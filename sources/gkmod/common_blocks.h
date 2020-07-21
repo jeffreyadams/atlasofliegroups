@@ -226,7 +226,7 @@ namespace ext_block {
 
 // A variant of |ext_block::param| that avoids fixing |gamma|
 // Identical (supplementary) data fields, method absent: |restrict|
-struct paramin // allow public member access; methods ensure no invariants
+struct ext_param // allow public member access; methods ensure no invariants
 {
   const repr::Ext_rep_context& ctxt;
   TwistedInvolution tw; // implicitly defines $\theta$
@@ -237,18 +237,18 @@ struct paramin // allow public member access; methods ensure no invariants
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  paramin (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
+  ext_param (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
 	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
 	   bool flipped=false);
 
   // default extension choice:
-  paramin (const repr::Ext_rep_context& ec,
-	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
-  static paramin default_extend
+  ext_param (const repr::Ext_rep_context& ec,
+	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
+  static ext_param default_extend
   (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
 
-  paramin (const paramin& p) = default;
-  paramin (paramin&& p)
+  ext_param (const ext_param& p) = default;
+  ext_param (ext_param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
   , l(std::move(p.l))
   , gamma_lambda(std::move(p.gamma_lambda))
@@ -257,8 +257,8 @@ struct paramin // allow public member access; methods ensure no invariants
   , flipped(p.flipped)
   {}
 
-  paramin& operator= (const paramin& p);
-  paramin& operator= (paramin&& p);
+  ext_param& operator= (const ext_param& p);
+  ext_param& operator= (ext_param&& p);
 
   bool is_flipped() const { return flipped; }
 
@@ -271,7 +271,7 @@ struct paramin // allow public member access; methods ensure no invariants
   KGBElt x() const; // reconstruct |x| component
   // underlying unextended representation
   repr::StandardRepr restrict(const RatWeight& gamma) const;
-}; // |paramin|
+}; // |ext_param|
 
 } // |namespace ext_block|
 

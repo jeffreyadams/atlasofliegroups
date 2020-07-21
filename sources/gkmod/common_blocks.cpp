@@ -1218,25 +1218,25 @@ Coweight ell (const KGB& kgb, KGBElt x);
   // Declarations of some local functions
 WeylWord fixed_conjugate_simple
   (const repr::Ext_common_context& c, RootNbr& alpha);
-bool same_standard_reps (const paramin& E, const paramin& F);
-bool same_sign (const paramin& E, const paramin& F);
-inline bool is_default (const paramin& E)
-  { return same_sign(E,paramin(E.ctxt,E.x(),E.gamma_lambda)); }
+bool same_standard_reps (const ext_param& E, const ext_param& F);
+bool same_sign (const ext_param& E, const ext_param& F);
+inline bool is_default (const ext_param& E)
+  { return same_sign(E,ext_param(E.ctxt,E.x(),E.gamma_lambda)); }
 
-void z_align (const paramin& E, paramin& F, bool extra_flip);
-void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
-paramin complex_cross(const repr::Ext_common_context& ctxt,
-		      const ext_gen& p, paramin E);
-int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
+void z_align (const ext_param& E, ext_param& F, bool extra_flip);
+void z_align (const ext_param& E, ext_param& F, bool extra_flip, int t_mu);
+ext_param complex_cross(const repr::Ext_common_context& ctxt,
+		      const ext_gen& p, ext_param E);
+int level_a (const ext_param& E, const Weight& shift, RootNbr alpha);
 DescValue star (const repr::Ext_common_context& ctxt,
-		const paramin& E, const ext_gen& p,
-		containers::sl_list<paramin>& links);
+		const ext_param& E, const ext_gen& p,
+		containers::sl_list<ext_param>& links);
 
 bool is_descent
-  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E);
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const ext_param& E);
 weyl::Generator first_descent_among
   (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
-   const ext_gens& orbits, const paramin& E);
+   const ext_gens& orbits, const ext_param& E);
 
 
   // Definitions of local functions in |namespace ext_block|
@@ -1279,12 +1279,12 @@ WeylWord fixed_conjugate_simple
 } // |fixed_conjugate_simple|
 
 
-  // |paramin| methods and functions
+  // |ext_param| methods and functions
 
-const WeightInvolution& paramin::theta () const
+const WeightInvolution& ext_param::theta () const
   { return ctxt.inner_class().matrix(tw); }
 
-void validate(const paramin& E)
+void validate(const ext_param& E)
 {
 #ifndef NDEBUG // make sure this is a no-op when debugging is disabled
   const auto& i_tab = E.ctxt.inner_class().involution_table();
@@ -1300,7 +1300,7 @@ void validate(const paramin& E)
 }
 
 
-paramin::paramin
+ext_param::ext_param
 (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
    RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t, bool flipped)
   : ctxt(ec), tw(tw)
@@ -1315,7 +1315,7 @@ paramin::paramin
 
 
 // contructor used for default extension once |x| and |gamma_lamba| are chosen
-paramin::paramin
+ext_param::ext_param
 (const repr::Ext_rep_context& ec,
    KGBElt x, const RatWeight& gamma_lambda, bool flipped)
   : ctxt(ec)
@@ -1343,7 +1343,7 @@ paramin::paramin
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
-paramin paramin::default_extend
+ext_param ext_param::default_extend
   (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
@@ -1351,17 +1351,17 @@ paramin paramin::default_extend
   auto srm =  repr::StandardReprMod::mod_reduce(ec,sr);
   // get default representative at |gamma%1|, normalised
   auto gamma_lambda=ec.gamma_lambda(srm);
-  return paramin(ec,sr.x(),gamma_lambda);
+  return ext_param(ec,sr.x(),gamma_lambda);
 }
 
-paramin& paramin::operator= (const paramin& p)
+ext_param& ext_param::operator= (const ext_param& p)
 { assert(&ctxt==&p.ctxt); // assignment should remain in the same context
   tw=p.tw;
   l=p.l; gamma_lambda=p.gamma_lambda; tau=p.tau; t=p.t;
   flipped=p.flipped;
   return *this;
 }
-paramin& paramin::operator= (paramin&& p)
+ext_param& ext_param::operator= (ext_param&& p)
 { assert(&ctxt==&p.ctxt); // assignment should remain in the same context
   tw=std::move(p.tw);
   l=std::move(p.l); gamma_lambda=std::move(p.gamma_lambda);
@@ -1371,12 +1371,12 @@ paramin& paramin::operator= (paramin&& p)
 }
 
 
-KGBElt paramin::x() const
+KGBElt ext_param::x() const
 { TitsElt a(ctxt.inner_class().titsGroup(),TorusPart(l),tw);
   return rc().kgb().lookup(a);
 }
 
-repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
+repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
 {
   const RatWeight gamma_rho = gamma-rho(rc().root_datum());
   const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
@@ -1385,7 +1385,7 @@ repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
 
 
 // whether |E| and |F| lie over equivalent |StandardRepr| values
-bool same_standard_reps (const paramin& E, const paramin& F)
+bool same_standard_reps (const ext_param& E, const ext_param& F)
 {
   if (&E.ctxt!=&F.ctxt)
   { if (&E.ctxt.inner_class()!=&F.ctxt.inner_class())
@@ -1400,7 +1400,7 @@ bool same_standard_reps (const paramin& E, const paramin& F)
     and in_L_image(E.gamma_lambda.integer_diff<int>(F.gamma_lambda),E.theta()-1);
 }
 
-void z_align (const paramin& E, paramin& F, bool extra_flip)
+void z_align (const ext_param& E, ext_param& F, bool extra_flip)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
   int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
   assert(d%2==0);
@@ -1418,7 +1418,7 @@ void z_align (const paramin& E, paramin& F, bool extra_flip)
   of call the value of |mu| is explicitly available, so we ask here to pass
   |t.dot(mu)| as third argument |t_mu|.
  */
-void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
+void z_align (const ext_param& E, ext_param& F, bool extra_flip, int t_mu)
 { z_align(E,F,extra_flip^(t_mu%2!=0)); }
 
 
@@ -1440,8 +1440,8 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-paramin complex_cross(const repr::Ext_common_context& ctxt,
-		      const ext_gen& p, paramin E) // by-value for |E|, modified
+ext_param complex_cross(const repr::Ext_common_context& ctxt,
+		      const ext_gen& p, ext_param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().root_datum();
   const RootDatum& id = ctxt.id();
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
@@ -1496,7 +1496,7 @@ paramin complex_cross(const repr::Ext_common_context& ctxt,
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
 // the relation is symmetric in |E|, |F|, although not obviously so
-bool same_sign (const paramin& E, const paramin& F)
+bool same_sign (const ext_param& E, const ext_param& F)
 {
   assert(same_standard_reps(E,F));
   const WeightInvolution& delta = E.delta();
@@ -1517,19 +1517,19 @@ bool same_sign (const paramin& E, const paramin& F)
   that |shift|, the multiple of $\alpha/2$ that such a projection would
   subtract from |E.gamma_lambda|).
 */
-int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
+int level_a (const ext_param& E, const Weight& shift, RootNbr alpha)
 {
   const RootDatum& rd = E.rc().root_datum();
   return (E.gamma_lambda + shift).dot(rd.coroot(alpha));
 }
 
 
-// compute type of |p| for |E|, and export adjacent |paramin| values in |links|
+// compute type of |p| for |E|, and export adjacent |ext_param| values in |links|
 DescValue star (const repr::Ext_common_context& ctxt,
-		const paramin& E, const ext_gen& p,
-		containers::sl_list<paramin>& links)
+		const ext_param& E, const ext_gen& p,
+		containers::sl_list<ext_param>& links)
 {
-  paramin E0=E; // a copy of |E| that might be modified below to "normalise"
+  ext_param E0=E; // a copy of |E| that might be modified below to "normalise"
   DescValue result;
 
   const TwistedWeylGroup& tW = E.rc().twisted_Weyl_group();
@@ -1586,7 +1586,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  Weight diff = // called $-\sigma$ in table 2 of [Ptr] (NOTE MINUS)
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
-	  paramin F(E.ctxt,new_tw,
+	  ext_param F(E.ctxt,new_tw,
 		    E.gamma_lambda- rho_r_shift,
 		    E0.tau+diff*tau_coef,
 		    E.l+alpha_v*(tf_alpha/2), E.t);
@@ -1629,11 +1629,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
 
-	  paramin F0(E.ctxt,new_tw,
+	  ext_param F0(E.ctxt,new_tw,
 		     new_gamma_lambda - rho_r_shift,
 		     new_tau - alpha*(tau_coef/2),
 		     E.l + alpha_v*(tf_alpha/2), E.t);
-	  paramin F1(E.ctxt,new_tw,
+	  ext_param F1(E.ctxt,new_tw,
 		     F0.gamma_lambda - alpha, F0.tau, F0.l, E.t);
 
 	  if (not rd.is_simple_root(alpha_simple))
@@ -1680,8 +1680,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  paramin F0(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l          , E0.t);
-	  paramin F1(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l + alpha_v, E0.t);
+	  ext_param F0(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l          , E0.t);
+	  ext_param F1(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l + alpha_v, E0.t);
 
 	  z_align(E0,F0,flipped);
 	  z_align(E0,F1,flipped);
@@ -1729,11 +1729,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  E0.t -= diff*t_alpha;
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  paramin E1 = E0; // for cross neighbour; share updated value of |t|
+	  ext_param E1 = E0; // for cross neighbour; share updated value of |t|
 	  E1.gamma_lambda -= alpha;
 	  assert(not same_standard_reps(E0,E1));
 
-	  paramin F(E.ctxt,new_tw, new_gamma_lambda, new_tau, E.l, E0.t);
+	  ext_param F(E.ctxt,new_tw, new_gamma_lambda, new_tau, E.l, E0.t);
 
 
 	  z_align(E0,F,flipped);
@@ -1794,7 +1794,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
-	  paramin F (E.ctxt, new_tw,
+	  ext_param F (E.ctxt, new_tw,
 		     E.gamma_lambda - rho_r_shift,  E.tau + sigma,
 		     E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
 
@@ -1820,10 +1820,10 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
-	  paramin F0(E.ctxt, new_tw,
+	  ext_param F0(E.ctxt, new_tw,
 		     E.gamma_lambda - rho_r_shift - alpha*m, new_tau0,
 		     new_l, E.t);
-	  paramin F1(E.ctxt, new_tw,
+	  ext_param F1(E.ctxt, new_tw,
 		     E.gamma_lambda - rho_r_shift - alpha*mm, E.tau + sigma,
 		     new_l, E.t);
 
@@ -1841,11 +1841,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  assert((at-bt)%2==0);
 	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
 
-	  paramin F0(E.ctxt, new_tw,
+	  ext_param F0(E.ctxt, new_tw,
 		     E.gamma_lambda - rho_r_shift - alpha*m,
 		     E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		     E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
-	  paramin F1(E.ctxt, new_tw,
+	  ext_param F1(E.ctxt, new_tw,
 		     E.gamma_lambda - rho_r_shift - alpha*(1-m) - beta,
 		     E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
 		     F0.l,E.t);
@@ -1888,7 +1888,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  - alpha*(a_level/2) - beta*(b_level/2);
 
 	int ta = E.t.dot(alpha); int tb = E.t.dot(beta);
-	paramin E1=E; // another modifiable copy, like |E0|
+	ext_param E1=E; // another modifiable copy, like |E0|
 
 	if (matreduc::has_solution(theta_1,alpha))
 	{ // type 2r11
@@ -1907,9 +1907,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t.dot(alpha)==m and E1.t.dot(beta)==-m);
 
-	  paramin F0(E.ctxt, new_tw,
+	  ext_param F0(E.ctxt, new_tw,
 		     new_gamma_lambda,E.tau, E.l+alpha_v*m, E0.t);
-	  paramin F1(E.ctxt, new_tw,
+	  ext_param F1(E.ctxt, new_tw,
 		     new_gamma_lambda,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t);
 
 	  z_align(E0,F0,flipped,m*((b_level-a_level)/2));
@@ -1942,9 +1942,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  assert(E1.t.dot(alpha)==-mm and E1.t.dot(beta)==mm);
 
 	  // Cayley links
-	  paramin F0(E.ctxt, new_tw,
+	  ext_param F0(E.ctxt, new_tw,
 		     new_gamma_lambda, E.tau, E.l+alpha_v*m, E0.t);
-	  paramin F1(E.ctxt, new_tw,
+	  ext_param F1(E.ctxt, new_tw,
 		     new_gamma_lambda, E.tau, E.l+alpha_v*mm, E1.t);
 
 	  z_align(E0,F0,flipped,m *((b_level-a_level)/2));
@@ -1966,7 +1966,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  E1.t = E0.t; // cross action, keeps adaptation of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
-	  paramin F(E.ctxt, new_tw, new_gamma_lambda, E.tau, E.l, E0.t);
+	  ext_param F(E.ctxt, new_tw, new_gamma_lambda, E.tau, E.l, E0.t);
 
 	  z_align(E0,F,flipped); // no 4th arg, as |E.t.dot(alpha)==0| etc.
 	  z_align(F,E1,flipped);
@@ -2016,7 +2016,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  const Coweight new_l = E.l + alpha_v*dual_f;
 	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
-	  paramin F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
+	  ext_param F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
 		     E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Ci case
@@ -2052,7 +2052,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
-	  paramin F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
+	  ext_param F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
 		   E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Cr case
@@ -2110,7 +2110,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	E0.l += alpha_v*(tf_alpha+tf_beta);
 	E0.t += (beta_v-alpha_v)*((tf_alpha+tf_beta)/2);
 
-	paramin F(E.ctxt, new_tw,
+	ext_param F(E.ctxt, new_tw,
 		  E0.gamma_lambda-rho_r_shift, E0.tau, E0.l, E0.t);
 
 	flipped = not flipped; // January unsurprise for 3i: delta acts by -1
@@ -2153,7 +2153,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	flipped = not flipped; // January unsurprise for 3r
 
-	paramin F(E.ctxt, new_tw, new_gamma_lambda,E0.tau,E0.l,E0.t);
+	ext_param F(E.ctxt, new_tw, new_gamma_lambda,E0.tau,E0.l,E0.t);
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
@@ -2192,7 +2192,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	    validate(E0);
 	    assert(E0.t.dot(kappa)==0);
 
-	    paramin F(E.ctxt,new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
+	    ext_param F(E.ctxt,new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Ci
 	    z_align(E0,F, flipped^(not same_sign(E,E0)));
@@ -2210,7 +2210,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	      E0.l += b_a;
 	      E0.t -= b_a;
 	    }
-	    paramin F(E.ctxt, new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
+	    ext_param F(E.ctxt, new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Cr
 	    z_align(E0,F,flipped^not same_sign(E,E0));
@@ -2278,10 +2278,10 @@ bool ext_block::tune_signs(const blocks::common_block& block)
   repr::Ext_common_context ctxt
     (block.context().real_group(),delta,block.integral_subsystem());
   repr::Ext_rep_context param_ctxt(block.context(),delta);
-  containers::sl_list<paramin> links;
+  containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const paramin E(param_ctxt,block.x(z),block.gamma_lambda(z));
+    const ext_param E(param_ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(ctxt,E,p,links);
@@ -2309,12 +2309,12 @@ bool ext_block::tune_signs(const blocks::common_block& block)
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
-	  const paramin q = *links.begin();
+	  const ext_param q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  paramin F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default
+	  ext_param F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -2324,13 +2324,13 @@ bool ext_block::tune_signs(const blocks::common_block& block)
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
-	  const paramin q0 = *links.begin();
-	  const paramin q1 = *std::next(links.begin());
+	  const ext_param q0 = *links.begin();
+	  const ext_param q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  if (m!=UndefBlock) // don't fall off the edge of a partial block
 	  {
 	    BlockElt Cz = this->z(m); // corresponding element of block
-	    paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    ext_param F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	    assert(same_standard_reps(q0,F));
 	    if (not same_sign(q0,F))
 	      flip_edge(s,n,m);
@@ -2338,7 +2338,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
 	  {
 	    BlockElt cz = this->z(m);
-	    paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
+	    ext_param Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
 	    assert(same_standard_reps(q1,Fc));
 	    if (not same_sign(q1,Fc))
 	      flip_edge(s,n,m);
@@ -2348,12 +2348,12 @@ bool ext_block::tune_signs(const blocks::common_block& block)
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
-	  const paramin q = *links.begin();
+	  const ext_param q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -2363,15 +2363,15 @@ bool ext_block::tune_signs(const blocks::common_block& block)
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
-	  const paramin q0 = *links.begin();
-	  const paramin q1 = *std::next(links.begin());
+	  const ext_param q0 = *links.begin();
+	  const ext_param q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 
 	  if (m.first==UndefBlock)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -2382,7 +2382,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz = this->z(m.second);
-	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -2392,15 +2392,15 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
-	  const paramin q0 = *links.begin();
-	  const paramin q1 = *std::next(links.begin());
+	  const ext_param q0 = *links.begin();
+	  const ext_param q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 
 	  if (m.first==UndefBlock)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -2411,7 +2411,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz= this->z(m.second);
-	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -2479,7 +2479,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
-  paramin E0 = paramin::default_extend(ctxt,sr);
+  ext_param E0 = ext_param::default_extend(ctxt,sr);
 
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
@@ -2511,7 +2511,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   } // end of transformation of extended parameter components
 
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
+  ext_param E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
     repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
@@ -2547,7 +2547,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       assert(block_ctxt.subsys().parent_nr_simple(p.s0)
 	     ==rd.simpleRootNbr(*it)); // check that we located it
 
-      containers::sl_list<paramin> links;
+      containers::sl_list<ext_param> links;
       auto type = // compute neighbours in extended block
 	star(block_ctxt,E1,p,links);
       assert(is_complex(type) or type==two_semi_real);
@@ -2563,7 +2563,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   // but the whole point of this function is to record the relative flip too!
   flipped = // compare |E1| to default
-    not same_sign(E1,paramin::default_extend(ctxt,result));
+    not same_sign(E1,ext_param::default_extend(ctxt,result));
   return result;
 
 } // |scaled_extended_dominant|
@@ -2576,7 +2576,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E)
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const ext_param& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
@@ -2598,7 +2598,7 @@ bool is_descent
 
 weyl::Generator first_descent_among
   (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
-   const ext_gens& orbits, const paramin& E)
+   const ext_gens& orbits, const ext_param& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
     if (is_descent(ctxt,orbits[*it],E))
       return *it;
@@ -2626,18 +2626,18 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::queue<paramin> to_do { paramin::default_extend(param_ctxt,sr) };
+  containers::queue<ext_param> to_do { ext_param::default_extend(param_ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
-  { const paramin E= to_do.front();
+  { const ext_param E= to_do.front();
     to_do.pop(); // we are done with |head|
     auto s = first_descent_among(ctxt,singular_orbits,orbits,E);
     if (s>=orbits.size()) // no singular descents, so append to result
       result.emplace_back
 	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
     else // |s| is a singular descent orbit
-    { containers::sl_list<paramin> links;
+    { containers::sl_list<ext_param> links;
       auto type = star(ctxt,E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
