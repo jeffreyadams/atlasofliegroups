@@ -332,6 +332,8 @@ class Rep_table : public Rep_context
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;
+    mutable unsigned long FREQUENCY; //how often to print data
+  mutable unsigned long NEXT; //next time to print data
 #if 0
   unsigned long LOOKUP;
 #endif
