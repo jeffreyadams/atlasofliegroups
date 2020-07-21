@@ -19,8 +19,7 @@
 
 #include "tits.h"
 #include "kgb.h"	// various methods
-#include "blocks.h"	// |dual_involution|
-#include "common_blocks.h" // the |blocks::common_block| class
+#include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
@@ -2023,6 +2022,163 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
+
+//			|common_conetxt| methods
+
+std::pair<gradings::Status::Value,bool>
+  common_context::status(weyl::Generator s, KGBElt x) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,x);
+  const auto t=sub.simple(s);
+  const auto stat = kgb().status(t,conj_x);
+  return std::make_pair(stat,
+			stat==gradings::Status::Real
+			? kgb().isDoubleCayleyImage(t,conj_x) // real type 1
+			: stat==gradings::Status::Complex
+			? kgb().isDescent(t,conj_x)
+			: conj_x!=kgb().cross(t,conj_x)); // nc imaginary type 1
+}
+
+StandardReprMod common_context::cross
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& refl = sub.reflection(s); // reflection word in full system
+  const KGBElt new_x = kgb().cross(refl,z.x());
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
+  pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
+  gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
+  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // then reflect
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+StandardReprMod common_context::down_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  assert(is_parity(s,z)); // which also asserts that |z| is real for |s|
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().inverseCayley(sub.simple(s),conj_x).first;
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet real_flip = i_tab.real_roots(kgb().inv_nr(z.x()));
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+bool common_context::is_parity
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& i_tab = inner_class().involution_table();
+  const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
+  assert(real_roots.isMember(sub.parent_nr_simple(s)));
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int eval = this->gamma_lambda(z).dot(alpha_hat);
+  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  return (eval+rho_r_corr)%2!=0;
+}
+
+StandardReprMod common_context::up_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().cayley(sub.simple(s),conj_x);
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  RootNbrSet real_flip = upstairs_real_roots;
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(z.x())); // remove downstairs reals
+
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+
+  // correct in case the parity condition fails for our raised |gamma_lambda|
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
+    alpha_hat.dot(root_datum().twoRho(upstairs_real_roots))/2;
+  const int eval = gamma_lambda.dot(alpha_hat);
+  if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
+    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+
+Weight common_context::to_simple_shift
+  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
+{ const InvolutionTable& i_tab = inner_class().involution_table();
+  S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
+  return root_sum(root_datum(),S);
+}
+
+
+//			|Ext_common_context| methods
+
+Ext_common_context::Ext_common_context
+  (RealReductiveGroup& G, const WeightInvolution& delta, const SubSystem& sub)
+    : repr::common_context(G,sub)
+    , d_delta(delta)
+    , pi_delta(G.root_datum().rootPermutation(delta))
+    , delta_fixed_roots(fixed_points(pi_delta))
+    , twist()
+    , l_shifts(id().semisimpleRank())
+{
+  const RootDatum& rd = root_datum();
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
+
+  // the reflections for |E.l| pivot around |g_rho_check()|
+  const RatCoweight& g_rho_check = this->g_rho_check();
+  for (unsigned i=0; i<l_shifts.size(); ++i)
+    l_shifts[i] = -g_rho_check.dot(id().simpleRoot(i));
+} // |Ext_common_context::Ext_common_context|
+
+
+bool Ext_common_context::is_very_complex
+  (InvolutionNbr theta, RootNbr alpha) const
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
+  assert (rd.is_posroot(alpha)); // this is a precondition
+  auto image = i_tab.root_involution(theta,alpha);
+  make_positive(rd,image);
+  return image!=alpha and image!=delta_of(alpha);
+}
+
+/*
+  For the conjugation to simple scenario, we compute a set of positive roots
+  that become negative under an element of $W^\delta$ that makes the
+  integrally-simple root(s) in question simple. From this set |S|, and the
+  involutions at both ends of the link in the block, the function |shift_flip|
+  computes whether an additional flip is to be added to the link.
+
+  This comes from an action of |delta| on a certain top wedge product of
+  root spaces, and the formula below tells whether that action is by $-1$.
+*/
+bool Ext_common_context::shift_flip
+  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
+{ S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
+
+  unsigned count=0; // will count 2-element |delta|-orbit elements
+  for (auto it=S.begin(); it(); ++it)
+    if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
+	not root_datum().sumIsRoot(*it,delta_of(*it)))
+      ++count;
+
+  assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
+  return count%4!=0;
+}
 
 // |Ext_rep_context| methods
 

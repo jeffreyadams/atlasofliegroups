@@ -23,7 +23,6 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
-#include "common_blocks.h" // for type |blocks::common_block|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
@@ -94,7 +93,7 @@ unsigned int generator_length(DescValue v);
 unsigned int link_count(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
-			BlockElt& first_link);
+			BlockElt& link, const BitMap& fixed_points);
 
 
  using Pol = Polynomial<int>;
@@ -281,6 +280,56 @@ class context // holds values that remain fixed across extended block
   // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
 
 }; // |context|
+
+
+// A variant of |ext_block::param| that avoids fixing |gamma|
+// Identical (supplementary) data fields, method absent: |restrict|
+struct ext_param // allow public member access; methods ensure no invariants
+{
+  const repr::Ext_rep_context& ctxt;
+  TwistedInvolution tw; // implicitly defines $\theta$
+
+  Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
+  RatWeight gamma_lambda; // lift of $\gamma-\lambda$ value in a |StandardRepr|
+  Weight tau; // a solution to $(1-\theta)*\tau=(1-\delta)gamma_\lambda$
+  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+  bool flipped; // whether tensored with the flipping representation
+
+  ext_param (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
+	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
+	   bool flipped=false);
+
+  // default extension choice:
+  ext_param (const repr::Ext_rep_context& ec,
+	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
+  static ext_param default_extend
+  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+
+  ext_param (const ext_param& p) = default;
+  ext_param (ext_param&& p)
+  : ctxt(p.ctxt), tw(std::move(p.tw))
+  , l(std::move(p.l))
+  , gamma_lambda(std::move(p.gamma_lambda))
+  , tau(std::move(p.tau))
+  , t(std::move(p.t))
+  , flipped(p.flipped)
+  {}
+
+  ext_param& operator= (const ext_param& p);
+  ext_param& operator= (ext_param&& p);
+
+  bool is_flipped() const { return flipped; }
+
+  void flip (bool whether=true) { flipped=(whether!=flipped); }
+
+  const repr::Rep_context& rc() const { return ctxt; } // reference base object
+  const WeightInvolution& delta () const { return ctxt.delta(); }
+  const WeightInvolution& theta () const;
+
+  KGBElt x() const; // reconstruct |x| component
+  // underlying unextended representation
+  repr::StandardRepr restrict(const RatWeight& gamma) const;
+}; // |ext_param|
 
 
 // a variation of |Rep_context::make_dominant|, used during extended deformation

@@ -12,7 +12,6 @@
 
 #include "commands_fwd.h"
 #include "../Atlas.h"
-#include "common_blocks.h"
 #include "wgraph.h"
 
 namespace atlas {

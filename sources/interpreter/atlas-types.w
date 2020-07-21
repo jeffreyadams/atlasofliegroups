@@ -4659,7 +4659,6 @@ void test_final(const module_parameter_value& p, const char* descr)
 of the \.{full\_block} command in the \.{Fokko} program, and a variation for
 partial blocks.
 
-@h "common_blocks.h"
 @< Local function def...@>=
 void print_c_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
