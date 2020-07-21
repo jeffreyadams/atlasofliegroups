@@ -28,6 +28,7 @@
 #include "y_values.h"
 #include "kgb.h"
 #include "weyl.h"
+#include "ext_block.h"  // class |ext_block::ext_block| constructor
 #include "kl.h"		// destruction
 
 /*
@@ -684,7 +685,728 @@ void Block::compute_supports()
 //		****	     Nothing else for |Block|		****
 
 
-/*****	    |nblock_help| helper class for |param_block|	****/
+// auxiliaries to |common_block| constructor not declared in the header file
+
+// add a new block element to |zz_hash| and (therfore) to |info|
+void add_z(block_hash& hash,KGBElt x,KGBElt y)
+{
+  size_t old_size=hash.size();
+  BlockElt z=hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
+  assert(z==old_size);
+  ndebug_use(old_size); ndebug_use(z);
+}
+
+// find already constructed element, to be called during construction
+BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y)
+{ return hash.find(block_elt_entry(x,y)); }
+
+
+  // |common_block| methods
+
+RealReductiveGroup& common_block::real_group() const
+  { return rc.real_group(); }
+const InnerClass& common_block::inner_class() const
+  { return rc.inner_class(); }
+const InvolutionTable& common_block::involution_table() const
+  { return inner_class().involution_table(); }
+const RootDatum& common_block::root_datum() const
+  { return rc.root_datum(); }
+
+RankFlags common_block::singular (const RatWeight& gamma) const
+{
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    result.set(s,root_datum().coroot(integral_sys.parent_nr_simple(s))
+				    .dot(gamma.numerator())==0);
+  return result;
+}
+
+// find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
+RatWeight common_block::gamma_lambda(BlockElt z) const
+{
+  return rc.gamma_lambda(z_pool[z].srm(rc,gamma_mod_1));
+}
+
+common_block::~common_block() = default;
+
+
+// the full block constructor is only called on explicit user demand
+// it is long because of the need to find elements in all corners
+
+common_block::common_block // full block constructor
+  (const Rep_context& rc,
+   const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
+   BlockElt& entry_element	// set to block element matching input
+  )
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
+  , rc(rc)
+  , gamma_mod_1(srm.gamma_mod1()) // already reduced
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , z_pool()
+  , srm_hash(z_pool,5)
+  , extended(nullptr) // no extended block initially
+  , highest_x() // defined below when we have moved to top of block
+  , highest_y() // defined below when generation is complete
+  , generated_as_full_block(true)
+{
+  const InnerClass& ic = inner_class();
+  const RootDatum& rd = root_datum();
+
+  const InvolutionTable& i_tab = ic.involution_table();
+  const KGB& kgb = rc.kgb();
+
+  Block_base::dd = // integral Dynkin diagram, converted from dual side
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+
+  const unsigned our_rank = integral_sys.rank();
+
+  repr::common_context ctxt(real_group(),integral_sys);
+
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
+  block_hash xy_hash(info);
+
+  // step 1: initialise |z|
+  auto z = srm; // get a working copy
+
+  // step 2: move up |z| toward the most split fiber for the current real form
+  {
+    weyl::Generator s;
+    do
+      for(s=0; s<our_rank; ++s)
+      {
+	std::pair<gradings::Status::Value,bool> stat = ctxt.status(s,z.x());
+	if (stat.first==gradings::Status::Complex
+	    and not stat.second) // complex ascent
+	{
+	  z = ctxt.cross(s,z);
+	  break;
+	}
+	else if (stat.first==gradings::Status::ImaginaryNoncompact)
+	{
+	  z = ctxt.up_Cayley(s,z);
+	  break;
+	}
+	// otherwise try next |s|
+      } // |for(s)|
+    while(s<our_rank); // loop until no ascents found in |integral_sys|
+  }
+  y_hash.match(i_tab.pack(rc.y_as_torus_elt(z),kgb.inv_nr(highest_x=z.x())));
+  // end of step 2
+
+  // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
+  using LL = containers::sl_list<containers::sl_list<repr::StandardReprMod> >;
+  containers::queue<LL>elements; // involution packets, by |x| outer, |y| inner
+  {
+    const InvolutionNbr theta = kgb.inv_nr(highest_x);
+    // generating reflections are by subsystem real roots for |theta0|
+    RootNbrSet pos_real = // as subset of full root datum posroots
+      integral_sys.positive_roots() & i_tab.real_roots(theta);
+    const RootNbrList generator_roots = rd.simpleBasis(pos_real);
+    std::vector<WeylWord> reflect(generator_roots.size());
+    for (unsigned i=0; i<generator_roots.size(); ++i)
+    {
+      auto alpha = // generating root expressed as root for |integral_sys|
+	integral_sys.from_parent(generator_roots[i]);
+      assert(alpha!=RootNbr(-1)); // renaming to subsystem should work
+      reflect[i] = integral_sys.reflectionWord(alpha); // word in integral gen's
+    }
+
+    containers::sl_list<repr::StandardReprMod> queue { z };
+    elements.emplace(); // create empty involution packet at front
+    auto& list = // when popping |queue|, move elts here
+      elements.front().emplace_back(); // create sublist for the unique |x| value
+    do
+    {
+      auto zz = queue.front();
+      list.splice(list.end(),queue,queue.begin()); // move node
+      srm_hash.match(repr::Repr_mod_entry(rc,zz));
+      for (const auto& w : reflect)
+      {
+	auto new_z = zz;
+	for (auto s : w) // order is irrelevant for a reflection word
+	  new_z = ctxt.cross(s,new_z);
+	assert(new_z.x()==highest_x); // since we have a real reflection
+
+	auto prev = y_pool.size();
+	auto new_y = y_hash.match(i_tab.pack(rc.y_as_torus_elt(new_z),theta));
+	if (new_y==prev) // then this was really a new y-value
+	  queue.push_back(new_z);
+      }
+    }
+    while (not queue.empty());
+
+    // now insert elements from |y_hash| as first R-packet of block
+    for (size_t i=0; i<y_hash.size(); ++i)
+      add_z(xy_hash,highest_x,i); // adds element to |info|, setting |length==0|
+
+  } // end of step 3
+
+  // step 4: generate packets for successive involutions
+  containers::queue<BlockElt> queue { size() }; // involution packet boundaries
+
+  BitMap x_seen(kgb.size()); // for |x| below |highest_x|, record encounters
+  x_seen.insert(highest_x);
+  BlockElt next=0; // start at beginning of (growing) list of block elements
+  containers::sl_list<LL> bundles;
+
+  do // process involution packet of elements from |next| to |queue.front()|
+  { // |next| is constant throughout the loop body, popped from |queue| at end
+    const KGBElt first_x = x(next);
+
+    // precompute (reversed) length for anything generated this iteration
+    const auto next_length = info[next].length+1;
+
+    const LL& bundle = // keep handle on packet being transferred
+      elements.pop_splice_to(bundles,bundles.end()); // transfer bundle
+
+    const unsigned int nr_x = bundle.size();
+    const unsigned int nr_y = bundle.front().size();
+#ifndef NDEBUG // check regularity of the constructed bundle
+    assert((queue.front()-next)==nr_x*nr_y);
+    const KGBElt first_y=y(next);
+    {
+      const InvolutionNbr tau = kgb.inv_nr(first_x);
+      auto z=next;
+      for (const auto& row : bundle)
+      {
+	assert(kgb.inv_nr(x(z))==tau);
+	assert(row.front().x()==x(z));
+	auto it = row.wcbegin();
+	for (unsigned j=0; j<nr_y; ++j,++z,++it)
+	{
+	  assert(y_hash[y(z)].nr==tau); // involutions must match
+	  assert(y(z)==first_y+j);   // and |y|s are consecutive
+	  assert(y_hash.find(i_tab.pack(rc.y_as_torus_elt(*it),tau))==y(z));
+	}
+      }
+    }
+#endif
+
+    for (weyl::Generator s=0; s<our_rank; ++s)
+    {
+      std::vector<block_fields>& tab_s = data[s];
+      tab_s.resize(size()); // ensure enough slots for now
+
+      const repr::StandardReprMod& head = bundle.front().front();
+      const bool cross_new_involution =
+	not x_seen.isMember(ctxt.cross(s,head).x());
+      const bool is_real = // whether |s| is real for this involution packet
+	ctxt.status(s,first_x).first==gradings::Status::Real;
+      const bool is_type1 = is_real and ctxt.status(s,first_x).second;
+
+      containers::sl_list<KGBElt> cross_ys, Cayley_ys;
+      const size_t old_y_size = y_pool.size(); // from here up |y|'s are new
+      KGBElt sample_x=UndefKGB; // to be set in case of any |Cayley_ys|
+
+      { // compute values into |cross_ys|,
+	// check for existence of real parity. in which case compute |Cayley_ys|
+
+	auto it = bundle.front().cbegin();
+	for (unsigned int j=0; j<nr_y; ++j,++it)
+	{
+	  auto sz = ctxt.cross(s,*it);
+	  InvolutionNbr theta = kgb.inv_nr(sz.x());
+	  TorusElement t = rc.y_as_torus_elt(sz);
+	  cross_ys.push_back(y_hash.match(i_tab.pack(t,theta)));
+	  if (is_real and ctxt.is_parity(s,*it)) // then do Cayley instead
+	  { // looking only for |y| value, so just one Cayley descent suffices
+	    sz = ctxt.down_Cayley(s,*it);
+	    theta = kgb.inv_nr(sample_x=sz.x()); // same |sample_x| each time
+	    t = rc.y_as_torus_elt(sz);
+	    Cayley_ys.push_back(y_hash.match(i_tab.pack(t,theta)));
+	  }
+	}
+      } // compute values |cross_ys|
+
+      { // handle cross actions and descent statuses in all cases
+	const auto theta = kgb.inv_nr(ctxt.cross(s,head).x());
+	BlockElt cur = next; // start of old involution packet
+
+	if (cross_new_involution)
+	{ // add a new involution packet
+	  LL packet;
+	  for (const auto& row : bundle)
+	  {
+	    auto& packet_list = packet.emplace_back();
+	    auto it = cross_ys.cbegin();
+	    for (const auto& z : row)
+	    {
+	      auto &sz = packet_list.emplace_back(ctxt.cross(s,z));
+	      assert(*it==y_hash.find(i_tab.pack(rc.y_as_torus_elt(sz),theta)));
+	      ndebug_use(theta);
+	      tab_s[cur++].cross_image = info.size();
+	      add_z(xy_hash,sz.x(),*it);
+	      info.back().length=next_length;
+	      srm_hash.match(repr::Repr_mod_entry(rc,sz));
+	      ++it;
+	    }
+	    x_seen.insert(packet_list.front().x());
+	  } // |for (row)|
+	  elements.push(std::move(packet));
+	  queue.push(info.size()); // mark end of a new involution packet
+	} // |if (cross_new_involution)|
+	else
+	  for (const auto& row : bundle)
+	  {
+	    assert(row.front().x()==x(cur));
+	    KGBElt s_cross_x =
+	      kgb.cross(integral_sys.reflection(s),row.front().x());
+	    for (auto y : cross_ys)
+	      tab_s[cur++].cross_image = find_in(xy_hash,s_cross_x,y);
+	  }
+
+	cur = next; // back up for setting descent status
+	if (is_real) // then status depends on |y|
+	{ const auto parity = // supposing |y| says "parity", which type is it?
+	      is_type1 ? DescentStatus::RealTypeI : DescentStatus::RealTypeII
+	    , nonparity = DescentStatus::RealNonparity;
+	  for (const auto& row : bundle) // actually |x| is irrelevant
+	    for (const auto& z : row)
+	      info[cur++].descent.set(s,
+				      ctxt.is_parity(s,z) ? parity : nonparity);
+	}
+	else
+	  for (unsigned i=0; i<nr_x; ++i)
+	  {
+	    auto stat = ctxt.status(s,x(cur));
+	    auto block_status =
+	      stat.first == gradings::Status::Complex
+	      ? stat.second ? DescentStatus::ComplexDescent
+	                    : DescentStatus::ComplexAscent
+	      : stat.first == gradings::Status::ImaginaryCompact
+	                    ? DescentStatus::ImaginaryCompact
+	      : stat.second ? DescentStatus::ImaginaryTypeI
+	                    : DescentStatus::ImaginaryTypeII;
+	    for (unsigned j=0; j<nr_y; ++j)
+	      info[cur++].descent.set(s,block_status);
+	  }
+      } // done for cross action
+
+      if (not Cayley_ys.empty())
+      {
+	if (not x_seen.isMember(sample_x))
+	{ // we must now extend |info| with elements for the new involution
+	  // the |x| values of Cayleys of known elements do not suffice; rather
+	  // complete |sample_x| to its subsystem fiber over new involution
+	  containers::sl_list<containers::sl_list<repr::StandardReprMod> >
+	    packet;
+
+	  RootNbrSet pos_imag = // subsystem positive imaginary roots
+	    integral_sys.positive_roots() &
+	    i_tab.imaginary_roots(kgb.inv_nr(sample_x));
+	  RootNbrList imaginary_generators = rd.simpleBasis(pos_imag);
+
+	  auto to_do = containers::queue<KGBElt> { sample_x };
+	  do
+	  {
+	    KGBElt x = to_do.front(); to_do.pop();
+	    if (x_seen.isMember(x))
+	      continue;
+
+	    x_seen.insert(x);
+	    auto& packet_list = packet.emplace_back();
+
+	    for (auto y = old_y_size; y<y_pool.size(); ++y) // distinct new |y|s
+	    {
+	      add_z(xy_hash,x,y), info.back().length=next_length;
+	      auto& new_srm = packet_list.emplace_back
+		(repr::StandardReprMod::build
+		 (rc,srm.gamma_mod1(), x,y_pool[y].repr().log_pi(false)));
+	      srm_hash.match(repr::Repr_mod_entry(rc,new_srm));
+	    }
+
+	    // push any new neighbours of |x| onto |to_do|
+	    for (RootNbr alpha : imaginary_generators)
+	      to_do.push(kgb.cross(rd.reflectionWord(alpha),x));
+	  }
+	  while (not to_do.empty());
+
+	  elements.push(std::move(packet));
+	  queue.push(info.size()); // mark end of a new involution packet
+	  tab_s.resize(info.size()); // ensure the Cayley link slots below exist
+	} // |if (not x_seen.isMember(sample_x))|: finished extending |info|
+
+	// it remains to set Cayley links in both directions
+	BlockElt cur = next; // start of old involution packet
+	for (const auto& row : bundle)
+	{
+	  auto it = Cayley_ys.cbegin();
+	  for (const auto& z : row)
+	  {
+	    if (ctxt.is_parity(s,z))
+	    {
+	      auto sz = ctxt.down_Cayley(s,z);
+	      BlockElt target = find_in(xy_hash,sz.x(),*it);
+	      tab_s[cur].Cayley_image.first = target;
+	      first_free_slot(tab_s[target].Cayley_image) = cur;
+	      if (is_type1)
+	      {
+		auto other_x = ctxt.cross(s,sz).x();
+		assert(x_seen.isMember(other_x));
+		target = find_in(xy_hash,other_x,*it);
+		tab_s[cur].Cayley_image.second = target;
+		first_free_slot(tab_s[target].Cayley_image) = cur;
+	      }
+	      ++it; // so |it| runs through |Cayley_ys|
+	    }
+	    ++cur;
+	  } // |for(z : row)|
+	  assert(Cayley_ys.at_end(it));
+	} // |for(row : bundle)|
+      } // |if (not Cayley_ys.empty())|
+    } // |for(s)|
+  }
+  while (next=queue.front(), queue.pop(), not queue.empty());
+  // end of step 4
+
+  highest_x = last(x_seen); // to be sure; length need not increase with |x|
+  highest_y = y_hash.size()-1; // set highest occurring |y| value, for |ysize|
+
+  std::vector<unsigned int> renumber(y_hash.size());
+  {
+    using pair_tp = std::pair<unsigned long,unsigned int>;
+    containers::sl_list<pair_tp> L;
+    auto less = [](const pair_tp& a,const pair_tp& b)->bool
+      { return a.first<b.first; };
+    unsigned int i=0; auto finish = L.end();
+    for (const auto& packet : bundles)
+    {
+      auto start=finish;
+      for (const auto& srm : packet.front()) // only traverse first row of packet
+      { // gather their |y_stripped| values
+	auto y_strip = repr::Repr_mod_entry(rc,srm).y_stripped();
+	L.emplace_back(y_strip,i++);
+      }
+      L.sort(start,finish = L.end(),less);  // and sort interval by those values
+      assert(finish==L.end()); // |L.sort| has modified |finish| to achieve this
+    }
+    i=0;
+    for (const auto& pair : L)
+      renumber[pair.second]=i++;
+  }
+  // now we renumber so that for each involution |y| increases with |y_stripped|
+  for (auto& entry : info)
+    entry.y=renumber[entry.y]; // makes |y_hash| useless; it is dropped anyway
+
+  { // reverse lengths
+    auto max_length=info.back().length;
+    for (auto& entry : info)
+    { assert(entry.length<=max_length);
+      entry.length = max_length-entry.length;
+    }
+  }
+
+  sort();
+
+  entry_element = lookup(srm); // look up element matching the original input
+
+} // |common_block::common_block|, full block version
+
+// the partial block constructor is used for Bruhat intervals below some element
+// the precomputed interval is passed as |elements|; this constructor sorts it
+
+common_block::common_block // partial block constructor
+    (const repr::Rep_table& rt,
+     const repr::common_context& ctxt,
+     containers::sl_list<unsigned long>& elements,
+     const RatWeight& gamma_mod_1)
+  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
+  , rc(rt)
+  , gamma_mod_1(gamma_mod_1) // already reduced
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , z_pool()
+  , srm_hash(z_pool)
+  , extended(nullptr) // no extended block initially
+  , highest_x(0) // it won't be less than this; increased later
+  , highest_y(0) // defined when generation is complete
+  , generated_as_full_block(false)
+{
+  info.reserve(elements.size());
+  const auto& kgb = rt.kgb();
+  const auto& i_tab = inner_class().involution_table();
+
+  Block_base::dd = // integral Dynkin diagram, converted from dual side
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
+
+  { // we first fill |y_hash|, carefully ordering those for a same involution
+    using y_tab_type = std::pair<unsigned long,TorusPart>;
+    std::vector<containers::sl_list<y_tab_type> > y_table
+      (inner_class().involution_table().size());
+    // every element of |y_table| pairs a |y_stripped| value and a corresponding
+    // |TorusPart|; the former is used for sorting, the latter for |gamma_lambda|
+    for (unsigned long elt : elements)
+    { const auto& srm = rt.srm(elt);
+      const KGBElt x = srm.x();
+      if (x>highest_x)
+	highest_x=x;
+      y_tab_type entry(repr::Repr_mod_entry(rc,srm).y_stripped(),srm.y());
+      auto& loc = y_table[kgb.inv_nr(x)];
+      auto it = std::find_if_not(loc.cbegin(),loc.cend(),
+		[&entry](const y_tab_type& t) { return t.first<entry.first; });
+      if (it==loc.end() or entry.first<it->first) // only insert |entry| if new
+	loc.insert(it,entry);
+    }
+
+    for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+    {
+      auto old_size = y_hash.size();
+      for (const y_tab_type& entry : y_table[i_x])
+      {
+	RatWeight gamma_lambda = rt.gamma_lambda(i_x,entry.second,gamma_mod_1);
+	TorusElement t = y_values::exp_pi(gamma_lambda);
+	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
+      } // we ensured that that |y| increases with |y_stripped| value in packet
+      assert(y_hash.size()==old_size+y_table[i_x].size()); // all |y|'s were new
+      ndebug_use(old_size);
+      highest_y += y_table[i_x].size();
+    }
+    assert(y_pool.size()==highest_y);
+    -- highest_y; // one less than the number of distinct |y| values
+  }
+
+  elements.sort // pre-sort by |x| ensures descents precede when setting lengths
+    ([&rt](unsigned long a, unsigned long b)
+          { return rt.srm(a).x()<rt.srm(b).x(); }
+     );
+
+  for (unsigned long elt : elements)
+  { const auto& srm=rt.srm(elt);
+    const KGBElt x=srm.x();
+    auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
+    assert(y!=y_hash.empty);
+    info.emplace_back(x,y); // leave descent status unset and |length==0| for now
+    srm_hash.match(repr::Repr_mod_entry(rc,srm));
+  }
+
+  // allocate link fields with |UndefBlock| entries
+  data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
+
+  assert(info.size()==elements.size());
+  auto it = elements.cbegin();
+  for (BlockElt i=0; i<info.size(); ++i,++it)
+  {
+    EltInfo& z = info[i];
+    const auto srm_z = rt.srm(*it);
+    for (weyl::Generator s=0; s<integral_sys.rank(); ++s)
+    {
+      auto& tab_s = data[s];
+      const auto stat = ctxt.status(s,z.x);
+      switch (stat.first)
+      {
+      case gradings::Status::Complex:
+	{
+	  z.descent.set(s,stat.second
+			  ? DescentStatus::ComplexDescent
+			  : DescentStatus::ComplexAscent);
+	  if (stat.second) // set links both ways when seeing descent
+	  {
+	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
+	    assert(sz!=UndefBlock);
+	    if (length(i)==0) // then this is the first descent for |i|
+	      info[i].length=length(sz)+1;
+	    else
+	      assert(length(i)==length(sz)+1);
+	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
+	    tab_s[i].cross_image = sz;
+	    tab_s[sz].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::Real:
+	{
+	  if (ctxt.is_parity(s,srm_z))
+	  {
+	    const auto srm_sz = ctxt.down_Cayley(s,srm_z);
+	    BlockElt sz = lookup(srm_sz);
+	    assert(sz!=UndefBlock);
+	    if (length(i)==0) // then this is the first descent for |i|
+	      info[i].length=length(sz)+1;
+	    else
+	      assert(length(i)==length(sz)+1);
+	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
+	    if (stat.second)
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeI);
+	      tab_s[i].cross_image = i;
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	      sz = lookup(ctxt.cross(s,srm_sz)); // move to other Cayley descent
+	      assert(sz!=UndefBlock);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[i].Cayley_image.second = sz; // second Cayley descent
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	    }
+	    else
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeII);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeII);
+	      first_free_slot(tab_s[sz].Cayley_image) = i; // one of two ascents
+	      tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	    }
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::RealNonparity);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::ImaginaryCompact:
+	{
+	  z.descent.set(s,DescentStatus::ImaginaryCompact);
+	  tab_s[i].cross_image = i;
+	}
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  if (stat.second)
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeI);
+	    tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeII);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      }
+    } // |for (s)|
+  } // |for (i)|
+
+  sort();  // finally sort by length, then |x|, then |y|
+
+} // |common_block::common_block|, partial block version
+
+BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
+{ // since |srm_hash.empty==UndefBlock|, we can just say:
+  return srm_hash.find(repr::Repr_mod_entry(rc,srm));
+}
+
+BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
+{
+  return lookup(repr::StandardReprMod::build(rc,gamma_mod_1,x,gamma_lambda));
+}
+
+repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(root_datum());
+  const Weight lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda(z));
+  return rc.sr_gamma(x(z),lambda_rho,gamma);
+}
+
+ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
+{
+  return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
+}
+
+ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
+{
+  if (extended.get()==nullptr)
+    extended.reset
+      (new ext_block::ext_block(*this,inner_class().distinguished(),pol_hash));
+  return *extended;
+}
+
+kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
+{
+  if (kl_tab_ptr.get()==nullptr) // do this only the first time
+    kl_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
+
+  return kl_tab_ptr-> polynomial_hash_table();
+}
+
+// integrate an older partial block, with mapping of elements
+void common_block::swallow
+  (common_block&& sub, const BlockEltList& embed,
+   KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
+{
+  for (BlockElt z=0; z<sub.size(); ++z)
+  {
+    auto& covered = std::move(sub).Bruhat_order().Hasse(z);
+    for (auto& c : covered)
+      c=embed[c]; // translate in place
+    set_Bruhat_covered(embed[z],std::move(covered));
+  }
+  if (sub.kl_tab_ptr!=nullptr)
+  {
+    auto hash_object = KL_hash(KL_pol_hash); // need this for polynomial look-up
+    assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
+    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
+  }
+  if (sub.extended!=nullptr)
+  {
+    auto& eblock = extended_block(ext_KL_pol_hash); // get/build extended block
+    eblock.swallow(std::move(*sub.extended),embed);
+  }
+}
+
+void common_block::set_Bruhat
+  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse)
+{
+  for (auto& pair : partial_Hasse)
+    set_Bruhat_covered(pair.first,std::move(pair.second));
+}
+
+// comparison of |info| entries: |length|, |x|, |y_stripped()|
+bool elt_info_less (const Block_base::EltInfo& a,const Block_base::EltInfo& b)
+{ if (a.length!=b.length)
+    return a.length<b.length;
+  if (a.x!=b.x)
+    return a.x<b.x;
+  return a.y<b.y; // this implies comparison between |y_stripped| values
+}
+
+void common_block::sort()
+{
+  Permutation ranks = // standardization permutation, to be used for reordering
+    permutations::standardization(info.begin(),info.end(),elt_info_less);
+
+  ranks.permute(info); // permute |info|, ordering them by increasing |value|
+  ranks.permute(z_pool);
+  srm_hash.reconstruct();
+
+  // now adapt |data| tables, assumed to be already computed
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    std::vector<block_fields>& tab_s = data[s];
+    ranks.permute(tab_s); // permute fields of |data[s]|
+    for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
+    {
+      BlockElt& sz = tab_s[z].cross_image;
+      if (sz!=UndefBlock)
+	sz = ranks[sz];
+      BlockEltPair& p=tab_s[z].Cayley_image;
+      if (p.first!=UndefBlock)
+      {
+	p.first=ranks[p.first];
+	if (p.second!=UndefBlock)
+	  p.second=ranks[p.second];
+      }
+    } // |for z|
+  } // |for s|
+
+} // |common_block::sort|
+
+
+// find element in same common block with |x| and |y| parts twisted by |delta|
+// may return |UndefBlock|, but success does not mean any representative of the
+// $X^*$ coset for this block is actually |delta|-fixed (no such test done)
+BlockElt twisted
+  (const blocks::common_block& block, BlockElt z,
+   const WeightInvolution& delta)
+{
+  return block.lookup(block.context().kgb().twisted(block.x(z),delta)
+		     ,delta*block.gamma_lambda(z));
+}
+
+
+/*****	    |nblock_help| helper class	****/
 
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
@@ -813,21 +1535,6 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
   return i_tab.pack(z.y(),i);
 }
 
-
-// auxiliaries to |param_block| constructor not declared in the header file
-
-// add a new block element to |zz_hash| and (therfore) to |info|
-void add_z(block_hash& hash,KGBElt x,KGBElt y)
-{
-  size_t old_size=hash.size();
-  BlockElt z=hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
-  assert(z==old_size);
-  ndebug_use(old_size); ndebug_use(z);
-}
-
-// find already constructed element, to be called during construction
-BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y)
-{ return hash.find(block_elt_entry(x,y)); }
 
 
 /*****************************************************************************

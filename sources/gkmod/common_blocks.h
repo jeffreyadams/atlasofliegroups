@@ -23,14 +23,6 @@
 namespace atlas {
 
 
-namespace blocks {
-
-
-// sorting criterion used to |common_block::sort| the |info| array in block base
-bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
-
-} // |namespace blocks|
-
 namespace repr {
 
 /*

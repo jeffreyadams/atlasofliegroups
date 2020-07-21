@@ -415,6 +415,12 @@ class common_block : public Block_base
 
 }; // |class common_block|
 
+// sorting criterion used to |common_block::sort| the |info| array in block base
+bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
+
+BlockElt twisted
+  (const blocks::common_block& block, BlockElt z, const WeightInvolution& delta);
+
 typedef HashTable<y_entry,KGBElt> y_part_hash;
 typedef Block_base::EltInfo block_elt_entry;
 typedef HashTable<block_elt_entry,BlockElt> block_hash;
