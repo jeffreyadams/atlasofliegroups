@@ -26,11 +26,11 @@
 #include "hashtable.h"
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
+#include "gradings.h"
+#include "subsystem.h"
 #include "polynomials.h"
 
 namespace atlas {
-
-namespace blocks { class common_block; }
 
 namespace repr {
 
@@ -134,6 +134,24 @@ class StandardReprMod
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
+
+class Repr_mod_entry
+{ KGBElt x; RankFlags y, mask;
+public:
+  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
+
+  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
+
+  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
+
+  // obligatory fields for hashable entry
+  using Pooltype =  std::vector<Repr_mod_entry>;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*y_stripped())&(modulus-1); }
+  bool operator !=(const Repr_mod_entry& o) const
+    { return x!=o.x or y_stripped()!=o.y_stripped(); }
+
+}; // |Repr_mod_entry|
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
@@ -360,6 +378,44 @@ class Rep_table : public Rep_context
 
 }; // |Rep_table|
 
+
+// a slight extension of |Rep_context|, fix |delta| for extended representations
+class Ext_rep_context : public Rep_context
+{
+  const WeightInvolution d_delta;
+public:
+  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
+
+  const WeightInvolution& delta () const { return d_delta; }
+
+}; // |class Ext_rep_context|
+
+// another extension of |Rep_context|, fix integral system for common block
+class common_context : public Rep_context
+{
+  const RootDatum integr_datum; // intgrality datum
+  const SubSystem sub; // embeds |integr_datum| into parent root datum
+public:
+  common_context (RealReductiveGroup& G, const SubSystem& integral);
+
+  // accessors
+  const RootDatum& id() const { return integr_datum; }
+  const SubSystem& subsys() const { return sub; }
+
+  // methods for local common block construction, as in |Rep_context|
+  // however, the generator |s| is interpreted for the |integr_datum|
+  StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod up_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  std::pair<gradings::Status::Value,bool> // status and whether a descent/type 1
+    status(weyl::Generator s, KGBElt x) const; // with |s| for |integr_datum|
+  bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
+
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
+
+}; // |class common_context|
 
 // 				Functions
 

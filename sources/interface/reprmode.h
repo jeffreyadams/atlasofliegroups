@@ -24,12 +24,6 @@ namespace commands {
   struct ReprmodeTag {};
   enum block_type { noblock, full_block, partial_block };
 
-/******** variable declarations ********************************************/
-
-  extern param_block* block_pointer;
-  extern block_type state;
-  extern BlockElt entry_z;
-
 /******** function and variable declarations ********************************/
 
   commands::CommandNode reprNode();

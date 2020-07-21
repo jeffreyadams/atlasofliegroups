@@ -50,21 +50,6 @@ namespace atlas {
 
 namespace repr {
 
-Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
-  : x(srm.x())
-  , y(srm.y().data())
-  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
-{}
-
-// recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
-StandardReprMod Repr_mod_entry::srm
-  (const Rep_context& rc,const RatWeight& gamma_mod_1) const
-{ // the following uses all bits of |y|, including bits ignored for equality test
-  TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
-  const auto gam_lam = rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1);
-  return StandardReprMod::build (rc,gamma_mod_1, x, gam_lam);
-}
-
 } // |namespace repr|
 
 namespace blocks {

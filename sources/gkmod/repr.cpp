@@ -82,7 +82,6 @@ StandardReprMod StandardReprMod::build
   return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
 }
 
-
 size_t StandardReprMod::hashCode(size_t modulus) const
 { size_t hash= x_part +
     243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
@@ -90,6 +89,22 @@ size_t StandardReprMod::hashCode(size_t modulus) const
   for (unsigned i=0; i<num.size(); ++i)
     hash= 11*(hash&(modulus-1))+num[i];
   return hash &(modulus-1);
+}
+
+
+Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
+  : x(srm.x())
+  , y(srm.y().data())
+  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
+{}
+
+// recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
+StandardReprMod Repr_mod_entry::srm
+  (const Rep_context& rc,const RatWeight& gamma_mod_1) const
+{ // the following uses all bits of |y|, including bits ignored for equality test
+  TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
+  const auto gam_lam = rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1);
+  return StandardReprMod::build (rc,gamma_mod_1, x, gam_lam);
 }
 
 Rep_context::Rep_context(RealReductiveGroup &G_R)
