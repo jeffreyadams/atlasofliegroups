@@ -147,9 +147,10 @@ KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 }
 
 /*
-  Return $\mu(x,y)$. Since |d_mu[y]| list the $x$'es such that $\mu(x,y)\neq 0$
-  in increasing otder, this is a simple matter of looking up $x$. We can say 0
-  without lookup in some easy cases.
+  Return $\mu(x,y)$ if $x<y$, and $0$ otherwise (no effort to symmetrise here).
+  Since |d_mu[y]| lists in increasing order the $x$'es less than $y$ such that
+  $\mu(x,y)\neq 0$, this is a matter of looking up $x$ (|std::lower_bound| does
+  this using binary search). We can return 0 without lookup in some easy cases.
 */
 MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 {
@@ -487,8 +488,8 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     }
     // for now |Pxy.degree()| might be one notch too high, which will be
     // corrected in |mu_correction|; also |assert| there are based on this one
-    assert(Pxy.isZero() or 2*Pxy.degree()<length(y)-length(x) or
-	   (2*Pxy.degree()==length(y)-length(x) and
+    assert(Pxy.isZero() or 2*Pxy.degree()<l(y,x) or
+	   (2*Pxy.degree()==l(y,x) and
 	    Pxy[Pxy.degree()]==mu(x,sy)
 	    ));
   } // |for (i=e.size()-->0)|
@@ -1049,87 +1050,59 @@ void KL_table::swallow
 
 
 /*
-  Return the W-graph for this block.
+  Return the unoriented $W$-graph for this block.
 
-  The W-graph is an oriented graph with one vertex for each element of the
-  block; its edges are determined by the descent sets of the block element
-  (their tau-invariant, i.e. the set of generators s that are either a complex
-  descent, real type I or II, or imaginary compact), and by the values
-  $\mu(x,y)$ for certain pairs $x<y$ that are stored in the various |d_mu[y]|
-  arrays. Recall from |complete_primitives| that nonzero $\mu(x,y)$ arise in two
-  ways: either when $x$ is extremal for $y$ and $P_{x,y}$ achieves the degree
-  bound given by lengths, or when $x$ is in the down-set of $y$, the set of
-  elements of length one less that $y$ reachable via a descent (such $x$ cannot
-  be extremal, and has $\mu(x,y)=1$ without needing computation of $P_{x,y}=1$).
+  The $W$-graph is a graph with the block elements as vertices and pairs with a
+  nonzero value of $\mu$ as edges; its vertices are labelled by their
+  $\tau$-invariant (or descent set: the set of generators that are either a
+  complex descent, real type I or II, or imaginary compact) and an arc between
+  $x$ and $y$ is labelled by the nonzero value $\mu(x,y)$ or $\mu(y,x)$.
 
-  There is an edge from $u$ to $v$ if either $\mu(u,v)$ or $\mu(v,u)$ (depending
-  on their respective lengths) is nonzero, and the descent set of $u$ is not
-  contained in the decent set of $v$ (the latter is in a sense a matter of
-  economy, as an edge for $u$ to $v$ will only by used for generators that are
-  removed from the descent set when traversing that edge, and if there are none
-  there is no point in recording an edge; however we do stipulate the absence of
-  such redundant edges). The edge will be labelled by the nonzero $\mu(u,v)$ or
-  $\mu(v,u)$. So a nonzero $\mu$ value will be ignored for the W-graph when the
-  vertices involved happen to have equal descent sets, and we henceforth assume
-  these sets to differ. Then (with $x$ below $y$ again) all remaining extremal
-  $x$ do give an upward edge labelled $\mu(x,y)$ from $x to $y$, and (by
-  definition of extremal) no downward edge. For the $x$ in the down-set of $y$
-  there will be a downward edge labelled $1$ from $y$ to $x$, and whenever the
-  descent set of $x$ is not contained in that of $y$ also an upward edge
-  labelled $1$. Stated differently, the downward edges, all labelled $1$, are
-  those from $y$ to an element of its down-set, and the upward edges to $y$ are
-  from are those $x$ with nonzero $\mu(x,y)$ (which will label the edge) and
-  descent set not contained in that of $y$.
+  This graph can be made into an oriented graph by removing any edge from $x$ to
+  $y$ for which the $\tau$-invariant of $x$ is contained in that of $y$, but
+  this transformation is not made inside this function, (though it used to be).
+  The motivation for this pruning is that for the purpose of defining and action
+  of $W$, the matrix for the action of simple generator $s$ records at position
+  $(i,j)$ the edge label for the edge between $i$ and $j$ only if $s$ is in the
+  $\tau$-invariant of $i$ but not in the of $j$, so the inclusion condition says
+  that the removed edges will never have an effect on these action matrices.
+  It is this orentied graph that will be used in the definition of $W$-cells.
 
-  The edge lists are constructed by a somewhat different (but equivalent) logic:
-  for $x<y$ with length difference more than $1$, an upward edge is constructed
-  whenever descent sets differ, while for length difference $1$ links in both
-  directions are considered, and placed in case of non-inclusion of descent sets.
+  For block elements $x<y$, and nonzero $\mu(x,y)$ is stored in |d_mu[y]|.
+  Recall from |complete_primitives| that nonzero $\mu(x,y)$ arise in two ways:
+  either when $x$ is extremal for $y$ and $P_{x,y}$ achieves the degree bound
+  given by lengths, or when $x$ is in the down-set of $y$, the set of elements
+  of length one less that $y$ reachable via a descent (such $x$ cannot be
+  extremal, and has $\mu(x,y)=1$ without needing computation of $P_{x,y}=1$).
+  For the former case only the upward edge from $x$ to $y$ can remain in the
+  oriented graph (and only if the $\tau$-invariants differ, while in the latter
+  case the downward edge from $y$ to $x$ definitely remains (with label $1$),
+  wheras the upward edge may or may not remain (depending on neighbours of $s$).
 
-  The (outgoing) lists come out by increasing destination vertex, with first the
-  downward edges, constructed when |y| equals that element (in increasing order
-  because |mcol| is so ordered), and then the upwards edges, constructed when
-  the given element occurs as |x| for another as |y| (traversed increasingly).
-
+  The code here is straighforward: we run over all $y$ and then over all entries
+  of |mcol=kl_tab.mu_column(y)|, storing both an edge in the edge list for $x$
+  (the block element |mcol[j].x| and for |y|, both labelled with |mcol[j].coef|.
+  For a given block element, we first see the edges for which it is in the role
+  of $y$ and then those for which it is in the role of $x$, and the
+  corresponding other (destination) vertex for the edges arise in this way in
+  increasing order, so there is no need to sort the edge lists.
 */
 wgraph::WGraph wGraph(const KL_table& kl_tab)
 {
-  wgraph::WGraph wg(kl_tab.rank(),kl_tab.size());
+  std::vector<containers::sl_list<Mu_pair> > edge_list(kl_tab.size());
+  containers::sl_list<RankFlags> tau;
 
   // fill in descent sets, edges and coefficients
   for (BlockElt y = 0; y < kl_tab.size(); ++y)
   {
-    const RankFlags& d_y = kl_tab.descent_set(y);
-    wg.descent_sets[y] = d_y;
-    const Mu_column& mcol = kl_tab.mu_column(y);
-    for (size_t j = 0; j < mcol.size(); ++j)
+    tau.push_back(kl_tab.descent_set(y));
+    for (const auto& pair : kl_tab.mu_column(y))
     {
-      BlockElt x = mcol[j].x;
-      assert(x<y); // this is a property of |mu_column(y)|
-      const RankFlags& d_x = kl_tab.descent_set(x);
-      if (d_x == d_y)
-	continue;
-      MuCoeff mu = mcol[j].coef;
-      if (kl_tab.length(y) - kl_tab.length(x) > 1)
-      { // $\mu\ne0$, unequal descents, $l(y/x)>1$: upward edge from $x$ to $y$
-	wg.oriented_graph.edgeList(x).push_back(y);
-	wg.coefficients[x].push_back(mu);
-	continue;
-      }
-      // now length difference is 1: edges except to a larger descent set
-      if (not d_y.contains(d_x)) // then add upward edge from $x$ to $y$
-      {
-	wg.oriented_graph.edgeList(x).push_back(y);
-	wg.coefficients[x].push_back(mu);
-      }
-      if (not d_x.contains(d_y)) // then add downward edge from $y$ to $x$
-      {
-	wg.oriented_graph.edgeList(y).push_back(x);
-	wg.coefficients[y].push_back(mu);
-      }
+      edge_list[y].push_back(pair);
+      edge_list[pair.x].emplace_back(y,pair.coef);
     }
   }
-  return wg;
+  return { kl_tab.rank(), tau, edge_list };
 } // |wGraph|
 
 } // |namespace kl|
