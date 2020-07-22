@@ -19,8 +19,7 @@
 
 #include "tits.h"
 #include "kgb.h"	// various methods
-#include "blocks.h"	// |dual_involution|
-#include "common_blocks.h" // the |blocks::common_block| class
+#include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
@@ -82,7 +81,6 @@ StandardReprMod StandardReprMod::build
   return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
 }
 
-
 size_t StandardReprMod::hashCode(size_t modulus) const
 { size_t hash= x_part +
     243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
@@ -90,6 +88,22 @@ size_t StandardReprMod::hashCode(size_t modulus) const
   for (unsigned i=0; i<num.size(); ++i)
     hash= 11*(hash&(modulus-1))+num[i];
   return hash &(modulus-1);
+}
+
+
+Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
+  : x(srm.x())
+  , y(srm.y().data())
+  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
+{}
+
+// recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
+StandardReprMod Repr_mod_entry::srm
+  (const Rep_context& rc,const RatWeight& gamma_mod_1) const
+{ // the following uses all bits of |y|, including bits ignored for equality test
+  TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
+  const auto gam_lam = rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1);
+  return StandardReprMod::build (rc,gamma_mod_1, x, gam_lam);
 }
 
 Rep_context::Rep_context(RealReductiveGroup &G_R)
@@ -860,27 +874,6 @@ bool Rep_context::compare::operator()
   return r_vec<s_vec;
 }
 
-
-// |Rep_table| methods
-
-Rep_table::Rep_table(RealReductiveGroup &G)
-: Rep_context(G)
-, pool(), hash(pool), def_formulae()
-, mod_pool(), mod_hash(mod_pool)
-, KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
-, poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
-, block_list(), place()
-{}
-Rep_table::~Rep_table() = default;
-
-unsigned short Rep_table::length(StandardRepr sr)
-{
-  make_dominant(sr); // length should not change in equivalence class
-  BlockElt z;
-  auto & block = lookup(sr,z); // construct partial block
-  return block.length(z);
-}
-
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const
 {
   poly result(repr_less());
@@ -970,6 +963,295 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
     result += *it;
   return result;
 } // |Rep_context::expand_final|
+
+
+std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
+  const
+{
+  return
+    str << "{x=" << z.x() << ",lambda=" << lambda(z) << ",nu=" << nu(z) << '}';
+}
+
+std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
+{
+  for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
+    print(str << (it==P.begin() ?"":"+") << it->second, it->first)
+      << std::endl;
+  return str;
+}
+
+
+//				|Rep_table| methods
+
+
+Rep_table::Rep_table(RealReductiveGroup &G)
+: Rep_context(G)
+, pool(), hash(pool), def_formulae()
+, mod_pool(), mod_hash(mod_pool)
+, KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
+, poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
+, block_list(), place()
+{}
+Rep_table::~Rep_table() = default;
+
+unsigned short Rep_table::length(StandardRepr sr)
+{
+  make_dominant(sr); // length should not change in equivalence class
+  BlockElt z;
+  auto & block = lookup(sr,z); // construct partial block
+  return block.length(z);
+}
+
+// an auxialry structure needed to hash |unsigned long| to shorter |BlockElt|
+struct ulong_entry
+{ unsigned long val;
+  ulong_entry(unsigned long n) : val(n) {}
+  typedef std::vector<ulong_entry> Pooltype;
+  bool operator != (ulong_entry x) const { return val!=x.val;  }
+  size_t hashCode(size_t modulus) const { return (5*val)&(modulus-1); }
+};
+
+// |Rep_table| helper class
+class Rep_table::Bruhat_generator
+{
+  Rep_table& parent;
+  const common_context& ctxt;
+  std::vector<ulong_entry> pool;
+  HashTable<ulong_entry,BlockElt> local_h; // hash table, avoid name |hash|
+  std::vector<containers::simple_list<unsigned long> > predecessors;
+public:
+  Bruhat_generator (Rep_table* caller, const common_context& ctxt)
+    : parent(*caller),ctxt(ctxt), pool(), local_h(pool), predecessors() {}
+
+  bool in_interval (unsigned long n) const
+  { return local_h.find(n)!=local_h.empty; }
+  const containers::simple_list<unsigned long>& covered(unsigned long n) const
+  { return predecessors.at(local_h.find(n)); }
+  containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
+}; // |class Rep_table::Bruhat_generator|
+
+blocks::common_block& Rep_table::add_block_below
+  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
+{
+  assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
+  Bruhat_generator gen(this,ctxt); // object to help generating Bruhat interval
+  const auto prev_size = mod_pool.size(); // limit of previously known elements
+  containers::sl_list<unsigned long> elements(gen.block_below(srm)); // generate
+
+  using sub_pair =
+    std::pair<blocks::common_block*,containers::sl_list<BlockElt> >;
+  containers::sl_list<sub_pair> sub_blocks;
+  for (auto z : elements)
+    if (z<prev_size) // then |z| was already known as a partial block element
+    { // record block pointer and index of |z| in block into |sub_blocks|
+      const auto block_p = &*place[z].first;
+      const BlockElt z_rel = place[z].second;
+      auto it = std::find_if
+	(sub_blocks.begin(),sub_blocks.end(),
+	 [block_p](const sub_pair& pair) { return &*pair.first==block_p; }
+	 );
+      if (sub_blocks.at_end(it)) // then we have a fresh sub-block
+	sub_blocks.emplace_back(block_p,containers::sl_list<BlockElt>{z_rel});
+      else // a sub-block already recorded (at |it|)
+	it->second.push_back(z_rel); // append |z_rel| to its list of elements
+    }
+
+  // add to |elements| any members of |sub_blocks| that are not already there
+  for (auto& pair : sub_blocks)
+  {
+    if (pair.first->size() > pair.second.size()) // then incomplete inclusion
+    { // so there are some elements to pick up form partial block |*pair.first|
+      const auto& block = *pair.first;
+      pair.second.sort(); // following loop requires increase
+      auto it = pair.second.begin();
+      for (BlockElt z=0; z<block.size(); ++z)
+	if (not it.at_end() and *it==z)
+	  ++it; // skip element already present in generated Bruhat interval
+	else // join old element but outside Bruhat interval to new block
+	  elements.push_back(mod_hash.find(block.representative(z)));
+    }
+    // since all |block| elements are now incorporated in |elements|
+    pair.second.clear(); // forget which were in the Bruhat interval
+  }
+
+  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back // construct block and get a reference
+    (*this,ctxt,elements,srm.gamma_mod1());
+
+  *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
+  containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
+  for (auto z : elements) // Bruhat interval is no longer contiguous in this list
+    if (gen.in_interval(z)) // select those that have their covered's in |gen|
+    {
+      BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
+      subset->insert(i_z); // mark |z| as element ot the Bruhat interval
+      const auto& covered = gen.covered(z);
+      BlockEltList row;
+      row.reserve(atlas::containers::length(covered));
+      for (auto it=covered.begin(); not covered.at_end(it); ++it)
+      {
+	const BlockElt y = block.lookup(this->srm(*it)); // get relative number
+	assert(y!=UndefBlock);
+	row.push_back(y); // store covering relation in |Hasse_diagram|
+      }
+      partial_Hasse_diagram.emplace_back(i_z,row);
+    }
+
+  block.set_Bruhat(std::move(partial_Hasse_diagram));
+  // remainder of Hasse diagram will be imported from swallowed sub-blocks
+
+  static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
+  place.resize(mod_pool.size(),empty);
+
+  if (not sub_blocks.empty())
+  {
+    for (const auto& pair : sub_blocks) // swallow sub-blocks
+    {
+      auto& sub_block = *pair.first;
+      bl_it block_it; // set below
+      BlockEltList embed; embed.reserve(sub_block.size()); // translation array
+      for (BlockElt z=0; z<sub_block.size(); ++z)
+      {
+	auto zm = sub_block.representative(z);
+	const BlockElt z_rel = block.lookup(zm);
+	assert(z_rel!=UndefBlock);
+	embed.push_back(z_rel);
+      }
+
+      auto h = mod_hash.find(sub_block.representative(0));
+      assert(h!=mod_hash.empty);
+      block_it = place[h].first;
+
+      assert(&*block_it==&sub_block); // ensure we erase |sub_block|
+      block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
+      block_erase(block_it); // even pilfered, the pointer is still unchanged
+    }
+  }
+
+  // only after the |block_erase| upheavals is it safe to link in the new block
+  // also, it can only go to the end of the list, to not invalidate any iterators
+  const auto new_block_it=block_list.end(); // iterator for new block elements
+  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+  // now make sure for all |elements| that |place| fields are set for new block
+  for (const auto& z : elements)
+  {
+    const BlockElt z_rel = block.lookup(this->srm(z));
+    place[z] = std::make_pair(new_block_it,z_rel); // extend or replace
+  }
+  return block;
+} // |Rep_table::add_block_below|
+
+
+containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
+  (const StandardReprMod& srm)
+{
+  auto& hash=parent.mod_hash;
+  { const auto h=hash.find(srm);
+    if (h!=hash.empty) // then |srm| was seen earlier
+    {
+      unsigned hh = local_h.find(h);
+      if (hh!=local_h.empty) // then we visited this element in current recursion
+	return containers::simple_list<unsigned long>(); // nothing new
+    }
+  }
+  const auto rank = ctxt.id().semisimpleRank();
+  containers::sl_list<unsigned long> pred; // list of elements covered by z
+  // invariant: |block_below| has been called for every element in |pred|
+
+  weyl::Generator s; // a complex or real type 1 descent to be found, if exists
+  containers::sl_list<containers::simple_list<unsigned long> > results;
+  for (s=0; s<rank; ++s)
+  {
+    std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,srm.x());
+    if (not stat.second)
+      continue; // ignore imaginary, complex ascent or real (potentially) type 2
+    if (stat.first==gradings::Status::Complex)
+    { // complex descent
+      const StandardReprMod sz = ctxt.cross(s,srm);
+      results.push_back(block_below(sz)); // recursion
+      pred.push_back(hash.find(sz)); // must call |hash.find| after |block_below|
+      break; // we shall add $s$-ascents of predecessors of |sz| below
+    }
+    else if (stat.first==gradings::Status::Real and ctxt.is_parity(s,srm))
+    { // |z| has a type 1 real descent at |s|
+      const StandardReprMod sz0 = ctxt.down_Cayley(s,srm);
+      const StandardReprMod sz1 = ctxt.cross(s,sz0);
+      results.push_back(block_below(sz0)); // recursion
+      results.push_back(block_below(sz1)); // recursion
+      pred.push_back(hash.find(sz0)); // call |hash.find| after |block_below|
+      pred.push_back(hash.find(sz1));
+      break; // we shall add $s$-ascents of predecessors of |sz_inx| below
+    } // |if (real type 1)|
+
+  } // |for (s)|
+
+  // if above loop performed a |break| it found complex or real type 1 descent
+  if (s==rank) // otherwise, the only descents are real type 2, if any
+  {
+    while (s-->0) // we reverse the loop just because |s==rank| already
+      if (ctxt.status(s,srm.x()).first==gradings::Status::Real and
+	  ctxt.is_parity(s,srm))
+      {
+	const auto sz = ctxt.down_Cayley(s,srm);
+	results.push_back(block_below(sz)); // recursion
+	pred.push_back(hash.find(sz));
+      }
+  }
+  else // a complex or real type 1 descent |sz==pred.front()| for |s| was found
+  { // add |s|-ascents for elements covered by |sz|
+    const auto pred_sz = predecessors.at(local_h.find(pred.front()));
+    for (auto it = pred_sz.begin(); not pred.at_end(it); ++it)
+    {
+      const auto p = *it; // sequence number of a predecessor of |sz|
+      const StandardReprMod zp = parent.mod_pool[p];
+      std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,zp.x());
+      switch (stat.first)
+      {
+      case gradings::Status::Real: case gradings::Status::ImaginaryCompact:
+	break; // nothing to do without ascent
+      case gradings::Status::Complex:
+	if (not stat.second) // complex ascent
+	{
+	  const auto szp = ctxt.cross(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	} // |if(complex ascent)
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  const auto szp = ctxt.up_Cayley(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	  if (not stat.second) // then nci type 2
+	  {
+	    const auto szp1 = ctxt.cross(s,szp);
+	    results.push_back(block_below(szp1)); // recursion
+	    pred.push_back(hash.find(szp1));
+	  }
+	}
+	break;
+      } // |switch(status(s,conj_x))|
+    } // |for (it)|
+  } // |if (s<rank)|
+
+  const auto h=hash.match(srm); // finally generate sequence number for |srm|
+  { // merge all |results| together and remove duplicates
+    results.push_front(containers::simple_list<unsigned long> {h} );
+    while (results.size()>1)
+    {
+      auto it=results.begin();
+      auto first = std::move(*it);
+      first.merge(std::move(*++it));
+      results.erase(results.begin(),++it);
+      first.unique();
+      results.push_back(std::move(first));
+    }
+  }
+  unsigned hh = local_h.match(h); // local sequence number for |srm|
+  assert(hh==predecessors.size()); ndebug_use(hh);
+  predecessors.push_back(pred.undress()); // store |pred| at |hh|
+  return results.front();
+} // |Rep_table::Bruhat_generator::block_below|
 
 // erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
 void Rep_table::block_erase (bl_it pos)
@@ -1741,20 +2023,179 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
 
-std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
-  const
+//			|common_conetxt| methods
+
+std::pair<gradings::Status::Value,bool>
+  common_context::status(weyl::Generator s, KGBElt x) const
 {
-  return
-    str << "{x=" << z.x() << ",lambda=" << lambda(z) << ",nu=" << nu(z) << '}';
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,x);
+  const auto t=sub.simple(s);
+  const auto stat = kgb().status(t,conj_x);
+  return std::make_pair(stat,
+			stat==gradings::Status::Real
+			? kgb().isDoubleCayleyImage(t,conj_x) // real type 1
+			: stat==gradings::Status::Complex
+			? kgb().isDescent(t,conj_x)
+			: conj_x!=kgb().cross(t,conj_x)); // nc imaginary type 1
 }
 
-std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
+StandardReprMod common_context::cross
+    (weyl::Generator s, const StandardReprMod& z) const
 {
-  for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
-    print(str << (it==P.begin() ?"":"+") << it->second, it->first)
-      << std::endl;
-  return str;
+  const auto& refl = sub.reflection(s); // reflection word in full system
+  const KGBElt new_x = kgb().cross(refl,z.x());
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
+  pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
+  gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
+  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // then reflect
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
 }
+
+StandardReprMod common_context::down_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  assert(is_parity(s,z)); // which also asserts that |z| is real for |s|
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().inverseCayley(sub.simple(s),conj_x).first;
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet real_flip = i_tab.real_roots(kgb().inv_nr(z.x()));
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+bool common_context::is_parity
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& i_tab = inner_class().involution_table();
+  const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
+  assert(real_roots.isMember(sub.parent_nr_simple(s)));
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int eval = this->gamma_lambda(z).dot(alpha_hat);
+  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  return (eval+rho_r_corr)%2!=0;
+}
+
+StandardReprMod common_context::up_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().cayley(sub.simple(s),conj_x);
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  RootNbrSet real_flip = upstairs_real_roots;
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(z.x())); // remove downstairs reals
+
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+
+  // correct in case the parity condition fails for our raised |gamma_lambda|
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
+    alpha_hat.dot(root_datum().twoRho(upstairs_real_roots))/2;
+  const int eval = gamma_lambda.dot(alpha_hat);
+  if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
+    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+
+Weight common_context::to_simple_shift
+  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
+{ const InvolutionTable& i_tab = inner_class().involution_table();
+  S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
+  return root_sum(root_datum(),S);
+}
+
+
+//			|Ext_common_context| methods
+
+Ext_common_context::Ext_common_context
+  (RealReductiveGroup& G, const WeightInvolution& delta, const SubSystem& sub)
+    : repr::common_context(G,sub)
+    , d_delta(delta)
+    , pi_delta(G.root_datum().rootPermutation(delta))
+    , delta_fixed_roots(fixed_points(pi_delta))
+    , twist()
+    , l_shifts(id().semisimpleRank())
+{
+  const RootDatum& rd = root_datum();
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
+
+  // the reflections for |E.l| pivot around |g_rho_check()|
+  const RatCoweight& g_rho_check = this->g_rho_check();
+  for (unsigned i=0; i<l_shifts.size(); ++i)
+    l_shifts[i] = -g_rho_check.dot(id().simpleRoot(i));
+} // |Ext_common_context::Ext_common_context|
+
+
+bool Ext_common_context::is_very_complex
+  (InvolutionNbr theta, RootNbr alpha) const
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
+  assert (rd.is_posroot(alpha)); // this is a precondition
+  auto image = i_tab.root_involution(theta,alpha);
+  make_positive(rd,image);
+  return image!=alpha and image!=delta_of(alpha);
+}
+
+/*
+  For the conjugation to simple scenario, we compute a set of positive roots
+  that become negative under an element of $W^\delta$ that makes the
+  integrally-simple root(s) in question simple. From this set |S|, and the
+  involutions at both ends of the link in the block, the function |shift_flip|
+  computes whether an additional flip is to be added to the link.
+
+  This comes from an action of |delta| on a certain top wedge product of
+  root spaces, and the formula below tells whether that action is by $-1$.
+*/
+bool Ext_common_context::shift_flip
+  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
+{ S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
+
+  unsigned count=0; // will count 2-element |delta|-orbit elements
+  for (auto it=S.begin(); it(); ++it)
+    if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
+	not root_datum().sumIsRoot(*it,delta_of(*it)))
+      ++count;
+
+  assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
+  return count%4!=0;
+}
+
+// |Ext_rep_context| methods
+
+Ext_rep_context::Ext_rep_context
+  (const repr::Rep_context& rc, const WeightInvolution& delta)
+: Rep_context(rc), d_delta(delta) {}
+
+Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
+: Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
+
+// |common_context| methods
+
+common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
+: Rep_context(G)
+, integr_datum(sub.pre_root_datum())
+, sub(sub)
+{} // |common_context::common_context|
 
 
   } // |namespace repr|

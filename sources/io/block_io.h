@@ -31,7 +31,8 @@ namespace block_io {
   std::ostream& printDescent(std::ostream&, const DescentStatus& ds,
 			     size_t rank, RankFlags mask = RankFlags(~0ul));
 
-  std::ostream& print_KL(std::ostream&f, param_block& block, BlockElt z);
+  std::ostream& print_KL(std::ostream&f, blocks::common_block& block,
+			 BlockElt z, RankFlags singular);
 
 } // |namespace block_io|
 

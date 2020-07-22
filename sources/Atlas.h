@@ -403,11 +403,11 @@ namespace atlas {
   namespace blocks {
     class Block_base;
     class Block;
-    class param_block;
+    class common_block;
   }
   using blocks::Block_base;
   using blocks::Block;
-  using blocks::param_block;
+  using blocks::common_block;
   typedef unsigned int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;
@@ -420,6 +420,7 @@ namespace atlas {
     class DecomposedWGraph;
   }
   namespace kl {
+    struct Poly_hash_export;
     class KL_table;
     using KLCoeff = unsigned int;
     using KLPol = polynomials::Safe_Poly<KLCoeff>;
@@ -469,10 +470,15 @@ namespace atlas {
 
   namespace repr {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
+    class StandardReprMod; // represent an equivalence class of |StandardRepr|
+    class Repr_mod_entry;
+    class common_context;
     class Rep_context;	// support class for interpreting |StandardRepr|
     class Rep_table;	// storage class for |StandardRepr| compuations
   }
   using repr::StandardRepr;
+  using repr::StandardReprMod;
+  using repr::common_context;
   using repr::Rep_context;
   using repr::Rep_table;
 

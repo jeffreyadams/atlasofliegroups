@@ -21,24 +21,18 @@ namespace commands {
 /******** type declarations ************************************************/
 
   struct ReprmodeTag {};
-  enum block_type { noblock, nblock, partial_block };
-
-/******** variable declarations ********************************************/
-
-  extern param_block* block_pointer;
-  extern block_type state;
-  extern BlockElt entry_z;
+  enum block_type { noblock, full_block, partial_block };
 
 /******** function and variable declarations ********************************/
 
   commands::CommandNode reprNode();
   extern CommandTree& repr_mode; // defined in commands.cpp
   const SubSystemWithGroup& currentSubSystem();
-  param_block& current_param_block();
+  blocks::common_block& current_common_block();
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
-  kl::KL_table& current_param_KL();
-  const wgraph::WGraph& current_param_WGraph();
+  kl::KL_table& current_KL();
+  const wgraph::WGraph& current_WGraph();
 } // |namespace reprmode|
 
 } // |namespace atlas|

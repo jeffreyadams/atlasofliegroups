@@ -194,7 +194,10 @@ class InvolutionTable
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
 
   // functionality for |y| values, as |TorusPart|, |TorusElement| or |y_entry|
+
+  // useful torus part size (including bits ignored for equality test)
   unsigned short tp_sz(InvolutionNbr i) const { return data[i].diagonal.size(); }
+  // taking |&| with |y_mask| leaves bits relevant for equality test
   RankFlags y_mask(InvolutionNbr i) const; // relavance mask for |y_bits|
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
 		  InvolutionNbr i) const;
