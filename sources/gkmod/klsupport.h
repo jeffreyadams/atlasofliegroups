@@ -13,10 +13,10 @@
 #ifndef KLSUPPORT_H  /* guard against multiple inclusions */
 #define KLSUPPORT_H
 
-
-#include "bitset.h"	// containment
+#include <cassert>
 
 #include "../Atlas.h"
+#include "bitset.h"	// containment
 #include "blocks.h"	// inlining of methods like |cross| and |cayley|
 
 namespace atlas {
@@ -55,10 +55,12 @@ class KLSupport
 
 // accessors
   const Block_base& block () const { return d_block; }
-  size_t rank () const { return d_block.rank(); }
-  size_t size () const { return d_block.size(); } // also |info.size()|
+  unsigned short rank () const { return d_block.rank(); }
+  BlockElt size () const { return d_block.size(); } // also |info.size()|
 
-  size_t length (BlockElt z) const { return d_block.length(z); }
+  unsigned short length (BlockElt z) const { return d_block.length(z); }
+  unsigned short l(BlockElt y,BlockElt x) const // length difference
+  { assert(length(x)<=length(y)); return length(y)-length(x); }
   BlockElt length_less (size_t l) const // number of block elements of length<l
   { return length_stop[l]; }
   BlockElt length_floor (BlockElt y) const { return length_stop[length(y)]; }

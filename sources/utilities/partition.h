@@ -126,9 +126,9 @@ class Partition
 }; // |class Partition|
 
 /*!
-  The idea is that a PartitionIterator gives a convenient way of traversing
-  the classes of a partition. It is intended that PartitionIterators are
-  compared only if they refer to the same partition.
+  The idea of |PartitionIterator| is that it gives a convenient way of traversing
+  the classes of a partition. It is intended that |PartitionIterator| values are
+  compared only if they refer to the same |Partition|.
 
   Usage: construct a partition iterator |it| from a partition |pi|, in general
   in the context of a looping construct
@@ -140,18 +140,19 @@ class Partition
   the second traverses a class for |pi|;
 
     for (PartitionIterator::SubIterator jt=it->first; jt!=it->second; ++jt)
-    { ... pi(*jt) is constant during this loop ... }
+    { ... pi.class_of(*jt) is constant during this loop ... }
 
-  In fact after the outer loop has advanced |i| times, one has |pi(*jt)==i|
-  throughout the inner loop, provided |pi| as a function is surjective to an
-  initial part of $\N$. Since the iterator runs through the classes for |pi|,
-  which are non-empty, the inner loop will run at least once in all cases.
+  In fact |pi.class_of(*jt)==i| throughout the inner loop after the outer loop
+  has advanced |i| times, provided |pi.class_of| is surjective to an initial
+  part of $\N$. The relative position of |jt| within the inner loop can as usual
+  be computed as |jt-it->first|. Since the iterator runs through the classes for
+  |pi|, which are non-empty, the inner loop will run at least once in all cases.
 
-  The vector d_data contains the integers [0,n[, where n is the size of the
-  set being partitioned, sorted in the order of the partition values. The
-  vector d_stop contains an iterator pointing to the beginning of each
-  class, and a final iterator pointing after the end of d_data. We then
-  only need to return two consecutive elements in d_stop to bound a class.
+  The vector |d_data| contains the integers [0,n[, where |n| is the size of the
+  set being partitioned, stably sorted according to the associated |d_class|
+  values. The vector |d_stop| contains an iterator pointing to the beginning of
+  each class, and a final iterator pointing after the end of |d_data|. We then
+  only need to return two consecutive elements in |d_stop| to bound a class.
 
   For convenience a (second-level) iterator |d_currentEnd| into |d_stop| is
   provided, which always satifies |*d_currentEnd==d_range.second|. In fact
@@ -159,10 +160,10 @@ class Partition
   index |i| such that |d_range| would be given implicitly as
   |make_pair(stop[i],stop[i+1])|, and |d_currentEnd| as |d_stop.begin()+i+1|.
 
-  Since constructing a PartitionIterator requires computing |d_data| which is
+  Since constructing a |PartitionIterator| requires computing |d_data| which is
   quite a bit of work (and to a somewhat lesser extent the same holds for
   copy-constructing or assigning), we provide a |rewind| method that allows
-  restarting a PartitionIterator used in a previous operation.
+  restarting an exhausted |PartitionIterator| used in a previous operation.
 */
 class PartitionIterator
 {
