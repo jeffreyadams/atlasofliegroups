@@ -17,7 +17,7 @@ vertices numbered i and j, having a positive integer label m. This information
 is symmetric in i and j, but computed in the direction where i<j: it is then the
 coefficient mu(i,j) defined as the coefficient of q^{(l(j)-l(i)-1)/2} of P_{i,j}
 (taking 0 if that exponent is not a natural number), with the convention that
-whenever this is 0 no edge is present (whence edge labels are at least 1).
+whenever this is 0, no edge is present (whence edge labels are at least 1).
 
 While this graph is unoriented, the action matrices derived from it for each
 Weyl group generator i are not symmetric: in order for this action to take into
@@ -26,8 +26,8 @@ absent in tau(j) (no ordering between i an j is assumed here; the action takes
 into account any given edge in at most one direction).
 
 One Weyl group representation attached to the graph, called coherent continuation
-action, may be described as follows. On take a free Z-module with basis {L_i}
-indexed by the block elements i. If root g is in the tau(j), then
+action, may be described as follows. One takes a free Z-module with basis {L_j}
+indexed by the block elements j. If root g is in the tau(j), then
 
   s_g(L_j) = -L_j.
 
@@ -39,16 +39,16 @@ where m_{i,j} denotes the multiplicity of the edge from i to j. In other words,
 a term m*L_i appears in the sum for s_g(L_j) if the pair (j,m) appears in the
 list for row i and moreover g is in tau(i) but not in tau(j). In matrix form,
 the action of s_g is given by a matrix whose diagonal terms are given using
-Iverson brackets [[]] as a_{j,j} = (-1)^[[g\notin\tau(j)]] and whose
+Iverson brackets [[...]] as a_{j,j} = (-1)^[[g\notin\tau(j)]] and whose
 off-diagonal terms are a_{i,j} = [[g\in\tau(i)\setminus\tau(j)]] m_{i,j}.
 
 The Hecke algebra action associated to the graph, at q=1 and expressed with
 respect to the basis of irreducible representations, each multiplied by a sign
-given by the parity of its length (so that off-diagonal terms are non negative),
-is similar, but differs in that diagonal entries have opposite signs.
+given by the parity of its length (so that off-diagonal terms become non
+negative), is similar, but differs in that diagonal entries have opposite signs.
 
 As a simple concrete example, for SL(2,R) the W-graph has vertices 0,1,2, with
-the unique W generator 0 occurring in tau(2) only, and edges from that vertex to
+the unique W generator 1 occurring in tau(2) only, and edges from that vertex to
 the other two vertices, as shown in the output
 
   0:{}:{(2,1)}
