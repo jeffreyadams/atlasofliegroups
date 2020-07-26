@@ -4667,7 +4667,7 @@ void print_c_block_wrapper(expression_base::level l)
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
-  block.print_to(*output_stream,true);
+  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
     // print block using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
@@ -4691,7 +4691,8 @@ void print_pc_block_wrapper(expression_base::level l)
       *output_stream << n << ',';
     *output_stream << init_index << "} in the following common block:\n";
   }
-  block.print_to(*output_stream,true); // print using involution expressions
+  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
+    // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
