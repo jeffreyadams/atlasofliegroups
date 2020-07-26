@@ -747,24 +747,17 @@ partial_block: (Param->[Param]): return partial block as list of parameters
   This is the Bruhat interval of the block below the given parameter,
   sorted by length and including the given parameter as final element
 length: (Param->int): the length of a parameter within its block
-KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
-  This combines block with the Kazhdan-Lustzig table for the block appended,
-  and two more values that allow cumulation to be performed. The two values of
-  block are followed by three values in the format of raw_KL below: a matrix
-  of indices into the following list of polynomials, coded as a list of
-  coefficient vectors, then a list of indices where the length function
-  increases. Finally follow a vector with indices of the "surviving" block
-  elements, and a matrix whose rows correspond to those survivors, its columns
-  to all block elements, and whose the entries gives the coefficients by which
-  each the block element (column) contributes to the surviving element (row),
-  with a sign given by the parity of their length difference. Here "surviving"
-  refers to the result of applying a translation functor to a standard module,
-  namely a functor from regular infinitesimal character to the current
-  (possibly) singular infinitesimal character. Thus one can transform the
-  given KL matrix (computed at regular infinitesimal character) to one at the
-  actual block by selecting only the columns whose index is among the
-  survivors, and multiplying the resulting matrix on the left by the
-  contribution-coefficient matrix (the final component this function returns).
+KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
+  This combines block with the computation of the its Kazhdan-Lustzig table.
+  The two values of block are followed by two values in the format of raw_KL
+  below: a matrix of indices into the following list of polynomials, coded as a
+  list of coefficient vectors. (Contrary to raw_KL below no data about the
+  length of block elements is exported, as length@Param can compute that.)
+  In case the infinitesimal character of the given parameter is singular, the
+  data computed for its common block is reduced to the elements that are final
+  at that infinitesimal character, taking appropriate linear combinations of
+  polynomials computed for the block. Since these combinations can have negative
+  coefficients, some of the polynomials in the table may have these as well.
 dual_KL_block: (Param->[Param],int,mat,[vec],vec,vec): KL info for dual block
   This closely corresponds to KL_block, but computes the KL polynomials for
   the formally dual block. Here the type of the simple roots are dualised,

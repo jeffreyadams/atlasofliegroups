@@ -121,6 +121,7 @@ template <typename U>
   C& operator[] (Degree j); // non-const version of above
   typename std::vector<C>::iterator begin()  { return d_data.begin();}
   typename std::vector<C>::iterator end()    { return d_data.end();}
+  std::vector<C>&& data() && { return std::move(d_data); } // pilfer contents
 
   Polynomial& operator+= (const Polynomial& q);
 
