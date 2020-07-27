@@ -89,3 +89,41 @@ in if success then prints("passed: P*Q=I")
    fi
 ;  (P_signed,Q,success)
 )
+{
+set Test_dual(RealForm G,ratvec gamma)=
+let all=all_parameters_gamma(G,gamma) then
+bc=blocks_and_cells(all) then
+()=prints("#bc: ", #bc) in
+for (block,) in bc do let (,,c)=test_duality(block[0]) in c od
+}
+
+set print_inv_composition_series(Param p)=void:
+for q in block_of(p) do
+ let c=composition_series(q)[p] in
+ if !=c then prints(c.split_as_int, " ", q) fi od
+
+set print_inv_character_formula(Param p)=void:
+for q in block_of(p) do
+ let c=character_formula(q)[p] in
+ if !=c then prints(c.split_as_int, " ", q) fi od 
+
+set m_Q(Param p,Param q)=composition_series(q)[p].split_as_int
+set m_P(Param p,Param q)=character_formula(q)[p].split_as_int
+
+
+set Cayley(int i,[Param] params)=##for p in params do Cayley_set(i,p) od
+set cross(int i,[Param] params)=for p in params do cross(i,p) od
+
+set Cayley_or_cross(int i,[Param] params)=
+if i<0 then Cayley(-i-1,params) else cross(i,params) fi
+
+set chain([int] S,[Param] params)=
+let rv=params in for i in S~ do rv:=
+ ##for q in rv do Cayley_or_cross(i,rv) od od;rv
+
+set chain([int] S,Param p)=chain(S,[p])
+
+set chain([int] S,Param p,[Param] block)=for q in chain(S,[p]) do find(block,q) od
+
+
+

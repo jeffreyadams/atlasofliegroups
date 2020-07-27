@@ -1,5 +1,6 @@
 <basic.at
 <tits.at
+<tabulate.at
 { various ways of defining parameters }
 
 { torus_factor, aka "normalized torus factor", is $\theta$-fixed,
@@ -201,6 +202,9 @@ for p in AminusB do prints(p) od;
 prints("B minus A: ", #BminusA);
 for p in BminusA do prints(p) od
 
+set show([Param] params)=void:
+let params_sorted=monomials(param_pol(params)) in 
+tabulate(["x","lambda","nu"]#for p in params_sorted~ do [(#(p.x)).to_string,p.lambda.compact_ratvec,p.nu.compact_ratvec] od)
 
 {see Vogan-dual.at}
 {this gives a parameter for the dual group with infinitesimal character g}

@@ -194,7 +194,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  elif 
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
-{      prints("survive:", p, " ", gamma);}
+      prints("survive:", p, " ", gamma);
       survivors#:=(i,j,first_param(T_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};

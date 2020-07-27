@@ -254,33 +254,61 @@ let st=params[0].root_datum.springer_table in
 if ti_verbose then prints("done computing Springer table") fi;
 associated_variety_ann(st,params)
 
+{nice output}
 set show([(Param,ComplexNilpotent)] pairs)=tabulate(
 ["x","lambda","nu","diagram(O)","GK-dim"]#
 for (p,O) in pairs~ do
  [(#p.x).to_string,compact_ratvec(p.lambda),compact_ratvec(p.nu),O.diagram.to_string,(O.dim_nilpotent\2).to_string] od)
 
-set av(RealForm GC {should be complex}, ratvec gamma) {size rank(GC)/2}=
+{associated variety of spherical representation of complex group,
+with given infinitesimal character/nu parameter}
+set associated_variety_of_spherical(RealForm GC {should be complex}, ratvec gamma) {size rank(GC)/2}=
 let p=parameter(GC.x_open,GC.rho,gamma##gamma) then
 p=parameter(GC.x_open,GC.rho,gamma##gamma) in
 associated_variety_ann(p)
 
-set av_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st,CharacterTable ct_int)=
+{associated variety of maximal ideal with given infinitesimal character gamma
+algorithm:
+if G is complex: compute associated variety of spherical representation with
+infinitesimal character gamma
+if G is not complex, set GC=complexification of G 
+compute associated variety OC of spherical representation with nu parameter
+(gamma,gamma)
+Then OC has semisimple element of the form (H,H), this gives
+the orbit for G with semsimple component H
+}
+
+{assuming G is a real group; given Springer table is for GC,
+character table is for integrality datum of GC}
+
+set associated_variety_of_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st_GC,CharacterTable ct_GC_int)=
 let GC=complexification(G) then
 p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
 ()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
-()=prints("computing av_ann of ",p_final) then
-av=associated_variety_ann(st,ct_int,p_final) then
+()=prints("computing associated_variety_ann of ",p_final) then
+av=associated_variety_ann(st_GC,ct_GC_int,p_final) then
 H=av.H then
 orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
-prints("diagram of orbit: ", orbit.diagram);orbit
+prints("diagram of orbit: ", orbit.diagram, " dimension: ", orbit.dim_nilpotent);orbit
 
 {integral case: get ct from st}
-set av_maximal_ideal_int(RootDatum G,ratvec gamma,SpringerTable st)=
+set associated_variety_maximal_ideal_int(RootDatum G,ratvec gamma,SpringerTable st)=
 assert(is_integral(G,gamma),"infinitesimal character is not integral");
-av_maximal_ideal(G,gamma,st,st.ct)
+associated_variety_of_maximal_ideal(G,gamma,st,st.ct)
 
-set av_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st)=
-av_maximal_ideal(G,gamma,st,character_table(integrality_datum(complexification(G),gamma##gamma)))
+{if G is already complex, don't need to complexify again}
+set associated_variety_of_maximal_ideal_C(RealForm GC,ratvec gamma,SpringerTable st_GC)=
+let p_final=finalize(parameter(GC.x_open,GC.rho,gamma)).first_param then
+()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
+()=prints("computing associated_varity_ann of ",p_final) then
+av=associated_variety_ann(st_GC,p_final) then
+H=av.H then
+orbit=ComplexNilpotent:(G,(),H) in
+prints("diagram of orbit: ", orbit.diagram, " dimension: ", orbit.dim_nilpotent);orbit
 
-set av_maximal_ideal(RootDatum G,ratvec gamma)=
-av_maximal_ideal(G,gamma,G.springer_table)
+set associated_variety_of_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st_GC)=
+assert(is_locally_isomorphic(complexification(G).derived,st_GC.root_datum), "Springer table must be for the complexification of G");
+associated_variety_of_maximal_ideal(G,gamma,st_GC,character_table(integrality_datum(complexification(G),gamma##gamma)))
+
+set associated_variety_of_maximal_ideal(RootDatum G,ratvec gamma)=
+associated_variety_of_maximal_ideal(G,gamma,G.complexification.springer_table)

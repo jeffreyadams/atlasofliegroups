@@ -194,7 +194,7 @@ set K_0 (KGBElt x) = RealForm:
   in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
 set K_0 (RealForm G) = RealForm: K_0(KGB(G,0))
 
-{ here x is required to bein the distinguished fiber: }
+{ here x is required to be in the distinguished fiber: }
 set rho_K (KGBElt x) = ratvec:   rho(K_0(x))   { in X^*(T_K0) }
 set rho_K (RealForm G) = ratvec: rho(K_0(G))
 

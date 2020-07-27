@@ -19,7 +19,7 @@ prints("defined Springer table")
 set orbits=G.even_dual_orbits
 
 prints("defined even orbits")
-
+{
 set wp=weak_packets(st,orbits,cell_data)
 
 prints("Computed weak packets")
@@ -30,4 +30,5 @@ show_short(wp)
 show(wp)
 show_long(wp)
 show_very_long(wp)
+}
 

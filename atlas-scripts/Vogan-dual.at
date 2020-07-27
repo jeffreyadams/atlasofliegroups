@@ -60,7 +60,8 @@ set fixed_lift (mat theta_1,ratvec z) = (ratvec,(vec,mat,mat)):
   let (image,denom) = %(z*theta_1), (d,L,R):dLR=diagonalize(theta_1)
   then r=#d next assert(denom=1,"torus element is not fixed by involution")
   then correction = for e@i in image*R do if i<r then e\d[i] else 0 fi od * L
-  in assert(correction*theta_1=image,"no lift possible"); ( z-correction, dLR )
+  in assert(correction*theta_1=image,"no lift possible");
+  ( z-correction, dLR )
 
 {
   When restricting to a centraliser subgroup, we shall need to correct a
@@ -100,7 +101,23 @@ set integral_shift (ratvec v, mat simples,(vec d,mat L,mat R)) = vec:
   The atlas program currently would make such an identification; however
   precomputing and passing it around is still more efficient, so we leave this.
 }
-set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
+{I believe this function always returns a KGBElt which is only correct
+up to the action of W_i. The reason is that integral_shift is only finding
+one solution. The requirement of y=dual_KGB(p,dull_int_ic) is that
+p.gamma-y.torus_factor\equiv p.lambda modulo (1-theta_x)  (x=p.x)
+i.e.
+
+(*) in_lattice(1-theta_x,p.gamma-y.torus_factor-p.lambda)=true
+ 
+there may be several integral_shifts, leading to several y's,
+but (only? one of these will satisfy the additional condition.
+Claim: the various solutions to integral_shift give KGBElts y which
+differ by the cross action of W_i
+In any event: if y is a candidate for dual_KGB(p,dual_int_ic),
+then so is wy for w\in W_i (imaginary roots with respect to x)
+so simply try these to find one which satisfies (*)
+}
+set dual_KGB_old (Param p, InnerClass dual_int_ic) = KGBElt:
   let x=x(p), dual_tf=infinitesimal_character(p) - lambda(p)
   then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
   then (simple_ims,) =
@@ -114,6 +131,29 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   in KGB_elt(dual_int_ic,
              dual_theta,
              phi+integral_shift)
+
+{------------------------ modified dual_KGB-----------}
+{generators of imaginary Weyl group}
+set W_i(KGBElt x)=let (simple_imaginary,)=simple_imaginary_subsystem(x)
+in for v in simple_imaginary do W_elt(x.root_datum,reflection(x.root_datum,v)) od
+
+{W_i orbit of x}
+set W_i_orbit(KGBElt x)= let (orbit,)=cross_sub_orbit(x.W_i,x) in orbit
+
+set dual_KGB(Param p,InnerClass dual_int_ic)=
+{
+let orbit=W_i_orbit(dual_KGB_old(p,dual_int_ic)) in
+let index=first(for y in orbit do
+in_lattice(1-p.x.involution,p.infinitesimal_character-y.torus_factor-p.lambda) od)
+in assert(index>=0,"no solution found in dual_KGB_new"); orbit[index]
+}
+dual_KGB_old(p,dual_int_ic)
+
+set dual_KGB_new(Param p,InnerClass dual_int_ic)=
+let orbit=W_i_orbit(dual_KGB_old(p,dual_int_ic)) in
+let index=first(for y in orbit do
+in_lattice(1-p.x.involution,p.infinitesimal_character-y.torus_factor-p.lambda) od)
+in assert(index>=0,"no solution found in dual_KGB_new"); orbit[index]
 
 {
 set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:

@@ -72,8 +72,8 @@ root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)
 set simple_factor(RootDatum rd,int root_number)=RootDatum:
 factor(rd,simple_factor_indices(rd,root_number))
 
-set simple_factor(RootDatum rd,vec alpha)=RootDatum: let i=first(for
-j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
+set simple_factor(RootDatum rd,vec alpha)=RootDatum:
+let i=first(for j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
 
 {complete list of simple factors, as [RootDatum]}
 set simple_factors(RootDatum rd)=[RootDatum]:
@@ -194,3 +194,16 @@ S*Q
 
 set project_on_simple_factor(RootDatum rd, int i, ratvec wt)=
 project_on_simple_factor(rd,i)*wt
+
+{return number of simple factor containing given root}
+set simple_factor_number(RootDatum rd,vec alpha)=int:
+first(for i:#rd.simple_factors do rd.simple_factors[i].rho_check*alpha!=0 od)
+
+set swapped_factors(RootDatum rd,mat delta)=[(int,int)]:
+let factors=rd.simple_factors in
+##for i:#factors do
+ let j=simple_factor_number(rd,delta*(factors[i].simple_roots[0])) in
+ if i=j then [(int,int)]:[] else [(i,j)] fi od
+
+set swapped_factors(RealForm G)=
+swapped_factors(G.root_datum,G.distinguished_involution)
