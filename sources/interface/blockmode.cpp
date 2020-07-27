@@ -168,7 +168,7 @@ Block& currentBlock()
 
 kl::KL_table& currentKL()
 {
-  return currentBlock().kl_tab(currentBlock().size()-1,nullptr,true);
+  return currentBlock().kl_tab(nullptr,0,true);
 }
 
 const wgraph::WGraph& currentWGraph()

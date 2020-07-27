@@ -1493,7 +1493,7 @@ SR_poly Rep_table::deformation_terms
 
   assert(not finals.empty() and finals.front()==y); // do not call for non-final
   const kl::KL_table& kl_tab =
-    block.kl_tab(y,&KL_poly_hash,false); // fill silently up to |y|
+    block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -1581,7 +1581,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
-    block.kl_tab(z,&KL_poly_hash,false); // fill silently up to |z|
+    block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
   SR_poly result(repr_less());
   auto z_length=block.length(z);
@@ -1614,7 +1614,7 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
   auto& block = lookup(sr,z);
 
   const kl::KL_table& kl_tab =
-    block.kl_tab(z,&KL_poly_hash,false); // fill silently up to |z|
+    block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
   containers::simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=z+1; x-->0; )

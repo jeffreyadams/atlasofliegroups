@@ -135,13 +135,8 @@ class KL_table
 
 // manipulators
 
-  // partial fill, up to and including the column of |y|
-  void fill(BlockElt y, bool verbose=false);
-
-  void fill(bool verbose=false)
-  { if (size()>0)
-     fill(size()-1,verbose); // simulate forbidden first default argument
-  }
+  // partial fill, up to column |limit| exclusive; fill all if |limit==0|
+  void fill (BlockElt limit=0, bool verbose=false);
 
   Poly_hash_export polynomial_hash_table ();
 
@@ -158,9 +153,10 @@ class KL_table
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
 
   // manipulators
-  void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
-  void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
+  void silent_fill(BlockElt limit); // called by public |fill| when not verbose
+  void verbose_fill(BlockElt limit); // called by public |fill| when verbose
 
+  // fill column for |y| in the KL-table, all previous ones having been filled
   size_t fill_KL_column(std::vector<KLPol>& klv, BlockElt y,
 			KL_hash_Table& hash);
   void recursion_column(BlockElt y, weyl::Generator s,

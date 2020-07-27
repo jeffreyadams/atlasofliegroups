@@ -192,10 +192,12 @@ Poly_hash_export KL_table::polynomial_hash_table ()
   return pol_hash!=nullptr ? Poly_hash_export(pol_hash) : Poly_hash_export(*own);
 }
 
-// Fill (or extend) the KL- and mu-lists.
-void KL_table::fill(BlockElt y, bool verbose)
+// Fill (or extend) the KL- and mu-lists up to |limit|
+void KL_table::fill(BlockElt limit, bool verbose)
 {
-  if (y<first_hole())
+  if (limit==0) // often defaulted value to indicate complete fill is requested
+    limit=size();
+  if (limit<=first_hole())
     return; // tables present already sufficiently large for |y|
 
 #ifndef VERBOSE
@@ -207,16 +209,16 @@ void KL_table::fill(BlockElt y, bool verbose)
     if (verbose)
     {
       std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
-      verbose_fill(y);
+      verbose_fill(limit);
       std::cerr << "done" << std::endl;
     }
     else
-      silent_fill(y);
+      silent_fill(limit);
   }
   catch (std::bad_alloc&)
   { // roll back, and transform failed allocation into |error::MemoryOverflow|
     std::cerr << "\n memory full, KL computation abondoned.\n";
-    for (auto it = d_holes.begin(); it() and *it<=y; ++it)
+    for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     { // remove any partially written columns
       d_KL[*it].clear();
       d_mu[*it].clear();
@@ -366,13 +368,7 @@ inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) cons
 
 // private manipulators
 
-/*
-  Fill the column for |y| in the KL-table.
-
-  Precondition: all lower rows have been filled
-
-  Column of $y$ is the set of all $P_{x,y}$ for $x<y$
-*/
+// Fill the column for |y| in the KL-table, all previous ones having been filled
 size_t KL_table::fill_KL_column
   (std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash)
 {
@@ -901,7 +897,7 @@ KLPol KL_table::mu_new_formula
 } // |KL_table::muNewFormula|
 
 
-void KL_table::silent_fill(BlockElt last_y)
+void KL_table::silent_fill(BlockElt limit)
 {
   std::vector<KLPol> klv(block().size()+1,Zero); // work; indexed by |BlockElt|
   const auto hash_object = polynomial_hash_table();
@@ -909,7 +905,7 @@ void KL_table::silent_fill(BlockElt last_y)
   try
   {
     // fill the lists
-    for (auto it = d_holes.begin(); it() and *it<=last_y; ++it)
+    for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     {
       fill_KL_column(klv,*it,hash);
       d_holes.remove(*it);
@@ -922,24 +918,22 @@ void KL_table::silent_fill(BlockElt last_y)
   }
 }
 
-/*
-  New routine that does verbose filling of existing |KL_table| object
-*/
-void KL_table::verbose_fill(BlockElt last_y)
+// Fill the existing |KL_table| object while printing progress reports
+void KL_table::verbose_fill(BlockElt limit)
 {
   std::vector<KLPol> klv(block().size()+1,Zero); // work; indexed by |BlockElt|
   const auto hash_object = polynomial_hash_table();
   auto& hash = hash_object.ref;
 
   size_t minLength = length(first_hole()); // length of first new |y|
-  size_t maxLength = length(last_y<size() ? last_y : size()-1);
+  size_t maxLength = length(limit<=size() ? limit-1 : size()-1);
 
   //set timers for KL computation
   std::time_t time0;
   std::time(&time0);
   std::time_t time;
 
-  struct rusage usage; //holds Resource USAGE report
+  struct rusage usage; // holds resource usage report
   size_t storesize = 0; // previous size of d_store
   size_t polsize = 0; // running total of sum of (polynomial degrees+1)
 
@@ -950,7 +944,7 @@ void KL_table::verbose_fill(BlockElt last_y)
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
-      BlockElt y_limit = l<maxLength ? length_less(l+1) : last_y+1;
+      BlockElt y_limit = l<maxLength ? length_less(l+1) : limit;
       for (BlockElt y=y_start; y<y_limit; ++y)
       {
 	std::cerr << y << "\r";
@@ -977,7 +971,7 @@ void KL_table::verbose_fill(BlockElt last_y)
 	<< ", mat:"  << std::setw(11) << prim_size
 	<<  std::endl;
       unsigned cputime, resident; //memory usage in megabytes
-      if(getrusage(RUSAGE_SELF, &usage) != 0)
+      if (getrusage(RUSAGE_SELF, &usage) != 0)
 	std::cerr << "getrusage failed" << std::endl;
       resident = usage.ru_maxrss/1024; //largest so far??
 #ifdef __APPLE__
