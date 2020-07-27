@@ -766,12 +766,11 @@ dual_KL_block: (Param->[Param],int,mat,[vec],vec,vec): KL info for dual block
   elements is reversed, and other changes made: adapting the indices of length
   function changes and of surviving elements. The contribution-coefficient
   matrix is omitted altogether, as it is not to be used for the dual block.
-partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
+partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
   This function relates to KL_block as partial_block relates to block. The
   first component of the result is the Bruhat interval as in partial_block,
-  and all other components are the same is in KL_block (except that the now
-  superfluous second component of KL_block is omitted), but with the two vec
-  components filtered so as to be indexed by the Bruhat interval indices only.
+  and the last two components are the same is in KL_block; no index of the given
+  parameter is returned, since it always equals the final element of the list.
 W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the W graph in the format used for W_graph@Block below
