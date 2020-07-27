@@ -743,9 +743,12 @@ print_block: (Param->): print translation family block for the given parameter
 print_partial_block: (Param->): print partial translation family block
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+  Non-final parameters are omitted from the list, and if this includes the
+  original parameter the second component will be negative.
 partial_block: (Param->[Param]): return partial block as list of parameters
-  This is the Bruhat interval of the block below the given parameter,
-  sorted by length and including the given parameter as final element
+  This is the Bruhat interval of the block below the given parameter, sorted by
+  length. Non-final parameters are omitted. If the original parameter is final,
+  then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   This combines block with the computation of the its Kazhdan-Lustzig table.

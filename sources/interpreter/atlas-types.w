@@ -4700,7 +4700,8 @@ void print_pc_block_wrapper(expression_base::level l)
 @ More interesting than printing the block is to return is to the user as a
 list of parameter values. The following function does this, and adds as a
 second result the index that the original parameter has in the resulting
-block.
+block. If not final, the original parameter will be absent, and the second
+value returned~$-1$.
 
 @< Local function def...@>=
 void common_block_wrapper(expression_base::level l)
@@ -4712,29 +4713,32 @@ void common_block_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
   const auto& gamma = p->val.gamma();
-  @< Push a list of parameter values for the elements of common |block| at
-   infinitesimal character |gamma| @>
-  push_value(std::make_shared<int_value>(start));
+  { const RankFlags singular = block.singular(gamma);
+    int start_pos = -1;
+    own_row param_list = std::make_shared<row_value>(0);
+    for (BlockElt z=0; z<block.size(); ++z)
+      if (block.survives(z,singular))
+      {
+        if (z==start)
+          start_pos=param_list->val.size();
+        param_list->val.push_back @|
+          (std::make_shared<module_parameter_value> @|
+               (p->rf,p->rc().sr(block.representative(z),gamma)));
+      }
+    push_value(std::move(param_list));
+    push_value(std::make_shared<int_value>(start_pos));
+  }
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
 
-@ Construction a list of values is a routine affair. This code must however also
-construct a module parameter value for each element of |block|, which requires
-explicitly passing the infinitesimal character, which the block does not record.
+@ There are also a functions that compute just a partial block. We generate
+the Bruhat interval inside the block (which might have more elements than just
+the requested partial bock because of earlier computations) by completing the
+downward closure of the Hasse relation (which is filled anyway by the partial
+block |lookup| function); this avoids generating the full
+|block.bruhatOrder().poset()| structure.
 
-@< Push a list of parameter values for the elements of common |block| at
-   infinitesimal character |gamma| @>=
-{ own_row param_list = std::make_shared<row_value>(0);
-  param_list->val.reserve(block.size());
-  for (BlockElt z=0; z<block.size(); ++z)
-    param_list->val.push_back (std::make_shared<module_parameter_value> @|
-             (p->rf,p->rc().sr(block.representative(z),gamma)));
-  push_value(std::move(param_list));
-
-}
-
-@ There are also a functions that compute just a partial block.
 @< Local function def...@>=
 void partial_common_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
@@ -4744,20 +4748,23 @@ void partial_common_block_wrapper(expression_base::level l)
 @)
   BlockElt z;
   blocks::common_block& block = p->rt().lookup(p->val,z);
+  const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
+    // |unsigned long| type is imposed by |Bitmap::back_up|
   BitMap subset(n);
   subset.insert(z);
   while (subset.back_up(n)) // compute downward closure
-    for (@[BlockElt y : block@].bruhatOrder().hasse(n))
+    for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
-
-  { own_row param_list = std::make_shared<row_value>(subset.size());
-    size_t i=0;
+@)
+  { const RankFlags singular = block.singular(gamma);
+    own_row param_list = std::make_shared<row_value>(0);
     for (auto z : subset)
-      param_list->val[i++] =
-         std::make_shared<module_parameter_value> @|
-             (p->rf,p->rc().sr(block.representative(z),p->val.gamma()));
+      if (block.survives(z,singular))
+        param_list->val.push_back @|
+          (std::make_shared<module_parameter_value> @|
+             (p->rf,p->rc().sr(block.representative(z),gamma)));
     push_value(std::move(param_list));
   }
 }
