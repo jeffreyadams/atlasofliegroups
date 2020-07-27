@@ -150,31 +150,6 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 }
 #endif
 
-// Here we seek twist and |ww| on parent side (dual with respect to |sub|)
-// used in |blocks::param_block::compute_duals| (just for the induced |Twist|)
-weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
-				    WeylWord& ww) const
-{
-  // beginning is identical to |SubSystem::twist| above
-  RootNbrList Delta(rank());
-  for (weyl::Generator i=0; i<rank(); ++i)
-  {
-    RootNbr image =
-      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
-    assert(image < numRoots());
-    Delta[i] = image; // PLUS |theta| image of |root(i)|
-  }
-
-  // set |ww| to sub-W-word relating |theta| to parent-side distinguished inv.
-  ww = rootdata::wrt_distinguished(*this,Delta);
-  // rightmost letter |ww| applies first to now disinguished |Delta|
-
-  weyl::Twist result;
-  for (weyl::Generator i=0; i<rank(); ++i)
-    result[i] = RootSystem::simpleRootIndex(Delta[i]);
-
-  return result;
-}
 
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const

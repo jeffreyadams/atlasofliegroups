@@ -2,7 +2,7 @@
   This is wgraph.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007,2017 Marc van Leeuwen
+  Copyright (C) 2007,2017,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -17,12 +17,9 @@
 
 #include "bitset.h"	// inlines
 #include "graph.h"	// containment
-
+#include "kl.h"         // type |Mu_pair|
 
 namespace atlas {
-
-/******** type declarations  (see ../Atlas.h)  ***************************/
-
 
 /******** function declarations *********************************************/
 
@@ -47,18 +44,22 @@ namespace wgraph {
   The |WGraph| structure stores a graph, edge weights (coefficients), and
   descent sets. The construction of the graph is left to the client.
 */
-struct WGraph
+class WGraph
 {
-  typedef unsigned short Coeff;
-  typedef std::vector<Coeff> CoeffList;
+  using Coeff = unsigned short;
+  using CoeffList = std::vector<Coeff>;
 
   size_t d_rank;
-  graph::OrientedGraph oriented_graph;
+  graph::OrientedGraph symmetric_graph;
   std::vector<CoeffList> coefficients;
   std::vector<RankFlags> descent_sets;
 
+public:
 // constructors and destructors
   explicit WGraph(size_t rank, size_t size);
+  WGraph(unsigned short rank,
+	 const containers::sl_list<RankFlags>& tau,
+	 const std::vector<containers::sl_list<kl::Mu_pair> >& edge_list);
 
 // copy, assignment and swap: nothing needed beyond defaults
 
@@ -70,16 +71,19 @@ struct WGraph
     { return descent_sets[x]; }
 
   unsigned int degree (graph::Vertex x) const
-    { return oriented_graph.edgeList(x).size(); }
+    { return symmetric_graph.edgeList(x).size(); }
 
+  const graph::EdgeList& edge_list (graph::Vertex x) const
+    { return symmetric_graph.edgeList(x); }
   graph::Vertex edge_target (graph::Vertex x,unsigned int index) const
-  { return oriented_graph.edgeList(x)[index]; }
+    { return symmetric_graph.edgeList(x)[index]; }
 
-  const graph::OrientedGraph& graph() const { return oriented_graph; }
+  const graph::OrientedGraph& graph() const { return symmetric_graph; }
+  graph::OrientedGraph oriented_graph() const; // removes some edges
 
-  const size_t rank() const { return d_rank; }
+  const unsigned short rank() const { return d_rank; }
 
-  size_t size() const { return oriented_graph.size(); }
+  graph::Vertex size() const { return symmetric_graph.size(); }
 
 }; // |class WGraph|
 

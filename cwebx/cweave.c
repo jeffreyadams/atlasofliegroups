@@ -985,6 +985,8 @@ int main (int argc,char** argv)
                                				{expression, NULL},only_plus_plus},	
                                {266, {{int_like, int_like, colcol, int_like},1},
                                				{int_like, NULL},only_plus_plus},	
+                               {267, {{int_like, expression, colon, expression}},
+                               				{expression, "_~!_m__"},only_plus_plus},	
                                
                                {270, {{int_like, binop, expression}},
                                				{int_like, NULL},only_plus_plus},	

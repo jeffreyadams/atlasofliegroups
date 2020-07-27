@@ -3,7 +3,7 @@
 <W_characters.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
-<sparse.at
+<sparse.at { for column-grouped |sparse_mat| type }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -67,95 +67,109 @@ set_type
 
 { Description of the cell representation taken from messages/wcells.help
 
-  The Weyl group representation attached to the cell may be described as
-  follows. It has a Z basis {L_j} indexed by the cell elements j. If
-  root i is in the tau invariant for element j, then
+  One Weyl group representation attached to the graph, called coherent
+  continuation action, may be described as follows. On take a free Z-module with
+  basis {L_i} indexed by the block elements i. If root g is in the tau(j), then
 
-  s_i(L_j) = -L_j.
+    s_g(L_j) = -L_j.
 
-  If i is not in the tau invariant, then
+  If g is not in tau(j), then
 
-  s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
+    s_g(L_j) = L_j + sum_{elements i such that g in tau(i)} m_{i,j} * L_i,
 
-  where m_{kj} denotes the multiplicity of the edge from k to j.
-  That is, m*L_k appears in the sum here if i is in the tau-invariant of
-  L_k, and the pair (j,m) appears in the list for row k.
+  where m_{i,j} denotes the multiplicity of the edge from i to j. In other
+  words, a term m*L_i appears in the sum for s_g(L_j) if the pair (j,m) appears
+  in the list for row i and moreover g is in tau(i) but not in tau(j). In matrix
+  form, the action of s_g is given by a matrix whose diagonal terms are given
+  using Iverson brackets [[]] as a_{j,j} = (-1)^[[g\notin\tau(j)]] and whose
+  off-diagonal terms are a_{i,j} = [[g\in\tau(i)\setminus\tau(j)]] m_{i,j}.
+
+  The Hecke algebra action associated to the graph, at q=1 and expressed with
+  respect to the basis of irreducible representations, each multiplied by a sign
+  given by the parity of its length (so that off-diagonal terms are non
+  negative), is similar, but differs in that diagonal entries have opposite
+  signs.
+
+  For example, here is a cell
 
   ([224,247,250,253,256],
-  [([0,1,2],[(1,1)]),
-  ([0,1,3],[(0,1),(3,1),(4,1)]),
-  ([1,2,3],[(3,1)]),([0,2,3],
-  [(1,1),(2,1)]),([0,1,2],[(1,1)])])
+   [([0,1,2],[(1,1)]),
+    ([0,1,3],[(0,1),(3,1),(4,1)]),
+    ([1,2,3],[(3,1)]),
+    ([0,2,3],[(1,1),(2,1)]),
+    ([0,1,2],[(1,1)])
+   ]
+  )
 
-  0[224]: {1,2,3} --> 1
-  1[247]: {1,2,4} --> 0,3,4
-  2[250]: {2,3,4} --> 3
-  3[253]: {1,3,4} --> 1,2
-  4[256]: {1,2,3} --> 1
+  which can be visualized (dropping the m values which are all 1) as
+
+  0[224]: {1,2,3} <-> 1
+  1[247]: {1,2,4} <-> 0,3,4
+  2[250]: {2,3,4} <-> 3
+  3[253]: {1,3,4} <-> 1,2
+  4[256]: {1,2,3} <-> 1
+
+  and which gives for the coherent continuation action the matrices, acting from
+  the left (so columns are images),
+
+  |-1, 0, 0, 0, 0 |  |-1, 0, 0, 0, 0 |  |-1, 1, 0, 0, 0 |  | 1, 0, 0, 0, 0 |
+  | 0,-1, 0, 0, 0 |  | 0,-1, 0, 1, 0 |  | 0, 1, 0, 0, 0 |  | 1,-1, 0, 0, 1 |
+  | 0, 0, 1, 0, 0 |, | 0, 0,-1, 1, 0 |, | 0, 0,-1, 0, 0 |, | 0, 0,-1, 0, 0 |
+  | 0, 0, 1,-1, 0 |  | 0, 0, 0, 1, 0 |  | 0, 1, 0,-1, 0 |  | 0, 0, 0,-1, 0 |
+  | 0, 0, 0, 0,-1 |  | 0, 0, 0, 0,-1 |  | 0, 1, 0, 0,-1 |  | 0, 0, 0, 0, 1 |
+
+  Whenever an off-diagonal coefficient (i,j) is nonzero, then the diagonal entry
+  at (i,i) is -1 (as g\in\tau(i)); the one at (j,j) is +1 (g\notin\tau(j))
+
+  In the Hecke action all the diagonal entries are opposite
 }
 
-{ matrix of action of of i^th simple reflection on a cell
-  a cell is: ([int],[([int],[(int,int)])]) cell,int i)
-  as described in the W_cells command in atlas-functions.help}
+{ sparse matrix of the Hecke action (on the basis of length-parity flipped
+  irreducible representations) of the i^th simple reflection on a cell
+  A cell is a value of type WCell = ( [int] , [([int],[(int,int)])] ) as
+  described in the W_cells@Block command in atlas-functions.help
+}
 
-{returns a sparse matrix}
-{. matrix of action of i^th simple reflection on a cell .}
-set cell_action (WCell (,graph),int s) = sparse_mat:
-let rv=sparse_mat:[] in
-for node@i in graph
-do 
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,-1)
-   ; for (j,mu) in node.out_list
-     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
-     od
-   else col#:=(i,1) 
- fi;
- rv#:=col
-od;rv
+{ the cell_action functions really live on the level of WGraph: }
 
-{. matrix of action of product of simple reflections on a cell .}
-set cell_action (WCell cell,[int] w) = mat:
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=unsparse(cell_action(cell,w[0]),n) in
-     for i:#w-1 from 1 do result:=result*cell_action(cell,w[i]) od; result
-  fi
-
-{. matrix of action of WeylElt on a cell .}
-set cell_action(WCell cell,WeylElt w) = mat: cell_action(cell,w.word)
-
-{the cell_action functions really live on the level of WGraph:}
-
-{returns a sparse matrix}
-{. matrix of action of i^th simple reflection on a W-graph .}
+{. matrix for s of graph, of coherent continuation action on irreducibels. }
 set graph_action (WGraph graph,int s) = sparse_mat:
-let rv=sparse_mat:[] in
-for node@i in graph
-do 
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,-1)
-   ; for (j,mu) in node.out_list
-     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
-     od
-   else col#:=(i,1) 
- fi;
- rv#:=col
-od;rv
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   for node@j in graph
+   do if node.tau_has_s
+      then [(j,-1)] { single diagonal term -1 }
+      else (j,1) { diagonal term, the rest come from outwardard edges } #
+        for (i,):link in node.out_list
+        do if graph[i].tau_has_s then [link] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
+      fi
+   od
 
 {. matrix of action of product of simple reflections on a cell .}
 set graph_action (WGraph graph,[int] w) = mat:
   let n=#graph in
   if =#w then id_mat(n)
   else let result=unsparse(graph_action(graph,w[0]),n) in
-     for i:#w-1 from 1 do result:=result*graph_action(graph,w[i]) od; result
+     for i:#w-1 from 1 do result:=result*graph_action(graph,w[i]) od
+  ;  result
   fi
 
 {. matrix of action of WeylElt on a cell .}
-set graph_action(WGraph graph,WeylElt w) = mat: graph_action(graph,w.word)
+set graph_action(WGraph graph,WeylElt w) = mat:
+  graph_action(graph,w.word)
 
+
+{. matrix of action of i^th simple reflection on a cell .}
+set cell_action (WCell cell,int s) = sparse_mat:
+  graph_action(cell.graph,s)
+
+{. matrix of action of product of simple reflections on a cell .}
+set cell_action (WCell cell,[int] w) = mat:
+  graph_action(cell.graph,w)
+
+{. matrix of action of WeylElt on a cell .}
+set cell_action(WCell cell,WeylElt w) = mat:
+  graph_action(cell.graph,w.word)
 
 
 {. character of representation of W on cell .}
@@ -175,7 +189,8 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.root_datum.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
+  (#cell.graph,for i:ct.root_datum.semisimple_rank
+	       do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:

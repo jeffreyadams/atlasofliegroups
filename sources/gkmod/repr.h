@@ -26,11 +26,11 @@
 #include "hashtable.h"
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
+#include "gradings.h"
+#include "subsystem.h"
 #include "polynomials.h"
 
 namespace atlas {
-
-namespace blocks { class common_block; }
 
 namespace repr {
 
@@ -38,24 +38,24 @@ class common_context;
 
 /*
   A parameter of a standard representation is determined by a triplet
-  $(x,\tilde\lambda,gamma)$, where $x\in K\\backslash G/B$ for our fixed real
+  $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
   form (determining amongs others an involution $\thata$ of $X^*$),
-  $\tilde\lambda$ is a genuine character of the $\rho$-cover of
-  $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
-  The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$, in
-  other words $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection of
-  $\gamma$ on the $+1$-eigenspace of $\theta$ is determined by this relation
-  and is called the free part $\lambda_0$ of $\gamma$. The difference
-  $\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
-  is called $\nu$. This component is what we are adding with respect to the
-  values encoded in the |standardrepk::StandardRepK| type. The part of
-  $\tilde\lambda$ that is independent of $\lambda_0$ is its "torsion part"
-  (due to the disconnectedness of $H(R)_c$), which would be represented in the
-  |Block| structure by the |TorusPart| component of the |TitsElt| of the dual
-  KGB-element ($y$). In fact we also convert it internally to a |TorusPart|
-  here, called |y_bits|. It represents an element of the quotient of
-  $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$; from it we can recover
-  $\tilde\lambda-\lambda_0$, using |involutions::InvolutionTable::unpack|.
+  $\tilde\lambda$ is a genuine character of the $\rho$-cover of $H^{\theta_x}$,
+  and $\gamma$ is a character of the complex Lie algebra $h$. The latter two
+  values are related; $(1+\theta)\gamma=(1+\theta)\tilde\lambda$, in other words
+  $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection $\lambda_0$ of
+  $\tilde\lambda$ or $\gamma$ on the $+1$-eigenspace of $\theta$ is determined
+  by this relation. The difference $\gamma-\lambda_0$, i.e., the projection of
+  $\gamma$ on the $-1$-eigenspace, is called $\nu$. This $\nu$ is the
+  information one is adding here with respect to the values encoded in the
+  |standardrepk::StandardRepK| type. The part of $\tilde\lambda$ that is
+  independent of $\lambda_0$ is its "torsion part" (due to the disconnectedness
+  of $H(R)_c$), which would be represented in the |Block| structure by the
+  |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$). In fact
+  we also convert it internally to a |TorusPart| here, called |y_bits|. It
+  represents an element of the quotient of $(X^*)^{-\theta}$ by the image
+  $(1-\theta)X^*$; from it we can recover $\tilde\lambda-\lambda_0$, using
+  |involutions::InvolutionTable::unpack|.
 
   In principle $\gamma$ could take any complex values compatible with
   $\tilde\lambda$. But we are only interested in real values, and in fact
@@ -135,6 +135,24 @@ class StandardReprMod
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
 
+class Repr_mod_entry
+{ KGBElt x; RankFlags y, mask;
+public:
+  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
+
+  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
+
+  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
+
+  // obligatory fields for hashable entry
+  using Pooltype =  std::vector<Repr_mod_entry>;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*y_stripped())&(modulus-1); }
+  bool operator !=(const Repr_mod_entry& o) const
+    { return x!=o.x or y_stripped()!=o.y_stripped(); }
+
+}; // |Repr_mod_entry|
+
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
@@ -185,7 +203,7 @@ class Rep_context
 
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
 
-  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
+  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |common_block|
   TorusElement y_as_torus_elt(const StandardRepr& z) const;
   TorusElement y_as_torus_elt(const StandardReprMod& z) const;
 
@@ -247,7 +265,7 @@ class Rep_context
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
-  containers::sl_list<StandardRepr> finals_for // like |param_block::finals_for|
+  containers::sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
@@ -269,20 +287,19 @@ using SR_poly = Rep_context::poly;
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored consists of lengths, and (twisted) full deformation formulae.
+  The data stored are: the |blocks::common_block| values encountered for this
+  real form, together with their KL data if computed, a table of (twisted) full
+  deformation formulae, pools of |kl::KLPol| (positive coeffient) and
+  |ext_kl::Pol| (integer coeffient) polynomials that blocks may choose to share
+  (they can alternatively choose to maintain their local polynomials themselves).
+
   This class provides methods for their computation, and handles the data
   storage and retrieval.
 
-  The deformation information for a parameter will actually be stored for its
-  first reducibility point (thus avoiding some duplication of the same
-  information, and avoiding memory usage for parameters without any
-  reducibility points), at the normalised form of the parameter there (the
-  deformation might have made some complex simple coroots singular, crossing
-  their wall). Since no slots are created for parameters that are zero or
-  non-final, such parameters must be expanded into finals before attempting
-  look-up or storage of deformation formulae; the nonzero and final conditions
-  are preserved at intermediate deformation points (though possibly not at the
-  terminating point $\nu=0$ of the deformation).
+  The deformation information is associated to parameters, but is unchanged
+  under certain changes of these parameters, so to limit memory usage somewhat
+  any parameter is moved to its first reducibility point and expressed in
+  nonzezro final ones before looking up or computing its deformation.
 */
 class Rep_table : public Rep_context
 {
@@ -361,6 +378,77 @@ class Rep_table : public Rep_context
 
 }; // |Rep_table|
 
+
+// a slight extension of |Rep_context|, fix |delta| for extended representations
+class Ext_rep_context : public Rep_context
+{
+  const WeightInvolution d_delta;
+public:
+  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
+
+  const WeightInvolution& delta () const { return d_delta; }
+
+}; // |class Ext_rep_context|
+
+// another extension of |Rep_context|, fix integral system for common block
+class common_context : public Rep_context
+{
+  const RootDatum integr_datum; // intgrality datum
+  const SubSystem sub; // embeds |integr_datum| into parent root datum
+public:
+  common_context (RealReductiveGroup& G, const SubSystem& integral);
+
+  // accessors
+  const RootDatum& id() const { return integr_datum; }
+  const SubSystem& subsys() const { return sub; }
+
+  // methods for local common block construction, as in |Rep_context|
+  // however, the generator |s| is interpreted for the |integr_datum|
+  StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod up_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  std::pair<gradings::Status::Value,bool> // status and whether a descent/type 1
+    status(weyl::Generator s, KGBElt x) const; // with |s| for |integr_datum|
+  bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
+
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
+
+}; // |class common_context|
+
+/*
+  This class is for |paramin| below what |ext_block::context| is for
+  |ext_block::param|: it holds relevant values that remain fixed across an
+  |extended block|. Data fields that are removed with respect to
+  |ext_block::param| are |d_gamma|, |lambda_shifts|. Methods that are absent:
+  |gamma|, |lambda_shift|
+*/
+class Ext_common_context : public common_context
+{
+  const WeightInvolution d_delta;
+  Permutation pi_delta; // permutation of |delta| on roots of full root datum
+  RootNbrSet delta_fixed_roots;
+  weyl::Twist twist;
+  int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
+
+ public:
+  Ext_common_context (RealReductiveGroup& G, const WeightInvolution& delta,
+		      const SubSystem& integral_subsystem);
+
+  // accessors
+  const WeightInvolution& delta () const { return d_delta; }
+  RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+  const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
+  weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
+  bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
+  bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
+		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
+
+}; // |Ext_common_context|
 
 // 				Functions
 
