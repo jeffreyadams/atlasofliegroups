@@ -19,7 +19,6 @@
 #include "kgb.h"     // |kgb.size()|
 #include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
-#include "common_blocks.h"
 #include "ext_block.h"
 #include "kl.h"
 #include "repr.h"
@@ -112,28 +111,6 @@ std::ostream& Block::print
     prettyprint::printInvolution(strm,involution(z),twistedWeylGroup());
   else
     prettyprint::printWeylElt(strm,involution(z),weylGroup());
-
-  return strm ;
-}
-
-std::ostream& param_block::print
-  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
-{
-  const KGB& kgb = rc.kgb();
-  unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = root_datum().semisimpleRank();
-
-  strm << (survives(z) ? '*' : ' ')
-       << "(x=" << std::setw(xwidth) << x(z)
-       << ",lam_rho=" << std::setw(3*rk+1) << lambda_rho(z)
-       << ", nu=" << std::setw(3*rk+3) << nu(z)
-       << ')' << std::setw(2) << "";
-
-  const TwistedInvolution& ti = kgb.involution(x(z));
-  const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
-  // print root datum involution
-  if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
-  else prettyprint::printWeylElt(strm,ti,tW.weylGroup());
 
   return strm ;
 }
@@ -431,8 +408,8 @@ std::ostream& printDescent(std::ostream& strm,
   return strm;
 }
 
-
-std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
+std::ostream& print_KL(std::ostream& f, blocks::common_block& block,
+			 BlockElt z, RankFlags singular)
 {
   // silently fill the whole KL table
   const kl::KL_table& kl_tab = block.kl_tab(z,nullptr,false);
@@ -449,7 +426,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
       Poly p(pol); // convert
       if (block.length(x)%2!=parity)
 	p*=-1;
-      auto finals=block.finals_for(x);
+      auto finals=block.finals_for(x,singular);
       for (BlockElt final : finals)
       {
 	std::pair<map_type::iterator,bool> trial =
@@ -457,11 +434,11 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
 	if (not trial.second) // failed to create a new entry
 	  trial.first->second += p;
       } // |for (final : finals)|
-    } // |if(pol!=0)|
+    } // |if (pol!=0)|
   } // |for (x<=z)|
 
 
-  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+  f << (singular.any() ? "(cumulated) " : "")
     << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
   int width = ioutils::digits(z,10ul);
   for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
@@ -472,7 +449,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
       pol.print(f << std::setw(width) << x << ": ","q") << std::endl;
   }
   return f;
-}
+} // |print_KL|
 
 } // |namespace block_io||
 

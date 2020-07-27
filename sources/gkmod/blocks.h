@@ -25,6 +25,8 @@
 #include "descents.h"	// inline methods
 #include "lietype.h"    // |ext_gen|;
 #include "dynkin.h"     // |DynkinDiagram|
+#include "subsystem.h"  // data memeber in |common_block|
+#include "repr.h"       // hash table in |common_block|
 
 namespace atlas {
 
@@ -171,6 +173,11 @@ public:
   weyl::Generator firstStrictDescent(BlockElt z) const;
   weyl::Generator firstStrictGoodDescent(BlockElt z) const;
 
+  bool survives(BlockElt z, RankFlags singular) const;
+    // whether $J(z_{reg})$ survives tr. functor with |singular| singular coroots
+  containers::sl_list<BlockElt>
+    finals_for(BlockElt z, RankFlags singular) const; // expression for $I(z)$
+
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
@@ -193,8 +200,14 @@ public:
 
 }; // |class Block_base|
 
+
+// The functor $T_{\alpha,\beta}$
+BlockEltPair link(weyl::Generator alpha,weyl::Generator beta,
+		  const Block_base& block, BlockElt y);
+
 // sorted list of elements reachable by a descent from $y$.
 containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y);
+
 
 // a derived class with minimal implementation to be a concrete class
 class Bare_block : public Block_base
@@ -316,78 +329,77 @@ private:
 
 }; // |class Block|
 
-// The functor $T_{\alpha,\beta}$
-BlockEltPair link(weyl::Generator alpha,weyl::Generator beta,
-		  const Block_base& block, BlockElt y);
-
-struct param_entry
-{ KGBElt x; TorusPart y;
-
-  // obligatory fields for hashable entry
-  typedef std::vector<param_entry> Pooltype;
-  size_t hashCode(size_t modulus) const
-  { return (5*x-11*y.data().to_ulong())&(modulus-1); }
-  bool operator !=(const param_entry& o) const { return x!=o.x or y!=o.y; }
-
-}; // |struct param_entry|
-
-typedef HashTable<y_entry,KGBElt> y_part_hash;
-typedef Block_base::EltInfo block_elt_entry;
-typedef HashTable<block_elt_entry,BlockElt> block_hash;
-typedef HashTable<param_entry,BlockElt> param_hash;
-
 // a class for blocks of (possibly non integral) parameters
-class param_block : public Block_base
+class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  RatWeight infin_char; // infinitesimal character
-  Weight gr_numer; // numerator of |gamma-rho|
+  const RatWeight gamma_mod_1;
+  const SubSystem integral_sys;
 
-  std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
+  // hash structure to facilitate lookup of elements in |StandardReprMod| form
+  using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
+  repr::Repr_mod_entry::Pooltype z_pool;
+  repr_hash srm_hash;
 
-  // hash structure to allow rapid lookup of |StandardRepr| values
-  param_entry::Pooltype z_pool;
-  param_hash z_hash;
+  std::unique_ptr<ext_block::ext_block> extended;
 
-  // group small components together:
-  int gr_denom;
-  KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
-  RankFlags singular; // flags, among integrally-simple roots, singular ones
+  // group small data members together:
+  KGBElt highest_x,highest_y; // maxima over this block
+  const bool generated_as_full_block; // tells which constructor was used
 
  public:
 
-  param_block // constructor for full block
+  // constructor and destructor
+  common_block // full block
     (const repr::Rep_context& rc,
-     StandardRepr sr, // by value,since it will be made dominant before use
+     const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
+  common_block // partial block
+    (const repr::Rep_table& rt,
+     const repr::common_context& ctxt,
+     containers::sl_list<unsigned long>& elements,
+     const RatWeight& gamma_mod_1);
+  ~common_block(); // cleans up |*extended|, so inline definition impossible
 
-  param_block // alternative constructor, for interval below |sr|
-    (const repr::Rep_context& rc,
-     StandardRepr sr); // by value,since it will be made dominant before use
-
- public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
+  const SubSystem& integral_subsystem() const { return integral_sys; }
   const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
 
-  const RatWeight& gamma() const { return infin_char; }
-  StandardRepr sr(BlockElt z) const; // parameter associated to block element
+  bool is_full () const { return generated_as_full_block; }
 
-  RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
-  Weight lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value
-  RatWeight lambda(BlockElt z) const; // reconstruct from y value
-  RankFlags singular_simple_roots() const { return singular; }
-  bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
-  containers::sl_list<BlockElt> finals_for(BlockElt z) const; // expr. for $I(z)$
+  RatWeight gamma_mod1 () const { return gamma_mod_1; }
+  // simple coroots of |sub| singular for |gamma|
+  RankFlags singular (const RatWeight& gamma) const;
 
-  BlockElt lookup(const StandardRepr& sr) const;
+  // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
+  RatWeight gamma_lambda(BlockElt z) const;
+
+  BlockElt lookup(const repr::StandardReprMod& srm) const;
+  BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
+
+  repr::StandardReprMod representative (BlockElt z) const
+  { return repr::StandardReprMod::build(rc,gamma_mod_1,x(z),gamma_lambda(z)); }
+  repr::StandardRepr sr (BlockElt z,const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
+
+  // manipulators
+  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using arugment
+  kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
+  void swallow // integrate an older partial block, with mapping of elements
+    (common_block&& sub, const BlockEltList& embed,
+     KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
+  ext_block::ext_block& extended_block(ext_KL_hash_Table* pol_hash);
+  // get/build extended block for inner class involution; if built, store it
+
+  void set_Bruhat
+  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
@@ -398,19 +410,20 @@ class param_block : public Block_base
 
 
  private:
-  void compute_y_bits(const y_entry::Pooltype& y_pool); // set all the |y_bits|
+// sort by increaing length, then |x|, then |y|; permute tables correspondingly
+  void sort();
 
-/*
-  reverse lengths and order block with them increasing, and by increasing
-  |x(z)| among elements of given length; adapt tables accordingly. Argument
-  |full_block| tells whether a full (rather than partial) block was generated;
-  in this case (only) the |data| fields are adapted to the permutation
- */
-  void reverse_length_and_sort(bool full_block);
+}; // |class common_block|
 
-}; // |class param_block|
+// sorting criterion used to |common_block::sort| the |info| array in block base
+bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
 
+BlockElt twisted
+  (const blocks::common_block& block, BlockElt z, const WeightInvolution& delta);
 
+typedef HashTable<y_entry,KGBElt> y_part_hash;
+typedef Block_base::EltInfo block_elt_entry;
+typedef HashTable<block_elt_entry,BlockElt> block_hash;
 
 class nblock_elt // internal representation during construction
 {

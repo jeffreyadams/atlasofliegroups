@@ -736,13 +736,11 @@ block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
   exaclty the two elements, namely x et z. The matrix is indexed by the numbers
-  of the block elements as displayed in print_common_block(p).
+  of the block elements as displayed in print_block(p).
 
-print_block: (Param->): print (non-integral) block generated from parameter
-print_partial_block: (Param->): print partial block generated from parameter
-print_common_block: (Param->): print translation family block for parameter
+print_block: (Param->): print translation family block for the given parameter
   The full common block is printed with "gamma-lambda" rather than "lambda-rho"
-print_partial_common_block: (Param->): |print_common_block| for a partial block
+print_partial_block: (Param->): print partial translation family block
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
 partial_block: (Param->[Param]): return partial block as list of parameters
@@ -965,17 +963,23 @@ raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data
   monotonically increasing along the block), takes a value at least l for the
   first time.
 
-W_graph: (Block->[[int],[int,int]]): data describing W-graph for this block
+W_graph: (Block->[[int],[int,int]]): data describing unoriented W-graph for block
   The data consists of a list with for each element x of the block a pair,
   consisting of its \tau-invariant (as list of 0-based simple root indices),
   and a list of outgoing edges, each one as a pair of a destination vertex y
-  and the integer \mu(x,y) that labels to this edge in the W-graph.
+  and the integer \mu(x,y)=\mu(y,x) that labels to this edge in the W-graph.
+  This graph may be turned into an oriented graph by removing any edge from x
+  to y where the tau-invariant of x is contained in the tau invariant of y; it
+  is that oriented graph in terms of which W_cells are defined as equivalence
+  classes for the relation of being linked by oriented paths in both directions.
 W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   This decomposes the W-graph into cells, and returns data describing each of
-  those cells. It consists of a list with for each cell a pair consisting of
+  those cells. It consists of a list with, for each cell, a pair consisting of
   a list of numbers identifying the elements of this cell by the numbers of
-  the block elements they correspond to, and the structure of the restriction
-  of the W-graph restricted to this cell, in the same format as W_graph above.
+  the block elements they correspond to, and the restriction to this cell of the
+  oriented graph obtained from the W-graph described there, in the same format
+  (in the restriction vertices are renumbered form 0, so that it can be
+  considered as a W-graph in its own right, without reference to the original).
 
 extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
   This function computes twisted KLV polynomials for (part of) a block, in the

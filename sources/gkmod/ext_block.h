@@ -23,7 +23,6 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
-#include "common_blocks.h" // for type |blocks::common_block|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
@@ -94,10 +93,15 @@ unsigned int generator_length(DescValue v);
 unsigned int link_count(DescValue v);
 
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
-			BlockElt& first_link);
+			BlockElt& link, const BitMap& fixed_points);
 
 
-typedef Polynomial<int> Pol;
+ using Pol = Polynomial<int>;
+
+
+// flag those among |orbits| whose elements are flagged in |gen_set|
+// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
+RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 class ext_block
 {
@@ -142,8 +146,6 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const param_block& block, const WeightInvolution& delta,
-	    bool verbose=false);
   // the following variant has its definition in common_blocks.cpp:
   ext_block(const blocks::common_block& block, const WeightInvolution& delta,
 	    ext_KL_hash_Table* pol_hash);
@@ -170,8 +172,6 @@ class ext_block
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
-  StandardRepr sr(BlockElt n, const param_block& parent) const
-  { return parent.sr(z(n)); }
 
   // Look up element by its index in |parent| (if that did define an element)
   // more precisely returns smallest |n| with |z(n)>=z|, or |size()| if none
@@ -198,9 +198,9 @@ class ext_block
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
-  // this works only for blocks generated from parameters, so supply |parent|
-  // mark the extended generators (orbits) that are singular for |parent.gamma()|
-  RankFlags singular_orbits(const param_block& parent) const;
+  // transform |singular| to a bitset of |orbits|
+  RankFlags singular_orbits(RankFlags singular) const
+    { return reduce_to(orbits,singular); }
 
   weyl::Generator first_descent_among
     (RankFlags singular_orbits, BlockElt y) const;
@@ -225,14 +225,9 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
-  bool check(const param_block& block, bool verbose=false);
   bool tune_signs(const blocks::common_block& block);
 
 }; // |class ext_block|
-
-// flag those among |orbits| whose elements are flagged in |gen_set|
-// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
-RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 // Extended parameters
 
@@ -286,62 +281,55 @@ class context // holds values that remain fixed across extended block
 
 }; // |context|
 
-// detailed parameter data; as defined by Jeff & David
-struct param // allow public member access; methods ensure no invariants anyway
+
+// A variant of |ext_block::param| that avoids fixing |gamma|
+// Identical (supplementary) data fields, method absent: |restrict|
+struct ext_param // allow public member access; methods ensure no invariants
 {
-  const context& ctxt;
+  const repr::Ext_rep_context& ctxt;
   TwistedInvolution tw; // implicitly defines $\theta$
 
   Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
-  Weight lambda_rho; // lift of that value in a |StandardRepr|
-  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  RatWeight gamma_lambda; // lift of $\gamma-\lambda$ value in a |StandardRepr|
+  Weight tau; // a solution to $(1-\theta)*\tau=(1-\delta)gamma_\lambda$
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  param (const context& ec,
-	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
-  param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
-	 bool flipped=false);
-  param (const context& ec, const StandardRepr& sr); // default extension choice
+  ext_param (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
+	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
+	   bool flipped=false);
 
-  param (const param& p) = default;
-  param (param&& p)
+  // default extension choice:
+  ext_param (const repr::Ext_rep_context& ec,
+	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
+  static ext_param default_extend
+  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+
+  ext_param (const ext_param& p) = default;
+  ext_param (ext_param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
   , l(std::move(p.l))
-  , lambda_rho(std::move(p.lambda_rho))
+  , gamma_lambda(std::move(p.gamma_lambda))
   , tau(std::move(p.tau))
   , t(std::move(p.t))
   , flipped(p.flipped)
   {}
 
-  param& operator= (const param& p)
-  { tw=p.tw;
-    l=p.l; lambda_rho=p.lambda_rho; tau=p.tau; t=p.t;
-    flipped=p.flipped;
-    return *this;
-  }
-  param& operator= (param&& p)
-  { tw=std::move(p.tw);
-    l=std::move(p.l); lambda_rho=std::move(p.lambda_rho);
-    tau=std::move(p.tau); t=std::move(p.t);
-    flipped=p.flipped;
-    return *this;
-  }
+  ext_param& operator= (const ext_param& p);
+  ext_param& operator= (ext_param&& p);
 
   bool is_flipped() const { return flipped; }
 
   void flip (bool whether=true) { flipped=(whether!=flipped); }
 
-  const repr::Rep_context rc() const { return ctxt.rc(); }
+  const repr::Rep_context& rc() const { return ctxt; } // reference base object
   const WeightInvolution& delta () const { return ctxt.delta(); }
-  const WeightInvolution& theta () const
-    { return ctxt.inner_class().matrix(tw); }
+  const WeightInvolution& theta () const;
 
   KGBElt x() const; // reconstruct |x| component
-  repr::StandardRepr restrict() const // underlying unextended representation
-    { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
-}; // |param|
+  // underlying unextended representation
+  repr::StandardRepr restrict(const RatWeight& gamma) const;
+}; // |ext_param|
 
 
 // a variation of |Rep_context::make_dominant|, used during extended deformation

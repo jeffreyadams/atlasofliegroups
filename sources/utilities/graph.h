@@ -46,7 +46,7 @@ class OrientedGraph
 // copy, construction and swap: nothing needed beyond defualts
 
 // accessors
-  partition::Partition cells(OrientedGraph* p = 0) const;
+  partition::Partition cells(OrientedGraph* p = nullptr) const;
 
   Vertex edge(Vertex x, size_t j) const { return d_edges[x][j]; } // edge #j
 
