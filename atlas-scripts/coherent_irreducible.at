@@ -265,6 +265,31 @@ tT(params,graph,hodge_param_laurent_pol(p),w.word)
 set S_inv([Param] params,WGraph graph, hodgeParamPol hpp,WeylElt w)=hodgeParamLaurentPol:
 S_inv(params,graph,hodge_param_laurent_pol(hpp),w)
 
+{ ----- normalized version of S_inv ------------}
+{for Stephen Miller
+intended for use (only?) with minimal principal series:
+ given a parameter p of a minimal principal series, replace p with
+ p_new, so that S_inv(params,graph,p_new,w) has the same composition
+ factors as p
+ Note: S_inv(params,graph,p,w) replaces the M-parameter lambda of p with w\times\lambda,
+ so for p_new use: lambda_new=cross(w^{-1},p).lambda
+}
+
+{typical usage:
+ set p=parameter(G.x_open,lambda,nu)  {at regular infinitesimal character}
+ set b=block_of(p)
+ set g=W_graph_of(p)
+ for w=[int] or WeylElt do:
+ show_long(millers_crossing(b,g,p,w))
+}
+
+{compute graded composition series of principal series in the w-chamber}
+set millers_crossing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+let w=W_elt(p.root_datum,w) in S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
 {hodgeParamPol giving grading on standard module}
 set graded_standard(Param std)=hodgeParamLaurentPol:
 let b=block_of(std) then
