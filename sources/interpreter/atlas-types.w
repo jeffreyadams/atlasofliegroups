@@ -4746,14 +4746,14 @@ void partial_common_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt z;
-  blocks::common_block& block = p->rt().lookup(p->val,z);
+  BlockElt start;
+  blocks::common_block& block = p->rt().lookup(p->val,start);
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
-    // |unsigned long| type is imposed by |Bitmap::back_up|
+    // |unsigned long| type is imposed by |BitMap::back_up|
   BitMap subset(n);
-  subset.insert(z);
+  subset.insert(start);
   while (subset.back_up(n)) // compute downward closure
     for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
@@ -4810,13 +4810,25 @@ list, a matrix of KL-polynomial indices, and a list of polynomials (as vectors).
 @< Local function def...@>=
 void KL_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  test_final(*p,"KL_block requires a final parameter");
+  test_standard(*p,"KL_block requires a standard parameter");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
-  @< Declare |gamma|, |singular|, and list of |survivors| in |block| @>
+  const auto& gamma = p->val.gamma();
+  const RankFlags singular = block.singular(gamma);
+  @)
+  containers::sl_list<BlockElt> survivors;
+  BlockEltList loc(block.size(),UndefBlock);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z,singular))
+    @/{@;
+      loc[z] = survivors.size();
+      survivors.push_back(z);
+    }
+  @)
+
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
     // fill full block, not sharing polynomials, silently
   typedef polynomials::Polynomial<int> Pol;
@@ -4824,8 +4836,10 @@ void KL_block_wrapper(expression_base::level l)
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
   @< Push list of parameters corresponding to |survivors| in |block| @>
-  assert(loc[start]!=UndefBlock);
-  push_value(std::make_shared<int_value>(loc[start]));
+  if (loc[start]==UndefBlock)
+    push_value(std::make_shared<int_value>(-1));
+  else
+    push_value(std::make_shared<int_value>(loc[start]));
 @)
 
   @< Group distinct polynomials in |M| into a list, then push a version of |M|
@@ -4835,24 +4849,6 @@ void KL_block_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
 }
-
-@ Extracting the list of final elements in |block| is a recurring matter, so we
-have a shared module for ding this in various places. Of course no braces here.
-
-@< Declare |gamma|, |singular|, and list of |survivors| in |block| @>=
-const auto& gamma = p->val.gamma();
-const RankFlags singular = block.singular(gamma);
-@)
-containers::sl_list<BlockElt> survivors;
-BlockEltList loc(block.size(),UndefBlock);
-for (BlockElt z=0; z<block.size(); ++z)
-  if (block.survives(z,singular))
-  @/{@;
-    loc[z] = survivors.size();
-    survivors.push_back(z);
-  }
-@)
-
 
 @ Condensing the KL polynomials to the block at possibly singular infinitesimal
 character~|gamma|, whose elements are the subset of |block| recorded in
@@ -4904,7 +4900,7 @@ by constructing a new polynomial |Pol(P)|.
   push_value(std::move(param_list));
 }
 
-@ And one more such module.
+@ And one more such shared module.
 @< Group distinct polynomials in |M| into a list,... @>=
 { const auto n_survivors = survivors.size();
   std::vector<Pol> pool = { Pol(), Pol(1) };
@@ -4924,34 +4920,65 @@ by constructing a new polynomial |Pol(P)|.
   push_value(std::move(polys));
 }
 
-@ The following module should not be enclosed in braces, as it defines two
-variables |M| and |polys|. One reason to extract it is that it can be used
-identically in several wrapper functions.
+@ Here is a version of the |KL_block| that computes just for a partial block
+and the Kazhdan-Lusztig polynomials for it. There are three components
+in the value returned: the list of final parameters in the partial block (of
+which the last one is the initial parameter), a matrix of KL-polynomial
+indices, and a list of polynomials (as vectors).
 
-@< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>=
-own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
-  // identity
-for (unsigned int y=1; y<kl_tab.size(); ++y)
-  for (unsigned int x=0; x<y; ++x)
-    M->val(x,y)= kl_tab.KL_pol_index(x,y);
+@< Local function def...@>=
+void partial_KL_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"partial_KL_block requires a standard parameter");
+  if (l==expression_base::no_value)
+    return;
 @)
-own_row polys = std::make_shared<row_value>(0);
-const auto& store = kl_tab.pol_store();
-polys->val.reserve(store.size());
-for (auto it=store.begin(); it!=store.end(); ++it)
-  polys->val.emplace_back(std::make_shared<vector_value> @|
-     (std::vector<int>(it->begin(),it->end())));
+  BlockElt start; // will hold index in the block of the initial element
+  auto& block = p->rt().lookup(p->val,start);
+  const auto& gamma = p->val.gamma();
+@)
+  unsigned long n=block.size();
+    // |unsigned long| type is imposed by |BitMap::back_up|
+  BitMap subset(n);
+  subset.insert(start);
+  while (subset.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      subset.insert(y);
+  @)
+  const RankFlags singular = block.singular(gamma);
+  containers::sl_list<BlockElt> survivors;
+  BlockEltList loc(block.size(),UndefBlock);
+  for (BlockElt z : subset)
+    if (block.survives(z,singular))
+    @/{@;
+      loc[z] = survivors.size();
+      survivors.push_back(z);
+    }
+  @)
 
-@ Here is a dual variation of the previous function. The main difference is
-calling the pseudo constructor |blocks::Bare_block::dual| to transform |block|
-into its dual (represented as just a |blocks::Bare_block| which is sufficient)
-before invoking the KL computations. The block is reversed with respect to
-|block|, so for proper interpretation we reverse the list of parameters
-returned, and this means that several other result components have to be
-transformed as well. On the dual side there should be no condensing of the
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
+    // fill the partial block, not sharing polynomials, silently
+  typedef polynomials::Polynomial<int> Pol;
+  matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
+@/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
+@)
+  @< Push list of parameters corresponding to |survivors| in |block| @>
+  @< Group distinct polynomials in |M| into a list,... @>
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<3>();
+}
+
+@ Here is a dual variation of |KL_block|. The main difference with that function
+defined above is that we call the pseudo constructor |blocks::Bare_block::dual|
+to transform |block| into its dual (represented as just a |blocks::Bare_block|
+which is sufficient) before invoking the KL computations. The block is reversed
+with respect to |block|, so for proper interpretation we reverse the list of
+parameters returned, and this means that several other result components have to
+be transformed as well. On the dual side there should be no condensing of the
 polynomial matrix on the ``survivor'' elements, rather just an extraction of a
 submatrix of polynomials at the corresponding indices; therefore we leave out
-the |contributes_to| matrix altogether.
+that part of the computation altogether.
 
 @< Local function def...@>=
 void dual_KL_block_wrapper(expression_base::level l)
@@ -4970,7 +4997,18 @@ void dual_KL_block_wrapper(expression_base::level l)
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,last+1);
 @)
-  @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+    // identity
+  for (unsigned int y=1; y<kl_tab.size(); ++y)
+    for (unsigned int x=0; x<y; ++x)
+      M->val(x,y)= kl_tab.KL_pol_index(x,y);
+  @)
+  own_row polys = std::make_shared<row_value>(0);
+  const auto& store = kl_tab.pol_store();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
+    polys->val.emplace_back(std::make_shared<vector_value> @|
+       (std::vector<int>(it->begin(),it->end())));
 @)
   own_vector length_stops =
     std::make_shared<vector_value>(int_Vector(block.length(last)+2));
@@ -5012,35 +5050,6 @@ to reverse the order.
              (p->rf,p->rc().sr(block.representative(z),gamma)));
   push_value(std::move(param_list));
 
-}
-
-@ Here is a version of the |KL_block| that computes just for a partial block
-and the Kazhdan-Lusztig polynomials for it. There are three components
-in the value returned: the list of final parameters in the partial block (of
-which the last one is the initial parameter), a matrix of KL-polynomial
-indices, and a list of polynomials (as vectors).
-
-@< Local function def...@>=
-void partial_KL_block_wrapper(expression_base::level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
-  test_final(*p,"partial_KL_block requires a final parameter");
-  if (l==expression_base::no_value)
-    return;
-@)
-  BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup(p->val,start);
-  @< Declare |gamma|, |singular|, and list of |survivors| in |block| @>
-  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
-    // fill the partial block, not sharing polynomials, silently
-  typedef polynomials::Polynomial<int> Pol;
-  matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
-@/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
-@)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
-  @< Group distinct polynomials in |M| into a list,... @>
-@)
-  if (l==expression_base::single_value)
-    wrap_tuple<3>();
 }
 
 @ Rather than exporting the detailed KL data, the following functions compute
