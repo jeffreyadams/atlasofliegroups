@@ -479,6 +479,8 @@ intended for use (only?) with minimal principal series:
 
 {compute graded composition series of principal series in the w-chamber}
 set millers_crossing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+if (not (p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series \
+of a split group, so probably not what you want") fi;
 prints("target parameter: ", p);
 prints("starting parameter: ", cross(w.inverse,p));
 {prints("w=",w);
@@ -487,25 +489,21 @@ prints("graph: ", graph);}
 S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
 
 set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\ 
+of a split group, so probably not what you want") fi;
 let w=W_elt(p.root_datum,w) in
 { let ()=prints("w=",w) in}
 prints("target parameter: ", p);
 prints("starting parameter: ", cross(w.inverse,p));
 S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
 
-{compute graded composition series of principal series in the w-chamber}
+{singular infinitesimal character}
 set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
-let p_reg=first_param(T(p,p.infinitesimal_character+2*p.root_datum.rho)) then
-()=prints("p_reg: ", p_reg, " ", p_reg.infinitesimal_character) then
-m_reg=S_inv(params,graph,graded_standard(cross(w.inverse,p_reg)),w) in
-let ()=prints("m_reg: ", m_reg) in
-T_irr(m_reg,p.infinitesimal_character)
+let gamma=p.infinitesimal_character then
+gamma_reg=gamma+p.root_datum.two_rho then
+p_reg=first_param(T(p,gamma_reg)) then
+m_reg=millers_crossing(for p in params do first_param(T(p,gamma_reg)) od,graph,p_reg,w) in
+T_irr(m_reg,gamma)
 
 set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
-let p_reg=first_param(T(p,p.infinitesimal_character+2*p.root_datum.rho)) then
-w=W_elt(p.root_datum,w) then
-()=prints("p_reg: ", p_reg, " ", p_reg.infinitesimal_character) then
-m_reg=S_inv(params,graph,graded_standard(cross(w.inverse,p_reg)),w) in
-let ()=prints("m_reg: ", m_reg) in
-T_irr(m_reg,p.infinitesimal_character)
-
+millers_crossing_sing(params,graph,p,W_elt(p.root_datum,w))
