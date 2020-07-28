@@ -492,3 +492,20 @@ let w=W_elt(p.root_datum,w) in
 prints("target parameter: ", p);
 prints("starting parameter: ", cross(w.inverse,p));
 S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+{compute graded composition series of principal series in the w-chamber}
+set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+let p_reg=first_param(T(p,p.infinitesimal_character+2*p.root_datum.rho)) then
+()=prints("p_reg: ", p_reg, " ", p_reg.infinitesimal_character) then
+m_reg=S_inv(params,graph,graded_standard(cross(w.inverse,p_reg)),w) in
+let ()=prints("m_reg: ", m_reg) in
+T_irr(m_reg,p.infinitesimal_character)
+
+set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+let p_reg=first_param(T(p,p.infinitesimal_character+2*p.root_datum.rho)) then
+w=W_elt(p.root_datum,w) then
+()=prints("p_reg: ", p_reg, " ", p_reg.infinitesimal_character) then
+m_reg=S_inv(params,graph,graded_standard(cross(w.inverse,p_reg)),w) in
+let ()=prints("m_reg: ", m_reg) in
+T_irr(m_reg,p.infinitesimal_character)
+

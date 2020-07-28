@@ -255,6 +255,12 @@ set find(hodgeParamLaurentPol f,[Param] b)=int:
 let f_at_1=f.v_to_1 in
 first(for i:#b do f_at_1=composition_series(b[i]) od)
 
+{this should only be used in the dominant chamber,
+so irreducibles -> irreducibles or 0}
+set T_irr(hodgeParamLaurentPol hpp,ratvec lambda)=hodgeParamLaurentPol:
+let (terms,j)=hpp in
+(for P in terms do T_irr(P,lambda) od,j)
+
 {also identify hplp.v_to_1 as a standard module if possible}
 set show_long([Param] b,hodgeParamLaurentPol hplp) =void:
   let factors=monomials(hplp) then
