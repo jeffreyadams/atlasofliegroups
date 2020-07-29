@@ -785,7 +785,7 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
   , rk=rank(rd), result=[vec]: []
   in
   for cs in cone(N,for col in basis do cowt*col od) do
-    let (v,d) = %sum(for col@i in basis do col*cs[i] od,rk) in
+    let (v,d) = %sum(rk, for col@i in basis do col*cs[i] od) in
     if d=1 then result #:= v fi
   od; rk { number of rows of matrix returned } # result
 

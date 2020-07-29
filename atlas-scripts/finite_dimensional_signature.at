@@ -83,7 +83,7 @@ set fd_report (RealForm G, int k) = void:
     ,"computing directly from the Hermitian form")
   fi; let rd=G.root_datum in
   for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
-  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+  do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
      if is_integer(l_rat)
      then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
      ("fund wt: ", mu
@@ -146,7 +146,7 @@ set fd_report_trace (RealForm G, int k) = void:
     ,"computing directly from the Hermitian form")
   fi; let rd=G.root_datum in
   for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
-  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+  do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
      if is_integer(l_rat)
      then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
      ("fund wt: ", mu
@@ -163,7 +163,7 @@ set fd_report_trace (RealForm G, int k) = void:
 set trace_report (RootDatum rd, ratvec v, int k) = void:
   let M=ratvecs_as_ratmat(fundamental_weights(rd)) in
   for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
-  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+  do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
      if is_integer(l_rat)
      then let lambda=l_rat\1 then p=finite_dimensional(split_form(rd),lambda) in
      ("fund wt: ", mu

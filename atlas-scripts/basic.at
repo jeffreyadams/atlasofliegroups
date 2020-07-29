@@ -579,8 +579,9 @@ set * (rat r,ratvec v) = ratvec: v*r
 set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
 set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
-set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
+set sum (int l,[ratvec] list) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in for v in list do result+:=v od; result
+
 
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
