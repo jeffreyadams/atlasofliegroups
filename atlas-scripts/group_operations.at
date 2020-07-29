@@ -85,15 +85,15 @@ set adjoint (InnerClass ic) = InnerClass:
   in inner_class(adjoint(rd)
                 ,adjoint_transform(rd,distinguished_involution(ic))
 		)
-
 set derived (RealForm G) = RealForm:
 ( let (der_rd,proj)=derived_info(root_datum(G))
   then xi0 = corestrict_action(proj,distinguished_involution(InnerClass:G))
+  then tf=torus_factor(KGB(G,0)), der_fc = der_rd.fundamental_coweights
   in
   real_form { synthetic }
     ( inner_class(der_rd,xi0)
     , xi0
-    , torus_factor(KGB(G,0))*right_inverse(proj)
+    , sum(der_rd.rank, for alpha@i in G.simple_roots do der_fc[i]*(tf*alpha) od)
     )
 )
 
