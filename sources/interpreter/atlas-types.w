@@ -4818,7 +4818,7 @@ void KL_block_wrapper(expression_base::level l)
   auto& block = p->rt().lookup_full_block(p->val,start);
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
-  @)
+@)
   containers::sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z=0; z<block.size(); ++z)
@@ -4827,8 +4827,7 @@ void KL_block_wrapper(expression_base::level l)
       loc[z] = survivors.size();
       survivors.push_back(z);
     }
-  @)
-
+@)
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
     // fill full block, not sharing polynomials, silently
   typedef polynomials::Polynomial<int> Pol;
@@ -4841,7 +4840,6 @@ void KL_block_wrapper(expression_base::level l)
   else
     push_value(std::make_shared<int_value>(loc[start]));
 @)
-
   @< Group distinct polynomials in |M| into a list, then push a version of |M|
   with polynomials replaced by there indices, and then push a list of the
   distinct polynomials @>
@@ -4975,8 +4973,8 @@ to transform |block| into its dual (represented as just a |blocks::Bare_block|
 which is sufficient) before invoking the KL computations. The block is reversed
 with respect to |block|, so for proper interpretation we reverse the list of
 parameters returned, and this means that several other result components have to
-be transformed as well. On the dual side there should be no condensing of the
-polynomial matrix on the ``survivor'' elements, rather just an extraction of a
+be transformed as well. On the dual side there should be no ``condensing'' of the
+polynomial matrix on the final elements, rather just an extraction of a
 submatrix of polynomials at the corresponding indices; therefore we leave out
 that part of the computation altogether.
 
@@ -4987,69 +4985,54 @@ void dual_KL_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt start; // will hold index in the block of the initial element
+  BlockElt start; // will hold index into |block| of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
-  const RankFlags singular = block.singular(p->val.gamma());
-  const auto& gamma = p->val.gamma();
-  @< Push a reversed list of parameter values for the elements of |block| @>
-  const auto last = block.size()-1;
-  push_value(std::make_shared<int_value>(last-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,last+1);
+  const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
+  const auto& gamma = p->val.gamma();
+  const RankFlags singular = block.singular(gamma);
 @)
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
-    // identity
-  for (unsigned int y=1; y<kl_tab.size(); ++y)
-    for (unsigned int x=0; x<y; ++x)
-      M->val(x,y)= kl_tab.KL_pol_index(x,y);
-  @)
-  own_row polys = std::make_shared<row_value>(0);
-  const auto& store = kl_tab.pol_store();
-  polys->val.reserve(store.size());
-  for (auto it=store.begin(); it!=store.end(); ++it)
-    polys->val.emplace_back(std::make_shared<vector_value> @|
-       (std::vector<int>(it->begin(),it->end())));
-@)
-  own_vector length_stops =
-    std::make_shared<vector_value>(int_Vector(block.length(last)+2));
-  for (unsigned int i=0; i<length_stops->val.size(); ++i)
-    // subtract from |block.size()| here:
-    length_stops->val[i] =
-      block.size()-block.length_first(block.length(last)+1-i);
-@)
-  unsigned n_survivors=0;
+  containers::sl_list<BlockElt> survivors; // indexes into |block|
+  BlockEltList loc(block.size(),UndefBlock);
+    // from |dual_block| index to |survivors| index
+  const BlockElt last=block.size()-1;
   for (BlockElt z=0; z<block.size(); ++z)
-  @+ if (block.survives(z,singular))
-      ++n_survivors;
-  own_vector survivor =
-    std::make_shared<vector_value>(int_Vector());
-  survivor->val.reserve(n_survivors);
-  for (BlockElt z=0; z<block.size(); ++z)
-  for (BlockElt z=block.size(); z-->0; )
     if (block.survives(z,singular))
-      survivor->val.push_back(last-z);
+    @/{@;
+      loc[last-z] = survivors.size();
+      survivors.push_back(z);
+    }
 @)
-  push_value(std::move(M));
+  @< Push list of parameters corresponding to |survivors| in |block| @>
+  if (loc[last-start]==UndefBlock)
+    push_value(std::make_shared<int_value>(-1));
+  else
+    push_value(std::make_shared<int_value>(loc[last-start]));
+@)
+  const auto n_survivors = survivors.size();
+  typedef polynomials::Polynomial<int> Pol;
+  std::vector<Pol> pool = { Pol(), Pol(1) };
+  { HashTable<IntPolEntry,unsigned int> hash(pool);
+    own_matrix M_ind = std::make_shared<matrix_value>(int_Matrix(n_survivors));
+    for (auto jt = survivors.begin(); not survivors.at_end(jt); ++jt)
+    { BlockElt y = last-*jt; // index into |dual_block|
+      for (auto it = jt; not survivors.at_end(it); ++it)
+      { BlockElt x = last-*it; // index into |dual_block|
+         M_ind->val(loc[x],loc[y]) = hash.match(Pol(kl_tab.KL_pol(x,y)));
+      }
+    }
+    push_value(std::move(M_ind));
+  }
+@)
+  own_row polys = std::make_shared<row_value>(0);
+  polys->val.reserve(pool.size());
+  for (auto it=pool.begin(); it!=pool.end(); ++it)
+    polys->val.emplace_back
+      (std::make_shared<vector_value>(std::move(*it).data()));
   push_value(std::move(polys));
-  push_value(std::move(length_stops));
-  push_value(std::move(survivor));
-
+@)
   if (l==expression_base::single_value)
-    wrap_tuple<6>();
-}
-
-@ Reversing a list after it has been pushed to the stack is somewhat
-cumbersome, so we prefer to redo a previous module with a slight modification
-to reverse the order.
-
-@< Push a reversed list of parameter values for the elements of |block| @>=
-{ own_row param_list = std::make_shared<row_value>(0);
-  param_list->val.reserve(block.size());
-  for (BlockElt z=block.size(); z-->0;)
-    param_list->val.push_back (std::make_shared<module_parameter_value> @|
-             (p->rf,p->rc().sr(block.representative(z),gamma)));
-  push_value(std::move(param_list));
-
+    wrap_tuple<4>();
 }
 
 @ Rather than exporting the detailed KL data, the following functions compute
@@ -5294,7 +5277,7 @@ install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec])");
 install_function(dual_KL_block_wrapper,@|"dual_KL_block"
-                ,"(Param->[Param],int,mat,[vec],vec,vec)");
+                ,"(Param->[Param],int,mat,[vec])");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec])");
 install_function(param_W_graph_wrapper,@|"W_graph"

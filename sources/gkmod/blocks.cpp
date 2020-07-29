@@ -498,7 +498,6 @@ Bare_block Bare_block::dual(const Block_base& block)
         if (p.second!=UndefBlock)
 	  dst.back().Cayley_image.second = size-1-p.second;
       }
-      // don't set Hermitian dual; they cannot be deduced from |block| at all
     }
   }
 

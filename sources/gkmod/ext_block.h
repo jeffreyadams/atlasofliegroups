@@ -131,7 +131,7 @@ class ext_block
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
-  BlockEltList l_start; // where elements of given length start
+  BlockEltList l_start; // where elements of given (parent) length start
 
   ext_KL_hash_Table* pol_hash; // hash table pointer for |KL_table| construction
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
@@ -182,7 +182,7 @@ class ext_block
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
     { assert(n<size()); assert(s<rank()); return data[s][n].type; }
 
-  unsigned length(BlockElt n) const;
+  unsigned length(BlockElt n) const; // same as |parent.length(z(n))|
   unsigned l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
   BlockElt length_first(size_t l) const { return l_start[l]; }
 

@@ -911,7 +911,7 @@ bool KL_table::check_polys(BlockElt y) const
   return result;
 }
 
-// this function serves uniquely to implement the built=in function of that name
+// this function serves uniquely to implement the built-in function of that name
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
