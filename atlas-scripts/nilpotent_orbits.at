@@ -74,7 +74,10 @@ od
 
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
-(rd,(),ratvec_as_vec(sum(for a@i in diagram do a*rd.fundamental_coweights[i] od,rd.rank)))
+(rd,()
+,ratvec_as_vec
+ (sum(rd.rank,for a@i in diagram do a*rd.fundamental_coweights[i] od))
+)
 
 set sort_by((ComplexNilpotent->int) f) =
    ([ComplexNilpotent] v) [ComplexNilpotent]:
@@ -128,7 +131,7 @@ set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
 {. Auxiliary function: For a list of integers giving simple roots, compute
   twice the sum of the corresponding fundamental coweights. .}
 set S_weight ([int] S, RootDatum rd) = ratvec:
-   sum(for k in S do 2*fundamental_coweight(rd,k) od,rd.rank)
+   sum(rd.rank, for k in S do 2*fundamental_coweight(rd,k) od)
 
 {. These are candidates H for the semisimple element of an SL(2) triple;
    not necessarily a vec, for example in SL(3). .}

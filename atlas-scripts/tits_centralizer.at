@@ -50,7 +50,7 @@ in coeff*e(#rd.roots,beta_index)
 }
 set simple_reflection_on_root_vectors(RootDatum rd,int i,ratvec v)=ratvec:
 assert(#v=#rd.roots,"v has wrong size");
-sum(for j:#v do v[j]*simple_reflection_on_root_vector(rd,i,j) od,#v)
+sum(#v,for j:#v do v[j]*simple_reflection_on_root_vector(rd,i,j) od)
 
 set simple_reflection_on_root_vectors(RootDatum rd,int i,CyclotomicVec v)=CyclotomicVec:
 assert(#v=#rd.roots,"v has wrong size");
