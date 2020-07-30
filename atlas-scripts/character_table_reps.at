@@ -55,9 +55,9 @@ set sort_u (CharacterTable tab,[W_rep] list) = [W_rep]:
   esac
 
 
-{ the sign representation occurs in S^(nr_of_posroots)(reflection), and
-  this is the maximum necessary exponent to get all irreducibles }
-{. smallest k so that pi occurs in S^k(reflection) .}
+{. smallest k so that pi occurs in S^k(reflection)
+ k<=nr_or_posroots with equality iff pi=sign
+.}
 set smallest_degree (CharacterTable ct, [int] character) = int:
   first(ct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=ct.inner(character,ct.sym_power(ct.reflection,k))
@@ -86,31 +86,26 @@ for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
  if success then return(w) fi od ;id_W(rd)
 
-set cell_action_permuted (WCell cell, int j, mat permutation) = sparse_mat:
-  cell_action(cell,first(for i:#permutation do permutation[i,j]=1 od))
+set cell_action_permuted(WCell cell, int i, mat permutation)=sparse_mat:
+cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 
 set cell_action_permuted(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result =
-       unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph)
-  in
-     for i:#w.word-1 from 1
-     do result:=result*cell_action_permuted(cell,w.word[i],permutation)
-     od
-  ; result
+  else let result=unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
+     for i:#w.word-1 from 1 do result:=result*cell_action_permuted(cell,w.word[i],permutation) od; result
   fi
 
-set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) =
-  [int]:
-  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
+for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
 
 set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
-  let summands = smallest_degree_summands
-    (ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
-  if #summands>1 then error("not unique special representation")
-  elif #summands=0 then error("no special summands?") else summands[0]
-  fi
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+
+set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
+special_character_permuted(ct,cell,permutation)
 
 {embeddings of Weyl groups, needed for induction}
 
@@ -137,105 +132,14 @@ in  W_elt(Gprime,word_Gprime)
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
+let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
+{difference here: formerly Gprime.rank}
 
 {w\in W(L) -> W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(Gprime,embed(L,G,Lprime,Gprime,w.word))
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,Lprime,Gprime,w)
 
-
-set special_character_permuted(CharacterTable ct,mat permutation) =
-  (WCell->int):(WCell cell): special_character_permuted(ct,cell,permutation)
-
-{ for testing: return all isomorphism permutations, extremely inefficiently }
-set isomorphism_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
-  assert(rd_1.is_semisimple and rd_2.is_semisimple,
-  	 "root data must be semisimple");
-  if not is_locally_isomorphic(rd_1,rd_2) then []
-  else
-     let S=symmetric_group(rd_1.rank)
-     , C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
-  in for g in S do if  g*C_2=C_1*g then [g] else [] fi od.##
-fi
-
-{ find one isomorphism_permutation, with indiactino of success }
-set isomorphism_permutation (RootDatum rd_1,RootDatum rd_2) = (bool,mat):
-  assert(rd_1.is_semisimple and rd_2.is_semisimple,
-	 "root data must be semisimple");
-  if is_locally_isomorphic(rd_1,rd_2)
-  then
-     let S=symmetric_group(rd_1.rank)
-     , C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
-     in for g in S do if g*C_2=C_1*g then return (true,g) fi od
-  fi; (false,null(0,0))
-
-{ for testing: try different ones }
-set isomorphism_permutation_variant(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
-  let all=isomorphism_permutations(rd_1,rd_2) in
-  case #all
-  in (false,null(0,0))
-  , (true,all[0])
-  , (true,all[1])
-  , (true,all[1])
-  , (true,all[2])
-  else (true, all[4])
-  esac
-
-set find_isomorphism_permutation([RootDatum] list,RootDatum rd) = (int,mat):
-  for rd_list@i in list
-  do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
-     if success then return (i,M) fi
-  od; (-1,null(0,0))
-
-{embeddings of Weyl groups, needed for induction}
-
-{requirement: simple roots of L are contained in the (positive) roots of G}
-set embed_simple_reflection(RootDatum L,RootDatum G, int i) = mat:
-  assert(find(G.posroots,L.simple_roots[i])>=0
-        ,"Simple root for L is not a root for G");
-  reflection(G,L.simple_roots[i])
-
-set embed(RootDatum L,RootDatum G,[int] w) = mat:
-   let rv=id_mat(G.rank) in
-   for i in w~ do rv*:=embed_simple_reflection(L,G,i) od; rv
-
-set embed(RootDatum L,RootDatum G,WeylElt w) = WeylElt:
-   W_elt(G,embed(L,G,w.word))
-set embed(RootDatum L,RootDatum G) = (WeylElt->WeylElt):
-   (WeylElt w) WeylElt: embed(L,G,w)
-
-{given: Lprime -> L \subset G -> Gprime
- where Lprime.derived \simeq L.derived and similarly G,Gprime
- embed W(Lprime) in W(Gprime)
-}
-set embed_simple_reflection (
-  RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i) = mat:
-  let (valid_G,P_G) = {P_G: G->G'}
-    isomorphism_permutation(G.derived,Gprime.derived)
-  , (valid_L,P_L) = {P_L: L'-> L}
-    isomorphism_permutation(L.derived,Lprime.derived)
-  in assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
-     assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
-  embed_simple_reflection(L,G,permutation(P_G)[permutation(P_L)[i]])
-
-set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w) =
-      mat:
-   let rv=id_mat(G.rank) in
-   for i in w~ do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od; rv
-
-set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w) =
-      WeylElt:
-   W_elt(G,embed(L,G,Lprime,Gprime,w.word))
-
-set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime) =
-      (WeylElt->WeylElt):
-   (WeylElt w) WeylElt: embed(L,G,Lprime,Gprime,w)
-
 { ------------------- induction ------------------- }
-
-{. promote w in W(Levi) to W(G) }
-{set promote (CharacterTable ct, WeylElt w_L) = WeylElt:
-  W_elt(ct.root_datum, matrix(w_L))}
 
 { all 2^n standard Levis }
 set standard_Levis (RootDatum rd) = [RootDatum]:
@@ -243,7 +147,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
 
 { induction from a Levi factor
 
-  L is a Levi in G, |pi_L| is a class function on W(L)
+  L is and equal rank subgroup of G |pi_L| is a class function on W(L)
   we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
@@ -274,11 +178,11 @@ set induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt)
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
-   let j=ct_G.class_index(f(w_L))  {see embed_W note below}
+   let j=ct_G.class_index(f(w_L))  {see embed note below}
    in
-{   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j]) in}
+{   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j], " pi: ", pi_L[i]) in}
    values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
-   od; values_G.ratvec_as_vec
+od; values_G.ratvec_as_vec
 
 {for debugging only: character value should be an integer}
 set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
@@ -290,7 +194,7 @@ set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->Weyl
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
-   let j=ct_G.class_index(f(w_L))  {see embed_W note below}
+   let j=ct_G.class_index(f(w_L))  {see embed note below}
    in
 {   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j]) in}
    values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
@@ -309,7 +213,7 @@ see embed(L,G,Lprime,Gprime) above
 {requirement: simple roots of L are contained in the (positive) roots of G
  if not this will trigger an assert in embed(L,G,w)
 first version: assume character tables of L,G pre-computed
-} 
+}
 set induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
 let Gprime=ct_G.root_datum_parent then
 Lprime=ct_L.root_datum_parent then
@@ -334,7 +238,7 @@ f=embed(L,G,Lprime,Gprime) in
 induce_character(ct_L,ct_G,f,pi_L)
 
 {Given G,ct_G, and define L in terms of posroots of G
-roots_of_L=[a_0,a_1,...] means that
+simple_roots_of_L=[a_0,a_1,...] means that
 the simple roots of L are [G.posroots[a_0],...
 }
 set induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
@@ -400,7 +304,7 @@ assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
  should equal the sign character (it it does not, this function fails) }
 
 {the remainder of this file needs attention}
-{comment to the end
+
 
 set Steinberg_character (RootDatum rd) = [int]:
   let ct_G=W_class_table(rd)
@@ -411,7 +315,7 @@ set Steinberg_character (RootDatum rd) = [int]:
      od
      .sum
   in assert(result=ct_G.sign); result
-
+{
 { ------------ projection on isotypic subspace  ----------- }
 
 { scalar multiple of projection of representation space of |ops| on isotoypic
