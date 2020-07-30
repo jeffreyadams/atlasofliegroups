@@ -5208,8 +5208,8 @@ finally negates entries at positions with odd length difference for the block
 elements corresponding to row and column. All this work is actually performed
 inside call to |ext_kl::ext_KL_matrix|.
 
-The function returns the extended block as list of parameters, the matrix just
-described, and a list of element lengths.
+The function returns the extended block as list of parameters, and the matrix
+just described.
 
 @< Local function def...@>=
 void extended_KL_block_wrapper(expression_base::level l)
@@ -5222,18 +5222,15 @@ void extended_KL_block_wrapper(expression_base::level l)
 @)
   std::vector<StandardRepr> block;
   own_matrix P_mat = std::make_shared<matrix_value>(int_Matrix());
-  own_vector lengths = std::make_shared<vector_value>(int_Vector());
-  ext_kl::ext_KL_matrix
-	(p->val,delta->val,p->rc(),block,P_mat->val,lengths->val);
+  ext_kl::ext_KL_matrix(p->val,delta->val,p->rc(),block,P_mat->val);
 @)
   own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
     param_list->val[z]=std::make_shared<module_parameter_value>(p->rf,block[z]);
   push_value(std::move(param_list));
   push_value(std::move(P_mat));
-  push_value(std::move(lengths));
   if (l==expression_base::single_value)
-    wrap_tuple<3>();
+    wrap_tuple<2>();
 }
 
 @ Finally we install everything related to module parameters.
@@ -5287,7 +5284,7 @@ install_function(param_W_cells_wrapper,@|"W_cells"
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
-                ,"(Param,mat->[Param],mat,vec)");
+                ,"(Param,mat->[Param],mat)");
 
 @*1 Polynomials formed from parameters.
 %

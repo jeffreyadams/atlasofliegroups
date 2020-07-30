@@ -915,8 +915,7 @@ bool KL_table::check_polys(BlockElt y) const
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
-		    int_Matrix& P_mat,
-		    int_Vector& lengths)
+		    int_Matrix& P_mat)
 { BlockElt entry_element;
   if (not ((delta-1)*p.gamma().numerator()).isZero())
   {
@@ -991,14 +990,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   }
 
   block_list.clear(); block_list.reserve(size);
-  lengths = int_Vector(0); lengths.reserve(size);
-
   for (auto ez : survivors)
-  {
-    auto z = eblock.z(ez);
-    block_list.push_back(rc.sr(B.representative(z),gamma));
-    lengths.push_back(B.length(z));
-  }
+    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),gamma));
 
 
 } // |ext_KL_matrix|
