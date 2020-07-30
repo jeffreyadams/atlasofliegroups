@@ -413,8 +413,8 @@ std::ostream& printDescent(std::ostream& strm,
 std::ostream& print_KL(std::ostream& f, blocks::common_block& block,
 			 BlockElt z, RankFlags singular)
 {
-  // silently fill the whole KL table
-  const kl::KL_table& kl_tab = block.kl_tab(z,nullptr,false);
+  // silently fill the KL table up to |z| inclusive, not sharing polynomials
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr,z+1);
 
   typedef Polynomial<int> Poly;
   typedef std::map<BlockElt,Poly> map_type;

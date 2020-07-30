@@ -4820,7 +4820,7 @@ void KL_block_wrapper(expression_base::level l)
     }
 @)
   const auto n_survivors=survivors.size();
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
     // fill full block, not sharing polynomials, silently
   typedef polynomials::Polynomial<int> Pol;
   matrix::Matrix<Pol> M(n_survivors,n_survivors,Pol());
@@ -4941,7 +4941,7 @@ void dual_KL_block_wrapper(expression_base::level l)
   const auto last = block.size()-1;
   push_value(std::make_shared<int_value>(last-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KL_table& kl_tab = dual_block.kl_tab(last,nullptr,false);
+  const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,last+1);
 @)
   @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
@@ -5011,7 +5011,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   @< Push a list of parameter values for the elements of common |block| at
    infinitesimal character |gamma| @>
   const auto last = block.size()-1;
-  const kl::KL_table& kl_tab = block.kl_tab(last,nullptr,false);
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr,last+1);
     // fill the partial block, not sharing polynomials, silently
 @)
   @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
@@ -5070,7 +5070,7 @@ void param_W_graph_wrapper(expression_base::level l)
   auto& block = p->rt().lookup_full_block(p->val,start);
   push_value(std::make_shared<int_value>(start));
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
 @)
@@ -5092,7 +5092,7 @@ void param_W_cells_wrapper(expression_base::level l)
   auto& block = p->rt().lookup_full_block(p->val,start);
   push_value(std::make_shared<int_value>(start));
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);

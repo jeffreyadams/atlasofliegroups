@@ -191,14 +191,15 @@ public:
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
   BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
-  kl::KL_table& kl_tab(BlockElt last_y, KL_hash_Table* pol_hash, bool verbose)
-  { fill_kl_tab(last_y,pol_hash,verbose); return *kl_tab_ptr; }
+  kl::KL_table& kl_tab
+    (KL_hash_Table* pol_hash, BlockElt limit=0, bool verbose=false)
+  { fill_kl_tab(limit,pol_hash,verbose); return *kl_tab_ptr; }
 
  protected:
   void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
  private:
   void fill_Bruhat();
-  void fill_kl_tab(BlockElt last_y, KL_hash_Table* pol_hash, bool verbose);
+  void fill_kl_tab(BlockElt limit, KL_hash_Table* pol_hash, bool verbose);
 
 }; // |class Block_base|
 
