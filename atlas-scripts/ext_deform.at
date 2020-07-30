@@ -25,7 +25,10 @@ set ed_verbose=false
 
 set deformation_terms (Param p, mat delta) = ParamPol:
   assert(twist(p,delta)=p,"parameter is not delta-fixed");
-  let (B,P_mat) = extended_KL_block(p,delta) then nB=#B in
+  let (B,P_ind_mat,polys) = extended_KL_block(p,delta)
+  then nB=#B, pev=for Q in polys do eval(Q,minus_1) od
+  then P_mat= for col in P_ind_mat do for entry in col do pev[entry] od od
+  in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
   else { compute final column |acc| of |Q| matrix by solving linear system

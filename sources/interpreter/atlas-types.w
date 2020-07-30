@@ -4909,7 +4909,17 @@ by constructing a new polynomial |Pol(P)|.
          M_ind->val(i,j) = hash.match(M(i,j));
     push_value(std::move(M_ind));
   }
-@)
+  @< Transfer the coefficient vectors of the polynomials from |pool| to an array,
+     and push that array @>
+}
+
+@ Since the type |Polynomial<int>| has a method |data| that allows extracting its
+coefficient vector, we can move without copying the essential information from
+|pool| to the array of vector to be pushed here.
+
+@< Transfer the coefficient vectors of the polynomials from |pool| to an array,
+   and push that array @>=
+{
   own_row polys = std::make_shared<row_value>(0);
   polys->val.reserve(pool.size());
   for (auto it=pool.begin(); it!=pool.end(); ++it)
@@ -5024,12 +5034,8 @@ void dual_KL_block_wrapper(expression_base::level l)
     push_value(std::move(M_ind));
   }
 @)
-  own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(pool.size());
-  for (auto it=pool.begin(); it!=pool.end(); ++it)
-    polys->val.emplace_back
-      (std::make_shared<vector_value>(std::move(*it).data()));
-  push_value(std::move(polys));
+  @< Transfer the coefficient vectors of the polynomials from |pool| to an array,
+     and push that array @>
 @)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
@@ -5222,15 +5228,18 @@ void extended_KL_block_wrapper(expression_base::level l)
 @)
   std::vector<StandardRepr> block;
   own_matrix P_mat = std::make_shared<matrix_value>(int_Matrix());
-  ext_kl::ext_KL_matrix(p->val,delta->val,p->rc(),block,P_mat->val);
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::ext_KL_matrix(p->val,delta->val,p->rc(),block,P_mat->val,pool);
 @)
   own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
     param_list->val[z]=std::make_shared<module_parameter_value>(p->rf,block[z]);
   push_value(std::move(param_list));
   push_value(std::move(P_mat));
+  @< Transfer the coefficient vectors of the polynomials from |pool|... @>
+
   if (l==expression_base::single_value)
-    wrap_tuple<2>();
+    wrap_tuple<3>();
 }
 
 @ Finally we install everything related to module parameters.
@@ -5284,7 +5293,7 @@ install_function(param_W_cells_wrapper,@|"W_cells"
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
-                ,"(Param,mat->[Param],mat)");
+                ,"(Param,mat->[Param],mat,[vec])");
 
 @*1 Polynomials formed from parameters.
 %
@@ -6560,20 +6569,13 @@ void raw_ext_KL_wrapper (expression_base::level l)
         M->val(x,y) = inx.second ? -inx.first : inx.first;
       }
   @)
-    own_row polys = std::make_shared<row_value>(0);
-    polys->val.reserve(pool.size());
-    for (auto it=pool.begin(); it!=pool.end(); ++it)
-      polys->val.emplace_back(std::make_shared<vector_value> @|
-         (std::vector<int>(it->begin(),it->end())));
-
-  @)
     std::vector<int> length_stops(block.length(block.size()-1)+2);
     length_stops[0]=0;
     for (unsigned int i=1; i<length_stops.size(); ++i)
       length_stops[i]=eb.length_first(i);
   @)
     push_value(std::move(M));
-    push_value(std::move(polys));
+    @< Transfer the coefficient vectors of the polynomials from |pool|... @>
     push_value(std::make_shared<vector_value>(length_stops));
   }
   if (l==expression_base::single_value)
