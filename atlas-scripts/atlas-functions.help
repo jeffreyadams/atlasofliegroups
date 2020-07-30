@@ -743,9 +743,12 @@ print_block: (Param->): print translation family block for the given parameter
 print_partial_block: (Param->): print partial translation family block
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+  Non-final parameters are omitted from the list, and if this includes the
+  original parameter the second component will be negative.
 partial_block: (Param->[Param]): return partial block as list of parameters
-  This is the Bruhat interval of the block below the given parameter,
-  sorted by length and including the given parameter as final element
+  This is the Bruhat interval of the block below the given parameter, sorted by
+  length. Non-final parameters are omitted. If the original parameter is final,
+  then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   This combines block with the computation of the its Kazhdan-Lustzig table.
@@ -758,20 +761,25 @@ KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   at that infinitesimal character, taking appropriate linear combinations of
   polynomials computed for the block. Since these combinations can have negative
   coefficients, some of the polynomials in the table may have these as well.
-dual_KL_block: (Param->[Param],int,mat,[vec],vec,vec): KL info for dual block
-  This closely corresponds to KL_block, but computes the KL polynomials for
-  the formally dual block. Here the type of the simple roots are dualised,
-  interchanging for instance imaginary compact and real nonparity and likewise
-  imaginary type 1 and real type 2. To make this valid, the order of the block
-  elements is reversed, and other changes made: adapting the indices of length
-  function changes and of surviving elements. The contribution-coefficient
-  matrix is omitted altogether, as it is not to be used for the dual block.
-partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
-  This function relates to KL_block as partial_block relates to block. The
-  first component of the result is the Bruhat interval as in partial_block,
-  and all other components are the same is in KL_block (except that the now
-  superfluous second component of KL_block is omitted), but with the two vec
-  components filtered so as to be indexed by the Bruhat interval indices only.
+dual_KL_block: (Param->[Param],int,mat,[vec]): KL_block values for dual block
+  This corresponds to KL_block, but computes the KL polynomials for the formally
+  dual block, where change of length is reversed, the type of the simple roots
+  dualized (interchanging for instance imaginary compact and real nonparity, or
+  imaginary type 1 and real type 2). The first two components of the result are
+  the same as for KL_block. The final two values give the KL polynomials for the
+  dual block in the same format as for KL_block (since the list of parameters
+  has decreasing length for the dual block, the matrix is lower triangular
+  rather than upper). In case of a singular infinitesimal character, the dual
+  KL polynomials at final block elements are selected unmodified (no linear
+  combination) since that is appropriate for the dual block; thus the transpose
+  of the matrix gives the matrix of Q-polynomials, which after conjugation with
+  the diagonal matrix of length-partity signs gives the inverse of the matrix of
+  ordinary Kazhdan-Lustzig polynomials, the ones returned by KL_block
+partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
+  This function relates to KL_block as partial_block relates to block. The first
+  component of the result is the Bruhat interval as in partial_block, and the
+  last two components have the same meansing as in KL_block; no index of the
+  given parameter is returned (if present, it is always the last listed element).
 W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the W graph in the format used for W_graph@Block below

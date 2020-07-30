@@ -3,8 +3,8 @@
 <ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
 
 {
-process output of KL_block or ext_KL_block to give ([Param],int,poly_mat,vec),
-the third entry is the matrix of polynomials
+  process old output of KL_block or current output pf ext_KL_block to give
+  ([Param],int,poly_mat,vec), the third entry is the signed matrix of polynomials
 }
 
 { use old output of |KL_block| to prepare block, signed KL matrix, and stops }
@@ -37,45 +37,19 @@ set cook_KL_block ( [Param] B, int entry_elem
      , for s in stops do get_index(s) od { convert stops to condensed block }
      )
 
-{ use output of |dual_KL_block| to prepare block, KL Q-matrix, and stops }
-set cook_dual_KL_block ( [Param] B, int entry_elem
-		       , mat KL, [i_poly] polys, vec stops, vec surv) =
-  ([Param],int,i_poly_mat,vec): { singular block, z0, signed P matrix, lengths }
-  let nB=#B, n_surv=#surv
-  then cooked_Q_mat = i_poly_mat:
-    for si in surv do for sj in surv do let ind = KL[si,sj] in
-      if ind<0 then -polys[-ind] else polys[ind] fi { |i_poly| entry }
-    od od
-  , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
-  in ( for si in surv do B[si] od { extracted block }
-     , get_index(entry_elem) { convert index of seeding element }
-     , cooked_Q_mat
-     , for s in stops do get_index(s) od { convert stops to extracted block }
-     )
-
-set reverse (i_poly_mat Q) = i_poly_mat:
-  for i:#Q ~do for Qj in Q ~do Qj[i] od od
-
-{ define the P,P_signed and Q polynomials
-  P,P_signed,Q matrices of polynomials in q
-  upper triangular if B is in standard (increasing) order
-  P_signed: positive/negative integer coefficients
-  P: non-negative integer coefficients
-  Q: non-negative integer coefficients, inverse of P_signed
-  P_signed(1) is the multiplicity of a standard module in an irreducible
-    (character formula)
-  Q(1) is the multiplicity of an irreducible module in a standard module
-}
-
 set eval (i_poly_mat M, int k) = mat:
   matrix (shape(M), (int i,int j)int: eval(M[i][j], k))
 
 { map from index in B1 to matching index in B2, and whether it's well defined }
 set permutation ([Param] B1, [Param] B2) = ([int],bool):
 ( if =#B2 then []
-  else let P = s*B2[0] { nonzero term but with zero int_part| } +
-               for q@i in B2 do (i,q) od in { tag each Param with its index }
-  for p in B1 do let c=P[p] in if =c then return ([],false) else c.int_part fi od
+  else let P = B2[0].null_module + for q@i in B2 do (Split:(i,1){nonzero!},q) od
+  in for p in B1
+     do let c=P[p] in
+        if =c then return ([],false) {signal failure to locate |p|}
+	else c.int_part { recover index at which |p| was contributed to |P| }
+	fi
+     od
   fi
 , true
 )
@@ -115,13 +89,15 @@ set KL_P_signed_polynomials ([Param] B) = i_poly_mat:
 set KL_P_signed_polynomials_at_minus_one ([Param] B) = mat:
   eval(KL_P_signed_polynomials(B),minus_1)
 
-{*DEFINE* the Q-polynomials as inverse of the signed P-matrix}
-{see dual.at for a different approach}
-
 set KL_Q_polynomials (Param p) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(p))
+  let (block,,M,polys) = dual_KL_block(p) then n=#block in
+  for i:n do let col = M[i] in for j:n do polys[col[j]] od od { transpose }
+
 set KL_Q_polynomials ([Param] B) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(B))
+  let (block,,M,polys)=dual_KL_block(B[0])
+  then (perm,valid)=permutation(B,block), n=#block
+  in  { transpose and apply permutation |perm| }
+  for i:n do let col = M[perm[i]] in for j:n do polys[col[perm[j]]] od od
 
 {                     twisted versions                                   }
 

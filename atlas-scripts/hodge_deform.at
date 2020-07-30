@@ -1,11 +1,10 @@
+<basic.at
 <hodgeParamPol.at
-<deform.at
 <hermitian.at
 set hodge_verbose=false
 
 {hodge version of deformation algorithm
- used to be called the "q" version, although 
- it is really "v"
+ used to be called the "q" version, although it is really "v"
 }
 
 {difference of two vectors of polynomials of the same length}
@@ -33,27 +32,25 @@ let B=^A then
 for i:m do for j:n do vec:[B[i][j]] od od
 
 {hodge-version of compress from deform.at}
-set hodge_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
-  ([Param], i_poly_mat, [int]):
-  let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od) then
-{   ()=prints("KL_poly_mat:");printPolyMatrix(KL_poly_mat) then}
-   S=for j in survivors do transpose(KL_poly_mat)[j] od then
-   M=mat_as_poly_mat(map) then
-{   reduced_KL_poly_mat =  i_poly_mat:S*transpose(M) then}
-   reduced_KL_poly_mat =  i_poly_mat:M*transpose(S) then
-{   ()=prints("reduced_KL_poly_mat:");printPolyMatrix(reduced_KL_poly_mat) then}
-   survivor_lengths = let l=0 in
-    for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
-  in
-  ( for i in survivors do
-  B[i] od { block restricted to survivors }
-  , { matrix of associated P polynomials}
-    for col@j in reduced_KL_poly_mat
-    do
-(for e@i in col do minus_1^survivor_lengths[i]*minus_1^survivor_lengths[j]*e od)
-    od
-  , survivor_lengths { length mapping }
-  )
+set hodge_compress ([Param] B, mat KL_mat, [i_poly] polys) =
+     ([Param], i_poly_mat):
+( B
+, let (r,c)=shape(KL_mat) in
+  for i:r do for j:c do
+    minus_1^(B[j].length-B[i].length) * polys[KL_mat[i,j]]
+  od od
+)
+
+{ the same, but evaluating polynomials at $q=-1$ }
+set compress ([Param] B, mat KL_mat, [i_poly] polys) = ([Param],mat):
+( B
+, let evs = for P in polys do eval(P,minus_1) od in
+  for col@j in KL_mat { by columns first for a |mat|! }
+  do for entry@i in col
+     do minus_1^(B[j].length-B[i].length) * evs[entry]
+     od
+  od
+)
 
 {Q(v^{-1}), this is a Laurent polynomial so shouldn't be needed/used,
 except in the subsequent function}
@@ -65,46 +62,54 @@ set v_to_the_k_times_Q_v_inverse(int N,i_poly f)=null(N-degree(f))##reverse(f)
 to compute column of inverse as polynomial in v
 }
 set hodge_deformation_terms (Param Gamma) = hodgeParamPol:
- let ()=if hodge_verbose then prints("Computing hodge_deformation of ", Gamma) fi in
- let (B,P,length) = hodge_compress(partial_KL_block(Gamma:=normal(Gamma))) in  {P is the *signed* P-matrix}
- if #B=0 or B~[0]!=Gamma then [null_module(Gamma)] { if |Gamma| itself is not among survivors, return 0 }
+  if hodge_verbose then prints("Computing hodge_deformation of ", Gamma) fi;
+  let pb = partial_KL_block(Gamma:=normal(Gamma))
+  then (B,P) = { get |P| to be the *signed* P-matrix } hodge_compress(pb)
+  in
+  if #B=0 or B~[0]!=Gamma  { if |Gamma| itself is not among survivors }
+  then [null_module(Gamma)]
   else
-   let rv=nullHodgeParamPol(Gamma.real_form) then
-   (,P0,)=compress(partial_KL_block(Gamma:=normal(Gamma))) then
-   Q_col=last_column_mat_poly_inverse(P)  {last column of Q matrix} in
-   for i:#Q_col-1 do  {i <-> Phi}
-    for j: #Q_col-i from i do { j <-> Xi}
-     let
-     Phi=B[i] then
-     Xi=B[j] then
-     length_diff=length(Gamma)-length(Xi) then
-     P_Phi_Xi_v=P[i][j] then
-     Q_Xi_Gamma_v=Q_col[j] then
-     v_power_Q_Xi_Gamma_v_inverse=v_to_the_k_times_Q_v_inverse(length_diff,Q_Xi_Gamma_v) then
-     on=orientation_nr(Gamma)-orientation_nr(Phi) then
-     on_over_2=assert(is_even(on),"odd orientation number");on\2 then
-{     sign=(-1)*(-1)^(length(Xi)-length(Phi)) then}
-     sign=(-1)  { P is the signed matrix, so don't need (-1)^length_diff} then
-     contrib=sign*poly_product(poly_product(vee^on_over_2,P_Phi_Xi_v),v_power_Q_Xi_Gamma_v_inverse) in
-     {debugging only}
-     if hodge_verbose=true then
-        prints(new_line,"(i,j)=(",i,",",j,")",new_line,
-	"Xi: ", Xi, new_line,
-        "Gamma: ", Gamma, new_line,
-        "Phi: ", Phi, new_line, "Xi: ", Xi, new_line,
-        "P(v): ", P_Phi_Xi_v, new_line,
-	"v^*Q(v^(-1)):", Q_Xi_Gamma_v, new_line,
-        "on(Gamma): ", orientation_nr(Gamma),new_line,
-        "on(Phi): ", orientation_nr(Phi),new_line,
-	"orientation number term=v^", on_over_2, new_line,
-        "length diff: ", length_diff,new_line,
-	"sign: ", sign,new_line,
-	"contribution: ", poly_format(contrib,"v")) fi;
-     {end debugging}
-     rv+:=contrib*[Phi]
-    od
-   od;rv
- fi
+     let rv=nullHodgeParamPol(Gamma.real_form)
+     then (,P0)=compress(pb)
+     then Q_col=last_column_mat_poly_inverse(P)  {last column of Q matrix}
+  in for i:#Q_col-1  {i <-> Phi}
+     do for j: #Q_col-i from i { j <-> Xi}
+        do let Phi=B[i]
+	   then Xi=B[j]
+	   then length_diff=length(Gamma)-length(Xi)
+	   then P_Phi_Xi_v=P[i][j]
+	   then Q_Xi_Gamma_v=Q_col[j]
+	   then v_power_Q_Xi_Gamma_v_inverse =
+	          v_to_the_k_times_Q_v_inverse(length_diff,Q_Xi_Gamma_v)
+	   then on=orientation_nr(Gamma)-orientation_nr(Phi)
+	   then on_over_2=assert(is_even(on),"odd orientation number");on\2
+	   then { sign=(-1)*(-1)^(length(Xi)-length(Phi))}
+                sign=minus_1  { P is the already signed matrix }
+           then contrib =
+	      sign*
+	      poly_product(poly_product(vee^on_over_2,P_Phi_Xi_v)
+	                  ,v_power_Q_Xi_Gamma_v_inverse)
+	in {debugging only}
+           if hodge_verbose
+	   then prints
+	    (new_line,"(i,j)=(",i,",",j,")",new_line,
+	     "Xi: ", Xi, new_line,
+             "Gamma: ", Gamma, new_line,
+             "Phi: ", Phi, new_line, "Xi: ", Xi, new_line,
+             "P(v): ", P_Phi_Xi_v, new_line,
+	     "v^*Q(v^(-1)):", Q_Xi_Gamma_v, new_line,
+             "on(Gamma): ", orientation_nr(Gamma),new_line,
+             "on(Phi): ", orientation_nr(Phi),new_line,
+	     "orientation number term=v^", on_over_2, new_line,
+             "length diff: ", length_diff,new_line,
+	     "sign: ", sign,new_line,
+	     "contribution: ", poly_format(contrib,"v"))
+	   fi {end debugging}
+        ;  rv+:=contrib*[Phi]
+     od
+  od
+; rv
+fi
 
 {hodge version of recursive deform}
 set hodge_recursive_deform (Param p) = hodgeParamPol:
@@ -206,23 +211,28 @@ set hodge_grading_std(Param p)=hodgeParamPol:hodge_recursive_deform(p)
 set hodge_grading_std(ParamPol P)=hodgeParamPol:hodge_recursive_deform(P)
 
 set hodge_signed_P_matrix(Param Gamma)=i_poly_mat:
-let (,P,) = hodge_compress(partial_KL_block(Gamma)) in P
+let (,P) = hodge_compress(partial_KL_block(Gamma)) in P
 
 set hodge_P_matrix(Param Gamma)=i_poly_mat:
-let (,P_signed,lengths) = hodge_compress(partial_KL_block(Gamma)) in
-for i:#P_signed do for j:#P_signed[i] do (-1)^(lengths[i]-lengths[j])*P_signed[i][j] od od
+  let (,KL_mat,polys) = partial_KL_block(Gamma) then (r,c)=shape(KL_mat) in
+  for i:r do for j:c do polys[KL_mat[i,j]] od od
 
 {write hodge(J(Gamma)) in terms of hodge(I(x,lambda,0))}
 set hodge_grading_irreducible(Param p)=
-let (B,P_signed,lengths)=hodge_compress(partial_KL_block(p)) then
-rv=nullHodgeParamPol(p.real_form) then
-!on_p = orientation_nr(p) then
-n=#B in
-for i:n do
- let   (q,r)=(on_p-orientation_nr(B[i]))\%2 then
- coeff= assert(=r,"odd orientation");poly_product(vee^q,P_signed[i][n-1]) in
-{ let ()=prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);print(evaluate_at_s(hodge_recursive_deform(B[i]))) in}
-rv+:=coeff*hodge_recursive_deform(B[i]) od;rv
+   let (B,P_signed)=hodge_compress(partial_KL_block(p))
+   , rv=nullHodgeParamPol(p.real_form)
+   then !on_p = orientation_nr(p)
+   then n=#B
+in for i:n
+   do let   (q,r)=(on_p-orientation_nr(B[i]))\%2
+      then coeff = assert(=r,"odd orientation");
+                   poly_product(vee^q,P_signed[i][n-1])
+   in
+{ prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);
+  print(evaluate_at_s(hodge_recursive_deform(B[i])));
+}
+      rv +:= coeff*hodge_recursive_deform(B[i])
+   od; rv
 
 {set hodge_branch_irr(Param p,int N)=KHodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)}
 

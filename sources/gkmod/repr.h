@@ -330,6 +330,7 @@ class Rep_table : public Rep_context
 
   const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
+  // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
 
   unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }

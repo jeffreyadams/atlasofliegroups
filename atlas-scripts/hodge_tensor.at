@@ -1,4 +1,4 @@
-<hodge_K_type_formula.at
+<hodge_K_type_formula.at { for |Phi_S| }
 <tensor_product.at
 
 {see hodgeTempered.pdf in Dropbox}
@@ -97,14 +97,15 @@ let rv=nullHodgeFunction(p.real_form) in
 
 {assume S is sorted by height}
 {map from KHodgeParamPols to hodgeParamPols, given a set S of K-types}
-set Phi_S_inverse(KHodgeParamPol KP,[K_Type] S)=hodgeParamPol:
-let rec_fun solve_one(KHodgeParamPol KP,[K_Type] S,hodgeParamPol rv)=hodgeParamPol:
-let n=first(for mu in S do !=coefficient(KP,mu) od) in
- if n=-1 then rv else
-  let c=coefficient(KP,S[n]) then
-  p=parameter(S[n]) in
-  solve_one(KP-Phi_S(c*p,S),S,rv+c*p) fi
-in solve_one(KP,S,nullHodgeParamPol(KP.real_form))
+set Phi_S_inverse(KHodgeParamPol KP,[K_Type] S) = hodgeParamPol:
+   let rec_fun solve_one(KHodgeParamPol KP,[K_Type] S,hodgeParamPol rv) =
+         hodgeParamPol:
+      let n=first(for mu in S do !=coefficient(KP,mu) od)
+      in if n=-1 then rv
+         else let c=i_poly: coefficient(KP,S[n]), p=parameter(S[n]) in
+	    solve_one(KP-Phi_S(c*p,S),S,rv+c*p)
+	 fi
+   in solve_one(KP,S,nullHodgeParamPol(KP.real_form))
 
 {map from hodge functions to hodgeParamPols, given a set S of K-types}
 set Omega_S_inverse(hodge_function f,[K_Type] S)=hodgeParamPol:Phi_S_inverse(Psi_S(f,S),S)
