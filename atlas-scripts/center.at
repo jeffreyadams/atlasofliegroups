@@ -34,7 +34,7 @@ set lie_radical = (RootDatum->mat): { kernel(^simple_roots(rd)) }
 { ss_part(rd,v)=projection of v\in X^*\otimes Q onto Q-span of the roots }
 set ss_part (RootDatum rd, ratvec v) = ratvec:
   let fw= [ratvec]: fundamental_weights(rd) in
-  sum(for coord@i in (^simple_coroots(rd))*v do coord*fw[i] od, rank(rd))
+  sum(rank(rd), for coord@i in (^simple_coroots(rd))*v do coord*fw[i] od)
 
 { lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto Lie coradical }
 set lie_coradical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)

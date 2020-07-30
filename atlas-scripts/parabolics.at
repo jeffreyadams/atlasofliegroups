@@ -182,14 +182,14 @@ set complex_Levi (RootDatum rd,[int] S) = RootDatum:
 
 {. coweight vanishing on all roots of the Levi, positive on other posroots .}
 set Levi_coweight (ComplexParabolic(rd,S)) = vec:
-  (for t in complement(rd.semisimple_rank,S) do fundamental_coweight(rd,t) od
-  ,rd.rank
+  ( rd.rank
+  , for t in complement(rd.semisimple_rank,S) do fundamental_coweight(rd,t) od
   ).sum.numer
 
 {. weight vanishing on all coroots of the Levi, positive on other poscoroots .}
 set Levi_weight (ComplexParabolic(rd,S)) = vec:
-  (for t in complement(rd.semisimple_rank,S) do fundamental_weight(rd,t) od
-  ,rd.rank
+  ( rd.rank
+  , for t in complement(rd.semisimple_rank,S) do fundamental_weight(rd,t) od
   ).sum.numer
 
 {. Test if a complex Levi defined by a set of simple roots $S$ is
