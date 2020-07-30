@@ -132,9 +132,9 @@ set_type
 
 { the cell_action functions really live on the level of WGraph: }
 
-{. matrix for s of graph, of coherent continuation action on irreducibels. }
+{. matrix for s of graph, of coherent continuation action on irreducibles. }
 set graph_action (WGraph graph,int s) = sparse_mat:
-   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s), n=#graph in
    for node@j in graph
    do if node.tau_has_s
       then [(j,-1)] { single diagonal term -1 }
