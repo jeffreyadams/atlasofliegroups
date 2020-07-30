@@ -123,10 +123,11 @@ set make_regular_irr(Param p)=Param:T_irr_nonzero(p,p.infinitesimal_character +2
 set T_irr(ParamPol P, ratvec gamma_new)= ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
-    let gamma = infinitesimal_character(first_param(P))
-    then shift = ratvec_as_vec(gamma_new-gamma)
-    then rv=0*P in
-     for w@q in P do rv+:=w*T_irr(q,shift) od;rv
+    let rv=0*P in
+{    let gamma = infinitesimal_character(first_param(P))
+    then shift = ratvec_as_vec(gamma_new-gamma) 
+    for w@q in P do rv+:=w*T_irr(q,shift) od;rv}
+     for w@q in P do rv+:=w*T_irr(q,gamma_new) od;rv
   fi
 
 

@@ -455,3 +455,55 @@ prints("number of terms: ", #rv,new_line,"result: ",valid);
 set h_test([RealForm] list)=void:for G in list do prints(new_line,G);h_test(G) od
 
 set list=[SL(2,R),SL(3,R),SL(4,R),GL(4,R),Sp(4,R), Sp(6,R),Spin(4,3),Spin(5,4),G2_s]
+
+
+
+{ ----- normalized version of S_inv ------------}
+
+{for Stephen Miller
+intended for use (only?) with minimal principal series:
+ given a parameter p of a minimal principal series, replace p with
+ p_new, so that S_inv(params,graph,p_new,w) has the same composition
+ factors as p
+ Note: S_inv(params,graph,p,w) replaces the M-parameter lambda of p with w\times\lambda,
+ so for p_new use: lambda_new=cross(w^{-1},p).lambda
+}
+
+{typical usage:
+ set p=parameter(G.x_open,lambda,nu)  {at regular infinitesimal character}
+ set b=block_of(p)
+ set g=W_graph_of(p)
+ for w=[int] or WeylElt do:
+ show_long(millers_crossing(b,g,p,w))
+}
+
+{compute graded composition series of principal series in the w-chamber}
+set millers_crossing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+if (not (p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series \
+of a split group, so probably not what you want") fi;
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+{prints("w=",w);
+prints("params: ", params);
+prints("graph: ", graph);}
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\ 
+of a split group, so probably not what you want") fi;
+let w=W_elt(p.root_datum,w) in
+{ let ()=prints("w=",w) in}
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+{singular infinitesimal character}
+set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+let gamma=p.infinitesimal_character then
+gamma_reg=gamma+p.root_datum.two_rho then
+p_reg=first_param(T(p,gamma_reg)) then
+m_reg=millers_crossing(for p in params do first_param(T(p,gamma_reg)) od,graph,p_reg,w) in
+T_irr(m_reg,gamma)
+
+set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+millers_crossing_sing(params,graph,p,W_elt(p.root_datum,w))
