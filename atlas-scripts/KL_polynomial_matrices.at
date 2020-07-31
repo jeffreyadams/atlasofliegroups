@@ -2,41 +2,6 @@
 <polynomial.at { for |poly_plus@(vec,vec)| and friends, |i_poly_mat| type }
 <ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
 
-{
-  process old output of KL_block or current output pf ext_KL_block to give
-  ([Param],int,poly_mat,vec), the third entry is the signed matrix of polynomials
-}
-
-{ use old output of |KL_block| to prepare block, signed KL matrix, and stops }
-set cook_KL_block ( [Param] B, int entry_elem
-                  , mat KL, [i_poly] polys, vec stops
-                  , vec surv, mat contrib) =
-  ([Param],int,i_poly_mat,vec): { singular block, z0, signed P matrix, lengths }
-  let n_surv=#surv, tr_KL=^KL, len = from_stops(stops)
-  then cooked_P_mat = i_poly_mat:
-     for si@i in surv
-     do let lsi=len(si), scalars=null(0) { nonzero factors from |contrib| }
-        then condensed = mat: { selected rows of KL contributing for i }
-           n_columns(KL) { size of individual rows } ^
-           for k:n_columns(contrib)
-           do if =contrib[i,k] then []
-              else scalars#:=contrib[i,k]; [tr_KL[k]]
-              fi
-           od.##
-     in for sj in surv
-        do strip(scalars*
-           for ind in condensed[sj] { expand column of indices into polynomials }
-           do if ind<0 then -polys[-ind] else polys[ind] fi
-	   od.stack_rows) * minus_1^(len(sj)-lsi)
-        od
-     od
-  , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
-  in ( for i in surv do B[i] od { condensed block }
-     , get_index(entry_elem) { convert index of seeding element }
-     , cooked_P_mat
-     , for s in stops do get_index(s) od { convert stops to condensed block }
-     )
-
 set eval (i_poly_mat M, int k) = mat:
   matrix (shape(M), (int i,int j)int: eval(M[i][j], k))
 
@@ -104,45 +69,11 @@ set KL_Q_polynomials ([Param] B) = i_poly_mat:
 set final_subset ([Param] B) = [Param]:
   ## for p in B do if is_final(p) then [p] else [] fi od
 
-{ this is raw_KL_block@(Param,mat), the twisted analogue of old KL_block@Param
-  Marc called this of ext_KL_block@(Param,mat); the 'ext' is superflous since it
-  is implied by the presence of |delta|, and therefore not used here. The 'raw_'
-  prefix is added here because of the following function KL_block that is a more
-  precise analogue of the new |KL_block@Param|
+
+{ this is the twisted analogue of |KL_block@Param|. Originally called
+  |ext_KL_block| the 'ext_' prefix is superflous since it is implied by the
+  presence of |delta|, and is therefore dropped
 }
-set raw_KL_block (Param p, mat delta) = { emulate built-in KL_block }
-    ([Param],int,mat,[vec],vec,vec,mat):
-{ let (regular_extblock,,,) = extended_block(p,delta) {this sometimes fails,
-  if block has no fixed elements(?), move it later} }
-  let (KL_mat,polys,stops) = raw_ext_KL(p,delta) in
-  if shape(KL_mat)=(0,0) then return ([],-1,null(0,0),[],[],[],null(0,0)) fi;
-  let (regular_extblock,,,) = extended_block(p,delta)
-  , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
-  , survivors = vec: [] then
-    final_subset=final_subset(regular_extblock)
-  then columns = [vec]:
-    for q@j in regular_extblock
-    do let Q = finalize_extended(q,delta) in
-      if #Q=1 and
-         (let r=monomials(Q)[0] in r.x=q.x and r.lambda=q.lambda and r.nu=q.nu)
-      then survivors #:= j
-      fi { gather those expanding to themselves }
-    ; vec: { value of loop body }
-      for i in regular_extblock
-      do if find(final_subset,i).>= then Q[i].s_to_minus_1 else 0 fi od
-    od
-  , reg_size = #regular_extblock
-  in
-{  let ()=prints("survivors:", survivors, "  reg_size:", reg_size) in
-  let ()=prints("columns:", #columns, " ", columns) in }
-  ( regular_extblock, first(reg_size,(int i):regular_extblock[i]=p)
-  , KL_mat,polys,stops
-  , survivors
-  , matrix((#survivors,reg_size) { slice out the surviving rows: }
-{      ,(int i,int j) int:prints("i,j:", i, ",", j); columns[j][survivors[i]] }
-          ,(int i,int j) int: columns[survivors[i]][j]
-          )
-  )
 
 { undo signedness of |extended_KL_block|, using negative index for negated poly }
 set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
