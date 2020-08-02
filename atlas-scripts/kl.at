@@ -5,7 +5,6 @@
 }
 
 <basic.at
-<polynomial.at { defines types poly, poly_mat }
 
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
@@ -42,18 +41,14 @@ set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
-  do let fy=f(y) in for x in block do s_to_1(fy[x]) od
+  do let fy=f(y) in for x in block do fy[x].s_to_1 od
   od
 
 set signed_KL_mat_at_1(Param p) = mat:
-( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
-; tabulate_at_1(partial_block(p), character_formula@Param)
-)
+  tabulate_at_1(partial_block(p), character_formula@Param)
 
 set KL_inverse_mat_at_1(Param p) = mat:
-( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
-; tabulate_at_1(partial_block(p), composition_series@Param)
-)
+  tabulate_at_1(partial_block(p), composition_series@Param)
 
 { versions that do the whole block rather than a partial block }
 set full_signed_KL_mat_at_1(Param p) = mat:
@@ -63,10 +58,20 @@ set full_KL_inverse_mat_at_1(Param p) = mat:
 
 
 set print_formatted (ParamPol P) = void:
-  for w@p in P do prints(split_format(w),"*",p) od
+  for w@p in P do prints(split_factor_format(w),"*",p) od
 
 set print_character_formula (Param p) = void:
   print_formatted(character_formula(p))
 
 set print_composition_series(Param p) = void:
   print_formatted(composition_series(p))
+
+{ trace progress while computing |composition_series| }
+set composition_series_trace (ParamPol P) = ParamPol:
+  null_module(P)+
+  while !=P { non null module }
+  do let (coef,p):term=first_term(P)
+  in P -:= coef*character_formula(p)
+  ; prints(coef.int_part,"*",p," [",height(p),"]") { coefficients are integer }
+  ; term
+  od
