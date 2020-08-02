@@ -283,8 +283,7 @@ set print_stable_at_singular ([*] S,[Param] B) = void:
 {#subset x #B matrix}
 
 set printParamPol(ParamPol P)=void:
-let pairs=%P in 
-tabulate(for (c,p) in pairs do [nice_string(c), " ", p.to_string] od)
+  tabulate(for c@p in P do [split_format(c), " ", p.to_string] od)
 
 set printParamPol([ParamPol] list)=void:
 for P in list do printParamPol(P) od

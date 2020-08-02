@@ -5,8 +5,7 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
-<misc.at
-<polynomial.at { defines types poly, poly_mat }
+<basic.at
 
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
@@ -43,18 +42,14 @@ set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
-  do let fy=f(y) in for x in block do s_to_1(fy[x]) od
+  do let fy=f(y) in for x in block do fy[x].s_to_1 od
   od
 
 set signed_KL_mat_at_1(Param p) = mat:
-( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
-; tabulate_at_1(partial_block(p), character_formula@Param)
-)
+  tabulate_at_1(partial_block(p), character_formula@Param)
 
 set KL_inverse_mat_at_1(Param p) = mat:
-( KL_sum_at_s(p) {dummy call to ensure internal tables are filled }
-; tabulate_at_1(partial_block(p), composition_series@Param)
-)
+  tabulate_at_1(partial_block(p), composition_series@Param)
 
 { versions that do the whole block rather than a partial block }
 set full_signed_KL_mat_at_1(Param p) = mat:
@@ -64,7 +59,7 @@ set full_KL_inverse_mat_at_1(Param p) = mat:
 
 
 set print_formatted (ParamPol P) = void:
-  for w@p in P do prints(split_format(w),"*",p) od
+  for w@p in P do prints(split_factor_format(w),"*",p) od
 
 set print_character_formula (Param p) = void:
   print_formatted(character_formula(p))
@@ -72,60 +67,33 @@ set print_character_formula (Param p) = void:
 set print_composition_series(Param p) = void:
   print_formatted(composition_series(p))
 
-{string output used in composition_series_verbose}
-set nice_string(Split s)=string:
-let (a,b)=%s in
-if b=0 then a.to_string
-elif a=0 then
- if b>1 then b.to_string + "s"
- elif b=1 then "+s"
- elif b=-1  then "-s" 
- else a.to_string + "-" + abs(b).to_string + "s"
- fi
-else
- if b>1 then a.to_string +  "+" + b.to_string + "s"
- elif b=1 then a.to_string +  "+s"
- elif b=-1 then a.to_string + "-s" 
- else a.to_string + "-" + abs(b).to_string + "s"
-fi
-fi
+set print_with_length (ParamPol P) = void:
+  for c@p in P do prints(c.split_factor_format, "*"  , p, " ", p.length) od
 
-set print_with_length(ParamPol P)=void:
-for (c,p) in %P do prints(c.nice_string, "*"  , p, " ", p.length) od
+{ print out high length terms as they become available }
+set composition_series_verbose (ParamPol P) = ParamPol:
+   let result=null_module(P), max=max(for p in monomials(P) do length(p) od)
+in for L:max+1 ~ { reverse }
+   do prints("Length: ", L)
+   ;  let result_new=null_module(P)
+   in for c@p in P
+      do if length(p)=L then result_new +:=c*composition_series(p) fi
+      od
+   ;  result := result+result_new
+   ;  prints("terms in result of length ", L, ":")
+   ;  for c@p in result
+      do if length(p)=L
+         then prints(c.split_factor_format, "*",p, " ", p.length)
+	 fi
+      od
+   od ; prints("result:"); print_with_length(result); result
 
-{print out high length terms as they become available}
-set composition_series_verbose(ParamPol P)= ParamPol:
-let result=null_module(P) in
-for i:#P do 
- let (c,p)=(%P)[i] then
- ()=prints("length of p: ", length(p)) then
- result_new =result+c*composition_series(p) in
- result:=result_new; 
- if i<#P-1 then
-  let next_length=length(monomials(P)[i]) in
-  {the next line is for debugging, comment it out}
-{  prints(new_line,"----------------------",new_line,"all terms: ", result);}
-  let ()=prints("terms of length >= ", next_length,":") in
-  for (d,q) in %result do
-   if length(q)>=next_length then prints(d.nice_string, "*", q, " ", q.length) fi
+{ something simpler and faster }
+set composition_series_trace (ParamPol P) = ParamPol:
+  null_module(P)+
+  while !=P { non null module }
+  do let (coef,p):term=first_term(P)
+  in P -:= coef*character_formula(p)
+  ; prints(coef.int_part,"*",p," [",height(p),"]") { coefficients are integer }
+  ; term
   od
- fi
-od;result
-
-{print out high length terms as they become available}
-set composition_series_verbose(ParamPol P)= ParamPol:
-let result=null_module(P) then
-max=max(for p in monomials(P) do length(p) od) in
-for L:max+1 downto 0 do
- let ()=prints("Length: ", L) then
- result_new=null_module(P) then
- ()=for (c,p) in %P do
-     if length(p)=L then result_new +:=c*composition_series(p)  fi
-    od in
-{    ()=prints("OK") in}
-    result:=result+result_new;
-    prints("terms in result of length ", L, ":");
-    for (c,p) in %result do if length(p)=L then prints(c.nice_string, "*",p, " ", p.length) fi od
-od;
-prints("result:");print_with_length(result);
-result
