@@ -5077,7 +5077,6 @@ void param_W_cells_wrapper(expression_base::level l)
   wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
-  push_value(std::make_shared<int_value>(start));
   own_row cells=std::make_shared<row_value>(0);
   cells->val.reserve(dg.cellCount());
   for (unsigned int c = 0; c < dg.cellCount(); ++c)
