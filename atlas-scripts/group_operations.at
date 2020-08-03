@@ -89,18 +89,15 @@ set adjoint (InnerClass ic) = InnerClass:
   in inner_class(adjoint(rd)
                 ,adjoint_transform(rd,distinguished_involution(ic))
 		)
-
 set derived (RealForm G) = RealForm:
 ( let (der_rd,proj)=derived_info(root_datum(G))
-  then xi0 = corestrict_action(proj,distinguished_involution(InnerClass:G)) then
-  v=KGB(G,0).torus_factor*G.simple_roots {size ss_rank, describing the vector we want} then
-  M=G.root_datum.derived.fundamental_coweights.ratvecs_as_ratmat {ss_rank x ss_rank} then
-  tf_derived=M*v {ss_rank ratvec: sum of fundamental coweights for derived group
-                                  with correct inner products with simple roots} in
+  then xi0 = corestrict_action(proj,distinguished_involution(InnerClass:G))
+  then tf=torus_factor(KGB(G,0)), der_fc = der_rd.fundamental_coweights
+  in
   real_form { synthetic }
     ( inner_class(der_rd,xi0)
     , xi0
-    , tf_derived
+    , sum(der_rd.rank, for alpha@i in G.simple_roots do der_fc[i]*(tf*alpha) od)
     )
 )
 
