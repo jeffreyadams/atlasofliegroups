@@ -22,8 +22,6 @@ set_type [ ratmat = (mat,string,int) ] { matrix, slash, common denominator }
 save_s : s
 set !s = "/"
 
-set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
-
 set simplify(ratmat(M,,d)) = ratmat:
   let g=gcd([gcd(M),d]) in (M\g,s,d\g)
 

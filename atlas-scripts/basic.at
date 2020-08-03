@@ -408,6 +408,8 @@ set product (int n, [mat] L) = mat:
   else let p=L~[0] in assert(shape(p)=(n,n)); for i:len-1 ~do p *:= L[i] od; p
   fi
 
+set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
+
 { integer division }
 set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
 
@@ -744,6 +746,11 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
+set sub_datum (RootDatum rd, [int]S) = RootDatum:
+  let in_S = is_member(S) in
+  root_datum(columns_with(in_S,rd.simple_roots)
+	    ,columns_with(in_S,rd.simple_coroots))
+
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
   root_datum(r#simple_roots,r#simple_coroots,false)
@@ -860,6 +867,21 @@ set conjugate (RootDatum rd, int i, mat M) = mat: { r*M*r where r=reflection }
   left_reflect(rd,i,right_reflect(rd,M,i))
 set conjugate (RootDatum rd, vec alpha, mat M) = mat:
   conjugate(rd,root_index(rd,alpha),M)
+
+
+{ orthogonal projection on span of subset of simple roots, a rational matrix }
+set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
+  let in_S = is_member(S)
+  then sub_simple_roots   =  columns_with(in_S,rd.simple_roots)
+  , tr_sub_simple_coroots = ^columns_with(in_S,rd.simple_coroots)
+  then (M,d) = invert(tr_sub_simple_coroots * sub_simple_roots)
+  then A=sub_simple_roots*M*tr_sub_simple_coroots
+  then dd=gcd([d,gcd(A)])
+  in (A\dd,d\dd)
+
+{ complementary orthogonal projection, to intersection of walls }
+set wall_projector ((RootDatum,[int]) arg) = (mat,int):
+   let (A,d)=root_span_projector(arg) in (d-A,d)
 
 
 set singular_simple_indices (RootDatum rd,ratvec v) = [int]:

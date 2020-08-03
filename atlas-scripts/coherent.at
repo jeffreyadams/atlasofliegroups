@@ -91,7 +91,7 @@ set coherent_std (Param p,[int] w) = ParamPol:
   if is_regular(p) then coherent_std_reg(p,w)
   else
     let gamma=infinitesimal_character(p)
-    then p_reg=T(p,gamma+2*rho(real_form(p)))
+    then p_reg=translate_by(p,two_rho(root_datum(p)))
     in T(coherent_std_reg(p_reg,w),gamma)
   fi
 
