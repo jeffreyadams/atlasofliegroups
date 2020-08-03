@@ -13,7 +13,7 @@ set nilpotent_verbose=false
   in particular is_dominant(H,rd) should hold
 }
 set_type
-[ ComplexNilpotent = (RootDatum root_datum, void ., vec H{_of_triple})  {_of_triple not necessary}
+[ ComplexNilpotent = (RootDatum root_datum, void ., vec H{_of_triple})
 , RealNilpotent    = (vec H, KGBElt x, void .)
 ]
 
@@ -188,8 +188,9 @@ set all_H_nd (RootDatum rd) = [vec]:
 {. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
 set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
+
 {tired of typing so many characters}
-set orbits (RootDatum rd) = [ComplexNilpotent]:nilpotent_orbits(rd)
+set orbits = (RootDatum->[ComplexNilpotent]): nilpotent_orbits@RootDatum
 
 set distinguished_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
 for H in rd.distinguished_H do (rd,(),H) od
@@ -1025,7 +1026,7 @@ set non_even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_non_even(O) then [O] else [] fi od
 set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 
-set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
+set dual_orbits (RootDatum rd) = [ComplexNilpotent]: rd.dual.orbits
 set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
 set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
 
