@@ -672,14 +672,17 @@ set is_pure (Split w)=bool: =*%w { test if product of both components is zero }
 { nicer display of Splits }
 set split_format (Split w) = string:
   let (a,b)=%w in
-  if =a and !=b
-  then if abs(b)>1 then int_format(b) elif b=1 then "" else "-" fi +"s"
+  if =a
+  then case b+1 in "-s","0","s" else int_format(b)+"s" esac
   else int_format(a) +
-    if abs(b)>1 then if <b then "" else "+" fi +int_format(b)+"s"
-    elif =b then "" elif b=1 then "+s" else "-s"
-    fi
+     case b+1 then int_format(b)+"s" in "-s","","+s"
+              else "+"+int_format(b)+"s"
+     esac
   fi
 
+{ same formatting, but supplying parentheses when necessary if used as factor }
+set split_factor_format (Split w) = string:
+  if =*%w { pure } then split_format(w) else "(" +  split_format(w) + ")" fi
 
 set ^ = (Split,int->Split): { exponentiation of split integers }
   let rec_fun split_power (Split x,int n) = Split: { we shall have n>0 }
