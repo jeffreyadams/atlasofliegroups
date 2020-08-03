@@ -12,7 +12,7 @@
   in particular is_dominant(H,rd) should hold
 }
 set_type
-[ ComplexNilpotent = (RootDatum root_datum, void ., vec H_of_triple)
+[ ComplexNilpotent = (RootDatum root_datum, void ., vec H{_of_triple})
 , RealNilpotent    = (vec H, KGBElt x, void .)
 ]
 
@@ -22,7 +22,7 @@ set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
    the H's are conjugate by the Weyl group. .}
 set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
    let rd=O1.root_datum in rd=O2.root_datum and
-   dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
+   dominant(O1.H,rd)=dominant(O2.H,rd)
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
@@ -40,7 +40,7 @@ set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
    first(#list,(int i)bool:list[i].root_datum=O.root_datum and
-                           list[i].H_of_triple=O.H_of_triple)
+                           list[i].H=O.H)
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if =k { level 0 is special: include torus and negative roots at this level }
@@ -82,11 +82,11 @@ set H_candidates (RootDatum rd) = [ratvec]:
 
 {. Choose the H among the candidates which correspond to distinguished
    nilpotent orbits. .}
-set distinguished_H (RootDatum rd, RootDatum rd_L) = [vec]:
+set distinguished_H (RootDatum rd_L) = [vec]:
  ##for H in H_candidates(rd_L)
    do if dim_eigenspace(rd_L,H,2) =
          dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then {[ratvec_as_vec(dominant(H,rd))]} [ratvec_as_vec(H)]
+      then [ratvec_as_vec(H)]
       else []
       fi
    od
@@ -95,7 +95,7 @@ set distinguished_H (RootDatum rd, RootDatum rd_L) = [vec]:
    (dominant for G) corresponding to the complex nilpotent orbits. .}
 set all_H (RootDatum rd) = [vec]:
  ##for S in standard_Levi_conjugacy_representatives(rd)
-   do for H in distinguished_H(rd,Levi_datum(rd,S)) do dominant(H,rd) od
+   do for H in distinguished_H(Levi_datum(rd,S)) do dominant(H,rd) od
    od
 
 {. As previous function, except the coweights H are given as sums of fundamental
@@ -103,12 +103,18 @@ set all_H (RootDatum rd) = [vec]:
    distinguished. This is the conjugate of H used for further calculation. .}
 set all_H_nd (RootDatum rd) = [vec]:
  ##for S in standard_Levi_conjugacy_representatives(rd)
-   do distinguished_H(rd,Levi_datum(rd,S))
+   do distinguished_H(Levi_datum(rd,S))
    od
 
-{. List all complex nilpotent orbits (with H dominant) for a complex group. .}
+{. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
 set complex_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do complex_nilpotent(rd,H) od.sort_by_dimension
+
+{tired of typing so many characters}
+set orbits = (RootDatum->[ComplexNilpotent]): complex_nilpotent_orbits@RootDatum
+
+set distinguished_nilpotent_orbits(RootDatum rd) = [ComplexNilpotent]:
+   for H in rd.distinguished_H do complex_nilpotent(rd,H) od
 
 {. (one) complex nilpotent orbit of minimal dimension>0 .}
 set minimal_nilpotent_orbit (RootDatum rd) = ComplexNilpotent:
@@ -120,7 +126,7 @@ set minimal_nilpotent_orbit (RootDatum rd) = ComplexNilpotent:
    giving the complex nilpotent orbits distinguished in M. .}
 set all_H_with_L (RootDatum rd) = [[int],[vec]]:
    for S in standard_Levi_conjugacy_representatives(rd)
-   do (S,distinguished_H(rd,Levi_datum(rd,S)))
+   do (S,distinguished_H(Levi_datum(rd,S)))
    od
 
 set find_conjugate_coweight (RootDatum rd,[vec] m, vec H) = int:
@@ -396,15 +402,6 @@ in for x in all_real_nilpotent_orbit_KGBs(G,H)
       then result#:=x fi
    od; result
 
-{. Make a list of all real nilpotent orbits (H,x,) of G with H the
-   conjugate determined by the corresponding M. Here x need not be
-   in the distinguished fiber. .}
-set real_nilpotent_orbits_alt (RealForm G) = [RealNilpotent]:
-   for H in all_H_nd(G)
-   do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
-      for x in kgbs do real_nilpotent(H,x) od
-   od.##.sort_by_dimension
-
 {. Auxiliary function. .}
 set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
    if =H then [parabolic_by_cwt(H,KGB(G,0))]
@@ -420,8 +417,7 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
    H dominant and x in the distinguished fiber. .}
 set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    for H in all_H_nd(G)
-   do prints(H)
-   ;  let K=dominant(H,root_datum(G))
+   do let K=dominant(H,root_datum(G))
       then kgps=real_nilpotent_orbit_KGPs(G,H)
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
