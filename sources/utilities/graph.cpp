@@ -15,6 +15,7 @@
 
 #include "bitmap.h"
 #include "tags.h"
+#include "sl_list.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -36,20 +37,21 @@ namespace graph {
 
 /*
   OrientedGraph::cells returns the partition of the vertex set into strong
-  components for the graph, and if gr!=nullptr also puts in *gr the graph of
+  components for the graph, and if |gr!=nullptr| also puts in |*gr| the graph of
   the partial order relation induced by our graph on the quotient.
 
-  Explanation: define a preorder relation on the vertices by setting x <= y
-  iff there is an oriented path from x to y (note the "inversion": edges go
-  up). This function puts in pi the partition function corresponding to the
-  equivalence classes of this preorder, which are called strong components of
-  the directed graph (two vertices are strongly connected if there are
-  oriented paths between them in both directions). We use R. E. Tarjan's
-  algorithm, explained in Knuths's book The Stanford GraphBase, pp. 512-519
-  (and also in his future volume 4 of The Art of Computer Programming). Fokko
-  explained he had learned this algorithm from Bill Casselman, but
-  unfortunately his rendition was not correct (even though it gave the right
-  results in the vast majority of the cases) so I had to adapt it, MvL.
+  Define a preorder relation on the vertices by setting $x\leq y$ iff there is
+  an oriented path from $x$ to $y$ (note the "inversion" with respect of the
+  arrowhead in the less-than symbol: edges go up). This function puts in |pi|
+  the partition classification function corresponding to the equivalence classes
+  of this preorder, which are called strong components of the directed graph
+  (two vertices are strongly connected if there are oriented paths between them
+  in both directions). We use R. E. Tarjan's algorithm, explained in Knuth's
+  book The Stanford GraphBase, pp. 512-519 (and also in his future volume 4 of
+  The Art of Computer Programming). Fokko explained he had learned this
+  algorithm from Bill Casselman, but unfortunately his rendition was not correct
+  (even though it gave the right results in the vast majority of the cases) so I
+  had to adapt it, MvL.
 
   The strong components are going to be discovered in a highest (sink) first
   topological order ("topological order" means some total order compatible
@@ -74,23 +76,23 @@ namespace graph {
   once this numbering starts from 1), and when |x| gets settled we set
   |rank[x]=infinity|. Nothing particular happens when |x| becomes mature.
 
-  Extra information is kept for all vertices in |active| (this infomation is
+  Extra information is kept for all vertices in |active| (this information is
   accessible for the current vertex during traversal, but is not (easily)
-  accessible given just some Vertex value). We record the Vertex value |v| of
-  the current vertex, the location of its |parent| in |active| to be able to
+  accessible given just some |Vertex| value). We record the |Vertex| value |v|
+  of the current vertex, the location of its |parent| in |active| to be able to
   continue the traversal when the vertex matures, and the index |next_edge| up
   to which its edges have already been considered (for immature vertices).
   Finally and most importantly, we record for |v| the minimal sequence number
-  |min| of any active vertex that is either |v| itself or can be reached in
-  one step from a mature descendant |d| of |v| (to be exact, this information
-  is incorporated into the |min| value of |v| once the branch of the
-  depth-first search tree from |v| containing |d| matures). When a vertex |v|
-  matures, its unsettled descendants are precisely the active vertices not
-  older than |v|, and |v| is the head of a strong componenent if and only if
-  its |min| value equals its own sequence number |rank[v]|; this means that
-  none of its descendants (including |v| itself) can reach an active vertex
-  older than |v|. When this happens, the unsettled descendants of |v| form the
-  final segment of |active| starting at |v|.
+  |min| of any active vertex that is either |v| itself or can be reached in one
+  step from a mature descendant |d| of |v| (to be exact, this information is
+  incorporated into the |min| value of |v| once the branch of the depth-first
+  search tree from |v| containing |d| matures). When a vertex |v| matures, its
+  unsettled descendants are precisely the active vertices not older than |v|,
+  and |v| is the head of a strong component if and only if its |min| value
+  equals its own sequence number |rank[v]|; this means that none of its
+  descendants (including |v| itself) can reach an active vertex older than |v|.
+  When this happens, the unsettled descendants of |v| form the final segment of
+  |active| starting at |v|.
 
   During the depth-first traversal, there are (apart from the settled vertices
   that are ignored) two kind of vertex encounters: the initial ones for which
@@ -102,7 +104,7 @@ namespace graph {
   the current vertex |x| remain, we must test whether it heads a strong
   component, and if not update the |min| information of its parent; after that
   the parent becomes current (again). It remains to prove that the criterion
-  |min==rank[v]| used for decicding whether |v| heads a strong component is
+  |min==rank[v]| used for deciding whether |v| heads a strong component is
   always correct; we shall do that below.
 */
 
@@ -176,28 +178,27 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 	work_addr new_pos=x.parent; // we will back-up to parent of |x| next
 
 	if (x.min == rank[x.v]) // no older vertex reachable from |x|
-	  { // split off strong component
-	    unsigned long c =
-	      pi.new_class(x.v);  // x will be added again in loop, harmless
-	    std::vector<const EdgeList*> out; // to gather outgoing edges
-	    out.reserve(active.size()-cur_pos);
-	    for (work_addr i=cur_pos; i<active.size(); ++i)
-	      {
-		Vertex y=active[i].v; // the first time |y==x.v|
-		pi.addToClass(c,y);
-		rank[y]=infinity;     // |y| is now settled
-		out.push_back(&edgeList(y));
-	      }
-	    // now remove |x| and its descendance from |active|
-	    active.erase(active.begin()+cur_pos,active.end());
+	{ // split off strong component
+	  unsigned long c =
+	    pi.new_class(x.v);  // x will be added again in loop, harmless
+	  containers::sl_list<const EdgeList*> out; // to gather outgoing edges
+	  for (work_addr i=cur_pos; i<active.size(); ++i)
+	  {
+	    Vertex y=active[i].v; // the first time |y==x.v|
+	    pi.addToClass(c,y);
+	    rank[y]=infinity;     // |y| is now settled
+	    out.push_back(&edgeList(y));
+	  }
+	  // now remove |x| and its descendance from |active|
+	  active.erase(active.begin()+cur_pos,active.end());
 
-	    if (gr!=nullptr) gr->addLinks(out,pi);
-	  }
+	  if (gr!=nullptr) gr->add_links(out,pi);
+	}
 	else // |x| matures but does not head a new strong component
-	  {  // note that |x| cannot be |x0|, so active[x.parent] exists
-	    if (x.min < active[x.parent].min) // then update parent info
-	      active[x.parent].min=x.min; // what x sees, its parent sees
-	  }
+	{ // note that |x| cannot be |x0|, so active[x.parent] exists
+	  if (x.min < active[x.parent].min) // then update parent info
+	    active[x.parent].min=x.min; // what x sees, its parent sees
+	}
 	cur_pos=new_pos;
       }  // while(cur_pos!=nil)
 
@@ -271,37 +272,35 @@ void OrientedGraph::reverseNumbering()
 }
 
 /*
-  The auxiliary method |addLinks| is called above to extend the induced graph
-  on the quotient structure (note how in the public accessor |cells| we made
-  use of our right to call private methods to call the manipulator |addLinks|
-  on a _different_ OrientedGraph!). The argument |out| gives a vector of
-  EdgeList pointers, whose destination vertices must be translated through the
-  parition function |pi| to obtain a set of existing vertices of the induced
-  graph, to which a freshly created vertex should be linked. There will almost
-  certainly be internal links in the component added, which means the new
+  The auxiliary method |add_links| is called above to extend the induced graph
+  on the quotient structure (note how in the public accessor |cells| we made use
+  of our right to call private methods to call the manipulator |add_links| on a
+  _different_ OrientedGraph!). The argument |out| gives a list of |EdgeList|
+  pointers, whose destination vertices must be translated through the partition
+  classification function |pi| to obtain a set of existing vertices of the
+  induced graph, to which a freshly created vertex should be linked. There will
+  almost certainly be internal links in the component added, which means the new
   vertex created will also appear among the images by |pi|, but it will be
   ignored (no loop in the induced graph is created).
 
-  Precondition: all values y=(*out[i])[j] (which are vertices of some _other_
-  graph) have their value |pi(y)| already defined, and |pi(y)<=c| where
-  |c=size()| is the current size of the (induced) graph |*this| (it is
-  therefore also the number of the new vertex that |addLinks will create).
+  Precondition: all |Vertex| values accessed from |out| (which are vertices of
+  some _other_ graph) have their value |pi(y)| already defined, and |pi(y)<=c|
+  where |c=size()| is the current size of the (induced) graph |*this| (it is
+  therefore also the number of the new vertex that |add_links| will create).
 */
-
-void OrientedGraph::addLinks
-  (const std::vector<const EdgeList*>& out, const partition::Partition& pi)
+void OrientedGraph::add_links
+  (const containers::sl_list<const EdgeList*>& out,
+   const partition::Partition& pi)
 {
   Vertex c=newVertex(); // extend graph by vertex; it now has |c+1| vertices
   bitmap::BitMap seen(c+1);
-  for (size_t i=0; i<out.size(); ++i)
-    for (size_t j = 0; j < (*out[i]).size(); ++j)
-      seen.insert(pi.class_of((*out[i])[j]));
+  for (auto list_p : out)
+    for (const Vertex e : *list_p)
+      seen.insert(pi.class_of(e));
   seen.remove(c); // exclude any edge from class |c| to itself
   EdgeList& e = edgeList(c); // the new edge list to define
   e.reserve(seen.size());
-
-  // by bitmap iterator's semantics we can thus add edges to set bit positions:
-  std::copy(seen.begin(),seen.end(),back_inserter(e));
+  e.assign(seen.begin(),seen.end()); // convert |BitMap| to |EdgeList|
 
 }
 

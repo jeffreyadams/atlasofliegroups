@@ -5086,7 +5086,7 @@ void param_W_cells_wrapper(expression_base::level l)
   own_row cells=std::make_shared<row_value>(0);
   cells->val.reserve(dg.cellCount());
   for (unsigned int c = 0; c < dg.cellCount(); ++c)
-  { auto& wg=dg.cell(c); // local W-graph of cell
+  { auto& wg=dg.cell(c); // local $W$-graph of cell
     own_row members =std::make_shared<row_value>(0);
     { const BlockEltList& mem=dg.cellMembers(c);
         // list of members of strong component |c|
@@ -5130,6 +5130,69 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   tup->val[0] = descents;
   tup->val[1] = out_edges;
   vertices->val.push_back(std::move(tup));
+}
+
+@ The following wrapper function makes available the Atlas implementation of
+Tarjan's strong component algorithm, the one that is used to isolate cells in a
+$W$-graph. It actually involves no atlas-specific types at all, as it encodes
+its argument graph by a list of lists of integers (of which list~$i$ enumerates
+the vertex numbers reachable by an outgoing edge from vertex~$i$), the first
+output value encodes the strong components found as lists of vertices, and the
+second value the induced graph on strong components, using the same structure as
+for the argument graph.
+
+@< Local function def...@>=
+void strong_components_wrapper(expression_base::level l)
+{
+  shared_row graph = get<row_value>();
+  const auto size = graph->val.size();
+  OrientedGraph G (size);
+  for (unsigned i=0; i<size; ++i)
+  {
+    const row_value* p = force<row_value>(graph->val[i].get());
+    auto& edges = G.edgeList(i);
+    edges.reserve(p->val.size());
+    for (size_t i=0; i<p->val.size(); ++i)
+      edges.push_back(force<int_value>(p->val[i].get())->int_val());
+      // convert to unsigned
+    for (unsigned v : edges)
+      if (v>=size)
+        throw runtime_error() << "Edge target " << v @|
+              << " out of bounds (should be <" << size << ")";
+  }
+@)
+  std::unique_ptr<OrientedGraph> induced(new OrientedGraph);
+  const auto pi = G.cells(induced.get()); // invoke Tarjan's algorithm
+@)
+  { std::vector<std::shared_ptr<row_value> > part(pi.classCount());
+    for (unsigned i=0; i<part.size(); ++i)
+    @/{@;
+      part[i]=std::make_shared<row_value>(0);
+      part[i]->val.reserve(pi.classSize(i));
+    }
+    for (unsigned long n=0; n<size; ++n)
+      part[pi.class_of(n)]->val.push_back(std::make_shared<int_value>(n));
+    own_row partition_list = std::make_shared<row_value>(pi.classCount());
+    for (unsigned i=0; i<part.size(); ++i)
+      partition_list->val[i] = part[i]; // widen shared pointer
+    push_value(std::move(partition_list));
+  }
+@)
+  {
+    own_row edge_list_list = std::make_shared<row_value>(induced->size());
+    for (unsigned i=0; i<induced->size(); ++i)
+    {
+      const auto& edges = induced->edgeList(i);
+      auto dest = std::make_shared<row_value>(edges.size());
+      for (unsigned j=0; j<edges.size(); ++j)
+        dest->val[j] = std::make_shared<int_value>(edges[j]);
+      edge_list_list->val[i] = dest; // widen shared pointer
+
+    }
+    push_value(std::move(edge_list_list));
+  }
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 
 
@@ -5289,6 +5352,8 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
+install_function(strong_components_wrapper,@|"strong_components"
+                ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"

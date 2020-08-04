@@ -72,8 +72,9 @@ class OrientedGraph
 
   // auxiliary methods
 private:
-void addLinks
-  (const std::vector<const EdgeList*>& out, const partition::Partition& pi);
+  void add_links
+    (const containers::sl_list<const EdgeList*>& out,
+     const partition::Partition& pi);
 }; // |class OrientedGraph|
 
 } // |namespace graph|

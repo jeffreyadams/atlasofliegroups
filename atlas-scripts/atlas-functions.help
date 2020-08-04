@@ -982,6 +982,22 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   (in the restriction vertices are renumbered form 0, so that it can be
   considered as a W-graph in its own right, without reference to the original).
 
+strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
+  The input describes a directed graph on the set #n={0,1,...,n-1}, where n is
+  the length of the list. The graph defines by (reflexive and) transitive
+  closure a pre-order on the set #n of vertices (an edge y->x meaning that x<y
+  in the pre-order). This pre-order defines an equivalence relation (valid
+  between x and y if both x<=y and y<=x hold) and an induced directed acyclic
+  graph (and a partial order) on the quotient set for this equivalence relation
+  (every edge of the original graph between elements of distinct equivalence
+  classes giving an edge of the induced graph between those classes). This
+  function computes these, returning the equivalence class and the induced
+  graph. The graph is encoded by a list of lists, indexed by its vertices, where
+  the list for vertex i describes the end points of all outgoing edges from i.
+  The equivalence relation is given as a list of non empty lists, each
+  describing the vertices of one equivalence classes, and the induced graph is
+  given in the same format as the input graph (but on a smaller set of numbers).
+
 extended_KL_block: (Param,mat->[Param],mat): extended KL data for deform
   This function computes twisted KLV polynomials for (part of) a block,
   similarly to partial_KL_block, but evlauated at q=-1 and including
