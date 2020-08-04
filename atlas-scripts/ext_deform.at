@@ -25,7 +25,10 @@ set ed_verbose=false
 
 set deformation_terms (Param p, mat delta) = ParamPol:
   assert(twist(p,delta)=p,"parameter is not delta-fixed");
-  let (B,P_mat,length) = extended_KL_block(p,delta) then nB=#B in
+  let (B,P_ind_mat,polys) = extended_KL_block(p,delta)
+  then nB=#B, pev=for Q in polys do eval(Q,minus_1) od
+  then P_mat= for col in P_ind_mat do for entry in col do pev[entry] od od
+  in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
   else { compute final column |acc| of |Q| matrix by solving linear system
@@ -33,7 +36,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     if ed_verbose then prints("Deformation terms for ",p) fi;
     let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
     , solution=null(nB)
-    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !opposite_parity=1-length(p)%2 { opposite to that of |length(p)| }
     , !on_p = orientation_nr(p)
     in
     for q_ind : nB
@@ -42,7 +45,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
       then prints("Contribution: ",remainder[q_ind],"*",P_mat[q_ind])
       fi;
       remainder -:= contrib
-    ; if length[q_ind]%2=opposite_parity
+    ; if length(B[q_ind])%2=opposite_parity
       then solution +:= contrib
       ; if ed_verbose then prints("added, giving ",solution) fi
       fi

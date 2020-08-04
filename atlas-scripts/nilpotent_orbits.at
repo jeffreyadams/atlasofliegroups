@@ -33,7 +33,7 @@ set_type ComplexNilpotentComponentDatum=
    the H's are conjugate by the Weyl group. .}
 set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
    let rd=O1.root_datum in rd=O2.root_datum and
-   dominant(O1.H{_of_triple},rd)=dominant(O2.H{_of_triple},rd)
+   dominant(O1.H,rd)=dominant(O2.H,rd)
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
@@ -88,7 +88,7 @@ set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
    first(#list,(int i)bool:list[i].root_datum=O.root_datum and
-                           list[i].H{_of_triple}=O.H{_of_triple})
+                           list[i].H=O.H)
 
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x=O.x and
@@ -158,7 +158,6 @@ set distinguished_H_diagrams (RootDatum rd, RootDatum rd_L) = [vec]:
       fi
    od
 
-
 {. As previous function, with H dominant. .}
 set distinguished_H_dom (RootDatum rd, RootDatum rd_L) = [vec]:
  ##for H in H_candidates(rd_L)
@@ -192,11 +191,11 @@ set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
 {tired of typing so many characters}
 set orbits = (RootDatum->[ComplexNilpotent]): nilpotent_orbits@RootDatum
 
-set distinguished_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
-for H in rd.distinguished_H do (rd,(),H) od
+set distinguished_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
+   for H in rd.distinguished_H do nilpotent(rd,H) od
 
-set distinguished_orbits(RootDatum rd)=[ComplexNilpotent]:
-rd.distinguished_nilpotent_orbits
+set distinguished_orbits = (RootDatum->[ComplexNilpotent]): { alias }
+   distinguished_nilpotent_orbits@RootDatum
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -486,8 +485,7 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
    H dominant and x in the distinguished fiber. .}
 set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    for H in all_H_nd(G)
-   do {prints(H)
-   ; } let K=dominant(H,root_datum(G))
+   do let K=dominant(H,root_datum(G))
       then kgps=real_nilpotent_orbit_KGPs(G,H)
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension

@@ -21,6 +21,9 @@
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This
   is quite subtle; maybe forbid binding to names with such type altogether.
 
+- Check whether using |braek| or |return| could leave the runtime stack in a
+  bad state in certain cases, and if so provide chatch blocks to clean up
+
 - give better type error message about "needed type" when a let expression
   pattern does not match the type of the defining expression. What appears to
   happen is that if a tuple type is provided but the number of components

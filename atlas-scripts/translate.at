@@ -14,16 +14,18 @@
     will be a quotient of block at gamma
   if gamma or gamma_new is not dominant, no guarantees (but no test either)
 }
-set translate_by (Param p, vec shift) = ParamPol:
-  let (x,lambda_rho,gamma)=%p in ParamPol: param(x,lambda_rho+shift,gamma+shift)
+set translate_by (Param p, vec shift) = Param:
+  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
 
 { translate to infinitesimal character |gamma_new|, must lie in $\gamma+X^*$ }
 set T (Param p, ratvec gamma_new) = ParamPol:
-  translate_by(p,(gamma_new-infinitesimal_character(p)).ratvec_as_vec)
+  let (shift,d) = %(gamma_new-infinitesimal_character(p)) in
+  assert(d=1,"cannot translate to "+to_string(gamma_new));
+  ParamPol: { finalize } translate_by(p,shift)
 
 { translate a |ParamPol| by translating each term }
 set translate_by (ParamPol P, vec shift) = ParamPol:
-  sum(P.real_form,for w@q in P do w*translate_by(q,shift) od)
+  P.null_module + for w@q in P do (w,translate_by(q,shift)) od
 
 { the same, specifying destination infinitesimal character for first term; this
   should only be used when all terms of |P| have same infinitesimal character
@@ -32,44 +34,52 @@ set T (ParamPol P, ratvec gamma_new) = ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
     let gamma = infinitesimal_character(first_param(P))
-    in translate_by(P,ratvec_as_vec(gamma_new-gamma))
+    in ParamPol: { finalize } translate_by(P,ratvec_as_vec(gamma_new-gamma))
   fi
 
-{ weight such that shift by its negative sends |gamma| to integral wall |k| }
-set to_wall (RootDatum id, int k, ratvec gamma) = vec:
-  let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
-  in assert(d=1,"cannot project to wall "+k); n
+{ weight such that shift by its negative sends |gamma| to integral wall |k|,
+  projecting parallel to all other walls
+}
+set to_wall (RootDatum id, int k, ratvec gamma) = ratvec:
+  fundamental_weight(id,k)*(coroot(id,k)*gamma)
 
 { translate parameter p to simple root wall #k of the integral root system }
 set Psi (Param p,int k) = ParamPol:
   let gamma=infinitesimal_character(p)
   then id = integrality_datum(root_datum(p),gamma)
-  in translate_by(p,-to_wall(id,k,gamma))
+  then (shift,d) = % -to_wall (id,k,gamma)
+  in assert(d=1,"cannot project to wall "+k);
+  ParamPol: { finalize } translate_by(p,shift)
 
 { translate p to intersection of set of simple root walls of integral system }
 set Psi (Param p, [int] S) = ParamPol:
-  let gamma=infinitesimal_character(p)
+( let gamma=infinitesimal_character(p)
   then id=integrality_datum(root_datum(p),gamma)
-  then (pi,d) = root_span_projector(id,S)
-  then shift = -ratvec_as_vec(pi*gamma/d)
-  in translate_by(p,shift)
+  then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
+  in assert(d=1,"cannot project to wall intersection "+to_string(S))
+; ParamPol: { finalize } translate_by(p,shift)
+)
 
 { translate |P| from assumed initial infinitesimal character |gamma| to the
   root wall #k of the integral root system }
 set Psi (ParamPol P,ratvec gamma,int k) = ParamPol:
-  let id = integrality_datum(root_datum(P),gamma)
-  then shift = -to_wall (id,k,gamma)
-  in sum(P.real_form,for w@q in P do w*translate_by(q,shift) od)
+( let id = integrality_datum(root_datum(P),gamma)
+  then (shift,d) = % -to_wall (id,k,gamma)
+  in assert(d=1,"cannot project to wall "+k)
+; P.null_module + for w@q in P do (w,translate_by(q,shift)) od
+)
 
 { translate |P| from assumed initial infinitesimal character |gamma| to the
-  intersection of set of simple root walls for |S| of the integral system (not
-  very meaningful if the assumption about the infinitesimal character fails).
+  intersection of set of simple root walls for |S| of the integral system,
+  parallel to other walls (calling this is not very meaningful if the assumption
+  about the infinitesimal character fails).
 }
 set Psi (ParamPol P, ratvec gamma, [int] S)= ParamPol:
-  let  id=integrality_datum(root_datum(P),gamma)
-  then (pi,d) = root_span_projector(id,S)
-  then shift = -ratvec_as_vec(pi*gamma/d)
-  in translate_by(P,shift)
+( let  id=integrality_datum(root_datum(P),gamma)
+  then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
+  in assert(d=1,"cannot project to wall intersection "+to_string(S))
+; translate_by(P,shift)
+)
 
 { assuming that all terms of |P| have same infinitesimal character, deduce
   |gamma| in |Psi@(ParamPol,ratvec,int)| from the first term of |P|, if any }
@@ -146,10 +156,8 @@ set pseudo_tau_bitset (Param p)= (int,(int->bool)):
   then id=integrality_datum(real_form(p),gamma)
   in
   ( semisimple_rank(id)
-  , (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
-    in d=1 and
-      (let p0=first_param(translate_by(p,-n)) then P=ParamPol: p0
-       in =P or x(P.first_param)!=x(p0))
+  , (int k): let (shift,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
+    in d=1 and =translate_by(p,shift)
   )
 
 { set of integers, defining a subset of the simple integral roots }
@@ -160,7 +168,5 @@ set pseudo_tau_complement (Param p)= [int]: complement(pseudo_tau_bitset(p))
 
 { push Param p to the most singular place where the irreducible is non-zero,
   i.e. to all of the root walls not in the pseudo_tau_invariant
-  (MvL:) This seems to assume that pushing to different walls commutes, which is
-  not true, so I think this function is mathemaically meaningless.
 }
 set make_maximally_singular (Param p) = ParamPol: Psi(p,pseudo_tau_complement(p))
