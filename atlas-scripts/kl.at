@@ -88,7 +88,7 @@ in for L:max+1 ~ { reverse }
       od
    od ; prints("result:"); print_with_length(result); result
 
-{ something simpler and faster }
+{ simpler and faster: trace progress while computing |composition_series| }
 set composition_series_trace (ParamPol P) = ParamPol:
   null_module(P)+
   while !=P { non null module }
