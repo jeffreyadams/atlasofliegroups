@@ -390,12 +390,12 @@ void Block_base::fill_Bruhat()
 }
 
 // computes and stores the KL polynomials
-void Block_base::fill_kl_tab(BlockElt last_y,
+void Block_base::fill_kl_tab(BlockElt limit,
 			     KL_hash_Table* pol_hash, bool verbose)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
     kl_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
-  kl_tab_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
+  kl_tab_ptr->fill(limit,verbose); // extend tables to contain |last_y|
 }
 
 // free function
@@ -498,7 +498,6 @@ Bare_block Bare_block::dual(const Block_base& block)
         if (p.second!=UndefBlock)
 	  dst.back().Cayley_image.second = size-1-p.second;
       }
-      // don't set Hermitian dual; they cannot be deduced from |block| at all
     }
   }
 

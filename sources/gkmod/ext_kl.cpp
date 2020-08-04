@@ -911,12 +911,12 @@ bool KL_table::check_polys(BlockElt y) const
   return result;
 }
 
-// this function serves uniquely to implement the built=in function of that name
+// this function serves uniquely to implement the built-in function of that name
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
-		    int_Matrix& P_mat,
-		    int_Vector& lengths)
+		    int_Matrix& P_index_mat,
+		    std::vector<Pol>& polys)
 { BlockElt entry_element;
   if (not ((delta-1)*p.gamma().numerator()).isZero())
   {
@@ -933,30 +933,15 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);
 
-  std::vector<ext_kl::Pol> pool;
+  std::vector<Pol> pool; // keep a separate pool, |polys| is for later
   ext_KL_hash_Table hash(pool,4);
   KL_table twisted_KLV(eblock,&hash);
   twisted_KLV.fill_columns(size); // fill up to and including |p|
 
-  int_Vector pol_value (pool.size()); // polynomials evaluated as $q=-1$
-  for (auto it=pool.begin(); it!=pool.end(); ++it)
-    if (it->isZero())
-      pol_value[it-pool.begin()]=0;
-    else
-    { auto d=it->degree();
-      int sum=(*it)[d];
-      while (d-->0)
-	sum=(*it)[d]-sum;
-      pol_value[it-pool.begin()]=sum;
-    }
-
-  P_mat = int_Matrix(size);
+  matrix::Matrix<Pol> P_mat(size); // will hold expanded KL matrix
   for (BlockElt x=0; x<size; ++x) // could stop at |size-1|
     for (BlockElt y=x+1; y<size; ++y)
-    { auto pair= twisted_KLV.KL_pol_index(x,y);
-      P_mat(x,y) = // |pol_value| at index of |it|, negated if |pair.second|
-	pair.second ? -pol_value[pair.first] : pol_value[pair.first];
-    }
+      P_mat(x,y) = twisted_KLV.P(x,y);
 
 /*
   singular blocks must be condensed by pushing down rows with singular
@@ -965,41 +950,44 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   Then afterwards non surviving rows and columns (should be 0) are removed.
 */
 
-  containers::sl_list<BlockElt> survivors
+  containers::sl_list<BlockElt> survivors // convert from |simple_list|
     (eblock.condense(P_mat,eblock.singular_orbits(singular)));
 
   if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
   { size=survivors.size(); // henceforth this is our size
-    int_Matrix M (size,size);
-    BlockElt i=0,j=0;
-    for (auto survivor_i : survivors)
-    { for (auto survivor_j : survivors)
-	M(i,j++)=P_mat(survivor_i,survivor_j);
-      ++i;
+    matrix::Matrix<Pol> M (size,size);
+    BlockElt i=0;
+    for (auto it=survivors.wbegin(); not survivors.at_end(it); ++it,++i)
+    { BlockElt j=0;
+      for (auto jt=it; not survivors.at_end(jt); ++jt,++j)
+	M(i,j) = std::move(P_mat(*it,*jt));
     }
     P_mat = std::move(M); // replace |P_mat| by its expunged version
   }
 
   { // flip signs for odd length distance, since that is what deformation wants
-    auto it = survivors.wcbegin(), jt=it;
-    for (BlockElt i=0; i<P_mat.numRows(); ++i,++it)
-    { auto parity = eblock.length(*it)%2;
-      for (BlockElt j=0; j<P_mat.numColumns(); ++j,++jt)
-	if (eblock.length(*jt)%2!=parity)
+    auto jt = survivors.wcbegin();
+    for (BlockElt j=0; j<P_mat.numRows(); ++j,++jt)
+    { auto parity = eblock.length(*jt)%2;
+      auto it = survivors.wcbegin();
+      for (BlockElt i=0; i<j; ++i,++it)
+	if (eblock.length(*it)%2!=parity)
 	  P_mat(i,j) *= -1;
     }
   }
 
   block_list.clear(); block_list.reserve(size);
-  lengths = int_Vector(0); lengths.reserve(size);
-
   for (auto ez : survivors)
-  {
-    auto z = eblock.z(ez);
-    block_list.push_back(rc.sr(B.representative(z),gamma));
-    lengths.push_back(B.length(z));
-  }
+    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),gamma));
 
+  polys.assign({Pol(),Pol(1)}); // set up initial values of table
+  P_index_mat = int_Matrix(size);
+  {
+    ext_KL_hash_Table pol_hash(polys,4);
+    for (BlockElt j=1; j<size; ++j)
+      for (BlockElt i=0; i<j; ++i)
+	P_index_mat(i,j) = pol_hash.match(P_mat(i,j));
+  }
 
 } // |ext_KL_matrix|
 

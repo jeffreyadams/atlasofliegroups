@@ -10,16 +10,17 @@
 
 }
 set all_sums([ratvec] ratvecs)=[ratvec]:
-if #ratvecs=0 then [ratvec:[]] else
-for S in generate_all_subsets(ratvecs)  do sum(S,#ratvecs[0]) od fi
+if #ratvecs=0 then [ratvec:[]] { wrong size, but which size is right? }
+else let n=#ratvecs[0] in for S in generate_all_subsets(ratvecs) do sum(n,S) od
+fi
 
 {given a set S of N ratvecs all of length n
- return list of sums in all subsets of size k
+ return list of sums in all subsets of size k, inefficiently generated
 }
 set sums_of_size_k([ratvec] ratvecs,int k)=
 if #ratvecs=0 then [ratvec:[]] else
-##for S in generate_all_subsets(ratvecs)  do 
-if #S=k then [sum(S,#ratvecs[0])] else [] fi  od fi
+##for S in generate_all_subsets(ratvecs)  do
+if #S=k then [sum(#ratvecs[0],S)] else [] fi  od fi
 
 {like makeS in induction.at, except only keep the roots in u}
 set makeS(KGBElt x_G,Parabolic P)=
@@ -37,7 +38,7 @@ Note: our application will be to L_0\subset L\subset G
  so L_0 plays no role
 }
 {
-Dangerous bend: this is a KGBElt for L (what is needed for a weight function to compute 
+Dangerous bend: this is a KGBElt for L (what is needed for a weight function to compute
 tensor products) but the roots are for G, so embed_KGB(x_L,G)
 }
 set nci_nilrad_roots_restricted_to_H_theta(KGBElt x_L,Parabolic P)=[ratvec]:

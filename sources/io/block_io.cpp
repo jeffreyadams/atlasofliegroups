@@ -43,7 +43,8 @@ namespace blocks {
 
 // print a derived block object, with virtual |print| after Cayley transforms
 std::ostream& Block_base::print_to(std::ostream& strm,
-				   bool as_invol_expr) const
+				   bool as_invol_expr,
+				   RankFlags singular) const
 {
   // compute maximal width of entry
   int width = ioutils::digits(size()==0 ? 0 : size()-1,10ul);
@@ -93,7 +94,7 @@ std::ostream& Block_base::print_to(std::ostream& strm,
     }
 
     // finish with derived class specific output
-    print(strm,z,as_invol_expr) << std::endl;
+    print(strm,z,as_invol_expr,singular) << std::endl;
   } // |for (z)|
 
   return strm;
@@ -101,7 +102,7 @@ std::ostream& Block_base::print_to(std::ostream& strm,
 
 
 std::ostream& Block::print
-  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
+  (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags) const
 {
   int cwidth = ioutils::digits(max_Cartan(),10ul);
   strm << std::setw(cwidth) << Cartan_class(z) << std::setw(2) << "";
@@ -116,14 +117,15 @@ std::ostream& Block::print
 }
 
 std::ostream& common_block::print
-  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
+  (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
   unsigned int rk = root_datum().semisimpleRank();
 
-  strm << " (x=" << std::setw(xwidth) << x(z)
-       << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z)
+  strm << (survives(z,singular) ? '*' : ' ')
+       << "(x=" << std::setw(xwidth) << x(z)
+       << ",lambda-gamma=" << std::setw(5*rk+1) << -gamma_lambda(z).normalize()
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));
@@ -411,8 +413,8 @@ std::ostream& printDescent(std::ostream& strm,
 std::ostream& print_KL(std::ostream& f, blocks::common_block& block,
 			 BlockElt z, RankFlags singular)
 {
-  // silently fill the whole KL table
-  const kl::KL_table& kl_tab = block.kl_tab(z,nullptr,false);
+  // silently fill the KL table up to |z| inclusive, not sharing polynomials
+  const kl::KL_table& kl_tab = block.kl_tab(nullptr,z+1);
 
   typedef Polynomial<int> Poly;
   typedef std::map<BlockElt,Poly> map_type;

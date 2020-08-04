@@ -559,19 +559,22 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
 set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
-  let G=real_form(x) then
-  Q=parabolic_LKT(mu_in)
-  in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
-  let x_Q=x_min(Q)
-  then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
-  then test=for weight in list do inds(weight) od in
-    let good_mu_list=choose_irred_inds(test) then k=#good_mu_list in
-    assert (k>0,"There is no suitable weight in the R-group orbit.");
-    assert (k=1,"There is more than one suitable highest weight.");
-   ##for p in good_mu_list[0] do
-   if any(for wt in highest_weights(K_type(p[0]))
-              do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
-   then [K_type(p[0])] else [] fi od
+   let G=real_form(x)
+   then Q=parabolic_LKT(mu_in)
+in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+   let x_Q=x_min(Q)
+   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
+   then test=for weight in list do inds(weight) od
+   then good_mu_list=choose_irred_inds(test) then k=#good_mu_list
+in assert (k>0,"There is no suitable weight in the R-group orbit.");
+   assert (k=1,"There is more than one suitable highest weight.");
+ ##for p in good_mu_list[0]
+   do if any(for wt in highest_weights(K_type(p[0]))
+             do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
+      then [K_type(p[0])]
+      else []
+      fi
+   od
 
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
@@ -729,7 +732,7 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
   , rk=rank(rd), result=[vec]: []
   in
   for cs in cone(N,for col in basis do cowt*col od) do
-    let (v,d) = %sum(for col@i in basis do col*cs[i] od,rk) in
+    let (v,d) = %sum(rk, for col@i in basis do col*cs[i] od) in
     if d=1 then result #:= v fi
   od; rk { number of rows of matrix returned } # result
 

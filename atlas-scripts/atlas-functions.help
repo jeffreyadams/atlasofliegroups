@@ -743,42 +743,43 @@ print_block: (Param->): print translation family block for the given parameter
 print_partial_block: (Param->): print partial translation family block
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+  Non-final parameters are omitted from the list, and if this includes the
+  original parameter the second component will be negative.
 partial_block: (Param->[Param]): return partial block as list of parameters
-  This is the Bruhat interval of the block below the given parameter,
-  sorted by length and including the given parameter as final element
+  This is the Bruhat interval of the block below the given parameter, sorted by
+  length. Non-final parameters are omitted. If the original parameter is final,
+  then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
-KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
-  This combines block with the Kazhdan-Lustzig table for the block appended,
-  and two more values that allow cumulation to be performed. The two values of
-  block are followed by three values in the format of raw_KL below: a matrix
-  of indices into the following list of polynomials, coded as a list of
-  coefficient vectors, then a list of indices where the length function
-  increases. Finally follow a vector with indices of the "surviving" block
-  elements, and a matrix whose rows correspond to those survivors, its columns
-  to all block elements, and whose the entries gives the coefficients by which
-  each the block element (column) contributes to the surviving element (row),
-  with a sign given by the parity of their length difference. Here "surviving"
-  refers to the result of applying a translation functor to a standard module,
-  namely a functor from regular infinitesimal character to the current
-  (possibly) singular infinitesimal character. Thus one can transform the
-  given KL matrix (computed at regular infinitesimal character) to one at the
-  actual block by selecting only the columns whose index is among the
-  survivors, and multiplying the resulting matrix on the left by the
-  contribution-coefficient matrix (the final component this function returns).
-dual_KL_block: (Param->[Param],int,mat,[vec],vec,vec): KL info for dual block
-  This closely corresponds to KL_block, but computes the KL polynomials for
-  the formally dual block. Here the type of the simple roots are dualised,
-  interchanging for instance imaginary compact and real nonparity and likewise
-  imaginary type 1 and real type 2. To make this valid, the order of the block
-  elements is reversed, and other changes made: adapting the indices of length
-  function changes and of surviving elements. The contribution-coefficient
-  matrix is omitted altogether, as it is not to be used for the dual block.
-partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
-  This function relates to KL_block as partial_block relates to block. The
-  first component of the result is the Bruhat interval as in partial_block,
-  and all other components are the same is in KL_block (except that the now
-  superfluous second component of KL_block is omitted), but with the two vec
-  components filtered so as to be indexed by the Bruhat interval indices only.
+KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
+  This combines block with the computation of the its Kazhdan-Lustzig table.
+  The two values of block are followed by two values in the format of raw_KL
+  below: a matrix of indices into the following list of polynomials, coded as a
+  list of coefficient vectors. (Contrary to raw_KL below no data about the
+  length of block elements is exported, as length@Param can compute that.)
+  In case the infinitesimal character of the given parameter is singular, the
+  data computed for its common block is reduced to the elements that are final
+  at that infinitesimal character, taking appropriate linear combinations of
+  polynomials computed for the block. Since these combinations can have negative
+  coefficients, some of the polynomials in the table may have these as well.
+dual_KL_block: (Param->[Param],int,mat,[vec]): KL_block values for dual block
+  This corresponds to KL_block, but computes the KL polynomials for the formally
+  dual block, where change of length is reversed, the type of the simple roots
+  dualized (interchanging for instance imaginary compact and real nonparity, or
+  imaginary type 1 and real type 2). The first two components of the result are
+  the same as for KL_block. The final two values give the KL polynomials for the
+  dual block in the same format as for KL_block (since the list of parameters
+  has decreasing length for the dual block, the matrix is lower triangular
+  rather than upper). In case of a singular infinitesimal character, the dual
+  KL polynomials at final block elements are selected unmodified (no linear
+  combination) since that is appropriate for the dual block; thus the transpose
+  of the matrix gives the matrix of Q-polynomials, which after conjugation with
+  the diagonal matrix of length-partity signs gives the inverse of the matrix of
+  ordinary Kazhdan-Lustzig polynomials, the ones returned by KL_block
+partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
+  This function relates to KL_block as partial_block relates to block. The first
+  component of the result is the Bruhat interval as in partial_block, and the
+  last two components have the same meansing as in KL_block; no index of the
+  given parameter is returned (if present, it is always the last listed element).
 W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the W graph in the format used for W_graph@Block below
@@ -981,23 +982,23 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   (in the restriction vertices are renumbered form 0, so that it can be
   considered as a W-graph in its own right, without reference to the original).
 
-extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
-  This function computes twisted KLV polynomials for (part of) a block, in the
-  spirit of KL_block, but presents its data in a somewhat more "cooked" form.
-  The arguments (p,delta) are a parameter and a distinguished involution as for
-  raw_ext_KL. The list of parameters returned are the delta-fixed parameters of
-  the block, which therefore give elements of the extended block, but those that
-  have a singular descent among the simple generators of the extended block are
-  removed from the list. The list is also truncated by removing any elements
-  that are beyond p from it, so if present p is the final element on the list.
-  The matrix of KL polynomials is condensed to a square matrix index by just the
-  listed elements, a mapping as described in KL_block having been applied.
-  Moreover, since the deformation algorithm can work with just the evaluations
-  of the P polynomials at q=-1, these evaluations are computed (so that the
-  result can be returned as a plain matrix, the second component) and the
-  resulting number is negated for those entries for which the length difference
-  for the block elements for its row and column is odd. The final component is a
-  vector whose entries are the lengths of the parameters in the block. The form
+extended_KL_block: (Param,mat->[Param],mat): extended KL data for deform
+  This function computes twisted KLV polynomials for (part of) a block,
+  similarly to partial_KL_block, but evlauated at q=-1 and including
+  length-parity signs (so these are evaluations of signe P-polynomials). The
+  arguments (p,delta) are a parameter and a distinguished involution as for
+  raw_ext_KL. The list of parameters returned are the final delta-fixed
+  parameters of the block, which therefore give elements of the extended block
+  without singular descents among the simple generators of the extended block.
+  The list is also truncated by removing any elements that are beyond p from it,
+  so if present, p is the last element on the list. The matrix of KL polynomials
+  is condensed to a square matrix index by just the listed elements, as in
+  partial_KL_block. Moreover, since the deformation algorithm can work with just
+  the evaluations of the P polynomials at q=-1, these evaluations are computed
+  (so that the result can be returned as a plain matrix, the second component)
+  and the resulting number is negated for those entries for which the length
+  difference for the block elements for its row and column is odd (here length
+  is as length@Param, there is no separate length in extended blocks). The form
   of the result is meant to be directly usable in the deformation algorithm.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form

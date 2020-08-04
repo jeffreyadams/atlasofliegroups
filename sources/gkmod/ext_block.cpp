@@ -2155,9 +2155,6 @@ bool check_braid
   return success;
 } // |check_braid|
 
-template containers::simple_list<BlockElt> ext_block::condense
-  (matrix::Matrix<int>& M, RankFlags sing_orbs) const;
-
 void ext_block::flip_edge(weyl::Generator s, BlockElt x, BlockElt y)
 {
   BlockEltPair p= data[s][x].links;
@@ -2356,7 +2353,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   } // end of transformation of extended parameter components
 
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  ext_param E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
+  ext_param E1(ctxt,kgb.involution(x),
+	       E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
     repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
@@ -2505,6 +2503,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   return result;
 } // |extended_finalise|
 
+template containers::simple_list<BlockElt> ext_block::condense
+(matrix::Matrix<ext_kl::Pol>& M, RankFlags sing_orbs) const;
 
 } // |namespace ext_block|
 

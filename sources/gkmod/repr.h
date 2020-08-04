@@ -229,7 +229,8 @@ class Rep_context
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // in addition to |make_dominant| apply any singular complex descents
+  // do |make_dominant|, then make involution canonical for cross action by the
+  // singular subgroup of $W$, and finally apply any singular complex descents
   void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
@@ -329,6 +330,7 @@ class Rep_table : public Rep_context
 
   const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
+  // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
 
   unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
