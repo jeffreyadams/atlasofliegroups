@@ -80,6 +80,8 @@ struct Free_Abelian : public std::map<T,C,Compare>
     return p==base::end() ? C(0) : p->second;
   }
 
+  bool is_zero () const { return this->empty(); }
+
 }; // |class Free_Abelian|
 
 /* When we also want a multiplication, |T| must have operator+=. Rather than

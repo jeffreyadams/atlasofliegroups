@@ -977,13 +977,58 @@ std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
   return str;
 }
 
+bool deformation_unit::operator!=(const deformation_unit& another) const
+{
+  if (sample.x()!=another.sample.x() or
+      sample.height()!=another.sample.height() or
+      sample.y().data()!=another.sample.y().data())
+    return true; // easy tests for difference
+
+  {
+    const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
+    const auto gamma_diff_num = (sample.gamma()-another.sample.gamma()
+				 ).numerator();
+    if (not (theta*gamma_diff_num+gamma_diff_num).isZero())
+      return true; // difference in the free part of $\lambda$ spotted
+  }
+
+  const auto& rd = rc.root_datum();
+  const auto& g0=sample.gamma();
+  const auto& g1=another.sample.gamma();
+  const auto& num0 = g0.numerator();
+  const auto& num1 = g1.numerator();
+  const int d0=g0.denominator(), d1=g1.denominator(); // convert to |int|
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    if (arithmetic::divide(num0.dot(*it),d0) !=
+	arithmetic::divide(num1.dot(*it),d1))
+      return true; // different integer part of evaluation on poscoroot found
+
+  return false; // if no differences detected, consider |another| as equivalent
+}
+
+size_t deformation_unit::hashCode(size_t modulus) const
+{
+  size_t hash = 7*sample.x() + 89*sample.y().data().to_ulong();
+  const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
+  const auto& num = sample.gamma().numerator();
+  const auto free_lambda = (theta*num+num)/sample.gamma().denominator();
+  for (int c : free_lambda) // take into account free part of $\lambda$
+    hash = 21*(hash&(modulus-1))+c;
+
+  const auto& rd = rc.root_datum();
+  const int denom = sample.gamma().denominator(); // convert to |int|
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    hash = 5*(hash&(modulus-1))+arithmetic::divide(num.dot(*it),denom);
+
+  return hash&(modulus-1);
+}
 
 //				|Rep_table| methods
 
 
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
-, pool(), hash(pool), def_formulae()
+, pool(), alcove_hash(pool)
 , mod_pool(), mod_hash(mod_pool)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
@@ -1271,16 +1316,7 @@ void Rep_table::block_erase (bl_it pos)
     }
   }
   block_list.erase(pos);
-}
-
-unsigned long Rep_table::formula_index (const StandardRepr& sr)
-{
-  const auto prev_size = hash.size();
-  const auto h = hash.match(sr);
-  if (h>=prev_size)
-    def_formulae.push_back(std::make_pair(SR_poly(),SR_poly()));
-  return h;
-}
+} // |Rep_table::block_erase|
 
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
@@ -1669,10 +1705,11 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
+  deformation_unit zn(*this,std::move(z_near));
   { // look up if deformation formula for |z_near| is already known and stored
-    unsigned long h=hash.find(z_near);
-    if (h!=hash.empty and not def_formulae[h].first.empty())
-      return def_formulae[h].first;
+    unsigned long h=alcove_hash.find(zn);
+    if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
+      return pool[h].deformation_formula();
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1688,8 +1725,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }
 
-  const auto h = formula_index(z_near);
-  return def_formulae[h].first=result;
+  const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
+  return pool[h].set_deformation_formula(std::move(result));
 } // |Rep_table::deformation|
 
 
@@ -1958,13 +1995,14 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
   }
 
+  deformation_unit zu(*this,z);
   { // if deformation for |z| was previously stored, return it with |flip_start|
-    const auto h=hash.find(z);
-    if (h!=hash.empty and not def_formulae[h].second.empty())
+    const auto h=alcove_hash.find(zu);
+    if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly().add_multiple
-	   (def_formulae[h].second,Split_integer(0,1))
-	: def_formulae[h].second;
+	         (pool[h].twisted_deformation_formula(),Split_integer(0,1))
+	: pool[h].twisted_deformation_formula();
   }
 
   { // initialise |result| to fully deformed parameter expanded to finals
@@ -2006,13 +2044,11 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     }
   }
 
-  { // store
-    const auto h=formula_index(z);
-    def_formulae[h].second=result;
-  }
+  const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
+  const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? SR_poly().add_multiple(result,Split_integer(0,1)) : result;
+    ? SR_poly().add_multiple(res,Split_integer(0,1)) : res;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

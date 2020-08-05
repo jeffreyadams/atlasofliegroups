@@ -279,6 +279,52 @@ class Rep_context
 using SR_poly = Rep_context::poly;
 
 /*
+  A class to serve as key-value pair for deformation formula lookup.
+
+  A key determines a parameter up to variations in $\nu$ that do not change the
+  integral part (always rounding down) of the evaluation on any positive coroot;
+  the domain of such changes is called an alcove. (Strictly speaking, set of
+  associated infinitesimal characters is the intersection of an alcove with an
+  affine subspace parallel to the $-1$ eigenspace of the involution; no
+  (discrete) variation is allowed in the direction of the $+1$ eigenspace.)
+
+  For compactness we store a sample |StandardRepr|, but the functions used for
+  hashing only take into account aspects that are unchanging within the alcove.
+ */
+class deformation_unit
+{
+  friend class Rep_table; // while not essential, allows easier instrurmenting
+
+  StandardRepr sample;
+  SR_poly untwisted, twisted;
+  const Rep_context& rc; // access coroots etc. necessary for alcove testing
+public:
+  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
+  : sample(sr), untwisted(), twisted(), rc(rc) {}
+  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
+  : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
+
+  bool has_deformation_formula() const { return not untwisted.is_zero(); }
+  bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
+
+  size_t def_form_size () const { return untwisted.size(); }
+  size_t twisted_def_form_size () const { return twisted.size(); }
+
+  const SR_poly& deformation_formula() const { return untwisted;}
+  const SR_poly& twisted_deformation_formula() const { return twisted; }
+
+  const SR_poly& set_deformation_formula(SR_poly&& formula)
+  { return untwisted=std::move(formula); }
+  const SR_poly& set_twisted_deformation_formula(SR_poly&& formula)
+  { return twisted=std::move(formula); }
+
+// special members required by HashTable
+  typedef std::vector<deformation_unit> Pooltype;
+  bool operator!=(const deformation_unit& another) const; // distinct alcoves?
+  size_t hashCode(size_t modulus) const; // value depending on alcove only
+}; // |class deformation_unit|
+
+/*
   In addition to providing methods inherited from |Rep_context|, the class
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
@@ -299,9 +345,8 @@ using SR_poly = Rep_context::poly;
 */
 class Rep_table : public Rep_context
 {
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash;
-  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
+  std::vector<deformation_unit> pool; // also stores actual deformation formulae
+  HashTable<deformation_unit,unsigned long> alcove_hash;
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -328,11 +373,16 @@ class Rep_table : public Rep_context
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
 
-  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
+  unsigned long alcove_number (StandardRepr z) const
+    { deformation_unit zu(*this,std::move(z)); return alcove_hash.find(zu); }
   const SR_poly& deformation_formula(unsigned long h) const
-    { assert(h<def_formulae.size()); return def_formulae[h].first; }
+    { assert(h<pool.size()); assert(pool[h].has_deformation_formula());
+      return pool[h].deformation_formula();
+    }
   const SR_poly& twisted_deformation_formula(unsigned long h) const
-    { assert(h<def_formulae.size()); return def_formulae[h].second; }
+    { assert(h<pool.size()); assert(pool[h].has_twisted_deformation_formula());
+      return pool[h].twisted_deformation_formula();
+    }
 
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
@@ -369,7 +419,6 @@ class Rep_table : public Rep_context
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
-  unsigned long formula_index (const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
