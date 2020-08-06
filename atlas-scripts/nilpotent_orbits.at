@@ -837,6 +837,11 @@ for L@k in Levi_subgroups(rd) do
 {Bala Carter Levi only}
 set Bala_Carter_Levi (ComplexNilpotent O)=RootDatum:let (L,)=O.Bala_Carter_Levi_plus in L
 
+{complex Levi of orbit: defined by H (not the Bala Carter Levi)}
+set complex_Levi(ComplexNilpotent orbit)=
+let rd=orbit.root_datum in 
+complex_Levi(rd, (int k):rd.simple_roots[k]*orbit.H=0)
+
 set order_in_A (ratvec v, RootDatum rd, vec H)=int:
    let div=divisors(denom(v)) then
    k=first(
