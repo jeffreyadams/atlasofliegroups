@@ -1036,7 +1036,16 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
 {}
-Rep_table::~Rep_table() = default;
+Rep_table::~Rep_table()
+{
+  size_t total=0;
+  for (const auto& item : pool)
+    total += item.def_form_size() + item.twisted_def_form_size();
+
+  std::cout << "Number of alcoves " << pool.size()
+	    << " totalling " << total  << " terms.\n";
+  std::cout << "Number of distinct K_types " << K_type_hash.size() << ".\n";
+}
 
 unsigned short Rep_table::length(StandardRepr sr)
 {
