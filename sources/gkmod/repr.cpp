@@ -1726,7 +1726,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
-  return pool[h].set_deformation_formula(std::move(result));
+  return pool[h].set_deformation_formula(result);
 } // |Rep_table::deformation|
 
 

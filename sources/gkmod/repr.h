@@ -278,6 +278,70 @@ class Rep_context
 
 using SR_poly = Rep_context::poly;
 
+
+class K_type // compact representation of parameters at $\nu=0$
+{
+  KGBElt d_x;
+  Weight lam_rho;
+
+public:
+  K_type(const Rep_context& rc, const StandardRepr& sr)
+    : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
+
+  KGBElt x () const { return d_x;  }
+  const Weight& lambda_rho () const { return lam_rho; }
+
+  StandardRepr sr (const Rep_context& rc) const // represent as full parameter
+  { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }
+
+  bool operator< (const K_type& another) const
+  {
+    if (d_x!=another.d_x)
+      return d_x<another.d_x;
+    assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
+    for (unsigned i=0; i<lam_rho.size(); ++i)
+      if (lam_rho[i]!=another.lam_rho[i])
+	return lam_rho[i]<another.lam_rho[i];
+    return false; // we found equality
+  }
+
+  using Pooltype = std::vector<K_type>;
+  bool operator!= (const K_type& another) const
+  { return d_x!=another.d_x or lam_rho!=another.lam_rho; }
+  size_t hashCode (size_t modulus) const
+  {
+    size_t h = 3*d_x;
+    for (auto c : lam_rho)
+      h = (17*h&(modulus-1)) + c;
+    return h&(modulus-1);
+  }
+}; // |class K_type|
+
+class K_type_poly
+{
+  std::vector<std::pair<Split_integer,K_type> > v;
+public:
+  K_type_poly () : v() {}
+  K_type_poly (const Rep_context& rc, const SR_poly& Q) : v()
+  {
+    v.reserve(Q.size());
+    for (const auto& pair : Q)
+      v.emplace_back(pair.second,K_type(rc,pair.first));
+  }
+
+  SR_poly as_SR_poly (const Rep_context& rc) const
+  {
+    SR_poly result;
+    for (const auto& pair : v)
+      result.emplace_hint(result.end(),pair.second.sr(rc),pair.first);
+    return result;
+  }
+
+  bool is_zero () const { return v.empty(); }
+  size_t size () const { return v.size(); }
+
+}; // |class K_type_poly|
+
 /*
   A class to serve as key-value pair for deformation formula lookup.
 
@@ -296,7 +360,7 @@ class deformation_unit
   friend class Rep_table; // while not essential, allows easier instrurmenting
 
   StandardRepr sample;
-  SR_poly untwisted, twisted;
+  K_type_poly untwisted, twisted;
   const Rep_context& rc; // access coroots etc. necessary for alcove testing
 public:
   deformation_unit(const Rep_context& rc, const StandardRepr& sr)
@@ -310,13 +374,13 @@ public:
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
-  const SR_poly& deformation_formula() const { return untwisted;}
-  const SR_poly& twisted_deformation_formula() const { return twisted; }
+  SR_poly deformation_formula() const { return untwisted.as_SR_poly(rc); }
+  SR_poly twisted_deformation_formula() const { return twisted.as_SR_poly(rc); }
 
-  const SR_poly& set_deformation_formula(SR_poly&& formula)
-  { return untwisted=std::move(formula); }
-  const SR_poly& set_twisted_deformation_formula(SR_poly&& formula)
-  { return twisted=std::move(formula); }
+  const SR_poly& set_deformation_formula(const SR_poly& formula)
+  { untwisted = K_type_poly(rc,formula); return formula; }
+  const SR_poly& set_twisted_deformation_formula(const SR_poly& formula)
+  { twisted = K_type_poly(rc,formula); return formula; }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
@@ -375,11 +439,11 @@ class Rep_table : public Rep_context
 
   unsigned long alcove_number (StandardRepr z) const
     { deformation_unit zu(*this,std::move(z)); return alcove_hash.find(zu); }
-  const SR_poly& deformation_formula(unsigned long h) const
+  SR_poly deformation_formula(unsigned long h) const
     { assert(h<pool.size()); assert(pool[h].has_deformation_formula());
       return pool[h].deformation_formula();
     }
-  const SR_poly& twisted_deformation_formula(unsigned long h) const
+  SR_poly twisted_deformation_formula(unsigned long h) const
     { assert(h<pool.size()); assert(pool[h].has_twisted_deformation_formula());
       return pool[h].twisted_deformation_formula();
     }
