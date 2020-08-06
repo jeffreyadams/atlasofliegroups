@@ -1,7 +1,7 @@
 <springer_tables.at
 <character_table_reps.at
 <nilpotent_orbit_partitions.at
-
+<springer_table_BC.at {just for pad@(ratvec,int), should move this to basic}
 
 {Springer correspondence from nilpotent orbits to representations of W in type B/C
  orbit: partition -> representation= pair of partitions
