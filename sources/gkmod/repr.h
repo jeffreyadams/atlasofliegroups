@@ -361,6 +361,8 @@ class Rep_table : public Rep_context
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;
 
+  size_t param_saved, terms_saved;
+
  public:
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
