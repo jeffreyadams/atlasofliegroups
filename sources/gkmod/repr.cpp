@@ -13,6 +13,15 @@
 #include <map> // used in computing |reducibility_points|
 #include <algorithm> // for |make_heap|
 #include <iostream> // for progress reports and easier debugging
+
+#include<sys/time.h>
+#include<sys/resource.h> // for memory use report
+#ifdef __APPLE__
+#define RSSUNITSPERMiB 0x100000 // 2^{20} for bytes
+#else
+#define RSSUNITSPERMiB 0x400    // 2^{10} for KiB
+#endif
+
 #include "error.h"
 
 #include "arithmetic.h"
@@ -35,6 +44,24 @@
 
 namespace atlas {
   namespace repr {
+
+void Rep_table::mem_report () const
+{
+  size_t total=0;
+  for (const auto& item : pool)
+    total += item.def_form_size() + item.twisted_def_form_size();
+
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage) != 0)
+    std::cerr << "getrusage failed" << std::endl;
+  const unsigned resident = usage.ru_maxrss/RSSUNITSPERMiB;
+  const unsigned CPU_time = usage.ru_utime.tv_sec;
+  std::cout  <<  "Number of alcoves " << pool.size()
+	     << " with " << total <<  " terms "
+	     << "  max res size = " << resident << "MB"
+	     << " CPU time = " << CPU_time << 's'
+	     << '\n';
+    }
 
 bool StandardRepr::operator== (const StandardRepr& z) const
 { return x_part==z.x_part and y_bits==z.y_bits
@@ -1317,10 +1344,12 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 
   auto prev = hash.size();
   const auto h=hash.match(srm); // finally generate sequence number for |srm|
-  if (h==prev and (h+1)%1000==0)
+  if (h==prev and (h+1)%10000==0)
   {
-    std::cout << "block_below:  " << hash.size()
-	      << "    " << parent.block_list.size() << '\n';
+    std::cout << "block_below: generated " << hash.size()
+	      << " modular parameters, in " << parent.block_list.size()
+	      << " blocks\n";
+    parent.mem_report();
     interpreter::check_interrupt();
   }
   { // merge all |results| together and remove duplicates
@@ -1965,6 +1994,7 @@ Rep_table::twisted_deformation_terms
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
+
 
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
