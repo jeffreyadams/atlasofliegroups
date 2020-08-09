@@ -425,6 +425,7 @@ class Rep_table : public Rep_context
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
+  void mem_report () const;
 }; // |Rep_table|
 
 
