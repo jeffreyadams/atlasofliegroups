@@ -13,6 +13,15 @@
 #include <map> // used in computing |reducibility_points|
 #include <algorithm> // for |make_heap|
 #include <iostream> // for progress reports and easier debugging
+
+#include<sys/time.h>
+#include<sys/resource.h> // for memory use report
+#ifdef __APPLE__
+#define RSSUNITSPERMiB 0x100000 // 2^{20} for bytes
+#else
+#define RSSUNITSPERMiB 0x400    // 2^{10} for KiB
+#endif
+
 #include "error.h"
 
 #include "arithmetic.h"
@@ -35,6 +44,24 @@
 
 namespace atlas {
   namespace repr {
+
+void Rep_table::mem_report () const
+{
+  size_t total=0;
+  for (const auto& item : pool)
+    total += item.def_form_size() + item.twisted_def_form_size();
+
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage) != 0)
+    std::cerr << "getrusage failed" << std::endl;
+  const unsigned resident = usage.ru_maxrss/RSSUNITSPERMiB;
+  const unsigned CPU_time = usage.ru_utime.tv_sec;
+  std::cout  <<  "Number of alcoves " << pool.size()
+	     << " with " << total <<  " terms "
+	     << "  max res size = " << resident << "MB"
+	     << " CPU time = " << CPU_time << 's'
+	     << '\n';
+    }
 
 bool StandardRepr::operator== (const StandardRepr& z) const
 { return x_part==z.x_part and y_bits==z.y_bits
@@ -1343,6 +1370,7 @@ blocks::common_block& Rep_table::add_block_below
 	std::cout << "add_block_below: "
 		  << reduced_hash.size() << " reduced parameters, "
 		  << block_list.size() << " blocks \n";
+	mem_report();
 	interpreter::check_interrupt();
       }
       place.emplace_back(bl_it(),-1); // create slot; both fields filled later
@@ -2078,6 +2106,7 @@ Rep_table::twisted_deformation_terms
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
+
 
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
