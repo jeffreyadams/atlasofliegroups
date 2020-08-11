@@ -5590,8 +5590,7 @@ is found.
 void virtual_module_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<virtual_module_value> @|
-      (rf,repr::SR_poly(rf->rc().repr_less())));
+    push_value(std::make_shared<virtual_module_value> @| (rf,repr::SR_poly()));
 }
 @)
 void real_form_of_virtual_module_wrapper(expression_base::level l)
@@ -5844,7 +5843,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
-        (m->rf,repr::SR_poly(m->rc().repr_less())));
+        (m->rf,repr::SR_poly()));
   }
   else
   { own_virtual_module m = get_own<virtual_module_value>();
@@ -5960,7 +5959,7 @@ void K_type_formula_wrapper(expression_base::level l)
    // don't need |first==srk|
   const RatWeight zero_nu(p->rf->val.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+    (new virtual_module_value(p->rf, repr::SR_poly()));
   for (auto it=formula.begin(); it!=formula.end(); ++it)
   {
     standardrepk::combination st=khc.standardize(it->first);
@@ -6018,7 +6017,7 @@ void branch_wrapper(expression_base::level l)
   standardrepk::combination combo=khc.standardize(srk);
   const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
+    (new virtual_module_value(p->rf, repr::SR_poly()));
   for (auto it=combo.begin(); it!=combo.end(); ++it)
     // loop over finals from |srk|
   {
@@ -6051,8 +6050,7 @@ void branch_pol_wrapper(expression_base::level l)
   const Rep_context rc = P->rc();
   KhatContext& khc = P->rf->khc();
   auto P0 = rc.scale_0(P->val);
-@/own_virtual_module acc @|
-    (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
+@/own_virtual_module acc @| (new virtual_module_value(P->rf, repr::SR_poly()));
   RatWeight zero_nu(G.rank());
   for (auto it=P0.begin(); it!=P0.end(); ++it)
     // loop over terms of |P0|
@@ -6252,7 +6250,7 @@ void full_deform_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
-  repr::SR_poly result (rc.repr_less());
+  repr::SR_poly result;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result += p->rt().deformation(*it);
   push_value(std::make_shared<virtual_module_value>(p->rf,result));
@@ -6270,7 +6268,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals =
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::SR_poly result (rc.repr_less());
+  repr::SR_poly result;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
@@ -6447,7 +6445,7 @@ void finalize_extended_wrapper(expression_base::level l)
     return;
 @)
   auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
-  repr::SR_poly result(rc.repr_less());
+  repr::SR_poly result;
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
                    ,it->second ? Split_integer(0,1) : Split_integer(1,0));

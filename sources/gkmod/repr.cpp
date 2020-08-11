@@ -854,8 +854,6 @@ StandardRepr Rep_context::twisted
   return z;
 }
 
-Rep_context::compare Rep_context::repr_less() const
-{ return compare(root_datum().dual_twoRho()); }
 
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
@@ -876,7 +874,7 @@ bool Rep_context::compare::operator()
 
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const
 {
-  poly result(repr_less());
+  poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale(z,f));
@@ -888,7 +886,7 @@ SR_poly Rep_context::scale(const poly& P, const Rational& f) const
 
 SR_poly Rep_context::scale_0(const poly& P) const
 {
-  poly result(repr_less());
+  poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale_0(z));
@@ -957,10 +955,9 @@ containers::sl_list<StandardRepr>
 
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
-  auto finals = finals_for(z);
-  poly result (repr_less());
-  for (auto it=finals.cbegin(); not finals.at_end(it); ++it)
-    result += *it;
+  poly result;
+  for (const auto sr : finals_for(z))
+    result += sr;
   return result;
 } // |Rep_context::expand_final|
 
@@ -1281,8 +1278,7 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
   const auto prev_size = hash.size();
   const auto h = hash.match(sr);
   if (h>=prev_size)
-    def_formulae.push_back
-      (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
+    def_formulae.push_back(std::make_pair(SR_poly(),SR_poly()));
   return h;
 }
 
@@ -1481,7 +1477,7 @@ SR_poly Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
-  SR_poly result(repr_less());
+  SR_poly result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1583,7 +1579,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
-  SR_poly result(repr_less());
+  SR_poly result;
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
@@ -1630,8 +1626,8 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
 #if 0
 SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 { // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)
-  SR_poly result(repr_less());
-  SR_poly remainder(hash[sr_hash],repr_less());
+  SR_poly result;
+  SR_poly remainder(hash[sr_hash]);
   auto y_parity=lengths[sr_hash]%2;
 
   while(not remainder.empty())
@@ -1731,8 +1727,7 @@ SR_poly twisted_KL_sum
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
-  const auto& rc = parent.context();
-  SR_poly result(rc.repr_less());
+  SR_poly result;
   unsigned int parity = eblock.length(y)%2;
   for (BlockElt x=0; x<=y; ++x)
   { const auto& p = twisted_KLV.KL_pol_index(x,y);
@@ -1789,7 +1784,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 
   const auto& kl_tab = eblock.kl_table(y+1,&poly_hash);
 
-  SR_poly result(repr_less());
+  SR_poly result;
   const auto& gamma=sr.gamma();
   const RatWeight gamma_rho = gamma-rho(block.root_datum());
   auto y_length=block.length(y0);
@@ -1820,7 +1815,7 @@ SR_poly Rep_table::twisted_deformation_terms
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
 
-  SR_poly result(repr_less());
+  SR_poly result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1911,8 +1906,8 @@ SR_poly Rep_table::twisted_deformation_terms
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 { // the |StandardRepr| |hash[sr_hash]| is necessarily delta-fixed and final
-  SR_poly result(repr_less());
-  SR_poly remainder(hash[sr_hash],repr_less());
+  SR_poly result;
+  SR_poly remainder(hash[sr_hash]);
   auto y_parity=lengths[sr_hash]%2;
 
   while(not remainder.empty())
@@ -1943,7 +1938,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   const auto& delta = inner_class().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  SR_poly result(repr_less());
+  SR_poly result;
   if (rp.empty())
   {
     z = ext_block::scaled_extended_dominant
@@ -1967,7 +1962,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     const auto h=hash.find(z);
     if (h!=hash.empty and not def_formulae[h].second.empty())
       return flip_start // if so we must multiply the stored value by $s$
-	? SR_poly(repr_less()).add_multiple
+	? SR_poly().add_multiple
 	   (def_formulae[h].second,Split_integer(0,1))
 	: def_formulae[h].second;
   }
@@ -1977,7 +1972,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped);
     auto L = ext_block::extended_finalise(*this,z0,delta);
-    for (const auto& p :L )
+    for (const auto& p : L)
       result.add_term(p.first, p.second==flipped // flip means |times_s|
 			       ? Split_integer(1,0) : Split_integer(0,1) );
   }
@@ -2017,8 +2012,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
-    : result;
+    ? SR_poly().add_multiple(result,Split_integer(0,1)) : result;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

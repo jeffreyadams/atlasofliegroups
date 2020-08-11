@@ -251,15 +251,10 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  class compare
-  { Coweight level_vec; // linear form to apply to |gamma| for ordering
-  public:
-    compare (const Coweight& lv) : level_vec(lv) {}
-
+  struct compare
+  {
     bool operator()(const StandardRepr& r,const StandardRepr& s) const;
   }; // |compare|
-
-  compare repr_less() const;
 
   using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
 
