@@ -81,8 +81,8 @@ set coherent_std (Param p,int s) = ParamPol:
   if is_regular(p) then coherent_std_reg(p,s)
   else
     let gamma=infinitesimal_character(p)
-    then p_reg=T(p,gamma+rho(real_form(p)))
-    in T(coherent_std_reg(p_reg,s),gamma)
+    then p_reg=T_param(p,gamma+two_rho(real_form(p)))
+    in T_std_dominant(coherent_std_reg(p_reg,s),gamma)
   fi
 
 { coherent continuation action of Weyl group element on ParamPol,
@@ -91,8 +91,8 @@ set coherent_std (Param p,[int] w) = ParamPol:
   if is_regular(p) then coherent_std_reg(p,w)
   else
     let gamma=infinitesimal_character(p)
-    then p_reg=translate_by(p,two_rho(root_datum(p)))
-    in T(coherent_std_reg(p_reg,w),gamma)
+    then p_reg=translate_param_by(p,two_rho(root_datum(p)))
+    in T_std_dominant(coherent_std_reg(p_reg,w),gamma)
   fi
 
 { coherent continuation action of simple root on ParamPol, basis of standards }
@@ -128,12 +128,14 @@ set coherent_irr (ParamPol P,[int] w) = ParamPol:
 
 { ---------------------------coherent families------------------------------ }
 
-set coherent_family_irr (ParamPol P, ratvec v)=ParamPol:
-  if is_dominant(root_datum(P),v) then T_irr(P,v)
-  else let (w,v_dominant)=from_dominant(root_datum(P),v) in
-    { coherent_irr(u,T_irr(P,v_dominant)) }
-    T_irr(coherent_irr(P,w.word),v_dominant)
+set coherent_family_irr (ParamPol P, ratvec gamma_target)=ParamPol:
+  if is_dominant(root_datum(P),gamma_target) then T_irr_dominant(P,gamma_target)
+  else let (w,gamma_target_dominant)=from_dominant(root_datum(P),gamma_target) in
+    { coherent_irr(u,T_irr(P,gamma_target_dominant)) }
+    T_irr_dominant(coherent_irr(P,w.word),gamma_target_dominant)  {this translation is within the dominant chamber}
  fi
+
+{set T_irr(ParamPol P,ratvec gamma_target)=ParamPol:coherent_family_irr(P,gamma_target)}
 
 { everything commented out from this point on
 

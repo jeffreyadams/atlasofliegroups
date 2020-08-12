@@ -289,7 +289,6 @@ set compact_ratvec(ratvec v)=string:
 let (a,b)=%v in ([int]:a).to_string+
  if b=1 then "" else "/"+b.to_string fi
 
-
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
@@ -338,6 +337,8 @@ set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 
 {add zeros to make total length =N}
 set pad ([int] v,int N) = vec: v##null(N-#v)
+
+
 
 {                               Matrices                                }
 
@@ -593,9 +594,10 @@ set * (rat r,ratvec v) = ratvec: v*r
 set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
 set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
+set pad(ratvec v,int N)=v##null(N-#v)
+
 set sum (int l,[ratvec] list) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in for v in list do result+:=v od; result
-
 
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
@@ -959,6 +961,9 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
   all(for x in numer(v)*poscoroots(rd) do !=x od)
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
+set is_integrally_dominant(RootDatum rd,ratvec v)=bool:
+is_dominant(integrality_datum(rd,v),v)
+
 
 { reversing order, simplilar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
@@ -1770,3 +1775,5 @@ set height (ParamPol P) = int:
 set monomials([ParamPol] list)=[Param]:
    let sum=null_module(real_form(list[0])) in
    for P in list do for c@p in P do sum+:=p od od;monomials(sum)
+
+

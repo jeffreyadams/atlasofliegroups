@@ -204,3 +204,57 @@ av_maximal_ideal(G,gamma,st,character_table(integrality_datum(complexification(G
 
 set av_maximal_ideal(RootDatum G,ratvec gamma)=
 av_maximal_ideal(G,gamma,G.springer_table)
+
+
+{only need Springer table for G, character table for L=integrality datum}
+set associated_variety_ann_debug(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
+{let st=p.root_datum.springer_table then}
+let st=st_G then
+()=if ti_verbose then prints("Computed Springer table") fi then
+rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
+{ct_int=rd_int.character_table then}
+special_character_int=special_character(ct_int,W_cell(p)) then
+()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
+character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
+()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
+orbit_0=st.springer_inverse(character_G) then
+{might be for different root datum}
+orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+if ti_verbose then
+prints("orbit_0: ", orbit_0.diagram);
+ prints("Special character: ", special_character_int, new_line,
+ "orbit: ", orbit.diagram, st.special_star(orbit))
+fi;
+orbit
+
+
+
+
+
+
+
+{only need Springer table for G, character table for L=integrality datum}
+{new: includes permutation}
+set associated_variety_ann_new(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
+let st=p.root_datum.springer_table then
+()=if ti_verbose then prints("Computed Springer table") fi then
+rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
+(,P)=nice_order(rd_int.derived) then
+perm=P.permutation_matrix then
+{ct_int=rd_int.character_table then}
+special_character_int=special_character_permuted(ct_int,W_cell(p),perm) then
+()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
+character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
+()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
+orbit_0=st.springer_inverse(character_G) then
+{might be for different root datum}
+orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+if ti_verbose then
+prints("orbit_0: ", orbit_0.diagram);
+ prints("Special character: ", special_character_int, new_line,
+ "orbit: ", orbit.diagram, st.special_star(orbit))
+fi;
+orbit
+
+set associated_variety_ann_new(Param p)=associated_variety_ann_new(p,p.root_datum.springer_table,
+integrality_datum(p.root_datum,p.infinitesimal_character).character_table)

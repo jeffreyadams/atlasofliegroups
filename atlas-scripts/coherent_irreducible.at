@@ -364,18 +364,6 @@ cross_square(params,graph,p,i)=hodge_param_laurent_pol(p)
 
 {moved from induction.at to avoid circularity issue}
 
-set theta_induce_irreducible_new (Param p, RealForm G)=ParamPol:
-    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
-    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
-    then ic=dominant(rd,infinitesimal_character(p)+rhou)
-    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
-    then P=coherent_irr_new(ind,word(inverse(w)))  {note new here}
-    then result=null_module(G) in
-       for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
-    result
-
-
 { in singular case,
   move to regular infinitesimal character, apply w, and move back
   Dangerous Bend (example):
@@ -501,9 +489,9 @@ S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
 set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
 let gamma=p.infinitesimal_character then
 gamma_reg=gamma+p.root_datum.two_rho then
-p_reg=first_param(T(p,gamma_reg)) then
-m_reg=millers_crossing(for p in params do first_param(T(p,gamma_reg)) od,graph,p_reg,w) in
-T_irr(m_reg,gamma)
+p_reg=first_param(T_param(p,gamma_reg)) then
+m_reg=millers_crossing(for p in params do first_param(T_param(p,gamma_reg)) od,graph,p_reg,w) in
+T_irr_dominant(m_reg,gamma)
 
 set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
 millers_crossing_sing(params,graph,p,W_elt(p.root_datum,w))

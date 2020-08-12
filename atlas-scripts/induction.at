@@ -1,3 +1,13 @@
+<misc.at { for |simple_imaginary_subsystem| }
+<parabolics.at
+<kl.at { for |character_formula| }
+<coherent.at
+<synthetic.at { for |unnormalized_torus_factor| }
+<Weylgroup.at { for |to_no_Cminus@Param| }
+<K.at
+<W_K.at { for |cross_divide| }
+<finite_dimensional.at
+
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
 
@@ -74,18 +84,6 @@ ________________________
 | one-dimensional), hence "weakly fair" is only defined if pi_L is one-dimensional.
 |
 !}
-
-<misc.at { for |simple_imaginary_subsystem| }
-<parabolics.at
-<kl.at { for |character_formula| }
-<coherent.at
-<synthetic.at { for |unnormalized_torus_factor| }
-<Weylgroup.at { for |to_no_Cminus@Param| }
-<K.at
-<W_K.at { for |cross_divide| }
-<finite_dimensional.at
-
-
 
 set ind_verbose=false
 
@@ -226,10 +224,10 @@ set theta_stable_data (Param p) = (Parabolic,Param):
 {need real parabolic induction to define standardize (uses cuspidal_data)}
 
 {. Auxiliary function .}
-set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
+{set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
   let (,p_M)=cuspidal_data(p) in
   real_induce_standard(coherent_std(w,p_M),real_form(p))
-
+}
 {
 set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
   let (P,p_M)=cuspidal_data(p) in
@@ -242,7 +240,7 @@ set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
 
 {. convert a possibly non-standard parameter into a linear combination of
   standard ones .}
-set standardize (Param p) = ParamPol:
+{set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
   else p:=p.to_no_Cplus
   ; let i_root_system=root_datum(p.x.simple_imaginary_subsystem)
@@ -251,6 +249,15 @@ set standardize (Param p) = ParamPol:
     then p_dom=parameter(x(p), lambda_dom, nu(p))
     in coherent_std_imaginary(w,p_dom)
   fi
+}
+set standardize (Param p) = ParamPol:
+  if is_standard(p) then ParamPol:p
+  else p:=p.to_no_Cplus;
+  let (w,lambda_dom)=from_dominant(p.root_datum,p.lambda)  then
+  p_dom=parameter(x(p), lambda_dom, nu(p))
+    in coherent_std(w,p_dom)
+  fi
+{replace p.lambda with (1+theta)*p.lambda}
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
 set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
@@ -264,38 +271,37 @@ set find_N (Param p_L,RealForm G) = int:
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
   in let v=infinitesimal_character(p_L)+rho_u
-  in let pcg=poscoroots(G)
-   then two_rho=2*rho(G) then
+  in let pcg=poscoroots(G) then
    list=##for alpha in pcg do {if alpha*two_rhou > 0 then}
-   [-(alpha*v)/(alpha*two_rho)] {else [] fi} od
+   [-(alpha*v)/(alpha*two_rho(G))] {else [] fi} od
    in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
    else floor(max(list)+1) fi
 
 set theta_induce_irreducible_redefine (Param p, RealForm G)=ParamPol:
    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-   then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
    then ic=dominant(rd,infinitesimal_character(p)+rhou)
    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
    then P=coherent_irr(ind,word(inverse(w)))
    then result=null_module(G) in
-      for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
+      for coeff@q in P do result+:=coeff*T_irr_dominant(q,ic) od;
    result
 
 {set theta_induce_irreducible_new ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
-    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
-    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
-    then ic=dominant(rd,infinitesimal_character(p)+rhou)
-    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
-    then P=virtual(ind) in for s in word(inverse(w)) do P:=coherent_irr(block,graph,P,s) od;
-    let result=null_module(G) in
+   let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
+   then q=translate_by (p,ratvec_as_vec(N*two_rho(G))).monomials[0]
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
+   then ic=dominant(rd,infinitesimal_character(p)+rhou)
+   then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
+   then P=virtual(ind) in for s in word(inverse(w)) do P:=coherent_irr(block,graph,P,s) od;
+   let result=null_module(G) in
        for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
     result
 
 set shift_function (Param p, RealForm G)=Param:
     let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
+    then q=translate_by (p,ratvec_as_vec(N*two_rho(G))).monomials[0]
     in parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))}
 
 {. Theta-stable (cohomological) parabolic induction of a standard module for
@@ -852,7 +858,7 @@ set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
  2*rho(u\cap k) is the sum of:
  all compact imaginary roots of u and
  for each {\alpha,\theta\alpha} in u, contribution of alpha
- => two_rho_u_cap_k(P,x)=2*rho_u_ic(P,x) + two_rho_S(P)
+ => two_rho_u_cap_k(P,x)=two_rho_u_ic(P,x) + two_rho_S(P)
 }
 {.Sum of compact roots of H in u for theta-stable parabolic P
   with respect to x on fundamental Cartan(L)=fundamental Cartan(G)
@@ -871,7 +877,7 @@ set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
 }
 {. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic).}
 set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x)
+  ratvec_as_vec(two_rho_u(P))-two_rho_u_cap_k(P,x)
 
 { P is a theta-stable parabolic
   p_L is a STFL for L
@@ -901,7 +907,7 @@ set move_P_down_by_N (ParamPol P, int N, [int] Levi)=[(Split,Param)]:
 
 set find_N ([int] Levi, Param p)=int:
    let x=x(p),lam=lambda(p), nu=nu(p) then theta=involution(x),
-   rd=root_datum(x), P=Parabolic:(Levi,x) then two_rhou=2*rho_u(P) then
+   rd=root_datum(x), P=Parabolic:(Levi,x) then two_rhou=two_rho_u(P) then
    gamma=((1+theta)*lam+(1-theta)*nu)/2 then
    list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
    [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
@@ -926,3 +932,4 @@ set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
 set L_infinitesimal_character ([int] Levi, Param p)=ratvec:
    let theta=involution(p.x) then P=Parabolic:(Levi,p.x) in
    ((1+theta)*lambda(p)+(1-theta)*nu(p))/2-rho_u(P)
+
