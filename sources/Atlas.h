@@ -259,7 +259,6 @@ namespace atlas {
     class RootSystem;
     class RootDatum;
     typedef int_Vector Root;
-    typedef WeightList::const_iterator WRootIterator;
   }
   using rootdata::RootSystem;
   using rootdata::RootDatum;
