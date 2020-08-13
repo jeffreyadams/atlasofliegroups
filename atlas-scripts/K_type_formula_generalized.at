@@ -22,6 +22,17 @@ G.null_module+for z@mu in pol do z*K_type_formula(mu) od
 set K_type_formula_ladder(K_Type mu,int cutoff)=
 let f=ladder(mu.real_form,mu) in K_type_formula(mu.real_form,f,cutoff)
 
+set truncate(ParamPol P,int n)=P.real_form.null_module+
+for w@p in P do if K_norm(p)<=n then w*p else 0*p fi od
+
+set cut(ParamPol P, int n)=ParamPol:
+P.null_module+for w@p in P do if K_norm(p)<=n then w*p else 0*p fi od
+
+{compute formula for K-types out to K_norm=cutoff,
+ then throw away terms with K_norm>truncate}
+set K_type_formula_ladder(K_Type mu, int cutoff, int truncate)=
+cut(K_type_formula_ladder(mu,cutoff),truncate)
+
 {
 set K_type_formula(RealForm G,(K_Type-> int) f,int cutoff)=
 let
