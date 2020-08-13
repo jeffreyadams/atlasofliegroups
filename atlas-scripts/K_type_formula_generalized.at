@@ -1,0 +1,30 @@
+<all.at
+
+set ladder(RealForm G,K_Type mu)=(int->K_Type_Pol):(int cutoff):
+let ((),x,v)=highest_weight(mu) then
+hw_mu=highest_weight(mu) then
+beta=G.highest_root then
+i=0 then
+tau=mu then
+norm=K_norm(tau) then
+rv=G.null_module in
+while K_norm(tau)<cutoff do
+{ let ()=prints("K_norm[tau]:", K_norm(tau), "cutoff: ", cutoff);}
+ tau:=K_type(KHighestWeight:((),x,v+i*beta));
+ rv+:=parameter(tau);
+ i+:=1
+od;rv
+
+set K_type_formula(RealForm G,(int->K_Type_Pol) f, int cutoff)=
+let pol=f(cutoff) in
+G.null_module+for z@mu in pol do z*K_type_formula(mu) od
+
+set K_type_formula_ladder(K_Type mu,int cutoff)=
+let f=ladder(mu.real_form,mu) in K_type_formula(mu.real_form,f,cutoff)
+
+{
+set K_type_formula(RealForm G,(K_Type-> int) f,int cutoff)=
+let
+K_types=K_parameters_height_upto(G,cutoff) then
+K_types=G.null_module + for mu in K_types do f(mu)*parameter(mu) od in
+K_types
