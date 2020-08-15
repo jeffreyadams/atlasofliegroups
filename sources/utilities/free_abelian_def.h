@@ -185,6 +185,8 @@ template<typename T, typename C, typename Compare>
       it->second += m*p_it->second;
       ++p_it; // skip term whose coefficient has been used
     } // |for (it)|
+    for(; not p.recent.at_end(p_it); ++p_it) // copy part after |p_it|
+      recent.emplace_back(p_it->first,m*p_it->second);
   }
 
   std::vector<term_type> org(std::move(main));
@@ -212,20 +214,20 @@ template<typename T, typename C, typename Compare>
 	  else
 	    min0 = it1==p.main.end() or cmp(it0->first,it1->first);
 	}
-	else if (cmp(it1->first,it0->first))
+	else if (it0==org.end() or cmp(it1->first,it0->first))
 	{ // |it1| has the strictly smallest term, use |m| times the term
 	  const auto c = m*it1->second;
 	  if (c!=C(0))// allow for zero divisors
 	    main.emplace_back(it1->first,c);
 	  ++it1; // advance independently of whether term was zero
-	  if (it1==org.end())
+	  if (it1==p.main.end())
 	  {
-	    if (it0==p.main.end())
+	    if (it0==org.end())
 	      goto next_it;
 	    min0 = true;
 	  }
 	  else
-	    min0 = it0!=p.main.end() and cmp(it0->first,it1->first);
+	    min0 = it0!=org.end() and cmp(it0->first,it1->first);
 	}
 	else
 	{ // |it0| and |it1| have equal terms, use their combination
@@ -233,7 +235,7 @@ template<typename T, typename C, typename Compare>
 	  if (it0->second!=C(0)) // allow for zero divisors
 	    main.push_back(std::move(*it0));
 	  ++it0,++it1; // advance both independently of whether term was zero
-	  if (it0==p.main.end() or it1==org.end())
+	  if (it0==org.end() and it1==p.main.end())
 	    goto next_it;
 	  min0 = it0!=org.end() and
 	    (it1==p.main.end() or cmp(it0->first,it1->first));
@@ -241,7 +243,7 @@ template<typename T, typename C, typename Compare>
       // |while| the smaller iterator remains before |it|
 
       // before including |pair|, absorb possible like term at |it0| and/or |it1|
-      if (it0!=p.main.end() and not cmp(pair.first,it0->first))
+      if (it0!=org.end() and not cmp(pair.first,it0->first))
 	pair.second += (*it0++).second;
       if (it1!=p.main.end() and not cmp(pair.first,it1->first))
 	pair.second += m*(*it1++).second;
@@ -279,18 +281,19 @@ template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::add_multiple(Free_Abelian_light&& p, C m)
 {
   { // merge |p.recent| into |recent|, not worrying about zero coefficients
+    for (auto& pair : p.recent)
+      pair.second = m*pair.second;
     auto p_it = p.recent.begin();
     for (auto it = recent.begin(); not recent.at_end(it); ++it)
-    { for (;not p.recent.at_end(p_it) and cmp(p_it->first,it->first); ++p_it)
-      {
-	p_it->second = m*p_it->second;
+    { while (not p.recent.at_end(p_it) and cmp(p_it->first,it->first))
 	it = recent.splice(it,p.recent,p_it);
-      }
       if (p.recent.at_end(p_it) or cmp(it->first,p_it->first))
 	continue; // what remains is the case |it->first==p_it->first|
-      it->second += m*p_it->second; // this may easily create a zero coefficient
+      it->second += p_it->second; // this may easily create a zero coefficient
       ++p_it; // skip term whose coefficient has been used
     } // |for (it)|
+    recent.splice(recent.end(),
+		  p.recent,p_it,p.recent.end()); // move part after |p_it|
   }
 
   std::vector<term_type> org(std::move(main));
@@ -317,20 +320,20 @@ template<typename T, typename C, typename Compare>
 	  else
 	    min0 = it1==p.main.end() or cmp(it0->first,it1->first);
 	}
-	else if (cmp(it1->first,it0->first))
+	else if (it0==org.end() or cmp(it1->first,it0->first))
 	{ // |it1| has the strictly smallest term, use |m| times the term
 	  it1->second = m*it1->second;
 	  if (it1->second!=C(0)) // allow for zero divisors
 	    main.push_back(std::move(*it1));
 	  ++it1; // advance independently of whether term was zero
-	  if (it1==org.end())
+	  if (it1==p.main.end())
 	  {
-	    if (it0==p.main.end())
+	    if (it0==org.end())
 	      goto next_it;
 	    min0 = true;
 	  }
 	  else
-	    min0 = it0!=p.main.end() and cmp(it0->first,it1->first);
+	    min0 = it0!=org.end() and cmp(it0->first,it1->first);
 	}
 	else
 	{ // |it0| and |it1| have equal terms, use their combination
@@ -338,7 +341,7 @@ template<typename T, typename C, typename Compare>
 	  if (it0->second!=C(0)) // allow for zero divisors
 	    main.push_back(std::move(*it0));
 	  ++it0,++it1; // advance both independently of whether term was zero
-	  if (it0==p.main.end() or it1==org.end())
+	  if (it0==org.end() and it1==p.main.end())
 	    goto next_it;
 	  min0 = it0!=org.end() and
 	    (it1==p.main.end() or cmp(it0->first,it1->first));
@@ -346,7 +349,7 @@ template<typename T, typename C, typename Compare>
       // |while| the smaller iterator remains before |it|
 
       // before including |pair|, absorb possible like term at |it0| and/or |it1|
-      if (it0!=p.main.end() and not cmp(pair.first,it0->first))
+      if (it0!=org.end() and not cmp(pair.first,it0->first))
 	pair.second += (*it0++).second;
       if (it1!=p.main.end() and not cmp(pair.first,it1->first))
 	pair.second += m*(*it1++).second;
