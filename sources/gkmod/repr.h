@@ -317,6 +317,9 @@ public:
   }
 }; // |class K_type|
 
+using K_term_type = std::pair<K_type,Split_integer>;
+using K_type_poly_vec = Free_Abelian_light<K_type,Split_integer>;
+
 class K_type_poly
 {
   std::vector<std::pair<Split_integer,K_type> > v;
@@ -329,12 +332,28 @@ public:
       v.emplace_back(pair.second,K_type(rc,pair.first));
   }
 
+  K_type_poly (K_type_poly_vec& Q) : v()
+  {
+    auto tmp = Q.snapshot();
+    v.reserve(tmp.size());
+    for (const auto& pair : tmp)
+      v.emplace_back(pair.second,pair.first);
+  }
+
   SR_poly as_SR_poly (const Rep_context& rc) const
   {
     SR_poly result;
     for (const auto& pair : v)
       result.emplace_hint(result.end(),pair.second.sr(rc),pair.first);
     return result;
+  }
+
+  K_type_poly_vec as_K_vec () const
+  {
+    std::vector<std::pair<K_type,Split_integer> > tmp; tmp.reserve(v.size());
+    for (const auto& pair : v)
+      tmp.emplace_back(pair.second,pair.first);
+    return { std::move(tmp) };
   }
 
   bool is_zero () const { return v.empty(); }
@@ -357,7 +376,7 @@ public:
  */
 class deformation_unit
 {
-  friend class Rep_table; // while not essential, allows easier instrurmenting
+  friend class Rep_table; // while not essential, allows easier instrumenting
 
   StandardRepr sample;
   K_type_poly untwisted, twisted;
@@ -377,10 +396,19 @@ public:
   SR_poly deformation_formula() const { return untwisted.as_SR_poly(rc); }
   SR_poly twisted_deformation_formula() const { return twisted.as_SR_poly(rc); }
 
+  K_type_poly_vec def_formula() const       { return untwisted.as_K_vec(); }
+  K_type_poly_vec twisted_def_formula() const { return twisted.as_K_vec(); }
+
   const SR_poly& set_deformation_formula(const SR_poly& formula)
   { untwisted = K_type_poly(rc,formula); return formula; }
   const SR_poly& set_twisted_deformation_formula(const SR_poly& formula)
   { twisted = K_type_poly(rc,formula); return formula; }
+
+  // the following have non |const| arguments since they need to flatten
+  K_type_poly_vec& set_deformation_formula (K_type_poly_vec& formula)
+  { untwisted = K_type_poly(formula); return formula; }
+  K_type_poly_vec& set_twisted_deformation_formula (K_type_poly_vec& formula)
+  { twisted = K_type_poly(formula); return formula; }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
@@ -459,6 +487,8 @@ class Rep_table : public Rep_context
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
+  // a signed multiset of final parameters needed to be taken into account
+  // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   SR_poly deformation_terms
     (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
 #if 0
@@ -466,7 +496,8 @@ class Rep_table : public Rep_context
   // once a parameter has been entered, we can compute this without a block
 #endif
 
-  SR_poly deformation(const StandardRepr& z);
+  // full deformation to $\nu=0$ of |z|
+  K_type_poly_vec deformation(const StandardRepr& z);
 
   SR_poly twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
@@ -479,7 +510,7 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  SR_poly twisted_deformation(StandardRepr z); // by value
+  K_type_poly_vec twisted_deformation(StandardRepr z); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner

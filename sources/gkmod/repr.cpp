@@ -956,7 +956,7 @@ containers::sl_list<StandardRepr>
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
   poly result;
-  for (const auto sr : finals_for(z))
+  for (const auto& sr : finals_for(z))
     result += sr;
   return result;
 } // |Rep_context::expand_final|
@@ -1689,13 +1689,18 @@ SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 } // |deformation_terms|, version without block
 #endif
 
-SR_poly Rep_table::deformation(const StandardRepr& z)
+K_type_poly_vec Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
   StandardRepr z0 = z; scale_0(z0);
-  SR_poly result = expand_final(z0); // value without deformation terms
+  auto K_types = finals_for(z0);
+  std::vector<K_term_type> finals_vec; finals_vec.reserve(K_types.size());
+  for (const auto& sr : K_types)
+    finals_vec.emplace_back(K_type(*this,sr),Split_integer(1,0));
+
+  K_type_poly_vec result(std::move(finals_vec)); // value sans deformation terms
 
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
@@ -1709,7 +1714,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
-      return pool[h].deformation_formula();
+      return pool[h].def_formula();
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1970,49 +1975,52 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-SR_poly Rep_table::twisted_deformation (StandardRepr z)
+K_type_poly_vec Rep_table::twisted_deformation (StandardRepr z)
 {
   const auto& delta = inner_class().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  SR_poly result;
+  K_type_poly_vec result;
   if (rp.empty())
   {
     z = ext_block::scaled_extended_dominant
-	  (*this,z,delta,Rational(0,1),flip_start);
+      (*this,z,delta,Rational(0,1),flip_start); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z,delta);
-    for (auto it=L.begin(); it!=L.end(); ++it)
-      result.add_term(it->first, it->second==flip_start
-				 ? Split_integer(1,0) : Split_integer(0,1) );
+    for (const std::pair<StandardRepr,bool>& p : L)
+      result.add_term(K_type(*this,p.first),
+		      p.second==flip_start
+		      ? Split_integer(1,0) : Split_integer(0,1) );
     return result;
   }
   else if (rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
-    z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
-    Rational f=rp.back();
+    const Rational f=rp.back();
+    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip_start);
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
+    // here we continue, with |flip_start| recording whether we already flipped
   }
 
   deformation_unit zu(*this,z);
-  { // if deformation for |z| was previously stored, return it with |flip_start|
+  { // if formula for |z| was previously stored, return it with |s^flip_start|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return flip_start // if so we must multiply the stored value by $s$
-	? SR_poly().add_multiple
-	         (pool[h].twisted_deformation_formula(),Split_integer(0,1))
-	: pool[h].twisted_deformation_formula();
+	? K_type_poly_vec().add_multiple
+	(pool[h].twisted_def_formula(),Split_integer(0,1))
+	: pool[h].twisted_def_formula();
   }
 
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
-		(*this,z,delta,Rational(0,1),flipped);
+		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
-    for (const auto& p : L)
-      result.add_term(p.first, p.second==flipped // flip means |times_s|
-			       ? Split_integer(1,0) : Split_integer(0,1) );
+    for (const std::pair<StandardRepr,bool>& p : L)
+      result.add_term(K_type(*this,p.first),
+		      p.second==flipped // flip means |times_s|
+		      ? Split_integer(1,0) : Split_integer(0,1) );
   }
 
   // compute the deformation terms at all reducibility points
@@ -2045,10 +2053,10 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
-  const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
+  const auto& res = pool[h].set_twisted_deformation_formula(result);
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? SR_poly().add_multiple(res,Split_integer(0,1)) : res;
+    ? K_type_poly_vec().add_multiple(res,Split_integer(0,1)) : res;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

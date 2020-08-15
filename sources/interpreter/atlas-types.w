@@ -6240,6 +6240,9 @@ void twisted_deform_wrapper(expression_base::level l)
 results for efficiency in the |Rep_table| structure |p->rt()| that is stored
 within the |real_form_value|.
 
+@s SR_poly vector
+@s K_type_poly_vec vector
+
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
@@ -6250,9 +6253,14 @@ void full_deform_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
-  repr::SR_poly result;
+  repr::K_type_poly_vec res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    result += p->rt().deformation(*it);
+    res += p->rt().deformation(*it);
+@)
+  const auto& v = res.snapshot();
+  repr::SR_poly result;
+  for (@[auto&& p : v@]@;@;)
+    result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
   push_value(std::make_shared<virtual_module_value>(p->rf,result));
 }
 @)
@@ -6268,10 +6276,15 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals =
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::SR_poly result;
+  repr::K_type_poly_vec res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    result.add_multiple(p->rt().twisted_deformation(it->first) @|
+    res.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
+@)
+  const auto& v = res.snapshot();
+  repr::SR_poly result;
+  for (@[auto&& p : v@]@;@;)
+    result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
   push_value(std::make_shared<virtual_module_value>(p->rf,result));
 }
 
