@@ -320,27 +320,16 @@ public:
 using K_term_type = std::pair<K_type,Split_integer>;
 using K_type_poly_vec = Free_Abelian_light<K_type,Split_integer>;
 
-class K_type_poly
+class K_type_poly : public Free_Abelian_light<K_type,Split_integer>
 {
-  K_type_poly_vec v;
+  using base = Free_Abelian_light<K_type,Split_integer>;
 public:
-  K_type_poly () : v() {}
-  K_type_poly (const Rep_context& rc, const SR_poly& Q) : v()
-  {
-    std::vector<K_term_type> tmp;
-    tmp.reserve(Q.size());
-    for (const auto& pair : Q)
-      tmp.emplace_back(K_type(rc,pair.first),pair.second);
-    v = K_type_poly_vec(std::move(tmp));
-  }
+  K_type_poly () : base() {}
 
-  K_type_poly (const K_type_poly_vec& Q) : v(Q) {}
-  K_type_poly (K_type_poly_vec&& Q) : v(std::move(Q)) {}
+  K_type_poly (const K_type_poly_vec& Q) : base(Q) {}
+  K_type_poly (K_type_poly_vec&& Q) : base(std::move(Q)) {}
 
-  const K_type_poly_vec& as_K_vec () const { return v; }
-
-  bool is_zero () const { return v.is_zero(); }
-  size_t size () const { return v.size(); }
+  const K_type_poly_vec& as_K_vec () const { return *this; }
 
 }; // |class K_type_poly|
 
