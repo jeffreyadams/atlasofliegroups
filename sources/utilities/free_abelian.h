@@ -180,6 +180,7 @@ public:
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
 
   bool is_zero () const { return main.empty() and recent.empty(); }
+  size_t size() const { return main.size() + recent.size(); }
 
   // to read out, call |snapshot| and read the produced vector
   const std::vector<term_type>& snapshot () { flatten(); return main; }

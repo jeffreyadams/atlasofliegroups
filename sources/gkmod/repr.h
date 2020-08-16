@@ -322,41 +322,24 @@ using K_type_poly_vec = Free_Abelian_light<K_type,Split_integer>;
 
 class K_type_poly
 {
-  std::vector<std::pair<Split_integer,K_type> > v;
+  K_type_poly_vec v;
 public:
   K_type_poly () : v() {}
   K_type_poly (const Rep_context& rc, const SR_poly& Q) : v()
   {
-    v.reserve(Q.size());
+    std::vector<K_term_type> tmp;
+    tmp.reserve(Q.size());
     for (const auto& pair : Q)
-      v.emplace_back(pair.second,K_type(rc,pair.first));
+      tmp.emplace_back(K_type(rc,pair.first),pair.second);
+    v = K_type_poly_vec(std::move(tmp));
   }
 
-  K_type_poly (K_type_poly_vec& Q) : v()
-  {
-    auto tmp = Q.snapshot();
-    v.reserve(tmp.size());
-    for (const auto& pair : tmp)
-      v.emplace_back(pair.second,pair.first);
-  }
+  K_type_poly (const K_type_poly_vec& Q) : v(Q) {}
+  K_type_poly (K_type_poly_vec&& Q) : v(std::move(Q)) {}
 
-  SR_poly as_SR_poly (const Rep_context& rc) const
-  {
-    SR_poly result;
-    for (const auto& pair : v)
-      result.emplace_hint(result.end(),pair.second.sr(rc),pair.first);
-    return result;
-  }
+  const K_type_poly_vec& as_K_vec () const { return v; }
 
-  K_type_poly_vec as_K_vec () const
-  {
-    std::vector<std::pair<K_type,Split_integer> > tmp; tmp.reserve(v.size());
-    for (const auto& pair : v)
-      tmp.emplace_back(pair.second,pair.first);
-    return { std::move(tmp) };
-  }
-
-  bool is_zero () const { return v.empty(); }
+  bool is_zero () const { return v.is_zero(); }
   size_t size () const { return v.size(); }
 
 }; // |class K_type_poly|
@@ -393,16 +376,8 @@ public:
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
-  SR_poly deformation_formula() const { return untwisted.as_SR_poly(rc); }
-  SR_poly twisted_deformation_formula() const { return twisted.as_SR_poly(rc); }
-
   K_type_poly_vec def_formula() const       { return untwisted.as_K_vec(); }
   K_type_poly_vec twisted_def_formula() const { return twisted.as_K_vec(); }
-
-  const SR_poly& set_deformation_formula(const SR_poly& formula)
-  { untwisted = K_type_poly(rc,formula); return formula; }
-  const SR_poly& set_twisted_deformation_formula(const SR_poly& formula)
-  { twisted = K_type_poly(rc,formula); return formula; }
 
   // the following have non |const| arguments since they need to flatten
   K_type_poly_vec& set_deformation_formula (K_type_poly_vec& formula)
@@ -464,17 +439,6 @@ class Rep_table : public Rep_context
 
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
-
-  unsigned long alcove_number (StandardRepr z) const
-    { deformation_unit zu(*this,std::move(z)); return alcove_hash.find(zu); }
-  SR_poly deformation_formula(unsigned long h) const
-    { assert(h<pool.size()); assert(pool[h].has_deformation_formula());
-      return pool[h].deformation_formula();
-    }
-  SR_poly twisted_deformation_formula(unsigned long h) const
-    { assert(h<pool.size()); assert(pool[h].has_twisted_deformation_formula());
-      return pool[h].twisted_deformation_formula();
-    }
 
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
