@@ -770,6 +770,11 @@ set adjoint (LieType type) = RootDatum:
 set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
 set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
 
+{root datum whose coroots are those integral on p.infinitesimal_character}
+set integrality_datum (Param p)= RootDatum:
+  {second argument is p.infinitesimal_character, but this isn't defined until later in this file}
+  integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
+
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let in_S = is_member(S) in
   root_datum(columns_with(in_S,rd.simple_roots)
@@ -963,7 +968,6 @@ set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 set is_integrally_dominant(RootDatum rd,ratvec v)=bool:
 is_dominant(integrality_datum(rd,v),v)
-
 
 { reversing order, simplilar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
@@ -1412,6 +1416,24 @@ set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 set codim (Param p) = int: codim(p.x)
 
+{<p.infinitesimal_character,alpha^vee> >=0 for all roots;
+ if false also return index of first simple root which fails
+ see is_normal@Param in is_normal.at
+}
+set is_dominant(Param p)=(bool,int):
+let gamma=infinitesimal_character(p) then
+index=first(#p.root_datum.simple_coroots,(int i)bool:p.root_datum.simple_coroots[i]*gamma<0) in (index = -1,index)
+
+{
+<p.infinitesimal_character,alpha^vee> >=0 for all integral rootsroots;
+if false also return index of first integral simple roots which fails
+}
+set is_integrally_dominant(Param p)=(bool,int):
+let gamma=infinitesimal_character(p) then
+rd_int=integrality_datum(p) then
+index=first(#rd_int.simple_coroots,(int i)bool:rd_int.simple_coroots[i]*gamma<0) in (index = -1,index)
+
+
 {this syntax is common:}
 set is_noncompact_imaginary(int i,Param p)=bool:
 is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
@@ -1419,9 +1441,6 @@ set is_compact_imaginary(int i,Param p)=bool:
 is_compact_imaginary(p.root_datum.simple_roots[i],p.x)
 
 set involution (Param p)=involution(x(p))
-
-set integrality_datum (Param p)= RootDatum:
-  integrality_datum(root_datum(p),infinitesimal_character(p))
 
 set is_regular (Param p) = bool:
   is_regular(root_datum(p),infinitesimal_character(p))

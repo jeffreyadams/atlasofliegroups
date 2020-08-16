@@ -250,13 +250,16 @@ set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
     in coherent_std_imaginary(w,p_dom)
   fi
 }
-set standardize (Param p) = ParamPol:
+set standardize (Param p) = ParamPol: p
+
+{set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
   else p:=p.to_no_Cplus;
   let (w,lambda_dom)=from_dominant(p.root_datum,p.lambda)  then
   p_dom=parameter(x(p), lambda_dom, nu(p))
     in coherent_std(w,p_dom)
   fi
+}
 {replace p.lambda with (1+theta)*p.lambda}
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
@@ -285,7 +288,7 @@ set theta_induce_irreducible_redefine (Param p, RealForm G)=ParamPol:
    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
    then P=coherent_irr(ind,word(inverse(w)))
    then result=null_module(G) in
-      for coeff@q in P do result+:=coeff*T_irr_dominant(q,ic) od;
+      for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
    result
 
 {set theta_induce_irreducible_new ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:

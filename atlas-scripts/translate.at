@@ -1,4 +1,5 @@
 <basic.at
+{<is_normal.at}
 set translate_debug=false
 
 {various versions of the Zuckerman translation principle
@@ -36,10 +37,13 @@ set T_param (ParamPol P, ratvec gamma_target) = ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
     let gamma = infinitesimal_character(P) {error if not well defined}
-    in ParamPol: { finalize } translate_param_by(P,ratvec_as_vec(gamma_target-gamma))
+    in ParamPol: translate_param_by(P,ratvec_as_vec(gamma_target-gamma))
   fi
 
 {translation of standard modules}
+
+{recall p.final => p.normal => p.is_dominant
+(infinitesimal character is (weakly) dominant for all positive roots}
 
 {translation of irreducible or standard modules is only reasonable
  if the target is at least as singular as the origin, in other
@@ -49,46 +53,55 @@ set is_not_less_singular(RootDatum rd,ratvec gamma,ratvec gamma_target)=bool:
 all (for alpha_check in rd.simple_coroots do
  alpha_check*gamma!=0 or =alpha_check*gamma_target  od)
 
-{main case: target is integrally dominant
-non-dominant case: need standardize, see end of ?}
+{T_std(p,gamma_target) is only defined if p.is_dominant
+ (recall final => normal => is_dominant, but p.is_standard does not imply p.is_dominant)
+ and target is integrally dominant
+}
 
-set T_std_dominant(Param p,ratvec gamma_target)=ParamPol:
+set T_std(Param p,ratvec gamma_target)=ParamPol:
 assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(let (is_dom,)=is_dominant(p) in is_dom,"p is not dominant");
 assert(is_integrally_dominant(p.root_datum,gamma_target),"target is not integrally dominant");
 T_param(p,gamma_target)
 
 { translate a |ParamPol| by translating each term }
-set T_std_dominant (ParamPol P, ratvec gamma_target) = ParamPol:
-  P.null_module + for w@q in P do w*T_std_dominant(q,gamma_target) od
+set T_std (ParamPol P, ratvec gamma_target) = ParamPol:
+  P.null_module + for w@q in P do w*T_std(q,gamma_target) od
 
 { T_param of ParamPol of parameters, assuming each term has the
  same infinitesimal character}
-set T_std_dominant (ParamPol P, ratvec gamma_target) = ParamPol:
+set T_std (ParamPol P, ratvec gamma_target) = ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
-    let gamma = infinitesimal_character(P) {only to return error if not well defined}
+    let gamma = infinitesimal_character(P) {only needed to return error if not well defined}
     in ParamPol: T_param(P,gamma_target)
   fi
 
-{translation of irreducible modules}
-
-{first case: target is integrally dominant
-non-dominant case: need standardize, see end of ?}
+{irreducible module is non-zero when translated to a wall,
+needed for T_irr}
 
 { corrected version handles non-integral infinitesimal character
   whether translation of irreducible parameter p to gamma is non-zero
   the name is too cute to change, but |J_will_survive| would be more accurate
 }
-
 set I_will_survive (Param p,ratvec gamma) = bool:
    for alpha_v@i in integrality_datum(p.root_datum,gamma).simple_coroots
    do is_descent(i,p) and =alpha_v*gamma
    od.none { no singular simple descents of integral subsystem }
 
+{translation of irreducible modules}
+{T_irr(p,gamma_target) is only defined if p.infinitesimal_character is
+ dominant (for example if p is final) and gamma_target is integrally dominant
+dominant condition avoid things like: parameter(KGB(G,2),[1],[-1/2])
+for SL(2,R). This is integrally dominant but not dominant, and
+putting it in a ParamPol automatically converts it to (KGB(G,2)),[1],[1/2])
+}
+
 { translation functor of irreducible; returns |ParamPol| with at most one term
   gamma_target must at least as singular and integrally dominant}
-set T_irr_dominant (Param p,ratvec gamma_target) = ParamPol:  {with at most 1 term}
+set T_irr (Param p,ratvec gamma_target) = ParamPol:  {with at most 1 term}
 assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(let (is_dom,)=is_dominant(p) in is_dom,"p is not dominant");
 assert(is_integrally_dominant(p.root_datum,gamma_target),"target is not integrally dominant");
 if p.infinitesimal_character=gamma_target then p { trivial case }
 else  #I_will_survive(p,gamma_target)*T_param(p,gamma_target) { multiply by 1 or 0 }
@@ -97,22 +110,20 @@ fi
 {Question: if p is not standard then trouble - allow this?}
 
 {return an actual Param if nonzero}
-set T_irr_dominant_nonzero(Param p,ratvec gamma_target)=Param:
-let P=T_irr_dominant(p,gamma_target) in
+set T_irr_nonzero(Param p,ratvec gamma_target)=Param:
+let P=T_irr(p,gamma_target) in
 assert(#P!=0,"module is 0");
 assert(#P=1,"module is not irreducible");
 first_param(P)
 
 { translate a ParamPol of irreducibles by translating each term by the same shift }
-set T_irr_dominant (ParamPol P, ratvec gamma_target)= ParamPol:
+set T_irr (ParamPol P, ratvec gamma_target)= ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
     let gamma = infinitesimal_character(P)  {error if not well defined}
     then shift = ratvec_as_vec(gamma_target-gamma)
-    in sum(P.real_form,for w@q in P do w*T_irr_dominant(q,shift) od)
+    in sum(P.real_form,for w@q in P do w*T_irr(q,shift) od)
   fi
-
-
 
 { weight such that shift by its negative sends |gamma| to integral wall |k|,
   projecting parallel to all other walls
@@ -173,7 +184,7 @@ translate_param_by(P,shift)
 
 {translate an irreducible from singular to regular}
 {move an irreducible parameter to regular infinitesimal character}
-set make_regular_irr(Param p)=Param:T_irr_dominant_nonzero(p,p.infinitesimal_character +two_rho(p.root_datum))
+set make_regular_irr(Param p)=Param:T_irr_nonzero(p,p.infinitesimal_character +two_rho(p.root_datum))
 
 { translate a ParamPol by translating each term }
 {set T_irr(ParamPol P, ratvec gamma_target)= ParamPol:
