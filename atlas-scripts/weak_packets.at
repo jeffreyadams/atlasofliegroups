@@ -391,7 +391,7 @@ tabulate(
      let (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag= is_dual_Aq(params,cell).star {fi} then
-     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi in
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
     [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
    od
   od
@@ -415,7 +415,7 @@ tabulate(
      let (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
-     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi in
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
     [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
    od
   od
@@ -464,7 +464,7 @@ tabulate(
      (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
-     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi in
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
     [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag+induced_flag, p.infinitesimal_character.to_string]
    od
   od
@@ -487,7 +487,7 @@ tabulate(
      let (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
-     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi then
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi then
      induced_flag=if find(induced_unipotents,p)>=0 then "(I)" else "" fi in
     [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string + param_flag+ induced_flag, p.infinitesimal_character.to_string]
    od
