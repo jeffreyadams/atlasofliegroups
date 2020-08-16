@@ -1689,7 +1689,7 @@ SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 } // |deformation_terms|, version without block
 #endif
 
-K_type_poly_vec Rep_table::deformation(const StandardRepr& z)
+K_type_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -1700,7 +1700,7 @@ K_type_poly_vec Rep_table::deformation(const StandardRepr& z)
   for (const auto& sr : K_types)
     finals_vec.emplace_back(K_type(*this,sr),Split_integer(1,0));
 
-  K_type_poly_vec result(std::move(finals_vec)); // value sans deformation terms
+  K_type_poly result(std::move(finals_vec)); // value sans deformation terms
 
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
@@ -1975,12 +1975,12 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-K_type_poly_vec Rep_table::twisted_deformation (StandardRepr z)
+K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 {
   const auto& delta = inner_class().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  K_type_poly_vec result;
+  K_type_poly result;
   if (rp.empty())
   {
     z = ext_block::scaled_extended_dominant
@@ -2007,7 +2007,7 @@ K_type_poly_vec Rep_table::twisted_deformation (StandardRepr z)
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return flip_start // if so we must multiply the stored value by $s$
-	? K_type_poly_vec().add_multiple
+	? K_type_poly().add_multiple
 	(pool[h].twisted_def_formula(),Split_integer(0,1))
 	: pool[h].twisted_def_formula();
   }
@@ -2056,7 +2056,7 @@ K_type_poly_vec Rep_table::twisted_deformation (StandardRepr z)
   const auto& res = pool[h].set_twisted_deformation_formula(result);
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? K_type_poly_vec().add_multiple(res,Split_integer(0,1)) : res;
+    ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

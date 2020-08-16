@@ -318,20 +318,7 @@ public:
 }; // |class K_type|
 
 using K_term_type = std::pair<K_type,Split_integer>;
-using K_type_poly_vec = Free_Abelian_light<K_type,Split_integer>;
-
-class K_type_poly : public Free_Abelian_light<K_type,Split_integer>
-{
-  using base = Free_Abelian_light<K_type,Split_integer>;
-public:
-  K_type_poly () : base() {}
-
-  K_type_poly (const K_type_poly_vec& Q) : base(Q) {}
-  K_type_poly (K_type_poly_vec&& Q) : base(std::move(Q)) {}
-
-  const K_type_poly_vec& as_K_vec () const { return *this; }
-
-}; // |class K_type_poly|
+using K_type_poly = Free_Abelian_light<K_type,Split_integer>;
 
 /*
   A class to serve as key-value pair for deformation formula lookup.
@@ -365,14 +352,14 @@ public:
   size_t def_form_size () const { return untwisted.size(); }
   size_t twisted_def_form_size () const { return twisted.size(); }
 
-  K_type_poly_vec def_formula() const       { return untwisted.as_K_vec(); }
-  K_type_poly_vec twisted_def_formula() const { return twisted.as_K_vec(); }
+  const K_type_poly& def_formula() const       { return untwisted; }
+  const K_type_poly& twisted_def_formula() const { return twisted; }
 
   // the following have non |const| arguments since they need to flatten
-  K_type_poly_vec& set_deformation_formula (K_type_poly_vec& formula)
-  { untwisted = K_type_poly(formula); return formula; }
-  K_type_poly_vec& set_twisted_deformation_formula (K_type_poly_vec& formula)
-  { twisted = K_type_poly(formula); return formula; }
+  K_type_poly& set_deformation_formula (K_type_poly& formula)
+  { return untwisted=formula; }
+  K_type_poly& set_twisted_deformation_formula (K_type_poly& formula)
+  { return twisted=formula; }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
@@ -450,7 +437,7 @@ class Rep_table : public Rep_context
 #endif
 
   // full deformation to $\nu=0$ of |z|
-  K_type_poly_vec deformation(const StandardRepr& z);
+  K_type_poly deformation(const StandardRepr& z);
 
   SR_poly twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
@@ -463,7 +450,7 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  K_type_poly_vec twisted_deformation(StandardRepr z); // by value
+  K_type_poly twisted_deformation(StandardRepr z); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
