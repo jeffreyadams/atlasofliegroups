@@ -48,7 +48,7 @@ class RationalVector
   explicit RationalVector(size_t r): d_num(r,0), d_denom(1){} // zero vector
 
   // build the RationalVector with numerator v and denominator d.
-  template <typename C1>
+  template <typename C1> // possibly convert |v| entries to other type
     RationalVector(const matrix::Vector<C1>& v, C d);
 
   RationalVector(V&& v, C d);

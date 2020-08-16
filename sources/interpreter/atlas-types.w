@@ -116,8 +116,9 @@ struct Lie_type_value : public value_base
 @)
   Lie_type_value() : val() @+ {}
     // default constructor, produces empty type
-  Lie_type_value(LieType t) : val(t) @+{}
+  Lie_type_value(const LieType& t) : val(t) @+{}
     // constructor from already validated Lie type
+  Lie_type_value(LieType&& t) : val(std::move(t)) @+{} // idem, rvalue reference
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Lie type"; }
@@ -1592,6 +1593,11 @@ developed, and have been used since the beginnings of Atlas for the
 representation of involutions. This only exposes the possibilities of the
 implementation in a very limited way, and it is useful for \.{atlas} users to
 have direct access to computations with Weyl group elements.
+
+Since the |WeylElt| calls has non remote (outside the object proper) data, as
+would be the case had it used |std::vector|, it does not have efficient move
+semantics, and there is no point providing a constructor taking |WeylElt| by
+rvalue-reference.
 
 @<Type definitions @>=
 struct W_elt_value : public value_base
@@ -4208,6 +4214,8 @@ struct module_parameter_value : public value_base
 @)
   module_parameter_value(const shared_real_form& form, const StandardRepr& v)
   : rf(form), val(v) @+{}
+  module_parameter_value(const shared_real_form& form, StandardRepr&& v)
+  : rf(form), val(std::move(v)) @+{}
   ~module_parameter_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -5236,9 +5244,8 @@ into a list of parameters and three tables in the form of matrices.
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
     const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-    StandardRepr block_elt_param = rc.sr_gamma(block.x(z),lambda_rho,gamma);
-    params->val[n] =
-      std::make_shared<module_parameter_value>(p->rf,block_elt_param);
+    params->val[n] = std::make_shared<module_parameter_value> @|
+      (p->rf,rc.sr_gamma(block.x(z),lambda_rho,gamma));
     for (weyl::Generator s=0; s<eb.rank(); ++s)
     { auto type = eb.descent_type(s,n);
       types(n,s) = static_cast<int>(type);
@@ -5295,7 +5302,8 @@ void extended_KL_block_wrapper(expression_base::level l)
 @)
   own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
-    param_list->val[z]=std::make_shared<module_parameter_value>(p->rf,block[z]);
+    param_list->val[z]=std::make_shared<module_parameter_value>
+      (p->rf,std::move(block[z]));
   push_value(std::move(param_list));
   push_value(std::move(P_mat));
   @< Transfer the coefficient vectors of the polynomials from |pool|... @>
@@ -5522,6 +5530,8 @@ struct virtual_module_value : public value_base
 @)
   virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
   : rf(form), val(v) @+{}
+  virtual_module_value(const shared_real_form& form, repr::SR_poly&& v)
+  : rf(form), val(std::move(v)) @+{}
   ~virtual_module_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -5886,7 +5896,8 @@ void last_term_wrapper (expression_base::level l)
     throw runtime_error("Empty module has no last term");
   const auto& term = *m->val.rbegin();
   push_value(std::make_shared<split_int_value>(term.second));
-  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  push_value(std::make_shared<module_parameter_value>
+	(m->rf,std::move(term.first)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -5900,7 +5911,8 @@ void first_term_wrapper (expression_base::level l)
     throw runtime_error("Empty module has no first term");
   const auto& term = *m->val.begin();
   push_value(std::make_shared<split_int_value>(term.second));
-  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  push_value(std::make_shared<module_parameter_value>
+  	(m->rf,std::move(term.first)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -6112,7 +6124,8 @@ void q_branch_wrapper(expression_base::level l)
     auto tup = std::make_shared<tuple_value>(2);
     StandardRepr term = rc.sr(khc.rep_no(it->first),khc,zero_nu);
     tup->val[0] = std::move(coef);
-    tup->val[1] = std::make_shared<module_parameter_value> (p->rf,term);
+    tup->val[1] = std::make_shared<module_parameter_value>
+	(p->rf,std::move(term));
     *res_p++ = std::move(tup);
   }
   push_value(std::move(result));
@@ -6147,7 +6160,7 @@ void to_canonical_wrapper(expression_base::level l)
 @)
   RatWeight zero_nu(p->rf->val.rank());
   StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/2,zero_nu);
-  push_value(std::make_shared<module_parameter_value>(p->rf,result));
+  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
 }
 
 @ Here is one more useful function: computing the height of a parameter
@@ -6261,7 +6274,7 @@ void full_deform_wrapper(expression_base::level l)
   repr::SR_poly result;
   for (@[auto&& p : v@]@;@;)
     result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
-  push_value(std::make_shared<virtual_module_value>(p->rf,result));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
@@ -6285,7 +6298,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
   repr::SR_poly result;
   for (@[auto&& p : v@]@;@;)
     result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
-  push_value(std::make_shared<virtual_module_value>(p->rf,result));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
@@ -6407,7 +6420,7 @@ void scale_extended_wrapper(expression_base::level l)
   bool flipped;
   auto result = @;ext_block::scaled_extended_dominant
     (rc,sr,delta->val,factor->rat_val(),flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,result));
+  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
   push_value(whether(flipped));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
