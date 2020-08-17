@@ -429,17 +429,14 @@ class Rep_table : public Rep_context
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
-  SR_poly deformation_terms
+  containers::sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
-#if 0
-  SR_poly deformation_terms (unsigned long sr_hash) const;
-  // once a parameter has been entered, we can compute this without a block
-#endif
 
   // full deformation to $\nu=0$ of |z|
   K_type_poly deformation(const StandardRepr& z);
 
-  SR_poly twisted_deformation_terms
+  // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
+  containers::sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, RankFlags singular, const RatWeight& gamma);
 #if 0

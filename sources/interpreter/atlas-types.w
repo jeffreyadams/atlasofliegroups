@@ -6216,9 +6216,12 @@ void deform_wrapper(expression_base::level l)
   BlockElt p_index; // will hold index of |p| in the block
   auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
   const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
-  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
+  repr::SR_poly result;
+  for (auto&& term : p->rt().deformation_terms(block,p_index,gamma)@;@;)
+    result.add_term(std::move(term.first),
+                    Split_integer(term.second,-term.second));
 
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 @)
 void twisted_deform_wrapper(expression_base::level l)
@@ -6242,11 +6245,14 @@ void twisted_deform_wrapper(expression_base::level l)
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 @)
-  repr::SR_poly terms
-     = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
-                                     singular_orbits,p->val.gamma());
+  auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
+					     singular_orbits,p->val.gamma());
+  repr::SR_poly result;
+  for (auto&& term : terms@;@;)
+    result.add_term(std::move(term.first),
+                    Split_integer(term.second,-term.second));
 
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
@@ -6272,7 +6278,7 @@ void full_deform_wrapper(expression_base::level l)
 @)
   const auto& v = res.snapshot();
   repr::SR_poly result;
-  for (@[auto&& p : v@]@;@;)
+  for (auto&& p : v @;@;)
     result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }

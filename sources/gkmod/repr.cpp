@@ -1509,11 +1509,11 @@ std::vector<pair_list> contributions
   return result;
 } // |contributions|, extended block
 
-SR_poly Rep_table::deformation_terms
+containers::sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
-  SR_poly result;
+  containers::sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1559,7 +1559,7 @@ SR_poly Rep_table::deformation_terms
 	continue; // polynomials with $-1$ as root do not contribute; skip
       if ((block.length(z)-block.length(x))%2!=0) // when |l(z)-l(x)| odd
 	eval=-eval; // flip sign (do alternating sum of KL column at |-1|)
-      for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
+      for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
@@ -1588,9 +1588,8 @@ SR_poly Rep_table::deformation_terms
       if (c!=0) // test must follow |++it| !
       {
 	const auto sr_z = block.sr(z,gamma);
-
 	auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
-	result.add_term(sr_z,Split_integer(1,-1)*coef);
+	result.emplace_back(sr_z,coef);
       }
     }
     assert(it==finals.end());
@@ -1659,35 +1658,6 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
   return result;
 } // |Rep_table::KL_column|
 
-#if 0
-SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
-{ // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)
-  SR_poly result;
-  SR_poly remainder(hash[sr_hash]);
-  auto y_parity=lengths[sr_hash]%2;
-
-  while(not remainder.empty())
-  {
-    auto const& leading = *remainder.cbegin(); // least term is leading term
-    auto h=hash.find(leading.first); // highest term of |remainder|
-    assert(h!=hash.empty); // we remain within the already tabled parameters
-    auto c_cur = leading.second;
-    const SR_poly& KL_cur = KLV_list[h];
-    remainder.add_multiple(KL_cur,-c_cur);
-    assert(remainder.empty() or hash.find(remainder.cbegin()->first)!=h);
-    if (lengths[h]%2!=y_parity)
-      result.add_multiple(KL_cur,c_cur);
-  }
-  unsigned int orient_y = orientation_number(hash[sr_hash]);
-  for (auto& term : result)
-  {
-    unsigned int orient_express=orient_y-orientation_number(term.first);
-    (term.second*= arithmetic::exp_i(orient_express)).times_1_s();
-  }
-
-  return result;
-} // |deformation_terms|, version without block
-#endif
 
 K_type_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
@@ -1725,9 +1695,9 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
-    const SR_poly terms = deformation_terms(block,new_z,zi.gamma());
-    for (auto const& term : terms)
-      result.add_multiple(deformation(term.first),term.second); // recursion
+    for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
+      result.add_multiple(deformation(term.first), // recursion
+			  Split_integer(term.second,-term.second)); // $(1-s)*c$
   }
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
@@ -1849,7 +1819,8 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   return result;
 } // |Rep_table::twisted_KL_column_at_s|
 
-SR_poly Rep_table::twisted_deformation_terms
+containers::sl_list<std::pair<StandardRepr,int> >
+Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
      RankFlags singular_orbits, const RatWeight& gamma)
@@ -1857,7 +1828,7 @@ SR_poly Rep_table::twisted_deformation_terms
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
 
-  SR_poly result;
+  containers::sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1912,7 +1883,7 @@ SR_poly Rep_table::twisted_deformation_terms
       const int val_xz = p.second!= // XOR stored sign with length diff. parity
 	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
 	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
-      for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
+      for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
@@ -1933,11 +1904,10 @@ SR_poly Rep_table::twisted_deformation_terms
       const int c = *it++;
       if (c==0)
 	continue;
-      BlockElt z = eblock.z(f); // |block| numbering used to build |StandardRepr|
-      const auto sr_z = block.sr(z,gamma);
+      const auto sr_z = block.sr(eblock.z(f),gamma); // renumber |f| to |block|
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
-      result.add_term(sr_z,Split_integer(1,-1)*coef);
+      result.emplace_back(sr_z,coef);
     }
     assert(it==acc.end());
   }
@@ -2042,13 +2012,13 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
       for (weyl::Generator s=0; s<eblock.rank(); ++s)
 	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
-      const SR_poly terms =
-	twisted_deformation_terms(block,eblock,new_z,
-				  singular_orbits,zi.gamma());
+      auto terms = twisted_deformation_terms(block,eblock,new_z,
+					     singular_orbits,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
 	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? term.second.times_s() : term.second);
+			    flip ? Split_integer(-term.second,term.second)
+				 : Split_integer(term.second,-term.second));
     }
   }
 
