@@ -131,7 +131,7 @@ template<typename T, typename C, typename Compare>
   class Free_Abelian_light
 {
   using term_type = std::pair<T,C>;
-  using map_tp = std::map<T,C,Compare>;
+  using self = Free_Abelian_light<T,C,Compare>;
   std::vector<term_type> main;
   containers::sl_list<term_type> recent;
   Compare cmp;
@@ -142,7 +142,6 @@ public:
   Free_Abelian_light(Compare c) // here a specific |Compare| is used
   : main(), recent(), cmp(c) {}
 
-  explicit Free_Abelian_light(const map_tp& m); // is this needed?
   explicit Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
     : main(1,std::make_pair(p,C(1L))), recent(), cmp(c) {}
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
@@ -156,31 +155,62 @@ public:
   Free_Abelian_light(InputIterator first, InputIterator last,
 		     Compare c=Compare());
 
-  Free_Abelian_light& add_term(const T& p, C m);
-  Free_Abelian_light& operator+=(const T& p) { return add_term(p,C(1)); }
-  Free_Abelian_light& operator-=(const T& p) { return add_term(p,C(-1)); }
+  self& add_term(const T& p, C m);
+  self& operator+=(const T& p) { return add_term(p,C(1)); }
+  self& operator-=(const T& p) { return add_term(p,C(-1)); }
 
-  Free_Abelian_light& add_multiple(const Free_Abelian_light& p, C m);
-  Free_Abelian_light& add_multiple(Free_Abelian_light&& p, C m);
+  self& add_multiple(const self& p, C m);
+  self& add_multiple(self&& p, C m);
 
-  Free_Abelian_light& operator+=(const Free_Abelian_light& p)
+  self& operator+=(const self& p)
   { if (this->is_zero())
       return *this = p; // assign, avoiding work on initial addition to empty
     return add_multiple(p,C(1));
   }
-  Free_Abelian_light& operator+=(Free_Abelian_light&& p)
+  self& operator+=(self&& p)
   { if (this->is_zero())
       return *this = std::move(p); // assign, avoiding initial addition to empty
     return add_multiple(p,C(1));
   }
 
-  Free_Abelian_light& operator-=(const Free_Abelian_light& p)
-  { return add_multiple(p,C(-1)); }
+  self& operator-=(const self& p) { return add_multiple(p,C(-1)); }
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
 
   bool is_zero () const { return main.empty() and recent.empty(); }
   size_t size() const { return main.size() + recent.size(); }
+
+  class const_iterator
+  { const self& parent;
+    typename std::vector<term_type>::const_iterator main_it;
+    typename containers::sl_list<term_type>::const_iterator recent_it;
+  public:
+    const_iterator(const self& parent,
+		   typename std::vector<term_type>::const_iterator it,
+		   typename containers::sl_list<term_type>::const_iterator jt)
+      : parent(parent), main_it(it), recent_it(jt) {}
+    bool operator== (const const_iterator& other)
+    { return main_it==other.main_it and recent_it==other.recent_it; }
+    bool operator!= (const const_iterator& other)
+    { return not operator==(other); }
+
+    const term_type& operator*() const
+    { return main_it!=parent.main.end() and
+	(recent_it.at_end() or main_it->first<recent_it->first)
+	? *main_it : *recent_it; }
+    const term_type* operator->() const { return &operator*(); }
+
+    const_iterator& operator++()
+    { if (main_it!=parent.main.end()
+	  and (recent_it.at_end() or main_it->first < recent_it->first))
+	++main_it;
+      else ++recent_it;
+      return *this;
+    }
+  };
+
+  const_iterator begin() const { return {*this,main.begin(),recent.begin()}; }
+  const_iterator end() const { return {*this,main.end(),recent.end()}; }
 
   // to read out, call |snapshot| and read the produced vector
   const std::vector<term_type>& snapshot () { flatten(); return main; }

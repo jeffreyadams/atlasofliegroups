@@ -355,10 +355,9 @@ public:
   const K_type_poly& def_formula() const       { return untwisted; }
   const K_type_poly& twisted_def_formula() const { return twisted; }
 
-  // the following have non |const| arguments since they need to flatten
-  K_type_poly& set_deformation_formula (K_type_poly& formula)
+  const K_type_poly& set_deformation_formula (const K_type_poly& formula)
   { return untwisted=formula; }
-  K_type_poly& set_twisted_deformation_formula (K_type_poly& formula)
+  const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
   { return twisted=formula; }
 
 // special members required by HashTable

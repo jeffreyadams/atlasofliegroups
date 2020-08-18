@@ -6276,9 +6276,8 @@ void full_deform_wrapper(expression_base::level l)
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     res += p->rt().deformation(*it);
 @)
-  const auto& v = res.snapshot();
   repr::SR_poly result;
-  for (auto&& p : v @;@;)
+  for (const auto& p : res @;@;)
     result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
@@ -6300,9 +6299,8 @@ void twisted_full_deform_wrapper(expression_base::level l)
     res.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
 @)
-  const auto& v = res.snapshot();
   repr::SR_poly result;
-  for (@[auto&& p : v@]@;@;)
+  for (@[const auto& p : res@]@;@;)
     result.emplace(p.first.sr(rc),p.second); // transform to |std::map|
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
