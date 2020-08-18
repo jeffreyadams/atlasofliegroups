@@ -1,6 +1,4 @@
-{		computing coherent continuations		}
-
-<misc.at
+<kl.at
 <translate.at { for translation functor T@(Param(Pol),ratvec) }
 <W_orbit.at
 
@@ -79,6 +77,7 @@ set coherent_irr (Param p,int s) =
 { coherent continuation of Weyl group element on Param, basis of irreducibles }
 set coherent_irr (Param p,[int] w)=
   composition_series(coherent_std(character_formula(p),w))
+set coherent_irr (Param p,WeylElt w)=ParamPol:coherent_irr(p,w.word)
 
 { coherent continuation of simple root on ParamPol, basis of irreducibles }
 set coherent_irr (ParamPol P,int s) = ParamPol:
@@ -88,6 +87,7 @@ set coherent_irr (ParamPol P,int s) = ParamPol:
   basis of irreducibles }
 set coherent_irr (ParamPol P,[int] w) = ParamPol:
   composition_series(coherent_std(character_formula(P),w))
+set coherent_irr (ParamPol P,WeylElt w) = ParamPol: coherent_irr(P,w.word)
 
 { ---------------------------coherent families------------------------------ }
 

@@ -1,3 +1,9 @@
+<representations.at
+<W_K.at { |R_K_dom|, |R_K_dom_mu| }
+{<induction.at}
+
+<center.at { for |Z_2@RealForm| }
+
 {! Functions involving K-types (final tempered limit parameters) and
    K-highest weights.
    The main reference is Vogan, "Branching to a Maximal Compact Subgroup"
@@ -46,12 +52,6 @@ Algorithm:
    part of the $\theta$-stable data for tau=(x,lambda). The parameter for
    (relatively split) L is obtained from xi by a $\rho$-shift.
 !}
-
-<W_K.at { |R_K_dom|, |R_K_dom_mu| }
-<induction.at
-<representations.at
-<center.at { for |Z_2@RealForm| }
-
 set LKT_verbose=false
 { see K.at: K-types as final tempered limit parameters
   (x,lambda) <-> representations of K
