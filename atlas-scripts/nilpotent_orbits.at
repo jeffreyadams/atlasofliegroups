@@ -298,7 +298,7 @@ set tau_containing (Block B,[int] P) = [int]:
  ##for ti@i in t do if P<=ti then [i] else [] fi od
 
 {moved elsewhere since needed earlier
- for now: is_Aq.at
+ for now: is_Aq.at}
 { test if (x,y) -> Aq parameter }
 { the first version isn't necessary, just use the second }
 { because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work: }
@@ -319,7 +319,7 @@ set Aq_reps (Block B,[int] cell) = [int]:
 
 set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
    Aq_cells(principal_block(G),cells)
-}
+
 
 { |set_type RealNilpotent = (vec H, KGBElt x, void .)| defined above
 

@@ -39,3 +39,4 @@ let
 K_types=K_parameters_height_upto(G,cutoff) then
 K_types=G.null_module + for mu in K_types do f(mu)*parameter(mu) od in
 K_types
+}

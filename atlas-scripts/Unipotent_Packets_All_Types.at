@@ -3,6 +3,8 @@
 {note: rv#:=Psi(parameter(b[t]), S) replaced with
 rv#:=first_param(Psi(parameter(b[t]), S)) fi od in several places due
 to change of syntax}
+
+
 <basic.at
 <sort.at
 <W_reps_type_BC.at
@@ -13,6 +15,9 @@ to change of syntax}
 <stable.at { for |print_stable| }
 <combinatorics.at
 <K_highest_weights.at
+
+{in this file only: rename Psi to Psi_irreducible (forget at end)}
+set Psi(Param p,[int] S)=ParamPol:Psi_irr(p,S)
 
 set dual_integral (Param p) = InnerClass:
   dual_integral(p.inner_class,p.infinitesimal_character)
@@ -551,3 +556,6 @@ assert(is_valid_pair(B,P),"The block and the complex orbit are not compatible");
 let G=real_form(B)
 then k=type_number(G)
 in if k=1 then Unipotent_information_C(B,P) elif k=2 then Unipotent_information_B(B,P) fi
+
+forget Psi@(Param,[int])
+
