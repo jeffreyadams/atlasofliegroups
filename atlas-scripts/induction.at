@@ -483,6 +483,7 @@ coherent_irr(p,w) uses character_formula and composition_series
 }
 
 set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
+   assert(is_final(p), "parameter is not final");
    let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
    then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
@@ -491,6 +492,7 @@ set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
    then P=coherent_irr(ind,w.inverse)
    in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
 
+{moved to coherent_irreducible.at}
 {Second version using coherent continuation of irreducibles:
  using W_graph version of coherent_continuation
 block: block for G of the induced representation

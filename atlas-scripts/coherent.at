@@ -29,10 +29,14 @@ set r1_Cayley (int k,Param p) = ParamPol:
 { coherent continuation action of simple root on Param in basis of standards }
 
 {only defined for regular infinitesimal character}
+{s is the number of a simple root in the *integrality* root datum}
 
 set coherent_std (Param p,int s) = ParamPol:
   assert(is_regular(p),"infinitesimal character is not regular");
-  let type=status(s,x(p)) in
+{  let type=status(s,p.x) in}
+{NO: only correct in integral case
+ use status@(vec,KGBElt) to be correct in general}
+  let type=status(p.integrality_datum.simple_roots[s],p.x) in
   if   type=1 { compact imaginary }     then -p
   elif type=3 { non-compact imaginary } then nci_Cayley(s,p)-cross(s,p)
   else        { complex or real }            cross(s,p)

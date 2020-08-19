@@ -502,6 +502,7 @@ graph: W_graph of the block
 }
 
 set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
+   assert(is_final(p), "parameter is not final");
    let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
    then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
@@ -516,7 +517,7 @@ but useful for testing
 set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
    let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
    then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
-   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))  {theta_induce_std(q,G)?}
    then block=block_of(ind)
    then graph=W_graph_of(ind)
    then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
