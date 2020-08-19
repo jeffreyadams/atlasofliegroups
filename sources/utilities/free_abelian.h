@@ -203,17 +203,22 @@ public:
     const_iterator& operator++()
     { if (main_it!=parent.main.end()
 	  and (recent_it.at_end() or main_it->first < recent_it->first))
-	++main_it;
+	do // usually just once, but skip any term with zero coefficient
+	  ++main_it;
+	while (main_it!=parent.main.end() and main_it->second==C(0));
       else ++recent_it;
       return *this;
     }
   };
 
-  const_iterator begin() const { return {*this,main.begin(),recent.begin()}; }
+  const_iterator begin() const
+  { auto it = main.begin();
+    while (it!=main.end() and it->second==C(0)) // skip any leading zero term
+      ++it;
+    return {*this,it,recent.begin()};
+  }
   const_iterator end() const { return {*this,main.end(),recent.end()}; }
 
-  // to read out, call |snapshot| and read the produced vector
-  const std::vector<term_type>& snapshot () { flatten(); return main; }
 
 private:
   C& main_coef(const T& e); // coefficient of |e| in |main|, or |C0|

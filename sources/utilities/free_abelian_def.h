@@ -137,7 +137,7 @@ template<typename T, typename C, typename Compare>
 {
   C& c = this->main_coef(p);
   if (c!=C(0))
-    c+=m;
+    c+=m; // this can create a zero term in |main|; leave it for now
   else
   {
     auto pred = [this,&p](const term_type& t){ return cmp(t.first,p); };
@@ -149,7 +149,11 @@ template<typename T, typename C, typename Compare>
 	flatten();
     }
     else
+    {
       it->second+=m;
+      if (it->second==C(0))
+	recent.erase(it);
+    }
   }
   return *this;
 }
@@ -163,7 +167,10 @@ template<typename T, typename C, typename Compare>
   for (auto&& pair : recent)
   {
     while (it!=org.end() and cmp(it->first,pair.first))
-      main.push_back(std::move(*it++));
+      if (it->second!=C(0))
+	main.push_back(std::move(*it++));
+      else // squeeze out rare term with coefficient |0|
+	++it;
     main.push_back(std::move(pair));
   }
   while (it!=org.end())
