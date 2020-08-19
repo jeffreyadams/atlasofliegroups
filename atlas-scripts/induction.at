@@ -223,46 +223,14 @@ set theta_stable_data (Param p) = (Parabolic,Param):
   )
 
 {---------------------standardize-----------------------------------------}
-{need real parabolic induction to define standardize (uses cuspidal_data)}
 
-{. Auxiliary function .}
-{set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
-  let (,p_M)=cuspidal_data(p) in
-  real_induce_standard(coherent_std(w,p_M),real_form(p))
-}
-{
-set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
-  let (P,p_M)=cuspidal_data(p) in
-  let M=Levi(P) in let rd_M=root_datum(M) in
-  let (lam_new,w)=make_dominant(rd_M,lam) in
-  if lam_new!=lambda(p) then prints("HERE IS A PROBLEM!!!!!!!") fi;
-  real_induce_standard(coherent_std(w,p_M),real_form(p))
-}
-
-
-{. convert a possibly non-standard parameter into a linear combination of
-  standard ones .}
-{set standardize (Param p) = ParamPol:
-  if is_standard(p) then ParamPol:p
-  else p:=p.to_no_Cplus
-  ; let i_root_system=root_datum(p.x.simple_imaginary_subsystem)
-    , lambda=lambda(p)
-    then (w,lambda_dom)=from_dominant(i_root_system,lambda)
-    then p_dom=parameter(x(p), lambda_dom, nu(p))
-    in coherent_std_imaginary(w,p_dom)
-  fi
-}
-set standardize (Param p) = ParamPol: p
-
-{set standardize (Param p) = ParamPol:
+set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
   else p:=p.to_no_Cplus;
-  let (w,lambda_dom)=from_dominant(p.root_datum,p.lambda)  then
+  let (w,lambda_dom)=from_dominant(p.root_datum,(1+p.x.involution)*p.lambda)  then
   p_dom=parameter(x(p), lambda_dom, nu(p))
     in coherent_std(w,p_dom)
   fi
-}
-{replace p.lambda with (1+theta)*p.lambda}
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
 set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
@@ -485,7 +453,7 @@ coherent_irr(p,w) uses character_formula and composition_series
 set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
    assert(is_final(p), "parameter is not final");
    let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
-   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G)))
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
    then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
     {w:gamma_dom -> p.infinitesimal_character _rho_u}
