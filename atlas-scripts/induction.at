@@ -222,19 +222,6 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    )
   )
 
-{---------------------standardize-----------------------------------------}
-
-set standardize (Param p) = ParamPol:
-  if is_standard(p) then ParamPol:p
-  else p:=p.to_no_Cplus;
-  let (w,lambda_dom)=from_dominant(p.root_datum,(1+p.x.involution)*p.lambda)  then
-  p_dom=parameter(x(p), lambda_dom, nu(p))
-    in coherent_std(w,p_dom)
-  fi
-
-{. standardize a formal linear combination of possibly non-standard parameters .}
-set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
-
 {--------------------- theta-stable parabolic induction -------------------}
 
 {. Theta-stable (cohomological) parabolic induction of a standard module for

@@ -102,6 +102,23 @@ set coherent_family_irr (ParamPol P, ratvec gamma_target)=ParamPol:
     T_irr(coherent_irr(P,w.word),gamma_target_dominant)  {this translation is within the dominant chamber}
  fi
 
+
+{---------------------standardize-----------------------------------------}
+
+{moved from induction.at}
+
+set standardize (Param p) = ParamPol:
+  if is_standard(p) then ParamPol:p
+  else p:=p.to_no_Cplus;
+  let (w,lambda_dom)=from_dominant(p.root_datum,(1+p.x.involution)*p.lambda)  then
+  p_dom=parameter(x(p), lambda_dom, nu(p))
+    in coherent_std(w,p_dom)
+  fi
+
+{. standardize a formal linear combination of possibly non-standard parameters .}
+set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
+
+
 {set T_irr(ParamPol P,ratvec gamma_target)=ParamPol:coherent_family_irr(P,gamma_target)}
 
 { everything commented out from this point on
