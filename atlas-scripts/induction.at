@@ -222,6 +222,53 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    )
   )
 
+{---------------------standardize-----------------------------------------}
+
+{on the compact Cartan, coherent continuation is well defined even
+if the infinitesimal character is singular
+translate out -> coherently continue -> translate back
+p equivalent to p' => p=p' on the Compact Cartan so this is
+well defined}
+set coherent_std_compact_Cartan(WeylElt w,Param p)=ParamPol:
+let p_reg=T_param(p,p.infinitesimal_character+two_rho(p.root_datum))
+{use T_param to avoid error moving to less singular target}
+then p_reg_cont=coherent_std(w,p_reg) in
+T_std(p_reg_cont,p.infinitesimal_character)
+
+{coherent continuation using only imaginary roots
+ to avoid technical issues involving the fact that atlas automically
+ finalizes terms in a ParamPol, pass to the cuspidal Levi,
+ on which all the roots are imaginary, apply coherent continuation
+ there, and induce back
+ example: Sp(4,R)
+   p=param(KGB(G,7),[3,-2],[1,0])
+   p_dom=param(KGB(G,7),[3,2],[1,0])  (lambda is dominant, but not gamma)
+   is not dominant, so atlas changes this to the equivalent parameter
+   param(KGB(G,5),[2,1],[0,1])
+   tricky to keep track of this
+   the cuspidal Levi is M=SL(2,R)xGL(1) with root [0,2]
+   coherent continuation is going on in M
+}
+set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
+  let (P,p_M)=cuspidal_data(p) then
+  w_M=W_elt(P.Levi,w.matrix) in
+  real_induce_standard(coherent_std_compact_Cartan(w_M,p_M),real_form(p))
+
+{find w so that w*lambda_dom=lambda, this should be in the imaginary Weyl group
+ then compute coherent continuation by passing to the cuspidal Levi M
+}
+set standardize (Param p) = ParamPol:
+  if is_standard(p) then ParamPol:p
+  else p:=p.to_no_Cplus;
+  let (w,lambda_dom)=from_dominant(p.real_form,p.lambda)  then
+  p_dom=parameter(x(p), lambda_dom, nu(p))
+    in prints("p_dom: ", p_dom, "w: ", w);coherent_std_imaginary(w,p_dom)
+  fi
+
+{. standardize a formal linear combination of possibly non-standard parameters .}
+set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
+
+
 {--------------------- theta-stable parabolic induction -------------------}
 
 {. Theta-stable (cohomological) parabolic induction of a standard module for
