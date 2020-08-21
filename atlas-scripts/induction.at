@@ -260,7 +260,7 @@ set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
   else p:=p.to_no_Cplus;
-  let (w,lambda_dom)=from_dominant(p.real_form,p.lambda)  then
+  let (w,lambda_dom)=from_dominant(root_datum(p.x.simple_imaginary_subsystem),p.lambda)  then
   p_dom=parameter(x(p), lambda_dom, nu(p))
     in prints("p_dom: ", p_dom, "w: ", w);coherent_std_imaginary(w,p_dom)
   fi
