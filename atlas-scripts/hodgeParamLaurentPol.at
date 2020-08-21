@@ -5,29 +5,15 @@
 
 {recall: set_type hodgeParamPol=[ParamPol]
 [P_0,...,P_m] -> (P_0+P_1*v+...+P_m*v^m)
-Write the union of monomials(P_i) as {p_0,...,p_r}.
-The order of this set matters.
-Write P_i=\sum a_{i,j}p_j where j\le r. 
-Then this corresponds to
-\sum a_{i,0}v^i)p_0 +
-\sum a_{i,1}v^i)p_1 +
-...
-\sum a_{i,r}v^i)p_r
 }
 
-{Generalize this to sum of params with Laurent series coefficients
+{Generalize this
 
 (data type:
-[P_0,...,P_m],[c_0,...,c_r]) ->
-\sum a_{i,0}v^i)v^{c_0}p_0 +
-\sum a_{i,1}v^i)v^{c_1}p_1 +
-...
-\sum a_{i,r}v^i)v^{c_r}p_r
-Note that the listed order of the p_i matters
+([P_0,...,P_m],int n)->  (P_0+P_1*v+...+P_m*v^m)*v^n
 }
 
-set_type hodgeParamLaurentPol=(hodgeParamPol hpp,vec shifts)
-{require: #shifts is the number of parameters p_i occuring in the various P_j}
+set_type hodgeParamLaurentPol=(hodgeParamPol hpp,int shift)
 
 {ignore Laurent part}
 set hodge_param_pol(hodgeParamLaurentPol (hpp,))=hodgeParamPol:hpp
@@ -38,12 +24,14 @@ set monomials([hodgeParamLaurentPol] list)=[Param]:monomials(##for hplp in list 
 
 { -------------- hodgeParamLaurentPol versions -------------}
 
-set nullHodgeParamLaurentPol(RealForm G)=hodgeParamLaurentPol:(nullHodgeParamPol(G),null(0))
+set nullHodgeParamLaurentPol(RealForm G)=hodgeParamLaurentPol:(nullHodgeParamPol(G),0)
 
-set hodge_param_laurent_pol(ParamPol P)=hodgeParamLaurentPol:([P],null(#monomials(P)))
-set hodge_param_laurent_pol(Param p)=hodgeParamLaurentPol:(hodge_param_pol(p),[0])
-set hodge_param_laurent_pol(hodgeParamPol P)=hodgeParamLaurentPol:(P,null(#monomials(P)))
-set *(Split c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(c*hplp.hpp,hplp.shifts)
+set hodge_param_laurent_pol(ParamPol P)=hodgeParamLaurentPol:([P],0)
+set hodge_param_laurent_pol(Param p)=hodgeParamLaurentPol:(hodge_param_pol(p),0)
+set hodge_param_laurent_pol(hodgeParamPol P)=hodgeParamLaurentPol:(P,0)
+
+set *(Split c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(c*hplp.hpp,hplp.shift)
+set *(hodgeParamLaurentPol hplp,Split c)=c*hplp
 set -(hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*hplp
 
 set real_form(hodgeParamLaurentPol hplp)=RealForm:real_form(hodge_param_pol(hplp))
@@ -52,7 +40,7 @@ set coefficient(hodgeParamLaurentPol hplp,Param p)=i_laurent_poly:
 let hpp=hodge_param_pol(hplp) then
 coeff=coefficient(hodge_param_pol(hplp),p)  {this is an i_poly} then
 index=find(monomials(hplp),p) in
-(coeff,hplp.shifts[index])
+(coeff,hplp.shift)
 
 set =(hodgeParamLaurentPol hplp_1,hodgeParamLaurentPol hplp_2)=bool:
 let m_1=monomials(hplp_1), m_2=monomials(hplp_2) in
@@ -66,23 +54,26 @@ fi
 
 set =(hodgeParamLaurentPol hplp)=bool:hplp=nullHodgeParamLaurentPol(hplp.real_form)
 
-{rearrange:
-takes hodgeParamLaurentPol:([P_0,P_1,..,P_m],[c_0,...,c_r]) ->
-([P_0,...,P_m],[c_0,...,c_r]) ->
-\sum a_{i,0}v^i)^{c_0}p_0 +
-\sum a_{i,1}v^i)v^{c_1}p_1 +
+{rearrange and dearrange
+ should be used only for input/output
+ all computations internally are in terms of hodgeParamLaurentPols
+rearrange takes hodgeParamLaurentPol:([P_0,P_1,..,P_m],n) ->
+(P_0+P_1*v+...P_m*v^m)*v^n
+\sum a_{i,0}v^i)^{n}p_0 +
+\sum a_{i,1}v^i)v^{n}p_1 +
 ...
-\sum a_{i,r}v^i)v^{c_r}p_r
+\sum a_{i,r}v^i)v^{n}p_r
 represented by
 [
-( ([a_{0,0},a_{1,0},...,a_{m,0}],c_0),p_0),
-( ([a_{0,1},a_{1,1},...,a_{m,1}],c_1),p_1),
+( ([a_{0,0},a_{1,0},...,a_{m,0}],c_0),n),
+( ([a_{0,1},a_{1,1},...,a_{m,1}],c_1),n),
 ...
-( ([a_{0,r},a_{1,r},...,a_{m,r}],c_r),p_r)]
+( ([a_{0,r},a_{1,r},...,a_{m,r}],c_r),n)]
 }
-set rearrange(hodgeParamLaurentPol (hpp,shifts))=[(i_laurent_poly,Param)]:
+
+set rearrange(hodgeParamLaurentPol (hpp,shift))=[(i_laurent_poly,Param)]:
 let Q=rearrange(hpp) {[(i_poly f_i,p_i)] i=0,...,r} in
-for (f,p)@i in Q do ((f,shifts[i]),p) od
+for (f,p)@i in Q do ((f,shift),p) od
 
 set coefficient(hodgeParamLaurentPol hplp, Param p)=i_laurent_poly:
 let r=rearrange(hplp) then
@@ -91,46 +82,35 @@ if i=-1 then zero_laurent_poly else
 let (f,)=r[i] in f fi
 
 {go other way:
- given f_0(v)p_0 + ... + f_r(v) p_r, take it to ([P_0,...,P_m],[c_0,...,c_r])
+ given f_0(v)p_0 + ... + f_r(v) p_r, take it to ([P_0,...,P_m],n)
 } 
 set dearrange([(i_laurent_poly,Param)] pairs,RealForm G)=hodgeParamLaurentPol:
 if =#pairs then nullHodgeParamLaurentPol(G) else 
-let pairs_0=for (f,p) in pairs do (f.w,p) od {gives [(i_poly,Param)]}
-then d_0=dearrange(pairs_0)   {a hodgeParamPol} then
-shifts=for (f,p) in pairs do f.n od in (d_0,shifts)
+let pairs_0=[((i_poly,Param),int)]:for (f,p) in pairs do  {(f,p)=(i_laurent_poly,Param), f=(i_poly,int)}
+ let (g,shift_f)=f   {(g,shift_f)=(i_poly,int)}
+                     {(g,p)=(i_poly,Param), can apply dearrange from hodgeParamPol.at
+                                            to get a hodgeParamPol, missing the shifts}
+ in ((g,p),shift_f) od  {pairs_0=[((i_poly,Param),int)]}
+then max_negative_shift=min(for (f,p) in pairs  do f.n od) then   {max_negative_shift<= shift_f for all f}
+pairs=for ((f,p),n) in pairs_0 do     {max_negative_shift<= n, i.e. n-max_negative_shift>=0}
+  let d=n-max_negative_shift in            {n-d=max_negative_shift}
+  assert(d>=0,"d is negative");
+  ((null(d)##f,p),max_negative_shift) od   {equivalent, and all terms have same shift (second component)}
+in                                         {pairs = [((f,p),max_negative_shift)] f is an i_poly}
+let d=dearrange(for ((f,p),) in pairs do (f,p) od) {d=hodgeParamPol}
+in (d,max_negative_shift) 
 fi
 
-set dearrange([(i_laurent_poly,Param)] pairs,RealForm G)=hodgeParamLaurentPol:
-if =#pairs then nullHodgeParamLaurentPol(G) else 
-let pairs_0=for (f,p) in pairs do (f.w,p) od {gives [(i_poly,Param)]}
-then d_0=dearrange(pairs_0)   {a hodgeParamPol} then
-shifts=##for ((f,n),p) in pairs do
- if  =f  then [] else [n] fi od in (d_0,shifts) fi
-
-set *(i_laurent_poly f,Param p)=hodgeParamLaurentPol: dearrange([(f,p)],p.real_form)
+{set *(i_laurent_poly f,Param p)=hodgeParamLaurentPol: dearrange([(f,p)],p.real_form)}
+{same, but don't use dearrange:}
+set *(i_laurent_poly (f,n),Param p)=hodgeParamLaurentPol:
+ (for c in f do c*p od,n)
 set *(i_poly f,Param p)=hodgeParamLaurentPol: poly_as_laurent_poly(f)*p
 
-{polynomial  in v, or constant, times hodgeParamPol}
-set *(i_laurent_poly f,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
-let r=rearrange(hplp)  {[(i_laurent_poly,Param)]} in
-if #r=0 then nullHodgeParamLaurentPol(hplp.real_form) else
-dearrange(for (g,p) in r do (f*g,p) od,hplp.real_form) fi
-set *(int c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
-constant_laurent_poly(c)*hplp
+set *(Param p,i_laurent_poly f)=hodgeParamLaurentPol: f*p
+set *(Param p,i_poly f)=hodgeParamLaurentPol: f*p
 
-set *(i_poly f,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
-poly_as_laurent_poly(f)*hplp
-
-{given list of shifts for first, rewrite to be compatible with new}
-{not needed
-set rewrite_shifts([Param] first,[Param] new, vec shifts)=vec:
-let v=null(#new) in
- for p@i in first do
-  let j=find(new,p) in 
-  v[j]:=shifts[i]
- od;v
-}
-
+{old version, used rearrange/dearrange}
 set +(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=
 let rP=rearrange(P), rQ=rearrange(Q) in
 if =#rP then Q
@@ -148,27 +128,50 @@ rv=for p in params do
 dearrange(rv,P.real_form)
 fi
 
-set plus(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=
-let rP=rearrange(P), rQ=rearrange(Q) in
-let
-mP=monomials(P), mQ=monomials(Q) then
-params=union([mP##mQ]) then
-rv=for p in params do
-{let ()=prints("p=",p) in}
- let a=zero_laurent_poly in
-  let index_P=find(mP,p) in if index_P>=0 then let (f,)=rP[index_P] in a+:=f fi;
-  let  index_Q=find(mQ,p) in if index_Q>=0 then let (f,)=rQ[index_Q] in a+:=f fi;
- (a,p)
- od in
-(rv,dearrange(rv,P.real_form))
+{add k copies of nullHodgeParamPol at beginning}
+set pad(int k,hodgeParamPol P)=hodgeParamPol:
+assert(k>=0,"k is negative");
+##for i:k do nullHodgeParamPol(P.real_form) od ##P
+
+set +(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=
+let (hpp_P,n_P)=P, (hpp_Q,n_Q)=Q in
+if =#hpp_P then Q
+elif =#hpp_Q then P
+else
+ let G=P.real_form in
+ if n_P>=n_Q
+  then (pad(n_P-n_Q,hpp_P)+hpp_Q,n_Q)
+  else (hpp_P+pad(n_Q-n_P,hpp_Q),n_P)
+ fi
+fi
 
 set -(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=P+(-1)*Q
 set v_to_1(hodgeParamLaurentPol hplp)=ParamPol:
 let rv=null_module(hplp.real_form) in
  for P in hplp.hpp do rv+:=P od;rv
 
+{polynomial  in v, or constant, times hodgeParamPol}
+set *(i_poly f,hodgeParamLaurentPol (hpp,n))=hodgeParamLaurentPol:
+let rv=nullHodgeParamLaurentPol(hpp.real_form) in
+ for i:#f do rv+:=(f[i]*hpp,n+i) od;
+ rv
+set *(hodgeParamLaurentPol hplp,i_poly f)=hodgeParamLaurentPol:f*hplp
+
+set *(i_laurent_poly f,hodgeParamLaurentPol (hpp,m))=hodgeParamLaurentPol:
+let (g,n)=f in (g*hpp,m+n)
+
+set *(hodgeParamLaurentPol hplp,i_laurent_poly f)=hodgeParamLaurentPol:f*hplp
+
 {v^k*p for k\in Z}
-set power_times(Param p,int n)=hodgeParamLaurentPol:([p],[n])
+set power_times(Param p,int n)=hodgeParamLaurentPol:([p],n)
+
+set sub(hodgeParamLaurentPol hpp)=ParamPol:
+let (terms,)=hpp then
+index=first(for i:#terms do !=terms[i] od) in terms[index]
+
+set quotient(hodgeParamLaurentPol hpp)=ParamPol:
+let (terms,)=hpp then
+index=first(for i:#terms do !=terms~[i] od) in terms~[index]
 
 {nice output}
 set show(hodgeParamLaurentPol hplp)=void:
@@ -198,22 +201,12 @@ set b=block[1]
 set c=block[2]
 
 set f=hodgeParamLaurentPol:
-([a+b,b,b,c],[0,-3,-6])
-
-set g=hodgeParamLaurentPol:([a],[-1])
-set h=hodgeParamLaurentPol:([b,2*b],[0])
-set l=hodgeParamLaurentPol:([b],[-3])}
-
-set flip(i_poly f,int ld)=i_poly:
-{let ()=prints(new_line,"f=",f,"ld=",ld) in}
- let r=ld\2 then
- f=pad(f,r+1)  {f=[a_0,...,a_r], #f=r+1} in
- if ld.is_even then
-  ##for a in f~ do [a,0] od
- else
-  ##for a in f~ do [0,a] od
- fi
-
+([a+b,b,b,c],-5)
+set f=i_laurent_poly:([1],-3)
+set g=hodgeParamLaurentPol:([a],-1)
+set h=hodgeParamLaurentPol:([b,2*b],0)
+set l=hodgeParamLaurentPol:([b],-3)
+}
 set show_long(hodgeParamLaurentPol hplp) =void:
   let factors=monomials(hplp) then
    r_unshifted=rearrange(hplp) then  {(Laurent poly,Param)}
@@ -261,6 +254,12 @@ set show_long(hodgeParamLaurentPol hplp) =void:
 set find(hodgeParamLaurentPol f,[Param] b)=int:
 let f_at_1=f.v_to_1 in
 first(for i:#b do f_at_1=composition_series(b[i]) od)
+
+{this should only be used in the dominant chamber,
+so irreducibles -> irreducibles or 0}
+set T_irr_dominant(hodgeParamLaurentPol hpp,ratvec lambda)=hodgeParamLaurentPol:
+let (terms,j)=hpp in
+(for P in terms do T_irr(P,lambda) od,j)
 
 {also identify hplp.v_to_1 as a standard module if possible}
 set show_long([Param] b,hodgeParamLaurentPol hplp) =void:

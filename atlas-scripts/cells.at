@@ -114,7 +114,7 @@ set parameters_given_AV ( { same arguments as |cells_given_AV| }
 
 
 set push ([Param] params, ratvec gamma) = [Param]:
-  for p in params do T_irr(p,gamma).monomials { zero or one |Param| } od.##
+  for p in params do coherent_family_irr(p,gamma).monomials { zero or one |Param| } od.##
 
 set cell_members_given_descent (RootDatum rd, WCell (,graph), [int] S) = [int]:
    let target = complement(rd.semisimple_rank,S) { so S is desired ASCENT set? }
@@ -161,7 +161,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
       prints("survive:", p, " ", gamma);
-      survivors#:=(i,j,first_param(T_irr(p,gamma)))
+      survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
  =#survivors
@@ -197,7 +197,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
 {      prints("survive:", p, " ", gamma);}
-      survivors#:=(i,j,first_param(T_irr(p,gamma)))
+      survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
  =#survivors
@@ -238,7 +238,7 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
     if spec=springer_O then
     ##for k in cell_param_numbers do let p=parameters[k] in if I_will_survive(p,gamma) then
 {   prints("survive:", p, " ", gamma);}
-   [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+   [(i,j,first_param(coherent_family_irr(p,gamma)))] else [] fi od
   else []
   fi
  od

@@ -102,17 +102,16 @@ set graph_Hecke_action ([sparse_mat] matrices,int col_number,int s) =
       sparse_column:
    matrices[s][col_number]
 
-
-
 { coherent continuation of irreducibles is defined using the W-graph,
   keeping in mind the W-graph is the action in the basis of (-1)^length(p)p
 }
 set coherent_irr([Param] block,WGraph graph,Param p,int s) = ParamPol:
    assert(is_regular(p),"infinitesimal character is not regular");
    assert(s<p.root_datum.ss_rank,"not a root");
-   let gac=graph_Hecke_action_column(graph,find(block,p),s) in
-   prints("got gac, p=",p, new_line,"s=",s);
-   null_module(p.real_form) + for (i,coeff) in gac do (-coeff,block[i]) od
+   let index_p=find(block,p) in
+   let gac=graph_Hecke_action_column(graph,index_p,s) in
+   prints("got gac, p=",p, new_line,"s=",s, new_line, gac);
+   null_module(p.real_form) + for (i,coeff) in gac do ((-1)^(#(index_p=i))*coeff,block[i]) od
 
 {variants: ParamPol P, [int] w, WeylElt w}
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
@@ -364,18 +363,6 @@ cross_square(params,graph,p,i)=hodge_param_laurent_pol(p)
 
 {moved from induction.at to avoid circularity issue}
 
-set theta_induce_irreducible_new (Param p, RealForm G)=ParamPol:
-    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
-    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
-    then ic=dominant(rd,infinitesimal_character(p)+rhou)
-    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
-    then P=coherent_irr_new(ind,word(inverse(w)))  {note new here}
-    then result=null_module(G) in
-       for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
-    result
-
-
 { in singular case,
   move to regular infinitesimal character, apply w, and move back
   Dangerous Bend (example):
@@ -409,9 +396,9 @@ set coherent_irr ([Param] block_reg,WGraph graph_reg,Param p,int s) = ParamPol:
   }
 
 
-{use: set (b,g,gs,w)=h_init(G)
+{use: set (G,p,b,g,gs,w)=h_init(G)
 then
-show(S_inv(b,g,w,gs)
+show_long(S_inv(b,g,gs,w)
 }
 set h_init(RealForm G)=
 let p=G.trivial then
@@ -455,3 +442,86 @@ prints("number of terms: ", #rv,new_line,"result: ",valid);
 set h_test([RealForm] list)=void:for G in list do prints(new_line,G);h_test(G) od
 
 set list=[SL(2,R),SL(3,R),SL(4,R),GL(4,R),Sp(4,R), Sp(6,R),Spin(4,3),Spin(5,4),G2_s]
+
+
+
+{ ----- normalized version of S_inv ------------}
+
+{for Stephen Miller
+intended for use (only?) with minimal principal series:
+ given a parameter p of a minimal principal series, replace p with
+ p_new, so that S_inv(params,graph,p_new,w) has the same composition
+ factors as p
+ Note: S_inv(params,graph,p,w) replaces the M-parameter lambda of p with w\times\lambda,
+ so for p_new use: lambda_new=cross(w^{-1},p).lambda
+}
+
+{typical usage:
+ set p=parameter(G.x_open,lambda,nu)  {at regular infinitesimal character}
+ set b=block_of(p)
+ set g=W_graph_of(p)
+ for w=[int] or WeylElt do:
+ show_long(millers_crossing(b,g,p,w))
+}
+
+{compute graded composition series of principal series in the w-chamber}
+set millers_crossing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+if (not (p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series \
+of a split group, so probably not what you want") fi;
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+{prints("w=",w);
+prints("params: ", params);
+prints("graph: ", graph);}
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\ 
+of a split group, so probably not what you want") fi;
+let w=W_elt(p.root_datum,w) in
+{ let ()=prints("w=",w) in}
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+{singular infinitesimal character}
+set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+let gamma=p.infinitesimal_character then
+gamma_reg=gamma+p.root_datum.two_rho then
+p_reg=first_param(T_param(p,gamma_reg)) then
+m_reg=millers_crossing(for p in params do first_param(T_param(p,gamma_reg)) od,graph,p_reg,w) in
+T_irr_dominant(m_reg,gamma)
+
+set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+millers_crossing_sing(params,graph,p,W_elt(p.root_datum,w))
+
+{Second version using coherent continuation of irreducibles:
+ using W_graph version of coherent_continuation
+block: block for G of the induced representation
+graph: W_graph of the block
+}
+
+set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
+   assert(is_final(p), "parameter is not final");
+   let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G))){.monomials[0]}
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
+    {w:gamma_dom -> p.infinitesimal_character _rho_u}
+   then P=coherent_irr(block,graph,ind,w.inverse)
+   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+
+{this is slow and probably negates the possible speed advantage of theta_induce_irreducible_wgraph,
+but useful for testing
+}
+set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
+   let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
+   then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G)))
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   {=theta_induce_std(q,G), but this hasn't been defined yet}
+   then block=block_of(ind)
+   then graph=W_graph_of(ind)
+   then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
+    {w:gamma_dom -> p.infinitesimal_character _rho_u}
+   then P=coherent_irr(block,graph,ind,w.inverse)
+   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od

@@ -606,3 +606,35 @@ failures=##for i:#prods do for j:#prods do
   if i!=j  and x=w then [(i,j)] else [] fi od od in (prods,##failures)
 }
 
+{. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
+set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
+  KGB_elt(G,involution(x_L), torus_factor(x_L))
+
+{. Given a KGB element of G, find one for the theta-stable Levi L which maps to it. .}
+set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
+  KGB_elt(L,involution(x_G), torus_factor(x_G))
+
+{. Given an involution theta and a root datum, return the set S of complex roots
+   containing the first positive representative of each quadruple
+   ($\pm$ alpha,$\pm$ theta(alpha)). .}
+
+set makeS (mat theta,RootDatum rd) = mat:
+  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
+
+{. As the previous function, with argument a KGB element x determining the
+   involution and root datum .}
+set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
+
+{. Half sum of roots in chosen set S of complex roots, described above. .}
+set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2
+
+{. As previous function, with argument KGB element x. .}
+set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
+
+{. Given a Levi subgroup L of G, construct the parabolic with Levi L
+  (this reverses Levi(P) defined in parabolics.at). .}
+set make_parabolic (RealForm L,RealForm G)=Parabolic:
+   assert(is_standard_Levi(L,G),"L is not standard in G");
+   let rdl=root_datum(L) in
+   let S=[int]:[] in for alpha@i in simple_roots(G) do
+   if is_posroot((rdl,alpha)) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))

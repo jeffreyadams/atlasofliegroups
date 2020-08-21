@@ -28,7 +28,7 @@
 <arthur_parameters.at
 <coherent_irreducible.at
 <deform_plus.at
-
+<truncated_induction.at
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

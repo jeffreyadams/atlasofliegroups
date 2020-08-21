@@ -1,17 +1,13 @@
-<basic.at
 <elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
-<sort.at { for sorting lists of posroot indices }
-<Weylgroup.at { for |order_W@RootDatum|, |root_reflection@(RootDatum,vec)| }
-<W_orbit.at { for |W@RootDatum| }
 <tabulate.at { for |tabulate| }
 <cyclotomic.at {for |product_of_cyclotomic|}
-
+<Weylgroup.at
+<conjugate.at
 
 { The purpose of this file is working with Weyl group characters.
 
   A large initial part is dedicated to deciding conjugacy in the Weyl group, and
   finding an explicit witness of conjugacy from a class represntative.
-
 }
 
 { Preliminary: some transformations of presentation of a Levi system
@@ -64,11 +60,8 @@ set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
   (from |power_set| in basic.at) by conjugacy of their associated $2\rho$s.
 }
 
-{ $2\rho$ for standard Levi, from predicate to |select| simple root indices }
-set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
-  root_datum(columns_with(select,rd.simple_roots)
-            ,columns_with(select,rd.simple_coroots)
-            ).two_rho
+{two_rho@(RootDatum,(int->bool)) and standard_Levi_conjugacy_representatives@RootDatum
+ have been moved to conjugate.at}
 
 {
   For each standard Levi system we determine the dominant orbit representative
@@ -146,22 +139,8 @@ set classify_standard_Levis (RootDatum rd) =  [vec,[int],[[int],WeylElt]]:
   ,  r = rd.semisimple_rank
   in for k:r+1 do classify_group(choices_from(#r,k)) od.##
 
-{ older method to do the same, but without searching for conjugacy witnesses }
-set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
-begin
-   let reps_by_rho ([[int]] list) = [[int]]:
-       let rho2s = [vec]:[] { list of known dominant $2\rho$ values } in
-     ##for subset in list
-       do let rho2=dominant(rd,two_rho(rd,is_member(subset)))
-       in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
-          then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
-          else [] { |rho2| was already present, contribute nothing }
-          fi
-       od
-   , r = rd.semisimple_rank
-in { now apply |reps_by_rho| to each size class, and concatenate the results }
-   for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##
-end
+
+{standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]: moved to conjugate.at}
 
 { A second task is to enumerate elliptic conjugacy classes for each standard
   Levi subsystem. The function |elliptics_for_standard_Levi@(RootDatum,[int])|
@@ -175,9 +154,7 @@ set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
   od
 
 set conjugacy_classes = conjugacy_class_reps@RootDatum
-
 set elliptic_conjugacy_classes(RootDatum rd)=[WeylElt]:
-
 ##for w in conjugacy_classes(rd) do if is_elliptic(w) then [w] else [] fi od
 
 {
@@ -275,7 +252,6 @@ in if standard_Levi=Levi_repr
       in (conj , Levi_repr)
    fi
 
-
 { value of $2\rho$ for not necessarily standard Levi, from Levi info }
 set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
       vec: { two_rho(Levi_datum(rd,select)), but we can compute it directly: }
@@ -310,61 +286,13 @@ set conjugate_from_classified_standard_Levi (
 (WeylElt w) (WeylElt,[int],WeylElt):
    let (conj,Levi) = lookup(Levi_of(w)) in (conj,Levi,/conj*w*conj)
 
-{ A third task is to test for conjugacy in $W$.
-
-  The above allows us to conjugate any $w$ a Weyl group element to one that is
-  elliptic (up to a torus part) for a standard Levi system. However, the problem
-  of deciding conjugacy of elliptic elements in a given standard Levi subgroup
-  and producing a witness does not seem essentially simpler than the same
-  problem in the full Weyl group.
-
-  Therefore, we use for the moment a method for deciding conjugacy that does not
-  produce any witness, and is not entirely complete. It basically compares
-  characteristic polynomials, but adds a special test to discriminate between
-  two classes of elliptic elements for F4 that share a characteristic polynomial
-  (an outer automorphism switches them). This method does not work when the
-  implied Levi subsystem is composite and contains a factor F4.
-}
-
-{ conjugacy test; not complete for composite types with a F4 factor
-use is_conjugate_strong instead (see below)}
-set is_conjugate (WeylElt x,WeylElt y) = bool:
-   {quick false if orders not same}
-   if order(x)!=order(y) then false else
-   { there follows a rather complicated and/or expression: }
-   let rd=x.root_datum in y.root_datum=rd { easy and necessary } and
-   char_poly(matrix(x))=char_poly(matrix(y)) { easy and necessary } and
-(  let L_x = x.Levi_info, L_y = y.Levi_info
-in dominant(rd,subsystem_2rho(L_x))=dominant(rd,subsystem_2rho(L_y)) and
-(  let Levi_x = Levi_datum(L_x) then factors = Levi_x.Lie_type.simple_factors
-in none(for (code,) in factors do code="F" od) { done unless F4 factors } or
-(  assert(#factors=1,"Can't handle composite Levi subgroups with F4 factor")
-;  if order(x)=6 and length(x)=10 { the hard case } else true
-   then let is_negated(WeylElt w,RootDatum rd) = (int->bool):
-      let M = w.matrix+1 in (int i)bool: =M*root(rd,i) { root in -1 eigenspace }
-      , Levi_y = Levi_datum(y)
-      then alpha = root(Levi_x,first(24,is_negated(x,Levi_x)))
-      ,    beta =  root(Levi_y,first(24,is_negated(y,Levi_y)))
-   in dominant(rd,alpha)=dominant(rd,beta) { whether these have same length }
-   fi
-)))
-fi
-
-{ some simple functions that exploit the conjugacy test }
-set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
-   for rep in classes do if is_conjugate(w,rep) then return rep fi od;
-   error("missing class")
-
-set conjugacy_class_rep (WeylElt w) = WeylElt:
-  conjugacy_class_rep(w,conjugacy_class_reps(w.root_datum))
 {----------------------------------------------------------------------------}
-{Alternative version, using He's algorithm to compute minimal length
-representatives of a conjugacy class}
+{He's algorithm to compute minimal length representatives of an elliptic conjugacy class}
 
 set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 
-{ the following is correct only for elliptic classes
-
+{ this algorithm gives *some* minimal length representatives of WeylElt:w
+   but it only gives *all* such if w is elliptic
   algorithm to compute minimal length representatives directly by induction
   algorithm (due to He):
     one can conjugate w to a minimal length representative
@@ -373,7 +301,8 @@ set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
            all by conjugating without increasing the length)
      NOTE: in A2 the two simple generators are conjugate, but (obviously)
            not by either one of them, so any conjugation path increases length
-	   but these are not elliptic
+	   in this case the algorithm does give a minimal length representative
+	     but (since w is not elliptic) not all
   So:
   given a class=[w_1,...,w_n], all of which are conjugate and same length |l|,
   compute s_i*w_j*s_i for all simple s_i
@@ -385,10 +314,7 @@ set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 }
 set rec_fun minimal_representatives_witnesses(
       [WeylElt] class,[WeylElt] witnesses) = ([WeylElt],[WeylElt]):
-{     assert(is_elliptic(class[0]),"Class is not elliptic");
-      this function is used for non-elliptic elements in F4; the 
-      validity of this application needs to be checked
-}
+{      assert(is_relatively_elliptic(class[0]),"Class is not (relatively) elliptic");}
 
 (  let rd=class[0].root_datum
    , shorter=[WeylElt]:[], witnesses_shorter=[WeylElt]:[]
@@ -418,6 +344,9 @@ in for s:rd.semisimple_rank
    fi
 )
 
+{these functions give *some* minimal length representatives of w
+ but only guaranteed to give all if w is elliptic
+}
 set minimal_representatives_witnesses (WeylElt w) =
    ([WeylElt],[WeylElt]):
    minimal_representatives_witnesses([w],[id_W(w.root_datum)])
@@ -429,8 +358,131 @@ set minimal_representatives (WeylElt w) = [WeylElt]:
    let (reps,)=minimal_representatives_witnesses(w) in reps
 set minimal_representative (WeylElt w) = WeylElt: minimal_representatives(w)[0]
 
-set is_conjugate_strong (WeylElt x,WeylElt y) = bool:
-   find(minimal_representatives(x),minimal_representative(y))!=-1
+set all_minimal_representatives (WeylElt w) = [WeylElt]:
+assert(is_relatively_elliptic(w),"w is not (relatively) elliptic");minimal_representatives(w)
+
+
+{------------------------------------------------------------------- }
+
+{ Conjugacy test, using reduction to elliptic
+
+  We use the fact that x,y are conjugate iff L_x=x.Levi_datum is
+  conjugate to L_y=y.Levi_datum, and, after conjugating L_y to L_x,
+  x_ell is L_x conjugate to y_ell, where x_ell, y_ell are the elliptic
+  classes in L_x, L_y corresponding to x,y
+  Note that there is a choice of how to conjugate L_y to L_x, however the
+  result is independent of that choice, essentially because the only elliptic
+  class in type A is the Coxeter element, and the elliptic classes in a
+  simple group are fixed by all outer automorphisms.
+}
+
+set elliptic_reduction(WeylElt w)=WeylElt:W_elt(Levi_datum(w),w.matrix)
+
+{conjugacy test, using reduction to elliptic, and an arbitrary test for elliptic}
+set is_conjugate(WeylElt x,WeylElt y,((WeylElt,WeylElt)->bool) elliptic_conjugacy_test) = bool:
+let rd=x.root_datum in
+if
+ order(x)!=order(y) {easy and necessary} or
+ y.root_datum!=rd { easy and necessary } or
+ char_poly(x.matrix)!=char_poly(y.matrix) { easy and necessary }
+ then false
+else
+ (let L_x = x.Levi_datum, L_y = y.Levi_datum in
+  if standard_Levi(rd,L_x)!=standard_Levi(rd,L_y) then false else
+   let w_x=standard_Levi_witness(rd,L_x),
+    w_y=standard_Levi_witness(rd,L_y) then
+    x_ell=W_elt(L_x,x.matrix) then   {x_ell \in W(L_x)}
+    y_ell_0=inverse(w_x)*w_y*y*inverse(w_y)*w_x {  y_ell_0\in W(L_x)} then
+    (y_ell,)=from_dominant(L_x,y_ell_0*L_x.two_rho) in   {y_ell\in W(L_x)}
+     {      let ()=prints("x=", x, "y=", y, new_line,"y_ell_0: ", y_ell_0, "y_ell: ", y_ell, " x_ell: ", x_ell)  in}
+    elliptic_conjugacy_test(x_ell,y_ell)
+  fi
+ )
+fi
+
+{------------------------------------------------------------------- }
+
+{He's algorithm to definitively tell if two elliptic elements are conjugate
+actually only the first needs to be (relatively) elliptic
+using minimal_representative test for elliptic elements of a Levi
+}
+set is_conjugate_elliptic_he (WeylElt x,WeylElt y) = bool:
+   assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
+   if not is_relatively_elliptic(y) then false else
+   find(all_minimal_representatives(x),minimal_representative(y))!=-1 fi
+
+{is is_conjugate_elliptic_he to create a general is_conjugate funtion}
+set is_conjugate_he(WeylElt x,WeylElt y)=is_conjugate(x,y,is_conjugate_elliptic_he@(WeylElt,WeylElt))
+
+
+
+{----------------------------------------------------------------------------}
+
+{conjugacy test using reduction to elliptic, and characteristic polynomial
+on each simple factor}
+
+{ The above allows us to conjugate any $w$ a Weyl group element to one that is
+  elliptic (up to a torus part) for a standard Levi system. However, the problem
+  of deciding conjugacy of elliptic elements in a given standard Levi subgroup
+  and producing a witness does not seem essentially simpler than the same
+  problem in the full Weyl group.
+
+  Therefore, we use for the moment a method for deciding conjugacy that does not
+  produce any witness, and is not entirely complete. It basically compares
+  characteristic polynomials, but adds a special test to discriminate between
+  two classes of elliptic elements for F4 that share a characteristic polynomial
+  (an outer automorphism switches them). This method does not work when the
+  implied Levi subsystem is composite and contains a factor F4.
+
+  This version is not correct: it requires a further test on each simple
+  factor. Alternatively, this test is correct for a simple factor,
+  and could be used (on each simple factor) to write an alternative function
+  to elliptic_conjugate_test above, and plugged in to
+  set is_conjugate@(WeylElt,WeylElt,(WeylElt,WeylElt)->bool)
+}
+
+{conjugacy test for elliptic elements of a simple group:
+ equality of characteristic polynomial, plus additional
+ check in F4
+}
+set is_conjugate_elliptic_simple_char_poly (WeylElt x,WeylElt y) = bool:
+assert(x.root_datum=y.root_datum,"RootDatum mismatch");
+assert(x.root_datum.derived.is_simple,"Derived group is not simple");
+assert(x.is_relatively_elliptic and y.is_relatively_elliptic,"x and/or y is not (relatively) elliptic");
+if order(x)!=order(y) then false {easy test}
+elif char_poly(matrix(x))!=char_poly(matrix(y)) then false  {easy test}
+else
+ let (code,)=factors(x.root_datum.Lie_type)[0] in
+ if code = "F" and x.order=6 and x.length=10 then
+ {extra test in this one case}
+ let is_negated(WeylElt w) = (int->bool):
+   let M = w.matrix+1 in (int i)bool: =M*root(w.root_datum,i) { root in -1 eigenspace }
+ then
+ alpha = root(x.root_datum,first(24,is_negated(x))),
+ beta =  root(x.root_datum,first(24,is_negated(y))) in
+ dominant(x.root_datum,alpha)=dominant(x.root_datum,beta) { whether these have same length }
+ else true
+ fi
+fi
+
+{conjugacy test for elliptic elements: previous test on each simple factor}
+set is_conjugate_elliptic_char_poly(WeylElt x,WeylElt y)=bool:
+assert(x.root_datum=y.root_datum,"RootData don't match");
+assert(x.is_relatively_elliptic and y.is_relatively_elliptic,"x and/or y is not (relatively) elliptic");
+let x_factors=factor_strong(x),y_factors=factor_strong(y) in
+{x_factors is a list of WeylElts, each for the simple group
+ simple_factors(rd).derived
+}
+all(for i:#x_factors do is_conjugate_elliptic_simple_char_poly(x_factors[i],y_factors[i]) od)
+
+{general conjugacy test: reduce to elliptic and then use is_conjugate_elliptic_char_poly}
+set is_conjugate_char_poly(WeylElt x,WeylElt y)=bool:
+is_conjugate(x,y,is_conjugate_elliptic_char_poly@(WeylElt,WeylElt))
+
+{----------------------------------------------------------------------------}
+{decide which is_conjugate to use as the default:}
+
+set is_conjugate(WeylElt x,WeylElt y)=is_conjugate(x,y,is_conjugate_elliptic_he@(WeylElt,WeylElt))
 
 {----------------------------------------------------------------------------}
 
@@ -448,8 +500,38 @@ in while current<#class
       od
    od; (conjugators,class)
 
-set full_conjugacy_class (WeylElt w) = [WeylElt]:
-   let (,class)=conjugators_and_conjugacy_class(w) in class
+set full_conjugacy_class (WeylElt w) = [WeylElt]:let (,class)=conjugators_and_conjugacy_class(w) in class
+
+{most users will guess:}
+set conjugacy_class(WeylElt w)=[WeylElt]:full_conjugacy_class(w)
+
+{brute force check of conjugacy, slow, mainly for testing
+ also used in character_table_F4.at
+}
+
+{should test each element of the conjugacy class as it is generated for a faster function}
+set is_conjugate_direct(WeylElt x,WeylElt y)=bool:find(full_conjugacy_class(x),y)!=-1
+
+{this works for all x, but is slow}
+set all_minimal_representatives_direct(WeylElt x)=[WeylElt]:
+let class=x.full_conjugacy_class then
+rv=[class[0]], min_length=length(class[0]) in
+for w in class do
+ if length(w)<min_length then rv:=[w]; min_length:=length(w)
+ elif length(w)=min_length then rv#:=w
+ fi
+od;
+rv
+
+set minimal_representative_direct(WeylElt x)=WeylElt:all_minimal_representatives_direct(x)[0]
+
+{ some simple functions that exploit the conjugacy test }
+set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
+   for rep in classes do if is_conjugate(w,rep) then return rep fi od;
+   error("missing class")
+
+set conjugacy_class_rep (WeylElt w) = WeylElt:
+  conjugacy_class_rep(w,conjugacy_class_reps(w.root_datum))
 
 set full_centraliser (WeylElt w) = [WeylElt]:
    ##for x in W(w.root_datum) do if x*w=w*x then [x] else [] fi od
@@ -458,26 +540,6 @@ set conjugator (WeylElt x, WeylElt w) = WeylElt: { find v such that x=v*w*/v }
    assert(is_conjugate(x,w),"Weyl group elements are not conjugate");
    let (conjugators,class)=conjugators_and_conjugacy_class(w) in
    conjugators[last(#class,(int i)bool: class[i]=x)]
-
-{ The next task is to determine the order of a conjugacy class of |w| without
-  enumerating it, computing using some basic group theory. Since we shall reduce
-  to a minimal (non standard) Levi subsystem in whose Weyl group |w| lives, we
-  can compute the order of its centralizer in that Weyl group, where it is
-  elliptic. This will allow computing the order of the conjugacy class in the
-  Levi Weyl group, but this needs to be multiplied by the number of Levi systems
-  conjugate to the one at hand. This is the index in $W$ of the normaliser $N_L$
-  of the Levi system, but we cannot find the size of $N_L$ without some amount
-  of explicit enumeration. We first do a direct approach, then an improvement.
-
-  The function |Levi_orbit| generates the orbit under $W$ of a Levi subsystem,
-  represented by the indices of the positive roots forming its simple
-  generators. It uses the fact that simple reflections have an easy action on
-  such sets of postive roots: either the set contains the simple root for the
-  applied reflection, in which case the Levi system is unchanged so no new orbit
-  element is produced, or else one just reflects each of the generators for the
-  Levi system, which remain positive. One does need to sort the result in order
-  to have a unique representation of each simple system, for equality testing.
-}
 
 { $W$-orbit of (non standard) Levi subsystem, represented by simple systems }
 set Levi_orbit (RootDatum rd, [int] Levi { posroot indices } ) = [[int]]:
@@ -498,7 +560,6 @@ in while current<#orbit
          if moved and none(#orbit,(int i):orbit[i]=M) then orbit #:= M fi
       od
    od; orbit
-
 
 { Computing just the size of this Levi orbit can be done a bit more efficiently
   than generating it, though it requires a some preliminary computation. The
@@ -816,3 +877,7 @@ for i:#list-1 from 1 do
   if index=-1 then classes#:=list[i] fi
 od;
 classes
+
+
+
+

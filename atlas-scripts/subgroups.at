@@ -3,6 +3,7 @@
 <center.at
 <poset.at
 <number_theory.at {for is_prime}
+<W_characters.at
 
 {
   The functions deal with constructing Levi systems cut out by various linear

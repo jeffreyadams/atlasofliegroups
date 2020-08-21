@@ -210,3 +210,4 @@ set simple_root_summand(RootDatum rd,vec alpha)=vec:
 if is_posroot(rd,alpha) then 
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else 
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]<0 od) in -simple_roots(rd)[i] fi
+

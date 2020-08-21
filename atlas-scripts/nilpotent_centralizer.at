@@ -93,17 +93,29 @@ Suppose C=Cent_G(O)^0 has a central torus. If C has a non-trivial semisimple par
 then the rank of C is determined (by the length of the vectors in question),
 i.e. the dimension of the radical is determined.
 However if Cent_G(O)^0 is a torus (closely related to be not equivlanet to quasi-distinguished),
-then there are non roots to use to determine the rank of the torus. 
+then there are non roots to use to determine the rank of the torus.
 In this case (only): the rank of the torus is the dimension of the radical (maximal central torus)
 of the Bala-Carter Levi of the orbit
 }
-set centralizer(ComplexNilpotent O)=
+set centralizer(ComplexNilpotent O)=RootDatum:
 let (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O) in
 if #roots_C=0
  then Bala_Carter_Levi(O).radical
 else
 root_datum_from_positive(roots_C,coroots_C) fi
 
+{this is the dimension of Cent(O), i.e. the reductive part of Cent(X)}
+set dim_centralizer(ComplexNilpotent O)=int:O.centralizer.dimension
+
+{X is a nilpotent element, orbit=G.x
+dimension of the nilradical of Cent(X) 
+orbit -> C=Cent(O) -> C=C_red*C_u
+ dim(O)=dim(G/C)=dim(G)-dim(C_red)-dim(C_u)
+ dim(C_u)=dim(G)-dim(C_red)-dim(O)
+ recall dim(C_red)=dim_centralizer(orbit)
+}
+set dim_centralizer_nilradical(ComplexNilpotent O)=int:
+O.root_datum.dimension - O.dim_centralizer - O.dim
 
 {for testing only}
 set test(ComplexNilpotent O)=
@@ -241,3 +253,41 @@ set show_centralizer_isogenies(RootDatum rd)=void:
 for orbit in rd.orbits do
 prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);
 show_centralizer_isogeny(orbit) od
+
+
+{ checking condition on orbits:
+
+}
+
+set dim_nilradical_parabolic_H(ComplexNilpotent O)=int:
+(O.root_datum.dimension-O.complex_Levi.dimension)\2
+
+{recall dim_centralizer_nilradical(ComplexNilpotent O)
+is the dimension of the nilradical of the centralizer of X\in O}
+
+set check_nilradical_dimensions(ComplexNilpotent O)=
+let a=O.dim_centralizer_nilradical, b=O.dim_nilradical_parabolic_H in (a,b,a=b)
+
+{run over orbits of rd
+for each orbit O, with X\in O, test
+dimension of nilpotent part of centralizer of X = dimension of nilradical of parabolic defined by O.H
+display table of results,
+returns [int] indices of the orbits passing the test
+}
+set check_nilradical_dimensions(RootDatum rd)=[int]:
+let orbits=rd.orbits then
+rv=[int]:[] then
+table=[[string]]:[] in
+for i:#orbits do
+ let orbit=orbits[i] in
+ let (dim_nilrad_cent,dim_nilrad_parabolic,test)=orbit.check_nilradical_dimensions in
+  if test then rv#:=i fi;
+ table#:=[i.to_string,orbit.diagram.to_string,orbit.dim.to_string,dim_nilrad_cent.to_string,dim_nilrad_parabolic.to_string,test.to_string]
+ od;
+ prints("G=", rd);
+ prints("testing: dim(nilradical centralizer of nilpotent X)=dim(nilradical of parabolic of O.H)");
+ prints("dim: dimension of orbit");
+ prints("dim_1: dimension of nilradical of centralizer of X");
+ prints("dim_2: dimension of nilradical of parabolic of O.H");
+ prints("test: dim_1=dim_2");
+ tabulate(["i","diagram","dim","dim_1","dim_2","test"]#table);rv
