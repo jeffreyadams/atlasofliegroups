@@ -1701,7 +1701,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
-  return pool[h].set_deformation_formula(result);
+  return pool[h].set_deformation_formula(std::move(result));
 } // |Rep_table::deformation|
 
 
@@ -2023,7 +2023,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
-  const auto& res = pool[h].set_twisted_deformation_formula(result);
+  const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
 
   return flip_start // if so we must multiply the stored value by $s$
     ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;

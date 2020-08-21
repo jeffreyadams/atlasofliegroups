@@ -357,8 +357,12 @@ public:
 
   const K_type_poly& set_deformation_formula (const K_type_poly& formula)
   { return untwisted=formula; }
+  const K_type_poly& set_deformation_formula (K_type_poly&& formula)
+  { return untwisted=std::move(formula); }
   const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
   { return twisted=formula; }
+  const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
+  { return twisted=std::move(formula); }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
