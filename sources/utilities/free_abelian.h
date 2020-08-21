@@ -161,6 +161,7 @@ public:
 
   self& add_multiple(const self& p, C m);
   self& add_multiple(self&& p, C m);
+  self& add_multiples(containers::sl_list<std::pair<self,C> >&& L);
 
   self& operator+=(const self& p)
   { if (this->is_zero())
@@ -181,43 +182,66 @@ public:
   size_t size() const { return main.size() + recent.size(); }
 
   class const_iterator
-  { const self& parent;
+  { const self* parent;
     typename std::vector<term_type>::const_iterator main_it;
-    typename containers::sl_list<term_type>::const_iterator recent_it;
+    typename containers::sl_list<term_type>::weak_const_iterator recent_it;
   public:
-    const_iterator(const self& parent,
-		   typename std::vector<term_type>::const_iterator it,
-		   typename containers::sl_list<term_type>::const_iterator jt)
+    const_iterator
+     ( const self* parent,
+       typename std::vector<term_type>::const_iterator it,
+       typename containers::sl_list<term_type>::weak_const_iterator jt)
       : parent(parent), main_it(it), recent_it(jt) {}
+    const_iterator(const const_iterator& it) = default;
+    const_iterator(const_iterator&& it) = default;
+
+    const_iterator& operator= (const const_iterator& it) = default;
+    const_iterator& operator= (const_iterator&& it) = default;
+
     bool operator== (const const_iterator& other)
-    { return main_it==other.main_it and recent_it==other.recent_it; }
+    { return parent==other.parent and
+	main_it==other.main_it and recent_it==other.recent_it;
+    }
     bool operator!= (const const_iterator& other)
     { return not operator==(other); }
 
     const term_type& operator*() const
-    { return main_it!=parent.main.end() and
+    { return main_it!=parent->main.end() and
 	(recent_it.at_end() or main_it->first<recent_it->first)
-	? *main_it : *recent_it; }
+	? *main_it : *recent_it;
+    }
     const term_type* operator->() const { return &operator*(); }
 
     const_iterator& operator++()
-    { if (main_it!=parent.main.end()
+    { if (main_it!=parent->main.end()
 	  and (recent_it.at_end() or main_it->first < recent_it->first))
 	do // usually just once, but skip any term with zero coefficient
 	  ++main_it;
-	while (main_it!=parent.main.end() and main_it->second==C(0));
+	while (main_it!=parent->main.end() and main_it->second==C(0));
       else ++recent_it;
       return *this;
     }
+
+    const term_type& post_incr()
+    { const term_type* p;
+      if (main_it!=parent->main.end() and
+	  (recent_it.at_end() or main_it->first<recent_it->first))
+	p=&*main_it,++main_it;
+      else
+	p=  &*recent_it, ++recent_it;
+      return *p;
+    }
+
+    bool has_ended() const
+    { return main_it==parent->main.end() and recent_it.at_end(); }
   };
 
   const_iterator begin() const
   { auto it = main.begin();
     while (it!=main.end() and it->second==C(0)) // skip any leading zero term
       ++it;
-    return {*this,it,recent.begin()};
+    return {this,it,recent.wcbegin()};
   }
-  const_iterator end() const { return {*this,main.end(),recent.end()}; }
+  const_iterator end() const { return {this,main.end(),recent.wcend()}; }
 
 
 private:

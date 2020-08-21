@@ -247,16 +247,18 @@ version:
 distribution:
 	bash make_distribution.sh $(version)
 
-.PHONY: mostlyclean clean veryclean showobjects
+.PHONY: newbinary mostlyclean clean veryclean showobjects
+newbinary:
+	$(RM) $(objects) Fokko atlas
 mostlyclean:
-	$(RM) -f $(objects) $(interpreter_made_files) *~ */*~ sources/*/*~ \
+	$(RM) $(objects) *~ */*~ sources/*/*~ \
            sources/*/*.tex sources/*/*.dvi sources/*/*.log sources/*/*.toc
 
-clean: mostlyclean
-	$(RM) -f Fokko atlas
+clean: mostlyclean newbinary
 
 veryclean: clean
-	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
+	$(RM) $(interpreter_made_files)
+	$(RM) sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
 
 $(cweb_dir)/ctanglex: $(cweb_dir)/common.h $(cweb_dir)/ctangle.c
 	cd $(cweb_dir) && $(MAKE) ctanglex
