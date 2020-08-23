@@ -259,7 +259,7 @@ set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
 }
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
-  else p:=p.to_no_Cplus;
+{  else p:=p.to_no_Cplus;} else p:=p.to_no_Cplus;
   let (w,lambda_dom)=from_dominant(root_datum(p.x.simple_imaginary_subsystem),p.lambda)  then
   p_dom=parameter(x(p), lambda_dom, nu(p))
     in prints("p_dom: ", p_dom, "w: ", w);coherent_std_imaginary(w,p_dom)
@@ -490,8 +490,10 @@ set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
    then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G)))
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
    then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
-    {w:gamma_dom -> p.infinitesimal_character _rho_u}
-   then P=coherent_irr(ind,w.inverse)
+    {w*gamma_dom=p.infinitesimal_character+rho_u
+       according to the discussion DANGEROUS BEND in coherent.at, this means
+       coherent(ind,w) is what we want, not coherent(ind,w.inverse)}
+   then P=coherent_irr(ind,w)
    in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
 
 {moved to coherent_irreducible.at}

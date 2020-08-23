@@ -110,16 +110,17 @@ set coherent_irr([Param] block,WGraph graph,Param p,int s) = ParamPol:
    assert(s<p.root_datum.ss_rank,"not a root");
    let index_p=find(block,p) in
    let gac=graph_Hecke_action_column(graph,index_p,s) in
-   prints("got gac, p=",p, new_line,"s=",s, new_line, gac);
+{   prints("got gac, p=",p, new_line,"s=",s, new_line, gac);}
    null_module(p.real_form) + for (i,coeff) in gac do ((-1)^(#(index_p=i))*coeff,block[i]) od
 
 {variants: ParamPol P, [int] w, WeylElt w}
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
   0*P + for coeff@p in P do coeff*coherent_irr(block,graph,p,s) od
 set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
-  let P=virtual(p) in for s in w do P:=coherent_irr(block,graph,P,s) od; P
+  let P=virtual(p) in for s in ~w {note ~ here, see coherent.at}
+  do P:=coherent_irr(block,graph,P,s) od; P
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
-  for s in w do P:=coherent_irr(block,graph,P,s) od; P
+  for s in ~w do P:=coherent_irr(block,graph,P,s) od; P
 set coherent_irr ([Param] block,WGraph graph,Param p,WeylElt w) = ParamPol:
  coherent_irr(block,graph,p,w.word)
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
