@@ -317,8 +317,10 @@ public:
   }
 }; // |class K_type|
 
-using K_term_type = std::pair<K_type,Split_integer>;
-using K_type_poly = Free_Abelian_light<K_type,Split_integer>;
+using K_type_nr = unsigned int; // hashed in |Rep_table| below
+
+using K_term_type = std::pair<K_type_nr,Split_integer>;
+using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*
   A class to serve as key-value pair for deformation formula lookup.
@@ -397,6 +399,9 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
+  std::vector<K_type> K_type_pool;
+  HashTable<K_type,K_type_nr> K_type_hash;
+
   std::vector<kl::KLPol> KL_poly_pool;
   KL_hash_Table KL_poly_hash;
 
@@ -429,6 +434,8 @@ class Rep_table : public Rep_context
   containers::simple_list<std::pair<BlockElt,kl::KLPol> >
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
+
+  StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
