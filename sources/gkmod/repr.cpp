@@ -1694,9 +1694,9 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 
   // otherwise compute the deformation terms at all reducibility points
 
-  containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
   for (unsigned i=rp.size(); i-->0; )
   {
+    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
@@ -1705,8 +1705,8 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
       bag.emplace_back(deformation(term.first), // recursion
 		       Split_integer(term.second,-term.second)); // $(1-s)*c$
+    result.add_multiples(std::move(bag));
   }
-  result.add_multiples(std::move(bag));
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
   return pool[h].set_deformation_formula(std::move(result));
