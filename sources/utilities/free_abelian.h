@@ -133,19 +133,18 @@ template<typename T, typename C, typename Compare>
   using term_type = std::pair<T,C>;
   using self = Free_Abelian_light<T,C,Compare>;
   std::vector<term_type> main;
-  containers::sl_list<term_type> recent;
   Compare cmp;
 
 public:
   Free_Abelian_light() // default |Compare| value for base
-  : main(), recent(), cmp(Compare()) {}
+  : main(), cmp(Compare()) {}
   Free_Abelian_light(Compare c) // here a specific |Compare| is used
-  : main(), recent(), cmp(c) {}
+  : main(), cmp(c) {}
 
   explicit Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
-    : main(1,std::make_pair(p,C(1L))), recent(), cmp(c) {}
+    : main(1,std::make_pair(p,C(1L))), cmp(c) {}
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
-    : main(1,std::make_pair(p,m)), recent(), cmp(c)
+    : main(1,std::make_pair(p,m)), cmp(c)
   { if (m==C(0)) main.clear(); } // ensure absence of terms with zero coefficient
 
   Free_Abelian_light(std::vector<term_type>&& vec, Compare c=Compare());
@@ -175,22 +174,20 @@ public:
   }
 
   self& operator-=(const self& p) { return add_multiple(p,C(-1)); }
+  self& operator-=(self&& p) { return add_multiple(std::move(p),C(-1)); }
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
 
-  bool is_zero () const { return main.empty() and recent.empty(); }
-  size_t size() const { return main.size() + recent.size(); }
+  bool is_zero () const { return begin()==end(); } // this ignores zeros
+  size_t size() const { return main.size(); }
 
   class const_iterator
   { const self* parent;
     typename std::vector<term_type>::const_iterator main_it;
-    typename containers::sl_list<term_type>::weak_const_iterator recent_it;
   public:
     const_iterator
-     ( const self* parent,
-       typename std::vector<term_type>::const_iterator it,
-       typename containers::sl_list<term_type>::weak_const_iterator jt)
-      : parent(parent), main_it(it), recent_it(jt) {}
+     ( const self* parent, typename std::vector<term_type>::const_iterator it)
+      : parent(parent), main_it(it) {}
     const_iterator(const const_iterator& it) = default;
     const_iterator(const_iterator&& it) = default;
 
@@ -198,55 +195,38 @@ public:
     const_iterator& operator= (const_iterator&& it) = default;
 
     bool operator== (const const_iterator& other)
-    { return parent==other.parent and
-	main_it==other.main_it and recent_it==other.recent_it;
+    { return parent==other.parent and main_it==other.main_it;
     }
     bool operator!= (const const_iterator& other)
     { return not operator==(other); }
 
-    const term_type& operator*() const
-    { return main_it!=parent->main.end() and
-	(recent_it.at_end() or main_it->first<recent_it->first)
-	? *main_it : *recent_it;
-    }
+    const term_type& operator*() const  { return *main_it; }
     const term_type* operator->() const { return &operator*(); }
 
     const_iterator& operator++()
-    { if (main_it!=parent->main.end()
-	  and (recent_it.at_end() or main_it->first < recent_it->first))
-	do // usually just once, but skip any term with zero coefficient
-	  ++main_it;
-	while (main_it!=parent->main.end() and main_it->second==C(0));
-      else ++recent_it;
+    { do // usually just once, but skip any term with zero coefficient
+	++main_it;
+      while (main_it!=parent->main.end() and main_it->second==C(0));
       return *this;
     }
 
     const term_type& post_incr()
-    { const term_type* p;
-      if (main_it!=parent->main.end() and
-	  (recent_it.at_end() or main_it->first<recent_it->first))
-	p=&*main_it,++main_it;
-      else
-	p=  &*recent_it, ++recent_it;
+    { const term_type* p =&*main_it;
+      ++main_it;
       return *p;
     }
 
-    bool has_ended() const
-    { return main_it==parent->main.end() and recent_it.at_end(); }
+    bool has_ended() const { return main_it==parent->main.end(); }
   };
 
   const_iterator begin() const
   { auto it = main.begin();
     while (it!=main.end() and it->second==C(0)) // skip any leading zero term
       ++it;
-    return {this,it,recent.wcbegin()};
+    return {this,it};
   }
-  const_iterator end() const { return {this,main.end(),recent.wcend()}; }
+  const_iterator end() const { return {this,main.end()}; }
 
-
-private:
-  C& main_coef(const T& e); // coefficient of |e| in |main|, or |C0|
-  void flatten ();
 }; // |class Free_Abelian_light|
 
 } // |namespace free_abelian|
