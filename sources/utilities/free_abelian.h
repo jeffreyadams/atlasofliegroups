@@ -171,7 +171,7 @@ public:
   self& operator+=(self&& p)
   { if (this->is_zero())
       return *this = std::move(p); // assign, avoiding initial addition to empty
-    return add_multiple(p,C(1));
+    return add_multiple(std::move(p),C(1));
   }
 
   self& operator-=(const self& p) { return add_multiple(p,C(-1)); }
