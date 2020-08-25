@@ -457,6 +457,39 @@ void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
   assert(tw == kgb().involution(z.x_part));
 }
 
+// make dominant, then descend though any singular complex descents
+void Rep_context::deform_readjust(StandardRepr& z) const
+{
+  make_dominant(z); // typically may have gone negative only for complex coroots
+  const RootDatum& rd = root_datum();
+
+  RankFlags simple_singulars;
+  { const auto& numer = z.infinitesimal_char.numerator();
+    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+
+  { RankFlags::iterator it;
+    do
+      for (it=simple_singulars.begin(); it(); ++it)
+	if (kgb().isComplexDescent(*it,x))
+	{
+	  weyl::Generator s=*it;
+	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
+	  x = kgb().cross(s,x);
+	  break; // out of the loop |for(s)|
+	} // |if(v<0)|
+    while (it()); // wait until inner loop runs to completion
+  }
+  z.y_bits=inner_class().involution_table().y_pack(kgb().inv_nr(x),lr);
+} // |deform_readjust|
+
+// this also ensures a chosen singular-complex minumum when there are multiple
+// but that only arises when singular-real descents exist (not so in deformation)
 void Rep_context::normalise(StandardRepr& z) const
 {
   make_dominant(z);
@@ -917,38 +950,40 @@ containers::sl_list<StandardRepr>
   auto rit=result.begin();
   do
   { const KGBElt x=rit->x();
-    auto it=singular.begin();
-    for (; it(); ++it)
-    { const auto s=*it;
-      if (kgb().status(s,x)==gradings::Status::ImaginaryCompact)
+    for (const auto s : singular)
+      // as |break| from loop is not available within |switch|, use |goto| below
+      switch (kgb().status(s,x))
       {
-        result.erase(rit); // discard zero parameter
-	break;
-      }
-      else if (kgb().status(s,x)==gradings::Status::Complex)
-      { if (kgb().isDescent(s,x))
+      case gradings::Status::ImaginaryCompact:
+	result.erase(rit); // discard zero parameter
+	goto repeat;
+      case gradings::Status::Complex:
+        if (kgb().isDescent(s,x))
 	{ // replace |*rit| by its complex descent for |s|
 	  singular_cross(s,*rit);
-	  break; // reconsider all singular roots for the new parameter
+	  goto repeat; // reconsider all singular roots for the new parameter
 	}
-      }
-      else if (kgb().status(s,x)==gradings::Status::Real)
-      { // only do something for parity roots
-	const InvolutionNbr i_x = kgb().inv_nr(x);
-	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
-	{ // found parity root; |kgb()| can distinguish type 1 and type 2
-	  const KGBEltPair p = kgb().inverseCayley(s,x);
-	  Weight lr = lambda_rho(*rit);
-	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	  *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
-	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
-	    result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
-	  break;
+	break;
+      case gradings::Status::Real:
+	{ // only do something for parity roots
+	  const InvolutionNbr i_x = kgb().inv_nr(x);
+	  if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
+	  { // found parity root; |kgb()| can distinguish type 1 and type 2
+	    const KGBEltPair p = kgb().inverseCayley(s,x);
+	    Weight lr = lambda_rho(*rit);
+	    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
+	    *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
+	    if (p.second!=UndefKGB) // insert second inverse Cayley after first
+	      result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
+	    goto repeat;
+	  }
 	}
-      }
-    }
-    if (not it()) // no singular descents found: consolidate |*rit|
-      ++rit;
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+        break; // like for complex ascent or real nonparity, do nothing here
+      } // end of |switch| and of |for (s:singular)|
+    ++rit; // no singular descents found: consolidate |*rit|
+  repeat: {} // continue modifications at |*rit| after jump here
   }
   while (not result.at_end(rit));
   return result;
@@ -1682,7 +1717,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     return result; // don't even bother to store the result
 
   StandardRepr z_near = z; scale(z_near,rp.back());
-  normalise(z_near); // so that we may find a stored equivalent parameter
+  deform_readjust(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
   deformation_unit zn(*this,std::move(z_near));
@@ -1696,12 +1731,13 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 
   for (unsigned i=rp.size(); i-->0; )
   {
-    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     auto zi = z; scale(zi,rp[i]);
-    normalise(zi); // necessary to ensure the following |assert| will hold
+    deform_readjust(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
+
+    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
       bag.emplace_back(deformation(term.first), // recursion
 		       Split_integer(term.second,-term.second)); // $(1-s)*c$
@@ -1955,22 +1991,12 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 
 K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 {
+  assert(is_final(z));
   const auto& delta = inner_class().distinguished();
-  RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  K_type_poly result;
-  if (rp.empty())
-  {
-    z = ext_block::scaled_extended_dominant
-      (*this,z,delta,Rational(0,1),flip_start); // deformation to $\nu=0$
-    auto L = ext_block::extended_finalise(*this,z,delta);
-    for (const std::pair<StandardRepr,bool>& p : L)
-      result.add_term(K_type_hash.match(K_type(*this,p.first)),
-		      p.second==flip_start
-		      ? Split_integer(1,0) : Split_integer(0,1) );
-    return result;
-  }
-  else if (rp.back()!=Rational(1,1))
+
+  RationalList rp=reducibility_points(z);
+  if (not rp.empty() and rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
     const Rational f=rp.back();
     z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip_start);
@@ -1990,16 +2016,24 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 	: pool[h].twisted_def_formula();
   }
 
+  std::vector<K_term_type> finals_vec;
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
+    finals_vec.reserve(L.size());
     for (const std::pair<StandardRepr,bool>& p : L)
-      result.add_term(K_type_hash.match(K_type(*this,p.first)),
-		      p.second==flipped // flip means |times_s|
-		      ? Split_integer(1,0) : Split_integer(0,1) );
+    {
+      auto h = K_type_hash.match(K_type(*this,p.first));
+      finals_vec.emplace_back(h,p.second==flipped // flip means |times_s|
+				? Split_integer(1,0) : Split_integer(0,1) );
+    }
   }
+  K_type_poly result(std::move(finals_vec)); // value sans deformation terms
+
+  if (rp.empty())
+    return result; // return without storing in such easy cases
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
@@ -2009,6 +2043,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
+    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     for (std::pair<StandardRepr,bool>& p : L)
     {
       BlockElt new_z;
@@ -2024,10 +2059,11 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 					     singular_orbits,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
-	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? Split_integer(-term.second,term.second)
-				 : Split_integer(term.second,-term.second));
+	bag.emplace_back(twisted_deformation(term.first), // recursion
+			 flip ? Split_integer(-term.second,term.second)
+			      : Split_integer(term.second,-term.second));
     }
+    result.add_multiples(std::move(bag));
   }
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|

@@ -6286,7 +6286,6 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  test_final(*p,"Full twisted deformation requires final parameter");
   if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
