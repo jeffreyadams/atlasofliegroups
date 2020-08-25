@@ -229,8 +229,9 @@ class Rep_context
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // do |make_dominant|, then make involution canonical for cross action by the
-  // singular subgroup of $W$, and finally apply any singular complex descents
+  // do |make_dominant|, and descend through any singular complex descents
+  void deform_readjust(StandardRepr& z) const;
+  // do the same, ensuring fixed choice of descent-minimum among equivalent ones
   void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
