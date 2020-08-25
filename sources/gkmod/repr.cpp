@@ -11,7 +11,8 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
-#include <iostream>
+#include <algorithm> // for |make_heap|
+#include <iostream> // for progress reports and easier debugging
 #include "error.h"
 
 #include "arithmetic.h"
@@ -1692,6 +1693,8 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   // otherwise compute the deformation terms at all reducibility points
+
+  containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
   for (unsigned i=rp.size(); i-->0; )
   {
     auto zi = z; scale(zi,rp[i]);
@@ -1700,9 +1703,10 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
     for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
-      result.add_multiple(deformation(term.first), // recursion
-			  Split_integer(term.second,-term.second)); // $(1-s)*c$
+      bag.emplace_back(deformation(term.first), // recursion
+		       Split_integer(term.second,-term.second)); // $(1-s)*c$
   }
+  result.add_multiples(std::move(bag));
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
   return pool[h].set_deformation_formula(std::move(result));

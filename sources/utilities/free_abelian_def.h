@@ -390,5 +390,116 @@ template<typename T, typename C, typename Compare>
   return *this;
 }
 
+template<typename E, typename Compare>
+  void insert_min_heap (std::vector<E>& heap, E item, Compare less)
+{
+  auto n = heap.size();
+  heap.push_back(item);
+  while (n>0)
+  {
+    auto m=(n-1)/2;
+    if (not less(item,heap[m]))
+      break;
+    heap[n]=heap[m];
+    n=m;
+  }
+  heap[n]=item;
+}
+
+// replacing |heap[0]| by |item|, reestablish heap property by sifting up
+template<typename E, typename Compare>
+  void sift_min_heap (std::vector<E>& heap, E item, Compare less)
+{
+  const auto size = heap.size();
+
+  size_t n=0;
+  while (2*n+1<size)
+  {
+    size_t m = size==2*(n+1) or
+      less(heap[2*n+1],heap[2*(n+1)]) ? 2*n+1 : 2*(n+1);
+    if (not less(heap[m],item))
+      break;
+    heap[n]=heap[m];
+    n=m;
+  }
+  heap[n]=item;
+}
+
+// remove |heap[0]| and reestablish heap property by sifting up
+template<typename E, typename Compare>
+  void pop_min_heap (std::vector<E>& heap, Compare less)
+{
+  E item = heap.back();
+  heap.pop_back();
+  sift_min_heap(heap,item,less);
+}
+
+
+template<typename T, typename C, typename Compare>
+  Free_Abelian_light<T,C,Compare>&
+  Free_Abelian_light<T,C,Compare>::add_multiples
+  (containers::sl_list<std::pair<Free_Abelian_light<T,C,Compare>,C> >&& L)
+{
+  struct participant
+  {
+    using iter = typename self::const_iterator;
+    iter it; // current state of iteration
+    const T* lead; // current leading exponent
+    C factor; // factor by which contribution will be multiplied
+    participant(const iter& it, const C& f)
+      : it(it),lead(&it->first),factor(f) {}
+  };
+
+  auto less = [this] (const participant& a, const participant& b)
+		     { return cmp(*a.lead,*b.lead); };
+
+  auto n=size(); // will be upper bound for total number of terms in result
+  auto org = std::move(*this); main.clear(); recent.clear(); // transfer
+
+  std::vector<participant> heap; heap.reserve(1+L.size());
+  {
+    auto it=org.begin();
+    if (it!=org.end())
+      heap.emplace_back(it,C(1));
+  }
+  for (const auto& elem : L)
+  {
+    auto it = elem.first.begin();
+    if (it!=elem.first.end())
+    {
+      insert_min_heap(heap,participant(it,elem.second),less);
+      n += elem.first.size();
+    }
+  }
+
+  if (heap.empty())
+    return *this;
+
+  main.reserve(n);
+  T cur = *heap[0].lead;
+  C cur_coef = C(0);
+  while (not heap.empty())
+  {
+    if (cmp(cur,*heap[0].lead)) // a new exponent has appeared on |front|
+    { // so contribute accumulated term if non-zero
+      if (cur_coef!=C(0))
+	main.emplace_back(cur,cur_coef);
+      cur = *heap[0].lead; cur_coef = C(0); // and prepare for new
+    }
+    C f = heap[0].factor; // get it first, though unchanged by |post_incr|
+    cur_coef = cur_coef + heap[0].it.post_incr().second*f;
+    if (heap[0].it.has_ended())
+      pop_min_heap(heap,less); // drop the no longer productive |heap[0]|
+    else
+      sift_min_heap(heap,participant(heap[0].it,heap[0].factor),less);
+  }
+
+  // push final term
+  if (cur_coef!=C(0))
+    main.emplace_back(cur,cur_coef);
+
+  return *this;
+}
+
   } // |namespace free_abelian|
 } // |namespace atlas|
