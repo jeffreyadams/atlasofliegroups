@@ -1696,12 +1696,13 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 
   for (unsigned i=rp.size(); i-->0; )
   {
-    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
+
+    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
       bag.emplace_back(deformation(term.first), // recursion
 		       Split_integer(term.second,-term.second)); // $(1-s)*c$
@@ -2009,6 +2010,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
+    containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     for (std::pair<StandardRepr,bool>& p : L)
     {
       BlockElt new_z;
@@ -2024,10 +2026,11 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 					     singular_orbits,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
-	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? Split_integer(-term.second,term.second)
-				 : Split_integer(term.second,-term.second));
+	bag.emplace_back(twisted_deformation(term.first), // recursion
+			 flip ? Split_integer(-term.second,term.second)
+			      : Split_integer(term.second,-term.second));
     }
+    result.add_multiples(std::move(bag));
   }
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
