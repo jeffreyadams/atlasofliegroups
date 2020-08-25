@@ -1030,6 +1030,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), alcove_hash(pool)
 , mod_pool(), mod_hash(mod_pool)
+, K_type_pool(), K_type_hash(K_type_pool)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
@@ -1668,7 +1669,10 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   auto K_types = finals_for(z0);
   std::vector<K_term_type> finals_vec; finals_vec.reserve(K_types.size());
   for (const auto& sr : K_types)
-    finals_vec.emplace_back(K_type(*this,sr),Split_integer(1,0));
+  {
+    auto h = K_type_hash.match(K_type(*this,sr));
+    finals_vec.emplace_back(h,Split_integer(1,0));
+  }
 
   K_type_poly result(std::move(finals_vec)); // value sans deformation terms
 
@@ -1957,7 +1961,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
       (*this,z,delta,Rational(0,1),flip_start); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
-      result.add_term(K_type(*this,p.first),
+      result.add_term(K_type_hash.match(K_type(*this,p.first)),
 		      p.second==flip_start
 		      ? Split_integer(1,0) : Split_integer(0,1) );
     return result;
@@ -1988,7 +1992,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
-      result.add_term(K_type(*this,p.first),
+      result.add_term(K_type_hash.match(K_type(*this,p.first)),
 		      p.second==flipped // flip means |times_s|
 		      ? Split_integer(1,0) : Split_integer(0,1) );
   }
