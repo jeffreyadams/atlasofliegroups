@@ -1605,7 +1605,7 @@ template<typename T, typename Alloc>
   // append contents of another list, return iterator to start of appended part
   iterator append (sl_list&& other)
   { iterator const result(*tail);
-    if (not other.empty()) // avoid erroneously setting |tail| in trival case
+    if (not other.empty()) // avoid erroneously setting |tail| in trivial case
     { *tail = std::move(other.head); // |std::unique_ptr| does the work
       tail = other.tail;
       node_count += other.node_count;

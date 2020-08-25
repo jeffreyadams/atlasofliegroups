@@ -378,54 +378,35 @@ class RootDatum
   RootNbr semisimpleRank() const { return RootSystem::rank(); }
 
 // root list access
+  using Weight_citer = WeightList::const_iterator;
+  using Coweight_citer = CoweightList::const_iterator;
 
-  WeightList::const_iterator beginRoot() const
-    { return d_roots.begin(); }
+  Weight_citer beginRoot() const { return d_roots.begin(); }
+  Weight_citer endRoot() const   { return d_roots.end(); }
+  Coweight_citer beginCoroot() const { return d_coroots.begin(); }
+  Coweight_citer endCoroot() const   { return d_coroots.end(); }
 
-  WeightList::const_iterator endRoot() const
-    { return d_roots.end(); }
+  Coweight_citer beginRadical() const { return d_radicalBasis.begin(); }
+  Coweight_citer endRadical() const   { return d_radicalBasis.end(); }
+  Weight_citer beginCoradical() const { return d_coradicalBasis.begin(); }
+  Weight_citer endCoradical() const   { return d_coradicalBasis.end(); }
 
-  CoweightList::const_iterator beginCoroot() const
-    { return d_coroots.begin(); }
-
-  CoweightList::const_iterator endCoroot() const
-    { return d_coroots.end(); }
-
-  CoweightList::const_iterator beginRadical() const
-    { return d_radicalBasis.begin(); }
-
-  CoweightList::const_iterator endRadical() const
-    { return d_radicalBasis.end(); }
-
-  WeightList::const_iterator beginCoradical() const
-    { return d_coradicalBasis.begin(); }
-
-  WeightList::const_iterator endCoradical() const
-    { return d_coradicalBasis.end(); }
-
-  // below |WRootIterator| is legacy; it equals |WeightList::const_iterator|
-  WRootIterator beginSimpleRoot() const // simple roots start halfway
+  Weight_citer beginSimpleRoot() const // simple roots start halfway
     { return beginRoot()+numPosRoots(); }
-
-  WRootIterator endSimpleRoot() const // and end after |semisimpleRank()|
+  Weight_citer endSimpleRoot() const // and end after |semisimpleRank()|
     { return beginSimpleRoot()+semisimpleRank(); }
-
-  WRootIterator beginPosRoot() const // positive roots start halfway
-    { return  beginSimpleRoot(); }
-
-  WRootIterator endPosRoot() const // an continue to the end
+  Weight_citer beginPosRoot() const // positive roots start halfway
+    { return beginSimpleRoot(); }
+  Weight_citer endPosRoot() const // and continue to the end
     { return endRoot(); }
 
-  WRootIterator beginSimpleCoroot() const
+  Coweight_citer beginSimpleCoroot() const // simple roots start halfway
     { return beginCoroot()+numPosRoots(); }
-
-  WRootIterator endSimpleCoroot() const
+  Coweight_citer endSimpleCoroot() const // and end after |semisimpleRank()|
     { return beginSimpleCoroot()+semisimpleRank(); }
-
-  WRootIterator beginPosCoroot() const // positive coroots start halfway
+  Coweight_citer beginPosCoroot() const // positive coroots start halfway
     { return  beginSimpleCoroot(); }
-
-  WRootIterator endPosCoroot() const
+  Coweight_citer endPosCoroot() const // and continue to the end
     { return endCoroot(); }
 
 

@@ -854,8 +854,6 @@ StandardRepr Rep_context::twisted
   return z;
 }
 
-Rep_context::compare Rep_context::repr_less() const
-{ return compare(root_datum().dual_twoRho()); }
 
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
@@ -876,7 +874,7 @@ bool Rep_context::compare::operator()
 
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const
 {
-  poly result(repr_less());
+  poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale(z,f));
@@ -888,7 +886,7 @@ SR_poly Rep_context::scale(const poly& P, const Rational& f) const
 
 SR_poly Rep_context::scale_0(const poly& P) const
 {
-  poly result(repr_less());
+  poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale_0(z));
@@ -957,10 +955,9 @@ containers::sl_list<StandardRepr>
 
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
-  auto finals = finals_for(z);
-  poly result (repr_less());
-  for (auto it=finals.cbegin(); not finals.at_end(it); ++it)
-    result += *it;
+  poly result;
+  for (const auto& sr : finals_for(z))
+    result += sr;
   return result;
 } // |Rep_context::expand_final|
 
@@ -980,13 +977,58 @@ std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
   return str;
 }
 
+bool deformation_unit::operator!=(const deformation_unit& another) const
+{
+  if (sample.x()!=another.sample.x() or
+      sample.height()!=another.sample.height() or
+      sample.y().data()!=another.sample.y().data())
+    return true; // easy tests for difference
+
+  {
+    const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
+    const auto gamma_diff_num = (sample.gamma()-another.sample.gamma()
+				 ).numerator();
+    if (not (theta*gamma_diff_num+gamma_diff_num).isZero())
+      return true; // difference in the free part of $\lambda$ spotted
+  }
+
+  const auto& rd = rc.root_datum();
+  const auto& g0=sample.gamma();
+  const auto& g1=another.sample.gamma();
+  const auto& num0 = g0.numerator();
+  const auto& num1 = g1.numerator();
+  const int d0=g0.denominator(), d1=g1.denominator(); // convert to |int|
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    if (arithmetic::divide(num0.dot(*it),d0) !=
+	arithmetic::divide(num1.dot(*it),d1))
+      return true; // different integer part of evaluation on poscoroot found
+
+  return false; // if no differences detected, consider |another| as equivalent
+}
+
+size_t deformation_unit::hashCode(size_t modulus) const
+{
+  size_t hash = 7*sample.x() + 89*sample.y().data().to_ulong();
+  const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
+  const auto& num = sample.gamma().numerator();
+  const auto free_lambda = (theta*num+num)/sample.gamma().denominator();
+  for (int c : free_lambda) // take into account free part of $\lambda$
+    hash = 21*(hash&(modulus-1))+c;
+
+  const auto& rd = rc.root_datum();
+  const int denom = sample.gamma().denominator(); // convert to |int|
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    hash = 5*(hash&(modulus-1))+arithmetic::divide(num.dot(*it),denom);
+
+  return hash&(modulus-1);
+}
 
 //				|Rep_table| methods
 
 
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
-, pool(), hash(pool), def_formulae()
+, pool(), alcove_hash(pool)
 , mod_pool(), mod_hash(mod_pool)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
@@ -1274,17 +1316,7 @@ void Rep_table::block_erase (bl_it pos)
     }
   }
   block_list.erase(pos);
-}
-
-unsigned long Rep_table::formula_index (const StandardRepr& sr)
-{
-  const auto prev_size = hash.size();
-  const auto h = hash.match(sr);
-  if (h>=prev_size)
-    def_formulae.push_back
-      (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
-  return h;
-}
+} // |Rep_table::block_erase|
 
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
@@ -1477,11 +1509,11 @@ std::vector<pair_list> contributions
   return result;
 } // |contributions|, extended block
 
-SR_poly Rep_table::deformation_terms
+containers::sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
-  SR_poly result(repr_less());
+  containers::sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1527,7 +1559,7 @@ SR_poly Rep_table::deformation_terms
 	continue; // polynomials with $-1$ as root do not contribute; skip
       if ((block.length(z)-block.length(x))%2!=0) // when |l(z)-l(x)| odd
 	eval=-eval; // flip sign (do alternating sum of KL column at |-1|)
-      for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
+      for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
@@ -1556,9 +1588,8 @@ SR_poly Rep_table::deformation_terms
       if (c!=0) // test must follow |++it| !
       {
 	const auto sr_z = block.sr(z,gamma);
-
 	auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
-	result.add_term(sr_z,Split_integer(1,-1)*coef);
+	result.emplace_back(sr_z,coef);
       }
     }
     assert(it==finals.end());
@@ -1583,7 +1614,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
-  SR_poly result(repr_less());
+  SR_poly result;
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
@@ -1627,43 +1658,19 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
   return result;
 } // |Rep_table::KL_column|
 
-#if 0
-SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
-{ // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)
-  SR_poly result(repr_less());
-  SR_poly remainder(hash[sr_hash],repr_less());
-  auto y_parity=lengths[sr_hash]%2;
 
-  while(not remainder.empty())
-  {
-    auto const& leading = *remainder.cbegin(); // least term is leading term
-    auto h=hash.find(leading.first); // highest term of |remainder|
-    assert(h!=hash.empty); // we remain within the already tabled parameters
-    auto c_cur = leading.second;
-    const SR_poly& KL_cur = KLV_list[h];
-    remainder.add_multiple(KL_cur,-c_cur);
-    assert(remainder.empty() or hash.find(remainder.cbegin()->first)!=h);
-    if (lengths[h]%2!=y_parity)
-      result.add_multiple(KL_cur,c_cur);
-  }
-  unsigned int orient_y = orientation_number(hash[sr_hash]);
-  for (auto& term : result)
-  {
-    unsigned int orient_express=orient_y-orientation_number(term.first);
-    (term.second*= arithmetic::exp_i(orient_express)).times_1_s();
-  }
-
-  return result;
-} // |deformation_terms|, version without block
-#endif
-
-SR_poly Rep_table::deformation(const StandardRepr& z)
+K_type_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
   StandardRepr z0 = z; scale_0(z0);
-  SR_poly result = expand_final(z0); // value without deformation terms
+  auto K_types = finals_for(z0);
+  std::vector<K_term_type> finals_vec; finals_vec.reserve(K_types.size());
+  for (const auto& sr : K_types)
+    finals_vec.emplace_back(K_type(*this,sr),Split_integer(1,0));
+
+  K_type_poly result(std::move(finals_vec)); // value sans deformation terms
 
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
@@ -1673,10 +1680,11 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
+  deformation_unit zn(*this,std::move(z_near));
   { // look up if deformation formula for |z_near| is already known and stored
-    unsigned long h=hash.find(z_near);
-    if (h!=hash.empty and not def_formulae[h].first.empty())
-      return def_formulae[h].first;
+    unsigned long h=alcove_hash.find(zn);
+    if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
+      return pool[h].def_formula();
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1687,13 +1695,13 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
-    const SR_poly terms = deformation_terms(block,new_z,zi.gamma());
-    for (auto const& term : terms)
-      result.add_multiple(deformation(term.first),term.second); // recursion
+    for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
+      result.add_multiple(deformation(term.first), // recursion
+			  Split_integer(term.second,-term.second)); // $(1-s)*c$
   }
 
-  const auto h = formula_index(z_near);
-  return def_formulae[h].first=result;
+  const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
+  return pool[h].set_deformation_formula(std::move(result));
 } // |Rep_table::deformation|
 
 
@@ -1731,8 +1739,7 @@ SR_poly twisted_KL_sum
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
-  const auto& rc = parent.context();
-  SR_poly result(rc.repr_less());
+  SR_poly result;
   unsigned int parity = eblock.length(y)%2;
   for (BlockElt x=0; x<=y; ++x)
   { const auto& p = twisted_KLV.KL_pol_index(x,y);
@@ -1789,7 +1796,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 
   const auto& kl_tab = eblock.kl_table(y+1,&poly_hash);
 
-  SR_poly result(repr_less());
+  SR_poly result;
   const auto& gamma=sr.gamma();
   const RatWeight gamma_rho = gamma-rho(block.root_datum());
   auto y_length=block.length(y0);
@@ -1812,7 +1819,8 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   return result;
 } // |Rep_table::twisted_KL_column_at_s|
 
-SR_poly Rep_table::twisted_deformation_terms
+containers::sl_list<std::pair<StandardRepr,int> >
+Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
      RankFlags singular_orbits, const RatWeight& gamma)
@@ -1820,7 +1828,7 @@ SR_poly Rep_table::twisted_deformation_terms
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
 
-  SR_poly result(repr_less());
+  containers::sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
@@ -1875,7 +1883,7 @@ SR_poly Rep_table::twisted_deformation_terms
       const int val_xz = p.second!= // XOR stored sign with length diff. parity
 	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
 	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
-      for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
+      for (auto jt=contrib[x].wcbegin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
@@ -1896,11 +1904,10 @@ SR_poly Rep_table::twisted_deformation_terms
       const int c = *it++;
       if (c==0)
 	continue;
-      BlockElt z = eblock.z(f); // |block| numbering used to build |StandardRepr|
-      const auto sr_z = block.sr(z,gamma);
+      const auto sr_z = block.sr(eblock.z(f),gamma); // renumber |f| to |block|
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
-      result.add_term(sr_z,Split_integer(1,-1)*coef);
+      result.emplace_back(sr_z,coef);
     }
     assert(it==acc.end());
   }
@@ -1911,8 +1918,8 @@ SR_poly Rep_table::twisted_deformation_terms
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 { // the |StandardRepr| |hash[sr_hash]| is necessarily delta-fixed and final
-  SR_poly result(repr_less());
-  SR_poly remainder(hash[sr_hash],repr_less());
+  SR_poly result;
+  SR_poly remainder(hash[sr_hash]);
   auto y_parity=lengths[sr_hash]%2;
 
   while(not remainder.empty())
@@ -1938,48 +1945,52 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-SR_poly Rep_table::twisted_deformation (StandardRepr z)
+K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 {
   const auto& delta = inner_class().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  SR_poly result(repr_less());
+  K_type_poly result;
   if (rp.empty())
   {
     z = ext_block::scaled_extended_dominant
-	  (*this,z,delta,Rational(0,1),flip_start);
+      (*this,z,delta,Rational(0,1),flip_start); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z,delta);
-    for (auto it=L.begin(); it!=L.end(); ++it)
-      result.add_term(it->first, it->second==flip_start
-				 ? Split_integer(1,0) : Split_integer(0,1) );
+    for (const std::pair<StandardRepr,bool>& p : L)
+      result.add_term(K_type(*this,p.first),
+		      p.second==flip_start
+		      ? Split_integer(1,0) : Split_integer(0,1) );
     return result;
   }
   else if (rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
-    z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
-    Rational f=rp.back();
+    const Rational f=rp.back();
+    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip_start);
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
+    // here we continue, with |flip_start| recording whether we already flipped
   }
 
-  { // if deformation for |z| was previously stored, return it with |flip_start|
-    const auto h=hash.find(z);
-    if (h!=hash.empty and not def_formulae[h].second.empty())
+  deformation_unit zu(*this,z);
+  { // if formula for |z| was previously stored, return it with |s^flip_start|
+    const auto h=alcove_hash.find(zu);
+    if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return flip_start // if so we must multiply the stored value by $s$
-	? SR_poly(repr_less()).add_multiple
-	   (def_formulae[h].second,Split_integer(0,1))
-	: def_formulae[h].second;
+	? K_type_poly().add_multiple
+	(pool[h].twisted_def_formula(),Split_integer(0,1))
+	: pool[h].twisted_def_formula();
   }
 
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
-		(*this,z,delta,Rational(0,1),flipped);
+		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
-    for (const auto& p :L )
-      result.add_term(p.first, p.second==flipped // flip means |times_s|
-			       ? Split_integer(1,0) : Split_integer(0,1) );
+    for (const std::pair<StandardRepr,bool>& p : L)
+      result.add_term(K_type(*this,p.first),
+		      p.second==flipped // flip means |times_s|
+		      ? Split_integer(1,0) : Split_integer(0,1) );
   }
 
   // compute the deformation terms at all reducibility points
@@ -2001,24 +2012,21 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
       for (weyl::Generator s=0; s<eblock.rank(); ++s)
 	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
-      const SR_poly terms =
-	twisted_deformation_terms(block,eblock,new_z,
-				  singular_orbits,zi.gamma());
+      auto terms = twisted_deformation_terms(block,eblock,new_z,
+					     singular_orbits,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
 	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? term.second.times_s() : term.second);
+			    flip ? Split_integer(-term.second,term.second)
+				 : Split_integer(term.second,-term.second));
     }
   }
 
-  { // store
-    const auto h=formula_index(z);
-    def_formulae[h].second=result;
-  }
+  const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
+  const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
-    : result;
+    ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

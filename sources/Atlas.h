@@ -156,8 +156,14 @@ namespace atlas {
   namespace free_abelian {
     template<typename T, typename C=long int, typename Compare=std::less<T> >
       struct Free_Abelian;
+    template<typename T, typename C=long int, typename Compare=std::less<T> >
+      struct Monoid_Ring;
+    template<typename T, typename C=long int, typename Compare=std::less<T> >
+      class Free_Abelian_light;
   }
   using free_abelian::Free_Abelian;
+  using free_abelian::Monoid_Ring;
+  using free_abelian::Free_Abelian_light;
 
   namespace polynomials {
     template<typename C> class Polynomial;
@@ -259,7 +265,6 @@ namespace atlas {
     class RootSystem;
     class RootDatum;
     typedef int_Vector Root;
-    typedef WeightList::const_iterator WRootIterator;
   }
   using rootdata::RootSystem;
   using rootdata::RootDatum;

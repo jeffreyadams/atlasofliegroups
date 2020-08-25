@@ -53,7 +53,7 @@ struct Free_Abelian : public std::map<T,C,Compare>
       base::insert(std::make_pair(p,m));
   }
 
-  // convert other agregate of (monomial,coefficient) pairs to |Free_Abelian|
+  // convert other aggregate of (monomial,coefficient) pairs to |Free_Abelian|
   // warning: current implementation allows coefficients |C(0)| to slip through
   template<typename InputIterator> // iterator over (T,coef_t) pairs
   Free_Abelian(InputIterator first, InputIterator last, Compare c=Compare())
@@ -80,12 +80,14 @@ struct Free_Abelian : public std::map<T,C,Compare>
     return p==base::end() ? C(0) : p->second;
   }
 
-}; // |class Free_Abelian|
+  bool is_zero () const { return this->empty(); }
+
+}; // |struct Free_Abelian|
 
 /* When we also want a multiplication, |T| must have operator+=. Rather than
    defining operator*= in Free_Abelian (possibly unused), we prefer to derive.
 */
-template<typename T, typename C=long int, typename Compare=std::less<T> >
+template<typename T, typename C, typename Compare>
   struct Monoid_Ring : public Free_Abelian<T,C,Compare>
 {
   typedef C coef_t;
@@ -109,8 +111,119 @@ template<typename T, typename C=long int, typename Compare=std::less<T> >
   // add to |*this| a multiple of |p| by the mono-nomial $cX^{\\{expon}}$
   Monoid_Ring& add_multiple(const Monoid_Ring& p, C m,const T& expon);
 
-}; // |class Monoid_Ring|
+}; // |struct Monoid_Ring|
 
+
+/*
+  A class template that should be functionally equivalent to |Free_Abelian|, at
+  least when its public derivation from a |std::map| instance is not directly
+  used, but which avoids using |std::map|, using a sorted |std::vector| instead.
+
+  This should save quite a bit of space when |T| is a small type, but costs a
+  bit of complexity if small insertions are frequent. To alleviate this burden,
+  term insertions that are not matched (so would produce a fresh term) are
+  stored in a temporary |containers::sl_list| that will be merge into to main
+  vector once it gets large relative to the square root of the size of the main
+  vector; thus insertion costs are amorised square root of the size per element
+  at worst. Term deletions, assumed rare, are performed on the vector directly.
+*/
+template<typename T, typename C, typename Compare>
+  class Free_Abelian_light
+{
+  using term_type = std::pair<T,C>;
+  using self = Free_Abelian_light<T,C,Compare>;
+  std::vector<term_type> main;
+  containers::sl_list<term_type> recent;
+  Compare cmp;
+
+public:
+  Free_Abelian_light() // default |Compare| value for base
+  : main(), recent(), cmp(Compare()) {}
+  Free_Abelian_light(Compare c) // here a specific |Compare| is used
+  : main(), recent(), cmp(c) {}
+
+  explicit Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
+    : main(1,std::make_pair(p,C(1L))), recent(), cmp(c) {}
+  Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
+    : main(1,std::make_pair(p,m)), recent(), cmp(c)
+  { if (m==C(0)) main.clear(); } // ensure absence of terms with zero coefficient
+
+  Free_Abelian_light(std::vector<term_type>&& vec, Compare c=Compare());
+
+  // construct from another aggregate of (monomial,coefficient) pairs
+  template<typename InputIterator> // iterator over (T,coef_t) pairs
+  Free_Abelian_light(InputIterator first, InputIterator last,
+		     Compare c=Compare());
+
+  self& add_term(const T& p, C m);
+  self& operator+=(const T& p) { return add_term(p,C(1)); }
+  self& operator-=(const T& p) { return add_term(p,C(-1)); }
+
+  self& add_multiple(const self& p, C m);
+  self& add_multiple(self&& p, C m);
+
+  self& operator+=(const self& p)
+  { if (this->is_zero())
+      return *this = p; // assign, avoiding work on initial addition to empty
+    return add_multiple(p,C(1));
+  }
+  self& operator+=(self&& p)
+  { if (this->is_zero())
+      return *this = std::move(p); // assign, avoiding initial addition to empty
+    return add_multiple(p,C(1));
+  }
+
+  self& operator-=(const self& p) { return add_multiple(p,C(-1)); }
+
+  C operator[] (const T& t) const; // find coefficient of |t| in |*this|
+
+  bool is_zero () const { return main.empty() and recent.empty(); }
+  size_t size() const { return main.size() + recent.size(); }
+
+  class const_iterator
+  { const self& parent;
+    typename std::vector<term_type>::const_iterator main_it;
+    typename containers::sl_list<term_type>::const_iterator recent_it;
+  public:
+    const_iterator(const self& parent,
+		   typename std::vector<term_type>::const_iterator it,
+		   typename containers::sl_list<term_type>::const_iterator jt)
+      : parent(parent), main_it(it), recent_it(jt) {}
+    bool operator== (const const_iterator& other)
+    { return main_it==other.main_it and recent_it==other.recent_it; }
+    bool operator!= (const const_iterator& other)
+    { return not operator==(other); }
+
+    const term_type& operator*() const
+    { return main_it!=parent.main.end() and
+	(recent_it.at_end() or main_it->first<recent_it->first)
+	? *main_it : *recent_it; }
+    const term_type* operator->() const { return &operator*(); }
+
+    const_iterator& operator++()
+    { if (main_it!=parent.main.end()
+	  and (recent_it.at_end() or main_it->first < recent_it->first))
+	do // usually just once, but skip any term with zero coefficient
+	  ++main_it;
+	while (main_it!=parent.main.end() and main_it->second==C(0));
+      else ++recent_it;
+      return *this;
+    }
+  };
+
+  const_iterator begin() const
+  { auto it = main.begin();
+    while (it!=main.end() and it->second==C(0)) // skip any leading zero term
+      ++it;
+    return {*this,it,recent.begin()};
+  }
+  const_iterator end() const { return {*this,main.end(),recent.end()}; }
+
+
+private:
+  C& main_coef(const T& e); // coefficient of |e| in |main|, or |C0|
+  void flatten ();
+}; // |class Free_Abelian_light|
 
 } // |namespace free_abelian|
 

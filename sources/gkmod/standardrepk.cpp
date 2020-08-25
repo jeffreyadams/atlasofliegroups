@@ -275,15 +275,13 @@ StandardRepK SRK_context::KGB_elt_rep(KGBElt z) const
 { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
 #endif
 
-level
-SRK_context::height(const StandardRepK& sr) const
+level SRK_context::height(const StandardRepK& sr) const
 {
   const RootDatum& rd=root_datum();
   const Weight mu=theta_lift(sr);
 
   level sum=0;
-  for (rootdata::WRootIterator
-	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
     sum += std::abs(mu.dot(*it));
 
   return sum/4; // |mu| has doubled coordinates, and use the coroot half-sum

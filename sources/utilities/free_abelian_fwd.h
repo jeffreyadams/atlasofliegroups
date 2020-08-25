@@ -18,6 +18,10 @@ namespace free_abelian {
 
 template<typename T, typename C=long int, typename Compare=std::less<T> >
   struct Free_Abelian;
+template<typename T, typename C=long int, typename Compare=std::less<T> >
+  struct Monoid_Ring;
+template<typename T, typename C=long int, typename Compare=std::less<T> >
+  class Free_Abelian_light;
 }
 
 }
