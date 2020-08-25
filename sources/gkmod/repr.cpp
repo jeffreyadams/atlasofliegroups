@@ -917,38 +917,40 @@ containers::sl_list<StandardRepr>
   auto rit=result.begin();
   do
   { const KGBElt x=rit->x();
-    auto it=singular.begin();
-    for (; it(); ++it)
-    { const auto s=*it;
-      if (kgb().status(s,x)==gradings::Status::ImaginaryCompact)
+    for (const auto s : singular)
+      // as |break| from loop is not available within |switch|, use |goto| below
+      switch (kgb().status(s,x))
       {
-        result.erase(rit); // discard zero parameter
-	break;
-      }
-      else if (kgb().status(s,x)==gradings::Status::Complex)
-      { if (kgb().isDescent(s,x))
+      case gradings::Status::ImaginaryCompact:
+	result.erase(rit); // discard zero parameter
+	goto repeat;
+      case gradings::Status::Complex:
+        if (kgb().isDescent(s,x))
 	{ // replace |*rit| by its complex descent for |s|
 	  singular_cross(s,*rit);
-	  break; // reconsider all singular roots for the new parameter
+	  goto repeat; // reconsider all singular roots for the new parameter
 	}
-      }
-      else if (kgb().status(s,x)==gradings::Status::Real)
-      { // only do something for parity roots
-	const InvolutionNbr i_x = kgb().inv_nr(x);
-	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
-	{ // found parity root; |kgb()| can distinguish type 1 and type 2
-	  const KGBEltPair p = kgb().inverseCayley(s,x);
-	  Weight lr = lambda_rho(*rit);
-	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	  *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
-	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
-	    result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
-	  break;
+	break;
+      case gradings::Status::Real:
+	{ // only do something for parity roots
+	  const InvolutionNbr i_x = kgb().inv_nr(x);
+	  if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
+	  { // found parity root; |kgb()| can distinguish type 1 and type 2
+	    const KGBEltPair p = kgb().inverseCayley(s,x);
+	    Weight lr = lambda_rho(*rit);
+	    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
+	    *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
+	    if (p.second!=UndefKGB) // insert second inverse Cayley after first
+	      result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
+	    goto repeat;
+	  }
 	}
-      }
-    }
-    if (not it()) // no singular descents found: consolidate |*rit|
-      ++rit;
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+        break; // like for complex ascent or real nonparity, do nothing here
+      } // end of |switch| and of |for (s:singular)|
+    ++rit; // no singular descents found: consolidate |*rit|
+  repeat: {} // continue modifications at |*rit| after jump here
   }
   while (not result.at_end(rit));
   return result;
