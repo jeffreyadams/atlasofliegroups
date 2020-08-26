@@ -11,8 +11,9 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
-#include <algorithm> // for |make_heap|
 #include <iostream> // for progress reports and easier debugging
+
+#include <cmath> // for |sqrt|
 
 #include<sys/time.h>
 #include<sys/resource.h> // for memory use report
@@ -1287,8 +1288,30 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
+, formula_count(0), def_terms_count(0), dt_size(0), shrink(0)
+, fcount2(0), dtcount2(0)
 {}
-Rep_table::~Rep_table() = default;
+Rep_table::~Rep_table()
+{
+  size_t total=0;
+  for (const auto& item : pool)
+    total += item.def_form_size() + item.twisted_def_form_size();
+
+  std::cout << "Number of alcoves " << pool.size()
+	    << " totalling " << total  << " terms.\n";
+  std::cout << "Number of distinct K_types " << K_type_hash.size() << ".\n";
+
+  if (pool.empty())
+    return; // avoid division by 0
+
+  double n = pool.size();
+  std::cout
+    << "Average formula size " << formula_count/n
+    << ", quadratic average " << std::sqrt(fcount2/n) << ";\n"
+    << "Average number of deformation contributions " << def_terms_count/n
+    << ", quadratic average " << std::sqrt(dtcount2/n) << ", with "
+    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms.\n";
+}
 
 unsigned short Rep_table::length(StandardRepr sr)
 {
@@ -1937,6 +1960,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     result.add_term(h,Split_integer(1,0));
   }
 
+  size_t total = result.size();
   for (unsigned i=rp.size(); i-->0; )
   {
     auto zi = z; scale(zi,rp[i]);
@@ -1947,18 +1971,31 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     RatWeight diff = offset(zi, block.representative(new_z));
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
 	   .isZero());
+
+    size_t loop_count=0;
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto& term : dt)
     {
-      simplify(*this,term.first);
+      ++loop_count;
+       simplify(*this,term.first);
       for (const auto& final : finals_for(term.first))
       {
 	const auto& def = deformation(final); // recursion
-	result.add_multiple
+	dt_size += def.size();
+	total += def.size();
+ 	result.add_multiple
 	  (def,Split_integer(term.second,-term.second)); // $(1-s)*c$
       }
     }
+
+    def_terms_count += loop_count;
+    dtcount2 += loop_count*loop_count;
   }
+
+  size_t size = result.size();
+  formula_count += size;
+  fcount2 += size*size;
+  shrink += total-size;
 
   const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
   return pool[h].set_deformation_formula(std::move(result).flatten());
@@ -2257,6 +2294,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   }
 
   // compute the deformation terms at all reducibility points
+  size_t total = result.size();
   for (unsigned i=rp.size(); i-->0; )
   {
     RatNum r=rp[i]; bool flipped;
@@ -2264,6 +2302,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
+    size_t loop_count=0;
     for (std::pair<StandardRepr,bool>& p : L)
     {
       const bool flip_p = flipped!=p.second;
@@ -2284,17 +2323,26 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       auto terms = twisted_deformation_terms(block,eblock,new_z,
 					     singular_orbits,diff,zi.gamma());
       for (auto const& term : terms)
-      { bool flip_def;
+      { ++loop_count;
+	bool flip_def;
 	const auto& def = twisted_deformation(term.first,flip_def); // recursion
+	dt_size += def.size();
+	total += def.size();
 	result.add_multiple(def,
 	   flip_p!=flip_def ? Split_integer(-term.second,term.second)
 			    : Split_integer(term.second,-term.second));
       }
     }
+    def_terms_count += loop_count;
+    dtcount2 += loop_count*loop_count;
   }
 
-  const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
+  size_t size = result.size();
+  formula_count += size;
+  fcount2 += size*size;
+  shrink += total-size;
 
+  const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
   return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
