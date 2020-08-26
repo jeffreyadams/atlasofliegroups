@@ -448,6 +448,8 @@ class Rep_table : public Rep_context
   using bl_it = sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
 
+  // statistics of deformation, last two are squared counts
+  size_t formula_count, def_terms_count, dt_size, shrink, fcount2, dtcount2;
  public:
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
