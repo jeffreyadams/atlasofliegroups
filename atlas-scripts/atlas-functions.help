@@ -684,7 +684,7 @@ infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module
-  True whenever gamma is singular on a compact (for x) simple-imaginary root
+  True whenever gamma is singular on a compact (for x) simply-imaginary root
 is_semifinal: (Param->bool): whether parameter has no singular real descents
   False whenever associated standard representation is combination of others
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is

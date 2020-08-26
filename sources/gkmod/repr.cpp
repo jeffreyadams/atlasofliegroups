@@ -11,8 +11,9 @@
 
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
-#include <algorithm> // for |make_heap|
 #include <iostream> // for progress reports and easier debugging
+
+#include <cmath> // for |sqrt|
 
 #include<sys/time.h>
 #include<sys/resource.h> // for memory use report
@@ -1099,6 +1100,8 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
+, formula_count(0), def_terms_count(0), dt_size(0), shrink(0)
+, fcount2(0), dtcount2(0)
 {}
 Rep_table::~Rep_table()
 {
@@ -1109,6 +1112,14 @@ Rep_table::~Rep_table()
   std::cout << "Number of alcoves " << pool.size()
 	    << " totalling " << total  << " terms.\n";
   std::cout << "Number of distinct K_types " << K_type_hash.size() << ".\n";
+
+  double n = pool.size();
+  std::cout
+    << "Average formula size " << formula_count/n
+    << ", quadratic average " << std::sqrt(fcount2/n) << ";\n"
+    << "Average number of deformation contributions " << def_terms_count/n
+    << ", quadratic average " << std::sqrt(dtcount2/n) << ", with "
+    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms.\n";
 }
 
 unsigned short Rep_table::length(StandardRepr sr)
@@ -1775,7 +1786,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   // otherwise compute the deformation terms at all reducibility points
-
+  size_t total = result.size();
   for (unsigned i=rp.size(); i-->0; )
   {
     auto zi = z; scale(zi,rp[i]);
@@ -1786,10 +1797,21 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 
     containers::sl_list<std::pair<K_type_poly,Split_integer> > bag;
     for (auto const& term : deformation_terms(block,new_z,zi.gamma()))
-      bag.emplace_back(deformation(term.first), // recursion
+    {
+      auto def = deformation(term.first); // recursion
+      dt_size += def.size();
+      total += def.size();
+      bag.emplace_back(std::move(def),
 		       Split_integer(term.second,-term.second)); // $(1-s)*c$
+    }
+    def_terms_count += bag.size();
+    dtcount2 += bag.size()*bag.size();
     result.add_multiples(std::move(bag));
   }
+
+  formula_count += result.size();
+  fcount2 += result.size()*result.size();
+  shrink += total-result.size();
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
   return pool[h].set_deformation_formula(std::move(result));
@@ -2084,6 +2106,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
     return result; // return without storing in such easy cases
 
   // compute the deformation terms at all reducibility points
+  size_t total = result.size();
   for (unsigned i=rp.size(); i-->0; )
   {
     Rational r=rp[i]; bool flipped;
@@ -2107,12 +2130,23 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 					     singular_orbits,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
-	bag.emplace_back(twisted_deformation(term.first), // recursion
+      {
+	auto def = twisted_deformation(term.first); // recursion
+	dt_size += def.size();
+	total += def.size();
+	bag.emplace_back(std::move(def),
 			 flip ? Split_integer(-term.second,term.second)
 			      : Split_integer(term.second,-term.second));
+      }
     }
+    def_terms_count += bag.size();
+    dtcount2 += bag.size()*bag.size();
     result.add_multiples(std::move(bag));
   }
+
+  formula_count += result.size();
+  fcount2 += result.size()*result.size();
+  shrink += total-result.size();
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
   const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
