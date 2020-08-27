@@ -117,7 +117,7 @@ set coherent_irr([Param] block,WGraph graph,Param p,int s) = ParamPol:
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
   0*P + for coeff@p in P do coeff*coherent_irr(block,graph,p,s) od
 set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
-  let P=virtual(p) in for s in ~w {note ~ here, see coherent.at}
+  let P=virtual(p) in for s in w {note NO ~ here, see coherent.at}
   do P:=coherent_irr(block,graph,P,s) od; P
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
   for s in ~w do P:=coherent_irr(block,graph,P,s) od; P
