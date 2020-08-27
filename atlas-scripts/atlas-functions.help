@@ -837,6 +837,12 @@ K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   The argument parameter is interpreted as giving an irreducible module; its
   restriction to K is expressed as linear combination of restrictions to K of
   standard representations, and a polynomial giving their parameters returned.
+K_type_formula: (Param,int->ParamPol) Height-truncated version of K_type_formula
+  This returns the reuslt of the previous version of K_type_formula, after
+  removal of all terms of greater height than indicated in the second argument,
+  which must be a non negative number. This truncation is incorporated in the
+  computation itself, which avoids any work that can only affect terms that
+  exceed the given height bound; in some cases this may be considerably faster.
 branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
   The first argument is taken as standard representation, and is interpreted
   as restricted to K (the nu component is replaced by a zero vector), while

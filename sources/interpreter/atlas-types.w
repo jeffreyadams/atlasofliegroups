@@ -5987,6 +5987,42 @@ void K_type_formula_wrapper(expression_base::level l)
   push_value(std::move(acc));
 }
 
+@ Here is a variation of the previous function that passes a bound value on to
+@< Local function def...@>=
+
+void K_type_formula_trunc_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  if (bound<0)
+    throw runtime_error() << "Negative height bound " << bound;
+  RealReductiveGroup& G = p->rf->val;
+  const Rep_context& rc = p->rc();
+  KhatContext& khc = p->rf->khc();
+  StandardRepK srk =
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  @< Check that |srk| is final, and if not |throw| an error @>
+  if (l==expression_base::no_value)
+    return;
+@)
+  const standardrepk::Char formula = khc.K_type_formula(srk,bound).second;
+  const RatWeight zero_nu(p->rf->val.rank());
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (auto it=formula.begin(); it!=formula.end(); ++it)
+  {
+    standardrepk::combination st=khc.standardize(it->first);
+    for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
+    {
+      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
+      Split_integer coef (it->second*stit->second);
+      auto finals = p->rc().finals_for(term);
+      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
+         acc->val.add_term(*jt,coef);
+    }
+  }
+  push_value(std::move(acc));
+}
+
 @ We must test the parameter for being final, or else the method
 |K_type_formula| will fail. The error message mentions restriction to $K$,
 since the parameter itself reported here might be final.
@@ -6499,6 +6535,8 @@ install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
+install_function(K_type_formula_trunc_wrapper,@|"K_type_formula"
+		,"(Param,int->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
