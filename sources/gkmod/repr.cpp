@@ -1113,13 +1113,19 @@ Rep_table::~Rep_table()
 	    << " totalling " << total  << " terms.\n";
   std::cout << "Number of distinct K_types " << K_type_hash.size() << ".\n";
 
-  double n = pool.size();
+  double n = pool.size(), fm=sum_counts.find_miss;
   std::cout
     << "Average formula size " << formula_count/n
     << ", quadratic average " << std::sqrt(fcount2/n) << ";\n"
     << "Average number of deformation contributions " << def_terms_count/n
     << ", quadratic average " << std::sqrt(dtcount2/n) << ", with "
-    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms.\n";
+    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms\n"
+    << "Total contributed terms: " << sum_counts.contrib
+    << " of which " << sum_counts.unmatched << " were not matched.\n"
+    << "Find was called successfully " << sum_counts.find_n-sum_counts.find_miss
+    << " times, average length " << sum_counts.find_l/(sum_counts.find_n-fm)
+    << ",\nand it was called unsuccessfully " << sum_counts.find_miss
+    << " times, average length " << sum_counts.find_miss_l/fm << ".\n";
 }
 
 unsigned short Rep_table::length(StandardRepr sr)
@@ -1768,7 +1774,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     assert(is_final(z_near));
   }
 
-  deformation_unit zn(*this,std::move(z_near));
+  deformation_unit zn(*this,std::move(z_near),&sum_counts);
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
@@ -1776,7 +1782,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   StandardRepr z0 = z; scale_0(z0);
-  K_type_poly result {std::less<K_type_nr>()};
+  K_type_poly result {&sum_counts,std::less<K_type_nr>()};
   for (const auto& sr : finals_for(z0))
   {
     K_type_nr h = K_type_hash.match(K_type(*this,sr));
@@ -2078,17 +2084,17 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
     // here we continue, with |flip_start| recording whether we already flipped
   }
 
-  deformation_unit zu(*this,z);
+  deformation_unit zu(*this,z,&sum_counts);
   { // if formula for |z| was previously stored, return it with |s^flip_start|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return flip_start // if so we must multiply the stored value by $s$
-	? K_type_poly().add_multiple
+	? K_type_poly(&sum_counts).add_multiple
 	(pool[h].twisted_def_formula(),Split_integer(0,1))
 	: pool[h].twisted_def_formula();
   }
 
-  K_type_poly result { std::less<K_type_nr>() };
+  K_type_poly result { &sum_counts, std::less<K_type_nr>() };
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
@@ -2154,7 +2160,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
     pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
   return flip_start // if so we must multiply the stored value by $s$
-    ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;
+    ? K_type_poly(&sum_counts).add_multiple(res,Split_integer(0,1)) : res;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 

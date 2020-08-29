@@ -6308,7 +6308,8 @@ void full_deform_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
-  repr::K_type_poly res;
+  free_abelian::sum_stat dummy;
+  repr::K_type_poly res(&dummy);
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     res += p->rt().deformation(*it);
 @)
@@ -6329,7 +6330,8 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals =
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly res;
+  free_abelian::sum_stat dummy;
+  repr::K_type_poly res(&dummy);
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     res.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
