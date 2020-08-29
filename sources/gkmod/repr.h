@@ -344,10 +344,12 @@ class deformation_unit
   K_type_poly untwisted, twisted;
   const Rep_context& rc; // access coroots etc. necessary for alcove testing
 public:
-  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
-  : sample(sr), untwisted(), twisted(), rc(rc) {}
-  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
-  : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
+  deformation_unit(const Rep_context& rc, const StandardRepr& sr,
+		   free_abelian::sum_stat* s)
+  : sample(sr), untwisted(s), twisted(s), rc(rc) {}
+  deformation_unit(const Rep_context& rc, StandardRepr&& sr,
+		   free_abelian::sum_stat* s)
+  : sample(std::move(sr)), untwisted(s), twisted(s), rc(rc) {}
 
   bool has_deformation_formula() const { return not untwisted.is_zero(); }
   bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
@@ -415,6 +417,7 @@ class Rep_table : public Rep_context
 
   // statistics of deformation, last two are squared counts
   size_t formula_count, def_terms_count, dt_size, shrink, fcount2, dtcount2;
+  free_abelian::sum_stat sum_counts;
  public:
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
