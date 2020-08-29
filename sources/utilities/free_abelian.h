@@ -114,6 +114,13 @@ template<typename T, typename C, typename Compare>
 }; // |struct Monoid_Ring|
 
 
+struct sum_stat
+{ size_t contrib, unmatched;
+  size_t find_n, find_l, find_miss, find_miss_l;
+  sum_stat() : contrib(0),unmatched(0)
+	     , find_n(0), find_l(0), find_miss(0), find_miss_l(0) {}
+};
+
 /*
   A class template that should be functionally equivalent to |Free_Abelian|, at
   least when its public derivation from a |std::map| instance is not directly
@@ -137,27 +144,28 @@ template<typename T, typename C, typename Compare>
 
   poly_list L; // list by decreasing length, at least halving each time
   Compare cmp;
+  sum_stat* stat_ptr;
 
 public:
-  Free_Abelian_light() // default |Compare| value for base
-  : L(), cmp(Compare()) {}
-  Free_Abelian_light(Compare c) // here a specific |Compare| is used
-  : L(), cmp(c) {}
+  Free_Abelian_light(sum_stat* s) // default |Compare| value for base
+    : L(), cmp(Compare()), stat_ptr(s) {}
+  Free_Abelian_light(sum_stat* s, Compare c) // here a specific |Compare| is used
+  : L(), cmp(c), stat_ptr(s) {}
 
 explicit
-  Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
-  : L { { std::make_pair(p,C(1L)) } }, cmp(c) {}
-  Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
-  : L { { std::make_pair(p,m) } }, cmp(c)
+  Free_Abelian_light(const T& p, sum_stat* s, Compare c=Compare()) // monomial
+  : L { { std::make_pair(p,C(1L)) } }, cmp(c), stat_ptr(s) {}
+  Free_Abelian_light(const T& p,C m, sum_stat* s, Compare c=Compare()) // mononomial
+  : L { { std::make_pair(p,m) } }, cmp(c), stat_ptr(s)
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
 
-  Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
+  Free_Abelian_light(poly&& vec, sum_stat* s, Compare c=Compare()); // sanitise; singleton
 
   // construct from another aggregate of (monomial,coefficient) pairs
   template<typename InputIterator> // iterator over (T,coef_t) pairs
-  Free_Abelian_light(InputIterator first, InputIterator last,
+  Free_Abelian_light(InputIterator first, InputIterator last, sum_stat* s,
 		     Compare c=Compare())
-  : Free_Abelian_light(poly(first,last),c) {} // delegate to previous constructor
+  : Free_Abelian_light(poly(first,last),s,c) {} // delegate to previous ctor
 
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
@@ -201,7 +209,7 @@ explicit
     poly result; result.reserve(size());
     for (auto it=begin(); not it.has_ended(); ++it)
       result.push_back(std::move(*it));
-    return { std::move(result), cmp }; // transform |poly| into |self|
+    return { std::move(result), stat_ptr, cmp }; // transform |poly| into |self|
   }
 
   struct triple

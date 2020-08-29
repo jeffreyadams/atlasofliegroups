@@ -99,8 +99,9 @@ Monoid_Ring<T,C,Compare>
 //				|Free_Abelian_light|
 
 template<typename T, typename C, typename Compare>
-  Free_Abelian_light<T,C,Compare>::Free_Abelian_light(poly&& vec, Compare c)
-  : L(), cmp(c)
+  Free_Abelian_light<T,C,Compare>::Free_Abelian_light
+    (poly&& vec, sum_stat* s, Compare c)
+  : L(), cmp(c), stat_ptr(s)
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
     (vec.begin(),vec.end(),[](term_type x){return x.second==C(0);});
@@ -118,13 +119,20 @@ template<typename T, typename C, typename Compare>
 template<typename T, typename C, typename Compare>
   C* Free_Abelian_light<T,C,Compare>::find(const T& e)
 {
+  ++stat_ptr->find_n;
+  auto old_l=stat_ptr->find_l;
   auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
   for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
   {
+    ++stat_ptr->find_l;
     auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
     if (it != L_it->end() and not cmp(e,it->first))
       return &it->second;
   }
+  ++stat_ptr->find_miss;
+  assert(stat_ptr->find_l-old_l==length(L));
+  stat_ptr->find_miss_l += stat_ptr->find_l-old_l;
+  stat_ptr->find_l = old_l; // reset
   return nullptr; // if nothing was found, indicate this by a null pointer
 }
 
@@ -189,11 +197,12 @@ template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>&
     Free_Abelian_light<T,C,Compare>::add_term(const T& e, C m)
 {
+  ++stat_ptr->contrib;
   C* ptr = find(e);
   if (ptr!=nullptr)
     *ptr += m;
   else
-    insert(poly{term_type(e,m)});
+    insert(poly{term_type(e,m)}),++stat_ptr->unmatched;
   return *this;
 }
 
@@ -203,6 +212,7 @@ template<typename T, typename C, typename Compare>
 {
   if (m==C(0))
     return *this;
+  stat_ptr->contrib += p.size();
   poly v; v.reserve(p.size());
   for (const auto& entry : p) // flatten |p| virtually by iteration over it
   {
@@ -216,6 +226,7 @@ template<typename T, typename C, typename Compare>
 	v.emplace_back(entry.first,c); // collect non matching terms in |v|
     }
   }
+  stat_ptr->unmatched += v.size();
   insert(std::move(v));
   return *this;
 }
@@ -226,6 +237,7 @@ template<typename T, typename C, typename Compare>
 {
   if (m==C(0))
     return *this;
+  stat_ptr->contrib += p.size();
   poly v; v.reserve(p.size());
   for (auto& entry : p)
   {
@@ -239,6 +251,7 @@ template<typename T, typename C, typename Compare>
 	v.push_back(std::move(entry)); // collect non matching terms in |v|
     }
   }
+  stat_ptr->unmatched += v.size();
   insert(std::move(v));
   return *this;
 }
