@@ -17,8 +17,13 @@ set oriented_KL_sum  (Param p) = ParamPol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible (Param p) = ParamPol:
-  map(c_form_std@Param, oriented_KL_sum(p) )
-
+{  map(c_form_std@Param, oriented_KL_sum(p) ) }
+ let P=oriented_KL_sum(p), count=0 then nP=#P
+  then
+    f(Param p) = if count%10=0 or nP-count<=5
+                 then prints("Term ",count,": ",p)
+                 fi; count+:=1; full_deform(p)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
 {    twisted_c_form_irreducible   }
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)

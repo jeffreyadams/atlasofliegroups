@@ -43,6 +43,24 @@
 namespace atlas {
   namespace repr {
 
+void Rep_table::mem_report () const
+{
+  //  size_t total=0;
+  //  for (const auto& item : pool)
+  //    total += item.def_form_size() + item.twisted_def_form_size();
+
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage) != 0)
+    std::cerr << "getrusage failed" << std::endl;
+  const unsigned resident = usage.ru_maxrss/RSSUNITSPERMiB;
+  const unsigned CPU_time = usage.ru_utime.tv_sec;
+  std::cout  <<  "Number of alcoves " << pool.size()
+    //	     << " with " << total <<  " terms "
+	     << "  max res size = " << resident << "MB"
+	     << " CPU time = " << CPU_time << 's'
+	     << '\n';
+}
+
 bool StandardRepr::operator== (const StandardRepr& z) const
 { return x_part==z.x_part and y_bits==z.y_bits
   and infinitesimal_char==z.infinitesimal_char;
@@ -1062,7 +1080,18 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 
   for (BlockElt z=0; z<block.size(); ++z)
   {
+  auto prev = mod_hash.size();
     auto seq = mod_hash.match(block.representative(z));
+
+  if (seq==prev and (seq+1)%10000==0)
+  {
+    //    std::cout << "block_below: generated " << hash.size()
+    //	      << " modular parameters, in " << parent.block_list.size()
+    //	      << " blocks\n";
+    mem_report();
+    //    interpreter::check_interrupt();
+  }
+
     if (seq==place.size()) // block element is new
       place.emplace_back(bl_it(),z); // iterator filled later
     else
