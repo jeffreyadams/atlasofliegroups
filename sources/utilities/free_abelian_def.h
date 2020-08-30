@@ -95,228 +95,219 @@ Monoid_Ring<T,C,Compare>
   return result;
 }
 
-template<typename T, typename C, typename Compare>
-  Free_Abelian_light<T,C,Compare>::Free_Abelian_light
-    (std::vector<term_type>&& vec, Compare c)
-  : main(std::move(vec)), cmp(c)
-{
-  auto it = std::remove_if // squeeze out any terms with zero coefficients
-    (main.begin(),main.end(),[](term_type x){return x.second==C(0);});
-  main.erase(it,main.end()); // and collect the garbage
-  auto less = [this](const term_type& a, const term_type& b)
-		    { return cmp(a.first,b.first); };
-  std::sort(main.begin(),main.end(),less); // ensure elements are sorted by |cmp|
-}
+
+//				|Free_Abelian_light|
 
 template<typename T, typename C, typename Compare>
-template<typename InputIterator> // iterator over (T,coef_t) pairs
-  Free_Abelian_light<T,C,Compare>::Free_Abelian_light
-    (InputIterator first, InputIterator last, Compare c)
-  : main(first,last), cmp(c)
+  Free_Abelian_light<T,C,Compare>::Free_Abelian_light(poly&& vec, Compare c)
+  : L(), cmp(c)
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
-    (main.begin(),main.end(),[](const term_type& x){return x.second==C(0);});
-  main.erase(it,main.end()); // and collect the garbage
+    (vec.begin(),vec.end(),[](term_type x){return x.second==C(0);});
+  vec.erase(it,vec.end()); // and collect the garbage
+
   auto less = [this](const term_type& a, const term_type& b)
 		    { return cmp(a.first,b.first); };
-  std::sort(main.begin(),main.end(),less); // ensure elements are sorted by |cmp|
+  std::sort(vec.begin(),vec.end(),less); // ensure elements are sorted by |cmp|
+
+  L.push_front(std::move(vec));
+}
+
+// find the coefficient of |e| in |*this|
+template<typename T, typename C, typename Compare>
+  C* Free_Abelian_light<T,C,Compare>::find(const T& e)
+{
+  auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
+  for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
+  {
+    auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
+    if (it != L_it->end() and not cmp(e,it->first))
+      return &it->second;
+  }
+  return nullptr; // if nothing was found, indicate this by a null pointer
 }
 
 // find coefficient of |e| in |*this|
 template<typename T, typename C, typename Compare>
   C Free_Abelian_light<T,C,Compare>::operator[] (const T& e) const
-{
+{ // we redo the work of |find|, which we cannot call because of |const|ness
   auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
-  auto it = std::lower_bound(main.begin(),main.end(),e,comp);
-  if (it==main.cend() or cmp(e,it->first))
-    return C(0);
-  return it->second;
+  for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
+  {
+    auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
+    if (it != L_it->end() and not cmp(e,it->first))
+      return it->second;
+  }
+  return C(0);
 }
+
+// incorporate |v|, its exponents are disjoint from $L$
+template<typename T, typename C, typename Compare>
+  void Free_Abelian_light<T,C,Compare>::insert(poly&& v)
+{
+  if (v.empty())
+    return;
+  typename poly_list::iterator L_it = L.begin();
+  containers::simple_list<typename poly_list::iterator> prev;
+  while (not (L.at_end(L_it) or L_it->size() < 2*v.size()))
+  {
+    prev.push_front(L_it); // save for possible later fusion
+    ++L_it; // but for now skip this too large term vector
+  }
+
+  if (L.at_end(L_it) or not (v.size() < 2*L_it->size()))
+    L.insert(L_it,std::move(v));
+  else // do fusion with at least one existing |poly|, avoid |L.insert|
+  {
+    while(true) // merge polynomial |*L_it|, and maybe predecessors, into |v|
+    {
+      poly org = std::move(v);
+      v.clear(); v.reserve(L_it->size()+org.size());
+      auto it = org.begin();
+      for (auto& entry : *L_it)
+	if (entry.second!=C(0)) // skip any term whose coefficient has become 0
+	{
+	  for ( ; it!=org.end() and it->first < entry.first; ++it)
+	    v.push_back(std::move(*it));
+	  v.push_back(std::move(entry));
+	}
+      while (it!=org.end())
+	v.push_back(std::move(*it++)); // copy final piece of |v|
+
+      if (prev.empty() or not (prev.front()->size() < 2*v.size()))
+	break;
+      L.erase(L_it); // discard empty shell
+      L_it = prev.front(); // continue working with previous node
+      prev.pop_front();
+    }
+    *L_it = std::move(v); // move merged |v| into last merged slot
+  }
+} // |insert|
 
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>&
     Free_Abelian_light<T,C,Compare>::add_term(const T& e, C m)
 {
-  auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
-  auto it = std::lower_bound(main.begin(),main.end(),e,comp);
-  if (it==main.cend() or cmp(e,it->first))
-    main.emplace(it,e,m);
+  C* ptr = find(e);
+  if (ptr!=nullptr)
+    *ptr += m;
   else
-    it->second += m; // this can create a zero term in |main|; leave it for now
+    insert(poly{term_type(e,m)});
   return *this;
 }
 
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>&
-  Free_Abelian_light<T,C,Compare>::add_multiple(const Free_Abelian_light& p, C m)
+    Free_Abelian_light<T,C,Compare>::add_multiple(const self& p, C m)
 {
-  std::vector<term_type> org(std::move(main));
-  main.clear(); main.reserve(org.size()+p.main.size());
-  auto it0 = org.begin();
-  auto it1 = p.main.cbegin();
-
-  while (it0!=org.end() or it1!=p.main.end())
-    if (it0!=org.end() and (it1==p.main.end() or cmp(it0->first,it1->first)))
-      main.push_back(std::move(*it0++));
-    else if (it0==org.end() or cmp(it1->first,it0->first))
-    {
-      const auto c = m*it1->second;
-      if (c!=C(0))// allow for zero divisors
-	main.emplace_back(it1->first,c);
-      ++it1; // advance independently of whether term was zero
-    }
-    else
-    { // |it0| and |it1| have equal terms, use their combination
-      it0->second += m*it1->second;
-      if (it0->second!=C(0)) // allow for zero divisors
-	main.push_back(std::move(*it0));
-      ++it0,++it1; // advance both independently of whether term was zero
-    }
-  // while any term remained to be included
-
-  return *this;
-}
-
-template<typename T, typename C, typename Compare>
-  Free_Abelian_light<T,C,Compare>&
-  Free_Abelian_light<T,C,Compare>::add_multiple(Free_Abelian_light&& p, C m)
-{
-  std::vector<term_type> org(std::move(main));
-  main.clear(); main.reserve(org.size()+p.main.size());
-  auto it0 = org.begin(), it1=p.main.begin();
-
-  while (it0!=org.end() or it1!=p.main.end())
-    if (it0!=org.end() and (it1==p.main.end() or cmp(it0->first,it1->first)))
-      main.push_back(std::move(*it0++));
-    else if (it0==org.end() or cmp(it1->first,it0->first))
-    {
-      it1->second = m*it1->second;
-      if (it1->second!=C(0)) // allow for zero divisors
-	main.push_back(std::move(*it1));
-      ++it1; // advance independently of whether term was zero
-    }
-    else
-    { // |it0| and |it1| have equal terms, use their combination
-      it0->second += m*it1->second;
-      if (it0->second!=C(0)) // allow for zero divisors
-	main.push_back(std::move(*it0));
-      ++it0,++it1; // advance both independently of whether term was zero
-    }
-  // while any term remained to be included
-
-  return *this;
-}
-
-template<typename E, typename Compare>
-  void insert_min_heap (std::vector<E>& heap, E item, Compare less)
-{
-  auto n = heap.size();
-  heap.push_back(item);
-  while (n>0)
-  {
-    auto m=(n-1)/2;
-    if (not less(item,heap[m]))
-      break;
-    heap[n]=heap[m];
-    n=m;
-  }
-  heap[n]=item;
-}
-
-// replacing |heap[0]| by |item|, reestablish heap property by sifting up
-template<typename E, typename Compare>
-  void sift_min_heap (std::vector<E>& heap, E item, Compare less)
-{
-  const auto size = heap.size();
-
-  size_t n=0;
-  while (2*n+1<size)
-  {
-    size_t m = size==2*(n+1) or
-      less(heap[2*n+1],heap[2*(n+1)]) ? 2*n+1 : 2*(n+1);
-    if (not less(heap[m],item))
-      break;
-    heap[n]=heap[m];
-    n=m;
-  }
-  heap[n]=item;
-}
-
-// remove |heap[0]| and reestablish heap property by sifting up
-template<typename E, typename Compare>
-  void pop_min_heap (std::vector<E>& heap, Compare less)
-{
-  E item = heap.back();
-  heap.pop_back();
-  sift_min_heap(heap,item,less);
-}
-
-
-template<typename T, typename C, typename Compare>
-  Free_Abelian_light<T,C,Compare>&
-  Free_Abelian_light<T,C,Compare>::add_multiples
-  (containers::sl_list<std::pair<Free_Abelian_light<T,C,Compare>,C> >&& L)
-{
-  struct participant
-  {
-    using iter = typename self::const_iterator;
-    iter it; // current state of iteration
-    const T* lead; // current leading exponent
-    C factor; // factor by which contribution will be multiplied
-    participant(const iter& it, const C& f)
-      : it(it),lead(&it->first),factor(f) {}
-  };
-
-  auto less = [this] (const participant& a, const participant& b)
-		     { return cmp(*a.lead,*b.lead); };
-
-  auto n=size(); // will be upper bound for total number of terms in result
-  auto org = std::move(*this); main.clear(); // transfer
-
-  std::vector<participant> heap; heap.reserve(1+L.size());
-  {
-    auto it=org.begin();
-    if (it!=org.end())
-      heap.emplace_back(it,C(1));
-  }
-  for (const auto& elem : L)
-  {
-    auto it = elem.first.begin();
-    if (it!=elem.first.end())
-    {
-      insert_min_heap(heap,participant(it,elem.second),less);
-      n += elem.first.size();
-    }
-  }
-
-  if (heap.empty())
+  if (m==C(0))
     return *this;
-
-  main.reserve(n);
-  T cur = *heap[0].lead;
-  C cur_coef = C(0);
-  while (not heap.empty())
+  poly v; v.reserve(p.size());
+  for (const auto& entry : p)
   {
-    if (cmp(cur,*heap[0].lead)) // a new exponent has appeared on |front|
-    { // so contribute accumulated term if non-zero
-      if (cur_coef!=C(0))
-	main.emplace_back(cur,cur_coef);
-      cur = *heap[0].lead; cur_coef = C(0); // and prepare for new
+    C c = entry.second*m;
+    if (c != C(0))
+    {
+      C* ptr = find(entry.first);
+      if (ptr!=nullptr)
+	*ptr += c; // update coefficient if one is found
+      else
+	v.emplace_back(entry.first,c); // collect non matching terms in |v|
     }
-    C f = heap[0].factor; // get it first, though unchanged by |post_incr|
-    cur_coef = cur_coef + heap[0].it.post_incr().second*f;
-    if (heap[0].it.has_ended())
-      pop_min_heap(heap,less); // drop the no longer productive |heap[0]|
-    else
-      sift_min_heap(heap,participant(heap[0].it,heap[0].factor),less);
   }
-
-  // push final term
-  if (cur_coef!=C(0))
-    main.emplace_back(cur,cur_coef);
-
+  insert(std::move(v));
   return *this;
 }
+
+template<typename T, typename C, typename Compare>
+  Free_Abelian_light<T,C,Compare>&
+  Free_Abelian_light<T,C,Compare>::add_multiple(self&& p, C m)
+{
+  if (m==C(0))
+    return *this;
+  poly v; v.reserve(p.size());
+  for (auto& entry : p)
+  {
+    entry.second *= m; // make sure factor |m| is taken into account regardless
+    if (entry.second != C(0))
+    {
+      C* ptr = find(entry.first);
+      if (ptr!=nullptr)
+	*ptr += entry.second; // update coefficient if one is found
+      else
+	v.push_back(std::move(entry)); // collect non matching terms in |v|
+    }
+  }
+  insert(std::move(v));
+  return *this;
+}
+
+template<typename T, typename C, typename Compare>
+  typename Free_Abelian_light<T,C,Compare>::iterator
+    Free_Abelian_light<T,C,Compare>::begin()
+{
+  containers::simple_list<poly*> ptrs; // pointers to entries of |L|, reversed
+  for (auto it=L.wbegin(); not L.at_end(it); ++it)
+    assert(not it->empty()),ptrs.push_front(&*it);
+
+  triplist stack;
+  for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
+  {
+    auto lead = (*it)->begin(); // iterator to leading term of current poly
+    typename poly::iterator min =
+      stack.empty() or cmp(lead->first,stack.front().min->first)
+      ? lead : stack.front().min;
+    stack.emplace_front(min,lead,(*it)->end());
+  }
+  iterator result(std::move(stack),cmp);
+  result.skip_zeros();
+  return result;
+}
+
+template<typename T, typename C, typename Compare>
+  void Free_Abelian_light<T,C,Compare>::const_iterator::skip_zeros()
+{
+  while (not stack.empty() and stack.front().min->second==C(0))
+    pop(stack.begin());
+}
+
+template<typename T, typename C, typename Compare>
+  auto Free_Abelian_light<T,C,Compare>::const_iterator::operator++()
+  -> const_iterator&
+{
+  assert(not stack.empty());
+  while (not pop(stack.begin()) // does the work; returns whether stack emptied
+	 and stack.front().min->second==C(0)) {} // continue while zero appears
+  return *this;
+}
+
+template<typename T, typename C, typename Compare>
+  bool Free_Abelian_light<T,C,Compare>::const_iterator::pop
+    (typename triplist::iterator it)
+{
+  assert(not stack.at_end(it)); // otherwise one should not call |pop|
+  const auto nit = std::next(it); // so this is well defined
+  if (stack.at_end(nit))
+  {
+    if ((it->min = ++it->cur) != it->end)
+      return false; // one unfinished iteration remains here
+    stack.erase(it); // this clears |stack| after |it|
+    return true;
+  }
+  if (it->min==it->cur) // iterator comparison: whether minimum came from |*it|
+  { // if so advance iteration in |*it|
+    if (++it->cur == it->end)
+    {
+      stack.erase(it); // remove empty font node, no |it->min| to set
+      return false; // return whether the rest is absent too, which it isn't
+    }
+  }
+  else // the minumum came from further down the list, recurse
+    if (pop(nit)) // if so, |*it| is now the last valid node
+      return it->min=it->cur,false; // one unfinished iteration remains here
+  it->min = less(it->cur->first,nit->min->first) ? it->cur : nit->min;
+  return false; // at least two more unfinished iterations remain here
+} // |pop|
 
   } // |namespace free_abelian|
 } // |namespace atlas|
