@@ -132,27 +132,32 @@ template<typename T, typename C, typename Compare>
 {
   using term_type = std::pair<T,C>;
   using self = Free_Abelian_light<T,C,Compare>;
-  std::vector<term_type> main;
+  using poly = std::vector<term_type>;
+  using poly_list = containers::simple_list<poly>;
+
+  poly_list L; // list by decreasing length, at least halving each time
   Compare cmp;
 
 public:
   Free_Abelian_light() // default |Compare| value for base
-  : main(), cmp(Compare()) {}
+  : L(), cmp(Compare()) {}
   Free_Abelian_light(Compare c) // here a specific |Compare| is used
-  : main(), cmp(c) {}
+  : L(), cmp(c) {}
 
-  explicit Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
-    : main(1,std::make_pair(p,C(1L))), cmp(c) {}
+explicit
+  Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
+  : L { { std::make_pair(p,C(1L)) } }, cmp(c) {}
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
-    : main(1,std::make_pair(p,m)), cmp(c)
-  { if (m==C(0)) main.clear(); } // ensure absence of terms with zero coefficient
+  : L { { std::make_pair(p,m) } }, cmp(c)
+  { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
 
-  Free_Abelian_light(std::vector<term_type>&& vec, Compare c=Compare());
+  Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
 
   // construct from another aggregate of (monomial,coefficient) pairs
   template<typename InputIterator> // iterator over (T,coef_t) pairs
   Free_Abelian_light(InputIterator first, InputIterator last,
-		     Compare c=Compare());
+		     Compare c=Compare())
+  : Free_Abelian_light(poly(first,last),c) {} // delegate to previous constructor
 
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
@@ -160,7 +165,13 @@ public:
 
   self& add_multiple(const self& p, C m);
   self& add_multiple(self&& p, C m);
-  self& add_multiples(containers::sl_list<std::pair<self,C> >&& L);
+#if 0 // there is no reason to keep using this once useful function
+  self& add_multiples(containers::sl_list<std::pair<self,C> >&& L)
+  { for (auto&& term : L)
+      add_mulitple(std::move(term.first),term.second);
+    return *this;
+  }
+#endif
 
   self& operator+=(const self& p)
   { if (this->is_zero())
@@ -179,53 +190,74 @@ public:
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
-  size_t size() const { return main.size(); }
+  size_t size() const // only provides upper bound: zero terms are not ignored
+  { size_t s=0;
+    for (auto it = L.wbegin(); not L.at_end(it); ++it) s += it->size();
+    return s;
+  }
+
+  self flatten () && // transform into single-poly form without zeros
+  {
+    poly result; result.reserve(size());
+    for (auto it=begin(); not it.has_ended(); ++it)
+      result.push_back(std::move(*it));
+    return { std::move(result), cmp }; // transform |poly| into |self|
+  }
+
+  struct triple
+  { using iter = typename poly::iterator;
+    using citer = typename poly::const_iterator;
+    iter min, cur; // non-|const| for use by |iterator|
+    citer end; // this one can be |const_iterator| regardless
+    triple(iter min, iter cur, citer end) : min(min), cur(cur), end(end) {}
+  };
+  using triplist = containers::simple_list<triple>;
 
   class const_iterator
-  { const self* parent;
-    typename std::vector<term_type>::const_iterator main_it;
+  {
+    friend self;
+  protected:
+    triplist stack;
+    Compare less;
   public:
-    const_iterator
-     ( const self* parent, typename std::vector<term_type>::const_iterator it)
-      : parent(parent), main_it(it) {}
-    const_iterator(const const_iterator& it) = default;
-    const_iterator(const_iterator&& it) = default;
+    const_iterator(triplist&& s,Compare c) : stack(std::move(s)), less(c) {}
 
-    const_iterator& operator= (const const_iterator& it) = default;
-    const_iterator& operator= (const_iterator&& it) = default;
-
+    bool has_ended() const { return stack.empty(); }
     bool operator== (const const_iterator& other)
-    { return parent==other.parent and main_it==other.main_it;
+    { return other.stack.empty() ? stack.empty()
+	: not stack.empty() and stack.front().min==other.stack.front().min;
     }
     bool operator!= (const const_iterator& other)
-    { return not operator==(other); }
+    { return other.stack.empty() ? not stack.empty()
+	: stack.empty() or stack.front().min!=other.stack.front().min;
+    }
 
-    const term_type& operator*() const  { return *main_it; }
+    const term_type& operator*() const  { return *stack.front().min; }
     const term_type* operator->() const { return &operator*(); }
 
-    const_iterator& operator++()
-    { do // usually just once, but skip any term with zero coefficient
-	++main_it;
-      while (main_it!=parent->main.end() and main_it->second==C(0));
-      return *this;
-    }
+    const_iterator& operator++();
 
-    const term_type& post_incr()
-    { const term_type* p =&*main_it;
-      ++main_it;
-      return *p;
-    }
+  private:
+    bool pop(typename triplist::iterator top);
+    void skip_zeros(); // advance until no longer pointing at zero term
+    }; // |class const_iterator|
 
-    bool has_ended() const { return main_it==parent->main.end(); }
-  };
+  struct iterator : public const_iterator
+  {
+    iterator(triplist&& s,Compare c) : const_iterator(std::move(s),c) {}
+    term_type& operator*() const  { return * this->stack.front().min; }
+    term_type* operator->() const { return &operator*(); }
+    iterator& operator++() { const_iterator::operator++(); return *this; }
+  }; // |struct iterator|
 
-  const_iterator begin() const
-  { auto it = main.begin();
-    while (it!=main.end() and it->second==C(0)) // skip any leading zero term
-      ++it;
-    return {this,it};
-  }
-  const_iterator end() const { return {this,main.end()}; }
+  iterator begin(); // set up initial iterator and |skip_zeros|
+  const_iterator begin() const { return const_cast<self*>(this)->begin(); }
+  iterator end() { return {triplist(),cmp}; } // with empty |stack|
+  const_iterator end() const { return {triplist(),cmp}; } // with empty |stack|
+
+ private:
+  C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
+  void insert(poly&& v); // incorporate |v|, which has all disjoint exponents
 
 }; // |class Free_Abelian_light|
 
