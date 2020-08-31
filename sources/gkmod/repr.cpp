@@ -1701,24 +1701,14 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-  StandardRepr z0 = z; scale_0(z0);
-  auto K_types = finals_for(z0);
-  std::vector<K_term_type> finals_vec; finals_vec.reserve(K_types.size());
-  for (const auto& sr : K_types)
-  {
-    auto h = K_type_hash.match(K_type(*this,sr));
-    finals_vec.emplace_back(h,Split_integer(1,0));
-  }
-
-  K_type_poly result(std::move(finals_vec)); // value sans deformation terms
-
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
-  if (rp.size()==0) // without deformation terms
-    return result; // don't even bother to store the result
-
-  StandardRepr z_near = z; scale(z_near,rp.back());
-  deform_readjust(z_near); // so that we may find a stored equivalent parameter
-  assert(is_final(z_near));
+  StandardRepr z_near = z;
+  if (not rp.empty() and rp.back()!=Rational(1,1))
+  { // then shrink wrap toward $\nu=0$
+    scale(z_near,rp.back()); // snap to nearest reducibility point
+    deform_readjust(z_near); // so that we may find a stored equivalent parameter
+    assert(is_final(z_near));
+  }
 
   deformation_unit zn(*this,std::move(z_near));
   { // look up if deformation formula for |z_near| is already known and stored
@@ -1726,6 +1716,17 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();
   }
+
+  StandardRepr z0 = z; scale_0(z0);
+  K_type_poly result {std::less<K_type_nr>()};
+  for (const auto& sr : finals_for(z0))
+  {
+    K_type_nr h = K_type_hash.match(K_type(*this,sr));
+    result.add_term(h,Split_integer(1,0));
+  }
+
+  if (rp.empty()) // without deformation terms
+    return std::move(result).flatten(); // don't even bother to store the result
 
   // otherwise compute the deformation terms at all reducibility points
 
@@ -1742,7 +1743,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
-  return pool[h].set_deformation_formula(std::move(result));
+  return pool[h].set_deformation_formula(std::move(result).flatten());
 } // |Rep_table::deformation|
 
 
@@ -2013,24 +2014,22 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 	: pool[h].twisted_def_formula();
   }
 
-  std::vector<K_term_type> finals_vec;
+  K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
-    finals_vec.reserve(L.size());
     for (const std::pair<StandardRepr,bool>& p : L)
     {
       auto h = K_type_hash.match(K_type(*this,p.first));
-      finals_vec.emplace_back(h,p.second==flipped // flip means |times_s|
-				? Split_integer(1,0) : Split_integer(0,1) );
+      result.add_term(h,p.second==flipped // flip means |times_s|
+			? Split_integer(1,0) : Split_integer(0,1) );
     }
   }
-  K_type_poly result(std::move(finals_vec)); // value sans deformation terms
 
   if (rp.empty())
-    return result; // return without storing in such easy cases
+    return std::move(result).flatten(); // return without storing in easy cases
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
@@ -2062,7 +2061,8 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
-  const auto& res = pool[h].set_twisted_deformation_formula(std::move(result));
+  const auto& res =
+    pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
   return flip_start // if so we must multiply the stored value by $s$
     ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;

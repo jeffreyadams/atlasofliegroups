@@ -104,12 +104,13 @@ template<typename T, typename C, typename Compare>
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
     (vec.begin(),vec.end(),[](term_type x){return x.second==C(0);});
-  vec.erase(it,vec.end()); // and collect the garbage
+  if (it==vec.begin())
+    return; // nothing left, so leave |L| empty
+  vec.erase(it,vec.end()); // otherwise collect the garbage, reducing size
 
   auto less = [this](const term_type& a, const term_type& b)
 		    { return cmp(a.first,b.first); };
   std::sort(vec.begin(),vec.end(),less); // ensure elements are sorted by |cmp|
-
   L.push_front(std::move(vec));
 }
 
@@ -203,7 +204,7 @@ template<typename T, typename C, typename Compare>
   if (m==C(0))
     return *this;
   poly v; v.reserve(p.size());
-  for (const auto& entry : p)
+  for (const auto& entry : p) // flatten |p| virtually by iteration over it
   {
     C c = entry.second*m;
     if (c != C(0))

@@ -157,7 +157,7 @@ explicit
   template<typename InputIterator> // iterator over (T,coef_t) pairs
   Free_Abelian_light(InputIterator first, InputIterator last,
 		     Compare c=Compare())
-  : Free_Abelian_light(poly(first,last)) {} // delegate to previous constructor
+  : Free_Abelian_light(poly(first,last),c) {} // delegate to previous constructor
 
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
@@ -194,6 +194,14 @@ explicit
   { size_t s=0;
     for (auto it = L.wbegin(); not L.at_end(it); ++it) s += it->size();
     return s;
+  }
+
+  self flatten () && // transform into single-poly form without zeros
+  {
+    poly result; result.reserve(size());
+    for (auto it=begin(); not it.has_ended(); ++it)
+      result.push_back(std::move(*it));
+    return { std::move(result), cmp }; // transform |poly| into |self|
   }
 
   struct triple
