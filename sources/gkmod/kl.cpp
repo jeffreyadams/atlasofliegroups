@@ -1013,9 +1013,13 @@ void KL_table::swallow
   check_sub(sub,embed);
 #endif
   // set up polynomial translation while ensuring those of |sub| are known here
-  std::vector<KLIndex> poly_trans; poly_trans.reserve(sub.storage_pool.size());
-  for (const auto& poly : sub.storage_pool)
-    poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
+  const bool shared_KL_pool = &hash.pool()==&sub.pol_hash->pool();
+  std::vector<KLIndex> poly_trans;
+  if (not shared_KL_pool)
+  { poly_trans.reserve(sub.storage_pool.size());
+    for (const auto& poly : sub.storage_pool)
+      poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
+  }
 
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))
@@ -1023,7 +1027,8 @@ void KL_table::swallow
       for (auto& entry : sub.d_KL[z])
       {
 	entry.x=embed[entry.x];      // renumber block elements
-	entry.P=poly_trans[entry.P]; // renumber polynomial indices
+	if (not shared_KL_pool)
+	  entry.P=poly_trans[entry.P]; // renumber polynomial indices
       }
       d_KL[embed[z]] = std::move(sub.d_KL[z]);
 
