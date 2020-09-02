@@ -833,7 +833,8 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 
 void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 {
-  if (pol_hash!=nullptr and sub.pol_hash==pol_hash) // case of shared hash tables
+  if (pol_hash!=nullptr and sub.pol_hash!=nullptr and
+      &pol_hash->pool()==&sub.pol_hash->pool()) // case of shared hash tables
   {
     for (BlockElt y=0; y<sub.aux.block.size(); ++y)
       if (sub.column[y].size()==sub.aux.col_size(y) and column[embed[y]].empty())
