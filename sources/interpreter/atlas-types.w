@@ -116,8 +116,9 @@ struct Lie_type_value : public value_base
 @)
   Lie_type_value() : val() @+ {}
     // default constructor, produces empty type
-  Lie_type_value(LieType t) : val(t) @+{}
+  Lie_type_value(const LieType& t) : val(t) @+{}
     // constructor from already validated Lie type
+  Lie_type_value(LieType&& t) : val(std::move(t)) @+{} // idem, rvalue reference
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Lie type"; }
@@ -1592,6 +1593,11 @@ developed, and have been used since the beginnings of Atlas for the
 representation of involutions. This only exposes the possibilities of the
 implementation in a very limited way, and it is useful for \.{atlas} users to
 have direct access to computations with Weyl group elements.
+
+Since the |WeylElt| calls has non remote (outside the object proper) data, as
+would be the case had it used |std::vector|, it does not have efficient move
+semantics, and there is no point providing a constructor taking |WeylElt| by
+rvalue-reference.
 
 @<Type definitions @>=
 struct W_elt_value : public value_base
@@ -4208,6 +4214,8 @@ struct module_parameter_value : public value_base
 @)
   module_parameter_value(const shared_real_form& form, const StandardRepr& v)
   : rf(form), val(v) @+{}
+  module_parameter_value(const shared_real_form& form, StandardRepr&& v)
+  : rf(form), val(std::move(v)) @+{}
   ~module_parameter_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -5236,9 +5244,8 @@ into a list of parameters and three tables in the form of matrices.
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
     const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-    StandardRepr block_elt_param = rc.sr_gamma(block.x(z),lambda_rho,gamma);
-    params->val[n] =
-      std::make_shared<module_parameter_value>(p->rf,block_elt_param);
+    params->val[n] = std::make_shared<module_parameter_value> @|
+      (p->rf,rc.sr_gamma(block.x(z),lambda_rho,gamma));
     for (weyl::Generator s=0; s<eb.rank(); ++s)
     { auto type = eb.descent_type(s,n);
       types(n,s) = static_cast<int>(type);
@@ -5295,7 +5302,8 @@ void extended_KL_block_wrapper(expression_base::level l)
 @)
   own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
-    param_list->val[z]=std::make_shared<module_parameter_value>(p->rf,block[z]);
+    param_list->val[z]=std::make_shared<module_parameter_value>
+      (p->rf,std::move(block[z]));
   push_value(std::move(param_list));
   push_value(std::move(P_mat));
   @< Transfer the coefficient vectors of the polynomials from |pool|... @>
@@ -5522,6 +5530,8 @@ struct virtual_module_value : public value_base
 @)
   virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
   : rf(form), val(v) @+{}
+  virtual_module_value(const shared_real_form& form, repr::SR_poly&& v)
+  : rf(form), val(std::move(v)) @+{}
   ~virtual_module_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -5590,8 +5600,7 @@ is found.
 void virtual_module_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<virtual_module_value> @|
-      (rf,repr::SR_poly(rf->rc().repr_less())));
+    push_value(std::make_shared<virtual_module_value> @| (rf,repr::SR_poly()));
 }
 @)
 void real_form_of_virtual_module_wrapper(expression_base::level l)
@@ -5844,7 +5853,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
-        (m->rf,repr::SR_poly(m->rc().repr_less())));
+        (m->rf,repr::SR_poly()));
   }
   else
   { own_virtual_module m = get_own<virtual_module_value>();
@@ -5887,7 +5896,8 @@ void last_term_wrapper (expression_base::level l)
     throw runtime_error("Empty module has no last term");
   const auto& term = *m->val.rbegin();
   push_value(std::make_shared<split_int_value>(term.second));
-  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  push_value(std::make_shared<module_parameter_value>
+	(m->rf,std::move(term.first)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -5901,7 +5911,8 @@ void first_term_wrapper (expression_base::level l)
     throw runtime_error("Empty module has no first term");
   const auto& term = *m->val.begin();
   push_value(std::make_shared<split_int_value>(term.second));
-  push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
+  push_value(std::make_shared<module_parameter_value>
+  	(m->rf,std::move(term.first)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -5960,7 +5971,43 @@ void K_type_formula_wrapper(expression_base::level l)
    // don't need |first==srk|
   const RatWeight zero_nu(p->rf->val.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (auto it=formula.begin(); it!=formula.end(); ++it)
+  {
+    standardrepk::combination st=khc.standardize(it->first);
+    for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
+    {
+      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
+      Split_integer coef (it->second*stit->second);
+      auto finals = p->rc().finals_for(term);
+      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
+         acc->val.add_term(*jt,coef);
+    }
+  }
+  push_value(std::move(acc));
+}
+
+@ Here is a variation of the previous function that passes a bound value on to
+@< Local function def...@>=
+
+void K_type_formula_trunc_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  if (bound<0)
+    throw runtime_error() << "Negative height bound " << bound;
+  RealReductiveGroup& G = p->rf->val;
+  const Rep_context& rc = p->rc();
+  KhatContext& khc = p->rf->khc();
+  StandardRepK srk =
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  @< Check that |srk| is final, and if not |throw| an error @>
+  if (l==expression_base::no_value)
+    return;
+@)
+  const standardrepk::Char formula = khc.K_type_formula(srk,bound).second;
+  const RatWeight zero_nu(p->rf->val.rank());
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
   for (auto it=formula.begin(); it!=formula.end(); ++it)
   {
     standardrepk::combination st=khc.standardize(it->first);
@@ -6018,7 +6065,7 @@ void branch_wrapper(expression_base::level l)
   standardrepk::combination combo=khc.standardize(srk);
   const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
+    (new virtual_module_value(p->rf, repr::SR_poly()));
   for (auto it=combo.begin(); it!=combo.end(); ++it)
     // loop over finals from |srk|
   {
@@ -6051,8 +6098,7 @@ void branch_pol_wrapper(expression_base::level l)
   const Rep_context rc = P->rc();
   KhatContext& khc = P->rf->khc();
   auto P0 = rc.scale_0(P->val);
-@/own_virtual_module acc @|
-    (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
+@/own_virtual_module acc @| (new virtual_module_value(P->rf, repr::SR_poly()));
   RatWeight zero_nu(G.rank());
   for (auto it=P0.begin(); it!=P0.end(); ++it)
     // loop over terms of |P0|
@@ -6114,7 +6160,8 @@ void q_branch_wrapper(expression_base::level l)
     auto tup = std::make_shared<tuple_value>(2);
     StandardRepr term = rc.sr(khc.rep_no(it->first),khc,zero_nu);
     tup->val[0] = std::move(coef);
-    tup->val[1] = std::make_shared<module_parameter_value> (p->rf,term);
+    tup->val[1] = std::make_shared<module_parameter_value>
+	(p->rf,std::move(term));
     *res_p++ = std::move(tup);
   }
   push_value(std::move(result));
@@ -6149,7 +6196,7 @@ void to_canonical_wrapper(expression_base::level l)
 @)
   RatWeight zero_nu(p->rf->val.rank());
   StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/2,zero_nu);
-  push_value(std::make_shared<module_parameter_value>(p->rf,result));
+  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
 }
 
 @ Here is one more useful function: computing the height of a parameter
@@ -6205,9 +6252,12 @@ void deform_wrapper(expression_base::level l)
   BlockElt p_index; // will hold index of |p| in the block
   auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
   const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
-  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
+  repr::SR_poly result;
+  for (auto&& term : p->rt().deformation_terms(block,p_index,gamma)@;@;)
+    result.add_term(std::move(term.first),
+                    Split_integer(term.second,-term.second));
 
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 @)
 void twisted_deform_wrapper(expression_base::level l)
@@ -6231,16 +6281,22 @@ void twisted_deform_wrapper(expression_base::level l)
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 @)
-  repr::SR_poly terms
-     = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
-                                     singular_orbits,p->val.gamma());
+  auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
+					     singular_orbits,p->val.gamma());
+  repr::SR_poly result;
+  for (auto&& term : terms@;@;)
+    result.add_term(std::move(term.first),
+                    Split_integer(term.second,-term.second));
 
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
 results for efficiency in the |Rep_table| structure |p->rt()| that is stored
 within the |real_form_value|.
+
+@s SR_poly vector
+@s K_type_poly vector
 
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
@@ -6252,17 +6308,20 @@ void full_deform_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
-  repr::SR_poly result (rc.repr_less());
+  repr::K_type_poly res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    result += p->rt().deformation(*it);
-  push_value(std::make_shared<virtual_module_value>(p->rf,result));
+    res += p->rt().deformation(*it);
+@)
+  repr::SR_poly result;
+  for (const auto& t : res @;@;) // transform to |std::map|
+    result.emplace(p->rt().K_type_sr(t.first),t.second);
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  test_final(*p,"Full twisted deformation requires final parameter");
   if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
@@ -6270,32 +6329,15 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals =
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::SR_poly result (rc.repr_less());
+  repr::K_type_poly res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    result.add_multiple(p->rt().twisted_deformation(it->first) @|
+    res.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
-  push_value(std::make_shared<virtual_module_value>(p->rf,result));
-}
-
-@ To monitor the storage, we provide a function |storage_status| that returns a
-negative value for parameters absent from the tables, and otherwise the a
-non-negative value indicating in its first two bits whether a deformation formal
-respectively a twisted deformation formula is stored for the parameter.
-
-@< Local function def...@>=
-void storage_status_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
-  const auto& rt = p->rt();
-  auto h = rt.parameter_number(p->val);
-  int code = -1;
-  if (h!=HashTable<StandardRepr,unsigned long>::empty)
-  {
-    code = rt.deformation_formula(h).empty() ? 0 : 1;
-    code += rt.twisted_deformation_formula(h).empty() ? 0 : 2;
-  }
-  push_value(std::make_shared<int_value>(code));
+@)
+  repr::SR_poly result;
+  for (@[const auto& t : res@]@;@;) // transform to |std::map|
+    result.emplace(p->rt().K_type_sr(t.first),t.second);
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
@@ -6417,7 +6459,7 @@ void scale_extended_wrapper(expression_base::level l)
   bool flipped;
   auto result = @;ext_block::scaled_extended_dominant
     (rc,sr,delta->val,factor->rat_val(),flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,result));
+  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
   push_value(whether(flipped));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -6447,7 +6489,7 @@ void finalize_extended_wrapper(expression_base::level l)
     return;
 @)
   auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
-  repr::SR_poly result(rc.repr_less());
+  repr::SR_poly result;
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
                    ,it->second ? Split_integer(0,1) : Split_integer(1,0));
@@ -6493,6 +6535,8 @@ install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
+install_function(K_type_formula_trunc_wrapper,@|"K_type_formula"
+		,"(Param,int->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
@@ -6503,7 +6547,6 @@ install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)")
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->ParamPol)");
-install_function(storage_status_wrapper,@|"storage_status","(Param->int)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");

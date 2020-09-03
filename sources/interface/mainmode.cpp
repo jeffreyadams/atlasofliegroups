@@ -268,8 +268,7 @@ void simpleroots_f()
 {
   const RootDatum& rd = current_inner_class().rootDatum();
 
-  rootdata::WRootIterator first = rd.beginSimpleRoot();
-  rootdata::WRootIterator last = rd.endSimpleRoot();
+  auto first = rd.beginSimpleRoot(), last = rd.endSimpleRoot();
   basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
 }
 
@@ -278,8 +277,7 @@ void simplecoroots_f()
 {
   const RootDatum& rd = current_inner_class().rootDatum();
 
-  rootdata::WRootIterator first = rd.beginSimpleCoroot();
-  rootdata::WRootIterator last = rd.endSimpleCoroot();
+  auto first = rd.beginSimpleCoroot(), last = rd.endSimpleCoroot();
   basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
 }
 
@@ -290,8 +288,7 @@ void posroots_f()
 
   const RootDatum& rd = current_inner_class().rootDatum();
 
-  rootdata::WRootIterator first = rd.beginPosRoot();
-  rootdata::WRootIterator last = rd.endPosRoot();
+  auto first = rd.beginPosRoot(), last = rd.endPosRoot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
 
@@ -302,8 +299,7 @@ void poscoroots_f()
 
   const RootDatum& rd = current_inner_class().rootDatum();
 
-  rootdata::WRootIterator first = rd.beginPosCoroot();
-  rootdata::WRootIterator last = rd.endPosCoroot();
+  auto first = rd.beginPosCoroot(), last = rd.endPosCoroot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
 

@@ -51,29 +51,23 @@ $(atlas_dir)/global.o $(atlas_dir)/global.tex: \
  $(atlas_dir)/buffer.h \
  $(atlas_dir)/axis.h \
  $(atlas_dir)/lexer.h \
- $(sources_dir)/utilities/arithmetic.h \
- $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/utilities/matrix.h \
- $(sources_dir)/utilities/matrix_fwd.h \
  $(sources_dir)/utilities/tags.h \
  $(sources_dir)/utilities/ratvec.h \
  $(sources_dir)/utilities/matrix.h \
  $(sources_dir)/utilities/arithmetic.h \
  $(sources_dir)/utilities/bigint.h \
  $(sources_dir)/utilities/matreduc.h \
- $(sources_dir)/utilities/bitmap_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/structure/lattice.h \
- $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/utilities/bitset.h \
- $(sources_dir)/utilities/bitset_fwd.h \
  $(sources_dir)/utilities/bits.h \
  $(sources_dir)/utilities/permutations.h \
- $(sources_dir)/utilities/permutations_fwd.h \
  $(sources_dir)/utilities/permutations_def.h \
  $(sources_dir)/utilities/bitmap.h
 
@@ -108,33 +102,26 @@ $(atlas_dir)/axis.o $(atlas_dir)/axis.tex : \
  $(atlas_dir)/lexer.h \
  $(atlas_dir)/global.h \
  $(atlas_dir)/atlas-types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/utilities/arithmetic.h \
- $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
- $(sources_dir)/utilities/bitmap_fwd.h \
  $(sources_dir)/utilities/bits.h \
  $(sources_dir)/utilities/bitset.h \
- $(sources_dir)/utilities/bitset_fwd.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/utilities/free_abelian.h \
- $(sources_dir)/utilities/free_abelian_fwd.h \
- $(sources_dir)/utilities/graph_fwd.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
  $(sources_dir)/utilities/hashtable.h \
- $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/hashtable_def.h \
  $(sources_dir)/utilities/matrix.h \
- $(sources_dir)/utilities/matrix_fwd.h \
  $(sources_dir)/utilities/partition.h \
- $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/partition_def.h \
  $(sources_dir)/utilities/permutations.h \
- $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/permutations_def.h \
  $(sources_dir)/utilities/poset.h \
- $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
  $(sources_dir)/utilities/size.h \
- $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/innerclass.h \
@@ -167,37 +154,30 @@ $(atlas_dir)/atlas-types.o $(atlas_dir)/atlas-types.tex: \
  $(atlas_dir)/global.h \
  $(atlas_dir)/axis.h \
  $(atlas_dir)/lexer.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/utilities/arithmetic.h \
- $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
- $(sources_dir)/utilities/bitmap_fwd.h \
  $(sources_dir)/utilities/bits.h \
  $(sources_dir)/utilities/bitset.h \
- $(sources_dir)/utilities/bitset_fwd.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/utilities/free_abelian.h \
- $(sources_dir)/utilities/free_abelian_fwd.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
  $(sources_dir)/utilities/graph.h \
- $(sources_dir)/utilities/graph_fwd.h \
  $(sources_dir)/utilities/hashtable.h \
- $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/hashtable_def.h \
  $(sources_dir)/utilities/matreduc.h \
  $(sources_dir)/utilities/matrix.h \
- $(sources_dir)/utilities/matrix_fwd.h \
  $(sources_dir)/utilities/partition.h \
- $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/partition_def.h \
  $(sources_dir)/utilities/permutations.h \
- $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/permutations_def.h \
  $(sources_dir)/utilities/polynomials.h \
- $(sources_dir)/utilities/polynomials_fwd.h \
+ $(sources_dir)/utilities/polynomials_def.h \
  $(sources_dir)/utilities/poset.h \
- $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
  $(sources_dir)/utilities/size.h \
- $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/innerclass.h \
@@ -246,32 +226,25 @@ $(atlas_dir)/main.o $(atlas_dir)/main.tex: \
  $(atlas_dir)/parser.tab.h \
  $(atlas_dir)/parse_types.h \
  $(atlas_dir)/axis-types.h \
+ $(sources_dir)/Atlas.h \
  $(sources_dir)/utilities/arithmetic.h \
- $(sources_dir)/utilities/arithmetic_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
- $(sources_dir)/utilities/bitmap_fwd.h \
  $(sources_dir)/utilities/bits.h \
  $(sources_dir)/utilities/bitset.h \
- $(sources_dir)/utilities/bitset_fwd.h \
  $(sources_dir)/utilities/constants.h \
  $(sources_dir)/utilities/free_abelian.h \
- $(sources_dir)/utilities/free_abelian_fwd.h \
- $(sources_dir)/utilities/graph_fwd.h \
+ $(sources_dir)/utilities/free_abelian_def.h \
  $(sources_dir)/utilities/hashtable.h \
- $(sources_dir)/utilities/hashtable_fwd.h \
+ $(sources_dir)/utilities/hashtable_def.h \
  $(sources_dir)/utilities/matrix.h \
- $(sources_dir)/utilities/matrix_fwd.h \
  $(sources_dir)/utilities/partition.h \
- $(sources_dir)/utilities/partition_fwd.h \
+ $(sources_dir)/utilities/partition_def.h \
  $(sources_dir)/utilities/permutations.h \
- $(sources_dir)/utilities/permutations_fwd.h \
+ $(sources_dir)/utilities/permutations_def.h \
  $(sources_dir)/utilities/poset.h \
- $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
  $(sources_dir)/utilities/size.h \
- $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/tags.h \
- $(sources_dir)/Atlas.h \
  $(sources_dir)/structure/bitvector.h \
  $(sources_dir)/structure/cartanclass.h \
  $(sources_dir)/structure/innerclass.h \

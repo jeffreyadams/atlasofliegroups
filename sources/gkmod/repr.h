@@ -229,8 +229,9 @@ class Rep_context
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // do |make_dominant|, then make involution canonical for cross action by the
-  // singular subgroup of $W$, and finally apply any singular complex descents
+  // do |make_dominant|, and descend through any singular complex descents
+  void deform_readjust(StandardRepr& z) const;
+  // do the same, ensuring fixed choice of descent-minimum among equivalent ones
   void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
@@ -251,15 +252,10 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  class compare
-  { Coweight level_vec; // linear form to apply to |gamma| for ordering
-  public:
-    compare (const Coweight& lv) : level_vec(lv) {}
-
+  struct compare
+  {
     bool operator()(const StandardRepr& r,const StandardRepr& s) const;
   }; // |compare|
-
-  compare repr_less() const;
 
   using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
 
@@ -283,6 +279,100 @@ class Rep_context
 
 using SR_poly = Rep_context::poly;
 
+
+class K_type // compact representation of parameters at $\nu=0$
+{
+  KGBElt d_x;
+  Weight lam_rho;
+
+public:
+  K_type(const Rep_context& rc, const StandardRepr& sr)
+    : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
+
+  KGBElt x () const { return d_x;  }
+  const Weight& lambda_rho () const { return lam_rho; }
+
+  StandardRepr sr (const Rep_context& rc) const // represent as full parameter
+  { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }
+
+  bool operator< (const K_type& another) const
+  {
+    if (d_x!=another.d_x)
+      return d_x<another.d_x;
+    assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
+    for (unsigned i=0; i<lam_rho.size(); ++i)
+      if (lam_rho[i]!=another.lam_rho[i])
+	return lam_rho[i]<another.lam_rho[i];
+    return false; // we found equality
+  }
+
+  using Pooltype = std::vector<K_type>;
+  bool operator!= (const K_type& another) const
+  { return d_x!=another.d_x or lam_rho!=another.lam_rho; }
+  size_t hashCode (size_t modulus) const
+  {
+    size_t h = 3*d_x;
+    for (auto c : lam_rho)
+      h = (17*h&(modulus-1)) + c;
+    return h&(modulus-1);
+  }
+}; // |class K_type|
+
+using K_type_nr = unsigned int; // hashed in |Rep_table| below
+
+using K_term_type = std::pair<K_type_nr,Split_integer>;
+using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
+
+/*
+  A class to serve as key-value pair for deformation formula lookup.
+
+  A key determines a parameter up to variations in $\nu$ that do not change the
+  integral part (always rounding down) of the evaluation on any positive coroot;
+  the domain of such changes is called an alcove. (Strictly speaking, set of
+  associated infinitesimal characters is the intersection of an alcove with an
+  affine subspace parallel to the $-1$ eigenspace of the involution; no
+  (discrete) variation is allowed in the direction of the $+1$ eigenspace.)
+
+  For compactness we store a sample |StandardRepr|, but the functions used for
+  hashing only take into account aspects that are unchanging within the alcove.
+ */
+class deformation_unit
+{
+  friend class Rep_table; // while not essential, allows easier instrumenting
+
+  StandardRepr sample;
+  K_type_poly untwisted, twisted;
+  const Rep_context& rc; // access coroots etc. necessary for alcove testing
+public:
+  deformation_unit(const Rep_context& rc, const StandardRepr& sr)
+  : sample(sr), untwisted(), twisted(), rc(rc) {}
+  deformation_unit(const Rep_context& rc, StandardRepr&& sr)
+  : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
+
+  bool has_deformation_formula() const { return not untwisted.is_zero(); }
+  bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
+
+  size_t def_form_size () const { return untwisted.size(); }
+  size_t twisted_def_form_size () const { return twisted.size(); }
+
+  const K_type_poly& def_formula() const       { return untwisted; }
+  const K_type_poly& twisted_def_formula() const { return twisted; }
+
+  const K_type_poly& set_deformation_formula (const K_type_poly& formula)
+  { return untwisted=formula; }
+  const K_type_poly& set_deformation_formula (K_type_poly&& formula)
+  { return untwisted=std::move(formula); }
+  const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
+  { return twisted=formula; }
+  const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
+  { return twisted=std::move(formula); }
+
+// special members required by HashTable
+  typedef std::vector<deformation_unit> Pooltype;
+  bool operator!=(const deformation_unit& another) const; // distinct alcoves?
+  size_t hashCode(size_t modulus) const; // value depending on alcove only
+}; // |class deformation_unit|
+
 /*
   In addition to providing methods inherited from |Rep_context|, the class
   |Rep_table| provides storage for data that was previously computed for
@@ -304,12 +394,14 @@ using SR_poly = Rep_context::poly;
 */
 class Rep_table : public Rep_context
 {
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash;
-  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
+  std::vector<deformation_unit> pool; // also stores actual deformation formulae
+  HashTable<deformation_unit,unsigned long> alcove_hash;
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
+
+  std::vector<K_type> K_type_pool;
+  HashTable<K_type,K_type_nr> K_type_hash;
 
   std::vector<kl::KLPol> KL_poly_pool;
   KL_hash_Table KL_poly_hash;
@@ -333,12 +425,6 @@ class Rep_table : public Rep_context
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
 
-  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
-  const SR_poly& deformation_formula(unsigned long h) const
-    { assert(h<def_formulae.size()); return def_formulae[h].first; }
-  const SR_poly& twisted_deformation_formula(unsigned long h) const
-    { assert(h<def_formulae.size()); return def_formulae[h].second; }
-
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
@@ -350,16 +436,18 @@ class Rep_table : public Rep_context
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
-  SR_poly deformation_terms
+  StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
+
+  // a signed multiset of final parameters needed to be taken into account
+  // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
+  containers::sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
-#if 0
-  SR_poly deformation_terms (unsigned long sr_hash) const;
-  // once a parameter has been entered, we can compute this without a block
-#endif
 
-  SR_poly deformation(const StandardRepr& z);
+  // full deformation to $\nu=0$ of |z|
+  K_type_poly deformation(const StandardRepr& z);
 
-  SR_poly twisted_deformation_terms
+  // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
+  containers::sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, RankFlags singular, const RatWeight& gamma);
 #if 0
@@ -370,11 +458,10 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  SR_poly twisted_deformation(StandardRepr z); // by value
+  K_type_poly twisted_deformation(StandardRepr z); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
-  unsigned long formula_index (const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
