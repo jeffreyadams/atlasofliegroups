@@ -209,7 +209,7 @@ class InvolutionTable
 
   // pack $\lambda'$ into a |TorusPart| (depends only on  $(1-\theta)\lambda'$)
   TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
-  // find |(1-theta)*lam_rho| for any |lam_rho| with |ypack(i,lam_rho)=y_part|
+  // find |(1-theta)*lam_rho| for some |lam_rho| with |ypack(i,lam_rho)=y_part|
   Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
 
   // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates

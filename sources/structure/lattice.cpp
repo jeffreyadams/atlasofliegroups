@@ -53,7 +53,7 @@ namespace lattice {
 ******************************************************************************/
 
 
-/*!
+/*
   In this template, we assume that |I|, and |O| are respectively random
   access input and output iterator types for type |Weight|, and that
   |[firstb,lastb[| holds a new $\Q$-basis for the lattice, in particular that
@@ -64,11 +64,11 @@ namespace lattice {
 
   Doing the base change amounts to applying the inverse of |b|'s matrix.
 
-  NOTE: we don't assume that |[firstb, lastb[| is necessarily a $\Z$-basis of
-  the current lattice, only that it is a basis of a full rank sublattice
-  containing the vectors in the input range; the new coordinates will then be
-  integers. Users should be aware of the "full rank" condition; without it the
-  specification still makes sense, but the implementation will fail.
+  We don't assume that |[firstb, lastb[| is necessarily a $\Z$-basis of $\Z^n$,
+  but we do assume that it is a basis of a _full rank_ sublattice, and that
+  the vectors in |[first,last[| also lie in that range; the new coordinates will
+  then be integers. Users should be aware of the "full rank" condition; without
+  it the specification would still make sense, but the implementation will fail.
 */
 template<typename I, typename O>
   void baseChange(I first, I last, O out, I firstb, I lastb)
@@ -85,7 +85,7 @@ template<typename I, typename O>
   }
 }
 
-/*!
+/*
   This (unsused) template function is like |baseChange|, but goes from weights
   expressed in terms of |[firstb, lastb[| to ones expressed in terms of the
   original basis. This is easier, as we don't have to invert the matrix!

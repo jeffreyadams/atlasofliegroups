@@ -139,7 +139,7 @@ void InvolutionData::cross_act(const Permutation& root_reflection)
 
 
 
-// describe involution by class 0 involution |cross|, and set of Cayley roots
+// describe involution by Cartan class 0 involution |cross|, and Cayley roots
 RootNbrList Cayley_roots(const TwistedInvolution& tw,
 			 const RootSystem& rs,
 			 const TwistedWeylGroup& W,
@@ -202,8 +202,9 @@ InvolutionNbr InvolutionTable::add_involution
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
   A.negate() += 1;
 
-  // |R| will map $\lambda-\rho$ to reduced torus part coordinates
-  // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
+  // implicitly we shall use expression |row*A*col=diagonal(diag##null(..))|
+  // |R|, first rows of |row*A|, will map $\lambda-\rho$ to reduced coordinates
+  // |B|, inverse of |row|, will then map these (mod 2) to $A*(\lambda-\rho)$
   int_Vector diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
@@ -213,10 +214,10 @@ InvolutionNbr InvolutionTable::add_involution
     if (diagonal[i]!=1)
       for (unsigned j=0; j<R.numColumns(); ++j)
       {
-	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*col^{-1}$
 	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
       }
-  // now |R| gives coordinates on adapted basis scaled: basis of image lattice
+  // now |R| gives coordinates after $A$ on image basis: adapterd basis scaled
   // |R| is the matrix that will become |M_real|
 
   B=B.block(0,0,B.numRows(),diagonal.size());

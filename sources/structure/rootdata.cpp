@@ -549,7 +549,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
-      RootNbr gamma = root_perm[alpha-numPosRoots()][beta];
+      RootNbr gamma = root_permutation(alpha)[beta];
       if (gamma<beta) // positive dot product
       {
 	if (is_posroot(gamma)) // beta can be made less positive, so it cannot

@@ -23,8 +23,7 @@ namespace atlas {
 
 namespace subsystem {
 
-SubSystem::SubSystem(const RootDatum& parent,
-		     const RootNbrList& sub_sys)
+SubSystem::SubSystem(const RootDatum& parent, const RootNbrList& sub_sys)
   : RootSystem(parent.cartanMatrix(sub_sys).transposed(), // build
 	       not parent.prefer_coroots()) // flip, since coroots ar now roots
   , rd(parent) // share
@@ -47,7 +46,7 @@ SubSystem::SubSystem(const RootDatum& parent,
     }
 
     RootNbr alpha = pos_map[i]; // now we use parent numbering
-    inv_map[alpha] = posRootNbr(i); // refers simple root |i| in subsystem
+    inv_map[alpha] = posRootNbr(i); // refers to posroot |i| in subsystem
     inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
 
     // in the remainder we work in parent datum; must find conjugate to simple
@@ -85,7 +84,7 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
     if (parent.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(parent.posRootNbr(i));
 
-  // it suffices that simpleBasis computed below live until end of constructor
+  // it suffices that |simpleBasis| computed below live until end of constructor
   return SubSystem(parent,parent.simpleBasis(int_roots));
 }
 

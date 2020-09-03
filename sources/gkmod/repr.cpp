@@ -197,7 +197,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   return (i2 + i_tab.y_lift(i_x,z.y()))/2; // division exact again
 }
 
-// this function is similar to |common_block::gamma_lambda|
+// compute $\gamma-\lambda$ from $(1-\theta)(\gamma-\lambda)=2(\gamma-\lambda)$
 RatWeight Rep_context::gamma_lambda
   (InvolutionNbr i_x,  const TorusPart& y_bits, const RatWeight& gamma) const
 {
