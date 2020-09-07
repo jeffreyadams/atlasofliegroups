@@ -111,8 +111,9 @@ class StandardReprMod
   KGBElt x_part;
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+  const Rep_context* rc_ptr;
 
-  StandardReprMod (StandardRepr&& sr); // private raw constructor
+  StandardReprMod (const Rep_context& rc,StandardRepr&& sr); // private raw ctor
 
  public:
   // when building, we force integral parts of |gamma_mod1| components to zero
@@ -126,13 +127,10 @@ class StandardReprMod
   KGBElt x() const { return x_part; }
   const TorusPart& y() const { return y_bits; }
 
-  bool operator== (const StandardReprMod& other) const
-  { return x_part==other.x_part and y_bits==other.y_bits
-    and inf_char_mod_1==other.inf_char_mod_1; }
+  // members for hash table; a coarse equivalence that implies block isomorphism
   typedef std::vector<StandardReprMod> Pooltype;
-  bool operator!=(const StandardReprMod& another) const
-    { return not operator==(another); }
-  size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+  bool operator!=(const StandardReprMod& another) const;
+  size_t hashCode(size_t modulus) const;
 }; // |class StandardReprMod|
 
 class Repr_mod_entry

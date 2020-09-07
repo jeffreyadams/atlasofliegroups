@@ -48,10 +48,11 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-StandardReprMod::StandardReprMod (StandardRepr&& sr)
+StandardReprMod::StandardReprMod (const Rep_context& rc, StandardRepr&& sr)
 : x_part(sr.x())
 , y_bits(sr.y())
-, inf_char_mod_1(sr.gamma()) // will be reduced modulo 1 caller; is normalized
+, inf_char_mod_1(sr.gamma()) // was reduced modulo 1 by caller; is normalized
+, rc_ptr(&rc)
 {}
 
 StandardReprMod StandardReprMod::mod_reduce
@@ -68,7 +69,7 @@ StandardReprMod StandardReprMod::mod_reduce
     num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
     lam_rho[i] -= q; // shift to $\gamma_mod1$ is also applied to $\lambda$ part
   }
-  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
+  return StandardReprMod(rc,rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
 }
 
 StandardReprMod StandardReprMod::build
@@ -79,15 +80,53 @@ StandardReprMod StandardReprMod::build
   const RatWeight lr_rat = (gamma_rho-gam_lam).normalize();
   assert(lr_rat.denominator()==1);
   Weight lam_rho(lr_rat.numerator().begin(),lr_rat.numerator().end());
-  return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
+  return StandardReprMod(rc,rc.sr_gamma(x,lam_rho,gamma_mod_1));
+}
+
+bool StandardReprMod::operator!=(const StandardReprMod& another) const
+{
+  if (x_part!=another.x_part or y_bits!=another.y_bits)
+    return true;
+  const auto& rd = rc_ptr->root_datum();
+  BitMap integral_posroots(rd.numRoots());
+  arithmetic::Numer_t n=inf_char_mod_1.denominator(); // signed!
+  const auto& v=inf_char_mod_1.numerator();
+  arithmetic::Numer_t an=another.inf_char_mod_1.denominator(); // signed!
+  const auto& av=another.inf_char_mod_1.numerator();
+  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+  {
+    bool is_integral = rd.posCoroot(i).dot(v)%n == 0;
+    if (is_integral!=(rd.posCoroot(i).dot(av)%an == 0))
+      return true;
+    integral_posroots.set_to(rd.posRootNbr(i),is_integral);
+  }
+
+  const RatWeight gam_lam_diff =
+    rc_ptr->gamma_lambda(*this)-rc_ptr->gamma_lambda(another);
+  for (unsigned int k : rd.simpleBasis(integral_posroots))
+    if (gam_lam_diff.dot(rd.coroot(k))!=0)
+      return true;
+
+  return false; // no relevant difference found;
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const
-{ size_t hash= x_part +
-    243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
-  const Ratvec_Numer_t& num=inf_char_mod_1.numerator();
-  for (unsigned i=0; i<num.size(); ++i)
-    hash= 11*(hash&(modulus-1))+num[i];
+{
+  const auto& rd = rc_ptr->root_datum();
+  BitMap integral_posroots(rd.numRoots());
+  arithmetic::Numer_t n=inf_char_mod_1.denominator(); // signed!
+  const auto& v=inf_char_mod_1.numerator();
+  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+    integral_posroots.set_to(rd.posRootNbr(i),rd.posCoroot(i).dot(v)%n == 0);
+  const RatWeight gam_lam = rc_ptr->gamma_lambda(*this);
+
+  size_t hash= x_part;
+  for (unsigned i=rd.numPosRoots()&constants::baseBits; // round down
+       i<rd.numRoots(); i+=constants::longBits)
+    hash=9*hash+integral_posroots.range(i,constants::longBits);
+  for (unsigned int k : rd.simpleBasis(integral_posroots))
+    hash=17*hash+gam_lam.dot(rd.coroot(k));
+
   return hash &(modulus-1);
 }
 
@@ -1441,7 +1480,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   BitMap subset;
   auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
   which = last(subset);
-  assert(block.representative(which)==srm);
+  // assert(block.representative(which)==srm);
   return block;
 } // |Rep_table::lookup|
 
