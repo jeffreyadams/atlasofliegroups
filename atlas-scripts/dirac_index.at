@@ -1,0 +1,91 @@
+<K_highest_weights.at
+
+{direct index for equal rank groups}
+{also G(R), i.e. K, should be connected. Otherwise
+you will get an answer, somehow related to the identity
+component, but it's precise meaning isn't clear}
+
+set dv=true  {dv standard for dirac_verbose: turn debugging on/off}
+
+{two-fold cover of G(C) defined by \gamma\in (1/2)X^*}
+{X*(rd)=Z^n -> lattice <Z^n,v>\subset (1/2)Z^n
+ where 2v is integral
+ the new lattice is the span of id_mat(rank)#v
+  compute this by multiplying by 2, using image_lattice, and dividing by 2
+  this gives a rational matrix A_i, whose inverse A is integral
+ simple_roots in this new basis: A*rd.simple_roots
+ simple_coroots in the new dual basis: ^A_i*rd.simple_coroots
+ new root datum has (roots,coroots)=(A*rd.simple_roots,^A_i*rd.simple_coroots)
+ note that (^roots)*coroots=^(A*rd.simple_roots)*(^A_i*rd.simple_coroots)
+  =rd.simple_roots*(^A*^A_i)*rd.simple_coroots = original Cartan matrix
+}
+
+set cover(RootDatum rd,ratvec v)=(RootDatum,mat):
+let n=rd.rank then
+A_i=image_lattice((2*id_mat(n))#ratvec_as_vec(2*v))/2 {rat_mat} then
+A=ratmat_as_mat(A_i.inverse) then
+{()=if dv then prints("A: ", A, new_line, "A_inverse: ", A_i) fi then}
+new_simple_roots=A*rd.simple_roots then
+new_simple_coroots=ratmat_as_mat(^A_i*rd.simple_coroots) in
+(root_datum(new_simple_roots,new_simple_coroots),A)  {mat:A takes roots for rd->roots for cover}
+
+{compact form of cover}
+set cover_c(RootDatum rd,ratvec v)=RealForm:let (cover,)=cover(rd,v) in cover.compact_form
+
+set rho_cover(RootDatum rd)=cover(rd,rd.rho)
+
+{DS with HC parameter(lambda)
+ K is defined by x_K, then K_cover;
+ Dirac index is the K_cover-type with infinitesimal character (for K_cover) lambda
+}
+set dirac_index_ds(Param p,KGBElt x_K)=Param:
+assert(p.real_form.is_equal_rank,"group not equal rank");
+assert(p.x.is_fundamental_Cartan,"p is not a (limit of) discrete series");
+let G=p.real_form then
+gamma=p.infinitesimal_character then
+K=K_0(x_K) then
+(K_cover,A)=cover(K,G.rho-K.rho) then
+w =cross_divide(x_K,p.x) in
+parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
+
+{default x_K=KGB(G,0)}
+set dirac_index_ds(Param p)=Param:dirac_index_ds(p,KGB(p.real_form,0))
+
+{Dirac index of ParamPol of standards is a linear function}
+set dirac_index_std(ParamPol P,KGBElt x_K)=ParamPol:
+assert(P.real_form.is_equal_rank,"group not equal rank");
+let G=P.real_form then
+gamma=P.infinitesimal_character then
+K=K_0(x_K) then
+(K_cover,A)=cover(K,G.rho-K.rho) then
+K_cover_compact=K_cover.compact_form in
+null_module(K_cover.compact_form)+
+for c@p in P do c*
+  if is_fundamental_Cartan(p.x) then
+   let w =cross_divide(x_K,p.x)
+    in parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
+  else null_module(K_cover_compact)
+  fi
+od
+set dirac_index_std(ParamPol P)=ParamPol:dirac_index_std(P,KGB(P.real_form,0))
+
+set dirac_index_irr(Param p,KGBElt x_K)=ParamPol:
+dirac_index_std(character_formula(p),x_K)
+set dirac_index_irr(Param p)=ParamPol:dirac_index_irr(p,KGB(p.real_form,0))
+
+{nice output of Diract index of ParamPol of standards}
+set show_dirac_index_param_pol(ParamPol P)=void:
+if =#P then prints("Dirac index is 0") else
+tabulate(
+["coeff","lambda","higest weight", "fund.wt.coords.", "dim"]#
+for c@p in P do
+ [c.split_as_int.to_string, p.lambda.to_string, p.highest_weight.mu.to_string,p.fundamental_weight_coordinates.to_string,p.dimension.to_string] od)
+ fi
+
+{nice output of Dirac index of irreducible}
+set show_dirac_index(Param p,KGBElt x_K)=void:
+prints(new_line,"G=",p.real_form,new_line,"p=",p);
+show_dirac_index_param_pol(dirac_index_irr(p,x_K))
+
+{nice output of Dirac index of irreducible, default x_K=KGB(G,0)}
+set show_dirac_index(Param p)=void:show_dirac_index(p,KGB(p.real_form,0))
