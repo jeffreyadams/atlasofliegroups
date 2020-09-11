@@ -1,6 +1,6 @@
 <K_highest_weights.at
 
-{direct index for equal rank groups}
+{Dirac index for equal rank groups}
 {also G(R), i.e. K, should be connected. Otherwise
 you will get an answer, somehow related to the identity
 component, but it's precise meaning isn't clear}
