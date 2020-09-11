@@ -29,6 +29,7 @@
 <coherent_irreducible.at
 <deform_plus.at
 <truncated_induction.at
+<dirac_index.at
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

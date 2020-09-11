@@ -3,6 +3,8 @@
 <simple_factors.at
 { Functions for computing with Weyl group elements }
 
+set sgn(WeylElt w)=int:(-1)^length(w)
+
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
 
 { whether multiplication by simple reflection lengthens or shortens M }

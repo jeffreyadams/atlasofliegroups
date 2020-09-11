@@ -38,7 +38,7 @@ set rho_cover(RootDatum rd)=cover(rd,rd.rho)
  K is defined by x_K, then K_cover;
  Dirac index is the K_cover-type with infinitesimal character (for K_cover) lambda
 }
-set dirac_index_ds(Param p,KGBElt x_K)=Param:
+set dirac_index_ds(Param p,KGBElt x_K)=ParamPol:
 assert(p.real_form.is_equal_rank,"group not equal rank");
 assert(p.x.is_fundamental_Cartan,"p is not a (limit of) discrete series");
 let G=p.real_form then
@@ -46,10 +46,10 @@ gamma=p.infinitesimal_character then
 K=K_0(x_K) then
 (K_cover,A)=cover(K,G.rho-K.rho) then
 w =cross_divide(x_K,p.x) in
-parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
+sgn(w)*parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
 
 {default x_K=KGB(G,0)}
-set dirac_index_ds(Param p)=Param:dirac_index_ds(p,KGB(p.real_form,0))
+set dirac_index_ds(Param p)=ParamPol:dirac_index_ds(p,KGB(p.real_form,0))
 
 {Dirac index of ParamPol of standards is a linear function}
 set dirac_index_std(ParamPol P,KGBElt x_K)=ParamPol:
@@ -62,8 +62,8 @@ K_cover_compact=K_cover.compact_form in
 null_module(K_cover.compact_form)+
 for c@p in P do c*
   if is_fundamental_Cartan(p.x) then
-   let w =cross_divide(x_K,p.x)
-    in parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
+   let w =cross_divide(x_K,p.x) in
+   sgn(w)*parameter(K_cover.compact_form,0,A*(w*gamma),null(K_cover.rank))
   else null_module(K_cover_compact)
   fi
 od
