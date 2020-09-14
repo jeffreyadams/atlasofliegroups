@@ -10,8 +10,11 @@
 #ifndef Y_VALUES_H  /* guard against multiple inclusions */
 #define Y_VALUES_H
 
+#include <cassert>
+
 #include "../Atlas.h"
 
+#include "bitvector.h" // use of |SmallBitVector| constructor
 #include "ratvec.h"   // containment
 
 namespace atlas {
@@ -125,6 +128,36 @@ struct y_entry
   const TorusElement& repr() const { return t_rep; }
 
 }; //  |struct y_entry|
+
+// maps from $\gamma-\lambda$ shift to integral-only $y$ bits and back
+// coding modulo sum of $\Q$-orthogonal of integral coroots and $(1-\theta)X^*$
+class y_codec
+{ // below $r$ is the rank (of $X^*$) and $d$ the number of relevant $y$ bits
+  int_Matrix coder; // size $d\times r$
+  int_Matrix decoder; // size $r\times d$, lift $y$ to $\gamma-\lambda$ shift
+
+ public:
+  y_codec(const InnerClass& ic,
+	  InvolutionNbr inv,
+	  const CoweightList& integrally_simple_coroots);
+
+  // methods to inherit coing information to a diffent involution
+  y_codec cross(weyl::Generator s, const y_codec& yc);
+  y_codec Cayley_descent(weyl::Generator s, const y_codec& yc);
+
+  SmallBitVector encode(const RatWeight& gamma_lambda_shift)
+  { const RatWeight prod = (coder*gamma_lambda_shift).normalize();
+    assert(prod.denominator()==1);
+    return SmallBitVector { prod.numerator() };
+  }
+  Weight decode (SmallBitVector y_bits)
+  { Weight result(decoder.numRows(),0);
+    for (auto it = y_bits.data().begin(); it(); ++it)
+      result += decoder.column(*it);
+    return result;
+  }
+}; // |y_codec|
+
 
 //				*** Functions ***
 

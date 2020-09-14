@@ -1113,7 +1113,7 @@ common_block::common_block // partial block constructor
   : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
   , rc(rt)
   , gamma_mod_1(gamma_mod_1) // already reduced
-  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , integral_sys(ctxt.subsys())
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -1123,47 +1123,54 @@ common_block::common_block // partial block constructor
 {
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
-  const auto& i_tab = inner_class().involution_table();
+  const auto& ic = inner_class();
+  const auto& i_tab = ic.involution_table();
+  const CoweightList intly_simp_crts
+    (ctxt.id().beginSimpleCoroot(),ctxt.id().endSimpleCoroot());
+  const RatWeight gamma_rho = (gamma_mod_1-rho(ic.rootDatum())).normalize();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash(y_pool);
+  std::vector<unsigned long> offset(i_tab.size(),-1);
+  using y_list = BitMap; // used for recording y values at an involution
+  struct inv_data
+  { std::unique_ptr<y_values::y_codec> cd; y_list list; unsigned long offset;
+    inv_data() : cd(nullptr), list(), offset(-1) {}
+  };
+  std::vector<inv_data> y_table (i_tab.size());
+  // each element of |y_table| gives a |y_codec| and all coded values found
 
-  { // we first fill |y_hash|, carefully ordering those for a same involution
-    using y_tab_type = std::pair<unsigned long,TorusPart>;
-    std::vector<containers::sl_list<y_tab_type> > y_table
-      (inner_class().involution_table().size());
-    // every element of |y_table| pairs a |y_stripped| value and a corresponding
-    // |TorusPart|; the former is used for sorting, the latter for |gamma_lambda|
+  { // we first collect |y|-values by involution, ordering for each involution
     for (unsigned long elt : elements)
     { const auto& srm = rt.srm(elt);
       const KGBElt x = srm.x();
       if (x>highest_x)
 	highest_x=x;
-      y_tab_type entry(repr::Repr_mod_entry(rc,srm).y_stripped(),srm.y());
-      auto& loc = y_table[kgb.inv_nr(x)];
-      auto it = std::find_if_not(loc.cbegin(),loc.cend(),
-		[&entry](const y_tab_type& t) { return t.first<entry.first; });
-      if (it==loc.end() or entry.first<it->first) // only insert |entry| if new
-	loc.insert(it,entry);
+
+      auto inv = kgb.inv_nr(x);
+      auto& slot = y_table[inv];
+      if (slot.cd==nullptr)
+      {
+	slot.cd.reset(new y_values::y_codec(ic,inv,intly_simp_crts));
+	SmallBitVector y_bits =
+	  slot.cd->encode(gamma_rho-rt.gamma_lambda(srm));
+	slot.list.set_capacity(1<<y_bits.size());
+	slot.list.insert(y_bits.data().to_ulong());
+      }
+      else
+      {
+	RankFlags y_bits =
+	  y_table[inv].cd->encode(gamma_rho-rt.gamma_lambda(srm)).data();
+	slot.list.insert(y_bits.to_ulong());
+      }
     }
 
     for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
     {
-      auto old_size = y_hash.size();
-      for (const y_tab_type& entry : y_table[i_x])
-      {
-	RatWeight gamma_lambda = rt.gamma_lambda(i_x,entry.second,gamma_mod_1);
-	TorusElement t = y_values::exp_pi(gamma_lambda);
-	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
-      } // we ensured that that |y| increases with |y_stripped| value in packet
-      assert(y_hash.size()==old_size+y_table[i_x].size()); // all |y|'s were new
-      ndebug_use(old_size);
-      highest_y += y_table[i_x].size();
+      y_table[i_x].offset = highest_y;
+      highest_y += y_table[i_x].list.size();
     }
-    assert(y_pool.size()==highest_y);
     -- highest_y; // one less than the number of distinct |y| values
   }
 
@@ -1174,11 +1181,12 @@ common_block::common_block // partial block constructor
 
   for (unsigned long elt : elements)
   { const auto& srm=rt.srm(elt);
-    const KGBElt x=srm.x();
-    auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
-    assert(y!=y_hash.empty);
+    const KGBElt x = srm.x();
+    const inv_data& d = y_table[kgb.inv_nr(x)];
+    auto v = d.cd->encode(gamma_rho-rt.gamma_lambda(srm));
+    auto y = d.offset+d.list.position(v.data().to_ulong());
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
-    srm_hash.match(repr::Repr_mod_entry(rc,srm));
+    srm_hash.match(repr::Repr_mod_entry(rc,srm)); // record |srm| in block
   }
 
   // allocate link fields with |UndefBlock| entries

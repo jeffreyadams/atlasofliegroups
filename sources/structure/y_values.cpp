@@ -14,6 +14,7 @@
 #include "arithmetic.h"
 #include "prerootdata.h"
 #include "rootdata.h"
+#include "innerclass.h"
 #include "matreduc.h" // for |adapted_basis|
 
 namespace atlas {
@@ -149,6 +150,40 @@ size_t y_entry::hashCode(size_t modulus) const
 
 bool y_entry::operator !=(const y_entry& y) const
 { return nr!=y.nr or fingerprint!=y.fingerprint; }
+
+
+y_codec::y_codec(const InnerClass& ic,
+		 InvolutionNbr inv,
+		 const CoweightList& integrally_simple_coroots)
+  : coder(), decoder()
+{
+  const auto& i_tab = ic.involution_table();
+  int_Matrix orth_killer(integrally_simple_coroots.size(),ic.rank());
+  for (unsigned i=0; i<integrally_simple_coroots.size(); ++i)
+    orth_killer.set_row(i,integrally_simple_coroots[i]);
+  int_Matrix row,col;
+  auto diagonal = matreduc::diagonalise(orth_killer,row,col);
+  auto rep_vecs = col.block(0,0,col.numRows(),diagonal.size());
+  auto saturation = col.inverse().block(0,0,diagonal.size(),col.numRows());
+  int_Matrix A = saturation*(i_tab.matrix(inv)-1)*rep_vecs;
+
+  // now do something similar with $A$, but only using torsion factors 2
+  diagonal = matreduc::diagonalise(A,row,col);
+  RankFlags torsion2;
+  for (unsigned i=0; i<diagonal.size(); ++i)
+    torsion2.set(i,diagonal[i]==2);
+  int_Matrix new_reps(col.numRows(),torsion2.count());
+  int_Matrix to_new_map(torsion2.count(),col.numRows());
+  unsigned int i=0; auto col_inv = col.inverse();
+  for (auto it=torsion2.begin(); it(); ++it,++i)
+  {
+    new_reps.set_column(i,col.column(*it));
+    to_new_map.set_row(i,col_inv.row(*it));
+  }
+  coder = to_new_map * saturation;
+  decoder = rep_vecs * new_reps;
+}
+
 
 // condition |is_central(roots,t)| means $t=\exp(2pi\pi)$ with $<p,roots>$ int
 bool is_central(const LatticeMatrix& alpha, const TorusElement& t)
