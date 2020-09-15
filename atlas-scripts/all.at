@@ -30,6 +30,7 @@
 <deform_plus.at
 <truncated_induction.at
 <dirac_index.at
+<sub_cells.at
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

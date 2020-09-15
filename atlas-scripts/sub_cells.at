@@ -1,0 +1,266 @@
+{Suppose G is a RootDatum, and \theta is a algebraic involution of G
+defining a real form G(R) We say G is a "complex group" if the root
+system R of G is "complex": meaning R\simeq R_1\times R_1, with \delta
+exchanging the two factors.  Equivalently:
+<\alpha,\delta(\alpha^vee)>=0 for all (simple) roots alpha
+
+Caution: This is slightly weaker than: G\simeq G_1\times G_1 with
+\delta switching factors. For example SL(2)xSL(2)/<-I,-I>, delta acts
+by switching factors <- SO(3,1); this is disconnected.
+
+is_complex@RealForm tests the condition: <alpha,delta(alpha^vee)>=0
+
+Question: how do we check the stronger condition: G(R) is a connected,
+complex group. (This allows Spin(3,1)=SL(2,C) and PSO(3,1)=PSL(2,C),
+but not SO(3,1)\simeq PSL(2,C)\times Z_2 (direct product)
+
+Answer: G^\theta\otimes C\simeq G
+In the usual notation:
+G=G_1\times G_1, \theta(g,h)=(h,g)
+G^\theta=G_1-diagonal,
+(G^\theta)\otimes C=G_1\times G_1=G
+
+We call this condition: is_strictly_complex
+
+How to test this:
+
+(G^\theta)_0 =K_0(G)  (identity component)
+
+Claim: (G,\theta) is complex <=>
+a) G(R), equivalently K=G^\theta, is connected
+b) complexification(K_0(G))\simeq G
+
+I believe we can replace b) with
+
+b') complexification(K_0(G)) is locally isomorphic to G
+
+Furthermore this is probably equivalent to:
+
+i)  G.is_complex
+ii) G.components_rank=0
+
+Probably we won't use is_strictly_complex much, so
+leaving this here
+}
+set is_complex(RealForm G)=bool:
+all(for i:#G.simple_roots do
+G.distinguished_involution*G.simple_roots[i]*G.simple_coroots[i]=0 od)
+
+set is_strictly_complex(RealForm G)=bool:
+let
+test_1=G.is_complex and =G.components_rank then
+test_2=is_locally_isomorphic(G,complexification(K_0(G))) and =G.components_rank
+in
+assert(test_1=test_2,"two strictly complex tests don't agree");
+test_1
+
+set swapped_factors(RealForm G)=[(int,int)]:
+assert(G.is_complex,"G is not complex");
+let sf=G.simple_factors in
+##for factor@i in sf do
+ let root=G.distinguished_involution*factor.simple_roots[0] then
+ j=first(for i:#sf do find(sf[i].simple_roots,root) !=-1 od) in
+  if i<j then [(i,j)] else [] fi
+od
+
+set left_factors(RealForm G)=[RootDatum]:
+assert(G.is_complex,"G is not complex");
+let sf=G.simple_factors in
+for (i,j) in G.swapped_factors do sf[i] od
+
+set left_roots(RealForm G)=[vec]:
+##for f in G.left_factors do [vec]:f.simple_roots od
+
+set left_coroots(RealForm G)=[vec]:
+##for f in G.left_factors do [vec]:f.simple_coroots od
+
+set left_copy(RealForm G)=RootDatum:
+root_datum(left_roots(G),left_coroots(G))
+
+set left_root_indices(RealForm G)=[int]:
+for v in G.left_roots do find(G.simple_roots,v) od
+
+set right_factors(RealForm G)=[RootDatum]:
+assert(G.is_complex,"G is not complex");
+let sf=G.simple_factors in
+for (i,j) in G.swapped_factors do sf[i] od
+
+set right_roots(RealForm G)=[vec]:
+##for f in G.right_factors do [vec]:f.simple_roots od
+
+set right_coroots(RealForm G)=[vec]:
+##for f in G.right_factors do [vec]:f.simple_coroots od
+
+set right_copy(RealForm G)=RootDatum:
+root_datum(right_roots(G),right_coroots(G))
+
+set right_root_indices(RealForm G)=[int]:
+for v in G.right_roots do find(G.simple_roots,v) od
+
+{tau invariant of node of WGraph}
+set tau(WGraph graph,int i)=[int]:let (tau,)=graph[i] in tau
+set in_tau(WGraph graph,int i, int j)=bool:
+if find(tau(graph,i),j)>=0 then true else false fi
+
+{intersection of sets of integers}
+set intersection([int] S,[int] T)=[int]:
+##for i in S do if find(T,i)>=0 then [i] else [] fi od
+
+{directed graph underlying (symmetric) WGraph
+ see atlas-functions.help/W_graph
+ discard edge x->y if tax(x)\subset tau(y)
+ [keep edge x-> y if there is j\in tau(x), j\not\in\tau(y)]
+}
+set digraph(WGraph graph)=WGraph:
+for (tau,edges) in graph do
+    (tau,
+	##for (target,mult) in edges do
+	    if not is_subset(tau,tau(graph[target])) then [(target,mult)] else [] fi
+	  od)
+od
+
+set intersection([int] A,[int] B)=[int]:
+##for i in A do if find(B,i)!=-1 then [i] else [] fi od
+
+{subgraph of a directed graph
+ given by subset S of simple roots
+ keep link x->y if there is j\in S satisfying:
+  j\in \tau(x)  j\not\in\tau(y) i.e. 
+  S\cap tau(x)\not\subset \tau(y) 
+}
+
+set sub_digraph(WGraph graph,[int] S)=WGraph:
+for (tau,edges) in graph do
+    (tau,
+	##for (target,mult) in edges do
+	    let tau_target=tau(graph[target]) in
+	    	if not is_subset(intersection(S,tau),tau_target) 
+		   then [(target,mult)] else [] fi
+	  od)
+od
+
+set sub_graph(WGraph graph,[int] S)=WGraph:
+for (tau,edges) in graph do
+    (tau,
+	##for (target,mult) in edges do
+	    let tau_target=tau(graph[target]) in
+	    	if not is_subset(intersection(S,tau),tau_target) or
+		   not is_subset(intersection(S,tau_target),tau) 
+		   then [(target,mult)] else [] fi
+	  od)
+od
+
+set links(WGraph graph)=[[int]]:
+for i:#graph do let (,links)=graph[i] in
+ for (j,) in links do j
+ od
+od
+
+{strong_components(g) returns [([int] nodes,WGraph)]:
+the ith entry ([int] nodes,WGraph graph) is:
+ nodes is the list of nodes in the strong component
+  (as returned by strong_components(links(g)))
+ graph is the WGraph of these nodes, renumbered [0,1,...,k]
+  so this really is a WGraph, without reference to the original,
+  as in the W_cells command,
+}
+set strong_components(WGraph g)=[WCell]: {[([int],WGraph)]:}
+let (components,)=strong_components(links(g)) in
+for comp in components do
+ (comp,for i in comp do
+  let (tau,links)=g[i] in
+  (tau,##for (j,m) in links do let index=find(comp,j) in
+   if index>=0 then [(index,m)] else [] fi od)
+ od)
+od
+
+{same as the previous, except that the nodes [0,1,...,n] of
+ g are also labeled by [int] nodes, and we want to keep track of
+ this numbering also
+ this means for each component there are two lists of indices:
+  first one:  the nodes of component, in their numbering [0,...,n] of nodes of g
+  second one: the nodes of component, in their numbering from [int] nodes
+  return: (second one,graph)
+}
+set strong_components(WCell cell)=[WCell]:{[([int],WGraph)]:}
+let (nodes,g)=cell in
+for (indices,graph) in strong_components(g)  do
+(for i in indices do nodes[i] od, graph)
+od
+
+set sub_cells(WCell (nodes,graph),[int] S)=[WCell]:
+strong_components(nodes,sub_digraph(graph,S))
+
+set left_cells(RealForm G,WCell cell)=[WCell]:
+sub_cells(cell,left_root_indices(G))
+
+set right_cells(RealForm G,WCell cell)=[WCell]:
+sub_cells(cell,right_root_indices(G))
+
+set extract_nodes(WGraph g, [int] nodes)=WGraph:
+for i in nodes do
+let (tau,links)=g[i] in
+ (tau,##for (j,m) in links do
+  let index=find(nodes,j) in
+   if index!=-1 then [(index,m)] else [] fi od)
+od
+
+{. character of representation of W on cell .}
+{
+set cell_character_C (CharacterTable ct,WCell cell) = [int]:
+for w in ct.class_reps do trace(cell_action(cell,w)) od
+}
+
+{ ----- output commands  -----------}
+set show(WGraph g)=void:
+tabulate(["node","tau","links"]#for (a,b)@i in g do
+ [i.to_string,a.to_string,b.to_string] od)
+
+set show(WCell (vertices,g))=
+prints("vertices: ", vertices);show(g)
+
+set show([WGraph] graphs)=void:
+tabulate(["graph","node","tau","links"]#
+##for graph@i in graphs do
+ ["","","",""]#for (a,b)@j in graph do
+ [i.to_string,j.to_string,a.to_string,b.to_string] od od)
+
+set show([WCell] cells)=void:
+for (vertices,graph)@i in cells do
+prints("cell #", i, new_line,"vertices: ", vertices);
+show(graph);prints() od
+
+{convert [int] to string, truncating after max terms}
+set short_string([int] list,int max)=
+if #list<max then list.to_string else
+let rv="[" in
+ for i:max do rv+:=list[i].to_string+"," od;
+rv+:=list~[1].to_string+",...]";
+rv
+fi
+
+set show_short([WCell] cells)=void:
+tabulate(["cell","size","nodes"]#for (nodes,graph)@i in cells do
+[i.to_string,(#nodes).to_string,short_string(nodes,15)] od)
+
+{write a graphviz file
+ typical usage:
+ > file.dot prints(export(g))
+ in console:
+ dot -Tpdf -ofile.pdf file.dot"
+}
+set export(WGraph g)=string:
+let text=
+"strict digraph  { " +
+new_line + "size=""30.0,30.0!""; " +
+new_line + "center=true;  " +
+new_line + "node [color=black,fontcolor=black] " +
+new_line + " edge [arrowhead=normal,color=black]; "
+in
+for node@i in g do
+ let (tau,arrows)=node then
+ str=new_line+i.to_string+ ";" in
+  for (j,m) in arrows do str+:=i.to_string + "->" + j.to_string + ";" od;
+ text+:=str
+od;text+new_line+"}"
+

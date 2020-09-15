@@ -1746,6 +1746,8 @@ set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
 set in_string_list (string s,[string] S) = bool:
   >=first(for t in S do s=t od)
 
+set in_list([int] v,int k)=bool:>=find(v,k)
+
 { delete one term from a list }
 set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
 set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]

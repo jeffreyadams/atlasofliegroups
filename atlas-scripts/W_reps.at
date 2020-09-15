@@ -65,6 +65,8 @@ set_type
 , WNode = ([int] tau,[int,int] out_list)
 ]
 
+set W_graph(WCell (,g))=WGraph:g
+
 { Description of the cell representation taken from messages/wcells.help
 
   One Weyl group representation attached to the graph, called coherent

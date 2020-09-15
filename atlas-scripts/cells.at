@@ -1,12 +1,11 @@
-<basic.at
 <character_table_reps.at
 <springer_tables.at
-<W_reps.at { for |WCell| type }
-<lietypes.at
-<conjugate.at
-<conjugate.at
-<sparse.at
 
+
+
+
+
+set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells(p) in cells
 { ----------- cell representations --------------}
 {{moved from character_table_reps.at}}
 
