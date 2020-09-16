@@ -733,12 +733,12 @@ common_block::~common_block() = default;
 // it is long because of the need to find elements in all corners
 
 common_block::common_block // full block constructor
-  (const Rep_context& rc,
+  (const repr::common_context& ctxt,
    const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
-  , rc(rc)
+  , cc(ctxt)
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , z_pool()
@@ -1111,7 +1111,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<unsigned long>& elements,
      const RatWeight& gamma_mod_1)
   : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
-  , rc(rt)
+  , cc(ctxt)
   , gamma_mod_1(gamma_mod_1) // already reduced
   , integral_sys(ctxt.subsys())
   , z_pool()
@@ -1122,7 +1122,7 @@ common_block::common_block // partial block constructor
   , generated_as_full_block(false)
 {
   info.reserve(elements.size());
-  const auto& kgb = rt.kgb();
+  const auto& kgb = cc.kgb();
   const auto& ic = inner_class();
   const auto& i_tab = ic.involution_table();
   const CoweightList intly_simp_crts
@@ -1154,14 +1154,14 @@ common_block::common_block // partial block constructor
       {
 	slot.cd.reset(new y_values::y_codec(ic,inv,intly_simp_crts));
 	SmallBitVector y_bits =
-	  slot.cd->encode(gamma_rho-rt.gamma_lambda(srm));
+	  slot.cd->encode(gamma_rho-cc.gamma_lambda(srm));
 	slot.list.set_capacity(1<<y_bits.size());
 	slot.list.insert(y_bits.data().to_ulong());
       }
       else
       {
 	RankFlags y_bits =
-	  y_table[inv].cd->encode(gamma_rho-rt.gamma_lambda(srm)).data();
+	  y_table[inv].cd->encode(gamma_rho-cc.gamma_lambda(srm)).data();
 	slot.list.insert(y_bits.to_ulong());
       }
     }
@@ -1183,7 +1183,7 @@ common_block::common_block // partial block constructor
   { const auto& srm=rt.srm(elt);
     const KGBElt x = srm.x();
     const inv_data& d = y_table[kgb.inv_nr(x)];
-    auto v = d.cd->encode(gamma_rho-rt.gamma_lambda(srm));
+    auto v = d.cd->encode(gamma_rho-cc.gamma_lambda(srm));
     auto y = d.offset+d.list.position(v.data().to_ulong());
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
     srm_hash.match(repr::Repr_mod_entry(rc,srm)); // record |srm| in block
@@ -1292,7 +1292,7 @@ common_block::common_block // partial block constructor
 
 BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
 { // since |srm_hash.empty==UndefBlock|, we can just say:
-  return srm_hash.find(repr::Repr_mod_entry(rc,srm));
+  return srm_hash.find(repr::Repr_mod_entry(cc,srm));
 }
 
 BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const

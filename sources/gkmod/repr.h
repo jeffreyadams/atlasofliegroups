@@ -134,20 +134,17 @@ class StandardReprMod
 }; // |class StandardReprMod|
 
 class Repr_mod_entry
-{ KGBElt x; RankFlags y, mask;
+{ KGBElt x; RankFlags y;
 public:
   Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
 
   StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
 
-  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
-
   // obligatory fields for hashable entry
   using Pooltype =  std::vector<Repr_mod_entry>;
   size_t hashCode(size_t modulus) const
-  { return (5*x-11*y_stripped())&(modulus-1); }
-  bool operator !=(const Repr_mod_entry& o) const
-    { return x!=o.x or y_stripped()!=o.y_stripped(); }
+  { return (5*x-11*y.data().to_ulong)&(modulus-1); }
+  bool operator !=(const Repr_mod_entry& o) const  { return x!=o.x or y!=o.y; }
 
 }; // |Repr_mod_entry|
 

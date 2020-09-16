@@ -131,11 +131,18 @@ size_t StandardReprMod::hashCode(size_t modulus) const
 }
 
 
-Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
+Repr_mod_entry::Repr_mod_entry
+  (const common_context& ctxt, const StandardReprMod& srm)
   : x(srm.x())
-  , y(srm.y().data())
-  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
-{}
+  , y()
+{
+  const auto& ic = rc.inner_class();
+  const inv = ctxt.kgb().inv_nr(x);
+  const CoweightList intly_simp_crts
+    (ctxt.id().beginSimpleCoroot(),ctxt.id().endSimpleCoroot());
+  y_codec cd(ctxt.inner_class(),inv,intly_simp_crts);
+  y = 
+}
 
 // recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
 StandardReprMod Repr_mod_entry::srm

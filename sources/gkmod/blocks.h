@@ -336,7 +336,7 @@ private:
 // a class for blocks of (possibly non integral) parameters
 class common_block : public Block_base
 {
-  const Rep_context& rc; // accesses many things, including KGB set for x
+  const common_context& cc; // accesses many things, including KGB set for x
 
   const RatWeight gamma_mod_1;
   const SubSystem integral_sys;
@@ -356,7 +356,7 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const repr::Rep_context& rc,
+    (const repr::common_context& ctxt,
      const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
@@ -368,7 +368,7 @@ class common_block : public Block_base
   ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
-  const repr::Rep_context& context() const { return rc; }
+  const repr::common_context& context() const { return cc; }
   const RootDatum& root_datum() const;
   const SubSystem& integral_subsystem() const { return integral_sys; }
   const InnerClass& inner_class() const;
@@ -382,6 +382,7 @@ class common_block : public Block_base
   RankFlags singular (const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
+  // and only up to $-\theta$-fixed shift orthogonal to all integral coroots
   RatWeight gamma_lambda(BlockElt z) const;
 
   BlockElt lookup(const repr::StandardReprMod& srm) const;
