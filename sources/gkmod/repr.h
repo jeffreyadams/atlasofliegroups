@@ -82,7 +82,7 @@ class StandardRepr
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
   // one should call constructor from |Rep_context| only
-  StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
+  StandardRepr(KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
   { infinitesimal_char.normalize(); } // to ensure this class invariant
 
@@ -93,7 +93,7 @@ class StandardRepr
   const TorusPart& y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
-  bool operator== (const StandardRepr&) const;
+  bool operator==(const StandardRepr&) const;
 
 // special members required by HashTable
 
@@ -109,49 +109,30 @@ class StandardReprMod
   friend class Rep_context;
 
   KGBElt x_part;
-  TorusPart y_bits; // torsion part of $\lambda$
-  RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+  RatWeight rgl; // |rho+real_unique(gamma-lambda)|
 
-  StandardReprMod (StandardRepr&& sr); // private raw constructor
+  StandardReprMod(KGBElt x_part, RatWeight&& rgl) // private raw constructor
+    : x_part(x_part), rgl(std::move(rgl.normalize())) {}
 
  public:
-  // when building, we force integral parts of |gamma_mod1| components to zero
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
   static StandardReprMod build
-    (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
-     KGBElt x, const RatWeight& gam_lam);
+    (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
-  const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
   KGBElt x() const { return x_part; }
-  const TorusPart& y() const { return y_bits; }
+  RatWeight gamma_lambda(const RatWeight& rho) const { return rgl-rho; }
+  const RatWeight gamma_rep() const { return rgl; }
 
-  bool operator== (const StandardReprMod& other) const
-  { return x_part==other.x_part and y_bits==other.y_bits
-    and inf_char_mod_1==other.inf_char_mod_1; }
+  // since pseudo constructors map |rgl| to fundamental domain, equality is easy
+  bool operator==(const StandardReprMod& other) const
+  { return x_part==other.x_part and rgl==other.rgl; }
+
   typedef std::vector<StandardReprMod> Pooltype;
   bool operator!=(const StandardReprMod& another) const
-    { return not operator==(another); }
+  { return not operator==(another); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
-
-class Repr_mod_entry
-{ KGBElt x; RankFlags y, mask;
-public:
-  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
-
-  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
-
-  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
-
-  // obligatory fields for hashable entry
-  using Pooltype =  std::vector<Repr_mod_entry>;
-  size_t hashCode(size_t modulus) const
-  { return (5*x-11*y_stripped())&(modulus-1); }
-  bool operator !=(const Repr_mod_entry& o) const
-    { return x!=o.x or y_stripped()!=o.y_stripped(); }
-
-}; // |Repr_mod_entry|
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
@@ -165,6 +146,8 @@ class Rep_context
   // accessors
   RealReductiveGroup& real_group() const { return G; }
   const InnerClass& inner_class() const { return G.innerClass(); }
+  const Cartan_orbits& involution_table() const
+    { return inner_class().involution_table(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
     { return G.twistedWeylGroup(); }

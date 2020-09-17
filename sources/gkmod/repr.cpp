@@ -48,64 +48,31 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-StandardReprMod::StandardReprMod (StandardRepr&& sr)
-: x_part(sr.x())
-, y_bits(sr.y())
-, inf_char_mod_1(sr.gamma()) // will be reduced modulo 1 caller; is normalized
-{}
-
 StandardReprMod StandardReprMod::mod_reduce
   (const Rep_context& rc, const StandardRepr& sr)
 {
-  auto gamma_mod1=sr.gamma(); // a normalized rational vector
-  auto lam_rho=rc.lambda_rho(sr); // both these valeus are modified below
-  auto& num = gamma_mod1.numerator(); assert(num.size()==lam_rho.size());
-
-  const auto d = gamma_mod1.denominator(); // positive value of a signed type
-  for (unsigned i=0; i<num.size(); ++i)
-  {
-    auto q = arithmetic::divide(num[i],d);
-    num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
-    lam_rho[i] -= q; // shift to $\gamma_mod1$ is also applied to $\lambda$ part
-  }
-  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
+  KGBElt x = sr.x();
+  auto rho = rootdata::rho(rc.root_datum());
+  auto gam_lam=sr.gamma()-rho-rc.lambda_rho(sr);
+  rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
+  return StandardReprMod(x,rho+gam_lam);
 }
 
 StandardReprMod StandardReprMod::build
-  (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
-   KGBElt x, const RatWeight& gam_lam)
+  (const Rep_context& rc, KGBElt x, RatWeight gam_lam)
 {
-  const auto gamma_rho = gamma_mod_1 - rho(rc.root_datum());
-  const RatWeight lr_rat = (gamma_rho-gam_lam).normalize();
-  assert(lr_rat.denominator()==1);
-  Weight lam_rho(lr_rat.numerator().begin(),lr_rat.numerator().end());
-  return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
+  rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
+  return StandardReprMod(x,rho(rc.root_datum())+gam_lam);
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const
-{ size_t hash= x_part +
-    243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
-  const Ratvec_Numer_t& num=inf_char_mod_1.numerator();
+{ size_t hash= x_part + 47*rgl.denominator();
+  const Ratvec_Numer_t& num=rgl.numerator();
   for (unsigned i=0; i<num.size(); ++i)
-    hash= 11*(hash&(modulus-1))+num[i];
+    hash= 11*hash+num[i];
   return hash &(modulus-1);
 }
 
-
-Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
-  : x(srm.x())
-  , y(srm.y().data())
-  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
-{}
-
-// recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
-StandardReprMod Repr_mod_entry::srm
-  (const Rep_context& rc,const RatWeight& gamma_mod_1) const
-{ // the following uses all bits of |y|, including bits ignored for equality test
-  TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
-  const auto gam_lam = rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1);
-  return StandardReprMod::build (rc,gamma_mod_1, x, gam_lam);
-}
 
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
@@ -209,7 +176,7 @@ RatWeight Rep_context::gamma_lambda
 }
 
 RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const
-{ return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma_mod1()); }
+{ return z.gamma_lambda(rho(root_datum())); }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
 {
@@ -1155,7 +1122,7 @@ blocks::common_block& Rep_table::add_block_below
 
   containers::sl_list<blocks::common_block> temp; // must use temporary singleton
   auto& block = temp.emplace_back // construct block and get a reference
-    (*this,ctxt,elements,srm.gamma_mod1());
+    (*this,ctxt,elements,srm.gamma_rep());
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
@@ -1340,12 +1307,9 @@ void Rep_table::block_erase (bl_it pos)
   if (not block_list.at_end(next_pos))
   { // then make sure in |place| instances of |next_pos| are replaced by |pos|
     const auto& block = *next_pos;
-    const RatWeight gamma_rho = block.gamma_mod1()-rho(root_datum());
     for (BlockElt z=0; z<block.size(); ++z)
     {
-      Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      auto zm = StandardReprMod::mod_reduce
-	(*this, sr_gamma(block.x(z),lambda_rho,block.gamma_mod1()));
+      auto zm = StandardReprMod::build(*this,block.x(z),block.gamma_lambda(z));
       unsigned long seq = mod_hash.find(zm);
       assert(seq<place.size()); // all elements in |block_list| must have |place|
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
@@ -2099,7 +2063,7 @@ StandardReprMod common_context::cross
   pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
   gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
   integr_datum.simple_reflect(s,gamma_lambda.numerator()); // then reflect
-  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
 }
 
 StandardReprMod common_context::down_Cayley
@@ -2118,7 +2082,7 @@ StandardReprMod common_context::down_Cayley
   real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
   pos_neg &= real_flip; // posroots that change real status and map to negative
   gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
-  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
 }
 
 bool common_context::is_parity
@@ -2159,7 +2123,7 @@ StandardReprMod common_context::up_Cayley
   if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
     gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
 
-  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
 }
 
 

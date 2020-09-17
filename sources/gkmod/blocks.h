@@ -338,12 +338,12 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const RatWeight gamma_mod_1;
+  RatWeight gamma_mod_1; // |const| here would give difficulty in constructors
   const SubSystem integral_sys;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
-  using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
-  repr::Repr_mod_entry::Pooltype z_pool;
+  using repr_hash = HashTable<repr::StandardReprMod,BlockElt>;
+  repr::StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
   std::unique_ptr<ext_block::ext_block> extended;
@@ -364,7 +364,7 @@ class common_block : public Block_base
     (const repr::Rep_table& rt,
      const repr::common_context& ctxt,
      containers::sl_list<unsigned long>& elements,
-     const RatWeight& gamma_mod_1);
+     const RatWeight& gamma_rep);
   ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
@@ -388,7 +388,7 @@ class common_block : public Block_base
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   repr::StandardReprMod representative (BlockElt z) const
-  { return repr::StandardReprMod::build(rc,gamma_mod_1,x(z),gamma_lambda(z)); }
+  { return repr::StandardReprMod::build(rc,x(z),gamma_lambda(z)); }
   repr::StandardRepr sr (BlockElt z,const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;

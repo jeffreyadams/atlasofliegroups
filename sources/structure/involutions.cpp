@@ -375,10 +375,9 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
   const record& rec=data[inv];
   Ratvec_Numer_t v = rec.M_real * y.numerator();
   assert(v.size()==rec.diagonal.size());
+  // expressed $(1-theta)y$ on image $(1-theta)X^*$ basis, reduce mod 2*image
   for (unsigned i=0; i<v.size(); ++i)
-  { int factor = rec.diagonal[i] ? 2 : 4; // twice |diagonal[i]| before reduction
-    v[i]= arithmetic::remainder(v[i],factor*y.denominator());
-  }
+    v[i]= arithmetic::remainder(v[i],2*y.denominator());
 
   y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
   (y/=2).normalize(); // and this gets us back to the class of the original |y|

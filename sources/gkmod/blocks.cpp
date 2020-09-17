@@ -723,7 +723,7 @@ RankFlags common_block::singular (const RatWeight& gamma) const
 // find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
 RatWeight common_block::gamma_lambda(BlockElt z) const
 {
-  return rc.gamma_lambda(z_pool[z].srm(rc,gamma_mod_1));
+  return z_pool[z].gamma_lambda(rho(root_datum()));
 }
 
 common_block::~common_block() = default;
@@ -737,9 +737,9 @@ common_block::common_block // full block constructor
    const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_rep()))
   , rc(rc)
-  , gamma_mod_1(srm.gamma_mod1()) // already reduced
+  , gamma_mod_1(srm.gamma_rep()) // reduced below
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , z_pool()
   , srm_hash(z_pool,5)
@@ -748,6 +748,9 @@ common_block::common_block // full block constructor
   , highest_y() // defined below when generation is complete
   , generated_as_full_block(true)
 {
+  for (auto& entry : gamma_mod_1.numerator()) // reduce |gamma_mod_1| modulo 1
+    entry = arithmetic::remainder(entry,gamma_mod_1.denominator());
+
   const InnerClass& ic = inner_class();
   const RootDatum& rd = root_datum();
 
@@ -819,7 +822,7 @@ common_block::common_block // full block constructor
     {
       auto zz = queue.front();
       list.splice(list.end(),queue,queue.begin()); // move node
-      srm_hash.match(repr::Repr_mod_entry(rc,zz));
+      srm_hash.match(zz);
       for (const auto& w : reflect)
       {
 	auto new_z = zz;
@@ -847,7 +850,7 @@ common_block::common_block // full block constructor
   BitMap x_seen(kgb.size()); // for |x| below |highest_x|, record encounters
   x_seen.insert(highest_x);
   BlockElt next=0; // start at beginning of (growing) list of block elements
-  containers::sl_list<LL> bundles;
+  containers::sl_list<LL> bundles; // element list-lists grouped by involution
 
   do // process involution packet of elements from |next| to |queue.front()|
   { // |next| is constant throughout the loop body, popped from |queue| at end
@@ -937,7 +940,7 @@ common_block::common_block // full block constructor
 	      tab_s[cur++].cross_image = info.size();
 	      add_z(xy_hash,sz.x(),*it);
 	      info.back().length=next_length;
-	      srm_hash.match(repr::Repr_mod_entry(rc,sz));
+	      srm_hash.match(sz);
 	      ++it;
 	    }
 	    x_seen.insert(packet_list.front().x());
@@ -1011,8 +1014,8 @@ common_block::common_block // full block constructor
 	      add_z(xy_hash,x,y), info.back().length=next_length;
 	      auto& new_srm = packet_list.emplace_back
 		(repr::StandardReprMod::build
-		 (rc,srm.gamma_mod1(), x,y_pool[y].repr().log_pi(false)));
-	      srm_hash.match(repr::Repr_mod_entry(rc,new_srm));
+		 (rc, x,y_pool[y].repr().log_pi(false)));
+	      srm_hash.match(new_srm);
 	    }
 
 	    // push any new neighbours of |x| onto |to_do|
@@ -1062,29 +1065,29 @@ common_block::common_block // full block constructor
   highest_x = last(x_seen); // to be sure; length need not increase with |x|
   highest_y = y_hash.size()-1; // set highest occurring |y| value, for |ysize|
 
-  std::vector<unsigned int> renumber(y_hash.size());
+   // to ensure fixed order of |y| for each |x|, we'll sort |y| fields by packets
+  std::vector<unsigned int> renumber(y_hash.size()); // standardisation
   {
-    using pair_tp = std::pair<unsigned long,unsigned int>;
+    using pair_tp =
+      std::pair<const StandardReprMod&,unsigned int>; // |(y,seq_no)|
     containers::sl_list<pair_tp> L;
     auto less = [](const pair_tp& a,const pair_tp& b)->bool
-      { return a.first<b.first; };
+      { return a.first.gamma_rep()<b.first.gamma_rep(); };
     unsigned int i=0; auto finish = L.end();
     for (const auto& packet : bundles)
     {
       auto start=finish;
       for (const auto& srm : packet.front()) // only traverse first row of packet
-      { // gather their |y_stripped| values
-	auto y_strip = repr::Repr_mod_entry(rc,srm).y_stripped();
-	L.emplace_back(y_strip,i++);
-      }
+	L.emplace_back(srm,i++);
       L.sort(start,finish = L.end(),less);  // and sort interval by those values
       assert(finish==L.end()); // |L.sort| has modified |finish| to achieve this
     }
+    assert(i==y_hash.size()); // all |y| values should have been seen just once
     i=0;
     for (const auto& pair : L)
       renumber[pair.second]=i++;
   }
-  // now we renumber so that for each involution |y| increases with |y_stripped|
+  // now we renumber |y| fileds in |info|, so |y| increases for each involution
   for (auto& entry : info)
     entry.y=renumber[entry.y]; // makes |y_hash| useless; it is dropped anyway
 
@@ -1109,10 +1112,10 @@ common_block::common_block // partial block constructor
     (const repr::Rep_table& rt,
      const repr::common_context& ctxt,
      containers::sl_list<unsigned long>& elements,
-     const RatWeight& gamma_mod_1)
-  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
+     const RatWeight& gamma_rep)
+  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_rep))
   , rc(rt)
-  , gamma_mod_1(gamma_mod_1) // already reduced
+  , gamma_mod_1(gamma_rep) // reduced below
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , z_pool()
   , srm_hash(z_pool)
@@ -1121,9 +1124,12 @@ common_block::common_block // partial block constructor
   , highest_y(0) // defined when generation is complete
   , generated_as_full_block(false)
 {
+  for (auto& entry : gamma_mod_1.numerator()) // reduce |gamma_mod_1| modulo 1
+    entry = arithmetic::remainder(entry,gamma_mod_1.denominator());
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
   const auto& i_tab = inner_class().involution_table();
+  const RatWeight rho = rootdata::rho(root_datum());
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
@@ -1132,22 +1138,19 @@ common_block::common_block // partial block constructor
   y_part_hash y_hash(y_pool);
 
   { // we first fill |y_hash|, carefully ordering those for a same involution
-    using y_tab_type = std::pair<unsigned long,TorusPart>;
-    std::vector<containers::sl_list<y_tab_type> > y_table
-      (inner_class().involution_table().size());
-    // every element of |y_table| pairs a |y_stripped| value and a corresponding
-    // |TorusPart|; the former is used for sorting, the latter for |gamma_lambda|
+    using y_tab_type = RatWeight; // a |gamma_rep| value: |rho+gamma_lambda|
+    std::vector<containers::sl_list<y_tab_type> >
+      y_table(involution_table().size()); // sorted list for each involution
     for (unsigned long elt : elements)
     { const auto& srm = rt.srm(elt);
       const KGBElt x = srm.x();
       if (x>highest_x)
 	highest_x=x;
-      y_tab_type entry(repr::Repr_mod_entry(rc,srm).y_stripped(),srm.y());
+      auto gamma_rep = srm.gamma_rep();
       auto& loc = y_table[kgb.inv_nr(x)];
-      auto it = std::find_if_not(loc.cbegin(),loc.cend(),
-		[&entry](const y_tab_type& t) { return t.first<entry.first; });
-      if (it==loc.end() or entry.first<it->first) // only insert |entry| if new
-	loc.insert(it,entry);
+      auto it = std::lower_bound(loc.cbegin(),loc.cend(),gamma_rep);
+      if (it==loc.end() or gamma_rep < *it) // only insert when |gamma_rep| new
+	loc.insert(it,gamma_rep);
     }
 
     for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
@@ -1155,7 +1158,7 @@ common_block::common_block // partial block constructor
       auto old_size = y_hash.size();
       for (const y_tab_type& entry : y_table[i_x])
       {
-	RatWeight gamma_lambda = rt.gamma_lambda(i_x,entry.second,gamma_mod_1);
+	RatWeight gamma_lambda = entry-rho;
 	TorusElement t = y_values::exp_pi(gamma_lambda);
 	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
       } // we ensured that that |y| increases with |y_stripped| value in packet
@@ -1178,7 +1181,7 @@ common_block::common_block // partial block constructor
     auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
     assert(y!=y_hash.empty);
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
-    srm_hash.match(repr::Repr_mod_entry(rc,srm));
+    srm_hash.match(srm);
   }
 
   // allocate link fields with |UndefBlock| entries
@@ -1284,12 +1287,12 @@ common_block::common_block // partial block constructor
 
 BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
 { // since |srm_hash.empty==UndefBlock|, we can just say:
-  return srm_hash.find(repr::Repr_mod_entry(rc,srm));
+  return srm_hash.find(srm);
 }
 
 BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 {
-  return lookup(repr::StandardReprMod::build(rc,gamma_mod_1,x,gamma_lambda));
+  return lookup(repr::StandardReprMod::build(rc,x,gamma_lambda));
 }
 
 repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
