@@ -39,7 +39,7 @@ class common_context;
 /*
   A parameter of a standard representation is determined by a triplet
   $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
-  form (determining amongs others an involution $\thata$ of $X^*$),
+  form (determining amongst others an involution $\theta$ of $X^*$),
   $\tilde\lambda$ is a genuine character of the $\rho$-cover of $H^{\theta_x}$,
   and $\gamma$ is a character of the complex Lie algebra $h$. The latter two
   values are related; $(1+\theta)\gamma=(1+\theta)\tilde\lambda$, in other words
@@ -99,11 +99,20 @@ class StandardRepr
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
-    { return not operator==(another); }
+  { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
-// a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
+/*
+  A variation, representing |StandardRepr| up to parallel shift |gamma|,|lambda|
+  which suffices for block construction, and given |gamma| we can easily
+  reconstruct a full |StandardRepr|.
+
+  We use a trick to assume by parallel shift that |lambda=rho|, so the
+  corresponding value |rgl| of |gamma| now also encodes |gamma-lambda|, and we
+  do not need to represent |y_bits| at all. In fact doing without the packing
+  and unpacking operations for |y_bits| greatly simplifies our operations.
+*/
 class StandardReprMod
 {
   friend class Rep_context;
@@ -115,6 +124,7 @@ class StandardReprMod
     : x_part(x_part), rgl(std::move(rgl.normalize())) {}
 
  public:
+  // the raw constructor is always called through one of two pseudo constructors
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
   static StandardReprMod build
@@ -147,10 +157,10 @@ class Rep_context
   RealReductiveGroup& real_group() const { return G; }
   const InnerClass& inner_class() const { return G.innerClass(); }
   const Cartan_orbits& involution_table() const
-    { return inner_class().involution_table(); }
+  { return inner_class().involution_table(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
-    { return G.twistedWeylGroup(); }
+  { return G.twistedWeylGroup(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -164,7 +174,7 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
-    { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
+  { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
   StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
 
   StandardRepr

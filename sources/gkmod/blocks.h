@@ -26,7 +26,7 @@
 #include "lietype.h"    // |ext_gen|;
 #include "dynkin.h"     // |DynkinDiagram|
 #include "subsystem.h"  // data memeber in |common_block|
-#include "repr.h"       // hash table in |common_block|
+#include "repr.h"       // hash table in |common_block|, |StandardReprMod|
 
 namespace atlas {
 
@@ -338,7 +338,6 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  RatWeight gamma_mod_1; // |const| here would give difficulty in constructors
   const SubSystem integral_sys;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
@@ -377,12 +376,13 @@ class common_block : public Block_base
 
   bool is_full () const { return generated_as_full_block; }
 
-  RatWeight gamma_mod1 () const { return gamma_mod_1; }
   // simple coroots of |sub| singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
+  RatWeight gamma_lambda_rho(BlockElt z) const // that is $\gamma-\lambda+\rho$
+  { return z_pool[z].gamma_rep(); } // is actually easier than |gamma_lambda|
 
   BlockElt lookup(const repr::StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;

@@ -739,8 +739,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_rep()))
   , rc(rc)
-  , gamma_mod_1(srm.gamma_rep()) // reduced below
-  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , integral_sys(SubSystem::integral(root_datum(),srm.gamma_rep()))
   , z_pool()
   , srm_hash(z_pool,5)
   , extended(nullptr) // no extended block initially
@@ -748,9 +747,6 @@ common_block::common_block // full block constructor
   , highest_y() // defined below when generation is complete
   , generated_as_full_block(true)
 {
-  for (auto& entry : gamma_mod_1.numerator()) // reduce |gamma_mod_1| modulo 1
-    entry = arithmetic::remainder(entry,gamma_mod_1.denominator());
-
   const InnerClass& ic = inner_class();
   const RootDatum& rd = root_datum();
 
@@ -1115,8 +1111,7 @@ common_block::common_block // partial block constructor
      const RatWeight& gamma_rep)
   : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_rep))
   , rc(rt)
-  , gamma_mod_1(gamma_rep) // reduced below
-  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , integral_sys(SubSystem::integral(root_datum(),gamma_rep))
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -1124,8 +1119,6 @@ common_block::common_block // partial block constructor
   , highest_y(0) // defined when generation is complete
   , generated_as_full_block(false)
 {
-  for (auto& entry : gamma_mod_1.numerator()) // reduce |gamma_mod_1| modulo 1
-    entry = arithmetic::remainder(entry,gamma_mod_1.denominator());
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
   const auto& i_tab = inner_class().involution_table();
@@ -1297,8 +1290,7 @@ BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 
 repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
 {
-  const RatWeight gamma_rho = gamma-rho(root_datum());
-  const Weight lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda(z));
+  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(z));
   return rc.sr_gamma(x(z),lambda_rho,gamma);
 }
 
