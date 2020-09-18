@@ -1111,7 +1111,7 @@ common_block::common_block // partial block constructor
      const RatWeight& gamma_rep)
   : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_rep))
   , rc(rt)
-  , integral_sys(SubSystem::integral(root_datum(),gamma_rep))
+  , integral_sys(ctxt.subsys())
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -1121,26 +1121,27 @@ common_block::common_block // partial block constructor
 {
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
-  const auto& i_tab = inner_class().involution_table();
+  const auto& i_tab = involution_table();
   const RatWeight rho = rootdata::rho(root_datum());
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash(y_pool);
+  using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
+  struct inv_y_data
+  {
+    y_list list; unsigned long offset;    inv_y_data() : list(), offset(-1) {}
+  };
 
-  { // we first fill |y_hash|, carefully ordering those for a same involution
-    using y_tab_type = RatWeight; // a |gamma_rep| value: |rho+gamma_lambda|
-    std::vector<containers::sl_list<y_tab_type> >
-      y_table(involution_table().size()); // sorted list for each involution
+  std::vector<inv_y_data> y_table (i_tab.size());
+  {
     for (unsigned long elt : elements)
     { const auto& srm = rt.srm(elt);
       const KGBElt x = srm.x();
       if (x>highest_x)
 	highest_x=x;
       auto gamma_rep = srm.gamma_rep();
-      auto& loc = y_table[kgb.inv_nr(x)];
+      auto& loc = y_table[kgb.inv_nr(x)].list;
       auto it = std::lower_bound(loc.cbegin(),loc.cend(),gamma_rep);
       if (it==loc.end() or gamma_rep < *it) // only insert when |gamma_rep| new
 	loc.insert(it,gamma_rep);
@@ -1148,18 +1149,9 @@ common_block::common_block // partial block constructor
 
     for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
     {
-      auto old_size = y_hash.size();
-      for (const y_tab_type& entry : y_table[i_x])
-      {
-	RatWeight gamma_lambda = entry-rho;
-	TorusElement t = y_values::exp_pi(gamma_lambda);
-	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
-      } // we ensured that that |y| increases with |y_stripped| value in packet
-      assert(y_hash.size()==old_size+y_table[i_x].size()); // all |y|'s were new
-      ndebug_use(old_size);
-      highest_y += y_table[i_x].size();
+      y_table[i_x].offset = highest_y;
+      highest_y += y_table[i_x].list.size();
     }
-    assert(y_pool.size()==highest_y);
     -- highest_y; // one less than the number of distinct |y| values
   }
 
@@ -1169,11 +1161,15 @@ common_block::common_block // partial block constructor
      );
 
   for (unsigned long elt : elements)
-  { const auto& srm=rt.srm(elt);
-    const KGBElt x=srm.x();
-    auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
-    assert(y!=y_hash.empty);
-    info.emplace_back(x,y); // leave descent status unset and |length==0| for now
+  { const auto& srm = rt.srm(elt);
+    const KGBElt x = srm.x();
+    const inv_y_data& slot = y_table[kgb.inv_nr(x)];
+    auto y = slot.offset;
+    for (auto it = slot.list.begin(); not slot.list.at_end(it); ++it,++y)
+      if (*it == srm.gamma_rep())
+	break;
+    assert(y-slot.offset<slot.list.size()); // should have found it
+    info.emplace_back(x,y); // for now leave descent status unset, |length==0|
     srm_hash.match(srm);
   }
 
