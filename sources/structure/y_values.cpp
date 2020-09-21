@@ -137,19 +137,6 @@ TorusElement TorusElement::simple_imaginary_cross
 }
 
 
-size_t y_entry::hashCode(size_t modulus) const
-{
-  unsigned long d= fingerprint.denominator()+1;
-  const Ratvec_Numer_t& num=fingerprint.numerator();
-  size_t h=nr; // start with involution number
-  for (size_t i=0; i<num.size(); ++i)
-    h=h*d+num[i];
-  return h&(modulus-1);
-}
-
-bool y_entry::operator !=(const y_entry& y) const
-{ return nr!=y.nr or fingerprint!=y.fingerprint; }
-
 // condition |is_central(roots,t)| means $t=\exp(2pi\pi)$ with $<p,roots>$ int
 bool is_central(const LatticeMatrix& alpha, const TorusElement& t)
 {

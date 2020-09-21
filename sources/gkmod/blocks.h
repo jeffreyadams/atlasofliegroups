@@ -66,11 +66,11 @@ public: // this |struct| must be public, though mainly used in derived classes
     EltInfo(KGBElt xx,KGBElt yy)
       : x(xx),y(yy),descent(),length(0) {}
 
-  // methods that will allow building a hashtable with |info| as pool
+  // currently unused methods that allow building a hashtable around |info|
+  // this used to be useful for lookup by |(x,y)| during block construction
     typedef std::vector<EltInfo> Pooltype;
     size_t hashCode(size_t modulus) const { return (13*x+21*y)&(modulus-1); }
-    bool operator != (const EltInfo& o) const
-    { return x!=o.x or y!=o.y; }
+    bool operator != (const EltInfo& o) const { return x!=o.x or y!=o.y; }
 
   }; // |struct EltInfo|
 
@@ -419,15 +419,8 @@ class common_block : public Block_base
 
 }; // |class common_block|
 
-// sorting criterion used to |common_block::sort| the |info| array in block base
-bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
-
 BlockElt twisted
   (const blocks::common_block& block, BlockElt z, const WeightInvolution& delta);
-
-typedef HashTable<y_entry,KGBElt> y_part_hash;
-typedef Block_base::EltInfo block_elt_entry;
-typedef HashTable<block_elt_entry,BlockElt> block_hash;
 
 class nblock_elt // internal representation during construction
 {
@@ -467,8 +460,6 @@ public:
   void do_up_Cayley (weyl::Generator s,nblock_elt& z) const;
   void do_down_Cayley (weyl::Generator s,nblock_elt& z) const;
   bool is_real_nonparity(weyl::Generator s,nblock_elt z) const; // by value
-
-  y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|
 
 } // |namespace blocks|

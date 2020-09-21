@@ -684,23 +684,8 @@ void Block::compute_supports()
 //		****	     Nothing else for |Block|		****
 
 
-// auxiliaries to |common_block| constructor not declared in the header file
 
-// add a new block element to |zz_hash| and (therfore) to |info|
-void add_z(block_hash& hash,KGBElt x,KGBElt y)
-{
-  size_t old_size=hash.size();
-  BlockElt z=hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
-  assert(z==old_size);
-  ndebug_use(old_size); ndebug_use(z);
-}
-
-// find already constructed element, to be called during construction
-BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y)
-{ return hash.find(block_elt_entry(x,y)); }
-
-
-  // |common_block| methods
+//				|common_block| methods
 
 RealReductiveGroup& common_block::real_group() const
   { return rc.real_group(); }
@@ -763,8 +748,6 @@ common_block::common_block // full block constructor
   const unsigned our_rank = integral_sys.rank();
 
   repr::common_context ctxt(real_group(),integral_sys);
-
-  block_hash xy_hash(info); // temporary, so we can expand |info| using |add_z|
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy
@@ -846,7 +829,7 @@ common_block::common_block // full block constructor
 
     // now insert elements from |list| as first R-packet of block
     for (BlockElt y=0; y<y_count; ++y) // these are the first |y|s
-      add_z(xy_hash,highest_x,y); // adds element to |info|, setting |length==0|
+      info.emplace_back(highest_x,y); // adds element to |info|, setting |length==0|
 
   } // end of step 3
 
@@ -949,7 +932,7 @@ common_block::common_block // full block constructor
 	      const auto h = srm_hash.match(sz);
 	      assert (h==old_size); // this must be a newly created block element
 #endif
-	      add_z(xy_hash,x,y++);
+	      info.emplace_back(x,y++);
 	      info.back().length=next_length;
 	    } // |for (crosses,y_count)|
 	  } // |for (row,x)|
@@ -1027,7 +1010,7 @@ common_block::common_block // full block constructor
 	      auto& new_srm =
 		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
 	      srm_hash.match(new_srm);
-	      add_z(xy_hash,x,y++);
+	      info.emplace_back(x,y++);
 	      info.back().length=next_length;
 	    }
 
@@ -1504,16 +1487,6 @@ void nblock_help::do_down_Cayley (weyl::Generator s, nblock_elt& z) const
     parent_cross_act(ww[i],z);
 }
 
-
-// this essentially modularly reduces the |y| component by taking fingerprint
-y_entry nblock_help::pack_y(const nblock_elt& z) const
-{
-  InvolutionNbr i = kgb.inv_nr(z.x());
-#ifndef NDEBUG
-  check_y(z.y(),i);
-#endif
-  return i_tab.pack(z.y(),i);
-}
 
 
 

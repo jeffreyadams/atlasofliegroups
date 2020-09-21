@@ -193,16 +193,7 @@ class InvolutionTable
   KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
 
-  // functionality for |y| values, as |TorusPart|, |TorusElement| or |y_entry|
-
-  // useful torus part size (including bits ignored for equality test)
-  unsigned short tp_sz(InvolutionNbr i) const { return data[i].diagonal.size(); }
-  // taking |&| with |y_mask| leaves bits relevant for equality test
-  RankFlags y_mask(InvolutionNbr i) const; // relavance mask for |y_bits|
-  bool equivalent(const TorusElement& t1, const TorusElement& t2,
-		  InvolutionNbr i) const;
-  RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
-  y_entry pack(const TorusElement& t, InvolutionNbr i) const;
+  // functionality for |y| values, as |TorusPart|, or |TorusElement|
 
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;

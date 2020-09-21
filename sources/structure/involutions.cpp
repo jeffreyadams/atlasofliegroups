@@ -331,44 +331,6 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
 }
 
 
-RankFlags InvolutionTable::y_mask(InvolutionNbr i) const
-{
-  const auto& diag = data[i].diagonal; // bits 1,0 for diagonal entries 1,2
-  return diag.data().complement(diag.size()); // complement: filter out bits 1
-}
-
-bool InvolutionTable::equivalent
-  (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt=(t2-t1).log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  for (size_t j=0; j<p.size(); ++j)
-    if (p[j]%wt.denominator()!=0)
-      return false;
-
-  return true;
-}
-
-RatWeight InvolutionTable::fingerprint
-  (const TorusElement& t, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt = t.log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  // reduce modulo integers and return
-  for (size_t j=0; j<p.size(); ++j)
-    p[j]= arithmetic::remainder(p[j],wt.denominator());
-  return RatWeight(p,wt.denominator()).normalize();
-}
-
-y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
-{
-  return y_entry(fingerprint(t,i),i,t);
-}
-
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {

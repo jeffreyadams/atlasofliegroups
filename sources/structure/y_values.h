@@ -108,24 +108,6 @@ class TorusElement
 inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }
 inline TorusElement exp_2pi(const RatWeight& r) { return TorusElement(r,true); }
 
-// a |y| value can be hashed as (fingerprint,InvolutionNbr) pair
-struct y_entry
-{
-  TorusElement t_rep; // a representative torus element, ignored in test
-  InvolutionNbr nr;
-  RatWeight fingerprint; // charcterizes the torus element
-
-  // obligatory fields for hashable entry
-  typedef std::vector<y_entry> Pooltype;
-  size_t hashCode(size_t modulus) const; // hash function
-  bool operator !=(const y_entry& y) const; // tests |nr| and |fingerprint|
-
-  y_entry (const RatWeight& f, InvolutionNbr i, const TorusElement& t)
-  : t_rep(t), nr(i), fingerprint(f) {}
-  const TorusElement& repr() const { return t_rep; }
-
-}; //  |struct y_entry|
-
 //				*** Functions ***
 
 // whether each simple root has integral evaluation on a torus element
