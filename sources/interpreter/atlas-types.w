@@ -4438,14 +4438,13 @@ void parameter_equivalent_wrapper(expression_base::level l)
 @ While parameters can be used to compute blocks of (other) parameters, it can
 be useful to have available the basic operations of cross actions and Cayley
 transforms on individual parameters without going through the construction of
-an entire block. This should basically be simple because the construction of
-blocks is based on just such operations defined on individual parameters;
-however the reality is more complicated because the storage format
-|StandardRepr| used in parameter values is not directly suited to the way
-(currently) cross actions and Cayley transforms are computed. So the functions
-below involve the actual computation sandwiched between unpacking and
-repacking operations; this is hidden in the methods |Rep_context::cross| and
-friends that are called blow.
+an entire block. The library provides methods that do this computation directly
+in the |StandardRepr| format (calling |make_dominant| on it first). In case they
+find that the type of the simple reflection for the integral system is not right
+for the Cayley transform demanded (imaginary noncompact respectively real
+parity) they throw a |Cayley_error| value, which is caught here and translated
+in make the whole function a no-operation (so that the caller gets an occasion
+to test the condition).
 
 Like for KGB elements there is the possibilty of double values, this time both
 for the Cayley and inverse Cayley transforms. The ``solution'' to this
@@ -4476,9 +4475,17 @@ void parameter_Cayley_wrapper(expression_base::level l)
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s @|
       << ", should be <" << r;
-  if (l!=expression_base::no_value)
+  if (l==expression_base::no_value)
+    return;
+
+  try {
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().Cayley(s,p->val)));
+  }
+  catch (error::Cayley_error& e) // ignore undefined Cayley transforms
+  {@;
+    push_value(std::move(p));
+  }
 }
 
 void parameter_inv_Cayley_wrapper(expression_base::level l)
@@ -4489,9 +4496,17 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s
       << ", should be <" << r;
-  if (l!=expression_base::no_value)
+  if (l==expression_base::no_value)
+    return;
+
+  try {
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().inv_Cayley(s,p->val)));
+  }
+  catch (error::Cayley_error& e) // ignore undefined Cayley transforms
+  {@;
+    push_value(std::move(p));
+  }
 }
 
 @ The above (old) functions emulate the built-in non-integral block

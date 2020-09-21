@@ -27,6 +27,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 #include "gradings.h"
+#include "kgb.h"
 #include "subsystem.h"
 #include "polynomials.h"
 
@@ -190,6 +191,9 @@ class Rep_context
   { return rho(root_datum()).normalize()+lambda_rho(z); }
   RatWeight gamma_lambda
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
+  RatWeight gamma_lambda(const StandardRepr& z) const
+  { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
+
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
