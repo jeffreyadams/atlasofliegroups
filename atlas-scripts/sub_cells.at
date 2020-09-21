@@ -131,7 +131,7 @@ set intersection([int] A,[int] B)=[int]:
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
 for (tau,edges) in graph do
-    (tau,
+    (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) 
@@ -196,7 +196,12 @@ sub_cells(cell,left_root_indices(G))
 
 set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
+{
+set left_cell_of(Param p)=
+let (index,cell)=W_cell(p)
+let cells=left_cells(p.real_form,W_cell(p)) in 
 
+}
 set extract_nodes(WGraph g, [int] nodes)=WGraph:
 for i in nodes do
 let (tau,links)=g[i] in
@@ -264,3 +269,9 @@ for node@i in g do
  text+:=str
 od;text+new_line+"}"
 
+{G is complex, 
+ st_left is the springer table for the left copy of G
+}
+{set special_left_orbit(SpringerTable st_left,Param p)=
+special_orbit(st_left,W_cell
+}

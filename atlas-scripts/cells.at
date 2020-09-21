@@ -2,8 +2,20 @@
 <springer_tables.at
 
 
+set W_cell(Param p)=(int,WCell):
+let (index,cells)=W_cells(p) in
+(index,cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od)])
 
+set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
 
+{assuming block and cells are already computed:}
+set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
+let index=find(block,p) then
+cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
+(index,cells[cell_number])
+
+set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
+let (,c)=W_cell(block,cells,p) in c
 
 set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells(p) in cells
 { ----------- cell representations --------------}
@@ -13,8 +25,7 @@ set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells(p) in cells
 set cell_character (CharacterTable ct,WCell cell) = [int]:
   for w in ct.class_reps do trace(cell_action(cell,w)) od
 
-set cell_character(CharacterTable ct)=(WCell -> [int]):
-(WCell cell):cell_character(ct,cell)
+set cell_character(CharacterTable ct)=(WCell -> [int]):(WCell cell):cell_character(ct,cell)
 set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(ct, cell) od
 
@@ -202,9 +213,9 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  =#survivors
   then {prints("NONE");}{don't bother checking cell representation} [(int,int,Param)]:[]
  elif
- special_character_permuted(st.ct,cell,permutation)=springer_O
+ special_character(st.ct,cell,permutation)=springer_O
   then
-let c=special_character_permuted(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
+let c=special_character(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
 survivors
  else [(int,int,Param)]:[]
  fi
@@ -246,20 +257,6 @@ od
 set special_orbit(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
 set special_orbit(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):special_orbit(st,cell)
 
-set W_cell(Param p)=(int,WCell):
-let (index,cells)=W_cells(p) in
-(index,cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od)])
-
-set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
-
-{assuming block and cells are already computed:}
-set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
-let index=find(block,p) then
-cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
-(index,cells[cell_number])
-
-set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
-let (,c)=W_cell(block,cells,p) in c
 
 set special_orbit(SpringerTable st,Param p)=ComplexNilpotent:special_orbit(st,W_cell_of(p))
 set special_orbit(SpringerTable st)=(Param->ComplexNilpotent):(Param p):special_orbit(st,W_cell_of(p))

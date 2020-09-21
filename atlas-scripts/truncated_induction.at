@@ -228,11 +228,6 @@ fi;
 orbit
 
 
-
-
-
-
-
 {only need Springer table for G, character table for L=integrality datum}
 {new: includes permutation}
 set associated_variety_ann_new(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
@@ -242,7 +237,7 @@ rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
 (,P)=nice_order(rd_int.derived) then
 perm=P.permutation_matrix then
 {ct_int=rd_int.character_table then}
-special_character_int=special_character_permuted(ct_int,W_cell_of(p),perm) then
+special_character_int=special_character(ct_int,W_cell_of(p),perm) then
 ()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
 character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
 ()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
