@@ -620,52 +620,53 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
 {
   make_dominant(z);
-  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
   const RootDatum& rd = root_datum();
-  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
-  blocks::nblock_help aux(real_group(),subsys);
-  blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
-  aux.cross_act(s,src);
-  const RatWeight& t =	src.y().as_Qmod2Z();
-  // InvolutionNbr i_x = kgb().inv_nr(z.x());
-  // no need to do |involution_table().real_unique(i_x,t)|
+  const auto& i_tab = involution_table();
+  const KGB& kgb = this->kgb();
+  const RatWeight& gamma = z.gamma(); // now get the infinitesimal character
+  const SubSystem& subsys = SubSystem::integral(rd,gamma);
 
-  RatWeight lr =  (infin_char - t - rho(rd)).normalize();
-  assert(lr.denominator()==1); // we have reconstructed $\lambda-\rho \in X^*$
-  return sr_gamma(src.x(),
-		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
-		  infin_char);
+  const auto refl = subsys.reflection(s);
+  const KGBElt new_x = kgb.cross(refl,z.x());
+  RootNbrSet pos_neg = pos_to_neg(rd,refl);
+  pos_neg &= i_tab.real_roots(kgb.inv_nr(z.x())); // only real roots for |z|
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+  gamma_lambda -= root_sum(rd,pos_neg); // correction for $\rho_r$'s
+  rd.reflect(subsys.parent_nr_simple(s),gamma_lambda.numerator());
+
+  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho(rd));
+  return sr_gamma(new_x,lambda_rho,gamma);
 }
 
 StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
 {
+  // this method does not apply or require any form of making |z| dominant first
   const RootDatum& rd = root_datum();
-  KGBElt& x= z.x_part;
+  KGBElt x= z.x_part;
   InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = involution_table();
 
   const RatWeight& gamma=z.infinitesimal_char; // integrally dominant
-  RootNbr rt = rd.root_index(alpha);
+  const RootNbr rt = rd.root_index(alpha);
   if (rt==rd.numRoots())
     throw std::runtime_error("Not a root");
-  // the following test ensures that our final |assert| below won't fail
+  // the following test ensures that the |integer_diff| below won't fail
   if (rd.coroot(rt).dot(gamma.numerator())%gamma.denominator()!=0)
     throw std::runtime_error("Not an integral root");
 
-  RatWeight lambda_shifted =
-    gamma - lambda(z) + RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
-  Ratvec_Numer_t& lambda_numer = lambda_shifted.numerator();
+  RatWeight gam_lam_shifted = gamma_lambda(z) +
+    RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2); // shift by $\rho_\R$
+  Ratvec_Numer_t& lambda_numer = gam_lam_shifted.numerator();
 
+  // transform |x|, |i_x|, and |gam_lam_shifted|, reflecting them by |alpha|
+  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(rt),x) );
   rd.reflect(rt,lambda_numer);
-  x = kgb().cross(rd.reflectionWord(rt),x);
-  i_x = kgb().inv_nr(x);
 
-  // the addition of $\rho$ below is because |sr_gamma| takes $\lambda-\rho$
-  lambda_shifted += RatWeight(rd.twoRho()-rd.twoRho(i_tab.real_roots(i_x)),2);
-  lambda_shifted =  (gamma - lambda_shifted).normalize();
-  assert(lambda_shifted.denominator()==1);
+  // shift back by $\rho_\R$ at (now) destination |i_x|
+  gam_lam_shifted -= RatWeight(rd.twoRho(i_tab.real_roots(i_x)),2);
 
-  return sr_gamma(x,Weight(lambda_numer.begin(),lambda_numer.end()),gamma);
+  const Weight lambda_rho = gamma.integer_diff<int>(gam_lam_shifted+rho(rd));
+  return sr_gamma(x,lambda_rho,gamma);
 }
 
 StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
@@ -674,7 +675,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   const RootDatum& rd = root_datum();
   const auto& i_tab = involution_table();
   const KGB& kgb = this->kgb();
-  const RatWeight gamma = z.gamma(); // now get the infinitesimal character
+  const RatWeight& gamma = z.gamma(); // now get the infinitesimal character
   const SubSystem& subsys = SubSystem::integral(rd,gamma);
   const auto parent_s = subsys.parent_nr_simple(s);
 
@@ -712,7 +713,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   const RootDatum& rd = root_datum();
   const auto& i_tab = involution_table();
   const KGB& kgb = this->kgb();
-  const RatWeight gamma = z.gamma(); // now get the infinitesimal character
+  const RatWeight& gamma = z.gamma(); // now get the infinitesimal character
   const SubSystem& subsys = SubSystem::integral(rd,gamma);
   const auto parent_s = subsys.parent_nr_simple(s);
 
@@ -748,7 +749,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   non-simple root $\alpha$, from involutions |theta_down| to |theta_up|, where
   |to_simple| left-conjugates root $\alpha$ to some simple root.
 
-  Curiously, this appears to depend only on $\theta$ upstairs and the
+  Curiously, this appears to depend only on $\theta$ \emph{upstairs} and the
   conjugating element |to_simple|; an explanation is needed here. It seems to
   be because \emph{all} upstairs real roots becoming negative by the necessary
   conjugation will be downstairs complex roots (so contribute to the shift).
@@ -769,7 +770,7 @@ WeylWord
 Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 {
   const RootDatum& rd = root_datum();
-  KGBElt& x= z.x_part;
+  KGBElt& x= z.x_part; // thiss component will be modified in place
   InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = involution_table();
 
@@ -778,9 +779,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
     + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
   Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
 
-  WeylWord result;
-  result.reserve(subsys.numPosRoots()); // enough to accommodate the WeylWord
-
+  containers::sl_list<weyl::Generator> result;
   { weyl::Generator s;
     do
     {
@@ -797,8 +796,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 
 	  // reflect |gamma| by |alpha|
 	  gamma_num.subtract(rd.root(alpha).begin(),v);
-	  x = kgb().cross(rd.reflectionWord(alpha),x);
-	  i_x = kgb().inv_nr(x);
+	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(alpha),x) );
 	  rd.reflect(alpha,lambda2_shifted);
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)|
@@ -807,8 +805,8 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
     while (s<subsys.rank()); // wait until inner loop runs to completion
   }
   lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
-  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
-  return result;
+  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2); // insert modified bits into |z|
+  return { result.to_vector() }; // convert to |WeylWord|
 } // |make_dominant| (integrally)
 
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
@@ -837,8 +835,8 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   WeylWord ww = subsys.to_simple(rt);
   // neither |alpha| nor |rt| will be used beyond thus point
 
-  // now do the Cayley transform proper
-  bool ascent; // whether forward Cayley
+  // now do the Cayley transform proper, with most work for handling |x|
+  bool ascent; // whether forward Cayley, so that we can locate "upstairs"
   const InvolutionNbr inv0= kgb.inv_nr(x); // initial involution
 
   x = kgb.cross(ww,x);
@@ -852,7 +850,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 	infin_char - lr - RatWeight(std::move(rho2_diff),2);
       if (parity_vector.dot(rd.coroot(n_alpha))%2!=0)
       { // then |alpha| was parity
-	x = kgb.inverseCayley(s,x).first; // do inverse Cayley at |inv1|
+	x = kgb.inverseCayley(s,x).first; // do inverse Cayley from |inv0|
 	ascent=false;
 	break;
       }
