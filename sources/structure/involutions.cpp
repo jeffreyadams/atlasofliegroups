@@ -202,37 +202,14 @@ InvolutionNbr InvolutionTable::add_involution
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
   A.negate() += 1;
 
-  // implicitly we shall use expression |row*A*col=diagonal(diag##null(..))|
-  // |R|, first rows of |row*A|, will map $\lambda-\rho$ to reduced coordinates
-  // |B|, inverse of |row|, will then map these (mod 2) to $A*(\lambda-\rho)$
-  int_Vector diagonal;
-  int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
-  int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R=R.block(0,0,diagonal.size(),R.numColumns()); // restrict to image |A|
-  R*=A; // now R is A followed by taking coordinates on adapted basis of image
-  for (unsigned i=0; i<R.numRows(); ++i)
-    if (diagonal[i]!=1)
-      for (unsigned j=0; j<R.numColumns(); ++j)
-      {
-	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*col^{-1}$
-	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
-      }
-  // now |R| gives coordinates after $A$ on image basis: adapterd basis scaled
-  // |R| is the matrix that will become |M_real|
-
-  B=B.block(0,0,B.numRows(),diagonal.size());
-  for (unsigned j=0; j<B.numColumns(); ++j)
-    if (diagonal[j]!=1)
-      B.columnMultiply(j,diagonal[j]);
-  // restore relation |B*R==A| after scaling down rows of |R|
-  // |B| is the matrix that will become |lift_mat|
+  int_Matrix col; bool flip;
+  matreduc::column_echelon(A,col,flip);  // now |A| holds basis for image
+  int_Matrix M_real = col.inverse().block(0,0,A.numColumns(),A.numRows());
 
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
   data.push_back(record(theta,InvolutionData(rd,theta),
-			lattice::row_saturate(A), // |projector| for |y|
-			R, // |M_real|
-			B, // |lift_mat|
+			M_real, A, // |lift_mat|
 			length,W_length,
 			tits::fiber_denom(theta))); // |mod_space| for |x|
   assert(data.size()==hash.size());
@@ -253,7 +230,6 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
 
   rd.simple_reflect(s,me.theta);
   rd.simple_reflect(me.theta,s); // not |twisted(s)|: |delta| is incorporated
-  rd.simple_reflect(me.projector,s); // reflection by |s| of kernel
   rd.simple_reflect(me.M_real,s); // apply $s$ before |M_real|
   rd.simple_reflect(s,me.lift_mat); // and apply it after |lift_mat|
   me.id.cross_act(rd.simple_root_permutation(s));

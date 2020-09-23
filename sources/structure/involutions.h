@@ -103,7 +103,6 @@ class InvolutionTable
   {
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
-    int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
     int_Matrix M_real; // $1-\theta$; then expression in a basis of its image
     int_Matrix lift_mat; // basis of image $1-\theta$: |lift_mat*M_real==1-theta|
     unsigned int length;
@@ -112,13 +111,12 @@ class InvolutionTable
 
   record(const WeightInvolution& inv,
 	 const InvolutionData& inv_d,
-	 const int_Matrix& proj,
 	 const int_Matrix& Mre, const int_Matrix& lm,
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
   : id(inv_d), theta(inv)
-  , projector(proj), M_real(Mre), lift_mat(lm)
+  , M_real(Mre), lift_mat(lm)
   , length(l), W_length(Wl), mod_space(ms) {}
   }; // |struct record|
 
