@@ -86,32 +86,33 @@ for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
  if success then return(w) fi od ;id_W(rd)
 
-set cell_action_permuted(WCell cell, int i, mat permutation)=sparse_mat:
+{cell action in the presence of a permutation isomorphism of the root datum}
+set cell_action(WCell cell, int i, mat permutation)=sparse_mat:
 cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 
-set cell_action_permuted(WCell cell,WeylElt w,mat permutation)=mat:
+set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
-     for i:#w.word-1 from 1 do result:=result*cell_action_permuted(cell,w.word[i],permutation) od; result
+  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph) in
+     for i:#w.word-1 from 1 do result:=result*cell_action(cell,w.word[i],permutation) od; result
   fi
 
-set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
-for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
+for w in ct.class_reps do trace(cell_action(cell,w,permutation)) od
 
-set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+set special_character(CharacterTable ct,WCell cell,mat permutation)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,permutation))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 
-set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
-special_character_permuted(ct,cell,permutation)
+set special_character(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
+special_character(ct,cell,permutation)
 
 {embeddings of Weyl groups, needed for induction}
 
 {requirement: simple roots of L are contained in the (positive) roots of G}
 set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
-assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
+assert(find(G.posroots,L.simple_roots[i])>=0,"Simplex root for L is not a root for G");
 reflection(G,L.simple_roots[i])
 set embed(RootDatum L,RootDatum G,[int] w)=mat:
 let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,i) od;rv
@@ -297,6 +298,30 @@ rv=##for i:#ind do
   fi
 od in
 assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
+
+
+{ ------------------- restriction ------------------- }
+
+{Given an embedding f of W_L into W_G}
+set restrict_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) f,[int] pi_G) =[int]:
+   let rd_G= ct_G.root_datum_parent, rd_L=ct_L.root_datum_parent
+   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
+   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
+   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
+   then values_L= [rat]: {will be [int] in the end} for c in classes_G do 0 od
+   , sizes_G = ct_G.class_sizes
+   , sizes_L = ct_L.class_sizes
+   in for w_L@i in classes_L do
+   let j=ct_G.class_index(f(w_L))  {see embed note below}
+   in
+   values_L[i] +:= pi_G[i]
+od; values_L.ratvec_as_vec
+
+set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
+let Gprime=ct_G.root_datum_parent then
+Lprime=ct_L.root_datum_parent then
+f=embed(L,G,Lprime,Gprime) in
+restrict_character(ct_G,ct_L,f,pi_G)
 
 { the Steinberg character (mainly for testing)}
 

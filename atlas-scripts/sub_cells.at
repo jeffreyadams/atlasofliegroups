@@ -98,7 +98,7 @@ set right_root_indices(RealForm G)=[int]:
 for v in G.right_roots do find(G.simple_roots,v) od
 
 {tau invariant of node of WGraph}
-set tau(WGraph graph,int i)=[int]:let (tau,)=graph[i] in tau
+set tau(WGraph graph,int i)=[int]:let (tau,)=graph.nodes[i] in tau
 set in_tau(WGraph graph,int i, int j)=bool:
 if find(tau(graph,i),j)>=0 then true else false fi
 
@@ -112,12 +112,12 @@ set intersection([int] S,[int] T)=[int]:
  [keep edge x-> y if there is j\in tau(x), j\not\in\tau(y)]
 }
 set digraph(WGraph graph)=WGraph:
-for (tau,edges) in graph do
+(graph.root_datum,for (tau,edges) in graph.nodes do
     (tau,
 	##for (target,mult) in edges do
-	    if not is_subset(tau,tau(graph[target])) then [(target,mult)] else [] fi
+	    if not is_subset(tau,tau(graph.nodes[target])) then [(target,mult)] else [] fi
 	  od)
-od
+od)
 
 set intersection([int] A,[int] B)=[int]:
 ##for i in A do if find(B,i)!=-1 then [i] else [] fi od
@@ -130,28 +130,28 @@ set intersection([int] A,[int] B)=[int]:
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
-for (tau,edges) in graph do
-    (tau,
+(graph.root_datum,for (tau,edges) in graph.nodes do
+    (intersection(S,tau),
 	##for (target,mult) in edges do
-	    let tau_target=tau(graph[target]) in
+	    let tau_target=tau(graph.nodes[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) 
 		   then [(target,mult)] else [] fi
 	  od)
-od
+od)
 
 set sub_graph(WGraph graph,[int] S)=WGraph:
-for (tau,edges) in graph do
+(graph.root_datum,for (tau,edges) in graph.nodes do
     (tau,
 	##for (target,mult) in edges do
-	    let tau_target=tau(graph[target]) in
+	    let tau_target=tau(graph.nodes[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) or
 		   not is_subset(intersection(S,tau_target),tau) 
 		   then [(target,mult)] else [] fi
 	  od)
-od
+od)
 
 set links(WGraph graph)=[[int]]:
-for i:#graph do let (,links)=graph[i] in
+for i:#graph do let (,links)=graph.nodes[i] in
  for (j,) in links do j
  od
 od
@@ -167,11 +167,13 @@ the ith entry ([int] nodes,WGraph graph) is:
 set strong_components(WGraph g)=[WCell]: {[([int],WGraph)]:}
 let (components,)=strong_components(links(g)) in
 for comp in components do
- (comp,for i in comp do
-  let (tau,links)=g[i] in
-  (tau,##for (j,m) in links do let index=find(comp,j) in
-   if index>=0 then [(index,m)] else [] fi od)
- od)
+ (comp,
+   (g.root_datum,
+     for i in comp do let (tau,links)=g.nodes[i] in
+       (tau,##for (j,m) in links do let index=find(comp,j) in
+       if index>=0 then [(index,m)] else [] fi od
+       )
+ od))
 od
 
 {same as the previous, except that the nodes [0,1,...,n] of
@@ -196,14 +198,21 @@ sub_cells(cell,left_root_indices(G))
 
 set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
+{
+set left_cell_of(Param p)=
+let (index,cell)=W_cell(p)
+let cells=left_cells(p.real_form,W_cell(p)) in 
 
+}
 set extract_nodes(WGraph g, [int] nodes)=WGraph:
+(g.root_datum,
 for i in nodes do
-let (tau,links)=g[i] in
+let (tau,links)=g.nodes[i] in
  (tau,##for (j,m) in links do
   let index=find(nodes,j) in
    if index!=-1 then [(index,m)] else [] fi od)
 od
+)
 
 {. character of representation of W on cell .}
 {
@@ -213,7 +222,7 @@ for w in ct.class_reps do trace(cell_action(cell,w)) od
 
 { ----- output commands  -----------}
 set show(WGraph g)=void:
-tabulate(["node","tau","links"]#for (a,b)@i in g do
+tabulate(["node","tau","links"]#for (a,b)@i in g.nodes do
  [i.to_string,a.to_string,b.to_string] od)
 
 set show(WCell (vertices,g))=
@@ -222,7 +231,7 @@ prints("vertices: ", vertices);show(g)
 set show([WGraph] graphs)=void:
 tabulate(["graph","node","tau","links"]#
 ##for graph@i in graphs do
- ["","","",""]#for (a,b)@j in graph do
+ ["","","",""]#for (a,b)@j in graph.nodes do
  [i.to_string,j.to_string,a.to_string,b.to_string] od od)
 
 set show([WCell] cells)=void:
@@ -257,10 +266,16 @@ new_line + "center=true;  " +
 new_line + "node [color=black,fontcolor=black] " +
 new_line + " edge [arrowhead=normal,color=black]; "
 in
-for node@i in g do
+for node@i in g.nodes do
  let (tau,arrows)=node then
  str=new_line+i.to_string+ ";" in
   for (j,m) in arrows do str+:=i.to_string + "->" + j.to_string + ";" od;
  text+:=str
 od;text+new_line+"}"
 
+{G is complex, 
+ st_left is the springer table for the left copy of G
+}
+{set special_left_orbit(SpringerTable st_left,Param p)=
+special_orbit(st_left,W_cell
+}

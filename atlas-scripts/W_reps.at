@@ -60,12 +60,25 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
 
 { Type definitions that facilitate handling output from W_cells }
 set_type
-[ WCell = ([int] labels, WGraph graph)
-, WGraph = [WNode]
-, WNode = ([int] tau,[int,int] out_list)
+[ WNode = ([int] tau,[int,int] out_list),
+  WGraph = (RootDatum rd,[WNode] nodes),
+  WCell = ([int] labels, WGraph graph)
 ]
 
+set root_datum(WGraph(rd,))=rd  {this is the integrality_datum of the parameter/block}
+set root_datum(WCell (,g))=g.root_datum
+set #(WGraph(,nodes))=int:#nodes
+set nodes(WCell (,graph))=[WNode]:graph.nodes
+{
 set W_graph(WCell (,g))=WGraph:g
+set root_datum(WNode node)=RootDatum:node.rd
+set root_datum(WGraph g)=RootDatum:g[0].root_datum
+set root_datum(WCell (,g))=RootDatum: g.root_datum
+}
+
+{modify some builtins to take RootDatum of WGraph/WCell into account}
+set W_cells_of(Param p)=[WCell]:
+let (index,cells)=W_cells(p) in {(index,}for (tau,g) in cells do (tau,(p.root_datum,g)) od{)}
 
 { Description of the cell representation taken from messages/wcells.help
 
@@ -135,7 +148,7 @@ set W_graph(WCell (,g))=WGraph:g
 { the cell_action functions really live on the level of WGraph: }
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
-set graph_action (WGraph graph,int s) = sparse_mat:
+set graph_action (WGraph (rd,graph),int s) = sparse_mat:
    let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s), n=#graph in
    for node@j in graph
    do if node.tau_has_s

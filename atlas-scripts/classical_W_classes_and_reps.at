@@ -19,6 +19,7 @@ D_class =
   )
 ]
 
+
 {uniform type all classical root systems}
 set_type [classical_class=
    ( A_class class_A

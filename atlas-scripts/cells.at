@@ -2,10 +2,24 @@
 <springer_tables.at
 
 
+set W_cell(Param p)=(int,WCell):
+let (index,cells)=W_cells(p) then
+j=first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od) then
+(tau,g)=cells[j] in
+(index,(tau,(p.integrality_datum,g)))
+
+set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
+
+{assuming block and cells are already computed:}
+set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
+let index=find(block,p) then
+cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
+(index,cells[cell_number])
+
+set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
+let (,c)=W_cell(block,cells,p) in c
 
 
-
-set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells(p) in cells
 { ----------- cell representations --------------}
 {{moved from character_table_reps.at}}
 
@@ -13,8 +27,7 @@ set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells(p) in cells
 set cell_character (CharacterTable ct,WCell cell) = [int]:
   for w in ct.class_reps do trace(cell_action(cell,w)) od
 
-set cell_character(CharacterTable ct)=(WCell -> [int]):
-(WCell cell):cell_character(ct,cell)
+set cell_character(CharacterTable ct)=(WCell -> [int]):(WCell cell):cell_character(ct,cell)
 set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(ct, cell) od
 
@@ -36,9 +49,13 @@ set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
   for cell in cells do cell_representation(ct,cell) od
 
 {smallest_degree_summands is in character_tables.at}
-
+{NOTE: need to incorporate the permutation relating ct.root_datum and cell.root_datum}
+{note that ct.root_datum must be (isomorphic to) cell.root_datum,
+ which is the integrality_datum of a parameter}
 set special_character(CharacterTable ct,WCell cell)=
-let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell)))
+let (valid,P)=isomorphism_permutation(ct.root_datum.derived,cell.root_datum.derived) in
+assert(valid,"No root system isomorphism");
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
 in if #summands>1 then error("not unique special representation")
    elif #summands=0 then error("no special summands?")
    else summands[0]
@@ -81,7 +98,7 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
   for B in blocks(params)
   {caution: b and block_of(b[0]) might not be in the same order (MvL really??) }
   {if not, one can do simpler: |do let (,cell)=W_cells(b[0]) in (b,cell) od| }
-  do let (,cell)=W_cells(B[0]) in (B,cell) od
+  do let cell=W_cells_of(B[0]) in (B,cell) od
 
 set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
 
@@ -117,7 +134,7 @@ set push ([Param] params, ratvec gamma) = [Param]:
 
 set cell_members_given_descent (RootDatum rd, WCell (,graph), [int] S) = [int]:
    let target = complement(rd.semisimple_rank,S) { so S is desired ASCENT set? }
-in for (tau,)@i in graph do if tau=target then [i] else [] fi od.##
+in for (tau,)@i in graph.nodes do if tau=target then [i] else [] fi od.##
 
 {given cell, gamma, dim_special, reject the cell
 unless #cell>=dim_special and
@@ -127,7 +144,7 @@ if #cell< springer_dim then prints("dim: ", #cell, " ", springer_dim);false
 elif
  let singular_roots=##for alpha@i in rd_int.simple_roots do if =alpha*gamma then [i] else [] fi od in
  let ()=prints("sr: ", singular_roots) in
- let a= any(let (,list)=cell in for i:#cell do let (tau,)=list[i] in prints("tau: ",tau);tau=singular_roots od)
+ let a= any(let (,(,graph))=cell in for i:#cell do let (tau,)=graph[i] in prints("tau: ",tau);tau=singular_roots od)
  in prints("a=",a);not a then false
 else true
 fi
@@ -202,9 +219,9 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  =#survivors
   then {prints("NONE");}{don't bother checking cell representation} [(int,int,Param)]:[]
  elif
- special_character_permuted(st.ct,cell,permutation)=springer_O
+ special_character(st.ct,cell,permutation)=springer_O
   then
-let c=special_character_permuted(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
+let c=special_character(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
 survivors
  else [(int,int,Param)]:[]
  fi
@@ -243,33 +260,64 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
  od
 od
 
-set special_orbit(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
-set special_orbit(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):special_orbit(st,cell)
+{assuming integral infinitesimal character}
+set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
+set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
+set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(p))
+set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
 
-set W_cell(Param p)=(int,WCell):
-let (index,cells)=W_cells(p) in
-(index,cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od)])
+set associated_variety(SpringerTable st,WCell cell)=ComplexNilpotent:
+let G=st.root_datum then
+ct_G=st.ct then
+L=cell.root_datum then
+ct_L=L.character_table then
+index_pi_L=ct_L.special_character(cell) then
+char_L=ct_L.characters[index_pi_L] then
+d_L=ct_L.degrees[index_pi_L] then
+()=prints("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAa") then
+()=prints("G: ", G) then
+()=prints("ct_G: ", ct_G.root_datum) then
+chars_G=
+##for i:st.ct.n_classes do
+ let ()=prints("i: ", ct_G.degrees[i]) in 
+ if ct_G.degrees[i]=d_L and
+  !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
+  then  [i] else [] fi
+od
+then
+()=prints("chars_G=",chars_G) then
+index_G=chars_G[0] in
+st.springer_inverse(index_G)
 
-set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
+set associated_variety_test(SpringerTable st,WCell cell)=
+let G=st.root_datum then
+ct_G=st.ct then
+L=cell.root_datum then
+ct_L=L.character_table then
+index_pi_L=ct_L.special_character(cell) then
+char_L=ct_L.characters[index_pi_L] then
+d_L=ct_L.degrees[index_pi_L] then
+()=prints("OK") in
+(ct_G,ct_L,index_pi_L,char_L,d_L){
+chars_G=
+##for i:st.ct.n_classes do
+ if ct.degrees[i]=d_L and
+  !=ct_L.inner_product(char_L,restrict_character(G,L,ct,ct_L,ct.characters[i]))
+  then  [i] else [] fi
+od
+then
+()=prints("OK2") then
+{()=prints("chars_G=",chars_G) then}
+index_G=chars_G[0] in
+st.springer_inverse(index_G)
+}
 
-{assuming block and cells are already computed:}
-set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
-let index=find(block,p) then
-cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
-(index,cells[cell_number])
-
-set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
-let (,c)=W_cell(block,cells,p) in c
-
-set special_orbit(SpringerTable st,Param p)=ComplexNilpotent:special_orbit(st,W_cell_of(p))
-set special_orbit(SpringerTable st)=(Param->ComplexNilpotent):(Param p):special_orbit(st,W_cell_of(p))
-
-set GK_dimension(SpringerTable st,Param p)=int:st.special_orbit(p).dim_nilpotent\2
-set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.special_orbit(p).dim_nilpotent\2
+set GK_dimension(SpringerTable st,Param p)=int:st.associated_variety_int(p).dim_nilpotent\2
+set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.associated_variety_int(p).dim_nilpotent\2
 
 set show([WCell] cells)=void:
 for (cell,)@i in cells do prints(i, " ", cell) od;
-for (cell,graph)@i in cells do
+for (cell,(,graph))@i in cells do
 prints("// cell #",i, ":");
 tabulate(
  for (a,b)@i in graph do
