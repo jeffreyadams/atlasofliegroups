@@ -19,10 +19,11 @@
 #include "hashtable.h"   // containment
 #include "permutations.h"// containment root permutation in |InvolutionData|
 #include "bitmap.h"      // containment root sets in |InvolutionData|
-#include "bitvector.h"   // containment |diagonal| in |InvolutionTable::record|
 
 #include "weyl.h"        // containment of |WI_Entry|
 #include "subquotient.h" // containment of |SmallSubspace|
+
+#include "matrix.h"      // inlined matrix arithmetic
 
 /* The purpose of this module is to provide a central registry of (twisted)
    involutions, in the form of a hash table to encode them by numbers, and
@@ -103,9 +104,8 @@ class InvolutionTable
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
-    int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
-    SmallBitVector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // for section: satisfies |lift_mat*M_real==1-theta|
+    int_Matrix M_real; // $1-\theta$; then expression in a basis of its image
+    int_Matrix lift_mat; // basis of image $1-\theta$: |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -113,14 +113,14 @@ class InvolutionTable
   record(const WeightInvolution& inv,
 	 const InvolutionData& inv_d,
 	 const int_Matrix& proj,
-	 const int_Matrix& Mre, const SmallBitVector& d, const int_Matrix& lm,
+	 const int_Matrix& Mre, const int_Matrix& lm,
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
   : id(inv_d), theta(inv)
-  , projector(proj), M_real(Mre), diagonal(d), lift_mat(lm)
+  , projector(proj), M_real(Mre), lift_mat(lm)
   , length(l), W_length(Wl), mod_space(ms) {}
-  };
+  }; // |struct record|
 
   std::vector<record> data;
   std::vector<BinaryMap> torus_simple_reflection;
@@ -193,24 +193,23 @@ class InvolutionTable
   KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
 
-  // functionality for |y| values, as |TorusPart|, or |TorusElement|
+  // functionality for |y| values, represented as |TorusPart| (a small bitset)
 
-  // choose unique representative for real projection of rational weight
-  void real_unique(InvolutionNbr i, RatWeight& y) const;
+  // uniquely chosen representative modulo $(1-\theta)X^*$ of $(1-\theta)/2*y$
+  void real_unique(InvolutionNbr inv, RatWeight& y) const;
 
-  // pack $\lambda'$ into a |TorusPart| (depends only on  $(1-\theta)\lambda'$)
-  TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  // pack $(1-\theta)\lambda_rho$ into |TorusPart|: |lift_mat| coordinates mod 2
+  TorusPart y_pack(InvolutionNbr inv, const Weight& lambda_rho) const
+  { return TorusPart(data[inv].M_real * lambda_rho); }
+
   // find |(1-theta)*lam_rho| for some |lam_rho| with |ypack(i,lam_rho)=y_part|
   Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
 
-  // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates
-  TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
   // apply |delta| to |y_part| at |i0|, the result being at |i1==delta*i0*delta|
   // this is used to twist a parameter by |delta|, which affects its involution
   TorusPart y_act(InvolutionNbr i0, InvolutionNbr i1, // source, destination
 		  TorusPart y_part, const WeightInvolution& delta) const
   { return y_unlift(i1,delta*y_lift(i0,y_part)); }
-
 
 
   // the following produces a light-weight function object calling |involution|
@@ -232,6 +231,16 @@ class InvolutionTable
   InvolutionNbr add_cross(weyl::Generator s, InvolutionNbr n);
 
   void reserve(size_t s) { pool.reserve(s); }
+
+ private: // auxiliary for |y_act| above
+  // like |y_pack|, but direct |lift| left-inverse: |y_unlift(i,y_lift(i,y))==y|
+  // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates
+  TorusPart y_unlift(InvolutionNbr inv, const Weight& lifted) const
+  { return TorusPart // contructor reduces coordinates modulo 2
+      ((data[inv].M_real*lifted) / 2); // division precedes that reduction
+  }
+
+
 
 }; // |class InvolutionTable|
 

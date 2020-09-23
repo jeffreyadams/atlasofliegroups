@@ -232,7 +232,6 @@ InvolutionNbr InvolutionTable::add_involution
   data.push_back(record(theta,InvolutionData(rd,theta),
 			lattice::row_saturate(A), // |projector| for |y|
 			R, // |M_real|
-			SmallBitVector(diagonal), // values 1,2 become bits 1,0
 			B, // |lift_mat|
 			length,W_length,
 			tits::fiber_denom(theta))); // |mod_space| for |x|
@@ -336,23 +335,12 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
   const record& rec=data[inv];
   Ratvec_Numer_t v = rec.M_real * y.numerator();
-  assert(v.size()==rec.diagonal.size());
-  // expressed $(1-theta)y$ on image $(1-theta)X^*$ basis, reduce mod 2*image
+  // reduce $v=(1-theta)y$ expressed on image $(1-theta)X^*$-basis modulo 2
   for (unsigned i=0; i<v.size(); ++i)
     v[i]= arithmetic::remainder(v[i],2*y.denominator());
 
   y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
   (y/=2).normalize(); // and this gets us back to the class of the original |y|
-}
-
-TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
-  const
-{
-  const record& rec=data[inv];
-  int_Vector v = rec.M_real * lambda_rho;
-  assert(v.size()==rec.diagonal.size());
-  // DON'T REDUCE according to |diagonal|: |lambda| recontruction needs original
-  return TorusPart(v); // reduces all integer coordinates to bits, modulo 2
 }
 
 Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
@@ -365,15 +353,6 @@ Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
       for (unsigned i=0; i<result.size(); ++i)
 	result[i] += rec.lift_mat(i,j);
   return result;
-}
-
-// variant of |y_pack| that is a direct left-inverse: |y_unlift(i,y_lift(y))==y|
-// since |y_lift(i,y_pack(lam_rho))=(1-theta(i))*lam_rho|, one needs to halve
-TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
-{
-  const record& rec=data[inv];
-  int_Vector v = rec.M_real * lift;
-  return TorusPart(v/2); // reduce coordinates modulo 2
 }
 
 // ------------------------------ Cartan_orbit --------------------------------

@@ -157,11 +157,13 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   const InvolutionTable& i_tab = involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  const RatWeight gamma_rho = z.gamma() - rho(root_datum());
-  Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
-  im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
-  Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
-  return (i2 + i_tab.y_lift(i_x,z.y()))/2; // division exact again
+
+  // recover $\lambda-\rho$ from doubled projections on eigenspaces $\theta$
+  const RatWeight gam_rho = z.gamma() - rho(root_datum());
+  auto im_part2 = // $(1+\theta)(\lambda-\rho)$ found as |(1+theta)*(gam_rho)|
+    (gam_rho.numerator()+theta*gam_rho.numerator()) / gam_rho.denominator();
+  // both divisions, above and below, will be exact
+  return (Weight(im_part2.begin(),im_part2.end()) +i_tab.y_lift(i_x,z.y())) / 2;
 }
 
 // compute $\gamma-\lambda$ from $(1-\theta)(\gamma-\lambda)=2(\gamma-\lambda)$
@@ -856,8 +858,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
       }
       // else FALL THROUGH
     }
-  case gradings::Status::ImaginaryCompact:
-  case gradings::Status::Complex:
+  default: // |ImaginaryCompact| or |Complex|
     throw error::Cayley_error();
   }
   x = kgb.cross(x,ww); // finally cross back

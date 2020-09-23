@@ -144,6 +144,8 @@ template<typename C>
   Vector<C>& divide (Vector<C>& v, C c); // this integer division rounds down
 template<typename C>
   Vector<C>& operator%= (Vector<C>& v, C c);
+
+// a by-value operand |v| will be copy-constructed only if given by an lvalue
 template<typename C>
   Vector<C> operator/ (Vector<C> v,C c) { return v /= c; }
 
