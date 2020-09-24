@@ -200,10 +200,6 @@ class Rep_context
 
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
 
-  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |common_block|
-  TorusElement y_as_torus_elt(const StandardRepr& z) const;
-  TorusElement y_as_torus_elt(const StandardReprMod& z) const;
-
   // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness

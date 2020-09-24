@@ -194,12 +194,6 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
   return ((z.gamma()-theta*z.gamma())/=2).normalize();
 }
 
-TorusElement Rep_context::y_as_torus_elt(const StandardRepr& z) const
-{ return y_values::exp_pi(z.gamma()-lambda(z)); }
-
-TorusElement Rep_context::y_as_torus_elt(const StandardReprMod& z) const
-{ return y_values::exp_pi(gamma_lambda(z)); }
-
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
