@@ -266,50 +266,46 @@ set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell ce
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(p))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
 
-set associated_variety(SpringerTable st,WCell cell)=ComplexNilpotent:
-let G=st.root_datum then
-ct_G=st.ct then
+set associated_variety(SpringerTable st_G,WCell cell)=ComplexNilpotent:
+let G=st_G.root_datum_parent then
+ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then
 index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
-()=prints("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAa") then
-()=prints("G: ", G) then
-()=prints("ct_G: ", ct_G.root_datum) then
 chars_G=
-##for i:st.ct.n_classes do
- let ()=prints("i: ", ct_G.degrees[i]) in 
+##for i:st_G.ct.n_classes do
+{ let ()=prints("i: ",i, " ",  ct_G.degrees[i], " ", d_L) in }
  if ct_G.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
   then  [i] else [] fi
 od
 then
-()=prints("chars_G=",chars_G) then
 index_G=chars_G[0] in
-st.springer_inverse(index_G)
+st_G.springer_inverse(index_G)
 
-set associated_variety_test(SpringerTable st,WCell cell)=
-let G=st.root_datum then
-ct_G=st.ct then
+set associated_variety_test(SpringerTable st_G,WCell cell)=
+let G=st_G.root_datum_parent then
+ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then
 index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
 ()=prints("OK") in
-(ct_G,ct_L,index_pi_L,char_L,d_L){
+(G,L,ct_G,ct_L,index_pi_L,char_L,d_L){
 chars_G=
-##for i:st.ct.n_classes do
+##for i:st_G.ct.n_classes do
  if ct.degrees[i]=d_L and
-  !=ct_L.inner_product(char_L,restrict_character(G,L,ct,ct_L,ct.characters[i]))
+  !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct.characters[i]))
   then  [i] else [] fi
 od
 then
 ()=prints("OK2") then
 {()=prints("chars_G=",chars_G) then}
 index_G=chars_G[0] in
-st.springer_inverse(index_G)
+st_G.springer_inverse(index_G)
 }
 
 set GK_dimension(SpringerTable st,Param p)=int:st.associated_variety_int(p).dim_nilpotent\2

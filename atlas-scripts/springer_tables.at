@@ -13,6 +13,7 @@ set_type [SpringerTable=
   )]
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
+set root_datum_parent(SpringerTable st)=RootDatum: st.ct.root_datum_parent
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:

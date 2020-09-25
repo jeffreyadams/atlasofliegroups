@@ -112,28 +112,42 @@ special_character(ct,cell,permutation)
 
 {requirement: simple roots of L are contained in the (positive) roots of G}
 set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
-assert(find(G.posroots,L.simple_roots[i])>=0,"Simplex root for L is not a root for G");
+assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
 reflection(G,L.simple_roots[i])
+
+set embed_simple_reflection_or_coreflection(RootDatum rd_L,RootDatum rd, int i)=mat:
+let i=find(rd.posroots,rd_L.simple_roots[i]) in
+ if i>=0 then reflection(rd,i) else
+let j=find(rd.poscoroots,rd_L.simple_coroots[i]) in
+ if j>=0 then reflection(rd,j)
+else error("neither root nor coroot of rd_L is a root/coroot in rd") fi fi
+
+{abbreviation:}
+set embed(RootDatum rd_L,RootDatum rd, int i)=mat:embed_simple_reflection_or_coreflection(rd_L,rd,i)
+
+{embedding W: using either roots or coroots is allowed}
 set embed(RootDatum L,RootDatum G,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,i) od;rv
+ let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,i) od;rv
 set embed(RootDatum L,RootDatum G,WeylElt w)=WeylElt:W_elt(G,embed(L,G,w.word))
 set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
 
-{this gives an element of W(Gprime), which is what is needed in the application to induction}
-set embed_simple_reflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
+{take an element of W(Lprime) to an element of W(Gprime)}
+set embed_simple_reflection_or_coreflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
 let (valid_G,P_G)=isomorphism_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
-(valid_L,P_L)=isomorphism_permutation(L.derived,Lprime.derived) in  {P_L: L'-> L}
+(valid_L,P_L)=isomorphism_permutation(Lprime.derived,L.derived) in  {P_L: L'-> L}
 assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
 assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
-let M=embed_simple_reflection(L,G,permutation(P_G)[permutation(P_L)[i]]) {matrix, in W(G)} then
+let M=embed_simple_reflection_or_coreflection(L,G,permutation(P_G)[permutation(P_L)[i]]) {matrix, in W(Gprime)} then
 w=W_elt(G,M) then
 word_G=w.word {in W(G)} then
 word_Gprime=for i in word_G do permutation(P_G)[i] od
 in  W_elt(Gprime,word_Gprime)
 
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
+
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
+let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
 {difference here: formerly Gprime.rank}
 
 {w\in W(L) -> W(Gprime)}
@@ -308,13 +322,13 @@ set restrict_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylEl
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
    , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_L= [rat]: {will be [int] in the end} for c in classes_G do 0 od
+   then values_L= [rat]: {will be [int] in the end} for c in classes_L do 0 od
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
    let j=ct_G.class_index(f(w_L))  {see embed note below}
    in
-   values_L[i] +:= pi_G[i]
+   values_L[i] +:= pi_G[j]
 od; values_L.ratvec_as_vec
 
 set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=

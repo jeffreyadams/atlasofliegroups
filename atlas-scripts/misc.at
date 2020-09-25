@@ -23,6 +23,9 @@ set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   this function used to return a [Param] instead, with coefficients ignored }
 set finalize (Param p) = ParamPol: p
 
+set Finalize(Param p)=Param: let f=finalize(p) in
+assert(#f=1,"finalize(p) has more than one term, use finalize(p)");first_param(f)
+
 set finalize ([Param] P) = ParamPol: { will fail on an empty list }
   P[0].null_module + for p in P do (Split:1,p) od
 
