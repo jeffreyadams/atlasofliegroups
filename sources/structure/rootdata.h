@@ -65,6 +65,8 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
+// set of posroot indices of coroots integral on |gamma|
+RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
@@ -277,6 +279,7 @@ class RootSystem
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
+  RootNbrList pos_simples(RootNbrSet posroots) const; // posroots only here!
 
   bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sumIsRoot(RootNbr alpha, RootNbr beta) const

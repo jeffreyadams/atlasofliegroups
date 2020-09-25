@@ -123,6 +123,44 @@ class SubSystemWithGroup : public SubSystem
   const WeylGroup& Weyl_group() const { return sub_W; }
 }; // |class SubSystemWithGroup|
 
+struct integral_datum_entry // hashable (integral) subset of positive roots
+{
+  RootNbrSet posroots; // as set of posroot indices, so starting at 0
+
+  integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
+
+  using Pooltype = std::vector<integral_datum_entry>;
+  bool operator!=(const integral_datum_entry& other) const
+  { return posroots!=other.posroots; }
+  size_t hashCode(size_t modulus) const
+  {
+    size_t h = 2;
+    for (unsigned count = 0; count<posroots.capacity(); count+=32)
+      h = 243*h + posroots.range(count,32);
+    return h&(modulus-1);
+  }
+ }; // |struct integral_datum_entry|
+
+class integral_datum_item
+{
+  SubSystem integral; // references full root datum, presents integral datum
+  CoweightList simple_coroots; // convenience, for creating |codec| values
+
+  struct codec
+  {
+    int_Matrix coder, decoder; // transposed shapes: to quotient and a section
+    codec (const InnerClass& ic, InvolutionNbr inv, const CoweightList& gens);
+  }; // |struct integral_datum_item::codec|
+
+  std::vector<std::unique_ptr<codec> > codecs;
+
+ public:
+  integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
+  integral_datum_item(integral_datum_item&&)=default; // move, never copy
+  const int_Matrix& encoder(const InnerClass& ic,InvolutionNbr inv);
+  const int_Matrix& decoder(const InnerClass& ic,InvolutionNbr inv);
+
+}; // |class integral_datum_item|
 
 
 } // |namespace subsystem|

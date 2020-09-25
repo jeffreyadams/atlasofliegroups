@@ -11,9 +11,11 @@
 
 #include "ratvec.h"	// acces to infinitesimal character |gamma|
 #include "bitmap.h"	// root sets
+#include "matreduc.h"   // |diagonalise| used in |codec| constructor
 
 #include "prerootdata.h"// value returned
 #include "rootdata.h"	// |RootSystem| construction and methods
+#include "innerclass.h"	// |integrality_datum_item| construction
 #include "cartanclass.h"// |InvolutionData|
 #include "weyl.h"	// subobject
 
@@ -175,6 +177,45 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
 
   // it suffices that simpleBasis computed below live until end of constructor
   return SubSystemWithGroup(parent,parent.simpleBasis(int_coroots));
+}
+
+integral_datum_item::integral_datum_item
+    (InnerClass& ic,const RootNbrSet& int_posroots)
+  : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_posroots))
+  , simple_coroots(integral.rank())
+  , codecs(ic.numInvolutions())
+{
+  for (unsigned i=0; i<integral.rank(); ++i)
+    simple_coroots.push_back
+      (ic.rootDatum().coroot(integral.parent_nr_simple(i)));
+}
+
+const int_Matrix& integral_datum_item::encoder
+  (const InnerClass& ic,InvolutionNbr inv)
+{
+  if (codecs[inv]==nullptr)
+    codecs[inv].reset(new codec(ic,inv,simple_coroots));
+  return codecs[inv]->coder;
+}
+
+const int_Matrix& integral_datum_item::decoder
+  (const InnerClass& ic,InvolutionNbr inv)
+{
+  if (codecs[inv]==nullptr)
+    codecs[inv].reset(new codec(ic,inv,simple_coroots));
+  return codecs[inv]->decoder;
+}
+
+integral_datum_item::codec::codec
+  (const InnerClass& ic, InvolutionNbr inv, const CoweightList& gens)
+    : coder(), decoder()
+{
+  int_Matrix orth_killer(gens.size(),ic.rank()),row,col;
+  for (unsigned i=0; i<gens.size(); ++i)
+    orth_killer.set_row(i,gens[i]);
+  auto img_rank = matreduc::diagonalise(orth_killer,row,col).size();
+  decoder = col.block(0,0,col.numRows(),img_rank);
+  coder = col.inverse().block(0,0,img_rank,col.numRows());
 }
 
 } // |namespace subdatum|

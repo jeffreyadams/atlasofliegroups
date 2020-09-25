@@ -569,6 +569,34 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
 }
 
+RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
+{
+  containers::sl_list<RootNbr> result; // these are full root numbers
+
+  for (RootNbrSet::iterator it=posroots.begin(); it(); ++it)
+  {
+    RootNbr alpha = posRootNbr(*it); // convert from posroot index to root
+    RootNbrSet::iterator jt=std::next(it);
+    for (; jt(); ++jt)
+    {
+      RootNbr beta  = posRootNbr(*jt); // convert from posroot index to root
+      RootNbr gamma = root_permutation(alpha)[beta];
+      if (gamma<beta) // positive dot product
+      {
+	if (is_posroot(gamma))
+	  posroots.remove(*jt); // |beta| cannot be simple; remove it
+	else
+	  break; // positive root beta made nagative, so alpha is not simple
+      }
+    } // |for (beta)|
+    if (not jt()) // loop over |beta| ran to completion, so |alpha| is "simple"
+      result.push_back(alpha);
+  } // |for (alpha)|
+  // now roots in |result| all have weakly negative dot products
+
+  return result.to_vector();
+}
+
 bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
 {
   RootNbr a = rt_abs(alpha);
@@ -1328,6 +1356,16 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
   return q;
 }
 
+RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma)
+{
+  arithmetic::Numer_t n=gamma.denominator(); // signed type!
+  const Ratvec_Numer_t& v=gamma.numerator();
+  RootNbrSet result(rd.numPosRoots());
+  for (RootNbr i=0; i<rd.numPosRoots(); ++i)
+    if (rd.posCoroot(i).dot(v)%n == 0)
+      result.insert(i);
+  return result;
+}
 
 // get |PreRootDatum| for subdatum whose coroots are those integral on |gamma|
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma)

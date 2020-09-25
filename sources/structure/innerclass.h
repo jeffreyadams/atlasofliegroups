@@ -24,6 +24,7 @@
 
 #include "cartanclass.h"// containment of |Fiber|
 #include "involutions.h"// containment of |InvolutionTable|, |Cartan_orbits|
+#include "subsystem.h"  // containment of |integral_datum_item|
 #include "poset.h"	// containment of Cartan poset
 #include "rootdata.h"	// containment of root datum and its dual
 #include "tits.h"	// containment of Tits group and its dual
@@ -220,6 +221,11 @@ class InnerClass
 
   // a general repository for involutions, organised by conjugacy class
   Cartan_orbits C_orb;
+
+  using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned>;
+  subsystem::integral_datum_entry::Pooltype integral_pool;
+  integral_hash int_hash;
+  std::vector<subsystem::integral_datum_item> int_table;
 
  public:
 // constructors and destructors
@@ -466,6 +472,8 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
+  const int_Matrix& integrality_encoder(const RatWeight& gamma, InvolutionNbr);
+  const int_Matrix& integrality_decoder(const RatWeight& gamma, InvolutionNbr);
 
 // pseudo manipulator
 
