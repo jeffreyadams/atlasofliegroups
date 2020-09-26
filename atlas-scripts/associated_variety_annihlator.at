@@ -170,9 +170,10 @@ set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(Finalize(p)))
 
 {given cell, SpringerTable for G and CharacterTable for integrality_datum, using restriction}
-set associated_variety_ann_res(SpringerTable st_G,CharacterTable ct_L,WCell cell)=ComplexNilpotent:
-let G=st_G.root_datum_parent then
-ct_G=st_G.ct then
+{need RootDatum rd since it isn't specified by cell (only the integrality datum is given by the cell)}
+set associated_variety_ann_res(RootDatum G,SpringerTable st_G,CharacterTable ct_L,WCell cell)=ComplexNilpotent:
+{let G=st_G.root_datum_parent then}
+let ct_G=st_G.ct then
 L=cell.root_datum then
 {ct_L=L.character_table then}
 index_pi_L=ct_L.special_character(cell) then
@@ -190,19 +191,19 @@ index_G=chars_G[0] in
 st_G.springer_inverse(index_G)
 
 {given cell, SpringerTable for G, compute ct_L, using restriction}
-set associated_variety_ann_res(SpringerTable st_G,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(st_G,cell.root_datum.character_table,cell)
+set associated_variety_ann_res(RootDatum G,SpringerTable st_G,WCell cell)=ComplexNilpotent:
+associated_variety_ann_res(G,st_G,cell.root_datum.character_table,cell)
 
 {(slow) given cell, compute st_G,ct_L}
 set associated_variety_ann_res(RootDatum G,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(G.springer_table,cell.root_datum.character_table,cell)
+associated_variety_ann_res(G,G.springer_table,cell.root_datum.character_table,cell)
 
 {given Param, SpringerTable for G and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_res(SpringerTable st_G,CharacterTable ct_L,Param p)=ComplexNilpotent:
-associated_variety_ann_res(st_G,ct_L,W_cell_of(Finalize(p)))
+associated_variety_ann_res(p.real_form,st_G,ct_L,W_cell_of(Finalize(p)))
 
 set associated_variety_ann_res(SpringerTable st_G,Param p)=ComplexNilpotent:
-let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_res(st_G,cell.root_datum.character_table,cell)
+let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_res(p.real_form,st_G,cell.root_datum.character_table,cell)
 
 set associated_variety_ann_res(Param p)=ComplexNilpotent:
 associated_variety_ann_res(p.root_datum.springer_table,p)
