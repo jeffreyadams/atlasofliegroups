@@ -61,8 +61,18 @@ StandardReprMod StandardReprMod::mod_reduce
 StandardReprMod StandardReprMod::build
   (const Rep_context& rc, KGBElt x, RatWeight gam_lam)
 {
-  rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
-  return StandardReprMod(x,rho(rc.root_datum())+gam_lam);
+  auto& ic = rc.inner_class();
+  InvolutionNbr inv = rc.kgb().inv_nr(x);
+  const auto& codec = ic.integrality_codec(gam_lam,inv);
+  Ratvec_Numer_t v = codec.in * (codec.coder * gam_lam.numerator());
+  // reduce $v=(1-theta)y$ expressed on image $(1-theta)X^*$-basis modulo 2
+  for (unsigned i=0; i<v.size(); ++i)
+    v[i]= arithmetic::remainder(v[i],2*gam_lam.denominator());
+  gam_lam.numerator() = // replace |gam_lam| by |2*gam_lam| shifted orth integral
+    codec.decoder * (codec.out * v);
+  gam_lam /= 2; // now change is just down to a shift orthogonal to integral sys
+
+  return StandardReprMod(x,rho(rc.root_datum())+gam_lam); // ctor normalises
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const

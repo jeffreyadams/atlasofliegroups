@@ -474,8 +474,16 @@ class InnerClass
 
   const int_Matrix& integral_eval(const RatWeight& gamma) // int coroots matrix
   { return int_item(gamma).coroots_matrix(); }
-  const int_Matrix& integrality_encoder(const RatWeight& gamma, InvolutionNbr);
-  const int_Matrix& integrality_decoder(const RatWeight& gamma, InvolutionNbr);
+  const subsystem::integral_datum_item::codec& integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv)
+  { return int_item(gamma).data(*this,inv); }
+
+  const int_Matrix& integrality_encoder(const RatWeight& gamma,InvolutionNbr inv)
+  { return integrality_codec(gamma,inv).coder; }
+
+  const int_Matrix& integrality_decoder(const RatWeight& gamma,InvolutionNbr inv)
+  { return integrality_codec(gamma,inv).decoder; }
+
 
 // pseudo manipulator
 

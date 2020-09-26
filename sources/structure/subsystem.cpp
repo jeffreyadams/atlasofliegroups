@@ -190,20 +190,12 @@ integral_datum_item::integral_datum_item
 			   ic.rootDatum().coroot(integral.parent_nr_simple(i)));
 }
 
-const int_Matrix& integral_datum_item::encoder
+const integral_datum_item::codec& integral_datum_item::data
   (const InnerClass& ic,InvolutionNbr inv)
 {
   if (codecs[inv]==nullptr)
     codecs[inv].reset(new codec(ic,inv,simple_coroots));
-  return codecs[inv]->coder;
-}
-
-const int_Matrix& integral_datum_item::decoder
-  (const InnerClass& ic,InvolutionNbr inv)
-{
-  if (codecs[inv]==nullptr)
-    codecs[inv].reset(new codec(ic,inv,simple_coroots));
-  return codecs[inv]->decoder;
+  return *codecs[inv];
 }
 
 integral_datum_item::codec::codec

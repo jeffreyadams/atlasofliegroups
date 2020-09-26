@@ -1112,17 +1112,6 @@ subsystem::integral_datum_item& InnerClass::int_item(const RatWeight& gamma)
 }
 
 
-const int_Matrix& InnerClass::integrality_encoder
-  (const RatWeight& gamma,InvolutionNbr inv)
-{
-  return int_item(gamma).encoder(*this,inv);
-}
-
-const int_Matrix& InnerClass::integrality_decoder
-  (const RatWeight& gamma,InvolutionNbr inv)
-{
-  return int_item(gamma).decoder(*this,inv);
-}
 
 
 /*****************************************************************************
