@@ -1,3 +1,5 @@
+<springer_tables_reductive.at
+<truncated_induction.at
 
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity
@@ -136,30 +138,30 @@ orbit
 {using truncated induction, incorporating permutation}
 {only need Springer table for G, character table for L=integrality datum}
 {new: includes permutation}
-set associated_variety_ann_ind(Param param,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
+set associated_variety_ann_ind(Param param,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
 let p=Finalize(param) then
-st=p.root_datum.springer_table then
-()=if ti_verbose then prints("Computed Springer table") fi then
 rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
 (,P)=nice_order(rd_int.derived) then
 perm=P.permutation_matrix then
-{ct_int=rd_int.character_table then}
-special_character_int=special_character(ct_int,W_cell_of(p),perm) then
-()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
-character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
-()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
-orbit_0=st.springer_inverse(character_G) then
-{might be for different root datum}
+special_character_int=special_character(ct_int,cell,perm) then
+character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
+orbit_0=st_rd.springer_inverse(character_G) then
 orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
-if ti_verbose then
-prints("orbit_0: ", orbit_0.diagram);
- prints("Special character: ", special_character_int, new_line,
- "orbit: ", orbit.diagram, st.special_star(orbit))
-fi;
 orbit
 
-set associated_variety_ann_ind(Param p)=ComplexNilpotent:associated_variety_ann_ind(p,p.root_datum.springer_table,
-integrality_datum(p.root_datum,p.infinitesimal_character).character_table)
+{(slow) given cell, compute st_G,ct_L}
+set associated_variety_ann_ind(Param p,WCell cell)=ComplexNilpotent:
+associated_variety_ann_ind(p,p.root_datum.springer_table,cell.root_datum.character_table,cell)
+
+{given Param, SpringerTable for G and CharacterTable for integrality_datum,compute W_cell}
+set associated_variety_ann_ind(Param p,SpringerTable st_G,CharacterTable ct_L)=ComplexNilpotent:
+associated_variety_ann_ind(p,st_G,ct_L,W_cell_of(Finalize(p)))
+
+set associated_variety_ann_ind(Param p,SpringerTable st_G)=ComplexNilpotent:
+let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_ind(p,st_G,cell.root_datum.character_table,cell)
+
+set associated_variety_ann_ind(Param p)=ComplexNilpotent:
+associated_variety_ann_ind(p,p.root_datum.springer_table)
 
 {-----------------using restriction-----------------------}
 
@@ -171,24 +173,26 @@ set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p)
 
 {given cell, SpringerTable for G and CharacterTable for integrality_datum, using restriction}
 {need RootDatum rd since it isn't specified by cell (only the integrality datum is given by the cell)}
-set associated_variety_ann_res(RootDatum G,SpringerTable st_G,CharacterTable ct_L,WCell cell)=ComplexNilpotent:
-{let G=st_G.root_datum_parent then}
-let ct_G=st_G.ct then
+set associated_variety_ann_res(RootDatum rd,SpringerTable st_rd,CharacterTable ct_L,WCell cell)=ComplexNilpotent:
+{let G=st_rd.root_datum_parent then}
+let ct_rd=st_rd.ct then
 L=cell.root_datum then
 {ct_L=L.character_table then}
 index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
-chars_G=
-##for i:st_G.ct.n_classes do
-{ let ()=prints("i: ",i, " ",  ct_G.degrees[i], " ", d_L) in }
- if ct_G.degrees[i]=d_L and
-  !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
+chars_rd=
+##for i:st_rd.ct.n_classes do
+{ let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_L) in }
+ if ct_rd.degrees[i]=d_L and
+  !=ct_L.inner_product(char_L,restrict_character(rd,L,ct_rd,ct_L,ct_rd.characters[i]))
   then  [i] else [] fi
 od
 then
-index_G=chars_G[0] in
-st_G.springer_inverse(index_G)
+index_rd=chars_rd[0] then
+orbit_0=st_rd.springer_inverse(index_rd) then
+orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
+orbit
 
 {given cell, SpringerTable for G, compute ct_L, using restriction}
 set associated_variety_ann_res(RootDatum G,SpringerTable st_G,WCell cell)=ComplexNilpotent:
