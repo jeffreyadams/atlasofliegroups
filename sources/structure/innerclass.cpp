@@ -1101,17 +1101,16 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
   return result;
 }
 
-subsystem::integral_datum_item& InnerClass::int_item(const RatWeight& gamma)
+subsystem::integral_datum_item& InnerClass::int_item
+  (const RatWeight& gamma, unsigned int& int_sys_nr)
 {
   subsystem::integral_datum_entry e(integrality_poscoroots(rootDatum(),gamma));
   assert(integral_pool.size()==int_table.size());
-  auto h = int_hash.match(e);
-  if (h==int_table.size())
+  int_sys_nr = int_hash.match(e);
+  if (int_sys_nr==int_table.size())
     int_table.emplace_back(*this,e.posroots);
-  return int_table[h];
+  return int_table[int_sys_nr];
 }
-
-
 
 
 /*****************************************************************************

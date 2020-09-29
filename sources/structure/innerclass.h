@@ -472,17 +472,23 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
-  const int_Matrix& integral_eval(const RatWeight& gamma) // int coroots matrix
-  { return int_item(gamma).coroots_matrix(); }
+  subsystem::integral_datum_item& int_item
+    (const RatWeight& gamma, unsigned int& int_sys_nr);
   const subsystem::integral_datum_item::codec& integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv)
-  { return int_item(gamma).data(*this,inv); }
+    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return int_item(gamma,int_sys_nr).data(*this,inv); }
 
-  const int_Matrix& integrality_encoder(const RatWeight& gamma,InvolutionNbr inv)
-  { return integrality_codec(gamma,inv).coder; }
+  const int_Matrix& integral_eval
+    (const RatWeight& gamma, unsigned int& int_sys_nr)
+  { return int_item(gamma,int_sys_nr).coroots_matrix(); }
 
-  const int_Matrix& integrality_decoder(const RatWeight& gamma,InvolutionNbr inv)
-  { return integrality_codec(gamma,inv).decoder; }
+  const int_Matrix& integrality_encoder
+    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return integrality_codec(gamma,inv,int_sys_nr).coder; }
+
+  const int_Matrix& integrality_decoder
+    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return integrality_codec(gamma,inv,int_sys_nr).decoder; }
 
 
 // pseudo manipulator

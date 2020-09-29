@@ -197,7 +197,11 @@ RatWeight Rep_context::offset
 {
   auto reduced = StandardReprMod::mod_reduce(*this,sr);
   RatWeight result = reduced.gamma_rep() - srm.gamma_rep();
-  assert((inner_class().integral_eval(sr.gamma())*result.numerator()).isZero());
+#ifndef NDEBUG
+  unsigned int int_sys_nr;
+  assert((inner_class().integral_eval(sr.gamma(),int_sys_nr)*result.numerator())
+	 .isZero());
+#endif
   return result;
 }
 
