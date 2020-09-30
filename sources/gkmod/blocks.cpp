@@ -805,16 +805,16 @@ common_block::common_block // full block constructor
       elements.front().emplace_back(); // create sublist for the unique |x| value
     do
     {
-      const auto zz = queue.front();
-      const auto old_size = z_pool.size();
-      if (srm_hash.match(zz)!=old_size) // record generated element
+      const auto& zz = queue.front();
+      auto it = std::lower_bound(list.begin(),list.end(),zz,y_less);
+      if (not list.at_end(it) and *it==zz)
 	queue.pop_front(); // if already known, simply drop the element
       else
       {
-	list.splice(list.end(),queue,queue.begin()); // move |zz| to |list|
+	list.splice(it,queue,queue.begin()); // move |zz| ointo sorted |list|
 	for (const auto& w : reflect)
 	{
-	  auto new_z = zz;
+	  auto new_z = zz; // take a copy each time
 	  for (auto s : w) // order is irrelevant for a reflection word
 	    new_z = ctxt.cross(s,new_z);
 	  assert(new_z.x()==highest_x); // since we have a real reflection
@@ -824,13 +824,15 @@ common_block::common_block // full block constructor
     }
     while (not queue.empty());
 
-    list.sort(y_less);
-    y_count = list.size(); // take first packet into account
-
     // now insert elements from |list| as first R-packet of block
-    for (BlockElt y=0; y<y_count; ++y) // these are the first |y|s
-      info.emplace_back(highest_x,y); // adds element to |info|, setting |length==0|
-
+    for (auto it=list.wcbegin(); not list.at_end(it); ++it,++y_count)
+    {
+      auto h=srm_hash.match(*it);
+      assert(h==info.size()); // must be new; keep |z_pool| and |info| synced
+      ndebug_use(h);
+      info.emplace_back(highest_x,y_count); // extend |info|; sets |length==0|
+    }
+    assert(y_count==list.size()); // we have taken into account the first packet
   } // end of step 3
 
   // step 4: generate packets for successive involutions
@@ -925,13 +927,9 @@ common_block::common_block // full block constructor
 	      const auto gamma_lambda = srm.gamma_lambda(rho);
 	      auto &sz =
 		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
-#ifdef NDEBUG
-	      srm_hash.match(sz); // enter new block element into |z_pool|
-#else
-	      const auto old_size = z_pool.size();
 	      const auto h = srm_hash.match(sz);
-	      assert (h==old_size); // this must be a newly created block element
-#endif
+	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
+	      ndebug_use(h);
 	      info.emplace_back(x,y++);
 	      info.back().length=next_length;
 	    } // |for (crosses,y_count)|
@@ -1009,7 +1007,9 @@ common_block::common_block // full block constructor
 	      const auto gamma_lambda = srm.gamma_lambda(rho);
 	      auto& new_srm =
 		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
-	      srm_hash.match(new_srm);
+	      const auto h = srm_hash.match(new_srm);
+	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
+	      ndebug_use(h);
 	      info.emplace_back(x,y++);
 	      info.back().length=next_length;
 	    }
