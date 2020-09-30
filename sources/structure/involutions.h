@@ -104,7 +104,7 @@ class InvolutionTable
     InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix M_real; // $1-\theta$; then expression in a basis of its image
-    int_Matrix lift_mat; // basis of image $1-\theta$: |lift_mat*M_real==1-theta|
+    int_Matrix lift_mat; // image basis $1-\theta$: |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
