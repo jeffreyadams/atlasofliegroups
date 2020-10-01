@@ -174,7 +174,7 @@ RatWeight Rep_context::gamma_lambda
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   const RatWeight gamma_rho = gamma - rho(root_datum());
-  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))/2;
+  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))/2LL;
 }
 
 RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const

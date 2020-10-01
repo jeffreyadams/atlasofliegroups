@@ -80,9 +80,7 @@ class RationalVector
   RationalVector& operator*=(C n);
   RationalVector& operator/=(C n);
   RationalVector& operator%=(C n);
-  RationalVector operator* (C n) && { return (*this)*=n ;}
-  RationalVector operator/ (C n) && { return (*this)/=n ;}
-  RationalVector operator% (C n) && { return (*this)%=n ;}
+  // functional versions are free functions taking first agument by value
 
   template <typename C1>
     RationalVector& operator+=(const matrix::Vector<C1>& v)
@@ -148,6 +146,15 @@ class RationalVector
 
 
 //				Functions
+
+
+// right-operate by scalars
+template<typename C>
+  RationalVector<C> operator* (RationalVector<C> v, C n) { return v*=n ;}
+template<typename C>
+  RationalVector<C> operator/ (RationalVector<C> v, C n) { return v/=n ;}
+template<typename C>
+  RationalVector<C> operator% (RationalVector<C> v, C n) { return v%=n ;}
 
 // left-multiply by a matrix
 template<typename C1, typename C2>
