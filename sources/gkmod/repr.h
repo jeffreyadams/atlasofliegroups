@@ -176,7 +176,11 @@ class Rep_context
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
-  StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
+
+  // reconstruct |StandardRep| from |srm| and difference of |gamma_rep| values
+  StandardRepr sr
+    (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
+    const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -193,6 +197,10 @@ class Rep_context
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
   RatWeight gamma_lambda(const StandardRepr& z) const
   { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
+  RatWeight gamma_lambda_rho(const StandardRepr& z) const;
+
+  // offset in $\gamma-\lambda$ from |sr| with respect to that of |srm|
+  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const;
 
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
@@ -434,7 +442,8 @@ class Rep_table : public Rep_context
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   containers::sl_list<std::pair<StandardRepr,int> > deformation_terms
-    (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
+    (blocks::common_block& block, BlockElt y,
+     const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
   K_type_poly deformation(const StandardRepr& z);
@@ -442,7 +451,8 @@ class Rep_table : public Rep_context
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   containers::sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
-     BlockElt y, RankFlags singular, const RatWeight& gamma);
+     BlockElt y, // in numbering of |block|, not |eblock|
+     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block

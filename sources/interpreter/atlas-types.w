@@ -4735,6 +4735,7 @@ void common_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index in the block of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
+  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   const auto& gamma = p->val.gamma();
   { const RankFlags singular = block.singular(gamma);
     int start_pos = -1;
@@ -4746,7 +4747,7 @@ void common_block_wrapper(expression_base::level l)
           start_pos=param_list->val.size();
         param_list->val.push_back @|
           (std::make_shared<module_parameter_value> @|
-               (p->rf,p->rc().sr(block.representative(z),gamma)));
+               (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
       }
     push_value(std::move(param_list));
     push_value(std::make_shared<int_value>(start_pos));
@@ -4771,6 +4772,7 @@ void partial_common_block_wrapper(expression_base::level l)
 @)
   BlockElt start;
   blocks::common_block& block = p->rt().lookup(p->val,start);
+  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -4787,7 +4789,7 @@ void partial_common_block_wrapper(expression_base::level l)
       if (block.survives(z,singular))
         param_list->val.push_back @|
           (std::make_shared<module_parameter_value> @|
-             (p->rf,p->rc().sr(block.representative(z),gamma)));
+             (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
     push_value(std::move(param_list));
   }
 }
@@ -4839,6 +4841,7 @@ void KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index in the block of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
+  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
@@ -4917,7 +4920,7 @@ by constructing a new polynomial |Pol(P)|.
   param_list->val.reserve(survivors.size());
   for (BlockElt z : survivors)
     param_list->val.push_back (std::make_shared<module_parameter_value> @|
-           (p->rf,p->rc().sr(block.representative(z),gamma)));
+           (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
   push_value(std::move(param_list));
 }
 
@@ -4966,6 +4969,7 @@ void partial_KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index in the block of the initial element
   auto& block = p->rt().lookup(p->val,start);
+  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -5020,6 +5024,7 @@ void dual_KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index into |block| of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
+  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
   const auto& gamma = p->val.gamma();
@@ -6266,9 +6271,10 @@ void deform_wrapper(expression_base::level l)
 @)
   BlockElt p_index; // will hold index of |p| in the block
   auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
+  RatWeight diff = p->rc().offset(p->val,block.representative(p_index));
   const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
   repr::SR_poly result;
-  for (auto&& term : p->rt().deformation_terms(block,p_index,gamma)@;@;)
+  for (auto&& term : p->rt().deformation_terms(block,p_index,diff,gamma)@;@;)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
 
@@ -6289,6 +6295,7 @@ void twisted_deform_wrapper(expression_base::level l)
   BlockElt entry_elem;
   auto& block = rt.lookup(p->val,entry_elem);
     // though by reference, does not change |p->val|
+  RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
   auto& eblock = block.extended_block(rt.shared_poly_table());
 @)
   RankFlags singular = block.singular(p->val.gamma());
@@ -6297,7 +6304,8 @@ void twisted_deform_wrapper(expression_base::level l)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 @)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
-					     singular_orbits,p->val.gamma());
+					     singular_orbits,
+                                             diff,p->val.gamma());
   repr::SR_poly result;
   for (auto&& term : terms@;@;)
     result.add_term(std::move(term.first),
@@ -6406,11 +6414,12 @@ void KL_column_wrapper(expression_base::level l)
   auto col = p->rt().KL_column(p->val);
   BlockElt z;
   const blocks::common_block& block = p->rt().lookup(p->val,z);
+  RatWeight diff = p->rc().offset(p->val, block.representative(z));
   own_row column = std::make_shared<row_value>(0);
   column->val.reserve(length(col));
   for (auto it=col.wcbegin(); not col.at_end(it); ++it)
   {
-    StandardRepr sr = block.sr(it->first,p->val.gamma());
+    StandardRepr sr = block.sr(it->first,diff,p->val.gamma());
     auto tup = std::make_shared<tuple_value>(3);
     tup->val[0] = std::make_shared<int_value>(it->first);
     tup->val[1] = std::make_shared<module_parameter_value>(p->rf,std::move(sr));

@@ -927,6 +927,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
   blocks::common_block B(rc,srm,entry_element);
   const auto& gamma = p.gamma();
+  RatWeight diff(gamma.size()); // a custom made |StandardReprMod| gives zero offset
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
   ext_block::ext_block eblock(B,delta,nullptr);
@@ -979,7 +980,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   block_list.clear(); block_list.reserve(size);
   for (auto ez : survivors)
-    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),gamma));
+    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),diff,gamma));
 
   polys.assign({Pol(),Pol(1)}); // set up initial values of table
   P_index_mat = int_Matrix(size);

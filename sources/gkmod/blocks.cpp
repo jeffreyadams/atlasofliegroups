@@ -1257,9 +1257,11 @@ BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
   return lookup(StandardReprMod::build(rc,x,gamma_lambda));
 }
 
-repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
+repr::StandardRepr common_block::sr
+  (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
 {
-  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(z));
+  const Weight lambda_rho =
+    gamma.integer_diff<int>(gamma_lambda_rho(z)+diff);
   return rc.sr_gamma(x(z),lambda_rho,gamma);
 }
 
