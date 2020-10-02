@@ -182,12 +182,12 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
 integral_datum_item::integral_datum_item
     (InnerClass& ic,const RootNbrSet& int_posroots)
   : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_posroots))
-  , simple_coroots(integral.rank())
+  , simple_coroots(integral.rank(),ic.rank())
   , codecs(ic.numInvolutions())
 {
   for (unsigned i=0; i<integral.rank(); ++i)
-    simple_coroots.push_back
-      (ic.rootDatum().coroot(integral.parent_nr_simple(i)));
+    simple_coroots.set_row(i,
+			   ic.rootDatum().coroot(integral.parent_nr_simple(i)));
 }
 
 const int_Matrix& integral_datum_item::encoder
@@ -207,12 +207,10 @@ const int_Matrix& integral_datum_item::decoder
 }
 
 integral_datum_item::codec::codec
-  (const InnerClass& ic, InvolutionNbr inv, const CoweightList& gens)
+  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& cmat)
     : coder(), decoder()
 {
-  int_Matrix orth_killer(gens.size(),ic.rank()),row,col;
-  for (unsigned i=0; i<gens.size(); ++i)
-    orth_killer.set_row(i,gens[i]);
+  int_Matrix orth_killer(cmat),row,col;
   auto img_rank = matreduc::diagonalise(orth_killer,row,col).size();
   decoder = col.block(0,0,col.numRows(),img_rank);
   coder = col.inverse().block(0,0,img_rank,col.numRows());

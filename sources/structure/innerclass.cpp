@@ -1101,27 +1101,27 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
   return result;
 }
 
-
-const int_Matrix& InnerClass::integrality_encoder
-  (const RatWeight& gamma,InvolutionNbr inv)
+subsystem::integral_datum_item& InnerClass::int_item(const RatWeight& gamma)
 {
   subsystem::integral_datum_entry e(integrality_poscoroots(rootDatum(),gamma));
   assert(integral_pool.size()==int_table.size());
   auto h = int_hash.match(e);
   if (h==int_table.size())
     int_table.emplace_back(*this,e.posroots);
-  return int_table[h].encoder(*this,inv);
+  return int_table[h];
+}
+
+
+const int_Matrix& InnerClass::integrality_encoder
+  (const RatWeight& gamma,InvolutionNbr inv)
+{
+  return int_item(gamma).encoder(*this,inv);
 }
 
 const int_Matrix& InnerClass::integrality_decoder
   (const RatWeight& gamma,InvolutionNbr inv)
 {
-  subsystem::integral_datum_entry e(integrality_poscoroots(rootDatum(),gamma));
-  assert(integral_pool.size()==int_table.size());
-  auto h = int_hash.match(e);
-  if (h==int_table.size())
-    int_table.emplace_back(*this,e.posroots);
-  return int_table[h].decoder(*this,inv);
+  return int_item(gamma).decoder(*this,inv);
 }
 
 

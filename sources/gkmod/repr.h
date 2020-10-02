@@ -156,7 +156,7 @@ class Rep_context
 
   // accessors
   RealReductiveGroup& real_group() const { return G; }
-  const InnerClass& inner_class() const { return G.innerClass(); }
+  InnerClass& inner_class() const { return G.innerClass(); }
   const Cartan_orbits& involution_table() const
   { return inner_class().involution_table(); }
   const RootDatum& root_datum() const { return G.root_datum(); }

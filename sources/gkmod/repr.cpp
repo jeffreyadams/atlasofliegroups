@@ -196,7 +196,9 @@ RatWeight Rep_context::offset
   (const StandardRepr& sr, const StandardReprMod& srm) const
 {
   auto reduced = StandardReprMod::mod_reduce(*this,sr);
-  return reduced.gamma_rep() - srm.gamma_rep();
+  RatWeight result = reduced.gamma_rep() - srm.gamma_rep();
+  assert((inner_class().integral_eval(sr.gamma())*result.numerator()).isZero());
+  return result;
 }
 
 RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const

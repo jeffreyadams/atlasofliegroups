@@ -144,12 +144,12 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 class integral_datum_item
 {
   SubSystem integral; // references full root datum, presents integral datum
-  CoweightList simple_coroots; // convenience, for creating |codec| values
+  int_Matrix simple_coroots; // convenience, for creating |codec| values
 
   struct codec
   {
     int_Matrix coder, decoder; // transposed shapes: to quotient and a section
-    codec (const InnerClass& ic, InvolutionNbr inv, const CoweightList& gens);
+    codec (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& cmat);
   }; // |struct integral_datum_item::codec|
 
   std::vector<std::unique_ptr<codec> > codecs;
@@ -157,6 +157,8 @@ class integral_datum_item
  public:
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&&)=default; // move, never copy
+
+  const int_Matrix& coroots_matrix() const { return simple_coroots; }
   const int_Matrix& encoder(const InnerClass& ic,InvolutionNbr inv);
   const int_Matrix& decoder(const InnerClass& ic,InvolutionNbr inv);
 

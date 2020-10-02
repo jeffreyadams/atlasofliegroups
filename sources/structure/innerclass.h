@@ -225,7 +225,7 @@ class InnerClass
   using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned>;
   subsystem::integral_datum_entry::Pooltype integral_pool;
   integral_hash int_hash;
-  std::vector<subsystem::integral_datum_item> int_table;
+  mutable std::vector<subsystem::integral_datum_item> int_table;
 
  public:
 // constructors and destructors
@@ -472,6 +472,8 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
+  const int_Matrix& integral_eval(const RatWeight& gamma) // int coroots matrix
+  { return int_item(gamma).coroots_matrix(); }
   const int_Matrix& integrality_encoder(const RatWeight& gamma, InvolutionNbr);
   const int_Matrix& integrality_decoder(const RatWeight& gamma, InvolutionNbr);
 
@@ -500,6 +502,9 @@ class InnerClass
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
+
+  // get |int_table| entry for |gamma|
+  subsystem::integral_datum_item& int_item(const RatWeight& gamma);
 
 }; // |class InnerClass|
 
