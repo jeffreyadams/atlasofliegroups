@@ -199,13 +199,20 @@ const integral_datum_item::codec& integral_datum_item::data
 }
 
 integral_datum_item::codec::codec
-  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& cmat)
-    : coder(), decoder()
+  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& coroots_mat)
+    : coder(), decoder(), in(), out()
 {
-  int_Matrix orth_killer(cmat),row,col;
+  int_Matrix orth_killer(coroots_mat),row,col;
   auto img_rank = matreduc::diagonalise(orth_killer,row,col).size();
   decoder = col.block(0,0,col.numRows(),img_rank);
   coder = col.inverse().block(0,0,img_rank,col.numRows());
+
+  const auto& i_tab = ic.involution_table();
+  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
+  int_Matrix A = coroots_mat * i_tab.theta_1_image_basis(inv);
+  auto rank = matreduc::diagonalise(A,row,col).size();
+  in  = row.block(0,0,rank,row.numColumns());
+  out = col.block(0,0,col.numRows(),rank);
 }
 
 } // |namespace subdatum|

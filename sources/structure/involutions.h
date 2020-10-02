@@ -196,6 +196,11 @@ class InvolutionTable
   // uniquely chosen representative modulo $(1-\theta)X^*$ of $(1-\theta)/2*y$
   void real_unique(InvolutionNbr inv, RatWeight& y) const;
 
+  const int_Matrix& to_1_theta_image_coordinates(InvolutionNbr inv) const
+  { return data[inv].M_real; }
+  const int_Matrix& theta_1_image_basis(InvolutionNbr inv) const
+  { return data[inv].lift_mat; }
+
   // pack $(1-\theta)\lambda_rho$ into |TorusPart|: |lift_mat| coordinates mod 2
   TorusPart y_pack(InvolutionNbr inv, const Weight& lambda_rho) const
   { return TorusPart(data[inv].M_real * lambda_rho); }
