@@ -474,9 +474,13 @@ class InnerClass
 
   subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr);
+  // same when |int_sys_nr| has already been computed:
+  subsystem::integral_datum_item& int_item(unsigned int int_sys_nr)
+  { return int_table[int_sys_nr];}
+
   const subsystem::integral_datum_item::codec& integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
-  { return int_item(gamma,int_sys_nr).data(*this,inv); }
+  { return int_item(gamma,int_sys_nr).data(*this,int_sys_nr,inv); }
 
   const int_Matrix& integral_eval
     (const RatWeight& gamma, unsigned int& int_sys_nr)

@@ -192,16 +192,43 @@ RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
   return (std::move(result) - i_tab.y_lift(i_x,sr.y())*2)/4LL;
 }
 
+Weight Rep_context::theta_1_preimage
+  (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+  const
+{
+  auto& ic = inner_class();
+  RatWeight eval =
+    (ic.int_item(codec.int_sys_nr).coroots_matrix()*offset).normalize();
+  assert(eval.denominator()==1);
+  auto eval_v = int_Vector(eval.numerator().begin(),eval.numerator().end());
+  eval_v = codec.in * eval_v;
+
+  { unsigned int i;
+    for (i=0; i<codec.diagonal.size(); ++i)
+    {
+      assert(eval_v[i]%codec.diagonal[i]==0);
+      eval_v[i]/=codec.diagonal[i];
+    }
+    for (; i<eval_v.size(); ++i)
+      assert(eval_v[i]==0);
+    eval_v.resize(codec.diagonal.size());
+  }
+
+  return ic.involution_table().theta_1_image_basis(codec.inv) *
+    (codec.out * eval_v);
+}
+
 RatWeight Rep_context::offset
   (const StandardRepr& sr, const StandardReprMod& srm) const
 {
   auto reduced = StandardReprMod::mod_reduce(*this,sr);
   RatWeight result = reduced.gamma_rep() - srm.gamma_rep();
-#ifndef NDEBUG
+  auto& ic = inner_class();
+  InvolutionNbr inv = kgb().inv_nr(sr.x());
   unsigned int int_sys_nr;
-  assert((inner_class().integral_eval(sr.gamma(),int_sys_nr)*result.numerator())
-	 .isZero());
-#endif
+  auto codec = ic.integrality_codec(sr.gamma(),inv,int_sys_nr);
+  result -= theta_1_preimage(result,codec);
+  assert((ic.integral_eval(sr.gamma(),int_sys_nr)*result.numerator()).isZero());
   return result;
 }
 

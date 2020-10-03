@@ -201,6 +201,11 @@ class Rep_context
 
   // offset in $\gamma-\lambda$ from |sr| with respect to that of |srm|
   RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const;
+  // auxiliary for |offset|
+  // find element in |(1-theta)X^*| with same evaluation on all integral coroots
+  Weight theta_1_preimage
+   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+    const;
 
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
