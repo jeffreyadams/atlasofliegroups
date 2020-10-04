@@ -1164,12 +1164,12 @@ blocks::common_block& Rep_table::add_block_below
   assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
   Bruhat_generator gen(this,ctxt); // object to help generating Bruhat interval
   const auto prev_size = mod_pool.size(); // limit of previously known elements
-  containers::sl_list<unsigned long> elements(gen.block_below(srm)); // generate
+  containers::sl_list<unsigned long> elts(gen.block_below(srm)); // generate
 
   using sub_pair =
     std::pair<blocks::common_block*,containers::sl_list<BlockElt> >;
   containers::sl_list<sub_pair> sub_blocks;
-  for (auto z : elements)
+  for (auto z : elts)
     if (z<prev_size) // then |z| was already known as a partial block element
     { // record block pointer and index of |z| in block into |sub_blocks|
       const auto block_p = &*place[z].first;
@@ -1196,19 +1196,22 @@ blocks::common_block& Rep_table::add_block_below
 	if (not it.at_end() and *it==z)
 	  ++it; // skip element already present in generated Bruhat interval
 	else // join old element but outside Bruhat interval to new block
-	  elements.push_back(mod_hash.find(block.representative(z)));
+	  elts.push_back(mod_hash.find(block.representative(z)));
     }
     // since all |block| elements are now incorporated in |elements|
     pair.second.clear(); // forget which were in the Bruhat interval
   }
 
-  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  sl_list<blocks::common_block> temp; // must use temporary singleton
+  sl_list<StandardReprMod> elements;
+  for (unsigned long i : elts)
+    elements.push_back(mod_pool[i]); // convert from hash index to value
   auto& block = temp.emplace_back // construct block and get a reference
-    (*this,ctxt,elements,srm.gamma_rep());
+    (ctxt,elements,srm.gamma_rep());
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
-  for (auto z : elements) // Bruhat interval is no longer contiguous in this list
+  for (auto z : elts) // Bruhat interval is no longer contiguous in this list
     if (gen.in_interval(z)) // select those that have their covered's in |gen|
     {
       BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
@@ -1261,7 +1264,7 @@ blocks::common_block& Rep_table::add_block_below
   const auto new_block_it=block_list.end(); // iterator for new block elements
   block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
   // now make sure for all |elements| that |place| fields are set for new block
-  for (const auto& z : elements)
+  for (const auto& z : elts)
   {
     const BlockElt z_rel = block.lookup(this->srm(z));
     place[z] = std::make_pair(new_block_it,z_rel); // extend or replace

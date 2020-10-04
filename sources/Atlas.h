@@ -93,7 +93,7 @@ namespace atlas {
     class sl_list_iterator;
 
   template<typename T,typename Alloc = std::allocator<T> >
-    class mirrored_simple_list; // trivial adapter, to allow use with |std::stack|
+    class mirrored_simple_list; // trivial adapter, allows use with |std::stack|
 
   template<typename T,typename Alloc = std::allocator<T> >
     class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
@@ -103,6 +103,12 @@ namespace atlas {
   template<typename T,typename Alloc = std::allocator<T> > class queue;
 
   } // |namespace containers|
+  using containers::simple_list;
+  using containers::sl_list;
+  using containers::sl_list_const_iterator;
+  using containers::sl_list_iterator;
+  using containers::stack;
+  using containers::queue;
 
   namespace arithmetic {
     typedef long long int Numer_t;
@@ -475,7 +481,8 @@ namespace atlas {
 
   namespace repr {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
-    class StandardReprMod; // represent an equivalence class of |StandardRepr|
+    class StandardReprMod; // represent an $X^*$-shift class of |StandardRepr|
+    class Reduced_param; // even coarser representation, mod integral orthogonal
     class Repr_mod_entry;
     class common_context;
     class Rep_context;	// support class for interpreting |StandardRepr|
@@ -483,6 +490,7 @@ namespace atlas {
   }
   using repr::StandardRepr;
   using repr::StandardReprMod;
+  using repr::Reduced_param;
   using repr::common_context;
   using repr::Rep_context;
   using repr::Rep_table;

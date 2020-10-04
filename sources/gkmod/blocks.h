@@ -341,8 +341,8 @@ class common_block : public Block_base
   const SubSystem integral_sys;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
-  using repr_hash = HashTable<repr::StandardReprMod,BlockElt>;
-  repr::StandardReprMod::Pooltype z_pool;
+  using repr_hash = HashTable<StandardReprMod,BlockElt>;
+  StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
   std::unique_ptr<ext_block::ext_block> extended;
@@ -355,19 +355,18 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const repr::Rep_context& rc,
-     const repr::StandardReprMod& srm, // not modified, no "making dominant"
+    (const Rep_context& rc,
+     const StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
   common_block // partial block
-    (const repr::Rep_table& rt,
-     const repr::common_context& ctxt,
-     containers::sl_list<unsigned long>& elements,
+    (const common_context& ctxt,
+     containers::sl_list<StandardReprMod>& elements,
      const RatWeight& gamma_rep);
   ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
-  const repr::Rep_context& context() const { return rc; }
+  const Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
   const SubSystem& integral_subsystem() const { return integral_sys; }
   const InnerClass& inner_class() const;
@@ -384,12 +383,12 @@ class common_block : public Block_base
   RatWeight gamma_lambda_rho(BlockElt z) const // that is $\gamma-\lambda+\rho$
   { return z_pool[z].gamma_rep(); } // is actually easier than |gamma_lambda|
 
-  BlockElt lookup(const repr::StandardReprMod& srm) const;
+  BlockElt lookup(const StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
-  repr::StandardReprMod representative (BlockElt z) const
-  { return repr::StandardReprMod::build(rc,x(z),gamma_lambda(z)); }
-  repr::StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_rep|s
+  StandardReprMod representative (BlockElt z) const
+  { return StandardReprMod::build(rc,x(z),gamma_lambda(z)); }
+  StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_rep|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
