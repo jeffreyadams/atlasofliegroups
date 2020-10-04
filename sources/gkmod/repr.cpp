@@ -849,7 +849,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
     + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
   Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
 
-  containers::sl_list<weyl::Generator> result;
+  sl_list<weyl::Generator> result;
   { weyl::Generator s;
     do
     {
@@ -998,8 +998,7 @@ SR_poly Rep_context::scale_0(const poly& P) const
   return result;
 }
 
-containers::sl_list<StandardRepr>
-  Rep_context::finals_for(StandardRepr z) const
+sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionTable& i_tab = involution_table();
@@ -1014,7 +1013,7 @@ containers::sl_list<StandardRepr>
    integrally-simple roots (simple roots of integral subsystem), so we can
    proceed without constructing the integral subsystem (even less the block) */
 
-  containers::sl_list<StandardRepr> result { z };
+  sl_list<StandardRepr> result { z };
   auto rit=result.begin();
   do
   { const KGBElt x=rit->x();
@@ -1133,7 +1132,6 @@ size_t deformation_unit::hashCode(size_t modulus) const
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), alcove_hash(pool)
-, mod_pool(), mod_hash(mod_pool)
 , reduced_pool(), reduced_hash(reduced_pool)
 , K_type_pool(), K_type_hash(K_type_pool)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
@@ -1150,6 +1148,9 @@ unsigned short Rep_table::length(StandardRepr sr)
   return block.length(z);
 }
 
+
+using Mod_hash_tp = HashTable<StandardReprMod,BlockElt>;
+
 // an auxialry structure needed to hash |unsigned long| to shorter |BlockElt|
 struct ulong_entry
 { unsigned long val;
@@ -1162,164 +1163,31 @@ struct ulong_entry
 // |Rep_table| helper class
 class Rep_table::Bruhat_generator
 {
-  Rep_table& parent;
+  Mod_hash_tp& mod_hash;
   const common_context& ctxt;
-  std::vector<ulong_entry> pool;
-  HashTable<ulong_entry,BlockElt> local_h; // hash table, avoid name |hash|
-  std::vector<containers::simple_list<unsigned long> > predecessors;
+  std::vector<simple_list<BlockElt> > predecessors;
 public:
-  Bruhat_generator (Rep_table* caller, const common_context& ctxt)
-    : parent(*caller),ctxt(ctxt), pool(), local_h(pool), predecessors() {}
+  Bruhat_generator (Mod_hash_tp& hash, const common_context& ctxt)
+    : mod_hash(hash),ctxt(ctxt), predecessors() {}
 
-  bool in_interval (unsigned long n) const
-  { return local_h.find(n)!=local_h.empty; }
-  const containers::simple_list<unsigned long>& covered(unsigned long n) const
-  { return predecessors.at(local_h.find(n)); }
-  containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
+  bool in_interval (const StandardReprMod& srm) const
+  { return mod_hash.find(srm)!=mod_hash.empty; }
+  const simple_list<BlockElt>& covered(BlockElt n) const
+  { return predecessors.at(n); }
+  void block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
 
-blocks::common_block& Rep_table::add_block_below
-  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
+
+void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
 {
-  assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
-  Bruhat_generator gen(this,ctxt); // object to help generating Bruhat interval
-  containers::sl_list<unsigned long> elts(gen.block_below(srm)); // generate
+  if (mod_hash.find(srm)!=mod_hash.empty) // then |srm| was seen earlier
+    return; // nothing new
 
-  using sub_pair = std::pair<blocks::common_block*,RatWeight>;
-  containers::sl_list<sub_pair> sub_blocks;
-  for (auto z : elts)
-  {
-    Reduced_param red(inner_class(),mod_pool[z]);
-    auto h = reduced_hash.find(red); // fingerprint for family of parameters
-    if (h!=reduced_hash.empty) // then a similar parameter was known
-    { // record block pointer and index of |z| in block into |sub_blocks|
-      const auto block_p = &*place[h].first;
-      auto hit = [block_p]
-	(const sub_pair& pair)->bool { return &*pair.first==block_p; };
-      if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
-      {
-	StandardReprMod base = block_p->representative(place[h].second);
-	sub_blocks.emplace_back(block_p,offset(this->srm(z),base));
-      }
-    }
-  }
-
-  // reconstruct elements for all |sub_blocks|
-  size_t limit = mod_pool.size();
-  const auto rho = rootdata::rho(root_datum());
-  for (auto& pair : sub_blocks)
-    for (BlockElt z=0; z<pair.first->size(); ++z)
-    {
-      auto new_gam_lam =
-	pair.first->representative(z).gamma_lambda(rho)+pair.second;
-      auto shifted =
-	StandardReprMod::build(*this,pair.first->x(z),std::move(new_gam_lam));
-#ifdef NDEBUG
-      mod_hash.match(shifted); // if new, add |shifted| to |mod_pool|
-#else
-      auto h = mod_hash.match(shifted); // if new, add |shifted| to |mod_pool|
-      if (h<limit) // if |shifted| already known, check |h| is among |elements|
-	assert(std::any_of(elts.begin(),elts.end(),
-			   [h](unsigned long e) {return e==h; }
-			   ));
-#endif
-    }
-  // add any new elements generated from |sub_blocks| to the end of |elements|
-  while (limit<mod_pool.size())
-    elts.push_back(limit++);
-
-  sl_list<blocks::common_block> temp; // must use temporary singleton
-  sl_list<StandardReprMod> elements;
-  for (unsigned long i : elts)
-    elements.push_back(mod_pool[i]); // convert from hash index to value
-  auto& block = temp.emplace_back // construct block and get a reference
-    (ctxt,elements,srm.gamma_rep());
-
-  *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
-  containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
-  for (auto z : elts) // Bruhat interval is no longer contiguous in this list
-    if (gen.in_interval(z)) // select those that have their covered's in |gen|
-    {
-      BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
-      subset->insert(i_z); // mark |z| as element ot the Bruhat interval
-      const auto& covered = gen.covered(z);
-      BlockEltList row;
-      row.reserve(atlas::containers::length(covered));
-      for (auto it=covered.begin(); not covered.at_end(it); ++it)
-      {
-	const BlockElt y = block.lookup(this->srm(*it)); // get relative number
-	assert(y!=UndefBlock);
-	row.push_back(y); // store covering relation in |Hasse_diagram|
-      }
-      partial_Hasse_diagram.emplace_back(i_z,row);
-    }
-
-  block.set_Bruhat(std::move(partial_Hasse_diagram));
-  // remainder of Hasse diagram will be imported from swallowed sub-blocks
-
-  static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
-  place.resize(mod_pool.size(),empty);
-
-  if (not sub_blocks.empty())
-  {
-    for (const auto& pair : sub_blocks) // swallow sub-blocks
-    {
-      auto& sub_block = *pair.first;
-      bl_it block_it; // set below
-      BlockEltList embed; embed.reserve(sub_block.size()); // translation array
-      for (BlockElt z=0; z<sub_block.size(); ++z)
-      {
-	auto new_gam_lam =
-	  sub_block.representative(z).gamma_lambda(rho)+pair.second;
-	auto shifted =
-	  StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
-	const BlockElt z_rel = block.lookup(shifted);
-	assert(z_rel!=UndefBlock);
-	embed.push_back(z_rel);
-      }
-
-      auto h = mod_hash.find(sub_block.representative(0));
-      assert(h!=mod_hash.empty);
-      block_it = place[h].first;
-
-      assert(&*block_it==&sub_block); // ensure we erase |sub_block|
-      block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
-      block_erase(block_it); // even pilfered, the pointer is still unchanged
-    }
-  }
-
-  // only after the |block_erase| upheavals is it safe to link in the new block
-  // also, it can only go to the end of the list, to not invalidate any iterators
-  const auto new_block_it=block_list.end(); // iterator for new block elements
-  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
-  // now make sure for all |elements| that |place| fields are set for new block
-  for (const auto& z : elts)
-  {
-    const BlockElt z_rel = block.lookup(this->srm(z));
-    place[z] = std::make_pair(new_block_it,z_rel); // extend or replace
-  }
-  return block;
-} // |Rep_table::add_block_below|
-
-
-containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
-  (const StandardReprMod& srm)
-{
-  auto& hash=parent.mod_hash;
-  { const auto h=hash.find(srm);
-    if (h!=hash.empty) // then |srm| was seen earlier
-    {
-      unsigned hh = local_h.find(h);
-      if (hh!=local_h.empty) // then we visited this element in current recursion
-	return containers::simple_list<unsigned long>(); // nothing new
-    }
-  }
   const auto rank = ctxt.id().semisimpleRank();
-  containers::sl_list<unsigned long> pred; // list of elements covered by z
+  sl_list<BlockElt> pred; // list of elements covered by z
   // invariant: |block_below| has been called for every element in |pred|
 
   weyl::Generator s; // a complex or real type 1 descent to be found, if exists
-  containers::sl_list<containers::simple_list<unsigned long> > results;
   for (s=0; s<rank; ++s)
   {
     std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,srm.x());
@@ -1328,18 +1196,18 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
     if (stat.first==gradings::Status::Complex)
     { // complex descent
       const StandardReprMod sz = ctxt.cross(s,srm);
-      results.push_back(block_below(sz)); // recursion
-      pred.push_back(hash.find(sz)); // must call |hash.find| after |block_below|
+      block_below(sz); // recursion
+      pred.push_back(mod_hash.find(sz)); // |mod_hash.find| after |block_below|
       break; // we shall add $s$-ascents of predecessors of |sz| below
     }
     else if (stat.first==gradings::Status::Real and ctxt.is_parity(s,srm))
     { // |z| has a type 1 real descent at |s|
       const StandardReprMod sz0 = ctxt.down_Cayley(s,srm);
       const StandardReprMod sz1 = ctxt.cross(s,sz0);
-      results.push_back(block_below(sz0)); // recursion
-      results.push_back(block_below(sz1)); // recursion
-      pred.push_back(hash.find(sz0)); // call |hash.find| after |block_below|
-      pred.push_back(hash.find(sz1));
+      block_below(sz0); // recursion
+      block_below(sz1); // recursion
+      pred.push_back(mod_hash.find(sz0)); // |mod_hash.find| after |block_below|
+      pred.push_back(mod_hash.find(sz1));
       break; // we shall add $s$-ascents of predecessors of |sz_inx| below
     } // |if (real type 1)|
 
@@ -1353,18 +1221,18 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 	  ctxt.is_parity(s,srm))
       {
 	const auto sz = ctxt.down_Cayley(s,srm);
-	results.push_back(block_below(sz)); // recursion
-	pred.push_back(hash.find(sz));
+	block_below(sz); // recursion
+	pred.push_back(mod_hash.find(sz));
       }
   }
   else // a complex or real type 1 descent |sz==pred.front()| for |s| was found
   { // add |s|-ascents for elements covered by |sz|
-    const auto pred_sz = predecessors.at(local_h.find(pred.front()));
+    const auto pred_sz = predecessors.at(pred.front());
     for (auto it = pred_sz.begin(); not pred.at_end(it); ++it)
     {
-      const auto p = *it; // sequence number of a predecessor of |sz|
-      const StandardReprMod zp = parent.mod_pool[p];
-      std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,zp.x());
+      const BlockElt p = *it; // sequence number of a predecessor of |sz|
+      const StandardReprMod& zp = mod_hash[p];
+      std::pair<gradings::Status::Value,bool> stat = ctxt.status(s,zp.x());
       switch (stat.first)
       {
       case gradings::Status::Real: case gradings::Status::ImaginaryCompact:
@@ -1372,21 +1240,21 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       case gradings::Status::Complex:
 	if (not stat.second) // complex ascent
 	{
-	  const auto szp = ctxt.cross(s,zp);
-	  results.push_back(block_below(szp)); // recursion
-	  pred.push_back(hash.find(szp));
+	  const StandardReprMod szp = ctxt.cross(s,zp);
+	  block_below(szp); // recursion
+	  pred.push_back(mod_hash.find(szp));
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
 	{
-	  const auto szp = ctxt.up_Cayley(s,zp);
-	  results.push_back(block_below(szp)); // recursion
-	  pred.push_back(hash.find(szp));
+	  const StandardReprMod szp = ctxt.up_Cayley(s,zp);
+	  block_below(szp); // recursion
+	  pred.push_back(mod_hash.find(szp));
 	  if (not stat.second) // then nci type 2
 	  {
-	    const auto szp1 = ctxt.cross(s,szp);
-	    results.push_back(block_below(szp1)); // recursion
-	    pred.push_back(hash.find(szp1));
+	    const StandardReprMod szp1 = ctxt.cross(s,szp);
+	    block_below(szp1); // recursion
+	    pred.push_back(mod_hash.find(szp1));
 	  }
 	}
 	break;
@@ -1394,24 +1262,126 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
     } // |for (it)|
   } // |if (s<rank)|
 
-  const auto h=hash.match(srm); // finally generate sequence number for |srm|
-  { // merge all |results| together and remove duplicates
-    results.push_front(containers::simple_list<unsigned long> {h} );
-    while (results.size()>1)
-    {
-      auto it=results.begin();
-      auto first = std::move(*it);
-      first.merge(std::move(*++it));
-      results.erase(results.begin(),++it);
-      first.unique();
-      results.push_back(std::move(first));
+  const auto h = mod_hash.match(srm); // now generate sequence number for |srm|
+  assert(h==predecessors.size()); ndebug_use(h);
+  predecessors.push_back(pred.undress()); // store |pred| at |h|
+} // |Rep_table::Bruhat_generator::block_below|
+
+// a structure used in |Rep_table::add_block_below| and |Rep_table::add_block|
+// for each sub_block, record block pointer, entry element, shift
+// DO NOT record iterator into |block_list| which might get invalidated,
+// access of iterator to |bp| through |place[h]| will be checked and corrected
+struct sub_triple {
+  common_block* bp; unsigned long h; RatWeight shift;
+  sub_triple(common_block* bp, unsigned long h, RatWeight shift)
+    : bp(bp),h(h),shift(shift) {}
+};
+
+blocks::common_block& Rep_table::add_block_below
+  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
+{
+  assert // we are called to add a block for nothing like what is known before
+    (reduced_hash.find(Reduced_param(inner_class(),srm))==reduced_hash.empty);
+
+  std::vector<StandardReprMod> pool;
+  Mod_hash_tp hash(pool);
+  Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
+  gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
+
+  const size_t place_limit = place.size();
+  sl_list<sub_triple> sub_blocks;
+  for (const auto& elt : pool)
+  {
+    Reduced_param red(inner_class(),elt);
+    auto h = reduced_hash.match(red); // fingerprint for family of parameters
+    if (h==place.size()) // block element has new reduced hash value
+      place.emplace_back(bl_it(),-1); // create slot; both fields filled later
+    else if (h<place_limit) // then a similar parameter was known
+    { // record block pointer and index of |z| in block into |sub_blocks|
+      common_block* sub = &*place[h].first;
+      auto hit = [sub] (const sub_triple& tri)->bool { return tri.bp==sub; };
+      if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
+      {
+	StandardReprMod base = sub->representative(place[h].second);
+	sub_blocks.emplace_back(sub,h,offset(elt,base));
+      }
     }
   }
-  unsigned hh = local_h.match(h); // local sequence number for |srm|
-  assert(hh==predecessors.size()); ndebug_use(hh);
-  predecessors.push_back(pred.undress()); // store |pred| at |hh|
-  return results.front();
-} // |Rep_table::Bruhat_generator::block_below|
+
+  // reconstruct elements for all |sub_blocks|
+  size_t limit = pool.size(); // limit of generated Bruhat interval
+  const auto rho = rootdata::rho(root_datum());
+  for (auto sub : sub_blocks)
+    for (BlockElt z=0; z<sub.bp->size(); ++z)
+    {
+      auto new_gam_lam =
+	sub.bp->representative(z).gamma_lambda(rho)+sub.shift;
+      auto shifted =
+	StandardReprMod::build(*this,sub.bp->x(z),std::move(new_gam_lam));
+      hash.match(shifted); // if new, add |shifted| to |pool| beyong |limit|
+    }
+
+  sl_list<StandardReprMod> elements(pool.begin(),pool.end()); // working copy
+
+  sl_list<blocks::common_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back // construct block and get a reference
+    (ctxt,elements,srm.gamma_rep());
+
+  *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
+  sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
+  for (unsigned int i=0; i<limit; ++i)
+  {
+    BlockElt i_z = block.lookup(pool[i]); // index of element |i| in new block
+    subset->insert(i_z); // mark |z| as element ot the Bruhat interval
+    const auto& covered = gen.covered(i);
+    BlockEltList row;
+    row.reserve(containers::length(covered));
+    for (auto it=covered.begin(); not covered.at_end(it); ++it)
+    {
+      const BlockElt y = block.lookup(pool[*it]); // get relative number
+      assert(y!=UndefBlock);
+      row.push_back(y); // store covering relation in |Hasse_diagram|
+    }
+    partial_Hasse_diagram.emplace_back(i_z,row);
+  }
+
+  block.set_Bruhat(std::move(partial_Hasse_diagram));
+  // remainder of Hasse diagram will be imported from swallowed sub-blocks
+
+  for (const auto& sub : sub_blocks) // swallow sub-blocks
+  {
+    auto& sub_block = *sub.bp;
+    BlockEltList embed; embed.reserve(sub_block.size()); // translation array
+    for (BlockElt z=0; z<sub_block.size(); ++z)
+    {
+      auto new_gam_lam =
+	sub_block.representative(z).gamma_lambda(rho)+sub.shift;
+      auto shifted =
+	StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
+      const BlockElt z_rel = block.lookup(shifted);
+      assert(z_rel!=UndefBlock);
+      embed.push_back(z_rel);
+    }
+
+    block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
+    block_erase(place[sub.h].first); // iterator argument might be corrected
+  }
+
+
+  // only after the |block_erase| upheavals is it safe to link in the new block
+  // also, it can only go to the end of the list, to not invalidate any iterators
+  const auto new_block_it=block_list.end(); // iterator for new block elements
+  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+
+  for (BlockElt z=block.size(); z-->0; ) // decreasing: least |z| wins below
+  { // by using reverse iteration, least elt with same |h| defines |place[h]|
+    const StandardReprMod srm =block.representative(z);
+    auto h = reduced_hash.find(Reduced_param(inner_class(),srm));
+    assert(h!=reduced_hash.empty);
+    place[h] = std::make_pair(new_block_it,z); // extend or replace
+  }
+  return block;
+} // |Rep_table::add_block_below|
 
 // erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
 void Rep_table::block_erase (bl_it pos)
@@ -1423,8 +1393,8 @@ void Rep_table::block_erase (bl_it pos)
     const auto& block = *next_pos;
     for (BlockElt z=0; z<block.size(); ++z)
     {
-      auto zm = StandardReprMod::build(*this,block.x(z),block.gamma_lambda(z));
-      unsigned long seq = mod_hash.find(zm);
+      auto zm = block.representative(z);
+      auto seq = reduced_hash.find(Reduced_param(inner_class(),zm));
       assert(seq<place.size()); // all elements in |block_list| must have |place|
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
 	place[seq].first=pos; // replace iterator that is about to be invalidated
@@ -1436,57 +1406,64 @@ void Rep_table::block_erase (bl_it pos)
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  sl_list<blocks::common_block> temp; // must use temporary singleton
   auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
 
-  // pairs of a block pointer and a mapping vector into the new |block|
-  using sub_pair = std::pair<blocks::common_block*,BlockEltList >;
-  containers::simple_list<sub_pair> embeddings;
+  auto& ic = inner_class();
+  const auto rho = rootdata::rho(root_datum());
+  const size_t place_limit = place.size();
 
+  sl_list<sub_triple> sub_blocks;
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto seq = mod_hash.match(block.representative(z));
-    if (seq==place.size()) // block element is new
-      place.emplace_back(bl_it(),z); // iterator filled later
-    else
+    auto elt = block.representative(z);
+    auto seq = reduced_hash.match(Reduced_param(ic,elt));
+    if (seq==place.size()) // block element has new reduced hash value
+      place.emplace_back(bl_it(),z); // create slot; iterator filled later
+    else if (seq<place_limit)
     {
-      auto& sub_block = *place[seq].first;
-      auto e_it = embeddings.begin();
-      while (not embeddings.at_end(e_it) and e_it->first!=&sub_block)
-	++e_it;
-      if (embeddings.at_end(e_it))
-	embeddings.emplace(e_it,
-			   &sub_block,BlockEltList(sub_block.size(),UndefBlock));
-      e_it->second[place[seq].second]=z; // record embedding as |z|
-      // leave |place[seq].first| pointing to our block for now
-      place[seq].second = z; // relative index of |zm| in new block
+      common_block* sub = &*place[seq].first;
+      auto hit = [sub] (const sub_triple& tri)->bool { return tri.bp==sub; };
+      if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
+      {
+	StandardReprMod base = sub->representative(place[seq].second);
+	sub_blocks.emplace_back(sub,seq,offset(elt,base));
+      }
     }
   }
 
-  // swallow blocks in |embeddings|, and remove them from |block_list|
-  for (auto it= embeddings.begin(); not embeddings.at_end(it); ++it)
+  // swallow |embeddings|, and remove them from |block_list|
+  for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    auto& sub_block = *it->first;
-    auto h = mod_hash.find(sub_block.representative(0));
-    assert(h!=mod_hash.empty);
-    auto block_it = place[h].first; // found iterator to our |block_list| entry
-#ifndef NDEBUG
-    for (BlockElt z : it->second)
-      assert(z!=UndefBlock);
-#endif
-    block.swallow(std::move(sub_block),it->second,&KL_poly_hash,&poly_hash);
-    block_erase(block_it);
+    auto& sub_block = *sub.bp;
+    BlockEltList embed; embed.reserve(sub_block.size()); // translation array
+    for (BlockElt z=0; z<sub_block.size(); ++z)
+    {
+      auto new_gam_lam =
+	sub_block.representative(z).gamma_lambda(rho)+sub.shift;
+      auto shifted =
+	StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
+      const BlockElt z_rel = block.lookup(shifted);
+      assert(z_rel!=UndefBlock);
+      embed.push_back(z_rel);
+    }
+
+    block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
+    block_erase(place[sub.h].first);
   }
 
   // only after |block_erase| upheavals is it safe to link in the new block
   // also, it can only go to the end of the list, to not invalidate any iterators
   const auto new_block_it=block_list.end(); // iterator for new block elements
   block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+
   // now make sure for all |elements| that |place| fields are set for new block
   for (BlockElt z=0; z<block.size(); ++z)
-    place[mod_hash.find(block.representative(z))].first = new_block_it;
-
-  return mod_hash.find(srm);
+  {
+    auto red_par = Reduced_param(ic,block.representative(z));
+    place[reduced_hash.find(red_par)].first = new_block_it;
+  }
+  return reduced_hash.find(Reduced_param(ic,srm));
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
@@ -1508,7 +1485,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
 {
   normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  assert(mod_hash.size()==place.size()); // should be in sync at this point
+  assert(reduced_hash.size()==place.size()); // should be in sync at this point
   Reduced_param red(inner_class(),srm); // reduce further mod integral orthogonal
   auto h=reduced_hash.find(red); // look up modulo $X^*+integral^\perp$
   if (h!=reduced_hash.empty) // then we have found our family of blocks
@@ -1529,7 +1506,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
 // dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
 
 typedef std::pair<BlockElt,int>  term;
-typedef containers::sl_list<term> pair_list;
+typedef sl_list<term> pair_list;
 
 pair_list combine (pair_list a, pair_list b) // by value, will move from rvalues
 { // |a| and |b| are assumed to be sorted
@@ -1626,17 +1603,17 @@ std::vector<pair_list> contributions
   return result;
 } // |contributions|, extended block
 
-containers::sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
+sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,
     const RatWeight& diff, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
-  containers::sl_list<std::pair<StandardRepr,int> > result;
+  sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
   std::vector<pair_list> contrib = contributions(block,block.singular(gamma),y);
-  containers::sl_list<BlockElt> finals;
+  sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
@@ -1756,7 +1733,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 } // |Rep_table::KL_column_at_s|
 
 // compute and return column of KL table for final parameter |sr|
-containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+simple_list<std::pair<BlockElt,kl::KLPol> >
   Rep_table::KL_column(StandardRepr sr) // |sr| must be final
 {
   assert(is_final(sr));
@@ -1767,7 +1744,7 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 
-  containers::simple_list<std::pair<BlockElt,kl::KLPol> > result;
+  simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=z+1; x-->0; )
   {
     const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
@@ -1927,7 +1904,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   const BlockElt y = eblock.element(y0);
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
-  containers::sl_list<BlockElt> finals; // these have numbering for |eblock|!
+  sl_list<BlockElt> finals; // these have numbering for |eblock|!
   for (BlockElt z=0; z<=y; ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
@@ -1958,7 +1935,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   return result;
 } // |Rep_table::twisted_KL_column_at_s|
 
-containers::sl_list<std::pair<StandardRepr,int> >
+sl_list<std::pair<StandardRepr,int> >
 Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
@@ -1967,12 +1944,12 @@ Rep_table::twisted_deformation_terms
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
 
-  containers::sl_list<std::pair<StandardRepr,int> > result;
+  sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
     return result; // easy case, null result
 
   auto contrib = repr::contributions(eblock,singular_orbits,y_index+1);
-  containers::sl_list<BlockElt> finals; // these have numbering for |eblock|!
+  sl_list<BlockElt> finals; // these have numbering for |eblock|!
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
