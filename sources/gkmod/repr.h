@@ -145,6 +145,22 @@ class StandardReprMod
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
 
+// hashable type for |StandardReprMod| upto shift orthogonal to integral system
+class Reduced_param
+{
+  KGBElt x;
+  unsigned int int_sys_nr;
+  int_Vector evaluations;
+
+public:
+  Reduced_param(InnerClass& ic, const StandardReprMod& srm);
+
+  typedef std::vector<Reduced_param> Pooltype;
+  bool operator!=(const Reduced_param& p) const
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evaluations!=p.evaluations; }
+  size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+}; // |class Reduced_param|
+
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
@@ -199,8 +215,11 @@ class Rep_context
   { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
   RatWeight gamma_lambda_rho(const StandardRepr& z) const;
 
-  // offset in $\gamma-\lambda$ from |sr| with respect to that of |srm|
-  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const;
+  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
+  RatWeight offset
+    (const StandardReprMod& sr0, const StandardReprMod& srm1) const;
+  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const
+  { return offset(StandardReprMod::mod_reduce(*this,sr),srm); }
   // auxiliary for |offset|
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
   Weight theta_1_preimage
@@ -406,6 +425,9 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
+  std::vector<Reduced_param> reduced_pool;
+  HashTable<Reduced_param,unsigned long> reduced_hash;
+
   std::vector<K_type> K_type_pool;
   HashTable<K_type,K_type_nr> K_type_hash;
 
@@ -417,7 +439,7 @@ class Rep_table : public Rep_context
 
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
-  std::vector<std::pair<bl_it, BlockElt> > place;
+  std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
 
  public:
   Rep_table(RealReductiveGroup &G);

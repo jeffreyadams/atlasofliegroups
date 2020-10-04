@@ -66,10 +66,29 @@ StandardReprMod StandardReprMod::build
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const
-{ size_t hash= x_part + 47*rgl.denominator();
-  const Ratvec_Numer_t& num=rgl.numerator();
-  for (unsigned i=0; i<num.size(); ++i)
-    hash= 11*hash+num[i];
+{ size_t hash = x_part + 47*rgl.denominator();
+  for (auto entry : rgl.numerator())
+    hash= 11*hash+entry;
+  return hash &(modulus-1);
+}
+
+Reduced_param::Reduced_param (InnerClass& ic, const StandardReprMod& srm)
+    : x(srm.x()), evaluations() // |int_sys_nr| is set by |integral_eval| below
+{
+  const auto& glr = srm.gamma_rep(); // $\gamma-\lambda+\rho$
+  auto eval = ic.integral_eval(glr,int_sys_nr) * glr.numerator();
+  for (auto& entry : eval)
+  {
+    assert(entry%glr.denominator()==0);
+    entry /= glr.denominator();
+  }
+  evaluations = int_Vector(eval.begin(),eval.end());
+}
+
+size_t Reduced_param::hashCode(size_t modulus) const
+{ size_t hash = 7*x + 83*int_sys_nr;
+  for (auto val : evaluations)
+    hash= 25*hash+val;
   return hash &(modulus-1);
 }
 
@@ -219,16 +238,16 @@ Weight Rep_context::theta_1_preimage
 }
 
 RatWeight Rep_context::offset
-  (const StandardRepr& sr, const StandardReprMod& srm) const
+  (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {
-  auto reduced = StandardReprMod::mod_reduce(*this,sr);
-  RatWeight result = reduced.gamma_rep() - srm.gamma_rep();
+  const auto& gam = srm0.gamma_rep(); // will also define integral system
+  RatWeight result = gam - srm1.gamma_rep();
   auto& ic = inner_class();
-  InvolutionNbr inv = kgb().inv_nr(sr.x());
+  InvolutionNbr inv = kgb().inv_nr(srm0.x());
   unsigned int int_sys_nr;
-  auto codec = ic.integrality_codec(sr.gamma(),inv,int_sys_nr);
+  auto codec = ic.integrality_codec(gam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((ic.integral_eval(sr.gamma(),int_sys_nr)*result.numerator()).isZero());
+  assert((ic.integral_eval(gam,int_sys_nr)*result.numerator()).isZero());
   return result;
 }
 
@@ -1115,6 +1134,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), alcove_hash(pool)
 , mod_pool(), mod_hash(mod_pool)
+, reduced_pool(), reduced_hash(reduced_pool)
 , K_type_pool(), K_type_hash(K_type_pool)
 , KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
 , poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
@@ -1163,44 +1183,50 @@ blocks::common_block& Rep_table::add_block_below
 {
   assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
   Bruhat_generator gen(this,ctxt); // object to help generating Bruhat interval
-  const auto prev_size = mod_pool.size(); // limit of previously known elements
   containers::sl_list<unsigned long> elts(gen.block_below(srm)); // generate
 
-  using sub_pair =
-    std::pair<blocks::common_block*,containers::sl_list<BlockElt> >;
+  using sub_pair = std::pair<blocks::common_block*,RatWeight>;
   containers::sl_list<sub_pair> sub_blocks;
   for (auto z : elts)
-    if (z<prev_size) // then |z| was already known as a partial block element
-    { // record block pointer and index of |z| in block into |sub_blocks|
-      const auto block_p = &*place[z].first;
-      const BlockElt z_rel = place[z].second;
-      auto it = std::find_if
-	(sub_blocks.begin(),sub_blocks.end(),
-	 [block_p](const sub_pair& pair) { return &*pair.first==block_p; }
-	 );
-      if (sub_blocks.at_end(it)) // then we have a fresh sub-block
-	sub_blocks.emplace_back(block_p,containers::sl_list<BlockElt>{z_rel});
-      else // a sub-block already recorded (at |it|)
-	it->second.push_back(z_rel); // append |z_rel| to its list of elements
-    }
-
-  // add to |elements| any members of |sub_blocks| that are not already there
-  for (auto& pair : sub_blocks)
   {
-    if (pair.first->size() > pair.second.size()) // then incomplete inclusion
-    { // so there are some elements to pick up form partial block |*pair.first|
-      const auto& block = *pair.first;
-      pair.second.sort(); // following loop requires increase
-      auto it = pair.second.begin();
-      for (BlockElt z=0; z<block.size(); ++z)
-	if (not it.at_end() and *it==z)
-	  ++it; // skip element already present in generated Bruhat interval
-	else // join old element but outside Bruhat interval to new block
-	  elts.push_back(mod_hash.find(block.representative(z)));
+    Reduced_param red(inner_class(),mod_pool[z]);
+    auto h = reduced_hash.find(red); // fingerprint for family of parameters
+    if (h!=reduced_hash.empty) // then a similar parameter was known
+    { // record block pointer and index of |z| in block into |sub_blocks|
+      const auto block_p = &*place[h].first;
+      auto hit = [block_p]
+	(const sub_pair& pair)->bool { return &*pair.first==block_p; };
+      if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
+      {
+	StandardReprMod base = block_p->representative(place[h].second);
+	sub_blocks.emplace_back(block_p,offset(this->srm(z),base));
+      }
     }
-    // since all |block| elements are now incorporated in |elements|
-    pair.second.clear(); // forget which were in the Bruhat interval
   }
+
+  // reconstruct elements for all |sub_blocks|
+  size_t limit = mod_pool.size();
+  const auto rho = rootdata::rho(root_datum());
+  for (auto& pair : sub_blocks)
+    for (BlockElt z=0; z<pair.first->size(); ++z)
+    {
+      auto new_gam_lam =
+	pair.first->representative(z).gamma_lambda(rho)+pair.second;
+      auto shifted =
+	StandardReprMod::build(*this,pair.first->x(z),std::move(new_gam_lam));
+#ifdef NDEBUG
+      mod_hash.match(shifted); // if new, add |shifted| to |mod_pool|
+#else
+      auto h = mod_hash.match(shifted); // if new, add |shifted| to |mod_pool|
+      if (h<limit) // if |shifted| already known, check |h| is among |elements|
+	assert(std::any_of(elts.begin(),elts.end(),
+			   [h](unsigned long e) {return e==h; }
+			   ));
+#endif
+    }
+  // add any new elements generated from |sub_blocks| to the end of |elements|
+  while (limit<mod_pool.size())
+    elts.push_back(limit++);
 
   sl_list<blocks::common_block> temp; // must use temporary singleton
   sl_list<StandardReprMod> elements;
@@ -1243,8 +1269,11 @@ blocks::common_block& Rep_table::add_block_below
       BlockEltList embed; embed.reserve(sub_block.size()); // translation array
       for (BlockElt z=0; z<sub_block.size(); ++z)
       {
-	auto zm = sub_block.representative(z);
-	const BlockElt z_rel = block.lookup(zm);
+	auto new_gam_lam =
+	  sub_block.representative(z).gamma_lambda(rho)+pair.second;
+	auto shifted =
+	  StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
+	const BlockElt z_rel = block.lookup(shifted);
 	assert(z_rel!=UndefBlock);
 	embed.push_back(z_rel);
       }
@@ -1464,8 +1493,9 @@ blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
-  if (h==mod_hash.empty or not place[h].first->is_full()) // then we must
+  Reduced_param red(inner_class(),srm); // reduce further mod integral orthogonal
+  auto h=reduced_hash.find(red); // look up modulo $X^*+integral^\perp$
+  if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
     h=add_block(srm); // generate a new full block (possibly swalllow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
@@ -1479,12 +1509,13 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   assert(mod_hash.size()==place.size()); // should be in sync at this point
-  auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
-  if (h!=mod_hash.empty) // then we are in a new translation family of blocks
+  Reduced_param red(inner_class(),srm); // reduce further mod integral orthogonal
+  auto h=reduced_hash.find(red); // look up modulo $X^*+integral^\perp$
+  if (h!=reduced_hash.empty) // then we have found our family of blocks
   {
-    assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
+    assert(h<place.size());
     which = place[h].second;
-    return *place[h].first;
+    return *place[h].first; // use block of related |StandardReprMod| as ours
   }
   common_context ctxt(*this,SubSystem::integral(root_datum(),sr.gamma()));
   BitMap subset;
