@@ -1483,7 +1483,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
     which = place[h].second;
     return *place[h].first;
   }
-  common_context ctxt(real_group(),SubSystem::integral(root_datum(),sr.gamma()));
+  common_context ctxt(*this,SubSystem::integral(root_datum(),sr.gamma()));
   BitMap subset;
   auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
   which = last(subset);
@@ -2135,7 +2135,7 @@ K_type_poly Rep_table::twisted_deformation (StandardRepr z)
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
 
-//			|common_conetxt| methods
+//			|common_context| methods
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
@@ -2155,27 +2155,29 @@ std::pair<gradings::Status::Value,bool>
 StandardReprMod common_context::cross
     (weyl::Generator s, const StandardReprMod& z) const
 {
+  const auto& full_datum = full_root_datum();
   const auto& refl = sub.reflection(s); // reflection word in full system
   const KGBElt new_x = kgb().cross(refl,z.x());
-  RatWeight gamma_lambda = this->gamma_lambda(z);
+  RatWeight gamma_lambda = rc().gamma_lambda(z);
 
   const auto& i_tab = involution_table();
-  RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
+  RootNbrSet pos_neg = pos_to_neg(full_datum,refl);
   pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
-  gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
+  gamma_lambda -= root_sum(full_datum,pos_neg); // correction for $\rho_r$'s
   integr_datum.simple_reflect(s,gamma_lambda.numerator()); // integrally simple
-  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
+  return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
 bool common_context::is_parity
     (weyl::Generator s, const StandardReprMod& z) const
 {
+  const auto& full_datum = full_root_datum();
   const auto& i_tab = involution_table();
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
   assert(real_roots.isMember(sub.parent_nr_simple(s)));
   const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
-  const int eval = this->gamma_lambda(z).dot(alpha_hat);
-  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  const int eval = rc().gamma_lambda(z).dot(alpha_hat);
+  const int rho_r_corr = alpha_hat.dot(full_datum.twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
 }
 
@@ -2183,49 +2185,51 @@ StandardReprMod common_context::down_Cayley
     (weyl::Generator s, const StandardReprMod& z) const
 {
   assert(is_parity(s,z)); // which also asserts that |z| is real for |s|
+  const auto& full_datum = full_root_datum();
   const auto& conj = sub.to_simple(s); // word in full system
   const KGBElt conj_x = kgb().cross(conj,z.x());
   const KGBElt new_x =
     kgb().cross(kgb().inverseCayley(sub.simple(s),conj_x).first,conj);
-  RatWeight gamma_lambda = this->gamma_lambda(z); // will be shifted below
+  RatWeight gamma_lambda = rc().gamma_lambda(z); // will be shifted below
 
   const auto& i_tab = involution_table();
-  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet pos_neg = pos_to_neg(full_datum,conj);
   RootNbrSet real_flip = i_tab.real_roots(kgb().inv_nr(z.x()));
   real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
   pos_neg &= real_flip; // posroots that change real status and map to negative
-  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
-  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
+  gamma_lambda += root_sum(full_datum,pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
 StandardReprMod common_context::up_Cayley
     (weyl::Generator s, const StandardReprMod& z) const
 {
+  const auto& full_datum = full_root_datum();
   const auto& conj = sub.to_simple(s); // word in full system
   const KGBElt conj_x = kgb().cross(conj,z.x());
   assert(kgb().status(sub.simple(s),conj_x)==
 	 gradings::Status::ImaginaryNoncompact);
   const auto new_x = kgb().cross(kgb().cayley(sub.simple(s),conj_x),conj);
-  RatWeight gamma_lambda = this->gamma_lambda(z); // will be shifted below
+  RatWeight gamma_lambda = rc().gamma_lambda(z); // will be shifted below
 
   const auto& i_tab = involution_table();
   const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
   RootNbrSet real_flip = upstairs_real_roots;
   real_flip ^= i_tab.real_roots(kgb().inv_nr(z.x())); // remove downstairs reals
 
-  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet pos_neg = pos_to_neg(full_datum,conj);
   pos_neg &= real_flip; // posroots that change real status and map to negative
-  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  gamma_lambda += root_sum(full_datum,pos_neg); // correction of $\rho_r$'s
 
   // correct in case the parity condition fails for our raised |gamma_lambda|
   const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
   const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
-    alpha_hat.dot(root_datum().twoRho(upstairs_real_roots))/2;
+    alpha_hat.dot(full_datum.twoRho(upstairs_real_roots))/2;
   const int eval = gamma_lambda.dot(alpha_hat);
   if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
     gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
 
-  return repr::StandardReprMod::build(*this,new_x,gamma_lambda);
+  return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
 
@@ -2233,36 +2237,36 @@ Weight common_context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(root_datum(),S);
+  return root_sum(full_root_datum(),S);
 }
 
 
 //			|Ext_common_context| methods
 
 Ext_common_context::Ext_common_context
-  (RealReductiveGroup& G, const WeightInvolution& delta, const SubSystem& sub)
-    : repr::common_context(G,sub)
+  (const Rep_context& rc, const WeightInvolution& delta, const SubSystem& sub)
+    : repr::common_context(rc,sub)
     , d_delta(delta)
-    , pi_delta(G.root_datum().rootPermutation(delta))
+    , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , l_shifts(id().semisimpleRank())
 {
-  const RootDatum& rd = root_datum();
+  const RootDatum& rd = rc.root_datum();
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
   // the reflections for |E.l| pivot around |g_rho_check()|
-  const RatCoweight& g_rho_check = this->g_rho_check();
+  const RatCoweight minus_g_rho_check = -rc.g_rho_check();
   for (unsigned i=0; i<l_shifts.size(); ++i)
-    l_shifts[i] = -g_rho_check.dot(id().simpleRoot(i));
+    l_shifts[i] = minus_g_rho_check.dot(id().simpleRoot(i));
 } // |Ext_common_context::Ext_common_context|
 
 
 bool Ext_common_context::is_very_complex
   (InvolutionNbr theta, RootNbr alpha) const
 { const auto& i_tab = involution_table();
-  const auto& rd = root_datum();
+  const auto& rd = full_root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
@@ -2286,7 +2290,7 @@ bool Ext_common_context::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not root_datum().sumIsRoot(*it,delta_of(*it)))
+	not full_root_datum().sumIsRoot(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -2304,8 +2308,8 @@ Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
 
 // |common_context| methods
 
-common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
-: Rep_context(G)
+common_context::common_context (const Rep_context& rc, const SubSystem& sub)
+: rep_con(rc)
 , integr_datum(sub.pre_root_datum())
 , sub(sub)
 {} // |common_context::common_context|

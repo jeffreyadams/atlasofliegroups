@@ -728,8 +728,7 @@ common_block::common_block // full block constructor
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_rep()))
   , rc(rc)
   , integral_sys(SubSystem::integral(root_datum(),srm.gamma_rep()))
-  , z_pool()
-  , srm_hash(z_pool,5)
+  , z_pool(), srm_hash(z_pool,4)
   , extended(nullptr) // no extended block initially
   , highest_x() // defined below when we have moved to top of block
   , highest_y() // defined below when generation is complete
@@ -747,7 +746,7 @@ common_block::common_block // full block constructor
 
   const unsigned our_rank = integral_sys.rank();
 
-  repr::common_context ctxt(real_group(),integral_sys);
+  repr::common_context ctxt(rc,integral_sys);
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy
@@ -1082,11 +1081,10 @@ common_block::common_block // partial block constructor
      const repr::common_context& ctxt,
      containers::sl_list<unsigned long>& elements,
      const RatWeight& gamma_rep)
-  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_rep))
+  : Block_base(ctxt.subsys().rank())
   , rc(rt)
   , integral_sys(ctxt.subsys())
-  , z_pool()
-  , srm_hash(z_pool)
+  , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended(nullptr) // no extended block initially
   , highest_x(0) // it won't be less than this; increased later
   , highest_y(0) // defined when generation is complete

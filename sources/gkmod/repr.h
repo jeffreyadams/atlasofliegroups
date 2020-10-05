@@ -157,7 +157,7 @@ class Rep_context
   // accessors
   RealReductiveGroup& real_group() const { return G; }
   InnerClass& inner_class() const { return G.innerClass(); }
-  const Cartan_orbits& involution_table() const
+  const InvolutionTable& involution_table() const
   { return inner_class().involution_table(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
@@ -489,14 +489,20 @@ public:
 }; // |class Ext_rep_context|
 
 // another extension of |Rep_context|, fix integral system for common block
-class common_context : public Rep_context
+class common_context
 {
+  const Rep_context& rep_con;
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
 public:
-  common_context (RealReductiveGroup& G, const SubSystem& integral);
+  common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors
+  const Rep_context& rc() const { return rep_con; }
+  const KGB& kgb() const { return rep_con.kgb(); }
+  const InvolutionTable& involution_table() const
+    { return rep_con.involution_table(); }
+  const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
 
@@ -530,7 +536,7 @@ class Ext_common_context : public common_context
   int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
-  Ext_common_context (RealReductiveGroup& G, const WeightInvolution& delta,
+  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta,
 		      const SubSystem& integral_subsystem);
 
   // accessors
