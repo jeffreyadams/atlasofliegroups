@@ -1278,15 +1278,15 @@ struct sub_triple {
 };
 
 blocks::common_block& Rep_table::add_block_below
-  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
+  (const common_context& ctxt, const StandardReprMod& init, BitMap* subset)
 {
   assert // we are called to add a block for nothing like what is known before
-    (reduced_hash.find(Reduced_param(inner_class(),srm))==reduced_hash.empty);
+    (reduced_hash.find(Reduced_param(inner_class(),init))==reduced_hash.empty);
 
   std::vector<StandardReprMod> pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
-  gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
+  gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
 
   const size_t place_limit = place.size();
   sl_list<sub_triple> sub_blocks;
@@ -1325,7 +1325,7 @@ blocks::common_block& Rep_table::add_block_below
 
   sl_list<blocks::common_block> temp; // must use temporary singleton
   auto& block = temp.emplace_back // construct block and get a reference
-    (ctxt,elements,srm.gamma_rep());
+    (ctxt,elements,init.gamma_rep());
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
