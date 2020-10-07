@@ -150,14 +150,14 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  int_Vector evaluations;
+  int_Vector evs_reduced; // evaluation at coroots, reduced mod $(1-theta)X^*$
 
 public:
-  Reduced_param(InnerClass& ic, const StandardReprMod& srm);
+  Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
 
   typedef std::vector<Reduced_param> Pooltype;
   bool operator!=(const Reduced_param& p) const
-  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evaluations!=p.evaluations; }
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
 
@@ -458,6 +458,11 @@ class Rep_table : public Rep_context
   simple_list<std::pair<BlockElt,kl::KLPol> >
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
+
+  size_t find_reduced_hash(const StandardReprMod& srm) const
+  { return reduced_hash.find(Reduced_param(*this,srm)); }
+  size_t match_reduced_hash(const StandardReprMod& srm)
+  { return reduced_hash.match(Reduced_param(*this,srm)); }
 
   StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
 

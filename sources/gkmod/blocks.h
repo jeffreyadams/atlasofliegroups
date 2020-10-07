@@ -386,7 +386,7 @@ class common_block : public Block_base
   BlockElt lookup(const StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
-  StandardReprMod representative (BlockElt z) const { return z_pool[z]; }
+  const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_rep|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;

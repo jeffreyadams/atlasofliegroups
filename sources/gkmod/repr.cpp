@@ -72,9 +72,12 @@ size_t StandardReprMod::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-Reduced_param::Reduced_param (InnerClass& ic, const StandardReprMod& srm)
-    : x(srm.x()), evaluations() // |int_sys_nr| is set by |integral_eval| below
+Reduced_param::Reduced_param
+  (const Rep_context& rc, const StandardReprMod& srm)
+    : x(srm.x()), evs_reduced() // |int_sys_nr| is set by |integral_eval| below
 {
+  InnerClass& ic = rc.inner_class();
+  const KGB& kgb = rc.kgb();
   const auto& glr = srm.gamma_rep(); // $\gamma-\lambda+\rho$
   auto eval = ic.integral_eval(glr,int_sys_nr) * glr.numerator();
   for (auto& entry : eval)
@@ -82,12 +85,16 @@ Reduced_param::Reduced_param (InnerClass& ic, const StandardReprMod& srm)
     assert(entry%glr.denominator()==0);
     entry /= glr.denominator();
   }
-  evaluations = int_Vector(eval.begin(),eval.end());
+  const auto& codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
+  evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
+    int_Vector(eval.begin(),eval.end());
+  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
+    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
 }
 
 size_t Reduced_param::hashCode(size_t modulus) const
 { size_t hash = 7*x + 83*int_sys_nr;
-  for (auto val : evaluations)
+  for (auto val : evs_reduced)
     hash= 25*hash+val;
   return hash &(modulus-1);
 }
@@ -1281,7 +1288,7 @@ blocks::common_block& Rep_table::add_block_below
   (const common_context& ctxt, const StandardReprMod& init, BitMap* subset)
 {
   assert // we are called to add a block for nothing like what is known before
-    (reduced_hash.find(Reduced_param(inner_class(),init))==reduced_hash.empty);
+    (find_reduced_hash(init)==reduced_hash.empty);
 
   std::vector<StandardReprMod> pool;
   Mod_hash_tp hash(pool);
@@ -1292,8 +1299,7 @@ blocks::common_block& Rep_table::add_block_below
   sl_list<sub_triple> sub_blocks;
   for (const auto& elt : pool)
   {
-    Reduced_param red(inner_class(),elt);
-    auto h = reduced_hash.match(red); // fingerprint for family of parameters
+    auto h = match_reduced_hash(elt); // fingerprint of parameter family
     if (h==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),-1); // create slot; both fields filled later
     else if (h<place_limit) // then a similar parameter was known
@@ -1354,11 +1360,12 @@ blocks::common_block& Rep_table::add_block_below
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
-      auto new_gam_lam =
-	sub_block.representative(z).gamma_lambda(rho)+sub.shift;
-      auto shifted =
+      const auto& elt = sub_block.representative(z);
+      auto new_gam_lam = elt.gamma_lambda(rho)+sub.shift;
+      auto elt_shifted =
 	StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
-      const BlockElt z_rel = block.lookup(shifted);
+      assert(find_reduced_hash(elt)==find_reduced_hash(elt_shifted));
+      const BlockElt z_rel = block.lookup(elt_shifted);
       assert(z_rel!=UndefBlock);
       embed.push_back(z_rel);
     }
@@ -1376,7 +1383,7 @@ blocks::common_block& Rep_table::add_block_below
   for (BlockElt z=block.size(); z-->0; ) // decreasing: least |z| wins below
   { // by using reverse iteration, least elt with same |h| defines |place[h]|
     const StandardReprMod srm =block.representative(z);
-    auto h = reduced_hash.find(Reduced_param(inner_class(),srm));
+    auto h = find_reduced_hash(srm);
     assert(h!=reduced_hash.empty);
     place[h] = std::make_pair(new_block_it,z); // extend or replace
   }
@@ -1394,7 +1401,7 @@ void Rep_table::block_erase (bl_it pos)
     for (BlockElt z=0; z<block.size(); ++z)
     {
       auto zm = block.representative(z);
-      auto seq = reduced_hash.find(Reduced_param(inner_class(),zm));
+      auto seq = find_reduced_hash(zm);
       assert(seq<place.size()); // all elements in |block_list| must have |place|
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
 	place[seq].first=pos; // replace iterator that is about to be invalidated
@@ -1409,7 +1416,6 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   sl_list<blocks::common_block> temp; // must use temporary singleton
   auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
 
-  auto& ic = inner_class();
   const auto rho = rootdata::rho(root_datum());
   const size_t place_limit = place.size();
 
@@ -1417,7 +1423,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   for (BlockElt z=0; z<block.size(); ++z)
   {
     auto elt = block.representative(z);
-    auto seq = reduced_hash.match(Reduced_param(ic,elt));
+    auto seq = match_reduced_hash(elt);
     if (seq==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),z); // create slot; iterator filled later
     else if (seq<place_limit)
@@ -1460,18 +1466,18 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   // now make sure for all |elements| that |place| fields are set for new block
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto red_par = Reduced_param(ic,block.representative(z));
-    place[reduced_hash.find(red_par)].first = new_block_it;
+    auto h = find_reduced_hash(block.representative(z));
+    place[h].first = new_block_it;
+    place[h].second = z;
   }
-  return reduced_hash.find(Reduced_param(ic,srm));
+  return find_reduced_hash(srm);
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  Reduced_param red(inner_class(),srm); // reduce further mod integral orthogonal
-  auto h=reduced_hash.find(red); // look up modulo $X^*+integral^\perp$
+  auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
     h=add_block(srm); // generate a new full block (possibly swalllow older ones)
   assert(h<place.size() and place[h].first->is_full());
@@ -1486,13 +1492,14 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
-  Reduced_param red(inner_class(),srm); // reduce further mod integral orthogonal
-  auto h=reduced_hash.find(red); // look up modulo $X^*+integral^\perp$
+  auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
   if (h!=reduced_hash.empty) // then we have found our family of blocks
   {
     assert(h<place.size());
     which = place[h].second;
-    return *place[h].first; // use block of related |StandardReprMod| as ours
+    auto& block = *place[h].first;
+    assert(block.representative(which).x()==srm.x()); // check minimum of sanity
+    return block; // use block of related |StandardReprMod| as ours
   }
   common_context ctxt(*this,SubSystem::integral(root_datum(),sr.gamma()));
   BitMap subset;

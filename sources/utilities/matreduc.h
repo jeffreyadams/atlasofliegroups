@@ -41,7 +41,9 @@ template<typename C>
 				  matrix::Vector<C> b,
 				  arithmetic::big_int& f);
 
-template<typename C> // find |row,col| making |row*M*col| (the returned) diagonal
+// find |row,col|, with $\det=1$ making |row*M*col| (the returned) diagonal
+// WARNING first entry (only) of result might be negative (rest is positive)
+template<typename C>
   std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			     matrix::PID_Matrix<C>& row,
 			     matrix::PID_Matrix<C>& col);
