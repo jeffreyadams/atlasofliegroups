@@ -130,7 +130,7 @@ set intersection([int] A,[int] B)=[int]:
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
-(graph.root_datum,for (tau,edges) in graph.nodes do
+(sub_root_datum(graph.root_datum,S).derived,for (tau,edges) in graph.nodes do
     (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in
@@ -198,12 +198,14 @@ sub_cells(cell,left_root_indices(G))
 
 set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
-{
-set left_cell_of(Param p)=
-let (index,cell)=W_cell(p)
-let cells=left_cells(p.real_form,W_cell(p)) in 
 
-}
+set left_cell_of(Param p)=
+let (index,cell)=W_cell(p) then
+cells=left_cells(p.real_form,cell) then
+j=first(for (vertices,links) in cells do find(vertices,index)>=0 od) in 
+cells[j]
+
+
 set extract_nodes(WGraph g, [int] nodes)=WGraph:
 (g.root_datum,
 for i in nodes do

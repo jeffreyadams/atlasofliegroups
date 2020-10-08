@@ -147,7 +147,8 @@ set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=embe
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
+{let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
+let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
 {difference here: formerly Gprime.rank}
 
 {w\in W(L) -> W(Gprime)}
