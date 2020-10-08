@@ -384,7 +384,7 @@ class common_block : public Block_base
   { return z_pool[z].gamma_rep(); } // is actually easier than |gamma_lambda|
 
   BlockElt lookup(const StandardReprMod& srm) const;
-  BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
+  BlockElt lookup(KGBElt x, RatWeight gamma_lambda) const; // by value
 
   const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 

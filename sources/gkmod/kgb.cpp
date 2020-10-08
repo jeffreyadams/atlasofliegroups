@@ -728,7 +728,7 @@ KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
      titsGroup().left_torus_part(a)*delta2+corr,
      weylGroup().translation(a.w(),delta_twist)
      );
-  return lookup(twisted_a);
+  return lookup(std::move(twisted_a));
 }
 
 const poset::Poset& KGB::bruhatPoset() // this creates full poset on demand

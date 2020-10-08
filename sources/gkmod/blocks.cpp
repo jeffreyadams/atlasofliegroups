@@ -1246,9 +1246,9 @@ BlockElt common_block::lookup(const StandardReprMod& srm) const
   return srm_hash.find(srm);
 }
 
-BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
+BlockElt common_block::lookup(KGBElt x, RatWeight gamma_lambda) const
 {
-  return lookup(StandardReprMod::build(rc,x,gamma_lambda));
+  return lookup(StandardReprMod::build(rc,x,std::move(gamma_lambda)));
 }
 
 repr::StandardRepr common_block::sr

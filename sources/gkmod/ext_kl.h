@@ -58,8 +58,10 @@ class descent_table
     { return info[y].descents-info[x].descents; }
 
   // index of primitive element corresponding to $x$ in row for $y$
+  unsigned int x_index(BlockElt x, RankFlags desc) const
+    { return prim_index[desc.to_ulong()][x]; }
   unsigned int x_index(BlockElt x, BlockElt y) const
-    { return prim_index[info[y].descents.to_ulong()][x]; }
+    { return x_index(x,info[y].descents); }
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
   bool flips(BlockElt x,BlockElt y) const
     { return prim_flip[x].isMember(info[y].descents.to_ulong()); }
