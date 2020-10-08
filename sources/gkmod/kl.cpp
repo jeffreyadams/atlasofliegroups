@@ -1024,18 +1024,31 @@ void KL_table::swallow
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))
     { // then transfer |sub.d_KL[z]| and |sub.d_mu[z]| to new block
-      for (auto& entry : sub.d_KL[z])
-      {
-	entry.x=embed[entry.x];      // renumber block elements
-	if (not shared_KL_pool)
-	  entry.P=poly_trans[entry.P]; // renumber polynomial indices
+      { auto& KL_list = sub.d_KL[z];
+	for (unsigned int i=0; i<KL_list.size(); ++i)
+	{
+	  auto& entry = KL_list[i];
+	  entry.x=embed[entry.x];      // renumber block elements
+	  if (not shared_KL_pool)
+	    entry.P=poly_trans[entry.P]; // renumber polynomial indices
+	  // insertion sort to reestablish possibly lost increasing property
+	  for (unsigned int j=i; j>0 and KL_list[j-1].x > KL_list[j].x; --j)
+	    std::swap(KL_list[j-1],KL_list[j]);
+	}
+	d_KL[embed[z]] = std::move(sub.d_KL[z]);
       }
-      d_KL[embed[z]] = std::move(sub.d_KL[z]);
 
-      for (auto& entry : sub.d_mu[z])
-	entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
-      d_mu[embed[z]] = std::move(sub.d_mu[z]);
-
+      { auto& mu_list = sub.d_mu[z];
+	for (unsigned int i=0; i<mu_list.size(); ++i)
+	{
+	  auto& entry = mu_list[i];
+	  entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
+	  // insertion sort to reestablish possibly lost increasing property
+	  for (unsigned int j=i; j>0 and mu_list[j-1].x > mu_list[j].x; --j)
+	    std::swap(mu_list[j-1],mu_list[j]);
+	}
+	d_mu[embed[z]] = std::move(sub.d_mu[z]);
+      }
       d_holes.remove(embed[z]);
     }
 }
