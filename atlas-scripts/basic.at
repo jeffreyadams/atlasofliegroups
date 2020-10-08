@@ -1028,9 +1028,10 @@ set fundamental_coweights (RootDatum rd) = [ratvec]:
 {root datum of singular roots}
 set singular_root_datum(RootDatum rd,ratvec gamma)=
 let roots=[vec]:[], coroots=[vec]:[] in
-for a@i in  rd.poscoroots do if a*gamma=0 then
-  roots#:=rd.coroots[i]; coroots#:=a fi od;
-if =#roots then root_datum(null(0,0),null(0,0)) else   {trivial_group, in groups.at, not loaded yet}
+for a@i in  rd.poscoroots do 
+ if a*gamma=0 then roots#:=rd.posroots[i]; coroots#:=a fi
+od;
+if #roots=0 then  root_datum(null(0,0),null(0,0)) else   {trivial_group, in groups.at, not loaded yet}
 root_datum_from_positive(roots,coroots) fi
 
 { list of all highest roots (one for each simple factor) }

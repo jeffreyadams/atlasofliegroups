@@ -196,12 +196,51 @@ tensor with sign, and truncated induce to get
  a character tau of W(rd)
 return springer_inverse(tau)
 
-need:
+precompute:
 rd.springer_table
 rd_int.character_table
 rd_singular.character_table
 }
-set av_maximal_ideal(RootDatum rd,ratvec gamma_in)=
+set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
+let gamma=dominant(rd,gamma_in) then
+ct=st.ct then
+rd_int=integrality_datum(rd,gamma) then
+rd_singular=singular_root_datum(rd,gamma) then
+d=rd_singular.nr_of_posroots then
+()=prints("target d: ", d) then
+chars_int=##for i:ct_int.n_classes do
+ if ct_int.degrees[i]=d and
+ !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
+ then  [i] else [] fi
+od then
+char_int=ct_int.characters[chars_int[0]] then
+char_int_sign=ct_int.tensor_sign(char_int) then
+index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then
+orbit=st.springer_inverse(index) in
+orbit_by_diagram(rd,orbit.diagram_normalized)
+
+{precompute st,ct_int}
+set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,ratvec gamma)=
+let rd_singular=singular_root_datum(rd,gamma) then
+ct_singular=if rd_singular=ct_int.root_datum then ct_int else rd_singular.character_table fi
+in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+
+{precompute st}
+set av_maximal_ideal(RootDatum rd,SpringerTable st,ratvec gamma)=
+let rd_int=integrality_datum(rd,gamma) then
+ct_int=if rd_int=rd then st.ct else rd_int.character_table fi in
+av_maximal_ideal(rd,st,ct_int,gamma)
+
+set av_maximal_ideal(RootDatum rd,ratvec gamma)=
+let st=rd.springer_table then
+rd_int=integrality_datum(rd,gamma) then
+ct_int=if rd_int=rd then st.ct else rd_int.character_table fi then
+rd_singular=singular_root_datum(rd,gamma) then
+ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
+in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+{
+
+
 let gamma=dominant(rd,gamma_in) then
 {springer table for rd}
 st=rd.springer_table then
@@ -229,7 +268,7 @@ index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then
 ()=prints("index: ", index, new_line, "induced character: ", ct.characters[index]) then
 orbit=st.springer_inverse(index) in
 orbit_by_diagram(rd,orbit.diagram_normalized)
-
+}
 
 {the alt versions use the left cell for a complex group to compute
 the maximal ideal at gamma, this is faster than av_maximal_ideal
