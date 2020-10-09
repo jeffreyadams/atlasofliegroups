@@ -157,6 +157,7 @@ public:
   typedef std::vector<Reduced_param> Pooltype;
   bool operator!=(const Reduced_param& p) const
   { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
+  bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
 
@@ -193,6 +194,7 @@ class Rep_context
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
   // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
+  StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
   StandardRepr sr
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
@@ -487,7 +489,7 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
+     RankFlags singular, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block

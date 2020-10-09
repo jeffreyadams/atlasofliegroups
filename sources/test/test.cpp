@@ -982,14 +982,14 @@ void repr_braid_f()
     (commands::current_layout(), commands::current_lattice_basis());
 
   auto gamma = commands::currentStandardRepr().gamma();
-  auto& block = commands::current_common_block();
   if (not ((delta-1)*gamma.numerator()).isZero())
   {
     std::cout << "Chosen delta does not fix gamma=" << gamma
 	      << " for the current block." << std::endl;
     return;
   }
-  ext_block::ext_block eblock(block,delta,nullptr);
+  ext_block::ext_block eblock =
+    commands::current_common_block().extended_block(delta);
   test_braid(eblock);
 }
 

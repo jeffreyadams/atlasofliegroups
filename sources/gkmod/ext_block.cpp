@@ -603,11 +603,6 @@ ext_block::ext_block
   BitMap fixed_points(block.size());
 
   // compute the delta-fixed points of the block
-
-  // test if twisting some block element lands in the same block
-  if (twisted(block,0,delta)==UndefBlock)
-    return; // if block not delta-stable, leave |size==0| and quit
-
   for (BlockElt z=0; z<block.size(); ++z)
     if (twisted(block,z,delta)==z)
       fixed_points.insert(z);

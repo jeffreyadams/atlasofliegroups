@@ -345,7 +345,9 @@ class common_block : public Block_base
   StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
-  std::unique_ptr<ext_block::ext_block> extended;
+  // pair of an extended block and characterising |gamma_lambda| at element 0
+  struct ext_block_pair;
+  sl_list<ext_block_pair> extended;
 
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
@@ -367,7 +369,7 @@ class common_block : public Block_base
   const Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
   const SubSystem& integral_subsystem() const { return integral_sys; }
-  const InnerClass& inner_class() const;
+  InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
 
@@ -385,10 +387,15 @@ class common_block : public Block_base
 
   const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 
+  StandardRepr sr // reconstruct |StandardRepr| at |gamma| from |z_pool[z]|
+    (BlockElt z, const RatWeight& gamma) const;
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
+
+  // unshifted, unshared extended block, but with "arbitrary" involution
+  ext_block::ext_block extended_block(const WeightInvolution& delta) const;
 
   // manipulators
 

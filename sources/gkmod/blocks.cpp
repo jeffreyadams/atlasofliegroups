@@ -689,7 +689,7 @@ void Block::compute_supports()
 
 RealReductiveGroup& common_block::real_group() const
   { return rc.real_group(); }
-const InnerClass& common_block::inner_class() const
+InnerClass& common_block::inner_class() const
   { return rc.inner_class(); }
 const InvolutionTable& common_block::involution_table() const
   { return inner_class().involution_table(); }
@@ -723,7 +723,7 @@ common_block::common_block // full block constructor
   , rc(rc)
   , integral_sys(SubSystem::integral(root_datum(),srm.gamma_lambda()))
   , z_pool(), srm_hash(z_pool,4)
-  , extended(nullptr) // no extended block initially
+  , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
   , highest_y() // defined below when generation is complete
   , generated_as_full_block(true)
@@ -1076,7 +1076,7 @@ common_block::common_block // partial block constructor
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
   , integral_sys(ctxt.subsys())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
-  , extended(nullptr) // no extended block initially
+  , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
   , highest_y(0) // defined when generation is complete
   , generated_as_full_block(false)
@@ -1242,6 +1242,13 @@ BlockElt common_block::lookup(KGBElt x, RatWeight gamma_lambda) const
   return lookup(StandardReprMod::build(rc,x,std::move(gamma_lambda)));
 }
 
+repr::StandardRepr common_block::sr(BlockElt z, const RatWeight& gamma) const
+{
+  const Weight lambda_rho =
+    gamma.integer_diff<int>(context().gamma_lambda_rho(z_pool[z]));
+  return rc.sr_gamma(x(z),lambda_rho,gamma);
+}
+
 repr::StandardRepr common_block::sr
   (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
 {
@@ -1255,16 +1262,16 @@ ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
   return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
 }
 
-ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
+ext_block::ext_block common_block::extended_block
+  (const WeightInvolution& delta) const
 {
-  if (extended.get()==nullptr)
-    extended.reset
-      (new ext_block::ext_block(*this,inner_class().distinguished(),pol_hash));
-  return *extended;
+  return { *this, delta, nullptr };
 }
 
 void common_block::shift (const RatWeight& diff)
 {
+  if (diff.numerator().isZero())
+    return;
   const auto& rc = context();
 #ifndef NDEBUG
   auto& ic = rc.inner_class();
@@ -1277,6 +1284,31 @@ void common_block::shift (const RatWeight& diff)
     rc.shift(diff,srm);
   srm_hash.reconstruct(); // input for hash function is computed has changed
 }
+
+struct common_block::ext_block_pair
+{
+  ext_block::ext_block eblock; RatWeight signature;
+  ext_block_pair
+    (const blocks::common_block& block, const WeightInvolution& delta,
+     ext_KL_hash_Table* pol_hash, RatWeight gamma_lambda)
+      : eblock(block,delta,pol_hash), signature(std::move(gamma_lambda)) {}
+};
+
+// when this method is called, a shift has been applied so twist works as-is
+ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
+{
+  auto preceeds = [] (const ext_block_pair& item,
+		      const RatWeight& value) { return item.signature<value; };
+
+  const auto& gamlam = z_pool[0].gamma_lambda(); // reference weight (adapted)
+  auto it = std::lower_bound(extended.begin(),extended.end(),gamlam,preceeds);
+  if (it!=extended.end() and it->signature==gamlam)
+    return it->eblock; // then identical extended block found, so use it
+
+  // otherwise construct |ext_block| within a pair
+  extended.emplace(it,*this,inner_class().distinguished(),pol_hash,gamlam);
+  return it->eblock; // return |ext_block| without |gamlam|
+} // |common_block::extended_block|
 
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
@@ -1304,12 +1336,28 @@ void common_block::swallow
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
-  if (sub.extended!=nullptr)
+
+  const auto& rc = context();
+  auto& ic = rc.inner_class();
+  const auto& kgb = rc.kgb();
+  InvolutionNbr inv = kgb.inv_nr(sub.z_pool[0].x());
+  unsigned int int_sys_nr; // for the |common_block|
+  subsystem::integral_datum_item& idi =
+    ic.int_item(sub.z_pool[0].gamma_lambda(),int_sys_nr);
+  const auto& codec = idi.data(ic,int_sys_nr,inv);
+  for (auto& pair : sub.extended)
   {
-    auto& eblock = extended_block(ext_KL_pol_hash); // get/build extended block
-    eblock.swallow(std::move(*sub.extended),embed);
+    auto& sub_eblock = pair.eblock;
+    RatWeight diff = pair.signature - rc.gamma_lambda(z_pool[embed[0]]);
+    diff -= rc.theta_1_preimage(diff,codec); // ensure orthogonality to int sys
+    shift(diff); // adapt our representatives to match |sub_eblock|
+    assert(pair.signature==rc.gamma_lambda(z_pool[embed[0]]));
+    auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
+    for (unsigned int n=0; n<sub_eblock.size(); ++n)
+      assert(eblock.is_present(embed[sub_eblock.z(n)]));
+    eblock.swallow(std::move(sub_eblock),embed);
   }
-}
+} // |common_block::swallow|
 
 void common_block::set_Bruhat
   (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse)
