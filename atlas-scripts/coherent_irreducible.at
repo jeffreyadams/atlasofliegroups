@@ -510,7 +510,7 @@ set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealF
    then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
     {w:gamma_dom -> p.infinitesimal_character _rho_u}
    then P=coherent_irr(block,graph,ind,w{.inverse})  {see theta_induce_irreducible_coherent in induction.at}
-   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
 
 {this is slow and probably negates the possible speed advantage of theta_induce_irreducible_wgraph,
 but useful for testing
@@ -525,4 +525,4 @@ set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
    then (w,gamma_dom)=from_dominant(rd,p.infinitesimal_character+rho_u)
     {w:gamma_dom -> p.infinitesimal_character _rho_u}
    then P=coherent_irr(block,graph,ind,w{.inverse})
-   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od

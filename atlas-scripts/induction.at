@@ -262,7 +262,7 @@ set standardize (Param p) = ParamPol:
 {  else p:=p.to_no_Cplus;} else p:=p.to_no_Cplus;
   let (w,lambda_dom)=from_dominant(root_datum(p.x.simple_imaginary_subsystem),p.lambda)  then
   p_dom=parameter(x(p), lambda_dom, nu(p))
-    in prints("p_dom: ", p_dom, "w: ", w);coherent_std_imaginary(w,p_dom)
+    in {prints("p_dom: ", p_dom, "w: ", w);}coherent_std_imaginary(w,p_dom)
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
@@ -494,7 +494,7 @@ set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
        according to the discussion DANGEROUS BEND in coherent.at, this means
        coherent(ind,w) is what we want, not coherent(ind,w.inverse)}
    then P=coherent_irr(ind,w)
-   in G.null_module + for c@q in P do c*T_param(q,gamma_dom) od
+   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
 
 {moved to coherent_irreducible.at}
 {Second version using coherent continuation of irreducibles:
