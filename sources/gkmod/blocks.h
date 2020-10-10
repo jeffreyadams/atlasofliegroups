@@ -173,20 +173,22 @@ public:
   weyl::Generator firstStrictDescent(BlockElt z) const;
   weyl::Generator firstStrictGoodDescent(BlockElt z) const;
 
+  // whether $J(z_{reg})$ survives tr. functor with |singular| singular coroots
   bool survives(BlockElt z, RankFlags singular) const;
-    // whether $J(z_{reg})$ survives tr. functor with |singular| singular coroots
-  containers::sl_list<BlockElt>
-    finals_for(BlockElt z, RankFlags singular) const; // expression for $I(z)$
+
+  // expression for $I(z)$
+  sl_list<BlockElt> finals_for(BlockElt z, RankFlags singular) const;
 
   // print whole block to stream (name chosen to avoid masking by |print|)
-  std::ostream& print_to // defined in |block_io|
-    (std::ostream& strm,bool as_invol_expr,RankFlags singular=RankFlags(0))
-    const;
+  // both veariants defined in |block_io|
+  std::ostream& print_to(std::ostream& strm,bool as_invol_expr) const;
+  std::ostream& print_to
+     (std::ostream& strm,RankFlags singular,const RatWeight& shift) const;
 
   // print derivated class specific information  for |z| (used in |print_to|)
   virtual std::ostream& print
-    (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular)
-    const =0;
+    (std::ostream& strm, BlockElt z,
+     bool as_invol_expr,RankFlags singular,const RatWeight* shift) const =0;
 
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
@@ -209,7 +211,7 @@ BlockEltPair link(weyl::Generator alpha,weyl::Generator beta,
 		  const Block_base& block, BlockElt y);
 
 // sorted list of elements reachable by a descent from $y$.
-containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y);
+simple_list<BlockElt> down_set(const Block_base& block,BlockElt y);
 
 
 // a derived class with minimal implementation to be a concrete class
@@ -223,7 +225,7 @@ public:
   virtual KGBElt max_x() const { return x_size-1; }
   virtual KGBElt max_y() const { return y_size-1; }
   virtual std::ostream& print
-    (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const
+    (std::ostream& strm, BlockElt,bool,RankFlags,const RatWeight*) const
     { return strm; }
 
   // pseudo constructors
@@ -323,7 +325,7 @@ class Block : public Block_base
   }
 
   virtual std::ostream& print // defined in block_io.cpp
-   (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const;
+   (std::ostream&,BlockElt,bool,RankFlags,const RatWeight*) const;
 
 
   // private accessor and manipulators
@@ -360,10 +362,8 @@ class common_block : public Block_base
      BlockElt& entry_element	// set to block element matching input
     );
   common_block // partial block
-    (const common_context& ctxt,
-     containers::sl_list<StandardReprMod>& elements,
-     const RatWeight& gamma_rep);
-  ~common_block(); // cleans up |*extended|, so inline definition impossible
+    (const common_context& ctxt, sl_list<StandardReprMod>& elements);
+  ~common_block(); // cleans up |extended|, so inline definition impossible
 
   // accessors that get values via |rc|
   const Rep_context& context() const { return rc; }
@@ -379,16 +379,15 @@ class common_block : public Block_base
   RankFlags singular (const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
-  RatWeight gamma_lambda(BlockElt z) const;
-  RatWeight gamma_lambda_rho(BlockElt z) const // that is $\gamma-\lambda+\rho$
-  { return z_pool[z].gamma_rep(); } // is actually easier than |gamma_lambda|
+  RatWeight gamma_lambda(BlockElt z) const { return z_pool[z].gamma_lambda(); }
+  RatWeight gamma_lambda_rho(BlockElt z) const; // that is $\gamma-\lambda+\rho$
 
   BlockElt lookup(const StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, RatWeight gamma_lambda) const; // by value
 
   const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 
-  StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_rep|s
+  StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
@@ -402,15 +401,14 @@ class common_block : public Block_base
   ext_block::ext_block& extended_block(ext_KL_hash_Table* pol_hash);
   // get/build extended block for inner class involution; if built, store it
 
-  void set_Bruhat
-  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
+  void set_Bruhat (sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
   virtual KGBElt max_y() const { return highest_y; }
 
   virtual std::ostream& print // defined in block_io.cpp
-    (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const;
+    (std::ostream&, BlockElt,bool,RankFlags,const RatWeight*) const;
 
 
  private:

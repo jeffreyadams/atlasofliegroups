@@ -3,32 +3,15 @@
 <groups.at
 <hermitian.at
 
-G:=SO(6,5)
+G:=E6_s
 delta:=G.distinguished_involution
 rho:=G.rho
-p:=G.trivial
-gamma:=p.infinitesimal_character
-theta:=p.x.involution
-set gamma1=gamma%1
-q := param(KGB(G,387),null(5),[9,3,4,4,-3]/2)
-set prep () = let (fixed,) = twisted_c_form_irreducible_contributions(p) in
-   sum(fixed.real_form
-      ,for c@p in fixed ~do let t=full_deform(p) in if p=q then break fi; c*t od
-      )
-set q3 = q*/3
-set q3d = dominant(q3)
-set q3n = normal(q3)
-set qprime = { q.deform.first_param }
-  parameter(KGB(G,371),[9,7,5,3,1]/2,[9,0,4,4,0]/2)
-set qdouble = { ((qprime*(3/5)).deform.first_param*(15/17)).normal }
-  parameter(KGB(G,223),[7,7,7,1,3]/2,[0,3,3,0,3]/2)
-set target = parameter(KGB(G,27),[7,5,3,1,1]/2,[0,0,0,0,1]/2)
-set go () = qdouble.deform[target]
+x:=KGB(G,359)
+theta:=x.involution
+gamma:=[5,3,5,4,5,5]/3
+p:=parameter_gamma(x,[2,-1,2,2,2,2],gamma)
+q:=parameter_gamma(x,[3,-2,1,3,1,4],gamma)
 
-set culprit = { parameter(KGB(G,308),[9,7,5,3,1]/2,[9,0,0,3,1]/2) }
-              { parameter(KGB(G,267),[9,7,5,3,1]/2,[9,0,0,3,0]/2) }
-	       parameter(G,217,[9,7,5,3,1]/2,[9,0,0,0,1]/2)
-	      { parameter(G,173,[9,7,5,3,1]/2,[9,0,0,0,0]/2) }
 { set P=oriented_KL_sum(p) }
 {
 G:=SO(6,3) { also SO(4,4) needs study }
@@ -80,29 +63,6 @@ set deformations (Param p) = [ParamPol]:
   let s=(ParamPol:p*0) in s #
   for f in reducibility_points(p)
   do  s +:= for c@q in deform(normal(p*f)) do c*full_deform(q) od
-  od
-
-set def_try  (Param p) = ParamPol:
-  let s=(ParamPol:p*0) in
-  for f in reducibility_points(p)
-  do prints(f," ",go()); s +:=
-    for c@q in deform(p*f)
-    do prints(c,"@",q," ",go())
-    ; c*full_deform(q)
-    next prints("Deformed ",q," ",go())
-    od
-  od; s
-
-set defos (Param p) = [ParamPol]:
-  let s=(ParamPol:p*0) in s #
-  for f in reducibility_points(p)
-  do  s +:=
-  ( let D=deform(print(p*f.print)) then nD=#D,i=0 in
-    for c@q in D
-    do prints("Deformation of term ",(i+:=1)-1," (of ",nD,"), coef=",c)
-    ; let r=c*full_deform(q.print) in prints("Result",r); r next prints(72*"-")
-    od
-  )
   od
 
 {

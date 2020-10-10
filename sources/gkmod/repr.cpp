@@ -52,22 +52,21 @@ StandardReprMod StandardReprMod::mod_reduce
   (const Rep_context& rc, const StandardRepr& sr)
 {
   KGBElt x = sr.x();
-  auto rho = rootdata::rho(rc.root_datum());
-  auto gam_lam=sr.gamma()-rho-rc.lambda_rho(sr);
+  auto gam_lam=sr.gamma()-rho(rc.root_datum())-rc.lambda_rho(sr);
   rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
-  return StandardReprMod(x,rho+gam_lam);
+  return StandardReprMod(x,std::move(gam_lam));
 }
 
 StandardReprMod StandardReprMod::build
   (const Rep_context& rc, KGBElt x, RatWeight gam_lam)
 {
   rc.involution_table().real_unique(rc.kgb().inv_nr(x),gam_lam);
-  return StandardReprMod(x,rho(rc.root_datum())+gam_lam); // ctor normalises
+  return StandardReprMod(x,std::move(gam_lam)); // ctor normalises
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const
-{ size_t hash = x_part + 47*rgl.denominator();
-  for (auto entry : rgl.numerator())
+{ size_t hash = x_part + 47*gamlam.denominator();
+  for (auto entry : gamlam.numerator())
     hash= 11*hash+entry;
   return hash &(modulus-1);
 }
@@ -78,12 +77,12 @@ Reduced_param::Reduced_param
 {
   InnerClass& ic = rc.inner_class();
   const KGB& kgb = rc.kgb();
-  const auto& glr = srm.gamma_rep(); // $\gamma-\lambda+\rho$
-  auto eval = ic.integral_eval(glr,int_sys_nr) * glr.numerator();
+  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
+  auto eval = ic.integral_eval(gl,int_sys_nr) * gl.numerator();
   for (auto& entry : eval)
   {
-    assert(entry%glr.denominator()==0);
-    entry /= glr.denominator();
+    assert(entry%gl.denominator()==0);
+    entry /= gl.denominator();
   }
   const auto& codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
@@ -132,7 +131,7 @@ StandardRepr Rep_context::sr
   (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
   const
 {
-  const RatWeight gamma_lambda_rho = srm.gamma_rep()+diff;
+  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum())+diff;
   const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
   return sr_gamma(srm.x(),lambda_rho,gamma);
 }
@@ -218,6 +217,28 @@ RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
   return (std::move(result) - i_tab.y_lift(i_x,sr.y())*2)/4LL;
 }
 
+RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
+{
+  const InvolutionTable& i_tab = involution_table();
+  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
+  return ((z.gamma()+theta*z.gamma())/=2).normalize();
+}
+
+RatWeight Rep_context::nu(const StandardRepr& z) const
+{
+  const InvolutionTable& i_tab = involution_table();
+  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
+  return ((z.gamma()-theta*z.gamma())/=2).normalize();
+}
+
+StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
+{
+  const auto& delta = inner_class().distinguished();
+  return StandardReprMod::build(*this,kgb().twisted(z.x(),delta),
+				delta*gamma_lambda(z));
+}
+
+
 Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
@@ -247,32 +268,21 @@ Weight Rep_context::theta_1_preimage
 RatWeight Rep_context::offset
   (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {
-  const auto& gam = srm0.gamma_rep(); // will also define integral system
-  RatWeight result = gam - srm1.gamma_rep();
+  const auto& gamlam = srm0.gamma_lambda(); // will also define integral system
+  RatWeight result = gamlam - srm1.gamma_lambda();
   auto& ic = inner_class();
   InvolutionNbr inv = kgb().inv_nr(srm0.x());
   unsigned int int_sys_nr;
-  auto codec = ic.integrality_codec(gam,inv,int_sys_nr);
+  auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((ic.integral_eval(gam,int_sys_nr)*result.numerator()).isZero());
+  assert((ic.integral_eval(int_sys_nr)*result.numerator()).isZero());
   return result;
 }
 
-RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const
-{ return z.gamma_lambda(rho(root_datum())); }
-
-RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
+StandardReprMod Rep_context::shifted
+  (const RatWeight& shift, const StandardReprMod& srm) const
 {
-  const InvolutionTable& i_tab = involution_table();
-  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
-  return ((z.gamma()+theta*z.gamma())/=2).normalize();
-}
-
-RatWeight Rep_context::nu(const StandardRepr& z) const
-{
-  const InvolutionTable& i_tab = involution_table();
-  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
-  return ((z.gamma()-theta*z.gamma())/=2).normalize();
+  return StandardReprMod::build(*this,srm.x(),shift + gamma_lambda(srm));
 }
 
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots
@@ -1321,7 +1331,7 @@ blocks::common_block& Rep_table::add_block_below
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     {
       auto new_gam_lam =
-	sub.bp->representative(z).gamma_lambda(rho)+sub.shift;
+	sub.bp->representative(z).gamma_lambda()+sub.shift;
       auto shifted =
 	StandardReprMod::build(*this,sub.bp->x(z),std::move(new_gam_lam));
       hash.match(shifted); // if new, add |shifted| to |pool| beyong |limit|
@@ -1330,8 +1340,8 @@ blocks::common_block& Rep_table::add_block_below
   sl_list<StandardReprMod> elements(pool.begin(),pool.end()); // working copy
 
   sl_list<blocks::common_block> temp; // must use temporary singleton
-  auto& block = temp.emplace_back // construct block and get a reference
-    (ctxt,elements,init.gamma_rep());
+  auto& block =
+     temp.emplace_back(ctxt,elements); // construct block and get a reference
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
@@ -1361,7 +1371,7 @@ blocks::common_block& Rep_table::add_block_below
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       const auto& elt = sub_block.representative(z);
-      auto new_gam_lam = elt.gamma_lambda(rho)+sub.shift;
+      auto new_gam_lam = elt.gamma_lambda()+sub.shift;
       auto elt_shifted =
 	StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
       assert(find_reduced_hash(elt)==find_reduced_hash(elt_shifted));
@@ -1446,7 +1456,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       auto new_gam_lam =
-	sub_block.representative(z).gamma_lambda(rho)+sub.shift;
+	sub_block.representative(z).gamma_lambda()+sub.shift;
       auto shifted =
 	StandardReprMod::build(*this,sub_block.x(z),std::move(new_gam_lam));
       const BlockElt z_rel = block.lookup(shifted);

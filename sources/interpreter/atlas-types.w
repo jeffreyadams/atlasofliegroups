@@ -4688,9 +4688,10 @@ void print_c_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
-  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
+  block.print_to(*output_stream,block.singular(p->val.gamma()),diff);
     // print block using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
@@ -4701,6 +4702,7 @@ void print_pc_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup(p->val,init_index);
+  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
   BitMap less = block.bruhatOrder().poset().below(init_index);
   if (less.full())
   {
@@ -4714,7 +4716,7 @@ void print_pc_block_wrapper(expression_base::level l)
       *output_stream << n << ',';
     *output_stream << init_index << "} in the following common block:\n";
   }
-  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
+  block.print_to(*output_stream,block.singular(p->val.gamma()),diff);
     // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
