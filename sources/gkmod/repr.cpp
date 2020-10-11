@@ -279,10 +279,12 @@ RatWeight Rep_context::offset
   return result;
 }
 
-StandardReprMod Rep_context::shifted
-  (const RatWeight& shift, const StandardReprMod& srm) const
+StandardReprMod& Rep_context::shift
+  (const RatWeight& shift, StandardReprMod& srm) const
 {
-  return StandardReprMod::build(*this,srm.x(),shift + gamma_lambda(srm));
+  srm.gamlam += shift;
+  involution_table().real_unique(kgb().inv_nr(srm.x()),srm.gamlam);
+  return srm;
 }
 
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots

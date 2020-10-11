@@ -393,6 +393,11 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
+
+  // shift all values |gamma_lambda| by |shift| and renormalise (|real_unique|)
+  // it is assumed that |shift| is orthogonal to the integral system
+  void shift (const RatWeight& shift);
+
   // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using arugment
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements

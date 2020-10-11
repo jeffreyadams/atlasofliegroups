@@ -231,8 +231,9 @@ class Rep_context
   Weight theta_1_preimage
     (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
     const;
-  StandardReprMod shifted
-    (const RatWeight& shift, const StandardReprMod& srm) const;
+  StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
+  StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
+  { return shift(diff,srm); } // preform |shift| on a copy and return it
 
   RatWeight gamma_lambda(const StandardReprMod& z) const
   { return z.gamma_lambda(); }

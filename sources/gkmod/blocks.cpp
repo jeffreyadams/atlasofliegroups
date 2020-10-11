@@ -1263,6 +1263,21 @@ ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
   return *extended;
 }
 
+void common_block::shift (const RatWeight& diff)
+{
+  const auto& rc = context();
+#ifndef NDEBUG
+  auto& ic = rc.inner_class();
+  unsigned int int_sys_nr; // unused dummy
+  const int_Matrix& int_ev =
+    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr);
+  assert((int_ev*diff.numerator()).isZero());
+#endif
+  for (auto& srm : z_pool)
+    rc.shift(diff,srm);
+  srm_hash.reconstruct(); // input for hash function is computed has changed
+}
+
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
