@@ -1,4 +1,4 @@
-/*
+  /*
   This is block_io.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -42,20 +42,17 @@ namespace atlas {
 namespace blocks {
 
 std::ostream& do_print(const Block_base& block,std::ostream& strm,
-		       bool as_invol_expr,RankFlags singular,
-		       const RatWeight* shift);
+		       bool as_invol_expr,RankFlags singular);
 
 // print a derived block object, with virtual |print| after Cayley transforms
 std::ostream& Block_base::print_to(std::ostream& strm,bool as_invol_expr) const
-  { return do_print(*this,strm,as_invol_expr,RankFlags(0),nullptr); }
+  { return do_print(*this,strm,as_invol_expr,RankFlags(0)); }
 
-std::ostream& Block_base::print_to
-     (std::ostream& strm,RankFlags singular,const RatWeight& shift) const
-  { return do_print(*this,strm,true,singular,&shift); }
+std::ostream& Block_base::print_to(std::ostream& strm,RankFlags singular) const
+  { return do_print(*this,strm,true,singular); }
 
 std::ostream& do_print(const Block_base& block,std::ostream& strm,
-		       bool as_invol_expr,RankFlags singular,
-		       const RatWeight* shift)
+		       bool as_invol_expr,RankFlags singular)
 {
   auto size = block.size();
   // compute maximal width of entry
@@ -106,7 +103,7 @@ std::ostream& do_print(const Block_base& block,std::ostream& strm,
     }
 
     // finish with derived class specific output
-    block.print(strm,z,as_invol_expr,singular,shift) << std::endl;
+    block.print(strm,z,as_invol_expr,singular) << std::endl;
   } // |for (z)|
 
   return strm;
@@ -114,9 +111,8 @@ std::ostream& do_print(const Block_base& block,std::ostream& strm,
 
 
 std::ostream& Block::print
-  (std::ostream& strm, BlockElt z,
-   bool as_invol_expr,RankFlags,const RatWeight* shift) const
-{ // |shift| is always |nullptr| here, and ignored
+  (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags) const
+{
   int cwidth = ioutils::digits(max_Cartan(),10ul);
   strm << std::setw(cwidth) << Cartan_class(z) << std::setw(2) << "";
 
@@ -130,8 +126,7 @@ std::ostream& Block::print
 }
 
 std::ostream& common_block::print
-  (std::ostream& strm, BlockElt z,
-   bool as_invol_expr,RankFlags singular,const RatWeight* shift) const
+  (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
@@ -139,9 +134,7 @@ std::ostream& common_block::print
 
   strm << (survives(z,singular) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",gamma-lambda=" << std::setw(3*rk+4)
-       << (shift==nullptr ? gamma_lambda(z) : gamma_lambda(z) + *shift)
-	  .normalize()
+       << ",gamma-lambda=" << std::setw(3*rk+4) << gamma_lambda(z).normalize()
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));

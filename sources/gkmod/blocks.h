@@ -182,13 +182,12 @@ public:
   // print whole block to stream (name chosen to avoid masking by |print|)
   // both veariants defined in |block_io|
   std::ostream& print_to(std::ostream& strm,bool as_invol_expr) const;
-  std::ostream& print_to
-     (std::ostream& strm,RankFlags singular,const RatWeight& shift) const;
+  std::ostream& print_to(std::ostream& strm,RankFlags singular) const;
 
   // print derivated class specific information  for |z| (used in |print_to|)
   virtual std::ostream& print
-    (std::ostream& strm, BlockElt z,
-     bool as_invol_expr,RankFlags singular,const RatWeight* shift) const =0;
+    (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular)
+    const =0;
 
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
@@ -225,8 +224,7 @@ public:
   virtual KGBElt max_x() const { return x_size-1; }
   virtual KGBElt max_y() const { return y_size-1; }
   virtual std::ostream& print
-    (std::ostream& strm, BlockElt,bool,RankFlags,const RatWeight*) const
-    { return strm; }
+    (std::ostream& strm, BlockElt,bool,RankFlags) const { return strm; }
 
   // pseudo constructors
   static Bare_block dual (const Block_base& block);
@@ -325,7 +323,7 @@ class Block : public Block_base
   }
 
   virtual std::ostream& print // defined in block_io.cpp
-   (std::ostream&,BlockElt,bool,RankFlags,const RatWeight*) const;
+   (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const;
 
 
   // private accessor and manipulators
@@ -413,7 +411,7 @@ class common_block : public Block_base
   virtual KGBElt max_y() const { return highest_y; }
 
   virtual std::ostream& print // defined in block_io.cpp
-    (std::ostream&, BlockElt,bool,RankFlags,const RatWeight*) const;
+    (std::ostream& strm, BlockElt z,bool as_invol_expr,RankFlags singular) const;
 
 
  private:
