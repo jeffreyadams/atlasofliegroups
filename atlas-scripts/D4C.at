@@ -40,9 +40,6 @@ rv
 
 set top(int a,int b,int c,int d) = Inf(last_param(ladder2(a,b,c,d)))
 
-set test(int M) = void: for i:M+1 do for j:i+1 do for k:j+1 do let
-T=top(i,0,j,k) in prints("[",i,",0,",j,",",k,"] ",T,FourSL2(T)) od od od
-
 {converts fundamental weight coordinates [a,b,c,d] to "product of four
 SL(2)" coordinates [x,y,z,w]=[a, a+2b+c+d, c, d]. These are subject to
 x+y+z+w EVEN; Weyl group is...complicated. If we look instead at the
@@ -53,3 +50,7 @@ aren't so easy to write.}
 
 set FourSL2(vec v) = v + [0,v[0]+v[1]+v[2]+v[3],0,0]
 
+set test(int M) = void:
+  for i:M+1 do for j:i+1 do for k:j+1 do
+    let T=top(i,0,j,k) in prints("[",i,",0,",j,",",k,"] ",T,FourSL2(T))
+  od od od
