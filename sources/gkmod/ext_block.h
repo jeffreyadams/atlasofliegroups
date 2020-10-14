@@ -146,9 +146,10 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  // the following variant has its definition in common_blocks.cpp:
   ext_block(const blocks::common_block& block, const WeightInvolution& delta,
 	    ext_KL_hash_Table* pol_hash);
+
+  ext_block(ext_block&&) = default;
 
   ~ext_block(); // cannot be implicitly defined here (|KL_table| incomplete)
 

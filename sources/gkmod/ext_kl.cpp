@@ -843,6 +843,7 @@ void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 	cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
 	BlockElt x=sub.aux.length_floor(y);
 	const auto desc = sub.descent_set(y);
+	assert(desc==descent_set(embed[y]));
 	for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
 	  cur_col.at(aux.x_index(embed[x],embed[y])) = *it;
       }
@@ -867,6 +868,7 @@ void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
       cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
       BlockElt x=sub.aux.length_floor(y);
       const auto desc = sub.descent_set(y);
+      assert(desc==descent_set(embed[y]));
       for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
 	cur_col.at(aux.x_index(embed[x],embed[y])) = poly_trans[*it];
     }

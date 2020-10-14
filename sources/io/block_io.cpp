@@ -1,4 +1,4 @@
-/*
+  /*
   This is block_io.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -41,51 +41,60 @@ namespace atlas {
 
 namespace blocks {
 
+std::ostream& do_print(const Block_base& block,std::ostream& strm,
+		       bool as_invol_expr,RankFlags singular);
+
 // print a derived block object, with virtual |print| after Cayley transforms
-std::ostream& Block_base::print_to(std::ostream& strm,
-				   bool as_invol_expr,
-				   RankFlags singular) const
+std::ostream& Block_base::print_to(std::ostream& strm,bool as_invol_expr) const
+  { return do_print(*this,strm,as_invol_expr,RankFlags(0)); }
+
+std::ostream& Block_base::print_to(std::ostream& strm,RankFlags singular) const
+  { return do_print(*this,strm,true,singular); }
+
+std::ostream& do_print(const Block_base& block,std::ostream& strm,
+		       bool as_invol_expr,RankFlags singular)
 {
+  auto size = block.size();
   // compute maximal width of entry
-  int width = ioutils::digits(size()==0 ? 0 : size()-1,10ul);
-  int xwidth = ioutils::digits(max_x(),10ul);
-  int ywidth = ioutils::digits(max_y(),10ul);
-  int lwidth = ioutils::digits(size()==0 ? 0 : length(size()-1),10ul);
+  int width = ioutils::digits(size==0 ? 0 : size-1,10ul);
+  int xwidth = ioutils::digits(block.max_x(),10ul);
+  int ywidth = ioutils::digits(block.max_y(),10ul);
+  int lwidth = ioutils::digits(size==0 ? 0 : block.length(size-1),10ul);
 
   const int pad = 2;
 
-  bool traditional = dynamic_cast<const Block*>(this)!=nullptr;
+  bool traditional = dynamic_cast<const Block*>(&block)!=nullptr;
 
-  for (BlockElt z=0; z<size(); ++z)
+  for (BlockElt z=0; z<size; ++z)
   {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << z;
     if (traditional) // prining "local" x,y is confusing in other cases
-      strm << '(' << std::setw(xwidth) << x(z)
-	   << ',' << std::setw(ywidth) << y(z) << "):";
+      strm << '(' << std::setw(xwidth) << block.x(z)
+	   << ',' << std::setw(ywidth) << block.y(z) << "):";
     else
       strm << ':';
 
     // print length
-    strm << std::setw(lwidth+pad) << length(z) << std::setw(pad) << "";
+    strm << std::setw(lwidth+pad) << block.length(z) << std::setw(pad) << "";
 
     // print descents
-    block_io::printDescent(strm,descent(z),rank());
+    block_io::printDescent(strm,block.descent(z),block.rank());
 
     // print cross actions
-    for (weyl::Generator s = 0; s < rank(); ++s)
+    for (weyl::Generator s = 0; s < block.rank(); ++s)
     {
       strm << std::setw(width+pad);
-      if (cross(s,z)==UndefBlock) strm << '*';
-      else strm << cross(s,z);
+      if (block.cross(s,z)==UndefBlock) strm << '*';
+      else strm << block.cross(s,z);
     }
     strm << std::setw(pad+1) << "";
 
     // print Cayley transforms
-    for (size_t s = 0; s < rank(); ++s)
+    for (size_t s = 0; s < block.rank(); ++s)
     {
       BlockEltPair p =
-	isWeakDescent(s,z) ? inverseCayley(s,z) : cayley(s,z);
+	block.isWeakDescent(s,z) ? block.inverseCayley(s,z) : block.cayley(s,z);
       strm << '(' << std::setw(width);
       if (p.first ==UndefBlock) strm << '*'; else strm << p.first;
       strm << ',' << std::setw(width);
@@ -94,7 +103,7 @@ std::ostream& Block_base::print_to(std::ostream& strm,
     }
 
     // finish with derived class specific output
-    print(strm,z,as_invol_expr,singular) << std::endl;
+    block.print(strm,z,as_invol_expr,singular) << std::endl;
   } // |for (z)|
 
   return strm;
@@ -125,7 +134,7 @@ std::ostream& common_block::print
 
   strm << (survives(z,singular) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z).normalize()
+       << ",gamma-lambda=" << std::setw(3*rk+4) << gamma_lambda(z).normalize()
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));

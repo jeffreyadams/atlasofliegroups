@@ -22,8 +22,8 @@ set c_form_irreducible (Param p) = ParamPol:
   let sum = oriented_KL_sum(p)
   , f(Param p) = ParamPol: let result = full_deform(p) in
       prints(new_line,"Full deform of ",p,":",result); result
-  then result=map(f,sum)
-  in prints(new_line,new_line,"Final result:",result); result
+  then final=map(f,sum)
+  in prints(new_line,new_line,"Final result:",final); final
 
 {    twisted_c_form_irreducible   }
 
@@ -52,8 +52,12 @@ set twisted_c_form_irreducible_contributions (Param p) =
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+  , f(Param p) = ParamPol: let result = twisted_full_deform(p) in
+      prints(new_line,"Twisted full deform of ",p,":",result); result
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  in map(twisted_c_form_std@Param,fixed)+half(unfixed.at_nu_0)
+  then final= map(f,fixed)
+  in prints(new_line,new_line,"Final result:",final)
+  ; final+half(unfixed.at_nu_0)
 )
 
 {.whether J(p) admits an invariant Hermitian form.}
@@ -88,7 +92,7 @@ set is_unitary (Param p) = bool:
     J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
   where
     P(x,y) is a cumulated KL polynomial
-    minus_1^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
+    (-1)^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
     indices[i]=x on(x,y)=orientation number given by orientation_nr_term()
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
@@ -194,6 +198,7 @@ set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
     fi
   in convert_cform_hermitian(c_invariant_form,p0)
 
+{. Hermitian form on an irreducible, with extra information.}
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   { here we just use |twisted_c_form_irreducible| in all cases }

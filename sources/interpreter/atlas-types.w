@@ -4688,9 +4688,11 @@ void print_c_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
-  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
+  block.shift(diff);
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print block using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
@@ -4701,6 +4703,7 @@ void print_pc_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup(p->val,init_index);
+  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
   BitMap less = block.bruhatOrder().poset().below(init_index);
   if (less.full())
   {
@@ -4714,7 +4717,8 @@ void print_pc_block_wrapper(expression_base::level l)
       *output_stream << n << ',';
     *output_stream << init_index << "} in the following common block:\n";
   }
-  block.print_to(*output_stream,true,block.singular(p->val.gamma()));
+  block.shift(diff);
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
@@ -5224,8 +5228,8 @@ void strong_components_wrapper(expression_base::level l)
 }
 
 
-@ The function |extended_block| intends to make computation of extended
-blocks available in \.{atlas}.
+@ The function |extended_block| makes computation of extended blocks available
+directly in \.{atlas}.
 
 @< Local function def...@>=
 void extended_block_wrapper(expression_base::level l)
@@ -5253,7 +5257,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(block,delta->val,p->rt().shared_poly_table());
+{ auto eb = block.extended_block(rc.inner_class().distinguished());
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -6296,6 +6300,7 @@ void twisted_deform_wrapper(expression_base::level l)
   auto& block = rt.lookup(p->val,entry_elem);
     // though by reference, does not change |p->val|
   RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
+  block.shift(diff);
   auto& eblock = block.extended_block(rt.shared_poly_table());
 @)
   RankFlags singular = block.singular(p->val.gamma());
@@ -6305,7 +6310,7 @@ void twisted_deform_wrapper(expression_base::level l)
 @)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
 					     singular_orbits,
-                                             diff,p->val.gamma());
+                                             p->val.gamma());
   repr::SR_poly result;
   for (auto&& term : terms@;@;)
     result.add_term(std::move(term.first),
@@ -6688,7 +6693,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(block,delta->val,nullptr);
+    ext_block::ext_block eb = block.extended_block(delta->val);
     std::vector<ext_kl::Pol> pool;
     ext_KL_hash_Table hash(pool,4);
     ext_kl::KL_table klt(eb,&hash); klt.fill_columns();

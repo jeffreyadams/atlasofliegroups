@@ -310,10 +310,7 @@ void extblock_f()
     return;
   }
   ensure_full_block();
-  ext_block::ext_block eblock
-    (current_common_block(),
-     current_inner_class().distinguished(),
-     nullptr);
+  ext_block::ext_block eblock = current_common_block().extended_block(delta);
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
@@ -330,8 +327,8 @@ void gextblock_f()
   }
 
   ensure_full_block();
-  auto& block = current_common_block();
-  ext_block::ext_block eblock(block,delta,nullptr);
+  ext_block::ext_block eblock = current_common_block().extended_block(delta);
+
   std::cout << "Extended block structure checked successfully." << std::endl;
   ioutils::OutputFile file;
   eblock.print_to(file);
@@ -349,8 +346,7 @@ void extkl_f()
   }
 
   ensure_full_block();
-  auto& block = current_common_block();
-  ext_block::ext_block eblock(block,delta,nullptr);
+  ext_block::ext_block eblock = current_common_block().extended_block(delta);
   ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns();
 

@@ -119,10 +119,10 @@ class StandardReprMod
   friend class Rep_context;
 
   KGBElt x_part;
-  RatWeight rgl; // |rho+real_unique(gamma-lambda)|
+  RatWeight gamlam; // |real_unique(gamma-lambda)|
 
-  StandardReprMod(KGBElt x_part, RatWeight&& rgl) // private raw constructor
-    : x_part(x_part), rgl(std::move(rgl.normalize())) {}
+  StandardReprMod(KGBElt x_part, RatWeight&& gl) // private raw constructor
+    : x_part(x_part), gamlam(std::move(gl.normalize())) {}
 
  public:
   // the raw constructor is always called through one of two pseudo constructors
@@ -132,12 +132,11 @@ class StandardReprMod
     (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
   KGBElt x() const { return x_part; }
-  RatWeight gamma_lambda(const RatWeight& rho) const { return rgl-rho; }
-  const RatWeight gamma_rep() const { return rgl; }
+  RatWeight gamma_lambda() const { return gamlam; }
 
   // since pseudo constructors map |rgl| to fundamental domain, equality is easy
   bool operator==(const StandardReprMod& other) const
-  { return x_part==other.x_part and rgl==other.rgl; }
+  { return x_part==other.x_part and gamlam==other.gamlam; }
 
   typedef std::vector<StandardReprMod> Pooltype;
   bool operator!=(const StandardReprMod& another) const
@@ -150,7 +149,7 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  int_Vector evs_reduced; // evaluation at coroots, reduced mod $(1-theta)X^*$
+  int_Vector evs_reduced; // coroots evaluation (|gamlam| mod $(1-theta)X^*$)
 
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
@@ -158,6 +157,7 @@ public:
   typedef std::vector<Reduced_param> Pooltype;
   bool operator!=(const Reduced_param& p) const
   { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
+  bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
 
@@ -193,7 +193,8 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
-  // reconstruct |StandardRep| from |srm| and difference of |gamma_rep| values
+  // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
+  StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
   StandardRepr sr
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
@@ -214,6 +215,13 @@ class Rep_context
   RatWeight gamma_lambda(const StandardRepr& z) const
   { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
   RatWeight gamma_lambda_rho(const StandardRepr& z) const;
+  RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
+    (const StandardRepr& z) const;
+  RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+
+  // |StandardReprMod| handling
+
+  StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
   // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
   RatWeight offset
@@ -223,14 +231,16 @@ class Rep_context
   // auxiliary for |offset|
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
   Weight theta_1_preimage
-   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+    (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
     const;
+  StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
+  StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
+  { return shift(diff,srm); } // preform |shift| on a copy and return it
 
-  RatWeight gamma_lambda(const StandardReprMod& z) const;
-  RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
-    (const StandardRepr& z) const;
-
-  RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+  RatWeight gamma_lambda(const StandardReprMod& z) const
+  { return z.gamma_lambda(); }
+  RatWeight gamma_lambda_rho(const StandardReprMod& z) const
+  { return z.gamma_lambda()+rho(root_datum()); }
 
   // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
@@ -479,7 +489,7 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
+     RankFlags singular, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block

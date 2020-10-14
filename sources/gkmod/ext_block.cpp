@@ -603,11 +603,6 @@ ext_block::ext_block
   BitMap fixed_points(block.size());
 
   // compute the delta-fixed points of the block
-
-  // test if twisting some block element lands in the same block
-  if (twisted(block,0,delta)==UndefBlock)
-    return; // if block not delta-stable, leave |size==0| and quit
-
   for (BlockElt z=0; z<block.size(); ++z)
     if (twisted(block,z,delta)==z)
       fixed_points.insert(z);
@@ -2228,8 +2223,8 @@ ext_param::ext_param
   Importantly, this does not use |sr.gamma()| otherwise than for asserting its
   $\delta$-stability: the same default is used in |common_block| for an entire
   family of blocks, so dependence on |gamma| must be limited to dependence on
-  its reduction modulo 1. Even though |gamma_lambda| is computed at the maybe
-  not $\delta$-fixed |srm.gamma_rep()|, it is also (due to the way |mod_reduce|
+  its reduction modulo 1. Even though |gamma_lambda| is computed at a maybe not
+  $\delta$-fixed infinitesimal character, it is also (due to how |mod_reduce|
   works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
   gives a valid value for the equation of which |tau| is a solution. However
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
