@@ -243,7 +243,8 @@ template<>
 */
 template<typename I>
   I remainder(I a, I b_signed)
-{ typedef typename std::make_unsigned<I>::type UI;
+{ assert(b_signed>0); // should avoid nasty surprises; negatives fail badly
+  using UI = typename std::make_unsigned<I>::type;
   UI b(b_signed); // interpret unsigned, even though it was passed as signed
   // use unsigned division (because |b| is so), then convert back to signed
   return I(a >= 0 ? a%b : ~((-1-a)%b) + b); // remainder is never negative

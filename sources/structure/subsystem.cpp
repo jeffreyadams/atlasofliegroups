@@ -212,6 +212,13 @@ integral_datum_item::codec::codec
   // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
   int_Matrix A = coroots_mat * i_tab.theta_1_image_basis(inv);
   diagonal=matreduc::diagonalise(A,row,col);
+  // ensure |diagonal| entries positive, since we shall be reducing modulo them
+  if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
+  {
+    diagonal[0] = -diagonal[0];
+    row.rowMultiply(0u,-1); // restablish relation |row*A*col==diagonal|
+  }
+
   auto rank = diagonal.size();
   in  = std::move(row); // keep full coordinate transform
   out = col.block(0,0,col.numRows(),rank); // chop part for final zero entries

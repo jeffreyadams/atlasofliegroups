@@ -967,7 +967,7 @@ void KL_table::swallow
       prepare_prim_index(desc); // first make sure |KLSuport| is ready for |z|
       auto sub_prims = sub.primitives(z);
       auto prims = primitives(embed[z]);
-      // we need to convert these |BitMap|s to vectors
+      // we need to convert these |BitMap|s to vectors (|pc|: primitive column)
       BlockEltList sub_pc(sub_prims.begin(),sub_prims.end());
       BlockEltList pc(prims.begin(),prims.end());
       assert(sub.d_KL[z].size()==sub_pc.size());

@@ -145,6 +145,22 @@ class StandardReprMod
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
 
+// hashable type for |StandardReprMod| upto shift orthogonal to integral system
+class Reduced_param
+{
+  KGBElt x;
+  unsigned int int_sys_nr;
+  int_Vector evs_reduced; // evaluation at coroots, reduced mod $(1-theta)X^*$
+
+public:
+  Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
+
+  typedef std::vector<Reduced_param> Pooltype;
+  bool operator!=(const Reduced_param& p) const
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
+  size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+}; // |class Reduced_param|
+
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
@@ -199,8 +215,11 @@ class Rep_context
   { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
   RatWeight gamma_lambda_rho(const StandardRepr& z) const;
 
-  // offset in $\gamma-\lambda$ from |sr| with respect to that of |srm|
-  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const;
+  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
+  RatWeight offset
+    (const StandardReprMod& sr0, const StandardReprMod& srm1) const;
+  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const
+  { return offset(StandardReprMod::mod_reduce(*this,sr),srm); }
   // auxiliary for |offset|
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
   Weight theta_1_preimage
@@ -268,7 +287,7 @@ class Rep_context
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
-  containers::sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
+  sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
@@ -403,8 +422,8 @@ class Rep_table : public Rep_context
   std::vector<deformation_unit> pool; // also stores actual deformation formulae
   HashTable<deformation_unit,unsigned long> alcove_hash;
 
-  std::vector<StandardReprMod> mod_pool;
-  HashTable<StandardReprMod,unsigned long> mod_hash;
+  std::vector<Reduced_param> reduced_pool;
+  HashTable<Reduced_param,unsigned long> reduced_hash;
 
   std::vector<K_type> K_type_pool;
   HashTable<K_type,K_type_nr> K_type_hash;
@@ -415,9 +434,9 @@ class Rep_table : public Rep_context
   std::vector<ext_kl::Pol> poly_pool;
   ext_KL_hash_Table poly_hash;
 
-  containers::sl_list<blocks::common_block> block_list;
-  using bl_it = containers::sl_list<blocks::common_block>::iterator;
-  std::vector<std::pair<bl_it, BlockElt> > place;
+  sl_list<blocks::common_block> block_list;
+  using bl_it = sl_list<blocks::common_block>::iterator;
+  std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
 
  public:
   Rep_table(RealReductiveGroup &G);
@@ -425,8 +444,6 @@ class Rep_table : public Rep_context
   // both defined out of line because of implicit use |common_block| destructor
 
   ext_KL_hash_Table* shared_poly_table () { return &poly_hash; }
-
-  const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
@@ -438,15 +455,20 @@ class Rep_table : public Rep_context
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
-  containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+  simple_list<std::pair<BlockElt,kl::KLPol> >
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
+
+  size_t find_reduced_hash(const StandardReprMod& srm) const
+  { return reduced_hash.find(Reduced_param(*this,srm)); }
+  size_t match_reduced_hash(const StandardReprMod& srm)
+  { return reduced_hash.match(Reduced_param(*this,srm)); }
 
   StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
-  containers::sl_list<std::pair<StandardRepr,int> > deformation_terms
+  sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
      const RatWeight& diff, const RatWeight& gamma);
 
@@ -454,7 +476,7 @@ class Rep_table : public Rep_context
   K_type_poly deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
-  containers::sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
+  sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
      RankFlags singular, const RatWeight& diff, const RatWeight& gamma);

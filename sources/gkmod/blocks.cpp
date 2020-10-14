@@ -1077,12 +1077,11 @@ common_block::common_block // full block constructor
 // the precomputed interval is passed as |elements|; this constructor sorts it
 
 common_block::common_block // partial block constructor
-    (const repr::Rep_table& rt,
-     const repr::common_context& ctxt,
-     containers::sl_list<unsigned long>& elements,
+    (const repr::common_context& ctxt,
+     containers::sl_list<StandardReprMod>& elements,
      const RatWeight& gamma_rep)
   : Block_base(ctxt.subsys().rank())
-  , rc(rt)
+  , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
   , integral_sys(ctxt.subsys())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended(nullptr) // no extended block initially
@@ -1091,7 +1090,7 @@ common_block::common_block // partial block constructor
   , generated_as_full_block(false)
 {
   info.reserve(elements.size());
-  const auto& kgb = rt.kgb();
+  const auto& kgb = rc.kgb();
   const auto& i_tab = involution_table();
   const RatWeight rho = rootdata::rho(root_datum());
 
@@ -1106,9 +1105,8 @@ common_block::common_block // partial block constructor
 
   std::vector<inv_y_data> y_table (i_tab.size());
   {
-    for (unsigned long elt : elements)
-    { const auto& srm = rt.srm(elt);
-      const KGBElt x = srm.x();
+    for (const auto& srm : elements)
+    { const KGBElt x = srm.x();
       if (x>highest_x)
 	highest_x=x;
       auto gamma_rep = srm.gamma_rep();
@@ -1127,13 +1125,11 @@ common_block::common_block // partial block constructor
   }
 
   elements.sort // pre-sort by |x| ensures descents precede when setting lengths
-    ([&rt](unsigned long a, unsigned long b)
-          { return rt.srm(a).x()<rt.srm(b).x(); }
-     );
+    ([](const StandardReprMod& a, const StandardReprMod& b)
+       { return a.x()<b.x(); } );
 
-  for (unsigned long elt : elements)
-  { const auto& srm = rt.srm(elt);
-    const KGBElt x = srm.x();
+  for (const auto& srm : elements) // find its $(x,y)$ pair and extend |info|
+  { const KGBElt x = srm.x();
     const inv_y_data& slot = y_table[kgb.inv_nr(x)];
     auto y = slot.offset;
     for (auto it = slot.list.begin(); not slot.list.at_end(it); ++it,++y)
@@ -1152,7 +1148,7 @@ common_block::common_block // partial block constructor
   for (BlockElt i=0; i<info.size(); ++i,++it)
   {
     EltInfo& z = info[i];
-    const auto srm_z = rt.srm(*it);
+    const auto srm_z = *it;
     for (weyl::Generator s=0; s<integral_sys.rank(); ++s)
     {
       auto& tab_s = data[s];

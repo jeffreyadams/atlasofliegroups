@@ -184,8 +184,6 @@ BlockElt
 void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
 {
   assert(sub.rank()==rank());
-  for (unsigned i=1; i<embed.size(); ++i)
-    assert(embed[i-1]<embed[i]);
   for (BlockElt z=0; z<sub.block().size(); ++z)
   {
     assert(sub.block().length(z)==d_block.length(embed[z]));
