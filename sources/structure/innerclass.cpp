@@ -120,11 +120,11 @@ InnerClass::C_info::C_info
   distinguished involution |tmp_d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
-  (const PreRootDatum& prd, const WeightInvolution& tmp_d)
-    : own_datum(new RootDatum(prd))
-    , own_dual_datum(new RootDatum(*own_datum,tags::DualTag()))
-    , d_rootDatum(*own_datum)
-    , d_dualRootDatum(*own_dual_datum)
+    (const PreRootDatum& prd, const WeightInvolution& tmp_d)
+  : own_datum(new RootDatum(prd))
+  , own_dual_datum(new RootDatum(*own_datum,tags::DualTag()))
+  , d_rootDatum(*own_datum)
+  , d_dualRootDatum(*own_dual_datum)
 
   , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
@@ -143,6 +143,10 @@ InnerClass::InnerClass
 
   // DON'T use |tmp_d| as involution below: would store a dangling reference!
   , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
+
+  , integral_pool()
+  , int_hash(integral_pool)
+  , int_table()
 {
   construct(); // set up |Cartan| data, but only resizes |C_orb|
 }
@@ -175,6 +179,10 @@ InnerClass::InnerClass
 
   // DON'T use |tmp_d| as involution below: would store a dangling reference!
   , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
+
+  , integral_pool()
+  , int_hash(integral_pool)
+  , int_table()
 {
   construct(); // set up |Cartan| data, but only resizes |C_orb|
 }
@@ -405,6 +413,10 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
   , C_orb(d_rootDatum,d_fundamental.involution(),d_titsGroup)
+
+  , integral_pool()
+  , int_hash(integral_pool)
+  , int_table()
 {
   Cartan.reserve(G.Cartan.size());
   C_orb.set_size(G.Cartan.size());
@@ -1087,9 +1099,18 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
   }
 
   return result;
-
 }
 
+subsystem::integral_datum_item& InnerClass::int_item
+  (const RatWeight& gamma, unsigned int& int_sys_nr)
+{
+  subsystem::integral_datum_entry e(integrality_poscoroots(rootDatum(),gamma));
+  assert(integral_pool.size()==int_table.size());
+  int_sys_nr = int_hash.match(e);
+  if (int_sys_nr==int_table.size())
+    int_table.emplace_back(*this,e.posroots);
+  return int_table[int_sys_nr];
+}
 
 
 /*****************************************************************************

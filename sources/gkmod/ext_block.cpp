@@ -520,7 +520,7 @@ BlockElt twisted (const Block& block,
  */
 WeylWord fixed_conjugate_simple
   (const repr::Ext_common_context& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.root_datum();
+{ const RootDatum& rd = ctxt.full_root_datum();
 
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
@@ -1625,7 +1625,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
   repr::Ext_common_context ctxt
-    (block.context().real_group(),delta,block.integral_subsystem());
+    (block.context(),delta,block.integral_subsystem());
   repr::Ext_rep_context param_ctxt(block.context(),delta);
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
@@ -2228,8 +2228,8 @@ ext_param::ext_param
   Importantly, this does not use |sr.gamma()| otherwise than for asserting its
   $\delta$-stability: the same default is used in |common_block| for an entire
   family of blocks, so dependence on |gamma| must be limited to dependence on
-  its reduction modulo 1. Even though |gamma_lambda| is computed at the non
-  $\delta$-fixed |srm.gamma_mod1()|, it is also (due to the way |mod_reduce|
+  its reduction modulo 1. Even though |gamma_lambda| is computed at the maybe
+  not $\delta$-fixed |srm.gamma_rep()|, it is also (due to the way |mod_reduce|
   works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
   gives a valid value for the equation of which |tau| is a solution. However
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
@@ -2308,7 +2308,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  )
 {
   const RootDatum& rd=rc.root_datum();
-  RealReductiveGroup& G=rc.real_group(); const KGB& kgb = rc.kgb();
+  const KGB& kgb = rc.kgb();
   repr::Ext_rep_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
@@ -2357,7 +2357,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	       E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
+    repr::Ext_common_context block_ctxt(rc,delta,SubSystem::integral(rd,gamma));
     const auto& int_datum = block_ctxt.id();
     const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
@@ -2463,7 +2463,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 
   repr::Ext_rep_context param_ctxt(rc,delta);
   repr::Ext_common_context ctxt
-    (rc.real_group(),delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
+    (rc,delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
 
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =

@@ -37,7 +37,7 @@ in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
 ;  let (Tri,R)= ech_up(M,pivots)
 in if product(Tri.main_diagonal)=1
    then ^(C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:])
-   else error("image is not saturated")
+   else error("matrix is not surjective")
    fi
 )
 

@@ -26,7 +26,7 @@
 #include "lietype.h"    // |ext_gen|;
 #include "dynkin.h"     // |DynkinDiagram|
 #include "subsystem.h"  // data memeber in |common_block|
-#include "repr.h"       // hash table in |common_block|
+#include "repr.h"       // hash table in |common_block|, |StandardReprMod|
 
 namespace atlas {
 
@@ -66,11 +66,11 @@ public: // this |struct| must be public, though mainly used in derived classes
     EltInfo(KGBElt xx,KGBElt yy)
       : x(xx),y(yy),descent(),length(0) {}
 
-  // methods that will allow building a hashtable with |info| as pool
+  // currently unused methods that allow building a hashtable around |info|
+  // this used to be useful for lookup by |(x,y)| during block construction
     typedef std::vector<EltInfo> Pooltype;
     size_t hashCode(size_t modulus) const { return (13*x+21*y)&(modulus-1); }
-    bool operator != (const EltInfo& o) const
-    { return x!=o.x or y!=o.y; }
+    bool operator != (const EltInfo& o) const { return x!=o.x or y!=o.y; }
 
   }; // |struct EltInfo|
 
@@ -338,12 +338,11 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const RatWeight gamma_mod_1;
   const SubSystem integral_sys;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
-  using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
-  repr::Repr_mod_entry::Pooltype z_pool;
+  using repr_hash = HashTable<repr::StandardReprMod,BlockElt>;
+  repr::StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
   std::unique_ptr<ext_block::ext_block> extended;
@@ -364,7 +363,7 @@ class common_block : public Block_base
     (const repr::Rep_table& rt,
      const repr::common_context& ctxt,
      containers::sl_list<unsigned long>& elements,
-     const RatWeight& gamma_mod_1);
+     const RatWeight& gamma_rep);
   ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
@@ -377,19 +376,21 @@ class common_block : public Block_base
 
   bool is_full () const { return generated_as_full_block; }
 
-  RatWeight gamma_mod1 () const { return gamma_mod_1; }
   // simple coroots of |sub| singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
+  RatWeight gamma_lambda_rho(BlockElt z) const // that is $\gamma-\lambda+\rho$
+  { return z_pool[z].gamma_rep(); } // is actually easier than |gamma_lambda|
 
   BlockElt lookup(const repr::StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   repr::StandardReprMod representative (BlockElt z) const
-  { return repr::StandardReprMod::build(rc,gamma_mod_1,x(z),gamma_lambda(z)); }
-  repr::StandardRepr sr (BlockElt z,const RatWeight& gamma) const;
+  { return repr::StandardReprMod::build(rc,x(z),gamma_lambda(z)); }
+  repr::StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_rep|s
+    (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
@@ -419,57 +420,8 @@ class common_block : public Block_base
 
 }; // |class common_block|
 
-// sorting criterion used to |common_block::sort| the |info| array in block base
-bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
-
 BlockElt twisted
   (const blocks::common_block& block, BlockElt z, const WeightInvolution& delta);
-
-typedef HashTable<y_entry,KGBElt> y_part_hash;
-typedef Block_base::EltInfo block_elt_entry;
-typedef HashTable<block_elt_entry,BlockElt> block_hash;
-
-class nblock_elt // internal representation during construction
-{
-  friend class nblock_help;
-  KGBElt xx; // identifies element in parent KGB set
-  TorusElement yy; // adds "local system" information to |xx|
-public:
-  nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
-
-  KGBElt x() const { return xx; }
-  const TorusElement& y() const { return yy; }
-
-}; // |class nblock_elt|
-
-class nblock_help // a support class for |nblock_elt|
-{
-public: // references stored for convenience, no harm in exposing them
-  const KGB& kgb;
-  const RootDatum& rd;  // the full (parent) root datum
-  const SubSystem& sub; // the relevant subsystem
-  const InvolutionTable& i_tab; // information about involutions, for |pack|
-
-private:
-  std::vector<TorusPart> dual_m_alpha; // the simple roots, reduced modulo 2
-  std::vector<TorusElement> half_alpha; // half the simple roots
-
-  void check_y(const TorusElement& t, InvolutionNbr i) const;
-  void parent_cross_act(weyl::Generator s,nblock_elt& z) const;
-  void parent_up_Cayley(weyl::Generator s,nblock_elt& z) const;
-  void parent_down_Cayley(weyl::Generator s,nblock_elt& z) const;
-
-public:
-  nblock_help(RealReductiveGroup& GR, const SubSystem& subsys);
-
-  void cross_act(weyl::Generator s,nblock_elt& z) const;
-  void cross_act_parent_word(const WeylWord& ww, nblock_elt& z) const;
-  void do_up_Cayley (weyl::Generator s,nblock_elt& z) const;
-  void do_down_Cayley (weyl::Generator s,nblock_elt& z) const;
-  bool is_real_nonparity(weyl::Generator s,nblock_elt z) const; // by value
-
-  y_entry pack_y(const nblock_elt& z) const;
-}; // |class nblock_help|
 
 } // |namespace blocks|
 

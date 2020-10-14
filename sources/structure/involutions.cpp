@@ -139,7 +139,7 @@ void InvolutionData::cross_act(const Permutation& root_reflection)
 
 
 
-// describe involution by class 0 involution |cross|, and set of Cayley roots
+// describe involution by Cartan class 0 involution |cross|, and Cayley roots
 RootNbrList Cayley_roots(const TwistedInvolution& tw,
 			 const RootSystem& rs,
 			 const TwistedWeylGroup& W,
@@ -202,37 +202,14 @@ InvolutionNbr InvolutionTable::add_involution
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
   A.negate() += 1;
 
-  // |R| will map $\lambda-\rho$ to reduced torus part coordinates
-  // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
-  int_Vector diagonal;
-  int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
-  int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
-  R=R.block(0,0,diagonal.size(),R.numColumns()); // restrict to image |A|
-  R*=A; // now R is A followed by taking coordinates on adapted basis of image
-  for (unsigned i=0; i<R.numRows(); ++i)
-    if (diagonal[i]!=1)
-      for (unsigned j=0; j<R.numColumns(); ++j)
-      {
-	assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
-	R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
-      }
-  // now |R| gives coordinates on adapted basis scaled: basis of image lattice
-  // |R| is the matrix that will become |M_real|
-
-  B=B.block(0,0,B.numRows(),diagonal.size());
-  for (unsigned j=0; j<B.numColumns(); ++j)
-    if (diagonal[j]!=1)
-      B.columnMultiply(j,diagonal[j]);
-  // restore relation |B*R==A| after scaling down rows of |R|
-  // |B| is the matrix that will become |lift_mat|
+  int_Matrix col; bool flip;
+  matreduc::column_echelon(A,col,flip);  // now |A| holds basis for image
+  int_Matrix M_real = col.inverse().block(0,0,A.numColumns(),A.numRows());
 
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
   data.push_back(record(theta,InvolutionData(rd,theta),
-			lattice::row_saturate(A), // |projector| for |y|
-			R, // |M_real|
-			SmallBitVector(diagonal), // values 1,2 become bits 1,0
-			B, // |lift_mat|
+			M_real, A, // |lift_mat|
 			length,W_length,
 			tits::fiber_denom(theta))); // |mod_space| for |x|
   assert(data.size()==hash.size());
@@ -253,7 +230,6 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
 
   rd.simple_reflect(s,me.theta);
   rd.simple_reflect(me.theta,s); // not |twisted(s)|: |delta| is incorporated
-  rd.simple_reflect(me.projector,s); // reflection by |s| of kernel
   rd.simple_reflect(me.M_real,s); // apply $s$ before |M_real|
   rd.simple_reflect(s,me.lift_mat); // and apply it after |lift_mat|
   me.id.cross_act(rd.simple_root_permutation(s));
@@ -330,67 +306,17 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
 }
 
 
-RankFlags InvolutionTable::y_mask(InvolutionNbr i) const
-{
-  const auto& diag = data[i].diagonal; // bits 1,0 for diagonal entries 1,2
-  return diag.data().complement(diag.size()); // complement: filter out bits 1
-}
-
-bool InvolutionTable::equivalent
-  (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt=(t2-t1).log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  for (size_t j=0; j<p.size(); ++j)
-    if (p[j]%wt.denominator()!=0)
-      return false;
-
-  return true;
-}
-
-RatWeight InvolutionTable::fingerprint
-  (const TorusElement& t, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt = t.log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  // reduce modulo integers and return
-  for (size_t j=0; j<p.size(); ++j)
-    p[j]= arithmetic::remainder(p[j],wt.denominator());
-  return RatWeight(p,wt.denominator()).normalize();
-}
-
-y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
-{
-  return y_entry(fingerprint(t,i),i,t);
-}
-
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
   const record& rec=data[inv];
   Ratvec_Numer_t v = rec.M_real * y.numerator();
-  assert(v.size()==rec.diagonal.size());
+  // reduce $v=(1-theta)y$ expressed on image $(1-theta)X^*$-basis modulo 2
   for (unsigned i=0; i<v.size(); ++i)
-  { int factor = rec.diagonal[i] ? 2 : 4; // twice |diagonal[i]| before reduction
-    v[i]= arithmetic::remainder(v[i],factor*y.denominator());
-  }
+    v[i]= arithmetic::remainder(v[i],2*y.denominator());
 
   y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
   (y/=2).normalize(); // and this gets us back to the class of the original |y|
-}
-
-TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
-  const
-{
-  const record& rec=data[inv];
-  int_Vector v = rec.M_real * lambda_rho;
-  assert(v.size()==rec.diagonal.size());
-  // DON'T REDUCE according to |diagonal|: |lambda| recontruction needs original
-  return TorusPart(v); // reduces all integer coordinates to bits, modulo 2
 }
 
 Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
@@ -403,15 +329,6 @@ Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
       for (unsigned i=0; i<result.size(); ++i)
 	result[i] += rec.lift_mat(i,j);
   return result;
-}
-
-// variant of |y_pack| that is a direct left-inverse: |y_unlift(i,y_lift(y))==y|
-// since |y_lift(i,y_pack(lam_rho))=(1-theta(i))*lam_rho|, one needs to halve
-TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
-{
-  const record& rec=data[inv];
-  int_Vector v = rec.M_real * lift;
-  return TorusPart(v/2); // reduce coordinates modulo 2
 }
 
 // ------------------------------ Cartan_orbit --------------------------------

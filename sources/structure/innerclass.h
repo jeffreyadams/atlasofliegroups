@@ -24,6 +24,7 @@
 
 #include "cartanclass.h"// containment of |Fiber|
 #include "involutions.h"// containment of |InvolutionTable|, |Cartan_orbits|
+#include "subsystem.h"  // containment of |integral_datum_item|
 #include "poset.h"	// containment of Cartan poset
 #include "rootdata.h"	// containment of root datum and its dual
 #include "tits.h"	// containment of Tits group and its dual
@@ -220,6 +221,11 @@ class InnerClass
 
   // a general repository for involutions, organised by conjugacy class
   Cartan_orbits C_orb;
+
+  using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned>;
+  subsystem::integral_datum_entry::Pooltype integral_pool;
+  integral_hash int_hash;
+  mutable std::vector<subsystem::integral_datum_item> int_table;
 
  public:
 // constructors and destructors
@@ -466,6 +472,28 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
+  subsystem::integral_datum_item& int_item
+    (const RatWeight& gamma, unsigned int& int_sys_nr);
+  // same when |int_sys_nr| has already been computed:
+  subsystem::integral_datum_item& int_item(unsigned int int_sys_nr)
+  { return int_table[int_sys_nr];}
+
+  const subsystem::integral_datum_item::codec& integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return int_item(gamma,int_sys_nr).data(*this,int_sys_nr,inv); }
+
+  const int_Matrix& integral_eval
+    (const RatWeight& gamma, unsigned int& int_sys_nr)
+  { return int_item(gamma,int_sys_nr).coroots_matrix(); }
+
+  const int_Matrix& integrality_encoder
+    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return integrality_codec(gamma,inv,int_sys_nr).coder; }
+
+  const int_Matrix& integrality_decoder
+    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
+  { return integrality_codec(gamma,inv,int_sys_nr).decoder; }
+
 
 // pseudo manipulator
 
@@ -492,6 +520,9 @@ class InnerClass
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
+
+  // get |int_table| entry for |gamma|
+  subsystem::integral_datum_item& int_item(const RatWeight& gamma);
 
 }; // |class InnerClass|
 

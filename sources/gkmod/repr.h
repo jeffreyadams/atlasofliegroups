@@ -27,6 +27,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 #include "gradings.h"
+#include "kgb.h"
 #include "subsystem.h"
 #include "polynomials.h"
 
@@ -39,7 +40,7 @@ class common_context;
 /*
   A parameter of a standard representation is determined by a triplet
   $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
-  form (determining amongs others an involution $\thata$ of $X^*$),
+  form (determining amongst others an involution $\theta$ of $X^*$),
   $\tilde\lambda$ is a genuine character of the $\rho$-cover of $H^{\theta_x}$,
   and $\gamma$ is a character of the complex Lie algebra $h$. The latter two
   values are related; $(1+\theta)\gamma=(1+\theta)\tilde\lambda$, in other words
@@ -82,7 +83,7 @@ class StandardRepr
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
   // one should call constructor from |Rep_context| only
-  StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
+  StandardRepr(KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
   { infinitesimal_char.normalize(); } // to ensure this class invariant
 
@@ -93,65 +94,56 @@ class StandardRepr
   const TorusPart& y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
-  bool operator== (const StandardRepr&) const;
+  bool operator==(const StandardRepr&) const;
 
 // special members required by HashTable
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
-    { return not operator==(another); }
+  { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
-// a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
+/*
+  A variation, representing |StandardRepr| up to parallel shift |gamma|,|lambda|
+  which suffices for block construction, and given |gamma| we can easily
+  reconstruct a full |StandardRepr|.
+
+  We use a trick to assume by parallel shift that |lambda=rho|, so the
+  corresponding value |rgl| of |gamma| now also encodes |gamma-lambda|, and we
+  do not need to represent |y_bits| at all. In fact doing without the packing
+  and unpacking operations for |y_bits| greatly simplifies our operations.
+*/
 class StandardReprMod
 {
   friend class Rep_context;
 
   KGBElt x_part;
-  TorusPart y_bits; // torsion part of $\lambda$
-  RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+  RatWeight rgl; // |rho+real_unique(gamma-lambda)|
 
-  StandardReprMod (StandardRepr&& sr); // private raw constructor
+  StandardReprMod(KGBElt x_part, RatWeight&& rgl) // private raw constructor
+    : x_part(x_part), rgl(std::move(rgl.normalize())) {}
 
  public:
-  // when building, we force integral parts of |gamma_mod1| components to zero
+  // the raw constructor is always called through one of two pseudo constructors
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
   static StandardReprMod build
-    (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
-     KGBElt x, const RatWeight& gam_lam);
+    (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
-  const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
   KGBElt x() const { return x_part; }
-  const TorusPart& y() const { return y_bits; }
+  RatWeight gamma_lambda(const RatWeight& rho) const { return rgl-rho; }
+  const RatWeight gamma_rep() const { return rgl; }
 
-  bool operator== (const StandardReprMod& other) const
-  { return x_part==other.x_part and y_bits==other.y_bits
-    and inf_char_mod_1==other.inf_char_mod_1; }
+  // since pseudo constructors map |rgl| to fundamental domain, equality is easy
+  bool operator==(const StandardReprMod& other) const
+  { return x_part==other.x_part and rgl==other.rgl; }
+
   typedef std::vector<StandardReprMod> Pooltype;
   bool operator!=(const StandardReprMod& another) const
-    { return not operator==(another); }
+  { return not operator==(another); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
-
-class Repr_mod_entry
-{ KGBElt x; RankFlags y, mask;
-public:
-  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
-
-  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
-
-  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
-
-  // obligatory fields for hashable entry
-  using Pooltype =  std::vector<Repr_mod_entry>;
-  size_t hashCode(size_t modulus) const
-  { return (5*x-11*y_stripped())&(modulus-1); }
-  bool operator !=(const Repr_mod_entry& o) const
-    { return x!=o.x or y_stripped()!=o.y_stripped(); }
-
-}; // |Repr_mod_entry|
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
@@ -164,10 +156,12 @@ class Rep_context
 
   // accessors
   RealReductiveGroup& real_group() const { return G; }
-  const InnerClass& inner_class() const { return G.innerClass(); }
+  InnerClass& inner_class() const { return G.innerClass(); }
+  const InvolutionTable& involution_table() const
+  { return inner_class().involution_table(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
-    { return G.twistedWeylGroup(); }
+  { return G.twistedWeylGroup(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -181,8 +175,12 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
-    { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
-  StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
+  { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
+
+  // reconstruct |StandardRep| from |srm| and difference of |gamma_rep| values
+  StandardRepr sr
+    (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
+    const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -197,15 +195,23 @@ class Rep_context
   { return rho(root_datum()).normalize()+lambda_rho(z); }
   RatWeight gamma_lambda
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
+  RatWeight gamma_lambda(const StandardRepr& z) const
+  { return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma()); }
+  RatWeight gamma_lambda_rho(const StandardRepr& z) const;
+
+  // offset in $\gamma-\lambda$ from |sr| with respect to that of |srm|
+  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const;
+  // auxiliary for |offset|
+  // find element in |(1-theta)X^*| with same evaluation on all integral coroots
+  Weight theta_1_preimage
+   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+    const;
+
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
 
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
-
-  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |common_block|
-  TorusElement y_as_torus_elt(const StandardRepr& z) const;
-  TorusElement y_as_torus_elt(const StandardReprMod& z) const;
 
   // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
@@ -441,7 +447,8 @@ class Rep_table : public Rep_context
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   containers::sl_list<std::pair<StandardRepr,int> > deformation_terms
-    (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
+    (blocks::common_block& block, BlockElt y,
+     const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
   K_type_poly deformation(const StandardRepr& z);
@@ -449,7 +456,8 @@ class Rep_table : public Rep_context
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   containers::sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
-     BlockElt y, RankFlags singular, const RatWeight& gamma);
+     BlockElt y, // in numbering of |block|, not |eblock|
+     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
@@ -481,14 +489,20 @@ public:
 }; // |class Ext_rep_context|
 
 // another extension of |Rep_context|, fix integral system for common block
-class common_context : public Rep_context
+class common_context
 {
+  const Rep_context& rep_con;
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
 public:
-  common_context (RealReductiveGroup& G, const SubSystem& integral);
+  common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors
+  const Rep_context& rc() const { return rep_con; }
+  const KGB& kgb() const { return rep_con.kgb(); }
+  const InvolutionTable& involution_table() const
+    { return rep_con.involution_table(); }
+  const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
 
@@ -522,7 +536,7 @@ class Ext_common_context : public common_context
   int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
-  Ext_common_context (RealReductiveGroup& G, const WeightInvolution& delta,
+  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta,
 		      const SubSystem& integral_subsystem);
 
   // accessors

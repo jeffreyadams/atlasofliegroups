@@ -125,7 +125,7 @@ std::ostream& common_block::print
 
   strm << (survives(z,singular) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",lambda-gamma=" << std::setw(5*rk+1) << -gamma_lambda(z).normalize()
+       << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z).normalize()
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));

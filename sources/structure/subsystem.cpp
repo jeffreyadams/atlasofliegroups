@@ -11,9 +11,11 @@
 
 #include "ratvec.h"	// acces to infinitesimal character |gamma|
 #include "bitmap.h"	// root sets
+#include "matreduc.h"   // |diagonalise| used in |codec| constructor
 
 #include "prerootdata.h"// value returned
 #include "rootdata.h"	// |RootSystem| construction and methods
+#include "innerclass.h"	// |integrality_datum_item| construction
 #include "cartanclass.h"// |InvolutionData|
 #include "weyl.h"	// subobject
 
@@ -23,8 +25,7 @@ namespace atlas {
 
 namespace subsystem {
 
-SubSystem::SubSystem(const RootDatum& parent,
-		     const RootNbrList& sub_sys)
+SubSystem::SubSystem(const RootDatum& parent, const RootNbrList& sub_sys)
   : RootSystem(parent.cartanMatrix(sub_sys).transposed(), // build
 	       not parent.prefer_coroots()) // flip, since coroots ar now roots
   , rd(parent) // share
@@ -47,7 +48,7 @@ SubSystem::SubSystem(const RootDatum& parent,
     }
 
     RootNbr alpha = pos_map[i]; // now we use parent numbering
-    inv_map[alpha] = posRootNbr(i); // refers simple root |i| in subsystem
+    inv_map[alpha] = posRootNbr(i); // refers to posroot |i| in subsystem
     inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
 
     // in the remainder we work in parent datum; must find conjugate to simple
@@ -85,7 +86,7 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
     if (parent.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(parent.posRootNbr(i));
 
-  // it suffices that simpleBasis computed below live until end of constructor
+  // it suffices that |simpleBasis| computed below live until end of constructor
   return SubSystem(parent,parent.simpleBasis(int_roots));
 }
 
@@ -176,6 +177,44 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
 
   // it suffices that simpleBasis computed below live until end of constructor
   return SubSystemWithGroup(parent,parent.simpleBasis(int_coroots));
+}
+
+integral_datum_item::integral_datum_item
+    (InnerClass& ic,const RootNbrSet& int_posroots)
+  : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_posroots))
+  , simple_coroots(integral.rank(),ic.rank())
+  , codecs(ic.numInvolutions())
+{
+  for (unsigned i=0; i<integral.rank(); ++i)
+    simple_coroots.set_row(i,
+			   ic.rootDatum().coroot(integral.parent_nr_simple(i)));
+}
+
+const integral_datum_item::codec& integral_datum_item::data
+  (const InnerClass& ic,unsigned int isys, InvolutionNbr inv)
+{
+  if (codecs[inv]==nullptr)
+    codecs[inv].reset(new codec(ic,isys,inv,simple_coroots));
+  return *codecs[inv];
+}
+
+integral_datum_item::codec::codec
+  (const InnerClass& ic,
+   unsigned int isys, InvolutionNbr inv, const int_Matrix& coroots_mat)
+    : int_sys_nr(isys), inv(inv), coder(), decoder(), diagonal(), in(), out()
+{
+  int_Matrix orth_killer(coroots_mat),row,col;
+  auto img_rank = matreduc::diagonalise(orth_killer,row,col).size();
+  decoder = col.block(0,0,col.numRows(),img_rank);
+  coder = col.inverse().block(0,0,img_rank,col.numRows());
+
+  const auto& i_tab = ic.involution_table();
+  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
+  int_Matrix A = coroots_mat * i_tab.theta_1_image_basis(inv);
+  diagonal=matreduc::diagonalise(A,row,col);
+  auto rank = diagonal.size();
+  in  = std::move(row); // keep full coordinate transform
+  out = col.block(0,0,col.numRows(),rank); // chop part for final zero entries
 }
 
 } // |namespace subdatum|
