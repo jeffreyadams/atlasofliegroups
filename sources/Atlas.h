@@ -427,7 +427,7 @@ namespace atlas {
 
   namespace klsupport { class KLSupport; }
   namespace wgraph {
-    struct WGraph;
+    class WGraph;
     class DecomposedWGraph;
   }
   namespace kl {

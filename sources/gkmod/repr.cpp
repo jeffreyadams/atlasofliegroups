@@ -1489,7 +1489,7 @@ blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
-    h=add_block(srm); // generate a new full block (possibly swalllow older ones)
+    h=add_block(srm); // generate a new full block (possibly swallow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
   z = place[h].second;
