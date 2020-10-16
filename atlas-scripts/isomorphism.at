@@ -68,3 +68,6 @@ if not valid then (false,id_mat(0),id_mat(0)) else
 set isomorphism_matrix(RootDatum rd_1,RootDatum rd_2)=mat:
 let (valid,M,P)=isomorphism(rd_1,rd_2) in
 assert(valid,"root data are not isomorphic");M
+
+set is_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
+let (valid,,)=isomorphism(rd_1,rd_2) in valid
