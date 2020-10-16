@@ -183,19 +183,10 @@ integral_datum_item::integral_datum_item
     (InnerClass& ic,const RootNbrSet& int_posroots)
   : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_posroots))
   , simple_coroots(integral.rank(),ic.rank())
-  , codecs(ic.numInvolutions())
 {
   for (unsigned i=0; i<integral.rank(); ++i)
     simple_coroots.set_row(i,
 			   ic.rootDatum().coroot(integral.parent_nr_simple(i)));
-}
-
-const integral_datum_item::codec& integral_datum_item::data
-  (const InnerClass& ic,unsigned int isys, InvolutionNbr inv)
-{
-  if (codecs[inv]==nullptr)
-    codecs[inv].reset(new codec(ic,isys,inv,simple_coroots));
-  return *codecs[inv];
 }
 
 integral_datum_item::codec::codec
