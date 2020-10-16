@@ -478,7 +478,7 @@ class InnerClass
   subsystem::integral_datum_item& int_item(unsigned int int_sys_nr)
   { return int_table[int_sys_nr]; }
 
-  const subsystem::integral_datum_item::codec& integrality_codec
+  const subsystem::integral_datum_item::codec integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).data(*this,int_sys_nr,inv); }
 
@@ -488,15 +488,6 @@ class InnerClass
   const int_Matrix& integral_eval
     (const RatWeight& gamma, unsigned int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).coroots_matrix(); }
-
-  const int_Matrix& integrality_encoder
-    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
-  { return integrality_codec(gamma,inv,int_sys_nr).coder; }
-
-  const int_Matrix& integrality_decoder
-    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
-  { return integrality_codec(gamma,inv,int_sys_nr).decoder; }
-
 
 // pseudo manipulator
 

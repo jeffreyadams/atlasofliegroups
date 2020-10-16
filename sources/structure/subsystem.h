@@ -151,21 +151,17 @@ class integral_datum_item
   {
     unsigned int int_sys_nr;
     InvolutionNbr inv;
-    int_Matrix coder, decoder; // transposed shapes: to quotient and a section
     std::vector<int> diagonal; // inv.factors image $(1-\theta)X^*$ in $X^*/N$
     int_Matrix in, out; // from $X^*/N$ to $-1$ subspace to $(1-\theta)X^*$
     codec (const InnerClass& ic,
 	   unsigned int isys, InvolutionNbr inv, const int_Matrix& cmat);
   }; // |struct integral_datum_item::codec|
- private:
 
-  std::vector<std::unique_ptr<codec> > codecs;
-
- public:
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&&)=default; // move, never copy
 
-  const codec& data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv);
+  const codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv)
+  { return { ic,isys,inv,simple_coroots }; }
   const int_Matrix& coroots_matrix() const { return simple_coroots; }
 
 }; // |class integral_datum_item|
