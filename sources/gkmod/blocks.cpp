@@ -1297,7 +1297,7 @@ void common_block::shift (const RatWeight& diff)
   srm_hash.reconstruct(); // input for hash function is computed has changed
 
   for (auto& pair: extended)
-    pair.shift -= diff; // compensate extended blocks for shift in base
+    (pair.shift -= diff).normalize(); // compensate base shift in |exrtewnded|
 }
 
 // when this method is called, |shift| has been called, so twist works as-is

@@ -1899,7 +1899,7 @@ SR_poly twisted_KL_column_at_s
   return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
 } // |twisted_KL_column_at_s|
 
-// compute and return the alternating sum of twisted KL polynomials
+// look up or compute and return the alternating sum of twisted KL polynomials
 // at the inner class involution for final parameter |z|, evaluated at $q=s$
 SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   // |z| must be inner-class-twist-fixed, nonzero and final
@@ -1909,7 +1909,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   BlockElt y0;
   auto& block = lookup(sr,y0);
   block.shift(offset(sr,block.representative(y0)));
-  auto eblock = block.extended_block(inner_class().distinguished());
+  auto& eblock = block.extended_block(&poly_hash);
 
   RankFlags singular=block.singular(sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -2135,7 +2135,7 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
       block.shift(diff); // adapt representatives for extended block construction
       assert(block.representative(new_z)==
 	     StandardReprMod::mod_reduce(*this,p.first));
-      auto eblock = block.extended_block(delta); // unshared, unstored copy
+      auto& eblock = block.extended_block(&poly_hash);
 
       RankFlags singular = block.singular(p.first.gamma());
       RankFlags singular_orbits; // flag singulars among orbits
