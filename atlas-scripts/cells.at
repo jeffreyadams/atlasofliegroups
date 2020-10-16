@@ -53,7 +53,7 @@ set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
 {note that ct.root_datum must be (isomorphic to) cell.root_datum,
  which is the integrality_datum of a parameter}
 set special_character(CharacterTable ct,WCell cell)=
-let (valid,P)=isomorphism_permutation(ct.root_datum.derived,cell.root_datum.derived) in
+let (valid,P)=root_permutation(ct.root_datum.derived,cell.root_datum.derived) in
 assert(valid,"No root system isomorphism");
 let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
 in if #summands>1 then error("not unique special representation")

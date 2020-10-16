@@ -133,21 +133,28 @@ set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
 
 {take an element of W(Lprime) to an element of W(Gprime)}
 set embed_simple_reflection_or_coreflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
-let (valid_G,P_G)=isomorphism_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
-(valid_L,P_L)=isomorphism_permutation(Lprime.derived,L.derived) in  {P_L: L'-> L}
+let (valid_G,P_G)=root_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
+(valid_L,P_L)=root_permutation(Lprime.derived,L.derived) in  {P_L: L'-> L}
 assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
 assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
+prints("P_L" ,P_L);
+prints("P_G" ,P_G);
 let M=embed_simple_reflection_or_coreflection(L,G,permutation(P_G)[permutation(P_L)[i]]) {matrix, in W(Gprime)} then
 w=W_elt(G,M) then
+()=prints("w=",w) then
 word_G=w.word {in W(G)} then
 word_Gprime=for i in word_G do permutation(P_G)[i] od
 in  W_elt(Gprime,word_Gprime)
+
+set e(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
+embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
 {let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
+{let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
 let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
 {difference here: formerly Gprime.rank}
 

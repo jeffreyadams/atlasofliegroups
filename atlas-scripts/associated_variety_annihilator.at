@@ -1,5 +1,6 @@
 <springer_tables_reductive.at
 <truncated_induction.at
+<sub_cells.at
 
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity

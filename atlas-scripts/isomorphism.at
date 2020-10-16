@@ -1,0 +1,70 @@
+{isomorphisms of root data by permutations}
+
+{for testing: return all permutations preserving the inner products
+note this only depends on the derived root data
+Consition: P*Cartan_matrix_1=Cartan_matrix_2*P
+}
+set root_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
+{assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");}
+assert(is_locally_isomorphic(rd_1.derived,rd_2.derived), "Derived root data are not locally isomorphic");
+if =rd_1.rank then [id_mat(0)] {empty root system case} else
+if not is_locally_isomorphic(rd_1,rd_2) then [null(0,0)]
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
+ ##for g in S do if  g*C_2=C_1*g then [g] else [] fi od
+fi
+fi
+
+{return one permutation}
+set root_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+{assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");}
+assert(is_locally_isomorphic(rd_1.derived,rd_2.derived), "Derived root data are not locally isomorphic");
+if =rd_1.rank then (true,id_mat(0)) {empty root system case} else
+if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
+ index=first(for g in S do g*C_2=C_1*g od) in
+ if index=-1 then (false,null(0,0)) else (true,S[index]) fi
+fi
+fi
+
+set find_root_permutation([RootDatum] list,RootDatum rd)=(int,mat):
+for rd_list@i in list do let (success,M)=root_permutation(rd_list.derived,rd.derived) in
+ if success then return (i,M) fi od;(-1,null(0,0))
+
+{find g\in GL(n,Q) and permutation matrix P so that
+P is a root_permutation (as above), i.e.
+P*Cartan_matrix_1=Cartan_matrix_2*P
+gR_1=R_2P  (R_i = simple roots in rd_i)
+these imply
+^tS_2=S_1P^{-1}
+this implies <\alpha,\beta^v>_1=<g\alpha,^g\beta^v>_2
+call this a "semi-isomorphism" since g,g^{-1} are
+ in GL(n,Q) not necessarily GL(n,Z)
+g gives an isomorphism of root systems
+it also gives an isomorphism of root data if and only if g and g^{-1}
+are both in GL(n,Z)
+}
+set semi_isomorphism(RootDatum rd_1,RootDatum rd_2)=(bool,ratmat,mat):
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+assert(is_locally_isomorphic(rd_1,rd_2), "Root data are not locally isomorphic");
+let (valid,P)=root_permutation(rd_1,rd_2) in
+assert(valid,"Can't find permutation");
+(valid,rd_2.simple_roots*P*rd_1.simple_roots.rational_inverse,P)
+
+set semi_isomorphism_matrix(RootDatum rd_1,RootDatum rd_2)=ratmat:
+let (valid,M,P)=semi_isomorphism(rd_1,rd_2) in
+assert(valid,"root data are not locally isomorphic");M
+
+set isomorphism(RootDatum rd_1,RootDatum rd_2)=(bool,mat,mat):
+let (valid,g,P)=semi_isomorphism(rd_1,rd_2) in
+if not valid then (false,id_mat(0),id_mat(0)) else 
+ let (num,,d)=g in
+ if d=1 and abs(det(g))=1 then (true,ratmat_as_mat(g),P)
+ else (false,id_mat(0),P) fi fi
+
+set isomorphism_matrix(RootDatum rd_1,RootDatum rd_2)=mat:
+let (valid,M,P)=isomorphism(rd_1,rd_2) in
+assert(valid,"root data are not isomorphic");M
