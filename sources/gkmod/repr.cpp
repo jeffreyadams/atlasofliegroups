@@ -84,7 +84,7 @@ Reduced_param::Reduced_param
     assert(entry%gl.denominator()==0);
     entry /= gl.denominator();
   }
-  const auto& codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
+  const auto codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
     int_Vector(eval.begin(),eval.end());
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -281,7 +281,7 @@ RatWeight Rep_context::offset
   auto& ic = inner_class();
   InvolutionNbr inv = kgb().inv_nr(srm0.x());
   unsigned int int_sys_nr;
-  const auto& codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
+  const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
   assert((ic.integral_eval(int_sys_nr)*result.numerator()).isZero());
   return result;

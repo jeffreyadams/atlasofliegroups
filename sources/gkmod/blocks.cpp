@@ -1344,7 +1344,7 @@ void common_block::swallow
   unsigned int int_sys_nr; // for the |common_block|
   subsystem::integral_datum_item& idi =
     ic.int_item(sub.z_pool[0].gamma_lambda(),int_sys_nr);
-  const auto& codec = idi.data(ic,int_sys_nr,inv);
+  const auto codec = idi.data(ic,int_sys_nr,inv);
   for (auto& pair : sub.extended)
   {
     auto& sub_eblock = pair.eblock;
