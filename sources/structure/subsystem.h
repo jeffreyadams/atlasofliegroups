@@ -151,7 +151,6 @@ class integral_datum_item
   {
     unsigned int int_sys_nr;
     InvolutionNbr inv;
-    int_Matrix coder, decoder; // transposed shapes: to quotient and a section
     std::vector<int> diagonal; // inv.factors image $(1-\theta)X^*$ in $X^*/N$
     int_Matrix in, out; // from $X^*/N$ to $-1$ subspace to $(1-\theta)X^*$
     codec (const InnerClass& ic,

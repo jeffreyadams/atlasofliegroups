@@ -489,15 +489,6 @@ class InnerClass
     (const RatWeight& gamma, unsigned int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).coroots_matrix(); }
 
-  const int_Matrix integrality_encoder
-    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
-  { return integrality_codec(gamma,inv,int_sys_nr).coder; }
-
-  const int_Matrix integrality_decoder
-    (const RatWeight& gamma,InvolutionNbr inv, unsigned int& int_sys_nr)
-  { return integrality_codec(gamma,inv,int_sys_nr).decoder; }
-
-
 // pseudo manipulator
 
   void generate_Cartan_orbit (CartanNbr i) { C_orb.add(*this,i); }
