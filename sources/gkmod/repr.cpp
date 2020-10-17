@@ -251,9 +251,7 @@ Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
 {
-  auto& ic = inner_class();
-  RatWeight eval =
-    (ic.int_item(codec.int_sys_nr).coroots_matrix()*offset).normalize();
+  RatWeight eval = (codec.coroots_matrix*offset).normalize();
   assert(eval.denominator()==1);
   auto eval_v = int_Vector(eval.numerator().begin(),eval.numerator().end());
   eval_v = codec.in * eval_v;
@@ -269,8 +267,7 @@ Weight Rep_context::theta_1_preimage
     eval_v.resize(codec.diagonal.size());
   }
 
-  return ic.involution_table().theta_1_image_basis(codec.inv) *
-    (codec.out * eval_v);
+  return codec.theta_1_image_basis * (codec.out * eval_v);
 }
 
 RatWeight Rep_context::offset
@@ -283,7 +280,7 @@ RatWeight Rep_context::offset
   unsigned int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((ic.integral_eval(int_sys_nr)*result.numerator()).isZero());
+  assert((codec.coroots_matrix*result).isZero());
   return result;
 }
 
