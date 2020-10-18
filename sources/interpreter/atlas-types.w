@@ -4694,6 +4694,7 @@ void print_c_block_wrapper(expression_base::level l)
   block.shift(diff);
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print block using involution expressions
+  block.shift(-diff);
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
@@ -4720,6 +4721,7 @@ void print_pc_block_wrapper(expression_base::level l)
   block.shift(diff);
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print using involution expressions
+  block.shift(-diff);
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
@@ -6302,6 +6304,7 @@ void twisted_deform_wrapper(expression_base::level l)
   RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
   block.shift(diff);
   auto& eblock = block.extended_block(rt.shared_poly_table());
+  block.shift(-diff);
 @)
   RankFlags singular = block.singular(p->val.gamma());
   RankFlags singular_orbits;
@@ -6310,7 +6313,7 @@ void twisted_deform_wrapper(expression_base::level l)
 @)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
 					     singular_orbits,
-                                             p->val.gamma());
+                                             diff,p->val.gamma());
   repr::SR_poly result;
   for (auto&& term : terms@;@;)
     result.add_term(std::move(term.first),

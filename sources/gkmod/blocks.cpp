@@ -1297,7 +1297,7 @@ void common_block::shift (const RatWeight& diff)
   srm_hash.reconstruct(); // input for hash function is computed has changed
 
   for (auto& pair: extended)
-    (pair.shift -= diff).normalize(); // compensate base shift in |exrtewnded|
+    (pair.shift -= diff).normalize(); // compensate in |extended| for base shift
 }
 
 // when this method is called, |shift| has been called, so twist works as-is
@@ -1308,7 +1308,6 @@ ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
     { return item.shift<value; };
 
   const RatWeight zero(root_datum().rank());
-  const auto& gamlam = z_pool[0].gamma_lambda(); // reference weight (adapted)
   auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
   if (it!=extended.end() and it->shift==zero)
     return it->eblock; // then identical extended block found, so use it
@@ -1352,12 +1351,13 @@ void common_block::swallow
     const RatWeight diff = pair.shift; // take a copy: |sub.shift| modifies it
     sub.shift(diff); // align the |sub| block to this extended block
     shift(diff); // and adapt our block to match, so |embed| remains valid
-    final_shift -= diff;
     assert(pair.shift.isZero());
     auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
     eblock.swallow(std::move(sub_eblock),embed); // transfer computed KL data
+    shift(-diff);
+    sub.shift(-diff);
   }
   shift(final_shift);
 } // |common_block::swallow|
