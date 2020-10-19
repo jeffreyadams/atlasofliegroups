@@ -55,6 +55,10 @@ class RationalVector
 
   RationalVector() : d_num(),d_denom(C(1)) {} // default to empty numerator
 
+// pseudo accessor
+  // this method although classified |const| modifies members, but in a manner
+  // that is mathematically neutral, so having this done should never harm
+  const RationalVector& normalize() const;
 
 // accessors
   // unsigned denominator requires care: plain % or / taboo; so export signed
@@ -126,18 +130,20 @@ class RationalVector
     matrix::Vector<C1> integer_diff(const RationalVector<C>& v) const
   {
     assert(size()==v.size());
-    const auto d=denominator(), vd=v.denominator();
-    const auto dvd=d*vd;
+    normalize(); v.normalize();
+    assert(d_denom==v.d_denom); // integer difference, so equal normalized denom
+    auto d = denominator(); // convert to signed type (avoid unsigned division!)
     matrix::Vector<C1> result(size());
     for (unsigned i=0; i<size(); ++i)
-    { assert((d_num[i]*vd-d*v.d_num[i])%dvd==0);
-      result[i] = (d_num[i]*vd-d*v.d_num[i])/dvd;
+    { assert((d_num[i]-v.d_num[i])%d==0);
+      result[i] = (d_num[i]-v.d_num[i])/d;
     }
     return result;
   }
 
 //manipulators
-  RationalVector& normalize();
+  RationalVector& normalize()
+  { static_cast<const RationalVector*>(this) -> normalize(); return *this; }
   V& numerator() { return d_num; } // allow direct manipulation
 
 }; // |template <typename C> class RationalVector|

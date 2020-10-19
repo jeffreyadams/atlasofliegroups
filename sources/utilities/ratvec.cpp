@@ -106,7 +106,7 @@ RationalVector<C>& RationalVector<C>::operator*=(C n)
 
 // division takes signed argument to avoid catastrophic surprises: if ever a
 // negative argument were passed, implicit conversion to unsigned would be fatal
-// like multiplication, this function does not guarantee a normalized result
+// like multiplication, this function does not guarantee a normalised result
 template<typename C>
 RationalVector<C>& RationalVector<C>::operator/=(C n)
 {
@@ -156,24 +156,25 @@ const
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::normalize()
+const RationalVector<C>& RationalVector<C>::normalize() const
 {
   arithmetic::Denom_t d=d_denom;
 
   if (d==0)
     throw std::runtime_error("Denominator 0 in rational vector");
 
-  for (size_t i=0; i<d_num.size(); ++i)
+  for (const auto& entry : d_num)
   {
-    if (d_num[i]!=0)
-      d=arithmetic::gcd(d,std::abs(d_num[i]));
+    d=arithmetic::gcd(entry,d); // |gcd| takes (signed,unsigned) arguments
     if (d==1)
-      return *this;
+      return *this; // quit early when no common divisors are left
   }
 
-  d_denom/=d;
-  d_num/=C(d);
-  return *this;
+  auto& my = const_cast<RationalVector<C>&>(*this); // now we shall "cheat"
+  my.d_denom /= d;    // unsigned exact division, is safe here
+  my.d_num   /= C(d); // signed exact division
+
+  return *this; // export as |const| reference
 }
 
 
