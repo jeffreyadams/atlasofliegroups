@@ -32,7 +32,9 @@ namespace arithmetic {
   Denom_t gcd (Numer_t, Denom_t); // signed first argument only!
 
   // the following functions are entirely unsigned
-  Denom_t unsigned_gcd (Denom_t, Denom_t); // name choice avoids overloading
+
+  // the name of the next function was chosen to avoid any overloading
+  Denom_t unsigned_gcd (Denom_t a, Denom_t b); // must have |b!=0|; |a| is free
 
   Denom_t div_gcd (Denom_t a, Denom_t b); // $a/\gcd(a,b)$
 
@@ -252,12 +254,13 @@ template<typename I>
 
   inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
 
-  inline Denom_t gcd (Numer_t a, Denom_t b)
+  inline Denom_t gcd (Numer_t a, Denom_t b) // caller must ensure |b>0|
   {
-    if (a < 0)
-      return unsigned_gcd(static_cast<Denom_t>(-a),b);
-    else
+    if (a > 0)
       return unsigned_gcd(static_cast<Denom_t>(a),b);
+    else if (a==0) return b; // faster, although |unsigned_gcd| could also cope
+    else
+      return unsigned_gcd(static_cast<Denom_t>(-a),b);
   }
 
   // we assume |a| and |b| to be less than |n| here

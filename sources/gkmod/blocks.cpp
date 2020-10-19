@@ -1268,6 +1268,18 @@ ext_block::ext_block common_block::extended_block
   return { *this, delta, nullptr };
 }
 
+struct common_block::ext_block_pair
+{
+  ext_block::ext_block eblock;
+  RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
+  ext_block_pair
+    (const blocks::common_block& block, const WeightInvolution& delta,
+     ext_KL_hash_Table* pol_hash)
+    : eblock(block,delta,pol_hash)
+    , shift(block.root_datum().rank()) // at construction time, |shift| is zero
+  {}
+};
+
 void common_block::shift (const RatWeight& diff)
 {
   if (diff.numerator().isZero())
@@ -1283,30 +1295,25 @@ void common_block::shift (const RatWeight& diff)
   for (auto& srm : z_pool)
     rc.shift(diff,srm);
   srm_hash.reconstruct(); // input for hash function is computed has changed
+
+  for (auto& pair: extended)
+    (pair.shift -= diff).normalize(); // compensate in |extended| for base shift
 }
 
-struct common_block::ext_block_pair
-{
-  ext_block::ext_block eblock; RatWeight signature;
-  ext_block_pair
-    (const blocks::common_block& block, const WeightInvolution& delta,
-     ext_KL_hash_Table* pol_hash, RatWeight gamma_lambda)
-      : eblock(block,delta,pol_hash), signature(std::move(gamma_lambda)) {}
-};
-
-// when this method is called, a shift has been applied so twist works as-is
+// when this method is called, |shift| has been called, so twist works as-is
 ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
 {
-  auto preceeds = [] (const ext_block_pair& item,
-		      const RatWeight& value) { return item.signature<value; };
+  auto preceeds =
+    [] (const ext_block_pair& item, const RatWeight& value)
+    { return item.shift<value; };
 
-  const auto& gamlam = z_pool[0].gamma_lambda(); // reference weight (adapted)
-  auto it = std::lower_bound(extended.begin(),extended.end(),gamlam,preceeds);
-  if (it!=extended.end() and it->signature==gamlam)
+  const RatWeight zero(root_datum().rank());
+  auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
+  if (it!=extended.end() and it->shift==zero)
     return it->eblock; // then identical extended block found, so use it
 
   // otherwise construct |ext_block| within a pair
-  extended.emplace(it,*this,inner_class().distinguished(),pol_hash,gamlam);
+  extended.emplace(it,*this,inner_class().distinguished(),pol_hash);
   return it->eblock; // return |ext_block| without |gamlam|
 } // |common_block::extended_block|
 
@@ -1337,26 +1344,22 @@ void common_block::swallow
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
 
-  const auto& rc = context();
-  auto& ic = rc.inner_class();
-  const auto& kgb = rc.kgb();
-  InvolutionNbr inv = kgb.inv_nr(sub.z_pool[0].x());
-  unsigned int int_sys_nr; // for the |common_block|
-  subsystem::integral_datum_item& idi =
-    ic.int_item(sub.z_pool[0].gamma_lambda(),int_sys_nr);
-  const auto codec = idi.data(ic,int_sys_nr,inv);
+  RatWeight final_shift(root_datum().rank()); // correction to be made finally
   for (auto& pair : sub.extended)
   {
     auto& sub_eblock = pair.eblock;
-    RatWeight diff = pair.signature - rc.gamma_lambda(z_pool[embed[0]]);
-    diff -= rc.theta_1_preimage(diff,codec); // ensure orthogonality to int sys
-    shift(diff); // adapt our representatives to match |sub_eblock|
-    assert(pair.signature==rc.gamma_lambda(z_pool[embed[0]]));
+    const RatWeight diff = pair.shift; // take a copy: |sub.shift| modifies it
+    sub.shift(diff); // align the |sub| block to this extended block
+    shift(diff); // and adapt our block to match, so |embed| remains valid
+    assert(pair.shift.isZero());
     auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
-    eblock.swallow(std::move(sub_eblock),embed);
+    eblock.swallow(std::move(sub_eblock),embed); // transfer computed KL data
+    shift(-diff);
+    sub.shift(-diff);
   }
+  shift(final_shift);
 } // |common_block::swallow|
 
 void common_block::set_Bruhat

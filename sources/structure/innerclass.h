@@ -225,7 +225,7 @@ class InnerClass
   using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned>;
   subsystem::integral_datum_entry::Pooltype integral_pool;
   integral_hash int_hash;
-  mutable std::vector<subsystem::integral_datum_item> int_table;
+  std::vector<subsystem::integral_datum_item> int_table;
 
  public:
 // constructors and destructors
@@ -475,7 +475,7 @@ class InnerClass
   subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr);
   // same when |int_sys_nr| has already been computed:
-  subsystem::integral_datum_item& int_item(unsigned int int_sys_nr)
+  const subsystem::integral_datum_item& int_item(unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
   const subsystem::integral_datum_item::codec integrality_codec

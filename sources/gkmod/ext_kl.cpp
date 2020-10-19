@@ -443,6 +443,8 @@ void KL_table::fill_columns(BlockElt limit)
 	column[y].clear(); // ensure partially filled columns are removed
       }
     }
+
+  assert(check_polys(limit));
 }
 
 /*
@@ -588,8 +590,6 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
   } // end of |if (has_direct_recursion(y,s,sy))|
   else // direct recursion was not possible
     do_new_recursion(y,hash);
-
-  assert(check_polys(y));
  } // |KL_table::fill_column|
 
 /*
@@ -895,21 +895,23 @@ bool check(const Pol& P_sigma, const KLPol& P)
   return true;
 }
 
-bool KL_table::check_polys(BlockElt y) const
+bool KL_table::check_polys(BlockElt limit) const
 {
   bool result = true;
 #ifndef NDEBUG
   kl::KL_table untwisted(aux.block.untwisted());
   untwisted.fill(); // fill KL table silently
-  for (BlockElt x=y; x-->0; )
-    if (not check(P(x,y),untwisted.KL_pol(aux.block.z(x),aux.block.z(y))))
-    {
-      std::cerr << "Mismatch at (" << aux.block.z(x) << ',' << aux.block.z(y)
-		<< "): ";
-      std::cerr << P(x,y) << " and "
-		<< untwisted.KL_pol(aux.block.z(x),aux.block.z(y)) << std::endl;
-      result=false;
-    }
+  for (BlockElt y=aux.block.length_first(1); y<limit; ++y)
+    for (BlockElt x=y; x-->0; )
+      if (not check(P(x,y),untwisted.KL_pol(aux.block.z(x),aux.block.z(y))))
+      {
+	std::cerr << "Mismatch at (" << aux.block.z(x) << ',' << aux.block.z(y)
+		  << "): ";
+	std::cerr << P(x,y) << " and "
+		  << untwisted.KL_pol(aux.block.z(x),aux.block.z(y))
+		  << std::endl;
+	result=false;
+      }
 #endif
   return result;
 }

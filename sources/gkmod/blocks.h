@@ -345,7 +345,7 @@ class common_block : public Block_base
   StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
-  // pair of an extended block and characterising |gamma_lambda| at element 0
+  // pair of an extended block and integral-orthogonal shift to |gamma_lambda|
   struct ext_block_pair;
   sl_list<ext_block_pair> extended;
 

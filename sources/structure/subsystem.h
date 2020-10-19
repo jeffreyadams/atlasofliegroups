@@ -149,8 +149,8 @@ class integral_datum_item
  public:
   struct codec
   {
-    unsigned int int_sys_nr;
-    InvolutionNbr inv;
+    const int_Matrix& coroots_matrix;
+    const int_Matrix& theta_1_image_basis;
     std::vector<int> diagonal; // inv.factors image $(1-\theta)X^*$ in $X^*/N$
     int_Matrix in, out; // from $X^*/N$ to $-1$ subspace to $(1-\theta)X^*$
     codec (const InnerClass& ic,
@@ -160,7 +160,7 @@ class integral_datum_item
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&&)=default; // move, never copy
 
-  const codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv)
+  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
   { return { ic,isys,inv,simple_coroots }; }
   const int_Matrix& coroots_matrix() const { return simple_coroots; }
 

@@ -251,9 +251,7 @@ Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
 {
-  auto& ic = inner_class();
-  RatWeight eval =
-    (ic.int_item(codec.int_sys_nr).coroots_matrix()*offset).normalize();
+  RatWeight eval = (codec.coroots_matrix*offset).normalize();
   assert(eval.denominator()==1);
   auto eval_v = int_Vector(eval.numerator().begin(),eval.numerator().end());
   eval_v = codec.in * eval_v;
@@ -269,8 +267,7 @@ Weight Rep_context::theta_1_preimage
     eval_v.resize(codec.diagonal.size());
   }
 
-  return ic.involution_table().theta_1_image_basis(codec.inv) *
-    (codec.out * eval_v);
+  return codec.theta_1_image_basis * (codec.out * eval_v);
 }
 
 RatWeight Rep_context::offset
@@ -283,7 +280,7 @@ RatWeight Rep_context::offset
   unsigned int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((ic.integral_eval(int_sys_nr)*result.numerator()).isZero());
+  assert((codec.coroots_matrix*result).isZero());
   return result;
 }
 
@@ -1489,7 +1486,7 @@ blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
-    h=add_block(srm); // generate a new full block (possibly swalllow older ones)
+    h=add_block(srm); // generate a new full block (possibly swallow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
   z = place[h].second;
@@ -1835,6 +1832,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
 ( ext_block::ext_block& eblock, BlockElt y, const blocks::common_block& parent,
+  const RatWeight& diff,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
   // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
@@ -1874,7 +1872,7 @@ SR_poly twisted_KL_sum
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       eval = -eval;
     for (const auto& pair : contrib[x])
-      result.add_term(parent.sr(eblock.z(pair.first),gamma),
+      result.add_term(parent.sr(eblock.z(pair.first),diff,gamma),
 		      eval*pair.second);
   }
 
@@ -1893,13 +1891,17 @@ SR_poly twisted_KL_column_at_s
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry;
   blocks::common_block block(rc,zm,entry); // which this constructor does
-  assert(rc.offset(zm, block.representative(entry)).isZero());
+  RatWeight diff = rc.offset(z, block.representative(entry));
+  assert(diff.isZero()); // because we custom-built our |block| above
+  // the code below handles still |diff| as it should if it were nonzero
 
+  block.shift(diff);
   auto eblock = block.extended_block(delta);
-  return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
+  block.shift(-diff);
+  return twisted_KL_sum(eblock,eblock.element(entry),block,diff,z.gamma());
 } // |twisted_KL_column_at_s|
 
-// compute and return the alternating sum of twisted KL polynomials
+// look up or compute and return the alternating sum of twisted KL polynomials
 // at the inner class involution for final parameter |z|, evaluated at $q=s$
 SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   // |z| must be inner-class-twist-fixed, nonzero and final
@@ -1908,8 +1910,10 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0;
   auto& block = lookup(sr,y0);
-  block.shift(offset(sr,block.representative(y0)));
-  auto eblock = block.extended_block(inner_class().distinguished());
+  const RatWeight diff = offset(sr,block.representative(y0));
+  block.shift(diff);
+  auto& eblock = block.extended_block(&poly_hash);
+  block.shift(-diff);
 
   RankFlags singular=block.singular(sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -1943,7 +1947,8 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if ((y_length-block.length(eblock.z(x)))%2!=0) // when |l(y)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (const auto& pair : contrib[x])
-      result.add_term(block.sr(eblock.z(pair.first),gamma), eval*pair.second);
+      result.add_term(block.sr(eblock.z(pair.first),diff,gamma),
+		      eval*pair.second);
   }
 
   return result;
@@ -1951,9 +1956,9 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 
 sl_list<std::pair<StandardRepr,int> >
 Rep_table::twisted_deformation_terms
-  (blocks::common_block& block, ext_block::ext_block& eblock,
-   BlockElt y, // in numbering of |block|, not |eblock|
-   RankFlags singular_orbits, const RatWeight& gamma)
+    (blocks::common_block& block, ext_block::ext_block& eblock,
+     BlockElt y, // in numbering of |block|, not |eblock|
+     RankFlags singular_orbits, const RatWeight& diff, const RatWeight& gamma)
 {
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
@@ -2026,7 +2031,7 @@ Rep_table::twisted_deformation_terms
     assert(remainder[pos]==0); // check relation of being inverse
   }
   {
-    const unsigned int orient_y = orientation_number(block.sr(y,gamma));
+    const unsigned int orient_y = orientation_number(block.sr(y,diff,gamma));
 
     auto it=acc.begin();
     for (const int f : finals) // accumulator |acc| runs parallel to |finals|
@@ -2034,7 +2039,8 @@ Rep_table::twisted_deformation_terms
       const int c = *it++;
       if (c==0)
 	continue;
-      const auto sr_z = block.sr(eblock.z(f),gamma); // renumber |f| to |block|
+      const auto sr_z =
+	block.sr(eblock.z(f),diff,gamma); // renumber |f| to |block|
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
       result.emplace_back(sr_z,coef);
@@ -2135,7 +2141,8 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
       block.shift(diff); // adapt representatives for extended block construction
       assert(block.representative(new_z)==
 	     StandardReprMod::mod_reduce(*this,p.first));
-      auto eblock = block.extended_block(delta); // unshared, unstored copy
+      auto& eblock = block.extended_block(&poly_hash);
+      block.shift(-diff);
 
       RankFlags singular = block.singular(p.first.gamma());
       RankFlags singular_orbits; // flag singulars among orbits
@@ -2143,7 +2150,7 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
 	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
       auto terms = twisted_deformation_terms(block,eblock,new_z,
-					     singular_orbits,zi.gamma());
+					     singular_orbits,diff,zi.gamma());
       const bool flip = flipped!=p.second;
       for (auto const& term : terms)
 	result.add_multiple(twisted_deformation(term.first), // recursion
