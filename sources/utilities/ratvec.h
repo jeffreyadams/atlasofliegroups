@@ -110,11 +110,17 @@ class RationalVector
     { d_num.subtract(v.begin(),denominator()); return *this; }
 
   template <typename C1>
-    RationalVector operator+(const matrix::Vector<C1>& v) const
+    RationalVector operator+(const matrix::Vector<C1>& v) const &
     { return RationalVector(*this)+=v; }
   template <typename C1>
-    RationalVector operator-(const matrix::Vector<C1>& v) const
+    RationalVector operator-(const matrix::Vector<C1>& v) const &
     { return RationalVector(*this)-= v; }
+  template <typename C1>
+    RationalVector operator+(const matrix::Vector<C1>& v) &&
+    { return (*this)+=v; }
+  template <typename C1>
+    RationalVector operator-(const matrix::Vector<C1>& v) &&
+    { return (*this)-= v; }
 
   RationalVector& operator*=(const arithmetic::Rational& r);
   RationalVector& operator/=(const arithmetic::Rational& r);
