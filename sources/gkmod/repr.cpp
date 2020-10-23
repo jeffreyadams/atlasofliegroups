@@ -494,9 +494,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimpleRank(); ++s)
-      {
-	int v=rd.simpleCoroot(s).dot(numer);
-	if (v<0)
+	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
 	  rd.simple_reflect(s,numer);
 	  int offset; // used to pivot |lr| around $\rho_r-\rho$
@@ -510,8 +508,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  rd.simple_reflect(s,lr,offset);
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-      } // |for(s)|
+	} // |if(v<0)| and |for(s)|
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
