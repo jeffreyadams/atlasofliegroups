@@ -75,15 +75,42 @@ template<typename C>
 }
 
 template<typename C>
-RationalVector<C> RationalVector<C>::operator+(const RationalVector<C>& v)
-  const
+  RationalVector<C>& RationalVector<C>::operator+=(const RationalVector<C>& v)
 {
+  assert(size()==v.size());
   arithmetic::Denom_t gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
-  arithmetic::Denom_t f = v.d_denom/gcd;
-  assert (f==m/d_denom); // if this fails, then there was overflow on m
-  RationalVector<C> result(d_num*f,m); // |operator*| returns |Ratvec_Numer_t|
-  result.d_num += v.d_num*(d_denom/gcd);
-  return result; // don't normalize, better just limit denominator growth
+  arithmetic::Denom_t f0 = v.d_denom/gcd, f1=d_denom/gcd;
+  assert (f0==m/d_denom and f1==m/v.d_denom); // failure indicates overflow on m
+  for (unsigned i=d_num.size(); i-->0; )
+    d_num[i]=d_num[i]*f0 + v.d_num[i]*f1;
+  d_denom=m;
+  return normalize();
+}
+
+template<typename C>
+  RationalVector<C>& RationalVector<C>::operator-=(const RationalVector<C>& v)
+{
+  assert(size()==v.size());
+  arithmetic::Denom_t gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
+  arithmetic::Denom_t f0 = v.d_denom/gcd, f1=d_denom/gcd;
+  assert (f0==m/d_denom and f1==m/v.d_denom); // failure indicates overflow on m
+  for (unsigned i=d_num.size(); i-->0; )
+    d_num[i]=d_num[i]*f0 - v.d_num[i]*f1;
+  d_denom=m;
+  return normalize();
+}
+
+template<typename C>
+  RationalVector<C>& RationalVector<C>::negate_add(const RationalVector<C>& v)
+{
+  assert(size()==v.size());
+  arithmetic::Denom_t gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
+  arithmetic::Denom_t f0 = v.d_denom/gcd, f1=d_denom/gcd;
+  assert (f0==m/d_denom and f1==m/v.d_denom); // failure indicates overflow on m
+  for (unsigned i=d_num.size(); i-->0; )
+    d_num[i]=v.d_num[i]*f1 - d_num[i]*f0;
+  d_denom=m;
+  return normalize();
 }
 
 // rational vectors are not guaranteed on lowest terms

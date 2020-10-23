@@ -72,19 +72,35 @@ class RationalVector
   { return not operator==(a); }
   bool operator< (const RationalVector& a) const; // comparison, for STL use
 
-  RationalVector operator+(const RationalVector& v) const;
-  RationalVector& operator+=(const RationalVector& v)
-  { return *this=*this+v; }
-  RationalVector operator-() const
-  { return RationalVector(-d_num,d_denom); }
-  RationalVector operator-(const RationalVector& v) const
-  { return *this+-v; }
-  RationalVector& operator-=(const RationalVector& v)
-  { return *this=*this-v; }
+  RationalVector& operator+=(const RationalVector& v);
+  RationalVector& operator-=(const RationalVector& v);
+  RationalVector& negate() { d_num.negate(); return *this; }
+  RationalVector& negate_add(const RationalVector& v);
   RationalVector& operator*=(C n);
   RationalVector& operator/=(C n);
   RationalVector& operator%=(C n);
   // functional versions are free functions taking first agument by value
+
+  RationalVector operator+(const RationalVector& v) const &
+  { RationalVector result(*this); return result+=v; }
+  RationalVector operator-(const RationalVector& v) const &
+  { RationalVector result(*this); return result-=v; }
+  RationalVector operator-() const &
+  { RationalVector result(*this); return result.negate(); }
+
+  // when left operand is rvalue reference, use destructive operators
+  RationalVector operator+ (const RationalVector& v) && { return *this += v; }
+  RationalVector operator- (const RationalVector& v) && { return *this -= v; }
+  RationalVector operator- () &&     { return negate(); }
+
+  // when right operand is rvalue reference, use destructive operators too
+  RationalVector operator+ (RationalVector&& v) const & { return v+=*this; }
+  RationalVector operator- (RationalVector&& v) const &
+					     { return v.negate_add(*this); }
+
+  // when both operands are rvalue references, give priority to the left
+  RationalVector operator+ (RationalVector&& v) && { return *this += v; }
+  RationalVector operator- (RationalVector&& v) && { return *this -= v; }
 
   template <typename C1>
     RationalVector& operator+=(const matrix::Vector<C1>& v)
@@ -94,11 +110,17 @@ class RationalVector
     { d_num.subtract(v.begin(),denominator()); return *this; }
 
   template <typename C1>
-    RationalVector operator+(const matrix::Vector<C1>& v) const
+    RationalVector operator+(const matrix::Vector<C1>& v) const &
     { return RationalVector(*this)+=v; }
   template <typename C1>
-    RationalVector operator-(const matrix::Vector<C1>& v) const
+    RationalVector operator-(const matrix::Vector<C1>& v) const &
     { return RationalVector(*this)-= v; }
+  template <typename C1>
+    RationalVector operator+(const matrix::Vector<C1>& v) &&
+    { return (*this)+=v; }
+  template <typename C1>
+    RationalVector operator-(const matrix::Vector<C1>& v) &&
+    { return (*this)-= v; }
 
   RationalVector& operator*=(const arithmetic::Rational& r);
   RationalVector& operator/=(const arithmetic::Rational& r);

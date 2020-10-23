@@ -113,18 +113,29 @@ StandardRepr Rep_context::sr_gamma
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
   // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
 
-  int_Matrix theta1 = kgb().involution_matrix(x)+1;
-  Weight t1_gamma (gamma.numerator().begin(), gamma.numerator().end());
-  // the division in the next computation may throw when |gamma| is bad for |x|
-  t1_gamma = theta1*t1_gamma/static_cast<int>(gamma.denominator());
+  const auto& theta = kgb().involution_matrix(x);
+  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
+    gamma.numerator()+theta*gamma.numerator();
+
+  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
+  Weight th1_gamma(th1_gamma_num.size());
+  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
+  {
+    assert(th1_gamma_num[i]%gamma.denominator()==0);
+    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
+  }
 #ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
-  Weight image = // $(\theta+1)(\gamma-\rho)$
-    t1_gamma-(theta1*root_datum().twoRho()/2);
-  matreduc::find_solution(theta1,image); // a solution must exist
+  {
+    int_Matrix theta1 = theta+1;
+    Weight image = // $(\theta+1)(\gamma-\rho)$
+      th1_gamma-(theta1*root_datum().twoRho()/2); // exact division
+    matreduc::find_solution(theta1,image); // a solution must exist
+  }
 #endif
+
   const InvolutionTable& i_tab = involution_table();
   return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma,
-		      height(t1_gamma));
+		      height(th1_gamma));
 }
 
 StandardRepr Rep_context::sr
@@ -194,10 +205,18 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
 
   // recover $\lambda-\rho$ from doubled projections on eigenspaces $\theta$
   const RatWeight gam_rho = z.gamma() - rho(root_datum());
-  auto im_part2 = // $(1+\theta)(\lambda-\rho)$ found as |(1+theta)*(gam_rho)|
-    (gam_rho.numerator()+theta*gam_rho.numerator()) / gam_rho.denominator();
-  // both divisions, above and below, will be exact
-  return (Weight(im_part2.begin(),im_part2.end()) +i_tab.y_lift(i_x,z.y())) / 2;
+  auto th1_gam_rho_num = // numerator of $(1+\theta)*(\gamma-\rho)$, 64 bits
+    gam_rho.numerator() + theta*gam_rho.numerator();
+
+  Weight th1_gam_rho(th1_gam_rho_num.size());
+  for (unsigned i=0; i<th1_gam_rho_num.size(); ++i)
+  {
+    assert(th1_gam_rho_num[i]%gam_rho.denominator()==0);
+    th1_gam_rho[i] = th1_gam_rho_num[i]/gam_rho.denominator();
+  }
+
+  // the next addition is |Weight::operator+(Weight&&) const &|:
+  return ( th1_gam_rho + i_tab.y_lift(i_x,z.y()) ) / 2; // exact division
 }
 
 // compute $\gamma-\lambda$ from $(1-\theta)(\gamma-\lambda)=2(\gamma-\lambda)$
@@ -222,7 +241,8 @@ RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
   RatWeight result = sr.gamma()*2LL;
   (result -= theta*(result-rho2)) += rho2;
 
-  return (std::move(result) - i_tab.y_lift(i_x,sr.y())*2)/4LL;
+  // the next subtraction is |RatWeight::operator-(const Weight&) &&|:
+  return ( std::move(result) - i_tab.y_lift(i_x,sr.y())*2 )/4LL;
 }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
@@ -474,9 +494,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimpleRank(); ++s)
-      {
-	int v=rd.simpleCoroot(s).dot(numer);
-	if (v<0)
+	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
 	  rd.simple_reflect(s,numer);
 	  int offset; // used to pivot |lr| around $\rho_r-\rho$
@@ -490,8 +508,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  rd.simple_reflect(s,lr,offset);
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-      } // |for(s)|
+	} // |if(v<0)| and |for(s)|
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
