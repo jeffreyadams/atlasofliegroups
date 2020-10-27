@@ -75,14 +75,17 @@ in for alpha_v in poscoroots(sub_datum)
 }
 set walls(RootDatum rd, ratvec gamma) = ([int,int,rat],[rat],ratvec):
 (  assert(#gamma=rd.rank,"rational weight of wrong size")
+;  if not rd.prefers_coroots { then replace |rd| by one that does }
+   then rd:=root_datum(rd.simple_roots,rd.simple_coroots,true)
+   fi
 ;  let levels = for alpha_v in coroots(rd) do frac(alpha_v*gamma) od
    , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
    , gens=[int]: []
    then ranking = inv_standardisation(levels)
-   then start = { where we shall start considering |levels| }
+   then start = { skip over level 0 negative coroots in |ranking| }
        #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
    , exclude = is_in_coroot_span(rd,gens)
-in for place in ranking[start:] { skip the negative coroots seen above }
+in for place in ranking[start:] { treat the remaining coroots in |ranking| }
    do let index = place-npr { transform to standard coroot index }
    in if not exclude(index)
       then gens #:= index; exclude := is_in_coroot_span(rd,gens)
@@ -92,25 +95,25 @@ in for place in ranking[start:] { skip the negative coroots seen above }
 ;  let lc = lowest_coroots(rd,gens)
    , !triv_rel = vec:for :2*rd.nr_of_posroots do 0 od
    then new_gens=for (i,)in lc do i od
-   ,  relations = mat:
+   ,  relations = mat: #triv_rel { size of each relation } #
       for (i,arr) in lc
       do let rel=triv_rel in
          rel[i+npr]:=1; for (j,c,) in arr do rel[gens[j]+npr]:=c od
       ;  rel
       od
-   then wall_triples = [int,int,rat]:
+   then wall_triples = [int,int,rat]: { coroot index, integral, fractional part }
       for i in sort(gens ## new_gens)
       do let alpha_v=coroot(rd,i) then (n,f)=(alpha_v*gamma)\%1
          in assert(f=levels[i+npr],"mismatch in levels"); (i,n,f)
       od
    then coroot_fracs = [rat]: for :2*rd.nr_of_posroots do 0 od
-in assert(=rd.coroots*relations,"relations don't") { |relations| should relate }
+in assert(=rd.coroots*relations,"relations don't relate") { |relations| should }
 ;  for rel in relations
    do let parts = [ratvec]: { (floor,frac) separated coroot evaluations }
          for (i,n,f) in wall_triples do [n,f]*rel[i+npr] od
    in assert(sum(2,parts)=[-1,1]/1,"wrong weighted sum of fractional parts")
    od
-; let alcove_weight = ratvec: { representative rational weight in alcove }
+;  let alcove_weight = ratvec: { representative rational weight in alcove }
       sum(rd.rank, { sum over (fundamental weight)*coordinate contributions }
 	for (i_aff,arr) in lc
 	do let neg_count = #<i_aff { count negative root contributions |rel| }
