@@ -489,7 +489,7 @@ set theta_induce_irreducible_coherent (Param p, RealForm G)=ParamPol:
    let rd=root_datum(G), N=find_N (p,G), rho_u=rho(G)-rho(real_form(p))
    then q=translate_param_by (p,ratvec_as_vec(N*two_rho(G)))
    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
-   then (w,gamma_dom)=from_dominant(p.integrality_datum,p.infinitesimal_character+rho_u)
+   then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
     {w*gamma_dom=p.infinitesimal_character+rho_u
        according to the discussion DANGEROUS BEND in coherent.at, this means
        coherent(ind,w) is what we want, not coherent(ind,w.inverse)}
