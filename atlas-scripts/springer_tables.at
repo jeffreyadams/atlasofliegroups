@@ -144,7 +144,7 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
  tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
-set show(SpringerTable st)=void:
+set show_old(SpringerTable st)=void:
 let orbits=st.root_datum.orbits in
 tabulate(["i","O","d(O)","dd(O)","pi","special"] #
  for O@i in orbits do

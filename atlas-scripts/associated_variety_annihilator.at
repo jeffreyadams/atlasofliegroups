@@ -2,6 +2,8 @@
 <truncated_induction.at
 <sub_cells.at
 
+set av_verbose=false
+
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity
  associated_variety_ann_inid includes the permutation,
@@ -103,8 +105,7 @@ L=cell.root_datum then
 ct_L=L.character_table then
 index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
-d_L=ct_L.degrees[index_pi_L] then
-()=prints("OK") in
+d_L=ct_L.degrees[index_pi_L] in
 (rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L){
 chars_rd=
 ##for i:st_rd.ct.n_classes do
@@ -113,8 +114,6 @@ chars_rd=
   then  [i] else [] fi
 od
 then
-()=prints("OK2") then
-{()=prints("chars_rd=",chars_rd) then}
 index_rd=chars_rd[0] in
 st_rd.springer_inverse(index_rd)
 }
@@ -177,7 +176,7 @@ set av_maximal_ideal_0(RootDatum G,ratvec gamma,SpringerTable st,CharacterTable 
 let GC=complexification(G) then
 p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
 ()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
-()=prints("computing associated_variety_ann_res of ",p_final) then
+()=if av_verbose then prints("computing associated_variety_ann_res of ",p_final) fi then
 av=associated_variety_ann(p_final,st,ct_int) then
 H=av.H then
 orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
@@ -202,13 +201,14 @@ rd.springer_table
 rd_int.character_table
 rd_singular.character_table
 }
-set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
-let gamma=dominant(rd,gamma_in) then
+set av_maximal_ideal(SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
+let rd=st.root_datum then
+gamma=dominant(rd,gamma_in) then
 ct=st.ct then
 rd_int=integrality_datum(rd,gamma) then
 rd_singular=singular_root_datum(rd,gamma) then
 d=rd_singular.nr_of_posroots then
-()=prints("target d: ", d) then
+()=if av_verbose then prints("target d: ", d) fi then
 chars_int=##for i:ct_int.n_classes do
  if ct_int.degrees[i]=d and
  !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
@@ -221,16 +221,18 @@ orbit=st.springer_inverse(index) in
 orbit_by_diagram(rd,orbit.diagram_normalized)
 
 {precompute st,ct_int}
-set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,ratvec gamma)=
-let rd_singular=singular_root_datum(rd,gamma) then
+set av_maximal_ideal(SpringerTable st,CharacterTable ct_int,ratvec gamma)=
+let rd=st.root_datum then
+rd_singular=singular_root_datum(rd,gamma) then
 ct_singular=if rd_singular=ct_int.root_datum then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+in av_maximal_ideal(st,ct_int,ct_singular,gamma)
 
 {precompute st}
-set av_maximal_ideal(RootDatum rd,SpringerTable st,ratvec gamma)=
-let rd_int=integrality_datum(rd,gamma) then
+set av_maximal_ideal(SpringerTable st,ratvec gamma)=
+let rd=st.root_datum then
+rd_int=integrality_datum(rd,gamma) then
 ct_int=if rd_int=rd then st.ct else rd_int.character_table fi in
-av_maximal_ideal(rd,st,ct_int,gamma)
+av_maximal_ideal(st,ct_int,gamma)
 
 set av_maximal_ideal(RootDatum rd,ratvec gamma)=
 let st=rd.springer_table then
@@ -238,8 +240,25 @@ rd_int=integrality_datum(rd,gamma) then
 ct_int=if rd_int=rd then st.ct else rd_int.character_table fi then
 rd_singular=singular_root_datum(rd,gamma) then
 ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+in av_maximal_ideal(st,ct_int,ct_singular,gamma)
+
+set test_av_maximal_ideal(SpringerTable st)=bool:
+let rv=[bool]:[] in
+prints("testing av_maximal_idea(O_vee.H/2)=dual(O_vee)");
+tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
+ for orbit_vee@i in st.root_datum.dual_orbits do
+ let gamma=orbit_vee.H/2 then
+ av=av_maximal_ideal(st,gamma) then
+ dual=st.dual_map_i(orbit_vee) in
+ rv#:= (av.diagram_normalized=dual.diagram_normalized);
+ [orbit_vee.diagram.to_string,
+  av.diagram.to_string,
+  st.dual_map_i(orbit_vee).diagram.to_string]
+  od);all(rv)
+
+set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.springer_table)
 {
+
 
 
 let gamma=dominant(rd,gamma_in) then

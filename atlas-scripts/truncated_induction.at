@@ -16,7 +16,7 @@ provide both ct_L and L, the latter so (unlike ct_L.root_datum) its
 roots are a subset of the of G
 }
 
-set ti_verbose=true
+set ti_verbose=false
 
 {truncate character: keep only the components of minimal degree}
 set truncate(CharacterTable ct_G,[int] char)=
