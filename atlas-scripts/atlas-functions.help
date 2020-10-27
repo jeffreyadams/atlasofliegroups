@@ -87,6 +87,10 @@ prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty
 ascii: (int->string): string of length 1 with given ASCII code (if safe value)
 
+floor: (rat->int): closest integer <= rational (round down, same as r\1)
+ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
+frac: (rat->int): fractional part of rational (same as r%1 or as r-floor(r))
+
 null: (int->vec): null vector of given length
 null: (int,int->mat): null matrix with given number of rows and columns
 id_mat: (int->mat): identity matrix of given size.
@@ -129,6 +133,14 @@ echelon: (mat->mat,mat,[int],int): column echelon form, with extra information
   extended by m-k zero columns (so the last m-k columns of C are a basis of the
   kernel of A). For each j with 0<=j<k one the entries M[s[j],j] is nonzero (the
   pivot entry) and M[i,j]=0 for i>s[j].
+linear_solve: (mat,vec->(void|vec,int,mat)) Complete solution for x of A*x=b
+  For a matrix A and vector (of same height as A) the affine space of rational
+  solutions x to the equation A*x=b is sought. If none exist the first variant
+  of the union type is returned, with tag empty_set, otherwise the space is
+  returned in the form (v,n,M) where n is the minimal numerator required (so
+  integer solutions exist only if n=1), v/n is a particular solution and the
+  (linearly independent) columns of M span the kernel of A, so that all other
+  solutions are obtained from v/n by adding a vector in that span.
 diagonalize: (mat->vec,mat,mat): partial Smith reduction, without divisibility
   Applies row and column operations to the matrix to obtain diagonal form;
   returns the list of non-zero diagonal entries (all except the first are
@@ -168,7 +180,7 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
 subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
   Given a sequence of binary vectors, namely the reduction modulo 2 of the
   columns of the argument matrix, find a normalized basis for the subspace they
-  span (a matrix in reduced column form without zero columns), and also
+  span (a matrix in reduced column echelon form without zero columns), and also
   expressions for the basis vectors in terms of the given list, a basis for the
   relations between the vectors, and a list of pivot values (each list given as
   a matrix with the specified vectors as its columns). The argument is a list of
@@ -179,8 +191,7 @@ subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
   this basis vector, the next component has n-d binary vectors of size n, each
   giving basis of the linear dependency relations among the generators, and the
   final component is an increasing sequence of non-negative d integers less than
-  r giving the pivot positions, the first nonzero positions in each of the basis
-  vectors.
+  r giving the pivot (first nonzero) positions in each of the basis vectors.
 
 Lie_type: (string->LieType): interpret string as Lie type.
   Factors are one of "ABCDEFGT" followed by a number; several factors can be
@@ -350,8 +361,8 @@ root_index: (RootDatum,vec->int): Index of root with respect to posroots
 coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
   These functions return the index of the root/coroot in the root system rd, or
   return nr_of_posroots(rd) if the argument is not found among the (co)roots.
-  The indexing is as in the root/coroot functions above, so if fond the index i
-  returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
+  The indexing is as in the root/coroot functions above, so if found, the
+  index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed

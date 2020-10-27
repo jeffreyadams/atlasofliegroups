@@ -1757,20 +1757,27 @@ expression after 'while', with as final component the actual condition.
 
 So the loop in
 
-  let i=0 in while i<=n do i+:=1 od
+  let i=0 in while i<n do i+:=1 od
 
 will produce a row [1,2,...,n] (since the body 'i+:=1', which stands for
 'i:=i+1', returns the assigned value 'i+1'). Often the side effect is required
 to take place after a component to the row result is contributed; to that end
 and expression sequenced by 'next' can be used. So for instance the variation
 
-  let i=0 in while i<=n do i next i+:=i od
+  let i=0 in while i<n do i next i+:=i od
 
 produces the row [0,1,...,n-1]. It can also be useful to use 'next' in the
 condition of the loop, to program an action that is to be performed whether or
 not the loop will terminate, but after the evaluation of the condition proper;
 this is possible, provided the condition is parenthesized (without which there
-could be ambiguity, in view of the possibilities discussed below).
+could be ambiguity, in view of the possibilities discussed below). For instance
+
+  set i=0
+  while (i<n next i+:=1) do i od
+
+produces the row [1,2,...,n] like the first example, but leaves i=n+1 (the
+condition fails for i=n, but i is then augmented nonetheless); by contrast, the
+first example would have left i=n if i would not have gone out of scope there.
 
 While the above form of the while-loop suffices in many cases, the axis language
 allows for more flexible uses, in which the condition and loop body are

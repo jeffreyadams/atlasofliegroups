@@ -398,7 +398,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
 
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
   {
-    auto v=rd.simpleCoroot(s).dot(numer);
+    auto v = rd.simpleCoroot(s).dot(numer);
     if (v<0)
       return false; // unless |gamma| is dominant, we just say "no"
     else if (v==0)
@@ -414,8 +414,8 @@ bool Rep_context::is_final(const StandardRepr& z) const
 	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0)
 	  return false;
       default: {} // ImaginaryNoncompact is fine
-      }
-  }
+      } // tests on |v|
+  } // |for(s)|
   RootNbr witness;
   return is_nonzero(z,witness); // check \emph{all} simply-imaginary coroots
 }
@@ -430,7 +430,7 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 
   assert(real.isMember(alpha)); // only real roots should be tested
 
-  const Weight& av = root_datum().coroot(alpha);
+  const Coweight& av = root_datum().coroot(alpha);
   const auto numer = av.dot(z.gamma().numerator());
   const auto denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
