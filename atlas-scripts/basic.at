@@ -1052,6 +1052,16 @@ set highest_root (RootDatum rd) = vec:
 { one of the highest roots }
 set highest_root_one (RootDatum rd) = vec: highest_roots(rd)[0]
 
+{change basis: replace an element of X^*_Q wrt basis of rd_1
+with that of rd_2
+v -> v*rd_1.simple_roots (fundamental weight coordinates for rd_1
+-> rd_2.fundamental_weights*(...)     given rd_2 coordinates for rd_2
+}
+set move(ratvec v,RootDatum rd_1,RootDatum rd_2)=ratvec:
+rd_2.fundamental_weights*(v*rd_1.simple_coroots)
+
+set move(vec v,RootDatum rd_1,RootDatum rd_2)=vec:
+ratvec_as_vec(move(v,rd_1,rd_2))
 
 {                               Weyl group				}
 
