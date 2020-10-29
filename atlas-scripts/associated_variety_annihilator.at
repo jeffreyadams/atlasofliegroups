@@ -2,7 +2,7 @@
 <truncated_induction.at
 <sub_cells.at
 
-set av_verbose=true
+set av_verbose=false
 
 
 {SEVERAL VERSIONS
