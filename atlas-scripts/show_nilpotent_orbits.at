@@ -1,5 +1,6 @@
 <nilpotent_centralizer.at
 <arthur_parameters.at
+<springer_tables.at
 {
 set real_forms_central_invariant(InnerClass ic,ratvec v)=[int]:
 ##for G@i in ic.real_forms do if equal_central_invariant(G,v) 
