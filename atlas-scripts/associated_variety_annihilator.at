@@ -2,7 +2,8 @@
 <truncated_induction.at
 <sub_cells.at
 
-set av_verbose=false
+set av_verbose=true
+
 
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity
@@ -26,9 +27,14 @@ rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
 (,P)=nice_order(rd_int.derived) then
 perm=P.permutation_matrix then
 special_character_int=special_character(ct_int,cell,perm) then
+()=if av_verbose then prints("p=",p, new_line,
+"rd_int: ", nice_format(rd_int), new_line,
+"special_character_int: ", special_character_int, ": ", ct_int.characters[special_character_int]) fi then
 character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
 orbit_0=st_rd.springer_inverse(character_G) then
-orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) then
+()=if av_verbose then prints("character_G: ", character_G, ": ",st_rd.ct.characters[character_G],
+new_line,"diagram of orbit: ",orbit_0.diagram) fi in
 orbit
 
 {given cell, SpringerTable for G, compute ct_int, using restriction}
@@ -67,6 +73,9 @@ L=cell.root_datum then
 index_pi_int=ct_int.special_character(cell) then
 char_int=ct_int.characters[index_pi_int] then
 d_int=ct_int.degrees[index_pi_int] then
+()=if av_verbose then prints("#cell: ", cell,
+new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index_pi_int],
+"degree of special character: ", d_int) fi then
 chars_rd=
 ##for i:st_rd.ct.n_classes do
 { let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
@@ -77,6 +86,8 @@ od
 then
 index_rd=chars_rd[0] then
 orbit_0=st_rd.springer_inverse(index_rd) then
+()=if av_verbose then prints("character(s) found: ", chars_rd,
+new_line,"diagram of orbit: ", orbit_0.diagram) fi then
 orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
 orbit
 
@@ -120,7 +131,7 @@ st_rd.springer_inverse(index_rd)
 
 {default: associated_variety_ann_res}
 set associated_variety_ann(RootDatum rd,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
- associated_variety_ann_res(rd,st_rd,ct_int,cell)
+associated_variety_ann_res(rd,st_rd,ct_int,cell)
 set associated_variety_ann(RootDatum rd,SpringerTable st_rd,WCell cell)=ComplexNilpotent:associated_variety_ann_res(rd,st_rd,cell)
 set associated_variety_ann(RootDatum rd,WCell cell)=ComplexNilpotent:associated_variety_ann_res(rd,cell)
 set associated_variety_ann(Param p,SpringerTable st_rd,CharacterTable ct_int)=ComplexNilpotent:associated_variety_ann_res(p,st_rd,ct_int)
@@ -201,38 +212,49 @@ rd.springer_table
 rd_int.character_table
 rd_singular.character_table
 }
-set av_maximal_ideal(SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
+set av_maximal_ideal(RootDatum rd_in,SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
 let rd=st.root_datum then
-gamma=dominant(rd,gamma_in) then
+gamma_0=move(gamma_in,rd_in, rd) then
+gamma=dominant(rd,gamma_0) then
+()=if av_verbose then prints("gamma_in: ", gamma_in, new_line, "gamma_0: ", gamma_0,new_line, "gamma: ", gamma) fi then
 ct=st.ct then
-rd_int=integrality_datum(rd,gamma) then
+rd_int=integrality_datum(rd,gamma) then 
 rd_singular=singular_root_datum(rd,gamma) then
 d=rd_singular.nr_of_posroots then
-()=if av_verbose then prints("target d: ", d) fi then
+()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
+"target d: ", d) fi then
 chars_int=##for i:ct_int.n_classes do
  if ct_int.degrees[i]=d and
  !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi
 od then
+()=if av_verbose then prints("characters found: ", chars_int) fi then
 char_int=ct_int.characters[chars_int[0]] then
 char_int_sign=ct_int.tensor_sign(char_int) then
-index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then
-orbit=st.springer_inverse(index) in
+()=if av_verbose then 
+ prints("char_int_sign: ", char_int_sign, new_line,
+ "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line, "ct: ", ct.root_datum) fi then
+{index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then}
+index=truncate_induce_character(rd_int,rd,ct,char_int_sign) then
+orbit=st.springer_inverse(index) then
+()=if av_verbose then
+prints("index: ", index, new_line,"truncated induced character: ", index, ":", st.ct.characters[index], new_line,
+"orbit", orbit.diagram_normalized) fi in
 orbit_by_diagram(rd,orbit.diagram_normalized)
 
 {precompute st,ct_int}
-set av_maximal_ideal(SpringerTable st,CharacterTable ct_int,ratvec gamma)=
-let rd=st.root_datum then
+set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,ratvec gamma)=
+let
 rd_singular=singular_root_datum(rd,gamma) then
 ct_singular=if rd_singular=ct_int.root_datum then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(st,ct_int,ct_singular,gamma)
+in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
 
 {precompute st}
-set av_maximal_ideal(SpringerTable st,ratvec gamma)=
-let rd=st.root_datum then
+set av_maximal_ideal(RootDatum rd,SpringerTable st,ratvec gamma)=
+let
 rd_int=integrality_datum(rd,gamma) then
 ct_int=if rd_int=rd then st.ct else rd_int.character_table fi in
-av_maximal_ideal(st,ct_int,gamma)
+av_maximal_ideal(rd,st,ct_int,gamma)
 
 set av_maximal_ideal(RootDatum rd,ratvec gamma)=
 let st=rd.springer_table then
@@ -240,7 +262,7 @@ rd_int=integrality_datum(rd,gamma) then
 ct_int=if rd_int=rd then st.ct else rd_int.character_table fi then
 rd_singular=singular_root_datum(rd,gamma) then
 ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(st,ct_int,ct_singular,gamma)
+in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
 
 set test_av_maximal_ideal(SpringerTable st)=bool:
 let rv=[bool]:[] in
@@ -248,9 +270,10 @@ prints("testing av_maximal_idea(O_vee.H/2)=dual(O_vee)");
 tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
  for orbit_vee@i in st.root_datum.dual_orbits do
  let gamma=orbit_vee.H/2 then
- av=av_maximal_ideal(st,gamma) then
- dual=st.dual_map_i(orbit_vee) in
- rv#:= (av.diagram_normalized=dual.diagram_normalized);
+ av=av_maximal_ideal(st.root_datum,st,gamma) then
+ dual_of_orbit_vee=st.dual_map_i(orbit_vee) in
+ rv#:= (av.diagram_normalized=dual_of_orbit_vee.diagram_normalized);
+ if av_verbose then prints("O^v: ", orbit_vee.diagram.to_string,new_line,"d(O_v):", dual_of_orbit_vee.diagram,new_line) fi;
  [orbit_vee.diagram.to_string,
   av.diagram.to_string,
   st.dual_map_i(orbit_vee).diagram.to_string]
