@@ -860,6 +860,8 @@ set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
+set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
+  reflection(rd,coroot_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
 set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
@@ -1019,6 +1021,14 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
+{root datum of singular roots}
+set singular_root_datum(RootDatum rd,ratvec gamma)=
+let roots=[vec]:[], coroots=[vec]:[] in
+for a@i in  rd.poscoroots do 
+ if a*gamma=0 then roots#:=rd.posroots[i]; coroots#:=a fi
+od;
+if #roots=0 then  root_datum(null(0,0),null(0,0)) else   {trivial_group, in groups.at, not loaded yet}
+root_datum_from_positive(roots,coroots) fi
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:
@@ -1038,6 +1048,16 @@ set highest_root (RootDatum rd) = vec:
 { one of the highest roots }
 set highest_root_one (RootDatum rd) = vec: highest_roots(rd)[0]
 
+{change basis: replace an element of X^*_Q wrt basis of rd_1
+with that of rd_2
+v -> v*rd_1.simple_roots (fundamental weight coordinates for rd_1
+-> rd_2.fundamental_weights*(...)     given rd_2 coordinates for rd_2
+}
+set move(ratvec v,RootDatum rd_1,RootDatum rd_2)=ratvec:
+rd_2.fundamental_weights*(v*rd_1.simple_coroots)
+
+set move(vec v,RootDatum rd_1,RootDatum rd_2)=vec:
+ratvec_as_vec(move(v,rd_1,rd_2))
 
 {                               Weyl group				}
 

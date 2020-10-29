@@ -134,7 +134,7 @@ fi
 
 {this calls weak_packet_int(st_int,O_check,G,params,gamma_target)
 and is typically called as follows:
-params=all_paramaeters_gamma(G,O_check.H/2+2*rho(G))
+params=all_parameters_gamma(G,O_check.H/2+2*rho(G))
 gamma_target=O_check.H/2
 st_int = integrality_datum(G,gamma_target)
 }

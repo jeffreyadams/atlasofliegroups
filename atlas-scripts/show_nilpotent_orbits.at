@@ -455,3 +455,84 @@ rf.to_string
 ] od);
 data
 
+{------------------tables of nilpotents from Springer tables------------}
+
+{SpringerTable versions: also include information about duality}
+set show_nilpotent_orbits_short(SpringerTable st)=void:
+prints("*: special");
+tabulate(
+["i","H","diagram","dim","BC Levi"]#
+for orbit@i in st.orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string + st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format
+] od)
+
+
+{include special_star, dual_orbit}
+set show_nilpotent_orbits(SpringerTable st)=void:
+prints("*: special");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","A(O)","dual"]#
+for  orbit@i in st.orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string+ st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+d.orders.to_string,
+st.dual_map(orbit).diagram.to_string] od)
+
+set show_nilpotent_orbits(RootDatum rd)=void:show_nilpotent_orbits(nilpotent_orbits(rd))
+set show_nilpotent_orbits_short(RootDatum rd)=void:show_nilpotent_orbits_short(nilpotent_orbits(rd))
+
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","Z","C_2","A(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+cent=orbit.centralizer in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+cent.nice_format,
+cent.derived.order_center.to_string,
+(#cent.compact_form.strong_real_forms_same_type).to_string,
+d.orders.to_string
+] od)
+
+set show_nilpotent_orbits_long(RootDatum rd)=void:show_nilpotent_orbits_long(rd.orbits)
+
+
+set show_nilpotent_orbits_long(SpringerTable st)=void:
+prints(new_line,"complex nilpotent orbits for inner class ",new_line,st.root_datum,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","dual"]#
+for  orbit@i in st.orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C_2=conjugacy_classes_involutions(H) in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string  + st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+C_2.to_string,
+d.orders.to_string,
+st.dual_map(orbit).diagram.to_string] od)

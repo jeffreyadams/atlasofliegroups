@@ -31,6 +31,7 @@
 <truncated_induction.at
 <dirac_index.at
 <sub_cells.at
+<associated_variety_annihilator.at
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

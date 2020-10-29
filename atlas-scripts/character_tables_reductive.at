@@ -26,7 +26,7 @@ assert(rd.is_abelian,"Not a torus");
 (int->classical_irrep):(int n):classical_irrep:().null_irrep, 
 (int->string):(int n):"",{ irreducible_label}
 [[int]]:[[]],  {sym_powers_reflection}
-[int]:[1], { degrees}
+[int]:[0], { degrees}
 mat:[[1]])
 
 {including torus}
