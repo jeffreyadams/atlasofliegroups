@@ -45,7 +45,7 @@ namespace involutions {
 // the data depends only on the permutation of the |RootSystem| by |theta|
 class InvolutionData
 {
-  Permutation d_rootInvolution; // permutation of all roots
+  Permutation root_perm; // permutation of all roots
   RootNbrSet d_imaginary, d_real, d_complex;
   RootNbrList d_simpleImaginary; // imaginary roots simple wrt subsystem
   RootNbrList d_simpleReal; // real roots simple wrt subsystem
@@ -68,10 +68,8 @@ public:
   void cross_act(const Permutation& r_perm); // change (cheaply) to conjugate
 
   //accessors
-  const Permutation& root_involution() const
-    { return d_rootInvolution; }
-  RootNbr root_involution(RootNbr alpha) const
-    { return d_rootInvolution[alpha]; }
+  const Permutation& root_involution() const { return root_perm; }
+  RootNbr root_involution(RootNbr alpha) const  { return root_perm[alpha]; }
   const RootNbrSet& imaginary_roots() const  { return d_imaginary; }
   const RootNbrSet& real_roots() const       { return d_real; }
   const RootNbrSet& complex_roots() const    { return d_complex; }
@@ -164,6 +162,7 @@ class InvolutionTable
   { assert(n<size()); return data[n].id.real_roots(); }
   const RootNbrSet& complex_roots(InvolutionNbr n) const
   { assert(n<size()); return data[n].id.complex_roots(); }
+
   size_t imaginary_rank(InvolutionNbr n) const
   { assert(n<size()); return data[n].id.imaginary_rank(); }
   const RootNbrList& imaginary_basis(InvolutionNbr n) const
@@ -181,7 +180,7 @@ class InvolutionTable
   bool is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const;
   bool is_real_simple(InvolutionNbr n,weyl::Generator s) const;
 
-  bool is_complex_descent(InvolutionNbr n,RootNbr alpha) const;
+  bool complex_is_descent(InvolutionNbr n,RootNbr alpha) const;
 
   void reduce(TitsElt& a) const;
 
