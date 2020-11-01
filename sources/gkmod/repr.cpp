@@ -1128,10 +1128,14 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       sample.y().data()!=another.sample.y().data())
     return true; // easy tests for difference
 
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
+  InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
+
   {
-    const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
-    const auto gamma_diff_num = (sample.gamma()-another.sample.gamma()
-				 ).numerator();
+    const int_Matrix& theta = i_tab.matrix(inv_nr);
+    const auto gamma_diff_num =
+      (sample.gamma()-another.sample.gamma()).numerator();
     if (not (theta*gamma_diff_num+gamma_diff_num).isZero())
       return true; // difference in the free part of $\lambda$ spotted
   }
@@ -1141,28 +1145,70 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   const auto& g1=another.sample.gamma();
   const auto& num0 = g0.numerator();
   const auto& num1 = g1.numerator();
-  const int d0=g0.denominator(), d1=g1.denominator(); // convert to |int|
-  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    if (arithmetic::divide(num0.dot(*it),d0) !=
-	arithmetic::divide(num1.dot(*it),d1))
-      return true; // different integer part of evaluation on poscoroot found
+  const auto d0 = g0.denominator(), d1 = g1.denominator(); // convert to signed
+
+  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+    for (auto it=complex_posroots.begin(); it(); ++it)
+      if (i_tab.complex_is_descent(inv_nr,*it))
+	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
+	    arithmetic::divide(rd.coroot(*it).dot(num1),d1))
+	  return true; // distinct integer part of evaluation poscoroot found
+  }
+  {
+    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    auto lambda_rho_real2 =
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+    for (auto it=real_posroots.begin(); it(); ++it)
+    {
+      const auto& alpha_v= rd.coroot(*it);
+      if (alpha_v.dot(lambda_rho_real2)%4!=0) // whether parity at |gamma==0|
+      { // when parity at 0, compare integer quotients of evaluations by 2
+	if (arithmetic::divide(alpha_v.dot(num0),2*d0) !=
+	    arithmetic::divide(alpha_v.dot(num1),2*d1))
+	  return true; // distinct integer part of evaluation on poscoroot found
+      }
+      else // nonparity at 0, so shift division cut-off by 1
+	if (arithmetic::divide(alpha_v.dot(num0)+d0,2*d0) !=
+	    arithmetic::divide(alpha_v.dot(num1)+d1,2*d1))
+	  return true; // distinct integer part of evaluation on poscoroot found
+    }
+  }
 
   return false; // if no differences detected, consider |another| as equivalent
 }
 
 size_t deformation_unit::hashCode(size_t modulus) const
 {
-  size_t hash = 7*sample.x() + 89*sample.y().data().to_ulong();
-  const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
-  const auto& num = sample.gamma().numerator();
-  const auto free_lambda = (theta*num+num)/sample.gamma().denominator();
-  for (int c : free_lambda) // take into account free part of $\lambda$
-    hash = 21*(hash&(modulus-1))+c;
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
+  InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
+
+  size_t hash = 17*sample.x() + 89*sample.y().data().to_ulong();
+  const int_Matrix& theta = i_tab.matrix(inv_nr);
+  const auto& g = sample.gamma();
+  const auto& num = g.numerator();
+  const auto denom = g.denominator();
+  // take into account free part of $\lambda$
+  for (int c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
+    hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
-  const int denom = sample.gamma().denominator(); // convert to |int|
-  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    hash = 5*(hash&(modulus-1))+arithmetic::divide(num.dot(*it),denom);
+  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+    for (auto it=complex_posroots.begin(); it(); ++it)
+      if (i_tab.complex_is_descent(inv_nr,*it))
+	hash = 5*hash + arithmetic::divide(rd.coroot(*it).dot(num),denom);
+  }
+  {
+    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    auto lambda_rho_real2 =
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+    for (auto it=real_posroots.begin(); it(); ++it)
+    {
+      const auto& alpha_v= rd.coroot(*it);
+      const auto shift = alpha_v.dot(lambda_rho_real2)%4==0 ? denom : 0;
+      hash = 7*hash + arithmetic::divide(alpha_v.dot(num)+shift,2*denom);
+    }
+  }
 
   return hash&(modulus-1);
 }
@@ -2219,6 +2265,7 @@ StandardReprMod common_context::cross
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
+// whether integrally simple root |s|, supposed real, is parity for |z|
 bool common_context::is_parity
     (weyl::Generator s, const StandardReprMod& z) const
 {
