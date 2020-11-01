@@ -329,7 +329,10 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
    p_L must be final. .}
 set theta_induce_irreducible_final (Param p_L, RealForm G) = ParamPol:
   let result =
+   if is_weakly_good(p_L,G) then theta_induce_standard(p_L,G)
+   else
     theta_induce_irreducible_as_sum_of_standards(p_L,G).composition_series
+   fi
   in
   if ind_verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
