@@ -516,13 +516,16 @@ set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealF
 but useful for testing
 }
 set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
-   let rd=root_datum(G), N=find_N (p,G), rho_u=G.rho-p.root_datum.rho
-   then q=translate_param_by (p,N*two_rho(G))
-   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
-   {=theta_induce_std(q,G), but this hasn't been defined yet}
-   then block=block_of(ind)
-   then graph=W_graph_of(ind)
-   then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
-    {w:gamma_dom -> p.infinitesimal_character _rho_u}
-   then P=coherent_irr(block,graph,ind,w{.inverse})
-   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
+   if is_weakly_good(p,G) then theta_induce_irreducible(p,G)
+   else
+    let rd=root_datum(G), N=find_N (p,G), rho_u=G.rho-p.root_datum.rho
+    then q=translate_param_by (p,N*two_rho(G))
+    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+    {=theta_induce_std(q,G), but this hasn't been defined yet}
+    then block=block_of(ind)
+    then graph=W_graph_of(ind)
+    then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
+     {w:gamma_dom -> p.infinitesimal_character _rho_u}
+    then P=coherent_irr(block,graph,ind,w{.inverse})
+    in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
+   fi
