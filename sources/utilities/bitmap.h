@@ -162,14 +162,22 @@ class BitMap
   // get a range of bits as unsigned long value; see bitmap.ccp for details
   unsigned long range(unsigned long first, unsigned long number) const;
 
-  BitMap operator& (const BitMap& other) const
+  BitMap operator& (const BitMap& other) && { operator&=(other); return *this; }
+
+  BitMap operator| (const BitMap& other) && { return operator|=(other); }
+
+  BitMap operator^ (const BitMap& other) && { return operator^=(other); }
+
+  // bitwise cannot exploit |BitMap&& other|, as |other| allowed to be shorter
+
+  BitMap operator& (const BitMap& other) const &
   { BitMap result(*this); result&=other; return result; }
 
-  BitMap operator| (const BitMap& other) const
-  { BitMap result(*this); result|=other; return result; }
+  BitMap operator| (const BitMap& other) const &
+  { BitMap result(*this); return result|=other; }
 
-  BitMap operator^ (const BitMap& other) const
-  { BitMap result(*this); result^=other; return result; }
+  BitMap operator^ (const BitMap& other) const &
+  { BitMap result(*this); return result^=other; }
 
 
 // manipulators
@@ -178,7 +186,7 @@ class BitMap
   BitMap& operator~ ();
 
  // these operators allow argument to have less capacity than |*this|
-  bool operator&= (const BitMap&);
+  bool operator&= (const BitMap&); // return whether result is non-empty
 
   BitMap& operator|= (const BitMap&);
 
