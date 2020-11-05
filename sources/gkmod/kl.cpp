@@ -1013,7 +1013,8 @@ void KL_table::swallow
   check_sub(sub,embed);
 #endif
   // set up polynomial translation while ensuring those of |sub| are known here
-  const bool shared_KL_pool = &hash.pool()==&sub.pol_hash->pool();
+  const bool shared_KL_pool =
+    sub.pol_hash!=nullptr and &hash.pool()==&sub.pol_hash->pool();
   std::vector<KLIndex> poly_trans;
   if (not shared_KL_pool)
   { poly_trans.reserve(sub.storage_pool.size());
