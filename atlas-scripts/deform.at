@@ -1,6 +1,7 @@
-
 <basic.at
 <polynomial.at { for type |i_poly| and function |eval| }
+<convert_c_form.at { final part of unitarity computation }
+<alcove.at { new code for simplifying |nu| in parameters }
 
 { this file defines commands that are equivalent to the |full_deform| command
   that is now built-in; it therefore serves mainly documentation (and
@@ -131,3 +132,67 @@ set recursive_deform (Param p) = ParamPol:
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p)
+
+{ code that follows is adapted from hermitian.at to do unitarity computation
+  in terms of the above functions rather than built-ins
+}
+
+set oriented_KL_sum  (Param p) = ParamPol:
+   let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
+   for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+set c_form_irreducible (Param p) = ParamPol:
+  let P=oriented_KL_sum(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; recursive_deform(p)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions (Param p) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then fixed_terms=G.null_module, unfixed_terms=G.null_module
+  in
+  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
+  do if twist(q)=q
+     then fixed_terms+:=(half(c)*orientation_nr_term(ori_nr_p,q),q)
+     else unfixed_terms+:=(c*orientation_nr_term(ori_nr_p,q),q)
+     fi
+  od; (fixed_terms,unfixed_terms)
+
+{ for now we do not have any scirpt for the twisted deformation; use built-in }
+set twisted_c_form_irreducible (Param p) = ParamPol:
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  , count=0
+  then nf=#fixed
+  then
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform(p)
+  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+; map(f,fixed)+half(unfixed.at_nu_0)
+)
+
+{.whether J(p) admits an invariant Hermitian form.}
+set is_hermitian (Param p) = bool: equivalent(twist(p),p)
+
+set check_hermitian (Param p) = void:
+  assert(p.is_hermitian
+        ,"Irreducible module does not admit any invariant Hermitian form"
+	)
+set hermitian_form_irreducible (Param p) = ParamPol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian(p); twisted_c_form_irreducible(p)
+  fi.convert_cform_hermitian
+
+{ compute Hermitian form on p, and report if it is unitary }
+set is_unitary (Param p) = bool:
+  p.is_hermitian and hermitian_form_irreducible(p).is_pure

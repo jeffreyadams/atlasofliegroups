@@ -136,3 +136,114 @@ in for rel in relations
    )
 )
 
+set is_lowest_for(RootDatum rd, [int] indices, int i) = bool:
+      let a_v = coroot(rd,i)
+      in none(for j in indices do is_coroot(rd,coroot(rd,j)-a_v) od)
+
+{ first component: affine coroots |(alpha_v,c)| for alcove of gamma, and its
+  coordinates: first |coroot_index(rd,alpha_v)|, then is constant |c| added for
+  affine coroot: (floor(alpha_v*gamma), finally |frac(alpha_v*gamma)|
+}
+set wall_set(RootDatum rd, ratvec gamma) = [int]:
+(  assert(#gamma=rd.rank,"rational weight of wrong size")
+;  if not rd.prefers_coroots { then replace |rd| by one that does }
+   then rd:=root_datum(rd.simple_roots,rd.simple_coroots,true)
+   fi
+;  let levels = for alpha_v in coroots(rd) do frac(alpha_v*gamma) od
+   , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
+   , gens=[int]: []
+   then ranking = inv_standardisation(levels)
+   then start = { skip over level 0 negative coroots in |ranking| }
+       #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
+in for place in ranking[start:] { treat the remaining coroots in |ranking| }
+   do let index = place-npr { transform to standard coroot index }
+   in if is_lowest_for(rd,gens,index) then gens #:= index fi
+   od
+;  sort(gens)
+)
+
+{ test hypothesis that root set allows for |-theta| fixed correction }
+set validate_root_set(RootDatum rd, mat theta, [vec] coroots) = bool:
+   let imag_coroots = [vec]:[] in
+   for alpha_v in coroots
+   do let th_av=theta*alpha_v in
+      if th_av=alpha_v then imag_coroots ##:= [alpha_v,-alpha_v]; true
+      else let sum=alpha_v+th_av in
+        =sum { real root }
+	or any(for a_v in imag_coroots do sum=a_v od) { complex with imaginary }
+	or any(for a_v in coroots do a_v=-th_av od) { complex with partner }
+      fi
+   od.all
+
+{ group coroots into connected components; for each group element alpha_v tell
+  index in |rd|, |-theta| projection of root |alpha|, whether to make integral }
+set classify(RootDatum rd, Param p, [int] indices) = [[int,vec,bool]]:
+(  let groups = [[int,vec,bool]]:[], theta=p.x.involution
+in for i in indices
+   do let alpha=root(rd,i),alpha_v=coroot(rd,i)
+      then projection2 = (1-theta)*alpha { twice the projection on $-1$ space }
+      , npr = rd.nr_of_posroots
+      then grs =
+	 let test =
+            for j in indices do if =coroot(rd,j)*projection2 then [] else [j] fi
+	    od.##.is_member
+         in for gr@j in groups
+            do if for (k,,) in gr do test(k) od.any then [j] else [] fi od.##
+      ,  condition = { whether to allow making the fractional part 0 }
+         if !=projection2 then true { nut fractional part shoudl be 0 already }
+	 elif projection2=alpha*2 { real root }
+	 then i>=npr { real coroot is positive }
+           or { after making real coroot integral, it becomes nonparity: }
+	    ( let (x,lr,gamma)=%p in is_nonparity(alpha,param(x,lr,
+	        gamma-alpha*(frac(alpha_v*gamma)/2))))
+         else i>=npr or is_positive_root(rd,theta*-alpha)
+	 fi
+      in if =#grs { no matches ?}
+         then groups #:= [(i,projection2,condition)] { add singleton group }
+	 else groups := { filter away |grs|, and bundle with |i| as new group }
+	    for j in complement(#groups,grs) do groups[j] od #
+	    (for j in grs do groups[j] od.## # (i,projection2,condition))
+	 fi
+   od
+;  groups
+)
+
+{ from a group given by coroot index, fractional part, whether to 0,
+  compute correction to add to |gamma| to simplify fractional parts
+}
+set correction(RootDatum rd, [int,rat,bool] walls) = ratvec:
+(  let relation =
+      let k=kernel(rd.rank # for (i,,) in walls do coroot(rd,i)od) in
+      assert(#k=1); case k~[0,0] then -k[0] in error("group rel") else k[0] esac
+   , neg_count = 0
+   , gen_roots = for (i,,) in walls[:~1] do i od
+   then coefs = ratvec: { list of new coordinates to obtain }
+      for (,,to_0)@i in walls
+      do if to_0 then 0 else neg_count +:=1; /relation[i] fi od
+   ,  A = (rd.rank # for i in gen_roots do coroot(rd,i)od) ##
+       ^kernel(rd.rank ^ for i in gen_roots do root(rd,i)od) { group radical }
+   then (A_inv,d) = invert(A) { a |A_inv[i]/d| dual base of coroots }
+in coefs /:= neg_count { to barycenter of nonzero coordinates }
+;  sum(rd.rank,for (,frac,)@i in walls[:1~] do A_inv[i]/d*(coefs[i]-frac) od)
+)
+
+set promote_in_alcove(Param p) = Param:
+(  let rd=p.real_form.root_datum, (x,lr,gamma) = %p
+   then walls = wall_set(rd,gamma)
+in assert
+   (validate_root_set(rd, x.involution, for i in walls do coroot(rd,i) od)
+   ,"Set of wall lacks necessary symmetry "+walls.to_string
+   )
+;  let groups = classify(rd,p,walls)
+   then corr =
+      sum
+      (rd.rank
+      ,  for gr in groups
+         do correction
+            (rd
+	    ,for (ind,,to_0) in gr do (ind,frac(coroot(rd,ind)*gamma),to_0) od
+            )
+         od
+      )
+in param(x, lr, gamma+corr)
+)
