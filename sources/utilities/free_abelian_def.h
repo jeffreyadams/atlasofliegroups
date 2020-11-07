@@ -199,7 +199,7 @@ template<typename T, typename C, typename Compare>
 
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>&
-    Free_Abelian_light<T,C,Compare>::add_multiple(const self& p, C m)
+    Free_Abelian_light<T,C,Compare>::add_multiple(const self& p, C m) &
 {
   if (m==C(0))
     return *this;
@@ -222,7 +222,7 @@ template<typename T, typename C, typename Compare>
 
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>&
-  Free_Abelian_light<T,C,Compare>::add_multiple(self&& p, C m)
+  Free_Abelian_light<T,C,Compare>::add_multiple(self&& p, C m) &
 {
   if (m==C(0))
     return *this;

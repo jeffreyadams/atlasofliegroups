@@ -384,6 +384,8 @@ public:
   deformation_unit(const Rep_context& rc, StandardRepr&& sr)
   : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
 
+  deformation_unit(deformation_unit&&) = default; // type is only movable
+
   bool has_deformation_formula() const { return not untwisted.is_zero(); }
   bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
 
@@ -394,13 +396,13 @@ public:
   const K_type_poly& twisted_def_formula() const { return twisted; }
 
   const K_type_poly& set_deformation_formula (const K_type_poly& formula)
-  { return untwisted=formula; }
+  { return untwisted = formula.copy(); }
   const K_type_poly& set_deformation_formula (K_type_poly&& formula)
-  { return untwisted=std::move(formula); }
+  { return untwisted = std::move(formula); }
   const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
-  { return twisted=formula; }
+  { return twisted = formula.copy(); }
   const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
-  { return twisted=std::move(formula); }
+  { return twisted = std::move(formula); }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;

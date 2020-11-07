@@ -159,14 +159,25 @@ explicit
 		     Compare c=Compare())
   : Free_Abelian_light(poly(first,last),c) {} // delegate to previous constructor
 
+  Free_Abelian_light(Free_Abelian_light&&) = default; // move construct
+  self& operator=(Free_Abelian_light&&) = default; // move assign
+
+  // in lieu of a copy constructor, use this more explicit method
+  self copy() const { self result(cmp()); result.L=L; return result; }
+
   Compare cmp() const { return Compare(*this); } // get |Compare| "member"
 
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
   self& operator-=(const T& p) { return add_term(p,C(-1)); }
 
-  self& add_multiple(const self& p, C m);
-  self& add_multiple(self&& p, C m);
+  self& add_multiple(const self& p, C m) &;
+  self& add_multiple(self&& p, C m) &;
+  self&& add_multiple(const self& p, C m) &&
+  { add_multiple(p,m); return std::move(*this);}
+  self&& add_multiple(self&& p, C m) &&
+  { add_multiple(std::move(p),m); return std::move(*this);}
+
 #if 0 // there is no reason to keep using this once useful function
   self& add_multiples(containers::sl_list<std::pair<self,C> >&& L)
   { for (auto&& term : L)
@@ -177,7 +188,7 @@ explicit
 
   self& operator+=(const self& p)
   { if (this->is_zero())
-      return *this = p; // assign, avoiding work on initial addition to empty
+      return *this = p.copy(); // assign, avoid initial addition to empty
     return add_multiple(p,C(1));
   }
   self& operator+=(self&& p)

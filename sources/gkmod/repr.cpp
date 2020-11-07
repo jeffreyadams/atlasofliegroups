@@ -1853,7 +1853,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
-      return pool[h].def_formula();
+      return pool[h].def_formula().copy();
   }
 
   StandardRepr z0 = z; scale_0(z0);
@@ -1887,8 +1887,8 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     }
   }
 
-  const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
-  return pool[h].set_deformation_formula(std::move(result).flatten());
+  const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
+  return pool[h].set_deformation_formula(std::move(result).flatten()).copy();
 } // |Rep_table::deformation|
 
 
@@ -2165,10 +2165,12 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
   { // if formula for |z| was previously stored, return it with |s^flip_start|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-      return flip_start // if so we must multiply the stored value by $s$
-	? K_type_poly().add_multiple
-	(pool[h].twisted_def_formula(),Split_integer(0,1))
-	: pool[h].twisted_def_formula();
+    {
+      if (flip_start)
+	return K_type_poly().add_multiple
+	  (pool[h].twisted_def_formula(),Split_integer(0,1));
+      else return pool[h].twisted_def_formula().copy();
+    }
   }
 
   K_type_poly result { std::less<K_type_nr>() };
@@ -2222,12 +2224,15 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
     }
   }
 
-  const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
-  const auto& res =
-    pool[h].set_twisted_deformation_formula(std::move(result).flatten());
+  const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
 
-  return flip_start // if so we must multiply the stored value by $s$
-    ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;
+  if (flip_start)
+    return K_type_poly().add_multiple
+      (pool[h].set_twisted_deformation_formula(std::move(result).flatten())
+      ,Split_integer(0,1));
+  else
+    return pool[h].set_twisted_deformation_formula(std::move(result).flatten())
+      .copy();
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
