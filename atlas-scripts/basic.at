@@ -148,6 +148,8 @@ set int_format = to_string@int
 
 set is_member ([int] v) = (int->bool):
   (int val)bool: any(#v,(int i)bool: v[i]=val)
+set isnt_member ([int] v) = (int->bool):
+  (int val)bool: all(#v,(int i)bool: v[i]!=val)
 
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
