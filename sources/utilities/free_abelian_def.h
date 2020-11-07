@@ -100,7 +100,7 @@ Monoid_Ring<T,C,Compare>
 
 template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::Free_Abelian_light(poly&& vec, Compare c)
-  : L(), cmp(c)
+  : Compare(c), L()
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
     (vec.begin(),vec.end(),[](term_type x){return x.second==C(0);});
@@ -109,8 +109,8 @@ template<typename T, typename C, typename Compare>
   vec.erase(it,vec.end()); // otherwise collect the garbage, reducing size
 
   auto less = [this](const term_type& a, const term_type& b)
-		    { return cmp(a.first,b.first); };
-  std::sort(vec.begin(),vec.end(),less); // ensure elements are sorted by |cmp|
+		    { return cmp()(a.first,b.first); };
+  std::sort(vec.begin(),vec.end(),less); // ensure elements are sorted by |cmp()|
   L.push_front(std::move(vec));
 }
 
@@ -118,11 +118,11 @@ template<typename T, typename C, typename Compare>
 template<typename T, typename C, typename Compare>
   C* Free_Abelian_light<T,C,Compare>::find(const T& e)
 {
-  auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
+  auto comp = [this](const term_type& t, const T& e){ return cmp()(t.first,e); };
   for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
   {
     auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
-    if (it != L_it->end() and not cmp(e,it->first))
+    if (it != L_it->end() and not cmp()(e,it->first))
       return &it->second;
   }
   return nullptr; // if nothing was found, indicate this by a null pointer
@@ -132,11 +132,11 @@ template<typename T, typename C, typename Compare>
 template<typename T, typename C, typename Compare>
   C Free_Abelian_light<T,C,Compare>::operator[] (const T& e) const
 { // we redo the work of |find|, which we cannot call because of |const|ness
-  auto comp = [this](const term_type& t, const T& e){ return cmp(t.first,e); };
+  auto comp = [this](const term_type& t, const T& e){ return cmp()(t.first,e); };
   for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
   {
     auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
-    if (it != L_it->end() and not cmp(e,it->first))
+    if (it != L_it->end() and not cmp()(e,it->first))
       return it->second;
   }
   return C(0);
@@ -256,11 +256,11 @@ template<typename T, typename C, typename Compare>
   {
     auto lead = (*it)->begin(); // iterator to leading term of current poly
     typename poly::iterator min =
-      stack.empty() or cmp(lead->first,stack.front().min->first)
+      stack.empty() or cmp()(lead->first,stack.front().min->first)
       ? lead : stack.front().min;
     stack.emplace_front(min,lead,(*it)->end());
   }
-  iterator result(std::move(stack),cmp);
+  iterator result(std::move(stack),cmp());
   result.skip_zeros();
   return result;
 }

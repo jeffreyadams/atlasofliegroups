@@ -129,6 +129,7 @@ template<typename T, typename C, typename Compare>
 */
 template<typename T, typename C, typename Compare>
   class Free_Abelian_light
+  : private Compare // derived to allow for Empty Base Optimization
 {
   using term_type = std::pair<T,C>;
   using self = Free_Abelian_light<T,C,Compare>;
@@ -136,19 +137,18 @@ template<typename T, typename C, typename Compare>
   using poly_list = containers::simple_list<poly>;
 
   poly_list L; // list by decreasing length, at least halving each time
-  Compare cmp;
 
 public:
   Free_Abelian_light() // default |Compare| value for base
-  : L(), cmp(Compare()) {}
+  : Compare(), L() {}
   Free_Abelian_light(Compare c) // here a specific |Compare| is used
-  : L(), cmp(c) {}
+  : Compare(c), L() {}
 
 explicit
   Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
-  : L { { std::make_pair(p,C(1L)) } }, cmp(c) {}
+  : Compare(c), L { { std::make_pair(p,C(1L)) } } {}
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
-  : L { { std::make_pair(p,m) } }, cmp(c)
+  : Compare(c), L { { std::make_pair(p,m) } }
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
 
   Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
@@ -158,6 +158,8 @@ explicit
   Free_Abelian_light(InputIterator first, InputIterator last,
 		     Compare c=Compare())
   : Free_Abelian_light(poly(first,last),c) {} // delegate to previous constructor
+
+  Compare cmp() const { return Compare(*this); } // get |Compare| "member"
 
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
@@ -201,7 +203,7 @@ explicit
     poly result; result.reserve(size());
     for (auto it=begin(); not it.has_ended(); ++it)
       result.push_back(std::move(*it));
-    return { std::move(result), cmp }; // transform |poly| into |self|
+    return { std::move(result), cmp() }; // transform |poly| into |self|
   }
 
   struct triple
@@ -252,8 +254,8 @@ explicit
 
   iterator begin(); // set up initial iterator and |skip_zeros|
   const_iterator begin() const { return const_cast<self*>(this)->begin(); }
-  iterator end() { return {triplist(),cmp}; } // with empty |stack|
-  const_iterator end() const { return {triplist(),cmp}; } // with empty |stack|
+  iterator end() { return {triplist(),cmp()}; } // with empty |stack|
+  const_iterator end() const { return {triplist(),cmp()}; } // with empty |stack|
 
  private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
