@@ -188,6 +188,33 @@ template <typename C>
 
 }; // |template <typename C> class Safe_Poly|
 
+/* For somewhat unclear reasons, both |PolEntry| and |SafePolEntry| templates
+   use as |Pooltype| a |std::vector| of a base type rather than a vector of
+   themselves. Since the base type has no |hashCode| member, we define hash
+   functions for them as free functions |hash_code|, that will override the more
+   generally templated one provided in hastable.h
+*/
+
+template <typename U>
+  size_t hash_code(const Safe_Poly<U>& P, size_t modulus)
+{ if (P.isZero()) return 0;
+  Degree i = P.degree();
+  size_t h = P[i];
+  while (i-->0)
+    h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
+  return h & (modulus-1);
+}
+
+template <typename C>
+  size_t hash_code(const Polynomial<C>& P, size_t modulus)
+{ if (P.isZero()) return 0;
+  Degree i = P.degree();
+  size_t h = P[i]; // start with leading coefficient, converted to unsigned
+  while (i-->0)
+    h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
+  return h & (modulus-1);
+}
+
 template <typename C> class PolEntry : public Polynomial<C>
 {
   using Pol = Polynomial<C>;
@@ -198,15 +225,8 @@ public:
 
   // members required for an Entry parameter to the HashTable template
   using Pooltype = std::vector<Pol>;  // associated storage type
-  size_t hashCode(size_t modulus) const // hash function
-  { const Pol& P=*this;
-    if (P.isZero()) return 0;
-    Degree i=P.degree();
-    size_t h=P[i]; // start with leading coefficient, converted to unsigned
-    while (i-->0)
-      h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-    return h & (modulus-1);
-  }
+  size_t hashCode(size_t modulus) const // hash function; use the one above
+  { return hash_code(static_cast<const Pol&>(*this),modulus); }
 
   // compare polynomial with one from storage
   bool operator!=(typename Pooltype::const_reference e) const
@@ -230,14 +250,8 @@ public:
 
   // members required for an Entry parameter to the HashTable template
   using Pooltype = std::vector<SafePol>;  // associated storage type
-  size_t hashCode(size_t modulus) const // hash function
-  { const SafePol& P=*this;
-    if (P.isZero()) return 0;
-    Degree i=P.degree();
-    size_t h=P[i]; // start with leading coefficient, converted to unsigned
-    while (i-->0) h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-    return h & (modulus-1);
-  }
+  size_t hashCode(size_t modulus) const // hash function; use the one above
+  { return hash_code(static_cast<const SafePol&>(*this),modulus); }
 
   // compare polynomial with one from storage
   bool operator!=(typename Pooltype::const_reference e) const
