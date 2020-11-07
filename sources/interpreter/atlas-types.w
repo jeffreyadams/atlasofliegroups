@@ -6252,7 +6252,9 @@ below the parameter in its block. The code below used to apply |expand_final|
 to the |deformation_terms|, but that is redundant since that method already
 condenses the KL polynomials (and its result) to block elements without
 singular descents (so nonzero and final), for which |expand_final| has no
-effect.
+effect. On the other hand, since the |deformation_terms| method assumes its
+arguments to be final, we apply |finals_for| to |p->val| and sum over any
+(final) parameters this might produce.
 
 There is also a variation |twisted_deform| that uses twisted KLV polynomials
 instead, for the distinguished involution $\delta$ of the inner class. For the
@@ -6264,9 +6266,7 @@ error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
 should avoid asking for it. Similarly the twisted variant cannot allow non
 dominant parameters, as this would internally produce an |SR_poly| value with
-non-dominant terms, which should never happen. Also, since the construction of
-an extended block currently cannot deal with a partial parent block, so it
-implies a full block construction.
+non-dominant terms, which should never happen.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -6275,14 +6275,22 @@ void deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt p_index; // will hold index of |p| in the block
-  auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
-  RatWeight diff = p->rc().offset(p->val,block.representative(p_index));
-  const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
+  auto& rt=p->rt();
+  const auto& rc = p->rc();
+  rt.make_dominant(p->val);
+  const auto& gamma = p->val.gamma(); // after being made dominant
   repr::SR_poly result;
-  for (auto&& term : p->rt().deformation_terms(block,p_index,diff,gamma)@;@;)
+  auto finals = rc.finals_for(p->val);
+  for (auto it=finals.begin(); it!=finals.end(); ++it)
+  {
+    auto& q = *it;
+    BlockElt q_index; // will hold index of |q| in the block
+    auto& block = rt.lookup(q,q_index); // generate partial common block
+    RatWeight diff = rc.offset(q,block.representative(q_index));
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma)@;@;)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
+  }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
