@@ -1835,7 +1835,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-K_type_poly Rep_table::deformation(const StandardRepr& z)
+const K_type_poly& Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -1853,7 +1853,7 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
-      return pool[h].def_formula().copy();
+      return pool[h].def_formula();
   }
 
   StandardRepr z0 = z; scale_0(z0);
@@ -1863,11 +1863,6 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     K_type_nr h = K_type_hash.match(K_type(*this,sr));
     result.add_term(h,Split_integer(1,0));
   }
-
-  if (rp.empty()) // without deformation terms
-    return std::move(result).flatten(); // don't even bother to store the result
-
-  // otherwise compute the deformation terms at all reducibility points
 
   for (unsigned i=rp.size(); i-->0; )
   {
@@ -1881,14 +1876,14 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 	   .isZero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto const& term : dt)
-    { auto def = deformation(term.first);
-      result.add_multiple(std::move(def), // recursion
-			  Split_integer(term.second,-term.second)); // $(1-s)*c$
+    { const auto& def = deformation(term.first); // recursion
+      result.add_multiple
+	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
     }
   }
 
   const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
-  return pool[h].set_deformation_formula(std::move(result).flatten()).copy();
+  return pool[h].set_deformation_formula(std::move(result).flatten());
 } // |Rep_table::deformation|
 
 
