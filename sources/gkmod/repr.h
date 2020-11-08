@@ -497,7 +497,8 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  K_type_poly twisted_deformation(StandardRepr z); // by value
+  // full twisted deformation, with |flip| telling whether to multiply by |s|
+  const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner

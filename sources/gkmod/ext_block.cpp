@@ -2299,7 +2299,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
  Rational factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // records whether a net extended flip was computed
+ bool& flipped // output only, records whether a net extended flip was computed
  )
 {
   const RootDatum& rd=rc.root_datum();

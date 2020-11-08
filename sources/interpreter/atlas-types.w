@@ -6328,8 +6328,11 @@ void twisted_full_deform_wrapper(expression_base::level l)
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_poly res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    res.add_multiple(p->rt().twisted_deformation(it->first) @|
-                       ,it->second ? Split_integer(0,1) : Split_integer(1,0));
+  { bool flip;
+    const auto& def = p->rt().twisted_deformation(it->first,flip);
+    res.add_multiple(def @|
+                    ,flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+  }
 @)
   repr::SR_poly result;
   for (@[const auto& t : res@]@;@;) // transform to |std::map|

@@ -2124,17 +2124,17 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-K_type_poly Rep_table::twisted_deformation(StandardRepr z)
+const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   const auto& delta = inner_class().distinguished();
-  bool flip_start=false; // whether a flip in descending to first point
 
   RationalList rp=reducibility_points(z);
+  flip = false; // ensure no flip is recorded when shrink wrapping is not done
   if (not rp.empty() and rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
     const Rational f=rp.back();
-    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip_start);
+    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip);
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
@@ -2145,30 +2145,22 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
   { // if formula for |z| was previously stored, return it with |s^flip_start|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-    {
-      if (flip_start)
-	return K_type_poly().add_multiple
-	  (pool[h].twisted_def_formula(),Split_integer(0,1));
-      else return pool[h].twisted_def_formula().copy();
-    }
+      return pool[h].twisted_def_formula();
   }
 
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to fully deformed parameter expanded to finals
-    bool flipped; // contrary to |flip_start| this affects value stored for |z|
+    bool flipped; // contrary to |flip|, influences |result| to be stored in |zu|
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
     {
       auto h = K_type_hash.match(K_type(*this,p.first));
-      result.add_term(h,p.second==flipped // flip means |times_s|
+      result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
 			? Split_integer(1,0) : Split_integer(0,1) );
     }
   }
-
-  if (rp.empty())
-    return std::move(result).flatten(); // return without storing in easy cases
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
@@ -2180,6 +2172,7 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
 
     for (std::pair<StandardRepr,bool>& p : L)
     {
+      const bool flip_p = flipped!=p.second;
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);
       RatWeight diff = offset(p.first,block.representative(new_z));
@@ -2196,23 +2189,19 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
 
       auto terms = twisted_deformation_terms(block,eblock,new_z,
 					     singular_orbits,diff,zi.gamma());
-      const bool flip = flipped!=p.second;
       for (auto const& term : terms)
-	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? Split_integer(-term.second,term.second)
-				 : Split_integer(term.second,-term.second));
+      { bool flip_def;
+	const auto& def = twisted_deformation(term.first,flip_def); // recursion
+	result.add_multiple(def,
+	   flip_p!=flip_def ? Split_integer(-term.second,term.second)
+			    : Split_integer(term.second,-term.second));
+      }
     }
   }
 
   const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
 
-  if (flip_start)
-    return K_type_poly().add_multiple
-      (pool[h].set_twisted_deformation_formula(std::move(result).flatten())
-      ,Split_integer(0,1));
-  else
-    return pool[h].set_twisted_deformation_formula(std::move(result).flatten())
-      .copy();
+  return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
