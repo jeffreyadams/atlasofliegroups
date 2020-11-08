@@ -29,7 +29,7 @@
 #include "ext_block.h"
 #include "ext_kl.h"
 
-#include "basic_io.h"
+#include "basic_io.h"   // lookup of |operator<<| instances
 
 namespace atlas {
   namespace repr {
@@ -398,7 +398,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
 
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
   {
-    auto v=rd.simpleCoroot(s).dot(numer);
+    auto v = rd.simpleCoroot(s).dot(numer);
     if (v<0)
       return false; // unless |gamma| is dominant, we just say "no"
     else if (v==0)
@@ -414,8 +414,8 @@ bool Rep_context::is_final(const StandardRepr& z) const
 	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0)
 	  return false;
       default: {} // ImaginaryNoncompact is fine
-      }
-  }
+      } // tests on |v|
+  } // |for(s)|
   RootNbr witness;
   return is_nonzero(z,witness); // check \emph{all} simply-imaginary coroots
 }
@@ -430,7 +430,7 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 
   assert(real.isMember(alpha)); // only real roots should be tested
 
-  const Weight& av = root_datum().coroot(alpha);
+  const Coweight& av = root_datum().coroot(alpha);
   const auto numer = av.dot(z.gamma().numerator());
   const auto denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
@@ -1106,21 +1106,6 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
 } // |Rep_context::expand_final|
 
 
-std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
-  const
-{
-  return
-    str << "{x=" << z.x() << ",lambda=" << lambda(z) << ",nu=" << nu(z) << '}';
-}
-
-std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
-{
-  for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
-    print(str << (it==P.begin() ?"":"+") << it->second, it->first)
-      << std::endl;
-  return str;
-}
-
 bool deformation_unit::operator!=(const deformation_unit& another) const
 {
   if (sample.x()!=another.sample.x() or
@@ -1128,10 +1113,14 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
       sample.y().data()!=another.sample.y().data())
     return true; // easy tests for difference
 
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
+  InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
+
   {
-    const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
-    const auto gamma_diff_num = (sample.gamma()-another.sample.gamma()
-				 ).numerator();
+    const int_Matrix& theta = i_tab.matrix(inv_nr);
+    const auto gamma_diff_num =
+      (sample.gamma()-another.sample.gamma()).numerator();
     if (not (theta*gamma_diff_num+gamma_diff_num).isZero())
       return true; // difference in the free part of $\lambda$ spotted
   }
@@ -1141,28 +1130,70 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   const auto& g1=another.sample.gamma();
   const auto& num0 = g0.numerator();
   const auto& num1 = g1.numerator();
-  const int d0=g0.denominator(), d1=g1.denominator(); // convert to |int|
-  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    if (arithmetic::divide(num0.dot(*it),d0) !=
-	arithmetic::divide(num1.dot(*it),d1))
-      return true; // different integer part of evaluation on poscoroot found
+  const auto d0 = g0.denominator(), d1 = g1.denominator(); // convert to signed
+
+  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+    for (auto it=complex_posroots.begin(); it(); ++it)
+      if (i_tab.complex_is_descent(inv_nr,*it))
+	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
+	    arithmetic::divide(rd.coroot(*it).dot(num1),d1))
+	  return true; // distinct integer part of evaluation poscoroot found
+  }
+  {
+    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    auto lambda_rho_real2 =
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+    for (auto it=real_posroots.begin(); it(); ++it)
+    {
+      const auto& alpha_v= rd.coroot(*it);
+      if (alpha_v.dot(lambda_rho_real2)%4!=0) // whether parity at |gamma==0|
+      { // when parity at 0, compare integer quotients of evaluations by 2
+	if (arithmetic::divide(alpha_v.dot(num0),2*d0) !=
+	    arithmetic::divide(alpha_v.dot(num1),2*d1))
+	  return true; // distinct integer part of evaluation on poscoroot found
+      }
+      else // nonparity at 0, so shift division cut-off by 1
+	if (arithmetic::divide(alpha_v.dot(num0)+d0,2*d0) !=
+	    arithmetic::divide(alpha_v.dot(num1)+d1,2*d1))
+	  return true; // distinct integer part of evaluation on poscoroot found
+    }
+  }
 
   return false; // if no differences detected, consider |another| as equivalent
 }
 
 size_t deformation_unit::hashCode(size_t modulus) const
 {
-  size_t hash = 7*sample.x() + 89*sample.y().data().to_ulong();
-  const int_Matrix& theta = rc.kgb().involution_matrix(sample.x());
-  const auto& num = sample.gamma().numerator();
-  const auto free_lambda = (theta*num+num)/sample.gamma().denominator();
-  for (int c : free_lambda) // take into account free part of $\lambda$
-    hash = 21*(hash&(modulus-1))+c;
+  auto& i_tab = rc.involution_table();
+  const auto& kgb = rc.kgb();
+  InvolutionNbr inv_nr = kgb.inv_nr(sample.x());
+
+  size_t hash = 17*sample.x() + 89*sample.y().data().to_ulong();
+  const int_Matrix& theta = i_tab.matrix(inv_nr);
+  const auto& g = sample.gamma();
+  const auto& num = g.numerator();
+  const auto denom = g.denominator();
+  // take into account free part of $\lambda$
+  for (int c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
+    hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
-  const int denom = sample.gamma().denominator(); // convert to |int|
-  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    hash = 5*(hash&(modulus-1))+arithmetic::divide(num.dot(*it),denom);
+  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+    for (auto it=complex_posroots.begin(); it(); ++it)
+      if (i_tab.complex_is_descent(inv_nr,*it))
+	hash = 5*hash + arithmetic::divide(rd.coroot(*it).dot(num),denom);
+  }
+  {
+    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    auto lambda_rho_real2 =
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+    for (auto it=real_posroots.begin(); it(); ++it)
+    {
+      const auto& alpha_v= rd.coroot(*it);
+      const auto shift = alpha_v.dot(lambda_rho_real2)%4==0 ? denom : 0;
+      hash = 7*hash + arithmetic::divide(alpha_v.dot(num)+shift,2*denom);
+    }
+  }
 
   return hash&(modulus-1);
 }
@@ -1789,7 +1820,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-K_type_poly Rep_table::deformation(const StandardRepr& z)
+const K_type_poly& Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
@@ -1818,11 +1849,6 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
     result.add_term(h,Split_integer(1,0));
   }
 
-  if (rp.empty()) // without deformation terms
-    return std::move(result).flatten(); // don't even bother to store the result
-
-  // otherwise compute the deformation terms at all reducibility points
-
   for (unsigned i=rp.size(); i-->0; )
   {
     auto zi = z; scale(zi,rp[i]);
@@ -1835,13 +1861,13 @@ K_type_poly Rep_table::deformation(const StandardRepr& z)
 	   .isZero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto const& term : dt)
-    { auto def = deformation(term.first);
-      result.add_multiple(std::move(def), // recursion
-			  Split_integer(term.second,-term.second)); // $(1-s)*c$
+    { const auto& def = deformation(term.first); // recursion
+      result.add_multiple
+	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
     }
   }
 
-  const auto h = alcove_hash.match(zn); // now allocate a slot in |pool|
+  const auto h = alcove_hash.match(std::move(zn)); // allocate a slot in |pool|
   return pool[h].set_deformation_formula(std::move(result).flatten());
 } // |Rep_table::deformation|
 
@@ -2098,17 +2124,17 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 } // |twisted_deformation_terms|, version without block
 #endif
 
-K_type_poly Rep_table::twisted_deformation(StandardRepr z)
+const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   const auto& delta = inner_class().distinguished();
-  bool flip_start=false; // whether a flip in descending to first point
 
   RationalList rp=reducibility_points(z);
+  flip = false; // ensure no flip is recorded when shrink wrapping is not done
   if (not rp.empty() and rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
     const Rational f=rp.back();
-    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip_start);
+    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip);
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
@@ -2119,28 +2145,22 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
   { // if formula for |z| was previously stored, return it with |s^flip_start|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-      return flip_start // if so we must multiply the stored value by $s$
-	? K_type_poly().add_multiple
-	(pool[h].twisted_def_formula(),Split_integer(0,1))
-	: pool[h].twisted_def_formula();
+      return pool[h].twisted_def_formula();
   }
 
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to fully deformed parameter expanded to finals
-    bool flipped; // contrary to |flip_start| this affects value stored for |z|
+    bool flipped; // contrary to |flip|, influences |result| to be stored in |zu|
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
     {
       auto h = K_type_hash.match(K_type(*this,p.first));
-      result.add_term(h,p.second==flipped // flip means |times_s|
+      result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
 			? Split_integer(1,0) : Split_integer(0,1) );
     }
   }
-
-  if (rp.empty())
-    return std::move(result).flatten(); // return without storing in easy cases
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
@@ -2152,6 +2172,7 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
 
     for (std::pair<StandardRepr,bool>& p : L)
     {
+      const bool flip_p = flipped!=p.second;
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);
       RatWeight diff = offset(p.first,block.representative(new_z));
@@ -2168,20 +2189,19 @@ K_type_poly Rep_table::twisted_deformation(StandardRepr z)
 
       auto terms = twisted_deformation_terms(block,eblock,new_z,
 					     singular_orbits,diff,zi.gamma());
-      const bool flip = flipped!=p.second;
       for (auto const& term : terms)
-	result.add_multiple(twisted_deformation(term.first), // recursion
-			    flip ? Split_integer(-term.second,term.second)
-				 : Split_integer(term.second,-term.second));
+      { bool flip_def;
+	const auto& def = twisted_deformation(term.first,flip_def); // recursion
+	result.add_multiple(def,
+	   flip_p!=flip_def ? Split_integer(-term.second,term.second)
+			    : Split_integer(term.second,-term.second));
+      }
     }
   }
 
-  const auto h = alcove_hash.match(zu);  // now find or allocate a slot in |pool|
-  const auto& res =
-    pool[h].set_twisted_deformation_formula(std::move(result).flatten());
+  const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
 
-  return flip_start // if so we must multiply the stored value by $s$
-    ? K_type_poly().add_multiple(res,Split_integer(0,1)) : res;
+  return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
@@ -2219,6 +2239,7 @@ StandardReprMod common_context::cross
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
+// whether integrally simple root |s|, supposed real, is parity for |z|
 bool common_context::is_parity
     (weyl::Generator s, const StandardReprMod& z) const
 {

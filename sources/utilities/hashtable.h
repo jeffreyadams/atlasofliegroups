@@ -18,46 +18,59 @@
 namespace atlas {
 namespace hashtable {
 
-  /* The HashTable template class has two type parameters:
-     the class Entry of values stored in the hash table, and the unsigned
-     integral type Number used for sequence numbers (whose size will give a
-     limit to the number of different Entry values that can be stored).
+/* The |HashTable| class template has two type parameters:
+   the class |Entry| of values stored in the hash table, and the unsigned
+   integral type |Number| used for sequence numbers (whose size will give a
+   limit to the number of different |Entry| values that can be stored).
 
-     The class Entry should at least have the following members
+   The class |Entry| should at least have the following members
 
      typename Pooltype;   //  given by a typedef inside the class definition
 
      explicit Entry(Pooltype::const_reference); // |explicit| may be absent
-     size_t hashCode(size_t modulus) const;
      bool operator!=(Pooltype::const_reference another) const;
 
-     Here:
+   and possibly (notably when |Pooltype| is |std::vector<Entry>|)
 
-       Pooltype::const_reference is a type related to Entry that is returned
-         by Pooltype::operator[] (see below) and can be tested against an
-         Entry; it might be const Entry& (as it will be if Pooltype is
-         std::vector<Entry>) in which case the constructor
-         Entry(Pooltype::const_reference) will be the ordinary copy
-         constructor, or it might something more fancy in the case of
-         compacted storage (as will be used for KL polynomials) in which case
-         the mentioned constructor will need an explicit definition
+     size_t hashCode(size_t modulus) const;
 
-       hashCode computes a hash code for the Entry in the range [0,modulus[,
-         where modulus is a power of 2
+   Here:
 
-       operator!= tests inequality,
+     |Pooltype::const_reference| is a type related to |Entry| that is returned
+       by |Pooltype::operator[]| (see below) and can be tested against an
+       |Entry|; it might be |const Entry&| (as it will be if |Pooltype| is
+       |std::vector<Entry>|), in which case the constructor
+       |Entry(Pooltype::const_reference)| will be the ordinary copy constructor,
+       or it might something more fancy in the case of compacted storage (as was
+       at some point for KL polynomials when memory compactness was vital) in
+       which case the mentioned constructor will need an explicit definition.
 
-       Pooltype is a container class (for instance std::vector<Entry>),
-         such that
+     |size_t hashCode(size_t modulus) const| computes a hash code in the range
+       [0,modulus[, where |modulus| is guaranteed to be a power of 2. Typically
+       the computation is done in |size_t| and on return masked |h&(modulus-1)|
 
-	 typename const_reference;                    // is some typedef
+     |size_t hash_code(Pooltype::const_reference, size_t modulus)| similarly
+       computes a hash code, but from a |Pooltype::const_reference| value. If
+       not defined explicitly, a template function below will translate the free
+       function call |hash_code(r,m)| into |r.hashCode(m)|, so when
+       |Pooltype::const_reference| is |const Entry&|, no definition is needed.
 
-         Pooltype();                                  // creates an empty store
-	 void Pooltype::push_back(const Entry&);      // adds entry to store
-         size_t size() const;                         // returns nr of entries
-         const_reference operator[] (Number i) const; // recalls entry i
-	 void swap(Pooltype& other);                  // usual swap method
-  */
+     |operator!=| tests inequality,
+
+     |Pooltype| is a container class (for instance |std::vector<Entry>|),
+       such that
+
+       typename const_reference;                    // is some typedef
+
+       Pooltype();                                  // creates an empty store
+       void Pooltype::push_back(const Entry&);      // adds entry to store
+       size_t size() const;                         // returns nr of entries
+       const_reference operator[] (Number i) const; // recalls entry i
+       void swap(Pooltype& other);                  // usual swap method
+*/
+
+template <class Entry> size_t hash_code(const Entry& r,size_t modulus)
+  { return r.hashCode(modulus); }
 
 template <class Entry, typename Number>
 class HashTable
@@ -79,7 +92,8 @@ class HashTable
 	    unsigned int n=8); // intially make $2^n$ slots
 
   // manipulators
-  Number match(const Entry&);   // lookup entry and return its sequence number
+  Number match(const Entry& x);   // lookup |x| and return its sequence number
+  Number match(Entry&& x); // this version will move from |x| if not found
   const typename Entry::Pooltype& pool() const
   { return d_pool; } // allow sharing |d_pool|
 

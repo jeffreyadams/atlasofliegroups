@@ -1,0 +1,248 @@
+{ an experimental script for finding good representative points in alcoves }
+
+{ the application would be to simplify parameters with large numerators in their
+  infinitesimal character to ones in their alcove that do not. That would
+  require operating only in the -1 eigenspace if the involution at hand, which
+  is not yet taken into account here; it will need a different alcove notion
+}
+
+<basic.at
+<sort.at
+
+{ David's proposal to improve a parameter by moving onto a wall; it cuurently
+  does not take into account the possibility that this wall outside the alcove
+}
+set improve(Param p) = Param:
+(  let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+   then id = integrality_datum(rd,gamma)
+in assert(is_dominant(rd,gamma))
+;  if id.semisimple_rank=rd.semisimple_rank
+   then p { if integral system has full rank, don't try to improve any more }
+   else let coroots_mat=^id.simple_coroots
+      then orth_basis = kernel(coroots_mat) { basis of part $X^*$ orth to |id| }
+      then outside_poscoroots = { poscoroots not in row span of |coroots_mat| }
+        columns_with((vec alpha_v) bool: !=alpha_v*orth_basis, rd.poscoroots)
+      then xi_i0 = let ev = outside_poscoroots[0]*orth_basis
+                   in orth_basis[first(#ev, (int j)bool: !=ev[j] )]
+    in outside_poscoroots := { filter out those orthogonal to |xi_i0| }
+         columns_with((vec beta_v)bool: !=beta_v*xi_i0, outside_poscoroots)
+    ; let delays = { scalings of |xi_i0| to make each |beta*gamma| integral }
+        for beta in outside_poscoroots do frac(beta*gamma)/abs(beta*xi_i0) od
+      then (r,t) = (0,delays[0])
+   in for d@i in delays do if d<t then set (r,t):=(i,d) fi od
+   ;  let beta_0 = outside_poscoroots[r]
+   in parameter_gamma(p.x,p.lambda,gamma - xi_i0 * sign(beta_0*xi_i0) * t)
+   fi
+)
+
+{ Marc's approach to find the walls of an alcove, and for all of them that do
+  not lie outside move to them, while for the forbidden walls take equal
+  barycentric coordinates (take barycentre of smallest inside facet of alcove)
+}
+set is_in_coroot_span(RootDatum rd, [int] indices) = (int->bool):
+   let orth = kernel(rd.rank ^ for i in indices do coroot(rd,i) od) in
+   (int i) bool: = coroot(rd,i)*orth
+
+{ find additive decomposition of coroot in simple coroots, for each contribution
+  give index, nonzero coeffcieint, and fundamental weight
+}
+set coroot_constituents(RootDatum rd, vec alpha_v) = [int,int,ratvec]:
+   for i:rd.semisimple_rank
+   do let omega = fundamental_weight(rd,i) then v = rat_as_int(omega*alpha_v) in
+      if !=v then [(i,v,omega)] else [] fi
+   od.##
+
+{ additively minimal coroots in the subsystem of coroots[indices] }
+{ for each such coroot, add it coroot coefficients on that subsystem }
+set lowest_coroots(RootDatum rd, [int] indices) = [int,[int,int,ratvec]]:
+   let rk=rd.rank
+   then simp_rts=rk # for i in indices do root(rd,i) od
+   , simp_crts=rk # for i in indices do coroot(rd,i) od
+   then sub_datum =  { subsystem for |indeices|, preferring coroots }
+     root_datum(simp_rts,simp_crts,true)
+in for alpha_v in poscoroots(sub_datum)
+   do if any(for beta_v in simp_crts do is_coroot(sub_datum,alpha_v+beta_v) od)
+      then []
+      else [(coroot_index(rd,-alpha_v),coroot_constituents(sub_datum,alpha_v))]
+      fi
+   od.##
+
+{ first component: affine coroots |(alpha_v,c)| for alcove of gamma, and its
+  coordinates: first |coroot_index(rd,alpha_v)|, then is constant |c| added for
+  affine coroot: (floor(alpha_v*gamma), finally |frac(alpha_v*gamma)|
+  second component: alternative fractional parts for best point in alcove
+  third component: best point in alcove, using those alternative fractional parts
+}
+set walls(RootDatum rd, ratvec gamma) = ([int,int,rat],[rat],ratvec):
+(  assert(#gamma=rd.rank,"rational weight of wrong size")
+;  if not rd.prefers_coroots { then replace |rd| by one that does }
+   then rd:=root_datum(rd.simple_roots,rd.simple_coroots,true)
+   fi
+;  let levels = for alpha_v in coroots(rd) do frac(alpha_v*gamma) od
+   , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
+   , gens=[int]: []
+   then ranking = inv_standardisation(levels)
+   then start = { skip over level 0 negative coroots in |ranking| }
+       #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
+   , exclude = is_in_coroot_span(rd,gens)
+in for place in ranking[start:] { treat the remaining coroots in |ranking| }
+   do let index = place-npr { transform to standard coroot index }
+   in if not exclude(index)
+      then gens #:= index; exclude := is_in_coroot_span(rd,gens)
+      ; if #gens=rk then break fi { once at semisimple rank, we are done }
+      fi
+   od
+;  let lc = lowest_coroots(rd,gens)
+   , !triv_rel = vec:for :2*rd.nr_of_posroots do 0 od
+   then new_gens=for (i,)in lc do i od
+   ,  relations = mat: #triv_rel { size of each relation } #
+      for (i,arr) in lc
+      do let rel=triv_rel in
+         rel[i+npr]:=1; for (j,c,) in arr do rel[gens[j]+npr]:=c od
+      ;  rel
+      od
+   then wall_triples = [int,int,rat]: { coroot index, integral, fractional part }
+      for i in sort(gens ## new_gens)
+      do let alpha_v=coroot(rd,i) then (n,f)=(alpha_v*gamma)\%1
+         in assert(f=levels[i+npr],"mismatch in levels"); (i,n,f)
+      od
+   then coroot_fracs = [rat]: for :2*rd.nr_of_posroots do 0 od
+in assert(=rd.coroots*relations,"relations don't relate") { |relations| should }
+;  for rel in relations
+   do let parts = [ratvec]: { (floor,frac) separated coroot evaluations }
+         for (i,n,f) in wall_triples do [n,f]*rel[i+npr] od
+   in assert(sum(2,parts)=[-1,1]/1,"wrong weighted sum of fractional parts")
+   od
+;  let alcove_weight = ratvec: { representative rational weight in alcove }
+      sum(rd.rank, { sum over (fundamental weight)*coordinate contributions }
+	for (i_aff,arr) in lc
+	do let neg_count = #<i_aff { count negative root contributions |rel| }
+	   then coefs = ratvec:
+	      for (j,c,) in arr
+	      do if <gens[j] then neg_count +:= 1; /c else 0 fi
+	      od
+	in if <i_aff then coroot_fracs[i_aff+npr] := /neg_count fi
+	;  for (j,,fund_wt)@i in arr
+	   do let frac = coroot_fracs[gens[j]+npr] := coefs[i]/neg_count in
+	     fund_wt*(floor(coroot(rd,gens[j])*gamma)+frac) { contribution }
+	   od
+	od.##
+	)
+in for rel in relations
+   do assert(coroot_fracs * rel = 1,"wrong new coordinates") od
+;  (wall_triples
+   ,for (i,,) in wall_triples do coroot_fracs[i+npr] od
+   ,alcove_weight
+   )
+)
+
+set is_lowest_for(RootDatum rd, [int] indices, int i) = bool:
+      let a_v = coroot(rd,i)
+      in none(for j in indices do is_coroot(rd,a_v-coroot(rd,j)) od)
+
+{ first component: affine coroots |(alpha_v,c)| for alcove of gamma, and its
+  coordinates: first |coroot_index(rd,alpha_v)|, then is constant |c| added for
+  affine coroot: (floor(alpha_v*gamma), finally |frac(alpha_v*gamma)|
+}
+set wall_set(RootDatum rd, ratvec gamma) = [int]:
+(  assert(#gamma=rd.rank,"rational weight of wrong size")
+;  let rd_pc = if rd.prefers_coroots then rd
+               else root_datum(rd.simple_roots,rd.simple_coroots,true)
+	       fi
+   then coroot_list = coroots(rd_pc)
+   then levels = for alpha_v in coroot_list do frac(alpha_v*gamma) od
+   , rk = rd.semisimple_rank, npr = rd.nr_of_posroots
+   , gens=[int]: []
+   then ranking = inv_standardisation(levels)
+   then start = { skip over level 0 negative coroots in |ranking| }
+       #for ind in ranking do if >levels[ind] or ind>=npr then break fi od
+in for place in ranking[start:] ## ranking[:start]
+      { treat coroots in |ranking| order but treat negative integral ones last }
+   do let index = coroot_index(rd,coroot_list[place]) { translate to |rd| index }
+   in if is_lowest_for(rd,gens,index) then gens #:= index fi
+   od
+;  sort(gens)
+)
+
+{ test hypothesis that root set allows for |-theta| fixed correction }
+set validate_root_set(RootDatum rd, mat theta, [int] walls, mat int_mat) = bool:
+(  let coroots = for ind in walls do coroot(rd,ind) od
+   , int_killer = ^kernel(int_mat)
+in for ind@i in walls
+   do let alpha_v=coroots[i] then th_av=alpha_v*theta then sum=alpha_v+th_av
+   in alpha_v=th_av { imaginary } or =sum { real }
+      or =int_killer*sum { complex pair with difference in integral root span }
+      or any(for bv in coroots do =th_av+bv od)
+   od.all
+)
+
+{ group coroots given by |indices| by additive relation between them; for each
+  coroot indicate it index, whether to make its evaluation integral (depending
+  on |p|), and its coefficient in the linear relation for the group of coroots }
+set coroot_relations(RootDatum rd, [int] indices, Param p) = [[int,bool,int]]:
+(  let (x,lr,gamma)=%p
+   then theta = x.involution
+   ,  npr = rd.nr_of_posroots
+   ,  result = [[int,bool,int]]:[], coroots=null(rd.rank,0)
+in for ind in indices
+   do let k=kernel(coroots #:= coroot(rd,ind))
+   in if >#k
+      then assert(#k=1,"kernel dimension jump")
+      ;  let pos = for e@i in k[0] do if =e then [] else [i] fi od.##
+      in result #:=
+         for i in pos
+	 do let alpha_v=coroots[i] then th_av = alpha_v*theta
+	 in (coroot_index(rd,alpha_v)
+	    ,   alpha_v=th_av { imaginary: always OK (but already integral) }
+	     or is_poscoroot(rd,alpha_v) { safe to move downwards to wall }
+	     or =(alpha_v+th_av) { real negative: whether it becomes nonparity }
+	        and (let alpha=root(rd,alpha_v)
+		     then p=param(x,lr,gamma-alpha*(frac(alpha_v*gamma)/2))
+		     in is_nonparity(alpha,p)
+		    )
+             or { negative complex: whether ascent } is_poscoroot(rd,-th_av)
+	    ,k[i,0]
+	    )
+	 od
+      ;  coroots:=columns_with(isnt_member(pos), coroots)
+      fi
+   od
+;  result
+)
+
+
+{ from a group given by coroot index, fractional part, whether to 0,
+  compute correction to add to |gamma| to simplify fractional parts
+}
+set correction(RootDatum rd, [int,bool,int] walls, [rat] fracs) = ratvec:
+(  let gens = { generating coroot indices } for (i,,) in walls[:~1] do i od
+   , neg_count = for (,to_0,) in walls do not to_0 od.count
+   then coefs = [rat]: { list of new coordinates to obtain }
+      for (,to_0,coef)@i in walls do if to_0 then 0 else /(coef*neg_count) fi od
+   ,  A = { $\Q$-invertible matrix whose first rows are the |gens| coroots }
+       (rd.rank ^ for i in gens do coroot(rd,i) od)
+       ^ kernel(rd.rank ^ for i in gens do root(rd,i) od) { group radical }
+   then (A_inv,d) = invert(A) { a |A_inv[i]/d| dual base of coroots }
+in sum(rd.rank,for frac@i in fracs[:1~] do (A_inv[i]/d)*(coefs[i]-frac) od)
+)
+
+set promote_in_alcove(Param p) = Param:
+(  let rd=p.real_form.root_datum, (x,lr,gamma) = %p
+   then walls = wall_set(rd,gamma)
+in ( let int_coroot_mat = { matrix whose row are the integral positive coroots }
+        ^columns_with((vec av)bool: =(av*gamma)%1,rd.poscoroots)
+     in assert
+        (validate_root_set(rd, x.involution,walls,int_coroot_mat)
+        ,"Set of walls lacks necessary symmetry "+walls.to_string
+	)
+   )
+;  let groups = coroot_relations(rd,walls,p)
+   then corr =
+      sum
+      (rd.rank
+      ,  for gr in groups
+         do correction(rd,gr,for (ind,,)in gr do frac(coroot(rd,ind)*gamma) od)
+         od
+      )
+in param(x, lr, gamma+corr)
+)

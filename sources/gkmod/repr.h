@@ -301,9 +301,6 @@ class Rep_context
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
-  std::ostream& print (std::ostream&,const StandardRepr& z) const;
-  std::ostream& print (std::ostream&,const poly& P) const;
-
  private:
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
@@ -384,6 +381,8 @@ public:
   deformation_unit(const Rep_context& rc, StandardRepr&& sr)
   : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
 
+  deformation_unit(deformation_unit&&) = default; // type is only movable
+
   bool has_deformation_formula() const { return not untwisted.is_zero(); }
   bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
 
@@ -394,13 +393,13 @@ public:
   const K_type_poly& twisted_def_formula() const { return twisted; }
 
   const K_type_poly& set_deformation_formula (const K_type_poly& formula)
-  { return untwisted=formula; }
+  { return untwisted = formula.copy(); }
   const K_type_poly& set_deformation_formula (K_type_poly&& formula)
-  { return untwisted=std::move(formula); }
+  { return untwisted = std::move(formula); }
   const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
-  { return twisted=formula; }
+  { return twisted = formula.copy(); }
   const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
-  { return twisted=std::move(formula); }
+  { return twisted = std::move(formula); }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
@@ -483,7 +482,7 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
-  K_type_poly deformation(const StandardRepr& z);
+  const K_type_poly& deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -498,7 +497,8 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  K_type_poly twisted_deformation(StandardRepr z); // by value
+  // full twisted deformation, with |flip| telling whether to multiply by |s|
+  const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
@@ -586,6 +586,8 @@ class Ext_common_context : public common_context
 }; // |Ext_common_context|
 
 // 				Functions
+
+// printing functions for various types are declared in basic_io.h
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
 // gets added to |lambda_rho| in imaginary cases, subtracted in real cases
