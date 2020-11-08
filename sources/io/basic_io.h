@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "../Atlas.h"
+#include "repr.h"
 
 /******** function declarations *********************************************/
 
@@ -62,9 +63,27 @@ template<unsigned int dim>
 
 namespace arithmetic {
 
-  std::ostream& operator<< (std::ostream& strm, const Split_integer& s);
+  std::ostream& print_split (std::ostream& strm, const Split_integer& s);
 
 } // |namespace arithmetic|
+
+namespace repr {
+
+std::ostream& print_stdrep
+  (std::ostream& out, const StandardRepr& val, const Rep_context& rc);
+
+std::ostream& print_SR_poly
+(std::ostream& out, const repr::SR_poly& val, const Rep_context& rc);
+
+std::ostream& print_K_type
+  (std::ostream& out, const repr::K_type& val, const Rep_context& rc);
+
+std::ostream& print_K_type_poly
+  (std::ostream& out,
+   const repr::K_type_poly& val, const std::vector<K_type>& pool,
+   const Rep_context& rc);
+
+} // |namespace repr|
 
 namespace basic_io {
 

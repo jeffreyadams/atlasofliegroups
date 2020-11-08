@@ -301,9 +301,6 @@ class Rep_context
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
-  std::ostream& print (std::ostream&,const StandardRepr& z) const;
-  std::ostream& print (std::ostream&,const poly& P) const;
-
  private:
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
@@ -588,6 +585,8 @@ class Ext_common_context : public common_context
 }; // |Ext_common_context|
 
 // 				Functions
+
+// printing functions for various types are declared in basic_io.h
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
 // gets added to |lambda_rho| in imaginary cases, subtracted in real cases

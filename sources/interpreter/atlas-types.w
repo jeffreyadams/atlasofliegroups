@@ -4232,31 +4232,18 @@ typedef std::unique_ptr<module_parameter_value> module_parameter_ptr;
 typedef std::shared_ptr<const module_parameter_value> shared_module_parameter;
 typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 
-@ When printing a module parameter, we shall indicate a triple
-$(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
-values in other contexts as well, we shall define an auxiliary output function
-|print_stdrep| for such values first, which takes and additional |Rep_context|
-argument, and then call that function from |module_parameter_value::print|. By
-choosing a name for the auxiliary function different from |print|, we avoid
-having that call being mistaken for a recursive call.
+@ When printing a module parameter, we shall indicate a triple $(x,\lambda,\nu)$
+that defines it. Since we shall need to print |StandardRepr| values in other
+contexts as well, an auxiliary output function |repr::print_stdrep| is defined
+in \.{repr.h}, which takes and additional |Rep_context| argument; we shall call
+that function from |module_parameter_value::print|. By choosing a name for the
+auxiliary function different from |print|, we avoid having that call being
+mistaken for a recursive call.
 
-@f nu nullptr
-
-@< Local function def...@>=
-std::ostream& print_stdrep
-  (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
-{ return @|
-  out << "parameter(x="
-      << val.x() << ",lambda="
-      << rc.lambda(val) << ",nu="
-      << rc.nu(val) << ')';
-}
-
-@ Here is virtual method |module_parameter_value::print|, used when printing a
+The virtual method |module_parameter_value::print|, is used when printing a
 value of type \.{Param} (as opposed to for instance printing a term of
-a \.{ParamPol}, which calls |print_stdrep|). Here we prefix the parameter text
-proper with additional information about the parameter that may be relevant to
-the user.
+a \.{ParamPol}). Here we prefix the parameter text proper with additional
+information about the parameter that may be relevant to the \.{atlas} user.
 
 @< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
@@ -4288,6 +4275,8 @@ condition |is_final| should apply, though it is not tested here).
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
 projection on the $-\theta_x$-stable subspace is used, one might specify the
 infinitesimal character $\gamma$ in the place of $\nu$.
+
+@f nu nullptr
 
 @< Local function def...@>=
 void module_parameter_wrapper(expression_base::level l)
@@ -5429,23 +5418,15 @@ typedef std::unique_ptr<split_int_value> split_int_ptr;
 typedef std::shared_ptr<const split_int_value> shared_split_int;
 typedef std::shared_ptr<split_int_value> own_split_int;
 
-@ Like for parameter values, we first define a printing function on the level
-of a bare |Split_integer| value, which can be used in situations where the
-method |split_int_value::print| cannot.
-
-@< Local function def...@>=
-std::ostream& print (std::ostream& out, const Split_integer& val)
-{@;
-  return out << '(' << val.e()
-             << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
-}
-@ Again the virtual method |print| must not be defined in the anonymous
-namespace.
+@ Like for parameter values, a printing function |print_split| on the level
+of a bare |Split_integer| value is defined in the library, which can be used
+also in situations where the method |split_int_value::print| cannot. THe latter
+method simply calls it.
 
 @< Function def... @>=
 
 void split_int_value::print(std::ostream& out) const @+
-{@; interpreter::print(out,val); }
+{@; print_split(out,val); }
 
 @ Here are some basic relations and arithmetic operations.
 
@@ -5573,41 +5554,18 @@ typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
 typedef std::shared_ptr<const virtual_module_value> shared_virtual_module;
 typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 
-@ When printing a virtual module value, we traverse the |std::map| that is
-hidden in the |Free_Abelian| class template, and print individual terms using
-the auxiliary function that was defined above for printing parameter values.
-However when either all coefficients are integers or coefficients are integer
-multiples of~$s$, then we suppress the component that is always~$0$; this is
-particularly useful if polynomials are used to encode $\Zee$-linear
+@ Printing a virtual module value calls the free function |repr::print_SR_poly|
+to do the actual work. It traverses the |std::map| that is hidden in the
+|Free_Abelian| class template, and print individual terms by printing the
+|Split_integer| coefficient, followed by the parameter through a call of
+|print_stdrep|. When either all coefficients are integers or all coefficients
+are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
+this is particularly useful if polynomials are used to encode $\Zee$-linear
 combinations of parameters.
 
-@h <iomanip> // for |std::setw|
 @< Function def...@>=
 void virtual_module_value::print(std::ostream& out) const
-{ if (val.empty())
-    {@; out << "Empty sum of standard modules"; return; }
-  bool has_one=false, has_s=false;
-  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
-  { if (it->second.e()!=0)
-      has_one=true;
-    if (it->second.s()!=0)
-      has_s=true;
-    if (has_one and has_s)
-      break;
-  }
-  assert (has_one or has_s); // otherwise the module would have been empty
-  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
-  { out << '\n';
-    if (has_one and has_s)
-      interpreter::print(out,it->second); // print coefficient
-    else if (has_one)
-      out << it->second.e();
-    else
-      out << it->second.s() << 's';
-    print_stdrep(out << '*',it->first,rc()); // print parameter
-    out << " [" << it->first.height() << ']';
-  }
-}
+{@; print_SR_poly(out,val,rc()); }
 
 @*2 Functions for virtual modules.
 %

@@ -29,7 +29,7 @@
 #include "ext_block.h"
 #include "ext_kl.h"
 
-#include "basic_io.h"
+#include "basic_io.h"   // lookup of |operator<<| instances
 
 namespace atlas {
   namespace repr {
@@ -1105,21 +1105,6 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
-
-std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
-  const
-{
-  return
-    str << "{x=" << z.x() << ",lambda=" << lambda(z) << ",nu=" << nu(z) << '}';
-}
-
-std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
-{
-  for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
-    print(str << (it==P.begin() ?"":"+") << it->second, it->first)
-      << std::endl;
-  return str;
-}
 
 bool deformation_unit::operator!=(const deformation_unit& another) const
 {
