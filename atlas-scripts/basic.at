@@ -822,7 +822,7 @@ set among_posroots (RootDatum rd) = (mat M)bool: { all columns M posroots? }
 set among_poscoroots (RootDatum rd) = (mat M)bool: { all columns M poscoroots? }
   all(M,(vec v)bool: is_poscoroot(rd,v))
 
-set negative_system (mat posroots) = { the missing half of the root system }
+set negative_system (mat posroots) = mat: { the missing half of the root system }
   swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
 
 { having _all_ roots can be useful }
