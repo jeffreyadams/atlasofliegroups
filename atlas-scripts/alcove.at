@@ -76,9 +76,10 @@ in for alpha_v@i in poscoroots(rd)
       (  let mav_th = -alpha_v*theta in
          if alpha_v=mav_th { whether real coroot }
 	 then abs(diff)<2 and
-	    (let f = frac(alpha_v * if diff>0 then gamma_p else gamma_q fi)
-	     , alpha = root(rd,i)
-	     in is_nonparity(alpha,param(x,lr,gamma_p-alpha*(f/2)))
+	    (let alpha=root(rd,i)
+	    , gamma_high = if diff>0 then gamma_p else gamma_q fi
+	    in is_nonparity(alpha,
+	          param(x,lr,gamma_high-alpha*(frac(alpha_v * gamma_high))))
 	    )
 	 else mav_th.is_negative
 	 fi
