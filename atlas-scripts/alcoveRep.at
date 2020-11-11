@@ -1,0 +1,271 @@
+<basic.at
+
+{I have tested quite a bit, and believe I have a proof, that
+|fix| gives a new parameter in the same alcove. (This uses the
+late-October enlarged notion of alcove, throwing out some integral
+walls that don't contribute to reducibility.) Same for |fixNu| at the
+end.}
+
+{I do _not_ have a proof that the "while" statements in |fix| and
+|fixNu| must terminate, but in fact they do in thousands of fairly
+complicated examples; and I have not seen them fail.}
+
+{Tested on collection of 2400 parameters for E6_s; fix ran in 32
+seconds, fixNu in 64 seconds on my laptop. Average denominator for fix
+was 11, for fixNu 17. Largest denominator for fix was 64, for fixNu
+512.}
+
+{That sounds like a strong endorsement for fix, but I still like fixNu
+better :-) }
+
+set improve(Param p) = Param:
+(  let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,gamma)
+in assert(is_dominant(rd,gamma))
+;  if id.semisimple_rank=rd.semisimple_rank
+    then p
+    { if integral system has full rank, don't try to improve any more }
+    else let coroots_mat=^id.simple_coroots
+       then orth_basis = kernel(coroots_mat) { basis of part $X^*$
+       orth to |id| }
+       {next line added to land in -1 eig of theta_x}
+       then orth_basis = orth_basis - (p.x.involution)*orth_basis
+       in if( =orth_basis) then p
+       {but it might be that now orth_basis is zero. I think this can
+       only happen in unequal rank; but when it happens, then
+       improve should just return p}
+       else
+       let outside_poscoroots = { poscoroots not in row span of |coroots_mat| }
+         columns_with((vec alpha_v) bool: !=alpha_v*orth_basis, rd.poscoroots)
+       then xi_i0 = let ev = outside_poscoroots[0]*orth_basis
+                    in orth_basis[first(#ev, (int j)bool: !=ev[j] )]
+     in outside_poscoroots := { filter out those orthogonal to |xi_i0| }
+          columns_with((vec beta_v)bool: !=beta_v*xi_i0, outside_poscoroots)
+     ; let delays = { scalings of |xi_i0| to make each |beta*gamma| integral }
+         for beta in outside_poscoroots do frac(beta*gamma)/abs(beta*xi_i0) od
+       then (r,t) = (0,delays[0])
+    in for d@i in delays do if d<t then set (r,t):=(i,d) fi od
+    ;  let beta_0 = outside_poscoroots[r] in let gamma0=gamma-xi_i0 *
+    sign(beta_0*xi_i0) * t in
+{This gamma0 is meant to decrease some nonintegral beta_0*gamma to the
+next lower integer. The problem is that it might at the same time
+_increase_ some other nonintegral beta*gamma beyond the next higher
+integer. The loop is meant to test for that.}
+if
+      (all (for beta in outside_poscoroots do (floor(beta*gamma) =
+      floor(beta*gamma0)) 
+or (beta*(p.x.involution)*gamma0 >= 0) od))
+{ The "or" part excludes worrying about some
+      non-reducible walls.}
+      {should also exclude a wall if real beta becomes nonparity on wall}
+   then
+	if (#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
+	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
+	else p fi
+   else
+      p
+     fi
+    fi
+   fi
+   )
+
+{this is exactly the same, but trying to make N*infinitesimal
+character more integral}
+
+set improve(Param p, int N) = Param:
+(  let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,N*gamma)
+in assert(is_dominant(rd,gamma))
+;  if id.semisimple_rank=rd.semisimple_rank
+    then p { if integral system has full rank, don't try to improve any more }
+    else let coroots_mat=^id.simple_coroots
+       then orth_basis = kernel(coroots_mat) { basis of part $X^*$
+       orth to |id| }
+       {next line added to land in -1 eig of theta_x}
+       then orth_basis = orth_basis - (p.x.involution)*orth_basis
+        {but it might be that now orth_basis is zero. I think this can
+       only happen in the unequal rank case; but if it happens, then
+       improve should just return p}
+       in if ( = orth_basis) then p
+       else
+      let outside_poscoroots = { poscoroots not in row span of |coroots_mat| }
+         columns_with((vec alpha_v) bool: !=alpha_v*orth_basis, rd.poscoroots)
+       then xi_i0 = let ev = outside_poscoroots[0]*orth_basis
+                    in orth_basis[first(#ev, (int j)bool: !=ev[j] )]
+     in outside_poscoroots := { filter out those orthogonal to |xi_i0| }
+          columns_with((vec beta_v)bool: !=beta_v*xi_i0, outside_poscoroots)
+     ; let delays = { scalings of |xi_i0| to make each |beta*gamma| N*integral }
+         for beta in outside_poscoroots do
+	 frac(N*(beta*gamma))/abs(beta*xi_i0) od
+       then (r,t) = (0,delays[0])
+    in for d@i in delays do if d<t then set (r,t):=(i,d) fi od
+    ;  let beta_0 = outside_poscoroots[r] in let gamma0=gamma-xi_i0 *
+    sign(beta_0*xi_i0) * (t/N) in
+{This gamma0 is meant to decrease some nonintegral beta_0*gamma to the
+next lower integer. The problem is that it might at the same time
+_increase_ some other nonintegral beta*gamma beyond the next higher
+integer. The loop is meant to test for that.}
+if
+      (all (for beta in outside_poscoroots do (floor(beta*gamma) =
+      floor(beta*gamma0)) 
+or (beta*(p.x.involution)*gamma0 >= 0) od))
+{ The "or" part is meant to exclude worrying about some
+      non-reducible walls. But it isn't yet working right.}
+      {should also allow if real beta becomes nonparity on wall}
+   then
+   	if(#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
+	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
+	else p fi
+   else
+      p
+     fi
+    fi
+   fi
+   )
+
+{measures failure of N*infinitesimal_character to be integral}
+
+set r(Param p, int N) = semisimple_rank(p.real_form.root_datum) -
+semisimple_rank(integrality_datum(p.real_form.root_datum,
+N*(p.infinitesimal_character)))
+
+set fix(Param p) = Param:
+(
+let N=1, q=p in let temp =
+(while(r(p,N)>0) do q:=improve(p,N); if(q!= p)
+then (p:= q; N:=N )else (p:=p; N:=2*N) fi od
+)
+in p
+)
+
+{calculate the integral part of nu}
+
+set nuInt(Param p) = ratvec:
+(let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,gamma)
+in let nu=p.nu in let nuint=0*nu in
+for beta@i in simple_coroots(id) do nuint+:=
+(beta*nu)*(id.fundamental_weights)[i] od;
+nuint
+)
+
+set nuInt(Param p,int N) = ratvec:
+(let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,N*gamma)
+in let nu=p.nu in let nuint=0*nu in
+for beta@i in simple_coroots(id) do nuint+:=
+(beta*nu)*(id.fundamental_weights)[i] od;
+nuint
+)
+
+
+{this is meant to be like improve, but moving by perturbing the
+non-integral part of nu. This is more appealing to me, but doesn't
+test brilliantly.}
+
+set improveNu(Param p) = Param:
+(  let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,gamma)
+in assert(is_dominant(rd,gamma))
+;  if id.semisimple_rank=rd.semisimple_rank
+    then p { if integral system has full rank, don't try to improve any more }
+    else let coroots_mat=^id.simple_coroots
+    in let nu0 = p.nu - p.nuInt
+       then orth_basis = kernel(coroots_mat) { basis of part $X^*$
+       orth to |id| }
+       {next line added to land in -1 eig of theta_x}
+       then orth_basis = orth_basis - (p.x.involution)*orth_basis
+       in if( =orth_basis ) then p
+       else let outside_poscoroots = { poscoroots not in row span of |coroots_mat| }
+         columns_with((vec alpha_v) bool: !=alpha_v*orth_basis, rd.poscoroots)
+then xi_i0 = let ev = outside_poscoroots[0]*orth_basis
+                    in orth_basis[first(#ev, (int j)bool: !=ev[j] )]
+     in outside_poscoroots := { filter out those orthogonal to |nu0| }
+          columns_with((vec beta_v)bool: !=beta_v*nu0, outside_poscoroots)
+     ; let delays = { scalings of |nu0| to make each |beta*gamma| integral }
+         for beta in outside_poscoroots do frac(beta*gamma)/abs(beta*nu0) od
+       then (r,t) = (0,delays[0])
+    in for d@i in delays do if d<t then set (r,t):=(i,d) fi od
+    ;  let beta_0 = outside_poscoroots[r] in let gamma0=gamma-nu0 *
+    sign(beta_0*nu0) * t in
+{This gamma0 is meant to decrease some nonintegral beta_0*gamma to the
+next lower integer. The problem is that it might at the same time
+_increase_ some other nonintegral beta*gamma beyond the next higher
+integer. The loop is meant to test for that.}
+if
+      (all (for beta in outside_poscoroots do (floor(beta*gamma) =
+      floor(beta*gamma0)) 
+or (beta*(p.x.involution)*gamma0 >= 0) od))
+{ The "or" part excludes worrying about some
+      non-reducible walls.}
+      {should also exclude if real beta becomes nonparity on wall}
+   then
+   	if(#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
+	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
+	else p fi
+   else
+      p
+     fi
+    fi
+   fi
+   )
+
+set improveNu(Param p, int N) = Param:
+(  let rd=p.real_form.root_datum, gamma=p.infinitesimal_character
+    then id = integrality_datum(rd,N*gamma)
+in assert(is_dominant(rd,gamma))
+;  if id.semisimple_rank=rd.semisimple_rank
+    then p { if N*integral system has full rank, don't try to
+    improve any more }
+    else let coroots_mat=^id.simple_coroots
+    in let nu0 = p.nu - nuInt(p,N)
+       then orth_basis = kernel(coroots_mat) { basis of part $X^*$
+       orth to |id| }
+       {next line added to land in -1 eig of theta_x}
+       then orth_basis = orth_basis - (p.x.involution)*orth_basis
+       in if( =orth_basis ) then p
+       else let outside_poscoroots = { poscoroots not in row span of
+       |coroots_mat| }
+         columns_with((vec alpha_v) bool: !=alpha_v*orth_basis, rd.poscoroots)
+then xi_i0 = let ev = outside_poscoroots[0]*orth_basis
+                    in orth_basis[first(#ev, (int j)bool: !=ev[j] )]
+     in outside_poscoroots := { filter out those orthogonal to |nu0| }
+          columns_with((vec beta_v)bool: !=beta_v*nu0, outside_poscoroots)
+     ; let delays = { scalings of |nu0| to make each |beta*gamma| N*integral }
+         for beta in outside_poscoroots do frac(N*(beta*gamma))/abs(beta*nu0) od
+       then (r,t) = (0,delays[0])
+    in for d@i in delays do if d<t then set (r,t):=(i,d) fi od
+    ;  let beta_0 = outside_poscoroots[r] in let gamma0=gamma-nu0 *
+    sign(beta_0*nu0) * (t/N) in
+{This gamma0 is meant to decrease some nonintegral beta_0*gamma to the
+next lower integer. The problem is that it might at the same time
+_increase_ some other nonintegral beta*gamma beyond the next higher
+integer. The loop is meant to test for that.}
+if
+      (all (for beta in outside_poscoroots do (floor(beta*gamma) =
+      floor(beta*gamma0)) 
+or (beta*(p.x.involution)*gamma0 >= 0) od))
+{ The "or" part excludes worrying about some
+      non-reducible walls.}
+      {should also exclude if real beta becomes nonparity on wall}
+   then
+   	if(#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
+	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
+	else p fi
+   else
+      p
+     fi
+    fi
+   fi
+   )
+
+{here's a second way to do the fixing}
+
+set fixNu(Param p) = Param:
+(
+let N=1, q=p in let temp =
+(while(r(p,N)>0) do q:=improveNu(p,N); if(q!= p)
+then (p:= q; N:=N )else (p:=p; N:=2*N) fi od
+)
+in p
+)
