@@ -54,10 +54,14 @@ integer. The loop is meant to test for that.}
 if
       (all (for beta in outside_poscoroots do (floor(beta*gamma) =
       floor(beta*gamma0)) 
-or (beta*(p.x.involution)*gamma0 >= 0) od))
+or (beta*(p.x.involution)*gamma0 >= 0)
+or ((beta*(p.x.involution) = -beta) and (let j=coroot_index(rd,beta) 
+in (=(floor(beta*gamma0) + #is_parity(root(rd,j),p*0))%2))) od ))
 { The "or" part excludes worrying about some
       non-reducible walls.}
-      {should also exclude a wall if real beta becomes nonparity on wall}
+      {also exclude a wall if real beta becomes nonparity on
+      wall; this means integer is ODD if parity at zero, EVEN if
+      nonparity at 0}
    then
 	if (#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
 	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
@@ -108,10 +112,12 @@ integer. The loop is meant to test for that.}
 if
       (all (for beta in outside_poscoroots do (floor(beta*gamma) =
       floor(beta*gamma0)) 
-or (beta*(p.x.involution)*gamma0 >= 0) od))
-{ The "or" part is meant to exclude worrying about some
-      non-reducible walls. But it isn't yet working right.}
-      {should also allow if real beta becomes nonparity on wall}
+or (beta*(p.x.involution)*gamma0 >= 0)
+or ((beta*(p.x.involution) = -beta) and (let j=coroot_index(rd,beta) 
+in (=(floor(beta*gamma0) + #is_parity(root(rd,j),p*0))%2))) od ))
+{ The "or" part excludes worrying about some
+      non-reducible walls.}
+      {Also allow if real beta becomes nonparity on wall}
    then
    	if(#finalize(parameter_gamma(p.x,p.lambda,gamma0)) = 1) then
 	first_param(finalize(parameter_gamma(p.x,p.lambda,gamma0)))
