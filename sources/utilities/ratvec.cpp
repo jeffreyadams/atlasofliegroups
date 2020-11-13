@@ -159,24 +159,24 @@ RationalVector<C>& RationalVector<C>::operator%=(C n)
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational& r)
+RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational<C>& r)
 { return (*this /= r.denominator()) *= r.numerator(); }
 
 template<typename C>
-RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational& r)
+RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational<C>& r)
 const
 {
   return RationalVector(d_num*r.numerator(),d_denom*r.denominator());
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational& r)
+RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational<C>& r)
 { assert (r.numerator()!=0);
   return (*this /= r.numerator()) *= r.denominator();
 }
 
 template<typename C>
-RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational& r)
+RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational<C>& r)
 const
 {
   return RationalVector(d_num*r.denominator(),d_denom*r.numerator());

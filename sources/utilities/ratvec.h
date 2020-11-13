@@ -122,10 +122,10 @@ class RationalVector
     RationalVector operator-(const matrix::Vector<C1>& v) &&
     { return (*this)-= v; }
 
-  RationalVector& operator*=(const arithmetic::Rational& r);
-  RationalVector& operator/=(const arithmetic::Rational& r);
-  RationalVector operator*(const arithmetic::Rational& r) const;
-  RationalVector operator/(const arithmetic::Rational& r) const;
+  RationalVector& operator*=(const arithmetic::Rational<C>& r);
+  RationalVector& operator/=(const arithmetic::Rational<C>& r);
+  RationalVector operator*(const arithmetic::Rational<C>& r) const;
+  RationalVector operator/(const arithmetic::Rational<C>& r) const;
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of

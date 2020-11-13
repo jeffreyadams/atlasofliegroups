@@ -1528,7 +1528,7 @@ void integrality_points_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
+  RatNumList ipl = rootdata::integrality_points(rd->val,lambda->val);
     // method normalises rationals
   own_row result = std::make_shared<row_value>(ipl.size());
   for (unsigned int i=0; i<ipl.size(); ++i)
@@ -4595,7 +4595,7 @@ void reducibility_points_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList rp = p->rc().reducibility_points(p->val);
+  RatNumList rp = p->rc().reducibility_points(p->val);
       // method normalises rationals
   own_row result = std::make_shared<row_value>(rp.size());
   for (unsigned int i=0; i<rp.size(); ++i)

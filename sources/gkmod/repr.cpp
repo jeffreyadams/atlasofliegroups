@@ -649,7 +649,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   return z0==z1;
 } // |Rep_context::equivalent|
 
-StandardRepr& Rep_context::scale(StandardRepr& z, const Rational& f) const
+StandardRepr& Rep_context::scale(StandardRepr& z, const RatNum& f) const
 { // we can just replace the |infinitesimal_char|, nothing else changes
   auto image = theta(z)*z.gamma();
   auto diff = z.gamma()-image; // this equals $2\nu(z)$
@@ -662,7 +662,7 @@ StandardRepr& Rep_context::scale(StandardRepr& z, const Rational& f) const
 StandardRepr& Rep_context::scale_0(StandardRepr& z) const
 { z.infinitesimal_char = gamma_0(z); return z; }
 
-RationalList Rep_context::reducibility_points(const StandardRepr& z) const
+RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -714,17 +714,17 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     }
   }
 
-  std::set<Rational> fracs;
+  std::set<RatNum> fracs;
 
   for (table::iterator it= evens.begin(); it!=evens.end(); ++it)
     for (long s= d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(Rational(s,it->first));
+      fracs.insert(RatNum(s,it->first));
 
   for (table::iterator it= odds.begin(); it!=odds.end(); ++it)
     for (long s= it->second==0 ? d : d*(it->second+2); s<=it->first; s+=2*d)
-      fracs.insert(Rational(s,it->first));
+      fracs.insert(RatNum(s,it->first));
 
-  return RationalList(fracs.begin(),fracs.end());
+  return RatNumList(fracs.begin(),fracs.end());
 } // |reducibility_points|
 
 
@@ -1015,7 +1015,7 @@ bool Rep_context::compare::operator()
   return r_vec<s_vec;
 }
 
-SR_poly Rep_context::scale(const poly& P, const Rational& f) const
+SR_poly Rep_context::scale(const poly& P, const RatNum& f) const
 {
   poly result;
   for (auto it=P.begin(); it!=P.end(); ++it)
@@ -1825,9 +1825,9 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-  RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
+  RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
   StandardRepr z_near = z;
-  if (not rp.empty() and rp.back()!=Rational(1,1))
+  if (not rp.empty() and rp.back()!=RatNum(1,1))
   { // then shrink wrap toward $\nu=0$
     scale(z_near,rp.back()); // snap to nearest reducibility point
     deform_readjust(z_near); // so that we may find a stored equivalent parameter
@@ -2129,15 +2129,15 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   assert(is_final(z));
   const auto& delta = inner_class().distinguished();
 
-  RationalList rp=reducibility_points(z);
+  RatNumList rp=reducibility_points(z);
   flip = false; // ensure no flip is recorded when shrink wrapping is not done
-  if (not rp.empty() and rp.back()!=Rational(1,1))
+  if (not rp.empty() and rp.back()!=RatNum(1,1))
   { // then shrink wrap toward $\nu=0$
-    const Rational f=rp.back();
+    const RatNum f=rp.back();
     z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip);
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
-    assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
+    assert(rp.back()==RatNum(1,1)); // should make first reduction at |z|
     // here we continue, with |flip_start| recording whether we already flipped
   }
 
@@ -2152,7 +2152,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   { // initialise |result| to fully deformed parameter expanded to finals
     bool flipped; // contrary to |flip|, influences |result| to be stored in |zu|
     auto z0 = ext_block::scaled_extended_dominant
-		(*this,z,delta,Rational(0,1),flipped); // deformation to $\nu=0$
+		(*this,z,delta,RatNum(0,1),flipped); // deformation to $\nu=0$
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
     {
@@ -2165,7 +2165,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    Rational r=rp[i]; bool flipped;
+    RatNum r=rp[i]; bool flipped;
     auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list

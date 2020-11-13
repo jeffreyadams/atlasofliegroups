@@ -272,10 +272,10 @@ class Rep_context
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   // deforming the $\nu$ component
-  StandardRepr& scale(StandardRepr& sr, const Rational& f) const;
+  StandardRepr& scale(StandardRepr& sr, const RatNum& f) const;
   StandardRepr& scale_0(StandardRepr& sr) const;
 
-  RationalList reducibility_points(const StandardRepr& z) const; // normalised
+  RatNumList reducibility_points(const StandardRepr& z) const; // normalised
 
   // the following take |z| by value, modifying and in some cases returning it
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
@@ -294,7 +294,7 @@ class Rep_context
 
   using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
 
-  poly scale(const poly& P, const Rational& f) const;
+  poly scale(const poly& P, const RatNum& f) const;
   poly scale_0(const poly& P) const;
 
   sl_list<StandardRepr> finals_for // like |Block_base::finals_for|

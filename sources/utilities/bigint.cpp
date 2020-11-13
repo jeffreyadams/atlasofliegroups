@@ -733,7 +733,7 @@ big_rat big_rat::operator% (const big_rat& r) const
 big_rat big_rat::power (int e) const
 {
   if (e==0)
-    return big_rat(Rational{1,1});
+    return big_rat{big_int{1}};
 
   big_rat result(*this); // take a working copy
   const bool neg_exp = e<0;

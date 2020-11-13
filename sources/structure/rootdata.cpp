@@ -1396,7 +1396,7 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
   return rd.simpleBasis(int_roots).size();
 }
 
-RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 {
   arithmetic::Denom_t d = gamma.denominator(); // unsigned type is safe here
 
@@ -1408,13 +1408,13 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
       products.insert(p);
   }
 
-  std::set<Rational> fracs;
+  std::set<RatNum> fracs;
   for (std::set<arithmetic::Denom_t>::iterator
 	 it= products.begin(); it!=products.end(); ++it)
     for (arithmetic::Denom_t s=d; s<=*it; s+=d)
-      fracs.insert(Rational(s,*it));
+      fracs.insert(RatNum(s,*it));
 
-  return RationalList(fracs.begin(),fracs.end());
+  return RatNumList(fracs.begin(),fracs.end());
 }
 
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta)

@@ -2298,7 +2298,7 @@ repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
- Rational factor, // |z.nu()| is scaled by |factor| first
+ RatNum factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // output only, records whether a net extended flip was computed
  )
 {

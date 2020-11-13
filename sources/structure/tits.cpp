@@ -167,9 +167,7 @@ RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 void
 GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
 {
-  Rational r =
-    t.evaluate_at(prd.simple_coroot(s))
-		   - Rational(1); // $\rho_{im}$ shift
+  RatNum r = t.evaluate_at(prd.simple_coroot(s)) - RatNum(1); // $\rho_{im}$ shift
   if (r.numerator()!=0) // compact imaginary case needs no action
     add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
 	(prd.simple_root(s)*-r.numerator(),2*r.denominator()),t);

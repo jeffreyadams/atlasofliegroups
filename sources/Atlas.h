@@ -111,15 +111,18 @@ namespace atlas {
   using containers::queue;
 
   namespace arithmetic {
-    typedef long long int Numer_t;
-    typedef unsigned long long int Denom_t;
-    class Rational;
+    using Numer_t = long long int;
+    using Denom_t = unsigned long long int;
+    template<typename I> class Rational;
+    using RatNum = Rational<Numer_t>;
+    using RatNumList = std::vector<RatNum>;
     class Split_integer;
-    class big_int;
-    class big_rat;
+    class big_int; // defined in bigint.h
+    class big_rat; // defined in bigint.h
   }
   using arithmetic::Rational;
-  typedef std::vector<Rational> RationalList;
+  using arithmetic::RatNum;
+  using arithmetic::RatNumList;
   using arithmetic::Split_integer;
   using arithmetic::big_int;
   using arithmetic::big_rat;

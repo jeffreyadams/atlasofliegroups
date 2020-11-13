@@ -70,7 +70,7 @@ RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 // semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 

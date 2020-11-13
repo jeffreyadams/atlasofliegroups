@@ -1859,7 +1859,7 @@ typedef std::shared_ptr<int_value> own_int;
 struct rat_value : public value_base
 { big_rat val;
 @)
-  explicit rat_value(Rational v) : val(v) @+ {}
+  explicit rat_value(RatNum v) : val(v) @+ {}
   explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
 @)
   void print(std::ostream& out) const @+{@; out << val; }
@@ -1870,7 +1870,7 @@ struct rat_value : public value_base
   big_int denominator() const &@[@] @+{@; return val.denominator(); }
   big_int&& numerator() &@[@] @+{@; return std::move(val).numerator(); }
   big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
-  Rational rat_val() const @+{@; return val.rat_val(); }
+  RatNum rat_val() const @+{@; return val.rat_val(); }
 };
 @)
 typedef std::shared_ptr<const rat_value> shared_rat;
@@ -2210,7 +2210,7 @@ void vector_intlist_convert()
 @ A final purely externalising function at the vector level is
 |ratvec_ratlist_convert|, which is inverse to |ratlist_ratvec_convert|.
 Although the rational numbers we construct are likely to not be normalised, we
-need not worry about it since the |big_rat| constructor from |Rational| will
+need not worry about it since the |big_rat| constructor from |RatNum| will
 call |normalize| before building and storing its numerator and denominator.
 
 @< Local function def... @>=
@@ -2220,7 +2220,7 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
   own_row result = std::make_shared<row_value>(rv->val.size());
   for (std::size_t i=0; i<rv->val.size(); ++i)
     result->val[i] = std::make_shared<rat_value>@|
-      (Rational(rv->val.numerator()[i],rv->val.denominator()));
+      (RatNum(rv->val.numerator()[i],rv->val.denominator()));
   push_value(result);
 }
 

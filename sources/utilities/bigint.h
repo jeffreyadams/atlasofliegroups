@@ -159,7 +159,8 @@ private:
 public:
   static big_rat from_fraction(big_int numer, big_int denom)
   { return big_rat(std::move(numer),std::move(denom)).normalise(); }
-  big_rat(Rational r)
+
+  template<typename I> big_rat(const Rational<I> r)
     : num(big_int::from_signed(r.normalize().numerator()))
     , den(big_int::from_unsigned(r.true_denominator()))
     {}
@@ -169,8 +170,8 @@ public:
   big_int&& numerator() && { return std::move(num); }
   big_int&& denominator() && { return std::move(den); }
 
-  Rational rat_val() const // limited precision rational, or throw an error
-  { return Rational(num.long_val(),den.ulong_val()); }
+  Rational<Numer_t> rat_val() const // to limited precision, or throw an error
+  { return Rational<Numer_t>(num.long_val(),den.ulong_val()); }
 
   bool is_negative() const { return num.is_negative(); }
   bool is_zero() const { return num.is_zero(); }
