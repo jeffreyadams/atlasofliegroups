@@ -5420,7 +5420,7 @@ typedef std::shared_ptr<split_int_value> own_split_int;
 
 @ Like for parameter values, a printing function |print_split| on the level
 of a bare |Split_integer| value is defined in the library, which can be used
-also in situations where the method |split_int_value::print| cannot. THe latter
+also in situations where the method |split_int_value::print| cannot. The latter
 method simply calls it.
 
 @< Function def... @>=

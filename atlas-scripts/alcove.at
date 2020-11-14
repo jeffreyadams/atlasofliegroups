@@ -79,7 +79,7 @@ in for alpha_v@i in poscoroots(rd)
 	    (let alpha=root(rd,i)
 	    , gamma_high = if diff>0 then gamma_p else gamma_q fi
 	    in is_nonparity(alpha,
-	          param(x,lr,gamma_high-alpha*(frac(alpha_v * gamma_high))))
+	          param(x,lr,gamma_high-alpha*(frac(alpha_v * gamma_high)/2)))
 	    )
 	 else mav_th.is_negative
 	 fi
@@ -166,5 +166,5 @@ set promote_in_alcove(Param p) = Param:
          od
       )
   then q= param(x, lr, gamma+corr)
-  in assert(in_same_alcove(p,q),"correction leaves alcove for "+p.to_string); p
+  in assert(in_same_alcove(p,q),"correction leaves alcove for "+p.to_string); q
 )
