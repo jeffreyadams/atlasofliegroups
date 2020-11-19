@@ -1,7 +1,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009-2012 Marc van Leeuwen
+  Copyright (C) 2009-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -218,6 +218,12 @@ class Rep_context
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+
+  // whether real root with index |i| is parity on |z| deformed to $\nu=0$
+  // only depends on |x| and |y| parts of |z|, and is defined for all real roots
+  bool is_parity_at_0(RootNbr i,const StandardRepr& z) const;
+  // method that assumes an integral real coroot with index |i|, uses |gamma|
+  bool is_parity(RootNbr i,const StandardRepr& z) const;
 
   // |StandardReprMod| handling
 

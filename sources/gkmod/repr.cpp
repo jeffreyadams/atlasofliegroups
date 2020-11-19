@@ -259,6 +259,33 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
   return ((z.gamma()-theta*z.gamma())/=2).normalize();
 }
 
+
+bool Rep_context::is_parity_at_0(RootNbr i,const StandardRepr& z) const
+{
+  const RootDatum& rd = root_datum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = involution_table();
+  const RootNbrSet& real_roots = i_tab.real_roots(i_x);
+  assert(real_roots.isMember(i));
+  const RootNbrSet non_real_roots = ~real_roots; // the complement
+
+  const Coweight& alpha_hat = rd.coroot(i);
+
+  Weight theta_1_lamrho = i_tab.y_lift(i_x,z.y()); // |(1-theta)*lam_rho|
+  int eval = // twice evaluation of |alpha_hat| on |\lambda-\rho_{rea]}|
+    alpha_hat.dot(theta_1_lamrho+rd.twoRho(non_real_roots));
+  assert (eval%2==0); // because |\lambda-\rho_{rea]}| is integral
+  return eval%4!=0;
+}
+
+bool Rep_context::is_parity(RootNbr i,const StandardRepr& z) const
+{
+  assert(involution_table().real_roots(kgb().inv_nr(z.x())).isMember(i));
+  RatNum eval = z.gamma().dot_Q(root_datum().coroot(i)).normalize();
+  assert(eval.denominator()==1); // must be an integral coroot
+  return is_parity_at_0(i,z) == (eval.numerator()%2==0);
+}
+
 StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 {
   const auto& delta = inner_class().distinguished();
