@@ -344,8 +344,8 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   { const auto n_piv=pivot_columns.size();
     if (pivot_columns.position(n_piv)<n_piv) // pivot columns not left-adjusted
     { permutations::Permutation pi(pivot_columns.begin(),pivot_columns.end());
-      ~pivot_columns; // now get the non-pivot columns, and add them at end
-      pi.insert(pi.end(),pivot_columns.begin(),pivot_columns.end());
+      pivot_columns.take_complement(); // now get the non-pivot columns
+      pi.insert(pi.end(),pivot_columns.begin(),pivot_columns.end()); // add them
       permute_columns(col,pi);
       col_minus ^= (sign(pi)<0);
     }
