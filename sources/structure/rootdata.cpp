@@ -976,10 +976,10 @@ Weight RootDatum::twoRho(const RootNbrList& rl) const
   return result;
 }
 
-/* Returns the sum of the positive roots in rs.
+/* The sum of the positive roots in |rs|.
 
-  Precondition: rs holds the roots in a sub-rootsystem of the root system of
-  rd, or possibly only the positive roots in such a subsystem
+  Any set of roots is accepted (even if they do not for a subsystem, e.g.,
+  the non-real roots for some involution), but only positive ones are added
 */
 Weight RootDatum::twoRho(RootNbrSet rs) const
 {
