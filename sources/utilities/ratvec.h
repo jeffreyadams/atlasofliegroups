@@ -50,6 +50,8 @@ class RationalVector
   // build the RationalVector with numerator v and denominator d.
   template <typename C1> // possibly convert |v| entries to other type
     RationalVector(const matrix::Vector<C1>& v, C d);
+  template <typename C1> // possibly convert |v| entries to other type
+  RationalVector(const matrix::Vector<C1>& v, const arithmetic::Rational<C>& d);
 
   RationalVector(V&& v, C d);
 
@@ -144,6 +146,14 @@ class RationalVector
     auto num = w.dot(d_num);
     assert(num%(C)d_denom==0); // division below must be without remainder
     return num/(C)d_denom; // order is imposed here by return type |C|
+  }
+
+// evalutiong as a rational number needs another name than |dot|, whence |dot_Q|
+  template <typename C1>
+  arithmetic::Rational<C> dot_Q (const matrix::Vector<C1>& w) const
+  {
+    auto num = w.dot(d_num); // compute scalar product with type |C| arithmetic
+    return arithmetic::Rational<C> { num, d_denom };
   }
 
 // take difference as integer vector (which it is assumed to be here), converting

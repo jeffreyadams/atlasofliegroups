@@ -106,10 +106,11 @@ public:
   Rational& operator*=(I n);
   Rational& operator/=(I n); // assumes $n\neq0$, will not throw
   Rational& operator%=(I n); // assumes $n\neq0$, will not throw
+  Rational& mod1() { num = remainder(num,denominator()); return *this; };
 
   I floor () const { return divide(num,static_cast<I>(denom)); }
   I ceil () const { return -divide(-num,static_cast<I>(denom)); }
-  I quotient (Denom_t n) const
+  I quotient (Denom_t n) const // integer division by positive integer
     { return divide(num,static_cast<I>(n*denom)); }
 
   // these definitions must use |denominator()| to ensure signed comparison
@@ -133,6 +134,15 @@ public:
   { static_cast<const Rational*>(this)->normalize(); return *this; }
 }; // |class Rational|
 
+//				Functions
+
+
+// arithmetic operations by value
+template<typename C> Rational<C> operator+ (Rational<C> q, C n) { return q+=n ;}
+template<typename C> Rational<C> operator- (Rational<C> q, C n) { return q-=n ;}
+template<typename C> Rational<C> operator* (Rational<C> q, C n) { return q*=n ;}
+template<typename C> Rational<C> operator/ (Rational<C> q, C n) { return q/=n ;}
+template<typename C> Rational<C> operator% (Rational<C> q, C n) { return q%=n ;}
 
 class Split_integer
 {

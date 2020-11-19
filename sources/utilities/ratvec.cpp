@@ -26,10 +26,19 @@ namespace ratvec {
 
 template<typename C>
 template<typename C1>
-RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
+RationalVector<C>::RationalVector(const matrix::Vector<C1>& v, C d)
   : d_num(v.begin(),v.end()), d_denom(std::abs(d))
 { if (d<C(0))
     d_num.negate();
+} // don't try to normalize, caller can do the explicitly if needed
+
+template<typename C>
+template<typename C1>
+RationalVector<C>::RationalVector
+  (const matrix::Vector<C1>& v, const arithmetic::Rational<C>& d)
+    : d_num(v.begin(),v.end()), d_denom(d.true_denominator())
+{
+  d_num *= d.numerator();
 } // don't try to normalize, caller can do the explicitly if needed
 
 template<typename C>
@@ -228,6 +237,8 @@ template<typename C1, typename C2>
 template class RationalVector<arithmetic::Numer_t>; // the main instance used
 template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<int>&, arithmetic::Numer_t);
+template RationalVector<arithmetic::Numer_t>::RationalVector
+  (const matrix::Vector<int>&, const arithmetic::Rational<arithmetic::Numer_t>&);
 template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t> operator*

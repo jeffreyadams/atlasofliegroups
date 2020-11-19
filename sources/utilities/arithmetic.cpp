@@ -151,7 +151,6 @@ template<typename I>
 }
 
 
-
 template<typename I>
   Rational<I> Rational<I>::operator+(Rational<I> q) const
 {
