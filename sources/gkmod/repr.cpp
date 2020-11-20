@@ -136,7 +136,26 @@ StandardRepr Rep_context::sr_gamma
   const InvolutionTable& i_tab = involution_table();
   return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma,
 		      height(th1_gamma));
-}
+} // |sr_gamma|
+
+// the same, but moving from |gamma|
+StandardRepr Rep_context::sr_gamma
+  (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const
+{
+  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
+    gamma.numerator()+kgb().involution_matrix(x)*gamma.numerator();
+
+  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
+  Weight th1_gamma(th1_gamma_num.size());
+  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
+  {
+    assert(th1_gamma_num[i]%gamma.denominator()==0);
+    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
+  }
+
+  return StandardRepr(x, involution_table().y_pack(kgb().inv_nr(x),lambda_rho),
+		      std::move(gamma), height(th1_gamma));
+} // |sr_gamma|
 
 StandardRepr Rep_context::sr
   (const StandardReprMod& srm, const RatWeight& gamma) const

@@ -82,9 +82,12 @@ class StandardRepr
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
-  // one should call constructor from |Rep_context| only
+  // one should call constructors from |Rep_context| only, so they are |private|
   StandardRepr(KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
+  { infinitesimal_char.normalize(); } // to ensure this class invariant
+  StandardRepr(KGBElt x,TorusPart y, RatWeight&& gamma,unsigned int h)
+    : x_part(x), hght(h), y_bits(y), infinitesimal_char(std::move(gamma))
   { infinitesimal_char.normalize(); } // to ensure this class invariant
 
  public:
@@ -189,6 +192,8 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
   StandardRepr sr_gamma // use this one when infinitesimal character is known
     (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
+  StandardRepr sr_gamma // variant of previous which moves from |gamma|
+    (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const;
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
