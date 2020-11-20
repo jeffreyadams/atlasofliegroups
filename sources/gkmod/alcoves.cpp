@@ -128,8 +128,37 @@ bool make_multiple_integral
       }
     }
 
+  sr = rc.sr_gamma(sr.x(), rc.lambda_rho(sr), std::move(new_gamma));
   return true;
 } // |make_multiple_integral|
+
+
+unsigned scaled_integrality_rank
+  (const RootDatum& rd, const RatWeight& gamma, long long N)
+{
+  RootNbrSet integrals(2*rd.numPosRoots());
+  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+    if (rd.posCoroot(i).dot(gamma.numerator())*N % gamma.denominator() == 0)
+      integrals.insert(rd.posRootNbr(i));
+  return rd.simpleBasis(integrals).size();
+}
+
+long long simplify(const Rep_context& rc, StandardRepr& sr)
+{ long long N=1;
+  const auto& rd = rc.root_datum();
+  while(true) // a middle-exit loop, hard to formulate differently
+  {
+    while (make_multiple_integral(rc,sr,N))
+    {} // continue while it changes
+    if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimpleRank())
+      break; // we have achieved our goal
+    if (N+N<N) // this condition signals integer overflow in the addition
+      throw std::runtime_error
+	("Integer overflow while trying to simplify parameter in alcove");
+    N += N; // double down and try again
+  }
+  return N;
+}
 
 } // |namespace repr|
 
