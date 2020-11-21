@@ -43,10 +43,10 @@ bool make_multiple_integral
   for (unsigned i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
-  RootNbrList integrally_simples=rd.simpleBasis(int_poscoroots);
+  RootNbrList integrally_simples=rd.pos_simples(int_poscoroots);
   int_Matrix A(integrally_simples.size()+rd.rank(),rd.rank());
   for (unsigned int i=0; i<integrally_simples.size(); ++i)
-    A.set_row(i,rd.posCoroot(integrally_simples[i]));
+    A.set_row(i,rd.coroot(integrally_simples[i]));
   {
     int_Matrix theta_plus_1 = rc.inner_class().matrix(kgb.involution(sr.x()))+1;
     for (unsigned int i=0; i<theta_plus_1.numRows(); ++i)
@@ -100,7 +100,7 @@ bool make_multiple_integral
     if (delay < min_delay)
     {
       mindex = *it;
-      delay = min_delay;
+      min_delay = delay;
     }
   }
   assert(mindex>=0);
@@ -136,11 +136,11 @@ bool make_multiple_integral
 unsigned scaled_integrality_rank
   (const RootDatum& rd, const RatWeight& gamma, long long N)
 {
-  RootNbrSet integrals(2*rd.numPosRoots());
+  RootNbrSet integrals(rd.numPosRoots());
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
     if (rd.posCoroot(i).dot(gamma.numerator())*N % gamma.denominator() == 0)
-      integrals.insert(rd.posRootNbr(i));
-  return rd.simpleBasis(integrals).size();
+      integrals.insert(i);
+  return rd.pos_simples(integrals).size();
 }
 
 long long simplify(const Rep_context& rc, StandardRepr& sr)

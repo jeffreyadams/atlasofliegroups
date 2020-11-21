@@ -24,6 +24,8 @@
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
+#include "alcoves.h"
+
 #include "kl.h"
 
 #include "ext_block.h"

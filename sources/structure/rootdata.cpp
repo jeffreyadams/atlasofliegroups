@@ -569,6 +569,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
 }
 
+// the same, but indexing positive roots from 0, and using |sl_list|
 RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
 {
   containers::sl_list<RootNbr> result; // these are full root numbers
@@ -586,7 +587,7 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
 	if (is_posroot(gamma))
 	  posroots.remove(*jt); // |beta| cannot be simple; remove it
 	else
-	  break; // positive root beta made nagative, so alpha is not simple
+	  break; // positive root beta made negative, so alpha is not simple
       }
     } // |for (beta)|
     if (not jt()) // loop over |beta| ran to completion, so |alpha| is "simple"
