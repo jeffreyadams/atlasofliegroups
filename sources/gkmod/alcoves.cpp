@@ -57,7 +57,7 @@ bool make_multiple_integral
   if (ker.numColumns()==0) // easy though not necessary test (next one suffices)
     return false; // no change necessary, or done
 
-  RootNbrSet outside_poscoroots(npr);
+  RootNbrSet outside_poscoroots(npr); // record positions within positive set
   std::vector<BitMap> // indexed by the |outer_poscooroots|, by their position
     coroot_generators; // flag |ker| columns that are nonzero on this coroot
   for (unsigned i=0; i<npr; ++i)
@@ -72,12 +72,12 @@ bool make_multiple_integral
     }
   }
   if (coroot_generators.size()==0)
-    return false; // no change necessary, or done
+    return false; // no change necessary, so we are done
 
   const auto j0 = *coroot_generators[0].begin();
   Weight xi = ker.column(j0);
   { // filter out of |poscoroots| those that vanish on |xi|
-    unsigned i=0;
+    unsigned i=1; // we shall skip the first of |outside_poscoroots|
     for (auto it = std::next(outside_poscoroots.begin()); it(); ++it,++i)
       if (not coroot_generators[i].isMember(j0))
 	outside_poscoroots.remove(*it);
@@ -122,7 +122,7 @@ bool make_multiple_integral
 	{
 	  if (theta_alpha!=rd.rootMinus(alpha))
 	    return false; // complex descent coroot oversteps integral: bad
-	  if (rc.is_parity_at_0(*it,sr) == (new_floor%2==0))
+	  if (rc.is_parity_at_0(alpha,sr) == (new_floor%2==0))
 	    return false; // real parity coroot oversteps integral: bad
 	}
       }
@@ -148,8 +148,10 @@ long long simplify(const Rep_context& rc, StandardRepr& sr)
   const auto& rd = rc.root_datum();
   while(true) // a middle-exit loop, hard to formulate differently
   {
-    while (make_multiple_integral(rc,sr,N))
-    {} // continue while it changes
+    unsigned count=rd.rank()+1;
+    while (make_multiple_integral(rc,sr,N)) // continue while it changes
+      if (count--==0)
+	throw std::runtime_error("Runaway loop in parameter simplify");
     if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimpleRank())
       break; // we have achieved our goal
     if (N+N<N) // this condition signals integer overflow in the addition
