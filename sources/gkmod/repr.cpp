@@ -23,6 +23,7 @@
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
+#include "alcoves.h"
 
 #include "alcoves.h"
 
@@ -1908,10 +1909,15 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
 	   .isZero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
-    for (auto const& term : dt)
-    { const auto& def = deformation(term.first); // recursion
-      result.add_multiple
-	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
+    for (auto& term : dt)
+    {
+      simplify(*this,term.first);
+      for (const auto& final : finals_for(term.first))
+      {
+	const auto& def = deformation(final); // recursion
+	result.add_multiple
+	  (def,Split_integer(term.second,-term.second)); // $(1-s)*c$
+      }
     }
   }
 
