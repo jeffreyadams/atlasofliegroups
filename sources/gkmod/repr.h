@@ -460,6 +460,7 @@ class Rep_table : public Rep_context
 
   // statistics of deformation, last two are squared counts
   size_t formula_count, def_terms_count, dt_size, shrink, fcount2, dtcount2;
+  long long int max_N;
  public:
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();

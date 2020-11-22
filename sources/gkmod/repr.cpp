@@ -1290,6 +1290,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , block_list(), place()
 , formula_count(0), def_terms_count(0), dt_size(0), shrink(0)
 , fcount2(0), dtcount2(0)
+, max_N(1)
 {}
 Rep_table::~Rep_table()
 {
@@ -1310,7 +1311,8 @@ Rep_table::~Rep_table()
     << ", quadratic average " << std::sqrt(fcount2/n) << ";\n"
     << "Average number of deformation contributions " << def_terms_count/n
     << ", quadratic average " << std::sqrt(dtcount2/n) << ", with "
-    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms.\n";
+    << dt_size/n << " terms\nAverage cancelation " << shrink/n << " terms.\n"
+    << "Maximal N: " << max_N << ".\n";;
 }
 
 unsigned short Rep_table::length(StandardRepr sr)
@@ -1977,7 +1979,9 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     for (auto& term : dt)
     {
       ++loop_count;
-       simplify(*this,term.first);
+      long long int N = simplify(*this,term.first);
+      if (N>max_N)
+	max_N = N;
       for (const auto& final : finals_for(term.first))
       {
 	const auto& def = deformation(final); // recursion
