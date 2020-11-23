@@ -40,6 +40,7 @@ KLSupport::KLSupport(const Block_base& b)
   : d_block(b)
   , info()
   , length_stop()
+  , d_prim_index(1ul << rank()) // $2^r$ empty slots, with $r$ (semisimple) rank
 {
 /*
   Make |length_stop| into a vector of size |max(lengths(d_block))+2| such that
@@ -87,8 +88,64 @@ KLSupport::KLSupport(const Block_base& b)
   } // |for(BlockElt z)|
 } // |KLSupport::KLSupport|
 
+
+/*
+  Fill in the table |d_prim_index|.
+
+  For each |z| in the block, and each descent set |A|, one can from |z| either
+  reach a primitive element |z'| for |A| by following 'C+' or 'i1' ascents in
+  |A| , or run into an 'rn' ascent in |A| which aborts the search (because when
+  this happens, one has $P_{z,y}=0$ for any |y| for which |descentSet(y)==A|).
+
+  After doing this for any |A| and |z|, we store not |z'|, but its index in the
+  list of primitives for |A|, recoreded as |prim_index[z]| below. This avoids
+  having to use binary search to locate the polynomial $P_{z',y}$, provided it
+  is stored at an offset |prim_index[z]| in the appropriate vector. This does
+  mean we will have to store null polynomials at primitive elements to ensure
+  everything is at its predicted place, while such (fairly common) polynomials
+  could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
+*/
+
+void KLSupport::fill_prim_index(RankFlags descs)
+{
+  prim_index_tp& record=d_prim_index[descs.to_ulong()];
+  record.index.resize(d_block.size()); // create slots; we will fill backwards
+
+  unsigned int count = 0; // count primitives seen
+  constexpr unsigned int dead_end = -1; // signals "no valid index" temporarily
+  for (BlockElt x = d_block.size(); x-->0;)
+  {
+    // store index of primitivized |x| among primitives for |RankFlags(descs)|
+    // since |x| is decreasing, initially count _larger_ primitive elements
+    auto& dest = record.index[x]; // the slot to fill during this iteration
+    RankFlags a = good_ascent_set(x) & descs;
+    if (a.none())
+    { // then |x| is primitive, record its index
+      dest = count++; // for now, record nr of larger primitives
+      continue;
+    }
+
+    const weyl::Generator s = a.firstBit();
+    const auto v = descent_value(s,x);
+    if (v==DescentStatus::RealNonparity)
+      dest = dead_end;
+    else
+    {
+      auto sz = d_block.unique_ascent(s,x);
+      dest = sz==UndefBlock ? dead_end : record.index[sz];
+    }
+  } // |for(x-->0)|
+
+  record.range = count;
+  const BlockElt last=count-1;
+  for (unsigned int& slot : record.index)
+    slot = slot==dead_end ? record.range : last-slot; // reverse indices
+
+} // |fill_prim_index|
+
 /******** accessors **********************************************************/
 
+#if 0
 /*
   Find for |x| a primitive element for |d| above it, returning that value, or
   return |d_block.size()| if a real nonparity case is hit, or if (in partial
@@ -121,6 +178,7 @@ BlockElt
   }
   return d_block.size(); // indicate that a dead end was reached
 }
+#endif // code disabled because replaced by table look-up
 
 #ifndef NDEBUG
 void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)

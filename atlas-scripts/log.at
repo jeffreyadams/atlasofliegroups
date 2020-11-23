@@ -1,0 +1,20 @@
+<basic.at
+
+{calculating log_b}
+
+{largest k so that b^k<=n}
+set max_power(int n, int b)=int:
+if n=0 then 0 else
+let k=0 in
+while b^k <= n do
+ k:=k+1 od;k-1 fi
+
+set max_power(rat r,int b)=int:max_power(floor(r),b)
+set log_b_int(rat r,int b)=int:max_power(r,b)
+
+{round rational to nearest integer}
+set round(rat r)=floor(r+1/2)
+
+{it appears to work better to use round@rat:}
+set log_2_int(rat r)=int:round(log_b_int(r^2,2)/2)
+

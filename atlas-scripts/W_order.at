@@ -1,0 +1,46 @@
+<lietypes.at
+<poset.at
+<good_W_representatives.at
+<group_operations.at
+<center.at
+
+{order on conjugacy classes of W}
+
+{The Bruhat order induces an order on elliptic conjugacy
+classes in W, although this is hard to compute
+This file is speculative, and involves other orders
+on conjugacy classes in W
+}
+
+<sort.at
+
+{dominance order on dominant coweights}
+set less(RootDatum rd, ratvec v, ratvec w)=
+assert(is_dominant(v,rd) and is_dominant(w,rd),"v and/or w are not dominant");
+is_positive(requisition(solve(simple_coroots(rd),v-w)))
+
+set vecs([WeylElt] W)=for w in W do let (,,,,,v)=good_info(w) in v od
+
+set vec_poset([ratvec] S,RootDatum rd)=Poset:
+let rv=[[int]]:[] in
+for i:#S do
+ let new=[int]:[] in 
+ for j:#S do
+   if less(rd,S[i],S[j]) then new#:=j fi 
+  od;
+  rv#:=new
+od;
+rv
+
+set W_poset([WeylElt] W)=Poset:
+let S=for w in W do let (,,,,,v)=good_info(w) in v od
+in vec_poset(S,W[0].root_datum)
+
+set W_graph([WeylElt] W)=string:
+let labels(int i)=
+let w=W[i] in
+ w.order.to_string+ ":" + w.length.to_string + " " + complex_Levi(W[0].root_datum,Levi_of(w)).derived.Lie_type.nice_format in 
+graph(W_poset(W),labels)
+
+set elliptic_W_Graph(RootDatum rd)=string:
+W_graph(elliptic_conjugacy_classes(rd))

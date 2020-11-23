@@ -1,0 +1,56 @@
+<K_types.at
+<K_norm.at
+
+{tensor product of K-representations for G of semisimple rank 1}
+
+set sl2_or_pgl2(RealForm G)=int: {0: G_der=SL(2,R); 1:G_der=PGL(2,R)}
+assert(semisimple_rank(G)=1,"G_der is not SL(2,R) or PGL(2,R)");
+assert(KGB_size(G)>3,"That is impossible");
+assert(KGB_size(G)>0,"Group is compact");
+{only cases left for G_der: SL(2,R), KGB_size=3;PGL(2,R): KGB_size=2}
+if KGB_size(G)=3 then 0 else 1 fi
+
+set N=100
+
+{simply use p.x}
+set add_weight_gl2 (Param p, vec H)=Param:parameter(p.x,p.lambda+H,nu(p))
+
+set add_weight_gl2 (ParamPol P, vec H)=ParamPol:
+   let result=null_module(P.real_form) in
+   for coeff@p in P do result+:=coeff*(standardize(add_weight_gl2 (p,H)))*0 od;
+   result
+
+set add_weight_gl2 (K_Type mu, vec H)=ParamPol:
+   let P=K_type_formula(mu) in add_weight_gl2(P,H)
+
+
+set K_display(K_Type_Pol P)=void:
+let header=["c", "x", "lambda", "dim", "highest weight"] then
+values=for c@p in P do 
+let mu=LKT(p) then
+(,,hw)=highest_weights(mu)[0] in
+[c.split_as_int.to_string,mu.x.to_string,mu.lambda.to_string,dimension(mu).to_string,hw.to_string] od
+in tabulate(header#values,"lllll",2," ") 
+
+set tensor_gl2(K_Type mu,K_Type tau)=K_Type_Pol:
+let rv=null_module(mu.real_form) in
+for (,,v) in highest_weights(tau) do rv+:=add_weight_gl2(mu,v) od;
+prints("hw_0=", let (,,v)=highest_weights(mu)[0] in v, " dim=", dimension(mu));
+prints("hw_1=", let (,,v)=highest_weights(tau)[0] in v, " dim=", dimension(mu));
+prints("result:", new_line);
+let P=branch_std(rv,N) in
+K_display(P);P
+
+set tensor_sl2(K_Type mu,K_Type tau)=K_Type_Pol:
+let x=KGB(mu.real_form,0) in K_Type_Pol:parameter(K_Type:(x,highest_weight(mu,x).mu+highest_weight(tau,x).mu))
+
+
+
+{only works for relatively split groups}
+set tensor_A1(K_Type mu,K_Type tau)=K_Type_Pol:
+if sl2_or_pgl2(mu.real_form)=0 then tensor_sl2(mu,tau) else tensor_gl2(mu,tau) fi
+
+
+
+
+

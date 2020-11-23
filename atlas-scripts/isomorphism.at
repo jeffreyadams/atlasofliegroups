@@ -1,0 +1,126 @@
+<lietypes.at
+<conjugate.at
+
+{permutations relating Cartan matrices
+ isomorphism of root systems (local isomorphism)
+ isomorphism of root data (semisimple case (mainly))
+}
+
+{return all permutations preserving the inner products
+note this only depends on the derived root data
+Condition: P*Cartan_matrix_1=Cartan_matrix_2*P
+never returns an error (possibly the empty list)
+reductive is allowed
+each P satisfies: permutation(P)[i]=j means
+ L_1.simple_roots[i] -> L_2.simple_roots[j]  and
+ L_1.simple_coroots[i] -> L_2.simple_coroots[j] preserves the inner products
+explicitly:
+L_1.simple_roots[i]*L_1.simple_coroots[j] = 
+L_2.simple_roots[permutation(P)[i]]*L_2.simple_coroots[permutation(P)[j]]
+}
+set root_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
+if not is_locally_isomorphic(rd_1,rd_2) then [mat]:[]
+elif =rd_1.rank then [id_mat(0)] {empty root system case}
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
+ ##for P in S do if  P*C_1=C_2*P then [P] else [] fi od
+fi
+
+{return (bool, one permutation matrix)
+reductive is allowed
+}
+set root_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))  elif
+=rd_1.rank then (true,id_mat(0)) {empty root system case} else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
+ index=first(for g in S do g*C_1=C_2*g od) in
+ if index=-1 then (false,null(0,0)) else (true,S[index]) fi
+fi
+
+{find g\in GL(n,Q) and permutation matrix P so that
+P is a root_permutation (as above), i.e.
+P*Cartan_matrix_1=Cartan_matrix_2*P
+gR_1=R_2P  (R_i = simple roots in rd_i)
+these imply
+^gS_2=S_1P^{-1}
+this implies <\alpha,\beta^v>_1=<g\alpha,^g\beta^v>_2
+this gives an isomorphism of root *systems*, i.e.
+a local isomorphism since g,g^{-1} are
+ in GL(n,Q) not necessarily GL(n,Z)
+g gives an isomorphism of root systems (local isomorphism)
+it also gives an isomorphism of root data if and only if g and g^{-1}
+are both integral matrices
+semisimple case only}
+set local_isomorphism_long(RootDatum rd_1,RootDatum rd_2)=(bool,ratmat,mat):
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+let (valid,P)=root_permutation(rd_1,rd_2) in
+if not valid then (false,id_mat(0)/1,id_mat(0)) else
+(valid,rd_2.simple_roots*P*rd_1.simple_roots.rational_inverse,P) fi
+
+{return matrix of local isomorphism if it exists
+abort with an error otherwise
+note that the permutation is not returned
+semisimple case only}
+set local_isomorphism(RootDatum rd_1,RootDatum rd_2)=ratmat:
+let (valid,M,P)=local_isomorphism_long(rd_1,rd_2) in
+assert(valid,"root data are not locally isomorphic");M
+
+{to find an actual isomorphism, need to try all possible permutations
+for example SL(2)xPGL(2) -> PGL(2)xSL(2)
+also SO(8) has 6 local isomorphisms, only 1 non-trivial isomorphism
+return (bool, matrix g, permutation P) satisfying gR_1=R_2P
+semisimple case only}
+set isomorphism_long(RootDatum rd_1,RootDatum rd_2)=(bool,mat,mat):
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+let perms=root_permutations(rd_1,rd_2) then
+rv=(false,id_mat(0),id_mat(0)) in
+for P in perms do
+ let g=rd_2.simple_roots*P*rd_1.simple_roots.rational_inverse then
+ (num,,d)=g in
+ if d=1 and abs(det(g))=1 then rv:=(true,ratmat_as_mat(g),P);break
+fi od;rv
+
+{return matrix of isomorphism if it exists
+abort with an error otherwise
+note that the permutation is not returned
+return value satisfies: gR_1=R_2P for some permutation P
+semisimple case only}
+set isomorphism(RootDatum rd_1,RootDatum rd_2)=mat:
+let (valid,M,P)=isomorphism_long(rd_1,rd_2) in
+assert(valid,"root data are not isomorphic");M
+
+{boolean
+ gives the correct answer if both root data are semimple
+ also: in reductive case, correctly returns false
+  if the groups are not locally isomorphic
+abort with an error if: the root data are locally
+ isomorphic but not semisimple
+}
+set is_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
+if not(rd_1.is_semisimple and rd_2.is_semisimple) then
+ {reductive case: return false if not locally isomorphic, error otherwise}
+ let not_locally_isomorphic=not is_locally_isomorphic(rd_1,rd_2) in
+ {error: not semisimple but are locally isomorphic: can't give a definitive answer:}
+ assert(not_locally_isomorphic,"root data are not semisimple (and are locally isomorphic)")
+ {reductive but not locally isomorphic: correct answer is false};false
+else  {semisimple case:}
+ let (valid,,)=isomorphism_long(rd_1,rd_2) in valid
+fi
+
+
+{
+G_ss x torus
+A\center G_ss
+map: phi:A->torus
+
+G_ss x torus/<a,phi(a)>
+
+question: are two sublattices of finite index in Z^n: conjugate by GL(n,Z)?
+
+classifying real tori:  (Z^n,theta)
+
+basis:  theta = (1,1,....,-1,....,(swaps)...)
+
+}
