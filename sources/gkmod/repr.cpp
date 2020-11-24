@@ -1979,9 +1979,15 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     for (auto& term : dt)
     {
       ++loop_count;
+      const auto prev=term.first;
       long long int N = simplify(*this,term.first);
       if (N>max_N)
+      {
+	print_stdrep(std::cout << "From ", prev,*this);
+	print_stdrep(std::cout << " to ", prev,*this)
+	  << " avances N to " << N << ".\n";
 	max_N = N;
+      }
       for (const auto& final : finals_for(term.first))
       {
 	const auto& def = deformation(final); // recursion
