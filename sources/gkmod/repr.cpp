@@ -1984,7 +1984,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
       if (N>max_N)
       {
 	print_stdrep(std::cout << "From ", prev,*this);
-	print_stdrep(std::cout << " to ", prev,*this)
+	print_stdrep(std::cout << " to ", term.first,*this)
 	  << " avances N to " << N << ".\n";
 	max_N = N;
       }
