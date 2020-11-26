@@ -103,11 +103,11 @@ class RootSystem
   typedef matrix::Vector<byte> Byte_vector;
   struct root_info
   {
-    Byte_vector root, dual; // root in root basis, coroot in coroot basis
+    Byte_vector root, coroot; // root in root basis, coroot in coroot basis
     RankFlags descents,ascents; // for reflections by simple roots
 
     root_info(const Byte_vector& v)
-    : root(v), dual(), descents(), ascents() {}
+    : root(v), coroot(), descents(), ascents() {}
   };
   struct root_compare; // auxilary type defined here for access reasons
 
@@ -125,12 +125,18 @@ class RootSystem
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
   { return Cmat(i,j); }
-  Byte_vector& root(RootNbr i) { return ri[i].root;}
-  Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
-  const Byte_vector& root(RootNbr i) const { return ri[i].root;}
-  const Byte_vector& coroot(RootNbr i) const { return ri[i].dual;}
 
- public:
+  // in the following 4 methods |i| indexes a positive root or corrot
+  Byte_vector& root(RootNbr i) { return ri[i].root;}
+  Byte_vector& coroot(RootNbr i) { return ri[i].coroot;}
+  const Byte_vector& root(RootNbr i) const { return ri[i].root;}
+  const Byte_vector& coroot(RootNbr i) const { return ri[i].coroot;}
+
+  // look up and return index in full root system, or |numRoots()| on failure
+  RootNbr lookup_root(const Byte_vector& root) const;
+  RootNbr lookup_coroot(const Byte_vector& coroot) const;
+
+public:
 
 // constructors and destructors
 
@@ -158,9 +164,9 @@ class RootSystem
 
 
 
-// root list access
+// root list access; unless noted, |alpha| indexes the full root system
 
-  // express root in simple root basis, or coroot in simple coroot basis
+  // express any root in simple root basis; any coroot in simple coroot basis
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
@@ -189,14 +195,20 @@ class RootSystem
   RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
 
-  RootNbr posRootNbr(RootNbr alpha) const
+  RootNbr posRootNbr(RootNbr alpha) const // here |alpha| indexes positive roots
   { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
+
+  RootNbr negRootNbr(RootNbr alpha) const // here |alpha| indexes positive roots
+  { assert(alpha<numPosRoots()); return numPosRoots()-1-alpha; }
 
   RootNbr simpleRootIndex(RootNbr alpha) const
   { assert(is_simple_root(alpha));  return alpha-numPosRoots(); }
 
-  RootNbr posRootIndex(RootNbr alpha) const
+  RootNbr posroot_index(RootNbr alpha) const
   { assert(is_posroot(alpha)); return alpha-numPosRoots(); }
+
+  RootNbr negroot_index(RootNbr alpha) const // |posroot_index(rootMinus(alpha))|
+  { assert(is_negroot(alpha)); return numPosRoots()-1-alpha; }
 
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
   { return numRoots()-1-alpha; }
@@ -281,9 +293,13 @@ class RootSystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
   RootNbrList pos_simples(RootNbrSet posroots) const; // posroots only here!
 
-  bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
-  bool sumIsRoot(RootNbr alpha, RootNbr beta) const
-  { RootNbr dummy; return sumIsRoot(alpha,beta,dummy); }
+  bool sum_is_root(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
+  bool sum_is_root(RootNbr alpha, RootNbr beta) const
+  { RootNbr dummy; return sum_is_root(alpha,beta,dummy); }
+
+  bool sum_is_coroot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
+  bool sum_is_coroot(RootNbr alpha, RootNbr beta) const
+  { RootNbr dummy; return sum_is_coroot(alpha,beta,dummy); }
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
