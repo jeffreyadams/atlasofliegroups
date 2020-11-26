@@ -994,6 +994,24 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   (in the restriction vertices are renumbered form 0, so that it can be
   considered as a W-graph in its own right, without reference to the original).
 
+simplify: (Param->Param,int): Find simpler parameter in its alcove
+  This tries to make N*p.infinitesimal_character integral for a minimal power N
+  of 2; returns new parameter and N. Actually just maximizes integral rank.
+walls: (RootDatum,ratvec->[int]) Find set of coroots defining walls of alcove
+  The alcove is the one defined by the given rational weight, the alcove being
+  characterized by the integral parts of evaluations on all positive coroots.
+  The value returned is the minimal set of indices into |coroots(rd)| of coroots
+  that define the alcove. For these coroots the evaluation is integral on a some
+  wall of the alcove, and increases when going from that wall to the interior.
+  In case of a negative coroot, the wall itself is not part of the alcove.
+alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
+  The alcove is defined by the integral parts of the evaluations of gamma on
+  all the positive coroots, as in the walls function. The "central" point is
+  obtained by remaining on any (positive coroot) wall that gamma is already on,
+  and for the remaining walls spread out the fractional parts of the coroot
+  evaluations evenly, in the fashion of an isobarycenter. This adaptation
+  should ensure the change is fixed under -p.x.involution in all cases.
+
 strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
   The input describes a directed graph on the set #n={0,1,...,n-1}, where n is
   the length of the list. The graph defines by (reflexive and) transitive

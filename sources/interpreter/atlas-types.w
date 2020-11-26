@@ -5213,6 +5213,50 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
+@ Here is a temporary function for exploring |simplify| in \.{alcoves.cpp}.
+
+@h "alcoves.h"
+
+@< Local function def...@>=
+void simplify_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  auto N = simplify(p->rc(),p->val);
+  push_value(std::move(p));
+  push_value(std::make_shared<int_value>(N));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ And similarly here are two to experiment with the |wall_set| and
+|alcove_center| functions.
+
+@< Local function def...@>=
+void walls_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(walls.size());
+  for (auto it=walls.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(result));
+}
+@)
+void alcove_center_wrapper(expression_base::level l)
+{
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  push_value(std::make_shared<module_parameter_value> @|
+    (p->rf,alcove_center(p->rc(),p->val)));
+}
+
 @ The following wrapper function makes available the Atlas implementation of
 Tarjan's strong component algorithm, the one that is used to isolate cells in a
 $W$-graph. It actually involves no atlas-specific types at all, as it encodes
@@ -5435,6 +5479,9 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
+install_function(simplify_wrapper,"simplify","(Param->Param,int)");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
+install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
