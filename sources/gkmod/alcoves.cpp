@@ -7,6 +7,9 @@
   For license information see the LICENSE file
 */
 
+#include <memory> // for |std::unique_ptr|
+
+#include "tags.h"
 #include "alcoves.h"
 #include "arithmetic.h"
 #include "matrix.h"
@@ -22,9 +25,82 @@ namespace repr {
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 {
   RatNum eval = gamma.dot_Q(rd.coroot(i)).mod1();
-  if (eval.numerator()==0 and i<0)
+  if (eval.numerator()==0 and i<0) // for negative coroots round up, not down
     eval+=1;
   return eval;
+}
+
+using level_pair = std::pair<RootNbr,RatNum>;
+using level_list = containers::sl_list<level_pair>;
+
+// put minima in front, returning iterator to rest; possibly permute remainder
+level_list::const_iterator get_minima(level_list& L)
+{ if (L.empty())
+    return L.cbegin();
+  auto tail = std::next(L.cbegin()), rest=tail;
+  RatNum min = L.front().second;
+  while (not L.at_end(tail))
+  {
+    if (tail->second > min)
+      ++tail;
+    else if (tail->second ==  min)
+      rest=L.splice(rest,L,tail);  // move node from |tail| to |rest|, advancing
+    else // a new minimum is hit, abandon old one
+    {
+      min = tail->second;
+      rest = L.splice(L.cbegin(),L,tail);
+    }
+  }
+  return rest;
+}
+
+// splice from |L| elements whose coroot is sum of coroot |i| and another coroot
+// return list of the elements removed
+level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
+{
+  RootNbr minus_i = rd.rootMinus(i);
+  level_list out;
+  for (auto it=L.cbegin(); not L.at_end(it); ) // no increment here
+    if (rd.sum_is_coroot(minus_i,it->first))
+      out.splice(out.end(),L,it);
+    else
+      ++it;
+  return out;
+}
+
+RootNbrSet wall_set(const RootDatum& rd0, const RatWeight& gamma)
+{
+  std::unique_ptr<RootDatum> root_datum_ptr;
+  if (not rd0.prefer_coroots())
+  {
+    int_Matrix s_roots(rd0.beginSimpleRoot(),rd0.endSimpleRoot(),rd0.rank(),
+		       tags::IteratorTag());
+    int_Matrix s_coroots(rd0.beginSimpleCoroot(),rd0.endSimpleCoroot(),rd0.rank(),
+			 tags::IteratorTag());
+    PreRootDatum prd(s_roots,s_coroots,true); // prefer coroots now!
+    root_datum_ptr.reset(new RootDatum(std::move(prd)));
+  }
+  const RootDatum& rd = root_datum_ptr==nullptr ? rd0 : *root_datum_ptr;
+  level_list levels;
+  for (RootNbr i=0; i<rd.numRoots(); ++i)
+    levels.emplace_back(i,frac_eval(rd,i,gamma));
+
+  RootNbrSet result(rd.numRoots());
+  while (not levels.empty())
+  { const auto rest = get_minima(levels);
+    unsigned n_min = std::distance(levels.cbegin(),rest);
+    const auto v = levels.front().second;  // minimal level, repeats |n_min| times
+    while (n_min>0)
+    {
+      auto alpha = levels.front().first;
+      result.insert(alpha), levels.pop_front(), --n_min;
+      const auto out = filter_up(rd,alpha,levels);  // remove incompatible coroots
+      for (auto it = out.cbegin(); not out.at_end(it) and it->second==v; ++it)
+	--n_min; // take into account copies of |min| filtered out
+    }
+  }
+
+  return result;
 }
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
