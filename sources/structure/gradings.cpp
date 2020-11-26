@@ -66,7 +66,7 @@ RootNbrSet max_orth(const RootNbrSet& non_compact,
     for (RootNbrSet::iterator it = sub.begin(); it(); ++it)
       if (not rs.isOrthogonal(alpha,*it))
 	sub.remove(*it); // remove non-orthogonal roots as candidates
-      else if (rs.sumIsRoot(alpha,*it))
+      else if (rs.sum_is_root(alpha,*it))
 	ncr.flip(*it); // and flip compactness status of these short roots
 
     ncr &= sub; // ensure removed roots, and |alpha|, are no longer considered
