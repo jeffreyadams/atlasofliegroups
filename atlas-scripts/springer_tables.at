@@ -9,7 +9,7 @@ set_type [SpringerTable=
   [ComplexNilpotent] orbits,
   (ComplexNilpotent->ComplexNilpotent) dual_map,
   (ComplexNilpotent->ComplexNilpotent) dual_map_i,
-  (ComplexNilpotent->int) springer
+  (ComplexNilpotent->int) springer,
   )]
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
@@ -51,6 +51,10 @@ is_special(st,O)
 {all special orbits}
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
 ##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
+
+{all special representations}
+set special_representations(SpringerTable st)=[int]:
+sort(for orbit in st.special_orbits do st.springer(orbit) od)
 
 {complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
