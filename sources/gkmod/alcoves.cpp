@@ -7,8 +7,6 @@
   For license information see the LICENSE file
 */
 
-#include <memory> // for |std::unique_ptr|
-
 #include "tags.h"
 #include "alcoves.h"
 #include "arithmetic.h"
@@ -25,8 +23,8 @@ namespace repr {
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 {
   RatNum eval = gamma.dot_Q(rd.coroot(i)).mod1();
-  if (eval.numerator()==0 and i<0) // for negative coroots round up, not down
-    eval+=1;
+  if (eval.numerator()==0 and rd.is_negroot(i))
+    eval+=1; // for negative coroots round up, not down
   return eval;
 }
 
@@ -44,7 +42,12 @@ level_list::const_iterator get_minima(level_list& L)
     if (tail->second > min)
       ++tail;
     else if (tail->second ==  min)
-      rest=L.splice(rest,L,tail);  // move node from |tail| to |rest|, advancing
+    {
+      if (tail==rest) // now |splice| would be no-op, but we must advance
+	rest = ++tail;
+      else
+	rest=L.splice(rest,L,tail); // move node from |tail| to |rest|, advancing
+    }
     else // a new minimum is hit, abandon old one
     {
       min = tail->second;
