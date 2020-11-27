@@ -5168,6 +5168,8 @@ for the argument graph.
 void strong_components_wrapper(expression_base::level l)
 {
   shared_row graph = get<row_value>();
+  if (l==expression_base::no_value)
+    return;
   const auto size = graph->val.size();
   OrientedGraph G (size);
   for (unsigned i=0; i<size; ++i)
