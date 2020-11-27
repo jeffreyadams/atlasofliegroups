@@ -53,6 +53,17 @@ in for place in ranking[start:] ## ranking[:start]
 ;  sort(gens)
 )
 
+set check_walls(RootDatum rd, ratvec gamma,[int] walls) = bool:
+  for i in walls
+  do let exception = if <i then [-1-i] else [] fi { exceptional positive root}
+  , proj = gamma - root(rd,i)*(coroot_frac(rd,coroot(rd,i),gamma)/2)
+  then crossings = { positive coroot indices for which integral part changes }
+    for alpha_v@k in poscoroots(rd)
+    do if floor(alpha_v*gamma)=floor(alpha_v*proj) then [] else [k] fi
+    od.##
+  in crossings=exception
+  od.all
+
 { test hypothesis that root set allows for |-theta| fixed correction }
 set validate_root_set(RootDatum rd, mat theta, [int] walls, mat int_mat) = bool:
 (  let coroots = for ind in walls do coroot(rd,ind) od
