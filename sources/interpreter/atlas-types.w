@@ -5155,7 +5155,23 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
-@ To experiment with the walls function
+@ Here is a temporary function for exploring |simplify| in \.{alcoves.cpp}.
+
+@h "alcoves.h"
+
+@< Local function def...@>=
+void simplify_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  auto N = simplify(p->rc(),p->val);
+  push_value(std::move(p));
+  push_value(std::make_shared<int_value>(N));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ And her is similarly one to experiment with the |wall_set| function.
 
 @h "alcoves.h"
 @< Local function def...@>=
@@ -5395,6 +5411,7 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
+install_function(simplify_wrapper,"simplify","(Param->Param,int)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
