@@ -5155,6 +5155,24 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
+@ To experiment with the walls function
+
+@h "alcoves.h"
+@< Local function def...@>=
+void walls_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  RootNbrSet walls = repr::wall_set(rd->val,gamma->val);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(walls.size());
+  for (auto it=walls.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(result));
+}
+
 @ The following wrapper function makes available the Atlas implementation of
 Tarjan's strong component algorithm, the one that is used to isolate cells in a
 $W$-graph. It actually involves no atlas-specific types at all, as it encodes
@@ -5375,6 +5393,7 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"

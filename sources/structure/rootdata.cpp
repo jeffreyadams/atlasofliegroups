@@ -598,30 +598,60 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
   return result.to_vector();
 }
 
-bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
+RootNbr RootSystem::lookup_root(const Byte_vector& v) const
 {
-  RootNbr a = rt_abs(alpha);
-  RootNbr b = rt_abs(beta);
+  Byte_vector::const_iterator it;
+  for (it = v.begin(); it!=v.end(); ++it)
+    if (*it!=0)
+      break;
+  if (it==v.end())
+    return numRoots(); // zero vector is not a root
 
-  bool alpha_less = root_compare()(root(a),root(b)); // ordering among posroots
-  if (alpha_less) // compare actual levels
-    std::swap(a,b); // ensure |a| is higher root
-
-  Byte_vector v =
-    is_posroot(alpha)==is_posroot(beta)
-    ? root(a) + root(b)
-    : root(a) - root(b);
+  const bool neg = *it<0;
+  auto v_abs = neg ? -v : v;
 
   for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
-    if (v==root(i))
-    {
-      gamma = posRootNbr(i);
-      if (alpha_less ? is_negroot(beta) : is_negroot(alpha))
-	gamma = rootMinus(gamma); // take sign from that root that gave |a|
-      return true;
-    }
+    if (v_abs==root(i))
+      return neg ? posRootNbr(i) : negRootNbr(i);
+  return numRoots(); // vector not found
+}
 
-  return false; // not found
+RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
+{
+  Byte_vector::const_iterator it;
+  for (it = v.begin(); it!=v.end(); ++it)
+    if (*it!=0)
+      break;
+  if (it==v.end())
+    return numRoots(); // zero vector is not a root
+
+  const bool neg = *it<0;
+  auto v_abs = neg ? -v : v;
+
+  for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
+    if (v_abs==coroot(i))
+      return neg ? posRootNbr(i) : negRootNbr(i);
+  return numRoots(); // vector not found
+}
+
+bool RootSystem::sum_is_root(RootNbr i, RootNbr j, RootNbr& k) const
+{
+  Byte_vector alpha =
+    is_posroot(i) ? root(posroot_index(i)) : -root(negroot_index(i));
+  Byte_vector beta =
+    is_posroot(j) ? root(posroot_index(j)) : -root(negroot_index(j));
+  k = lookup_root(alpha+beta);
+  return k != numRoots();
+}
+
+bool RootSystem::sum_is_coroot(RootNbr i, RootNbr j, RootNbr& k) const
+{
+  Byte_vector alpha =
+    is_posroot(i) ? coroot(posroot_index(i)) : -coroot(negroot_index(i));
+  Byte_vector beta =
+    is_posroot(j) ? coroot(posroot_index(j)) : -coroot(negroot_index(j));
+  k = lookup_coroot(alpha+beta);
+  return k != numRoots();
 }
 
 /*
@@ -640,7 +670,7 @@ RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
   RootNbr gamma;
   for (RootNbrSet::iterator it=result.begin(); it(); ++it)
     for (RootNbrSet::iterator jt=result.begin(); jt!=it; ++jt)
-      if (sumIsRoot(*it,*jt,gamma))
+      if (sum_is_root(*it,*jt,gamma))
       { // replace *it and *jt by sum and difference (short->long in B2 system)
 	result.insert(gamma);
 	result.insert(root_permutation(*jt)[gamma]);
@@ -1326,7 +1356,7 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
     pos_perm_simple.push_back(Permutation(npos));
     for (RootNbr j=0; j<npos; ++j)
       if (j==i) pos_perm_simple.back()[j]=i; // make |j| itself a fixed point
-      else pos_perm_simple.back()[j]=rs.posRootIndex(p[rs.posRootNbr(j)]);
+      else pos_perm_simple.back()[j]=rs.posroot_index(p[rs.posRootNbr(j)]);
   }
 
   RootNbrSet current(npos), tmp(npos);

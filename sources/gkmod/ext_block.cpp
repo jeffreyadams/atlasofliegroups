@@ -326,7 +326,7 @@ bool context::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not root_datum().sumIsRoot(*it,delta_of(*it)))
+	not root_datum().sum_is_root(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -1453,7 +1453,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
 	 (p.s1, integr_datum.simpleRootNbr(p.s0));
-      WeylWord s_kappa = subs.reflection(integr_datum.posRootIndex(n_kappa));
+      WeylWord s_kappa = subs.reflection(integr_datum.posroot_index(n_kappa));
 
       const Weight& kappa = integr_datum.root(n_kappa);
       assert (kappa==alpha+beta);

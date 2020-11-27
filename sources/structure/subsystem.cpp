@@ -43,7 +43,7 @@ SubSystem::SubSystem(const RootDatum& parent, const RootNbrList& sub_sys)
       RootNbr sub_alpha = posRootNbr(i);
       weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
       simple_reflect_root(s,sub_alpha);
-      RootNbr beta = pos_map[posRootIndex(sub_alpha)]; // |beta| is in parent
+      RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
       pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
     }
 
