@@ -68,19 +68,8 @@ level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
   return out;
 }
 
-RootNbrSet wall_set(const RootDatum& rd0, const RatWeight& gamma)
+RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma)
 {
-  std::unique_ptr<RootDatum> root_datum_ptr;
-  if (not rd0.prefer_coroots())
-  {
-    int_Matrix s_roots(rd0.beginSimpleRoot(),rd0.endSimpleRoot(),rd0.rank(),
-		       tags::IteratorTag());
-    int_Matrix s_coroots(rd0.beginSimpleCoroot(),rd0.endSimpleCoroot(),rd0.rank(),
-			 tags::IteratorTag());
-    PreRootDatum prd(s_roots,s_coroots,true); // prefer coroots now!
-    root_datum_ptr.reset(new RootDatum(std::move(prd)));
-  }
-  const RootDatum& rd = root_datum_ptr==nullptr ? rd0 : *root_datum_ptr;
   level_list levels;
   for (RootNbr i=0; i<rd.numRoots(); ++i)
     levels.emplace_back(i,frac_eval(rd,i,gamma));
@@ -89,19 +78,19 @@ RootNbrSet wall_set(const RootDatum& rd0, const RatWeight& gamma)
   while (not levels.empty())
   { const auto rest = get_minima(levels);
     unsigned n_min = std::distance(levels.cbegin(),rest);
-    const auto v = levels.front().second;  // minimal level, repeats |n_min| times
+    const auto v = levels.front().second; // minimal level, repeats |n_min| times
     while (n_min>0)
     {
       auto alpha = levels.front().first;
       result.insert(alpha), levels.pop_front(), --n_min;
-      const auto out = filter_up(rd,alpha,levels);  // remove incompatible coroots
+      const auto out = filter_up(rd,alpha,levels); // remove incompatible coroots
       for (auto it = out.cbegin(); not out.at_end(it) and it->second==v; ++it)
 	--n_min; // take into account copies of |min| filtered out
     }
   }
 
   return result;
-}
+} // |wall_set|
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
