@@ -174,8 +174,8 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
       Weight real2rho=rd.twoRho(f.realRootSet());
       Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
       for (size_t i=0; i<rd.semisimpleRank(); ++i)
-	if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
-	    rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
+	if (rd.is_orthogonal(real2rho,rd.simpleRootNbr(i)) and
+	    rd.is_orthogonal(imaginary2rho,rd.simpleRootNbr(i)))
 	{ // test coroot orthogonality
 	  RootNbr alpha = rd.simpleRootNbr(i);
 	  RootNbr beta= f.involution_image_of_root(alpha);

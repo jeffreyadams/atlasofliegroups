@@ -3,7 +3,7 @@
    Class definitions and function declarations for the RootDatum class.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2010 Marc van Leeuwen
+  Copyright (C) 2006--2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -61,6 +61,9 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 // set of positive roots sent to negative by left multiplication by |w|
 // (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
+
+// partition |roots| into connected components for |is_orthogonal|
+sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots);
 
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
@@ -272,7 +275,7 @@ public:
   const Permutation& root_permutation(RootNbr alpha) const
   { return root_perm[rt_abs(alpha)]; }
 
-  bool isOrthogonal(RootNbr alpha, RootNbr beta) const
+  bool is_orthogonal(RootNbr alpha, RootNbr beta) const
   { return root_permutation(alpha)[beta]==beta; }
 
   // pairing between root |alpha| and coroot |beta|
@@ -495,8 +498,8 @@ class RootDatum
   int scalarProduct(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j)); }
 
-  using RootSystem::isOrthogonal; // for the case of two RootNbr values
-  bool isOrthogonal(const Weight& v, RootNbr j) const
+  using RootSystem::is_orthogonal; // for the case of two |RootNbr| values
+  bool is_orthogonal(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j))==0; }
 
   int cartan(weyl::Generator i, weyl::Generator j) const
@@ -657,14 +660,13 @@ class RootDatum
   // express coroot in basis of simple coroots
   int_Vector inSimpleCoroots(RootNbr alpha) const { return coroot_expr(alpha); }
 
-  Weight twoRho(const RootNbrList&) const; // sum of the \emph{positive} members
-  Weight twoRho(RootNbrSet) const; // by value; sum of the positive members
-  Coweight dual_twoRho(const RootNbrList&) const;
-  Coweight dual_twoRho(RootNbrSet) const; // by value
+  // The sum of the positive roots in |rs|
+  Weight twoRho(const RootNbrSet& rs) const
+  { return root_sum(*this,posRootSet()&rs); }
+  Coweight dual_twoRho(const RootNbrSet& rs) const
+  { return coroot_sum(*this,posRootSet()&rs); }
 
-
-  WeylWord word_of_inverse_matrix(const WeightInvolution&)
-    const;
+  WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
 
 // manipulators
 

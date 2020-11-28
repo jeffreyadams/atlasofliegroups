@@ -2,7 +2,7 @@
   This is rootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2016 Marc van Leeuwen
+  Copyright (C) 2006--2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -454,7 +454,7 @@ LieType RootSystem::subsystem_type(const RootNbrList& rb) const
 // pairing $\<\alpha,\beta^\vee>$; note that coroot is on the right
 int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
 {
-  if (isOrthogonal(alpha,beta)) // this is quick
+  if (is_orthogonal(alpha,beta)) // this is quick
     return 0;
 
 /*
@@ -990,62 +990,6 @@ WeylWord RootDatum::word_of_inverse_matrix
   return to_dominant(q*twoRho());
 }
 
-/*
-  The sum of the positive roots in rl.
-
-  Precondition: rl holds the roots in a sub-rootsystem of the root system of
-  rd;
-*/
-Weight RootDatum::twoRho(const RootNbrList& rl) const
-{
-  Weight result(rank(),0);
-
-  for (RootNbr i = 0; i < rl.size(); ++i)
-    if (is_posroot(rl[i]))
-      result += root(rl[i]);
-
-  return result;
-}
-
-/* The sum of the positive roots in |rs|.
-
-  Any set of roots is accepted (even if they do not for a subsystem, e.g.,
-  the non-real roots for some involution), but only positive ones are added
-*/
-Weight RootDatum::twoRho(RootNbrSet rs) const
-{
-  Weight result(rank(),0);
-  rs &= posRootSet(); // limit to positive roots in the subset
-
-  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    result += root(*i);
-
-  return result;
-}
-
-// and their dual relatives
-Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
-{
-  Coweight result(rank(),0);
-
-  for (RootNbr i = 0; i < rl.size(); ++i)
-    if (is_posroot(rl[i]))
-      result += coroot(rl[i]);
-
-  return result;
-}
-
-Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
-{
-  Coweight result(rank(),0);
-  rs &= posRootSet(); // limit to positive roots in the subset
-
-  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    result += coroot(*i);
-
-  return result;
-}
-
 
 // make |lambda| dominant, and return Weyl word that will convert it back
 WeylWord RootDatum::factor_dominant (Weight& v) const
@@ -1199,12 +1143,12 @@ void RootDatum::fillStatus()
 ******************************************************************************/
 
 RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
-RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
-  { return RatWeight(rd.twoRho(sub_posroots),2); }
+// RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
+//   { return RatWeight(rd.twoRho(sub_posroots),2); }
 RatCoweight rho_check (const RootDatum& rd)
   { return RatCoweight(rd.dual_twoRho(),2); }
-RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
-  { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
+// RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
+//   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 /*
   Return matrix of dual fundamental involution related to fundamental |q|
@@ -1245,7 +1189,7 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
     RootNbr alpha = *it;
     RootNbrSet::iterator jt;
     for (jt = o.begin(); jt(); ++jt)
-      if (not rs.isOrthogonal(alpha,*jt))
+      if (not rs.is_orthogonal(alpha,*jt))
       {
 	result.remove(alpha);
 	break;
@@ -1371,6 +1315,33 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
 
   current.set_capacity(rs.numRoots()); // double the size
   return current <<= npos; // shift to root (rather than posroot) numbers
+} // |pos_to_neg|
+
+// partition |roots| into connected components for |is_orthogonal|
+sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots)
+{
+  sl_list<RootNbrSet> result;
+  for (auto alpha : roots)
+  {
+    sl_list<RootNbrSet> adhere; // gathers |result| members connected to |alpha|
+    for (auto it=result.begin(); not result.at_end(it); ) // no increment here
+    {
+      bool stick=false;
+      for (auto beta : *it)
+	if (not rs.is_orthogonal(alpha,beta)) { stick=true; break; }
+      if (stick)
+	adhere.splice(adhere.end(),result,it);
+      else
+	++it; // skip only over disconnected sets
+    }
+
+    auto& new_comp = result.emplace_back(roots.capacity());
+    new_comp.insert(alpha);
+    for (auto comp : adhere) // unite with components that adhere to |alpha|
+      new_comp |= comp;
+  }
+
+  return result;
 }
 
 /*
@@ -1463,7 +1434,7 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
     else if (pi[alpha]>alpha)
     {
       if (rd.is_simple_root(pi[alpha]))
-	result.push_back(ext_gen(rd.isOrthogonal(alpha,pi[alpha]),
+	result.push_back(ext_gen(rd.is_orthogonal(alpha,pi[alpha]),
 				 s,rd.simpleRootIndex(pi[alpha])));
       else
 	throw std::runtime_error("Not a distinguished involution");

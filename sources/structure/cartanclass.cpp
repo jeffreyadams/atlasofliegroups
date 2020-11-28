@@ -1007,8 +1007,8 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
   // collect roots orthogonal to both sums of positive roots
   RootNbrSet rs(rd.numRoots());
   for (size_t i = 0; i < rd.numRoots(); ++i)
-    if (rd.isOrthogonal(tri,i) and
-	rd.isOrthogonal(trr,i))
+    if (rd.is_orthogonal(tri,i) and
+	rd.is_orthogonal(trr,i))
       rs.insert(i);
 
   // get a (positive) basis for that root system, and its Cartan matrix
@@ -1037,7 +1037,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
          non-orthogonal to the (non-simple) |theta|-image of |rb[*it]| */
       RootNbr rTau = involution_image_of_root(rb[*it]);
       for (RankFlags::iterator jt = b.begin(); jt(); ++jt)
-	if (not rd.isOrthogonal(rb[*jt],rTau))
+	if (not rd.is_orthogonal(rb[*jt],rTau))
 	  b.reset(*jt);
     }
   }
