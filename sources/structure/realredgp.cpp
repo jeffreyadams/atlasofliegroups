@@ -77,7 +77,7 @@ void RealReductiveGroup::construct()
 
   d_status.set(IsQuasisplit,rf == G_C.quasisplit());
   d_status.set(IsSplit,(ms_tau+1).is_zero());
-  d_status.set(IsSemisimple,G_C.rank() == G_C.semisimpleRank());
+  d_status.set(IsSemisimple,G_C.rank() == G_C.semisimple_rank());
 
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
@@ -153,8 +153,8 @@ size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
 
 size_t RealReductiveGroup::rank() const { return root_datum().rank(); };
 
-size_t RealReductiveGroup::semisimpleRank() const
-  { return root_datum().semisimpleRank(); }
+size_t RealReductiveGroup::semisimple_rank() const
+  { return root_datum().semisimple_rank(); }
 
 size_t RealReductiveGroup::numInvolutions()
   { return innerClass().numInvolutions(Cartan_set()); }

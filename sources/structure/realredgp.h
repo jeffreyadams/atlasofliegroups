@@ -101,7 +101,7 @@ class RealReductiveGroup
   bool isSemisimple() const;
   size_t numCartan() const;
   size_t rank() const;
-  size_t semisimpleRank() const;
+  size_t semisimple_rank() const;
   size_t numInvolutions(); // non-|const|, as Cartan classes get generated
   size_t KGB_size() const; // the cardinality of |K\\G/B|.
   size_t mostSplit() const;

@@ -444,7 +444,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
   KGBElt x=z.x();
   const InvolutionNbr i_x = kgb().inv_nr(x);
 
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
   {
     auto v = rd.simpleCoroot(s).dot(numer);
     if (v<0)
@@ -541,7 +541,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 
   { weyl::Generator s;
     do
-      for (s=0; s<rd.semisimpleRank(); ++s)
+      for (s=0; s<rd.semisimple_rank(); ++s)
 	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
 	  rd.simple_reflect(s,numer);
@@ -557,7 +557,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)| and |for(s)|
-    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+    while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
   }
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
@@ -591,7 +591,7 @@ void Rep_context::deform_readjust(StandardRepr& z) const
 
   RankFlags simple_singulars;
   { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
       simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
   }
 
@@ -623,7 +623,7 @@ void Rep_context::normalise(StandardRepr& z) const
 
   RankFlags simple_singulars;
   { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
       simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
   }
 
@@ -656,7 +656,7 @@ bool Rep_context::is_twist_fixed
 
   RankFlags simple_singulars;
   { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
       simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
   }
 
@@ -687,7 +687,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
 
   RankFlags simple_singulars;
   { const auto& numer = z0.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
       simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
   }
 
@@ -1096,7 +1096,7 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
   const RatWeight& gamma=z.gamma();
 
   RankFlags singular; // subset of simple roots that is singular at |gamma|
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     singular.set(s,rd.simpleCoroot(s).dot(gamma.numerator())==0);
 /* the simple roots flagged in |singular| coincide with the singular
    integrally-simple roots (simple roots of integral subsystem), so we can
@@ -1303,7 +1303,7 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   if (mod_hash.find(srm)!=mod_hash.empty) // then |srm| was seen earlier
     return; // nothing new
 
-  const auto rank = ctxt.id().semisimpleRank();
+  const auto rank = ctxt.id().semisimple_rank();
   sl_list<BlockElt> pred; // list of elements covered by z
   // invariant: |block_below| has been called for every element in |pred|
 
@@ -2370,10 +2370,10 @@ Ext_common_context::Ext_common_context
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts(id().semisimpleRank())
+    , l_shifts(id().semisimple_rank())
 {
   const RootDatum& rd = rc.root_datum();
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
   // the reflections for |E.l| pivot around |g_rho_check()|

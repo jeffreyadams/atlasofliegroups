@@ -220,7 +220,7 @@ long long simplify(const Rep_context& rc, StandardRepr& sr)
     while (make_multiple_integral(rc,sr,N)) // continue while it changes
       if (count--==0)
 	throw std::runtime_error("Runaway loop in parameter simplify");
-    if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimpleRank())
+    if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimple_rank())
       break; // we have achieved our goal
     if (N+N<N) // this condition signals integer overflow in the addition
       throw std::runtime_error

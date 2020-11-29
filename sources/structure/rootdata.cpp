@@ -732,7 +732,7 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   coweight_numer = (coroot_mat*iC).columns();
 
   // get basis of co-radical character lattice, if any (or leave empty list)
-  if (semisimpleRank()<d_rank)
+  if (semisimple_rank()<d_rank)
   {
     d_coradicalBasis = lattice::perp(prd.simple_coroots_mat());
     d_radicalBasis   = lattice::perp(prd.simple_roots_mat());
@@ -781,7 +781,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 		     tags::DerivedTag)
   : RootSystem(rd)
-  , d_rank(rd.semisimpleRank())
+  , d_rank(rd.semisimple_rank())
   , d_roots(rd.numRoots())
   , d_coroots(rd.numRoots())
   , weight_numer(d_rank)
@@ -832,7 +832,7 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 		     tags::CoderivedTag)
   : RootSystem(rd)
-  , d_rank(rd.semisimpleRank())
+  , d_rank(rd.semisimple_rank())
   , d_roots(rd.numRoots())
   , d_coroots(rd.numRoots())
   , weight_numer(d_rank)
@@ -898,8 +898,8 @@ RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 LieType RootDatum::type() const
 {
   LieType result = dynkin::Lie_type(cartanMatrix());
-  result.reserve(result.size()+rank()-semisimpleRank());
-  for (unsigned int i=semisimpleRank(); i<rank(); ++i)
+  result.reserve(result.size()+radical_rank());
+  for (RootNbr i=0; i<radical_rank(); ++i)
     result.emplace_back('T',1);
   return result;
 }
@@ -939,9 +939,9 @@ void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 */
 Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
 {
-  RootNbrList simple_image(semisimpleRank());
+  RootNbrList simple_image(semisimple_rank());
 
-  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
   { auto image = root_index(q*simpleRoot(s));
     assert(image<numRoots());
     simple_image[s] = image;
@@ -999,14 +999,14 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
   do
-    for (s=0; s<semisimpleRank(); ++s)
+    for (s=0; s<semisimple_rank(); ++s)
       if (v.dot(simpleCoroot(s)) < 0)
       {
 	w.push_back(s); // actually at front when applying list right-to-left
 	simple_reflect(s,v);
 	break;
       }
-  while (s<semisimpleRank());
+  while (s<semisimple_rank());
 
   // result is in proper order to transform (right to left) |v| back to original
   return WeylWord(std::move(w).to_vector());
@@ -1020,14 +1020,14 @@ WeylWord RootDatum::factor_codominant (Coweight& v) const
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
   do
-    for (s=0; s<semisimpleRank(); ++s)
+    for (s=0; s<semisimple_rank(); ++s)
       if (v.dot(simpleRoot(s)) < 0)
       {
 	w.push_front(s);
 	simple_coreflect(v,s);
 	break;
       }
-  while (s<semisimpleRank());
+  while (s<semisimple_rank());
 
   // result is in proper order to transform (left to right) |v| back to original
   return WeylWord(std::move(w).to_vector());
@@ -1426,7 +1426,7 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 {
   ext_gens result;
   const Permutation pi = rd.rootPermutation(delta);
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
   {
     RootNbr alpha=rd.simpleRootNbr(s);
     if (pi[alpha]==alpha)
@@ -1476,7 +1476,7 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 {
   const Ratvec_Numer_t& v=gamma.numerator();
   RankFlags result;
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     result.set(s,rd.simpleCoroot(s).dot(v) == 0);
 
   return result;
@@ -1485,7 +1485,7 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma)
 {
   auto& numer = gamma.numerator();
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     if (rd.simpleCoroot(s).dot(numer)<0)
       return false;
   return true;

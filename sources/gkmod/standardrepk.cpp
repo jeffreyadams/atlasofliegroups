@@ -114,8 +114,8 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
   , proj_pool(), proj_sets(proj_pool), proj_data()
 {
   const RootDatum& rd=root_datum();
-  simple_reflection_mod_2.reserve(G.semisimpleRank());
-  for (size_t i=0; i<G.semisimpleRank(); ++i)
+  simple_reflection_mod_2.reserve(G.semisimple_rank());
+  for (size_t i=0; i<G.semisimple_rank(); ++i)
     simple_reflection_mod_2.push_back
       (BinaryMap(rd.simple_reflection(i).transposed()));
 
@@ -173,7 +173,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
     { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
       Weight real2rho=rd.twoRho(f.realRootSet());
       Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
-      for (size_t i=0; i<rd.semisimpleRank(); ++i)
+      for (size_t i=0; i<rd.semisimple_rank(); ++i)
 	if (rd.is_orthogonal(real2rho,rd.simpleRootNbr(i)) and
 	    rd.is_orthogonal(imaginary2rho,rd.simpleRootNbr(i)))
 	{ // test coroot orthogonality
@@ -312,7 +312,7 @@ level SRK_context::height_bound(const Weight& lambda)
   {
     new_negatives.reset();
     mu=get_projection(negatives).projection*lambda;
-    for (size_t i=0; i<rd.semisimpleRank(); ++i)
+    for (size_t i=0; i<rd.semisimple_rank(); ++i)
       if (not negatives[i] and mu.dot(rd.simpleCoroot(i))<0)
 	new_negatives.set(i);
     negatives |= new_negatives;
@@ -485,7 +485,7 @@ SRK_context::theta_stable_parabolic
   while (true) // loop will terminate if inner loop runs to completion
   {
     weyl::Generator s;
-    for (s=0; s<rd.semisimpleRank(); ++s)
+    for (s=0; s<rd.semisimple_rank(); ++s)
     {
       RootNbr alpha=rd.simpleRootNbr(s);
       LatticeCoeff v=dom.dot(rd.simpleCoroot(s));
@@ -504,7 +504,7 @@ SRK_context::theta_stable_parabolic
 
     } // |for(s)|
 
-    if (s<rd.semisimpleRank()) // then we found a reflection |s| to apply
+    if (s<rd.semisimple_rank()) // then we found a reflection |s| to apply
     {
       basedTitsGroup().basedTwistedConjugate(strong,s);
       rd.simple_reflect(s,dom);
@@ -969,7 +969,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
     rd.act(ww,lambda);
     for (size_t i=ww.size(); i-->0; )
       mod_space.apply(dual_reflection(ww[i]));
-    for (weyl::Generator i=0; i<rd.semisimpleRank(); ++i)
+    for (weyl::Generator i=0; i<rd.semisimple_rank(); ++i)
       orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
   }
   assert(rd.is_posroot(alpha)); // no real reflections; should still be positive
@@ -1036,7 +1036,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
     while (not rd.is_descent(i,alpha))
     {
       ++i;
-      assert(i<rd.semisimpleRank());
+      assert(i<rd.semisimple_rank());
     }
     // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
     // and \alpha_i$ is complex for the involution |a.tw()|
@@ -1678,7 +1678,7 @@ PSalgebra::PSalgebra(TitsElt base, const InnerClass& G)
   InvolutionData id = G.involution_data(base.tw());
 
   // get |rd.simpleRootSet&id.real_roots()|, shifted to fit in |RankFlags|
-  for (size_t i=0; i<rd.semisimpleRank(); ++i)
+  for (size_t i=0; i<rd.semisimple_rank(); ++i)
     if (id.real_roots().isMember(rd.simpleRootNbr(i)))
       sub_diagram.set(i);
 

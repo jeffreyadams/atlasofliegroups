@@ -487,7 +487,7 @@ BinaryMap Fiber::makeFiberMap(const RootDatum& rd) const
 
   const SmallBitVectorList& b = d_fiberGroup.space().basis();
   const RankFlags& supp = d_fiberGroup.support();
-  size_t n = rd.semisimpleRank();
+  size_t n = rd.semisimple_rank();
   for (RankFlags::iterator it = supp.begin(); it(); ++it)
   {
     SmallBitVector v(n);
