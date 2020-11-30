@@ -273,6 +273,7 @@ template<typename C> class Matrix : public Matrix_base<C>
   Matrix& operator*= (const Matrix& Q) { return *this = *this * Q; }
   Matrix& leftMult (const Matrix& P)   { return *this = P * *this; }
 
+  Matrix& operator*= (C c) { base::d_data *= c; return *this; }
   Matrix& negate() { base::d_data.negate(); return *this; }
   Matrix& transpose();
 

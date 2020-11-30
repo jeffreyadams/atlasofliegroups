@@ -561,6 +561,9 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 }
 
  // instantiations
+
+using Num = arithmetic::Numer_t;
+
 template
 int gcd (matrix::Vector<int> row, matrix::PID_Matrix<int>* col, bool& flip,
 	 size_t dest);
@@ -574,9 +577,18 @@ bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M,
 			           matrix::PID_Matrix<int>& col,
 				   bool& flip);
 template
+bitmap::BitMap column_echelon<Num>(matrix::PID_Matrix<Num>& M,
+			           matrix::PID_Matrix<Num>& col,
+				   bool& flip);
+template
 matrix::Vector<int> echelon_solve(const matrix::PID_Matrix<int>& E,
 				  const bitmap::BitMap& pivots,
 				  matrix::Vector<int> b,
+				  arithmetic::big_int& f);
+template
+matrix::Vector<Num> echelon_solve(const matrix::PID_Matrix<Num>& E,
+				  const bitmap::BitMap& pivots,
+				  matrix::Vector<Num> b,
 				  arithmetic::big_int& f);
 
 

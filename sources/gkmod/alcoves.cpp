@@ -12,6 +12,7 @@
 #include "arithmetic.h"
 #include "matrix.h"
 #include "ratvec.h"
+#include "matreduc.h"
 #include "lattice.h"
 #include "rootdata.h"
 #include "repr.h"
@@ -19,6 +20,14 @@
 namespace atlas {
 
 namespace repr {
+
+using integer = arithmetic::Numer_t; // use a long signed integer type here
+
+integer floor_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
+{
+  RatNum eval = gamma.dot_Q(rd.coroot(i));
+  return rd.is_posroot(i) ? eval.floor() : eval.ceil() -1 ;
+}
 
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 {
@@ -95,6 +104,84 @@ RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma)
   return result;
 } // |wall_set|
 
+/*
+  Get fractional parts of wall evaluations, for special point in alcove.
+  This special point has zero evaluations on positive wall coroots, and balanced
+  nonzero evaluations on nogatve wall evaluations
+*/
+RatNumList barycentre_eq (const RootDatum& rd, const RootNbrSet& walls)
+{
+  RatNumList result(walls.size(),RatNum(0,1));
+  auto comps = rootdata::components(rd,walls);
+  for (auto& comp : comps)
+  {
+    int_Matrix A(rd.rank(),comp.size());
+    unsigned i=0;
+    for (auto it=comp.begin(); it(); ++it,++i)
+      A.set_column(i,rd.coroot(*it));
+    int_Matrix k = lattice::kernel(A);
+    assert(k.numColumns()==1);
+    assert(k(0,0)!=0); // in fact all coefficients should be nonzero
+    if (k(0,0)<0)
+      k.negate(); // ensure coefficents are positive
+
+    comp.andnot(rd.posRootSet()); // focus on negative roots from here on
+    unsigned n_neg = comp.size();
+    assert(n_neg>0); // every |walls| component has at least one negative coroot
+    i=0;
+    for (auto it=comp.begin(); it(); ++it,++i)
+    {
+      assert(k(i,0)>0);
+      result[walls.position(*it)] = RatNum(1,n_neg*k(i,0));
+    }
+  }
+  return result;
+} // |barycentre_eq|
+
+// find a special parameter in the alcove of |sr|. In root span direction, it
+// depends only on that alcove. In coradical direction keep |sr| coordinates.
+StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
+{
+  const auto& rd = rc.root_datum();
+  unsigned rank = rd.rank();
+  const auto& gamma = sr.gamma();
+  RootNbrSet walls = wall_set(rd,gamma);
+  RatNumList fracs = barycentre_eq(rd,walls);
+
+  using Vec = matrix::Vector<integer>;
+  using Mat = matrix::PID_Matrix<integer>;
+
+  // now form matrix for left hand side of coordinate equation
+  Mat A(walls.size()+rd.radical_rank(),rank);
+  { unsigned int i=0;
+    for (auto it=walls.begin(); it(); ++it, ++i)
+      A.set_row(i,rd.coroot(*it).scaled(fracs[i].denominator()));
+    for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it, ++i)
+      A.set_row(i,it->scaled(gamma.denominator()));
+  }
+
+  Vec b; // will be right hand side of equation
+  b.reserve(A.numRows());
+  // for each of the |walls|, the RHS takes it "fractional part" from |fracs|
+  // but multiplying by |fracs[i].denominator()| makes equation |i| integer
+  unsigned i=0;
+  for (auto it = walls.begin(); it(); ++it,++i)
+    b.push_back(fracs[i].numerator() // sets new fractional part
+	       +floor_eval(rd,*it,gamma)*fracs[i].denominator()); // keep floor
+  // on the radical part we do no change the coordinates of |gamma|
+  for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it)
+    b.push_back(gamma.numerator().dot(*it));
+
+  bool flip; // unused argument
+  Mat column; // records column operations used in |column_echelon|
+  BitMap pivots = matreduc::column_echelon(A,column,flip);
+  unsigned k = A.numColumns(); // rank of matrix |A|
+  arithmetic::big_int factor;
+  Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
+  RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
+  return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
+}
+
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
   (const Rep_context& rc, StandardRepr& sr, long long N)
@@ -108,7 +195,7 @@ bool make_multiple_integral
   const auto& v = N_gamma.numerator();
   const auto npr = rd.numPosRoots();
   RootNbrSet int_poscoroots(npr);
-  for (unsigned i=0; i<npr; ++i)
+  for (RootNbr i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
   RootNbrList integrally_simples=rd.pos_simples(int_poscoroots);
@@ -128,7 +215,7 @@ bool make_multiple_integral
   RootNbrSet outside_poscoroots(npr); // record positions within positive set
   std::vector<BitMap> // indexed by the |outer_poscooroots|, by their position
     coroot_generators; // flag |ker| columns that are nonzero on this coroot
-  for (unsigned i=0; i<npr; ++i)
+  for (RootNbr i=0; i<npr; ++i)
   {
     auto eval = ker.right_prod(rd.posCoroot(i));
     if (not eval.isZero())
@@ -157,7 +244,7 @@ bool make_multiple_integral
   for (auto it = outside_poscoroots.begin(); it(); ++it)
   {
     const auto alpha_v = rd.posCoroot(*it); // current coroot, function on $X^*$
-    arithmetic::Numer_t rate = alpha_v.dot(xi); // change rate in direction |xi|
+    integer rate = alpha_v.dot(xi); // change rate in direction |xi|
     assert(rate!=0);
     if (rate<0)
     {
@@ -205,7 +292,7 @@ unsigned scaled_integrality_rank
   (const RootDatum& rd, const RatWeight& gamma, long long N)
 {
   RootNbrSet integrals(rd.numPosRoots());
-  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+  for (RootNbr i=0; i<rd.numPosRoots(); ++i)
     if (rd.posCoroot(i).dot(gamma.numerator())*N % gamma.denominator() == 0)
       integrals.insert(i);
   return rd.pos_simples(integrals).size();

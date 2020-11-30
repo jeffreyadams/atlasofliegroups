@@ -22,6 +22,8 @@ RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma);
 
 RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma);
 
+  StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr);
+
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
   (const Rep_context& rc, StandardRepr& sr, long long N);
