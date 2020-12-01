@@ -1009,6 +1009,12 @@ walls: (RootDatum,ratvec->[int]) Find set of coroots defining walls of alcove
   that define the alcove. For these coroots the evaluation is integral on a some
   face of the alcove, and increases when going from that face to the interior.
   In case of a negative root, the wall itself is not part of the alcove.
+alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
+  The alcove is defined by the integral parts of the evaluations of gamma on
+  all the positive coroots; the "central" point in fact is on any wall of the
+  alcove for which the alcove body is on the positive side, but for the walls
+  for which it is not (at least one) the nonzero coordinates are spread out
+  evenly, in the fashion of an isobarycenter.
 
 strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
   The input describes a directed graph on the set #n={0,1,...,n-1}, where n is

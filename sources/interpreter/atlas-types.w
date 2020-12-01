@@ -5171,9 +5171,9 @@ void simplify_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ And her is similarly one to experiment with the |wall_set| function.
+@ And similarly here are two to experiment with the |wall_set| and
+|alcove_center| functions.
 
-@h "alcoves.h"
 @< Local function def...@>=
 void walls_wrapper(expression_base::level l)
 {
@@ -5187,6 +5187,16 @@ void walls_wrapper(expression_base::level l)
   for (auto it=walls.begin(); it(); ++it)
     result->val.push_back(std::make_shared<int_value>(*it));
   push_value(std::move(result));
+}
+@)
+void alcove_center_wrapper(expression_base::level l)
+{
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  push_value(std::make_shared<module_parameter_value> @|
+    (p->rf,alcove_center(p->rc(),p->val)));
 }
 
 @ The following wrapper function makes available the Atlas implementation of
@@ -5413,6 +5423,7 @@ install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(simplify_wrapper,"simplify","(Param->Param,int)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
+install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
