@@ -15,6 +15,7 @@
 #include "matreduc.h"
 #include "lattice.h"
 #include "rootdata.h"
+#include "basic_io.h"
 #include "repr.h"
 
 namespace atlas {
@@ -172,14 +173,28 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
   for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it)
     b.push_back(gamma.numerator().dot(*it));
 
-  bool flip; // unused argument
-  Mat column; // records column operations used in |column_echelon|
-  BitMap pivots = matreduc::column_echelon(A,column,flip);
-  unsigned k = A.numColumns(); // rank of matrix |A|
-  arithmetic::big_int factor;
-  Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
-  RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
-  return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
+  try {
+    bool flip; // unused argument
+    Mat column; // records column operations used in |column_echelon|
+    BitMap pivots = matreduc::column_echelon(A,column,flip);
+    unsigned k = A.numColumns(); // rank of matrix |A|
+    arithmetic::big_int factor;
+    Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
+    RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
+    return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
+  }
+  catch(...)
+  {
+    print_stdrep(std::cerr << "Problem for parameter ",sr,rc)<< "\n  walls: ";
+    for (auto it=walls.begin(); it(); ++it, ++i)
+      std::cerr << (it==walls.begin() ? '[' : ',') << *it;
+    std::cerr << "], values ";
+    for (unsigned i=0; i<fracs.size(); ++i)
+      std::cerr << (i==0?'[':',') << b[i] << '/' << fracs[i].denominator()
+		<< '(' << fracs[i].numerator() << ')';
+    std::cerr << "]\n";
+    throw;
+  }
 }
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
@@ -301,17 +316,26 @@ unsigned scaled_integrality_rank
 long long simplify(const Rep_context& rc, StandardRepr& sr)
 { long long N=1;
   const auto& rd = rc.root_datum();
+  const auto init_sr = sr;
   while(true) // a middle-exit loop, hard to formulate differently
   {
     unsigned count=rd.rank()+1;
     while (make_multiple_integral(rc,sr,N)) // continue while it changes
       if (count--==0)
+      {
+	print_stdrep(std::cerr<<"Initial parameter ",init_sr,rc);
+	print_stdrep(std::cerr<<",\n  transformed parameter ",sr,rc)<<'\n';
 	throw std::runtime_error("Runaway loop in parameter simplify");
+      }
     if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimple_rank())
       break; // we have achieved our goal
     if (N+N<N) // this condition signals integer overflow in the addition
+    {
+      print_stdrep(std::cerr<<"Initial parameter ",init_sr,rc);
+      print_stdrep(std::cerr<<",\n  transformed parameter ",sr,rc)<<'\n';
       throw std::runtime_error
 	("Integer overflow while trying to simplify parameter in alcove");
+    }
     N += N; // double down and try again
   }
   return N;
