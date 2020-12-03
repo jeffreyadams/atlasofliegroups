@@ -9,7 +9,7 @@ set_type [SpringerTable=
   [ComplexNilpotent] orbits,
   (ComplexNilpotent->ComplexNilpotent) dual_map,
   (ComplexNilpotent->ComplexNilpotent) dual_map_i,
-  (ComplexNilpotent->int) springer,
+  (ComplexNilpotent->int) springer
   )]
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
