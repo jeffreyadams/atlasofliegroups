@@ -173,6 +173,6 @@ set special_star(SpringerTable st)=(ComplexNilpotent ->string):
 set special_representations(SpringerTable st)=[int]:
 sort(for orbit in st.special_orbits do st.springer(orbit) od)
 set is_special_representation(SpringerTable st,int i)=in_list(st.special_representations,i)
-set is_specal_representation(SpringerTable st)=(int->bool):(int i):is_special_representation(st,i)
+set is_special_representation(SpringerTable st)=(int->bool):(int i):is_special_representation(st,i)
 set special_representation_star(SpringerTable st)=(int->string):(int i):
 if is_special_representation(st,i) then "*" else "" fi
