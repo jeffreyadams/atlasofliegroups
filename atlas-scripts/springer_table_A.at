@@ -86,9 +86,9 @@ set dual_map_A(ComplexNilpotent O)=ComplexNilpotent:
 let P=partition_of_orbit_A(O) in
 complex_nilpotent_A(P.A_dual)
 
-set springer_table_A(CharacterTable ct)=
+set springer_table_A(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum then
 orbits=rd.orbits then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_A(O) then
 springer(ComplexNilpotent O)=springer_A(ct,O) in
-(ct,orbits,dual_map,dual_map,springer)
+(ct,orbits,dual_map,dual_map,springer,[int]:[])

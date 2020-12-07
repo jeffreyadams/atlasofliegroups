@@ -309,7 +309,7 @@ for P in all do [P.to_string,P.D_dual.D_dual.to_string] od)
    which isn't necessarily simply connected
  Need to pass to simply connected root datum, using orbit_by_diagram
 }
-set springer_table_D(CharacterTable ct)=
+set springer_table_D(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum {simply connected} then
 orbits=rd.orbits then
 reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
@@ -332,7 +332,7 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent:
 dual_map_i(ComplexNilpotent O_check {for adjoint group})=
 let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
 dual_map(O_check_lift) in
-(ct,orbits,dual_map,dual_map_i,springer)
+(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
 
 {
 set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:

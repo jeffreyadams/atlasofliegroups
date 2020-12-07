@@ -239,13 +239,13 @@ first(for v@i in characters do
 v[0]=sig_0 and ct.degrees[i]=sig_1 od)
 
 
-set springer_table_E7(CharacterTable ct)=
+set springer_table_E7(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum then
 orbits=rd.orbits then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_E7(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_E7(O) then
 springer(ComplexNilpotent O)=springer_E7(ct,O) in
-(ct,orbits,dual_map,dual_map_i,springer)
+(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
 
 {
 atlas> show_nilpotent_orbits(rd)

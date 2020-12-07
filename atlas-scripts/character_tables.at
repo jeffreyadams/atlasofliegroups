@@ -142,18 +142,16 @@ set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
 prints("Initializing CharacterTable for ", lt);
 let rd=simply_connected(lt) then
-()=prints("Step 1/6") then
+()=prints("Step 1/5: computing order(W)") then
 W_order=order_W(rd) then
-()=prints("Step 2/6") then
 class_size(WeylElt w)=W_order\w.centralizer_order then
-()=prints("Step 3/6") then
-{orbits=rd.orbits then}
+()=prints("Step 2/5: computing class representatives") then
 classes=rd.W_class_table.class_representatives() then
-()=prints("Step 4/6") then
+()=prints("Step 3/5: computing sizes of centralizers") then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
-()=prints("Step 5/6") then
+()=prints("Step 4/5: computing sizes of conjugacy classes") then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
-()=prints("Step 6/6") then
+()=prints("Step 5/5: computing orders of elements of conjugacy classes") then
 class_orders=for w in classes do w.order od {then} 
 {()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:

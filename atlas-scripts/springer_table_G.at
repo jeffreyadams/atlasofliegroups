@@ -29,5 +29,6 @@ let ct=character_table_G2() in
 simply_connected(G2).orbits,
 dual_map_G2@ComplexNilpotent,
 dual_map_G2@ComplexNilpotent,
-springer_G2@ComplexNilpotent
+springer_G2@ComplexNilpotent,
+[int]:[]
 )

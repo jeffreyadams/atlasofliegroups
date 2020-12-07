@@ -12,12 +12,12 @@ set springer_torus(ComplexNilpotent O)=int:
 assert(O.root_datum.is_abelian,"O.rd is not a torus");0
 
 
-set springer_table_torus(RootDatum rd)=
+set springer_table_torus(RootDatum rd)=SpringerTable:
 assert(rd.is_abelian,"group not a torus");
 (character_table_torus(rd),
 rd.orbits,
 dual_map_torus@ComplexNilpotent,
 dual_map_i_torus@ComplexNilpotent,
-springer_torus@ComplexNilpotent
-)
+springer_torus@ComplexNilpotent,
+[int]:[])
 
