@@ -39,7 +39,8 @@ st.root_datum.dual.orbits[index]
 
 {dual_map_i(dual_map(O))}
 set special_closure(SpringerTable st,ComplexNilpotent O)=ComplexNilpotent:
-orbit_by_diagram(st,st.dual_map_i(st.dual_map(O)).diagram_normalized)
+{O.root_datum here: need this to be an orbit O.root_datum}
+orbit_by_diagram(O.root_datum,st.dual_map_i(st.dual_map(O)).diagram_normalized)
 set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(ComplexNilpotent O):special_closure(st,O)
 
 {orbit is special if O=special_closure(O)}
@@ -157,10 +158,20 @@ tabulate(["i","O","d(O)","dd(O)","pi","special"] #
   [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
  od)
 
-set springer_inverse(SpringerTable st,int special_character_number)=ComplexNilpotent:
-st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)]
+{inverse Springer map: try to find an orbit (not necessarily special) such
+ that springer(orbit)=given character
+if the character is special this succeeds and gives a special orbit
+otherwise it might fail, in which case it returns (false,0-orbit)
+}
+set springer_inverse(SpringerTable st,int special_character_number)=(bool,ComplexNilpotent):
+let index=first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)
+ in if index=-1 then (false,st.orbits[0]) else (true,st.orbits[index]) fi
+set springer_inverse(SpringerTable st)=(int->(bool,ComplexNilpotent)):(int j):springer_inverse(st,j)
 
-set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
+{case of special orbit don't need the boolean}
+set springer_inverse_special(SpringerTable st,int special_character_number)=ComplexNilpotent:
+let (,orbit)=springer_inverse(st,special_character_number) in orbit
+set springer_inverse_special(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse_special(st,j)
 
 set special_star(SpringerTable st,ComplexNilpotent O)=string:
 if is_special(st,O) then "*" else "" fi

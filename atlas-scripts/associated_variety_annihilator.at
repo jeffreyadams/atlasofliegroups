@@ -31,7 +31,7 @@ special_character_int=special_character(ct_int,cell,perm) then
 "rd_int: ", nice_format(rd_int), new_line,
 "special_character_int: ", special_character_int, ": ", ct_int.characters[special_character_int]) fi then
 character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
-orbit_0=st_rd.springer_inverse(character_G) then
+(,orbit_0)=st_rd.springer_inverse(character_G) then
 orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) then
 ()=if av_verbose then prints("character_G: ", character_G, ": ",st_rd.ct.characters[character_G],
 new_line,"diagram of orbit: ",orbit_0.diagram) fi in
@@ -58,7 +58,7 @@ associated_variety_ann_ind(p,p.root_datum.springer_table)
 {-----------------using restriction-----------------------}
 
 {assuming integral infinitesimal character, no induction}
-set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
+set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
 set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(Finalize(p)))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(Finalize(p)))
@@ -85,8 +85,9 @@ chars_rd=
 od
 then
 index_rd=chars_rd[0] then
-orbit_0=st_rd.springer_inverse(index_rd) then
-()=if av_verbose then prints("character(s) found: ", chars_rd,
+(valid,orbit_0)=st_rd.springer_inverse(index_rd) then
+()=assert(valid,"can't compute springer_inverse");
+if av_verbose then prints("character(s) found: ", chars_rd,
 new_line,"diagram of orbit: ", orbit_0.diagram) fi then
 orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
 orbit
@@ -236,8 +237,9 @@ char_int_sign=ct_int.tensor_sign(char_int) then
  "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line, "ct: ", ct.root_datum) fi then
 {index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then}
 index=truncate_induce_character(rd_int,rd,ct,char_int_sign) then
-orbit=st.springer_inverse(index) then
-()=if av_verbose then
+(valid,orbit)=st.springer_inverse(index) then
+()=assert(valid,"Can't compute springer_inverse");
+if av_verbose then
 prints("index: ", index, new_line,"truncated induced character: ", index, ":", st.ct.characters[index], new_line,
 "orbit", orbit.diagram_normalized) fi in
 orbit_by_diagram(rd,orbit.diagram_normalized)

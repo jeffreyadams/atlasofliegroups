@@ -88,7 +88,8 @@ let L=O_L.root_datum then
 char_L=st_L.springer(O_L) then
 ()=if ti_verbose then prints("orbit_L: ", O_L.diagram,  new_line,"index of character_L: ", char_L, " (degree: ",st_L.ct.degrees[char_L],")") fi then
 char_G=truncate_induce_character(L,G,st_L.ct,st_G.ct,st_L.ct.characters[char_L]) then
-orbit=st_G.springer_inverse(char_G) in
+(valid,orbit)=st_G.springer_inverse(char_G) in
+assert(valid,"induced orbit doesn't have springer_inverse");
 if ti_verbose then prints("induced orbit: ", orbit.diagram,st_G.special_star(orbit)) fi;
 orbit
 

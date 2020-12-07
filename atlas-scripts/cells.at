@@ -261,7 +261,7 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 od
 
 {assuming integral infinitesimal character}
-set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
+set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
 set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(p))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
@@ -283,7 +283,7 @@ chars_G=
 od
 then
 index_G=chars_G[0] in
-st_G.springer_inverse(index_G)
+st_G.springer_inverse_special(index_G)
 
 set associated_variety_test(SpringerTable st_G,WCell cell)=
 let G=st_G.root_datum_parent then
@@ -305,7 +305,7 @@ then
 ()=prints("OK2") then
 {()=prints("chars_G=",chars_G) then}
 index_G=chars_G[0] in
-st_G.springer_inverse(index_G)
+st_G.springer_inverse_special(index_G)
 }
 
 set GK_dimension(SpringerTable st,Param p)=int:st.associated_variety_int(p).dim_nilpotent\2
