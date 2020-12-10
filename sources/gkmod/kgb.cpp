@@ -175,7 +175,7 @@ void KGB_base::add_element()
 
 // create structure incorporating all KGB structures for a given inner class
 global_KGB::global_KGB(InnerClass& G_C)
-  : KGB_base(G_C,G_C.semisimpleRank())
+  : KGB_base(G_C,G_C.semisimple_rank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
@@ -220,7 +220,7 @@ global_KGB::global_KGB(InnerClass& G_C)
 }
 
 global_KGB::global_KGB(InnerClass& G_C, const GlobalTitsElement& x)
-  : KGB_base(G_C,G_C.semisimpleRank())
+  : KGB_base(G_C,G_C.semisimple_rank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
 {
@@ -474,7 +474,7 @@ void global_KGB::generate(size_t predicted_size)
 */
 
 KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
-  : KGB_base(G.innerClass(),G.innerClass().semisimpleRank())
+  : KGB_base(G.innerClass(),G.innerClass().semisimple_rank())
   , G(G)
   , Cartan()
   , left_torus_part()
@@ -483,7 +483,7 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
   , d_base(nullptr)
 {
   //const TitsGroup& Tg = ic.titsGroup();
-  size_t rank = ic.semisimpleRank(); // |ic.rank()| does not interest us here
+  size_t rank = ic.semisimple_rank(); // |ic.rank()| does not interest us here
 
   {// check that |Cartan_classes| is upwards closed within |G.Cartan_set()|
     BitMap test_set = G.Cartan_set();

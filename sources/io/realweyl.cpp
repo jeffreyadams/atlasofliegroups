@@ -243,7 +243,7 @@ RootNbrList orthogonalMAlpha
   // keep the ones that are orthogonal to tworho_ic
   RootNbrList rl;
   for (RootNbrSet::iterator it=rs.begin(); it(); ++it)
-    if (rd.isOrthogonal(tworho_ic,*it))
+    if (rd.is_orthogonal(tworho_ic,*it))
       rl.push_back(*it);
   return rl;
 }

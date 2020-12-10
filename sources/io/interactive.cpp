@@ -879,7 +879,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
   { weyl::Generator s;
     do
     {
-      for (s=0; s<rd.semisimpleRank(); ++s)
+      for (s=0; s<rd.semisimple_rank(); ++s)
       {
 	RootNbr alpha = rd.simpleRootNbr(s);
         int v=rd.simpleCoroot(s).dot(numer);
@@ -911,7 +911,7 @@ SubSystemWithGroup get_parameter(RealReductiveGroup& GR,
         }
       }
     }
-    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+    while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
     // now |gamma| has been made dominant
 
     if (changed)

@@ -69,9 +69,9 @@ namespace testprint {
 std::ostream& print(std::ostream& strm, const RootDatum& rd)
 {
   strm << "cartan matrix :" << std::endl;
-  int_Matrix q(rd.semisimpleRank(),rd.semisimpleRank());
-  for (size_t j = 0; j < rd.semisimpleRank(); ++j)
-    for (size_t i = 0; i < rd.semisimpleRank(); ++i)
+  int_Matrix q(rd.semisimple_rank(),rd.semisimple_rank());
+  for (size_t j = 0; j < rd.semisimple_rank(); ++j)
+    for (size_t i = 0; i < rd.semisimple_rank(); ++i)
       q(i,j) = rd.cartan(i,j);
   prettyprint::printMatrix(strm,q) << std::endl;
 

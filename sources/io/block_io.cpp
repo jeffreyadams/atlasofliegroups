@@ -130,7 +130,7 @@ std::ostream& common_block::print
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = root_datum().semisimpleRank();
+  unsigned int rk = root_datum().semisimple_rank();
 
   strm << (survives(z,singular) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)

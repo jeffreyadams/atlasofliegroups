@@ -337,8 +337,8 @@ CoveringIterator::CoveringIterator(const LieType& lt)
   : d_lieType(lt)
   , d_dcenter(nullptr)
   , d_rank(lt.rank())
-  , d_semisimpleRank(lt.semisimple_rank())
-  , d_torusRank(d_rank-d_semisimpleRank)
+  , d_semisimple_rank(lt.semisimple_rank())
+  , d_torusRank(d_rank-d_semisimple_rank)
   , d_quotReps()
   , d_subgroup()
   , d_torusMap()
@@ -350,11 +350,11 @@ CoveringIterator::CoveringIterator(const LieType& lt)
   int_Matrix Smith = // true Smith form needed here
     matreduc::Smith_basis(lt.transpose_Cartan_matrix(),factor);
 
-  assert(factor.size()==d_semisimpleRank); // semisimple, so no zero factors
+  assert(factor.size()==d_semisimple_rank); // semisimple, so no zero factors
 
   abelian::GroupType gt;
 
-  d_smithBasis.reserve(d_semisimpleRank);
+  d_smithBasis.reserve(d_semisimple_rank);
   for (size_t j=0; j<factor.size(); ++j)
   {
     d_smithBasis.push_back(Smith.column(j)); // size is rank, including torus
@@ -384,7 +384,7 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
   , d_dcenter(i.d_dcenter==nullptr ? nullptr
               : new abelian::FiniteAbelianGroup(*i.d_dcenter))
   , d_rank(i.d_rank)
-  , d_semisimpleRank(i.d_semisimpleRank)
+  , d_semisimple_rank(i.d_semisimple_rank)
   , d_torusRank(i.d_torusRank)
   , d_quotReps(i.d_quotReps)
   , d_subgroup(i.d_subgroup)
@@ -513,7 +513,7 @@ void CoveringIterator::makeBasis(WeightList& b) const
 
   int_Matrix m_cb(cb,c_rank+t_rank); // convert |cb| to a matrix
   int_Matrix m_sb // start after the invariant factors that are $1$
-    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), d_semisimpleRank,
+    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), d_semisimple_rank,
      tags::IteratorTag());
 
   m_sb *= m_cb; // use |m_sb| to map each column of |m_cb| to lattice element
