@@ -749,9 +749,13 @@ template<typename T, typename Alloc>
 
   iterator splice (const_iterator pos, simple_list&& other,
 		   const_iterator begin, const_iterator end)
-  { if (begin==end or pos==begin) // in these cases with dangerous aliasing
-      return iterator(*pos.link_loc); // splicing is a no-op
+  { // first check for cases with dangerous aliasing, but splicing is a no-op
+    if (begin==end) // empty list to move
+      return iterator(*pos.link_loc);
+    if (pos==begin) // move list to its own place
+      return iterator(*end.link_loc); // indicate where "moved" segment ends
     // |pos==end| is a no-op too, but less likely and ends up properly handled
+
     // cycle backward |(*pos.link_loc, *begin.link_loc, *end.link_loc)|:
     pos.link_loc->swap(*begin.link_loc);
     begin.link_loc->swap(*end.link_loc);
@@ -1657,8 +1661,11 @@ template<typename T, typename Alloc>
 
   iterator splice (const_iterator pos, sl_list&& other,
 		   const_iterator begin, const_iterator end)
-  { if (begin==end or pos==begin) // in these cases with dangerous aliasing
-      return iterator(*pos.link_loc); // splicing is a no-op
+  { // first check for cases with dangerous aliasing, but splicing is a no-op
+    if (begin==end) // empty list to move
+      return iterator(*pos.link_loc);
+    if (pos==begin) // move list to its own place
+      return iterator(*end.link_loc); // indicate where "moved" segment ends
     // |pos==end| is a no-op too, but less likely and ends up properly handled
 
     auto d = // correction to node counts; compute before making any changes
