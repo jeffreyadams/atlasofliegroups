@@ -1355,7 +1355,7 @@ void rd_rank_wrapper(expression_base::level l)
 void rd_semisimple_rank_wrapper(expression_base::level l)
 { shared_root_datum rd = get<root_datum_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(rd->val.semisimpleRank()));
+    push_value(std::make_shared<int_value>(rd->val.semisimple_rank()));
 }
 @)
 void rd_nposroots_wrapper(expression_base::level l)
@@ -1439,7 +1439,7 @@ basis, which is easier since they are rational vectors.
 void fundamental_weight_wrapper(expression_base::level l)
 { int i= get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimpleRank())
+  if (unsigned(i)>=rd->val.semisimple_rank())
     throw runtime_error("Invalid index ") << i;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value> @|
@@ -1449,7 +1449,7 @@ void fundamental_weight_wrapper(expression_base::level l)
 void fundamental_coweight_wrapper(expression_base::level l)
 { int i= get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimpleRank())
+  if (unsigned(i)>=rd->val.semisimple_rank())
     throw runtime_error("Invalid index ") << i;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value> @|
@@ -1652,7 +1652,7 @@ WeylWord check_Weyl_word(const row_value& r, unsigned int rank)
 void W_elt_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
   shared_root_datum rd = get<root_datum_value>();
-  auto ww=check_Weyl_word(*r,rd->val.semisimpleRank());
+  auto ww=check_Weyl_word(*r,rd->val.semisimple_rank());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
@@ -2007,7 +2007,7 @@ sufficient.
 @< Local function def...@>=
 RootNbrList check_root_datum_involution
   (const RootDatum& rd, const WeightInvolution& delta)
-{ const unsigned int r=rd.rank(), s=rd.semisimpleRank();
+{ const unsigned int r=rd.rank(), s=rd.semisimple_rank();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
   RootNbrList Delta(s);
   for (weyl::Generator i=0; i<s; ++i)
@@ -2025,7 +2025,7 @@ RootNbrList check_root_datum_involution
 void check_based_root_datum_involution
   (const RootDatum& rd, const WeightInvolution& delta)
 { const auto Delta=check_root_datum_involution(rd,delta);
-  const auto s=rd.semisimpleRank();
+  const auto s=rd.semisimple_rank();
   for (weyl::Generator i=0; i<s; ++i)
     if (not rd.is_simple_root(Delta[i]))
       throw runtime_error("Root datum involution is not distinguished");
@@ -2069,7 +2069,7 @@ weyl::Twist check_involution
   WeylWord& ww, @| lietype::Layout* lo=nullptr)
 { RootNbrList Delta = check_root_datum_involution(rd,delta);
   ww = wrt_distinguished(rd,Delta);
-  const unsigned int r=rd.rank(), s=rd.semisimpleRank();
+  const unsigned int r=rd.rank(), s=rd.semisimple_rank();
   weyl::Twist p; // result
 @/ @< Copy the permutation of the simple roots in |Delta| to |p|, and
       left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
@@ -4102,7 +4102,7 @@ void block_status_wrapper(expression_base::level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
+  if (s>=b->rf->val.semisimple_rank())
     throw runtime_error("Illegal simple reflection: ") << s;
   if (i>=b->val.size())
     throw runtime_error("Block element ") << i @|
@@ -4124,7 +4124,7 @@ void block_cross_wrapper(expression_base::level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
+  if (s>=b->rf->val.semisimple_rank())
     throw runtime_error("Illegal simple reflection: ") << s;
   if (i>=b->val.size())
     throw runtime_error("Block element ") << i
@@ -4138,7 +4138,7 @@ void block_Cayley_wrapper(expression_base::level l)
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
+  if (s>=b->rf->val.semisimple_rank())
     throw runtime_error("Illegal simple reflection: ") << s;
   if (ii >= b->val.size())
     throw runtime_error("Block element ") << ii
@@ -4158,7 +4158,7 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
+  if (s>=b->rf->val.semisimple_rank())
     throw runtime_error("Illegal simple reflection: ") << s;
   if (ii >= b->val.size())
     throw runtime_error("Block element ")  << ii @|
@@ -5168,6 +5168,8 @@ for the argument graph.
 void strong_components_wrapper(expression_base::level l)
 {
   shared_row graph = get<row_value>();
+  if (l==expression_base::no_value)
+    return;
   const auto size = graph->val.size();
   OrientedGraph G (size);
   for (unsigned i=0; i<size; ++i)

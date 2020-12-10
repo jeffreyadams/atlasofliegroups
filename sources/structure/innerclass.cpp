@@ -307,7 +307,7 @@ void InnerClass::construct() // common part of two constructors
 	  cartanclass::restrictGrading // values at simple roots give torus part
 	  (f.compactRoots(f.wrf_rep(i)), // compact ones need a set bit
 	   d_rootDatum.simpleRootList()); // reproduces grading at imag. simples
-	TitsElt x(dual_Tg,TorusPart(gr,d_rootDatum.semisimpleRank()));
+	TitsElt x(dual_Tg,TorusPart(gr,d_rootDatum.semisimple_rank()));
 	dual_adj_Tg.basedTwistedConjugate(x,ww); // transform to canonical
 	Cartan.back().dual_rep[i] = dual_Tg.left_torus_part(x).data();
       }
@@ -444,7 +444,7 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
 
     for (BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
     {
-      TitsElt x(Tg,TorusPart(dst.rep[*it],semisimpleRank()),tw_org);
+      TitsElt x(Tg,TorusPart(dst.rep[*it],semisimple_rank()),tw_org);
       adj_Tg.basedTwistedConjugate(x,conjugator);
       assert(x.tw()==dst.tw);
       dst.rep[*it] =Tg.left_torus_part(x).data();
@@ -452,7 +452,7 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
     }
     for (BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
     {
-      TitsElt y(dual_Tg,TorusPart(dst.dual_rep[*it],semisimpleRank()),src.tw);
+      TitsElt y(dual_Tg,TorusPart(dst.dual_rep[*it],semisimple_rank()),src.tw);
       dual_adj_Tg.basedTwistedConjugate(y,conjugator);
       assert(y.tw()==W.opposite(dst.tw));
       dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
@@ -645,7 +645,7 @@ RankFlags InnerClass::simple_roots_imaginary() const
 {
   const auto twist = twistedWeylGroup().twist();
   RankFlags result;
-  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     result.set(s,s==twist[s]);
   return result;
 }
@@ -654,7 +654,7 @@ RankFlags InnerClass::simple_roots_real() const
 {
   const auto twist = twistedWeylGroup().dual_twist();
   RankFlags result;
-  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     result.set(s,s==twist[s]);
   return result;
 }
@@ -1188,7 +1188,7 @@ Grading grading_of_simples
 {
   const RootDatum& rd=G.rootDatum();
   Grading result;
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     result.set(s,coch.dot(rd.simpleRoot(s))%2==0);
   return result;
 }

@@ -181,7 +181,7 @@ SmallBitVectorList
    add rows of zeroes.
 */
 { int_Vector zero_column(rd.rank(),0);
-    for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
+    for (size_t j = rd.semisimple_rank(); j < rd.rank(); ++j)
       basis.set_column(j,zero_column); // clear radical part of |basis|
   }
 
