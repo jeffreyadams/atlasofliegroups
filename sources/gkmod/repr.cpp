@@ -1911,7 +1911,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto& term : dt)
     {
-      simplify(*this,term.first);
+      term.first=alcove_center(*this,term.first);
       for (const auto& final : finals_for(term.first))
       {
 	const auto& def = deformation(final); // recursion
