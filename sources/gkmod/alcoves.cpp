@@ -81,13 +81,15 @@ level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
   return out;
 }
 
-RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma)
+RootNbrSet wall_set
+  (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& on_wall_coroots)
 {
   level_list levels;
   for (RootNbr i=0; i<rd.numRoots(); ++i)
     levels.emplace_back(i,frac_eval(rd,i,gamma));
 
   RootNbrSet result(rd.numRoots());
+  on_wall_coroots=result; // make a copy to use the same capacity
   while (not levels.empty())
   { const auto rest = get_minima(levels);
     unsigned n_min = std::distance(levels.cbegin(),rest);
@@ -95,6 +97,8 @@ RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma)
     while (n_min>0)
     {
       auto alpha = levels.front().first;
+      if (v.is_zero())
+	on_wall_coroots.insert(alpha);
       result.insert(alpha), levels.pop_front(), --n_min;
       const auto out = filter_up(rd,alpha,levels); // remove incompatible coroots
       for (auto it = out.cbegin(); not out.at_end(it) and it->second==v; ++it)
@@ -110,7 +114,8 @@ RootNbrSet wall_set(const RootDatum& rd, const RatWeight& gamma)
   This special point has zero evaluations on positive wall coroots, and balanced
   nonzero evaluations on nogatve wall evaluations
 */
-RatNumList barycentre_eq (const RootDatum& rd, const RootNbrSet& walls)
+RatNumList barycentre_eq
+  (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
 {
   RatNumList result(walls.size(),RatNum(0,1));
   auto comps = rootdata::components(rd,walls);
@@ -126,14 +131,14 @@ RatNumList barycentre_eq (const RootDatum& rd, const RootNbrSet& walls)
     if (k(0,0)<0)
       k.negate(); // ensure coefficents are positive
 
-    comp.andnot(rd.posRootSet()); // focus on negative roots from here on
-    unsigned n_neg = comp.size();
-    assert(n_neg>0); // every |walls| component has at least one negative coroot
+    comp.andnot(integral_walls); // from here on focus walls we were not on
+    unsigned n_off = comp.size();
+    assert(n_off>0); // every |walls| component has at least one negative coroot
     for (auto it=comp.begin(); it(); ++it)
     {
       const unsigned i = walls.position(*it);
       assert(k(i,0)>0);
-      result[i] = RatNum(1,n_neg*k(i,0));
+      result[i] = RatNum(1,n_off*k(i,0));
     }
   }
   return result;
@@ -146,8 +151,11 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
   const auto& rd = rc.root_datum();
   unsigned rank = rd.rank();
   const auto& gamma = sr.gamma();
-  RootNbrSet walls = wall_set(rd,gamma);
-  RatNumList fracs = barycentre_eq(rd,walls);
+  RootNbrSet integrals;
+  RootNbrSet walls = wall_set(rd,gamma,integrals);
+  RatNumList fracs = barycentre_eq(rd,walls,integrals);
+
+  int_Matrix theta_plus_1 = rc.inner_class().matrix(rc.kgb().involution(sr.x()))+1;
 
   using Vec = matrix::Vector<integer>;
   using Mat = matrix::PID_Matrix<integer>;
@@ -181,6 +189,11 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
     arithmetic::big_int factor;
     Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
     RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
+    if (not (theta_plus_1*(new_gamma-gamma)).isZero())
+    {
+      std::cerr << new_gamma << '\n';
+      throw std::runtime_error("Attempted correction off -theta subspace");
+    }
     return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
   }
   catch(...)
