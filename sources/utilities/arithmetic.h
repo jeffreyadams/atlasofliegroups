@@ -70,15 +70,17 @@ public:
 
   /*
     The C++ rule that one unsigned operand silently converts the other operand
-    to unsigned as well makes exporting denominator as unsigned too error
-    prone; e.g., floor=numerator()/denominator() would wreak havoc. Generally
-    speaking, casting unsigend to signed is not a good thing, but typically
-    when this happens we risk having (had) overflow anyway, so accept it.
+    to unsigned as well makes exporting denominator as unsigned too error prone;
+    e.g., floor=numerator()/denominator() would wreak havoc. Generally speaking,
+    casting unsigned to signed is not a good thing, but when this gives a
+    negative value here, we risk having (had) overflow anyway, so here it is.
   */
   I denominator() const { return static_cast<I>(denom); }
 
   // however sometimes (printing, |big_int| conversion, we want the Real Thing
   UI true_denominator() const { return denom; }
+
+  bool is_zero() const { return num==0; }
 
   // these operators all return normalised results
   Rational operator+(Rational q) const;

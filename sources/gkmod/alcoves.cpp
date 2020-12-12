@@ -7,26 +7,34 @@
   For license information see the LICENSE file
 */
 
-#include <memory> // for |std::unique_ptr|
-
 #include "tags.h"
 #include "alcoves.h"
 #include "arithmetic.h"
 #include "matrix.h"
 #include "ratvec.h"
+#include "matreduc.h"
 #include "lattice.h"
 #include "rootdata.h"
+#include "basic_io.h"
 #include "repr.h"
 
 namespace atlas {
 
 namespace repr {
 
+using integer = arithmetic::Numer_t; // use a long signed integer type here
+
+integer floor_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
+{
+  RatNum eval = gamma.dot_Q(rd.coroot(i));
+  return rd.is_posroot(i) ? eval.floor() : eval.ceil() -1 ;
+}
+
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 {
   RatNum eval = gamma.dot_Q(rd.coroot(i)).mod1();
-  if (eval.numerator()==0 and i<0) // for negative coroots round up, not down
-    eval+=1;
+  if (eval.numerator()==0 and rd.is_negroot(i))
+    eval+=1; // for negative coroots round up, not down
   return eval;
 }
 
@@ -44,7 +52,12 @@ level_list::const_iterator get_minima(level_list& L)
     if (tail->second > min)
       ++tail;
     else if (tail->second ==  min)
-      rest=L.splice(rest,L,tail);  // move node from |tail| to |rest|, advancing
+    {
+      if (tail==rest) // now |splice| would be no-op, but we must advance
+	rest = ++tail;
+      else
+	rest=L.splice(rest,L,tail); // move node from |tail| to |rest|, advancing
+    }
     else // a new minimum is hit, abandon old one
     {
       min = tail->second;
@@ -68,39 +81,133 @@ level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
   return out;
 }
 
-RootNbrSet wall_set(const RootDatum& rd0, const RatWeight& gamma)
+RootNbrSet wall_set
+  (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& on_wall_coroots)
 {
-  std::unique_ptr<RootDatum> root_datum_ptr;
-  if (not rd0.prefer_coroots())
-  {
-    int_Matrix s_roots(rd0.beginSimpleRoot(),rd0.endSimpleRoot(),rd0.rank(),
-		       tags::IteratorTag());
-    int_Matrix s_coroots(rd0.beginSimpleCoroot(),rd0.endSimpleCoroot(),rd0.rank(),
-			 tags::IteratorTag());
-    PreRootDatum prd(s_roots,s_coroots,true); // prefer coroots now!
-    root_datum_ptr.reset(new RootDatum(std::move(prd)));
-  }
-  const RootDatum& rd = root_datum_ptr==nullptr ? rd0 : *root_datum_ptr;
   level_list levels;
   for (RootNbr i=0; i<rd.numRoots(); ++i)
     levels.emplace_back(i,frac_eval(rd,i,gamma));
 
   RootNbrSet result(rd.numRoots());
+  on_wall_coroots=result; // make a copy to use the same capacity
   while (not levels.empty())
   { const auto rest = get_minima(levels);
     unsigned n_min = std::distance(levels.cbegin(),rest);
-    const auto v = levels.front().second;  // minimal level, repeats |n_min| times
+    const auto v = levels.front().second; // minimal level, repeats |n_min| times
     while (n_min>0)
     {
       auto alpha = levels.front().first;
+      if (v.is_zero())
+	on_wall_coroots.insert(alpha);
       result.insert(alpha), levels.pop_front(), --n_min;
-      const auto out = filter_up(rd,alpha,levels);  // remove incompatible coroots
+      const auto out = filter_up(rd,alpha,levels); // remove incompatible coroots
       for (auto it = out.cbegin(); not out.at_end(it) and it->second==v; ++it)
 	--n_min; // take into account copies of |min| filtered out
     }
   }
 
   return result;
+} // |wall_set|
+
+/*
+  Get fractional parts of wall evaluations, for special point in alcove.
+  This special point has zero evaluations on positive wall coroots, and balanced
+  nonzero evaluations on nogatve wall evaluations
+*/
+RatNumList barycentre_eq
+  (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
+{
+  RatNumList result(walls.size(),RatNum(0,1));
+  auto comps = rootdata::components(rd,walls);
+  for (auto& comp : comps)
+  {
+    int_Matrix A(rd.rank(),comp.size());
+    unsigned i=0;
+    for (auto it=comp.begin(); it(); ++it,++i)
+      A.set_column(i,rd.coroot(*it));
+    int_Matrix k = lattice::kernel(A);
+    assert(k.numColumns()==1);
+    assert(k(0,0)!=0); // in fact all coefficients should be nonzero
+    if (k(0,0)<0)
+      k.negate(); // ensure coefficents are positive
+
+    comp.andnot(integral_walls); // from here on focus walls we were not on
+    unsigned n_off = comp.size();
+    assert(n_off>0); // every |walls| component has at least one negative coroot
+    for (auto it=comp.begin(); it(); ++it)
+    {
+      const unsigned i = walls.position(*it);
+      assert(k(i,0)>0);
+      result[i] = RatNum(1,n_off*k(i,0));
+    }
+  }
+  return result;
+} // |barycentre_eq|
+
+// find a special parameter in the alcove of |sr|. In root span direction, it
+// depends only on that alcove. In coradical direction keep |sr| coordinates.
+StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
+{
+  const auto& rd = rc.root_datum();
+  unsigned rank = rd.rank();
+  const auto& gamma = sr.gamma();
+  RootNbrSet integrals;
+  RootNbrSet walls = wall_set(rd,gamma,integrals);
+  RatNumList fracs = barycentre_eq(rd,walls,integrals);
+
+  int_Matrix theta_plus_1 = rc.inner_class().matrix(rc.kgb().involution(sr.x()))+1;
+
+  using Vec = matrix::Vector<integer>;
+  using Mat = matrix::PID_Matrix<integer>;
+
+  // now form matrix for left hand side of coordinate equation
+  Mat A(walls.size()+rd.radical_rank(),rank);
+  { unsigned int i=0;
+    for (auto it=walls.begin(); it(); ++it, ++i)
+      A.set_row(i,rd.coroot(*it).scaled(fracs[i].denominator()));
+    for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it, ++i)
+      A.set_row(i,it->scaled(gamma.denominator()));
+  }
+
+  Vec b; // will be right hand side of equation
+  b.reserve(A.numRows());
+  // for each of the |walls|, the RHS takes it "fractional part" from |fracs|
+  // but multiplying by |fracs[i].denominator()| makes equation |i| integer
+  unsigned i=0;
+  for (auto it = walls.begin(); it(); ++it,++i)
+    b.push_back(fracs[i].numerator() // sets new fractional part
+	       +floor_eval(rd,*it,gamma)*fracs[i].denominator()); // keep floor
+  // on the radical part we do no change the coordinates of |gamma|
+  for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it)
+    b.push_back(gamma.numerator().dot(*it));
+
+  try {
+    bool flip; // unused argument
+    Mat column; // records column operations used in |column_echelon|
+    BitMap pivots = matreduc::column_echelon(A,column,flip);
+    unsigned k = A.numColumns(); // rank of matrix |A|
+    arithmetic::big_int factor;
+    Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
+    RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
+    if (not (theta_plus_1*(new_gamma-gamma)).isZero())
+    {
+      std::cerr << new_gamma << '\n';
+      throw std::runtime_error("Attempted correction off -theta subspace");
+    }
+    return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
+  }
+  catch(...)
+  {
+    print_stdrep(std::cerr << "Problem for parameter ",sr,rc)<< "\n  walls: ";
+    for (auto it=walls.begin(); it(); ++it, ++i)
+      std::cerr << (it==walls.begin() ? '[' : ',') << *it;
+    std::cerr << "], values ";
+    for (unsigned i=0; i<fracs.size(); ++i)
+      std::cerr << (i==0?'[':',') << b[i] << '/' << fracs[i].denominator()
+		<< '(' << fracs[i].numerator() << ')';
+    std::cerr << "]\n";
+    throw;
+  }
 }
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
@@ -116,7 +223,7 @@ bool make_multiple_integral
   const auto& v = N_gamma.numerator();
   const auto npr = rd.numPosRoots();
   RootNbrSet int_poscoroots(npr);
-  for (unsigned i=0; i<npr; ++i)
+  for (RootNbr i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
   RootNbrList integrally_simples=rd.pos_simples(int_poscoroots);
@@ -136,7 +243,7 @@ bool make_multiple_integral
   RootNbrSet outside_poscoroots(npr); // record positions within positive set
   std::vector<BitMap> // indexed by the |outer_poscooroots|, by their position
     coroot_generators; // flag |ker| columns that are nonzero on this coroot
-  for (unsigned i=0; i<npr; ++i)
+  for (RootNbr i=0; i<npr; ++i)
   {
     auto eval = ker.right_prod(rd.posCoroot(i));
     if (not eval.isZero())
@@ -165,7 +272,7 @@ bool make_multiple_integral
   for (auto it = outside_poscoroots.begin(); it(); ++it)
   {
     const auto alpha_v = rd.posCoroot(*it); // current coroot, function on $X^*$
-    arithmetic::Numer_t rate = alpha_v.dot(xi); // change rate in direction |xi|
+    integer rate = alpha_v.dot(xi); // change rate in direction |xi|
     assert(rate!=0);
     if (rate<0)
     {
@@ -213,7 +320,7 @@ unsigned scaled_integrality_rank
   (const RootDatum& rd, const RatWeight& gamma, long long N)
 {
   RootNbrSet integrals(rd.numPosRoots());
-  for (unsigned i=0; i<rd.numPosRoots(); ++i)
+  for (RootNbr i=0; i<rd.numPosRoots(); ++i)
     if (rd.posCoroot(i).dot(gamma.numerator())*N % gamma.denominator() == 0)
       integrals.insert(i);
   return rd.pos_simples(integrals).size();
@@ -222,17 +329,26 @@ unsigned scaled_integrality_rank
 long long simplify(const Rep_context& rc, StandardRepr& sr)
 { long long N=1;
   const auto& rd = rc.root_datum();
+  const auto init_sr = sr;
   while(true) // a middle-exit loop, hard to formulate differently
   {
     unsigned count=rd.rank()+1;
     while (make_multiple_integral(rc,sr,N)) // continue while it changes
       if (count--==0)
+      {
+	print_stdrep(std::cerr<<"Initial parameter ",init_sr,rc);
+	print_stdrep(std::cerr<<",\n  transformed parameter ",sr,rc)<<'\n';
 	throw std::runtime_error("Runaway loop in parameter simplify");
-    if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimpleRank())
+      }
+    if (scaled_integrality_rank(rd,sr.gamma(),N)==rd.semisimple_rank())
       break; // we have achieved our goal
     if (N+N<N) // this condition signals integer overflow in the addition
+    {
+      print_stdrep(std::cerr<<"Initial parameter ",init_sr,rc);
+      print_stdrep(std::cerr<<",\n  transformed parameter ",sr,rc)<<'\n';
       throw std::runtime_error
 	("Integer overflow while trying to simplify parameter in alcove");
+    }
     N += N; // double down and try again
   }
   return N;

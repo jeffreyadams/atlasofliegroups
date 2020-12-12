@@ -1200,7 +1200,7 @@ size_t TI_Entry::hashCode(size_t modulus) const
  */
 Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 {
-  RootNbrList simple_image(rd.semisimpleRank());
+  RootNbrList simple_image(rd.semisimple_rank());
 
   for (Generator i = 0; i<simple_image.size(); ++i)
     simple_image[i] = rd.root_index(d*rd.simpleRoot(i));
