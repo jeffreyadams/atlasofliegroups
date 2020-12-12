@@ -129,11 +129,11 @@ RatNumList barycentre_eq (const RootDatum& rd, const RootNbrSet& walls)
     comp.andnot(rd.posRootSet()); // focus on negative roots from here on
     unsigned n_neg = comp.size();
     assert(n_neg>0); // every |walls| component has at least one negative coroot
-    i=0;
-    for (auto it=comp.begin(); it(); ++it,++i)
+    for (auto it=comp.begin(); it(); ++it)
     {
+      const unsigned i = walls.position(*it);
       assert(k(i,0)>0);
-      result[walls.position(*it)] = RatNum(1,n_neg*k(i,0));
+      result[i] = RatNum(1,n_neg*k(i,0));
     }
   }
   return result;
