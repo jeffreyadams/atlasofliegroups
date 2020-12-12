@@ -5181,7 +5181,7 @@ void walls_wrapper(expression_base::level l)
   shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
-  RootNbrSet walls = repr::wall_set(rd->val,gamma->val);
+  RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(walls.size());
   for (auto it=walls.begin(); it(); ++it)

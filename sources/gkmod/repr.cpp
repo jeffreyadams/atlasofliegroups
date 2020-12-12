@@ -1980,7 +1980,8 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     {
       ++loop_count;
       const auto prev=term.first;
-      long long int N = simplify(*this,term.first);
+      term.first=alcove_center(*this,term.first);
+      long long int N = term.first.gamma().denominator();
       if (N>max_N)
       {
 	print_stdrep(std::cout << "From ", prev,*this);
