@@ -1985,7 +1985,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
       {
 	print_stdrep(std::cout << "From ", prev,*this);
 	print_stdrep(std::cout << " to ", term.first,*this)
-	  << " avances N to " << N << ".\n";
+	  << " advances N to " << N << ".\n";
 	max_N = N;
       }
       for (const auto& final : finals_for(term.first))
