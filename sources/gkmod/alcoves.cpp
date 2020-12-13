@@ -151,11 +151,12 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
   const auto& rd = rc.root_datum();
   unsigned rank = rd.rank();
   const auto& gamma = sr.gamma();
+  const auto inv_nr = rc.kgb().involution(sr.x());
   RootNbrSet integrals;
   RootNbrSet walls = wall_set(rd,gamma,integrals);
   RatNumList fracs = barycentre_eq(rd,walls,integrals);
 
-  int_Matrix theta_plus_1 = rc.inner_class().matrix(rc.kgb().involution(sr.x()))+1;
+  int_Matrix theta_plus_1 = rc.inner_class().matrix(inv_nr)+1;
 
   using Vec = matrix::Vector<integer>;
   using Mat = matrix::PID_Matrix<integer>;
