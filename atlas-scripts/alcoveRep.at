@@ -120,10 +120,10 @@ set is_integral(RootDatum rd, ratvec Ngamma) = bool:
   rd.semisimple_rank = integrality_datum(rd,Ngamma).semisimple_rank
 
 set fix(Param p) = Param:
-( let N=1, rd=p.root_datum, gamma=p.infinitesimal_character in
+( let N=1, rd=p.root_datum in
   while let q=p in
-    while (q:=improve(p,N))!=p do p:=q od
-  ; not is_integral(rd,N*gamma)
+    while (q:=(p,N).improve)!=p do p:=q od
+  ; not is_integral(rd,N*p.infinitesimal_character)
   do N+:=N
   od
 ; p
