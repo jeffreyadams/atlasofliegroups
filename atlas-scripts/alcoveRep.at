@@ -122,7 +122,8 @@ set is_integral(RootDatum rd, ratvec Ngamma) = bool:
 set fix(Param p) = Param:
 ( let N=1, rd=p.root_datum in
   while let q=p in
-    while (q:=improve(p,N))!=p do p:=q od
+    while print(p.infinitesimal_character); (q:=improve(p,N))!=p do p:=q od
+  ; print(integrality_datum(rd,N*p.infinitesimal_character).semisimple_rank,N)
   ; not is_integral(rd,N*p.infinitesimal_character)
   do N+:=N
   od
