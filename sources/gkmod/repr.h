@@ -283,8 +283,8 @@ class Rep_context
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   // deforming the $\nu$ component
-  StandardRepr& scale(StandardRepr& sr, const RatNum& f) const;
-  StandardRepr& scale_0(StandardRepr& sr) const;
+  StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
+  StandardRepr scale_0(StandardRepr sr) const; // |sr| by value
 
   RatNumList reducibility_points(const StandardRepr& z) const; // normalised
 
