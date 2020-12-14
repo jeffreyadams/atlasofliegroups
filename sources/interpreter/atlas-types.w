@@ -4614,7 +4614,7 @@ void scale_parameter_wrapper(expression_base::level l)
 { shared_rat f = get<rat_value>();
   own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale(p->val,f->rat_val());
+@/{@; p->val = p->rc().scale(p->val,f->rat_val());
     push_value(std::move(p));
   }
 }
@@ -4622,7 +4622,7 @@ void scale_parameter_wrapper(expression_base::level l)
 void scale_0_parameter_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale_0(p->val);
+@/{@; p->val = p->rc().scale_0(p->val);
     push_value(std::move(p));
   }
 }

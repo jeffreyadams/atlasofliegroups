@@ -728,7 +728,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   return z0==z1;
 } // |Rep_context::equivalent|
 
-StandardRepr& Rep_context::scale(StandardRepr& z, const RatNum& f) const
+StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
 { // we can just replace the |infinitesimal_char|, nothing else changes
   auto image = theta(z)*z.gamma();
   auto diff = z.gamma()-image; // this equals $2\nu(z)$
@@ -738,7 +738,7 @@ StandardRepr& Rep_context::scale(StandardRepr& z, const RatNum& f) const
   return z;
 }
 
-StandardRepr& Rep_context::scale_0(StandardRepr& z) const
+StandardRepr Rep_context::scale_0(StandardRepr z) const
 { z.infinitesimal_char = gamma_0(z); return z; }
 
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
@@ -1933,28 +1933,30 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const K_type_poly& Rep_table::deformation(const StandardRepr& z)
+const K_type_poly& Rep_table::deformation(const StandardRepr& z_org)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
-  assert(is_final(z));
-  RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
-  StandardRepr z_near = z;
-  if (not rp.empty() and rp.back()!=RatNum(1,1))
-  { // then shrink wrap toward $\nu=0$
-    scale(z_near,rp.back()); // snap to nearest reducibility point
-    deform_readjust(z_near); // so that we may find a stored equivalent parameter
-    assert(is_final(z_near));
+  assert(is_final(z_org));
+  StandardRepr z = alcove_center(*this,z_org);
+  long long int N = z.gamma().denominator();
+  if (N>max_N)
+  {
+    print_stdrep(std::cout << "From ", z_org,*this);
+    print_stdrep(std::cout << " to ", z,*this)
+      << " advances N to " << N << ".\n";
+    max_N = N;
   }
+  RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
 
-  deformation_unit zn(*this,std::move(z_near));
+  deformation_unit zn(*this,z);
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();
   }
 
-  StandardRepr z0 = z; scale_0(z0);
+  StandardRepr z0 = scale_0(z);
   K_type_poly result {std::less<K_type_nr>()};
   for (const auto& sr : finals_for(z0))
   {
@@ -1965,7 +1967,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
   size_t total = result.size();
   for (unsigned i=rp.size(); i-->0; )
   {
-    auto zi = z; scale(zi,rp[i]);
+    auto zi = scale(z,rp[i]);
     deform_readjust(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
@@ -1979,24 +1981,11 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     for (auto& term : dt)
     {
       ++loop_count;
-      const auto prev=term.first;
-      term.first=alcove_center(*this,term.first);
-      long long int N = term.first.gamma().denominator();
-      if (N>max_N)
-      {
-	print_stdrep(std::cout << "From ", prev,*this);
-	print_stdrep(std::cout << " to ", term.first,*this)
-	  << " advances N to " << N << ".\n";
-	max_N = N;
-      }
-      for (const auto& final : finals_for(term.first))
-      {
-	const auto& def = deformation(final); // recursion
-	dt_size += def.size();
-	total += def.size();
- 	result.add_multiple
-	  (def,Split_integer(term.second,-term.second)); // $(1-s)*c$
-      }
+      const auto& def = deformation(term.first); // recursion
+      dt_size += def.size();
+      total += def.size();
+      result.add_multiple
+	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
     }
 
     def_terms_count += loop_count;
