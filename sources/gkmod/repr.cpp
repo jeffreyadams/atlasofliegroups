@@ -1869,21 +1869,15 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const K_type_poly& Rep_table::deformation(const StandardRepr& z)
+const K_type_poly& Rep_table::deformation(const StandardRepr& z_org)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
-  assert(is_final(z));
+  assert(is_final(z_org));
+  StandardRepr z = alcove_center(*this,z_org);
   RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
-  StandardRepr z_near = z;
-  if (not rp.empty() and rp.back()!=RatNum(1,1))
-  { // then shrink wrap toward $\nu=0$
-    scale(z_near,rp.back()); // snap to nearest reducibility point
-    deform_readjust(z_near); // so that we may find a stored equivalent parameter
-    assert(is_final(z_near));
-  }
 
-  deformation_unit zn(*this,std::move(z_near));
+  deformation_unit zn(*this,z);
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
@@ -1911,13 +1905,9 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto& term : dt)
     {
-      term.first=alcove_center(*this,term.first);
-      for (const auto& final : finals_for(term.first))
-      {
-	const auto& def = deformation(final); // recursion
-	result.add_multiple
-	  (def,Split_integer(term.second,-term.second)); // $(1-s)*c$
-      }
+      const auto& def = deformation(term.first); // recursion
+      result.add_multiple
+	(def,Split_integer(term.second,-term.second)); // $(1-s)*c$
     }
   }
 
