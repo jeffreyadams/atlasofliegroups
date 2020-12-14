@@ -698,7 +698,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   return z0==z1;
 } // |Rep_context::equivalent|
 
-StandardRepr& Rep_context::scale(StandardRepr& z, const RatNum& f) const
+StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
 { // we can just replace the |infinitesimal_char|, nothing else changes
   auto image = theta(z)*z.gamma();
   auto diff = z.gamma()-image; // this equals $2\nu(z)$
@@ -708,7 +708,7 @@ StandardRepr& Rep_context::scale(StandardRepr& z, const RatNum& f) const
   return z;
 }
 
-StandardRepr& Rep_context::scale_0(StandardRepr& z) const
+StandardRepr Rep_context::scale_0(StandardRepr z) const
 { z.infinitesimal_char = gamma_0(z); return z; }
 
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
@@ -1890,7 +1890,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
       return pool[h].def_formula();
   }
 
-  StandardRepr z0 = z; scale_0(z0);
+  StandardRepr z0 = scale_0(z);
   K_type_poly result {std::less<K_type_nr>()};
   for (const auto& sr : finals_for(z0))
   {
@@ -1900,7 +1900,7 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z)
 
   for (unsigned i=rp.size(); i-->0; )
   {
-    auto zi = z; scale(zi,rp[i]);
+    auto zi = scale(z,rp[i]);
     deform_readjust(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
