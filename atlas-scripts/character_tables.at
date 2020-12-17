@@ -161,7 +161,7 @@ index=find(ct.characters,v) then
 ()=prints("Step 9") then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"}
-in (
+then ct=(
   Lie_type(rd)    {lie_type}
   , W_order    {order (of W)}
   , #classes      {n_classes}
@@ -178,9 +178,9 @@ in (
   ,[int]:[]     {degrees}
   ,null(#classes,#classes)
   )
+in prints("Done intializing character table");ct
 
 set initialize_character_table(RootDatum rd)=CharacterTable:initialize_character_table(Lie_type(rd))
-
 
 {tensor product of two rows of character table}
 set tensor(CharacterTable t)=(int,int->[int]):(int i,int j):
@@ -420,6 +420,7 @@ error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
 
 {update degrees}
 set update_degrees(CharacterTable ct)=CharacterTable:
+prints("Updating degrees in character table");
 let ct=
  if #ct.sym_powers_reflection!=0 then ct else
  ct.update_sym_powers_reflection
@@ -431,6 +432,7 @@ for i:ct.n_classes do
      (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))
 od
 in ct.degrees:=degrees;
+prints("Done updating degrees");
 ct
 
 {mults is a vector of multiplicities of the irreducible characters,

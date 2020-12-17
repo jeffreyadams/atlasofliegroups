@@ -31,6 +31,8 @@ mat:[[1]])
 
 {including torus}
 set character_table_simple(RootDatum rd)=
+prints("Computing charactere table for simple root datum: ", rd.nice_format);
+let ct=
 let (letter,n)=simple_type(rd) in
 if letter="A" then
  let ct=character_table_A(n) in ct
@@ -58,6 +60,13 @@ elif letter="E" and n=8 then
  character_table_torus(rd)
 else error("case not covered")
 fi
+in
+prints("Done computing character table");ct
+
+
+
+
+
 
 set character_table(RootDatum rd)=
 if rd.is_abelian then character_table_torus(rd) else
