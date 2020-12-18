@@ -123,6 +123,10 @@ class RootSystem
 
   std::vector<root_info> ri; // information about individual positive roots
 
+  // the following two are relations on the full root set
+  std::vector<RootNbrSet> root_ladder_bot; // minima for root ladders for |alpha|
+  std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
+
 
   // internal access methods
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
@@ -219,6 +223,10 @@ public:
   RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
   { return is_posroot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
+  const RootNbrSet& min_roots_for(RootNbr alpha) const
+  { return root_ladder_bot[alpha]; }
+  const RootNbrSet& min_coroots_for(RootNbr alpha) const
+  { return coroot_ladder_bot[alpha]; }
 
   RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
   RootNbrList simpleRootList() const; // NOT for iteration over it
@@ -311,7 +319,8 @@ public:
 // manipulators
  private:
   void dualise();
-
+  RootNbr lookup_posroot(const Byte_vector& v) const;
+  RootNbr lookup_poscoroot(const Byte_vector& v) const;
 }; // |class RootSystem|
 
 /*

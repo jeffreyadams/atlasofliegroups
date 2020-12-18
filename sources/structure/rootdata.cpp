@@ -133,6 +133,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   , prefer_co(prefer_co)
   , Cmat(rk,rk) // filled below
   , ri()
+  , root_ladder_bot(), coroot_ladder_bot()
 {
   if (rk==0)
     return; // avoid problems in trivial case
@@ -213,7 +214,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
     roots_of_length[l].clear(); // no longer needed
   } // |for(l)|
 
-  RootNbr npos = ri.size(); // number of positive roots
+  const RootNbr npos = numPosRoots(); // number of positive roots, |ri| is filled
 
   // simple coroots in themselves are just standard basis, like simple roots
   for (RootNbr i=0; i<rk; ++i)
@@ -233,23 +234,49 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   if (prefer_co)
     dualise(); // this restores |Cmat|, and swaps roots and coroots
 
+  root_ladder_bot.resize(2*npos);
+  coroot_ladder_bot.resize(2*npos);
   // first fill in the simple root permutations
   for (unsigned int i=0; i<rk; ++i)
   {
     Permutation& perm = ri[i].root_perm; perm.resize(2*npos);
+    auto&   bots =   root_ladder_bot[simpleRootNbr(i)];
+    auto& cobots = coroot_ladder_bot[simpleRootNbr(i)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
     for (RootNbr alpha=0; alpha<npos; ++alpha)
       if (alpha==i) // simple root reflecting itself makes it negative
       {
-	perm[npos+alpha]=npos-1-alpha;
-	perm[npos-1-alpha]=npos+alpha;
+	perm[posRootNbr(alpha)] = negRootNbr(alpha);
+	perm[negRootNbr(alpha)] = posRootNbr(alpha);
+	// consider root itself as a singleton ladder
+	bots.insert(posRootNbr(alpha));
+	bots.insert(negRootNbr(alpha));
+	cobots.insert(posRootNbr(alpha));
+	cobots.insert(negRootNbr(alpha));
       }
       else // don't change positivity status
       {
-	RootNbr beta = link[alpha][i];
-	perm[npos+alpha] = npos+beta;
-	perm[npos-1-alpha]=npos-1-beta;
+	const RootNbr beta = link[alpha][i];
+	perm[posRootNbr(alpha)] = posRootNbr(beta);
+	perm[negRootNbr(alpha)] = negRootNbr(beta);
+
+	// mark bottom of root/coroot ladders got simple root/coroot |i|
+	Byte_vector coef_alpha = root(alpha);
+	if (coef_alpha[i]-- ==0 or lookup_posroot(coef_alpha)==npos)
+	{
+	  bots.insert(posRootNbr(alpha));
+	  bots.insert(negRootNbr(beta)); // as |posRootNbr(beta)| is ladder top
+	}
+	coef_alpha = coroot(alpha);
+	if (coef_alpha[i]-- ==0 or lookup_poscoroot(coef_alpha)==npos)
+	{
+	  cobots.insert(posRootNbr(alpha));
+	  cobots.insert(negRootNbr(beta));
+	}
       }
   }
+
 
   // extend permutations to all positive roots by conjugation from lower root
   for (RootNbr alpha=rk; alpha<npos; ++alpha)
@@ -263,7 +290,28 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
     // the next three statements are alias-free; conjugate |beta| by simple |i|
     alpha_perm = ri[i].root_perm; // copy initial permutation (sets the size)
     ri[beta].root_perm.renumber(alpha_perm); // multiply
-    ri[i].root_perm.renumber(alpha_perm); // complete conjugation
+    ri[i].root_perm.renumber(alpha_perm); // complete the conjugation
+
+    auto& bots =     root_ladder_bot[posRootNbr(alpha)];
+    auto& cobots = coroot_ladder_bot[posRootNbr(alpha)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
+    for (auto it=root_ladder_bot[posRootNbr(beta)].begin(); it(); ++it)
+      bots.insert(simple_reflected_root(i,*it));
+    for (auto it=coroot_ladder_bot[posRootNbr(beta)].begin(); it(); ++it)
+      cobots.insert(simple_reflected_root(i,*it));
+  }
+
+  for (RootNbr alpha=0; alpha<npos; ++alpha)
+  {
+    auto& bots =     root_ladder_bot[negRootNbr(alpha)];
+    auto& cobots = coroot_ladder_bot[negRootNbr(alpha)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
+    for (auto it=root_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
+      bots.insert(ri[alpha].root_perm[*it]);
+    for (auto it=coroot_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
+      cobots.insert(ri[alpha].root_perm[*it]);
   }
 
 } // end of basic constructor
@@ -597,6 +645,24 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
   // now roots in |result| all have weakly negative dot products
 
   return result.to_vector();
+}
+
+RootNbr RootSystem::lookup_posroot(const Byte_vector& v) const
+{
+  RootNbr i=0;
+  for (; i<numPosRoots(); ++i)
+    if (root(i)==v)
+      break;
+  return i;
+}
+
+RootNbr RootSystem::lookup_poscoroot(const Byte_vector& v) const
+{
+  RootNbr i=0;
+  for (; i<numPosRoots(); ++i)
+    if (coroot(i)==v)
+      break;
+  return i;
 }
 
 RootNbr RootSystem::lookup_root(const Byte_vector& v) const
