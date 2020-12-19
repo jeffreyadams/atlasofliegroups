@@ -1938,7 +1938,8 @@ const K_type_poly& Rep_table::deformation(const StandardRepr& z_org)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z_org));
-  StandardRepr z = alcove_center(*this,z_org);
+  StandardRepr z = z_org.gamma().denominator() > (1LL<<rank())
+    ? alcove_center(*this,z_org) : z_org;
   long long int N = z.gamma().denominator();
   if (N>max_N)
   {

@@ -69,15 +69,15 @@ level_list::const_iterator get_minima(level_list& L)
 
 // splice from |L| elements whose coroot is sum of coroot |i| and another coroot
 // return list of the elements removed
-level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
+level_list filter_up(const RootDatum& rd,RootNbr alpha,level_list& L)
 {
-  RootNbr minus_i = rd.rootMinus(i);
+  const RootNbrSet& bottoms = rd.min_coroots_for(alpha);
   level_list out;
   for (auto it=L.cbegin(); not L.at_end(it); ) // no increment here
-    if (rd.sum_is_coroot(minus_i,it->first))
-      out.splice(out.end(),L,it);
+    if (bottoms.isMember(it->first))
+      ++it; // keep
     else
-      ++it;
+      out.splice(out.end(),L,it);
   return out;
 }
 
@@ -227,10 +227,12 @@ bool make_multiple_integral
   for (RootNbr i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
-  RootNbrList integrally_simples=rd.pos_simples(int_poscoroots);
+  sl_list<RootNbr> integrally_simples=rd.pos_simples(int_poscoroots);
   int_Matrix A(integrally_simples.size()+rd.rank(),rd.rank());
-  for (unsigned int i=0; i<integrally_simples.size(); ++i)
-    A.set_row(i,rd.coroot(integrally_simples[i]));
+  { unsigned i=0;
+    for (auto alpha : integrally_simples)
+      A.set_row(i++,rd.coroot(alpha));
+  }
   {
     int_Matrix theta_plus_1 = rc.inner_class().matrix(kgb.involution(sr.x()))+1;
     for (unsigned int i=0; i<theta_plus_1.numRows(); ++i)
