@@ -701,25 +701,6 @@ RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
   return numRoots(); // vector not found
 }
 
-bool RootSystem::sum_is_root(RootNbr i, RootNbr j, RootNbr& k) const
-{
-  Byte_vector alpha =
-    is_posroot(i) ? root(posroot_index(i)) : -root(negroot_index(i));
-  Byte_vector beta =
-    is_posroot(j) ? root(posroot_index(j)) : -root(negroot_index(j));
-  k = lookup_root(alpha+beta);
-  return k != numRoots();
-}
-
-bool RootSystem::sum_is_coroot(RootNbr i, RootNbr j, RootNbr& k) const
-{
-  Byte_vector alpha =
-    is_posroot(i) ? coroot(posroot_index(i)) : -coroot(negroot_index(i));
-  Byte_vector beta =
-    is_posroot(j) ? coroot(posroot_index(j)) : -coroot(negroot_index(j));
-  k = lookup_coroot(alpha+beta);
-  return k != numRoots();
-}
 
 /*
   Make the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
@@ -734,13 +715,20 @@ bool RootSystem::sum_is_coroot(RootNbr i, RootNbr j, RootNbr& k) const
 RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 {
   RootNbrSet result = rset;
-  RootNbr gamma;
   for (RootNbrSet::iterator it=result.begin(); it(); ++it)
     for (RootNbrSet::iterator jt=result.begin(); jt!=it; ++jt)
-      if (sum_is_root(*it,*jt,gamma))
+      if (sum_is_root(*it,*jt))
       { // replace *it and *jt by sum and difference (short->long in B2 system)
+	Byte_vector sum =
+	  ( is_posroot(*it) ?  root(posroot_index(*it))
+	                    : -root(negroot_index(*it)) )
+	  +
+	  ( is_posroot(*it) ?  root(posroot_index(*jt))
+	                    : -root(negroot_index(*jt)) );
+	RootNbr gamma = lookup_root(sum);
+	assert(gamma != numRoots()); // |sum| wass supposed to be a root
 	result.insert(gamma);
-	result.insert(root_permutation(*jt)[gamma]);
+	result.insert(root_permutation(*jt)[gamma]); // invert sign second root
 	result.remove(*it); result.remove(*jt);
 	break; // move to next |*it|; without this inner loop won't terminate!
       }

@@ -307,13 +307,10 @@ public:
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
   sl_list<RootNbr> pos_simples(RootNbrSet posroots) const; // posroots only here!
 
-  bool sum_is_root(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sum_is_root(RootNbr alpha, RootNbr beta) const
-  { RootNbr dummy; return sum_is_root(alpha,beta,dummy); }
-
-  bool sum_is_coroot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
+  { return not min_roots_for(rootMinus(alpha)).isMember(beta); }
   bool sum_is_coroot(RootNbr alpha, RootNbr beta) const
-  { RootNbr dummy; return sum_is_coroot(alpha,beta,dummy); }
+  { return not min_coroots_for(rootMinus(alpha)).isMember(beta); }
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
