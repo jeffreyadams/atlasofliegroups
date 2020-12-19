@@ -259,9 +259,9 @@ global_KGB::global_KGB(InnerClass& G_C, const GlobalTitsElement& x)
     for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
     {
       add_element(); // create in base
-      for (size_t k=0; k<gen_root.size(); ++k)
+      for (auto alpha : gen_root)
 	elt_hash.match(i_tab.x_pack
-	  (Tg.cross(rd.reflectionWord(gen_root[k]),elt_hash[i].repr())));
+	  (Tg.cross(rd.reflectionWord(alpha),elt_hash[i].repr())));
     }
 
     first_of_tau.push_back(elt_hash.size()); // end of fundamental fiber

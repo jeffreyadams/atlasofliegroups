@@ -283,6 +283,9 @@ public:
   const Permutation& root_permutation(RootNbr alpha) const
   { return ri[rt_abs(alpha)].root_perm; }
 
+  RootNbr reflected_root(RootNbr alpha,RootNbr beta) const
+  { return root_permutation(alpha)[beta]; }
+
   bool is_orthogonal(RootNbr alpha, RootNbr beta) const
   { return root_permutation(alpha)[beta]==beta; }
 
@@ -302,7 +305,7 @@ public:
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
-  RootNbrList pos_simples(RootNbrSet posroots) const; // posroots only here!
+  sl_list<RootNbr> pos_simples(RootNbrSet posroots) const; // posroots only here!
 
   bool sum_is_root(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sum_is_root(RootNbr alpha, RootNbr beta) const

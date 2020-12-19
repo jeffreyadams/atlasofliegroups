@@ -619,9 +619,9 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 }
 
 // the same, but indexing positive roots from 0, and using |sl_list|
-RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
+sl_list<RootNbr> RootSystem::pos_simples(RootNbrSet posroots) const
 {
-  containers::sl_list<RootNbr> result; // these are full root numbers
+  sl_list<RootNbr> result; // these are full root numbers
 
   for (RootNbrSet::iterator it=posroots.begin(); it(); ++it)
   {
@@ -644,7 +644,7 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
   } // |for (alpha)|
   // now roots in |result| all have weakly negative dot products
 
-  return result.to_vector();
+  return result;
 }
 
 RootNbr RootSystem::lookup_posroot(const Byte_vector& v) const

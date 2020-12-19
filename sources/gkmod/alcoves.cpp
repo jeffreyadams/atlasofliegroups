@@ -227,10 +227,12 @@ bool make_multiple_integral
   for (RootNbr i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
-  RootNbrList integrally_simples=rd.pos_simples(int_poscoroots);
+  sl_list<RootNbr> integrally_simples=rd.pos_simples(int_poscoroots);
   int_Matrix A(integrally_simples.size()+rd.rank(),rd.rank());
-  for (unsigned int i=0; i<integrally_simples.size(); ++i)
-    A.set_row(i,rd.coroot(integrally_simples[i]));
+  { unsigned i=0;
+    for (auto alpha : integrally_simples)
+      A.set_row(i++,rd.coroot(alpha));
+  }
   {
     int_Matrix theta_plus_1 = rc.inner_class().matrix(kgb.involution(sr.x()))+1;
     for (unsigned int i=0; i<theta_plus_1.numRows(); ++i)
