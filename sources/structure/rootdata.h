@@ -107,11 +107,13 @@ class RootSystem
   struct root_info
   {
     Byte_vector root, coroot; // root in root basis, coroot in coroot basis
+    Permutation root_perm;
     RankFlags descents,ascents; // for reflections by simple roots
 
     root_info(const Byte_vector& v)
-    : root(v), coroot(), descents(), ascents() {}
+    : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
+
   struct root_compare; // auxilary type defined here for access reasons
 
   const unsigned char rk; // rank of root system
@@ -121,8 +123,10 @@ class RootSystem
 
   std::vector<root_info> ri; // information about individual positive roots
 
-// Root permutations induced by reflections in all positive roots.
-  std::vector<Permutation> root_perm;
+  // the following two are relations on the full root set
+  std::vector<RootNbrSet> root_ladder_bot; // minima for root ladders for |alpha|
+  std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
+
 
   // internal access methods
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
@@ -219,6 +223,10 @@ public:
   RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
   { return is_posroot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
+  const RootNbrSet& min_roots_for(RootNbr alpha) const
+  { return root_ladder_bot[alpha]; }
+  const RootNbrSet& min_coroots_for(RootNbr alpha) const
+  { return coroot_ladder_bot[alpha]; }
 
   RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
   RootNbrList simpleRootList() const; // NOT for iteration over it
@@ -229,7 +237,7 @@ public:
   // The next method requires a positive root index |i|. It is however used
   // mostly with simple roots, whence the name. See |root_permutation| below.
   const Permutation& simple_root_permutation(weyl::Generator i) const
-  { return root_perm[i]; }
+  { return ri[i].root_perm; }
 
   RankFlags descent_set(RootNbr alpha) const
   {
@@ -246,10 +254,10 @@ public:
   { return descent_set(alpha).firstBit(); }
 
   bool is_descent(weyl::Generator i, RootNbr alpha) const
-  { return root_perm[i][alpha]<alpha; } // easier than using |descent_set|
+  { return ri[i].root_perm[alpha]<alpha; } // or |ri[alpha].descent_set.test(i)|
 
   bool is_ascent(weyl::Generator i, RootNbr alpha) const
-  { return root_perm[i][alpha]>alpha; }
+  { return ri[i].root_perm[alpha]>alpha; } // or |ri[alpha].ascent_set.test(i)|
 
   RootNbr simple_reflected_root(weyl::Generator i,RootNbr r) const
   { return simple_root_permutation(i)[r]; }
@@ -273,7 +281,10 @@ public:
 
   // for arbitrary roots, reduce root number to positive root offset first
   const Permutation& root_permutation(RootNbr alpha) const
-  { return root_perm[rt_abs(alpha)]; }
+  { return ri[rt_abs(alpha)].root_perm; }
+
+  RootNbr reflected_root(RootNbr alpha,RootNbr beta) const
+  { return root_permutation(alpha)[beta]; }
 
   bool is_orthogonal(RootNbr alpha, RootNbr beta) const
   { return root_permutation(alpha)[beta]==beta; }
@@ -294,7 +305,7 @@ public:
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
-  RootNbrList pos_simples(RootNbrSet posroots) const; // posroots only here!
+  sl_list<RootNbr> pos_simples(RootNbrSet posroots) const; // posroots only here!
 
   bool sum_is_root(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
   bool sum_is_root(RootNbr alpha, RootNbr beta) const
@@ -311,7 +322,8 @@ public:
 // manipulators
  private:
   void dualise();
-
+  RootNbr lookup_posroot(const Byte_vector& v) const;
+  RootNbr lookup_poscoroot(const Byte_vector& v) const;
 }; // |class RootSystem|
 
 /*

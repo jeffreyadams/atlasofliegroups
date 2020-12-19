@@ -25,28 +25,29 @@ namespace atlas {
 
 namespace subsystem {
 
-SubSystem::SubSystem(const RootDatum& parent, const RootNbrList& sub_sys)
-  : RootSystem(parent.cartanMatrix(sub_sys).transposed(), // build
+SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
+  : RootSystem(parent.cartanMatrix(sub_sys.to_vector()).transposed(), // build
 	       not parent.prefer_coroots()) // flip, since coroots ar now roots
   , rd(parent) // share
-  , pos_map(numPosRoots(),-1)
+  , pos_map()
   , inv_map(rd.numRoots()+1,-1) // one spare entry for "unfound root in parent"
-  , sub_root(numPosRoots())
+  , sub_root(numPosRoots()) // initially empty vector of posroot information
 {
+  pos_map.reserve(numPosRoots()); // |pos_map| is indexed by \emph{our} posroots
+  for (RootNbr alpha : sub_sys)
+    pos_map.push_back(alpha);
+  for (unsigned int i=sub_sys.size(); i<numPosRoots(); ++i)
+  {
+    RootNbr sub_alpha = posRootNbr(i);
+    weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
+    simple_reflect_root(s,sub_alpha); // lower |sub_alpha| in our system
+    RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
+    pos_map.push_back(rd.reflected_root(pos_map[s],beta));
+  }
+
+  // now complete setting |inv_map| and |sub_root| arrays
   for (unsigned int i=0; i<numPosRoots(); ++i)
   {
-    // first set |pos_map[i]|
-    if (i<sub_sys.size()) // simple in subsystem, just use |sub_sys|
-      pos_map[i]=sub_sys[i];
-    else // use previously stored values in |pos_map|, |sub_root| recursively
-    {
-      RootNbr sub_alpha = posRootNbr(i);
-      weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
-      simple_reflect_root(s,sub_alpha);
-      RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
-      pos_map[i] = rd.permuted_root(sub_root[s].reflection,beta);
-    }
-
     RootNbr alpha = pos_map[i]; // now we use parent numbering
     inv_map[alpha] = posRootNbr(i); // refers to posroot |i| in subsystem
     inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
@@ -81,13 +82,13 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed!
   const Ratvec_Numer_t& v=gamma.numerator();
-  RootNbrSet int_roots(parent.numRoots());
+  RootNbrSet int_poscoroots(parent.numPosRoots());
   for (size_t i=0; i<parent.numPosRoots(); ++i)
     if (parent.posCoroot(i).dot(v)%n == 0)
-      int_roots.insert(parent.posRootNbr(i));
+      int_poscoroots.insert(i);
 
-  // it suffices that |simpleBasis| computed below live until end of constructor
-  return SubSystem(parent,parent.simpleBasis(int_roots));
+  // it suffices that |pos_simples| computed below live until end of constructor
+  return SubSystem(parent,parent.pos_simples(int_poscoroots));
 }
 
 RootNbr SubSystem::to_parent(RootNbr alpha) const
@@ -160,7 +161,7 @@ InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 { return InvolutionData(rd,theta,positive_roots()); }
 
 SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
-				       const RootNbrList& sub_sys)
+				       const sl_list<RootNbr>& sub_sys)
   : SubSystem(parent,sub_sys) // build
   , sub_W(RootSystem::cartanMatrix()) // use sub-side Cartan matrix built above
 {}
@@ -170,18 +171,18 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed!
   const Ratvec_Numer_t& v=gamma.numerator();
-  RootNbrSet int_coroots(parent.numRoots());
+  RootNbrSet int_poscoroots(parent.numPosRoots());
   for (size_t i=0; i<parent.numPosRoots(); ++i)
     if (parent.posCoroot(i).dot(v)%n == 0)
-      int_coroots.insert(parent.posRootNbr(i));
+      int_poscoroots.insert(i);
 
-  // it suffices that simpleBasis computed below live until end of constructor
-  return SubSystemWithGroup(parent,parent.simpleBasis(int_coroots));
+  // it suffices that |pos_simples| computed below live until end of constructor
+  return SubSystemWithGroup(parent,parent.pos_simples(int_poscoroots));
 }
 
 integral_datum_item::integral_datum_item
-    (InnerClass& ic,const RootNbrSet& int_posroots)
-  : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_posroots))
+    (InnerClass& ic,const RootNbrSet& int_poscoroots)
+  : integral(ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots))
   , simple_coroots(integral.rank(),ic.rank())
 {
   for (unsigned i=0; i<integral.rank(); ++i)
