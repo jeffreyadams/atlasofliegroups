@@ -69,15 +69,15 @@ level_list::const_iterator get_minima(level_list& L)
 
 // splice from |L| elements whose coroot is sum of coroot |i| and another coroot
 // return list of the elements removed
-level_list filter_up(const RootDatum& rd,RootNbr i,level_list& L)
+level_list filter_up(const RootDatum& rd,RootNbr alpha,level_list& L)
 {
-  RootNbr minus_i = rd.rootMinus(i);
+  const RootNbrSet& bottoms = rd.min_coroots_for(alpha);
   level_list out;
   for (auto it=L.cbegin(); not L.at_end(it); ) // no increment here
-    if (rd.sum_is_coroot(minus_i,it->first))
-      out.splice(out.end(),L,it);
+    if (bottoms.isMember(it->first))
+      ++it; // keep
     else
-      ++it;
+      out.splice(out.end(),L,it);
   return out;
 }
 
