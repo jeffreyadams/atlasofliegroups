@@ -1249,80 +1249,7 @@ void adjoint_datum_wrapper(expression_base::level l)
 
 @*2 Functions operating on root data.
 %
-The following functions allow us to look at individual simple roots and simple
-coroots stored in a root datum value. We adopt a convention that shifts root
-indices so that the simple (and positive) roots start at index~$0$, and such
-that negative roots have negative indices. This allows the same function to be
-used for producing simple, positive, or general roots. Since internally the
-full list of roots starts at index~$0$ with the most negative roots, we must
-apply a shift by the number of positive roots here.
-
-@< Local function definitions @>=
-void root_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
-  shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-    throw runtime_error("Illegal root index ") << root_index;
-  if (l!=expression_base::no_value)
-     push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
-}
-void coroot_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
-  shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-    throw runtime_error("Illegal coroot index ") << root_index;
-  if (l!=expression_base::no_value)
-     push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
-}
-
-@ We also allow access to the matrices of all simple or of all positive
-(co)roots. For all roots such access is rarely needed, and if so easily
-programmed, so we don't provide a built-in function for that.
-We exploit the by-columns |matrix_value| constructor, passing iterators to
-a |int_Matrix| constructor; no extra copying.
-
-@< Local function definitions @>=
-void simple_roots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<matrix_value> @|
-    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot(),rd->val.rank()));
-}
-@)
-void simple_coroots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<matrix_value> @|
-    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot(),rd->val.rank()));
-}
-@)
-void positive_roots_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<matrix_value> @|
-    (rd->val.beginPosRoot(),rd->val.endPosRoot(),rd->val.rank()));
-}
-@)
-void positive_coroots_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<matrix_value> @|
-    (rd->val.beginPosCoroot(),rd->val.endPosCoroot(),rd->val.rank()));
-}
-
-@ Here are some important attributes of root data,
+We start with attributes of root data as a whole.
 
 @< Local function definitions @>=
 void root_datum_eq_wrapper (expression_base::level l)
@@ -1377,6 +1304,36 @@ void two_rho_check_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
 }
 
+@ The following functions allow us to look at individual simple roots and simple
+coroots stored in a root datum value. We adopt a convention that shifts root
+indices so that the simple (and positive) roots start at index~$0$, and such
+that negative roots have negative indices. This allows the same function to be
+used for producing simple, positive, or general roots. Since internally the
+full list of roots starts at index~$0$ with the most negative roots, we must
+apply a shift by the number of positive roots here.
+
+@< Local function definitions @>=
+void root_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw runtime_error("Illegal root index ") << root_index;
+  if (l!=expression_base::no_value)
+     push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
+}
+void coroot_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw runtime_error("Illegal coroot index ") << root_index;
+  if (l!=expression_base::no_value)
+     push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
+}
+
 @ Also important are look-up functions for roots and coroots.
 
 @< Local function definitions @>=
@@ -1402,6 +1359,122 @@ void coroot_index_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(index));
 }
 
+
+@ An information about roots and coroots that is precomputed in root data and
+can be useful for the user tells for each root or coroot $\alpha$ which are the
+other roots respectively coroots $\beta$ that are at bottom of a latter
+for~$\alpha$, in other words such that $\beta-\alpha$ is not a root. The
+following functions extract that information in the form of a |BitMap| (under
+the alias |RootNbrSet|), whose coded unsigned values are converted here to the
+signed indexing convention of root systems.
+
+@< Local function def...@>=
+void root_ladder_bottoms_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw runtime_error("Illegal root index ") << root_index;
+  if (l==expression_base::no_value)
+    return;
+
+  const RootNbrSet& bots = rd->val.min_roots_for(alpha);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(bots.size());
+  for (auto it=bots.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>
+      (static_cast<int>(*it-npr)));
+  push_value(std::move(result));
+}
+@)
+void coroot_ladder_bottoms_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+    throw runtime_error("Illegal coroot index ") << root_index;
+  if (l==expression_base::no_value)
+    return;
+
+  const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(bots.size());
+  for (auto it=bots.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>
+      (static_cast<int>(*it-npr)));
+  push_value(std::move(result));
+}
+
+@ We provide the fundamental weights and coweights, which are rational
+vectors in the span of the roots respectively coroots, such that their pairings
+with the simple coroots respectively simple roots are given by the
+Kronecker~$\delta$ (in other words, they form dual bases in within those spans).
+
+@< Local function definitions @>=
+void fundamental_weight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  if (unsigned(i)>=rd->val.semisimple_rank())
+    throw runtime_error("Invalid index ") << i;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value> @|
+      (rd->val.fundamental_weight(i)));
+}
+@)
+void fundamental_coweight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  if (unsigned(i)>=rd->val.semisimple_rank())
+    throw runtime_error("Invalid index ") << i;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value> @|
+      (rd->val.fundamental_coweight(i)));
+}
+
+@ We give access to the matrices of all simple or of all positive
+(co)roots; for \emph{all} roots we would need index-shifting, so we leave this
+to the user program to handle. Our implementation here exploits the by-columns
+|matrix_value| constructor, passing iterators to a |int_Matrix| constructor; no
+extra copying.
+
+@< Local function definitions @>=
+void simple_roots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value> @|
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot(),rd->val.rank()));
+}
+@)
+void simple_coroots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value> @|
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot(),rd->val.rank()));
+}
+@)
+void positive_roots_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value> @|
+    (rd->val.beginPosRoot(),rd->val.endPosRoot(),rd->val.rank()));
+}
+@)
+void positive_coroots_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value> @|
+    (rd->val.beginPosCoroot(),rd->val.endPosCoroot(),rd->val.rank()));
+}
 
 @ It is useful to have bases for the sum of the root lattice and the
 coradical, and for the sum of the coroot lattice and the radical; the latter
@@ -1430,30 +1503,6 @@ void coroot_radical_wrapper(expression_base::level l)
   scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
   push_value(std::make_shared<matrix_value> @|
     (scl.begin(),scl.end(),rd->val.rank()));
-}
-
-@ We give access to the fundamental weights and coweights on an individual
-basis, which is easier since they are rational vectors.
-
-@< Local function definitions @>=
-void fundamental_weight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
-  shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimple_rank())
-    throw runtime_error("Invalid index ") << i;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value> @|
-      (rd->val.fundamental_weight(i)));
-}
-@)
-void fundamental_coweight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
-  shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimple_rank())
-    throw runtime_error("Invalid index ") << i;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value> @|
-      (rd->val.fundamental_coweight(i)));
 }
 
 
@@ -1553,34 +1602,42 @@ install_function(simply_connected_datum_wrapper,@|"simply_connected"
                 ,"(LieType,bool->RootDatum)");
 install_function(adjoint_datum_wrapper,@| "adjoint"
                 ,"(LieType,bool->RootDatum)");
-install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
-install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
-install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
-install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
-install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
-install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+
 install_function(root_datum_eq_wrapper,@|"=","(RootDatum,RootDatum->bool)");
 install_function(root_datum_neq_wrapper,@|"!=","(RootDatum,RootDatum->bool)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
-install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
-install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
-install_function(fundamental_weight_wrapper,@|
-		 "fundamental_weight","(RootDatum,int->ratvec)");
-install_function(fundamental_coweight_wrapper,@|
-		 "fundamental_coweight","(RootDatum,int->ratvec)");
-install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
-install_function(derived_info_wrapper,@|
-		 "derived_info","(RootDatum->RootDatum,mat)");
-install_function(mod_central_torus_info_wrapper,@|
-		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper,@|
 		 "semisimple_rank","(RootDatum->int)");
 install_function(rd_nposroots_wrapper@|,"nr_of_posroots","(RootDatum->int)");
 install_function(two_rho_wrapper@|,"two_rho","(RootDatum->vec)");
 install_function(two_rho_check_wrapper@|,"two_rho_check","(RootDatum->vec)");
+
+install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
+install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
+install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
+                ,"(RootDatum,int->[int])");
+install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"
+                ,"(RootDatum,int->[int])");
+install_function(fundamental_weight_wrapper,@|
+		 "fundamental_weight","(RootDatum,int->ratvec)");
+install_function(fundamental_coweight_wrapper,@|
+		 "fundamental_coweight","(RootDatum,int->ratvec)");
+
+install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
+install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
+install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
+install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
+install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
+
+install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
+install_function(derived_info_wrapper,@|
+		 "derived_info","(RootDatum->RootDatum,mat)");
+install_function(mod_central_torus_info_wrapper,@|
+		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(integrality_datum_wrapper,@|
                  "integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper,@|
