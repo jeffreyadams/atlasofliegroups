@@ -16,6 +16,7 @@
 #include <cassert>
 
 #include "../Atlas.h"
+
 #include "bitset.h"	// containment
 #include "blocks.h"	// inlining of methods like |cross| and |cayley|
 

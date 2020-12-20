@@ -47,6 +47,8 @@ a large section with basic functions related to these types.
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;

@@ -248,7 +248,8 @@ RatWeight Rep_context::gamma_lambda
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   const RatWeight gamma_rho = gamma - rho(root_datum());
-  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))/2LL;
+  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))
+    /static_cast<arithmetic::Numer_t>(2);
 }
 
 // compute $\gamma-\lambda-\rho$ from same information
@@ -259,11 +260,12 @@ RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   const Weight& rho2 = root_datum().twoRho();
-  RatWeight result = sr.gamma()*2LL;
+  RatWeight result = sr.gamma()*static_cast<arithmetic::Numer_t>(2);
   (result -= theta*(result-rho2)) += rho2;
 
   // the next subtraction is |RatWeight::operator-(const Weight&) &&|:
-  return ( std::move(result) - i_tab.y_lift(i_x,sr.y())*2 )/4LL;
+  return ( std::move(result) - i_tab.y_lift(i_x,sr.y())*2 )
+    /static_cast<arithmetic::Numer_t>(4);
 }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const

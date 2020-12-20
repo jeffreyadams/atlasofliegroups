@@ -16,9 +16,9 @@
 #ifndef KLTEST_H  /* guard against multiple inclusions */
 #define KLTEST_H
 
-#include "permutations.h"
-
 #include "../Atlas.h"
+
+#include "permutations.h"
 
 namespace atlas {
 
