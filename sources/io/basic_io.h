@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "../Atlas.h"
+
 #include "repr.h"
 
 /******** function declarations *********************************************/

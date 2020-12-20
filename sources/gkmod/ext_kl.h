@@ -12,8 +12,9 @@
 
 #include <memory> // for |std::unique_ptr|
 
-#include "ext_block.h"
 #include "../Atlas.h"
+
+#include "ext_block.h"
 #include "polynomials.h"
 #include "kl.h"
 
