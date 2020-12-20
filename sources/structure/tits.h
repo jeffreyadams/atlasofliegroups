@@ -16,12 +16,11 @@
 #ifndef TITS_H  /* guard against multiple inclusions */
 #define TITS_H
 
+#include "../Atlas.h"
 
 #include "tags.h"
 #include "ratvec.h"   // |RatWeight| contained in |TorusElement|
 #include "arithmetic_fwd.h"
-
-#include "../Atlas.h"
 
 #include "bitvector.h" // contained in |TitsGroup|
 #include "prerootdata.h" // contained in |GlobalTitsGroup|

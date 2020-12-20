@@ -11,6 +11,8 @@
 #ifndef TESTRUN_H  /* guard against multiple inclusions */
 #define TESTRUN_H
 
+#include "../Atlas.h"
+
 #include "abelian.h"
 #include "lietype.h"
 #include "prerootdata.h"

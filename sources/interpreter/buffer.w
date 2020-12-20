@@ -55,6 +55,8 @@ control to the file active at the point they were opened.
 #ifndef BUFFER_H
 #define BUFFER_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in the header file @>@;
 
 
@@ -480,7 +482,6 @@ BufferedInput* main_input_buffer=nullptr;
 
 @< Includes needed in the header file @>=
 #include <string>
-#include "../Atlas.h" // for common |using| declarations
 #include "bitmap.h" // so that the type |BitMap| is complete
 #include "sl_list.h" // used for stack of input files
 

@@ -123,6 +123,7 @@ typedef ullong KLIndex;
 #ifndef FILEKL_IN_H
 #define FILEKL_IN_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
 
 @< Includes needed in the input header file @>@;
 namespace atlas {
@@ -141,7 +142,6 @@ more elaborate standard header \.{ios}.
 #include <ios>
 @)
 #include "bitset.h" // to make |RankFlags| a complete type; used when inlining
-#include "../Atlas.h"
 
 @ We need two testable out-of-range values |UndefBlock| and |no_good_ascent| to
 record special circumstances in places where |BlockElt| value is expected.

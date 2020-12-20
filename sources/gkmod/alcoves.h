@@ -31,7 +31,8 @@ bool make_multiple_integral
   (const Rep_context& rc, StandardRepr& sr, long long N);
 
 // repeat the above for increasing |N| until |sr*N| has full integral rank
-long long simplify(const Rep_context& rc, StandardRepr& sr); // returns |N|
+arithmetic::Numer_t  // returns |N|
+  simplify(const Rep_context& rc, StandardRepr& sr);
 
 } // |namespace repr|
 

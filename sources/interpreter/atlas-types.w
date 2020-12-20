@@ -53,6 +53,8 @@ this file.
 #ifndef ATLAS_TYPES_H
 #define ATLAS_TYPES_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
@@ -90,7 +92,6 @@ implementation, but we avoid including its header into out header file.
 @h "global.h"
 
 @< Includes needed in the header file @>=
-#include "../Atlas.h" // must be very first \.{atlas} include
 #include "axis-types.h"
 
 @*1 Lie types.

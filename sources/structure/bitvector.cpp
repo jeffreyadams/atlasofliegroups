@@ -1036,14 +1036,13 @@ template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
 template class BitVector<64ul>; // used in atlas function |subspace_normal|
 template
    void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
-template class BitMatrix<64ul>; // used in realex function |binary_invert|
 
 template
   BitVector<constants::RANK_MAX>::BitVector
     (const matrix::Vector<int>& weight);
 template
   BitVector<constants::RANK_MAX>::BitVector
-    (const matrix::Vector<long long int>& weight);
+    (const matrix::Vector<arithmetic::Numer_t>& weight);
 template
   BitVector<constants::RANK_MAX+1>::BitVector
     (const matrix::Vector<int>& weight);

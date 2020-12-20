@@ -12,12 +12,10 @@
 #ifndef ROOTDATA_H  /* guard against multiple inclusions */
 #define ROOTDATA_H
 
-#include "../Atlas.h"
-
 #include <algorithm>
 
-#include "arithmetic_fwd.h"
 #include "../Atlas.h"
+
 #include "tags.h"
 
 #include "bitset.h" // for ascent and descent sets

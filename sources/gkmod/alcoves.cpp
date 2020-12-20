@@ -213,7 +213,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
-  (const Rep_context& rc, StandardRepr& sr, long long N)
+  (const Rep_context& rc, StandardRepr& sr, arithmetic::Numer_t N)
 {
   const auto& rd = rc.root_datum();
   const auto& kgb = rc.kgb();
@@ -329,8 +329,8 @@ unsigned scaled_integrality_rank
   return rd.pos_simples(integrals).size();
 }
 
-long long simplify(const Rep_context& rc, StandardRepr& sr)
-{ long long N=1;
+arithmetic::Numer_t simplify(const Rep_context& rc, StandardRepr& sr)
+{ arithmetic::Numer_t N=1;
   const auto& rd = rc.root_datum();
   const auto init_sr = sr;
   while(true) // a middle-exit loop, hard to formulate differently
