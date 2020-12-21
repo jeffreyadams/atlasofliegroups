@@ -1842,8 +1842,8 @@ struct int_value : public value_base
 { arithmetic::big_int val;
 @)
   explicit int_value(int v) : val(v) @+ {}
-  explicit int_value(arithmetic::Numer_t v)
-  : val(big_int::from_signed(v)) @+ {}
+//  explicit int_value(arithmetic::Numer_t v)
+//  : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned int v)
     : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(unsigned long v)

@@ -763,45 +763,45 @@ template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
 template void swap(Matrix_base<int>&,Matrix_base<int>&);
 template void row_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
 template void column_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
-template void column_apply(Matrix<Num>&,const Matrix<Num>&,unsigned int);
+  // template void column_apply(Matrix<Num>&,const Matrix<Num>&,unsigned int);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
-template class Vector<Num>;           // numerators of rational vectors
+  // template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
-template class Matrix_base<Num>;
+  // template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
-template class Matrix<Num>;
+  // template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
-template class PID_Matrix<Num>; // for precision system solving (alcoves)
+  // template class PID_Matrix<Num>; // for precision system solving (alcoves)
 
 // template member instances
 template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
-template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
-template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
+  // template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
+  // template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
 template signed char
   Vector<signed char>::dot(const Vector<signed char>&) const;
 template int Vector<int>::dot(Vector<int> const&) const;
-template Num Vector<int>::dot(Vector<Num> const&) const;
-template int Vector<Num>::dot(Vector<int> const&) const;
+  // template Num Vector<int>::dot(Vector<Num> const&) const;
+  // template int Vector<Num>::dot(Vector<int> const&) const;
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);
 template Vector<int>& operator%=(Vector<int>&,int);
-template Vector<Num>& operator/=(Vector<Num>&,Num);
+  // template Vector<Num>& operator/=(Vector<Num>&,Num);
 template Vector<Num> Vector<int>::scaled(Num c) const;
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
-template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
-template Vector<Num> Matrix<Num>::operator*(Vector<Num> const&) const;
+  // template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
+  // template Vector<Num> Matrix<Num>::operator*(Vector<Num> const&) const;
 template Vector<int> Matrix<int>::right_prod(const Vector<int>&) const;
-template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
+  // template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,
@@ -827,11 +827,11 @@ template Matrix_base<int>::Matrix_base
    unsigned int,
    tags::IteratorTag);
 
-template Matrix_base<Num>::Matrix_base
-  (containers::sl_list<matrix::Vector<Num> >::iterator,
-   containers::sl_list<matrix::Vector<Num> >::iterator,
-   unsigned int,
-   tags::IteratorTag);
+  // template Matrix_base<Num>::Matrix_base
+  //   (containers::sl_list<matrix::Vector<Num> >::iterator,
+  //    containers::sl_list<matrix::Vector<Num> >::iterator,
+  //    unsigned int,
+  //    tags::IteratorTag);
 
 template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
 

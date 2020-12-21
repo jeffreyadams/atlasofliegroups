@@ -1040,9 +1040,9 @@ template
 template
   BitVector<constants::RANK_MAX>::BitVector
     (const matrix::Vector<int>& weight);
-template
-  BitVector<constants::RANK_MAX>::BitVector
-    (const matrix::Vector<arithmetic::Numer_t>& weight);
+  // template
+  //  BitVector<constants::RANK_MAX>::BitVector
+  //    (const matrix::Vector<arithmetic::Numer_t>& weight);
 template
   BitVector<constants::RANK_MAX+1>::BitVector
     (const matrix::Vector<int>& weight);

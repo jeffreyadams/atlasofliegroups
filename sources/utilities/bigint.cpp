@@ -39,8 +39,8 @@ big_int big_int::from_unsigned (Denom_t n)
 }
 
 template<> int big_int::convert<int> () const { return int_val(); }
-template<> arithmetic::Numer_t big_int::convert<arithmetic::Numer_t> () const
- { return long_val(); }
+// template<> arithmetic::Numer_t big_int::convert<arithmetic::Numer_t> () const
+//  { return long_val(); }
 
 
 /*

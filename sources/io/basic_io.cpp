@@ -316,8 +316,8 @@ template std::ostream& bitvector::operator<<
 
 namespace matrix {
 template std::ostream& operator<< (std::ostream& strm, const Vector<int>& v);
-template std::ostream& operator<<
-  (std::ostream& strm, const Vector<arithmetic::Numer_t>& v);
+  // template std::ostream& operator<<
+  //  (std::ostream& strm, const Vector<arithmetic::Numer_t>& v);
 
 } // |namespace matrix|
 

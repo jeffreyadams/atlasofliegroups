@@ -64,7 +64,7 @@ public:
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
 
   big_int& operator*= (int x);
-  big_int& operator*= (Numer_t n) { return (*this)*=from_signed(n); }
+  //  big_int& operator*= (Numer_t n) { return (*this)*=from_signed(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }

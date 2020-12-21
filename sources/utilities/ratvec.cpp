@@ -239,8 +239,8 @@ template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<int>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t>::RationalVector
   (const matrix::Vector<int>&, const arithmetic::Rational<arithmetic::Numer_t>&);
-template RationalVector<arithmetic::Numer_t>::RationalVector
-  (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
+  // template RationalVector<arithmetic::Numer_t>::RationalVector
+  //  (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t> operator*
   (const matrix::Matrix<int>& M, const RationalVector<arithmetic::Numer_t>& v);
 template RationalVector<arithmetic::Numer_t> operator*
