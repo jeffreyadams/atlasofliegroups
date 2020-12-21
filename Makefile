@@ -83,8 +83,8 @@ dependencies := $(Fokko_objects:%.o=%.d)
 # optimizing (oflags)
 # development with debugging (gflags)
 # profiling (pflags), which implies optimization and excludes readline
-nflags := -Wall -DNDEBUG
-oflags := -Wall -O3 -DNDEBUG
+nflags := -Wall -O3 -flto -DNDEBUG
+oflags := -Wall -O3 -flto -DNDEBUG
 gflags := -Wall -ggdb
 pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
 goflags := -Wall -ggdb -O3
@@ -166,14 +166,16 @@ all: atlas
 # string it prints will be that of the last recompilation.
 sources/interface/emptymode.o: $(Fokko_sources)
 
+# For profiling not only 'CXXFLAGS' used in compiling is modified, but linking
+# also is different
 # Linking the Fokko program is disabled, as repr.cpp depends on the interrupt
 # checking function of the interpreter, but Fokko is built without
 Fokko: $(Fokko_objects)
-#ifeq ($(profile),true)
+# ifeq ($(profile),true)
 #	$(CXX) -pg -o Fokko $(Fokko_objects) $(LDFLAGS)
-#else
-#	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
-#endif
+# else
+#	$(CXX) -o FokkoLTO $(Fokko_objects) -O3 -flto $(LDFLAGS)
+# endif
 
 # Rules with two colons are static pattern rules: they are like implicit
 # rules, but only apply to the files listed before the first colon

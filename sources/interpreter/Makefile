@@ -225,7 +225,7 @@ $(Atlas_root)/atlas: $(objects)
 ifeq ($(profile),true)
 	$(CXX) -pg -o $@ $^ $(LDFLAGS)
 else
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@LTO $^ -O3 -flto $(LDFLAGS)
 endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
