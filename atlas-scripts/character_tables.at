@@ -2,6 +2,8 @@
 <nilpotent_orbits.at
 <isomorphism.at
 
+set ct_verbose=true
+
 {define sum and product of [int] corresponding to direct
 sum and tensor product of characters}
 set sum([int] v,[int] w)=
@@ -117,6 +119,9 @@ set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace
 set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
 set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
 
+{table [[int]] of size (n_classes x #posroots_1)
+table[i]=character of sym^i(reflection)
+}
 set sym_powers_reflection([WeylElt] list)=[[int]]:
 let rd=list[0].root_datum then
 wct=W_class_table(rd) then
@@ -236,7 +241,12 @@ for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 set inverse((int->int) f, int n)=(int j):
 permutation_inverse(for i:n do f(i) od)[j]
 
+
 set permute_classes(CharacterTable ct,(int->int) f)=CharacterTable:
+{don't waste time if f is the identity}
+let ()=prints("check:", for i:ct.n_classes do f(i) od) in
+if all(for i:ct.n_classes do f(i)=i od) then ct
+else
 let
 centralizer_orders=for i:ct.n_classes do ct.centralizer_orders[f(i)] od then
 class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
@@ -254,11 +264,18 @@ ct.classical_reps,
 ct.irreducible_label,
 if =#ct.sym_powers_reflection then [] else
 {recompute sym_powers_reflection}
- sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od) fi,
+{ sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od)}
+for v in ct.sym_powers_reflection do
+ for i:ct.n_classes do
+  v[f(i)]
+ od
+od
+fi,
 if =#ct.degrees then [] else
  for i:ct.n_classes do ct.degrees[f(i)] od fi,
 for col@i in ct.table do ct.table[f(i)] od
 )
+fi
 
 {permute classes, including permuting the table itself}
 set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:

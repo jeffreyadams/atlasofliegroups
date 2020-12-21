@@ -65,7 +65,7 @@ set show_nilpotent_orbits_short([ComplexNilpotent] orbits)=void:
 tabulate(
 ["i","H","diagram","dim","BC Levi"]#
 for  orbit@i in orbits do
-let d=orbit.component_datum in
+{let d=orbit.component_datum in}
 [i.to_string,
 ([int]:orbit.H).to_string,
 orbit.diagram.to_string,
@@ -464,7 +464,7 @@ prints("*: special");
 tabulate(
 ["i","H","diagram","dim","BC Levi"]#
 for orbit@i in st.orbits do
-let d=orbit.component_datum in
+{let d=orbit.component_datum in}
 [i.to_string,
 ([int]:orbit.H).to_string,
 orbit.diagram.to_string + st.special_star(orbit),
