@@ -299,13 +299,17 @@ prefers_coroots: (RootDatum->bool): whether coroots were used for generation
 Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
   This pairs roots and coroots, so it is square, of size the semisimple rank.
   By force of convention, rows correspond to roots and columns to coroots.
+rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
+semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
+nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
+two_rho: (RootDatum->vec): The sum of all positive roots in the root datum.
+two_rho_check: (RootDatum->vec): The sum of all positive coroots in root datum.
 
 simply_connected: (LieType,bool->RootDatum): "simply connected" datum for type.
   This gives the root datum for the "simply connected" group of the given type
   (the direct product of a simply connected G' with a central torus): one has
     simply_connected_datum(type,b) = root_datum(type,id_mat(rank),b)
   The final argument has the 'refers_coroots' meaning, as in root_datum versions
-
 adjoint: (LieType,bool->RootDatum): "adjoint" root datum for given type.
   Here the sublattice for the semisimple factor is the root lattice, with
   simple roots as basis; for the central torus an arbitrary basis is used.
@@ -316,6 +320,18 @@ root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
   Indexing is from -nr_of_posroots(rd) upto nr_of_posroots(rd)-1, with
   negative indices giving negative (co)roots, and non-negative indices giving
   positive (co)roots; simple (co)roots are consecutive from index 0 upwards.
+root_index: (RootDatum,vec->int): Index of root with respect to posroots
+coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
+  These functions return the index of the root/coroot in the root system rd, or
+  return nr_of_posroots(rd) if the argument is not found among the (co)roots.
+  The indexing is as in the root/coroot functions above, so if found, the
+  index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
+root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
+  For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
+coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders
+  For (rd,i) the gives those j for which coroot(rd,j)-coroot(rd,i) is no coroot
+fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
+fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 
 simple_roots: (RootDatum->mat): matrix of simple roots in the root datum.
 simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum.
@@ -326,19 +342,11 @@ poscoroots: (RootDatum->mat): matrix of positive coroots in the root datum.
   over these matrices, which loops over its columns. The result is given as a
   matrix instead of as a list of vectors because this retains the information
   about the rank (number of rows of the matrix) even when there are 0 columns.
-
-roots: (RootDatum->mat): full set of roots of root datum (columns of result).
-coroots: (RootDatum->mat): full set of coroots of root datum (as columns).
-  Since these include negative roots/coroots, the numbering of the columns
-  (necessarily starting at 0) is shifted with respect to the indexing given by
-  the root/coroot functions (which have negative roots at negative indices).
-
 root_coradical: (RootDatum->mat): simple roots and coradical basis.
   With respect to simple_roots, add columns for coradical basis generators
 coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
-fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
-fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
+
 dual: (RootDatum->RootDatum): dual of given root datum.
   This operation preserves the numbering of the roots, interchanging just what
   it calls roots and coroots. This implies that the ordering may differ from
@@ -351,23 +359,10 @@ derived_info: (RootDatum->RootDatum,mat): information for the derived group
 mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
   The (semisimple) root datum obtained by quotienting by the central torus,
   and matrix embedding weights for the quotient datum into the original datum.
-rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
-semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
-nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
-two_rho: (RootDatum->vec): The sum of all positive roots in the root datum.
-two_rho_check: (RootDatum->vec): The sum of all positive coroots in root datum.
-
-root_index: (RootDatum,vec->int): Index of root with respect to posroots
-coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
-  These functions return the index of the root/coroot in the root system rd, or
-  return nr_of_posroots(rd) if the argument is not found among the (co)roots.
-  The indexing is as in the root/coroot functions above, so if found, the
-  index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
   subsystem of the coroots of rd that take an integral value on gamma.
-
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:

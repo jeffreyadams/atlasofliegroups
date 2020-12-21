@@ -71,10 +71,8 @@ set improve(Param p, int N) = Param:
 in assert(is_dominant(rd,gamma))
 ;  { if integral system has full rank, don't try to improve any more }
    if id.semisimple_rank=rd.semisimple_rank then return p fi
-;  let coroots_mat=^id.simple_coroots
+;  let coroots_mat = (^id.simple_coroots)^(p.x.involution+1)
    then orth_basis = kernel(coroots_mat) { basis of part $X^*$ orth to |id| }
-       { next line added to land in -1 eig of theta_x }
-   then orth_basis = orth_basis - (p.x.involution)*orth_basis
 in { it might be that now orth_basis is zero. I think this can only happen
      in the unequal rank case; but if it happens, then just return p}
    if = orth_basis then return p fi
@@ -120,10 +118,11 @@ set is_integral(RootDatum rd, ratvec Ngamma) = bool:
   rd.semisimple_rank = integrality_datum(rd,Ngamma).semisimple_rank
 
 set fix(Param p) = Param:
-( let N=1, rd=p.root_datum, gamma=p.infinitesimal_character in
+( let N=1, rd=p.root_datum in
   while let q=p in
-    while (q:=improve(p,N))!=p do p:=q od
-  ; not is_integral(rd,N*gamma)
+    while print(p.infinitesimal_character); (q:=improve(p,N))!=p do p:=q od
+  ; print(integrality_datum(rd,N*p.infinitesimal_character).semisimple_rank,N)
+  ; not is_integral(rd,N*p.infinitesimal_character)
   do N+:=N
   od
 ; p

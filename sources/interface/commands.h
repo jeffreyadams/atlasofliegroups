@@ -11,6 +11,7 @@
 #define COMMANDS_H
 
 #include "commands_fwd.h"
+#include "../Atlas.h"
 
 #include <map>
 #include <set>

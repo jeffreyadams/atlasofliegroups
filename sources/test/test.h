@@ -14,6 +14,8 @@
 #include <map>
 #include <string>
 
+#include "../Atlas.h"
+
 #include "commands.h"
 
 /******** function declarations ********************************************/
