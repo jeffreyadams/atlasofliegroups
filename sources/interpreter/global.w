@@ -2016,9 +2016,9 @@ struct rational_vector_value : public value_base
    : val(std::move(v)) @+{@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
-  rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
-                       arithmetic::Denom_t d)
-   : val(std::move(v),d) @+ {@; val.normalize(); }
+//  rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
+//                       arithmetic::Denom_t d)
+//   : val(std::move(v),d) @+ {@; val.normalize(); }
   template <typename I> @+
      rational_vector_value(I begin, I end, arithmetic::Denom_t d)
     : val(matrix::Vector<arithmetic::Numer_t>(begin,end),d)
