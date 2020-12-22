@@ -1,0 +1,123 @@
+set Cartan_class_number(CartanClass C,InnerClass ic)=int:
+first(for i:ic.nr_of_Cartan_classes do Cartan_class(ic,i)=C od)
+
+set Cartan_class_number(KGBElt x)=int:Cartan_class_number(Cartan_class(x),x.inner_class)
+set Cartan_class_number(Param p)=int:Cartan_class_number(p.x)
+
+set Cartan_KGB(RealForm G,int cartan_number)=[KGBElt]:
+##for x in G.KGB do if Cartan_class_number(x)=cartan_number then [x] else [] fi od
+
+{all parameters on given Cartan}
+set Cartan_parameters([Param] params,int cartan_number)=[Param]:
+ ##for p@i in params do if
+  p.x.Cartan_class_number=cartan_number and
+   (i=0 or involution(KGB(p.real_form,p.x.number-1)) != involution(p.x))  {skip if x is not the first one in its fiber} then
+   [p] else [] fi od
+
+set q(KGBElt x)=int:(-1)^(#imaginary_roots(x.root_datum,x.involution)\2)
+set q(Param p)=int:q(p.x)
+
+{multiplicity of standard module in ParamPol of standards}
+set M_std(Param standard_module,ParamPol sum_of_standards)=int:sum_of_standards[standard_module].split_as_int
+
+{multiplicity of standard module in another standard module (0 or 1)}
+set M_std(Param standard_module,Param std_module)=int:M_std(standard_module,1*std_module)  {1*std_module is a ParamPol}
+
+{multiplicity of standard module in character formula of irreducible}
+set M_irr(Param standard_module,Param irr)=int:M_std(standard_module,character_formula(irr))
+
+{multiplicity of standard module in ParamPol of irreducibles (i.e. character formula of ParamPol)}
+set M_irr(Param standard_module,ParamPol sum_of_irreducibles)=int:M_std(standard_module,character_formula(sum_of_irreducibles))
+
+{coefficient of (H,w^{-1}Lambda) in global character of standard module std}
+set coeff_std(Param std, WeylElt w,Param H_Lambda)=M_std(H_Lambda,coherent_std(std,w))
+
+{coefficient of (H,w^{-1}Lambda) in global character of ParamPol of standard modules}
+set coeff_std(ParamPol param_pol_of_stds, WeylElt w,Param H_Lambda)=M_std(H_Lambda,coherent_std(w,param_pol_of_stds))
+
+{coefficient of (H,w^{-1}Lambda) in global character of irreducible}
+set coeff_irr(Param irr, WeylElt w,Param H_Lambda)=M_irr(H_Lambda,coherent_irr(irr,w))
+
+{coefficient of (H,w^{-1}Lambda) in global character of ParamPol of irreducibles}
+set coeff_irr(ParamPol param_pol_of_irreducibles, WeylElt w,Param H_Lambda)=M_irr(H_Lambda,coherent_irr(param_pol_of_irreducibles,w))
+
+set Cartan_character_formula_std(Param p,int cartan_number)=
+let W=p.root_datum.W in
+##for q in Cartan_parameters(block_of(p),cartan_number) do
+ ##for w in W do
+  let c=coeff_std(p,w,q) in
+   if !=c then [(w,coeff_std(p,w,q),q)] else []  fi 
+ od
+od
+
+set Cartan_character_formula_std(ParamPol param_pol_of_stds,int cartan_number)=
+let p=first_param(param_pol_of_stds) then
+W=p.root_datum.W in
+##for q in Cartan_parameters(block_of(p),cartan_number) do
+ ##for w in W do
+  let c=coeff_std(param_pol_of_stds,w,q) in
+   if !=c then [(w,c,q)] else []  fi 
+ od
+od
+
+set Cartan_character_formula_irr(Param p,int cartan_number)=
+let W=p.root_datum.W then
+cf=character_formula(p) in
+##for q in Cartan_parameters(block_of(p),cartan_number) do
+ ##for w in W do
+  let c=coeff_std(cf,w,q) in
+{  let ()=prints("w: ",w, "  p: ", p, "q:  ",q,"c:",c) in} 
+   if !=c then [(w,c,q)] else []  fi 
+ od
+od
+
+set Cartan_character_formula_irr(ParamPol param_pol_of_irrs,int cartan_number)=
+let p=first_param(param_pol_of_irrs) then
+W=p.root_datum.W then
+cf=character_formula(param_pol_of_irrs) in
+##for q in Cartan_parameters(block_of(p),cartan_number) do
+ ##for w in W do
+  let c=coeff_std(cf,w,q) in
+{  let ()=prints("w: ",w, "  p: ", p, "q:  ",q,"c:",c) in} 
+   if !=c then [(w,c,q)] else []  fi 
+ od
+od
+
+set Cartan_character_formula_std(Param std_module)=
+for i:std_module.real_form.nr_of_Cartan_classes do
+prints("Computing on Cartan #",i);
+Cartan_character_formula_std(std_module,i) od
+
+set Cartan_character_formula_irr(Param irr_module)=
+for i:irr_module.real_form.nr_of_Cartan_classes do
+prints("Computing on Cartan #",i);
+Cartan_character_formula_irr(irr_module,i) od
+
+set Cartan_character_formula_irr(ParamPol param_pol_of_irreducibles)=
+for i:param_pol_of_irreducibles.real_form.nr_of_Cartan_classes do
+prints("Computing on Cartan #",i);
+Cartan_character_formula_irr(param_pol_of_irreducibles,i) od
+
+
+set show([(WeylElt,int,Param)] triples)=
+tabulate(
+["Cartan","q_H","w","coeff","x","lambda","nu"]#
+for (w,c,p) in triples do
+ [p.Cartan_class_number.to_string,p.x.q.to_string,w.to_string,c.to_string,p.x.number.to_string,p.lambda.to_string,p.nu.to_string] od)
+
+set show([[(WeylElt,int,Param)]] d)=void:show(##d)
+
+set show_global_character_std(Param p)=
+let cf=Cartan_character_formula_std(p) in show(cf);cf
+
+set show_global_character_irr(Param p)=
+let cf=Cartan_character_formula_irr(p) in show(cf);cf
+
+
+set G=Sp(4,R)
+set p=G.trivial
+set b=block_of(p)
+set cf=character_formula(p)
+set id=id_W(G)
+set s=W_elt(G,[0])
+
