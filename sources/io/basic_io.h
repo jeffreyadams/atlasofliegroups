@@ -22,6 +22,14 @@
 
 namespace atlas {
 
+namespace basic_io {
+  template<typename I>
+  std::ostream& seqPrint(std::ostream&, const I&, const I&,
+			 const char* sep = ",", const char* pre = "",
+			 const char* post = "");
+} // |namespace basic_ip|
+
+
 /* Non-member operators are defined in namespace of an operand, then
    argument-dependent lookup will find the operator if it's known at all.
 
@@ -40,7 +48,12 @@ namespace weyl {
 
 namespace matrix {
   template<typename C>
-    std::ostream& operator<< (std::ostream&, const Vector<C>&);
+    std::ostream& operator<< (std::ostream& strm, const Vector<C>& v)
+  {
+    std::ostringstream o; // accumulate in string for interpretation of width
+    basic_io::seqPrint(o, v.begin(), v.end(), ",", "[", "]");
+    return strm << o.str(); // now |strm.width()| is applied to whole vector
+  }
 }
 
 namespace polynomials {
@@ -86,13 +99,10 @@ std::ostream& print_K_type_poly
 
 } // |namespace repr|
 
-namespace basic_io {
 
 // other functions
-template<typename I>
-std::ostream& seqPrint(std::ostream&, const I&, const I&,
-		       const char* sep = ",", const char* pre = "",
-		       const char* post = "");
+
+namespace basic_io {
 
 template <unsigned int n>
 unsigned long long read_bytes(std::istream& in);

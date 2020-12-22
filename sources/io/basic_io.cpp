@@ -131,14 +131,6 @@ namespace matrix { // since |Weight| = |matrix::Vector<int>|
   Using |seqPrint| it is output as a bracket-enclosed, comma-separated list.
 */
 
-template<typename C>
-std::ostream& operator<< (std::ostream& strm, const Vector<C>& v)
-{
-  std::ostringstream o; // accumulate in string for interpretation of width
-  basic_io::seqPrint(o, v.begin(), v.end(), ",", "[", "]");
-  return strm << o.str(); // now |strm.width()| is applied to whole vector
-}
-
 } // |namespace matrix|
 
 namespace ratvec {
@@ -313,12 +305,5 @@ template std::ostream& polynomials::operator<<
 
 template std::ostream& bitvector::operator<<
   (std::ostream& strm, const BitVector<constants::RANK_MAX>& b);
-
-namespace matrix {
-template std::ostream& operator<< (std::ostream& strm, const Vector<int>& v);
-template std::ostream& operator<<
-  (std::ostream& strm, const Vector<arithmetic::Numer_t>& v);
-
-} // |namespace matrix|
 
 } // |namespace atlas|

@@ -166,18 +166,6 @@ template<typename C>
   return true;
 }
 
-
-template<typename C>
-template<typename C1>
-Vector<C1> Vector<C>::scaled (C1 c) const
-{
-  Vector<C1> result(base::size());
-  auto p=result.begin();
-  for (auto it=base::begin(); it!=base::end(); ++p,++it)
-    *p = *it * c;
-  return result;
-}
-
 template<typename C>
   Matrix<C> Vector<C>::row_matrix() const
 {
@@ -671,21 +659,6 @@ template<typename C>
 }
 
 template<typename C>
-  void column_apply(Matrix<C>& A, const Matrix<C>& ops, unsigned int j) // initial col
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(j+r <= A.numColumns());
-  Vector<C> tmp(r);
-  for (unsigned int i=0; i<A.numRows(); ++i)
-  { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
-    for (unsigned int l=0; l<r; ++l)
-      tmp[l]=A(i,j+l);
-    ops.right_mult(tmp); // do column operations on row vector |tmp|
-    for (unsigned int l=0; l<r; ++l)
-      A(i,j+l)=tmp[l];
-  }
-}
-template<typename C>
 void Matrix_base<C>::eraseRow(unsigned int i)
 {
   assert(i<d_rows);
@@ -754,7 +727,7 @@ template<typename C>
   */
 
  // type abreviations used in these instantiations
-typedef arithmetic::Numer_t Num;
+using Num = long long; // maybe |arithmetic::Numer_t Num|
 typedef polynomials::Polynomial<int> Pol;
 typedef arithmetic::big_int bigint;
 
@@ -762,8 +735,6 @@ template std::vector<Vector<int> > standard_basis<int>(unsigned int n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
 template void swap(Matrix_base<int>&,Matrix_base<int>&);
 template void row_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
-template void column_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
-template void column_apply(Matrix<Num>&,const Matrix<Num>&,unsigned int);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
@@ -795,7 +766,6 @@ template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);
 template Vector<int>& operator%=(Vector<int>&,int);
 template Vector<Num>& operator/=(Vector<Num>&,Num);
-template Vector<Num> Vector<int>::scaled(Num c) const;
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;

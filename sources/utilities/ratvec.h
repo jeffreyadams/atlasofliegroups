@@ -44,11 +44,25 @@ class RationalVector
 
   // build the RationalVector with numerator v and denominator d.
   template <typename C1> // possibly convert |v| entries to other type
-    RationalVector(const matrix::Vector<C1>& v, C d);
-  template <typename C1> // possibly convert |v| entries to other type
-  RationalVector(const matrix::Vector<C1>& v, const arithmetic::Rational<C>& d);
+    RationalVector(const matrix::Vector<C1>& v, C d)
+      : d_num(v.begin(),v.end()), d_denom(std::abs(d))
+  { if (d<C(0))
+      d_num.negate();
+  } // don't try to normalize, caller can do the explicitly if needed
 
-  RationalVector(V&& v, C d);
+  template <typename C1> // possibly convert |v| entries to other type
+  RationalVector(const matrix::Vector<C1>& v, const arithmetic::Rational<C>& d)
+    : d_num(v.begin(),v.end()), d_denom(d.true_denominator())
+  {
+    d_num *= d.numerator();
+  } // don't try to normalize, caller can do the explicitly if needed
+
+  RationalVector(V&& v, C d)
+    : d_num(std::move(v)), d_denom(std::abs(d))
+  { if (d<C(0))
+      d_num.negate();
+  } // don't try to normalize, caller can do the explicitly if needed
+
 
   RationalVector() : d_num(),d_denom(C(1)) {} // default to empty numerator
 
