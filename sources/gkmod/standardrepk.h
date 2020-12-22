@@ -46,7 +46,8 @@ typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
 // remaining definitions could be in ../Atlas.h, but seem module-specific
 
-typedef Free_Abelian<seq_no,long int,graded_compare> combination;
+// typedef Free_Abelian<seq_no,long int,graded_compare> combination;
+typedef Free_Abelian<seq_no,int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
 
 typedef Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
