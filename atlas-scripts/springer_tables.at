@@ -45,7 +45,7 @@ set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(Comp
 
 {orbit is special if O=special_closure(O)}
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
-if is_even(O) then true else {st.special_closure(O)=O slow}
+if is_even(O) then true else {st.special_closure(O)=O this is slow}
 st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized
 fi
 
