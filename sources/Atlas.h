@@ -19,6 +19,17 @@
  several such files. We also make system-wide |typedef|s here. One still needs
  to include the related ordinary header files for these types to be complete.
 
+ This file should be included when compiling the Atlas object files everywhere
+ BEFORE any of the utility forward files (the ones whose inclusion is excleded
+ below) are invoked; this can be accomplished by including it before any other
+ Atlas files in each non-utility header file. (Header or other files in the
+ utility sub-directory itself should not include ot otherwise refer to this
+ file, so as to retain their independence of the rest of the Atlas project.) In
+ this manner those object files avoid including both such a forward file and its
+ information duplicated here. Since the utility object files necessarily do use
+ the information from those forward files, their contents and that of Atlas.h
+ must nevertheless always remain in sync, lest problems occur at link time.
+
  */
 
 // exclude forward files from utilities subdirectory whose contents are copied here
@@ -111,15 +122,18 @@ namespace atlas {
   using containers::queue;
 
   namespace arithmetic {
-    typedef long long int Numer_t;
-    typedef unsigned long long int Denom_t;
-    class Rational;
+    using Numer_t = long long int;
+    using Denom_t = unsigned long long int;
+    template<typename I> class Rational;
+    using RatNum = Rational<Numer_t>;
+    using RatNumList = std::vector<RatNum>;
     class Split_integer;
-    class big_int;
-    class big_rat;
+    class big_int; // defined in bigint.h
+    class big_rat; // defined in bigint.h
   }
   using arithmetic::Rational;
-  typedef std::vector<Rational> RationalList;
+  using arithmetic::RatNum;
+  using arithmetic::RatNumList;
   using arithmetic::Split_integer;
   using arithmetic::big_int;
   using arithmetic::big_rat;

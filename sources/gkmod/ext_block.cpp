@@ -274,13 +274,13 @@ context::context
     , pi_delta(rc.root_datum().rootPermutation(d_delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , lambda_shifts (integr_datum.semisimpleRank())
-    , l_shifts (integr_datum.semisimpleRank())
+    , lambda_shifts (integr_datum.semisimple_rank())
+    , l_shifts (integr_datum.semisimple_rank())
 {
   const RootDatum& rd = rc.root_datum();
   assert(is_dominant_ratweight(rd,d_gamma)); // this is a class invariant
 
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
   // the reflections for |E.lambda_rho| pivot around $\gamma-\rho$
@@ -326,7 +326,7 @@ bool context::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not root_datum().sumIsRoot(*it,delta_of(*it)))
+	not root_datum().sum_is_root(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -527,7 +527,7 @@ WeylWord fixed_conjugate_simple
   {
     weyl::Generator s = rd.descent_set(alpha)
       .andnot(rd.ascent_set(ctxt.delta_of(alpha))).firstBit();
-    assert(s<rd.semisimpleRank()); // exists for positive non-simple roots
+    assert(s<rd.semisimple_rank()); // exists for positive non-simple roots
     weyl::Generator t = ctxt.twisted(s);
     if (rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(t))
       break; // |alpha| is sum of (non-commuting) simple roots |s|,|twisted(s)|
@@ -1453,7 +1453,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
 	 (p.s1, integr_datum.simpleRootNbr(p.s0));
-      WeylWord s_kappa = subs.reflection(integr_datum.posRootIndex(n_kappa));
+      WeylWord s_kappa = subs.reflection(integr_datum.posroot_index(n_kappa));
 
       const Weight& kappa = integr_datum.root(n_kappa);
       assert (kappa==alpha+beta);
@@ -2298,7 +2298,7 @@ repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
- Rational factor, // |z.nu()| is scaled by |factor| first
+ RatNum factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // output only, records whether a net extended flip was computed
  )
 {
@@ -2320,7 +2320,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
-  int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
+  int_Vector r_g_eval (rd.semisimple_rank()); // simple root evaluations at |-gr|
   { const RatCoweight& g_r=ctxt.g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));

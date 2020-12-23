@@ -29,7 +29,7 @@ namespace arithmetic {
 
   extern Denom_t dummy_gcd, dummy_mult;
 
-  Denom_t gcd (Numer_t, Denom_t); // signed first argument only!
+  Denom_t gcd (Numer_t, Denom_t); // signed first argument only! Defined below.
 
   // the following functions are entirely unsigned
 
@@ -56,27 +56,31 @@ namespace arithmetic {
 
 /*        Class definitions        */
 
-class Rational
+template<typename I>
+  class Rational
 {
-  Numer_t num;
-  Denom_t denom;
+  using UI = typename std::make_unsigned<I>::type;
+  I num;
+  UI denom;
 public:
   explicit Rational (Numer_t n=0,Denom_t d=1) : num(n), denom(d)
   { normalize(); }
 
-  Numer_t numerator() const   { return num; }
+  I numerator() const   { return num; }
 
   /*
     The C++ rule that one unsigned operand silently converts the other operand
-    to unsigned as well makes exporting denominator as unsigned too error
-    prone; e.g., floor=numerator()/denominator() would wreak havoc. Generally
-    speaking, casting unsigend to signed is not a good thing, but typically
-    when this happens we risk having (had) overflow anyway, so accept it.
+    to unsigned as well makes exporting denominator as unsigned too error prone;
+    e.g., floor=numerator()/denominator() would wreak havoc. Generally speaking,
+    casting unsigned to signed is not a good thing, but when this gives a
+    negative value here, we risk having (had) overflow anyway, so here it is.
   */
-  Numer_t denominator() const { return Numer_t(denom); }
+  I denominator() const { return static_cast<I>(denom); }
 
   // however sometimes (printing, |big_int| conversion, we want the Real Thing
-  Denom_t true_denominator() const { return denom; }
+  UI true_denominator() const { return denom; }
+
+  bool is_zero() const { return num==0; }
 
   // these operators all return normalised results
   Rational operator+(Rational q) const;
@@ -99,16 +103,17 @@ public:
   Rational& operator%=(Rational q) { return operator=(operator%(q)); }
 
   // assignment operators with integers have efficient implementations
-  Rational& operator+=(Numer_t n);
-  Rational& operator-=(Numer_t n);
-  Rational& operator*=(Numer_t n);
-  Rational& operator/=(Numer_t n); // assumes $n\neq0$, will not throw
-  Rational& operator%=(Numer_t n); // assumes $n\neq0$, will not throw
+  Rational& operator+=(I n) { num+=n*denom; return *this; }
+  Rational& operator-=(I n) { num-=n*denom; return *this; }
+  Rational& operator*=(I n);
+  Rational& operator/=(I n); // assumes $n\neq0$, will not throw
+  Rational& operator%=(I n); // assumes $n\neq0$, will not throw
+  Rational& mod1() { num = remainder(num,denominator()); return *this; };
 
-  Numer_t floor () const { return divide(num,static_cast<Numer_t>(denom)); }
-  Numer_t ceil () const { return -divide(-num,static_cast<Numer_t>(denom)); }
-  Numer_t quotient (Denom_t n) const
-    { return divide(num,static_cast<Numer_t>(n*denom)); }
+  I floor () const { return divide(num,static_cast<I>(denom)); }
+  I ceil () const { return -divide(-num,static_cast<I>(denom)); }
+  I quotient (Denom_t n) const // integer division by positive integer
+    { return divide(num,static_cast<I>(n*denom)); }
 
   // these definitions must use |denominator()| to ensure signed comparison
   bool operator==(Rational q) const
@@ -124,11 +129,22 @@ public:
   bool operator>=(Rational q) const
     { return num*q.denominator()>=denominator()*q.num; }
 
-  inline Rational& normalize();
+  const Rational& normalize() const; // pseudo-|const|; defined below
   Rational& power(int n); // raise to power |n| and return |*this|
 
+  Rational& normalize()
+  { static_cast<const Rational*>(this)->normalize(); return *this; }
 }; // |class Rational|
 
+//				Functions
+
+
+// arithmetic operations by value
+template<typename C> Rational<C> operator+ (Rational<C> q, C n) { return q+=n ;}
+template<typename C> Rational<C> operator- (Rational<C> q, C n) { return q-=n ;}
+template<typename C> Rational<C> operator* (Rational<C> q, C n) { return q*=n ;}
+template<typename C> Rational<C> operator/ (Rational<C> q, C n) { return q/=n ;}
+template<typename C> Rational<C> operator% (Rational<C> q, C n) { return q%=n ;}
 
 class Split_integer
 {
@@ -186,7 +202,8 @@ class Split_integer
   int s_to_minus_1() const { return ev_minus_1; }
 }; // |class Split_integer|
 
-std::ostream& operator<< (std::ostream& out, const Rational& frac);
+template<typename I>
+  std::ostream& operator<< (std::ostream& out, const Rational<I>& frac);
 
 
 /******** inline function definitions ***************************************/
@@ -219,11 +236,11 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 */
 
 template<typename I>
-  I divide(I a, I b_signed)
-{ typedef typename std::make_unsigned<I>::type UI;
+  I divide(I a, I b_signed) // integer quotient, may be negative
+{ using UI = typename std::make_unsigned<I>::type;
   UI b(b_signed); // interpret unsigned, even though it was passed as signed
   // use unsigned division (because |b| is so), then convert back to signed
-  return a >= 0 ? I(a/b) : -1-I((-1-a)/b); // quotient may be negative
+  return a >= 0 ? static_cast<I>(a/b) : -1-static_cast<I>((-1-a)/b);
 }
 
 // override for |I=Denom_t| (is instantiated for |Matrix<Denom_t>|)
@@ -249,35 +266,40 @@ template<typename I>
   using UI = typename std::make_unsigned<I>::type;
   UI b(b_signed); // interpret unsigned, even though it was passed as signed
   // use unsigned division (because |b| is so), then convert back to signed
-  return I(a >= 0 ? a%b : ~((-1-a)%b) + b); // remainder is never negative
+  return static_cast<I>(a >= 0 ? a%b : ~((-1-a)%b) + b); // never negative
 }
 
-  inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
+inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
 
-  inline Denom_t gcd (Numer_t a, Denom_t b) // caller must ensure |b>0|
-  {
-    if (a > 0)
-      return unsigned_gcd(static_cast<Denom_t>(a),b);
-    else if (a==0) return b; // faster, although |unsigned_gcd| could also cope
-    else
-      return unsigned_gcd(static_cast<Denom_t>(-a),b);
-  }
+inline Denom_t gcd (Numer_t a, Denom_t b) // caller must ensure |b>0|
+{
+  if (a > 0)
+    return unsigned_gcd(static_cast<Denom_t>(a),b);
+  else if (a==0) return b; // faster, although |unsigned_gcd| could also cope
+  else
+    return unsigned_gcd(static_cast<Denom_t>(-a),b);
+}
 
-  // we assume |a| and |b| to be less than |n| here
-  inline Denom_t modAdd(Denom_t a, Denom_t b, Denom_t n)
-  {
-    if (a < n-b)
-      return a + b;
-    else
-      return a - (n-b);
-  }
+// we assume |a| and |b| to be less than |n| here
+inline Denom_t modAdd(Denom_t a, Denom_t b, Denom_t n)
+{
+  if (a < n-b)
+    return a + b;
+  else
+    return a - (n-b);
+}
 
-  inline Rational& Rational::normalize()
-  {
-    Denom_t d = gcd(num,denom);
-    if (d>1)      num/=Numer_t(d),denom/=d;
-    return *this;
+template<typename I>
+  const Rational<I>& Rational<I>::normalize() const
+{
+  Denom_t d = gcd(num,denom);
+  if (d>1)
+  { auto& my = const_cast<Rational<I>&>(*this);
+    my.num/=static_cast<I>(d);
+    my.denom/=d;
   }
+  return *this;
+}
 
 } // |namespace arithmetic|
 

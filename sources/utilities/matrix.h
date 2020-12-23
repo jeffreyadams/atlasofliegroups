@@ -131,7 +131,14 @@ public:
   Vector operator- (Vector&& v) && { return *this -=v; }
 
   template<typename C1>
-    Vector<C1> scaled (C1 c) const; // like operator*, but forces type to C1
+    Vector<C1> scaled (C1 c) const // like operator*, but forces type to C1
+  {
+    Vector<C1> result(base::size());
+    auto p=result.begin();
+    for (auto it=base::begin(); it!=base::end(); ++p,++it)
+      *p = *it * c;
+    return result;
+  }
 
   Matrix<C> row_matrix() const;    // vector as 1-row matrix
   Matrix<C> column_matrix() const; // vector as 1-column matrix
@@ -273,6 +280,7 @@ template<typename C> class Matrix : public Matrix_base<C>
   Matrix& operator*= (const Matrix& Q) { return *this = *this * Q; }
   Matrix& leftMult (const Matrix& P)   { return *this = P * *this; }
 
+  Matrix& operator*= (C c) { base::d_data *= c; return *this; }
   Matrix& negate() { base::d_data.negate(); return *this; }
   Matrix& transpose();
 
@@ -366,6 +374,25 @@ public:
 
   C operator[] (std::size_t i) const { return base::get()[i]; }
 }; // |class Vector_cref|
+
+
+template<typename C>
+  void column_apply(Matrix<C>& A, const Matrix<C>& ops,
+		    unsigned int j) // initial column of |A| to act on
+{ const auto r=ops.numRows();
+  assert(r==ops.numColumns());
+  assert(j+r <= A.numColumns());
+  Vector<C> tmp(r);
+  for (unsigned int i=0; i<A.numRows(); ++i)
+  { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
+    for (unsigned int l=0; l<r; ++l)
+      tmp[l]=A(i,j+l);
+    ops.right_mult(tmp); // do column operations on row vector |tmp|
+    for (unsigned int l=0; l<r; ++l)
+      A(i,j+l)=tmp[l];
+  }
+} // |column_apply|
+
 
 } // |namespace matrix|
 

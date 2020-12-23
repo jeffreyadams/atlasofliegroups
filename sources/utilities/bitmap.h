@@ -162,6 +162,8 @@ class BitMap
   // get a range of bits as unsigned long value; see bitmap.ccp for details
   unsigned long range(unsigned long first, unsigned long number) const;
 
+  BitMap operator~ () const { return BitMap(*this).take_complement(); }
+
   BitMap operator& (const BitMap& other) && { operator&=(other); return *this; }
 
   BitMap operator| (const BitMap& other) && { return operator|=(other); }
@@ -182,8 +184,7 @@ class BitMap
 
 // manipulators
 
-  // WARNING: the following looks like an accessor, but complements |*this|
-  BitMap& operator~ ();
+  BitMap& take_complement ();
 
  // these operators allow argument to have less capacity than |*this|
   bool operator&= (const BitMap&); // return whether result is non-empty

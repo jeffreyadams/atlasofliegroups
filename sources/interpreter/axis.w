@@ -40,6 +40,8 @@ module have been relegated to a separate module \.{global.w}.
 #ifndef AXIS_H
 #define AXIS_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 #include "axis-types.h"
 
 @< Includes needed in the header file @>@;
@@ -3770,7 +3772,7 @@ void ratvec_subscription<reversed>::evaluate(level l) const
   if (static_cast<unsigned int>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
-    push_value(std::make_shared<rat_value>(Rational @|
+    push_value(std::make_shared<rat_value>(RatNum @|
        (v->val.numerator()[i],v->val.denominator())));
 }
 @)
@@ -5559,7 +5561,7 @@ case subscr_base::ratvec_entry:
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     while (i!=(in_forward(flags) ? n : 0))
     { loop_var->val[1] = std::make_shared<rat_value> @|
-      (Rational
+      (RatNum
         (in_val->val.numerator()[in_forward(flags) ? i : i-1]
         ,in_val->val.denominator()));
       @< Set |loop_var->val[0]| to... @>

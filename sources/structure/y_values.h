@@ -78,10 +78,10 @@ class TorusElement
   }
 
   // evaluation giving rational number modulo 2, represented in interval [0,2)
-  Rational evaluate_at(const SmallBitVector& alpha) const;
+  RatNum evaluate_at(const SmallBitVector& alpha) const;
 
   // evaluation giving rational number modulo 2, represented in interval [0,2)
-  Rational evaluate_at(const Coweight& alpha) const;
+  RatNum evaluate_at(const Coweight& alpha) const;
 
 // a method for rapidly doing imaginary cross action (for completing fiber)
 // requires simple-imaginary |alpha| that is integral on |t| (however unless

@@ -51,23 +51,23 @@ RatWeight TorusElement::log_2pi() const
 }
 
 // evaluation giving rational number modulo 2
-Rational TorusElement::evaluate_at (const SmallBitVector& alpha) const
+RatNum TorusElement::evaluate_at (const SmallBitVector& alpha) const
 {
   assert(alpha.size()==rank());
   arithmetic::Numer_t d = repr.denominator();
   arithmetic::Numer_t s = 0;
   for (auto it=alpha.data().begin(); it(); ++it)
     s += repr.numerator()[*it];
-  return Rational(arithmetic::remainder(s,d+d),d);
+  return RatNum(arithmetic::remainder(s,d+d),d);
 }
 
 // evaluation giving rational number modulo 2
-Rational TorusElement::evaluate_at (const Coweight& alpha) const
+RatNum TorusElement::evaluate_at (const Coweight& alpha) const
 {
   arithmetic::Numer_t d = repr.denominator();
   arithmetic::Numer_t n =
     arithmetic::remainder(alpha.dot(repr.numerator()),d+d);
-  return Rational(n,d);
+  return RatNum(n,d);
 }
 
 TorusElement TorusElement::operator +(const TorusElement& t) const

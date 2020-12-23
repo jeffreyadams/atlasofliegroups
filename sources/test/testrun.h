@@ -11,6 +11,8 @@
 #ifndef TESTRUN_H  /* guard against multiple inclusions */
 #define TESTRUN_H
 
+#include "../Atlas.h"
+
 #include "abelian.h"
 #include "lietype.h"
 #include "prerootdata.h"
@@ -289,7 +291,7 @@ class CoveringIterator {
   // the center of the dual to the simply connected semisimple group
   const abelian::FiniteAbelianGroup* d_dcenter;
   size_t d_rank;
-  size_t d_semisimpleRank;
+  size_t d_semisimple_rank;
   size_t d_torusRank;
 
 // iterator management

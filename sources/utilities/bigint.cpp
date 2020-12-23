@@ -18,7 +18,7 @@
 namespace atlas {
 namespace arithmetic {
 
-big_int big_int::from_signed (Numer_t n)
+big_int big_int::from_signed (long long n)
 { big_int result;
   digit high_word = static_cast<digit>(n>>32), low_word = static_cast<digit>(n);
   if (low_word<neg_flag ? high_word==0u : high_word==-1u)
@@ -27,7 +27,7 @@ big_int big_int::from_signed (Numer_t n)
   return result;
 }
 
-big_int big_int::from_unsigned (Denom_t n)
+big_int big_int::from_unsigned (unsigned long long n)
 { big_int result;
   digit high_word = n>>32, low_word = static_cast<digit>(n);
   if (high_word>=neg_flag)
@@ -39,8 +39,7 @@ big_int big_int::from_unsigned (Denom_t n)
 }
 
 template<> int big_int::convert<int> () const { return int_val(); }
-template<> arithmetic::Numer_t big_int::convert<long long int> () const
- { return long_val(); }
+template<> long long big_int::convert<long long> () const { return long_val(); }
 
 
 /*
@@ -733,7 +732,7 @@ big_rat big_rat::operator% (const big_rat& r) const
 big_rat big_rat::power (int e) const
 {
   if (e==0)
-    return big_rat(Rational{1,1});
+    return big_rat{big_int{1}};
 
   big_rat result(*this); // take a working copy
   const bool neg_exp = e<0;

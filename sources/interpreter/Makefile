@@ -93,6 +93,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/utilities/matreduc.o \
  $(sources_dir)/gkmod/standardrepk.o \
  $(sources_dir)/gkmod/repr.o \
+ $(sources_dir)/gkmod/alcoves.o \
  $(sources_dir)/structure/subsystem.o \
  $(sources_dir)/structure/involutions.o \
  $(sources_dir)/structure/y_values.o \

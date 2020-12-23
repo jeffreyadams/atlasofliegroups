@@ -47,6 +47,8 @@ a large section with basic functions related to these types.
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
@@ -1831,13 +1833,16 @@ which only then (when being pushed onto the execution stack) becomes available
 for sharing; for the types where this applies we also |typedef| a non-|const|
 instance of the |shared_ptr| template, using the \&{own\_} prefix.
 
+@s Numer_t int
+@s RatNum int
+
 @< Type definitions @>=
 
 struct int_value : public value_base
 { arithmetic::big_int val;
 @)
   explicit int_value(int v) : val(v) @+ {}
-  explicit int_value(arithmetic::Numer_t v)
+  explicit int_value(long long v)
   : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned int v)
     : val(big_int::from_unsigned(v)) @+ {}
@@ -1851,6 +1856,7 @@ struct int_value : public value_base
   int_value @[(const int_value& ) = default@]; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
+  arithmetic::Numer_t long_val () const @+{@; return val.long_val(); }
 };
 @)
 typedef std::shared_ptr<const int_value> shared_int;
@@ -1859,18 +1865,18 @@ typedef std::shared_ptr<int_value> own_int;
 struct rat_value : public value_base
 { big_rat val;
 @)
-  explicit rat_value(Rational v) : val(v) @+ {}
+  explicit rat_value(RatNum v) : val(v) @+ {}
   explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
 @)
   void print(std::ostream& out) const @+{@; out << val; }
   static const char* name() @+{@; return "rational"; }
   rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
 @)
-  big_int numerator() const &@[@] @+{@; return val.numerator(); }
-  big_int denominator() const &@[@] @+{@; return val.denominator(); }
-  big_int&& numerator() &@[@] @+{@; return std::move(val).numerator(); }
-  big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
-  Rational rat_val() const @+{@; return val.rat_val(); }
+  big_int numerator@[() const &@] @+{@; return val.numerator(); }
+  big_int denominator@[() const &@] @+{@; return val.denominator(); }
+  big_int&& numerator@[() &@] @+{@; return std::move(val).numerator(); }
+  big_int&& denominator@[() &@] @+{@; return std::move(val).denominator(); }
+  RatNum rat_val() const @+{@; return val.rat_val(); }
 };
 @)
 typedef std::shared_ptr<const rat_value> shared_rat;
@@ -1996,6 +2002,8 @@ typedef std::shared_ptr<matrix_value> own_matrix;
 
 @ Rational vectors are anther variation on the same theme. Note that the
 constructors ensure that rational vectors are always normalised.
+
+@s Denom_t int
 
 @< Type definitions @>=
 
@@ -2210,7 +2218,7 @@ void vector_intlist_convert()
 @ A final purely externalising function at the vector level is
 |ratvec_ratlist_convert|, which is inverse to |ratlist_ratvec_convert|.
 Although the rational numbers we construct are likely to not be normalised, we
-need not worry about it since the |big_rat| constructor from |Rational| will
+need not worry about it since the |big_rat| constructor from |RatNum| will
 call |normalize| before building and storing its numerator and denominator.
 
 @< Local function def... @>=
@@ -2220,7 +2228,7 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
   own_row result = std::make_shared<row_value>(rv->val.size());
   for (std::size_t i=0; i<rv->val.size(); ++i)
     result->val[i] = std::make_shared<rat_value>@|
-      (Rational(rv->val.numerator()[i],rv->val.denominator()));
+      (RatNum(rv->val.numerator()[i],rv->val.denominator()));
   push_value(result);
 }
 
@@ -3604,11 +3612,11 @@ also provide addition and subtraction of another rational vector.
 
 @< Local function def... @>=
 void vector_div_wrapper(expression_base::level l)
-{ int n=get<int_value>()->int_val();
-  own_vector v=get_own<vector_value>();
+{ auto n=get<int_value>()->long_val();
+  shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value@|(std::make_shared<rational_vector_value>
-      (std::move(v->val),n)); // throws if |n==0|
+    push_value@|
+      (std::make_shared<rational_vector_value>(v->val,n)); // throws if |n==0|
 }
 @)
 void ratvec_unfraction_wrapper(expression_base::level l)
@@ -3650,7 +3658,7 @@ lead to a smaller denominator since it effectively adds an integer vector.
 
 @< Local function def... @>=
 void ratvec_times_int_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
+{ auto i= get<int_value>()->long_val();
   own_rational_vector v= get_own<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
@@ -3658,7 +3666,7 @@ void ratvec_times_int_wrapper(expression_base::level l)
   push_value(v);
 }
 void ratvec_divide_int_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
+{ auto i= get<int_value>()->long_val();
   own_rational_vector v= get_own<rational_vector_value>();
   if (i==0)
     throw runtime_error("Rational vector division by 0");
@@ -3668,7 +3676,7 @@ void ratvec_divide_int_wrapper(expression_base::level l)
   push_value(v);
 }
 void ratvec_modulo_int_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
+{ auto i= get<int_value>()->long_val();
   own_rational_vector v= get_own<rational_vector_value>();
   if (i==0)
     throw runtime_error("Rational vector modulo 0");

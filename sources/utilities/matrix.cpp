@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "sl_list.h"
 #include "matreduc.h"
 #include "permutations.h"
 #include "arithmetic.h"
@@ -165,18 +166,6 @@ template<typename C>
   return true;
 }
 
-
-template<typename C>
-template<typename C1>
-Vector<C1> Vector<C>::scaled (C1 c) const
-{
-  Vector<C1> result(base::size());
-  auto p=result.begin();
-  for (auto it=base::begin(); it!=base::end(); ++p,++it)
-    *p = *it * c;
-  return result;
-}
-
 template<typename C>
   Matrix<C> Vector<C>::row_matrix() const
 {
@@ -245,7 +234,7 @@ template<typename C>
 template<typename C>
   template<typename I> Matrix_base<C>::Matrix_base
     (I first, I last, unsigned int n_rows, tags::IteratorTag)
-  : d_rows(n_rows), d_columns(last-first)
+    : d_rows(n_rows), d_columns(std::distance(first,last))
   , d_data(static_cast<std::size_t>(d_rows)*d_columns)
 {
   I p=first;
@@ -670,21 +659,6 @@ template<typename C>
 }
 
 template<typename C>
-  void column_apply(Matrix<C>& A, const Matrix<C>& ops, unsigned int j) // initial col
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(j+r <= A.numColumns());
-  Vector<C> tmp(r);
-  for (unsigned int i=0; i<A.numRows(); ++i)
-  { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
-    for (unsigned int l=0; l<r; ++l)
-      tmp[l]=A(i,j+l);
-    ops.right_mult(tmp); // do column operations on row vector |tmp|
-    for (unsigned int l=0; l<r; ++l)
-      A(i,j+l)=tmp[l];
-  }
-}
-template<typename C>
 void Matrix_base<C>::eraseRow(unsigned int i)
 {
   assert(i<d_rows);
@@ -753,7 +727,7 @@ template<typename C>
   */
 
  // type abreviations used in these instantiations
-typedef arithmetic::Numer_t Num;
+using Num = long long; // maybe |arithmetic::Numer_t Num|
 typedef polynomials::Polynomial<int> Pol;
 typedef arithmetic::big_int bigint;
 
@@ -761,7 +735,6 @@ template std::vector<Vector<int> > standard_basis<int>(unsigned int n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
 template void swap(Matrix_base<int>&,Matrix_base<int>&);
 template void row_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
-template void column_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
@@ -769,22 +742,25 @@ template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
+template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
+template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
+template class PID_Matrix<Num>; // for precision system solving (alcoves)
 
 // template member instances
 template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
 template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
 template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
+template signed char
+  Vector<signed char>::dot(const Vector<signed char>&) const;
 template int Vector<int>::dot(Vector<int> const&) const;
 template Num Vector<int>::dot(Vector<Num> const&) const;
 template int Vector<Num>::dot(Vector<int> const&) const;
-template signed char
-  Vector<signed char>::dot(const Vector<signed char>&) const;
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);
@@ -793,6 +769,7 @@ template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
 template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
+template Vector<Num> Matrix<Num>::operator*(Vector<Num> const&) const;
 template Vector<int> Matrix<int>::right_prod(const Vector<int>&) const;
 template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
 
@@ -817,6 +794,12 @@ template Matrix_base<int>::Matrix_base
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector_cref<int> >::iterator,
    std::vector<Vector_cref<int> >::iterator,
+   unsigned int,
+   tags::IteratorTag);
+
+template Matrix_base<Num>::Matrix_base
+  (containers::sl_list<matrix::Vector<Num> >::iterator,
+   containers::sl_list<matrix::Vector<Num> >::iterator,
    unsigned int,
    tags::IteratorTag);
 

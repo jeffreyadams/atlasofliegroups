@@ -3,7 +3,7 @@
    Class definitions and function declarations for the RootDatum class.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2010 Marc van Leeuwen
+  Copyright (C) 2006--2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -12,12 +12,10 @@
 #ifndef ROOTDATA_H  /* guard against multiple inclusions */
 #define ROOTDATA_H
 
-#include "../Atlas.h"
-
 #include <algorithm>
 
-#include "arithmetic_fwd.h"
 #include "../Atlas.h"
+
 #include "tags.h"
 
 #include "bitset.h" // for ascent and descent sets
@@ -62,6 +60,9 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 // (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
+// partition |roots| into connected components for |is_orthogonal|
+sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots);
+
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
@@ -70,7 +71,7 @@ RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 // semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
@@ -103,12 +104,14 @@ class RootSystem
   typedef matrix::Vector<byte> Byte_vector;
   struct root_info
   {
-    Byte_vector root, dual; // root in root basis, coroot in coroot basis
+    Byte_vector root, coroot; // root in root basis, coroot in coroot basis
+    Permutation root_perm;
     RankFlags descents,ascents; // for reflections by simple roots
 
     root_info(const Byte_vector& v)
-    : root(v), dual(), descents(), ascents() {}
+    : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
+
   struct root_compare; // auxilary type defined here for access reasons
 
   const unsigned char rk; // rank of root system
@@ -118,19 +121,27 @@ class RootSystem
 
   std::vector<root_info> ri; // information about individual positive roots
 
-// Root permutations induced by reflections in all positive roots.
-  std::vector<Permutation> root_perm;
+  // the following two are relations on the full root set
+  std::vector<RootNbrSet> root_ladder_bot; // minima for root ladders for |alpha|
+  std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
+
 
   // internal access methods
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
   { return Cmat(i,j); }
-  Byte_vector& root(RootNbr i) { return ri[i].root;}
-  Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
-  const Byte_vector& root(RootNbr i) const { return ri[i].root;}
-  const Byte_vector& coroot(RootNbr i) const { return ri[i].dual;}
 
- public:
+  // in the following 4 methods |i| indexes a positive root or corrot
+  Byte_vector& root(RootNbr i) { return ri[i].root;}
+  Byte_vector& coroot(RootNbr i) { return ri[i].coroot;}
+  const Byte_vector& root(RootNbr i) const { return ri[i].root;}
+  const Byte_vector& coroot(RootNbr i) const { return ri[i].coroot;}
+
+  // look up and return index in full root system, or |numRoots()| on failure
+  RootNbr lookup_root(const Byte_vector& root) const;
+  RootNbr lookup_coroot(const Byte_vector& coroot) const;
+
+public:
 
 // constructors and destructors
 
@@ -158,9 +169,9 @@ class RootSystem
 
 
 
-// root list access
+// root list access; unless noted, |alpha| indexes the full root system
 
-  // express root in simple root basis, or coroot in simple coroot basis
+  // express any root in simple root basis; any coroot in simple coroot basis
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
@@ -189,14 +200,20 @@ class RootSystem
   RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
 
-  RootNbr posRootNbr(RootNbr alpha) const
+  RootNbr posRootNbr(RootNbr alpha) const // here |alpha| indexes positive roots
   { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
+
+  RootNbr negRootNbr(RootNbr alpha) const // here |alpha| indexes positive roots
+  { assert(alpha<numPosRoots()); return numPosRoots()-1-alpha; }
 
   RootNbr simpleRootIndex(RootNbr alpha) const
   { assert(is_simple_root(alpha));  return alpha-numPosRoots(); }
 
-  RootNbr posRootIndex(RootNbr alpha) const
+  RootNbr posroot_index(RootNbr alpha) const
   { assert(is_posroot(alpha)); return alpha-numPosRoots(); }
+
+  RootNbr negroot_index(RootNbr alpha) const // |posroot_index(rootMinus(alpha))|
+  { assert(is_negroot(alpha)); return numPosRoots()-1-alpha; }
 
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
   { return numRoots()-1-alpha; }
@@ -204,6 +221,10 @@ class RootSystem
   RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
   { return is_posroot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
+  const RootNbrSet& min_roots_for(RootNbr alpha) const
+  { return root_ladder_bot[alpha]; }
+  const RootNbrSet& min_coroots_for(RootNbr alpha) const
+  { return coroot_ladder_bot[alpha]; }
 
   RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
   RootNbrList simpleRootList() const; // NOT for iteration over it
@@ -214,7 +235,7 @@ class RootSystem
   // The next method requires a positive root index |i|. It is however used
   // mostly with simple roots, whence the name. See |root_permutation| below.
   const Permutation& simple_root_permutation(weyl::Generator i) const
-  { return root_perm[i]; }
+  { return ri[i].root_perm; }
 
   RankFlags descent_set(RootNbr alpha) const
   {
@@ -231,10 +252,10 @@ class RootSystem
   { return descent_set(alpha).firstBit(); }
 
   bool is_descent(weyl::Generator i, RootNbr alpha) const
-  { return root_perm[i][alpha]<alpha; } // easier than using |descent_set|
+  { return ri[i].root_perm[alpha]<alpha; } // or |ri[alpha].descent_set.test(i)|
 
   bool is_ascent(weyl::Generator i, RootNbr alpha) const
-  { return root_perm[i][alpha]>alpha; }
+  { return ri[i].root_perm[alpha]>alpha; } // or |ri[alpha].ascent_set.test(i)|
 
   RootNbr simple_reflected_root(weyl::Generator i,RootNbr r) const
   { return simple_root_permutation(i)[r]; }
@@ -258,9 +279,12 @@ class RootSystem
 
   // for arbitrary roots, reduce root number to positive root offset first
   const Permutation& root_permutation(RootNbr alpha) const
-  { return root_perm[rt_abs(alpha)]; }
+  { return ri[rt_abs(alpha)].root_perm; }
 
-  bool isOrthogonal(RootNbr alpha, RootNbr beta) const
+  RootNbr reflected_root(RootNbr alpha,RootNbr beta) const
+  { return root_permutation(alpha)[beta]; }
+
+  bool is_orthogonal(RootNbr alpha, RootNbr beta) const
   { return root_permutation(alpha)[beta]==beta; }
 
   // pairing between root |alpha| and coroot |beta|
@@ -279,11 +303,12 @@ class RootSystem
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
-  RootNbrList pos_simples(RootNbrSet posroots) const; // posroots only here!
+  sl_list<RootNbr> pos_simples(RootNbrSet posroots) const; // posroots only here!
 
-  bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
-  bool sumIsRoot(RootNbr alpha, RootNbr beta) const
-  { RootNbr dummy; return sumIsRoot(alpha,beta,dummy); }
+  bool sum_is_root(RootNbr alpha, RootNbr beta) const
+  { return not min_roots_for(rootMinus(alpha)).isMember(beta); }
+  bool sum_is_coroot(RootNbr alpha, RootNbr beta) const
+  { return not min_coroots_for(rootMinus(alpha)).isMember(beta); }
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
@@ -292,7 +317,8 @@ class RootSystem
 // manipulators
  private:
   void dualise();
-
+  RootNbr lookup_posroot(const Byte_vector& v) const;
+  RootNbr lookup_poscoroot(const Byte_vector& v) const;
 }; // |class RootSystem|
 
 /*
@@ -307,7 +333,7 @@ themselves, and of additional data that correspond to embeddings of these
 lattices into mutually dual free abelian groups (weight and coweight lattices).
 
 The rank |d_rank| is that of the weight and coweight lattices, the root system
-itself has rank |semisimpleRank()| which may be smaller. The roots and coroots
+itself has rank |semisimple_rank()| which may be smaller. The roots and coroots
 are stored in compact form in the |RootSystem|, and again as represented in
 the weight and coweight lattices, for efficiency of retrieval under this form.
 Also constructed are various useful auxiliary things, like d_twoRho (the sum
@@ -376,9 +402,10 @@ class RootDatum
 
   const RootSystem& root_system() const { return *this; } // base object ref
 
-  // |rank()| does not number roots, but keep type same as |semisimpleRank()|
+  // |rank()| does not number roots, but keep type same as |semisimple_rank()|
   RootNbr rank() const { return d_rank; }
-  RootNbr semisimpleRank() const { return RootSystem::rank(); }
+  RootNbr semisimple_rank() const { return RootSystem::rank(); }
+  RootNbr radical_rank() const { return d_radicalBasis.size(); }
 
 // root list access
   using Weight_citer = WeightList::const_iterator;
@@ -396,8 +423,8 @@ class RootDatum
 
   Weight_citer beginSimpleRoot() const // simple roots start halfway
     { return beginRoot()+numPosRoots(); }
-  Weight_citer endSimpleRoot() const // and end after |semisimpleRank()|
-    { return beginSimpleRoot()+semisimpleRank(); }
+  Weight_citer endSimpleRoot() const // and end after |semisimple_rank()|
+    { return beginSimpleRoot()+semisimple_rank(); }
   Weight_citer beginPosRoot() const // positive roots start halfway
     { return beginSimpleRoot(); }
   Weight_citer endPosRoot() const // and continue to the end
@@ -405,8 +432,8 @@ class RootDatum
 
   Coweight_citer beginSimpleCoroot() const // simple roots start halfway
     { return beginCoroot()+numPosRoots(); }
-  Coweight_citer endSimpleCoroot() const // and end after |semisimpleRank()|
-    { return beginSimpleCoroot()+semisimpleRank(); }
+  Coweight_citer endSimpleCoroot() const // and end after |semisimple_rank()|
+    { return beginSimpleCoroot()+semisimple_rank(); }
   Coweight_citer beginPosCoroot() const // positive coroots start halfway
     { return  beginSimpleCoroot(); }
   Coweight_citer endPosCoroot() const // and continue to the end
@@ -416,13 +443,13 @@ class RootDatum
   bool isRoot(const Weight& v) const // ask this of a weight
     { return permutations::find_index(d_roots,v) != d_roots.size(); }
 
-  bool isSemisimple() const { return d_rank == semisimpleRank(); }
+  bool isSemisimple() const { return d_rank == semisimple_rank(); }
 
   const Weight& root(RootNbr i) const
     { assert(i<numRoots()); return d_roots[i]; }
 
   const Weight& simpleRoot(weyl::Generator i) const
-    { assert(i<semisimpleRank()); return *(beginSimpleRoot()+i); }
+    { assert(i<semisimple_rank()); return *(beginSimpleRoot()+i); }
 
   const Weight& posRoot(RootNbr i) const
     { assert(i<numPosRoots()); return *(beginPosRoot()+i); }
@@ -435,7 +462,7 @@ class RootDatum
     { assert(i<numRoots()); return d_coroots[i]; }
 
   const Coweight& simpleCoroot(weyl::Generator i) const
-    { assert(i<semisimpleRank()); return *(beginSimpleCoroot()+i); }
+    { assert(i<semisimple_rank()); return *(beginSimpleCoroot()+i); }
 
   const Coweight& posCoroot(RootNbr i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
@@ -479,8 +506,8 @@ class RootDatum
   int scalarProduct(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j)); }
 
-  using RootSystem::isOrthogonal; // for the case of two RootNbr values
-  bool isOrthogonal(const Weight& v, RootNbr j) const
+  using RootSystem::is_orthogonal; // for the case of two |RootNbr| values
+  bool is_orthogonal(const Weight& v, RootNbr j) const
     { return v.dot(coroot(j))==0; }
 
   int cartan(weyl::Generator i, weyl::Generator j) const
@@ -641,14 +668,13 @@ class RootDatum
   // express coroot in basis of simple coroots
   int_Vector inSimpleCoroots(RootNbr alpha) const { return coroot_expr(alpha); }
 
-  Weight twoRho(const RootNbrList&) const; // sum of the \emph{positive} members
-  Weight twoRho(RootNbrSet) const; // by value; sum of the positive members
-  Coweight dual_twoRho(const RootNbrList&) const;
-  Coweight dual_twoRho(RootNbrSet) const; // by value
+  // The sum of the positive roots in |rs|
+  Weight twoRho(const RootNbrSet& rs) const
+  { return root_sum(*this,posRootSet()&rs); }
+  Coweight dual_twoRho(const RootNbrSet& rs) const
+  { return coroot_sum(*this,posRootSet()&rs); }
 
-
-  WeylWord word_of_inverse_matrix(const WeightInvolution&)
-    const;
+  WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
 
 // manipulators
 

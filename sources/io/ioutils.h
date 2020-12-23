@@ -14,6 +14,8 @@
 #include <iosfwd>
 #include <string>
 
+#include "../Atlas.h"
+
 #include "bigint.h"
 
 namespace atlas {

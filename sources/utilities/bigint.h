@@ -40,8 +40,8 @@ public:
   constexpr static digit neg_flag = 0x80000000;
   explicit big_int (int n) // normal constructor only for single |digit| case
     : d(1,static_cast<digit>(n)) {}
-  static big_int from_signed (Numer_t n);  // factory for up to 2-digit signed
-  static big_int from_unsigned (Denom_t n);  // factory, up to 3-digit unsigned
+  static big_int from_signed (long long n);  // factory for up to 2-digit signed
+  static big_int from_unsigned (unsigned long long n); // up to 3-digit unsigned
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
@@ -64,7 +64,7 @@ public:
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
 
   big_int& operator*= (int x);
-  big_int& operator*= (Numer_t n) { return (*this)*=from_signed(n); }
+  big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
@@ -159,7 +159,8 @@ private:
 public:
   static big_rat from_fraction(big_int numer, big_int denom)
   { return big_rat(std::move(numer),std::move(denom)).normalise(); }
-  big_rat(Rational r)
+
+  template<typename I> big_rat(const Rational<I> r)
     : num(big_int::from_signed(r.normalize().numerator()))
     , den(big_int::from_unsigned(r.true_denominator()))
     {}
@@ -169,8 +170,8 @@ public:
   big_int&& numerator() && { return std::move(num); }
   big_int&& denominator() && { return std::move(den); }
 
-  Rational rat_val() const // limited precision rational, or throw an error
-  { return Rational(num.long_val(),den.ulong_val()); }
+  Rational<Numer_t> rat_val() const // to limited precision, or throw an error
+  { return Rational<Numer_t>(num.long_val(),den.ulong_val()); }
 
   bool is_negative() const { return num.is_negative(); }
   bool is_zero() const { return num.is_zero(); }
