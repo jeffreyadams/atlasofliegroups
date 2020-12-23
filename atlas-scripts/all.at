@@ -27,7 +27,7 @@
 <weak_packets_precomputed_cell_traces.at
 <arthur_parameters.at
 <coherent_irreducible.at
-<deform_plus.at
+ { <deform_plus.at Removed by DV 12/23: this now makes is_unitary use the VERY SLOW script version}
 <truncated_induction.at
 <dirac_index.at
 <sub_cells.at
