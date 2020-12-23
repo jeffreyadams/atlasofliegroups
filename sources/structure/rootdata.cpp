@@ -152,7 +152,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   }
 
   if (prefer_co) // then we generate for the dual system
-    dualise(); // here this just transposes |Cmat|
+    swap_roots_and_coroots(); // here this just transposes |Cmat|
 
   // the Cartan matrix sliced into rows respectively into columns
   std::vector<Byte_vector> simple_root, simple_coroot;
@@ -232,7 +232,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 
   // now switch roots and coroots if coroots generation was actually requested
   if (prefer_co)
-    dualise(); // this restores |Cmat|, and swaps roots and coroots
+    swap_roots_and_coroots(); // this also restores |Cmat|
 
   root_ladder_bot.resize(2*npos);
   coroot_ladder_bot.resize(2*npos);
@@ -316,7 +316,8 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 
 } // end of basic constructor
 
-void RootSystem::dualise() // private method to pass to dual
+// a method designed for the 3 places where is called; not for general use
+void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 { bool simply_laced = true;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=i+1; j<rk; ++j) // do only case $i<j$, upper triangle
@@ -326,14 +327,16 @@ void RootSystem::dualise() // private method to pass to dual
   if (not simply_laced)
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
       root(alpha).swap(coroot(alpha)); // |descent|, |ascent| are OK
-} // |RootSystem::dualise|
+} // |RootSystem::swap_roots_and_coroots|
 
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , prefer_co(not rs.prefer_co) // switch this
   , Cmat(rs.Cmat) // transposed below
   , ri(rs.ri)     // entries modified internally in non simply laced case
-{ dualise(); }
+  , root_ladder_bot(rs.coroot_ladder_bot)
+  , coroot_ladder_bot(rs.root_ladder_bot)
+{ swap_roots_and_coroots(); }
 
 
 // express root in simple root basis
