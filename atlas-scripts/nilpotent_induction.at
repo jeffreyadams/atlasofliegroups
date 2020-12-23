@@ -1,0 +1,47 @@
+<subgroups.at
+<nilpotent_orbits.at
+
+{compute induction of nilpotent orbits in easy case:
+when determined by the dimension}
+set_type [
+maybe_induce = (void no_orbit| ComplexNilpotent orbit)
+]
+
+set any(maybe_induce orbit)=bool: case orbit| orbit: true | no_orbit: false esac
+set req(maybe_induce orbit)=ComplexNilpotent: case orbit | orbit(orbit):orbit  | else error("error in easy induce") esac
+
+{assume O_L is for a Levi}
+set induce_multiple(ComplexNilpotent O_L,RootDatum rd)=
+let target_dimension=O_L.dim_nilpotent + rd.dimension -O_L.root_datum.dimension in
+##for orbit in rd.nilpotent_orbits do
+ if orbit.dim_nilpotent=target_dimension  then [orbit] else [] fi od
+
+{assume O_L is for a Levi}
+set simple_induce(ComplexNilpotent O_L,RootDatum rd)=maybe_induce:
+let ind=induce_multiple(O_L,rd) in if #ind=1 then ind[0].orbit else ().no_orbit fi
+
+set show_nilpotent_induction(RootDatum rd)=void:
+tabulate(##for L in proper_Levi_subgroups(rd) do
+ ##for O_L in nilpotent_orbits(L) do
+  let ind=induce_multiple(O_L,rd)  then
+  unique= if #ind=1 then "*" else "" fi in
+  for O in ind do
+  [L.derived.Lie_type.nice_format, O_L.H{_of_triple}.to_string, O_L.diagram.to_string,O_L.dim_nilpotent.to_string,
+     O.H{_of_triple}.to_string, O.diagram.to_string,O.dim_nilpotent.to_string,unique] od od od)
+
+set show_richardson_orbits(RootDatum rd)=void:
+tabulate(##for L in proper_Levi_subgroups(rd) do
+  let O_L=L.zero_orbit then
+  ind=induce_multiple(O_L,rd)  then
+  unique= if #ind=1 then "*" else "" fi in
+  for O in ind do
+  [L.derived.Lie_type.nice_format, O_L.H{_of_triple}.to_string, O_L.diagram.to_string,O_L.dim_nilpotent.to_string,
+     O.H{_of_triple}.to_string, O.diagram.to_string,O.dim_nilpotent.to_string,unique] od  od)
+     
+
+
+
+
+
+
+

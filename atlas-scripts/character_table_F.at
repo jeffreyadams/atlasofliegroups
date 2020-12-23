@@ -1,0 +1,138 @@
+<character_tables.at
+<nilpotent_orbits.at
+<character_table_C.at
+
+set rd_F4=simply_connected(F4)
+set orbits=rd_F4.orbits
+
+set a=W_elt (rd_F4,[1])
+set b=W_elt (rd_F4,[2,1,2])
+set c=W_elt (rd_F4,[2,3,2,1,2,3,2])
+set d=W_elt (rd_F4,[0])
+set tau=W_elt (rd_F4,[2])
+set sigma=W_elt (rd_F4,[2,3])
+set e=(a*b*c*d)^2
+set z=(a*b*c*d)^3
+set classes_Kondo_F4_0=
+[
+id_W(rd_F4),z,a*b,e,e*z,a*d*b*d*c*d,sigma,sigma*z,sigma*e,sigma*e*z,c*d*sigma,d,d*z,sigma*d,sigma*d*z,a*d*b,tau,tau*z,e*tau,e*tau*z,c*a*tau,tau*d,a*tau,a*tau*z,c*d*b*tau
+]
+
+set classes_Kondo_F4= {minimal length reps}
+for w in classes_Kondo_F4_0 do minimal_representative(w) od
+
+set class_centralizer_sizes_Kondo_F4=for w in classes_Kondo_F4 do w.centralizer_order od
+set class_sizes_Kondo_F4=for w@i in classes_Kondo_F4 do order_W(rd_F4)\class_centralizer_sizes_Kondo_F4[i] od
+set class_orders_Kondo_F4=for w in classes_Kondo_F4 do w.order od
+
+set character_table_Kondo_F4=
+[
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1],
+[1,1,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,1,1,1,1,1,-1,-1,-1,-1],
+[1,1,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1,1,1,1],
+[2,2,2,2,2,2,-1,-1,-1,-1,-1,2,2,-1,-1,2,0,0,0,0,0,0,0,0,0],
+[2,2,2,2,2,2,-1,-1,-1,-1,-1,-2,-2,1,1,-2,0,0,0,0,0,0,0,0,0],
+[2,2,2,-1,-1,2,2,2,-1,-1,-1,0,0,0,0,0,2,2,-1,-1,2,0,0,0,0],
+[2,2,2,-1,-1,2,2,2,-1,-1,-1,0,0,0,0,0,-2,-2,1,1,-2,0,0,0,0],
+[4,4,4,-2,-2,4,-2,-2,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[9,9,1,0,0,-3,0,0,0,0,0,3,3,0,0,-1,3,3,0,0,-1,1,1,1,-1],
+[9,9,1,0,0,-3,0,0,0,0,0,3,3,0,0,-1,-3,-3,0,0,1,-1,-1,-1,1],
+[9,9,1,0,0,-3,0,0,0,0,0,-3,-3,0,0,1,3,3,0,0,-1,-1,-1,-1,1],
+[9,9,1,0,0,-3,0,0,0,0,0,-3,-3,0,0,1,-3,-3,0,0,1,1,1,1,-1],
+[6,6,-2,0,0,2,0,0,3,3,-1,0,0,0,0,0,0,0,0,0,0,2,-2,-2,0],
+[6,6,-2,0,0,2,0,0,3,3,-1,0,0,0,0,0,0,0,0,0,0,-2,2,2,0],
+[12,12,-4,0,0,4,0,0,-3,-3,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[4,-4,0,1,-1,0,1,-1,-2,2,0,2,-2,-1,1,0,2,-2,-1,1,0,0,2,-2,0],
+[4,-4,0,1,-1,0,1,-1,-2,2,0,2,-2,-1,1,0,-2,2,1,-1,0,0,-2,2,0],
+[4,-4,0,1,-1,0,1,-1,-2,2,0,-2,2,1,-1,0,2,-2,-1,1,0,0,-2,2,0],
+[4,-4,0,1,-1,0,1,-1,-2,2,0,-2,2,1,-1,0,-2,2,1,-1,0,0,2,-2,0],
+[8,-8,0,2,-2,0,-1,1,2,-2,0,4,-4,1,-1,0,0,0,0,0,0,0,0,0,0],
+[8,-8,0,2,-2,0,-1,1,2,-2,0,-4,4,-1,1,0,0,0,0,0,0,0,0,0,0],
+[8,-8,0,-1,1,0,2,-2,2,-2,0,0,0,0,0,0,4,-4,1,-1,0,0,0,0,0],
+[8,-8,0,-1,1,0,2,-2,2,-2,0,0,0,0,0,0,-4,4,-1,1,0,0,0,0,0],
+[16,-16,0,-2,2,0,-2,2,-2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+]
+
+{when attaching names to signatures there can be 0,1 or 2 primes
+primes[list_0,list_1,list_2] where list_i is the ones with i primes
+}
+set primes=[
+[[1,1,1],[1,-1,-1],[4,0,0],[9,3,3],[9,-3,-3],[12,0,0],[4,2,2],[4,-2,-2],[16,0,0]],  {0 primes}
+[[1,-1,1],[2,-2,0],[2,0,2],[9,-3,3],[4,-2,2],[8,-4,0],[8,0,4]],                     {1 prime}
+[[1,1,-1],[2,2,0],[2,0,-2],[9,3,-3],[4,2,-2],[8,4,0],[8,0,-4]]                      {2 primes}
+]
+
+set primes(int n)=
+{assert(n>=0 and n<=2,"invalid value of n");}
+if n=0 then "" elif n=1 then "'"  elif n=2 then  "''"  else n.to_string fi
+
+set F4_name(CharacterTable ct)=(vec->string):(vec v):string:
+let dim=v[0] then
+index=find(ct.characters,v) then
+d=ct.degree(index) then
+number_primes=first(for list in primes do find(list,ct.signature(v))!=-1 od) in
+if number_primes=-1
+then
+ number_primes:=if sum(v)=15 then 1 elif sum(v)=19 then 2 else error("problem with signature [6,0,0]") fi
+fi ;
+if number_primes=0 then "phi(" + dim.to_string + "," + d.to_string +")" 
+else "phi(" + dim.to_string+","+d.to_string+")"+primes(number_primes)
+fi
+
+set number_orthogonal_simple_roots(RootDatum rd,ratvec co_weight)=
+count(for alpha in rd.simple_roots do alpha*co_weight=0 od)
+
+
+set character_table_F4_0() = CharacterTable:
+{initialize_character_table(simply_connected(F4))}
+let order=1152, ncc=25 then
+wct=W_class_table(simply_connected(F4)) then
+classes=classes_Kondo_F4 then
+sym_powers=sym_powers_reflection(classes) 
+in
+  ( Lie_type(F4)    {lie_type}  
+  , order    {order (of W)}
+  , ncc      {n_classes}
+  , (int j) classical_class: ().null_class
+  , (int j) string: "" {class_label} {fill in later}
+  , (int j) WeylElt: classes_Kondo_F4[j] {class_rep}
+  , (int j) int: class_orders_Kondo_F4[j]
+  , (int j, int p) int: first(ncc,(int i): is_conjugate(classes_Kondo_F4[i],classes_Kondo_F4[j]^p))
+  , class_centralizer_sizes_Kondo_F4
+  , class_sizes_Kondo_F4
+  , (int j): null_irrep()
+  , (int i) string: "" { irreducible representation label }  {later}
+  , sym_powers
+  ,[int]:[]     {degrees}
+  , ^character_table_Kondo_F4
+  )
+
+
+set character_table_F4()=
+let ct_0=character_table_F4_0() then
+ct=ct_0.update_degrees then
+F4_names(int i)=ct.F4_name(ct.character(i)) {function} in
+ct.irreducible_label:=F4_names;
+ct
+
+{
+set ct=character_table_F4()
+ct:=ct.update_degrees
+set F4_names(CharacterTable ct)=[string]:for i:ct.n_classes do ct.F4_name(ct.character(i)) od
+set F4_names(int i)=ct.F4_names[i]
+}
+forget a
+forget b
+forget c
+forget d
+forget tau
+forget sigma
+forget e
+forget z
+
+
+
+
+
+

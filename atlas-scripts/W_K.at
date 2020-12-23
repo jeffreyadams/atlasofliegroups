@@ -202,7 +202,7 @@ set make_strongly_dominant (KGBElt x,vec mu) =
 {       let mu_2=lift_action(x,R_K_dom[i])*mu_1 in   ???}
 {       prints("mu_1=", mu_1, " mu_2:", mu_2, " x=", x); }
       let is_pos=is_P_positive(x,mu_2,R_K_dom) in
-{       prints("is_P_positive:", is_pos); }
+{    prints("is_P_positive:", is_pos);}
       if is_pos then j:=i;done:=true; mu:=mu_2
       else i:=i+1
       fi

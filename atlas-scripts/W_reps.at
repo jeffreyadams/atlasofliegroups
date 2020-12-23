@@ -3,6 +3,7 @@
 <W_characters.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<sparse.at { for column-grouped |sparse_mat| type }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -59,10 +60,25 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
 
 { Type definitions that facilitate handling output from W_cells }
 set_type
-[ WCell = ([int] labels, WGraph graph)
-, WGraph = [WNode]
-, WNode = ([int] tau,[int,int] out_list)
+[ WNode = ([int] tau,[int,int] out_list),
+  WGraph = (RootDatum rd,[WNode] nodes),
+  WCell = ([int] labels, WGraph graph)
 ]
+
+set root_datum(WGraph(rd,))=rd  {this is the integrality_datum of the parameter/block}
+set root_datum(WCell (,g))=g.root_datum
+set #(WGraph(,nodes))=int:#nodes
+set nodes(WCell (,graph))=[WNode]:graph.nodes
+{
+set W_graph(WCell (,g))=WGraph:g
+set root_datum(WNode node)=RootDatum:node.rd
+set root_datum(WGraph g)=RootDatum:g[0].root_datum
+set root_datum(WCell (,g))=RootDatum: g.root_datum
+}
+
+{modify some builtins to take RootDatum of WGraph/WCell into account}
+set W_cells_of(Param p)=[WCell]:
+let (index,cells)=W_cells(p) in {(index,}for (tau,g) in cells do (tau,(p.root_datum,g)) od{)}
 
 { Description of the cell representation taken from messages/wcells.help
 
@@ -123,7 +139,7 @@ set_type
   In the Hecke action all the diagonal entries are opposite
 }
 
-{ matrix of the Hecke action (on the basis of length-parity flipped
+{ sparse matrix of the Hecke action (on the basis of length-parity flipped
   irreducible representations) of the i^th simple reflection on a cell
   A cell is a value of type WCell = ( [int] , [([int],[(int,int)])] ) as
   described in the W_cells@Block command in atlas-functions.help
@@ -132,23 +148,26 @@ set_type
 { the cell_action functions really live on the level of WGraph: }
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
-set graph_action (WGraph graph,int s) = mat:
+set graph_action (WGraph (rd,graph),int s) = sparse_mat:
    let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s), n=#graph in
    for node@j in graph
    do if node.tau_has_s
-      then for i:n do if i=j then -1 else 0 fi { single diagonal term -1 } od
-      else let col=null(n) in
-         col[j]:=1 { diagonal term, the rest come from (inward) edges }
-      ;  for (i,mu) in node.out_list
-         do if graph[i].tau_has_s then col[i]:=mu fi
-         od
-      ;  col
+      then [(j,-1)] { single diagonal term -1 }
+      else (j,1) { diagonal term, the rest come from outwardard edges } #
+        for (i,):link in node.out_list
+        do if graph[i].tau_has_s then [link] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
       fi
    od
 
 {. matrix of action of product of simple reflections on a cell .}
 set graph_action (WGraph graph,[int] w) = mat:
-  product(#graph,for s in w do graph_action(graph,s) od)
+  let n=#graph in
+  if =#w then id_mat(n)
+  else let result=unsparse(graph_action(graph,w[0]),n) in
+     for i:#w-1 from 1 do result:=result*graph_action(graph,w[i]) od
+  ;  result
+  fi
 
 {. matrix of action of WeylElt on a cell .}
 set graph_action(WGraph graph,WeylElt w) = mat:
@@ -156,7 +175,7 @@ set graph_action(WGraph graph,WeylElt w) = mat:
 
 
 {. matrix of action of i^th simple reflection on a cell .}
-set cell_action (WCell cell,int s) = mat:
+set cell_action (WCell cell,int s) = sparse_mat:
   graph_action(cell.graph,s)
 
 {. matrix of action of product of simple reflections on a cell .}
@@ -185,7 +204,8 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.root_datum.semisimple_rank do cell_action(cell,i) od)
+  (#cell.graph,for i:ct.root_datum.semisimple_rank
+	       do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:

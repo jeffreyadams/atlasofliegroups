@@ -1,0 +1,14 @@
+<simple_character_table.at
+<character_table_tensor.at
+
+set character_table(RootDatum rd)=
+let factors=rd.derived.simple_factors then
+rv=simple_character_table(factors[0].derived) in
+ for i:#factors-1 from 1 do
+  rv:=tensor(rv,simple_character_table(factors[i].derived)) od;
+rv
+
+set character_table(RootDatum rd,ratvec infinitesimal_character)=
+let rd_int=integrality_datum(rd,infinitesimal_character) in
+let ()=prints("integrality datum: ", rd_int) in 
+character_table(rd_int)

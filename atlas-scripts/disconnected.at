@@ -1,0 +1,90 @@
+<K_highest_weights.at
+<nilpotent_orbits.at
+
+{data type for certain disconnected complex reductive groups}
+
+{for now: class which includes G^theta where G is connected complex,
+theta is an involution. G/G^theta is an elementary 2-group}
+
+
+set_type [DisconnectedGroup = (RootDatum rd,[vec] characters,[mat] automorphisms)]
+{characters: representatives of the 2-group ker(1+delta)/im(1-delta)=X^*(H^delta/(H^delta)_0)
+automorphisms: a set A of square matrices of size rank(rd)a, satisying:
+1) M^2=1  (M\in A)
+2) MN=NM  (M,N in A)
+3) M is a distinguished automorphism:
+   M*: simple roots -> simple_roots
+   (^M)*: simple_coroots -> simple_coroots
+
+characters: see K_highest_weights.at
+applying the following construction with theta=distinguished involution delta
+
+X^*(H^theta)=X^*/(1-theta)X^*
+X^*(H/(H^theta)_0)=X^*/(X^*)^{-theta}
+                  =X^*/ker(1+theta)
+=>
+X^*(H^theta/(H^theta)_0)=(X^*)^{-theta}/(1-theta)X^*
+                        =ker(1+theta)/image(1-theta)
+
+this is from characters_of_order_2@KGBElt in K_highest_weights.at
+
+{This function is the same as basis_lambda_differential_0 in all_parameters.at
+   List of weights representative of a set of generators of the elementary
+   2-group ker(1+theta(x))/im(1-theta(x)).
+characters_order_2@KGBElt
+returns [v_0,...,v_k], v_i\in X^*,
+the characters of H^{theta_x} with differential 0
+are \sum a_i v_i with a_i=0,1 (or [] -> [0,...,0])
+
+Each v_i is in ker(1+theta)X^*
+Two such give the same character <=> difference is in im(1-theta)X^*
+}
+}
+
+set K(RealForm G)=DisconnectedGroup:
+let K_0=K_0(G) then
+x=nice_choice_x(G)  {not sure this is necessary?} then
+characters=characters_order_2(x) then
+automorphisms=R_K_dom(x) in
+(K_0,characters,for w in automorphisms do factor_action(x,w) od)
+
+set_type [ComplexNilpotent_d=(DisconnectedGroup rd_d,void .,vec H)]
+
+set root_datum(ComplexNilpotent_d O_d)=O_d.rd_d.rd
+
+set =(ComplexNilpotent_d a,ComplexNilpotent_d b)=bool:
+any(for M in a.rd_d.automorphisms do ^M*a.H=b.H od)
+
+set find([ComplexNilpotent_d] orbits,ComplexNilpotent_d O)=int:
+first(for orbit in orbits do orbit=O od)
+
+{lift orbit from G_0 to G}
+set lift(ComplexNilpotent O,DisconnectedGroup G)=ComplexNilpotent_d:
+assert(O.root_datum=G.rd,"root data don't match");(G,(),O.H)
+
+{saturate orbit of disconnected subgroup to orbit for connected G}
+set saturate(ComplexNilpotent_d O_d,RootDatum rd)=ComplexNilpotent:
+(rd,(),O_d.H)
+
+{saturate an orbit from a disconnected subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
+set saturate(ComplexNilpotent_d O_d,RootDatum rd,mat inc)=ComplexNilpotent:
+(rd,(),inc*O_d.H)
+
+set remove_duplicates([ComplexNilpotent_d] orbits)=[ComplexNilpotent_d]:
+let rv=[ComplexNilpotent_d]:[] in
+for orbit in orbits do
+ if find(rv,orbit)=-1 then rv#:=orbit fi
+od;rv
+
+{nilpotent orbit for G intersect G_0}
+set intersect(ComplexNilpotent_d O_d)=[ComplexNilpotent]:
+let O=(O_d.root_datum,(),O_d.H) in
+remove_duplicates(for w in O_d.rd_d.automorphisms do (O.root_datum,(),w*O.H) od)
+
+set nilpotent_orbits(DisconnectedGroup G)=[ComplexNilpotent_d]:
+let orbits=G.rd.orbits then
+orbits_d=for O in orbits do lift(O,G) od in
+remove_duplicates(orbits_d)
+
+set orbits(DisconnectedGroup G)=[ComplexNilpotent_d]:nilpotent_orbits(G)
+

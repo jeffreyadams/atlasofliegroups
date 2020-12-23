@@ -11,7 +11,7 @@ D*my_roots=simple_roots(rd)
 C*simple_roots(rd)=my_roots
 D*C=id_mat(semi_simple_rank(rd))
 D*[v]_{my_basis}=[v]_{simple_roots(rd) basis}
-C*[v]_{simple_roots(rd) basis}=[v]_{my_basis}z
+C*[v]_{simple_roots(rd) basis}=[v]_{my_basis}
 theta given in basis simple_roots(rd) ->
 C*theta*D in my_basis
 }

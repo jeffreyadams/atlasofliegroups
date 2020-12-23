@@ -85,9 +85,9 @@ namespace atlas {
       // finally, write the indices of the KL polynomials themselves
       for (size_t i=0; i<kld.size(); ++i)
       {
-        assert((kld[i].P!=0)==prims.isMember(i));
-        if (kld[i].P!=0) // only write nonzero indices
-          basic_io::put_int(kld[i].P,out);
+        assert((kld[i]!=0)==prims.isMember(i));
+        if (kld[i]!=0) // only write nonzero indices
+          basic_io::put_int(kld[i],out);
       }
 
       basic_io::put_int(1,out); // write unrecorded final polynomial 1

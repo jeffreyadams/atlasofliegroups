@@ -1,5 +1,8 @@
 <basic.at
 
+{complex torus of rank n (RootDatum)}
+set complex_torus(int n)=RootDatum:root_datum(null(n,0),null(n,0))
+
 { involution for torus with |a| compact, |b| complex, and |c| split factors }
 set torus_involution (int a,int b,int c) = mat:
   let M=diagonal(##[ones(a), null(2*b), -ones(c)])
@@ -10,8 +13,39 @@ set torus (int a,int b, int c) = RealForm:
   in real_form(inner_class(root_datum(r,r),torus_involution(a,b,c)),0)
 
 set compact_torus (int k) = RealForm:torus(k,0,0)
-set complex_torus (int k) = RealForm:torus(0,k,0)
+set real_complex_torus (int k) = RealForm:torus(0,k,0)  {complex torus as a real group}
 set split_torus (int k)   = RealForm:torus(0,0,k)
 
 set torus(CartanClass C) = RealForm:
   let (type,,,)=Cartan_info(C) in torus(type)
+
+{a few constructions involving a subtorus T of our fixed Cartan subgroup H}
+
+{matrix gives X_*(T)\subset X_*(H)}
+set_type SubTorus=mat
+
+{Given T, defined determined by X_*(T)\subset X_*(H)
+ X^*(T) is naturally a quotient: $X^*(H)/X^*(T/H)
+ but this isn't useful, instead we define X^*(T)=Hom(X_*(T),Z)
+
+suppose T is given by mat:A, A is n\times c, of rank c
+the rows of ^A are a basis of X_*(T) {v_1,...,v_c}
+this gives an isomorphism X_*(T)\simeq Z^r
+suppose lambda\in X^*(H), then lambda restricted to T
+is in X^*(T)\simeq Z^r. The map is:
+
+restriction: lambda\in Z^n -> (^A)*lambda \in Z^r
+restrict=project (synonyms)
+
+dually: inject: X_*(T)-X_*(H)
+}
+
+set restrict(SubTorus T,vec lambda)=(^T)*lambda
+set restrict(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+
+set project(SubTorus T,vec lambda)=(^T)*lambda
+set project(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+
+set inject(SubTorus T,vec lambda)=T*lambda
+set inject(SubTorus T)=(vec->vec):(vec lambda):T*lambda
+

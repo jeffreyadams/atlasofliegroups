@@ -1,0 +1,220 @@
+<bracket.at
+<structure_constants.at
+<ratmat.at
+<nilpotent_orbits.at
+<cyclotomicMat.at
+<cyclotomic_Gaussian_elim.at
+
+{Lie algebra over cyclotomic field}
+
+{data type for an element of a reductive Lie algebra over CF(m)
+ N=number of roots
+ n=rank
+ X=CyclotomicVector of size N <-> \sum_{i=0}^{N-1} x_i X_i where X_i are the root vectors
+ H=CyclotomicVector of size n <-> X_* in atlas coordinates
+ arbitrary element of \g: (X,H)
+}
+set_type CFLieAlgebraElement=(StructureConstantTable t,(CyclotomicVec,CyclotomicVec) X)
+set F(CFLieAlgebraElement X)=CyclotomicField:let (,(v,))=X in v.F
+set root_datum(CFLieAlgebraElement (t,))=RootDatum:t.root_datum
+set root_part(CFLieAlgebraElement(,(v,)))=CyclotomicVec:v
+set semisimple_part(CFLieAlgebraElement(,(,v)))=CyclotomicVec:v
+set H(CFLieAlgebraElement X)=CyclotomicVec:X.semisimple_part
+set =(CFLieAlgebraElement X,CFLieAlgebraElement Y)=bool:
+X.root_datum=Y.root_datum and X.root_part=Y.root_part and X.H=Y.H
+set null(StructureConstantTable t,CyclotomicField F)=CFLieAlgebraElement:(t,(null(#t.root_datum.roots,F),null(t.root_datum.ss_rank,F)))
+set =(CFLieAlgebraElement X)=bool:X=null(X.t,X.F)
+set +(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
+assert(X.root_datum=Y.root_datum,"root datum mismatch");
+(X.t,((X.root_part+Y.root_part),(X.H+Y.H)))
+
+set *(CyclotomicFieldElement c,CFLieAlgebraElement X)=CFLieAlgebraElement:
+(X.t,(c*X.root_part,c*X.H))
+set *(rat c,CFLieAlgebraElement X)=CFLieAlgebraElement:embed(c,X.F)*X
+set embed(LieAlgebraElement X,CyclotomicField F)=(X.t,(embed(X.root_part,F),embed(X.H,F)))
+{(t,v,w)-> v##w}
+set coordinates(CFLieAlgebraElement X)=CyclotomicVec:X.root_part##X.H
+
+{dot product of a cyclotomic vector and an integral vector}
+set *(vec alpha,CyclotomicVec v)=CyclotomicFieldElement:
+let rv=v.F.zero in
+for i:#v do rv+:=alpha[i]*v[i] od;rv
+
+{X=\sum a_\alpha X_\alpha
+support: \alpha for which a_\alpha\ne 0}
+set support(CFLieAlgebraElement X)=[vec]:
+let v=X.root_part in
+##for alpha@i in X.root_datum.roots do if not =v[i] then [alpha] else [] fi od
+
+{element of Lie algebra coming from ratvec of size n+N=dim(\g)}
+set lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebraElement:
+(t,(v[:#t.root_datum.roots],v[#t.root_datum.roots:]))
+
+set lie_algebra_element_semisimple(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,(null(#t.root_datum.roots,v.F)##v))
+set lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,v##(null(t.root_datum.rank,v.F)))
+
+{CF versions of constructors}
+set X_alpha(StructureConstantTable t,int i, CyclotomicField F)=CFLieAlgebraElement:embed(X_alpha(t,i),F)
+set X_alpha(StructureConstantTable t,vec alpha, CyclotomicField F)=CFLieAlgebraElement:embed(X_alpha(t,alpha),F)
+set H(StructureConstantTable t,vec h,CyclotomicField F)=CFLieAlgebraElement:embed(H(t,h),F)
+set X(StructureConstantTable t,(vec alpha,vec h),CyclotomicField F)=CFLieAlgebraElement:embed(X(t,(alpha,h)),F)
+set X(StructureConstantTable t,vec alpha,vec h,CyclotomicField F)=CFLieAlgebraElement:embed(X(t,(alpha,h)),F)
+
+{element of Lie algebra coming from ratvec of size n+N=dim(\g)}
+set lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebraElement:
+(t,(v[:#t.root_datum.roots],v[#t.root_datum.roots:]))
+
+set lie_algebra_element_semisimple(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,(null(#t.root_datum.roots,v.F)##v))
+set lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,v##(null(t.root_datum.rank,v.F)))
+
+{1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
+set CFbasis(StructureConstantTable t,int i,CyclotomicField F)=CFLieAlgebraElement:
+lie_algebra_element(t,embed(e(t.root_datum.dimension,i),F))
+
+{nice string representation of LieAlgebraElement}
+set to_strings(CFLieAlgebraElement X)=string:
+let rv="" in
+(for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od,
+(X.H).to_string);rv
+
+set root_part_array(CFLieAlgebraElement X)=[(CyclotomicFieldElement,vec)]:
+##(for i:#X.root_part do if !=X.root_part[i] then [(X.root_part[i],X.root_datum.roots[i])] else [] fi od)
+
+set show_long(CFLieAlgebraElement X)=void:prints(X.to_string)
+
+{[X,Y] =[(X.root_term,X.H),(Y.root_term,Y.H)]=
+[X.root_term,Y.root_term] + other terms
+this function returns just the root term of this bracket
+(not the torus part which may also be nonzero)
+this is computed from the structure constant table
+}
+set bracket_root_term(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
+assert(X.F=Y.F,"cyclotomic fields don't match");
+assert(X.root_datum=Y.root_datum,"root datum don't match");
+assert(#X.root_part=#Y.root_part and #X.root_part=#X.root_datum.roots,"size don't match");
+let rd=X.root_datum then
+t=X.t then
+N=#X.root_part then
+n=#X.H then
+rv=CyclotomicVec:null(N,X.F) in
+for i:N do
+ for j:N do
+  let cij=X.t.table[j][i]*X.root_part[i]*Y.root_part[j] in
+  if !=cij then
+   rv+:=cij*embed(t.root_datum.coordinates(t.root_datum.roots[i]+t.root_datum.roots[j]),X.F)
+  fi
+ od
+od;(X.t,(rv,null(n,X.F)))
+
+set sum([CyclotomicVec] S)=CyclotomicVec:
+let n=#S[0] then
+F=S[0].F then
+rv=null(n,F) in
+for v in S do rv+:=v od;rv
+
+
+
+{torus term, coming from [X_alpha,X_-alpha]}
+set bracket_torus_term(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
+assert(X.F=Y.F,"cyclotomic fields don't match");
+assert(X.root_datum=Y.root_datum,"root data don't match");
+let F=X.F then
+rd=X.root_datum then
+cyclotomic_vector=sum(for i:#rd.roots do
+  let alpha=rd.roots[i] then
+  j=find(rd.roots, -alpha) in
+  X.root_part[i]*Y.root_part[j]*embed((-1)^(rd.height(alpha)),F)*embed(rd.coroots[i],F)
+od) in
+(X.t,(CyclotomicVec:null(#X.root_datum.roots,F),cyclotomic_vector))
+
+{[X,Y]=(X.root_terms,X.H),(Y.root_terms,Y.H)] -> [X.H,Y.root_terms] + [X.H,Y.root_terms],
+ which gives a term \sum_1^N a_i X_i
+}
+
+set *(CyclotomicVec v,CyclotomicVec w)=CyclotomicFieldElement:
+assert(v.F=w.F,"cyclotomic fields don't match");
+assert(#v=#w,"vectors not same size");
+let F=v.F then
+rv=F.zero in
+for i:#v do rv+:=v[i]*w[i] od ;rv
+
+set bracket_off_diagonal_terms(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
+assert(X.root_datum=Y.root_datum,"root datum mismatch");
+assert(X.F=Y.F,"cyclotomic fields don't match");
+let  rd=X.root_datum then
+F=X.F then
+N=#X.root_part then
+n=#X.H then
+scr=rd.simple_coroots in
+(X.t,
+ (
+  (sum(for i:N do (-X.root_part[i]*Y.H*embed(rd.roots[i],F)+Y.root_part[i]*X.H*embed(rd.roots[i],F))*embed(e(N,i),F) od),CyclotomicVec:null(n,F)
+ )
+))
+
+
+{put the three bracket calculations together}
+set bracket(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
+bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
+
+
+
+set ad(CFLieAlgebraElement X)=CyclotomicMat:
+for i:X.root_datum.dimension do coordinates(bracket(X,CFbasis(X.t,i,X.F))) od
+{
+{solve ad(X)(Y)=Z for Y}
+set solve_ad(CFLieAlgebraElement X,CFLieAlgebraElement Z)=full_solve(ad(X),coordinates(Z))
+}
+{   Jacobson-Morozov triples (H,X,Y)    }
+
+set any (CF_lin_solution x) = bool: case x  | affine_space: true | no_Cyclotomic_solution: false esac
+
+set a_solution ((CyclotomicMat,CyclotomicVec)system) = CyclotomicVec:
+   case full_solve(system)
+   | (v,).affine_space: v
+   | else error("No solution")
+   esac
+
+
+{        Jacobi identity     }
+
+{general Jacobi formula [[X,Y],Z]+[[Z,X],Y]+[Y,X],X]}
+set jacobi_formula(LieAlgebraElement X,LieAlgebraElement Y,LieAlgebraElement Z)=LieAlgebraElement:
+bracket(bracket(X,Y),Z)+bracket(bracket(Z,X),Y)+bracket(bracket(Y,Z),X)
+
+{test all Jacobi identities for the Lie algebra
+see jacobi_identity in structure_constants.at
+}
+set jacobi_identities(StructureConstantTable t)=bool:
+all(##(##for i:t.root_datum.dimension do
+ for j:t.root_datum.dimension do
+  for k:t.root_datum.dimension do
+      =jacobi_formula(basis(t,i),basis(t,j),basis(t,k)) od od od))
+
+set jacobi_identities_long(StructureConstantTable t)=void:
+for i:t.root_datum.dimension do
+ for j:t.root_datum.dimension do
+  for k:t.root_datum.dimension do
+  let rv=jacobi_formula(basis(t,i),basis(t,j),basis(t,k)) in
+  if not =rv then  prints(new_line,
+ "i:",i, " j:", j, " k:", k," ", rv);show_long(basis(t,i));show_long(basis(t,j));show_long(basis(t,k)) fi  od od od
+
+set jacobi_identities(RootDatum rd)=bool:jacobi_identities(rd.structure_constant_table)
+set jacobi_identities_long(RootDatum rd)=void:jacobi_identities_long(rd.structure_constant_table)
+
+
+
+
+set centralizer((LieAlgebraElement X,LieAlgebraElement Y))=
+let (ad_Y,,)=ad(Y) then
+Kernel_Y=ad_Y.kernel then
+(ad_X,,)=ad(X) then
+Z=ad_X*Kernel_Y then
+Kernel_Z=kernel(Z) in
+Kernel_Y*Kernel_Z
+
+
+set show([CyclotomicVec] v)=void:
+let rv="[" in
+for i:#v-1 do rv:=rv + to_string(v[i]) + "," od;
+rv:=rv+to_string(v~[0]) + "]";prints(rv)

@@ -1,0 +1,15 @@
+<character_tables.at
+set G2_table=
+[
+{id} [1,1,1,1,2,2],
+{order 2,size 3} [1,-1,1,-1,0,0],
+{2,3} [1,1,-1,-1,0,0],
+{order 6,size 2} [1,-1,-1,1,-1,1],
+{order 3, size 2} [1,1,1,1,-1,-1],
+{order 2,size 1} [1,-1,-1,1,2,-2]
+]
+
+set character_table_G2() = CharacterTable:
+let ct=initialize_character_table(simply_connected(G2)) in
+ct.table:=G2_table;
+ct.update_degrees

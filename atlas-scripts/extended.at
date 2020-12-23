@@ -346,3 +346,5 @@ begin
   assert(m>=0 and m<=4,"fundamental error in mathematics (folder_order)")
 ; [2,3,4,6,1][m] { case m=4: delta(root_i)=root_j }
 end
+
+set order(RootDatum rd,int i, int j)=int:folded_order(rd,id_mat(rd.rank),i,j)

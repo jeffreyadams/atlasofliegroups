@@ -14,12 +14,13 @@
   then the sum is (1+theta)(lambda+rho)/2 on T
 }
 set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
-  (1+x.involution)*(lambda+rho(x.root_datum))/2
+  (1+x.involution)*(lambda+rho(x.root_datum))/2   
 
 { mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
 { formula: mu(p) = < torus_factor(x)+rho^\vee , (1+theta_x)(lambda+rho)/2 > }
 set mu (Param p) = rat:
-  (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
+{  (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)} 
+  (p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda) + p.x.torus_factor*(p.lambda+p.root_datum.rho)
 
 {  converting to Hermitian forms in unequal rank case  }
 
