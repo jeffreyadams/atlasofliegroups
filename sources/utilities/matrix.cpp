@@ -772,6 +772,7 @@ template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
 template Vector<Num> Matrix<Num>::operator*(Vector<Num> const&) const;
 template Vector<int> Matrix<int>::right_prod(const Vector<int>&) const;
 template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
+template Vector<Num> Matrix<Num>::right_prod(const Vector<Num>&) const; //aded because of a linking failure in master, citing alcoves.o
 
 template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,
