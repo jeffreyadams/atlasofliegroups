@@ -515,9 +515,9 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
       {
-	int eps = av.dot(test_wt)%4==0 ? 0 : denom;
+	auto eps = av.dot(test_wt)%4==0 ? 0 : denom;
 	if ((num>0) == // either positive for gamma and oriented, or neither
-	    (arithmetic::remainder(num+eps,2*denom)< (unsigned)denom))
+	    (arithmetic::remainder(num+eps,2*denom) < denom))
 	  ++count;
       }
       else // complex root

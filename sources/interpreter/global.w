@@ -1842,7 +1842,7 @@ struct int_value : public value_base
 { arithmetic::big_int val;
 @)
   explicit int_value(int v) : val(v) @+ {}
-  explicit int_value(arithmetic::Numer_t v)
+  explicit int_value(long long v)
   : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned int v)
     : val(big_int::from_unsigned(v)) @+ {}
@@ -3613,10 +3613,10 @@ also provide addition and subtraction of another rational vector.
 @< Local function def... @>=
 void vector_div_wrapper(expression_base::level l)
 { auto n=get<int_value>()->long_val();
-  own_vector v=get_own<vector_value>();
+  shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value@|(std::make_shared<rational_vector_value>
-      (std::move(v->val),n)); // throws if |n==0|
+    push_value@|
+      (std::make_shared<rational_vector_value>(v->val,n)); // throws if |n==0|
 }
 @)
 void ratvec_unfraction_wrapper(expression_base::level l)
