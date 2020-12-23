@@ -18,7 +18,7 @@
 namespace atlas {
 namespace arithmetic {
 
-big_int big_int::from_signed (Numer_t n)
+big_int big_int::from_signed (long long n)
 { big_int result;
   digit high_word = static_cast<digit>(n>>32), low_word = static_cast<digit>(n);
   if (low_word<neg_flag ? high_word==0u : high_word==-1u)
@@ -27,7 +27,7 @@ big_int big_int::from_signed (Numer_t n)
   return result;
 }
 
-big_int big_int::from_unsigned (Denom_t n)
+big_int big_int::from_unsigned (unsigned long long n)
 { big_int result;
   digit high_word = n>>32, low_word = static_cast<digit>(n);
   if (high_word>=neg_flag)
@@ -39,8 +39,7 @@ big_int big_int::from_unsigned (Denom_t n)
 }
 
 template<> int big_int::convert<int> () const { return int_val(); }
-template<> arithmetic::Numer_t big_int::convert<arithmetic::Numer_t> () const
- { return long_val(); }
+template<> long long big_int::convert<long long> () const { return long_val(); }
 
 
 /*

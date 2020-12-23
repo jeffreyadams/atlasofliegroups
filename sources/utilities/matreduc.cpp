@@ -21,61 +21,6 @@ namespace atlas {
 
 namespace matreduc {
 
-template<typename C>
-C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
-       size_t dest)
-{ if (col!=nullptr)
-    *col = matrix::PID_Matrix<C>(row.size());
-  containers::sl_list<size_t> active_entries;
-  C min(0); size_t mindex;
-  for (size_t j=0; j<row.size(); ++j)
-    if (row[j]!=C(0))
-    {
-      active_entries.push_back(j);
-      if (min==C(0) or abs(row[j])<min)
-	min=abs(row[mindex=j]);
-    }
-  if (active_entries.empty())
-    return C(0);
-  if (row[mindex]<C(0))
-  {
-    row[mindex]=-row[mindex];
-    flip = not flip;
-    if (col!=nullptr)
-      (*col)(mindex,mindex)=C(-1);
-  }
-
-  while (not active_entries.singleton())
-  { const size_t cur_col = mindex;
-    const C d = row[mindex];
-    for (auto it=active_entries.begin(); not active_entries.at_end(it); )
-      if (*it==cur_col)
-	++it;
-      else
-      { auto j=*it;
-	C q=arithmetic::divide(row[j],d);
-	if (col!=nullptr)
-	  col->columnOperation(j,cur_col,-q);
-	if ((row[j] -= d*q)==C(0))
-	  active_entries.erase(it); // this leaves |it| pointing to next
-	else
-	{ if (row[j]<min)
-	    min=row[mindex=j];
-	  ++it; // don't forget to increment in this case
-	}
-      }
-    assert(active_entries.singleton() or mindex!=cur_col);
-  }
-
-  if (col!=nullptr and mindex!=dest)
-  {
-    col->swapColumns(dest,mindex);
-    flip=not flip;
-  }
-
-  return min;
-}
-
 // make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
@@ -191,87 +136,6 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
   return true;
 }
 
-/* transform |M| to column echelon form using only PID operations
-   postcondition: |M| has unchanged column span, |result.size==M.numColumns|,
-   and for |j| and |i=result.n_th(j)|: |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
-*/
-template<typename C>
-  bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M,
-				matrix::PID_Matrix<C>& col,
-				bool& flip)
-{ using std::abs;
-  const size_t n=M.numColumns();
-  col=matrix::PID_Matrix<C>(n); // start with identity matrix
-  matrix::PID_Matrix<C> ops; // working matrix, accumulates column operations
-  flip=false;
-  bitmap::BitMap result(M.numRows()); // set of pivot rows found so far
-  size_t l=n; // limit of columns yet to consider
-  for (size_t i=M.numRows(); i-->0; )
-  { int d=gcd(M.partial_row(i,0,l),&ops,flip,l-1);
-    assert(ops.numRows()==l and ops.numColumns()==l);
-    if (d==0)
-      continue; // if partial row was already zero, just skip over current row
-    matrix::column_apply(M,ops,0);
-    matrix::column_apply(col,ops,0);
-    result.insert(i);
-    --l; // now we have a pivot in column |l-1|
-    assert(M(i,l)==d); // |column_apply| should have achieved this
-  } // |for(i)
-
-  while (l-->0)
-  { // then erase column |l| from |M|, rotate it in |col| towards the right
-    M.eraseColumn(l);
-    matrix::Vector<C> cc=col.column(l); // this one too
-    for (size_t j=l; j<M.numColumns(); ++j)
-      col.set_column(j,col.column(j+1));
-    col.set_column(M.numColumns(),cc);
-    flip ^= (M.numColumns()-l)%2;
-  }
-
-  return result;
-} // |column_echelon|
-
-// when |E| is echolon with |pivots|, the following solves by back-substitution
-template<typename C>
-  matrix::Vector<C> echelon_solve(const matrix::PID_Matrix<C>& E,
-				  const bitmap::BitMap& pivots,
-				  matrix::Vector<C> b,
-				  arithmetic::big_int& f) // needed scale factor
-{ assert(b.size()==E.numRows());
-  using arithmetic::gcd;
-  f=arithmetic::big_int(1);
-  matrix::Vector<C> result(E.numColumns());
-  size_t j=pivots.size();
-  for (size_t i=E.numRows(); i-->0; )
-    if (pivots.isMember(i))
-    {
-      --j;
-      assert(E(i,j)>C(0)); // since it is a pivot
-      const C d=gcd(b[i],E(i,j)); // we ensure a positive second argument
-      assert(d>C(0));
-      const C m = b[i]/d; // factor for column |j| in upcoming subtraction
-      if (d<E(i,j)) // then division is not exact
-      {
-	const C q = E(i,j)/d;
-	f *= q; // need to scale up |b| by an additional factor |q|
-	for (size_t k=0; k<=i; ++k)
-	  b[k]*=q;
-	for (size_t l=j+1; l<result.size(); ++l)
-	  result[l] *= q;
-      }
-      assert(m==b[i]/E(i,j)); // since |b[i]| now is what was |b[i]*E(i,j)/d|
-      result[j] = m;
-      for (size_t k=0; k<=i; ++k)
-	b[k] -= E(k,j)*m; // subtract off contribution from htis column
-      assert(b[i]==C(0)); // that was the point of the subtraction
-    }
-    else if (b[i]!=C(0))
-      throw std::runtime_error("Inconsistent linear system");
-
-  assert(j==0); // every column had its pivot, and |result| is fully defined
-
-  return result;
-}
 
 /*
   Find |row|, |col| of determinant $1$ such that $row*M*col$ is diagonal, and
@@ -479,15 +343,15 @@ matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
   manner. Rather than iterating matrix operations for a given pair, we use the
   following formula valid whenever gcd(a,b)=d=pa+qb:
 
-  [   1     1   ]   [ a  0 ]   [ p  -b/d ]   [ d   0   ]
-  [             ] * [      ] * [         ] = [         ],
-  [ pa/d-1 pa/d ]   [ 0  b ]   [ q   a/d ]   [ 0  ab/d ]
+    [   1     1   ]   [ a  0 ]   [ p  -b/d ]   [ d   0   ]
+    [             ] * [      ] * [         ] = [         ],
+    [ pa/d-1 pa/d ]   [ 0  b ]   [ q   a/d ]   [ 0  ab/d ]
 
   where the outer matrices have deteminant $1$. The inverse of the first one:
 
-  [  pa/d  -1 ]    [ 1  -1 ]   [  1     0 ]
-  [           ] =  [       ] * [          ]
-  [ 1-pa/d  1 ]	   [ 0   1 ]   [ 1-pa/d 1 ]
+    [  pa/d  -1 ]    [ 1  -1 ]   [  1     0 ]
+    [           ] =  [       ] * [          ]
+    [ 1-pa/d  1 ]    [ 0   1 ]   [ 1-pa/d 1 ]
 
   is applied to the right to the initial |adapted_basis| for correction.
   The numbers |lcm=ab/d|, |d| and |pa| are obtained from |arithmetic::lcm|
@@ -571,26 +435,6 @@ template
 bool column_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 template
 bool row_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
-
-template
-bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M,
-			           matrix::PID_Matrix<int>& col,
-				   bool& flip);
-template
-bitmap::BitMap column_echelon<Num>(matrix::PID_Matrix<Num>& M,
-			           matrix::PID_Matrix<Num>& col,
-				   bool& flip);
-template
-matrix::Vector<int> echelon_solve(const matrix::PID_Matrix<int>& E,
-				  const bitmap::BitMap& pivots,
-				  matrix::Vector<int> b,
-				  arithmetic::big_int& f);
-template
-matrix::Vector<Num> echelon_solve(const matrix::PID_Matrix<Num>& E,
-				  const bitmap::BitMap& pivots,
-				  matrix::Vector<Num> b,
-				  arithmetic::big_int& f);
-
 
 template
 std::vector<int> diagonalise(matrix::PID_Matrix<int> M,

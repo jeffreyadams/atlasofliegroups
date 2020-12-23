@@ -36,17 +36,6 @@ namespace atlas {
 
 namespace bitvector {
 
-template<unsigned int dim> template<typename C>
-BitVector<dim>::BitVector(const matrix::Vector<C>& v) // reduce mod 2
-  : d_data()
-  , d_size(v.size())
-{
-  assert(d_size<=dim);
-  for (size_t j = 0; j < d_size; ++j)
-    d_data.set(j, v[j]%2!=0 ); // WARNING: not |v[j]%2==1|, think |v[j]<0| !
-}
-
-
 /*
   Add |b| to the bitvector (as the last coordinate), increasing the
   size by one.
@@ -1036,18 +1025,6 @@ template class BitMatrix<constants::RANK_MAX>;   // |BinaryMap|
 template class BitVector<64ul>; // used in atlas function |subspace_normal|
 template
    void initBasis<64ul>(std::vector<BitVector<64ul> >& b, size_t r); // idem
-
-template
-  BitVector<constants::RANK_MAX>::BitVector
-    (const matrix::Vector<int>& weight);
-template
-  BitVector<constants::RANK_MAX>::BitVector
-    (const matrix::Vector<arithmetic::Numer_t>& weight);
-template
-  BitVector<constants::RANK_MAX+1>::BitVector
-    (const matrix::Vector<int>& weight);
-template
-  BitVector<64ul>::BitVector (const matrix::Vector<int>& weight);
 
 } // |namespace bitvector|
 
