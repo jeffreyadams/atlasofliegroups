@@ -18,8 +18,8 @@ namespace atlas {
 
 namespace arithmetic {
 
-  using Numer_t = long long int;
-  using Denom_t = unsigned long long int;
+  using Numer_t = int;
+  using Denom_t = unsigned int;
   template<typename I> class Rational;
   using RatNum = Rational<Numer_t>;
   using RatNumList = std::vector<RatNum>;
