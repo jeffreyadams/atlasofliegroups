@@ -316,7 +316,7 @@ public:
 
 // manipulators
  private:
-  void dualise();
+  void swap_roots_and_coroots();
   RootNbr lookup_posroot(const Byte_vector& v) const;
   RootNbr lookup_poscoroot(const Byte_vector& v) const;
 }; // |class RootSystem|
