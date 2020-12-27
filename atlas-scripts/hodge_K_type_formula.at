@@ -1,0 +1,829 @@
+<hodge_functions.at
+<K_type_formula.at
+<bigMatrices.at {for is_non_negative@i_poly_mat}
+<tensor_product.at
+
+{debugging stuff}
+set hodge_K_type_formula_verbose=false  {short for hodge_K_type_formula_verbose}
+
+{indenting of debugging output}
+set char="."
+set sp=""
+set add()=void:sp##:=char
+set cut()=void:sp:=char*(#sp-1)
+
+set dual((KGBElt ->[ratvec]) weights)=(KGBElt->[ratvec]):(KGBElt x):for v in weights(x) do -v od
+
+{delete K-type from list}
+set delete(K_Type mu,[K_Type] S)=[K_Type]:
+##for tau in S do if tau=mu then [] else [tau] fi od
+
+{global variable in this file}
+{caution: one sometimes needs to manually set
+hodge_table:=[] between runs, especially when debugging,
+and to avoid conflict between results from different groups
+Maybe this could be improved by including G_orig in the table
+An entry (parameter p_L_j,Parabolic P,hodgeParamPol HP) means:
+HP=Omega_S_inverse_of_hodge_tensor_exterior_local(p_L_j,P)
+p_L_j is intended to remind us that this is a parameter
+for L_j\subset L\subset G_orig and P=LU is a parabolic
+with L as Levi factor
+}
+set hodge_table=[(Param,Parabolic,hodgeParamPol)]:[]
+
+set lookup(Param p_L_j,Parabolic P,[(Param,Parabolic, hodgeParamPol)] hodge_table)=
+first(for i:#hodge_table do let (q,Q,)=hodge_table[i] in p_L_j=q and P=Q od)
+
+{for each K_type mu in ktypes, append all K_Types of parameter(mu),
+up to height N, to ktypes
+}
+set fill_out([K_Type] ktypes, int N)=[K_Type]:
+let new_ktypes=ktypes in
+for mu in ktypes do
+ for tau in monomials(branch(parameter(mu),N)) do
+  if find(new_ktypes,LKT(tau))=-1 then new_ktypes#:=LKT(tau) fi
+ od
+od;new_ktypes
+
+set fill_out_recursively([K_Type] ktypes, int N)=
+let rec_fun f([K_Type] ktypes_in)=[K_Type]:
+ let new=fill_out(ktypes_in,N) in
+ if #new=#ktypes_in then sort_by_height(new) else f(new) fi in  f(ktypes)
+
+{nice format of a polynomial matrix: }
+set hodgePrintPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"v")
+set hodgePrintPolyMatrix (i_poly_mat M) = void: hodgePrintPolyMatrix(M,3)
+
+{from convert_c_form.at, mu is used to convert from Hermitian form to c-form:
+set mu (Param p) = rat:
+  (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
+}
+
+{given a list of params, return list of unique params occuring}
+set unique([Param] list)=[Param]:
+if #list=0 then [] else
+let rv=null_module(list[0].real_form) in
+for p in list do rv+:=p od;monomials(rv) fi
+
+{union of list of params}
+set union([[Param]] lists)=[Param]:
+let params=[Param]:[] in
+for list in lists do params##:=list od;unique(params)
+
+{given a list of K_types, return list of unique params occuring}
+set unique([K_Type] list)=[K_Type]:
+if #list=0 then [] else
+let rv=null_module(list[0].real_form) in
+for p in list do rv+:=parameter(p) od;
+for p in monomials(rv) do LKT(p) od fi
+
+{union of list of K_types}
+set union([[K_Type]] lists)=[K_Type]:
+let ktypes=[K_Type]:[] in
+for list in lists do ktypes##:=list od;unique(ktypes)
+
+set starting_set_of_K_types(K_Type mu,Parabolic P,int N)=
+let
+weights=sums_nci_nilrad_roots_restricted_to_H_theta(P) then
+params=monomials(standardize(parameter(mu)+add_weights(parameter(mu),weights))) in
+{prints(params);}
+union(for p in parameter(mu)#params do
+ for q in monomials(branch_std(p,N)) do LKT(q) od
+ od)
+
+{Main function in this file: see hodgeTempered.pdf, Sections 5-7}
+{Three versions:
+hodge_K_type_formula(K_Type mu_G_orig, int N)   {fastest, no debugging}
+hodge_K_type_formula_debugging(K_Type mu_G_orig, int N)  {option of debugging on/off}
+hodge_K_type_formula_old(K_Type mu_G_orig, int N)  {old version not using hodge_table}
+
+The non-old versions keep a table hodge_table of calculations to reuse.
+Note: if you run hodge_K_type_formul(p,N) and then
+hodge_K_type_formul(p,N+k) it will be faster, as it reuses the table
+On the other hand before running a different group you should
+do hodge_table:=[]
+}
+set hodge_K_type_formula(K_Type mu_G_orig, int N)=
+let G_orig=mu_G_orig.real_form then
+rv=hodgeParamPol:nullHodgeParamPol(G_orig) then
+{RECURSIVE FUNCTION}
+rec_fun hodge_K_type_formula_recursive(K_Type mu)=hodgeParamPol:
+  let G=mu.real_form then
+  rv_G=nullHodgeParamPol(G) then
+  (P,mu_L)=tau_q(mu) then
+  L=Levi(P) then
+  cf=character_formula_one_dimensional(mu_L)   {mu_L is 1-dimensional} then
+  deformed=hodge_recursive_deform(cf) then
+  cf_0=rearrange(deformed)   {this is what we need: [(vec,Param)]} {each nu=0} in
+  for (c,p_L)@j in cf_0 do   {c\in Z, p_L\in P_t(L)}
+   let  (Q_j,p_L_j_with_nu)=tau_q(LKT(p_L)) then
+   L_j=Levi(Q_j) then
+   p_L_j=p_L_j_with_nu*0 {see definition of tau_q in K_types_plus.at} then
+   tensor=
+   (
+    {long list of local function definitions, these are the same as some functions in hodge_tensor.at
+     I've appended "_local" to the names to be sure there is no confusion about which is being called}
+    let
+  {*}hodge_K_type_mat_long_local(K_Type mu, int N,[K_Type] ktypes)=(int,[K_Type],i_poly_mat,i_poly_mat):
+     let    M=zero_poly_matrix(#ktypes) in
+     for tau in ktypes do
+      let index=find(ktypes,tau) then
+      row=zero_poly_row(#ktypes) then
+      hktf=hodge_K_type_formula_recursive(tau) {local: calls this recursive function} then
+      rf=rearrange(hktf) in
+      for (g,kappa) in rf do
+       let j=find(ktypes,LKT(kappa)) in
+        if j!=-1 then row[j]:=g fi
+      od;
+       M[index]:=row
+     od;
+     let tM=transpose(M) in  {tM is lower triangular}
+       (find(ktypes,mu),ktypes,tM, lower_unitriangular_inverse(tM))  {/hodge_K_type_mat_long}
+     then
+    {definition of Phi_S (local: calls hodge_K_type_mat_long_local)}
+  {*}Phi_S_local(Param p, int N)=KHodgeParamPol:
+      if is_abelian(p.real_form) then
+        ([p],())
+      else
+	{why fill_out_recursively here... should pass S to Phi_S_local...?}
+      let (index,ktypes,A,B)=hodge_K_type_mat_long_local(LKT(p),N,fill_out_recursively([LKT(p)],N))
+      then
+      vector=transpose(B)[index] then
+      temp=[(vec,Param)]:[] in
+      for i:#vector do if vector[i]!=null(0) then
+       temp#:=(vector[i],parameter(ktypes[i])) fi
+      od;
+     dearrange(temp,()) fi  {/Phi_S_local(p,N)}
+     then
+  {*}Phi_S_local(hodgeParamPol P, int N)=KHodgeParamPol:  {local: calls Phi_S_local}
+      if is_abelian(P.real_form) then
+       (P,())
+      else
+      let Q=rearrange(P) then
+      rv_K=nullKHodgeParamPol(P.real_form) in
+      for (c,p) in Q do rv_K+:=c*Phi_S_local(p,N) od;
+     rv_K fi  {/Phi_S_local([P],N)}
+     then
+  {*}hodge_branch_std_local(Param p, int N)=KHodgeParamPol: {local: calls Phi_S_local}
+      Phi_S_local(hodge_recursive_deform(p),N)
+     then
+  {*}hodge_function_std_local(Param p)=hodge_function:  {local: calls hodge_branch_std_local}
+      ((K_Type mu):coefficient(hodge_branch_std_local(p,K_norm(mu)),parameter(mu)),p.real_form)
+     then
+  {*}hodge_tensor_local(hodge_function f, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:
+     let rv_ht=poly_0 in
+     for c@p in tensor_product(mu,dual(weights)) {K_Type_Pol} do
+      let mu=LKT(p) in rv_ht:=poly_plus(rv_ht,split_as_int(c)*f.f(mu))
+     od;
+     rv_ht  {/hodge_tensor}
+     then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:  {local: calls hodge_tensor}
+       let f=hodge_function_std_local(p) in hodge_tensor_local(f,weights,mu)
+    then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:((K_Type mu): {local: calls hodge-tensor_std}
+      hodge_tensor_std_local(p,weights,mu),p.real_form)
+     then
+  {*}hodge_tensor_wedge_k_u_cap_s_std_local(Param p,Parabolic P_1,int k)=hodge_function:  {local: hodge_tensor_std_local}
+     {get out of the induction!}
+     if k=0 then
+       hodge_function_std_local(p)
+     else
+     let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P_1, k) in
+      minus_vee_to_the_k(k)*hodge_tensor_std_local(p,weights)
+     fi
+     then
+  {*}hodge_tensor_exterior_u_cap_s_std_local(Param p,Parabolic P)=hodge_function:  {local: calls hodge_tensor_wedge...}
+     let rv_hf=nullHodgeFunction(p.real_form) in
+     {get out of the induction!}
+     if #nilrad_roots(P)=0
+      then branch_function_std_as_hodge_function(p)
+     else
+      for k:#nilrad_roots(P)+1  {NOTE +1}
+       do rv_hf+:=hodge_tensor_wedge_k_u_cap_s_std_local(p,P,k) od;
+      rv_hf
+     fi
+     then
+  {*}Phi_S_inverse_local(KHodgeParamPol KP,[K_Type] S)=hodgeParamPol: {local: calls Phi_S_local}
+     let rec_fun solve_one(KHodgeParamPol KP,[K_Type] S,hodgeParamPol rv_hp)=hodgeParamPol:
+     let n=first(for mu in S do !=coefficient(KP,mu) od) in
+     if n=-1 then
+      rv_hp
+      else
+       let c=coefficient(KP,S[n]) then
+        p=parameter(S[n]) then
+	S_1=union([S,for q in monomials(branch_std(p,N)) do LKT(q) od]) then
+        S_2=delete(LKT(p),S_1) in
+{	()=prints("#S,#S_1,#S_2:", #S, ",", #S_1, ",", #S_2)  in}
+        solve_one(KP-Phi_S_local(c*p,max(for mu in S_1 do K_norm(mu) od)),S_2,rv_hp+c*p)
+      fi
+     in
+     solve_one(KP,S,nullHodgeParamPol(KP.real_form))  {start the recursion}
+     then {definition of Omega_S_inverse_local:}
+  {*}Omega_S_inverse_local(hodge_function f,[K_Type] S)=hodgeParamPol:
+        hodgeParamPol:Phi_S_inverse_local(Psi_S(f,S),S)
+     then {combined Phi_S_inverse and Omega_S_Inverse}
+  {*}Omega_S_inverse_of_hodge_tensor_exterior_local(Param p_L_j,Parabolic P)=hodgeParamPol:
+     {don't need ktypes since this is computed from p_L_j and N}
+     let k=
+     lookup(p_L_j,P,hodge_table) {index of (p_L_j,P) in hodge_table, or -1} in
+     if k!=-1  {i.e. result is in table}
+      then let (,,P)=hodge_table[k] in P  {return value from hodge_table}
+     else {k=-1: need to do calculation}
+      let A=
+      hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
+      if #nilrad_roots(P)=0 then
+       let ()=hodge_table#:=(p_L_j,P,[1*p_L_j]) in   {update hodge_table}
+       hodgeParamPol:[p_L_j]   {#nilrad_roots=0: return [p_L_j]}
+      else {nilrad_roots(P)>0}
+       let ktypes=starting_set_of_K_types(LKT(p_L_j),P,N) in
+        Omega_S_inverse_local(A,ktypes) {B:hodgeParamPol on L_j}
+	{return B: new calculated value}
+      fi {/if #nilrad_roots(P)=0}
+     fi {/if j!=-1}
+     in
+    {end of local function definitions}
+    {THIS IS THE HEART OF THE MATTER:}
+{   formerly:
+    let A=hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
+    ...
+    B=Omega_S_inverse_local(A,ktypes)  then   {B:hodgeParamPol on L_j}
+    replaced by next line:
+}
+    Omega_S_inverse_of_hodge_tensor_exterior_local(p_L_j,P)
+   ){/tensor=}{tensor is a hodgeParamPol for L_j}
+  in
+  let hodge_ind=hodge_theta_induce_standard(tensor,G)  {hodgeParamPol for G} in
+  rv_G+:=c*hodge_ind
+  od;{for (c,p_L)@j1}
+  rv_G in
+hodge_K_type_formula_recursive(mu_G_orig)
+
+set hodge_K_type_formula_debugging(K_Type mu_G_orig, int N)=
+let G_orig=mu_G_orig.real_form then
+rv=hodgeParamPol:nullHodgeParamPol(G_orig) then
+{RECURSIVE FUNCTION}
+rec_fun hodge_K_type_formula_recursive(K_Type mu)=hodgeParamPol:
+  let G=mu.real_form then
+  rv_G=nullHodgeParamPol(G) then
+  ()=if hodge_K_type_formula_verbose then prints(new_line,"-------------------",new_line,sp,"main recursion:",mu,"  ", mu.real_form, new_line,"G_orig=", G_orig,new_line,
+     "G=", G, new_line,"mu: ",mu,new_line, "mu.real_form: ",mu.real_form) fi
+  then
+  (P,mu_L)=tau_q(mu) then
+  L=Levi(P) then
+  ()=if hodge_K_type_formula_verbose then prints(sp,"L: ",L,new_line,"mu_L=",mu_L) fi;
+   assert(dimension(mu_L)=1,"mu_L is not one-dimensional");
+   assert(let ind=theta_induce_standard(mu_L*0,G) in
+    #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
+   assert(theta_induce_standard(mu_L,G)*0=theta_induce_standard(mu_L*0,G), "mismatch") then
+  cf=character_formula_one_dimensional(mu_L)   {mu_L is 1-dimensional} then
+  deformed=hodge_recursive_deform(cf) then
+  cf_0=rearrange(deformed)   {this is what we need: [(vec,Param)]} {each nu=0} in
+  let ()=if hodge_K_type_formula_verbose then prints(sp,"cf: (on L)");print(deformed) fi in
+  for (c,p_L)@j in cf_0 do   {c\in Z, p_L\in P_t(L)}
+   let ()=if hodge_K_type_formula_verbose then prints(new_line,sp,"j: ",j, "/", #cf_0,new_line,sp, L, new_line,"p_L: ", p_L, new_line,sp, "c: ",poly_format(c,"v")) fi in
+   let  (Q_j,p_L_j_with_nu)=tau_q(LKT(p_L)) then
+   L_j=Levi(Q_j) then
+   p_L_j=p_L_j_with_nu*0 {see definition of tau_q in K_types_plus.at} then
+   ()=if hodge_K_type_formula_verbose then prints(sp,"L_j: ", L_j, new_line,sp, "p_L_j: ", p_L_j) fi then
+   tensor=
+   (
+    {long list of local function definitions, these are the same as some functions in hodge_tensor.at
+     I've appended "_local" to the names to be sure there is no confusion about which is being called}
+    let
+  {*}hodge_K_type_mat_long_local(K_Type mu, int N,[K_Type] ktypes)=(int,[K_Type],i_poly_mat,i_poly_mat):
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_K_type_mat_long_local", " ", mu, " ", mu.real_form) fi;
+     let    M=zero_poly_matrix(#ktypes) in
+     for tau in ktypes do
+      let index=find(ktypes,tau) then
+      row=zero_poly_row(#ktypes) then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"calling hodge_K_type_formula_recursive for",new_line,sp,"real form: ",tau.real_form, new_line,sp, "tau=",tau) fi then
+      hktf=hodge_K_type_formula_recursive(tau) {local: calls this recursive function} then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"got hodge K-type formula:", new_line,sp, hktf.real_form, new_line,sp,hktf) fi then
+      rf=rearrange(hktf) in
+      for (g,kappa) in rf do
+       let j=find(ktypes,LKT(kappa)) in
+        if j!=-1 then row[j]:=g fi
+      od;
+       M[index]:=row
+     od;
+     let tM=transpose(M) in  {tM is lower triangular}
+        if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_K_type_mat_long_local(mu,N,ktypes): ",mu," ", mu.real_form, " ", #ktypes) fi;
+       (find(ktypes,mu),ktypes,tM, lower_unitriangular_inverse(tM))  {/hodge_K_type_mat_long}
+     then
+    {definition of Phi_S (local: calls hodge_K_type_mat_long_local)}
+  {*}Phi_S_local(Param p, int N)=KHodgeParamPol:
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_local(p,N)", " ", p, " ", p.real_form, " ", N) fi;
+      if is_abelian(p.real_form) then
+        if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local for torus: ",p.real_form,new_line,sp,p) fi;([p],())
+      else
+        let ()=if hodge_K_type_formula_verbose then prints(sp,"Not torus: ",p.real_form) fi in
+	{why fill_out_recursively here... should pass S to Phi_S_local...?}
+      let (index,ktypes,A,B)=hodge_K_type_mat_long_local(LKT(p),N,fill_out_recursively([LKT(p)],N))
+      then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"In Phi_S_local with: ", p) fi then
+      vector=transpose(B)[index] then
+      temp=[(vec,Param)]:[] in
+      for i:#vector do if vector[i]!=null(0) then
+       temp#:=(vector[i],parameter(ktypes[i])) fi
+      od;
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local for ",p, " ", p.real_form) fi;
+     dearrange(temp,()) fi  {/Phi_S_local(p,N)}
+     then
+  {*}Phi_S_local(hodgeParamPol P, int N)=KHodgeParamPol:  {local: calls Phi_S_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_local(P,N):",new_line,P, " ", P.real_form, " ", N) fi;
+      if is_abelian(P.real_form) then
+       let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local (abelian)", P) fi in (P,()) else
+      let Q=rearrange(P) then
+      rv_K=nullKHodgeParamPol(P.real_form) in
+      for (c,p) in Q do rv_K+:=c*Phi_S_local(p,N) od;
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local", P) fi;
+     rv_K fi  {/Phi_S_local([P],N)}
+     then
+  {*}hodge_branch_std_local(Param p, int N)=KHodgeParamPol: {local: calls Phi_S_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_branch_std_local(p,N)", p, " ", p.real_form, " ", N) fi;
+      let rv=Phi_S_local(hodge_recursive_deform(p),N) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_branch_std_local", P) fi;rv
+     then
+  {*}hodge_function_std_local(Param p)=hodge_function:  {local: calls hodge_branch_std_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_function_std_local(p)", p, " ", p.real_form) fi;
+      let rv=((K_Type mu):coefficient(hodge_branch_std_local(p,K_norm(mu)),parameter(mu)),p.real_form) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub hodge_function_std_local:", p) fi;rv
+     then
+  {*}hodge_tensor_local(hodge_function f, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_local(f,wts,mu)", f.real_form, " ", mu, " ", mu.real_form) fi;
+     let rv_ht=poly_0 in
+     for c@p in tensor_product(mu,dual(weights)) {K_Type_Pol} do
+      let mu=LKT(p) in rv_ht:=poly_plus(rv_ht,split_as_int(c)*f.f(mu))
+     od;
+     if hodge_K_type_formula_verbose then cut();prints(sp,"end sub hodge_tensor_local(f,weights,mu): ", f.real_form, " ", mu) fi;
+     rv_ht  {/hodge_tensor}
+     then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:  {local: calls hodge_tensor}
+       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weightss,mu)  ",p.real_form, " ",p, " ", mu) fi;
+       let f=hodge_function_std_local(p) then
+       ()=if hodge_K_type_formula_verbose then prints(sp,"in hodge_tensor_std_local, computed hodge_function_std_local(p) ", p.real_form,"  ",p) fi in
+       let rv=hodge_tensor_local(f,weights,mu) in
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weights,mu)",p.real_form," ",p," ",mu) fi;rv
+    then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:((K_Type mu): {local: calls hodge-tensor_std}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights)", " ",p.real_form," ",p) fi;
+      let h=hodge_tensor_std_local(p,weights,mu) in
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weightts)", p.real_form," ",p) fi;
+      h,p.real_form)
+     then
+  {*}hodge_tensor_wedge_k_u_cap_s_std_local(Param p,Parabolic P_1,int k)=hodge_function:  {local: hodge_tensor_std_local}
+        if hodge_K_type_formula_verbose then add();prints(sp,"sub:  hodge_tensor_wedge_k_u_cap_s_std_local(p,P_1,k)", " ", p, " ", p.real_form, " ", k) fi;
+     {get out of the induction!}
+     if k=0 then
+       let rv=hodge_function_std_local(p) in
+       let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_wedge_k_u_cap_s_std_local; k=0 in wedge, no recursion needed") fi in
+       rv
+     else
+     let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P_1, k) then
+      rv=minus_vee_to_the_k(k)*hodge_tensor_std_local(p,weights) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_wedge_k_u_cap_s_std_local(p,P_1,) ", p, " ", p.real_form," ", P_1, " ", k) fi;
+      rv
+     fi
+     then
+  {*}hodge_tensor_exterior_u_cap_s_std_local(Param p,Parabolic P)=hodge_function:  {local: calls hodge_tensor_wedge...}
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub:  hodge_tensor_exterior_u_cap_s_std_local(p,P_1)", " ", p, " ", p.real_form) fi;
+     let rv_hf=nullHodgeFunction(p.real_form) in
+     {get out of the induction!}
+     if #nilrad_roots(P)=0
+      then if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_exterior_u_cap_s_std_local for #nilrad_roots(P)=0 ", p, " ", p.real_form) fi;
+      branch_function_std_as_hodge_function(p)
+     else
+      for k:#nilrad_roots(P)+1  {NOTE +1}
+      do rv_hf+:=hodge_tensor_wedge_k_u_cap_s_std_local(p,P,k) od;
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_exterior_u_cap_s_std_local ", p, " ", p.real_form) fi;
+      rv_hf
+     fi
+     then
+  {*}Phi_S_inverse_local(KHodgeParamPol KP,[K_Type] S)=hodgeParamPol: {local: calls Phi_S_local}
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_inverse_local(KP,S)", " ", KP, " ", KP.real_form) fi;
+     let ()=if =#S then
+        if hodge_K_type_formula_verbose then add();prints(sp,"and sub: Phi_S_inverse_local(KP,S) (S is empty)", " ", KP, " ", KP.real_form) fi
+	fi in
+     let rec_fun solve_one(KHodgeParamPol KP,[K_Type] S,hodgeParamPol rv_hp)=hodgeParamPol:
+     let n=first(for mu in S do !=coefficient(KP,mu) od) in
+      let ()=if hodge_K_type_formula_verbose then prints(sp,"Phi_S_inverse rec_fun: #S=", #S,new_line,sp,"n=",n) fi in
+     if n=-1 then
+     let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_inverse_local(KP,S)(A) for ",KP.real_form," ", #S) fi in rv_hp
+      else
+       let c=coefficient(KP,S[n]) then
+        p=parameter(S[n]) then
+	S_1=union([S,for q in monomials(branch_std(p,N)) do LKT(q) od]) then
+        S_2=delete(LKT(p),S_1) in
+{	()=prints("#S,#S_1,#S_2:", #S, ",", #S_1, ",", #S_2)  in}
+        solve_one(KP-Phi_S_local(c*p,max(for mu in S_1 do K_norm(mu) od)),S_2,rv_hp+c*p)
+      fi
+     in
+     let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_inverse_local(KP,S)(B) for ",KP.real_form," ", #S) fi in
+     solve_one(KP,S,nullHodgeParamPol(KP.real_form))  {start the recursion}
+     then {definition of Omega_S_inverse_local:}
+  {*}Omega_S_inverse_local(hodge_function f,[K_Type] S)=hodgeParamPol:
+        if hodge_K_type_formula_verbose then add();prints(sp,"sub: Omega_S_inverse_local(f,S)", " ", f.real_form) fi;
+        let rv=hodgeParamPol:Phi_S_inverse_local(Psi_S(f,S),S) in let
+	()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Omega_S_inverse_local(f,S) for ", f.real_form, new_line,sp, "returning: ", rv) fi in rv
+     then {combined Phi_S_inverse and Omega_S_Inverse}
+  {*}Omega_S_inverse_of_hodge_tensor_exterior_local(Param p_L_j,Parabolic P)=hodgeParamPol:
+     {don't need ktypes since this is computed from p_L_j and N}
+     let k=
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: Omega_S_inverse_of_hodge_tensor_exterior_local: ", p_L_j, " ", p_L_j.real_form, " ", P) fi;
+     lookup(p_L_j,P,hodge_table) {index of (p_L_j,P) in hodge_table, or -1} in
+     if k!=-1  {i.e. result is in table}
+{      if k=-2  {never holds, for testing by disabling the table}}
+      then let (,,P)=hodge_table[k] in
+      if hodge_K_type_formula_verbose then prints("found: ", p_L_j, "  ",p_L_j.real_form," ", P, "result in table: ", new_line);print(P) fi;
+      if hodge_K_type_formula_verbose then cut();prints("end sub (1): Omega_S_inverse_of_hodge_tensor_exterior_local: ", p_L_j, " ", p_L_j.real_form, " ", P) fi;
+      P  {return value from hodge_table}
+     else {k=-1: need to do calculation}
+      let A=
+      if hodge_K_type_formula_verbose then prints("not found: ", p_L_j, " ", p_L_j.real_form, " ",P, "result not in table, doing calclulation") fi;
+      hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
+      if #nilrad_roots(P)=0 then
+       if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots=0, no recursion needed") fi;
+       if hodge_K_type_formula_verbose then cut();prints("end sub (2): Omega_S_inverse_of_hodge_tensor_exterior_local: ", p_L_j, " ", p_L_j.real_form, " ", P) fi;
+       if hodge_K_type_formula_verbose then prints(sp,"updated hodge_table: ", p_L_j, "  ",p_L_j.real_form," ", P, "value:",new_line,[p_L_j], "hodge_table size: ", #hodge_table) fi;
+       let ()=hodge_table#:=(p_L_j,P,[1*p_L_j]) in   {update hodge_table}
+       hodgeParamPol:[p_L_j]   {#nilrad_roots=0: return [p_L_j]}
+      else {nilrad_roots(P)>0}
+       if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots !=0, need recursion") fi;
+       let ktypes=starting_set_of_K_types(LKT(p_L_j),P,N) then
+        ()=if hodge_K_type_formula_verbose then prints(sp,"ktypes:"); for mu in ktypes do prints(sp,mu) od fi then
+        B=Omega_S_inverse_local(A,ktypes)  then {B:hodgeParamPol on L_j}
+        ()=if hodge_K_type_formula_verbose then prints(sp,"updated hodge_table: ", p_L_j, "  ",p_L_j.real_form, new_line,"value: ");print(B);prints("hodge_table size: ", #hodge_table) fi then
+	()=hodge_table#:=(p_L_j,P,B)  {update hodge_table} then
+        ()=if hodge_K_type_formula_verbose then prints(sp,"Finished computing B:");print(B) fi then
+        ()=if hodge_K_type_formula_verbose then cut();prints("end sub (3): Omega_S_inverse_of_hodge_tensor_exterior_local: ", p_L_j, " ", p_L_j.real_form, " ", P) fi in
+        B  {return B: new calculated value}
+      fi {/if #nilrad_roots(P)=0}
+     fi {/if j!=-1}
+     in
+    {end of local function definitions}
+    {THIS IS THE HEART OF THE MATTER:}
+{   formerly:
+    let A=hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
+    ...
+    B=Omega_S_inverse_local(A,ktypes)  then   {B:hodgeParamPol on L_j}
+    replaced by next line:
+}
+    let B=Omega_S_inverse_of_hodge_tensor_exterior_local(p_L_j,P) in
+    if hodge_K_type_formula_verbose then prints("Finished computing B for ", p_L_j, " ", p_L_j.real_form, new_line, P, new_line);print(B) fi;B
+   ){/tensor=}{tensor is a hodgeParamPol for L_j}
+  in
+  let hodge_ind=hodge_theta_induce_standard(tensor,G)  {hodgeParamPol for G} then
+  ()=if hodge_K_type_formula_verbose then
+   prints(sp,"tensor: (on L_j):");print(tensor.real_form);print(tensor);
+   prints(sp,"hodge_ind (on G):");print(hodge_ind);
+   prints(sp,"c: ",poly_format(c,"v"));
+   prints(sp,"c*hodge_ind:");
+   print(c*hodge_ind);
+   prints(sp,"old rv_G:");print(rv_G);
+   prints(sp,"new rv_G:");print(rv_G+c*hodge_ind) fi
+  then
+  ()=if hodge_K_type_formula_verbose then prints(sp,"finished j: ", j, "/",#cf_0,
+    new_line,sp,  "L: ", L, new_line,sp, "L_j: ", L_j, new_line,sp, "p_L_j: ", p_L_j) fi in
+  rv_G+:=c*hodge_ind
+  od;{for (c,p_L)@j1}
+ if hodge_K_type_formula_verbose then prints(sp,"Done with loop for cf with G:", new_line,sp, G, new_line,sp, "L:", L, new_line,sp,"mu_L: ",mu_L) fi;
+  if hodge_K_type_formula_verbose then prints(sp,"Returning: ", new_line,sp,rv_G.real_form,new_line);print(rv_G) fi;
+  rv_G
+in if hodge_K_type_formula_verbose then  prints(sp,"CALLING RECURSIVE with mu_G_orig:", mu_G_orig, new_line,sp, "on real form:", mu_G_orig.real_form) fi;hodge_K_type_formula_recursive(mu_G_orig)
+
+
+{Main function in this file: see hodgeTempered.pdf, Sections 5-7}
+{This is a deeply recursive function. It repeats the same
+calculation many times, and is therefore the _old version.
+This is partially addressed in the }
+set hodge_K_type_formula_old(K_Type mu_G_orig, int N)=hodgeParamPol:
+let G_orig=mu_G_orig.real_form then
+rv=hodgeParamPol:nullHodgeParamPol(G_orig) then
+{RECURSIVE FUNCTION}
+rec_fun hodge_K_type_formula_recursive(K_Type mu)=hodgeParamPol:
+  let G=mu.real_form then
+  rv_G=nullHodgeParamPol(G) then
+  ()=if hodge_K_type_formula_verbose then prints(new_line,"-------------------",new_line,sp,"main recursion:",mu,"  ", mu.real_form, new_line,new_line,"G_orig=", G_orig,new_line,
+     "G=", G, new_line,"mu: ",mu,new_line, "mu.real_form: ",mu.real_form) fi
+  then
+  (P,mu_L)=tau_q(mu) then
+  L=Levi(P) then
+  ()=if hodge_K_type_formula_verbose then prints(sp,"L: ",L,new_line,"mu_L=",mu_L) fi then
+  ()=
+   assert(dimension(mu_L)=1,"mu_L is not one-dimensional");
+   assert(let ind=theta_induce_standard(mu_L*0,G) in
+     #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
+   assert(theta_induce_standard(mu_L,G)*0=theta_induce_standard(mu_L*0,G), "mismatch") then
+  cf=character_formula_one_dimensional(mu_L)   {mu_L is 1-dimensional} then
+  deformed=hodge_recursive_deform(cf) then
+  cf_0=rearrange(deformed)   {this is what we need: [(vec,Param)]} {each nu=0} in
+  let ()=if hodge_K_type_formula_verbose then prints(sp,"cf: (on L)");print(deformed) fi in
+  for (c,p_L)@j in cf_0 do   {c\in Z, p_L\in P_t(L)}
+   let ()=if hodge_K_type_formula_verbose then prints(new_line,sp,"j: ",j, "/", #cf_0,new_line,sp, L, new_line,"p_L: ", p_L, new_line,sp, "c: ",poly_format(c,"v")) fi in
+   let  (Q_j,p_L_j_with_nu)=tau_q(LKT(p_L)) then
+   L_j=Levi(Q_j) then
+   p_L_j=p_L_j_with_nu*0 {see definition of tau_q in K_types_plus.at} then
+   ()=if hodge_K_type_formula_verbose then prints(sp,"L_j: ", L_j, new_line,sp, "p_L_j: ", p_L_j) fi then
+   tensor=(
+    {long list of local function definitions, these are the same as some functions in hodge_tensor.at
+     I've appended "_local" to the names to be sure there is no confusion about which is being called}
+    let
+  {*}hodge_K_type_mat_long_local(K_Type mu, int N,[K_Type] ktypes)=(int,[K_Type],i_poly_mat,i_poly_mat):
+     let ()=if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_K_type_mat_long_local", " ", mu, " ", mu.real_form) fi in
+{     let ()=if hodge_K_type_formula_verbose then prints(sp,"START hodge_K_type_mat_long_local:", new_line,sp, "mu: ", mu, new_line,sp, "mu.real_form: ", mu.real_form,
+      new_line,sp, "# of Ktypes: ", #ktypes) fi in}
+     let    M=zero_poly_matrix(#ktypes) in
+     for tau in ktypes do
+      let index=find(ktypes,tau) then
+      row=zero_poly_row(#ktypes) then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"calling hodge_K_type_formula_recursive for",new_line,sp,"real form: ",tau.real_form, new_line,sp, "tau=",tau) fi then
+      hktf=hodge_K_type_formula_recursive(tau) {local: calls this recursive function} then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"got hodge K-type formula:", new_line,sp, hktf.real_form, new_line,sp,hktf) fi then
+      rf=rearrange(hktf) in
+      for (g,kappa) in rf do
+       let j=find(ktypes,LKT(kappa)) in
+        if j!=-1 then row[j]:=g fi
+      od;
+       M[index]:=row
+     od;
+     let tM=transpose(M) in  {tM is lower triangular}
+        if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_K_type_mat_long_local(mu,N,ktypes): ",mu," ", mu.real_form, " ", #ktypes) fi;
+       (find(ktypes,mu),ktypes,tM, lower_unitriangular_inverse(tM))  {/hodge_K_type_mat_long}
+     then
+    {definition of Phi_S (local: calls hodge_K_type_mat_long_local)}
+  {*}Phi_S_local(Param p, int N)=KHodgeParamPol:
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_local(p,N)", " ", p, " ", p.real_form, " ", N) fi;
+      if is_abelian(p.real_form) then
+        if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local for torus: ",p.real_form,new_line,sp,p) fi;([p],())
+      else
+        let ()=if hodge_K_type_formula_verbose then prints(sp,"Not torus: ",p.real_form) fi in
+	{why fill_out_recursively here... should pass S to Phi_S_local...?}
+{      let (index,ktypes,A,B)=hodge_K_type_mat_long_local(LKT(p),N,fill_out_recursively([LKT(p)],N))}
+      let (index,ktypes,A,B)=hodge_K_type_mat_long_local(LKT(p),N,fill_out_recursively([LKT(p)],N))
+      then
+      ()=if hodge_K_type_formula_verbose then prints(sp,"In Phi_S_local with: ", p) fi then
+      vector=transpose(B)[index] then
+      temp=[(vec,Param)]:[] in
+      for i:#vector do if vector[i]!=null(0) then
+       temp#:=(vector[i],parameter(ktypes[i])) fi
+      od;
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local for ",p, " ", p.real_form) fi;
+     dearrange(temp,()) fi  {/Phi_S_local(p,N)}
+     then
+  {*}Phi_S_local(hodgeParamPol P, int N)=KHodgeParamPol:  {local: calls Phi_S_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_local(P,N):",new_line,P, " ", P.real_form, " ", N) fi;
+      if is_abelian(P.real_form) then
+       let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local (abelian)", P) fi in (P,()) else
+      let Q=rearrange(P) then
+      rv_K=nullKHodgeParamPol(P.real_form) in
+      for (c,p) in Q do rv_K+:=c*Phi_S_local(p,N) od;
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_local", P) fi;
+     rv_K fi  {/Phi_S_local([P],N)}
+     then
+  {*}hodge_branch_std_local(Param p, int N)=KHodgeParamPol: {local: calls Phi_S_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_branch_std_local(p,N)", p, " ", p.real_form, " ", N) fi;
+      let rv=Phi_S_local(hodge_recursive_deform(p),N) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_branch_std_local", P) fi;rv
+     then
+  {*}hodge_function_std_local(Param p)=hodge_function:  {local: calls hodge_branch_std_local}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_function_std_local(p)", p, " ", p.real_form) fi;
+      let rv=((K_Type mu):coefficient(hodge_branch_std_local(p,K_norm(mu)),parameter(mu)),p.real_form) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub hodge_function_std_local:", p) fi;rv
+     then
+  {*}hodge_tensor_local(hodge_function f, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_local(f,wts,mu)", f.real_form, " ", mu, " ", mu.real_form) fi;
+     let rv_ht=poly_0 in
+     for c@p in tensor_product(mu,dual(weights)) {K_Type_Pol} do
+      let mu=LKT(p) in rv_ht:=poly_plus(rv_ht,split_as_int(c)*f.f(mu))
+     od;
+     if hodge_K_type_formula_verbose then cut();prints(sp,"end sub hodge_tensor_local(f,weights,mu): ", f.real_form, " ", mu) fi;
+     rv_ht  {/hodge_tensor}
+     then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights,K_Type mu)=i_poly:  {local: calls hodge_tensor}
+       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weightss,mu)  ",p.real_form, " ",p, " ", mu) fi;
+       let f=hodge_function_std_local(p) then
+       ()=if hodge_K_type_formula_verbose then prints(sp,"in hodge_tensor_std_local, computed hodge_function_std_local(p) ", p.real_form,"  ",p) fi in
+       let rv=hodge_tensor_local(f,weights,mu) in
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weights,mu)",p.real_form," ",p," ",mu) fi;rv
+    then
+  {*}hodge_tensor_std_local(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:((K_Type mu): {local: calls hodge-tensor_std}
+      if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights)", " ",p.real_form," ",p) fi;
+      let h=hodge_tensor_std_local(p,weights,mu) in
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weightts)", p.real_form," ",p) fi;
+      h,p.real_form)
+     then
+  {*}hodge_tensor_wedge_k_u_cap_s_std_local(Param p,Parabolic P_1,int k)=hodge_function:  {local: hodge_tensor_std_local}
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub:  hodge_tensor_wedge_k_u_cap_s_std_local(p,P_1,k)", " ", p, " ", p.real_form, " ", k) fi;
+     {get out of the induction!}
+     if k=0 then
+       let rv=hodge_function_std_local(p) in
+       let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_wedge_k_u_cap_s_std_local; k=0 in wedge, no recursion needed") fi in
+       rv
+     else
+     let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P_1, k) then
+      rv=minus_vee_to_the_k(k)*hodge_tensor_std_local(p,weights) in
+      if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_wedge_k_u_cap_s_std_local(p,P_1,) ", p, " ", p.real_form," ", P_1, " ", k) fi;
+      rv
+     fi
+     then
+  {*}hodge_tensor_exterior_u_cap_s_std_local(Param p,Parabolic P)=hodge_function:  {local: calls hodge_tensor_wedge...}
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub:  hodge_tensor_exterior_u_cap_s_std_local(p,P_1)", " ", p, " ", p.real_form) fi;
+     let rv_hf=nullHodgeFunction(p.real_form) in
+     {get out of the induction!}
+     if #nilrad_roots(P)=0
+      then if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_exterior_u_cap_s_std_local for #nilrad_roots(P)=0 ", p, " ", p.real_form) fi;
+      branch_function_std_as_hodge_function(p)
+     else
+      for k:#nilrad_roots(P)+1  {NOTE +1}
+      do rv_hf+:=hodge_tensor_wedge_k_u_cap_s_std_local(p,P,k) od;
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_exterior_u_cap_s_std_local ", p, " ", p.real_form) fi;
+      rv_hf
+     fi
+     then
+  {*}Phi_S_inverse_local(KHodgeParamPol KP,[K_Type] S)=hodgeParamPol: {local: calls Phi_S_local}
+     if hodge_K_type_formula_verbose then add();prints(sp,"sub: Phi_S_inverse_local(KP,S)", " ", KP, " ", KP.real_form) fi;
+     let ()=if =#S then
+        if hodge_K_type_formula_verbose then add();prints(sp,"and sub: Phi_S_inverse_local(KP,S) (S is empty)", " ", KP, " ", KP.real_form) fi
+	fi in
+     let rec_fun solve_one(KHodgeParamPol KP,[K_Type] S,hodgeParamPol rv_hp)=hodgeParamPol:
+     let n=first(for mu in S do !=coefficient(KP,mu) od) in
+      let ()=if hodge_K_type_formula_verbose then prints(sp,"Phi_S_inverse rec_fun: #S=", #S,new_line,sp,"n=",n) fi in
+     if n=-1 then
+     let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_inverse_local(KP,S)(A) for ",KP.real_form," ", #S) fi in rv_hp
+      else
+       let c=coefficient(KP,S[n]) then
+        p=parameter(S[n]) then
+	S_1=union([S,for q in monomials(branch_std(p,N)) do LKT(q) od]) then
+        S_2=delete(LKT(p),S_1) in
+        solve_one(KP-Phi_S_local(c*p,max(for mu in S_1 do K_norm(mu) od)),S_2,rv_hp+c*p)
+      fi
+     in
+     let ()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Phi_S_inverse_local(KP,S)(B) for ",KP.real_form," ", #S) fi in
+     solve_one(KP,S,nullHodgeParamPol(KP.real_form))  {start the recursion}
+     then {definition of Omega_S_inverse_local:}
+  {*}Omega_S_inverse_local(hodge_function f,[K_Type] S)=
+        if hodge_K_type_formula_verbose then add();prints(sp,"sub: Omega_S_inverse_local(f,S)", " ", f.real_form) fi;
+        let rv=hodgeParamPol:Phi_S_inverse_local(Psi_S(f,S),S) in let
+	()=if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: Omega_S_inverse_local(f,S) for ", f.real_form, new_line,sp, "returning: ", rv) fi in rv
+    {end of local function definitions}
+    {THIS IS THE HEART OF THE MATTER:}
+    in
+    let A=hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
+    let ()=if hodge_K_type_formula_verbose then
+       for x in KGB(L_j) do prints(sp,"x: ",x,new_line,sp,"sums of nci roots: ", sums_nci_nilrad_roots_restricted_to_H_theta(P)(x)) od fi in
+    if #nilrad_roots(P)=0 then
+      if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots=0, no recursion needed") fi;
+      hodgeParamPol:[p_L_j]
+    else
+     if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots !=0, need recursion") fi;
+     let ktypes=starting_set_of_K_types(LKT(p_L_j),P,N) then
+     ()=if hodge_K_type_formula_verbose then prints(sp,"ktypes:"); for mu in ktypes do prints(sp,mu) od fi then
+     B=Omega_S_inverse_local(A,ktypes)  then   {B:hodgeParamPol on L_j}
+     ()=if hodge_K_type_formula_verbose then prints(sp,"Finished computing B for:",p_L_j, " ", p_L_j.real_form);print(B) fi in B
+    fi
+  ){end of subroutines}{/tensor=}{tensor is a hodgeParamPol for L_j}
+  in
+  let ()=if hodge_K_type_formula_verbose then prints(sp,"tensor:");prints(sp,"tensor.real_form: ",tensor.real_form);print(tensor) fi  in
+  let hodge_ind=hodge_theta_induce_standard(tensor,G)  {hodgeParamPol for G} then
+  ()=if hodge_K_type_formula_verbose then
+   prints(sp,"tensor: (on L_j):");print(tensor.real_form);print(tensor);
+   prints(sp,"hodge_ind (on G):");print(hodge_ind);
+   prints(sp,"c: ",poly_format(c,"v"));
+   prints(sp,"c*hodge_ind:");
+   print(c*hodge_ind);
+   prints(sp,"old rv_G:");print(rv_G);
+   prints(sp,"new rv_G:");print(rv_G+c*hodge_ind) fi
+  then
+  ()=if hodge_K_type_formula_verbose then prints(sp,"finished j: ", j, "/",#cf_0,
+    new_line,sp,  "L: ", L, new_line,sp, "L_j: ", L_j, new_line,sp, "p_L_j: ", p_L_j) fi in
+  rv_G+:=c*hodge_ind
+  od;{for (c,p_L)@j1}
+ if hodge_K_type_formula_verbose then prints(sp,"Done with loop for cf with G:", new_line,sp, G, new_line,sp, "L:", L, new_line,sp,"mu_L: ",mu_L) fi;
+  if hodge_K_type_formula_verbose then prints(sp,"Returning: ", new_line,sp,rv_G.real_form,new_line);print(rv_G) fi;
+  rv_G
+in if hodge_K_type_formula_verbose then  prints(sp,"CALLING RECURSIVE with mu_G_orig:", mu_G_orig, new_line,sp, "on real form:", mu_G_orig.real_form) fi;hodge_K_type_formula_recursive(mu_G_orig)
+
+{matrix with rows/columns indexed by [K_Type]:ktypes;  long output}
+set hodge_K_type_mat_long(K_Type mu, int N,[K_Type] ktypes)=(int,[K_Type],i_poly_mat,i_poly_mat):
+let
+M=zero_poly_matrix(#ktypes) in
+for tau in ktypes do
+ let index=find(ktypes,tau) then
+ row=zero_poly_row(#ktypes) then
+ hktf=hodge_K_type_formula(tau,N) then
+ rf=rearrange(hktf) in
+ for (g,kappa) in rf do
+  let j=find(ktypes,LKT(kappa)) in
+   if j!=-1 then row[j]:=g fi
+ od;
+ M[index]:=row
+od;
+let tM=transpose(M) in  {tM is lower triangular}
+(find(ktypes,mu),ktypes,tM, lower_unitriangular_inverse(tM))
+
+{default: use fill_out_recursively to generate ktypes}
+set hodge_K_type_mat_long(K_Type mu, int N)=(int,[K_Type],i_poly_mat,i_poly_mat):
+hodge_K_type_mat_long(mu,N,fill_out_recursively([mu],N))
+
+{short versions, only return i_poly_mats}
+set hodge_K_type_mat(K_Type mu, int N,[K_Type] ktypes)=(i_poly_mat,i_poly_mat):
+let(,,A,B)=hodge_K_type_mat_long(mu,N,ktypes) in (A,B)
+
+set hodge_K_type_mat(K_Type mu, int N)=(i_poly_mat,i_poly_mat):
+hodge_K_type_mat(mu,N,fill_out_recursively([mu],N))
+
+set test_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,[bool],bool):
+let (A,B)=hodge_K_type_mat(mu,N) in let
+results=for i:#B do is_non_negative(transpose(B)[i]) od in (B,results,all(results))
+
+set test_hodge_K_type_mat([K_Type] mus,int N)=([([[vec]],bool)],bool):
+let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od in
+(pairs, all( for (,r) in pairs do r od))
+
+set hodge_K_type_mat_trivial(RealForm G, int N)=let (a,b,A,B)=hodge_K_type_mat_long(LKT(trivial(G)),N)
+in prints("G=",G,new_line,"N=",N,new_line,"set (a,b,A,B)=hodge_K_type_mat_long(trivial(LKT(G)),N)");
+prints("columns of A: graded version of the formula for the LKT of standard (finite number of terms)");
+prints("columns of B: graded K-multiplicities in the standard module (Hodge grading)");
+prints("A=");
+printPolyMatrix(A,"v");
+prints("B=");
+printPolyMatrix(B,"v");
+(a,b,A,B)
+
+{hodge branching formula for standard tempered module}
+{was called hodge_branch_std_tempered, renamed to Phi_S
+see hodgeTempered.pdf (towards the end) and hodge_tensor.at}
+set Phi_S(Param p, int N)=KHodgeParamPol:
+let (index,ktypes,A,B)=hodge_K_type_mat_long(LKT(p),N) then
+vector=transpose(B)[index] then
+temp=[(vec,Param)]:[] in
+ for i:#vector do if vector[i]!=null(0) then
+ temp#:=(vector[i],parameter(ktypes[i])) fi od;
+dearrange(temp,())
+
+{hodge branching formula for ParamPol of tempered modules}
+set Phi_S(ParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+ for c@p in P do rv+:=c*Phi_S(p,N) od;rv
+
+{hodge branching formula for hodgeParamPol of tempered modules}
+set Phi_S(hodgeParamPol P, int N)=KHodgeParamPol:
+let Q=rearrange(P) then
+rv=nullKHodgeParamPol(P.real_form) in
+ for (c,p) in Q do rv+:=c*Phi_S(p,N) od;
+rv
+
+set Phi_S(Param p, [K_Type] S)=KHodgeParamPol:Phi_S(p,max(for mu in S do K_norm(mu) od))
+set Phi_S(ParamPol P, [K_Type] S)=KHodgeParamPol:Phi_S(P,max(for mu in S do K_norm(mu) od))
+set Phi_S(hodgeParamPol P, [K_Type] S)=KHodgeParamPol:Phi_S(P,max(for mu in S do K_norm(mu) od))
+
+{hodge branching formula for arbitrary standard module p
+ algorithm: Phi_S(hodge_recursive deform(p))
+}
+set hodge_branch_std(Param p, int N)=KHodgeParamPol:
+Phi_S(hodge_recursive_deform(p),N)
+
+{hodge branching formula for arbitrary ParamPol of standard modules}
+set hodge_branch_std(ParamPol P, int N)=KHodgeParamPol:
+Phi_S(hodge_recursive_deform(P),N)
+
+set hodge_branch_std(hodgeParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+for i:#P do rv+:=shift(hodge_branch_std(P[i],N),i) od;rv
+
+{see atlasHodge.pdf Section 7.1}
+
+{write hodge(J) as Z[v] linear combination of hodge(I_j)
+where {I_j} are at the same infinitesimal character (not necessarily nu=0)}
+set hodge_formula_irr(Param p)=hodgeParamPol:
+let (b,index)=singular_block(p) then {p=b[index]}
+polys=transpose(KL_P_signed_polynomials(p))[index] then
+on_p=orientation_nr(p) then
+rv=nullHodgeParamPol(p.real_form) in
+for i:#b do
+ let on_diff=on_p-orientation_nr(b[i])\2 in
+ rv+:=poly_product(polys[i],vee^on_diff)*b[i] od;rv
+
+
+set hodge_branch_irr(Param p,int N)=
+let hp=hodge_formula_irr(p) then
+rv=nullKHodgeParamPol(p.real_form) in
+for (c,q) in rearrange(hp) do
+ rv+:=c*hodge_branch_std(q,N) od;rv
+
+{the hodge function of I(p)}
+{moved from hodge_functions.at}
+set hodge_function_std(Param p)=hodge_function:
+((K_Type mu):coefficient(hodge_branch_std(p,K_norm(mu)),mu),p.real_form)
+
+set column([K_Type] ktypes,i_poly_mat M,int i)=
+let col=transpose(M)[i] in
+dearrange(for j:#col do (col[j],ktypes[j]) od )
+
+{---- some output routines, see hodgeParamPol.at---}
+
+set print_hodge_std(Param p,int bound)=show(hodge_branch_std(p,bound))
+set print_hodge_std_long(Param p,int bound)=show_long(hodge_branch_std(p,bound))
+
+set print_hodge_irr(Param p,int bound)=show(hodge_branch_irr(p,bound))
+set print_hodge_irr_long(Param p,int bound)=show_long(hodge_branch_irr(p,bound))

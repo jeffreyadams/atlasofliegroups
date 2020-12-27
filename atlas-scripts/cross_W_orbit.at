@@ -22,3 +22,7 @@ set cross_orbit (KGBElt x) = ([KGBElt],[WeylElt]):
 set cross_divide (KGBElt y,KGBElt x) = WeylElt:
   let (orbit,ws)=cross_orbit(x) then i=first(#orbit,(int i)bool:orbit[i]=y) in
   if i<0 then error("Did not find ",y," in orbit of ",x) fi; ws[i]
+
+set is_in_cross_orbit (KGBElt x, KGBElt y) = (bool,WeylElt):
+  let (orbit,ws)=cross_orbit(x),b=true then i=first(#orbit,(int i)bool:orbit[i]=y) in
+  if i<0 then prints("Did not find ",y," in orbit of ",x);b:=false;i:=0 fi; (b,ws[i])

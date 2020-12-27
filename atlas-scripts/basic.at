@@ -289,9 +289,17 @@ set fgrep (string s, string text) = [string]:
   do if is_substring(s,line) then result#:=line fi
   od; result
 
+{eliminate spaces, and "/1", for printing a ratvec}
+set compact_ratvec(ratvec v)=string:
+let (a,b)=%v in ([int]:a).to_string+
+ if b=1 then "" else "/"+b.to_string fi
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
+
+{ standard basis in rank n }
+set e(int n,int i) = vec: for j:n do #(i=j) od
 
 set ones (int n)= vec: for i:n do 1 od
 
@@ -331,6 +339,11 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
 
 {. number of times n occurs in [int] S .}
 set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
+
+{add zeros to make total length =N}
+set pad ([int] v,int N) = vec: v##null(N-#v)
+
+
 
 {                               Matrices                                }
 
@@ -751,6 +764,18 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
+{ simply_connected and adjoint for a RootDatum: each is a product of
+  simple factors and possibly a torus factor. Since |Lie_type| is used,
+  coordinates for the new root datum are unrelated to those of |rd|
+}
+
+set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
+set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
+
+{root datum whose coroots are those integral on p.infinitesimal_character}
+set integrality_datum (Param p)= RootDatum:
+  integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
+
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let in_S = is_member(S) in
   root_datum(columns_with(in_S,rd.simple_roots)
@@ -840,6 +865,8 @@ set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
+set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify coroot (not root) }
+  reflection(rd,coroot_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
 set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
@@ -857,6 +884,16 @@ set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
   let (n,d) = %v in coreflect(rd,n,i)/d
 set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
   let (n,d) = %v in coreflect(rd,n,alpha)/d
+
+{ object-like versions: }
+set reflect (RootDatum rd) = ((int,ratvec)->ratvec):
+  (int i, ratvec v): ratvec: reflect(rd,i,v)
+set reflect (RootDatum rd) = ((vec,ratvec) -> ratvec):
+  (vec alpha, ratvec v): ratvec: reflect(rd,alpha,v)
+set coreflect (RootDatum rd)=((ratvec,int) -> ratvec):
+  (ratvec v, int i): ratvec: coreflect(rd,v,i)
+set coreflect (RootDatum rd)=((ratvec,vec) -> ratvec):
+  (ratvec v, vec alpha): ratvec: coreflect(rd,v,alpha)
 
 { in matrix version reflect becomes left_reflect and coreflect right_reflect }
 set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
@@ -932,6 +969,8 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
   all(for x in numer(v)*poscoroots(rd) do !=x od)
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
+set is_integrally_dominant (RootDatum rd,ratvec v) = bool:
+  is_dominant(integrality_datum(rd,v),v)
 
 { reversing order, simplilar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
@@ -987,16 +1026,43 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
-{ find a root of maximal level; if |rd| is simple this is the highest root }
-{.highest root.}
-set highest_root (RootDatum rd) = vec:
-{ root data produced by |dual@RootDatum| are not ordered by level, so do work: }
+{root datum of singular roots}
+set singular_root_datum(RootDatum rd,ratvec gamma)=
+let roots=[vec]:[], coroots=[vec]:[] in
+for a@i in  rd.poscoroots do 
+ if a*gamma=0 then roots#:=rd.posroots[i]; coroots#:=a fi
+od;
+if #roots=0 then  root_datum(null(0,0),null(0,0)) else   {trivial_group, in groups.at, not loaded yet}
+root_datum_from_positive(roots,coroots) fi
+
+{ list of all highest roots (one for each simple factor) }
+set highest_roots (RootDatum rd) = [vec]:
   let pr=posroots(rd) in
-  if =pr then error("Empty set of roots, none is highest")
-  elif not rd.prefers_coroots { when generated in root order, take short cut }
-  then pr~[0] { since the last generated root will be a high root }
-  else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
-  fi
+##for alpha in pr
+  do if all(for beta in pr do not is_posroot(rd,alpha+beta) od)
+     then [alpha] else []
+     fi
+  od
+
+{ single highest root, or error if rd has more than one simple factor }
+set highest_root (RootDatum rd) = vec:
+  assert(derived_is_simple(rd),
+         "Multiple simple factors, no unique highest root");
+  highest_roots(rd)[0]
+
+{ one of the highest roots }
+set highest_root_one (RootDatum rd) = vec: highest_roots(rd)[0]
+
+{change basis: replace an element of X^*_Q wrt basis of rd_1
+with that of rd_2
+v -> v*rd_1.simple_roots (fundamental weight coordinates for rd_1
+-> rd_2.fundamental_weights*(...)     given rd_2 coordinates for rd_2
+}
+set move(ratvec v,RootDatum rd_1,RootDatum rd_2)=ratvec:
+rd_2.fundamental_weights*(v*rd_1.simple_coroots)
+
+set move(vec v,RootDatum rd_1,RootDatum rd_2)=vec:
+ratvec_as_vec(move(v,rd_1,rd_2))
 
 {                               Weyl group				}
 
@@ -1132,6 +1198,8 @@ set is_equal_rank (InnerClass ic) = bool: { whether distinguished_involution=1 }
 
 set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
   =compact_rank(most_split_Cartan(G))
+{ avoid implicit conversion RealForm->InnerClass: would give wrong answer }
+set is_split (InnerClass ic) = bool: is_split(quasisplit_form(ic))
 
 { equality of Cartan classes }
 set = (CartanClass H,CartanClass J) = bool:
@@ -1165,6 +1233,9 @@ set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 
 set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
+
+set compact_form (RootDatum r) = RealForm:
+  quasicompact_form(inner_class(r,id_mat(rank(r))))
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in
@@ -1298,6 +1369,9 @@ set dimension (KGBElt x) = int: { dimension as $K$-orbit on $G/B$ }
 + #columns_with(is_complex(x0.involution),posroots)\2
 )
 
+{ codimension as $K$-orbit on $G/B$ }
+set codim(KGBElt x) = int: nr_of_posroots(root_datum(x))-dimension(x)
+
 
 set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
 set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
@@ -1363,11 +1437,29 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+set codim (Param p) = int: codim(p.x)
 
-set involution (Param p)=involution(x(p))
+{ whether gamma dominant, and if not witnessing simple coroot for this }
+set is_dominant (Param p) = (bool,int):
+  let gamma=infinitesimal_character(p) in
+  for alpha_v@i in p.root_datum.simple_coroots
+  do if alpha_v*gamma<0 then return(false,i) fi
+  od; (true,-1)
 
-set integrality_datum (Param p)= RootDatum:
-  integrality_datum(root_datum(p),infinitesimal_character(p))
+{ whether gamma dominant, and if not witnessing integrally simple coroot }
+set is_integrally_dominant(Param p)=(bool,int):
+  let gamma=infinitesimal_character(p) in
+  for alpha_v@i in integrality_datum(p).simple_coroots
+  do if alpha_v*gamma<0 then return(false,i) fi
+  od; (true,-1)
+
+{ questions about status of x component with respect to full datum simple root }
+set is_noncompact_imaginary (int i,Param p) = bool:
+  is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
+set is_compact_imaginary (int i,Param p) = bool:
+  is_compact_imaginary(p.root_datum.simple_roots[i],p.x)
+
+set involution (Param p) = mat: involution(x(p))
 
 set is_regular (Param p) = bool:
   is_regular(root_datum(p),infinitesimal_character(p))
@@ -1382,8 +1474,9 @@ set is_strongly_regular (Param p)=bool:
 set survives (Param p) = bool:
   is_final(p) { was recently defined to mean exactly that }
 
+set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
-  param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
+  param(G.x_open,null(rank(G)),rho(G))
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
 set W_cross ([int] w,Param p) = Param:
@@ -1470,6 +1563,9 @@ set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
 set is_descent ((vec,Param) ap) = bool: status(ap)<4
+
+set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
+set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
 
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
@@ -1648,6 +1744,7 @@ set purity (ParamPol P)=(int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
@@ -1658,6 +1755,7 @@ set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
 set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
+set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
 
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
@@ -1666,6 +1764,8 @@ set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
 
 set in_string_list (string s,[string] S) = bool:
   >=first(for t in S do s=t od)
+
+set in_list([int] v,int k)=bool:>=find(v,k)
 
 { delete one term from a list }
 set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
@@ -1705,6 +1805,10 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{ height of a ParamPol is max of height of each term}
+set height (ParamPol P) = int:
+  max(0)(for p in monomials(P) do height(p) od)
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}

@@ -1,0 +1,86 @@
+<matrix.at
+
+{compute the root system of A in G where
+H=TA is the most split Cartan
+this is possibly reduced, so restricted_roots_short
+and restricted_roots_long give the two options
+for a reduced root system
+default: restricted_roots_short
+for example restricted_roots_short(SU(n+1,n))=B_n
+}
+
+{ basis of X_*(H^{-theta_x}) where x <-> most split Cartan}
+set basis_max_split_torus(RealForm G)=mat:
+let delta=G.trivial.x.involution in
+eigen_lattice(^delta,-1) { id_mat in split case}
+
+{eliminate duplicates from list}
+set remove_duplicates([vec] list)=[vec]:
+let rv=[vec]:[] in
+for v in list do
+ if find(rv,v)=-1 then rv#:=v fi
+od;rv
+
+{remove zero vector from list}
+set remove_zeros([vec] list)=[vec]:
+##for v in list do if =v then [] else [v] fi od
+
+{removed both duplicates and zeros}
+set prune([vec] list)=[vec]:
+remove_zeros(remove_duplicates(list))
+
+{return: (mat A,mat B) where
+ A is the matrix of positive restricted roots
+ B is the matrix of positive injected coroots
+these are the roots of a possibly nonreduced root system
+}
+set restricted_roots_raw(RealForm G)=(mat,mat):
+let delta=G.trivial.x.involution {Cartan involution for most split Cartan} then
+inj=basis_max_split_torus(G) {basis of X^*(H^(-delta))} then
+proj=^inj {projection X^*(H) -> X^*(H^(-delta))} then
+pullback=left_inverse(inj) {X_*(H) -> X_*(H^(-delta))} then
+restricted_roots=prune(proj*G.posroots) {roots are the restrictions} then
+{coroots:
+ note: delta acts on coroots on the right
+ note: \alpha^vee positive complex => alpha^vee*delta negative
+ if alpha is delta-real then this contributes alpha^vee
+ if alpha is delta-complex then this contributes:
+   alpha_vee(1-delta)*c
+   where c=(1+<alpha_vee*delta,alpha>)=1 or 2
+    (since <alpha_vee*delta,alpha>=0 or +1)
+}
+injected_coroots=prune(
+ pullback*(
+ ##for alpha_vee@j in G.poscoroots do
+   if alpha_vee*delta=-alpha_vee then [alpha_vee] elif
+   alpha_vee*delta=alpha_vee then [] else
+   [alpha_vee*(1-delta)*(int: 1+alpha_vee*delta*G.posroots[j])] fi
+   od))
+in (mat:restricted_roots,mat:injected_coroots)
+
+{if both v,2v occur keep only 2v}
+set keep_long([vec] list)=[vec]:
+##for v in list do if find(list,2*v)>=0 then [] else [v] fi od
+
+{if both v,2v occur keep only v}
+set keep_short([vec] list)=[vec]:
+##for v in list do if is_integer(v/2) and find(list,v\2)>=0 then [] else [v] fi od
+
+set keep_short_roots_long_coroots(mat roots, mat coroots)=(mat,mat):
+(mat:keep_short(roots),mat:keep_long(coroots))
+
+set keep_long_roots_short_coroots(mat roots, mat coroots)=(mat,mat):
+(mat:keep_long(roots),mat:keep_short(coroots))
+
+{reduced root system obtained by keep short roots/long coroots}
+set restricted_roots_short(RealForm G)=RootDatum:
+let (A,B)=restricted_roots_raw(G) in
+root_datum_from_positive(keep_short_roots_long_coroots(A,B))
+
+{reduced root system obtained by keep long roots/short coroots}
+set restricted_roots_long(RealForm G)=RootDatum:
+let (A,B)=restricted_roots_raw(G) in
+root_datum_from_positive(keep_long_roots_short_coroots(A,B))
+
+set restricted_roots(RealForm G)=RootDatum:
+restricted_roots_short(G)

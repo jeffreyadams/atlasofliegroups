@@ -16,7 +16,7 @@ set inf_chars_dom_for_L (Param p, Parabolic P)=[ratvec]:
   character of p. .}
 set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
    let rd=root_datum(p) in let L=Levi(P) in let rdl=root_datum(L) in
-   let orb=W_orbit(rd,infinitesimal_character(p)) in
+   let orb=W_orbit(rd,infinitesimal_character(p)) in 
    let rho=rho_u(P) in
    let list=[] in
    for v in orb do if is_dominant(rdl,v-rho) then

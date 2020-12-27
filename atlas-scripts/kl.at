@@ -1,3 +1,4 @@
+
 { KL stuff, including character formulas and composition series
   This implementation seeks to avoid using KL_block, and instead uses
   KL_sum_at_s, as this function stores earlier results
@@ -66,7 +67,28 @@ set print_character_formula (Param p) = void:
 set print_composition_series(Param p) = void:
   print_formatted(composition_series(p))
 
-{ trace progress while computing |composition_series| }
+set print_with_length (ParamPol P) = void:
+  for c@p in P do prints(c.split_factor_format, "*"  , p, " ", p.length) od
+
+{ print out high length terms as they become available }
+set composition_series_verbose (ParamPol P) = ParamPol:
+   let result=null_module(P), max=max(for p in monomials(P) do length(p) od)
+in for L:max+1 ~ { reverse }
+   do prints("Length: ", L)
+   ;  let result_new=null_module(P)
+   in for c@p in P
+      do if length(p)=L then result_new +:=c*composition_series(p) fi
+      od
+   ;  result := result+result_new
+   ;  prints("terms in result of length ", L, ":")
+   ;  for c@p in result
+      do if length(p)=L
+         then prints(c.split_factor_format, "*",p, " ", p.length)
+	 fi
+      od
+   od ; prints("result:"); print_with_length(result); result
+
+{ simpler and faster: trace progress while computing |composition_series| }
 set composition_series_trace (ParamPol P) = ParamPol:
   null_module(P)+
   while !=P { non null module }

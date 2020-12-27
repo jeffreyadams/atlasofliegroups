@@ -1,0 +1,59 @@
+<log.at
+<tensor_product.at
+
+{sum of dimensions of K-types up to given height}
+set dim_K_types_std_upto(Param p, int n)=dimension(branch_std(p,n))
+
+{terms of ParamPol of height <=n (with multiplicity)}
+set truncate(ParamPol P, int n)=
+let rv=null_module(P.real_form) in
+ for (a,p) in %P do if height(p)<=n then rv+:=a*p fi od;rv
+
+{terms of ParamPol of height =n (with multiplicity)}
+set slice(ParamPol P, int n)=
+let rv=null_module(P.real_form) in
+ for (a,p) in %P do if height(p)=n then rv+:=a*p fi od;rv
+
+{estimating GK dimension of module X
+X_n=K-types of height <=n}
+{dim(X_n)= cn^d  d=GK-dimension
+ dim(X_2^n)= c2^dn
+ dim(X_2^(n-1))= c2^d(n-1)
+ dim(X_2^n)/ dim(X_(2^(n-1))
+ dim(X_2^n)/X_x^(n-1))= c2^dn/c2^d(n-1)=2^d
+ d=log_2(dim(X_2^n)/X_2^(n-1))
+}
+
+set sort_K_types_by_log_2_height(K_Type_Pol P)=
+let rv=for i:log_2_int(max(height(P),1))+1 do null_module(P.real_form) od in
+for (a,p) in %P do rv[log_2_int(height(p)+1)]+:=a*p od;rv
+
+{estimate GK dimension
+ list[k]: K_Type_Pol all terms with log_2_int(height)=k
+ estimate: log_2(dim(list[k+1])/dim(list[k])
+} 
+set growth([K_Type_Pol] list)=
+let n=#list then
+v=for P in list do dimension(P) od in
+prints("v=",v);
+prints("k=1,...,",n-1,":");
+prints("height up to: 2^",n-1,"=",2^(n-1));
+prints("a_k=dimension of K-types up to height 2^k");
+prints("b_k=dimension of K-types up to height 2^(k-1)",new_line);
+for k:n-1  do let
+a=max(sum(v[:k+1]),1) then
+b=max(sum(v[:k]),1) then
+rv=log_2_int(a/b) in
+prints("k=", k, " 2^k=",2^k, new_line, "(a,b)=(",a,",",b,")", new_line, "a/b=", with_decimals(3)(a/b), new_line, "rate:",rv,new_line,"------------");rv
+od
+
+{estimate growth of standard module up to height 2^n}
+set growth_std(Param p, int n)=
+let P=branch_std(p,2^n) then
+Q=sort_K_types_by_log_2_height(P) in growth(Q)
+
+{estimate growth of irreducible module up to height 2^n}
+set growth_irr(Param p, int n)=
+let P=branch_irr(p,2^n) then
+Q=sort_K_types_by_log_2_height(P) in growth(Q)
+

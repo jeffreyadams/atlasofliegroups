@@ -2,6 +2,7 @@
 <representations.at { for |finite_dimensional@(RealForm,vec)| }
 <K_types.at  { for |K_signature_irr| }
 <weyl_character_formula.at { for |trace_strong_real@(Param,ratvec)| }
+<K_highest_weights.at
 
 {some functions related to Frobenius-Schur indicator,
 real/quaternionic indicator, and sign of Hermitian form

@@ -1,0 +1,123 @@
+<hodge_normalize.at
+<hodge_deform.at
+<K_types.at
+<hodgeParamPol.at
+
+{basics of functions from K-hat to Z,W and Z[v]}
+
+set hodge_functions_verbose=false
+
+set_type multiplicity_function=(K_Type -> int)
+set_type signature_function=(K_Type -> Split)
+set_type hodge_function= ((K_Type->i_poly) f,RealForm real_form)
+
+set minus_vee_to_the_k(int k)=i_poly:(-1)^k*null(k)#1
+
+{print routines}
+set hodgePrint(hodgeParamPol P)=void:print(P)
+set hodgePrint(KHodgeParamPol KP)=void:print(KP.P)
+set hodgePrint([(vec,Param)] P)=void:print(dearrange(P))
+set hodgePrint([(vec,K_Type)] P)=void:print(dearrange(P))
+
+set coefficient(hodgeParamPol P,K_Type mu)=vec:coefficient(P,parameter(mu))
+
+{the multiplicity function of I(p)}
+set branch_function_std(Param p)=multiplicity_function:
+(K_Type mu):split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])
+
+set branch_function_std_as_hodge_function(Param p)=hodge_function:
+((K_Type mu):[split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])],p.real_form)
+
+
+{the hodge function of I(p)}
+{moved to hodge_K_type_formula.at}
+{set hodge_function_std(Param p)=hodge_function:
+(K_Type mu):coefficient(hodge_branch_std(p,K_norm(mu)),mu)
+}
+
+{convert function f to \sum_mu f(mu)*mu}
+{this function is slow and should be used sparingly}
+{was called hodge_polynomial, renamed to Psi_S
+ see hodgeTempered.pdf (towards the end) and hodge_tensor.at}
+set Psi_S(hodge_function f,[K_Type] ktypes)=KHodgeParamPol:
+let ()=if hodge_functions_verbose then prints("SUB: Psi_S(f,ktypes)", f.real_form) fi in
+let rv=##
+ for mu in ktypes do
+  let f_mu=f.f(mu) in
+  if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)]
+  fi
+ od
+in let d=dearrange(rv) in
+(d,())
+
+{set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+let ()=if hodge_functions_verbose then prints("SUB: Psi_S(f,ktypes,G)", f.real_form) fi in
+let rv=(##
+ for mu in ktypes do
+  let f_mu=f.f(mu) in
+  if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)]
+  fi
+ od,G)
+in let d=dearrange(rv) in
+(d,())
+}
+
+set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+let ()=if hodge_functions_verbose then prints("SUB: Psi_S(f,ktypes)", f.real_form) fi in
+(dearrange(##for mu in ktypes do
+  let f_mu=f.f(mu) in 
+ if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)] fi  od,G),())
+
+{warning: this is slow}
+set hodgePrint(hodge_function f, [K_Type] ktypes)=void:
+if #ktypes=0 then () else
+hodgePrint(Psi_S(f,ktypes,ktypes[0].real_form)) fi
+
+set print(hodge_function f, [K_Type] ktypes)=void:hodgePrint(f,ktypes)
+
+set nullHodgeFunction(RealForm G)=hodge_function:((K_Type mu):[],G)
+
+set sort_by ( (vec,(KGBElt,ratvec)->int) f) =
+  ([(vec,(KGBElt,ratvec))] v) [(vec,(KGBElt,ratvec))]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by ( (vec,Param->int) f) =
+  ([(vec,Param)] v) [(vec,Param)]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set K_norm(vec v,K_Type mu)=int:K_norm(mu)
+set K_norm(vec v,Param p)=int:K_norm(LKT(p))
+set sort = ([(vec,K_Type)]->[(vec,K_Type)]):sort_by(K_norm@(vec,K_Type))
+set sort = ([(vec,Param)]->[(vec,Param)]):sort_by(K_norm@(vec,Param))
+
+{multiply function by polynomial: f_new(mu)=f(mu)*poly\in Z[v]}
+set * (i_poly P, hodge_function f)=hodge_function: 
+((K_Type mu):convolve(P,f.f(mu)),f.real_form)
+
+set *(int i,hodge_function f)=hodge_function:constant_poly(i)*f
+
+set + (hodge_function f,hodge_function g)=hodge_function:
+assert(f.real_form=g.real_form,"real forms don't match in + of hodge_functions");
+((K_Type mu):poly_plus(f.f(mu),g.f(mu)),g.real_form)
+
+set - (hodge_function f,hodge_function g)=hodge_function:
+assert(f.real_form=g.real_form,"real forms don't match in + of hodge_functions");
+((K_Type mu):poly_minus(f.f(mu),g.f(mu)),f.real_form)
+
+set is_zero(hodge_function f,[K_Type] ktypes)=bool:
+{let ()=prints("is_zero with:", Psi_S(f,ktypes,ktypes[0].real_form)) in}
+Psi_S(f,ktypes,ktypes[0].real_form)=nullKHodgeParamPol(ktypes[0].real_form)
+
+{Note: algorithm is, formally induce the parameter (which may be non-standard),
+and then apply hodge_normalize. Recall hodge_normalize uses imaginary
+wall-crossings, based on an SL(2,R) calculation, and always preserves nu=0.
+The first step of standardize is a Cayley transform introduces non-zero nu,
+but this is a red herring. See hodge_normalization.pdf in Dropbox}
+set hodge_theta_induce_standard(Param p_L,RealForm G)=hodgeParamPol:
+ let p_G=parameter(embed_KGB(p_L.x,G), p_L.lambda+rho(G)-rho(p_L.real_form),p_L.nu)
+ in hodge_normalize(p_G)
+
+set hodge_theta_induce_standard(hodgeParamPol P,RealForm G)=hodgeParamPol:
+let rv=nullHodgeParamPol(G) in
+ for (c,p) in rearrange(P) do rv+:=c*hodge_theta_induce_standard(p,G) od;rv
+

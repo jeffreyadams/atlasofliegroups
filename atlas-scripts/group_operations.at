@@ -70,6 +70,10 @@ set derived (InnerClass ic) = InnerClass:
   let (der_rd,proj)=derived_info(root_datum(ic))
   in inner_class(der_rd,corestrict_action(proj,distinguished_involution(ic)))
 
+set derived_info(InnerClass ic)=(InnerClass,mat):
+  let (der_rd,proj)=derived_info(root_datum(ic))
+  in (inner_class(der_rd,corestrict_action(proj,distinguished_involution(ic))),proj)
+
 set mod_central_torus (InnerClass ic) = InnerClass:
   let (quot_rd,inj)=mod_central_torus_info(root_datum(ic))
   in inner_class(quot_rd,restrict_action(distinguished_involution(ic),inj))
@@ -110,6 +114,8 @@ set adjoint (RealForm G) = RealForm:
 
 set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
   compact_rank(most_split_Cartan(G))=compact_rank(radical(InnerClass:G))
+
+set is_abelian(RootDatum G)=bool: =semisimple_rank(G)
 
 {  converting between root data, and including a change of basis matrix }
 
