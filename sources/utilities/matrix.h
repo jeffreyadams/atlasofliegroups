@@ -15,6 +15,7 @@
 #include <vector>
 #include <functional> // for |std::reference_wrapper|
 #include <stdexcept>
+#include <cassert>
 
 #include "matrix_fwd.h"
 
@@ -100,11 +101,25 @@ public:
   Vector& negate_add (const Vector& y); // reversed -=, so *this = y - *this
 
   // the following two methods do not take an end iterator; count is |size()|
-  template<typename I> Vector& add(I b,C c); // add |Vector(b,b+size())*c|
+  template<typename I> Vector& add(I b,C c) // add |Vector(b,b+size())*c|
+  {
+    if (c!=C(0)) // we may be able to avoid doing anything at all
+      for (auto it=base::begin(); it!=base::end(); ++it,++b)
+	*it += *b * c;
+    return *this;
+  }
   template<typename I> Vector& subtract( I b,C c) { return add(b,-c); }
 
 
-  template<typename C1> C1 dot (const Vector<C1>& v) const;
+  template<typename C1> C1 dot (const Vector<C1>& v) const
+  {
+    assert(base::size()==v.size());
+    C1 result = 0;
+    for (size_t i=0; i<base::size(); ++i)
+      result += (*this)[i] * v[i];
+    return result;
+  }
+
   bool isZero() const;
 
   Vector operator+ (const Vector& v) const &
@@ -178,7 +193,16 @@ template<typename C> class Matrix_base
 	       unsigned int n_rows); // with explicit #rows in case |b| empty
 
   template<typename I> // from sequence of columns obtained via iterator
-    Matrix_base(I begin, I end, unsigned int n_rows, tags::IteratorTag);
+    Matrix_base(I begin, I end, unsigned int n_rows, tags::IteratorTag)
+      : d_rows(n_rows), d_columns(std::distance(begin,end))
+    , d_data(static_cast<std::size_t>(d_rows)*d_columns)
+  {
+    I p=begin;
+    for (unsigned int j=0; j<d_columns; ++j,++p)
+      for (unsigned int i=0; i<d_rows; ++i)
+	(*this)(i,j) = (*p)[i];
+  }
+
 
   void swap(Matrix_base&);
 
@@ -375,6 +399,84 @@ public:
   C operator[] (std::size_t i) const { return base::get()[i]; }
 }; // |class Vector_cref|
 
+// instantiations of templated free functions and methods
+
+// Set |b| to the canonical basis (as in identity matrix) in dimension |r|
+template<typename C>
+  std::vector<Vector<C> > standard_basis(unsigned int r)
+{
+  std::vector<Vector<C> > result(r,Vector<C>(r,C(0)));
+
+  for (unsigned int i=0; i<r; ++i)
+    result[i][i] = C(1);
+
+  return result;
+}
+
+template<typename C>
+  void swap(Matrix_base<C>& A,Matrix_base<C>& B) { A.swap(B); }
+
+/*
+Apply the matrix to the vector |w|, and returns the result. It is assumed that
+the size of |w| is the number of columns; result size is the number of rows.
+*/
+template<typename C>
+template<typename C1>
+Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
+{
+  assert(base::numColumns()==w.size());
+  Vector<C1> result(base::numRows());
+
+  for (unsigned int i=0; i<base::numRows(); ++i)
+  {
+    C1 c(0);
+    for (unsigned int j=0; j<base::numColumns(); ++j)
+      c += (*this)(i,j) * w[j];
+    result[i] = c;
+  }
+
+  return result;
+}
+
+/*
+  Multiply the matrix to right to the row-vector w, and returns the result.
+  It is assumed that the size of w is the number of rows; result size is the
+  number of columns. This is the proper sense of application for dual space.
+*/
+template<typename C> template<typename C1>
+Vector<C1> Matrix<C>::right_prod(const Vector<C1>& w) const
+{
+  assert(base::numRows()==w.size());
+  Vector<C1> result(base::numColumns());
+
+  for (unsigned int j=0; j<base::numColumns(); ++j)
+  {
+    C1 c(0);
+    for (unsigned int i=0; i<base::numRows(); ++i)
+      c += w[i] * (*this)(i,j);
+    result[j] = c;
+  }
+
+  return result;
+}
+
+template<typename C>
+  void row_apply(Matrix<C>& A, const Matrix<C>& ops,
+		 unsigned int i) // initial row
+{ const auto r=ops.numRows();
+  assert(r==ops.numColumns());
+  assert(i+r <= A.numRows());
+  Vector<C> tmp(r);
+  for (unsigned int j=0; j<A.numColumns(); ++j)
+  { // |tmp = partial_column(j,i,i+r)|; save values before overwriting
+    for (unsigned int k=0; k<r; ++k)
+      tmp[k]=A(i+k,j);
+    ops.apply_to(tmp); // do row operations on column vector |tmp|
+    for (unsigned int k=0; k<r; ++k)
+      A(i+k,j)=tmp[k];
+  }
+}
+
 
 template<typename C>
   void column_apply(Matrix<C>& A, const Matrix<C>& ops,
@@ -392,6 +494,15 @@ template<typename C>
       A(i,j+l)=tmp[l];
   }
 } // |column_apply|
+
+template<typename C>
+  PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy
+{
+  unsigned int i=std::min(A.numRows(),A.numColumns());
+  while (i-->0)
+    A(i,i) += c;
+  return A;
+}
 
 
 } // |namespace matrix|
