@@ -3324,10 +3324,10 @@ struct subscr_base : public expression_base
 struct slice_base : public expression_base
 { expression_ptr array, lower,upper; // the three parts of the slice expression
 @)
-  slice_base(expression_ptr&& a, expression_ptr&& l, expression_ptr&& u)
+  slice_base(expression_ptr&& a, expression_ptr&& lwb, expression_ptr&& upb)
 @/: array(a.release())
-  , lower(l.release())
-  , upper(u.release())
+  , lower(lwb.release())
+  , upper(upb.release())
   @+{}
   virtual ~@[slice_base() nothing_new_here@] ;
 @)
@@ -3411,8 +3411,8 @@ of these differ only by their |evaluate| method.
 
 template <unsigned flags>
 struct row_slice : public slice_base
-{ row_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
-@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+{ row_slice(expression_ptr&& a, expression_ptr&& lwb,  expression_ptr&& upb)
+@/: slice_base(std::move(a),std::move(lwb),std::move(upb)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
@@ -3421,8 +3421,8 @@ struct row_slice : public slice_base
 @)
 template <unsigned flags>
 struct vector_slice : public slice_base
-{ vector_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
-@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+{ vector_slice(expression_ptr&& a, expression_ptr&& lwb,  expression_ptr&& upb)
+@/: slice_base(std::move(a),std::move(lwb),std::move(upb)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
@@ -3430,8 +3430,8 @@ struct vector_slice : public slice_base
 @)
 template <unsigned flags>
 struct ratvec_slice : public slice_base
-{ ratvec_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
-@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+{ ratvec_slice(expression_ptr&& a, expression_ptr&& lwb,  expression_ptr&& upb)
+@/: slice_base(std::move(a),std::move(lwb),std::move(upb)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
@@ -3439,8 +3439,8 @@ struct ratvec_slice : public slice_base
 @)
 template <unsigned flags>
 struct string_slice : public slice_base
-{ string_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
-@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+{ string_slice(expression_ptr&& a, expression_ptr&& lwb,  expression_ptr&& upb)
+@/: slice_base(std::move(a),std::move(lwb),std::move(upb)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
@@ -3448,8 +3448,8 @@ struct string_slice : public slice_base
 @)
 template <unsigned flags>
 struct matrix_slice : public slice_base
-{ matrix_slice(expression_ptr&& a, expression_ptr&& l,  expression_ptr&& u)
-@/: slice_base(std::move(a),std::move(l),std::move(u)) @+{}
+{ matrix_slice(expression_ptr&& a, expression_ptr&& lwb,  expression_ptr&& upb)
+@/: slice_base(std::move(a),std::move(lwb),std::move(upb)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; slice_base::print(out,flags); }
