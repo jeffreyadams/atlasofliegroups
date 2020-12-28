@@ -61,7 +61,7 @@ orbits[index]
 uses partitions_C(semisimple_rank), but returns orbits for G
 }
 set partition_of_orbit_C(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.derived.simple_type in type="C","Not an orbit in smiple type C (plus torus)");
+assert(let (type,)=O.root_datum.derived.simple_type in type="C","Not an orbit in simple type C (plus torus)");
 let orbit_partitions=partitions_C(O.root_datum.ss_rank) then
 index=first(for P in orbit_partitions do complex_nilpotent_C(O.root_datum,P)=O od) in
 orbit_partitions[index]
@@ -170,7 +170,7 @@ orbits[index]
 uses partitions_B(semisimple_rank), but returns orbits for G
 }
 set partition_of_orbit_B(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.derived.simple_type in type="B","Not an orbit in smiple type B (plus torus)");
+assert(let (type,)=O.root_datum.derived.simple_type in type="B","Not an orbit in simple type B (plus torus)");
 let orbit_partitions=partitions_B(O.root_datum.ss_rank) then
 diagram=O.diagram_normalized then
 index=first(for P in orbit_partitions do complex_nilpotent_B(P).diagram_normalized=diagram od) in

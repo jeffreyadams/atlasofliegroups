@@ -56,6 +56,40 @@ is_special(st,O)
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
 ##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
 
+{st is the Springer table for RootDatum rd
+ O is an orbit for rd
+ special_piece(st,O)=list of orbits for rd:
+ all orbits satisfying d(orbit)=d(O)}
+
+set special_piece(SpringerTable st, ComplexNilpotent O)=[ComplexNilpotent]:
+{first make sure O has the right root datum}
+let O=orbit_by_diagram(st,O.diagram_normalized) then
+O_check=st.dual_map(O) then
+O_special=orbit_by_diagram(st,st.dual_map_i(O_check).diagram_normalized) in  {put special orbit first}
+O_special#
+##for i:#st.orbits do
+  let orbit=st.orbits[#st.orbits-i-1] in {reverse order}
+   if not orbit = O_special and st.dual_map(orbit)=O_check
+    then [orbit]
+    else []
+   fi
+  od
+
+{all orbits satisfying d_inverse(orbit^v)=d_inverse(O^v)}
+set dual_special_piece(SpringerTable st, ComplexNilpotent O_check)=[ComplexNilpotent]:
+{make sure O_check has the correct root datum}
+let O_check=dual_orbit_by_diagram(st,O_check.diagram_normalized) then
+O_special=st.dual_map_i(O_check) then
+O_check_special=st.dual_map(O_special) then
+dual_orbits=st.root_datum.dual_orbits in
+O_check_special#
+##for i:#st.root_datum.dual_orbits do
+  let orbit_check=dual_orbits[#dual_orbits-i-1] in {reverse order}
+   if not orbit_check = O_check_special and st.dual_map_i(orbit_check)=O_special 
+    then [orbit_check]
+    else []
+   fi
+  od
 
 {complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
