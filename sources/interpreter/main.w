@@ -563,10 +563,16 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
         else
           pop_value(); // don't forget to cast away that void value
       }
-      catch (std::exception& err)
-      { std::cerr << err.what() << std::endl;
-        reset_evaluator(); main_input_buffer->close_includes();
+      catch (error_base& err)
+      { std::cerr << err.message << "\nEvaluation aborted.\n";
       @/clean=false;
+        reset_evaluator(); main_input_buffer->close_includes();
+      }
+      catch (std::exception& err)
+      {
+        std::cerr << err.what() << "\nEvaluation aborted.\n";
+      @/clean=false;
+        reset_evaluator(); main_input_buffer->close_includes();
       }
     }
     destroy_expr(parse_tree);
@@ -598,23 +604,23 @@ open auxiliary input files; reporting where we were reading is done by the
 method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
-catch (const runtime_error& err)
-{ std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
-            << std::endl;
+catch (runtime_error& err)
+{ std::cerr << "Runtime error:\n  " << err.message
+            << "\nEvaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (const program_error& err)
-{ std::cerr << err.what() << std::endl;
+catch (program_error& err)
+{ std::cerr << err.message << "\nEvaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (const logic_error& err)
-{ std::cerr << "Internal error: " << err.what() << std::endl;
+catch (logic_error& err)
+{ std::cerr << "Internal error: " << err.message << "\nEvaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (const std::exception& err)
+catch (std::exception& err)
 { std::cerr << err.what() << "\nEvaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();

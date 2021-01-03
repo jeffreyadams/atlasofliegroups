@@ -44,7 +44,7 @@ template <typename Alloc> class allocator_deleter
   using pointer    = typename AT::pointer;
 
 public:
-  constexpr allocator_deleter (Alloc a) : Alloc(a) {}
+  constexpr explicit allocator_deleter (Alloc a) : Alloc(a) {}
   allocator_deleter (const allocator_deleter&) = default;
   void operator() (pointer p) noexcept
   {

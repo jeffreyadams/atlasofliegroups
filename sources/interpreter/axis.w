@@ -950,9 +950,9 @@ void balance
       // redo conversion with broader |common| type
 }
 
-@ We try to maintain |common| as the maximal type between the branches for the
-|broader_eq| relation. If this fails due to incomparable types we move the
-non-conforming type to |conflicts|.
+@ We try to maintain |common| as the maximal (broadest) type between the
+branches for the |broader_eq| relation. If this fails due to incomparable types
+we move the non-conforming type to |conflicts|.
 
 That list also collects types from any |balance_error| thrown directly by one of
 the calls to |convert_expr|. The reason is that it might happen that the
@@ -1018,6 +1018,7 @@ complete list of types that caused to balancing to fail.
 
 @< Prune from |conflicts| any types... @>=
 { for (auto it=conflicts.cbegin(); not conflicts.at_end(it); )
+      // no increment here!
     if (broader_eq(common,*it))
       conflicts.erase(it);
     else
@@ -1029,8 +1030,7 @@ complete list of types that caused to balancing to fail.
     // since |common| was obtained by |convert_expr| from some copy of |target|
   }
   else
-  { balance_error err(e);
-    (err.message += " between ") += description ;
+  { balance_error err(e,description);
     if (common.kind()!=undetermined_type)
       err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
@@ -1911,7 +1911,7 @@ from inner to outer.
 
 The work of modifying the error string is common to several such |catch|
 blocks, and relegated to a function |extend_message| to be defined presently.
-The error string is modified withing the existing error object; this is a
+The error string is modified within the existing error object; this is a
 possibility that error objects derived from our |error_base| provide, contrary
 to standard error objects like |std::runtime_error|. Nonetheless, we need to
 deal with some errors derived from |std::exception| but not from our
@@ -1961,7 +1961,7 @@ void extend_message
   o << ')';
   if (verbosity>0)
     o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
-  e.message.append(o.str());
+  e.message += o.str();
 }
 
 @ The |evaluate| method for ordinary built-in functions is similar to that of
@@ -2581,15 +2581,14 @@ pattern available, but there is a frame |fr| from which is can be obtained.
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
 { std::vector<id_type> names = fr.id_list();
-  auto id_it = names.cbegin(); std::ostringstream o; o << "\n  {";
+  auto id_it = names.cbegin(); std::ostringstream o; o << '\n';
   for (auto it = frame::current->begin(); it!=frame::current->end();
        ++it,++id_it)
-  { if (it!=frame::current->begin())
-      o << ", ";
-    o << main_hash_table->name_of(*id_it) << '=' << **it;
+  { o << (it==frame::current->begin() ? "  { " :", ")
+   @| << main_hash_table->name_of(*id_it) << '=' << **it;
   }
   o << '}';
-  e.message.append(o.str());
+  e.message += o.str();
   throw;
 }
 
@@ -4673,9 +4672,12 @@ but does report the full union type for clarity rather than just its number of
 variants.
 
 @< Report mismatching number of branches @>=
-throw expr_error(e) << "Union case expression has " << n_branches @|
+{ std::ostringstream o;
+  o << "Union case expression has " << n_branches @|
     << "branches,\nwhile the union type " << switch_type @|
     << " has " << n_variants << " variants";
+  throw expr_error(e,o.str());
+}
 
 @ Type checking of discrimination expressions is rather different from that of
 union case expressions, because we use the tags associated to the variants of
@@ -4807,17 +4809,20 @@ is found, we print the whole discrimination expression.
 @< Report that union type |subject_type| cannot be used in a discrimination
    expression without having been defined @>=
 
-throw expr_error(e)
-   << "Discrimination on expression of type " << subject_type @|
-   << " requires using 'set_type' for this type,\n" @|
+{ std::ostringstream o;
+  o << "Discrimination on expression of type " << subject_type @|
+    << " requires using 'set_type' for this type,\n" @|
        "  and naming injectors for it";
-
+  throw expr_error(e,o.str());
+}
 @
 @< Report that union type |subject_type| needs named injectors to be
    used in a discrimination expression @>=
-throw expr_error(e)
-   << "Discrimination on expression of type " << subject_type @|
-   << " requires naming injectors for it";
+{ std::ostringstream o;
+  o << "Discrimination on expression of type " << subject_type @|
+    << " requires naming injectors for it";
+  throw expr_error(e,o.str());
+}
 
 @ A default branch is just an expression, which we store unless a default
 branch was already defined.
