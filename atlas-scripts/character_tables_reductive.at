@@ -31,7 +31,7 @@ mat:[[1]])
 
 {including torus}
 set character_table_simple(RootDatum rd)=
-prints("Computing charactere table for simple root datum: ", rd.nice_format);
+prints("Computing character table for simple root datum: ", rd.nice_format);
 let ct=
 let (letter,n)=simple_type(rd) in
 if letter="A" then

@@ -16,11 +16,14 @@ provide both ct_L and L, the latter so (unlike ct_L.root_datum) its
 roots are a subset of the of G
 }
 
-set ti_verbose=false
+set ti_verbose=true
 
-{truncate character: keep only the components of minimal degree}
-set truncate(CharacterTable ct_G,[int] char)=
+{truncate character: keep only the components of minimal degree;
+returns (degree, list of indices of characters of this degree)
+}
+set truncate(CharacterTable ct_G,[int] char)=(int,[int]):
 let dec=ct_G.decompose(char) then
+()=if ti_verbose then prints("truncating character: ", char, "  decomposed: ", ct_G.decompose(char)) fi then
 min_degree=ct_G.root_datum.nr_of_posroots then
 rv=[int]:[] in
 for i:#dec do
@@ -38,52 +41,53 @@ fi;
 
 {induce and truncate}
 {basic version, using given embedding f}
-set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
+set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =int:
 let ()=if ti_verbose then prints("Computing induced character: ") fi then
 ind=induce_character(ct_L,ct_G,f,pi_L) then
 ()=if ti_verbose then prints("computed induced character: ", ind) fi then
- (,t)=truncate(ct_G,ind) then
- ()=if ti_verbose then prints("computed truncation of induced: ", t) fi in
+ (d,t)=truncate(ct_G,ind) then
+ ()=if ti_verbose then prints("computed truncation of induced", new_line, "degree= ", d, new_line,"induced: ", t) fi in
 assert(#t=1,"not a unique character in truncated induction");
 t[0]
 
 {standard form}
-set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
+set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=int:
 let ()=if ti_verbose then prints("Computing induced character: ") fi then
 ind=induce_character(L,G,ct_L,ct_G,pi_L) then
 ()=if ti_verbose then prints("computed induced character: ", ind) fi then
-(,t)=truncate(ct_G,ind) then
-()=if ti_verbose then prints("computed truncation of induced: ", t) fi in
+(d,t)=truncate(ct_G,ind) then
+ ()=if ti_verbose then prints("computed truncation of induced", new_line, "degree= ", d, new_line,"induced: ", t) fi in
 assert(#t=1,"not a unique character in truncated induction");
 t[0]
 
 
 {build ct_L, ct_G on the fly (slow)}
-set truncate_induce_character(RootDatum L,RootDatum G,[int] pi_L)=
+set truncate_induce_character(RootDatum L,RootDatum G,[int] pi_L)=int:
 let ct_G=G.character_table then
 ct_L=L.character_table in
 truncate_induce_character(L,G,ct_L,ct_G,pi_L)
 
 {build ct_L on the fly}
-set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
+set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=int:
 let ct_L=L.character_table in
 truncate_induce_character(L,G,ct_L,ct_G,pi_L)
 
 {L is given as a subgroup of G, by specifying the simple roots of
 L as a set of positive roots of G; for a Levi factor these
-roots are simple for G}
-set truncate_induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
+roots are simple for G
+}
+set truncate_induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=(int,[int]):
 truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L))
 
 {same as previous, build ct_G on the fly}
-set truncate_induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
+set truncate_induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=(int,[int]):
 let ct_G=G.character_table in
 truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L))
 
 {induction of orbits}
 
 {need Springer table for both L and G}
-set induce_orbit(RootDatum L,RootDatum G,SpringerTable st_L,SpringerTable st_G,ComplexNilpotent O_L)=
+set induce_orbit(RootDatum L,RootDatum G,SpringerTable st_L,SpringerTable st_G,ComplexNilpotent O_L)=ComplexNilpotent:
 let L=O_L.root_datum then
 char_L=st_L.springer(O_L) then
 ()=if ti_verbose then prints("orbit_L: ", O_L.diagram,  new_line,"index of character_L: ", char_L, " (degree: ",st_L.ct.degrees[char_L],")") fi then
@@ -94,14 +98,14 @@ if ti_verbose then prints("induced orbit: ", orbit.diagram,st_G.special_star(orb
 orbit
 
 {slow: computes Springer table for L and G}
-set induce_orbit(RootDatum L,RootDatum G,ComplexNilpotent O_L)=
+set induce_orbit(RootDatum L,RootDatum G,ComplexNilpotent O_L)=ComplexNilpotent:
 induce_orbit(L,G,L.springer_table, G.springer_table, O_L)
 
 {not quite as slow: compute Springer table for L}
-set induce_orbit(RootDatum L,RootDatum G,SpringerTable st_G,ComplexNilpotent O_L)=
+set induce_orbit(RootDatum L,RootDatum G,SpringerTable st_G,ComplexNilpotent O_L)=ComplexNilpotent:
 induce_orbit(L,G,L.springer_table, st_G, O_L)
 
-set test_induce_orbits(RootDatum G,[int] simple_roots_of_L)=
+set test_induce_orbits(RootDatum G,[int] simple_roots_of_L)=void:
 let L=Levi_datum(G,simple_roots_of_L) then
 st_G=G.springer_table then
 st_L=L.springer_table then

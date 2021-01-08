@@ -269,7 +269,8 @@ induce_character(ct_L,ct_G,f,pi_L)
 
 {Given G,ct_G, and define L in terms of posroots of G
 simple_roots_of_L=[a_0,a_1,...] means that
-the simple roots of L are [G.posroots[a_0],...
+the simple roots of L are [G.roots[a_0],...
+Note: roots[a_i] not posroots[a_i], roots[0] is negative...
 }
 set induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
 let L=subgroup_by_simple(G,simple_roots_of_L) in

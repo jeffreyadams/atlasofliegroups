@@ -697,7 +697,7 @@ prints(new_line,"Summary of weak packets:");for wp@i in m do
 prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
 
-{-----------------moved from thta_induced_unipotents.at------}
+{-----------------moved from theta_induced_unipotents.at------}
 
 {allow a central shift}
 set weak_packet(ComplexNilpotent O_check,RealForm G,ratvec shift)=([([Param],[WCell])],[(int,int,Param)]):

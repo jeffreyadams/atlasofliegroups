@@ -13,23 +13,37 @@ set involutions(RootDatum rd)=[WeylElt]:involutions(rd.W)
 {sign function (not character) on W coming from sgn
 character of imaginary roots}
 set epsilon_i(WeylElt involution, WeylElt w)=int:
-let rd=w.root_datum in 
+assert(involution.root_datum=w.root_datum,"root data don't match");
+let rd=w.root_datum in
 (-1)^count(for a in imaginary_posroots(rd,involution.matrix) do not is_positive_root(rd,w*a) od)
 set epsilon_i(KGBElt x,WeylElt w)=int:
+assert(x.root_datum=w.root_datum,"root data don't match");
 (-1)^count(for a in x.imaginary_posroots do not is_positive_root(x.root_datum,w*a) od)
 set epsilon_i(Param p,WeylElt w)=int:epsilon_i(p.x,w)
+
+{FIX cross@(WeylElt,Param): wrong assert, w.root_datum should be the integrality datum for p}
+set cross (WeylElt w,Param p) = Param:
+{  assert(w.root_datum=p.root_datum);}
+  for s in w.word ~do p:=cross(s,p) od; p
 
 {fixed points of w acting on parameters}
 set fixed_params(WeylElt w,[Param] params)=[Param]:
 ##for p in params do if cross(w,p)=p then [p] else [] fi od
 
 {character of coherent continuation representation on block,
-computed in basis of standard modules, by grading the block 
-representation by Cartan}
+computed in basis of standard modules, by grading the block
+representation by Cartan
+w.root_datum must equal params[0].root_datum
+}
 set trace_coherent(WeylElt w,[Param] params)=int:
+assert(w.root_datum=params[0].root_datum,"roots data don't match");
 sum(for p in fixed_params(w,params) do epsilon_i(p,w) od)
+
 set character_coherent(CharacterTable ct,[Param] params)=[int]:
-for w in ct.class_representatives do trace_coherent(w,params) od
+let rd=params[0].root_datum in
+for w_0 in ct.class_representatives do
+  let w=W_elt(rd,w_0.word) in {Note: need to convert w_0 from ct.root_datum to rd}
+let ()=prints("w: ", w, "trace: ", trace_coherent(w,params)) in trace_coherent(w,params) od
 
 {fixed points of w acting on KGB}
 set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
@@ -221,7 +235,8 @@ od
  representations of infinitesimal character gamma, and the sum runs over orbits O' in the special
  piece of d(O_check)
 }
-set size_weak_packet(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)=
+set size_weak_packet_int(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)=
+assert(O_check.is_even,"orbit is not even");
 let st=st_G then  {_G is just a reminder that this is for G not G_check}
 ct=st.ct  {character table for G} then
 param_character=character_coherent(ct,params) then
@@ -234,9 +249,25 @@ lusztig_cell_character=sum(for orbit@i in sp do
 ()=if coherent_verbose then prints("lusztig cell char.: ", lusztig_cell_character) fi in
 ct.inner_product(lusztig_cell_character,param_character)
 
-set sizes_weak_packets(SpringerTable st_G,[Param] params)=
-for O_check in st_G.root_datum.dual_orbits do if O_check.is_even then size_weak_packet(O_check,st_G,params) else -1 fi od
+set size_weak_packet(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)=
+let rd=O_check.root_datum.dual then
+gamma=O_check.H/2 then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table(rd_int) then
+(O_check_int,permutation)=integral_descent(st_int,O_check) in
+size_weak_packet_int(O_check_int,st_int,params)
 
+set sizes_weak_packets([ComplexNilpotent] orbits,SpringerTable st_G, RealForm G)=
+for O_check in orbits do
+  let   ()=prints("orbit: ", O_check.diagram) then
+  ()=prints("gamma: ", O_check.H/2)  then
+  ()=prints("st_G: ", st_G.root_datum) in
+  size_weak_packet(O_check,st_G,all_parameters_gamma(G,O_check.H/2+two_rho(G)))  od
+
+set sizes_weak_packets(SpringerTable st_G, RealForm G)=
+sizes_weak_packets(G.dual_orbits,st_G,G)
+
+set sizes_weak_packets(RealForm G)=sizes_weak_packets(G.springer_table,G)
 
 
 set show_coherent_data(SpringerTable st,[Param] block)=

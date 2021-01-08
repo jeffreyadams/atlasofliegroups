@@ -1,0 +1,103 @@
+{O is an even nilpotent orbit, x in Cent(SL(2)), 
+ -> L=L_x = pseudo-Levi Cent(x), O_L = orbit in L_x,
+ compute truncated induction of Springer_L(O_L)\otimes sgn
+ [Note: should be Springer(dual(O_L)?]
+ from W_L to W: this (conjecturally) is sigma_L(x,1)
+ where sigma_L: M(A-bar(O)) -> W^, M(*) is Lusztig's
+ set of pairs  (x,\xi)
+}
+
+set sigma_L_verbose=false
+
+{even orbit, ratvec v <-> t=exp(2\pi iv) -> L=Cent(x), O_L,
+ -> Springer(O_L)\otimes sgn -> truncated induction -> sigma\in W^
+}
+set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit,ratvec v)=int:
+assert(is_even(orbit),"orbit is not even");
+if v.is_integer
+ then
+ let char=orbit.root_datum.springer_table.springer(orbit)  then
+ ()=if sigma_L_verbose then prints("integral v,new_line, char #=", char, new_line,"char=", ct.characters[char]) fi in char
+else
+ let rd=orbit.root_datum then
+ ()=if sigma_L_verbose then prints(("v=",v) ) fi then
+ v=dominant(rd,v) then
+ ()=if sigma_L_verbose then prints(("v=",v) ) fi then
+ L=centralizer(rd,v) then
+ orbits_L=L.orbits then
+ {find an orbit O_L for L such that O_L.H is G-conjugate to orbit.H
+  if there is more than 1 print a warning, I'm not sure what this means}
+ L_indices=##for i:#orbits_L do if  dominant(orbits_L[i].H,rd)=orbit.H  then [i] else [] fi od then
+ ()=if #L_indices>1 then prints("WARNING: more than one L-orbit", L_indices) fi then
+ j=L_indices[0] then
+ H_L=orbits_L[j].H.ratvec_as_vec then
+ ()=if sigma_L_verbose then prints(("L=", L) ) fi then
+ ()=if sigma_L_verbose then prints(("H_L=", H_L) ) fi then
+ O_L=ComplexNilpotent:(L,(),H_L) then
+ ()=if sigma_L_verbose then prints(("O_L:", O_L.H, " ", O_L.diagram) ) fi then
+{ L=O_L.root_datum then ?}
+ roots_L=for alpha in L.simple_roots do find(rd.roots,alpha) od then
+ ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
+ st_L=L.springer_table then
+  ()=if sigma_L_verbose then prints(("done") ) fi then
+ L_index=st_L.springer(O_L) then
+ ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
+ ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
+ sigma_L_0=st_L.characters[st_L.springer(O_L)] then
+ ()=if sigma_L_verbose then prints(("sigma_L_0: ", sigma_L_0) ) fi then
+ sigma_L=st_L.ct.tensor_sign(sigma_L_0) then
+ ()=if sigma_L_verbose then prints(("sigma_L: ", sigma_L, new_line, "sigma_L decomposed: ", st_L.ct.decompose(sigma_L)) ) fi then
+ (ignore_degree,char)=truncate_induce_character(rd,ct,roots_L,sigma_L) then
+ ()=if sigma_L_verbose then prints("character: ", char[0], new_line, ct.characters[char[0]]) fi 
+ in char[0]
+fi
+
+{orbit -> list of pairs (L,[v_1,...,v_n]) L is a pseudo-Levi}
+set pseudo_Levi_pairs(ComplexNilpotent orbit)=[(RootDatum,[ratvec])]:
+let (,,pairs)=orbit.component_datum in pairs
+
+{representatives of conjugacy classes in A(O)
+ each ratvec v gives an element exp(2\pi iv) which is G-conjugate
+ to an element of Cent(O)
+}
+set component_representatives(ComplexNilpotent orbit)=[ratvec]:
+let (,,pairs)=orbit.component_datum in
+ ##for (,ratvecs) in pairs do ratvecs od
+
+{use the j^th ratvec from component_representatives(orbit)}
+set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit,int j)=int:
+sigma_L_even(ct,orbit,component_representatives(orbit)[j])
+
+{run over all ratvecs from component_representatives(orbit)}
+set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit)=[int]:
+for v in component_representatives(orbit) do
+ let ()=prints(new_line,"computing sigma_L for v=", v) in
+ sigma_L_even(ct,orbit,v) od
+
+set show_sigma_L_even(CharacterTable ct,ComplexNilpotent orbit)=
+tabulate(["L","v","j","deg_j","char_j"]#
+##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
+ let ()=prints("doing L:", L) in
+  for v in ratvecs do
+  let j=sigma_L_even(ct,orbit,v) in
+   [L.nice_format, v.to_string,j.to_string,ct.degrees[j].to_string,ct.characters[j].to_string]
+ od
+od
+)
+
+set show_sigma_L_even(CharacterTable ct,[ComplexNilpotent] orbits)=
+tabulate(["orbit","L","v","j","deg_j","char_j"]#
+##for orbit in orbits do 
+ ##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
+  let ()= if sigma_L_verbose then prints("doing L:", L) fi  in
+   for v in ratvecs do
+   let ()=prints("doing v: ", v) in
+   let j=sigma_L_even(ct,orbit,v) in
+    [orbit.diagram.to_string,L.nice_format, v.to_string,j.to_string,ct.degrees[j].to_string,ct.characters[j].to_string]
+   od
+ od
+od
+)
+
+set show_sigma_L_even(CharacterTable ct)=void:
+show_sigma_L_even(ct,ct.root_datum.even_orbits)
