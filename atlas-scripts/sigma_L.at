@@ -9,11 +9,6 @@
  set of pairs  (x,\xi)
 }
 
-set centralizer(ratvec v,RootDatum rd) = RootDatum:
-   let coroots = columns_with((vec alpha): is_integer(alpha*v), poscoroots(rd))
-   then roots = rank(rd) # for alpha in coroots do root(rd,alpha) od
-   in root_datum_from_positive(roots,coroots)
-
 set sigma_L_verbose=true
 
 {even orbit, ratvec v <-> t=exp(2\pi iv) -> L=Cent(x), O_L,

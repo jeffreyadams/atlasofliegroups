@@ -125,10 +125,7 @@ set orthogonal_subgroup(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):
 let S=simple_roots(rd_L) in orthogonal_subgroup(rd,S)
 
 
-{
-Given a set of weights,
-compute root datum of coroots perpendicular to all of them
-}
+{compute root datum of coroots perpendicular to a set of elements of X^*}
 set centralizer(RootDatum rd,[vec] wts)=
 let indices=##
 for a@i in poscoroots(rd) do if =a*wts then [i] else [] fi od
@@ -137,10 +134,7 @@ if #indices=0 then complex_torus(rank(rd)) else
 root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
 for i in indices do poscoroots(rd)[i] od)) fi
 
-{
-Given a set of coweights,
-compute root datum of roots perpendicular to all of them
-}
+{compute root datum of coroots perpendicular to a set of elements of X_*}
 set centralizer([vec] cwts,RootDatum rd)=
 let indices=##
 for a@i in posroots(rd) do if =a*cwts then [i] else [] fi od
@@ -149,32 +143,56 @@ if #indices=0 then complex_torus(rank(rd)) else
 root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
 for i in indices do poscoroots(rd)[i] od)) fi
 
-{root datum: <alpha,v>\in Z; v is a coweight
- (probably should change to centralizer(v,rd) for consistency with previous notation
- this is the root datum of (identity component of)  centralizer(exp(2\pi iv))
+set centralizer(RootDatum rd,[ratvec] wts) = RootDatum:
+   let roots = columns_with((vec alpha): all(for v in wts do is_integer(alpha*v) od), posroots(rd))
+   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+   in root_datum_from_positive(roots,coroots)
+
+{v is in X_*\otimes Q
+ t=exp(2\pi iv)\in T
+ compute (id component of) centralizer_G(t)
+ H=centralizer_coweight(G,v)
+ root datum of H: <alpha,v>\in Z
+ H is a subgroup of G
 }
-set centralizer(RootDatum rd,ratvec v) = RootDatum:
+set centralizer_coweight(RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
    in root_datum_from_positive(roots,coroots)
 
-set centralizer(RootDatum rd,[ratvec] vecs) = RootDatum:
-   let roots = columns_with((vec alpha): all(for v in vecs do is_integer(alpha*v) od), posroots(rd))
-   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-
-   in root_datum_from_positive(roots,coroots)
-
-{ centralizer of semisimple group element: Cent_G(exp(2\pi iv)^0
-see centralizer@(KGBElt,ratvec) in K_highest_weights.at
+{v is in X^*(T)_Q=X_*(T^vee)_Q
+ t=exp(2\pi iv)\in T^vee
+ compute (id component of) centralizer_{G^vee}(t)
+ H=centralizer_weight(G,v)
+ root datum of H: <alpha^vee,v>\in Z
+ H^vee is a subgroup of G^vee
 }
-
-set centralizer(RootDatum rd,ratvec v) = RootDatum:
-   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
-   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+set centralizer_weight(RootDatum rd, ratvec v) = RootDatum:
+   let coroots = columns_with((vec alpha_check): is_integer(alpha_check*v), poscoroots(rd))
+   then roots = rank(rd) # for alpha_check in coroots do root(rd,alpha_check) od
    in root_datum_from_positive(roots,coroots)
 
+{default: v\in X_*(T)_Q, t=exp(2\pi iv)\in T
+This is giving Cent_G(t), the most common case
+unfortunately this terminology conflicts with the
+terminology above for centralizer(RootDatum rd,[vec] wts)
+should change this, but there are many cases in the scripts
+}
+{Cent_G(exp(2\pi i v)}
+set centralizer(RootDatum rd,ratvec v) = RootDatum:centralizer_coweight(rd,v)
 
+{example of centralizer_weight versus centralizer_coweight:
+atlas> centralizer_coweight (SO(9),[1,1,1,1]/2)
+Value: root datum of Lie type 'D4'
+this is a subgroup of G: SO(8)\subset SO(9)
 
+atlas> centralizer_weight (Sp(8),[1,1,1,1]/2)
+Value: root datum of Lie type 'D4'
+this is a subgroup of G^\vee:
+Sp(8) -> SO(9)
+          |
+SO(8) <- SO(8)
+}
 
 {------------------}
 
