@@ -1956,12 +1956,12 @@ void extend_message
   (error_base& e,const call_base* call, const shared_function& f,
    const std::string& arg)
 { std::ostringstream o;
-  o << "\n(in call " << call->loc << " of " << call->function_name() << ", ";
+  o << "(in call " << call->loc << " of " << call->function_name() << ", ";
   f->report_origin(o);
   o << ')';
   if (verbosity>0)
     o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
-  e.message += o.str();
+  e.trace(o.str());
 }
 
 @ The |evaluate| method for ordinary built-in functions is similar to that of
@@ -2581,14 +2581,14 @@ pattern available, but there is a frame |fr| from which is can be obtained.
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
 { std::vector<id_type> names = fr.id_list();
-  auto id_it = names.cbegin(); std::ostringstream o; o << '\n';
+  auto id_it = names.cbegin(); std::ostringstream o;
   for (auto it = frame::current->begin(); it!=frame::current->end();
        ++it,++id_it)
   { o << (it==frame::current->begin() ? "  { " :", ")
    @| << main_hash_table->name_of(*id_it) << '=' << **it;
   }
   o << '}';
-  e.message += o.str();
+  e.trace(o.str());
   throw;
 }
 

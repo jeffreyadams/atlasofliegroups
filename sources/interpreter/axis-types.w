@@ -3277,29 +3277,46 @@ can cause runtime errors.
 
 @ We use classes derived from |std::exception| and similar standard ones like
 |std::runtime_error|, but we define our own local hierarchy, with
-|atlas::interpreter::error_base| as base class. The main reason to do this is
-to have a centralised error message to which exception handlers have write
-access, so that it is possible to extend the error message and then re-throw
-the same error object. The simplest way to allow this is to give public access
-to that string member, so we make this a |struct| rather than a |class|.
+|atlas::interpreter::error_base| as base class. The main reason to do this is to
+have a centralised error |message| to which exception handlers have write
+access, so that it is possible to extend the error message and then re-throw the
+same error object. The simplest way to allow this is to give public access to
+that string member, so we make this a |struct| rather than a |class|. For errors
+happening during evaluation, we want to have the error object thus collect,
+during stack unwinding, a trace of the dynamic context (functions being called
+and so forth) in which the error occurred, but we want to keep it apart from the
+root error |message|, to avoid clobbering the display with possibly massive
+output. Therefore a second field |back_trace| with a layered structure is added,
+and a method |trace| is provided for extending it. Although this feature is
+mostly used with the class |program_error| to be derived below, we provide the
+functionality in this base class, as question whether a back trace might be
+present in fact depends in principle more on the place where the error is caught
+(for instance if type checking produces an error, there can be no back trace)
+than on the type of the error itself, even if the two often go together.
 
-We used to provide a method here to extend the message with the help of an
-intermediate |std::ostringstream| object, but that type is really ill suited to
-be part of an error value, notably because it is impossible to implement the
-|what| method so as to present its contents: the |str| method can return the
-contents as a |std::string|, but unless that string is then stored separately in
-the error value, its lifetime will be to short to produce a value |char*|
-pointer to be returned from |what|. So we finally decided the only reasonable
-way to proceed is to store a |std::string| in the error value, and have the
-caller (just before throwing) construct this string using a temporary
-|std::ostringstream| and call its |str| method while throwing; this pattern will
-occur repeatedly.
+We used to provide a method here to extend the message, passing the old message
+to first to a temporary |std::ostringstream| object, writing to it, and then
+exporting the result as an extended message again. It might seem preferable to
+store an |std::ostringstream| object permanently, but that type is really ill
+suited to be part of an error value, notably because it is impossible to
+implement the |what| method so as to present its contents: the |str| method can
+return the contents as a |std::string|, but unless that string is then stored
+separately in the error value, its lifetime will be to short to produce a value
+|char*| pointer to be returned from |what|. So we finally decided the only
+reasonable way to proceed is to not provide a string extension method here, and
+instead require the caller to construct (just before throwing) an error string
+using a temporary |std::ostringstream| and call its |str| method while throwing
+(which string is then copied into the error object); this pattern will occur
+repeatedly.
 
 @< Type definitions @>=
 struct error_base : public std::exception
 { std::string message;
-  explicit error_base(const std::string& s) : message(s) @+{}
+  simple_list<std::string> back_trace;
+  explicit error_base(const std::string& s) : message(s),back_trace() @+{}
+  explicit error_base(std::string&& s) : message(std::move(s)),back_trace() @+{}
   error_base @[(error_base&& other) = default@];
+  void trace (std::string&& line) @+{@; back_trace.push_front(std::move(line)); }
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
@@ -3307,23 +3324,26 @@ struct error_base : public std::exception
 (rather than the user's) program are classified |logic_error|, those arising
 during the analysis of the user program are are classified |program_error|,
 and those not caught by analysis but during evaluation are classified
-|runtime_error|. The  first and last are similar to exceptions of the same
+|runtime_error|. The first and last are similar to exceptions of the same
 name in the |std| namespace, but they are not derived from those exception
 classes.
 
 @< Type definitions @>=
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
+  explicit logic_error(std::string&& s) : error_base(std::move(s)) @+{}
   logic_error @[(logic_error&& other) = default@];
 };
 @)
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
+  explicit program_error(std::string&& s) : error_base(std::move(s)) @+{}
   program_error @[(program_error&& other) = default@];
 };
 @)
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
+  explicit runtime_error(std::string&& s) : error_base(std::move(s)) @+{}
   runtime_error @[(runtime_error&& other) = default@];
 };
 
@@ -3352,6 +3372,8 @@ struct expr_error : public program_error
 @)
   expr_error (const expr& e,const std::string& s) noexcept
     : program_error(s),offender(e) @+{}
+  expr_error (const expr& e,std::string&& s) noexcept
+    : program_error(std::move(s)),offender(e) @+{}
   expr_error @[(expr_error&& other) = default@];
 };
 

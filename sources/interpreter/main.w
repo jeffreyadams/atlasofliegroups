@@ -604,19 +604,16 @@ open auxiliary input files; reporting where we were reading is done by the
 method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
-catch (runtime_error& err)
-{ std::cerr << "Runtime error:\n  " << err.message
-            << "\nEvaluation aborted.\n";
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
-catch (program_error& err)
-{ std::cerr << err.message << "\nEvaluation aborted.\n";
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
-catch (logic_error& err)
-{ std::cerr << "Internal error: " << err.message << "\nEvaluation aborted.\n";
+catch (error_base& err)
+{ if (dynamic_cast<runtime_error*>(&err)!=nullptr)
+    std::cerr << "Runtime error:\n  ";
+  else if (dynamic_cast<logic_error*>(&err)!=nullptr)
+    std::cerr << "Internal error: ";
+  std::cerr << err.message << "\n";
+  err.back_trace.reverse();
+  for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
+     std::cerr << *it << '\n';
+  std::cerr << "Evaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
