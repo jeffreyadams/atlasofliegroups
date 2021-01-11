@@ -1,24 +1,31 @@
-{O is an even nilpotent orbit, x in Cent(SL(2)), 
- -> L=L_x = pseudo-Levi Cent(x), O_L = orbit in L_x,
- compute truncated induction of Springer_L(O_L)\otimes sgn
- [Note: should be Springer(dual(O_L)?]
+{O is an even nilpotent orbit, x in Cent(SL(2)),
+ -> L=L_x = pseudo-Levi Cent(x)
+ -> O_L = orbit in L_x
+ -> sigma_L=Springer(O_L) \in hat(W_L)
+ -> truncated induction of sigma_L\otimes sgn
+ [Note: should be Springer(dual(O_L)]
  from W_L to W: this (conjecturally) is sigma_L(x,1)
  where sigma_L: M(A-bar(O)) -> W^, M(*) is Lusztig's
  set of pairs  (x,\xi)
 }
 
-set sigma_L_verbose=false
+set centralizer(ratvec v,RootDatum rd) = RootDatum:
+   let coroots = columns_with((vec alpha): is_integer(alpha*v), poscoroots(rd))
+   then roots = rank(rd) # for alpha in coroots do root(rd,alpha) od
+   in root_datum_from_positive(roots,coroots)
+
+set sigma_L_verbose=true
 
 {even orbit, ratvec v <-> t=exp(2\pi iv) -> L=Cent(x), O_L,
  -> Springer(O_L)\otimes sgn -> truncated induction -> sigma\in W^
 }
-set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit,ratvec v)=int:
+set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,ratvec v)=int:
 assert(is_even(orbit),"orbit is not even");
-if v.is_integer
- then
- let char=orbit.root_datum.springer_table.springer(orbit)  then
- ()=if sigma_L_verbose then prints("integral v,new_line, char #=", char, new_line,"char=", ct.characters[char]) fi in char
-else
+if v.is_integer then  {L=G, don't need induction}
+ let char=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) then
+ ()=if sigma_L_verbose then prints("integral v,new_line, char #=", char, new_line,"char=", char) fi in
+ st.ct.character_index(char)
+else  {compute L, sigma_L, truncated_induce}
  let rd=orbit.root_datum then
  ()=if sigma_L_verbose then prints(("v=",v) ) fi then
  v=dominant(rd,v) then
@@ -35,20 +42,28 @@ else
  ()=if sigma_L_verbose then prints(("H_L=", H_L) ) fi then
  O_L=ComplexNilpotent:(L,(),H_L) then
  ()=if sigma_L_verbose then prints(("O_L:", O_L.H, " ", O_L.diagram) ) fi then
-{ L=O_L.root_datum then ?}
+ { L=O_L.root_datum then ?}
  roots_L=for alpha in L.simple_roots do find(rd.roots,alpha) od then
- ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
- st_L=L.springer_table then
+ {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
+ sigma_L=
+ if O_L=L.zero_orbit then
+  L.character_table.trivial {Springer(O_L)*sign}
+ elif O_L=L.principal_orbit then
+  L.character_table.sign {Springer(O_L)*sign}
+ else  {need to compute L.springer_table}
+  let ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
+  st_L=L.springer_table then
   ()=if sigma_L_verbose then prints(("done") ) fi then
- L_index=st_L.springer(O_L) then
- ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
- ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
- sigma_L_0=st_L.characters[st_L.springer(O_L)] then
- ()=if sigma_L_verbose then prints(("sigma_L_0: ", sigma_L_0) ) fi then
- sigma_L=st_L.ct.tensor_sign(sigma_L_0) then
- ()=if sigma_L_verbose then prints(("sigma_L: ", sigma_L, new_line, "sigma_L decomposed: ", st_L.ct.decompose(sigma_L)) ) fi then
- (ignore_degree,char)=truncate_induce_character(rd,ct,roots_L,sigma_L) then
- ()=if sigma_L_verbose then prints("character: ", char[0], new_line, ct.characters[char[0]]) fi 
+  L_index=st_L.springer(O_L) then
+  ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
+  ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
+  sigma_L_0=st_L.characters[st_L.springer(O_L)] then
+  ()=if sigma_L_verbose then prints(("sigma_L_0: ", sigma_L_0) ) fi in
+  st_L.ct.tensor_sign(sigma_L_0)
+ fi  {end if O_L=L.zero_orbit} then
+ {for debugging: st_L.ct.decompose(sigma_L) should equal 1 in coordinate L_index, 0 else}
+ (ignore_degree,char)=truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
+ ()=if sigma_L_verbose then prints("character: ", char[0], new_line, st.ct.characters[char[0]]) fi
  in char[0]
 fi
 
@@ -65,39 +80,47 @@ let (,,pairs)=orbit.component_datum in
  ##for (,ratvecs) in pairs do ratvecs od
 
 {use the j^th ratvec from component_representatives(orbit)}
-set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit,int j)=int:
-sigma_L_even(ct,orbit,component_representatives(orbit)[j])
+set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,int j)=int:
+sigma_L_even(st,orbit,component_representatives(orbit)[j])
 
 {run over all ratvecs from component_representatives(orbit)}
-set sigma_L_even(CharacterTable ct,ComplexNilpotent orbit)=[int]:
+set sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=[int]:
 for v in component_representatives(orbit) do
  let ()=prints(new_line,"computing sigma_L for v=", v) in
- sigma_L_even(ct,orbit,v) od
+ sigma_L_even(st,orbit,v) od
 
-set show_sigma_L_even(CharacterTable ct,ComplexNilpotent orbit)=
+set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=
 tabulate(["L","v","j","deg_j","char_j"]#
 ##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
  let ()=prints("doing L:", L) in
   for v in ratvecs do
-  let j=sigma_L_even(ct,orbit,v) in
-   [L.nice_format, v.to_string,j.to_string,ct.degrees[j].to_string,ct.characters[j].to_string]
+  let j=sigma_L_even(st,orbit,v) in
+   [L.nice_format, v.to_string,j.to_string,st.ct.degrees[j].to_string,st.ct.characters[j].to_string]
  od
 od
 )
 
-set show_sigma_L_even(CharacterTable ct,[ComplexNilpotent] orbits)=
-tabulate(["orbit","L","v","j","deg_j","char_j"]#
-##for orbit in orbits do 
+set show_sigma_L_even(SpringerTable st,[ComplexNilpotent] orbits)=
+tabulate(["orbit","L","v","j","dim_j","deg_j","name","tensor_sign name","char_j"]#
+##for orbit in orbits do
  ##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
   let ()= if sigma_L_verbose then prints("doing L:", L) fi  in
    for v in ratvecs do
    let ()=prints("doing v: ", v) in
-   let j=sigma_L_even(ct,orbit,v) in
-    [orbit.diagram.to_string,L.nice_format, v.to_string,j.to_string,ct.degrees[j].to_string,ct.characters[j].to_string]
+   let j=sigma_L_even(st,orbit,v) in
+    [orbit.diagram.to_string,
+    L.nice_format,
+    v.to_string,
+    j.to_string,
+    st.ct.dimension(j).to_string,
+    st.ct.degrees[j].to_string,
+    st.ct.irreducible_label(j),
+    st.ct.irreducible_label(st.ct.character_index(st.ct.tensor_sign(st.ct.characters[j]))),
+    st.ct.characters[j].to_string]
    od
  od
 od
 )
 
-set show_sigma_L_even(CharacterTable ct)=void:
-show_sigma_L_even(ct,ct.root_datum.even_orbits)
+set show_sigma_L_even(SpringerTable st)=void:
+show_sigma_L_even(st,st.ct.root_datum.even_orbits)

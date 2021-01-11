@@ -88,6 +88,7 @@ set class_index(CharacterTable ct)=(WeylElt -> int): (WeylElt w):
 {is_conjugate needs to be fixed: only correct for simple groups}
 {  first(ct.n_classes,(int i): is_conjugate_strong(ct.class_reps[i],w))}
   first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
+
 set character_value(CharacterTable ct, int class)=(int i) int:ct.table[i,class]
 {since id_class(ct) is slow, in loops it is better to use
 character_value(ct,id_class)(i) where id_class is pre-computed}
@@ -95,6 +96,8 @@ set centralizer_order(CharacterTable ct)=(int->int):(int i): ct.centralizer_orde
 set class_size(CharacterTable ct)=(int->int):(int i): ct.class_sizes[i]
 set character(CharacterTable t)=(int->[int]):(int i):(^t.table)[i]
 set characters(CharacterTable ct)=[[int]]: ^ct.table
+set character_index(CharacterTable ct)=([int]->int):([int] char):
+  first(ct.n_classes,(int i): ct.characters[i]=char)
 set index(CharacterTable ct,vec char)=int:find(ct.characters,char)
 set inner(CharacterTable ct)=(([int],[int])->int): ([int] x,[int] y):
   assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");

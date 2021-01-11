@@ -149,6 +149,10 @@ if #indices=0 then complex_torus(rank(rd)) else
 root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
 for i in indices do poscoroots(rd)[i] od)) fi
 
+{root datum: <alpha,v>\in Z; v is a coweight
+ (probably should change to centralizer(v,rd) for consistency with previous notation
+ this is the root datum of (identity component of)  centralizer(exp(2\pi iv))
+}
 set centralizer(RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
