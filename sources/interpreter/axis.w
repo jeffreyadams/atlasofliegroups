@@ -1141,7 +1141,7 @@ an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
 @< Type definitions @>=
-#define nothing_new_here @[@[@]=@[default@]
+#define nothing_new_here @[@]=@[default@]
 
 struct identifier : public expression_base
 { id_type code;
@@ -1956,9 +1956,9 @@ void extend_message
   (error_base& e,const call_base* call, const shared_function& f,
    const std::string& arg)
 { std::ostringstream o;
-  o << "(in call " << call->loc << " of " << call->function_name() << ", ";
+  o << "In call of " << call->function_name() << ' ' << call->loc << ", ";
   f->report_origin(o);
-  o << ')';
+  o << '.';
   if (verbosity>0)
     o << "\n  argument" << (arg[0]=='(' ? "s: " : ": ") << arg;
   e.trace(o.str());
@@ -2571,23 +2571,25 @@ void let_expression::evaluate(level l) const
 } // restore context upon destruction of |fr|
 
 
-@ Providing the current values of local variables at an error stop is useful
-and quite easy. We obtain the names of the identifiers from the frame |fr| to
-which they are copied rather than directly from our |variable|, with the main
-purpose of reusing the module identically as |catch| block for user defined
-functions, where the current (call) expression does not have an identifier
-pattern available, but there is a frame |fr| from which is can be obtained.
+@ Providing the current values of local variables at an error stop is useful and
+quite easy. By calling |fr.id_list| we obtain the names of the identifiers
+from the frame |fr| to which they are copied, rather than directly from our
+|variable|; the main purpose of this is that it allows reusing the module
+identically as |catch| block for user defined functions, where the current
+(call) expression does not have an identifier pattern available, but there is a
+frame |fr| from which is can be obtained.
 
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
-{ std::vector<id_type> names = fr.id_list();
-  auto id_it = names.cbegin(); std::ostringstream o;
+{ std::ostringstream o;
+  std::vector<id_type> names = fr.id_list();
+  auto id_it = names.cbegin();
   for (auto it = frame::current->begin(); it!=frame::current->end();
        ++it,++id_it)
-  { o << (it==frame::current->begin() ? "  { " :", ")
+  { o << (it==frame::current->begin() ? "{ " :", ")
    @| << main_hash_table->name_of(*id_it) << '=' << **it;
   }
-  o << '}';
+  o << " }";
   e.trace(o.str());
   throw;
 }
@@ -3085,8 +3087,9 @@ run-time and will therefore unwind the \Cpp\ stack. (Actually, performing
 \&{break} from a loop should never lead to destructing any |lambda_frame|,
 though it might destruct some |frame|s.)
 
-By naming our frame |fr|, we can textually reuse a |catch| block, as mentioned
-at its definition.
+By naming our frame |fr|, and because |lambda_frame| has a method |id_list|
+with the same signature as |frame::id_list|, we can textually reuse a |catch|
+block, as was mentioned when that block was defined earlier.
 
 @: lambda evaluation @>
 
@@ -5230,8 +5233,8 @@ organisation of the pattern is already present in the structure \&{for\_loop}
 of the relevant variant of |expr|, and ultimately it is determined by parser
 actions building the pattern list. (Looking at those rules, the left-to-right
 reversal of component and index may not be obvious, but the function
-|make_pattern_list| used takes the \emph{tail} of the list as first argument,
-and the head as second; this is adapted to the subsequent reversal that
+|make_pattern_list| that is used takes the \emph{tail} of the list as first
+argument, and the head as second; this is adapted to the subsequent reversal that
 usually takes place when a pattern list is completed, but this reversal does
 not happen for the $2$-element list used for the patterns in for-loops.)
 
@@ -5540,48 +5543,60 @@ case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=(in_forward(flags) ? n : 0))
-    { loop_var->val[1]=in_val->val[in_forward(flags) ? i : i-1];
-        // move index into |loop_var| pair
-      @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
-      |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
-      maybe assign |*dst++| or |*--dst| from it @>
+    try {
+      while (i!=(in_forward(flags) ? n : 0))
+      { loop_var->val[1]=in_val->val[in_forward(flags) ? i : i-1];
+          // move index into |loop_var| pair
+        @< Set |loop_var->val[0]| to |i++| or to |--i|, create a new |frame| for
+        |pattern| binding |loop_var|, and evaluate the |loop_body| in it;
+        maybe assign |*dst++| or |*--dst| from it @>
+      }
     }
+    @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
 case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=(in_forward(flags) ? n : 0))
-    { loop_var->val[1] = std::make_shared<int_value>
-        (in_val->val[in_forward(flags) ? i : i-1]);
-      @< Set |loop_var->val[0]| to... @>
+    try {
+      while (i!=(in_forward(flags) ? n : 0))
+      { loop_var->val[1] = std::make_shared<int_value>
+          (in_val->val[in_forward(flags) ? i : i-1]);
+        @< Set |loop_var->val[0]| to... @>
+      }
     }
+    @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
 case subscr_base::ratvec_entry:
   { shared_rational_vector in_val = get<rational_vector_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=(in_forward(flags) ? n : 0))
-    { loop_var->val[1] = std::make_shared<rat_value> @|
-      (RatNum
-        (in_val->val.numerator()[in_forward(flags) ? i : i-1]
-        ,in_val->val.denominator()));
-      @< Set |loop_var->val[0]| to... @>
+    try {
+      while (i!=(in_forward(flags) ? n : 0))
+      { loop_var->val[1] = std::make_shared<rat_value> @|
+        (RatNum
+          (in_val->val.numerator()[in_forward(flags) ? i : i-1]
+          ,in_val->val.denominator()));
+        @< Set |loop_var->val[0]| to... @>
+      }
     }
+    @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
 case subscr_base::string_char:
   { shared_string in_val = get<string_value>();
     size_t n=in_val->val.size();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=(in_forward(flags) ? n : 0))
-    { loop_var->val[1] = std::make_shared<string_value>
-            (in_val->val.substr(in_forward(flags) ? i : i-1,1));
-      @< Set |loop_var->val[0]| to... @>
+    try {
+      while (i!=(in_forward(flags) ? n : 0))
+      { loop_var->val[1] = std::make_shared<string_value>
+              (in_val->val.substr(in_forward(flags) ? i : i-1,1));
+        @< Set |loop_var->val[0]| to... @>
+      }
     }
+    @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
 
@@ -5596,11 +5611,14 @@ case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
-    while (i!=(in_forward(flags) ? n : 0))
-    { loop_var->val[1] = std::make_shared<vector_value>
-        (in_val->val.column(in_forward(flags) ? i : i-1));
-      @< Set |loop_var->val[0]| to... @>
+    try {
+      while (i!=(in_forward(flags) ? n : 0))
+      { loop_var->val[1] = std::make_shared<vector_value>
+          (in_val->val.column(in_forward(flags) ? i : i-1));
+        @< Set |loop_var->val[0]| to... @>
+      }
     }
+    @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
 case subscr_base::mod_poly_term:
@@ -5617,6 +5635,22 @@ size_t i= in_forward(flags) ? 0 : n;
 if (l!=no_value)
 { result = std::make_shared<row_value>(n);
   dst = out_forward(flags) ? result->val.begin() : result->val.end();
+}
+
+@ Correspondingly, when an error is thrown from the loop body, we indicate the
+iteration number in the back trace. This code too is shared among the initial
+$5$ kinds of for-loop evaluators. In the reserve looping case the index~|i| will
+have been decreased before the loop body is executed, so the difference with
+|n-1| gives the iteration number.
+
+@< Catch block for reporting iteration number within loop that threw @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "During iteration " << (in_forward(flags) ? i : n-1-i) @|
+    << " of the " << (in_forward(flags) ? "" : "reversed ") << "for-loop";
+  e.trace(o.str());
+  throw;
 }
 
 @ This code too occurs identically five times. We set the in-part component
@@ -5636,14 +5670,17 @@ standard.
 @< Set |loop_var->val[0]| to... @>=
 { loop_var->val[0] = std::make_shared<int_value>(in_forward(flags) ? i++ : --i);
     // create a fresh index each time
-  frame loop_frame (pattern);
-  loop_frame.bind(loop_var);
-  if (l==no_value)
-    body->void_eval();
-  else
-  {@; body->eval();
-     *(out_forward(flags) ? dst++ : --dst) = pop_value();
-  }
+  frame fr (pattern);
+  fr.bind(loop_var);
+  try {
+    if (l==no_value)
+      body->void_eval();
+    else
+    {@; body->eval();
+       *(out_forward(flags) ? dst++ : --dst) = pop_value();
+    }
+   }
+   @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |loop_frame|
 
 @ The loop over terms of a virtual module is slightly different, and since it
@@ -5664,28 +5701,62 @@ between them.
     dst = out_forward(flags) ? result->val.begin() : result->val.end();
   }
   if (in_forward(flags))
-    for (auto it=pol_val->val.cbegin(); it!=pol_val->val.cend(); ++it)
+  { auto const start=pol_val->val.cbegin();
+    auto it = start; // need these in |catch| clause
+    try {
+    for ( ; it!=pol_val->val.cend(); ++it)
       @< Loop body for iterating over terms of a virtual module @>
+    }
+    @< Catch block for reporting iteration number within loop over
+       terms in a virtual module @>
+  }
   else
-    for (auto it=pol_val->val.crbegin(); it!=pol_val->val.crend(); ++it)
+  { auto const start=pol_val->val.crbegin();
+    auto it = start; // need these in |catch| clause
+    try {
+    for (; it!=pol_val->val.crend(); ++it)
       @< Loop body for iterating over terms of a virtual module @>
+    }
+    @< Catch block for reporting iteration number within loop over
+       terms in a virtual module @>
+  }
 }
 
-@~And here is that loop body, included twice identically.
+@ The catch clause is similar to those for other types of loops,
+but we use |std::distance| to compute the offset of |it| from its initial value
+|start|.
+@< Catch block for reporting iteration number within loop over terms in
+   a virtual module @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "During iteration " << std::distance(start,it) @|
+    << " of the for-loop over ParamPol";
+  e.trace(o.str());
+  throw;
+}
+
+
+@~And here is the loop body  that is included twice identically.
 
 @< Loop body for iterating over terms of a virtual module @>=
 { loop_var->val[0] =
     std::make_shared<module_parameter_value>(pol_val->rf,it->first);
   loop_var->val[1] = std::make_shared<split_int_value>(it->second);
-  frame loop_frame(pattern);
-  loop_frame.bind(loop_var);
-  if (l==no_value)
-    body->void_eval();
-  else
-  {@; body->eval();
-    *(out_forward(flags) ? dst++ : --dst) = pop_value();
-  }
+  frame fr(pattern);
+  fr.bind(loop_var);
+  try {
+    if (l==no_value)
+      body->void_eval();
+    else
+    {@; body->eval();
+      *(out_forward(flags) ? dst++ : --dst) = pop_value();
+    }
+   }
+   @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |loop_frame|
+
+
 
 @*1 Counted loops.
 %
@@ -5694,7 +5765,7 @@ few variations. For efficiency we shall handle cases of omitted identifier and
 (lower) |bound=0| (most likely due to an omitted \&{from} clause) specially.
 We could do the all distinctions detectable at compile time through the
 template argument |flags|, which would avoid any runtime tests, but give a lot
-of cases. We choose to represent in |flags| all distinction \emph{except} that
+of cases. We choose to represent in |flags| all distinctions \emph{except} that
 of an absent |bound| expression. The latter will be tested for presence when
 initialising the lower bound; this gives a minute runtime cost when the bound
 is present, but halves the number of template instances used.
@@ -5761,12 +5832,12 @@ expression make_counted_loop (unsigned flags, id_type id, @|
 loop-over-components that does not bind any identifiers at all; a case that we
 set aside as explained earlier.
 
-In order to substitute a counted loop without index for such a loop, we need
-to assemble a call to the appropriate size-computing built-in function. The
-needed |shared_builtin| values are held in variables whose definition will be
-given later. Some of the actual built-in functions needed here are declared as
-global rather than local functions (and in one case even defined in the first
-place) specifically for this purpose.
+In order to substitute a counted loop without index for such a loop, we need to
+assemble a call to the appropriate size-computing built-in function. The needed
+|shared_builtin| values are held in variables whose definition will be given
+later. It is specifically for this purpose that some of the actual built-in
+functions needed here are declared (and in one case even defined in the first
+place) as global rather than local functions.
 
 @< Set |loop| to a index-less counted |for| loop... @>=
 { expression_ptr call; const source_location &loc = f.in_part.loc;
@@ -5845,7 +5916,7 @@ case cfor_expr:
 @ Executing a loop is a simple variation of what we have seen before for
 |while| and |for| loops over value components. We distinguish a number of
 cases, some by template argument and others dynamically, but always before
-entering the loop, in order to allow an optimal adaptation to the task. We en
+entering the loop, in order to allow an optimal adaptation to the task. We end
 up always using a \Cpp\ |while| loop to implement the |for| loop.
 
 A special case that is optimised for is when the user gave no name to loop
@@ -5907,7 +5978,7 @@ void counted_for_expression<flags>::evaluate(level l) const
 }
 
 @ For a counted loop using its index, we remain at the \Cpp\ level close to
-the \.{axis} loop being implemented, but we transform the bound |b| or|c| into
+the \.{axis} loop being implemented, but we transform the bound |b| or |c| into
 our loop index. For decreasing loops we distinguish the case where the lower
 bound is~$0$, the default value, since a test against a constant~$0$ is a bit
 more efficient.

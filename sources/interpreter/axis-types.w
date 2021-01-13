@@ -2823,16 +2823,43 @@ fairly rare, so we don't mind the inefficiency of performing the conversion
 and then discarding the result; this will allow a failing conversion to be
 signalled as an error in such cases.
 
+At runtime an implicit conversion is essentially a function call, so we catch an
+re-throw errors after adding a line of back-tracing information, similarly to
+what we shall do for function calls (as implemented in the \.{axis} module).
+This only applies to errors that occur during attempted conversion, not those
+that might occur during the evaluation of |exp|, so the |try| block below
+limited to the conversion call itself.
+
 @< Function def...@>=
 void conversion::evaluate(level l) const
 { exp->eval();
-  (*conversion_type.convert)();
+  try {@; (*conversion_type.convert)(); }
+  @< Catch block for failing implicit conversion @>
   if (l==no_value)
     execution_stack.pop_back();
 }
 @)
 void conversion::print(std::ostream& out) const
 @+{@; out << conversion_type.name << ':' << *exp; }
+
+@ The errors that might be thrown and temporarily caught here can mostly arise
+vector/matrix related conversions (problems while converting big integer or
+rational values to bounded size internal representation, or shape problems for
+matrices), though the Atlas specific implicit conversion from string to Lie type
+can also fail; in all case however the error is detected outside the library, so
+there is no need to catch |std::exception| here. Contrary to function calls, an
+implicit conversion stores no information about the source location for the
+place where it is invoked, so in case of an error we can only report the kind of
+conversion that was attempted.
+
+@< Catch block for failing implicit conversion @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "In implicit conversion of kind " << conversion_type.name << '.';
+  e.trace(o.str());
+  throw;
+}
 
 @*1 Coercion of types.
 %
@@ -2925,11 +2952,15 @@ public:
 
 @ The |voiding::evaluate| method should not ignore its own |level| argument
 completely: when called with |l==single_value|, an actual empty tuple should
-be produced on the stack, which |wrap_tuple<0>()| does.
+be produced on the stack, which |wrap_tuple<0>()| does. There is no need
+contribute back-tracing information about the voiding in case of an error at
+runtime, since the voiding conversion itself cannot fail; indeed, with
+production of a value to be voided being avoided upstream, it is a no-op.
+
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
-{@; exp->void_eval();
+@+{@; exp->void_eval();
   if (l==single_value)
     wrap_tuple<0>();
 }

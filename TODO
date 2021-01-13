@@ -38,7 +38,6 @@
   Distinguish one-line (maybe abbreviated) and long forms.
 
 - For layers produced by loops, provide printing of the identifier value
-- For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
   is easy to write (and common in loop bodies), it is converted to 'v := v#x'
