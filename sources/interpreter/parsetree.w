@@ -624,9 +624,11 @@ usefulness of having a container type with a lightweight conversion to raw
 pointer and back.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef containers::simple_list<expr> expr_list;
-typedef containers::sl_node<expr>* raw_expr_list;
-  // raw counterpart for use by parser
+typedef simple_list<expr> expr_list;
+typedef containers::sl_node<expr> expr_list_node;
+typedef std::allocator<expr_list_node> node_allocator;
+typedef containers::allocator_deleter<node_allocator> node_deleter;
+typedef expr_list_node* raw_expr_list; // raw counterpart for use by parser
 @)
 typedef containers::weak_sl_list_const_iterator<expr> wel_const_iterator;
 typedef containers::weak_sl_list_iterator<expr> wel_iterator;
@@ -1800,15 +1802,19 @@ Of course we need if-then-else expressions.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct conditional_node* cond;
 
-@~The parser handles \&{elif} constructions, so we only need to handle the
-basic two-branch case. Nonetheless we prefer to have the two branches as a
-linked list, so as to dispose of a |raw_expr_list| value that can be passed to
-the same balancing function as for instance the components of a list display
-(it would be quite tedious to reorganise the contents of two explicit |expr|
-fields to make them occur in a list without temporarily removing the
-originals, given that copying |expr| values is expensive). On the other hand,
-given that the list always has length~$2$, we can represent the list by its
-initial node.
+@~The parser handles \&{elif} constructions, so we only need to handle the basic
+two-branch case. Nonetheless we prefer to have the two branches as a linked
+list, so as to dispose of a |raw_expr_list| value that can be passed to the same
+balancing function as for instance the components of a list display (it would be
+quite tedious to reorganise the contents of two explicit |expr| fields to make
+them occur in a list without temporarily removing the originals, given that
+copying |expr| values is expensive). On the other hand, given that the list
+always has length~$2$, we can represent the list by its initial node. This means
+we have to call the |containers::sl_node| constructor explicitly here, rather
+than from the |sl_list| class, and since the template code for that constructor
+requires as initial argument a deleter object for the |std::unique_ptr| is
+stores (even though the type is stateless, so there is not much choice), this is
+mode tedious than usual.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct conditional_node
@@ -1816,9 +1822,9 @@ struct conditional_node
 @)
   conditional_node(expr&& condition, expr&& then_branch, expr&& else_branch)
 @/: condition(std::move(condition))
-  , branches(std::move(then_branch))
-  {@; branches.next.reset(new
-      containers::sl_node<expr>(std::move(else_branch)));
+  , branches(node_deleter(node_allocator()),std::move(then_branch))
+  { branches.next.reset(new containers::sl_node<expr> @|
+        (branches.next.get_deleter(),std::move(else_branch)));
   }
   @< Other constructors for |conditional_node| @>@;
 };

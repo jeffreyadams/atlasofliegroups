@@ -281,8 +281,11 @@ shared_value Id_table::value_of(id_type id) const
 shared_share Id_table::address_of(id_type id)
 { map_type::iterator p=table.find(id);
   if (p==table.end())
-    throw logic_error() << "Identifier without table entry:" @|
-       << main_hash_table->name_of(id);
+  { std::ostringstream o;
+    o << "Identifier without table entry:" @|
+      << main_hash_table->name_of(id);
+    throw logic_error(o.str());
+  }
 @.Identifier without table entry@>
   return p->second.value();
 }
@@ -505,13 +508,16 @@ message is quite verbose, but tries to precisely pinpoint the kind of problem
 encountered so that the user will hopefully be able to understand.
 
 @< Throw a |program_error| reporting a conflict... @>=
-  throw program_error()
-    << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
        "already overloaded type '" << slot[i].type().arg_type
  @| << "' is too close to new argument type '"@| << arg_type
  @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
        "Simultaneous\noverloading for these types is not possible, " @|
        "forget the other one first.";
+  throw program_error(o.str());
+}
+
 
 
 
@@ -845,9 +851,12 @@ void definition_group::add(id_type id,type_expr&& t, bool is_const=false)
 { for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
   // check repeated identifiers
     if (it->first==id)
-      throw program_error() << "Multiple occurrences of '"
+    { std::ostringstream o;
+      o << "Multiple occurrences of '"
         << main_hash_table->name_of(id) @|
         << "' cannot be defined in same definition";
+      throw program_error(o.str());
+    }
 @)
   if (t.kind()==function_type)
   { const auto& var=global_overload_table->variants(id);
@@ -942,8 +951,11 @@ ascribed to the operator symbol, so that it will go to the overload table.
 
 @< Check that we are not setting an operator... @>=
 { if (overload==2 and t.kind()!=function_type)
-    throw program_error() << "Cannot set operator '" << pat.name @|
-       << "' to a value of non-function type " << t;
+    { std::ostringstream o;
+      o << "Cannot set operator '" << pat.name @|
+        << "' to a value of non-function type " << t;
+      throw program_error(o.str());
+    }
 }
 
 @ For identifier definitions we print their name and type, one line for each
@@ -1029,10 +1041,12 @@ pattern using |pattern_type| to do this.
 
 @< Report that type |t| of |rhs| does not have required structure,
    and |throw| @>=
-throw program_error()
-    << "Type " << t @|
+{ std::ostringstream o;
+  o << "Type " << t @|
     << " of right hand side does not match required pattern "
     << pattern_type(pat);
+  throw program_error(o.str());
+}
 
 
 @ We shall use the following static variable to signal
@@ -1224,7 +1238,7 @@ and the latter is also the only one that records the type binding in
 
 We start with the simple type definitions, which are handled by the function
 |type_define_identifier|. Its argument |id| is a new type identifier that is
-defined to stand for the type expression~|t|, and A third argument |ip| may
+defined to stand for the type expression~|t|, and a third argument~|ip| may
 provide a list of ``field names'' that can be useful in the case of a tuple or
 union type.
 
@@ -1267,9 +1281,11 @@ void type_define_identifier
 
   }
   catch (program_error& err)
-  { std::string mes; mes.swap(err.message);
-    throw err << "Error in type definition " << loc << ":\n" @| << mes
-              << "\n  Type definition aborted";
+  { std::ostringstream o;
+    o << "Error in type definition " << loc << ":\n" @| << err.message
+      << "\n  Type definition aborted";
+    err.message = o.str(); // replace message by extended one
+    throw; // then re-throw
   }
 }
 
@@ -1325,9 +1341,11 @@ section@#field name printing @>.
    ... @>=
 { for (auto it=group.begin(); it!=group.end(); ++it)
     if (it->first==id)
-      throw program_error()
-        << "Type definition of '" << main_hash_table->name_of(id) @|
-                << "' cannot contain a field of the same name";
+    { std::ostringstream o;
+      o << "Type definition of '" << main_hash_table->name_of(id) @|
+        << "' cannot contain a field of the same name";
+      throw program_error(o.str());
+    }
 @)
   bool redefine = global_id_table->is_defined_type(id);
   if (not redefine)
@@ -1399,9 +1417,11 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
   }
   catch (program_error& err)
   { type_expr::reset_table_size(old_size); // roll back any extension made
-    std::string mes; mes.swap(err.message);
-    throw err << "Error in 'set_type' command " << loc << ":\n" @| << mes
-              << "\n  Type definition aborted";
+    std::ostringstream o;
+    o << "Error in 'set_type' command " << loc << ":\n" @| << err.message
+      << "\n  Type definition aborted";
+    err.message = o.str(); // replace message by extended one
+    throw; // then re-throw
   }
 }
 
@@ -1429,15 +1449,19 @@ status would make the field name unusable.
       if (translate[id]==absent)
         translate[id] = count;
       else
-        throw program_error()
-          << "Repeated definition of '" @| << main_hash_table->name_of(id);
+      { std::ostringstream o;
+        o << "Repeated definition of '" @| << main_hash_table->name_of(id);
+        throw program_error(o.str());
+      }
     }
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
     for (auto jt=it->fields.wcbegin(); not jt.at_end(); ++jt)
       if ((jt->kind&0x1)!=0 and translate[jt->name]!=absent)
-      throw program_error()
-        << "Used '" << main_hash_table->name_of(jt->name) @|
-        << "' as defined type AND as field name";
+      { std::ostringstream o;
+        o << "Used '" << main_hash_table->name_of(jt->name) @|
+          << "' as defined type AND as field name";
+        throw program_error(o.str());
+      }
 }
 
 @ The method |Id_table::present| will report any presence in the table of an
@@ -1454,10 +1478,12 @@ accepted.
 { const bool p = global_id_table->present(id) and
                  not global_id_table->is_defined_type(id);
   if (p or not global_overload_table->variants(id).empty())
-    throw program_error()
-       << "Cannot define '" << main_hash_table->name_of(id) @|
+  { std::ostringstream o;
+    o  << "Cannot define '" << main_hash_table->name_of(id) @|
        << "' as a type; it is in use as " @|
        << (p? "global variable" : "function");
+    throw program_error(o.str());
+  }
 }
 
 @ In order to be able to process a set of recursive type definitions where a
@@ -1520,9 +1546,11 @@ iteratively, manually maintaining a stack of types remaining to be visited.
         else if (global_id_table->is_defined_type(id))
           t = global_id_table->type_of(id)->copy();
         else
-          throw program_error()
-            << "Type identifier '" << main_hash_table->name_of(id) @|
+        { std::ostringstream o;
+          o << "Type identifier '" << main_hash_table->name_of(id) @|
             << "' does not refer to any type";
+          throw program_error(o.str());
+        }
       }
     break;
     }
@@ -3096,7 +3124,10 @@ void string_to_ascii_wrapper(expression_base::level l)
 void ascii_char_wrapper(expression_base::level l)
 { int c=get<int_value>()->int_val();
   if ((c<' ' and c!='\n') or c>'~')
-    throw runtime_error() << "Value " << c << " out of printable ASCII range";
+  { std::ostringstream o;
+    o << "Value " << c << " out of printable ASCII range";
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<string_value>(std::string(1,c)));
 }
@@ -3382,7 +3413,10 @@ being built-in.
 @< Local function def... @>=
 void check_size (std::size_t a, std::size_t b)
 { if (a!=b)
-    throw runtime_error() << "Size mismatch " << a << ":" << b;
+  { std::ostringstream o;
+    o << "Size mismatch " << a << ":" << b;
+    throw runtime_error(o.str());
+  }
 }
 
 void vec_plus_wrapper(expression_base::level l)
@@ -3806,8 +3840,10 @@ void mv_prod_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   shared_matrix m=get<matrix_value>();
   if (m->val.numColumns()!=v->val.size())
-    throw runtime_error() << "Size mismatch " @|
-      << m->val.numColumns() << ':' << v->val.size();
+  { std::ostringstream o;
+    o << "Size mismatch " @| << m->val.numColumns() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val*v->val));
 }
@@ -3816,8 +3852,10 @@ void mrv_prod_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   shared_matrix m=get<matrix_value>();
   if (m->val.numColumns()!=v->val.size())
-    throw runtime_error() << "Size mismatch " @|
-      << m->val.numColumns() << ':' << v->val.size();
+  { std::ostringstream o;
+    o << "Size mismatch " @| << m->val.numColumns() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(m->val*v->val));
 }
@@ -3826,8 +3864,10 @@ void vm_prod_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>(); // right factor
   shared_vector v=get<vector_value>(); // left factor
   if (v->val.size()!=m->val.numRows())
-    throw runtime_error()
-      << "Size mismatch " << v->val.size() << ":" << m->val.numRows();
+  { std::ostringstream o;
+    o << "Size mismatch " << v->val.size() << ":" << m->val.numRows();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val.right_prod(v->val)));
 }
@@ -3836,8 +3876,11 @@ void rvm_prod_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   shared_rational_vector v=get<rational_vector_value>();
   if (v->val.size()!=m->val.numRows())
-    throw runtime_error() << "Size mismatch " @|
+  { std::ostringstream o;
+    o << "Size mismatch " @|
       << v->val.size() << ':' << m->val.numRows();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(v->val*m->val));
 }
@@ -3992,7 +4035,10 @@ in fact be hard to avoid.
 void null_vec_wrapper(expression_base::level l)
 { int n=get<int_value>()->int_val();
   if (n<0)
-    throw runtime_error() << "Negative size for vector: " << n;
+  { std::ostringstream o;
+    o << "Negative size for vector: " << n;
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(int_Vector(n,0)));
 }
@@ -4000,9 +4046,15 @@ void null_vec_wrapper(expression_base::level l)
 { int n=get<int_value>()->int_val();
   int m=get<int_value>()->int_val();
   if (m<0)
-    throw runtime_error() << "Negative number of rows: " << m;
+  { std::ostringstream o;
+    o << "Negative number of rows: " << m;
+    throw runtime_error(o.str());
+  }
   if (n<0)
-    throw runtime_error() << "Negative number of columns: " << n;
+  { std::ostringstream o;
+    o << "Negative number of columns: " << n;
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value> (int_Matrix(m,n,0)));
 }
@@ -4094,14 +4146,20 @@ void combine_columns_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
   int n = get<int_value>()->int_val();
   if (n<0)
-    throw runtime_error() << "Negative number " << n <<" of rows requested";
+  { std::ostringstream o;
+    o << "Negative number " << n <<" of rows requested";
+    throw runtime_error(o.str());
+  }
 @.Negative number of rows@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(std::size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=std::size_t(n))
-      throw runtime_error() << "Column " << j <<" size " << col.size() @|
-         << " does not match specified size " << n;
+    { std::ostringstream o;
+      o << "Column " << j <<" size " << col.size() @|
+        << " does not match specified size " << n;
+    throw runtime_error(o.str());
+    }
 @.Column size does not match@>
     m->val.set_column(j,col);
   }
@@ -4113,14 +4171,20 @@ void combine_rows_wrapper(expression_base::level l)
 { shared_row r =get<row_value>();
   int n = get<int_value>()->int_val();
   if (n<0)
-    throw runtime_error() << "Negative number " << n << " of columns requested";
+  { std::ostringstream o;
+    o << "Negative number " << n << " of columns requested";
+    throw runtime_error(o.str());
+  }
 @.Negative number of columns@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
   for(std::size_t i=0; i<r->val.size(); ++i)
   { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
     if (row.size()!=std::size_t(n))
-      throw runtime_error() << "Row " << i << " size " << row.size() @|
+    { std::ostringstream o;
+      o << "Row " << i << " size " << row.size() @|
         << " does not match specified size " << n;
+      throw runtime_error(o.str());
+    }
 @.Row size does not match@>
     m->val.set_row(i,row);
   }
@@ -4207,28 +4271,28 @@ void swiss_matrix_knife_wrapper(expression_base::level lev)
 @ We try to be specific about which bounds were out of range.
 
 @< Throw |std::error| reporting an error in the specified range @>=
-{ runtime_error e;
-  e << "Range exceeds bounds: ";
+{ std::ostringstream o;
+  o << "Range exceeds bounds: ";
   if (lwb_r<0 or upb_r>m)
     if (upb_r>m)
       if (lwb_r<0)
-        e << "both row bounds " << lwb_r << ':' << upb_r;
+        o << "both row bounds " << lwb_r << ':' << upb_r;
       else
-        e << "upper row bound " << upb_r;
+        o << "upper row bound " << upb_r;
     else
-      e << "lower row bound " << lwb_r;
+      o << "lower row bound " << lwb_r;
   if ((lwb_r<0 or upb_r>m) and (lwb_c<0 or upb_c>n))
-    e << " and ";
+    o << " and ";
   if (lwb_c<0 or upb_c>n)
     if (upb_c>n)
       if (lwb_c<0)
-        e << "both column bounds " << lwb_c << ':' << upb_c;
+        o << "both column bounds " << lwb_c << ':' << upb_c;
       else
-        e << "upper column bound " << upb_c;
+        o << "upper column bound " << upb_c;
     else
-      e << "lower column bound " << lwb_c;
-  e << " out of range, actual bounds 0:" << m << ", 0:" << n;
-  throw e;
+      o << "lower column bound " << lwb_c;
+  o << " out of range, actual bounds 0:" << m << ", 0:" << n;
+  throw runtime_error(o.str());
 }
 
 @ We ensure the dimensions of the result are non negative, and adapted to
@@ -4349,8 +4413,11 @@ void linear_solve_wrapper(expression_base::level l)
 { own_vector b=get_own<vector_value>();
   own_matrix A=get_own<matrix_value>();
   if (A->val.numRows()!=b->val.size())
-    throw runtime_error() << "Linear system size mismatch "
-                          << A->val.numRows() << ':' << b->val.size();
+  { std::ostringstream o;
+    o << "Linear system size mismatch "
+      << A->val.numRows() << ':' << b->val.size();
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
@@ -4471,9 +4538,11 @@ denominator to be applied to all coefficients.
 void invert_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (m->val.numRows()!=m->val.numColumns())
-    throw runtime_error()
-      << "Cannot invert a " @|
+  { std::ostringstream o;
+    o << "Cannot invert a " @|
       << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
   arithmetic::big_int denom;
@@ -4519,9 +4588,15 @@ void subspace_normal_wrapper(expression_base::level l)
   unsigned int n_gens = generators->val.numColumns();
   unsigned int dim = generators->val.numRows();
   if (dim>64)
-    throw runtime_error() << "Dimension too large: " << dim << ">64";
+  { std::ostringstream o;
+    o << "Dimension too large: " << dim << ">64";
+    throw runtime_error(o.str());
+  }
   if (n_gens>64)
-    throw runtime_error() << "Too many generators: " << n_gens << ">64";
+  { std::ostringstream o;
+    o << "Too many generators: " << n_gens << ">64";
+    throw runtime_error(o.str());
+  }
 @)
   std::vector<bitvec> basis, combination;
     // |basis[j]| will be initialised from column $j$ of |generators|

@@ -2571,7 +2571,9 @@ template <typename D> // |D| is a type derived from |value_base|
  inline std::shared_ptr<const D> get()
 { std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
   if (p.get()==nullptr)
-    throw logic_error() << "Argument is no " << D::name();
+  { std::ostringstream o; o << "Argument is no " << D::name();
+    throw logic_error(o.str());
+  }
   return p;
 }
 @.Argument is no ...@>
@@ -2601,16 +2603,20 @@ will often be the second one that is selected.
 template <typename D> // |D| is a type derived from |value_base|
   D* force (value_base* v)
 { D* p=dynamic_cast<D*>(v);
-  if (p==nullptr) throw
-    logic_error() <<"forced value is no " << D::name();
+  if (p==nullptr)
+  { std::ostringstream o; o << "forced value is no " << D::name();
+    throw logic_error(o.str());
+  }
   return p;
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
   const D* force (value v)
 { const D* p=dynamic_cast<const D*>(v);
-  if (p==nullptr) throw
-    logic_error() << "forced value is no " << D::name();
+  if (p==nullptr)
+  { std::ostringstream o; o << "forced value is no " << D::name();
+    throw logic_error(o.str());
+  }
   return p;
 }
 
@@ -2688,8 +2694,10 @@ template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> force_own(shared_value&& q)
 { std::shared_ptr<const D> p=
      std::dynamic_pointer_cast<const D>(shared_value(std::move(q)));
-  if (p==nullptr) throw
-    logic_error() << "forced value is no " << D::name();
+  if (p==nullptr)
+  { std::ostringstream o; o << "forced value is no " << D::name();
+    throw logic_error(o.str());
+  }
   if (p.unique())
     return std::const_pointer_cast<D>(p);
   return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
@@ -2815,16 +2823,43 @@ fairly rare, so we don't mind the inefficiency of performing the conversion
 and then discarding the result; this will allow a failing conversion to be
 signalled as an error in such cases.
 
+At runtime an implicit conversion is essentially a function call, so we catch an
+re-throw errors after adding a line of back-tracing information, similarly to
+what we shall do for function calls (as implemented in the \.{axis} module).
+This only applies to errors that occur during attempted conversion, not those
+that might occur during the evaluation of |exp|, so the |try| block below
+limited to the conversion call itself.
+
 @< Function def...@>=
 void conversion::evaluate(level l) const
 { exp->eval();
-  (*conversion_type.convert)();
+  try {@; (*conversion_type.convert)(); }
+  @< Catch block for failing implicit conversion @>
   if (l==no_value)
     execution_stack.pop_back();
 }
 @)
 void conversion::print(std::ostream& out) const
 @+{@; out << conversion_type.name << ':' << *exp; }
+
+@ The errors that might be thrown and temporarily caught here can mostly arise
+vector/matrix related conversions (problems while converting big integer or
+rational values to bounded size internal representation, or shape problems for
+matrices), though the Atlas specific implicit conversion from string to Lie type
+can also fail; in all case however the error is detected outside the library, so
+there is no need to catch |std::exception| here. Contrary to function calls, an
+implicit conversion stores no information about the source location for the
+place where it is invoked, so in case of an error we can only report the kind of
+conversion that was attempted.
+
+@< Catch block for failing implicit conversion @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "In implicit conversion of kind " << conversion_type.name << '.';
+  e.trace(o.str());
+  throw;
+}
 
 @*1 Coercion of types.
 %
@@ -2917,11 +2952,15 @@ public:
 
 @ The |voiding::evaluate| method should not ignore its own |level| argument
 completely: when called with |l==single_value|, an actual empty tuple should
-be produced on the stack, which |wrap_tuple<0>()| does.
+be produced on the stack, which |wrap_tuple<0>()| does. There is no need
+contribute back-tracing information about the voiding in case of an error at
+runtime, since the voiding conversion itself cannot fail; indeed, with
+production of a value to be voided being avoided upstream, it is a no-op.
+
 
 @< Function definitions @>=
 void voiding::evaluate(level l) const
-{@; exp->void_eval();
+@+{@; exp->void_eval();
   if (l==single_value)
     wrap_tuple<0>();
 }
@@ -3269,37 +3308,46 @@ can cause runtime errors.
 
 @ We use classes derived from |std::exception| and similar standard ones like
 |std::runtime_error|, but we define our own local hierarchy, with
-|atlas::interpreter::error_base| as base class. The main reason to do this is
-to have a centralised error message to which exception handlers have write
-access, so that it is possible to extend the error message and then re-throw
-the same error object. The simplest way to allow this is to give public access
-to that string member, so we make this a |struct| rather than a |class|.
+|atlas::interpreter::error_base| as base class. The main reason to do this is to
+have a centralised error |message| to which exception handlers have write
+access, so that it is possible to extend the error message and then re-throw the
+same error object. The simplest way to allow this is to give public access to
+that string member, so we make this a |struct| rather than a |class|. For errors
+happening during evaluation, we want to have the error object thus collect,
+during stack unwinding, a trace of the dynamic context (functions being called
+and so forth) in which the error occurred, but we want to keep it apart from the
+root error |message|, to avoid clobbering the display with possibly massive
+output. Therefore a second field |back_trace| with a layered structure is added,
+and a method |trace| is provided for extending it. Although this feature is
+mostly used with the class |program_error| to be derived below, we provide the
+functionality in this base class, as question whether a back trace might be
+present in fact depends in principle more on the place where the error is caught
+(for instance if type checking produces an error, there can be no back trace)
+than on the type of the error itself, even if the two often go together.
 
-However, since extending the error message is what is done most often, we
-provide a templated method |append_mes| to write directly to the message inside
-an error object. (An alternative would have been to derive |error_base| from
-|std::ostringstream| rather than to contain a |message| member; however we feel
-this goes somewhat against the inheritance philosophy, since an error
-object \emph{is not} a string stream.) The templated implementation does mean
-one cannot pass |std::endl| (an unresolved function overload) to the error
-message, but then that is quite useless anyway, and less efficient than passing
-|'\n'|. The method returns |void|, and it intended to be called from methods
-called |operator<<| defined at the level of derived classes, and returning a
-reference to |*this| of the derived type; the later is essential if one wants to
-be able to extend the error message inside the |throw| expression itself, as
-will be most convenient, since it ensures that this extension does not alter the
-(static) type of the thrown expression.
+We used to provide a method here to extend the message, passing the old message
+to first to a temporary |std::ostringstream| object, writing to it, and then
+exporting the result as an extended message again. It might seem preferable to
+store an |std::ostringstream| object permanently, but that type is really ill
+suited to be part of an error value, notably because it is impossible to
+implement the |what| method so as to present its contents: the |str| method can
+return the contents as a |std::string|, but unless that string is then stored
+separately in the error value, its lifetime will be to short to produce a value
+|char*| pointer to be returned from |what|. So we finally decided the only
+reasonable way to proceed is to not provide a string extension method here, and
+instead require the caller to construct (just before throwing) an error string
+using a temporary |std::ostringstream| and call its |str| method while throwing
+(which string is then copied into the error object); this pattern will occur
+repeatedly.
 
 @< Type definitions @>=
 struct error_base : public std::exception
 { std::string message;
-  explicit error_base(const std::string& s) : message(s) @+{}
-  error_base () : message() @+{}
-  template<typename T> void append_mes (const T& x)
-  @/{@; std::ostringstream o;
-      o << x;
-      message += o.str();
-    }
+  simple_list<std::string> back_trace;
+  explicit error_base(const std::string& s) : message(s),back_trace() @+{}
+  explicit error_base(std::string&& s) : message(std::move(s)),back_trace() @+{}
+  error_base @[(error_base&& other) = default@];
+  void trace (std::string&& line) @+{@; back_trace.push_front(std::move(line)); }
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
@@ -3307,30 +3355,27 @@ struct error_base : public std::exception
 (rather than the user's) program are classified |logic_error|, those arising
 during the analysis of the user program are are classified |program_error|,
 and those not caught by analysis but during evaluation are classified
-|runtime_error|. The  first and last are similar to exceptions of the same
+|runtime_error|. The first and last are similar to exceptions of the same
 name in the |std| namespace, but they are not derived from those exception
 classes.
 
 @< Type definitions @>=
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
-  logic_error () : @[error_base@]() @+{}
-  template<typename T> logic_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
+  explicit logic_error(std::string&& s) : error_base(std::move(s)) @+{}
+  logic_error @[(logic_error&& other) = default@];
 };
 @)
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
-  program_error () : @[error_base@]() @+{}
-  template<typename T> program_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
+  explicit program_error(std::string&& s) : error_base(std::move(s)) @+{}
+  program_error @[(program_error&& other) = default@];
 };
 @)
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
-  runtime_error () : @[error_base@]() @+{}
-  template<typename T> runtime_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
+  explicit runtime_error(std::string&& s) : error_base(std::move(s)) @+{}
+  runtime_error @[(runtime_error&& other) = default@];
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
@@ -3358,9 +3403,9 @@ struct expr_error : public program_error
 @)
   expr_error (const expr& e,const std::string& s) noexcept
     : program_error(s),offender(e) @+{}
-  expr_error (const expr& e) noexcept : program_error(),offender(e) @+{}
-  template<typename T> expr_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
+  expr_error (const expr& e,std::string&& s) noexcept
+    : program_error(std::move(s)),offender(e) @+{}
+  expr_error @[(expr_error&& other) = default@];
 };
 
 @ We derive from |expr_error| an even more specific exception type
@@ -3379,8 +3424,6 @@ struct type_error : public expr_error
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
   type_error @[(type_error&& e) = default@];
-  template<typename T> type_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
 };
 
 @ For type balancing, we shall use controlled throwing and catching of errors
@@ -3389,13 +3432,18 @@ If balancing ultimately fails, this error will be thrown uncaught by the
 balancing code, so |catch| blocks around type checking functions must be
 prepared to report the types that are stored in the error value.
 
+When a |balance_error| object is constructed, a descriptive name for the
+items being balanced (branches or components of some type of clause) is passed,
+which is recorded in the error message. The list of variants is left empty at
+construction, but will be filled before actually throwing the |balance_error|.
+
 @< Type definitions @>=
 struct balance_error : public expr_error
 { containers::sl_list<type_expr> variants;
-  balance_error(const expr& e)
-  : expr_error(e,"No common type found"), variants() @+{}
-  template<typename T> balance_error& operator<< (const T& x)
-  @+{@; append_mes(x); return *this; }
+  balance_error(const expr& e, const char* items_name)
+  : expr_error(e,"No common type found between "), variants()
+  @/{@; message+=items_name; }
+  balance_error @[(balance_error&& other) = default@];
 };
 
 @ Here is another special purpose error type, throwing of which does not
