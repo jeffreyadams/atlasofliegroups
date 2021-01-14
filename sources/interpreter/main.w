@@ -628,7 +628,7 @@ catch (error_base& err)
   *back_trace_pointer=new_trace;
   std::vector<shared_value>& trace = new_trace->val;
   trace.reserve(length(err.back_trace));
-  err.back_trace.reverse(); // order from point of failure outward
+    // order inwards towards point of failure
   for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
     trace.push_back(std::make_shared<string_value>(std::move(*it)));
     // back trace element

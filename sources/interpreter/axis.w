@@ -2572,12 +2572,14 @@ void let_expression::evaluate(level l) const
 
 
 @ Providing the current values of local variables at an error stop is useful and
-quite easy. By calling |fr.id_list| we obtain the names of the identifiers
-from the frame |fr| to which they are copied, rather than directly from our
+quite easy. By calling |fr.id_list| we obtain the names of the identifiers from
+the frame |fr| to which they are copied, rather than directly from our
 |variable|; the main purpose of this is that it allows reusing the module
 identically as |catch| block for user defined functions, where the current
 (call) expression does not have an identifier pattern available, but there is a
-frame |fr| from which is can be obtained.
+frame |fr| from which is can be obtained. This will also be reused on multiple
+other occasions where new identifiers, such as loop variables, are locally
+introduced.
 
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
@@ -4603,9 +4605,10 @@ void discrimination_expression::evaluate(level l) const
   if (branch.first.kind==0x0)
     branch.second->evaluate(l); // avoid creating an empty |frame|
   else
-  {@;frame fr(branch.first);
+  { frame fr(branch.first);
     fr.bind(discriminant->contents());
-    branch.second->evaluate(l);
+    try @+{@; branch.second->evaluate(l); }
+    @< Catch block for providing a trace-back of local variables @>
   }
 }
 
@@ -5627,7 +5630,7 @@ case subscr_base::mod_poly_term:
 case subscr_base::matrix_entry:; // excluded in type analysis
 case subscr_base::not_so: assert(false);
 
-@ The following code, which occurs five times, used both the input and output
+@ The following code, which occurs five times, uses both the input and output
 direction attributes.
 
 @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>=
@@ -5653,19 +5656,19 @@ catch (error_base& e)
   throw;
 }
 
-@ This code too occurs identically five times. We set the in-part component
-stored in |loop_var->val[1]| separately for the various values of |kind|, but
-|loop_var->val[0]| is always the (integral) loop index. Once initialised,
-|loop_var| is passed by the method |frame::bind| through the function
-|thread_components| to set up |loop_frame|, whose constructor has pushed it
-onto |frame::current| to form the new evaluation context. Like for
-|loop_var->val[0]|, it is important that |frame::current| be set to point to a
-newly created frame at each iteration, since any closure values in the loop
-body will incorporate its current instance by reference; there would be no
-point in supplying fresh pointers in |loop_var| if they were subsequently
-copied to overwrite the pointers in the same |evaluation_context| object each
-time. Once these things have been handled, the evaluation of the loop body is
-standard.
+@ This code too occurs identically five times. We have separately set the
+in-part component stored in |loop_var->val[1]| for the various values of |kind|,
+but |loop_var->val[0]| is always the (integral) loop index. Once |loop_var|
+initialised, we set up a new |frame| (named |fr| so as to be able to reuse a
+catch block textually) according to |pattern|, which pushes a new
+|evaluation_context| onto |frame::current|. Like it was important for
+|loop_var->val[0]| to build a fresh |shared_value|, it is important that a fresh
+|evaluation_context| be created at each iteration, rather than using a single
+one for the entire loop. Any closure values formed inside the loop body will
+incorporate the |evaluation_context| by reference; these will only be able to
+access distinct instances of |loop_var| in the absences of aliasing either at
+the level |evaluation_context| of the |shared_value| pointers stored in it. With
+these things properly handled, the evaluation of the loop body is standard.
 
 @< Set |loop_var->val[0]| to... @>=
 { loop_var->val[0] = std::make_shared<int_value>(in_forward(flags) ? i++ : --i);
@@ -5681,7 +5684,7 @@ standard.
     }
    }
    @< Catch block for providing a trace-back of local variables @>
-} // restore context upon destruction of |loop_frame|
+} // restore context upon destruction of |fr|
 
 @ The loop over terms of a virtual module is slightly different, and since it
 handles values defined in the modules \.{atlas-types.w} we shall include its
@@ -5701,7 +5704,7 @@ between them.
     dst = out_forward(flags) ? result->val.begin() : result->val.end();
   }
   if (in_forward(flags))
-  { auto const start=pol_val->val.cbegin();
+  { const auto start=pol_val->val.cbegin();
     auto it = start; // need these in |catch| clause
     try {
     for ( ; it!=pol_val->val.cend(); ++it)
@@ -5711,7 +5714,7 @@ between them.
        terms in a virtual module @>
   }
   else
-  { auto const start=pol_val->val.crbegin();
+  { const auto start=pol_val->val.crbegin();
     auto it = start; // need these in |catch| clause
     try {
     for (; it!=pol_val->val.crend(); ++it)
@@ -5754,7 +5757,7 @@ catch (error_base& e)
     }
    }
    @< Catch block for providing a trace-back of local variables @>
-} // restore context upon destruction of |loop_frame|
+} // restore context upon destruction of |fr|
 
 
 
@@ -5916,27 +5919,25 @@ case cfor_expr:
 @ Executing a loop is a simple variation of what we have seen before for
 |while| and |for| loops over value components. We distinguish a number of
 cases, some by template argument and others dynamically, but always before
-entering the loop, in order to allow an optimal adaptation to the task. We end
-up always using a \Cpp\ |while| loop to implement the |for| loop.
+entering the loop, in order to allow an optimal adaptation to the task. We shall
+end up always using a \Cpp\ |while| loop to implement the |for| loop.
 
 A special case that is optimised for is when the user gave no name to loop
-index, so bit |flags&0x4| is set: we can then omit introducing a |frame| for
-the loop altogether. Also, since the syntax ensures that absence of a name for
-the loop index implies absence of a lower bound expression (which would be
-unused anyway) we can omit trying to evaluate |bound| here. We choose to
-always use a decreasing loop counter internally in such cases, as this
-simplifies the termination condition and might therefore be marginally faster.
+index: we can then omit introducing a |frame| for the loop altogether. Also,
+since the syntax ensures that absence of a name for the loop index implies
+absence of a lower bound expression (which would be unused anyway) we can omit
+trying to evaluate |bound| here.
 
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
-{ int c=(count->eval(),get<int_value>()->int_val());
-  if (c<0)
-    c=0; // no negative size result
+{ const int n=(count->eval(),get<int_value>()->int_val());
+  const int lwb=(bound.get()==nullptr
+          ? 0 : (bound->eval(),get<int_value>()->int_val()));
+  int c = n<0 ? 0 : n; // no negative size result
 
   if (has_frame(flags)) // then loop uses index
-  { int b=(bound.get()==nullptr
-          ? 0 : (bound->eval(),get<int_value>()->int_val()));
+  { int b=lwb;
     id_pat pattern(id);
     if (l==no_value)
       @< Perform counted loop that uses an index, without storing result,
@@ -5946,40 +5947,73 @@ void counted_for_expression<flags>::evaluate(level l) const
          |execution_stack|,
          doing |c| iterations with lower bound |b| @>
   }
-  else if (l==no_value) // counted loop without index and no value
-  { try {@; while (c-->0)
+  else if (l==no_value)
+    @< Perform counted loop without index and no value @>
+  else
+    @< Perform counted loop without index producing a value @>
+}
+
+@ In cases of an anonymously counted loop, we choose to use a decreasing loop
+counter internally. This simplifies the termination condition and might
+therefore be marginally faster.
+
+@< Perform counted loop without index and no value @>=
+{ try {@;
+    while (c-->0)
       body->void_eval();
-    }
-    catch (loop_break& err) @+
+  }
+  catch (loop_break& err) @+
     {@; if (err.depth-- > 0)
           throw;
     }
-  }
-  else // counted loop without index producing a value
-  { own_row result = std::make_shared<row_value>(c);
-    auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
-    try @/{@;
-      while (c-->0)
-      {@; body->eval();
-        *(out_forward(flags)? dst++:--dst) = pop_value();
-      }
-    }
-    catch (loop_break& err)
-    { if (err.depth-- > 0)
-        throw;
-      if (out_reversed(flags))
-        dst=std::move(dst,result->val.end(),result->val.begin());
-        // after break, left-align |result|
-      result->val.resize(dst-result->val.begin());
-    }
-    push_value(std::move(result));
-  }
+  @< Catch block for reporting iteration number within
+     anonymously counted loop @>
 
 }
 
+@ If a value is produced from each loop body evaluation, it is stored using the
+|dst| iterator. In this case one must also take care, as before, that upon
+catching a |break| executed inside the loop body, the returned row is shorter
+than initially computed, and it may need to be shifted in the case of an
+output-reversed loop.
+
+@< Perform counted loop without index producing a value @>=
+{ own_row result = std::make_shared<row_value>(c);
+  auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
+  try @/{@;
+    while (c-->0)
+    {@; body->eval();
+      *(out_forward(flags)? dst++:--dst) = pop_value();
+    }
+  }
+  catch (loop_break& err)
+  { if (err.depth-- > 0)
+      throw;
+    if (out_reversed(flags))
+      dst=std::move(dst,result->val.end(),result->val.begin());
+      // after break, left-align |result|
+    result->val.resize(dst-result->val.begin());
+  }
+  @< Catch block for reporting iteration number within
+     anonymously counted loop @>
+@)
+  push_value(std::move(result));
+}
+
+@ In case the loop body throws an error, no loop counter will be shown in the
+back trace, but we can record an iteration count as was done for |while| loops.
+@< Catch block for reporting iteration number within anonymously counted loop @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "During iteration " <<  n-1-c << " of the  counted for-loop";
+  e.trace(o.str());
+  throw;
+}
+
 @ For a counted loop using its index, we remain at the \Cpp\ level close to
-the \.{axis} loop being implemented, but we transform the bound |b| or |c| into
-our loop index. For decreasing loops we distinguish the case where the lower
+the \.{axis} loop being implemented, but we transform the given bound |b| or |c|
+into our loop index. For decreasing loops we distinguish the case where the lower
 bound is~$0$, the default value, since a test against a constant~$0$ is a bit
 more efficient.
 
@@ -6010,6 +6044,7 @@ more efficient.
   {@; if (err.depth-- > 0)
         throw;
   }
+  @< Catch block for reporting iteration number within indexed loop @>
 }
 
 @ The case where a result is accumulated just differs by adding the necessary
@@ -6051,7 +6086,30 @@ bits of stuff.
       // after break, left-align |result|
     result->val.resize(dst-result->val.begin());
   }
+  @< Catch block for reporting iteration number within indexed loop @>
   push_value(std::move(result));
+}
+
+@ Although we will not generate a local variable trace line for indexed loops,
+we can report the name and value of the loop counter when reporting the loop
+iteration number.
+@< Catch block for reporting iteration number within indexed loop @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "During iteration ";
+  if (in_forward(flags))
+  { --b; // back up to actual loop index
+    o << b-lwb << " (" << main_hash_table->name_of(id) << '=' << b @|
+      << ") of the counted for-loop";
+  }
+  else
+  {
+    o << (b+n-1)-c << " (" << main_hash_table->name_of(id) << '=' << c @|
+      << ") of the counted reversed for-loop";
+  }
+  e.trace(o.str());
+  throw;
 }
 
 @* Casts and operator casts.
