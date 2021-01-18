@@ -10,15 +10,13 @@ springer_table_*.at (A,BC,D,E,F,G)
 <simple_factors.at
 
 {partition-type classification of W-conjugacy classes in types A-D}
-set_type[
-A_class = [int],
-BC_class = ([int],[int]),  {ordered pair (P,Q), #P+#Q=n}
-D_class =
+
+set_type A_class = [int]
+set_type BC_class = ([int],[int]) {ordered pair (P,Q), #P+#Q=n}
+set_type[ D_class =
   ( ([int],[int]) unsplit_class
   | ([int],bool) split_class
-  )
-]
-
+  )]
 
 {uniform type all classical root systems}
 set_type [classical_class=

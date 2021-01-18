@@ -23,7 +23,7 @@ returns (degree, list of indices of characters of this degree)
 }
 set truncate(CharacterTable ct_G,[int] char)=(int,[int]):
 let dec=ct_G.decompose(char) then
-()=if ti_verbose then prints("truncating character: ", char, "  decomposed: ", ct_G.decompose(char)) fi then
+()=if ti_verbose then prints("truncating character: ", char, new_line,"decomposed: ", ct_G.decompose(char)) fi then
 min_degree=ct_G.root_datum.nr_of_posroots then
 rv=[int]:[] in
 for i:#dec do

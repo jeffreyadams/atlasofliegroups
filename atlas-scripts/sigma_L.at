@@ -1,9 +1,11 @@
+<isomorphism_W.at
 {O is an even nilpotent orbit, x in Cent(SL(2)),
  -> L=L_x = pseudo-Levi Cent(x)
  -> O_L = orbit in L_x
- -> sigma_L=Springer(O_L) \in hat(W_L)
- -> truncated induction of sigma_L\otimes sgn
- [Note: should be Springer(dual(O_L)]
+ -> O_L_v=d(O_L) = orbit in (L_x)^vee
+ -> sigma_L_v=Springer(O_L_v) \in hat(W_L_v)
+ -> truncated induction of sigma_L_v in hat(W_v)
+ -> sigma in hat(W) via W\simeq W_v
  from W_L to W: this (conjecturally) is sigma_L(x,1)
  where sigma_L: M(A-bar(O)) -> W^, M(*) is Lusztig's
  set of pairs  (x,\xi)
@@ -11,33 +13,39 @@
 
 set sigma_L_verbose=true
 
-{even orbit, ratvec v <-> t=exp(2\pi iv) -> L=Cent(x), O_L,
- -> Springer(O_L)\otimes sgn -> truncated induction -> sigma\in W^
+{even orbit O, RootDatum M, vec H_M,ratvec v
+ O is an orbit for RootDatum G
+ (M,H_M,v) will be from component_representative_plus(O)
+ L=Cent_G(\exp(2\pi iv)) is a pseudo-Levi
+ M is a pseudo-Levi
+ M\subset L\subset G
+ O intersects M in a single distinguished orbit O_M
+  this is the orbit with H_M
+ O_L = L.O_M, has H_L=dominant(H_M,L)
+ then sigma_L=Springer(O_L)\otimes sign 
+  [note: \otimes sgn is wrong for the exceptional orbits in E7/E8]
+ sigma_L is an irreducible representation of L^\vee
+ sigma=truncated_induction(\sigma_L) = irreducible representation of W(G^\vee)
+ except in G2/F4: W(G^vee)\simeq W(G) is the identity map on characters
+ in fact, same is true in G2, but not F4
 }
-set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,ratvec v)=int:
+set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,RootDatum M,vec H_M,ratvec v)=int:
 assert(is_even(orbit),"orbit is not even");
 if v.is_integer then  {L=G, don't need induction}
- let char=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) then
- ()=if sigma_L_verbose then prints("integral v,new_line, char #=", char, new_line,"char=", char) fi in
+ let char=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) in
  st.ct.character_index(char)
-else  {compute L, sigma_L, truncated_induce}
+else  {need induction; compute L, sigma_L, truncated_induce}
  let rd=orbit.root_datum then
  ()=if sigma_L_verbose then prints(("v=",v) ) fi then
- v=dominant(rd,v) then
  ()=if sigma_L_verbose then prints(("v=",v) ) fi then
  L=centralizer(rd,v) then
- orbits_L=L.orbits then
- {find an orbit O_L for L such that O_L.H is G-conjugate to orbit.H
-  if there is more than 1 print a warning, I'm not sure what this means}
- L_indices=##for i:#orbits_L do if  dominant(orbits_L[i].H,rd)=orbit.H  then [i] else [] fi od then
- ()=if #L_indices>1 then prints("WARNING: more than one L-orbit", L_indices) fi then
- j=L_indices[0] then
- H_L=orbits_L[j].H.ratvec_as_vec then
+ {O_M=ComplexNilpotent:(M,(),H_M) -> saturation -> O_L
+  O_L has the same H=H_M, but made L-dominant}
+ H_L=dominant(H_M,L) then
  ()=if sigma_L_verbose then prints(("L=", L) ) fi then
  ()=if sigma_L_verbose then prints(("H_L=", H_L) ) fi then
  O_L=ComplexNilpotent:(L,(),H_L) then
  ()=if sigma_L_verbose then prints(("O_L:", O_L.H, " ", O_L.diagram) ) fi then
- { L=O_L.root_datum then ?}
  roots_L=for alpha in L.simple_roots do find(rd.roots,alpha) od then
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
  sigma_L=
@@ -52,15 +60,73 @@ else  {compute L, sigma_L, truncated_induce}
   L_index=st_L.springer(O_L) then
   ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
   ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
-  sigma_L_0=st_L.characters[st_L.springer(O_L)] then
-  ()=if sigma_L_verbose then prints(("sigma_L_0: ", sigma_L_0) ) fi in
-  st_L.ct.tensor_sign(sigma_L_0)
+  sigma_L_0=st_L.characters[L_index] then
+  sigma_L=st_L.ct.tensor_sign(sigma_L_0)  in
+  sigma_L
  fi  {end if O_L=L.zero_orbit} then
- {for debugging: st_L.ct.decompose(sigma_L) should equal 1 in coordinate L_index, 0 else}
- (ignore_degree,char)=truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
- ()=if sigma_L_verbose then prints("character: ", char[0], new_line, st.ct.characters[char[0]]) fi
- in char[0]
+  (ignore_degree,char_indices)=truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
+  char=st.ct.characters[char_indices[0]] then
+  ()=if sigma_L_verbose then prints("character: ", char_indices[0], new_line, char) fi in
+  st.ct.character_index(char)
 fi
+
+{for testing issue of multiple orbits in L
+when there is more than one orbit in L, compute for all of them
+}
+{
+set sigma_L_even_debug(SpringerTable st,ComplexNilpotent orbit,RootDatum M,ratvec v)=[int]:
+assert(is_even(orbit),"orbit is not even");
+if v.is_integer then  {L=G, don't need induction}
+ let char_0=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) {before the exchange} then
+ ()=if sigma_L_verbose then prints("integral v,new_line, char #=", char, new_line,"char_0=", char_0) fi then
+ char=exchange_long_short(st.ct,char_0) then
+ ()=if sigma_L_verbose then prints("after exchanged char=", char) fi in
+ [st.ct.character_index(char)]
+else  {compute L, sigma_L, truncated_induce}
+ let rd=orbit.root_datum then
+ ()=if sigma_L_verbose then prints(("v=",v) ) fi then
+ v=dominant(rd,v) then
+ ()=if sigma_L_verbose then prints(("v=",v) ) fi then
+ L=centralizer(rd,v) then
+ orbits_L=L.orbits then
+ {find an orbit O_L for L such that O_L.H is G-conjugate to orbit.H
+  if there is more than 1 print a warning, I'm not sure what this means}
+ L_indices=##for i:#orbits_L do if  dominant(orbits_L[i].H,M)=orbit.H  then [i] else [] fi od then
+ ()=if #L_indices>1 then prints("WARNING: more than one L-orbit", L_indices) fi in
+ for j in L_indices do 
+  let H_L=orbits_L[j].H.ratvec_as_vec then
+  ()=if sigma_L_verbose then prints(("L=", L) ) fi then
+  ()=if sigma_L_verbose then prints(("H_L=", H_L) ) fi then
+  O_L=ComplexNilpotent:(L,(),H_L) then
+  ()=if sigma_L_verbose then prints(("O_L:", O_L.H, " ", O_L.diagram) ) fi then
+  { L=O_L.root_datum then ?}
+  roots_L=for alpha in L.simple_roots do find(rd.roots,alpha) od then
+  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
+  sigma_L=
+  if O_L=L.zero_orbit then
+   L.character_table.trivial {Springer(O_L)*sign}
+  elif O_L=L.principal_orbit then
+   L.character_table.sign {Springer(O_L)*sign}
+  else  {need to compute L.springer_table}
+   let ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
+   st_L=L.springer_table then
+   ()=if sigma_L_verbose then prints(("done") ) fi then
+   L_index=st_L.springer(O_L) then
+   ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
+   ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
+   sigma_L_0=st_L.characters[L_index] then
+   ()=if sigma_L_verbose then prints(("sigma_L_0: ", sigma_L_0) ) fi in
+   st_L.ct.tensor_sign(sigma_L_0)
+  fi  {end if O_L=L.zero_orbit} then
+  (ignore_degree,char_indices)=truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
+   char_0=st.ct.characters[char_indices[0]]  {before exchange} then
+  ()=if sigma_L_verbose then prints("character: ", char_indices[0], new_line, char_0) fi then
+   char=exchange_long_short(st.ct,char_0) then
+   ()=if sigma_L_verbose then prints("after exchanged char=", char) fi in
+   st.ct.character_index(char)
+ od
+fi
+}
 
 {orbit -> list of pairs (L,[v_1,...,v_n]) L is a pseudo-Levi}
 set pseudo_Levi_pairs(ComplexNilpotent orbit)=[(RootDatum,[ratvec])]:
@@ -70,41 +136,49 @@ let (,,pairs)=orbit.component_datum in pairs
  each ratvec v gives an element exp(2\pi iv) which is G-conjugate
  to an element of Cent(O)
 }
-set component_representatives(ComplexNilpotent orbit)=[ratvec]:
+set component_representatives(ComplexNilpotent orbit)=
 let (,,pairs)=orbit.component_datum in
- ##for (,ratvecs) in pairs do ratvecs od
+ ##for (L,ratvecs) in pairs do
+    for v in ratvecs do (L,v)
+    od
+   od
+
+set component_representatives_plus(ComplexNilpotent orbit)=[(RootDatum,vec,ratvec)]:
+let (,,triples)=orbit.component_datum_plus in
+ ##for (M,v,ratvecs) in triples do
+    for w in ratvecs do (M,v,w) od
+   od
 
 {use the j^th ratvec from component_representatives(orbit)}
-set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,int j)=int:
+{set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,int j)=int:
 sigma_L_even(st,orbit,component_representatives(orbit)[j])
+}
 
 {run over all ratvecs from component_representatives(orbit)}
 set sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=[int]:
-for v in component_representatives(orbit) do
- let ()=prints(new_line,"computing sigma_L for v=", v) in
- sigma_L_even(st,orbit,v) od
+for (M,H_M,v) in component_representatives_plus(orbit) do
+ let ()=prints(new_line,"computing sigma_L for M=", M, new_line,"H_M=",H_M,new_line, "v=", v) in
+ sigma_L_even(st,orbit,M,H_M,v) od
 
 set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=
-tabulate(["L","v","j","deg_j","char_j"]#
-##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
- let ()=prints("doing L:", L) in
-  for v in ratvecs do
-  let j=sigma_L_even(st,orbit,v) in
-   [L.nice_format, v.to_string,j.to_string,st.ct.degrees[j].to_string,st.ct.characters[j].to_string]
+tabulate(["L","v","M","H_M","j","deg_j","char_j"]#
+for (M,H_M,v) in component_representatives_plus(orbit) do
+ let ()=prints("doing M:", M) in
+  let j=sigma_L_even(st,orbit,M,H_M,v) in
+   [M.nice_format, v.to_string,M.nice_format,H_M.to_string,j.to_string,st.ct.degrees[j].to_string,st.ct.characters[j].to_string]
  od
-od
 )
 
 set show_sigma_L_even(SpringerTable st,[ComplexNilpotent] orbits)=
 tabulate(["orbit","L","v","j","dim_j","deg_j","name","tensor_sign name","char_j"]#
 ##for orbit in orbits do
- ##for (L,ratvecs) in pseudo_Levi_pairs(orbit) do
-  let ()= if sigma_L_verbose then prints("doing L:", L) fi  in
-   for v in ratvecs do
+ let ()=if sigma_L_verbose then prints("doing orbit: ", orbit.diagram) fi in
+ for (M,H_M,v) in component_representatives_plus(orbit) do
+  let ()= if sigma_L_verbose then prints("doing M:", M) fi  in
    let ()=prints("doing v: ", v) in
-   let j=sigma_L_even(st,orbit,v) in
+   let j=sigma_L_even(st,orbit,M,H_M,v) in
     [orbit.diagram.to_string,
-    L.nice_format,
+    M.nice_format,
     v.to_string,
     j.to_string,
     st.ct.dimension(j).to_string,
@@ -114,7 +188,6 @@ tabulate(["orbit","L","v","j","dim_j","deg_j","name","tensor_sign name","char_j"
     st.ct.characters[j].to_string]
    od
  od
-od
 )
 
 set show_sigma_L_even(SpringerTable st)=void:
