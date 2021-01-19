@@ -117,8 +117,15 @@ set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
 set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
 set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
 set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace od    {reflection}
+
+{tensor_sign: [int] -> [int]}
 set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
 set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
+
+{tensor_sgn: int->int}
+set tensor_sign_index(CharacterTable ct, int index)=int:
+ct.character_index(ct.tensor_sign(ct.characters[index]))
+set tensor_sign_index(CharacterTable ct)=(int->int):(int index):tensor_sign_index(ct,index)
 
 {table [[int]] of size (n_classes x #posroots_1)
 table[i]=character of sym^i(reflection)

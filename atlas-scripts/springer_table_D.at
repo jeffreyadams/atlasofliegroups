@@ -315,7 +315,10 @@ orbits=rd.orbits then
 reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
 springer_hash_reps=springer_D_by_hash(ct) {ComplexNilpotent->D_irrep} then
 springer(ComplexNilpotent O_0 {not necessarily for sc group})=  {=int}
- let O=orbit_by_diagram(rd,[O_0.diagram]) then
+{ let O=orbit_by_diagram(rd,[O_0.diagram]) then}
+{O_0.diagram might not be the diagram of an orbit, need to
+use O_0.diagram_normalized}
+ let O=orbit_by_diagram(rd,O_0.diagram_normalized) then
  rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
 dual_map(ComplexNilpotent O)=ComplexNilpotent:
  let P=partition_of_orbit_D(O) then
