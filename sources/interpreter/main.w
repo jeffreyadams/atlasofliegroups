@@ -624,14 +624,18 @@ catch (error_base& err)
     std::cerr << "Internal error: ";
   std::cerr << err.message << "\n";
 @)
-  std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
-  *back_trace_pointer=new_trace;
-  std::vector<shared_value>& trace = new_trace->val;
-  trace.reserve(length(err.back_trace));
-    // order inwards towards point of failure
-  for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
-    trace.push_back(std::make_shared<string_value>(std::move(*it)));
-    // back trace element
+  if (not err.back_trace.empty())
+  {
+    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
+    *back_trace_pointer=new_trace;
+    std::vector<shared_value>& trace = new_trace->val;
+    trace.reserve(length(err.back_trace));
+      // order inwards towards point of failure
+    for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
+      trace.push_back(std::make_shared<string_value>(std::move(*it)));
+      // back trace element
+  }
+@)
   std::cerr << "Evaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();

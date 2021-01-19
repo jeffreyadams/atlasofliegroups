@@ -5642,15 +5642,16 @@ if (l!=no_value)
 
 @ Correspondingly, when an error is thrown from the loop body, we indicate the
 iteration number in the back trace. This code too is shared among the initial
-$5$ kinds of for-loop evaluators. In the reserve looping case the index~|i| will
-have been decreased before the loop body is executed, so the difference with
-|n-1| gives the iteration number.
+$5$ kinds of for-loop evaluators. We are using |while| loops in which the
+index~|i| has been increased or decreased \emph{before} the loop body is
+executed, so the code below compensates for that to print the actual count
+(from~$0$) of the iteration.
 
 @< Catch block for reporting iteration number within loop that threw @>=
 catch (error_base& e)
 {
   std::ostringstream o;
-  o << "During iteration " << (in_forward(flags) ? i : n-1-i) @|
+  o << "During iteration " << (in_forward(flags) ? i-1 : n-1-i) @|
     << " of the " << (in_forward(flags) ? "" : "reversed ") << "for-loop";
   e.trace(o.str());
   throw;

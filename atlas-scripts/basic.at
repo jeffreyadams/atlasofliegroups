@@ -7,7 +7,7 @@ set_type
 , maybe_a_mat =     ( void no_mat | mat solution )
 ]
 
-set trace_error() = void: for line in back_trace do prints(line) od
+set where() = void: for line in back_trace do prints(line) od
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
