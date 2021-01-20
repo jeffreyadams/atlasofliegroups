@@ -2128,7 +2128,7 @@ the presence of a central torus part.
   { std::ostringstream o;
      o << "Involution should be a " @|
        << r << 'x' << r << " matrix;"
-        " received a "  << delta.numRows() << 'x' << delta.numColumns()
+     @| " received a "  << delta.numRows() << 'x' << delta.numColumns()
       << " matrix";
     throw runtime_error(o.str());
   }

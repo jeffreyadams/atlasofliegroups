@@ -2512,7 +2512,7 @@ inform whether a result value should be produced at all, and if so whether it
 should be expanded on the |execution_stack| in case it is a tuple.
 
 @< Type definitions @>=
-typedef void (* wrapper_function)(expression_base::level);
+typedef void @[(* wrapper_function)@](expression_base::level);
 
 @ The following function will greatly
 facilitate the later repetitive task of installing wrapper functions.

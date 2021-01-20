@@ -432,9 +432,9 @@ called when an additional input stream is exhausted.
 
 @< Class declarations @>=
 class BufferedInput
-{ typedef char* (*rl_type)(const char* );
+{ typedef char* @[(*rl_type)@] (const char* );
      // |typedef| avoids inclusion of \.{readline} headers
-  typedef void (*add_hist_type) (const char* );  // this one too
+  typedef void @[(*add_hist_type)@] (const char* );  // this one too
   @< Define |struct input_record@;| @> // a local class
   @< Define |struct file_stack@;| @> // another one, using the previous
 

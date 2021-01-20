@@ -311,8 +311,7 @@ void expr::set_from (expr& other)
   loc = other.loc;
 }
 @)
-expr::expr (expr&& other) : kind(no_expr) @+
-{@; set_from(other); }
+expr::expr (expr&& other) : kind(no_expr) @+ {@; set_from(other); }
 
 void expr::operator= (expr&& other)
 {@;

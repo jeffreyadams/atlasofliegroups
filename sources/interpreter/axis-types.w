@@ -1370,7 +1370,8 @@ template<bool is_union>
 
 struct rank_comparer
 { const std::vector<type_data>& type_arr;
-  int (*cmp)(const type_data*, const type_data*, const std::vector<type_data>&);
+  int @[(*cmp)@]
+    (const type_data*, const type_data*, const std::vector<type_data>&);
 @)
   rank_comparer(type_tag kind,const std::vector<type_data>& a)
   : type_arr(a)
@@ -2125,7 +2126,7 @@ struct value_base
 @)
 // |static const char* name();| just a model; defined in derived classes
 @)
-  value_base& operator=(const value_base& x) = @[delete@];
+  value_base& @[operator=(const value_base& x) = delete@];
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
 @)
@@ -3332,8 +3333,8 @@ store an |std::ostringstream| object permanently, but that type is really ill
 suited to be part of an error value, notably because it is impossible to
 implement the |what| method so as to present its contents: the |str| method can
 return the contents as a |std::string|, but unless that string is then stored
-separately in the error value, its lifetime will be to short to produce a value
-|char*| pointer to be returned from |what|. So we finally decided the only
+separately in the error value, its lifetime will be to short to produce a valid
+|(char*)| pointer to be returned from |what|. So we finally decided the only
 reasonable way to proceed is to not provide a string extension method here, and
 instead require the caller to construct (just before throwing) an error string
 using a temporary |std::ostringstream| and call its |str| method while throwing

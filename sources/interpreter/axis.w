@@ -2018,7 +2018,7 @@ determined at run time. The distinction is handled though the virtual methods
 kinds of function objects at once.
 
 To evaluate a |call_expression| object, we first evaluate this function part,
-and then dynamically cast it to a |function_base f| (which should always
+and then dynamically cast it to a |function_base f@;| (which should always
 succeed, assuming type checking is sound). Then we evaluate the arguments
 according to the |f->argument_policy()|, and then call |f->apply|, which should
 find the arguments in the form it expects.
@@ -3051,7 +3051,7 @@ struct closure_call : public overloaded_call
 as a |name| to call itself and a |source_location| for the call. The method
 |build_call| constructs a shared pointer |me| to the |closure_value| object it is
 called for, but whose sharing is managed by a separately provided |shared_ptr
-owner|, and constructs a |closure_call| from that pointer and the provided
+owner@;|, and constructs a |closure_call| from that pointer and the provided
 argument(s) |arg|, and named according to the separately provided |name|.
 
 @< Function def... @>=
@@ -5286,8 +5286,8 @@ keywords |do| and~\&{od}.
 
 @< Function definitions @>=
 void print_body(std::ostream& out,const expression_ptr& body,unsigned flags)
-{@; out << (in_reversed(flags) ? " ~do " : " do ")  << *body
-        << (out_reversed(flags) ? " ~od " : " od ");
+{ out << (in_reversed(flags) ? " ~do " : " do ")  << *body
+  @|  << (out_reversed(flags) ? " ~od " : " od ");
 }
 @)
 template <unsigned flags, subscr_base::sub_type kind>
