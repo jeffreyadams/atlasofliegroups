@@ -28,11 +28,6 @@ namespace atlas {
 
 namespace containers {
 
-template<typename T,typename Alloc>
-  class simple_list;
-template<typename T,typename Alloc>
-  class sl_list;
-
 // when Alloc is not |std::allocator|, we need a deleter class for |unique_ptr|
 // that calls the Alloc destroyer and then deallocator, rather than |::delete|
 
@@ -82,7 +77,7 @@ typename std::allocator_traits<Alloc>::pointer
 /* The basic node type used by |simple_list| and |sl_list|
    It needs the |Alloc| template parameter to paramaterise |std::unique_ptr|
  */
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
 struct sl_node
 {
   using node_alloc_type =
@@ -112,7 +107,7 @@ struct sl_node
     while (next.get()!=nullptr) // this loop bounds recursion depth to 2
       next.reset(next->next.release()); // this destroys just the following node
   }
-}; // |class sl_node| template
+}; // |struct sl_node| template
 
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
@@ -179,8 +174,7 @@ public:
 
 }; // |class sl_list_iterator| template
 
-template<typename T, typename Alloc> class weak_sl_list_iterator;
-template<typename T, typename Alloc = std::allocator<T> >
+template<typename T, typename Alloc>
   class weak_sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
