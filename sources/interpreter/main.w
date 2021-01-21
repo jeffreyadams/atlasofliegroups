@@ -135,10 +135,12 @@ dependency on the readline library.
 @< Conditionally include some header files @>
 
 @< Declaration of interface to the parser @>@;
-namespace { @< Local static data @>@; }@;
+namespace {@; @< Local static data @>@; }
 @< Definitions of global namespace functions @>@;
-namespace atlas { namespace interpreter {@< Definitions of other functions @>@;
-}@;}@;
+namespace atlas
+{ namespace interpreter
+  {@; @< Definitions of other functions @>@;}
+}
 @/
 @< Main program @>
 
@@ -700,12 +702,14 @@ char* id_completion_func(const char* text, int state)
           global_id_table->present(id)))
     { char* result=static_cast<char*>(std::malloc(std::strlen(s)+1));
       if (result==nullptr)
-        @[throw std::bad_alloc()@];
+        throw std::bad_alloc();
       return std::strcpy(result,s);
     }
   }
   return nullptr; /* if loop terminates, report failure */
 }
+@
+@c
 
 @ The readline library needs to know where to break the input into words that
 may be completed. The value |lexical_break_chars| reflects what our lexical

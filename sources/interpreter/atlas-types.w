@@ -41,9 +41,9 @@ programming language of that name, which is independent of the Atlas library.
 @c
 namespace atlas { namespace interpreter {
 @< Global variable definitions @>
-namespace {@; @< Local function definitions @>@; }@;
+namespace {@; @< Local function definitions @>@; }
 @< Function definitions @>@;
-}@; }@;
+}}
 
 @ As usual the external interface is written to the header file associated to
 this file.
@@ -59,7 +59,7 @@ this file.
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of exported functions @>@;
-}@; }@;
+}}
 #endif
 
 @ In execution, the main role of this compilation unit is to install the stuff
@@ -123,7 +123,7 @@ struct Lie_type_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Lie type"; }
-  Lie_type_value @[(const Lie_type_value& v) = default@];
+  Lie_type_value (const Lie_type_value& v) = default;
     // we use |get_own<Lie_type_value>|
 @)
   void add_simple_factor (char,unsigned int); // grow
@@ -1009,7 +1009,7 @@ public:
   static shared_root_datum build(PreRootDatum&& pre);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
-  root_datum_value @[(const root_datum_value& ) = delete@];
+  root_datum_value (const root_datum_value& ) = delete;
 @)
   shared_root_datum dual() const; // get dual datum through |build|
   inner_class_weak_ptr& lookup (const WeightInvolution& delta) const;
@@ -1749,7 +1749,7 @@ struct W_elt_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Weyl group element"; }
-  W_elt_value @[(const W_elt_value& ) = default@];
+  W_elt_value (const W_elt_value& ) = default;
     // we use |get_own<W_elt_value>|
 
 };
@@ -2483,7 +2483,7 @@ static shared_inner_class build
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "inner class"; }
-  inner_class_value @[(const inner_class_value& ) = delete@];
+  inner_class_value (const inner_class_value& ) = delete;
 @)
   shared_inner_class dual () const;
 @) // tables for |real_form_value| identification:
@@ -2897,7 +2897,7 @@ public:
     const RatCoweight& coch, const TorusPart& tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
-  real_form_value @[(const real_form_value& ) = delete@];
+  real_form_value (const real_form_value& ) = delete;
 @)
   const KGB& kgb () const @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
@@ -3390,7 +3390,7 @@ struct Cartan_class_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Cartan class"; }
-  Cartan_class_value @[(const Cartan_class_value& ) = delete@];
+  Cartan_class_value (const Cartan_class_value& ) = delete;
 };
 @)
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
@@ -3795,7 +3795,7 @@ struct KGB_elt_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "KGB element"; }
-  KGB_elt_value @[(const KGB_elt_value& ) = default@];
+  KGB_elt_value (const KGB_elt_value& ) = default;
     // we use |get_own<KGB_elt_value>|
 };
 @)
@@ -4163,7 +4163,7 @@ struct Block_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "KGB element"; }
-  Block_value @[(const Block_value& ) = delete@];
+  Block_value (const Block_value& ) = delete;
 };
 @)
 typedef std::unique_ptr<Block_value> Block_ptr;
@@ -4438,7 +4438,7 @@ struct module_parameter_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "module parameter"; }
-  module_parameter_value @[(const module_parameter_value& ) = default@];
+  module_parameter_value (const module_parameter_value& ) = default;
     // we use |get_own<module_parameter_value>|
 
 @)
@@ -4932,7 +4932,7 @@ void print_pc_block_wrapper(expression_base::level l)
   else
   {
     *output_stream << "Subset {";
-    for (auto @[n : less@]@;@;)
+    for (auto n : less)
       *output_stream << n << ',';
     *output_stream << init_index << "} in the following common block:\n";
   }
@@ -5043,7 +5043,7 @@ void block_Hasse_wrapper(expression_base::level l)
   auto n= block.size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   for (unsigned j=0; j<n; ++j)
-    for (@[ unsigned int i : Bruhat.hasse(j) @]@;@;)
+    for (unsigned int i : Bruhat.hasse(j))
       M->val(i,j)=1;
   push_value(std::move(M));
 }
@@ -5691,7 +5691,7 @@ struct split_int_value : public value_base
   ~split_int_value()@+ {}
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "split integer"; }
-  split_int_value @[(const split_int_value& v) = default@];
+  split_int_value (const split_int_value& v) = default;
     // we use |get_own<split_int_value>|
 };
 @)
@@ -5824,7 +5824,7 @@ struct virtual_module_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "module parameter"; }
-  virtual_module_value @[(const virtual_module_value& v) = default@];
+  virtual_module_value (const virtual_module_value& v) = default;
     // we use |get_own<virtual_module_value>|
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
@@ -6619,7 +6619,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
   }
 @)
   repr::SR_poly result;
-  for (@[const auto& t : res@]@;@;) // transform to |std::map|
+  for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }

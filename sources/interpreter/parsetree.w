@@ -46,8 +46,8 @@ namespace atlas
   namespace interpreter
   {
 @< Type declarations for the parser @>@;
-  }@;
-}@;
+  }
+}
 #endif
 
 
@@ -81,8 +81,8 @@ namespace atlas
 @< Declarations of functions for the parser @>@;
 
 @< Declarations of functions not for the parser @>@;
-  }@;
-}@;
+  }
+}
 
 #endif
 
@@ -100,8 +100,8 @@ namespace atlas
   {
 @< Definitions of functions for the parser @>@;
 @< Definitions of functions not for the parser @>@;
-  }@;
-}@;
+  }
+}
 
 @*1 Outline of the type \ {\bf expr}.
 %
@@ -235,8 +235,8 @@ do no harm even if they were implicitly assumed.
 
 @< Methods of |expr| @>=
 expr() : kind(no_expr), loc() @+{}
-@/expr(const expr& x) = @[delete@];
-expr& operator=(const expr& x) = @[delete@];
+@/expr(const expr& x) = delete;
+expr& operator=(const expr& x) = delete;
 ~expr();
 void clear();
 // revert to |no_expr| state, defined below using a large |switch| statement
@@ -439,7 +439,7 @@ the value $0$, so we provide that string rather than |"0"| here.
 expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc)
 { std::unique_ptr<std::string>p(val_p); // this ensures clean-up
   if (val_p==nullptr)
-    p.reset(@[new std::string@]); // empty string will convert to $0$
+    p.reset(new @[std::string@]); // empty string will convert to $0$
   return new expr(std::move(*p),loc,expr::int_tag());
 }
 
@@ -558,9 +558,9 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
 expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
 expr_p make_break (unsigned n,const YYLTYPE& loc)
-{@; return new expr(loc,@[expr::break_tag{n}@]); }
+{@; return new expr(loc,expr::break_tag{n}); }
 expr_p make_return (expr_p exp,const YYLTYPE& loc)
-{@; return new expr(exp,loc,@[expr::return_tag{}@]); }
+{@; return new expr(exp,loc,expr::return_tag{}); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
@@ -903,7 +903,7 @@ since binding a freshly constructed |expr| to the modifiable lvalue that
 expr_p make_application_node(expr_p f, raw_expr_list r_args,
  const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right)
 { expr_ptr ff(f); expr_list args(r_args);
-  app a(new application_node @[{ std::move(*ff), expr() }@]);
+  app a(new application_node { std::move(*ff), expr() });
   if (args.singleton())
     a->arg.set_from(args.front());
   else
@@ -981,7 +981,7 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y,
   args.push_front(std::move(*xx)); // build up lest back-to-front
   expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
   app a(new application_node @|
-    @[{ expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) }@]);
+    { expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) });
   return new expr(std::move(a),loc); // move construct application expression
 }
 
@@ -1171,8 +1171,8 @@ struct formula_node
 @/{ expr left_subtree; @+ expr op_exp; @+ int prio;
 @/  formula_node(expr&& l,expr&& o, int prio)
     : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
-@/  formula_node@[(const formula_node& x) = delete@];
-@/  formula_node@[(formula_node&& x) = delete@];
+@/  formula_node (const formula_node& x) = delete;
+@/  formula_node (formula_node&& x) = delete;
 };
 @)
 typedef containers::sl_node<formula_node>* raw_form_stack;
@@ -1181,8 +1181,8 @@ struct form_stack : public containers::stack<formula_node>
   using sub_base = containers::mirrored_simple_list<formula_node>;
   using ssub_base = containers::simple_list<formula_node>; // sub-sub base
 @)
-  form_stack() : @[base()@] @+{}
-  form_stack(raw_form_stack s) : @[base{sub_base{ssub_base{s}}}@] @+{}
+  form_stack() : base() @+{}
+  form_stack(raw_form_stack s) @| : base{sub_base{ssub_base{s}}} @+{}
     // resuscitate stack from raw pointer
   raw_form_stack release() @+{@; return c.release(); }
     // inanimate the stack to a raw pointer
@@ -1338,10 +1338,10 @@ struct id_pat
   id_pat (id_type n, unsigned char k, patlist&& l)
   : name(n), kind(k), sublist(std::move(l)) @+{}
 @)
-  id_pat (const id_pat& x) = @[ delete @];
-@/id_pat& operator=(const id_pat& x) = @[ delete @];
-@/id_pat (id_pat&& x) = @[ default @];
-@/id_pat& operator=(id_pat&& x) = @[ default @];
+  id_pat (const id_pat& x) =  delete;
+@/id_pat& operator=(const id_pat& x) = delete;
+@/id_pat (id_pat&& x) = default;
+@/id_pat& operator=(id_pat&& x) = default;
   raw_id_pat release()
   @+{@; return { name, kind, sublist.release() }; }
 };

@@ -55,7 +55,7 @@ namespace atlas { namespace interpreter {
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
 @< Template and inline function definitions @>@;
-}@; }@;
+}}
 #endif
 
 @ The implementation unit follows the usual pattern, although not all possible
@@ -68,9 +68,9 @@ namespace atlas { namespace interpreter {
 @< Global variable definitions @>@;
 namespace {@;
 @< Local function definitions @>@;
-}@;
+}
 @< Global function definitions @>@;
-}@; }@;
+}}
 
 @* The global identifier table.
 %
@@ -124,8 +124,8 @@ class id_data
 public:
   id_data(shared_share&& val,type_expr&& t,bool is_const)
   : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
-  id_data @[(id_data&& x) = default@];
-  id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
+  id_data (id_data&& x) = default;
+  id_data& operator=(id_data&& x) = default; // no copy-and-swap needed
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
 @)
   const shared_share& value() const @+{@; return val; }
@@ -153,8 +153,8 @@ class Id_table
 { typedef std::map<id_type,id_data> map_type;
   map_type table;
 public:
-  Id_table(const Id_table&) = @[ delete @];
-  Id_table& operator=(const Id_table&) = @[ delete @];
+  Id_table(const Id_table&) = delete;
+  Id_table& operator=(const Id_table&) = delete;
   Id_table() : table() @+{} // the default and only constructor
 @)
   void add(id_type id, shared_value v, type_expr&& t, bool is_const);
@@ -362,9 +362,9 @@ class overload_data
 public:
   overload_data(shared_function&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
-  overload_data @[(overload_data&& x) = default@];
-  overload_data& operator=(overload_data&& x)
-   = @[default@]; // no copy-and-swap needed
+  overload_data (overload_data&& x) = default;
+  overload_data& operator=(overload_data&& x) = default;
+   // no copy-and-swap needed
 @)
   const shared_function& @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
@@ -403,8 +403,8 @@ public:
 private:
   map_type table;
 public:
-  overload_table @[(const Id_table&) =delete@];
-  overload_table& operator=(const Id_table&) = @[delete@];
+  overload_table (const Id_table&) =delete;
+  overload_table& operator=(const Id_table&) = delete;
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
   const variant_list& variants(id_type id) const;
@@ -1881,7 +1881,7 @@ struct int_value : public value_base
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
   void print(std::ostream& out) const @+{@; out << val; }
   static const char* name() @+{@; return "integer"; }
-  int_value @[(const int_value& ) = default@]; // we use |get_own<int_value>|
+  int_value (const int_value& ) = default; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
   arithmetic::Numer_t long_val () const @+{@; return val.long_val(); }
@@ -1898,12 +1898,12 @@ struct rat_value : public value_base
 @)
   void print(std::ostream& out) const @+{@; out << val; }
   static const char* name() @+{@; return "rational"; }
-  rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
+  rat_value (const rat_value& ) = default; // we use |get_own<rat_value>|
 @)
-  big_int numerator@[() const &@] @+{@; return val.numerator(); }
-  big_int denominator@[() const &@] @+{@; return val.denominator(); }
-  big_int&& numerator@[() &@] @+{@; return std::move(val).numerator(); }
-  big_int&& denominator@[() &@] @+{@; return std::move(val).denominator(); }
+  big_int numerator() const & @+{@; return val.numerator(); }
+  big_int denominator() const & @+{@; return val.denominator(); }
+  big_int&& numerator() & @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() & @+{@; return std::move(val).denominator(); }
   RatNum rat_val() const @+{@; return val.rat_val(); }
 };
 @)
@@ -1923,7 +1923,7 @@ struct string_value : public value_base
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
   static const char* name() @+{@; return "string"; }
-  string_value @[(const string_value& ) = delete@];
+  string_value (const string_value& ) = delete;
 };
 @)
 typedef std::shared_ptr<const string_value> shared_string;
@@ -1937,7 +1937,7 @@ struct bool_value : public value_base
   ~bool_value()@+ {}
   void print(std::ostream& out) const @+{@; out << std::boolalpha << val; }
   static const char* name() @+{@; return "Boolean"; }
-  bool_value @[(const bool_value& ) = delete@];
+  bool_value (const bool_value& ) = delete;
 };
 @)
 typedef std::shared_ptr<const bool_value> shared_bool;
@@ -1999,7 +1999,7 @@ struct vector_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "vector"; }
-  vector_value @[(const vector_value& ) = default@];
+  vector_value (const vector_value& ) = default;
     // we use |get_own<vector_value>|
 };
 @)
@@ -2021,7 +2021,7 @@ struct matrix_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "matrix"; }
-  matrix_value @[(const matrix_value& ) = default@];
+  matrix_value (const matrix_value& ) = default;
     // we use |get_own<matrix_value>|
 };
 @)
@@ -2054,7 +2054,7 @@ struct rational_vector_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "rational vector"; }
-  rational_vector_value @[(const rational_vector_value& ) = default@];
+  rational_vector_value (const rational_vector_value& ) = default;
     // we use |get_own|
 };
 @)
