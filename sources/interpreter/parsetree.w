@@ -1629,8 +1629,8 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct lambda_node* lambda;
-typedef struct rec_lambda_node* rec_lambda;
+typedef struct lambda_node* lambda_p;
+typedef struct rec_lambda_node* rec_lambda_p;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
 defined in \.{axis-types.w}), an expression (the body of the function), and
@@ -1665,17 +1665,17 @@ lambda_expr,rec_lambda_expr,@[@]
 
 @ We introduce the variant of |expr| as usual.
 @< Variants of ... @>=
-lambda lambda_variant;
-rec_lambda rec_lambda_variant;
+lambda_p lambda_variant;
+rec_lambda_p rec_lambda_variant;
 
 @ There are constructors for building lambda expressions, and recursive ones.
 @< Methods of |expr| @>=
-expr(lambda fun, const YYLTYPE& loc)
+expr(lambda_p fun, const YYLTYPE& loc)
  : kind(lambda_expr)
  , lambda_variant(fun)
  , loc(loc)
 @+{}
-expr(rec_lambda fun, const YYLTYPE& loc)
+expr(rec_lambda_p fun, const YYLTYPE& loc)
  : kind(rec_lambda_expr)
  , rec_lambda_variant(fun)
  , loc(loc)
@@ -1722,7 +1722,7 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
   @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
   // make tuple type
   }
-  return new expr(lambda(new@| lambda_node
+  return new expr(lambda_p(new@| lambda_node
       (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
 @)
@@ -1745,13 +1745,13 @@ expr_p make_rec_lambda_node(id_type self,
   @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
   // make tuple type
   }
-  return new expr(rec_lambda(new@| rec_lambda_node
+  return new expr(rec_lambda_p(new@| rec_lambda_node
       (self,std::move(pattern),std::move(parameter_type),@|
        std::move(*body_p),std::move(*body_t))
       ),loc);
 }
 
-@ Since |lambda| and |rec_lambda| are raw pointers, we can just assign here.
+@ Since |lambda_p| and |rec_lambda_p| are raw pointers, we can just assign here.
 @< Cases for copying... @>=
 case lambda_expr: lambda_variant=other.lambda_variant;
 break;

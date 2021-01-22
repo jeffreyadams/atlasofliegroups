@@ -131,7 +131,7 @@ void BitSetBase<2>::operator<<= (unsigned int c)
     return;
   if (c < 32)
   {
-    chunk f = d_bits0&~constants::lMask[32-c]; // the |c| bits shifted out
+    bitset_chunk f = d_bits0&~constants::lMask[32-c]; // the |c| bits shifted out
     d_bits1 <<= c; // shift out high word
     d_bits1 |= f >> (32 - c); // do "carry over"
     d_bits0 <<= c; // shift remander of low word
@@ -154,7 +154,7 @@ void BitSetBase<2>::operator>>= (unsigned int c)
     return;
   if (c < 32)
   {
-    chunk f = d_bits1&constants::lMask[c]; // the |c| bits shifted out
+    bitset_chunk f = d_bits1&constants::lMask[c]; // the |c| bits shifted out
     d_bits0 >>= c;
     d_bits0 |= f << (32 - c);
     d_bits1 >>= c;
