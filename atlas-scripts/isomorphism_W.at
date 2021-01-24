@@ -1,0 +1,53 @@
+{some isomorphisms of Weyl groups not coming from root systems
+ for example W(rd)\simeq W(dual(rd))
+}
+
+{v=e_j for some j}
+set index_standard_basis(vec v)=int:
+let j=first(for i:#v do !=v[i] od) in assert(e(#v,j)=v);j
+
+set no_F_factor(RootDatum rd)=bool:
+all(for f in rd.simple_factors do let (letter,)=simple_type(f.derived) in letter != "F" od)
+
+{M=permutation matrix ->
+permutation of [0,1,...,n-1] defined by a
+M*e(n,j)=e(n,M*j)
+atlas> M
+Value:
+| 0, 1, 0 |
+| 0, 0, 1 |
+| 1, 0, 0 |
+atlas> M*e(3,0)=e(3,2)
+Value: true
+atlas> M*0=2
+Value: true
+atlas> all(for i:3 do M*e(3,i)=e(3,M*i) od)
+Value: true
+}
+set *(mat M,int i)=index_standard_basis(M[i])
+
+set *(mat M,WeylElt w)=WeylElt: W_elt(w.root_datum,for i in w.word do M*i od)
+
+set permute(mat M,[WeylElt] classes)=[WeylElt]:
+for w in classes do classes[first(for y in classes do is_conjugate(M*w,y) od)] od
+
+set induced_permutation(mat M,[WeylElt] classes)=[int]:
+for w in classes do first(for y in classes do is_conjugate(M*w,y) od) od
+
+set permute_character(mat M,[WeylElt] classes,[int] char)=[int]:
+let ind=induced_permutation(M,classes) in
+ for i:#char do char[ind[i]] od
+
+set permute_character(mat M,CharacterTable ct,[int] char)=[int]:
+permute_character(M,ct.class_representatives,char)
+
+set exchange_long_short(CharacterTable ct,[int] char)=[int]:
+if no_F_factor(ct.root_datum) then char else
+ let rd=ct.root_datum then
+ M=root_permutations(rd,dual(rd))[0] in
+ if M=id_mat(#M)
+  then char
+ else
+  permute_character(M,ct,char)
+ fi
+fi
