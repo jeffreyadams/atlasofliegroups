@@ -1,0 +1,554 @@
+<W_reps_type_BC.at
+<nilpotent_centralizer.at
+
+set partition_sum(Partition P,Partition Q)=Partition:
+if #P<=#Q then pad(P,#Q) + Q else pad(Q,#P)+P fi
+
+set dual_orbit(Partition P)=
+let P=reverse_sort(P) in 
+if is_even(sum(P)) then  {G^vee type C/G type B}
+B_collapse(transpose(reverse_sort(B_collapse(add_one(P)))))
+else
+C_collapse(transpose(reverse_sort(C_collapse(subtract_one(P)))))
+fi
+
+set complex_nilpotent_from_partition(RootDatum rd, Partition p)=
+ComplexNilpotent:(rd,(),semisimple_element(rd,p))
+
+set dim_nilpotent_partition(RootDatum rd,Partition p)=
+dim_nilpotent(complex_nilpotent_from_partition(rd,p))
+
+set print_nilpotent_orbit_partitions(RootDatum rd)=
+let orbits=nilpotent_orbit_partitions(rd) then
+header=["Partition","H","diagram","symbol","Sp","dim","cent","A(O)","dual"] then
+values=for P in orbits do
+let orbit=complex_nilpotent_from_partition(rd,P) in
+ [P.to_string,
+ semisimple_element(rd,P).to_string,
+ orbit.diagram.to_string,
+ P.symbol.to_string,
+ P.special_star,
+ dim_nilpotent_partition(rd,P).to_string,
+ orbit.centralizer.nice_format,
+ orbit.component_datum.orders.to_string,
+ P.dual_orbit.to_string]
+ od in
+ tabulate(header#values,"lllllllll",2," ")
+
+set print_nilpotent_orbit_partitions_special_only(RootDatum rd)=
+let orbits=nilpotent_orbit_partitions(rd) then
+special_orbits=##for P in orbits do if P.is_special then [P] else [] fi od then
+header=["Partition","H","diagram","symbol","Sp","dim","cent","A(O)","dual"] then
+values=for P in special_orbits do
+let orbit=complex_nilpotent_from_partition(rd,P) in
+ [P.to_string,
+ semisimple_element(rd,P).to_string,
+ orbit.diagram.to_string,
+ P.symbol.to_string,
+ P.special_star,
+ dim_nilpotent_partition(rd,P).to_string,
+ orbit.centralizer.nice_format,
+ orbit.component_datum.orders.to_string,
+ P.dual_orbit.to_string] 
+ od in
+ tabulate(header#values,"lllllllll",2," ")
+
+set print_nilpotent_orbit_partitions(RootDatum rd,[vec] orbits)=
+let header=["Partition","H","diagram","symbol","Sp","dim"] then
+values=for P in orbits do
+ [P.to_string,semisimple_element(rd,P).to_string,complex_nilpotent_from_partition(rd,P).diagram.to_string,P.symbol.to_string,P.special_star,dim_nilpotent_partition(rd,P).to_string] od in
+ tabulate(header#values,"llllll",2," ")
+
+set print_nilpotent_orbit_partition(RootDatum rd,vec orbit)=
+let header=["Partition","H","diagram","symbol","Sp","dim"] then
+values=for P in [orbit] do
+ [P.to_string,semisimple_element(rd,P).to_string,complex_nilpotent_from_partition(rd,P).diagram.to_string,P.symbol.to_string,P.special_star,dim_nilpotent_partition(rd,P).to_string] od in
+ tabulate(header#values,"llllll",2," ") 
+
+set_type ClassicalOrbitSymbol=(int,([int,int,bool]),int)
+set_type OrbitSymbol=([(int,int)],ClassicalOrbitSymbol)
+
+set first(ClassicalOrbitSymbol (a,,))=a
+set last(ClassicalOrbitSymbol (,,a))=a
+set middle(ClassicalOrbitSymbol (,a,))=a
+
+set GL_part(OrbitSymbol (pairs,))=[(int,int)]: pairs
+set classical_part(OrbitSymbol (,qdsymbol))=ClassicalOrbitSymbol:qdsymbol
+
+set sum(ClassicalOrbitSymbol S)=
+max(S.first,0)+max(S.last,0) + sum(##for (x,y,a) in S.middle do [x,y] od)
+
+set sum(OrbitSymbol S)=
+sum(##for (a,b) in S.GL_part do [a,b] od) + sum(S.classical_part)
+
+set root_datum(OrbitSymbol S)=
+let n=sum(S) in
+ if n.is_even then Sp(n) else SO(n) fi
+
+set partitions_all_even_parts(int n)=
+assert(n.is_even, "n must be even");
+for p in partitions(n\2) do 2*p od
+
+set partitions_all_odd_parts(int n)=
+assert(n.is_odd, "n must be odd");
+##for p in partitions(n) do
+ if all(for x in p do is_odd(x) od) then [p] else [] fi od
+
+set cores(int n)=
+if n.is_even then
+ let partitions=
+  for P in partitions_all_even_parts(n) do
+   if is_even(#P) then 0#reverse(P) else reverse(P) fi
+  od
+  then
+  triples=##for P in partitions do
+   if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then 
+    [let middle=for i:#P\2 do (P[2*i],P[2*i+1]) od in (-1,middle,P~[0])] else [] fi
+  od
+  in triples
+else
+ let partitions=partitions_all_odd_parts(n) then
+  triples=##
+   for Q in partitions do
+    let P=reverse(Q) in
+    let first=P[0] then
+    P=delete(P,0) in
+    if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then 
+    [let middle=for i:#P\2 do (P[2*i],P[2*i+1]) od in (first,middle,-1)] else [] fi 
+   od
+  in triples
+fi
+
+set underlying_orbit(OrbitSymbol S)=
+let gl=##for (a,b) in GL_part(S) do [a,b] od then
+(first,middle,last)=classical_part(S) then
+cp=
+ let (first,middle,last)=classical_part(S) in
+{ let ()=prints("gl: ", gl) in }
+ ##for (a,b,) in middle do [a,b] od in
+ if first>=0 then cp#:=first fi;
+ if last>=0 then cp#:=last fi;
+{ prints("cp=", cp);}
+delete_trailing_zeros(reverse_sort(gl##cp))
+
+
+set first(ClassicalOrbitSymbol (b,,))=int:b
+set last(ClassicalOrbitSymbol (,,a))=int:a
+set middle(ClassicalOrbitSymbol (,middle,))=[(int,int,bool)]:middle
+
+set validate_signs(int first,[(int,int,bool)] m,int last)=bool:
+{let ()=prints("validating: ", first, " ", m, " ", last) in }
+all(for (x,y,z) in m do not(z) or y-x>2 od) and   {(x,y,truefo) => y-x>2}
+all(for i:#m-1 do let (a1,b1,c1)=m[i], (a2,b2,c2)=m[i+1] in
+    if not(c1) and not(c2) then b1<a2 else true fi od) and
+if #m=0 then true else
+if first=-1 then
+ let (,b,c)=m~[0] in if not(c) then {b<last}true else true fi
+ else true
+fi and
+if last=-1 then let (a,,c)=m[0] in if not(c) then {first<a}true else true fi else true fi fi
+
+set rank(ClassicalOrbitSymbol (first,middle,last))=int:
+(max(first,0) + sum(for (x,y,) in middle do x+y od) + max(last,0))\2
+
+set core(ClassicalOrbitSymbol (a,b,c))=(a,for (x,y,) in b do (x,y) od,c)
+
+
+set validate(ClassicalOrbitSymbol (first,middle,last))=bool:
+if last=-1 then
+ first >0 and all(for (x,y,) in middle do is_odd(x) and is_odd(y) od) and validate_signs(first,middle,last)
+elif first=-1 then
+ last >=0 and all(for (x,y,) in middle do is_even(x) and is_even(y) od) and validate_signs(first,middle,last)
+else false
+fi
+
+set validate(OrbitSymbol S)=bool:
+let (S_GL,S_class)=S then
+(first,middle,last)=S_class in
+validate(S_class) and
+all(
+ for i:#S_GL do
+  let (c_i,)=S_GL[i] in
+  all(for (a_j,b_j,bool_j)@j in middle do
+       if (a_j<c_i and c_i<b_j) and bool_j
+        then {let ()=prints("c_i: ", c_i, " a_j: ", a_j) in } c_i%2 != a_j%2
+       elif (a_j<c_i and c_i<b_j) and not bool_j
+        then c_i%2 = a_j%2
+       else true fi
+     od)
+  od
+)  and
+if first=-1 then all(for (c,) in S_GL  do if c>last then c%2 != last%2 else true fi od) else true fi \ 
+and
+if last=-1 then all(for (c,) in S_GL  do if c<first then c%2 != first%2 else true fi od) else true fi
+
+set root_datum(ClassicalOrbitSymbol S)=
+if S.first=-1 then Sp(2*S.rank) else
+SO(2*S.rank+1) fi
+
+set signs((int,[(int,int,bool)],int) S)=
+let (first,middle,last)=S then
+bin=generate_all_binary(#middle) then
+possible_signs=for v in bin do for j in v do if j=1 then false else true fi od od
+then
+S=for w in possible_signs do
+ for (x,y,)@i in middle do (x,y,w[i]) od  od in
+##for m in S do
+{let ()=prints("doing m:", m, " ", validate(first,m,last)) in}
+ if {validate (first,m,last)} true then [(first,m,last)] else [] fi od
+ 
+set valid_signs((int,[(int,int)],int) S)=
+let (first,middle,last)=S then
+bin=generate_all_binary(#middle) then
+possible_signs=for v in bin do for j in v do if j=1 then true else false fi od od
+then
+S=for w in possible_signs do
+ for (x,y)@i in middle do (x,y,w[i]) od  od in
+##for m in S do
+let ()=prints("doing m:", m, " ", validate(first,m,last)) in
+ if validate (first,m,last) then [(first,m,last)] else [] fi od
+
+set dual_data(int n)=
+##for c in cores(n) do valid_signs(c) od
+
+set dual_symbols(int n)=##
+ for S in cores(n) do valid_signs(S) od
+
+set q(ClassicalOrbitSymbol S)=Partition:
+let q=[int]:[] in
+if S.first>=0 then q:=[S.first] fi;
+for (x,y,z) in S.middle do if z then q##:=[x,y] fi od;
+if S.last>=0 then q#:=S.last fi;reverse(sort(q))
+
+set p(ClassicalOrbitSymbol S)=
+reverse(sort(##for (x,y,z) in S.middle do if not(z) then [x,y] else [] fi od))
+
+set dual_orbit(ClassicalOrbitSymbol S)=
+let p=S.p,q=S.q in
+if is_even(sum(q)) then
+{let ()=prints("type C->type B") in}
+{S is type C_n, dual of type B_n} 
+ let qplus=add_one(q) then
+ qplus_B=B_collapse(qplus) then
+ punionqplus_B=sort(p##qplus_B) then
+ punionqplus_Btranspose=transpose(reverse(punionqplus_B)) then
+ final=B_collapse(punionqplus_Btranspose) in
+ assert(sum(final)=2*S.rank+1,"rank mismatch1");final
+else
+ {S is type B_n, dual of type C_n} 
+ let qminus=subtract_one(q) then
+ qminus_C=C_collapse(qminus) then
+ punionqminus_C=sort(p##qminus_C) then
+ punionqminus_Ctranspose=transpose(reverse(punionqminus_C)) then
+ final=C_collapse(punionqminus_Ctranspose) in
+ assert(sum(final)=2*S.rank,"rank mismatch2");final
+fi
+
+
+set dual_orbit(OrbitSymbol S)=Partition:
+let 
+a=transpose(reverse_sort(##for (a,b) in S.GL_part do [a,b] od)) then
+b=dual_orbit(S.classical_part) then
+induced=partition_sum(a,b) in
+if sum(S).is_even then B_collapse(induced) else C_collapse(induced) fi
+
+
+set GL_part(Partition P)=
+let Q=for i:max(P) from 1 do multiplicity(i,P) od in
+##for i:#Q do  for k:Q[i]\2 do (i+1,i+1) od od
+
+set parts_C(Partition P)=
+assert(sum(P).is_even,"wrong type");
+let P=delete_leading_zeros(sort(P)) in
+if (#P).is_even then P:=0#P fi; let
+odd_parts=
+ ##for i:(P~[0]-1)\2+1 do
+ let j=2*i+1 in
+ assert(multiplicity(j,P).is_even,"odd part with odd multiplicity");j*ones(multiplicity(j,P)) od
+then
+even_parts=
+ ##for i:P~[0]\2+1 do
+ let j=2*i in j*ones(multiplicity(j,P)) od
+then
+even_pairs=[int]:[]
+in
+ assert((#even_parts).is_odd,"should have an odd number of parts");
+ for i:(#even_parts-1)\2 do
+  let a=even_parts[2*i], b=even_parts[2*i+1] in
+  if a=b then
+   odd_parts:=odd_parts##[a,b] else
+   even_pairs:=even_pairs##[a,b] fi
+ od;
+(sort(odd_parts),even_pairs#even_parts~[0])
+
+set parts_B(Partition P)=
+assert(sum(P).is_odd,"wrong type");
+let P=delete_leading_zeros(sort(P)) then
+even_parts=
+ ##for i:P~[0]\2+1 do
+ let j=2*i in
+ assert(multiplicity(j,P).is_even,"even part with odd multiplicity");j*ones(multiplicity(j,P)) od
+then
+odd_parts=
+ ##for i:(P~[0]-1)\2+1 do
+ let j=2*i+1 in j*ones(multiplicity(j,P)) od
+then
+()=prints("odd_parts=", odd_parts) then
+odd_pairs=[int]:[]
+in
+ assert((#odd_parts).is_odd,"should have an odd number of parts");
+ for i:(#odd_parts)\2 do
+  let a=odd_parts[2*i+1], b=odd_parts[2*i+2] in
+  let ()=prints("a: ", a, " b: ", b) in
+  if a=b then
+   even_parts:=even_parts##[a,b] else
+   odd_pairs:=odd_pairs##[a,b] fi
+ od;
+(sort(even_parts),odd_parts[0]#odd_pairs)
+
+set classical_part_C(Partition P)=
+let Q=for i:max(P) from 1 do multiplicity(i,P) od in
+sort(##for i:#Q do if Q[i].is_odd then [i+1] else [] fi od)
+
+set classical_part_B(Partition P)=
+let Q=for i:max(P) from 1 do multiplicity(i,P) od in
+sort(##for i:#Q do if Q[i].is_odd then [i+1] else [] fi od)
+
+set default_orbit_symbol_C(Partition P)=
+let (gl,cl)=parts_C(P) in
+(for i:#gl\2 do (gl[2*i],gl[2*i+1]) od,
+ (-1,for i:#cl\2 do (cl[2*i],cl[2*i+1],true) od,cl~[0]))
+
+set default_orbit_symbol_B(Partition P)=
+let (gl,cl)=parts_B(P) in
+let ()=prints("cl:", cl) in
+(for i:#gl\2 do (gl[2*i],gl[2*i+1]) od,
+ (cl[0],for i:(#cl\2) do (cl[2*i+1],cl[2*i+2],true) od,-1))
+
+set default_orbit_symbol(Partition P)=
+if sum(P).is_even then default_orbit_symbol_C(P)  else default_orbit_symbol_B(P) fi
+
+set ungroup(ClassicalOrbitSymbol S)=
+let rv=##for (a,b,) in S.middle do [a,b] od
+in
+if S.first>=0 then S.first#rv else rv#S.last fi
+
+set regroup(Partition P)=
+{assume all parts same parity}
+if P[0].is_even then
+ (-1,for i:(#P-1)\2 do (P[i],P[i+1],true) od,P~[0])
+else
+  (P[0],for i:(#P-1)\2 do (P[i+1],P[i+2],true) od,-1)
+fi
+
+set delete_all(int i,[int] list)=
+##for a in list do if a=i then [] else [a] fi od
+
+set delete_all([int] deletes,[int] list)=
+##for a in list do if find(deletes,a)>=0 then [] else [a] fi od
+
+
+set variants_C(ClassicalOrbitSymbol S)=
+let (,middle,last)=S then
+paired_entries=
+ ##for i:#middle-1 do
+  let (,b_i,)=middle[i] then
+  (a_j,,)=middle[i+1] in
+  if b_i=a_j then [b_i] else [] fi
+ od
+in
+ if #middle>0 then  let (,b,)=middle~[0] in if b=last then paired_entries#:=b fi  fi;
+ let choices=generate_all_binary(#paired_entries) then
+ (A,B)= (for v in choices do ##for i:#v do
+  if v[i]=1 then let a=paired_entries[i] in
+ [(a,a)] else [] fi  od od,
+ let P=ungroup(S) in
+for v in choices do
+ regroup( delete_all(##for i:#v do
+  if v[i]=1 then [paired_entries[i]] else [] fi od,P)) od)
+  in for i:#A do OrbitSymbol:(A[i],B[i]) od
+
+set variants_B(ClassicalOrbitSymbol S)=
+let (first,middle,)=S then
+paired_entries=
+ ##for i:#middle-1 do
+  let (,b_i,)=middle[i] then
+  (a_j,,)=middle[i+1] in
+  if b_i=a_j then [b_i] else [] fi
+ od
+in
+let ()=prints("paired: ", paired_entries) in
+ if #middle>0 then  let (a,,)=middle~[0] in if a=first then paired_entries#:=a fi  fi;
+ let choices=generate_all_binary(#paired_entries) then
+ (A,B)= (for v in choices do ##for i:#v do
+  if v[i]=1 then let a=paired_entries[i] in
+ [(a,a)] else [] fi  od od,
+ let P=ungroup(S) in
+for v in choices do
+ regroup( delete_all(##for i:#v do
+  if v[i]=1 then [paired_entries[i]] else [] fi od,P)) od)
+  in for i:#A do OrbitSymbol:(A[i],B[i]) od
+
+set sort([(int,int)] list)=
+for a in sort(for (b,) in list do b od) do (a,a) od
+
+set variants_C(OrbitSymbol S)=
+let (gl,cl)=S then
+var_cl=variants_C(cl) in
+for (a,b) in var_cl do  (sort(gl##a),b) od
+
+set variants_B(OrbitSymbol S)=
+let (gl,cl)=S then
+var_cl=variants_B(cl) in
+for (a,b) in var_cl do  (sort(gl##a),b) od
+
+set orbit_symbols_C(Partition P)=
+let D=P.default_orbit_symbol in
+##for (a,b) in variants_C(D) do
+ for c in signs(b) do (a,c) od od
+
+set orbit_symbols_B(Partition P)=
+let D=P.default_orbit_symbol in
+##for (a,b) in variants_B(D) do
+ for c in signs(b) do (a,c) od od
+
+set orbit_symbols(Partition P)=
+if P.sum.is_even then orbit_symbols_C(P) else orbit_symbols_B(P) fi
+
+set sort_by_dual_orbit = ([OrbitSymbol] symbols):
+for i in sort(#symbols, (int i,int j)bool: lex_lesseq(symbols[j].dual_orbit,symbols[i].dual_orbit)) do symbols[i] od
+
+{ Sort list of parameters by height }
+set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
+set sort_by ((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set birational_induction(OrbitSymbol S)=
+let (gl,cp)=S then
+rv=dual_orbit(cp) in
+ for (c,) in gl do rv:=partition_sum(rv,2*ones(c)) od;
+rv
+
+set birational_induction(OrbitSymbol S)=
+let (gl,cp)=S then
+rv=Partition:[] then
+()=for (c,) in gl do rv:=partition_sum(rv,2*ones(c)) od in
+(rv,dual_orbit(cp))
+
+set orbit_symbols(RootDatum rd)=[OrbitSymbol]:
+##for P in rd.nilpotent_orbit_partitions do
+ for S in orbit_symbols(P) do S od od
+
+set valid_symbols(RootDatum rd)=[OrbitSymbol]:
+##for S in rd.orbit_symbols do
+  if S.validate then [S] else [] fi od
+
+
+set chain(int a, int b)=
+assert((a-b).is_even, "a-b must be even");
+(for i:(a+b)\2 do b-(2*i+1) od)/2
+
+set infinitesimal_character_old(OrbitSymbol S)=
+let (gl,cl)=S then
+(a,b,c,d)=
+(for (x,) in gl do rho(GL(x)) od,
+for (x,y,z) in cl.middle do
+ if z then
+  if x.is_odd then rho(Sp((x+y))) else rho(SO((x+y))) fi
+ else
+  if x.is_odd then   rho(Sp(x+y))+(1/2)*ones((x+y)\2)  else rho(SO(x+y))+(1/2)*ones((x+y)\2) fi
+ fi
+od,
+if cl.first>=0 then  [rho(Sp(cl.first-1))] else []  fi,
+if cl.last>=0 then  [rho(SO(cl.last+1))] else []  fi) in
+[a,b,c,d]
+{let v=##(##([a,b,c,d])) then
+(num,denom)=%v in
+ratvec:reverse_sort(for a in num do abs(a) od)/denom
+}
+
+set infinitesimal_character(OrbitSymbol S)=
+let (gl,cl)=S then
+(a,b,c,d)=
+(for (x,) in gl do rho(GL(x)) od,
+for (x,y,z) in cl.middle do
+ if z then  chain(x,y) 
+ else chain(x,y)+(1/2)*ones((x+y)\2)
+ fi
+od,
+if cl.first>=0 then  [rho(Sp(cl.first-1))] else []  fi,
+if cl.last>=0 then  [rho(SO(cl.last+1))] else []  fi) in
+{[a,b,c,d]}
+let v=##(##([a,b,c,d])) then
+(num,denom)=%v in
+ratvec:reverse_sort(for a in num do abs(a) od)/denom
+
+set is_distinguished(OrbitSymbol S)=bool:
+let (gl,cl)=S in
+#gl=0 {and all(for (,,x) in cl.middle do not x od)}
+
+set is_birigid(Partition P)=bool:#sort_u(P)=max(P)
+
+set test(RootDatum rd)=
+tabulate(
+["#","symbol","dist","orbit", "Sp","even",  "dual", "Sp","birat/valid","BR","infchar"] #
+{for S@i in sort_by_dual_orbit(rd.symbols) do}
+for S@i in rd.orbit_symbols do
+{let ()=prints("S=",S) in}
+let O=S.underlying_orbit then
+O_check=S.dual_orbit in
+[i.to_string,
+S.to_string {+ S.classical_part.validate_signs.star},
+S.is_distinguished.star,
+O.to_string,
+O.special_star.to_string,
+complex_nilpotent_from_partition(rd,O).is_even.to_string,
+O_check.to_string,
+O_check.special_star,
+S.birational_induction.to_string + S.validate.star,
+O_check.is_birigid.star,
+S.infinitesimal_character.compact_ratvec
+] od)
+
+set test_valid_only(RootDatum rd)=
+let valid=rd.valid_symbols then
+orbits=rd.dual_orbits then
+()=prints("#dual orbits: ", #rd.dual_orbits, new_line, "#valid parameters: ", #valid) in
+tabulate(["#","symbol","dist","orbit", "Sp","even",  "dual", "Sp","birat","BR","infchar"] #
+for S@i in rd.valid_symbols do
+let O=S.underlying_orbit then
+O_check=S.dual_orbit in
+[i.to_string,
+S.to_string {+ S.classical_part.validate_signs.star},
+S.is_distinguished.star,
+O.to_string,
+O.special_star.to_string,
+complex_nilpotent_from_partition(rd,O).is_even.to_string,
+O_check.to_string,
+O_check.special_star,
+S.birational_induction.to_string{+ S.validate.star},
+O_check.is_birigid.star,
+S.infinitesimal_character.compact_ratvec
+]
+od);
+prints("# of orbits: ",#rd.dual.orbits)
+
+set test(RootDatum rd,Partition P)=
+tabulate(
+["#","symbol","dist","orbit", "Sp","even",  "dual", "Sp","birat/valid","BR","infchar"] #
+for S@i in ##for T in rd.orbit_symbols do if T.dual_orbit=P then [T] else [] fi od do
+{let ()=prints("S=",S) in}
+let O=S.underlying_orbit then
+O_check=S.dual_orbit in
+[i.to_string,
+S.to_string {+ S.classical_part.validate_signs.star},
+S.is_distinguished.star,
+O.to_string,
+O.special_star.to_string,
+complex_nilpotent_from_partition(rd,O).is_even.to_string,
+O_check.to_string,
+O_check.special_star,
+S.birational_induction.to_string + S.validate.star,
+O_check.is_birigid.star,
+S.infinitesimal_character.compact_ratvec
+] od)
