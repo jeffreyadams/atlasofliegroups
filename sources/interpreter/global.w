@@ -1902,8 +1902,8 @@ struct rat_value : public value_base
 @)
   big_int numerator() const & @+{@; return val.numerator(); }
   big_int denominator() const & @+{@; return val.denominator(); }
-  big_int&& numerator() & @+{@; return std::move(val).numerator(); }
-  big_int&& denominator() & @+{@; return std::move(val).denominator(); }
+  big_int&& numerator() && @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() && @+{@; return std::move(val).denominator(); }
   RatNum rat_val() const @+{@; return val.rat_val(); }
 };
 @)
