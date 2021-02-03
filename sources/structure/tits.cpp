@@ -91,8 +91,8 @@ GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
-  alpha_v.reserve(G.semisimpleRank());
-  for (size_t i=0; i<G.semisimpleRank(); ++i) // reduce vectors mod 2
+  alpha_v.reserve(G.semisimple_rank());
+  for (size_t i=0; i<G.semisimple_rank(); ++i) // reduce vectors mod 2
     alpha_v.push_back(TorusPart(prd.simple_root(i)));
 }
 
@@ -167,9 +167,7 @@ RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 void
 GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
 {
-  Rational r =
-    t.evaluate_at(prd.simple_coroot(s))
-		   - Rational(1); // $\rho_{im}$ shift
+  RatNum r = t.evaluate_at(prd.simple_coroot(s)) - RatNum(1); // $\rho_{im}$ shift
   if (r.numerator()!=0) // compact imaginary case needs no action
     add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
 	(prd.simple_root(s)*-r.numerator(),2*r.denominator()),t);
@@ -330,7 +328,7 @@ std::vector<Grading> compute_square_classes
 
   int_Matrix roots(0,r); // rows: coordinates of $\delta$-fixed simple roots
   RankFlags fixed; // the set of $\delta$-fixed simple roots
-  for (size_t i=0; i<rd.semisimpleRank(); ++i)
+  for (size_t i=0; i<rd.semisimple_rank(); ++i)
     if (twist[i]==i)
     {
       fixed.set(i);
@@ -381,9 +379,9 @@ TitsGroup::TitsGroup(const RootDatum& rd,
   , d_involution(delta.transposed())
   , dual_involution(rd.rank()) // set below
 {
-  d_simpleRoot.reserve(rd.semisimpleRank());
-  d_simpleCoroot.reserve(rd.semisimpleRank());
-  for (size_t i = 0; i<rd.semisimpleRank(); ++i) // reduce vectors mod 2
+  d_simpleRoot.reserve(rd.semisimple_rank());
+  d_simpleCoroot.reserve(rd.semisimple_rank());
+  for (size_t i = 0; i<rd.semisimple_rank(); ++i) // reduce vectors mod 2
   {
     d_simpleRoot.push_back(TorusPart(rd.simpleRoot(i)));
     d_simpleCoroot.push_back(TorusPart(rd.simpleCoroot(i)));
@@ -572,7 +570,7 @@ TitsCoset::TitsCoset(const InnerClass& G)
   , grading_offset()
   , rs(G.rootDatum())
 { // make all imaginary simple roots noncompact
-  for (unsigned i=0; i<G.semisimpleRank(); ++i)
+  for (unsigned i=0; i<G.semisimple_rank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 
@@ -585,7 +583,7 @@ TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
   , grading_offset()
   , rs(G.dualRootDatum())
 { // make all imaginary simple roots noncompact
-  for (unsigned i=0; i<G.semisimpleRank(); ++i)
+  for (unsigned i=0; i<G.semisimple_rank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 

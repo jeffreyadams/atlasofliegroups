@@ -30,7 +30,7 @@ namespace involutions {
 
 InvolutionData::InvolutionData(const RootDatum& rd,
 			       const WeightInvolution& theta)
-  : d_rootInvolution(rd.rootPermutation(theta))
+  : root_perm(rd.rootPermutation(theta))
   , d_imaginary(rd.numRoots()) // we can only dimension root sets for now
   , d_real(rd.numRoots())
   , d_complex(rd.numRoots())
@@ -41,9 +41,9 @@ InvolutionData::InvolutionData(const RootDatum& rd,
 void InvolutionData::classify_roots(const RootSystem& rs)
 {
   for (RootNbr alpha = 0; alpha<rs.numRoots(); ++alpha)
-    if (d_rootInvolution[alpha] == alpha)
+    if (root_perm[alpha] == alpha)
       d_imaginary.insert(alpha);
-    else if (d_rootInvolution[alpha] == rs.rootMinus(alpha))
+    else if (root_perm[alpha] == rs.rootMinus(alpha))
       d_real.insert(alpha);
     else
       d_complex.insert(alpha);
@@ -58,7 +58,7 @@ void InvolutionData::classify_roots(const RootSystem& rs)
 InvolutionData::InvolutionData(const RootDatum& rd,
 			       const WeightInvolution& theta,
 			       const RootNbrSet& positive_subsystem)
-: d_rootInvolution(rd.rootPermutation(theta))
+: root_perm(rd.rootPermutation(theta))
 , d_imaginary(rd.numRoots())
 , d_real(d_imaginary.capacity())
 , d_complex(d_imaginary.capacity())
@@ -69,12 +69,12 @@ InvolutionData::InvolutionData(const RootDatum& rd,
   {
     RootNbr alpha = *it;
     RootNbr minus_alpha = rd.rootMinus(alpha);
-    if (d_rootInvolution[alpha] == alpha)
+    if (root_perm[alpha] == alpha)
     {
       d_imaginary.insert(alpha);
       d_imaginary.insert(minus_alpha);
     }
-    else if (d_rootInvolution[alpha] == minus_alpha)
+    else if (root_perm[alpha] == minus_alpha)
     {
       d_real.insert(alpha);
       d_real.insert(minus_alpha);
@@ -92,7 +92,7 @@ InvolutionData::InvolutionData(const RootDatum& rd,
 
 InvolutionData::InvolutionData(const RootSystem& rs,
 			       const RootNbrList& s_image)
-  : d_rootInvolution(rs.extend_to_roots(s_image))
+  : root_perm(rs.extend_to_roots(s_image))
   , d_imaginary(rs.numRoots()) // we can only dimension root sets for now
   , d_real(rs.numRoots())
   , d_complex(rs.numRoots())
@@ -108,7 +108,7 @@ InvolutionData InvolutionData::build
 
 void InvolutionData::swap(InvolutionData& other)
 {
-  d_rootInvolution.swap(other.d_rootInvolution);
+  root_perm.swap(other.root_perm);
   d_imaginary.swap(other.d_imaginary);
   d_real.swap(other.d_real);
   d_complex.swap(other.d_complex);
@@ -119,12 +119,12 @@ void InvolutionData::swap(InvolutionData& other)
 
 void InvolutionData::cross_act(const Permutation& root_reflection)
 {
-  root_reflection.renumber(d_rootInvolution); // first half of conjugation
-  // then do |root_reflection.permute(d_rootInvolution)|, exploiting involution
+  root_reflection.renumber(root_perm); // first half of conjugation
+  // then do |root_reflection.permute(root_perm)|, exploiting involution
   RootNbr beta;
-  for (RootNbr alpha=0; alpha<d_rootInvolution.size(); ++alpha)
+  for (RootNbr alpha=0; alpha<root_perm.size(); ++alpha)
     if (alpha<(beta=root_reflection[alpha])) // do each 2-cycle just once
-      std::swap(d_rootInvolution[alpha],d_rootInvolution[beta]);
+      std::swap(root_perm[alpha],root_perm[beta]);
 
   d_imaginary = root_reflection.renumbering(d_imaginary);
   d_real = root_reflection.renumbering(d_real);
@@ -254,12 +254,10 @@ bool
 InvolutionTable::is_real_simple(InvolutionNbr n,weyl::Generator s) const
 { return real_roots(n).isMember(rd.simpleRootNbr(s)); }
 
-bool
-InvolutionTable::is_complex_descent(InvolutionNbr n,RootNbr alpha) const
-{ make_positive(rd,alpha); // test below assumes |alpha| itself is positive
-  return
-    complex_roots(n).isMember(alpha) and
-    rd.is_negroot(root_involution(n,alpha));
+// whether a complex root |alpha| is a descent at involution |n|
+bool InvolutionTable::complex_is_descent(InvolutionNbr n,RootNbr alpha) const
+{ // whether involution inverses positivity when applied to |alpha|
+  return rd.is_posroot(alpha)==rd.is_negroot(root_involution(n,alpha));
 }
 
 // this method makes involution table usable in X command, even if inefficient

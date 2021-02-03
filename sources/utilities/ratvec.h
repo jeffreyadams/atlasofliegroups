@@ -19,11 +19,6 @@
 #include "matrix.h"
 #include "arithmetic.h"
 
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#include "constants.h"
-#endif
-
 namespace atlas {
 
 namespace ratvec {
@@ -49,9 +44,25 @@ class RationalVector
 
   // build the RationalVector with numerator v and denominator d.
   template <typename C1> // possibly convert |v| entries to other type
-    RationalVector(const matrix::Vector<C1>& v, C d);
+    RationalVector(const matrix::Vector<C1>& v, C d)
+      : d_num(v.begin(),v.end()), d_denom(std::abs(d))
+  { if (d<C(0))
+      d_num.negate();
+  } // don't try to normalize, caller can do the explicitly if needed
 
-  RationalVector(V&& v, C d);
+  template <typename C1> // possibly convert |v| entries to other type
+  RationalVector(const matrix::Vector<C1>& v, const arithmetic::Rational<C>& d)
+    : d_num(v.begin(),v.end()), d_denom(d.true_denominator())
+  {
+    d_num *= d.numerator();
+  } // don't try to normalize, caller can do the explicitly if needed
+
+  RationalVector(V&& v, C d)
+    : d_num(std::move(v)), d_denom(std::abs(d))
+  { if (d<C(0))
+      d_num.negate();
+  } // don't try to normalize, caller can do the explicitly if needed
+
 
   RationalVector() : d_num(),d_denom(C(1)) {} // default to empty numerator
 
@@ -122,10 +133,10 @@ class RationalVector
     RationalVector operator-(const matrix::Vector<C1>& v) &&
     { return (*this)-= v; }
 
-  RationalVector& operator*=(const arithmetic::Rational& r);
-  RationalVector& operator/=(const arithmetic::Rational& r);
-  RationalVector operator*(const arithmetic::Rational& r) const;
-  RationalVector operator/(const arithmetic::Rational& r) const;
+  RationalVector& operator*=(const arithmetic::Rational<C>& r);
+  RationalVector& operator/=(const arithmetic::Rational<C>& r);
+  RationalVector operator*(const arithmetic::Rational<C>& r) const;
+  RationalVector operator/(const arithmetic::Rational<C>& r) const;
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of
@@ -144,6 +155,14 @@ class RationalVector
     auto num = w.dot(d_num);
     assert(num%(C)d_denom==0); // division below must be without remainder
     return num/(C)d_denom; // order is imposed here by return type |C|
+  }
+
+// evalutiong as a rational number needs another name than |dot|, whence |dot_Q|
+  template <typename C1>
+  arithmetic::Rational<C> dot_Q (const matrix::Vector<C1>& w) const
+  {
+    auto num = w.dot(d_num); // compute scalar product with type |C| arithmetic
+    return arithmetic::Rational<C> { num, d_denom };
   }
 
 // take difference as integer vector (which it is assumed to be here), converting

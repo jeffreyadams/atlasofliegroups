@@ -255,7 +255,7 @@ class InnerClass
   const RootSystem& rootSystem() const {return d_rootDatum; } // base object
   const RootSystem& dualRootSystem() const {return d_dualRootDatum; } // base
   size_t rank() const { return rootDatum().rank(); }
-  size_t semisimpleRank() const { return rootSystem().rank(); }
+  size_t semisimple_rank() const { return rootSystem().rank(); }
 
 // Access to certain component objects themselves
 
@@ -278,7 +278,7 @@ class InnerClass
   Permutation simple_twist() const
     { return Permutation
 	(&twistedWeylGroup().twist()[0],
-	 &twistedWeylGroup().twist()[semisimpleRank()]); }
+	 &twistedWeylGroup().twist()[semisimple_rank()]); }
 
   RankFlags simple_roots_imaginary() const; // $\xi$-fixed simple roots
   RankFlags simple_roots_real() const; // $(-w_0\xi^t)$-fixed simple roots
@@ -470,7 +470,7 @@ class InnerClass
 */
   WeylWord canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
   WeylWord canonicalize(TwistedInvolution& sigma) const
-  { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
+  { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr);
@@ -506,9 +506,9 @@ class InnerClass
 
   // adjoint torus parts, in fundamental coweight basis, \emph{are} gradings
   TorusPart sample_torus_part(CartanNbr cn, RealFormNbr rf) const
-  { return TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
+  { return TorusPart(Cartan[cn].rep[rf],semisimple_rank()); }
   TorusPart dual_sample_torus_part(CartanNbr cn, RealFormNbr drf) const
-  { return TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
+  { return TorusPart(Cartan[cn].dual_rep[drf],semisimple_rank()); }
 
 // Auxiliary manipulators
 

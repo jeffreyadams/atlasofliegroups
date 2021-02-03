@@ -4,7 +4,7 @@
 /*
   This is subystem.h
 
-  Copyright (C) 2010 Marc van Leeuwen
+  Copyright (C) 2010,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -51,7 +51,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
  public:
   SubSystem(const RootDatum& parent,
-	    const RootNbrList& sub_sys // list of simple roots in subsys
+	    const sl_list<RootNbr>& sub_sys // list of simple roots in subsys
            );
 
   static SubSystem integral // pseudo contructor for integral system
@@ -91,9 +91,6 @@ class SubSystem : public RootSystem // new system, subsytem of dual
     return sub_root[n].reflection; // parent reflection corresponding to |n|
   }
 
-  Coweight sub_2rho() const { return rd.dual_twoRho(pos_map); }
-  Weight parent_sub_2rho() const { return rd.twoRho(pos_map); }
-
   // numbers in parent for the positive (co)roots of the subsystem
   RootNbrSet positive_roots() const; // for subsystem only
   InvolutionData involution_data (const WeightInvolution& theta) const;
@@ -107,7 +104,7 @@ class SubSystemWithGroup : public SubSystem
   const WeylGroup sub_W; // Weyl group no reference: built by contructor
  public:
   SubSystemWithGroup(const RootDatum& parent,
-		     const RootNbrList& sub_sys // simple roots in subsys
+		     const sl_list<RootNbr>& sub_sys // simple roots in subsys
 		     );
 
   static SubSystemWithGroup integral // pseudo contructor for integral system

@@ -1,5 +1,7 @@
 /*
-  This is ratvec.cpp. This module contains some simple utilities for matrices.
+  This is ratvec.cpp.
+
+  This module contains implementations of operations on rational vectors
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2006-2020 Marc van Leeuwen
@@ -23,22 +25,6 @@ namespace atlas {
 namespace ratvec {
 
 //		      The RationalVector class template
-
-template<typename C>
-template<typename C1>
-RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
-  : d_num(v.begin(),v.end()), d_denom(std::abs(d))
-{ if (d<C(0))
-    d_num.negate();
-} // don't try to normalize, caller can do the explicitly if needed
-
-template<typename C>
-RationalVector<C>::RationalVector(V&& v, C d)
-  : d_num(std::move(v)), d_denom(std::abs(d))
-{ if (d<C(0))
-    d_num.negate();
-} // don't try to normalize, caller can do the explicitly if needed
-
 
 
 // unnormalised comparison without assuming |Numer_t| can hold cross products
@@ -159,24 +145,24 @@ RationalVector<C>& RationalVector<C>::operator%=(C n)
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational& r)
+RationalVector<C>& RationalVector<C>::operator*=(const arithmetic::Rational<C>& r)
 { return (*this /= r.denominator()) *= r.numerator(); }
 
 template<typename C>
-RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational& r)
+RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational<C>& r)
 const
 {
   return RationalVector(d_num*r.numerator(),d_denom*r.denominator());
 }
 
 template<typename C>
-RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational& r)
+RationalVector<C>& RationalVector<C>::operator/=(const arithmetic::Rational<C>& r)
 { assert (r.numerator()!=0);
   return (*this /= r.numerator()) *= r.denominator();
 }
 
 template<typename C>
-RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational& r)
+RationalVector<C> RationalVector<C>::operator/(const arithmetic::Rational<C>& r)
 const
 {
   return RationalVector(d_num*r.denominator(),d_denom*r.numerator());
@@ -226,10 +212,6 @@ template<typename C1, typename C2>
   */
 
 template class RationalVector<arithmetic::Numer_t>; // the main instance used
-template RationalVector<arithmetic::Numer_t>::RationalVector
-  (const matrix::Vector<int>&, arithmetic::Numer_t);
-template RationalVector<arithmetic::Numer_t>::RationalVector
-  (const matrix::Vector<arithmetic::Numer_t>&, arithmetic::Numer_t);
 template RationalVector<arithmetic::Numer_t> operator*
   (const matrix::Matrix<int>& M, const RationalVector<arithmetic::Numer_t>& v);
 template RationalVector<arithmetic::Numer_t> operator*

@@ -10,8 +10,9 @@
 #ifndef BLOCKMODE_H  /* guard against multiple inclusions */
 #define BLOCKMODE_H
 
-#include "commands_fwd.h"
 #include "../Atlas.h"
+
+#include "commands_fwd.h"
 #include "wgraph.h"
 
 namespace atlas {

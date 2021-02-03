@@ -341,17 +341,22 @@ any non-option arguments will considered to be file names (forming the
 std::vector<const char*> paths,prelude_filenames;
 paths.reserve(argc-1); prelude_filenames.reserve(argc-1);
 
-@ The strings in |paths| will initialise a ``system variable'' created below
-(a variable the user can assign to, and which is inspected whenever files are
-opened). We shall use a static variable that gives access to its value. It
-continues to do so even if the user should manage to forget or hide the user
-variable introduced below to hold it. We shall also keep a pointer to the
-initial working directory name and to the first path specified, in order to
-be able to perform the somewhat messy filename completion manoeuvres below.
+@ The strings in |paths| will initialise a ``system variable'' created below (a
+variable in the user space, whose value is inspected whenever files are opened),
+those in |prelude_filenames| initialise another one (this one read-only), and a
+third one will be initialised to an empty list but filled with tracing
+information when and error is caught during execution. In out program we use
+static variables that gives access to these values for inspection or
+modification. This method is robust and will not fail even if the user should
+manage to forget or override the user space variables. Apart from these, we
+shall also keep (on UNIX systems) a pointer to the initial working directory
+name and to the first path specified, in order to be able to perform the
+somewhat messy filename completion manoeuvres below.
 
 @h "global.h" // defines |shared_share|
 @< Local static data @>=
-static atlas::interpreter::shared_share input_path_pointer,prelude_log_pointer;
+static atlas::interpreter::shared_share
+  input_path_pointer,prelude_log_pointer, back_trace_pointer;
 #ifndef NOT_UNIX
 enum { cwd_size = 0x1000 };
 char cwd_buffer[cwd_size]; // since only |getcwd| is standard, fix a buffer
@@ -380,9 +385,10 @@ while (*++argv!=nullptr)
   else prelude_filenames.push_back(*argv);
 }
 
-@ Here we create the system variables called |input_path| and |prelude_log|;
-both are lists of strings, the latter a constant one. This is also a
-convenient time to test and record the first path specified (which has to wait
+@ Here we create the system variables called |input_path|, |prelude_log|, and
+|back_trace| (which will serve to record error messages); each of them holds a
+lists of strings (and |prelude_log| is declared read-only). This is also a
+convenient time to test and record the first path specified (which had to wait
 until other initialisations have been done), but we defer the details.
 
 @< Enter system variables into |global_id_table| @>=
@@ -403,6 +409,12 @@ until other initialisations have been done), but we defer the details.
 @/global_id_table->add@|(pl_id
                        ,prelude_log, mk_type_expr("[string]"), true);
   prelude_log_pointer = global_id_table->address_of(pl_id);
+@)
+  own_value back_trace = std::make_shared<row_value>(0); // start out empty
+  id_type bt_id = main_hash_table->match_literal("back_trace");
+@/global_id_table->add@|(bt_id
+                       ,back_trace, mk_type_expr("[string]"), false);
+  back_trace_pointer = global_id_table->address_of(bt_id);
 }
 
 @ We can now define the functions that are used in \.{buffer.w} to access the
@@ -525,11 +537,12 @@ this pointer; the \.{set} commands that form the essence of prelude files
 return a nonzero value from |yyparse|, so in practice most of the code below
 is rarely executed.
 
-Errors will break from the inner loop simply by popping the open include
-file(s) from |main_input_buffer|. We do not attempt to break from the outer
-loop upon an error, as this circumstance is rather hard to detect: any error
-has already been reported on |std::cerr|, and leaves a situation not very
-different from successfully completing reading the file.
+Errors will break from the inner loop simply by popping the open include file(s)
+from |main_input_buffer|. We do not attempt to then also break from the outer
+loop by throwing again, since after reporting there is not really much error
+handling left to do. Terminating the reading of a file in this manner leaves a
+situation not very different from successfully completing the reading of the
+file.
 
 @h "parsetree.h" // for |destroy_expr|
 
@@ -563,10 +576,16 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
         else
           pop_value(); // don't forget to cast away that void value
       }
-      catch (std::exception& err)
-      { std::cerr << err.what() << std::endl;
-        reset_evaluator(); main_input_buffer->close_includes();
+      catch (error_base& err)
+      { std::cerr << err.message << "\nEvaluation aborted.\n";
       @/clean=false;
+        reset_evaluator(); main_input_buffer->close_includes();
+      }
+      catch (std::exception& err)
+      {
+        std::cerr << err.what() << "\nEvaluation aborted.\n";
+      @/clean=false;
+        reset_evaluator(); main_input_buffer->close_includes();
       }
     }
     destroy_expr(parse_tree);
@@ -598,23 +617,30 @@ open auxiliary input files; reporting where we were reading is done by the
 method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
-catch (const runtime_error& err)
-{ std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
-            << std::endl;
+catch (error_base& err)
+{ if (dynamic_cast<runtime_error*>(&err)!=nullptr)
+    std::cerr << "Runtime error:\n  ";
+  else if (dynamic_cast<logic_error*>(&err)!=nullptr)
+    std::cerr << "Internal error: ";
+  std::cerr << err.message << "\n";
+@)
+  if (not err.back_trace.empty())
+  {
+    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
+    *back_trace_pointer=new_trace;
+    std::vector<shared_value>& trace = new_trace->val;
+    trace.reserve(length(err.back_trace));
+      // order inwards towards point of failure
+    for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
+      trace.push_back(std::make_shared<string_value>(std::move(*it)));
+      // back trace element
+  }
+@)
+  std::cerr << "Evaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
-catch (const program_error& err)
-{ std::cerr << err.what() << std::endl;
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
-catch (const logic_error& err)
-{ std::cerr << "Internal error: " << err.what() << std::endl;
-@/clean=false;
-  reset_evaluator(); main_input_buffer->close_includes();
-}
-catch (const std::exception& err)
+catch (std::exception& err)
 { std::cerr << err.what() << "\nEvaluation aborted.\n";
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();

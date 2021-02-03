@@ -22,6 +22,7 @@
 #include "lietype.h" // Lie types
 
 #include "polynomials.h" // |Polynomial<C>::print|
+#include "repr.h" // |StandardRepr| and friends
 
 /*****************************************************************************
 
@@ -130,14 +131,6 @@ namespace matrix { // since |Weight| = |matrix::Vector<int>|
   Using |seqPrint| it is output as a bracket-enclosed, comma-separated list.
 */
 
-template<typename C>
-std::ostream& operator<< (std::ostream& strm, const Vector<C>& v)
-{
-  std::ostringstream o; // accumulate in string for interpretation of width
-  basic_io::seqPrint(o, v.begin(), v.end(), ",", "[", "]");
-  return strm << o.str(); // now |strm.width()| is applied to whole vector
-}
-
 } // |namespace matrix|
 
 namespace ratvec {
@@ -154,11 +147,73 @@ namespace ratvec {
 
 namespace arithmetic {
 
-  std::ostream& operator<< (std::ostream& strm, const Split_integer& s)
-  { return strm << '(' << s.e() << '+' << s.s() << "s)"; }
-
+  std::ostream& print_split (std::ostream& out, const Split_integer& val)
+  { return out << '(' << val.e()
+	       << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
+  }
 } // |namespace arithmetic|
 
+namespace repr {
+
+std::ostream& print_stdrep
+  (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
+{ return out << "parameter(x=" << val.x() << ",lambda=" << rc.lambda(val)
+	     << ",nu=" << rc.nu(val) << ')';
+}
+
+std::ostream& print_SR_poly
+  (std::ostream& out,const SR_poly& val, const Rep_context& rc)
+{ if (val.empty())
+    { out << "Empty sum of standard modules"; return out; }
+
+  // embellishment: locate systematic zero component
+  bool has_one=false, has_s=false;
+  for (const auto& pair : val)
+  { if (pair.second.e()!=0)
+      has_one=true;
+    if (pair.second.s()!=0)
+      has_s=true;
+    if (has_one and has_s)
+      break;
+  }
+  assert (has_one or has_s); // otherwise the module would have been empty
+
+  for (const auto& pair : val)
+  { out << '\n';
+    if (has_one and has_s)
+      print_split(out,pair.second); // print coefficient
+    else if (has_one)
+      out << pair.second.e();
+    else
+      out << pair.second.s() << 's';
+    print_stdrep(out << '*',pair.first,rc); // print parameter
+    out << " [" << pair.first.height() << ']';
+  }
+  return out;
+}
+
+std::ostream& print_K_type
+  (std::ostream& out, const repr::K_type& val, const Rep_context& rc)
+{
+  return out << " <x=" << val.x() << ", lambda = rho+" << val.lambda_rho()
+	     << '>';
+}
+
+std::ostream& print_K_type_poly
+  (std::ostream& out,
+   const repr::K_type_poly& val, const std::vector<K_type>& pool,
+   const Rep_context& rc)
+{
+  for (const auto& term : val)
+  {
+    print_split(out,term.second) << "*[" << term.first << ']';
+    print_K_type(out,pool[term.first],rc) << '\n';
+  }
+  return out;
+}
+
+
+} // |namespace repr|
 
 // binary input
 
@@ -250,12 +305,5 @@ template std::ostream& polynomials::operator<<
 
 template std::ostream& bitvector::operator<<
   (std::ostream& strm, const BitVector<constants::RANK_MAX>& b);
-
-namespace matrix {
-template std::ostream& operator<< (std::ostream& strm, const Vector<int>& v);
-template std::ostream& operator<<
-  (std::ostream& strm, const Vector<arithmetic::Numer_t>& v);
-
-} // |namespace matrix|
 
 } // |namespace atlas|

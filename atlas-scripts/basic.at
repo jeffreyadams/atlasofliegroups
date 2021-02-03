@@ -1,8 +1,13 @@
-set_type { union types for versions of |solve|, cannot share |void| tag }
-[ maybe_a_vec =    ( void no_vec | vec solution)
-, maybe_a_ratvec = ( void no_ratvec | ratvec solution )
-, maybe_a_mat =    ( void no_mat | mat solution )
+{ Union types for built-in |linear_solve| and versions of |solve| below
+  Such types cannot share |void| tag, so we choose distince ones }
+set_type
+[ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
+, maybe_a_vec =     ( void no_vec | vec solution)
+, maybe_a_ratvec =  ( void no_ratvec | ratvec solution )
+, maybe_a_mat =     ( void no_mat | mat solution )
 ]
+
+set where() = void: for line in back_trace do prints(line) od
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
@@ -87,7 +92,7 @@ set from_stops ([int] stops) = (int->int):
 {                               Integers                                }
 
 set abs (int k)= int: if <k then -k else k fi
-set sign (int k)= int: if >k then 1 elif <k then minus_1 else 0 fi
+set sign (int k)= int: case k then minus_1 in 0 else 1 esac
 
 set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
@@ -145,6 +150,8 @@ set int_format = to_string@int
 
 set is_member ([int] v) = (int->bool):
   (int val)bool: any(#v,(int i)bool: v[i]=val)
+set isnt_member ([int] v) = (int->bool):
+  (int val)bool: all(#v,(int i)bool: v[i]!=val)
 
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
@@ -829,7 +836,7 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
 
-{ test whether all colums, being assumed root/coots, are positive }
+{ test whether all columns, being assumed root/coots, are positive }
 set roots_all_positive (RootDatum rd) = (mat->bool): { no negative roots }
   let are_pos = is_positive_root(rd) in (mat roots) bool: all(roots,are_pos)
 set coroots_all_positive (RootDatum rd) = (mat->bool): { no negative coroots }
@@ -837,12 +844,12 @@ set coroots_all_positive (RootDatum rd) = (mat->bool): { no negative coroots }
   (mat coroots) bool: all(coroots,are_pos)
 
 { the following test rather than assume that columns are roots/cooroots }
-set among_posroots (RootDatum rd) = (mat M)bool: { all colums M posroots? }
+set among_posroots (RootDatum rd) = (mat M)bool: { all columns M posroots? }
   all(M,(vec v)bool: is_posroot(rd,v))
-set among_poscoroots (RootDatum rd) = (mat M)bool: { all colums M poscoroots? }
+set among_poscoroots (RootDatum rd) = (mat M)bool: { all columns M poscoroots? }
   all(M,(vec v)bool: is_poscoroot(rd,v))
 
-set negative_system (mat posroots) = { the missing half of the root system }
+set negative_system (mat posroots) = mat: { the missing half of the root system }
   swiss_matrix_knife(172,posroots,0,0,0,0) { 172= 36+8+128: reverse cols,neg }
 
 { having _all_ roots can be useful }

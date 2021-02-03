@@ -4,7 +4,6 @@
 - Fix lack of edge flipping in first (classical) extended block contructor
 - Rework |Block_Base| which should not contain "extended" field |orbits|
 - Rewrite block construction using methods inspired by synthetic operations
-- Remove code for storing the Hermitian dual in KGB structures and blocks
 - Rewrite K type computations to use data type more compatible with Param
 
 * Work on the Fokko program
@@ -30,9 +29,6 @@
   mismatches the pattern, the "needed" components are taken from that tuple, and
   the user must figure out that their number was in fact too few (or too much).
 
-- Fix memory leak with recursive functions, at least for explicitly recursive
-  ones (people who manually make a recursive loop can be allowed to suffer).
-
 - Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
 
 - Allow repeated selection assignment |M[1][3]:=0| or |a[i].re:=5|
@@ -40,9 +36,6 @@
 
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
-
-- For layers produced by loops, provide printing of the identifier value
-- For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
   is easy to write (and common in loop bodies), it is converted to 'v := v#x'

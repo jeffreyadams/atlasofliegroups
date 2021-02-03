@@ -14,6 +14,7 @@
 
 #include <stdexcept> // some cases throw
 #include <cassert>   // but most just assert; user should test uncertain cases
+#include <limits>
 #include <cstdlib>
 
 #include "constants.h"
@@ -106,77 +107,116 @@ Denom_t power(Denom_t x, unsigned int n)
   return result;
 }
 
-Rational& Rational::operator+=(Numer_t n) { num+=n*denom; return *this; }
-Rational& Rational::operator-=(Numer_t n) { num-=n*denom; return *this; }
-
-Rational& Rational::operator*=(Numer_t n)
+template<typename I>
+  Rational<I>& Rational<I>::operator*=(I n)
 { if (n==0)
   { num=0; denom=1; }
   else
   {
+    normalize();
     if (n<0)
     { n=-n; num=-num; }
-    Numer_t d = unsigned_gcd(denom,n);
-    denom/=d;
-    num *= static_cast<Numer_t>(n/d); // |n| implicitly converted to unsiged
+    auto d = unsigned_gcd(denom,n); // converts |n| to unsigned
+    denom/=d; // unsigned division (of positive quantities)
+    I f = static_cast<I>(n/d); // positive |n| implicitly converted to unsigned
+    assert(num<std::numeric_limits<I>::max()/f);
+    num *= f;
   }
   return *this; // result will be normalised if |this| was
 }
 
-Rational& Rational::operator/=(Numer_t n)
+template<typename I>
+  Rational<I>& Rational<I>::operator/=(I n)
 { assert(n!=0);
+  normalize();
   if (n<0)
   { n=-n; num=-num; }
-  Numer_t d = unsigned_gcd(std::abs(num),n);
-  num/=d;
-  denom *= n/d; // |n| implicitly converted to unsigned here
+  I d = static_cast<I>(unsigned_gcd(std::abs(num),n));
+  num/=d; // signed divide
+  I f = n/d; // signed divide
+#ifndef NDEBUG
+  using UI = typename std::make_unsigned<I>::type;
+  assert(static_cast<UI>(num) < std::numeric_limits<UI>::max()/f);
+#endif
+  denom *= f;
   return *this; // result will be normalised if |this| was
 }
 
-Rational& Rational::operator%=(Numer_t n)
+template<typename I>
+  Rational<I>& Rational<I>::operator%=(I n)
 { assert(n!=0);
-  num = remainder(num,static_cast<Numer_t>(denom*std::abs(n)));
+  normalize();
+  num = remainder(num,static_cast<I>(denom*std::abs(n)));
   return *this;
 }
 
 
-
-Rational Rational::operator+(Rational q) const
+template<typename I>
+  Rational<I> Rational<I>::operator+(Rational<I> q) const
 {
+  normalize();
   Denom_t sum_denom=lcm(denom,q.denom);
-  return Rational(num*Numer_t(sum_denom/denom)+q.num*Numer_t(sum_denom/q.denom),
-		  sum_denom);
+  return Rational<I>(   num*static_cast<I>(sum_denom/denom)
+		     +q.num*static_cast<I>(sum_denom/q.denom)
+		    , sum_denom);
 }
-Rational Rational::operator-(Rational q) const
+template<typename I>
+  Rational<I> Rational<I>::operator-(Rational<I> q) const
 {
+  normalize();
   Denom_t sum_denom=lcm(denom,q.denom);
-  return Rational(num*Numer_t(sum_denom/denom)-q.num*Numer_t(sum_denom/q.denom),
-		  sum_denom);
+  return Rational<I>(  num*static_cast<I>(sum_denom/denom)
+		    -q.num*static_cast<I>(sum_denom/q.denom)
+		    , sum_denom);
 }
 
-Rational Rational::operator*(Rational q) const
+template<typename I>
+  Rational<I> Rational<I>::operator*(Rational<I> q) const
 {
-  return Rational(num*q.num,denom*q.denom).normalize();
+  normalize(); q.normalize();
+  Denom_t d = gcd(num,q.denom);
+  I new_num = d==1 ? num : (q.denom/=d, num/d);
+  auto new_denom = (d = gcd(q.num,denom))==1 ? denom : (q.num/=d, denom/d);
+  return Rational<I>(new_num*q.num,new_denom*q.denom);
 }
 
-Rational Rational::operator/(Rational q) const
+template<typename I>
+  Rational<I> Rational<I>::operator/(Rational<I> q) const
 {
   assert(q.num!=0);
+  normalize(); q.normalize();
+  Denom_t d = unsigned_gcd(denom,q.denom);
+  auto new_denom = d==1 ? denom : (q.denom/=d, denom/d);
+  I sd = gcd(num,std::abs(q.num)); // convert result to signed
+  I new_num = sd==1 ? num : (q.num/=sd, num/sd);
   if (q.num>0)
-    return Rational(num*Numer_t(q.denom),denom*q.num).normalize();
+    return Rational<I>(new_num*static_cast<I>(q.denom),new_denom*q.num);
   else
-    return Rational(-num*Numer_t(q.denom),denom*-q.num).normalize();
+    return Rational<I>(-new_num*static_cast<I>(q.denom),new_denom*-q.num);
 }
 
-Rational Rational::operator%(Rational q) const
+template<typename I>
+  Rational<I> Rational<I>::operator%(Rational<I> q) const
 {
   assert(q.num!=0);
-  return Rational
-            (remainder(num*Numer_t(q.denom),Numer_t(denom*std::abs(q.num))) ,
-	     denom*q.denom).normalize();
+  Denom_t d = unsigned_gcd(denom,q.denom);
+  if (d==1)
+    return Rational<I>
+      (remainder
+        (num*static_cast<I>(q.denom),static_cast<I>(denom*std::abs(q.num)))
+      , denom*q.denom).normalize();
+  else
+  {
+    q.denom/=d;
+    return Rational<I>
+      (remainder(num*static_cast<I>(q.denom),
+		 static_cast<I>((denom/d)*std::abs(q.num)))
+      , denom*q.denom).normalize();
+  }
 }
 
-Rational& Rational::power(int n)
+template<typename I>
+  Rational<I>& Rational<I>::power(int n)
 {
   normalize();
   Denom_t numer=std::abs(num);
@@ -186,14 +226,22 @@ Rational& Rational::power(int n)
     std::swap(numer,denom); n=-n;
   }
   numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);
-  num = (num>=0 or n%2==0 ? numer : - Numer_t(numer));
+  num = (num>=0 or n%2==0 ? numer : - static_cast<I>(numer));
   return *this;
 }
 
-std::ostream& operator<< (std::ostream& out, const Rational& frac)
+template<typename I>
+  std::ostream& operator<< (std::ostream& out, const Rational<I>& frac)
 {
   return out << frac.numerator() << '/' << frac.true_denominator();
 }
+
+
+// Instantiation of templates (only these are generated)
+
+template class Rational<Numer_t>; // the main instance used
+
+
 
 } // |namespace arithmetic|
 

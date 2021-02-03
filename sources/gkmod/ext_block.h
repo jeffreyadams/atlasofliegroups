@@ -336,8 +336,8 @@ struct ext_param // allow public member access; methods ensure no invariants
 // a variation of |Rep_context::make_dominant|, used during extended deformation
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
- Rational factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // records whether and extended flip was recorded
+ RatNum factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // output only, records whether and extended flip was recorded
  );
 
 // expand parameter into a signed sum of extended nonzero final parameters

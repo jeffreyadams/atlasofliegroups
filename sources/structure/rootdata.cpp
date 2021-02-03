@@ -2,7 +2,7 @@
   This is rootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2016 Marc van Leeuwen
+  Copyright (C) 2006--2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -99,7 +99,7 @@ namespace rootdata {
 ******************************************************************************/
 
 /*
-  For reasons of most of clarity for clients (which can now state just one what
+  For reasons of most of clarity for clients (which can now state just on what
   their operations depends), we derive |RootDatum| from a more basic class
   |RootSystem|, the latter being completely coordinate free (only the roots and
   coroots themselves are used to express things in). Thus for a |RootSystem|
@@ -128,12 +128,12 @@ struct RootSystem::root_compare
   }
 };
 
-  RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
+RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.numRows())
   , prefer_co(prefer_co)
   , Cmat(rk,rk) // filled below
   , ri()
-  , root_perm()
+  , root_ladder_bot(), coroot_ladder_bot()
 {
   if (rk==0)
     return; // avoid problems in trivial case
@@ -152,7 +152,7 @@ struct RootSystem::root_compare
   }
 
   if (prefer_co) // then we generate for the dual system
-    dualise(); // here this just transposes |Cmat|
+    swap_roots_and_coroots(); // here this just transposes |Cmat|
 
   // the Cartan matrix sliced into rows respectively into columns
   std::vector<Byte_vector> simple_root, simple_coroot;
@@ -161,6 +161,8 @@ struct RootSystem::root_compare
   { simple_root.push_back(Cmat.row(i)); // strange convention Cartan matrices
     simple_coroot.push_back(Cmat.column(i));
   }
+  // now |dot| can compute scalar products, provided one argument comes from
+  // |simple_root| or |simple_coroot|, the other from |ri|. |root| or |coroot|
 
   // now construct positive root list, simple reflection links, and descent sets
   std::vector<RootNbrList> link; // size |numPosRoots*rank|
@@ -169,10 +171,8 @@ struct RootSystem::root_compare
        ++l)
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
-    for (RootVecSet::iterator
-	   it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
+    for (const Byte_vector& alpha : roots_of_length[l])
     {
-      const Byte_vector& alpha = *it;
       const RootNbr cur = ri.size();
       assert(link.size()==cur);
       ri.push_back(root_info(alpha)); // add new positive root to the list
@@ -185,7 +185,7 @@ struct RootSystem::root_compare
 	else
 	{
 	  Byte_vector beta=alpha; // make a copy
-	  beta[i]-=c; // increase coefficient; add |-c| times |alpha[i]|
+	  beta[i]-=c; // increase coefficient; add |-c| times |simple_root(i)|
 	  if (c>0) // positive scalar product means $i$ gives a \emph{descent}
 	  {
 	    ri[cur].descents.set(i);
@@ -207,14 +207,14 @@ struct RootSystem::root_compare
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
 	    ri[cur].ascents.set(i);
-	    roots_of_length[l-c].insert(beta); // create root at proper length
+	    roots_of_length[l-c].insert(std::move(beta)); // will create root
 	  }
 	}
-    }
+    } // |for(alpha)|
     roots_of_length[l].clear(); // no longer needed
-  }
+  } // |for(l)|
 
-  RootNbr npos = ri.size(); // number of positive roots
+  const RootNbr npos = numPosRoots(); // number of positive roots, |ri| is filled
 
   // simple coroots in themselves are just standard basis, like simple roots
   for (RootNbr i=0; i<rk; ++i)
@@ -232,41 +232,92 @@ struct RootSystem::root_compare
 
   // now switch roots and coroots if coroots generation was actually requested
   if (prefer_co)
-    dualise(); // this restores |Cmat|, and swaps roots and coroots
+    swap_roots_and_coroots(); // this also restores |Cmat|
 
-  root_perm.resize(npos,Permutation(2*npos));
+  root_ladder_bot.resize(2*npos);
+  coroot_ladder_bot.resize(2*npos);
   // first fill in the simple root permutations
   for (unsigned int i=0; i<rk; ++i)
   {
-    Permutation& perm=root_perm[i];
+    Permutation& perm = ri[i].root_perm; perm.resize(2*npos);
+    auto&   bots =   root_ladder_bot[simpleRootNbr(i)];
+    auto& cobots = coroot_ladder_bot[simpleRootNbr(i)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
     for (RootNbr alpha=0; alpha<npos; ++alpha)
       if (alpha==i) // simple root reflecting itself makes it negative
       {
-	perm[npos+alpha]=npos-1-alpha;
-	perm[npos-1-alpha]=npos+alpha;
+	perm[posRootNbr(alpha)] = negRootNbr(alpha);
+	perm[negRootNbr(alpha)] = posRootNbr(alpha);
+	// consider root itself as a singleton ladder
+	bots.insert(posRootNbr(alpha));
+	bots.insert(negRootNbr(alpha));
+	cobots.insert(posRootNbr(alpha));
+	cobots.insert(negRootNbr(alpha));
       }
       else // don't change positivity status
       {
-	RootNbr beta = link[alpha][i];
-	perm[npos+alpha] = npos+beta;
-	perm[npos-1-alpha]=npos-1-beta;
+	const RootNbr beta = link[alpha][i];
+	perm[posRootNbr(alpha)] = posRootNbr(beta);
+	perm[negRootNbr(alpha)] = negRootNbr(beta);
+
+	// mark bottom of root/coroot ladders got simple root/coroot |i|
+	Byte_vector coef_alpha = root(alpha);
+	if (coef_alpha[i]-- ==0 or lookup_posroot(coef_alpha)==npos)
+	{
+	  bots.insert(posRootNbr(alpha));
+	  bots.insert(negRootNbr(beta)); // as |posRootNbr(beta)| is ladder top
+	}
+	coef_alpha = coroot(alpha);
+	if (coef_alpha[i]-- ==0 or lookup_poscoroot(coef_alpha)==npos)
+	{
+	  cobots.insert(posRootNbr(alpha));
+	  cobots.insert(negRootNbr(beta));
+	}
       }
   }
+
 
   // extend permutations to all positive roots by conjugation from lower root
   for (RootNbr alpha=rk; alpha<npos; ++alpha)
   {
     RootNbr i=ri[alpha].descents.firstBit();
+    RootNbr beta = link[alpha][i];
     assert(i<rk);
-    Permutation& alpha_perm=root_perm[alpha];
-    alpha_perm=root_perm[i]; // copy; this and next two statements alias-free
-    root_perm[link[alpha][i]].renumber(alpha_perm);
-    root_perm[i].renumber(alpha_perm);
+    assert(beta<alpha);
+    Permutation& alpha_perm = ri[alpha].root_perm;
+
+    // the next three statements are alias-free; conjugate |beta| by simple |i|
+    alpha_perm = ri[i].root_perm; // copy initial permutation (sets the size)
+    ri[beta].root_perm.renumber(alpha_perm); // multiply
+    ri[i].root_perm.renumber(alpha_perm); // complete the conjugation
+
+    auto& bots =     root_ladder_bot[posRootNbr(alpha)];
+    auto& cobots = coroot_ladder_bot[posRootNbr(alpha)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
+    for (auto it=root_ladder_bot[posRootNbr(beta)].begin(); it(); ++it)
+      bots.insert(simple_reflected_root(i,*it));
+    for (auto it=coroot_ladder_bot[posRootNbr(beta)].begin(); it(); ++it)
+      cobots.insert(simple_reflected_root(i,*it));
+  }
+
+  for (RootNbr alpha=0; alpha<npos; ++alpha)
+  {
+    auto& bots =     root_ladder_bot[negRootNbr(alpha)];
+    auto& cobots = coroot_ladder_bot[negRootNbr(alpha)];
+    bots.set_capacity(2*npos); cobots.set_capacity(2*npos);
+
+    for (auto it=root_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
+      bots.insert(ri[alpha].root_perm[*it]);
+    for (auto it=coroot_ladder_bot[posRootNbr(alpha)].begin(); it(); ++it)
+      cobots.insert(ri[alpha].root_perm[*it]);
   }
 
 } // end of basic constructor
 
-void RootSystem::dualise() // private method to pass to dual
+// a method designed for the 3 places where is called; not for general use
+void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 { bool simply_laced = true;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=i+1; j<rk; ++j) // do only case $i<j$, upper triangle
@@ -276,15 +327,16 @@ void RootSystem::dualise() // private method to pass to dual
   if (not simply_laced)
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
       root(alpha).swap(coroot(alpha)); // |descent|, |ascent| are OK
-} // |RootSystem::dualise|
+} // |RootSystem::swap_roots_and_coroots|
 
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , prefer_co(not rs.prefer_co) // switch this
   , Cmat(rs.Cmat) // transposed below
   , ri(rs.ri)     // entries modified internally in non simply laced case
-  , root_perm(rs.root_perm) // unchanged
-{ dualise(); }
+  , root_ladder_bot(rs.coroot_ladder_bot)
+  , coroot_ladder_bot(rs.root_ladder_bot)
+{ swap_roots_and_coroots(); }
 
 
 // express root in simple root basis
@@ -454,7 +506,7 @@ LieType RootSystem::subsystem_type(const RootNbrList& rb) const
 // pairing $\<\alpha,\beta^\vee>$; note that coroot is on the right
 int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
 {
-  if (isOrthogonal(alpha,beta)) // this is quick
+  if (is_orthogonal(alpha,beta)) // this is quick
     return 0;
 
 /*
@@ -495,7 +547,7 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
     assert(i<rk);
     RootNbr beta = simple_reflected_root(i,alpha);
     assert(is_posroot(beta) and beta<alpha);
-    result[alpha] = root_perm[image_reflection[i]][result[beta]];
+    result[alpha] = simple_reflected_root(image_reflection[i],result[beta]);
   }
 
   // finally extend to negative roots, using symmetry of root permutation
@@ -526,7 +578,7 @@ WeylWord RootSystem::reflectionWord(RootNbr alpha) const
   {
     RootNbr i = ri[alpha-numPosRoots()].descents.firstBit();
     result.push_back(i);
-    alpha = root_perm[i][alpha];
+    simple_reflect_root(i,alpha);
   }
   result.push_back(alpha-numPosRoots()); // central reflection
   for (RootNbr i=result.size()-1; i-->0;) // trace back to do conjugation
@@ -569,9 +621,10 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
 }
 
-RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
+// the same, but indexing positive roots from 0, and using |sl_list|
+sl_list<RootNbr> RootSystem::pos_simples(RootNbrSet posroots) const
 {
-  containers::sl_list<RootNbr> result; // these are full root numbers
+  sl_list<RootNbr> result; // these are full root numbers
 
   for (RootNbrSet::iterator it=posroots.begin(); it(); ++it)
   {
@@ -586,7 +639,7 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
 	if (is_posroot(gamma))
 	  posroots.remove(*jt); // |beta| cannot be simple; remove it
 	else
-	  break; // positive root beta made nagative, so alpha is not simple
+	  break; // positive root beta made negative, so alpha is not simple
       }
     } // |for (beta)|
     if (not jt()) // loop over |beta| ran to completion, so |alpha| is "simple"
@@ -594,34 +647,63 @@ RootNbrList RootSystem::pos_simples(RootNbrSet posroots) const
   } // |for (alpha)|
   // now roots in |result| all have weakly negative dot products
 
-  return result.to_vector();
+  return result;
 }
 
-bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
+RootNbr RootSystem::lookup_posroot(const Byte_vector& v) const
 {
-  RootNbr a = rt_abs(alpha);
-  RootNbr b = rt_abs(beta);
+  RootNbr i=0;
+  for (; i<numPosRoots(); ++i)
+    if (root(i)==v)
+      break;
+  return i;
+}
 
-  bool alpha_less = root_compare()(root(a),root(b)); // ordering among posroots
-  if (alpha_less) // compare actual levels
-    std::swap(a,b); // ensure |a| is higher root
+RootNbr RootSystem::lookup_poscoroot(const Byte_vector& v) const
+{
+  RootNbr i=0;
+  for (; i<numPosRoots(); ++i)
+    if (coroot(i)==v)
+      break;
+  return i;
+}
 
-  Byte_vector v =
-    is_posroot(alpha)==is_posroot(beta)
-    ? root(a) + root(b)
-    : root(a) - root(b);
+RootNbr RootSystem::lookup_root(const Byte_vector& v) const
+{
+  Byte_vector::const_iterator it;
+  for (it = v.begin(); it!=v.end(); ++it)
+    if (*it!=0)
+      break;
+  if (it==v.end())
+    return numRoots(); // zero vector is not a root
+
+  const bool neg = *it<0;
+  auto v_abs = neg ? -v : v;
 
   for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
-    if (v==root(i))
-    {
-      gamma = posRootNbr(i);
-      if (alpha_less ? is_negroot(beta) : is_negroot(alpha))
-	gamma = rootMinus(gamma); // take sign from that root that gave |a|
-      return true;
-    }
-
-  return false; // not found
+    if (v_abs==root(i))
+      return neg ? posRootNbr(i) : negRootNbr(i);
+  return numRoots(); // vector not found
 }
+
+RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
+{
+  Byte_vector::const_iterator it;
+  for (it = v.begin(); it!=v.end(); ++it)
+    if (*it!=0)
+      break;
+  if (it==v.end())
+    return numRoots(); // zero vector is not a root
+
+  const bool neg = *it<0;
+  auto v_abs = neg ? -v : v;
+
+  for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
+    if (v_abs==coroot(i))
+      return neg ? posRootNbr(i) : negRootNbr(i);
+  return numRoots(); // vector not found
+}
+
 
 /*
   Make the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
@@ -636,13 +718,20 @@ bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
 RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 {
   RootNbrSet result = rset;
-  RootNbr gamma;
   for (RootNbrSet::iterator it=result.begin(); it(); ++it)
     for (RootNbrSet::iterator jt=result.begin(); jt!=it; ++jt)
-      if (sumIsRoot(*it,*jt,gamma))
+      if (sum_is_root(*it,*jt))
       { // replace *it and *jt by sum and difference (short->long in B2 system)
+	Byte_vector sum =
+	  ( is_posroot(*it) ?  root(posroot_index(*it))
+	                    : -root(negroot_index(*it)) )
+	  +
+	  ( is_posroot(*it) ?  root(posroot_index(*jt))
+	                    : -root(negroot_index(*jt)) );
+	RootNbr gamma = lookup_root(sum);
+	assert(gamma != numRoots()); // |sum| wass supposed to be a root
 	result.insert(gamma);
-	result.insert(root_permutation(*jt)[gamma]);
+	result.insert(root_permutation(*jt)[gamma]); // invert sign second root
 	result.remove(*it); result.remove(*jt);
 	break; // move to next |*it|; without this inner loop won't terminate!
       }
@@ -701,7 +790,7 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   coweight_numer = (coroot_mat*iC).columns();
 
   // get basis of co-radical character lattice, if any (or leave empty list)
-  if (semisimpleRank()<d_rank)
+  if (semisimple_rank()<d_rank)
   {
     d_coradicalBasis = lattice::perp(prd.simple_coroots_mat());
     d_radicalBasis   = lattice::perp(prd.simple_roots_mat());
@@ -750,7 +839,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 		     tags::DerivedTag)
   : RootSystem(rd)
-  , d_rank(rd.semisimpleRank())
+  , d_rank(rd.semisimple_rank())
   , d_roots(rd.numRoots())
   , d_coroots(rd.numRoots())
   , weight_numer(d_rank)
@@ -801,7 +890,7 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 		     tags::CoderivedTag)
   : RootSystem(rd)
-  , d_rank(rd.semisimpleRank())
+  , d_rank(rd.semisimple_rank())
   , d_roots(rd.numRoots())
   , d_coroots(rd.numRoots())
   , weight_numer(d_rank)
@@ -867,8 +956,8 @@ RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 LieType RootDatum::type() const
 {
   LieType result = dynkin::Lie_type(cartanMatrix());
-  result.reserve(result.size()+rank()-semisimpleRank());
-  for (unsigned int i=semisimpleRank(); i<rank(); ++i)
+  result.reserve(result.size()+radical_rank());
+  for (RootNbr i=0; i<radical_rank(); ++i)
     result.emplace_back('T',1);
   return result;
 }
@@ -908,9 +997,9 @@ void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 */
 Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
 {
-  RootNbrList simple_image(semisimpleRank());
+  RootNbrList simple_image(semisimple_rank());
 
-  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
   { auto image = root_index(q*simpleRoot(s));
     assert(image<numRoots());
     simple_image[s] = image;
@@ -959,62 +1048,6 @@ WeylWord RootDatum::word_of_inverse_matrix
   return to_dominant(q*twoRho());
 }
 
-/*
-  The sum of the positive roots in rl.
-
-  Precondition: rl holds the roots in a sub-rootsystem of the root system of
-  rd;
-*/
-Weight RootDatum::twoRho(const RootNbrList& rl) const
-{
-  Weight result(rank(),0);
-
-  for (RootNbr i = 0; i < rl.size(); ++i)
-    if (is_posroot(rl[i]))
-      result += root(rl[i]);
-
-  return result;
-}
-
-/* Returns the sum of the positive roots in rs.
-
-  Precondition: rs holds the roots in a sub-rootsystem of the root system of
-  rd, or possibly only the positive roots in such a subsystem
-*/
-Weight RootDatum::twoRho(RootNbrSet rs) const
-{
-  Weight result(rank(),0);
-  rs &= posRootSet(); // limit to positive roots in the subset
-
-  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    result += root(*i);
-
-  return result;
-}
-
-// and their dual relatives
-Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
-{
-  Coweight result(rank(),0);
-
-  for (RootNbr i = 0; i < rl.size(); ++i)
-    if (is_posroot(rl[i]))
-      result += coroot(rl[i]);
-
-  return result;
-}
-
-Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
-{
-  Coweight result(rank(),0);
-  rs &= posRootSet(); // limit to positive roots in the subset
-
-  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
-    result += coroot(*i);
-
-  return result;
-}
-
 
 // make |lambda| dominant, and return Weyl word that will convert it back
 WeylWord RootDatum::factor_dominant (Weight& v) const
@@ -1024,14 +1057,14 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
   do
-    for (s=0; s<semisimpleRank(); ++s)
+    for (s=0; s<semisimple_rank(); ++s)
       if (v.dot(simpleCoroot(s)) < 0)
       {
 	w.push_back(s); // actually at front when applying list right-to-left
 	simple_reflect(s,v);
 	break;
       }
-  while (s<semisimpleRank());
+  while (s<semisimple_rank());
 
   // result is in proper order to transform (right to left) |v| back to original
   return WeylWord(std::move(w).to_vector());
@@ -1045,14 +1078,14 @@ WeylWord RootDatum::factor_codominant (Coweight& v) const
 
   // greedy approach: find and apply reflections bringing |v| closer to dominant
   do
-    for (s=0; s<semisimpleRank(); ++s)
+    for (s=0; s<semisimple_rank(); ++s)
       if (v.dot(simpleRoot(s)) < 0)
       {
 	w.push_front(s);
 	simple_coreflect(v,s);
 	break;
       }
-  while (s<semisimpleRank());
+  while (s<semisimple_rank());
 
   // result is in proper order to transform (left to right) |v| back to original
   return WeylWord(std::move(w).to_vector());
@@ -1168,12 +1201,12 @@ void RootDatum::fillStatus()
 ******************************************************************************/
 
 RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
-RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
-  { return RatWeight(rd.twoRho(sub_posroots),2); }
+// RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
+//   { return RatWeight(rd.twoRho(sub_posroots),2); }
 RatCoweight rho_check (const RootDatum& rd)
   { return RatCoweight(rd.dual_twoRho(),2); }
-RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
-  { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
+// RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
+//   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
 
 /*
   Return matrix of dual fundamental involution related to fundamental |q|
@@ -1214,7 +1247,7 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
     RootNbr alpha = *it;
     RootNbrSet::iterator jt;
     for (jt = o.begin(); jt(); ++jt)
-      if (not rs.isOrthogonal(alpha,*jt))
+      if (not rs.is_orthogonal(alpha,*jt))
       {
 	result.remove(alpha);
 	break;
@@ -1325,7 +1358,7 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
     pos_perm_simple.push_back(Permutation(npos));
     for (RootNbr j=0; j<npos; ++j)
       if (j==i) pos_perm_simple.back()[j]=i; // make |j| itself a fixed point
-      else pos_perm_simple.back()[j]=rs.posRootIndex(p[rs.posRootNbr(j)]);
+      else pos_perm_simple.back()[j]=rs.posroot_index(p[rs.posRootNbr(j)]);
   }
 
   RootNbrSet current(npos), tmp(npos);
@@ -1340,6 +1373,33 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
 
   current.set_capacity(rs.numRoots()); // double the size
   return current <<= npos; // shift to root (rather than posroot) numbers
+} // |pos_to_neg|
+
+// partition |roots| into connected components for |is_orthogonal|
+sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots)
+{
+  sl_list<RootNbrSet> result;
+  for (auto alpha : roots)
+  {
+    sl_list<RootNbrSet> adhere; // gathers |result| members connected to |alpha|
+    for (auto it=result.begin(); not result.at_end(it); ) // no increment here
+    {
+      bool stick=false;
+      for (auto beta : *it)
+	if (not rs.is_orthogonal(alpha,beta)) { stick=true; break; }
+      if (stick)
+	adhere.splice(adhere.end(),result,it);
+      else
+	++it; // skip only over disconnected sets
+    }
+
+    auto& new_comp = result.emplace_back(roots.capacity());
+    new_comp.insert(alpha);
+    for (auto comp : adhere) // unite with components that adhere to |alpha|
+      new_comp |= comp;
+  }
+
+  return result;
 }
 
 /*
@@ -1396,7 +1456,7 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
   return rd.simpleBasis(int_roots).size();
 }
 
-RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 {
   arithmetic::Denom_t d = gamma.denominator(); // unsigned type is safe here
 
@@ -1408,13 +1468,13 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
       products.insert(p);
   }
 
-  std::set<Rational> fracs;
+  std::set<RatNum> fracs;
   for (std::set<arithmetic::Denom_t>::iterator
 	 it= products.begin(); it!=products.end(); ++it)
     for (arithmetic::Denom_t s=d; s<=*it; s+=d)
-      fracs.insert(Rational(s,*it));
+      fracs.insert(RatNum(s,*it));
 
-  return RationalList(fracs.begin(),fracs.end());
+  return RatNumList(fracs.begin(),fracs.end());
 }
 
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta)
@@ -1424,7 +1484,7 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 {
   ext_gens result;
   const Permutation pi = rd.rootPermutation(delta);
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
   {
     RootNbr alpha=rd.simpleRootNbr(s);
     if (pi[alpha]==alpha)
@@ -1432,7 +1492,7 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
     else if (pi[alpha]>alpha)
     {
       if (rd.is_simple_root(pi[alpha]))
-	result.push_back(ext_gen(rd.isOrthogonal(alpha,pi[alpha]),
+	result.push_back(ext_gen(rd.is_orthogonal(alpha,pi[alpha]),
 				 s,rd.simpleRootIndex(pi[alpha])));
       else
 	throw std::runtime_error("Not a distinguished involution");
@@ -1474,7 +1534,7 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 {
   const Ratvec_Numer_t& v=gamma.numerator();
   RankFlags result;
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     result.set(s,rd.simpleCoroot(s).dot(v) == 0);
 
   return result;
@@ -1483,7 +1543,7 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma)
 {
   auto& numer = gamma.numerator();
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     if (rd.simpleCoroot(s).dot(numer)<0)
       return false;
   return true;

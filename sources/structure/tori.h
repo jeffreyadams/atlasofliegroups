@@ -12,10 +12,11 @@
 
 #include <tuple>
 
+#include "../Atlas.h"
+
 #include "bits.h"
 #include "tags.h"
 
-#include "../Atlas.h"
 #include "subquotient.h"
 
 namespace atlas {

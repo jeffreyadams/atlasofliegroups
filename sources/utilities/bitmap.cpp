@@ -370,16 +370,11 @@ unsigned long BitMap::size() const
 /******** manipulators *******************************************************/
 
 /*
-  Transform the bitmap into its bitwise complement at returns itself
+  Replace a bitmap by its complement
 
-  NOTE: one has to be careful about the last chunk, resetting the unused
-  bits to zero.
-
-  NOTE: the naming of this manipulator is dangerous, as the user might write
-  something like |a &= ~b| and be surprised by the fact that |b| changes
-  value. Incidentally, for that special case there is |a.andnot(b)|.
+  We are careful about the last chunk, leaving the unused bits equal to zero.
 */
-BitMap& BitMap::operator~ ()
+BitMap& BitMap::take_complement ()
 {
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] = ~d_map[j];

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "sl_list.h"
 #include "matreduc.h"
 #include "permutations.h"
 #include "arithmetic.h"
@@ -71,16 +72,6 @@ Vector<C>& Vector<C>::negate_add (const Vector<C>& v)
   auto p = v.begin();
   for (auto it=base::begin(); it!=base::end(); ++it,++p)
     *it = *p - *it;
-  return *this;
-}
-
-template<typename C>
-template<typename I>
-Vector<C>& Vector<C>::add (I b, C c)
-{
-  if (c!=C(0)) // we may be able to avoid doing anything at all
-    for (auto it=base::begin(); it!=base::end(); ++it,++b)
-      *it += *b * c;
   return *this;
 }
 
@@ -145,36 +136,12 @@ Vector<C>& Vector<C>::negate ()
 }
 
 template<typename C>
-template<typename C1>
-  C1 Vector<C>::dot (const Vector<C1>& v) const
-{
-  assert(base::size()==v.size());
-  C1 result= C1(0);
-  for (size_t i=0; i<base::size(); ++i)
-    result += (*this)[i] * v[i];
-
-  return result;
-}
-
-template<typename C>
   bool Vector<C>::isZero() const
 {
   for (auto it=base::begin(); it!=base::end(); ++it)
     if (*it!=C(0))
       return false;
   return true;
-}
-
-
-template<typename C>
-template<typename C1>
-Vector<C1> Vector<C>::scaled (C1 c) const
-{
-  Vector<C1> result(base::size());
-  auto p=result.begin();
-  for (auto it=base::begin(); it!=base::end(); ++p,++it)
-    *p = *it * c;
-  return result;
 }
 
 template<typename C>
@@ -200,8 +167,6 @@ template<typename C>
 }
 
 
-} // |namespace matrix|
-
 /*****************************************************************************
 
         Chapter II -- The Matrix class
@@ -209,8 +174,6 @@ template<typename C>
   We implement a matrix as a vector of elements, concatenating the rows.
 
 ******************************************************************************/
-
-namespace matrix {
 
 /******** constructors *******************************************************/
 
@@ -233,25 +196,6 @@ template<typename C>
 {
   for (unsigned int j = 0; j<d_columns; ++j)
     set_column(j,b[j]);
-}
-
-/*
-  Here |I| is a random access iterator type whose value type should be
-  |Vector<C>| or some other type that can be subscripted giving a value of
-  type |C|. We read the columns of the matrix from the iterator.
-
-  All the vectors obtained from the iterators should have size |n_rows|
-*/
-template<typename C>
-  template<typename I> Matrix_base<C>::Matrix_base
-    (I first, I last, unsigned int n_rows, tags::IteratorTag)
-  : d_rows(n_rows), d_columns(last-first)
-  , d_data(static_cast<std::size_t>(d_rows)*d_columns)
-{
-  I p=first;
-  for (unsigned int j=0; j<d_columns; ++j,++p)
-    for (unsigned int i=0; i<d_rows; ++i)
-      (*this)(i,j) = (*p)[i];
 }
 
 template<typename C>
@@ -320,50 +264,6 @@ bool Matrix_base<C>::is_zero () const
     if (*it!=C(0))
       return false;
   return true;
-}
-
-/*
-Apply the matrix to the vector |w|, and returns the result. It is assumed that
-the size of |w| is the number of columns; result size is the number of rows.
-*/
-template<typename C>
-template<typename C1>
-Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
-{
-  assert(base::numColumns()==w.size());
-  Vector<C1> result(base::numRows());
-
-  for (unsigned int i=0; i<base::numRows(); ++i)
-  {
-    C1 c(0);
-    for (unsigned int j=0; j<base::numColumns(); ++j)
-      c += (*this)(i,j) * w[j];
-    result[i] = c;
-  }
-
-  return result;
-}
-
-/*
-  Multiply the matrix to right to the row-vector w, and returns the result.
-  It is assumed that the size of w is the number of rows; result size is the
-  number of columns. This is the proper sense of application for dual space.
-*/
-template<typename C> template<typename C1>
-Vector<C1> Matrix<C>::right_prod(const Vector<C1>& w) const
-{
-  assert(base::numRows()==w.size());
-  Vector<C1> result(base::numColumns());
-
-  for (unsigned int j=0; j<base::numColumns(); ++j)
-  {
-    C1 c(0);
-    for (unsigned int i=0; i<base::numRows(); ++i)
-      c += w[i] * (*this)(i,j);
-    result[j] = c;
-  }
-
-  return result;
 }
 
 template<typename C>
@@ -566,7 +466,8 @@ bool PID_Matrix<C>::divisible(C c) const
 // Extract the block at indices [i0,i1[ x [j0,j1[ as a |Matrix|
 template<typename C>
   PID_Matrix<C>
-    PID_Matrix<C>::block(unsigned int i0, unsigned int j0, unsigned int i1, unsigned int j1) const
+    PID_Matrix<C>::block(unsigned int i0, unsigned int j0,
+			 unsigned int i1, unsigned int j1) const
 {
   assert(i0<=i1 and i1<=base::numRows());
   assert(j0<=j1 and j1<=base::numColumns());
@@ -654,37 +555,6 @@ void Matrix<C>::swapColumns(unsigned int j0, unsigned int j1)
 }
 
 template<typename C>
-  void row_apply(Matrix<C>& A, const Matrix<C>& ops, unsigned int i) // initial row
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(i+r <= A.numRows());
-  Vector<C> tmp(r);
-  for (unsigned int j=0; j<A.numColumns(); ++j)
-  { // |tmp = partial_column(j,i,i+r)|; save values before overwriting
-    for (unsigned int k=0; k<r; ++k)
-      tmp[k]=A(i+k,j);
-    ops.apply_to(tmp); // do row operations on column vector |tmp|
-    for (unsigned int k=0; k<r; ++k)
-      A(i+k,j)=tmp[k];
-  }
-}
-
-template<typename C>
-  void column_apply(Matrix<C>& A, const Matrix<C>& ops, unsigned int j) // initial col
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(j+r <= A.numColumns());
-  Vector<C> tmp(r);
-  for (unsigned int i=0; i<A.numRows(); ++i)
-  { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
-    for (unsigned int l=0; l<r; ++l)
-      tmp[l]=A(i,j+l);
-    ops.right_mult(tmp); // do column operations on row vector |tmp|
-    for (unsigned int l=0; l<r; ++l)
-      A(i,j+l)=tmp[l];
-  }
-}
-template<typename C>
 void Matrix_base<C>::eraseRow(unsigned int i)
 {
   assert(i<d_rows);
@@ -720,48 +590,16 @@ void Matrix_base<C>::eraseColumn(unsigned int j)
 
 namespace matrix {
 
-
-// Set |b| to the canonical basis (as in identity matrix) in dimension |r|
-template<typename C>
-  std::vector<Vector<C> > standard_basis(unsigned int r)
-{
-  std::vector<Vector<C> > result(r,Vector<C>(r,C(0)));
-
-  for (unsigned int i=0; i<r; ++i)
-    result[i][i] = C(1);
-
-  return result;
-}
-
-template<typename C>
-  PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy
-{
-  unsigned int i=std::min(A.numRows(),A.numColumns());
-  while (i-->0)
-    A(i,i) += c;
-  return A;
-}
-
-template<typename C>
-  void swap(Matrix_base<C>& A,Matrix_base<C>& B) { A.swap(B); }
-
-
   /*
 
-    Instantiation of templates (only these are generated)
+    Instantiation of class templates (only these class instances are generated)
 
   */
 
  // type abreviations used in these instantiations
-typedef arithmetic::Numer_t Num;
+using Num = long long; // maybe |arithmetic::Numer_t Num|
 typedef polynomials::Polynomial<int> Pol;
 typedef arithmetic::big_int bigint;
-
-template std::vector<Vector<int> > standard_basis<int>(unsigned int n);
-template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
-template void swap(Matrix_base<int>&,Matrix_base<int>&);
-template void row_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
-template void column_apply(Matrix<int>&,const Matrix<int>&,unsigned int);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
@@ -769,56 +607,22 @@ template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
+template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
+template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
+template class PID_Matrix<Num>; // for precision system solving (alcoves)
 
 // template member instances
-template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);
-template Vector<Num>& Vector<Num>::add(Vector<int>::const_iterator b,Num c);
-template Vector<Num>& Vector<Num>::add(Vector<Num>::const_iterator b,Num c);
-template int Vector<int>::dot(Vector<int> const&) const;
-template Num Vector<int>::dot(Vector<Num> const&) const;
-template int Vector<Num>::dot(Vector<int> const&) const;
-template signed char
-  Vector<signed char>::dot(const Vector<signed char>&) const;
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);
 template Vector<int>& operator%=(Vector<int>&,int);
 template Vector<Num>& operator/=(Vector<Num>&,Num);
-
-template Vector<int> Matrix<int>::operator*(Vector<int> const&) const;
-template Vector<Num> Matrix<int>::operator*(Vector<Num> const&) const;
-template Vector<int> Matrix<int>::right_prod(const Vector<int>&) const;
-template Vector<Num> Matrix<int>::right_prod(const Vector<Num>&) const;
-
-template Matrix_base<int>::Matrix_base
-  (std::vector<Vector<int> >::const_iterator,
-   std::vector<Vector<int> >::const_iterator,
-   unsigned int,
-   tags::IteratorTag);
-
-template Matrix_base<int>::Matrix_base
-  (std::vector<Vector<int> >::iterator,
-   std::vector<Vector<int> >::iterator,
-   unsigned int,
-   tags::IteratorTag);
-
-template Matrix_base<int>::Matrix_base
-  (Vector<int>*,
-   Vector<int>*,
-   unsigned int,
-   tags::IteratorTag);
-
-template Matrix_base<int>::Matrix_base
-  (std::vector<Vector_cref<int> >::iterator,
-   std::vector<Vector_cref<int> >::iterator,
-   unsigned int,
-   tags::IteratorTag);
 
 template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
 

@@ -53,6 +53,8 @@ this file.
 #ifndef ATLAS_TYPES_H
 #define ATLAS_TYPES_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
+
 @< Includes needed in the header file @>@;
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
@@ -90,7 +92,6 @@ implementation, but we avoid including its header into out header file.
 @h "global.h"
 
 @< Includes needed in the header file @>=
-#include "../Atlas.h" // must be very first \.{atlas} include
 #include "axis-types.h"
 
 @*1 Lie types.
@@ -164,27 +165,42 @@ void Lie_type_value::add_simple_factor (char c,unsigned int rank)
 { static const std::string types=lietype::typeLetters; // |"ABCDEFGT"|
   auto t=types.find(c);
   if (t==std::string::npos)
-    throw runtime_error("Invalid type letter '") << c << '\'';
+  { std::ostringstream o;
+    o << "Invalid type letter '" << c << '\'';
+    throw runtime_error(o.str());
+  }
 @.Invalid type letter@>
   const unsigned int r=constants::RANK_MAX; // for convenience
 @/static const unsigned int lwb[]={1,2,2,4,6,4,2,0};
   static const unsigned int upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw runtime_error("Too small rank ") << rank << " for Lie type " << c;
+  { std::ostringstream o;
+    o << "Too small rank " << rank << " for Lie type " << c;
+    throw runtime_error(o.str());
+  }
 @.Too small rank@>
   if (rank>upb[t])
   { if (upb[t]!=r)
-      throw runtime_error("Too large rank ") << rank << " for Lie type " << c;
+    { std::ostringstream o;
+      o << "Too large rank " << rank << " for Lie type " << c;
+      throw runtime_error(o.str());
+    }
 @.Too large rank@>
     else
-      throw runtime_error("Rank ") << rank @|
+    { std::ostringstream o;
+      o << "Rank " << rank @|
         << " exceeds implementation limit " << r;
+      throw runtime_error(o.str());
+    }
 @.Rank exceeds implementation limit@>
   }
 @)
   if (val.rank() + rank > r)
-    throw runtime_error("Total rank ") << val.rank() + rank @|
+  { std::ostringstream o;
+    o << "Total rank " << val.rank() + rank @|
      << " exceeds implementation limit " << r;
+    throw runtime_error(o.str());
+  }
 @.Total rank exceeds...@>
 @)
   if (c=='T')
@@ -216,9 +232,12 @@ void Lie_type_wrapper(expression_base::level l)
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
   { unsigned int rank;
     if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
-      throw runtime_error("Error in type string '") << is.str()
-        << "' for Lie type";
+    { std::ostringstream o;
+      o << "Error in string '" << is.str()
+        << "' that should specify a Lie type";
 @.Error in type string@>
+      throw runtime_error(o.str());
+    }
     result->add_simple_factor(c,rank);
       // this may |throw| a |runtime_error| as well
   }
@@ -243,9 +262,12 @@ void compose_Lie_types_wrapper(expression_base::level l)
   shared_Lie_type t2=get<Lie_type_value>();
   own_Lie_type t1=get_own<Lie_type_value>();
   if (t1->val.rank()+t2->val.rank()>constants::RANK_MAX)
-      throw runtime_error("Combined rank ") << t1->val.rank()+t2->val.rank() @|
+  { std::ostringstream o;
+    o << "Combined rank " << t1->val.rank()+t2->val.rank() @|
         << " exceeds implementation limit " @|
         << static_cast<unsigned>(constants::RANK_MAX);
+    throw runtime_error(o.str());
+  }
 @.Combined rank exceeds...@>
   if (l==expression_base::no_value)
     return;
@@ -435,9 +457,12 @@ void filter_units_wrapper (expression_base::level l)
   own_matrix basis=get_own<matrix_value>();
   unsigned int n=basis->val.numColumns();
   if (inv_f->val.size()>n)
-    throw runtime_error ("Too many factors: ") @|
-@.Too many factors@>
+  { std::ostringstream o;
+    o << "Too many factors: " @|
       << inv_f->val.size() << " for " << n <<" columns";
+    throw runtime_error(o.str());
+  }
+@.Too many factors@>
   if (l==expression_base::no_value)
     return;
 @)
@@ -538,9 +563,12 @@ void replace_gen_wrapper (expression_base::level l)
   own_matrix generators=get_own<matrix_value>();
   unsigned int n=generators->val.numColumns();
   if (inv_f->val.size()>n)
-    throw runtime_error ("Too many factors: ") @|
-@.Too many factors@>
+  { std::ostringstream o;
+    o << "Too many factors: " @|
       << inv_f->val.size() << " for " << n <<" columns";
+    throw runtime_error(o.str());
+  }
+@.Too many factors@>
 @)
   if (new_generators->val.numRows()!=generators->val.numRows())
     throw runtime_error("Column lengths do not match");
@@ -637,17 +665,23 @@ the new denominator~|d|.
     d=arithmetic::lcm(d,denom[j]);
 
     if (gen.size()!=v->val.size())
-      throw runtime_error("Length mismatch for generator ") << j << ": "@|
-@.Length mismatch...@>
+    { std::ostringstream o;
+      o << "Length mismatch for generator " << j << ": "@|
         << gen.size() << ':' << v->val.size();
+      throw runtime_error(o.str());
+    }
+@.Length mismatch...@>
 
     const auto& col=gen.numerator();
     for (unsigned int i=0; i<v->val.size(); ++i)
     { if (v->val[i]*col[i]%gen.denominator()!=0) // must use signed arithmetic!!
-	throw runtime_error("Improper generator entry: ")
+      { std::ostringstream o;
+	o << "Improper generator entry: "
+          << col[i] << '/' << denom[j] @|
+          << " not a multiple of 1/" << v->val[i];
+        throw runtime_error(o.str());
+      }
 @.Improper generator entry@>
-         << col[i] << '/' << denom[j] @|
-         << " not a multiple of 1/" << v->val[i];
       M(i,j) = @| arithmetic::remainder(col[i],denom[j]);
       // ``mod $\Zee$''; makes |M(i,j)| non-negative
     }
@@ -751,9 +785,13 @@ letter |'u'| corresponds to a type of the form~$D_{2n}$.
 @< Test and possibly transform... @>=
 { if (t=='D') result.push_back(r%2==0 ? 'u' : 's');
   else if (t=='A' and r>=2 or t=='E' and r==6 or t=='T') result.push_back('s');
-  else throw runtime_error("Unequal rank class is meaningless for type ") @|
+  else
+  { std::ostringstream o;
+    o << "Unequal rank class is meaningless for type " @|
+      << t << r;
+    throw runtime_error(o.str());
+  }
 @.Unequal rank class is meaningless...@>
-     << t << r;
 }
 
 @ Below we shall also need to pass a permutation argument supplied by the user
@@ -770,9 +808,15 @@ Permutation checked_permutation(const std::vector<shared_value>& pi)
   for (auto it=pi.begin(); it!=pi.end(); ++it,++rit)
   { auto entry = force<int_value>(it->get())->val.ulong_val();
     if (entry>=pi.size())
-      throw runtime_error("Permutation entry ") << entry << " too big";
+    { std::ostringstream o;
+      o << "Permutation entry " << entry << " too big";
+      throw runtime_error(o.str());
+    }
     if (seen.isMember(entry))
-      throw runtime_error("Permutation has repeated entry ") << entry;
+    { std::ostringstream o;
+      o << "Permutation has repeated entry " << entry;
+      throw runtime_error(o.str());
+    }
     seen.insert(entry);
     *rit=entry;
   }
@@ -792,8 +836,11 @@ void basic_involution_wrapper(expression_base::level l)
   shared_row perm = get<row_value>();
   shared_Lie_type t=get<Lie_type_value>();
   if (perm->val.size()!=t->val.rank())
-    throw runtime_error("Permutation size ") << perm->val.size() @|
+  { std::ostringstream o;
+    o << "Permutation size " << perm->val.size() @|
       << " does not match rank " << t->val.rank() << " of Lie type";
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -833,9 +880,11 @@ void based_involution_wrapper(expression_base::level l)
 @)
   unsigned int r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
-    throw runtime_error ("Basis should be given by ")
+  { std::ostringstream o;
+    o << "Basis should be given by " << r << 'x' << r << " matrix";
+    throw runtime_error(o.str());
+  }
 @.Basis should be given...@>
-      << r << 'x' << r << " matrix";
 @)
   WeightInvolution inv=lietype::involution
         (type->val,checked_inner_class_type(s->val.c_str(),type->val));
@@ -1131,10 +1180,13 @@ void root_datum_wrapper(expression_base::level l)
 
   if (simple_coroots->val.numRows()!=nr @| or
       simple_coroots->val.numColumns()!=nc)
-    throw runtime_error("Sizes (") << nr << ',' << nc << "),(" @|
+  { std::ostringstream o;
+    o << "Sizes (" << nr << ',' << nc << "),(" @|
       << simple_coroots->val.numRows() << ','
       << simple_coroots->val.numColumns() @|
       << ") of simple (co)root systems differ";
+    throw runtime_error(o.str());
+  }
 @.Sizes of simple (co)root systems...@>
 
 try @/{
@@ -1164,9 +1216,12 @@ void root_datum_from_type_wrapper(expression_base::level l)
   shared_Lie_type type=get<Lie_type_value>();
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->val.rank())
-    throw runtime_error("Sub-lattice matrix should have size ") @|
-@.Sub-lattice matrix should...@>
+  { std::ostringstream o;
+    o << "Sub-lattice matrix should have size " @|
       << type->val.rank() << 'x' << type->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Sub-lattice matrix should...@>
   PreRootDatum prd(type->val,prefer_coroots);
   prd.quotient(lattice->val);
 @.Sub-lattice matrix not square...@>
@@ -1189,9 +1244,12 @@ void sublattice_root_datum_wrapper(expression_base::level l)
   shared_root_datum rd=get<root_datum_value>();
   const auto r = rd->val.rank();
   if (lattice->val.numRows()!=r or lattice->val.numColumns()!=r)
-    throw runtime_error("Sub-lattice matrix should have size ") @|
-@.Sub-lattice matrix should...@>
+  { std::ostringstream o;
+    o << "Sub-lattice matrix should have size " @|
       << r << 'x' << r;
+    throw runtime_error(o.str());
+  }
+@.Sub-lattice matrix should...@>
 
   PreRootDatum prd = rd->val; // inherits |prefer_coroots| attribute
   prd.quotient(lattice->val); // this may |throw| a |std::runtime_error|
@@ -1249,7 +1307,62 @@ void adjoint_datum_wrapper(expression_base::level l)
 
 @*2 Functions operating on root data.
 %
-The following functions allow us to look at individual simple roots and simple
+We start with attributes of root data as a whole.
+
+@< Local function definitions @>=
+void root_datum_eq_wrapper (expression_base::level l)
+{ shared_root_datum rd1 = get<root_datum_value>();
+  shared_root_datum rd0 = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(rd0.get()==rd1.get())); // compare pointers
+}
+void root_datum_neq_wrapper (expression_base::level l)
+{ shared_root_datum rd1 = get<root_datum_value>();
+  shared_root_datum rd0 = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(rd0.get()!=rd1.get())); // compare pointers
+}
+@)
+void datum_Cartan_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value>(rd->val.cartanMatrix()));
+}
+@)
+void rd_rank_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(rd->val.rank()));
+}
+@)
+void rd_semisimple_rank_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(rd->val.semisimple_rank()));
+}
+@)
+void rd_nposroots_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
+}
+@)
+void two_rho_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.twoRho()));
+}
+void two_rho_check_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
+}
+
+@ The following functions allow us to look at individual simple roots and simple
 coroots stored in a root datum value. We adopt a convention that shifts root
 indices so that the simple (and positive) roots start at index~$0$, and such
 that negative roots have negative indices. This allows the same function to be
@@ -1264,7 +1377,10 @@ void root_wrapper(expression_base::level l)
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
   if (alpha>=2*npr)
-    throw runtime_error("Illegal root index ") << root_index;
+  { std::ostringstream o;
+    o << "Illegal root index " << root_index;
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
@@ -1274,16 +1390,130 @@ void coroot_wrapper(expression_base::level l)
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
   if (alpha>=2*npr)
-    throw runtime_error("Illegal coroot index ") << root_index;
+  { std::ostringstream o;
+    o << "Illegal coroot index " << root_index;
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
 
-@ We also allow access to the matrices of all simple or of all positive
-(co)roots. For all roots such access is rarely needed, and if so easily
-programmed, so we don't provide a built-in function for that.
-We exploit the by-columns |matrix_value| constructor, passing iterators to
-a |int_Matrix| constructor; no extra copying.
+@ Also important are look-up functions for roots and coroots.
+
+@< Local function definitions @>=
+void root_index_wrapper(expression_base::level l)
+{ shared_vector alpha = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  int index=rd->val.root_index(alpha->val); // ensure signed type here
+  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
+  push_value(std::make_shared<int_value>(index));
+}
+@)
+void coroot_index_wrapper(expression_base::level l)
+{ shared_vector alpha_v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
+  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
+  push_value(std::make_shared<int_value>(index));
+}
+
+
+@ An information about roots and coroots that is precomputed in root data and
+can be useful for the user tells for each root or coroot $\alpha$ which are the
+other roots respectively coroots $\beta$ that are at bottom of a latter
+for~$\alpha$, in other words such that $\beta-\alpha$ is not a root. The
+following functions extract that information in the form of a |BitMap| (under
+the alias |RootNbrSet|), whose coded unsigned values are converted here to the
+signed indexing convention of root systems.
+
+@< Local function def...@>=
+void root_ladder_bottoms_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal root index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+
+  const RootNbrSet& bots = rd->val.min_roots_for(alpha);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(bots.size());
+  for (auto it=bots.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>
+      (static_cast<int>(*it-npr)));
+  push_value(std::move(result));
+}
+@)
+void coroot_ladder_bottoms_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd(get<root_datum_value>());
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal coroot index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+
+  const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(bots.size());
+  for (auto it=bots.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>
+      (static_cast<int>(*it-npr)));
+  push_value(std::move(result));
+}
+
+@ We provide the fundamental weights and coweights, which are rational
+vectors in the span of the roots respectively coroots, such that their pairings
+with the simple coroots respectively simple roots are given by the
+Kronecker~$\delta$ (in other words, they form dual bases in within those spans).
+
+@< Local function definitions @>=
+void fundamental_weight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  if (unsigned(i)>=rd->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Invalid index " << i;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value> @|
+      (rd->val.fundamental_weight(i)));
+}
+@)
+void fundamental_coweight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  if (unsigned(i)>=rd->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Invalid index " << i;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rational_vector_value> @|
+      (rd->val.fundamental_coweight(i)));
+}
+
+@ We give access to the matrices of all simple or of all positive
+(co)roots; for \emph{all} roots we would need index-shifting, so we leave this
+to the user program to handle. Our implementation here exploits the by-columns
+|matrix_value| constructor, passing iterators to a |int_Matrix| constructor; no
+extra copying.
 
 @< Local function definitions @>=
 void simple_roots_wrapper(expression_base::level l)
@@ -1322,87 +1552,6 @@ void positive_coroots_wrapper(expression_base::level l)
     (rd->val.beginPosCoroot(),rd->val.endPosCoroot(),rd->val.rank()));
 }
 
-@ Here are some important attributes of root data,
-
-@< Local function definitions @>=
-void root_datum_eq_wrapper (expression_base::level l)
-{ shared_root_datum rd1 = get<root_datum_value>();
-  shared_root_datum rd0 = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-    push_value(whether(rd0.get()==rd1.get())); // compare pointers
-}
-void root_datum_neq_wrapper (expression_base::level l)
-{ shared_root_datum rd1 = get<root_datum_value>();
-  shared_root_datum rd0 = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-    push_value(whether(rd0.get()!=rd1.get())); // compare pointers
-}
-@)
-void datum_Cartan_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<matrix_value>(rd->val.cartanMatrix()));
-}
-@)
-void rd_rank_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(rd->val.rank()));
-}
-@)
-void rd_semisimple_rank_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(rd->val.semisimpleRank()));
-}
-@)
-void rd_nposroots_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
-}
-@)
-void two_rho_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(rd->val.twoRho()));
-}
-void two_rho_check_wrapper(expression_base::level l)
-{ shared_root_datum rd = get<root_datum_value>();
-  if (l!=expression_base::no_value)
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
-}
-
-@ Also important are look-up functions for roots and coroots.
-
-@< Local function definitions @>=
-void root_index_wrapper(expression_base::level l)
-{ shared_vector alpha = get<vector_value>();
-  shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.root_index(alpha->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
-}
-@)
-void coroot_index_wrapper(expression_base::level l)
-{ shared_vector alpha_v = get<vector_value>();
-  shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
-}
-
-
 @ It is useful to have bases for the sum of the root lattice and the
 coradical, and for the sum of the coroot lattice and the radical; the latter
 will in fact be used later in a function to built inner classes.
@@ -1430,30 +1579,6 @@ void coroot_radical_wrapper(expression_base::level l)
   scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
   push_value(std::make_shared<matrix_value> @|
     (scl.begin(),scl.end(),rd->val.rank()));
-}
-
-@ We give access to the fundamental weights and coweights on an individual
-basis, which is easier since they are rational vectors.
-
-@< Local function definitions @>=
-void fundamental_weight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
-  shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimpleRank())
-    throw runtime_error("Invalid index ") << i;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value> @|
-      (rd->val.fundamental_weight(i)));
-}
-@)
-void fundamental_coweight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->int_val();
-  shared_root_datum rd = get<root_datum_value>();
-  if (unsigned(i)>=rd->val.semisimpleRank())
-    throw runtime_error("Invalid index ") << i;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rational_vector_value> @|
-      (rd->val.fundamental_coweight(i)));
 }
 
 
@@ -1506,8 +1631,11 @@ void integrality_datum_wrapper(expression_base::level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
-    throw runtime_error("Length ") << lambda->val.size() @|
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
       << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
 @.Length of rational vector...@>
   if (l!=expression_base::no_value)
   @/push_value(root_datum_value::build @|
@@ -1522,13 +1650,16 @@ void integrality_points_wrapper(expression_base::level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
-    throw runtime_error("Length ") << lambda->val.size() @|
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
       << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
 @.Length of rational vector...@>
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
+  RatNumList ipl = rootdata::integrality_points(rd->val,lambda->val);
     // method normalises rationals
   own_row result = std::make_shared<row_value>(ipl.size());
   for (unsigned int i=0; i<ipl.size(); ++i)
@@ -1553,34 +1684,42 @@ install_function(simply_connected_datum_wrapper,@|"simply_connected"
                 ,"(LieType,bool->RootDatum)");
 install_function(adjoint_datum_wrapper,@| "adjoint"
                 ,"(LieType,bool->RootDatum)");
-install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
-install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
-install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
-install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
-install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
-install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+
 install_function(root_datum_eq_wrapper,@|"=","(RootDatum,RootDatum->bool)");
 install_function(root_datum_neq_wrapper,@|"!=","(RootDatum,RootDatum->bool)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
-install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
-install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
-install_function(fundamental_weight_wrapper,@|
-		 "fundamental_weight","(RootDatum,int->ratvec)");
-install_function(fundamental_coweight_wrapper,@|
-		 "fundamental_coweight","(RootDatum,int->ratvec)");
-install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
-install_function(derived_info_wrapper,@|
-		 "derived_info","(RootDatum->RootDatum,mat)");
-install_function(mod_central_torus_info_wrapper,@|
-		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper,@|
 		 "semisimple_rank","(RootDatum->int)");
 install_function(rd_nposroots_wrapper@|,"nr_of_posroots","(RootDatum->int)");
 install_function(two_rho_wrapper@|,"two_rho","(RootDatum->vec)");
 install_function(two_rho_check_wrapper@|,"two_rho_check","(RootDatum->vec)");
+
+install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
+install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
+install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
+                ,"(RootDatum,int->[int])");
+install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"
+                ,"(RootDatum,int->[int])");
+install_function(fundamental_weight_wrapper,@|
+		 "fundamental_weight","(RootDatum,int->ratvec)");
+install_function(fundamental_coweight_wrapper,@|
+		 "fundamental_coweight","(RootDatum,int->ratvec)");
+
+install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
+install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
+install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
+install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
+install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
+
+install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
+install_function(derived_info_wrapper,@|
+		 "derived_info","(RootDatum->RootDatum,mat)");
+install_function(mod_central_torus_info_wrapper,@|
+		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(integrality_datum_wrapper,@|
                  "integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper,@|
@@ -1642,9 +1781,13 @@ WeylWord check_Weyl_word(const row_value& r, unsigned int rank)
   { auto v=force<int_value>(it->get())->val.ulong_val();
     if (v<rank)
       result.push_back(v);
-    else throw runtime_error("Illegal Weyl word entry ") << v @|
-@.Illegal Weyl word entry@>
+    else
+  { std::ostringstream o;
+    o << "Illegal Weyl word entry " << v @|
          << " (should be <" << rank << ')';
+    throw runtime_error(o.str());
+  }
+@.Illegal Weyl word entry@>
   }
   return result;
 }
@@ -1652,7 +1795,7 @@ WeylWord check_Weyl_word(const row_value& r, unsigned int rank)
 void W_elt_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
   shared_root_datum rd = get<root_datum_value>();
-  auto ww=check_Weyl_word(*r,rd->val.semisimpleRank());
+  auto ww=check_Weyl_word(*r,rd->val.semisimple_rank());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
@@ -1750,8 +1893,11 @@ complete Weyl word.
 @< Local function def... @>=
 void check_Weyl_gen(int s, unsigned int rank)
 { if (static_cast<unsigned int>(s)>=rank)
-    throw runtime_error("Generator ") << s @|
-       << " out of range for Weyl group (should be <" << rank << ')';
+  { std::ostringstream o;
+    o << "Generator " << s @|
+      << " out of range for Weyl group (should be <" << rank << ')';
+    throw runtime_error(o.str());
+  }
 }
 @)
 void W_elt_gen_prod_wrapper(expression_base::level l)
@@ -1808,8 +1954,11 @@ void W_elt_weight_prod_wrapper(expression_base::level l)
   shared_W_elt w = get<W_elt_value>();
   auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
-    throw runtime_error("Rank and weight size mismatch ") @|
+  { std::ostringstream o;
+    o << "Rank and weight size mismatch " @|
       << rd.rank() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(w->W.image_by(rd,w->val,v->val)));
 }
@@ -1818,8 +1967,11 @@ void coweight_W_elt_prod_wrapper(expression_base::level l)
   shared_vector v = get<vector_value>();
   auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
-    throw runtime_error("Coweight size and rank mismatch ") @|
+  { std::ostringstream o;
+    o << "Coweight size and rank mismatch " @|
       <<  v->val.size() << ':' << rd.rank();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(w->W.image_by(rd,v->val,w->val)));
 }
@@ -1837,8 +1989,11 @@ void W_decompose_wrapper(expression_base::level l)
 { own_vector v = get_own<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
   if (v->val.size()!=rd->val.rank())
-    throw runtime_error("Rank and weight size mismatch ") @|
+  { std::ostringstream o;
+    o << "Rank and weight size mismatch " @|
       << rd->val.rank() << ':' << v->val.size();
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -1853,8 +2008,11 @@ void W_codecompose_wrapper(expression_base::level l)
 { shared_root_datum rd = get<root_datum_value>();
   own_vector v = get_own<vector_value>();
   if (v->val.size()!=rd->val.rank())
-    throw runtime_error("Coweight size and rank mismatch ") @|
+  { std::ostringstream o;
+    o << "Coweight size and rank mismatch " @|
       <<  v->val.size() << ':' << rd->val.rank();
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -1967,11 +2125,14 @@ the presence of a central torus part.
 
 @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>=
 { if (delta.numRows()!=r or delta.numColumns()!=r)
-     throw runtime_error("Involution should be a ") @|
-       << r << 'x' << r << " matrix;"@|
-@.Involution should be...@>
+  { std::ostringstream o;
+     o << "Involution should be a " @|
+       << r << 'x' << r << " matrix;"
         " received a "  << delta.numRows() << 'x' << delta.numColumns()
       << " matrix";
+    throw runtime_error(o.str());
+  }
+@.Involution should be...@>
   if (not (delta*delta-1).is_zero())
     throw runtime_error("Given transformation is not an involution");
 @.Given transformation...@>
@@ -2007,17 +2168,23 @@ sufficient.
 @< Local function def...@>=
 RootNbrList check_root_datum_involution
   (const RootDatum& rd, const WeightInvolution& delta)
-{ const unsigned int r=rd.rank(), s=rd.semisimpleRank();
+{ const unsigned int r=rd.rank(), s=rd.semisimple_rank();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
   RootNbrList Delta(s);
   for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.root_index(delta*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
-      throw runtime_error("Matrix maps simple root ") << (unsigned)i @|
+    { std::ostringstream o;
+      o << "Matrix maps simple root " << (unsigned)i @|
 						      << " to non-root";
+      throw runtime_error(o.str());
+    }
     if (delta.right_prod(rd.simpleCoroot(i))!=rd.coroot(Delta[i]))
-      throw runtime_error("Matrix does not map simple coroot ")
+    { std::ostringstream o;
+      o << "Matrix does not map simple coroot "
         << (unsigned)i @| << " to coroot " << Delta[i]-rd.numPosRoots();
+      throw runtime_error(o.str());
+    }
   }
   return Delta;
 }
@@ -2025,7 +2192,7 @@ RootNbrList check_root_datum_involution
 void check_based_root_datum_involution
   (const RootDatum& rd, const WeightInvolution& delta)
 { const auto Delta=check_root_datum_involution(rd,delta);
-  const auto s=rd.semisimpleRank();
+  const auto s=rd.semisimple_rank();
   for (weyl::Generator i=0; i<s; ++i)
     if (not rd.is_simple_root(Delta[i]))
       throw runtime_error("Root datum involution is not distinguished");
@@ -2069,7 +2236,7 @@ weyl::Twist check_involution
   WeylWord& ww, @| lietype::Layout* lo=nullptr)
 { RootNbrList Delta = check_root_datum_involution(rd,delta);
   ww = wrt_distinguished(rd,Delta);
-  const unsigned int r=rd.rank(), s=rd.semisimpleRank();
+  const unsigned int r=rd.rank(), s=rd.semisimple_rank();
   weyl::Twist p; // result
 @/ @< Copy the permutation of the simple roots in |Delta| to |p|, and
       left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
@@ -2578,9 +2745,15 @@ void block_size_wrapper(expression_base::level l)
   auto i = get<int_value>()->val.ulong_val();
   shared_inner_class G = get<inner_class_value>();
   if (i>=G->val.numRealForms())
-    throw runtime_error("Real form number ") << i << " out of bounds";
+  { std::ostringstream o;
+    o << "Real form number " << i << " out of bounds";
+    throw runtime_error(o.str());
+  }
   if (j>=G->val.numDualRealForms())
-    throw runtime_error("Dual real form number ") << j << " out of bounds";
+  { std::ostringstream o;
+    o << "Dual real form number " << j << " out of bounds";
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value> @|
       (G->val.block_size(G->interface.in(i),G->dual_interface.in(j))));
@@ -2827,7 +3000,10 @@ void real_form_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=G->val.numRealForms())
-    throw runtime_error("Illegal real form number: ") << i;
+  { std::ostringstream o;
+    o << "Illegal real form number: " << i;
+    throw runtime_error(o.str());
+  }
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
     push_value(real_form_value::build(G,G->interface.in(i)));
@@ -3025,7 +3201,10 @@ void dual_real_form_wrapper(expression_base::level l)
 { int i =get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=G->val.numDualRealForms())
-    throw runtime_error("Illegal dual real form number: ") << i;
+  { std::ostringstream o;
+    o << "Illegal dual real form number: " << i;
+    throw runtime_error(o.str());
+  }
 @.Illegal dual real form number@>
   if (l==expression_base::no_value)
     return;
@@ -3247,10 +3426,13 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   shared_inner_class ic = get<inner_class_value>();
   if (static_cast<unsigned int>(i)>=ic->val.numCartanClasses())
-    throw runtime_error ("Illegal Cartan class number: ") << i @|
-@.Illegal Cartan class number@>
+  { std::ostringstream o;
+    o << "Illegal Cartan class number: " << i @|
     << ", this inner class only has " << ic->val.numCartanClasses()
     << " of them";
+    throw runtime_error(o.str());
+  }
+@.Illegal Cartan class number@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<Cartan_class_value>(ic,i));
 }
@@ -3265,10 +3447,13 @@ void rf_Cartan_class_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
   if (static_cast<unsigned int>(i)>=rf->val.numCartan())
-    throw runtime_error ("Illegal Cartan class number: ") << i @|
+  { std::ostringstream o;
+    o << "Illegal Cartan class number: " << i @|
+      << ", this real form only has " << rf->val.numCartan()
+      << " of them";
+    throw runtime_error(o.str());
+  }
 @.Illegal Cartan class number@>
-    << ", this real form only has " << rf->val.numCartan()
-    << " of them";
   BitMap cs=rf->val.Cartan_set();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<Cartan_class_value> @|
@@ -3634,7 +3819,10 @@ void KGB_elt_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
   if (static_cast<unsigned int>(i)>=rf->val.KGB_size())
-    throw runtime_error ("Inexistent KGB element: ") << i;
+  { std::ostringstream o;
+    o << "Inexistent KGB element: " << i;
+    throw runtime_error(o.str());
+  }
 @.Inexistent KGB element@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<KGB_elt_value>(rf,i));
@@ -3698,7 +3886,10 @@ of definition), so we combine them into one function |Cayley|.
 inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 { RootNbr alpha= root_index<0 ? -1-root_index : root_index;
   if (alpha>=n_posroots)
-    throw runtime_error ("Illegal reflection: ") << root_index;
+  { std::ostringstream o;
+    o << "Illegal reflection: " << root_index;
+    throw runtime_error(o.str());
+  }
   return alpha;
 }
 @)
@@ -4040,8 +4231,11 @@ void block_element_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   BlockElt z = i; // extract value unsigned
   if (z>=b->val.size())
-    throw runtime_error("Block element ") << z
+  { std::ostringstream o;
+    o << "Block element " << z
       << " out of range (<" << b->val.size() << ")";
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -4102,11 +4296,17 @@ void block_status_wrapper(expression_base::level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
-    throw runtime_error("Illegal simple reflection: ") << s;
+  if (s>=b->rf->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s;
+    throw runtime_error(o.str());
+  }
   if (i>=b->val.size())
-    throw runtime_error("Block element ") << i @|
+  { std::ostringstream o;
+    o << "Block element " << i @|
       << " out of range (<" << b->val.size() << ')';
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -4124,11 +4324,17 @@ void block_cross_wrapper(expression_base::level l)
 { BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
-    throw runtime_error("Illegal simple reflection: ") << s;
+  if (s>=b->rf->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s;
+    throw runtime_error(o.str());
+  }
   if (i>=b->val.size())
-    throw runtime_error("Block element ") << i
+  { std::ostringstream o;
+    o << "Block element " << i
       << " out of range (<" << b->val.size() << ")";
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(b->val.cross(s,i)));
 }
@@ -4138,11 +4344,17 @@ void block_Cayley_wrapper(expression_base::level l)
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
-    throw runtime_error("Illegal simple reflection: ") << s;
+  if (s>=b->rf->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s;
+    throw runtime_error(o.str());
+  }
   if (ii >= b->val.size())
-    throw runtime_error("Block element ") << ii
+  { std::ostringstream o;
+    o << "Block element " << ii
       << " out of range (<" << b->val.size() << ")";
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -4158,11 +4370,17 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
   unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
   unsigned int s = get<int_value>()->int_val();
-  if (s>=b->rf->val.semisimpleRank())
-    throw runtime_error("Illegal simple reflection: ") << s;
+  if (s>=b->rf->val.semisimple_rank())
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s;
+    throw runtime_error(o.str());
+  }
   if (ii >= b->val.size())
-    throw runtime_error("Block element ")  << ii @|
+  { std::ostringstream o;
+    o << "Block element "  << ii @|
       << " out of range (<" << b->val.size() << ")";
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -4232,31 +4450,18 @@ typedef std::unique_ptr<module_parameter_value> module_parameter_ptr;
 typedef std::shared_ptr<const module_parameter_value> shared_module_parameter;
 typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 
-@ When printing a module parameter, we shall indicate a triple
-$(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
-values in other contexts as well, we shall define an auxiliary output function
-|print_stdrep| for such values first, which takes and additional |Rep_context|
-argument, and then call that function from |module_parameter_value::print|. By
-choosing a name for the auxiliary function different from |print|, we avoid
-having that call being mistaken for a recursive call.
+@ When printing a module parameter, we shall indicate a triple $(x,\lambda,\nu)$
+that defines it. Since we shall need to print |StandardRepr| values in other
+contexts as well, an auxiliary output function |repr::print_stdrep| is defined
+in \.{repr.h}, which takes and additional |Rep_context| argument; we shall call
+that function from |module_parameter_value::print|. By choosing a name for the
+auxiliary function different from |print|, we avoid having that call being
+mistaken for a recursive call.
 
-@f nu nullptr
-
-@< Local function def...@>=
-std::ostream& print_stdrep
-  (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
-{ return @|
-  out << "parameter(x="
-      << val.x() << ",lambda="
-      << rc.lambda(val) << ",nu="
-      << rc.nu(val) << ')';
-}
-
-@ Here is virtual method |module_parameter_value::print|, used when printing a
+The virtual method |module_parameter_value::print|, is used when printing a
 value of type \.{Param} (as opposed to for instance printing a term of
-a \.{ParamPol}, which calls |print_stdrep|). Here we prefix the parameter text
-proper with additional information about the parameter that may be relevant to
-the user.
+a \.{ParamPol}). Here we prefix the parameter text proper with additional
+information about the parameter that may be relevant to the \.{atlas} user.
 
 @< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
@@ -4289,6 +4494,8 @@ integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
 projection on the $-\theta_x$-stable subspace is used, one might specify the
 infinitesimal character $\gamma$ in the place of $\nu$.
 
+@f nu nullptr
+
 @< Local function def...@>=
 void module_parameter_wrapper(expression_base::level l)
 { shared_rational_vector nu(get<rational_vector_value>());
@@ -4296,9 +4503,12 @@ void module_parameter_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
   if (nu->val.size()!=lam_rho->val.size()
       or nu->val.size()!=x->rf->val.rank())
-    throw runtime_error("Rank mismatch: (") @|
+  { std::ostringstream o;
+    o << "Rank mismatch: (" @|
         << x->rf->val.rank() << ','
 	<< lam_rho->val.size() << ',' << nu->val.size() << ")";
+    throw runtime_error(o.str());
+  }
 @.Rank mismatch@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value> @| (x->rf,
@@ -4460,8 +4670,10 @@ void parameter_cross_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw runtime_error
-      ("Illegal simple reflection: ") << s << ", should be <" << r;
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s << ", should be <" << r;
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().cross(s,p->val)));
@@ -4473,8 +4685,11 @@ void parameter_Cayley_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw runtime_error("Illegal simple reflection: ") << s @|
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s @|
       << ", should be <" << r;
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 
@@ -4494,8 +4709,11 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
-    throw runtime_error("Illegal simple reflection: ") << s
+  { std::ostringstream o;
+    o << "Illegal simple reflection: " << s
       << ", should be <" << r;
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
 
@@ -4606,7 +4824,7 @@ void reducibility_points_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  RationalList rp = p->rc().reducibility_points(p->val);
+  RatNumList rp = p->rc().reducibility_points(p->val);
       // method normalises rationals
   own_row result = std::make_shared<row_value>(rp.size());
   for (unsigned int i=0; i<rp.size(); ++i)
@@ -4625,7 +4843,7 @@ void scale_parameter_wrapper(expression_base::level l)
 { shared_rat f = get<rat_value>();
   own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale(p->val,f->rat_val());
+@/{@; p->val = p->rc().scale(p->val,f->rat_val());
     push_value(std::move(p));
   }
 }
@@ -4633,7 +4851,7 @@ void scale_parameter_wrapper(expression_base::level l)
 void scale_0_parameter_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale_0(p->val);
+@/{@; p->val = p->rc().scale_0(p->val);
     push_value(std::move(p));
   }
 }
@@ -5166,6 +5384,50 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
+@ Here is a temporary function for exploring |simplify| in \.{alcoves.cpp}.
+
+@h "alcoves.h"
+
+@< Local function def...@>=
+void simplify_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  auto N = simplify(p->rc(),p->val);
+  push_value(std::move(p));
+  push_value(std::make_shared<int_value>(N));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ And similarly here are two to experiment with the |wall_set| and
+|alcove_center| functions.
+
+@< Local function def...@>=
+void walls_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(walls.size());
+  for (auto it=walls.begin(); it(); ++it)
+    result->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(result));
+}
+@)
+void alcove_center_wrapper(expression_base::level l)
+{
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  push_value(std::make_shared<module_parameter_value> @|
+    (p->rf,alcove_center(p->rc(),p->val)));
+}
+
 @ The following wrapper function makes available the Atlas implementation of
 Tarjan's strong component algorithm, the one that is used to isolate cells in a
 $W$-graph. It actually involves no atlas-specific types at all, as it encodes
@@ -5179,6 +5441,8 @@ for the argument graph.
 void strong_components_wrapper(expression_base::level l)
 {
   shared_row graph = get<row_value>();
+  if (l==expression_base::no_value)
+    return;
   const auto size = graph->val.size();
   OrientedGraph G (size);
   for (unsigned i=0; i<size; ++i)
@@ -5191,8 +5455,11 @@ void strong_components_wrapper(expression_base::level l)
       // convert to unsigned
     for (unsigned v : edges)
       if (v>=size)
-        throw runtime_error() << "Edge target " << v @|
-              << " out of bounds (should be <" << size << ")";
+      { std::ostringstream o;
+        o << "Edge target " << v @|
+          << " out of bounds (should be <" << size << ")";
+        throw runtime_error(o.str());
+      }
   }
 @)
   std::unique_ptr<OrientedGraph> induced(new OrientedGraph);
@@ -5386,6 +5653,9 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
+install_function(simplify_wrapper,"simplify","(Param->Param,int)");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
+install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
@@ -5429,23 +5699,15 @@ typedef std::unique_ptr<split_int_value> split_int_ptr;
 typedef std::shared_ptr<const split_int_value> shared_split_int;
 typedef std::shared_ptr<split_int_value> own_split_int;
 
-@ Like for parameter values, we first define a printing function on the level
-of a bare |Split_integer| value, which can be used in situations where the
-method |split_int_value::print| cannot.
-
-@< Local function def...@>=
-std::ostream& print (std::ostream& out, const Split_integer& val)
-{@;
-  return out << '(' << val.e()
-             << (val.s()<0?'-':'+') << std::abs(val.s()) << "s)";
-}
-@ Again the virtual method |print| must not be defined in the anonymous
-namespace.
+@ Like for parameter values, a printing function |print_split| on the level
+of a bare |Split_integer| value is defined in the library, which can be used
+also in situations where the method |split_int_value::print| cannot. The latter
+method simply calls it.
 
 @< Function def... @>=
 
 void split_int_value::print(std::ostream& out) const @+
-{@; interpreter::print(out,val); }
+{@; print_split(out,val); }
 
 @ Here are some basic relations and arithmetic operations.
 
@@ -5573,41 +5835,18 @@ typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
 typedef std::shared_ptr<const virtual_module_value> shared_virtual_module;
 typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 
-@ When printing a virtual module value, we traverse the |std::map| that is
-hidden in the |Free_Abelian| class template, and print individual terms using
-the auxiliary function that was defined above for printing parameter values.
-However when either all coefficients are integers or coefficients are integer
-multiples of~$s$, then we suppress the component that is always~$0$; this is
-particularly useful if polynomials are used to encode $\Zee$-linear
+@ Printing a virtual module value calls the free function |repr::print_SR_poly|
+to do the actual work. It traverses the |std::map| that is hidden in the
+|Free_Abelian| class template, and print individual terms by printing the
+|Split_integer| coefficient, followed by the parameter through a call of
+|print_stdrep|. When either all coefficients are integers or all coefficients
+are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
+this is particularly useful if polynomials are used to encode $\Zee$-linear
 combinations of parameters.
 
-@h <iomanip> // for |std::setw|
 @< Function def...@>=
 void virtual_module_value::print(std::ostream& out) const
-{ if (val.empty())
-    {@; out << "Empty sum of standard modules"; return; }
-  bool has_one=false, has_s=false;
-  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
-  { if (it->second.e()!=0)
-      has_one=true;
-    if (it->second.s()!=0)
-      has_s=true;
-    if (has_one and has_s)
-      break;
-  }
-  assert (has_one or has_s); // otherwise the module would have been empty
-  for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
-  { out << '\n';
-    if (has_one and has_s)
-      interpreter::print(out,it->second); // print coefficient
-    else if (has_one)
-      out << it->second.e();
-    else
-      out << it->second.s() << 's';
-    print_stdrep(out << '*',it->first,rc()); // print parameter
-    out << " [" << it->first.height() << ']';
-  }
-}
+{@; print_SR_poly(out,val,rc()); }
 
 @*2 Functions for virtual modules.
 %
@@ -6020,7 +6259,10 @@ void K_type_formula_trunc_wrapper(expression_base::level l)
 { int bound = get<int_value>()->int_val();
   shared_module_parameter p = get<module_parameter_value>();
   if (bound<0)
-    throw runtime_error() << "Negative height bound " << bound;
+  { std::ostringstream o;
+    o << "Negative height bound " << bound;
+    throw runtime_error(o.str());
+  }
   RealReductiveGroup& G = p->rf->val;
   const Rep_context& rc = p->rc();
   KhatContext& khc = p->rf->khc();
@@ -6252,7 +6494,9 @@ below the parameter in its block. The code below used to apply |expand_final|
 to the |deformation_terms|, but that is redundant since that method already
 condenses the KL polynomials (and its result) to block elements without
 singular descents (so nonzero and final), for which |expand_final| has no
-effect.
+effect. On the other hand, since the |deformation_terms| method assumes its
+arguments to be final, we apply |finals_for| to |p->val| and sum over any
+(final) parameters this might produce.
 
 There is also a variation |twisted_deform| that uses twisted KLV polynomials
 instead, for the distinguished involution $\delta$ of the inner class. For the
@@ -6264,9 +6508,7 @@ error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
 should avoid asking for it. Similarly the twisted variant cannot allow non
 dominant parameters, as this would internally produce an |SR_poly| value with
-non-dominant terms, which should never happen. Also, since the construction of
-an extended block currently cannot deal with a partial parent block, so it
-implies a full block construction.
+non-dominant terms, which should never happen.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -6275,14 +6517,22 @@ void deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt p_index; // will hold index of |p| in the block
-  auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
-  RatWeight diff = p->rc().offset(p->val,block.representative(p_index));
-  const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
+  auto& rt=p->rt();
+  const auto& rc = p->rc();
+  rt.make_dominant(p->val);
+  const auto& gamma = p->val.gamma(); // after being made dominant
   repr::SR_poly result;
-  for (auto&& term : p->rt().deformation_terms(block,p_index,diff,gamma)@;@;)
+  auto finals = rc.finals_for(p->val);
+  for (auto it=finals.begin(); it!=finals.end(); ++it)
+  {
+    auto& q = *it;
+    BlockElt q_index; // will hold index of |q| in the block
+    auto& block = rt.lookup(q,q_index); // generate partial common block
+    RatWeight diff = rc.offset(q,block.representative(q_index));
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma)@;@;)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
+  }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
@@ -6362,8 +6612,11 @@ void twisted_full_deform_wrapper(expression_base::level l)
     ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_poly res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    res.add_multiple(p->rt().twisted_deformation(it->first) @|
-                       ,it->second ? Split_integer(0,1) : Split_integer(1,0));
+  { bool flip;
+    const auto& def = p->rt().twisted_deformation(it->first,flip);
+    res.add_multiple(def @|
+                    ,flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+  }
 @)
   repr::SR_poly result;
   for (@[const auto& t : res@]@;@;) // transform to |std::map|

@@ -18,11 +18,14 @@ namespace atlas {
 
 namespace arithmetic {
 
-  typedef long long int Numer_t;
-  typedef unsigned long long int Denom_t;
-  class Rational;
-  typedef std::vector<Rational> RationalList;
+  using Numer_t = long long int;
+  using Denom_t = unsigned long long int;
+  template<typename I> class Rational;
+  using RatNum = Rational<Numer_t>;
+  using RatNumList = std::vector<RatNum>;
   class Split_integer;
+  class big_int; // defined in bigint.h but fiorward declared here
+  class big_rat; // defined in bigint.h but fiorward declared here
 
 } // |namespace arithmetic|
 

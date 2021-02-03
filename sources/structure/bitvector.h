@@ -159,7 +159,13 @@ template<unsigned int dim> class BitVector
     {}
 
   template<typename C>
-    explicit BitVector(const matrix::Vector<C>& weight); // reduce weight mod 2
+    explicit BitVector(const matrix::Vector<C>& v) // reduce |v| mod 2
+    : d_data(), d_size(v.size())
+  {
+    assert(d_size<=dim);
+    for (size_t j = 0; j < d_size; ++j)
+      d_data.set(j, v[j]%2!=0 ); // WARNING: not |v[j]%2==1|, think |v[j]<0| !
+  }
 
 // copy and assignment
   BitVector(const BitVector& v)

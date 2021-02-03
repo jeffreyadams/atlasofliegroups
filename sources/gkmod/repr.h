@@ -1,7 +1,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009-2012 Marc van Leeuwen
+  Copyright (C) 2009-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -82,9 +82,12 @@ class StandardRepr
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
-  // one should call constructor from |Rep_context| only
+  // one should call constructors from |Rep_context| only, so they are |private|
   StandardRepr(KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
+  { infinitesimal_char.normalize(); } // to ensure this class invariant
+  StandardRepr(KGBElt x,TorusPart y, RatWeight&& gamma,unsigned int h)
+    : x_part(x), hght(h), y_bits(y), infinitesimal_char(std::move(gamma))
   { infinitesimal_char.normalize(); } // to ensure this class invariant
 
  public:
@@ -189,6 +192,8 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
   StandardRepr sr_gamma // use this one when infinitesimal character is known
     (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
+  StandardRepr sr_gamma // variant of previous which moves from |gamma|
+    (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const;
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
   { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
@@ -218,6 +223,12 @@ class Rep_context
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+
+  // whether real root with index |i| is parity on |z| deformed to $\nu=0$
+  // only depends on |x| and |y| parts of |z|, and is defined for all real roots
+  bool is_parity_at_0(RootNbr i,const StandardRepr& z) const;
+  // method that assumes an integral real coroot with index |i|, uses |gamma|
+  bool is_parity(RootNbr i,const StandardRepr& z) const;
 
   // |StandardReprMod| handling
 
@@ -272,10 +283,10 @@ class Rep_context
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   // deforming the $\nu$ component
-  StandardRepr& scale(StandardRepr& sr, const Rational& f) const;
-  StandardRepr& scale_0(StandardRepr& sr) const;
+  StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
+  StandardRepr scale_0(StandardRepr sr) const; // |sr| by value
 
-  RationalList reducibility_points(const StandardRepr& z) const; // normalised
+  RatNumList reducibility_points(const StandardRepr& z) const; // normalised
 
   // the following take |z| by value, modifying and in some cases returning it
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
@@ -294,15 +305,12 @@ class Rep_context
 
   using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
 
-  poly scale(const poly& P, const Rational& f) const;
+  poly scale(const poly& P, const RatNum& f) const;
   poly scale_0(const poly& P) const;
 
   sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
-
-  std::ostream& print (std::ostream&,const StandardRepr& z) const;
-  std::ostream& print (std::ostream&,const poly& P) const;
 
  private:
   // make integrally dominant, with precomputed integral subsystem; return path
@@ -384,6 +392,8 @@ public:
   deformation_unit(const Rep_context& rc, StandardRepr&& sr)
   : sample(std::move(sr)), untwisted(), twisted(), rc(rc) {}
 
+  deformation_unit(deformation_unit&&) = default; // type is only movable
+
   bool has_deformation_formula() const { return not untwisted.is_zero(); }
   bool has_twisted_deformation_formula() const { return not twisted.is_zero(); }
 
@@ -394,13 +404,13 @@ public:
   const K_type_poly& twisted_def_formula() const { return twisted; }
 
   const K_type_poly& set_deformation_formula (const K_type_poly& formula)
-  { return untwisted=formula; }
+  { return untwisted = formula.copy(); }
   const K_type_poly& set_deformation_formula (K_type_poly&& formula)
-  { return untwisted=std::move(formula); }
+  { return untwisted = std::move(formula); }
   const K_type_poly& set_twisted_deformation_formula (const K_type_poly& formula)
-  { return twisted=formula; }
+  { return twisted = formula.copy(); }
   const K_type_poly& set_twisted_deformation_formula (K_type_poly&& formula)
-  { return twisted=std::move(formula); }
+  { return twisted = std::move(formula); }
 
 // special members required by HashTable
   typedef std::vector<deformation_unit> Pooltype;
@@ -483,7 +493,7 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
-  K_type_poly deformation(const StandardRepr& z);
+  const K_type_poly& deformation(const StandardRepr& z);
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
@@ -498,7 +508,8 @@ class Rep_table : public Rep_context
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
-  K_type_poly twisted_deformation(StandardRepr z); // by value
+  // full twisted deformation, with |flip| telling whether to multiply by |s|
+  const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
@@ -586,6 +597,8 @@ class Ext_common_context : public common_context
 }; // |Ext_common_context|
 
 // 				Functions
+
+// printing functions for various types are declared in basic_io.h
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
 // gets added to |lambda_rho| in imaginary cases, subtracted in real cases
