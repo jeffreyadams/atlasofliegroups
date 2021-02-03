@@ -297,7 +297,7 @@ this does NOT include actual Levi subgroups (except rd)
 assumption: rd has one simple factor, i.e. derived(rd) is simple
 }
 set weakly_maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
-assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
+assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
 if is_abelian(rd) then [rd] else
 let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
@@ -306,7 +306,7 @@ filter(rd,rd#(##for i:ss_rank(rd) do
  if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
 
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
-assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
+assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
 if is_abelian(rd) then [rd] else
 let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
