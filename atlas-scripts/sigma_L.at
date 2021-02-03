@@ -1,5 +1,8 @@
 <isomorphism_W.at
 {sigma_L=sigma_Lusztig
+actually there are two, differing by sgn: sigma_L_1 and sigma_L_2
+sigma_L is sigma_L_1, see commented section below
+
  O=orbit, x\in Cent(SL(2))
  sigma_L(x,1): irreducible representation of W
   attached by Lusztig to the pair (x,1)
@@ -21,7 +24,8 @@
  -> sigma in hat(W) via W\simeq W_v
  from W_L to W: this (conjecturally) is sigma_L(x,1)
  where sigma_L: M(A-bar(O)) -> W^, M(*) is Lusztig's
- set of pairs  (x,\xi)
+ set of pairs  (x,\xi)   Orbit O -> A(O) -> M(A(O))={(x,xi)| x in A(O), xi irreducible representation of Cent_A(O)(x)}
+ (x=1,xi=1) -> Springer(O)  giving all special representations of W
 }
 
 set sigma_L_verbose=true
@@ -42,16 +46,107 @@ set sigma_L_verbose=true
  except in G2/F4: W(G^vee)\simeq W(G) is the identity map on characters
  in fact, same is true in G2, but not F4
 }
-set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,RootDatum M,vec H_M,ratvec v)=int:
+
+{
+Compute A-bar:  A(O)/ all conj. classes x st sigma_L(x,1)=sigma_L(1,1)
+}
+{
+There are two Springer maps differing by tensoring with sign,
+similarly Lusztig and sigma_L
+
+Springer_1(0)=sgn
+Springer_2(0)=trivial
+Carter's tables (and all others?) are of Springer_1
+
+How to compute Lusztig_i(O,x,xi)
+These are given (for exceptional groups) starting on page 96
+ of Orange (Lusztig's book), these are the families,
+ once you know Lusztig_i(O,1,1):
+DEFINE:
+Lusztig_i(O,1,1)=Springer_i(O)
+Desideratum:
+the map (O,x,xi) -> W-hat given by the families
+ in Lusztig, page 95+, is Lusztig_1 (not Lusztig_2)
+ Note: Lusztig_i(O,1,1) is unambiguous
+ but the map in Orange is Lusztig_1, not Lusztig_2
+ for example in G_2, subregular, given in the book:
+  Lusztig_1(O,1,ref) = phi''(1,3)
+  Lusztig_1(O,g_3,1) = phi'(1,3)
+ and this implies
+  Lusztig_2(O,1,ref) = phi'(1,3)
+  Lusztig_2(O,g_3,1) = phi''(1,3)
+
+Example: F4, orange pg 96:
+
+{4_2,2_1,2_3} = {phi(4,1),phi''(2,4),phi'(2,4)}    a=1
+{4_5,2_4,2_2} = {phi(4,13),phi''(2,16),phi'(2,16)} a=13
+the phi's are given by Carter page 413
+
+Carter pg 428:
+Springer_1(A1s)=phi(4,13)
+Springer_1(F4(a1))=phi(4,1)
+=>
+Lusztig_1(A1s,1,1)=phi(4,13)
+Lusztig_1(F4(a1),1,1)=phi(4,1)
+
+also (from Orange, page 97):
+A=A-bar=Z2
+Lusztig_1(A1s,g_2,1)=phi''(2,16)
+Lusztig_1(A1s,1,xi)=phi'(2,16)
+Lusztig_1(F4(a1),g_2,1)=phi''(2,4)
+Lusztig_1(F4(a1),1,xi)=phi'(2,4)
+
+The conjecture is about Lusztig_2, so let's tabulate that:
+Lusztig_2(A1s,1,1)=phi(4,13)*sgn=phi(4,1)
+Lusztig_2(F4(a1),1,1)=phi(4,1)*sgn=phi(4,13)
+Lusztig_2(A1s,g_2,1)=phi''(2,4) {caution: the primes switch} 
+Lusztig_2(A1s,1,xi)=phi'(2,4)
+Lusztig_2(F4(a1),g_2,1)=phi''(2,16)
+Lusztig_2(F4(a1),1,xi)=phi'(2,16)
+
+sigma_L_2(O,x,1) is defined
+
+Conjecture:
+sigma_L_2(O,x,1)=Lusztig_2(O,x,1)
+
+by the definition of sigma_L_2 this is:
+
+t-ind(Springer_2(O_L))=Lusztig_2(O,x,1)
+
+special case: x=1, this says:
+
+Springer_2(O)=Lusztig_2(O,1,1) (correct)
+
+key example:
+orbit=0, x=1 or anything
+x=1: Springer_2(0)=trivial of W_L=W
+Lusztig_2(0,1,1)=trivial
+x=anything:
+Springer_2(0)=trivial of W_L -> truncated induce -> trivial of W
+
+BUT
+
+Springer_1(0):
+ x=anything
+ sigma_L_1(0,1,1)=t-ind Springer_1(O_L)=t-ind sgn_{W_L} is NOT sgn_{W_G}
+
+So nothing like the conjecture can hold for sigma_L_1
+}
+
+{NOTE: sigma_L_even and all others compute sigma_L_2: sigma_L_2(0-orbit,1)=trivial}
+set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,RootDatum M,vec H_M,ratvec v)=int:  {modify v by center of M^0}
 assert(is_even(orbit),"orbit is not even");
+let ()=prints(new_line,"Computing sigma_L_even: ",new_line, "G=", st.root_datum,new_line,"M=", M, new_line, "H_M=",H_M,new_line,"v=", v) in
 if v.is_integer then  {L=G, don't need induction}
+ let ()=prints("v is integer, no induction") in
  let char=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) in
  st.ct.character_index(char)
 else  {need induction; compute L, sigma_L, truncated_induce}
+ let ()=prints("need induction: ") in
  let rd=orbit.root_datum then
  ()=if sigma_L_verbose then prints(("v=",v) ) fi then
- ()=if sigma_L_verbose then prints(("v=",v) ) fi then
  L=centralizer(rd,v) then
+ ()=if sigma_L_verbose then prints(("L=",L, new_line, "G=", rd) ) fi then
  {O_M=ComplexNilpotent:(M,(),H_M) -> saturation -> O_L
   O_L has the same H=H_M, but made L-dominant}
  H_L=dominant(H_M,L) then
@@ -74,12 +169,16 @@ else  {need induction; compute L, sigma_L, truncated_induce}
   ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
   ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
   sigma_L_0=st_L.characters[L_index] then
-  sigma_L=st_L.ct.tensor_sign(sigma_L_0)  in
+  sigma_L=st_L.ct.tensor_sign(sigma_L_0)  then
+roo  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, new_line, "index=", st_L.ct.character_index(sigma_L)) fi in
   sigma_L
  fi  {end if O_L=L.zero_orbit} then
-  (ignore_degree,char_indices)=truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
+  (ignore_degree,char_indices)=
+     prints("truncated induce: ", "G=",rd,new_line,"roots_L: ", roots_L, " ", sigma_L);
+
+  truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
   char=st.ct.characters[char_indices[0]] then
-  ()=if sigma_L_verbose then prints("character: ", char_indices[0], new_line, char) fi in
+  ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char) fi in
   st.ct.character_index(char)
 fi
 
@@ -106,6 +205,7 @@ let (,,triples)=orbit.component_datum_plus in
 
 {run over all ratvecs from component_representatives(orbit)}
 set sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=[int]:
+prints("sigma_L_even for: ", orbit, " st:",st.root_datum);
 for (M,H_M,v) in component_representatives_plus(orbit) do
  let ()=prints(new_line,"computing sigma_L for M=", M, new_line,"H_M=",H_M,new_line, "v=", v) in
  sigma_L_even(st,orbit,M,H_M,v) od
@@ -165,7 +265,9 @@ set sigma_L(RootDatum rd,CharacterTable ct,SpringerTable st_int,ComplexNilpotent
 let ()=prints(new_line,"-------------",new_line,"Orbit: ", O, " ", O.diagram) then
 ()=prints("ct: ", ct.root_datum) then
 ()=prints("st_int: ", st_int.root_datum) then
-O_int=integral_descent(O)   {an orbit for a subgroup of G} then
+{O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
+O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
+()=prints("O_int: ", O_int, " ", O_int.diagram, " ", O_int.diagram_normalized) then
 ()=prints("O_int roots: ", O_int.root_datum.simple_roots) then
 ()=prints("rd: ", rd) then
 ()=prints("rd roots: ", rd.roots) then
@@ -174,7 +276,8 @@ sigma_int=sigma_L_even(st_int,O_int) then
 roots_int=for alpha in O_int.root_datum.simple_roots do find(rd.roots,alpha) od then
 ()=prints("roots_int: ", roots_int) then
 rv= ##for i in sigma_int do
- let (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in sigma od in
+ let (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in
+ prints("i: ", i, " sigma: ", sigma);sigma od in
 rv
 
 {need ct for G, st_int for subgroup}
@@ -188,7 +291,8 @@ sigma_L(O.root_datum,ct,st_int,O)
 fi
 
 set show_sigma_L(RootDatum rd,CharacterTable ct,SpringerTable st_int,ComplexNilpotent O)=
-let O_int=integral_descent(O)   {an orbit for a subgroup of G} then
+{let O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
+let O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
 data_int={sigma_L_even(st_int,O_int) then}
           { set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=}
           { tabulate(["L","v","M","H_M","j","deg_j","char_j"]#}
@@ -200,7 +304,7 @@ roots_int=for alpha in O_int.root_datum.simple_roots do find(rd.roots,alpha) od 
 tabulate(
  for i:#data_int do
   let (M,H_M,v,j)=data_int[i] then
-  (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in 
+  (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in
   [i.to_string,
    O_int.root_datum.nice_format,
    M.nice_format,
@@ -216,7 +320,8 @@ set show_sigma_L(RootDatum rd,CharacterTable ct,[ComplexNilpotent] orbits)=
 tabulate(
 ["O","i","rd_int","M","H_M","v","L","sigma_int","sigma","dim","deg","sgn","deg_sgn","char"]#
 ##for O in orbits do
- let O_int=integral_descent(O)   {an orbit for a subgroup of G} then
+ {let O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
+ let O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
  rd_int=O_int.root_datum then
  st_int=O_int.root_datum.springer_table then
  data_int=

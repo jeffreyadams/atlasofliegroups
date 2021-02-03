@@ -51,3 +51,6 @@ if no_F_factor(ct.root_datum) then char else
   permute_character(M,ct,char)
  fi
 fi
+
+set exchange_long_short_index(CharacterTable ct,int index)=int:
+ct.character_index(exchange_long_short(ct,ct.characters[index]))

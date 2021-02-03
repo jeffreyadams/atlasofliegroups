@@ -26,7 +26,7 @@ let orbit=complex_nilpotent_from_partition(rd,P) in
  [P.to_string,
  semisimple_element(rd,P).to_string,
  orbit.diagram.to_string,
- P.symbol.to_string,
+ P.symbol.normalize.to_string,
  P.special_star,
  dim_nilpotent_partition(rd,P).to_string,
  orbit.centralizer.nice_format,

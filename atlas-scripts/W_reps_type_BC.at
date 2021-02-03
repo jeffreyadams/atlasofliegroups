@@ -21,6 +21,9 @@
   every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
+set is_simple_type_BC(RootDatum rd)=bool:
+rd.is_simple and  (let (letter,rank)=rd.simple_type in letter="B" or letter="C")
+
 set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
 set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
@@ -64,14 +67,16 @@ set symbol_C (Orbit P) = Symbol:
 set symbol_B (Orbit P) = Symbol:
    assert(is_valid("B",P),"not a type B orbit"); symbol(P)
 
-{ Symbol -> Orbit partial map for specific tpyes, but defined uniformly }
-set orbit (Symbol S) = Orbit:
-   let S=normalize(S)
-   then f=S[0],g=S[1]
-   then F=for c in f do 2*c od, G=for c in g do 2*c+1 od
-   then F_G=merge(F,G)
-   then H= F_G - # #F_G { convert to reverse partition }
-in ## for c in H ~do if c.> then [c] else [] fi od { reverse, drop zeros }
+set large_symbol_C(Symbol S)=Symbol:
+[for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j+1 od]
+set large_symbol_B(Symbol S)=Symbol:
+[for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j od]
+set large_symbol(string type,Symbol S)=
+ if type="B" then large_symbol_B(S)
+ elif type="C" then large_symbol_C(S)
+ else error("wrong type") fi
+set large_symbol(RootDatum rd,Symbol S)=
+  let (letter,)=rd.simple_type in large_symbol(letter,S)
 
 { Symbol to Hn_rep (bijection) }
 set wrep (Symbol S) = Hn_rep:
@@ -97,8 +102,35 @@ set symbol (Hn_rep(p,q)) = Symbol:
    case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
    [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
 
-{Hn_rep -> Orbit}
-set orbit (Hn_rep(nu,mu)) = Orbit: from_core_quotient_2(0,mu,nu)
+{ Symbol -> Orbit partial map for specific types, but defined uniformly }
+{set orbit (Symbol S) = Orbit:
+   let S=normalize(S)
+   then f=S[0],g=S[1]
+   then F=for c in f do 2*c od, G=for c in g do 2*c+1 od
+   then F_G=merge(F,G)
+   then H= F_G - # #F_G { convert to reverse partition }
+in ## for c in H ~do if c.> then [c] else [] fi od { reverse, drop zeros }
+}
+
+{Hn_rep -> Orbit, depends on type B/C}
+set orbit_C (Hn_rep(nu,mu)) = Orbit: 
+let orbit=from_core_quotient_2(0,mu,nu) in if is_valid("C",orbit) then orbit else [] fi
+
+set orbit_B (Hn_rep(mu,nu)) = Orbit: 
+let orbit=from_core_quotient_2(1,mu,nu) in if is_valid("B",orbit) then orbit else [] fi
+
+set orbit(string type,Hn_rep(pi))=
+ if type ="B" then orbit_B(pi) 
+ elif type="C" then orbit_C(pi) 
+ else error("wrong type") fi
+
+set orbit(RootDatum rd,Hn_rep(pi))=
+let (letter,)=rd.simple_type in orbit(letter,pi)
+
+set orbit_C(Symbol S)=Orbit: orbit_C(wrep(S))
+set orbit_B(Symbol S)=Orbit: orbit_B(wrep(S))
+set orbit(string type,Symbol S)=Orbit: orbit(type,wrep(S))
+set orbit(RootDatum rd,Symbol S)= let (letter,)=rd.simple_type in orbit(letter,wrep(S))
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
@@ -143,10 +175,29 @@ set special_star (Orbit P)   = string: if is_special(P) then "*" else "" fi
 set special_star (Hn_rep sigma) = string:
    if is_special(sigma) then "*" else "" fi
 
+{
+these commands were based on orbits, which was misguided, see new version below}
 set symbols (RootDatum rd) = [Symbol]:
    for P in nilpotent_orbit_partitions(rd) do symbol(P) od
 set wreps (RootDatum rd)=[Hn_rep]:
    for P in nilpotent_orbit_partitions(rd) do wrep(P) od
+
+
+{wreps for B_n/C_n are the same: all (p,q) with |p|+|q|=n
+ symbols are the same (apply symbol to (p,q))
+}
+set wreps(RootDatum rd)=[Hn_rep]:
+assert(rd.is_simple_type_BC,"root datum is not simple of type BC");
+let (,rank)=rd.simple_type in
+##for i:rank+1 do
+ ##for p in partitions(i) do
+  for q in partitions(rank-i) do (p,q)
+  od
+ od
+od
+
+set symbols(RootDatum rd)=[Symbol]:
+for rep in wreps(rd) do symbol(rep) od
 
 
 { given a cell C, get list of tau invariants from it,
@@ -376,7 +427,7 @@ set max_Hn_reps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_Hn_rep_compact (Block B, [int] cell) = void:
    let rep=max_Hn_rep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(rep))
+   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(B.real_form,rep))
 
 set print_Hn_reps_compact (Block B, [[int]] cells) = void:
    prints("cell             Aq's             special_rep        orbit");
@@ -391,7 +442,7 @@ in if =#Aq then prints("Not an Aq cell") else prints("Aq reps: ", Aq) fi
 ;  prints("tau invs.: ",taus)
 ;  prints("max taus: ",max_taus)
 ;  prints("special rep: ", rep, special_star(rep))
-;  prints("orbit: ", orbit(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
 )
 
 set print_Hn_reps (Block B,[[int]] cells) = void:
@@ -441,7 +492,7 @@ set wreps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_wrep_cpt (Block B, [int] cell) = void:
    let rep=wrep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(rep))
+   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(B.real_form,rep))
 
 set print_wrep(Block B, [int] cell) = void:
 (  let rep=wrep(B,cell)
@@ -455,7 +506,7 @@ in if #Aq=0 then prints("Not an Aq cell")
 ;  prints("tau invs.: ",taus)
 ;  prints("max taus: ",max_taus)
 ;  prints("special rep: ", rep, special_star(rep))
-;  prints("orbit: ", orbit(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
 )
 
 set print_wreps_cpt (Block B,[[int]] cells) = void:
@@ -464,3 +515,17 @@ set print_wreps_cpt (Block B,[[int]] cells) = void:
 
 set print_wreps (Block B,[[int]] cells) = void:
   for cell@i in cells do prints("Cell ",i); print_wrep(B,cell); prints() od
+
+set show_orbits_and_reps(RootDatum rd)=
+let (letter,rank)=simple_type(rd) in
+assert(letter="B" or letter="C", "only types B/C allowed");
+let reps=all_reps_BC(rank) in
+prints(new_line,"type ",letter,rank);tabulate(
+["symbol","large symbol","rep","Sp.","orbit"]#
+ for rep in reps do
+  let S=symbol(rep) then
+  orbit=orbit(letter,rep) then
+  orbit_string=
+   if is_valid(letter,orbit) then orbit.to_string else "" fi
+  in
+  [S.to_string,large_symbol(rd,S).to_string,rep.to_string,rep.special_star,orbit_string] od)
