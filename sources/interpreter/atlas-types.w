@@ -511,6 +511,8 @@ occurs will be the first one. Since the call to |arithmetic::div_gcd|
 implicitly converts its second argument to unsigned, it is imperative that we
 use the absolute value of this first coefficient.
 
+@h <cstdlib> // for |std::abs|
+
 @h "arithmetic.h"
 @h "lattice.h"
 @h "matrix.h"
