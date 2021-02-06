@@ -2314,7 +2314,7 @@ lies in another component of the diagram we have a Complex inner class.
     }
 
     offset += comp_rank;
-  } // |for (cit)|
+  } // |for (cit;;)|
 }
 
 @ Complex factors of the inner class involve two simple factors, which requires
@@ -6500,18 +6500,6 @@ effect. On the other hand, since the |deformation_terms| method assumes its
 arguments to be final, we apply |finals_for| to |p->val| and sum over any
 (final) parameters this might produce.
 
-There is also a variation |twisted_deform| that uses twisted KLV polynomials
-instead, for the distinguished involution $\delta$ of the inner class. For the
-code here the difference consists mainly of calling the
-|Rep_table::twisted_deformation_terms| method instead of
-|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
-involution, so we need to test for that here. If the test fails we report an
-error rather than returning for instance a null module, since a twisted
-deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Similarly the twisted variant cannot allow non
-dominant parameters, as this would internally produce an |SR_poly| value with
-non-dominant terms, which should never happen.
-
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
@@ -6531,14 +6519,27 @@ void deform_wrapper(expression_base::level l)
     BlockElt q_index; // will hold index of |q| in the block
     auto& block = rt.lookup(q,q_index); // generate partial common block
     RatWeight diff = rc.offset(q,block.representative(q_index));
-    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma)@;@;)
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma))
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
   }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
-@)
+
+@ There is also a variation |twisted_deform| that uses twisted KLV polynomials
+instead, for the distinguished involution $\delta$ of the inner class. For the
+code here the difference consists mainly of calling the
+|Rep_table::twisted_deformation_terms| method instead of
+|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
+involution, so we need to test for that here. If the test fails we report an
+error rather than returning for instance a null module, since a twisted
+deformation formula for a non-fixed parameter makes little sense; the user
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen.
+
+@< Local function def...@>=
 void twisted_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
@@ -6567,7 +6568,7 @@ void twisted_deform_wrapper(expression_base::level l)
 					     singular_orbits,
                                              diff,p->val.gamma());
   repr::SR_poly result;
-  for (auto&& term : terms@;@;)
+  for (auto&& term : terms)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
 
@@ -6596,7 +6597,7 @@ void full_deform_wrapper(expression_base::level l)
     res += p->rt().deformation(*it);
 @)
   repr::SR_poly result;
-  for (const auto& t : res @;@;) // transform to |std::map|
+  for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }

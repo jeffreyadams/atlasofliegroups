@@ -1,14 +1,14 @@
-#define version_string	"x3.6"
-#define banner	"This is CWEAVE (Version "version_string")"
+#define version_string  "x3.6"
+#define banner  "This is CWEAVE (Version "version_string")"
 #define max_refs  10000
 #define max_toks  10000
 #define max_texts  2500
 #define max_scraps  4000
-#define max_no_of_nodes	 512
+#define max_no_of_nodes  512
 #define line_length  80
 #define stack_size  400
-#define sort_stack_size	 500
-#define variant	 xref_info
+#define sort_stack_size  500
+#define variant  xref_info
 #include  <stdlib.h>
 #include  <stdio.h>
 #include  <string.h>
@@ -27,15 +27,15 @@
 #define array_size(a) ((int)(sizeof(a)/sizeof(a[0])))
 #define false  (boolean) 0
 #define true  (boolean) 1
-#define ctangle	 0
-#define cweave	1
-#define and_and	 04
+#define ctangle  0
+#define cweave  1
+#define and_and  04
 #define lt_lt  020
 #define gt_gt  021
 #define plus_plus  013
 #define minus_minus  01
 #define minus_gt  031
-#define not_eq	032
+#define not_eq  032
 #define lt_eq  034
 #define gt_eq  035
 #define eq_eq  036
@@ -61,7 +61,7 @@
 #define overflow(t) fatal("\n! Sorry, %s capacity exceeded",t)
 #define confusion(s) fatal("\n! This can't happen: %s",s)
 #define show_banner  flags['b']
-#define show_happiness	flags['h']
+#define show_happiness  flags['h']
 #define show_progress  flags['p']
 #define show_stats  flags['s']
 #define C_plus_plus  flags['+']
@@ -84,7 +84,7 @@
   if (++xref_ptr >= &xmem[max_refs]) \
     overflow ("cross-reference");  \
   else xref_ptr->num=n, xref_ptr->next=i
-#define no_xref	 (!flags['x'])
+#define no_xref  (!flags['x'])
 #define make_xrefs  flags['x']
 #define file_flag  (cite_flag-1)
 #define tok_mem_end   (&tok_mem[max_toks])
@@ -106,39 +106,39 @@
 #define typedef_tracking(b) (typedef_master += b ? 5 : -5)
 #define emit_space() out_str ("\\Y");
 #define scrap_info  scrap_union.scrap_field
-#define scrap_info_end	 (&scrap_info[max_scraps])
+#define scrap_info_end   (&scrap_info[max_scraps])
 #define app(a) (*tok_ptr++ = a)
 #define app_tok(a)  \
-  if (tok_ptr>tok_mem_end-2) overflow("token");	 \
+  if (tok_ptr>tok_mem_end-2) overflow("token");  \
    else app(a)
 #define app_char_tok(c) app_tok((unsigned char)(c))
 #define freeze_text() (*++text_ptr = tok_ptr)
 #define pack_scrap(c,m) \
  ( scrap_ptr->cat = c, scrap_ptr->trans = text_ptr, freeze_text(), \
   (scrap_ptr++)->mathness = 5*(m) )
-#define id_flag	 10240U
+#define id_flag  10240U
 #define res_flag  (2*id_flag)
 #define mod_flag  (3*id_flag)
 #define text_flag  (4*id_flag)
-#define inner_text_flag	 (5*id_flag)
+#define inner_text_flag  (5*id_flag)
 #define enter_block(i) save[i].txt=text_ptr, save[i].tok=tok_ptr;
 #define leave_block(i) text_ptr=save[i].txt, tok_ptr=save[i].tok;
 #define check_toks(n)  if (tok_ptr>tok_mem_end-n) \
-   overflow("token");	else
+   overflow("token");   else
 #define check_text()   if (text_ptr>=text_mem_end-1) \
    overflow("text");   else
 #define check_scrap()  if (scrap_ptr>=scrap_info_end) \
-   overflow("scrap");	else check_text()
+   overflow("scrap");   else check_text()
 #define dangling_tokens() (compatibility_mode && tok_ptr>*text_ptr)
 #define max_category  end_expr
-#define min_nonrule_cat	 lproc
+#define min_nonrule_cat  lproc
 #define valid_cat(c) ((c)>0 && (c)<min_nonrule_cat)
 #define yes_math  1
-#define no_math	 2
+#define no_math  2
 #define maybe_math  0
 #define start_scrap(s,c,m) p=&token_trans[s],p->cat=c, p->mathness=5*(m)
 #define end_scrap  p->trans=text_ptr, freeze_text();
-#define max_lhs_length	5
+#define max_lhs_length  5
 #define trie_root  (&trie_node_mem[0])
 #define successor(q,c) \
    (&trie_node_mem[(q)->next[(c)-1]])
@@ -164,21 +164,21 @@ else
   app_trans(scr); \
 }
 #define math_char(x) ((x)==yes_math ? '+' : (x)==no_math ? '-' : '?')
-#define cwebx		0x0001
-#define compatibility	0x0002
-#define only_plus_plus	0x0004
-#define no_plus_plus		0x0008
-#define unaligned_braces	0x0050
-#define aligned_braces	0x0020
-#define wide_braces		0x0030
-#define standard_braces		0x0060
-#define merged_decls		0x0080
-#define forced_statements	0x0100
+#define cwebx           0x0001
+#define compatibility   0x0002
+#define only_plus_plus  0x0004
+#define no_plus_plus            0x0008
+#define unaligned_braces        0x0050
+#define aligned_braces  0x0020
+#define wide_braces             0x0030
+#define standard_braces         0x0060
+#define merged_decls            0x0080
+#define forced_statements       0x0100
 #define no_forced_statements  0x0600
-#define all_stats_forced	0x0300
-#define not_all_stats_forced	0x0400
-#define cur_tok	 cur_state.tok_field
-#define cur_end	 cur_state.end_field
+#define all_stats_forced        0x0300
+#define not_all_stats_forced    0x0400
+#define cur_tok  cur_state.tok_field
+#define cur_end  cur_state.end_field
 #define cur_mode  cur_state.mode_field
 #define cur_state  stack[0]
 #define stack_end  (&stack[stack_size])
@@ -193,7 +193,7 @@ else
 #define out(c) \
   *(out_ptr>=out_buf_end ? (break_out(),out_ptr++) : out_ptr++)=c
 #define triple_file_output  flags['t']
-#define even_out_pages	flags['e']
+#define even_out_pages  flags['e']
 #define sort_info  scrap_union.id_list_field
 #define sort_info_end  (&sort_info[sort_stack_size])
 #define ilink(p) index_link[id_index(p)]
@@ -305,24 +305,26 @@ enum
   label, /* a statement label */
   if_head, /* `|if|' followed by a (parenthesised) expression */
   if_else_head, /* \lq|if @t\dots@>@; else|', \lq|while(@t\dots@>)|'
-		or \lq|switch(@t\dots@>)|' */
+                or \lq|switch(@t\dots@>)|' */
+  for_heading, /* parenthesised heading like |(i=0; i<n; ++i)| */
   do_head, /* `|do @t\dots@>@; while|' */
   mod_scrap, /* module name */
   declarator, /* abstract declarator, like `|(*)(int,char*[])|' */
   declaration, /* a complete declaration */
   expression, /* an expression, possibly a single identifier */
-  while_like, /* `|for|', `|while|', `|switch|' */
+  while_like, /* `|while|', `|switch|' */
+  for_like,
   do_like,
   if_like,
   else_like,
   extern_like,
 namespace_like, template_like, throw_like, try_like, catch_like,
-    /* each a single token */
-  int_like, /* `|int|', `|char|', \dots	 */
+  using_like, /* all these a single token */
+  int_like, /* `|int|', `|char|', \dots  */
   case_like, /* `|case|', `|default|' */
   sizeof_like, /* `|sizeof|', `|const|', `\&{new}', `\&{delete}' */
   struct_like, /* `|struct|', `|union|', `|enum|',
-		  `\&{class}', `\&{typename}' */
+                  `\&{class}', `\&{typename}' */
   return_like, /* `|return|', `|break|', `|continue|', `|goto|' */
   langle, rangle, templ_params,
     /* `$\langle$', `$\rangle$', template parameters; for \Cpp */
@@ -433,12 +435,12 @@ union
 
 } scrap_union;
 scrap_pointer scrap_base=scrap_info;
-	/* beginning of the current scrap sequence */
+        /* beginning of the current scrap sequence */
 scrap_pointer scrap_ptr = scrap_info;
-	/* points to end of the current scrap sequence */
+        /* points to end of the current scrap sequence */
 #ifdef STAT
 scrap_pointer max_scr_ptr = scrap_info;
-	/* largest value assumed by |scrap_ptr| */
+        /* largest value assumed by |scrap_ptr| */
 #endif
 
 struct { text_pointer txt; token_pointer tok; } save[2];
@@ -525,79 +527,79 @@ int main (int argc,char** argv)
   ccode['d'] = ccode['D'] = definition;
   ccode['h'] = ccode['H'] = header;
   ccode['c'] = ccode['C'] = begin_C;
-	/* \Cee\ text in unnamed module */
+        /* \Cee\ text in unnamed module */
   ccode['<'] = ccode['('] = module_name; /* beginning of a module name */
   ccode['~'] = ccode['*'] = new_section; /* beginning of a new section */
     if (compatibility_mode)
 
       { ccode['h']=ccode['H']=include_preproc; /* \:h means \:p */
-	ccode['p']=ccode['P']=begin_C; /* \:p means \:c */
-	ccode['#']=big_line_break; /* \:\# means \:) */
-	ccode[':']=xref_wildcard; /* \:: means \:? */
+        ccode['p']=ccode['P']=begin_C; /* \:p means \:c */
+        ccode['#']=big_line_break; /* \:\# means \:) */
+        ccode[':']=xref_wildcard; /* \:: means \:? */
       }
   }
 
   { static struct { short tok; eight_bits cat, mathness; char* tr; }
       trans_ini [] = {
-		      { '!', unop,	yes_math, "\\R" },
-		      { '~', unop,	yes_math, "\\CM" },
-		      { '/', binop,	yes_math, "/" },
-		      { '<', binop,	yes_math, "<" },
-		      { '>', binop,	yes_math, ">" },
-		      { '.', select,	yes_math, "." },
-		      { '=', binop,	yes_math, "\\K" },
-		      { '|', binop,	yes_math, "\\OR" },
-			 { or, binop,	yes_math, "\\OR" },
-		      { '^', binop,	yes_math, "\\XOR" },
-		      { '%', binop,	yes_math, "\\MOD" },
-		      { '+', unorbinop,	yes_math, "+" },
-		      { '-', unorbinop,	yes_math, "-" },
-		      { '*', unorbinop,	yes_math, "*" },
-		      { '&', unorbinop,	yes_math, "\\AND" },
-		      { '?', question,	yes_math, "\\?" },
-		      { '(', lpar,	yes_math, "(" },
-		      { ')', rpar,	yes_math, ")" },
-		      { '[', lbrack,	maybe_math, "[" },
-		      { ']', rbrack,	maybe_math, "]" },
-		      { '{', lbrace,	yes_math, "\\{" },
-		      { '}', rbrace,	yes_math, "\\}" },
-		      { ',', comma,	yes_math, "," },
-		      { ';', semi,	yes_math, ";" },
-		      { ':', colon,	maybe_math, ":" },
-		      { '#', insert,	maybe_math, "\\#" },
-			  /* this should occur only in macro definitions */
-		      { at_sign_image, insert, maybe_math, "@" },
-			  /* this should not occur in legal \Cee~text */
+                      { '!', unop,      yes_math, "\\R" },
+                      { '~', unop,      yes_math, "\\CM" },
+                      { '/', binop,     yes_math, "/" },
+                      { '<', binop,     yes_math, "<" },
+                      { '>', binop,     yes_math, ">" },
+                      { '.', select,    yes_math, "." },
+                      { '=', binop,     yes_math, "\\K" },
+                      { '|', binop,     yes_math, "\\OR" },
+                         { or, binop,   yes_math, "\\OR" },
+                      { '^', binop,     yes_math, "\\XOR" },
+                      { '%', binop,     yes_math, "\\MOD" },
+                      { '+', unorbinop, yes_math, "+" },
+                      { '-', unorbinop, yes_math, "-" },
+                      { '*', unorbinop, yes_math, "*" },
+                      { '&', unorbinop, yes_math, "\\AND" },
+                      { '?', question,  yes_math, "\\?" },
+                      { '(', lpar,      yes_math, "(" },
+                      { ')', rpar,      yes_math, ")" },
+                      { '[', lbrack,    maybe_math, "[" },
+                      { ']', rbrack,    maybe_math, "]" },
+                      { '{', lbrace,    yes_math, "\\{" },
+                      { '}', rbrace,    yes_math, "\\}" },
+                      { ',', comma,     yes_math, "," },
+                      { ';', semi,      yes_math, ";" },
+                      { ':', colon,     maybe_math, ":" },
+                      { '#', insert,    maybe_math, "\\#" },
+                          /* this should occur only in macro definitions */
+                      { at_sign_image, insert, maybe_math, "@" },
+                          /* this should not occur in legal \Cee~text */
 
-		      { not_eq,	binop,	yes_math, "\\I" },
-		      { lt_eq,	binop,	yes_math, "\\Z" },
-		      { gt_eq,	binop,	yes_math, "\\G" },
-		      { eq_eq,	binop,	yes_math, "\\E" },
-		      { and_and,	binop,	yes_math, "\\W" },
-		      { or_or,	binop,	yes_math, "\\V" },
-		      { plus_plus,	unop,	yes_math, "\\PP" },
-		      { minus_minus,	unop,	yes_math, "\\MM" },
-		      { minus_gt,	select,	yes_math, "\\MG" },
-		      { gt_gt,	binop,	yes_math, "\\GG" },
-		      { lt_lt,	binop,	yes_math, "\\LL" },
-		      { mul_assign,	binop,	yes_math, "\\KK*" },
-		      { div_assign,	binop,	yes_math, "\\KK/" },
-		      { mod_assign,	binop,	yes_math, "\\KK\\MOD" },
-		      { plus_assign,	binop,	yes_math, "\\KK+" },
-		      { minus_assign,	binop,	yes_math, "\\KK-" },
-		      { left_assign,	binop,	yes_math, "\\KK\\LL" },
-		      { right_assign,	binop,	yes_math, "\\KK\\GG" },
-		      { and_assign,	binop,	yes_math, "\\KK\\AND" },
-		      { xor_assign,	binop,	yes_math, "\\KK\\XOR" },
-		      { or_assign,	binop,	yes_math, "\\KK\\OR" },
-		      { thin_space,	insert, yes_math, "\\," },
-		      { pseudo_semi,	magic,	maybe_math, "" },
-		      { force_expr_open,  begin_expr,	  maybe_math, "" },
-		      { force_expr_close, end_expr,	  maybe_math, "" },
-		      { join,		insert,	no_math, "\\J" },
-		      { ellipsis,   int_like,	yes_math, "\\ldots" },
-		      { sh_sh,	binop,	yes_math, "\\SS" },
-		      { colon_colon,	colcol, yes_math, "\\CC" }
+                      { not_eq, binop,  yes_math, "\\I" },
+                      { lt_eq,  binop,  yes_math, "\\Z" },
+                      { gt_eq,  binop,  yes_math, "\\G" },
+                      { eq_eq,  binop,  yes_math, "\\E" },
+                      { and_and,        binop,  yes_math, "\\W" },
+                      { or_or,  binop,  yes_math, "\\V" },
+                      { plus_plus,      unop,   yes_math, "\\PP" },
+                      { minus_minus,    unop,   yes_math, "\\MM" },
+                      { minus_gt,       select, yes_math, "\\MG" },
+                      { gt_gt,  binop,  yes_math, "\\GG" },
+                      { lt_lt,  binop,  yes_math, "\\LL" },
+                      { mul_assign,     binop,  yes_math, "\\KK*" },
+                      { div_assign,     binop,  yes_math, "\\KK/" },
+                      { mod_assign,     binop,  yes_math, "\\KK\\MOD" },
+                      { plus_assign,    binop,  yes_math, "\\KK+" },
+                      { minus_assign,   binop,  yes_math, "\\KK-" },
+                      { left_assign,    binop,  yes_math, "\\KK\\LL" },
+                      { right_assign,   binop,  yes_math, "\\KK\\GG" },
+                      { and_assign,     binop,  yes_math, "\\KK\\AND" },
+                      { xor_assign,     binop,  yes_math, "\\KK\\XOR" },
+                      { or_assign,      binop,  yes_math, "\\KK\\OR" },
+                      { thin_space,     insert, yes_math, "\\," },
+                      { pseudo_semi,    magic,  maybe_math, "" },
+                      { force_expr_open,  begin_expr,     maybe_math, "" },
+                      { force_expr_close, end_expr,       maybe_math, "" },
+                      { join,           insert, no_math, "\\J" },
+                      { ellipsis,   int_like,   yes_math, "\\ldots" },
+                      { sh_sh,  binop,  yes_math, "\\SS" },
+                      { colon_colon,    colcol, yes_math, "\\CC" }
    };
     int i,n=array_size(trans_ini);
     scrap o={ insert, 5*maybe_math, NULL }; /* completely inert scrap */
@@ -608,7 +610,11 @@ int main (int argc,char** argv)
       app_str(trans_ini[i].tr); p->trans=text_ptr; freeze_text();
     }
     if (C_plus_plus)
-		     { token_trans['<'].cat=langle; token_trans['>'].cat=rangle; }
+                     {
+                        token_trans[and_and].cat = unorbinop;
+                        token_trans['<'].cat=langle;
+                        token_trans['>'].cat=rangle;
+                     }
 
     { scrap* p;
       start_scrap(math_break,insert,maybe_math); /* \:\v */
@@ -639,431 +645,444 @@ int main (int argc,char** argv)
   #endif
 
   rule_mask= (compatibility_mode ? 0x0001 : 0x0002)
-	 | (C_plus_plus ? 0x0008 : 0x0004)
-	 | (flags['w'] ? 0x0040 : flags['u'] ? 0x0020 : 0x0010)
-	 | (flags['m'] ? 0x0000 : 0x0080)
-	 | (flags['a'] ? 0x0400 : flags['f'] ? 0x0200 : 0x0100)
-	 ;
+         | (C_plus_plus ? 0x0008 : 0x0004)
+         | (flags['w'] ? 0x0040 : flags['u'] ? 0x0020 : 0x0010)
+         | (flags['m'] ? 0x0000 : 0x0080)
+         | (flags['a'] ? 0x0400 : flags['f'] ? 0x0200 : 0x0100)
+         ;
   { static reduction rule[] = {
-			       { 1, {{expression, unop}},			{expression, NULL}},
-			       { 2, {{expression, binop, expression}},		{expression, NULL}},
-			       { 2, {{expression, langle, expression}},
-							{expression, NULL},only_plus_plus},
-			       { 2, {{expression, rangle, expression}},
-							{expression, NULL},only_plus_plus},
-			       { 3, {{expression, unorbinop, expression}},	{expression, NULL}},
-			       { 4, {{expression, select, expression}},	{expression, NULL}},
-			       { 5, {{expression, select, int_like}},		{expression, "__$_"}},
+                               { 1, {{expression, unop}},                       {expression, NULL}},
+                               { 2, {{expression, binop, expression}},          {expression, NULL}},
+                               { 2, {{expression, langle, expression}},
+                                                        {expression, NULL},only_plus_plus},
+                               { 2, {{expression, rangle, expression}},
+                                                        {expression, NULL},only_plus_plus},
+                               { 3, {{expression, unorbinop, expression}},      {expression, NULL}},
+                               { 4, {{expression, select, expression}}, {expression, NULL}},
+                               { 5, {{expression, select, int_like}},           {expression, "__$_"}},
 
-			       { 6, {{expression, comma, expression}},		{expression, "__p3_"}},
-			       { 7, {{expression, expression}},		{expression, NULL}},
-			       { 8, {{expression, lpar, rpar}},		{expression, "__,_"}},
-			       { 9, {{expression, subscript}},			{expression, NULL}},
-			       {10, {{lpar, expression, rpar}},		{expression, NULL}},
-			       {11, {{lbrack, expression, rbrack}},		{subscript,  NULL}},
-			       {12, {{lbrack, rbrack}},			{subscript,  "_,_"}},
-			       {13, {{unop, expression}},			{expression, NULL}},
-			       {14, {{unorbinop, expression}},			{expression, "o__"}},
-			       {15, {{unop, int_like}},	      {int_like, NULL},only_plus_plus},
+                               { 6, {{expression, comma, expression}},          {expression, "__p3_"}},
+                               { 7, {{expression, expression}},         {expression, NULL}},
+                               { 8, {{expression, lpar, rpar}},         {expression, "__,_"}},
+                               { 9, {{expression, subscript}},                  {expression, NULL}},
+                               {10, {{lpar, expression, rpar}},         {expression, NULL}},
+                               {11, {{lbrack, expression, rbrack}},             {subscript,  NULL}},
+                               {12, {{lbrack, rbrack}},                 {subscript,  "_,_"}},
+                               {13, {{unop, expression}},                       {expression, NULL}},
+                               {14, {{unorbinop, expression}},                  {expression, "o__"}},
+                               {15, {{unop, int_like}},       {int_like, NULL},only_plus_plus},
 
-			       {20, {{question, expression, colon}},		{binop, "__m_"}},
-			       {21, {{parameters, expression}},		{expression, "_,_"}},
-			       {22, {{sizeof_like, parameters}},		{expression, NULL}},
-			       {23, {{sizeof_like, expression}},		{expression,"_~_"}},
-			       {24, {{sizeof_like, int_like}},			{expression,"_~_"}
-									      ,only_plus_plus},
-			       {25, {{int_like, lpar, expression, rpar}},	{expression, NULL}
-									      ,only_plus_plus},
-			       {26, {{sizeof_like, templ_params}}, {int_like,NULL}   ,only_plus_plus},
+                               {20, {{question, expression, colon}},            {binop, "__m_"}},
+                               {21, {{parameters, expression}},         {expression, "_,_"}},
+                               {22, {{sizeof_like, parameters}},                {expression, NULL}},
+                               {23, {{sizeof_like, expression}},                {expression,"_~_"}},
+                               {24, {{sizeof_like, int_like}},                  {expression,"_~_"}
+                                                                              ,only_plus_plus},
+                               {25, {{int_like, lpar, expression, rpar}},       {expression, NULL}
+                                                                              ,only_plus_plus},
+                               {26, {{sizeof_like, templ_params}}, {int_like,NULL}   ,only_plus_plus},
 
-			       {30, {{int_like, int_like}},		   {int_like, "_~_"}},
-			       {31, {{int_like, expression, semi}},	   {declaration, "_~!__"}},
-			       {32, {{int_like, semi}},		   {declaration, NULL}},
-			       {33, {{int_like, expression, comma}},	   {int_like, "_~!__p8"}},
-			       {34, {{unorbinop, int_like}},		   {int_like, "o__"}},
-			       {35, {{sizeof_like,int_like, int_like},1},
-							 {int_like, "_~_"},only_plus_plus},
+                               {30, {{int_like, int_like}},                {int_like, "_~_"}},
+                               {31, {{int_like, expression, semi}},        {declaration, "_~!__"}},
+                               {32, {{int_like, semi}},            {declaration, NULL}},
+                               {33, {{int_like, expression, comma}},       {int_like, "_~!__p8"}},
+                               {34, {{unorbinop, int_like}},               {int_like, "o__"}},
+                               {35, {{sizeof_like,int_like, int_like},1},
+                                                         {int_like, "_~_"},only_plus_plus},
 
-			       {40, {{magic, int_like}},		   {expression, "_$_"}},
-			       {41, {{expression, parameters}}, {function_head, "_B_"},no_plus_plus},
-			       {41, {{int_like,expression, parameters}},
-							      {function_head, "_~_B_"},only_plus_plus},
-			       {42, {{lpar, int_like, expression, rpar}}, {parameters, "_+++_~!_---_"}},
-			       {43, {{colon, expression, semi}},	  {semi, "m___"}},
+                               {40, {{magic, int_like}},                   {expression, "_$_"}},
+                               {41, {{expression, parameters}}, {function_head, "_B_"},no_plus_plus},
+                               {41, {{int_like,expression, parameters}},
+                                                              {function_head, "_~_B_"},only_plus_plus},
+                               {42, {{lpar, int_like, expression, rpar}}, {parameters, "_+++_~!_---_"}},
+                               {43, {{colon, expression, semi}},          {semi, "m___"}},
 
-			       {45, {{namespace_like,expression}},
-							      {function_head, "_~_"},only_plus_plus},
-			       {46, {{namespace_like,lbrace},-1},{function_head,NULL},only_plus_plus},
-			       {47, {{int_like,namespace_like}},{int_like,"_~_"},only_plus_plus},
+                               {45, {{namespace_like,expression}},
+                                                              {function_head, "_~_"},only_plus_plus},
+                               {46, {{namespace_like,lbrace},-1},{function_head,NULL},only_plus_plus},
+                               {47, {{int_like,namespace_like}},{int_like,"_~_"},only_plus_plus},
+                               {47, {{using_like,namespace_like}},{int_like,"_~_"},only_plus_plus},
 
-			       {50, {{unorbinop, rpar}, -1},			{declarator, "_,"}},
-			       {50, {{binop, rpar}, -1},	{declarator, "o_,"},only_plus_plus},
-			       {51, {{unorbinop, comma},-1},			{declarator, "_,"}},
-			       {51, {{binop, comma},-1},	{declarator, "o_,"},only_plus_plus},
-			       {52, {{unorbinop, rangle},-1},	{declarator, "_,"},only_plus_plus},
-			       {52, {{binop, rangle},-1},	{declarator, "o_,"},only_plus_plus},
-			       {53, {{int_like, subscript},1},			{declarator, ",_"}},
-			       {54, {{unorbinop, subscript},1},		{declarator, ",_"}},
-			       {55, {{lpar, subscript},1},			{declarator, ",_"}},
+                               {50, {{unorbinop, rpar}, -1},                    {declarator, "_,"}},
+                               {50, {{binop, rpar}, -1},        {declarator, "o_,"},only_plus_plus},
+                               {51, {{unorbinop, comma},-1},                    {declarator, "_,"}},
+                               {51, {{binop, comma},-1},        {declarator, "o_,"},only_plus_plus},
+                               {52, {{unorbinop, rangle},-1},   {declarator, "_,"},only_plus_plus},
+                               {52, {{binop, rangle},-1},       {declarator, "o_,"},only_plus_plus},
+                               {53, {{int_like, subscript},1},                  {declarator, ",_"}},
+                               {54, {{unorbinop, subscript},1},         {declarator, ",_"}},
+                               {55, {{lpar, subscript},1},                      {declarator, ",_"}},
 
-			       {60, {{unorbinop, declarator}},	{declarator, "o__"}},
-			       {61, {{declarator, subscript}},	{declarator, NULL}},
-			       {62, {{declarator, parameters}}, {declarator, NULL}},
-			       {63, {{lpar, declarator, rpar}}, {declarator, NULL}},
+                               {60, {{unorbinop, declarator}},  {declarator, "o__"}},
+                               {61, {{declarator, subscript}},  {declarator, NULL}},
+                               {62, {{declarator, parameters}}, {declarator, NULL}},
+                               {63, {{lpar, declarator, rpar}}, {declarator, NULL}},
 
-			       {70, {{lpar, int_like, declarator, comma}}, {lpar, "____p5"}},
-			       {71, {{lpar, int_like, comma}},		    {lpar, "___p5"}},
-			       {72, {{lpar, int_like, declarator, rpar}}, {parameters, "_+++__---_"}},
-			       {73, {{lpar, int_like, rpar}},		   {parameters, "_+++_---_"}},
-			       {74, {{lpar, rpar}},			    {parameters, "_,_"}},
+                               {70, {{lpar, int_like, declarator, comma}}, {lpar, "____p5"}},
+                               {71, {{lpar, int_like, comma}},              {lpar, "___p5"}},
+                               {72, {{lpar, int_like, declarator, rpar}}, {parameters, "_+++__---_"}},
+                               {73, {{lpar, int_like, rpar}},              {parameters, "_+++_---_"}},
+                               {74, {{lpar, rpar}},                         {parameters, "_,_"}},
 
-			       {75, {{langle, int_like, declarator, comma}},
-							{langle, "____p5"},only_plus_plus},
-			       {76, {{langle, int_like, comma}},{langle, "___p5"},only_plus_plus},
-			       {77, {{langle, int_like, declarator, rangle}},
-						{templ_params, "a___a_"},only_plus_plus},
-			       {77, {{langle, int_like, rangle}},
-						{templ_params, "a__a_"},only_plus_plus},
-			       {78, {{langle, rangle}}, {templ_params, "a_a_"},only_plus_plus},
-			       {79, {{langle, expression, rangle}},
-						{templ_params, "a__a_"},only_plus_plus},
-			       {80, {{expression, langle, expression, rangle}},
-						{expression, "_a__a_"},only_plus_plus},
-			       {81, {{int_like,templ_params}},{int_like, NULL},only_plus_plus},
-			       {82, {{expression,templ_params}},{expression, NULL},only_plus_plus},
-			       {83, {{int_like,int_like, langle, expression, rangle},1},
-						{int_like, "_a__a_"},only_plus_plus},
+                               {75, {{langle, int_like, declarator, comma}},
+                                                        {langle, "____p5"},only_plus_plus},
+                               {76, {{langle, int_like, comma}},{langle, "___p5"},only_plus_plus},
+                               {77, {{langle, int_like, declarator, rangle}},
+                                                {templ_params, "a___a_"},only_plus_plus},
+                               {77, {{langle, int_like, rangle}},
+                                                {templ_params, "a__a_"},only_plus_plus},
+                               {78, {{langle, rangle}}, {templ_params, "a_a_"},only_plus_plus},
+                               {79, {{langle, expression, rangle}},
+                                                {templ_params, "a__a_"},only_plus_plus},
+                               {80, {{expression, langle, expression, rangle}},
+                                                {expression, "_a__a_"},only_plus_plus},
+                               {81, {{int_like,templ_params}},{int_like, NULL},only_plus_plus},
+                               {82, {{expression,templ_params}},{expression, NULL},only_plus_plus},
+                               {83, {{int_like,int_like, langle, expression, rangle},1},
+                                                {int_like, "_a__a_"},only_plus_plus},
+                               {85, {{using_like, int_like, binop,int_like,semi}},
+                                                {declaration, "_~____"},only_plus_plus},
+                               {86, {{using_like, expression, semi}},
+                                                {declaration, "_~__"},only_plus_plus},
+                               {86, {{using_like, int_like, semi}},
+                                                {declaration, "_~__"},only_plus_plus},
 
-			       {90, {{struct_like, lbrace}}, {struct_head, "_ft_"},standard_braces},
-			       {90, {{struct_like, lbrace}}, {struct_head, "_~_"},unaligned_braces},
-			       {90, {{struct_like, lbrace}}, {struct_head, "_f_"},wide_braces},
-			       {91, {{struct_like, expression, lbrace}},
-					{struct_head, "_~!_ft_"},standard_braces},
-			       {91, {{struct_like, expression, lbrace}},
-					{struct_head, "_~!_~_"},unaligned_braces},
-			       {91, {{struct_like, expression, lbrace}},
-					{struct_head, "_~!_f_"},wide_braces},
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!$_ft_"},standard_braces|no_plus_plus},
+                               {90, {{struct_like, lbrace}}, {struct_head, "_ft_"},standard_braces},
+                               {90, {{struct_like, lbrace}}, {struct_head, "_~_"},unaligned_braces},
+                               {90, {{struct_like, lbrace}}, {struct_head, "_f_"},wide_braces},
+                               {91, {{struct_like, expression, lbrace}},
+                                        {struct_head, "_~!_ft_"},standard_braces},
+                               {91, {{struct_like, expression, lbrace}},
+                                        {struct_head, "_~!_~_"},unaligned_braces},
+                               {91, {{struct_like, expression, lbrace}},
+                                        {struct_head, "_~!_f_"},wide_braces},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!$_ft_"},standard_braces|no_plus_plus},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!_ft_"},standard_braces|only_plus_plus},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!$_~_"},unaligned_braces|no_plus_plus},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!_~_"},unaligned_braces|only_plus_plus},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!$_f_"},wide_braces|no_plus_plus},
+                               {92, {{struct_like, int_like, lbrace}},
+                                {struct_head, "_~!_f_"},wide_braces|only_plus_plus},
+                               {93, {{struct_like, expression}}, {int_like, "_~_"}},
+                               {94, {{struct_like, int_like}}, {int_like, "_~$_"},no_plus_plus},
+                               {94, {{binop,struct_like, int_like},1}, {int_like, "_~_"},only_plus_plus},
+                               {94, {{struct_like, int_like, semi}},
+                                                        {declaration, "_~!__"},only_plus_plus},
+                               {95, {{struct_head, declaration, rbrace}},
+                                        {int_like, "_+_-f_"},standard_braces},
+                               {95, {{struct_head, declaration, rbrace}},
+                                        {int_like, "_+f_-f_"},unaligned_braces & wide_braces},
+                               {96, {{struct_head, function, rbrace}},
+                                        {int_like, "_+_-f_"},standard_braces|only_plus_plus},
+                               {96, {{struct_head, function, rbrace}},
+                                  {int_like, "_+f_-f_"},(unaligned_braces&wide_braces)|only_plus_plus},
+                               {97, {{struct_head, rbrace}}, {int_like,"_B_"}},
+                               {98, {{label, declaration}}, {declaration, "b_f_"},only_plus_plus},
 
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!_ft_"},standard_braces|only_plus_plus},
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!$_~_"},unaligned_braces|no_plus_plus},
+                               {100, {{extern_like, expression, lbrace},-2},
+                                                        {struct_like, NULL},only_plus_plus},
+                               {101, {{extern_like, expression}},
+                                                        {int_like, "_~_"},only_plus_plus},
+                               {102, {{extern_like}},           {int_like, NULL},only_plus_plus},
 
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!_~_"},unaligned_braces|only_plus_plus},
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!$_f_"},wide_braces|no_plus_plus},
+                               {105, {{struct_like, lbrace, expression},-1}, {struct_head, "_B_"}},
+                               {106, {{struct_like, expression, lbrace, expression},-1},
+                                        {struct_head, "_~_B_"}},
+                               {107, {{struct_head, expression, comma, expression},1},
+                                        {expression, "__B!_"}},
+                               {108, {{struct_head, expression, rbrace}}, {int_like, "_~+!_-B_"}},
+                               {109, {{struct_head, expression, comma, rbrace}},
+                                                                {int_like, "_~+!__-B_"}},
 
-			       {92, {{struct_like, int_like, lbrace}},
-				{struct_head, "_~!_f_"},wide_braces|only_plus_plus},
-			       {93, {{struct_like, expression}}, {int_like, "_~_"}},
-			       {94, {{struct_like, int_like}}, {int_like, "_~$_"},no_plus_plus},
+                               {110, {{struct_like, lbrace, magic}}, {short_struct_head, "_B__+"}},
+                               {111, {{struct_like, expression, lbrace, magic}},
+                                        {short_struct_head, "_~!_B__+"}},
+                               {112, {{struct_like, int_like, lbrace, magic}},
+                                        {short_struct_head, "_~!$_B__+"}, no_plus_plus},
 
-			       {94, {{struct_like, int_like, semi}},
-							{declaration, "_~!__"},only_plus_plus},
-			       {95, {{struct_head, declaration, rbrace}},
-					{int_like, "_+_-f_"},standard_braces},
-			       {95, {{struct_head, declaration, rbrace}},
-					{int_like, "_+f_-f_"},unaligned_braces & wide_braces},
-			       {96, {{struct_head, function, rbrace}},
-					{int_like, "_+_-f_"},standard_braces|only_plus_plus},
-			       {96, {{struct_head, function, rbrace}},
-				  {int_like, "_+f_-f_"},(unaligned_braces&wide_braces)|only_plus_plus},
-			       {97, {{struct_head, rbrace}}, {int_like,"_B_"}},
-			       {98, {{label, declaration}}, {declaration, "b_f_"},only_plus_plus},
+                               {112, {{struct_like, int_like, lbrace, magic}},
+                                        {short_struct_head, "_~!_B__+"}, only_plus_plus},
+                               {113, {{short_struct_head, declaration}}, {short_struct_head, "_B_"}},
+                               {114, {{short_struct_head, rbrace}}, {int_like, "_-B_"}},
 
-			       {100, {{extern_like, expression, lbrace},-2},
-							{struct_like, NULL},only_plus_plus},
-			       {101, {{extern_like, expression}},
-							{int_like, "_~_"},only_plus_plus},
-			       {102, {{extern_like}},		{int_like, NULL},only_plus_plus},
+                               {120, {{expression, semi}},              {statement, NULL}},
+                               {121, {{semi}},                          {statement, NULL}},
+                               {122, {{expression, colon}},             {label, "!_h_"}},
+                               {123, {{case_like, expression, colon}},  {label, "_ _h_"}},
+                               {124, {{case_like, colon}},              {label, "_h_"}},
+                               {125, {{label, label}},                  {label, "_B_"}},
+                               {126, {{label, statement}}, {statement, "b_B_"},not_all_stats_forced},
+                               {126, {{label, statement}}, {statement, "b_f_"},all_stats_forced},
+                               {127, {{magic}},                         {semi, NULL}},
 
-			       {105, {{struct_like, lbrace, expression},-1}, {struct_head, "_B_"}},
-			       {106, {{struct_like, expression, lbrace, expression},-1},
-					{struct_head, "_~_B_"}},
-			       {107, {{struct_head, expression, comma, expression},1},
-					{expression, "__B!_"}},
-			       {108, {{struct_head, expression, rbrace}}, {int_like, "_~+!_-B_"}},
-			       {109, {{struct_head, expression, comma, rbrace}},
-								{int_like, "_~+!__-B_"}},
+                               {130, {{declaration, declaration}}, {declaration, "_f_"}},
+                               {131, {{lbrace, declaration, declaration},1},
+                                                          {declaration, "_B_"},merged_decls},
+                               {132, {{declaration, statement}},  {statement, "_F_"},no_plus_plus},
+                               {132, {{declaration, statement}},
+                                        {statement, "_f_"},only_plus_plus|forced_statements},
+                               {132, {{declaration, statement}},
+                                        {statement, "_B_"},only_plus_plus|no_forced_statements},
+                               {133, {{statement, statement}},{statement, "_f_"},forced_statements},
+                               {133, {{statement, statement}},{statement, "_B_"},no_forced_statements},
+                               {134, {{statement, declaration}}, {declaration, "_f_"},only_plus_plus},
+                               {135, {{lbrace, rbrace}},          {statement, "_,_"}},
+                               {136, {{lbrace, statement, rbrace}},
+                                {compound_statement, "ft_+_-f_"},standard_braces},
+                               {136, {{lbrace, statement, rbrace}},
+                                {compound_statement, "_+f_-f_"},unaligned_braces},
+                               {136, {{lbrace, statement, rbrace}},
+                                {compound_statement, "f_+f_-f_"},wide_braces},
+                               {137, {{lbrace, declaration, rbrace}},
+                                {compound_statement, "ft_+_-f_"},standard_braces},
+                               {137, {{lbrace, declaration, rbrace}},
+                                {compound_statement, "_+f_-f_"},unaligned_braces},
+                               {137, {{lbrace, declaration, rbrace}},
+                                {compound_statement, "f_+f_-f_"},wide_braces},
+                               {138, {{compound_statement}},                    {statement, "f_f"}},
+                               {139, {{lbrace, expression, comma, rbrace}},     {expression, "_,__,_"}},
+                               {140, {{lbrace, expression, rbrace}},            {expression, "_,_,_"}},
+                               {141, {{int_like, lbrace, expression, rbrace}},
+                                                        {expression, "__,_,_"},only_plus_plus},
+                               {141, {{int_like, lbrace, rbrace}},
+                                                        {expression, "__,_"},only_plus_plus},
 
-			       {110, {{struct_like, lbrace, magic}}, {short_struct_head, "_B__+"}},
-			       {111, {{struct_like, expression, lbrace, magic}},
-					{short_struct_head, "_~!_B__+"}},
-			       {112, {{struct_like, int_like, lbrace, magic}},
-					{short_struct_head, "_~!$_B__+"}, no_plus_plus},
+                               {150, {{lbrace, magic}},         {short_lbrace, "__+"}},
+                               {151, {{short_lbrace, declaration}},     {short_lbrace, "_B_"}},
+                               {152, {{short_lbrace, statement}},       {short_lbrace, "_B_"}},
+                               {153, {{short_lbrace, rbrace}},          {statement, "_-B_"}},
 
-			       {112, {{struct_like, int_like, lbrace, magic}},
-					{short_struct_head, "_~!_B__+"}, only_plus_plus},
-			       {113, {{short_struct_head, declaration}}, {short_struct_head, "_B_"}},
-			       {114, {{short_struct_head, rbrace}}, {int_like, "_-B_"}},
+                               {160, {{if_like, expression}},         {if_head, "f_~_"}},
+                               {161, {{lbrace,if_like,expression},1}, {if_head, "_~_"},standard_braces},
+                               {162, {{if_head, compound_statement, else_like, if_like}},
+                                                {if_like, "__f_~_"},aligned_braces},
+                               {162, {{if_head, compound_statement, else_like, if_like}},
+                                                {if_like, "_~_~_~_"},unaligned_braces},
+                               {163, {{if_head, statement, else_like, if_like}},
+                                                {if_like, "_+B_-f_~_"},not_all_stats_forced},
+                               {163, {{if_head, statement, else_like, if_like}},
+                                                {if_like, "_+f_-f_~_"},all_stats_forced},
+                               {164, {{if_head, compound_statement, else_like}},
+                                                {if_else_head, "__f_"},aligned_braces},
+                               {164, {{if_head, compound_statement, else_like}},
+                                                {if_else_head, "_~_~_"},unaligned_braces},
+                               {165, {{if_head, statement, else_like}},
+                                                {if_else_head, "_+B_-f_"},not_all_stats_forced},
+                               {165, {{if_head, statement, else_like}},
+                                                {if_else_head, "_+f_-f_"},all_stats_forced},
+                               {166, {{if_head, compound_statement}},
+                                                {statement, "__f"},aligned_braces},
+                               {166, {{if_head, compound_statement}},
+                                                {statement, "_~_f"},unaligned_braces},
+                               {167, {{if_head, statement}},
+                                                {statement, "_+B_-f"},not_all_stats_forced},
+                               {167, {{if_head, statement}},
+                                                {statement, "_+f_-f"},all_stats_forced},
+                               {168, {{if_else_head, compound_statement}},
+                                                {statement, "__f"},aligned_braces},
+                               {168, {{if_else_head, compound_statement}},
+                                                {statement, "_~_f"},unaligned_braces},
+                               {169, {{if_else_head, statement}},
+                                                {statement, "_+B_-f"},not_all_stats_forced},
+                               {169, {{if_else_head, statement}},
+                                                {statement, "_+f_-f"},all_stats_forced},
 
-			       {120, {{expression, semi}},		{statement, NULL}},
-			       {121, {{semi}},				{statement, NULL}},
-			       {122, {{expression, colon}},		{label, "!_h_"}},
-			       {123, {{case_like, expression, colon}},	{label, "_ _h_"}},
-			       {124, {{case_like, colon}},		{label, "_h_"}},
-			       {125, {{label, label}},			{label, "_B_"}},
-			       {126, {{label, statement}}, {statement, "b_B_"},not_all_stats_forced},
-			       {126, {{label, statement}}, {statement, "b_f_"},all_stats_forced},
-			       {127, {{magic}},				{semi, NULL}},
+                               {170, {{short_lbrace, if_like, expression},1},
+                                        {if_head, "_~_"}},
+                               {171, {{short_lbrace, if_head, statement, else_like}},
+                                        {short_lbrace, "_B_B_B_"}},
+                               {172, {{short_lbrace, if_head, statement}},
+                                        {short_lbrace, "_B_B_"}},
 
-			       {130, {{declaration, declaration}}, {declaration, "_f_"}},
-			       {131, {{lbrace, declaration, declaration},1},
-							  {declaration, "_B_"},merged_decls},
-			       {132, {{declaration, statement}},  {statement, "_F_"},no_plus_plus},
-			       {132, {{declaration, statement}},
-					{statement, "_f_"},only_plus_plus|forced_statements},
-			       {132, {{declaration, statement}},
-					{statement, "_B_"},only_plus_plus|no_forced_statements},
-			       {133, {{statement, statement}},{statement, "_f_"},forced_statements},
-			       {133, {{statement, statement}},{statement, "_B_"},no_forced_statements},
-			       {134, {{statement, declaration}}, {declaration, "_f_"},only_plus_plus},
-			       {135, {{lbrace, rbrace}},	  {statement, "_,_"}},
-			       {136, {{lbrace, statement, rbrace}},
-				{compound_statement, "ft_+_-f_"},standard_braces},
-			       {136, {{lbrace, statement, rbrace}},
-				{compound_statement, "_+f_-f_"},unaligned_braces},
-			       {136, {{lbrace, statement, rbrace}},
-				{compound_statement, "f_+f_-f_"},wide_braces},
-			       {137, {{lbrace, declaration, rbrace}},
-				{compound_statement, "ft_+_-f_"},standard_braces},
-			       {137, {{lbrace, declaration, rbrace}},
-				{compound_statement, "_+f_-f_"},unaligned_braces},
-			       {137, {{lbrace, declaration, rbrace}},
-				{compound_statement, "f_+f_-f_"},wide_braces},
-			       {138, {{compound_statement}},			{statement, "f_f"}},
-			       {139, {{lbrace, expression, comma, rbrace}},	{expression, "_,__,_"}},
-			       {140, {{lbrace, expression, rbrace}},		{expression, "_,_,_"}},
-			       {141, {{int_like, lbrace, expression, rbrace}},
-							{expression, "__,_,_"},only_plus_plus},
-			       {141, {{int_like, lbrace, rbrace}},
-							{expression, "__,_"},only_plus_plus},
+                               {180, {{while_like, expression}}, {if_else_head, "f_~_"}},
+                               {181, {{lbrace, while_like, expression},1},
+                                                {if_else_head, "_~_"},standard_braces},
+                               {182, {{lpar, statement, statement}, 1},
+                                                {statement, "_B_"}, forced_statements},
+                               {183, {{lpar, statement, expression, rpar}}, {for_heading, "__B__"}},
+                               {183, {{lpar, statement, rpar}}, {for_heading, NULL}},
+                               {184, {{for_like, for_heading}}, {if_else_head, "f_~_"}},
+                               {184, {{lbrace,for_like,for_heading},1},
+                                                {if_else_head, "_~_"},standard_braces},
+                               {185, {{lpar, declaration, statement}, 1},
+                                                {statement, "_B_"}, only_plus_plus},
+                               {186, {{do_like, compound_statement, while_like}},
+                                                {do_head, "__~_"},standard_braces},
+                               {186, {{do_like, compound_statement, while_like}},
+                                                {do_head, "_~_~_"},unaligned_braces},
+                               {186, {{do_like, compound_statement, while_like}},
+                                                {do_head, "__f_"},wide_braces},
+                               {187, {{do_like, statement, while_like}},
+                                                {do_head, "_+B_-B_"},not_all_stats_forced},
+                               {187, {{do_like, statement, while_like}},
+                                                {do_head, "_+f_-f_"},all_stats_forced},
+                               {188, {{do_head, expression, semi}}, {statement, "f_~__f"}},
+                               {188, {{lbrace, do_head, expression, semi},1},
+                                                        {statement, "_~__f"},standard_braces},
+                               {190, {{lpar,int_like, expression, colon},2},
+                                                {label, "!_m_"},only_plus_plus},
+                               {191, {{lpar,int_like, label, expression,rpar}},
+                                                {for_heading, "__~___"},only_plus_plus},
 
-			       {150, {{lbrace, magic}},		{short_lbrace, "__+"}},
-			       {151, {{short_lbrace, declaration}},	{short_lbrace, "_B_"}},
-			       {152, {{short_lbrace, statement}},	{short_lbrace, "_B_"}},
-			       {153, {{short_lbrace, rbrace}},		{statement, "_-B_"}},
+                               {200, {{short_lbrace, while_like, expression}},
+                                                                {short_lbrace, "_B_~_"}},
+                               {200, {{short_lbrace, for_like, for_heading}},
+                                                {short_lbrace, "_B_~_"},standard_braces},
+                               {201, {{short_lbrace, do_like, statement, while_like},1},
+                                                                {do_head, "_B_B_"}},
+                               {202, {{short_lbrace, do_head, expression, semi}},
+                                                                {short_lbrace, "_B_~__"}},
 
-			       {160, {{if_like, expression}},	      {if_head, "f_~_"}},
-			       {161, {{lbrace,if_like,expression},1}, {if_head, "_~_"},standard_braces},
-			       {162, {{if_head, compound_statement, else_like, if_like}},
-						{if_like, "__f_~_"},aligned_braces},
-			       {162, {{if_head, compound_statement, else_like, if_like}},
-						{if_like, "_~_~_~_"},unaligned_braces},
-			       {163, {{if_head, statement, else_like, if_like}},
-						{if_like, "_+B_-f_~_"},not_all_stats_forced},
-			       {163, {{if_head, statement, else_like, if_like}},
-						{if_like, "_+f_-f_~_"},all_stats_forced},
-			       {164, {{if_head, compound_statement, else_like}},
-						{if_else_head, "__f_"},aligned_braces},
-			       {164, {{if_head, compound_statement, else_like}},
-						{if_else_head, "_~_~_"},unaligned_braces},
-			       {165, {{if_head, statement, else_like}},
-						{if_else_head, "_+B_-f_"},not_all_stats_forced},
-			       {165, {{if_head, statement, else_like}},
-						{if_else_head, "_+f_-f_"},all_stats_forced},
-			       {166, {{if_head, compound_statement}},
-						{statement, "__f"},aligned_braces},
-			       {166, {{if_head, compound_statement}},
-						{statement, "_~_f"},unaligned_braces},
-			       {167, {{if_head, statement}},
-						{statement, "_+B_-f"},not_all_stats_forced},
-			       {167, {{if_head, statement}},
-						{statement, "_+f_-f"},all_stats_forced},
-			       {168, {{if_else_head, compound_statement}},
-						{statement, "__f"},aligned_braces},
-			       {168, {{if_else_head, compound_statement}},
-						{statement, "_~_f"},unaligned_braces},
-			       {169, {{if_else_head, statement}},
-						{statement, "_+B_-f"},not_all_stats_forced},
-			       {169, {{if_else_head, statement}},
-						{statement, "_+f_-f"},all_stats_forced},
+                               {210, {{return_like, semi}},       {statement, NULL}},
+                               {211, {{return_like, expression}}, {expression, "_~_"}},
 
-			       {170, {{short_lbrace, if_like, expression},1},
-					{if_head, "_~_"}},
-			       {171, {{short_lbrace, if_head, statement, else_like}},
-					{short_lbrace, "_B_B_B_"}},
-			       {172, {{short_lbrace, if_head, statement}},
-					{short_lbrace, "_B_B_"}},
+                               {220, {{function_head, statement}}, {function, "!_f_"}},
+                               {220, {{function_head, semi}}, {function, "!__"},no_plus_plus},
+                               {221, {{expression, statement}}, {function, "!_f_"},no_plus_plus},
+                               {221, {{int_like,expression, statement}},
+                                                                {function, "!_ _f_"},only_plus_plus},
+                               {222, {{expression, declaration, statement}},
+                                                       {function, "!_++f_--f_"},no_plus_plus},
+                               {223, {{int_like, function}},     {function, "_ _"},no_plus_plus},
+                               {224, {{declaration, function}}, {function, "_F_"},no_plus_plus},
+                               {225, {{function, declaration}}, {declaration, "_F_"},no_plus_plus},
+                               {226, {{function, function}},     {function, "_F_"},no_plus_plus},
+                               {224, {{function}},               {declaration, NULL},only_plus_plus},
+                               {228, {{function_head, comma},-1}, {expression, NULL}},
+                               {229, {{function_head, binop},-1}, {expression, NULL},no_plus_plus},
+                               {229, {{function_head, unorbinop},-1}, {expression, NULL},no_plus_plus},
+                               {230, {{function_head, langle},-1}, {expression, NULL}},
+                               {230, {{function_head, rangle},-1}, {expression, NULL}},
+                               {230, {{function_head, rpar},-1},  {expression, NULL}},
 
-			       {180, {{while_like, expression}}, {if_else_head, "f_~_"}},
-			       {181, {{lbrace, while_like, expression},1},
-						{if_else_head, "_~_"},standard_braces},
-			       {182, {{lpar, statement, statement}, 1},
-						{statement, "_B_"}, forced_statements},
-			       {183, {{lpar, statement, expression, rpar}},	{expression, "__B__"}},
-			       {184, {{lpar, statement, rpar}},	{expression, NULL}},
-			       {185, {{lpar, declaration, statement}, 1},
-						{statement, "_B_"}, only_plus_plus},
-			       {186, {{do_like, compound_statement, while_like}},
-						{do_head, "__~_"},standard_braces},
-			       {186, {{do_like, compound_statement, while_like}},
-						{do_head, "_~_~_"},unaligned_braces},
-			       {186, {{do_like, compound_statement, while_like}},
-						{do_head, "__f_"},wide_braces},
-			       {187, {{do_like, statement, while_like}},
-						{do_head, "_+B_-B_"},not_all_stats_forced},
-			       {187, {{do_like, statement, while_like}},
-						{do_head, "_+f_-f_"},all_stats_forced},
-			       {188, {{do_head, expression, semi}}, {statement, "f_~__f"}},
-			       {189, {{lbrace, do_head, expression, semi},1}, {statement, "_~__f"}},
+                               {241, {{mod_scrap}},                     {statement, "_f"},cwebx},
+                               {242, {{short_lbrace, mod_scrap},1},     {statement, NULL},cwebx},
+                               {243, {{mod_scrap, magic}},              {declaration, "f__f"},cwebx},
+                               {244, {{lbrace, mod_scrap, magic},1},
+                                                {declaration, "__f"},cwebx|standard_braces},
+                               {245, {{short_lbrace, mod_scrap, magic},1}, {declaration, NULL},cwebx},
+                               {246, {{short_struct_head, mod_scrap, magic},1},
+                                                                    {declaration,NULL},cwebx},
+                               {247, {{mod_scrap, magic, magic}},       {expression, NULL},cwebx},
+                               {248, {{lbrace, mod_scrap, magic, magic},1},
+                                                {expression, NULL},cwebx|standard_braces},
+                               {249, {{short_lbrace, mod_scrap, magic, magic},1},
+                                                {expression, NULL},cwebx},
 
-			       {200, {{short_lbrace, while_like, expression}},
-								{short_lbrace, "_B_~_"}},
-			       {201, {{short_lbrace, do_like, statement, while_like},1},
-								{do_head, "_B_B_"}},
-			       {202, {{short_lbrace, do_head, expression, semi}},
-								{short_lbrace, "_B_~__"}},
+                               {241, {{mod_scrap, semi}},       {statement, "__f"},compatibility},
+                               {242, {{mod_scrap, magic}},      {statement, "__f"},compatibility},
+                               {243, {{short_lbrace, mod_scrap, semi},1},
+                                                        {statement, NULL},compatibility},
+                               {244, {{short_lbrace, mod_scrap, magic},1},
+                                                        {statement, NULL},compatibility},
+                               {245, {{mod_scrap}},             {expression, NULL},compatibility},
+                               {246, {{statement, function}},    {function, "_F_"},compatibility},
 
-			       {210, {{return_like, semi}},	  {statement, NULL}},
-			       {211, {{return_like, expression}}, {expression, "_~_"}},
+                               {250, {{binop, binop}},                  {binop,"r__"},compatibility},
+                               {251, {{unorbinop, binop}},              {binop,"r__"},compatibility},
+                               {252, {{lpar, expression, comma}}, {lpar, "___p3"}, compatibility},
 
-			       {220, {{function_head, statement}}, {function, "!_f_"}},
-			       {220, {{function_head, semi}}, {function, "!__"},no_plus_plus},
-			       {221, {{expression, statement}}, {function, "!_f_"},no_plus_plus},
-			       {221, {{int_like,expression, statement}},
-								{function, "!_ _f_"},only_plus_plus},
-			       {222, {{expression, declaration, statement}},
-						       {function, "!_++f_--f_"},no_plus_plus},
-			       {223, {{int_like, function}},	 {function, "_ _"},no_plus_plus},
-			       {224, {{declaration, function}}, {function, "_F_"},no_plus_plus},
-			       {225, {{function, declaration}}, {declaration, "_F_"},no_plus_plus},
-			       {226, {{function, function}},	 {function, "_F_"},no_plus_plus},
-			       {224, {{function}},		 {declaration, NULL},only_plus_plus},
-			       {228, {{function_head, comma},-1}, {expression, NULL}},
-			       {229, {{function_head, binop},-1}, {expression, NULL},no_plus_plus},
-			       {229, {{function_head, unorbinop},-1}, {expression, NULL},no_plus_plus},
-			       {230, {{function_head, langle},-1}, {expression, NULL}},
-			       {230, {{function_head, rangle},-1}, {expression, NULL}},
-			       {230, {{function_head, rpar},-1},  {expression, NULL}},
+                               {260, {{case_like, binop}},      {expression, "_o{_}"},only_plus_plus},
+                               {260, {{case_like, unorbinop}},  {expression, "_o_"},only_plus_plus},
+                               {260, {{case_like, unop}},       {expression, NULL},only_plus_plus},
+                               {260, {{case_like, langle}},     {expression, "_o_"},only_plus_plus},
+                               {260, {{case_like, rangle}},     {expression, "_o_"},only_plus_plus},
+                               {261, {{case_like, subscript}},  {expression, NULL},only_plus_plus},
+                               {262, {{case_like, lpar, rpar}}, {expression, NULL},only_plus_plus},
+                               {263, {{colcol, expression}},    {expression, NULL},only_plus_plus},
+                               {263, {{colcol, int_like}},      {int_like, NULL},only_plus_plus},
+                               {264, {{expression, colcol, expression}},
+                                                        {expression, NULL},only_plus_plus},
+                               {264, {{expression, colcol, int_like}},
+                                                        {int_like, NULL},only_plus_plus},
+                               {265, {{int_like, colcol, expression}},
+                                                        {expression, NULL},only_plus_plus},
+                               {265, {{int_like, colcol, int_like}},
+                                                        {int_like, NULL},only_plus_plus},
+                               {266, {{int_like, int_like, colcol, expression},1},
+                                                        {expression, NULL},only_plus_plus},
+                               {266, {{int_like, int_like, colcol, int_like},1},
+                                                        {int_like, NULL},only_plus_plus},
+                               {266, {{int_like, int_like, colcol, case_like},1},
+                                                        {case_like, NULL},only_plus_plus},
+                               {266, {{return_like, expression, colcol, expression},1},
+                                                        {expression, NULL},only_plus_plus},
+                               {266, {{return_like, expression, colcol, int_like},1},
+                                                        {int_like, NULL},only_plus_plus},
+                               {266, {{return_like, expression, colcol, case_like},1},
+                                                        {case_like, NULL},only_plus_plus},
+                               {266, {{throw_like, expression, colcol, expression},1},
+                                                        {expression, NULL},only_plus_plus},
+                               {266, {{throw_like, expression, colcol, int_like},1},
+                                                        {int_like, NULL},only_plus_plus},
+                               {266, {{throw_like, expression, colcol, case_like},1},
+                                                        {case_like, NULL},only_plus_plus},
 
-			       {241, {{mod_scrap}},			{statement, "_f"},cwebx},
-			       {242, {{short_lbrace, mod_scrap},1},	{statement, NULL},cwebx},
-			       {243, {{mod_scrap, magic}},		{declaration, "f__f"},cwebx},
-			       {244, {{lbrace, mod_scrap, magic},1},
-						{declaration, "__f"},cwebx|standard_braces},
-			       {245, {{short_lbrace, mod_scrap, magic},1}, {declaration, NULL},cwebx},
-			       {246, {{short_struct_head, mod_scrap, magic},1},
-								    {declaration,NULL},cwebx},
-			       {247, {{mod_scrap, magic, magic}},	{expression, NULL},cwebx},
-			       {248, {{lbrace, mod_scrap, magic, magic},1},
-						{expression, NULL},cwebx|standard_braces},
-			       {249, {{short_lbrace, mod_scrap, magic, magic},1},
-						{expression, NULL},cwebx},
+                               {270, {{int_like, binop, expression}},
+                                                        {int_like, NULL},only_plus_plus},
+                               {271, {{int_like, colon, case_like, int_like}},
+                                                               {int_like,"_m__~_"},only_plus_plus },
+                               {272, {{int_like,colon, int_like}}, {int_like,"_m__"},only_plus_plus },
+                               {273, {{struct_like, int_like, comma},-1},
+                                                        {int_like,"_~_"},only_plus_plus},
+                               {274, {{struct_like, int_like, rangle},-1},
+                                                        {int_like,"_~_"},only_plus_plus},
+                               {275, {{langle, int_like, expression, comma}},
+                                                        {langle,"__~!__p5"},only_plus_plus},
+                               {276, {{langle, int_like, expression, rangle}},
+                                                {templ_params,"a__~!_a_"},only_plus_plus},
+                               {277, {{struct_like,int_like,expression},-1},
+                                                        {int_like,"_~_"},only_plus_plus},
+                               {278, {{struct_like,expression,expression},-1},
+                                                        {int_like,"_~_"},only_plus_plus},
+                               {279, {{template_like,templ_params,declaration}},
+                                                        {declaration,"__f+_-"},only_plus_plus},
 
-			       {241, {{mod_scrap, semi}},	{statement, "__f"},compatibility},
-			       {242, {{mod_scrap, magic}},	{statement, "__f"},compatibility},
-			       {243, {{short_lbrace, mod_scrap, semi},1},
-							{statement, NULL},compatibility},
-			       {244, {{short_lbrace, mod_scrap, magic},1},
-							{statement, NULL},compatibility},
-			       {245, {{mod_scrap}},		{expression, NULL},compatibility},
-			       {246, {{statement, function}},	 {function, "_F_"},compatibility},
+                               {280, {{int_like, parameters}},  {function_head, "!__"},only_plus_plus},
+                               {280, {{expression, parameters}},{function_head, NULL},only_plus_plus},
+                               {281, {{function_head, semi}},   {declaration, NULL},only_plus_plus},
+                               {283, {{function_head, binop, expression}},
+                                                        {function_head, NULL},only_plus_plus},
+                               {283, {{function_head, binop, case_like}},
+                                                        {function_head, NULL},only_plus_plus},
+                               {283, {{function_head, binop, sizeof_like}},
+                                                        {function_head, NULL},only_plus_plus},
+                               {284, {{function_head, int_like}},
+                                                        {function_head, "_~_"},only_plus_plus},
+                               {284, {{function_head, unorbinop}},
+                                                        {function_head, "_~o_"},only_plus_plus},
+                               {285, {{int_like, expression, int_like}},
+                                                               {function_head,"_~_~_"},only_plus_plus},
+                               {285, {{int_like, expression, unorbinop}},
+                                                        {function_head, "_~_~o_"},only_plus_plus},
+                               {286, {{expression, binop, function_head}},
+                                                        {expression,NULL},only_plus_plus},
+                               {286, {{colon, function_head},1},
+                                                        {expression,NULL},only_plus_plus},
+                               {286, {{comma, function_head},1},
+                                                        {expression,NULL},only_plus_plus},
+                               {286, {{lpar, function_head},1},
+                                                        {expression,NULL},only_plus_plus},
+                               {286, {{question, function_head},1},
+                                                        {expression,NULL},only_plus_plus},
+                               {286, {{return_like, function_head},1},
+                                                        {expression,NULL},only_plus_plus},
 
-			       {250, {{binop, binop}},			{binop,"r__"},compatibility},
-			       {251, {{unorbinop, binop}},		{binop,"r__"},compatibility},
-			       {252, {{lpar, expression, comma}}, {lpar, "___p3"}, compatibility},
+                               {288, {{function_head,colon,expression,lbrace},-1},
+                                                {function_head,"_+p1m__-"},only_plus_plus},
+                               {289, {{sizeof_like,subscript}},{sizeof_like,NULL},only_plus_plus},
 
-			       {260, {{case_like, binop}},	{expression, "_o{_}"},only_plus_plus},
-			       {260, {{case_like, unorbinop}},	{expression, "_o_"},only_plus_plus},
-			       {260, {{case_like, unop}},	{expression, NULL},only_plus_plus},
-			       {260, {{case_like, langle}},	{expression, "_o_"},only_plus_plus},
-			       {260, {{case_like, rangle}},	{expression, "_o_"},only_plus_plus},
-			       {261, {{case_like, subscript}},	{expression, NULL},only_plus_plus},
-			       {262, {{case_like, lpar, rpar}}, {expression, NULL},only_plus_plus},
-			       {263, {{colcol, expression}},	{expression, NULL},only_plus_plus},
-			       {263, {{colcol, int_like}},	{int_like, NULL},only_plus_plus},
-			       {264, {{expression, colcol, expression}},
-							{expression, NULL},only_plus_plus},
-			       {264, {{expression, colcol, int_like}},
-							{int_like, NULL},only_plus_plus},
-			       {265, {{int_like, colcol, expression}},
-							{expression, NULL},only_plus_plus},
-			       {265, {{int_like, colcol, int_like}},
-							{int_like, NULL},only_plus_plus},
-			       {266, {{int_like, int_like, colcol, expression},1},
-							{expression, NULL},only_plus_plus},
-			       {266, {{int_like, int_like, colcol, int_like},1},
-							{int_like, NULL},only_plus_plus},
-			       {266, {{int_like, int_like, colcol, case_like},1},
-							{case_like, NULL},only_plus_plus},
-			       {266, {{return_like, expression, colcol, expression},1},
-							{expression, NULL},only_plus_plus},
-			       {266, {{return_like, expression, colcol, int_like},1},
-							{int_like, NULL},only_plus_plus},
-			       {266, {{return_like, expression, colcol, case_like},1},
-							{case_like, NULL},only_plus_plus},
-			       {266, {{throw_like, expression, colcol, expression},1},
-							{expression, NULL},only_plus_plus},
-			       {266, {{throw_like, expression, colcol, int_like},1},
-							{int_like, NULL},only_plus_plus},
-			       {266, {{throw_like, expression, colcol, case_like},1},
-							{case_like, NULL},only_plus_plus},
-			       {267, {{int_like, expression, colon, expression}},
-							{expression, "_~!_m__"},only_plus_plus},
-
-			       {270, {{int_like, binop, expression}},
-							{int_like, NULL},only_plus_plus},
-			       {271, {{int_like, colon, case_like, int_like}},
-							       {int_like,"_m__~_"},only_plus_plus },
-			       {272, {{int_like,colon, int_like}}, {int_like,"_m__"},only_plus_plus },
-			       {273, {{struct_like, int_like, comma},-1},
-							{int_like,"_~_"},only_plus_plus},
-			       {274, {{struct_like, int_like, rangle},-1},
-							{int_like,"_~_"},only_plus_plus},
-			       {275, {{langle, int_like, expression, comma}},
-							{langle,"__~!__p5"},only_plus_plus},
-			       {276, {{langle, int_like, expression, rangle}},
-						{templ_params,"a__~!_a_"},only_plus_plus},
-			       {277, {{struct_like,int_like,expression},-1},
-							{int_like,"_~_"},only_plus_plus},
-			       {278, {{struct_like,expression,expression},-1},
-							{int_like,"_~_"},only_plus_plus},
-			       {279, {{template_like,templ_params,declaration}},
-							{declaration,"__f+_-"},only_plus_plus},
-
-			       {280, {{int_like, parameters}},	{function_head, "!__"},only_plus_plus},
-			       {280, {{expression, parameters}},{function_head, NULL},only_plus_plus},
-			       {281, {{function_head, semi}},	{declaration, NULL},only_plus_plus},
-			       {283, {{function_head, binop, expression}},
-							{function_head, NULL},only_plus_plus},
-			       {283, {{function_head, binop, case_like}},
-							{function_head, NULL},only_plus_plus},
-			       {283, {{function_head, binop, sizeof_like}},
-							{function_head, NULL},only_plus_plus},
-			       {284, {{function_head, int_like}},
-							{function_head, "_~_"},only_plus_plus},
-			       {284, {{function_head, unorbinop}},
-							{function_head, "_~_"},only_plus_plus},
-			       {284, {{function_head, binop}},	{function_head, "_~o_"},only_plus_plus},
-			       {285, {{int_like,expression,int_like}},
-							       {function_head,"_~_ _"},only_plus_plus},
-			       {286, {{expression, binop, function_head}},
-							{expression,NULL},only_plus_plus},
-			       {286, {{colon, function_head},1},
-							{expression,NULL},only_plus_plus},
-			       {286, {{comma, function_head},1},
-							{expression,NULL},only_plus_plus},
-			       {286, {{lpar, function_head},1},
-							{expression,NULL},only_plus_plus},
-			       {286, {{question, function_head},1},
-							{expression,NULL},only_plus_plus},
-			       {286, {{return_like, function_head},1},
-							{expression,NULL},only_plus_plus},
-
-			       {288, {{function_head,colon,expression,lbrace},-1},
-						{function_head,"_+p1m__-"},only_plus_plus},
-			       {289, {{sizeof_like,subscript}},{sizeof_like,NULL},only_plus_plus},
-
-			       {290, {{throw_like,expression}},	 {expression,"_~_"},only_plus_plus},
-			       {291, {{throw_like,function_head}}, {expression,"_~_"},only_plus_plus},
-			       {292, {{throw_like,parameters}},	 {int_like,NULL},only_plus_plus},
-			       {293, {{throw_like,semi}},	  {statement,NULL},only_plus_plus},
-			       {295, {{try_like}},		  {if_else_head,"f_"},only_plus_plus},
-			       {296, {{catch_like,parameters}},	 {if_else_head,"f__"},only_plus_plus},
+                               {290, {{throw_like,expression}},  {expression,"_~_"},only_plus_plus},
+                               {291, {{throw_like,function_head}}, {expression,"_~_"},only_plus_plus},
+                               {292, {{throw_like,parameters}},  {int_like,NULL},only_plus_plus},
+                               {293, {{throw_like,semi}},         {statement,NULL},only_plus_plus},
+                               {295, {{try_like}},                {if_else_head,"f_"},only_plus_plus},
+                               {296, {{catch_like,parameters}},  {if_else_head,"f__"},only_plus_plus},
    };
   int i=array_size(rule);  do install_rule(&rule[--i]); while (i>0);
   #ifdef DEBUG
@@ -1079,7 +1098,7 @@ int main (int argc,char** argv)
   { char *p="_abcdefghijklmnopqrstuvwxyz0123456789";
     int c='\1', k=2;
     collate[0]='\0'; collate[1]=' ';
-    do	if (!isalnum(c) && c!='_' && c!=' ') collate[k++]=c;
+    do  if (!isalnum(c) && c!='_' && c!=' ') collate[k++]=c;
     while (++c<=UCHAR_MAX);
     while ((c=*p++)!='\0') collate[k++]=c;
     end_collate=k; /* record the length */
@@ -1096,42 +1115,42 @@ int main (int argc,char** argv)
       , "jmp_buf", "sig_atomic_t", "fpos_t", "div_t", "ldiv_t"
       , "clock_t","time_t"
       , "va_list",
-	  "int8_t",
-	  "int16_t",
-	  "int32_t",
-	  "int64_t",
-	  "int_fast8_t",
-	  "int_fast16_t",
-	  "int_fast32_t",
-	  "int_fast64_t",
-	  "int_least8_t",
-	  "int_least16_t",
-	  "int_least32_t",
-	  "int_least64_t",
-	  "intmax_t",
-	  "intptr_t",
+          "int8_t",
+          "int16_t",
+          "int32_t",
+          "int64_t",
+          "int_fast8_t",
+          "int_fast16_t",
+          "int_fast32_t",
+          "int_fast64_t",
+          "int_least8_t",
+          "int_least16_t",
+          "int_least32_t",
+          "int_least64_t",
+          "intmax_t",
+          "intptr_t",
 
-	  "uint8_t",
-	  "uint16_t",
-	  "uint32_t",
-	  "uint64_t",
-	  "uint_fast8_t",
-	  "uint_fast16_t",
-	  "uint_fast32_t",
-	  "uint_fast64_t",
-	  "uint_least8_t",
-	  "uint_least16_t",
-	  "uint_least32_t",
-	  "uint_least64_t",
-	  "uintmax_t",
-	  "uintptr_t",
+          "uint8_t",
+          "uint16_t",
+          "uint32_t",
+          "uint64_t",
+          "uint_fast8_t",
+          "uint_fast16_t",
+          "uint_fast32_t",
+          "uint_fast64_t",
+          "uint_least8_t",
+          "uint_least16_t",
+          "uint_least32_t",
+          "uint_least64_t",
+          "uintmax_t",
+          "uintptr_t",
 
       };
     static char* return_likes[]=
       {"break","continue","goto","return"};
     int int_like_nr=array_size(int_likes),
-	defined_type_nr=array_size(defined_types),
-	return_like_nr=array_size(return_likes);
+        defined_type_nr=array_size(defined_types),
+        return_like_nr=array_size(return_likes);
 
     for (i=0; i<int_like_nr; ++i) id_lookup(int_likes[i],NULL,int_like);
     for (i=0; i<defined_type_nr; ++i)
@@ -1147,7 +1166,7 @@ int main (int argc,char** argv)
     id_lookup("else", NULL, else_like);
     id_lookup("enum", NULL, struct_like);
     id_lookup("extern", NULL, C_plus_plus ? extern_like : int_like);
-    id_lookup("for", NULL, while_like);
+    id_lookup("for", NULL, for_like);
     id_lookup("if", NULL, if_like);
     id_lookup("mutable", NULL, const_like);
     id_lookup("noexcept", NULL, const_like);
@@ -1163,64 +1182,64 @@ int main (int argc,char** argv)
     id_lookup("nullptr", NULL, NULL_like);
     id_lookup("TeX", NULL, TeX_like);
     if (C_plus_plus)
-		     { int i;
-		       static char* cpp_types[] =
-		       { "exception", "bad_exception", "bad_cast", "bad_typeid", "logic_error",
-			 "domain_error", "invalid_argument", "length_error", "out_of_range",
-			 "bad_alloc", "runtime_error", "range_error", "overflow_error",
-			 "underflow_error",
-			 "string",
-			 "iterator", "const_iterator", "reverse_iterator", "const_reverse_iterator",
-			 "size_type", "value_type",
-			 "ios_base","ios", "istream", "ostream", "iostream",
-			 "istringstream", "ifstream", "ostringstream", "ofstream",
-			 "stringstream", "fstream",
-			 "streambuf", "stringbuf", "filebuf",
-			 "streamoff", "streampos",
-			 "input_iterator_tag", "output_iterator_tag", "forward_iterator_tag",
-			 "bidirectional_iterator_tag", "random_access_iterator_tag",
-			 "pair", "auto_ptr", "allocator", "raw_storage_iterator",
-			 "vector", "list", "deque",
-			 "set", "multiset", "map", "multimap",
-			 "stack", "queue", "priority_queue", "bitset",
-			 "shared_ptr", "weak_ptr", "unique_ptr",
-			 "reference_wrapper"
-		       };
-		       for (i=0; i<array_size(cpp_types); ++i)
-			 id_lookup(cpp_types[i],NULL,type_defined);
-		       id_lookup("asm", NULL, int_like);
-		       id_lookup("and", NULL, and_like);
-		       id_lookup("bool", NULL, int_like);
-		       id_lookup("catch", NULL, catch_like);
-		       id_lookup("class", NULL, struct_like);
-		       id_lookup("delete", NULL, sizeof_like);
-		       id_lookup("explicit", NULL, int_like);
-		       id_lookup("false", NULL, expression);
-		       id_lookup("friend", NULL, int_like);
-		       id_lookup("inline", NULL, int_like);
-		       id_lookup("namespace", NULL, namespace_like);
-		       id_lookup("new", NULL, sizeof_like);
-		       id_lookup("not", NULL, not_like);
-		       id_lookup("operator", NULL, case_like);
-		       id_lookup("or", NULL, and_like);
-		       id_lookup("private", NULL, case_like);
-		       id_lookup("protected", NULL, case_like);
-		       id_lookup("public", NULL, case_like);
-		       id_lookup("template", NULL, template_like);
-		       id_lookup("this", NULL, expression);
-		       id_lookup("throw", NULL, throw_like);
-		       id_lookup("true", NULL, expression);
-		       id_lookup("try", NULL, try_like);
-		       id_lookup("typeid", NULL, sizeof_like);
-		       id_lookup("typename", NULL, typename_like);
-		       id_lookup("using", NULL, int_like);
-		       id_lookup("virtual", NULL, int_like);
-		       id_lookup("xor", NULL, and_like);
-		       id_lookup("const_cast", NULL, sizeof_like);
-		       id_lookup("static_cast", NULL, sizeof_like);
-		       id_lookup("dynamic_cast", NULL, sizeof_like);
-		       id_lookup("reinterpret_cast", NULL, sizeof_like);
-		     }
+                     { int i;
+                       static char* cpp_types[] =
+                       { "exception", "bad_exception", "bad_cast", "bad_typeid", "logic_error",
+                         "domain_error", "invalid_argument", "length_error", "out_of_range",
+                         "bad_alloc", "runtime_error", "range_error", "overflow_error",
+                         "underflow_error",
+                         "string",
+                         "iterator", "const_iterator", "reverse_iterator", "const_reverse_iterator",
+                         "size_type", "value_type",
+                         "ios_base","ios", "istream", "ostream", "iostream",
+                         "istringstream", "ifstream", "ostringstream", "ofstream",
+                         "stringstream", "fstream",
+                         "streambuf", "stringbuf", "filebuf",
+                         "streamoff", "streampos",
+                         "input_iterator_tag", "output_iterator_tag", "forward_iterator_tag",
+                         "bidirectional_iterator_tag", "random_access_iterator_tag",
+                         "pair", "auto_ptr", "allocator", "raw_storage_iterator",
+                         "vector", "list", "deque",
+                         "set", "multiset", "map", "multimap",
+                         "stack", "queue", "priority_queue", "bitset",
+                         "shared_ptr", "weak_ptr", "unique_ptr",
+                         "reference_wrapper"
+                       };
+                       for (i=0; i<array_size(cpp_types); ++i)
+                         id_lookup(cpp_types[i],NULL,type_defined);
+                       id_lookup("asm", NULL, int_like);
+                       id_lookup("and", NULL, and_like);
+                       id_lookup("bool", NULL, int_like);
+                       id_lookup("catch", NULL, catch_like);
+                       id_lookup("class", NULL, struct_like);
+                       id_lookup("delete", NULL, sizeof_like);
+                       id_lookup("explicit", NULL, int_like);
+                       id_lookup("false", NULL, expression);
+                       id_lookup("friend", NULL, int_like);
+                       id_lookup("inline", NULL, int_like);
+                       id_lookup("namespace", NULL, namespace_like);
+                       id_lookup("new", NULL, sizeof_like);
+                       id_lookup("not", NULL, not_like);
+                       id_lookup("operator", NULL, case_like);
+                       id_lookup("or", NULL, and_like);
+                       id_lookup("private", NULL, case_like);
+                       id_lookup("protected", NULL, case_like);
+                       id_lookup("public", NULL, case_like);
+                       id_lookup("template", NULL, template_like);
+                       id_lookup("this", NULL, expression);
+                       id_lookup("throw", NULL, throw_like);
+                       id_lookup("true", NULL, expression);
+                       id_lookup("try", NULL, try_like);
+                       id_lookup("typeid", NULL, sizeof_like);
+                       id_lookup("typename", NULL, typename_like);
+                       id_lookup("using", NULL, using_like);
+                       id_lookup("virtual", NULL, int_like);
+                       id_lookup("xor", NULL, and_like);
+                       id_lookup("const_cast", NULL, sizeof_like);
+                       id_lookup("static_cast", NULL, sizeof_like);
+                       id_lookup("dynamic_cast", NULL, sizeof_like);
+                       id_lookup("reinterpret_cast", NULL, sizeof_like);
+                     }
   }
   phase_one (); /* read all the user's text and store the \xr.s */
   if (history>harmless_message) wrap_up(); /* stop in case of trouble */
@@ -1236,7 +1255,7 @@ void new_id_xref (id_pointer p)
 { sixteen_bits f=xref_switch; xref_switch=0;
   if (p->ilk==reference) f=0;
   else if (f==0 && (unindexed(p) || length(p)==1)
-	|| no_xref || including_header_file) return;
+        || no_xref || including_header_file) return;
   if ((p->xref->num&num_mask)==section_count) p->xref->num|=f;
   else
   { make_xref(section_count|f,xref_index(p->xref)); p->xref=xref_ptr; }
@@ -1287,7 +1306,7 @@ void copy_limbo (void) /* copy \TeX\ code until the next section begins */
       case char_trans: out_str("\\ATL "); break;
       default: err_print("! Double @ required in limbo part");
 
-	/* fall through */
+        /* fall through */
       case at_sign_image: out('@');
       }
   }
@@ -1300,14 +1319,14 @@ int skip_TeX (void) /* skip past pure \TeX\ code */
     while ((c=*loc++)!='@' && c!='%')
       if (c=='|') return c;
       else if (c=='\\' && *loc!='@') ++loc;
-	/* ignore `\.{\\\%}'  and `\.{\\\v}' */
+        /* ignore `\.{\\\%}'  and `\.{\\\v}' */
     if (loc<=limit)
       if (c=='@') return code_of(*loc++);
       else /* ignore remainder of line unless a major control code occurs */
-	do
-	  if ((c=*loc++)=='@' && code_of(*loc++)>=format)
-	    return code_of(loc[-1]);
-	while (loc<limit);
+        do
+          if ((c=*loc++)=='@' && code_of(*loc++)>=format)
+            return code_of(loc[-1]);
+        while (loc<limit);
   }
   return new_section;
 }
@@ -1321,15 +1340,15 @@ int copy_TeX (void) /* copy pure \TeX\ material */
       if (!(output_line_empty() && isspace(c))) out(c);
       if (c=='%') break;
       if (c=='\\' && *loc!='@') out(*loc++);
-	/* copy `\.{\\\%}' and `\.{\\\v}' */
+        /* copy `\.{\\\%}' and `\.{\\\v}' */
     }
     if (loc<=limit)
       if (c=='@') return code_of(*loc++);
       else /* ignore remainder of line unless a major control code occurs */
-	do
-	  if ((c=*loc++)=='@' && code_of(*loc++)>=format)
-	    return finish_line(),code_of(loc[-1]);
-	while(loc<limit);
+        do
+          if ((c=*loc++)=='@' && code_of(*loc++)>=format)
+            return finish_line(),code_of(loc[-1]);
+        while(loc<limit);
   }
   return new_section;
 }
@@ -1337,7 +1356,7 @@ int copy_TeX (void) /* copy pure \TeX\ material */
 int scan_comment (int* bal, boolean one_liner)
 { char c; boolean forced_out=false; /* prematurely terminated? */
   while (one_liner ? loc<limit
-		   : find_char() && (*loc!='*' || loc[1]!='/' ))
+                   : find_char() && (*loc!='*' || loc[1]!='/' ))
 
   if (including_header_file) ++loc; /* don't process characters here */
   else
@@ -1346,14 +1365,14 @@ int scan_comment (int* bal, boolean one_liner)
     case '|': return '|'; /* beginning of `\pb' inside comment */
     case '@':
       if (*loc++!='@')
-	if (code_of(loc[-1])!=new_section)
-	err_print("! Double @ required in comment");
+        if (code_of(loc[-1])!=new_section)
+        err_print("! Double @ required in comment");
 
-	else
-	{ err_print("! Section ended in mid-comment");
+        else
+        { err_print("! Section ended in mid-comment");
 
-	forced_out=true; goto done;
-	}
+        forced_out=true; goto done;
+        }
       break;
     case '\\':
       if (*loc!='@') { if (phase==2) app_char_tok(c); c=*loc++; }
@@ -1394,42 +1413,42 @@ restart:
     { int cc=code_of(*loc++);
       switch (cc)
       { case ignore: goto restart;
-	case underline: xref_switch=def_flag; goto restart;
+        case underline: xref_switch=def_flag; goto restart;
     #ifdef DEBUG
-	case trace0: case trace1: case trace2: case trace3:
-	  if (phase==2) tracing=cc;  goto restart;
+        case trace0: case trace1: case trace2: case trace3:
+          if (phase==2) tracing=cc;  goto restart;
     #endif
-	case char_trans:
-	  err_print("! `@l' only allowed in limbo"); goto restart;
+        case char_trans:
+          err_print("! `@l' only allowed in limbo"); goto restart;
 
-	case ASCII_code:
-			 { id_first=&mod_text[1]; strncpy(id_first,"@'",2); id_loc=&id_first[2];
-			   while ((*id_loc++=c=*loc++)!='\'')
-			   { if (c=='\\')
-			       *id_loc++=*loc++; /* copy any character following backslash */
-			     else if (c=='@' && *loc++!='@')
-			     { err_print("! Double @ required in strings"); --loc; }
+        case ASCII_code:
+                         { id_first=&mod_text[1]; strncpy(id_first,"@'",2); id_loc=&id_first[2];
+                           while ((*id_loc++=c=*loc++)!='\'')
+                           { if (c=='\\')
+                               *id_loc++=*loc++; /* copy any character following backslash */
+                             else if (c=='@' && *loc++!='@')
+                             { err_print("! Double @ required in strings"); --loc; }
 
-			     if (loc>=limit) { err_print("! ASCII constant didn't end"); break; }
+                             if (loc>=limit) { err_print("! ASCII constant didn't end"); break; }
 
-			   }
-			 }
+                           }
+                         }
       return string;
-	case module_name:
+        case module_name:
 
-	  { boolean file_module=loc[-1]=='(';
-	    cur_mod=get_module_name();
-	    if (file_module && phase==1 && cur_mod!=NULL) set_file_flag(cur_mod);
-	  }
+          { boolean file_module=loc[-1]=='(';
+            cur_mod=get_module_name();
+            if (file_module && phase==1 && cur_mod!=NULL) set_file_flag(cur_mod);
+          }
       break;
-	case ignored_text: get_control_text(); goto restart;
-	case verbatim: case TeX_string: get_control_text(); break;
-	case xref_roman: case xref_wildcard: case xref_typewriter:
-	case xref_mark: case refer:
-	  if (get_control_text()) goto restart; /* don't index empty strings */
-	  if (cc==refer) cur_id=id_lookup(id_first,id_loc,reference);
-	  else if (phase==1)
-	cur_id=id_lookup(id_first,id_loc,cc-xref_roman+roman);
+        case ignored_text: get_control_text(); goto restart;
+        case verbatim: case TeX_string: get_control_text(); break;
+        case xref_roman: case xref_wildcard: case xref_typewriter:
+        case xref_mark: case refer:
+          if (get_control_text()) goto restart; /* don't index empty strings */
+          if (cc==refer) cur_id=id_lookup(id_first,id_loc,reference);
+          else if (phase==1)
+        cur_id=id_lookup(id_first,id_loc,cc-xref_roman+roman);
       }
       return cc;
     }
@@ -1440,39 +1459,39 @@ restart:
   { get_string(); return string; }
   if (isalpha(c) || c=='_' || c>=0x80)
     {
-      {	 id_first=--loc; /* mark beginning of identifier */
-	 do c=*++loc; while (isalnum(c) || c=='_' || c>=0x80);
-	 cur_id= id_lookup(id_first,loc,normal);
+      {  id_first=--loc; /* mark beginning of identifier */
+         do c=*++loc; while (isalnum(c) || c=='_' || c>=0x80);
+         cur_id= id_lookup(id_first,loc,normal);
       }
  return identifier; }
   if (isdigit(c) || c=='.' && isdigit((eight_bits)*loc))
     {
       { id_first=id_loc=&mod_text[1];
 
-	if (c=='0' && (isdigit(c=*loc) || tolower(c)=='x')) /* octal or hex */
-	{ if (isdigit(c)) /* octal constant with at least two digits */
-	  { *id_loc++ = '~'; /* store `\.\~' in place of leading `\.0' */
-	    do shift_and_store(c); while (isdigit(c));
-	/* copy second and following digits */
-	  }
-	  else /* hex constant */
-	  { shift_and_store('^'); /* replace `\.{0x}' by `\.\^' */
-	    while (isxdigit(c)) shift_and_store(c);
-	  }
-	}
-	else /* decimal constant */
-	{ c=*--loc; /* recover first digit or decimal point */
-	  while (isdigit(c)) shift_and_store(c);
-	  if (c=='.')  do shift_and_store(c); while (isdigit(c));
-	  if (tolower(c)== 'e') /* floating point constant with exponent */
-	  { shift_and_store('_'); /* replace `\.e' by `\.\_' */
-	    if (c=='+' || c=='-') { *id_loc++ = c; c=*++loc; }
-	    while (isdigit(c)) shift_and_store(c); /* exponent */
-	  }
-	}
-	if (isalpha(c)) /* `\.{U}', `\.{L}', and/or `\.{F}' suffix */
-	{ *id_loc++ = '$';
-	  do shift_and_store(c); while (isalpha(c)); }
+        if (c=='0' && (isdigit(c=*loc) || tolower(c)=='x')) /* octal or hex */
+        { if (isdigit(c)) /* octal constant with at least two digits */
+          { *id_loc++ = '~'; /* store `\.\~' in place of leading `\.0' */
+            do shift_and_store(c); while (isdigit(c));
+        /* copy second and following digits */
+          }
+          else /* hex constant */
+          { shift_and_store('^'); /* replace `\.{0x}' by `\.\^' */
+            while (isxdigit(c)) shift_and_store(c);
+          }
+        }
+        else /* decimal constant */
+        { c=*--loc; /* recover first digit or decimal point */
+          while (isdigit(c)) shift_and_store(c);
+          if (c=='.')  do shift_and_store(c); while (isdigit(c));
+          if (tolower(c)== 'e') /* floating point constant with exponent */
+          { shift_and_store('_'); /* replace `\.e' by `\.\_' */
+            if (c=='+' || c=='-') { *id_loc++ = c; c=*++loc; }
+            while (isdigit(c)) shift_and_store(c); /* exponent */
+          }
+        }
+        if (isalpha(c)) /* `\.{U}', `\.{L}', and/or `\.{F}' suffix */
+        { *id_loc++ = '$';
+          do shift_and_store(c); while (isalpha(c)); }
       }
  return constant; }
   if (c=='\'' || c=='"' || (c=='<' && preprocessing==2))
@@ -1480,11 +1499,11 @@ restart:
   if (c=='#' && loc==&buffer[1])
   {
     { while (loc<limit && isspace((eight_bits)*loc)) ++loc;
-	/* allow spaces after `\.\#' */
+        /* allow spaces after `\.\#' */
       if (limit-loc>=7 && strncmp(loc,"include",7)==0) /* `\.{\#include}' line */
-	if (including_header_file) /* start nested header file */
-	{ loc+=7; push_header_file(false); goto restart; }
-	else preprocessing=2;
+        if (including_header_file) /* start nested header file */
+        { loc+=7; push_header_file(false); goto restart; }
+        else preprocessing=2;
       else preprocessing=1;
     }
      return start_preproc; }
@@ -1497,23 +1516,23 @@ restart:
   case '/': compress2('*',begin_comment);
     if (C_plus_plus) compress2('/',begin_comment);
     comp_ass_op2(div_assign); break;
-  case '*': compress2('/',end_comment);	comp_ass_op2(mul_assign);  break;
-  case '%': comp_ass_op2(mod_assign);	break;
-  case '+': compress2('+',plus_plus);	comp_ass_op2(plus_assign); break;
-  case '-': compress2('-',minus_minus);	compress2 ('>', minus_gt);
-	  comp_ass_op2(minus_assign);	break;
-  case '=': compress2('=',eq_eq);		break;
-  case '>': compress2('=',gt_eq);		comp_ass_op3('>',right_assign);
-	  compress2 ('>',gt_gt);	break;
-  case '<': compress2('=', lt_eq);	comp_ass_op3('<',left_assign);
-	  compress2 ('<', lt_lt);	break;
-  case '&': compress2('&',and_and);	comp_ass_op2(and_assign);   break;
-  case '^': comp_ass_op2(xor_assign);	break;
-  case '|': compress2('|',or_or);		comp_ass_op2(or_assign);    break;
-  case '!': compress2('=',not_eq);	break;
+  case '*': compress2('/',end_comment); comp_ass_op2(mul_assign);  break;
+  case '%': comp_ass_op2(mod_assign);   break;
+  case '+': compress2('+',plus_plus);   comp_ass_op2(plus_assign); break;
+  case '-': compress2('-',minus_minus); compress2 ('>', minus_gt);
+          comp_ass_op2(minus_assign);   break;
+  case '=': compress2('=',eq_eq);               break;
+  case '>': compress2('=',gt_eq);               comp_ass_op3('>',right_assign);
+          compress2 ('>',gt_gt);        break;
+  case '<': compress2('=', lt_eq);      comp_ass_op3('<',left_assign);
+          compress2 ('<', lt_lt);       break;
+  case '&': compress2('&',and_and);     comp_ass_op2(and_assign);   break;
+  case '^': comp_ass_op2(xor_assign);   break;
+  case '|': compress2('|',or_or);               comp_ass_op2(or_assign);    break;
+  case '!': compress2('=',not_eq);      break;
   case '.': compress3('.','.', ellipsis); break;
-  case '#': compress2 ('#', sh_sh);	break;
-  case ':':  if (C_plus_plus)		compress2 (':',colon_colon);
+  case '#': compress2 ('#', sh_sh);     break;
+  case ':':  if (C_plus_plus)           compress2 (':',colon_colon);
   }
   return c;
 }
@@ -1539,72 +1558,72 @@ void phase_one (void)
     { int c=code_of(*loc++);
       if (c==new_section) break;
       if (c==format)
-		   if (tolower((eight_bits)loc[-1])=='f')
-		     err_print("! Double @ required in limbo part");
+                   if (tolower((eight_bits)loc[-1])=='f')
+                     err_print("! Double @ required in limbo part");
 
-		   else
-		   { id_pointer lhs;
-		     if (shift()==identifier && (lhs=cur_id,shift()==identifier))
-		       lhs->ilk=cur_id->ilk;
-		     else err_print("! Improper format definition");
+                   else
+                   { id_pointer lhs;
+                     if (shift()==identifier && (lhs=cur_id,shift()==identifier))
+                       lhs->ilk=cur_id->ilk;
+                     else err_print("! Improper format definition");
 
-		   }
+                   }
     }
   }
   while (!input_has_ended)
 
     { if (++section_count==max_sections)
-	overflow("section number");
+        overflow("section number");
       if (loc[-1]=='*') print_section_progress ();
 
       do
-	switch (next_control=skip_TeX())
-	{ case underline: xref_switch=def_flag; break;
-	  case '|': C_xref(true); break;
-	  case module_name: case refer: loc-=2; get_next(); break;
-	  case ignored_text: get_control_text(); break;
-	  case char_trans: err_print("! `@l' only allowed in limbo"); break;
+        switch (next_control=skip_TeX())
+        { case underline: xref_switch=def_flag; break;
+          case '|': C_xref(true); break;
+          case module_name: case refer: loc-=2; get_next(); break;
+          case ignored_text: get_control_text(); break;
+          case char_trans: err_print("! `@l' only allowed in limbo"); break;
 
-	  case xref_roman: case xref_wildcard: case xref_typewriter:
-	  case xref_mark: loc-=2; get_next(); new_id_xref(cur_id);
-	}
+          case xref_roman: case xref_wildcard: case xref_typewriter:
+          case xref_mark: loc-=2; get_next(); new_id_xref(cur_id);
+        }
       while (next_control<format);
 
       while (next_control<begin_C) /* |format|, |definition| or |header| */
-	if(next_control!=header)
-	{ xref_switch=def_flag; /* implied \:! for first identifier */
-	  if (next_control==format)
-				  { boolean f= tolower((eight_bits)loc[-1])=='f';
-				    id_pointer lhs;
-				    if (shift()==identifier && (lhs=cur_id,shift()==identifier))
-				    { if (f) new_id_xref(lhs);	else xref_switch=0;
-				      lhs->ilk=cur_id->ilk;
-				    }
-				    else err_print("! Improper format definition");
+        if(next_control!=header)
+        { xref_switch=def_flag; /* implied \:! for first identifier */
+          if (next_control==format)
+                                  { boolean f= tolower((eight_bits)loc[-1])=='f';
+                                    id_pointer lhs;
+                                    if (shift()==identifier && (lhs=cur_id,shift()==identifier))
+                                    { if (f) new_id_xref(lhs);  else xref_switch=0;
+                                      lhs->ilk=cur_id->ilk;
+                                    }
+                                    else err_print("! Improper format definition");
 
-				  }
-	  outer_xref(); /* macro definition or comment after format definition */
-	}
-	else
-	     { if (push_header_file(true)) /* prepare for reading header file */
-		 including_header_file=true; /* will be reset on closing the file */
-	       typedef_tracking(true); /* this is what we are doing it for */
-	       outer_xref();
-		 /* |shift()| and  collect typedefs until |next_control>=format| */
-	       typedef_tracking(false);
-	     }
+                                  }
+          outer_xref(); /* macro definition or comment after format definition */
+        }
+        else
+             { if (push_header_file(true)) /* prepare for reading header file */
+                 including_header_file=true; /* will be reset on closing the file */
+               typedef_tracking(true); /* this is what we are doing it for */
+               outer_xref();
+                 /* |shift()| and  collect typedefs until |next_control>=format| */
+               typedef_tracking(false);
+             }
 
 
       { if (next_control<new_section) /* |begin_C| or |module_name| */
-	{ typedef_tracking(true);
-	  mod_xref_switch= next_control==module_name ? def_flag : 0;
-	  do
-	  { if (next_control==module_name && cur_mod!=NULL)
-	new_mod_xref(cur_mod);
-	    outer_xref();
-	  } while (next_control<new_section);
-	  typedef_tracking(false);
-	}
+        { typedef_tracking(true);
+          mod_xref_switch= next_control==module_name ? def_flag : 0;
+          do
+          { if (next_control==module_name && cur_mod!=NULL)
+        new_mod_xref(cur_mod);
+            outer_xref();
+          } while (next_control<new_section);
+          typedef_tracking(false);
+        }
       }
       if (section_changed(section_count)) change_exists=true;
      }
@@ -1616,15 +1635,15 @@ void phase_one (void)
   { id_pointer name; id_pointer *h; /* pointer into |hash| */
     for (h=hash; h<hash_end; h++)
       for (name=*h; name!=NULL; name=name->hash_link)
-	if (name->ilk!=header_file_name)
-	/* traverse hash lists, except for header file names */
+        if (name->ilk!=header_file_name)
+        /* traverse hash lists, except for header file names */
 
       {
-	sixteen_bits x=xref_index(name->xref),t,y=0;
-	  /* index of the sentinel node */
-	while (xnum(x)!=0)
-	 { t=x; x=xlink(t); xlink(t)=y; y=t; }
-	name->xref=&xmem[y]; /* don't forget to link in the reversed list */
+        sixteen_bits x=xref_index(name->xref),t,y=0;
+          /* index of the sentinel node */
+        while (xnum(x)!=0)
+         { t=x; x=xlink(t); xlink(t)=y; y=t; }
+        name->xref=&xmem[y]; /* don't forget to link in the reversed list */
       }
   }
 }
@@ -1634,83 +1653,86 @@ void C_xref (boolean inner)
   { if (preprocessing==0)
 
       { if (typedef_master==0 &&
-	    next_control==identifier && cur_id->ilk==typedef_like)
-	{ typedef_master=2; brace_level=par_level=0; }
-	else if (typedef_master>0) switch(next_control)
-	{ case identifier:
-	    if (brace_level==0)
-	if (typedef_master==2)
-	{ if (cur_id->ilk==int_like || cur_id->ilk==type_defined)
-	    typedef_master=4;
-	  else if (cur_id->ilk==struct_like) typedef_master=3;
-	}
-	else if (typedef_master==4)
-	{ if(cur_id->ilk==normal||cur_id->ilk==type_defined) /* this is it */
-	    cur_id->ilk=type_defined, typedef_master=1;
-		else if(cur_id->ilk==NULL_like)
-		{
-		  { if (including_header_file)
-		      print("While scanning header from file %s:\n",cur_file_name);
-		    print("Typedef at line %d tries to define special identifier %s; ignored\n",
-			  cur_line, cur_id->byte_start);
-		    mark_harmless();
-		  }
-		  typedef_master=1;
-		}
-	}
-	else if (typedef_master==3) typedef_master=4;
-	    break;
-	  case '{':
-	    if (brace_level++==0 && typedef_master==3) typedef_master=4;  break;
-	  case '}': --brace_level; break;
-	  case '<':  if (C_plus_plus) brace_level++;  break;
-	  case '>':  if (C_plus_plus) --brace_level;  break;
-	  case ',':
-	    if (typedef_master==1 && par_level==0) typedef_master=4;  break;
-	  case '(': ++par_level; break;
-	  case ')': --par_level; break;
-	  case ';':
-	    if (brace_level==0)
-	    { if (typedef_master>=2)
+            next_control==identifier && cur_id->ilk==typedef_like)
+        { typedef_master=2; brace_level=par_level=0; }
+        else if (typedef_master>0)
 
-		{ if (including_header_file)
-		    print("While scanning header from file %s:\n",cur_file_name);
-		  print("Unrecognised typedef at line %d (while in section %d)\n"
-			   ,cur_line, section_count);
-		  mark_harmless();
-		}
-	      typedef_master=0;
-	    }
-	    break;
-	  case colon_colon:
-	      if (C_plus_plus && brace_level==0 && typedef_master==4)
-	     typedef_master=2;	break;
-	}
-	if (C_plus_plus)
+          switch(next_control)
+          { case identifier:
+              if (brace_level==0)
+                if (typedef_master==2)
+                { if (cur_id->ilk==int_like || cur_id->ilk==type_defined)
+                    typedef_master=4;
+                  else if (cur_id->ilk==struct_like) typedef_master=3;
+                }
+                else if (typedef_master==4)
+                { if(cur_id->ilk==normal||cur_id->ilk==type_defined) /* this is it */
+                    cur_id->ilk=type_defined, typedef_master=1;
+                  else if(cur_id->ilk==NULL_like)
+                  {
+                    { if (including_header_file)
+                        print("While scanning header from file %s:\n",cur_file_name);
+                      print("Typedef at line %d tries to define special identifier %s; ignored\n",
+                            cur_line, cur_id->byte_start);
+                      mark_harmless();
+                    }
+                    typedef_master=1;
+                  }
+                }
+                else if (typedef_master==3) typedef_master=4;
+              break;
+            case '{':
+              if (brace_level++==0 && typedef_master==3) typedef_master=4;  break;
+            case '}': --brace_level; break;
+            case '<':  if (C_plus_plus) brace_level++;  break;
+            case '>':  if (C_plus_plus) --brace_level;  break;
+            case ',':
+              if (typedef_master==1 && par_level==0) typedef_master=4;  break;
+            case '(': ++par_level; break;
+            case ')': --par_level; break;
+            case ';':
+              if (brace_level==0)
+              { if (typedef_master>=2)
 
-	{ static int class_seen=0; static id_pointer this_id;
-	  switch (class_seen)
-	  { case 0:
-	    if (next_control==identifier)
-	      if (cur_id->ilk==struct_like) class_seen=1;
-	      else if(cur_id->ilk==typename_like)
-		class_seen=2;
-	  break;
-	    case 1:
-	    if (next_control==identifier && cur_id->ilk==normal)
-	      cur_id->ilk=type_defined;
-	    class_seen=0;
-	  break;
-	    case 2:
-	    if (next_control==identifier && cur_id->ilk==normal)
-	      { this_id=cur_id; class_seen=3; }
-	    else class_seen=0;
-	  break;
-	    case 3:
-	    if (next_control!=colon_colon) this_id->ilk=type_defined;
-	    class_seen=0;
-	  }
-	}
+                  { if (including_header_file)
+                      print("While scanning header from file %s:\n",cur_file_name);
+                    print("Unrecognised typedef at line %d (while in section %d)\n"
+                           ,cur_line, section_count);
+                    mark_harmless();
+                  }
+                typedef_master=0;
+              }
+              break;
+            case colon_colon:
+                if (C_plus_plus && brace_level==0 && typedef_master==4)
+               typedef_master=2;  break;
+          }
+        if (C_plus_plus)
+
+          { static int class_seen=0;
+            switch (class_seen)
+            { case 0:
+              if (next_control==identifier)
+                if (cur_id->ilk==struct_like) class_seen=1;
+                else if(cur_id->ilk==typename_like || cur_id->ilk==using_like)
+                  class_seen=2;
+            break;
+              case 1:
+              if (next_control==identifier && cur_id->ilk==normal)
+                cur_id->ilk=type_defined;
+              class_seen=0;
+            break;
+              case 2:
+              if (next_control==identifier && cur_id->ilk==normal)
+                class_seen=3;
+              else class_seen=0;
+            break;
+              case 3:
+              if (next_control==',' || next_control=='>' || next_control=='=')
+                cur_id->ilk=type_defined;
+              class_seen=0;
+            }
+          }
       }
     if (next_control>=identifier && next_control<=xref_mark)
       new_id_xref(cur_id);
@@ -1735,7 +1757,7 @@ void outer_xref (void) /* extension of |C_xref| */
     { boolean one_liner=loc[-1]=='/'; int bal=0; /* brace level in comment */
       typedef_tracking(false);
       while ((next_control=scan_comment(&bal,one_liner))=='|')
-	{ C_xref(true); if (next_control!='|') break; }
+        { C_xref(true); if (next_control!='|') break; }
       typedef_tracking(true);
     }
 }
@@ -1745,7 +1767,7 @@ void mod_check (mod_pointer p) /* print anomalies in subtree |p| */
   { mod_check (p->llink); /* traverse left subtree */
     { boolean file_module = p->xref->num==file_flag;
       sixteen_bits head, *q, threshold;
-	/* lower limit of |num| values of current interest */
+        /* lower limit of |num| values of current interest */
       if (file_module) q=&p->xref->next;
       else head=xref_index(p->xref),q=&head;
       if (!complete_name(p))
@@ -1757,26 +1779,26 @@ void mod_check (mod_pointer p) /* print anomalies in subtree |p| */
       else
 
       { sixteen_bits x=*q,y=0,t;
-	do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
-	xlink(t=*q)=x; *q=y; q=&xlink(t);
+        do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
+        xlink(t=*q)=x; *q=y; q=&xlink(t);
       }
       if (xnum(*q)>(threshold=cite_flag))
-				       { sixteen_bits x=*q,y=0,t;
-					 do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
-					 xlink(t=*q)=x; *q=y; q=&xlink(t);
-				       }
+                                       { sixteen_bits x=*q,y=0,t;
+                                         do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
+                                         xlink(t=*q)=x; *q=y; q=&xlink(t);
+                                       }
       if (xnum(*q)==(threshold=0))
       { if(!file_module)
-	  { print("\n! Never used"); print_mod(p); mark_harmless(); }
+          { print("\n! Never used"); print_mod(p); mark_harmless(); }
 
       }
       else
-	   { sixteen_bits x=*q,y=0,t;
-	     do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
-	     xlink(t=*q)=x; *q=y; q=&xlink(t);
-	   }
+           { sixteen_bits x=*q,y=0,t;
+             do { t=xlink(x); xlink(x)=y; y=x; } while (xnum(x=t)>threshold);
+             xlink(t=*q)=x; *q=y; q=&xlink(t);
+           }
       if (!file_module) p->xref=&xmem[head];
-	/* set pointer to possibly modified value */
+        /* set pointer to possibly modified value */
     }
     mod_check (p->rlink); /* traverse right subtree */
   }
@@ -1790,185 +1812,185 @@ void phase_two (void)
   section_count=0; copy_limbo(); finish_line();
   tex_new_line(); /* insert a blank line, it looks nice */
   while (!input_has_ended)
-			   { section_count++;
+                           { section_count++;
 
-			     { out('\\'); out(loc[-1]=='*' ? 'N' : loc[-1]=='~' ? 'n' : 'M' );
+                             { out('\\'); out(loc[-1]=='*' ? 'N' : loc[-1]=='~' ? 'n' : 'M' );
 
-			       if (loc[-1]=='*')
-			       { print_section_progress();
-							   { if (*loc=='*') ++loc,out_str("-1");
-							     else if (!isdigit((eight_bits)*loc)) out('0');
-							     else do out(*loc++); while (isdigit((eight_bits)*loc));
-							     out(' '); /* terminate level by a space */
-							   }
-			      }
-			       out_sec_nr(section_count); out_str(". ");
-			     }
+                               if (loc[-1]=='*')
+                               { print_section_progress();
+                                                           { if (*loc=='*') ++loc,out_str("-1");
+                                                             else if (!isdigit((eight_bits)*loc)) out('0');
+                                                             else do out(*loc++); while (isdigit((eight_bits)*loc));
+                                                             out(' '); /* terminate level by a space */
+                                                           }
+                              }
+                               out_sec_nr(section_count); out_str(". ");
+                             }
 
-			     do
-			       switch (next_control=copy_TeX())
-			       { case '|': typedef_master=0; do_C(); break;
-				 case at_sign_image: out('@'); break;
-				 case thin_space: case math_break: case ASCII_code: case line_break:
-				 case big_line_break: case no_line_break: case join: case pseudo_semi:
-				 case force_expr_open: case force_expr_close:
-				   err_print("! You can't do that in TeX text");
+                             do
+                               switch (next_control=copy_TeX())
+                               { case '|': typedef_master=0; do_C(); break;
+                                 case at_sign_image: out('@'); break;
+                                 case thin_space: case math_break: case ASCII_code: case line_break:
+                                 case big_line_break: case no_line_break: case join: case pseudo_semi:
+                                 case force_expr_open: case force_expr_close:
+                                   err_print("! You can't do that in TeX text");
 
-				   break;
-			     #ifdef DEBUG
-				 case trace0: case trace1: case trace2: case trace3: tracing=next_control;
-				   break;
-			     #endif
-				 case module_name: loc-=2; get_next(); break; /* get module name */
-				 case refer: loc-=2; get_next(); /* get name referred to */
-				   if (cur_id->xref->num==0) err_print("! Undefined reference");
-				   else list_refs(cur_id->xref,0);
-				   break;
-				 case TeX_string: err_print("! TeX string should be in C text only");
+                                   break;
+                             #ifdef DEBUG
+                                 case trace0: case trace1: case trace2: case trace3: tracing=next_control;
+                                   break;
+                             #endif
+                                 case module_name: loc-=2; get_next(); break; /* get module name */
+                                 case refer: loc-=2; get_next(); /* get name referred to */
+                                   if (cur_id->xref->num==0) err_print("! Undefined reference");
+                                   else list_refs(cur_id->xref,0);
+                                   break;
+                                 case TeX_string: err_print("! TeX string should be in C text only");
 
-				 /* fall through */
-				 case xref_roman: case xref_wildcard: case xref_typewriter:
-				 case xref_mark: case ignored_text:
-				   get_control_text(); /* skip to \:> */
-			       }
-			     while (next_control<format);
-			     if (next_control<begin_C)
-			     { emit_space();
+                                 /* fall through */
+                                 case xref_roman: case xref_wildcard: case xref_typewriter:
+                                 case xref_mark: case ignored_text:
+                                   get_control_text(); /* skip to \:> */
+                               }
+                             while (next_control<format);
+                             if (next_control<begin_C)
+                             { emit_space();
 
-			       { typedef_tracking(false);
-				 do
-				 { boolean suppressed=false; /* whether output suppressed by \:s */
-				   if (next_control==format)
-							   if (tolower((eight_bits)loc[-1])=='s')
-							   { suppressed=true; shift(); shift(); shift(); }
-							     /* skip format definition */
-							   else
-							   { int saved_code=0,saved_mathness;
-							     app_str("\\F"); shift(); /* this will produce `\&{format}' */
-							     if (cur_id->ilk!=TeX_like && cur_id->ilk!=NULL_like)
-							       app(id_flag+id_index(cur_id));
-							     else
-								  { char* p=name_begin(cur_id);
-								    saved_mathness=cur_id->ilk==TeX_like ? no_math : yes_math;
-								    saved_code=id_flag+id_index(cur_id);/* save to print afterwards */
-								    app_str("\\\\{");
-								    do { if (*p=='_') app('\\'); app_tok(*p); } while (*++p!='\0');
-								    app('}'); check_toks(10);
-								  }
-							     app('~'); pack_scrap(insert,yes_math); shift();
-							     app((cur_id->ilk==normal || cur_id->ilk==TeX_like || cur_id->ilk==NULL_like
-								 ? id_flag : res_flag
-								 )+id_index(cur_id));
-							   check_scrap();
-							     pack_scrap(insert,cur_id->ilk==TeX_like ? no_math : yes_math);
-							     shift();
-							     if (saved_code!=0)
-							     { app_str("\\quad("); app(saved_code); app(')');
-							     check_scrap(); pack_scrap(insert,saved_mathness);
-							     }
-							   }
-				   else if (next_control==definition)
-								    { if (shift()!=identifier)
-									err_print("! Improper macro definition");
+                               { typedef_tracking(false);
+                                 do
+                                 { boolean suppressed=false; /* whether output suppressed by \:s */
+                                   if (next_control==format)
+                                                           if (tolower((eight_bits)loc[-1])=='s')
+                                                           { suppressed=true; shift(); shift(); shift(); }
+                                                             /* skip format definition */
+                                                           else
+                                                           { int saved_code=0,saved_mathness;
+                                                             app_str("\\F"); shift(); /* this will produce `\&{format}' */
+                                                             if (cur_id->ilk!=TeX_like && cur_id->ilk!=NULL_like)
+                                                               app(id_flag+id_index(cur_id));
+                                                             else
+                                                                  { char* p=name_begin(cur_id);
+                                                                    saved_mathness=cur_id->ilk==TeX_like ? no_math : yes_math;
+                                                                    saved_code=id_flag+id_index(cur_id);/* save to print afterwards */
+                                                                    app_str("\\\\{");
+                                                                    do { if (*p=='_') app('\\'); app_tok(*p); } while (*++p!='\0');
+                                                                    app('}'); check_toks(10);
+                                                                  }
+                                                             app('~'); pack_scrap(insert,yes_math); shift();
+                                                             app((cur_id->ilk==normal || cur_id->ilk==TeX_like || cur_id->ilk==NULL_like
+                                                                 ? id_flag : res_flag
+                                                                 )+id_index(cur_id));
+                                                           check_scrap();
+                                                             pack_scrap(insert,cur_id->ilk==TeX_like ? no_math : yes_math);
+                                                             shift();
+                                                             if (saved_code!=0)
+                                                             { app_str("\\quad("); app(saved_code); app(')');
+                                                             check_scrap(); pack_scrap(insert,saved_mathness);
+                                                             }
+                                                           }
+                                   else if (next_control==definition)
+                                                                    { if (shift()!=identifier)
+                                                                        err_print("! Improper macro definition");
 
-								      else
-								      { app_str("\\D$");
-									      /* this will produce \&{\#define} */
-									app(id_flag+id_index(cur_id));
-									if (*loc=='(')
-									{ shift();
-									  do
-									  { app_char_tok(next_control);
-									if (shift()!=identifier) break;
-									app(id_flag+id_index(cur_id));
-									  } while(shift()==',');
-									  check_toks(2);
-									  if (next_control==')') { app(')'); shift(); }
-									  else err_print("! Improper macro definition");
-									}
-									else shift();
-									app('$');
-									app(break_space); pack_scrap(insert,no_math);
-								      }
-								    }
-				   else
-					{ app_str("\\h"); /* this will produce \&{\#include} */
-					  pack_scrap(insert,no_math);
-					  { int save=preprocessing; preprocessing=2; /* emulate `\.{\#include}' */
-					    while (shift()==' ') {} /* skip spaces and read file name as string */
-					    preprocessing=save;
-					  }
-					}
-				   if (!suppressed) outer_read(), finish_C();
-				   else if (next_control<format)
-				   { err_print("! Improper stuff after `@s' format definition");
+                                                                      else
+                                                                      { app_str("\\D$");
+                                                                              /* this will produce \&{\#define} */
+                                                                        app(id_flag+id_index(cur_id));
+                                                                        if (*loc=='(')
+                                                                        { shift();
+                                                                          do
+                                                                          { app_char_tok(next_control);
+                                                                        if (shift()!=identifier) break;
+                                                                        app(id_flag+id_index(cur_id));
+                                                                          } while(shift()==',');
+                                                                          check_toks(2);
+                                                                          if (next_control==')') { app(')'); shift(); }
+                                                                          else err_print("! Improper macro definition");
+                                                                        }
+                                                                        else shift();
+                                                                        app('$');
+                                                                        app(break_space); pack_scrap(insert,no_math);
+                                                                      }
+                                                                    }
+                                   else
+                                        { app_str("\\h"); /* this will produce \&{\#include} */
+                                          pack_scrap(insert,no_math);
+                                          { int save=preprocessing; preprocessing=2; /* emulate `\.{\#include}' */
+                                            while (shift()==' ') {} /* skip spaces and read file name as string */
+                                            preprocessing=save;
+                                          }
+                                        }
+                                   if (!suppressed) outer_read(), finish_C();
+                                   else if (next_control<format)
+                                   { err_print("! Improper stuff after `@s' format definition");
 
-				     if (next_control==begin_comment) loc-=2; /* try to get back in phase */
-				     outer_xref(); /* skip illegal stuff */
-				   }
-				 } while (next_control<begin_C); /* |format|, |definition|, or |header| */
-			       }
-			     }
-			     if (next_control<new_section)
-			     { mod_pointer this_module=NULL; /* the current module name */
-			       emit_space();
-					     { typedef_master=0;
-					       if (next_control==begin_C) shift();
-					       else
-					       { this_module=cur_mod; /* register the name for this module */
+                                     if (next_control==begin_comment) loc-=2; /* try to get back in phase */
+                                     outer_xref(); /* skip illegal stuff */
+                                   }
+                                 } while (next_control<begin_C); /* |format|, |definition|, or |header| */
+                               }
+                             }
+                             if (next_control<new_section)
+                             { mod_pointer this_module=NULL; /* the current module name */
+                               emit_space();
+                                             { typedef_master=0;
+                                               if (next_control==begin_C) shift();
+                                               else
+                                               { this_module=cur_mod; /* register the name for this module */
 
-						 { if (shift()=='=' || next_control==eq_eq || next_control==plus_assign)
-						   { if (next_control!=plus_assign || shift()=='=') shift(); }
-						       /* accept `\.=', `\.{==}', `\.{+=}' or `\.{+==}' */
-						   else err_print("! You need an = sign after the module name");
+                                                 { if (shift()=='=' || next_control==eq_eq || next_control==plus_assign)
+                                                   { if (next_control!=plus_assign || shift()=='=') shift(); }
+                                                       /* accept `\.=', `\.{==}', `\.{+=}' or `\.{+==}' */
+                                                   else err_print("! You need an = sign after the module name");
 
-						   if (this_module!=NULL) /* i.e., unless module name was bad */
-						   { xref_pointer x=this_module->xref;
-						     if (x->num==file_flag) x=next_xref(x);
-						     app_str("\\4$");
-								      /* module name will be flush left */
-						     app(mod_flag+mod_index(this_module));
-						     if (x->num != section_count+def_flag)
-						     { app_str("\\PE"); /* module has also been defined before */
-						       this_module = NULL; /* so we won't give \xr. info here */
-						     }
-						     else app_str("\\EQ"); /* output a module definition sign */
-						     app_str("{}$");
-						     app(force); pack_scrap(insert,no_math);
-						       /* this forces a line break unless \:+ follows */
-						   }
-						 }
-					       }
-					       do
-					       { outer_read();
-						 if (next_control==new_section) break;
-						 if (next_control==module_name)
-									      { if (cur_mod!=NULL)
-										  app(mod_flag+mod_index(cur_mod)), pack_scrap(mod_scrap,yes_math);
-									      }
-						 else err_print("! You can't do that in C text");
+                                                   if (this_module!=NULL) /* i.e., unless module name was bad */
+                                                   { xref_pointer x=this_module->xref;
+                                                     if (x->num==file_flag) x=next_xref(x);
+                                                     app_str("\\4$");
+                                                                      /* module name will be flush left */
+                                                     app(mod_flag+mod_index(this_module));
+                                                     if (x->num != section_count+def_flag)
+                                                     { app_str("\\PE"); /* module has also been defined before */
+                                                       this_module = NULL; /* so we won't give \xr. info here */
+                                                     }
+                                                     else app_str("\\EQ"); /* output a module definition sign */
+                                                     app_str("{}$");
+                                                     app(force); pack_scrap(insert,no_math);
+                                                       /* this forces a line break unless \:+ follows */
+                                                   }
+                                                 }
+                                               }
+                                               do
+                                               { outer_read();
+                                                 if (next_control==new_section) break;
+                                                 if (next_control==module_name)
+                                                                              { if (cur_mod!=NULL)
+                                                                                  app(mod_flag+mod_index(cur_mod)), pack_scrap(mod_scrap,yes_math);
+                                                                              }
+                                                 else err_print("! You can't do that in C text");
 
-						   /* |format|, |definition| or |begin_C| */
-						 shift();
-					       } while (true);
-					       finish_C();
-					     }
+                                                   /* |format|, |definition| or |begin_C| */
+                                                 shift();
+                                               } while (true);
+                                               finish_C();
+                                             }
 
-			       { if (this_module != NULL)
-				 { xref_pointer foot_ref=this_module->xref;
-				   if (foot_ref->num==file_flag) foot_ref=next_xref(foot_ref);
-				   foot_ref=next_xref(foot_ref); /* don't \xr. to yourself */
-				   footnote(&foot_ref,def_flag);
-				     /* display further defining sections; advance |foot_ref| */
-				   footnote(&foot_ref,cite_flag); /* display any citations */
-				   footnote(&foot_ref,0); /* display uses */
-				 }
-			       }
-			     }
+                               { if (this_module != NULL)
+                                 { xref_pointer foot_ref=this_module->xref;
+                                   if (foot_ref->num==file_flag) foot_ref=next_xref(foot_ref);
+                                   foot_ref=next_xref(foot_ref); /* don't \xr. to yourself */
+                                   footnote(&foot_ref,def_flag);
+                                     /* display further defining sections; advance |foot_ref| */
+                                   footnote(&foot_ref,cite_flag); /* display any citations */
+                                   footnote(&foot_ref,0); /* display uses */
+                                 }
+                               }
+                             }
 
-			     { out_str ("\\fi"); finish_line ();  tex_new_line(); }
+                             { out_str ("\\fi"); finish_line ();  tex_new_line(); }
 
-			   }
+                           }
 }
 
 void C_read (boolean inner) /* creates scraps from \Cee\ tokens */
@@ -1978,97 +2000,97 @@ void C_read (boolean inner) /* creates scraps from \Cee\ tokens */
       switch (next_control)
       { case string: case constant: case verbatim:
 
-	  { int count = -1; /* characters remaining before string break */
+          { int count = -1; /* characters remaining before string break */
 
-	    if (next_control==constant) app_str("\\T{");
-	    else if (next_control==string) { count=20; app_str("\\.{"); }
-	    else app_str("\\vb{");
+            if (next_control==constant) app_str("\\T{");
+            else if (next_control==string) { count=20; app_str("\\.{"); }
+            else app_str("\\vb{");
 
-	    while (id_first<id_loc)
-	    { if (count--==0) /* insert a discretionary break in a long string */
-		if (id_first[-1]=='\\') count=0; /* no break after backslash */
-		else { check_toks(2); app_str("\\)"); count = 20; }
-	      if (strchr(" \\#%$^{}~&_",*id_first)!=NULL) app('\\');
+            while (id_first<id_loc)
+            { if (count--==0) /* insert a discretionary break in a long string */
+                if (id_first[-1]=='\\') count=0; /* no break after backslash */
+                else { check_toks(2); app_str("\\)"); count = 20; }
+              if (strchr(" \\#%$^{}~&_",*id_first)!=NULL) app('\\');
 
 
-	      app_char_tok(*id_first++);
-	    }
-	    app('}');
-	    if (next_control==verbatim) pack_scrap(insert,maybe_math);
-	    else pack_scrap(expression,yes_math);
-	  }
+              app_char_tok(*id_first++);
+            }
+            app('}');
+            if (next_control==verbatim) pack_scrap(insert,maybe_math);
+            else pack_scrap(expression,yes_math);
+          }
       goto done;
-	case TeX_string:
-			 { app_str("\\hbox{");
-			   while (id_first<id_loc) app_char_tok(*id_first++);
-			   app('}');
-			   if (!compatibility_mode) pack_scrap(expression,maybe_math);
-			 }
+        case TeX_string:
+                         { app_str("\\hbox{");
+                           while (id_first<id_loc) app_char_tok(*id_first++);
+                           app('}');
+                           if (!compatibility_mode) pack_scrap(expression,maybe_math);
+                         }
       goto done;
-	case identifier:
-			 { id_pointer p=cur_id; int cat=p->ilk;
+        case identifier:
+                         { id_pointer p=cur_id; int cat=p->ilk;
 
-			   { if (typedef_master==0 && cat==typedef_like)
-			       typedef_master=2, brace_level=par_level=0;
-			     else if (typedef_master>0 && brace_level==0)
-			       if (typedef_master==2)
-			       { if (cat==int_like || cat==type_defined) typedef_master=4;
-				 else if (cat==struct_like) typedef_master=3;
-			       }
-			       else if (typedef_master==4 && cat==type_defined) /* this is it */
-				 cat=expression, typedef_master=1;
-			       else if (typedef_master==3) typedef_master=4;
-			   }
-			   if (cat==normal || cat==TeX_like || cat==NULL_like)
-			   { app(id_flag+id_index(p));
-			     pack_scrap(expression
-				       , cat==TeX_like && !compatibility_mode ? no_math : yes_math);
-			   }
-			   else
-			   { if (cat==and_like || cat==not_like) /* provide text operators with space */
-			     { if (cat==and_like) app('~');
-			       app(res_flag+id_index(p)); app('~');
-			     }
-			     else app(res_flag+id_index(p)); /* append reserved word */
+                           { if (typedef_master==0 && cat==typedef_like)
+                               typedef_master=2, brace_level=par_level=0;
+                             else if (typedef_master>0 && brace_level==0)
+                               if (typedef_master==2)
+                               { if (cat==int_like || cat==type_defined) typedef_master=4;
+                                 else if (cat==struct_like) typedef_master=3;
+                               }
+                               else if (typedef_master==4 && cat==type_defined) /* this is it */
+                                 cat=expression, typedef_master=1;
+                               else if (typedef_master==3) typedef_master=4;
+                           }
+                           if (cat==normal || cat==TeX_like || cat==NULL_like)
+                           { app(id_flag+id_index(p));
+                             pack_scrap(expression
+                                       , cat==TeX_like && !compatibility_mode ? no_math : yes_math);
+                           }
+                           else
+                           { if (cat==and_like || cat==not_like) /* provide text operators with space */
+                             { if (cat==and_like) app('~');
+                               app(res_flag+id_index(p)); app('~');
+                             }
+                             else app(res_flag+id_index(p)); /* append reserved word */
 
-			     if (cat==type_defined || cat==const_like || cat==typedef_like)
-			       cat=int_like;
-			     else if (cat==and_like) cat=binop;
-			     else if (cat==not_like) cat=unop;
-			     else if (cat==typename_like) cat=struct_like;
-			     pack_scrap(cat,maybe_math);
-			   }
-			 }
+                             if (cat==type_defined || cat==const_like || cat==typedef_like)
+                               cat=int_like;
+                             else if (cat==and_like) cat=binop;
+                             else if (cat==not_like) cat=unop;
+                             else if (cat==typename_like) cat=struct_like;
+                             pack_scrap(cat,maybe_math);
+                           }
+                         }
       goto done;
-	case module_name:
-			  { if (cur_mod!=NULL)
-			      app(mod_flag+mod_index(cur_mod)), pack_scrap(mod_scrap,yes_math);
-			  }
+        case module_name:
+                          { if (cur_mod!=NULL)
+                              app(mod_flag+mod_index(cur_mod)), pack_scrap(mod_scrap,yes_math);
+                          }
       goto done;
-	case start_preproc:
+        case start_preproc:
 
-	  { app(force); app(flush_left); app_str("\\&\\#");
-	    if (shift()==identifier)
-	    { app(res_flag+id_index(cur_id)); pack_scrap(lproc,no_math); }
-	    else if (next_control==end_preproc)
-	    { pack_scrap(lproc,no_math);
-	      check_scrap(); *scrap_ptr++=token_trans[end_preproc];
-	    }
-	    else confusion("no identifier after `#'");
+          { app(force); app(flush_left); app_str("\\&\\#");
+            if (shift()==identifier)
+            { app(res_flag+id_index(cur_id)); pack_scrap(lproc,no_math); }
+            else if (next_control==end_preproc)
+            { pack_scrap(lproc,no_math);
+              check_scrap(); *scrap_ptr++=token_trans[end_preproc];
+            }
+            else confusion("no identifier after `#'");
 
 
-	  }
+          }
       goto done;
-	case refer:
-	  err_print("! You can't use `@#' in C text"); /*fall through */
-	case ignore: case begin_comment: case end_comment:
-	case xref_roman: case xref_wildcard: case xref_typewriter:
-	case xref_mark: goto done;
+        case refer:
+          err_print("! You can't use `@#' in C text"); /*fall through */
+        case ignore: case begin_comment: case end_comment:
+        case xref_roman: case xref_wildcard: case xref_typewriter:
+        case xref_mark: goto done;
 
       case '{':
-	if (typedef_master>0 && brace_level++==0 && typedef_master==3)
-	  typedef_master=4;
-	break;
+        if (typedef_master>0 && brace_level++==0 && typedef_master==3)
+          typedef_master=4;
+        break;
       case '}': if (typedef_master>0) --brace_level; break;
       case '<': if (C_plus_plus && typedef_master>0) ++brace_level; break;
       case '>': if (C_plus_plus && typedef_master>0) --brace_level; break;
@@ -2077,14 +2099,14 @@ void C_read (boolean inner) /* creates scraps from \Cee\ tokens */
       case ')': if (typedef_master>0) --par_level; break;
       case ';': if (typedef_master>0 && brace_level==0) typedef_master=0; break;
       case colon_colon:
-	      if (C_plus_plus && typedef_master>0 && brace_level==0)
-		typedef_master=2 ;  break;
-	case '|':  if (inner) goto done; /* skip initial `\.\v' of `\pb' */
+              if (C_plus_plus && typedef_master>0 && brace_level==0)
+                typedef_master=2 ;  break;
+        case '|':  if (inner) goto done; /* skip initial `\.\v' of `\pb' */
       }
       *scrap_ptr=token_trans[next_control]; /* fixed scrap for this input token */
 
       { if (dangling_tokens())
-	{ app_trans(scrap_ptr); scrap_ptr->trans=text_ptr; freeze_text(); }
+        { app_trans(scrap_ptr); scrap_ptr->trans=text_ptr; freeze_text(); }
       }
       ++scrap_ptr; /* incorporate the scrap */
       done: {}
@@ -2113,27 +2135,27 @@ void outer_read (void) /* makes scraps from \Cee\ tokens and comments */
 { while (next_control<format)
     if (next_control!=begin_comment) C_read(false);
     else
-	 { boolean one_liner=loc[-1]=='/'; int bal=0; /* brace level in comment */
-	   typedef_tracking(false);
-	   check_scrap(); check_toks(4);
-	 #if 0
-	   if (scrap_ptr==scrap_base || scrap_ptr[-1].cat!=insert)
-	     app(cancel);
-	 #endif
-	   app_str(one_liner ? "\\SHC{" : "\\C{");
-	   while ((next_control=scan_comment(&bal,one_liner))=='|')
-	   { text_pointer p=text_ptr, q=(freeze_text(), C_translate());
-	     check_toks(7);
-	     app_tok(text_flag+text_index(p)); /* initial text */
-	     if (compatibility_mode) app_str("\\PB{");
-	     app(inner_text_flag+text_index(q)); /* text from `\pb' */
-	     if (compatibility_mode) app('}');
-	     check_text();
-	   }
-	   app_char_tok('}'); app(force); pack_scrap(insert, no_math);
-		    /* the full comment becomes a scrap */
-	   typedef_tracking(true);
-	 }
+         { boolean one_liner=loc[-1]=='/'; int bal=0; /* brace level in comment */
+           typedef_tracking(false);
+           check_scrap(); check_toks(4);
+         #if 0
+           if (scrap_ptr==scrap_base || scrap_ptr[-1].cat!=insert)
+             app(cancel);
+         #endif
+           app_str(one_liner ? "\\SHC{" : "\\C{");
+           while ((next_control=scan_comment(&bal,one_liner))=='|')
+           { text_pointer p=text_ptr, q=(freeze_text(), C_translate());
+             check_toks(7);
+             app_tok(text_flag+text_index(p)); /* initial text */
+             if (compatibility_mode) app_str("\\PB{");
+             app(inner_text_flag+text_index(q)); /* text from `\pb' */
+             if (compatibility_mode) app('}');
+             check_text();
+           }
+           app_char_tok('}'); app(force); pack_scrap(insert, no_math);
+                    /* the full comment becomes a scrap */
+           typedef_tracking(true);
+         }
   check_scrap(); check_toks(11); /* `\.{\$\\4$m$\\PE\{\}\$$f$}' */
 }
 
@@ -2159,7 +2181,7 @@ void finish_C (void)
   if (scrap_ptr>max_scr_ptr) max_scr_ptr=scrap_ptr;
 #endif
   leave_block(0); scrap_ptr=scrap_info;
-	/* forget the tokens and the scraps */
+        /* forget the tokens and the scraps */
 }
 
 void footnote (xref_pointer* p,sixteen_bits flag)
@@ -2194,10 +2216,10 @@ void print_cat (int c) /* symbolic printout of a category */
   , "subscr", "struct_head", "short_{", "short_struct_head"
   , "cmp_stmt", "stmt"
   , "function", "function_head", "params", "label"
-  , "if_head", "if_else_head", "do_head"
+  , "if_head", "if_else_head", "(iter)", "do_head"
   , "mod_name", "declarator", "decl", "exp"
-  , "for", "do", "if", "else", "extern"
-  , "namespace", "template", "throw", "try", "catch,"
+  , "while", "for", "do", "if", "else", "extern"
+  , "namespace", "template", "throw", "try", "catch", "using"
   , "int", "case", "sizeof", "struct", "return"
   , "<", ">", "templ_params"
   , "#{", "#}", "insert", "@[", "@]"
@@ -2222,32 +2244,32 @@ void install_rule(reduction *rule)
 #ifdef DEBUG
 
     { if (rule->lhs.length<=abs(rule->lhs.context))
-	rule_error("\nNo scraps to replace in rule %d.\n", rule->id);
+        rule_error("\nNo scraps to replace in rule %d.\n", rule->id);
 
       for(i=0; i<rule->lhs.length; ++i)
-	if (!valid_cat(p[i]))
-	  rule_error("\nUnknown category %d in LHS of rule %d.\n", p[i], rule->id);
+        if (!valid_cat(p[i]))
+          rule_error("\nUnknown category %d in LHS of rule %d.\n", p[i], rule->id);
 
     }
 
     { int c=rule->rhs.category; char* s=rule->rhs.translation;
       if (!valid_cat(c))
-	  rule_error("\nUnknown category %d in RHS of rule %d.\n", c, rule->id);
+          rule_error("\nUnknown category %d in RHS of rule %d.\n", c, rule->id);
 
       if (s!=NULL)
       { if (*s=='\0') s=rule->rhs.translation=NULL; /* replace empty string */
-	else
-	{ i=0;
-	  do
-	if (*s!='p') i+= *s++=='_'; /* count underscores */
-	else if (++s,isdigit((eight_bits)*s)) ++s; /* skip digit and advance */
-	else rule_error("\nDigit should follow 'p' in format of rule %d.\n"
-				, rule->id);
-	  while (*s!='\0');
-	  if (i!=rule->lhs.length-abs(rule->lhs.context))
-	rule_error("\nCount of '_' not equal to length LHS in rule %d.\n"
-		     , rule->id);
-	}
+        else
+        { i=0;
+          do
+        if (*s!='p') i+= *s++=='_'; /* count underscores */
+        else if (++s,isdigit((eight_bits)*s)) ++s; /* skip digit and advance */
+        else rule_error("\nDigit should follow 'p' in format of rule %d.\n"
+                                , rule->id);
+          while (*s!='\0');
+          if (i!=rule->lhs.length-abs(rule->lhs.context))
+        rule_error("\nCount of '_' not equal to length LHS in rule %d.\n"
+                     , rule->id);
+        }
       }
     }
 #endif
@@ -2255,12 +2277,12 @@ void install_rule(reduction *rule)
     { trie_node* q=trie_root;
       for (i=0; i<rule->lhs.length; ++i)
       { if (no_successor(q,p[i])) set_successor(q,p[i],get_new_trie_node());
-	q=successor(q,p[i]);
+        q=successor(q,p[i]);
       }
     #ifdef DEBUG
       if (q->rule!=NULL)
-	rule_error("\nIdentical left-hand sides in rules %d and %d.\n"
-		   , q->rule->id, rule->id);
+        rule_error("\nIdentical left-hand sides in rules %d and %d.\n"
+                   , q->rule->id, rule->id);
     #endif
       q->rule=rule;
     }
@@ -2271,8 +2293,8 @@ void install_rule(reduction *rule)
       if (rule->lhs.category[k]==rule->rhs.category) /* no category change */
       { ++d;
     #ifdef DEBUG
-	if (rule->lhs.length==1)
-	  rule_error("\nNo categories change in rule %d.\n", rule->id);
+        if (rule->lhs.length==1)
+          rule_error("\nNo categories change in rule %d.\n", rule->id);
 
     #endif
       }
@@ -2343,48 +2365,48 @@ void reduce (reduction* rule)
   if (l>1 || f!=NULL) /* otherwise ready already */
   { if (f==NULL) fuse(s,l), p+=l; /* default translation */
     else
-	 { int cur_mathness=maybe_math, init_mathness=maybe_math;
-	   check_toks(23); check_text();
-	   do
-	     switch (*f++)
-	     { case '+': app(indent); break;
-	       case '-': app(outdent); break;
-	       case 'p': app(opt); app(*f++); break; /* penalty with numeric argument */
-	       case 'f': set_mode(no_math); app(force); break;
-	       case 'F': set_mode(no_math); app(big_force); break;
-	       case 'b': set_mode(no_math); app(backup); break;
-	       case 'B': set_mode(no_math); app(break_space); break;
-	       case 't': set_mode(yes_math); app_str("\\a"); break;
-						/* next item in tab space */
-	       case ',': set_mode(yes_math); app_str("\\,"); break;
-						/* thin space */
-	       case 'h': set_mode(no_math); break; /* force horizontal mode */
-	       case 'm': set_mode(yes_math); app(' '); break;
-					/* force math mode, avoid `\.{\$\$}' */
-	       case 'o': set_mode(yes_math); app_str("\\m"); break;
-						/* make ``mathord'' */
-	       case 'r': set_mode(yes_math); app_str("\\MRL"); break;
-						/* make ``mathrel'' */
-	       case 'a': set_mode(yes_math); app_str("\\ang"); break;
-				 /* change `\.<' or `\.>' to `$\ang<$' or~$\ang>$'  */
-	       case '!': make_underlined(p); break;
-	       case '$': make_nonreserved(p); break;
-	       case ' ': set_mode(no_math); app(' '); break;
-	       case '~': case '{': case '}': app(f[-1]); break;
-			/* insert character literally */
-	       default: printf("%c: ",f[-1]);
-		 confusion("illegal character in format string");
-	       case '_':	add_trans(p++);
-	     }
-	   while (*f!='\0');
-	   s->trans=text_ptr; freeze_text();
-	   s->mathness=(init_mathness<<2)+cur_mathness;
-	 }
+         { int cur_mathness=maybe_math, init_mathness=maybe_math;
+           check_toks(23); check_text();
+           do
+             switch (*f++)
+             { case '+': app(indent); break;
+               case '-': app(outdent); break;
+               case 'p': app(opt); app(*f++); break; /* penalty with numeric argument */
+               case 'f': set_mode(no_math); app(force); break;
+               case 'F': set_mode(no_math); app(big_force); break;
+               case 'b': set_mode(no_math); app(backup); break;
+               case 'B': set_mode(no_math); app(break_space); break;
+               case 't': set_mode(yes_math); app_str("\\a"); break;
+                                                /* next item in tab space */
+               case ',': set_mode(yes_math); app_str("\\,"); break;
+                                                /* thin space */
+               case 'h': set_mode(no_math); break; /* force horizontal mode */
+               case 'm': set_mode(yes_math); app(' '); break;
+                                        /* force math mode, avoid `\.{\$\$}' */
+               case 'o': set_mode(yes_math); app_str("\\m"); break;
+                                                /* make ``mathord'' */
+               case 'r': set_mode(yes_math); app_str("\\MRL"); break;
+                                                /* make ``mathrel'' */
+               case 'a': set_mode(yes_math); app_str("\\ang"); break;
+                                 /* change `\.<' or `\.>' to `$\ang<$' or~$\ang>$'  */
+               case '!': make_underlined(p); break;
+               case '$': make_nonreserved(p); break;
+               case ' ': set_mode(no_math); app(' '); break;
+               case '~': case '{': case '}': app(f[-1]); break;
+                        /* insert character literally */
+               default: printf("%c: ",f[-1]);
+                 confusion("illegal character in format string");
+               case '_':        add_trans(p++);
+             }
+           while (*f!='\0');
+           s->trans=text_ptr; freeze_text();
+           s->mathness=(init_mathness<<2)+cur_mathness;
+         }
     if (l>1)
-	    { scrap_pointer q=s+1; /* position after the newly formed scrap */
-	      while (p<lo_ptr) *q++=*p++;
-	      lo_ptr=q;
-	    }
+            { scrap_pointer q=s+1; /* position after the newly formed scrap */
+              while (p<lo_ptr) *q++=*p++;
+              lo_ptr=q;
+            }
   }
 
 
@@ -2394,10 +2416,10 @@ void reduce (reduction* rule)
     { print("\n%3d:", rule->id);
       for (k=scrap_base; k<lo_ptr; k++)
       { putchar (' ');
-	if (tracing==trace3) putchar(math_char(left_math(k)));
-	if (k==s) putchar('>'), print_cat(k->cat), putchar('<');
-	else print_cat(k->cat);
-	if (tracing==trace3) putchar(math_char(right_math(k)));
+        if (tracing==trace3) putchar(math_char(left_math(k)));
+        if (k==s) putchar('>'), print_cat(k->cat), putchar('<');
+        else print_cat(k->cat);
+        if (tracing==trace3) putchar(math_char(right_math(k)));
       }
       print("%s\n", hi_ptr<scrap_ptr ? " ..." : ".");
     }
@@ -2429,12 +2451,12 @@ text_pointer translate (void) /* converts a sequence of scraps */
 
     { scrap_pointer lo_min = pp+max_lhs_length;
       while (lo_ptr<lo_min && lo_ptr->cat!=0)
-	if (hi_ptr>=scrap_ptr) lo_ptr->cat=0;
-	else
-	{ *lo_ptr++ = *hi_ptr++;
-	  while (hi_ptr<scrap_ptr && hi_ptr->cat==insert)
-	{ *lo_ptr = *hi_ptr++; fuse(lo_ptr-1,2); }
-	}
+        if (hi_ptr>=scrap_ptr) lo_ptr->cat=0;
+        else
+        { *lo_ptr++ = *hi_ptr++;
+          while (hi_ptr<scrap_ptr && hi_ptr->cat==insert)
+        { *lo_ptr = *hi_ptr++; fuse(lo_ptr-1,2); }
+        }
     }
     if ((rule=match(pp))!=NULL) reduce(rule);
     else
@@ -2442,21 +2464,21 @@ text_pointer translate (void) /* converts a sequence of scraps */
 
       if (pp->cat==end_expr || pp->cat==rproc)
       { int start=pp->cat-1; /* the opening category matching |pp->cat| */
-	scrap_pointer s=pp, p=pp+1;
-	while ((--s)->cat!=start && s>scrap_base) {}
-	if (s->cat==start) /* if opening symbol is missing, take no action */
-	{ if (start==begin_expr) s->cat=expression;
-	  else if (s==scrap_base) s->cat=insert;
-	  else --s; /* position of new scrap */
-	  fuse(s,(int)(p-s));
+        scrap_pointer s=pp, p=pp+1;
+        while ((--s)->cat!=start && s>scrap_base) {}
+        if (s->cat==start) /* if opening symbol is missing, take no action */
+        { if (start==begin_expr) s->cat=expression;
+          else if (s==scrap_base) s->cat=insert;
+          else --s; /* position of new scrap */
+          fuse(s,(int)(p-s));
 
-	  { scrap_pointer q=s+1; /* position after the newly formed scrap */
-	    while (p<lo_ptr) *q++=*p++;
-	    lo_ptr=q;
-	  }
+          { scrap_pointer q=s+1; /* position after the newly formed scrap */
+            while (p<lo_ptr) *q++=*p++;
+            lo_ptr=q;
+          }
        /* using values of |p| and |s| */
-	  pp= s-scrap_base<max_lhs_length ? scrap_base : s+1-max_lhs_length;
-	}
+          pp= s-scrap_base<max_lhs_length ? scrap_base : s+1-max_lhs_length;
+        }
       }
     }
   }
@@ -2471,11 +2493,11 @@ text_pointer translate (void) /* converts a sequence of scraps */
     #ifdef DEBUG
     { if (tracing==trace1 && lo_ptr>=scrap_base+2)
       { print("\nIrreducible scrap sequence at line %d in section %d:\n"
-	     ,cur_line, section_count);
-	mark_harmless();
-	for (j=scrap_base; j<lo_ptr-1; j++)
-	  print_cat(j->cat), putchar(' ');
-	print_cat(j->cat); new_line(); /* |term_line_empty| is still valid */
+             ,cur_line, section_count);
+        mark_harmless();
+        for (j=scrap_base; j<lo_ptr-1; j++)
+          print_cat(j->cat), putchar(' ');
+        print_cat(j->cat); new_line(); /* |term_line_empty| is still valid */
       }
     }
     #endif
@@ -2512,120 +2534,120 @@ void make_output(text_pointer t,mode m) /* output a complete text */
       {
 
       case 1:
-	      { if (state>=space)
-		  if (state<break_space) out(state==space ? ' ' : '~');
-		  else
-		  { out('\\');
-		    if (state<backup) out(state-break_space+'5');
-		/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-		    else out(state-backup+'6'),out_str("\\4");
-		      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
-		    finish_line();
-		  }
-		state=0;
-	      }
+              { if (state>=space)
+                  if (state<break_space) out(state==space ? ' ' : '~');
+                  else
+                  { out('\\');
+                    if (state<backup) out(state-break_space+'5');
+                /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                    else out(state-backup+'6'),out_str("\\4");
+                      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                    finish_line();
+                  }
+                state=0;
+              }
        out_identifier(id_at(a)); break;
       case 2:
-	      { if (state>=space)
-		  if (state<break_space) out(state==space ? ' ' : '~');
-		  else
-		  { out('\\');
-		    if (state<backup) out(state-break_space+'5');
-		/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-		    else out(state-backup+'6'),out_str("\\4");
-		      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
-		    finish_line();
-		  }
-		state=0;
-	      }
+              { if (state>=space)
+                  if (state<break_space) out(state==space ? ' ' : '~');
+                  else
+                  { out('\\');
+                    if (state<backup) out(state-break_space+'5');
+                /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                    else out(state-backup+'6'),out_str("\\4");
+                      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                    finish_line();
+                  }
+                state=0;
+              }
        out_keyword(id_at(a)); break;
       case 3:
-	      { if (state>=space)
-		  if (state<break_space) out(state==space ? ' ' : '~');
-		  else
-		  { out('\\');
-		    if (state<backup) out(state-break_space+'5');
-		/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-		    else out(state-backup+'6'),out_str("\\4");
-		      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
-		    finish_line();
-		  }
-		state=0;
-	      }
+              { if (state>=space)
+                  if (state<break_space) out(state==space ? ' ' : '~');
+                  else
+                  { out('\\');
+                    if (state<backup) out(state-break_space+'5');
+                /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                    else out(state-backup+'6'),out_str("\\4");
+                      /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                    finish_line();
+                  }
+                state=0;
+              }
        out_module_name(mod_at(a)); break;
-	case 4: push_level(text_at(a)); break;
-	case 5: push_level(text_at(a)); cur_mode=inner; break;
-	case 0:
-		{ switch (a)
-		  { case relax:
-				{ if (state>=space)
-				    if (state<break_space) out(state==space ? ' ' : '~');
-				    else
-				    { out('\\');
-				      if (state<backup) out(state-break_space+'5');
-					/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-				      else out(state-backup+'6'),out_str("\\4");
-					/* `\.{\\6\\4}' or `\.{\\7\\4}' */
-				      finish_line();
-				    }
-				  state=0;
-				}
-		 break;
-		    case cancel: state=cancel; break;
-		    case indent: case outdent:
-		      if (cur_mode==outer) { out('\\'); out(a-indent+'1'); }
-		      break;
-		    case opt:
-		    { int digit=*cur_tok++;
-		      if (state==0)
-		      { out('\\'); out(cur_mode==outer ? '3' : '0'); out(digit); }
+        case 4: push_level(text_at(a)); break;
+        case 5: push_level(text_at(a)); cur_mode=inner; break;
+        case 0:
+                { switch (a)
+                  { case relax:
+                                { if (state>=space)
+                                    if (state<break_space) out(state==space ? ' ' : '~');
+                                    else
+                                    { out('\\');
+                                      if (state<backup) out(state-break_space+'5');
+                                        /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                                      else out(state-backup+'6'),out_str("\\4");
+                                        /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                                      finish_line();
+                                    }
+                                  state=0;
+                                }
+                 break;
+                    case cancel: state=cancel; break;
+                    case indent: case outdent:
+                      if (cur_mode==outer) { out('\\'); out(a-indent+'1'); }
+                      break;
+                    case opt:
+                    { int digit=*cur_tok++;
+                      if (state==0)
+                      { out('\\'); out(cur_mode==outer ? '3' : '0'); out(digit); }
 
-		      break;
-		    }
-		    case flush_left:
-		      if (cur_mode==outer)
-		      {
-			{ if (state>=space)
-			    if (state<break_space) out(state==space ? ' ' : '~');
-			    else
-			    { out('\\');
-			      if (state<backup) out(state-break_space+'5');
-				/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-			      else out(state-backup+'6'),out_str("\\4");
-				/* `\.{\\6\\4}' or `\.{\\7\\4}' */
-			      finish_line();
-			    }
-			  state=0;
-			}
-		 out_str("\\8"); }
-		      break;
-		    case big_force: case backup:
-		      if (a+state==big_force+backup) a=big_backup; /* fall through */
-		    case break_space: case force: case big_backup:
-		      if (cur_mode==inner) a=space;
-		    up_state:
-		      if (state!=cancel && state<a) state=a;
-		      break;
-		    case ' ': case '~':
-		      if (cur_mode==inner) { a= a==' ' ? space : tilde; goto up_state; }
-		      if (state==cancel || state>=break_space) break;
-			/* else fall through */
-		    default:
-			     { if (state>=space)
-				 if (state<break_space) out(state==space ? ' ' : '~');
-				 else
-				 { out('\\');
-				   if (state<backup) out(state-break_space+'5');
-				/* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
-				   else out(state-backup+'6'),out_str("\\4");
-				     /* `\.{\\6\\4}' or `\.{\\7\\4}' */
-				   finish_line();
-				 }
-			       state=0;
-			     }
-		 out(a);
-		  }
-		}
+                      break;
+                    }
+                    case flush_left:
+                      if (cur_mode==outer)
+                      {
+                        { if (state>=space)
+                            if (state<break_space) out(state==space ? ' ' : '~');
+                            else
+                            { out('\\');
+                              if (state<backup) out(state-break_space+'5');
+                                /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                              else out(state-backup+'6'),out_str("\\4");
+                                /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                              finish_line();
+                            }
+                          state=0;
+                        }
+                 out_str("\\8"); }
+                      break;
+                    case big_force: case backup:
+                      if (a+state==big_force+backup) a=big_backup; /* fall through */
+                    case break_space: case force: case big_backup:
+                      if (cur_mode==inner) a=space;
+                    up_state:
+                      if (state!=cancel && state<a) state=a;
+                      break;
+                    case ' ': case '~':
+                      if (cur_mode==inner) { a= a==' ' ? space : tilde; goto up_state; }
+                      if (state==cancel || state>=break_space) break;
+                        /* else fall through */
+                    default:
+                             { if (state>=space)
+                                 if (state<break_space) out(state==space ? ' ' : '~');
+                                 else
+                                 { out('\\');
+                                   if (state<backup) out(state-break_space+'5');
+                                /* `\.{\\5}', `\.{\\6}', or `\.{\\7}' */
+                                   else out(state-backup+'6'),out_str("\\4");
+                                     /* `\.{\\6\\4}' or `\.{\\7\\4}' */
+                                   finish_line();
+                                 }
+                               state=0;
+                             }
+                 out(a);
+                  }
+                }
       }
     }
   while(stack_ptr>stack_bot);
@@ -2701,7 +2723,7 @@ xref_pointer out_module_name(mod_pointer name)
   { out_sec_nr(x->num-def_flag); /* output the defining section number */
     if (phase==3) /* all of them in Phase III */
       while (x=next_xref(x), x->num>=def_flag)
-	out_str (", "), out_sec_nr(x->num-def_flag);
+        out_str (", "), out_sec_nr(x->num-def_flag);
   }
   else out ('0'); /* section number `0' means `nowhere defined' */
   out (':'); if (file_module) out_str("\\.{");
@@ -2710,48 +2732,48 @@ xref_pointer out_module_name(mod_pointer name)
     while ((c=*k++)!='\0')
     { if (file_module) { if (strchr(" \\#%$^{}~&_",c)!=NULL) out ('\\'); }
       if (c=='@' && *k++!='@')
-		{ print("\n! Illegal control code in module name"); print_mod(name);
+                { print("\n! Illegal control code in module name"); print_mod(name);
 
-		  mark_error();
-		}
+                  mark_error();
+                }
       if (file_module || c!='|') out(c);
       else
       { char* save_loc=loc, *save_limit=limit;
 
-	{ char delimiter='\0'; /* |'"'| or |'\''|, or |'\0'| outside of strings */
-	  next_control=*limit++='|'; loc=limit;
-	  do
-	    if ((c=*k++)=='\0')
-		      { print("\n! C text in module name didn't end"); print_mod(name);
+        { char delimiter='\0'; /* |'"'| or |'\''|, or |'\0'| outside of strings */
+          next_control=*limit++='|'; loc=limit;
+          do
+            if ((c=*k++)=='\0')
+                      { print("\n! C text in module name didn't end"); print_mod(name);
 
-			mark_error();
-			if (delimiter!='\0') *limit++=delimiter;
-			*limit++='|';
-			if (limit>&buffer[long_buf_size-2])
-			  fatal("fix that first, you sneaky devil");
+                        mark_error();
+                        if (delimiter!='\0') *limit++=delimiter;
+                        *limit++='|';
+                        if (limit>&buffer[long_buf_size-2])
+                          fatal("fix that first, you sneaky devil");
 
-			break;
-		      }
-	    else
-	    { *limit++=c;
+                        break;
+                      }
+            else
+            { *limit++=c;
 
-	    { if (c=='@') /* control code; now |*k!='\0'| */
-	      { if ((*limit++=*k++)=='\'' && delimiter=='\0')	/* copy code, test for \:' */
-		  delimiter='\''; /* which behaves like `\.'' */
-	      }
-	      else if (c=='\\' && delimiter!='\0')
-	      { char d=*limit++=*k++; /* escaped character, possibly |delimiter| */
-		if (d=='\0') --k,limit-=2; /* remove backslash, error is issued anyway */
-	      }
-	      else if (c=='\'' || c=='"')
-		if (delimiter=='\0') delimiter=c;
-		else if (delimiter==c) delimiter='\0';
-	    }
-	    }
-	  while (c!='|' || delimiter!='\0');
-	  *limit=' ';
-	}
-	do_C(); loc=save_loc; *(limit=save_limit)=' ';
+            { if (c=='@') /* control code; now |*k!='\0'| */
+              { if ((*limit++=*k++)=='\'' && delimiter=='\0')   /* copy code, test for \:' */
+                  delimiter='\''; /* which behaves like `\.'' */
+              }
+              else if (c=='\\' && delimiter!='\0')
+              { char d=*limit++=*k++; /* escaped character, possibly |delimiter| */
+                if (d=='\0') --k,limit-=2; /* remove backslash, error is issued anyway */
+              }
+              else if (c=='\'' || c=='"')
+                if (delimiter=='\0') delimiter=c;
+                else if (delimiter==c) delimiter='\0';
+            }
+            }
+          while (c!='|' || delimiter!='\0');
+          *limit=' ';
+        }
+        do_C(); loc=save_loc; *(limit=save_limit)=' ';
       }
     }
   }
@@ -2763,7 +2785,7 @@ xref_pointer out_module_name(mod_pointer name)
 void flush_buffer(char* b, boolean percent)
    /* output from |out_line| to |b|, where |b<=out_ptr| */
 { int j=(int)(b-out_line); /* number of characters to be output */
-  if (!percent)	 while (j>0 && out_line[j-1]==' ') --j;
+  if (!percent)  while (j>0 && out_line[j-1]==' ') --j;
     /* remove trailing blanks */
   fprintf(tex_file, "%.*s",j,out_line);
   if (percent) tex_putc('%');
@@ -2787,15 +2809,15 @@ void break_out (void) /* finds a way to break the output line */
   do ++count; while ((c=*--k)=='\\');
 found:
   if (++k>out_line) flush_buffer(k,c!=' ');  else
-					  if (count==0) flush_buffer(out_ptr-1,true);
-					  else if (count>=2) flush_buffer
-					    (&out_line[count&=~1]==out_buf_end ? out_buf_end-2 : &out_line[count],true);
-					  else
-					  { print("\n! Line had to be broken (output l.%d):\n",out_line_nr);
+                                          if (count==0) flush_buffer(out_ptr-1,true);
+                                          else if (count>=2) flush_buffer
+                                            (&out_line[count&=~1]==out_buf_end ? out_buf_end-2 : &out_line[count],true);
+                                          else
+                                          { print("\n! Line had to be broken (output l.%d):\n",out_line_nr);
 
-					    term_write(out_line,out_ptr-out_line); new_line(); mark_harmless();
-					    flush_buffer(out_ptr,false);
-					  }
+                                            term_write(out_line,out_ptr-out_line); new_line(); mark_harmless();
+                                            flush_buffer(out_ptr,false);
+                                          }
 }
 
 void phase_three (void) /* output the \xr. index */
@@ -2808,97 +2830,97 @@ void phase_three (void) /* output the \xr. index */
     if (change_exists)
     {
       { int k=0; boolean first=true;
-	out_str("\\ch ");  /* changes */
-	while (k<section_count)
-	{ do ++k; while (!section_changed(k));
-	  if (first) first=false;  else out_str(", ");
-	  out_sec_nr(k);
-	}
-	out('.');
+        out_str("\\ch ");  /* changes */
+        while (k<section_count)
+        { do ++k; while (!section_changed(k));
+          if (first) first=false;  else out_str(", ");
+          out_sec_nr(k);
+        }
+        out('.');
       }
  finish_line(); }
     if (triple_file_output)
 
       { out_str("\\inx \\input \\jobname.idx\n"
-	  "\\fin \\input \\jobname.scn\n"
-	  "\\con");
-	if (even_out_pages) out_str("even");
-	finish_line(); fclose(tex_file);
-	if ((tex_file=fopen(idx_file_name,"w"))==NULL)
-	  fatal("! Cannot open \"%s\" as output file",idx_file_name);
+          "\\fin \\input \\jobname.scn\n"
+          "\\con");
+        if (even_out_pages) out_str("even");
+        finish_line(); fclose(tex_file);
+        if ((tex_file=fopen(idx_file_name,"w"))==NULL)
+          fatal("! Cannot open \"%s\" as output file",idx_file_name);
       }
-    else { out_str("\\inx"); finish_line(); }	/* index */
+    else { out_str("\\inx"); finish_line(); }   /* index */
 
     {
       { id_pointer name;
-	eight_bits c=UCHAR_MAX;
-	id_pointer *h; /* pointer into |hash| */
+        eight_bits c=UCHAR_MAX;
+        id_pointer *h; /* pointer into |hash| */
 
-	do bucket[c]=NULL; while (c--!=0);
-	for (h=hash; h<hash_end; h++)
-	  for (name=*h; name!=NULL; name=name->hash_link)
-	/* traverse all hash lists */
-	    if (name->ilk!=reference && name->ilk!=header_file_name
-	       && name->xref->num!=0)
-		/* leave out non-identifiers and unreferenced names */
-	    { c=name_begin(name)[0]; c=tolower(c);
-	ilink(name)=bucket[c]; bucket[c]=name;
-	    }
+        do bucket[c]=NULL; while (c--!=0);
+        for (h=hash; h<hash_end; h++)
+          for (name=*h; name!=NULL; name=name->hash_link)
+        /* traverse all hash lists */
+            if (name->ilk!=reference && name->ilk!=header_file_name
+               && name->xref->num!=0)
+                /* leave out non-identifiers and unreferenced names */
+            { c=name_begin(name)[0]; c=tolower(c);
+        ilink(name)=bucket[c]; bucket[c]=name;
+            }
       }
        /* the first time, entries do not come from |sort_info| */
       unbucket(1); /* pick up first-order bucketed lists */
       while (sort_ptr>sort_info) /* i.e., the stack is not empty */
       { eight_bits depth=(--sort_ptr)->depth;
-	id_pointer name=sort_ptr->head;
-	if (ilink(name)==NULL || depth==infinity)
-	    /* singleton or set of look-alikes */
+        id_pointer name=sort_ptr->head;
+        if (ilink(name)==NULL || depth==infinity)
+            /* singleton or set of look-alikes */
 
-	  do
-	  { out_str("\\@");
+          do
+          { out_str("\\@");
 
-	    switch (name->ilk)
-	    { case normal: case NULL_like: out('m'); out_identifier(name); break;
-	      case TeX_like: out('h'); out_identifier(name); break;
-	      case roman: out('h'); out_index(name); break;
-	      case wildcard: out_str("h\\9"); out_index(name); break;
-	      case typewriter: out_str("h\\."); out_index(name); break;
-	      default: out('h'); out_keyword(name);
-	    }
+            switch (name->ilk)
+            { case normal: case NULL_like: out('m'); out_identifier(name); break;
+              case TeX_like: out('h'); out_identifier(name); break;
+              case roman: out('h'); out_index(name); break;
+              case wildcard: out_str("h\\9"); out_index(name); break;
+              case typewriter: out_str("h\\."); out_index(name); break;
+              default: out('h'); out_keyword(name);
+            }
 
-	    { xref_pointer x=name->xref;
-	      do
-	      { sixteen_bits n=x->num;
-		out_str(", ");
-		if (n<def_flag) out_sec_nr(n);
-		else { out_str("\\["); out_sec_nr(n-def_flag); out(']'); }
-	      } while ((x=next_xref(x))->num!=0);
-	      out('.'); finish_line();
-	    }
-	  } while ((name=ilink(name))!= NULL);
-	else
-	{
-	  do
-	  { eight_bits c= tolower((eight_bits)name_begin(name)[depth]);
-	    id_pointer next_name=ilink(name); /* save link */
-	    ilink(name)=bucket[c]; bucket[c]=name; name=next_name;
-	      /* put into bucket */
-	  }
-	  while (name!=NULL);
-	  unbucket(depth+1);
-	}
+            { xref_pointer x=name->xref;
+              do
+              { sixteen_bits n=x->num;
+                out_str(", ");
+                if (n<def_flag) out_sec_nr(n);
+                else { out_str("\\["); out_sec_nr(n-def_flag); out(']'); }
+              } while ((x=next_xref(x))->num!=0);
+              out('.'); finish_line();
+            }
+          } while ((name=ilink(name))!= NULL);
+        else
+        {
+          do
+          { eight_bits c= tolower((eight_bits)name_begin(name)[depth]);
+            id_pointer next_name=ilink(name); /* save link */
+            ilink(name)=bucket[c]; bucket[c]=name; name=next_name;
+              /* put into bucket */
+          }
+          while (name!=NULL);
+          unbucket(depth+1);
+        }
       }
     }
     if (triple_file_output)
 
       { finish_line(); fclose(tex_file);
-	if ((tex_file=fopen(scn_file_name,"w"))==NULL)
-	  fatal("! Cannot open \"%s\" as output file",scn_file_name);
+        if ((tex_file=fopen(scn_file_name,"w"))==NULL)
+          fatal("! Cannot open \"%s\" as output file",scn_file_name);
       }
     else { out_str("\\fin"), finish_line(); }  /* end of index */
 
      list_modules(root);
     if (!triple_file_output)
-    { out_str("\\con");	 /* table of contents */
+    { out_str("\\con");  /* table of contents */
       if (even_out_pages) out_str("even");
     }
   }
@@ -2909,7 +2931,7 @@ void phase_three (void) /* output the \xr. index */
 
 void unbucket (eight_bits d) /* empties buckets having depth |d| */
 { int i=end_collate; /* index into |collate| */
-  while(--i>=0)	 if (bucket[collate[i]]!=NULL)
+  while(--i>=0)  if (bucket[collate[i]]!=NULL)
   { if (sort_ptr>=sort_info_end)
       overflow("sorting");
     sort_ptr->depth= i==0 ? infinity : d;
@@ -2938,17 +2960,17 @@ void list_modules (mod_pointer p) /* print all module names in subtree |p| */
 #ifdef STAT
 void print_stats()
 { print("\nMemory usage statistics:\n");
-report("identifier",		id_index(id_ptr),	max_idents);
-report("module name",		mod_index(mod_ptr),	max_modules);
-report("byte",		byte_ptr-byte_mem,	max_bytes);
-report("cross-reference",	xref_ptr-xmem,		max_refs-1);
+report("identifier",            id_index(id_ptr),       max_idents);
+report("module name",           mod_index(mod_ptr),     max_modules);
+report("byte",          byte_ptr-byte_mem,      max_bytes);
+report("cross-reference",       xref_ptr-xmem,          max_refs-1);
 printf("Parsing:\n");
-report("scrap",		max_scr_ptr-scrap_info,	max_scraps);
-report("text",		max_text_ptr-text_mem,	max_texts);
-report("token",		max_tok_ptr-tok_mem,	max_toks);
-report("trie node",		node_no,		max_no_of_nodes);
-report("level",		max_stack_ptr-stack,	stack_size);
+report("scrap",         max_scr_ptr-scrap_info, max_scraps);
+report("text",          max_text_ptr-text_mem,  max_texts);
+report("token",         max_tok_ptr-tok_mem,    max_toks);
+report("trie node",             node_no,                max_no_of_nodes);
+report("level",         max_stack_ptr-stack,    stack_size);
 printf("Sorting:\n");
-report("level",		max_sort_ptr-sort_info,	sort_stack_size);
+report("level",         max_sort_ptr-sort_info, sort_stack_size);
 }
 #endif

@@ -2710,9 +2710,9 @@ void lambda_expression::print(std::ostream& out) const
 {@; print_lambda(out,p->param,p->body); }
 void recursive_lambda::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
-  id_type self=it->name;
+  id_type self_id=it->name;
   const id_pat& param=*++it;
-  print_lambda(out << main_hash_table->name_of(self) << ':',param,p->body);
+  print_lambda(out << main_hash_table->name_of(self_id) << ':',param,p->body);
 }
 
 @ Handling of user-defined functions in type analysis is usually uneventful
@@ -2892,10 +2892,10 @@ void closure_value<false>::print(std::ostream& out) const
 template<>
 void closure_value<true>::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
-  id_type self=it->name;
+  id_type self_id=it->name;
   const id_pat& param=*++it;
   out << "Recursive function defined " << p->loc << std::endl;
-  print_lambda(out<< main_hash_table->name_of(self) << ':',param,p->body);
+  print_lambda(out<< main_hash_table->name_of(self_id) << ':',param,p->body);
 }
 
 template<bool recursive>
