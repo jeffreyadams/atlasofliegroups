@@ -2195,8 +2195,8 @@ public:
 template<typename T,typename Alloc> class queue
   : public std::queue<T,sl_list<T,Alloc> >
 {
-  using sl = sl_list<T,Alloc>;
-  using Base = std::queue<T,sl>;
+  using sl_l = sl_list<T,Alloc>;
+  using Base = std::queue<T,sl_l>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2207,11 +2207,11 @@ public:
   queue(Base&& b) : Base(std::move(b)) {}
 
   // unlike |std::queue|, we also provide initialisation by initializer list
-  queue(std::initializer_list<T> l) : Base(sl(l)) {}
+  queue(std::initializer_list<T> l) : Base(sl_l(l)) {}
 
-  T& pop_splice_to(sl& dest,typename sl::iterator it)
+  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(sl& dest,typename sl::const_iterator it)
+  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
 
   T& pop_splice_to(simple_list<T,Alloc>& dest,

@@ -92,15 +92,15 @@ template<typename InputIt, typename Compare, typename>
   Permutation standardization(InputIt first, InputIt last, Compare less)
 {
   using T = typename std::iterator_traits<InputIt>::value_type;
-  using P = std::pair<T,unsigned long>;
-  std::vector<P> aux;
+  using val_pos = std::pair<T,unsigned long>;
+  std::vector<val_pos> aux;
   aux.reserve(std::distance(first,last));
   unsigned long i=0;
   for (auto it=first; it!=last; ++it)
     aux.emplace_back(*it,i++);
 
   std::stable_sort(aux.begin(),aux.end(),
-		   [&less](const P& x,const P& y)
+		   [&less](const val_pos x,const val_pos& y)
 		   { return less(x.first,y.first); });
 
   Permutation result(aux.size());
