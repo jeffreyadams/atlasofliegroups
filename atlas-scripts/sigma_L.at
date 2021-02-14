@@ -1,36 +1,41 @@
 <isomorphism_W.at
+
+{changing things around again... no longer using sigma_L_1 and sigma_L_2
+ the sigma_L construction is now on the dual side, but it gives
+ a representation of W(G)
+ O^v is special orbit for G^v
+ sigma_L(O^v,x): O^v is for G^v, and x\in A(O^v) -> representation of W(G)
+}
+
 {sigma_L=sigma_Lusztig
-actually there are two, differing by sgn: sigma_L_1 and sigma_L_2
-sigma_L is sigma_L_1, see commented section below
-
- O=orbit, x\in Cent(SL(2))
- sigma_L(x,1): irreducible representation of W
-  attached by Lusztig to the pair (x,1)
-  strictly speaking O is special,
-  and x is an element of A(O)=Cent(SL(2))/Cent()^0
-  a computation of sigma_L(x,1) is given conjecturally by Vogan
-   this algorithm takes x\in Cent() to W^
-   need to assume: this map only depends on the image of x in A(O)
-  assuming this, this file implements that algorithm
-   using the values of x computed by component_datum(orbit)
+sigma_L(O^v,x) is a construction of a representation of W(G)
+conjecturally it is the same as
+Lusztig(O^v,x,1) as defined in the Orange book, this also
+                 gives a representation of W(G)
 }
 
-{O is an even nilpotent orbit, x in Cent(SL(2)),
- -> L=L_x = pseudo-Levi Cent(x)
- -> O_L = orbit in L_x
- -> O_L_v=d(O_L) = orbit in (L_x)^vee
- -> sigma_L_v=Springer(O_L_v) \in hat(W_L_v)
- -> truncated induction of sigma_L_v in hat(W_v)
- -> sigma in hat(W) via W\simeq W_v
- from W_L to W: this (conjecturally) is sigma_L(x,1)
- where sigma_L: M(A-bar(O)) -> W^, M(*) is Lusztig's
- set of pairs  (x,\xi)   Orbit O -> A(O) -> M(A(O))={(x,xi)| x in A(O), xi irreducible representation of Cent_A(O)(x)}
- (x=1,xi=1) -> Springer(O)  giving all special representations of W
+{first case: O^v is an even nilpotent orbit, x in Cent(SL(2)),
+ -> L_v = pseudo-Levi Cent(x)\subset G^v
+ -> L=dual(L_v) (not necessarily a subgroup of G)
+ -> O_L_v = orbit in L_v (using same H)
+ -> O_L=d(O_v_L)=orbit in L
+ -> sigma_L=Springer(O_L) in hat(W(L))
+ -> truncated induction of sigma_L  from W(L) to W(G)
 }
 
+{Example: O^v=0-orbit, x=1
+L_v=G_v,O_L_v=0-orbit, 
+O_L=dual(O_L_v)=principal orbit for G
+Springer(O_L)=trivial representation of W(G)
+
+More generally: O^v special, x=1
+
+** sigma_L(O^v,1)=Springer(dual(O^v)) **
+}
 set sigma_L_verbose=true
 
-{even orbit O, RootDatum M, vec H_M,ratvec v
+{OLD:
+ even orbit O, RootDatum M, vec H_M,ratvec v
  O is an orbit for RootDatum G
  (M,H_M,v) will be from component_representative_plus(O)
  L=Cent_G(\exp(2\pi iv)) is a pseudo-Levi
@@ -50,7 +55,7 @@ set sigma_L_verbose=true
 {
 Compute A-bar:  A(O)/ all conj. classes x st sigma_L(x,1)=sigma_L(1,1)
 }
-{
+{OLD:
 There are two Springer maps differing by tensoring with sign,
 similarly Lusztig and sigma_L
 
@@ -133,53 +138,68 @@ Springer_1(0):
 So nothing like the conjecture can hold for sigma_L_1
 }
 
-{NOTE: sigma_L_even and all others compute sigma_L_2: sigma_L_2(0-orbit,1)=trivial}
-set sigma_L_even(SpringerTable st,ComplexNilpotent orbit,RootDatum M,vec H_M,ratvec v)=int:  {modify v by center of M^0}
-assert(is_even(orbit),"orbit is not even");
-let ()=prints(new_line,"Computing sigma_L_even: ",new_line, "G=", st.root_datum,new_line,"M=", M, new_line, "H_M=",H_M,new_line,"v=", v) in
-if v.is_integer then  {L=G, don't need induction}
- let ()=prints("v is integer, no induction") in
- let char=st.ct.tensor_sign(st.ct.characters[st.springer(orbit)]) in
- st.ct.character_index(char)
+{rd is a RootDatum, rd_v its dual, given a subgroup rd_H_v of rd_v
+ return the corresponding group rd_H: the roots of H are a subset
+ of the roots of G; the coroots of H are the roots of rd_H_v,
+ which is a subgroup of rd_v
+}
+{
+set endoscopic_group(RootDatum rd,RootDatum rd_H_v)=
+let A= for alpha in rd_H_v.simple_roots do root(rd,root_index(rd_H_v,alpha)) od then
+    B= for alpha_v in rd_H_v.simple_coroots do coroot(rd,coroot_index(rd_H_v,alpha_v)) od
+    in (A,B)
+}
+
+{M_v is a pseudo-Levi, H_M_v is for an orbit for M_v, y is an element of center of M^0}
+set sigma_L_even_or_odd_1(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v,RootDatum M_v,vec H_M_v,ratvec y)=int:  {modify v by center of M^0}
+{assert(is_even(O_v),"O_v is not even");}
+let ()=if sigma_L_verbose then prints(new_line,"Computing sigma_L_even_or_odd_1: ",new_line, "G_v=", st_G_v.root_datum,new_line,"M_v=", M_v, new_line, "H_M_v=",H_M_v,new_line,"y=", y) fi in
+if y.is_integer then  {L=G, don't need induction}
+ let ()=if sigma_L_verbose then prints("y is integer, no induction")  fi then
+ sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
+ sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) in
+ ct_G.character_index(sigma) 
 else  {need induction; compute L, sigma_L, truncated_induce}
- let ()=prints("need induction: ") in
- let rd=orbit.root_datum then
- ()=if sigma_L_verbose then prints(("v=",v) ) fi then
- L=centralizer(rd,v) then
- ()=if sigma_L_verbose then prints(("L=",L, new_line, "G=", rd) ) fi then
- {O_M=ComplexNilpotent:(M,(),H_M) -> saturation -> O_L
-  O_L has the same H=H_M, but made L-dominant}
- H_L=dominant(H_M,L) then
- ()=if sigma_L_verbose then prints(("L=", L) ) fi then
- ()=if sigma_L_verbose then prints(("H_L=", H_L) ) fi then
- O_L=ComplexNilpotent:(L,(),H_L) then
- ()=if sigma_L_verbose then prints(("O_L:", O_L.H, " ", O_L.diagram) ) fi then
- roots_L=for alpha in L.simple_roots do find(rd.roots,alpha) od then
+ let ()=if sigma_L_verbose then prints("need induction: ")  fi in
+ let rd_v=O_v.root_datum then
+ ()=if sigma_L_verbose then prints(("y=",y) ) fi then
+ L_v=centralizer(rd_v,y) then
+ ()=if sigma_L_verbose then prints(("L_v=",L_v, new_line, "rd_v=", rd_v) ) fi then
+ {O_M_v=ComplexNilpotent:(M_v,(),H_M_v) -> saturation -> O_L_v
+  O_L_v has the same H=H_M_v, but made L_v-dominant}
+ H_L_v=dominant(H_M_v,L_v) then
+ ()=if sigma_L_verbose then prints(("L_v=", L_v) ) fi then
+ ()=if sigma_L_verbose then prints(("H_L_v=", H_L_v) ) fi then
+ O_L_v=ComplexNilpotent:(L_v,(),H_L_v) then
+ ()=if sigma_L_verbose then prints(("O_L_v:", O_L_v.H, " ", O_L_v.diagram) ) fi then
+ L=dual(L_v) then
+ roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
  sigma_L=
- if O_L=L.zero_orbit then
-  L.character_table.trivial {Springer(O_L)*sign}
- elif O_L=L.principal_orbit then
-  L.character_table.sign {Springer(O_L)*sign}
- else  {need to compute L.springer_table}
+ if O_L_v=L_v.zero_orbit then   {dual_map_inverse(O_L_v)=principal_O_L}
+    L.character_table.trivial
+  elif O_L_v=L_v.principal_orbit then  {dual_map_i(O_L_v)=0_O_L}
+    L.character_table.sign
+ else  {not 0 or principal orbit: need to compute L.springer_table}
   let ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
-  st_L=L.springer_table then
-  ()=if sigma_L_verbose then prints(("done") ) fi then
-  L_index=st_L.springer(O_L) then
+  st_L_v=L_v.springer_table then
+  ()=if sigma_L_verbose then prints(("done computing L.springer_table") ) fi then
+{  O_L=st_L.dual_map_i(O_L_v) then
   ()=if sigma_L_verbose then prints(("O_L", O_L, " ", O_L.diagram) ) fi then
-  ()=if sigma_L_verbose then prints(("L_index: ", L_index) ) fi then
-  sigma_L_0=st_L.characters[L_index] then
-  sigma_L=st_L.ct.tensor_sign(sigma_L_0)  then
-roo  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, new_line, "index=", st_L.ct.character_index(sigma_L)) fi in
-  sigma_L
- fi  {end if O_L=L.zero_orbit} then
+  sigma_L_index=st_L.springer(O_L) {this returns an int} then
+  sigma_L=st_L.ct.characters[sigma_L_index] then
+  ()=if sigma_L_verbose then prints("sigma_L_index: ", sigma_L_index, new_line, "sigma_L:", sigma_L) fi in}
+  sigma_L_v=st_L_v.springer(O_L_v) then
+  char=st_L_v.ct.characters[sigma_L_v] then
+  sigma_L_0=st_L_v.ct.tensor_sign(char) in
+  exchange_long_short(L_v.character_table,sigma_L_0)  {with ex: 1,-1,1,-1,1,-1}
+fi  {end if O_L=L.zero_orbit} then
   (ignore_degree,char_indices)=
-     prints("truncated induce: ", "G=",rd,new_line,"roots_L: ", roots_L, " ", sigma_L);
-
-  truncate_induce_character(rd,st.ct,roots_L,sigma_L) then
-  char=st.ct.characters[char_indices[0]] then
+     prints("truncated inducex: ", "G=",G,new_line,"roots_L: ", roots_L, " ", sigma_L);
+  truncate_induce_character(G,ct_G,roots_L,sigma_L) then
+  char=ct_G.characters[char_indices[0]] then
   ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char) fi in
-  st.ct.character_index(char)
+  ct_G.character_index(char)
 fi
 
 {orbit -> list of pairs (L,[v_1,...,v_n]) L is a pseudo-Levi}
@@ -204,23 +224,26 @@ let (,,triples)=orbit.component_datum_plus in
    od
 
 {run over all ratvecs from component_representatives(orbit)}
-set sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=[int]:
-prints("sigma_L_even for: ", orbit, " st:",st.root_datum);
-for (M,H_M,v) in component_representatives_plus(orbit) do
- let ()=prints(new_line,"computing sigma_L for M=", M, new_line,"H_M=",H_M,new_line, "v=", v) in
- sigma_L_even(st,orbit,M,H_M,v) od
+set sigma_L_even_or_odd_2(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v)=[int]:
+prints("sigma_L_even_or_odd_2 for: ", O_v,"  ", O_v.diagram,new_line, " st_G_v:",st_G_v.root_datum);
+for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
+ let ()=if sigma_L_verbose then prints(new_line,"computing sigma_L for M_v=", M_v, new_line,"H_M_v=",H_M_v,new_line, "y=", y)  fi in
+    let ()=if sigma_L_verbose then prints("calling sigma_L_even_1(x):", new_line,"G: ", G, new_line,
+   "st:", st_G_v.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) fi in 
+ sigma_L_even_or_odd_1(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) od
 
-set sigma_L_even(ComplexNilpotent orbit)=sigma_L_even(orbit.root_datum.springer_table,orbit)
+set sigma_L_even_or_odd_3(RootDatum G,ComplexNilpotent O_v)=sigma_L_even_or_odd_2(G,G.character_table,O_v.root_datum.springer_table,O_v)
 
-set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=
-tabulate(["M","v","L","H_M","j","deg_j","char_j"]#
-for (M,H_M,v) in component_representatives_plus(orbit) do
- let ()=prints("doing M:", M) in
-  let j=sigma_L_even(st,orbit,M,H_M,v) in
-   [M.nice_format, v.compact_ratvec,centralizer(st.root_datum,v).nice_format,H_M.compact_ratvec,j.to_string,st.ct.degrees[j].to_string,st.ct.characters[j].to_string]
+set show_sigma_L_even_or_odd(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v)=
+tabulate(["M_v","y","L_v","H_M_v","j","deg_j","char_j"]#
+for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
+ let ()=if sigma_L_verbose then prints("doing M_v:", M_v)  fi in
+  let j=sigma_L_even_or_odd_1(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) in
+   [M_v.nice_format, y.compact_ratvec,centralizer(O_v.root_datum,y).nice_format,H_M_v.compact_ratvec,j.to_string,ct_G.degrees[j].to_string,ct_G.characters[j].to_string]
  od
 )
 
+{
 set show_sigma_L_even(SpringerTable st,[ComplexNilpotent] orbits)=
 tabulate(["orbit","M","v","L","j","dim_j","deg_j","name","tensor_sign name","char_j"]#
 ##for orbit in orbits do
@@ -242,122 +265,230 @@ tabulate(["orbit","M","v","L","j","dim_j","deg_j","name","tensor_sign name","cha
    od
  od
 )
-
+}
+{
 set show_sigma_L_even(SpringerTable st)=void:
 show_sigma_L_even(st,st.ct.root_datum.even_orbits)
-
+}
 
 {-------------------------------------------------------------------}
 
 
 {sigma_L for general orbit, comes down to sigma_L for an even orbit
  for the integrality subgroup
- O -> rd_int (integrality_datum: roots integral on O.H/2)
-   -> O_int even orbit for rd_int
-   -> sigma_L(O_int) by previous construction \in W(rd_int)
-   -> truncated induction_{rd_int}^rd sigma_L(O_int)
+ given G, O_v for the dual group
+ G_v=dual(G)
+ O_v:
+  -> rd_int_v: root datum of centralizer, subgroup of G_v
+  -> O_int_v (even orbit for rd_int_v)
+  -> rd_int=dual(rd_int_v)
+  -> rd_int.st.dual_map_i(O_inv_v)=O_int for rd_int
+  -> sigma_rd_int=rd_int.st.springer(O_int) = representation of W(rd_int)
+  -> W(rd_int) is a subgroup of W(rd) 
+         even though rd_int might not be a subgroup of G
+  -> truncated_induction_{rd_int}^G(sigma_rd_int) = representation of W(G)
 }
 
-{NB: be careful about the character/Springer tables of rd_int versus those for rd
-in the code: ct/st always means for rd, ct_int/st_int is for rd_int}
 
-set sigma_L(RootDatum rd,CharacterTable ct,SpringerTable st_int,ComplexNilpotent O)=
-let ()=prints(new_line,"-------------",new_line,"Orbit: ", O, " ", O.diagram) then
-()=prints("ct: ", ct.root_datum) then
-()=prints("st_int: ", st_int.root_datum) then
+
+{
+{NB: be careful about the character/Springer tables of rd_int versus those for rd
+in the code: ct/st always means for G, ct_int/st_int is for rd_int}
+set sigma_L_old(RootDatum G,CharacterTable ct_G,SpringerTable st_int,ComplexNilpotent O_v)=
+let ()=if sigma_L_verbose then prints(new_line,"-------------",new_line,"Orbit on dual side: ", O_v, " ", O_v.diagram, new_line, "G: ",G) fi then
 {O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
-O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
-()=prints("O_int: ", O_int, " ", O_int.diagram, " ", O_int.diagram_normalized) then
-()=prints("O_int roots: ", O_int.root_datum.simple_roots) then
-()=prints("rd: ", rd) then
-()=prints("rd roots: ", rd.roots) then
-sigma_int=sigma_L_even(st_int,O_int) then
+O_int_v=ComplexNilpotent:(centralizer_coweight(O_v.root_datum,O_v.H/2),(),O_v.H) then
+()=prints("O_int_v: ", O_int_v, " ", O_int_v.diagram, " ", O_int_v.diagram_normalized) then
+rd_int_v=O_int_v.root_datum then
+rd_int=dual(rd_int_v) then
+st_int_v=rd_int_v.springer_table then
+()=prints("rd_int_v: ", rd_int_v,new_line,"rd_int: ", rd_int) then
+sigma_int=sigma_L_even_2(rd_int,st_int,O_int_v) then
 ()=prints("sigma_int: ", sigma_int) then
-roots_int=for alpha in O_int.root_datum.simple_roots do find(rd.roots,alpha) od then
+{rd_int is not necessarily a subgroup of G, but its roots are a subset of those in G
+ the reflections in these roots define a subgroup of W(G)}
+roots_int=for alpha in rd_int.simple_roots do find(G.roots,alpha) od then
 ()=prints("roots_int: ", roots_int) then
 rv= ##for i in sigma_int do
- let (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in
+ let (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[i]) in
  prints("i: ", i, " sigma: ", sigma);sigma od in
-rv
-
-{need ct for G, st_int for subgroup}
-set sigma_L(ComplexNilpotent O)=
-if O.is_even then sigma_L_even(O)
+prints("rv(a): ", rv, new_line, ct_G.characters[rv[0]]);rv
+}
+{don't precompute st_int}
+{set sigma_L_old(RootDatum G,CharacterTable ct_G,ComplexNilpotent O_v)=
+if O_v.is_even then 
+let ()=prints("calling sigma_L_even_3: ") in  let rv=sigma_L_even_3(G,O_v) in prints("rv(b)=", rv, new_line, ct_G.characters[rv[0]]);rv
 else
-let ct=O.root_datum.character_table then
-rd_int=integrality_datum(O) then
-st_int=rd_int.springer_table in
-sigma_L(O.root_datum,ct,st_int,O)
+ let
+ rd_int=integrality_datum(O_v) then
+ st_int=rd_int.springer_table in
+let rv=sigma_L(G,ct_G,st_int,O_v)
+in prints("rv(c): ", rv,new_line,ct_G.characters[rv[0]]);rv
 fi
+{
+set sigma_L_old(RootDatum G,CharacterTable ct_G,ComplexNilpotent O_v)=
+let ()=prints("calling sigma_L_even_or_odd_3: ") in
+let rv=sigma_L_even_or_odd_3(G,O_v) in prints("rv(b)=", rv, new_line, ct_G.characters[rv[0]]);rv
 
-set show_sigma_L(RootDatum rd,CharacterTable ct,SpringerTable st_int,ComplexNilpotent O)=
+set show_sigma_L_old(RootDatum G,CharacterTable ct_G,SpringerTable st_int,ComplexNilpotent O_v)=
 {let O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
-let O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
-data_int={sigma_L_even(st_int,O_int) then}
+let ()=if sigma_L_verbose then prints("show_sigma_L with st_int")  fi in
+let O_int_v=ComplexNilpotent:(centralizer_coweight(O_v.root_datum,O_v.H/2),(),O_v.H) then
+rd_int_v=O_int_v.root_datum then
+rd_int=dual(rd_int_v) then
+st_int=rd_int.springer_table then
+data_int={sigma_L_even(st_int,O_v_int) then}
           { set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=}
           { tabulate(["L","v","M","H_M","j","deg_j","char_j"]#}
- for (M,H_M,v) in component_representatives_plus(O_int) do
-   let j=sigma_L_even(st_int,O_int,M,H_M,v) in (M,H_M,v,j) 
+ for (M_v,H_M_v,y) in component_representatives_plus(O_int_v) do
+   let ()=prints("calling sigma_L_even_1(y):", new_line,"rd_int: ", rd_int, new_line,
+   "st_int:", st_int.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) in
+   let j=sigma_L_even_1(rd_int,st_int,O_int_v,M_v,H_M_v,y) in (M_v,H_M_v,y,j)
  od
 then
-roots_int=for alpha in O_int.root_datum.simple_roots do find(rd.roots,alpha) od in
+()=prints("rd_int.simple_roots: ", rd_int.simple_roots) then
+()=prints("G.roots: ", G.roots) then
+roots_int=for alpha in rd_int.simple_roots do find(G.roots,alpha) od in
+let ()=if sigma_L_verbose then prints("roots_int: ", roots_int)  fi in
+let ()=if sigma_L_verbose then prints("OK")  fi in
 tabulate(
+["i","O_int","M","H_M","v","j","sigma","deg_j","char_j","char_sigma"]#
  for i:#data_int do
   let (M,H_M,v,j)=data_int[i] then
-  (,sigma)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[i]) in
+{  (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[i]) in}
+  (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[j]) in
+{let (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[i]) in}
   [i.to_string,
-   O_int.root_datum.nice_format,
+   O_int_v.root_datum.nice_format,
    M.nice_format,
    H_M.compact_ratvec,
    v.compact_ratvec,
    j.to_string,
    sigma.to_string,
-   ct.degrees[j].to_string,
-   ct.characters[j].to_string]
+   ct_G.degrees[j].to_string,
+   ct_G.characters[j].to_string,
+   ct_G.characters[sigma[0]].to_string]
+ od)
+}
+set show_sigma_L_new(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v)=
+{let O_int_v=ComplexNilpotent:(centralizer_coweight(O_v.root_datum,O_v.H/2),(),O_v.H) then}
+let 
+data={sigma_L_even(st_int,O_v_int) then}
+          { set show_sigma_L_even(SpringerTable st,ComplexNilpotent orbit)=}
+          { tabulate(["L","v","M","H_M","j","deg_j","char_j"]#}
+ for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
+   let ()=prints("calling sigma_L_even_or_od_1(y):", new_line,"G: ", G, new_line,
+   new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) in
+   let j=sigma_L_even_or_odd_1(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) in (M_v,H_M_v,y,j)
+ od
+in
+tabulate(
+["i","O","M","H_M","v","j","sigma","deg_j","char_j","char_sigma"]#
+ for i:#data do
+  let (M,H_M,v,j)=data[i] then
+  sigma= ct_G.characters[j] in
+{  (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[j]) in}
+{let (,sigma)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[i]) in}
+  [i.to_string,
+   O_v.root_datum.nice_format,
+   M.nice_format,
+   H_M.compact_ratvec,
+   v.compact_ratvec,
+   j.to_string,
+   sigma.to_string,
+   ct_G.degrees[j].to_string,
+   ct_G.characters[j].to_string,
+   ct_G.characters[sigma[0]].to_string]
  od)
 
-set show_sigma_L(RootDatum rd,CharacterTable ct,[ComplexNilpotent] orbits)=
+}
+
+{
+set show_sigma_L(RootDatum G, CharacterTable ct_G,[ComplexNilpotent] dual_orbits)=
+for O_v in dual_orbits do show_sigma_L(G,ct_G,O_v) od
+}
+{
+set show_sigma_L_old(RootDatum G,CharacterTable ct_G,[ComplexNilpotent] dual_orbits)=
+let ()=if sigma_L_verbose then prints("show_sigma_L without st_int")  fi in
 tabulate(
-["O","i","rd_int","M","H_M","v","L","sigma_int","sigma","dim","deg","sgn","deg_sgn","char"]#
-##for O in orbits do
- {let O_int=integral_descent(O)   {an orbit for a subgroup of G NOT TRUE} then}
- let O_int=ComplexNilpotent:(centralizer_coweight(O.root_datum,O.H/2),(),O.H) then
- rd_int=O_int.root_datum then
- st_int=O_int.root_datum.springer_table then
+["O","i","rd_int","M","H_M","v","L","sigma_int","sigma","dim","deg","char"]#
+##for O_v in dual_orbits do
+ let O_int_v=ComplexNilpotent:(centralizer_coweight(O_v.root_datum,O_v.H/2),(),O_v.H) then
+ rd_int_v=O_int_v.root_datum then
+ rd_int=dual(rd_int_v) then
+ st_int=rd_int.springer_table then
  data_int=
-  for (M,H_M,v) in component_representatives_plus(O_int) do
-    let sigma_int=sigma_L_even(st_int,O_int,M,H_M,v) in (M,H_M,v,sigma_int) 
+  for (M_v,H_M_v,y) in component_representatives_plus(O_int_v) do
+   let ()=prints("calling sigma_L_even_or_odd_1(z):", new_line,"rd_int: ", rd_int, new_line,
+   "st_int:", st_int.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) in
+    let j=sigma_L_even_or_odd_1(rd_int,st_int,O_int_v,M_v,H_M_v,y) in (M_v,H_M_v,y,j)
   od
  then
- roots_int=for alpha in rd_int.simple_roots do find(rd.roots,alpha) od in
+ roots_int=for alpha in rd_int.simple_roots do find(G.roots,alpha) od in
   for i:#data_int do
-   let (M,H_M,v,sigma_int)=data_int[i] then
-   (,sigma_array)=truncate_induce_character(rd,ct,roots_int,st_int.ct.characters[sigma_int]) then
-   sigma=assert(#sigma_array=1,"array wrong length");sigma_array[0] then
-   tensor_sgn_index=ct.tensor_sign_index(sigma) in
-   [O.diagram.to_string,
+   let (M_v,H_M_v,y,j)=data_int[i] then
+{   (,sigma_array)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[i]) then}
+   (,sigma_array)=truncate_induce_character(G,ct_G,roots_int,st_int.ct.characters[j]) then
+   sigma=assert(#sigma_array=1,"array wrong length");sigma_array[0] in
+   [O_v.diagram.to_string,
     i.to_string,
     rd_int.nice_format,
-    M.nice_format,
-    H_M.compact_ratvec,
-    v.compact_ratvec,
-    centralizer(rd_int,v).nice_format,
-    sigma_int.to_string,
-    sigma.to_string,
-    ct.dimension(sigma).to_string,
-    ct.degrees[sigma].to_string,
-    tensor_sgn_index.to_string,
-    ct.degrees[tensor_sgn_index].to_string,
-    ct.characters[sigma].to_string]
+    M_v.nice_format,
+    H_M_v.compact_ratvec,
+    y.compact_ratvec,
+    centralizer(rd_int,y).nice_format,
+    "j="+j.to_string,
+    "sigma="+sigma.to_string,
+    ct_G.dimension(sigma).to_string,
+{    ct_G.degrees[j].to_string,
+    ct_G.characters[j].to_string]}
+    ct_G.degrees[sigma].to_string,
+    ct_G.characters[sigma].to_string]
+  od od)
+}
+set show_sigma_L_new(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=
+tabulate(
+["O","i","rd_int","M","H_M","v","L","sigma","dim","deg","char"]#
+##for O_v in dual_orbits do
+  let ()=prints("doing orbit: ", O_v, " ", O_v.diagram, " ", O_v.diagram_normalized) in
+let data=
+  for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
+    let j=sigma_L_even_or_odd_1(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) in (M_v,H_M_v,y,j)
+  od
+  in	
+  for i:#data do
+   let (M_v,H_M_v,y,j)=data[i] then
+   sigma=ct_G.characters[j] in
+   [O_v.diagram.to_string,
+    i.to_string,
+    integrality_datum(O_v).nice_format,
+    M_v.nice_format,
+    H_M_v.compact_ratvec,
+    y.compact_ratvec,
+    centralizer(G,y).nice_format,
+    "sigma="+j.to_string,
+    ct_G.dimension(j).to_string,
+{    ct_G.degrees[j].to_string,
+    ct_G.characters[j].to_string]}
+    ct_G.degrees[j].to_string,
+    sigma.to_string]
   od od)
 
-set show_sigma_L(RootDatum rd,CharacterTable ct,ComplexNilpotent orbit)=show_sigma_L(rd,ct,[orbit])
 
-set show_sigma_L(CharacterTable ct)=void:
-show_sigma_L(ct.root_datum,ct,ct.root_datum.orbits)
+{set show_sigma_L_old(RootDatum rd,CharacterTable ct,ComplexNilpotent orbit)=show_sigma_L(rd,ct,[orbit])
+set show_sigma_L_old(RootDatum G,CharacterTable ct)=void:show_sigma_L(G,ct,G.dual_orbits)}
 
-set show_sigma_L(RootDatum rd)=void:
-show_sigma_L(rd.character_table)
+set show_sigma_L_new(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent dual_orbit)=
+show_sigma_L_new(G,ct_G,st_G_v,[dual_orbit])
+set show_sigma_L_new(RootDatum G,CharacterTable ct)=void:show_sigma_L_new(G,ct,G.dual.springer_table,G.dual_orbits)
+set show_sigma_L_new(RootDatum G)=void:show_sigma_L_new(G,G.character_table,G.dual.springer_table,G.dual_orbits)
+
+{set show_sigma_L_new(RootDatum G)=void:
+let ct_G=G.character_table then
+st_G_v=G.dual.springer_table then
+orbits=G.dual_orbits in
+show_sigma_L_new(G,ct_G,st_G_v,orbits)
+}
 
 {{need ct for G, st_int for subgroup}
 set show_sigma_L(ComplexNilpotent O)=
@@ -367,4 +498,5 @@ st_int=rd_int.springer_table in
 show_sigma_L(O.root_datum,ct,st_int,O)
 }
 
+set init(RootDatum G)=(G.character_table,G.dual.springer_table,G.dual.orbits)
 
