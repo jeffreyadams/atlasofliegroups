@@ -194,6 +194,28 @@ Sp(8) -> SO(9)
 SO(8) <- SO(8)
 }
 
+{G is a RootDatum, G^v its dual, given a subgroup H^v of G^v
+ return the corresponding group H: the roots of H are a subset
+ of the roots of G; the coroots of H are the roots of H^v,
+ which is a subgroup of G_v. H is not necessrily a subgroup
+ of G. Actually this is not really an "endoscopic group",
+ which is dual to the centralizer of a semisimple element
+}
+
+set endoscopic_group(RootDatum G,RootDatum H_v)=RootDatum:
+let A= for alpha in H_v.simple_roots do root(G,root_index(G.dual,alpha)) od then
+    B= for alpha_v in H_v.simple_coroots do coroot(G,coroot_index(G.dual,alpha_v)) od
+    in root_datum(A,B)
+
+{actual endoscopic group: H^v =centralizer of exp(2\pi iv) nu G^v, H=dual(H^v)}a
+set endoscopic_group(RootDatum G,ratvec v)=RootDatum: 
+ endoscopic_group(G,centralizer_coweight(G.dual,v))
+
+
+
+
+
+
 {------------------}
 
 {these should be moved to W_characters.at}
@@ -617,8 +639,6 @@ maximal_pseudo_levis=maximal_pseudo_Levis(rd) then
 (,h)=subgroups_poset(rd,subs) in
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,maximal_pseudo_levis)
-
-
 
 {
 {complex nilpotent obtained by saturating the principal orbit of subgroup}
