@@ -16,7 +16,7 @@ provide both ct_L and L, the latter so (unlike ct_L.root_datum) its
 roots are a subset of the of G
 }
 
-set ti_verbose=true
+set ti_verbose=false
 
 {truncate character: keep only the components of minimal degree;
 returns (degree, list of indices of characters of this degree)
@@ -111,7 +111,7 @@ let L=Levi_datum(G,simple_roots_of_L) then
 st_G=G.springer_table then
 st_L=L.springer_table then
 codim=G.dimension-L.dimension in
-let ()=prints("codimension: ", codim) in
+let ()=if ti_verbose then prints("codimension: ", codim)  fi in
 tabulate(
 for O_L in L.orbits do
 let O=induce_orbit(L,G,st_L,st_G,O_L) in

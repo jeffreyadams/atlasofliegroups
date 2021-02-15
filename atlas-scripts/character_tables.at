@@ -2,7 +2,7 @@
 <nilpotent_orbits.at
 <isomorphism.at
 
-set ct_verbose=true
+set ct_verbose=false
 
 {define sum and product of [int] corresponding to direct
 sum and tensor product of characters}
@@ -153,18 +153,18 @@ set class_power_function(CharacterTable ct)=(int,int->int):
 
 set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
-prints("Initializing CharacterTable for ", lt);
+if ct_verbose then prints("Initializing CharacterTable for ", lt) fi;
 let rd=simply_connected(lt) then
-()=prints("Step 1/5: computing order(W)") then
+()=if ct_verbose then prints("Step 1/5: computing order(W)")  fi then
 W_order=order_W(rd) then
 class_size(WeylElt w)=W_order\w.centralizer_order then
-()=prints("Step 2/5: computing class representatives") then
+()=if ct_verbose then prints("Step 2/5: computing class representatives") fi then
 classes=rd.W_class_table.class_representatives() then
-()=prints("Step 3/5: computing sizes of centralizers") then
+()=if ct_verbose then prints("Step 3/5: computing sizes of centralizers") fi then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
-()=prints("Step 4/5: computing sizes of conjugacy classes") then
+()=if ct_verbose then prints("Step 4/5: computing sizes of conjugacy classes") fi then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
-()=prints("Step 5/5: computing orders of elements of conjugacy classes") then
+()=if ct_verbose then prints("Step 5/5: computing orders of elements of conjugacy classes") fi then
 class_orders=for w in classes do w.order od {then} 
 {()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:
@@ -191,7 +191,7 @@ then ct=(
   ,[int]:[]     {degrees}
   ,null(#classes,#classes)
   )
-in prints("Done intializing character table");ct
+in if ct_verbose then prints("Done intializing character table") fi;ct
 
 set initialize_character_table(RootDatum rd)=CharacterTable:initialize_character_table(Lie_type(rd))
 
@@ -445,7 +445,7 @@ error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
 
 {update degrees}
 set update_degrees(CharacterTable ct)=CharacterTable:
-prints("Updating degrees in character table");
+if ct_verbose then prints("Updating degrees in character table") fi;
 let ct=
  if #ct.sym_powers_reflection!=0 then ct else
  ct.update_sym_powers_reflection
@@ -457,7 +457,7 @@ for i:ct.n_classes do
      (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))
 od
 in ct.degrees:=degrees;
-prints("Done updating degrees");
+if ct_verbose then prints("Done updating degrees") fi;
 ct
 
 {mults is a vector of multiplicities of the irreducible characters,

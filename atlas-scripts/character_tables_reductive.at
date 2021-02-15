@@ -31,7 +31,7 @@ mat:[[1]])
 
 {including torus}
 set character_table_simple(RootDatum rd)=
-prints("Computing character table for simple root datum: ", rd.nice_format);
+if ct_verbose then prints("Computing character table for simple root datum: ", rd.nice_format) fi;
 let ct=
 let (letter,n)=simple_type(rd) in
 if letter="A" then
@@ -61,7 +61,7 @@ elif letter="E" and n=8 then
 else error("case not covered")
 fi
 in
-prints("Done computing character table");ct
+if ct_verbose then prints("Done computing character table") fi;ct
 
 
 
