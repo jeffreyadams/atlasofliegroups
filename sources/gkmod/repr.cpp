@@ -10,6 +10,8 @@
 #include "repr.h"
 
 #include <memory> // for |std::unique_ptr|
+#include <cstdlib> // for |std::abs|
+#include <cassert>
 #include <map> // used in computing |reducibility_points|
 #include <iostream> // for progress reports and easier debugging
 

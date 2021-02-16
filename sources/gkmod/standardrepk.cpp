@@ -12,6 +12,7 @@
 
 #include "standardrepk.h"
 
+#include <cstdlib> // for |std::abs|
 #include <cassert>
 #include <iostream>
 #include <sstream>

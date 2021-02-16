@@ -39,7 +39,7 @@ namespace atlas { namespace interpreter {
 @< Class declarations @>@;
 @< Declarations of static variables @>@;
 
-}@; }@;
+}}
 #endif
 
 @ Here we include only our own header file \.{lexer.h}; all other include
@@ -53,8 +53,8 @@ namespace atlas
    {
 @< Definitions of class members @>@;
 @< Definitions of static variables @>@;
-   }@;
-}@;
+   }
+}
 
 
 @ Since there is one central hash table, and other parts of the program must
@@ -429,7 +429,7 @@ a type definition, including injector or projector names, will be scanned as
 @h "global.h" // need to inspect |global_id_table|
 
 @< Scan an identifier or a keyword @>=
-{ const char* p=input.point@[()@]-1; // start of token
+{ const char* p=input.point()-1; // start of token
   do
     c=input.shift();
   while(std::isalnum(c) || c=='_');
@@ -483,7 +483,7 @@ to represent them. As explained below for strings denotations, we store a raw
 pointer to a |std::string|, again to minimise complications for the parser.
 
 @< Scan a number @>=
-{ const char* p=input.point@[()@]-1; // start of token
+{ const char* p=input.point()-1; // start of token
   do
     c=input.shift();
   while(std::isdigit(c));

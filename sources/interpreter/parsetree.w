@@ -46,8 +46,8 @@ namespace atlas
   namespace interpreter
   {
 @< Type declarations for the parser @>@;
-  }@;
-}@;
+  }
+}
 #endif
 
 
@@ -81,8 +81,8 @@ namespace atlas
 @< Declarations of functions for the parser @>@;
 
 @< Declarations of functions not for the parser @>@;
-  }@;
-}@;
+  }
+}
 
 #endif
 
@@ -100,8 +100,8 @@ namespace atlas
   {
 @< Definitions of functions for the parser @>@;
 @< Definitions of functions not for the parser @>@;
-  }@;
-}@;
+  }
+}
 
 @*1 Outline of the type \ {\bf expr}.
 %
@@ -235,8 +235,8 @@ do no harm even if they were implicitly assumed.
 
 @< Methods of |expr| @>=
 expr() : kind(no_expr), loc() @+{}
-@/expr(const expr& x) = @[delete@];
-expr& operator=(const expr& x) = @[delete@];
+@/expr(const expr& x) = delete;
+expr& operator=(const expr& x) = delete;
 ~expr();
 void clear();
 // revert to |no_expr| state, defined below using a large |switch| statement
@@ -311,8 +311,7 @@ void expr::set_from (expr& other)
   loc = other.loc;
 }
 @)
-expr::expr (expr&& other) : kind(no_expr) @+
-{@; set_from(other); }
+expr::expr (expr&& other) : kind(no_expr) @+ {@; set_from(other); }
 
 void expr::operator= (expr&& other)
 {@;
@@ -440,7 +439,7 @@ the value $0$, so we provide that string rather than |"0"| here.
 expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc)
 { std::unique_ptr<std::string>p(val_p); // this ensures clean-up
   if (val_p==nullptr)
-    p.reset(@[new std::string@]); // empty string will convert to $0$
+    p.reset(new @[std::string@]); // empty string will convert to $0$
   return new expr(std::move(*p),loc,expr::int_tag());
 }
 
@@ -559,9 +558,9 @@ expr_p make_applied_identifier (id_type id, const YYLTYPE& loc)
 expr_p make_dollar (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::dollar_tag()); }
 expr_p make_break (unsigned n,const YYLTYPE& loc)
-{@; return new expr(loc,@[expr::break_tag{n}@]); }
+{@; return new expr(loc,expr::break_tag{n}); }
 expr_p make_return (expr_p exp,const YYLTYPE& loc)
-{@; return new expr(exp,loc,@[expr::return_tag{}@]); }
+{@; return new expr(exp,loc,expr::return_tag{}); }
 expr_p make_die (const YYLTYPE& loc)
 @+{@; return new expr(loc,expr::die_tag()); }
 
@@ -904,7 +903,7 @@ since binding a freshly constructed |expr| to the modifiable lvalue that
 expr_p make_application_node(expr_p f, raw_expr_list r_args,
  const YYLTYPE& loc, const YYLTYPE& left, const YYLTYPE& right)
 { expr_ptr ff(f); expr_list args(r_args);
-  app a(new application_node @[{ std::move(*ff), expr() }@]);
+  app a(new application_node { std::move(*ff), expr() });
   if (args.singleton())
     a->arg.set_from(args.front());
   else
@@ -982,7 +981,7 @@ expr_p make_binary_call(id_type name, expr_p x, expr_p y,
   args.push_front(std::move(*xx)); // build up lest back-to-front
   expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
   app a(new application_node @|
-    @[{ expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) }@]);
+    { expr(name,op_loc,expr::identifier_tag()), std::move(arg_pack) });
   return new expr(std::move(a),loc); // move construct application expression
 }
 
@@ -1172,8 +1171,8 @@ struct formula_node
 @/{ expr left_subtree; @+ expr op_exp; @+ int prio;
 @/  formula_node(expr&& l,expr&& o, int prio)
     : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
-@/  formula_node@[(const formula_node& x) = delete@];
-@/  formula_node@[(formula_node&& x) = delete@];
+@/  formula_node (const formula_node& x) = delete;
+@/  formula_node (formula_node&& x) = delete;
 };
 @)
 typedef containers::sl_node<formula_node>* raw_form_stack;
@@ -1182,8 +1181,8 @@ struct form_stack : public containers::stack<formula_node>
   using sub_base = containers::mirrored_simple_list<formula_node>;
   using ssub_base = containers::simple_list<formula_node>; // sub-sub base
 @)
-  form_stack() : @[base()@] @+{}
-  form_stack(raw_form_stack s) : @[base{sub_base{ssub_base{s}}}@] @+{}
+  form_stack() : base() @+{}
+  form_stack(raw_form_stack s) @| : base{sub_base{ssub_base{s}}} @+{}
     // resuscitate stack from raw pointer
   raw_form_stack release() @+{@; return c.release(); }
     // inanimate the stack to a raw pointer
@@ -1339,10 +1338,10 @@ struct id_pat
   id_pat (id_type n, unsigned char k, patlist&& l)
   : name(n), kind(k), sublist(std::move(l)) @+{}
 @)
-  id_pat (const id_pat& x) = @[ delete @];
-@/id_pat& operator=(const id_pat& x) = @[ delete @];
-@/id_pat (id_pat&& x) = @[ default @];
-@/id_pat& operator=(id_pat&& x) = @[ default @];
+  id_pat (const id_pat& x) =  delete;
+@/id_pat& operator=(const id_pat& x) = delete;
+@/id_pat (id_pat&& x) = default;
+@/id_pat& operator=(id_pat&& x) = default;
   raw_id_pat release()
   @+{@; return { name, kind, sublist.release() }; }
 };
@@ -1630,8 +1629,8 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
-typedef struct lambda_node* lambda;
-typedef struct rec_lambda_node* rec_lambda;
+typedef struct lambda_node* lambda_p;
+typedef struct rec_lambda_node* rec_lambda_p;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
 defined in \.{axis-types.w}), an expression (the body of the function), and
@@ -1666,17 +1665,17 @@ lambda_expr,rec_lambda_expr,@[@]
 
 @ We introduce the variant of |expr| as usual.
 @< Variants of ... @>=
-lambda lambda_variant;
-rec_lambda rec_lambda_variant;
+lambda_p lambda_variant;
+rec_lambda_p rec_lambda_variant;
 
 @ There are constructors for building lambda expressions, and recursive ones.
 @< Methods of |expr| @>=
-expr(lambda fun, const YYLTYPE& loc)
+expr(lambda_p fun, const YYLTYPE& loc)
  : kind(lambda_expr)
  , lambda_variant(fun)
  , loc(loc)
 @+{}
-expr(rec_lambda fun, const YYLTYPE& loc)
+expr(rec_lambda_p fun, const YYLTYPE& loc)
  : kind(rec_lambda_expr)
  , rec_lambda_variant(fun)
  , loc(loc)
@@ -1723,7 +1722,7 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
   @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
   // make tuple type
   }
-  return new expr(lambda(new@| lambda_node
+  return new expr(lambda_p(new@| lambda_node
       (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
 @)
@@ -1746,13 +1745,13 @@ expr_p make_rec_lambda_node(id_type self,
   @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
   // make tuple type
   }
-  return new expr(rec_lambda(new@| rec_lambda_node
+  return new expr(rec_lambda_p(new@| rec_lambda_node
       (self,std::move(pattern),std::move(parameter_type),@|
        std::move(*body_p),std::move(*body_t))
       ),loc);
 }
 
-@ Since |lambda| and |rec_lambda| are raw pointers, we can just assign here.
+@ Since |lambda_p| and |rec_lambda_p| are raw pointers, we can just assign here.
 @< Cases for copying... @>=
 case lambda_expr: lambda_variant=other.lambda_variant;
 break;
