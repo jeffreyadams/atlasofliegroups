@@ -160,7 +160,7 @@ set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for mulit-assign} in while !=k do set (k,r):=k\%n; r od
+  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
