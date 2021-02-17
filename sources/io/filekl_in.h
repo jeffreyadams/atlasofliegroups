@@ -2,12 +2,12 @@
 #ifndef FILEKL_IN_H
 #define FILEKL_IN_H
 
+#include "../Atlas.h" // must be very first \.{atlas} include
 
 
 #include <ios>
 
-#include "bitset.h" // to make |RankFlags| a complete type; used when inlining
-#include "../Atlas.h"
+#include "bitset.h"
 
 namespace atlas {
   namespace filekl {
