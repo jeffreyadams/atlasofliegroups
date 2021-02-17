@@ -1,4 +1,5 @@
 <W_reps_type_BC.at
+<springer_table_D.at {for B_collapse}
 <nilpotent_centralizer.at
 
 set partition_sum(Partition P,Partition Q)=Partition:

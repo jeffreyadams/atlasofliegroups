@@ -1,6 +1,7 @@
 {some isomorphisms of Weyl groups not coming from root systems
  for example W(rd)\simeq W(dual(rd))
 }
+<character_tables.at
 
 {v=e_j for some j}
 set index_standard_basis(vec v)=int:

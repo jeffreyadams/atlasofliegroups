@@ -1,5 +1,6 @@
 <springer_tables_reductive.at
 <cells.at
+<K_highest_weights.at {for all_parameters_gamma}
 
 {character of coherent representation on parameters, KGB, and involutions}
 

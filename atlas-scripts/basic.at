@@ -296,6 +296,8 @@ set compact_ratvec(ratvec v)=string:
 let (a,b)=%v in ([int]:a).to_string+
  if b=1 then "" else "/"+b.to_string fi
 
+set star(bool value)=string:if value then "*" else "" fi
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
@@ -1252,6 +1254,7 @@ set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
 
 set real_form (KGBElt x) = let (rf,) = %x in rf
 set # (KGBElt x) = let (,n) = %x in n
+set number = #@KGBElt
 set root_datum (KGBElt x) = RootDatum: real_form(x)
 set inner_class (KGBElt x) = InnerClass: real_form(x)
 

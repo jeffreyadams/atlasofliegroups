@@ -1,3 +1,5 @@
+{preload tables for E6}
+<lietypes.at
 set rd=simply_connected(E6)
 
 set class_words_E6=[[],

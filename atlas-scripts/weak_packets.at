@@ -152,26 +152,6 @@ set weak_packet_int (SpringerTable st_int,ComplexNilpotent O_check,RealForm G) =
    in weak_packet_int(st_int,O_check,all,gamma_target)
 )
 
-{ we need to move this to st_int.root_datum.dual
-  this uses a permutation, which we return since it is needed later
-}
-set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
-      (ComplexNilpotent,mat):
-   let rd = {the original root datum on the group side} O_check.root_datum.dual
-   , O_check_rd_int = {orbit for rd_int_dual} O_check.integral_descent
-   then rd_int = {integrality datum on group side}
-                 integrality_datum(rd,O_check.H/2)
-   then {P is the permutation relating rd_int.derived and st_int.root_datum}
-        (,P)=nice_order(rd_int.derived)
-   then permutation=P.permutation_matrix
-in {by definition permutation should relate the Cartan matrices}
-   assert(permutation*st_int.root_datum.Cartan_matrix =
-          rd_int.Cartan_matrix*permutation
-         ,"permutation does not relate the Cartan matrices");
-{ Note: st_int.root_datum.dual is *adjoint*,
-  so O_check_rd_int.diagram = O_check_rd_int.H }
-  ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
-
 
 {This is the primary weak_packet function
 weak Arthur packet(O_check,G)
