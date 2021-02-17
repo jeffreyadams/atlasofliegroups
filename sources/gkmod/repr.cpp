@@ -1407,7 +1407,7 @@ blocks::common_block& Rep_table::add_block_below
   assert // we are called to add a block for nothing like what is known before
     (find_reduced_hash(init)==reduced_hash.empty);
 
-  std::vector<StandardReprMod> pool;
+  StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
   gen.block_below(init); // generate Bruhat interval below |srm| into |pool|

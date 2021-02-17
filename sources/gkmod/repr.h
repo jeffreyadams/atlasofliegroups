@@ -442,16 +442,16 @@ class Rep_table : public Rep_context
   std::vector<deformation_unit> pool; // also stores actual deformation formulae
   HashTable<deformation_unit,unsigned long> alcove_hash;
 
-  std::vector<Reduced_param> reduced_pool;
+  Reduced_param::Pooltype reduced_pool;
   HashTable<Reduced_param,unsigned long> reduced_hash;
 
-  std::vector<K_type> K_type_pool;
+  K_type::Pooltype K_type_pool;
   HashTable<K_type,K_type_nr> K_type_hash;
 
-  std::vector<kl::KLPol> KL_poly_pool;
+  PosPolEntry::Pooltype KL_poly_pool;
   KL_hash_Table KL_poly_hash;
 
-  std::vector<ext_kl::Pol> poly_pool;
+  IntPolEntry::Pooltype poly_pool;
   ext_KL_hash_Table poly_hash;
 
   sl_list<blocks::common_block> block_list;
