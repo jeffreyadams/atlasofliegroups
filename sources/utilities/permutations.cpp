@@ -53,11 +53,11 @@ template<unsigned int n>
 }
 
 // Replace each index |i| in |v| by |pi[i]|, where |pi| is our permutation
-template<typename U>
-std::vector<U> Permutation::renumbering(const std::vector<U>& v) const
+template<typename U,typename A>
+std::vector<U,A> Permutation::renumbering(const std::vector<U,A>& v) const
 {
   const Permutation& pi=*this;
-  std::vector<U> result; result.reserve(v.size());
+  std::vector<U,A> result; result.reserve(v.size());
   for (auto x : v)
     result.push_back(pi[x]);
   return result;
@@ -96,8 +96,8 @@ bitmap::BitMap Permutation::renumbering(const bitmap::BitMap& b) const
 }
 
 // Replace each index |i| in |v| by |(*this)[i]|
-template<typename U>
-void Permutation::renumber(std::vector<U>& v) const
+template<typename U,typename A>
+void Permutation::renumber(std::vector<U,A>& v) const
 {
   const Permutation& pi=*this;
   for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
@@ -106,8 +106,8 @@ void Permutation::renumber(std::vector<U>& v) const
 
 /* Here we are again applying the permutation |p| to each of the entries
    of |v|, but the exceptional value of |except| is passed unchanged */
-template<typename U>
-void Permutation::renumber(std::vector<U>& v, U except) const
+template<typename U,typename A>
+void Permutation::renumber(std::vector<U,A>& v, U except) const
 {
   const Permutation& pi=*this;
   for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
@@ -231,8 +231,8 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
   setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
   Complexity is $O(n+bound)$ with $n=#a$; good (only) if $bound=O(n log(n))$.
 */
-template <typename U>// unsigned type
-Permutation standardization(const std::vector<U>& a, size_t bound,
+template <typename U,typename A> // here |U| is an unsigned integral type
+Permutation standardization(const std::vector<U,A>& a, size_t bound,
 			    std::vector<unsigned int>* stops)
 {
   std::vector<unsigned int> count(bound,0);

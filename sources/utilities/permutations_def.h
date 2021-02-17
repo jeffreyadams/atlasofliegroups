@@ -29,13 +29,13 @@ namespace permutations {
 /* Permute the entries of |v| by "pulling back" through our permutation |pi|,
    so that |result[i]==v[pi[i]]| for all |i| afterwards.
 */
-template<typename T>
-std::vector<T> Permutation::pull_back(const std::vector<T>& v) const
+template<typename T,typename A>
+std::vector<T,A> Permutation::pull_back(const std::vector<T,A>& v) const
 {
   assert(v.size()==size());
 
   const Permutation& pi=*this;
-  std::vector<T> result; result.reserve(v.size());
+  std::vector<T,A> result; result.reserve(v.size());
 
   for (unsigned long i=0; i<v.size(); ++i)
     result.push_back(v[pi[i]]);
@@ -59,7 +59,8 @@ std::vector<T> Permutation::pull_back(const std::vector<T>& v) const
   auxiliary bitmap. Pushing forwards through a cycle does however require 3
   assignments (a swap) per step, while backwards a single assignment would do
 */
-template<typename T> void Permutation::permute(std::vector<T>& v) const
+template<typename T,typename A>
+  void Permutation::permute(std::vector<T,A>& v) const
 {
   assert(v.size()>=size());
   const Permutation& pi=*this;
