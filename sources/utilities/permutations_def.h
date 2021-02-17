@@ -34,11 +34,10 @@ std::vector<T,A> Permutation::pull_back(const std::vector<T,A>& v) const
 {
   assert(v.size()==size());
 
-  const Permutation& pi=*this;
-  std::vector<T,A> result; result.reserve(v.size());
+  std::vector<T,A> result; result.reserve(size());
 
-  for (unsigned long i=0; i<v.size(); ++i)
-    result.push_back(v[pi[i]]);
+  for (auto x : *this)
+    result.push_back(v[x]);
 
   return result;
 }
@@ -63,7 +62,7 @@ template<typename T,typename A>
   void Permutation::permute(std::vector<T,A>& v) const
 {
   assert(v.size()>=size());
-  const Permutation& pi=*this;
+  const Base& pi=*this;
   bitmap::BitMap seen(size()); // initialized empty
 
   for (size_t i = 0; i < size(); ++i)
