@@ -67,7 +67,8 @@ template<typename C>
 */
 template<typename C> class Polynomial
 { // to some extent we do as if the type is derived from |std::vector<C>|
-  std::vector<C> d_data; // as this unique data member
+  using data_type = std::vector<C>;
+  data_type d_data; // as this unique data member
 
  public:
 
@@ -99,9 +100,9 @@ template <typename U>
   bool operator< (const Polynomial& q) const { return d_data < q.d_data; }
 
   // iterator methods |begin| and |end| are as if we derived from |d_data|
-  typename std::vector<C>::const_iterator begin() const
+  typename data_type::const_iterator begin() const
   { return d_data.begin();}
-  typename std::vector<C>::const_iterator end() const { return d_data.end();}
+  typename data_type::const_iterator end() const { return d_data.end();}
 
   Degree degree() const { return d_data.size()-1; }
   Degree size() const { return d_data.size(); }
@@ -119,9 +120,9 @@ template <typename U>
 
 // manipulators
   C& operator[] (Degree j); // non-const version of above
-  typename std::vector<C>::iterator begin()  { return d_data.begin();}
-  typename std::vector<C>::iterator end()    { return d_data.end();}
-  std::vector<C>&& data() && { return std::move(d_data); } // pilfer contents
+  typename data_type::iterator begin()  { return d_data.begin();}
+  typename data_type::iterator end()    { return d_data.end();}
+  data_type&& data() && { return std::move(d_data); } // pilfer contents
 
   Polynomial& operator+= (const Polynomial& q);
 
@@ -247,6 +248,8 @@ public:
   // constructors
   SafePolEntry() : SafePol() {} // default constructor builds zero polynomial
   SafePolEntry(const SafePol& p) : SafePol(p) {} // lift polynomial to this class
+
+  SafePolEntry(SafePolEntry&&) = default;
 
   // members required for an Entry parameter to the HashTable template
   using Pooltype = std::vector<SafePol>;  // associated storage type

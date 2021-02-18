@@ -101,7 +101,7 @@ class StandardRepr
 
 // special members required by HashTable
 
-  typedef std::vector<StandardRepr> Pooltype;
+  using Pooltype = std::vector<StandardRepr>;
   bool operator!=(const StandardRepr& another) const
   { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
@@ -157,7 +157,9 @@ class Reduced_param
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
 
-  typedef std::vector<Reduced_param> Pooltype;
+  Reduced_param(Reduced_param&&) = default;
+
+  using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
   { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
@@ -332,6 +334,8 @@ public:
   K_type(const Rep_context& rc, const StandardRepr& sr)
     : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
 
+  K_type(K_type&&) = default;
+
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
 
@@ -413,7 +417,7 @@ public:
   { return twisted = std::move(formula); }
 
 // special members required by HashTable
-  typedef std::vector<deformation_unit> Pooltype;
+  using Pooltype = std::vector<deformation_unit>;
   bool operator!=(const deformation_unit& another) const; // distinct alcoves?
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
@@ -439,7 +443,7 @@ public:
 */
 class Rep_table : public Rep_context
 {
-  std::vector<deformation_unit> pool; // also stores actual deformation formulae
+  deformation_unit::Pooltype pool; // also stores actual deformation formulae
   HashTable<deformation_unit,unsigned long> alcove_hash;
 
   Reduced_param::Pooltype reduced_pool;
