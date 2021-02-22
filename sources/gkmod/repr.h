@@ -427,19 +427,22 @@ public:
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored are: the |blocks::common_block| values encountered for this
-  real form, together with their KL data if computed, a table of (twisted) full
-  deformation formulae, pools of |kl::KLPol| (positive coeffient) and
-  |ext_kl::Pol| (integer coeffient) polynomials that blocks may choose to share
-  (they can alternatively choose to maintain their local polynomials themselves).
-
-  This class provides methods for their computation, and handles the data
-  storage and retrieval.
-
-  The deformation information is associated to parameters, but is unchanged
-  under certain changes of these parameters, so to limit memory usage somewhat
-  any parameter is moved to its first reducibility point and expressed in
-  nonzezro final ones before looking up or computing its deformation.
+  The data stored are:
+  * the |blocks::common_block| values encountered for this real form, together
+    with their KL data if computed; these are accessed via |block_list| and
+   |place|
+  * a table of (twisted) full deformation formulae, associated to alcoves;
+    these are stored in |pool| and accessed through |alcove_hash|
+  * a table |reduced_hash| of |Reduced_param| values encountered; this table
+    guards the creation of blocks, as parameters sharing a |Reduced_param| value
+    can share their block: for finding a block, lookup in |reduced_hash| is
+    performed, and if found the index is then used via |place| to find the block
+  * a table |K_type_hash| of |K_type| values having been found to occur in
+    deformation formulas, which allows compact representation of the latter
+  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coeffient)
+    respectively |ext_kl::Pol| (integer coeffient) polynomials, which can be
+    shared among blocks to reduce the size of their tables of such polynomials
+    (they may also choose to maintain their local polynomials themselves).
 */
 class Rep_table : public Rep_context
 {

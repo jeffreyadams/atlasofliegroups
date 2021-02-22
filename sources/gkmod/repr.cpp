@@ -1617,7 +1617,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   return block;
 } // |Rep_table::lookup|
 
-// in the following type the second component is a mulitplicity so we are in fact
+// in the following type the second component is a multiplicity so we are in fact
 // dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
 
 typedef std::pair<BlockElt,int>  term;
