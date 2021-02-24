@@ -57,13 +57,19 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   static SubSystem integral // pseudo contructor for integral system
   (const RootDatum& parent, const RatWeight& gamma);
 
-  SubSystem(const SubSystem& s) // copy contructor, not actually used
+  SubSystem(const SubSystem& s) // copy contructor, used in |common_block|
   : RootSystem(s) // copy base object
   , rd(s.rd) // share this one
   , pos_map(s.pos_map), inv_map(s.inv_map), sub_root(s.sub_root) // copy those
-  {
-    //  assert(false); // should never be actually called, but exist nonetheless
-  }
+  {}
+
+  SubSystem(SubSystem&& s) // move constructor; cannot use |default|
+    : RootSystem(std::move(s)) // move base object
+    , rd(s.rd) // share this one
+    , pos_map(std::move(s.pos_map))
+    , inv_map(std::move(s.inv_map))
+    , sub_root(std::move(s.sub_root)) // move other data
+  {}
 
   const RootDatum& parent_datum() const { return rd; }
 
@@ -101,7 +107,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 // The following class is for cases where a Weyl group does need to exist
 class SubSystemWithGroup : public SubSystem
 {
-  const WeylGroup sub_W; // Weyl group no reference: built by contructor
+  WeylGroup sub_W; // Weyl is no group no reference, but built by contructor
  public:
   SubSystemWithGroup(const RootDatum& parent,
 		     const sl_list<RootNbr>& sub_sys // simple roots in subsys
@@ -110,12 +116,8 @@ class SubSystemWithGroup : public SubSystem
   static SubSystemWithGroup integral // pseudo contructor for integral system
   (const RootDatum& parent, const RatWeight& gamma);
 
-  SubSystemWithGroup(const SubSystemWithGroup& s) // copy ctor (for pseudo ctor)
-  : SubSystem(s) // copy base object
-  , sub_W(s.cartanMatrix()) // reconstruct (Weyl group cannot be copied)
-  {
-    // assert(false); // should never be actually called, but exist nonetheless
-  }
+  // move ctor (for pseudo ctor)
+  SubSystemWithGroup(SubSystemWithGroup&& s) = default;
 
   const WeylGroup& Weyl_group() const { return sub_W; }
 }; // |class SubSystemWithGroup|
