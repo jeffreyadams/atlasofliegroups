@@ -34,6 +34,8 @@ struct constants
   static const unsigned char ucharMax = ~0; // |0xFF|, all bits in byte set
   static const unsigned longBits = // typically 64
     std::numeric_limits<unsigned long>::digits;
+  static const unsigned intBits = // typically 32
+    std::numeric_limits<unsigned>::digits;
   static const unsigned long hiBit = // typically |0x80000000ull|
     1ul << (longBits - 1);
   static const unsigned long firstCharMask = // typically |0xFFull|

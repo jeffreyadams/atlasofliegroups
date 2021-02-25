@@ -1578,7 +1578,8 @@ std::ostream& KhatContext::print(std::ostream& strm,
   for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
-    long int ac = std::abs(it->second);
+    //   long int ac = std::abs(it->second);
+    int ac = std::abs(it->second);
     if (ac!=1)
       strm << ac << '*';
     if (brief)

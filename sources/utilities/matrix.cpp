@@ -597,32 +597,33 @@ namespace matrix {
   */
 
  // type abreviations used in these instantiations
-using Num = long long; // maybe |arithmetic::Numer_t Num|
+  //using Num = long long; // maybe |arithmetic::Numer_t Num|
+  using Num = int;
 typedef polynomials::Polynomial<int> Pol;
 typedef arithmetic::big_int bigint;
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
-template class Vector<Num>;           // numerators of rational vectors
+  // template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
-template class Matrix_base<Num>;
+  // template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
-template class Matrix<Num>;
+  // template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
-template class PID_Matrix<Num>; // for precision system solving (alcoves)
+  // template class PID_Matrix<Num>; // for precision system solving (alcoves)
 
 // template member instances
 
 template Vector<int>& operator/=(Vector<int>&,int);
 template Vector<int>& divide (Vector<int>&,int);
 template Vector<int>& operator%=(Vector<int>&,int);
-template Vector<Num>& operator/=(Vector<Num>&,Num);
+  // template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
 

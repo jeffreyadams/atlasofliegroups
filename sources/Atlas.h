@@ -122,8 +122,10 @@ namespace atlas {
   using containers::queue;
 
   namespace arithmetic {
-    using Numer_t = long long int;
-    using Denom_t = unsigned long long int;
+    //    using Numer_t = long long int;
+    using Numer_t = int;
+    //    using Denom_t = unsigned long long int;
+    using Denom_t = unsigned int;
     template<typename I> class Rational;
     using RatNum = Rational<Numer_t>;
     using RatNumList = std::vector<RatNum>;
@@ -174,11 +176,14 @@ namespace atlas {
   using hashtable::HashTable;
 
   namespace free_abelian {
-    template<typename T, typename C=long int, typename Compare=std::less<T> >
+    //   template<typename T, typename C=long int, typename Compare=std::less<T> >
+    template<typename T, typename C=int, typename Compare=std::less<T> >
       struct Free_Abelian;
-    template<typename T, typename C=long int, typename Compare=std::less<T> >
+    //    template<typename T, typename C=long int, typename Compare=std::less<T> >
+     template<typename T, typename C= int, typename Compare=std::less<T> >
       struct Monoid_Ring;
-    template<typename T, typename C=long int, typename Compare=std::less<T> >
+    //    template<typename T, typename C=long int, typename Compare=std::less<T> >
+    template<typename T, typename C=int, typename Compare=std::less<T> >
       class Free_Abelian_light;
   }
   using free_abelian::Free_Abelian;
