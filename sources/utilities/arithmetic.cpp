@@ -86,7 +86,8 @@ Denom_t lcm (Denom_t a, Denom_t b, Denom_t& gcd, Denom_t& mult_a)
 */
 Denom_t modProd(Denom_t a, Denom_t b, Denom_t n)
 {
-  if (n > (1UL << (constants::longBits >> 1)))
+  //  if (n > (1UL << (constants::longBits >> 1)))
+    if (n > (1UL << (constants::intBits >> 1)))
     error::FatalError() ("error: overflow in modProd");
 
   return (a * b) % n;
