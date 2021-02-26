@@ -1524,7 +1524,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<blocks::common_block> temp; // must use temporary singleton
-  auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
+  common_context ctxt(*this,srm.gamma_lambda());
+  auto& block = temp.emplace_back(ctxt,srm,srm_in_block); // build full block
 
   const auto rho = rootdata::rho(root_datum());
   const size_t place_limit = place.size();
@@ -1981,7 +1982,8 @@ SR_poly twisted_KL_column_at_s
     throw std::runtime_error("Parameter is not final");
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry;
-  blocks::common_block block(rc,zm,entry); // which this constructor does
+  common_context ctxt(rc,zm.gamma_lambda());
+  blocks::common_block block(ctxt,zm,entry); // build full block
   RatWeight diff = rc.offset(z, block.representative(entry));
   assert(diff.isZero()); // because we custom-built our |block| above
   // the code below handles still |diff| as it should if it were nonzero

@@ -357,7 +357,7 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const Rep_context& rc,
+    (const common_context& ctxt,
      const StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );

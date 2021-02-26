@@ -716,11 +716,11 @@ bool y_less (const StandardReprMod& a,const StandardReprMod& b)
 // it is long because of the need to find elements in all corners
 
 common_block::common_block // full block constructor
-  (const Rep_context& rc, const StandardReprMod& srm,
+  (const common_context& ctxt, const StandardReprMod& srm,
    BlockElt& entry_element	// set to block element matching input
   )
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_lambda()))
-  , rc(rc)
+  , rc(ctxt.rc())
   , integral_sys(SubSystem::integral(root_datum(),srm.gamma_lambda()))
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
@@ -738,8 +738,6 @@ common_block::common_block // full block constructor
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
   const unsigned our_rank = integral_sys.rank();
-
-  repr::common_context ctxt(rc,srm.gamma_lambda());
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy

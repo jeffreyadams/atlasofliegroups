@@ -127,8 +127,9 @@ blocks::common_block& current_common_block()
   { // we have entered reprmode without setting block
     const Rep_context rc(currentRealGroup());
     auto srm = repr::StandardReprMod::mod_reduce(rc,*sr);
+    common_context ctxt(currentRepTable(),srm.gamma_lambda());
     common_block_pointer = // generate full block and set |entry_z|
-      new blocks::common_block(currentRepTable(),srm,entry_z);
+      new blocks::common_block(ctxt,srm,entry_z);
     state=full_block;
     entry_z = common_block_pointer->size()-1;
   }

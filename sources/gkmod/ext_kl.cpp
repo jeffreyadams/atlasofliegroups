@@ -929,7 +929,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     throw std::runtime_error("No valid extended bock");
   }
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
-  blocks::common_block B(rc,srm,entry_element);
+  common_context ctxt(rc,srm.gamma_lambda());
+  blocks::common_block B(ctxt,srm,entry_element); // build full block
   const auto& gamma = p.gamma();
   RatWeight diff(gamma.size()); // a custom made |StandardReprMod| gives zero offset
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|

@@ -5516,7 +5516,8 @@ void extended_block_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
-  blocks::common_block block(rc,zm,start);
+  common_context ctxt(rc,zm.gamma_lambda());
+  blocks::common_block block(ctxt,zm,start); // build full block
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -6943,7 +6944,8 @@ void raw_ext_KL_wrapper (expression_base::level l)
   const auto gamma = p->val.gamma();
   const auto srm = repr::StandardReprMod::mod_reduce(rc,p->val);
   BlockElt start;
-  blocks::common_block block(rc,srm,start);
+  common_context ctxt(rc,srm.gamma_lambda());
+  blocks::common_block block(ctxt,srm,start); // build full block
   if (not((delta->val-1)*gamma.numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
