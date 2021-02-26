@@ -52,6 +52,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
  public:
   SubSystem(const RootDatum& parent,
 	    const sl_list<RootNbr>& sub_sys // list of simple roots in subsys
+	    // those simple roots must be positive roots of |parent|
            );
 
   static SubSystem integral // pseudo contructor for integral system
@@ -98,7 +99,8 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   }
 
   // numbers in parent for the positive (co)roots of the subsystem
-  RootNbrSet positive_roots() const; // for subsystem only
+  RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
+  RootNbrSet posroot_subset() const; // for subsystem, as |parent| posroots
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
 }; // |class SubSystem|
@@ -159,6 +161,7 @@ class integral_datum_item
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&&)=default; // move, never copy
 
+  const SubSystem& int_system() const { return integral; }
   codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
   { return { ic,isys,inv,simple_coroots }; }
   const int_Matrix& coroots_matrix() const { return simple_coroots; }

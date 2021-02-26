@@ -542,9 +542,11 @@ public:
 class common_context
 {
   const Rep_context& rep_con;
-  const RootDatum integr_datum; // intgrality datum
+  unsigned int int_sys_nr;
   const SubSystem sub; // embeds |integr_datum| into parent root datum
+  const RootDatum integr_datum; // full fledged integrality datum
 public:
+  common_context (const Rep_context& rc, const RatWeight& gamma);
   common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors

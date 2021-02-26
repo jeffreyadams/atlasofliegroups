@@ -1608,7 +1608,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
     assert(block.representative(which).x()==srm.x()); // check minimum of sanity
     return block; // use block of related |StandardReprMod| as ours
   }
-  common_context ctxt(*this,SubSystem::integral(root_datum(),sr.gamma()));
+  common_context ctxt(*this,sr.gamma());
   BitMap subset;
   auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
   which = last(subset);
@@ -2256,6 +2256,23 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 //			|common_context| methods
 
+common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
+: rep_con(rc)
+, int_sys_nr()
+, sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
+, integr_datum(sub.pre_root_datum())
+{} // |common_context::common_context|
+
+
+common_context::common_context (const Rep_context& rc, const SubSystem& sub)
+: rep_con(rc)
+, int_sys_nr()
+, sub(sub)
+, integr_datum(sub.pre_root_datum())
+{
+  rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr);
+} // |common_context::common_context|
+
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
 {
@@ -2425,14 +2442,6 @@ Ext_rep_context::Ext_rep_context
 
 Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
 : Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
-
-// |common_context| methods
-
-common_context::common_context (const Rep_context& rc, const SubSystem& sub)
-: rep_con(rc)
-, integr_datum(sub.pre_root_datum())
-, sub(sub)
-{} // |common_context::common_context|
 
 
   } // |namespace repr|

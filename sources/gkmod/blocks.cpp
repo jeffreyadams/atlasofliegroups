@@ -739,7 +739,7 @@ common_block::common_block // full block constructor
 
   const unsigned our_rank = integral_sys.rank();
 
-  repr::common_context ctxt(rc,integral_sys);
+  repr::common_context ctxt(rc,srm.gamma_lambda());
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy

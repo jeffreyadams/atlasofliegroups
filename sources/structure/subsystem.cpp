@@ -27,7 +27,7 @@ namespace subsystem {
 
 SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   : RootSystem(parent.cartanMatrix(sub_sys.to_vector()).transposed(), // build
-	       not parent.prefer_coroots()) // flip, since coroots ar now roots
+	       not parent.prefer_coroots()) // flip, since coroots are now roots
   , rd(parent) // share
   , pos_map()
   , inv_map(rd.numRoots()+1,-1) // one spare entry for "unfound root in parent"
@@ -49,6 +49,7 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   for (unsigned int i=0; i<numPosRoots(); ++i)
   {
     RootNbr alpha = pos_map[i]; // now we use parent numbering
+    assert(rd.is_posroot(alpha)); // conjugating to simple supposes this
     inv_map[alpha] = posRootNbr(i); // refers to posroot |i| in subsystem
     inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
 
@@ -156,6 +157,14 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
+
+RootNbrSet SubSystem::posroot_subset() const
+{ RootNbrSet result(rd.numPosRoots());
+  for (RootNbr alpha : pos_map)
+    result.insert(rd.posroot_index(alpha));
+  return result;
+}
+
 
 InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 { return InvolutionData(rd,theta,positive_roots()); }
