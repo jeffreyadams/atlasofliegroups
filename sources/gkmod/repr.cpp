@@ -2366,7 +2366,7 @@ StandardReprMod common_context::up_Cayley
     alpha_hat.dot(full_datum.twoRho(upstairs_real_roots))/2;
   const int eval = gamma_lambda.dot(alpha_hat);
   if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
-    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+    gamma_lambda += RatWeight(integr_datum.simpleRoot(s),2); // add half-alpha
 
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
