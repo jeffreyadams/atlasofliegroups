@@ -2269,11 +2269,9 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 common_context::common_context (const Rep_context& rc, const SubSystem& sub)
 : rep_con(rc)
 , int_sys_nr()
-, sub(sub)
+, sub(rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr).int_system())
 , integr_datum(sub.pre_root_datum())
-{
-  rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr);
-} // |common_context::common_context|
+{} // |common_context::common_context|
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const

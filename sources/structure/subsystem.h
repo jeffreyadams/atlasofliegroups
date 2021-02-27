@@ -78,11 +78,11 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   {}
 
   const RootDatum& parent_datum() const { return rd; }
+  // RootNbr rank() const; // integral rank; inherited from |RootSystem|
 
   PreRootDatum pre_root_datum() const; // viewed from parent side
 
-  RootNbr parent_nr_simple(weyl::Generator s) const
-  { return pos_map[s]; }
+  RootNbr parent_nr_simple(weyl::Generator s) const { return pos_map[s]; }
 
   RootNbr to_parent(RootNbr alpha) const; // |pos_map| with some shifting
   RootNbr from_parent(RootNbr alpha) const;
