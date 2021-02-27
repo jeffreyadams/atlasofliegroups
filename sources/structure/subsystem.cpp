@@ -26,8 +26,8 @@ namespace atlas {
 namespace subsystem {
 
 SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
-  : RootSystem(parent.cartanMatrix(sub_sys.to_vector()).transposed(), // build
-	       not parent.prefer_coroots()) // flip, since coroots are now roots
+  : RootSystem(parent.cartanMatrix(sub_sys.to_vector()), // build new system
+	       parent.prefer_coroots()) // no flip, roots will be roots
   , rd(parent) // share
   , which(parent.numPosRoots())
   , pos_map() // will be filled to size |numPosRoots()|

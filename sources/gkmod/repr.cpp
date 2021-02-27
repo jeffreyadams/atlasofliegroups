@@ -2387,7 +2387,7 @@ Ext_common_context::Ext_common_context
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts(id().semisimple_rank())
+    , l_shifts(sub.rank())
 {
   const RootDatum& rd = rc.root_datum();
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)

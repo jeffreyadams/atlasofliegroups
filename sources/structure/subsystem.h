@@ -22,19 +22,28 @@ namespace atlas {
 
 namespace subsystem {
 
-/* The following data type has a purpose specific for representation theory.
-   It is associated to a subsystem of the dual root datum (with positive roots
-   contained in the positive parent coroots), and is derived from |RootSystem|
-   at that dual side (meaning that inherited |rootSystem| methods present that
-   subsystem of the dual root system of the parent). It remains however
-   attached to the parent root _datum_ (not system), containing and exporting
-   a reference to that rootdatum, and has a method to produce a |PreRootDatum|
-   for the subsystem of the _parent_ defined by simple coroots for the
-   subsystem (a full such root datum is not stored, for efficientcy reasons).
- */
+/*
+  The following data type has a purpose specific for representation theory. It
+  is associated to a subdatum of the root datum, whose coroot system typically
+  is an "additively closed" part of the set of parent coroots (in the sense that
+  any sum of coroots in the part that is a parent coroot must also be in the
+  part), for instance the coroots that are integral on a given weight. This
+  property is nowhere used however: we take the subsystem to be specified by a
+  set of generating positive (co)roots, with the subsystem taken to be their
+  closure under the corresponding reflections. We derive from |RootSystem|,
+  which base class we use to generate the set of positive (co)roots (using the
+  Cartan matrix for the subsystem); we avoid deriving from |RootDatum| to save
+  memory, but we provide methods in coordinates using the parent datum.
+
+  The |RootSystem| from which we derive used to be on the dual side to reflect
+  the fact that it was mostly defined in terms of coroots, but this had hardly
+  any effect (since |RootSystem| methods are mostly duality agnostic), and if
+  anything caused terminological confusion. So this side-swapping is no longer
+  in effect and roots of the subsystem are also roots of the parent system.
+*/
 
 // A subsystem on the dual side of a given root datum
-class SubSystem : public RootSystem // new system, subsytem of dual
+class SubSystem : public RootSystem // new system, subsystem of parent
 {
   const RootDatum& rd; // parent root datum
   RootNbrSet which; // subset of parent posroots that are in subsystem
