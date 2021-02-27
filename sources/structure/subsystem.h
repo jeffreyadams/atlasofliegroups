@@ -37,8 +37,9 @@ namespace subsystem {
 class SubSystem : public RootSystem // new system, subsytem of dual
 {
   const RootDatum& rd; // parent root datum
+  RootNbrSet which; // subset of parent posroots that are in subsystem
   RootNbrList pos_map; // map positive roots to root number in parent
-  RootNbrList inv_map; // partial map back from all parent roots
+  RootNbrList inv_map; // map back from parent roots flagged in |which|
 
   struct root_info
   { weyl::Generator simple; // some simple root $s$ in parent conjugate to root
@@ -55,21 +56,25 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 	    // those simple roots must be positive roots of |parent|
            );
 
-  static SubSystem integral // pseudo contructor for integral system
-  (const RootDatum& parent, const RatWeight& gamma);
+  static SubSystem // pseudo contructor for integral system
+    integral(const RootDatum& parent, const RatWeight& gamma);
 
   SubSystem(const SubSystem& s) // copy contructor, used in |common_block|
-  : RootSystem(s) // copy base object
-  , rd(s.rd) // share this one
-  , pos_map(s.pos_map), inv_map(s.inv_map), sub_root(s.sub_root) // copy those
+    : RootSystem(s) // copy base object
+    , rd(s.rd) // share this one
+    , which(s.which) // copy other fields
+    , pos_map(s.pos_map)
+    , inv_map(s.inv_map)
+    , sub_root(s.sub_root)
   {}
 
   SubSystem(SubSystem&& s) // move constructor; cannot use |default|
     : RootSystem(std::move(s)) // move base object
     , rd(s.rd) // share this one
+    , which(std::move(s.which)) // move other fields
     , pos_map(std::move(s.pos_map))
     , inv_map(std::move(s.inv_map))
-    , sub_root(std::move(s.sub_root)) // move other data
+    , sub_root(std::move(s.sub_root))
   {}
 
   const RootDatum& parent_datum() const { return rd; }
@@ -80,7 +85,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   { return pos_map[s]; }
 
   RootNbr to_parent(RootNbr alpha) const; // |pos_map| with some shifting
-  RootNbr from_parent(RootNbr alpha) const { return inv_map[alpha]; }
+  RootNbr from_parent(RootNbr alpha) const;
   // could be |RootNbr(-1)| if absent, or if |alpha==rd.numPosRoots|
 
   weyl::Generator simple(unsigned int n) const
@@ -100,7 +105,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   // numbers in parent for the positive (co)roots of the subsystem
   RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
-  RootNbrSet posroot_subset() const; // for subsystem, as |parent| posroots
+  const RootNbrSet& posroot_subset() const { return which; }
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
 }; // |class SubSystem|

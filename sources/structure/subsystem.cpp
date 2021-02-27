@@ -29,13 +29,18 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   : RootSystem(parent.cartanMatrix(sub_sys.to_vector()).transposed(), // build
 	       not parent.prefer_coroots()) // flip, since coroots are now roots
   , rd(parent) // share
-  , pos_map()
-  , inv_map(rd.numRoots()+1,-1) // one spare entry for "unfound root in parent"
+  , which(parent.numPosRoots())
+  , pos_map() // will be filled to size |numPosRoots()|
+  , inv_map(numPosRoots()) // for |rd.posRootNbr(i)| at |which.position(i)|
   , sub_root(numPosRoots()) // initially empty vector of posroot information
 {
   pos_map.reserve(numPosRoots()); // |pos_map| is indexed by \emph{our} posroots
   for (RootNbr alpha : sub_sys)
+  {
     pos_map.push_back(alpha);
+    which.insert(rd.posroot_index(alpha));
+  }
+
   for (unsigned int i=sub_sys.size(); i<numPosRoots(); ++i)
   {
     RootNbr sub_alpha = posRootNbr(i);
@@ -43,6 +48,7 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
     simple_reflect_root(s,sub_alpha); // lower |sub_alpha| in our system
     RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
     pos_map.push_back(rd.reflected_root(pos_map[s],beta));
+    which.insert(rd.posroot_index(pos_map.back()));
   }
 
   // now complete setting |inv_map| and |sub_root| arrays
@@ -50,8 +56,9 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   {
     RootNbr alpha = pos_map[i]; // now we use parent numbering
     assert(rd.is_posroot(alpha)); // conjugating to simple supposes this
-    inv_map[alpha] = posRootNbr(i); // refers to posroot |i| in subsystem
-    inv_map[rd.rootMinus(alpha)] = rootMinus(inv_map[alpha]); // its negative
+    RootNbr alpha_pos = rd.posroot_index(alpha);
+    assert(which.isMember(alpha_pos));
+    inv_map[which.position(alpha_pos)] = posRootNbr(i);
 
     // in the remainder we work in parent datum; must find conjugate to simple
     size_t count=0; weyl::Generator s;
@@ -75,7 +82,7 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
       sub_root[i].reflection[count-1-j]=s;
     }
     assert(alpha==rd.simpleRootNbr(sub_root[i].simple)); // check |alpha|
-  }
+  } // |for(i<numPosRoots())|
 }
 
 SubSystem SubSystem::integral // pseudo contructor for integral system
@@ -100,6 +107,17 @@ RootNbr SubSystem::to_parent(RootNbr alpha) const
   return result;
 }
 
+RootNbr SubSystem::from_parent(RootNbr alpha) const
+{
+  RootNbr alpha_pos = parent_datum().rt_abs(alpha);
+  if (alpha_pos<parent_datum().numPosRoots() and which.isMember(alpha_pos))
+  {
+    RootNbr result = inv_map[which.position(alpha_pos)];
+    return parent_datum().is_posroot(alpha) ? result : rootMinus(result);
+  }
+  return RootNbr(-1);
+}
+
 PreRootDatum SubSystem::pre_root_datum() const
 {
   auto pr = parent_datum().rank(), sr=rank();
@@ -122,7 +140,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     RootNbr image =
-      inv_map[rd.root_index(theta*rd.root(parent_nr_simple(i)))];
+      from_parent(rd.root_index(theta*rd.root(parent_nr_simple(i))));
     assert(image < numRoots());  // |image| is number of image in subsystem
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
@@ -157,14 +175,6 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
-
-RootNbrSet SubSystem::posroot_subset() const
-{ RootNbrSet result(rd.numPosRoots());
-  for (RootNbr alpha : pos_map)
-    result.insert(rd.posroot_index(alpha));
-  return result;
-}
-
 
 InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 { return InvolutionData(rd,theta,positive_roots()); }
