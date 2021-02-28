@@ -14,8 +14,8 @@ namespace atlas {
     using basic_io::read_bytes;
 
     
-    const BlockElt no_good_ascent = UndefBlock-1;
-     // value flagging that no good ascent exists
+    const BlockElt no_good_ascent = (UndefBlock - 1);
+      // value flagging that no good ascent exists
     const unsigned int magic_code=0x06ABdCF0; 
 
 
@@ -228,8 +228,8 @@ namespace atlas {
           { std::cerr << y << std::endl;
     	throw std::runtime_error ("Premature end of file");
           }
-        } // for (BlockElt y...)
-      } // |if (...==magic_code)|
+        } // |for (BlockElt y;@;)|
+      } // |if (@[...@]==magic_code)|
     
       block_file.close(); // success, we no longer need the block file
     }

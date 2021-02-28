@@ -25,8 +25,8 @@ namespace atlas {
 
 namespace permutations {
 
-template<typename T>
-  inline size_t find_index(const std::vector<T>& v, const T& x)
+  template<typename T,typename A>
+  inline size_t find_index(const std::vector<T,A>& v, const T& x)
   { return std::find(v.begin(),v.end(),x)-v.begin(); }
 
 struct Permutation
@@ -39,27 +39,29 @@ struct Permutation
     Permutation(const Permutation& pi, int unused); // inverse
     template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
 
-  // right-compose with |*this|
-    template<typename T> // any assignable type
-      std::vector<T> pull_back(const std::vector<T>& v) const;
+    // right-compose with |*this|: |result[i]=v[(*this)[i]]| for all |i|
+    template<typename T,typename A> // here |T| is any assignable type
+    std::vector<T,A> pull_back(const std::vector<T,A>& v) const;
 
     template<unsigned int n>
       bitset::BitSet<n> pull_back(const bitset::BitSet<n>& v) const;
 
-  // left-compose with |*this|
-    template<typename U> // unsigned integral type
-      std::vector<U> renumbering(const std::vector<U>& v) const;
+    // left-compose with |*this|: |result[i]=(*this)[v[i]]| for all |i|
+    template<typename U,typename A> // here |U| is an unsigned integral type
+      std::vector<U,A> renumbering(const std::vector<U,A>& v) const;
 
+    // set of values |(*this)[x]| for $x\in b$
     bitmap::BitMap renumbering(const bitmap::BitMap& b) const;
 
   // left-multiply by |*this|; imperative version of |renumbering|
-    template<typename U> void renumber(std::vector<U>& v) const;
+    template<typename U,typename A> void renumber(std::vector<U,A>& v) const;
 
   // left-multiply by |*this|, but allowing an exception value
-    template<typename U> void renumber(std::vector<U>& v, U except) const;
+    template<typename U,typename A>
+      void renumber(std::vector<U,A>& v, U except) const;
 
   // right-compose with the inverse of the permutation (defining a left action)
-    template<typename T> void permute(std::vector<T>& v) const;
+    template<typename T,typename A> void permute(std::vector<T,A>& v) const;
 
   // conjugate by pemutation matrix (to coordinates on permute(standard basis))
     template<typename T> void conjugate(matrix::Matrix_base<T>& M) const;
@@ -67,12 +69,13 @@ struct Permutation
   // inverse conjugate by basis pemutation (to coordinates on (e_pi[i])_i)
     template<typename T> void inv_conjugate(matrix::Matrix_base<T>& M) const;
 
+    bool is_negative() const; // whether negative sign
   };
 
 
 /******** free standing function declarations *****************************/
 
-  int sign(const Permutation& pi); // signature of permutation
+  inline int sign(const Permutation& pi) { return pi.is_negative() ? -1 : 1; }
 
   bitmap::BitMap fixed_points(const Permutation& pi); // elements fixed
 
@@ -84,16 +87,18 @@ struct Permutation
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type>
     Permutation standardization(InputIt first, InputIt last, Compare less);
-  template<typename U>
-    Permutation standardization(const std::vector<U>& a, size_t bound,
+  template<typename U,typename A> // here |U| is an unsigned integral type
+  Permutation standardization(const std::vector<U,A>& a, size_t bound,
 				std::vector<unsigned int>* stops = NULL);
 
-  // a right action on columns: produce columns $(M.column(pi[j]))_j$
+  // a right action (like |pull_back|) on columns or rows of a matrix
+  // produce matrix with columns $(M.column(pi[j]))_{j\in[0..pi.size()[}$
   template<typename T>
-    void permute_columns(matrix::Matrix_base<T>& M, const Permutation& pi);
+    void pull_back_columns(matrix::Matrix_base<T>& M, const Permutation& pi);
 
+  // produce matrix with columns $(M.column(pi[j]))_{j\in[0..pi.size()[}$
   template<typename T>
-    void permute_rows(matrix::Matrix_base<T>& M, const Permutation& pi);
+    void pull_back_rows(matrix::Matrix_base<T>& M, const Permutation& pi);
 
  } // |namespace permutations|
 

@@ -120,7 +120,7 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 KL_table::KL_table(const ext_block::ext_block& b, ext_KL_hash_Table* pol_hash)
   : aux(b)
   , pol_hash(pol_hash)
-  , own(pol_hash!=nullptr ? nullptr : new std::vector<Pol> {Pol(0),Pol(1)})
+  , own(pol_hash!=nullptr ? nullptr : new IntPolEntry::Pooltype {Pol(0),Pol(1)})
   , storage_pool(pol_hash!=nullptr ? pol_hash->pool() : *own )
   , column(b.size(),KLColumn()) // start with empty columns
 { // ensure first two pool entries are constant polynomials $0$, and $1$
@@ -921,7 +921,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
 		    int_Matrix& P_index_mat,
-		    std::vector<Pol>& polys)
+		    IntPolEntry::Pooltype& polys)
 { BlockElt entry_element;
   if (not ((delta-1)*p.gamma().numerator()).isZero())
   {
@@ -929,7 +929,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     throw std::runtime_error("No valid extended bock");
   }
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
-  blocks::common_block B(rc,srm,entry_element);
+  common_context ctxt(rc,srm.gamma_lambda());
+  blocks::common_block B(ctxt,srm,entry_element); // build full block
   const auto& gamma = p.gamma();
   RatWeight diff(gamma.size()); // a custom made |StandardReprMod| gives zero offset
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
@@ -939,7 +940,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);
 
-  std::vector<Pol> pool; // keep a separate pool, |polys| is for later
+  IntPolEntry::Pooltype pool; // keep a separate pool, |polys| is for later
   ext_KL_hash_Table hash(pool,4);
   KL_table twisted_KLV(eblock,&hash);
   twisted_KLV.fill_columns(size); // fill up to and including |p|

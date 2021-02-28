@@ -65,7 +65,7 @@ namespace atlas {
     std::streamoff
     write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
     {
-      BitMap prims=kl_tab.prim_map(y);
+      BitMap prims=kl_tab.prim_map(y); // marks nonzero KL polys among primitives
       const auto& kld=kl_tab.KL_data(y);
 
       assert(kld.size()+1==prims.capacity()); // check the number of KL polynomials
@@ -75,7 +75,7 @@ namespace atlas {
 
       std::streamoff start_row=out.tellp();
 
-      // write number of primitive elements for convenience
+      // write number of primitive elements, plus 1 for |y| itself, for convenience
       basic_io::put_int(prims.capacity(),out);
 
       // now write the bitmap as a sequence of unsigned int values

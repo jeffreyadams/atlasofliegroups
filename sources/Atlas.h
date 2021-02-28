@@ -459,8 +459,6 @@ namespace atlas {
     class KL_table;
     using KLCoeff = unsigned int;
     using KLPol = polynomials::Safe_Poly<KLCoeff>;
-    using KLStore = std::vector<KLPol>;
-    using KLPolRef = KLStore::const_reference;
     using KLIndex = unsigned int; // $<2^{32}$ distinct polynomials for $E_8$!
     using MuCoeff = KLCoeff;
   }

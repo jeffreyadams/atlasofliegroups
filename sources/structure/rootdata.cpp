@@ -621,7 +621,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
 }
 
-// the same, but indexing positive roots from 0, and using |sl_list|
+// the same, but indexing in |posroots| is from 0, and returning a |sl_list|
 sl_list<RootNbr> RootSystem::pos_simples(RootNbrSet posroots) const
 {
   sl_list<RootNbr> result; // these are full root numbers
