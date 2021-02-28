@@ -721,7 +721,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_lambda()))
   , rc(ctxt.rc())
-  , integral_sys(SubSystem::integral(root_datum(),srm.gamma_lambda()))
+  , integral_sys(ctxt.subsys()) // copy reference, which is into |ic.int_table|
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1072,7 +1072,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , integral_sys(ctxt.subsys())
+  , integral_sys(ctxt.subsys()) // copy reference, which is into |ic.int_table|
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
