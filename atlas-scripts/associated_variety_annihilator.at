@@ -30,7 +30,7 @@ special_character_int=special_character(ct_int,cell,perm) then
 ()=if av_verbose then prints("p=",p, new_line,
 "rd_int: ", nice_format(rd_int), new_line,
 "special_character_int: ", special_character_int, ": ", ct_int.characters[special_character_int]) fi then
-character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
+character_G=truncate_by_degree_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
 (,orbit_0)=st_rd.springer_inverse(character_G) then
 orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) then
 ()=if av_verbose then prints("character_G: ", character_G, ": ",st_rd.ct.characters[character_G],
@@ -236,7 +236,7 @@ char_int_sign=ct_int.tensor_sign(char_int) then
  prints("char_int_sign: ", char_int_sign, new_line,
  "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line, "ct: ", ct.root_datum) fi then
 {index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then}
-index=truncate_induce_character(rd_int,rd,ct,char_int_sign) then
+index=truncate_by_degree_induce_character(rd_int,rd,ct,ct_int,char_int_sign) then
 (valid,orbit)=st.springer_inverse(index) then
 ()=assert(valid,"Can't compute springer_inverse");
 if av_verbose then

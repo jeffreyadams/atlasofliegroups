@@ -115,12 +115,21 @@ set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
 assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
 reflection(G,L.simple_roots[i])
 
-set embed_simple_reflection_or_coreflection(RootDatum rd_L,RootDatum rd, int i)=mat:
+{need to modify this to allow simple roots of L to be negative roots of G}
+set embed_simple_reflection_or_coreflection_old(RootDatum rd_L,RootDatum rd, int i)=mat:
 let i=find(rd.posroots,rd_L.simple_roots[i]) in
  if i>=0 then reflection(rd,i) else
 let j=find(rd.poscoroots,rd_L.simple_coroots[i]) in
  if j>=0 then reflection(rd,j)
 else error("neither root nor coroot of rd_L is a root/coroot in rd") fi fi
+
+{modified:}
+set embed_simple_reflection_or_coreflection(RootDatum rd_L,RootDatum rd, int i)=mat:
+let j=find(rd.posroots,rd_L.simple_roots[i]) in  if i>=0 then reflection(rd,j) else
+ let j=find(rd.posroots,-rd_L.simple_roots[i]) in if i>=0 then reflection(rd,j) else
+  let j=find(rd.poscoroots,rd_L.simple_coroots[i]) in if j>=0 then reflection(rd,j) else
+   let j=find(rd.poscoroots,-rd_L.simple_coroots[i]) in if j>=0 then reflection(rd,j) else
+error("neither root nor coroot of rd_L is a root/coroot in rd") fi fi fi fi
 
 {abbreviation:}
 set embed(RootDatum rd_L,RootDatum rd, int i)=mat:embed_simple_reflection_or_coreflection(rd_L,rd,i)
@@ -156,7 +165,7 @@ in  W_elt(Gprime,word_Gprime)
 set e(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
 embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:

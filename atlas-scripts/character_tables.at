@@ -1,6 +1,7 @@
 <classical_W_classes_and_reps.at
 <nilpotent_orbits.at
 <isomorphism.at
+{including fake degree}
 
 set ct_verbose=false
 
@@ -39,6 +40,7 @@ set_type
   , (int->string) irreducible_label
   , [[int]] sym_powers_reflection
   , [int] degrees
+  , [int] fake_degrees
   , mat table { by row=character }
   )
 ]
@@ -58,7 +60,8 @@ class_sizes,           {[int]}
 irreducible_label,     {int->string}
 sym_powers_reflection  {[[int]]}
 degrees		       {[int]}
-table)
+fake_degrees	       {[int]}
+table                  mat)
 }
 
 {root datum of CharacterTable is (semisimple) simply connected}
@@ -189,7 +192,8 @@ then ct=(
   , (int i) string: "" { irreducible representation label }  {later}
   , sym_powers_reflection(classes)  {sym_powers_reflection}
   ,[int]:[]     {degrees}
-  ,null(#classes,#classes)
+  ,[int]:[] {fake degrees}
+  ,null(#classes,#classes)   {table}
   )
 in if ct_verbose then prints("Done intializing character table") fi;ct
 
@@ -281,6 +285,8 @@ od
 fi,
 if =#ct.degrees then [] else
  for i:ct.n_classes do ct.degrees[f(i)] od fi,
+if =#ct.fake_degrees then [] else
+ for i:ct.n_classes do ct.fake_degrees[f(i)] od fi,
 for col@i in ct.table do ct.table[f(i)] od
 )
 fi
@@ -314,6 +320,7 @@ ct.classical_reps,
 (int i): ct.irreducible_label(f(i)),
 ct.sym_powers_reflection,
 ct.degrees,
+ct.fake_degrees,
 ^for i:ct.n_classes do row(ct.table,f(i)) od
 )
 
@@ -673,4 +680,3 @@ let ct_1=sort_by_profile(ct,powers) then
 (,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in
 assert(profile(ct_1,powers)=profile_1,"profiles don't match");
 ct_1.table:=table_1;ct_1
-

@@ -66,5 +66,4 @@ set springer_table_F4(CharacterTable ct)=SpringerTable:
 (ct,simply_connected(F4).orbits,
 dual_orbit_F4@ComplexNilpotent,
 dual_orbit_F4@ComplexNilpotent,
-springer_F4(ct),
-[int]:[])
+springer_F4(ct))

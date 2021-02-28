@@ -320,7 +320,12 @@ let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
 filter(rd,rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
+{want to choose simple roots of H positive for rd:
+ subgroup(G,H.roots) remakes H, with simple roots all positive for G}
+ if labels[i] !=1 then
+ let (valid,H)=subgroup(rd,subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in
+ assert(valid,"not a valid subgroup"); [H] else []
+ fi od)) fi
 
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
 assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
@@ -329,7 +334,11 @@ let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
 filter(rd,rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 and is_prime(labels[i]) then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
+ if labels[i] !=1 and is_prime(labels[i]) then
+ {want to choose simple roots of H positive for rd}
+  let (valid,H)=subgroup(rd,subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in
+ assert(valid,"not a valid subgroup"); [H] else [] fi od)) fi
+
 
 
 {given nonsimple RootDatum rd=rd_1 * ... * rd_n

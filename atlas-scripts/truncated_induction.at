@@ -18,10 +18,11 @@ roots are a subset of the of G
 
 set ti_verbose=false
 
-{truncate character: keep only the components of minimal degree;
+{truncate character: keep only the components of minimal degree,
+according to degree_function (degree or fake_degree)
 returns (degree, list of indices of characters of this degree)
 }
-set truncate(CharacterTable ct_G,[int] char)=(int,[int]):
+set truncate(CharacterTable ct_G,[int] char,(int->int) degree_function)=[int]:
 let dec=ct_G.decompose(char) then
 ()=if ti_verbose then prints("truncating character: ", char, new_line,"decomposed: ", dec) fi then
 ()=if ti_verbose then prints("all terms: ", ##for a@i in dec do if !=a then [(i,a)] else [] fi od) fi then
@@ -38,52 +39,97 @@ od;
 if ti_verbose then
  prints("degree: ", min_degree,new_line,"index of character: ", rv[0], "  (all: ",rv,")")
 fi;
-(min_degree,rv)
+{(min_degree,rv)}
+rv
+
+{degree_function: degree or fake_degree}
+set truncate(SpringerTable st_G,[int] char,(int->int) degree_function)=[int]:
+let ct_G=st_G.ct then
+dec=ct_G.decompose(char) then
+()=if ti_verbose then prints("truncating character: ", char, new_line,"decomposed: ", dec) fi then
+()=if ti_verbose then prints("all terms: ", ##for a@i in dec do if !=a then [(i,a)] else [] fi od) fi then
+min_degree=ct_G.root_datum.nr_of_posroots then
+rv=[int]:[] in
+for i:#dec do
+ if !=dec[i] then
+  {  let degree= if flag=0 then ct_G.degrees[i] else st_G.fake_degrees[i] fi in}
+    let degree= degree_function(i) in
+  if degree<min_degree then
+   rv:=[i];min_degree:=degree
+  elif degree=min_degree then rv#:=i
+  fi
+ fi
+od;
+if ti_verbose then
+ prints("degree: ", min_degree,new_line,"index of character: ", rv[0], "  (all: ",rv,")")
+fi;
+{(min_degree,rv)}
+rv
 
 {induce and truncate}
-{basic version, using given embedding f}
-set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =int:
+{basic version, using given embedding f
+ degree function is either degree or fake_degree
+ return value is [int] since this can happen in the fake_degree case}
+set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f, (int->int) degree_function,[int] pi_L) =[int]:
 let ()=if ti_verbose then prints("Computing induced character: ") fi then
 ind=induce_character(ct_L,ct_G,f,pi_L) then
 ()=if ti_verbose then prints("computed induced character: ", ind) fi then
- (d,t)=truncate(ct_G,ind) then
- ()=if ti_verbose then prints("computed truncation of induced", new_line, "degree= ", d, new_line,"induced: ", t) fi in
+ t=truncate(ct_G,ind,degree_function) then
+ ()=if ti_verbose then prints("computed truncation of induced", new_line,"induced: ", t) fi in
+t
+
+{standard form: ordinary degree, returns int}
+set truncate_by_degree_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=int:
+let f(int j)=ct_G.degrees[j] in 
+let ()=if ti_verbose then prints("Computing induced character: ") fi then
+ind=induce_character(L,G,ct_L,ct_G,pi_L) then
+()=if ti_verbose then prints("computed induced character: ", ind) fi then
+t=truncate(ct_G,ind,f) then
+ ()=if ti_verbose then prints("computed truncation of induced", new_line,"induced: ", t) fi in
 assert(#t=1,"not a unique character in truncated induction");
 t[0]
 
 {standard form}
-set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=int:
+set truncate_degree_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L,(int->int) degree_function)=[int]:
 let ()=if ti_verbose then prints("Computing induced character: ") fi then
 ind=induce_character(L,G,ct_L,ct_G,pi_L) then
 ()=if ti_verbose then prints("computed induced character: ", ind) fi then
-(d,t)=truncate(ct_G,ind) then
- ()=if ti_verbose then prints("computed truncation of induced", new_line, "degree= ", d, new_line,"induced: ", t) fi in
-assert(#t=1,"not a unique character in truncated induction");
-t[0]
+t=truncate(ct_G,ind,degree_function) then
+ ()=if ti_verbose then prints("computed truncation of induced",  new_line,"induced: ", t) fi in
+t
+
+set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L,(int->int) degree_function)=[int]:
+truncate_degree_induce_character(L,G,ct_L,ct_G,pi_L,degree_function)
 
 
 {build ct_L, ct_G on the fly (slow)}
-set truncate_induce_character(RootDatum L,RootDatum G,[int] pi_L)=int:
+set truncate_induce_character(RootDatum L,RootDatum G,[int] pi_L,(int->int) degree_function)=[int]:
 let ct_G=G.character_table then
 ct_L=L.character_table in
-truncate_induce_character(L,G,ct_L,ct_G,pi_L)
+truncate_induce_character(L,G,ct_L,ct_G,pi_L,degree_function)
 
 {build ct_L on the fly}
-set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=int:
+set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L,(int->int) degree_function)=[int]:
 let ct_L=L.character_table in
-truncate_induce_character(L,G,ct_L,ct_G,pi_L)
+truncate_induce_character(L,G,ct_L,ct_G,pi_L,degree_function)
 
 {L is given as a subgroup of G, by specifying the simple roots of
 L as a set of positive roots of G; for a Levi factor these
 roots are simple for G
 }
-set truncate_induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=(int,[int]):
-truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L))
+set truncate_induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L,(int->int) degree_function)=[int]:
+truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L),degree_function)
+
+{standard form: by degree, returns int}
+set truncate_by_degree_induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=int:
+let f(int i)=ct_G.degrees[i] then
+t=truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L),f)
+in assert(#t=1,"not a unique character in truncated induction");t[0]
 
 {same as previous, build ct_G on the fly}
-set truncate_induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=(int,[int]):
+set truncate_induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L,(int->int) degree_function)=[int]:
 let ct_G=G.character_table in
-truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L))
+truncate(ct_G,induce_character(G,ct_G,simple_roots_of_L,pi_L),degree_function)
 
 {induction of orbits}
 
@@ -92,8 +138,10 @@ set induce_orbit(RootDatum L,RootDatum G,SpringerTable st_L,SpringerTable st_G,C
 let L=O_L.root_datum then
 char_L=st_L.springer(O_L) then
 ()=if ti_verbose then prints("orbit_L: ", O_L.diagram,  new_line,"index of character_L: ", char_L, " (degree: ",st_L.ct.degrees[char_L],")") fi then
-char_G=truncate_induce_character(L,G,st_L.ct,st_G.ct,st_L.ct.characters[char_L]) then
-(valid,orbit)=st_G.springer_inverse(char_G) in
+degree_function=(int->int): (int j):st_G.ct.degrees[j] then
+char_G=truncate_induce_character(L,G,st_L.ct,st_G.ct,st_L.ct.characters[char_L],degree_function) then
+()=assert(#char_G=1,"not a unique term with given degree") then
+(valid,orbit)=st_G.springer_inverse(char_G[0]) in
 assert(valid,"induced orbit doesn't have springer_inverse");
 if ti_verbose then prints("induced orbit: ", orbit.diagram,st_G.special_star(orbit)) fi;
 orbit

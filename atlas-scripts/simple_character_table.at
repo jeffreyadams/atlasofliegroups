@@ -64,6 +64,7 @@ in
   , class_or_irrep_string   {irreducible_label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}
+  , [int]:[]  {fake degrees}
   , table
   )
 

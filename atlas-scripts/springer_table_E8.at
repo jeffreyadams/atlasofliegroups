@@ -225,4 +225,4 @@ orbits=rd.orbits then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
 springer(ComplexNilpotent O)=springer_E8(ct,O) in
-(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
+(ct,orbits,dual_map,dual_map_i,springer)

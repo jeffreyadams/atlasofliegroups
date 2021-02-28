@@ -307,7 +307,7 @@ orbits=rd.orbits then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_C(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
 springer(ComplexNilpotent O)=springer_C(ct,O) in
-(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
+(ct,orbits,dual_map,dual_map_i,springer)
 
 set springer_table_B(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum then
@@ -315,4 +315,4 @@ orbits=rd.orbits then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_C(O) then
 springer(ComplexNilpotent O)=springer_B(ct,O) in
-(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
+(ct,orbits,dual_map,dual_map_i,springer)

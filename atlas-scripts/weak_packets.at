@@ -7,6 +7,7 @@
 <arthur_parameters.at
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
+<cells_springer.at 
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od

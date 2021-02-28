@@ -44,7 +44,11 @@ set character_coherent(CharacterTable ct,[Param] params)=[int]:
 let rd=params[0].root_datum in
 for w_0 in ct.class_representatives do
   let w=W_elt(rd,w_0.word) in {Note: need to convert w_0 from ct.root_datum to rd}
-let ()=prints("w: ", w, "trace: ", trace_coherent(w,params)) in trace_coherent(w,params) od
+{let ()=prints("w: ", w, "trace: ", trace_coherent(w,params)) in} trace_coherent(w,params) od
+
+set character_coherent_B(RealForm G,CharacterTable ct,ratvec gamma)=[int]:
+character_coherent(ct,all_parameters_gamma(G,gamma))
+set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct,G.rho)
 
 {fixed points of w acting on KGB}
 set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
@@ -55,6 +59,7 @@ sum(for x in fixed_kgb(w,X) do epsilon_i(x,w) od)
 
 set character_coherent(CharacterTable ct,[KGBElt] X)=[int]:
 for w in ct.class_representatives do trace_coherent(w,X) od
+set character_coherent_X(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,KGB(G))
 
 {involutions in W fixed by conjugation action of w}
 set fixed_involutions(WeylElt w,[WeylElt] involutions)=[WeylElt]:
@@ -65,35 +70,8 @@ sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 
 set character_coherent(CharacterTable ct,[WeylElt] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
+set character_coherent_I(CharacterTable ct)=[int]:character_coherent(ct,involutions(ct.root_datum_parent))
 
-set fake_degrees(CharacterTable ct,[WCell] cells)=[int]:
-let rv=for i:ct.n_classes do -1 od in
-for cell in cells do
- let cell_char=ct.decompose(ct.cell_character(cell)) then
- ()=prints("cell_char: ", cell_char) then
- special_char=special_character(ct,cell) then
- ()=prints("special_char: ", special_char) then
- special_fake_degree=ct.degree(special_char) then
- ()=prints("sfd: ", special_fake_degree) in
- for i:ct.n_classes do
-  if cell_char[i]!=0 then rv[i]:=special_fake_degree fi
- od
-od;rv
-
-set fake_degrees(SpringerTable st,[WCell] cells)=[int]:fake_degrees(st.ct,cells)
-
-
-set update_fake_degrees(SpringerTable st,[WCell] cells)=SpringerTable:
-st.fake_degrees:=fake_degrees(st,cells);st
-
-set show_degrees(SpringerTable st)=void:
-let ct=st.ct then
-fake_degree(int i)=if #st.fake_degrees=0 then -1 else st.fake_degrees[i] fi in
-prints("a(i)=fake degree(character #i)",new_line,"b(i)=degree(character #i)",new_line,"*: special",new_line);
-tabulate(
-["i","dim","a(i)","b(i)"]#
-for i:ct.n_classes do
-[i.to_string,ct.dimension(i).to_string+st.special_representation_star(i),st.fake_degrees[i].to_string,ct.degree(i).to_string] od)
 
 set coherent_data(SpringerTable st,[Param] block)=(vec,vec,vec):
 let G=block[0].real_form then

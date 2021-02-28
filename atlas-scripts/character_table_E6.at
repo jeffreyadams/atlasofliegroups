@@ -94,6 +94,7 @@ let ct=(
   , (int i) string: "" { irreducible representation label }  {later}
   ,sym_powers_reflection_E6
   ,[int]:[]     {degrees}
+  ,[int]:[]     {fake degrees}
   ,null(25,25)
   )
 in prints("Done intializing character table");ct

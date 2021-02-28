@@ -335,7 +335,7 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent:
 dual_map_i(ComplexNilpotent O_check {for adjoint group})=
 let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
 dual_map(O_check_lift) in
-(ct,orbits,dual_map,dual_map_i,springer,[int]:[])
+(ct,orbits,dual_map,dual_map_i,springer)
 
 {
 set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:

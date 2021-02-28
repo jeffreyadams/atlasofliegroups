@@ -26,7 +26,7 @@ class_rep(int k)=WeylElt:
   w2_word=ct2.class_rep(b).word then
   w2_word_shifted=for i in w2_word do i+rd1.ss_rank od then
   w_word=   w1_word##w2_word_shifted in
-  W_elt(rd1*rd2,w_word) then  
+  W_elt(rd1*rd2,w_word) then
 class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then
 class_power(int i,int j)=let (a,b)=f(j) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
 centralizer_orders=for i:m*n do
@@ -41,6 +41,10 @@ sym_powers_reflection=
   od
  od then
 degrees=for i:m*n do let (a,b)=f(i) in ct1.degrees[a]+ct2.degrees[b] od then
+fake_degrees=
+ if #ct1.fake_degrees=m and #ct2.fake_degrees=n then
+   for i:m*n do let (a,b)=f(i) in ct1.fake_degrees[a]+ct2.fake_degrees[b] od
+ else [] fi then
 table=kronecker_product(ct1.table,ct2.table) in
 (
 lie_type,
@@ -57,4 +61,5 @@ class_sizes,
 irreducible_label,
 sym_powers_reflection,
 degrees,
+fake_degrees,
 table)

@@ -9,13 +9,13 @@ set_type [SpringerTable=
   [ComplexNilpotent] orbits,
   (ComplexNilpotent->ComplexNilpotent) dual_map,
   (ComplexNilpotent->ComplexNilpotent) dual_map_i,
-  (ComplexNilpotent->int) springer,
-  [int] fake_degrees
+  (ComplexNilpotent->int) springer
   )]
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 set root_datum_parent(SpringerTable st)=RootDatum: st.ct.root_datum_parent
 set characters(SpringerTable st)=[[int]]:st.ct.characters
+set fake_degrees(SpringerTable st)=[int]:st.ct.fake_degrees
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:
@@ -53,9 +53,26 @@ fi
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):
 is_special(st,O)
 
-{all special orbits}
-set special_orbits(SpringerTable st)=[ComplexNilpotent]:
-##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
+{all special orbits, including numbering from list of all orbits}
+set special_orbits_indexed(SpringerTable st)=([int],[ComplexNilpotent]):
+let indices=[int]:[] then
+orbits=##for O@i in st.ct.root_datum.orbits do if st.is_special(O) then indices#:=i;[O] else [] fi od
+in (indices,orbits)
+set special_orbits(SpringerTable st)=[ComplexNilpotent]:let (,orbits)=special_orbits_indexed(st) in orbits
+
+{often we want special orbits for G, in which the coordinates might be
+different than those in G.springer_table}
+set special_orbits_indexed(RootDatum G,SpringerTable st)=([int],[ComplexNilpotent]):
+let (indices,orbits)=st.special_orbits_indexed in
+(indices, for orbit in orbits do orbit_by_diagram(G,orbit.diagram_normalized) od)
+set special_orbits(RootDatum G,SpringerTable st)=[ComplexNilpotent]:let (,orbits)=special_orbits_indexed(G,st) in orbits
+
+set special_representations_indexed(SpringerTable st)=([int],[[int]]):
+let (indices,orbits)=st.special_orbits_indexed in
+(indices, for orbit in orbits do st.ct.characters[st.springer(orbit)] od)
+
+set special_representations(SpringerTable st)=[[int]]:
+let (,chars)=special_representations_indexed(st) in chars
 
 {st is the Springer table for RootDatum rd
  O is an orbit for rd
@@ -182,7 +199,7 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
 ()=prints("O2_check: ", O2_check) then}
  O1=st1.dual_map_i(O1_check), O2=st2.dual_map_i(O2_check) in
  tensor(O1,O2)
-in (ct,orbits,dual_map,dual_map_i,springer,[int]:[])
+in (ct,orbits,dual_map,dual_map_i,springer)
 
 set show_old(SpringerTable st)=void:
 let orbits=st.root_datum.orbits in
@@ -246,3 +263,26 @@ in {by definition permutation should relate the Cartan matrices}
   so O_check_rd_int.diagram = O_check_rd_int.H }
   ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
 
+
+set show(SpringerTable st)=void:
+tabulate(
+["diagram","dim_nilp","rep#","dim","deg(b)", "fake deg(a)","char"]#
+for orbit in st.orbits do
+let j=st.springer(orbit) in
+[orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+j.to_string,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+st.fake_degrees[j].to_string,
+ st.ct.characters[j].to_string] od)
+
+set show_reps(SpringerTable st)=void:
+tabulate(
+["rep#","dim","deg(b)", "fake deg(a)","char"]#
+for j:st.ct.n_classes do 
+[j.to_string,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+st.fake_degrees[j].to_string,
+ st.ct.characters[j].to_string] od)

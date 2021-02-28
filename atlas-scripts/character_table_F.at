@@ -110,6 +110,7 @@ in
   , (int i) string: "" { irreducible representation label }  {later}
   , sym_powers
   ,[int]:[]     {degrees}
+  ,[int]:[]     {fake degrees}
   , ^character_table_Kondo_F4
   )
 

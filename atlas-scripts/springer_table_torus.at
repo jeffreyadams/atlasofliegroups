@@ -19,6 +19,6 @@ assert(rd.is_abelian,"group not a torus");
 rd.orbits,
 dual_map_torus@ComplexNilpotent,
 dual_map_i_torus@ComplexNilpotent,
-springer_torus@ComplexNilpotent,
-[int]:[])
+springer_torus@ComplexNilpotent)
+
 
