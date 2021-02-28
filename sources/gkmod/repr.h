@@ -544,7 +544,6 @@ class common_context
   const Rep_context& rep_con;
   unsigned int int_sys_nr;
   const SubSystem& sub; // embeds |integr_datum| into parent root datum
-  const RootDatum integr_datum; // full fledged integrality datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
   common_context (const Rep_context& rc, const SubSystem& integral);
@@ -555,16 +554,15 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
-  const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|
-  // however, the generator |s| is interpreted for the |integr_datum|
+  // however, the generator |s| is interpreted for |subsys()|
   StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
   StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
   StandardReprMod up_Cayley(weyl::Generator s, const StandardReprMod& z) const;
   std::pair<gradings::Status::Value,bool> // status and whether a descent/type 1
-    status(weyl::Generator s, KGBElt x) const; // with |s| for |integr_datum|
+    status(weyl::Generator s, KGBElt x) const;
   bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,

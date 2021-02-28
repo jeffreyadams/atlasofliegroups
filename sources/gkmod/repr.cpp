@@ -1307,7 +1307,7 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   if (mod_hash.find(srm)!=mod_hash.empty) // then |srm| was seen earlier
     return; // nothing new
 
-  const auto rank = ctxt.id().semisimple_rank();
+  const auto rank = ctxt.subsys().rank();
   sl_list<BlockElt> pred; // list of elements covered by z
   // invariant: |block_below| has been called for every element in |pred|
 
@@ -2262,7 +2262,6 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
 , sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
-, integr_datum(sub.pre_root_datum())
 {} // |common_context::common_context|
 
 
@@ -2270,7 +2269,6 @@ common_context::common_context (const Rep_context& rc, const SubSystem& sub)
 : rep_con(rc)
 , int_sys_nr()
 , sub(rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr).int_system())
-, integr_datum(sub.pre_root_datum())
 {} // |common_context::common_context|
 
 std::pair<gradings::Status::Value,bool>
@@ -2300,7 +2298,7 @@ StandardReprMod common_context::cross
   RootNbrSet pos_neg = pos_to_neg(full_datum,refl);
   pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
   gamma_lambda -= root_sum(full_datum,pos_neg); // correction for $\rho_r$'s
-  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // integrally simple
+  subsys().simple_reflect(s,gamma_lambda.numerator()); // integrally simple
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
@@ -2312,7 +2310,7 @@ bool common_context::is_parity
   const auto& i_tab = involution_table();
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
   assert(real_roots.isMember(sub.parent_nr_simple(s)));
-  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const Coweight& alpha_hat = subsys().simple_coroot(s);
   const int eval = rc().gamma_lambda(z).dot(alpha_hat);
   const int rho_r_corr = alpha_hat.dot(full_datum.twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
@@ -2359,12 +2357,12 @@ StandardReprMod common_context::up_Cayley
   gamma_lambda += root_sum(full_datum,pos_neg); // correction of $\rho_r$'s
 
   // correct in case the parity condition fails for our raised |gamma_lambda|
-  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const Coweight& alpha_hat = subsys().simple_coroot(s);
   const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
     alpha_hat.dot(full_datum.twoRho(upstairs_real_roots))/2;
   const int eval = gamma_lambda.dot(alpha_hat);
   if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
-    gamma_lambda += RatWeight(integr_datum.simpleRoot(s),2); // add half-alpha
+    gamma_lambda += RatWeight(subsys().simple_root(s),2); // add half-alpha
 
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
@@ -2395,8 +2393,8 @@ Ext_common_context::Ext_common_context
 
   // the reflections for |E.l| pivot around |g_rho_check()|
   const RatCoweight minus_g_rho_check = -rc.g_rho_check();
-  for (unsigned i=0; i<l_shifts.size(); ++i)
-    l_shifts[i] = minus_g_rho_check.dot(id().simpleRoot(i));
+  for (unsigned i=0; i<sub.rank(); ++i)
+    l_shifts[i] = minus_g_rho_check.dot(sub.simple_root(i));
 } // |Ext_common_context::Ext_common_context|
 
 

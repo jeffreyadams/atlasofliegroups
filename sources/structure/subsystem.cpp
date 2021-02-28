@@ -13,7 +13,8 @@
 #include "bitmap.h"	// root sets
 #include "matreduc.h"   // |diagonalise| used in |codec| constructor
 
-#include "prerootdata.h"// value returned
+#include "lietype.h"	// returning |ext_gen|
+#include "prerootdata.h"// returning |PreRootDatum|
 #include "rootdata.h"	// |RootSystem| construction and methods
 #include "innerclass.h"	// |integrality_datum_item| construction
 #include "cartanclass.h"// |InvolutionData|
@@ -175,6 +176,19 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
+
+ext_gens SubSystem::fold_orbits (const WeightInvolution& delta) const
+{ return rootdata::fold_orbits(pre_root_datum(),delta); }
+
+RankFlags SubSystem::singular_generators(const RatWeight& gamma) const
+{
+  const Ratvec_Numer_t& v=gamma.numerator();
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    result.set(s,simple_coroot(s).dot(v) == 0);
+
+  return result;
+}
 
 InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 { return InvolutionData(rd,theta,positive_roots()); }

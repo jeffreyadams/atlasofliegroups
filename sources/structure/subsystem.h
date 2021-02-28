@@ -89,7 +89,7 @@ class SubSystem : public RootSystem // new system, subsystem of parent
   const RootDatum& parent_datum() const { return rd; }
   // RootNbr rank() const; // integral rank; inherited from |RootSystem|
 
-  PreRootDatum pre_root_datum() const; // viewed from parent side
+  PreRootDatum pre_root_datum() const;
 
   RootNbr parent_nr_simple(weyl::Generator s) const { return pos_map[s]; }
 
@@ -112,9 +112,26 @@ class SubSystem : public RootSystem // new system, subsystem of parent
     return sub_root[n].reflection; // parent reflection corresponding to |n|
   }
 
+  const Weight& simple_root(weyl::Generator s) const
+  { return parent_datum().root(parent_nr_simple(s)); }
+  const Coweight& simple_coroot(weyl::Generator s) const
+  { return parent_datum().coroot(parent_nr_simple(s)); }
+
   // numbers in parent for the positive (co)roots of the subsystem
   RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
-  const RootNbrSet& posroot_subset() const { return which; }
+  const RootNbrSet& posroot_subset() const { return which; } // as posroots
+
+  // methods that avoid building full |RootDatum srd(pre_root_datum())|
+  template<typename C>
+    void simple_reflect(weyl::Generator s,matrix::Vector<C>& v,int d=0) const
+  { parent_datum().reflect(parent_nr_simple(s),v,d); }
+  template<typename C>
+    void simple_coreflect(matrix::Vector<C>& v,weyl::Generator s,int d=0) const
+  { parent_datum().coreflect(v,parent_nr_simple(s),d); }
+
+  ext_gens fold_orbits (const WeightInvolution& delta) const; // as for |srd|
+  RankFlags singular_generators(const RatWeight& gamma) const; // as for |srd|
+
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
 }; // |class SubSystem|
