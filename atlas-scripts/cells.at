@@ -191,11 +191,13 @@ ct.fake_degrees:=fake_degrees(ct,cells);ct
 set update_fake_degrees(RealForm G,CharacterTable ct)=CharacterTable:
 ct.fake_degrees:=fake_degrees(ct,all_parameters_gamma(G,rho(G)));ct
 
+set update_fake_degrees(RealForm G,SpringerTable st)=SpringerTable:
+st.ct:=update_fake_degrees(G,st.ct);st
+
 set update_fake_degrees(RealForm G,SpringerTable st,[WCell] cells)=SpringerTable:
 st.ct:=update_fake_degrees(st.ct,cells);st
 
-set update_fake_degrees(RealForm G,SpringerTable st)=SpringerTable:
-st.ct:=update_fake_degrees(G,st.ct);st
+
 
 set show_degrees(CharacterTable ct)=void:
 let fake_degree(int i)=if #ct.fake_degrees=0 then -1 else ct.fake_degrees[i] fi in

@@ -43,7 +43,7 @@ L_x_v=G_v, O_L_x_v=0-orbit of G^v
 Springer(O_L_x_v)=sign of W(G^)
 \otimes sgn=trivial of
 }
-set sigma_L_verbose=true
+set sigma_L_verbose=false
 
 {main algorithm for computing sigma_L, this won't usually be called by the user
  M_v is a pseudo-Levi
@@ -71,6 +71,7 @@ let ()=if sigma_L_verbose then
 in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
  let ()=if sigma_L_verbose then prints("y is integer, no induction")  fi then
  sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
+ ()=prints("sigma_v (no induction): ", sigma_v) then
  sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) in
  ct_G.character_index(sigma)
 else  {need induction; compute L, sigma_L, truncated_induce}
@@ -103,8 +104,14 @@ else  {need induction; compute L, sigma_L, truncated_induce}
   "ex: ", ex) fi in ex
  fi  {end if O_L_v=L_v.zero_orbit} then
  {now induce sigma_L}
- degree_function(int j)=ct_G.fake_degrees[j] in
+ ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
+  degree_function(int j)=ct_G.fake_degrees[j] in
+  let ind=induce_character(G,ct_G,roots_L,sigma_L) in
  let char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
+ ()=prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line) then
+ ()=prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view(ind) then
+ ()=prints("minimal degree terms in induced: ", char_indices) then
+
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
  char_L=ct_G.characters[char_indices[0]] then
  ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char_L) fi in
@@ -211,7 +218,7 @@ set lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=[[int]]:
 set show_lusztig_cells(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=void:
 prints("G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
 tabulate(
-["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","char"]#
+["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","fdeg","char"]#
 ##for O_v@counter in dual_orbits do
   let ()=prints("orbit ",counter,": ", O_v.root_datum.nice_format,
         " H=", O_v.H, " diagram=", O_v.diagram, " normalized diagram=", O_v.diagram_normalized) in
@@ -234,9 +241,13 @@ tabulate(
     "sigma="+j.to_string,
     ct_G.dimension(j).to_string,
     ct_G.degrees[j].to_string,
+    if #ct_G.fake_degrees>0 then ct_G.fake_degrees[j].to_string else "" fi,
     sigma.to_string]
   od  {/for i:#data}
  od {for O_v})
+
+set show_lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=void:
+show_lusztig_cells(G,st_G.ct,st_G_v,dual_orbits)
 
 {default: run over dual special orbits, parametrized by dual(special orbits for G)}
 set show_lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=void:
@@ -244,7 +255,7 @@ show_lusztig_cells(G,st_G.ct,st_G_v,
 for O in st_G.special_orbits do let O_dual=st_G.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized)
 od)
 
-set show_lusztig_cells(RootDatum G)=void:show_lusztig_cells(G,G.springer_table,G.dual.springer_table)
+{set show_lusztig_cells(RootDatum G)=void:show_lusztig_cells(G,G.springer_table,G.dual.springer_table)}
 
 set show_lusztig_cell(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent dual_orbit)=void:
  show_lusztig_cells(G,ct_G,st_G_v,[dual_orbit])
@@ -253,8 +264,9 @@ set show_lusztig_cell(RootDatum G, ComplexNilpotent O_v)=void:show_lusztig_cell(
 set show_lusztig_cell(ComplexNilpotent O_v)=void:show_lusztig_cell(O_v.root_datum.dual,O_v)
 set show_lusztig_cells(RootDatum G,CharacterTable ct)=void:show_lusztig_cells(G,ct,G.dual.springer_table,G.dual_orbits)
 
-set show_lusztig_cells(RootDatum G)=void:
-let st=G.springer_table in
+set show_lusztig_cells(RealForm G)=void:
+let st=G.springer_table then
+st=update_fake_degrees(G,st)  in
 show_lusztig_cells(G,st.ct,G.dual.springer_table,
    for O in st.special_orbits do let O_dual=st.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized) od)
 
