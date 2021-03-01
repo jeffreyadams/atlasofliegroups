@@ -542,11 +542,13 @@ ct.class_rep(i).to_string
 set show_reps(CharacterTable ct)=void:
 let id_class=ct.id_class in 
 tabulate(
-["i","dim", "degree","name"]#
+["i","dim", "deg","fdeg","name"]#
 for i:ct.n_classes do
 [i.to_string,
 character_value(ct,id_class)(i).to_string,
-ct.degree(i).to_string,ct.irreducible_label(i).to_string] od)
+ct.degree(i).to_string,
+if #ct.fake_degrees>0 then ct.fake_degrees[i].to_string else "" fi,
+ct.irreducible_label(i).to_string] od)
 
 set show(CharacterTable ct)=void:
 prints("Classes:");

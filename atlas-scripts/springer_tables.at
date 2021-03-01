@@ -16,6 +16,7 @@ set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 set root_datum_parent(SpringerTable st)=RootDatum: st.ct.root_datum_parent
 set characters(SpringerTable st)=[[int]]:st.ct.characters
 set fake_degrees(SpringerTable st)=[int]:st.ct.fake_degrees
+set character_table(SpringerTable st)=CharacterTable: st.ct
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:
@@ -201,17 +202,6 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
  tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
-set show_old(SpringerTable st)=void:
-let orbits=st.root_datum.orbits in
-tabulate(["i","O","d(O)","dd(O)","pi","special"] #
- for O@i in orbits do
-  let O_d=st.dual_map(O) then
-  O_dd=st.dual_map_i(O_d) then
-  special=st.is_special(O) then
-  sigma_index=st.springer(O) in
-  [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
- od)
-
 {inverse Springer map: try to find an orbit (not necessarily special) such
  that springer(orbit)=given character
 if the character is special this succeeds and gives a special orbit
@@ -266,23 +256,31 @@ in {by definition permutation should relate the Cartan matrices}
 
 set show(SpringerTable st)=void:
 tabulate(
-["diagram","dim_nilp","rep#","dim","deg(b)", "fake deg(a)","char"]#
+["diagram","dim","rep#","dim","deg", "fdeg","char"]#
 for orbit in st.orbits do
 let j=st.springer(orbit) in
-[orbit.diagram.to_string,
+[orbit.diagram.to_string+st.special_star(orbit),
 orbit.dim_nilpotent.to_string,
 j.to_string,
 st.ct.dimension(j).to_string,
 st.ct.degree(j).to_string,
-st.fake_degrees[j].to_string,
+if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
  st.ct.characters[j].to_string] od)
 
 set show_reps(SpringerTable st)=void:
+let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in 
 tabulate(
-["rep#","dim","deg(b)", "fake deg(a)","char"]#
+["rep#","orbit","dim","deg", "fdeg","char"]#
 for j:st.ct.n_classes do 
 [j.to_string,
+ let orbit_index=find(springer_reps,j) in
+  if orbit_index>=0 then
+   let orbit=st.orbits[orbit_index] in orbit.diagram.to_string + st.special_star(orbit)
+  else ""
+  fi,
 st.ct.dimension(j).to_string,
 st.ct.degree(j).to_string,
-st.fake_degrees[j].to_string,
+if #st.fake_degrees>0 then
+  if st.fake_degrees[j]>=0 then st.fake_degrees[j].to_string else "" fi
+  else "" fi,
  st.ct.characters[j].to_string] od)
