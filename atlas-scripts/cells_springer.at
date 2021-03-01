@@ -1,0 +1,182 @@
+<cells.at
+
+set cells_given_AV ( SpringerTable st
+		   , ComplexNilpotent O
+		   , ([Param],[WCell]) (block,cells) ) =
+      ([Param],[WCell]):
+(  if cells_verbose then prints
+      ("size of block: ", #block,new_line, "number or cells: ", #cells)
+   fi
+; ( block
+  , for cell@j in cells
+    do if st.ct.special_character(cell)=st.springer(O) then [cell] else [] fi
+    od.##
+  )
+)
+
+set parameters_given_AV ( { same arguments as |cells_given_AV| }
+  (SpringerTable,ComplexNilpotent,([Param],[WCell])) data) = [Param]:
+  data.cells_given_AV.parameters
+
+
+{used in computing weak unipotent packets
+given blocks_and_cells (at regular infinitesimal character)
+compute all parameters whose special cell representation
+equals Springer(O), and push the results to infinitesimal character gamma,
+which is typically O_check.H/2, and singular
+the SpringerTable st and ComplexNilpotent O are for the integral root system,
+O is only used for its Springer representation
+}
+set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
+{[(int,int,Param)]: {[(block number, cell number, parameter)]}}
+let springer_O=st.springer(O) {int} then
+springer_dim=st.ct.dimension(springer_O) in
+if cells_verbose then
+ prints("given AV with infinitesimal character:", gamma, new_line, "O=",O);
+ prints("st:", st, " bc:", blocks_and_cells);
+ prints("blocks_and_cells:", blocks_and_cells)
+fi;
+##for (block,cells)@i in blocks_and_cells do
+if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
+ ##for cell@j in cells do
+ let survivors=[(int,int,Param)]:[] in
+ {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
+ if #cell< springer_dim
+  then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
+ elif
+   for p in parameters(block,cells[j]) do
+    if I_will_survive(p,gamma) then
+      prints("survive:", p, " ", gamma);
+      survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
+    fi {I_will_survive}
+   od {/##for p};
+ =#survivors
+  then {don't bother checking cell representation} [(int,int,Param)]:[]
+ elif
+ st.ct.special_character(cell)=springer_O then
+    survivors
+ else
+        [(int,int,Param)]:[]
+ fi
+ od  {/for cell}
+od  {/for block}
+
+{include permutation}
+set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma,mat permutation)=[(int,int,Param)]: {[(block number, cell number, parameter)]}
+let springer_O=st.springer(O) then
+()=prints("O: ", O) then
+springer_dim=st.ct.dimension(springer_O) in
+if cells_verbose then
+ prints("given AV with infinitesimal character:", gamma, new_line, "O=",O, new_line, "with permutation: ", permutation);
+ prints("st:", st, " bc:", blocks_and_cells);
+ prints("blocks_and_cells:", blocks_and_cells)
+fi;
+if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
+##for (block,cells)@i in blocks_and_cells do
+if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
+ ##for cell@j in cells do
+ let survivors=[(int,int,Param)]:[] in
+ if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
+ if #cell< springer_dim
+  then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
+ elif
+   for p in parameters(block,cells[j]) do
+    if I_will_survive(p,gamma) then
+{      prints("survive:", p, " ", gamma);}
+      survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
+    fi {I_will_survive}
+   od {/##for p};
+ =#survivors
+  then {prints("NONE");}{don't bother checking cell representation} [(int,int,Param)]:[]
+ elif
+ special_character(st.ct,cell,permutation)=springer_O
+  then
+let c=special_character(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
+survivors
+ else [(int,int,Param)]:[]
+ fi
+ od  {/for cell}
+od  {/for block}
+
+{include precomputed cell characters (but NOT permutation)
+mainly used for even orbits in E8}
+set parameters_given_AV_infinitesimal_character(
+SpringerTable st,
+ComplexNilpotent O,
+ratvec gamma,
+[(([Param],[WCell]),[([int],[int])])]  cell_data
+{[Param]: list of parameters in block
+ [([int] indices of parameters in cell,[int] character of cell)]
+ }
+)=
+[(int,int,Param)]: {[(block number, cell number, parameter)]}
+let springer_O=st.springer(O) then
+()=if cells_verbose then prints("given AV with infinitesimal character", new_line,"(precomputed cell character): ", gamma, new_line, "O=",O) fi in
+if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
+##for i:#cell_data do  {i=block number}
+ let (parameters_and_cells,cell_characters)=cell_data[i] then
+ (parameters,cells)=parameters_and_cells in
+  ##for j:#cell_characters do
+   let (cell_param_numbers,cell_character)=cell_characters[j] then
+    ()=if cells_verbose then prints("block ",i,"/cell", j, " of size ",#cell_param_numbers) fi then
+    spec=special_character(st.ct,cell_character) in
+    let ()=if cells_verbose then prints("spec: ", spec, " ", "springer_O: ", springer_O) fi in
+    if spec=springer_O then
+    ##for k in cell_param_numbers do let p=parameters[k] in if I_will_survive(p,gamma) then
+{   prints("survive:", p, " ", gamma);}
+   [(i,j,first_param(coherent_family_irr(p,gamma)))] else [] fi od
+  else []
+  fi
+ od
+od
+
+{assuming integral infinitesimal character}
+set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
+set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
+set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(p))
+set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
+
+set associated_variety(SpringerTable st_G,WCell cell)=ComplexNilpotent:
+let G=st_G.root_datum_parent then
+ct_G=st_G.ct then
+L=cell.root_datum then
+ct_L=L.character_table then
+index_pi_L=ct_L.special_character(cell) then
+char_L=ct_L.characters[index_pi_L] then
+d_L=ct_L.degrees[index_pi_L] then
+chars_G=
+##for i:st_G.ct.n_classes do
+{ let ()=prints("i: ",i, " ",  ct_G.degrees[i], " ", d_L) in }
+ if ct_G.degrees[i]=d_L and
+  !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
+  then  [i] else [] fi
+od
+then
+index_G=chars_G[0] in
+st_G.springer_inverse_special(index_G)
+
+set associated_variety_test(SpringerTable st_G,WCell cell)=
+let G=st_G.root_datum_parent then
+ct_G=st_G.ct then
+L=cell.root_datum then
+ct_L=L.character_table then
+index_pi_L=ct_L.special_character(cell) then
+char_L=ct_L.characters[index_pi_L] then
+d_L=ct_L.degrees[index_pi_L] then
+()=prints("OK") in
+(G,L,ct_G,ct_L,index_pi_L,char_L,d_L){
+chars_G=
+##for i:st_G.ct.n_classes do
+ if ct.degrees[i]=d_L and
+  !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct.characters[i]))
+  then  [i] else [] fi
+od
+then
+()=prints("OK2") then
+{()=prints("chars_G=",chars_G) then}
+index_G=chars_G[0] in
+st_G.springer_inverse_special(index_G)
+}
+
+set GK_dimension(SpringerTable st,Param p)=int:st.associated_variety_int(p).dim_nilpotent\2
+set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.associated_variety_int(p).dim_nilpotent\2
