@@ -87,7 +87,7 @@ in (char_block,char_kgb,char_inv)
 
 set coherent_data(SpringerTable st,RealForm G)=(vec,vec,vec):coherent_data(st,G.trivial.block_of)
 
-set show_coherent_data(SpringerTable st,(vec a,vec b,vec c))=
+set show_coherent_data(SpringerTable st,(vec a,vec b,vec c))=void:
 let ct=st.ct in
 prints(
 "i: index of representation sigma of W",new_line,

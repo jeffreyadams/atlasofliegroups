@@ -313,22 +313,27 @@ let tip=three_inner_products(G,st_G.ct,st_G.special_characters) then
 other=three_inner_products(G,st_G.ct,lusztig_cells_characters_special(G,st_G,st_G_v))  {for each orbit mult((sum over Lusztig left cell),BXI)} then
 lusztig_cells=lusztig_cells(G,st_G,st_G_v) then
 (indices,orbits)=st_G.special_orbits_indexed in
-prints("#: # of special orbit O_v of G^v in list of all orbits",new_line,
+prints(new_line,"Table of inner products for G=", G,new_line,"#: number of special orbit O_v of G^v in list of all orbits",new_line,
 "diag: diagram of orbit O_v",new_line,
 "dim: dimension of special representation",new_line,
 "deg: degree of special representation",new_line,
 "bxi: multiplicity of special in coherent continuation representations B,X,I",new_line,
 "BXI: inner product of Lusztig left cell character with coherent continuation representations B,X,I");
-tabulate( ["#","dim","deg","sigma","b","x","i", "B", "X", "I"]#
+tabulate( ["#","dim","deg","fdeg","sigma","b","x","i", "B", "X", "I"]#
  for i:#indices do let (a,b,c)=tip[i] then (d,e,f)=other[i] then
   j=indices[i] in
  [indices[i].to_string,
   st_G.ct.dimension(lusztig_cells[i][0]).to_string,
   st_G.ct.degree(lusztig_cells[i][0]).to_string,
+  if #st_G.fake_degrees>0 then st_G.fake_degrees[i].to_string else "" fi,
   lusztig_cells[i].to_string,
-  a.to_string,b.to_string,c.to_string, d.to_string,e.to_string,f.to_string] od)
+  a.to_string,b.to_string,c.to_string, d.to_string,e.to_string,f.to_string] od);
+  prints(new_line,"Springer table of G:");show_reps(st_G)
 
-set show_three_inner_products_special(RealForm G)=show_three_inner_products_special(G,G.springer_table, G.dual.springer_table)
+set show_three_inner_products_special(RealForm G)=void:
+let st_0=G.springer_table then
+st=update_fake_degrees(G,st_0) in
+show_three_inner_products_special(G,st, G.dual.springer_table)
 
 set show_big_table(RealForm G,CharacterTable ct_G)=
 let all=three_inner_products(G,ct_G,ct_G.characters) in
