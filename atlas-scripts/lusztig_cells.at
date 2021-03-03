@@ -74,7 +74,7 @@ in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
  ()=if sigma_L_verbose then prints("sigma_v (no induction): ", sigma_v) fi  then
  sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
  ()=if sigma_L_verbose then prints("exchange/tensor sign: ", sigma) fi in 
- ct_G.character_index(sigma).print
+ ct_G.character_index(sigma)
 else  {need induction; compute L, sigma_L, truncated_induce}
  let ()=if sigma_L_verbose then prints("need induction: ")  fi in
  let G_v=O_v.root_datum then
@@ -91,7 +91,7 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
  sigma_L=
- if O_L_v=L_v.zero_orbit then prints("triv");  L.character_table.trivial
+ if O_L_v=L_v.zero_orbit then   L.character_table.trivial
  elif O_L_v=L_v.principal_orbit then L.character_table.sign
  else  {not 0 or principal orbit: need to compute L.springer_table}
   let ()=if sigma_L_verbose then prints(("computing st_L_v:") ) fi then
@@ -106,13 +106,12 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  fi  {end if O_L_v=L_v.zero_orbit} then
  {now induce sigma_L}
  ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
-  degree_function(int j)=ct_G.fake_degrees[j] in
-  let ind=induce_character(G,ct_G,roots_L,sigma_L) in
- let char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
- ()=prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line) then
- ()=prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view(ind) then
- ()=prints("minimal degree terms in induced: ", char_indices) then
-
+  degree_function(int j)=ct_G.fake_degrees[j] then
+  ind=induce_character(G,ct_G,roots_L,sigma_L) then
+  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
+ ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line);
+    prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view(ind);
+    prints("minimal degree terms in induced: ", char_indices) fi then
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
  char_L=ct_G.characters[char_indices[0]] then
  ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char_L) fi in
@@ -364,6 +363,7 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","i", "B"
   a.to_string,b.to_string,c.to_string, d.to_string,e.to_string,f.to_string] od);
   prints(new_line,"Springer table of G_^v:");show_reps(st_G_v);
   prints(new_line,"Springer table of G:");show_reps(st_G);
+  prints(new_line,"Orbits for G:");show_long(st_G);
   prints(new_line,"lusztig cells for G:"); show_lusztig_cells(G,st_G,st_G_v);
   prints(new_line,"full decomposition of BXI: ");show_big_table(G,st_G.ct)
 

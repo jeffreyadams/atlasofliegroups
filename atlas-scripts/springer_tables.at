@@ -271,6 +271,23 @@ st.ct.degree(j).to_string,
 if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
  st.ct.characters[j].to_string] od)
 
+set show_long(SpringerTable st)=void:
+tabulate(
+["#orbit","diagram","dim","dual","dual-dim","rep#","dim","deg", "fdeg","char"]#
+for orbit@i in st.orbits do
+let  dual_orbit=st.dual_map(orbit) then
+j=st.springer(orbit) in
+[i.to_string,
+orbit.diagram.to_string+st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+dual_orbit.diagram.to_string,
+dual_orbit.dim_nilpotent.to_string,
+j.to_string,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
+ st.ct.characters[j].to_string] od)
+
 set show_reps(SpringerTable st)=void:
 let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in 
 tabulate(
