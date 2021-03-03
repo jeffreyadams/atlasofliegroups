@@ -1,0 +1,238 @@
+This version of atlas allows three possibilities for (much) more
+optimization, at the expense of increased time and effort on the part
+of the user. The main step in using them is to copy one of the sets of
+alternate Makefiles onto the active Makefiles: for example (in the
+terminal while in the main atlas directory) run the two commands
+
+cp MakefileLTO Makefile
+cp sources/interpreter/MakefileLTO sources/interpreter/Makefile
+
+You can later switch to another possibility by the same two kinds of
+commands. To return to the default optimization, run the two commands
+
+cp MakefileBK Makefile
+cp sources/interpreter/MakefileBK sources/interpreter/Makefile
+
+Here are some more details and instructions.
+
+**********************
+
+BK (the default)
+
+The command "make" will compile Fokko and atlas with no
+optimization. If your computer has N cores, then all "make" commands
+will be faster if you replace "make" by "make -jM," where M is the
+number of cores you would like to use. (There is nothing to be gained
+by choosing M larger than N. If you are on a large shared machine, you
+might choose M equal to whatever fraction of N you feel entitled
+to. If you are on your own computer, and there are K other processes
+running (browser, editor, Facebook...) you might choose M = N-K to
+keep from bringing the computer to a halt.
+
+Just as a reminder of this valuable feature, I will always write "make
+-j3" instead of "make," but you can replace 3 by something else or
+omit "-j3" entirely.
+
+The basic way to make faster code for atlas is to use (instead of
+"make -j3") the command
+
+make -j3 optimize=true
+
+This will compile each unit of the source code with gcc's "O3"
+optimization. (I won't try to explain that.) YOU SHOULD ALWAYS USE at
+least this much optimization. I tested just a couple of things, but
+the optimized code was faster than unoptimized by a factor of about
+five, and the executable is smaller by a factor of about three. There
+is a small increase in compilation time (sorry, I didn't test that!)
+but not much.
+
+**********************
+
+LTO
+
+LTO stands for "link time optimization." With ordinary optimization,
+the compiler looks at the code within each compilation unit, and makes
+an object file for that compilation unit that's as fast as
+possible. But Of course different compilation units call on each
+other; and it can happen that the nature of those calls suggests ways
+to optimize the final executable. "Link time optimization" happens
+_after_ the individual compilation units are compiled, and seeks to
+put those pieces together in the fastest possible way. The result is
+that the "linking" step (when the object files for each compilation
+unit are made into an executable) is much slower; again I have not
+made precise timings, but I think that you might expect compilation to
+take an additional couple of minutes. Here are the steps:
+
+     cp MakefileLTO Makefile
+     cp sources/interpreter/MakefileLTO sources/interpreter/Makefile
+
+     make mostlyclean
+
+     make -j3 optimize=true
+
+(The third step is needed to remove object files that might be left
+over from another compilation; they will not be what the linker needs
+to do link time optimization.)
+
+This process will produce executables atlasLTO and FokkoLTO. They
+should be smaller than the atlas and Fokko executables produced by the
+default Makefile, by perhaps 25-40%. In the most recent testing I've
+done, they are just _very_ slightly faster, perhaps 1%. I think they
+did better in the past; but based on recent tests (see the end of this
+file) LTO is not obviously worthwhile.
+
+**********************
+
+PDO
+
+PDO stands for "profile driven optimization. It's complicated.
+
+     cp MakefilePDO Makefile
+     cp sources/interpreter/MakefilePDO sources/interpreter/Makefile
+
+     make mostlyclean
+
+     make -j3 profile=true
+
+This will produce two executables atlas_instr and
+Fokko_instr. They behave just like atlas and Fokko, except that
+they are "instrumented:" when you use them (precisely, when you quit
+at the end of a job) they make a record of which parts of the software
+were used in which amounts. The records, called "profiles," are stored
+in an automatically created directory /PDO/ inside the atlas
+directory. Every time you reuse atlas_instr, new information is ADDED
+to the existing profile record.
+
+The instrumented executables are about half as fast as atlas and
+Fokko. You should use them to do calculations _you_ want to do. When I
+was doing this, I ran a lot of calculations like
+
+is_unitary(E6_q.trivial)
+
+and similarly for a variety of other groups; and
+
+unipotent_representations(F4_s).
+
+When you think you might have enough data collected, do
+
+     make mostlyclean
+     make -j3 optimize=true
+
+The first step is ABSOLUTELY necessary to get rid of the instrumented
+object files produced above. The second step then compiles using
+optimization informed by the profile information recorded above, and
+produces executables atlasPDO (and FokkoPDO): perhaps intermediate in
+size between atlas and atlasLTO.
+
+The profiles stored in /PDO/, and the instrumented executable
+atlas_instr, are not destroyed. If you are not happy with the
+performance of atlasPDO, you can return to using atlas_instr to record
+more profile information, and then repeat the steps
+
+     make mostlyclean
+     make -j3 optimize=true
+
+to get a _new_ atlasPDO (and FokkoPDO). As the testing data below
+indicates, atlasPDO might be something like 10% faster than
+atlas. YMMV, and will depend on what you choose to do on atlas_instr.
+
+*******************************
+This combines profile-driven and link-time optimization. Here are the
+instructions:
+
+
+     cp MakefilePDOLTO Makefile
+     cp sources/interpreter/MakefilePDOLTO sources/interpreter/Makefile
+
+     make mostlyclean
+
+     make -j3 profile=true
+
+This produces instrumented executables atlasLTO_instr and
+FokkoLTO_instr, which store profile information in /PDOLTO/ in the
+atlas directory. So you run atlasLTO_instr as often as you like, doing
+what you like, so that you accumulate profile information.
+
+When you think you might have enough data collected, do
+
+     make mostlyclean
+     make -j3 optimize=true
+
+The first step is ABSOLUTELY necessary to get rid of the instrumented
+object files produced above. The second step then compiles using
+optimization informed by the profile information recorded above, and
+produces executables atlasLTOPDO (and FokkoLTOPDO): perhaps the
+smallest given by any of these methods. They may be approximately 10%
+faster than atlas and Fokko.
+
+If you are not satisfied with the result, you can again run
+atlasLTO_instr to collect additional profiling data, and then repeat
+the steps
+
+     make mostlyclean
+     make -j3 optimize=true
+
+to get new atlasLTOPDO and FokkoLTOPDO.  For the testing data below I
+did this three times; the three versions are labelled LTOPDO1,
+LTOPDO2, and LTOPDO3; each is based on _more_ profiling data than its
+predecessor.
+
+***************************************
+testing data on MIT machine wave5a
+
+is_unitary(F4_s.trivial)
+BASE    3.306 / 2.923
+LTO     3.295 / 2.895
+PDO     3.091 / 2.787
+LTOPDO1 3.024 / 2.677
+LTOPDO2 3.045 / 2.674
+LTOPDO3 3.021 / 2.645
+
+is_unitary(E6_s.trivial)
+BASE    38.309
+LTO     38.246u
+PDO     36.553u
+LTOPDO1 35.399u
+LTOPDO2 34.749 / 34.708
+LTOPDO3 34.975 / 34.799 / 34.725
+
+is_unitary(E6_q.trivial)
+BASE    70.851
+LTO     69.909u
+PDO     64.743
+LTOPDO1 62.635 / 62.614
+LTOPDO2 62.084 / 61.584
+LTOPDO3 63.093 / 63.178
+
+is_unitary(Sp(10,R).trivial)
+BASE    13.173 / 12.889
+LTO     13.235 / 12.869
+PDO     12.307 / 12.021
+LTOPDO1 11.908 / 11.580
+LTOPDO2 11.679 / 11.708 / 11.425
+LTOPDO3 11.900 / 11.923 / 11.559 / 11.565
+
+[Fokko] kllist for split E7, output ?
+BASE    8.340 / 7.944 / 8.115
+LTO     8.196 / 8.201 / 8.088
+PDO     8.009 / 8.440 / 7.825
+LTOPDO1 8.168 / 7.841 / 8.131
+LTOPDO2 7.630 / 7.646 / 7.624
+LTOPDO3 7.626 / 7.425 / 7.4499
+
+is_unitary(parameter(KGB(E8_s,200325),[4,0,-3,9,-5,-3,4,-3]/1,[2,0,-2,5,-3,-2,2,-2 ]/1))
+BASE    740.365
+LTO	735.361
+PDO     679.080
+LTOPDO1 651.523
+LTOPDO2 643.583
+LTOPDO3 651.584
+
+set R = unipotent_representations(Sp(6,R))
+BASE   6.466
+LTO      6.357
+PDO	  5.942
+LTOPDO1  5.872 / 5.869
+LTOPDO2  6.001 / 5.988
+LTOPDO3  5.854 / 5.854
+
