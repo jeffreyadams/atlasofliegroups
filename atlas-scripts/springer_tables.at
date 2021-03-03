@@ -23,6 +23,10 @@ set equal([[int]] a,[[int]] b)=bool:
 if #a != #b then false else
 all(for i:#a do a[i]=b[i] od) fi
 
+set orbit_index(SpringerTable st,ComplexNilpotent orbit)=int:
+let diagram=orbit.diagram_normalized in 
+first(for O in st.orbits do equal(O.diagram_normalized,diagram) od)
+
 {ComplexNilpotent given by diagram}
 set orbit_by_diagram([ComplexNilpotent] orbits,[vec] diagram)=ComplexNilpotent:
 let index=first(for i:#orbits do equal(orbits[i].diagram_normalized,diagram) od) in orbits[index]
