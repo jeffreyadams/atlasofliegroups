@@ -719,7 +719,7 @@ common_block::common_block // full block constructor
   (const common_context& ctxt, const StandardReprMod& srm,
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_lambda()))
+  : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
   , integral_sys(ctxt.subsys()) // copy reference, which is into |ic.int_table|
   , z_pool(), srm_hash(z_pool,4)
