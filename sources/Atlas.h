@@ -93,15 +93,25 @@ namespace atlas {
 
   namespace containers {
 
+  template <typename Alloc>
+    class allocator_deleter;
   template<typename T,typename Alloc = std::allocator<T> >
-    class simple_list;
-  template<typename T,typename Alloc = std::allocator<T> >
-    class sl_list;
+    struct sl_node;
 
   template<typename T, typename Alloc = std::allocator<T> >
     class sl_list_const_iterator;
   template<typename T,typename Alloc = std::allocator<T> >
     class sl_list_iterator;
+
+  template<typename T, typename Alloc = std::allocator<T> >
+    class weak_sl_list_const_iterator;
+  template<typename T, typename Alloc> class
+    weak_sl_list_iterator;
+
+  template<typename T,typename Alloc = std::allocator<T> >
+    class simple_list;
+  template<typename T,typename Alloc = std::allocator<T> >
+    class sl_list;
 
   template<typename T,typename Alloc = std::allocator<T> >
     class mirrored_simple_list; // trivial adapter, allows use with |std::stack|
@@ -449,8 +459,6 @@ namespace atlas {
     class KL_table;
     using KLCoeff = unsigned int;
     using KLPol = polynomials::Safe_Poly<KLCoeff>;
-    using KLStore = std::vector<KLPol>;
-    using KLPolRef = KLStore::const_reference;
     using KLIndex = unsigned int; // $<2^{32}$ distinct polynomials for $E_8$!
     using MuCoeff = KLCoeff;
   }

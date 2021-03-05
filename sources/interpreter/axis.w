@@ -49,7 +49,7 @@ namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
-}@; }@;
+} }
 #endif
 
 @ The implementation unit follows a somewhat similar pattern.
@@ -64,9 +64,9 @@ namespace {
 @< Local variable definitions @>@;
 @< Local function definitions @>@;
 @< Static variable definitions that refer to local functions @>@;
-}@;
+}
 @< Function definitions @>@;
-}@; }@;
+} }
 
 @ Although initialising the evaluator will be handled in \.{global.w}, we
 define a function that resets the evaluator here (since it effectively
@@ -269,8 +269,8 @@ private:
   const type_p return_type;
     // return type of current function, if any (non owned)
 public:
-  layer(const layer&) = @[delete@]; // no ordinary copy constructor
-  layer& operator= (const layer&) = @[delete@]; // nor assignment operator
+  layer(const layer&) = delete; // no ordinary copy constructor
+  layer& operator= (const layer&) = delete; // nor assignment operator
   explicit layer(size_t n); // non-function non-loop layer
   layer(size_t n,type_p return_type);
     // function or (with |return_type==nullptr|) loop layer
@@ -1141,13 +1141,11 @@ an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
 @< Type definitions @>=
-#define nothing_new_here @[@]=@[default@]
-
 struct identifier : public expression_base
 { id_type code;
 @)
   explicit identifier(id_type id) : code(id) @+{}
-  virtual ~@[identifier() nothing_new_here@];
+  virtual ~identifier() = default;
   const char* name() const;
   virtual void print(std::ostream& out) const;
 };
@@ -1179,7 +1177,7 @@ class global_identifier : public identifier
 { const shared_share address;
 public:
   explicit global_identifier(id_type id);
-  virtual ~@[global_identifier() nothing_new_here@];
+  virtual ~global_identifier() = default;
   virtual void evaluate(level l) const;
 };
 
@@ -1616,7 +1614,7 @@ struct call_base : public expression_base
 @)
   call_base(expression_ptr&& arg, const source_location& loc)
   : expression_base(), argument(arg.release()), loc(loc) @+{}
-  virtual ~@[call_base() nothing_new_here@];
+  virtual ~call_base() = default;
   virtual std::string function_name() const=0;
 };
 @)
@@ -1640,8 +1638,8 @@ case of errors during execution of the function.
 class function_base : public value_base
 {
 public:
-  function_base() : @[value_base@]() @+{}
-  virtual ~@[function_base() nothing_new_here@];
+  function_base() : value_base() @+{}
+  virtual ~function_base() = default;
   static const char* name() @+{@; return "function value"; }
 @)
   virtual void apply(expression_base::level l) const=0;
@@ -1673,7 +1671,7 @@ struct call_expression : public call_base
   call_expression
     (expression_ptr&& f,expression_ptr&& a, const source_location& loc)
    : call_base(std::move(a),loc), function(f.release()) @+{}
-  virtual ~@[call_expression() nothing_new_here@];
+  virtual ~call_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
   virtual std::string function_name() const
@@ -1733,7 +1731,7 @@ template <bool variadic>
 @)
   builtin_value(wrapper_function v,const std::string& n)
   : function_base(), val(v), print_name(n) @+ {}
-  virtual ~ @[builtin_value() nothing_new_here@];
+  virtual ~builtin_value() = default;
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
   virtual void apply(expression_base::level l) const @+
@@ -1748,7 +1746,7 @@ template <bool variadic>
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
-  builtin_value@[(const builtin_value& v) = delete@];
+  builtin_value(const builtin_value& v) = delete;
 };
 typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
 typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
@@ -1772,7 +1770,7 @@ struct overloaded_call : public call_base
      expression_ptr&& arg,
      const source_location& loc)
 @/: call_base(std::move(arg),loc), name(name) @+ {}
-  virtual ~@[overloaded_call() nothing_new_here@];
+  virtual ~overloaded_call() = default;
   virtual std::string function_name() const @+{@; return name; }
   virtual void print(std::ostream& out) const;
 };
@@ -1825,7 +1823,7 @@ template <bool variadic>
      const source_location& loc)
 @/: overloaded_call(fun->print_name,std::move(arg),loc)
   , f(fun), f_ptr(fun->val) @+ {}
-  virtual ~@[overloaded_builtin_call() nothing_new_here@];
+  virtual ~overloaded_builtin_call() = default;
   virtual void evaluate(level l) const;
 };
 @)
@@ -2018,7 +2016,7 @@ determined at run time. The distinction is handled though the virtual methods
 kinds of function objects at once.
 
 To evaluate a |call_expression| object, we first evaluate this function part,
-and then dynamically cast it to a |function_base f| (which should always
+and then dynamically cast it to a |function_base f@;| (which should always
 succeed, assuming type checking is sound). Then we evaluate the arguments
 according to the |f->argument_policy()|, and then call |f->apply|, which should
 find the arguments in the form it expects.
@@ -2337,7 +2335,7 @@ struct let_expression : public expression_base
   expression_ptr initialiser, body;
 @)
   let_expression(const id_pat& v, expression_ptr&& ini, expression_ptr&& b);
-  virtual ~@[let_expression() nothing_new_here@]; // subobjects do all the work
+  virtual ~let_expression() = default; // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2648,7 +2646,7 @@ struct lambda_expression : public expression_base
     (id_pat&& pat, expression_ptr&& b, const source_location& loc)
     : p(std::make_shared<lambda_struct>(std::move(pat),std::move(b),loc)) @+{}
 
-  virtual ~@[lambda_expression() nothing_new_here@];
+  virtual ~lambda_expression() = default;
     // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -2657,7 +2655,7 @@ struct lambda_expression : public expression_base
 struct recursive_lambda : public lambda_expression
 { recursive_lambda(id_type self,@|
      id_pat&& p, expression_ptr&& b, const source_location& loc);
-  virtual ~@[recursive_lambda() nothing_new_here@];
+  virtual ~recursive_lambda() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -2712,9 +2710,9 @@ void lambda_expression::print(std::ostream& out) const
 {@; print_lambda(out,p->param,p->body); }
 void recursive_lambda::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
-  id_type self=it->name;
+  id_type self_id=it->name;
   const id_pat& param=*++it;
-  print_lambda(out << main_hash_table->name_of(self) << ':',param,p->body);
+  print_lambda(out << main_hash_table->name_of(self_id) << ':',param,p->body);
 }
 
 @ Handling of user-defined functions in type analysis is usually uneventful
@@ -2854,7 +2852,7 @@ struct closure_value : public function_base
 @)
   closure_value@|(const shared_context& c, const shared_lambda& l)
   : function_base(), context(c), p(l), body(*p->body) @+{}
-  virtual ~ @[closure_value() nothing_new_here@];
+  virtual ~closure_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(expression_base::level l) const;
   virtual expression_base::level argument_policy() const
@@ -2870,7 +2868,7 @@ struct closure_value : public function_base
 @)
   static const char* name() @+
    {@; return recursive ? "recursive closure" : "closure"; }
-  closure_value @[(const closure_value& ) = delete@];
+  closure_value (const closure_value& ) = delete;
 };
 template<bool recursive>
 using  closure_ptr = std::unique_ptr<closure_value<recursive> >;
@@ -2894,10 +2892,10 @@ void closure_value<false>::print(std::ostream& out) const
 template<>
 void closure_value<true>::print(std::ostream& out) const
 { auto it=p->param.sublist.begin();
-  id_type self=it->name;
+  id_type self_id=it->name;
   const id_pat& param=*++it;
   out << "Recursive function defined " << p->loc << std::endl;
-  print_lambda(out<< main_hash_table->name_of(self) << ':',param,p->body);
+  print_lambda(out<< main_hash_table->name_of(self_id) << ':',param,p->body);
 }
 
 template<bool recursive>
@@ -3042,7 +3040,7 @@ struct closure_call : public overloaded_call
    (shared_closure<recursive>&& f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
   : overloaded_call(n,std::move(a),loc), f(std::move(f)) @+ {}
-  virtual ~@[closure_call() nothing_new_here@];
+  virtual ~closure_call() = default;
   virtual void evaluate(level l) const;
 };
 
@@ -3051,7 +3049,7 @@ struct closure_call : public overloaded_call
 as a |name| to call itself and a |source_location| for the call. The method
 |build_call| constructs a shared pointer |me| to the |closure_value| object it is
 called for, but whose sharing is managed by a separately provided |shared_ptr
-owner|, and constructs a |closure_call| from that pointer and the provided
+owner@;|, and constructs a |closure_call| from that pointer and the provided
 argument(s) |arg|, and named according to the separately provided |name|.
 
 @< Function def... @>=
@@ -3221,7 +3219,7 @@ struct seq_expression : public expression_base
 @)
   seq_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~@[seq_expression() nothing_new_here@];
+  virtual ~seq_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3231,7 +3229,7 @@ struct next_expression : public expression_base
 @)
   next_expression(expression_ptr&& f,expression_ptr&& l)
    : first(f.release()),last(l.release()) @+{}
-  virtual ~@[next_expression() nothing_new_here@];
+  virtual ~next_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -3313,7 +3311,7 @@ struct subscr_base : public expression_base
 @/: array(a.release())
   , index(i.release())
   @+{}
-  virtual ~@[subscr_base() nothing_new_here@] ;
+  virtual ~subscr_base() = default;
 @)
   virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print (std::ostream& out, bool reversed) const; // non |virtual|
@@ -3333,7 +3331,7 @@ struct slice_base : public expression_base
   , lower(lwb.release())
   , upper(upb.release())
   @+{}
-  virtual ~@[slice_base() nothing_new_here@] ;
+  virtual ~slice_base() = default;
 @)
   virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print(std::ostream& out, unsigned flags) const; // non |virtual|
@@ -4002,7 +4000,7 @@ struct projector_value : public function_base
   projector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
   : type(t.copy()),position(i),id(id),loc(loc) @+ {}
-  virtual ~ @[projector_value() nothing_new_here@];
+  virtual ~projector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(expression_base::level l) const;
   virtual expression_base::level argument_policy() const;
@@ -4012,7 +4010,7 @@ struct projector_value : public function_base
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
-  projector_value @[(const projector_value& ) = delete@];
+  projector_value (const projector_value& ) = delete;
 };
 
 @ Here are two virtual methods. We print the position selected and the type
@@ -4047,7 +4045,7 @@ struct projector_call : public overloaded_call
    (const projector_value& f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
   : overloaded_call(n,std::move(a),loc), position(f.position), id(f.id) @+ {}
-  virtual ~@[projector_call() nothing_new_here@];
+  virtual ~projector_call() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4097,7 +4095,7 @@ struct injector_value : public function_base
   injector_value
      (const type_expr& t,unsigned i,id_type id,const source_location& loc)
   : type(t.copy()),position(i),id(id),loc(loc) @+ {}
-  virtual ~ @[injector_value() nothing_new_here@];
+  virtual ~injector_value() = default;
   virtual void print(std::ostream& out) const;
   virtual void apply(expression_base::level l) const;
   virtual expression_base::level argument_policy() const;
@@ -4107,7 +4105,7 @@ struct injector_value : public function_base
      expression_ptr&& arg, const source_location& loc) const;
 @)
   static const char* name() @+{@; return "built-in function"; }
-  injector_value @[(const injector_value& ) = delete@];
+  injector_value (const injector_value& ) = delete;
 };
 
 @ Here are two virtual methods. We print the position selected and the type
@@ -4145,7 +4143,7 @@ struct injector_call : public overloaded_call
    (const injector_value& f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
   : overloaded_call(n,std::move(a),loc), position(f.position), id(f.id) @+ {}
-  virtual ~@[injector_call() nothing_new_here@];
+  virtual ~injector_call() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4285,7 +4283,7 @@ struct conditional_expression : public expression_base
    (expression_ptr&& c,expression_ptr&& t, expression_ptr&& e)
    : condition(c.release()),then_branch(t.release()), else_branch(e.release())
   @+{}
-  virtual ~@[conditional_expression() nothing_new_here@];
+  virtual ~conditional_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4357,7 +4355,7 @@ struct int_case_expression : public expression_base
    (expression_ptr&& c,std::vector<expression_ptr>&& b)
    : condition(c.release()),branches(std::move(b))
   @+{}
-  virtual ~@[int_case_expression() nothing_new_here@];
+  virtual ~int_case_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4370,7 +4368,7 @@ struct int_case_else_expression : public expression_base
    (expression_ptr&& c,expression_ptr&& o,std::vector<expression_ptr>&& b)
    : condition(c.release()),out_branch(std::move(o)),branches(std::move(b))
   @+{}
-  virtual ~@[int_case_else_expression() nothing_new_here@];
+  virtual ~int_case_else_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4387,7 +4385,7 @@ struct int_case_then_else_expression : public expression_base
    , post_branch(std::move(e))
    , branches(std::move(b))
   @+{}
-  virtual ~@[int_case_then_else_expression() nothing_new_here@];
+  virtual ~int_case_then_else_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4526,7 +4524,7 @@ struct union_case_expression : public int_case_expression
    (expression_ptr&& c,std::vector<expression_ptr>&& b)
    : int_case_expression(std::move(c),std::move(b))
   @+{}
-  virtual ~@[union_case_expression() nothing_new_here@];
+  virtual ~union_case_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4541,7 +4539,7 @@ struct discrimination_expression : public expression_base
    (expression_ptr&& c,std::vector<choice_part>&& b)
    : condition(c.release()),branches(std::move(b))
   @+{}
-  virtual ~@[discrimination_expression() nothing_new_here@];
+  virtual ~discrimination_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4788,7 +4786,7 @@ this branch is chosen, and suppress creating a |frame| for the branch.
   thread_bindings(branch.pattern,variant_type,branch_layer,false);
   result=convert_expr(branch.branch,type);
 @/choices[k] = choice_part @|
-     (n==0 ? @[id_pat()@] : copy_id_pat(branch.pattern)
+     (n==0 ? id_pat() : copy_id_pat(branch.pattern)
      ,std::move(result));
 }
 
@@ -4921,7 +4919,7 @@ template<unsigned flags>
 struct while_expression : public expression_base
 { expression_ptr body;
   while_expression(expression_ptr&& b): body(std::move(b)) @+{}
-  virtual ~@[while_expression() nothing_new_here@];
+  virtual ~while_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -5027,7 +5025,7 @@ struct do_expression : public expression_base
 @)
   do_expression(expression_ptr&& c,expression_ptr&& b)
    : condition(c.release()),body(b.release()) @+{}
-  virtual ~@[do_expression() nothing_new_here@];
+  virtual ~do_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -5043,13 +5041,13 @@ struct forever_expression : public expression_base
 { expression_ptr body;
 @)
   forever_expression(expression_ptr&& b) : body(b.release()) @+{}
-  virtual ~@[forever_expression() nothing_new_here@];
+  virtual ~forever_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 struct dont_expression : public expression_base
 { dont_expression() @+{}
-  virtual ~@[dont_expression() nothing_new_here@];
+  virtual ~dont_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -5261,7 +5259,7 @@ struct for_expression : public expression_base
   expression_ptr body;
 @)
   for_expression (const id_pat& p, expression_ptr&& i, expression_ptr&& b);
-  virtual ~@[for_expression() nothing_new_here@];
+  virtual ~for_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -5286,8 +5284,8 @@ keywords |do| and~\&{od}.
 
 @< Function definitions @>=
 void print_body(std::ostream& out,const expression_ptr& body,unsigned flags)
-{@; out << (in_reversed(flags) ? " ~do " : " do ")  << *body
-        << (out_reversed(flags) ? " ~od " : " od ");
+{ out << (in_reversed(flags) ? " ~do " : " do ")  << *body
+  @|  << (out_reversed(flags) ? " ~od " : " od ");
 }
 @)
 template <unsigned flags, subscr_base::sub_type kind>
@@ -5786,7 +5784,7 @@ struct counted_for_expression : public expression_base
     expression_ptr&& b)
 @/: id(i), count(cnt.release()),bound(bnd.release()), body(b.release())
   @+{}
-  virtual ~@[counted_for_expression() nothing_new_here@];
+  virtual ~counted_for_expression() = default;
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -6293,7 +6291,7 @@ struct assignment_expr : public expression_base
 @)
   assignment_expr(id_type l,expression_ptr&& r)
    : lhs(l),rhs(r.release()) @+{}
-  virtual ~@[assignment_expr() nothing_new_here@];
+  virtual ~assignment_expr() = default;
   virtual void print(std::ostream& out) const;
 };
 
@@ -6311,7 +6309,7 @@ class global_assignment : public assignment_expr
 { shared_share address;
 public:
   global_assignment(id_type l,expression_ptr&& r);
-  virtual ~@[global_assignment() nothing_new_here@];
+  virtual ~global_assignment() = default;
   virtual void evaluate(level l) const;
 };
 
@@ -6345,7 +6343,7 @@ class local_assignment : public assignment_expr
 { size_t depth, offset;
 public:
   local_assignment(id_type l, size_t i,size_t j, expression_ptr&& r);
-  virtual ~@[local_assignment() nothing_new_here@];
+  virtual ~local_assignment() = default;
   virtual void evaluate(level l) const;
 };
 
@@ -6398,7 +6396,7 @@ public:
   multiple_assignment
     (const id_pat& lhs,expression_ptr&& r
     ,loc_list&& ll, glob_list&& gl, BitMap&& bm);
-  virtual ~@[multiple_assignment() nothing_new_here@];
+  virtual ~multiple_assignment() = default;
   virtual void print(std::ostream& out) const;
   virtual void evaluate(level l) const;
 };
@@ -6641,7 +6639,7 @@ void threader::thread(const id_pat& pat,type_expr& type)
     assoc.push_back(std::make_pair(id,&type));
       // record pointer to |type| for later refinement of |id|
     if (is_local)
-      locs.push_back(@[multiple_assignment::local_dest{i,j}@]);
+      locs.push_back(multiple_assignment::local_dest{i,j});
     else
       globs.push_back(global_id_table->address_of(id));
   }
@@ -6794,7 +6792,7 @@ struct component_assignment : public assignment_expr
   component_assignment
    (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
-  virtual ~@[component_assignment() nothing_new_here@];
+  virtual ~component_assignment() = default;
 
   virtual void print (std::ostream& out) const;
 @)
@@ -6807,7 +6805,7 @@ struct field_assignment : public assignment_expr
   field_assignment
    (id_type a,unsigned pos,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), position(pos) @+{}
-  virtual ~@[field_assignment() nothing_new_here@];
+  virtual ~field_assignment() = default;
 
   virtual void print (std::ostream& out) const;
 @)

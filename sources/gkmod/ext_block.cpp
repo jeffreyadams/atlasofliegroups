@@ -777,9 +777,9 @@ void validate(const ext_param& E)
   "correction" terms below.
  */
 ext_param complex_cross(const repr::Ext_common_context& ctxt,
-		      const ext_gen& p, ext_param E) // by-value for |E|, modified
+			const ext_gen& p,
+			ext_param E) // by-value for |E|; it is modified
 { const RootDatum& rd = E.rc().root_datum();
-  const RootDatum& id = ctxt.id();
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   auto &tW = E.rc().twisted_Weyl_group(); // caution: |p| refers to integr. datum
   const SubSystem& subs=ctxt.subsys();
@@ -792,12 +792,12 @@ ext_param complex_cross(const repr::Ext_common_context& ctxt,
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
     tW.twistedConjugate(subs.reflection(s),E.tw);
-    id.simple_reflect(s,E.gamma_lambda.numerator());
-    id.simple_reflect(s,rho_r_shift);
-    id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,ctxt.l_shift(s));
-    id.simple_coreflect(dual_rho_im_shift,s);
-    id.simple_coreflect(E.t,s);
+    subs.simple_reflect(s,E.gamma_lambda.numerator());
+    subs.simple_reflect(s,rho_r_shift);
+    subs.simple_reflect(s,E.tau);
+    subs.simple_coreflect(E.l,s,ctxt.l_shift(s));
+    subs.simple_coreflect(dual_rho_im_shift,s);
+    subs.simple_coreflect(E.t,s);
   }
 
   InvolutionNbr new_theta = i_tab.nr(E.tw);
@@ -914,7 +914,6 @@ DescValue star (const repr::Ext_common_context& ctxt,
   const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
   const RootDatum& rd = E.rc().root_datum();
-  const RootDatum& integr_datum = ctxt.id();
   const SubSystem& subs = ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
   switch (p.type)
@@ -922,9 +921,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
   default: assert(false);
     result=one_complex_ascent; // shut up "maybe uninitialsed" warning
   case ext_gen::one:
-    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
-      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
-      const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+    { const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      const Weight& alpha = rd.root(n_alpha);
+      const Coweight& alpha_v = rd.coroot(n_alpha);
       const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
       if (theta_alpha==n_alpha) // length 1 imaginary case
@@ -1133,13 +1132,13 @@ DescValue star (const repr::Ext_common_context& ctxt,
     break;
 
   case ext_gen::two:
-    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
-      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
-      RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+    { RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      const Weight& alpha = rd.root(n_alpha);
+      const Coweight& alpha_v = rd.coroot(n_alpha);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      const Weight& beta = integr_datum.simpleRoot(p.s1);
-      const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      const Weight& beta = rd.root(n_beta);
+      const Coweight& beta_v = rd.coroot(n_beta);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
 
       if (theta_alpha==n_alpha) // length 2 imaginary case
@@ -1443,21 +1442,20 @@ DescValue star (const repr::Ext_common_context& ctxt,
     }
     break;
   case ext_gen::three:
-    { const Weight& alpha = integr_datum.simpleRoot(p.s0);
-      const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);
-      RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+    { RootNbr n_alpha = subs.parent_nr_simple(p.s0);
+      const Weight& alpha = rd.root(n_alpha);
+      const Coweight& alpha_v = rd.coroot(n_alpha);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      const Weight& beta = integr_datum.simpleRoot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
-      const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
+      const Weight& beta = rd.root(n_beta);
+      const Coweight& beta_v = rd.coroot(n_beta);
 
-      RootNbr n_kappa =integr_datum.simple_reflected_root
-	 (p.s1, integr_datum.simpleRootNbr(p.s0));
-      WeylWord s_kappa = subs.reflection(integr_datum.posroot_index(n_kappa));
-
-      const Weight& kappa = integr_datum.root(n_kappa);
+      RootNbr n_kappa =	rd.reflected_root(n_beta,n_alpha);
+      const Weight& kappa = rd.root(n_kappa);
       assert (kappa==alpha+beta);
-      const Coweight& kappa_v = integr_datum.coroot(n_kappa);
+      const Coweight& kappa_v = rd.coroot(n_kappa);
+      assert (kappa_v==alpha_v+beta_v);
+      WeylWord s_kappa = rd.reflectionWord(n_kappa);
 
       const Weight beta_alpha = beta - alpha;
 
@@ -2353,10 +2351,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   { // descend through complex singular simple descents
     repr::Ext_common_context block_ctxt(rc,delta,SubSystem::integral(rd,gamma));
-    const auto& int_datum = block_ctxt.id();
-    const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
+    const ext_gens integral_orbits = block_ctxt.subsys().fold_orbits(delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
-      reduce_to(integral_orbits,singular_generators(int_datum,gamma));
+      reduce_to(integral_orbits,block_ctxt.subsys().singular_generators(gamma));
     /*
       |singular_orbits| are in fact orbits of simple roots, because we have
       ensured |gamma| is dominant, so the singular subsystem of |rd|
@@ -2460,11 +2457,12 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   repr::Ext_common_context ctxt
     (rc,delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
 
-  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  const ext_gens orbits = ctxt.subsys().fold_orbits(delta);
   const RankFlags singular_orbits =
-    reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
+    reduce_to(orbits,ctxt.subsys().singular_generators(sr.gamma()));
 
-  containers::queue<ext_param> to_do { ext_param::default_extend(param_ctxt,sr) };
+  containers::queue<ext_param>
+    to_do { ext_param::default_extend(param_ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do

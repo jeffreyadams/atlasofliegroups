@@ -338,7 +338,7 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const SubSystem integral_sys;
+  const SubSystem& integral_sys;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -357,7 +357,7 @@ class common_block : public Block_base
 
   // constructor and destructor
   common_block // full block
-    (const Rep_context& rc,
+    (const common_context& ctxt,
      const StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
