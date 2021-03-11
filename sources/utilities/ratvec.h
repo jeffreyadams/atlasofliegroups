@@ -15,6 +15,7 @@
 
 #include <vector>
 #include <cassert>
+#include <cstdlib> // for |std::abs|
 
 #include "matrix.h"
 #include "arithmetic.h"

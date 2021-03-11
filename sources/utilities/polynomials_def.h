@@ -69,13 +69,13 @@ template<typename C>
 // shifted copy of an existing polynomial
 template<typename C>
   Polynomial<C>::Polynomial(Degree d,const Polynomial& Q)
-  : d_data(Q.isZero() ? 0 : Q.d_data.size()+d)
+    : d_data()
 {
   if (Q.isZero())
     return; // avoid moving zeroes into an empty |d_data| array
-  typename std::vector<C>::iterator bottom=d_data.begin()+d;
-  std::fill(d_data.begin(),bottom,C(0)); // zero coefficient below bottom
-  std::copy(Q.d_data.begin(),Q.d_data.end(),bottom); // remainder copied from Q
+  d_data.reserve(d+Q.size());
+  d_data.resize(d); // fills the |d| initial entries with |C(0)|
+  std::copy(Q.begin(),Q.end(),std::back_inserter(d_data)); // remainder from Q
 }
 
 /******** accessors **********************************************************/

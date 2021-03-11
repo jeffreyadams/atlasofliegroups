@@ -474,6 +474,8 @@ class InnerClass
 
   subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr);
+  subsystem::integral_datum_item& int_item
+    (const RootNbrSet& int_posroots, unsigned int& int_sys_nr);
   // same when |int_sys_nr| has already been computed:
   const subsystem::integral_datum_item& int_item(unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }

@@ -39,30 +39,6 @@ Permutation::Permutation(const Permutation& pi, int) // inverse
 }
 
 
-template<unsigned int n>
-  bitset::BitSet<n> Permutation::pull_back(const bitset::BitSet<n>& v) const
-{
-  assert(size()<=n);
-
-  const Permutation& pi=*this;
-  bitset::BitSet<n> result;
-  for (size_t i=0; i<size(); ++i)
-    result.set(i,v[pi[i]]);
-
-  return result;
-}
-
-// Replace each index |i| in |v| by |pi[i]|, where |pi| is our permutation
-template<typename U>
-std::vector<U> Permutation::renumbering(const std::vector<U>& v) const
-{
-  const Permutation& pi=*this;
-  std::vector<U> result; result.reserve(v.size());
-  for (auto x : v)
-    result.push_back(pi[x]);
-  return result;
-}
-
 /*
   Perform |a *= b|;
 
@@ -86,46 +62,71 @@ void compose(Permutation& a, const Permutation& b, unsigned long n)
   }
 }
 
+template<unsigned int n>
+  bitset::BitSet<n> Permutation::pull_back(const bitset::BitSet<n>& v) const
+{
+  assert(size()<=n);
+
+  const Base& pi=*this;
+  bitset::BitSet<n> result;
+  for (size_t i=0; i<size(); ++i)
+    result.set(i,v[pi[i]]);
+
+  return result;
+}
+
+// Replace each number |x| in |v| by |pi[x]|, where |pi| is our permutation
+template<typename U,typename A>
+std::vector<U,A> Permutation::renumbering(const std::vector<U,A>& v) const
+{
+  const Base& pi=*this;
+  std::vector<U,A> result; result.reserve(v.size());
+  for (auto x : v)
+    result.push_back(pi[x]);
+  return result;
+}
+
 bitmap::BitMap Permutation::renumbering(const bitmap::BitMap& b) const
 {
   bitmap::BitMap result(size());
-  for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
-    result.insert((*this)[*it]);
+  for (auto x : b)
+    result.insert((*this)[x]);
 
   return result;
 }
 
 // Replace each index |i| in |v| by |(*this)[i]|
-template<typename U>
-void Permutation::renumber(std::vector<U>& v) const
+template<typename U,typename A>
+void Permutation::renumber(std::vector<U,A>& v) const
 {
-  const Permutation& pi=*this;
-  for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
-    *it = pi[*it];
+  const Base& pi=*this;
+  for (auto& x : v)
+    x = pi[x];
 }
 
 /* Here we are again applying the permutation |p| to each of the entries
    of |v|, but the exceptional value of |except| is passed unchanged */
-template<typename U>
-void Permutation::renumber(std::vector<U>& v, U except) const
+template<typename U,typename A>
+void Permutation::renumber(std::vector<U,A>& v, U except) const
 {
-  const Permutation& pi=*this;
-  for (typename std::vector<U>::iterator it=v.begin(); it!=v.end(); ++it)
-    if (*it!=except)
-      *it = pi[*it];
+  const Base& pi=*this;
+  for (auto& x : v)
+    if (x!=except)
+      x = pi[x];
 }
 
 
-int sign(const Permutation& pi)
+bool Permutation::is_negative() const
 {
-  int result = 1; size_t j;
-  bitmap::BitMap seen(pi.size());
-  for (size_t i=0; i<pi.size(); ++i)
-    if ((j=pi[i])!=i and not seen.isMember(i))
+  bool result = false; size_t j;
+  const Base& pi=*this;
+  bitmap::BitMap seen(size());
+  for (size_t i=0; i<size(); ++i)
+    if (not seen.isMember(i) and (j=pi[i])!=i) // skip earlier cycles and fixed
       do // loop is performed (cycle length)-1 times
       {	assert(not seen.isMember(j)); // will detect loops at non-permutations
 	seen.insert(j);
-	result = -result;
+	result = not result;
 	j=pi[j];
       }
       while (j!=i);
@@ -142,7 +143,7 @@ bitmap::BitMap fixed_points(const Permutation& pi)
 
 // Make column |j| of matrix be column |pi[j]| of the old matrix, for all |j|
 template<typename T>
-void permute_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
+void pull_back_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
 {
   assert(M.numColumns()>=pi.size());
   bitmap::BitMap seen(pi.size()); // initialized empty
@@ -153,7 +154,7 @@ void permute_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
       seen.insert(j);
       if (pi[j]!=j) // avoid useless work; test also allows |do|-|while| below
       {
-	const auto C_j= M.column(j);
+	const auto C_j= M.column(j); // take a copy
 	size_t l=j;
 	do
 	{ // effectively set |M.column(l)=M.column(pi[l])|
@@ -188,7 +189,7 @@ void Permutation::conjugate(matrix::Matrix_base<T>& M) const
   assert (M.numRows()==n);
   assert (M.numColumns()==n);
   matrix::Matrix<T> result(n,n);
-  const Permutation& pi=*this;
+  const Base& pi=*this;
   for (size_t i=0; i<n; ++i)
     for (size_t j=0; j<n; ++j)
       result(pi[i],pi[j]) = M(i,j);
@@ -215,7 +216,7 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
   assert (M.numRows()==n);
   assert (M.numColumns()==n);
   matrix::Matrix<T> result(n,n);
-  const Permutation& pi=*this;
+  const Base& pi=*this;
   for (size_t i=0; i<n; ++i)
     for (size_t j=0; j<n; ++j)
       result(i,j) = M(pi[i],pi[j]);
@@ -231,8 +232,8 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
   setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
   Complexity is $O(n+bound)$ with $n=#a$; good (only) if $bound=O(n log(n))$.
 */
-template <typename U>// unsigned type
-Permutation standardization(const std::vector<U>& a, size_t bound,
+template <typename U,typename A> // here |U| is an unsigned integral type
+Permutation standardization(const std::vector<U,A>& a, size_t bound,
 			    std::vector<unsigned int>* stops)
 {
   std::vector<unsigned int> count(bound,0);
@@ -265,37 +266,37 @@ Permutation standardization(const std::vector<U>& a, size_t bound,
 
 // Instantiation of templates (only these are generated)
 
-template bitset::BitSet<constants::RANK_MAX>
-Permutation::pull_back(const bitset::BitSet<constants::RANK_MAX>& v) const;
-  // output
+template  // output
+bitset::BitSet<constants::RANK_MAX> Permutation::pull_back
+  (const bitset::BitSet<constants::RANK_MAX>& v) const;
 
-template std::vector<unsigned int>
-Permutation::renumbering(const std::vector<unsigned int>& v) const; // blocks
+template // blocks
+std::vector<unsigned int> Permutation::renumbering
+  (const std::vector<unsigned int>& v) const;
 
-template std::vector<unsigned short>
-Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
+template // kgb
+std::vector<unsigned short> Permutation::renumbering
+  (const std::vector<unsigned short>& v) const;
 
-template void
-Permutation::renumber(std::vector<unsigned short>& v) const; // innerclass
+template // innerclass
+void Permutation::renumber(std::vector<unsigned short>& v) const;
 
-template void
-Permutation::renumber(std::vector<unsigned long>& v) const; // rootdata,weyl,.
+template // rootdata,weyl,...
+void Permutation::renumber(std::vector<unsigned long>& v) const;
 
-template void
-Permutation::renumber(std::vector<unsigned int>&, unsigned int) const; // blocks
+template // blocks
+void Permutation::renumber(std::vector<unsigned int>&, unsigned int) const;
 
-template void
-permute_columns(matrix::Matrix_base<int>& M, const Permutation& pi); // matreduc
+template // matreduc
+void pull_back_columns(matrix::Matrix_base<int>& M, const Permutation& pi);
 
-template void permute_columns
-  (matrix::Matrix_base<arithmetic::big_int>& M, const Permutation& pi);
+template // weyl
+void Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const;
 
-template void
-Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl
-
-template Permutation
-standardization(const std::vector<unsigned int>& a, size_t bound,
-		std::vector<unsigned int>* stops);
+template
+Permutation standardization
+  (const std::vector<unsigned int>& a, size_t bound,
+   std::vector<unsigned int>* stops);
 
 } // |namespace permutations|
 

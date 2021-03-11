@@ -69,12 +69,12 @@ namespace bitset {
 
 ******************************************************************************/
 
-typedef uint_least32_t chunk; // unit of grouping of bits
+typedef uint_least32_t bitset_chunk; // unit of grouping of bits
 typedef uint_least64_t wide_uint; // exchange format for all |BitSet| instances
 
 /*
   First a template class |BitSetBase| is defined, which provides the basic
-  implementation (a small fixed number of |chunk|s), but not yet the full
+  implementation (a small fixed number of |bitset_chunk|s), but not yet the full
   external interface. Because instances of the template class |BitSet| will be
   publicly derived from instances of |BitSetBase| (with a different argument),
   many methods will be directly used by the |BitSet| template instances.
@@ -91,7 +91,7 @@ template <unsigned int n> class BitSetBase; // instantiate only a few values |n|
 */
 template<> class BitSetBase<1u>
 {
-  chunk d_bits; // one chunk of (at least) 32 bits
+  bitset_chunk d_bits; // one chunk of (at least) 32 bits
 
  protected:
 
@@ -100,7 +100,7 @@ template<> class BitSetBase<1u>
 
 // constructors
   BitSetBase<1>() : d_bits(0u) {}
-  explicit BitSetBase<1>(wide_uint b): d_bits(static_cast<chunk>(b))  {}
+  explicit BitSetBase<1>(wide_uint b): d_bits(static_cast<bitset_chunk>(b))  {}
 
 // accessors
 
@@ -183,8 +183,8 @@ template<> class BitSetBase<1u>
 */
 template<> class BitSetBase<2>
 {
-  // use two |chunk|s rather than a |wide_uint| for less strict alignment
-  chunk d_bits0,d_bits1;
+  // use two |bitset_chunk|s rather than a |wide_uint| for less strict alignment
+  bitset_chunk d_bits0,d_bits1;
 
  protected:
 
@@ -197,7 +197,7 @@ template<> class BitSetBase<2>
 /*
   The class |BitSet| will assume that any |BitSetBase| instance has a
   constructor with argument a |wide_uint|, which is guaranteed to contain at
-  least 64 bits. We shift them into place into the two |chunk|s here.
+  least 64 bits. We shift them into place into the two |bitset_chunk|s here.
 */
   explicit BitSetBase<2>(wide_uint b)
     : d_bits0(b&0xFFFFFFFF), d_bits1((b&0xFFFFFFFF00000000ul)>>32) {}
@@ -389,7 +389,7 @@ template<unsigned int n> class BitSet
 class BitSetBase<1>::iterator
   : public std::iterator<std::input_iterator_tag,unsigned int>
 {
-  chunk d_bits; // iterator contains a copy of the set iterated over
+  bitset_chunk d_bits; // iterator contains a copy of the set iterated over
 
  public:
 

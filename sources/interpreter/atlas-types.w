@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2017 Marc van Leeuwen
+% Copyright (C) 2006-2021 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -41,9 +41,9 @@ programming language of that name, which is independent of the Atlas library.
 @c
 namespace atlas { namespace interpreter {
 @< Global variable definitions @>
-namespace {@; @< Local function definitions @>@; }@;
+namespace {@; @< Local function definitions @>@; }
 @< Function definitions @>@;
-}@; }@;
+}}
 
 @ As usual the external interface is written to the header file associated to
 this file.
@@ -59,7 +59,7 @@ this file.
 namespace atlas { namespace interpreter {
 @< Type definitions @>@;
 @< Declarations of exported functions @>@;
-}@; }@;
+}}
 #endif
 
 @ In execution, the main role of this compilation unit is to install the stuff
@@ -123,7 +123,7 @@ struct Lie_type_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Lie type"; }
-  Lie_type_value @[(const Lie_type_value& v) = default@];
+  Lie_type_value (const Lie_type_value& v) = default;
     // we use |get_own<Lie_type_value>|
 @)
   void add_simple_factor (char,unsigned int); // grow
@@ -510,6 +510,8 @@ does not know that); this may necessitate a negative coefficient, which if it
 occurs will be the first one. Since the call to |arithmetic::div_gcd|
 implicitly converts its second argument to unsigned, it is imperative that we
 use the absolute value of this first coefficient.
+
+@h <cstdlib> // for |std::abs|
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -1009,7 +1011,7 @@ public:
   static shared_root_datum build(PreRootDatum&& pre);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
-  root_datum_value @[(const root_datum_value& ) = delete@];
+  root_datum_value (const root_datum_value& ) = delete;
 @)
   shared_root_datum dual() const; // get dual datum through |build|
   inner_class_weak_ptr& lookup (const WeightInvolution& delta) const;
@@ -1749,7 +1751,7 @@ struct W_elt_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Weyl group element"; }
-  W_elt_value @[(const W_elt_value& ) = default@];
+  W_elt_value (const W_elt_value& ) = default;
     // we use |get_own<W_elt_value>|
 
 };
@@ -2128,7 +2130,7 @@ the presence of a central torus part.
   { std::ostringstream o;
      o << "Involution should be a " @|
        << r << 'x' << r << " matrix;"
-        " received a "  << delta.numRows() << 'x' << delta.numColumns()
+     @| " received a "  << delta.numRows() << 'x' << delta.numColumns()
       << " matrix";
     throw runtime_error(o.str());
   }
@@ -2312,7 +2314,7 @@ lies in another component of the diagram we have a Complex inner class.
     }
 
     offset += comp_rank;
-  } // |for (cit)|
+  } // |for (cit;;)|
 }
 
 @ Complex factors of the inner class involve two simple factors, which requires
@@ -2483,7 +2485,7 @@ static shared_inner_class build
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "inner class"; }
-  inner_class_value @[(const inner_class_value& ) = delete@];
+  inner_class_value (const inner_class_value& ) = delete;
 @)
   shared_inner_class dual () const;
 @) // tables for |real_form_value| identification:
@@ -2897,7 +2899,7 @@ public:
     const RatCoweight& coch, const TorusPart& tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
-  real_form_value @[(const real_form_value& ) = delete@];
+  real_form_value (const real_form_value& ) = delete;
 @)
   const KGB& kgb () const @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
@@ -3390,7 +3392,7 @@ struct Cartan_class_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "Cartan class"; }
-  Cartan_class_value @[(const Cartan_class_value& ) = delete@];
+  Cartan_class_value (const Cartan_class_value& ) = delete;
 };
 @)
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
@@ -3795,7 +3797,7 @@ struct KGB_elt_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "KGB element"; }
-  KGB_elt_value @[(const KGB_elt_value& ) = default@];
+  KGB_elt_value (const KGB_elt_value& ) = default;
     // we use |get_own<KGB_elt_value>|
 };
 @)
@@ -4163,7 +4165,7 @@ struct Block_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "KGB element"; }
-  Block_value @[(const Block_value& ) = delete@];
+  Block_value (const Block_value& ) = delete;
 };
 @)
 typedef std::unique_ptr<Block_value> Block_ptr;
@@ -4438,7 +4440,7 @@ struct module_parameter_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "module parameter"; }
-  module_parameter_value @[(const module_parameter_value& ) = default@];
+  module_parameter_value (const module_parameter_value& ) = default;
     // we use |get_own<module_parameter_value>|
 
 @)
@@ -4932,7 +4934,7 @@ void print_pc_block_wrapper(expression_base::level l)
   else
   {
     *output_stream << "Subset {";
-    for (auto @[n : less@]@;@;)
+    for (auto n : less)
       *output_stream << n << ',';
     *output_stream << init_index << "} in the following common block:\n";
   }
@@ -5043,7 +5045,7 @@ void block_Hasse_wrapper(expression_base::level l)
   auto n= block.size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   for (unsigned j=0; j<n; ++j)
-    for (@[ unsigned int i : Bruhat.hasse(j) @]@;@;)
+    for (unsigned int i : Bruhat.hasse(j))
       M->val(i,j)=1;
   push_value(std::move(M));
 }
@@ -5514,7 +5516,8 @@ void extended_block_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
-  blocks::common_block block(rc,zm,start);
+  common_context ctxt(rc,zm.gamma_lambda());
+  blocks::common_block block(ctxt,zm,start); // build full block
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -5691,7 +5694,7 @@ struct split_int_value : public value_base
   ~split_int_value()@+ {}
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "split integer"; }
-  split_int_value @[(const split_int_value& v) = default@];
+  split_int_value (const split_int_value& v) = default;
     // we use |get_own<split_int_value>|
 };
 @)
@@ -5824,7 +5827,7 @@ struct virtual_module_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "module parameter"; }
-  virtual_module_value @[(const virtual_module_value& v) = default@];
+  virtual_module_value (const virtual_module_value& v) = default;
     // we use |get_own<virtual_module_value>|
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
@@ -6498,18 +6501,6 @@ effect. On the other hand, since the |deformation_terms| method assumes its
 arguments to be final, we apply |finals_for| to |p->val| and sum over any
 (final) parameters this might produce.
 
-There is also a variation |twisted_deform| that uses twisted KLV polynomials
-instead, for the distinguished involution $\delta$ of the inner class. For the
-code here the difference consists mainly of calling the
-|Rep_table::twisted_deformation_terms| method instead of
-|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
-involution, so we need to test for that here. If the test fails we report an
-error rather than returning for instance a null module, since a twisted
-deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Similarly the twisted variant cannot allow non
-dominant parameters, as this would internally produce an |SR_poly| value with
-non-dominant terms, which should never happen.
-
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
@@ -6529,14 +6520,27 @@ void deform_wrapper(expression_base::level l)
     BlockElt q_index; // will hold index of |q| in the block
     auto& block = rt.lookup(q,q_index); // generate partial common block
     RatWeight diff = rc.offset(q,block.representative(q_index));
-    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma)@;@;)
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma))
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
   }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
-@)
+
+@ There is also a variation |twisted_deform| that uses twisted KLV polynomials
+instead, for the distinguished involution $\delta$ of the inner class. For the
+code here the difference consists mainly of calling the
+|Rep_table::twisted_deformation_terms| method instead of
+|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
+involution, so we need to test for that here. If the test fails we report an
+error rather than returning for instance a null module, since a twisted
+deformation formula for a non-fixed parameter makes little sense; the user
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen.
+
+@< Local function def...@>=
 void twisted_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
@@ -6565,7 +6569,7 @@ void twisted_deform_wrapper(expression_base::level l)
 					     singular_orbits,
                                              diff,p->val.gamma());
   repr::SR_poly result;
-  for (auto&& term : terms@;@;)
+  for (auto&& term : terms)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
 
@@ -6594,7 +6598,7 @@ void full_deform_wrapper(expression_base::level l)
     res += p->rt().deformation(*it);
 @)
   repr::SR_poly result;
-  for (const auto& t : res @;@;) // transform to |std::map|
+  for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
@@ -6619,7 +6623,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
   }
 @)
   repr::SR_poly result;
-  for (@[const auto& t : res@]@;@;) // transform to |std::map|
+  for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
@@ -6940,7 +6944,8 @@ void raw_ext_KL_wrapper (expression_base::level l)
   const auto gamma = p->val.gamma();
   const auto srm = repr::StandardReprMod::mod_reduce(rc,p->val);
   BlockElt start;
-  blocks::common_block block(rc,srm,start);
+  common_context ctxt(rc,srm.gamma_lambda());
+  blocks::common_block block(ctxt,srm,start); // build full block
   if (not((delta->val-1)*gamma.numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));

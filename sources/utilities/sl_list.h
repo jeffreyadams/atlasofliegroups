@@ -28,11 +28,6 @@ namespace atlas {
 
 namespace containers {
 
-template<typename T,typename Alloc>
-  class simple_list;
-template<typename T,typename Alloc>
-  class sl_list;
-
 // when Alloc is not |std::allocator|, we need a deleter class for |unique_ptr|
 // that calls the Alloc destroyer and then deallocator, rather than |::delete|
 
@@ -82,7 +77,7 @@ typename std::allocator_traits<Alloc>::pointer
 /* The basic node type used by |simple_list| and |sl_list|
    It needs the |Alloc| template parameter to paramaterise |std::unique_ptr|
  */
-template<typename T,typename Alloc = std::allocator<T> >
+template<typename T,typename Alloc>
 struct sl_node
 {
   using node_alloc_type =
@@ -112,7 +107,7 @@ struct sl_node
     while (next.get()!=nullptr) // this loop bounds recursion depth to 2
       next.reset(next->next.release()); // this destroys just the following node
   }
-}; // |class sl_node| template
+}; // |struct sl_node| template
 
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
@@ -179,8 +174,7 @@ public:
 
 }; // |class sl_list_iterator| template
 
-template<typename T, typename Alloc> class weak_sl_list_iterator;
-template<typename T, typename Alloc = std::allocator<T> >
+template<typename T, typename Alloc>
   class weak_sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
@@ -2201,8 +2195,8 @@ public:
 template<typename T,typename Alloc> class queue
   : public std::queue<T,sl_list<T,Alloc> >
 {
-  using sl = sl_list<T,Alloc>;
-  using Base = std::queue<T,sl>;
+  using sl_l = sl_list<T,Alloc>;
+  using Base = std::queue<T,sl_l>;
 
 public:
   using Base::Base; // inherit constructors
@@ -2213,11 +2207,11 @@ public:
   queue(Base&& b) : Base(std::move(b)) {}
 
   // unlike |std::queue|, we also provide initialisation by initializer list
-  queue(std::initializer_list<T> l) : Base(sl(l)) {}
+  queue(std::initializer_list<T> l) : Base(sl_l(l)) {}
 
-  T& pop_splice_to(sl& dest,typename sl::iterator it)
+  T& pop_splice_to(sl_l& dest,typename sl_l::iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
-  const T& pop_splice_to(sl& dest,typename sl::const_iterator it)
+  const T& pop_splice_to(sl_l& dest,typename sl_l::const_iterator it)
   { dest.splice(it,this->c,this->c.begin()); return *it; }
 
   T& pop_splice_to(simple_list<T,Alloc>& dest,

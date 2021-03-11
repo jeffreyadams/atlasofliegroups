@@ -1030,8 +1030,8 @@ strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
 
 extended_KL_block: (Param,mat->[Param],mat): extended KL data for deform
   This function computes twisted KLV polynomials for (part of) a block,
-  similarly to partial_KL_block, but evlauated at q=-1 and including
-  length-parity signs (so these are evaluations of signe P-polynomials). The
+  similarly to partial_KL_block, but evaluated at q=-1 and including
+  length-parity signs (so these are evaluations of signed P-polynomials). The
   arguments (p,delta) are a parameter and a distinguished involution as for
   raw_ext_KL. The list of parameters returned are the final delta-fixed
   parameters of the block, which therefore give elements of the extended block

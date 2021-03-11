@@ -103,7 +103,7 @@ struct Poly_hash_export // auxiliary to export possibly temporary hash table
 
   Poly_hash_export(ext_KL_hash_Table* hash_ptr)
   : own(nullptr), ref(*hash_ptr) {}
-  Poly_hash_export(std::vector<Pol>& storage)
+  Poly_hash_export(IntPolEntry::Pooltype& storage)
   : own(new ext_KL_hash_Table(storage,4)), ref(*own) {}
 }; // |Poly_hash_export|
 
@@ -111,8 +111,8 @@ class KL_table
 {
   const descent_table aux;
   ext_KL_hash_Table* pol_hash; // maybe pointer to shared KL polynomial table
-  std::unique_ptr<std::vector<Pol> > own; // points to |storage_pool| if we own
-  const std::vector<Pol>& storage_pool; // the distinct actual polynomials
+  std::unique_ptr<IntPolEntry::Pooltype> own; // to |storage_pool| if we own
+  const IntPolEntry::Pooltype& storage_pool; // the distinct actual polynomials
 
   using KLColumn = std::vector<kl::KLIndex>;
   std::vector<KLColumn> column; // columns are lists of polynomial pointers
@@ -135,7 +135,7 @@ class KL_table
 
   unsigned l(BlockElt y, BlockElt x) const { return aux.block.l(y,x); }
 
-  const std::vector<Pol>& polys() const { return storage_pool;}
+  const IntPolEntry::Pooltype& polys() const { return storage_pool;}
   std::pair<kl::KLIndex,bool> KL_pol_index(BlockElt x, BlockElt y) const;
 
   // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
@@ -188,7 +188,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
 		    int_Matrix& P_mat,
-		    std::vector<Pol>& polys);
+		    IntPolEntry::Pooltype& polys);
 
 } // |namespace ext_kl|
 

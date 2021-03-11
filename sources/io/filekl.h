@@ -6,13 +6,14 @@
 #include <iosfwd>
 
 #include "../Atlas.h"
+#include "kl.h"
 
 namespace atlas {
   namespace filekl {
     
-    const BlockElt no_good_ascent = UndefBlock-1;
-     // value flagging that no good ascent exists
-    const unsigned int magic_code=0x06ABdCF0; 
+    const BlockElt no_good_ascent = (UndefBlock - 1);
+      // value flagging that no good ascent exists
+    const unsigned int magic_code=0x06ABdCF0;
 
     
     void write_block_file(const Block& block, std::ostream& out);
