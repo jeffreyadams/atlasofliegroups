@@ -369,44 +369,16 @@ inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) cons
 // private manipulators
 
 // Fill the column for |y| in the KL-table, all previous ones having been filled
-size_t KL_table::fill_KL_column
-  (std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash)
+void KL_table::fill_KL_column(std::vector<KLPol>& klv, BlockElt y)
 {
-  size_t sparseness=0; // number of entries saved by suppressing zero polys
   weyl::Generator s = first_direct_recursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
     recursion_column(y,s,klv); // compute $P_{x,y}$ for extremal |x| for |y|
-    // write result
-    sparseness += // keep track of number of sqeeuzed out zeros
-      complete_primitives(klv,y,hash); // add primitive |x|s; store in |d_KL|
+    complete_primitives(klv,y); // add primitive |x|s
   }
   else // we must use an approach that distinguishes on |x| values
-  {
-    new_recursion_column(klv,y,hash);
-
-    // commit
-    const RankFlags desc_y = descent_set(y);
-    containers::simple_list<KL_pair> non_zeros;
-    unsigned int zero_count=0;
-    BlockElt x = length_floor(y);
-    while (prim_back_up(x,desc_y))
-    {
-      auto& Pxy = klv[x];
-      if (Pxy.isZero())
-	++zero_count;
-      else
-      {
-	non_zeros.emplace_front(x,hash.match(Pxy));
-	Pxy=Zero; // clean up;
-      }
-    }
-
-    d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
-
-    sparseness += zero_count;
-  }
-  return sparseness;
+    new_recursion_column(klv,y);
 } // |KL_table::fill_KL_column|
 
 /*
@@ -583,61 +555,34 @@ void KL_table::mu_correction(const BlockEltList& extremals,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
-				     BlockElt y, KL_hash_Table& hash)
+void KL_table::complete_primitives(std::vector<KLPol>& klv, BlockElt y)
 {
-  containers::simple_list<KL_pair>
-    acc; // accumulator for pairs $(x,P_{x,y})$ with $x$ primitive, $P_{x,y}\ne0$
   Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
   const unsigned int ly = length(y);
   const RankFlags desc_y = descent_set(y);
 
-  BitMap to_clear(length_floor(y)); // record for cleaning up
-  size_t zero_count=0; // just for gathering statistics
   // traverse primitives for |y| of length |y| less than |ly| backwards
   for(BlockElt x=length_floor(y); prim_back_up(x,desc_y); )
     if (is_extremal(x,desc_y))
     { // extremal element for |y|; use polynomial from vector passed to us
       const KLPol& Pxy=klv[x];
-      if (Pxy.isZero())
-	++zero_count;
-      else
-      {
-	acc.emplace_front(x,hash.match(Pxy));
-	unsigned int lx=length(x);
-	if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ
+      if (not Pxy.isZero())
+	if (ly==length(x)+2*Pxy.degree()+1) // implies parities |lx|, |ly| differ
 	  mu_pairs.emplace_front(x,MuCoeff(Pxy[Pxy.degree()]));
-	to_clear.insert(x); // record that |klv[x]| needs resetting later
-      }
     }
-    else // insert a polynomial for primitive non-extremal |x| if nonzero
+    else // insert a polynomial for primitive non-extremal |x|
     {
+      KLPol& Pxy = klv[x]; // the polynomial that will be computed here
       unsigned int s = ascent_descent(x,y);
       assert(descent_value(s,x)==DescentStatus::ImaginaryTypeII);
       BlockEltPair xs = cayley(s,x);
-      KLPol& Pxy = klv[x]; // the polynomial computed here on the fly
       Pxy = klv[primitivize(xs.first,desc_y)]; // look up $P_{xs.first,y}$
       Pxy.safeAdd(klv[primitivize(xs.second,desc_y)]);
-      if (Pxy.isZero())
-	++zero_count;
-      else
-      {
-	acc.emplace_front(x,hash.match(Pxy));
-	to_clear.insert(x);
-      }
       // no need to check for |mu| here: |down_set| has the only possible cases
     }
 
-  // only now clear out the nonzero entries in |klv| for re-use by other |y|
-  // should not be done in loop above, as |else| case may still need |klv[x]|
+  // clear an entry that is no longer necessary and won't otherwise be cleared
   klv[y]=Zero; // this one nonzero entry is beyond |length_floor(y)|
-  for (BlockElt x : to_clear)
-    klv[x] = Zero;
-
-#ifndef NDEBUG
-  for (auto P : klv)
-    P.isZero();
-#endif
 
   Mu_list downs;
   auto ds = down_set(block(),y);
@@ -648,12 +593,9 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
   // some elements in |mu_pairs| may have same length as |downs|: merge is needed
   mu_pairs.merge(std::move(downs)); // need not call |unique|: sets are disjoint
 
-  // commit
-  d_KL[y].assign(acc.wcbegin(),acc.wcend()); // convert from list to vector
+  // commit |mu_pairs| to |d_mu[y]|
+  d_mu[y].reserve(mu_pairs.size());
   d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend()); // convert to vector
-
-  return zero_count;
-
 } // |KL_table::complete_primitives|
 
 /*
@@ -702,8 +644,7 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-void KL_table::new_recursion_column
-  (std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash)
+void KL_table::new_recursion_column(std::vector<KLPol>& klv, BlockElt y)
 {
   const unsigned int l_y = length(y);
   const auto desc_y = descent_set(y);
@@ -832,7 +773,7 @@ void KL_table::new_recursion_column
       } // |if (endgame_pair(x,y)) |
       else // |first_endgame_pair| found nothing
 	assert(Pxy.isZero()); // just check unchanged since initialised
-    } // end of no NiceAscent case
+    } // end of no |NiceAscent| case
   } // while (j-->0)
 
   klv[y] = Zero; // clean up
@@ -907,8 +848,25 @@ void KL_table::silent_fill(BlockElt limit)
     // fill the lists
     for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     {
-      fill_KL_column(klv,*it,hash);
-      d_holes.remove(*it);
+      BlockElt y=*it;
+      fill_KL_column(klv,y);
+      // commit
+      const RankFlags desc_y = descent_set(y);
+      containers::sl_list<KL_pair> non_zeros;
+      BlockElt x = length_floor(y);
+      while (prim_back_up(x,desc_y))
+      {
+	auto& Pxy = klv[x];
+	if (not Pxy.isZero())
+	{
+	  non_zeros.emplace_front(x,hash.match(Pxy));
+	  Pxy=Zero; // clean up;
+	}
+      }
+
+      d_KL[y].reserve(non_zeros.size());
+      d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
+      d_holes.remove(y);
     }
     // after all columns are done the hash table is freed, only the store remains
   }
@@ -946,13 +904,30 @@ void KL_table::verbose_fill(BlockElt limit)
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
       BlockElt y_limit = l<maxLength ? length_less(l+1) : limit;
       for (BlockElt y=y_start; y<y_limit; ++y)
-      {
-	std::cerr << y << "\r";
-
-	nr_of_prim_nulls += fill_KL_column(klv,y,hash);
-	prim_size += d_KL[y].size();
-	d_holes.remove(y);
-      }
+	if (d_holes.isMember(y))
+	{
+	  std::cerr << y << "\r";
+	  fill_KL_column(klv,y);
+	  // commit
+	  const RankFlags desc_y = descent_set(y);
+	  containers::sl_list<KL_pair> non_zeros;
+	  BlockElt x = length_floor(y);
+	  while (prim_back_up(x,desc_y))
+	  {
+	    auto& Pxy = klv[x];
+	    if (Pxy.isZero())
+	      nr_of_prim_nulls++;
+	    else
+	    {
+	      non_zeros.emplace_front(x,hash.match(Pxy));
+	      Pxy=Zero; // clean up;
+	    }
+	  }
+	  d_KL[y].reserve(non_zeros.size());
+	  d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
+	  prim_size += d_KL[y].size();
+	  d_holes.remove(y);
+	}
 
       // now length |l| is completed
       size_t p_capacity // currently used memory for polynomials storage

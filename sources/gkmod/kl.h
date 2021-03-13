@@ -159,17 +159,14 @@ class KL_table
   void verbose_fill(BlockElt limit); // called by public |fill| when verbose
 
   // fill column for |y| in the KL-table, all previous ones having been filled
-  size_t fill_KL_column(std::vector<KLPol>& klv, BlockElt y,
-			KL_hash_Table& hash);
+  void fill_KL_column(std::vector<KLPol>& klv, BlockElt y);
   void recursion_column(BlockElt y, weyl::Generator s,
 			std::vector<KLPol>& klv);
   void mu_correction(const BlockEltList& extremals,
 		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
 		     std::vector<KLPol>& klv);
-  size_t complete_primitives(std::vector<KLPol>& klv, BlockElt y,
-			     KL_hash_Table& hash);
-  void new_recursion_column (std::vector<KLPol>& klv, BlockElt y,
-			     KL_hash_Table& hash);
+  void complete_primitives(std::vector<KLPol>& klv, BlockElt y);
+  void new_recursion_column(std::vector<KLPol>& klv, BlockElt y);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 
