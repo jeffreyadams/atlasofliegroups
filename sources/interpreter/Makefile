@@ -40,7 +40,7 @@ CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
 CXXFLAVOR ?= -Wall -ggdb
 
 # our C++ compiler
-CXX := g++ -std=c++11
+CXX := g++ -std=c++11 -pthread
 
 # only the Atlas object files listed below are used
 Atlas_objects := $(sources_dir)/structure/prerootdata.o \
