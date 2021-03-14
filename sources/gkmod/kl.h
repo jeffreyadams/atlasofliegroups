@@ -105,6 +105,7 @@ class KL_table
 
 // accessors
 
+  // the first hole, or |block().size()| if none are left
   BlockElt first_hole () const { return d_holes.front(); }
 
   BlockElt length_floor(BlockElt y) const
