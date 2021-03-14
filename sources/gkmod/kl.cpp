@@ -857,48 +857,73 @@ void KL_table::silent_fill(BlockElt limit)
 	if (d_holes.isMember(y))
 	  ys.push_back(y);
 
-      struct worker
-      { KL_table& tab;
-	std::vector<KLPol> klv; // working vector, at end holds thread result
-	BlockElt y;
-	std::thread t;
-
-	worker(KL_table& parent, BlockElt our_y)
-	  : tab(parent)
-	  , klv(tab.size()+1,Zero) // |primitivize| needs full block size + 1
-	  , y(our_y)
-	  , t([this]() { tab.fill_KL_column(klv,y); })
-	{}
-      };
-
-      std::vector<worker> threads; threads.reserve(ys.size());
-      for (BlockElt y:ys)
-	threads.emplace_back(*this,y); // start threads in parallel
-
-       // wait for completion of all threads
-      for (auto& thr: threads)
-	thr.t.join();
-
-      // now reap completed threads sequentially
-      for (const auto& thr: threads)
-      {
-	// commit
-	BlockElt y = thr.y;
-	const RankFlags desc_y = descent_set(y);
-	containers::sl_list<KL_pair> non_zeros;
-	BlockElt x = length_floor(y);
-	while (prim_back_up(x,desc_y))
+      if (ys.size()<4) // don't bother splitting into very few threads
+	for (BlockElt y:ys)
 	{
-	  const auto& Pxy = thr.klv[x];
-	  if (not Pxy.isZero())
-	    non_zeros.emplace_front(x,hash.match(Pxy));
-	}
+	  // due to |primitivize|, working vector needs full block size plus one
+	  std::vector<KLPol> klv(block().size()+1,Zero); // full column
+	  fill_KL_column(klv,y);
+	  // commit
+	  const RankFlags desc_y = descent_set(y);
+	  containers::sl_list<KL_pair> non_zeros;
+	  BlockElt x = length_floor(y);
+	  while (prim_back_up(x,desc_y))
+	  {
+	    const auto& Pxy = klv[x];
+	    if (not Pxy.isZero())
+	      non_zeros.emplace_front(x,hash.match(Pxy));
+	  }
 
-	d_KL[y].reserve(non_zeros.size());
-	d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
-	d_holes.remove(y);
-      } // |for(const auto& thr:threads)|
+	  d_KL[y].reserve(non_zeros.size());
+	  d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
+	  d_holes.remove(y);
+	} // |for y|
+      else
+      {
+	struct worker
+	{ KL_table& tab;
+	  std::vector<KLPol> klv; // working vector, at end holds thread result
+	  BlockElt y;
+	  std::thread t;
+
+	  worker(KL_table& parent, BlockElt our_y)
+	    : tab(parent)
+	    , klv(tab.size()+1,Zero) // |primitivize| needs full block size + 1
+	    , y(our_y)
+	    , t([this]() { tab.fill_KL_column(klv,y); })
+	  {}
+	};
+
+	std::vector<worker> threads; threads.reserve(ys.size());
+	for (BlockElt y:ys)
+	  threads.emplace_back(*this,y); // start threads in parallel
+
+	// wait for completion of all threads
+	for (auto& thr: threads)
+	  thr.t.join();
+
+	// now reap completed threads sequentially
+	for (const auto& thr: threads)
+	{
+	  // commit
+	  BlockElt y = thr.y;
+	  const RankFlags desc_y = descent_set(y);
+	  containers::sl_list<KL_pair> non_zeros;
+	  BlockElt x = length_floor(y);
+	  while (prim_back_up(x,desc_y))
+	  {
+	    const auto& Pxy = thr.klv[x];
+	    if (not Pxy.isZero())
+	      non_zeros.emplace_front(x,hash.match(Pxy));
+	  }
+
+	  d_KL[y].reserve(non_zeros.size());
+	  d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
+	  d_holes.remove(y);
+	} // |for(const auto& thr:threads)|
+      } // |else|
     } // |for(l)|
+
     // after all columns are done the hash table is freed, only the store remains
   }
   catch (error::NumericOverflow& )
