@@ -161,7 +161,7 @@ associated_variety_ann_res(p.real_form.left_copy.derived,cell)
 
 {rd=cell.root_datum then
 st_rd=rd.springer_table then
-
+p
 ct_int=p.integrality_datum.character_table then
 L=cell.root_datum then
 index_pi_int=ct_int.special_character(cell) then

@@ -323,8 +323,10 @@ filter(rd,rd#(##for i:ss_rank(rd) do
 {want to choose simple roots of H positive for rd:
  subgroup(G,H.roots) remakes H, with simple roots all positive for G}
  if labels[i] !=1 then
- let (valid,H)=subgroup(rd,subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in
- assert(valid,"not a valid subgroup"); [H] else []
+ let H_0=subgroup_by_simple(rd, delete(sr,i)#alpha) then
+ (valid,H)=subgroup(rd,H_0.roots) in 
+{ subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in}
+ assert(valid,"not a valid subgroup"); {[H]} [H_0] else []
  fi od)) fi
 
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
@@ -336,8 +338,10 @@ alpha=-highest_root(rd) in
 filter(rd,rd#(##for i:ss_rank(rd) do
  if labels[i] !=1 and is_prime(labels[i]) then
  {want to choose simple roots of H positive for rd}
-  let (valid,H)=subgroup(rd,subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in
- assert(valid,"not a valid subgroup"); [H] else [] fi od)) fi
+ let H_0=subgroup_by_simple(rd, delete(sr,i)#alpha) then
+ (valid,H)=subgroup(rd,H_0.roots) in 
+{  let (valid,H)=subgroup(rd,subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in}
+ assert(valid,"not a valid subgroup"); {[H]} [H_0] else [] fi od)) fi
 
 
 

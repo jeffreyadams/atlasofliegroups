@@ -46,9 +46,12 @@ for w_0 in ct.class_representatives do
   let w=W_elt(rd,w_0.word) in {Note: need to convert w_0 from ct.root_datum to rd}
 {let ()=prints("w: ", w, "trace: ", trace_coherent(w,params)) in} trace_coherent(w,params) od
 
-set character_coherent_B(RealForm G,CharacterTable ct,ratvec gamma)=[int]:
+set character_coherent_gamma(RealForm G,CharacterTable ct,ratvec gamma)=[int]:
 character_coherent(ct,all_parameters_gamma(G,gamma))
-set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct,G.rho)
+set character_coherent_gamma(RealForm G,CharacterTable ct)=[int]:character_coherent_gamma(G,ct,G.rho)
+
+set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,block_of(G.trivial))
+set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct)
 
 {fixed points of w acting on KGB}
 set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
@@ -60,6 +63,15 @@ sum(for x in fixed_kgb(w,X) do epsilon_i(x,w) od)
 set character_coherent(CharacterTable ct,[KGBElt] X)=[int]:
 for w in ct.class_representatives do trace_coherent(w,X) od
 set character_coherent_X(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,KGB(G))
+
+set character_coherent_dual(CharacterTable ct,[KGBElt] Y)=[int]:
+let rd_dual=Y[0].root_datum in
+for w in ct.class_representatives do
+ let y=W_elt(rd_dual,w.word) in trace_coherent(y,Y) od
+
+set character_coherent_Y(RealForm G,CharacterTable ct)=[int]:
+character_coherent_dual(ct,KGB(G.dual.quasisplit_form))
+
 
 {involutions in W fixed by conjugation action of w}
 set fixed_involutions(WeylElt w,[WeylElt] involutions)=[WeylElt]:
