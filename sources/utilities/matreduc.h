@@ -11,6 +11,7 @@
 # define   	MATREDUC_H
 
 #include <vector>
+#include <cstdlib>
 #include "matrix_fwd.h"
 #include "matrix.h"
 #include "bitmap.h"
@@ -76,8 +77,8 @@ C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
     if (row[j]!=C(0))
     {
       active_entries.push_back(j);
-      if (min==C(0) or abs(row[j])<min)
-	min=abs(row[mindex=j]);
+      if (min==C(0) or std::abs(row[j])<min)
+	min=std::abs(row[mindex=j]);
     }
   if (active_entries.empty())
     return C(0);
@@ -128,8 +129,7 @@ template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M,
 				matrix::PID_Matrix<C>& col,
 				bool& flip)
-{ using std::abs;
-  const size_t n=M.numColumns();
+{ const size_t n=M.numColumns();
   col=matrix::PID_Matrix<C>(n); // start with identity matrix
   matrix::PID_Matrix<C> ops; // working matrix, accumulates column operations
   flip=false;

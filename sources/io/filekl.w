@@ -53,8 +53,8 @@ is \.{filekl.cpp}, with others explicitly added below.
 namespace atlas {
   namespace filekl {
     @< Functions for writing binary files @>@;
-  }@;
-}@;
+  }
+}
 
 @ In \.{filekl.h} we declare everything that we want to export
 from \.{filekl.cpp}, and define constant values that should be shared between
@@ -76,14 +76,15 @@ namespace atlas {
 }@;
 #endif
 
-@ The header file \.{filekl.h} requires no include files other than the
-forward declarations contained in the \.{iosfwd} standard header
-and \.{Atlas.h}.
+@ The header file \.{filekl.h} requires the forward declarations contained in
+the \.{iosfwd} standard header and in \.{Atlas.h}, and also some typedef symbols
+defined in \.{kl.h}.
 
 @< Includes needed in the header file @>=
 #include <iosfwd>
 
 #include "../Atlas.h"
+#include "kl.h"
 
 @ The \.{filekl\_in} implementation does a lot of file reading, and notably uses
 the |basic_io::read_bytes| function template to read a fixed number of
@@ -151,9 +152,8 @@ we use a special $32$ bit value |magic_code| that should be present in a
 specific place. It's value was chosen in memory of Fokko du Cloux.
 
 @< Constants common for writing and reading @>=
-
-const BlockElt no_good_ascent = UndefBlock-1;
- // value flagging that no good ascent exists
+const BlockElt no_good_ascent = (UndefBlock - 1);
+  // value flagging that no good ascent exists
 const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
 @* Writing a block file.
@@ -632,8 +632,8 @@ matrix_info::matrix_info
       { std::cerr << y << std::endl;
 	throw std::runtime_error ("Premature end of file");
       }
-    } // for (BlockElt y...)
-  } // |if (...==magic_code)|
+    } // |for (BlockElt y;@;)|
+  } // |if (@[...@]==magic_code)|
 
   block_file.close(); // success, we no longer need the block file
 }

@@ -67,8 +67,8 @@ namespace atlas
     @< Inline function definitions @>@;
     @< Declarations of static variables @>@;
     @< Declarations functions used but defined elsewhere @>@;
-  }@;
-}@;
+  }
+}
 #endif
 
 @ Our main file will provide the class implementations.
@@ -81,8 +81,8 @@ namespace atlas
   {
 @< Definitions of class members @>@;
 @< Definitions of static variables @>@;
-  }@;
-}@;
+  }
+}
 
 
 
@@ -432,9 +432,9 @@ called when an additional input stream is exhausted.
 
 @< Class declarations @>=
 class BufferedInput
-{ typedef char* (*rl_type)(const char* );
+{ typedef char* @[(*rl_type)@] (const char* );
      // |typedef| avoids inclusion of \.{readline} headers
-  typedef void (*add_hist_type) (const char* );  // this one too
+  typedef void @[(*add_hist_type)@] (const char* );  // this one too
   @< Define |struct input_record@;| @> // a local class
   @< Define |struct file_stack@;| @> // another one, using the previous
 
@@ -611,8 +611,8 @@ struct input_record
   unsigned long line_no; // this refers to the older input stream!
 @)
   input_record(BufferedInput&, const char* file_name);
-  input_record@[(const input_record& rec) = delete@]; // cannot copy
-  input_record& operator=@[(const input_record& rec) = delete@]; // or assign
+  input_record(const input_record& rec) = delete; // cannot copy
+  input_record& operator=(const input_record& rec) = delete; // or assign
 };
 
 @ Our file stack is essentially a |std::stack| of |input_record| that uses
@@ -628,6 +628,7 @@ methods to produce (in that order) a range to traverse for visiting all active
 to the underlying container through its member~|c|.
 
 @s file_stack_t stack
+@s weak_const_iterator iterator
 @< Define |struct file_stack@;| @>=
 using file_stack_t =
   std::stack<input_record,containers::mirrored_sl_list<input_record> >;
@@ -635,7 +636,7 @@ struct file_stack : public file_stack_t
 { using const_iterator =
     containers::simple_list<input_record>::weak_const_iterator;
 @)
-  file_stack () : @[ file_stack_t() @]
+  file_stack () : file_stack_t()
   @+{}
   const_iterator ctop() const @+{@; return c.wcbegin(); }
   const_iterator cbottom() const @+{@; return c.wcend(); }
@@ -702,7 +703,7 @@ the record created here from the |input_stack|; this happens \emph{after} an
 attempt to read from the associated file failed, at which point incrementing
 the line number is already done, and won't be repeated.
 
-If opening the file fails the constructor still succeeds; we leave it to the
+If opening the file fails, the constructor still succeeds; we leave it to the
 calling function to detect this condition and destroy the created record.
 However, in case the file is not open after initialising |stream|, presumably
 because the file was not found, we do a second attempt after extending the
@@ -714,7 +715,7 @@ BufferedInput::input_record::input_record
 (BufferedInput& parent, const char* file_name)
 @/: f_stream()
   , name(~0)
-  , line_no(parent.line_no+parent.cur_lines) // record where reading will resume
+  , line_no(parent.line_no+parent.cur_lines) // where reading will resume
 
 { unsigned int path_size = input_path_size();
   for (unsigned int i=0; i<=path_size; ++i)

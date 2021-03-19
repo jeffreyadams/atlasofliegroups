@@ -43,7 +43,7 @@ namespace atlas { namespace interpreter {
 @< Declarations of global variables @>@;
 @< Declarations of exported functions @>@;
 @< Template and inline function definitions @>@;
-}@; }@;
+}}
 #endif
 
 @ Each compilation unit follows a similar global pattern. While some modules
@@ -61,9 +61,9 @@ namespace atlas { namespace interpreter {
 namespace {@;
   @< Local type definitions @>@;
   @< Local function definitions @>@;
-}@;
+}
 @< Function definitions @>@;
-}@; }@;
+}}
 
 
 @ The parser produces a parse tree, in the form of a value of type |expr|
@@ -493,8 +493,8 @@ struct func_type
 @)
   func_type(type_expr&& a, type_expr&& r)
 @/: arg_type(std::move(a)), result_type(std::move(r)) @+{}
-@/func_type(func_type&& f) = @[default@]; // move constructor
-  func_type& operator=(func_type&& f) = @[default@]; // move assignment
+@/func_type(func_type&& f) = default; // move constructor
+  func_type& operator=(func_type&& f) = default; // move assignment
   func_type copy() const // in lieu of a copy contructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
@@ -901,7 +901,7 @@ struct type_binding
 };
 class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
-  defined_type_mapping () : @[std::vector<type_binding>@]() @+{}
+  defined_type_mapping () : std::vector<type_binding>() @+{}
   const type_expr& defined_type(type_nr_type i) const @+
     {@; return (*this)[i].type; }
 };
@@ -1370,7 +1370,8 @@ template<bool is_union>
 
 struct rank_comparer
 { const std::vector<type_data>& type_arr;
-  int (*cmp)(const type_data*, const type_data*, const std::vector<type_data>&);
+  int @[(*cmp)@]
+    (const type_data*, const type_data*, const std::vector<type_data>&);
 @)
   rank_comparer(type_tag kind,const std::vector<type_data>& a)
   : type_arr(a)
@@ -1484,7 +1485,7 @@ pointed to by |it|.
   unsigned int cur_rank = (*start)->rank;
     // start with old rank for the whole (non-empty) range
   prev=start;
-  for (auto @[bar:bars@]@;@;)
+  for (auto bar:bars)
   { unsigned int count=0;
     tracker t=prev;
     do
@@ -1847,7 +1848,7 @@ type_expr scan_type(const char*& s)
       throw logic_error("Missing ']' in type");
     return type_expr(std::move(p));
   }
-  else if (*s=='*') return ++s,@[type_expr()@]; // undetermined type
+  else if (*s=='*') return ++s,type_expr(); // undetermined type
   else @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
 }
 @)
@@ -1858,7 +1859,7 @@ type_expr mk_type_expr(const char* s)
   catch (logic_error& e)
   { std::cerr << e.what() << "; original string: '" << orig @|
               << "' text remaining: '" << s << "'\n";
-    throw@[@];
+    throw;
   // make the error hard to ignore; if thrown probably aborts the program
   }
 }
@@ -2125,7 +2126,7 @@ struct value_base
 @)
 // |static const char* name();| just a model; defined in derived classes
 @)
-  value_base& operator=(const value_base& x) = @[delete@];
+  value_base& operator=(const value_base& x) = delete;
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
 @)
@@ -2221,7 +2222,7 @@ struct tuple_value : public row_value
   template <typename I> tuple_value(I begin, I end) : row_value(begin,end) @+{}
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "tuple value"; }
-@/tuple_value @[(const tuple_value& ) = default@];
+@/tuple_value (const tuple_value& ) = default;
     // we use |uniquify<tuple_value>|
 };
 @)
@@ -2319,7 +2320,7 @@ public:
   const shared_value& contents() const @+{@; return comp; }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "union value"; }
-  union_value @[(const union_value& v) = delete@];
+  union_value (const union_value& v) = delete;
 };
 @)
 typedef std::unique_ptr<union_value> union_ptr;
@@ -2364,7 +2365,7 @@ typedef std::shared_ptr<class evaluation_context> shared_context;
 class evaluation_context
 { shared_context next;
   std::vector<shared_value> frame;
-  evaluation_context@[(const evaluation_context&) = delete@];
+  evaluation_context(const evaluation_context&) = delete;
   // never copy contexts
 public:
   evaluation_context (const shared_context& next)
@@ -2418,10 +2419,10 @@ struct expression_base
 { enum level @+{ no_value, single_value, multi_value };
 @)
   expression_base() @+ {}
-  expression_base@[(const expression_base&) = delete@]; // they are never copied
-  expression_base@[(expression_base&&) = delete@]; // nor moved
-  expression_base& operator=@[(const expression_base&)=delete@]; // nor assigned
-  expression_base& operator=@[(expression_base&&)=delete@]; // nor move-assigned
+  expression_base(const expression_base&) = delete; // they are never copied
+  expression_base(expression_base&&) = delete; // nor moved
+  expression_base& operator=(const expression_base&)=delete; // nor assigned
+  expression_base& operator=(expression_base&&)=delete; // nor move-assigned
   virtual ~expression_base() @+ {}
 @)// other virtual methods
   virtual void evaluate(level l) const =0;
@@ -3332,8 +3333,8 @@ store an |std::ostringstream| object permanently, but that type is really ill
 suited to be part of an error value, notably because it is impossible to
 implement the |what| method so as to present its contents: the |str| method can
 return the contents as a |std::string|, but unless that string is then stored
-separately in the error value, its lifetime will be to short to produce a value
-|char*| pointer to be returned from |what|. So we finally decided the only
+separately in the error value, its lifetime will be to short to produce a valid
+|(char*)| pointer to be returned from |what|. So we finally decided the only
 reasonable way to proceed is to not provide a string extension method here, and
 instead require the caller to construct (just before throwing) an error string
 using a temporary |std::ostringstream| and call its |str| method while throwing
@@ -3346,7 +3347,7 @@ struct error_base : public std::exception
   simple_list<std::string> back_trace;
   explicit error_base(const std::string& s) : message(s),back_trace() @+{}
   explicit error_base(std::string&& s) : message(std::move(s)),back_trace() @+{}
-  error_base @[(error_base&& other) = default@];
+  error_base (error_base&& other) = default;
   void trace (std::string&& line) @+{@; back_trace.push_front(std::move(line)); }
   const char* what() const throw() @+{@; return message.c_str(); }
 };
@@ -3363,19 +3364,19 @@ classes.
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
   explicit logic_error(std::string&& s) : error_base(std::move(s)) @+{}
-  logic_error @[(logic_error&& other) = default@];
+  logic_error (logic_error&& other) = default;
 };
 @)
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
   explicit program_error(std::string&& s) : error_base(std::move(s)) @+{}
-  program_error @[(program_error&& other) = default@];
+  program_error (program_error&& other) = default;
 };
 @)
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
   explicit runtime_error(std::string&& s) : error_base(std::move(s)) @+{}
-  runtime_error @[(runtime_error&& other) = default@];
+  runtime_error (runtime_error&& other) = default;
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
@@ -3405,7 +3406,7 @@ struct expr_error : public program_error
     : program_error(s),offender(e) @+{}
   expr_error (const expr& e,std::string&& s) noexcept
     : program_error(std::move(s)),offender(e) @+{}
-  expr_error @[(expr_error&& other) = default@];
+  expr_error (expr_error&& other) = default;
 };
 
 @ We derive from |expr_error| an even more specific exception type
@@ -3423,7 +3424,7 @@ struct type_error : public expr_error
   type_error (const expr& e, type_expr&& a, type_expr&& r) noexcept @/
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
-  type_error @[(type_error&& e) = default@];
+  type_error (type_error&& e) = default;
 };
 
 @ For type balancing, we shall use controlled throwing and catching of errors
@@ -3443,7 +3444,7 @@ struct balance_error : public expr_error
   balance_error(const expr& e, const char* items_name)
   : expr_error(e,"No common type found between "), variants()
   @/{@; message+=items_name; }
-  balance_error @[(balance_error&& other) = default@];
+  balance_error (balance_error&& other) = default;
 };
 
 @ Here is another special purpose error type, throwing of which does not

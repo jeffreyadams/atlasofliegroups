@@ -101,7 +101,7 @@ class StandardRepr
 
 // special members required by HashTable
 
-  typedef std::vector<StandardRepr> Pooltype;
+  using Pooltype = std::vector<StandardRepr>;
   bool operator!=(const StandardRepr& another) const
   { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
@@ -157,7 +157,9 @@ class Reduced_param
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
 
-  typedef std::vector<Reduced_param> Pooltype;
+  Reduced_param(Reduced_param&&) = default;
+
+  using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
   { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
@@ -332,6 +334,8 @@ public:
   K_type(const Rep_context& rc, const StandardRepr& sr)
     : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
 
+  K_type(K_type&&) = default;
+
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
 
@@ -413,7 +417,7 @@ public:
   { return twisted = std::move(formula); }
 
 // special members required by HashTable
-  typedef std::vector<deformation_unit> Pooltype;
+  using Pooltype = std::vector<deformation_unit>;
   bool operator!=(const deformation_unit& another) const; // distinct alcoves?
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
@@ -423,35 +427,38 @@ public:
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored are: the |blocks::common_block| values encountered for this
-  real form, together with their KL data if computed, a table of (twisted) full
-  deformation formulae, pools of |kl::KLPol| (positive coeffient) and
-  |ext_kl::Pol| (integer coeffient) polynomials that blocks may choose to share
-  (they can alternatively choose to maintain their local polynomials themselves).
-
-  This class provides methods for their computation, and handles the data
-  storage and retrieval.
-
-  The deformation information is associated to parameters, but is unchanged
-  under certain changes of these parameters, so to limit memory usage somewhat
-  any parameter is moved to its first reducibility point and expressed in
-  nonzezro final ones before looking up or computing its deformation.
+  The data stored are:
+  * the |blocks::common_block| values encountered for this real form, together
+    with their KL data if computed; these are accessed via |block_list| and
+   |place|
+  * a table of (twisted) full deformation formulae, associated to alcoves;
+    these are stored in |pool| and accessed through |alcove_hash|
+  * a table |reduced_hash| of |Reduced_param| values encountered; this table
+    guards the creation of blocks, as parameters sharing a |Reduced_param| value
+    can share their block: for finding a block, lookup in |reduced_hash| is
+    performed, and if found the index is then used via |place| to find the block
+  * a table |K_type_hash| of |K_type| values having been found to occur in
+    deformation formulas, which allows compact representation of the latter
+  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coeffient)
+    respectively |ext_kl::Pol| (integer coeffient) polynomials, which can be
+    shared among blocks to reduce the size of their tables of such polynomials
+    (they may also choose to maintain their local polynomials themselves).
 */
 class Rep_table : public Rep_context
 {
-  std::vector<deformation_unit> pool; // also stores actual deformation formulae
+  deformation_unit::Pooltype pool; // also stores actual deformation formulae
   HashTable<deformation_unit,unsigned long> alcove_hash;
 
-  std::vector<Reduced_param> reduced_pool;
+  Reduced_param::Pooltype reduced_pool;
   HashTable<Reduced_param,unsigned long> reduced_hash;
 
-  std::vector<K_type> K_type_pool;
+  K_type::Pooltype K_type_pool;
   HashTable<K_type,K_type_nr> K_type_hash;
 
-  std::vector<kl::KLPol> KL_poly_pool;
+  PosPolEntry::Pooltype KL_poly_pool;
   KL_hash_Table KL_poly_hash;
 
-  std::vector<ext_kl::Pol> poly_pool;
+  IntPolEntry::Pooltype poly_pool;
   ext_KL_hash_Table poly_hash;
 
   sl_list<blocks::common_block> block_list;
@@ -535,9 +542,10 @@ public:
 class common_context
 {
   const Rep_context& rep_con;
-  const RootDatum integr_datum; // intgrality datum
-  const SubSystem sub; // embeds |integr_datum| into parent root datum
+  unsigned int int_sys_nr;
+  const SubSystem& sub; // embeds |integr_datum| into parent root datum
 public:
+  common_context (const Rep_context& rc, const RatWeight& gamma);
   common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors
@@ -546,16 +554,15 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
-  const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|
-  // however, the generator |s| is interpreted for the |integr_datum|
+  // however, the generator |s| is interpreted for |subsys()|
   StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
   StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
   StandardReprMod up_Cayley(weyl::Generator s, const StandardReprMod& z) const;
   std::pair<gradings::Status::Value,bool> // status and whether a descent/type 1
-    status(weyl::Generator s, KGBElt x) const; // with |s| for |integr_datum|
+    status(weyl::Generator s, KGBElt x) const;
   bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,

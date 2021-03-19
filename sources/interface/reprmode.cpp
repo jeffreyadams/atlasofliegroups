@@ -127,8 +127,9 @@ blocks::common_block& current_common_block()
   { // we have entered reprmode without setting block
     const Rep_context rc(currentRealGroup());
     auto srm = repr::StandardReprMod::mod_reduce(rc,*sr);
+    common_context ctxt(currentRepTable(),srm.gamma_lambda());
     common_block_pointer = // generate full block and set |entry_z|
-      new blocks::common_block(currentRepTable(),srm,entry_z);
+      new blocks::common_block(ctxt,srm,entry_z);
     state=full_block;
     entry_z = common_block_pointer->size()-1;
   }
@@ -194,15 +195,15 @@ void repr_mode_entry()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix(),true,false,pi)
+		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),
+				    true,false,pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])
 		  << (s<sub->rank()-1 ? "," : ".\n");
     }
 
-    sr = new
-      StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
+    sr = new StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
   }
   catch(error::InputError& e)
   {
@@ -237,15 +238,15 @@ void repr_f()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix(),true,false,pi)
+		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),
+				    true,false,pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])
 		  << (s<sub->rank()-1 ? "," : ".\n");
     }
     delete sr;
-    sr = new
-      StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
+    sr = new StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     state = noblock;
     delete common_block_pointer; common_block_pointer=nullptr;
     delete WGr_pointer; WGr_pointer=nullptr;

@@ -10,8 +10,9 @@
 #include "repr.h"
 
 #include <memory> // for |std::unique_ptr|
+#include <cstdlib> // for |std::abs|
+#include <cassert>
 #include <map> // used in computing |reducibility_points|
-#include <algorithm> // for |make_heap|
 #include <iostream> // for progress reports and easier debugging
 #include "error.h"
 
@@ -1306,7 +1307,7 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   if (mod_hash.find(srm)!=mod_hash.empty) // then |srm| was seen earlier
     return; // nothing new
 
-  const auto rank = ctxt.id().semisimple_rank();
+  const auto rank = ctxt.subsys().rank();
   sl_list<BlockElt> pred; // list of elements covered by z
   // invariant: |block_below| has been called for every element in |pred|
 
@@ -1406,7 +1407,7 @@ blocks::common_block& Rep_table::add_block_below
   assert // we are called to add a block for nothing like what is known before
     (find_reduced_hash(init)==reduced_hash.empty);
 
-  std::vector<StandardReprMod> pool;
+  StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
   gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
@@ -1523,7 +1524,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<blocks::common_block> temp; // must use temporary singleton
-  auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
+  common_context ctxt(*this,srm.gamma_lambda());
+  auto& block = temp.emplace_back(ctxt,srm,srm_in_block); // build full block
 
   const auto rho = rootdata::rho(root_datum());
   const size_t place_limit = place.size();
@@ -1607,7 +1609,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
     assert(block.representative(which).x()==srm.x()); // check minimum of sanity
     return block; // use block of related |StandardReprMod| as ours
   }
-  common_context ctxt(*this,SubSystem::integral(root_datum(),sr.gamma()));
+  common_context ctxt(*this,sr.gamma());
   BitMap subset;
   auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
   which = last(subset);
@@ -1616,7 +1618,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   return block;
 } // |Rep_table::lookup|
 
-// in the following type the second component is a mulitplicity so we are in fact
+// in the following type the second component is a multiplicity so we are in fact
 // dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
 
 typedef std::pair<BlockElt,int>  term;
@@ -1980,7 +1982,8 @@ SR_poly twisted_KL_column_at_s
     throw std::runtime_error("Parameter is not final");
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry;
-  blocks::common_block block(rc,zm,entry); // which this constructor does
+  common_context ctxt(rc,zm.gamma_lambda());
+  blocks::common_block block(ctxt,zm,entry); // build full block
   RatWeight diff = rc.offset(z, block.representative(entry));
   assert(diff.isZero()); // because we custom-built our |block| above
   // the code below handles still |diff| as it should if it were nonzero
@@ -2255,6 +2258,19 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 //			|common_context| methods
 
+common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
+: rep_con(rc)
+, int_sys_nr()
+, sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
+{} // |common_context::common_context|
+
+
+common_context::common_context (const Rep_context& rc, const SubSystem& sub)
+: rep_con(rc)
+, int_sys_nr()
+, sub(rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr).int_system())
+{} // |common_context::common_context|
+
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
 {
@@ -2282,7 +2298,7 @@ StandardReprMod common_context::cross
   RootNbrSet pos_neg = pos_to_neg(full_datum,refl);
   pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
   gamma_lambda -= root_sum(full_datum,pos_neg); // correction for $\rho_r$'s
-  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // integrally simple
+  subsys().simple_reflect(s,gamma_lambda.numerator()); // integrally simple
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
 
@@ -2294,7 +2310,7 @@ bool common_context::is_parity
   const auto& i_tab = involution_table();
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
   assert(real_roots.isMember(sub.parent_nr_simple(s)));
-  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const Coweight& alpha_hat = subsys().simple_coroot(s);
   const int eval = rc().gamma_lambda(z).dot(alpha_hat);
   const int rho_r_corr = alpha_hat.dot(full_datum.twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
@@ -2341,12 +2357,12 @@ StandardReprMod common_context::up_Cayley
   gamma_lambda += root_sum(full_datum,pos_neg); // correction of $\rho_r$'s
 
   // correct in case the parity condition fails for our raised |gamma_lambda|
-  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const Coweight& alpha_hat = subsys().simple_coroot(s);
   const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
     alpha_hat.dot(full_datum.twoRho(upstairs_real_roots))/2;
   const int eval = gamma_lambda.dot(alpha_hat);
   if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
-    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+    gamma_lambda += RatWeight(subsys().simple_root(s),2); // add half-alpha
 
   return repr::StandardReprMod::build(rc(),new_x,gamma_lambda);
 }
@@ -2369,7 +2385,7 @@ Ext_common_context::Ext_common_context
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts(id().semisimple_rank())
+    , l_shifts(sub.rank())
 {
   const RootDatum& rd = rc.root_datum();
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -2377,8 +2393,8 @@ Ext_common_context::Ext_common_context
 
   // the reflections for |E.l| pivot around |g_rho_check()|
   const RatCoweight minus_g_rho_check = -rc.g_rho_check();
-  for (unsigned i=0; i<l_shifts.size(); ++i)
-    l_shifts[i] = minus_g_rho_check.dot(id().simpleRoot(i));
+  for (unsigned i=0; i<sub.rank(); ++i)
+    l_shifts[i] = minus_g_rho_check.dot(sub.simple_root(i));
 } // |Ext_common_context::Ext_common_context|
 
 
@@ -2424,14 +2440,6 @@ Ext_rep_context::Ext_rep_context
 
 Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
 : Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
-
-// |common_context| methods
-
-common_context::common_context (const Rep_context& rc, const SubSystem& sub)
-: rep_con(rc)
-, integr_datum(sub.pre_root_datum())
-, sub(sub)
-{} // |common_context::common_context|
 
 
   } // |namespace repr|
