@@ -226,9 +226,9 @@ $(dvifiles): $(CWEAVE)
 # Our executable program 'atlas' is in Atlas root directory.
 $(Atlas_root)/atlas: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -o $@_instr $^ -fprofile-generate=$(profile_dir) $(LDFLAGS)
+	$(CXX) -o $@LTO_instr $^ -fprofile-generate=$(profile_dir) $(LDFLAGS)
 else
-	$(CXX) -o $@PDO $^ -O3 -fprofile-use=$(profile_dir) $(LDFLAGS)
+	$(CXX) -o $@PDOLTO $^ -flto -O3 -fprofile-use=$(profile_dir) $(LDFLAGS)
 endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
