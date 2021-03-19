@@ -155,6 +155,12 @@ class KL_table
     first_endgame_pair(BlockElt x, BlockElt y) const;
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
 
+  // like |KL_pol(x,y)|, but take value from |col|, when |d_KL[y]| not yet ready
+  // this assumes either |x| primitive for |y|, or |col| has size one more than
+  // that of the block, with entries |One| at |y| and |Zero| beyond
+  KLPol lookup(BlockElt x, RankFlags desc_y, const std::vector<KLPol>& col) const
+  { return col[primitivize(x,desc_y)]; }
+
   // manipulators
   void silent_fill(BlockElt limit); // called by public |fill| when not verbose
   void verbose_fill(BlockElt limit); // called by public |fill| when verbose
