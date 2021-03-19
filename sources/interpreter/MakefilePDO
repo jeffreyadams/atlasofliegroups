@@ -165,9 +165,9 @@ $(CWEAVE):
 # static pattern rules giving the usual C++ compilation
 $(c++objects) $(Atlas_objects): %.o: %.cpp
 ifeq ($(profile),true)
-	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-generate=$(profile_dir)/sources/interpreter
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-generate=$(profile_dir)sources/interpreter
 else
-	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-use=$(profile_dir)/sources/interpreter
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-use=$(profile_dir)sources/interpreter
 endif
 
 # for running ctanglex we cannot use a static pattern rule, since there are
@@ -227,7 +227,7 @@ $(dvifiles): $(CWEAVE)
 # Our executable program 'atlas' is in Atlas root directory.
 $(Atlas_root)/atlas: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o $@_instr $^ -fprofile-generate=$(profile_dir) $(LDFLAGS)
+	$(CXX) -o $@_instr $^ -fprofile-generate=$(profile_dir) $(LDFLAGS)
 else
 	$(CXX) -o $@PDO $^ -O3 -fprofile-use=$(profile_dir) $(LDFLAGS)
 endif
