@@ -169,9 +169,6 @@ class KL_table
   void fill_KL_column(std::vector<KLPol>& klv, BlockElt y);
   void recursion_column(BlockElt y, weyl::Generator s,
 			std::vector<KLPol>& klv);
-  void mu_correction(const BlockEltList& extremals,
-		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
-		     std::vector<KLPol>& klv);
   void complete_primitives(std::vector<KLPol>& klv, BlockElt y);
   void new_recursion_column(std::vector<KLPol>& klv, BlockElt y);
   KLPol mu_new_formula
