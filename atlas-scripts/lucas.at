@@ -1,0 +1,192 @@
+<lusztig_cells.at
+
+set test(ComplexNilpotent orbit)=
+for (M,,x) in component_representatives_plus(orbit) do
+prints(M, " ", x, " ", centralizer_coweight(orbit.root_datum,x));is_locally_isomorphic(M,centralizer_coweight(orbit.root_datum,x)) od
+
+{exp(2\pi iv) is in center of G}
+set is_central(RootDatum G,ratvec v)=bool:is_integer(v*G.simple_roots)
+
+{(w,v)=from_dominant(gamma,G) (w\in W, v\in X_*) =>
+ v*w=gamma
+ }
+set from_dominant (ratvec gamma,RootDatum rd) = (WeylElt,ratvec):
+  let (n,d)=%gamma then (v,w)=from_dominant(n,rd) in (w,v/d)
+
+set list_roots(RootDatum G,RootDatum L)=[int]:
+for a in L.simple_roots do find(G.posroots,a) od
+
+set list_roots(RootDatum G)=(RootDatum->[int]):(RootDatum L):list_roots(G,L)
+
+set make_positive(RootDatum G,RootDatum L)=let (valid,M)=subgroup(G,L.roots)
+in assert(valid,"subgroup failure");M
+
+set centralizer_of_radical(RootDatum G, RootDatum  H)=
+let (,M)=Levi_of_subspace(G,H.radical_basis) in M
+
+{-------------------------------------------------------------------}
+{Lusztig and Sommers version}
+{also return: O_L_v}
+set sigma_L_S(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v,RootDatum M_v,vec H_M_v,ratvec y)=(int,int,ComplexNilpotent):
+{variant: add center of M_v to y}
+let ()=if sigma_L_verbose then
+   prints("Computing sigma_L: ",new_line,
+   "G=", G, "st_G_v: ",new_line, st_G_v.root_datum, new_line,"M_v=", M_v, new_line, "H_M_v=",H_M_v,new_line,"y=", y) fi
+in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
+ let ()=if sigma_L_verbose then prints("y is integer, no induction")  fi then
+ sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
+ sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
+ char= ct_G.character_index(sigma) in
+ (char,char,O_v)  {sigma_L=sigma_S=char}
+else  {need induction; compute L, sigma_L, truncated_induce}
+ let ()=if sigma_L_verbose then prints("need induction: ")  fi in
+ let G_v=O_v.root_datum then
+ ()=if sigma_L_verbose then prints(("y=",y) ) fi then
+ L_v=centralizer(G_v,y) then
+ ()=if sigma_L_verbose then prints(("L_v=",L_v, new_line, "G_v=", G_v) ) fi then
+ {O_M_v=ComplexNilpotent:(M_v,(),H_M_v) -> saturation -> O_L_v
+  O_L_v has the same H=H_M_v, but made L_v-dominant}
+ H_L_v=dominant(H_M_v,L_v) then
+ O_L_v=ComplexNilpotent:(L_v,(),H_L_v) then
+ ()=if sigma_L_verbose
+   then prints(("L_v=", L_v,new_line,"H_L_v=", H_L_v,new_line,"O_L_v:", O_L_v.H, " ", O_L_v.diagram) ) fi then
+ L=dual(L_v) then
+ roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
+ {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
+ (sigma_L,sigma_sommers)=
+ if O_L_v=L_v.zero_orbit then let char=L.character_table.trivial in (char,char)
+ elif O_L_v=L_v.principal_orbit then let char=L.character_table.sign in (char,char) {sigma_L=sigma_S}
+ else  {not 0 or principal orbit: need to compute L.springer_table}
+  (let ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
+  st_L_v=L_v.springer_table then
+  ()=if sigma_L_verbose then prints(("done computing L.springer_table") ) fi then
+  sigma_L_v=st_L_v.springer(O_L_v) then
+  char=st_L_v.ct.characters[sigma_L_v] then
+  sigma_L_0=st_L_v.ct.tensor_sign(char) in
+  exchange_long_short(L_v.character_table,sigma_L_0),{that's sigma_L}
+  {now sigma_sommers}
+  let st_L=L.springer_table then
+  O_L=st_L.dual_map_i(O_L_v) then
+  rv=  st_L.ct.characters[st_L.springer(O_L)] in
+  if sigma_L_verbose then
+   prints("O_L: ", O_L, " ", O_L.diagram, new_line,"sigma_sommers: ", rv) fi; rv)
+ fi  {end if O_L_v=L_v.zero_orbit} in
+ {now induce sigma_L and sigma_sommers}
+ {sigma_L:}
+  (let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_L) then
+  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, "char_index: ", char_index) fi then 
+  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
+  char_L=ct_G.characters[char_index] then
+  ()=if sigma_L_verbose then prints("character of L: ", char_L) fi in char_index,
+  {now sommers:}
+   let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_sommers) then
+  ()=if sigma_L_verbose then prints("sigma_sommers: ", sigma_sommers, "char_index: ", char_index) fi then 
+  ()=if sigma_L_verbose then prints("truncated induce (sommers): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_sommers", sigma_sommers) fi then
+   char_sommers=ct_G.characters[char_index] then
+   ()=if sigma_L_verbose then prints("character of L: ", char_index, new_line, char_sommers) fi in
+{   ct_G.character_index(char_sommers),O_L_v)}
+   char_index,O_L_v)
+fi  {end if y.is_integer}
+
+set lusztig_cell(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v)=[int]:
+{prints("sigma_L for: ", O_v,"  ", O_v.diagram,new_line, " st_G_v:",st_G_v.root_datum);}
+{sort_u: avoid duplicates from A-bar(O_v)\ne A(O_v)}
+sort_u(for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
+ let ()=if sigma_L_verbose then prints("computing sigma_L for M_v=", M_v, new_line,"H_M_v=",H_M_v,new_line, "y=", y)  fi in
+    {let ()=if sigma_L_verbose then prints("calling sigma_L(x):", new_line,"G: ", G, new_line,"O_v: ", O_v.diagram, " ", O_v.dim_nilpotent,
+   "st:", st_G_v.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) fi in}
+ sigma_L(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) od)
+
+set lucas(RootDatum G,ComplexNilpotent O_v)=
+let ()=prints(new_line,"========================================================", new_line,"orbit: ", O_v, "  ", O_v.diagram, " ", O_v.dim_nilpotent) in
+if =O_v.diagram then [(G.dual,G.dual,O_v.H,null(G.rank),null(G.rank),null(G.rank),null(G.rank),null(G.rank)/1)] else
+for (M_v,H_M_v,x)@i in component_representatives_plus(O_v) do
+ {M_v_0 is a subgroup of G.dual}
+ {let x=[0,1,0,0,0,0]/2 then
+ M_v_0=centralizer_coweight(G.dual,x).dual then}
+ { M_v=M_v.dual {use this to make affine datum} then}
+ let
+{ (,M_v)=subgroup(G.dual,M_v.roots) {make all roots for M_v positive for G.dual} then}
+ ()=prints("--------------------------------------------",new_line,
+ "orbit: ", O_v.diagram, new_line,
+ "i: ", i, new_line,
+ "x=",x) then
+ L_v=centralizer_of_radical(G.dual,M_v) then
+ L=L_v.dual then
+ trd=TwistedRootDatum:(L,id_mat(L.rank)) then
+ ad=affine_datum(trd) then
+ (x_fund,)=affine_make_dominant(ad,x)  then
+ M_v_pos=make_positive(L_v,M_v) {make positive roots of M positive for L_v} then
+ (H_M_v_dom,w)=from_dominant(H_M_v,M_v_pos) then
+ z=H_M_v_dom/2+x_fund then
+ z_dom=dominant(G,z) in
+ prints(new_line,
+ "x=",x,new_line,
+  "x_fund=",x_fund,new_line,
+ "x_fund is L-dominant: ", is_dominant(L,x_fund),new_line,
+ "M_v=",M_v,new_line,
+ "M_v roots: ", list_roots(G.dual,M_v),new_line,
+ "Cent(x)=",centralizer_coweight(G.dual,x),new_line,
+ "H_M_v: ", H_M_v, new_line,
+ "H_M_v_dom: ", H_M_v_dom, new_line,
+ "L_v: ", L_v, new_line,
+ "O_M_v: ", (ComplexNilpotent:(M_v,(),H_M_v)).diagram, new_line,
+ "z=H_M_v_dom/2+ x: ", z,new_line,
+ "z_dom: ", z_dom);
+(M_v,L_v,H_M_v,H_M_v_dom,x,x_fund,z,z_dom)
+od
+fi
+
+set lucas(RootDatum G,[ComplexNilpotent] orbits)=
+for orbit in orbits do (orbit,lucas(G,orbit)) od
+
+set lucas(RootDatum G)=lucas(G,G.dual_orbits)
+
+{st_G_v just for special star}
+set show_lucas(RootDatum G,SpringerTable st_G_v,[ComplexNilpotent] orbits)=
+let list=lucas(G,orbits) in
+prints(new_line,"G=",G);
+tabulate(
+["i","diag","H","M_v","O_M_v","L_v","H_M_v_dom","x","x_fund","z=H/2+x","z_dom"] #
+ ##for (orbit,data)@i in list do
+  for (M_v,L_v,H_M_v,H_M_v_dom,x,x_fund,z,z_dom) in data do
+   [i.to_string,
+   orbit.diagram.to_string+special_star(st_G_v,orbit),
+   H_M_v.compact_ratvec,
+   M_v.nice_format,
+   (ComplexNilpotent:(M_v,(),H_M_v)).diagram.to_string,
+   L_v.nice_format,
+   H_M_v_dom.compact_ratvec,
+   x.compact_ratvec,
+   compact_ratvec(x_fund),
+   z.compact_ratvec,
+   z_dom.compact_ratvec]
+   od od)
+set show_lucas(RootDatum G,[ComplexNilpotent] orbits)=show_lucas(G,G.dual.springer_table,orbits)
+set show_lucas(RootDatum G,ComplexNilpotent orbit)=show_lucas(G,[orbit])
+set show_lucas(RootDatum G)=show_lucas(G,G.dual_orbits)
+{
+set show_lucas_verbose(RootDatum G,SpringerTable st_G_v)=
+let list=lucas(G) then
+()=prints(new_line,"G=",G) then
+header=["i","diag","H","v","v_fund","H/2+v_fund","dom(H/2+v_fund)"]  then
+table=##for (orbit,triples)@i in list do
+ let row=
+  for (H,v,v_dom) in triples do
+   [i.to_string,
+   orbit.diagram.to_string+special_star(st_G_v,orbit),
+   H.compact_ratvec,
+   v.compact_ratvec,
+   compact_ratvec(v_dom),
+   (H/2+v_dom).compact_ratvec,
+   dominant(G,(H/2+v_dom)).compact_ratvec]
+  od
+ in prints("row: ", row);row
+ od
+in prints("done calculating");tabulate(header#table)
+
+set show_lucas(RootDatum G)=show_lucas(G,G.dual.springer_table)
+set show_lucas_verbose(RootDatum G)=show_lucas_verbose(G,G.dual.springer_table)
+
+
+}
