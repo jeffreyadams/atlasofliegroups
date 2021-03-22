@@ -1,5 +1,8 @@
 <lusztig_cells.at
 
+set convert(WeylElt w,RootDatum G)=
+W_elt(G.dual,^w.matrix)
+
 set test(ComplexNilpotent orbit)=
 for (M,,x) in component_representatives_plus(orbit) do
 prints(M, " ", x, " ", centralizer_coweight(orbit.root_datum,x));is_locally_isomorphic(M,centralizer_coweight(orbit.root_datum,x)) od
@@ -100,7 +103,7 @@ sort_u(for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
 set lucas(RootDatum G,ComplexNilpotent O_v)=
 let ()=prints(new_line,"========================================================", new_line,"orbit: ", O_v, "  ", O_v.diagram, " ", O_v.dim_nilpotent) in
 if =O_v.diagram then [(G.dual,G.dual,O_v.H,null(G.rank),null(G.rank),null(G.rank),null(G.rank),null(G.rank)/1)] else
-for (M_v,H_M_v,x)@i in component_representatives_plus(O_v) do
+let ans=##for (M_v_0,H_M_v_0,x)@i in component_representatives_plus(O_v) do
  {M_v_0 is a subgroup of G.dual}
  {let x=[0,1,0,0,0,0]/2 then
  M_v_0=centralizer_coweight(G.dual,x).dual then}
@@ -110,32 +113,65 @@ for (M_v,H_M_v,x)@i in component_representatives_plus(O_v) do
  ()=prints("--------------------------------------------",new_line,
  "orbit: ", O_v.diagram, new_line,
  "i: ", i, new_line,
+ "M_v_0: ", M_v_0, new_line,
+  "H_M_v_0: ", H_M_v_0, new_line,
  "x=",x) then
- L_v=centralizer_of_radical(G.dual,M_v) then
+ L_v=centralizer_of_radical(G.dual,M_v_0) then
  L=L_v.dual then
  trd=TwistedRootDatum:(L,id_mat(L.rank)) then
  ad=affine_datum(trd) then
- (x_fund,)=affine_make_dominant(ad,x)  then
- M_v_pos=make_positive(L_v,M_v) {make positive roots of M positive for L_v} then
- (H_M_v_dom,w)=from_dominant(H_M_v,M_v_pos) then
- z=H_M_v_dom/2+x_fund then
- z_dom=dominant(G,z) in
- prints(new_line,
+ (x_fund_0,)=affine_make_dominant(ad,x)  then
+ ad_d=affine_datum(TwistedRootDatum:(G.dual,id_mat(G.dual.rank))) then
+ x_fund_all=action_fundamental_group(x_fund_0,ad_d) then
+ ()=prints("all x_fund: ") then
+ ()=for v in x_fund_all do prints(v) od in
+ for x_fund in x_fund_all do
+  let ()=prints("------",new_line,"from x_fund_all: ", x_fund) then
+  M_v=make_positive(L_v,M_v_0) {make positive roots of M positive for L_v} then
+  (H_M_v,w)=from_dominant(H_M_v_0,M_v)    {H_M_v*w=H_M_v_0} then
+  C_v_x=centralizer_coweight(L_v,x) then
+  { (y,x_dom)=from_dominant(L_v,x)  {y*x_dom=x} then}
+{  (y,x_dom)=from_dominant(x,L_v)  {x_dom*y=x} then}
+{  C_v_x_dom=centralizer_coweight(L_v,x_dom) then}
+  C_v_x_fund=centralizer_coweight(L_v,x_fund) then
+  (valid,t)=conjugate_to(L,C_v_x.rho_check,C_v_x_fund.rho_check) {t*C_v_x_fund.rho_check=C_v_x.rho_check} then
+  ()=prints("valid: ", valid) then
+{  ()=prints("x_dom: ", x_dom) then}
+  ()=prints("t=",t) then
+{  H_M_v_dom=t.inverse*H_M_v then}
+  H_M_v_fund=t.inverse*H_M_v then
+{  M_v_dom=convert(t,G)*M_v then}
+{  ()=prints("M_v_dom.rho_check: ", M_v_dom.rho_check) then}
+{  O_M_v_dom=ComplexNilpotent:(M_v_dom,(),H_M_v_dom) then}
+{  ()=prints("O_M_v_dom: ", O_M_v_dom.H, " ", O_M_v_dom.diagram) then}
+
+{  H_M_v_dom=H_M_v*t then}
+  ()=prints("H_M_v: ", H_M_v, new_line, "t=",t, new_line, "H_M_v_fund: ", H_M_v_fund) then
+  { z=H_M_v_dom/2+x_fund then}
+{  z=H_M_v_dom/2+x_fund then}
+  z=H_M_v_fund/2+x_fund then
+  z_dom=dominant(G,z) in
+  prints(new_line,
  "x=",x,new_line,
-  "x_fund=",x_fund,new_line,
+{ "x_dom=",x_dom,new_line,}
+ "x_fund=",x_fund,new_line,
  "x_fund is L-dominant: ", is_dominant(L,x_fund),new_line,
  "M_v=",M_v,new_line,
  "M_v roots: ", list_roots(G.dual,M_v),new_line,
- "Cent(x)=",centralizer_coweight(G.dual,x),new_line,
- "H_M_v: ", H_M_v, new_line,
- "H_M_v_dom: ", H_M_v_dom, new_line,
+ "C_v_x=",C_v_x,new_line,
+{ "C_v_x_dom=",C_v_x_dom,new_line,}
+ "H_M_v_0: ", H_M_v_0, new_line,
+  "H_M_v: ", H_M_v, new_line,
+{ "H_M_v_dom: ", H_M_v_dom, new_line,}
+ "H_M_v_fund: ", H_M_v_fund, new_line,
  "L_v: ", L_v, new_line,
- "O_M_v: ", (ComplexNilpotent:(M_v,(),H_M_v)).diagram, new_line,
- "z=H_M_v_dom/2+ x: ", z,new_line,
- "z_dom: ", z_dom);
-(M_v,L_v,H_M_v,H_M_v_dom,x,x_fund,z,z_dom)
+ "x_fund=",x_fund,new_line,
+ "H_M_v_fund: ", H_M_v_fund, new_line,
+ "z=H_M_v_fund/2+ x_fund: ", z,new_line,
+ "z_dom: ", z_dom);(M_v,L_v,H_M_v,H_M_v_fund,x,x_fund,z,z_dom)
 od
-fi
+od in ans
+fi 
 
 set lucas(RootDatum G,[ComplexNilpotent] orbits)=
 for orbit in orbits do (orbit,lucas(G,orbit)) od
@@ -146,23 +182,34 @@ set lucas(RootDatum G)=lucas(G,G.dual_orbits)
 set show_lucas(RootDatum G,SpringerTable st_G_v,[ComplexNilpotent] orbits)=
 let list=lucas(G,orbits) in
 prints(new_line,"G=",G);
+prints("i: #orbit",new_line,
+"diag:  diagram of orbit (*: special)",new_line,
+"M_v:  pseudo_Levi",new_line,
+"O_M_v: , diagram of orbit in M_v",new_line,
+"L_v: centralizer or radical of M_v", new_line,
+"x: original x from component_representatives_plus",new_line,
+"H_M_v_fund: H of orbit in M_v_fund",new_line,
+"x_fund: x moved to fundamental alcove for L_v",new_line,
+"|x_fund|: length of x_fund",new_line,
+"z=H_M_v_fund/2+x_fund: candidate infinitesimal character",new_line,
+"z_dom: z_H_M_v made dominant for G");
 tabulate(
-["i","diag","H","M_v","O_M_v","L_v","H_M_v_dom","x","x_fund","z=H/2+x","z_dom"] #
+["i","diag","H","M_v","O_M_v","L_v","x","H_M_v_fund","x_fund", "|x_fund|","z=H_M_v_fund/2+x","z_dom"] #
  ##for (orbit,data)@i in list do
-  for (M_v,L_v,H_M_v,H_M_v_dom,x,x_fund,z,z_dom) in data do
+  for (M_v,L_v,H_M_v,H_M_v_fund,x,x_fund,z,z_dom) in data do
    [i.to_string,
    orbit.diagram.to_string+special_star(st_G_v,orbit),
    H_M_v.compact_ratvec,
    M_v.nice_format,
    (ComplexNilpotent:(M_v,(),H_M_v)).diagram.to_string,
    L_v.nice_format,
-   H_M_v_dom.compact_ratvec,
    x.compact_ratvec,
-   compact_ratvec(x_fund),
+   H_M_v_fund.compact_ratvec,
+   compact_ratvec(x_fund) ,G.dual.co_invariant_form(x_fund,x_fund).to_string,
    z.compact_ratvec,
    z_dom.compact_ratvec]
    od od)
-set show_lucas(RootDatum G,[ComplexNilpotent] orbits)=show_lucas(G,G.dual.springer_table,orbits)
+set show_lucas(RootDatum G,[ComplexNilpotent] orbits)=prints("G=", G, new_line, "G^v=", G.dual);show_lucas(G,G.dual.springer_table,orbits)
 set show_lucas(RootDatum G,ComplexNilpotent orbit)=show_lucas(G,[orbit])
 set show_lucas(RootDatum G)=show_lucas(G,G.dual_orbits)
 {
