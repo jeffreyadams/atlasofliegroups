@@ -37,6 +37,7 @@
 #include <string>
 #include <algorithm> // for |std::lower_bound|
 #include <thread>
+#include <mutex>
 
 #include <sys/time.h>
 #include <sys/resource.h> // for getrusage in verbose
@@ -890,14 +891,33 @@ void KL_table::silent_fill(BlockElt limit)
 	  column_IO(BlockElt y): y(y), non_zeros() {}
 	};
 
+	class distributor
+	{
+	  std::mutex own;
+	  simple_list<BlockElt> roll;
+	public:
+	  distributor() : own(),roll() {};
+	  void fill (sl_list<BlockElt>& ys) { roll=ys.undress(); }
+	  BlockElt pull ()
+	  { std::lock_guard<std::mutex> lock(own);
+	    if (roll.empty())
+	      return UndefBlock;
+	    BlockElt ticket = roll.front();
+	    roll.pop_front();
+	    return ticket;
+	  }
+	} tickets; // |tickets| will be the unique instance of this class
+
 	struct worker
 	{ KL_table& tab;
+	  distributor& tickets;
 	  std::vector<KLPol> klv; // working vector, at end holds thread result
 	  sl_list<column_IO> columns;
 	  std::thread t;
 
-	  worker(KL_table& parent)
+	  worker(KL_table& parent, distributor& tickets)
 	    : tab(parent)
+	    , tickets(tickets)
 	    , klv(tab.size()+1,Zero) // |primitivize| needs full block size + 1
 	    , columns()
 	    , t()
@@ -907,8 +927,11 @@ void KL_table::silent_fill(BlockElt limit)
 	  {
 	    auto f = // argument to be given to the |std::thread| constructor
 	      [this] ()
-	      { for (column_IO& col : columns)
+	      { auto it = columns.begin();
+		assert(not columns.at_end(it)); // start with something on list
+		do
 		{
+		  column_IO& col = *it;
 		  const BlockElt y = col.y;
 		  tab.fill_KL_column(klv,y); //compute
 
@@ -924,7 +947,14 @@ void KL_table::silent_fill(BlockElt limit)
 		      Pxy=Zero; // return |Pxy| to well defined zero state
 		    }
 		  } // |while|
-		} // |for(col)|
+		  if (columns.at_end(++it)) // advance, and see if end was hit
+		  {
+		    BlockElt y = tickets.pull(); // try to acquire new work
+		    if (y!=UndefBlock)
+		      columns.insert(it,column_IO(y)); // add a new column
+		  }
+		} // |do|
+		while (not columns.at_end(it));
 	      };
 	      t=std::thread(std::move(f));
 	  } // |go|
@@ -938,16 +968,16 @@ void KL_table::silent_fill(BlockElt limit)
 
 	// create |n_threads| workers, for now inactive
 	for (unsigned int i=0; i<n_threads; ++i)
-	  threads.emplace_back(*this);
+	  threads.emplace_back(*this,tickets); // all threads share |tickets|
 
-	// distribute |ys| among workers
-	{ unsigned int i=0;
-	  for (BlockElt y : ys)
-	  {
-	    threads[i].columns.push_back(column_IO(y));
-	    i = (i+1)%n_threads; // distribute round robin
-	  }
+	// distribute initial |ys| among workers
+	for (auto& thread : threads)
+	{
+	  assert(not ys.empty());
+	  thread.columns.push_back(ys.front());
+	  ys.pop_front();
 	}
+	tickets.fill(ys); // remaining |ys| will be distributed as tickets
 
 	// launch the worker threads
 	for (auto& w : threads)
