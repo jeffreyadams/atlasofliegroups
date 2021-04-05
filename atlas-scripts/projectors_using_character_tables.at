@@ -39,3 +39,24 @@ set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
 set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
   for cell in cells do special_projector(ct,cell) od
 
+
+
+{ given list of nonzero vectors return [[int]]
+  where each [int] is the indices of the vectors
+  which are the same up to multiple
+  example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
+  {alt: no assert;
+  the result is [[parameters in kernel], [usual result]]}
+set group_vectors_up_to_scalar_alt ([vec] list) =
+  let result=[[int]]: [], reps=[vec]: [] then
+  kernel=[int]:[] in  
+   for v@i in list
+   do if =v then kernel#:=i else
+      let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
+      if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi fi
+   od; kernel#result
+
+set group_parameters_projection (WCell cell,mat projector) = [[int]]:
+  let grouping=group_vectors_up_to_scalar_alt([vec]:projector{matrix columns})
+  , parameters=cell.labels
+  in for v in grouping do for w in v do parameters[w] od od

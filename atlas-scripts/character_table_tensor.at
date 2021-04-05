@@ -28,7 +28,7 @@ class_rep(int k)=WeylElt:
   w_word=   w1_word##w2_word_shifted in
   W_elt(rd1*rd2,w_word) then
 class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then
-class_power(int i,int j)=let (a,b)=f(j) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
+class_power(int i,int j)=let (a,b)=f(i) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
 centralizer_orders=for i:m*n do
  let (a,b)=f(i) in ct1.centralizer_orders[a]*ct2.centralizer_orders[b] od then
 class_sizes=for i:m*n do
