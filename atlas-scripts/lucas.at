@@ -100,9 +100,30 @@ sort_u(for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
    "st:", st_G_v.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) fi in}
  sigma_L(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) od)
 
+set choose_best(RootDatum G,RootDatum rd, ratvec v, ratvec x)=
+let f(ratvec v)=rd.invariant_form(v,v) then
+()=prints("choose_best: ", rd, new_line," v=", v,new_line, " x=", x) then
+rv=[(WeylElt, ratvec, ratvec,ratvec)]: [] in
+for w in rd.W do
+ let z=w*v+x in
+  {let ()=prints("w=", w, "wv: ", w*v, " z=", z, "length: ", f(z),  "  ", #orthogonal_roots(rd,v), " ", #orthogonal_roots(rd,z)) in}
+  if #rv=0 then prints("BASE CASE", " w=", w, new_line, "v=", v,new_line, "wv=", w*v, "x=", x, new_line, "v=",v, "z=",z); rv#:=(w,w*v, z,dominant(G,z));prints("rv is now:", rv) else
+   let (,,z0,z0_dom)=rv[0] in
+{   let ()=prints("z0: ", z0, " z0_dom: ", z0_dom) in}
+   if  f(z)<f(z0) and #orthogonal_roots(rd,v)=#orthogonal_roots(rd,z) then
+   prints("ADD: z:", z, " f(z)=", f(z), " ", #orthogonal_roots(rd,v), " ", #orthogonal_roots(rd,z), new_line);
+   rv:=[(w,w*v,z,dominant(G,z))] else
+   let z_dom=dominant(G,z) in
+     if f(z)=f(z0)  and z_dom !=z0_dom then rv#:=(w,w*v,z,z_dom) fi fi
+  fi
+ od ;
+{for (w,v,z,z_dom) in rv do prints("w: ", w, "  v:", v, "  z:", z, " ", f(x), "z_dom: ", z_dom) od;}
+rv
+
 set lucas(RootDatum G,ComplexNilpotent O_v)=
 let ()=prints(new_line,"========================================================", new_line,"orbit: ", O_v, "  ", O_v.diagram, " ", O_v.dim_nilpotent) in
-if =O_v.diagram then [(G.dual,G.dual,O_v.H,null(G.rank),null(G.rank),null(G.rank),null(G.rank),null(G.rank)/1)] else
+if =O_v.diagram then [(G.dual,G.dual,O_v.H,null(G.rank),null(G.rank),null(G.rank),null(G.rank),null(G.rank)/1,
+[(WeylElt,ratvec,ratvec,ratvec)]:[(id_W(G),null(G.rank),null(G.rank),null(G.rank))])] else
 let ans=##for (M_v_0,H_M_v_0,x)@i in component_representatives_plus(O_v) do
  {M_v_0 is a subgroup of G.dual}
  {let x=[0,1,0,0,0,0]/2 then
@@ -120,42 +141,46 @@ let ans=##for (M_v_0,H_M_v_0,x)@i in component_representatives_plus(O_v) do
  L=L_v.dual then
  trd=TwistedRootDatum:(L,id_mat(L.rank)) then
  ad=affine_datum(trd) then
- (x_fund_0,)=affine_make_dominant(ad,x)  then
+ (x_f_0,)=affine_make_dominant(ad,x)  then
  ad_d=affine_datum(TwistedRootDatum:(G.dual,id_mat(G.dual.rank))) then
- x_fund_all=action_fundamental_group(x_fund_0,ad_d) then
- ()=prints("all x_fund: ") then
- ()=for v in x_fund_all do prints(v) od in
- for x_fund in x_fund_all do
-  let ()=prints("------",new_line,"from x_fund_all: ", x_fund) then
+ x_f_all=action_fundamental_group(x_f_0,ad_d) then
+ ()=prints("all x_f: ") then
+ ()=for v in x_f_all do prints(v) od in
+ for x_f in x_f_all do
+  let ()=prints("------",new_line,"from x_f_all: ", x_f) then
   M_v=make_positive(L_v,M_v_0) {make positive roots of M positive for L_v} then
   (H_M_v,w)=from_dominant(H_M_v_0,M_v)    {H_M_v*w=H_M_v_0} then
   C_v_x=centralizer_coweight(L_v,x) then
   { (y,x_dom)=from_dominant(L_v,x)  {y*x_dom=x} then}
 {  (y,x_dom)=from_dominant(x,L_v)  {x_dom*y=x} then}
 {  C_v_x_dom=centralizer_coweight(L_v,x_dom) then}
-  C_v_x_fund=centralizer_coweight(L_v,x_fund) then
-  (valid,t)=conjugate_to(L,C_v_x.rho_check,C_v_x_fund.rho_check) {t*C_v_x_fund.rho_check=C_v_x.rho_check} then
+  C_v_x_f=centralizer_coweight(L_v,x_f) then
+  (valid,u)=conjugate_to(L,C_v_x.rho_check,C_v_x_f.rho_check) {u*C_v_x_f.rho_check=C_v_x.rho_check} then
   ()=prints("valid: ", valid) then
 {  ()=prints("x_dom: ", x_dom) then}
-  ()=prints("t=",t) then
-{  H_M_v_dom=t.inverse*H_M_v then}
-  H_M_v_fund=t.inverse*H_M_v then
-{  M_v_dom=convert(t,G)*M_v then}
+  ()=prints("u=",u) then
+{  H_M_v_dom=u.inverse*H_M_v then}
+  H_M_v_f=u.inverse*H_M_v then
+{  M_v_dom=convert(u,G)*M_v then}
 {  ()=prints("M_v_dom.rho_check: ", M_v_dom.rho_check) then}
 {  O_M_v_dom=ComplexNilpotent:(M_v_dom,(),H_M_v_dom) then}
 {  ()=prints("O_M_v_dom: ", O_M_v_dom.H, " ", O_M_v_dom.diagram) then}
 
-{  H_M_v_dom=H_M_v*t then}
-  ()=prints("H_M_v: ", H_M_v, new_line, "t=",t, new_line, "H_M_v_fund: ", H_M_v_fund) then
-  { z=H_M_v_dom/2+x_fund then}
-{  z=H_M_v_dom/2+x_fund then}
-  z=H_M_v_fund/2+x_fund then
-  z_dom=dominant(G,z) in
+{  H_M_v_dom=H_M_v*u then}
+  ()=prints("H_M_v: ", H_M_v, new_line, "u=",u, new_line, "H_M_v_fund: ", H_M_v_f) then
+  { z=H_M_v_dom/2+x_f then}
+{  z=H_M_v_dom/2+x_f then}
+  minimal_z=choose_best(G,M_v,H_M_v_f/2,x_f) then
+{  minimal_z=choose_best(G,M_v,H_M_v/2,x_f) then}
+  ()=prints("#minimal_z: ", #minimal_z) then
+  ()=prints("x=", x) then
+{  ()=for (w,wv,z,z_dom) in minimal_z do prints("w: ", w, " w*v=",wv, " x=", z, " ", M_v.invariant_form(z,z), " ", dominant(G,z)) od then}
+  (,,z,z_dom)=minimal_z[0] in
   prints(new_line,
  "x=",x,new_line,
 { "x_dom=",x_dom,new_line,}
- "x_fund=",x_fund,new_line,
- "x_fund is L-dominant: ", is_dominant(L,x_fund),new_line,
+ "x_f=",x_f,new_line,
+ "x_f is L-dominant: ", is_dominant(L,x_f),new_line,
  "M_v=",M_v,new_line,
  "M_v roots: ", list_roots(G.dual,M_v),new_line,
  "C_v_x=",C_v_x,new_line,
@@ -163,12 +188,12 @@ let ans=##for (M_v_0,H_M_v_0,x)@i in component_representatives_plus(O_v) do
  "H_M_v_0: ", H_M_v_0, new_line,
   "H_M_v: ", H_M_v, new_line,
 { "H_M_v_dom: ", H_M_v_dom, new_line,}
- "H_M_v_fund: ", H_M_v_fund, new_line,
+ "H_M_v_f: ", H_M_v_f, new_line,
  "L_v: ", L_v, new_line,
- "x_fund=",x_fund,new_line,
- "H_M_v_fund: ", H_M_v_fund, new_line,
- "z=H_M_v_fund/2+ x_fund: ", z,new_line,
- "z_dom: ", z_dom);(M_v,L_v,H_M_v,H_M_v_fund,x,x_fund,z,z_dom)
+ "x_f=",x_f,new_line,
+ "H_M_v_f: ", H_M_v_f, new_line,
+ "z=H_M_v_f/2+ x_f: ", z,new_line,
+ "z_dom: ", z_dom);(M_v,L_v,H_M_v,H_M_v_f,x,x_f,z,z_dom,minimal_z)
 od
 od in ans
 fi 
@@ -177,7 +202,6 @@ set lucas(RootDatum G,[ComplexNilpotent] orbits)=
 for orbit in orbits do (orbit,lucas(G,orbit)) od
 
 set lucas(RootDatum G)=lucas(G,G.dual_orbits)
-
 {st_G_v just for special star}
 set show_lucas(RootDatum G,SpringerTable st_G_v,[ComplexNilpotent] orbits)=
 let list=lucas(G,orbits) in
@@ -188,15 +212,18 @@ prints("i: #orbit",new_line,
 "O_M_v: , diagram of orbit in M_v",new_line,
 "L_v: centralizer or radical of M_v", new_line,
 "x: original x from component_representatives_plus",new_line,
-"H_M_v_fund: H of orbit in M_v_fund",new_line,
-"x_fund: x moved to fundamental alcove for L_v",new_line,
-"|x_fund|: length of x_fund",new_line,
-"z=H_M_v_fund/2+x_fund: candidate infinitesimal character",new_line,
-"z_dom: z_H_M_v made dominant for G");
+"H_M_v_f/2: H/2 of orbit in M_v_f",new_line,
+"w: element of W_M_v",new_line,
+"w*H_M_v_f/2: w*H_M_v_f/2", new_line,
+"x_f: x moved to fundamental alcove for L_v",new_line,
+"z=w*H_M_v_f/2+x_f: candidate infinitesimal character",new_line,
+"|z|: M-length of z (squared)",new_line,
+"z_dom: z made G-dominant");
 tabulate(
-["i","diag","H","M_v","O_M_v","L_v","x","H_M_v_fund","x_fund", "|x_fund|","z=H_M_v_fund/2+x","z_dom"] #
+["i","diag","H","M_v","O_M_v","L_v","x","H_M_v_f/2","w","w*H_M_v_f/2","x_f","z=wH/2+x_f","|z|","z_dom"] #
  ##for (orbit,data)@i in list do
-  for (M_v,L_v,H_M_v,H_M_v_fund,x,x_fund,z,z_dom) in data do
+  for (M_v,L_v,H_M_v,H_M_v_f,x,x_f,z,z_dom,minimal_z) in data do
+  let (w,wv,z,z_dom)=minimal_z[0] in
    [i.to_string,
    orbit.diagram.to_string+special_star(st_G_v,orbit),
    H_M_v.compact_ratvec,
@@ -204,11 +231,16 @@ tabulate(
    (ComplexNilpotent:(M_v,(),H_M_v)).diagram.to_string,
    L_v.nice_format,
    x.compact_ratvec,
-   H_M_v_fund.compact_ratvec,
-   compact_ratvec(x_fund) ,G.dual.co_invariant_form(x_fund,x_fund).to_string,
+   (H_M_v_f/2).compact_ratvec,
+   w.to_string,
+   wv.compact_ratvec,
+   compact_ratvec(x_f),
    z.compact_ratvec,
-   z_dom.compact_ratvec]
+   M_v.dual.co_invariant_form(z,z).to_string,
+   z_dom.compact_ratvec
+]
    od od)
+   
 set show_lucas(RootDatum G,[ComplexNilpotent] orbits)=prints("G=", G, new_line, "G^v=", G.dual);show_lucas(G,G.dual.springer_table,orbits)
 set show_lucas(RootDatum G,ComplexNilpotent orbit)=show_lucas(G,[orbit])
 set show_lucas(RootDatum G)=show_lucas(G,G.dual_orbits)

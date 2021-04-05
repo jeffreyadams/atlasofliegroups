@@ -111,14 +111,27 @@ set stabilizer_elementary (RootDatum rd, ratvec gamma) = [WeylElt]:
   ##(for w in W(rd) do if w*gamma=gamma then [w] else  [] fi od)
 
 
+set orthogonal_roots(RootDatum rd,[vec] S)=[vec]:
+let S_mat = mat: rank(rd)#S in
+##for a_v in coroots(rd) do if =a_v*S_mat then [root(rd,a_v)] else [] fi od
 
+set orthogonal_roots(RootDatum rd,[ratvec] S)=[vec]:
+orthogonal_roots(rd,for v in S do numer(v) od)
+
+set orthogonal_roots(RootDatum rd,ratvec v)=[vec]:
+orthogonal_roots(rd,[v])
 
 { subgroup orthgonal to a set of roots}
 set orthogonal_subgroup (RootDatum rd, [vec] S) = (bool,RootDatum):
-   let S_mat = mat: rank(rd)#S
-   then roots = [vec]:
-     ##for a_v in coroots(rd) do if =a_v*S_mat then [root(rd,a_v)] else [] fi od
-   in subgroup(rd,roots)
+subgroup(rd,orthogonal_roots(rd,S))
+
+set orthogonal_subgroup (RootDatum rd, [ratvec] S) = (bool,RootDatum):
+orthogonal_subgroup(rd,for v in S do numer(v) od )
+
+set orthogonal_subgroup (RootDatum rd, ratvec v) = (bool,RootDatum):
+orthogonal_subgroup(rd,[v])
+
+
 
 { subgroup orthogonal to a Levi }
 set orthogonal_subgroup(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):

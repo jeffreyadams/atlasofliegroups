@@ -183,6 +183,7 @@ ct.irreducible_label(i)
  else ["","",""{,"",""}] fi##
 [a[i].to_string,b[i].to_string,c[i].to_string+st.special_representation_star(i)] od)
 
+set show_coherent_data(RealForm G)=void:show_coherent_data(G.springer_table,G)
 
 {see Barbasch-Trapa, Stable Combinations...Proposition 3.2
 That says: V(O_check)\otimes sgn is the sum of Springer representations
