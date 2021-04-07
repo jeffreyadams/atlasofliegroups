@@ -1,8 +1,28 @@
 set projector (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=ct.root_datum_parent, Q=null(dim,dim) in
+  let rd=ct.root_datum_parent, Q=null(dim,dim)  in
   for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
 {  do Q+:=character_value(tab,w,char_values)*action}
   do Q+:=char_values[ct.class_index(w)]*action
+ od; Q
+
+{ since the preceding function is very slow for large W because of
+class_index(w), report on progress through W }
+set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
+  let rd=ct.root_datum_parent, Q=null(dim,dim), N=#(ct.root_datum_parent.W) in
+  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  do Q+:=char_values[ct.class_index(w)]*action; N-:= 1; if (N%100 = 0) then prints(N) fi
+  od; Q
+
+{ since the preceding function is very slow for large W because of
+  class_index(w), combine several uses of it into one loop:
+  some_char_values is a list of characters for which the isotypic
+  projections are to be computed }
+set projectors (CharacterTable ct, W_rep (dim,ops), [[int]] some_char_values) = [mat]:
+  let rd=ct.root_datum_parent, Q=for j:#some_char_values do
+  null(dim,dim) od, N=#(ct.root_datum_parent.W) in
+  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  do let index = ct.class_index(w) in for j:#some_char_values do
+Q[j]+:=some_char_values[j][index]*action od; N-:= 1; if (N%100 = 0) then prints(N) fi
   od; Q
 
 { restrict representation pi to isotypic subspace (image space of projector) }
@@ -16,6 +36,14 @@ set restrict_representation_isotypic (
 { projector for a cell representation }
 set projector (CharacterTable ct, WCell cell, vec char_values) = mat:
   projector(ct,cell_representation(ct,cell),char_values)
+
+{ since the preceding function is very slow for large W because of
+  class_index(w), combine several uses of it into one loop:
+  some_char_values is a list of characters for which the isotypic
+  projections are to be computed }
+set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
+  projectors(ct,cell_representation(ct,cell),some_char_values)
+
 
 { given a cell, compute the cell represetation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
