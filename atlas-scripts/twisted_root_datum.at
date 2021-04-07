@@ -31,6 +31,7 @@ returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
 set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
 assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");
 assert(is_distinguished(rd,delta),"delta is not distinguished");
+if rd.is_abelian then (rd,delta) else
 let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
 {T is nxr where n=rd.rank and r=dimension(T)}
 { T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
@@ -49,7 +50,7 @@ for alpha in roots do
  coroots#:=ratvec_as_vec(corestrict_w)
 od;
 {(T,roots,mat:coroots,root_datum_from_positive(roots,coroots))}
-(root_datum_from_positive(roots,coroots),T)
+(root_datum_from_positive(roots,coroots),T) fi
 
 {make it easy to construct in simple case:
 use the first outer automorphism of given order
@@ -84,10 +85,11 @@ else folded_factor.highest_short_root
 fi
 
 set affine_datum(TwistedRootDatum trd)=
-let (frd,T)=trd.folded then
-affine_roots=for factor in frd.simple_factors do affine_root_of_factor(trd,factor,T) od then
+let (frd,T)=trd.folded in
+if frd.is_abelian then ([vec]:[],frd,[vec]:[]) else
+let affine_roots=for factor in frd.simple_factors do affine_root_of_factor(trd,factor,T) od then
 affine_coroots=for alpha in affine_roots do coroot(frd,alpha) od in
-(affine_coroots,frd,affine_roots)
+(affine_coroots,frd,affine_roots) fi
 
 {construct automorphism delta of (rd,rd,...,rd) (r copies)
 (x_1,...,x_r) -> (tau(x_r),x_1,...,x_{r-1})
