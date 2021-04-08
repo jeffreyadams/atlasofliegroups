@@ -3,61 +3,7 @@
 <W_reps.at { for type |WGraph| }
 <cells.at
 
-{Suppose G is a RootDatum, and \theta is a algebraic involution of G
-defining a real form G(R) We say G is a "complex group" if the root
-system R of G is "complex": meaning R\simeq R_1\times R_1, with \delta
-exchanging the two factors.  Equivalently:
-<\alpha,\delta(\alpha^vee)>=0 for all (simple) roots alpha
-
-Caution: This is slightly weaker than: G\simeq G_1\times G_1 with
-\delta switching factors. For example SL(2)xSL(2)/<-I,-I>, delta acts
-by switching factors <- SO(3,1); this is disconnected.
-
-is_complex@RealForm tests the condition: <alpha,delta(alpha^vee)>=0
-
-Question: how do we check the stronger condition: G(R) is a connected,
-complex group. (This allows Spin(3,1)=SL(2,C) and PSO(3,1)=PSL(2,C),
-but not SO(3,1)\simeq PSL(2,C)\times Z_2 (direct product)
-
-Answer: G^\theta\otimes C\simeq G
-In the usual notation:
-G=G_1\times G_1, \theta(g,h)=(h,g)
-G^\theta=G_1-diagonal,
-(G^\theta)\otimes C=G_1\times G_1=G
-
-We call this condition: is_strictly_complex
-
-How to test this:
-
-(G^\theta)_0 =K_0(G)  (identity component)
-
-Claim: (G,\theta) is complex <=>
-a) G(R), equivalently K=G^\theta, is connected
-b) complexification(K_0(G))\simeq G
-
-I believe we can replace b) with
-
-b') complexification(K_0(G)) is locally isomorphic to G
-
-Furthermore this is probably equivalent to:
-
-i)  G.is_complex
-ii) G.components_rank=0
-
-Probably we won't use is_strictly_complex much, so
-leaving this here
-}
-set is_complex(RealForm G)=bool:
-all(for i:#G.simple_roots do
-G.distinguished_involution*G.simple_roots[i]*G.simple_coroots[i]=0 od)
-
-set is_strictly_complex(RealForm G)=bool:
-let
-test_1=G.is_complex and =G.components_rank then
-test_2=is_locally_isomorphic(G,complexification(K_0(G))) and =G.components_rank
-in
-assert(test_1=test_2,"two strictly complex tests don't agree");
-test_1
+{is_complex moved to complex.at}
 
 set swapped_factors(RealForm G)=[(int,int)]:
 assert(G.is_complex,"G is not complex");
