@@ -70,8 +70,6 @@ set root_datum(WCell (,g))=g.root_datum
 set #(WGraph(,nodes))=int:#nodes
 set nodes(WCell (,graph))=[WNode]:graph.nodes
 
-let parameters(WCell (indices,graph))=[Param]:
-for j in indices do 
 {
 set W_graph(WCell (,g))=WGraph:g
 set root_datum(WNode node)=RootDatum:node.rd

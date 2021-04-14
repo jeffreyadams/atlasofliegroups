@@ -1,6 +1,7 @@
 <lietypes.at { for |is_locally_isomorphic| }
 <K.at      { for |K_0| }
 <W_reps.at { for type |WGraph| }
+<complex.at
 <cells.at
 
 {is_complex moved to complex.at}

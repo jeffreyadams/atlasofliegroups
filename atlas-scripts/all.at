@@ -36,6 +36,7 @@
 <lusztig_cells.at
 <sommers.at
 <lucas.at
+<self_intersection.at
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

@@ -1,3 +1,5 @@
+<cells.at
+
 { a few vector manipulations }
 set left (vec v) = vec: v[:#v\2]
 set right (vec v)= vec: v[#v\2:]
@@ -172,7 +174,7 @@ assert(valid,"w_parameter failed");
 set w(Param p)=WeylElt:let (,,w)=w_parameter(p) in w
 
 set cell_as_w([Param] block,WCell cell)=[WeylElt]:
-assert(G.is_complex, "G is not (restriction of scalars of) a complex group");
+assert(block[0].real_form.is_complex, "G is not (restriction of scalars of) a complex group");
 for p in parameters(block,cell) do w(p) od
 
 set view_complex([Param] params)=
@@ -194,31 +196,3 @@ set intersect([WeylElt] a,[WeylElt] b)=
 set self_intersect([WeylElt] a)=intersect(a,a.inverse)
 
 set diag([[WeylElt]] cells)=for cell in cells do self_intersect(cell) od
-
-set self_intersections_of_cells(Param p)=([[WCell]],[[[WeylElt]]]):
-let G=p.real_form then
-block=block_of(p) then
-cells=W_cells_of(p) then
-left_cells=for cell in cells do left_cells(G,cell) od then
-left_cells_w=for i:#left_cells do
- for cell in left_cells[i] do cell_as_w(block,cell) od od
-in
-(left_cells,for i:#left_cells_w do
- for cell in left_cells_w[i] do self_intersect(cell) od  od)
-
-set show(([[WCell]] left_cells,[[[WeylElt]]] self_intersections))=void:
-prints("each row is a single two-sided cell",new_line,
-"size: size of two-sided cell", new_line,
-"#left: number of left cells in given two-sided cell",new_line,
-"sizes(left):  sizes of left cells", new_line,
-"self-int: , size of (left_cell) intersect (left_cell)^{-1}");
-tabulate(
-["i","size","#left","sizes(left)","self-int"]#
-for a@i in left_cells do let v=for b in a do #b od in
-[i.to_string,  sum(v).to_string,(#v).to_string,v.to_string,
-(for a in self_intersections[i] do #a od).to_string
-] od)
-
-set show_self_intersections_of_cells(Param p)=([[WCell]],[[[WeylElt]]]):
-let d=self_intersections_of_cells(p) in
-prints("G=", p.real_form, new_line , "p=", p);show(d);d
