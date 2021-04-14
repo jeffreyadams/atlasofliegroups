@@ -157,19 +157,23 @@ W_elt(G,block_matrix(w.matrix,id_mat(G.rank\2)))
 }
 
 {triple: (G,gamma, w)
-
+parameter_w(G,gamma,w)=Param:
+w_parameter(Param p)=(RealForm,rarvec,WeylElt)
 parameter_w(w_parameter(p))=p
 w_parameter(parameter_w(G,gamma,w)=(G,gamma,w)
 }
-set parameter_w(RealForm G,ratvec gamma, WeylElt w)=parameter_g(G,gamma,inverse(w)*gamma)
+set parameter_w(RealForm G,ratvec gamma, WeylElt w)=Param:parameter_g(G,gamma,inverse(w)*gamma)
+
 set w_parameter(Param p)=(RealForm,ratvec,WeylElt):
-let (valid,w)=conjugate_to(
-left_G(p.real_form)
-,p.gamma_L,p.gamma_R) in
-assert(valid,"Wparameter failed");
+let (valid,w)=conjugate_to(left_G(p.real_form),p.gamma_L,p.gamma_R) in
+assert(valid,"w_parameter failed");
 (p.real_form,p.gamma_L,w)
 
+set w(Param p)=WeylElt:let (,,w)=w_parameter(p) in w
 
+set cell_as_w([Param] block,WCell cell)=[WeylElt]:
+assert(G.is_complex, "G is not (restriction of scalars of) a complex group");
+for p in parameters(block,cell) do w(p) od
 
 set view_complex([Param] params)=
 tabulate(["p", "gamma_L", "gamma_R", "mu_C", "nu_C"]#
@@ -180,4 +184,41 @@ let (,,w)=w_parameter(p) in (c,w) od
 
 set *([(Split,WeylElt)] x,Param p)=
 let rv=null_module(p.real_form) in
- for (c,w) in x do rv+:=c*cross(w,p) od;rv
+ for (c,w) in x do rv+:=c*coherent_irr(p,w) od;rv
+
+set inverse([WeylElt] cell)=[WeylElt]: for w in cell do w.inverse od
+
+set intersect([WeylElt] a,[WeylElt] b)=
+##for w in a do if find(b,w)=-1 then [] else [w] fi od
+
+set self_intersect([WeylElt] a)=intersect(a,a.inverse)
+
+set diag([[WeylElt]] cells)=for cell in cells do self_intersect(cell) od
+
+set self_intersections_of_cells(Param p)=([[WCell]],[[[WeylElt]]]):
+let G=p.real_form then
+block=block_of(p) then
+cells=W_cells_of(p) then
+left_cells=for cell in cells do left_cells(G,cell) od then
+left_cells_w=for i:#left_cells do
+ for cell in left_cells[i] do cell_as_w(block,cell) od od
+in
+(left_cells,for i:#left_cells_w do
+ for cell in left_cells_w[i] do self_intersect(cell) od  od)
+
+set show(([[WCell]] left_cells,[[[WeylElt]]] self_intersections))=void:
+prints("each row is a single two-sided cell",new_line,
+"size: size of two-sided cell", new_line,
+"#left: number of left cells in given two-sided cell",new_line,
+"sizes(left):  sizes of left cells", new_line,
+"self-int: , size of (left_cell) intersect (left_cell)^{-1}");
+tabulate(
+["i","size","#left","sizes(left)","self-int"]#
+for a@i in left_cells do let v=for b in a do #b od in
+[i.to_string,  sum(v).to_string,(#v).to_string,v.to_string,
+(for a in self_intersections[i] do #a od).to_string
+] od)
+
+set show_self_intersections_of_cells(Param p)=([[WCell]],[[[WeylElt]]]):
+let d=self_intersections_of_cells(p) in
+prints("G=", p.real_form, new_line , "p=", p);show(d);d

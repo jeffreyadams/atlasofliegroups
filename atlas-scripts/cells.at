@@ -9,14 +9,17 @@ let (index,cells)=W_cells(p) then
 j=first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od) then
 (tau,g)=cells[j] in
 (index,(tau,(p.integrality_datum,g)))
-
 set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
+
+set W_cell_of_plus(Param p)=([Param],WCell):(block_of(p),W_cell_of(p))
 
 {assuming block and cells are already computed:}
 set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
 let index=find(block,p) then
 cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
 (index,cells[cell_number])
+
+set W_cell_plus([Param] block,[WCell] cells,Param p)=([Param],(int,WCell)):(block,W_cell(block,cells,p))
 
 set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
 let (,c)=W_cell(block,cells,p) in c
@@ -196,8 +199,6 @@ st.ct:=update_fake_degrees(G,st.ct);st
 
 set update_fake_degrees(RealForm G,SpringerTable st,[WCell] cells)=SpringerTable:
 st.ct:=update_fake_degrees(st.ct,cells);st
-
-
 
 set show_degrees(CharacterTable ct)=void:
 let fake_degree(int i)=if #ct.fake_degrees=0 then -1 else ct.fake_degrees[i] fi in
