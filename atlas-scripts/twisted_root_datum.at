@@ -91,6 +91,9 @@ let affine_roots=for factor in frd.simple_factors do affine_root_of_factor(trd,f
 affine_coroots=for alpha in affine_roots do coroot(frd,alpha) od in
 (affine_coroots,frd,affine_roots) fi
 
+
+
+
 {construct automorphism delta of (rd,rd,...,rd) (r copies)
 (x_1,...,x_r) -> (tau(x_r),x_1,...,x_{r-1})
 delta^r=tau (automorphism of first factor)
@@ -116,9 +119,17 @@ affine_datum(simply_connected(lt))
 
 set affine_datum_long(LieType lt)=AffineDatum:affine_datum(simply_connected(lt))
 
+set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)
+
+{this doesn't work, probably isn't needed}
+{
 set affine_datum_short(LieType lt)=AffineDatum:
 let rd=simply_connected(lt) in
 affine_datum(rd,highest_short_root(rd))
+}
 
-set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)
+
+
+
+
 

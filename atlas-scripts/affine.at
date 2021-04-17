@@ -107,21 +107,25 @@ set_type AffineWeylElt = (AffineDatum ad, [int] w)
 set inverse(AffineWeylElt omega)=AffineWeylElt:(omega.ad,reverse(omega.w))
 
 {make affine datum from a root, simple case}
-set affine_datum(RootDatum rd,vec alpha)=AffineDatum:
+set affine_datum_simple(RootDatum rd,vec alpha)=AffineDatum:
 assert(is_one_factor(rd),"RootDatum has more than one simple factor");
   ([coroot(rd,alpha)],rd,[alpha])
 
 {default affine datum, simple case: use the highest root}
-set affine_datum(RootDatum rd)=AffineDatum:
+set affine_datum_simple(RootDatum rd)=AffineDatum:
   assert(is_one_factor(rd),"RootDatum has more than one simple factor");
-  affine_datum(rd,highest_root(rd))
+  affine_datum_simple(rd,highest_root(rd))
 
-{default affine datum general case: }
-{bad definition, see twisted_root_datum.at}
-{set affine_datum(RootDatum rd)=AffineDatum:
-let hr=highest_roots(rd) in
-AffineDatum:(for alpha in hr do coroot(rd,alpha) od,rd,hr)
-}
+{affine_datum@RootDatum general case: see twisted_root_datum.at}
+
+{this is really affine_datum(TwistedRootDatum:(rd,id_mat(rd.rank))), except
+that isn't defined yet (see twisted_root_datum.at) so hardwire it here}
+set affine_datum(RootDatum rd)=
+if rd.is_abelian then ([vec]:[],rd,[vec]:[]) else
+let affine_roots=for factor in rd.simple_factors do factor.highest_root od then
+affine_coroots=for factor in rd.simple_factors do coroot(factor,factor.highest_root) od in
+(affine_coroots,rd,affine_roots) fi
+
 
 {ordinary reflections
  beta is a root, acting on from left on X^* or from right on X_*
@@ -173,8 +177,8 @@ more than one affine root: all multiplicities are 0 except 1
 compute this by taking the <sum of affine roots,fundamental_coweight[i]>
 
 }
-set labels(AffineDatum ad)=for i:rank(ad) do rat_as_int(ad.affine_root_sum*fundamental_coweights(ad.rd)[i]) od
-set co_labels(AffineDatum ad)=for i:rank(ad) do rat_as_int(ad.affine_coroot_sum*fundamental_weights(ad.rd)[i]) od
+set labels(AffineDatum ad)=for i:ad.ss_rank do rat_as_int(ad.affine_root_sum*fundamental_coweights(ad.rd)[i]) od
+set co_labels(AffineDatum ad)=for i:ad.ss_rank do rat_as_int(ad.affine_coroot_sum*fundamental_weights(ad.rd)[i]) od
 set affine_labels(AffineDatum ad)=vec:labels(ad)##[1]
 set co_affine_labels(AffineDatum ad)=vec:co_labels(ad)##[1]
 
@@ -264,6 +268,20 @@ all(for a in let (v,w)=affine_coordinates(ad,wt) in v##w  do 0 <= a and a <= 1 o
 
 set in_fundamental_alcove(ratvec cwt,AffineDatum ad)=bool:
 all(for a in let (v,w)= affine_coordinates(cwt,ad) in v##w do 0 <= a and a <= 1 od)
+
+set barycenter_weight_fundamental_alcove(AffineDatum ad)=
+let rd=ad.rd then
+labels=rd.labels then
+v=ratvec:null(rd.rank) then
+()=for i:rd.ss_rank do v+:=rd.fundamental_weights[i]/labels[i]{; prints(v)} od in
+{prints("v final: ", v);}v/(rd.ss_rank+1)
+
+set barycenter_coweight_fundamental_alcove(AffineDatum ad)=
+let rd=ad.rd.dual then
+labels=rd.labels then
+v=ratvec:null(rd.rank) then
+()=for i:rd.ss_rank do v+:=rd.fundamental_weights[i]/labels[i]{; prints(v)} od in
+{prints("v final: ", v);}v/(rd.ss_rank+1)
 
 {wt\in X^* \otimes Q}
 {v=[a_1,...,a_n] n=ss_rank

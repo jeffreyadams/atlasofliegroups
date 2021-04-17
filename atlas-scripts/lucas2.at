@@ -1,0 +1,144 @@
+<lucas.at
+
+{O_M_v-> H
+ x=fundamental coweight for L_v/label
+ run over {x+wH/2|
+    1) singular Levi_{L_v}(x+wH/2)\sim singular Levi_{L_v}(H/2} (conjugate in M_v)
+    2) cent_{L_v}(exp(2\pi i(x+wH/2))=cent_{L_v}(exp(2\pi ix)
+ keep the smallest such x+wH/2
+}
+
+
+{see filter in subgroups.at}
+{keep one representative from each conjugacy class of subgroups}
+set filter(RootDatum rd_ambient, [(ratvec,RootDatum)] subs)=[(ratvec,RootDatum)]:
+if #subs=0 then [] else
+let rv=[subs[0]] in
+ for i:#subs-1 from 1 do
+  if not (let (,sub)=subs[i] in  find(rd_ambient,for (,a) in rv do a od,sub)) then rv#:=subs[i] fi od;
+rv fi
+
+{also return v=fund cowt/label so the pseudoLevi is the centralizer of x=exp(2\pi iv)}
+set weakly_maximal_pseudo_Levis_simple_plus(RootDatum rd)=[(ratvec,RootDatum)]:
+assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
+if is_abelian(rd) then [(null(rd.rank),rd)] else
+let sr=simple_roots(rd) then
+labels=labels(derived(rd)) then
+alpha=-highest_root(rd) in
+filter(rd,
+(null(rd.rank)/1,rd)#(##for i:ss_rank(rd) do
+{want to choose simple roots of H positive for rd:
+ subgroup(G,H.roots) remakes H, with simple roots all positive for G}
+ if labels[i] !=1 then
+ let H_0=subgroup_by_simple(rd, delete(sr,i)#alpha) then
+ (valid,H)=subgroup(rd,H_0.roots) in
+{ subgroup_by_simple(rd, delete(sr,i)#alpha).roots) in}
+ assert(valid,"not a valid subgroup"); {[H]} [(rd.fundamental_coweights[i]/labels[i],H)] else []
+ fi od)) fi
+
+set all_products([[(ratvec,RootDatum)]] pairs,RootDatum rd_ambient)=[(ratvec,RootDatum)]:
+if #pairs=0 then [] elif
+#pairs=1 then pairs[0] else
+let rec_fun f([[(ratvec,RootDatum)]] to_do,[(ratvec,RootDatum)] done)=[(ratvec, RootDatum)]:
+ if =#to_do then done else
+ let new=##
+  for (v,rd) in done do
+   for (v0,rd0) in to_do[0] do
+    let new_simple_roots=simple_roots(rd0)##simple_roots(rd) in
+    (v0##v,subgroup_by_simple(rd_ambient,new_simple_roots))
+   od
+  od
+  in f(for i:#to_do-1 from 1 do to_do[i] od,new)
+ fi
+in f(for i:#pairs-1 from 1 do pairs[i] od,pairs[0])  fi
+
+set weakly_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
+all_products(for subrd in simple_factors(rd) do weakly_maximal_pseudo_Levis_simple(subrd) od,rd)
+
+set weakly_maximal_pseudo_Levis_plus(RootDatum rd)=[(ratvec,RootDatum)]:
+all_products(for subrd in simple_factors(rd) do weakly_maximal_pseudo_Levis_simple_plus(subrd) od,rd)
+
+{returns: (x,O_M_v,[(w,z,z_dom)])}
+set lucas(RootDatum G_v, RootDatum L_v, ratvec x, ComplexNilpotent O_M_v)=(ratvec,ComplexNilpotent,[(WeylElt,ratvec,ratvec)]):
+let M_v=O_M_v.root_datum then
+W_M_v=M_v.W then
+H=O_M_v.H then
+f(ratvec v)=G_v.invariant_form(v,v) then
+rv=[(WeylElt,ratvec,ratvec)]:[] in  {(w,z,z_dom)}
+for w in W_M_v do
+ let z=x+w*(H/2) then
+ z_dom=dominant(G_v,z) in
+  if #rv=0 then
+   rv#:=(w,z,dominant(G_v,z))
+  else
+   let (,z0,z0_dom)=rv[0] in
+   if f(z)<f(z0)
+    and #orthogonal_roots(G_v,z)=#orthogonal_roots(G_v,H/2)
+    and centralizer_coweight(L_v,x)=centralizer_coweight(L_v,z) then
+    rv:=[(w,z,dominant(G_v,z))]
+   else
+    if f(z)=f(z0) and z_dom != z0_dom then rv#:=(w,z,z_dom) fi
+   fi
+  fi
+ od;(x,O_M_v,rv)
+
+{run over even orbits of M_v=cent_{L_v}(exp(2\pi ix))}
+set lucas(RootDatum G_v, RootDatum L_v, ratvec x)=
+ for orbit in centralizer_coweight(L_v,x).even_orbits do
+ lucas(G_v,L_v,x,orbit) od
+
+{run over possible x's for L_v, and even orbits of M_v}
+{set lucas(RootDatum G_v, RootDatum L_v)=
+##for (x,M_v) in weakly_maximal_pseudo_Levis_plus(L_v) do
+for orbit in M_v.even_orbits do lucas(G_v,L_v,x,orbit) od od
+}
+{G_v should be adjoint, so L_v has connected center,
+and (I think) the center of the derived group of a big pseudo-Levi of L_v
+is cyclic}
+set lucas(RootDatum G_v, RootDatum L_v)=
+let ad=affine_datum(TwistedRootDatum:(L_v,id_mat(L_v.rank))) in
+##for M_v in weakly_maximal_pseudo_Levis(L_v) do
+##for x in elements_of_center(M_v) do
+{##for x in elements_of_center(M_v) do}
+let (x_f,)=affine_make_dominant(ad,x) in
+for orbit in M_v.even_orbits do
+ lucas(G_v,L_v,x_f,orbit) od od od
+
+set lucas_bary(RootDatum G_v, RootDatum L_v)=
+let ad=affine_datum(TwistedRootDatum:(L_v,id_mat(L_v.rank))) in
+##for M_v in weakly_maximal_pseudo_Levis(L_v) do
+##for x in elements_of_center(M_v)#barycenter_weight_fundamental_alcove(ad) do
+{##for x in elements_of_center(M_v) do}
+let (x_f,)=affine_make_dominant(ad,x) in
+for orbit in M_v.even_orbits do
+ lucas(G_v,L_v,x_f,orbit) od od od
+
+set lucas(RootDatum G_v)=for L_v in G_v.Levi_subgroups do (L_v,lucas(G_v,L_v)) od
+set lucas_bary(RootDatum G_v)=for L_v in G_v.Levi_subgroups do (L_v,lucas_bary(G_v,L_v)) od
+
+{[(L_v,[(x,M_v,[(w,z,z_dom)])])]}
+set show([(RootDatum,[(ratvec,ComplexNilpotent,[(WeylElt,ratvec,ratvec)])])] data)=
+tabulate(
+["L_v","x","M_v","H_M_v","O_M_v","w","w*H/2","z","z_dom"]#
+##for (L_v,a) in data do
+ ##for (x,O_M_v,b) in a do
+  for (w,z,z_dom) in b do 
+   [L_v.nice_format,x.compact_ratvec,O_M_v.root_datum.nice_format,O_M_v.H.to_string,O_M_v.diagram.to_string,w.to_string,
+((w*O_M_v.H)/2).compact_ratvec,
+z.compact_ratvec,z_dom.compact_ratvec]
+  od
+ od
+od);
+let all=
+##for (L,list) in data do
+ ##for (,,other) in list do
+  for (,,z_dom) in other do z_dom od od od in
+let unique=sort_u(all) in
+prints(#unique, " unique infinitesimal characters:");
+for v in unique  do prints(v) od
+
+set show_lucas(RootDatum G)=void:
+prints("G=", G, new_line);show(lucas(G))
+
+set show_lucas_bary(RootDatum G)=void:
+prints("G=", G, new_line);show(lucas_bary(G))
