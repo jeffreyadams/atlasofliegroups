@@ -269,6 +269,10 @@ all(for a in let (v,w)=affine_coordinates(ad,wt) in v##w  do 0 <= a and a <= 1 o
 set in_fundamental_alcove(ratvec cwt,AffineDatum ad)=bool:
 all(for a in let (v,w)= affine_coordinates(cwt,ad) in v##w do 0 <= a and a <= 1 od)
 
+{n=ss_rank
+ sum_i=1^n (fundamental_weights[i]/label[i])/(n+1)
+ 
+}
 set barycenter_weight_fundamental_alcove(AffineDatum ad)=
 let rd=ad.rd then
 labels=rd.labels then
