@@ -402,8 +402,6 @@ class WeylGroup
   WeylInterface d_out;
   std::vector<Generator> d_min_star;
 
-  WeylGroup(const WeylGroup&); // forbid copying; Weyl groups should be shared
-
 // private member functions
 // these interpret Generators and WeylWords internally, so not for public use!
 
@@ -430,6 +428,9 @@ public:
 
 // constructors and destructors
   WeylGroup(const int_Matrix& cartan); // from Cartan matrix
+
+  WeylGroup(const WeylGroup&) = delete; // Weyl groups should be shared
+  WeylGroup(WeylGroup&& W) = default; // but they can be moved
 
 // accessors
 

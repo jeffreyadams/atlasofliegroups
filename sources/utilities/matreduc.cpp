@@ -210,8 +210,8 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
     { permutations::Permutation pi(pivot_columns.begin(),pivot_columns.end());
       pivot_columns.take_complement(); // now get the non-pivot columns
       pi.insert(pi.end(),pivot_columns.begin(),pivot_columns.end()); // add them
-      permute_columns(col,pi);
-      col_minus ^= (sign(pi)<0);
+      pull_back_columns(col,pi);
+      col_minus ^= pi.is_negative();
     }
   }
 
