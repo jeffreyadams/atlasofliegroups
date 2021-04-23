@@ -114,7 +114,7 @@ set dim_rep (Partition P) = int:
   for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
 
 set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
-   dim_rep(p)*dim_rep(q)* binom(sum(p),sum(q))
+   dim_rep(p)*dim_rep(q)* binom(sum(p)+sum(q),sum(q))
 
 set all_reps_BC (int n) = [Hn_rep]:
    let ps = for r: n+1 do partitions(r) od in
