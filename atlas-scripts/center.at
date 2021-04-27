@@ -199,9 +199,14 @@ adapted_basis(N): pairs (A,c)
  multiply resulting columns by M to change basis back
 This gives the rational vectors [v_1,...,v_n]
 }
+{MAYBE if rd is reductive this still works to give the center
+ of the derived group as a subgroup of G
+ that is: the ratvecs have size G.rank, not G.semisimple_rank
+}
 set center(RootDatum rd)=[ratvec]:
 {assert(is_semisimple(rd),"Root Datum is not semisimple");}
-if =rank(rd) then [] else
+{if =rank(rd) then [] else}
+if rd.is_abelian then [] else
 let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
 {N=ratmat_as_mat(inverse(M)) then}
 N=ratmat_as_mat(left_inverse(M)) then
