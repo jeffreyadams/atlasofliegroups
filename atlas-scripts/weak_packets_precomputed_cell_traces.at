@@ -122,7 +122,7 @@ characters=[[int]]:[] in
 for i:#bc do
    let (parameters,cells)=bc[i] in
    ((parameters,cells),for cell in cells do
-    let (params,)=cell in
+    let (params,,)=cell in
     (params,ct.cell_character(cell))
    od)
 od
