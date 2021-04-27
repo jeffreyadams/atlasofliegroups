@@ -3,6 +3,7 @@
 <W_characters.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<sparse.at { for column-grouped |sparse_mat| type }
 
 { this file is outdated with respect to the master branch; it should probably
   be removed to be later reinstated from that branch, but since there is a
@@ -61,12 +62,14 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
 
 { ----------- cell representations --------------}
 
-{ Type definitions that facilitate handling output from W_cells }
+{ Type definitions that facilitate handling the output from built-in |W_cells| }
 set_type
-[ WCell = ([int] labels, WGraph graph)
-, WGraph = [WNode]
-, WNode = ([int] tau,[int,int] out_list)
+[ WCell  = ([int] labels, WGraph graph,[sparse_mat] operators)
+, WGraph = (RootDatum root_datum, [WNode] nodes)
+, WNode  = ([int] tau,[int,int] out_list)
 ]
+set root_datum (WCell (,(rd,),)) = RootDatum: rd
+set # (WGraph (,nodes)) = int: #nodes
 
 { Description of the cell representation taken from messages/wcells.help
 
@@ -127,40 +130,44 @@ set_type
   In the Hecke action all the diagonal entries are opposite
 }
 
-{ matrix of the Hecke action (on the basis of length-parity flipped
+{ sparse matrix of the Hecke action (on the basis of length-parity flipped
   irreducible representations) of the i^th simple reflection on a cell
   A cell is a value of type WCell = ( [int] , [([int],[(int,int)])] ) as
   described in the W_cells@Block command in atlas-functions.help
 }
 
-{ the cell_action functions really live on the level of WGraph: }
+{ the |cell_action| functions really operate on |WGraph| data }
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
-set graph_action (WGraph graph,int s) = mat:
-   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s), n=#graph in
-   for node@j in graph
+set graph_action (WGraph (rd,nodes),int s) = sparse_mat:
+   assert(s.>= and s<rd.semisimple_rank,"bad W generator: "+s);
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   for node@j in nodes
    do if node.tau_has_s
-      then for i:n do if i=j then -1 else 0 fi { single diagonal term -1 } od
-      else let col=null(n) in
-         col[j]:=1 { diagonal term, the rest come from (inward) edges }
-      ;  for (i,mu) in node.out_list
-         do if graph[i].tau_has_s then col[i]:=mu fi
-         od
-      ;  col
+      then [(j,-1)] { single diagonal term -1 }
+      else (j,1) { diagonal term, the rest come from outward edges } #
+        for (i,):link in node.out_list
+        do if nodes[i].tau_has_s then [link] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
       fi
    od
 
 {. matrix of action of product of simple reflections on a cell .}
 set graph_action (WGraph graph,[int] w) = mat:
-  product(#graph,for s in w do graph_action(graph,s) od)
+  let n=#graph in
+  if =#w then id_mat(n)
+  else let result=unsparse(graph_action(graph,w[0]),n) in
+     for i:#w-1 from 1 do result:=result*graph_action(graph,w[i]) od
+  ;  result
+  fi
 
 {. matrix of action of WeylElt on a cell .}
-set graph_action(WGraph graph,WeylElt w) = mat:
+set graph_action (WGraph graph,WeylElt w) = mat:
   graph_action(graph,w.word)
 
 
 {. matrix of action of i^th simple reflection on a cell .}
-set cell_action (WCell cell,int s) = mat:
+set cell_action (WCell cell,int s) = sparse_mat:
   graph_action(cell.graph,s)
 
 {. matrix of action of product of simple reflections on a cell .}
@@ -168,39 +175,66 @@ set cell_action (WCell cell,[int] w) = mat:
   graph_action(cell.graph,w)
 
 {. matrix of action of WeylElt on a cell .}
-set cell_action(WCell cell,WeylElt w) = mat:
+set cell_action (WCell cell,WeylElt w) = mat:
   graph_action(cell.graph,w.word)
 
+{ |W_cells@Param| is built-in and returns (int,[[int],[[int],[int,int]]])
+  Now that graph_action is defined we can define functions that return actual
+  values of type [WCell]. Note that |WCell| includes the last argument [mat].
+
+ W_cells(p)=     (int,  [ ([int], [ ([int],[(int,int)])  ])  ])
+                 (index,[ (labels,[  WNode               ])  ])
+ W_cells_of(p)   =[ WCell ]
+                 =[([int],  WGraph,[sparse_mat]) ]
+                 =[ (labels, (rd,[WNode]), [sparse_mat]) ]
+ vertex_and_W_cells(p)
+	         =(int,[ WCell ])
+                 =(int,[ ([int],  WGraph,[sparse_mat]) ]_
+                 =(int,[ (labels, (rd,[WNode]), [sparse_mat]) ])
+}
+set vertex_and_W_cells (Param p) = (int,[WCell]):
+let (vertex,cells) = (int,[[int],[WNode]]): W_cells(p)
+then cells_with_action = [WCell]:
+  for (labels,nodes) in cells { of types |[int]| respectively |[WNode]| }
+  do let (id,):g = WGraph: (p.integrality_datum,nodes)
+     then ops = for i:id.semisimple_rank do graph_action(g,i) od
+     in (labels,g,ops)
+  od
+in (vertex,cells_with_action) { |vertex| is number of |p| as used in |labels| }
+
+set W_cells_of (Param p) = [WCell]:
+  let (,cells) = vertex_and_W_cells(p) in cells
 
 {. character of representation of W on cell .}
-set cell_character (WeylClassTable ct,WCell cell) = [int]:
-  for w in ct.class_representatives do trace(cell_action(cell,w)) od
+set cell_character (WeylClassTable Wct,WCell cell) = [int]:
+  for w in Wct.class_representatives do trace(cell_action(cell,w)) od
 
 {. list of characters of representation on list of cells .}
-set cell_characters (WeylClassTable ct,[WCell] cells) = [[int]]:
-  for cell in cells do cell_character(ct, cell) od
+set cell_characters (WeylClassTable Wct,[WCell] cells) = [[int]]:
+  for cell in cells do cell_character(Wct, cell) od
 
-set cells_table (WeylClassTable ct,[WCell] cells) = mat:
-  matrix_of_inner_products(ct,cell_characters(ct,cells))
+set cells_table (WeylClassTable Wct,[WCell] cells) = mat:
+  matrix_of_inner_products(Wct,cell_characters(Wct,cells))
 
-set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
+set cells_table_augmented (WeylClassTable Wct, [WCell] cells) = mat:
   let characters =
-    cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
-  in matrix_of_inner_products(ct,characters)
+    cell_characters(Wct,cells) ## [ Wct.trivial, Wct.sign, Wct.reflection ]
+  in matrix_of_inner_products(Wct,characters)
 
-set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.root_datum.semisimple_rank do cell_action(cell,i) od)
+set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
+  (#cell.graph,for i:Wct.root_datum.semisimple_rank
+	       do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
-set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
-  for cell in cells do cell_representation(ct,cell) od
+set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
+  for cell in cells do cell_representation(Wct,cell) od
 
 
 { ------------------- induction ------------------- }
 
 {. promote w in W(Levi) to W(G) }
-set promote (WeylClassTable ct, WeylElt w_L) = WeylElt:
-  W_elt(ct.root_datum, matrix(w_L))
+set promote (WeylClassTable Wct, WeylElt w_L) = WeylElt:
+  W_elt(Wct.root_datum, matrix(w_L))
 
 { all 2^n standard Levis }
 set standard_Levis (RootDatum rd) = [RootDatum]:
@@ -228,32 +262,32 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
-set induce_character (WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L) =
+set induce_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_L) =
        [int]:
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
+   let rd_G= Wct_G.root_datum, rd_L=Wct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
-   , classes_G=ct_G.class_representatives  {[WeylElt] for |G|}
-   , classes_L=ct_L.class_representatives  {[WeylElt] for |L|}
+   , classes_G=Wct_G.class_representatives  {[WeylElt] for |G|}
+   , classes_L=Wct_L.class_representatives  {[WeylElt] for |L|}
    then values_G= [int]: for c in classes_G do 0 od
-   , sizes_G = ct_G.class_sizes
-   , sizes_L = ct_L.class_sizes
+   , sizes_G = Wct_G.class_sizes
+   , sizes_L = Wct_L.class_sizes
 in for w_L@i in classes_L
-   do let j=ct_G.class_of(W_elt(rd_G,w_L.matrix))
+   do let j=Wct_G.class_of(W_elt(rd_G,w_L.matrix))
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
 { the sign representation occurs in S^(nr_of_posroots)(reflection), and
   this is the maximum necessary exponent to get all irreducibles }
 {. smallest k so that pi occurs in S^k(reflection) .}
-set smallest_degree (WeylClassTable ct, [int] character) = int:
-  first(ct.root_datum.nr_of_posroots+1
-       ,(int k) bool: !=ct.inner(character,ct.sym_power_refl(k))
+set smallest_degree (WeylClassTable Wct, [int] character) = int:
+  first(Wct.root_datum.nr_of_posroots+1
+       ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
 
 { the Steinberg character (mainly for testing)}
 
 {alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character (it it does not, this function fails) }
+ should equal the sign character (if it does not, this function fails) }
 set Steinberg_character (RootDatum rd) = [int]:
   let ct_G=W_class_table(rd)
   then result =
@@ -282,38 +316,38 @@ set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
   od; Q
 
 { restrict representation pi to isotypic subspace (image space of projector) }
-set restrict_representation_isotypic (
-    WeylClassTable ct, W_rep pi, vec char_values) = W_rep:
-  let (basis,factors)=projector(ct,pi,char_values).adapted_basis
+set restrict_representation_isotypic\
+   (WeylClassTable Wct, W_rep pi, vec char_values) = W_rep:
+  let (basis,factors)=projector(Wct,pi,char_values).adapted_basis
   { operators have integral matrices w.r.t. |basis|, so restriction is OK }
   then P=basis[:#factors] { saturated lattice basis of image of the projector }
   in (#P ,for T in pi.operators do restrict_action(T,P) od)
 
 { projector for a cell representation }
-set projector (WeylClassTable ct, WCell cell, vec char_values) = mat:
-  projector(ct,cell_representation(ct,cell),char_values)
+set projector (WeylClassTable Wct, WCell cell, vec char_values) = mat:
+  projector(Wct,cell_representation(Wct,cell),char_values)
 
 { given a cell, compute the cell represetation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
   irreducible in common is special; use the character of sym^k(reflection)
   to compute the projection operator onto the special
 }
-set special_projector (WeylClassTable ct, WCell cell) = mat:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in projector(ct,cell_rep,char)
+set special_projector (WeylClassTable Wct, WCell cell) = mat:
+  let cell_rep = cell_representation(Wct,cell)
+  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
+  in projector(Wct,cell_rep,char)
 
 { given a cell, compute the special_projector, and use this to construct
   the special representation itself
 }
-set special_representation_of_cell (WeylClassTable ct, WCell cell) = W_rep:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in restrict_representation_isotypic(ct,cell_rep,char)
+set special_representation_of_cell (WeylClassTable Wct, WCell cell) = W_rep:
+  let cell_rep = cell_representation(Wct,cell)
+  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
+  in restrict_representation_isotypic(Wct,cell_rep,char)
 
 {special_projectors for a list of cells}
-set special_projectors(WeylClassTable ct, [WCell] cells) = [mat]:
-  for cell in cells do special_projector(ct,cell) od
+set special_projectors (WeylClassTable Wct, [WCell] cells) = [mat]:
+  for cell in cells do special_projector(Wct,cell) od
 
 {test v, w same up to rational multiple}
 set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
@@ -356,10 +390,14 @@ set print_primitive_ideal_info ([WCell] cells,[mat] projectors) = void:
 { variant function of previous (distinguished by ignored final string argument),
   better suited to large cells
 }
-set print_primitive_ideal_info([WCell] cells,[mat] projectors,string .) = void:
+set print_primitive_ideal_info ([WCell] cells,[mat] projectors,string .) = void:
   for cell@i in cells
   do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P) in
     prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line
           , "dimension of special: ", #g)
   ; for a in g do prints(a) od
   od
+
+
+
+{Param->[(int, ([int],(RootDatum,[([int],[(int,int)])],[sparse_mat]) )    )]}

@@ -1,0 +1,36 @@
+<basic.at
+
+{ multiplication of a square integer matrix times
+  a square sparse matrix on the right}
+
+{ S is given by a list of columns, each a list of row number-coefficient pairs }
+set_type [ sparse_column = [(int,int)], sparse_mat=[sparse_column] ]
+
+set sparse(mat M) = sparse_mat:
+  for C in M
+  do for coef@i in C do if =coef then [] else [(i,coef)] fi od.##
+  od
+
+set unsparse(sparse_mat S, int height) = mat:
+  for C in S do let v=null(height) in for (i,coef) in C do v[i]+:=coef od; v od
+
+{multiply matrix * sparse_mat on the right}
+set * (mat M, sparse_mat S) = mat:
+  for C in S { loop over columns of sparse matrix }
+  do (mat: n_rows(M)#for (i,) in C do M[i] od)
+   * (vec: for (,coef) in C do coef od)
+  od
+
+{transpose of a sparse_mat, requires specifying height}
+set ^(sparse_mat S,int height)=
+let rv=sparse_mat:for i:height do [] od in
+for C@i in S do
+ for (row,entry) in C do
+  rv[row]#:=(i,entry) od
+ od;rv
+
+{sparse_mat * mat: (S*M)=^(^M* ^S
+ for ^S use height=#M}
+set *(sparse_mat S,mat M)=mat:^(^M* ^(S,#M))
+
+
