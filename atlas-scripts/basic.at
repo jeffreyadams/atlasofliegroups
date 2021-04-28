@@ -160,7 +160,7 @@ set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
+  let r=0{dummy for mulit-assign} in while !=k do set (k,r):=k\%n; r od
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
@@ -295,6 +295,8 @@ set fgrep (string s, string text) = [string]:
 set compact_ratvec(ratvec v)=string:
 let (a,b)=%v in ([int]:a).to_string+
  if b=1 then "" else "/"+b.to_string fi
+
+set star(bool value)=string:if value then "*" else "" fi
 
 {                               Vectors                                 }
 
@@ -1252,6 +1254,7 @@ set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
 
 set real_form (KGBElt x) = let (rf,) = %x in rf
 set # (KGBElt x) = let (,n) = %x in n
+set number = #@KGBElt
 set root_datum (KGBElt x) = RootDatum: real_form(x)
 set inner_class (KGBElt x) = InnerClass: real_form(x)
 
