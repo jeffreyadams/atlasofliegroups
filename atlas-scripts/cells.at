@@ -3,17 +3,16 @@
 
 
 set W_cell(Param p)=(int,WCell):
-let (index,cells)=W_cells(p) then
-j=first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od) then
-(tau,g)=cells[j] in
-(index,(tau,(p.integrality_datum,g)))
+let (index,cells)=W_cells_of(p) then
+j=first(for i:#cells do let (param_indices,,)=cells[i] in find(param_indices,index)>=0 od) in
+(index,cells[j])
 
 set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
 
 {assuming block and cells are already computed:}
 set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
 let index=find(block,p) then
-cell_number=first(for (param_numbers,)@i in cells do find(param_numbers,index)>=0 od) in
+cell_number=first(for (param_numbers,,)@i in cells do find(param_numbers,index)>=0 od) in
 (index,cells[cell_number])
 
 set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
@@ -75,7 +74,7 @@ set cells_verbose=false
 set #(WCell cell) = int: #cell.labels { should also equal |#cell.graph| }
 
 set parameters([Param] block,WCell cell)=[Param]:
-  let (labels,)=cell in for i in labels do block[i] od
+  let (labels,,)=cell in for i in labels do block[i] od
 
 set parameters([Param] block,[WCell] cells)=[Param]:
 ##for cell in cells do parameters(block,cell) od
@@ -98,7 +97,7 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
   for B in blocks(params)
   {caution: b and block_of(b[0]) might not be in the same order (MvL really??) }
   {if not, one can do simpler: |do let (,cell)=W_cells(b[0]) in (b,cell) od| }
-  do let cell=W_cells_of(B[0]) in (B,cell) od
+  do let (,cell)=W_cells_of(B[0]) in (B,cell) od
 
 set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
 
@@ -132,7 +131,7 @@ set parameters_given_AV ( { same arguments as |cells_given_AV| }
 set push ([Param] params, ratvec gamma) = [Param]:
   for p in params do coherent_family_irr(p,gamma).monomials { zero or one |Param| } od.##
 
-set cell_members_given_descent (RootDatum rd, WCell (,graph), [int] S) = [int]:
+set cell_members_given_descent (RootDatum rd, WCell (,graph,), [int] S) = [int]:
    let target = complement(rd.semisimple_rank,S) { so S is desired ASCENT set? }
 in for (tau,)@i in graph.nodes do if tau=target then [i] else [] fi od.##
 
@@ -144,7 +143,7 @@ if #cell< springer_dim then prints("dim: ", #cell, " ", springer_dim);false
 elif
  let singular_roots=##for alpha@i in rd_int.simple_roots do if =alpha*gamma then [i] else [] fi od in
  let ()=prints("sr: ", singular_roots) in
- let a= any(let (,(,graph))=cell in for i:#cell do let (tau,)=graph[i] in prints("tau: ",tau);tau=singular_roots od)
+ let a= any(let (,graph,)=cell in for node in graph.nodes do let (tau,)=node in prints("tau: ",tau);tau=singular_roots od)
  in prints("a=",a);not a then false
 else true
 fi
@@ -312,8 +311,8 @@ set GK_dimension(SpringerTable st,Param p)=int:st.associated_variety_int(p).dim_
 set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.associated_variety_int(p).dim_nilpotent\2
 
 set show([WCell] cells)=void:
-for (cell,)@i in cells do prints(i, " ", cell) od;
-for (cell,(,graph))@i in cells do
+for (cell,,)@i in cells do prints(i, " ", cell) od;
+for (cell,(,graph),)@i in cells do
 prints("// cell #",i, ":");
 tabulate(
  for (a,b)@i in graph do
@@ -327,7 +326,6 @@ if m=1 then (for (x,y) in arrows do x od).to_string else
 fi
 ] od)
   od
-
 
 {
 

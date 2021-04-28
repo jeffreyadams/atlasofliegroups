@@ -21,7 +21,7 @@ set parameters([([([Param],[WCell])],[(int,int,Param)])] data)=[Param]:
 
 {extract just the cells (parameter indices) from output of weak_packet(...)}
 set cells(([([Param],[WCell])],[(int,int,Param)]) (pairs,))=[[int]]:
-##for (,cells) in pairs do for (param_indices,) in cells do param_indices od od
+##for (,cells) in pairs do for (param_indices,,) in cells do param_indices od od
 
 {SpringerTable: table of Springer data, see springer_tables.at
  NOTE: this must be the SpringerTable for the integral root system

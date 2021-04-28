@@ -178,7 +178,9 @@ for comp in components do
        (tau,##for (j,m) in links do let index=find(comp,j) in
        if index>=0 then [(index,m)] else [] fi od
        )
- od))
+ od),
+   [sparse_mat]:[]  {don't fill in the operators if not needed}
+)
 od
 
 {same as the previous, except that the nodes [0,1,...,n] of
@@ -190,13 +192,13 @@ od
   return: (second one,graph)
 }
 set strong_components(WCell cell)=[WCell]:{[([int],WGraph)]:}
-let (nodes,g)=cell in
-for (indices,graph) in strong_components(g)  do
-(for i in indices do nodes[i] od, graph)
+let (nodes,g,ops)=cell in
+for (indices,graph,) in strong_components(g)  do
+(for i in indices do nodes[i] od, graph,[sparse_mat]:[])  {don't fill in operators if not needed}
 od
 
-set sub_cells(WCell (nodes,graph),[int] S)=[WCell]:
-strong_components(nodes,sub_digraph(graph,S))
+set sub_cells(WCell (nodes,graph,ops),[int] S)=[WCell]:
+strong_components(nodes,sub_digraph(graph,S),[sparse_mat]:[])
 
 set left_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,left_root_indices(G))
@@ -207,7 +209,7 @@ sub_cells(cell,right_root_indices(G))
 set left_cell_of(Param p)=
 let (index,cell)=W_cell(p) then
 cells=left_cells(p.real_form,cell) then
-j=first(for (vertices,links) in cells do find(vertices,index)>=0 od) in 
+j=first(for (vertices,links,) in cells do find(vertices,index)>=0 od) in 
 cells[j]
 
 
@@ -232,7 +234,7 @@ set show(WGraph g)=void:
 tabulate(["node","tau","links"]#for (a,b)@i in g.nodes do
  [i.to_string,a.to_string,b.to_string] od)
 
-set show(WCell (vertices,g))=
+set show(WCell (vertices,g,))=
 prints("vertices: ", vertices);show(g)
 
 set show([WGraph] graphs)=void:
@@ -242,7 +244,7 @@ tabulate(["graph","node","tau","links"]#
  [i.to_string,j.to_string,a.to_string,b.to_string] od od)
 
 set show([WCell] cells)=void:
-for (vertices,graph)@i in cells do
+for (vertices,graph,)@i in cells do
 prints("cell #", i, new_line,"vertices: ", vertices);
 show(graph);prints() od
 
@@ -256,7 +258,7 @@ rv
 fi
 
 set show_short([WCell] cells)=void:
-tabulate(["cell","size","nodes"]#for (nodes,graph)@i in cells do
+tabulate(["cell","size","nodes"]#for (nodes,graph,)@i in cells do
 [i.to_string,(#nodes).to_string,short_string(nodes,15)] od)
 
 {write a graphviz file
