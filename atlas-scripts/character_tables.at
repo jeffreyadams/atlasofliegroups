@@ -649,3 +649,16 @@ let ct_1=sort_by_profile(ct,powers) then
 assert(profile(ct_1,powers)=profile_1,"profiles don't match");
 ct_1.table:=table_1;ct_1
 
+set view(CharacterTable ct,vec vec_of_multiplicities)=void:
+let table=[] then
+v=vec_of_multiplicities then
+()=for i:#v do if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
+ct.degrees[i].to_string,
+if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi 
+] fi od
+in tabulate(["#","mult","dim","deg","fdeg"]#table)
+
+set view(CharacterTable ct,vec character)=void:
+view(ct,ct.decompose(character))
+
+set view(CharacterTable ct)=(vec->void):(vec v):view(ct,v)
