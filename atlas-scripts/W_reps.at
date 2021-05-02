@@ -182,16 +182,28 @@ set cell_action (WCell cell,[int] w) = mat:
 set cell_action(WCell cell,WeylElt w) = mat:
   graph_action(cell.graph,w.word)
 
-{now that graph_action is defined we can define W_cells_of, including
-the last argument [mat]}
-{modify some builtins to take RootDatum of WGraph/WCell into account}
-{W_cells(p)=   (int,  [ ([int], [ ([int],[(int,int)])  ])  ])
-               (index,[ (labels,[  WNode               ])  ])
- W_cells_of(p)=[ WCell ]
-              =[ ([int],  WGraph,[sparse_mat]) ]
-              =[ (labels, (rd,[WNode]), [sparse_mat]) ]
+{W_cells@Param is built-in,
+returns int,[[int],[[int],[int,int]]])
+now that graph_action is defined we can define
+functions which return actual [WCell], a WCell
+includes the last argument [mat]
+ W_cells_index: returns (int,[WCell])
+ W_cells_of     returns [WCell]
+the last argument [mat]
+also includes a WGraph, which includs a RootDatum
 }
-set W_cells_of(Param p)=(int,[WCell]):
+{modify some builtins to take RootDatum of WGraph/WCell into account}
+{W_cells(p)=     (int,  [ ([int], [ ([int],[(int,int)])  ])  ])
+                 (index,[ (labels,[  WNode               ])  ])
+ W_cells_of(p)   =[ WCell ]
+                 =[([int],  WGraph,[sparse_mat]) ]
+                 =[ (labels, (rd,[WNode]), [sparse_mat]) ]
+ W_cells_index(p)=(int,W_Cells_of)
+	         =(int,[ WCell ])
+                 =(int,[ ([int],  WGraph,[sparse_mat]) ]_
+                 =(int,[ (labels, (rd,[WNode]), [sparse_mat]) ])
+}
+set W_cells_index(Param p)=(int,[WCell]):
 let (index,cells)=W_cells(p) then
 rd=p.root_datum then
 cells=[WCell]:
@@ -201,6 +213,8 @@ cells=[WCell]:
  in (labels,g,ops)
  od
 in (index,cells)
+
+set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells_index(p) in cells
 
 {. character of representation of W on cell .}
 set cell_character (WeylClassTable ct,WCell cell) = [int]:

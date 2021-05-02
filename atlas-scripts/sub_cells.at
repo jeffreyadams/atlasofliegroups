@@ -207,7 +207,7 @@ set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
 
 set left_cell_of(Param p)=
-let (index,cell)=W_cell(p) then
+let (index,cell)=W_cell_index(p) then
 cells=left_cells(p.real_form,cell) then
 j=first(for (vertices,links,) in cells do find(vertices,index)>=0 od) in 
 cells[j]

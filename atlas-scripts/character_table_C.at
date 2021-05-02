@@ -134,6 +134,7 @@ in
   , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}
+  , [int]:[]  {fake degrees}
   , ncc ^ { gather rows of this size: }
     for pair in pairs
     do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
