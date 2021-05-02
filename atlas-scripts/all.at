@@ -36,6 +36,7 @@
 {<lusztig_cells.at}
 {<sommers.at}
 <projectors_using_character_tables.at
+<fake_degrees.at
 {<lucas.at
 <self_intersection.at}
 {this is slow to load:
