@@ -30,7 +30,8 @@ set_type
   , int n_classes  { number of conjugacy classes}
   , (int ->classical_class) classes
   , (int->string) class_label {derived from partitions in classical case}
-  , (int ->WeylElt) class_rep     {element of W representing conjugacy class}
+  , [WeylElt] class_reps   {list of class representative: this is the primary object}
+  {  , (int ->WeylElt) class_rep     {used to be the (primary) projector, making it a (secondary) function}}
   , (int->int) class_order
   , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
   , [int] centralizer_orders
@@ -52,7 +53,7 @@ order,                 int
 n_classes,             int
 partitions,            {int->[Partition]}
 class_label,           {int->string}
-class_rep,             {int->WeylElt}
+class_reps,            [WeylElt]
 class_order,           {int->int}  
 class_power,	       {(int,int)->int}
 cenetralizer_orders,   {[int]}
@@ -73,7 +74,7 @@ set root_datum (CharacterTable ct) =RootDatum:simply_connected(ct.lie_type)
  the parent of the the class_representatives is root_datum_parent
 } 
 set root_datum_parent(CharacterTable ct)=RootDatum:
-RootDatum:ct.class_rep(0).root_datum { at least one class exists }
+RootDatum:ct.class_reps[0].root_datum { at least one class exists }
 
 {moved isomorphism stuff to isomorphism.at}
 set parent_root_permutation(CharacterTable ct)=mat:
@@ -81,8 +82,12 @@ let (valid,P)=root_permutation(ct.root_datum,ct.root_datum_parent)
 in assert(valid,"inconsistent root data");P
 
 set rank(CharacterTable ct)=ct.lie_type.rank
-set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
+{ct.class_reps=[WeylElt] is now a projector}
+{set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od}{old version}
 set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
+set class_rep(CharacterTable ct,int i)=WeylElt:ct.class_reps[i]  {not really
+necessary, but helpful for backward compatibility}
+set class_rep(CharacterTable ct)=(int->WeylElt):(int i):ct.class_reps[i]  {not really necessary, but helpful for backward compatibility}
 set id_class(CharacterTable ct)=first(for j:ct.n_classes do ct.class_reps[j].length=0 od)
 set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
 
@@ -183,7 +188,7 @@ then ct=(
   , #classes      {n_classes}
   , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
-  , (int j) WeylElt: classes[j] {class_rep}
+  , classes {class_reps}
   , (int j) int: class_orders[j]
   , (int j, int p) int: first(#classes,(int i): is_conjugate(classes[i],classes[j]^p))
   , class_centralizer_sizes
@@ -267,7 +272,8 @@ ct.order,
 ct.n_classes,
 (int i):ct.classes(f(i)),
 (int i):ct.class_label(f(i)),
-(int i):ct.class_rep(f(i)),
+for i:ct.n_classes do ct.class_reps[i] od,
+{(int i):ct.class_rep(f(i)),}
 (int i):ct.class_order(f(i)),
 (int i, int j):inverse(f,ct.n_classes)(ct.class_power(f(i),j)),
 centralizer_orders,
@@ -311,7 +317,7 @@ ct.order,
 ct.n_classes,
 ct.classes,
 ct.class_label,
-ct.class_rep,
+ct.class_reps,
 ct.class_order,
 ct.class_power,
 ct.centralizer_orders,

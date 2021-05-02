@@ -21,7 +21,7 @@ in
   , ncc      {n_classes}
   , (int j) classical_class: conjugacy_classes[j].class_BC
   , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
-  , (int j) WeylElt: conjugacy_class_B(pairs[j])  {class_rep}
+  , for pair in pairs do conjugacy_class_B(pair) od  {class_reps}
   , (int j) int: cycles[j].cycle_type_order       {class_order}
   , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
   , centralizer_orders   {class}

@@ -93,7 +93,7 @@ in
   , ncc      {n_classes}
   , (int j) classical_class: classes[j].class_D
   , (int j) string: { class_label }  classes[j].D_class_string
-  , (int j) WeylElt: conjugacy_class_D(classes[j])  {class_rep}
+  , for class in classes do conjugacy_class_D(class) od {class_reps}
   , (int j) int: cycles[j].cycle_type_order       {class_order}
   , (int j, int p) int: class(cycle_power(cycles[j],p)).index   {class_power}
   , centralizer_orders   {class}

@@ -101,7 +101,7 @@ in
   , ncc      {n_classes}
   , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
-  , (int j) WeylElt: classes_Kondo_F4[j] {class_rep}
+  , classes_Kondo_F4  {class_reps}
   , (int j) int: class_orders_Kondo_F4[j]
   , (int j, int p) int: first(ncc,(int i): is_conjugate(classes_Kondo_F4[i],classes_Kondo_F4[j]^p))
   , class_centralizer_sizes_Kondo_F4

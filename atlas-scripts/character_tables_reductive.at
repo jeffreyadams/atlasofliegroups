@@ -18,7 +18,7 @@ assert(rd.is_abelian,"Not a torus");
 1,    {number of classes}
 (int->classical_class):(int n):classical_class:().null_class,  {empty partition}
 (int->string):(int n):"null",  {number of classes}
-(int ->WeylElt):(int n):rd.id_W,
+[rd.id_W],  {class_reps}
 (int->int):(int n):1, {class orders}
 ((int,int)->int):(int m,int n):1, {class power}
 [int]:[1],   {centralizer_orders}
