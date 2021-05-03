@@ -1,8 +1,9 @@
 <character_tables.at
 <nilpotent_orbits.at
-{
-don't need to precompute any of this:
+<character_table_E6_data.at {precomputed data}
 
+{
+best to use precomputed data rather than this:
 set rd_E6=simply_connected(E6)
 set W_order=order_W(rd_E6)
 set class_size(WeylElt w)=W_order\w.centralizer_order
@@ -20,7 +21,9 @@ index=find(ct.characters,v) then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"
 }
-set character_table_E6_0() = CharacterTable:
+
+{compute everything from scratch; slow}
+set character_table_E6_de_novo() = CharacterTable:
 initialize_character_table(simply_connected(E6))
 
 {from magma}
@@ -73,12 +76,39 @@ set e6_sgn_reflection=mat:
 set e6_profile=^(^e6_orders_sizes)##(^e6_sgn_reflection)
 set e6_profile_long=^(^e6_orders_sizes)##(^e6_sgn_reflection)##(^e6_powers)
 
+{precomputed data}
+set initialize_character_table_E6()=CharacterTable:
+let ct=(
+  Lie_type(E6)    {lie_type}
+  , 51840    {order (of W)}
+  , 25      {n_classes}
+  , (int j) classical_class: ().null_class
+  , (int j) string: "" {class_label} {fill in later}
+{  , (int i) WeylElt: class_reps_E6[i]  {(int)->W_elt}}
+  , class_reps_E6
+  , (int j) int: class_orders_E6[j]
+  , (int i, int j) int: class_powers_E6[i][j]
+  , class_centralizer_orders_E6
+  , class_sizes_E6
+  , (int j): null_irrep()
+  , (int i) string: "" { irreducible representation label }  {later}
+  ,sym_powers_reflection_E6
+  ,[int]:[]     {degrees}
+  ,[int]:[]     {fake degrees}
+  ,null(25,25)
+  )
+in prints("Done intializing character table");ct
+
 set character_table_E6()=
-let ct=initialize_character_table(simply_connected(E6)) then
+let ct=
+if ct_verbose then prints("Computing character table for E6") fi;
+{initialize_character_table(simply_connected(E6)) then}
+initialize_character_table_E6() then  {precomputed version}
+()=prints("done initializing character table") then
 ct1=set_table(ct,e6_profile,e6_table) in
 {spr=sym_powers_reflection(ct1.class_reps) in}
 {ct1.sym_powers_reflection:=spr;}
-ct1:=ct1.update_degrees;
+ct1.degrees:=degrees_E6;
 ct1
 
 

@@ -272,7 +272,7 @@ ct.order,
 ct.n_classes,
 (int i):ct.classes(f(i)),
 (int i):ct.class_label(f(i)),
-for i:ct.n_classes do ct.class_reps[i] od,
+for i:ct.n_classes do ct.class_reps[f(i)] od,
 {(int i):ct.class_rep(f(i)),}
 (int i):ct.class_order(f(i)),
 (int i, int j):inverse(f,ct.n_classes)(ct.class_power(f(i),j)),
