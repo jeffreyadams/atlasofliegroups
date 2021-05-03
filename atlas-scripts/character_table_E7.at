@@ -1,5 +1,6 @@
 <character_tables.at
 <nilpotent_orbits.at
+<character_table_E7_data.at
 
 {the magma data first:}
 set rows=[
@@ -151,8 +152,31 @@ set e7_profile_long=^(^e7_orders_sizes)##(^e7_sgn_reflection)##(^e7_powers)
 
 {end of magma data}
 
+set initialize_character_table_E7()=CharacterTable:
+let ct=(
+  Lie_type(E7)    {lie_type}
+  , 2903040    {order (of W)}
+  , 60 {n_classes}
+  , (int j) classical_class: ().null_class
+  , (int j) string: "" {class_label} {fill in later}
+{  , (int i) WeylElt: class_reps_E6[i]  {(int)->W_elt}}
+  , class_reps_E7
+  , (int j) int: class_orders_E7[j]
+  , (int i, int j) int: class_powers_E7[i][j]
+  , class_centralizer_orders_E7
+  , class_sizes_E7
+  , (int j): null_irrep()
+  , (int i) string: "" { irreducible representation label }  {later}
+  ,sym_powers_reflection_E7
+  ,[int]:[]     {degrees}
+  ,[int]:[]     {fake degrees}
+  ,null(60,60)
+  )
+in prints("Done intializing character table");ct
+
 set character_table_E7()=CharacterTable:
-let  ct0=initialize_character_table(simply_connected(E7)) then
+{let  ct0=initialize_character_table(simply_connected(E7)) then}
+let  ct0=initialize_character_table_E7() then
 ct1=set_table(ct0,e7_profile,e7_table) then
 ct2=ct1.update_degrees in
 {st=springer_table_E7(ct)}
