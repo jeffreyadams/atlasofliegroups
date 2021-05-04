@@ -2,6 +2,7 @@
 <misc.at  {for box}
 <lattice.at { for image_subspace@mat }
 <ratmat.at
+<group_operations.at {is_abelian}
 
 { center Z and dual Z_hat of complex group or real form }
 {
