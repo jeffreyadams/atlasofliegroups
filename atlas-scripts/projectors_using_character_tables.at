@@ -1,0 +1,101 @@
+<cells.at
+
+set projectors_verbose=true
+
+set projector (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
+  let rd=ct.root_datum_parent, Q=null(dim,dim)  in
+  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+{  do Q+:=character_value(tab,w,char_values)*action}
+  do Q+:=char_values[ct.class_index(w)]*action
+ od; Q
+
+{ since the preceding function is very slow for large W because of
+class_index(w), report on progress through W (if projectors_verbose=true}
+set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
+  let rd=ct.root_datum_parent, Q=null(dim,dim), N=#(ct.root_datum_parent.W) in
+  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  do Q+:=char_values[ct.class_index(w)]*action; N-:= 1;
+   if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
+  od; Q
+
+{ since the preceding function is very slow for large W because of
+  class_index(w), combine several uses of it into one loop:
+  some_char_values is a list of characters for which the isotypic
+  projections are to be computed }
+set projectors (CharacterTable ct, W_rep (dim,ops), [[int]] some_char_values) = [mat]:
+let rd=ct.root_datum_parent,
+Q=for j:#some_char_values do null(dim,dim) od,
+N=#(ct.root_datum_parent.W) in
+for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+ do let index = ct.class_index(w) in for j:#some_char_values do
+ Q[j]+:=some_char_values[j][index]*action od; N-:= 1;
+ if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
+od;
+Q
+
+set projector (CharacterTable ct, W_rep (dim,ops), [int] char) = mat:
+projectors(ct,(dim,ops),[char])[0]
+
+{ restrict representation pi to isotypic subspace (image space of projector) }
+set restrict_representation_isotypic (
+    CharacterTable ct, W_rep pi, vec char_values) = W_rep:
+  let (basis,factors)=projector(ct,pi,char_values).adapted_basis
+  { operators have integral matrices w.r.t. |basis|, so restriction is OK }
+  then P=basis[:#factors] { saturated lattice basis of image of the projector }
+  in (#P ,for T in pi.operators do restrict_action(T,P) od)
+
+{ projector for a cell representation }
+set projector (CharacterTable ct, WCell cell, vec char_values) = mat:
+  projector(ct,cell_representation(ct,cell),char_values)
+
+{ since the preceding function is very slow for large W because of
+  class_index(w), combine several uses of it into one loop:
+  some_char_values is a list of characters for which the isotypic
+  projections are to be computed }
+set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
+  projectors(ct,cell_representation(ct,cell),some_char_values)
+
+
+{ given a cell, compute the cell represetation pi, find the smallest k so that
+  <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
+  irreducible in common is special; use the character of sym^k(reflection)
+  to compute the projection operator onto the special
+}
+set special_projector (CharacterTable ct, WCell cell) = mat:
+  let cell_rep = cell_representation(ct,cell)
+  then char = ct.sym_powers_reflection[smallest_degree(ct,character(ct,cell_rep))]
+  in projector(ct,cell_rep,char)
+
+{ given a cell, compute the special_projector, and use this to construct
+  the special representation itself
+}
+set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
+  let cell_rep = cell_representation(ct,cell)
+  then char = ct.sym_powers_reflection[smallest_degree(ct,character(ct,cell_rep))]
+  in restrict_representation_isotypic(ct,cell_rep,char)
+
+{special_projectors for a list of cells}
+set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
+  for cell in cells do special_projector(ct,cell) od
+
+
+
+{ given list of nonzero vectors return [[int]]
+  where each [int] is the indices of the vectors
+  which are the same up to multiple
+  example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
+  {alt: no assert;
+  the result is [[parameters in kernel], [usual result]]}
+set group_vectors_up_to_scalar_alt ([vec] list) =
+  let result=[[int]]: [], reps=[vec]: [] then
+  kernel=[int]:[] in  
+   for v@i in list
+   do if =v then kernel#:=i else
+      let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
+      if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi fi
+   od; kernel#result
+
+set group_parameters_projection (WCell cell,mat projector) = [[int]]:
+  let grouping=group_vectors_up_to_scalar_alt([vec]:projector{matrix columns})
+  , parameters=cell.labels
+  in for v in grouping do for w in v do parameters[w] od od
