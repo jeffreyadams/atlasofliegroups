@@ -369,6 +369,8 @@ set Steinberg_character (RootDatum rd) = [int]:
      od
      .sum
   in assert(result=ct_G.sign); result
+
+{MOVED TO projectors_using_character_tables.at}
 {
 { ------------ projection on isotypic subspace  ----------- }
 
@@ -491,7 +493,6 @@ in
 if #specials >1 then error("more than one special representation found")
 elif #specials = 0 then error("no special representations found")
 else specials[0] fi
-
 
 end comment
 }

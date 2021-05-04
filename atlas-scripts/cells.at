@@ -1,13 +1,20 @@
 <character_table_reps.at
 <springer_tables.at
 
-
-set W_cell(Param p)=(int,WCell):
-let (index,cells)=W_cells_of(p) then
+{
+these two functions are defined in W_reps.at:
+W_cells_index@Param->(int,[WCell])
+W_cells_of@Param->[WCell]
+now also define singular versions:
+W_cell_index@Param->(int,WCell)
+W_cell_of@Param->WCell
+}
+set W_cell_index(Param p)=(int,WCell):
+let (index,cells)=W_cells_index(p) then
 j=first(for i:#cells do let (param_indices,,)=cells[i] in find(param_indices,index)>=0 od) in
 (index,cells[j])
 
-set W_cell_of(Param p)=WCell:let (,c)=W_cell(p) in c
+set W_cell_of(Param p)=WCell: let (,cell)=W_cell_index(p) in cell
 
 {assuming block and cells are already computed:}
 set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
@@ -97,7 +104,7 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
   for B in blocks(params)
   {caution: b and block_of(b[0]) might not be in the same order (MvL really??) }
   {if not, one can do simpler: |do let (,cell)=W_cells(b[0]) in (b,cell) od| }
-  do let (,cell)=W_cells_of(B[0]) in (B,cell) od
+  do let cell=W_cells_of(B[0]) in (B,cell) od
 
 set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
 

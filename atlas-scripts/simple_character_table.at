@@ -55,7 +55,7 @@ in
   , ncc              {n_classes}
   , (int j) classical_class: conjugacy_classes[j].class_A
   , class_or_irrep_string  {class_label}
-  , (int i) WeylElt: class_reps[i]   {class_rep}
+  , class_reps {class_reps}
   , (int j) int: partitions_n[j].cycle_type_order  {class_order}
   , (int j, int p) int: cycle_power(partitions_n[j],p).index  {class_power}
   , centralizer_orders  {centralizer_orders}
@@ -64,6 +64,7 @@ in
   , class_or_irrep_string   {irreducible_label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}
+  , [int]:[]  {fake degrees}
   , table
   )
 

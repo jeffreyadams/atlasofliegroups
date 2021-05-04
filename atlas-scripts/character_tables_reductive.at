@@ -18,7 +18,7 @@ assert(rd.is_abelian,"Not a torus");
 1,    {number of classes}
 (int->classical_class):(int n):classical_class:().null_class,  {empty partition}
 (int->string):(int n):"null",  {number of classes}
-(int ->WeylElt):(int n):rd.id_W,
+[rd.id_W],  {class_reps}
 (int->int):(int n):1, {class orders}
 ((int,int)->int):(int m,int n):1, {class power}
 [int]:[1],   {centralizer_orders}
@@ -27,10 +27,13 @@ assert(rd.is_abelian,"Not a torus");
 (int->string):(int n):"",{ irreducible_label}
 [[int]]:[[]],  {sym_powers_reflection}
 [int]:[0], { degrees}
+[int]:[], {fake degrees}
 mat:[[1]])
 
 {including torus}
-set character_table_simple(RootDatum rd)=
+set character_table_simple(RootDatum rd)=CharacterTable:
+if ct_verbose then prints("Computing character table for simple root datum: ", rd.nice_format) fi;
+let ct=
 let (letter,n)=simple_type(rd) in
 if letter="A" then
  let ct=character_table_A(n) in ct
@@ -58,6 +61,13 @@ elif letter="E" and n=8 then
  character_table_torus(rd)
 else error("case not covered")
 fi
+in
+if ct_verbose then prints("Done computing character table") fi;ct
+
+
+
+
+
 
 set character_table(RootDatum rd)=
 if rd.is_abelian then character_table_torus(rd) else

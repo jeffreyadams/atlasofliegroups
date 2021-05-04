@@ -1,6 +1,9 @@
 <classical_W_classes_and_reps.at
 <nilpotent_orbits.at
 <isomorphism.at
+{including fake degree}
+
+set ct_verbose=false
 
 {define sum and product of [int] corresponding to direct
 sum and tensor product of characters}
@@ -27,7 +30,8 @@ set_type
   , int n_classes  { number of conjugacy classes}
   , (int ->classical_class) classes
   , (int->string) class_label {derived from partitions in classical case}
-  , (int ->WeylElt) class_rep     {element of W representing conjugacy class}
+  , [WeylElt] class_reps   {list of class representative: this is the primary object}
+  {  , (int ->WeylElt) class_rep     {used to be the (primary) projector, making it a (secondary) function}}
   , (int->int) class_order
   , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
   , [int] centralizer_orders
@@ -37,6 +41,7 @@ set_type
   , (int->string) irreducible_label
   , [[int]] sym_powers_reflection
   , [int] degrees
+  , [int] fake_degrees
   , mat table { by row=character }
   )
 ]
@@ -48,7 +53,7 @@ order,                 int
 n_classes,             int
 partitions,            {int->[Partition]}
 class_label,           {int->string}
-class_rep,             {int->WeylElt}
+class_reps,            [WeylElt]
 class_order,           {int->int}  
 class_power,	       {(int,int)->int}
 cenetralizer_orders,   {[int]}
@@ -56,30 +61,33 @@ class_sizes,           {[int]}
 irreducible_label,     {int->string}
 sym_powers_reflection  {[[int]]}
 degrees		       {[int]}
-table)
+fake_degrees	       {[int]}
+table                  mat)
 }
 
 {root datum of CharacterTable is (semisimple) simply connected}
 set root_datum (CharacterTable ct) =RootDatum:simply_connected(ct.lie_type)
 
-{Note: ct.class_rep(0).root_datum might not be the same:
+{Note: ct.class_rep(0).root_datum and ct.root_datum might not be the same:
  for example in simple type B/D ct.root_datum is simply connected,but
  ct.class_rep(0).root_datum is SO(n)
  the parent of the the class_representatives is root_datum_parent
 } 
 set root_datum_parent(CharacterTable ct)=RootDatum:
-RootDatum:ct.class_rep(0).root_datum { at least one class exists }
+RootDatum:ct.class_reps[0].root_datum { at least one class exists }
 
 {moved isomorphism stuff to isomorphism.at}
 set parent_root_permutation(CharacterTable ct)=mat:
 let (valid,P)=root_permutation(ct.root_datum,ct.root_datum_parent)
 in assert(valid,"inconsistent root data");P
 
-
-
 set rank(CharacterTable ct)=ct.lie_type.rank
-set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
+{ct.class_reps=[WeylElt] is now a projector}
+{set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od}{old version}
 set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
+set class_rep(CharacterTable ct,int i)=WeylElt:ct.class_reps[i]  {not really
+necessary, but helpful for backward compatibility}
+set class_rep(CharacterTable ct)=(int->WeylElt):(int i):ct.class_reps[i]  {not really necessary, but helpful for backward compatibility}
 set id_class(CharacterTable ct)=first(for j:ct.n_classes do ct.class_reps[j].length=0 od)
 set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
 
@@ -88,6 +96,7 @@ set class_index(CharacterTable ct)=(WeylElt -> int): (WeylElt w):
 {is_conjugate needs to be fixed: only correct for simple groups}
 {  first(ct.n_classes,(int i): is_conjugate_strong(ct.class_reps[i],w))}
   first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
+
 set character_value(CharacterTable ct, int class)=(int i) int:ct.table[i,class]
 {since id_class(ct) is slow, in loops it is better to use
 character_value(ct,id_class)(i) where id_class is pre-computed}
@@ -95,6 +104,8 @@ set centralizer_order(CharacterTable ct)=(int->int):(int i): ct.centralizer_orde
 set class_size(CharacterTable ct)=(int->int):(int i): ct.class_sizes[i]
 set character(CharacterTable t)=(int->[int]):(int i):(^t.table)[i]
 set characters(CharacterTable ct)=[[int]]: ^ct.table
+set character_index(CharacterTable ct)=([int]->int):([int] char):
+  first(ct.n_classes,(int i): ct.characters[i]=char)
 set index(CharacterTable ct,vec char)=int:find(ct.characters,char)
 set inner(CharacterTable ct)=(([int],[int])->int): ([int] x,[int] y):
   assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
@@ -114,9 +125,19 @@ set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
 set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
 set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
 set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace od    {reflection}
+
+{tensor_sign: [int] -> [int]}
 set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
 set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
 
+{tensor_sgn: int->int}
+set tensor_sign_index(CharacterTable ct, int index)=int:
+ct.character_index(ct.tensor_sign(ct.characters[index]))
+set tensor_sign_index(CharacterTable ct)=(int->int):(int index):tensor_sign_index(ct,index)
+
+{table [[int]] of size (n_classes x #posroots_1)
+table[i]=character of sym^i(reflection)
+}
 set sym_powers_reflection([WeylElt] list)=[[int]]:
 let rd=list[0].root_datum then
 wct=W_class_table(rd) then
@@ -140,20 +161,18 @@ set class_power_function(CharacterTable ct)=(int,int->int):
 
 set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
-prints("Initializing CharacterTable for ", lt);
+if ct_verbose then prints("Initializing CharacterTable for ", lt) fi;
 let rd=simply_connected(lt) then
-()=prints("Step 1/6") then
+()=if ct_verbose then prints("Step 1/5: computing order(W)")  fi then
 W_order=order_W(rd) then
-()=prints("Step 2/6") then
 class_size(WeylElt w)=W_order\w.centralizer_order then
-()=prints("Step 3/6") then
-{orbits=rd.orbits then}
+()=if ct_verbose then prints("Step 2/5: computing class representatives") fi then
 classes=rd.W_class_table.class_representatives() then
-()=prints("Step 4/6") then
+()=if ct_verbose then prints("Step 3/5: computing sizes of centralizers") fi then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
-()=prints("Step 5/6") then
+()=if ct_verbose then prints("Step 4/5: computing sizes of conjugacy classes") fi then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
-()=prints("Step 6/6") then
+()=if ct_verbose then prints("Step 5/5: computing orders of elements of conjugacy classes") fi then
 class_orders=for w in classes do w.order od {then} 
 {()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:
@@ -163,13 +182,13 @@ index=find(ct.characters,v) then
 ()=prints("Step 9") then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"}
-in (
+then ct=(
   Lie_type(rd)    {lie_type}
   , W_order    {order (of W)}
   , #classes      {n_classes}
   , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
-  , (int j) WeylElt: classes[j] {class_rep}
+  , classes {class_reps}
   , (int j) int: class_orders[j]
   , (int j, int p) int: first(#classes,(int i): is_conjugate(classes[i],classes[j]^p))
   , class_centralizer_sizes
@@ -178,11 +197,12 @@ in (
   , (int i) string: "" { irreducible representation label }  {later}
   , sym_powers_reflection(classes)  {sym_powers_reflection}
   ,[int]:[]     {degrees}
-  ,null(#classes,#classes)
+  ,[int]:[] {fake degrees}
+  ,null(#classes,#classes)   {table}
   )
+in if ct_verbose then prints("Done intializing character table") fi;ct
 
 set initialize_character_table(RootDatum rd)=CharacterTable:initialize_character_table(Lie_type(rd))
-
 
 {tensor product of two rows of character table}
 set tensor(CharacterTable t)=(int,int->[int]):(int i,int j):
@@ -238,7 +258,12 @@ for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 set inverse((int->int) f, int n)=(int j):
 permutation_inverse(for i:n do f(i) od)[j]
 
+
 set permute_classes(CharacterTable ct,(int->int) f)=CharacterTable:
+{don't waste time if f is the identity}
+let ()=prints("check:", for i:ct.n_classes do f(i) od) in
+if all(for i:ct.n_classes do f(i)=i od) then ct
+else
 let
 centralizer_orders=for i:ct.n_classes do ct.centralizer_orders[f(i)] od then
 class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
@@ -247,7 +272,8 @@ ct.order,
 ct.n_classes,
 (int i):ct.classes(f(i)),
 (int i):ct.class_label(f(i)),
-(int i):ct.class_rep(f(i)),
+for i:ct.n_classes do ct.class_reps[f(i)] od,
+{(int i):ct.class_rep(f(i)),}
 (int i):ct.class_order(f(i)),
 (int i, int j):inverse(f,ct.n_classes)(ct.class_power(f(i),j)),
 centralizer_orders,
@@ -256,11 +282,20 @@ ct.classical_reps,
 ct.irreducible_label,
 if =#ct.sym_powers_reflection then [] else
 {recompute sym_powers_reflection}
- sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od) fi,
+{ sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od)}
+for v in ct.sym_powers_reflection do
+ for i:ct.n_classes do
+  v[f(i)]
+ od
+od
+fi,
 if =#ct.degrees then [] else
  for i:ct.n_classes do ct.degrees[f(i)] od fi,
+if =#ct.fake_degrees then [] else
+ for i:ct.n_classes do ct.fake_degrees[f(i)] od fi,
 for col@i in ct.table do ct.table[f(i)] od
 )
+fi
 
 {permute classes, including permuting the table itself}
 set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:
@@ -282,7 +317,7 @@ ct.order,
 ct.n_classes,
 ct.classes,
 ct.class_label,
-ct.class_rep,
+ct.class_reps,
 ct.class_order,
 ct.class_power,
 ct.centralizer_orders,
@@ -291,6 +326,7 @@ ct.classical_reps,
 (int i): ct.irreducible_label(f(i)),
 ct.sym_powers_reflection,
 ct.degrees,
+ct.fake_degrees,
 ^for i:ct.n_classes do row(ct.table,f(i)) od
 )
 
@@ -422,6 +458,7 @@ error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
 
 {update degrees}
 set update_degrees(CharacterTable ct)=CharacterTable:
+if ct_verbose then prints("Updating degrees in character table") fi;
 let ct=
  if #ct.sym_powers_reflection!=0 then ct else
  ct.update_sym_powers_reflection
@@ -433,6 +470,7 @@ for i:ct.n_classes do
      (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))
 od
 in ct.degrees:=degrees;
+if ct_verbose then prints("Done updating degrees") fi;
 ct
 
 {mults is a vector of multiplicities of the irreducible characters,
@@ -510,11 +548,13 @@ ct.class_rep(i).to_string
 set show_reps(CharacterTable ct)=void:
 let id_class=ct.id_class in 
 tabulate(
-["i","dim", "degree","name"]#
+["i","dim", "deg","fdeg","name"]#
 for i:ct.n_classes do
 [i.to_string,
 character_value(ct,id_class)(i).to_string,
-ct.degree(i).to_string,ct.irreducible_label(i).to_string] od)
+ct.degree(i).to_string,
+if #ct.fake_degrees>0 then ct.fake_degrees[i].to_string else "" fi,
+ct.irreducible_label(i).to_string] od)
 
 set show(CharacterTable ct)=void:
 prints("Classes:");
@@ -535,6 +575,19 @@ prints("Representations:");
 ct.show_reps;
 prints("Character Table:",ct.table)
 
+set view_multiplicities(CharacterTable ct,vec vec_of_multiplicities)=void:
+let table=[] then
+v=vec_of_multiplicities then
+()=for i:#v do prints(i);if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
+ct.degrees[i].to_string,
+if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi 
+] fi od
+in tabulate(["#","mult","dim","deg","fdeg"]#table)
+
+set view_char(CharacterTable ct,vec character)=void:
+view_multiplicities(ct,ct.decompose(character))
+
+set view_char(CharacterTable ct)=(vec->void):(vec v):view_char(ct,v)
 
 {more routines for computing character tables, mainly of exceptional
 groups; this was previously in character_tables_2.at
