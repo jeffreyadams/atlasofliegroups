@@ -70,7 +70,7 @@ set ^ (ratmat(M,,d)) { transpose } = ratmat: (^M,s,d)
 
 set + (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M+d*MM,s,d*dd)
 set - (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M-d*MM,s,d*dd)
-set - (ratmat(M,,d)) = (-M,d,())
+set - (ratmat(M,s,d)) = ratmat: (-M,s,d)
 
 set * (ratvec v,ratmat(M,,d)) = ratvec: v*M/d
 set * (ratmat(M,,d),ratvec v) = ratvec: M*v/d
