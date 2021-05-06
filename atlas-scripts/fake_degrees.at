@@ -1,3 +1,6 @@
+<basic.at
+<character_tables.at { for type |CharacterTable| }
+<cells.at { for |cell_character@CharacterTable| }
 <character_table_reps.at
 <K_highest_weights.at {for all_parameters_gamma}
 <springer_tables.at
