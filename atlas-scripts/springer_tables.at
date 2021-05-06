@@ -1,8 +1,8 @@
 <nilpotent_orbits.at
 <character_tables.at
 <character_table_tensor.at
-
-{tables encoding the Springer correspondence}
+{
+tables encoding the Springer correspondence}
 
 set_type [SpringerTable=
   (CharacterTable ct,
