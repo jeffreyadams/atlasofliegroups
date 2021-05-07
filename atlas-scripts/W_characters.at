@@ -8,8 +8,7 @@
 { The purpose of this file is working with Weyl group characters.
 
   A large initial part is dedicated to deciding conjugacy in the Weyl group, and
-  finding an explicit witness of conjugacy from a class represntative.
-
+  finding an explicit witness of conjugacy from a class representative.
 }
 
 { Preliminary: some transformations of presentation of a Levi system
@@ -68,7 +67,13 @@ set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
             ,columns_with(select,rd.simple_coroots)
             ).two_rho
 
-{
+{ The following functions, up to |classify_standard_Levis|, aim to classify
+  standard Levis under conjugation _and_ find conjugators for each one from the
+  first of their class. The Levi orbit table produced are then used in some
+  functions defined later, but the ultimate goal of efficiently classifying Weyl
+  group elements up to conjugation, with witnesses, is not achieved here, and
+  these functions are not used in the |WeylClassTable| object (near the end).
+
   For each standard Levi system we determine the dominant orbit representative
   |rho2_dom| of $2\rho$, a Weyl group element |w0| that witnesses this, and the
   image under it of the Levi system (a non-standard Levi system $L$ whose value
@@ -85,7 +90,7 @@ set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   system in the orbit of $L$, the acting stabiliser subgroup will map positive
   roots of $L$ to positive roots. We can then work with positive root indices
   only, act on lists of such indices, and sort the result to test for equality.
-  }
+}
 
 set_type orbit_data = [int,WeylElt] { posroot set as binary number, conjugator }
 set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| in binary }
@@ -123,10 +128,13 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
          od
       od; orbit
 
+set_type Std_Levi_orbit = (vec rho2, [int] Levi_repr, [[int],WeylElt] others)
+set_type Std_Levi_table = [Std_Levi_orbit]
+
 { group together conjugate standard Levis, with witness conjugating from first }
-set classify_standard_Levis (RootDatum rd) =  [vec,[int],[[int],WeylElt]]:
-   let classify_group ([[int]] list) = [vec,[int],[[int],WeylElt]]:
-      let orbs=[orbit_data]: [], result=[vec,[int],[[int],WeylElt]]: [] in
+set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
+   let classify_group ([[int]] list) = Std_Levi_table:
+      let orbs = [orbit_data]:[], result = [Std_Levi_orbit]:[] in
       for Levi in list
       do let (w0,rho2_dom)=from_dominant(rd,two_rho(rd,is_member(Levi)))
          then i = first(#result,(int i)bool: let (v,,)=result[i] in v=rho2_dom)
@@ -134,15 +142,18 @@ set classify_standard_Levis (RootDatum rd) =  [vec,[int],[[int],WeylElt]]:
          then orbs #:= rho_stabiliser_orbit(rd,Levi)
          ;  result #:= (rho2_dom,Levi,[])
          else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
-            let orbit=orbs[i], L = right_act(Levi,w0)
-            then pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in L=rts)
-            in assert(pos.>=,"conjugate with dominant rho not found in orbit");
-               let (rho2,L,v)= result[i], (,w)=orbit[pos] in
-               result[i] := (rho2,L,v#(Levi,w0*w { Levi <-w0-- L <-w-- first }))
-         fi
+            let orbit=orbs[i], cur=result[i], L = right_act(Levi,w0)
+            then (,w) =
+	       let pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in L=rts)
+	       in assert(pos.>=,"conjugate with dominant rho not found in orbit")
+	       ;  orbit[pos]
+            in result[i] := (cur.rho2,cur.Levi_repr,cur.others#(Levi,w0*w))
+					  { Levi <-w0-- L <-w-- Levi_rep }
+	 fi
      od; result
   ,  r = rd.semisimple_rank
   in for k:r+1 do classify_group(choices_from(#r,k)) od.##
+
 
 { older method to do the same, but without searching for conjugacy witnesses }
 set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
@@ -255,13 +266,13 @@ set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) =
    let (chamber,perm) = chamber_max_system(rd,maximise(arg)) in
    (chamber,perm[:#Levi] { select start of simple indices list })
 
-set standard_Levi_lookup (
-      RootDatum rd,[vec,[int],[[int],WeylElt]] table) = ([int]->WeylElt, [int]):
+set standard_Levi_lookup (RootDatum rd,Std_Levi_table table) =
+      ([int]->WeylElt, [int]):
 ([int] unsorted_standard_Levi) (WeylElt, [int]):
    let rho2 = dominant(rd,two_rho(rd,is_member(unsorted_standard_Levi)))
    , standard_Levi=unsorted_standard_Levi.sort
    then (,Levi_repr,others) =
-      table[first(#table,(int i)bool: let (r,,)=table[i] in r=rho2)]
+      table[first(#table,(int i)bool: table[i].rho2=rho2)]
 in if standard_Levi=Levi_repr
    then (id_W(rd),standard_Levi)
    else let (,conj) =
@@ -289,20 +300,19 @@ set conjugate_from_standard_Levi (WeylElt w) =
       = from_standard_Levi(w.root_datum,Levi_of(w))
    in (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
 
-set Levi_lookup (
-      RootDatum rd,[vec,[int],[[int],WeylElt]] table) = ([int]->WeylElt,[int]):
+set Levi_lookup (RootDatum rd,Std_Levi_table table) = ([int]->WeylElt,[int]):
    let lookup = standard_Levi_lookup(rd,table) in
 ([int] Levi) (WeylElt, [int]):
    let (chamber,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
-   then (conj,Levi) = lookup(unsorted_standard_Levi)
-   in (chamber*conj,Levi)
+   then (conj,Levi_repr) = lookup(unsorted_standard_Levi)
+   in (chamber*conj,Levi_repr)
 
 { like |conjugate_from_standard_Levi|, using standard Levi chosen from |table| }
-set conjugate_from_classified_standard_Levi (
-      RootDatum rd,[vec,[int],[[int],WeylElt]] table) =
+set conjugate_from_classified_standard_Levi (RootDatum rd,Std_Levi_table table) =
+      (WeylElt->WeylElt,[int],WeylElt):
    let lookup = Levi_lookup(rd,table) in
-(WeylElt w) (WeylElt,[int],WeylElt):
-   let (conj,Levi) = lookup(Levi_of(w)) in (conj,Levi,/conj*w*conj)
+(WeylElt w) (WeylElt,[int],WeylElt): { conjugator from, Levi_repr, w_repr) }
+   let (conj,Levi_repr) = lookup(Levi_of(w)) in (conj,Levi_repr,/conj*w*conj)
 
 { A third task is to test for conjugacy in $W$.
 
@@ -568,6 +578,12 @@ set conjugacy_class_number (WeylElt w) = int:
   let classes=w.root_datum.conjugacy_class_reps in
   first(#classes, (int i)bool: is_conjugate(w,classes[i]))
 
+
+{ A final production is a type for storing data relevant to W-characters,
+  notably information about conjugacy classes. From the above functions, the
+  table constructor only uses |conjugacy_class_reps|, |size_of_conjugacy_class|,
+  and |is_conjugate| to get its information (and choices) concerning conjugacy.
+}
 set_type
 [ WeylClassTable =
   ( (->) print_classes
