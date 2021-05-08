@@ -1,3 +1,5 @@
+<basic.at
+<combinatorics.at { for partitions@int }
 <character_tables.at
 <character_table_B.at  {loads type C also}
 <character_table_F.at
@@ -9,71 +11,28 @@
 
 { get an actual WeylElt from a partition <-> conjugacy class in W}
 { sum(P)=n -> S_n -> root datum A_{n-1} -> SL(n)}
-set conjugacy_class_S(Partition P)=WeylElt:  {for SL(n)}
-{construct element for GL(n) and then convert to SL(n) at last step}
-assert(is_positive(P), "P is not a parition (has non-positive entries)");
-if #P=0 then id_W(trivial_group)  {special case}
-else
- {P=[a_1,...,a_r]
- construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
- algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
- #of terms i is a_i
- then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
- }
- let n=sum(P) then
- (GL_roots,GL_coroots)=
-  let v=##
-   for i:#P do
-    for j:P[i] do i+1
-   od
-  od
-  then
-  roots=##for alpha in GL(#v).simple_roots do
-   if alpha*v=0 then [alpha] else [] fi od
-  in (roots,roots)
-then sub_rd=root_datum(GL_roots,GL_coroots,n) then
-  w_sub=sub_rd.coxeter_element then
-  w_GL=W_elt(GL(n),w_sub.matrix) in
-  {convert to SL(n): product of simple roots with the same numbers}
-  W_elt(SL(n),w_GL.word)
-fi
-
-set character_table_S_0(int n) = CharacterTable:
-  let order=n.fac, partitions_n = partitions(n) then
-  ncc=#partitions_n then
-  conjugacy_classes = partitions_n 
-  then index = index_partition(partitions_n)
-  , centralizer_orders= for i:ncc do cycle_centralizer_order(partitions_n[i]) od
-  , class_or_irrep_string (int j) = string: partitions_n[j].to_string
-  , class_reps=for i:ncc do conjugacy_class_S(partitions_n[i]) od 
-  , table=#partitions_n ^ { gather rows of this size: }
-    for lambda in partitions_n
-    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od od
-in
-  (Lie_type(SL(n))  {lie_type}
-  , order            {order}
-  , ncc              {n_classes}
-  , (int j) classical_class: conjugacy_classes[j].class_A
-  , class_or_irrep_string  {class_label}
-  , class_reps {class_reps}
-  , (int j) int: partitions_n[j].cycle_type_order  {class_order}
-  , (int j, int p) int: cycle_power(partitions_n[j],p).index  {class_power}
-  , centralizer_orders  {centralizer_orders}
-  , for i:ncc do  order\centralizer_orders[i] od  {class_sizes}
-  , (int i) classical_irrep: partitions_n[i].irrep_A
-  , class_or_irrep_string   {irreducible_label}
-  , [[int]]:[] {sym_powers_reflection}
-  , [int]:[]  {degrees}
-  , [int]:[]  {fake degrees}
-  , table
-  )
+set conjugacy_class_S(Partition P) = WeylElt:  {for SL(n)}
+(  assert(is_positive(P), "P is not a partition (has non-positive entries)")
+;  let n=sum(P)
+   , bars= let sum=-1 in for p in P do sum+:=p od { W generators to suppress }
+in W_elt(if =n then trivial_group else SL(n) fi,complement(n,bars))
+)
 
 set character_table_S(int n) = CharacterTable:
-let ct=character_table_S_0(n) in ct.update_degrees
+  let partitions_n = partitions(n)
+  then classes = [WeylElt,classical_class,string]:
+    for lambda in partitions_n
+    do (conjugacy_class_S(lambda),lambda.class_A,lambda.to_string)
+    od
+  , irreps = [classical_irrep,string,[int]]:
+    for lambda in partitions_n
+    do (irrep_A(lambda),lambda.to_string
+       ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
+       )
+    od
+  in character_table(SL(n),classes,irreps)
 
-set character_table_A(int n) = CharacterTable:character_table_S(n+1)
-
-
+set character_table_A(int n) = CharacterTable: character_table_S(n+1)
 
 
 
