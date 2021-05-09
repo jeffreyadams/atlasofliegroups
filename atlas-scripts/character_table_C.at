@@ -1,20 +1,21 @@
 <nilpotent_orbits.at
 <character_tables.at
-<classical_W_classes_and_reps.at
+<classical_W_classes_and_reps.at { for type abbreviation |BC_class|, |cycles| }
 
 set sign_string (bool s) = string: if s then "-" else "+" fi
-set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set parts_string (Partition lambda) = string: { partition without brackets }
+  lambda.to_string[1:1~]
+{ |cycles@(Partition,Partition)| tacks booleans one cycle lengths, the do this: }
 set cycles_string ([int,bool] cycles) = string:
-(  "["
-   ##
- ##for (l,s)@pos in cycles
+(  "[" ##
+   for (l,s)@pos in cycles
    do if =pos then l.to_string##s.sign_string
       else "," ##  l.to_string##s.sign_string
       fi
-   od
- ##
-   "]"
+   od.##
+   ##  "]"
 )
+
 {     type C     }
 
 {representation of H_n is given by a pair of partitions or a symbol}
@@ -26,34 +27,32 @@ set cycles_string ([int,bool] cycles) = string:
   every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
-set_type Hn_rep  =(Partition,Partition)
+set_type Hn_rep  =(Partition,Partition) { (negative cycles, positive cycles) }
 set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
 set_type BC_Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
 
-{ use equivalence relation on symbols to get one with at most one 0 }
-set normalize ([int] v) = [int]:
-   let nv=#v, i=0 in while i<nv and v[i]<=i do i+:=1 od;
-   for e in v[i:] do e-i od
-
-{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
-set expand([int] v, int r) = [int]: #r ## for c in v do c+r od
-
 { normalize symbol: |f|=|g|+1 and at most 1 zero }
 set normalize (Symbol S) = Symbol:
-  let f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
-  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
+   let reduce([int] f)=[int]:
+      let k = let nf=#f in first(nf,(int i)bool:f[i]>i) in
+      if k.< then [] else for e in f[k:] do e-k od fi
+   , expand([int] f,int r) = [int]: #r ## for e in f do e+r od
+   then f=S[0].reduce, g=S[1].reduce then d=#f-(#g+1)
+in case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
 
-{ Symbol to Hn_rep (bijection) }
+{ Symbol to Hn_rep (surjection, identifying equivalence classes of Symbols) }
 set wrep (Symbol S) = Hn_rep:
 ( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
 , for g_i@i in S[1] do g_i-i ~od.strip_to_partition
 )
-{Hn_rep to Symbol}
+{ Hn_rep to normalized Symbol }
 set symbol (Hn_rep(p,q)) = Symbol:
-   let d=#p-(#q+1) in
-   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
-   [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
+(( let d=#p-(#q+1) in { if necessasry extend p or q by zeros so as to make d=0: }
+   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac
+ )
+; [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
+)
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
@@ -61,7 +60,7 @@ set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
 { equality of symbols (not equivalence) }
 set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
-set BC_classes(int n)=[BC_class]:partition_pairs(n)
+set BC_classes(int n) = [BC_class]: partition_pairs(n)
 
 {get actual conjugacy class representatives, i.e. elements of W(C_n),
  from pairs of partitions
@@ -93,9 +92,11 @@ else
  then
  {next, add single 2e_i term to simple roots of each GL factor from P
  corresponding e_i term to simple coroots}
- n=sum(P)+sum(Q) then
- long_roots=[vec]: for i:#P do 2*e(n,sum(for k:i+1 do P[k] od)-1) od then
- short_coroots=[vec]: for i:#P do e(n,sum(for k:i+1 do P[k] od)-1) od 
+   n=sum(P)+sum(Q)
+ , bars = for i:#P from 1 do sum(P[:i])-1 od { at separations between factors }
+ then
+   long_roots=[vec]: for bar in bars do 2*e(n,bar) od
+ , short_coroots=[vec]: for bar in bars do e(n,bar) od
  in
 { let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
  let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
@@ -112,31 +113,15 @@ fi
 set convert(WeylElt w,RootDatum rd)=WeylElt:W_elt(rd,w.word)
 
 set character_table_C(int n) = CharacterTable:
-let order=n.fac*2^n, pairs = partition_pairs(n)
-  then cycles = for pair in pairs do pair.cycles od
-  then ncc=#cycles then
-  conjugacy_classes {[Dn_conjugacy_class]}= BC_classes(n) then  {array of (Partition,Partition,Partition)}
-  index = index_signed_cycles(cycles,#(#cycles))
-  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
-  , sign(bool s) = string: if s then "-" else "+" fi
-in
-  (Lie_type(Sp(2*n))    {lie_type}  
-  , order    {order (of W)}
-  , ncc      {n_classes}
-  , (int j) classical_class: conjugacy_classes[j].class_BC
-  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
-  , for pair in pairs do conjugacy_class_C(pair) od  {class_reps}
-  , (int j) int: cycles[j].cycle_type_order       {class_order}
-  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
-  , centralizer_orders   {class}
-  , for co in centralizer_orders do order\co od    {class_sizes}
-  , (int i) classical_irrep: pairs[i].irrep_BC 
-  , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
-  , [[int]]:[] {sym_powers_reflection}
-  , [int]:[]  {degrees}
-  , [int]:[]  {fake degrees}
-  , ncc ^ { gather rows of this size: }
-    for pair in pairs
-    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
-    od
-  )
+   let pairs = partition_pairs(n)
+   then classes = [WeylElt,classical_class,string]:
+      for PQ in pairs
+      do (conjugacy_class_C(PQ), PQ.class_BC,PQ.cycles.cycles_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for (P,Q):PQ in pairs
+      do ( PQ.irrep_BC, PQ.to_string
+         , for pair in pairs do hyperoctahedral_character(PQ,pair.cycles) od
+	 )
+      od
+   in character_table(Sp(2*n),classes,irreps)
