@@ -62,55 +62,28 @@ set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
 set BC_classes(int n) = [BC_class]: partition_pairs(n)
 
-{get actual conjugacy class representatives, i.e. elements of W(C_n),
- from pairs of partitions
-pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
-P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
-Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
-}
-set conjugacy_class_C(BC_class (P,Q))=WeylElt:
-if #P+#Q=0 then id_W(trivial_group)  {special case}
-else
- {first, given a single partition P=(a_1,...,a_r)
- construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
- algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
- #of terms i is a_i
- then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
- }
- let (GL_roots,GL_coroots)=
-  let partition=P##Q then
-  v=##
-   for i:#partition do
-    for j:partition[i] do i+1
-   od
-  od
-  then
-{  ()=prints("v=",v) then}
-  roots=##for alpha in GL(#v).simple_roots do
-   if alpha*v=0 then [alpha] else [] fi od
-  in (roots,roots)
- then
- {next, add single 2e_i term to simple roots of each GL factor from P
- corresponding e_i term to simple coroots}
-   n=sum(P)+sum(Q)
- , bars = for i:#P from 1 do sum(P[:i])-1 od { at separations between factors }
- then
-   long_roots=[vec]: for bar in bars do 2*e(n,bar) od
- , short_coroots=[vec]: for bar in bars do e(n,bar) od
- in
-{ let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
- let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
-  w_sub=sub_rd.coxeter_element in
- minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
-fi
+{ word representative in types B and C of conjugacy class for partition pair }
+set cycles_representative_word(Partition P,Partition Q) = [int]:
+(  assert((P:=P.strip_to_partition).>, "P is not a partition")
+;  assert((Q:=Q.strip_to_partition).>, "Q is not a partition")
+;  let nP=sum(P), nQ=sum(Q)
+   ,  Pbars = let sum=0       in for p in P do sum+:=p od
+   ,  Qbars = let sum=minus_1 in for q in Q do sum+:=q od
+then  n = nP+nQ
+   ,  Q_gens = complement(nQ,Qbars) { for Q part, do the same as in type A }
+   ,  P_gens = { each cycle from P gets a sign flip when its end is sensed }
+      for i:nP
+      do let pos=nQ+i { position in [0,n) where we are }
+      in if isnt_member(Pbars)(i+1) then [pos] { extend our cycle }
+         else { tack on a sign flip at the final element of the cycle }
+	    for j:nP-i from pos do j od## for j:nP-i-1 from pos do j ~od
+	 fi
+      od.##
+in Q_gens##P_gens
+)
 
-{dangerous bend
- conjugacy_class_C(pair) is a class for Sp(2n)
- in application, the character table will have its own root datum of type C,
-  and these might not agree
-}
-
-set convert(WeylElt w,RootDatum rd)=WeylElt:W_elt(rd,w.word)
+set conjugacy_class_C((Partition,Partition)(P,Q):PQ) = WeylElt:
+   W_elt(Sp(2*(P.sum+Q.sum)),cycles_representative_word(PQ))
 
 set character_table_C(int n) = CharacterTable:
    let pairs = partition_pairs(n)
