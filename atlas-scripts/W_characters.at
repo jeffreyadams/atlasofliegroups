@@ -789,13 +789,16 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , k=0 { last symmetric power computed}
 in
 ( {print_classes} @:
-   let data = for w in reps
-     do [ w.order.to_string
+   let data = ["nr","count","order","length","Levi type"] #
+     for w@i in reps
+     do [ i.to_string
+        , sizes[i].to_string
+        , w.order.to_string
         , w.length.to_string
         , w.Levi_datum.Lie_type.semisimple.str
         ]
      od
-   in tabulate(data,"rrl",2," ")
+   in tabulate(data,"rrrrl",2," ")
 
 , {n_classes} ncc
 , {class_representatives} @: reps
