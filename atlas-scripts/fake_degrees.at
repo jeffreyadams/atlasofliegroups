@@ -14,7 +14,9 @@
 
 
 set fake_degrees(CharacterTable ct,[WCell] cells)=[int]:
-let rv=for i:ct.n_classes do -1 od in
+
+let rv=ct.fake_degrees in
+if =#rv then rv:=for i:ct.n_classes do -1 od fi;
 for cell in cells do
  let cell_char=ct.decompose(ct.cell_character(cell)) then
 { ()=prints("cell_char: ", cell_char) then}
