@@ -6,6 +6,8 @@
 }
 <coherent_characters.at
 <truncated_induction.at
+<isomorphism_W.at
+<fake_degrees.at
 
 {sigma_L (L stands for "Lusztig")
 sigma_L(O^v,x) is a of a representation of W(G)
