@@ -1,0 +1,281 @@
+<springer_tables_reductive.at
+<cells.at
+<K_highest_weights.at {for all_parameters_gamma}
+
+{character of coherent representation on parameters, KGB, and involutions}
+
+set coherent_verbose=true
+
+set involutions([WeylElt] W)=[WeylElt]:
+##for w in W do if w^2=id_W(W[0].root_datum) then [w] else [] fi od
+
+set involutions(RootDatum rd)=[WeylElt]:involutions(rd.W)
+
+{sign function (not character) on W coming from sgn
+character of imaginary roots}
+set epsilon_i(WeylElt involution, WeylElt w)=int:
+assert(involution.root_datum=w.root_datum,"root data don't match");
+let rd=w.root_datum in
+(-1)^count(for a in imaginary_posroots(rd,involution.matrix) do not is_positive_root(rd,w*a) od)
+set epsilon_i(KGBElt x,WeylElt w)=int:
+assert(x.root_datum=w.root_datum,"root data don't match");
+(-1)^count(for a in x.imaginary_posroots do not is_positive_root(x.root_datum,w*a) od)
+set epsilon_i(Param p,WeylElt w)=int:epsilon_i(p.x,w)
+
+{FIX cross@(WeylElt,Param): wrong assert, w.root_datum should be the integrality datum for p}
+set cross (WeylElt w,Param p) = Param:
+{  assert(w.root_datum=p.root_datum);}
+  for s in w.word ~do p:=cross(s,p) od; p
+
+{fixed points of w acting on parameters}
+set fixed_params(WeylElt w,[Param] params)=[Param]:
+##for p in params do if cross(w,p)=p then [p] else [] fi od
+
+{character of coherent continuation representation on block,
+computed in basis of standard modules, by grading the block
+representation by Cartan
+w.root_datum must equal params[0].root_datum
+}
+set trace_coherent(WeylElt w,[Param] params)=int:
+assert(w.root_datum=params[0].root_datum,"roots data don't match");
+sum(for p in fixed_params(w,params) do epsilon_i(p,w) od)
+
+set character_coherent(CharacterTable ct,[Param] params)=[int]:
+let rd=params[0].root_datum in
+for w_0 in ct.class_representatives do
+  let w=W_elt(rd,w_0.word) in {Note: need to convert w_0 from ct.root_datum to rd}
+{let ()=prints("w: ", w, "trace: ", trace_coherent(w,params)) in} trace_coherent(w,params) od
+
+set character_coherent_gamma(RealForm G,CharacterTable ct,ratvec gamma)=[int]:
+character_coherent(ct,all_parameters_gamma(G,gamma))
+set character_coherent_gamma(RealForm G,CharacterTable ct)=[int]:character_coherent_gamma(G,ct,G.rho)
+
+set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,block_of(G.trivial))
+set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct)
+
+{fixed points of w acting on KGB}
+set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
+##for x in X do if cross(w,x)=x then [x] else [] fi od
+
+set trace_coherent(WeylElt w,[KGBElt] X)=int:
+sum(for x in fixed_kgb(w,X) do epsilon_i(x,w) od)
+
+set character_coherent(CharacterTable ct,[KGBElt] X)=[int]:
+for w in ct.class_representatives do trace_coherent(w,X) od
+set character_coherent_X(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,KGB(G))
+
+set character_coherent_dual(CharacterTable ct,[KGBElt] Y)=[int]:
+let rd_dual=Y[0].root_datum in
+for w in ct.class_representatives do
+ let y=W_elt(rd_dual,w.word) in trace_coherent(y,Y) od
+
+set character_coherent_Y(CharacterTable ct, RealForm G_dual)=
+character_coherent_dual(ct,KGB(G_dual))
+
+set character_coherent_Y(RealForm G,CharacterTable ct)=[int]:
+character_coherent_Y(ct,G.dual.quasisplit_form)
+
+
+{involutions in W fixed by conjugation action of w}
+set fixed_involutions(WeylElt w,[WeylElt] involutions)=[WeylElt]:
+##for y in involutions do if w*y=y*w then [y] else [] fi od
+
+set trace_coherent(WeylElt w,[WeylElt] involutions)=
+sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
+
+set character_coherent(CharacterTable ct,[WeylElt] involutions)=
+for w in ct.class_representatives do trace_coherent(w,involutions) od
+set character_coherent_I(CharacterTable ct)=[int]:character_coherent(ct,involutions(ct.root_datum_parent))
+
+
+set coherent_data(SpringerTable st,[Param] block)=(vec,vec,vec):
+let G=block[0].real_form then
+ct=st.ct then
+()=if coherent_verbose then prints("Computing character of B") fi then
+char_block=ct.decompose(character_coherent(ct,block)) then
+()=if coherent_verbose then prints("Computing character of X") fi then
+char_kgb=ct.decompose(character_coherent(ct,G.KGB)) then
+()=if coherent_verbose then prints("Computing character of I") fi then
+char_inv=ct.decompose(character_coherent(ct,G.involutions)) then
+()=if coherent_verbose then prints("Done computing coherent data") fi
+in (char_block,char_kgb,char_inv)
+
+set coherent_data(SpringerTable st,RealForm G)=(vec,vec,vec):coherent_data(st,G.trivial.block_of)
+
+set show_coherent_data(SpringerTable st,(vec a,vec b,vec c))=void:
+let ct=st.ct in
+prints(
+"i: index of representation sigma of W",new_line,
+"*: special",new_line,
+"dim: dimension of sigma",new_line,
+"deg: degree b(sigma) of sigma", new_line,
+"name: label of representation",new_line,
+"orbit: Springer(orbit)=sigma",new_line,
+"mult of sigma in:",new_line,
+" B: W-rep on block B",new_line,
+" Z: W-rep on KGB space X",new_line,
+" I: W-rep on involutions in W");
+tabulate(
+["i","dim","deg","name","orbit","B","X","I"] #
+for i:st.ct.n_classes do
+[i.to_string+st.special_representation_star(i),
+ct.dimension(i).to_string,
+ct.irreducible_label(i),
+ct.degree(i).to_string,
+if st.is_special_representation(i)  then st.springer_inverse_special(i).diagram.to_string else "xx" fi,
+a[i].to_string,b[i].to_string,c[i].to_string] od)
+
+set show_coherent_data_short(SpringerTable st,(vec a,vec b,vec c))=
+let ct=st.ct in
+prints(
+"i: index of representation sigma of W",new_line,
+"*: special",new_line,
+"dim: dimension of sigma",new_line,
+"deg: degree b(sigma) of sigma", new_line,
+"name: label of representation",new_line,
+"orbit: Springer(orbit)=sigma",new_line,
+"mult of sigma in:",new_line,
+" B: W-rep on block B",new_line,
+" Z: W-rep on KGB space X",new_line,
+" I: W-rep on involutions in W");
+tabulate(
+["i","dim","deg","name","orbit","B","X","I"] #
+for i:st.ct.n_classes do
+[i.to_string+st.special_representation_star(i),
+ct.dimension(i).to_string,
+ct.irreducible_label(i),
+ct.degree(i).to_string,
+{if st.is_special_representation(i)  then st.springer_inverse_special(i).diagram.to_string else "xx" fi,} "xx",
+a[i].to_string,b[i].to_string,c[i].to_string] od)
+
+set show_coherent_data(SpringerTable st,RealForm G)=
+let ct=st.ct then
+(a,b,c)=coherent_data(st,block_of(G.trivial)) in
+prints(
+"Coherent data for G=", G,new_line,
+"i: index of representation sigma of W",new_line,
+"dim: dimension of sigma",new_line,
+"deg: degree b(sigma) of sigma", new_line,
+"name: label of representation",new_line,
+"*: special",new_line,
+"orbit: Springer(orbit)=sigma",new_line,
+"RF: number of real forms of orbit",new_line,
+{"Cent: Cent(SL2)^0",new_line,
+"C2: #conjugacy classes in Cent of order 1,2",new_line,}
+"A(O): orders of conjugacy classes in A(O)",new_line,
+"mult of sigma in:",new_line,
+" B: W-rep on block B",new_line,
+" X: W-rep on KGB space X",new_line,
+" I: W-rep on involutions in W");
+tabulate(
+["i","dim","deg","name","orbit","RF",{"Cent","C2",}"A(O)","B","X","I"] #
+for i:st.ct.n_classes do
+let  (valid,orbit)=st.springer_inverse(i) in
+[i.to_string+st.special_representation_star(i),
+ct.dimension(i).to_string,
+ct.degree(i).to_string,
+ct.irreducible_label(i)
+]##
+ if valid then
+{  let cent=orbit.centralizer in}
+  [orbit.diagram.to_string,
+  number_real_nilpotent_orbits(orbit_by_diagram(G,orbit.diagram_normalized),G).to_string,
+{  cent.nice_format,
+  (#cent.compact_form.strong_real_forms_same_type).to_string,}
+  orbit.component_datum.orders.to_string]
+ else ["","",""{,"",""}] fi##
+[a[i].to_string,b[i].to_string,c[i].to_string+st.special_representation_star(i)] od)
+
+set show_coherent_data(RealForm G)=void:show_coherent_data(G.springer_table,G)
+
+{see Barbasch-Trapa, Stable Combinations...Proposition 3.2
+That says: V(O_check)\otimes sgn is the sum of Springer representations
+ in the special piece of dual(O_check), where V(O_check) is the Lusztig
+ cell consisting of all Springer(x,1)
+Change roles of G,G_check, move sgn to the other side:
+ rd=given RootDatum
+ V(O)=\sum Springer(dual_orbit)\otimes sgn
+  where dual_orbit runs over the special piece of dual(O),
+   which is an array of orbits for dual(rd)
+  this is an array of characters for W(dual(rd))=W(rd)
+Note that we need the Springer table for dual(rd) (not rd itself)
+ since the Lusztig cell is in terms of the Springer correspondence for dual(rd)
+}
+set Lusztig_cell(SpringerTable st_dual,ComplexNilpotent O)=[[int]]: {array of characters for W(rd)}
+{O is an orbit for RootDatum rd
+ st_dual is the Springer table for dual(rd)
+ st_dual.dual_map_i(O) is an orbit for rd_dual
+ special_piece(st_dual,O_check) is a list of orbits for rd_dual
+}
+let O_check=st_dual.dual_map_i(O) {this is an orbit for dual(rd)} then
+sp=special_piece(st_dual,O_check) {list of orbits for dual(rd)} in
+for orbit in sp do
+ let char_index=st_dual.springer(orbit) then
+ char=st_dual.ct.characters[char_index] {[int]} in
+ st_dual.ct.tensor_sign(char) od
+
+set Lusztig_cells(SpringerTable st_dual)=[(ComplexNilpotent,[[int]])]:
+for orbit in st_dual.root_datum.dual_orbits do prints(orbit.diagram);(orbit,Lusztig_cell(st_dual,orbit)) od
+
+set show_Lusztig_cells(CharacterTable ct,[(ComplexNilpotent,[[int]])] data)=void:
+prints("Lusztig cells for ",nice_format(let (orbit,)=data[0] in orbit.root_datum));
+for (orbit,reps) in data do
+prints(new_line,"orbit: ",orbit.diagram, "  dim:", orbit.dim_nilpotent,new_line,"characters:");
+ tabulate(["i","dim","deg"]#for v in reps do let i=index(ct,v) in [i.to_string,ct.dimension(i).to_string,ct.degree(i).to_string] od)
+od
+
+{see assem.pdf
+ size of weak packet \Pi(O_check) is:
+ dom_hom(\sum_{O'}Springer(O'),M_gamma) where M_gamma is the coherent continuation representation on
+ representations of infinitesimal character gamma, and the sum runs over orbits O' in the special
+ piece of d(O_check)
+}
+set size_weak_packet_int(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)=
+assert(O_check.is_even,"orbit is not even");
+let st=st_G then  {_G is just a reminder that this is for G not G_check}
+ct=st.ct  {character table for G} then
+param_character=character_coherent(ct,params) then
+()=if coherent_verbose then prints("coherent cont. char.: ", param_character,"  decomposed: ", ct.decompose(param_character)) fi then
+O=st.dual_map_i(O_check) {special orbit for G} then
+sp=special_piece(st,O)   {special piece of O} then
+lusztig_cell_character=sum(for orbit@i in sp do
+  let char=ct.characters[st.springer(orbit)] in
+  if coherent_verbose then prints("orbit: ", orbit.diagram, "  char. #",i,": ",char, "  decomposed: ", ct.decompose(char)) fi;char od)  then
+()=if coherent_verbose then prints("lusztig cell char.: ", lusztig_cell_character) fi in
+ct.inner_product(lusztig_cell_character,param_character)
+
+set size_weak_packet(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)=
+let rd=O_check.root_datum.dual then
+gamma=O_check.H/2 then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table(rd_int) then
+(O_check_int,permutation)=integral_descent(st_int,O_check) in
+size_weak_packet_int(O_check_int,st_int,params)
+
+set sizes_weak_packets([ComplexNilpotent] orbits,SpringerTable st_G, RealForm G)=
+for O_check in orbits do
+  let   ()=prints("orbit: ", O_check.diagram) then
+  ()=prints("gamma: ", O_check.H/2)  then
+  ()=prints("st_G: ", st_G.root_datum) in
+  size_weak_packet(O_check,st_G,all_parameters_gamma(G,O_check.H/2+two_rho(G)))  od
+
+set sizes_weak_packets(SpringerTable st_G, RealForm G)=
+sizes_weak_packets(G.dual_orbits,st_G,G)
+
+set sizes_weak_packets(RealForm G)=sizes_weak_packets(G.springer_table,G)
+
+
+set show_coherent_data(SpringerTable st,[Param] block)=
+ let data=coherent_data(st,block) in
+ show_coherent_data(st,data);data
+{set show_coherent_data(SpringerTable st,RealForm G)=show_coherent_data(st,block_of(G.trivial))}
+set show_coherent_data(RealForm G)=show_coherent_data(G.springer_table,G)
+
+set show_coherent_data([RealForm] groups)=
+for G in groups do
+let ()=prints(new_line,"Coherent character data for: ", G) then
+st=G.springer_table in
+show_coherent_data(st,G) od
+
+set groups=[SL(2,R),Sp(4,R),G2_s, Sp(6,R),Sp(8,R),F4_s,SL(3,R),SL(4,R),E6_q]
+
