@@ -28,13 +28,11 @@ Value: true
 }
 set *(mat M,int i)=index_standard_basis(M[i])
 
-set *(mat M,WeylElt w)=WeylElt: W_elt(w.root_datum,for i in w.word do M*i od)
-
 set permute(mat M,[WeylElt] classes)=[WeylElt]:
-for w in classes do classes[first(for y in classes do is_conjugate(M*w,y) od)] od
+for w in classes do classes[first(for y in classes do is_conjugate(W_elt(w.root_datum,M*w),y) od)] od
 
 set induced_permutation(mat M,[WeylElt] classes)=[int]:
-for w in classes do first(for y in classes do is_conjugate(M*w,y) od) od
+for w in classes do first(for y in classes do is_conjugate(W_elt(w.root_datum,M*w),y) od) od
 
 set permute_character(mat M,[WeylElt] classes,[int] char)=[int]:
 let ind=induced_permutation(M,classes) in

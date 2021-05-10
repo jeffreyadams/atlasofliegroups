@@ -1,9 +1,4 @@
-<basic.at
-<parabolics.at
 <character_tables_reductive.at
-<sort.at { for |sort_u@[vec]| }
-<lattice.at { for |restrict_action@(mat,mat)| }
-<W_reps.at
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -156,7 +151,7 @@ in  W_elt(Gprime,word_Gprime)
 set e(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
 embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
