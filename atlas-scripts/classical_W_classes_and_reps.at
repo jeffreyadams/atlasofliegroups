@@ -1,3 +1,8 @@
+<basic.at
+<combinatorics.at { for types |Partition|, |Signed_cycles|, and many functions }
+<W_characters.at
+<simple_factors.at
+
 {conjugacy classes and representations of classical Weyl groups
 this file consists mainly of some union types to
 aggregate A/BC/D constructions into a uniform type
@@ -6,173 +11,137 @@ springer_tables.at
 see character_table_*.at (A,B,C,D,E,F,G)
 springer_table_*.at (A,BC,D,E,F,G)
 }
-<W_characters.at
-<simple_factors.at
-
-{partition-type classification of W-conjugacy classes in types A-D}
-set_type A_class = [int] { partition }
-set_type BC_class = ([int],[int])  { ordered partition pair (P,Q), #P+#Q=n}
-set_type [D_class = ( ([int],[int]) unsplit_class | ([int],bool) split_class )]
 
 
+set_type A_class = Partition { parametrise W conjugacy classes in type A }
+set_type A_irrep = Partition
 
-{uniform type all classical root systems}
-set_type [classical_class=
-   ( A_class class_A
-   | BC_class class_BC
-   | D_class  class_D
-   | void null_class { for an exceptional group }
-   )]
+{ for types B and C, there is the type |Signed_cycles| from combinatorics.at
+  Here we group cycles with |true| negative sign), then cycles with |false|
+  (positive sign), each decreasingly sorted, to a order pair of |Paritition|s }
+set_type BC_class = (Partition,Partition)
+set_type BC_irrep = (Partition,Partition)
 
-{get_class_* extracts a class and return the appropriate type}
-set get_class_A(classical_class cl)=[int]:
-case cl
-|P.class_A: P
-|cl.class_BC: error("wrong type")
-|cl.class_D: error("wrong type")
-|cl.null_class: null(0)
-esac
-
-set get_class_BC(classical_class cl)=([int],[int]):
-case cl
-|cl.class_A: error("wrong type")
-|(P,Q).class_BC: (P,Q)
-|cl.class_D: error("wrong type")
-|cl.null_class: (null(0),null(0))
-esac
-
-set get_class_D(classical_class cl)=D_class:
-case cl
-|cl.class_A: error("wrong type")
-|cl.class_BC: error("wrong type")
-|x.class_D: x {?}
-|cl.null_class: error("wrong type") {should change this to something for null group?}
-esac
-
-
-
-
-{parametrization of W-conjugacy classes by cycles
-this is used for computing the power map, for example
-}
-set_type [
-A_class_cycles= [int],
-BC_class_cycles=[int,bool],
-D_class_cycles=
-   ( [int,bool] unsplit_cycle { the XOR of all |bool| values is |false| }
-   | ([int],bool) split_cycle { "all false" even cycles, and a single sign }
+set_type
+[ D_class = { cycle types restricted to Dn subgroup }
+   ( Signed_cycles unsplit_class { the product of all signs is positive }
+   | (Partition,bool) split_class { "all false" even cycles, and a single sign }
+   )
+,  D_irrep = { from folding pairs of partitions under swapping }
+   ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
+   | (Partition,bool) split_irr { for pair of equal partitions, with sign }
    )
 ]
 
-set_type [classical_class_cycles=
- ( A_class_cycles class_cycles_A
- | BC_class_cycles class_cycles_BC
- | D_class_cycles class_cycles_D
- )]
-
-{return cycles of appropriate type}
-set cycles(A_class cl)=A_class_cycles:cl
-set cycles(BC_class (P,Q))=BC_class_cycles:[int,bool]:
- for a in P do (a, true) od## for a in Q do (a,false) od
-set cycles(D_class cl)=D_class_cycles:
-  case cl
-{   |(P,Q).unsplit_class: (for a in P do (a,true) od##for a in Q do (a,false) od).unsplit_cycle}
-   |(P,Q).unsplit_class: (for a in P do (a,false) od##for a in Q do (a,true) od).unsplit_cycle
-   |(P,Bool).split_class: (P,Bool).split_cycle
-  esac
-
-{extract class of appropriate type}
-set class(A_class_cycles cy)=A_class: cy
-set class(BC_class_cycles cy)=BC_class:
- let P=[int]:[], Q=[int]:[] in
- for (a,b) in cy do if b then Q#:=a else P#:=a fi od;(P,Q)
-set class(D_class_cycles cy)=
-case cy
-  |list.unsplit_cycle:
-   let P=[int]:[], Q=[int]:[] in
-   for (a,b) in list do if b then Q#:=a else P#:=a fi od;(P,Q).unsplit_class
-  |x.split_cycle: x.split_class
-esac
-
-{moved from combinatorics.at:}
-
-{partition type parametrization of irreducible representations 
-of classical Weyl groups}
-set_type [
- A_irrep=[int],
- BC_irrep=([int],[int]),
- D_irrep = { from folding pairs of partitions under swapping }
-   ( ([int],[int]) unsplit_irr { unequal partitions, larger first }
-   | (bool,[int]) split_irr { for pair of equal partitions, with sign }
-                            {switch order to avoid overlap with D_class}
-   )]
-
-set_type [classical_irrep=
-    (A_irrep irrep_A
-    |BC_irrep irrep_BC
-    |D_irrep irrep_D
+{ A type that allows grouping any of the above or none into a single value }
+set_type
+[ classical_class =
+    ( A_class class_A
+    | BC_class class_BC
+    | D_class  class_D
+    | void null_class { for an exceptional group }
+    )
+, classical_irrep =
+    ( A_irrep irrep_A
+    | BC_irrep irrep_BC
+    | D_irrep irrep_D
     | void null_irrep{for an exceptional group}
-    )]
+    )
+]
+
+{ functions to extract form the union; for user convenience only, for
+  programming purpusos always use discrimination clauses (case..esac as below) }
+
+set split_class (D_class c) = (Partition,bool):
+   case c | split_class(pair): pair | else error("class is not split") esac
+
+set unsplit_class(D_class c) = Signed_cycles:
+   case c | unsplit_class(pair): pair | else error("class is split") esac
+
+
+
+set get_class_A(classical_class cl) = Partition:
+case cl
+| class_A(P): P
+| class_BC(x): error("wrong type")
+| class_D(x):  error("wrong type")
+| else []
+esac
+
+set get_class_BC(classical_class cl) = (Partition,Partition):
+case cl
+| class_A(x):   error("wrong type")
+| class_BC(PQ): PQ
+| class_D(x):   error("wrong type")
+| else          ([],[])
+esac
+
+set get_class_D(classical_class cl) = D_class:
+case cl
+| class_D(val): val
+| else          error("wrong type")
+esac
+
+set to_partition_pair(Signed_cycles cy) = BC_class:
+( for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
+, for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
+)
+
+
 
 {-------------------------------------------------------------------}
-set get_irrep_A(classical_irrep cl)=[int]:
-case cl
-|P.irrep_A: P
-|cl.irrep_BC: error("wrong type")
-|cl.irrep_D: error("wrong type")
-|cl.null_irrep: error("wrong type")
-esac
+set get_irrep_A(classical_irrep rep) = [int]:
+   case rep | P.irrep_A: P | else error("wrong type") esac
 
-set get_irrep_BC(classical_irrep cl)=([int],[int]):
-case cl
-|cl.irrep_A: error("wrong type")
-|(P,Q).irrep_BC: (P,Q)
-|cl.irrep_D: error("wrong type")
-|cl.null_irrep: error("wrong type")
-esac
+set get_irrep_BC(classical_irrep rep) = ([int],[int]):
+   case rep | PQ.irrep_BC: PQ | else error("wrong type") esac
 
-set get_irrep_D(classical_irrep cl)=D_irrep:
-case cl
-|cl.irrep_A: error("wrong type")
-|cl.irrep_BC: error("wrong type")
-|x.irrep_D: x {?}
-|cl.null_irrep: error("wrong type")
-esac
+set get_irrep_D(classical_irrep rep) = D_irrep:
+   case rep | val.irrep_D: val | else error("wrong type") esac
+
 {-------------------------------------------------------------------}
-
 
 {some cases special to type D:}
 { recover the value of |n| }
 set rank (D_irrep chi) = int:
-   case chi | pair.unsplit_irr: pair.rank | (,mu).split_irr: 2*mu.sum esac
-
-set rank (D_class_cycles C) = int:
-   case C
-   | cycles.unsplit_cycle: cycles.rank
-   | (alpha,).split_cycle: alpha.sum
+   case chi
+   | pair.unsplit_irr: pair.rank { rank@(Partition,Partition); combinatorics.at }
+   | (lambda,).split_irr: 2*lambda.sum { |lambda| stands for (lambda,lambda) }
    esac
 
-set cycle_type_order (D_class_cycles C) = int:
-   case C
-   | cycles.unsplit_cycle: cycles.cycle_type_order
-   | (alpha,).split_cycle: alpha.cycle_type_order { first cycle type suffices }
+set rank (D_class c) = int:
+   case c
+   | cycles.unsplit_class: cycles.rank { rank@Signed_cycles; combinatorics.at }
+   | (lambda,).split_class: lambda.sum { |lambda| has all cycles (even,false) }
+   esac
+
+set cycle_type_order (D_class c) = int:
+   case c
+   | cycles.unsplit_class: cycles.cycle_type_order { as in types B, C }
+   | (lambda,).split_class: lambda.cycle_type_order { as in type A }
    esac
 
 { compute cycle type of power of a signed permutation, given its cycle type }
-set cycle_power (D_class_cycles C, int k) = D_class_cycles:
-   case C
-   | cycles.unsplit_cycle: cycle_power(cycles,k).unsplit_cycle
-   | (alpha,sign).split_cycle: let beta=cycle_power(alpha,k) in
-     if for c in beta do c%2=0 od.all { whether class remains split }
-     then (beta,sign).split_cycle { keep sign when class remains split }
-     else for c in beta do (c,false) od.unsplit_cycle
+set cycle_power (D_class c, int k) = D_class:
+   case c
+   | cycles.unsplit_class: cycle_power(cycles,k).unsplit_class
+   | (alpha,sign).split_class: let beta=cycle_power(alpha,k) in
+     if =beta%2 { whether class remains split (could fail if |k| is even) }
+     then (beta,sign).split_class { keep sign when class remains split }
+     { an easy way to see that this is right: certainly when |sign=false|, the
+       power gets no sign, but since an outer automorphisme interchanges the
+       halves of every split class, |sign=true| should give the opposite half }
+     else for part in beta do (part,false) od.unsplit_class
      fi
    esac
 
-set centralizer_order (D_class_cycles C) = int:
-   case C
-   | cycles.unsplit_cycle: cycles.cycle_centralizer_order\2
-   | (alpha,).split_cycle: alpha.cycle_centralizer_order*2^#alpha
+set centralizer_order (D_class c) = int:
+   case c
+   | cycles.unsplit_class: { unsplit means half of BC centralizer is not in Dn }
+       cycles.cycle_centralizer_order\2
+   | (alpha,).split_class: { split means full BC centralizer is in Dn subgroup }
+       { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
+       alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
 
 set D_irreducibles (int n) = [D_irrep]:
@@ -183,164 +152,137 @@ set D_irreducibles (int n) = [D_irrep]:
    if =r else []
    then
     ##for lambda in partitions(s)
-      do [(false,lambda).split_irr,(true,lambda).split_irr]
+      do [(lambda,false).split_irr,(lambda,true).split_irr]
       od
    fi
   )
 
-set D_class_cycles_list (int n) = [D_class_cycles]:
- ##for (alpha,beta):pair in partition_pairs(n)
+set D_classes (int n) = [D_class]:
+   for (alpha,beta):pair in partition_pairs(n)
    do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
-      elif != alpha or for l in beta do l.is_odd od.any { whether unsplit }
-      then [pair.cycles.unsplit_cycle]
+      elif != alpha or !=beta%2 { whether unsplit: some negative or odd length }
+      then [pair.cycles.unsplit_class]
       else { alpha is empty, beta has all even parts }
-         [(beta,false).split_cycle, (beta,true).split_cycle ]
+         [ (beta,false).split_class, (beta,true).split_class ]
       fi
-   od
+   od.##
 
-set character (D_irrep chi, D_class_cycles  cy) = int:
-   assert(chi.rank = cy.rank,"Size mismatch");
+set character (D_irrep chi, D_class c) = int:
+   assert(chi.rank = c.rank,"Size mismatch");
+   let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
    case chi
    | pair.unsplit_irr:
-     case cy
-     | class.unsplit_cycle: hyperoctahedral_character(pair,class)
-     | (alpha,).split_cycle:
-        hyperoctahedral_character(pair,for l in alpha do (l,false) od)
+     case c
+     | cycles.unsplit_class: hyperoctahedral_character(pair,cycles)
+     | (alpha,).split_class: { both halves behave as their BC class }
+        hyperoctahedral_character(pair,pos_cycles(alpha))
      esac
-   | (epsilon,lambda).split_irr:
-     case cy
-     | class.unsplit_cycle:
-       let (q,r) = hyperoctahedral_character((lambda,lambda),class)\%2 in
+   | (lambda,epsilon).split_irr:
+     case c
+     | cycles.unsplit_class:
+       let (q,r) = hyperoctahedral_character((lambda,lambda),cycles)\%2 in
        assert(=r,"Odd character value at unsplit class"); q
-     | (alpha,delta).split_cycle:
-       let Hn_char = hyperoctahedral_character
-                     ( (lambda,lambda), for l in alpha do (l,false) od )
-       ,   Sn_char = assert(=alpha%2,"Split class with odd cycle(s)")
-                   ; Murnaghan_Nakayama(lambda, alpha\2)
+     | (alpha,delta).split_class:
+       let Hn_char = int:
+           hyperoctahedral_character((lambda,lambda),pos_cycles(alpha))
+       ,   Sn_char = int:
+           assert(=alpha%2,"Split class with odd cycle(s)");
+           Murnaghan_Nakayama(lambda, alpha\2)
        then (q,r) = (Hn_char+sign(epsilon!=delta)*2^#alpha*Sn_char)\%2
        in assert(=r,"Parity problem for split-split character value"); q
      esac
    esac
 
-set character(D_irrep chi, D_class cl)=int:
-character(chi,cycles(cl))
+set is_split(D_class c) = bool:
+   case c | (,).split_class: true | else false esac
 
-set is_split(D_class C)=bool:
-   case C
-   | (y,).split_class: true
-   | x.unsplit_class: false
+set split_and_unsplit_classes([D_class] list) =
+      (([Partition,bool],[int]),([Signed_cycles],[int])):
+let split=[Partition,bool]:[], map_split=[int]:[]
+,   unsplit=[Signed_cycles]:[], map_unsplit=[int]:[]
+in for x@i in list
+   do case x
+      | split_class(s):    split  #:= s;  map_split#:=i
+      | unsplit_class(us): unsplit #:=us; map_unsplit#:=i
+      esac
+   od; ((split,map_split),(unsplit,map_unsplit))
+
+set is_split(D_irrep pi) = bool:
+   case pi | (,).split_irr: true | else false esac
+
+set split_irrep (D_irrep pi) = (Partition,bool):
+   case pi | pair.split_irr: pair | else error("rep is unsplit") esac
+
+set unsplit_irrep (D_irrep pi) = (Partition,Partition):
+   case pi | pair.unsplit_irr: pair | else error("rep is split") esac
+
+{ curried version could be more efficient here }
+set index_D_classes([D_class] L) = (D_class->int):
+   let ((split,map_split),(unsplit,map_unsplit)) = split_and_unsplit_classes(L)
+in (D_class class) int:
+   case class
+   | split_class(P,boolean):
+       let ix=first(#split,(int i)bool: let (a,b)=split[i] in a=P and b=boolean)
+       in map_split[ix]
+   | unsplit_class(cycles): index_signed_cycles(unsplit,map_unsplit)(cycles)
    esac
 
-set split_class(D_class class)=
-case class
-     |(a,b).split_class:(a,b)
-     |class.unsplit_class:error("class is not split")
-esac
+{ uncurried vesion used curried one (without efficieny gain) }
+set index_D_classes([D_class] L, D_class c) = int: index_D_classes(L)(c)
 
-set unsplit_class(D_class class)=
-case class
-     |class.split_class:error("class is split")
-     |a.unsplit_class:a
-esac
 
-set split_and_unsplit_classes([D_class] list)=
-let split=[([int],bool)]:[], map_split=[int]:[] then
-unsplit=[([int],[int])]:[], map_unsplit=[int]:[] in
-for x@i in list do if x.is_split
- then
-  split:=split#x.split_class;
-  map_split#:=i
- else
-  unsplit#:=x.unsplit_class;
-  map_unsplit#:=i
- fi
-od;
-((split,map_split),(unsplit,map_unsplit))
+set split_and_unsplit_reps([D_irrep] list) =
+      (([Partition,bool],[int]), ([Partition,Partition],[int])):
+let  split=[Partition,bool]:[], map_split=[int]:[]
+,  unsplit=[Partition,Partition]:[], map_unsplit=[int]:[]
+in for x@i in list
+   do case x
+      | split_irr(r):    split  #:= r;  map_split#:=i
+      | unsplit_irr(ur): unsplit #:=ur; map_unsplit#:=i
+      esac
+   od; ((split,map_split),(unsplit,map_unsplit))
 
-set is_split(D_irrep pi)=bool:
-   case pi
-   | (y,).split_irr: true
-   | x.unsplit_irr: false
+{ curried first }
+set index_D_reps([D_irrep] L) = (D_irrep->int):
+   let ((split,map_split),(unsplit,map_unsplit)) = split_and_unsplit_reps(L)
+in (D_irrep rep) int:
+   case rep
+   | split_irr(P,boolean):
+      let ix=first(#split,(int i)bool: let (a,b)=split[i] in a=P and b=boolean)
+      in map_split[ix]
+   | unsplit_irr(lambda,mu):
+     let ix=first(#unsplit
+                 ,(int i)bool: let (a,b)=unsplit[i] in a=lambda and b=mu
+		 )
+     in map_unsplit[ix]
    esac
 
-set split_irrep(D_irrep pi)=
-case pi
-     |(a,b).split_irr:(a,b)
-     |class.unsplit_irr:error("rep is not split")
-esac
+set index_D_reps ([D_irrep] L,D_irrep rep) = int: index_D_reps(L)(rep)
 
-set unsplit_irrep(D_irrep pi)=
-case pi
-     |pi.split_irr:error("rep is split")
-     |a.unsplit_irr:a
-esac
-
-set index_D_classes([D_class] list,D_class class)=
-let ((split,map_split),(unsplit,map_unsplit))=split_and_unsplit_classes(list) in
- if class.is_split then
-  let (P,boolean)=class.split_class then
-   ix=first(for (a,b) in split do P=a and b=boolean od) in
-   map_split[ix]
-  else
-   index_signed_cycles(for cy in unsplit do cycles(cy) od,map_unsplit)(cycles(class.unsplit_class))
-   fi
-
-set index_D_classes([D_class] list)=(D_class->int):
-(D_class class):index_D_classes(list,class)
-
-set index_D_classes([D_class] list)=(D_class->int):
-(D_class class):index_D_classes(list,class)
-
-
-
-set split_and_unsplit_reps([D_irrep] list)=
-let split=[(bool,[int])]:[], map_split=[int]:[] then
-unsplit=[([int],[int])]:[], map_unsplit=[int]:[] in
-for x@i in list do if x.is_split
- then
-  split:=split#(x.split_irrep);
-{  split:=split#(false,[int]:[]);}
-  map_split#:=i
- else
-  unsplit#:=x.unsplit_irrep;
-  map_unsplit#:=i
- fi
-od;
-((split,map_split),(unsplit,map_unsplit))
-
-set index_D_reps([D_irrep] list,D_irrep rep)=int:
-let ((split,map_split),(unsplit,map_unsplit))=split_and_unsplit_reps(list) in
- if rep.is_split then
-  let (boolean,P)=rep.split_irrep then
-   ix=first(for (a,b) in split do a=boolean and b=P od) in
-   map_split[ix]
- else
-   let (P,Q)=rep.unsplit_irrep then
-   ix=first(for (a,b) in unsplit do a=P and b=Q od) in
-   map_unsplit[ix]
- fi
-
-
-set A_class_string(A_class cl)=cl.to_string
-set BC_class_string(BC_class cl)=cl.to_string
-set D_class_string(D_class cl)=
-case cl
-|(P,Q).unsplit_class:(P,Q).to_string
-|(P,Bool).split_class: P.to_string+  ";" + Bool.to_string
-esac
+set string_rep(D_class c) = string:
+   case c
+   | (list).unsplit_class: list.to_partition_pair.to_string
+   | (P,b).split_class: P.to_string + ";" + sign(b).to_string
+   esac
 
 set class_string(classical_class cl)=
-case cl
- |cl.class_A: cl.A_class_string
- |cl.class_BC: cl.BC_class_string
- |cl.class_D: cl.D_class_string
- |cl.null_class: ""
-esac
+  case cl
+  | cl.class_A: cl.to_string
+  | cl.class_BC: cl.to_string
+  | cl.class_D: cl.string_rep
+  | else ""
+  esac
 
-set A_irrep_string(A_irrep rep)=rep.to_string
-set BC_irrep_string(BC_irrep rep)=rep.to_string
-set D_irrep_string(D_irrep rep)=
-case rep
- |rep.unsplit_irr: rep.to_string
- |(Bool,P).split_irr: P.to_string + ";" + Bool.to_string
-esac
+set string_rep(D_irrep rep) = string:
+   case rep
+   | pair.unsplit_irr: pair.to_string
+   | (P,b).split_irr: P.to_string + ";" + sign(b).to_string
+   esac
+
+set irrep_string(classical_irrep rep)=
+  case rep
+  | lambda.irrep_A: lambda.to_string
+  | pair.irrep_BC: pair.to_string
+  | r.irrep_D: r.string_rep
+  | else ""
+  esac

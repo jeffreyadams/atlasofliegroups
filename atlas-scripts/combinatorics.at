@@ -53,8 +53,10 @@ set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
    let m=#mu in
    for l@i in lambda
-   do if i>=m then return l.<= elif l!=mu[i] then return l<mu[i] fi
-   od; true { any remaining entries of |mu| are necessarily 0 }
+   do if i>=m then assert(=l,"unequal sum"); return true
+      elif l!=mu[i] then return l<mu[i]
+      fi
+   od; assert(=mu[#lambda:],"unequal sum"); true
 
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
 set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
@@ -73,8 +75,11 @@ set leq_dominance_order_partitions (Partition v,Partition w) = bool:
 set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
    all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
 
+{ cycles with product of signs, for simple types B,C,D }
+set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
+
 { compare lists of signed cycle lengths, ordered minus first then decreasing }
-set leq_signed_cycles ([int,bool] x, [int,bool]y) = bool:
+set leq_signed_cycles (Signed_cycles x, Signed_cycles y) = bool:
 (  let m=min(#x,#y) in
    for i:m
    do let (xi,si)=x[i], (yi,ti)=y[i] in
@@ -85,7 +90,7 @@ set leq_signed_cycles ([int,bool] x, [int,bool]y) = bool:
 ;  #x <= #y { if one is prefix of the other, compare as their lengths do }
 )
 
-set sort_cycle_types([[int,bool]] a) = [[int,bool]]:
+set sort_cycle_types([Signed_cycles] a) = [Signed_cycles]:
    for k in sort(#a,(int i,int j)bool: leq_signed_cycles(a[i],a[j])) do a[k] od
 
 set frequencies (Partition lambda) = vec:
@@ -246,13 +251,13 @@ set index_partition_pair([Partition,Partition] sorted_list) =
 { look up in list of signed cycle types, and translate index found by |map|;
   contrary to previous index functions, the |list| is not assumed ordered
 }
-set index_signed_cycles([[int,bool]] list,[int] map) = ([int,bool]->int):
+set index_signed_cycles([Signed_cycles] list,[int] map) = (Signed_cycles->int):
 (  let l=#list in
 { first ensure that |list| is sorted, and that |map| is permuted accordingly }
    ( let perm = sort(l,(int i,int j):leq_signed_cycles(list[i],list[j])) in
      list := for i in perm do list[i] od; map := for i in perm do map[i] od
    )
-;  ([int,bool] cycle_type) int:
+;  (Signed_cycles cycle_type) int:
       map
       [ binary_search_first
         ( (int i)bool: { whether list[i] equals or comes after cycle_type }
@@ -264,11 +269,11 @@ set index_signed_cycles([[int,bool]] list,[int] map) = ([int,bool]->int):
 
 
 { converting partition pairs to signed cycle types, first means flipped cycles }
-set cycles (Partition lambda,Partition mu) = [int,bool]:
+set cycles (Partition lambda,Partition mu) = Signed_cycles:
   for part in lambda do (part,true) od ## for part in mu do (part,false) od
 
 set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
-set rank ([int,bool] cycles) = int: for (c,) in cycles do c od.sum
+set rank (Signed_cycles cycles) = int: for (c,) in cycles do c od.sum
 
 { compute cycle type of power of a permutation, given its cycle type }
 set cycle_power ([int] cycles, int k) = [int]:
@@ -328,7 +333,7 @@ set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
 { counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
 set hyperoctahedral_character (
       ((Partition lambda, Partition mu){irreducible: (trivial,sign) for {1,-1}}
-      ,[int,bool] signed_cycle_type{describes a conjugacy class}
+      ,Signed_cycles signed_cycle_type{describes a conjugacy class}
       )) = int:
    assert(sum(lambda)+sum(mu)
          =sum(for (c,) in signed_cycle_type do c od),"Size mismatch");
@@ -497,7 +502,7 @@ set classic_permutation (WeylElt w) = [int]:
 set cycle_type ([int] pi) = Partition: { cycle sizes in decreasing order }
   for cycle in permutation_cycles(pi) do #cycle od.reverse_sort
 
-set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
+set signed_cycle_type ([int] sigma) = Signed_cycles: { pairs of cycle and sign }
   let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
   ,   flip   = for a in sigma do a.< od { whether negative, per position }
   then size = for cycle in cycles do #cycle od
@@ -505,12 +510,12 @@ set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
   in for i in inv_standardisation(size) do (size[i],sign[i]) ~od
 
 set cycle_type_order = lcm@[int]
-set cycle_type_order ([int,bool] cycles) = int:
+set cycle_type_order (Signed_cycles cycles) = int:
   for (cycle,sign) in cycles do if sign else cycle then cycle+cycle fi od.lcm
 
 set cycle_centralizer_order ([int] cycles) = int:
   product(cycles)*product(for m in cycles.frequencies do m.fac od)
-set cycle_centralizer_order ([int,bool] cycles) = int:
+set cycle_centralizer_order (Signed_cycles cycles) = int:
   let plus_cycles = ## for (c,s) in cycles do if s then [] else [c] fi od
   ,  minus_cycles = ## for (c,s) in cycles do if s then [c] else [] fi od
   in product(for (cycle,) in cycles do cycle+cycle od)*
@@ -518,7 +523,7 @@ set cycle_centralizer_order ([int,bool] cycles) = int:
      product(for m in minus_cycles.frequencies do m.fac od)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
-set cycle_power ([int,bool] cycles, int k) = [int,bool]:
+set cycle_power (Signed_cycles cycles, int k) = Signed_cycles:
    let m = for (c,) in cycles do c od.(max(0))
    then n_cycles = { multiplicities by cycle length and sign }
      mat: null(m,2) { row index offset by 1, minus_1^(column index) is sign }

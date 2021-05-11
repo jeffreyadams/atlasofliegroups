@@ -3,7 +3,7 @@
 <character_table_C.at
 
 set conjugacy_class_B((Partition,Partition)(P,Q):PQ) = WeylElt:
-   W_elt(Spin(2*(P.sum+Q.sum)+1),cycles_representative_word(PQ))
+   W_elt(Spin(2*(P.sum+Q.sum)+1),class_word_BC(PQ))
 
 {     type B     }
 

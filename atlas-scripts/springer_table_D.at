@@ -114,9 +114,7 @@ rep=if a!=b then
       (a,b).unsplit_irr else
       {two cases have the same pair (a,b), use O itself to distinguish them, two choices here}
       let index=first(for P in partitions_D(O.root_datum.rank) do complex_nilpotent_D(P).diagram_normalized=O.diagram_normalized od) in
-      	  let ()=prints("GOT:", index) in
-       if index>=0 then (true,a).split_irr else
-       (false,a).split_irr fi
+	prints("GOT:", index); (a,index>=0).split_irr
     fi
 then ()=prints("representation:", rep) then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
 index_D_reps(reps,rep)
@@ -199,14 +197,14 @@ let rd=ct.root_datum then
  sign=if =diag~[0] then 1 else -1 fi then
  w=W_elt(rd,for i:n\2 do 2*i od) then
   w_index=find_conjugate(for i:ct.n_classes do ct.class_representatives[i] od,w) then
-  pi_true=(true,a).split_irr.irrep_D  then
+  pi_true=(a,true).split_irr.irrep_D  then
   pi_true_index=index_D_reps(for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od,pi_true.get_irrep_D) then
   val=ct.characters[pi_true_index][w_index] in
 {  ()=prints("sign:", sign, "val: ", val) in}
 {this sign is correct in types D_4 and D_6 by explicit calculation
 see springerD6.txt
 }
-  if sign*val*(-1)^(n\2)>0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
+  if sign*val*(-1)^(n\2)>0 then (a,false).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
 fi
 
 set springer_D_by_induction(CharacterTable ct,ComplexNilpotent O)=D_irrep:

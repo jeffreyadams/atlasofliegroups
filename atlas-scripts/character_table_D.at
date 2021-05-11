@@ -1,12 +1,6 @@
-<nilpotent_orbits.at
+<basic.at
 <character_tables.at
 <character_table_C.at
-
-set_type D_Orbit = (Partition,bool)
- {all even parts have even multiplicity
-  bool is true except if all parts of partition are even, in which case
-  bool can be true or false
-  }
 
 {get actual conjugacy class representatives, i.e. elements of W(D_n),
  from pairs or triples of partitions
@@ -22,43 +16,37 @@ Q=(b_1,...,b_s) -> coxeter element of O(2b_1)x...xO(2b_s)
 the "coxeter element" of O(2b) comes from Sp(2b), and has determinant -1
 =>cneed s to be even
 }
-set conjugacy_class_D(D_class cl)=
-if not cl.is_split then
- let (P,Q)=cl.unsplit_class in
- if #P+#Q=0
-  then id_W(trivial_group)  {special case}
- else
-  let rd=SO(2*(sum(P)+sum(Q))) then
-  M=conjugacy_class_C(Q,P {note switch here}).matrix
-  in lift_sc(W_elt(rd,M))  {lift_sc: W(SO) -> W(Spin)}
- fi
-else
- let (P,Bool)=cl.split_class then
- rd=SO(2*sum(P)) then
-  M=conjugacy_class_C([int]:[],P).matrix in
-  if Bool then lift_sc(W_elt(rd,M)) else
-   let delta=distinguished_involution(inner_class(rd,"u")) in
-   lift_sc(W_elt(rd, delta*M*delta)) {lift_sc: W(SO) -> W(Spin)}
- fi
-fi
+set conjugacy_class_D(D_class c) = WeylElt:
+  case c
+  | unsplit_class(cycles):
+     let (P,Q)=cycles.to_partition_pair, n=rank(cycles)
+     then rd = SO(2*n), M=conjugacy_class_C(Q,P {note switch here}).matrix
+     in lift_sc(W_elt(rd,M))  {lift_sc: W(SO) -> W(Spin)}
+  | split_class(P,switch):
+     let rd=SO(2*sum(P)), M=conjugacy_class_C([int]:[],P).matrix in
+     if switch else lift_sc(W_elt(rd,M))
+     then let delta=distinguished_involution(inner_class(rd,"u")) in
+        lift_sc(W_elt(rd, delta*M*delta)) {lift_sc: W(SO) -> W(Spin)}
+     fi
+  esac
 
 {all irreducible representations of D_n}
 set D_irreps (int n) = [D_irrep]:
-let unsplit=
-##
-for (lambda,mu) in partition_pairs(n)
-  do if lambda !=mu and leq_partitions(mu,lambda) then [(lambda,mu).unsplit_irr] else [] fi
-od then
-(s,r)=n\%2 then
-split=
-##
-if !=r then []
-else
-for lambda in partitions(s)
-   do [(false,lambda).split_irr,(true,lambda).split_irr]
-  od
-fi
-in unsplit##split
+   let unsplit =
+      for (lambda,mu) in partition_pairs(n)
+      do if not leq_partitions(lambda,mu) then [(lambda,mu).unsplit_irr]
+         else []
+	 fi
+      od.##
+   , (q,r)=n\%2
+   then split=
+      if !=r then []
+      else
+         for lambda in partitions(q)
+         do [(lambda,false).split_irr,(lambda,true).split_irr]
+         od.##
+      fi
+   in unsplit##split
 
 {conjugacy classes in type D:
 pair of partitions (P,Q)
@@ -69,46 +57,46 @@ union
 (P,false),(P,true)
 where #P=n, P is very even
 }
-set D_classes(int n)=[D_class]:
-##for (P,Q):pair in partition_pairs(n) do
- if not is_even(#Q) then [D_class]:[] 
- elif !=Q or not is_very_even(P) then [(P,Q).unsplit_class] 
- else [(P,true).split_class,(P,false).split_class]
- fi
-od
+set D_classes(int n) = [D_class]:
+   for (P,Q):pair in partition_pairs(n)
+   do if not is_even(#Q) then []
+      elif not(=Q and is_very_even(P)) then [cycles(P,Q).unsplit_class]
+      else [(P,true).split_class,(P,false).split_class]
+      fi
+   od.##
 
 {make a character table of type D}
 set character_table_D(int n) = CharacterTable:
-let order=n.fac*2^(n-1) then
-classes = D_classes(n) then
-cycles = for class in classes do cycles(class) od then
-ncc=#cycles then
-index = index_D_classes(classes) then
-centralizer_orders = for type in cycles do type.centralizer_order od then
-reps=D_irreps(n)  then
-sign(bool s) = string: if s then "-" else "+" fi
+   let order=n.fac*2^(n-1)
+   then classes = D_classes(n)
+   then ncc=#classes
+   then index = index_D_classes(classes)
+   then centralizer_orders = for class in classes do class.centralizer_order od
+   then reps=D_irreps(n)
+   then sign(bool s) = string: if s then "-" else "+" fi
 in
   (Lie_type(Spin(2*n))    {lie_type}
   , order    {order (of W)}
   , ncc      {n_classes}
   , (int j) classical_class: classes[j].class_D
-  , (int j) string: { class_label }  classes[j].D_class_string
+  , (int j) string: { class_label }  classes[j].string_rep
   , for class in classes do conjugacy_class_D(class) od {class_reps}
-  , (int j) int: cycles[j].cycle_type_order       {class_order}
-  , (int j, int p) int: class(cycle_power(cycles[j],p)).index   {class_power}
+  , (int j) int: classes[j].cycle_type_order       {class_order}
+  , (int j, int p) int: cycle_power(classes[j],p).index   {class_power}
   , centralizer_orders   {class}
   , for co in centralizer_orders do order\co od    {class_sizes}
   , (int i) classical_irrep: reps[i].irrep_D
-  , (int i) string: reps[i].D_irrep_string { irreducible representation label }  {irreducible label}
+  , (int i) string: reps[i].string_rep { irreducible representation label }
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}
-  , [int]:[]  {fake degrees}  
+  , [int]:[]  {fake degrees}
     {character table:}
   , for cl in D_classes(n) do
      for pi in reps do character(pi,cl)
      od
     od
   )
+
 set split_classes(CharacterTable ct)=[classical_class]:
 ##for i:ct.n_classes do if ct.classes(i).get_class_D.is_split then [ct.classes(i)] else [] fi od
 
@@ -128,8 +116,8 @@ set index(CharacterTable ct,D_class c)=int:
 index_D_classes(for i:ct.n_classes do ct.classes(i).get_class_D od,c)
 
 set split_table(CharacterTable ct)=
-let reps=ct.split_reps then
-classes=ct.split_classes in
+let reps=ct.split_reps
+   then classes=ct.split_classes in
 (reps,classes,for pi in reps do
  for c in classes do
   ct.characters[index(ct,pi)][index(ct,c)] od od)
