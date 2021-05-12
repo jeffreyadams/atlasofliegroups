@@ -214,9 +214,10 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+{ generate all bi-partitions of |n| by size distribution, starting all left }
 set partition_pairs (int n) = [Partition,Partition]:
   let list = for i:n+1 do partitions(i) od in
-##for parts_i@i in list
+##for parts_i@i in list ~ { reversal means taking larger partitions first }
   do ##for lambda in parts_i do for mu in list[n-i] do (lambda,mu) od od
   od
 

@@ -60,7 +60,8 @@ set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
 { equality of symbols (not equivalence) }
 set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
-set BC_classes(int n) = [BC_class]: partition_pairs(n)
+set BC_classes(int n) = [BC_class]:
+   for PQ in partition_pairs(n) do to_cycles(PQ) od
 
 { word representative in types B and C of conjugacy class for partition pair;
   the parts of P correspond to are cycles without flip, those of Q with flip }
@@ -82,20 +83,21 @@ then  P_gens = complement(nP,Pbars) { for P part, do the same as in type A }
 in P_gens##Q_gens
 )
 
-{ get |WeylElt| with unflipped cycles from P and flipped cycles from Q }
-set conjugacy_class_C((Partition,Partition)(P,Q):PQ) = WeylElt:
-   W_elt(Sp(2*(P.sum+Q.sum)),class_word_BC(PQ))
+set conjugacy_class_C(BC_class cycles) = WeylElt:
+   let n=cycles.rank in W_elt(Sp(2*n),class_word_BC(cycles.to_partition_pair))
+
+set BC_irreps = partition_pairs@int
 
 set character_table_C(int n) = CharacterTable:
-   let pairs = partition_pairs(n)
+   let class_list =  BC_classes(n)
    then classes = [WeylElt,classical_class,string]:
-      for PQ in pairs
-      do (conjugacy_class_C(PQ), PQ.class_BC,PQ.to_cycles.cycles_string)
+      for cycles in class_list
+      do (conjugacy_class_C(cycles), cycles.class_BC,cycles.cycles_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
-      for chi in pairs
-      do ( chi.irrep_BC, chi.to_string
-         , for PQ in pairs do hyperoctahedral_character(chi,PQ.to_cycles) od
+      for rep in BC_irreps(n)
+      do ( rep.irrep_BC, rep.to_string
+         , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
 	 )
       od
    in character_table(Sp(2*n),classes,irreps)

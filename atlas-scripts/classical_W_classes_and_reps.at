@@ -19,7 +19,7 @@ set_type A_irrep = Partition
 { for types B and C, there is the type |Signed_cycles| from combinatorics.at
   Here we group cycles with |true| negative sign), then cycles with |false|
   (positive sign), each decreasingly sorted, to a order pair of |Paritition|s }
-set_type BC_class = (Partition,Partition)
+set_type BC_class = Signed_cycles
 set_type BC_irrep = (Partition,Partition)
 
 set_type
@@ -60,20 +60,20 @@ set unsplit_class(D_class c) = Signed_cycles:
 
 
 
-set get_class_A(classical_class cl) = Partition:
+set get_class_A(classical_class cl) = A_class:
 case cl
 | class_A(P): P
 | class_BC(x): error("wrong type")
 | class_D(x):  error("wrong type")
-| else []
+| else 	       []
 esac
 
-set get_class_BC(classical_class cl) = (Partition,Partition):
+set get_class_BC(classical_class cl) = BC_class:
 case cl
 | class_A(x):   error("wrong type")
 | class_BC(PQ): PQ
 | class_D(x):   error("wrong type")
-| else          ([],[])
+| else          []
 esac
 
 set get_class_D(classical_class cl) = D_class:
@@ -83,7 +83,7 @@ case cl
 esac
 
 { the inverse of |to_cycles@(Partition,Partition)| in combinatorics.at }
-set to_partition_pair(Signed_cycles cy) = BC_class:
+set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
 ( for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
 , for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
 )
@@ -146,8 +146,8 @@ set centralizer_order (D_class c) = int:
    esac
 
 set D_irreducibles (int n) = [D_irrep]:
- ##for (lambda,mu) in partition_pairs(n)
-   do if leq_partitions(lambda,mu) then [] else [(lambda,mu).unsplit_irr] fi
+ ##for (lambda,):pair in partition_pairs(n)
+   do if leq_partitions(pair) then [] else [pair.unsplit_irr] fi
    od ##
   (let (s,r)=n\%2 in
    if =r else []
@@ -159,11 +159,11 @@ set D_irreducibles (int n) = [D_irrep]:
   )
 
 set D_classes (int n) = [D_class]:
-   for (alpha,beta):pair in partition_pairs(n)
-   do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
-      elif not(=alpha and beta.is_very_even) { whether unsplit }
-      then [(beta,alpha).to_cycles.unsplit_class]
-      else [ (beta,false).split_class, (beta,true).split_class ]
+   for (lambda,mu):pair in partition_pairs(n)
+   do if (#mu).is_odd then [] { must have even number of cycles in |mu| }
+      elif not(=mu and lambda.is_very_even) { whether unsplit }
+      then [pair.to_cycles.unsplit_class]
+      else [ (lambda,false).split_class, (lambda,true).split_class ]
       fi
    od.##
 

@@ -51,10 +51,8 @@ in W_elt(SO(2*rank(c)),word)
 { all irreducible representations of D_n }
 set D_irreps (int n) = [D_irrep]:
    let unsplit =
-      for (lambda,mu) in partition_pairs(n)
-      do if not leq_partitions(lambda,mu) then [(lambda,mu).unsplit_irr]
-         else []
-	 fi
+      for (lambda,):pair in partition_pairs(n)
+      do if not leq_partitions(pair) then [pair.unsplit_irr] else [] fi
       od.##
    , (q,r)=n\%2
    then split=
@@ -67,13 +65,13 @@ set D_irreps (int n) = [D_irrep]:
    in unsplit##split
 
 set character_table_D(int n) = CharacterTable:
-   let pairs = partition_pairs(n), classes =  D_classes(n)
+   let class_list =  D_classes(n)
    then classes = [WeylElt,classical_class,string]:
-      for c in classes do (conjugacy_class(c),c.class_D,c.string_rep) od
+      for c in class_list do (conjugacy_class(c),c.class_D,c.string_rep) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in D_irreps(n)
       do ( rep.irrep_D, rep.string_rep
-         , for class in classes do character(rep,class) od
+         , for class in class_list do character(rep,class) od
 	 )
       od
 in character_table(SO(2*n),classes,irreps)
