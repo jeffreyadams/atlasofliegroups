@@ -14,11 +14,18 @@ set_type [SpringerTable=
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 set root_datum_parent(SpringerTable st)=RootDatum: st.ct.root_datum_parent
+set characters(SpringerTable st)=[[int]]:st.ct.characters
+set fake_degrees(SpringerTable st)=[int]:st.ct.fake_degrees
+set character_table(SpringerTable st)=CharacterTable: st.ct
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:
 if #a != #b then false else
 all(for i:#a do a[i]=b[i] od) fi
+
+set orbit_index(SpringerTable st,ComplexNilpotent orbit)=int:
+let diagram=orbit.diagram_normalized in 
+first(for O in st.orbits do equal(O.diagram_normalized,diagram) od)
 
 {ComplexNilpotent given by diagram}
 set orbit_by_diagram([ComplexNilpotent] orbits,[vec] diagram)=ComplexNilpotent:
@@ -38,19 +45,74 @@ st.root_datum.dual.orbits[index]
 
 {dual_map_i(dual_map(O))}
 set special_closure(SpringerTable st,ComplexNilpotent O)=ComplexNilpotent:
-orbit_by_diagram(st,st.dual_map_i(st.dual_map(O)).diagram_normalized)
+{O.root_datum here: need this to be an orbit O.root_datum}
+orbit_by_diagram(O.root_datum,st.dual_map_i(st.dual_map(O)).diagram_normalized)
 set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(ComplexNilpotent O):special_closure(st,O)
 
 {orbit is special if O=special_closure(O)}
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
-if is_even(O) then true else st.special_closure(O)=O fi
+if is_even(O) then true else {st.special_closure(O)=O this is slow}
+st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized
+fi
 
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):
 is_special(st,O)
 
-{all special orbits}
-set special_orbits(SpringerTable st)=[ComplexNilpotent]:
-##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
+{all special orbits, including numbering from list of all orbits}
+set special_orbits_indexed(SpringerTable st)=([int],[ComplexNilpotent]):
+let indices=[int]:[] then
+orbits=##for O@i in st.ct.root_datum.orbits do if st.is_special(O) then indices#:=i;[O] else [] fi od
+in (indices,orbits)
+set special_orbits(SpringerTable st)=[ComplexNilpotent]:let (,orbits)=special_orbits_indexed(st) in orbits
+
+{often we want special orbits for G, in which the coordinates might be
+different than those in G.springer_table}
+set special_orbits_indexed(RootDatum G,SpringerTable st)=([int],[ComplexNilpotent]):
+let (indices,orbits)=st.special_orbits_indexed in
+(indices, for orbit in orbits do orbit_by_diagram(G,orbit.diagram_normalized) od)
+set special_orbits(RootDatum G,SpringerTable st)=[ComplexNilpotent]:let (,orbits)=special_orbits_indexed(G,st) in orbits
+
+set special_representations_indexed(SpringerTable st)=([int],[[int]]):
+let (indices,orbits)=st.special_orbits_indexed in
+(indices, for orbit in orbits do st.ct.characters[st.springer(orbit)] od)
+
+set special_representations(SpringerTable st)=[[int]]:
+let (,chars)=special_representations_indexed(st) in chars
+
+{st is the Springer table for RootDatum rd
+ O is an orbit for rd
+ special_piece(st,O)=list of orbits for rd:
+ all orbits satisfying d(orbit)=d(O)}
+
+set special_piece(SpringerTable st, ComplexNilpotent O)=[ComplexNilpotent]:
+{first make sure O has the right root datum}
+let O=orbit_by_diagram(st,O.diagram_normalized) then
+O_check=st.dual_map(O) then
+O_special=orbit_by_diagram(st,st.dual_map_i(O_check).diagram_normalized) in  {put special orbit first}
+O_special#
+##for i:#st.orbits do
+  let orbit=st.orbits[#st.orbits-i-1] in {reverse order}
+   if not orbit = O_special and st.dual_map(orbit)=O_check
+    then [orbit]
+    else []
+   fi
+  od
+
+{all orbits satisfying d_inverse(orbit^v)=d_inverse(O^v)}
+set dual_special_piece(SpringerTable st, ComplexNilpotent O_check)=[ComplexNilpotent]:
+{make sure O_check has the correct root datum}
+let O_check=dual_orbit_by_diagram(st,O_check.diagram_normalized) then
+O_special=st.dual_map_i(O_check) then
+O_check_special=st.dual_map(O_special) then
+dual_orbits=st.root_datum.dual_orbits in
+O_check_special#
+##for i:#st.root_datum.dual_orbits do
+  let orbit_check=dual_orbits[#dual_orbits-i-1] in {reverse order}
+   if not orbit_check = O_check_special and st.dual_map_i(orbit_check)=O_special 
+    then [orbit_check]
+    else []
+   fi
+  od
 
 {complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
@@ -144,21 +206,20 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
  tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
-set show_old(SpringerTable st)=void:
-let orbits=st.root_datum.orbits in
-tabulate(["i","O","d(O)","dd(O)","pi","special"] #
- for O@i in orbits do
-  let O_d=st.dual_map(O) then
-  O_dd=st.dual_map_i(O_d) then
-  special=st.is_special(O) then
-  sigma_index=st.springer(O) in
-  [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
- od)
+{inverse Springer map: try to find an orbit (not necessarily special) such
+ that springer(orbit)=given character
+if the character is special this succeeds and gives a special orbit
+otherwise it might fail, in which case it returns (false,0-orbit)
+}
+set springer_inverse(SpringerTable st,int special_character_number)=(bool,ComplexNilpotent):
+let index=first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)
+ in if index=-1 then (false,st.orbits[0]) else (true,st.orbits[index]) fi
+set springer_inverse(SpringerTable st)=(int->(bool,ComplexNilpotent)):(int j):springer_inverse(st,j)
 
-set springer_inverse(SpringerTable st,int special_character_number)=ComplexNilpotent:
-st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)]
-
-set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
+{case of special orbit don't need the boolean}
+set springer_inverse_special(SpringerTable st,int special_character_number)=ComplexNilpotent:
+let (,orbit)=springer_inverse(st,special_character_number) in orbit
+set springer_inverse_special(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse_special(st,j)
 
 set special_star(SpringerTable st,ComplexNilpotent O)=string:
 if is_special(st,O) then "*" else "" fi
@@ -167,3 +228,80 @@ set special_star(SpringerTable st)=(ComplexNilpotent ->string):
 (ComplexNilpotent O):special_star(st,O)
 
 
+{all special representations}
+set special_representations(SpringerTable st)=[int]:
+sort(for orbit in st.special_orbits do st.springer(orbit) od)
+set is_special_representation(SpringerTable st,int i)=in_list(st.special_representations,i)
+set is_special_representation(SpringerTable st)=(int->bool):(int i):is_special_representation(st,i)
+set special_representation_star(SpringerTable st)=(int->string):(int i):
+if is_special_representation(st,i) then "*" else "" fi
+
+
+{ this version of integral_descent is used in weak_packets.at
+  this uses a permutation, which we return since it is needed later
+}
+set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
+      (ComplexNilpotent,mat):
+   let rd = {the original root datum on the group side} O_check.root_datum.dual
+   , O_check_rd_int = {orbit for rd_int_dual} O_check.integral_descent
+   then rd_int = {integrality datum on group side}
+                 integrality_datum(rd,O_check.H/2)
+   then {P is the permutation relating rd_int.derived and st_int.root_datum}
+        (,P)=nice_order(rd_int.derived)
+   then permutation=P.permutation_matrix
+in {by definition permutation should relate the Cartan matrices}
+   assert(permutation*st_int.root_datum.Cartan_matrix =
+          rd_int.Cartan_matrix*permutation
+         ,"permutation does not relate the Cartan matrices");
+{ Note: st_int.root_datum.dual is *adjoint*,
+  so O_check_rd_int.diagram = O_check_rd_int.H }
+  ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
+
+
+set show(SpringerTable st)=void:
+tabulate(
+["diagram","dim","rep#","dim","deg", "fdeg","char"]#
+for orbit in st.orbits do
+let j=st.springer(orbit) in
+[orbit.diagram.to_string+st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+j.to_string,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
+ st.ct.characters[j].to_string] od)
+
+set show_long(SpringerTable st)=void:
+tabulate(
+["#orbit","diagram","dim","dual","dual-dim","rep#","dim","deg", "fdeg","char"]#
+for orbit@i in st.orbits do
+let  dual_orbit=st.dual_map(orbit) then
+j=st.springer(orbit) in
+[i.to_string,
+orbit.diagram.to_string+st.special_star(orbit),
+orbit.dim_nilpotent.to_string,
+dual_orbit.diagram.to_string,
+dual_orbit.dim_nilpotent.to_string,
+j.to_string,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
+ st.ct.characters[j].to_string] od)
+
+set show_reps(SpringerTable st)=void:
+let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in 
+tabulate(
+["rep#","orbit","dim","deg", "fdeg","char"]#
+for j:st.ct.n_classes do 
+[j.to_string,
+ let orbit_index=find(springer_reps,j) in
+  if orbit_index>=0 then
+   let orbit=st.orbits[orbit_index] in orbit.diagram.to_string + st.special_star(orbit)
+  else ""
+  fi,
+st.ct.dimension(j).to_string,
+st.ct.degree(j).to_string,
+if #st.fake_degrees>0 then
+  if st.fake_degrees[j]>=0 then st.fake_degrees[j].to_string else "" fi
+  else "" fi,
+ st.ct.characters[j].to_string] od)
