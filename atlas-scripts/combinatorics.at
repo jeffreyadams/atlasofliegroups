@@ -45,7 +45,7 @@ set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 set strip_to_partition (Partition lambda) = [int]:
   lambda[:1+last(for p in lambda do !=p od)]
 
-set is_very_even(Partition P)=is_integer(P/2)
+set is_very_even(Partition P) = bool: =P%2 { whether all parts are even }
 
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 

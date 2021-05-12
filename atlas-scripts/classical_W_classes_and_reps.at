@@ -127,7 +127,7 @@ set cycle_power (D_class c, int k) = D_class:
    case c
    | cycles.unsplit_class: cycle_power(cycles,k).unsplit_class
    | (alpha,sign).split_class: let beta=cycle_power(alpha,k) in
-     if =beta%2 { whether class remains split (could fail if |k| is even) }
+     if beta.is_very_even { whether class remains split (may fail for even |k|) }
      then (beta,sign).split_class { keep sign when class remains split }
      { an easy way to see that this is right: certainly when |sign=false|, the
        power gets no sign, but since an outer automorphisme interchanges the
@@ -161,10 +161,9 @@ set D_irreducibles (int n) = [D_irrep]:
 set D_classes (int n) = [D_class]:
    for (alpha,beta):pair in partition_pairs(n)
    do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
-      elif != alpha or !=beta%2 { whether unsplit: some negative or odd length }
+      elif not(=alpha and beta.is_very_even) { whether unsplit }
       then [(beta,alpha).to_cycles.unsplit_class]
-      else { alpha is empty, beta has all even parts }
-         [ (beta,false).split_class, (beta,true).split_class ]
+      else [ (beta,false).split_class, (beta,true).split_class ]
       fi
    od.##
 
@@ -187,7 +186,7 @@ set character (D_irrep chi, D_class c) = int:
        let Hn_char = int:
            hyperoctahedral_character((lambda,lambda),pos_cycles(alpha))
        ,   Sn_char = int:
-           assert(=alpha%2,"Split class with odd cycle(s)");
+           assert(alpha.is_very_even,"Split class with odd cycle(s)");
            Murnaghan_Nakayama(lambda, alpha\2)
        then (q,r) = (Hn_char+sign(epsilon!=delta)*2^#alpha*Sn_char)\%2
        in assert(=r,"Parity problem for split-split character value"); q

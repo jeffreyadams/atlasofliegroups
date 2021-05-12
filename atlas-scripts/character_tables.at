@@ -57,7 +57,7 @@ let Wct = W_class_table(rd)
 ,   order= rd.order_W { recomputed; fix |WeylClassTable| to provide it }
 then n=Wct.n_classes
 then class_map = [int]:
-      assert(#class_reps=n,"There should be "+n+" class reprensentatives")
+      assert(#class_reps=n,"There should be "+n+" class representatives")
     ; assert(#chars=n,"There should be "+n+" irreducible characters")
     ; for i:n do Wct.class_of(let (w,,)=class_reps[i] in w) od
 then inv_map = inverse(class_map)
@@ -65,7 +65,7 @@ then inv_map = inverse(class_map)
 , rearrange([int] val) = [int]: for i:n do val[class_map[i]] od
 then irreps = [classical_irrep]: for (ci,,) in chars do ci od
 , labels = [string]: for (,s,) in chars do s od
-, character_table = mat: n ^ for (,,char) in chars do char od
+, character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
 , degrees = [int]:
   for i:n
   do
