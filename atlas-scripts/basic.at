@@ -751,6 +751,8 @@ set str (LieType t) = string:
 
 {                               Root data                               }
 
+set central_torus_rank (RootDatum rd) = int: rd.Lie_type.central_torus_rank
+
 { provide default values for coroot preference when building root data }
 
 set derived_is_simple(RootDatum rd) = bool: Lie_type(rd).derived_is_simple
@@ -1070,8 +1072,8 @@ ratvec_as_vec(move(v,rd_1,rd_2))
 
 {                               Weyl group				}
 
-set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
-set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
+set id_W (RootDatum rd) = WeylElt: W_elt(rd,[int]:[])
+set W_gen (RootDatum rd, int s) = W_elt(rd,[s])
 set W_gens (RootDatum rd) = [WeylElt]:
   for s:rd.semisimple_rank do W_elt(rd,[s]) od
 set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
