@@ -49,13 +49,13 @@ set_type
 ]
 
 
-set character_table ( RootDatum rd
+set character_table ( WeylClassTable Wct
     		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-let Wct = W_class_table(rd)
-,   order= rd.order_W { recomputed; fix |WeylClassTable| to provide it }
-then n=Wct.n_classes
+let    rd  = Wct.root_datum
+then order = rd.order_W { recomputed; fix |WeylClassTable| to provide it }
+,    n     = Wct.n_classes
 then class_map = [int]:
       assert(#class_reps=n,"There should be "+n+" class representatives")
     ; assert(#chars=n,"There should be "+n+" irreducible characters")
@@ -95,6 +95,12 @@ in
 , { fake_degrees} [int]: [] { to be set afterwards }
 , { table } mat: character_table
 )
+
+set character_table ( RootDatum rd
+		    , [WeylElt,classical_class,string] class_reps
+		    , [classical_irrep,string,[int]] chars
+		    ) =  CharacterTable:
+    character_table ( W_class_table(rd), class_reps, chars )
 
 set initialize_character_table (LieType lt) = CharacterTable:
 (  assert(lt.is_simple,"LieType is not simple")
