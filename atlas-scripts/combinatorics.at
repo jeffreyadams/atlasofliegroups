@@ -468,17 +468,15 @@ set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
 
 set permutation_cycles ([int] pi) = [[int]]:
   let n=#pi then todo = for :n do true od in
-  while let i=first(todo) in i.>=
-  do
-    while todo[i] do todo[i]:=false; i next i:=pi[i] od
-  od
+  for start:n { try every index once as |start|, those visited give 0-cycles }
+  do let i=start { we need a modifiable index }
+     then cycle = while todo[i] do todo[i]:=false; i next i:=pi[i] od
+     in if =#cycle then [] else [cycle] fi { suppress the 0-cycles }
+  od.##
 
 { Find classical (permutation or signed permutation) description of Weyl group
   elements in classical types. The associated root datum must have one simple
-  factor of type A-D, with standard (Bourbaki) numbering of the Dynkin diagram.
-  Such a root datum can be obtained from classical factors in the Lie type from
-  |Cartan_matrix_type|, by taking Levi subdatum of the corresponding simple
-  roots/coroots, following the mapping that |Cartan_matrix_type| also supplies.
+  factor of type A-D, but need not have standard (Bourbaki) diagram numbering.
 
   The output is a (signed) permutation in one-line format. For type $A_n$ this
   is just a permutation of $n+1$ (hence 0-based), for types $B_n$, $C_n$, $D_n$
@@ -487,18 +485,20 @@ set permutation_cycles ([int] pi) = [[int]]:
   the images of $1, 2, ..., n$ (1-based); it determines the signed permutation.
 }
 set classic_permutation (WeylElt w) = [int]:
-  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
-  then factors=simple_factors(lt) then nf=#factors
-  in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components");
-  let (type,rank)=factors[0] in
-  assert(map=#rank,"Dynkin diagram is not in standard order");
-  case char_index(type,"ABCD")
-  else error("Root datum of exceptional type "+type)
-  in let n=rank+1 in (vec:#n)*W_elt(GL(n),w.word) { right act on [0,1,...,n-1] }
-  , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),w.word)
-  , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),w.word)
-  , (vec:for i:rank from 1 do i od)*W_elt(SO(rank+rank),w.word)
-  esac
+(  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+   then factors=simple_factors(lt) then nf=#factors
+in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
+;  let word = { |w.word| translated to word for Bourbaki numbered diagram }
+      let inv = permutation_inverse(map) in for s in w.word do inv[s] od
+   , (type,rank)=factors[0]
+in case char_index(type,"ABCD")
+   in let n=rank+1 in (vec:#n)*W_elt(GL(n),word) { right act on [0,1,...,n-1] }
+   , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),word) { B is same as C }
+   , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),word)
+   , (vec:for i:rank from 1 do i od)*W_elt(SO(rank+rank),word)
+   else error("Root datum of exceptional type "+type)
+   esac
+)
 
 set cycle_type ([int] pi) = Partition: { cycle sizes in decreasing order }
   for cycle in permutation_cycles(pi) do #cycle od.reverse_sort
@@ -523,6 +523,11 @@ set cycle_centralizer_order (Signed_cycles cycles) = int:
      product(for m in plus_cycles.frequencies do m.fac od)*
      product(for m in minus_cycles.frequencies do m.fac od)
 
+set cycle_class_order ([int] cycles) = int:
+  cycles.sum.fac \ cycle_centralizer_order(cycles)
+set cycle_class_order (Signed_cycles cycles) = int:
+  let n=rank(cycles) in n.fac * 2^n \ cycle_centralizer_order(cycles)
+
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (Signed_cycles cycles, int k) = Signed_cycles:
    let m = for (c,) in cycles do c od.(max(0))
@@ -536,6 +541,11 @@ in for (l,sign) in cycles
     ##for l:m from 1 ~do for :n_cycles[l-1,b] do (l,kind) od od
    od
 
+{ the inverse of |to_cycles@(Partition,Partition)| }
+set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
+( for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
+, for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
+)
 
 { the same for Weyl groups of type $D_n$: in classical_W_classes_and_reps.at }
 

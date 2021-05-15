@@ -82,15 +82,9 @@ case cl
 | else          error("wrong type")
 esac
 
-{ the inverse of |to_cycles@(Partition,Partition)| in combinatorics.at }
-set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
-( for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
-, for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
-)
-
-
-
 {-------------------------------------------------------------------}
+
+
 set get_irrep_A(classical_irrep rep) = [int]:
    case rep | P.irrep_A: P | else error("wrong type") esac
 
@@ -100,7 +94,6 @@ set get_irrep_BC(classical_irrep rep) = ([int],[int]):
 set get_irrep_D(classical_irrep rep) = D_irrep:
    case rep | val.irrep_D: val | else error("wrong type") esac
 
-{-------------------------------------------------------------------}
 
 {some cases special to type D:}
 { recover the value of |n| }
@@ -144,6 +137,9 @@ set centralizer_order (D_class c) = int:
        { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
        alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
+
+set class_order (D_class c) = int:
+  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
 
 set D_irreducibles (int n) = [D_irrep]:
  ##for (lambda,):pair in partition_pairs(n)
