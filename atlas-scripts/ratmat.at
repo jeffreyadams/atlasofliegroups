@@ -13,7 +13,7 @@
 }
 
 <basic.at
-<matrix.at
+<matrix.at { for |ech_up@(mat,[int])|, used for one-sided inverses }
 
 set_type [ ratmat = (mat,string,int) ] { matrix, slash, common denominator }
 { the void component avoids unary/binary conflicts, as for -@(mat,int) }

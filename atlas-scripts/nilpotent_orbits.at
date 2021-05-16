@@ -1,8 +1,7 @@
 <center.at { for |lie_compact_radical)@InnerClass| }
-<induction.at { for |embed_KGB@(KGBElt,RealForm)| }
+<induction.at { for |is_coh_ind_from_finite_dimensional| }
 <all_finite_order.at
 <subgroups.at
-{<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}}
 <twisted_conjugacy.at
 
 set nilpotent_verbose=false
@@ -429,7 +428,7 @@ set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S) = [KGBElt]:
             od.sum
       in if dimension(K_0(Levi_of_orbit(real_nilpotent(H,x_M))))
            =dim_center+number_roots
-         then [embed_KGB(x_M,G)]
+         then [KGB_elt(G,x_M)]
          else []
          fi
       fi

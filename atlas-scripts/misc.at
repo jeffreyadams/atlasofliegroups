@@ -111,23 +111,16 @@ set prettyPrint (ParamPol P)= void:
 for w@p in P
 do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
 
-{ a few basic utility functions, used to be in complex_nilpotent_orbits.at }
-{ prefix every element of |A| with every element of |v|, gather results }
-set smash ([int] v,[[int]] A)=[[int]]:
-  ## for a in A do for c in v do c#a od od
-
 {. Cartesian power (#height)^rank, lists of length rank of numbers <height .}
 set rec_fun box(int height, int rank) = [[int]]:
-  if rank=0 then [[]] else smash(#height,box(height,rank-1)) fi
+  all_words(for :rank do height od) { converted from [vec] to [[int]] }
 
 {. Cartesian product (#heights[0])*(#heights[1])*...*(heights~[0]) .}
-set rec_fun box([int] heights) = [[int]]:
-  if #heights=0 then [[]] else smash(#heights[0],box(heights[1:])) fi
+set rec_fun box([int] heights) = [[int]]: all_words(heights) { converted }
 
 set flatten = ## @ [[int]]
 
-{formerly defined in combinatorics.at as strip_to_partition@[int]}
-{delete trailing zeros}
+{delete trailing zeros, a.k.a. |strip_to_partition| from combinatorics.at }
 set delete_trailing_zeros([int] list)=[int]:
 if =list then null(0) else list[:#list-first(for i:#list do !=list~[i] od)] fi
 
