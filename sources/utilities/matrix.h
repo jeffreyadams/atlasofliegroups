@@ -380,6 +380,7 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix block(unsigned int i0, unsigned int j0, // upper left
 		   unsigned int i1, unsigned int j1  // lower right
 		   ) const;
+  // return a block of the transposed matrix, without calling |transposed|
   PID_Matrix transposed_block // same as |transposed().block(i0,j0,i1,j1)|
     (unsigned int i0, unsigned int j0, // upper left
      unsigned int i1, unsigned int j1  // lower right
