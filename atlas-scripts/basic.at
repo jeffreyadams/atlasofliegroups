@@ -276,10 +276,10 @@ set c_adjust (int w, string s) = string:
 set width (int n) = int: #int_format(n)
 
 set split_lines (string text) = [string]:
-  let result = [string]: [], a=for c in text do c od, last=0 in
-  for c@i in a
-  do if c=new_line then result #:= concat(a[last:i]); last:=i+1 fi
-  od; result
+  let last=0 in
+  for c@i in text
+  do if c=new_line else [] then [text[last:i]] next last:=i+1 fi
+  od.##
 
 set is_substring (string s, string text) = bool:
   let s0=for c in s do c od, t0=for c in text do c od in
