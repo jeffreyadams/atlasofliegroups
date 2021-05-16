@@ -317,11 +317,19 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
-set rec_fun all_0_1_vecs (int n) = [vec]:
-  if n<=0 then [null(0)]
-  else let list=all_0_1_vecs(n-1) in
-    for v in list do v#0 od  ##  for v in list do v#1 od
-  fi
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+  let rec_fun generate(int final) = [vec]:
+     if =final then [null(0)]
+     else final-:=1; let limit=limits[final] in
+          for prefix in generate(final)
+          do for i:limit do prefix#i od
+	  od.##
+     fi
+  , size=#limits
+  in size # generate(size) { ensure column size |size|, even for empty set }
+
+set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
   if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
@@ -1273,11 +1281,13 @@ set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }
   in KGB_elt(rf,theta,v)    { find KGB element within rf }
 
-{ NB: elements produced by the following function test unequal to any others }
 set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
-  let ic = inner_class(rd,theta)   { find the proper inner class }
-  then rf = real_form(ic,theta,v)  { find real form within ic }
-  in KGB_elt(rf,theta,v)           { find KGB element within rf }
+  KGB_elt(inner_class(rd,theta), theta, v)
+
+{ transfer to other inner class (or real form) that shares coordinates,
+  this can be used for instance to embed the KGB set of a Levi subgroup }
+set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
+  KGB_elt(ic, x.involution, x.torus_factor)
 
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
