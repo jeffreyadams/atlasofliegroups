@@ -104,3 +104,21 @@ set fibonacci = inf_list:
   the same list elements. That inefficient version would also be obtained by
   | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |
 }
+
+
+{			    Formal power series				}
+
+pentagonal_series : inf_list:
+@:(1
+  , (1,false,1).
+    (rec_fun f (int k, bool upper, int i) inf_list:
+     @: if i+i= if upper else k*(3*k-1) then k*(3*k+1) fi
+        then (minus_1^k, f(k+#upper,not upper,i+1))
+        else (0,f(k,upper,i+1))
+        fi
+    )
+  )
+
+set n_parts = memoize(inverse(pentagonal_series))
+set n_partitions (int n) = int:
+  let (x,ff)=n_parts() in for :n do set(x,ff):=ff() od; x

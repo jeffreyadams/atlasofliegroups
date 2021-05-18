@@ -4,7 +4,6 @@
 
 <basic.at
 <sort.at
-<lazy_lists.at { for |inf_list| type and related stuff }
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
 set fac (int n) = int:
@@ -33,9 +32,21 @@ set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
    let p=1 in for i:k from n do p*:=i od; p
 
 
+{		some transformations of sequences of numbers		}
+
+set cumulate_forward ([int] seq) = [int]:
+   let sum=0 in for k in seq do sum+:=k od
+set cumulate_backward ([int] seq) = [int]:
+   let sum=0 in for k in seq ~do sum+:=k ~od
+
+set forward_differences ([int] seq) = [int]: { inverse of |cumulate_forward| }
+   let last=0 in for k in seq do k-last next last:=k od
+set backward_differences ([int] seq) = [int]: { inverse of |cumulate_backward| }
+   let last=0 in for k in seq ~do k-last next last:=k ~od
+
 { extract components at even or odd positions }
-set even_places ([int] v) = for i:ceil(#v/2) do v[2*i] od
-set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
+set even_places ([int] v) = for i:-(-#v)\2 do v[2*i] od
+set odd_places  ([int] v) = for i:#v\2 do v[2*i+1] od
 
 
 {				Partitions				}
@@ -43,11 +54,11 @@ set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
 set strip_to_partition (Partition lambda) = [int]:
-  lambda[:1+last(for p in lambda do !=p od)]
+  lambda[:1+last(#lambda,(int i)bool: !=lambda[i])]
 
 set is_very_even(Partition P) = bool: =P%2 { whether all parts are even }
 
-set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
+set is_partition ([int] seq) = bool: backward_differences(seq).>=
 
 { comparing partitions of same |n| lexicographically; implicitly 0-extend }
 set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
@@ -61,29 +72,39 @@ set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
 set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
-  if sl=sm else sl<sm then leq_equal_sum_partitions(pair) fi
+  if sl!=sm then sl<sm else leq_equal_sum_partitions(pair) fi
 
-{ dominance order of partitions}
+{ dominance order of partitions }
 set leq_dominance_order_partitions (Partition v,Partition w) = bool:
-   assert(sum(v)=sum(w),"not comparable");
-   assert(v.>= and w.>= , "negative terms");
-   v:=reverse_sort(v); w:=reverse_sort(w);
-   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
+   if =#v then assert(=w ,"not comparable"); true
+   elif =#w then assert(=v ,"not comparable"); true
+   else v:=reverse_sort(v); w:=reverse_sort(w)
+   ; assert(v~[0].>= and w~[0].>=,"negative terms")
+   ; let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
+     in assert(sums_v~[0]=sums_w~[0],"not comparable")
+     ; for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all { need exactly these }
+   fi
 
 { same as previous but assume each term is already reverse sorted,
   and all terms are comparable }
 set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
-   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
+   let sums_v = cumulate_forward(v), sums_w = cumulate_forward(w)
+   in for i:min(#v,#w) do sums_v[i]<=sums_w[i] od.all
+
 
 { cycles with product of signs, for simple types B,C,D }
 set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
 
-{ compare lists of signed cycle lengths, ordered minus first then decreasing }
+{ although permutation of pairs within |Signed_cycles| should not alter their
+  meaning, the following defines a (lexicographic) total ordering that does not
+  respect such equivalence; it is presumed each |Signed_cycles| is normalised }
+
+{ compare lists of signed cycle lengths; mathematically meaningless total order }
 set leq_signed_cycles (Signed_cycles x, Signed_cycles y) = bool:
 (  let m=min(#x,#y) in
    for i:m
    do let (xi,si)=x[i], (yi,ti)=y[i] in
-      if si!=ti then return ti { have (a,+)<(b,-): in this case LHS has + only }
+      if si!=ti then return ti { have (a,+)<(b,-) }
       elif xi!=yi then return xi<yi
       fi
    od
@@ -114,6 +135,9 @@ set transpose (Partition lambda) = Partition:
     od
   fi
 
+
+{ generating all partitions; for counting, see |n_partitions| in lazy_lists.at }
+
 set partitions = (int n) [Partition]:
   if n.< then []
   else
@@ -133,6 +157,8 @@ set partitions = (int n) [Partition]:
     od
   ; ##table~[0] { concatenate entries of final table row }
   fi
+
+{ generating partitions, all of whose parts must lie in a given set }
 
 set part_restricted_partitions ((int->bool)pred) =
   (int n) [Partition]:
@@ -405,13 +431,14 @@ set core_number (int k) = int: assert(k.>=); case k in -k\2, -k\-2 esac
 set from_core_quotient_2 (int d,Partition mu,Partition nu) = Partition:
 
 { Implementation is delicate, as we must represent infinite sets finitely.
-   Initially take just one number for each (nonzero) part of each partition, and
-   record the first numbers |k|, |l| that are omitted in this representation.
-   Also reverse the order to increasing, since this is what |merge@([int,[int])|
-   defined in sort.at assumes. Before merging, we need to "even out" the
-   (negative) heads of the lists by adding omitted terms to one of them, those
-   whose absent would produce gaps in the merged result. The first such term to
-   be added (if any) is 3 more than the first omitted term in the other list.
+
+  Initially take just one number for each (nonzero) part of each partition, and
+  record the first numbers |k|, |l| that are omitted in this representation.
+  Also reverse the order to increasing, since this is what |merge@([int,[int])|
+  defined in sort.at assumes. Before merging, we need to "even out" the
+  (negative) heads of the lists by adding omitted terms to one of them, those
+  whose absent would produce gaps in the merged result. The first such term to
+  be added (if any) is 3 more than the first omitted term in the other list.
 }
 (  let evens = for m@i in mu do 2*(m-i-1+d) ~od { space out and reverse }
    ,   odds = for n@i in nu do 2*(n-i-1-d)+1 ~od { likewise }
@@ -549,19 +576,3 @@ set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
 
 { the same for Weyl groups of type $D_n$: in classical_W_classes_and_reps.at }
 
-
-{			    Formal power series				}
-pentagonal_series : inf_list:
-@:(1
-  , (1,false,1).
-    (rec_fun f (int k, bool upper, int i) inf_list:
-     @: if i+i= if upper else k*(3*k-1) then k*(3*k+1) fi
-        then (minus_1^k, f(k+#upper,not upper,i+1))
-        else (0,f(k,upper,i+1))
-        fi
-    )
-  )
-
-set n_parts = memoize(inverse(pentagonal_series))
-set n_partitions (int n) = int:
-  let (x,ff)=n_parts() in for :n do set(x,ff):=ff() od; x
