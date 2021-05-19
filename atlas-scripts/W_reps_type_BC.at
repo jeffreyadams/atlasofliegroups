@@ -24,7 +24,7 @@
 set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
 set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
-set_type Hn_rep  =(Partition,Partition)
+set_type Hn_rep = BiPartition
   { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
 
 { use equivalence relation on symbols to get one with at most one 0 }
@@ -78,12 +78,9 @@ set wrep (Symbol S) = Hn_rep:
 , for g_i@i in S[1] do g_i-i ~od.strip_to_partition
 )
 
-{ Orbit -> Hn_rep
-  Use |core_quotient_2|, but swap quotient to match |P.symbol.wrep|
-  The reason is that |symbol@Orbit| uses |P~[i]+i| without |-1|, flipping parity
-}
+{ Orbit -> Hn_rep }
 set wrep (Orbit P) = Hn_rep:
-   let (d,mu,nu) = core_quotient_2(P) in assert(=d,"Illegal partition"); (nu,mu)
+   let (d,pair) = core_quotient_2(P) in assert(=d,"Illegal partition"); pair
 
 {Hn_rep to Symbol}
 set symbol (Hn_rep(p,q)) = Symbol:
@@ -92,7 +89,7 @@ set symbol (Hn_rep(p,q)) = Symbol:
    [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
 
 {Hn_rep -> Orbit}
-set orbit (Hn_rep(nu,mu)) = Orbit: from_core_quotient_2(0,mu,nu)
+set orbit (Hn_rep pair) = Orbit: from_core_quotient_2(0,pair)
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
@@ -392,7 +389,7 @@ in (rank,A_Levis,AC_Levis,Partition:[],Partition:[]) { initial values } .
    (rec_fun f
          (int rank, [Partition] A_Levis, [(int,Partition)] AC_Levis
          , Partition p, Partition q)
-         (Partition,Partition):
+         Hn_rep:
       if #A_Levis=0 and #AC_Levis=0
       then prints("Done with p=",p, "q=",q)
       ;  assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
