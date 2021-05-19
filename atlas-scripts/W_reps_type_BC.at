@@ -104,13 +104,26 @@ set large_symbol_C(Symbol S)=Symbol:
 [for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j+1 od]
 set large_symbol_B(Symbol S)=Symbol:
 [for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j od]
-set large_symbol(string type,Symbol S)=
- if type="B" then large_symbol_B(S)
- elif type="C" then large_symbol_C(S)
- else error("wrong type") fi
-set large_symbol(RootDatum rd,Symbol S)=
-  let (letter,)=rd.simple_type in large_symbol(letter,S)
 
+set large_symbol(RootDatum rd,Symbol S)=Symbol:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
+if rd.type_number=1 then large_symbol("B",S)
+else  large_symbol("C",S) fi
+
+set small_symbol_C(Symbol S_large)=Symbol:
+[for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-(j+1) od]
+set small_symbol_B(Symbol S_large)=Symbol:
+[for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-j od]
+set small_symbol(RootDatum rd,Symbol S_large)=Symbol:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
+if rd.type_number=1 then small_symbol_B(S_large)
+else  small_symbol_C(S_large) fi
+
+{Hn_rep to Symbol}
+set large_symbol (RootDatum rd,Hn_rep(p,q)) = Symbol:
+large_symbol(rd,symbol(p,q))
 
 
 { Symbol -> Orbit partial map for specific types, but defined uniformly }
@@ -167,6 +180,11 @@ set all_reps_BC (int n) = [Hn_rep]:
       od.## { and everything gets concatenated to a single list }
    od.##
 
+set all_reps_BC(RootDatum rd)=[Hn_rep]:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
+all_reps_BC(rd.rank)
+
 { a (normalized) symbol is special if f_0<=g_0<= f_1...;
   this is the "raison d'etre" of |Symbol|
 }
@@ -186,8 +204,14 @@ set special_star (Orbit P)   = string: if is_special(P) then "*" else "" fi
 set special_star (Hn_rep sigma) = string:
    if is_special(sigma) then "*" else "" fi
 
-{
-these commands were based on orbits, which was misguided, see new version below}
+{reorder a list of symbols to put a special one first,
+ typically this is used when the special symbol is unique,
+ but that isn't enforced}
+set special_first([Symbol] symbols)=[Symbol]:
+let index=first(for S in symbols do S.is_special od) in
+symbols[index]#symbols[:index]##symbols[index+1:]
+
+{these commands were based on orbits, which was misguided, see new version below}
 set symbols (RootDatum rd) = [Symbol]:
    for P in nilpotent_orbit_partitions(rd) do symbol(P) od
 set wreps (RootDatum rd)=[Hn_rep]:
@@ -210,6 +234,8 @@ od
 set symbols(RootDatum rd)=[Symbol]:
 for rep in wreps(rd) do symbol(rep) od
 
+set large_symbols(RootDatum rd)=[Symbol]:
+for S in rd.symbols do large_symbol(rd,S) od
 
 { given a cell C, get list of tau invariants from it,
   then construct the Levi set of C:
@@ -540,3 +566,71 @@ prints(new_line,"type ",letter,rank);tabulate(
    if is_valid(letter,orbit) then orbit.to_string else "" fi
   in
   [S.to_string,large_symbol(rd,S).to_string,rep.to_string,rep.special_star,orbit_string] od)
+
+set entries(Symbol S)=[int]:sort(##S)
+
+{this test aborts via an assert, or returns void}
+set test_simple_BC(RootDatum rd)=void:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C")
+
+set lusztig_cell_classical(RootDatum rd,Symbol S_0) =[Symbol]:
+test_simple_BC(rd);
+let orig=entries(S_0) in
+##for S in symbols(rd) do if entries(S)=orig then [S] else [] fi od
+
+set lusztig_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
+test_simple_BC(rd);
+let orig=entries(symbol(pi)) in
+##for sigma in all_reps_BC(rd) do if entries(symbol(sigma))=orig then [sigma] else [] fi od
+
+set lusztig_cells_classical(RootDatum rd) =[[Symbol]]:
+test_simple_BC(rd);
+let symbols=symbols(rd) then
+rv=[[Symbol]]:[] in
+for S in symbols do
+ let index=first(for i:#rv do entries(rv[i][0])=entries(S) od) in
+ if index=-1 then rv##:=[[S]] else  rv[index]##:=[S] fi
+od;rv
+
+set springer_cell_classical(RootDatum rd,Symbol large_symbol_S_0) =[Symbol]:
+test_simple_BC(rd);
+let orig=entries(large_symbol_S_0) in
+##for S in symbols(rd) do
+ let T=large_symbol(rd,S) in
+  if entries(T)=orig then [T] else [] fi od
+
+set springer_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
+test_simple_BC(rd);
+let orig=entries(large_symbol(rd,symbol(pi))) in
+##for sigma in all_reps_BC(rd) do if entries(large_symbol(rd,sigma))=orig then [sigma] else [] fi od
+
+set springer_cells_classical(RootDatum rd) =[[Symbol]]:
+test_simple_BC(rd);
+let rv=[[Symbol]]:[] in
+for T in large_symbols(rd) do
+ let index=first(for i:#rv do entries(rv[i][0])=entries(T) od) in
+ if index=-1 then rv##:=[[T]] else  rv[index]##:=[T] fi
+od;
+{now process to put the special one first}
+for symbols in rv do special_first(symbols) od
+
+set show_lusztig_cells_classical(RootDatum rd)=void:
+let symbols=lusztig_cells_classical(rd) in
+for i:#symbols do
+ prints(new_line,"entries: ", entries(symbols[i][0]));
+ tabulate([" ","symbol","rep"]#for S in symbols[i] do [" ",S.to_string, wrep(S).to_string] od)
+od
+
+set show_springer_cells_classical(RootDatum rd)=void:
+let large_symbols=springer_cells_classical(rd) in
+for i:#large_symbols do
+ let small_symbol=small_symbol(rd,large_symbols[i][0]) in 
+  prints(new_line,"orbit: ", orbit(rd,small_symbol), "  entries: ", entries(large_symbols[i][0]) );
+tabulate([" ","symbol","large symbol","rep","orbit"]#for T in large_symbols[i] do
+  let S=small_symbol(rd,T) in [" ",S.to_string+S.special_star,T.to_string, wrep(S).to_string, orbit(rd,S).to_string] od)
+od
+
+
+
+
