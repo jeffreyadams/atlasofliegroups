@@ -29,27 +29,32 @@ set check_orthogonality (character_table t) = bool:
    let n=t.n_classes, dot=t.scalar_product in
    for i:n do for j:n do dot(i,j) = #(i=j) od.all od.all
 
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set cycles_string ([int] cycles) = string:
+   (  "[", cycles.parts_string ,  "]" ).to_string
+set irred_string ([int] cycles) = string:
+   (  "{", cycles.parts_string ,  "}" ).to_string
+
+
 set character_table_S(int n) = character_table:
   let order=n.fac, partitions_n = partitions(n)
   then index = index_partition(partitions_n)
   , c_orders=for lambda in partitions_n do cycle_centralizer_order(lambda) od
-  , class_or_irrep_string (int j) = string: partitions_n[j].to_string
 in
   ( order
-  , class_or_irrep_string
+  , (int j) string: partitions_n[j].cycles_string
   , (int j) int: partitions_n[j].cycle_type_order
   , (int j, int p) int: cycle_power(partitions_n[j],p).index
   , c_orders
   , for co in c_orders do order\co od
-  , class_or_irrep_string
+  , (int j) string: partitions_n~[j].irred_string
   , #partitions_n ^ { gather rows of this size: }
     for lambda in partitions_n
-    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od
+   ~do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od
     od
   )
 
 set sign_string (bool s) = string: if s then "-" else "+" fi
-set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
 set cycles_string ([int,bool] cycles) = string:
 (  "["
    ##
@@ -61,45 +66,56 @@ set cycles_string ([int,bool] cycles) = string:
  ##
    "]"
 )
+set irred_string(BiPartition(mu,lambda)) = string:
+   ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string
 
 set character_table_H(int n) = character_table:
-  let order=n.fac*2^n, irred = partition_pairs(n)
-  then class = for pair in irred do pair.cycles od
+  let order=n.fac*2^n
+  then class = for pair in partition_pairs(n) do pair.cycles od
+  , irred = weighted_pairs(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
   then index = index_signed_cycles(class,#(#class))
   , c_orders = for type in class do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
-in
+  in
   ( order
   , (int j) string: { class_label } class[j].cycles_string
   , (int j) int: class[j].cycle_type_order
   , (int j, int p) int: cycle_power(class[j],p).index
   , c_orders
   , for co in c_orders do order\co od
-  , (int i) string: { irreducible representation label }
-    let (mu,lambda)=irred[i] { mu for the sign character} in
-       "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
+  , (int i) string: { irreducible representation label } irred[i].irred_string
   , #class ^ { gather rows of this size: }
     for pair in irred
     do for cycle_type in class do hyperoctahedral_character(pair,cycle_type) od
     od
   )
 
+
+set cycles_string (Dn_class c) = string:
+    case c
+    | cycles.unsplit_class: cycles.cycles_string
+    | (alpha,s).split_class: (alpha,sign(s)).to_string
+    esac
+set irred_string(Dn_irrep chi) = string:
+  case chi
+  | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
+    ("{",mu.parts_string,"|",lambda.parts_string,"}").to_string
+  | (mu,s).split_irr:
+    ("{",mu.parts_string,"|",mu.parts_string,"}",s.sign_string).to_string
+  esac
+
 set character_table_D(int n) = character_table:
 ( let order=n.fac*2^(n-1)
   , irred = Dn_irreducibles(n)
   , class = Dn_classes(n)
-  , unsplits = [[int,bool]]:[], splits = [Partition]: []
-  then unsplit_indices =
-   ##for c@i in class
-     do case c | cycles.unsplit_class: unsplits #:= cycles; [i] | else [] esac
-     od
+  then unsplits =
+    for c in class do case c | cyc.unsplit_class:[cyc] | else [] esac od.##
+  , unsplit_indices =
+    for c@i in class do case c | cycles.unsplit_class:[i] | else [] esac od.##
+  , splits =
+    for c in class do case c | (mu,).split_class:[mu] | else [] esac od.##
   , split_indices =
-   ##for c@i in class
-     do case c
-        | (alpha,neg).split_class: if neg then [] else splits #:= alpha; [i] fi
-        | else []
-        esac
-     od
+    for c@i in class do case c | (,).split_class:[i] | else [] esac od.##
   then index_unsplit = index_signed_cycles(unsplits,unsplit_indices)
   , index_split = index_partition(splits) { |splits| is born in sorted order }
   then index(Dn_class C) = int:
@@ -111,22 +127,12 @@ set character_table_D(int n) = character_table:
   , sign(bool s) = string: if s then "-" else "+" fi
 in
   ( order
-  , (int j) string: { class_label }
-    case class[j]
-    | cycles.unsplit_class: cycles.cycles_string
-    | (alpha,s).split_class: alpha.to_string ## sign(s)
-    esac
+  , (int j) string: { class_label } class[j].cycles_string
   , (int j) int: class[j].cycle_type_order
   , (int j, int p) int: cycle_power(class[j],p).index
   , c_orders
   , for co in c_orders do order\co od
-  , (int i) string: { irreducible representation label }
-    case irred[i]
-    | (lambda,mu).unsplit_irr: { here we keep the stored order of partitions }
-      "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
-    | (mu,s).split_irr:
-      "{" ## mu.parts_string ## " | " ## mu.parts_string ## "}" ## s.sign_string
-    esac
+  , (int i) string: { irreducible representation label } irred[i].irred_string
   , #class ^ { gather rows of this size: }
     for chi in irred do for C in class do Dn_character(chi,C) od od
   )

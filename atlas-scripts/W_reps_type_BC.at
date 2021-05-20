@@ -25,7 +25,7 @@ set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
 set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
 set_type Hn_rep = BiPartition
-  { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
+  { hyperoctahedral representation: pair (sign,triv) of partitions; |p|+|q|=n }
 
 { use equivalence relation on symbols to get one with at most one 0 }
 set normalize ([int] v) = [int]:
