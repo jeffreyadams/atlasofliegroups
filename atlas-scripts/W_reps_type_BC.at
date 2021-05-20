@@ -21,8 +21,10 @@
   every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
-set is_simple_type_BC(RootDatum rd)=bool:
-rd.is_simple and  (let (letter,rank)=rd.simple_type in letter="B" or letter="C")
+{this test aborts via an assert, or returns void}
+set test_simple_BC(RootDatum rd)=void:
+assert(rd.is_simple,"root datum is not simple");
+assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C")
 
 set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
@@ -106,25 +108,21 @@ set large_symbol_B(Symbol S)=Symbol:
 [for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j od]
 
 set large_symbol(RootDatum rd,Symbol S)=Symbol:
-assert(rd.is_simple,"root datum is not simple");
-assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
-if rd.type_number=1 then large_symbol("B",S)
-else  large_symbol("C",S) fi
+test_simple_BC(rd);
+if rd.type_number=1 then large_symbol_B(S) else  large_symbol_C(S) fi
 
 set small_symbol_C(Symbol S_large)=Symbol:
 [for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-(j+1) od]
 set small_symbol_B(Symbol S_large)=Symbol:
 [for i:#S_large[0] do S_large[0][i]-i od,for j:#S_large[1] do S_large[1][j]-j od]
 set small_symbol(RootDatum rd,Symbol S_large)=Symbol:
-assert(rd.is_simple,"root datum is not simple");
-assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
+test_simple_BC(rd);
 if rd.type_number=1 then small_symbol_B(S_large)
 else  small_symbol_C(S_large) fi
 
 {Hn_rep to Symbol}
 set large_symbol (RootDatum rd,Hn_rep(p,q)) = Symbol:
-large_symbol(rd,symbol(p,q))
-
+test_simple_BC(rd);large_symbol(rd,symbol(p,q))
 
 { Symbol -> Orbit partial map for specific types, but defined uniformly }
 {set orbit (Symbol S) = Orbit:
@@ -181,9 +179,7 @@ set all_reps_BC (int n) = [Hn_rep]:
    od.##
 
 set all_reps_BC(RootDatum rd)=[Hn_rep]:
-assert(rd.is_simple,"root datum is not simple");
-assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C");
-all_reps_BC(rd.rank)
+test_simple_BC(rd);all_reps_BC(rd.rank)
 
 { a (normalized) symbol is special if f_0<=g_0<= f_1...;
   this is the "raison d'etre" of |Symbol|
@@ -222,7 +218,7 @@ set wreps (RootDatum rd)=[Hn_rep]:
  symbols are the same (apply symbol to (p,q))
 }
 set wreps(RootDatum rd)=[Hn_rep]:
-assert(rd.is_simple_type_BC,"root datum is not simple of type BC");
+test_simple_BC(rd);
 let (,rank)=rd.simple_type in
 ##for i:rank+1 do
  ##for p in partitions(i) do
@@ -567,49 +563,45 @@ prints(new_line,"type ",letter,rank);tabulate(
   in
   [S.to_string,large_symbol(rd,S).to_string,rep.to_string,rep.special_star,orbit_string] od)
 
-set entries(Symbol S)=[int]:sort(##S)
-
-{this test aborts via an assert, or returns void}
-set test_simple_BC(RootDatum rd)=void:
-assert(rd.is_simple,"root datum is not simple");
-assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C")
+{support of a symbol: multiset of entries}
+set support(Symbol S)=[int]:sort(##S)
 
 set lusztig_cell_classical(RootDatum rd,Symbol S_0) =[Symbol]:
 test_simple_BC(rd);
-let orig=entries(S_0) in
-##for S in symbols(rd) do if entries(S)=orig then [S] else [] fi od
+let orig=support(S_0) in
+##for S in symbols(rd) do if support(S)=orig then [S] else [] fi od
 
 set lusztig_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
 test_simple_BC(rd);
-let orig=entries(symbol(pi)) in
-##for sigma in all_reps_BC(rd) do if entries(symbol(sigma))=orig then [sigma] else [] fi od
+let orig=support(symbol(pi)) in
+##for sigma in all_reps_BC(rd) do if support(symbol(sigma))=orig then [sigma] else [] fi od
 
 set lusztig_cells_classical(RootDatum rd) =[[Symbol]]:
 test_simple_BC(rd);
 let symbols=symbols(rd) then
 rv=[[Symbol]]:[] in
 for S in symbols do
- let index=first(for i:#rv do entries(rv[i][0])=entries(S) od) in
+ let index=first(for i:#rv do support(rv[i][0])=support(S) od) in
  if index=-1 then rv##:=[[S]] else  rv[index]##:=[S] fi
 od;rv
 
 set springer_cell_classical(RootDatum rd,Symbol large_symbol_S_0) =[Symbol]:
 test_simple_BC(rd);
-let orig=entries(large_symbol_S_0) in
+let orig=support(large_symbol_S_0) in
 ##for S in symbols(rd) do
  let T=large_symbol(rd,S) in
-  if entries(T)=orig then [T] else [] fi od
+  if support(T)=orig then [T] else [] fi od
 
 set springer_cell_classical(RootDatum rd,Hn_rep pi) =[Hn_rep]:
 test_simple_BC(rd);
-let orig=entries(large_symbol(rd,symbol(pi))) in
-##for sigma in all_reps_BC(rd) do if entries(large_symbol(rd,sigma))=orig then [sigma] else [] fi od
+let orig=support(large_symbol(rd,symbol(pi))) in
+##for sigma in all_reps_BC(rd) do if support(large_symbol(rd,sigma))=orig then [sigma] else [] fi od
 
 set springer_cells_classical(RootDatum rd) =[[Symbol]]:
 test_simple_BC(rd);
 let rv=[[Symbol]]:[] in
 for T in large_symbols(rd) do
- let index=first(for i:#rv do entries(rv[i][0])=entries(T) od) in
+ let index=first(for i:#rv do support(rv[i][0])=support(T) od) in
  if index=-1 then rv##:=[[T]] else  rv[index]##:=[T] fi
 od;
 {now process to put the special one first}
@@ -618,7 +610,7 @@ for symbols in rv do special_first(symbols) od
 set show_lusztig_cells_classical(RootDatum rd)=void:
 let symbols=lusztig_cells_classical(rd) in
 for i:#symbols do
- prints(new_line,"entries: ", entries(symbols[i][0]));
+ prints(new_line,"support: ", support(symbols[i][0]));
  tabulate([" ","symbol","rep"]#for S in symbols[i] do [" ",S.to_string, wrep(S).to_string] od)
 od
 
@@ -626,7 +618,7 @@ set show_springer_cells_classical(RootDatum rd)=void:
 let large_symbols=springer_cells_classical(rd) in
 for i:#large_symbols do
  let small_symbol=small_symbol(rd,large_symbols[i][0]) in 
-  prints(new_line,"orbit: ", orbit(rd,small_symbol), "  entries: ", entries(large_symbols[i][0]) );
+  prints(new_line,"orbit: ", orbit(rd,small_symbol), "  support: ", support(large_symbols[i][0]) );
 tabulate([" ","symbol","large symbol","rep","orbit"]#for T in large_symbols[i] do
   let S=small_symbol(rd,T) in [" ",S.to_string+S.special_star,T.to_string, wrep(S).to_string, orbit(rd,S).to_string] od)
 od
