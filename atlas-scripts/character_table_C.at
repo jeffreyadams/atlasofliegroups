@@ -18,48 +18,6 @@ set cycles_string ([int,bool] cycles) = string:
 
 {     type C     }
 
-{representation of H_n is given by a pair of partitions or a symbol}
-{
-  symbol:
-  0 \le f_1 < f_2 < ... < f_a
-  0 \le g_1 < f_2 < ....< g_b
-  equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
-  every symbol is equivalent to a unique one with a=b+1 and at most one 0
-}
-
-set_type Hn_rep  =(Partition,Partition) { (negative cycles, positive cycles) }
-set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
-set_type BC_Orbit = Partition
-  { all odd(C) or even(B) parts must have even multiplicity }
-
-{ normalize symbol: |f|=|g|+1 and at most 1 zero }
-set normalize (Symbol S) = Symbol:
-   let reduce([int] f)=[int]:
-      let k = let nf=#f in first(nf,(int i)bool:f[i]>i) in
-      if k.< then [] else for e in f[k:] do e-k od fi
-   , expand([int] f,int r) = [int]: #r ## for e in f do e+r od
-   then f=S[0].reduce, g=S[1].reduce then d=#f-(#g+1)
-in case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
-
-{ Symbol to Hn_rep (surjection, identifying equivalence classes of Symbols) }
-set wrep (Symbol S) = Hn_rep:
-( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
-, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
-)
-{ Hn_rep to normalized Symbol }
-set symbol (Hn_rep(p,q)) = Symbol:
-(( let d=#p-(#q+1) in { if necessasry extend p or q by zeros so as to make d=0: }
-   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac
- )
-; [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
-)
-
-{ equality of Hn_reps }
-set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
-
-{ equality of symbols (not equivalence) }
-set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
-
 set BC_classes(int n) = [BC_class]:
    for PQ in partition_pairs(n) do to_cycles(PQ) od
 
