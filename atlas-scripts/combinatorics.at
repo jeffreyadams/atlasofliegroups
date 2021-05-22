@@ -268,9 +268,9 @@ set index_signed_cycles([Signed_cycles] list,[int] map) = (Signed_cycles->int):
 )
 
 
-{ converting partition pairs to signed cycle types, first means flipped cycles }
-set cycles (Partition lambda,Partition mu) = Signed_cycles:
-  for part in lambda do (part,true) od ## for part in mu do (part,false) od
+{ converting partition pairs to signed cycle types, second has flipped cycles }
+set to_cycles (Partition lambda,Partition mu) = Signed_cycles:
+  for part in lambda do (part,false) od ## for part in mu do (part,true) od
 
 set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
 set rank (Signed_cycles cycles) = int: for (c,) in cycles do c od.sum

@@ -19,8 +19,8 @@ the "coxeter element" of O(2b) comes from Sp(2b), and has determinant -1
 set conjugacy_class_D(D_class c) = WeylElt:
   case c
   | unsplit_class(cycles):
-     let (P,Q)=cycles.to_partition_pair, n=rank(cycles)
-     then rd = SO(2*n), M=conjugacy_class_C(Q,P {note switch here}).matrix
+     let pair=cycles.to_partition_pair, n=rank(cycles)
+     then rd = SO(2*n), M=conjugacy_class_C(pair).matrix
      in lift_sc(W_elt(rd,M))  {lift_sc: W(SO) -> W(Spin)}
   | split_class(P,switch):
      let rd=SO(2*sum(P)), M=conjugacy_class_C([int]:[],P).matrix in
@@ -60,7 +60,7 @@ where #P=n, P is very even
 set D_classes(int n) = [D_class]:
    for (P,Q):pair in partition_pairs(n)
    do if not is_even(#Q) then []
-      elif not(=Q and is_very_even(P)) then [cycles(P,Q).unsplit_class]
+      elif not(=Q and is_very_even(P)) then [(Q,P).to_cycles.unsplit_class]
       else [(P,true).split_class,(P,false).split_class]
       fi
    od.##

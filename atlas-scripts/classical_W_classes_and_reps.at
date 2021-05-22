@@ -82,9 +82,10 @@ case cl
 | else          error("wrong type")
 esac
 
+{ the inverse of |to_cycles@(Partition,Partition)| in combinatorics.at }
 set to_partition_pair(Signed_cycles cy) = BC_class:
-( for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
-, for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
+( for (part,b) in cy do if b then [] else [part] fi od.##.reverse_sort
+, for (part,b) in cy do if b then [part] else [] fi od.##.reverse_sort
 )
 
 
@@ -161,7 +162,7 @@ set D_classes (int n) = [D_class]:
    for (alpha,beta):pair in partition_pairs(n)
    do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
       elif != alpha or !=beta%2 { whether unsplit: some negative or odd length }
-      then [pair.cycles.unsplit_class]
+      then [(beta,alpha).to_cycles.unsplit_class]
       else { alpha is empty, beta has all even parts }
          [ (beta,false).split_class, (beta,true).split_class ]
       fi

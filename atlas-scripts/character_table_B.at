@@ -2,6 +2,7 @@
 <character_tables.at
 <character_table_C.at
 
+{ get |WeylElt| with unflipped cycles from P and flipped cycles from Q }
 set conjugacy_class_B((Partition,Partition)(P,Q):PQ) = WeylElt:
    W_elt(Spin(2*(P.sum+Q.sum)+1),class_word_BC(PQ))
 
@@ -11,12 +12,12 @@ set character_table_B(int n) = CharacterTable:
    let pairs = partition_pairs(n)
    then classes = [WeylElt,classical_class,string]:
       for PQ in pairs
-      do (conjugacy_class_B(PQ), PQ.class_BC,PQ.cycles.cycles_string)
+      do (conjugacy_class_B(PQ), PQ.class_BC,PQ.to_cycles.cycles_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
-      for (P,Q):PQ in pairs
-      do ( PQ.irrep_BC, PQ.to_string
-         , for pair in pairs do hyperoctahedral_character(PQ,pair.cycles) od
+      for chi in pairs
+      do ( chi.irrep_BC, chi.to_string
+         , for PQ in pairs do hyperoctahedral_character(chi,PQ.to_cycles) od
 	 )
       od
    in character_table(Spin(2*n+1),classes,irreps)
