@@ -60,47 +60,72 @@ set wrep (Symbol S) = Hn_rep:
 )
 
 {Hn_rep to Symbol}
-set symbol (Hn_rep(p,q)) = Symbol:
-   let d=#p-(#q+1) in
-   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
-   [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
+set symbol (Hn_rep(lambda,mu)) = Symbol:
+(  let d=#lambda-(#mu+1)
+in case d
+   then { #lambda<#mu+1 } lambda##:= for : -d do 0 od
+   in { #lambda=#mu } ()
+   else { #lambda>#mu+1 } mu##:=for : d do 0 od
+   esac
+; [ for i:#lambda do lambda~[i]+i od, for j:#mu do mu~[j]+j od ]
+)
 
-{ Orbit -> Hn_rep}
-{
-set wrep_orig (Orbit P) = Hn_rep:
-   let (d,mu,nu) = core_quotient_2(P) in assert(=d,"Illegal partition"); (nu,mu)
+{ The map from nilpotent Jordan types to |Hn_rep| should be such that the
+  regular nilpotent class [2n] (type $C_n$) or [2n+1] (type $B_n$) or [2n-1,1]
+  (type $D_n$) map to the trivial representation { -|+ n}. Given that the
+  |BiPartition| produced by |core_quotient_2| has the partition form the
+  even-class (with an edge just after the main diagonal) before the partition
+  from the odd-class edges, this means partitions need to be swapped in type C.
 }
 
-{better:
-  Use |core_quotient_2|, but swap quotient to match |P.symbol.wrep|
-  The reason is that |symbol@Orbit| uses |P~[i]+i| without |-1|, flipping parity
-this is correct in types B and C, see Carter pp. 421-422}
-
+{ this is correct in types B and C, see Carter pp. 421-422}
 set wrep (Orbit P) = Hn_rep:
-   let (d,mu,nu) = core_quotient_2(P) in
-   if is_even(sum(P)) then (nu,mu) else (mu,nu) fi 
+   let (d,(lambda,mu):pair) = core_quotient_2(P), type_C=is_even(sum(P))
+   in if type_C then { switch } (mu,lambda) else { no switch } pair fi
 
-{ Orbit -> Symbol (injective map) }
-{set symbol_old (Orbit P) = Symbol:  {this is not correct}
-   if is_even(sum(P)) {type C} and is_odd(#P) then P#:=0 { extend to make length even } fi;
-   let e = { transform partition into strictly increasing sequence }
+{ JordanType -> Symbol (normalised), injective maps separately for types B, C }
+{ One has |symbol(lambda)=sumbol(wrep(lambda))| when |lambda| valid for B or C }
+set symbol (Orbit P) = Symbol:
+   let type_C=is_even(sum(P)) in
+(  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
+;  let e = { transform partition into strictly increasing sequence }
            for i:#P do P~[i]+i od
-   then split = [bool,int]: for x in e do (x.is_even,x\2) od then
-   x=## for (b,n) in split do if b then [n] else [] fi od,
-   y=## for (b,n) in split do if b then [] else [n] fi od
-   in
-   if is_even(sum(P)) then [x,y] else [y,x] fi
-}
-
-{symbol(wrep) is correct
-so define symbol(orbit)=symbol(wrep(orbit))}
-
-set symbol(Orbit P)=Symbol: symbol(wrep(P))
+   then f = for x in e do if x.is_odd  then [x\2] else [] fi od.##
+   ,    g = for x in e do if x.is_even then [x\2] else [] fi od.##
+in if type_C then [g,f] else [f,g] fi
+)
 
 set symbol_C (Orbit P) = Symbol:
    assert(is_valid("C",P),"not a type C orbit"); symbol(P)
 set symbol_B (Orbit P) = Symbol:
    assert(is_valid("B",P),"not a type B orbit"); symbol(P)
+
+set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
+   let merger([int]T0,[int]T1) = Partition: { common workhorse function }
+      if #T0 != 1+#T1 then return [] fi
+   ;  for t@i in T1
+      do if   T0[i]>t
+        then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
+	 elif t>T0[i+1]
+	 then if t-1 = T0[i+1] then T0[i+1]:=t; T1[i]:=t-1 else return [] fi
+	 fi { now |T0[i] <= T1[i] <= T0[i+1]| }
+      od
+   ;  for j: #T0+#T1
+      do case j in {even} T0[j\2]-j, {odd} T1[j\2]-j esac { shrink differences }
+     ~od { reverse to partition, may have a trailing 0 in case C }
+in
+(  (Symbol S) Orbit: {Orbit_C}
+   merger(for s in S[0] do s+s od,for s in S[1] do s+s+1 od).strip_to_partition
+,  (Symbol S) Orbit: {Orbit_B}
+   merger(for s in S[0] do s+s+1 od,for s in S[1] do s+s od)
+)
+
+set orbit (string type,Symbol S) = Orbit:
+  case ascii(type)-ascii("B") in orbit_B(S), orbit_C(S)
+  else error("wrong type")
+  esac
+set orbit (RootDatum rd,Symbol S) = Orbit:
+  let (letter,)=rd.simple_type in orbit(letter,S)
 
 set large_symbol_C(Symbol S)=Symbol:
 [for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j+1 od]
@@ -121,38 +146,26 @@ if rd.type_number=1 then small_symbol_B(S_large)
 else  small_symbol_C(S_large) fi
 
 {Hn_rep to Symbol}
-set large_symbol (RootDatum rd,Hn_rep(p,q)) = Symbol:
-test_simple_BC(rd);large_symbol(rd,symbol(p,q))
+set large_symbol (RootDatum rd,Hn_rep pair) = Symbol:
+test_simple_BC(rd);large_symbol(rd,symbol(pair))
 
-{ Symbol -> Orbit partial map for specific types, but defined uniformly }
-{set orbit (Symbol S) = Orbit:
-   let S=normalize(S)
-   then f=S[0],g=S[1]
-   then F=for c in f do 2*c od, G=for c in g do 2*c+1 od
-   then F_G=merge(F,G)
-   then H= F_G - # #F_G { convert to reverse partition }
-in ## for c in H ~do if c.> then [c] else [] fi od { reverse, drop zeros }
-}
+{ Hn_rep -> Orbit, depends on type B/C }
+set orbit_C (Hn_rep(lambda,mu)) = Orbit:
+  let orbit=from_core_quotient_2(0,(mu,lambda)) in
+  if is_valid("C",orbit) then orbit else [] fi
 
-{Hn_rep -> Orbit, depends on type B/C}
-set orbit_C (Hn_rep(nu,mu)) = Orbit: 
-let orbit=from_core_quotient_2(0,mu,nu) in if is_valid("C",orbit) then orbit else [] fi
+set orbit_B (Hn_rep pair) = Orbit:
+  let orbit=from_core_quotient_2(1,pair) in
+  if is_valid("B",orbit) then orbit else [] fi
 
-set orbit_B (Hn_rep(mu,nu)) = Orbit: 
-let orbit=from_core_quotient_2(1,mu,nu) in if is_valid("B",orbit) then orbit else [] fi
-
-set orbit(string type,Hn_rep(pi))=
- if type ="B" then orbit_B(pi) 
- elif type="C" then orbit_C(pi) 
- else error("wrong type") fi
+set orbit(string type,Hn_rep(pi)) = Orbit:
+  if type ="B" then orbit_B(pi)
+  elif type="C" then orbit_C(pi)
+  else error("wrong type")
+  fi
 
 set orbit(RootDatum rd,Hn_rep(pi))=
 let (letter,)=rd.simple_type in orbit(letter,pi)
-
-set orbit_C(Symbol S)=Orbit: orbit_C(wrep(S))
-set orbit_B(Symbol S)=Orbit: orbit_B(wrep(S))
-set orbit(string type,Symbol S)=Orbit: orbit(type,wrep(S))
-set orbit(RootDatum rd,Symbol S)= let (letter,)=rd.simple_type in orbit(letter,wrep(S))
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
@@ -617,12 +630,8 @@ od
 set show_springer_cells_classical(RootDatum rd)=void:
 let large_symbols=springer_cells_classical(rd) in
 for i:#large_symbols do
- let small_symbol=small_symbol(rd,large_symbols[i][0]) in 
+ let small_symbol=small_symbol(rd,large_symbols[i][0]) in
   prints(new_line,"orbit: ", orbit(rd,small_symbol), "  support: ", support(large_symbols[i][0]) );
 tabulate([" ","symbol","large symbol","rep","orbit"]#for T in large_symbols[i] do
   let S=small_symbol(rd,T) in [" ",S.to_string+S.special_star,T.to_string, wrep(S).to_string, orbit(rd,S).to_string] od)
 od
-
-
-
-
