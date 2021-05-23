@@ -1,4 +1,5 @@
-<nilpotent_orbits.at
+<basic.at
+<combinatorics.at { for |partition_pairs|, |pairs_of_total_sum| }
 <character_tables.at
 <classical_W_classes_and_reps.at { for type abbreviation |BC_class|, |cycles| }
 
@@ -44,7 +45,8 @@ in P_gens##Q_gens
 set conjugacy_class_C(BC_class cycles) = WeylElt:
    let n=cycles.rank in W_elt(Sp(2*n),class_word_BC(cycles.to_partition_pair))
 
-set BC_irreps = partition_pairs@int
+set BC_irreps(int n) = [BC_irrep]:
+   pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
 
 set character_table_C(int n) = CharacterTable:
    let class_list =  BC_classes(n)

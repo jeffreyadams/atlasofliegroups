@@ -76,7 +76,7 @@ set character_table_S(int n) = CharacterTable:
     do (conjugacy_class_S(lambda),lambda.class_A,lambda.to_string)
     od
   , irreps = [classical_irrep,string,[int]]:
-    for lambda in partitions_n
+    for lambda in partitions_n ~ { reversal to go from trivial to sign }
     do (irrep_A(lambda),lambda.to_string
        ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
        )
@@ -91,7 +91,7 @@ set character_table_A(RootDatum rd) = CharacterTable:
     do (class_rep(lambda),lambda.class_A,lambda.to_string)
     od
   , irreps = [classical_irrep,string,[int]]:
-    for lambda in partitions
+    for lambda in partitions ~ { reversal to go from trivial to sign }
     do (irrep_A(lambda),lambda.to_string
        ,for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
        )

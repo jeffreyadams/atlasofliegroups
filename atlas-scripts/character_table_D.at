@@ -50,19 +50,13 @@ in W_elt(SO(2*rank(c)),word)
 
 { all irreducible representations of D_n }
 set D_irreps (int n) = [D_irrep]:
-   let unsplit =
-      for (lambda,):pair in partition_pairs(n)
-      do if not leq_partitions(pair) then [pair.unsplit_irr] else [] fi
-      od.##
-   , (q,r)=n\%2
-   then split=
-      if !=r then []
-      else
-         for lambda in partitions(q)
-         do [(lambda,false).split_irr,(lambda,true).split_irr]
-         od.##
+   for (lambda,mu):pair
+     in pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
+   do if not leq_partitions(pair) then [pair.unsplit_irr]
+      elif lambda=mu then [(lambda,false).split_irr,(lambda,true).split_irr]
+      else []
       fi
-   in unsplit##split
+   od.##
 
 set character_table_D(int n) = CharacterTable:
    let class_list =  D_classes(n)
