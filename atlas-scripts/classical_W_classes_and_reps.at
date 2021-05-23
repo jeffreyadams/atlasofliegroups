@@ -95,7 +95,46 @@ set get_irrep_D(classical_irrep rep) = D_irrep:
    case rep | val.irrep_D: val | else error("wrong type") esac
 
 
-{some cases special to type D:}
+{			string representations				}
+
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set cycles_string = ([int]->string): to_string@[int]
+set irrep_string ([int] cycles) = string:
+   (  "{", cycles.parts_string ,  "}" ).to_string
+
+set sign_string (bool s) = string: if s then "-" else "+" fi
+set parts_string (Partition lambda) = string: { partition without brackets }
+  lambda.to_string[1:1~]
+{ |cycles@(Partition,Partition)| tacks booleans one cycle lengths, the do this: }
+set cycles_string ([int,bool] cycles) = string:
+(  "["
+,  for (l,s)@pos in cycles
+   do if =pos then l.to_string##s.sign_string
+      else "," ##  l.to_string##s.sign_string
+      fi
+   od.##
+,  "]"
+).to_string
+
+set irrep_string(BiPartition(lambda,mu)) = string:
+   ("{", lambda.parts_string, "+|-", mu.parts_string, "}").to_string
+
+set cycles_string (D_class c) = string:
+    case c
+    | cycles.unsplit_class: cycles.cycles_string
+    | (alpha,s).split_class: (alpha,sign_string(s)).to_string
+    esac
+set irrep_string(D_irrep chi) = string:
+  case chi
+  | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
+    ("{",mu.parts_string,"|",lambda.parts_string,"}").to_string
+  | (mu,s).split_irr:
+    ("{",mu.parts_string,"|",mu.parts_string,"}",s.sign_string).to_string
+  esac
+
+
+{			some cases special to type D:			}
+
 { recover the value of |n| }
 set rank (D_irrep chi) = int:
    case chi
@@ -255,30 +294,18 @@ in (D_irrep rep) int:
 
 set index_D_reps ([D_irrep] L,D_irrep rep) = int: index_D_reps(L)(rep)
 
-set string_rep(D_class c) = string:
-   case c
-   | (list).unsplit_class: list.to_partition_pair.to_string
-   | (P,b).split_class: P.to_string + ";" + sign(b).to_string
-   esac
-
 set class_string(classical_class cl)=
   case cl
   | cl.class_A: cl.to_string
   | cl.class_BC: cl.to_string
-  | cl.class_D: cl.string_rep
+  | cl.class_D: cl.cycles_string
   | else ""
   esac
-
-set string_rep(D_irrep rep) = string:
-   case rep
-   | pair.unsplit_irr: pair.to_string
-   | (P,b).split_irr: P.to_string + ";" + sign(b).to_string
-   esac
 
 set irrep_string(classical_irrep rep)=
   case rep
   | lambda.irrep_A: lambda.to_string
   | pair.irrep_BC: pair.to_string
-  | r.irrep_D: r.string_rep
+  | r.irrep_D: r.irrep_string
   | else ""
   esac

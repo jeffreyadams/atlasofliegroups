@@ -1,6 +1,6 @@
 <basic.at
 <character_tables.at
-<character_table_C.at
+<classical_W_classes_and_reps.at { for types |D_class|, |D_irrep| }
 
 { word representative in types D of unsplit conjugacy class for partition pair }
 set class_word_D(Partition lambda,Partition mu) = [int]:
@@ -61,10 +61,10 @@ set D_irreps (int n) = [D_irrep]:
 set character_table_D(int n) = CharacterTable:
    let class_list =  D_classes(n)
    then classes = [WeylElt,classical_class,string]:
-      for c in class_list do (conjugacy_class(c),c.class_D,c.string_rep) od
+      for c in class_list do (conjugacy_class(c),c.class_D,c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in D_irreps(n)
-      do ( rep.irrep_D, rep.string_rep
+      do ( rep.irrep_D, rep.irrep_string
          , for class in class_list do character(rep,class) od
 	 )
       od

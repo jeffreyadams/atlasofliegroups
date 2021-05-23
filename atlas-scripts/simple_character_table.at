@@ -45,7 +45,7 @@ in assert(!=#bars and bars~[0]=#map
 set cycle_type_GL(WeylElt w) = Partition:
   let n=w.root_datum.rank in cycle_type((vec:#n)*w)
 
-{ somtimes we can avoid sorting the cycles into decreasing length order }
+{ sometimes we can avoid sorting the cycles into decreasing length order }
 set unsorted_cycle_type_GL(WeylElt w) = [int]:
   let n=w.root_datum.rank in
   for cycle in permutation_cycles((vec:#n)*w) do #cycle od
@@ -73,11 +73,11 @@ set character_table_S(int n) = CharacterTable:
   let partitions_n = partitions(n)
   then classes = [WeylElt,classical_class,string]:
     for lambda in partitions_n
-    do (conjugacy_class_S(lambda),lambda.class_A,lambda.to_string)
+    do (conjugacy_class_S(lambda),lambda.class_A,lambda.cycles_string)
     od
   , irreps = [classical_irrep,string,[int]]:
     for lambda in partitions_n ~ { reversal to go from trivial to sign }
-    do (irrep_A(lambda),lambda.to_string
+    do (irrep_A(lambda),lambda.irrep_string
        ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
        )
     od

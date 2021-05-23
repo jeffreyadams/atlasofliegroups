@@ -1,5 +1,6 @@
 <basic.at
 <character_tables.at
+<classical_W_classes_and_reps.at { for type abbreviation |BC_class|, |cycles| }
 <character_table_C.at
 
 set conjugacy_class_B(BC_class cycles) = WeylElt:
@@ -16,7 +17,7 @@ set character_table_B(int n) = CharacterTable:
       od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in BC_irreps(n)
-      do ( rep.irrep_BC, rep.to_string
+      do ( rep.irrep_BC, rep.irrep_string
          , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
 	 )
       od

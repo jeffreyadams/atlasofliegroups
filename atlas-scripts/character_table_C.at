@@ -3,19 +3,7 @@
 <character_tables.at
 <classical_W_classes_and_reps.at { for type abbreviation |BC_class|, |cycles| }
 
-set sign_string (bool s) = string: if s then "-" else "+" fi
-set parts_string (Partition lambda) = string: { partition without brackets }
-  lambda.to_string[1:1~]
-{ |cycles@(Partition,Partition)| tacks booleans one cycle lengths, the do this: }
-set cycles_string ([int,bool] cycles) = string:
-(  "[" ##
-   for (l,s)@pos in cycles
-   do if =pos then l.to_string##s.sign_string
-      else "," ##  l.to_string##s.sign_string
-      fi
-   od.##
-   ##  "]"
-)
+
 
 {     type C     }
 
@@ -56,7 +44,7 @@ set character_table_C(int n) = CharacterTable:
       od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in BC_irreps(n)
-      do ( rep.irrep_BC, rep.to_string
+      do ( rep.irrep_BC, rep.irrep_string
          , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
 	 )
       od
