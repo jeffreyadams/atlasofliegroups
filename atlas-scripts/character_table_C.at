@@ -30,8 +30,40 @@ then  P_gens = complement(nP,Pbars) { for P part, do the same as in type A }
 in P_gens##Q_gens
 )
 
-set conjugacy_class_C(BC_class cycles) = WeylElt:
-   let n=cycles.rank in W_elt(Sp(2*n),class_word_BC(cycles.to_partition_pair))
+set conjugacy_class_Sp(BC_class cycles) = WeylElt:
+   let n=cycles.rank in W_elt(Sp(n+n),class_word_BC(cycles.to_partition_pair))
+
+{ for general type C root data, we need to look up and use the diagram order }
+set conjugacy_class_C(RootDatum rd) = (BC_class->WeylElt):
+   let map = test_simple_type("C",rd) then n=#map in
+   (BC_class cycles) WeylElt:
+(  let size = rank(cycles)
+in assert(size=n,"Cycles sum to "+size+" rather than "+n)
+;  W_elt(rd,for s in class_word_BC(cycles.to_partition_pair) do map[s] od)
+)
+
+set cycle_code_Sp(WeylElt w) = vec: { assuming |w| is for |Sp(2*n)| }
+  let n=w.root_datum.rank in signed_cycle_type_code((vec:for i:n do i+1 od)*w)
+
+set class_table_C(int n) = WeylClassTable:
+   let rd=Sp(n+n), classes = [BC_class]: BC_classes(n)
+in W_class_table( rd, for cycles in classes do conjugacy_class_Sp(cycles) od
+		, (WeylElt w)int:
+		    cycle_class_order(cycle_code_Sp(w).as_signed_cycles)
+		, (WeylElt w0) (WeylElt->bool): let code=cycle_code_Sp(w0) in
+		    (WeylElt w)bool: cycle_code_Sp(w)=code
+		)
+
+set class_table_C(RootDatum rd) = WeylClassTable:
+  let classes = [BC_class]: BC_classes(rd.semisimple_rank)
+  , type_code(WeylElt w) = [int]: signed_cycle_type_code(classic_permutation(w))
+  , class_rep = (BC_class->WeylElt): conjugacy_class_C(rd)
+  in W_class_table( rd, for cycles in classes do class_rep(cycles) od
+		  , (WeylElt w)int:
+		      cycle_class_order(type_code(w).as_signed_cycles)
+		  , (WeylElt w0) (WeylElt->bool): let code=type_code(w0) in
+		      (WeylElt w)bool: type_code(w)=code
+		  )
 
 set BC_irreps(int n) = [BC_irrep]:
    pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
@@ -40,7 +72,7 @@ set character_table_C(int n) = CharacterTable:
    let class_list =  BC_classes(n)
    then classes = [WeylElt,classical_class,string]:
       for cycles in class_list
-      do (conjugacy_class_C(cycles), cycles.class_BC,cycles.cycles_string)
+      do (conjugacy_class_Sp(cycles), cycles.class_BC,cycles.cycles_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in BC_irreps(n)
@@ -48,4 +80,20 @@ set character_table_C(int n) = CharacterTable:
          , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
 	 )
       od
-   in character_table(Sp(2*n),classes,irreps)
+   in character_table(class_table_C(n),classes,irreps)
+
+set character_table_C(RootDatum rd) = CharacterTable:
+   let n=rd.semisimple_rank
+   , class_rep = (BC_class->WeylElt): conjugacy_class_C(rd)
+   then class_list =  BC_classes(n)
+   then classes = [WeylElt,classical_class,string]:
+      for cycles in class_list
+      do (class_rep(cycles), cycles.class_BC,cycles.cycles_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for rep in BC_irreps(n)
+      do ( rep.irrep_BC, rep.irrep_string
+         , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
+	 )
+      od
+   in character_table(class_table_C(rd),classes,irreps)

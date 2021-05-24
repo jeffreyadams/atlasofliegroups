@@ -330,7 +330,8 @@ set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
 { although permutation of pairs within |Signed_cycles| should not alter their
   meaning, the following defines a (lexicogrpahic) total ordering that does not
   respect such equivalence; it is presumed each |Signed_cycles| is normalised,
-  for instance by having |x=c.to_partition_pair.cycles| }
+  for instance by having |x=c.to_partition_pair.to_cycles| for some |c|
+}
 
 { compare lists of signed cycle lengths; mathematically meaningless total order }
 set leq_signed_cycles (Signed_cycles x, Signed_cycles y) = bool:
@@ -594,18 +595,25 @@ in case char_index(type,"ABCD")
    esac
 )
 
-set signed_cycle_type ([int] sigma) = Signed_cycles: { pairs of cycle and sign }
+{ for a signed permutation |sigma| of $\{1,...,n\}$, represented by the images
+  of $1,...,n$, compute the cycle type as list of pairs (cycle length, sign);
+  return weakly increasing vector of sign*cycle_length, e.g., |[-3,-1,-1,2,4]|
+}
+set signed_cycle_type_code ([int] sigma) = vec:
   let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
-  ,   flip   = for a in sigma do a.< od { whether negative, per position }
-  then size = for cycle in cycles do #cycle od
-  ,    sign = for cycle in cycles do for i in cycle do #flip[i] od.sum.is_odd od
-  in for i in inv_standardisation(size) do (size[i],sign[i]) ~od
+  then lengths = { lengths of cycles, negated when there is a flip }
+    for cyc in cycles do minus_1^for i in cyc do #<sigma[i] od.sum * #cyc od
+  in sort(lengths)
+set as_signed_cycles (vec v) = Signed_cycles:
+  for cyc in v do (abs(cyc),cyc.<) od
+set signed_cycle_type ([int] sigma) = Signed_cycles:
+  signed_cycle_type_code(sigma).as_signed_cycles
 
 set cycle_type_order (Signed_cycles cycles) = int:
   for (cycle,sign) in cycles do if sign else cycle then cycle+cycle fi od.lcm
 set cycle_centralizer_order (Signed_cycles cycles) = int:
-  let plus_cycles = ## for (c,s) in cycles do if s then [] else [c] fi od
-  ,  minus_cycles = ## for (c,s) in cycles do if s then [c] else [] fi od
+  let plus_cycles = for (c,s) in cycles do if s then [] else [c] fi od.##
+  ,  minus_cycles = for (c,s) in cycles do if s then [c] else [] fi od.##
   in product(for (cycle,) in cycles do cycle+cycle od)*
      product(for m in plus_cycles.frequencies do m.fac od)*
      product(for m in minus_cycles.frequencies do m.fac od)

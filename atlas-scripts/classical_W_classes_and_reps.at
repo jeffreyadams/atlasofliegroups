@@ -12,6 +12,17 @@ see character_table_*.at (A,B,C,D,E,F,G)
 springer_table_*.at (A,BC,D,E,F,G)
 }
 
+{ test |rd| for being of simple type T (a letter in "ABCDEFG"), and return (as
+  a list of integers) a map from standard diagam labelling to |rd| simple roots
+}
+set test_simple_type(string T, RootDatum rd) = [int]:
+(  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+   then factors=simple_factors(lt) then nf=#factors
+in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
+;  let (type,rank)=factors[0]
+in assert(type=T,"Not a simple type "+T+" root datum")
+;  map
+)
 
 set_type A_class = Partition { parametrise W conjugacy classes in type A }
 set_type A_irrep = Partition

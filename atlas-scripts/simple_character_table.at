@@ -1,6 +1,7 @@
 <basic.at
 <combinatorics.at { for partitions@int }
 <character_tables.at
+<classical_W_classes_and_reps.at { for |test_simple_type| }
 <character_table_B.at  {loads type C also}
 <character_table_D.at
 <character_table_F.at
@@ -9,15 +10,6 @@
 {now for the individual types}
 
 {  type A }
-
-set test_type_A (RootDatum rd) = [int]:
-(  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
-   then factors=simple_factors(lt) then nf=#factors
-in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
-;  let (type,rank)=factors[0] then n=rank+1
-in assert(type="A","Not a type A root datum")
-;  map
-)
 
 { get an actual WeylElt from a partition <-> conjugacy class in W}
 set conjugacy_class_S(Partition P) = WeylElt:  {for GL(n)}
@@ -29,7 +21,7 @@ in W_elt(if =n then trivial_group else GL(n) fi,complement(n,bars))
 
 { for other type A root data like SL(n), we need to work a bit harder }
 set conjugacy_class_A(RootDatum rd) = (Partition->WeylElt):
-   let map = test_type_A(rd) then n=#map+1 in
+   let map = test_simple_type("A",rd) then n=#map+1 in
    (Partition P) WeylElt:
 (  assert(is_positive(P), "P is not a partition (has non-positive entries)")
 ;  let bars= let sum=-1 in for p in P do sum+:=p od { W generators to suppress }
