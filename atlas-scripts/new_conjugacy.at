@@ -1,0 +1,143 @@
+<cells.at
+
+set nc_verbose=true
+
+set test_enumerated_class([WeylElt] class,[(int,int)] pairs)=
+for i:#pairs-1 from 1 do
+ let (precursor,s)=pairs[i] in class[i]=s#class[precursor]#s od
+
+{conjugacy class of w -> ([WeylElt] class, [(int,int)] pairs)
+class is the list of elements in the conjugacy class of w
+pairs[i]=(j,s) means:
+ j<i, s=simple root number,
+ class[i]=s#class[j]#s
+given simple operators, use this to recursively
+compute the operators of the class
+}
+set enumerate_class (WeylElt !w0) = ([WeylElt],[(int,int)]):
+   let rd=w0.root_datum, class = [w0]
+   then pairs= [(int,int)]:[(-1,-1)], current=0, ssr=semisimple_rank(rd)
+   , absent (WeylElt x) = none(for y in class do @: y=x od)
+in while current<#class
+   do let  w=class[current] in 
+   for s:ssr
+      do let sws=s#w#s in
+         if absent(sws) then class #:= sws; pairs #:= (current,s) fi
+      od;
+      current+:=1
+   od;
+   if nc_verbose then
+    let pass=all(test_enumerated_class(class,pairs)) in
+{    prints(w0, " ", pass);}assert(pass,"test_enumerated_class  failed") fi;
+(class,pairs)
+
+set enumerate_classes([WeylElt] class_reps) = [([WeylElt],[(int,int)])]:
+for w in class_reps do enumerate_class(w) od
+
+{build an operator from a word [int] and list of sparse operators (and dimension)}
+set operator([sparse_mat] simple_operators,[int] word, int dimension)=mat:
+let op=id_mat(dimension) in
+ for j in word do op*:=simple_operators[j] od;
+ op
+
+{build a single operator from a WeylElt and list of sparse operators (and dimension)}
+{this will run once for each class, to construct a single operator
+ for the base point w of the class, using the word for w}
+set operator([sparse_mat] simple_operators,WeylElt w,int dimension)=mat:
+operator(simple_operators,w.word,dimension)
+
+{construct operators for all elements of a conjugacy class, starting with
+the base element, and proceeding recursively}
+set operators([WeylElt] class,[(int,int)] pairs, [sparse_mat] simple_operators,int dim)=
+let ops=[operator(simple_operators,class[0],dim)] in
+ for i:#pairs-1 from 1 do
+  let (index,simple_root_number)=pairs[i] then
+  sr=simple_operators[simple_root_number] in
+  ops#:= sr*ops[index]*sr od;
+ops
+
+{use enumerate_class(w) to generate (class,pairs)
+note: be careful not to use this in a loop where enumerate_class(w)
+ will get run more then necessary}
+set operators(WeylElt w, [sparse_mat] simple_operators, int dim)=
+let (class,pairs)=enumerate_class(w) in
+operators(class,pairs,simple_operators,dim)
+
+set operators(CharacterTable ct,WeylElt w,WCell cell)=
+let (dim,simple_ops)=cell_representation(ct,cell)
+in operators(w,for a in simple_ops do sparse(a) od, dim)
+
+{operators for single w, multiple cells, run enumerate_class(w) only once}
+set operators(CharacterTable ct,WeylElt w,[WCell] cells)=
+let (class,pairs)=enumerate_class(w) in
+for cell in cells do
+ let (dim,simple_ops)=cell_representation(ct,cell) in
+ operators(w,for a in simple_ops do a.sparse od,dim)
+od
+
+{complete list of operators for all of W in cell, organized
+by conjugacy class
+set ops=operators(ct,cell)
+ ops=[[mat]]
+ #ops=#conjugacy classes of W
+ #(ops[i])= size of i^th conjugacy class
+ ops[i] = [A_1,...,A_n] operators of elements in i^th class}
+set operators(CharacterTable ct,WCell cell)=[[mat]]:
+let class_reps=ct.class_representatives then
+classes_and_pairs=enumerate_classes(class_reps) in
+for w in class_reps do operators(ct,w,cell) od
+
+{set ops=operators(ct,cells)
+ ops=[[[mat]]]
+ #ops = #cells
+ ops[i]=[[mat]]
+ ops[i] = [ [A_1,...,A_n], [B_1,...,B_m],...]
+ ops[i][j]=[mat]=[A_1,...A_n]  n=order of conjugacy class #j
+ ##ops[i] = [mat]: one entry for each element of W
+ only run enumerate_classes(ct.class_representatives) once
+}
+set operators(CharacterTable ct,[WCell] cells)=[[[mat]]]:
+let class_reps=ct.class_representatives then
+classes_and_pairs=enumerate_classes(class_reps) in
+for w in class_reps do operators(ct,w,cells) od
+
+{returns ([mat] op_sums,mat P)
+ op_sums: sum of operators over each conjugacy class (without weighting by character)
+ P= sum_i character_value[i]* op_sums[i]
+}
+set projector_new_plus(CharacterTable ct,WCell cell, [int] char)=
+let ops=operators(ct,cell) then
+n=#cell {size of matrices} then
+op_sums=  {one for each conjugacy class}
+for i:#ops do  {#ops=#conjugacy classes}
+ let A=null(n,n) in
+  for T in ops[i] do A+:=T od;A
+od
+then
+rv=null(n,n) in
+ for i:#char do rv+:=char[i]*op_sums[i] od;
+(op_sums,rv)
+
+set projectors_new_plus(CharacterTable ct,[WCell] cells, [int] char)=
+for cell in cells do projector_new_plus(ct,cell,char) od
+
+{only return the final operator P, which should be a projection up to scalar}
+set projector_new(CharacterTable ct,WCell cell, [int] char)=
+let (,ops)=projector_new_plus(ct,cell,char) in ops
+
+set projectors_new(CharacterTable ct,[WCell] cells, [int] char)=
+let pairs=projectors_new_plus(ct,cells,char) in
+for (,ops) in pairs do ops od
+
+{test: P^2=(constant)*P}
+set test_projector(mat P)=
+if =P then true else
+ let column =first( for i:#P do !=P[i] od) then
+ row=first(for j:#P do !=P[column,j] od) then
+ Q=P^2 then
+ ratio=P[column,row]/Q[column,row] then
+ test=P-ratio*P^2 then
+ (num,,denom)=test in
+ if =num then true else
+ prints(num,new_line,denom);false fi
+fi

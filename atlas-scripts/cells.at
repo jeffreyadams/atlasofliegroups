@@ -265,9 +265,11 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
   fi
  od
 od
+{
+MOVED ALL THE REST TO associated_variety_annihlator.at:
 
 {assuming integral infinitesimal character}
-set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
+set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
 set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(p))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
@@ -346,4 +348,5 @@ fi
 Value: 16
 atlas> cells[14]
 Value: ([45,47,49,51],[([0,1],[(3,1)]),([0,1],[(3,1)]),([1,2],[(3,1)]),([0,2],[(0,1),(1,1),(2,1)])])
+}
 }

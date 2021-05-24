@@ -860,6 +860,33 @@ then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum
 (O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od)
 fi
 
+set component_datum_plus(ComplexNilpotent O)=
+if O.root_datum.is_abelian then
+ let rd=O.root_datum in 
+ (O,[1],[(rd,null(0),[null(rd.rank)/1])]) else
+let g=generators_of_component_group(O)
+then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
+(O,sort(orders),for (L,H,b,c,d,S) in g do (L,H,S) od)
+fi
+
+
+{representatives of conjugacy classes in A(O)
+ each ratvec v gives an element exp(2\pi iv) which is G-conjugate
+ to an element of Cent(O)
+}
+set component_representatives(ComplexNilpotent orbit)=
+let (,,pairs)=orbit.component_datum in
+ ##for (L,ratvecs) in pairs do
+    for v in ratvecs do (L,v)
+    od
+   od
+
+set component_representatives_plus(ComplexNilpotent orbit)=[(RootDatum,vec,ratvec)]:
+let (,,triples)=orbit.component_datum_plus in
+ ##for (M,v,ratvecs) in triples do
+    for w in ratvecs do (M,v,w) od
+   od
+
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
 set number_conjugacy_classes_A(ComplexNilpotent O)=#O.component_datum.orders
