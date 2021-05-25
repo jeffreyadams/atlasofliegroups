@@ -198,7 +198,7 @@ set edge_sequence (Partition lambda) = ([bool],int):
 set cycle_type_order = lcm@[int]
 set cycle_centralizer_order ([int] cycles) = int:
   product(cycles)*product(for m in cycles.frequencies do m.fac od)
-set cycle_class_order ([int] cycles) = int:
+set cycle_class_size ([int] cycles) = int:
   cycles.sum.fac \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a permutation, given its cycle type }
@@ -624,7 +624,7 @@ set cycle_centralizer_order (Signed_cycles cycles) = int:
   in product(for (cycle,) in cycles do cycle+cycle od)*
      product(for m in plus_cycles.frequencies do m.fac od)*
      product(for m in minus_cycles.frequencies do m.fac od)
-set cycle_class_order (Signed_cycles cycles) = int:
+set cycle_class_size (Signed_cycles cycles) = int:
   let n=rank(cycles) in n.fac * 2^n \ cycle_centralizer_order(cycles)
 
 { compute cycle type of power of a signed permutation, given its cycle type }

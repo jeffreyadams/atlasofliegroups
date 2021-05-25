@@ -22,7 +22,7 @@ set class_table_B(int n) = WeylClassTable:
    let rd=SO(n+n+1), classes = [BC_class]: BC_classes(n)
 in W_class_table( rd, for cycles in classes do conjugacy_class_SO(cycles) od
 		, (WeylElt w)int:
-		    cycle_class_order(cycle_code(w).as_signed_cycles)
+		    cycle_class_size(cycle_code(w).as_signed_cycles)
 		, (WeylElt w0) (WeylElt->bool): let code=cycle_code(w0) in
 		    (WeylElt w)bool: cycle_code(w)=code
 		)
@@ -33,7 +33,7 @@ set class_table_B(RootDatum rd) = WeylClassTable:
   , class_rep = (BC_class->WeylElt): conjugacy_class_B(rd)
   in W_class_table( rd, for cycles in classes do class_rep(cycles) od
 		  , (WeylElt w)int:
-		      cycle_class_order(type_code(w).as_signed_cycles)
+		      cycle_class_size(type_code(w).as_signed_cycles)
 		  , (WeylElt w0) (WeylElt->bool): let code=type_code(w0) in
 		      (WeylElt w)bool: type_code(w)=code
 		  )

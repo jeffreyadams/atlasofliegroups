@@ -46,7 +46,7 @@ set class_table_S(int n) = WeylClassTable:
   let rd=GL(n), reps = [A_class]: partitions(n)
   in W_class_table(rd, for rep in reps do conjugacy_class_S(rep) od
 		  , (WeylElt w)int:
-		    cycle_class_order(unsorted_cycle_type_GL(w))
+		    cycle_class_size(unsorted_cycle_type_GL(w))
 		  , (WeylElt w0) (WeylElt->bool): let lambda=cycle_type_GL(w0) in
 		    (WeylElt w)bool: cycle_type_GL(w)=lambda
 		  )
@@ -56,7 +56,7 @@ set class_table_A(RootDatum rd) = WeylClassTable:
   , type(WeylElt w) = Partition: cycle_type(classic_permutation(w))
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
   in W_class_table( rd, for lambda in partitions do class_rep(lambda) od
-		  , (WeylElt w)int: cycle_class_order(type(w))
+		  , (WeylElt w)int: cycle_class_size(type(w))
 		  , (WeylElt w0) (WeylElt->bool):
 		     let lambda=type(w0) in (WeylElt w)bool: type(w)=lambda
 		  )
