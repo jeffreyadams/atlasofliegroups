@@ -595,15 +595,22 @@ in case char_index(type,"ABCD")
    esac
 )
 
+{ a simpler version when |w| is known to be for some Sp(2n) or SO(m) }
+set signed_permutation(WeylElt w) = [int]:
+   (vec:for i:w.root_datum.rank from 1 do i od)*w
+
 { for a signed permutation |sigma| of $\{1,...,n\}$, represented by the images
   of $1,...,n$, compute the cycle type as list of pairs (cycle length, sign);
-  return weakly increasing vector of sign*cycle_length, e.g., |[-3,-1,-1,2,4]|
+  return weakly decreasing vector of sign*cycle_length, e.g., |[4,2,-1,-1,-3]|
 }
 set signed_cycle_type_code ([int] sigma) = vec:
   let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
   then lengths = { lengths of cycles, negated when there is a flip }
-    for cyc in cycles do minus_1^for i in cyc do #<sigma[i] od.sum * #cyc od
-  in sort(lengths)
+    for cyc in cycles do sign(for i in cyc do <sigma[i] od.XOR) * #cyc od
+  in reverse_sort(lengths)
+set cycle_code(WeylElt w) = vec: { assuming |w| is for |Sp(2n)| or |SO(m)| }
+  signed_cycle_type_code(signed_permutation(w))
+
 set as_signed_cycles (vec v) = Signed_cycles:
   for cyc in v do (abs(cyc),cyc.<) od
 set signed_cycle_type ([int] sigma) = Signed_cycles:

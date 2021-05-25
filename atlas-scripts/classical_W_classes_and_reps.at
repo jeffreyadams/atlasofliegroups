@@ -147,23 +147,62 @@ set irrep_string(D_irrep chi) = string:
 {			some cases special to type D:			}
 
 { recover the value of |n| }
-set rank (D_irrep chi) = int:
-   case chi
-   | pair.unsplit_irr: pair.rank { rank@(Partition,Partition); combinatorics.at }
-   | (lambda,).split_irr: 2*lambda.sum { |lambda| stands for (lambda,lambda) }
-   esac
-
 set rank (D_class c) = int:
    case c
    | cycles.unsplit_class: cycles.rank { rank@Signed_cycles; combinatorics.at }
    | (lambda,).split_class: lambda.sum { |lambda| has all cycles (even,false) }
    esac
 
+set rank (D_irrep chi) = int:
+   case chi
+   | pair.unsplit_irr: pair.rank { rank@(Partition,Partition); combinatorics.at }
+   | (lambda,).split_irr: 2*lambda.sum { |lambda| stands for (lambda,lambda) }
+   esac
+
+{ rather than |signed_cycle_type_code|, $D_n$ classes need a finer analysis }
+set to_D_class ([int] sigma) { as from |classic_permutation } = D_class:
+   let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
+   then cycle_signs = for cyc in cycles do for i in cyc do <sigma[i] od.XOR od
+   then type_code =
+       for cyc@i in cycles do #cyc*sign(cycle_signs[i]) od.reverse_sort
+   , neg_count = count(cycle_signs) { number of cycles with odd flip count }
+in if neg_count.is_odd then error("Permutation is not in type D subgroup")
+   elif not(neg_count.= and type_code.is_very_even)
+   then type_code.as_signed_cycles.unsplit_class
+   else { we have a split cycle, count parities of flip positions for sign }
+      let parity =
+	 for cyc in cycles
+	 do for i@pos in cyc do <sigma[i] and pos.is_odd od.XOR
+	 od.XOR
+   in (type_code,parity).split_class
+   fi
+
+set = = (D_class,D_class->bool):
+   let code(Signed_cycles c) = vec: for (l,flip) in c do l*sign(flip) od
+in (D_class c0,D_class c1) bool:
+  case c0
+  | cyc0.unsplit_class:
+    case c1 | cyc1.unsplit_class: code(cyc0)=code(cyc1) | else false esac
+  | (lambda,eps0).split_class:
+    case c1 | (mu,eps1).split_class: lambda=mu and eps0=eps1 | else false esac
+  esac
+set != (D_class c0,D_class c1) = bool: not(c0=c1)
+
 set cycle_type_order (D_class c) = int:
    case c
    | cycles.unsplit_class: cycles.cycle_type_order { as in types B, C }
    | (lambda,).split_class: lambda.cycle_type_order { as in type A }
    esac
+set cycle_centralizer_order (D_class c) = int:
+   case c
+   | cycles.unsplit_class: { unsplit means half of BC centralizer is not in Dn }
+       cycles.cycle_centralizer_order\2
+   | (alpha,).split_class: { split means full BC centralizer is in Dn subgroup }
+       { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
+       alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
+   esac
+set cycle_class_order (D_class c) = int:
+  let n=rank(c) in n.fac * 2^(n-1) \ cycle_centralizer_order(c)
 
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (D_class c, int k) = D_class:
