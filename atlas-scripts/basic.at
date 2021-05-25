@@ -53,6 +53,8 @@ set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 set count ([bool] p) = int: { count (sum) number of truths in list }
   let c=0 in for b in p do if b then c+:=1 fi od; c
+set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
+  let c=false in for b in p do c:=(c!=b) od; c
 
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
