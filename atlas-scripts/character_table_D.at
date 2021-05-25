@@ -40,13 +40,46 @@ in if minus else complement(n,bars) { just have a word for each (even) cycle }
    fi
 )
 
-set conjugacy_class(D_class c) = WeylElt:
-   let word = [int]:
-     case c
-     | unsplit_class(cycles): class_word_D(cycles.to_partition_pair)
-     | split_class(lambda_minus): class_word_D(lambda_minus)
-     esac
-in W_elt(SO(2*rank(c)),word)
+set class_word(D_class c) =  [int]:
+   case c
+   | unsplit_class(cycles): class_word_D(cycles.to_partition_pair)
+   | split_class(lambda_minus): class_word_D(lambda_minus)
+   esac
+
+
+set conjugacy_class_SO(D_class c) = WeylElt:
+   let n=rank(c) in W_elt(SO(n+n),class_word(c))
+
+{ for general type D root data, we need to look up and use the diagram order }
+set conjugacy_class_D(RootDatum rd) = (D_class->WeylElt):
+   let map = test_simple_type("D",rd) then n=#map in
+   (D_class cycles) WeylElt:
+(  let size = rank(cycles)
+in assert(size=n,"Cycles sum to "+size+" rather than "+n)
+;  W_elt(rd,for s in class_word(cycles) do map[s] od)
+)
+
+set class_table_D(int n) = WeylClassTable:
+   let rd=SO(n+n), classes = [D_class]: D_classes(n)
+in W_class_table( rd, for class in classes do conjugacy_class_SO(class) od
+		, (WeylElt w)int:
+		    cycle_class_order(signed_permutation(w).to_D_class)
+		, (WeylElt w0) (WeylElt->bool):
+		    let c=signed_permutation(w0).to_D_class in
+		    (WeylElt w)bool: signed_permutation(w).to_D_class=c
+		)
+
+set class_table_D(RootDatum rd) = WeylClassTable:
+  let classes = [D_class]: D_classes(rd.semisimple_rank)
+  , type_code(WeylElt w) = D_class: classic_permutation(w).to_D_class
+  , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
+  in W_class_table( rd, for class in classes do class_rep(class) od
+		  , (WeylElt w)int:
+		      cycle_class_order(signed_permutation(w).to_D_class)
+		  , (WeylElt w0) (WeylElt->bool): let c=type_code(w0) in
+		      (WeylElt w)bool: type_code(w)=c
+		  )
+
 
 { all irreducible representations of D_n }
 set D_irreps (int n) = [D_irrep]:
@@ -61,14 +94,30 @@ set D_irreps (int n) = [D_irrep]:
 set character_table_D(int n) = CharacterTable:
    let class_list =  D_classes(n)
    then classes = [WeylElt,classical_class,string]:
-      for c in class_list do (conjugacy_class(c),c.class_D,c.cycles_string) od
+      for c in class_list
+      do (conjugacy_class_SO(c),c.class_D,c.cycles_string)
+      od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in D_irreps(n)
       do ( rep.irrep_D, rep.irrep_string
          , for class in class_list do character(rep,class) od
 	 )
       od
-in character_table(SO(2*n),classes,irreps)
+in character_table(class_table_D(n),classes,irreps)
+
+set character_table_D(RootDatum rd) = CharacterTable:
+   let n=rd.semisimple_rank
+   , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
+   then class_list =  D_classes(n)
+   then classes = [WeylElt,classical_class,string]:
+      for c in class_list do (class_rep(c),c.class_D,c.cycles_string) od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for rep in D_irreps(n)
+      do ( rep.irrep_D, rep.irrep_string
+         , for class in class_list do character(rep,class) od
+	 )
+      od
+in character_table(class_table_D(n),classes,irreps)
 
 { functions that expect a |CharacterTable| of simple type D }
 set split_class_nrs(CharacterTable ct) = [int]:
