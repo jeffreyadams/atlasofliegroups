@@ -66,12 +66,31 @@ set real_form_of_pseudo_Levi (RootDatum rd, KGBElt x)=RealForm:
    let theta=involution(x) then
    ic_L=inner_class(rd,theta)   in real_form(ic_L,theta,torus_factor(x))
 
+set is_elliptic_pseudo_Levi_x (RootDatum rd, KGBElt x) = bool:
+   {in_distinguished_fiber(x)} let G=real_form(x) in
+        Cartan_class(x)= fundamental_Cartan(G) and
+   all(for alpha in simple_roots(rd) do let beta=involution(x)*alpha in
+      (is_posroot (rd,beta) and is_simple_root(rd,beta)) od)
+
 set real_forms_of_pseudo_Levi (RootDatum rd, RealForm G)=[(RealForm,KGBElt)]:
    let result=[(RealForm,KGBElt)]:[] in
    for x in x_preserving_root_datum (rd,G) do
    let L=real_form_of_pseudo_Levi (rd,x) in
    if none (for (M,) in result do M=L od) then result#:=(L,x) fi od;
    result
+
+set elliptic_forms_of_pseudo_Levi (RootDatum rd, RealForm G)=[(RealForm,KGBElt)]:
+   let result=[(RealForm,KGBElt)]:[] in
+   for x in KGB(G) do if is_elliptic_pseudo_Levi_x (rd,x) then
+   let L=real_form_of_pseudo_Levi (rd,x) in
+   if none (for (M,) in result do M=L od) then result#:=(L,x) fi fi od;
+   result
+
+set elliptic_pseudo_Levis (RealForm G)=[RealForm]:
+   let rd=root_datum(G) in let
+      temp= ##for L in pseudo_Levi_subgroups(rd)
+      do  elliptic_forms_of_pseudo_Levi (L,G) od in
+      for (L,) in temp do L od
 
 set proper_pseudo_Levis (RootDatum rd)=[[int]]:
    let r=semisimple_rank (rd) in
@@ -138,3 +157,8 @@ set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=bool:
      in any(for (K,y,) in noticed_orbits do
        let orb=RealNilpotent:(K,embed_KGB(y,G),()) in
                  is_conjugate_orbit (orb,(H,x,())) od) fi
+
+set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[RealForm]:
+   let G=real_form(O) then list=elliptic_pseudo_Levis(G) in
+   ##for L in list do if is_noticed_orbit_in_M (O,L) then [L]
+                         else [] fi od
