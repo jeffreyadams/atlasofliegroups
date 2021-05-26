@@ -33,10 +33,10 @@
 <sub_cells.at
 <associated_variety_annihilator.at
 {<coherent_characters.at}
-{<lusztig_cells.at}
-{<sommers.at}
+<sommers.at
 <projectors_using_character_tables.at
-<fake_degrees.at
+<lusztig_cells.at
+<new_conjugacy.at
 {<lucas.at
 <self_intersection.at}
 {this is slow to load:

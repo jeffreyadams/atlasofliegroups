@@ -1,142 +1,96 @@
-<nilpotent_orbits.at
+<basic.at
+<combinatorics.at { for |partition_pairs|, |pairs_of_total_sum| }
 <character_tables.at
-<classical_W_classes_and_reps.at
+<classical_W_classes_and_reps.at { for type abbreviation |BC_class|, |cycles| }
 
-set sign_string (bool s) = string: if s then "-" else "+" fi
-set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
-set cycles_string ([int,bool] cycles) = string:
-(  "["
-   ##
- ##for (l,s)@pos in cycles
-   do if =pos then l.to_string##s.sign_string
-      else "," ##  l.to_string##s.sign_string
-      fi
-   od
- ##
-   "]"
-)
+
+
 {     type C     }
 
-{representation of H_n is given by a pair of partitions or a symbol}
-{
-  symbol:
-  0 \le f_1 < f_2 < ... < f_a
-  0 \le g_1 < f_2 < ....< g_b
-  equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
-  every symbol is equivalent to a unique one with a=b+1 and at most one 0
-}
+set BC_classes(int n) = [BC_class]:
+   for PQ in partition_pairs(n) do to_cycles(PQ) od
 
-set_type Hn_rep  =(Partition,Partition)
-set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
-set_type BC_Orbit = Partition
-  { all odd(C) or even(B) parts must have even multiplicity }
-
-{ use equivalence relation on symbols to get one with at most one 0 }
-set normalize ([int] v) = [int]:
-   let nv=#v, i=0 in while i<nv and v[i]<=i do i+:=1 od;
-   for e in v[i:] do e-i od
-
-{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
-set expand([int] v, int r) = [int]: #r ## for c in v do c+r od
-
-{ normalize symbol: |f|=|g|+1 and at most 1 zero }
-set normalize (Symbol S) = Symbol:
-  let f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
-  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
-
-{ Symbol to Hn_rep (bijection) }
-set wrep (Symbol S) = Hn_rep:
-( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
-, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
+{ word representative in types B and C of conjugacy class for partition pair;
+  the parts of P correspond to are cycles without flip, those of Q with flip }
+set class_word_BC(Partition P,Partition Q) = [int]:
+(  assert((P:=P.strip_to_partition).>, "P is not a partition")
+;  assert((Q:=Q.strip_to_partition).>, "Q is not a partition")
+;  let nP=sum(P), nQ=sum(Q)
+   ,  Pbars = let sum=minus_1 in for p in P do sum+:=p od
+   ,  Qbars = let sum=minus_1 in for q in Q do sum+:=q od
+then  P_gens = complement(nP,Pbars) { for P part, do the same as in type A }
+   ,  Q_gens = { each cycle from Q gets a sign flip when its end is sensed }
+      for i:nQ
+      do let pos=nP+i { position in [0,n) where we are }
+      in if isnt_member(Qbars)(i) then [pos] { extend our cycle }
+         else { tack on a sign flip at the final element of the cycle }
+	    for j:nQ-i from pos do j od## for j:nQ-i-1 from pos do j ~od
+	 fi
+      od.##
+in P_gens##Q_gens
 )
-{Hn_rep to Symbol}
-set symbol (Hn_rep(p,q)) = Symbol:
-   let d=#p-(#q+1) in
-   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
-   [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
 
-{ equality of Hn_reps }
-set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
+set conjugacy_class_Sp(BC_class cycles) = WeylElt:
+   let n=cycles.rank in W_elt(Sp(n+n),class_word_BC(cycles.to_partition_pair))
 
-{ equality of symbols (not equivalence) }
-set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
+{ for general type C root data, we need to look up and use the diagram order }
+set conjugacy_class_C(RootDatum rd) = (BC_class->WeylElt):
+   let map = test_simple_type("C",rd) then n=#map in
+   (BC_class cycles) WeylElt:
+(  let size = rank(cycles)
+in assert(size=n,"Cycles sum to "+size+" rather than "+n)
+;  W_elt(rd,for s in class_word_BC(cycles.to_partition_pair) do map[s] od)
+)
 
-set BC_classes(int n)=[BC_class]:partition_pairs(n)
+set class_table_C(int n) = WeylClassTable:
+   let rd=Sp(n+n), classes = [BC_class]: BC_classes(n)
+in W_class_table( rd, for cycles in classes do conjugacy_class_Sp(cycles) od
+		, (WeylElt w)int:
+		    cycle_class_size(cycle_code(w).as_signed_cycles)
+		, (WeylElt w0) (WeylElt->bool): let code=cycle_code(w0) in
+		    (WeylElt w)bool: cycle_code(w)=code
+		)
 
-{get actual conjugacy class representatives, i.e. elements of W(C_n),
- from pairs of partitions
-pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
-P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
-Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
-}
-set conjugacy_class_C(BC_class (P,Q))=WeylElt:
-if #P+#Q=0 then id_W(trivial_group)  {special case}
-else
- {first, given a single partition P=(a_1,...,a_r)
- construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
- algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
- #of terms i is a_i
- then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
- }
- let (GL_roots,GL_coroots)=
-  let partition=P##Q then
-  v=##
-   for i:#partition do
-    for j:partition[i] do i+1
-   od
-  od
-  then
-{  ()=prints("v=",v) then}
-  roots=##for alpha in GL(#v).simple_roots do
-   if alpha*v=0 then [alpha] else [] fi od
-  in (roots,roots)
- then
- {next, add single 2e_i term to simple roots of each GL factor from P
- corresponding e_i term to simple coroots}
- n=sum(P)+sum(Q) then
- long_roots=[vec]: for i:#P do 2*e(n,sum(for k:i+1 do P[k] od)-1) od then
- short_coroots=[vec]: for i:#P do e(n,sum(for k:i+1 do P[k] od)-1) od 
- in
-{ let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
- let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
-  w_sub=sub_rd.coxeter_element in
- minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
-fi
+set class_table_C(RootDatum rd) = WeylClassTable:
+  let classes = [BC_class]: BC_classes(rd.semisimple_rank)
+  , type_code(WeylElt w) = [int]: signed_cycle_type_code(classic_permutation(w))
+  , class_rep = (BC_class->WeylElt): conjugacy_class_C(rd)
+  in W_class_table( rd, for cycles in classes do class_rep(cycles) od
+		  , (WeylElt w)int:
+		      cycle_class_size(type_code(w).as_signed_cycles)
+		  , (WeylElt w0) (WeylElt->bool): let code=type_code(w0) in
+		      (WeylElt w)bool: type_code(w)=code
+		  )
 
-{dangerous bend
- conjugacy_class_C(pair) is a class for Sp(2n)
- in application, the character table will have its own root datum of type C,
-  and these might not agree
-}
-
-set convert(WeylElt w,RootDatum rd)=WeylElt:W_elt(rd,w.word)
+set BC_irreps(int n) = [BC_irrep]:
+   pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
 
 set character_table_C(int n) = CharacterTable:
-let order=n.fac*2^n, pairs = partition_pairs(n)
-  then cycles = for pair in pairs do pair.cycles od
-  then ncc=#cycles then
-  conjugacy_classes {[Dn_conjugacy_class]}= BC_classes(n) then  {array of (Partition,Partition,Partition)}
-  index = index_signed_cycles(cycles,#(#cycles))
-  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
-  , sign(bool s) = string: if s then "-" else "+" fi
-in
-  (Lie_type(Sp(2*n))    {lie_type}  
-  , order    {order (of W)}
-  , ncc      {n_classes}
-  , (int j) classical_class: conjugacy_classes[j].class_BC
-  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
-  , for pair in pairs do conjugacy_class_C(pair) od  {class_reps}
-  , (int j) int: cycles[j].cycle_type_order       {class_order}
-  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
-  , centralizer_orders   {class}
-  , for co in centralizer_orders do order\co od    {class_sizes}
-  , (int i) classical_irrep: pairs[i].irrep_BC 
-  , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
-  , [[int]]:[] {sym_powers_reflection}
-  , [int]:[]  {degrees}
-  , [int]:[]  {fake degrees}
-  , ncc ^ { gather rows of this size: }
-    for pair in pairs
-    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
-    od
-  )
+   let class_list =  BC_classes(n)
+   then classes = [WeylElt,classical_class,string]:
+      for cycles in class_list
+      do (conjugacy_class_Sp(cycles), cycles.class_BC,cycles.cycles_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for rep in BC_irreps(n)
+      do ( rep.irrep_BC, rep.irrep_string
+         , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
+	 )
+      od
+   in character_table(class_table_C(n),classes,irreps)
+
+set character_table_C(RootDatum rd) = CharacterTable:
+   let n=rd.semisimple_rank
+   , class_rep = (BC_class->WeylElt): conjugacy_class_C(rd)
+   then class_list =  BC_classes(n)
+   then classes = [WeylElt,classical_class,string]:
+      for cycles in class_list
+      do (class_rep(cycles), cycles.class_BC,cycles.cycles_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for rep in BC_irreps(n)
+      do ( rep.irrep_BC, rep.irrep_string
+         , for cycles in class_list do hyperoctahedral_character(rep,cycles) od
+	 )
+      od
+   in character_table(class_table_C(rd),classes,irreps)

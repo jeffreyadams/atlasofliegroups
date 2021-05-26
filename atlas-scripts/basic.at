@@ -53,6 +53,8 @@ set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 set count ([bool] p) = int: { count (sum) number of truths in list }
   let c=0 in for b in p do if b then c+:=1 fi od; c
+set XOR ([bool] p) = bool: { exclusive or (sum modulo 2) of all truths in list }
+  let c=false in for b in p do c:=(c!=b) od; c
 
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
@@ -276,10 +278,10 @@ set c_adjust (int w, string s) = string:
 set width (int n) = int: #int_format(n)
 
 set split_lines (string text) = [string]:
-  let result = [string]: [], a=for c in text do c od, last=0 in
-  for c@i in a
-  do if c=new_line then result #:= concat(a[last:i]); last:=i+1 fi
-  od; result
+  let last=0 in
+  for c@i in text
+  do if c=new_line else [] then [text[last:i]] next last:=i+1 fi
+  od.##
 
 set is_substring (string s, string text) = bool:
   let s0=for c in s do c od, t0=for c in text do c od in
@@ -317,11 +319,19 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
-set rec_fun all_0_1_vecs (int n) = [vec]:
-  if n<=0 then [null(0)]
-  else let list=all_0_1_vecs(n-1) in
-    for v in list do v#0 od  ##  for v in list do v#1 od
-  fi
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+  let rec_fun generate(int final) = [vec]:
+     if =final then [null(0)]
+     else final-:=1; let limit=limits[final] in
+          for prefix in generate(final)
+          do for i:limit do prefix#i od
+	  od.##
+     fi
+  , size=#limits
+  in size # generate(size) { ensure column size |size|, even for empty set }
+
+set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
 set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
   if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
@@ -1128,6 +1138,9 @@ set W_elt (RootDatum rd, mat M) = WeylElt:
   let w = chamber(rd,M*two_rho(rd))
   in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
 
+{ |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
+  |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
+set convert_to (RootDatum rd, WeylElt w) = WeylElt: chamber(rd,w*two_rho(rd))
 
 {                               Inner classes                           }
 
@@ -1270,11 +1283,13 @@ set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }
   in KGB_elt(rf,theta,v)    { find KGB element within rf }
 
-{ NB: elements produced by the following function test unequal to any others }
 set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
-  let ic = inner_class(rd,theta)   { find the proper inner class }
-  then rf = real_form(ic,theta,v)  { find real form within ic }
-  in KGB_elt(rf,theta,v)           { find KGB element within rf }
+  KGB_elt(inner_class(rd,theta), theta, v)
+
+{ transfer to other inner class (or real form) that shares coordinates,
+  this can be used for instance to embed the KGB set of a Levi subgroup }
+set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
+  KGB_elt(ic, x.involution, x.torus_factor)
 
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class

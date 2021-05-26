@@ -224,18 +224,18 @@ in { now apply |reps_by_rho| to each size class, and concatenate the results }
    for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##
 end
 
-{which standard Levi is (non-standard) L conjugate to, but not giving a conjugator}
-set standard_Levi(RootDatum rd,RootDatum rd_L)=RootDatum:
-let v=dominant(rho_check(rd_L),rd) then
-reps=standard_Levi_conjugacy_representatives(rd) then
-index=first(for L_std in reps do dominant(rho_check(sub_root_datum(rd,L_std)),rd)=v od) in
-{let ()=prints("index:", index) in }
-sub_root_datum(rd,reps[index])
+{ which standard Levi is (the non-standard) L conjugate to? }
+set standard_Levi (RootDatum rd,RootDatum rd_L) = RootDatum:
+   let v = dominant(rho_check(rd_L),rd)
+   , reps = standard_Levi_conjugacy_representatives(rd)
+   then index=first(#reps,(int i)bool:
+			  dominant(rho_check(sub_root_datum(rd,reps[i])),rd)=v)
+   in sub_root_datum(rd,reps[index])
 
-{return a WeylElt taking rd_L to a standard Levi root datum}
-set standard_Levi_witness(RootDatum rd,RootDatum rd_L)=WeylElt:
-let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L)) in
-assert(any(w), "Error finding standard_Levi_witness");req(w)
+{ return a WeylElt, assumed to exist, taking rd_L to a standard Levi root datum }
+set standard_Levi_witness (RootDatum rd,RootDatum rd_L) = WeylElt:
+   let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L))
+   in assert(any(w), "Error finding standard_Levi_witness"); req(w)
 
 
 

@@ -1,14 +1,16 @@
 <simple_character_table.at
 <character_table_tensor.at
 
-set character_table(RootDatum rd)=
-let factors=rd.derived.simple_factors then
-rv=simple_character_table(factors[0].derived) in
- for i:#factors-1 from 1 do
-  rv:=tensor(rv,simple_character_table(factors[i].derived)) od;
-rv
+set character_table(RootDatum rd)= CharacterTable:
+   let factors=rd.very_simple_factors { list of simple root data }
+   then table =
+      if =#factors then error("Cannot handle trivial Weyl group") fi
+      ; simple_character_table(factors[0])
+   in for factor in factors[1:]
+      do table:=tensor(table,simple_character_table(factor))
+      od; table
 
 set character_table(RootDatum rd,ratvec infinitesimal_character)=
+    CharacterTable:
 let rd_int=integrality_datum(rd,infinitesimal_character) in
-let ()=prints("integrality datum: ", rd_int) in 
-character_table(rd_int)
+prints("integrality datum: ", rd_int); character_table(rd_int)

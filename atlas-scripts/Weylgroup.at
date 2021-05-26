@@ -96,11 +96,11 @@ set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
   let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
 set is_elliptic (WeylElt w) = bool:
- if w.root_datum.is_abelian then true else 
-  =eigen_lattice(matrix(w),1) fi { |eigen_lattice| empty means no eigenvalue 1 }
+  =#eigen_lattice(matrix(w),1) { |eigen_lattice| empty means no eigenvalue 1 }
 
-{elliptic in the derived group}
-set is_relatively_elliptic(WeylElt w)=bool:is_elliptic(W_elt(w.root_datum.derived,w.word))
+{ elliptic in the derived group }
+set is_relatively_elliptic (WeylElt w) = bool:
+  #eigen_lattice(matrix(w),1) = w.root_datum.central_torus_rank
 
 { use complex cross actions to find a KGBElt x0 in a fiber with no C- roots
   by descending through complex descents until none are left

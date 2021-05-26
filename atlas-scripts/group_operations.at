@@ -115,7 +115,7 @@ set adjoint (RealForm G) = RealForm:
 set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
   compact_rank(most_split_Cartan(G))=compact_rank(radical(InnerClass:G))
 
-set is_abelian(RootDatum G)=bool: =semisimple_rank(G)
+set is_abelian(RootDatum rd)=bool: =semisimple_rank(rd)
 
 {  converting between root data, and including a change of basis matrix }
 
