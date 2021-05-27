@@ -50,11 +50,13 @@ elif letter="F" then
  let ct=character_table_F4() in ct
 elif letter="G" then character_table_G2()
 elif letter="E" and n=6 then
- let ct_0=character_table_E6() then 
- ct=update_degrees(ct_0) in ct
+ let ct_0=character_table_E6()
+ {then ct=update_degrees(ct_0)}{now precomputed}
+ in ct_0
 elif letter="E" and n=7 then
- let ct_0=character_table_E7() then
- ct=update_degrees(ct_0) in ct
+ let ct_0=character_table_E7()
+ {then  ct=update_degrees(ct_0) in ct}{now precomputed}
+ in ct_0
 elif letter="E" and n=8 then
  let ct=character_table_E8() in ct
  elif is_abelian(rd) then

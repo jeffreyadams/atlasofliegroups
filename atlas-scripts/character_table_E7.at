@@ -169,7 +169,7 @@ let ct=(
   , (int i) string: "" { irreducible representation label }  {later}
   ,sym_powers_reflection_E7
   ,[int]:[]     {degrees}
-  ,[int]:[]     {fake degrees}
+  ,[int]:e7_fake_degrees     {fake degrees}
   ,null(60,60)
   )
 in prints("Done intializing character table");ct
@@ -177,9 +177,10 @@ in prints("Done intializing character table");ct
 set character_table_E7()=CharacterTable:
 {let  ct0=initialize_character_table(simply_connected(E7)) then}
 let  ct0=initialize_character_table_E7() then
-ct1=set_table(ct0,e7_profile,e7_table) then
-ct2=ct1.update_degrees in
-{st=springer_table_E7(ct)}
-ct2
+ct1=set_table(ct0,e7_profile,e7_table) in
+{ct2=ct1.update_degrees in}
+ct1.degrees:=e7_degrees;
+ct1.fake_degrees:=e7_fake_degrees;
+ct1
 
 
