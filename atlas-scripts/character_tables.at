@@ -82,7 +82,7 @@ in
 , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
 , { class_reps } [WeylElt]: for (w,,) in class_reps do w od
 { , { class_rep } (int i)WeylElt: let (w,,)=class_reps[i] in w }
-, { class_order } c_size
+, { class_order } (int i) int: let (w,,) = class_reps[i] in order(w)
 , { class_power } (int i,int pow)int: inv_map[Wct.class_power(class_map[i],pow)]
 , { centralizer_orders} [int]: for i:n do order\c_size(i) od
 , { class_sizes } [int]: for i:n do c_size(i) od

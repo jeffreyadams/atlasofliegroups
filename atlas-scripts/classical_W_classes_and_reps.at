@@ -128,7 +128,7 @@ set cycles_string ([int,bool] cycles) = string:
 ).to_string
 
 set irrep_string(BiPartition(lambda,mu)) = string:
-   ("{", lambda.parts_string, "+|-", mu.parts_string, "}").to_string
+   ("{ ", lambda.parts_string, " +|- ", mu.parts_string, " }").to_string
 
 set cycles_string (D_class c) = string:
     case c
@@ -138,9 +138,9 @@ set cycles_string (D_class c) = string:
 set irrep_string(D_irrep chi) = string:
   case chi
   | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
-    ("{",mu.parts_string,"|",lambda.parts_string,"}").to_string
+    ("{ ",mu.parts_string," | ",lambda.parts_string," }").to_string
   | (mu,s).split_irr:
-    ("{",mu.parts_string,"|",mu.parts_string,"}",s.sign_string).to_string
+    ("{ ",mu.parts_string," | ",mu.parts_string," }",s.sign_string).to_string
   esac
 
 
