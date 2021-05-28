@@ -788,9 +788,10 @@ set adjoint (LieType type) = RootDatum:
 set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
 set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
 
-{root datum whose coroots are those integral on p.infinitesimal_character}
+{ root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
   integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
+set integrality_rank (Param p) = int: semisimple_rank(integrality_datum(p))
 
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let in_S = is_member(S) in
@@ -1576,7 +1577,7 @@ set block_status_text (int i) = string:
 
 set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts (Param p) = [string]:
-  for s:semisimple_rank(real_form(p)) do status_text(s,p) od
+  for s:integrality_rank(p) do status_text(s,p) od
 
 set status_text ((vec,Param) ap) = string: block_status_text(status(ap))
 
@@ -1589,7 +1590,7 @@ set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
 
 set is_descent (int s,Param p) = bool: status(s,p)<4
 set tau_bitset (Param p) = (int,(int->bool)):
-  (p.real_form.semisimple_rank, (int s): is_descent(s,p))
+  (integrality_rank(p), (int s): is_descent(s,p))
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
