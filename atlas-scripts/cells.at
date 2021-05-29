@@ -1,5 +1,6 @@
 <character_table_reps.at
 <springer_tables.at
+<isomorphism_W.at {for permute_character}
 
 {
 these two functions are defined in W_reps.at:
@@ -29,9 +30,21 @@ let (,c)=W_cell(block,cells,p) in c
 { ----------- cell representations --------------}
 {{moved from character_table_reps.at}}
 
+{neglected to take permutation into account}
+set cell_characterold (CharacterTable ct,WCell cell) = [int]:
+  for w in ct.class_reps do trace(cell_action(cell,w)) od
+
 {. character of representation of W on cell .}
 set cell_character (CharacterTable ct,WCell cell) = [int]:
-  for w in ct.class_reps do trace(cell_action(cell,w)) od
+let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
+()=assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell") in
+if P=id_mat(#P) then
+ for w in ct.class_reps do trace(cell_action(cell,w)) od
+else
+ prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P);
+ for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
+fi
+
 
 set cell_character(CharacterTable ct)=(WCell -> [int]):(WCell cell):cell_character(ct,cell)
 set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
