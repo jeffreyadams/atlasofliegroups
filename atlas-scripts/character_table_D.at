@@ -61,24 +61,34 @@ in assert(size=n,"Cycles sum to "+size+" rather than "+n)
 
 set class_table_D(int n) = WeylClassTable:
    let rd=SO(n+n), classes = [D_class]: D_classes(n)
+   then lookup = (D_class->int):
+      let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
+         sort(#classes,(int i,int j)bool: classes[i]<=classes[j])
+      then list = for i in ranked do classes[i] od
+      in (D_class c) int: { index in |classes| where one finds |c| }
+         ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
 in W_class_table( rd, for class in classes do conjugacy_class_SO(class) od
 		, (WeylElt w)int:
 		    cycle_class_size(signed_permutation(w).to_D_class)
-		, (WeylElt w0) (WeylElt->bool):
-		    let c=signed_permutation(w0).to_D_class in
-		    (WeylElt w)bool: signed_permutation(w).to_D_class=c
+		, (WeylElt w)int: lookup(signed_permutation(w).to_D_class)
+		, (int i,int k)int: lookup(cycle_power(classes[i],k))
 		)
 
 set class_table_D(RootDatum rd) = WeylClassTable:
-  let classes = [D_class]: D_classes(rd.semisimple_rank)
-  , type_code(WeylElt w) = D_class: classic_permutation(w).to_D_class
-  , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
-  in W_class_table( rd, for class in classes do class_rep(class) od
-		  , (WeylElt w)int:
-		      cycle_class_size(classic_permutation(w).to_D_class)
-		  , (WeylElt w0) (WeylElt->bool): let c=type_code(w0) in
-		      (WeylElt w)bool: type_code(w)=c
-		  )
+   let classes = [D_class]: D_classes(rd.semisimple_rank)
+   , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
+   then lookup = (D_class->int):
+      let ranked = { |ranked[i]| is index in |classes| of class ranked |i| }
+         sort(#classes,(int i,int j)bool: classes[i]<=classes[j])
+      then list = for i in ranked do classes[i] od
+      in (D_class c) int: { index in |classes| where one finds |c| }
+         ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
+in W_class_table( rd, for class in classes do class_rep(class) od
+		, (WeylElt w)int:
+		     cycle_class_size(classic_permutation(w).to_D_class)
+		, (WeylElt w)int: lookup(classic_permutation(w).to_D_class)
+		, (int i,int k)int: lookup(cycle_power(classes[i],k))
+		)
 
 
 { all irreducible representations of D_n }
