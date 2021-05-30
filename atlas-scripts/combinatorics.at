@@ -335,27 +335,6 @@ set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
 , for (part,b) in cy do if b then part else 0 fi od.sort_to_partition
 )
 
-{ although permutation of pairs within |Signed_cycles| should not alter their
-  meaning, the following defines a (lexicogrpahic) total ordering that does not
-  respect such equivalence; it is presumed each |Signed_cycles| is normalised,
-  for instance by having |x=c.to_partition_pair.to_cycles| for some |c|
-}
-
-{ compare lists of signed cycle lengths; mathematically meaningless total order }
-set leq_signed_cycles (Signed_cycles x, Signed_cycles y) = bool:
-(  let m=min(#x,#y) in
-   for i:m
-   do let (xi,si)=x[i], (yi,ti)=y[i] in
-      if si!=ti then return ti { have (a,+)<(b,-) }
-      elif xi!=yi then return xi<yi
-      fi
-   od
-;  #x <= #y { if one is prefix of the other, compare as their lengths do }
-)
-
-set sort_cycle_types([Signed_cycles] a) = [Signed_cycles]:
-   for k in sort(#a,(int i,int j)bool: leq_signed_cycles(a[i],a[j])) do a[k] od
-
 { partitions with even multiplicity of parts of one parity (odd or even) }
 set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   let is_multiplicity_restricted = (int->bool):
@@ -402,10 +381,12 @@ set partition_pairs (int n) = [BiPartition]:
 
 set =(BiPartition (P,Q), BiPartition (R,S)) = bool: P=R and Q=S
 
+{ compare |BiPartition| values of same sum, in ordering of |partition_pairs| }
 set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
    case P.sum-R.sum
-   then true else false { size of left partitions decides }
-   in if P=R else (P,R) then (Q,S) fi.leq_equal_sum_partitions
+   then false else true { size balance is decisive, inverted ordering! }
+   in { equal size balence case: compare left partitions, or right if ex aequo }
+      if P=R else (P,R) then (Q,S) fi.leq_equal_sum_partitions
    esac
 
 { look up pair in sorted list of partition pairs, all assumed of same sum }
@@ -413,24 +394,6 @@ set index_bipartition([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
 
-{ look up in list of signed cycle types, and translate index found by |map|;
-  contrary to previous index functions, the |list| is not assumed ordered
-}
-set index_signed_cycles([Signed_cycles] list,[int] map) = (Signed_cycles->int):
-(  let l=#list in
-{ first ensure that |list| is sorted, and that |map| is permuted accordingly }
-   ( let perm = sort(l,(int i,int j):leq_signed_cycles(list[i],list[j])) in
-     list := for i in perm do list[i] od; map := for i in perm do map[i] od
-   )
-;  (Signed_cycles cycle_type) int:
-      map
-      [ binary_search_first
-        ( (int i)bool: { whether list[i] equals or comes after cycle_type }
-             leq_signed_cycles(cycle_type,list[i])
-        ,0,l
-        )
-      ]
-)
 
 
 set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
@@ -617,6 +580,10 @@ set cycle_code(WeylElt w) = vec: { assuming |w| is for |Sp(2n)| or |SO(m)| }
 
 set as_signed_cycles (vec v) = Signed_cycles:
   for cyc in v do (abs(cyc),cyc.<) od
+set as_bipartition (vec v) = BiPartition:
+  ( for l in v  do if l.> then [l]  else [] fi od.##
+  , for l in v ~do if l.< then [-l] else [] fi od.##
+  )
 set signed_cycle_type ([int] sigma) = Signed_cycles:
   signed_cycle_type_code(sigma).as_signed_cycles
 
