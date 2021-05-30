@@ -75,7 +75,7 @@ set class_table_D(RootDatum rd) = WeylClassTable:
   , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
   in W_class_table( rd, for class in classes do class_rep(class) od
 		  , (WeylElt w)int:
-		      cycle_class_size(signed_permutation(w).to_D_class)
+		      cycle_class_size(classic_permutation(w).to_D_class)
 		  , (WeylElt w0) (WeylElt->bool): let c=type_code(w0) in
 		      (WeylElt w)bool: type_code(w)=c
 		  )
