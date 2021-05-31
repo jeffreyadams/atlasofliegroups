@@ -1,7 +1,11 @@
-<extended.at
-<hecke.at
-<nonintegral.at
-<dual.at
+<basic.at
+<extended.at { for |ext_block_of@Param|, E@(mat,ratvec,...,KGBElt_gen) }
+<extended_misc.at { for |parameter@ExtParam| }
+<parameters.at { for |dual_inner_class@Param| }
+<Vogan-dual.at { for |dual_KGB@(Param,InnerClass)| }
+<hecke.at { for |y_gen@Param|, |decompose@(int,int,mat,[Param],ratvec)|,
+            |test_hecke@(int,int,mat,ratvec,ratvec,[(KGBElt,KGBElt_gen)])|,
+	    |hecke_row@(int,ExtParam,[(KGBElt,KGBElt_gen)]) }
 
 set rd=root_datum(Lie_type("A1.A1"),[[1/2,1/2]])
 set ic=inner_class(rd,"ss")
@@ -20,10 +24,10 @@ set EB=ext_block_of(delta,trivial(G))
 set E=EB[0]
 set p=parameter(E)
 set gamma=infinitesimal_character(p)
-set g=g(E)
+set g=E.g
 
-set x=x(p)
-set y=dual_KGB(p,dual_inner_class(p))
+set x=p.x
+set y = KGBElt: dual_KGB(p,dual_inner_class(p))
 set id=integrality_datum(p)
 set y_gen=y_gen(p)
 set E=E(delta,gamma,x,g,y_gen)

@@ -36,7 +36,7 @@ if ct_verbose then prints("Computing character table for simple root datum: ", r
 let ct=
 let (letter,n)=simple_type(rd) in
 if letter="A" then
- let ct=character_table_A(n) in ct
+ let ct=character_table_A(SL(n+1)) in ct
 elif letter="B" then
  let ct_0=character_table_B(n) then
  ct=ct_0.update_degrees in ct

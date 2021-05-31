@@ -45,7 +45,7 @@ set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
 
 { test if partition is valid orbit in type ABCD }
 set is_valid (string type,Partition P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
+{ avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
   P:=P.strip_to_partition; { avoid frequencies of 0 }
   case ascii(type)-ascii("A")
   in { type A } true

@@ -2,7 +2,7 @@
 
 <basic.at
 <nilpotent_orbits.at { for |ComplexNilpotent| type, |dual_orbits| }
-<springer_reductive.at
+<springer_tables_reductive.at
 <show_nilpotent_orbits.at
 <arthur_parameters.at
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }

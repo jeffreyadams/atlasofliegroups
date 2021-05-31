@@ -1,4 +1,10 @@
-<cells.at
+<basic.at
+<lietypes.at { for |is_locally_isomorphic| }
+<groups.at { for |complexification }
+<K.at { for |K_0| }
+<W_orbit.at { for |W| }
+<W_reps.at { for type |WCell| }
+<cells.at { for |parameters@([Param],WCell)| }
 
 { a few vector manipulations }
 set left (vec v) = vec: v[:#v\2]
@@ -24,63 +30,61 @@ set up_left_corner (mat M) = mat:
   assert(r.is_even,"odd size matrix");
   M[:r\2,:r\2]
 
-{testing if a group is (weak,strictly) complex}
+{ Testing if a group is (weak,strictly) complex }
 
-{Suppose G is a RootDatum, and \theta is a algebraic involution of G
-defining a real form G(R) We say G is a "complex group" if the root
-system R of G is "complex": meaning R\simeq R_1\times R_1, with \delta
-exchanging the two factors.  Equivalently:
-<\alpha,\delta(\alpha^vee)>=0 for all (simple) roots alpha
+{ Suppose G is a RootDatum, and \theta is a algebraic involution of G
+  defining a real form G(R). We say G is a "complex group" if the root
+  system R of G is "complex": meaning $R\simeq R_1\times R_1$, with \delta
+  exchanging the two factors.  Equivalently:
+  <\alpha^vee,\delta(\alpha)> = 0 for all (simple) roots alpha
 
-Caution: This is slightly weaker than: G\simeq G_1\times G_1 with
-\delta switching factors. For example SL(2)xSL(2)/<-I,-I>, delta acts
-by switching factors <- SO(3,1); this is disconnected.
+  Caution: This is slightly weaker than: G\simeq G_1\times G_1 with
+  \delta switching factors. For example SL(2)xSL(2)/<-I,-I>, delta acts
+  by switching factors <- SO(3,1); this is disconnected.
 
-is_complex@RealForm tests the condition: <alpha,delta(alpha^vee)>=0
+  is_complex@RealForm tests the condition: <alpha^vee,delta(alpha)> = 0
 
-Question: how do we check the stronger condition: G(R) is a connected,
-complex group. (This allows Spin(3,1)=SL(2,C) and PSO(3,1)=PSL(2,C),
-but not SO(3,1)\simeq PSL(2,C)\times Z_2 (direct product)
+  Question: how do we check the stronger condition: G(R) is a connected,
+  complex group. (This allows Spin(3,1)=SL(2,C) and PSO(3,1)=PSL(2,C),
+  but not SO(3,1)\simeq PSL(2,C)\times Z_2 (direct product)
 
-Answer: G^\theta\otimes C\simeq G
-In the usual notation:
-G=G_1\times G_1, \theta(g,h)=(h,g)
-G^\theta=G_1-diagonal,
-(G^\theta)\otimes C=G_1\times G_1=G
+  Answer: G^\theta\otimes C\simeq G
+  In the usual notation:
+  G=G_1\times G_1, \theta(g,h)=(h,g)
+  G^\theta=G_1-diagonal,
+  (G^\theta)\otimes C=G_1\times G_1=G
 
-We call this condition: is_strictly_complex
+  We call this condition: is_strictly_complex
 
-How to test this:
+  How to test this:
 
-(G^\theta)_0 =K_0(G)  (identity component)
+  (G^\theta)_0 =K_0(G)  (identity component)
 
-Claim: (G,\theta) is complex <=>
-a) G(R), equivalently K=G^\theta, is connected
-b) complexification(K_0(G))\simeq G
+  Claim: (G,\theta) is complex <=>
+  a) G(R), equivalently K=G^\theta, is connected
+  b) complexification(K_0(G))\simeq G
 
-I believe we can replace b) with
+  I believe we can replace b) with
 
-b') complexification(K_0(G)) is locally isomorphic to G
+  b') complexification(K_0(G)) is locally isomorphic to G
 
-Furthermore this is probably equivalent to:
+  Furthermore this is probably equivalent to:
 
-i)  G.is_complex
-ii) G.components_rank=0
+  i)  G.is_complex
+  ii) G.components_rank=0
 
-Probably we won't use is_strictly_complex much, so
-leaving this here
+  Probably we won't use is_strictly_complex much, so
+  leaving this here
 }
-set is_complex(RealForm G)=bool:
-all(for i:#G.simple_roots do
-G.distinguished_involution*G.simple_roots[i]*G.simple_coroots[i]=0 od)
+set is_complex(InnerClass ic)=bool:
+  let alpha_v=ic.simple_coroots, delta=ic.distinguished_involution in
+  for alpha@i in ic.simple_roots do =alpha_v[i]*(delta*alpha) od.all
 
-set is_strictly_complex(RealForm G)=bool:
-let
-test_1=G.is_complex and =G.components_rank then
-test_2=is_locally_isomorphic(G,complexification(K_0(G))) and =G.components_rank
-in
-assert(test_1=test_2,"two strictly complex tests don't agree");
-test_1
+set is_strictly_complex(RealForm G) = bool:
+  let test_1 = bool: G.is_complex and =G.components_rank
+  , test_2 = bool:
+    is_locally_isomorphic(G,complexification(K_0(G))) and =G.components_rank
+  in assert(test_1=test_2,"two strictly complex tests don't agree"); test_1
 
 set left_w (KGBElt x) = mat: { assumes inner_class(x) is complex }
   up_right_corner(involution(x))
@@ -120,13 +124,14 @@ set parameter_m(RealForm G, vec mu, ratvec nu) = Param:
   {parameter(KGB(G,0), mu##null(#mu), concatenate(nu/2,-nu/2))}
   dominant(parameter(KGB(G,0), mu##null(#mu), concatenate(nu/2,-nu/2)))
 
-set m_parameter(Param p)=(p.real_form,p.mu_C,p.nu_C)
+set m_parameter(Param p) = (RealForm,vec,ratvec): (p.real_form,p.mu_C,p.nu_C)
 
 {-------------------------------------------------------------------}
 {get a copy of G_int from (GxG)(gamma)=G(gamma)xG(gamma)}
-set K_int(RealForm G,ratvec gamma)=
-assert(G.is_strictly_complex, "G is not a (strictly) complex group");
-K_0(quasisplit_form(inner_class(integrality_datum(G,gamma),G.distinguished_involution)))
+set K_int(RealForm G,ratvec gamma) = RealForm:
+  assert(G.is_strictly_complex, "G is not a (strictly) complex group");
+  inner_class(integrality_datum(G,gamma),G.distinguished_involution
+             ).quasisplit_form.K_0
 
 {G is a complex group, viewed as a real group it has rank n=2m
  W(G): acting on 2m-vectors = W_left(G) x W_right(G)
@@ -168,53 +173,62 @@ w_parameter(Param p)=(RealForm,rarvec,WeylElt)
 parameter_w(w_parameter(p))=p
 w_parameter(parameter_w(G,gamma,w)=(G,gamma,w)
 }
-set parameter_w(RealForm G,ratvec gamma, WeylElt w)=Param:parameter_g(G,gamma,inverse(w)*gamma)
+set parameter_w(RealForm G,ratvec gamma, WeylElt w) = Param:
+  parameter_g(G,gamma,inverse(w)*gamma)
 
 {this one should work for _any_ gamma, and send 1_W to spherical parameter}
 set parameter1_w(RealForm G, ratvec gamma, WeylElt w) = Param:
-parameter_g(G,w*gamma,-gamma)
+  parameter_g(G,w*gamma,-gamma)
 
 { this is meant to recover w from parameter_w(G,gamma,w) }
-set w_parameter(Param p)=(RealForm,ratvec,WeylElt):
-let (valid,w)=conjugate_to(left_G(p.real_form),p.gamma_L,p.gamma_R) in
-assert(valid,"w_parameter failed");
-(p.real_form,p.gamma_L,w)
+set w_parameter(Param p) = (RealForm,ratvec,WeylElt):
+  let (valid,w)=conjugate_to(left_G(p.real_form),p.gamma_L,p.gamma_R) in
+  assert(valid,"w_parameter failed"); (p.real_form,p.gamma_L,w)
 
 { this is meant to recover w from parameter1_w(G,gamma,w) }
-set w_parameter1(Param p)=(RealForm,ratvec,WeylElt):
-let (valid,w)=conjugate_to(left_G(p.real_form),p.gamma_L,-p.gamma_R) in
-assert(valid,"w_parameter1 failed");
-(p.real_form,p.gamma_L,w)
+set w_parameter1(Param p) = (RealForm,ratvec,WeylElt):
+  let (valid,w)=conjugate_to(left_G(p.real_form),p.gamma_L,-p.gamma_R) in
+  assert(valid,"w_parameter1 failed"); (p.real_form,p.gamma_L,w)
 
-set w(Param p)=WeylElt:let (,,w)=w_parameter(p) in w
+set w(Param p) = WeylElt: let (,,w)=w_parameter(p) in w
 
-set cell_as_w([Param] block,WCell cell)=[WeylElt]:
-assert(block[0].real_form.is_complex, "G is not (restriction of scalars of) a complex group");
-for p in parameters(block,cell) do w(p) od
+set cell_as_w([Param] block,WCell cell) = [WeylElt]:
+  assert(block[0].real_form.is_complex
+        , "G is not (restriction of scalars of) a complex group");
+  for p in parameters(block,cell) do w(p) od
 
-set view_complex([Param] params)=
-tabulate(["p", "gamma_L", "gamma_R", "mu_C", "nu_C"]#
-for p in params do [p.to_string, p.gamma_L.to_string,p.gamma_R.to_string,p.nu_C.to_string,p.nu_C.to_string] od)
+set view_complex([Param] params) = void:
+  tabulate(["p", "gamma_L", "gamma_R", "mu_C", "nu_C"]#
+    for p in params
+    do [ p.to_string
+       , p.gamma_L.to_string
+       , p.gamma_R.to_string
+       , p.nu_C.to_string
+       , p.nu_C.to_string
+       ]
+    od
+  )
 
 {  viewing block for a complex group as group-algebra of W
    for applications to computing cells for a real group}
 
-set gp_alg_elt(ParamPol P)=[(Split,WeylElt)]:for (c,p) in %P do
-let (,,w)=w_parameter(p) in (c,w) od
+set gp_alg_elt(ParamPol P) = [(Split,WeylElt)]:
+  for (c,p) in %P do let (,,w)=w_parameter(p) in (c,w) od
 
 {more or less differs from gp_alg_elt by mult by long element (on some side?)}
-set gp_alg_elt1(ParamPol P)=[(Split,WeylElt)]:for (c,p) in %P do
-let (,,w)=w_parameter1(p) in (c,w) od
+set gp_alg_elt1(ParamPol P) = [(Split,WeylElt)]:
+  for (c,p) in %P do let (,,w)=w_parameter1(p) in (c,w) od
 
-set *([(Split,WeylElt)] x,Param p)=
-let rv=null_module(p.real_form) in
- for (c,w) in x do rv+:=c*coherent_irr(p,w) od;rv
+set *([(Split,WeylElt)] x,Param p) = ParamPol:
+  sum(p.real_form, for (c,w) in x do c*coherent_irr(p,w) od)
 
-set inverse([WeylElt] cell)=[WeylElt]: for w in cell do w.inverse od
+set inverses([WeylElt] cell) = [WeylElt]: for w in cell do /w od
 
-set intersect([WeylElt] a,[WeylElt] b)=
-##for w in a do if find(b,w)=-1 then [] else [w] fi od
+set intersect([WeylElt] a,[WeylElt] b)= [WeylElt]:
+  let l=#b then present(WeylElt w) = bool: any(l,(int i)bool: b[i]=w)
+  in for w in a do if w.present then [w] else [] fi od.##
 
-set self_intersect([WeylElt] a)=intersect(a,a.inverse)
+set self_intersect([WeylElt] a)= [WeylElt]: intersect(a,inverses(a))
 
-set diag([[WeylElt]] cells)=for cell in cells do self_intersect(cell) od
+set diag([[WeylElt]] cells) = [[WeylElt]]: { diagonal, one must presume }
+   for cell in cells do self_intersect(cell) od
