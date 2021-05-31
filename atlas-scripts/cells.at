@@ -121,6 +121,11 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
 
 set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
 
+{really should be this, since it only returns one block:}
+set block_and_cells (Param p) = ([Param],[WCell]):
+let bc=blocks_and_cells(p) in
+assert(#bc=1,"more than one block?");bc[0]
+
 { locate a given parameter in structure returned from |blocks_and_cells| }
 set find ([[Param],[WCell]] blocks_and_cells, Param p) = (int,int):
 for (block,cells)@i in blocks_and_cells

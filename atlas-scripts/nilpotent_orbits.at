@@ -120,6 +120,9 @@ set odd_eigenspaces(RootDatum rd, vec H)=[int]:
 set support (Param p) = [int]:
    support(x(p)) { using |support@KGBElt| from parabolics.at }
 
+set support_dual (Param p) = [int]:
+   support_dual(x(p))
+
 set blocku(RealForm G) = [Param]:
  ##for p in block_of(trivial(G))
    do if for k in support(x(p)) do is_descent(k,p) od.all then [p] else [] fi

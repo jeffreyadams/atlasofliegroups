@@ -1,0 +1,41 @@
+<nilpotent_orbits.at
+
+set cells_parameters([Param] params,[WCell] cells)=[[Param]]:
+for cell in cells do parameters(params,cell) od
+
+set is_proper_support(KGBElt x)=bool:
+ #x.support<x.root_datum.semisimple_rank
+
+set is_proper_support_dual(KGBElt x)=bool:
+ #x.support_dual<x.root_datum.semisimple_rank
+
+set is_proper_support(Param p)=bool:is_proper_support(p.x)
+set is_proper_support_dual(Param p)=bool:is_proper_support_dual(p.x)
+
+set is_proper_support_or_dual(Param p)=bool: is_proper_support(p) or is_proper_support_dual(p)
+
+{usually apply to a cell}
+set proper_support_or_dual_proper_support_subset([Param] params)=[Param]:
+##for p in params do
+ if is_proper_support_or_dual(p) then [p] else [] fi od
+
+set proper_support_or_dual_proper_support_subset([Param] params,[WCell] cells)=[([Param],[Param])]:
+for cell in cells_parameters(params,cells) do (cell,proper_support_or_dual_proper_support_subset(cell)) od
+
+set test_support([Param] params)=
+let bc=blocks_and_cells(params)  {[[Param],[WCell]]} in
+ for (block,cells) in bc do  {(block,cells)=([Param],[WCell])}
+  proper_support_or_dual_proper_support_subset(block,cells) od
+
+set test_support_long([Param] params)=bool:
+let t=test_support(params) in
+prints("#params: ", #params, new_line,
+"#blocks: ", #t);
+for i:#t do
+prints("block #", i, new_line, "#cells: ", #t[i]);
+ tabulate(["i","#cell","#proper","lengths"]#for (b,c)@j in t[i] do [j.to_string, (#b).to_string, (#c).to_string, (for p in c do p.length od).to_string] od) od;
+all(##for i:#t do for (,c) in t[i] do #c>0 od od)
+
+
+
+
