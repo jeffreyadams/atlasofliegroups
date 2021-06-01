@@ -66,7 +66,7 @@ set class_table_D(int n) = WeylClassTable:
          sort(#classes,(int i,int j)bool: classes[i]<=classes[j])
       then list = for i in ranked do classes[i] od
       in (D_class c) int: { index in |classes| where one finds |c| }
-         ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
+         ranked[binary_search_first((int i)bool: c<=list[i], 0,#classes)]
 in W_class_table( rd, for class in classes do conjugacy_class_SO(class) od
 		, (WeylElt w)int:
 		    cycle_class_size(signed_permutation(w).to_D_class)

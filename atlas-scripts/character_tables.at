@@ -314,10 +314,7 @@ set check_orthogonality (CharacterTable ct) = bool:
 
 {miscellaneous functions}
 
-{find j so that
- s_long=ct.class_representatives()[j]
- in one root length case all roots are long
-}
+{ find index j of the conjugacy class of a long (or any) root reflection }
 set index_long_reflection(CharacterTable ct)=int:
 let rd=ct.root_datum in
 first(for i:ct.n_classes do
@@ -331,10 +328,11 @@ first(for i:ct.n_classes do
  let w=ct.class_rep(i) in
   length(w)=1  and is_short(rd,let j=w.word[0] in rd.simple_roots[j]) od)
 
-set signature(CharacterTable ct,[int] char)=[int]:
-let i_long=ct.index_long_reflection then
-i_short=ct.index_short_reflection in
-if i_short!=-1 then [char[0],char[i_long],char[i_short]] else [char[0],char[i_long]] fi
+{ character values at two or three special elements:
+  identity, long root reflection, and if different short root reflection }
+set signature(CharacterTable ct,[int] char) = [int]:
+  let i_long=ct.index_long_reflection, i_short=ct.index_short_reflection in
+  [char[0],char[i_long]] ## if i_short.>= then [char[i_short]] else [] fi
 
 set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
 
