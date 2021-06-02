@@ -1,49 +1,18 @@
 <basic.at
 <combinatorics.at
+<W_characters.at
 <character_tables.at
-
-<nilpotent_orbits.at
 
 { orbit sizes on long respectively short roots; these characterise classes }
 set class_signature (WeylElt w) = Partition:
    let rd=root_datum(w)
 in for c in root_orbits(w) do #c od.sort_to_partition
 
-set classes_E6(RootDatum E6, [int] map) = [WeylElt]:
-   let convert([int] word) = [int]: for letter in word do map[letter] od
-   , class_words = [[int]]:
-      [[]
-      ,[0]
-      ,[0,1]
-      ,[0,2]
-      ,[0,1,2]
-      ,[0,2,3]
-      ,[0,1,4]
-      ,[0,2,3,1]
-      ,[0,1,2,4]
-      ,[0,1,3,4]
-      ,[1,2,3,1,2,3,4,3,1,2,3,4]
-      ,[1,2,3,2,4,3]
-      ,[1,3,2,4]
-      ,[0,2,4,5]
-      ,[0,1,2,3,1,2,3,4,3,1,2,3,4]
-      ,[0,1,2,3,1,4,3]
-      ,[0,2,3,1,4]
-      ,[0,2,3,1,5]
-      ,[0,1,2,4,5]
-      ,[0,2,3,4,5]
-      ,[0,1,2,3,4,5]
-      ,[0,1,2,3,1,4,3,5]
-      ,[0,1,2,0,3,1,2,3,4,3,5,4]
-      ,[0,1,2,3,1,2,3,4,3,1,2,3,4,5]
-      ,[0,1,2,0,3,1,2,0,3,4,3,1,2,0,3,4,5,4,3,1,2,3,4,5]
-      ]
-in for word in class_words do W_elt(E6,convert(word)) od
-
 set class_table_E6(RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: classes_E6(rd,test_simple_type("E",rd))
+   let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
+	       ; conjugacy_class_reps(rd)
    then sigs = [Partition]: for w in classes do class_signature(w) od
-   then N=51840
+   then N=51840 { order_W("E6") }
    ,  lookup = (Partition->int):
       let ranked =
          sort(#sigs,(int i,int j)bool: leq_partitions(sigs[i],sigs[j]))
