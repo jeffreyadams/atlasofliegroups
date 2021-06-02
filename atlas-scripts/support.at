@@ -32,9 +32,23 @@ let t=test_support(params) in
 prints("#params: ", #params, new_line,
 "#blocks: ", #t);
 for i:#t do
-prints("block #", i, new_line, "#cells: ", #t[i]);
- tabulate(["i","#cell","#proper","lengths"]#for (b,c)@j in t[i] do [j.to_string, (#b).to_string, (#c).to_string, (for p in c do p.length od).to_string] od) od;
+prints("block #", i, new_line, "#cells: ",#t[i]);
+ tabulate(["i","#cell","#proper","min/max","lengths","which","which_dual"]
+ #for (b,c)@j in t[i] do [
+ j.to_string  + if #c<#b then "*" else "" fi,
+ (#b).to_string,
+ (#c).to_string,
+  (min(for p in b do p.length od)).to_string + "/" +
+ (max(for p in b do p.length od)).to_string,
+ (for p in c do p.length od).to_string,
+ (for p in b do if is_proper_support(p) then 1 else 0 fi od).to_string,
+  (for p in b do if is_proper_support_dual(p) then 1 else 0 fi od).to_string
+ ]
+od) od;
 all(##for i:#t do for (,c) in t[i] do #c>0 od od)
+
+
+
 
 
 

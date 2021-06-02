@@ -43,7 +43,7 @@ L_x_v=G_v, O_L_x_v=0-orbit of G^v
 Springer(O_L_x_v)=sign of W(G^)
 \otimes sgn=trivial of
 }
-set sigma_L_verbose=false
+set sigma_L_verbose=true
 
 {main algorithm for computing sigma_L, this won't usually be called by the user
  M_v is a pseudo-Levi
@@ -110,7 +110,7 @@ else  {need induction; compute L, sigma_L, truncated_induce}
   ind=induce_character(G,ct_G,roots_L,sigma_L) then
   char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
  ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line);
-    prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view_char(ind);
+    prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));{ct_G.view_char(ind);}
     prints("minimal degree terms in induced: ", char_indices) fi then
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
  char_L=ct_G.characters[char_indices[0]] then
@@ -218,7 +218,7 @@ set lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=[[int]]:
 
 {show lusztig cells, running over given list of dual nilpotents}
 set show_lusztig_cells(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=void:
-prints("G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
+prints(new_line,"G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
 tabulate(
 ["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","fdeg","char"]#
 ##for O_v@counter in dual_orbits do
