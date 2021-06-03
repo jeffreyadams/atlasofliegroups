@@ -76,7 +76,7 @@ case cl
 | class_A(P): P
 | class_BC(x): error("wrong type")
 | class_D(x):  error("wrong type")
-| else 	       []
+| else	       []
 esac
 
 set get_class_BC(classical_class cl) = BC_class:
@@ -128,7 +128,7 @@ set cycles_string ([int,bool] cycles) = string:
 ).to_string
 
 set irrep_string(BiPartition(lambda,mu)) = string:
-   ("{", lambda.parts_string, "+|-", mu.parts_string, "}").to_string
+   ("{ ", lambda.parts_string, " +|- ", mu.parts_string, " }").to_string
 
 set cycles_string (D_class c) = string:
     case c
@@ -138,9 +138,9 @@ set cycles_string (D_class c) = string:
 set irrep_string(D_irrep chi) = string:
   case chi
   | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
-    ("{",mu.parts_string,"|",lambda.parts_string,"}").to_string
+    ("{ ",mu.parts_string," | ",lambda.parts_string," }").to_string
   | (mu,s).split_irr:
-    ("{",mu.parts_string,"|",mu.parts_string,"}",s.sign_string).to_string
+    ("{ ",mu.parts_string," | ",mu.parts_string," }",s.sign_string).to_string
   esac
 
 
@@ -177,16 +177,57 @@ in if neg_count.is_odd then error("Permutation is not in type D subgroup")
    in (type_code,parity).split_class
    fi
 
-set = = (D_class,D_class->bool):
+set D_classes (int n) = [D_class]:
+   for (lambda,mu):pair in partition_pairs(n)
+   do if (#mu).is_odd then [] { must have even number of cycles in |mu| }
+      elif not(=mu and lambda.is_very_even) { whether unsplit }
+      then [pair.to_cycles.unsplit_class]
+      else [ (lambda,false).split_class, (lambda,true).split_class ]
+      fi
+   od.##
+
+set eq_D_class = (D_class,D_class->bool):
    let code(Signed_cycles c) = vec: for (l,flip) in c do l*sign(flip) od
 in (D_class c0,D_class c1) bool:
-  case c0
-  | cyc0.unsplit_class:
-    case c1 | cyc1.unsplit_class: code(cyc0)=code(cyc1) | else false esac
-  | (lambda,eps0).split_class:
-    case c1 | (mu,eps1).split_class: lambda=mu and eps0=eps1 | else false esac
-  esac
+   case c0
+   | cyc0.unsplit_class:
+     case c1 | cyc1.unsplit_class: code(cyc0)=code(cyc1) | else false esac
+   | (lambda,eps0).split_class:
+     case c1 | (mu,eps1).split_class: lambda=mu and eps0=eps1 | else false esac
+   esac
+
+{ a total ordering on equal size |Signed_cycles| values produced by |to.cycles|;
+  take one the is fast to test for; not the order produced by |D_classes|
+}
+set leq_D_class = (D_class,D_class->bool):
+   (D_class c0,D_class c1) bool:
+   case c0
+   | cyc0.unsplit_class:
+     case c1
+     | cyc1.unsplit_class:
+        ( for (l,flip0)@i in cyc0
+	  do let (k,flip1)=cyc1[i] { |cyc1[i]| exists if we come here }
+	  in if l!=k then return l<k
+	     elif flip0!=flip1 then return flip1 { consider |false<true| }
+	     fi
+	  od
+	; true { if |cyc0| exhausted then |cyc1| must be too; so equality }
+	)
+     | else true { consider that unsplit classes come before split ones }
+     esac
+   | (lambda,eps0).split_class:
+     case c1
+     | (mu,eps1).split_class:
+       if lambda!=mu then leq_equal_sum_partitions(lambda,mu)
+       elif eps0 then eps1 else true { equivalently |else #eps0<=#eps1| }
+       fi
+     | else false
+     esac
+   esac
+
+set = = eq_D_class@(D_class,D_class)
 set != (D_class c0,D_class c1) = bool: not(c0=c1)
+set <= = leq_D_class@(D_class,D_class)
 
 set cycle_type_order (D_class c) = int:
    case c
@@ -243,15 +284,6 @@ set D_irreducibles (int n) = [D_irrep]:
    fi
   )
 
-set D_classes (int n) = [D_class]:
-   for (lambda,mu):pair in partition_pairs(n)
-   do if (#mu).is_odd then [] { must have even number of cycles in |mu| }
-      elif not(=mu and lambda.is_very_even) { whether unsplit }
-      then [pair.to_cycles.unsplit_class]
-      else [ (lambda,false).split_class, (lambda,true).split_class ]
-      fi
-   od.##
-
 set character (D_irrep chi, D_class c) = int:
    assert(chi.rank = c.rank,"Size mismatch");
    let pos_cycles(Partition mu)=Signed_cycles: for l in mu do (l,false) od in
@@ -300,20 +332,6 @@ set split_irrep (D_irrep pi) = (Partition,bool):
 
 set unsplit_irrep (D_irrep pi) = (Partition,Partition):
    case pi | pair.unsplit_irr: pair | else error("rep is split") esac
-
-{ curried version could be more efficient here }
-set index_D_classes([D_class] L) = (D_class->int):
-   let ((split,map_split),(unsplit,map_unsplit)) = split_and_unsplit_classes(L)
-in (D_class class) int:
-   case class
-   | split_class(P,boolean):
-       let ix=first(#split,(int i)bool: let (a,b)=split[i] in a=P and b=boolean)
-       in map_split[ix]
-   | unsplit_class(cycles): index_signed_cycles(unsplit,map_unsplit)(cycles)
-   esac
-
-{ uncurried vesion used curried one (without efficieny gain) }
-set index_D_classes([D_class] L, D_class c) = int: index_D_classes(L)(c)
 
 
 set split_and_unsplit_reps([D_irrep] list) =

@@ -7,13 +7,17 @@
   reduction to the simple case, whence we start by handling simple root data.
 
   Elliptic Weyl group elements are those whose reflection action does not have
-  any eigenvalue 1. Every Weyl group element is elliptic for a Levi subgroup
-  (not necessesarily standard) and hence conjugate to an element elliptic for a
-  standard Levi subgroup; this serves in conjugacy_classes.at as basis for the
-  generation of representatives of all conjugacy classes of Weyl group elements.
+  any eigenvalue 1; what actually matters here is "relatively elliptic"
+  elements, which have no eigenvalue 1 for the restriction to the span of the
+  roots (so any nontrivial central torus, which prevents any elements from being
+  elliptic, is ignored). Every Weyl group element is relatively elliptic for a
+  Levi subgroup (not necessesarily standard) and hence conjugate to an element
+  relatively elliptic for a standard Levi subgroup; this serves in
+  conjugacy_classes.at as basis for the generation of representatives of all
+  conjugacy classes of Weyl group elements.
 
   Our generation is based on a reduction to the simple case (and reconstruction
-  from elements for the simple factors), andthen case by case according to type.
+  from elements for the simple factors); then case by case according to type.
 }
 
 {
@@ -181,7 +185,7 @@ set elliptic_simple = (string,int->[[int]]):
   , {B} for P in partitions(rank) do cycle_product(P) od
   , {C} for P in partitions(rank) do cycle_product(P) od
   , {D, same as BC but restricted to partitions with even number of parts }
-    ## for P in partitions(rank) do case #P in [cycles_product(P)],[] esac od
+    for P in partitions(rank) do case #P in [cycles_product(P)],[] esac od.##
   , {E}
     case rank-6
     in {E6} E6_elliptic_words, {E7} E7_elliptic_words, {E8} E8_elliptic_words

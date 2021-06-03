@@ -23,7 +23,7 @@ assert(rd.is_abelian,"Not a torus");
 ((int,int)->int):(int m,int n):1, {class power}
 [int]:[1],   {centralizer_orders}
 [int]:[1], {class_sizes}
-(int->classical_irrep):(int n):classical_irrep:().null_irrep, 
+(int->classical_irrep):(int n):classical_irrep:().null_irrep,
 (int->string):(int n):"",{ irreducible_label}
 [[int]]:[[]],  {sym_powers_reflection}
 [int]:[0], { degrees}
@@ -47,10 +47,10 @@ elif letter="D" then
  let ct_0=character_table_D(n) then
  ct=ct_0.update_degrees in ct
 elif letter="F" then
- let ct=character_table_F4() in ct
-elif letter="G" then character_table_G2()
+ let ct=character_table_F(4) in ct
+elif letter="G" then character_table_G(2)
 elif letter="E" and n=6 then
- let ct_0=character_table_E6() then 
+ let ct_0=character_table_E6() then
  ct=update_degrees(ct_0) in ct
 elif letter="E" and n=7 then
  let ct_0=character_table_E7() then
@@ -75,4 +75,3 @@ let factors=simple_factors(rd) then
 ct=character_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do
  ct:=tensor(ct,character_table_simple(factors[i].derived)) od;ct fi
-

@@ -1,114 +1,130 @@
+<basic.at
+<combinatorics.at
+<W_characters.at
 <character_tables.at
-<nilpotent_orbits.at
-<character_table_E6_data.at {precomputed data}
 
-{
-best to use precomputed data rather than this:
-set rd_E6=simply_connected(E6)
-set W_order=order_W(rd_E6)
-set class_size(WeylElt w)=W_order\w.centralizer_order
+{ orbit sizes on long respectively short roots; these characterise classes }
+set class_signature (WeylElt w) = Partition:
+   let rd=root_datum(w)
+in for c in root_orbits(w) do #c od.sort_to_partition
 
-set orbits=rd_E6.orbits
-set wct=W_class_table(rd_E6)
-set wct_classes=wct.class_representatives()
-set classes_E6=wct_classes
-set class_centralizer_sizes_E6=for w in classes_E6 do w.centralizer_order od
-set class_sizes_E6=for w@i in classes_E6 do W_order\class_centralizer_sizes_E6[i] od
-set class_orders_E6=for w in classes_E6 do w.order od
-set E6_name(CharacterTable ct)=(vec->string):(vec v):string:
-let dim=v[0] then
-index=find(ct.characters,v) then
-d=ct.degree(index) in
-"phi(" + dim.to_string+","+d.to_string+")"
-}
+set class_table_E6(RootDatum rd) = WeylClassTable:
+   let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
+	       ; conjugacy_class_reps(rd)
+   then sigs = [Partition]: for w in classes do class_signature(w) od
+   then N=51840 { order_W("E6") }
+   ,  lookup = (Partition->int):
+      let ranked =
+         sort(#sigs,(int i,int j)bool: leq_partitions(sigs[i],sigs[j]))
+      then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
+      in (Partition sig) int: { index in |sigs| where one finds |sig| }
+         ranked[binary_search_first((int i)bool: leq_partitions(sig,list[i])
+				   , 0,#list)]
+in W_class_table ( rd
+		 , classes
+		 , (WeylElt w) int: N\centralizer_order(w)
+		 , (WeylElt w) int: lookup(class_signature(w))
+		 , (int i,int k) int: lookup(cycle_power(sigs[i],k))
+		 )
 
-{compute everything from scratch; slow}
-set character_table_E6_de_novo() = CharacterTable:
-initialize_character_table(simply_connected(E6))
-
-{from magma}
-set e6_table=^[
-[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-[1,-1,1,1,-1,1,1,1,1,-1,-1,1,1,1,1,-1,1,-1,1,-1,-1,1,-1,-1,1],
-[6,4,-2,2,0,-3,3,0,2,-2,2,0,1,1,1,1,-2,-2,-1,0,0,0,-1,1,-1],
-[6,-4,-2,2,0,-3,3,0,2,2,-2,0,1,1,1,-1,-2,2,-1,0,0,0,1,-1,-1],
-[10,0,-6,2,0,1,-2,4,2,0,0,-2,0,-3,0,0,0,0,2,0,0,1,0,0,-1],
-[15,-5,7,3,-1,-3,0,3,-1,-3,1,1,0,1,-2,-2,1,1,0,-1,1,0,0,0,-1],
-[15,-5,-1,-1,3,6,3,0,3,-1,-1,-1,0,2,-1,1,2,-2,-1,0,1,0,0,-1,0],
-[15,5,7,3,1,-3,0,3,-1,3,-1,1,0,1,-2,2,1,-1,0,1,-1,0,0,0,-1],
-[15,5,-1,-1,-3,6,3,0,3,1,1,-1,0,2,-1,-1,2,2,-1,0,-1,0,0,1,0],
-[20,10,4,4,2,2,5,-1,0,2,2,0,0,-2,1,1,1,1,1,-1,0,-1,0,-1,0],
-[20,-10,4,4,-2,2,5,-1,0,-2,-2,0,0,-2,1,-1,1,-1,1,1,0,-1,0,1,0],
-[20,0,4,-4,0,-7,2,2,4,0,0,0,0,1,-2,0,-2,0,2,0,0,-1,0,0,1],
-[24,4,8,0,4,6,0,3,0,0,0,0,-1,2,2,-2,-1,1,0,1,0,0,-1,0,0],
-[24,-4,8,0,-4,6,0,3,0,0,0,0,-1,2,2,2,-1,-1,0,-1,0,0,1,0,0],
-[30,-10,-10,2,2,3,3,3,-2,4,0,0,0,-1,-1,-1,-1,-1,-1,-1,0,0,0,1,1],
-[30,10,-10,2,-2,3,3,3,-2,-4,0,0,0,-1,-1,1,-1,1,-1,1,0,0,0,-1,1],
-[60,10,-4,4,2,6,-3,-3,0,-2,-2,0,0,2,-1,1,-1,1,1,-1,0,0,0,1,0],
-[60,-10,-4,4,-2,6,-3,-3,0,2,2,0,0,2,-1,-1,-1,-1,1,1,0,0,0,-1,0],
-[60,0,12,4,0,-3,-6,0,4,0,0,0,0,-3,0,0,0,0,-2,0,0,0,0,0,1],
-[64,16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,-2,0,-2,0,0,0,1,1,0,0],
-[64,-16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,2,0,2,0,0,0,1,-1,0,0],
-[80,0,-16,0,0,-10,-4,2,0,0,0,0,0,2,2,0,2,0,0,0,0,-1,0,0,0],
-[81,9,9,-3,-3,0,0,0,-3,3,-1,-1,1,0,0,0,0,0,0,0,1,0,-1,0,0],
-[81,-9,9,-3,3,0,0,0,-3,-3,1,-1,1,0,0,0,0,0,0,0,-1,0,1,0,0],
-[90,0,-6,-6,0,9,0,0,2,0,0,2,0,-3,0,0,0,0,0,0,0,0,0,0,-1]]
+{ compute class table once here }
+set class_table_E6 = WeylClassTable: class_table_E6(simply_connected("E6"))
 
 {from magma}
-set e6_orders_sizes=^[
-[1,2,2,2,2,3,3,3,4,4,4,4,5,6,6,6,6,6,6,6,8,9,10,12,12],
-[1,36,45,270,540,80,240,480,540,540,1620,3240,5184,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320]
+set !e6_table = [[int]]: { characters, with conjugacy classes in Magma order }
+[[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]           { trivial }
+,[1,-1,1,1,-1,1,1,1,1,-1,-1,1,1,1,1,-1,1,-1,1,-1,-1,1,-1,-1,1] { sign }
+,[6,4,-2,2,0,-3,3,0,2,-2,2,0,1,1,1,1,-2,-2,-1,0,0,0,-1,1,-1]   { reflection }
+,[6,-4,-2,2,0,-3,3,0,2,2,-2,0,1,1,1,-1,-2,2,-1,0,0,0,1,-1,-1]
+,[10,0,-6,2,0,1,-2,4,2,0,0,-2,0,-3,0,0,0,0,2,0,0,1,0,0,-1]
+,[15,-5,7,3,-1,-3,0,3,-1,-3,1,1,0,1,-2,-2,1,1,0,-1,1,0,0,0,-1]
+,[15,-5,-1,-1,3,6,3,0,3,-1,-1,-1,0,2,-1,1,2,-2,-1,0,1,0,0,-1,0]
+,[15,5,7,3,1,-3,0,3,-1,3,-1,1,0,1,-2,2,1,-1,0,1,-1,0,0,0,-1]
+,[15,5,-1,-1,-3,6,3,0,3,1,1,-1,0,2,-1,-1,2,2,-1,0,-1,0,0,1,0]
+,[20,10,4,4,2,2,5,-1,0,2,2,0,0,-2,1,1,1,1,1,-1,0,-1,0,-1,0]
+,[20,-10,4,4,-2,2,5,-1,0,-2,-2,0,0,-2,1,-1,1,-1,1,1,0,-1,0,1,0]
+,[20,0,4,-4,0,-7,2,2,4,0,0,0,0,1,-2,0,-2,0,2,0,0,-1,0,0,1]
+,[24,4,8,0,4,6,0,3,0,0,0,0,-1,2,2,-2,-1,1,0,1,0,0,-1,0,0]
+,[24,-4,8,0,-4,6,0,3,0,0,0,0,-1,2,2,2,-1,-1,0,-1,0,0,1,0,0]
+,[30,-10,-10,2,2,3,3,3,-2,4,0,0,0,-1,-1,-1,-1,-1,-1,-1,0,0,0,1,1]
+,[30,10,-10,2,-2,3,3,3,-2,-4,0,0,0,-1,-1,1,-1,1,-1,1,0,0,0,-1,1]
+,[60,10,-4,4,2,6,-3,-3,0,-2,-2,0,0,2,-1,1,-1,1,1,-1,0,0,0,1,0]
+,[60,-10,-4,4,-2,6,-3,-3,0,2,2,0,0,2,-1,-1,-1,-1,1,1,0,0,0,-1,0]
+,[60,0,12,4,0,-3,-6,0,4,0,0,0,0,-3,0,0,0,0,-2,0,0,0,0,0,1]
+,[64,16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,-2,0,-2,0,0,0,1,1,0,0]
+,[64,-16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,2,0,2,0,0,0,1,-1,0,0]
+,[80,0,-16,0,0,-10,-4,2,0,0,0,0,0,2,2,0,2,0,0,0,0,-1,0,0,0]
+,[81,9,9,-3,-3,0,0,0,-3,3,-1,-1,1,0,0,0,0,0,0,0,1,0,-1,0,0]
+,[81,-9,9,-3,3,0,0,0,-3,-3,1,-1,1,0,0,0,0,0,0,0,-1,0,1,0,0]
+,[90,0,-6,-6,0,9,0,0,2,0,0,2,0,-3,0,0,0,0,0,0,0,0,0,0,-1]
 ]
 
-{from magma}
-set e6_powers_unshifted=^
-[[1,1,1,1,1,6,7,8,3,4,4,4,13,6,7,7,8,8,7,8,9,22,13,19,14],
-[1,2,3,4,5,1,1,1,9,10,11,12,13,3,3,2,3,2,4,5,21,6,23,10,9],
-[1,2,3,4,5,6,7,8,9,10,11,12,1,14,15,16,17,18,19,20,21,22,2,24,25]]
 
-set e6_powers=for row in e6_powers_unshifted do for j:#row do row[j]-1 od od
+{ some stuff to figure out in what order Magma has listed classes }
+
+{from magma} { orders, then class sizes, of conjugacy classes in magma order }
+set e6_orders_sizes = mat:
+[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5
+                     ,  6,   6,   6,   6,   6,   6,   6,   8,   9,  10,  12,  12
+|1,36,45,270,540,80,240,480,540,540,1620,3240,5184
+		     ,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320
+]
 
 set e6_sgn_index=1
 set e6_reflection_index=2
-set e6_sgn_reflection=mat:
-^[row(e6_table,e6_sgn_index),row(e6_table,e6_reflection_index)]
 
-set e6_profile=^(^e6_orders_sizes)##(^e6_sgn_reflection)
-set e6_profile_long=^(^e6_orders_sizes)##(^e6_sgn_reflection)##(^e6_powers)
+set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
+   e6_orders_sizes ^ ^[e6_table[e6_sgn_index],e6_table[e6_reflection_index]]
 
-{precomputed data}
-set initialize_character_table_E6()=CharacterTable:
-let ct=(
-  Lie_type(E6)    {lie_type}
-  , 51840    {order (of W)}
-  , 25      {n_classes}
-  , (int j) classical_class: ().null_class
-  , (int j) string: "" {class_label} {fill in later}
-{  , (int i) WeylElt: class_reps_E6[i]  {(int)->W_elt}}
-  , class_reps_E6
-  , (int j) int: class_orders_E6[j]
-  , (int i, int j) int: class_powers_E6[i][j]
-  , class_centralizer_orders_E6
-  , class_sizes_E6
-  , (int j): null_irrep()
-  , (int i) string: "" { irreducible representation label }  {later}
-  ,sym_powers_reflection_E6
-  ,[int]:[]     {degrees}
-  ,[int]:[]     {fake degrees}
-  ,null(25,25)
-  )
-in prints("Done intializing character table");ct
+set Magma_reorder = [int]: { map Magma class index to one for |class_table_E6| }
+   let Wct = class_table_E6
+   then Wct_prof = mat: { with shape (4,25) }
+      let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
+      4 # for j:Wct.n_classes
+          do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
+	  od
+   then profile_ranked = [int]: { columns |e6_profile| ranked by |lex_lesseq| }
+      sort(#e6_profile,(int i,int j): lex_lesseq(e6_profile[i],e6_profile[j]))
+   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
+      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
+   then ranking = inverse(profile_ranked) { ranking[j]|: Magma class |j| rank }
+   in compose_permutations(Wct_ranked,ranking)
 
-set character_table_E6()=
-let ct=
-if ct_verbose then prints("Computing character table for E6") fi;
-{initialize_character_table(simply_connected(E6)) then}
-initialize_character_table_E6() then  {precomputed version}
-()=prints("done initializing character table") then
-ct1=set_table(ct,e6_profile,e6_table) in
-{spr=sym_powers_reflection(ct1.class_reps) in}
-{ct1.sym_powers_reflection:=spr;}
-ct1.degrees:=degrees_E6;
-ct1
+set Magma_reps = [WeylElt]: { class representatives in Magma order }
+   let reps = class_table_E6.class_representatives() in
+   for j in Magma_reorder do reps[j] od
 
+set compressed_string(Partition P) = string:
+   let mult=1
+   then result =
+      for l@i in P
+      do if i=0 then "[ "
+	 elif l=P[i-1] then mult+:=1; ""
+	 elif mult=1 then P[i-1]+", "
+	 else P[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
 
+set E6_name(vec chi) = string:
+   let Wct = class_table_E6, psi = null(#chi)
+   then degree = { first reorder |chi| for |Wct| into |psi| }
+      for j@i in Magma_reorder do psi[j]:=chi[i] od { apply inverse reordering }
+   ;  first(class_table_E6.root_datum.nr_of_posroots+1
+           ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+	   )
+in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+
+set character_table_E6() = CharacterTable:
+   let classes = [WeylElt,classical_class,string]:
+      for w@j in Magma_reps
+      do (w,null_class(),class_signature(w).compressed_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for line@i in e6_table
+      do (null_irrep()
+         ,case i in "trivial", "sign", "reflection" else E6_name(line) esac
+	 ,line
+	 )
+      od
+   in character_table(class_table_E6,classes,irreps)

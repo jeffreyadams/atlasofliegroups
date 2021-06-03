@@ -788,9 +788,10 @@ set adjoint (LieType type) = RootDatum:
 set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
 set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
 
-{root datum whose coroots are those integral on p.infinitesimal_character}
+{ root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
   integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
+set integrality_rank (Param p) = int: semisimple_rank(integrality_datum(p))
 
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let in_S = is_member(S) in
@@ -824,6 +825,10 @@ set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
   let i=root_index(p) in if <i then minus_1-i else i fi
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if <i then minus_1-i else i fi
+
+set is_long_root(RootDatum rd, int i) = bool:
+   let alpha=root(rd,i:=if i.< then minus_1-i else i fi)
+in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
 
 
 set rho (RootDatum rd) = ratvec: rd.two_rho/2
@@ -1091,10 +1096,16 @@ set * (mat theta,WeylElt w) = mat:
   theta.n_columns ^ for row in ^theta do row*w od
 
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
-  let len=#L in
+  let len = #L in
   if =len then id_W(rd)
   else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
   fi
+
+set root_permutation(WeylElt w) = [int]: { permutation of all roots renumbered }
+  let rd = w.root_datum then npr=nr_of_posroots (rd)
+  then images = for alpha in posroots(rd) do root_index(rd,w*alpha) od
+  in for index in images do minus_1-index+npr ~od ##
+     for index in images do index+npr od
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
@@ -1566,7 +1577,7 @@ set block_status_text (int i) = string:
 
 set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts (Param p) = [string]:
-  for s:semisimple_rank(real_form(p)) do status_text(s,p) od
+  for s:integrality_rank(p) do status_text(s,p) od
 
 set status_text ((vec,Param) ap) = string: block_status_text(status(ap))
 
@@ -1579,7 +1590,7 @@ set nonparity_poscoroots (Param p) = mat: { positive real nonparity coroots }
 
 set is_descent (int s,Param p) = bool: status(s,p)<4
 set tau_bitset (Param p) = (int,(int->bool)):
-  (p.real_form.semisimple_rank, (int s): is_descent(s,p))
+  (integrality_rank(p), (int s): is_descent(s,p))
 
 set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))

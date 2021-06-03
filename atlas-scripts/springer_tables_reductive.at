@@ -30,7 +30,7 @@ elif letter="D" then
  ct=ct_0.update_degrees in
   springer_table_D(ct)
 elif letter="F" then
- let ct=character_table_F4() in
+ let ct=character_table_F(4) in
  springer_table_F4(ct)
 elif letter="G" then
  springer_table_G2()

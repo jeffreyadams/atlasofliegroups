@@ -82,7 +82,7 @@ in
 , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
 , { class_reps } [WeylElt]: for (w,,) in class_reps do w od
 { , { class_rep } (int i)WeylElt: let (w,,)=class_reps[i] in w }
-, { class_order } c_size
+, { class_order } (int i) int: let (w,,) = class_reps[i] in order(w)
 , { class_power } (int i,int pow)int: inv_map[Wct.class_power(class_map[i],pow)]
 , { centralizer_orders} [int]: for i:n do order\c_size(i) od
 , { class_sizes } [int]: for i:n do c_size(i) od
@@ -314,10 +314,7 @@ set check_orthogonality (CharacterTable ct) = bool:
 
 {miscellaneous functions}
 
-{find j so that
- s_long=ct.class_representatives()[j]
- in one root length case all roots are long
-}
+{ find index j of the conjugacy class of a long (or any) root reflection }
 set index_long_reflection(CharacterTable ct)=int:
 let rd=ct.root_datum in
 first(for i:ct.n_classes do
@@ -331,10 +328,11 @@ first(for i:ct.n_classes do
  let w=ct.class_rep(i) in
   length(w)=1  and is_short(rd,let j=w.word[0] in rd.simple_roots[j]) od)
 
-set signature(CharacterTable ct,[int] char)=[int]:
-let i_long=ct.index_long_reflection then
-i_short=ct.index_short_reflection in
-if i_short!=-1 then [char[0],char[i_long],char[i_short]] else [char[0],char[i_long]] fi
+{ character values at two or three special elements:
+  identity, long root reflection, and if different short root reflection }
+set signature(CharacterTable ct,[int] char) = [int]:
+  let i_long=ct.index_long_reflection, i_short=ct.index_short_reflection in
+  [char[0],char[i_long]] ## if i_short.>= then [char[i_short]] else [] fi
 
 set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
 
@@ -346,45 +344,44 @@ set inverse((int->int) f, int n)=(int j):
 permutation_inverse(for i:n do f(i) od)[j]
 
 
-set permute_classes(CharacterTable ct,(int->int) f)=CharacterTable:
+set permute_classes(CharacterTable ct,(int->int) f) = CharacterTable:
 {don't waste time if f is the identity}
-let ()=prints("check:", for i:ct.n_classes do f(i) od) in
-if all(for i:ct.n_classes do f(i)=i od) then ct
-else
-let
-centralizer_orders=for i:ct.n_classes do ct.centralizer_orders[f(i)] od then
-class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
-(ct.lie_type,
-ct.order,
-ct.n_classes,
-(int i):ct.classes(f(i)),
-(int i):ct.class_label(f(i)),
-for i:ct.n_classes do ct.class_reps[f(i)] od,
-{(int i):ct.class_rep(f(i)),}
-(int i):ct.class_order(f(i)),
-(int i, int j):inverse(f,ct.n_classes)(ct.class_power(f(i),j)),
-centralizer_orders,
-class_sizes,
-ct.classical_reps,
-ct.irreducible_label,
-if =#ct.sym_powers_reflection then [] else
-{recompute sym_powers_reflection}
-{ sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od)}
-for v in ct.sym_powers_reflection do
- for i:ct.n_classes do
-  v[f(i)]
- od
-od
-fi,
-if =#ct.degrees then [] else
- for i:ct.n_classes do ct.degrees[f(i)] od fi,
-if =#ct.fake_degrees then [] else
- for i:ct.n_classes do ct.fake_degrees[f(i)] od fi,
-for col@i in ct.table do ct.table[f(i)] od
-)
-fi
+  if all(for i:ct.n_classes do f(i)=i od) then ct
+  else let f_inv = (int->int):
+     let inv_perm=  permutation_inverse(for i:ct.n_classes do f(i) od)
+     in (int j): inv_perm[j]
+  in ( ct.lie_type
+     , ct.order
+     , ct.n_classes
+     , (int i) classical_class: ct.classes(f(i))
+     , (int i) string: ct.class_label(f(i))
+     , [WeylElt]: for i:ct.n_classes do ct.class_reps[f(i)] od
+     , (int i) int: ct.class_order(f(i))
+     , (int i, int j) int: f_inv(ct.class_power(f(i),j))
+     , [int]: for i:ct.n_classes do ct.centralizer_orders[f(i)] od
+     , [int]: for i:ct.n_classes do ct.class_sizes[f(i)] od
+     , (int->classical_irrep): ct.classical_reps
+     , (int->string): ct.irreducible_label
+     , [[int]]:
+       if =#ct.sym_powers_reflection then []
+       else {recompute sym_powers_reflection}
+          for v in ct.sym_powers_reflection
+	  do for i:ct.n_classes do v[f(i)]od { permute each internal |[int]| }
+	  od
+       fi
+     , [int]:
+       if =#ct.degrees then []
+       else for i:ct.n_classes do ct.degrees[f(i)] od
+       fi
+     , [int]:
+       if =#ct.fake_degrees then []
+       else for i:ct.n_classes do ct.fake_degrees[f(i)] od
+       fi
+     , mat: for col@j in ct.table do ct.table[f(j)] od
+     )
+   fi
 
-{permute classes, including permuting the table itself}
+{ permute classes, including permuting the table itself }
 set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:
 let f(int i)=permutation[i] in permute_classes(ct,f)
 
@@ -668,11 +665,13 @@ set all_entries(mat M)=[int]: sort(##rows(M))
 set match_entries(mat M,mat N)=bool:all_entries(M)=all_entries(N)
 
 {find a permutation relating two lists of not necessarily distinct vecs}
-set find_permutation(mat A,mat B)=
-let rv=[int]:[] in
-for v in A do
- let index=first(for i:#B do find(rv,i)=-1 and B[i]=v od)
- in rv#:=index od;rv
+{ postcondition: |result| a permutation with |B[result[j]]=A[j]| for all |j| }
+set find_permutation(mat A,mat B) = [int]:
+(  let rv=[int]:[]
+in for v in A
+   do rv#:=first(for i:#B do find(rv,i)=-1 and B[i]=v od) od
+;  rv
+)
 
 set rows(mat M,[int] list)=for i in list do row(M,i) od
 set show_rows(mat M,[int] list)=^rows(M,list)
@@ -700,27 +699,27 @@ for i in powers  do v[i%(#v)] od
 set power_profile(CharacterTable ct,[int] powers)=mat:
 for i:ct.n_classes do power_map(ct,powers)(i) od
 
-set order_size_profile(CharacterTable ct)=mat:
-for i:ct.n_classes do [ct.class_order(i),ct.class_size(i)] od
+set order_size_profile(CharacterTable ct) = mat:
+  2 # for j:ct.n_classes do [ct.class_order(j),ct.class_size(j)] od
 
-set sgn_reflection_profile(CharacterTable ct)=mat:
-[ct.sign,ct.reflection]
+set sgn_reflection_profile(CharacterTable ct) = mat:
+   [ct.sign,ct.reflection] { 2 columns; these should really be rows }
 
-set profile(CharacterTable ct)=
-^(^ct.order_size_profile)##ct.sgn_reflection_profile
+set profile(CharacterTable ct) = mat:
+   ct.order_size_profile ^ ^ct.sgn_reflection_profile
 
-set profile(CharacterTable ct,[int] powers)=
+set profile(CharacterTable ct,[int] powers) =
 ^(^ct.order_size_profile)##ct.sgn_reflection_profile##(^power_profile(ct,powers))
 
 set ct_size_orders(CharacterTable ct)=
 mat:for i:ct.n_classes do [ct.class_size(i),ct.class_order(i)] od
 
-{sort by lexicographic (order,size,det,trace)}
-set sort_by_profile(CharacterTable ct)=
-let profile=ct.profile then
-profile_sorted=sort(ct.profile) then
-permutation=find_permutation(profile_sorted,profile) in
-permute_classes(ct,permutation)
+{sort conjugacy classes into lex. order of: (elt.order,size,sign,reflection) }
+set sort_by_profile(CharacterTable ct) = CharacterTable:
+   let prof = profile(ct) { extract profile from character table just once }
+   then perm = [int]: { ranked: |profile[perm[j]]| weakly increasing by |j| }
+      sort(#prof,(int i,int j)bool: lex_lesseq(prof[i],prof[j]))
+in permute_classes(ct,(int j)int:perm[j]) { new class |j|: old class |perm[j]| }
 
 {sort by lexicographic (order,size,det,trace,powermap)}
 {first does sort_by_profile(ct) to sort by profile without powers}
@@ -731,13 +730,16 @@ profile_sorted=sort(profile) then
 permutation=find_permutation(profile_sorted,profile) in
 permute_classes(ct1,permutation)
 
-{sort the magma table similarly: first by profile, then by profile_including_powermap}
+{ sort the magma table similarly: first by profile }
 
-set sort_by_profile(mat profile, mat table)=
-let profile_sorted=profile.sort then
-permutation=find_permutation(profile_sorted,profile) in
-(mat:profile_sorted,mat:for j in permutation do columns(table)[j] od)
+set sort_by_profile (mat profile, mat table) = (mat,mat):
+   let perm = [int]: { ranked: |profile[perm[j]]| weakly increasing by |j| }
+      sort(#profile,(int i,int j)bool: lex_lesseq(profile[i],profile[j]))
+   in ( n_rows(profile) # for j in perm do profile[j] od
+      , n_rows(table)   # for j in perm do table[j] od
+      )
 
+{ second by profile_including_power map }
 set sort_by_profile(mat profile_long, mat table,[int] powers)=
 let profile_short=mat:profile_long[:4,:] then
 (profile_short_1,table_1)=sort_by_profile(profile_short,table) then
@@ -757,11 +759,16 @@ profile_long_1=for j in permutation do columns(profile_long)[j] od  then
 (profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
 (profile_long_1,profile_2,table_2,permutation)
 
-set set_table(CharacterTable ct,mat profile,mat table)=
-let ct1=sort_by_profile(ct) then
-(profile1,table1)=sort_by_profile(profile,table) in
-assert(profile(ct1)=profile1,"profiles don't match");
-ct1.table:=table1;ct1
+{ replace table by one given explicitly, but using order implicitly defined by
+  a profile: matrix whose columns give (elt.order,size,sign,reflection char)
+  for the classes (supposed to uniquely identify them) in the order used.
+  The internals of the table are in fact adjusted to that order
+}
+set set_table(CharacterTable ct, mat profile, mat table) = CharacterTable:
+   let ct1=sort_by_profile(ct) { new table with profile-sorted classes }
+   then (profile1,table1) = sort_by_profile(profile,table) { sort table as well }
+   in assert(profile(ct1)=profile1,"profiles don't match");
+   ct1.table:=table1; ct1 { insert column-permuted table; return the new table }
 
 set set_table(CharacterTable ct,mat profile_long,mat table,[int] powers)=
 let ct_1=sort_by_profile(ct,powers) then
