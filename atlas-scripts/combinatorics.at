@@ -31,6 +31,21 @@ set falling_power (int n, int k) = int: assert(>=0,"Negative exponent");
 set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
    let p=1 in for i:k from n do p*:=i od; p
 
+{ Combinatorial number system ${\N\choose k}\to\N$ encoding and decoding }
+
+{ Represent any $k$-combination on $\N$ as a single natural number
+  For fixed $k$ this is bijective, and a decoding follows.
+}
+set combination_encode([int] list) = int: { |list| strictly increasing }
+   for c@i in list do binom(c,i+1) od.sum
+
+set combination_decode(int k) = (int->[int]): assert(k.>,"Impossible decoding");
+   (int N) [int]:
+   let bound=N+k { conservative start; we must have |binom(bound,k)>N| }
+in for i:k from 1 ~ { entries are determined in decreasing order }
+   do let c_i = binary_search_first((int n)bool: binom(n,i)>N, 1,bound) - 1
+   in N -:= binom(c_i,i); bound:=c_i
+  ~od { next assert(N=0) }
 
 {		some transformations of sequences of numbers		}
 
