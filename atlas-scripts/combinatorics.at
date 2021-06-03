@@ -593,8 +593,11 @@ set signed_cycle_type_code ([int] sigma) = vec:
 set cycle_code(WeylElt w) = vec: { assuming |w| is for |Sp(2n)| or |SO(m)| }
   signed_cycle_type_code(signed_permutation(w))
 
+{ convert code as above to |Signed_cycles|, ordering as |to_cycles| does }
 set as_signed_cycles (vec v) = Signed_cycles:
-  for cyc in v do (abs(cyc),cyc.<) od
+  let pos_part = for cyc in v do if cyc.> then [(cyc,false)] else [] fi od.##
+  , neg_part = for cyc in v ~ do if cyc.< then [(-cyc,true)] else [] fi od.##
+  in pos_part ## neg_part
 set as_bipartition (vec v) = BiPartition:
   ( for l in v  do if l.> then [l]  else [] fi od.##
   , for l in v ~do if l.< then [-l] else [] fi od.##
