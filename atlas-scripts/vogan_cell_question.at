@@ -16,6 +16,26 @@ Presumably this question can be modified to make sense
 for non-abelian A(O)
 }
 
+{n=3}
+set vectors_sets_three=[[vec]]:
+[
+[[0,0,0]],
+[[1,0,0]],
+[[1,1,0]],
+[[1,0,1]],
+[[1,1,1]],
+[[0,1,0]],
+[[0,1,1]],
+[[0,0,1]],
+[[1,0,0],[0,1,0]],
+[[1,0,1],[0,1,0]],
+[[1,0,0],[0,1,1]],
+[[1,0,1],[0,1,1]],
+[[1,0,0],[0,0,1]],
+[[1,1,0],[0,0,1]],
+[[0,1,0],[0,0,1]],
+[[1,0,0],[0,1,0],[0,0,1]]]
+
 set root_datum(RootDatum G,[ratvec] gens) = RootDatum:
 root_datum(G.Lie_type,gens)
 
@@ -28,30 +48,26 @@ set sp_product(int n,[vec] vecs)=RootDatum:sp_product(n,for v in vecs do v/2 od)
 set all_vectors(int n)=[vec]:box(2,n)
 
 set sp_products(int n)=[RealForm]:
-let vecs=all_vectors(n) then
+assert(n=3,"only n=3");
+let vecs=vectors_sets_three then
 Sp=(sp_product(n,[vec]:[])).split_form in
-[adjoint(Sp)]##
-for v in vecs do sp_product(n,[v]).split_form od ##
-##for v in vecs do
- ##for w in vecs do
- let ()=prints(v, " ", w) in
-  if v!=w then [sp_product(n,[v,w]).split_form] else [] fi od od
+for list in vecs do sp_product(n,list).split_form od
 
-set sp_products_long(int n)=
-let vecs=all_vectors(n) then
+set sp_products_long(int n)=[([vec],RealForm)]:
+assert(n=3,"only n=3");
+let vecs=vectors_sets_three then
 Sp=(sp_product(n,[vec]:[])).split_form in
-[([null(0),null(0)],adjoint(Sp))]##
-for v in vecs do ([v],sp_product(n,[v]).split_form) od ##
-##for v in vecs do
- ##for w in vecs do
- let ()=prints(v, " ", w) in
-  if v!=w then [([v,w],sp_product(n,[v,w]).split_form)] else [] fi od od
+for list in vecs do (list,sp_product(n,list).split_form) od 
 
+set my_orbit(RootDatum G)=
+let cwts=G.fundamental_coweights in
+complex_nilpotent(G,ratvec_as_vec(2*(cwts[1]+cwts[3]+cwts[5])))
 
 {subregular orbit in each group}
 set sp_orbits(int n)=[(RealForm,ComplexNilpotent)]:
 for G in sp_products(n) do
- (G,orbit_by_diagram(G.dual,for i:G.rank\2 do [2,0] od)) od
+ let Gd=G.dual_quasisplit_form in 
+ (G,my_orbit(Gd)) od
 
 set sp_character_table(int n)=character_table(sp_product(n))
 set sp_springer_table_dual(int n)=sp_product(n).dual.springer_table

@@ -1,7 +1,8 @@
 <nilpotent_orbits.at
 
-set cells_parameters([Param] params,[WCell] cells)=[[Param]]:
-for cell in cells do parameters(params,cell) od
+{this requires that [Param] is a block}
+set cells_parameters([Param] block,[WCell] cells)=[[Param]]:
+for cell in cells do parameters(block,cell) od
 
 set is_proper_support(KGBElt x)=bool:
  #x.support<x.root_datum.semisimple_rank
