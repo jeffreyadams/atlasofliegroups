@@ -1144,7 +1144,8 @@ set ^ = (WeylElt,int->WeylElt):
   in (WeylElt w,int n) WeylElt:
   if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
 
-set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
+set matrix (WeylElt w) = mat:
+   let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
 set W_elt (RootDatum rd, mat M) = WeylElt:
   let w = chamber(rd,M*two_rho(rd))
   in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w

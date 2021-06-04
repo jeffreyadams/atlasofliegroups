@@ -28,7 +28,12 @@ in W_class_table ( rd
 		 )
 
 { compute class table once here }
-set class_table_E6 = WeylClassTable: class_table_E6(simply_connected("E6"))
+set class_table_E6 = (->WeylClassTable):
+   let Wct= W_class_table(adjoint("")) { placeholder |WeylClassTable| value }
+in @: { function with no arguments }
+   if =Wct.root_datum.rank { whether this is the first time we are called }
+   then Wct:=class_table_E6(simply_connected("E6")) else Wct
+   fi
 
 {from magma}
 set !e6_table = [[int]]: { characters, with conjugacy classes in Magma order }
@@ -76,23 +81,30 @@ set e6_reflection_index=2
 set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
    e6_orders_sizes ^ ^[e6_table[e6_sgn_index],e6_table[e6_reflection_index]]
 
-set Magma_reorder = [int]: { map Magma class index to one for |class_table_E6| }
-   let Wct = class_table_E6
-   then Wct_prof = mat: { with shape (4,25) }
-      let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
-      4 # for j:Wct.n_classes
-          do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
-	  od
-   then profile_ranked = [int]: { columns |e6_profile| ranked by |lex_lesseq| }
-      sort(#e6_profile,(int i,int j): lex_lesseq(e6_profile[i],e6_profile[j]))
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
-      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
-   then ranking = inverse(profile_ranked) { ranking[j]|: Magma class |j| rank }
-   in compose_permutations(Wct_ranked,ranking)
+set Magma_reorder = (->[int]): { map Magma to |class_table_E6| class indeces }
+   let perm =[int]: [] { placeholder, awaiting constrution }
+in @:
+   if =#perm else perm { used previously computed value if present }
+   then
+      let Wct = class_table_E6()
+      then Wct_prof = mat: { with shape (4,25) }
+	 let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
+	 4 # for j:Wct.n_classes
+	     do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
+	     od
+      then profile_ranked = [int]: { columns |e6_profile| ranked |lex_lesseq| }
+	 sort(#e6_profile
+	     ,(int i,int j)bool: lex_lesseq(e6_profile[i],e6_profile[j]))
+      , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
+	 sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
+      then ranking = [int]:  { ranking[j]|: Magma class |j| rank }
+         inverse(profile_ranked)
+      in perm:=compose_permutations(Wct_ranked,ranking)
+   fi
 
-set Magma_reps = [WeylElt]: { class representatives in Magma order }
-   let reps = class_table_E6.class_representatives() in
-   for j in Magma_reorder do reps[j] od
+set Magma_class_reps() = [WeylElt]: { class representatives in Magma order }
+   let reps = class_table_E6().class_representatives() in
+   for j in Magma_reorder() do reps[j] od
 
 set compressed_string(Partition P) = string:
    let mult=1
@@ -107,17 +119,17 @@ set compressed_string(Partition P) = string:
 in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
 
 set E6_name(vec chi) = string:
-   let Wct = class_table_E6, psi = null(#chi)
+   let Wct = class_table_E6(), psi = null(#chi)
    then degree = { first reorder |chi| for |Wct| into |psi| }
-      for j@i in Magma_reorder do psi[j]:=chi[i] od { apply inverse reordering }
-   ;  first(class_table_E6.root_datum.nr_of_posroots+1
+      for j@i in Magma_reorder() do psi[j]:=chi[i] od { inverse reordering }
+   ;  first(class_table_E6().root_datum.nr_of_posroots+1
            ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
 	   )
 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
 
 set character_table_E6() = CharacterTable:
    let classes = [WeylElt,classical_class,string]:
-      for w@j in Magma_reps
+      for w@j in Magma_class_reps()
       do (w,null_class(),class_signature(w).compressed_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
@@ -127,4 +139,4 @@ set character_table_E6() = CharacterTable:
 	 ,line
 	 )
       od
-   in character_table(class_table_E6,classes,irreps)
+   in character_table(class_table_E6(),classes,irreps)
