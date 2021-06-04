@@ -700,7 +700,7 @@ set Kac_triples (RootDatum rd, RootDatum L)=[(int,[int],ratvec,WeylElt)]:
    ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
 
 set in_radical (ratvec v, RootDatum rd) = bool:
-   let (,M)=mod_central_torus_info(rd) in is_integer(M*v)
+   let (,M)=mod_central_torus_info(rd) in is_integer(v*M)
 
 
 set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
