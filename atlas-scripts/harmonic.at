@@ -19,7 +19,7 @@ center.}
 {number of positive roots from character table}
 {set number_pos(CharacterTable ct) = max(for c in
 ct.class_representatives do length(c) od)}
-			 
+
 {multiplicity of W irr by number in symmetric powers  of
 reflection. Power must be at most #pos roots}
 set mult(CharacterTable ct, int rep, int deg) = int:
@@ -43,18 +43,28 @@ if =deg then [] else let list=invariants_to(ct,deg-1) in
 list:=list## for i:partial_harm(ct, 0,deg,list) do deg od fi
 list
 
-{fundamental invariant degrees}
+{ fundamental invariant degrees }
 set invariants(RootDatum rd) = [int]:
 let ct = rd.character_table in invariants_to(ct,#posroots(rd))
 
-{multiplicity of W irr by number "rep" in harmonics of degree "deg"}
+{ multiplicity of W irr by number "rep" in harmonics of degree "deg" }
 set harm(RootDatum rd, CharacterTable ct, int rep, int deg) = int:
 let h = 0, list=invariants(rd) in partial_harm(ct,rep, deg, list)
 
-{array of multiplicities of W irr by number "rep" in harmonics}
+{ multiplicity of W irr by number "rep" in harmonics of degree "deg",
+with precomputed invariants }
+set harm(CharacterTable ct, [int] invts, int rep, int deg) =
+partial_harm(ct,rep, deg, invts)
+
+{ array of multiplicities of W irr by number "rep" in harmonics }
 set harm(RootDatum rd, int rep) = [int]:
 let ct = rd.character_table in for j:#rd.posroots +1 do harm(rd,ct,rep,j) od
 
-{array of multiplicities of W irr by number "rep" in harmonics}
+{ array of multiplicities of W irr by number "rep" in harmonics }
 set harm(RootDatum rd, CharacterTable ct,int rep) = [int]:
 for j:#rd.posroots +1 do harm(rd,ct,rep,j) od
+
+{ array of multiplicities of W irr by number "rep" in harmonics with
+precomputed invariants }
+set harm(RootDatum rd, CharacterTable ct, [int] invts, int rep) = [int]:
+for j:#rd.posroots +1 do harm(ct,invts,rep,j) od
