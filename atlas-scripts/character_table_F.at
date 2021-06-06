@@ -110,29 +110,6 @@ in for (chi,deg,) in character_table_F4_data
 	   )=deg
    od.all
 
-set compressed_string(BiPartition(P,Q)) = string:
-(  let mult=1
-   then result =
-      for l@i in P
-      do if i=0 then "[ "
-	 elif l=P[i-1] then mult+:=1; ""
-	 elif mult=1 then P[i-1]+", "
-	 else P[i-1]+"^"+mult+", " next mult:=1
-	 fi
-      od.##
-in result ##:=
-      if mult=1 then P~[0].to_string else P~[0]+"^"+mult next mult:=1 fi
-;  result ##:=
-      for l@i in Q
-      do if i=0 then " L|S "
-	 elif l=Q[i-1] then mult+:=1; ""
-	 elif mult=1 then Q[i-1]+", "
-	 else Q[i-1]+"^"+mult+", " next mult:=1
-	 fi
-      od.##
-;  result ## if mult=1 then Q~[0].to_string else Q~[0]+"^"+mult fi ## " ]"
-)
-
 set F4_name(int dim, int degree, int n_primes) = string:
    ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
 
