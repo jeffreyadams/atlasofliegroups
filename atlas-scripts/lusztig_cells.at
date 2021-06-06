@@ -73,7 +73,7 @@ in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
  sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
  ()=if sigma_L_verbose then prints("sigma_v (no induction): ", sigma_v) fi  then
  sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
- ()=if sigma_L_verbose then prints("exchange/tensor sign: ", sigma) fi in 
+ ()=if sigma_L_verbose then prints("exchange/tensor sign: ", sigma) fi in
  ct_G.character_index(sigma)
 else  {need induction; compute L, sigma_L, truncated_induce}
  let ()=if sigma_L_verbose then prints("need induction: ")  fi in
@@ -169,13 +169,13 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  {now induce sigma_L and sigma_sommers}
  {sigma_L:}
   (let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_L) then
-  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, "char_index: ", char_index) fi then 
+  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, "char_index: ", char_index) fi then
   ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
   char_L=ct_G.characters[char_index] then
   ()=if sigma_L_verbose then prints("character of L: ", char_L) fi in char_index,
   {now sommers:}
    let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_sommers) then
-  ()=if sigma_L_verbose then prints("sigma_sommers: ", sigma_sommers, "char_index: ", char_index) fi then 
+  ()=if sigma_L_verbose then prints("sigma_sommers: ", sigma_sommers, "char_index: ", char_index) fi then
   ()=if sigma_L_verbose then prints("truncated induce (sommers): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_sommers", sigma_sommers) fi then
    char_sommers=ct_G.characters[char_index] then
    ()=if sigma_L_verbose then prints("character of L: ", char_index, new_line, char_sommers) fi in
@@ -474,13 +474,14 @@ tabulate(
     ct_G.dimension(j_S).to_string,
     ct_G.degrees[j_S].to_string,
     let (valid,orbit)=st_G.springer_inverse(j_S) in if valid then orbit.diagram.to_string+st_G.special_star(orbit) else "*" fi,
-    if j_L=j_S then "=" else "" fi 
+    if j_L=j_S then "=" else "" fi
 ]
   od  {/for i:#data}
  od {for O_v})
 
-set show_lusztig_sommers_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=void:
-show_lusztig_sommers_cells(rd,st_G,st_G_v,G.dual_orbits)
+set show_lusztig_sommers_cells(
+ RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=void:
+  show_lusztig_sommers_cells(G,st_G,st_G_v,G.dual_orbits)
 
 set show_lusztig_sommers_cell(RootDatum G,SpringerTable st_G,SpringerTable st_G_v,ComplexNilpotent dual_orbit)=void:
  show_lusztig_sommers_cells(G,st_G,st_G_v,[dual_orbit])

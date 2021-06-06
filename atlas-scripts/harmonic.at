@@ -19,7 +19,7 @@ center.}
 {number of positive roots from character table}
 {set number_pos(CharacterTable ct) = max(for c in
 ct.class_representatives do length(c) od)}
-
+			 
 {multiplicity of W irr by number in symmetric powers  of
 reflection. Power must be at most #pos roots}
 set mult(CharacterTable ct, int rep, int deg) = int:
@@ -29,8 +29,8 @@ ct.inner(ct.characters[rep],ct.sym_powers_reflection[deg]) fi
 {multiplicity of W irr by number "rep" in symm power "deg" mod poly alg with
 generators in degrees "list"}
 set partial_harm(CharacterTable ct, int rep, int deg, [int] list) = int:
-let h = 0 in 
-for k:#list+1 do 
+let h = 0 in
+for k:#list+1 do
 for S in choices_from(list,k) do if is_even(k) then h := h +
 mult(ct,rep,deg-sum(S)) else h := h-mult(ct,rep,deg-sum(S))
 fi od

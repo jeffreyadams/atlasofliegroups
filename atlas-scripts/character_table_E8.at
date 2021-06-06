@@ -8,7 +8,7 @@
 {atlas character table for W(E8)}
 {see character_table_E8.txt}
 
-{ orbit sizes on long respectively short roots; these characterise classes }
+{ orbit sizes on roots; these characterise conjugacy classes for W(E8) }
 set class_signature (WeylElt w) = Partition:
    let rd=root_datum(w)
 in for c in root_orbits(w) do #c od.sort_to_partition
@@ -17,13 +17,13 @@ set class_table_E8(RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=8,"Not E8")
 	       ; conjugacy_class_reps(rd)
    then sigs = [Partition]: for w in classes do class_signature(w) od
+   , leq = leq_equal_sum_partitions@(Partition,Partition)
    then lookup = (Partition->int):
       let ranked =
-         sort(#sigs,(int i,int j)bool: leq_partitions(sigs[i],sigs[j]))
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
+         sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
+      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq_partitions(sig,list[i])
-				   , 0,#list)]
+         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
    , sizes = [int]: { |for w in classes do 696729600\centralizer_order(w)| }
      [1,120,3780,2240,80640,45360,37800,580608
      ,604800,907200,3150,37800,100800,268800,113400,151200
@@ -84,7 +84,7 @@ in W_class_table ( rd
 		   fi
 		 )
 
-{ compute class table once here }
+{ compute class table once, on demand the first time it is needed }
 set class_table_E8 = (->WeylClassTable):
    let Wct= W_class_table(adjoint("")) { placeholder |WeylClassTable| value }
 in @: { function with no arguments }
