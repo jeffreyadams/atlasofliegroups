@@ -73,11 +73,14 @@ for list in vecs do (list,sp_product(n,list).split_form) od
 
 set my_orbit(RootDatum G)=
 assert(G.rank=4 or G.rank=6, "only rank 2,3");
-if G.rank=3 then 
 let cwts=G.fundamental_coweights in
+if G.rank=3 then 
 complex_nilpotent(G,ratvec_as_vec(2*(cwts[1]+cwts[3]+cwts[5])))
 else
-complex_nilpotent(G,[2,0,2,0]) fi
+complex_nilpotent(G,ratvec_as_vec(2*(cwts[0]+cwts[2]))) fi
+
+
+
 
 
 
@@ -112,6 +115,7 @@ st_v=sp_springer_table_dual(n) then
 for (G,orbit) in groups_and_orbits do
  prints("-------------------------------------------------------------");
  prints("G=", G, new_line);
+ prints("Orbit: ", orbit, " ", orbit.diagram);
  print_Z(G);
  for v in G.center do prints(v) od;
  show_lusztig_cell(G,ct,st_v,orbit) od
