@@ -16,6 +16,13 @@ Presumably this question can be modified to make sense
 for non-abelian A(O)
 }
 
+{n=2}
+set vectors_sets_two=[[vec]]:
+[
+[[0,0]],
+[[1,0]],
+[[1,1]],
+[[1,0],[0,1]]]
 {n=3}
 set vectors_sets_three=[[vec]]:
 [
@@ -48,10 +55,15 @@ set sp_product(int n,[vec] vecs)=RootDatum:sp_product(n,for v in vecs do v/2 od)
 set all_vectors(int n)=[vec]:box(2,n)
 
 set sp_products(int n)=[RealForm]:
-assert(n=3,"only n=3");
+if n=3 then 
 let vecs=vectors_sets_three then
 Sp=(sp_product(n,[vec]:[])).split_form in
 for list in vecs do sp_product(n,list).split_form od
+elif n=2 then 
+let vecs=vectors_sets_two then
+Sp=(sp_product(n,[vec]:[])).split_form in
+for list in vecs do sp_product(n,list).split_form od else
+[] fi
 
 set sp_products_long(int n)=[([vec],RealForm)]:
 assert(n=3,"only n=3");
@@ -60,8 +72,14 @@ Sp=(sp_product(n,[vec]:[])).split_form in
 for list in vecs do (list,sp_product(n,list).split_form) od 
 
 set my_orbit(RootDatum G)=
+assert(G.rank=4 or G.rank=6, "only rank 2,3");
+if G.rank=3 then 
 let cwts=G.fundamental_coweights in
 complex_nilpotent(G,ratvec_as_vec(2*(cwts[1]+cwts[3]+cwts[5])))
+else
+complex_nilpotent(G,[2,0,2,0]) fi
+
+
 
 {subregular orbit in each group}
 set sp_orbits(int n)=[(RealForm,ComplexNilpotent)]:
@@ -78,8 +96,17 @@ let groups_and_orbits=sp_orbits(n) then
 ct_0=sp_character_table(n) then
 (G,)=groups_and_orbits[0] then
 ()=prints("computed character table") then
-ct=update_fake_degrees(G,ct_0) then
-()=prints("updated fake degrees") then
+fd=
+ if n=3 then [0,1,1,-1,4,1,2,2,-1,5,1,2,2,-1,5,-1,-1,-1,-1,-1,4,5,5,-1,8,1,2,2,-1,5,2,\
+3,3,-1,6,2,3,3,-1,6,-1,-1,-1,-1,-1,5,6,6,-1,9,1,2,2,-1,5,2,3,3,-1,6,2,3,3,-1,6,-1,-1,-1,-1,-1,\
+5,6,6,-1,9,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,4,5,5,\
+-1,8,5,6,6,-1,9,5,6,6,-1,9,-1,-1,-1,-1,-1,8,9,9,-1,12] else
+fake_degrees(ct_0,all_parameters_gamma(G,G.rho)) fi then
+()=ct_0.fake_degrees:=fd then
+{ct=update_fake_degrees(G,ct_0) then}
+()=prints("updated fake degrees:") then
+()=prints(ct_0.fake_degrees) then
+ct=ct_0 then
 st_v=sp_springer_table_dual(n) then
 ()=prints("computed (dual) springer table") in
 for (G,orbit) in groups_and_orbits do
@@ -97,4 +124,4 @@ for (G,orbit) in groups_and_orbits do
 set show_groups([([vec],RealForm)] groups)=
  for (x,a)@i in groups do prints(new_line,i);prints("vecs=",x);print_Z(a);prints("center:",a.elements_of_center) od
 
-set show_groups(int n)=show_groups(sp_products_long(n)) 
+ set show_groups(int n)=show_groups(sp_products_long(n)) 
