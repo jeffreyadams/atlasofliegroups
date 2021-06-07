@@ -43,22 +43,24 @@ set unsorted_cycle_type_GL(WeylElt w) = [int]:
   for cycle in permutation_cycles((vec:#n)*w) do #cycle od
 
 set class_table_S(int n) = WeylClassTable:
-  let rd=GL(n), reps = [A_class]: partitions(n)
+  let rd=GL(n), reps = [Partition]: partitions(n)
+  then lookup = (Partition->int): index_partition(reps)
   in W_class_table(rd, for rep in reps do conjugacy_class_S(rep) od
 		  , (WeylElt w)int:
 		    cycle_class_size(unsorted_cycle_type_GL(w))
-		  , (WeylElt w0) (WeylElt->bool): let lambda=cycle_type_GL(w0) in
-		    (WeylElt w)bool: cycle_type_GL(w)=lambda
+		  , (WeylElt w) int: lookup(cycle_type_GL(w))
+		  , (int i,int k)int: lookup(cycle_power(reps[i],k))
 		  )
 
 set class_table_A(RootDatum rd) = WeylClassTable:
-  let partitions = [A_class]: partitions(rd.semisimple_rank+1)
+  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
   , type(WeylElt w) = Partition: cycle_type(classic_permutation(w))
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
+  then lookup = (Partition->int): index_partition(partitions)
   in W_class_table( rd, for lambda in partitions do class_rep(lambda) od
 		  , (WeylElt w)int: cycle_class_size(type(w))
-		  , (WeylElt w0) (WeylElt->bool):
-		     let lambda=type(w0) in (WeylElt w)bool: type(w)=lambda
+		  , (WeylElt w) int: lookup(type(w))
+		  , (int i,int k)int: lookup(cycle_power(partitions[i],k))
 		  )
 
 set character_table_S(int n) = CharacterTable:
@@ -98,8 +100,8 @@ in case char_index(letter,"ABCDEFG")
    ,  character_table_C(rank)
    ,  character_table_D(rank)
    ,  error("Type E simple character table not implemented here")
-   ,  character_table_F4()
-   ,  character_table_G2()
+   ,  character_table_F(4)
+   ,  character_table_G(2)
    else error("Classification of simple types exploded!")
    esac
 )
