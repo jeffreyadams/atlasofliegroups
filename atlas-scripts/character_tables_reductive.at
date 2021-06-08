@@ -13,7 +13,7 @@
 
 set character_table_torus(RootDatum rd)=CharacterTable:
 assert(rd.is_abelian,"Not a torus");
-(Lie_type(rd),
+(W_class_table(rd),
 1,    {order of class}
 1,    {number of classes}
 (int->classical_class):(int n):classical_class:().null_class,  {empty partition}
