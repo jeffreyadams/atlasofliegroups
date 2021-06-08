@@ -38,9 +38,10 @@ h
 
 {list of degrees of generators of invariant polynomials to degree deg}
 set rec_fun invariants_to(CharacterTable ct, int deg) = [int]:
-if =deg then [] else let list=invariants_to(ct,deg-1) in
-list:=list## for i:partial_harm(ct, 0,deg,list) do deg od fi
-list
+if =deg then []
+else let list=invariants_to(ct,deg-1) in
+list## for i:partial_harm(ct, 0,deg,list) do deg od
+fi
 
 {fundamental invariant degrees}
 set invariants(CharacterTable ct) = invariants_to(ct,number_pos(ct))
