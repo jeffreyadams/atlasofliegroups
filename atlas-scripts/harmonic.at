@@ -15,10 +15,8 @@ invariants(GL(3,R).character_table) = [2,3]
 invariants(RootDatum rd) which would add a 1 for each dimension of the
 center.}
 
-{THIS DOESN'T WORK unless -1 is in W}
 {number of positive roots from character table}
-{set number_pos(CharacterTable ct) = max(for c in
-ct.class_representatives do length(c) od)}
+set number_pos(CharacterTable ct) = ct.root_datum.nr_of_posroots
 
 {multiplicity of W irr by number in symmetric powers  of
 reflection. Power must be at most #pos roots}
@@ -45,12 +43,12 @@ list## for i:partial_harm(ct, 0,deg,list) do deg od
 fi
 
 { fundamental invariant degrees }
-set invariants(RootDatum rd) = [int]:
-let ct = rd.character_table in invariants_to(ct,#posroots(rd))
+set invariants(CharacterTable ct) = [int]:
+   invariants_to(ct,nr_of_posroots(ct.root_datum))
 
 { multiplicity of W irr by number "rep" in harmonics of degree "deg" }
-set harm(RootDatum rd, CharacterTable ct, int rep, int deg) = int:
-let h = 0, list=invariants(rd) in partial_harm(ct,rep, deg, list)
+set harm(CharacterTable ct, int rep, int deg) = int:
+   let list=invariants(ct) in partial_harm(ct,rep, deg, list)
 
 { multiplicity of W irr by number "rep" in harmonics of degree "deg",
 with precomputed invariants }
@@ -58,14 +56,14 @@ set harm(CharacterTable ct, [int] invts, int rep, int deg) =
 partial_harm(ct,rep, deg, invts)
 
 { array of multiplicities of W irr by number "rep" in harmonics }
-set harm(RootDatum rd, int rep) = [int]:
-let ct = rd.character_table in for j:#rd.posroots +1 do harm(rd,ct,rep,j) od
+set harm(CharacterTable ct, int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,rep,j) od
 
 { array of multiplicities of W irr by number "rep" in harmonics }
-set harm(RootDatum rd, CharacterTable ct,int rep) = [int]:
-for j:#rd.posroots +1 do harm(rd,ct,rep,j) od
+set harm(CharacterTable ct,int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,rep,j) od
 
 { array of multiplicities of W irr by number "rep" in harmonics with
 precomputed invariants }
-set harm(RootDatum rd, CharacterTable ct, [int] invts, int rep) = [int]:
-for j:#rd.posroots +1 do harm(ct,invts,rep,j) od
+set harm(CharacterTable ct, [int] invts, int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,invts,rep,j) od

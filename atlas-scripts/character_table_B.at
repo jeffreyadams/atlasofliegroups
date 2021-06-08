@@ -52,7 +52,7 @@ set character_table_B(int n) = CharacterTable:
       od
    in character_table(class_table_B(n),classes,irreps)
 
-set character_table_(RootDatum rd) = CharacterTable:
+set character_table_B(RootDatum rd) = CharacterTable:
    let n=rd.semisimple_rank
    then class_list =  partition_pairs(n)
    then cycles = for pair in class_list do pair.to_cycles od
