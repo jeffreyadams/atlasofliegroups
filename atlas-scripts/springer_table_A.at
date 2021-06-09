@@ -69,10 +69,16 @@ let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
 index=first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od) in
 orbit_partitions[index]
 
-
+{
 set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
   let P=O.partition_of_orbit_A, reps=ct.class_reps
   in first(#reps,(int i): cycle_type(classic_permutation(reps[i]))=P)
+}  
+
+{Springer(orbit with partition P) = classical_irrep with partition P}
+set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
+  let P=O.partition_of_orbit_A
+  in first(ct.n_classes,(int i): ct.classical_reps(i).get_irrep_A=P)
 
 set inverse_springer_partition_A(Partition P)=Partition: P
 
