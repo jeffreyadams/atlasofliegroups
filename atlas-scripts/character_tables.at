@@ -26,7 +26,7 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 
 set_type
 [ CharacterTable =
-  ( LieType lie_type
+  ( WeylClassTable class_table
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
@@ -74,7 +74,7 @@ then irreps = [classical_irrep]: for (ci,,) in chars do ci od
          ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
   od
 in
-( { lie_type } LieType: Lie_type(rd)
+( { class_table } WeylClassTable: Wct
 , { order } int: order
   {conjugacy classes}
 , { n_classes } int: n
@@ -120,7 +120,7 @@ then class_orders
      = log("Step 5/5: computing orders of elements of conjugacy classes")
      ; for w in classes do w.order od
 then ct=
-   ( lt    {lie_type}
+   ( wct    {class_table}
    , W_order    {order (of W)}
    , #classes      {n_classes}
    , (int j) classical_class: ().null_class
@@ -153,7 +153,7 @@ set initialize_character_table(RootDatum rd) = CharacterTable:
    initialize_character_table(Lie_type(rd))
 
 {root datum of CharacterTable is (semisimple) simply connected}
-set root_datum (CharacterTable ct) =RootDatum:simply_connected(ct.lie_type)
+set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
 
 {Note: ct.class_rep(0).root_datum and ct.root_datum might not be the same:
  for example in simple type B/D ct.root_datum is simply connected,but
@@ -168,7 +168,7 @@ set parent_root_permutation(CharacterTable ct)=mat:
 let (valid,P)=root_permutation(ct.root_datum,ct.root_datum_parent)
 in assert(valid,"inconsistent root data");P
 
-set rank(CharacterTable ct) = ct.lie_type.rank
+set rank(CharacterTable ct) = ct.root_datum.rank
 {ct.class_reps=[WeylElt] is now a projector}
 {set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od}{old version}
 set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
@@ -269,8 +269,8 @@ index=find(ct.characters,v) then
 ()=prints("Step 9") then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"}
-then ct=(
-  Lie_type(rd)    {lie_type}
+then ct=
+( W_class_table(rd) {generic class_table; slow!}
   , W_order    {order (of W)}
   , #classes      {n_classes}
   , (int j) classical_class: ().null_class
@@ -350,7 +350,7 @@ set permute_classes(CharacterTable ct,(int->int) f) = CharacterTable:
   else let f_inv = (int->int):
      let inv_perm=  permutation_inverse(for i:ct.n_classes do f(i) od)
      in (int j): inv_perm[j]
-  in ( ct.lie_type
+  in ( ct.class_table
      , ct.order
      , ct.n_classes
      , (int i) classical_class: ct.classes(f(i))
@@ -396,7 +396,7 @@ if permute_table then ct1 else
 }
 
 set permute_representations(CharacterTable ct,(int->int) f)=CharacterTable:
-(ct.lie_type,
+(ct.class_table,
 ct.order,
 ct.n_classes,
 ct.classes,

@@ -60,7 +60,7 @@ set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
 
 set cell_representation (CharacterTable ct,WCell cell) = W_rep:
   (#cell.graph,
-   for i:ct.lie_type.semisimple_rank
+   for i:ct.root_datum.semisimple_rank
    do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
