@@ -31,47 +31,101 @@ assert(rd.is_abelian,"Not a torus");
 mat:[[1]])
 
 {including torus}
-set character_table_simple(RootDatum rd)=CharacterTable:
-if ct_verbose then prints("Computing character table for simple root datum: ", rd.nice_format) fi;
-let ct=
-let (letter,n)=simple_type(rd) in
-if letter="A" then
- let ct=character_table_A(SL(n+1)) in ct
-elif letter="B" then
- let ct_0=character_table_B(n) then
- ct=ct_0.update_degrees in ct
-elif letter="C" then
- let ct_0=character_table_C(n) then
- ct=ct_0.update_degrees in ct
-elif letter="D" then
- let ct_0=character_table_D(n) then
- ct=ct_0.update_degrees in ct
-elif letter="F" then
- let ct=character_table_F(4) in ct
-elif letter="G" then character_table_G(2)
-elif letter="E" and n=6 then
- let ct_0=character_table_E6() then
- ct=update_degrees(ct_0) in ct
-elif letter="E" and n=7 then
- let ct_0=character_table_E7() then
- ct=update_degrees(ct_0) in ct
-elif letter="E" and n=8 then
- let ct=character_table_E8() in ct
- elif is_abelian(rd) then
- character_table_torus(rd)
-else error("case not covered")
-fi
-in
-if ct_verbose then prints("Done computing character table") fi;ct
+set character_table_simple(RootDatum rd,string letter,int n) = CharacterTable:
+( if ct_verbose
+  then prints("Computing character table for simple root datum: "
+	     , rd.nice_format)
+  fi
+; let ct=
+     case char_index(letter,"ABCDEFG")
+     in character_table_A(rd)
+     , character_table_B(rd)
+     , character_table_C(rd)
+     , character_table_D(rd)
+     , case n-6
+       in character_table_E6(), character_table_E7(), character_table_E8()
+       esac
+     , character_table_F(rd)
+     , character_table_G(rd)
+     esac
+in if ct_verbose then prints("Done computing character table") fi;ct
+)
 
+{ Combine conjugacy class tables of Weyl groups for root subdata whose simple
+  roots form a mutually orthogonal partition of the simple roots of |rd|.
+  Explicitly passing |rd| as argument allows the proper renumbering to be
+  applied when passing to and from the Weyl group of the full root datum.
+}
+set combine(RootDatum rd,[WeylClassTable] tables) = WeylClassTable:
+(  let rds = for table in tables do table.root_datum od
+   , radix = for table in tables do table.n_classes od { mixed radix list }
+   , tr = two_rho(rd)
+in assert(for rdj@j in rds
+          do for i:j { iterate of all pairs |i<j| }
+	     do for alpha_v in simple_coroots(rds[i])
+	        do for beta in simple_roots(rdj)
+	           do =alpha_v*beta
+		   od.all
+	        od.all
+	     od.all
+	  od.all,"Factors are not mutually orthogonal")
+;  let reps = [[WeylElt]]: { all class representatives, lifted to |rd| }
+      for table in tables
+      do for w in table.class_representatives() do chamber(rd,w*tr) od
+      od
+   , words = all_words(radix) { mixed radix representations of class numbers }
+   , index = mixed_radix_nr(radix) { map from |word| to its index in |words| }
+   , project_W = [(WeylElt->WeylElt)]: { projectors to component Weyl groups }
+      for rdi in rds
+      do let tri = two_rho(rdi) in (WeylElt w): chamber(rdi,w*tri)
+      od
+in W_class_table
+   ( rd
+   , for word in words do product(rd,for n@i in word do reps[i][n] od) od
+   , (WeylElt w) int:
+     for proj@i in project_W
+     do tables[i].class_sizes()[tables[i].class_of(proj(w))]
+     od.product
+   , (WeylElt w) int: { class number }
+        for proj@i in project_W do tables[i].class_of(proj(w)) od.index
+   , (int N,int k) int:
+	for n@i in words[N] do tables[i].class_power(n,k) od.index
+   )
+)
 
+set combine(RootDatum rd,[CharacterTable] factors) = CharacterTable:
+(  let Wct = combine(rd,for factor in factors do factor.class_table od)
+   , words = for factor in factors do factor.n_classes od.all_words
+   then reps = Wct.class_representatives()
+   , tensor([vec] chars) = [int]: { all products of entries }
+        for word in words do product(for l@i in word do chars[i][l] od)	od
+in let classes = [WeylElt,classical_class,string]:
+     for word@N in words
+     do ( reps[N]
+	, null_class()
+	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
+	)
+     od
+  , irreps = [classical_irrep,string,[int]]:
+     for L in words
+     do ( null_irrep()
+	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
+	, tensor(for n@i in L do factors[i].character(n) od)
+	)
+     od
+in character_table(Wct,classes,irreps)
+)
 
-
-
-
-set character_table(RootDatum rd)=
-if rd.is_abelian then character_table_torus(rd) else
-let factors=simple_factors(rd) then
-ct=character_table_simple(factors[0].derived) in
-for i:#factors-1 from 1 do
- ct:=tensor(ct,character_table_simple(factors[i].derived)) od;ct fi
+set character_table(RootDatum rd) = CharacterTable:
+   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
+   then simples = simple_factors(Lie_type)
+   then root_data = [RootDatum]: { subdata with a single simple factor + torus }
+      let offset=0 in
+      for (,rank) in simples
+      do sub_datum(rd,for i:rank do map[offset+i] od)  next offset+:=rank
+      od
+   then simple_tables = [CharacterTable]: { tables for each of |root_data| }
+      for rdi@i in root_data
+      do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
+      od
+in combine(rd,simple_tables)
