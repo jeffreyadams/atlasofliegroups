@@ -267,6 +267,10 @@ set plural (int n) = string: if n=1 then "" else "s" fi
 set plural (int n,string s) = string: n + if n=1 then s else s+"s" fi
 
 set concat = ##@[string]
+set join ([string] elts, string sep, string unit) = string:
+   if =#elts then unit
+   else elts[0] ## for elt in elts[1:] do sep ## elt od.##
+   fi
 
 set l_adjust (int w, string s) = string:
   let d=w-#s in if <=d then s else s##(" "*d) fi
@@ -350,6 +354,13 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
     in from_first(#S,k)
   fi
 
+{ index of |word| in |all_words(radix)| }
+set mixed_radix_nr([int] radix) = (vec->int):
+   (vec word) int: let s=0 in for l@i in word do s:=s*radix[i]+l od; s
+{ its inverse, in other words, the function |f=mixed_radix_word(radix)| is
+  such that |all_words(radix)| is equal to |for i:product(radix) do f(i) od| }
+set mixed_radix_word([int] radix) = (int->vec):
+  (int N) vec: for rad@i in radix ~do let (q,r)= N\%rad in N:=q; r ~od
 
 {. number of times n occurs in [int] S .}
 set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
@@ -881,6 +892,10 @@ set coroots (RootDatum rd) = mat:
 set root (RootDatum rd, vec alpha_v) = vec: root(rd,coroot_index(rd,alpha_v))
 set coroot (RootDatum rd, vec alpha) = vec: coroot(rd,root_index(rd,alpha))
 
+set is_orthogonal (RootDatum rd, int i, int j) = bool: =coroot(rd,i)*root(rd,j)
+set is_orthogonal (RootDatum rd, [int] S, int j) = bool:
+   for i in S do is_orthogonal(rd,i,j) od.all
+
 { reflection action of roots }
 set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
@@ -1047,14 +1062,12 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
-{root datum of singular roots}
-set singular_root_datum(RootDatum rd,ratvec gamma)=
-let roots=[vec]:[], coroots=[vec]:[] in
-for a@i in  rd.poscoroots do 
- if a*gamma=0 then roots#:=rd.posroots[i]; coroots#:=a fi
-od;
-if #roots=0 then  root_datum(null(0,0),null(0,0)) else   {trivial_group, in groups.at, not loaded yet}
-root_datum_from_positive(roots,coroots) fi
+{ root datum of singular roots }
+set singular_root_datum(RootDatum rd,ratvec gamma) = RootDatum:
+   let pcr = poscoroots(rd)
+   then pred(int i) = bool: { whether coroot |i| is singular } =pcr[i]*gamma
+in (columns_with(pred,posroots(rd)),columns_with(pred,pcr)).
+   root_datum_from_positive
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:
@@ -1147,8 +1160,13 @@ set ^ = (WeylElt,int->WeylElt):
 set matrix (WeylElt w) = mat:
    let n=w.root_datum.rank in n # for c in id_mat(n) do w*c od
 set W_elt (RootDatum rd, mat M) = WeylElt:
-  let w = chamber(rd,M*two_rho(rd))
-  in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
+   let w = chamber(rd,M*two_rho(rd))
+   in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
+set W_elt_of_reflection(RootDatum rd,int root) = WeylElt:
+   chamber(rd,reflect(rd,root,two_rho(rd)))
+set W_elt_of_reflection(RootDatum rd,vec alpha) = WeylElt:
+   chamber(rd,reflect(rd,alpha,two_rho(rd)))
+
 
 { |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
   |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
