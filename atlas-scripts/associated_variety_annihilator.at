@@ -83,7 +83,9 @@ chars_rd=
   then  [i] else [] fi
 od
 then
+()=if av_verbose then prints("chars_rd: ", chars_rd) fi then
 index_rd=chars_rd[0] then
+()=if av_verbose then prints("index_rd: ", index_rd) fi then
 (valid,orbit_0)=st_rd.springer_inverse(index_rd) then
 ()=assert(valid,"can't compute springer_inverse");
 if av_verbose then prints("character(s) found: ", chars_rd,
