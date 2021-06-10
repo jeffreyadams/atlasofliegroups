@@ -12,7 +12,7 @@ elif d=[0,1,0,0] then [9,-3,-3] {A1+A1~ -> phi(9,10)}
 elif d=[0,0,0,2] then [8,-4,0]  {A2~ -> phi(8,9)'}
 elif d=[0,0,1,0] then [4,2,-2]  {A2+A1~ -> phi(4,7)''}
 elif d=[2,0,0,1] then [9,3,-3]  {B2->phi(9,6)''}
-elif d=[0,1,0,1] then [6,0,0]   {A2~+A1 -> phi(6,6)''}  {ambiguous: is the special one, with sum()=19}
+elif d=[0,1,0,1] then [6,0,0]   {A2~+A1 -> phi(6,6)''}  {ambiguous, determined by  sum()=15 {NOT 19}, see springer_F4 below; note this orbit is not special}
 elif d=[1,0,1,0] then [16,0,0]  {C3(a1) -> phi(16,5)}
 elif d=[0,2,0,0] then [12,0,0]  {F4(a3) -> phi(12,4)}
 elif d=[2,2,0,0] then [8,4,0]   {B3 -> phi(8,3)''}
@@ -26,7 +26,8 @@ set springer_F4(CharacterTable ct,ComplexNilpotent O)=int:
 let characters=ct.characters then
 sig=springer_by_signature(O) in
 if sig=[6,0,0] then
- first(for v in characters do ct.signature(v)=sig and sum(v)=19 od)
+{ first(for v in characters do ct.signature(v)=sig and sum(v)=19 od)}
+ first(for v in characters do ct.signature(v)=sig and sum(v)=15 od)     {mistake corrected: phi(6,6)'' sum=19, phi(6,6)' sum=15}
  else
  first(for v in characters do ct.signature(v)=sig od)
 fi
