@@ -127,7 +127,7 @@ set character_table_D(RootDatum rd) = CharacterTable:
          , for class in class_list do character(rep,class) od
 	 )
       od
-in character_table(class_table_D(n),classes,irreps)
+in character_table(class_table_D(rd),classes,irreps)
 
 { functions that expect a |CharacterTable| of simple type D }
 set split_class_nrs(CharacterTable ct) = [int]:
