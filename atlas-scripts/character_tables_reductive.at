@@ -89,11 +89,12 @@ set combine(RootDatum rd,[CharacterTable] factors) = CharacterTable:
 (  let Wct = combine(rd,for factor in factors do factor.class_table od)
    , words = for factor in factors do factor.n_classes od.all_words
    then reps = Wct.class_representatives()
+   , index = mixed_radix_nr(for factor in factors do factor.n_classes od)
    , tensor([vec] chars) = [int]: { all products of entries }
         for word in words do product(for l@i in word do chars[i][l] od)	od
 in let classes = [WeylElt,classical_class,string]:
-     for word@N in words
-     do ( reps[N]
+     for word in words
+     do ( reps[for n@i in word do factors[i].to_class_table(n) od.index]
 	, null_class()
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)

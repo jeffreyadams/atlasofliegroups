@@ -73,6 +73,8 @@ table=kronecker_product(ct1.table,ct2.table) in
 (
 Wct,
 order,
+(int n) int: let(a,b)=f(n) in g(ct1.to_class_table(a),ct2.to_class_table(b)),
+(int m) int: let(x,y)=f(m) in g(ct1.from_class_table(x),ct2.from_class_table(y)),
 n_classes,
 (int j): null_class(),
 class_label,
