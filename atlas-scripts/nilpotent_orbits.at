@@ -54,7 +54,7 @@ set diagram (ComplexNilpotent(rd,,H)) = [int]:
  order. For a non-simple system, put in standard Bourbaki
  order on each simple factor. Probably the order of the factors
  doesn't change but this isn't guaranteed.
-} 
+}
 set diagram_normalized_simple(ComplexNilpotent O)=[int]:
 let (,perm)=Cartan_matrix_type(O.root_datum) then
 P=permutation_matrix(perm) in
@@ -62,7 +62,7 @@ P*diagram(O)
 
 {diagram_normalized is [[int]] to allow for multiple simple factors}
 set diagram_normalized(ComplexNilpotent O)=[[int]]:
-let H=dominant(O.H,O.root_datum) then 
+let H=dominant(O.H,O.root_datum) then
 factors=simple_factors(O.root_datum) in
 for f in factors do
  let diagram=H*f.simple_roots then
@@ -652,11 +652,12 @@ for (L,H) in O.pseudo_Levis do (L,(),H) od
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
 set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
-if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0)) else
+if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0),rd.prefers_coroots)
+else
 let simple_roots=for i in S do
  if i<ss_rank(rd) then simple_roots(rd)[i] else -highest_root(rd) fi od
 then simple_coroots=for v in simple_roots do coroot(rd,v) od
-in root_datum(simple_roots,simple_coroots)  fi
+in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)  fi
 
 {run over list of pairs [(v,w)], only keep those for which the v's
 give distint torus elements
@@ -840,7 +841,7 @@ set Bala_Carter_Levi (ComplexNilpotent O)=RootDatum:let (L,)=O.Bala_Carter_Levi_
 
 {complex Levi of orbit: defined by H (not the Bala Carter Levi)}
 set complex_Levi(ComplexNilpotent orbit)=
-let rd=orbit.root_datum in 
+let rd=orbit.root_datum in
 complex_Levi(rd, (int k):rd.simple_roots[k]*orbit.H=0)
 
 set order_in_A (ratvec v, RootDatum rd, vec H)=int:
@@ -853,7 +854,7 @@ set order_in_A (ratvec v, RootDatum rd, vec H)=int:
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
 (ComplexNilpotent,[int],[(RootDatum,[ratvec])]):
 if O.root_datum.is_abelian then
- let rd=O.root_datum in 
+ let rd=O.root_datum in
  (O,[1],[(rd,[null(rd.rank)/1])]) else
 let g=generators_of_component_group(O)
 then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
@@ -862,7 +863,7 @@ fi
 
 set component_datum_plus(ComplexNilpotent O)=
 if O.root_datum.is_abelian then
- let rd=O.root_datum in 
+ let rd=O.root_datum in
  (O,[1],[(rd,null(0),[null(rd.rank)/1])]) else
 let g=generators_of_component_group(O)
 then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
@@ -991,7 +992,7 @@ orbits
 {if rd has n simple factors it has n minimal orbits
 take the product of the 0 orbit in all
 but 1 factor, and the minimal orbit in that factor
-minimal_orbits(rd)[i] is the minimal orbit 
+minimal_orbits(rd)[i] is the minimal orbit
  on factor i, and 0 on all other factors
 }
 set minimal_orbits(RootDatum rd)=
@@ -1063,4 +1064,3 @@ set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
 
 set twist(mat delta,ComplexNilpotent O)=ComplexNilpotent:
 (O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right}
-

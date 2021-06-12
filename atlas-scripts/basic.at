@@ -807,7 +807,8 @@ set integrality_rank (Param p) = int: semisimple_rank(integrality_datum(p))
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let in_S = is_member(S) in
   root_datum(columns_with(in_S,rd.simple_roots)
-	    ,columns_with(in_S,rd.simple_coroots))
+	    ,columns_with(in_S,rd.simple_coroots)
+	    ,rd.prefers_coroots)
 
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
@@ -1042,7 +1043,7 @@ set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
 set mod_central_torus (RootDatum rd) = RootDatum:
   let (d,)=mod_central_torus_info(rd) in d
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
-  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd))
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),false)
 
 { from appropriate (subsystem) dual 2rho value, deduce test for being simple }
 set is_simple_for (vec dual_two_rho) = (vec->bool):
@@ -1054,8 +1055,9 @@ set simple_system_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
 
-set root_datum_from_positive((mat,mat)pair) = RootDatum:
-  pair.simple_system_from_positive.root_datum
+set root_datum_from_positive((mat,mat)pair, bool prefer_coroots) = RootDatum:
+  let (posroots,poscoroots) = pair.simple_system_from_positive
+  in root_datum(posroots,poscoroots,prefer_coroots)
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
@@ -1066,8 +1068,12 @@ set fundamental_coweights (RootDatum rd) = [ratvec]:
 set singular_root_datum(RootDatum rd,ratvec gamma) = RootDatum:
    let pcr = poscoroots(rd)
    then pred(int i) = bool: { whether coroot |i| is singular } =pcr[i]*gamma
-in (columns_with(pred,posroots(rd)),columns_with(pred,pcr)).
-   root_datum_from_positive
+in root_datum_from_positive((columns_with(pred,posroots(rd))
+			    ,columns_with(pred,pcr)
+			    )
+			   ,rd.prefers_coroots
+			   )
+
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:

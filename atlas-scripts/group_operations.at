@@ -35,7 +35,9 @@ set split_form(InnerClass ic) = RealForm:
 
 set *(RootDatum R,RootDatum S) = RootDatum:
   root_datum(block_matrix(simple_roots(R),simple_roots(S))
-            ,block_matrix(simple_coroots(R),simple_coroots(S)) )
+            ,block_matrix(simple_coroots(R),simple_coroots(S))
+	    ,R.prefers_coroots { somebody has to rule, |R| came first }
+	    )
 
 set *(InnerClass ic1,InnerClass ic2) = InnerClass:
   let di =
@@ -54,7 +56,8 @@ set * (RealForm G,RealForm H) = RealForm:
 { ---------------- radical, i.e. maximal central torus ---------------- }
 
 set radical (RootDatum rd) = RootDatum: { central torus as separate root datum }
-  let empty = null(rank(rd)-semisimple_rank(rd),0) in root_datum(empty,empty)
+  let empty = null(rank(rd)-semisimple_rank(rd),0) { rank of torus, no roots }
+  in root_datum(empty,empty,false)
 
 set radical (InnerClass ic) = RealForm: { unique real form of central torus }
   let rd = root_datum(ic)
@@ -142,7 +145,7 @@ set adjoint_info (RootDatum rd) = (RootDatum,mat): { change weight basis to simp
 let A=simple_roots(rd) then
 A_new=id_mat(semisimple_rank(rd)) then
 B_new=Cartan_matrix(rd) in
-(root_datum(A_new,B_new), left_inverse(A))
+(root_datum(A_new,B_new,rd.prefers_coroots), left_inverse(A))
 
 {.simply connected cover of complex group, with change of basis matrix.}
 set simply_connected_cover_info(RootDatum rd)=(RootDatum, ratmat):
@@ -150,7 +153,7 @@ assert(is_semisimple(rd), "rd is not semisimple");
 let A=simple_roots(rd) then
 A_new=^Cartan_matrix(rd) then
 B_new=id_mat(rank(rd)) in
-(root_datum(A_new,B_new), A_new*rational_inverse(A))
+(root_datum(A_new,B_new,rd.prefers_coroots), A_new*rational_inverse(A))
 
 {.simply connected cover of complex group}
 set simply_connected_cover(RootDatum rd)=RootDatum:

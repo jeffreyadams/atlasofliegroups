@@ -34,8 +34,11 @@ set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
 
 set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
       RootDatum:
-   root_datum(simple_system_from_positive
-      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
+(  root_datum_from_positive
+     ((columns_with(select,rd.posroots),columns_with(select,rd.poscoroots))
+     ,rd.prefers_coroots
+     )
+)
 
 set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
@@ -698,6 +701,7 @@ in for (,rank):code in codes { traverse the simple factors }
       , simple_datum = root_datum
 	( r # for i in sub_map do rd_L.simple_roots[i]   od
 	, r # for i in sub_map do rd_L.simple_coroots[i] od
+	, w.root_datum.prefers_coroots
 	)
    in ( W_elt(simple_datum,factor_word), code )
    next offset +:= rank

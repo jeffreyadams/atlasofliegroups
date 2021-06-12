@@ -1,12 +1,14 @@
 <basic.at
 <torus.at
 
-set !trivial_group=RootDatum:root_datum(null(0,0),null(0,0))
+set !trivial_group = RootDatum: root_datum(null(0,0),null(0,0),false)
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex (RootDatum rd) = RealForm:
   let r = rank(rd) then id_2r=id_mat(r+r), twice (mat m) = block_matrix(m,m)
-  then rd_C = root_datum(twice(rd.simple_roots),twice(rd.simple_coroots))
+  then rd_C = root_datum(twice(rd.simple_roots)
+			,twice(rd.simple_coroots)
+			,rd.prefers_coroots)
   in quasisplit_form(inner_class(rd_C, id_2r[r:] ## id_2r[:r] ))
 
 { complexification of a real group, another name for the same }
@@ -30,9 +32,9 @@ set SL_coroots (int n) = mat: { equals |GL_roots(n)| without its final row }
 set SL_roots (int n) = mat: { like |SL_coroots(n)|, but add 1 in final column }
   matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
 
-set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
-set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
-set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
+set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r,false)
+set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n),false)
+set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n),true)
 
 { roots and coroots in nice coordinates for roots in types B,C,D }
 
@@ -53,25 +55,25 @@ set type_D_roots (int n) = mat:
 
 set Sp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(type_C_roots(m),type_B_roots(m))
+  in root_datum(type_C_roots(m),type_B_roots(m),false)
 
 set PSp (int n) = RootDatum: { same as adjoint(Sp(n)) }
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m))
+  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m),false)
 
 set GSp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   , type = LieType:
      if m>1 then "C" elif m=1 then "A" else "T" fi+int_format(m)+".T1"
-  in root_datum(type,quotient_basis(type,[[1/2,1/2]]))
+  in root_datum(type,quotient_basis(type,[[1/2,1/2]]),false)
 
 { type B/D root data }
 
 { use the standard basis for SO(n) }
 set SO (int n)= RootDatum:
   let (m,r)=n\%2 in
-  if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
-  else let roots=type_D_roots(m) in root_datum(roots,roots)
+  if r=1 then root_datum(type_B_roots(m),type_C_roots(m),false)
+  else let roots=type_D_roots(m) in root_datum(roots,roots,false)
   fi
 
 set (Spin,PSO) { two functions that share a local definition } =

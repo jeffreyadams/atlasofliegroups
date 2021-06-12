@@ -13,7 +13,7 @@ see very_simple_factors for the actual simple factors}
 
 {P: permutation of simple roots, given by matrix of size rd.semisimple_rank}
 set permute(RootDatum rd,mat P)=RootDatum:
-root_datum(rd.simple_roots*P,rd.simple_coroots*P)
+root_datum(rd.simple_roots*P,rd.simple_coroots*P,rd.prefers_coroots)
 set *(RootDatum rd,mat P)=RootDatum:permute(rd,P)
 
 {apply permutation given as [int]}
@@ -23,7 +23,7 @@ set *(RootDatum rd,[int] P)=RootDatum:rd*P.permutation_matrix
 
 {P should be a permutation matrix of size rd.rank}
 set permute(mat P,RootDatum rd)=RootDatum:
-root_datum(P*rd.simple_roots,P*rd.simple_coroots)
+root_datum(P*rd.simple_roots,P*rd.simple_coroots,rd.prefers_coroots)
 set *(mat P,RootDatum rd)=RootDatum:permute(P,rd)
 {note: P*(Q*rd)=(PQ)*rd}
 
@@ -62,7 +62,10 @@ in f(rd,[])
 set factor(RootDatum rd,[int] subset_of_simple_roots )=RootDatum:
 let S=subset_of_simple_roots in
 if #S=0 then complex_torus(rank(rd)) else
-root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)[i] od) fi
+root_datum(for i in S do simple_roots(rd)[i] od
+	  ,for i in S do simple_coroots(rd)[i] od
+	  ,rd.prefers_coroots)
+fi
 
 {RootDatum of simple factor containing simple root #i}
 set simple_factor(RootDatum rd,int root_number)=RootDatum:

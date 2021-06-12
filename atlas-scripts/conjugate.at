@@ -52,8 +52,9 @@ return the root datum for which these are
 the simple roots
 }
 set sub_root_datum(RootDatum rd,[vec] S)=
-if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0)) else
-root_datum(S, for v in S do coroot(rd,v) od) fi
+if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0),rd.prefers_coroots)
+else root_datum(S, for v in S do coroot(rd,v) od,rd.prefers_coroots)
+fi
 
 set sub_root_datum(RootDatum rd,[int] S)=
 sub_root_datum(rd,for i in S do posroots(rd)[i] od)
@@ -70,9 +71,15 @@ set centralizer(RootDatum rd,[vec] S)=
 let indices=##
 for a@i in poscoroots(rd) do if =a*S then [i] else [] fi od
 in
-if #indices=0 then root_datum(null(rank(rd),0),null(rank(rd),0)) else
-root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
-for i in indices do poscoroots(rd)[i] od)) fi
+if #indices=0
+then root_datum(null(rank(rd),0),null(rank(rd),0),rd.prefers_coroots)
+else let (posroots,poscoroots) = (mat,mat):
+    simple_system_from_positive
+      (for i in indices do posroots(rd)[i] od
+      ,for i in indices do poscoroots(rd)[i] od
+      )
+in root_datum(posroots,poscoroots,rd.prefers_coroots)
+fi
 
 set_type
 [maybe_a_mover = (void no_w | WeylElt w),
@@ -205,7 +212,8 @@ is_conjugate(rd,rho(sub_1),rho(sub_2))
 set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   root_datum(columns_with(select,rd.simple_roots)
             ,columns_with(select,rd.simple_coroots)
-            ).two_rho
+	    ,rd.prefers_coroots
+	    ).two_rho
 
 {moved from W_characters.at since it is needed here, in standard_Levi}
 set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:

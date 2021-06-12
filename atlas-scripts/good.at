@@ -76,7 +76,8 @@ posroots(rd)[i] od then pos_coroots=for i in coroots do
 poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[])
 else let
 (simple_roots,simple_coroots)=simple_system_from_positive(pos_roots,pos_coroots)
-in root_datum(simple_roots,simple_coroots) fi
+in root_datum(simple_roots,simple_coroots,rd.prefers_coroots)
+fi
 
 set nested_Levis(RootDatum rd,[EigenPair] pairs_in)=
 let F=pairs_in[0].F then
