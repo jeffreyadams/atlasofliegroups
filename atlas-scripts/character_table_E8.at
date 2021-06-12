@@ -72,8 +72,7 @@ set class_table_E8(RootDatum rd) = WeylClassTable:
      ]
 in W_class_table ( rd
 		 , classes
-		 , (WeylElt w) int: { 696729600\centralizer_order(w) }
-		   sizes[lookup(class_signature(w))]
+		 , (int i) int: sizes[i]
 		 , (WeylElt w) int: lookup(class_signature(w))
 		 , (int i,int k) int: { lookup(cycle_power(sigs[i],k)) }
 		   let n=classes[i].order, pow=pows[i] in

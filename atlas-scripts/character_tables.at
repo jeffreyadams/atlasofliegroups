@@ -28,6 +28,8 @@ set_type
 [ CharacterTable =
   ( WeylClassTable class_table
   , int order { of the finite group }
+  , (int->int) to_class_table
+  , (int->int) from_class_table
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
   , (int ->classical_class) classes
@@ -76,6 +78,8 @@ then irreps = [classical_irrep]: for (ci,,) in chars do ci od
 in
 ( { class_table } WeylClassTable: Wct
 , { order } int: order
+, { to_class_table } (int i) int: class_map[i]
+, { from_class_table } (int j)int: inv_map[j]
   {conjugacy classes}
 , { n_classes } int: n
 , { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
@@ -119,9 +123,11 @@ then class_sizes = log("Step 4/5: computing sizes of conjugacy classes")
 then class_orders
      = log("Step 5/5: computing orders of elements of conjugacy classes")
      ; for w in classes do w.order od
+,  id(int n) = int: n
 then ct=
    ( wct    {class_table}
    , W_order    {order (of W)}
+   , id, id
    , #classes      {n_classes}
    , (int j) classical_class: ().null_class
    , (int j) string: "" {class_label} {fill in later}
@@ -269,9 +275,11 @@ index=find(ct.characters,v) then
 ()=prints("Step 9") then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"}
+, id(int n) = int: n
 then ct=
 ( W_class_table(rd) {generic class_table; slow!}
   , W_order    {order (of W)}
+  , id, id
   , #classes      {n_classes}
   , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
@@ -352,6 +360,8 @@ set permute_classes(CharacterTable ct,(int->int) f) = CharacterTable:
      in (int j): inv_perm[j]
   in ( ct.class_table
      , ct.order
+     , (int n) int: ct.to_class_table(f(n))
+     , (int m) int: f_inv(ct.from_class_table(m))
      , ct.n_classes
      , (int i) classical_class: ct.classes(f(i))
      , (int i) string: ct.class_label(f(i))
@@ -395,9 +405,10 @@ if permute_table then ct1 else
  let ()=ct1.table:=ct.table in ct1 fi
 }
 
-set permute_representations(CharacterTable ct,(int->int) f)=CharacterTable:
+set permute_representations(CharacterTable ct,(int->int) f) = CharacterTable:
 (ct.class_table,
 ct.order,
+ct.to_class_table, ct.from_class_table,
 ct.n_classes,
 ct.classes,
 ct.class_label,

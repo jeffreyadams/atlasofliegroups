@@ -21,7 +21,7 @@ set class_table_E6(RootDatum rd) = WeylClassTable:
          ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
 in W_class_table ( rd
 		 , classes
-		 , (WeylElt w) int: N\centralizer_order(w)
+		 , (int i) int: N\centralizer_order(classes[i])
 		 , (WeylElt w) int: lookup(class_signature(w))
 		 , (int i,int k) int: lookup(cycle_power(sigs[i],k))
 		 )

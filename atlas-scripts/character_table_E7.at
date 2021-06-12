@@ -76,7 +76,7 @@ set class_table_E7 (RootDatum rd) = WeylClassTable:
       )
 in W_class_table ( rd
 		 , classes
-		 , (WeylElt w) int: N\centralizer_order(w)
+		 , (int i) int: N\centralizer_order(classes[i])
 		 , lookup_w
 		 , (int i,int k) int:
 		   let (lambda,n)=sigs[i] then locs = lookup_cyc(lambda)

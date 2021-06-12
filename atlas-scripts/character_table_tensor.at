@@ -1,25 +1,25 @@
+<basic.at
 <character_tables.at
 <group_operations.at
 
-
+{ combining rows representing characters to one for the product group }
 set outer_tensor([int] char_1,[int] char_2)=[int]:
- ##for i:#char_1 do for j:#char_2 do char_1[i]*char_2[j] od od
+   for x in char_1 do for y in char_2 do x*y od od.##
 
 set product(WeylClassTable Wct0, WeylClassTable Wct1) = WeylClassTable:
    let rd0=Wct0.root_datum, rd1=Wct1.root_datum
    then rd= rd0*rd1, n0=rd0.rank, n1=rd1.rank
    then embed(WeylElt w0,WeylElt w1) = WeylElt: { for rd }
            chamber(rd,(w0*two_rho(rd0))##(w1*two_rho(rd1)))
+   , sizes0=Wct0.class_sizes(), sizes1=Wct1.class_sizes()
    then reps =
       for w0 in Wct0.class_representatives()
       do for w1 in Wct1.class_representatives()
          do embed(w0,w1)
 	 od
       od.##
-   , class_size(WeylElt w) = int:
-      let v=w*two_rho(rd) then w0=chamber(rd0,v[:n0]), w1=chamber(rd1,v[n0:])
-      in Wct0.class_sizes()[Wct0.class_of(w0)]
-        *Wct1.class_sizes()[Wct1.class_of(w1)]
+   , class_size(int i) = int:
+      let (q,r)=i\%Wct1.n_classes in sizes0[q]*sizes1[r]
    , class(WeylElt w) = int:
       let v=w*two_rho(rd) then w0=chamber(rd0,v[:n0]), w1=chamber(rd1,v[n0:])
       in Wct0.class_of(w0)*Wct1.n_classes + Wct1.class_of(w1)
@@ -28,7 +28,7 @@ set product(WeylClassTable Wct0, WeylClassTable Wct1) = WeylClassTable:
       in Wct0.class_power(i0,k)*Wct1.n_classes + Wct1.class_power(i1,k)
  in W_class_table(rd,reps,class_size,class,class_pow)
 
-set tensor(CharacterTable ct1,CharacterTable ct2)=CharacterTable:
+set tensor(CharacterTable ct1,CharacterTable ct2) = CharacterTable:
 let m=ct1.n_classes, n=ct2.n_classes then
 {
 {0,1,...,mn-1} <-> {(a,b)| 0\le 1\le m-1, 0\le b\le n-1}
@@ -42,7 +42,7 @@ order=ct1.order*ct2.order then
 n_classes=m*n then
 class_label(int k)=let (a,b)=f(k) in ct1.class_label(a) + ct2.class_label(b) then
 class_reps=[WeylElt]:
-for k:n_classes do 
+for k:n_classes do
  let (a,b)=f(k) then
   rd1=ct1.root_datum then
   rd2=ct2.root_datum then
@@ -73,6 +73,8 @@ table=kronecker_product(ct1.table,ct2.table) in
 (
 Wct,
 order,
+(int n) int: let(a,b)=f(n) in g(ct1.to_class_table(a),ct2.to_class_table(b)),
+(int m) int: let(x,y)=f(m) in g(ct1.from_class_table(x),ct2.from_class_table(y)),
 n_classes,
 (int j): null_class(),
 class_label,

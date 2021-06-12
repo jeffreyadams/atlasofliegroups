@@ -817,11 +817,11 @@ set_type
 }
 set W_class_table ( RootDatum rd
 		  , [WeylElt] !reps
-		  , (WeylElt->int) class_size
+		  , (int->int) class_size { size of class, by class numer }
 		  , (WeylElt->int) class_nr_of
 		  , (int,int->int) power_map
 		  ) = WeylClassTable:
-   let !sizes = [int]: for w in reps do class_size(w) od
+   let !sizes = [int]: for i:#reps do class_size(i) od
    , !ncc = #reps { number of conjugacy classes }
    , !nW = rd.order_W
    , !rank = rd.rank, !npr=rd.nr_of_posroots
@@ -896,7 +896,9 @@ set W_class_table ( RootDatum rd
 		  ) = WeylClassTable:
    let memberships = [(WeylElt->bool)]: for r in reps do is_conjugate_to(r) od
    then class_of(WeylElt w) = int: first(#reps,(int i)bool: memberships[i](w))
-in W_class_table( rd, reps, class_size, class_of
+in W_class_table( rd, reps
+		, (int i) int: class_size(reps[i])
+		, class_of
 		, (int i, int k) int: let pred=is_conjugate_to(reps[i]^k) in
 		    for r@j in reps do if pred(r) then return j fi od; minus_1
 		)

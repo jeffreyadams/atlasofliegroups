@@ -198,7 +198,7 @@ for (indices,graph,) in strong_components(g)  do
 od
 
 set sub_cells(WCell (nodes,graph,ops),[int] S)=[WCell]:
-strong_components(nodes,sub_digraph(graph,S),[sparse_mat]:[])
+strong_components(nodes,sub_graph(graph,S),[sparse_mat]:[])
 
 set left_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,left_root_indices(G))
