@@ -37,7 +37,7 @@ set character_table_simple(RootDatum rd,string letter,int n) = CharacterTable:
      , character_table_C(rd)
      , character_table_D(rd)
      , case n-6
-       in character_table_E6(rd), character_table_E7(rd), character_table_E8()
+       in character_table_E6(rd), character_table_E7(rd), character_table_E8(rd)
        esac
      , character_table_F(rd)
      , character_table_G(rd)
