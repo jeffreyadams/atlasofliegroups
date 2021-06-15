@@ -2,6 +2,8 @@
 <springer_tables.at
 <isomorphism_W.at {for permute_character}
 
+set cells_verbose=false
+
 {
 these two functions are defined in W_reps.at:
 W_cells_index@Param->(int,[WCell])
@@ -41,7 +43,7 @@ let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
 if P=id_mat(#P) then
  for w in ct.class_reps do trace(cell_action(cell,w)) od
 else
- prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P);
+ if cells_verbose then prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P) fi;
  for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
 fi
 
@@ -89,7 +91,7 @@ if #summands>1 then error("not unique special representation") elif
 {set special_character(CharacterTable ct)=([int]->int):
  ([int] cell_character):special_character(ct,cell_character)}
 
-set cells_verbose=false
+
 
 set #(WCell cell) = int: #cell.labels { should also equal |#cell.graph| }
 

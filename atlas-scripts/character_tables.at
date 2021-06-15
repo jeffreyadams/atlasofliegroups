@@ -653,7 +653,7 @@ prints("Character Table:",ct.table)
 set view_multiplicities(CharacterTable ct,vec vec_of_multiplicities)=void:
 let table=[] then
 v=vec_of_multiplicities then
-()=for i:#v do prints(i);if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
+()=for i:#v do if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
 ct.degrees[i].to_string,
 if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi
 ] fi od
