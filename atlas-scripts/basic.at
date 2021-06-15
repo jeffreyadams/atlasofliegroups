@@ -797,7 +797,8 @@ set adjoint (LieType type) = RootDatum:
 }
 
 set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
-set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
+{ replaced by a more reasonable version below }
+{set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))}
 
 { root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
@@ -1042,8 +1043,12 @@ set is_adjoint (RootDatum rd) = bool:
 set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
 set mod_central_torus (RootDatum rd) = RootDatum:
   let (d,)=mod_central_torus_info(rd) in d
+
+
+{ this version keeps the numbering of the simple roots and therefore
+(we hope! of all roots }
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
-  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),false)
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
 
 { from appropriate (subsystem) dual 2rho value, deduce test for being simple }
 set is_simple_for (vec dual_two_rho) = (vec->bool):
