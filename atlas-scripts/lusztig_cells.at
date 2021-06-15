@@ -108,8 +108,9 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
   degree_function(int j)=ct_G.fake_degrees[j] then
   ind=induce_character(G,ct_G,roots_L,sigma_L) then
-  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
- ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line);
+  ()=if sigma_L_verbose then prints("ind= ", ind) fi then
+  (deg,char_indices)=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then
+ ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line, "degree=",deg,new_line);
     prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));{ct_G.view_char(ind);}
     prints("minimal degree terms in induced: ", char_indices) fi then
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
