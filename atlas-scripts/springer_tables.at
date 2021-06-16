@@ -13,7 +13,6 @@ set_type [SpringerTable=
   )]
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
-set root_datum_parent(SpringerTable st)=RootDatum: st.ct.root_datum_parent
 set characters(SpringerTable st)=[[int]]:st.ct.characters
 set fake_degrees(SpringerTable st)=[int]:st.ct.fake_degrees
 set character_table(SpringerTable st)=CharacterTable: st.ct
@@ -24,7 +23,7 @@ if #a != #b then false else
 all(for i:#a do a[i]=b[i] od) fi
 
 set orbit_index(SpringerTable st,ComplexNilpotent orbit)=int:
-let diagram=orbit.diagram_normalized in 
+let diagram=orbit.diagram_normalized in
 first(for O in st.orbits do equal(O.diagram_normalized,diagram) od)
 
 {ComplexNilpotent given by diagram}
@@ -108,7 +107,7 @@ dual_orbits=st.root_datum.dual_orbits in
 O_check_special#
 ##for i:#st.root_datum.dual_orbits do
   let orbit_check=dual_orbits[#dual_orbits-i-1] in {reverse order}
-   if not orbit_check = O_check_special and st.dual_map_i(orbit_check)=O_special 
+   if not orbit_check = O_check_special and st.dual_map_i(orbit_check)=O_special
     then [orbit_check]
     else []
    fi
@@ -199,7 +198,7 @@ diagram_2=[vec]:[diagram~[0]] then
 {()=prints("diagram_1: ", diagram_1) then
 ()=prints("diagram_2: ", diagram_2) then}
 O1_check=dual_orbit_by_diagram(st1,diagram_1) then
-O2_check=dual_orbit_by_diagram(st2,diagram_2) then 
+O2_check=dual_orbit_by_diagram(st2,diagram_2) then
 {()=prints("O1_check: ", O1_check) then
 ()=prints("O2_check: ", O2_check) then}
  O1=st1.dual_map_i(O1_check), O2=st2.dual_map_i(O2_check) in
@@ -289,10 +288,10 @@ if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
  st.ct.characters[j].to_string] od)
 
 set show_reps(SpringerTable st)=void:
-let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in 
+let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
 tabulate(
 ["rep#","orbit","dim","deg", "fdeg","char"]#
-for j:st.ct.n_classes do 
+for j:st.ct.n_classes do
 [j.to_string,
  let orbit_index=find(springer_reps,j) in
   if orbit_index>=0 then

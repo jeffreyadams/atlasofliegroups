@@ -275,7 +275,7 @@ set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
 
 set associated_variety(SpringerTable st_G,WCell cell)=ComplexNilpotent:
-let G=st_G.root_datum_parent then
+let G=st_G.root_datum then
 ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then
@@ -294,7 +294,7 @@ index_G=chars_G[0] in
 st_G.springer_inverse(index_G)
 
 set associated_variety_test(SpringerTable st_G,WCell cell)=
-let G=st_G.root_datum_parent then
+let G=st_G.root_datum then
 ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then

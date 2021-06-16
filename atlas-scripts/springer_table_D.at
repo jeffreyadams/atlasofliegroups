@@ -239,7 +239,7 @@ sigma=(true,a).split_irr then
 tau=(false,a).split_irr then
 L=Bala_Carter_Levi(O) then
 w=embed_coxeter(L,ct.root_datum) then
-index=ct.class_index(w) then
+index=ct.class_of(w) then
 sign_sigma=ct.character_D(sigma)[index] then
 sign_tau=ct.character_D(tau)[index] in
 prints("sign_sigma: ", sign_sigma, new_line, "sign_tau: ", sign_tau);

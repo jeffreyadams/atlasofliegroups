@@ -195,7 +195,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
 
 {Given an embedding f of W_L into W_G}
 set induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =[int]:
-   let rd_G= ct_G.root_datum_parent, rd_L=ct_L.root_datum_parent
+   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
    , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
@@ -203,7 +203,7 @@ set induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt)
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
-   let j=ct_G.class_index(f(w_L))  {see embed note below}
+   let j=ct_G.class_of(f(w_L))  {see embed note below}
    in
 {   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j], " pi: ", pi_L[i]) in}
    values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
@@ -211,7 +211,7 @@ od; values_G.ratvec_as_vec
 
 {for debugging only: character value should be an integer}
 set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
-   let rd_G= ct_G.root_datum_parent, rd_L=ct_L.root_datum_parent
+   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
    , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
@@ -219,7 +219,7 @@ set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->Weyl
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
-   let j=ct_G.class_index(f(w_L))  {see embed note below}
+   let j=ct_G.class_of(f(w_L))  {see embed note below}
    in
 {   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j]) in}
    values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
@@ -228,8 +228,8 @@ set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->Weyl
 {given L\subset G, compute
 ct_G=G.character_table and
 ct_L=L.character_table
-the class_representatives for ct_G are in terms of Gprime=ct_G.root_datum_parent
-the class_representatives for ct_L are in terms of Lprime=ct_L.root_datum_parent
+the class_representatives for ct_G are in terms of Gprime=ct_G.root_datum
+the class_representatives for ct_L are in terms of Lprime=ct_L.root_datum
 the embedding of W(L) in W(G), on the other hand, is in terms of L and G
 need: L' -> L \subset G -> Gprime
 see embed(L,G,Lprime,Gprime) above
@@ -240,8 +240,8 @@ see embed(L,G,Lprime,Gprime) above
 first version: assume character tables of L,G pre-computed
 }
 set induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
-let Gprime=ct_G.root_datum_parent then
-Lprime=ct_L.root_datum_parent then
+let Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
 f=embed(L,G,Lprime,Gprime) in
 induce_character(ct_L,ct_G,f,pi_L)
 
@@ -249,16 +249,16 @@ induce_character(ct_L,ct_G,f,pi_L)
 set induce_character(RootDatum L,RootDatum G,[int] pi_L)=
 let ct_G=G.character_table then
 ct_L=L.character_table then
-Gprime=ct_G.root_datum_parent then
-Lprime=ct_L.root_datum_parent then
+Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
 f=embed(L,G,Lprime,Gprime) in
 induce_character(ct_L,ct_G,f,pi_L)
 
 {assume ct_G computed, but not ct_L}
 set induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
 let ct_L=L.character_table then
-Gprime=ct_G.root_datum_parent then
-Lprime=ct_L.root_datum_parent then
+Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
 f=embed(L,G,Lprime,Gprime) in
 induce_character(ct_L,ct_G,f,pi_L)
 
@@ -274,7 +274,7 @@ set induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
 induce_character(G,G.character_table,simple_roots_of_L,pi_L)
 
 set induce_trivial(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
-let G=ct_G.root_datum_parent then
+let G=ct_G.root_datum then
 L=subgroup_by_simple(G,simple_roots_of_L) then
 ct_L=L.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.trivial)
@@ -286,7 +286,7 @@ ct_G=G.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.trivial)
 
 set induce_sign(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
-let G=ct_G.root_datum_parent then
+let G=ct_G.root_datum then
 L=subgroup_by_simple(G,simple_roots_of_L) then
 ct_L=L.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.sign)
@@ -328,7 +328,7 @@ assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
 
 {Given an embedding f of W_L into W_G}
 set restrict_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) f,[int] pi_G) =[int]:
-   let rd_G= ct_G.root_datum_parent, rd_L=ct_L.root_datum_parent
+   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
    , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
@@ -336,14 +336,14 @@ set restrict_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylEl
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
    in for w_L@i in classes_L do
-   let j=ct_G.class_index(f(w_L))  {see embed note below}
+   let j=ct_G.class_of(f(w_L))  {see embed note below}
    in
    values_L[i] +:= pi_G[j]
 od; values_L.ratvec_as_vec
 
 set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
-let Gprime=ct_G.root_datum_parent then
-Lprime=ct_L.root_datum_parent then
+let Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
 f=embed(L,G,Lprime,Gprime) in
 restrict_character(ct_G,ct_L,f,pi_G)
 

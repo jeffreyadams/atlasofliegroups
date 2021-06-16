@@ -85,7 +85,8 @@ sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 
 set character_coherent(CharacterTable ct,[WeylElt] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
-set character_coherent_I(CharacterTable ct)=[int]:character_coherent(ct,involutions(ct.root_datum_parent))
+set character_coherent_I(CharacterTable ct)=[int]:
+   character_coherent(ct,involutions(ct.root_datum))
 
 
 set coherent_data(SpringerTable st,[Param] block)=(vec,vec,vec):
@@ -278,4 +279,3 @@ st=G.springer_table in
 show_coherent_data(st,G) od
 
 set groups=[SL(2,R),Sp(4,R),G2_s, Sp(6,R),Sp(8,R),F4_s,SL(3,R),SL(4,R),E6_q]
-

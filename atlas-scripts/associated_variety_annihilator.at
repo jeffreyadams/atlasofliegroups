@@ -65,7 +65,7 @@ set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p)
 {given cell, SpringerTable for G and CharacterTable for integrality_datum, using restriction}
 {need RootDatum rd since it isn't specified by cell (only the integrality datum is given by the cell)}
 set associated_variety_ann_res(RootDatum rd,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
-{let G=st_rd.root_datum_parent then}
+{let G=st_rd.root_datum then}
 let ct_rd=st_rd.ct then
 L=cell.root_datum then
 {ct_int=L.character_table then}
@@ -112,7 +112,7 @@ set associated_variety_ann_res(Param p)=ComplexNilpotent:
 associated_variety_ann_res(p,p.root_datum.springer_table)
 
 set associated_variety_ann_res_test(SpringerTable st_rd,WCell cell)=
-let rd=st_rd.root_datum_parent then
+let rd=st_rd.root_datum then
 ct_rd=st_rd.ct then
 L=cell.root_datum then
 ct_L=L.character_table then
