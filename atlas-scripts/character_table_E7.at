@@ -275,3 +275,48 @@ set character_table_E7() = CharacterTable:
 	 )
       od
    in character_table(class_table_E7(),classes,irreps)
+
+{use faster class_index function as ct.class_index}
+set e7_class_index(WeylElt w)=
+let classes = [WeylElt]: Magma_class_reps_E7() then
+sigs = [Partition,int]: { class signatures; to be modified a bit below }
+      for w in classes do class_signature_E7(w) od then
+(lookup_w,lookup_cyc)          = ((WeylElt->int),(Partition->[int])):
+      let ranked = [int]:
+         sort(#sigs,(int i,int j)bool: leq_E7_signatures(sigs[i],sigs[j]))
+      then (list,locs) = ([Partition],[[int]]): { sorted cycle type, positions }
+         let locs=[int]:[], prev= Partition:[]
+	 then out = [Partition,[int]]: { grouping of |sigs[ranked[i]] values }
+	    for loc@rank in ranked
+	    do let (lambda,)=sigs[loc] in
+	       if =rank then [] next prev:=lambda; locs:=[loc]
+	       elif lambda=prev then [] next locs#:=loc
+	       else [(prev,locs)] next prev:=lambda; locs:=[loc]
+	       fi
+	    od.##
+      in out #:= (prev,locs) { attach last group; now split into (list,locs): }
+      ;  ( for (lambda, ) in out do lambda od, for (,locs) in out do locs od )
+      then locate(Partition lambda) = int: { position of |lambda| in |list| }
+         binary_search_first
+	   ((int i)bool: leq_equal_sum_partitions(lambda,list[i]), 0,#list)
+   in ( { lookup_w = } (WeylElt w) int:
+        let (lambda,n)=class_signature_E7(w) then locs = locs[locate(lambda)]
+	in if #locs=1 or n=1 {single factor} then locs[0] else locs[1] fi
+      , { lookup_cyc = } (Partition mu) [int]: locs[locate(mu)]
+      )
+in
+let (lambda,n)=class_signature_E7(w) then
+locs=lookup_cyc(lambda)  in
+if #locs=1 then locs[0] else
+  let seq = #(n>1) in { 0/1 value to disambiguate } locs[seq]
+fi
+
+{redefine class_index@CharacterTable}
+
+set class_index(CharacterTable ct)=(WeylElt->int):(WeylElt w):
+if ct.root_datum.Lie_type="E7" then e7_class_index(w)
+else
+first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w)) fi
+
+
+
