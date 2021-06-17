@@ -233,7 +233,7 @@ in e7_orders_sizes ^ ^[e7_characters[sgn_index],e7_characters[reflection_index]]
 
 set Magma_reorder_E7(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
    let  Wct_prof = mat: { with shape (4,60) }
-      let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
+      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
       4 # for j:Wct.n_classes
 	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
 	  od
@@ -256,7 +256,7 @@ set character_table_E7(RootDatum rd) = CharacterTable:
 	      )
       in to_string("irrep(dim:",psi[0],",deg:",degree,")")
    then classes = [WeylElt,classical_class,string]:
-      let reps = Wct.class_representatives()
+      let reps = Wct.class_representatives
       in for j in reordering
 	 do (reps[j],null_class()
 	    ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n

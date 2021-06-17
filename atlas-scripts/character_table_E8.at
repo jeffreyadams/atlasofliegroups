@@ -100,7 +100,7 @@ set class_table_E8() = WeylClassTable: class_table_E8(standard_datum_E8)
 
 set GAP_reorder_E8(WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
    let Wct_prof = mat: { with shape (5,25) }
-      let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
+      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
       5 # for j:Wct.n_classes
           do [ reps[j].order
 	     , sizes[j]
@@ -130,7 +130,7 @@ set character_table_E8(RootDatum rd) = CharacterTable:
       in to_string("irrep(dim:",psi[0],",deg:",degree,")")
 
    then classes = [WeylElt,classical_class,string]:
-      let reps = Wct.class_representatives()
+      let reps = Wct.class_representatives
       in for j in reordering
 	 do (reps[j],null_class()
 	    ,to_string(class_signature(reps[j]).compressed_string

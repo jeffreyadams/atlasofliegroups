@@ -792,11 +792,11 @@ set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
 }
 set_type
 [ WeylClassTable =
-  ( (->) print_classes
-  , int n_classes
-  , (->[WeylElt]) class_representatives
+  ( int n_classes
+  , int order_W
+  , [WeylElt] class_representatives
   , (WeylElt->int) class_of
-  , (->[int]) class_sizes
+  , [int] class_sizes
   , (int,int->int) class_power
   , [int] trivial
   , [int] sign
@@ -844,23 +844,11 @@ set W_class_table ( RootDatum rd
 	# for :npr do [int]:[] od { reserve empty table rows }
    , k=0 { last symmetric power computed}
 in
-( {print_classes} @:
-   let data = ["nr","count","order","length","Levi type","representative"] #
-     for w@i in reps
-     do [ i.to_string
-        , sizes[i].to_string
-        , w.order.to_string
-        , w.length.to_string
-        , w.Levi_datum.Lie_type.semisimple.str
-	, reps[i].to_string
-        ]
-     od
-   in tabulate(data,"rrrrll",2," ")
-
-, {n_classes} ncc
-, {class_representatives} @: reps
+( {n_classes} ncc
+, {order_W} nW
+, {class_representatives} reps
 , {class_of} class_nr_of
-, {class_sizes} @: sizes
+, {class_sizes} sizes
 , {class_power} (int i,int n) int: let v=power_table[i] in v[n % #v]
 , {trivial}     for :ncc do 1 od
 , {sign}        for w in reps do minus_1^w.length od
@@ -912,14 +900,62 @@ set W_class_table (RootDatum rd) = WeylClassTable:
 		, size_of_conjugacy_class@WeylElt, is_conjugate_to@WeylElt
 		)
 
-{. root datum of WeylClassTable .}
 set root_datum (WeylClassTable tab) = RootDatum:
-    tab.class_representatives()[0].root_datum { at least one class exists }
+    tab.class_representatives[0].root_datum { at least one class exists }
 
-{ compare characters when paired up with a |WeylClassTable| }
-set =((WeylClassTable ct,[int] char_values)
-     ,(WeylClassTable ct2,[int] char_values2)) = bool:
-     ct.root_datum=ct2.root_datum and char_values=char_values2
+{ adapt an existing table to an externally imposed order of the classes }
+set reorder (WeylClassTable tab, [WeylElt] reps) = WeylClassTable:
+   let !n = tab.n_classes, rd = tab.root_datum
+   then !class_map = [int]:
+        assert(#reps=n,"There should be "+n+" class representatives")
+      ; for w in reps do tab.class_of(w) od
+in if class_map = #n then tab { no reordering needed }
+   else
+      let !inv_map = inverse(class_map)
+      , sizes = let old_sizes=tab.class_sizes in
+		for i:n do old_sizes[class_map[i]] od
+      then export([int]chi) = [int]: for i:n do chi[class_map[i]] od
+      , inner([int] x,[int] y) = int:
+	 assert(#x=n and #y=n,"Wrong sizes");
+	 let s = for size@i in sizes do size*x[i]*y[i] od.sum
+	 then (q,r)=s \% tab.order_W
+      in if =r then q else error("Non integer inner product ",s/tab.order_W) fi
+   in
+     ( {n_classes} n
+     , {order_W} tab.order_W
+     , {class_representatives} reps
+     , {class_of} (WeylElt w) int: inv_map[tab.class_of(w)]
+     , {class_sizes} sizes
+     , {class_power} (int i,int k) int: inv_map[tab.class_power(class_map[i],k)]
+     , {trivial}    tab.trivial { no reordering necessary here }
+     , {sign}       tab.sign.export
+     , {reflection} tab.reflection.export
+     , {dimension}  let e=inv_map[tab.class_of(id_W(rd))] in ([int] v) int: v[e]
+     , {norm2} ([int] x) int: inner(x,x)
+     , {inner} inner
+     , {direct_sum} tab.direct_sum { no change for reordering }
+     , {Cartesian_power} tab.Cartesian_power { no change for reordering }
+     , {tensor} tab.tensor { no change for reordering }
+     , {tensor_power}  tab.tensor_power { no change for reordering }
+     , {sym_power_refl} (int k)[int]: tab.sym_power_refl(k).export
+     )
+   fi
+
+set class_representative (WeylClassTable tab) = (int i) WeylElt:
+   tab.class_representatives[i]
+
+set print_classes(WeylClassTable tab) = void:
+   let data = ["nr","count","order","length","Levi type","representative"] #
+     for w@i in tab.class_representatives
+     do [ i.to_string
+        , tab.class_sizes[i].to_string
+        , w.order.to_string
+        , w.length.to_string
+        , w.Levi_datum.Lie_type.semisimple.str
+	, w.to_string
+        ]
+     od
+   in tabulate(data,"rrrrll",2," ")
 
 {. index i for which w is conjugate to classes[i], in given WeylClassTable .}
 set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int: ct.class_of(w)

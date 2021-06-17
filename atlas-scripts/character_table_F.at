@@ -116,7 +116,7 @@ set F4_name(int dim, int degree, int n_primes) = string:
 set character_table_F(RootDatum rd) = CharacterTable:
    let Wct = class_table_F(rd)
    then classes = [WeylElt,classical_class,string]:
-      for w@i in Wct.class_representatives()
+      for w@i in Wct.class_representatives
       do (w,null_class(),class_signature(w).compressed_string)
       od
    , irreps = [classical_irrep,string,[int]]:

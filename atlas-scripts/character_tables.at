@@ -27,23 +27,14 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 set_type
 [ CharacterTable =
   ( WeylClassTable class_table
-  , int order { of the finite group }
-  , (int->int) to_class_table
-  , (int->int) from_class_table
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-  , (int ->classical_class) classes
-  , (int->string) class_label {derived from partitions in classical case}
   , [WeylElt] class_reps  { should be made function } {list of class reps }
-  {  , (int ->WeylElt) class_rep     {used to be the (primary) projector, making it a (secondary) function}}
-  , (int->int) class_order
-  , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
-  , [int] centralizer_orders { should be made function }
-  , [int] class_sizes { should be made function }
+  , (int->string) class_label {derived from partitions in classical case}
+  , (int ->classical_class) classes
   {irreducible characters}
   , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
-  , [[int]] sym_powers_reflection { should be made function }
   , [int] degrees { should be made function }
   , [int] fake_degrees { should be made function }
   , mat table { should be made function } { by row=character }
@@ -55,49 +46,34 @@ set character_table ( WeylClassTable Wct
     		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-let    rd  = Wct.root_datum
-then order = rd.order_W { recomputed; fix |WeylClassTable| to provide it }
-,    n     = Wct.n_classes
-then class_map = [int]:
-      assert(#class_reps=n,"There should be "+n+" class representatives")
-    ; assert(#chars=n,"There should be "+n+" irreducible characters")
-    ; for i:n do Wct.class_of(let (w,,)=class_reps[i] in w) od
-then inv_map = inverse(class_map)
-, c_size(int i) = Wct.class_sizes()[class_map[i]]
-, rearrange([int] val) = [int]: for i:n do val[class_map[i]] od
-then irreps = [classical_irrep]: for (ci,,) in chars do ci od
-, labels = [string]: for (,s,) in chars do s od
-, character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
-, degrees = [int]:
-  for i:n
-  do
-    let char = let (,,ch)=chars[i] in for j:n do ch[inv_map[j]] od in
-    first(rd.nr_of_posroots+1
-         ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
-  od
+(  let rd  = Wct.root_datum, n = Wct.n_classes
+   , reps = for (w,,) in class_reps do w od
+in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
+;  let irreps = [classical_irrep]: for (ci,,) in chars do ci od
+,  labels = [string]: for (,s,) in chars do s od
+,  character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
+,  sizes = Wct.class_sizes
+,  degrees = [int]:
+   for i:n
+   do
+     let (,,char)=chars[i] in
+     first(rd.nr_of_posroots+1
+          ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
+   od
 in
-( { class_table } WeylClassTable: Wct
-, { order } int: order
-, { to_class_table } (int i) int: class_map[i]
-, { from_class_table } (int j)int: inv_map[j]
-  {conjugacy classes}
-, { n_classes } int: n
-, { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
-, { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
-, { class_reps } [WeylElt]: for (w,,) in class_reps do w od
-{ , { class_rep } (int i)WeylElt: let (w,,)=class_reps[i] in w }
-, { class_order } (int i) int: let (w,,) = class_reps[i] in order(w)
-, { class_power } (int i,int pow)int: inv_map[Wct.class_power(class_map[i],pow)]
-, { centralizer_orders} [int]: for i:n do order\c_size(i) od
-, { class_sizes } [int]: for i:n do c_size(i) od
-{irreducible characters}
-, { classical_reps } (int i)classical_irrep: irreps[i]
-, { irreducible_label } (int i)string: labels[i]
-, { sym_powers_reflection } [[int]]:
-  for k:rd.nr_of_posroots+1 do rearrange(Wct.sym_power_refl(k)) od
-, { degrees } [int]: degrees
-, { fake_degrees} [int]: [] { to be set afterwards }
-, { table } mat: character_table
+   ( { class_table } WeylClassTable: Wct
+     {conjugacy classes}
+   , { n_classes } int: n
+   , { class_reps } reps
+   , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
+   , { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
+     {irreducible characters}
+   , { classical_reps } (int i)classical_irrep: irreps[i]
+   , { irreducible_label } (int i)string: labels[i]
+   , { degrees } [int]: degrees
+   , { fake_degrees} [int]: [] { to be set afterwards }
+   , { table } mat: character_table
+   )
 )
 
 set character_table ( RootDatum rd
@@ -110,27 +86,27 @@ set character_table ( RootDatum rd
 set !trivial_character_table = CharacterTable:
    let Wct = W_class_table(adjoint("")), id(int i)=int: i
    then e=id_W(Wct.root_datum)
-in (Wct,1,id,id
-   ,1,(int i)classical_class: null_class()
-   ,(int i):"e",[e],(int i):1,(int i,int k)int:0,[1],[1]
-   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[[1]],[0],[0],[[1]]
+in (Wct,1,[e],(int i):"e",(int i)classical_class: null_class()
+   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0],[0],[[1]]
    )
 
-{root datum of CharacterTable is (semisimple) simply connected}
+{ attributes inhereited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
-
 set rank(CharacterTable ct) = ct.root_datum.rank
+set order(CharacterTable ct) = ct.root_datum.order_W
 
 set class_representatives = class_reps@CharacterTable {synonym}
 set class_rep(CharacterTable ct,int i) = WeylElt: ct.class_reps[i]
 set class_rep(CharacterTable ct) = (int->WeylElt): (int i):ct.class_reps[i]
-set class_of(CharacterTable ct) = (WeylElt w) int:
-   ct.from_class_table(ct.class_table.class_of(w))
+set class_of(CharacterTable ct) = ct.class_table.class_of
 
-set import(CharacterTable ct) = ([int] char) [int]:
-   for i:ct.n_classes do char[ct.from_class_table(i)] od
-set export(CharacterTable ct) = ([int] char) [int]:
-   for i:ct.n_classes do char[ct.to_class_table(i)] od
+set class_order(CharacterTable ct) = (int i) int:
+  order(class_rep(ct,i)) {element order}
+set class_sizes(CharacterTable ct) = ct.class_table.class_sizes
+set class_size(CharacterTable ct) = (int i) int: ct.class_sizes[i]
+set centralizer_order(CharacterTable ct) = (int i) int:
+  ct.order\ct.class_sizes[i]
+set class_power(CharacterTable ct) = (int,int->int): ct.class_table.class_power
 
 set character_value(CharacterTable ct, int class) = (int i) int:
   ct.table[i,class]
@@ -139,8 +115,6 @@ set id_class(CharacterTable ct) = ct.class_of(ct.root_datum.id_W)
 set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
 
 
-set centralizer_order(CharacterTable ct) = (int i) int: ct.centralizer_orders[i]
-set class_size(CharacterTable ct) = (int i) int: ct.class_sizes[i]
 set character(CharacterTable t) = (int i) [int]: row(t.table,i)
 set characters(CharacterTable ct)=[[int]]: rows(ct.table)
 
@@ -148,30 +122,26 @@ set character_index(CharacterTable ct) = ([int] char) int:
   first(ct.n_classes,(int i): ct.characters[i]=char)
 set index(CharacterTable ct,vec char) = int: ct.character_index(char)
 
-set inner(CharacterTable ct) = ([int] x,[int] y) int:
-   assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
-   ct.class_table.inner(ct.import(x),ct.import(y))
-
-set norm2(CharacterTable ct)= ([int] x)int: ct.inner(x,x)
+set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
+set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
 
 set degree(CharacterTable ct) = (int i)int: ct.degrees[i] { actually fake deg }
 
-set sum(CharacterTable ct) = ([int],[int]->[int]):
-   ct.class_table.direct_sum { no need to import/export here }
-
-set product(CharacterTable ct) = (([int],[int])->[int]):
-   ct.class_table.tensor { no need to import/export }
+set sum(CharacterTable ct) = ([int],[int]->[int]): ct.class_table.direct_sum
+set product(CharacterTable ct) = (([int],[int])->[int]): ct.class_table.tensor
 
 set power_map(CharacterTable ct) = (int i) [int]: { powers of class |i| }
-   let ii = ct.to_class_table(i), Wct=ct.class_table
+   let Wct=ct.class_table
    , order = ct.class_rep(i).order { or |Wct.class_representatives()[ii].order }
-   in for k: order do ct.from_class_table(Wct.class_power(ii,k)) od
+   in for k: order do Wct.class_power(i,k) od
+
+set sym_power_refl(CharacterTable ct) = ct.class_table.sym_power_refl
 
 set degree(CharacterTable ct) = (int i): ct.degrees[i]
 
-set trivial(CharacterTable ct) = [int]: ct.class_table.trivial{.(ct.export)}
-set sign(CharacterTable ct) = [int]: ct.export(ct.class_table.sign)
-set reflection (CharacterTable ct) = [int]: ct.export(ct.class_table.reflection)
+set trivial(CharacterTable ct) = [int]: ct.class_table.trivial
+set sign(CharacterTable ct) = [int]: ct.class_table.sign
+set reflection (CharacterTable ct) = [int]: ct.class_table.reflection
 
 {tensor_sign: [int] -> [int]}
 set tensor_sign(CharacterTable ct) = ([int]->[int]):
@@ -257,10 +227,6 @@ in for k:n from 1
    od; h[n] { last symmetric power is the one we want }
 
 
-set sym_power_reflection(CharacterTable ct)=(int->[int]):(int i):
-  ct.sym_powers_reflection[i] { used precomputed value }
-
-
 { exterior power of a character }
 set ext_power (CharacterTable tab) = ([int]char, int n) [int]:
 { with $e_k$ ext, $p_k$, use $ke_k=\sum_{i=0}{k-1}(-1)^{k-i-1} e_ip_{k-i}$ }
@@ -282,9 +248,9 @@ in for k:n from 1
 {copied (and modified) from W_reps.at}
 
 {. matrix of inner products of characters of representations .}
-set matrix_of_inner_products (CharacterTable tab,[[int]] characters) = mat:
-  let n=#characters, imp = for chi in characters do tab.import(chi) od
-  in matrix((n,n),(int i,int j): tab.class_table.inner(imp[i],imp[j]))
+set matrix_of_inner_products (CharacterTable ct,[[int]] characters) = mat:
+  let n=#characters in
+  matrix((n,n),(int i,int j): ct.inner(characters[i],characters[j]))
 
 
 {mults is a vector of multiplicities of the irreducible characters,

@@ -63,7 +63,7 @@ set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
 }
 set special_projector (CharacterTable ct, WCell cell) = mat:
   let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_powers_reflection[smallest_degree(ct,character(ct,cell_rep))]
+  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
   in projector(ct,cell_rep,char)
 
 { given a cell, compute the special_projector, and use this to construct
@@ -71,7 +71,7 @@ set special_projector (CharacterTable ct, WCell cell) = mat:
 }
 set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
   let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_powers_reflection[smallest_degree(ct,character(ct,cell_rep))]
+  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
   in restrict_representation_isotypic(ct,cell_rep,char)
 
 {special_projectors for a list of cells}
