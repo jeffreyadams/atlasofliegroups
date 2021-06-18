@@ -1,7 +1,7 @@
 <basic.at
 
 {complex torus of rank n (RootDatum)}
-set complex_torus(int n)=RootDatum:root_datum(null(n,0),null(n,0))
+set complex_torus(int n) = RootDatum: root_datum(null(n,0),null(n,0),false)
 
 { involution for torus with |a| compact, |b| complex, and |c| split factors }
 set torus_involution (int a,int b,int c) = mat:
@@ -10,7 +10,7 @@ set torus_involution (int a,int b,int c) = mat:
 
 set torus (int a,int b, int c) = RealForm:
   let r=null(a+2*b+c,0)
-  in real_form(inner_class(root_datum(r,r),torus_involution(a,b,c)),0)
+  in real_form(inner_class(root_datum(r,r,false),torus_involution(a,b,c)),0)
 
 set compact_torus (int k) = RealForm:torus(k,0,0)
 set real_complex_torus (int k) = RealForm:torus(0,k,0)  {complex torus as a real group}

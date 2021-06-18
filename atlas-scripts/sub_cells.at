@@ -80,7 +80,7 @@ set left_coroots(RealForm G)=[vec]:
 ##for f in G.left_factors do [vec]:f.simple_coroots od
 
 set left_copy(RealForm G)=RootDatum:
-root_datum(left_roots(G),left_coroots(G))
+  root_datum(left_roots(G),left_coroots(G),G.prefers_coroots)
 
 set left_root_indices(RealForm G)=[int]:
 for v in G.left_roots do find(G.simple_roots,v) od
@@ -97,7 +97,7 @@ set right_coroots(RealForm G)=[vec]:
 ##for f in G.right_factors do [vec]:f.simple_coroots od
 
 set right_copy(RealForm G)=RootDatum:
-root_datum(right_roots(G),right_coroots(G))
+   root_datum(right_roots(G),right_coroots(G),G.prefers_coroots)
 
 set right_root_indices(RealForm G)=[int]:
 for v in G.right_roots do find(G.simple_roots,v) od
@@ -130,8 +130,8 @@ set intersection([int] A,[int] B)=[int]:
 {subgraph of a directed graph
  given by subset S of simple roots
  keep link x->y if there is j\in S satisfying:
-  j\in \tau(x)  j\not\in\tau(y) i.e. 
-  S\cap tau(x)\not\subset \tau(y) 
+  j\in \tau(x)  j\not\in\tau(y) i.e.
+  S\cap tau(x)\not\subset \tau(y)
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
@@ -139,7 +139,7 @@ set sub_digraph(WGraph graph,[int] S)=WGraph:
     (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in
-	    	if not is_subset(intersection(S,tau),tau_target) 
+	    	if not is_subset(intersection(S,tau),tau_target)
 		   then [(target,mult)] else [] fi
 	  od)
 od)
@@ -150,7 +150,7 @@ set sub_graph(WGraph graph,[int] S)=WGraph:
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) or
-		   not is_subset(intersection(S,tau_target),tau) 
+		   not is_subset(intersection(S,tau_target),tau)
 		   then [(target,mult)] else [] fi
 	  od)
 od)
@@ -209,7 +209,7 @@ sub_cells(cell,right_root_indices(G))
 set left_cell_of(Param p)=
 let (index,cell)=W_cell_index(p) then
 cells=left_cells(p.real_form,cell) then
-j=first(for (vertices,links,) in cells do find(vertices,index)>=0 od) in 
+j=first(for (vertices,links,) in cells do find(vertices,index)>=0 od) in
 cells[j]
 
 
@@ -282,7 +282,7 @@ for node@i in g.nodes do
  text+:=str
 od;text+new_line+"}"
 
-{G is complex, 
+{G is complex,
  st_left is the springer table for the left copy of G
 }
 {set special_left_orbit(SpringerTable st_left,Param p)=

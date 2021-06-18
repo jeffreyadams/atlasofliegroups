@@ -132,7 +132,9 @@ set to_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q
 
 {action of invertible matrix on RootDatum}
 set *(mat M,RootDatum rd)=RootDatum:
-root_datum(M*simple_roots(rd), ^inverse(M)*simple_coroots(rd))
+root_datum(M*simple_roots(rd)
+	  ,^inverse(M)*simple_coroots(rd)
+	  ,rd.prefers_coroots)
 
 set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
 

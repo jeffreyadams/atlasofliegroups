@@ -38,7 +38,7 @@ set subgroup (RootDatum rd, [vec] roots) = (bool,RootDatum):
     if #roots>0 and #simple_roots=0 then (false,rd)
     else let simple_coroots = mat: { corresponding coroots }
              rk # for v in simple_roots do coroot(rd,v) od
-      then subrd = root_datum(simple_roots,simple_coroots)
+      then subrd = root_datum(simple_roots,simple_coroots,rd.prefers_coroots)
       in ( { whether } nr_of_posroots(subrd) = #posroots, subrd)
     fi
   fi
@@ -58,12 +58,20 @@ subgroup(rd, for j in roots do posroots(rd)[j] od)
 {specify a subgroup by a list of roots (not necessarily
 simple or even positive), to serve as the simple roots of the subgroup}
 set subgroup_by_simple(RootDatum rd,[vec] roots)=RootDatum:
-if #roots=0 then complex_torus(rank(rd)) else
-root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od) fi
+if #roots=0 then complex_torus(rank(rd))
+else root_datum(for v in roots do v od
+     	       ,for v in roots do coroot(rd,v) od
+	       ,rd.prefers_coroots)
+fi
 
+{ do what |sub_datum| in basic.at does, but use allways-positive indices!
+  in other words, this ONLY works if |roots| are indices into |rd.roots| }
 set subgroup_by_simple(RootDatum rd,[int] roots)=RootDatum:
 if #roots=0 then complex_torus(rank(rd)) else
-root_datum(for i in roots do roots(rd)[i] od, for i in roots do coroots(rd)[i] od) fi
+root_datum(for i in roots do roots(rd)[i] od
+	  ,for i in roots do coroots(rd)[i] od
+	  ,rd.prefers_coroots)
+fi
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U
@@ -130,23 +138,32 @@ set centralizer(RootDatum rd,[vec] wts)=
 let indices=##
 for a@i in poscoroots(rd) do if =a*wts then [i] else [] fi od
 in
-if #indices=0 then complex_torus(rank(rd)) else
-root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
-for i in indices do poscoroots(rd)[i] od)) fi
+if #indices=0 then complex_torus(rank(rd))
+else root_datum_from_positive
+     ((for i in indices do root(rd,i) od,for i in indices do coroot(rd,i) od)
+     ,rd.prefers_coroots
+     )
+fi
 
 {compute root datum of coroots perpendicular to a set of elements of X_*}
 set centralizer([vec] cwts,RootDatum rd)=
 let indices=##
 for a@i in posroots(rd) do if =a*cwts then [i] else [] fi od
 in
-if #indices=0 then complex_torus(rank(rd)) else
-root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
-for i in indices do poscoroots(rd)[i] od)) fi
+if #indices=0 then complex_torus(rank(rd))
+else
+   root_datum_from_positive
+   ((for i in indices do posroots(rd)[i] od
+    ,for i in indices do poscoroots(rd)[i] od
+    )
+    ,rd.prefers_coroots
+   )
+fi
 
 set centralizer(RootDatum rd,[ratvec] wts) = RootDatum:
    let roots = columns_with((vec alpha): all(for v in wts do is_integer(alpha*v) od), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   in root_datum_from_positive(roots,coroots)
+   in root_datum_from_positive((roots,coroots),rd.prefers_coroots)
 
 {v is in X_*\otimes Q
  t=exp(2\pi iv)\in T
@@ -158,7 +175,7 @@ set centralizer(RootDatum rd,[ratvec] wts) = RootDatum:
 set centralizer_coweight(RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   in root_datum_from_positive(roots,coroots)
+   in root_datum_from_positive((roots,coroots),rd.prefers_coroots)
 
 {v is in X^*(T)_Q=X_*(T^vee)_Q
  t=exp(2\pi iv)\in T^vee
@@ -170,7 +187,7 @@ set centralizer_coweight(RootDatum rd,ratvec v) = RootDatum:
 set centralizer_weight(RootDatum rd, ratvec v) = RootDatum:
    let coroots = columns_with((vec alpha_check): is_integer(alpha_check*v), poscoroots(rd))
    then roots = rank(rd) # for alpha_check in coroots do root(rd,alpha_check) od
-   in root_datum_from_positive(roots,coroots)
+   in root_datum_from_positive((roots,coroots),rd.prefers_coroots)
 
 {default: v\in X_*(T)_Q, t=exp(2\pi iv)\in T
 This is giving Cent_G(t), the most common case
@@ -333,7 +350,7 @@ let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
   for rd in done do
    for rd0 in to_do[0] do
     let new_simple_roots=simple_roots(rd0)##simple_roots(rd) in
-    subgroup_by_simple(rd_ambient,new_simple_roots) 
+    subgroup_by_simple(rd_ambient,new_simple_roots)
    od
   od
   in f(for i:#to_do-1 from 1 do to_do[i] od,new)
@@ -378,7 +395,7 @@ set subgroups_raw(RootDatum rd)=[RootDatum]:
  for S in standard_Levi_conjugacy_representatives(sub)  do complex_Levi(sub,S) od  od
 
 {cut down subgroups_raw to one representative of each conjugacy class
-for efficiency group by ss_rank and number of simple factors before 
+for efficiency group by ss_rank and number of simple factors before
 testing for conjugacy
 return two lists
 first: [[RootDatum]] grouped by ss_rank
@@ -476,14 +493,14 @@ set proper_subgroups(RootDatum rd)=[RootDatum]:
 L.dimension=rd.dimension then [] else [L] fi od
 
 {cut down subgroups_raw to one representative of each conjugacy class
-for efficiency group by ss_rank and number of simple factors before 
+for efficiency group by ss_rank and number of simple factors before
 testing for conjugacy}
 set subgroups_weak(RootDatum rd)=
 let all=group_by_ss_rank_and_number_simple_factors(subgroups_raw(rd)) in
 let rv=
 for i:#all do
  for j:#all[i] do
-  let ()=prints("ss_rank: ", i, new_line, "# simple factors: ",j) in 
+  let ()=prints("ss_rank: ", i, new_line, "# simple factors: ",j) in
   let f=filter_weak(rd,all[i][j])  then
 ()=prints("#reduced subs=",#f) in
 f od od in
@@ -499,7 +516,7 @@ for L in subs do (L,W_elt(rd,matrix(coxeter_element(L)))) od
 set group_by_conjugacy([(RootDatum,WeylElt)] pairs)=[[(RootDatum,WeylElt)]]:
 let rv=[[(RootDatum,WeylElt)]]:[] in
 for (L,w) in pairs do
- let match=find_conjugate(for list in rv do let (,y)=list[0]  in y od,w) in 
+ let match=find_conjugate(for list in rv do let (,y)=list[0]  in y od,w) in
  if match =-1 then rv#:=[(L,w)] else rv[match]#:=(L,w) fi od;
  rv
 
@@ -509,7 +526,7 @@ for (L,w) in pairs do
 }
 {NOT WORKING}
 set iterate_maximal_pseudo_Levis_long(RootDatum rd)=
-let stop=0 in 
+let stop=0 in
 let rec_fun f([[RootDatum]] done,[[RootDatum]] to_do)=[[RootDatum]]:
  assert(stop<5,"Stopping");
  prints("stop=",stop);
@@ -642,7 +659,7 @@ center=elements_of_center(rd_L.derived) then
 center_lifted=for v in center do lift(rd_L,v) od then
 rv=[] in
  for (,w) in norm do
-  let m=w.matrix in 
+  let m=w.matrix in
   if all (for v in center_lifted do m*v=v od) then rv#:=(m,w) fi od;rv fi
 
 
@@ -653,7 +670,7 @@ rv=[(mat,WeylElt)]:[] then
 t=regular_central_element(rd_L,rd) then
 rad_L=rd_L.radical_basis in
 for (,w) in norm do
- let m=w.matrix in 
+ let m=w.matrix in
  if m*t=t and m*rad_L=rad_L then rv#:=(m,w) fi od;
 rv
 

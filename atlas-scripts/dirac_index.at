@@ -26,8 +26,9 @@ A_i=image_lattice((2*id_mat(n))#ratvec_as_vec(2*v))/2 {rat_mat} then
 A=ratmat_as_mat(A_i.inverse) then
 {()=if dv then prints("A: ", A, new_line, "A_inverse: ", A_i) fi then}
 new_simple_roots=A*rd.simple_roots then
-new_simple_coroots=ratmat_as_mat(^A_i*rd.simple_coroots) in
-(root_datum(new_simple_roots,new_simple_coroots),A)  {mat:A takes roots for rd->roots for cover}
+new_simple_coroots=ratmat_as_mat(^A_i*rd.simple_coroots)
+in (root_datum(new_simple_roots,new_simple_coroots,rd.prefers_coroots),A)
+{mat:A takes roots for rd->roots for cover}
 
 {compact form of cover}
 set cover_c(RootDatum rd,ratvec v)=RealForm:let (cover,)=cover(rd,v) in cover.compact_form

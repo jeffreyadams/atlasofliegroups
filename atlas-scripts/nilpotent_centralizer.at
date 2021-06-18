@@ -102,7 +102,7 @@ let (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O) in
 if #roots_C=0
  then Bala_Carter_Levi(O).radical
 else
-root_datum_from_positive(roots_C,coroots_C) fi
+root_datum_from_positive((roots_C,coroots_C),O.root_datum.prefers_coroots) fi
 
 {this is the dimension of Cent(O), i.e. the reductive part of Cent(X)}
 set dim_centralizer(ComplexNilpotent O)=int:O.centralizer.dimension

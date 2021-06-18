@@ -83,17 +83,23 @@ in W_class_table ( rd
 		   fi
 		 )
 
-{ compute class table once, on demand the first time it is needed }
-set class_table_E8 = (->WeylClassTable):
-   let Wct= W_class_table(adjoint("")) { placeholder |WeylClassTable| value }
-in @: { function with no arguments }
-   if =Wct.root_datum.rank { whether this is the first time we are called }
-   then Wct:=class_table_E8(simply_connected("E8")) else Wct { don't recompute }
+{ we shall do storage of the class table for one particular E8 root datum }
+set !standard_datum_E8 = RootDatum: simply_connected("E8")
+
+{ voluntarily override previous definition to memoize for |standard_datum_E8| }
+set class_table_E8 = (RootDatum->WeylClassTable):
+   let Wct= trivial_character_table.class_table { place holder value }
+in (RootDatum rd) WeylClassTable:
+   if rd != standard_datum_E8 then class_table_E8(rd) { this is not recursion! }
+   elif =Wct.root_datum.rank { whether this is the first time we are called }
+   then Wct:=class_table_E8(rd) { compute and store the first time }
+   else Wct { any next time just return the previously computed value }
    fi
 
-set GAP_reorder() = [int]: { map GAP class index to one for |class_table_E8| }
-   let Wct = class_table_E8()
-   then Wct_prof = mat: { with shape (5,25) }
+set class_table_E8() = WeylClassTable: class_table_E8(standard_datum_E8)
+
+set GAP_reorder_E8(WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
+   let Wct_prof = mat: { with shape (5,25) }
       let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
       5 # for j:Wct.n_classes
           do [ reps[j].order
@@ -109,48 +115,44 @@ set GAP_reorder() = [int]: { map GAP class index to one for |class_table_E8| }
 	  )
    , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
       sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
-   then ranking = inverse(profile_ranked) { ranking[j]|: GAP class |j| rank }
-   in compose_permutations(Wct_ranked,ranking)
+   in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
-set GAP_class_reps() = [WeylElt]: { class representatives in GAP order }
-   let reps = class_table_E8().class_representatives() in
-   for j in GAP_reorder() do reps[j] od
+set character_table_E8(RootDatum rd) = CharacterTable:
+   let Wct = class_table_E8(rd)
+   then reordering = GAP_reorder_E8(Wct)
+   then E8_name(vec chi) = string:
+      let psi = null(#chi)
+      then degree = { first reorder |chi| for |Wct| into |psi| }
+	 for j@i in reordering do psi[j]:=chi[i] od { apply inverse reordering }
+      ;  first(Wct.root_datum.nr_of_posroots+1
+	      ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+	      )
+      in to_string("irrep(dim:",psi[0],",deg:",degree,")")
 
-set E8_name(vec chi) = string:
-   let Wct = class_table_E8(), psi = null(#chi)
-   then degree = { first reorder |chi| for |Wct| into |psi| }
-      for j@i in GAP_reorder() do psi[j]:=chi[i] od { apply inverse reordering }
-   ;  first(class_table_E8().root_datum.nr_of_posroots+1
-           ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-	   )
-in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-
-set character_table_E8() = CharacterTable:
-   let compressed_string(Partition P) = string:
-      let mult=1
-      then result =
-	 for l@i in P
-	 do if i=0 then "[ "
-	    elif l=P[i-1] then mult+:=1; ""
-	    elif mult=1 then P[i-1]+", "
-	    else P[i-1]+"^"+mult+", " next mult:=1
-	    fi
-	 od.##
-   in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
    then classes = [WeylElt,classical_class,string]:
-      for w@j in GAP_class_reps()
-      do (w,null_class()
-         ,to_string(class_signature(w).compressed_string
-	           ," (GAP:",e8_gap_classes[j],")")
-	 )
-      od
+      let reps = Wct.class_representatives()
+      in for j in reordering
+	 do (reps[j],null_class()
+	    ,to_string(class_signature(reps[j]).compressed_string
+		      ," (GAP:",e8_gap_classes[j],")")
+	    )
+	 od
    ,  irreps = [classical_irrep,string,[int]]:
       for line@i in e8_gap_table
       do (null_irrep(),E8_name(line),line)
       od
-   in character_table(class_table_E8(),classes,irreps)
+   in character_table(Wct,classes,irreps)
 
-{this is the special test which fails if the columns are wrong}
-set test(CharacterTable ct) = [int]:
-   let S=ct.sym_power(ct.reflection,3)
-   in for i:ct.n_classes do ct.inner(ct.characters[i],S) od
+{ voluntarily override previous definition to memoize for |standard_datum_E8| }
+set character_table_E8 = (RootDatum->CharacterTable):
+   let ct= trivial_character_table { place holder value }
+in (RootDatum rd) CharacterTable:
+   if rd != standard_datum_E8 then character_table_E8(rd) { no recursion! }
+   elif =ct.root_datum.rank { whether this is the first time we are called }
+   then ct:=character_table_E8(rd) { compute and store the first time }
+   else ct { any next time just return the previously computed value }
+   fi
+
+
+set character_table_E8() = CharacterTable:
+   character_table_E8(standard_datum_E8)
