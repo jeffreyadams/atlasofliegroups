@@ -120,7 +120,7 @@ tabulate(
 ["i","dim","deg","name","orbit","B","X","I"] #
 for i:st.ct.n_classes do
 [i.to_string+st.special_representation_star(i),
-ct.dimension(i).to_string,
+dimension(ct,i).to_string,
 ct.irreducible_label(i),
 ct.degree(i).to_string,
 if st.is_special_representation(i)  then st.springer_inverse_special(i).diagram.to_string else "xx" fi,
@@ -143,7 +143,7 @@ tabulate(
 ["i","dim","deg","name","orbit","B","X","I"] #
 for i:st.ct.n_classes do
 [i.to_string+st.special_representation_star(i),
-ct.dimension(i).to_string,
+dimension(ct,i).to_string,
 ct.irreducible_label(i),
 ct.degree(i).to_string,
 {if st.is_special_representation(i)  then st.springer_inverse_special(i).diagram.to_string else "xx" fi,} "xx",
@@ -173,7 +173,7 @@ tabulate(
 for i:st.ct.n_classes do
 let  (valid,orbit)=st.springer_inverse(i) in
 [i.to_string+st.special_representation_star(i),
-ct.dimension(i).to_string,
+dimension(ct,i).to_string,
 ct.degree(i).to_string,
 ct.irreducible_label(i)
 ]##
@@ -222,7 +222,7 @@ set show_Lusztig_cells(CharacterTable ct,[(ComplexNilpotent,[[int]])] data)=void
 prints("Lusztig cells for ",nice_format(let (orbit,)=data[0] in orbit.root_datum));
 for (orbit,reps) in data do
 prints(new_line,"orbit: ",orbit.diagram, "  dim:", orbit.dim_nilpotent,new_line,"characters:");
- tabulate(["i","dim","deg"]#for v in reps do let i=index(ct,v) in [i.to_string,ct.dimension(i).to_string,ct.degree(i).to_string] od)
+ tabulate(["i","dim","deg"]#for v in reps do let i=index(ct,v) in [i.to_string,dimension(ct,i).to_string,ct.degree(i).to_string] od)
 od
 
 {see assem.pdf

@@ -711,20 +711,30 @@ adjoint(E7)
 
 set normalizer_reports()=normalizer_reports(default)
 
+{the following function could be done more efficiently using a |WeylClassTable| }
+{reduce list of Weyl group elements to distinct conjugacy classes}
+set filter_by_class ([WeylElt] list)=
+   let classes=[WeylElt]:[]
+in for elt in list
+   do if none(for w in classes do is_conjugate(w,elt) od) then classes#:=elt fi
+   od; classes
+
 
 
 {embed Coxeter element of W(equal rank subgroup)}
-set embed_coxeter(RootDatum rd_H,RootDatum rd)=
-W_elt(rd,matrix(coxeter_element(rd_H)))
+set embed_coxeter (RootDatum rd_H,RootDatum rd) = WeylElt:
+   W_elt(rd,matrix(coxeter_element(rd_H)))
 
-set embed_coxeters(RootDatum rd)=
-let subgroups =rd.subgroups then
-classes_gen=for rd_H in subgroups do embed_coxeter (rd_H,rd) od then
-f=filter_by_class(classes_gen) in
-prints("# classes: ", #rd.conjugacy_classes, new_line,
-"#subgroups: ", #subgroups, new_line, "classes generated: ", #f);f
+set embed_coxeters(RootDatum rd) = [WeylElt]:
+(  let subgroups =rd.subgroups
+   then classes_gen = for rd_H in subgroups do embed_coxeter(rd_H,rd) od
+   then f=filter_by_class(classes_gen)
+in prints("# classes: ", #rd.conjugacy_classes, new_line,
+         "#subgroups: ", #subgroups, new_line, "classes generated: ", #f)
+;  f
+)
 
-set embed_coxeters([RootDatum] data)=void:
+set embed_coxeters([RootDatum] data) = void: { for debugging the previous ? }
 let values=
  for rd in data do
  let subs=rd.subgroups then

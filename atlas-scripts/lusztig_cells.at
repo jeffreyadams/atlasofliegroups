@@ -241,7 +241,7 @@ tabulate(
     y.compact_ratvec,
     centralizer(G,y).nice_format,
     "sigma="+j.to_string,
-    ct_G.dimension(j).to_string,
+    dimension(ct_G,j).to_string,
     ct_G.degrees[j].to_string,
     if #ct_G.fake_degrees>0 then ct_G.fake_degrees[j].to_string else "" fi,
     sigma.to_string]
@@ -345,7 +345,7 @@ tabulate(
 ["i","dim","deg", "fdeg","B","X","Y","I"]#
 for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
 [i.to_string,
-ct_G.dimension(i).to_string,
+dimension(ct_G,i).to_string,
 ct_G.degree(i).to_string,
 if #ct_G.fake_degrees>0 then ct_G.fake_degrees[i].to_string else "" fi,
 a.to_string,b.to_string,bprime.to_string,c.to_string] od)
@@ -369,7 +369,7 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","y","i",
  [j.to_string,
   st_G.dual_map(st_G.special_orbits[i]).diagram.to_string,
   {st_G_v.orbits[j].diagram.to_string,}{wrong order}
-  st_G.ct.dimension(lusztig_cells[i][0]).to_string,
+  dimension(st_G.ct,lusztig_cells[i][0]).to_string,
   st_G.ct.degree(lusztig_cells[i][0]).to_string,
   if #st_G.fake_degrees>0 then st_G.fake_degrees[i].to_string else "" fi,
   lusztig_cells[i].to_string,
@@ -399,7 +399,7 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","y","i",
  [j.to_string,
   st_G.dual_map(st_G.special_orbits[i]).diagram.to_string,
   {st_G_v.orbits[j].diagram.to_string,}{wrong order}
-  st_G.ct.dimension(lusztig_cells[i][0]).to_string,
+  dimension(st_G.ct,lusztig_cells[i][0]).to_string,
   st_G.ct.degree(lusztig_cells[i][0]).to_string,
   if #st_G.fake_degrees>0 then st_G.fake_degrees[i].to_string else "" fi,
   lusztig_cells[i].to_string,
@@ -467,11 +467,11 @@ tabulate(
     O_L_v.root_datum.nice_format,
     O_L_v.diagram.to_string,
     j_L.to_string,
-    ct_G.dimension(j_L).to_string,
+    dimension(ct_G,j_L).to_string,
     ct_G.degrees[j_L].to_string,
     let (valid,orbit)=st_G.springer_inverse(j_L) in if valid then orbit.diagram.to_string+st_G.special_star(orbit) else "*" fi,
     j_S.to_string,
-    ct_G.dimension(j_S).to_string,
+    dimension(ct_G,j_S).to_string,
     ct_G.degrees[j_S].to_string,
     let (valid,orbit)=st_G.springer_inverse(j_S) in if valid then orbit.diagram.to_string+st_G.special_star(orbit) else "*" fi,
     if j_L=j_S then "=" else "" fi

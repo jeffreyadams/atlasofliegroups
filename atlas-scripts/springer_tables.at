@@ -265,7 +265,7 @@ let j=st.springer(orbit) in
 [orbit.diagram.to_string+st.special_star(orbit),
 orbit.dim_nilpotent.to_string,
 j.to_string,
-st.ct.dimension(j).to_string,
+dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
 if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
  st.ct.characters[j].to_string] od)
@@ -282,7 +282,7 @@ orbit.dim_nilpotent.to_string,
 dual_orbit.diagram.to_string,
 dual_orbit.dim_nilpotent.to_string,
 j.to_string,
-st.ct.dimension(j).to_string,
+dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
 if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
  st.ct.characters[j].to_string] od)
@@ -298,7 +298,7 @@ for j:st.ct.n_classes do
    let orbit=st.orbits[orbit_index] in orbit.diagram.to_string + st.special_star(orbit)
   else ""
   fi,
-st.ct.dimension(j).to_string,
+dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
 if #st.fake_degrees>0 then
   if st.fake_degrees[j]>=0 then st.fake_degrees[j].to_string else "" fi

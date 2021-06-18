@@ -73,7 +73,7 @@ set weak_packet_int (SpringerTable st_int
      fi
   ;  let sigma=st_int.springer(O)
   in if cells_verbose then prints
-        ("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma))
+        ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
      fi
   ;  let parameters = parameters_given_AV_infinitesimal_character
                       (st_int,O,blocks_and_cells,gamma_target)
@@ -124,7 +124,7 @@ in if cells_verbose then prints
 ;  prints("computing springer map of", O.diagram)
 ;  let sigma=st_int.springer(O)
 in if cells_verbose then prints
-      ("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma))
+      ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
    fi
 ; let parameters = parameters_given_AV_infinitesimal_character
                    (st_int,O,blocks_and_cells,gamma_target,permutation)

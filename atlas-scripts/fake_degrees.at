@@ -54,4 +54,4 @@ tabulate(
 ["i","dim","a(i)","b(i)"]#
 for i:ct.n_classes do
 {don't know special_representation_star without springer table}
-[i.to_string,ct.dimension(i).to_string{+ct.special_representation_star(i)},ct.fake_degrees[i].to_string,ct.degree(i).to_string] od)
+[i.to_string,dimension(ct,i).to_string{+ct.special_representation_star(i)},ct.fake_degrees[i].to_string,ct.degree(i).to_string] od)

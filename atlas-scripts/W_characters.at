@@ -999,10 +999,3 @@ in for k:n from 1
    in for i:k-1 from 1 do sum:=tab.direct_sum(sum,tab.tensor(e[i],sp~[i])) od
    ; e #:= for s in sum do s\k od { expand table by |sum\k| }
    od; e[n] { last symmetric power is the one we want }
-
-{reduce list of Weyl group elements do distinct conjugacy classes}
-set filter_by_class ([WeylElt] list)=
-   let classes=[WeylElt]:[]
-in for elt in list
-   do if none(for w in classes do is_conjugate(w,elt) od) then classes#:=elt fi
-   od; classes

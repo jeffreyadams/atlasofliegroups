@@ -12,7 +12,7 @@ set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
   Extended Parameters in Atlas (Adams)
   Computing Twisted KLV Polynomials (Adams)
   More on the 2i12, 2Ci, 1i cases (Adams)
-  Examples of extended paramters/braid relations (Adams)
+  Examples of extended parameters/braid relations (Adams)
   all found at www.liegroups.org/papers/extended (no public link)
 }
 

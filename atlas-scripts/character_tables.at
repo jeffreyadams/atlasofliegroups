@@ -112,8 +112,8 @@ set character_value(CharacterTable ct, int class) = (int i) int:
   ct.table[i,class]
 
 set id_class(CharacterTable ct) = ct.class_of(ct.root_datum.id_W)
-set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
-
+set dimension (CharacterTable ct) = ([int] chi) int: chi[ct.id_class]
+set dimension (CharacterTable ct,int i) = int: ct.table[i,ct.id_class]
 
 set character(CharacterTable t) = (int i) [int]: row(t.table,i)
 set characters(CharacterTable ct)=[[int]]: rows(ct.table)
@@ -204,54 +204,9 @@ set decompose(CharacterTable ct) = (vec v)[int]:
    for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 
 
-{copied (and modified) from W_characters.at}
-
-{ Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
-set Adams (CharacterTable tab) = ([int]char, int n) [int]:
-   for i:tab.n_classes do char[tab.class_power(i,n)] od
-
 { symmetric power of a character }
-set sym_power (CharacterTable tab) = ([int]char, int n) [int]:
-{ with $h_k$ symmetric, $p_k$ Adams, use $kh_k=\sum_{i=0}{k-1} h_ip_{k-i}$ }
-   let { define two local tables of characters, to be expanded in loop }
-     p = { "power sum polynomials", results of Adams operations } [[int]]: [ ]
-         { since there is no $p_0$, the $k$-the Adams operation gives the entry
-           |p[k-1|, but never mind since we will always reverse-index |p| }
-   , h = { "complete homogeneous polynomials", symmetric powers } [tab.trivial]
-   , Adams = tab.Adams { shorthand }
-in for k:n from 1
-   do p #:= Adams(char,k) { expand }
-   ;  let sum=p~[0]
-   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(h[i],p~[i])) od
-   ; h #:= for s in sum do s\k od { expand table by |sum\k| }
-   od; h[n] { last symmetric power is the one we want }
-
-
-{ exterior power of a character }
-set ext_power (CharacterTable tab) = ([int]char, int n) [int]:
-{ with $e_k$ ext, $p_k$, use $ke_k=\sum_{i=0}{k-1}(-1)^{k-i-1} e_ip_{k-i}$ }
-   let { define two local tables of characters, to be expanded in loop }
-    sp = { "signed power sum polynomials", $(-1)^{i-1}p_i$ } [[int]]: [ ]
-         { since there is no $p_0$, the $k$-the Adams operation gives the entry
-           |p[k-1|, but never mind since we will always reverse-index |p| }
-   , e = { "elementary symmetric polynomials", exterior powers } [tab.trivial]
-   , Adams = tab.Adams { shorthand }
-in for k:n from 1
-   do sp #:= Cartesian_power(Adams(char,k),minus_1^(k-1)) { expand }
-   ;  let sum=sp~[0]
-   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(e[i],sp~[i])) od
-   ; e #:= for s in sum do s\k od { expand table by |sum\k| }
-   od; e[n] { last symmetric power is the one we want }
-
-
-{   -----character calculations------}
-{copied (and modified) from W_reps.at}
-
-{. matrix of inner products of characters of representations .}
-set matrix_of_inner_products (CharacterTable ct,[[int]] characters) = mat:
-  let n=#characters in
-  matrix((n,n),(int i,int j): ct.inner(characters[i],characters[j]))
-
+set sym_power (CharacterTable tab) = tab.class_table.sym_power
+set ext_power (CharacterTable tab) = tab.class_table.ext_power
 
 {mults is a vector of multiplicities of the irreducible characters,
 return a list (without multiplicities) of the irreducible characters
@@ -263,46 +218,8 @@ in if =#degrees then [] { no multiplicities, empty result }
    in for m@j in mults do if m.> and ct.degree(j)=min then [j] else [] fi od.##
    fi
 
-{  representations of W; copied (and modified) from W_reps.at}
 
-{ data type for representation of W
-  operators[i] is the matrix of the action of simple generator #i
-}
-set_type W_rep = (int dimension, [mat] operators)
-
-{ matrix of pi(w) }
-set operator (W_rep rep, WeylElt w) = mat:
-   product(rep.dimension,for s in w.word ~do rep.operators[s] od)
-
-set operator (W_rep pi) = (WeylElt -> mat):
-  (WeylElt w) mat: operator(pi,w)
-
-{ trivial representation of W }
-set trivial_W (RootDatum rd) = W_rep:
-  (1,for i:semisimple_rank(rd) do id_mat(1) od)
-
-{ Compute characters of W-representations on cells, as obtained from W_cells
-  also induced characters from Levi subgroups, and the Steinberg character
-}
-
-{character of pi}
-set character(CharacterTable ct, W_rep pi) = [int]:
-  for w in ct.class_reps do trace(pi.operator(w)) od
-
-{ isomorphism test using the character }
-set is_isomorphic (CharacterTable tab, W_rep pi, W_rep sigma) = bool:
-  all(tab.n_classes
-     ,(int i): let w = tab.class_reps[i] in
-               trace(pi.operator(w))=trace(sigma.operator(w))
-     )
-
-{ inner product of rational characters }
-set inner_no_test(CharacterTable ct) = ([int] x,[int] y) rat:
-  assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
-  let sizes=for i:ct.n_classes do ct.class_size(i) od then
-  nW=ct.order then
-    s = for size@i in sizes do size*x[i]*y[i] od.sum in s/nW
-
+{ convenience functions }
 
 set show_classes(CharacterTable ct) = void:
 tabulate (
@@ -311,7 +228,7 @@ tabulate (
    ,"class_size"
    ,"|cent|"
    ,"sgn(w)"
-   ,"chi_ref(w))"
+   ,"chi_refl(w))"
    ,"name"
    ]
 #  for i:#ct.table
@@ -333,9 +250,9 @@ tabulate (
     ,"class_size"
     ,"|cent|"
     ,"sgn(w)"
-    ,"chi_ref(w))"
+    ,"chi_refl(w))"
     ,"name"
-    ,"rep"
+    ,"class rep"
     ]
 #  for i:#ct.table
    do [i.to_string
@@ -389,7 +306,7 @@ set view_multiplicities (CharacterTable ct,vec v {multiplicities}) = void:
 	 then
 	 [  [i.to_string
 	    ,mult.to_string
-	    ,ct.dimension(i).to_string
+	    ,dimension(ct,i).to_string
 	    ,ct.degrees[i].to_string
 	    ,if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi
 	    ]

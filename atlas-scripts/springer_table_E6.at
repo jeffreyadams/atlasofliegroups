@@ -110,7 +110,8 @@ elif d=[2,2,2,0,2,2] then [6,1]
 elif d=[2,2,2,2,2,2] then [1,0]
 else error("error in springer correspondence") fi
 
-set dim_and_degree(CharacterTable ct,vec v)=[v[0], smallest_degree(ct,v)]
+set dim_and_degree(CharacterTable ct,vec v) =
+   [ct.dimension(v), smallest_degree(ct.class_table,v)]
 
 set springer_E6(CharacterTable ct,ComplexNilpotent O)=int:
 let characters=ct.characters then
