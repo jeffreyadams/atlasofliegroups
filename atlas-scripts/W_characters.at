@@ -32,13 +32,7 @@ set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
    let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
    (rd,(int i) bool: =coroot(rd,i)*orth)
 
-set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
-      RootDatum:
-(  root_datum_from_positive
-     ((columns_with(select,rd.posroots),columns_with(select,rd.poscoroots))
-     ,rd.prefers_coroots
-     )
-)
+set Levi_datum = sub_datum@(RootDatum,(int->bool)) { defined in basic.at }
 
 set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
