@@ -200,7 +200,7 @@ set generators_of_component_group (RealNilpotent (H,x,()))=
 
 set component_datum(RealNilpotent O)=(RealNilpotent,[int],[(RealForm,[ratvec])]):
   if O.root_datum.is_abelian then
-     let EL=O.real_form in (O,[1],[(EL,[null(rd.rank)/1])])
+     let EL=O.real_form in (O,[1],[(EL,[null(root_datum(O).rank)/1])])
   else let g=generators_of_component_group(O)
        then orders=## for (a,H,b,c,d,S) in g do for v in S do
                               order_in_A(v,O.root_datum,H) od od
