@@ -146,7 +146,7 @@ set is_noticed_orbit (RealNilpotent (H,y,()))=bool:
            =dim_center+number_roots
          fi
 
-set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=bool:
+{set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=bool:
    let G=real_form(x) then rd=root_datum(G), MC=root_datum(M) then
    orbits=nilpotent_orbits(MC) in
    let n=first(for (,,K) in orbits do is_conjugate(K,H,rd) od) in
@@ -156,9 +156,62 @@ set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=bool:
         if is_noticed_orbit (orb) then [orb] else [] fi od
      in any(for (K,y,) in noticed_orbits do
        let orb=RealNilpotent:(K,embed_KGB(y,G),()) in
-                 is_conjugate_orbit (orb,(H,x,())) od) fi
+                 is_conjugate_orbit (orb,(H,x,())) od) fi}
 
-set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[RealForm]:
+set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=(bool,vec):
+   let G=real_form(x) then rd=root_datum(G), MC=root_datum(M) then
+   orbits=nilpotent_orbits(MC) in
+   let n=first(for (,,K) in orbits do is_conjugate(K,H,rd) od) in
+   if n=-1 then {prints("The orbit does not meet M.");} (false,[])
+   else let M_orbits=real_nilpotent_orbits(orbits[n],M) then
+     noticed_orbits=##for orb in M_orbits do
+        if is_noticed_orbit (orb) then [orb] else [] fi od
+     in
+     if any(for (K,y,) in noticed_orbits do
+       let orb=RealNilpotent:(K,embed_KGB(y,G),()) in
+              is_conjugate_orbit (orb,(H,x,())) od)
+	      then (true,orbits[n].H) else (false,[]) fi fi
+
+set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[(RealForm,vec)]:
    let G=real_form(O) then list=elliptic_pseudo_Levis(G) in
-   ##for L in list do if is_noticed_orbit_in_M (O,L) then [L]
+   ##for L in list do let (b,v)=is_noticed_orbit_in_M (O,L) in if b then [(L,v)]
                          else [] fi od
+
+set generators_of_component_group (RealNilpotent (H,x,()))=
+[(RealForm,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
+  let rd=root_datum(x)
+  in for (EL,H_L) in noticed_elliptic_pseudo_Levis (H,x,()) do let L=root_datum(EL)
+   then Lmod=mod_central_torus(L)
+   then Z_Lmod=elements_of_center(Lmod)
+   then L_rad=radical_basis(L)
+   then (,M)=Levi_of_subspace(rd,L_rad)
+   then Z_Lmod_reg=##for v in Z_Lmod do
+     if dimension(centralizer(M,lift(L,v)))=L.dimension then [v]
+     else [] fi od
+   then Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od
+   then (,Levi_H_L_M)=Levi_of_coweight(M,H_L)
+   then  (,Levi_H_L)=Levi_of_coweight(rd,H_L)
+   {then (indices,Z_Lmod_reg_lifted_cc)
+               = semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)}
+   then (indices,Z_Lmod_reg_lifted_cc)
+            = semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad)
+   then Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od
+   in (EL,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc) od
+
+set component_datum(RealNilpotent O)=(RealNilpotent,[int],[(RealForm,[ratvec])]):
+  if O.root_datum.is_abelian then
+     let EL=O.real_form in (O,[1],[(EL,[null(rd.rank)/1])])
+  else let g=generators_of_component_group(O)
+       then orders=## for (a,H,b,c,d,S) in g do for v in S do
+                              order_in_A(v,O.root_datum,H) od od
+       in (O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od) fi
+
+set print_component_info (RealNilpotent O)=void:
+   let (,orders,d)=component_datum(O)
+   then header=["pseudo_Levi","Generators"]
+   then values=
+        for (L,S) in d do [L.to_string,S.to_string] od in
+   prints("Component info for orbit:",new_line, "H=", O.H{_of_triple}, " ",x(O),
+      ", diagram:", O.complex_orbit.diagram);
+   prints("orders:",orders);
+   tabulate(header#values)
