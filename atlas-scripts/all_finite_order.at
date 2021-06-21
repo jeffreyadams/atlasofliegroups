@@ -232,8 +232,9 @@ set complex_pseudo_Levi(RootDatum rd, [int] S)= RootDatum:
      if i<semisimple_rank(rd)
        then simple_coroots(rd)[i]
        else -coroot(rd,highest_root(rd))
-     fi od in
-   root_datum(roots,coroots) fi
+     fi od
+   in root_datum(roots,coroots,rd.prefers_coroots)
+   fi
 
 set centralizer_of_Kac (RootDatum rd, [int] Kac)=RootDatum:
    let roots=[int]:

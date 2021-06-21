@@ -75,12 +75,12 @@ set keep_long_roots_short_coroots(mat roots, mat coroots)=(mat,mat):
 {reduced root system obtained by keep short roots/long coroots}
 set restricted_roots_short(RealForm G)=RootDatum:
 let (A,B)=restricted_roots_raw(G) in
-root_datum_from_positive(keep_short_roots_long_coroots(A,B))
+root_datum_from_positive(keep_short_roots_long_coroots(A,B),G.prefers_coroots)
 
 {reduced root system obtained by keep long roots/short coroots}
 set restricted_roots_long(RealForm G)=RootDatum:
 let (A,B)=restricted_roots_raw(G) in
-root_datum_from_positive(keep_long_roots_short_coroots(A,B))
+root_datum_from_positive(keep_long_roots_short_coroots(A,B),G.prefers_coroots)
 
 set restricted_roots(RealForm G)=RootDatum:
 restricted_roots_short(G)

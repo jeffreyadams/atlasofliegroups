@@ -46,8 +46,7 @@ set class_table_S(int n) = WeylClassTable:
   let rd=GL(n), reps = [Partition]: partitions(n)
   then lookup = (Partition->int): index_partition(reps)
   in W_class_table(rd, for rep in reps do conjugacy_class_S(rep) od
-		  , (WeylElt w)int:
-		    cycle_class_size(unsorted_cycle_type_GL(w))
+		  , (int i)int: cycle_class_size(reps[i])
 		  , (WeylElt w) int: lookup(cycle_type_GL(w))
 		  , (int i,int k)int: lookup(cycle_power(reps[i],k))
 		  )
@@ -58,7 +57,7 @@ set class_table_A(RootDatum rd) = WeylClassTable:
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
   then lookup = (Partition->int): index_partition(partitions)
   in W_class_table( rd, for lambda in partitions do class_rep(lambda) od
-		  , (WeylElt w)int: cycle_class_size(type(w))
+		  , (int i)int: cycle_class_size(partitions[i])
 		  , (WeylElt w) int: lookup(type(w))
 		  , (int i,int k)int: lookup(cycle_power(partitions[i],k))
 		  )

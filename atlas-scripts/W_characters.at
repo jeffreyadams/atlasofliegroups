@@ -34,8 +34,11 @@ set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
 
 set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
       RootDatum:
-   root_datum(simple_system_from_positive
-      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
+(  root_datum_from_positive
+     ((columns_with(select,rd.posroots),columns_with(select,rd.poscoroots))
+     ,rd.prefers_coroots
+     )
+)
 
 set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
@@ -630,32 +633,45 @@ in while current<#orbit
 
 set Levi_normalizer_index ((RootDatum,(int->bool))(rd,select):Levi_info) = int:
    let rho2_L = subsystem_2rho(Levi_info)
-   then rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_L)
-   then stab_orbit = [[int]]:
+   then Levi = [int]: { indices in |rd| for simple system of Levi }
+         list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
+in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
+   let rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_L)
+   then stab_orbit_size = int:
       begin
-      let root_perm =
+      let root_perm = [[int]]: { absroot perm.s by stabiliser simple refl.s }
          let ab (int i) = int: if i.< then -1-i else i fi { to positive index }
          in for beta in rho_L_stabiliser.simple_roots
             do for alpha in rd.posroots
                do root_index(rd,reflect(rd,beta,alpha)).ab
                od
             od
-      , Levi = { indices in |rd| for simple system of Levi }
-         list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
       then act(int i,[int] roots) = [int] :
          let map = root_perm[i] in for j in roots do map[j] od.sort
-      , orbit = [Levi]
-      , current=0
-      in while current<#orbit
-         do let L=orbit[current] in current+:=1
-         ;  for k:#root_perm
-            do let M=act(k,L) in
-               if none(#orbit,(int i):orbit[i]=M) then orbit #:= M fi
-            od
-         od
-      ; { stab_orbit = } orbit
+      , stack = [[int]]: [[],[combination_encode(Levi)]]
+      , decode = { decoding function from numbers to lists }
+           combination_decode(#Levi) { safe, as |Levi=[]| case short-circuited }
+      , present([int] sorted,int code) = bool:
+           let l=#sorted
+	   then i = binary_search_first((int i)bool: sorted[i]>=code, 0,l)
+	   in i<l and sorted[i]=code
+      in while { loop with |do| near end }
+            let new_level = [int]:
+	       for code in stack~[0]
+	       do let L = [int]: decode(code)
+	       in for k:#root_perm
+                  do let M=combination_encode(act(k,L))
+		  in if present(stack~[1],M) or present(stack~[0],M)
+		     then [] else [M]
+		     fi
+                  od.##
+               od.##
+	 in >#new_level { whether any new elements were found for new level }
+	 do stack #:= new_level.sort_u
+	 od
+      ; { stab_orbit_size = } for level in stack do #level od.sum
       end
-   in rho_L_stabiliser.order_W \ #stab_orbit { index of $W_L$ in $N_L$ }
+   in rho_L_stabiliser.order_W \ stab_orbit_size { index of $W_L$ in $N_L$ }
 
 set Levi_orbit_size ((RootDatum,(int->bool))(rd,):Levi_info) = int:
   rd.order_W \ (Levi_info.Levi_normalizer_index * Levi_info.Levi_datum.order_W)
@@ -685,6 +701,7 @@ in for (,rank):code in codes { traverse the simple factors }
       , simple_datum = root_datum
 	( r # for i in sub_map do rd_L.simple_roots[i]   od
 	, r # for i in sub_map do rd_L.simple_coroots[i] od
+	, w.root_datum.prefers_coroots
 	)
    in ( W_elt(simple_datum,factor_word), code )
    next offset +:= rank
@@ -804,11 +821,11 @@ set_type
 }
 set W_class_table ( RootDatum rd
 		  , [WeylElt] !reps
-		  , (WeylElt->int) class_size
+		  , (int->int) class_size { size of class, by class numer }
 		  , (WeylElt->int) class_nr_of
 		  , (int,int->int) power_map
 		  ) = WeylClassTable:
-   let !sizes = [int]: for w in reps do class_size(w) od
+   let !sizes = [int]: for i:#reps do class_size(i) od
    , !ncc = #reps { number of conjugacy classes }
    , !nW = rd.order_W
    , !rank = rd.rank, !npr=rd.nr_of_posroots
@@ -883,7 +900,9 @@ set W_class_table ( RootDatum rd
 		  ) = WeylClassTable:
    let memberships = [(WeylElt->bool)]: for r in reps do is_conjugate_to(r) od
    then class_of(WeylElt w) = int: first(#reps,(int i)bool: memberships[i](w))
-in W_class_table( rd, reps, class_size, class_of
+in W_class_table( rd, reps
+		, (int i) int: class_size(reps[i])
+		, class_of
 		, (int i, int k) int: let pred=is_conjugate_to(reps[i]^k) in
 		    for r@j in reps do if pred(r) then return j fi od; minus_1
 		)

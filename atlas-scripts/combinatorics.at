@@ -149,6 +149,19 @@ set transpose ([int] parts) = Partition:
   fi
 }
 
+set compressed_string(Partition P) = string:
+   let mult=1
+   then result =
+      for l@i in P
+      do if i=0 then "[ "
+	 elif l=P[i-1] then mult+:=1; ""
+	 elif mult=1 then P[i-1]+", "
+	 else P[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
+
+
 { comparing partitions of same |n| lexicographically; implicitly 0-extend }
 set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
    let m=#mu in
@@ -157,6 +170,15 @@ set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
       elif l!=mu[i] then return l<mu[i]
       fi
    od; assert(=mu[#lambda:],"unequal sum"); true
+
+{ same, but three-way result in $\{-1,0,1\}$ for less/equal/greater; no 0-ext }
+set cmp_equal_sum_partitions(Partition lambda, Partition mu) = int:
+   let m=#mu in
+   for l@i in lambda
+   do if l!=mu[i] { equal sum, nonzero entries, so |mu| cannot run out }
+      then return if l<mu[i] then minus_1 else 1 fi
+      fi
+   od; 0 { if |lambda| exhausted then so is |mu|, and we have equality }
 
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
 set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
@@ -409,10 +431,31 @@ set index_bipartition([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
 
-
-
 set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
 set rank (Signed_cycles cycles) = int: for (c,) in cycles do c od.sum
+
+set compressed_string(BiPartition(P,Q)) = string:
+(  let mult=1
+   then result =
+      for l@i in P
+      do if i=0 then "[ "
+	 elif l=P[i-1] then mult+:=1; ""
+	 elif mult=1 then P[i-1]+", "
+	 else P[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+in result ##:=
+      if mult=1 then P~[0].to_string else P~[0]+"^"+mult next mult:=1 fi
+;  result ##:=
+      for l@i in Q
+      do if i=0 then " L|S "
+	 elif l=Q[i-1] then mult+:=1; ""
+	 elif mult=1 then Q[i-1]+", "
+	 else Q[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+;  result ## if mult=1 then Q~[0].to_string else Q~[0]+"^"+mult fi ## " ]"
+)
 
 { counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
 

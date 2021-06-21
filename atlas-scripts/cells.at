@@ -1,5 +1,8 @@
 <character_table_reps.at
 <springer_tables.at
+<isomorphism_W.at {for permute_character}
+
+set cells_verbose=false
 
 {
 these two functions are defined in W_reps.at:
@@ -29,9 +32,21 @@ let (,c)=W_cell(block,cells,p) in c
 { ----------- cell representations --------------}
 {{moved from character_table_reps.at}}
 
+{neglected to take permutation into account}
+set cell_characterold (CharacterTable ct,WCell cell) = [int]:
+  for w in ct.class_reps do trace(cell_action(cell,w)) od
+
 {. character of representation of W on cell .}
 set cell_character (CharacterTable ct,WCell cell) = [int]:
-  for w in ct.class_reps do trace(cell_action(cell,w)) od
+let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
+()=assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell") in
+if P=id_mat(#P) then
+ for w in ct.class_reps do trace(cell_action(cell,w)) od
+else
+ if cells_verbose then prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P) fi;
+ for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
+fi
+
 
 set cell_character(CharacterTable ct)=(WCell -> [int]):(WCell cell):cell_character(ct,cell)
 set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
@@ -47,7 +62,7 @@ set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
 
 set cell_representation (CharacterTable ct,WCell cell) = W_rep:
   (#cell.graph,
-   for i:ct.lie_type.semisimple_rank
+   for i:ct.root_datum.semisimple_rank
    do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
@@ -76,7 +91,7 @@ if #summands>1 then error("not unique special representation") elif
 {set special_character(CharacterTable ct)=([int]->int):
  ([int] cell_character):special_character(ct,cell_character)}
 
-set cells_verbose=false
+
 
 set #(WCell cell) = int: #cell.labels { should also equal |#cell.graph| }
 
@@ -107,6 +122,11 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
   do let cell=W_cells_of(B[0]) in (B,cell) od
 
 set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
+
+{really should be this, since it only returns one block:}
+set block_and_cells (Param p) = ([Param],[WCell]):
+let bc=blocks_and_cells(p) in
+assert(#bc=1,"more than one block?");bc[0]
 
 { locate a given parameter in structure returned from |blocks_and_cells| }
 set find ([[Param],[WCell]] blocks_and_cells, Param p) = (int,int):

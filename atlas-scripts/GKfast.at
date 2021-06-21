@@ -1,0 +1,14 @@
+<cells.at
+
+
+{ The existing code for GK_dimension@Param does a lot of calculation in
+the character table for G to get a nilpotent for G; but the desired
+GK dimension was known from the calculation down in the integral
+root datum. So this version cuts to the chase. Should be noticeably
+faster for large G and nonintegral infinitesimal character. Should be
+incorporated into associated_variety_annihilator.at }
+
+set GKfast(Param p) = int:
+let cell=W_cell_of(Finalize(p)) then
+ct_L=cell.root_datum.character_table in
+#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character(cell)]

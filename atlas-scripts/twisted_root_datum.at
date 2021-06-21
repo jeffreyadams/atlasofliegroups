@@ -41,15 +41,14 @@ roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=
 coroots=[] in
 for alpha in roots do
  let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
- v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)] 
-   else [] 
+ v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+   else []
   fi od)) then
  w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
  corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
  coroots#:=ratvec_as_vec(corestrict_w)
 od;
-{(T,roots,mat:coroots,root_datum_from_positive(roots,coroots))}
-(root_datum_from_positive(roots,coroots),T)
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
 
 {make it easy to construct in simple case:
 use the first outer automorphism of given order
@@ -70,7 +69,7 @@ if find(folded_factor.posroots,T.project(alpha))>=0 then
  roots#:=alpha;
  coroots#:=rd.poscoroots[i]
 fi
-od;root_datum_from_positive(roots,coroots)
+od;root_datum_from_positive((roots,coroots),rd.prefers_coroots)
 
 set affine_root_of_factor(TwistedRootDatum trd, RootDatum folded_factor,mat T)=
 let inv=inverse_image_simple_factor(trd,folded_factor,T) then
@@ -119,4 +118,3 @@ let rd=simply_connected(lt) in
 affine_datum(rd,highest_short_root(rd))
 
 set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)
-

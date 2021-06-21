@@ -3,7 +3,7 @@
 <W_characters.at
 <character_tables.at
 
-{ orbit sizes on long respectively short roots; these characterise classes }
+{ orbit sizes on roots; these characterise conjugacy classes for W(E6) }
 set class_signature (WeylElt w) = Partition:
    let rd=root_datum(w)
 in for c in root_orbits(w) do #c od.sort_to_partition
@@ -12,26 +12,37 @@ set class_table_E6(RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
 	       ; conjugacy_class_reps(rd)
    then sigs = [Partition]: for w in classes do class_signature(w) od
+   , leq = leq_equal_sum_partitions@(Partition,Partition)
    then N=51840 { order_W("E6") }
    ,  lookup = (Partition->int):
-      let ranked =
-         sort(#sigs,(int i,int j)bool: leq_partitions(sigs[i],sigs[j]))
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
+      let ranked = sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
+      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
       in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq_partitions(sig,list[i])
-				   , 0,#list)]
+         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
 in W_class_table ( rd
 		 , classes
-		 , (WeylElt w) int: N\centralizer_order(w)
+		 , (int i) int: N\centralizer_order(classes[i])
 		 , (WeylElt w) int: lookup(class_signature(w))
 		 , (int i,int k) int: lookup(cycle_power(sigs[i],k))
 		 )
 
-{ compute class table once here }
-set class_table_E6 = WeylClassTable: class_table_E6(simply_connected("E6"))
+{ we shall do storage of the class table for one particular E6 root datum }
+set !standard_datum_E6 = RootDatum: simply_connected("E6")
 
-{from magma}
-set !e6_table = [[int]]: { characters, with conjugacy classes in Magma order }
+{ voluntarily override previous definition to memoize for |standard_datum_E6| }
+set class_table_E6 = (RootDatum->WeylClassTable):
+   let Wct= trivial_character_table.class_table { place holder value }
+in (RootDatum rd) WeylClassTable:
+   if rd != standard_datum_E6 then class_table_E6(rd) { this is not recursion! }
+   elif =Wct.root_datum.rank { whether this is the first time we are called }
+   then Wct:=class_table_E6(rd) { compute and store the first time }
+   else Wct { any next time just return the previously computed value }
+   fi
+
+set class_table_E6() = WeylClassTable: class_table_E6(standard_datum_E6)
+
+{from Magma}
+set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
 [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]           { trivial }
 ,[1,-1,1,1,-1,1,1,1,1,-1,-1,1,1,1,1,-1,1,-1,1,-1,-1,1,-1,-1,1] { sign }
 ,[6,4,-2,2,0,-3,3,0,2,-2,2,0,1,1,1,1,-2,-2,-1,0,0,0,-1,1,-1]   { reflection }
@@ -63,63 +74,50 @@ set !e6_table = [[int]]: { characters, with conjugacy classes in Magma order }
 { some stuff to figure out in what order Magma has listed classes }
 
 {from magma} { orders, then class sizes, of conjugacy classes in magma order }
-set e6_orders_sizes = mat:
-[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5
-                     ,  6,   6,   6,   6,   6,   6,   6,   8,   9,  10,  12,  12
-|1,36,45,270,540,80,240,480,540,540,1620,3240,5184
-		     ,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320
-]
 
 set e6_sgn_index=1
 set e6_reflection_index=2
 
 set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
-   e6_orders_sizes ^ ^[e6_table[e6_sgn_index],e6_table[e6_reflection_index]]
+   let e6_orders_sizes = mat:
+	[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5
+                     ,  6,   6,   6,   6,   6,   6,   6,   8,   9,  10,  12,  12
+	|1,36,45,270,540,80,240,480,540,540,1620,3240,5184
+		     ,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320
+	]
+   , sgn_index=1
+   , reflection_index=2
+in e6_orders_sizes ^ ^[e6_table[sgn_index],e6_table[reflection_index]]
 
-set Magma_reorder = [int]: { map Magma class index to one for |class_table_E6| }
-   let Wct = class_table_E6
-   then Wct_prof = mat: { with shape (4,25) }
+set Magma_reorder_E6(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
+   let Wct_prof = mat: { with shape (4,25) }
       let reps=Wct.class_representatives(), sizes=Wct.class_sizes() in
       4 # for j:Wct.n_classes
-          do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
+	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
 	  od
-   then profile_ranked = [int]: { columns |e6_profile| ranked by |lex_lesseq| }
-      sort(#e6_profile,(int i,int j): lex_lesseq(e6_profile[i],e6_profile[j]))
+   then profile_ranked = [int]: { columns |e6_profile| ranked |lex_lesseq| }
+      sort(#e6_profile
+	  ,(int i,int j)bool: lex_lesseq(e6_profile[i],e6_profile[j]))
    , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
       sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
-   then ranking = inverse(profile_ranked) { ranking[j]|: Magma class |j| rank }
-   in compose_permutations(Wct_ranked,ranking)
+in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
-set Magma_reps = [WeylElt]: { class representatives in Magma order }
-   let reps = class_table_E6.class_representatives() in
-   for j in Magma_reorder do reps[j] od
-
-set compressed_string(Partition P) = string:
-   let mult=1
-   then result =
-      for l@i in P
-      do if i=0 then "[ "
-	 elif l=P[i-1] then mult+:=1; ""
-	 elif mult=1 then P[i-1]+", "
-	 else P[i-1]+"^"+mult+", " next mult:=1
-	 fi
-      od.##
-in result ## if mult=1 then P~[0].to_string else P~[0]+"^"+mult fi ## " ]"
-
-set E6_name(vec chi) = string:
-   let Wct = class_table_E6, psi = null(#chi)
-   then degree = { first reorder |chi| for |Wct| into |psi| }
-      for j@i in Magma_reorder do psi[j]:=chi[i] od { apply inverse reordering }
-   ;  first(class_table_E6.root_datum.nr_of_posroots+1
-           ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-	   )
-in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-
-set character_table_E6() = CharacterTable:
-   let classes = [WeylElt,classical_class,string]:
-      for w@j in Magma_reps
-      do (w,null_class(),class_signature(w).compressed_string)
-      od
+set character_table_E6(RootDatum rd) = CharacterTable:
+   let Wct = class_table_E6(rd)
+   then reordering = Magma_reorder_E6(Wct)
+   then E6_name(vec chi) = string:
+      let psi = null(#chi)
+      then degree = { first reorder |chi| for |Wct| into |psi| }
+        for j@i in reordering do psi[j]:=chi[i] od { inverse reorder }
+        ;  first(Wct.root_datum.nr_of_posroots+1
+                ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+	        )
+      in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+   then classes = [WeylElt,classical_class,string]:
+      let reps = Wct.class_representatives()
+      in for j in reordering
+         do (reps[j],null_class(),class_signature(reps[j]).compressed_string)
+         od
    ,  irreps = [classical_irrep,string,[int]]:
       for line@i in e6_table
       do (null_irrep()
@@ -127,4 +125,18 @@ set character_table_E6() = CharacterTable:
 	 ,line
 	 )
       od
-   in character_table(class_table_E6,classes,irreps)
+   in character_table(Wct,classes,irreps)
+
+{ voluntarily override previous definition to memoize for |standard_datum_E6| }
+set character_table_E6 = (RootDatum->CharacterTable):
+   let ct= trivial_character_table { place holder value }
+in (RootDatum rd) CharacterTable:
+   if rd != standard_datum_E6 then character_table_E6(rd) { no recursion! }
+   elif =ct.root_datum.rank { whether this is the first time we are called }
+   then ct:=character_table_E6(rd) { compute and store the first time }
+   else ct { any next time just return the previously computed value }
+   fi
+
+
+set character_table_E6() = CharacterTable:
+   character_table_E6(standard_datum_E6)

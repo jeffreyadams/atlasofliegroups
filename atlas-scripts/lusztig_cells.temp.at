@@ -75,7 +75,7 @@ in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
  sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
  ()=if sigma_L_verbose then prints("exchange/tensor sign: ", sigma) fi in
  ct_G.character_index(sigma)
-else  {need induction; compute L, sigma_L, truncated_induce}
+else  {y not integral; need induction; compute L, sigma_L, induced and truncate}
  let ()=if sigma_L_verbose then prints("need induction: ")  fi in
  let G_v=O_v.root_datum then
  ()=if sigma_L_verbose then prints(("y=",y) ) fi then
@@ -105,36 +105,30 @@ else  {need induction; compute L, sigma_L, truncated_induce}
   ex=exchange_long_short(L_v.character_table,sigma_L_0) in
   let ()=if sigma_L_verbose then prints("sigma_L_v: ", sigma_L_v, new_line, "char: ", char, new_line, "sigma_L_0: ", sigma_L_0, new_line,
   "ex: ", ex) fi in ex
- fi  {end if O_L_v=L_v.zero_orbit} then
- {now induce sigma_L}
- ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
- {maybe need fake degrees for st_G_v}
-{ ()=    assert(#(st_G_v.fake_degrees)>0,"need to compute fake degrees for st_G_v (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then}
-  degree_function(int j)=ct_G.fake_degrees[j] then
-  ()=if sigma_L_verbose then prints("inducing character from L:", L) fi then
+  fi  {end if O_L_v=L_v.zero_orbit} then
+  {now induce sigma_L}
+  ()=assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
   ind=induce_character(G,ct_G,roots_L,sigma_L) then
-    ()=if sigma_L_verbose then prints("finished inducing character from L:", L) fi then
-{  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then}
-{error in F4, trying variants:}
+  ()=if sigma_L_verbose then prints("ind=",ind, new_line);ct_G.view(ind) fi then
   ind_decomposed=ct_G.decompose(ind) then
-  desired_fake_degree =
-   st_G_v.ct.degrees[st_G_v.springer(O_v)] then
-  ()=if sigma_L_verbose then prints("desired_fake_degree: ", desired_fake_degree) fi then
+  {desired fake degree: fake_degree(ex)}
+  sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
+  sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
+  sigma_index=ct_G.character_index(sigma) then
+  desired_fake_degree=ct_G.degrees[sigma_index] then
+  ()=if sigma_L_verbose then prints("computing desired fake degree", new_line, "sigma_v=", sigma_v, new_line, "sigma=", sigma,
+    "sigma _index=", sigma_index, "desired fake degree: ", desired_fake_degree) fi then
   char_indices=[int]:
-     ##for i:#ind_decomposed do
-       if (ind_decomposed[i]>0 and ct_G.fake_degrees[i]=desired_fake_degree) then [i]  else [] fi od then
+  ##for i:#ind_decomposed do
+  if (ind_decomposed[i]>0 and ct_G.fake_degrees[i]=desired_fake_degree) then [i]  else [] fi od then
 {     if      (ind_decomposed[i]>0 and ct.fake_degrees[i]=desired_fake_degree) then [i] else [int]:[] fi od }
   ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line);
     prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view_char(ind);
     prints("minimal degree terms in induced: ", char_indices) fi then
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
-  char_index=   if =#char_indices then -1
-    else
-     let char_L_0=ct_G.characters[char_indices[0]] then
-     ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char_L_0) fi in
-     ct_G.character_index(char_L_0)
-    fi
-  in if sigma_L_verbose then prints("char_index=", char_index) fi;char_index
+ char_L=ct_G.characters[char_indices[0]] then
+ ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char_L) fi in
+ ct_G.character_index(char_L)
 fi  {end if y.is_integer}
 
 
@@ -163,7 +157,7 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  H_L_v=dominant(H_M_v,L_v) then
  O_L_v=ComplexNilpotent:(L_v,(),H_L_v) then
  ()=if sigma_L_verbose
-   then prints(("L_v=", L_v,new_line,"H_L_v=", H_L_v,new_line,"O_L_v:", O_L_v.H, new_line,"O_L_v.diagram:", O_L_v.diagram) ) fi then
+   then prints(("L_v=", L_v,new_line,"H_L_v=", H_L_v,new_line,"O_L_v:", O_L_v.H, " ", O_L_v.diagram) ) fi then
  L=dual(L_v) then
  roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
@@ -250,8 +244,7 @@ tabulate(
   in
   for i:#data do
    let (M_v,H_M_v,y,j)=data[i] then
-   sigma=
-    if j=-1 then [] else ct_G.characters[j] fi in
+   sigma=ct_G.characters[j] in
    [O_v.diagram.to_string,
     O_v.dim_nilpotent.to_string,
     i.to_string,
@@ -261,11 +254,9 @@ tabulate(
     y.compact_ratvec,
     centralizer(G,y).nice_format,
     "sigma="+j.to_string,
-    if j=-1 then "x" else ct_G.dimension(j).to_string fi,
-    if j=-1 then "x"  else ct_G.degrees[j].to_string fi,
-    if j=-1 then "x"
-     elif #ct_G.fake_degrees>0 then ct_G.fake_degrees[j].to_string
-     else "x" fi,
+    ct_G.dimension(j).to_string,
+    ct_G.degrees[j].to_string,
+    if #ct_G.fake_degrees>0 then ct_G.fake_degrees[j].to_string else "" fi,
     sigma.to_string]
   od  {/for i:#data}
  od {for O_v})
