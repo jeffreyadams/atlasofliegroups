@@ -138,7 +138,7 @@ set split_last_factor(RootDatum rd)=(RootDatum,RootDatum,[[int]]):
 let factors=simple_factors(rd) then
 rv=factors[0].derived then
 ()= for i:#factors-2 from 1 do rv*:=factors[i].derived od in
-(rv,factors~[0].derived, [##for i:#factors-1 do simple_factor_indices(rd,i) od, simple_factor_indices(rd,#factors-1)])
+(rv,factors~[0].derived, [##for i:#factors-1 do diagram_component(rd,i) od, diagram_component(rd,#factors-1)])
 
 {tensor product of springer tables
 st1.root_datum can be anything semisimple,
@@ -246,7 +246,7 @@ set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
    then rd_int = {integrality datum on group side}
                  integrality_datum(rd,O_check.H/2)
    then {P is the permutation relating rd_int.derived and st_int.root_datum}
-        (,P)=nice_order(rd_int.derived)
+        (,P)=Cartan_matrix_type(Cartan_matrix(rd_int))
    then permutation=P.permutation_matrix
 in {by definition permutation should relate the Cartan matrices}
    assert(permutation*st_int.root_datum.Cartan_matrix =

@@ -356,9 +356,11 @@ dual: (RootDatum->RootDatum): dual of given root datum.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
   The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
+  Although coordinates change, the Cartan matrix is unchanged in the result.
 mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
   The (semisimple) root datum obtained by quotienting by the central torus,
   and matrix embedding weights for the quotient datum into the original datum.
+  Although coordinates change, the Cartan matrix is unchanged in the result.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed

@@ -23,7 +23,7 @@ set av_verbose=false
 set associated_variety_ann_ind(Param param,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
 let p=Finalize(param) then
 rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
-(,P)=nice_order(rd_int.derived) then
+(,P)=Cartan_matrix_type(Cartan_matrix(rd_int)) then
 perm=P.permutation_matrix then
 special_character_int=special_character(ct_int,cell,perm) then
 ()=if av_verbose then prints("p=",p, new_line,

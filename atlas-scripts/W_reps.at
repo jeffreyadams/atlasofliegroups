@@ -58,24 +58,17 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
 
 { ----------- cell representations --------------}
 
-{ Type definitions that facilitate handling output from W_cells }
+{ Type definitions that facilitate handling the output from built-in |W_cells| }
 set_type
-[ WNode = ([int] tau,[int,int] out_list),    {([int],[int,int])}
-  WGraph = (RootDatum rd,[WNode] nodes),     {(RootDatum,[([int],[int,int])])}
-  WCell = ([int] labels, WGraph graph,[sparse_mat] operators)
-          { ([int], (RootDatum,[([int],[int,int])]), [sparse_mat])}
+[ WNode = ([int] tau,[int,int] out_list)
+, WGraph = (RootDatum root_datum,[WNode] nodes)
+, WCell = ([int] labels, WGraph graph,[sparse_mat] operators)
 ]
-
-set root_datum(WGraph(rd,))=rd  {this is the integrality_datum of the parameter/block}
-set root_datum(WCell (,g,))=g.root_datum
-set #(WGraph(,nodes))=int:#nodes
-set nodes(WCell (,graph,))=[WNode]:graph.nodes
-{
-set W_graph(WCell (,g))=WGraph:g
-set root_datum(WNode node)=RootDatum:node.rd
-set root_datum(WGraph g)=RootDatum:g[0].root_datum
-set root_datum(WCell (,g))=RootDatum: g.root_datum
-}
+{ now |W_cells@Block| returns      | [[int],[WNode]]  |
+  and |W_cells@Param| returns | (int,[[int],[WNode]]) | }
+set root_datum(WCell c) = RootDatum: c.graph.root_datum
+set nodes(WCell c) = [WNode]: c.graph.nodes
+set #(WGraph g) = int: #g.nodes
 
 { Description of the cell representation taken from messages/wcells.help
 
@@ -142,15 +135,16 @@ set root_datum(WCell (,g))=RootDatum: g.root_datum
   described in the W_cells@Block command in atlas-functions.help
 }
 
-{ the cell_action functions really live on the level of WGraph: }
+{ the |cell_action| functions really operate on |WGraph| data }
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
 set graph_action (WGraph (rd,graph),int s) = sparse_mat:
-   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s), n=#graph in
+   assert(s.>= and s<rd.semisimple_rank,"bad W generator: "+s);
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
    for node@j in graph
    do if node.tau_has_s
       then [(j,-1)] { single diagonal term -1 }
-      else (j,1) { diagonal term, the rest come from outwardard edges } #
+      else (j,1) { diagonal term, the rest come from outward edges } #
         for (i,):link in node.out_list
         do if graph[i].tau_has_s then [link] else [] fi
         od.## { filter, keeping destination nodes with |s| in tau invariant }
@@ -183,39 +177,32 @@ set cell_action (WCell cell,[int] w) = mat:
 set cell_action(WCell cell,WeylElt w) = mat:
   graph_action(cell.graph,w.word)
 
-{W_cells@Param is built-in,
-returns int,[[int],[[int],[int,int]]])
-now that graph_action is defined we can define
-functions which return actual [WCell], a WCell
-includes the last argument [mat]
- W_cells_index: returns (int,[WCell])
- W_cells_of     returns [WCell]
-the last argument [mat]
-also includes a WGraph, which includs a RootDatum
-}
-{modify some builtins to take RootDatum of WGraph/WCell into account}
-{W_cells(p)=     (int,  [ ([int], [ ([int],[(int,int)])  ])  ])
+{ |W_cells@Param| is built-in and returns (int,[[int],[[int],[int,int]]])
+  Now that graph_action is defined we can define functions that return actual
+  values of type [WCell]. Note that |WCell| includes the last argument [mat].
+
+ W_cells(p)=     (int,  [ ([int], [ ([int],[(int,int)])  ])  ])
                  (index,[ (labels,[  WNode               ])  ])
  W_cells_of(p)   =[ WCell ]
                  =[([int],  WGraph,[sparse_mat]) ]
                  =[ (labels, (rd,[WNode]), [sparse_mat]) ]
- W_cells_index(p)=(int,W_Cells_of)
+ vertex_and_W_cells(p)
 	         =(int,[ WCell ])
                  =(int,[ ([int],  WGraph,[sparse_mat]) ]_
                  =(int,[ (labels, (rd,[WNode]), [sparse_mat]) ])
 }
-set W_cells_index(Param p)=(int,[WCell]):
-let (index,cells)=W_cells(p) then
-rd=p.root_datum then
-cells=[WCell]:
- for (labels,nodes) in cells do  {nodes=[WNode]=[([int],[(int,int)])]}
- let g=WGraph:(p.integrality_datum,nodes) then
- ops=for i:p.root_datum.ss_rank do graph_action(g,i) od
- in (labels,g,ops)
- od
-in (index,cells)
+set vertex_and_W_cells(Param p) = (int,[WCell]):
+let (vertex,cells) = (int,[[int],[WNode]]): W_cells(p)
+then cells_with_action = [WCell]:
+  for (labels,nodes) in cells { of types |[int]| respectively |[WNode]| }
+  do let (id,):g = WGraph: (p.integrality_datum,nodes)
+     then ops = for i:id.semisimple_rank do graph_action(g,i) od
+     in (labels,g,ops)
+  od
+in (vertex,cells_with_action) { |vertex| is number of |p| as used in |labels| }
 
-set W_cells_of(Param p)=[WCell]:let (,cells)=W_cells_index(p) in cells
+set W_cells_of(Param p) = [WCell]:
+  let (,cells) = vertex_and_W_cells(p) in cells
 
 {. character of representation of W on cell .}
 set cell_character (WeylClassTable Wct,WCell cell) = [int]:

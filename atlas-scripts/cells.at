@@ -1,29 +1,32 @@
+<basic.at
+<W_reps.at { for types |WNode|, |WGraph|, |WCell| }
 <character_table_reps.at
 <springer_tables.at
 
-{
-these two functions are defined in W_reps.at:
-W_cells_index@Param->(int,[WCell])
-W_cells_of@Param->[WCell]
-now also define singular versions:
-W_cell_index@Param->(int,WCell)
-W_cell_of@Param->WCell
+{ Below, conforming to definition of |WCell| given in W_reps.at, the term
+  "cell" will always refer to a structure that includes action matrices. This
+  was not so for the built-in functions |W_cells|, not directly used here.
 }
-set W_cell_index(Param p)=(int,WCell):
-let (index,cells)=W_cells_index(p) then
-j=first(for i:#cells do let (param_indices,,)=cells[i] in find(param_indices,index)>=0 od) in
-(index,cells[j])
+set vertex_and_W_cell(Param p) = (int,WCell):
+   let (vertex,cells)=vertex_and_W_cells(p)
+   then cell_nr = int:
+      let test = contains(vertex)
+      in first(#cells,(int i)bool: test(cells[i].labels))
+in (vertex,cells[cell_nr])
 
-set W_cell_of(Param p)=WCell: let (,cell)=W_cell_index(p) in cell
+set W_cell_of(Param p) = WCell: { just the cell that has the vertex for |p| }
+   let (,cell) = vertex_and_W_cell(p) in cell
 
-{assuming block and cells are already computed:}
-set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
-let index=find(block,p) then
-cell_number=first(for (param_numbers,,)@i in cells do find(param_numbers,index)>=0 od) in
-(index,cells[cell_number])
+{ with block and cells already computed, this can replace |vertex_and_W_cell| }
+set W_cell([Param] block,[WCell] cells, Param p) = (int,WCell):
+   let vertex = find(block,p)
+   then cell_nr = int:
+      let test = contains(vertex)
+      in first(#cells,(int i): test(cells[i].labels))
+in (vertex,cells[cell_nr])
 
-set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
-let (,c)=W_cell(block,cells,p) in c
+set W_cell_of(([Param],[WCell],Param) arg) = WCell:
+   let (,cell) = W_cell(arg) in cell
 
 
 { ----------- cell representations --------------}
