@@ -1,0 +1,55 @@
+<basic.at
+<character_tables.at { for type |CharacterTable| }
+<cells.at { for |cell_character@CharacterTable| }
+<character_table_reps.at
+<K_highest_weights.at {for all_parameters_gamma}
+<springer_tables.at
+<isomorphism_W.at {for permute_character}
+{<springer_tables.at}{moved stuff requiring springer tables to cells_springer.at}
+{this file does not require springer_tables.at}
+
+
+
+{------------------- generic degrees ----------------}
+
+
+set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
+( ct.n_classes { size of degree lists being summed }
+# for cell in cells
+  do let cell_char = [int]: ct.decompose(cell_character(ct,cell))
+     then d() = ct.degree(special_irreducible(ct,cell_char))
+  in for i:ct.n_classes
+     do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
+     od
+   od
+).sum
+
+{ if only side-effect of |generic_degrees| is desired, have name reflect that }
+set update_generic_degrees(CharacterTable ct,[WCell] cells) = void:
+   generic_degrees(ct,cells)
+
+set generic_degrees(CharacterTable ct,[Param] parameters) = [int]:
+   let cells= for b in blocks(parameters) do W_cells_of(b[0]) od.##
+in generic_degrees(ct,cells)
+
+set update_generic_degrees(CharacterTable ct,RealForm G) = void:
+   generic_degrees(ct,all_parameters_gamma(G,rho(G)))
+
+set show_degrees(CharacterTable ct) = void:
+(  let generic_degree(int i) =
+     if ct.has_generic_degree(i) then -1 else ct.generic_degree(i) fi
+in prints("a(i)=generic degree(character #i)",new_line
+	 ,"b(i)=degree(character #i)",new_line
+	 ,"*: special",new_line)
+;  tabulate
+   ( ["i","dim","a(i)","b(i)"]
+   # for i:ct.n_classes
+     do {don't know special_representation_star without springer table}
+       [i.to_string
+       ,dimension(ct,i).to_string {+ct.special_representation_star(i)}
+       ,generic_degree(i).to_string
+       ,ct.degree(i).to_string
+       ]
+     od
+   )
+)

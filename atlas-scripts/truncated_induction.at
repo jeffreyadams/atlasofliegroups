@@ -17,11 +17,11 @@ roots are a subset of the of G
 set ti_verbose=false
 
 {truncate character: keep only the components of minimal degree,
-according to degree_function (degree or fake_degree)
+according to degree_function (degree or generic_degree)
 returns (degree, list of indices of characters of this degree)
 }
 
-{degree_function: degree or fake_degree}
+{degree_function: degree or generic_degree}
 set truncate(CharacterTable ct_G,[int] char,(int->int) degree_function)=[int]:
 let dec=ct_G.decompose(char) then
 ()=if ti_verbose then prints("truncating character: ", char, new_line,"decomposed: ", dec) fi then
@@ -30,7 +30,6 @@ min_degree=ct_G.root_datum.nr_of_posroots then
 rv=[int]:[] in
 for i:#dec do
  if !=dec[i] then
-  {  let degree= if flag=0 then ct_G.degrees[i] else st_G.fake_degrees[i] fi in}
     let degree= degree_function(i) in
   if degree<min_degree and degree>=0 then
    rv:=[i];min_degree:=degree
@@ -48,8 +47,8 @@ set truncate(SpringerTable st_G,[int] char,(int->int) degree_function)=[int]:tru
 
 {induce and truncate}
 {basic version, using given embedding f
- degree function is either degree or fake_degree
- return value is [int] since this can happen in the fake_degree case}
+ degree function is either degree or generic_degree
+ return value is [int] since this can happen in the generic_degree case}
 set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f, (int->int) degree_function,[int] pi_L) =[int]:
 let ()=if ti_verbose then prints("Computing induced character: ") fi then
 ind=induce_character(ct_L,ct_G,f,pi_L) then

@@ -41,11 +41,13 @@ then
    let (a,b)=f(i) in ct1.irreducible_label(a)+ct2.irreducible_label(b)
 , degrees = [int]:
    for i:m*n do let (a,b)=f(i) in ct1.degrees[a]+ct2.degrees[b] od
-, fake_degrees=
-   if #ct1.fake_degrees=m and #ct2.fake_degrees=n
-   then for i:m*n do let (a,b)=f(i) in ct1.fake_degrees[a]+ct2.fake_degrees[b] od
-   else []
-   fi
+, get_generic_degree (int i) = int:
+    let (a,b)=f(i) then d1 = ct1.generic_degree(a), d2=ct2.generic_degree(b)
+    in if d1.< or d2.< then minus_1 else d1+d2 fi
+, set_generic_degree (int i, (->int) d, bool check) = int:
+    error("Cannot set generic degrees for tensor table: set it for factors")
+, has_generic_degree (int i) = bool:
+    let (a,b)=f(i) in ct1.has_generic_degree(a) and ct2.has_generic_degree(b)
 , table=kronecker_product(ct1.table,ct2.table)
 in
 ( Wct
@@ -56,6 +58,6 @@ in
 , (int j): null_irrep()
 , irreducible_label
 , degrees
-, fake_degrees
+, get_generic_degree, set_generic_degree, has_generic_degree
 , table
 )

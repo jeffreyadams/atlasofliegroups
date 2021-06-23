@@ -1,6 +1,6 @@
 <basic.at
-<W_reps.at { for types |WNode|, |WGraph|, |WCell| }
-<character_table_reps.at
+<W_reps.at { for type |WCell|; |cell_action@(WCell,WeylElt)| }
+<character_table_reps.at { |smallest_degree_summands| }
 <springer_tables.at
 
 { Below, conforming to definition of |WCell| given in W_reps.at, the term
@@ -58,18 +58,29 @@ set cell_representation (CharacterTable ct,WCell cell) = W_rep:
 set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
   for cell in cells do cell_representation(ct,cell) od
 
-{smallest_degree_summands is in character_tables.at}
+set special_irreducible(CharacterTable ct, [int] multiplicities) = int:
+   let summands = smallest_degree_summands(ct,multiplicities)
+in case #summands
+   in assert(=multiplicities,"What?"); error("zero character, no special")
+   , summands[0]
+   else error("non-unique special representation")
+   esac
+
 {NOTE: need to incorporate the permutation relating ct.root_datum and cell.root_datum}
 {note that ct.root_datum must be (isomorphic to) cell.root_datum,
  which is the integrality_datum of a parameter}
-set special_character(CharacterTable ct,WCell cell)=
-let (valid,P)=root_permutation(ct.root_datum.derived,cell.root_datum.derived) in
-assert(valid,"No root system isomorphism");
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
+set special_character (CharacterTable ct,WCell cell) = int:
+(  let (valid,P) =
+     root_permutation(ct.root_datum.derived,cell.root_datum.derived)
+   in assert(valid,"No root system isomorphism")
+;  let summands =
+     smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
 in if #summands>1 then error("not unique special representation")
    elif #summands=0 then error("no special summands?")
    else summands[0]
    fi
+)
+
 set special_character(CharacterTable ct)=(WCell->int):(WCell cell):
   special_character(ct,cell)
 

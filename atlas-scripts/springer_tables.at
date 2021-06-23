@@ -14,7 +14,7 @@ set_type [SpringerTable=
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 set characters(SpringerTable st)=[[int]]:st.ct.characters
-set fake_degrees(SpringerTable st)=[int]:st.ct.fake_degrees
+set generic_degree(SpringerTable st) = (int->int): st.ct.generic_degree
 set character_table(SpringerTable st)=CharacterTable: st.ct
 
 {equality of normalized diagrams}
@@ -267,7 +267,7 @@ orbit.dim_nilpotent.to_string,
 j.to_string,
 dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
-if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
+st.ct.generic_degree_string(j),
  st.ct.characters[j].to_string] od)
 
 set show_long(SpringerTable st)=void:
@@ -284,8 +284,8 @@ dual_orbit.dim_nilpotent.to_string,
 j.to_string,
 dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
-if #st.fake_degrees>0 then st.fake_degrees[j].to_string else "" fi,
- st.ct.characters[j].to_string] od)
+st.ct.generic_degree_string(j),
+st.ct.characters[j].to_string] od)
 
 set show_reps(SpringerTable st)=void:
 let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
@@ -300,7 +300,5 @@ for j:st.ct.n_classes do
   fi,
 dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
-if #st.fake_degrees>0 then
-  if st.fake_degrees[j]>=0 then st.fake_degrees[j].to_string else "" fi
-  else "" fi,
- st.ct.characters[j].to_string] od)
+st.ct.generic_degree_string(j),
+st.ct.characters[j].to_string] od)

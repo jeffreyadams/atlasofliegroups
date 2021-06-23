@@ -3,7 +3,6 @@
 <classical_W_classes_and_reps.at
 <nilpotent_orbits.at
 <isomorphism.at
-{including fake degree}
 
 set ct_verbose=false
 
@@ -36,7 +35,9 @@ set_type
   , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
   , [int] degrees { should be made function }
-  , [int] fake_degrees { should be made function }
+  , (int->int) generic_degree
+  , (int,(->int),bool->int) set_generic_degree
+  , (int->bool) has_generic_degree
   , mat table { should be made function } { by row=character }
   )
 ]
@@ -60,6 +61,19 @@ in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
      first(rd.nr_of_posroots+1
           ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
    od
+   , generic_degrees = vec: -ones(n)
+then get_generic_degree(int i) = int:
+   if generic_degrees[i].<
+   then error("Generic degree of irrep "+i+" was not set")
+   else generic_degrees[i]
+   fi
+,  set_generic_degree(int i,(->int) d, bool check) = int:
+   if generic_degrees[i].<
+   then generic_degrees[i]:=d()
+   else
+     if check then assert(generic_degrees[i]=d(),"Generic degree change") fi
+   ; generic_degrees[i]
+   fi
 in
    ( { class_table } WeylClassTable: Wct
      {conjugacy classes}
@@ -71,7 +85,9 @@ in
    , { classical_reps } (int i)classical_irrep: irreps[i]
    , { irreducible_label } (int i)string: labels[i]
    , { degrees } [int]: degrees
-   , { fake_degrees} [int]: [] { to be set afterwards }
+   , { generic_degree } (int->int): get_generic_degree
+   , { set_generic_degree } (int,(->int),bool->int): set_generic_degree
+   , { has_generic_degree } (int i) bool: generic_degrees[i].>=
    , { table } mat: character_table
    )
 )
@@ -87,7 +103,8 @@ set !trivial_character_table = CharacterTable:
    let Wct = W_class_table(adjoint("")), id(int i)=int: i
    then e=id_W(Wct.root_datum)
 in (Wct,1,[e],(int i):"e",(int i)classical_class: null_class()
-   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0],[0],[[1]]
+   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0]
+   ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true, [[1]]
    )
 
 { attributes inhereited from the |class_table| component }
@@ -125,7 +142,9 @@ set index(CharacterTable ct,vec char) = int: ct.character_index(char)
 set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
 set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
 
-set degree(CharacterTable ct) = (int i)int: ct.degrees[i] { actually fake deg }
+set degree(CharacterTable ct) = (int i)int: ct.degrees[i]
+set generic_degree_string(CharacterTable ct)  = (int i)string:
+   if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
 
 set sum(CharacterTable ct) = ([int],[int]->[int]): ct.class_table.direct_sum
 set product(CharacterTable ct) = (([int],[int])->[int]): ct.class_table.tensor
@@ -273,14 +292,14 @@ tabulate (
    ["i"
    ,"dim"
    , "deg"
-   ,"fdeg"
+   ,"gdeg"
    ,"name"
    ]
 #  for i:ct.n_classes
    do [i.to_string
       ,character_value(ct,id_class)(i).to_string
       ,ct.degree(i).to_string
-      ,if #ct.fake_degrees>0 then ct.fake_degrees[i].to_string else "" fi
+      ,ct.generic_degree_string(i)
       ,ct.irreducible_label(i).to_string
       ]
    od
@@ -308,12 +327,12 @@ set view_multiplicities (CharacterTable ct,vec v {multiplicities}) = void:
 	    ,mult.to_string
 	    ,dimension(ct,i).to_string
 	    ,ct.degrees[i].to_string
-	    ,if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi
+	    ,ct.generic_degree_string(i)
 	    ]
 	 ]
 	 fi
       od.##
- in tabulate(["#","mult","dim","deg","fdeg"]#table)
+ in tabulate(["#","mult","dim","deg","gdeg"]#table)
 
 set view_char(CharacterTable ct,vec character) = void:
    view_multiplicities(ct,ct.decompose(character))
