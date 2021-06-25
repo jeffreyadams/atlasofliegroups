@@ -9,19 +9,21 @@
   by the simple roots for a single connected component of the diagram }
 
 
-{ for a permutation of the semisimple rank, given as list of integers, make new
-  root datum where new simple (co)root |i| is what used to be number |sigma[i] }
+{ For a permutation of the semisimple rank, given as list of integers, make new
+  root datum whose new simple (co)root |i| is what used to be number |sigma[i]|.
+  This is not a permutation of simple roots and coroots by |sigma| in the usual
+  convention (and that of |permute@([int],vec)|, but rather by |inverse(sigma)|,
+  which is why the argument |sigma| is written to the right of the root datum.
+}
 set permute(RootDatum rd,[int] sigma) = RootDatum:
    let sr=simple_roots(rd), scr=simple_coroots(rd), r=rank(rd)
 in root_datum( r # for i in sigma do sr[i] od  { permute columns by |sigma| }
 	     , r # for i in sigma do scr[i] od { permute columns by |sigma| }
 	     , rd.prefers_coroots )
 
-{this returns a single RootDatum, with simple roots
-grouped by simple factors; within each simple
-factor roots are in Bourbaki order
-also permutation satisfying: |rd_new=permute(rd,P)|
-}
+{ Make a root datum with simple roots permuted, such that simple factors are
+  grouped together and have their roots in Bourbaki order; this is achieved by
+  a call to |permute| above, whose permutation argument is also returned. }
 set reorder_diagram_Bourbaki(RootDatum rd) = (RootDatum,[int]):
    let (,pi)=Cartan_matrix_type(Cartan_matrix(rd)) in (permute(rd,pi),pi)
 
@@ -45,7 +47,7 @@ set simple_factor(RootDatum rd, int root_number) = RootDatum:
 set simple_factor(RootDatum rd,vec alpha) = RootDatum:
    simple_factor(rd,first(rd.semisimple_rank,(int i): !=coroot(rd,i)*alpha))
 
-{complete list of simple factors, as [RootDatum]}
+{ complete list of simple factors, each stratified, as [RootDatum] }
 set simple_factors(RootDatum rd) = [RootDatum]:
    for S in diagram_components(rd) do sub_datum(rd,S) od
 
@@ -53,23 +55,6 @@ set simple_factors(RootDatum rd) = [RootDatum]:
 set very_simple_factors(RootDatum rd) = [RootDatum]:
    let (type,)=Cartan_matrix_type(Cartan_matrix(rd)) in
    for (letter,rank) in simple_factors(type) do simply_connected(letter+rank) od
-
-{complete list of simple factors, as [RootDatum]
-returns:
-RootDatum rd_new: permutation of original, with roots ordered
-by simple factor, and within each simple factor by Bourbaki
-order;no attempt is made to order the simple factors
-[RootDatum]: list of simple factors
-[int]: permutation relating rd and rd_new:
-permut(rd,P)=rd_new
-i.e.
-rd.simple_roots*(P.permutation_matrix)=rd_new.simple_roots
-rd.simple_coroots*(P.permutation_matrix)=rd_new.simple_coroots
-}
-set simple_factors_nice(RootDatum rd)=(RootDatum,[RootDatum],[int]):
-let (rd_nice,P)=rd.reorder_diagram_Bourbaki in
-   assert(permute(rd,P)=rd_nice,"failure computing permutation");
-   (rd_nice,simple_factors(rd_nice),P)
 
 set number_simple_factors(RootDatum rd) = int: #diagram_components(rd)
 
