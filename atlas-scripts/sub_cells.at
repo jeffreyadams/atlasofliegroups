@@ -144,9 +144,13 @@ set sub_digraph(WGraph graph,[int] S)=WGraph:
 	  od)
 od)
 
+{ sub_root_datum is needed for the W_cells to be understood by the
+underlying "real" character table. But it isn't good enough: if
+ct=GL(3,R).character_table and C is a left cell from GL(3,C), then ct
+cannot see C: the root datum of C is SL(3), and that for ct is GL(3). }
 set sub_graph(WGraph graph,[int] S)=WGraph:
-(graph.root_datum,for (tau,edges) in graph.nodes do
-    (tau,
+(sub_root_datum(graph.root_datum,S).derived,for (tau,edges) in graph.nodes do
+    (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) or
@@ -224,10 +228,10 @@ od
 )
 
 {. character of representation of W on cell .}
-{
+
 set cell_character_C (CharacterTable ct,WCell cell) = [int]:
 for w in ct.class_reps do trace(cell_action(cell,w)) od
-}
+
 
 { ----- output commands  -----------}
 set show(WGraph g)=void:
