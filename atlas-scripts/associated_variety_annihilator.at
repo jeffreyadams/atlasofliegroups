@@ -140,10 +140,16 @@ set associated_variety_ann(Param p,SpringerTable st_rd,CharacterTable ct_int)=Co
 set associated_variety_ann(Param p,SpringerTable st_rd)=ComplexNilpotent:associated_variety_ann_res(p,st_rd)
 set associated_variety_ann(Param p)=ComplexNilpotent:associated_variety_ann_res(p)
 
-set GK_dimension(Param p,SpringerTable st)=int:associated_variety_ann(p,st).dim_nilpotent\2
-set GK_dimension(SpringerTable st)=(Param->int):(Param p):GK_dimension(p,st)
+{set GK_dim(Param p,SpringerTable st)=int:associated_variety_ann(p,st).dim_nilpotent\2}
 
-set GK_dimension(Param p)=int:associated_variety_ann(p,p.root_datum.springer_table).dim_nilpotent\2
+{ If you only want the GK dimension you don'tn need to compute the induction step.}
+set GK_dim(Param p) = int:
+let cell=W_cell_of(Finalize(p)) then
+ct_L=cell.root_datum.character_table in
+#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character(cell)]
+
+{set GK_dim(SpringerTable st)=(Param->int):(Param p):GK_dim(p,st)}
+
 
 set show([(Param,ComplexNilpotent)] data)=void:
 tabulate(
@@ -283,56 +289,39 @@ tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
   od);all(rv)
 
 set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.springer_table)
-{
 
-
-
-let gamma=dominant(rd,gamma_in) then
-{springer table for rd}
-st=rd.springer_table then
-ct=st.ct then
-{character table for ct_int}
+{GK_dim_maximal_ideal is like GK_dim: it returns just the dimension of the orbit,
+and can therefore skip (one of the) the induction step(s)}
+set GK_dim_maximal_ideal(RootDatum rd,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
+let gamma_0=move(gamma_in,rd, rd) then
+gamma=dominant(rd,gamma_0) then
+()=if av_verbose then prints("gamma_in: ", gamma_in, new_line, "gamma_0: ", gamma_0,new_line, "gamma: ", gamma) fi then
 rd_int=integrality_datum(rd,gamma) then
-ct_int=rd_int.character_table then
-{character table for rd_singular}
 rd_singular=singular_root_datum(rd,gamma) then
-ct_singular=rd_singular.character_table then
 d=rd_singular.nr_of_posroots then
-()=prints("target degree: ", d) then
-{(rd_int,ct_int,rd_singular,ct_singular,ct_singular_sign)}
+()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
+"target d: ", d) fi then
 chars_int=##for i:ct_int.n_classes do
  if ct_int.degrees[i]=d and
  !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi
 od then
+()=if av_verbose then prints("characters found: ", chars_int) fi then
 char_int=ct_int.characters[chars_int[0]] then
 char_int_sign=ct_int.tensor_sign(char_int) then
-{in (rd_int,rd,ct_int,rd.character_table,char_int)}
-()=prints("char_int: ", char_int) then
-()=prints("char_int_sign: ", char_int_sign) then
-index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then
-()=prints("index: ", index, new_line, "induced character: ", ct.characters[index]) then
-orbit=st.springer_inverse(index) in
-orbit_by_diagram(rd,orbit.diagram_normalized)
-}
+()=if av_verbose then 
+ prints("char_int_sign: ", char_int_sign, new_line,
+ "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line) fi then
+gk_dim=#posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)] in 
+if av_verbose then prints("rd_int: ", rd_int, "#posroots(rd): ", #posroots(rd), new_line, "char_int_sign: ", char_int_sign,
+new_line, "index of char_int_sign: ", ct_int.character_index(char_int_sign), new_line, "degree: ", 
+ct_int.degrees[ct_int.character_index(char_int_sign)]) fi;
+gk_dim
 
-{the alt versions use the left cell for a complex group to compute
-the maximal ideal at gamma, this is faster than av_maximal_ideal
-however I never go this working correctly, and it was replaced by
-
-
-
-{G: real group, st: SpringerTable for GC,ct_int: CharacterTable for GC,gamma#gamma}
-set av_maximal_ideal_alt(RootDatum G,ratvec gamma,SpringerTable st,CharacterTable ct_int)=
-let GC=complexification(G) then
-p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
-()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
-()=prints("computing associated_variety_ann_res_complex of ", p_final.real_form, " " ,p_final) in p_final{
-associated_variety_ann_res_complex(p_final) }
-
-set av_maximal_ideal_alt(RootDatum rd,ratvec gamma,SpringerTable st_C)=
-av_maximal_ideal_alt(rd,gamma,st_C,character_table(integrality_datum(rd.complexification,gamma##gamma)))
-
-set av_maximal_ideal_alt(RootDatum G,ratvec gamma)=av_maximal_ideal_alt(G,gamma,G.complexification.springer_table)
-}
+set GK_dim_maximal_ideal(RootDatum rd,ratvec gamma)=int:
+let rd_int=integrality_datum(rd,gamma) then
+ct_int=character_table(rd_int) then
+rd_singular=singular_root_datum(rd,gamma) then
+ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
+in GK_dim_maximal_ideal(rd,ct_int, ct_singular,gamma)
 

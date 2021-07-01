@@ -569,6 +569,10 @@ set support (KGBElt x) = [int]:
   {note: x.w has the distinguished involution in it}
   list(x.root_datum.semisimple_rank,x.w.word.is_member)
 
+set support_dual (KGBElt x) = [int]:
+let w_long=x.root_datum.w0 in 
+  list(x.root_datum.semisimple_rank,(w_long*x.w.word).is_member)
+
 {. Auxiliary function. .}
 set support_alt(KGBElt x)=[int]:
   let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in

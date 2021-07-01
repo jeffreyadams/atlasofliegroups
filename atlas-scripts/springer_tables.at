@@ -205,6 +205,9 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
  tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
+set springer_character(SpringerTable st)=(ComplexNilpotent->[int]):(ComplexNilpotent orbit):
+st.ct.characters[st.springer(orbit)]
+
 {inverse Springer map: try to find an orbit (not necessarily special) such
  that springer(orbit)=given character
 if the character is special this succeeds and gives a special orbit
