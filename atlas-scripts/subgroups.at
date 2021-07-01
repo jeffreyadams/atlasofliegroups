@@ -213,20 +213,29 @@ SO(8) <- SO(8)
 
 {------------------}
 
-{these should be moved to W_characters.at}
-
-set find_conjugate([WeylElt] S,WeylElt w)=int:
-first(for y in S do is_conjugate(y,w) od)
+{ these functions are slow, by calling |classify_standard_Levis| each time }
+set find_conjugate([WeylElt] S,WeylElt w) = int:
+  let match = is_conjugate_to_He(classify_standard_Levis(root_datum(w)))(w)
+  in first(for y in S do match(y) od)
 
 set find_all_conjugate([WeylElt] S,WeylElt w)=[int]:
-##for y@i in S do if is_conjugate(y,w) then [i] else [] fi od
+  let match = is_conjugate_to_He(classify_standard_Levis(root_datum(w)))(w)
+  in for y@i in S do if match(y) then [i] else [] fi od.##
 
 set group_by_conjugacy([WeylElt] S)=[[WeylElt]]:
-let rv=[[WeylElt]]:[] in
-for w in S do
- let match=find_conjugate(for list in rv do list[0] od,w) in
- if match =-1 then rv#:=[w] else rv[match]#:=w fi od;
- rv
+  if =#S then []
+  else
+     let is_conjugate = (WeylElt->(WeylElt->bool)):
+         is_conjugate_to_He(classify_standard_Levis(root_datum(S[0])))
+  , rv=[[WeylElt]]:[]
+  in
+     for w in S
+     do let match = (WeylElt->bool): is_conjugate(w)
+        then i = first(for list in rv do match(list[0]) od)
+     in if i.< then rv#:=[w] else rv[i]#:=w fi
+     od
+  ;  rv
+  fi
 
 {a few simple output routines}
 
@@ -712,13 +721,19 @@ adjoint(E7)
 set normalizer_reports()=normalizer_reports(default)
 
 {the following function could be done more efficiently using a |WeylClassTable| }
-{reduce list of Weyl group elements to distinct conjugacy classes}
-set filter_by_class ([WeylElt] list)=
-   let classes=[WeylElt]:[]
-in for elt in list
-   do if none(for w in classes do is_conjugate(w,elt) od) then classes#:=elt fi
-   od; classes
-
+{reduce list of W elements to representatives of distinct conjugacy classes}
+set filter_by_class ([WeylElt] list) = [WeylElt]:
+   if =#list then []
+   else
+     let is_conjugate = (WeylElt->(WeylElt->bool)):
+         is_conjugate_to_He(classify_standard_Levis(root_datum(list[0])))
+     , classes=[WeylElt]:[]
+   in for elt in list
+      do let match = is_conjugate(elt) in
+         if none(for w in classes do match(w) od) then classes#:=elt fi
+      od
+   ; classes
+   fi
 
 
 {embed Coxeter element of W(equal rank subgroup)}

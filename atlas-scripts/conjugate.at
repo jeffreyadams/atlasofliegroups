@@ -1,4 +1,5 @@
 <W_orbit.at
+<Levi_subgroups.at
 <simple_factors.at
 <lietypes.at  {for locally isomorphic}
 <group_operations.at
@@ -208,44 +209,18 @@ any(maybe_conjugate(rd,sub_1,sub_2))
 set is_conjugate_weak(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
 is_conjugate(rd,rho(sub_1),rho(sub_2))
 
-{moved from W_characters.at since it is needed here, for standard_Levi_conjugacy_representatives}
-set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
-  root_datum(columns_with(select,rd.simple_roots)
-            ,columns_with(select,rd.simple_coroots)
-	    ,rd.prefers_coroots
-	    ).two_rho
-
-{moved from W_characters.at since it is needed here, in standard_Levi}
-set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
-begin
-   let reps_by_rho ([[int]] list) = [[int]]:
-       let rho2s = [vec]:[] { list of known dominant $2\rho$ values } in
-     ##for subset in list
-       do let rho2=dominant(rd,two_rho(rd,is_member(subset)))
-       in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
-          then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
-          else [] { |rho2| was already present, contribute nothing }
-          fi
-       od
-   , r = rd.semisimple_rank
-in { now apply |reps_by_rho| to each size class, and concatenate the results }
-   for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##
-end
-
 { which standard Levi is (the non-standard) L conjugate to? }
 set standard_Levi (RootDatum rd,RootDatum rd_L) = RootDatum:
    let v = dominant(rho_check(rd_L),rd)
    , reps = standard_Levi_conjugacy_representatives(rd)
    then index=first(#reps,(int i)bool:
-			  dominant(rho_check(sub_root_datum(rd,reps[i])),rd)=v)
-   in sub_root_datum(rd,reps[index])
+			  dominant(rho_check(sub_datum(rd,reps[i])),rd)=v)
+   in sub_datum(rd,reps[index])
 
 { return a WeylElt, assumed to exist, taking rd_L to a standard Levi root datum }
 set standard_Levi_witness (RootDatum rd,RootDatum rd_L) = WeylElt:
    let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L))
    in assert(any(w), "Error finding standard_Levi_witness"); req(w)
-
-
 
 {automorphisms given by permutations of simple roots/coroots
 automorphism of Lie algebra

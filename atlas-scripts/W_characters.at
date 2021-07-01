@@ -1,8 +1,9 @@
+<basic.at
+<Levi_subgroups.at
 <elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
-<tabulate.at { for |tabulate| }
 <cyclotomic.at {for |product_of_cyclotomic|}
 <Weylgroup.at { for |is_relatively_elliptic| }
-<conjugate.at
+<tabulate.at { for |tabulate| }
 
 { The purpose of this file is working with Weyl group characters.
 
@@ -10,286 +11,60 @@
   finding an explicit witness of conjugacy from a class representative.
 }
 
-{ Preliminary: some transformations of presentation of a Levi system
 
-  A Levi system, not necessarily standard, can be defined either by the roots
-  forming a simple system for it (represented by their indices, usually within
-  |posroots(rd)|, though the code handles negative indices of negative roots
-  too), or by a predicate selecting the indices of positive roots in the system.
-
-  The function |Levi_info| deduces the predicate from the simple system, or from
-  a Weyl group element $w$ (selecting coroots vanishing on $w$-fixed weights),
-  and |Levi_datum| builds the root datum for the subsystem, given the predicate.
-}
-
-{ select posroots indices for (non standard) Levi, given by its simple system }
-set Levi_info (RootDatum rd, [int] Levi) = (RootDatum,(int->bool)):
-   let orth=kernel(rd.rank ^ for i in Levi do coroot(rd,i) od) in
-   (rd,(int j) bool: =coroot(rd,j)*orth)
-
-{ the |select| predicate for the above functions to use for a given |w| }
-set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
-   let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
-   (rd,(int i) bool: =coroot(rd,i)*orth)
-
-set Levi_datum = sub_datum@(RootDatum,(int->bool)) { defined in basic.at }
-
-set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
-set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
-
-{ A first task is to list the $W$ conjugacy classes.
+{ A first major task is to list the $W$ conjugacy classes.
 
   Every Weyl group element $w$ has an associated Levi subgroup (not necessarily
   standard), whose roots are those whose reflections fix all weights fixed by
-  $w$ (its eigenspace for $1$ in the reflection representation). Then $w$ is in
-  the Weyl group of this Levi subgroup, and by construction is elliptic there.
+  $w$ (its eigenspace for $1$ in the reflection representation). The function
+  |Levi_info@WeylElt| defined in Levi_subgroups.at computes the |Levi_info| for
+  this Levi subgroup. Then $w$ is in the Weyl group of this Levi subgroup, and
+  by construction it is a relatively elliptic element there.
 
   The Weyl subgroup of any Levi subgroup is conjugate in $W$ to that of a
   standard Levi subgroup, so for the purpose of finding the conjugacy classes of
-  $W$ it suffices to consider only standard Levi subgroups. A first task is to
-  classify standard Levi subgroups (determined by subsets of the simple roots)
-  by conjugacy. It turns out that Levi subsystems (whether or not standard) are
-  conjugate in $W$ if and only if their sum-of-posroots ($2\rho$) are conjugate.
-  We also compute explicit conjugating elements between standard Levi systems.
-
-  So compute $2\rho$ values for standard Levi subsystems, use |dominant| to
-  decide $W$-conjugacy, and classify all subsets of the set of simple roots
-  (from |power_set| in basic.at) by conjugacy of their associated $2\rho$s.
+  $W$ it suffices to consider only standard Levi subgroups. These have been
+  classified (under conjugacy by $W$) in Levi_subgroups.at. The function
+  |standard_Levi_conjugacy_representatives| defined there lists standard Levi
+  conjugacy class representatives, and the function |classify_standard_Levis|
+  provides for a root datum more complete information in the form of a
+  |Std_Levi_table|, which also lists Levi conjugacy orbits for easy looking up.
 }
 
-{two_rho@(RootDatum,(int->bool)) and standard_Levi_conjugacy_representatives@RootDatum
- have been moved to conjugate.at}
-
-{ The following functions, up to |classify_standard_Levis|, aim to classify
-  standard Levis under conjugation _and_ find conjugators for each one from the
-  first of their class. The Levi orbit table produced are then used in some
-  functions defined later, but the ultimate goal of efficiently classifying Weyl
-  group elements up to conjugation, with witnesses, is not achieved here, and
-  these functions are not used in the |WeylClassTable| object (near the end).
-
-  For each standard Levi system we determine the dominant orbit representative
-  |rho2_dom| of $2\rho$, a Weyl group element |w0| that witnesses this, and the
-  image under it of the Levi system (a non-standard Levi system $L$ whose value
-  $2\rho_L$ equals |rho2_dom|, since the Levi system remains positive throughout
-  the transformation). A conjugate standard Levi system will not necessarily map
-  to the same non-standard Levi system $L$, whence we generate the orbit of the
-  latter under the stabiliser subgroup of the |rho2_dom|, with witnesses.
-
-  The orbit generation here is taylored to the specific situation that we know
-  that all elements of the acting subgroup fix the $2\rho$ value for $L$, so the
-  only way they can map all simple generators of $L$ to roots of $L$ is by
-  permuting them among each other. Also since the $2\rho_L$ value is dominant,
-  for the full system, and so a fortiori dominant for the positive roots in any
-  system in the orbit of $L$, the acting stabiliser subgroup will map positive
-  roots of $L$ to positive roots. We can then work with positive root indices
-  only, act on lists of such indices, and sort the result to test for equality.
-}
-
-set_type orbit_data = [int,WeylElt] { posroot set as binary number, conjugator }
-set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| in binary }
-   let rd=w.root_datum in
-   for i in Levi do 2^coroot_index(rd,coroot(rd,i)*w) od.sum
-set unbinary (int bin) = [int]: let i=0 in
-   while bin.>
-   do let (q,r)=bin\%2 in if =r then [] else [i] fi
-   next i+:=1; bin:=q
-   od.##
-
-{ list of (L,w) where 2rho(L)=dominant(2rho(Levi)) and L=w*Levi  }
-set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
-   let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,is_member(standard_Levi)))
-   then rho_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_dom)
-   then root_perm = { list of posroot permutations for stabiliser generators }
-      let two=2/1 then pow2(int n)=int:floor(two^n) { negatives to 0 } in
-      for beta in rho_stabiliser.simple_roots
-      do for alpha in rd.posroots
-         do root_index(rd,reflect(rd,beta,alpha)).pow2
-	 od
-      od
-   then act(int i,[int] roots) = int:
-      let map = root_perm[i] in for j in roots do map[j] od.sum
-   , orbit = [(right_act(standard_Levi,w0),/w0)] { starting point }
-   , current=0
-   in while current<#orbit
-      do let (L_bin,w)=orbit[current] next current+:=1 then L=L_bin.unbinary in
-         for k:rho_stabiliser.semisimple_rank
-         do let new_L_bin=act(k,L) in
-            if none(#orbit,(int i): let (x,)=orbit[i] in x=new_L_bin)
-            then orbit #:=
-              (new_L_bin,root_reflection(rd,rho_stabiliser.simple_roots[k])*w)
-            fi
-         od
-      od; orbit
-
-set_type Std_Levi_orbit = (vec rho2, [int] Levi_repr, [[int],WeylElt] others)
-set_type Std_Levi_table = [Std_Levi_orbit]
-
-{ group together conjugate standard Levis, with witness conjugating from first }
-set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
-   let classify_group ([[int]] list) = Std_Levi_table:
-      let orbs = [orbit_data]:[], result = [Std_Levi_orbit]:[] in
-      for Levi in list
-      do let (w0,rho2_dom)=from_dominant(rd,two_rho(rd,is_member(Levi)))
-         then i = first(#result,(int i)bool: let (v,,)=result[i] in v=rho2_dom)
-      in if i.< { is this a previously unseen |rho2_dom| value }
-         then orbs #:= rho_stabiliser_orbit(rd,Levi)
-         ;  result #:= (rho2_dom,Levi,[])
-         else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
-            let orbit=orbs[i], cur=result[i], L = right_act(Levi,w0)
-            then (,w) =
-	       let pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in L=rts)
-	       in assert(pos.>=,"conjugate with dominant rho not found in orbit")
-	       ;  orbit[pos]
-            in result[i] := (cur.rho2,cur.Levi_repr,cur.others#(Levi,w0*w))
-					  { Levi <-w0-- L <-w-- Levi_rep }
-	 fi
-     od; result
-  ,  r = rd.semisimple_rank
-  in for k:r+1 do classify_group(choices_from(#r,k)) od.##
-
-
-{standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]: moved to conjugate.at}
-
-{ A second task is to enumerate elliptic conjugacy classes for each standard
+{ A subsidiary task is to enumerate elliptic conjugacy classes for each standard
   Levi subsystem. The function |elliptics_for_standard_Levi@(RootDatum,[int])|
   defined in elliptic.at accomplishes this, partly by explicit listing.
 }
 
-{. list of conjugacy class representatives of rd .}
+{. list of conjugacy class representatives of W(rd) .}
 set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
-##for subset in standard_Levi_conjugacy_representatives(rd)
+  for subset in standard_Levi_conjugacy_representatives(rd)
   do elliptics_for_standard_Levi(rd,subset)
-  od
+  od.##
 
 set conjugacy_classes = conjugacy_class_reps@RootDatum
 set elliptic_conjugacy_classes(RootDatum rd) = [WeylElt]:
-##for w in conjugacy_classes(rd) do if is_elliptic(w) then [w] else [] fi od
+  for w in conjugacy_classes(rd)
+  do if is_elliptic(w) then [w] else [] fi
+  od.##
 
-{
-  From $w$ we find the associated non-standard Levi subsystem, the minimal one
-  in whose Weyl group $w$ occurs. Our next task, surprisingly difficult, is to
-  find a standard Levi system conjugate to it, and a conjugating element of $W$.
-
-  For the case where we are given a non standard list of simple generators (not
-  all positive, and in arbitrary order) for the full root system, there is an
-  easy algorithm to find $w$ (called |chamber| below) that maps the set of
-  simple roots of |rd| to those generators, and the permutation of them (map
-  from positions to simple root index being mapped to it) so obtained. It goes:
-  as long as the system contains a negative root, select one (recording its
-  position) and apply the corresponding (non simple) root reflection to all
-  roots; ultimately all roots become positive, and as a set we have obtained the
-  simple roots. The list of their indices is our permutation; as letters of $w$,
-  from right to left, take for each reflection applied the simple generator that
-  ended up at the recorded position. This is done in |chamber_max_system| below.
-
-  Our approach is then to extend the Levi system one root at a time to a maximal
-  system, and then apply this algorithm. To find a root by which we can extend
-  the Levi system to a larger one, we first locate using |minimal_extenders| a
-  set of candidates (root indices, not necessarily positive ones), whose roots
-  are minimally positive for some some linear form vanishing on |Levi|. From
-  these, |extend_Levi| will then select a minimal one for |Levi| root addition.
-}
-
-{ list of posroot indices, minimal>0 for some linear form vanishing on |Levi| }
-set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
-   let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
-      kernel(rd.rank ^ for i in Levi do root(rd,i) od)
-in case a_column_with((vec alpha)bool: !=alpha*orth {@*(vec,mat)}, rd.posroots)
-   | no_vec: [] { |Levi| already spans subspace containing all roots }
-   | solution(alpha):
-      { find a column |f| of |orth| (coweight) witnessing |alpha*orth| nonzero }
-      let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
-      , min=0 { minimal positive coroot evaluation on |wt| so far; 0 if none }
-      , result = [int]: [] { list of root indices with minimal positive eval }
-      in for beta@i in rd.posroots
-         do let eval=f*beta then abs_eval=eval.abs in
-            if =eval then () { ignore roots on which |f| vanishes }
-            elif min=0 or abs_eval<min { cases where |result| is replaced }
-            then min:=abs_eval; result:=[if eval<0 then -1-i else i fi]
-            elif abs_eval=min { ex aequo case, now |result| is extended }
-            then result #:= if eval<0 then -1-i else i fi
-            fi
-         od
-      ; result
-   esac
-
-set extend_Levi (RootDatum rd,[int] Levi) = [int]:
-   let mins = minimal_extenders(rd,Levi) in
-   for m in mins
-   do let alpha=root(rd,m) in
-      if none(#Levi,(int i): is_root(rd,alpha-root(rd,Levi[i])) )
-      then return Levi#m { found a valid |m|, add it to Levi and return }
-      fi
-   od; assert(#mins=0); { if there were any candidates, one should work }
-   [] { return indication that |Levi| was already maximal }
-
-{ return maximal Levi containing |Levi|, ordered in the way they were found }
-set maximise (RootDatum rd,[int] !Levi) = [int]:
-   let ssr = rd.semisimple_rank, max=Levi in
-   while #max<ssr do max:=extend_Levi(rd,max); assert(!=#max) od; max
-
-{ find chamber defined by a maximal system, and its simple root permutation }
-set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
-   let roots= rd.rank # for index in sys do root(rd,index) od
-   , ssr=rd.semisimple_rank
-   then positions = { a list of positions in |roots| (rather than a Weyl word) }
-      assert(#sys=ssr) { first check that |sys| has enough roots };
-      while let i=first(ssr,(int i)bool: not is_posroot(rd,roots[i])) in i.>=
-      do roots := left_reflect(rd,roots[i],roots); i { record position }
-     ~od
-   then perm= for alpha in roots do root_index(rd,alpha) od
-   in assert(all(ssr,is_member(perm)),"Not a complete system");
-   (W_elt(rd,for pos in positions do perm[pos] od),perm)
-
-set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) =
-      (WeylElt, [int]): { chamber, unsorted standard Levi }
-   let (chamber,perm) = chamber_max_system(rd,maximise(arg)) in
-   (chamber,perm[:#Levi] { select start of simple indices list })
-
-set standard_Levi_lookup (RootDatum rd,Std_Levi_table table) =
-      ([int]->WeylElt, [int]):
-([int] unsorted_standard_Levi) (WeylElt, [int]):
-   let rho2 = dominant(rd,two_rho(rd,is_member(unsorted_standard_Levi)))
-   , standard_Levi=unsorted_standard_Levi.sort
-   then (,Levi_repr,others) =
-      table[first(#table,(int i)bool: table[i].rho2=rho2)]
-in if standard_Levi=Levi_repr
-   then (id_W(rd),standard_Levi)
-   else let (,conj) =
-      others[first(#others,(int i)bool: let (L,)=others[i] in L=standard_Levi)]
-      in (conj , Levi_repr)
-   fi
-
-
-{ value of $2\rho$ for not necessarily standard Levi, from Levi info }
-set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
-      vec: { two_rho(Levi_datum(rd,select)), but we can compute it directly: }
-   sum(rd.rank #
-       ##for alpha@i in rd.posroots do if select(i) then [alpha] else [] fi od)
 
 set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
    let (rd,):Levi_info=w.Levi_info
-   then Ld=Levi_datum(Levi_info), rho2_L = subsystem_2rho(Levi_info)
+   then Ld=Levi_datum(Levi_info), rho2_L = two_rho(Levi_info)
 in for alpha_v in columns_with(is_simple_for(rho2_L),Ld.poscoroots)
    do coroot_index(rd,alpha_v) od
 
-{ partial work: find some standard Levi conjugate to that of |w| }
+{ some standard Levi conjugate to that of |w|, conjugator from it, $w'$ in it }
 set conjugate_from_standard_Levi (WeylElt w) =
        (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
    let (chamber,unsorted_standard_Levi)
       = from_standard_Levi(w.root_datum,Levi_of(w))
    in (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
 
-set Levi_lookup (RootDatum rd,Std_Levi_table table) = ([int]->WeylElt,[int]):
-   let lookup = standard_Levi_lookup(rd,table) in
-([int] Levi) (WeylElt, [int]):
-   let (chamber,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
-   then (conj,Levi_repr) = lookup(unsorted_standard_Levi)
-   in (chamber*conj,Levi_repr)
-
 { like |conjugate_from_standard_Levi|, using standard Levi chosen from |table| }
 set conjugate_from_classified_standard_Levi (RootDatum rd,Std_Levi_table table) =
-      (WeylElt->WeylElt,[int],WeylElt):
+      (WeylElt->WeylElt,[int],WeylElt): { conjugator from, elected Levi, c(w) }
    let lookup = Levi_lookup(rd,table) in
 (WeylElt w) (WeylElt,[int],WeylElt): { conjugator from, Levi_repr, w_repr) }
    let (conj,Levi_repr) = lookup(Levi_of(w)) in (conj,Levi_repr,/conj*w*conj)
@@ -386,202 +161,86 @@ set minimal_representative (WeylElt w) = WeylElt:
 
 set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
 
-{ conjugacy test, using reduction to elliptic, and provided elliptic case test }
+set is_conjugate_to ( WeylElt x
+		    , (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
+    		    ) = (WeylElt->bool):
+(  let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
+   then rho2 = dominant(rd,two_rho(Levi_info(x)))
+   , (w_x,sLevi) = from_standard_Levi(rd,Levi_of(x))
+   then rd_sL = sub_datum(rd,sLevi) { standard Levi sub-datum }
+   , orbit = rho_stabiliser_orbit(rd,sLevi)
+   then elliptic_test = (WeylElt->bool): { class membership conjugate in sLevi }
+      elliptic_conjugacy_test(convert_to(rd_sL,x := /w_x * x * w_x))
+in assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
+  { check that we successfully moved to standard Levi }
+;
+   (WeylElt y) bool: { the actual test |is_conjugate_to(x)| }
+   y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
+   dominant(rd,two_rho(Levi_info(y)))=rho2 and
+   ( let (w0,rho2_y) = from_dominant(rd,two_rho(Levi_info(y)))
+     in rho2_y=rho2 and
+        ( let L = int: right_act(Levi_of(y),w0)
+	  then pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in rts=L)
+          then (,w) =
+	      assert(pos.>=,"conjugate with dominant rho not found in orbit");
+	      orbit[pos]
+	  then conjugator = w0 * w  { Levi_of(y) <-L <- sLevi=orbit.Levi_repr }
+        in elliptic_test(convert_to(rd_sL,/conjugator*y*conjugator))
+	)
+   )
+)
 
-set is_conjugate_to ( (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
-		    , WeylElt x) = (WeylElt->bool):
+{ conjugacy test, using a |Std_Levi_table table| and an elliptic case test }
+
+set is_conjugate_to ( WeylElt x
+		    , Std_Levi_table table
+		    , (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
+    		    ) = (WeylElt->bool):
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
-   , L_x = RootDatum: x.Levi_datum
-   then sL_x= RootDatum: standard_Levi(rd,L_x)
-   , w_x = WeylElt: standard_Levi_witness(rd,L_x) { an element of W(rd) }
-   , x_ell= convert_to(L_x,x) { convert |x| to relatively elliptic for |L_x| }
-   then elliptic_test=elliptic_conjugacy_test(x_ell)
-   in { end of preparations for |x|, now define the function of |y| }
+   then classify = (WeylElt->WeylElt,[int],WeylElt):
+                   conjugate_from_classified_standard_Levi(rd,table)
+   then (,Levi,x_ell) = classify(x)
+   then rd_L = sub_datum(rd,Levi)
+   then elliptic_test = elliptic_conjugacy_test(convert_to(rd_L,x_ell))
+in { end of preparations for |x|, now define the function of |y| }
    (WeylElt y) bool:
    { start with easy necessary conditions on |y|: }
    y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
-(  let L_y = y.Levi_datum
-in standard_Levi(rd,L_y)=sL_x and
-(  let y_ell = let conjugator = /w_x * standard_Levi_witness(rd,L_y)
-	       in convert_to(L_x,conjugator * y * /conjugator)
-   in elliptic_test(y_ell)
-))
-
-{conjugacy test, using reduction to elliptic, and an arbitrary test for elliptic}
-set is_conjugate(WeylElt x,WeylElt y,((WeylElt,WeylElt)->bool) elliptic_conjugacy_test) = bool:
-let rd=x.root_datum in
-if
- order(x)!=order(y) {easy and necessary} or
- y.root_datum!=rd { easy and necessary } or
- char_poly(x)!=char_poly(y) { easy and necessary }
- then false
-else
- (let L_x = x.Levi_datum, L_y = y.Levi_datum in
-  if standard_Levi(rd,L_x)!=standard_Levi(rd,L_y) then false else
-   let w_x=standard_Levi_witness(rd,L_x),
-    w_y=standard_Levi_witness(rd,L_y) then
-    x_ell=W_elt(L_x,x.matrix) then   {x_ell \in W(L_x)}
-    y_ell_0=inverse(w_x)*w_y*y*inverse(w_y)*w_x {  y_ell_0\in W(L_x)} then
-    (y_ell,)=from_dominant(L_x,y_ell_0*L_x.two_rho) in   {y_ell\in W(L_x)}
-     {      let ()=prints("x=", x, "y=", y, new_line,"y_ell_0: ", y_ell_0, "y_ell: ", y_ell, " x_ell: ", x_ell)  in}
-    elliptic_conjugacy_test(x_ell,y_ell)
-  fi
- )
-fi
+   (let (,Levi_y,y_ell) = classify(y)
+    in Levi_y=Levi and elliptic_test(convert_to(rd_L,y_ell))
+   )
 
 {------------------------------------------------------------------- }
 
 set present([WeylElt] list,WeylElt w) = bool: any(#list,(int i)bool: list[i]=w)
 
-{ Given elliptic |x|, produce test for conjugacy of elliptic |y| to it }
+{ Given elliptic |x|, produce test for conjugacy of elliptic |y| to it.
+  uses |minimal_representatives| function that invokes He's algorithm
+}
 set is_conjugate_to_elliptic_He (WeylElt x) = (WeylElt->bool):
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
   let reps = minimal_representatives(x) in
   (WeylElt y)bool: present(reps,minimal_representative(y))
 
-{ He's algorithm to definitively tell if two elliptic elements are conjugate
-  actually only the first needs to be (relatively) elliptic using
-  minimal_representative test for elliptic elements of a Levi
-}
+{ uncurried version of the previous function (only |x| needs to be elliptic) }
 set is_conjugate_elliptic_He (WeylElt x,WeylElt y) = bool:
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
    is_relatively_elliptic(y) and
    present(minimal_representatives(x),minimal_representative(y))
 
-{ use |is_conjugate_elliptic_He| to create a general is_conjugate funtion}
-set is_conjugate_to_He (WeylElt x) = (WeylElt->bool):
-   is_conjugate_to(is_conjugate_to_elliptic_He@(WeylElt),x)
+{ class membership for |x|: call |is_conjugate_to@(WeylElt,(WeylElt->bool))| }
+set is_conjugate_to(WeylElt x) = (WeylElt->bool):
+   is_conjugate_to(x,is_conjugate_to_elliptic_He@(WeylElt))
 
+{ use |is_conjugate_elliptic_He| to make a general |is_conjugate_to| funtion }
+set is_conjugate_to_He(Std_Levi_table table) = (WeylElt x) (WeylElt->bool):
+   is_conjugate_to(x,table,is_conjugate_to_elliptic_He@(WeylElt))
 
-
-{----------------------------------------------------------------------------}
-
-{conjugacy test using reduction to elliptic, and characteristic polynomial
-on each simple factor}
-
-{ The above allows us to conjugate any $w$ a Weyl group element to one that is
-  elliptic (up to a torus part) for a standard Levi system. However, the problem
-  of deciding conjugacy of elliptic elements in a given standard Levi subgroup
-  and producing a witness does not seem essentially simpler than the same
-  problem in the full Weyl group.
-
-  Therefore, we use for the moment a method for deciding conjugacy that does not
-  produce any witness, and is not entirely complete. It basically compares
-  characteristic polynomials, but adds a special test to discriminate between
-  two classes of elliptic elements for F4 that share a characteristic polynomial
-  (an outer automorphism switches them). This method does not work when the
-  implied Levi subsystem is composite and contains a factor F4.
-
-  This version is not correct: it requires a further test on each simple
-  factor. Alternatively, this test is correct for a simple factor,
-  and could be used (on each simple factor) to write an alternative function
-  to elliptic_conjugate_test above, and plugged in to
-  set is_conjugate@(WeylElt,WeylElt,(WeylElt,WeylElt)->bool)
-}
-
-{conjugacy test for elliptic elements of a simple group:
- equality of characteristic polynomial, plus additional
- check in F4
-}
-set is_conjugate_elliptic_simple_char_poly (WeylElt x,WeylElt y) = bool:
-assert(x.root_datum=y.root_datum,"RootDatum mismatch");
-assert(x.root_datum.derived.is_simple,"Derived group is not simple");
-assert(x.is_relatively_elliptic and y.is_relatively_elliptic,"x and/or y is not (relatively) elliptic");
-if order(x)!=order(y) then false {easy test}
-elif char_poly(x)!=char_poly(y) then false  {easy test}
-else
- let (code,)=factors(x.root_datum.Lie_type)[0] in
- if code = "F" and x.order=6 and x.length=10 then
- {extra test in this one case}
- let is_negated(WeylElt w) = (int->bool):
-   let M = w.matrix+1 in (int i)bool: =M*root(w.root_datum,i) { root in -1 eigenspace }
- then
- alpha = root(x.root_datum,first(24,is_negated(x))),
- beta =  root(x.root_datum,first(24,is_negated(y))) in
- dominant(x.root_datum,alpha)=dominant(x.root_datum,beta) { whether these have same length }
- else true
- fi
-fi
-
-{conjugacy test for elliptic elements: previous test on each simple factor}
-set is_conjugate_elliptic_char_poly(WeylElt x,WeylElt y)=bool:
-assert(x.root_datum=y.root_datum,"RootData don't match");
-assert(x.is_relatively_elliptic and y.is_relatively_elliptic,"x and/or y is not (relatively) elliptic");
-let x_factors=factor_strong(x),y_factors=factor_strong(y) in
-{x_factors is a list of WeylElts, each for the simple group
- simple_factors(rd).derived
-}
-all(for i:#x_factors do is_conjugate_elliptic_simple_char_poly(x_factors[i],y_factors[i]) od)
-
-{general conjugacy test: reduce to elliptic and then use is_conjugate_elliptic_char_poly}
-set is_conjugate_char_poly(WeylElt x,WeylElt y)=bool:
-is_conjugate(x,y,is_conjugate_elliptic_char_poly@(WeylElt,WeylElt))
-
-{----------------------------------------------------------------------------}
-{decide which is_conjugate to use as the default:}
-
-set is_conjugate_to = (WeylElt->(WeylElt->bool)): is_conjugate_to_He@WeylElt
-
-{ uncurried version, less efficient for frequent use }
-set is_conjugate (WeylElt x,WeylElt y) = bool: is_conjugate_to(x)(y)
-
-{----------------------------------------------------------------------------}
-
-{ brute force enumerate the conjugacy class of |w|, with conjugacy witnesses }
-set conjugators_and_conjugacy_class (WeylElt !w0) = ([WeylElt],[WeylElt]):
-   let rd=w0.root_datum, class = [w0]
-   then conjugators= [id_W(rd)], current=0, ssr=semisimple_rank(rd)
-   , absent (WeylElt x) = none(for y in class do @: y=x od)
-in while current<#class
-   do let c = conjugators[current], w=class[current] in current+:=1
-   { assert(w=c*w0*/c); }
-   ;  for s:ssr
-      do let sws=s#w#s in
-         if absent(sws) then class #:= sws; conjugators #:= s#c fi
-      od
-   od; (conjugators,class)
-
-set full_conjugacy_class (WeylElt w) = [WeylElt]:let (,class)=conjugators_and_conjugacy_class(w) in class
-
-{most users will guess:}
-set conjugacy_class(WeylElt w)=[WeylElt]:full_conjugacy_class(w)
-
-{should test each element of the conjugacy class as it is generated for a faster function}
-set is_conjugate_direct (WeylElt x,WeylElt y) = bool:
-   present(full_conjugacy_class(x),y)
-
-{this works for all x, but is slow}
-set all_minimal_representatives_direct(WeylElt x)=[WeylElt]:
-let class=x.full_conjugacy_class then
-rv=[class[0]], min_length=length(class[0]) in
-for w in class do
- if length(w)<min_length then rv:=[w]; min_length:=length(w)
- elif length(w)=min_length then rv#:=w
- fi
-od;
-rv
-
-set minimal_representative_direct(WeylElt x)=WeylElt:all_minimal_representatives_direct(x)[0]
-
-{ some simple functions that exploit the conjugacy test }
-set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
-   for rep in classes do if is_conjugate(w,rep) then return rep fi od;
-   error("missing class")
-
-set conjugacy_class_rep (WeylElt w) = WeylElt:
-  conjugacy_class_rep(w,conjugacy_class_reps(w.root_datum))
-
-set full_centraliser (WeylElt w) = [WeylElt]:
-   ##for x in W(w.root_datum) do if x*w=w*x then [x] else [] fi od
-
-set conjugator (WeylElt x, WeylElt w) = WeylElt: { find v such that x=v*w*/v }
-   assert(is_conjugate(x,w),"Weyl group elements are not conjugate");
-   let (conjugators,class)=conjugators_and_conjugacy_class(w) in
-   conjugators[last(#class,(int i)bool: class[i]=x)]
+{ the following inefficient function is unused, but motivates the one after it }
 
 { $W$-orbit of (non standard) Levi subsystem, represented by simple systems }
 set Levi_orbit (RootDatum rd, [int] Levi { posroot indices } ) = [[int]]:
-   let root_perm =
+   let root_perm = [[int]]: { root permutations for all simple reflections }
      for i:rd.semisimple_rank
      do for alpha in rd.posroots do root_index(rd,W_gen(rd,i)*alpha) od
      od { this is negative on the main diagonal, but those entries are unused }
@@ -626,7 +285,7 @@ in while current<#orbit
 }
 
 set Levi_normalizer_index ((RootDatum,(int->bool))(rd,select):Levi_info) = int:
-   let rho2_L = subsystem_2rho(Levi_info)
+   let rho2_L = two_rho(Levi_info)
    then Levi = [int]: { indices in |rd| for simple system of Levi }
          list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
 in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
@@ -640,7 +299,7 @@ in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
                do root_index(rd,reflect(rd,beta,alpha)).ab
                od
             od
-      then act(int i,[int] roots) = [int] :
+      then act(int i,[int] roots) = [int]:
          let map = root_perm[i] in for j in roots do map[j] od.sort
       , stack = [[int]]: [[],[combination_encode(Levi)]]
       , decode = { decoding function from numbers to lists }
@@ -670,7 +329,7 @@ in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
 set Levi_orbit_size ((RootDatum,(int->bool))(rd,):Levi_info) = int:
   rd.order_W \ (Levi_info.Levi_normalizer_index * Levi_info.Levi_datum.order_W)
 
-{ Now onward to the task of getting the size of the conjugacy class of |w| in
+{ Now onward to the task of getting the size of the conjugacy class of |w|
   for |Levi_datum(w)|, where ignoring the central torus it is elliptic. This
   root datum can have multiple simple factors, and we can decompose |w| as
   commuting product of elements of the Weyl groups of the simple factors, and
@@ -891,7 +550,8 @@ in W_class_table( rd, reps
 
 set W_class_table (RootDatum rd) = WeylClassTable:
    W_class_table( rd, conjugacy_class_reps(rd)
-		, size_of_conjugacy_class@WeylElt, is_conjugate_to@WeylElt
+		, size_of_conjugacy_class@WeylElt
+		, is_conjugate_to_He(classify_standard_Levis(rd))
 		)
 
 set root_datum (WeylClassTable tab) = RootDatum:
