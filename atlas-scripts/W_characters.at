@@ -1,6 +1,6 @@
 <basic.at
 <Levi_subgroups.at
-<elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
+<elliptic.at { for |elliptics_for_standard_Levi@(RootDatum,[int])| }
 <cyclotomic.at {for |product_of_cyclotomic|}
 <Weylgroup.at { for |is_relatively_elliptic| }
 <tabulate.at { for |tabulate| }
@@ -36,18 +36,12 @@
   defined in elliptic.at accomplishes this, partly by explicit listing.
 }
 
+
 {. list of conjugacy class representatives of W(rd) .}
 set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
   for subset in standard_Levi_conjugacy_representatives(rd)
   do elliptics_for_standard_Levi(rd,subset)
   od.##
-
-set conjugacy_classes = conjugacy_class_reps@RootDatum
-set elliptic_conjugacy_classes(RootDatum rd) = [WeylElt]:
-  for w in conjugacy_classes(rd)
-  do if is_elliptic(w) then [w] else [] fi
-  od.##
-
 
 set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
    let (rd,):Levi_info=w.Levi_info
@@ -94,7 +88,7 @@ set conjugate_from_classified_standard_Levi (RootDatum rd,Std_Levi_table table) 
 
   The function below implements this, while also returning conjugations witnesses
 }
-set apply_He (WeylElt w) = [WeylElt,WeylElt]:
+set apply_He (WeylElt w) = [WeylElt,WeylElt]: { $(w', g)$ with $g*w*/g = w'$ }
 (  let !rd = w.root_datum
    then stack = [[],[(w,id_W(rd))]], lw=length(w)
    , absent([WeylElt,WeylElt] pairs, WeylElt w) = bool:
@@ -129,23 +123,21 @@ in while { loop with embedded |do| instances near end }
 ;  ##stack
 )
 
-{ these functions give *some* minimal length representatives of |w|
-  but are guaranteed to give all of them if |w| is elliptic
-}
+{ split result of |apply_He| into parallel lists (conjugates,witnesses) }
 set minimal_representatives_witnesses (WeylElt w) = ([WeylElt],[WeylElt]):
    let list = apply_He(w) in
    (for (w,) in list do w od, for (,witness) in list do witness od)
 
+{ one selected minimal length class representative, witness conjugating to it }
 set minimal_representative_witness (WeylElt w) = (WeylElt,WeylElt):
    apply_He(w)[0]
 
+{ often one does not need a witness, so the following can be used instead }
 set minimal_representatives (WeylElt w) = [WeylElt]:
    for (rep,) in apply_He(w) do rep od
 set minimal_representative (WeylElt w) = WeylElt:
    let (rep,) = apply_He(w)[0] in rep
 
-
-{------------------------------------------------------------------- }
 
 { Conjugacy test, using reduction to elliptic
 
@@ -159,21 +151,25 @@ set minimal_representative (WeylElt w) = WeylElt:
   simple group are fixed by all outer automorphisms.
 }
 
+{ We may want to reduce |w| to an elliptic element of a sub-datum, which can be
+  done using |elliptic_reduction|; the sub-datum can be recoverd from it. }
 set elliptic_reduction (WeylElt w) = WeylElt: convert_to(Levi_datum(w),w)
 
+{ to test for conugacy class membership, we use reduction to the elliptic case
+  and a provided membership test for elliptic classes.
+}
 set is_conjugate_to ( WeylElt x
 		    , (WeylElt->(WeylElt->bool)) elliptic_conjugacy_test
     		    ) = (WeylElt->bool):
 (  let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    then rho2 = dominant(rd,two_rho(Levi_info(x)))
    , (w_x,sLevi) = from_standard_Levi(rd,Levi_of(x))
-   then rd_sL = sub_datum(rd,sLevi) { standard Levi sub-datum }
-   , orbit = rho_stabiliser_orbit(rd,sLevi)
-   then elliptic_test = (WeylElt->bool): { class membership conjugate in sLevi }
-      elliptic_conjugacy_test(convert_to(rd_sL,x := /w_x * x * w_x))
-in assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
-  { check that we successfully moved to standard Levi }
-;
+   then x_ell = elliptic_reduction(x := /w_x * x * w_x)
+      next { check that assigment successfully moved |s| to our standard Levi }
+      assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
+   then orbit = rho_stabiliser_orbit(rd,sLevi)
+   , elliptic_test = elliptic_conjugacy_test(x_ell) { class membership in sLevi }
+in
    (WeylElt y) bool: { the actual test |is_conjugate_to(x)| }
    y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
    dominant(rd,two_rho(Levi_info(y)))=rho2 and
@@ -185,7 +181,7 @@ in assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
 	      assert(pos.>=,"conjugate with dominant rho not found in orbit");
 	      orbit[pos]
 	  then conjugator = w0 * w  { Levi_of(y) <-L <- sLevi=orbit.Levi_repr }
-        in elliptic_test(convert_to(rd_sL,/conjugator*y*conjugator))
+        in elliptic_test(convert_to(x_ell.root_datum,/conjugator*y*conjugator))
 	)
    )
 )
@@ -199,15 +195,16 @@ set is_conjugate_to ( WeylElt x
    let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
    then classify = (WeylElt->WeylElt,[int],WeylElt):
                    conjugate_from_classified_standard_Levi(rd,table)
-   then (,Levi,x_ell) = classify(x)
+   then (,Levi,x_L) = classify(x)
+   then x_ell = elliptic_reduction(x_L)
    then rd_L = sub_datum(rd,Levi)
-   then elliptic_test = elliptic_conjugacy_test(convert_to(rd_L,x_ell))
+   then elliptic_test = elliptic_conjugacy_test(convert_to(rd_L,x_L))
 in { end of preparations for |x|, now define the function of |y| }
    (WeylElt y) bool:
    { start with easy necessary conditions on |y|: }
    y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi and
    (let (,Levi_y,y_ell) = classify(y)
-    in Levi_y=Levi and elliptic_test(convert_to(rd_L,y_ell))
+    in Levi_y=Levi and elliptic_test(convert_to(x_ell.root_datum,y_ell))
    )
 
 {------------------------------------------------------------------- }
@@ -235,6 +232,7 @@ set is_conjugate_to(WeylElt x) = (WeylElt->bool):
 { use |is_conjugate_elliptic_He| to make a general |is_conjugate_to| funtion }
 set is_conjugate_to_He(Std_Levi_table table) = (WeylElt x) (WeylElt->bool):
    is_conjugate_to(x,table,is_conjugate_to_elliptic_He@(WeylElt))
+
 
 { the following inefficient function is unused, but motivates the one after it }
 
@@ -381,61 +379,6 @@ set size_of_conjugacy_class (WeylElt w) = int:
   w.root_datum.order_W \ w.centralizer_order
 set sizes_of_conjugacy_classes (RootDatum rd) = [int]:
   for w in conjugacy_class_reps(rd) do w.size_of_conjugacy_class od
-
-{ test: sum of sizes of conjugacy class = |W| }
-set test_size_of_conjugacy_classes (RootDatum rd,[WeylElt] c) = (int,int):
-  (order_W(rd),sum(for w in c do  size_of_conjugacy_class(w)  od))
-
-set test_size_of_conjugacy_classes (RootDatum rd) = bool:
-  =test_size_of_conjugacy_classes(rd,conjugacy_classes(rd))
-
-{. print order, length, Levi.}
-set print_conjugacy_classes ([WeylElt] C) = void:
-  let data=["order","length","Levi"] { column headers }
-  # for w in C
-    do [ w.order.to_string
-       , w.length.to_string
-       , w.Levi_datum.Lie_type.semisimple.str
-       ]
-    od
-  in tabulate(data,"rrl",2," ")
-
-{. print order, length, Levi.}
-set print_conjugacy_classes_med ([WeylElt] C) = void:
-  let data=["order","length","Levi","Cyclotomic"] { column headers }
-  # for w in C
-    do [ w.order.to_string
-       , w.length.to_string
-       , w.Levi_datum.Lie_type.semisimple.str
-       , product_of_cyclotomic(rat_poly:("q",char_poly(w),())).to_string
-       ]
-    od
-  in tabulate(data,"rrrl",2," ")
-
-set print_conjugacy_classes_long ([WeylElt] C) = void:
-  let data=["order","length","Levi","size","word"] { column headers }
-  # for w in C
-    do [ w.order.to_string
-       , w.length.to_string
-       , w.Levi_datum.Lie_type.semisimple.str
-       , w.size_of_conjugacy_class.to_string
-       , w.word.to_string
-       ]
-    od
-  in tabulate(data,"rrlll",2," ")
-
-set print_conjugacy_classes (RootDatum rd) = void:
-  print_conjugacy_classes(conjugacy_class_reps(rd))
-{set print_conjugacy_classes_med (RootDatum rd) = void:
-  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_med}
-set print_conjugacy_classes_long (RootDatum rd) = void:
-  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_long
-
-{. print elliptic classes only .}
-set print_elliptic_conjugacy_classes (RootDatum rd) = void:
-  print_conjugacy_classes(sort_by(order@WeylElt)(elliptic(rd)))
-set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
-  rd.elliptic.(sort_by(order@WeylElt)).print_conjugacy_classes_long
 
 { A final production is a type for storing data relevant to W-characters,
   notably information about conjugacy classes. This will be a (mildly) "stateful
@@ -653,3 +596,66 @@ in for k:n from 1
    in for i:k-1 from 1 do sum:=tab.direct_sum(sum,tab.tensor(e[i],sp~[i])) od
    ; e #:= for s in sum do s\k od { expand table by |sum\k| }
    od; e[n] { last symmetric power is the one we want }
+
+
+{ Convenience functions }
+
+
+{ test: sum of sizes of conjugacy class = |W| }
+set test_size_of_conjugacy_classes (RootDatum rd,[WeylElt] c) = (int,int):
+  (order_W(rd),sum(for w in c do  size_of_conjugacy_class(w)  od))
+
+set test_size_of_conjugacy_classes (RootDatum rd) = bool:
+  =test_size_of_conjugacy_classes(rd,conjugacy_class_reps(rd))
+
+{. print order, length, Levi.}
+set print_conjugacy_classes ([WeylElt] C) = void:
+  let data=["order","length","Levi"] { column headers }
+  # for w in C
+    do [ w.order.to_string
+       , w.length.to_string
+       , w.Levi_datum.Lie_type.semisimple.str
+       ]
+    od
+  in tabulate(data,"rrl",2," ")
+
+{. print order, length, Levi.}
+set print_conjugacy_classes_med ([WeylElt] C) = void:
+  let data=["order","length","Levi","Cyclotomic"] { column headers }
+  # for w in C
+    do [ w.order.to_string
+       , w.length.to_string
+       , w.Levi_datum.Lie_type.semisimple.str
+       , product_of_cyclotomic(rat_poly:("q",char_poly(w),())).to_string
+       ]
+    od
+  in tabulate(data,"rrrl",2," ")
+
+set print_conjugacy_classes_long ([WeylElt] C) = void:
+  let data=["order","length","Levi","size","word"] { column headers }
+  # for w in C
+    do [ w.order.to_string
+       , w.length.to_string
+       , w.Levi_datum.Lie_type.semisimple.str
+       , w.size_of_conjugacy_class.to_string
+       , w.word.to_string
+       ]
+    od
+  in tabulate(data,"rrlll",2," ")
+
+set print_conjugacy_classes (RootDatum rd) = void:
+  rd.conjugacy_class_reps.print_conjugacy_classes
+
+set print_conjugacy_classes_long (RootDatum rd) = void:
+  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_long
+
+{. print elliptic classes only .}
+set print_elliptic_conjugacy_classes (RootDatum rd) = void:
+  elliptic_conjugacy_class_reps(rd).
+  (sort_by(order@WeylElt)).
+  print_conjugacy_classes
+
+set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
+  rd.elliptic_conjugacy_class_reps.
+  (sort_by(order@WeylElt)).
+  print_conjugacy_classes_long
