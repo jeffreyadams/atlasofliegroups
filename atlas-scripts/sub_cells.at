@@ -139,7 +139,7 @@ set intersection([int] A,[int] B)=[int]:
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
-(sub_root_datum(graph.root_datum,S).derived,for (tau,edges) in graph.nodes do
+(sub_datum(graph.root_datum,S).derived,for (tau,edges) in graph.nodes do
     (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in

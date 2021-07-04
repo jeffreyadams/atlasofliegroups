@@ -939,7 +939,9 @@ tabulate(["i","diag","dim","A(O)"]#
 
 {------ principal, zero, subregular and minimal orbits -----}
 
-set principal_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),ratvec_as_vec(2*rho_check(rd)))
+set principal_orbit(RootDatum rd) = ComplexNilpotent:
+   complex_nilpotent(rd,two_rho_check(rd))
+
 set zero_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),null(rank(rd)))
 
 set subregular_orbit_simple(RootDatum rd)=ComplexNilpotent:

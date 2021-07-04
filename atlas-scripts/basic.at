@@ -791,11 +791,6 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
-{ simply_connected and adjoint for a RootDatum: each is a product of
-  simple factors and possibly a torus factor. Since |Lie_type| is used,
-  coordinates for the new root datum are unrelated to those of |rd|
-}
-
 set simply_connected (RootDatum rd) = RootDatum:
   root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),rd.prefers_coroots)
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
@@ -866,6 +861,9 @@ set two_rho_check (RootDatum rd,[int] simples) = vec:
    let orth = { matrix right-annihilating precisely span of |simples| coroots }
      kernel(rank(rd)^for i in simples do coroot(rd,i) od) in
    two_rho_check(rd,(int i)bool: =coroot(rd,i)*orth)
+
+set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
+   for j in simples do for i in simples do coroot(rd,j)*root(rd,i) od od
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):

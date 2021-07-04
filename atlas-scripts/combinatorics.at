@@ -39,7 +39,8 @@ set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
 set combination_encode([int] list) = int: { |list| strictly increasing }
    for c@i in list do binom(c,i+1) od.sum
 
-set combination_decode(int k) = (int->[int]): assert(k.>,"Impossible decoding");
+set combination_decode(int k) = (int->[int]):
+{ no need of case distinction for |k=0|: code below builds constant function }
    (int N) [int]:
    let bound=N+k { conservative start; we must have |binom(bound,k)>N| }
 in for i:k from 1 ~ { entries are determined in decreasing order }

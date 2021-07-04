@@ -286,8 +286,7 @@ set Levi_normalizer_index ((RootDatum,(int->bool))(rd,select):Levi_info) = int:
    let rho2_L = two_rho(Levi_info)
    then Levi = [int]: { indices in |rd| for simple system of Levi }
          list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
-in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
-   let rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_L)
+   , rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_L)
    then stab_orbit_size = int:
       begin
       let root_perm = [[int]]: { absroot perm.s by stabiliser simple refl.s }
@@ -300,8 +299,7 @@ in if =#Levi then return order_W(rd) fi; { short-circuit trivial case }
       then act(int i,[int] roots) = [int]:
          let map = root_perm[i] in for j in roots do map[j] od.sort
       , stack = [[int]]: [[],[combination_encode(Levi)]]
-      , decode = { decoding function from numbers to lists }
-           combination_decode(#Levi) { safe, as |Levi=[]| case short-circuited }
+      , decode = combination_decode(#Levi) { decode numbers to |#Levi|-subsets }
       , present([int] sorted,int code) = bool:
            let l=#sorted
 	   then i = binary_search_first((int i)bool: sorted[i]>=code, 0,l)
