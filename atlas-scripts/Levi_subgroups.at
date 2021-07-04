@@ -1,4 +1,6 @@
 <basic.at
+<sort.at { for |sort@[int]| }
+<combinatorics.at { for |combination_encode|, and decode }
 <Weylgroup.at { for |root_reflection| }
 
 { This file groups function concerning classification of and computation with
@@ -39,28 +41,23 @@ set Levi_datum = sub_datum@(RootDatum,[int]) { also defined in basic.at }
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
 
 { It turns out that Levi subsystems (whether or not standard) are conjugate in
-  $W$ if and only if their |rho_check| coweights are in the same $W$-orbit.
-  (Since dual Weyl groups are conjugate, we could have used |rho| instead of
-  |rho_check|, and indeed did this initially. Some applications however need
-  to work with |rho_check| anyway, which is why we chose to use that here.)
+  $W$ if and only if their |two_rho| weights are in the same $W$-orbit.
 }
 
-{moved from W_characters.at since it is needed here, in standard_Levi}
+{ select from subsets of diagrams representatives of $2\rho$-value classes }
 set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
-begin
-   let reps_by_rho ([[int]] list) = [[int]]:
+   let reps_by_rho ([[int]] list) = [[int]]: { list of chosen standard Levis }
       let rho2s = [vec]:[] { list of known dominant $2\rho$ values }
-   in for subset in list
-      do let rho2=dominant(rd,two_rho(rd,subset))
-      in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
-         then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
-         else [] { |rho2| was already present, contribute nothing }
-         fi
-      od.##
+      in for subset in list
+	 do let rho2=dominant(rd,two_rho(rd,subset))
+	 in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
+	    then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
+	    else [] { |rho2| was already present, contribute nothing }
+	    fi
+	 od.## { wrap up contributing standard Levis as result |reps_by_rho| }
    , r = rd.semisimple_rank
 in { now apply |reps_by_rho| to each size class, and concatenate the results }
    for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##
-end
 
 { The following functions, up to |classify_standard_Levis|, aim to classify
   standard Levis under conjugation _and_ find conjugators for each one from the
@@ -77,81 +74,104 @@ end
   conjugate standard Levi system will give the same |rho2_dom|, but will not
   necessarily transform to the same system $L$; therefore we generate the orbit
   of $L$ under the stabiliser subgroup of the |rho2_dom|, with witnesses.
-
-  The orbit generation here is taylored to the specific situation that we know
-  that all elements of the acting subgroup fix |rho2_dom|, so the only way they
-  can map all simple generators (in the sense of its sub-datum) of $L$ to
-  (necessarily positive) roots of $L$ is by permuting them among each other.
-  Also since |rho2_dom| is dominant for the full system, and so a fortiori
-  dominant for the positive roots in any system in the orbit of $L$, the acting
-  stabiliser subgroup will map positive roots of $L$ to positive roots. We can
-  then work with positive root indices only, act on lists of such indices, and
-  sort the result to test for equality.
 }
 
-set_type orbit_data = [int,WeylElt] { posroot set as binary number, conjugator }
+{ given a standard Levi, list conjugate non-standard Levis with dominant 2rho }
+set_type orbit_entry = (int L_int, WeylElt w)
+set_type orbit_data = [int,WeylElt] { posroot set as single number, conjugator }
 
-set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| in binary }
-	let rd=w.root_datum in
-	for i in Levi do 2^coroot_index(rd,coroot(rd,i)*w) od.sum
+{ since the number of roots in the subset is fixed, we use |combination_encode|
+  to represent a subset of $k$ positive roots as a number inside |orbit_data|;
+  |right_act| assumes |w| maps all roots listed in |Levi| to positive roots
+}
 
-{ list of (L,w) where 2rho(L)=dominant(2rho(Levi)) and L=w*standard_Levi  }
+set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
+   let rd=w.root_datum in
+   for i in Levi do coroot_index(rd,coroot(rd,i)*w) od.sort.combination_encode
+
+{ the following function facilitates identifying all Levi subgroups conjugate to
+  |standard_Levi|, by providing a full list of those (non standard) Levi
+  subgroups whose $2]rho$-value is dominant, with witnesses conjugating them
+  back to |standard_Levi|; in other words it returns a list of |(L,w)| where
+  |two_rho(L)=dominant(two_rho(standard_Levi)) and |L=w*standard_Levi| (but with
+  |L| encoded as an integer, so these are not actually valid expressions).
+
+  The orbit generation here is taylored to the specific situation that we know
+  that all elements of the acting subgroup live in |W(rd)|, so they permute the
+  (co)roots of the full system, and they fix the dominant weight |rho2_dom|. The
+  level of coroots with respect to |rho2_dom| is invariant under such action,
+  and since it is weakly positive on all simple coroots for |rd|, any coroot
+  with a strictly positive level is a positive coroot; starting with the simple
+  coroots for some such (non standard) Levi $L$ which are at level 2, all the
+  action is among coroots at level $2$, and in particular happens inside the set
+  of positive coroots for |rd|. We can then work with positive (co)root indices
+  only, act on lists of such indices, and test sorted lists for equality.
+
+  This function is not destined to be called extremely often (just once for each
+  standard Levi conjugacy class representative), so we do no effort to speed up
+  orbit searching (by doing binary search on a separate sorted list); it will
+  cost time quadratic in the generated orbit size, whether we do that or not.
+}
 set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
-   let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,standard_Levi))
+(  let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,standard_Levi))
    then rho_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_dom)
-   then root_perm = { list of posroot permutations for stabiliser generators }
-      let two=2/1 then pow2(int n)=int:floor(two^n) { negatives to 0 } in
+   then root_perm = [[int]]: { posroot permutations for stabiliser generators }
       for beta in rho_stabiliser.simple_roots
-      do for alpha in rd.posroots
-         do root_index(rd,reflect(rd,beta,alpha)).pow2
-	 od
+      do for alpha in rd.posroots do root_index(rd,reflect(rd,beta,alpha)) od
       od
-   , unbinary (int bin) = [int]: { recover |Levi| from binary representation }
-	let i=0 in
-	while bin.>
-	do let (q,r)=bin\%2 in if =r then [] else [i] fi
-	next i+:=1; bin:=q
-	od.##
+   , decode = combination_decode(#standard_Levi)
    then act(int i,[int] roots) = int:
-      let map = root_perm[i] in for j in roots do map[j] od.sum
+      let map = root_perm[i] in
+      for j in roots do map[j] od.sort.combination_encode
    , orbit = [(right_act(standard_Levi,w0),/w0)] { starting point }
    , current=0
    in while current<#orbit
-      do let (L_bin,w)=orbit[current] next current+:=1 then L=L_bin.unbinary in
-         for k:rho_stabiliser.semisimple_rank
-         do let new_L_bin=act(k,L) in
-            if none(#orbit,(int i): let (x,)=orbit[i] in x=new_L_bin)
-            then orbit #:=
-              (new_L_bin,root_reflection(rd,rho_stabiliser.simple_roots[k])*w)
+      do let orb = orbit[current] next current+:=1
+         then L = [int]: orb.L_int.decode
+      in for k:rho_stabiliser.semisimple_rank
+         do let new_L=act(k,L) in
+            if none(#orbit,(int i): orbit[i].L_int = new_L)
+            then orbit :=
+              (orbit next orbit:=[]{trick allows in-place append of value}) #
+              (new_L,root_reflection(rd,rho_stabiliser.simple_roots[k])*orb.w)
             fi
          od
-      od; orbit
+      od
+   ; let perm = sort(#orbit,(int i,int j)bool: orbit[i].L_int<=orbit[j].L_int)
+   in for i in perm do orbit[i] od { return |orbit| sorted increasing }
+)
 
-set_type Std_Levi_orbit = (vec rho2, [int] Levi_repr, [[int],WeylElt] others)
-set_type Std_Levi_table = [Std_Levi_orbit]
+{ in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
+  members |L| of |others|; for |(L,w) in others| one has |L=w*Levi_repr|
+}
+set_type Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
+set_type Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
 
 { group together conjugate standard Levis, with witness conjugating from first }
 set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
-   let classify_group ([[int]] list) = Std_Levi_table:
+   let classify_group ([[int]] list) = [Std_Levi_orbit]:
       let orbs = [orbit_data]:[], result = [Std_Levi_orbit]:[] in
       for Levi in list
       do let (w0,rho2_dom)=from_dominant(rd,two_rho(rd,Levi))
          then i = first(#result,(int i)bool: result[i].rho2=rho2_dom)
       in if i.< { is this a previously unseen |rho2_dom| value }
-         then orbs #:= rho_stabiliser_orbit(rd,Levi)
-         ;  result #:= (rho2_dom,Levi,[])
+         then orbs #:= rho_stabiliser_orbit(rd,Levi) { sorted }
+         ;  result #:= (rho2_dom,combination_encode(Levi),[])
          else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
             let cur=result[i], orbit=orbs[i], L = int: right_act(Levi,w0)
             then (,w) =
-	       let pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in rts=L)
-	       in assert(pos.>=,"conjugate with dominant rho not found in orbit")
+	       let pos = binary_search_first
+	          ((int j)bool: orbit[j].L_int>=L,0,#orbit)
+	       in assert(pos<#orbit and orbit[pos].L_int=L
+	       	  	,"conjugate with dominant rho not found")
 	       ;  orbit[pos]
-            in result[i] := (cur.others #:= (Levi,w0*w); cur)
-					  { Levi <-w0-- L <-w-- cur.Levi_repr }
+            in result[i] :=
+	       begin cur.others #:= (combination_encode(Levi),w0*w); cur end
+					{ Levi <-w0-- L <-w-- cur.Levi_repr }
 	 fi
      od; result
   ,  r = rd.semisimple_rank
-  in for k:r+1 do classify_group(choices_from(#r,k)) od.##
+  in for k:r+1 do classify_group(choices_from(#r,k)) od
 
 {
   From $w$ we find the associated non-standard Levi subsystem, the minimal one
@@ -238,18 +258,21 @@ set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) =
 
 { given |Std_Levi_table|: tabled representative of a standard Levi, conjugator }
 { does linear search for |rho2| in the table, then again in its orbit }
-set standard_Levi_lookup (RootDatum rd,Std_Levi_table table) =
+set standard_Levi_lookup (RootDatum rd,Std_Levi_table full_table) =
       ([int]->WeylElt, [int]):
 ([int] unsorted_standard_Levi) (WeylElt, [int]): { conjugator, Levi class repr }
    let rho2 = dominant(rd,two_rho(rd,unsorted_standard_Levi))
-   , standard_Levi=unsorted_standard_Levi.sort
-   then (,Levi_repr,others) =
+   , Levi_code=unsorted_standard_Levi.sort.combination_encode
+   , table = [Std_Levi_orbit]: full_table[#unsorted_standard_Levi]
+   , decode = combination_decode(#unsorted_standard_Levi)
+   then (,Levi_repr_code,others) =
       table[first(#table,(int i)bool: table[i].rho2=rho2)]
-in if standard_Levi=Levi_repr
-   then (id_W(rd),standard_Levi)
-   else let (,conj) =
-      others[first(#others,(int i)bool: let (L,)=others[i] in L=standard_Levi)]
-      in (conj , Levi_repr)
+in if Levi_code=Levi_repr_code
+   then (id_W(rd),decode(Levi_repr_code))
+   else
+      let (,conj) =
+      	  others[first(#others,(int i)bool: let (L,)=others[i] in L=Levi_code)]
+      in (conj , decode(Levi_repr_code))
    fi
 
 { given |Std_Levi_table|: tabled representative of any Levi, and conjugator }
