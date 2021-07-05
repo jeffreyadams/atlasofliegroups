@@ -107,10 +107,13 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
   of positive coroots for |rd|. We can then work with positive (co)root indices
   only, act on lists of such indices, and test sorted lists for equality.
 
-  This function is not destined to be called extremely often (just once for each
-  standard Levi conjugacy class representative), so we do no effort to speed up
-  orbit searching (by doing binary search on a separate sorted list); it will
-  cost time quadratic in the generated orbit size, whether we do that or not.
+  Even though this function is not destined to be called very often (just once
+  for each standard Levi conjugacy class), the orbits can be very large (notably
+  for E8), so we do an effort to generate them not too inefficiently. A standard
+  technique to do that is to stratify the orbit by distance (in the Cayley
+  graph) from the starting point: neighbours of the latest stratum need only be
+  searched in that and the preceeding stratum, and if not found contrubute to
+  the next stratum.
 }
 set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 (  let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,standard_Levi))
@@ -123,22 +126,36 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
    then act(int i,[int] roots) = int:
       let map = root_perm[i] in
       for j in roots do map[j] od.sort.combination_encode
-   , orbit = [(right_act(standard_Levi,w0),/w0)] { starting point }
-   , current=0
-   in while current<#orbit
-      do let orb = orbit[current] next current+:=1
-         then L = [int]: orb.L_int.decode
-      in for k:rho_stabiliser.semisimple_rank
-         do let new_L=act(k,L) in
-            if none(#orbit,(int i): orbit[i].L_int = new_L)
-            then orbit :=
-              (orbit next orbit:=[]{trick allows in-place append of value}) #
-              (new_L,root_reflection(rd,rho_stabiliser.simple_roots[k])*orb.w)
-            fi
-         od
+   , stack = [[orbit_entry]]:
+	[[],[(right_act(standard_Levi,w0),/w0)] { starting point } ]
+   , present([orbit_entry] sorted,int code) = bool:
+     	let l=#sorted
+	then i = binary_search_first((int i)bool: sorted[i].L_int>=code, 0,l)
+	in i<l and sorted[i].L_int=code
+   in while { loop with |do| near end }
+	 let new_level = [orbit_entry]:
+	    for (code,w) in stack~[0]
+	    do let L = [int]: decode(code) in
+	       for alpha@k in rho_stabiliser.simple_roots
+	       do let M=act(k,L) in
+	          if present(stack~[1],M) or present(stack~[0],M)
+		  then [] else [(M,root_reflection(rd,alpha)*w)]
+		  fi
+	       od.##
+	    od.##
+      in >#new_level { whether any new elements were found for new level }
+      do stack := (stack next stack:=[]) #
+         (let cmp(int i,int j)=bool: new_level[i].L_int<=new_level[j].L_int in
+          for i in sort_u(#new_level,cmp) do new_level[i] od
+	 )
       od
-   ; let perm = sort(#orbit,(int i,int j)bool: orbit[i].L_int<=orbit[j].L_int)
-   in for i in perm do orbit[i] od { return |orbit| sorted increasing }
+   ; let sizes = for level in stack do #level od, orbit = ##stack
+     then merge = merge((int i,int j)bool: orbit[i].L_int<=orbit[j].L_int)
+     , result = #sizes[1] { list of indices into |orbit|, in sorted order }
+     , ranges = [[int]]: { ranges of indices to be merged into |result| }
+         let c=sizes[1]-1 in for s in sizes[2:] do for :s do c+:=1 od od
+   in for range in ranges do result := merge(result,range) od
+   ;  for i in result do orbit[i] od { return |orbit| sorted increasing }
 )
 
 { in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
