@@ -207,7 +207,7 @@ set combine_W_lists ([[WeylElt]] lists) = [WeylElt]:
      for l@i in lengths[:1~] ~do set (q,r):=q\%l; w:=lists[i][r]*w od; w
   od
 
-set elliptic (RootDatum rd) = [WeylElt]:
+set elliptic_conjugacy_class_reps (RootDatum rd) = [WeylElt]:
   let (lt,map_to_rd) = Cartan_matrix_type(rd.Cartan_matrix), offset=0
   then factors=simple_factors(lt)
   in

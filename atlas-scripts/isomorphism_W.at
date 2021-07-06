@@ -45,10 +45,14 @@ if #classes=0 then [] else permute(M,classes,classes[0].root_datum) fi
 {M takes W_1 to W_2, given classes_1, classes_2, find the induced permutation
 on classes. This requires a lookup since M takes w\in W_1 to w'\in W_2, but
 not necessarily a conjugacy classes representative in W_2}
-set induced_permutation_on_classes(mat M,[WeylElt] classes,[WeylElt] classes_new)=[int]:
-for w in classes do
- first(for y in classes_new do is_conjugate(permute(M,w,classes_new[0].root_datum),y) od)
-od
+set induced_permutation_on_classes(
+   mat M,[WeylElt] classes,[WeylElt] classes_new) = [int]:
+   let rd=classes_new[0].root_datum
+in for w in classes
+   do let test = is_conjugate_to(permute(M,w,rd))
+   in first(for y in classes_new do test(y) od)
+   od
+
 set induced_permutation_on_classes(mat M,[WeylElt] classes)=[int]:
 induced_permutation_on_classes(M,classes,classes)
 

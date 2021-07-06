@@ -196,7 +196,7 @@ new_line + orbit.dim_nilpotent.to_string od)
 
 set special_elliptic(RootDatum rd)=
 let ad=affine_datum(rd) then
-ell=elliptic_conjugacy_classes(rd) then
+ell=elliptic_conjugacy_class_reps(rd) then
 good_info=for w in ell do good_info(w,ad) od then
 special=##for w@i in ell do let (,,levis,,,,,(,x))=good_info[i] then
  (a,)=%x then
@@ -231,7 +231,7 @@ sort_by(g@WeylElt)
 
 set special_elliptic_poset(RootDatum rd)=NilpotentPoset:
 let ad=affine_datum(rd) then
-ell=elliptic_conjugacy_classes(rd) then
+ell=elliptic_conjugacy_class_reps(rd) then
 good_info=for w in ell do good_info(w,ad) od then
 special_elliptic_elements=[] then
 orbits=[] in

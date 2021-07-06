@@ -151,7 +151,8 @@ let (ep,orders,levis,std_levis,y,v,z,ac)=good_info(w,ad) in
 [w.order.to_string,w.length.to_string,(#levis).to_string,v.to_string,z.to_string,ac.to_string] od in
 tabulate(header#values)
 
-set good_report(RootDatum rd)=good_report(elliptic(rd), affine_datum(rd))
+set good_report(RootDatum rd) = void:
+  good_report(elliptic_conjugacy_class_reps(rd), affine_datum(rd))
 
 set run_reports()=void:
 let types=["G2","F4","E6","E7","E8"] in
