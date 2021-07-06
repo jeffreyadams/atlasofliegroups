@@ -64,4 +64,4 @@ rv
 
 
 set elliptic_conjugacy_class_poset(RootDatum rd)=[[int]]:
-conjugacy_class_poset(elliptic(rd))
+   conjugacy_class_poset(elliptic_conjugacy_class_reps(rd))

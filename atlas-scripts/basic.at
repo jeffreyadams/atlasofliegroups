@@ -791,11 +791,6 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
-{ simply_connected and adjoint for a RootDatum: each is a product of
-  simple factors and possibly a torus factor. Since |Lie_type| is used,
-  coordinates for the new root datum are unrelated to those of |rd|
-}
-
 set simply_connected (RootDatum rd) = RootDatum:
   root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),rd.prefers_coroots)
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
@@ -811,9 +806,9 @@ set integrality_rank (Param p) = int: { this really should be built-in }
   but they need not be positive, and will be taken in the order specified.
   In particular any subset of simple roots taken in any order will be valid. }
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
-  let r = rd.rank, sr=rd.simple_roots, scr=rd.simple_coroots in
-  root_datum(r # for i in S do  sr[i] od
-	    ,r # for i in S do scr[i] od
+  let r = rd.rank in
+  root_datum(r # for i in S do   root(rd,i) od
+	    ,r # for i in S do coroot(rd,i) od
 	    ,rd.prefers_coroots)
 
 { backwards compatibility function; used to be the built-in prototype }
@@ -852,6 +847,23 @@ in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
 set rho (RootDatum rd) = ratvec: rd.two_rho/2
 set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
+
+set two_rho (RootDatum rd,(int->bool) select) = vec: { sum of selected posroots }
+   columns_with(select,posroots(rd)).sum
+set two_rho_check (RootDatum rd,(int->bool) select) = vec:
+   columns_with(select,poscoroots(rd)).sum
+
+set two_rho (RootDatum rd,[int] simples) = vec:
+   let orth = { linear form vanishing precisely on span of roots in |simples| }
+     ^kernel(rank(rd)^for i in simples do root(rd,i) od) in
+   two_rho(rd,(int i)bool: =orth*root(rd,i))
+set two_rho_check (RootDatum rd,[int] simples) = vec:
+   let orth = { matrix right-annihilating precisely span of |simples| coroots }
+     kernel(rank(rd)^for i in simples do coroot(rd,i) od) in
+   two_rho_check(rd,(int i)bool: =coroot(rd,i)*orth)
+
+set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
+   for j in simples do for i in simples do coroot(rd,j)*root(rd,i) od od
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):

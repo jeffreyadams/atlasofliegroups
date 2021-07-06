@@ -1,4 +1,4 @@
-<basic.at  { for assert, #@int,... }
+<basic.at  { for |assert|, |all_simples|,... }
 
 {
   An optimised orbit generation procedure, which assumes that generators can
@@ -110,7 +110,7 @@ set W_parabolic_act (RootDatum rd, [int] gens, int dim, [mat] gens_rep) =
    od; result
 
 { all elements of Weyl group of RootDatum, in parabolic	quotient lex order }
-set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,#rd.semisimple_rank)
+set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,all_simples(rd))
 
 { variants of the above for |vec| instead of |vec|; reduce to |vec| case }
 set generate_from (RootDatum rd,[int] S,ratvec rv) = ([ratvec],[WeylElt]):
