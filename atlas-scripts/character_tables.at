@@ -3,7 +3,6 @@
 <classical_W_classes_and_reps.at
 <nilpotent_orbits.at
 <isomorphism.at
-{including fake degree}
 
 set ct_verbose=false
 
@@ -27,25 +26,18 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 set_type
 [ CharacterTable =
   ( WeylClassTable class_table
-  , int order { of the finite group }
-  , (int->int) to_class_table
-  , (int->int) from_class_table
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-  , (int ->classical_class) classes
-  , (int->string) class_label {derived from partitions in classical case}
   , [WeylElt] class_reps  { should be made function } {list of class reps }
-  {  , (int ->WeylElt) class_rep     {used to be the (primary) projector, making it a (secondary) function}}
-  , (int->int) class_order
-  , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
-  , [int] centralizer_orders { should be made function }
-  , [int] class_sizes { should be made function }
+  , (int->string) class_label {derived from partitions in classical case}
+  , (int ->classical_class) classes
   {irreducible characters}
   , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
-  , [[int]] sym_powers_reflection { should be made function }
   , [int] degrees { should be made function }
-  , [int] fake_degrees { should be made function }
+  , (int->int) generic_degree
+  , (int,(->int),bool->int) set_generic_degree
+  , (int->bool) has_generic_degree
   , mat table { should be made function } { by row=character }
   )
 ]
@@ -55,49 +47,49 @@ set character_table ( WeylClassTable Wct
     		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-let    rd  = Wct.root_datum
-then order = rd.order_W { recomputed; fix |WeylClassTable| to provide it }
-,    n     = Wct.n_classes
-then class_map = [int]:
-      assert(#class_reps=n,"There should be "+n+" class representatives")
-    ; assert(#chars=n,"There should be "+n+" irreducible characters")
-    ; for i:n do Wct.class_of(let (w,,)=class_reps[i] in w) od
-then inv_map = inverse(class_map)
-, c_size(int i) = Wct.class_sizes()[class_map[i]]
-, rearrange([int] val) = [int]: for i:n do val[class_map[i]] od
-then irreps = [classical_irrep]: for (ci,,) in chars do ci od
-, labels = [string]: for (,s,) in chars do s od
-, character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
-, degrees = [int]:
-  for i:n
-  do
-    let char = let (,,ch)=chars[i] in for j:n do ch[inv_map[j]] od in
-    first(rd.nr_of_posroots+1
-         ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
-  od
+(  let rd  = Wct.root_datum, n = Wct.n_classes
+   , reps = for (w,,) in class_reps do w od
+in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
+;  let irreps = [classical_irrep]: for (ci,,) in chars do ci od
+,  labels = [string]: for (,s,) in chars do s od
+,  character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
+,  sizes = Wct.class_sizes
+,  degrees = [int]:
+   for i:n
+   do
+     let (,,char)=chars[i] in
+     first(rd.nr_of_posroots+1
+          ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
+   od
+   , generic_degrees = vec: -ones(n)
+then get_generic_degree(int i) = int:
+   if generic_degrees[i].<
+   then error("Generic degree of irrep "+i+" was not set")
+   else generic_degrees[i]
+   fi
+,  set_generic_degree(int i,(->int) d, bool check) = int:
+   if generic_degrees[i].<
+   then generic_degrees[i]:=d()
+   else
+     if check then assert(generic_degrees[i]=d(),"Generic degree change") fi
+   ; generic_degrees[i]
+   fi
 in
-( { class_table } WeylClassTable: Wct
-, { order } int: order
-, { to_class_table } (int i) int: class_map[i]
-, { from_class_table } (int j)int: inv_map[j]
-  {conjugacy classes}
-, { n_classes } int: n
-, { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
-, { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
-, { class_reps } [WeylElt]: for (w,,) in class_reps do w od
-{ , { class_rep } (int i)WeylElt: let (w,,)=class_reps[i] in w }
-, { class_order } (int i) int: let (w,,) = class_reps[i] in order(w)
-, { class_power } (int i,int pow)int: inv_map[Wct.class_power(class_map[i],pow)]
-, { centralizer_orders} [int]: for i:n do order\c_size(i) od
-, { class_sizes } [int]: for i:n do c_size(i) od
-{irreducible characters}
-, { classical_reps } (int i)classical_irrep: irreps[i]
-, { irreducible_label } (int i)string: labels[i]
-, { sym_powers_reflection } [[int]]:
-  for k:rd.nr_of_posroots+1 do rearrange(Wct.sym_power_refl(k)) od
-, { degrees } [int]: degrees
-, { fake_degrees} [int]: [] { to be set afterwards }
-, { table } mat: character_table
+   ( { class_table } WeylClassTable: Wct
+     {conjugacy classes}
+   , { n_classes } int: n
+   , { class_reps } reps
+   , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
+   , { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
+     {irreducible characters}
+   , { classical_reps } (int i)classical_irrep: irreps[i]
+   , { irreducible_label } (int i)string: labels[i]
+   , { degrees } [int]: degrees
+   , { generic_degree } (int->int): get_generic_degree
+   , { set_generic_degree } (int,(->int),bool->int): set_generic_degree
+   , { has_generic_degree } (int i) bool: generic_degrees[i].>=
+   , { table } mat: character_table
+   )
 )
 
 set character_table ( RootDatum rd
@@ -106,659 +98,243 @@ set character_table ( RootDatum rd
 		    ) =  CharacterTable:
     character_table ( W_class_table(rd), class_reps, chars )
 
-{ An invalid character table the can be used ti initialise local variables }
+{ A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
    let Wct = W_class_table(adjoint("")), id(int i)=int: i
    then e=id_W(Wct.root_datum)
-in (Wct,1,id,id
-   ,1,(int i)classical_class: null_class()
-   ,(int i):"e",[e],(int i):1,(int i,int k)int:0,[1],[1]
-   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[[1]],[0],[0],[[1]]
+in (Wct,1,[e],(int i):"e",(int i)classical_class: null_class()
+   ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0]
+   ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true, [[1]]
    )
 
-set initialize_character_table(RootDatum rd) = CharacterTable:
-(  if ct_verbose then prints("Initializing CharacterTable for ", rd) fi
-;  let log = if ct_verbose then prints@string else (string s): void:() fi
-then wct = log("0/5 computing W_class_table"); W_class_table(rd)
-   , W_order = log("Step 1/5: computing order(W)"); order_W(rd)
-then class_size(WeylElt w) = W_order\w.centralizer_order
-then classes = log("Step 2/5: computing class representatives")
-             ; wct.class_representatives()
-then  class_centralizer_sizes = log("Step 3/5: computing sizes of centralizers")
-                              ; for w in classes do w.centralizer_order od
-then class_sizes = log("Step 4/5: computing sizes of conjugacy classes")
-                 ; for w@i in classes do W_order\class_centralizer_sizes[i] od
-then class_orders
-     = log("Step 5/5: computing orders of elements of conjugacy classes")
-     ; for w in classes do w.order od
-,  id(int n) = int: n
-then ct=
-   ( wct    {class_table}
-   , W_order    {order (of W)}
-   , id, id
-   , #classes      {n_classes}
-   , (int j) classical_class: ().null_class
-   , (int j) string: "" {class_label} {fill in later}
-   , classes {class_reps}
-   , (int j) int: class_orders[j]
-   , (int j, int p) int:
-	first(#classes,(int i): is_conjugate(classes[i],classes[j]^p))
-   , class_centralizer_sizes
-   , class_sizes
-   , (int j): null_irrep()
-   , (int i) string: "" { irreducible representation label }  {later}
-   , {sym_powers_reflection} [[int]]:
-     for i:rd.nr_of_posroots+1  {S^i(ref)}
-     do let v=wct.sym_power_refl(i) in
-        for class in classes
-	do let index=find_conjugate(wct.class_representatives(),class) in
-	   v[index]
-	od
-     od
-   , [int]:[]     {degrees}
-   , [int]:[] {fake degrees}
-   , null(#classes,#classes)   {table}
-   )
-in log ("Done intializing character table")
-; ct
-)
-
-set initialize_character_table (LieType lt) = CharacterTable:
-   assert(lt.is_simple,"LieType is not simple");
-   initialize_character_table(simply_connected(lt))
-
-{root datum of CharacterTable is (semisimple) simply connected}
+{ attributes inhereited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
-
-{Note: ct.class_rep(0).root_datum and ct.root_datum might not be the same:
- for example in simple type B/D ct.root_datum is simply connected,but
- ct.class_rep(0).root_datum is SO(n)
- the parent of the the class_representatives is root_datum_parent
-}
-set root_datum_parent (CharacterTable ct) = RootDatum:
-RootDatum: ct.class_reps[0].root_datum { at least one class exists }
-
-{moved isomorphism stuff to isomorphism.at}
-set parent_root_permutation(CharacterTable ct)=mat:
-let (valid,P)=root_permutation(ct.root_datum,ct.root_datum_parent)
-in assert(valid,"inconsistent root data");P
-
 set rank(CharacterTable ct) = ct.root_datum.rank
-{ct.class_reps=[WeylElt] is now a projector}
-{set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od}{old version}
-set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
-set class_rep(CharacterTable ct,int i)=WeylElt:ct.class_reps[i]  {not really
-necessary, but helpful for backward compatibility}
-set class_rep(CharacterTable ct)=(int->WeylElt):(int i):ct.class_reps[i]  {not really necessary, but helpful for backward compatibility}
-set id_class(CharacterTable ct)=first(for j:ct.n_classes do ct.class_reps[j].length=0 od)
-set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
+set order(CharacterTable ct) = ct.root_datum.order_W
 
-set class_index(CharacterTable ct)=(WeylElt -> int): (WeylElt w):
-{  first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))}
-{is_conjugate needs to be fixed: only correct for simple groups}
-{  first(ct.n_classes,(int i): is_conjugate_strong(ct.class_reps[i],w))}
-  first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
+set class_representatives = class_reps@CharacterTable {synonym}
+set class_rep(CharacterTable ct,int i) = WeylElt: ct.class_reps[i]
+set class_rep(CharacterTable ct) = (int->WeylElt): (int i):ct.class_reps[i]
+set class_of(CharacterTable ct) = ct.class_table.class_of
 
-set character_value(CharacterTable ct, int class)=(int i) int:ct.table[i,class]
-{since id_class(ct) is slow, in loops it is better to use
-character_value(ct,id_class)(i) where id_class is pre-computed}
-set centralizer_order(CharacterTable ct)=(int->int):(int i): ct.centralizer_orders[i]
-set class_size(CharacterTable ct)=(int->int):(int i): ct.class_sizes[i]
-set character(CharacterTable t)=(int->[int]):(int i):(^t.table)[i]
-set characters(CharacterTable ct)=[[int]]: ^ct.table
-set character_index(CharacterTable ct)=([int]->int):([int] char):
+set class_order(CharacterTable ct) = (int i) int:
+  order(class_rep(ct,i)) {element order}
+set class_sizes(CharacterTable ct) = ct.class_table.class_sizes
+set class_size(CharacterTable ct) = (int i) int: ct.class_sizes[i]
+set centralizer_order(CharacterTable ct) = (int i) int:
+  ct.order\ct.class_sizes[i]
+set class_power(CharacterTable ct) = (int,int->int): ct.class_table.class_power
+
+set character_value(CharacterTable ct, int class) = (int i) int:
+  ct.table[i,class]
+
+set id_class(CharacterTable ct) = ct.class_of(ct.root_datum.id_W)
+set dimension (CharacterTable ct) = ([int] chi) int: chi[ct.id_class]
+set dimension (CharacterTable ct,int i) = int: ct.table[i,ct.id_class]
+
+set character(CharacterTable t) = (int i) [int]: row(t.table,i)
+set characters(CharacterTable ct)=[[int]]: rows(ct.table)
+
+set character_index(CharacterTable ct) = ([int] char) int:
   first(ct.n_classes,(int i): ct.characters[i]=char)
-set index(CharacterTable ct,vec char)=int:find(ct.characters,char)
-set inner(CharacterTable ct)=(([int],[int])->int): ([int] x,[int] y):
-  assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
-  let sizes=for i:ct.n_classes do ct.class_size(i) od then
-  nW=ct.order then
-    s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
-    if =r then q else error("Non integer inner product ",s/nW) fi
-set norm2(CharacterTable ct)=([int]->int): ([int] x):ct.inner(x,x)
-set sum(CharacterTable ct)=(([int],[int])->[int]): ([int] x,[int] y):
-   for xi@i in x do xi+y[i] od
-set product(CharacterTable ct)=(([int],[int])->[int]):([int] x,[int] y):
-   for xi@i in x do xi*y[i] od
-set power_map(CharacterTable ct)=(int -> [int]):
-(int j): let w=ct.class_rep(j) in for i:w.order do ct.class_index(w^i) od
-set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
+set index(CharacterTable ct,vec char) = int: ct.character_index(char)
 
-set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
-set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
-set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace od    {reflection}
+set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
+set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
+
+set degree(CharacterTable ct) = (int i)int: ct.degrees[i]
+set generic_degree_string(CharacterTable ct)  = (int i)string:
+   if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
+
+set sum(CharacterTable ct) = ([int],[int]->[int]): ct.class_table.direct_sum
+set product(CharacterTable ct) = (([int],[int])->[int]): ct.class_table.tensor
+
+set power_map(CharacterTable ct) = (int i) [int]: { powers of class |i| }
+   let Wct=ct.class_table
+   , order = ct.class_rep(i).order { or |Wct.class_representatives()[ii].order }
+   in for k: order do Wct.class_power(i,k) od
+
+set sym_power_refl(CharacterTable ct) = ct.class_table.sym_power_refl
+
+set degree(CharacterTable ct) = (int i): ct.degrees[i]
+
+set trivial(CharacterTable ct) = [int]: ct.class_table.trivial
+set sign(CharacterTable ct) = [int]: ct.class_table.sign
+set reflection (CharacterTable ct) = [int]: ct.class_table.reflection
 
 {tensor_sign: [int] -> [int]}
-set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
-set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
+set tensor_sign(CharacterTable ct) = ([int]->[int]):
+   let sign=ct.sign in ([int] char): tensor(sign,char) { "free" |tensor| above }
+set tensor_sign(CharacterTable ct,[int] char) = [int]: ct.tensor_sign(char)
 
 {tensor_sgn: int->int}
-set tensor_sign_index(CharacterTable ct, int index)=int:
-ct.character_index(ct.tensor_sign(ct.characters[index]))
-set tensor_sign_index(CharacterTable ct)=(int->int):(int index):tensor_sign_index(ct,index)
+set tensor_sign_index(CharacterTable ct) = (int->int):
+   let ts = ct.tensor_sign in
+   (int index) int: ct.character_index(ts(ct.character(index)))
+set tensor_sign_index(CharacterTable ct, int index) = int:
+   ct.tensor_sign_index(index)
 
-{table [[int]] of size (n_classes x #posroots_1)
-table[i]=character of sym^i(reflection)
-}
-set sym_powers_reflection([WeylElt] list)=[[int]]:
-let rd=list[0].root_datum then
-wct=W_class_table(rd) then
-wct_class_reps=wct.class_representatives() in
-for i:rd.nr_of_posroots+1 do  {S^i(ref)}
- let v=wct.sym_power_refl(i) in
- for j:#v do let index=find_conjugate(wct_class_reps,list[j]) in v[index] od
-od
-
-set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
-ct.sym_powers_reflection:=sym_powers_reflection(ct.class_reps); ct
-
-{set sym_powers_reflection(CharacterTable ct)=[[int]]:[]}
- {store empty list by default
-  see the function sym_power_reflection@CharacterTable below:
-  the first time it is called it fills sym_powers_reflection
- }
-
-set class_power_function(CharacterTable ct)=(int,int->int):
-(int j,int p):first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],ct.class_reps[j]^p))
 
 {tensor product of two rows of character table}
-set tensor(CharacterTable t)=(int,int->[int]):(int i,int j):
-product(t.character(i),t.character(j))
-set tensor_power(CharacterTable t)=(int,int->[int]):(int i,int power):
-for x in t.character(i) do x^power od
+set tensor(CharacterTable t) = (int i,int j)[int]:
+   product(t.character(i),t.character(j)) { "free" |product| = |tensor| above }
+set tensor_power(CharacterTable t) = (int i,int k)[int]:
+   tensor_power(t.character(i),k)
 
-set Cartesian_power(CharacterTable ct)=([int],int->[int]):([int] x,int n): assert(#x=ct.n_classes,"Wrong size"); for v in x do n*v od
+set Cartesian_power(CharacterTable ct) = ([int] x,int n)[int]:
+   assert(#x=ct.n_classes,"Wrong size"); for v in x do n*v od
 
-set scalar_product (CharacterTable ct) = (int i0, int i1) rat:
-   let tab=ct.table in
-   for j: ct.n_classes do tab[i0,j]*tab[i1,j]*ct.class_size(j) od.sum/ct.order
+set scalar_product (CharacterTable ct) = (int i0, int i1) int:
+   ct.inner(ct.character(i0),ct.character(i1))
 
 {different name for use with [int],[int] arguments}
-set inner_product(CharacterTable ct)=(([int],[int])->int):([int] v,[int] w):
-rat_as_int(sum(for i:ct.n_classes do v[i]*w[i]*ct.class_size(i) od)/ct.order)
+set inner_product = (CharacterTable->([int],[int]->int)):
+   inner@CharacterTable { we already had that function }
 
 set check_orthogonality (CharacterTable ct) = bool:
-   let n=ct.n_classes, dot=ct.scalar_product in
-   for i:n do for j:n do {prints(i, " ", j, " ", dot(i,j)=#(i=j));}dot(i,j) = #(i=j) od.all od.all
+   let n=ct.n_classes in matrix((n,n),ct.scalar_product) = id_mat(n)
 
+{ The following few functions assume |ct| has a simple root datum }
 
-{miscellaneous functions}
+{ find index j of the conjugacy class of a long root reflection, or -1 if none }
+set index_long_reflection(CharacterTable ct) = int:
+   let rd=ct.root_datum
+   then inx = first(rd.semisimple_rank,(int i)bool: is_long_root(rd,i))
+in if inx.< then { there is no long root } minus_1
+   else ct.class_of(W_elt(rd,[inx]))
+   fi
 
-{ find index j of the conjugacy class of a long (or any) root reflection }
-set index_long_reflection(CharacterTable ct)=int:
-let rd=ct.root_datum in
-first(for i:ct.n_classes do
- let w=ct.class_rep(i) in
-  length(w)=1  and is_long(rd,let j=w.word[0] in rd.simple_roots[j]) od)
-
-{returns -1 if one root length}
-set index_short_reflection(CharacterTable ct)=int:
-let rd=ct.root_datum in
-first(for i:ct.n_classes do
- let w=ct.class_rep(i) in
-  length(w)=1  and is_short(rd,let j=w.word[0] in rd.simple_roots[j]) od)
+set index_short_reflection(CharacterTable ct) = int:
+   let rd=ct.root_datum
+   then inx = first(rd.semisimple_rank,(int i)bool: not is_long_root(rd,i))
+in ct.class_of(W_elt(rd,[inx]))
 
 { character values at two or three special elements:
   identity, long root reflection, and if different short root reflection }
 set signature(CharacterTable ct,[int] char) = [int]:
-  let i_long=ct.index_long_reflection, i_short=ct.index_short_reflection in
-  [char[0],char[i_long]] ## if i_short.>= then [char[i_short]] else [] fi
-
-set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
-
-set decompose(CharacterTable ct)=(vec->vec):(vec v):
-for i:#ct.table do ct.inner_product(v,ct.character(i)) od
-
-{inverse of f, assuming it is a permutation of [0,..,n]}
-set inverse((int->int) f, int n)=(int j):
-permutation_inverse(for i:n do f(i) od)[j]
-
-
-set permute_classes(CharacterTable ct,(int->int) f) = CharacterTable:
-{don't waste time if f is the identity}
-  if all(for i:ct.n_classes do f(i)=i od) then ct
-  else let f_inv = (int->int):
-     let inv_perm=  permutation_inverse(for i:ct.n_classes do f(i) od)
-     in (int j): inv_perm[j]
-  in ( ct.class_table
-     , ct.order
-     , (int n) int: ct.to_class_table(f(n))
-     , (int m) int: f_inv(ct.from_class_table(m))
-     , ct.n_classes
-     , (int i) classical_class: ct.classes(f(i))
-     , (int i) string: ct.class_label(f(i))
-     , [WeylElt]: for i:ct.n_classes do ct.class_reps[f(i)] od
-     , (int i) int: ct.class_order(f(i))
-     , (int i, int j) int: f_inv(ct.class_power(f(i),j))
-     , [int]: for i:ct.n_classes do ct.centralizer_orders[f(i)] od
-     , [int]: for i:ct.n_classes do ct.class_sizes[f(i)] od
-     , (int->classical_irrep): ct.classical_reps
-     , (int->string): ct.irreducible_label
-     , [[int]]:
-       if =#ct.sym_powers_reflection then []
-       else {recompute sym_powers_reflection}
-          for v in ct.sym_powers_reflection
-	  do for i:ct.n_classes do v[f(i)]od { permute each internal |[int]| }
-	  od
-       fi
-     , [int]:
-       if =#ct.degrees then []
-       else for i:ct.n_classes do ct.degrees[f(i)] od
-       fi
-     , [int]:
-       if =#ct.fake_degrees then []
-       else for i:ct.n_classes do ct.fake_degrees[f(i)] od
-       fi
-     , mat: for col@j in ct.table do ct.table[f(j)] od
-     )
+   let i_long=ct.index_long_reflection, i_short=ct.index_short_reflection
+in if i_long.< then { single root length } [char[ct.id_class],char[i_short]]
+   else [char[ct.id_class],char[i_long],char[i_short]]
    fi
 
-{ permute classes, including permuting the table itself }
-set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:
-let f(int i)=permutation[i] in permute_classes(ct,f)
+set signature(CharacterTable ct) = ([int] char)[int]: signature(ct,char)
 
-{better to always permute them, if not what you want, leave the table
-empty until you're ready to fill it}
-{permute classes but optionally don't permute the column entries of the table}
-{set permute_classes(CharacterTable ct,[int] permutation,bool permute_table)=CharacterTable:
-let ct1=permute_classes(ct,permutation) in
-if permute_table then ct1 else
- {only permute the classes themselves, not the character table columns}
- let ()=ct1.table:=ct.table in ct1 fi
-}
+set decompose(CharacterTable ct) = (vec v)[int]: { list of irrep multiplicities }
+   for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 
-set permute_representations(CharacterTable ct,(int->int) f) = CharacterTable:
-(ct.class_table,
-ct.order,
-ct.to_class_table, ct.from_class_table,
-ct.n_classes,
-ct.classes,
-ct.class_label,
-ct.class_reps,
-ct.class_order,
-ct.class_power,
-ct.centralizer_orders,
-ct.class_sizes,
-ct.classical_reps,
-(int i): ct.irreducible_label(f(i)),
-ct.sym_powers_reflection,
-ct.degrees,
-ct.fake_degrees,
-^for i:ct.n_classes do row(ct.table,f(i)) od
-)
-
-set permute_representations(CharacterTable ct,[int] permutation)=CharacterTable:
-let f(int i)=permutation[i] in permute_representations(ct,f)
-
-set sorting_permutation([int] v,[int] w)=
-assert(sort(v)=sort(w),"v and w are not related by a permutation");
-let rv=[int]:[] in
-for i in w do
- let index=first(for j:#v do find(rv,j)=-1 and v[j]=i od) in
- rv#:=index od;rv
-
-set sorting_permutation([int] v)=
-let sorted=sort(v) then
-rv=[int]:[] in
-for i in sorted do
- let index=first(for j:#v do find(rv,j)=-1 and v[j]=i od) in
- rv#:=index od;rv
-{set y=sorting_permutation(v)
- set sorted=for j:#y do v[y[j]]
- then sorted=sort(v)}
-
-
-set sort_by_dimension(CharacterTable ct)=
-permute_representations(ct,sorting_permutation(ct.table[0]))
-
-
-{copied (and modified) from W_characters.at}
-
-{ Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
-set Adams (CharacterTable tab) = ([int]char, int n) [int]:
-   for i:tab.n_classes do char[tab.class_power(i,n)] od
 
 { symmetric power of a character }
-set sym_power (CharacterTable tab) = ([int]char, int n) [int]:
-{ with $h_k$ symmetric, $p_k$ Adams, use $kh_k=\sum_{i=0}{k-1} h_ip_{k-i}$ }
-   let { define two local tables of characters, to be expanded in loop }
-     p = { "power sum polynomials", results of Adams operations } [[int]]: [ ]
-         { since there is no $p_0$, the $k$-the Adams operation gives the entry
-           |p[k-1|, but never mind since we will always reverse-index |p| }
-   , h = { "complete homogeneous polynomials", symmetric powers } [tab.trivial]
-   , Adams = tab.Adams { shorthand }
-in for k:n from 1
-   do p #:= Adams(char,k) { expand }
-   ;  let sum=p~[0]
-   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(h[i],p~[i])) od
-   ; h #:= for s in sum do s\k od { expand table by |sum\k| }
-   od; h[n] { last symmetric power is the one we want }
-
-
-set sym_power_reflection(CharacterTable ct)=(int->[int]):(int i):
-  ct.sym_powers_reflection[i]
-
-
-{ exterior power of a character }
-set ext_power (CharacterTable tab) = ([int]char, int n) [int]:
-{ with $e_k$ ext, $p_k$, use $ke_k=\sum_{i=0}{k-1}(-1)^{k-i-1} e_ip_{k-i}$ }
-   let { define two local tables of characters, to be expanded in loop }
-    sp = { "signed power sum polynomials", $(-1)^{i-1}p_i$ } [[int]]: [ ]
-         { since there is no $p_0$, the $k$-the Adams operation gives the entry
-           |p[k-1|, but never mind since we will always reverse-index |p| }
-   , e = { "elementary symmetric polynomials", exterior powers } [tab.trivial]
-   , Adams = tab.Adams { shorthand }
-in for k:n from 1
-   do sp #:= Cartesian_power(Adams(char,k),minus_1^(k-1)) { expand }
-   ;  let sum=sp~[0]
-   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(e[i],sp~[i])) od
-   ; e #:= for s in sum do s\k od { expand table by |sum\k| }
-   od; e[n] { last symmetric power is the one we want }
-
-
-{   -----character calculations------}
-{copied (and modified) from W_reps.at}
-
-{. matrix of inner products of characters of representations .}
-set matrix_of_inner_products (CharacterTable tab,[[int]] characters) = mat:
-  let n=#characters
-  in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
-
-{ filter list of representations to a unique copy of any occurring character }
-{
-set sort_u (CharacterTable tab,[W_rep] list) = [W_rep]:
-  case #list
-  in [], list
-  else let chars = for pi in list do character(tab,pi) od
-     then sorted = [[int]]: sort_u(chars)
-     then positions = for :#sorted do minus_1 od
-     in for char@i in chars
-        do let j =
-           binary_search_first((int j):lex_lesseq(char,sorted[j]),0,#sorted)
-           in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
-        od
-     ; for pos in positions do list[pos] od
-  esac
-  }
-
-{ the sign representation occurs in S^(nr_of_posroots)(reflection), and
-  this is the maximum necessary exponent to get all irreducibles }
-{. smallest k so that pi occurs in S^k(reflection) .}
-
-{ct.degrees should be precomputed
- if not, return error instructing how to update ct
-}
-
-set degree(CharacterTable ct)=(int->int):(int i):
-if #ct.degrees>0 then ct.degrees[i] else
-error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
-
-{update degrees}
-set update_degrees(CharacterTable ct)=CharacterTable:
-if ct_verbose then prints("Updating degrees in character table") fi;
-let ct=
- if #ct.sym_powers_reflection!=0 then ct else
- ct.update_sym_powers_reflection
-fi
-then
- degrees=
-for i:ct.n_classes do
-  first(ct.root_datum.nr_of_posroots+1,
-     (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))
-od
-in ct.degrees:=degrees;
-if ct_verbose then prints("Done updating degrees") fi;
-ct
+set sym_power (CharacterTable tab) = tab.class_table.sym_power
+set ext_power (CharacterTable tab) = tab.class_table.ext_power
 
 {mults is a vector of multiplicities of the irreducible characters,
 return a list (without multiplicities) of the irreducible characters
 of smallest degree occuring}
-set smallest_degree_summands(CharacterTable ct,[int] mults)= [int]:
-let smallest=-1 then
-indices=[int]:[]  in
-for j:#mults do
- if mults[j]>0 then
- let deg_j=ct.degree(j)
-  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
-   elif deg_j=smallest  then indices#:=j
-  fi
- fi
-od;
-indices
-
-{  representations of W; copied (and modified) from W_reps.at}
-
-{ data type for representation of W
-  operators[i] is the matrix of the action of simple generator #i
-}
-set_type [W_rep = (int dimension, [mat] operators)]
-
-{ matrix of pi(w) }
-set operator (W_rep (dimension,operators), WeylElt w) = mat:
-   product(dimension,for s in w.word ~do operators[s] od)
-
-set operator (W_rep pi) = (WeylElt -> mat):
-  (WeylElt w) mat: operator(pi,w)
-
-{ trivial representation of W }
-set trivial_W (RootDatum rd) = W_rep:
-  (1,for i:semisimple_rank(rd) do id_mat(1) od)
-
-{ Compute characters of W-representations on cells, as obtained from W_cells
-  also induced characters from Levi subgroups, and the Steinberg character
-}
-
-{character of pi}
-set  character(CharacterTable ct, W_rep pi) = [int]:
-  for w in ct.class_reps do trace(pi.operator(w)) od
-
-{ isomorphism test using the character }
-set is_isomorphic (CharacterTable tab, W_rep pi, W_rep sigma) = bool:
-  all(tab.n_classes
-     ,(int i): let w = tab.class_reps[i] in
-               trace(pi.operator(w))=trace(sigma.operator(w))
-     )
+set smallest_degree_summands(CharacterTable ct,[int] mults) = [int]:
+   let degrees = for m@j in mults do if m.> then [ct.degree(j)] else [] fi od.##
+in if =#degrees then [] { no multiplicities, empty result }
+   else let min = min(degrees)
+   in for m@j in mults do if m.> and ct.degree(j)=min then [j] else [] fi od.##
+   fi
 
 
-set inner_no_test(CharacterTable ct)=(([int],[int])->rat): ([int] x,[int] y):
-  assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
-  let sizes=for i:ct.n_classes do ct.class_size(i) od then
-  nW=ct.order then
-    s = for size@i in sizes do size*x[i]*y[i] od.sum in s/nW
+{ convenience functions }
 
-
-set show_classes(CharacterTable ct)=void:
-tabulate(
- ["i","order","class_size","|cent|","sgn(w)","chi_ref(w))","name"]# for i:#ct.table do
-[i.to_string,ct.class_order(i).to_string,ct.class_size(i).to_string, ct.centralizer_order(i).to_string,
-ct.sign[i].to_string,ct.reflection[i].to_string,ct.class_label(i)
-] od)
-
-set show_classes_long(CharacterTable ct)=void:
-tabulate(
- ["i","order","class_size","|cent|","sgn(w)","chi_ref(w))","name","rep"]# for i:#ct.table do
-[i.to_string,ct.class_order(i).to_string,ct.class_size(i).to_string, ct.centralizer_order(i).to_string,
-ct.sign[i].to_string,ct.reflection[i].to_string,ct.class_label(i),
-ct.class_rep(i).to_string
-] od)
-
-set show_reps(CharacterTable ct)=void:
-let id_class=ct.id_class in
-tabulate(
-["i","dim", "deg","fdeg","name"]#
-for i:ct.n_classes do
-[i.to_string,
-character_value(ct,id_class)(i).to_string,
-ct.degree(i).to_string,
-if #ct.fake_degrees>0 then ct.fake_degrees[i].to_string else "" fi,
-ct.irreducible_label(i).to_string] od)
-
-set show(CharacterTable ct)=void:
-prints("Classes:");
-ct.show_classes;
-prints("Representations:");
-ct.show_reps
-
-set show_long(CharacterTable ct)=void:
-prints("Classes:");
-ct.show_classes_long;
-prints("Representations:");
-ct.show_reps
-
-set show_very_long(CharacterTable ct)=void:
-prints("Classes:");
-ct.show_classes_long;
-prints("Representations:");
-ct.show_reps;
-prints("Character Table:",ct.table)
-
-set view_multiplicities(CharacterTable ct,vec vec_of_multiplicities)=void:
-let table=[] then
-v=vec_of_multiplicities then
-()=for i:#v do if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
-ct.degrees[i].to_string,
-if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi
-] fi od
-in tabulate(["#","mult","dim","deg","fdeg"]#table)
-
-set view_char(CharacterTable ct,vec character)=void:
-view_multiplicities(ct,ct.decompose(character))
-
-set view_char(CharacterTable ct)=(vec->void):(vec v):view_char(ct,v)
-
-{more routines for computing character tables, mainly of exceptional
-groups; this was previously in character_tables_2.at
-}
-
-{ profiles for externally input character table, with orders,sizes
-and certain power maps}
-
-set all_entries(mat M)=[int]: sort(##rows(M))
-
-set match_entries(mat M,mat N)=bool:all_entries(M)=all_entries(N)
-
-{find a permutation relating two lists of not necessarily distinct vecs}
-{ postcondition: |result| a permutation with |B[result[j]]=A[j]| for all |j| }
-set find_permutation(mat A,mat B) = [int]:
-(  let rv=[int]:[]
-in for v in A
-   do rv#:=first(for i:#B do find(rv,i)=-1 and B[i]=v od) od
-;  rv
+set show_classes(CharacterTable ct) = void:
+tabulate (
+   ["i"
+   ,"order"
+   ,"class_size"
+   ,"|cent|"
+   ,"sgn(w)"
+   ,"chi_refl(w))"
+   ,"name"
+   ]
+#  for i:#ct.table
+   do [i.to_string
+      ,ct.class_order(i).to_string
+      ,ct.class_size(i).to_string
+      , ct.centralizer_order(i).to_string
+      ,ct.sign[i].to_string
+      ,ct.reflection[i].to_string
+      ,ct.class_label(i)
+      ]
+   od
 )
 
-set rows(mat M,[int] list)=for i in list do row(M,i) od
-set show_rows(mat M,[int] list)=^rows(M,list)
-set columns(mat M,[int] list)= rows(^M,list)
-set show_columns(mat M,[int] list)=mat:columns(M,list)
+set show_classes_long(CharacterTable ct) = void:
+tabulate (
+    ["i"
+    ,"order"
+    ,"class_size"
+    ,"|cent|"
+    ,"sgn(w)"
+    ,"chi_refl(w))"
+    ,"name"
+    ,"class rep"
+    ]
+#  for i:#ct.table
+   do [i.to_string
+      ,ct.class_order(i).to_string
+      ,ct.class_size(i).to_string
+      , ct.centralizer_order(i).to_string
+      ,ct.sign[i].to_string
+      ,ct.reflection[i].to_string
+      ,ct.class_label(i)
+      ,ct.class_rep(i).to_string
+      ]
+   od
+)
 
-set profile(mat table,mat orders_and_sizes,[int] sign_and_reflections_rows)=
-^((^orders_and_sizes)##(rows(table,sign_and_reflections_rows)))
+set show_reps(CharacterTable ct) = void:
+let id_class=ct.id_class in
+tabulate (
+   ["i"
+   ,"dim"
+   , "deg"
+   ,"gdeg"
+   ,"name"
+   ]
+#  for i:ct.n_classes
+   do [i.to_string
+      ,character_value(ct,id_class)(i).to_string
+      ,ct.degree(i).to_string
+      ,ct.generic_degree_string(i)
+      ,ct.irreducible_label(i).to_string
+      ]
+   od
+)
 
-{include power map:}
-set profile(mat table,mat orders_and_sizes,mat powers,[int] sign_and_reflections_rows)=
-^((^orders_and_sizes)##(rows(table,sign_and_reflections_rows))##(^powers))
+set show(CharacterTable ct) = void:
+   prints("Classes:"); ct.show_classes;
+   prints("Representations:"); ct.show_reps
 
-set power_map(CharacterTable ct,int N)=(int -> [int]):
-(int n):let v=ct.power_map(n) in
-for i:N do v[i%(#v)] od
+set show_long(CharacterTable ct) = void:
+   prints("Classes:"); ct.show_classes_long;
+   prints("Representations:"); ct.show_reps
 
-set power_map(CharacterTable ct, [int] powers)=(int -> [int]):
-(int n):let v=ct.power_map(n) in
-for i in powers  do v[i%(#v)] od
+set show_very_long(CharacterTable ct) = void:
+   prints("Classes:"); ct.show_classes_long;
+   prints("Representations:"); ct.show_reps;
+   prints("Character Table:"); prints(ct.table)
 
-{----------------------------------------------------------------}
-{character table versions}
+set view_multiplicities (CharacterTable ct,vec v {multiplicities}) = void:
+   let table =
+      for mult@i in v
+      do if mult>0 else []
+	 then
+	 [  [i.to_string
+	    ,mult.to_string
+	    ,dimension(ct,i).to_string
+	    ,ct.degrees[i].to_string
+	    ,ct.generic_degree_string(i)
+	    ]
+	 ]
+	 fi
+      od.##
+ in tabulate(["#","mult","dim","deg","gdeg"]#table)
 
-set power_profile(CharacterTable ct,[int] powers)=mat:
-for i:ct.n_classes do power_map(ct,powers)(i) od
+set view_char(CharacterTable ct,vec character) = void:
+   view_multiplicities(ct,ct.decompose(character))
 
-set order_size_profile(CharacterTable ct) = mat:
-  2 # for j:ct.n_classes do [ct.class_order(j),ct.class_size(j)] od
-
-set sgn_reflection_profile(CharacterTable ct) = mat:
-   [ct.sign,ct.reflection] { 2 columns; these should really be rows }
-
-set profile(CharacterTable ct) = mat:
-   ct.order_size_profile ^ ^ct.sgn_reflection_profile
-
-set profile(CharacterTable ct,[int] powers) =
-^(^ct.order_size_profile)##ct.sgn_reflection_profile##(^power_profile(ct,powers))
-
-set ct_size_orders(CharacterTable ct)=
-mat:for i:ct.n_classes do [ct.class_size(i),ct.class_order(i)] od
-
-{sort conjugacy classes into lex. order of: (elt.order,size,sign,reflection) }
-set sort_by_profile(CharacterTable ct) = CharacterTable:
-   let prof = profile(ct) { extract profile from character table just once }
-   then perm = [int]: { ranked: |profile[perm[j]]| weakly increasing by |j| }
-      sort(#prof,(int i,int j)bool: lex_lesseq(prof[i],prof[j]))
-in permute_classes(ct,(int j)int:perm[j]) { new class |j|: old class |perm[j]| }
-
-{sort by lexicographic (order,size,det,trace,powermap)}
-{first does sort_by_profile(ct) to sort by profile without powers}
-set sort_by_profile(CharacterTable ct,[int] powers)=
-let ct1=sort_by_profile(ct) then
-profile=profile(ct1,powers) then
-profile_sorted=sort(profile) then
-permutation=find_permutation(profile_sorted,profile) in
-permute_classes(ct1,permutation)
-
-{ sort the magma table similarly: first by profile }
-
-set sort_by_profile (mat profile, mat table) = (mat,mat):
-   let perm = [int]: { ranked: |profile[perm[j]]| weakly increasing by |j| }
-      sort(#profile,(int i,int j)bool: lex_lesseq(profile[i],profile[j]))
-   in ( n_rows(profile) # for j in perm do profile[j] od
-      , n_rows(table)   # for j in perm do table[j] od
-      )
-
-{ second by profile_including_power map }
-set sort_by_profile(mat profile_long, mat table,[int] powers)=
-let profile_short=mat:profile_long[:4,:] then
-(profile_short_1,table_1)=sort_by_profile(profile_short,table) then
-{apply the same permutation to profile_long}
-permutation=find_permutation(profile_short_1,profile_short) then
-profile_long_1=for j in permutation do columns(profile_long)[j] od  then
-{()=prints("profile_long_1:",^profile_long_1) then}
-(profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
-(profile_long_1,profile_2,table_2)
-
-set sort_by_profile_extra(mat profile_long, mat table,[int] powers)=
-let profile_short=mat:profile_long[:4,:] then
-(profile_short_1,table_1)=sort_by_profile(profile_short,table) then
-{apply the same permutation to profile_long}
-permutation=find_permutation(profile_short_1,profile_short) then
-profile_long_1=for j in permutation do columns(profile_long)[j] od  then
-(profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
-(profile_long_1,profile_2,table_2,permutation)
-
-{ replace table by one given explicitly, but using order implicitly defined by
-  a profile: matrix whose columns give (elt.order,size,sign,reflection char)
-  for the classes (supposed to uniquely identify them) in the order used.
-  The internals of the table are in fact adjusted to that order
-}
-set set_table(CharacterTable ct, mat profile, mat table) = CharacterTable:
-   let ct1=sort_by_profile(ct) { new table with profile-sorted classes }
-   then (profile1,table1) = sort_by_profile(profile,table) { sort table as well }
-   in assert(profile(ct1)=profile1,"profiles don't match");
-   ct1.table:=table1; ct1 { insert column-permuted table; return the new table }
-
-set set_table(CharacterTable ct,mat profile_long,mat table,[int] powers)=
-let ct_1=sort_by_profile(ct,powers) then
-(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in
-assert(profile(ct_1,powers)=profile_1,"profiles don't match");
-ct_1.table:=table_1;ct_1
-
-set view(CharacterTable ct,vec vec_of_multiplicities)=void:
-let table=[] then
-v=vec_of_multiplicities then
-()=for i:#v do if v[i]>0 then table#:=[i.to_string,v[i].to_string,ct.dimension(i).to_string,
-ct.degrees[i].to_string,
-if #(ct.fake_degrees)>0 then ct.fake_degrees[i].to_string else "" fi
-] fi od
-in tabulate(["#","mult","dim","deg","fdeg"]#table)
-
-set view(CharacterTable ct,vec character)=void:
-view(ct,ct.decompose(character))
-
-set view(CharacterTable ct)=(vec->void):(vec v):view(ct,v)
+set view_char(CharacterTable ct) = (vec v)void: view_char(ct,v)

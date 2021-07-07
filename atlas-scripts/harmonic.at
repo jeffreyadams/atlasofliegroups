@@ -22,7 +22,7 @@ set number_pos(CharacterTable ct) = ct.root_datum.nr_of_posroots
 reflection. Power must be at most #pos roots}
 set mult(CharacterTable ct, int rep, int deg) = int:
 if deg < 0 then 0 else
-ct.inner(ct.characters[rep],ct.sym_powers_reflection[deg]) fi
+ct.inner(ct.characters[rep],ct.sym_power_refl(deg)) fi
 
 {multiplicity of W irr by number "rep" in symm power "deg" mod poly alg with
 generators in degrees "list"}

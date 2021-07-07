@@ -215,9 +215,9 @@ Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
 Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
-  columns). The function returns the semisimple type, and the permutation of
-  mapping the standard (Bourbaki) ordering of the diagram of that type to the
-  ordering of the corresponding simple roots in matrix rows and columns.
+  columns). The function returns the semisimple type, and the permutation
+  mapping the standard (Bourbaki) numbering of the diagram of that type to the
+  positions of the corresponding simple roots and coroots in the Cartan matrix
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -356,9 +356,11 @@ dual: (RootDatum->RootDatum): dual of given root datum.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
   The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
+  Although coordinates change, the Cartan matrix is unchanged in the result.
 mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
   The (semisimple) root datum obtained by quotienting by the central torus,
   and matrix embedding weights for the quotient datum into the original datum.
+  Although coordinates change, the Cartan matrix is unchanged in the result.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed

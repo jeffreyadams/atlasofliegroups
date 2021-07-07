@@ -796,19 +796,24 @@ set adjoint (LieType type) = RootDatum:
   coordinates for the new root datum are unrelated to those of |rd|
 }
 
-set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
-{ replaced by a more reasonable version below }
-{set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))}
+set simply_connected (RootDatum rd) = RootDatum:
+  root_datum(^Cartan_matrix(rd),id_mat(semisimple_rank(rd)),rd.prefers_coroots)
+set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
+  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
 
 { root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
   integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
-set integrality_rank (Param p) = int: semisimple_rank(integrality_datum(p))
+set integrality_rank (Param p) = int: { this really should be built-in }
+  semisimple_rank(integrality_datum(p))
 
+{ in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
+  but they need not be positive, and will be taken in the order specified.
+  In particular any subset of simple roots taken in any order will be valid. }
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
-  let in_S = is_member(S) in
-  root_datum(columns_with(in_S,rd.simple_roots)
-	    ,columns_with(in_S,rd.simple_coroots)
+  let r = rd.rank, sr=rd.simple_roots, scr=rd.simple_coroots in
+  root_datum(r # for i in S do  sr[i] od
+	    ,r # for i in S do scr[i] od
 	    ,rd.prefers_coroots)
 
 { backwards compatibility function; used to be the built-in prototype }
@@ -1044,12 +1049,6 @@ set derived (RootDatum rd) = RootDatum: let (d,)=derived_info(rd) in d
 set mod_central_torus (RootDatum rd) = RootDatum:
   let (d,)=mod_central_torus_info(rd) in d
 
-
-{ this version keeps the numbering of the simple roots and therefore
-(we hope! of all roots }
-set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
-  root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
-
 { from appropriate (subsystem) dual 2rho value, deduce test for being simple }
 set is_simple_for (vec dual_two_rho) = (vec->bool):
   (vec alpha): dual_two_rho*alpha=2
@@ -1063,6 +1062,15 @@ set simple_system_from_positive (mat posroots,mat poscoroots) = (mat,mat):
 set root_datum_from_positive((mat,mat)pair, bool prefer_coroots) = RootDatum:
   let (posroots,poscoroots) = pair.simple_system_from_positive
   in root_datum(posroots,poscoroots,prefer_coroots)
+
+{ |sub_datum| with predicate argument preserves positivity of (co)roots }
+set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
+      RootDatum:
+(  root_datum_from_positive
+     ((columns_with(select,rd.posroots),columns_with(select,rd.poscoroots))
+     ,rd.prefers_coroots
+     )
+)
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od

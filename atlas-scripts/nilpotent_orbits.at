@@ -17,15 +17,15 @@ set_type
 ]
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
-{"complex" isn't necessary}
-set nilpotent (RootDatum rd, vec H) = complex_nilpotent(rd,H)
+{ an alias for people tired of typing "complex_" }
+set nilpotent = complex_nilpotent@(RootDatum,vec)
 
 {complex orbit; list of orders of conjugacy classes;
 for each conjugacy class a list of pairs (L,[ratvec])
 L is a pseudo-Levi, and each ratvec is a semisimple element,
 each pair (L,ratvec) gives one conjugacy class in A(O)
 }
-set_type ComplexNilpotentComponentDatum=
+set_type ComplexNilpotentComponentDatum =
              (ComplexNilpotent orbit,[int] orders,[(RootDatum,[ratvec])] pairs)
 
 {. Two complex nilpotent orbits are equal if the root data are, and
@@ -36,40 +36,30 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
-  sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
+  sum(for alpha in posroots(rd) do case H*alpha in 0, 1 else 2 esac od)
 
 {synonym}
 set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
 
-{saturate an orbit from an equal rank subgroup to G}
-set saturate(ComplexNilpotent O,RootDatum rd)=ComplexNilpotent:(rd,(),O.H)
+{saturate an orbit from an equal rank subgroup to G: just replace the RootDatum}
+set saturate(ComplexNilpotent O,RootDatum rd) = ComplexNilpotent:(rd,(),O.H)
 
 {saturate an orbit from a subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
-set saturate(ComplexNilpotent O,RootDatum rd,mat inc)=ComplexNilpotent:(rd,(),inc*O.H)
+{ note that |inc| violates convention of writing action on X_* on the right }
+set saturate(ComplexNilpotent O,RootDatum rd,mat inc) = ComplexNilpotent:
+   (rd,(),inc*O.H)
 
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
-{for a simple root system, put the diagram in standard Bourbaki
- order. For a non-simple system, put in standard Bourbaki
- order on each simple factor. Probably the order of the factors
- doesn't change but this isn't guaranteed.
-}
-set diagram_normalized_simple(ComplexNilpotent O)=[int]:
-let (,perm)=Cartan_matrix_type(O.root_datum) then
-P=permutation_matrix(perm) in
-P*diagram(O)
+set diagram_normalized_simple(ComplexNilpotent O) = [int]:
+   diagram(complex_nilpotent(O.root_datum.stratify,O.H))
 
-{diagram_normalized is [[int]] to allow for multiple simple factors}
-set diagram_normalized(ComplexNilpotent O)=[[int]]:
-let H=dominant(O.H,O.root_datum) then
-factors=simple_factors(O.root_datum) in
-for f in factors do
- let diagram=H*f.simple_roots then
- (,perm)=Cartan_matrix_type(f) then
- P=permutation_matrix(perm) in
- inverse(P)*diagram
-od
+{diagram_normalized returns [[int]] to allow for multiple simple factors}
+set diagram_normalized(ComplexNilpotent O) = [[int]]:
+   let H = vec: {coweight} dominant(O.H,O.root_datum)
+   , factors = simple_factors(O.root_datum) { each factor Bourbaki ordered }
+in for f in factors do H*f.simple_roots od
 
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:

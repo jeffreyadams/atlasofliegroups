@@ -1,3 +1,7 @@
+<all.at
+
+{This can replace lusztig_cells.at in the 7/1/21 version of leaner}
+
 {the Lusztig map goes from triples (O^v,x,xi) to W^
  this file implements an algorithm (conjectural)
  to implement this when xi=1
@@ -7,7 +11,7 @@
 <coherent_characters.at
 <truncated_induction.at
 <isomorphism_W.at
-<fake_degrees.at
+<generic_degrees.at
 
 {sigma_L (L stands for "Lusztig")
 sigma_L(O^v,x) is a of a representation of W(G)
@@ -44,7 +48,7 @@ L_x_v=G_v, O_L_x_v=0-orbit of G^v
 Springer(O_L_x_v)=sign of W(G^)
 \otimes sgn=trivial of
 }
-set sigma_L_verbose=true
+set sigma_L_verbose=false
 
 {main algorithm for computing sigma_L, this won't usually be called by the user
  M_v is a pseudo-Levi
@@ -93,13 +97,13 @@ else  {need induction; compute L, sigma_L, truncated_induce}
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
  sigma_L=
  if O_L_v=L_v.zero_orbit then prints("zero orbit");   L.character_table.trivial
- elif O_L_v=L_v.principal_orbit then prints("principal orbit");L.character_table.sign
+ elif O_L_v=L_v.principal_orbit then L.character_table.sign
  else  {not 0 or principal orbit: need to compute L.springer_table}
   let ()=if sigma_L_verbose then prints(("computing st_L_v:") ) fi then
-  st_L_v_0=L_v.springer_table then
-  ()=if sigma_L_verbose then prints(("done computing L_v.springer_table (not including fake degree)") ) fi then
-  st_L_v=update_fake_degrees(L_v.split_form,st_L_v_0) then
-  ()=if sigma_L_verbose then prints("done updating fake degrees for L_v_0") fi then
+  st_L_v=L_v.springer_table then
+  ()=if sigma_L_verbose then prints(("done computing L_v.springer_table (not including generic degree)") ) fi then
+{ st_L_v=update_fake_degrees(L_v.split_form,st_L_v_0) then 
+  ()=if sigma_L_verbose then prints("done updating fake degrees for L_v_0") fi then }
   sigma_L_v=st_L_v.springer(O_L_v) then
   char=st_L_v.ct.characters[sigma_L_v] then
   sigma_L_0=st_L_v.ct.tensor_sign(char) then
@@ -108,25 +112,24 @@ else  {need induction; compute L, sigma_L, truncated_induce}
   "ex: ", ex) fi in ex
  fi  {end if O_L_v=L_v.zero_orbit} then
  {now induce sigma_L}
- ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
+ { ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then }
  {maybe need fake degrees for st_G_v}
 { ()=    assert(#(st_G_v.fake_degrees)>0,"need to compute fake degrees for st_G_v (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then}
-  degree_function(int j)=ct_G.fake_degrees[j] then
+  degree_function(int j)=ct_G.generic_degree(j) then
   ()=if sigma_L_verbose then prints("inducing character from L:", L) fi then
   ind=induce_character(G,ct_G,roots_L,sigma_L) then
     ()=if sigma_L_verbose then prints("finished inducing character from L:", L) fi then
 {  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then}
-{error in F4, trying variants:}
+{ in F4, trying variants:}
   ind_decomposed=ct_G.decompose(ind) then
-  desired_fake_degree =
-   st_G_v.ct.degrees[st_G_v.springer(O_v)] then
-  ()=if sigma_L_verbose then prints("desired_fake_degree: ", desired_fake_degree) fi then
+  desired_generic_degree = st_G_v.ct.degrees[st_G_v.springer(O_v)] then
+  ()=if sigma_L_verbose then prints("desired_generic_degree: ", desired_generic_degree) fi then
   char_indices=[int]:
      ##for i:#ind_decomposed do
-       if (ind_decomposed[i]>0 and ct_G.fake_degrees[i]=desired_fake_degree) then [i]  else [] fi od then
-{     if      (ind_decomposed[i]>0 and ct.fake_degrees[i]=desired_fake_degree) then [i] else [int]:[] fi od }
+       if (ind_decomposed[i]>0 and ct_G.generic_degree(i)=desired_generic_degree) then [i]  else [] fi od then
+{     if      (ind_decomposed[i]>0 and ct.fake_degrees[i]=desired_generic_degree) then [i] else [int]:[] fi od }
   ()=if sigma_L_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_L: ", sigma_L,new_line);
-    prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view_char(ind);
+    prints("induced char: ", ind,new_line, "decomposition(1):", ct_G.decompose(ind));ct_G.view_char(ind);
     prints("minimal degree terms in induced: ", char_indices) fi then
  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
   char_index=   if =#char_indices then -1
@@ -142,80 +145,87 @@ fi  {end if y.is_integer}
 {modify to work on the group side:
 generalization of Springer map
 
-(O,1,1) -> Springer(O)  Springer correspondence for G
+(O,1,1) -> Springer(O)  Springer correspondence for G  (Springer(0)=sign/Springer(principal)=trivial)
+        -> Springer(O)*sgn  (so 0->trivial/principal->sign)
 
 General case:
 (O,x,1)  -> L_x=Cent_{G}(x)^0
 	 -> O_L_x (same H)
 	 -> Springer(O_L_x) in W(L_x)^
 	 -> induce from W(L_x) to W(G)
-	 -> keep term(s) 
+  	 -> exchange_long_short   (W(B4)->W(C4) in F4)
+	 -> keep term(s) with generic degree: generic_degree(Springer(O)*sign)
 }
 
-set sigma_L_no_dual(RootDatum G,SpringerTable st_G,ComplexNilpotent O,RootDatum M,vec H_M,ratvec y)=
-let ()=if sigma_L_verbose then
-   prints(new_line,"Computing sigma_L_no_dual: ",new_line,"O=", O.diagram,new_line,
-   "G=", G,new_line, "st_G: ", st_G.root_datum, new_line,"M=", M, new_line, "H_M=",H_M,new_line,"y=", y) fi then
- ct_G=st_G.character_table
-in if y.is_integer then  {L=G, L=G, don't need induction}
- let ()=if sigma_L_verbose then prints("y is integer, no induction")  fi then
- springer_index=st_G.springer(O) {int} then
- sigma=st_G.ct.tensor_sign_index(springer_index) then
- ()=if sigma_L_verbose then prints("sigma (no induction): ", sigma) fi  in
- sigma
+{returns [(int,int)] = [(index,multiplicity)]
+ usually [(j,1)]: meaning only character #j appears with multiplicity 1
+ rarely  [(j,1),(k,1)...] : several characters appear with multiplicity 1
+ occasionally []: empty
+ so far never see mult>0
+}
+set sigma_L_no_dual(RootDatum G,SpringerTable st_G,ComplexNilpotent O,RootDatum M,vec H_M,ratvec y)=[int]: 
+let ()=if sigma_L_verbose then  prints(new_line,"Computing sigma_L_no_dual: ",new_line,"O=", O.diagram,new_line,
+       "G=", G,new_line, "st_G: ", st_G.root_datum, new_line,"M=", M, new_line, "H_M=",H_M,new_line,"y=", y)  fi
+then
+ct_G=st_G.character_table in
+if y.is_integer then  {L=G, L=G, don't need induction}
+ let ()=if sigma_L_verbose then prints("y is integer, no induction",new_line)  fi then
+ sigma=st_G.springer(O) {int} then
+ ()=if sigma_L_verbose then prints("sigma (no induction): ", sigma,new_line) fi  in
+ [sigma]  {return value}
 else  {need induction; compute L, sigma_L}
- let ()=if sigma_L_verbose then prints("need induction: ")  fi in
+ let ()=if sigma_L_verbose then prints("need induction: ") fi in
  let L=centralizer(G,y) then
- ()=if sigma_L_verbose then prints(("L=",L, new_line, "G=", G) ) fi then
+{ let (,L)=subgroup(G,M.roots) then}
  H_L=dominant(H_M,L) then
  O_L=ComplexNilpotent:(L,(),H_L) then
  ()=if sigma_L_verbose
    then prints(("L=", L,new_line,"H_L=", H_L,new_line,"O_L:", O_L.H, " ", O_L.diagram) ) fi then
- roots_L=for alpha in L.simple_roots do find(st.root_datum.roots,alpha) od then
- ()=if sigma_L_verbose then prints("L.simple_roots: ", L.simple_roots, new_line, "st.root.datum.roots: ", st.root_datum.roots) fi then
+{ roots_L=for alpha in L.simple_roots do find(st_G.root_datum.roots,alpha) od then}{no: should be G.roots}
+ roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
+{ ()=if sigma_L_verbose then prints("L.simple_roots: ", L.simple_roots, new_line, "st_G.root.datum.roots: ", st_G.root_datum.roots) fi then}
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
- sigma_L=
- if O_L=L.zero_orbit then prints("zero orbit");   L.character_table.trivial
- elif O_L=L.principal_orbit then prints("principal orbit");L.character_table.sign
- else  {not 0 or principal orbit: need to compute L.springer_table}
+ sigma_L=[int]:
+ if O_L=L.zero_orbit then    L.character_table.sign 
+ elif O_L=L.principal_orbit then L.character_table.trivial
+ else  {not 0 or principal orbit; need to compute L.springer_table: main work is here}
   let ()=if sigma_L_verbose then prints(("computing st_L:") ) fi then
-  st_L_0=L.springer_table then
-  ()=if sigma_L_verbose then prints(("done computing L.springer_table (not including fake degree)") ) fi then
-  st_L=update_fake_degrees(L.split_form,st_L_0) then
-  ()=if sigma_L_verbose then prints("done updating fake degrees for L_0") fi then
+  st_L=L.springer_table then
+   ()=if sigma_L_verbose then prints(("done computing L.springer_table (not including generic degree)") ) fi then
   sigma_L_0=st_L.springer(O_L) then
-  char_0=st_L.ct.characters[sigma_L_0] then
-  char=st_L.ct.tensor_sign_index(sigma_L_0) then
-  char_1=st.ct.tensor_sign_index(char) then
-  sigma_L=st_L.ct.characters[sigma_L_0] then
-  ()=if sigma_L_verbose then prints("sigma_L: ", sigma_L, new_line, "char: ", char) fi in sigma_L
- fi  {end if O_L=L.zero_orbit} then
- {now induce sigma_L}
- ()=    assert(#(ct_G.fake_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_fake_degrees(G,ct) or st:=update_fake_degrees(G,st)") then
- degree_function(int j)=ct_G.fake_degrees[j] then
-  ()=if sigma_L_verbose then prints("inducing character from L:", L, "roots_L: ", roots_L, new_line, "sigma_L: ", sigma_L) fi then
-  ind=induce_character(G,ct_G,roots_L,sigma_L) then
-    ()=if sigma_L_verbose then prints("finished inducing character from L:", L, new_line, "ind=" , ind) fi then
-{  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_L,degree_function) then}
-{error in F4, trying variants:}
+  char=st_L.ct.characters[sigma_L_0] then
+   ()=if sigma_L_verbose then prints("sigma_L: ", char) fi  in char
+ fi  {now have sigma_L=character of L}{end if O_L=L.zero_orbit} then
+ {next: induce sigma_L}
+  ()=if sigma_L_verbose then prints("inducing character from L:", L,new_line, "roots_L: ", roots_L, new_line, "sigma_L: ", sigma_L) fi then
+ ind=induce_character(G,ct_G,roots_L,sigma_L) then
+  ()=if sigma_L_verbose then
+   prints("finished inducing character from L:", L, new_line, "ind=(2)" , ind,new_line);
+   ct_G.view_char(ind)
+  fi then
   ind_decomposed=ct_G.decompose(ind) then
-  desired_fake_degree =
-  st_G.ct.degrees[st_G.springer(O)] then
-  ()=if sigma_L_verbose then prints("desired_fake_degree: ", desired_fake_degree) fi then
-  char_indices=[int]:
-     ##for i:#ind_decomposed do
-       if (ind_decomposed[i]>0 and ct_G.fake_degrees[i]=desired_fake_degree) then [i]  else [] fi od then
-  ()=if sigma_L_verbose then  prints("O: ", O.diagram, new_line,"L: ", L,new_line,"O_L: ", O_L.diagram,new_line,"sigma_L: ", sigma_L,new_line);
-    prints("induced char: ", ind,new_line, "decomposition:", ct_G.decompose(ind));ct_G.view_char(ind);
-    prints("minimal degree terms in induced: ", char_indices) fi then
-  ()=if sigma_L_verbose then prints("truncated induce (sigma_L): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_L=", sigma_L) fi then
-  char_index=   if =#char_indices then -1
+   springer_O=st_G.springer(O) then
+   desired_generic_degree = st_G.ct.generic_degree(springer_O) then
+    ()=if sigma_L_verbose then prints("getting desired fake degree: ", new_line, "O=",O.diagram, new_line, "springer(O): ", springer_O,
+     new_line, "sigma_L for generic degree: ", sigma_L, new_line,"desired_generic_degree: ", desired_generic_degree)
+    fi then
+   char_indices=[int]:  
+   ##for i:#ind_decomposed do
+      if (ind_decomposed[i]>0 and ct_G.generic_degree(i)=desired_generic_degree) then
+       {probably never happens: correct generic degree and mult >1. If so print loud WARNING}
+       if ind_decomposed[i]>1 then prints("WARNING: multiplicity >1: ", new_line, "i=", i, " mult= ",ind_decomposed[i],new_line,
+       "ind_decomposed=",ind_decomposed) fi;
+      [i]  else [] fi
+      od
+   in char_indices
+{   ()=if sigma_L_verbose then  prints("O: ", O.diagram, new_line,"L: ", L,new_line,"O_L: ", O_L.diagram,new_line,"sigma_L: ", sigma_L,new_line);
+    prints("induced char: ", ind,new_line, "decomposition(3):", ct_G.decompose(ind));ct_G.view_char(ind) fi
+  then}
+{  char_index=   if =#char_indices then -1
     else
      let char_L_0=ct_G.characters[char_indices[0]] then
      ()=if sigma_L_verbose then prints("character of L: ", char_indices[0], new_line, char_L_0) fi in
-     ct_G.character_index(char_L_0)
-    fi
-  in if sigma_L_verbose then prints("char_index=", char_index) fi;char_index
+     ct_G.character_index(char_L_0)}
 fi  {end if y.is_integer}
 
 
@@ -297,18 +307,22 @@ sort_u(for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
 
 
 {run over all ratvecs from component_representatives(orbit)}
-set lusztig_cell_no_dual(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[int]:
-sort_u(for (M,H_M,y) in component_representatives_plus(O) do
- let ()=if sigma_L_verbose then prints("computing sigma_L for M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
-    {let ()=if sigma_L_verbose then prints("calling sigma_L(x):", new_line,"G: ", G, new_line,"O: ", O.diagram, " ", O.dim_nilpotent,
-   "st:", st_G.root_datum, new_line,"M: ", M, new_line, "H_M", H_M, new_line, "y: ", y) fi in}
- sigma_L_no_dual(G,st_G,O,M,H_M,y) od)
+set lusztig_cell_no_dual(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[[int]]:
+sort_u(
+ for (M,H_M,y) in component_representatives_plus(O) do
+     let ()=if sigma_L_verbose then prints("computing sigma_L for M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
+ sigma_L_no_dual(G,st_G,O,M,H_M,y)
+od)
+
+
+set lusztig_cell_char(RootDatum G,CharacterTable ct_G,SpringerTable st_G,ComplexNilpotent O)=
+sum(for index in lusztig_cell(G,ct_G,st_G,O) do ct_G.character(index) od)
 
 set lusztig_cell_char_no_dual(RootDatum G,CharacterTable ct_G,SpringerTable st_G,ComplexNilpotent O)=
 sum(for index in lusztig_cell(G,ct_G,st_G,O) do ct_G.character(index) od)
 
 {some shorthands which are handy but inefficient}
-set lusztig_cell_no_dual(RootDatum G,ComplexNilpotent O)=[int]:lusztig_cell_no_dual(G,G.springer_table,O)
+set lusztig_cell_no_dual(RootDatum G,ComplexNilpotent O)=[[int]]:lusztig_cell_no_dual(G,G.springer_table,O)
 
 {Caution: we need to run over special orbits of G and/or G^v,
  and keep track of the permutation given by duality}
@@ -329,8 +343,10 @@ prints("G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
 tabulate(
 ["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","fdeg","char"]#
 ##for O_v@counter in dual_orbits do
-  let ()=prints("orbit ",counter,": ", O_v.root_datum.nice_format,
-        " H=", O_v.H, " diagram=", O_v.diagram, " normalized diagram=", O_v.diagram_normalized) in
+  let ()=  if sigma_L_verbose then prints(new_line, "------------------------------------------------------------",new_line,
+  "orbit #",counter,": ", O_v.root_datum.nice_format,
+        " H=", O_v.H, new_line,"diagram=", O_v.diagram,new_line, "normalized diagram=", O_v.diagram_normalized) fi 
+	in
   let data=
   for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
     let j=sigma_L(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) in  (M_v,H_M_v,y,j)
@@ -349,11 +365,12 @@ tabulate(
     y.compact_ratvec,
     centralizer(G,y).nice_format,
     "sigma="+j.to_string,
-    if j=-1 then "x" else ct_G.dimension(j).to_string fi,
+    if j=-1 then "x" else dimension(ct_G,j).to_string fi,
     if j=-1 then "x"  else ct_G.degrees[j].to_string fi,
     if j=-1 then "x"
-     elif #ct_G.fake_degrees>0 then ct_G.fake_degrees[j].to_string
-     else "x" fi,
+     { elif #ct_G.generic_degrees>0 then ct_G.fake_degrees[j].to_string }
+else ct_G.generic_degree(j).to_string
+{     else "x"} fi,
     sigma.to_string]
   od  {/for i:#data}
  od {for O_v})
@@ -362,19 +379,22 @@ tabulate(
 set show_lusztig_cells_no_dual(RootDatum G,SpringerTable st_G,[ComplexNilpotent] dual_orbits)=void:
 prints("G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
 tabulate(
-["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","fdeg","char"]#
+["O","dim","i","rd_int","M","H_M","v","L","sigma(s)","dim","deg","fdeg","char=ct.characters[sigma[0]]"]#
 ##for O@counter in dual_orbits do
-  let ()=prints("orbit ",counter,": ", O.root_datum.nice_format,
-        " H=", O.H, " diagram=", O.diagram, " normalized diagram=", O.diagram_normalized) in
+  let ()=if sigma_L_verbose then
+     prints(new_line,"------------------------------------------------------------",new_line, "orbit #",counter,": ", O.root_datum.nice_format,
+        " H=", O.H, " diagram=", O.diagram, " normalized diagram=", O.diagram_normalized) fi
+	in
   let data=
   for (M,H_M,y) in component_representatives_plus(O) do
-    let j=sigma_L_no_dual(G,st_G,O,M,H_M,y) in  (M,H_M,y,j)
+    let j_values=sigma_L_no_dual(G,st_G,O,M,H_M,y) in  (M,H_M,y,j_values)
   od
   in
   for i:#data do
-   let (M,H_M,y,j)=data[i] then
-   sigma=
-    if j=-1 then [] else st_G.ct.characters[j] fi in
+   let (M,H_M,y,j_values)=data[i] then
+   j=if =#j_values then -1 else j_values[0] fi then
+   sigma=[int]:
+    if #j_values=0 then [] else st_G.ct.characters[j_values[0]] fi in
    [O.diagram.to_string,
     O.dim_nilpotent.to_string,
     i.to_string,
@@ -383,12 +403,14 @@ tabulate(
     H_M.compact_ratvec,
     y.compact_ratvec,
     centralizer(G,y).nice_format,
-    "sigma="+j.to_string,
-    if j=-1 then "x" else st_G.ct.dimension(j).to_string fi,
+    "sigma="+
+     if #j_values=1 then j.to_string else j_values.to_string fi,
+    if j=-1 then "x" else dimension(st_G.ct,j).to_string fi,
     if j=-1 then "x"  else st_G.ct.degrees[j].to_string fi,
     if j=-1 then "x"
-     elif #st_G.fake_degrees>0 then st_G.ct.fake_degrees[j].to_string
-     else "x" fi,
+{     elif #st_G.fake_degrees>0 then st_G.ct.fake_degrees[j].to_string }
+     else st_G.ct.generic_degree(j).to_string
+     {else "x"} fi,
     sigma.to_string]
   od  {/for i:#data}
  od {for O})
@@ -396,8 +418,8 @@ tabulate(
 set show_lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=void:
 show_lusztig_cells(G,st_G.ct,st_G_v,dual_orbits)
 
-set show_lusztig_cells_no_dual(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=void:
-show_lusztig_cells_no_dual(G,st_G,orbits)
+{set show_lusztig_cells_no_dual(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=void:
+show_lusztig_cells_no_dual(G,st_G,orbits)}
 
 set show_lusztig_cells(RootDatum G,SpringerTable st_G)=void:
 show_lusztig_cells(G,st_G.ct,st_G,
@@ -405,10 +427,13 @@ for O in st_G.orbits do let O_dual=st_G.dual_map(O) in orbit_by_diagram(G.dual,O
 od)
 
 set show_lusztig_cells_no_dual(RootDatum G,SpringerTable st_G)=void:
-show_lusztig_cells_no_dual(G,st_G,st_G.orbits)
+{show_lusztig_cells_no_dual(G,st_G,{st_}G.orbits)}{no: should be G.orbits}
+show_lusztig_cells_no_dual(G,st_G,{st_}G.orbits)
 
 set show_lusztig_cells_no_dual(RootDatum G)=void:
-show_lusztig_cells_no_dual(G,G.springer_table)
+let st=G.springer_table in
+update_generic_degrees(st.ct,G.split_form);
+show_lusztig_cells_no_dual(G,st)
 
 set show_lusztig_cell_no_dual(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=void:
  show_lusztig_cells_no_dual(G,st_G,[O])
@@ -424,19 +449,24 @@ set show_lusztig_cell(ComplexNilpotent O_v)=void:show_lusztig_cell(O_v.root_datu
 set show_lusztig_cells(RootDatum G,CharacterTable ct)=void:show_lusztig_cells(G,ct,G.dual.springer_table,G.dual_orbits)
 
 set show_lusztig_cells(RealForm G)=void:
-let st=G.springer_table then
-st=update_fake_degrees(G,st)  in
+let st=G.springer_table in
+update_generic_degrees(st.ct,G);
 show_lusztig_cells(G,st.ct,G.dual.springer_table,
    for O in st.special_orbits do let O_dual=st.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized) od)
 
+set show_lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=void:
+show_lusztig_cells(G,st_G.ct,st_G_v,
+for O in st_G.special_orbits do let O_dual=st_G.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized)
+od)
+
 
 {for convenience:}
-set init(RootDatum G)=(CharacterTable,SpringerTable,[ComplexNilpotent]):
+{set init(RootDatum G)=(CharacterTable,SpringerTable,[ComplexNilpotent]):
 let ct_0=G.character_table then
 st_v_0=G.dual.springer_table then
 ct=update_fake_degrees(G.split_form,ct_0) then
 st_v=update_fake_degrees(G.dual.split_form,st_v_0) then
-orbits=st_v.special_orbits in (ct,st_v,orbits)
+orbits=st_v.special_orbits in (ct,st_v,orbits)}
 {
 set dual_special_orbits_indexed(RootDatum G,SpringerTable st_G_v)=([int],[ComplexNilpotent]):
 special_orbits_indexed(G.dual,st_G_v)
@@ -447,8 +477,7 @@ set dual_special_orbits(RootDatum G)=[ComplexNilpotent]:dual_special_orbits(G,G.
 
 {parametrize by special orbits for G}
 set lusztig_cells_characters_special(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=[[int]]:
-for orbit in st_G.special_orbits do lusztig_cell_char(G,st_G.ct,st_G_v,
-orbit_by_diagram(G.dual,st_G.dual_map(orbit).diagram_normalized)) od
+for orbit in st_G.special_orbits do lusztig_cell_char(G,st_G.ct,st_G_v,orbit_by_diagram(G.dual,st_G.dual_map(orbit).diagram_normalized)) od
 
 set four_inner_products(RealForm G,CharacterTable ct_G,[int] char_G)=
 let (valid,M)=root_permutation(G,ct_G.root_datum) then
@@ -501,15 +530,15 @@ set show_big_table(RealForm G,CharacterTable ct_G)=
 let all=four_inner_products(G,ct_G,ct_G.characters) in
 prints("i: #of character of W",new_line,
 "dim: dim(sigma)",new_line, "deg: degree(sigma)", new_line,
- "fdeg: fake degree(sigma)", new_line,
+ "gdeg: generic degree(sigma)", new_line,
 "mult of sigma in B,X,Y,I",new_line);
 tabulate(
-["i","dim","deg", "fdeg","B","X","Y","I"]#
+["i","dim","deg", "gdeg","B","X","Y","I"]#
 for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
 [i.to_string,
-ct_G.dimension(i).to_string,
+dimension(ct_G,i).to_string,
 ct_G.degree(i).to_string,
-if #ct_G.fake_degrees>0 then ct_G.fake_degrees[i].to_string else "" fi,
+{if #ct_G.fake_degrees>0 then }ct_G.generic_degree(i).to_string {else "" fi},
 a.to_string,b.to_string,bprime.to_string,c.to_string] od)
 
 set show_big_table(RealForm G)=show_big_table(G,G.character_table)
@@ -531,9 +560,9 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","y","i",
  [j.to_string,
   st_G.dual_map(st_G.special_orbits[i]).diagram.to_string,
   {st_G_v.orbits[j].diagram.to_string,}{wrong order}
-  st_G.ct.dimension(lusztig_cells[i][0]).to_string,
+  dimension(st_G.ct,lusztig_cells[i][0]).to_string,
   st_G.ct.degree(lusztig_cells[i][0]).to_string,
-  if #st_G.fake_degrees>0 then st_G.fake_degrees[i].to_string else "" fi,
+  {if #st_G.fake_degrees>0 then} (st_G.ct.generic_degree(i)).to_string {else "" fi},
   lusztig_cells[i].to_string,
   (for a in lusztig_cells[i] do st_G.ct.tensor_sign_index(a) od).to_string,
   a.to_string,b.to_string,bprime.to_string,c.to_string, d.to_string,e.to_string,eprime.to_string,f.to_string] od);
@@ -561,9 +590,9 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","y","i",
  [j.to_string,
   st_G.dual_map(st_G.special_orbits[i]).diagram.to_string,
   {st_G_v.orbits[j].diagram.to_string,}{wrong order}
-  st_G.ct.dimension(lusztig_cells[i][0]).to_string,
+  dimension(st_G.ct,lusztig_cells[i][0]).to_string,
   st_G.ct.degree(lusztig_cells[i][0]).to_string,
-  if #st_G.fake_degrees>0 then st_G.fake_degrees[i].to_string else "" fi,
+  {if #st_G.fake_degrees>0 then} st_G.ct.generic_degree(i).to_string {else "" fi},
   lusztig_cells[i].to_string,
   (for a in lusztig_cells[i] do st_G.ct.tensor_sign_index(a) od).to_string,
   a.to_string,b.to_string,bprime.to_string,c.to_string, d.to_string,e.to_string,eprime.to_string,f.to_string] od);
@@ -574,13 +603,13 @@ tabulate( ["#O^v","diag","dim","deg","fdeg","sigma","sigma*sgn","b","x","y","i",
   prints(new_line,"full decomposition of BXYI: ");show_big_table(G,st_G.ct)
 
 set show_four_inner_products_special(RealForm G)=void:
-let st_0=G.springer_table then
-st=update_fake_degrees(G,st_0) in
+let st=G.springer_table in
+update_generic_degrees(st.ct,G);
 show_four_inner_products_special(G,st, G.dual.springer_table)
 
 set show_four_inner_products_special(RealForm G,RealForm G_dual)=void:
-let st_0=G.springer_table then
-st=update_fake_degrees(G,st_0) in
+let st=G.springer_table in
+update_generic_degrees(st.ct,G);
 show_four_inner_products_special(G,G_dual,st, G.dual.springer_table)
 
 
@@ -629,11 +658,11 @@ tabulate(
     O_L_v.root_datum.nice_format,
     O_L_v.diagram.to_string,
     j_L.to_string,
-    ct_G.dimension(j_L).to_string,
+    dimension(ct_G,j_L).to_string,
     ct_G.degrees[j_L].to_string,
     let (valid,orbit)=st_G.springer_inverse(j_L) in if valid then orbit.diagram.to_string+st_G.special_star(orbit) else "*" fi,
     j_S.to_string,
-    ct_G.dimension(j_S).to_string,
+    dimension(ct_G,j_S).to_string,
     ct_G.degrees[j_S].to_string,
     let (valid,orbit)=st_G.springer_inverse(j_S) in if valid then orbit.diagram.to_string+st_G.special_star(orbit) else "*" fi,
     if j_L=j_S then "=" else "" fi

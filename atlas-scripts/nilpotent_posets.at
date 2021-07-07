@@ -133,13 +133,17 @@ orbits=P.orbits then
 closures=P.orbit_closures then
 factors=simple_factors(rd) in
 for subregular@i in rd.subregular_orbits do
- let subregular_number=find(orbits,subregular) then
-new_relations=
- ##for orbit@j in orbits do
-    if j=subregular_number or project_on_simple_factor(orbit.H{_of_triple},i,rd)=project_on_simple_factor(2*rho_check(factors[i]),i,rd) then []
-    else [j] fi
- od
- in closures[subregular_number]:=sort_u(closures[subregular_number] ## new_relations)
+ let subregular_number=find(orbits,subregular)
+ then new_relations=
+   let like = same_coweight_projection_simple_factor(rd,i) in
+  for orbit@j in orbits do
+    if j=subregular_number or like(orbit.H,two_rho_check(factors[i]))
+    then []
+    else [j]
+    fi
+  od.##
+ in closures[subregular_number]:=
+   sort_u(closures[subregular_number] ## new_relations)
 od;
 (rd,orbits,closures)
 
