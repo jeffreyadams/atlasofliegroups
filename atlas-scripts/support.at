@@ -1,6 +1,7 @@
 <basic.at
 <cells.at { for parameters@([Param],WCell) }
 <nilpotent_orbits.at
+<cells.at
 
 {this requires that [Param] is a block}
 set cells_parameters([Param] block,[WCell] cells)=[[Param]]:
