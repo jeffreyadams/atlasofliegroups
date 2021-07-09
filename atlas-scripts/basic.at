@@ -126,9 +126,18 @@ set min (int !seed) = ([int]->int):
 set max (int !seed) = ([int]->int):
   ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
-set gcd (int a,int b) = int:
-   if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
-   while let r=a%b in r.!= do a:=b; b:=r od; b
+set gcd = (int,int->int): { greatest common divisor; no size limit }
+   let limit = 2^31 in
+   (int a,int b) int:
+   if   case a then a:=-a in return abs(b) else a esac<limit then [a,b%a].gcd
+   elif case b then b:=-b in return a      else b esac<limit then [a%b,b].gcd
+   else { too big for |vec|, so do Euclid's algorithm explicitly }
+      while let r=a%b in r.!= do a:=b; b:=r od; b
+   fi
+
+{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
+set gcd_big([int] v) = int:
+   let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
 set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
 
@@ -154,6 +163,25 @@ set is_member ([int] v) = (int->bool):
   (int val)bool: any(#v,(int i)bool: v[i]=val)
 set isnt_member ([int] v) = (int->bool):
   (int val)bool: all(#v,(int i)bool: v[i]!=val)
+
+{ when |v| is known to be sorted (and long), this can be done faster }
+set is_member_sorted ([int] v) = (int->bool):
+  let l=#v in
+  case l { special cases for |l<=5| }
+  in (int .): false
+  , (int n): n=v[0]
+  , (int n): n=v[0] or n=v[1]
+  , (int n): case n-v[1] then n=v[0] in true else n=v[2] esac
+  , (int n): if n<v[2] then n=v[0] or n=v[1] else n=v[2] or n=v[3] fi
+  , (int n):
+       case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
+  else
+     (int n)bool:
+     let m = binary_search_first((int i)bool:v[i]>=n,0,l)
+     in m<l and v[m]=n
+  esac
+set isnt_member_sorted ([int] v) = (int->bool):
+  let member = is_member_sorted(v) in (int n): not member(n)
 
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
@@ -282,20 +310,21 @@ set c_adjust (int w, string s) = string:
 set width (int n) = int: #int_format(n)
 
 set split_lines (string text) = [string]:
-  let result = [string]: [], a=for c in text do c od, last=0 in
+( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
+; let a=for c in text do c od, last=0 in
   for c@i in a
-  do if c=new_line then result #:= concat(a[last:i]); last:=i+1 fi
-  od; result
+  do if c=new_line then [concat(a[last:i])] next last:=i+1 else [] fi
+  od.##
+)
 
 set is_substring (string s, string text) = bool:
   let s0=for c in s do c od, t0=for c in text do c od in
   >=last(#t0-#s0,(int start):all(#s0,(int i):t0[start+i]=s0[i]))
 
 set fgrep (string s, string text) = [string]:
-  let result = [string]: [] in
   for line in split_lines(text)
-  do if is_substring(s,line) then result#:=line fi
-  od; result
+  do if is_substring(s,line) then [line] else [] fi
+  od.##
 
 {                               Vectors                                 }
 
@@ -1482,11 +1511,11 @@ set is_dominant (Param p) = (bool,int):
   od; (true,-1)
 
 { whether gamma dominant, and if not witnessing integrally simple coroot }
-set is_integrally_dominant(Param p)=(bool,int):
+set is_integrally_dominant(Param p) = (bool,int):
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in integrality_datum(p).simple_coroots
   do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,-1)
+  od; (true,minus_1)
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,Param p) = bool:
@@ -1506,8 +1535,7 @@ set is_strongly_regular (Param p)=bool:
    in is_dominant(root_datum(G),ic-rho(G))
 
 { whether irreducible rpn survives translation functor from regular inf.char. }
-set survives (Param p) = bool:
-  is_final(p) { was recently defined to mean exactly that }
+set survives = (Param->bool): is_final@Param { defined to mean exactly that }
 
 set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
@@ -1830,7 +1858,7 @@ set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
 
 { pad string with blanks (for lining up columns in tables) }
-set pad(string s,int padding)=string: l_adjust(padding,s)
+set pad(string s,int width)=string: l_adjust(width,s)
 
 { for user convenience; a ParamPol is an associative array ParamPol->Split
   so selecting its monomials (Param values) by position is not reliable, but

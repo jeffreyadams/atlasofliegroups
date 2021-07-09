@@ -1,5 +1,5 @@
 <basic.at
-<group_operations.at {for is_abelian@RootDatum}
+<sort.at { for |sort@[int]| }
 { Functions for computing with Weyl group elements }
 
 set sgn(WeylElt w)=int:(-1)^length(w)
@@ -163,11 +163,9 @@ set factor (WeylElt w) = [WeylElt]:
   then codes = simple_factors(type)
    , offset=0 { rank within |type| already seen in loop below }
 in for (,rank):code in codes { traverse the simple factors }
-   do let sub_map = map[offset:offset+rank] { index mapping for this factor }
-      then factor_word =
-         let test = is_member(sub_map) in
-         for s in w.word do if test(s) then [s] else [] fi od.##
-	 {note: use |s| here: original index not index in simple factor }
+   do let range = map[offset:offset+rank].sort { index range for this factor }
+      then test = is_member_sorted(range)
+      then factor_word = for s in w.word do if test(s) then [s] else [] fi od.##
    in W_elt(rd,factor_word)
    next offset +:= rank
    od

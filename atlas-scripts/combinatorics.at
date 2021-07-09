@@ -237,7 +237,7 @@ set edge_sequence (Partition lambda) = ([bool],int):
    if =#lambda or =lambda[0] then ([],0)
    else
       let d = lambda.transpose[0] { offset, index of edge above main diagonal }
-      , edge_val=is_member(for part@i in lambda do part-i-1 od)
+      , edge_val=is_member_sorted(for part@i in lambda do part-i-1 ~od)
       in (for i:lambda[0]+d from -d do edge_val(i) od, d)
    fi
 
