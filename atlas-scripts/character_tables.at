@@ -70,10 +70,11 @@ set irred_string(BiPartition(mu,lambda)) = string:
    ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string
 
 set character_table_H(int n) = character_table:
-  let order=n.fac*2^n
-  then class = for pair in partition_pairs(n) do pair.cycles od
-  , irred = weighted_pairs(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
-  then index = index_signed_cycles(class,#(#class))
+  let order=n.fac*2^n, pairs = partition_pairs(n)
+  then class = for pair in pairs do pair.to_cycles od
+  , irred = pairs_of_total_sum(n,(int k):partitions(k)~[:]) { [k],..,ones(k) }
+  , lookup = index_bipartition(pairs)
+  then index(Signed_cycles cyc) = int: cyc.to_partition_pair.lookup
   , c_orders = for type in class do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
   in
@@ -108,15 +109,16 @@ set character_table_D(int n) = character_table:
 ( let order=n.fac*2^(n-1)
   , irred = Dn_irreducibles(n)
   , class = Dn_classes(n)
-  then unsplits =
+  then unsplits = [Signed_cycles]:
     for c in class do case c | cyc.unsplit_class:[cyc] | else [] esac od.##
-  , unsplit_indices =
+  , unsplit_indices = [int]:
     for c@i in class do case c | cycles.unsplit_class:[i] | else [] esac od.##
   , splits =
     for c in class do case c | (mu,).split_class:[mu] | else [] esac od.##
   , split_indices =
     for c@i in class do case c | (,).split_class:[i] | else [] esac od.##
-  then index_unsplit = index_signed_cycles(unsplits,unsplit_indices)
+  then index_unsplit(Signed_cycles cyc) = int:
+     for c@i in unsplits do if c=cyc then unsplit_indices[i] fi od; minus_1
   , index_split = index_partition(splits) { |splits| is born in sorted order }
   then index(Dn_class C) = int:
      case C

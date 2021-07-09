@@ -21,34 +21,9 @@ set sort = ([int]->[int]): { merge sort }
 
 set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
-{ sort for a general type: in order to remain type agnostic here, we have the
-  caller pass just the array size and comparison function. For |a| of type
-  [string] (so <=@(string,string) is lexicographic comparison), sort it using:
-  |a:=for i in sort(#a,(int i,int j)bool: a[i]<=a[j]) do a[i] od|
-}
-set sort (int n, (int,int->bool)leq) = [int]: { sort |#n| according to |leq| }
-  let merge ([int] a, int na, [int] b, int nb) = [int]:
-    let i=0, j=0 in
-      while
-        if i<na
-        then do { certainly not finished here }
-          if j=nb or leq(a[i],b[j])
-	  then a[i] next i+:=1
-	  else b[j] next j+:=1
-	  fi
-        else j<nb do b[j] next j+:=1
-      fi
-    od
-  in (0,n). { describes range of consecutive numbers to sort via |leq| }
-  (rec_fun ms(int b,int size) [int]: { sort |size| numbers from |b| }
-     case size-1 { set aside cases of 1 or 2 elements }
-     in [b], let e=b+1 in if leq(e,b) then [e,b] else [b,e] fi
-     else let half=size\2 then chalf=size-half in
-        merge( ms(b,half),half, ms(b+half,chalf),chalf )
-     esac
-   )
 
-{ sort unique of row of integers }
+{ sort unique of row of integers; first the merging function }
+
 set merge_u ([int] a, [int] b) = [int]: { merge unique weakly increasing lists }
   let na=#a in
   if =na then b
@@ -76,6 +51,79 @@ set sort_u = ([int]->[int]): { sort, keeping unique copy of duplicates }
     else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
     fi
   in { sort_u = } ([int] v) [int]: ms(v,#v)
+
+
+{ auxiliary for sorting of general types, using provided comparison }
+set merge ((int,int->bool) leq) = ([int] a,[int] b) [int]:
+   let na=#a, nb=#b, i=0, j=0 in
+   for :na + nb
+   do if i<na and (j=nb or leq(a[i],b[j]))
+      then a[i] next i+:=1
+      else b[j] next j+:=1
+      fi
+   od
+
+{ sort for a general type: in order to remain type agnostic here, we have the
+  caller pass just the array size and comparison function. For |a| of type
+  [string] (so <=@(string,string) is lexicographic comparison), sort it using:
+  |a:=for i in sort(#a,(int i,int j)bool: a[i]<=a[j]) do a[i] od|
+}
+set sort((int,int->bool)leq) = (int->[int]):
+   let combine = merge(leq)
+in (int n) [int]:
+   (0,n). { describes range of consecutive numbers to sort via |leq| }
+   (rec_fun ms(int b,int size) [int]:
+      case size-1
+      in [b], let e=b+1 in if leq(b,e) then [b,e] else [e,b] fi
+      else let half=size\2 then chalf=size-half in
+         combine( ms(b,half), ms(b+half,chalf) )
+      esac
+   )
+
+{ uncurried version for everyday use }
+set sort(int n,(int,int->bool)leq) = [int]: sort(leq)(n)
+
+{ auxiliary for sort-unique of general types, using provided comparison }
+set merge_u ((int,int->bool) leq) = ([int] a,[int] b) [int]:
+   let na=#a, nb=#b, i=0, j=0 in
+   if =na then b elif=nb then a
+   else
+      while { run until i=na and j=nb }
+      if i=na then j<nb do b[j] next j+:=1
+      else { loop certainly not terminated }
+      do if j=nb or not leq(b[j],a[i]) then a[i] next i+:=1
+	 elif leq(a[i],b[j])
+	 then a[i] next i+:=1; j+:=1 { take one, skip both }
+	 else b[j] next j+:=1
+	 fi
+      fi
+      od
+    fi
+
+{ sort-unique for a general type: as for cooresponding |sort|, we have the
+  caller pass just the array size and comparison function. For |a| of type
+  [(string,T)], select elements sorted by |string| component, keeping onlt the
+  first pair with a given string as
+  |a:=for i in sort_u(#a,(int i,int j)bool: let(x,)=a[i],(y,)=a[j]) in x<=y)
+      do a[i] od|
+}
+set sort_u ((int,int->bool)leq) = (int->[int]):
+   let merge = merge_u(leq)
+in (int n) [int]:
+   (0,n). { describes range of consecutive numbers to sort via |leq| }
+   (rec_fun ms(int b,int size) [int]: { range from |b| with |size| elements }
+      case size-1
+      in [b]
+      , let e=b+1 in
+        if not leq(b,e) then [e,b] elif leq(e,b) then [e] else [b,e] fi
+      else let half=size\2 then chalf=size-half in
+         merge( ms(b,half), ms(b+half,chalf) )
+      esac
+   )
+
+{ uncurried version for everyday use }
+set sort_u (int n, (int,int->bool)leq) = [int]: sort_u(leq)(n)
+
 
 { the following helps stable-sorting of anything according to a statistic }
 
