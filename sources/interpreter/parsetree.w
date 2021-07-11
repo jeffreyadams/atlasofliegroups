@@ -1063,7 +1063,7 @@ break;
 
 @*1 Operators and priority.
 %
-Applications of operators are transformed during parsing in function calls,
+Applications of operators are transformed during parsing into function calls,
 and the priorities of operators, which only serve to define the structure of
 the resulting call tree, are a matter of grammar only. Nevertheless, handling
 operator priorities purely in the syntax description has certain

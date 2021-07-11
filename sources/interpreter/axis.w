@@ -215,7 +215,7 @@ if |type| remains completely undefined `\.*' (as will happen for an expression
 that selects a value from an empty list, or that calls |error|), then this means
 that evaluation cannot possibly complete without error (since no resulting value
 could have all possible types at once). (If one would try to deduce the return
-type of a recursive function from its body, this situation would also happen is
+type of a recursive function from its body, this situation would also happen if
 such a function were to have no terminating case; in reality, the syntax insists
 that recursive functions declare their return type explicitly, avoiding this
 situation.) Therefore we might treat the case where |convert_expr| leaves |type|
@@ -1408,7 +1408,7 @@ inexact match, because it might irreversibly specialise |type| according to
 the tentative match, and this should be avoided if a generic match turns out
 to override this match.
 
-The parts of this function that actually construct a function calls are
+The parts of this function that actually construct a function call are
 postponed to be detailed later.
 
 @:resolve_overload@>
@@ -1444,7 +1444,7 @@ expression_ptr resolve_overload
         // redo conversion
         @< Set |call| to a call of the function value |*v.value()|... @>
         result_type = &v.type().result_type;
-        // just store the |call| and the its |result_type| now
+        // just store the |call| and the its |result_type| for now
       }
       catch (const type_error&) @+{}
        // if coercion fails ignore the match, but quit search anyway
