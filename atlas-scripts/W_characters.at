@@ -124,12 +124,12 @@ in while { loop with embedded |do| instances near end }
 )
 
 { split result of |apply_He| into parallel lists (conjugates,witnesses) }
-set minimal_representatives_witnesses (WeylElt w) = ([WeylElt],[WeylElt]):
+set minimal_representatives_with_witnesses (WeylElt w) = ([WeylElt],[WeylElt]):
    let list = apply_He(w) in
    (for (w,) in list do w od, for (,witness) in list do witness od)
 
 { one selected minimal length class representative, witness conjugating to it }
-set minimal_representative_witness (WeylElt w) = (WeylElt,WeylElt):
+set minimal_representative_with_witness (WeylElt w) = (WeylElt,WeylElt):
    apply_He(w)[0]
 
 { often one does not need a witness, so the following can be used instead }
@@ -167,7 +167,7 @@ set is_conjugate_to ( WeylElt x
    then x_ell = elliptic_reduction(x := /w_x * x * w_x)
       next { check that assigment successfully moved |s| to our standard Levi }
       assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
-   then orbit = rho_stabiliser_orbit(rd,sLevi)
+   then orbit = [int,WeylElt]: rho_stabiliser_orbit(rd,sLevi)
    , elliptic_test = elliptic_conjugacy_test(x_ell) { class membership in sLevi }
 in
    (WeylElt y) bool: { the actual test |is_conjugate_to(x)| }
@@ -187,6 +187,35 @@ in
 )
 
 { conjugacy test, using a |Std_Levi_table table| and an elliptic case test }
+
+set_type [ WeylElt_or_none = (WeylElt conjugator | void not_conjugate) ]
+
+set conjugacy_witness \
+  ( WeylElt x
+  , Std_Levi_table table
+  , (WeylElt->(WeylElt->WeylElt_or_none)) elliptic_conjugacy_test
+  ) = (WeylElt-> WeylElt_or_none):
+   let rd=x.root_datum, ord_x = order(x), chi=char_poly(x)
+   then classify = (WeylElt->WeylElt,[int],WeylElt):
+                   conjugate_from_classified_standard_Levi(rd,table)
+   then (w_x,Levi,x_L) = classify(x)
+   then x_ell = elliptic_reduction(x_L)
+   then elliptic_test = elliptic_conjugacy_test(x_ell)
+in { end of preparations for |x|, now define the function of |y| }
+   (WeylElt y) WeylElt_or_none:
+   { start with easy necessary conditions on |y|: }
+   if y.root_datum=rd and order(y)=ord_x and char_poly(y)=chi
+   then
+      let (w_y,Levi_y,y_ell) = classify(y) in
+      if Levi_y!=Levi then not_conjugate()
+      else
+         case elliptic_test(convert_to(x_ell.root_datum,y_ell))
+	 | conjugator(w_Levi): conjugator(w_x * convert_to(rd,w_Levi) * /w_y)
+	 | not_conjugate(): not_conjugate()
+	 esac
+      fi
+   else not_conjugate()
+   fi
 
 set is_conjugate_to ( WeylElt x
 		    , Std_Levi_table table
@@ -214,25 +243,41 @@ set present([WeylElt] list,WeylElt w) = bool: any(#list,(int i)bool: list[i]=w)
 { Given elliptic |x|, produce test for conjugacy of elliptic |y| to it.
   uses |minimal_representatives| function that invokes He's algorithm
 }
-set is_conjugate_to_elliptic_He (WeylElt x) = (WeylElt->bool):
+set is_conjugate_to_He (WeylElt x) = (WeylElt->bool):
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
-  let reps = minimal_representatives(x) in
-  (WeylElt y)bool: present(reps,minimal_representative(y))
+   let reps = minimal_representatives(x) in
+   (WeylElt y)bool: present(reps,minimal_representative(y))
+
+set conjugacy_witness_He (WeylElt x) =
+      (WeylElt->WeylElt_or_none):
+   assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
+   let reps = [WeylElt,WeylElt]: apply_He(x) in
+   (WeylElt y) WeylElt_or_none:
+      let (min,w_y) = minimal_representative_with_witness(y) { min=w_y*y*/w_y }
+      then i = last(#reps,(int i)bool: let (w,)=reps[i] in w=min)
+   in if i.< then not_conjugate()
+      else let (,w_x)=reps[i] { min = w_x*x*/w_x }
+           in conjugator(/w_x * w_y) { from y to x: x= /w_x*w_y*y*/w_y*w_x }
+      fi
 
 { uncurried version of the previous function (only |x| needs to be elliptic) }
-set is_conjugate_elliptic_He (WeylElt x,WeylElt y) = bool:
+set is_conjugate_He (WeylElt x,WeylElt y) = bool:
    assert(is_relatively_elliptic(x),"Class is not (relatively) elliptic");
    is_relatively_elliptic(y) and
    present(minimal_representatives(x),minimal_representative(y))
 
 { class membership for |x|: call |is_conjugate_to@(WeylElt,(WeylElt->bool))| }
 set is_conjugate_to(WeylElt x) = (WeylElt->bool):
-   is_conjugate_to(x,is_conjugate_to_elliptic_He@(WeylElt))
+   is_conjugate_to(x,is_conjugate_to_He@(WeylElt))
 
-{ use |is_conjugate_elliptic_He| to make a general |is_conjugate_to| funtion }
+{ use |is_conjugate_elliptic_He| to make a general |is_conjugate_to| function }
 set is_conjugate_to_He(Std_Levi_table table) = (WeylElt x) (WeylElt->bool):
-   is_conjugate_to(x,table,is_conjugate_to_elliptic_He@(WeylElt))
+   is_conjugate_to(x,table,is_conjugate_to_He@(WeylElt))
 
+{ similarly use |is_conjugate_elliptic_with_witness_He| }
+set conjugacy_witness(Std_Levi_table table) =
+   (WeylElt x) (WeylElt->WeylElt_or_none):
+      conjugacy_witness(x,table,conjugacy_witness_He@(WeylElt))
 
 { the following inefficient function is unused, but motivates the one after it }
 
@@ -595,6 +640,7 @@ in for k:n from 1
    ; e #:= for s in sum do s\k od { expand table by |sum\k| }
    od; e[n] { last symmetric power is the one we want }
 
+forget WeylElt_or_none
 
 { Convenience functions }
 
