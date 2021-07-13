@@ -65,7 +65,7 @@ in assert(for rdj@j in rds
 	  od.all,"Factors are not mutually orthogonal")
 ;  let reps = [[WeylElt]]: { all class representatives, lifted to |rd| }
       for table in tables
-      do for w in table.class_representatives() do chamber(rd,w*tr) od
+      do for w in table.class_representatives do chamber(rd,w*tr) od
       od
    , words = all_words(radix) { mixed radix representations of class numbers }
    , index = mixed_radix_nr(radix) { map from |word| to its index in |words| }
@@ -77,7 +77,7 @@ in W_class_table
    ( rd
    , for word in words do product(rd,for n@i in word do reps[i][n] od) od
    , (int N) int: { class size }
-     for l@i in words[N] do tables[i].class_sizes()[l] od.product
+     for l@i in words[N] do tables[i].class_sizes[l] od.product
    , (WeylElt w) int: { class number }
         for proj@i in project_W do tables[i].class_of(proj(w)) od.index
    , (int N,int k) int:
@@ -88,13 +88,13 @@ in W_class_table
 set combine(RootDatum rd,[CharacterTable] factors) = CharacterTable:
 (  let Wct = combine(rd,for factor in factors do factor.class_table od)
    , words = for factor in factors do factor.n_classes od.all_words
-   then reps = Wct.class_representatives()
+   then reps = Wct.class_representatives
    , index = mixed_radix_nr(for factor in factors do factor.n_classes od)
    , tensor([vec] chars) = [int]: { all products of entries }
         for word in words do product(for l@i in word do chars[i][l] od)	od
 in let classes = [WeylElt,classical_class,string]:
      for word in words
-     do ( reps[for n@i in word do factors[i].to_class_table(n) od.index]
+     do ( reps[index(word)]
 	, null_class()
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)

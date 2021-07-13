@@ -1,3 +1,4 @@
+<basic.at
 <lietypes.at { for |is_locally_isomorphic| }
 <K.at      { for |K_0| }
 <W_reps.at { for type |WGraph| }
@@ -47,26 +48,29 @@ ii) G.components_rank=0
 Probably we won't use is_strictly_complex much, so
 leaving this here
 }
-set is_complex(RealForm G)=bool:
-all(for i:#G.simple_roots do
-G.distinguished_involution*G.simple_roots[i]*G.simple_coroots[i]=0 od)
 
-set is_strictly_complex(RealForm G)=bool:
-let
-test_1=G.is_complex and =G.components_rank then
-test_2=is_locally_isomorphic(G,complexification(K_0(G))) and =G.components_rank
-in
-assert(test_1=test_2,"two strictly complex tests don't agree");
-test_1
+{ whether root system involution is that of a complex group }
+set is_complex(InnerClass ic) = bool:
+   let scr = simple_coroots(ic), delta=distinguished_involution(ic) in
+   for alpha@i in simple_roots(ic) do =scr[i]*delta*alpha od.all
 
-set swapped_factors(RealForm G)=[(int,int)]:
-assert(G.is_complex,"G is not complex");
-let sf=G.simple_factors in
-##for factor@i in sf do
- let root=G.distinguished_involution*factor.simple_roots[0] then
- j=first(for i:#sf do find(sf[i].simple_roots,root) !=-1 od) in
-  if i<j then [(i,j)] else [] fi
-od
+{ whether |G| is a complex group, which implies being connected }
+set is_strictly_complex(RealForm G) = bool:
+   =G.components_rank and
+(  let test_1 = G.inner_class.is_complex
+   , test_2=is_locally_isomorphic(G,complexification(K_0(G)))
+in assert(test_1=test_2,"two strictly complex tests don't agree"); test_1
+)
+
+{ find pairing of factors among |simple_factors(root_datum(G))| }
+set swapped_factors(RealForm G) = [(int,int)]:
+   assert(G.is_complex,"G is not complex");
+   let sf=G.root_datum.simple_factors
+in for factor@i in sf
+   do let root=G.distinguished_involution*factor.simple_roots[0]
+      then j=first(for i:#sf do find(sf[i].simple_roots,root) !=-1 od)
+   in if i<j then [(i,j)] else [] fi
+   od.##
 
 set left_factors(RealForm G)=[RootDatum]:
 assert(G.is_complex,"G is not complex");
@@ -82,8 +86,8 @@ set left_coroots(RealForm G)=[vec]:
 set left_copy(RealForm G)=RootDatum:
   root_datum(left_roots(G),left_coroots(G),G.prefers_coroots)
 
-set left_root_indices(RealForm G)=[int]:
-for v in G.left_roots do find(G.simple_roots,v) od
+set left_root_indices(RealForm G) = [int]:
+  for v in G.left_roots do find(G.simple_roots,v) od
 
 set right_factors(RealForm G)=[RootDatum]:
 assert(G.is_complex,"G is not complex");
@@ -144,9 +148,13 @@ set sub_digraph(WGraph graph,[int] S)=WGraph:
 	  od)
 od)
 
+{ sub_root_datum is needed for the W_cells to be understood by the
+underlying "real" character table. But it isn't good enough: if
+ct=GL(3,R).character_table and C is a left cell from GL(3,C), then ct
+cannot see C: the root datum of C is SL(3), and that for ct is GL(3). }
 set sub_graph(WGraph graph,[int] S)=WGraph:
-(graph.root_datum,for (tau,edges) in graph.nodes do
-    (tau,
+(sub_root_datum(graph.root_datum,S).derived,for (tau,edges) in graph.nodes do
+    (intersection(S,tau),
 	##for (target,mult) in edges do
 	    let tau_target=tau(graph.nodes[target]) in
 	    	if not is_subset(intersection(S,tau),tau_target) or
@@ -198,19 +206,21 @@ for (indices,graph,) in strong_components(g)  do
 od
 
 set sub_cells(WCell (nodes,graph,ops),[int] S)=[WCell]:
-strong_components(nodes,sub_graph(graph,S),[sparse_mat]:[])
+   strong_components(nodes,sub_graph(graph,S),[sparse_mat]:[])
 
-set left_cells(RealForm G,WCell cell)=[WCell]:
-sub_cells(cell,left_root_indices(G))
+set left_cells(RealForm G, WCell cell) = [WCell]:
+   sub_cells(cell,left_root_indices(G))
 
 set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
 
-set left_cell_of(Param p)=
-let (index,cell)=W_cell_index(p) then
-cells=left_cells(p.real_form,cell) then
-j=first(for (vertices,links,) in cells do find(vertices,index)>=0 od) in
-cells[j]
+set left_cell_of(Param p) = WCell:
+   let (vertex,cell)=vertex_and_W_cell(p)
+   then cells = left_cells(p.real_form,cell)
+   then j = int:
+      let test = contains(vertex)
+      in first(#cells,(int i)bool: test(cells[i].labels))
+in cells[j]
 
 
 set extract_nodes(WGraph g, [int] nodes)=WGraph:
@@ -224,10 +234,10 @@ od
 )
 
 {. character of representation of W on cell .}
-{
+
 set cell_character_C (CharacterTable ct,WCell cell) = [int]:
 for w in ct.class_reps do trace(cell_action(cell,w)) od
-}
+
 
 { ----- output commands  -----------}
 set show(WGraph g)=void:

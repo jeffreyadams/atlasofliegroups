@@ -39,7 +39,7 @@ set character_table_G = (RootDatum -> CharacterTable):
 in (RootDatum rd) CharacterTable:
    let class_table = class_table_G(rd)
    then classes = [WeylElt,classical_class,string]:
-      for w@i in class_table.class_representatives()
+      for w@i in class_table.class_representatives
       do (w,null_class(),class_names[i])
       od
    in character_table(class_table,classes,irreps)

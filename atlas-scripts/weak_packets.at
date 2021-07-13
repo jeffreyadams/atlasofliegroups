@@ -73,7 +73,7 @@ set weak_packet_int (SpringerTable st_int
      fi
   ;  let sigma=st_int.springer(O)
   in if cells_verbose then prints
-        ("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma))
+        ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
      fi
   ;  let parameters = parameters_given_AV_infinitesimal_character
                       (st_int,O,blocks_and_cells,gamma_target)
@@ -124,7 +124,7 @@ in if cells_verbose then prints
 ;  prints("computing springer map of", O.diagram)
 ;  let sigma=st_int.springer(O)
 in if cells_verbose then prints
-      ("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma))
+      ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
    fi
 ; let parameters = parameters_given_AV_infinitesimal_character
                    (st_int,O,blocks_and_cells,gamma_target,permutation)
@@ -162,7 +162,7 @@ set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
    then rd_int = {integrality datum on group side}
                  integrality_datum(rd,O_check.H/2)
    then {P is the permutation relating rd_int.derived and st_int.root_datum}
-        (,P)=nice_order(rd_int.derived)
+        (,P)=Cartan_matrix_type(Cartan_matrix(rd_int))
    then permutation=P.permutation_matrix
 in {by definition permutation should relate the Cartan matrices}
    assert(permutation*st_int.root_datum.Cartan_matrix =

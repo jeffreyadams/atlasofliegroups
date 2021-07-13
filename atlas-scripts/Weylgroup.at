@@ -229,11 +229,12 @@ set w(Param p)=p.x.w
 
 {need invariant_form to (easily) determine if a root is short/long}
 
-set is_long(RootDatum rd,vec alpha)=bool:
-assert(is_root(rd,alpha),"not a root");
-let L=simple_factor(rd,alpha) then
-f=invariant_form(L) then
-beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
+set is_long(RootDatum rd,vec alpha) = bool:
+   assert(is_root(rd,alpha),"not a root");
+   let L=simple_factor(rd,alpha)
+   then f = (ratvec,ratvec->rat): invariant_form(L)
+   , beta=highest_root(L)
+   in f(alpha,alpha)=f(beta,beta)
 
 set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
 

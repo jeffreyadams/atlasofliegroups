@@ -1,32 +1,35 @@
-<character_table_reps.at
+<basic.at
+<W_reps.at { for type |WCell|; |cell_action@(WCell,WeylElt)| }
+<character_table_reps.at { |smallest_degree_summands| }
 <springer_tables.at
 <isomorphism_W.at {for permute_character}
 
 set cells_verbose=false
 
-{
-these two functions are defined in W_reps.at:
-W_cells_index@Param->(int,[WCell])
-W_cells_of@Param->[WCell]
-now also define singular versions:
-W_cell_index@Param->(int,WCell)
-W_cell_of@Param->WCell
+{ Below, conforming to definition of |WCell| given in W_reps.at, the term
+  "cell" will always refer to a structure that includes action matrices. This
+  was not so for the built-in functions |W_cells|, not directly used here.
 }
-set W_cell_index(Param p)=(int,WCell):
-let (index,cells)=W_cells_index(p) then
-j=first(for i:#cells do let (param_indices,,)=cells[i] in find(param_indices,index)>=0 od) in
-(index,cells[j])
+set vertex_and_W_cell(Param p) = (int,WCell):
+   let (vertex,cells)=vertex_and_W_cells(p)
+   then cell_nr = int:
+      let test = contains(vertex)
+      in first(#cells,(int i)bool: test(cells[i].labels))
+in (vertex,cells[cell_nr])
 
-set W_cell_of(Param p)=WCell: let (,cell)=W_cell_index(p) in cell
+set W_cell_of(Param p) = WCell: { just the cell that has the vertex for |p| }
+   let (,cell) = vertex_and_W_cell(p) in cell
 
-{assuming block and cells are already computed:}
-set W_cell([Param] block,[WCell] cells,Param p)=(int,WCell):
-let index=find(block,p) then
-cell_number=first(for (param_numbers,,)@i in cells do find(param_numbers,index)>=0 od) in
-(index,cells[cell_number])
+{ with block and cells already computed, this can replace |vertex_and_W_cell| }
+set W_cell([Param] block,[WCell] cells, Param p) = (int,WCell):
+   let vertex = find(block,p)
+   then cell_nr = int:
+      let test = contains(vertex)
+      in first(#cells,(int i): test(cells[i].labels))
+in (vertex,cells[cell_nr])
 
-set W_cell_of([Param] block,[WCell] cells,Param p)=WCell:
-let (,c)=W_cell(block,cells,p) in c
+set W_cell_of(([Param],[WCell],Param) arg) = WCell:
+   let (,cell) = W_cell(arg) in cell
 
 
 { ----------- cell representations --------------}
@@ -48,17 +51,18 @@ else
 fi
 
 
-set cell_character(CharacterTable ct)=(WCell -> [int]):(WCell cell):cell_character(ct,cell)
+set cell_character(CharacterTable ct) = (WCell cell)[int]:
+  cell_character(ct,cell)
 set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(ct, cell) od
 
 set cells_table (CharacterTable ct,[WCell] cells) = mat:
-  matrix_of_inner_products(ct,cell_characters(ct,cells))
+  matrix_of_inner_products(ct.class_table,cell_characters(ct,cells))
 
 set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
   let characters =
     cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
-  in matrix_of_inner_products(ct,characters)
+  in matrix_of_inner_products(ct.class_table,characters)
 
 set cell_representation (CharacterTable ct,WCell cell) = W_rep:
   (#cell.graph,
@@ -69,18 +73,29 @@ set cell_representation (CharacterTable ct,WCell cell) = W_rep:
 set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
   for cell in cells do cell_representation(ct,cell) od
 
-{smallest_degree_summands is in character_tables.at}
+set special_irreducible(CharacterTable ct, [int] multiplicities) = int:
+   let summands = smallest_degree_summands(ct,multiplicities)
+in case #summands
+   in assert(=multiplicities,"What?"); error("zero character, no special")
+   , summands[0]
+   else error("non-unique special representation")
+   esac
+
 {NOTE: need to incorporate the permutation relating ct.root_datum and cell.root_datum}
 {note that ct.root_datum must be (isomorphic to) cell.root_datum,
  which is the integrality_datum of a parameter}
-set special_character(CharacterTable ct,WCell cell)=
-let (valid,P)=root_permutation(ct.root_datum.derived,cell.root_datum.derived) in
-assert(valid,"No root system isomorphism");
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
+set special_character (CharacterTable ct,WCell cell) = int:
+(  let (valid,P) =
+     root_permutation(ct.root_datum.derived,cell.root_datum.derived)
+   in assert(valid,"No root system isomorphism")
+;  let summands =
+     smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
 in if #summands>1 then error("not unique special representation")
    elif #summands=0 then error("no special summands?")
    else summands[0]
    fi
+)
+
 set special_character(CharacterTable ct)=(WCell->int):(WCell cell):
   special_character(ct,cell)
 
@@ -185,8 +200,8 @@ O is only used for its Springer representation
 }
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
 {[(int,int,Param)]: {[(block number, cell number, parameter)]}}
-let springer_O=st.springer(O) {int} then
-springer_dim=st.ct.dimension(springer_O) in
+let springer_O= int: st.springer(O) {int} then
+springer_dim=dimension(st.ct,springer_O) in
 if cells_verbose then
  prints("given AV with infinitesimal character:", gamma, new_line, "O=",O);
  prints("st:", st, " bc:", blocks_and_cells);
@@ -221,7 +236,7 @@ od  {/for block}
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma,mat permutation)=[(int,int,Param)]: {[(block number, cell number, parameter)]}
 let springer_O=st.springer(O) then
 ()=prints("O: ", O) then
-springer_dim=st.ct.dimension(springer_O) in
+springer_dim=dimension(st.ct,springer_O) in
 if cells_verbose then
  prints("given AV with infinitesimal character:", gamma, new_line, "O=",O, new_line, "with permutation: ", permutation);
  prints("st:", st, " bc:", blocks_and_cells);
@@ -295,7 +310,7 @@ set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(p))
 
 set associated_variety(SpringerTable st_G,WCell cell)=ComplexNilpotent:
-let G=st_G.root_datum_parent then
+let G=st_G.root_datum then
 ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then
@@ -314,7 +329,7 @@ index_G=chars_G[0] in
 st_G.springer_inverse(index_G)
 
 set associated_variety_test(SpringerTable st_G,WCell cell)=
-let G=st_G.root_datum_parent then
+let G=st_G.root_datum then
 ct_G=st_G.ct then
 L=cell.root_datum then
 ct_L=L.character_table then

@@ -48,7 +48,10 @@ fi then
    " dimension: ", O.dim_nilpotent)
 fi then
 sigma=st_int.springer(O) then
-()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma)) fi then
+()=if cells_verbose
+   then prints("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
+   fi
+then
 wp=parameters_given_AV_infinitesimal_character(st_int,O,gamma_target,cell_and_character_data) then
 cell_data=for (d,) in cell_and_character_data do d od in
 (cell_data,wp)
