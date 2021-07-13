@@ -179,7 +179,7 @@ set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[(RealForm,vec)]:
 
 set generators_of_component_group (RealNilpotent (H,x,()))=
 [(RealForm,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
-  let rd=root_datum(x)
+  let rd=root_datum(x), G=real_form(x)
   in for (EL,H_L) in noticed_elliptic_pseudo_Levis (H,x,()) do let L=root_datum(EL)
    then Lmod=mod_central_torus(L)
    then Z_Lmod=elements_of_center(Lmod)
@@ -215,3 +215,9 @@ set print_component_info (RealNilpotent O)=void:
       ", diagram:", O.complex_orbit.diagram);
    prints("orders:",orders);
    tabulate(header#values)
+
+set is_K_conjugate(KGBElt x,vec mu,vec lambda)=bool:
+   let ((,v),,,)=make_strongly_dominant(x,mu),
+   ((,w),,,)=make_strongly_dominant(x,lambda)
+   in v=w
+   
