@@ -77,8 +77,10 @@ in { now apply |reps_by_rho| to each size class, and concatenate the results }
 }
 
 { given a standard Levi, list conjugate non-standard Levis with dominant 2rho }
-set_type orbit_entry = (int L_int, WeylElt w)
-set_type orbit_data = [int,WeylElt] { posroot set as single number, conjugator }
+set_type
+[ orbit_entry = (int L_int, WeylElt w)
+, orbit_data = [orbit_entry] { posroot set as single number, conjugator }
+]
 
 { since the number of roots in the subset is fixed, we use |combination_encode|
   to represent a subset of $k$ positive roots as a number inside |orbit_data|;
@@ -161,8 +163,10 @@ set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:
 { in a |Std_Levi_orbit|, |Levi_repr| is an encoded standard Levi, as are first
   members |L| of |others|; for |(L,w) in others| one has |L=w*Levi_repr|
 }
-set_type Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
-set_type Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
+set_type
+[ Std_Levi_orbit = (vec rho2, int Levi_repr, [int,WeylElt] others)
+, Std_Levi_table = [[Std_Levi_orbit]] { list of lists, grouped by |k| }
+]
 
 { group together conjugate standard Levis, with witness conjugating from first }
 set classify_standard_Levis (RootDatum rd) =  Std_Levi_table:
@@ -299,3 +303,8 @@ set Levi_lookup (RootDatum rd,Std_Levi_table table) = ([int]->WeylElt,[int]):
    let (chamber,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
    then (conj,Levi_repr) = lookup(unsorted_standard_Levi)
    in (chamber*conj,Levi_repr)
+
+
+forget orbit_entry
+forget orbit_data
+forget Std_Levi_orbit
