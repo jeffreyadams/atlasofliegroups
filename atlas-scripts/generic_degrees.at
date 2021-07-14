@@ -35,6 +35,10 @@ in generic_degrees(ct,cells)
 set update_generic_degrees(CharacterTable ct,RealForm G) = void:
    generic_degrees(ct,all_parameters_gamma(G,rho(G)))
 
+set update_generic_degrees(CharacterTable ct)=(RealForm->void):(RealForm G):update_generic_degrees(ct,G)
+set update_generic_degrees(SpringerTable st,RealForm G)=void:update_generic_degrees(st.ct,G)
+set update_generic_degrees(SpringerTable st)=(RealForm->void):(RealForm G):update_generic_degrees(st.ct,G)
+
 set show_degrees(CharacterTable ct) = void:
 (  let generic_degree(int i) =
      if ct.has_generic_degree(i) then -1 else ct.generic_degree(i) fi

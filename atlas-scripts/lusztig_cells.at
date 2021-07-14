@@ -3,20 +3,22 @@
  to implement this when xi=1
  the set obtained for fixed O, running over x,
  is a Lusztig (left) cell
+ Note: this used to involve the dual group but this has been changed,
+ the dual version will be moved to lusztig_cells_dual.at
 }
 <basic.at
 <coherent_characters.at
 <truncated_induction.at
 <isomorphism_W.at
-<generic_degrees.at
+<generic_degrees.at 
+<nci_nilrad_roots.at {for all_sums@([ratvec])}
 
-{sigma_lusztig
+{sigma_lusztig (used to be sigma_L, the new name is better
 sigma_lusztig(O,x) is a of a representation of W(G)
 conjecturally it is the same as
-Lusztig(O,x,1) as defined in the Orange book, this also
-}
+Lusztig(O,x,1) as defined in the Orange book
 
-{G G, O = special orbit for G, x\in A-bar(O)
+G G, O = special orbit for G, x\in A-bar(O)
 M=M(A-bar(O)): pairs defined by Lusztig
 xi an irreducible representation of Cent_{A-bar(O)}(x)
 (O,x,xi)  -- Lusztig -->  W(G)^
@@ -39,32 +41,31 @@ Note: this O_L_x might not be special, so Springer(dual(orbit)) \ne Springer(orb
 
 Non-trivial \xi not yet considered
 
-
 Example: O=0-orbit, x=1
 L_x_v=G_v, O_L_x_v=0-orbit of G
 Springer(O_L_x_v)=sign of W(G^)
 \otimes sgn=trivial of
 }
+
 set sigma_lusztig_verbose=true
 
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user
- M_v is a pseudo-Levi
- H_M_v is (the ss element of) an orbit for M_v
+ M is a pseudo-Levi
+ H_M is (the ss element of) an orbit for M
  exp(2pi i y) is an element of center of M^0
- typically (M_v,H_M_v,y) are provided by component_datum@ComplexNilpotent
+ typically (M,H_M,y) are provided by component_datum@ComplexNilpotent
 }
 {arguments:
  G given group with its coordinate, need this to compute roots of L in G
  G.ct is needed to compute truncated induction/exchange_long_short
- L_v.st is needed to compute Springer(O_L_v)  (L_v=centralizer of y on dual side, L=dual(L_v))
- O_v: given orbit on the dual side
- M_v: pseudo-Levi in which exp(2\pi iy) is central
+ L.st is needed to compute Springer(O_L)  (L=centralizer of y)
+ O: given orbit on the dual side
+ M: pseudo-Levi in which exp(2\pi iy) is central
   (this isn't really needed but is helpful information)
- H_M_v: ss element for orbit of M_v
+ H_M: ss element for orbit of M
  y: x=exp(2\pi iy)
- note that L_v depends on y
+ note that L depends on y
 }
-
 
 {-------------------------------------------------------------------}
 {modify to work on the group side:
@@ -86,6 +87,7 @@ General case:
  occasionally []: empty
  so far never see mult>0
 }
+
 
 {this used to be called _no_dual, now the default}
 set sigma_lusztig(RootDatum G,SpringerTable st_G,ComplexNilpotent O,RootDatum M,vec H_M,ratvec y)=[int]: 
@@ -153,16 +155,12 @@ else  {need induction; compute L, sigma_lusztig}
      ct_G.character_index(char_L_0)}
 fi  {end if y.is_integer}
 
-{run over all ratvecs from component_representatives(orbit)}
-{used to be lusztig_cell_no_dual, now the default}
-
 set lusztig_cell(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[[int]]:
 sort_u(
  for (M,H_M,y) in component_representatives_plus(O) do
      let ()=if sigma_lusztig_verbose then prints("computing sigma_lusztig for orbit=", O, " ", O.diagram, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
  sigma_lusztig(G,st_G,O,M,H_M,y)
 od)
-
 set lusztig_cell_plus(RootDatum G,SpringerTable st_G,ComplexNilpotent orbit)=[[int]]:
 let basis=orbit.Bala_Carter_Levi.radical_basis in
 sort_u(
@@ -173,8 +171,7 @@ sort_u(
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
      basis, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
  sigma_lusztig(G,st_G,orbit,M,H_M,y+v/2) od
-od) 
-
+od)
 
 {some shorthands which are handy but inefficient}
 set lusztig_cell(RootDatum G,ComplexNilpotent O)=[[int]]:lusztig_cell(G,G.springer_table,O)
@@ -210,7 +207,7 @@ lusztig_cells(G,st_G,G.orbits)
 
 set lusztig_cells(RealForm G)=[[(ComplexNilpotent,RootDatum,vec,ratvec,[int])]]:
 let st=G.springer_table in
-update_generic_degrees(st.ct,G);
+st.update_generic_degrees(G);
 lusztig_cells(G,st,G.orbits)
 
 {show lusztig cells, running over given list of nilpotents}
@@ -329,329 +326,13 @@ set show_lusztig_cells_plus(RootDatum G,SpringerTable st_G)=show_lusztig_cells_p
 
 set show_lusztig_cells(RootDatum G)=
 let st=G.springer_table in
-update_generic_degrees(st.ct,G.split_form);
+st.update_generic_degrees(G.split_form);
 show_lusztig_cells(G,st)
 
 set show_lusztig_cells_plus(RootDatum G)=
 let st=G.springer_table in
-update_generic_degrees(st.ct,G.split_form);
+st.update_generic_degrees(G.split_form);
 show_lusztig_cells_plus(G,st)
 
-set four_inner_products(RealForm G,CharacterTable ct_G,[int] char_G)=
-let (valid,M)=root_permutation(G,ct_G.root_datum) then
-char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
-(ct_G.inner_product(char,character_coherent_B(G,ct_G)),
- ct_G.inner_product(char,character_coherent_X(G,ct_G)),
- ct_G.inner_product(char,character_coherent_Y(G,ct_G)),
- ct_G.inner_product(char,character_coherent_I(ct_G)))
-
-set four_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[int] char_G)=
-let (valid,M)=root_permutation(G,ct_G.root_datum) then
-char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
-(ct_G.inner_product(char,character_coherent_B(G,ct_G)),
- ct_G.inner_product(char,character_coherent_X(G,ct_G)),
- ct_G.inner_product(char,character_coherent_Y(ct_G,G_dual)),
- ct_G.inner_product(char,character_coherent_I(ct_G)))
-
-set four_inner_products(RealForm G,CharacterTable ct_G,[[int]] chars)=
-for char in chars do four_inner_products(G,ct_G,char) od
-
-set four_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[[int]] chars)=
-for char in chars do four_inner_products(G,G_dual,ct_G,char) od
-
-{_sgn version shouldn't be necessary, here for historical/debugging
- reasons, not called}
-set four_inner_products_sgn(RealForm G,CharacterTable ct_G,[int] char_G)=
-let (valid,M)=root_permutation(G,ct_G.root_datum) then
-char_G_sgn=ct_G.tensor_sign(char_G) then
-char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G_sgn) in
-(ct_G.inner_product(char,character_coherent_B(G,ct_G)),
- ct_G.inner_product(char,character_coherent_X(G,ct_G)),
- ct_G.inner_product(char,character_coherent_Y(G,ct_G)),
- ct_G.inner_product(char,character_coherent_I(ct_G)))
-
-set four_inner_products_sgn(RealForm G,CharacterTable ct_G,[[int]] chars)=
-for char in chars do four_inner_products_sgn(G,ct_G,char) od
-
-{
-set four_inner_products_special(RealForm G,SpringerTable st_G)=
-let chars=special_representations(st_G) in
-four_inner_products(G,st_G.ct,for j in chars do st_G.ct.tensor_sign(st_G.ct.characters[j]) od)
-}
-{set four_inner_products_all(RealForm G,SpringerTable st_G)=
-four_inner_products(G,st_G.ct,for j:st_G.ct.n_classes do  st_G.ct.tensor_sign(st_G.ct.characters[j]) od)
-}
-
-set special_characters(SpringerTable st)=[[int]]: for orbit in st.special_orbits do st.ct.characters[st.springer(orbit)] od
-
-set show_big_table(RealForm G,CharacterTable ct_G)=
-let all=four_inner_products(G,ct_G,ct_G.characters) in
-prints("i: #of character of W",new_line,
-"dim: dim(sigma)",new_line, "deg: degree(sigma)", new_line,
- "gdeg: generic degree(sigma)", new_line,
-"mult of sigma in B,X,Y,I",new_line);
-tabulate(
-["i","dim","deg", "gdeg","B","X","Y","I"]#
-for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
-[i.to_string,
-dimension(ct_G,i).to_string,
-ct_G.degree(i).to_string,
-{if #ct_G.generic_degrees>0 then }ct_G.generic_degree(i).to_string {else "" fi},
-a.to_string,b.to_string,bprime.to_string,c.to_string] od)
-
-set show_big_table(RealForm G)=show_big_table(G,G.character_table)
 
 {four inner products stuff moved to inner_products.at}
-
-
-{  rest of the file doesn't load at the moment...}
-
-{
-
-{Lusztig only: old version, on dual side}
-set sigma_lusztig_old(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v,RootDatum M_v,vec H_M_v,ratvec y)=
-{variant: add center of M_v to y}
-let ()=if sigma_lusztig_verbose then
-   prints(new_line,"Computing sigma_lusztig: ",new_line,"O_v=", O_v.diagram,new_line,
-   "G=", G,new_line, "st_G_v: ", st_G_v.root_datum, new_line,"M_v=", M_v, new_line, "H_M_v=",H_M_v,new_line,"y=", y) fi
-in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
- let ()=if sigma_lusztig_verbose then prints("y is integer, no induction")  fi then
- sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
- ()=if sigma_lusztig_verbose then prints("sigma_v (no induction): ", sigma_v) fi  then
- sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
- ()=if sigma_lusztig_verbose then prints("exchange/tensor sign: ", sigma) fi in
- ct_G.character_index(sigma)
-else  {need induction; compute L, sigma_lusztig, truncated_induce}
- let ()=if sigma_lusztig_verbose then prints("need induction: ")  fi in
- let G_v=O_v.root_datum then
- ()=if sigma_lusztig_verbose then prints(("y=",y) ) fi then
- L_v=centralizer(G_v,y) then
- ()=if sigma_lusztig_verbose then prints(("L_v=",L_v, new_line, "G_v=", G_v) ) fi then
- {O_M_v=ComplexNilpotent:(M_v,(),H_M_v) -> saturation -> O_L_v
-  O_L_v has the same H=H_M_v, but made L_v-dominant}
- H_L_v=dominant(H_M_v,L_v) then
- O_L_v=ComplexNilpotent:(L_v,(),H_L_v) then
- ()=if sigma_lusztig_verbose
-   then prints(("L_v=", L_v,new_line,"H_L_v=", H_L_v,new_line,"O_L_v:", O_L_v.H, " ", O_L_v.diagram) ) fi then
- L=dual(L_v) then
- roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
- {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
- sigma_lusztig=
- if O_L_v=L_v.zero_orbit then prints("zero orbit");   L.character_table.trivial
- elif O_L_v=L_v.principal_orbit then L.character_table.sign
- else  {not 0 or principal orbit: need to compute L.springer_table}
-  let ()=if sigma_lusztig_verbose then prints(("computing st_L_v:") ) fi then
-  st_L_v=L_v.springer_table then
-  ()=if sigma_lusztig_verbose then prints(("done computing L_v.springer_table (not including generic degree)") ) fi then
-{ st_L_v=update_generic_degrees(L_v.split_form,st_L_v_0) then 
-  ()=if sigma_lusztig_verbose then prints("done updating fake degrees for L_v_0") fi then }
-  sigma_lusztig_v=st_L_v.springer(O_L_v) then
-  char=st_L_v.ct.characters[sigma_lusztig_v] then
-  sigma_lusztig_0=st_L_v.ct.tensor_sign(char) then
-  ex=exchange_long_short(L_v.character_table,sigma_lusztig_0) in
-  let ()=if sigma_lusztig_verbose then prints("sigma_lusztig_v: ", sigma_lusztig_v, new_line, "char: ", char, new_line, "sigma_lusztig_0: ", sigma_lusztig_0, new_line,
-  "ex: ", ex) fi in ex
- fi  {end if O_L_v=L_v.zero_orbit} then
- {now induce sigma_lusztig}
- { ()=    assert(#(ct_G.generic_degrees)>0,"need to compute fake degrees for ct_G (ct:=update_generic_degrees(G,ct) or st:=update_generic_degrees(G,st)") then }
- {maybe need fake degrees for st_G_v}
-{ ()=    assert(#(st_G_v.generic_degrees)>0,"need to compute fake degrees for st_G_v (ct:=update_generic_degrees(G,ct) or st:=update_generic_degrees(G,st)") then}
-  degree_function(int j)=ct_G.generic_degree(j) then
-  ()=if sigma_lusztig_verbose then prints("inducing character from L:", L) fi then
-  ind=induce_character(G,ct_G,roots_L,sigma_lusztig) then
-    ()=if sigma_lusztig_verbose then prints("finished inducing character from L:", L) fi then
-{  char_indices=truncate_induce_character(G,ct_G,roots_L,sigma_lusztig,degree_function) then}
-{ in F4, trying variants:}
-  ind_decomposed=ct_G.decompose(ind) then
-  desired_generic_degree = st_G_v.ct.degrees[st_G_v.springer(O_v)] then
-  ()=if sigma_lusztig_verbose then prints("desired_generic_degree: ", desired_generic_degree) fi then
-  char_indices=[int]:
-     ##for i:#ind_decomposed do
-       if (ind_decomposed[i]>0 and ct_G.generic_degree(i)=desired_generic_degree) then [i]  else [] fi od then
-{     if      (ind_decomposed[i]>0 and ct.generic_degrees[i]=desired_generic_degree) then [i] else [int]:[] fi od }
-  ()=if sigma_lusztig_verbose then  prints("O_v: ", O_v.diagram, new_line,"L_v: ", L_v,new_line,"O_L_v: ", O_L_v.diagram,new_line,"sigma_lusztig: ", sigma_lusztig,new_line);
-    prints("induced char: ", ind,new_line, "decomposition(1):", ct_G.decompose(ind));ct_G.view_char(ind);
-    prints("minimal degree terms in induced: ", char_indices) fi then
- ()=if sigma_lusztig_verbose then prints("truncated induce (sigma_lusztig): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_lusztig=", sigma_lusztig) fi then
-  char_index=   if =#char_indices then -1
-    else
-     let char_L_0=ct_G.characters[char_indices[0]] then
-     ()=if sigma_lusztig_verbose then prints("character of L: ", char_indices[0], new_line, char_L_0) fi in
-     ct_G.character_index(char_L_0)
-    fi
-  in if sigma_lusztig_verbose then prints("char_index=", char_index) fi;char_index
-fi  {end if y.is_integer}
-
-
-{------------------------------------------old versions------------------------------------------------------------}
-{probably deprecated}
-
-{Lusztig and Sommers version}
-{also return: O_L_v}
-set sigma_lusztig_S(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v,RootDatum M_v,vec H_M_v,ratvec y)=(int,int,ComplexNilpotent):
-{variant: add center of M_v to y}
-let ()=if sigma_lusztig_verbose then
-   prints("Computing sigma_lusztig: ",new_line,
-   "G=", G, "st_G_v: ",new_line, st_G_v.root_datum, new_line,"M_v=", M_v, new_line, "H_M_v=",H_M_v,new_line,"y=", y) fi
-in if y.is_integer then  {L_v=G_v, L=G, don't need induction}
- let ()=if sigma_lusztig_verbose then prints("y is integer, no induction")  fi then
- sigma_v=st_G_v.ct.characters[st_G_v.springer(O_v)] then
- sigma= exchange_long_short(ct_G,st_G_v.ct.tensor_sign(sigma_v)) then
- char= ct_G.character_index(sigma) in
- (char,char,O_v)  {sigma_lusztig=sigma_S=char}
-else  {need induction; compute L, sigma_lusztig, truncated_induce}
- let ()=if sigma_lusztig_verbose then prints("need induction: ")  fi in
- let G_v=O_v.root_datum then
- ()=if sigma_lusztig_verbose then prints(("y=",y) ) fi then
- L_v=centralizer(G_v,y) then
- ()=if sigma_lusztig_verbose then prints(("L_v=",L_v, new_line, "G_v=", G_v) ) fi then
- {O_M_v=ComplexNilpotent:(M_v,(),H_M_v) -> saturation -> O_L_v
-  O_L_v has the same H=H_M_v, but made L_v-dominant}
- H_L_v=dominant(H_M_v,L_v) then
- O_L_v=ComplexNilpotent:(L_v,(),H_L_v) then
- ()=if sigma_lusztig_verbose
-   then prints(("L_v=", L_v,new_line,"H_L_v=", H_L_v,new_line,"O_L_v:", O_L_v.H, new_line,"O_L_v.diagram:", O_L_v.diagram) ) fi then
- L=dual(L_v) then
- roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
- {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
- (sigma_lusztig,sigma_sommers)=
- if O_L_v=L_v.zero_orbit then let char=L.character_table.trivial in (char,char)
- elif O_L_v=L_v.principal_orbit then let char=L.character_table.sign in (char,char) {sigma_lusztig=sigma_S}
- else  {not 0 or principal orbit: need to compute L.springer_table}
-  (let ()=if sigma_lusztig_verbose then prints(("computing st_L:") ) fi then
-  st_L_v=L_v.springer_table then
-  ()=if sigma_lusztig_verbose then prints(("done computing L.springer_table") ) fi then
-  sigma_lusztig_v=st_L_v.springer(O_L_v) then
-  char=st_L_v.ct.characters[sigma_lusztig_v] then
-  sigma_lusztig_0=st_L_v.ct.tensor_sign(char) in
-  exchange_long_short(L_v.character_table,sigma_lusztig_0),{that's sigma_lusztig}
-  {now sigma_sommers}
-  let st_L=L.springer_table then
-  O_L=st_L.dual_map_i(O_L_v) then
-  rv=  st_L.ct.characters[st_L.springer(O_L)] in
-  if sigma_lusztig_verbose then
-   prints("O_L: ", O_L, " ", O_L.diagram, new_line,"sigma_sommers: ", rv) fi; rv)
- fi  {end if O_L_v=L_v.zero_orbit} in
- {now induce sigma_lusztig and sigma_sommers}
- {sigma_lusztig:}
-  (let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_lusztig) then
-  ()=if sigma_lusztig_verbose then prints("sigma_lusztig: ", sigma_lusztig, "char_index: ", char_index) fi then
-  ()=if sigma_lusztig_verbose then prints("truncated induce (sigma_lusztig): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_lusztig=", sigma_lusztig) fi then
-  char_L=ct_G.characters[char_index] then
-  ()=if sigma_lusztig_verbose then prints("character of L: ", char_L) fi in char_index,
-  {now sommers:}
-   let char_index=truncate_by_degree_induce_character(G,ct_G,roots_L,sigma_sommers) then
-  ()=if sigma_lusztig_verbose then prints("sigma_sommers: ", sigma_sommers, "char_index: ", char_index) fi then
-  ()=if sigma_lusztig_verbose then prints("truncated induce (sommers): ", "G=",G,new_line,"roots_L: ", roots_L, " sigma_sommers", sigma_sommers) fi then
-   char_sommers=ct_G.characters[char_index] then
-   ()=if sigma_lusztig_verbose then prints("character of L: ", char_index, new_line, char_sommers) fi in
-{   ct_G.character_index(char_sommers),O_L_v)}
-   char_index,O_L_v
-fi  {end if y.is_integer}
-
-{---------------}
-
-{run over all ratvecs from component_representatives(orbit)}
-set lusztig_cell(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent O_v)=[int]:
-{prints("sigma_lusztig for: ", O_v,"  ", O_v.diagram,new_line, " st_G_v:",st_G_v.root_datum);}
-{sort_u: avoid duplicates from A-bar(O_v)\ne A(O_v)}
-sort_u(for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
- let ()=if sigma_lusztig_verbose then prints("computing sigma_lusztig for M_v=", M_v, new_line,"H_M_v=",H_M_v,new_line, "y=", y)  fi in
-    {let ()=if sigma_lusztig_verbose then prints("calling sigma_lusztig(x):", new_line,"G: ", G, new_line,"O_v: ", O_v.diagram, " ", O_v.dim_nilpotent,
-   "st:", st_G_v.root_datum, new_line,"M_v: ", M_v, new_line, "H_M_v", H_M_v, new_line, "y: ", y) fi in}
- sigma_lusztig(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) od)
-
-
-{old version: on dual side
- by G.special_orbits}
-set lusztig_cells_dual(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=[[int]]:
- for O in st_G.special_orbits do
-  let O_dual=st_G.dual_map(O) then
-  O_v=orbit_by_diagram(G.dual,O_dual.diagram_normalized) then
-  ()=if sigma_lusztig_verbose then prints(new_line,"-----------------------------------------------",new_line,"computing Lusztig cell of dual orbit: ",O_v.diagram, " ", O_v.dim_nilpotent) fi in
-  lusztig_cell(G,st_G.ct,st_G_v,O_v) od
-
-
-
-
-{show lusztig cells, running over given list of dual nilpotents}
-{old version, dual side}
-set show_lusztig_cells(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,[ComplexNilpotent] dual_orbits)=void:
-prints("G=", G.nice_format, new_line, "#orbits: ", #dual_orbits);
-tabulate(
-["O^v","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","gdeg","char"]#
-##for O_v@counter in dual_orbits do
-  let ()=  if sigma_lusztig_verbose then prints(new_line, "------------------------------------------------------------",new_line,
-  "orbit #",counter,": ", O_v.root_datum.nice_format,
-        " H=", O_v.H, new_line,"diagram=", O_v.diagram,new_line, "normalized diagram=", O_v.diagram_normalized) fi 
-	in
-  let data=
-  for (M_v,H_M_v,y) in component_representatives_plus(O_v) do
-    let j=sigma_lusztig(G,ct_G,st_G_v,O_v,M_v,H_M_v,y) in  (M_v,H_M_v,y,j)
-  od
-  in
-  for i:#data do
-   let (M_v,H_M_v,y,j)=data[i] then
-   sigma=
-    if j=-1 then [] else ct_G.characters[j] fi in
-   [O_v.diagram.to_string,
-    O_v.dim_nilpotent.to_string,
-    i.to_string,
-    integrality_datum(O_v).nice_format,
-    M_v.nice_format,
-    H_M_v.compact_ratvec,
-    y.compact_ratvec,
-    centralizer(G,y).nice_format,
-    "sigma="+j.to_string,
-    if j=-1 then "x" else dimension(ct_G,j).to_string fi,
-    if j=-1 then "x"  else ct_G.degrees[j].to_string fi,
-    if j=-1 then "x"
-     { elif #ct_G.generic_degrees>0 then ct_G.generic_degrees[j].to_string }
-else ct_G.generic_degree(j).to_string
-{     else "x"} fi,
-    sigma.to_string]
-  od  {/for i:#data}
- od {for O_v})
-
-
-
-set show_lusztig_cell(RootDatum G,CharacterTable ct_G,SpringerTable st_G_v,ComplexNilpotent dual_orbit)=void:
- show_lusztig_cells(G,ct_G,st_G_v,[dual_orbit])
-set show_lusztig_cell(RootDatum G, CharacterTable ct_G,ComplexNilpotent O_v)=void:show_lusztig_cell(G,ct_G,G.dual.springer_table,O_v)
-set show_lusztig_cell(RootDatum G, ComplexNilpotent O_v)=void:show_lusztig_cell(G,G.character_table,G.dual.springer_table,O_v)
-set show_lusztig_cell(ComplexNilpotent O_v)=void:show_lusztig_cell(O_v.root_datum.dual,O_v)
-set show_lusztig_cells(RootDatum G,CharacterTable ct)=void:show_lusztig_cells(G,ct,G.dual.springer_table,G.dual_orbits)
-
-set show_lusztig_cells(RealForm G)=void:
-let st=G.springer_table in
-update_generic_degrees(st.ct,G);
-show_lusztig_cells(G,st.ct,G.dual.springer_table,
-   for O in st.special_orbits do let O_dual=st.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized) od)
-
-set show_lusztig_cells(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=void:
-show_lusztig_cells(G,st_G.ct,st_G_v,
-for O in st_G.special_orbits do let O_dual=st_G.dual_map(O) in orbit_by_diagram(G.dual,O_dual.diagram_normalized)
-od)
-
-
-{for convenience:}
-{set init(RootDatum G)=(CharacterTable,SpringerTable,[ComplexNilpotent]):
-let ct_0=G.character_table then
-st_v_0=G.dual.springer_table then
-ct=update_generic_degrees(G.split_form,ct_0) then
-st_v=update_generic_degrees(G.dual.split_form,st_v_0) then
-orbits=st_v.special_orbits in (ct,st_v,orbits)}
-{
-set dual_special_orbits_indexed(RootDatum G,SpringerTable st_G_v)=([int],[ComplexNilpotent]):
-special_orbits_indexed(G.dual,st_G_v)
-set dual_special_orbits_indexed(RootDatum G)=([int],[ComplexNilpotent]):dual_special_orbits_indexed(G,G.dual.springer_table)
-set dual_special_orbits(RootDatum G,SpringerTable st_G_v)=[ComplexNilpotent]:special_orbits(G.dual,st_G_v)
-set dual_special_orbits(RootDatum G)=[ComplexNilpotent]:dual_special_orbits(G,G.dual.springer_table)
-}
-
-{parametrize by special orbits for G}
-set lusztig_cells_characters_special(RootDatum G,SpringerTable st_G,SpringerTable st_G_v)=[[int]]:
-for orbit in st_G.special_orbits do lusztig_cell_char(G,st_G.ct,st_G_v,orbit_by_diagram(G.dual,st_G.dual_map(orbit).diagram_normalized)) od
-
-
-}

@@ -262,7 +262,7 @@ in {by definition permutation should relate the Cartan matrices}
 
 set show(SpringerTable st)=void:
 tabulate(
-["diagram","dim","rep#","dim","deg", "fdeg","char"]#
+["diagram","dim","rep#","dim","deg", "gdeg","char"]#
 for orbit in st.orbits do
 let j=st.springer(orbit) in
 [orbit.diagram.to_string+st.special_star(orbit),
@@ -275,7 +275,7 @@ st.ct.generic_degree_string(j),
 
 set show_long(SpringerTable st)=void:
 tabulate(
-["#orbit","diagram","dim","dual","dual-dim","rep#","dim","deg", "fdeg","char"]#
+["#orbit","diagram","dim","dual","dual-dim","rep#","dim","deg", "gdeg","char"]#
 for orbit@i in st.orbits do
 let  dual_orbit=st.dual_map(orbit) then
 j=st.springer(orbit) in
@@ -293,7 +293,7 @@ st.ct.characters[j].to_string] od)
 set show_reps(SpringerTable st)=void:
 let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
 tabulate(
-["rep#","orbit","dim","deg", "fdeg","char"]#
+["rep#","orbit","dim","deg", "gdeg","char"]#
 for j:st.ct.n_classes do
 [j.to_string,
  let orbit_index=find(springer_reps,j) in
@@ -305,3 +305,4 @@ dimension(st.ct,j).to_string,
 st.ct.degree(j).to_string,
 st.ct.generic_degree_string(j),
 st.ct.characters[j].to_string] od)
+
