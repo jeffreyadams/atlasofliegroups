@@ -1,0 +1,31 @@
+set wallace_verbose=true
+
+set wallace(int n, int k)=
+let G=Sp(2*n) then
+S=for i:k-1 do i od ## for j:n-k from k do j od then
+L=complex_Levi(G,S) 
+in (G,L)
+
+set grommit(int n, int k)=
+let (G,L)=wallace(n,k) then
+()=if wallace_verbose then prints(new_line,"G=", G, new_line, "L=", L) fi then
+root_numbers=for a in L.simple_roots do find(G.roots,a) od  then
+ct=G.character_table then
+ind=induce_sign(ct,root_numbers) then
+(degree,t_ind)=truncate(ct,ind,ct.degree) in
+if wallace_verbose then prints("full induced of sign: ");ct.view_char(ind) fi;
+assert(#t_ind=1,"truncated induction not irreducible" + t_ind.to_string);
+{(G,L,root_numbers,ind,t_ind)}t_ind[0]
+
+{ct must be Sp(2n).character_table}
+set grommit(CharacterTable ct, int k)=
+let (G,L)=wallace(ct.root_datum.rank,k) then
+()=if wallace_verbose then prints(new_line,"G=", G, new_line, "L=", L) fi then
+root_numbers=for a in L.simple_roots do find(G.roots,a) od  then
+ind=induce_sign(ct,root_numbers) then
+(degree,t_ind)=truncate(ct,ind,ct.degree) in
+if wallace_verbose then prints("full induced of sign: ");ct.view_char(ind);
+assert(#t_ind=1,"truncated induction not irreducible" + t_ind.to_string);
+prints("lowest degree term: ", t_ind[0]) fi;
+{(G,L,root_numbers,ind,t_ind)}
+t_ind[0]
