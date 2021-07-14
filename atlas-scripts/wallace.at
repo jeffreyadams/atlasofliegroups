@@ -1,3 +1,11 @@
+{grommit(5,2):
+G=Sp(10)
+L=GL(2)xSp(6)
+compute truncated induction of sign from W_L to W_G
+to run loops and avoid recomputing G.ct do
+grommit(ct,k) where ct=Sp(2n).character_table
+}
+<truncated_induction.at
 set wallace_verbose=true
 
 set wallace(int n, int k)=
