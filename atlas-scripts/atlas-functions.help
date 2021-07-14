@@ -95,7 +95,11 @@ null: (int->vec): null vector of given length
 null: (int,int->mat): null matrix with given number of rows and columns
 id_mat: (int->mat): identity matrix of given size.
 diagonal: (vec->mat): square diagonal matrix with given diagonal entries.
-shape : (mat->int,int) : dimensions (rows,columns) of a matrix
+shape : (mat->int,int): dimensions (rows,columns) of a matrix
+rows: (mat->[vec]): the matrix transformed into its list of rows
+columns: (mat->[vec]): the list of columns (same result as coercion to [vec])
+row: (mat,int->vec): row(M,i) is the row of the M at index i
+column: (mat->[vec]): column(M,j) is the column M[j] of the M at index j
 
 swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
   This function selects a block from a matrix, and depending on the options in
@@ -326,6 +330,11 @@ coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
   return nr_of_posroots(rd) if the argument is not found among the (co)roots.
   The indexing is as in the root/coroot functions above, so if found, the
   index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
+root_expression: (RootDatum,int->vec): Express root additively in simple roots
+  So v= root_expression(rd,i) means that root(rd,i) is sum_j=0^rv[j]root(rd,j)
+  where r=semisimple_rank(rd)
+coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
+  So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
 root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
   For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
 coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders

@@ -396,12 +396,6 @@ set n_columns = #@mat { this one is built in as a # operator overload }
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
-set row (mat A,int i) = vec: (^A)[i]
-set column (mat A,int i) = vec: A[i]
-
-set rows (mat A) = [vec]: ^A
-set columns (mat A) = [vec]: A
-
 set ~ (mat A) = mat: { reverse rows and reverse columns }
   swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
 
@@ -423,17 +417,17 @@ set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
-set # (mat m, vec v) = mat: n_rows(m) { require size match } # (([vec]:m)#v)
-set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
 
 { add row to a matrix, which is similar; use operator ^ for it }
-set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
-set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
 
 set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
-   n_rows(B) # (([vec]:A)##([vec]:B))
+   n_rows(B) # (columns(A)##columns(B))
 set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
-   n_columns(B) ^ (([vec]:^A)##([vec]:^B))
+   n_columns(B) ^ (rows(A)##rows(B))
 
 { concatenate horizontally a list of matrices; each of n rows }
 set ## (int n,[mat] L) = mat:
@@ -525,17 +519,17 @@ set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
 
-{ test all columns }
-set all (mat M,(vec->bool) predicate) = bool:
-  all(#M,(int i)bool:M[i].predicate)
-set any (mat M,(vec->bool) predicate) = bool:
-  any(#M,(int i)bool:M[i].predicate)
-set none (mat M,(vec->bool) predicate) = bool:
-  none(#M,(int i)bool:M[i].predicate)
-set first (mat M,(vec->bool) predicate) = int:
-  first(#M,(int i)bool:M[i].predicate)
-set last (mat M,(vec->bool) predicate) = int:
-  last(#M,(int i)bool:M[i].predicate)
+{ test all vectors in a list }
+set all ([vec] L,(vec->bool) predicate) = bool:
+  all(#L,(int i)bool:L[i].predicate)
+set any ([vec] L,(vec->bool) predicate) = bool:
+  any(#L,(int i)bool:L[i].predicate)
+set none ([vec] L,(vec->bool) predicate) = bool:
+  none(#L,(int i)bool:L[i].predicate)
+set first ([vec] L,(vec->bool) predicate) = int:
+  first(#L,(int i)bool:L[i].predicate)
+set last ([vec] L,(vec->bool) predicate) = int:
+  last(#L,(int i)bool:L[i].predicate)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   n_rows(m)# ## for col@j in m do if p(j,col) then [col] else [] fi od
@@ -547,21 +541,21 @@ set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
   for col in m do if p(col) then return solution(col) fi od; no_vec()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row@i in ^m do if p(i,row) then [row] else [] fi od
+  n_columns(m) ^ for row@i in rows(m) do if p(i,row) then [row] else [] fi od.##
 set rows_with ((vec->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row in ^m do if p(row) then [row] else [] fi od
+  n_columns(m) ^ for row in rows(m) do if p(row) then [row] else [] fi od.##
 set rows_with ((int->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row@i in ^m do if p(i) then [row] else [] fi od
+  n_columns(m) ^ for row@i in rows(m) do if p(i) then [row] else [] fi od.##
 set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in ^m do if p(row) then return solution(row) fi od; no_vec()
+  for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
 
 set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
 set <=(mat m) = bool: all(m,<=@vec)
 set <(mat m) = bool: all(m,<@vec)
 
-set lookup_column (vec v,mat m) = int: last(m,(vec w)bool: w=v)
-set lookup_row (vec v,mat m) = int: last(^m,(vec w)bool: w=v)
+set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
+set lookup_row (vec v,mat m) = int: last(rows(m),(vec w)bool: w=v)
 
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
@@ -868,9 +862,9 @@ set two_rho_check (RootDatum rd,(int->bool) select) = vec:
    columns_with(select,poscoroots(rd)).sum
 
 set two_rho (RootDatum rd,[int] simples) = vec:
-   let orth = { linear form vanishing precisely on span of roots in |simples| }
-     ^kernel(rank(rd)^for i in simples do root(rd,i) od) in
-   two_rho(rd,(int i)bool: =orth*root(rd,i))
+   let orth = { matrix right-annihilating precisely span of roots in |simples| }
+     kernel(rank(rd)^for i in simples do root(rd,i) od) in
+   two_rho(rd,(int i)bool: =root(rd,i)*orth)
 set two_rho_check (RootDatum rd,[int] simples) = vec:
    let orth = { matrix right-annihilating precisely span of |simples| coroots }
      kernel(rank(rd)^for i in simples do coroot(rd,i) od) in
@@ -968,7 +962,7 @@ set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
 set left_reflect (RootDatum rd, vec alpha, mat M) = mat:
   left_reflect(rd,root_index(rd,alpha),M)
 set right_reflect (RootDatum rd, mat M, int i) = mat: { M*reflection(rd,i) }
-  n_columns(M) ^ for row in ^M do coreflect(rd,row,i) od
+  n_columns(M) ^ for row in rows(M) do coreflect(rd,row,i) od
 set right_reflect (RootDatum rd, mat M, vec alpha) = mat:
   right_reflect(rd,M,root_index(rd,alpha))
 
@@ -982,7 +976,7 @@ set conjugate (RootDatum rd, vec alpha, mat M) = mat:
 set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
   let in_S = is_member(S)
   then sub_simple_roots   =  columns_with(in_S,rd.simple_roots)
-  , tr_sub_simple_coroots = ^columns_with(in_S,rd.simple_coroots)
+  , tr_sub_simple_coroots =  rows_with(in_S,^rd.simple_coroots)
   then (M,d) = invert(tr_sub_simple_coroots * sub_simple_roots)
   then A=sub_simple_roots*M*tr_sub_simple_coroots
   then dd=gcd([d,gcd(A)])
@@ -1120,7 +1114,7 @@ set W_gens (RootDatum rd) = [WeylElt]:
   for s:rd.semisimple_rank do W_elt(rd,[s]) od
 set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
 set * (mat theta,WeylElt w) = mat:
-  theta.n_columns ^ for row in ^theta do row*w od
+  theta.n_columns ^ for row in rows(theta) do row*w od
 
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
   let len = #L in
@@ -1460,7 +1454,7 @@ set no_Cplus_roots (KGBElt x) = bool:
 {                               Blocks                                  }
 
 set blocks (RealForm rf) = [Block]:
-   let ic=InnerClass:rf then sizes=(^block_sizes(ic))[rf.form_number] in
+   let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number) in
 ## for drf in dual_real_forms(ic)
    do if >sizes[drf.form_number] then [block(rf,drf)] else [] fi
    od

@@ -2166,8 +2166,8 @@ int_Vector row_to_vector(const row_value& r);
 own_row vector_to_row(const int_Vector& v);
 
 @ The |row_to_vector| conversion uses the |int_val| method to force the
-|big_int| entries in a list of |int_value| objects ti the |int| size of
-|int_Vector| entries; if too large values are found, the conversion will fail
+|big_int| entries in a list of |int_value| objects into the limited |int| size
+of |int_Vector| entries; if too large values are found, the conversion will fail
 and a |runtime_error| thrown. Of course |vector_to_row| knows no such potential
 difficulties.
 
@@ -2385,18 +2385,35 @@ void intlistlist_veclist_convert()
   push_value(r);
 }
 
-@ There are two corresponding externalising conversions for matrices. The
-second one uses the same auxiliary function |vector_to_row| that was used above.
+@ There are two corresponding externalising conversions for matrices, and also a
+conversion applying |vector_to_row| on each element of a list of vectors. Since
+they are very similar to the conversion of a matrix into a list of vectors, we
+also define wrappers for built-in functions |rows| and |columns| here; the
+second in fact does the same as the implicit conversion and is indeed called by
+it.
 
 @< Local function def... @>=
 
-void matrix_veclist_convert()
+void rows_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  own_row result = std::make_shared<row_value>(m->val.numRows());
+  for(unsigned int i=0; i<m->val.numRows(); ++i)
+    result->val[i]=std::make_shared<vector_value>(m->val.row(i));
+  push_value(result);
+}
+void columns_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
   own_row result = std::make_shared<row_value>(m->val.numColumns());
   for(unsigned int j=0; j<m->val.numColumns(); ++j)
     result->val[j]=std::make_shared<vector_value>(m->val.column(j));
   push_value(result);
 }
+void matrix_veclist_convert()
+{ columns_wrapper(expression_base::single_value); }
 @)
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
@@ -3193,6 +3210,36 @@ void matrix_shape_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ We have a functions for selecting a single row from a matrix (The latter can
+be done using subscription syntax as well, so it could have been omitted, but we
+do not want to associate even a slight efficiency penalty on using a named
+function instead, which can be more readable in certain contexts.)
+
+@< Local function definitions @>=
+inline std::string range_mess (int i,size_t n,const char* what)
+{ std::ostringstream o;
+  o << what << " index " << i << " out of range (0<= . <" << n << ')';
+  return o.str();
+}
+@)
+void matrix_row_wrapper(expression_base::level l)
+{ int i=get<int_value>()->int_val();
+  shared_matrix m=get<matrix_value>();
+  if (static_cast<unsigned int>(i) >= m->val.numRows())
+    throw runtime_error(range_mess(i,m->val.numRows(),"row"));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(m->val.row(i)));
+}
+@)
+void matrix_column_wrapper(expression_base::level l)
+{ int j=get<int_value>()->int_val();
+  shared_matrix m=get<matrix_value>();
+  if (static_cast<unsigned int>(j) >= m->val.numColumns())
+    throw runtime_error(range_mess(j,m->val.numColumns(),"column"));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(m->val.column(j)));
+}
+
 @ Here are functions for extending vectors one or many elements at a time.
 
 @< Local function definitions @>=
@@ -3964,6 +4011,10 @@ install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
+install_function(matrix_row_wrapper,"row","(mat,int->vec)");
+install_function(matrix_column_wrapper,"column","(mat,int->vec)");
+install_function(rows_wrapper,"rows","(mat->[vec])");
+install_function(columns_wrapper,"columns","(mat->[vec])");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
