@@ -726,6 +726,7 @@ void global_forget_overload(id_type id, type_p type);
 void type_define_identifier
   (id_type id, type_p type, raw_id_pat ip, const source_location& loc);
 void process_type_definitions (raw_typedef_list l, const source_location& loc);
+void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
 void type_of_type_name(id_type t);
@@ -736,14 +737,28 @@ the pointer variable |output_stream|, so that it can be redirected during the
 prelude. The same pointer is also used for all normal output from the
 evaluator, and can for that purpose also be redirected on a per-command basis.
 
+If a runtime errors occur, for instance during the evaluation of the expression
+in |global_set_identifier|, the thrown error object will contain a back-trace of
+the nested evaluations that were interrupted. The catch clauses for the error
+will then transfer the information to a variable accessed through
+|back_trace_pointer| to be defined here.
+
 @< Declarations of global variables @>=
 extern std::ostream* output_stream;
+extern shared_share back_trace_pointer;
 
-@ The |output_stream| will normally point to |std::cout|, but the pointer
-may be assigned to in the main program, which causes output redirection.
+@ The |output_stream| will normally point to |std::cout|, but the pointer may be
+assigned to in the main program, which causes output redirection. Similarly
+|back_trace_pointer| will be set by the main program once the corresponding
+``magic'' user variable has been created and installed into the global
+identifier table. It is important that we can access it without searching the
+identifier table, as we cannot exclude the possibility that the user has
+overridden the entry created there initially.
+
 
 @< Global variable definitions @>=
 std::ostream* output_stream= &std::cout;
+shared_share back_trace_pointer;
 
 @ Global identifiers can be introduced (or overridden) by the function
 |global_set_identifiers|, handling the \&{set} syntax with the same
@@ -1049,13 +1064,16 @@ pattern using |pattern_type| to do this.
 }
 
 
-@ We shall use the following static variable to signal
-that errors were encountered.
+@ We shall use the following static variable to signal that errors were
+encountered; it serves to set the exit status from |main| so that tools
+calling our interpreter with specific input can tell whether that input was
+cleanly processed.
 
 @< Declarations of global variables @>=
 extern bool clean;
 
-@~We start out cleanly
+@~We start out cleanly of course; this is the only point where |clean| is
+made~|true|.
 
 @< Global variable definitions @>=
 bool clean=true;
@@ -1072,12 +1090,15 @@ catch any |std::runtime_error| thrown from the library (rather than by our
 wrapper functions), although it hardly seems possible they could get through to
 here without being relabelled as (our) |runtime_error| by the back-trace
 producing code. This clause is in fact defined to catch any |std::exception| so
-that we really should not be letting any unexpected error through here.
+that we really should not be letting any unexpected error through here. We do
+want |handle| to get a reference to an |error_base| value, not to its base class
+|std::exception|, so when catching the latter we construct an |error_base| value
+with the message from |std::exception::what| to pass to |handle|; since it will
+have an empty |back_trace| this will give the desired behaviour in this case.
 
-Whether or not an error is caught, the pattern
-|pat| and the expression |rhs| should not be destroyed here, since the parser
-which aborts after calling this function should do that while clearing its
-parsing stack.
+Whether or not an error is caught, the pattern |pat| and the expression |rhs|
+should not be destroyed here, since the parser which aborts after calling this
+function should do that while clearing its parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
 catch (const program_error& err)
@@ -1089,18 +1110,21 @@ catch (const logic_error& err)
   handle(err,pat,phase,overload,loc);
 }
 catch (const std::exception& err)
-{@; handle(err,pat,phase,overload,loc); }
+{@; handle(error_base(err.what()),pat,phase,overload,loc); }
 
-@ Here is the common part for various |catch| clauses. We provide a uniform
-context for error messages to guide the user to the source of the problem;
-this context is not always available at the place where the error message
-proper is assembled, so it is a good thing that it can be added here.
+@ Here is the common part for various |catch| clauses. We report to the user the
+context in which the error arose to help locate the source of the problem, as
+well as the immediate error message |err.what()| that was provided at the point
+where the error was signalled. More detail is contained in the |back_trace|
+field of the error object which we copy to a ``magic'' user variable of that
+name using a function |set_back_trace| that will also be called (in |main|)
+when a runtime error happens during expression evaluation.
 
 @h "parsetree.h" // for output of |id_pat| value
 
 @< Define auxiliary functions for |do_global_set| @>=
 void handle
-  (const std::exception& err,const id_pat& pat, int phase, int overload,
+  (const error_base& err,const id_pat& pat, int phase, int overload,
    const source_location& loc)
 { static const char* message[3] = {"not executed","interrupted","failed"};
   std::cerr << "Error in 'set' command " << loc << ":\n" @|
@@ -1109,10 +1133,28 @@ void handle
   if (phase<2)
     std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
   std::cerr << ".\n";
+@/set_back_trace(err.back_trace);
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 
+@ The function |set_back_trace| converts the |simple_list| into an axis array.
+
+@< Global function definitions @>=
+void set_back_trace(const simple_list<std::string>& back_trace)
+{
+  if (not back_trace.empty())
+  {
+    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
+    *back_trace_pointer=new_trace;
+    std::vector<shared_value>& trace = new_trace->val;
+    trace.reserve(length(back_trace));
+      // order inwards towards point of failure
+    for (auto it=back_trace.begin(); not back_trace.at_end(it); ++it)
+      trace.push_back(std::make_shared<string_value>(std::move(*it)));
+      // back trace element
+  }
+}
 
 @*2 Declaring and forgetting global identifiers.
 %
