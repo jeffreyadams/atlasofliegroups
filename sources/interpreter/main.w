@@ -355,10 +355,10 @@ shall also keep (on UNIX systems) a pointer to the initial working directory
 name and to the first path specified, in order to be able to perform the
 somewhat messy filename completion manoeuvres below.
 
-@h "global.h" // defines |shared_share|
+@h "global.h" // defines |shared_share|, declares |back_trace_pointer|
 @< Local static data @>=
 static atlas::interpreter::shared_share
-  input_path_pointer,prelude_log_pointer, back_trace_pointer;
+  input_path_pointer,prelude_log_pointer;
 #ifndef NOT_UNIX
 enum { cwd_size = 0x1000 };
 char cwd_buffer[cwd_size]; // since only |getcwd| is standard, fix a buffer
@@ -494,8 +494,7 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
         std::cout << "Expression before type analysis: " << *parse_tree
                   << std::endl;
     }
-    @< Analyse types and then evaluate and print, or catch runtime or other
-       errors @>
+    @< Analyse types, and then evaluate and print the result @>
   }
   @< Various |catch| phrases for the main loop @>
   output_stream= &std::cout; // reset output stream if it was changed
@@ -509,7 +508,7 @@ printing of the uninteresting value.
 @h <stdexcept>
 @h "axis.h"
 
-@< Analyse types and then evaluate and print... @>=
+@< Analyse types, and then evaluate and print... @>=
 { expression_ptr e;
   type_expr found_type=analyse_types(*parse_tree,e);
   if (verbosity>0)
@@ -626,17 +625,7 @@ catch (error_base& err)
     std::cerr << "Internal error: ";
   std::cerr << err.message << "\n";
 @)
-  if (not err.back_trace.empty())
-  {
-    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
-    *back_trace_pointer=new_trace;
-    std::vector<shared_value>& trace = new_trace->val;
-    trace.reserve(length(err.back_trace));
-      // order inwards towards point of failure
-    for (auto it=err.back_trace.begin(); not err.back_trace.at_end(it); ++it)
-      trace.push_back(std::make_shared<string_value>(std::move(*it)));
-      // back trace element
-  }
+  set_back_trace(err.back_trace);
 @)
   std::cerr << "Evaluation aborted.\n";
 @/clean=false;

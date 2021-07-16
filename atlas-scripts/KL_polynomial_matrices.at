@@ -21,14 +21,14 @@ set permutation ([Param] B1, [Param] B2) = ([int],bool):
 
 set KL_P_polynomials (Param p) = i_poly_mat:
   let (,,P,polys)=KL_block(p) in
-  for row in ^P do for entry in row do polys[entry] od od
+  for row in rows(P) do for entry in row do polys[entry] od od
 
 set KL_P_polynomials_at_minus_one (Param p) = mat:
   eval(KL_P_polynomials(p),minus_1)
 
 set KL_P_signed_polynomials (Param p) = i_poly_mat:
   let (block,,P,polys)=KL_block(p) in
-  for row@i in ^P do for entry@j in row
+  for row@i in rows(P) do for entry@j in row
   do minus_1^(block[j].length-block[i].length)*polys[entry] od od
 
 set KL_P_signed_polynomials_at_minus_one (Param p) = mat:
@@ -88,9 +88,9 @@ set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
 
 set KL_P_polynomials (Param p, mat delta) = i_poly_mat:
    let (,P,polys) = KL_block(p,delta)
-in for row in ^P { mat to i_pol_mat convention flip }  do for index in row do
-      if index.< then -polys[-index] else polys[index] fi
-   od od
+in for row in rows(P) { mat to i_pol_mat convention flip }
+   do for index in row do if index.< then -polys[-index] else polys[index] fi od
+   od
 
 set KL_P_polynomials_at_minus_one (Param p, mat delta) = mat:
    let (,P,polys) = KL_block(p,delta)
@@ -112,9 +112,9 @@ set KL_P_polynomials_at_minus_one ([Param] B_fixed, mat delta) = mat:
 
 set KL_P_signed_polynomials (Param p, mat delta) = i_poly_mat:
    let (,P,polys) = extended_KL_block(p,delta) in
-   for row in ^P { mat to i_pol_mat convention flip }  do for index in row do
-      polys[index]
-   od od
+   for row in rows(P) { mat to i_pol_mat convention flip }
+   do for index in row do polys[index] od
+   od
 
 set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
   eval(KL_P_signed_polynomials(p,delta),minus_1)

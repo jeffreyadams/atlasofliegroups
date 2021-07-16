@@ -237,7 +237,7 @@ set edge_sequence (Partition lambda) = ([bool],int):
    if =#lambda or =lambda[0] then ([],0)
    else
       let d = lambda.transpose[0] { offset, index of edge above main diagonal }
-      , edge_val=is_member(for part@i in lambda do part-i-1 od)
+      , edge_val=is_member_sorted(for part@i in lambda do part-i-1 ~od)
       in (for i:lambda[0]+d from -d do edge_val(i) od, d)
    fi
 
@@ -358,10 +358,32 @@ set is_very_even(Partition P) = bool: =P%2 { whether all parts are even }
 
 
 set_type BiPartition = (Partition,Partition)
-{ no fixed interpretation, but positive/false/triv before negative/true/sign }
+{ no specific interpretation imposed here, but ordering should always have:
+  positive/even/0/false/trivial repn BEFORE negative/odd/1/true/sign repn one }
 
 { cycles with product of signs, for simple types B,C,D }
 set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
+
+set = (Signed_cycles cyc0,Signed_cycles cyc1) = bool:
+   #cyc0=#cyc1 and
+   ( for (n,b)@i in cyc0
+     do let(m,c)=cyc1[i] in if n!=m or b!=c then return false fi
+     od
+   ; true
+   )
+set != (Signed_cycles cyc0,Signed_cycles cyc1) = bool: not(cyc0=cyc1)
+
+{ The hyperoctahedral group $H_n$ can be represented by sigend permutation
+  matrices (where every row and column has a unique nonzero entry, which lies in
+  $\{-1,1\}$. There is a surjective group morphism to $S_n$ forgetting the signs.
+
+  This is the symmetry group of en $n$-dimensional hyperoctahedron (also of the
+  hypercube), centered at the origin, with 2 vertices on each coordinate axis.
+
+  Conjugacy classes of $H_n$ are given by signed cycle types: projection to
+  $S_n$ gives a cycle type (for the permutation of the axes), and to each cycle
+  is attached the product of the signs for the coordinate axes in the cycle.
+}
 
 { converting partition pairs to signed cycle types, second has flipped cycles }
 set to_cycles (Partition lambda,Partition mu) = Signed_cycles:
@@ -677,10 +699,10 @@ in for (l,sign) in cycles
 
 set_type
 [ D_class = { cycle types restricted to Dn subgroup }
-   ( Signed_cycles unsplit_class { the product of all signs is positive }
+   ( Signed_cycles unsplit_class { the XOR of all |bool| values is |false| }
    | (Partition,bool) split_class { "all false" even cycles, and a single sign }
    )
-,  D_irrep = { from folding pairs of partitions under swapping }
+, D_irrep = { from folding pairs of partitions under swapping }
    ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
    | (Partition,bool) split_irr { for pair of equal partitions, with sign }
    )
@@ -712,6 +734,8 @@ set centralizer_order (D_class c) = int:
        { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
        alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
+set class_size (D_class c) = int:
+  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
 
 set class_size (D_class c) = int:
   let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
@@ -777,4 +801,3 @@ set character (D_irrep chi, D_class c) = int:
        in assert(=r,"Parity problem for split-split character value"); q
      esac
    esac
-

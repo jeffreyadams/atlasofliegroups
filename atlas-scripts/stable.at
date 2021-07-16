@@ -21,7 +21,7 @@ set column (i_poly_mat M,int j) = [i_poly]: for row in M do row[j] od
 set null_poly_mat (int r,int c) = i_poly_mat:
   let row = [i_poly]: for i:c do poly_0 od in for j:r do row od
 set mat_as_poly_mat (mat A) = i_poly_mat:
-  for row in ^A do for entry in row do constant_poly(entry) od od
+  for row in rows(A) do for entry in row do constant_poly(entry) od od
 
 set * (mat A,i_poly_mat B) = i_poly_mat: mat_as_poly_mat(A)*B
 

@@ -1425,6 +1425,37 @@ void coroot_index_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(index));
 }
 
+@ The library knows additive decompositions of roots and coroots into simple
+roots respectively coroots, and we give the user access to these.
+
+@< Local function definitions @>=
+void root_expression_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal root index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.root_expr(alpha)));
+}
+
+void coroot_expression_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal coroot index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.coroot_expr(alpha)));
+}
 
 @ An information about roots and coroots that is precomputed in root data and
 can be useful for the user tells for each root or coroot $\alpha$ which are the
@@ -1701,6 +1732,10 @@ install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
 install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
+install_function(root_expression_wrapper@|,"root_expression"
+		,"(RootDatum,int->vec)");
+install_function(coroot_expression_wrapper@|,"coroot_expression"
+		,"(RootDatum,int->vec)");
 install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
                 ,"(RootDatum,int->[int])");
 install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"

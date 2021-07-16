@@ -596,7 +596,7 @@ template<typename T, typename Alloc>
   size_type max_size() const noexcept
   { return std::allocator_traits<Alloc>::max_size(get_allocator()); }
 
-/*
+ /*
    Somewhat unusally the method |insert| returns an iterator pointing not to the
    added item(s), but _after_ them (same for |emplace|, |prepend|, |splice|).
    Thus the idiom |it=list.insert(it,...)| can be used to insert and step over
@@ -880,23 +880,23 @@ template<typename T, typename Alloc>
     }
 
     const_iterator p = cbegin();
-    link_type& qq = other.head;
+    link_type q = std::move(other.head);
 
-    do // invariant: neither |*p.link_loc| nor |qq| hold null pointers
+    do // invariant: neither |*p.link_loc| nor |q| hold null pointers
     {
       const T& t=*p; // put aside contents of our current node
-      if (less(qq->contents,t))
+      if (less(q->contents,t))
       {
 	// gather a range of elements of |other| to splice before our current
-	const_iterator r(qq->next);
+	const_iterator r(q->next);
 	while (not at_end(r) and less(*r,t))
 	  ++r;
 
-	// cycle backward |(*p.link_loc, qq, *r.link_loc)|:
-	qq.swap(*p.link_loc);
-        qq.swap(*r.link_loc);
+	// cycle backward |(*p.link_loc, q, *r.link_loc)|:
+	q.swap(*p.link_loc);
+        q.swap(*r.link_loc);
 
-	if (qq.get()==nullptr)
+	if (q==nullptr)
 	  return; // now |other.empty()|, and nothing left to do
 
 	p = r; // skip over spliced-in part before incrementing
@@ -904,21 +904,25 @@ template<typename T, typename Alloc>
     }
     while(not at_end(++p)); // advance one node in our list, stop when last
 
-    *p.link_loc = std::move(qq); // attach nonempty remainder of |other|
+    *p.link_loc = std::move(q); // attach nonempty remainder of |other|
   }
 
-  iterator merge (const_iterator b0, const_iterator e0,
-		  const_iterator b1, const_iterator e1)
+  static iterator merge (const_iterator b0, const_iterator e0,
+			 const_iterator b1, const_iterator e1)
   { return merge(b0,e0,b1,e1,std::less<T>()); }
 
-  // merge non-overlapping increasing ranges, return end of merged range;
-  // the merged range will be accessed from the original value of |b0|
-  // except in the case |b0==e1| where the first range directly _follows_ the
-  // second range; in that case the merged range is accessed from |b1| instead
+ /*
+   Merge non-overlapping increasing ranges, returning end of merged range.
+   The second range is merged into the first, so the merge range will appear
+   after |b0|, unless when |b0==e1| (the first range directly _follows_ the
+   second range), in which case it appears after |b1| instead. This static
+   method should not be called for ranges in |sl_list| instances, but it could
+   be used to merge a range from one |simple_list| into a range from another.
+  */
   template<typename Compare>
-  iterator merge (const_iterator b0, const_iterator e0,
-		  const_iterator b1, const_iterator e1,
-		  Compare less)
+  static iterator merge (const_iterator b0, const_iterator e0,
+			 const_iterator b1, const_iterator e1,
+			 Compare less)
   {
     if (b1==e1) // whether second range empty
       return iterator(*e0.link_loc); // then nothing to do
@@ -926,74 +930,68 @@ template<typename T, typename Alloc>
     if (b0==e1) // whether first range immediately after second range
       return merge(b1,e1,b0,e0,less); // swap to avoid dangerous aliasing
 
-    link_type& qq = *b1.link_loc;
-    node_ptr const end = e1.link_loc->get(); // save link value that marks end
-
-    for ( ; b0!=e0; ++b0) // neither range is empty
-    {
-      const T& t=*b0; // put aside contents of our current node
-      if (less(qq->contents,t))
-      {
-	// gather a range of elements of |other| to splice before our current
-	const_iterator r(qq->next);
-	while (r!=e1 and less(*r,t))
-	  ++r;
-
-	// cycle backward |(*b0.link_loc, qq, *r.link_loc)|:
-	qq.swap(*b0.link_loc);
-        qq.swap(*r.link_loc);
-
-	if (qq.get()==end)
-	  return iterator(qq);
-
-	b0 = r; // skip over spliced in part, before |++b0|
-      }
-    }
-
-    if (e0==b1)
-      return iterator(*e1.link_loc); // nothing to do, and code below would fail
-
-    // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
-    qq.swap(*b0.link_loc);
-    qq.swap(*e1.link_loc);
-
-    return iterator(qq);
+    return simple_list<T,Alloc>::merge_aux(b0,e0,b1,e1,less);
   }
 
 private:
-  // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
-  // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
   template<typename Compare>
-    void sort_aux (size_type from, size_type n, const_iterator& to,
-		   const std::vector<const_iterator>& its,
-		   Compare less)
-  { if (n<2)
-      return;
-    const size_type half=n/2;
-    const_iterator mid = its[from+half]; // to be used and modified below
+  static const_iterator // final iterator of merged part
+  merge_aux(const_iterator b0, const_iterator e0,
+	    const_iterator b1, const_iterator e1,
+	    Compare less)
+  {
+    link_type q = std::move(*b1.link_loc);
+    for ( ; b0!=e0; ++b0) // in loop body neither range is empty
+    {
+      const T& t=*b0; // put aside contents of our current node
+      if (less(q->contents,t))
+      {	// gather a range of elements of |other| to splice before our current
+	const_iterator r(q->next);
+	while (r!=e1 and less(*r,t))
+	  ++r;
 
-    // the order below between the two recursive calls is obligatory, since
-    // in our first call |its[from+half| must be an unshuffled iterator
-    sort_aux(from+half,n-half,to,its,less);
-    sort_aux(from,half,mid,its,less);
+	// cycle backward |(*b0.link_loc, q, *r.link_loc)|:
+	q.swap(*b0.link_loc);
+        q.swap(*r.link_loc);
 
-    to = merge(its[from],mid,mid,to,less);
+	if (r==e1)
+	{
+	  *b1.link_loc = std::move(q);
+	  return iterator(*e0.link_loc);
+	}
+
+	b0 = r; // skip over merged sublist before advancing |b0|
+      }
+    } // |for ( ; b0!=e0; ++b0)|
+
+    if (e0!=b1)
+    {
+      *b1.link_loc = std::move(*e1.link_loc);
+      *e1.link_loc = std::move(*b0.link_loc);
+    }
+    *b0.link_loc = std::move(q); // attach remainer at |q| after |b0|
+    return iterator(*e1.link_loc);
   }
+
+  // sort |n| elements form |it| (assumed present);
+  template<typename Compare>
+  static const_iterator sort_next (const_iterator it, size_type n, Compare less)
+  { if (n==1)
+      return std::next(it);
+    const size_type half=n/2;
+    auto mid = sort_next(it,half,less);
+    auto final = sort_next(mid,n-half,less);
+    return merge_aux(it,mid,mid,final,less);
+  }
+
 public:
 
   void sort () { sort(std::less<T>()); }
   template<typename Compare> void sort (Compare less)
   {
-    std::vector<const_iterator>its;
-    const auto n=length(*this);
-    its.reserve(n);
-
-    const_iterator it=cbegin();
-    for (size_type i=0; i<n; ++i,++it)
-      its.push_back(it);
-
-    // now |it==cend()|
-    sort_aux(0,n,it,its,less);
+    auto n = std::distance(wcbegin(),wcend());
+    if (n>1)
+      sort_next(cbegin(),n,less);
   }
 
   // accessors
@@ -1847,26 +1845,26 @@ template<typename T, typename Alloc>
     }
 
     const_iterator p = cbegin();
-    link_type& qq = other.head;
+    link_type q = std::move(other.head);
     node_count += other.node_count; // this will hold at end
     const auto other_tail = other.tail; // final link location; maybe needed
     other.set_empty(); // already prepare |tal| and |node_count| for emptying
 
-    do // invariant: neither |*p.link_loc| nor |qq| hold null pointers
+    do // invariant: neither |*p.link_loc| nor |q| hold null pointers
     {
       const T& t=*p; // put aside contents of our current node
-      if (less(qq->contents,t))
+      if (less(q->contents,t))
       {
 	// gather a range of elements of |other| to splice before our current
-	const_iterator r(qq->next);
+	const_iterator r(q->next);
 	while (not at_end(r) and less(*r,t))
 	  ++r;
 
-	// cycle backward |(*p.link_loc, qq, *r.link_loc)|:
-	qq.swap(*p.link_loc);
-        qq.swap(*r.link_loc);
+	// cycle backward |(*p.link_loc, q, *r.link_loc)|:
+	q.swap(*p.link_loc);
+        q.swap(*r.link_loc);
 
-	if (qq.get()==nullptr)
+	if (q==nullptr)
 	  return; // now |other.empty()|, and nothing left to do
 
 	p = r; // skip over spliced-in part before incrementing
@@ -1874,7 +1872,7 @@ template<typename T, typename Alloc>
     }
     while(not at_end(++p)); // advance one node in our list, stop when last
 
-    *p.link_loc = std::move(qq); // attach nonempty remainder of |other|
+    *p.link_loc = std::move(q); // attach nonempty remainder of |other|
     tail = other_tail; // and in this case we must redirect our |tail|
   }
 
@@ -1882,10 +1880,12 @@ template<typename T, typename Alloc>
 		  const_iterator b1, const_iterator e1)
   { return merge(b0,e0,b1,e1,std::less<T>()); }
 
-  // internal merge non-overlapping increasing ranges, return end of merged
-  // the merged range will be accessed from the original value of |b0|
-  // except in the case |b0==e1| where the first range directly _follows_ the
-  // second range; in that case the merged range is accessed from |b1| instead
+ /*
+   Merge non-overlapping increasing ranges of |*this|, returning end of merged
+   range. Like for |simple_list<T,A>::merge|, the merged range will appear after
+   |b0|, unless |b0==e1| in which case it appears after |b1|. Contrary to that
+   one, this is not a |static| method: it may need to update our |tail| field.
+ */
   template<typename Compare>
   iterator merge (const_iterator b0, const_iterator e0,
 		  const_iterator b1, const_iterator e1,
@@ -1897,81 +1897,27 @@ template<typename T, typename Alloc>
     if (b0==e1) // whether first range immediately after second range
       return merge(b1,e1,b0,e0,less); // swap to avoid dangerous aliasing
 
-    link_type& qq = *b1.link_loc;
-    node_ptr const end = e1.link_loc->get(); // save link value that marks end
+    const_iterator result =  simple_list<T,Alloc>::merge_aux(b0,e0,b1,e1,less);
 
-    for ( ; b0!=e0; ++b0) // neither range is empty
+    if (tail==e1.link_loc)
     {
-      const T& t=*b0; // put aside contents of our current node
-      if (less(qq->contents,t))
-      {
-	// gather a range of elements of |other| to splice before our current
-	const_iterator r(qq->next);
-	while (r!=e1 and less(*r,t))
-	  ++r;
-
-	// cycle backward |(*b0.link_loc, qq, *r.link_loc)|:
-	qq.swap(*b0.link_loc);
-        qq.swap(*r.link_loc);
-
-	if (qq.get()==end)
-	{
-	  if (end==nullptr) // then previous tail in spliced away part
-	    tail = &qq; // so attach tail to link now holding |nullptr|
-	  return iterator(qq);
-	}
-
-	b0 = r; // skip over spliced in part, before |++b0|
-      }
+      if (b1.at_end()) // either |p|, or |e0| was strictly before |b1|
+	tail=b1.link_loc;
+    }
+    else if (tail==e0.link_loc) // implies that |e1| came strictly before |b0|
+    {
+      if (e1.at_end()) // equivalently |not p|
+	tail=e1.link_loc;
     }
 
-    if (e0==b1)
-      return iterator(*e1.link_loc); // nothing to do, and code below would fail
-
-    // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
-    qq.swap(*b0.link_loc);
-    qq.swap(*e1.link_loc);
-
-    if (end==nullptr) // here |qq.get()==end| always
-      tail = &qq;
-    else if (at_end(e1)) // if merge was at the tail of the list
-      tail = e1.link_loc; // set |tail| to point to final link of merged part
-    return iterator(qq);
+    return iterator(*result.link_loc);
   }
-
-private:
-  // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
-  // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
-  template<typename Compare>
-    void sort_aux (size_type from, size_type n, const_iterator& to,
-		   const std::vector<const_iterator>& its,
-		   Compare less)
-  { if (n<2)
-      return;
-    const size_type half=n/2;
-    const_iterator mid = its[from+half];
-
-    // the order below between the two recursive calls is obligatory, since
-    // iterators its[i] for |from<=i<from+n| must refer to unshuffled nodes
-    sort_aux(from+half,n-half,to,its,less);
-    sort_aux(from,half,mid,its,less);
-
-    to = merge(its[from],mid,mid,to,less);
-  }
-public:
 
   void sort () { sort(std::less<T>()); }
   template<typename Compare> void sort (Compare less)
   {
-    std::vector<const_iterator>its;
-    its.reserve(size());
-
-    const_iterator it=cbegin();
-    for (size_type i=0; i<size(); ++i,++it)
-      its.push_back(it);
-
-    // now |it==cend()|
-    sort_aux(0,size(),it,its,less);
+    if (size()>1)
+      tail = simple_list<T,Alloc>::sort_next(cbegin(),size(),less).link_loc;
   }
 
   // sort a range, and set |to| to new final iterator for range
@@ -1980,12 +1926,13 @@ public:
   template<typename Compare>
     void sort (const_iterator from, const_iterator& to, Compare less)
   {
-    std::vector<const_iterator>its;
     const size_type n=std::distance(from,to);
-    its.reserve(n);
-    for (const_iterator it=from; it!=to; ++it)
-      its.push_back(it);
-    sort_aux(0,n,to,its,less);
+    if (n>1)
+    {
+      to = simple_list<T,Alloc>::sort_next(from,n,less);
+      if (to.at_end())
+	tail=to.link_loc;
+    }
   }
 
   simple_list<T,Alloc> undress() // return only |head|, amputating other fields

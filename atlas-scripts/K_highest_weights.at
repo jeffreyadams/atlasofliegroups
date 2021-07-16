@@ -1,6 +1,7 @@
-<representations.at
+<basic.at
+<induction.at { for |theta_stable_data| }
+<representations.at { for |finite_dimensional| }
 <W_K.at { |R_K_dom|, |R_K_dom_mu| }
-{<induction.at}
 
 <center.at { for |Z_2@RealForm| }
 
@@ -280,7 +281,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*involution(x)*sr[i] = -1 and
             is_noncompact(x)( (1+involution(x))*sr[i] ) { this is a root because alpha and theta(alpha) generate a subsystem of type A_2, so their sum is a root }
          )
-  ;{prints("j=",j);} assert(>=j,"error in find_nci_root")
+  ; assert(>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
   fi
 
