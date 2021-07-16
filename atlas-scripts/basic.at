@@ -23,7 +23,7 @@ set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
-set bitset ([int] L) =
+set bitset ([int] L) = (int,(int->bool)):
   let map=[bool]:[], len=0 { invariant len=#map } in
   for x in L ~ { reversing loop minimises expansions for many lists }
   do if x<len then map[x]:=true
@@ -186,6 +186,13 @@ set isnt_member_sorted ([int] v) = (int->bool):
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
 
+set is_subset_of_sorted ([int] sorted) = ([int]->bool):
+   let test = is_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
+   let test = isnt_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
@@ -311,9 +318,9 @@ set width (int n) = int: #int_format(n)
 
 set split_lines (string text) = [string]:
 ( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
-; let a=for c in text do c od, last=0 in
-  for c@i in a
-  do if c=new_line then [concat(a[last:i])] next last:=i+1 else [] fi
+; let last=0 in
+  for c@i in text
+  do if c=new_line then [text[last:i]] next last:=i+1 else [] fi
   od.##
 )
 
@@ -773,6 +780,42 @@ set semisimple (LieType t) = LieType:
 set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
 set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
+{ compute |t.semisimple.adjoint.two_rho| without constructing a |RootDatum| }
+set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
+  for (letter,n) in simple_factors(t)
+  do case ascii(letter)-ascii("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(n+n-i) od
+     ,  { C } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [16,30,42,22]
+     , { G2 } [10,6]
+     esac
+  od.##
+
+{ similarly $2\check\rho$ on basis of simple coroots }
+set simply_connected_2rho_check (LieType t) = vec:
+  for (letter,n) in simple_factors(t)
+  do case ascii(letter)-ascii("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { C } for i:n from 1 do i*(n+n-i) od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [22,42,30,16]
+     , { G2 } [6,10]
+     esac
+  od.##
+
 set str (LieType t) = string:
   (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
 
@@ -852,6 +895,10 @@ set is_long_root(RootDatum rd, int i) = bool:
 in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
 
 
+set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
+   let r=#simples in
+   matrix((r,r),(int i,int j)int: coroot(rd,simples[j])*root(rd,simples[i]))
+
 set rho (RootDatum rd) = ratvec: rd.two_rho/2
 set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
@@ -862,16 +909,14 @@ set two_rho_check (RootDatum rd,(int->bool) select) = vec:
    columns_with(select,poscoroots(rd)).sum
 
 set two_rho (RootDatum rd,[int] simples) = vec:
-   let orth = { matrix right-annihilating precisely span of roots in |simples| }
-     kernel(rank(rd)^for i in simples do root(rd,i) od) in
-   two_rho(rd,(int i)bool: =root(rd,i)*orth)
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=adjoint_2rho(lt)
+in (rd.rank # for pos@i in map do root(rd,simples[pos])*v[i] od).sum
 set two_rho_check (RootDatum rd,[int] simples) = vec:
-   let orth = { matrix right-annihilating precisely span of |simples| coroots }
-     kernel(rank(rd)^for i in simples do coroot(rd,i) od) in
-   two_rho_check(rd,(int i)bool: =coroot(rd,i)*orth)
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=simply_connected_2rho_check(lt)
+in (rd.rank # for pos@i in map do coroot(rd,simples[pos])*v[i] od).sum
 
-set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
-   for j in simples do for i in simples do coroot(rd,j)*root(rd,i) od od
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):
