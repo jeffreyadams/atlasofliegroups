@@ -4,6 +4,10 @@
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 
+{ this file is outdated with respect to the master branch; it should probably
+  be removed to be later reinstated from that branch, but since there is a
+  dependency of W_reps_type_BC.at on this file, we leave it as it is for now }
+
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
 }

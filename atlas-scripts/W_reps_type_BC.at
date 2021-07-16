@@ -25,7 +25,7 @@ set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
 set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
 set_type Hn_rep = BiPartition
-  { hyperoctahedral representation: pair (sign,triv) of partitions; |p|+|q|=n }
+  { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
 
 { use equivalence relation on symbols to get one with at most one 0 }
 set normalize ([int] v) = [int]:
@@ -50,37 +50,53 @@ set symbol_ranks (Symbol S) = (int,int):
 
 { Orbit -> Symbol (injective map) }
 set symbol (Orbit P) = Symbol:
-   if is_even(#P) then P#:=0 { extend for odd length } fi;
-   let e = { transform partition into strictly increasing sequence }
+   let type_C=is_even(sum(P)) in
+(  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
+;  let e = { transform partition into strictly increasing sequence }
            for i:#P do P~[i]+i od
-   then split = [bool,int]: for x in e do (x.is_even,x\2) od
-in [ ## for (b,n) in split do if b then [n] else [] fi od
-   , ## for (b,n) in split do if b then [] else [n] fi od
-   ]
+   then f = for x in e do if x.is_odd  then [x\2] else [] fi od.##
+   ,    g = for x in e do if x.is_even then [x\2] else [] fi od.##
+in if type_C then [g,f] else [f,g] fi
+)
 
 set symbol_C (Orbit P) = Symbol:
    assert(is_valid("C",P),"not a type C orbit"); symbol(P)
 set symbol_B (Orbit P) = Symbol:
    assert(is_valid("B",P),"not a type B orbit"); symbol(P)
 
-{ Symbol -> Orbit partial map for specific tpyes, but defined uniformly }
-set orbit (Symbol S) = Orbit:
-   let S=normalize(S)
-   then f=S[0],g=S[1]
-   then F=for c in f do 2*c od, G=for c in g do 2*c+1 od
-   then F_G=merge(F,G)
-   then H= F_G - # #F_G { convert to reverse partition }
-in ## for c in H ~do if c.> then [c] else [] fi od { reverse, drop zeros }
-
-{ Symbol to Hn_rep (bijection) }
-set wrep (Symbol S) = Hn_rep:
-( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
-, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
+set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
+   let merger([int]T0,[int]T1) = Partition: { common workhorse function }
+      if #T0 != 1+#T1 then return [] fi
+   ;  for t@i in T1
+      do if   T0[i]>t
+        then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
+	 elif t>T0[i+1]
+	 then if t-1 = T0[i+1] then T0[i+1]:=t; T1[i]:=t-1 else return [] fi
+	 fi { now |T0[i] <= T1[i] <= T0[i+1]| }
+      od
+   ;  for j: #T0+#T1
+      do case j in {even} T0[j\2]-j, {odd} T1[j\2]-j esac { shrink differences }
+     ~od { reverse to partition, may have a trailing 0 in case C }
+in
+(  (Symbol S) Orbit: {Orbit_C}
+   merger(for s in S[0] do s+s od,for s in S[1] do s+s+1 od).strip_to_partition
+,  (Symbol S) Orbit: {Orbit_B}
+   merger(for s in S[0] do s+s+1 od,for s in S[1] do s+s od)
 )
 
-{ Orbit -> Hn_rep }
+{ The map from nilpotent Jordan types to |Hn_rep| should be such that the
+  regular nilpotent class [2n] (type $C_n$) or [2n+1] (type $B_n$) or [2n-1,1]
+  (type $D_n$) map to the trivial representation {n +|- }. Given that the
+  |BiPartition| produced by |core_quotient_2| has the partition form the
+  even-class (with an edge just after the main diagonal) before the partition
+  from the odd-class edges, this means partitions need to be swapped in type C.
+}
+
+{ JordanType -> Symbol (normalised), injective maps separately for types B, C }
+{ One has |symbol(lambda)=sumbol(wrep(lambda))| when |lambda| valid for B or C }
 set wrep (Orbit P) = Hn_rep:
-   let (d,pair) = core_quotient_2(P) in assert(=d,"Illegal partition"); pair
+   let (d,(lambda,mu):pair) = core_quotient_2(P), type_C=is_even(sum(P))
+   in if type_C then { switch } (mu,lambda) else { no switch } pair fi
 
 {Hn_rep to Symbol}
 set symbol (Hn_rep(p,q)) = Symbol:
@@ -88,14 +104,47 @@ set symbol (Hn_rep(p,q)) = Symbol:
    case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
    [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
 
-{Hn_rep -> Orbit}
-set orbit (Hn_rep pair) = Orbit: from_core_quotient_2(0,pair)
+set orbit (string type,Symbol S) = Orbit:
+  case ascii(type)-ascii("B") in orbit_B(S), orbit_C(S)
+  else error("wrong type")
+  esac
+set orbit (RootDatum rd,Symbol S) = Orbit:
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,S)
+
+{ Hn_rep -> Orbit, depends on type B/C }
+set orbit_C (Hn_rep(lambda,mu)) = Orbit:
+  let orbit=from_core_quotient_2(0,(mu,lambda)) in
+  if is_valid("C",orbit) then orbit else [] fi
+
+set orbit_B (Hn_rep pair) = Orbit:
+  let orbit=from_core_quotient_2(1,pair) in
+  if is_valid("B",orbit) then orbit else [] fi
+
+set orbit(string type,Hn_rep(pi)) = Orbit:
+  if type ="B" then orbit_B(pi)
+  elif type="C" then orbit_C(pi)
+  else error("wrong type")
+  fi
+
+set orbit (RootDatum rd, Hn_rep(pi)) = Orbit:
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,pi)
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
 
 { equality of symbols (not equivalence) }
 set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
+
+set hook_length (Partition P, int i, int j) =int:
+  let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
+
+set dim_rep (Partition P) = int:
+  let dim=fac(sum(P)) in
+  for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
 
 set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
    dim_rep(p)*dim_rep(q)* binom(sum(p)+sum(q),sum(q))
@@ -127,10 +176,11 @@ set special_star (Orbit P)   = string: if is_special(P) then "*" else "" fi
 set special_star (Hn_rep sigma) = string:
    if is_special(sigma) then "*" else "" fi
 
+set wreps (RootDatum rd) = [Hn_rep]:
+   partition_pairs(rd.semisimple_rank)
+
 set symbols (RootDatum rd) = [Symbol]:
-   for P in nilpotent_orbit_partitions(rd) do symbol(P) od
-set wreps (RootDatum rd)=[Hn_rep]:
-   for P in nilpotent_orbit_partitions(rd) do wrep(P) od
+   for rep in wreps(rd) do symbol(rep) od
 
 
 { given a cell C, get list of tau invariants from it,
@@ -360,7 +410,10 @@ set max_Hn_reps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_Hn_rep_compact (Block B, [int] cell) = void:
    let rep=max_Hn_rep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(rep))
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+	 ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
 
 set print_Hn_reps_compact (Block B, [[int]] cells) = void:
    prints("cell             Aq's             special_rep        orbit");
@@ -375,7 +428,7 @@ in if =#Aq then prints("Not an Aq cell") else prints("Aq reps: ", Aq) fi
 ;  prints("tau invs.: ",taus)
 ;  prints("max taus: ",max_taus)
 ;  prints("special rep: ", rep, special_star(rep))
-;  prints("orbit: ", orbit(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
 )
 
 set print_Hn_reps (Block B,[[int]] cells) = void:
@@ -425,7 +478,10 @@ set wreps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_wrep_cpt (Block B, [int] cell) = void:
    let rep=wrep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(rep))
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+         ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
 
 set print_wrep(Block B, [int] cell) = void:
 (  let rep=wrep(B,cell)
@@ -439,7 +495,7 @@ in if #Aq=0 then prints("Not an Aq cell")
 ;  prints("tau invs.: ",taus)
 ;  prints("max taus: ",max_taus)
 ;  prints("special rep: ", rep, special_star(rep))
-;  prints("orbit: ", orbit(rep))
+;  prints("orbit: ", orbit(B.real_form,rep))
 )
 
 set print_wreps_cpt (Block B,[[int]] cells) = void:

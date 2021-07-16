@@ -136,6 +136,6 @@ in
   , for co in c_orders do order\co od
   , (int i) string: { irreducible representation label } irred[i].irred_string
   , #class ^ { gather rows of this size: }
-    for chi in irred do for C in class do Dn_character(chi,C) od od
+    for chi in irred do for C in class do character(chi,C) od od
   )
 )
