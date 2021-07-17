@@ -335,6 +335,11 @@ root_expression: (RootDatum,int->vec): Express root additively in simple roots
   where r=semisimple_rank(rd)
 coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
   So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
+is_long_root: (RootDatum,int->bool): Whether a root is considered to be long
+is_long_coroot: (RootDatum,int->bool): Whether a coroot is considered to be long
+  Being long is defined to mean having a pairing strictly less than -1 with
+  some (co)root other than its the dual of its own opposite. This gives usual
+  "long" in types Bn,Cn,G2,F4, and always "short" short simply laced types.
 root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
   For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
 coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders

@@ -890,10 +890,6 @@ set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if <i then minus_1-i else i fi
 
-set is_long_root(RootDatum rd, int i) = bool:
-   let alpha=root(rd,i:=if i.< then minus_1-i else i fi)
-in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
-
 
 set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
    let r=#simples in

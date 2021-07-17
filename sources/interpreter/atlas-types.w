@@ -1457,6 +1457,41 @@ void coroot_expression_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(rd->val.coroot_expr(alpha)));
 }
 
+@ Occasionally it is useful to distinguish long and short roots and coroots,
+which is a notion relative to the component of the Dynkin diagram the root
+belongs to. By convention for simply laced components all roots and coroots are
+considered short, while for other components a root is long if and only if the
+corresponding coroot is short.
+
+@< Local function def...@>=
+void is_long_root_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal root index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(whether(is_long_root(rd->val,alpha)));
+}
+@)
+void is_long_coroot_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr npr = rd->val.numPosRoots();
+  RootNbr alpha = npr+root_index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal coroot index " << root_index;
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(whether(is_long_coroot(rd->val,alpha)));
+}
+
 @ An information about roots and coroots that is precomputed in root data and
 can be useful for the user tells for each root or coroot $\alpha$ which are the
 other roots respectively coroots $\beta$ that are at bottom of a latter
@@ -1736,6 +1771,9 @@ install_function(root_expression_wrapper@|,"root_expression"
 		,"(RootDatum,int->vec)");
 install_function(coroot_expression_wrapper@|,"coroot_expression"
 		,"(RootDatum,int->vec)");
+install_function(is_long_root_wrapper@|,"is_long_root" ,"(RootDatum,int->bool)");
+install_function(is_long_coroot_wrapper@|,"is_long_coroot"
+		,"(RootDatum,int->bool)");
 install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
                 ,"(RootDatum,int->[int])");
 install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"
