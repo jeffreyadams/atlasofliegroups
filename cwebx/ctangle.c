@@ -1,10 +1,10 @@
 #define version_string  "x3.6"
 #define banner  "This is CTANGLE (version "version_string")"
-#define max_toks  150000L 
-#define max_texts  2500 
-#define max_files  50 
-#define stack_size_max  50 
-#define max_indent  1000 
+#define max_toks  150000L
+#define max_texts  2500
+#define max_files  50
+#define stack_size_max  50
+#define max_indent  1000
 #define variant  text
 #define line_output  flags['l']
 #include  <stdlib.h>
@@ -13,34 +13,31 @@
 #include  <ctype.h>
 #include  <limits.h>
 #include  "common.h"
-#define max_bytes  50000L \
-   
-#define max_modules  1000 
-#define max_idents  5000 
-#define max_sections  4000 \
-   
-#define hash_size  353 
-#define buf_size  500 
-#define longest_name  1000 \
-   
-#define long_buf_size  (buf_size+longest_name) 
+#define max_bytes  250000L
+#define max_modules  1000
+#define max_idents  10000
+#define max_sections  4000
+#define hash_size  353
+#define buf_size  500
+#define longest_name  1000
+#define long_buf_size  (buf_size+longest_name)
 #define local  static
 #define array_size(a) ((int)(sizeof(a)/sizeof(a[0])))
 #define false  (boolean) 0
 #define true  (boolean) 1
 #define ctangle  0
 #define cweave  1
-#define and_and  04 
-#define lt_lt  020 
-#define gt_gt  021 
-#define plus_plus  013 
-#define minus_minus  01 
-#define minus_gt  031 
-#define not_eq  032 
-#define lt_eq  034 
-#define gt_eq  035 
-#define eq_eq  036 
-#define or_or  037 
+#define and_and  04
+#define lt_lt  020
+#define gt_gt  021
+#define plus_plus  013
+#define minus_minus  01
+#define minus_gt  031
+#define not_eq  032
+#define lt_eq  034
+#define gt_eq  035
+#define eq_eq  036
+#define or_or  037
 #define find_char() (loc<=limit || get_line())
 #define id_index(p) ((sixteen_bits)((p)-id_table))
 #define id_at(i)    (&id_table[i])
@@ -52,37 +49,36 @@
 #define complete_name(p) ((p)->byte_start[-1]=='\0')
 #define print_mod(p) \
    printf(": <%s%s>",name_begin(p), complete_name(p) ? "" : "..." )
-#define spotless  0 
-#define harmless_message  1 
-#define error_message  2 
-#define fatal_message  3 
+#define spotless  0
+#define harmless_message  1
+#define error_message  2
+#define fatal_message  3
 #define mark_harmless() \
-    if (history==spotless) history=harmless_message;  else 
+    if (history==spotless) history=harmless_message;  else
 #define mark_error() (history=error_message)
-#define overflow(t) fatal("\n! Sorry, %s capacity exceeded",t) \
-			
-#define confusion(s) fatal("\n! This can't happen: %s",s) 
-#define show_banner  flags['b'] 
-#define show_happiness  flags['h'] 
-#define show_progress  flags['p'] 
-#define show_stats  flags['s'] 
-#define C_plus_plus  flags['+'] 
-#define compatibility_mode  flags['c'] 
-#define update_terminal() fflush(stdout) 
+#define overflow(t) fatal("\n! Sorry, %s capacity exceeded",t)
+#define confusion(s) fatal("\n! This can't happen: %s",s)
+#define show_banner  flags['b']
+#define show_happiness  flags['h']
+#define show_progress  flags['p']
+#define show_stats  flags['s']
+#define C_plus_plus  flags['+']
+#define compatibility_mode  flags['c']
+#define update_terminal() fflush(stdout)
 #define new_line() putchar('\n')
-#define term_write(string,leng) printf("%.*s",(int)(leng),string) 
+#define term_write(string,leng) printf("%.*s",(int)(leng),string)
 #define tok_begin(p) (p)->tok_start
 #define tok_end(p) ((p)+1)->tok_start
 #define text_table_end  (&text_table[max_texts])
 #define tok_mem_end  (&tok_mem[max_toks])
 #define store_byte(c)  \
 if (tok_ptr==tok_mem_end) overflow("token");  else *tok_ptr++=c
-#define macro_flag  (text_table_end-1) 
-#define header_flag  text_table_end 
-#define next_sec(m) ((m)->text_link) 
-#define equiv  equiv_or_xref 
-#define verb_quote  0x2 
-#define join  0x3 
+#define macro_flag  (text_table_end-1)
+#define header_flag  text_table_end
+#define next_sec(m) ((m)->text_link)
+#define equiv  equiv_or_xref
+#define verb_quote  0x2
+#define join  0x3
 #define cur_repl  cur_state.repl_field
 #define cur_byte  cur_state.byte_field
 #define cur_end  cur_state.end_field
@@ -97,16 +93,16 @@ if (tok_ptr==tok_mem_end) overflow("token");  else *tok_ptr++=c
    (indent_buffer[ind_i=cur_ind]='\0',C_printf("%s",indent_buffer))
 #define append_white(c) \
   if (ind_i>=max_indent) overflow("indent buffer"); \
-  else indent_buffer[ind_i++]= isspace(c) ? c : ' ' 
-#define trans_limit  9 
+  else indent_buffer[ind_i++]= isspace(c) ? c : ' '
+#define trans_limit  9
 #define trans_of(c) c_trans[(unsigned char)(c)-0x80]
-#define translation_exists(c) (trans_of(c)[0]!='\0') 
+#define translation_exists(c) (trans_of(c)[0]!='\0')
 #define comp_op(op) \
   (C_printf(out_state==operator && line_output ? " %s" : "%s",op) \
   ,out_state=operator)
 #define code_of(c) ccode[(unsigned char)(c)]
 #define compress(char2,code)  \
-  if (*loc==char2) return ++loc,code 
+  if (*loc==char2) return ++loc,code
 #define preproc_directive   0
 #define section_body  1
 #define report(k,c,m) \
@@ -135,7 +131,7 @@ enum {identifier=0x80, section_start, section_end, line_mark };
 
 enum { no_space, num_or_id, operator, literal};
 
-enum 
+enum
 { ignore=0x80, /* control code of no interest to \.{\me.}, or \:> */
   id_code, constant, /* token codes but not control codes */
   verbatim, /* control code for \:= */
@@ -158,63 +154,63 @@ void phase_two (void); /* output the contents of the compressed tables */
 void output (text_pointer); /* recursively write out modules */
 void output_preproc_directives(void); /* write out all \:d and \:h stuff */
 void C_newline (void); /* send a newline to the \Cee~file */
-void out_char (eight_bits); 
+void out_char (eight_bits);
 
  boolean mark_line(void);
 
 void phase_one (void);
-  
+
 
 
 text text_table[max_texts];
 text_pointer text_ptr=&text_table[0]; /* first unused position in |text_table| */
 eight_bits tok_mem[max_toks];
-eight_bits *tok_ptr=&tok_mem[0]; 
+eight_bits *tok_ptr=&tok_mem[0];
 
 text_pointer text_root=NULL;
-text_pointer* last_unnamed=&text_root; 
+text_pointer* last_unnamed=&text_root;
 
-boolean atp_seen=false; 
+boolean atp_seen=false;
 
 mod_pointer output_file[max_files];
 int output_file_count=0;
 
 output_state stack[stack_size_max]; /* info for non-current levels */
-stack_pointer stack_ptr; 
+stack_pointer stack_ptr;
 
 char indent_buffer[max_indent];
    /* white space characters to produce indentation */
 sixteen_bits ind_i;
-   
 
-int cur_val; 
+
+int cur_val;
 
 eight_bits out_state; /* current status of partial output */
-boolean protect; 
+boolean protect;
 
 char c_trans[UCHAR_MAX+1-0x80][trans_limit+1];
 
-eight_bits ccode[UCHAR_MAX+1]; 
+eight_bits ccode[UCHAR_MAX+1];
 
 id_pointer cur_id; /* identifier just scanned */
-mod_pointer cur_mod; 
+mod_pointer cur_mod;
 
 text_pointer cur_text; /* replacement text formed by |scan_repl| */
-eight_bits next_control; 
+eight_bits next_control;
 
 
 int main (int argc, char** argv)
 { program=ctangle;
   line_output=true;
   common_init(argc,argv,banner);
-  
+
   tok_begin(text_ptr)=tok_ptr;
-  
+
   if (compatibility_mode)
   { unsigned char c=UCHAR_MAX;
     do sprintf(trans_of(c),"X%X",c); while (--c>=0x80);
   }
-  
+
   { unsigned char c=0;
     do ccode[c] = isspace (c) ? new_section : ignore; while(c++!=UCHAR_MAX);
   ccode['v']=ccode['V']='|';
@@ -233,7 +229,7 @@ int main (int argc, char** argv)
   ccode['<']=ccode['(']=module_name;
   ccode['~']=ccode['*']=new_section;
   if (compatibility_mode)
-    
+
     { ccode['h']=ccode['H']=include_preproc; /* \:h means \:p */
       ccode['p']=ccode['P']=begin_C; /* \:p means \:c */
       ccode['#']=ignore; /* \:\# means \:) */
@@ -268,10 +264,10 @@ void init_id_name (id_pointer dummy,int ilk)  {}
 { phase=2;
   if (text_root==NULL && output_file_count==0)
   { print("\n! No program text was specified."); mark_harmless(); }
-		 
+
   else
   { if (show_progress)
-    { print("\nWriting the output file%s"   
+    { print("\nWriting the output file%s"
 	   ,(text_root!=NULL)+output_file_count>1 ? "s" : "");
       if (text_root!=NULL) printf(" (%s):",C_file_name);
       update_terminal();
@@ -282,18 +278,18 @@ void init_id_name (id_pointer dummy,int ilk)  {}
       if (!atp_seen) output_preproc_directives();
       output(text_root);
     }
-    
+
     { int i;
       char output_file_name[longest_name+1]; /* name of the file */
       for (i=0; i<output_file_count; i++)
       { mod_pointer output_module=output_file[i];
-        
+
         { char* p=output_file_name, *q=name_begin(output_module);
           while (*q!='\0')
             if ((*p++=*q++)=='@')
               if (*q++!='@')
               { print("\n! Illegal control code in file name");
-        		 
+
         	print_mod(output_module); err_print("");
               }
           *p='\0';
@@ -301,12 +297,12 @@ void init_id_name (id_pointer dummy,int ilk)  {}
         if (C_file!=NULL) fclose(C_file);
         if (output_module->equiv==NULL)
         { print("\n! Module not present");
-    		   
+
           print_mod(output_module); err_print("");
         }
         else if ((C_file=fopen(output_file_name,"w"))==NULL)
         { print("\n! Cannot open \"%s\" as output file",output_file_name);
-    		   
+
           err_print("");
         }
         else
@@ -350,7 +346,7 @@ cur_repl=repl; cur_byte=tok_begin(cur_repl); cur_end=tok_end(cur_repl);
       out_char(section_end); /* output ending section number comment */
     }
     else
-    
+
     { int a = *cur_byte++;
       if (a<0x80) out_char(a); /* single byte token */
       else if (a>=0xF8)
@@ -360,12 +356,12 @@ cur_repl=repl; cur_byte=tok_begin(cur_repl); cur_end=tok_end(cur_repl);
       { cur_val=(((a-=0x80)%0x28)<<8)+*cur_byte++;
         switch (a/0x28)
         { case 0: out_char(identifier); break;
-          case 1: 
+          case 1:
                   { mod_pointer mod_name=mod_at(cur_val);
                     if (mod_name->equiv!=NULL) push_level(mod_name);
                     else
                     { print("\n! Module not present"); print_mod(mod_name); err_print("");
-                  	       
+
                     }
                   }
       break;
@@ -388,16 +384,16 @@ void output_preproc_directives (void)
       C_printf ("#%se ",l==macro_flag ? "defin" : "includ");
       out_state=no_space;
       while (p<end)
-      
+
       { int a=*p++;
         if (a<0x80) out_char(a); /* single byte token */
         else if (a>=0xF8)
-          if (a==0xF8) out_char(*p++); 
-          else confusion("`@p' within macro"); 
+          if (a==0xF8) out_char(*p++);
+          else confusion("`@p' within macro");
         else
         { cur_val=(((a-=0x80)%0x28)<<8)+*p++;
-          if (a<0x28) out_char(identifier); 
-          else confusion("module within macro"); 
+          if (a<0x28) out_char(identifier);
+          else confusion("module within macro");
         }
       }
       C_newline(); /* this newline is not escaped */
@@ -431,13 +427,13 @@ void out_char (eight_bits c)
       if (out_state==num_or_id && line_output) C_putc(' ');
       out_state=literal; break;
     case join: out_state=no_space; break;
-    case '\n': 
+    case '\n':
            { if (protect) { C_putc(' '); C_putc('\\'); }
              C_newline();
              if (out_state!=literal) out_state=no_space;
            }
   break;
-    case identifier: 
+    case identifier:
                      { char* p=name_begin(id_at(cur_val)); int l=0;
                        if (out_state==num_or_id && line_output) C_putc(' ');
                        do
@@ -455,21 +451,21 @@ void out_char (eight_bits c)
     case section_end:
       if (line_output) C_printf("/*:%d*/",cur_val);  else C_newline();
       out_state=no_space; break;
-    case line_mark: 
+    case line_mark:
                     { sixteen_bits a;
                       a=(*cur_byte++)<<8; a+=*cur_byte++; /* get the line number */
-                      C_newline(); C_printf("#line %u \"",a); 
+                      C_newline(); C_printf("#line %u \"",a);
                       a=(*cur_byte++)<<8; a+=*cur_byte++; /* get the file name index */
                       C_printf("%s\"",name_begin(id_at(a)));
                       C_newline(); out_state=no_space;
                     }
   break;
-    
+
     case '+': case '-': case '*': case '/': case '%': case'?':
     case '<': case '>': case '&': case '|':
       if (out_state==operator && line_output) C_putc(' '); /* fall through */
     case '=': C_putc(c); out_state=operator; break;
-    
+
     case plus_plus: comp_op("++"); break;
     case minus_minus: comp_op("--"); break;
     case minus_gt: comp_op("->"); break;
@@ -504,21 +500,21 @@ boolean skip_comment (boolean one_liner) /* skips over comments */
       else if (get_line ()) return true;
       else
       { err_print("! Input ended in mid-comment"); return false; }
-		     
+
     if ((c=*loc++)=='/' && *loc=='*')
       err_print("! `/*' inside comment, did you forget `*/' before? ");
-		 
+
     if (c=='@')
     { eight_bits cc=code_of(*loc++);
       if (cc==new_section) /* watch out for \:\ , \:\~, and \:* */
       { err_print("! Section ended in mid-comment"); loc-=2; return false; }
-		       
-      if (cc==module_name) { 
+
+      if (cc==module_name) {
                            { boolean file_module= loc[-1]=='(';
                              /* does this module define an output file? */
                              cur_mod=get_module_name();
                              if (file_module && cur_mod!=NULL)
-                                
+
                                 { int i=0;
                                   while(i<output_file_count)
                                     if (output_file[i]==cur_mod) break;  else ++i;
@@ -543,7 +539,7 @@ eight_bits get_next (void) /* produces the next input token */
   static boolean comment_continues=false; /* were we scanning a comment? */
   eight_bits c; /* the current character */
 restart:
-  
+
   { if (loc>=limit)
     { if (preprocessing && limit>buffer && limit[-1]!='\\')
         preprocessing=false;
@@ -551,7 +547,7 @@ restart:
     }
     if (comment_continues
      ||(c=*loc++)=='/' && (*loc=='*' || C_plus_plus && *loc=='/'))
-    
+
     { boolean one_liner=false;
       if (!comment_continues)
       { if (!line_output) { store_byte('/'); store_byte(*loc); }
@@ -560,7 +556,7 @@ restart:
       }
       else if (preprocessing)
       { print("\nWarning: Multi-line comment in preprocessor line");
-    		    
+
         preprocessing=false; mark_harmless();
       }
       if (comment_continues=skip_comment(one_liner))
@@ -579,7 +575,7 @@ restart:
   if (c=='L' && (*loc=='\'' || *loc=='\"'))
   { get_string(); return constant; }
   if (c<0x80 ? isalpha(c) || c=='_' : translation_exists(c))
-  { 
+  {
     { id_first=--loc; /* mark beginning of identifier */
       do c=*++loc;
       while (c<0x80 ? isalnum(c) || c=='_' : translation_exists(c));
@@ -589,9 +585,9 @@ restart:
     }
  return id_code; }
   if (c>=0x80) { err_print("! Illegal 8-bit character"); goto restart; }
-			      
+
   if (isdigit(c) || c=='.' && isdigit((eight_bits)*loc))
-  { 
+  {
     { if (*(id_first=loc-1)=='0' && tolower((eight_bits)*loc)=='x')
         /* hex constant */
         do c=*++loc; while (isxdigit(c));
@@ -611,28 +607,28 @@ restart:
  return constant; }
   switch(c)
   { case '\'': case '"': get_string(); return constant;
-    case '@': 
+    case '@':
            { eight_bits cc=code_of(*loc++);
              switch(cc)
              { case ignore: goto restart;
                case control_text: get_control_text(); goto restart;
                case verbatim: if (get_control_text()) goto restart;  else break;
-               case ord: 
+               case ord:
                          id_first=loc; /* first character after opening quote */
                          while (*loc!='\'')
                          { if (*loc++=='\\') loc++; /* accept any character following backslash */
                            if (loc>=limit) { err_print("! ASCII constant didn't end"); break; }
-                         				 
+
                          }
-                         id_loc=loc++; 
+                         id_loc=loc++;
              break;
                case module_name:
-               
+
                { boolean file_module= loc[-1]=='(';
                  /* does this module define an output file? */
                  cur_mod=get_module_name();
                  if (file_module && cur_mod!=NULL)
-                    
+
                     { int i=0;
                       while(i<output_file_count)
                         if (output_file[i]==cur_mod) break;  else ++i;
@@ -644,7 +640,7 @@ restart:
              }
              return cc;
            }
-  
+
   case '+': compress('+',plus_plus); break;
   case '-': compress('-',minus_minus); compress('>',minus_gt); break;
   case '=': compress('=',eq_eq); break;
@@ -662,39 +658,39 @@ void scan_repl (eight_bits context) /* creates a replacement text */
   eight_bits* keep=tok_ptr; /* non-discardable stuff up to this point */
   int brace_level=0, par_level=0;
   if (context==section_body)
-    
+
     { if (mark_line()) { a=new_section; goto done; } }
-  do 
+  do
      { switch (a=get_next())
        {
-       
+
        case id_code:
-         
+
          if (cur_id==NULL) store_byte(*id_first); /* single-character identifier */
          else store_two_bytes(0x8000+id_index(cur_id));
          keep=tok_ptr; continue;
        case module_name: if (context==preproc_directive) goto done;
          if (cur_mod!=NULL) /* don't record bad module name */
          { sixteen_bits n = mod_index(cur_mod); /* index of module name */
-           
+
            { char *p=loc;
              while (*p==' ' && p<limit) ++p;
              if (*p=='+') ++p; /* an optional `\.+' is allowed */
              if (*p=='=')
                err_print
                  ("! Illegal defining occurrence of module name; did you forget `@ '?");
-           	
+
            }
            if (line_output) tok_ptr=keep; /* back up */
            store_two_bytes(0xA800+n); keep=tok_ptr;
              /* store reference to module name */
-           
+
            { if (mark_line()) { a=new_section; goto done; } }
              /* to get in phase after module insertion */
          }
          continue;
        case constant: case verbatim:
-         
+
          if (id_loc==id_first+1) store_byte(*id_first); /* single digit number */
          else
          { store_byte(verb_quote); /* opening */
@@ -711,17 +707,17 @@ void scan_repl (eight_bits context) /* creates a replacement text */
            while (id_first<id_loc);
            store_byte(verb_quote); /* closing */
            if (context==section_body && print_where)
-             
+
              { if (mark_line()) { a=new_section; goto done; } }
          }
          keep=tok_ptr;
          continue;
        case ord:
-         
+
          { int c=*id_first++;
            if (c=='@' && *id_first++ !='@')
            { err_print("! Double `@' should be used in ASCII constant");
-         		   
+
                --id_first;
            }
            if (c=='\\')
@@ -738,7 +734,7 @@ void scan_repl (eight_bits context) /* creates a replacement text */
                case '\'':c='\047'; break;
                case '\"':c='\042'; break;
                default: err_print("! Unrecognised escape sequence");
-         			  
+
              }
            }
            else
@@ -747,43 +743,43 @@ void scan_repl (eight_bits context) /* creates a replacement text */
            if (id_first!=id_loc)
              if (id_loc>id_first)
                err_print("! ASCII constant should be single character");
-         		 
+
              else { err_print("! Empty ASCII constant"); c=0; }
-         			
+
            store_byte(verb_quote);
            if (c>=100) store_byte('0'+c/100);  if (c>=10) store_byte('0'+(c/10)%10);
-           store_byte('0'+c%10); 
+           store_byte('0'+c%10);
            store_byte(verb_quote);
          }
          keep=tok_ptr; continue;
        case include_preproc:
          if (context==preproc_directive)
            err_print("! `@p' is forbidden in preprocessor directive");
-       	       
+
          else
          { if (line_output) tok_ptr=keep;
            store_byte(0xFA); atp_seen=true; keep=tok_ptr;
-           
+
            { if (mark_line()) { a=new_section; goto done; } }
          }
          continue;
        case char_trans:
          err_print("! `@l' is only allowed in limbo");
-       	     
+
          continue;
        case format: case definition: case header: case begin_C:
          if (context==preproc_directive) goto done;
          err_print
            ("! `@f', `@d', `@h', and `@c' are ignored in section body");
-     		     
+
          continue;
        case new_section: goto done;
-       
+
        case '(': ++par_level; break;
        case ')':
          if (par_level<=0)
          { err_print("! Unmatched closing parenthesis"); continue; }
-       		 
+
          --par_level; break;
        case '{': ++brace_level; break;
        case '}':
@@ -793,7 +789,7 @@ void scan_repl (eight_bits context) /* creates a replacement text */
        case '\n': store_byte('\n');
          if (context==section_body && print_where) /* input file was switched */
          { tok_ptr=keep; /* back up over discardable items */
-           
+
            { if (mark_line()) { a=new_section; goto done; } }
          }
          continue;
@@ -804,13 +800,13 @@ void scan_repl (eight_bits context) /* creates a replacement text */
   while (true);
 done: tok_ptr=keep; /* backup over trailing newlines and \&{\#line} marks */
   next_control=a; /* this control code must be reconsidered */
-  if (par_level>0 || brace_level>0) 
+  if (par_level>0 || brace_level>0)
                                 { char *p, *s; int l;
                                   if (par_level>0) l=par_level, s="parenthes", p= l>1 ? "es" : "is";
                                   else l=brace_level, s="brace", p=l>1 ? "s" : "";
                                   print("\n! There %s %d unclosed %s%s"
                                        ,par_level+brace_level>1 ? "are" : "is", l, s, p );
-                                  
+
                                   if (par_level>0 && brace_level>0)
                                     print(" and %d unclosed brace%s"
                                          , brace_level, brace_level>1 ? "s" : "");
@@ -819,7 +815,7 @@ done: tok_ptr=keep; /* backup over trailing newlines and \&{\#line} marks */
                                   while (--par_level>=0) store_byte(')');
                                   while (--brace_level>=0) store_byte('}');
                                 }
-  
+
   { cur_text=text_ptr++; /* consolidate the replacement text */
     if (text_ptr>=text_table_end) overflow("text");
     tok_begin(text_ptr)=tok_ptr; /* mark end of replacement text */
@@ -842,7 +838,7 @@ boolean mark_line(void)
 void scan_section (void)
 { ++section_count;
   if (loc[-1]=='*') print_section_progress();
-  
+
   { next_control=ignore; /* clear |new_section| */
     do
     { if (next_control<definition)
@@ -851,16 +847,16 @@ void scan_section (void)
   	/* back up and scan the module name itself */
       }
       else if (next_control==definition)
-      { 
+      {
         { do next_control=get_next(); /* allow white space before identifier */
           while (line_output ? next_control=='\n'
                 : next_control<0x80 && isspace(next_control));
           if (next_control!=id_code)
           { err_print("! Macro definition ignored, must start with identifier");
-        		   
+
             continue;
           }
-          
+
           if (cur_id==NULL) store_byte(*id_first); /* single-character identifier */
           else store_two_bytes(0x8000+id_index(cur_id));
           if (isspace((eight_bits)*loc)) store_byte(' ');
@@ -872,19 +868,19 @@ void scan_section (void)
       else /* |next_control==header| */
       { scan_repl(preproc_directive); cur_text->text_link=header_flag; }
       if (next_control==module_name)
-      
+
       { eight_bits t=get_next();
         if (t=='+') t=get_next(); /* skip an optional `\.+' */
         if (t!='=' && t!=eq_eq) /* then apparently a cited occurrence, ignore it */
         { next_control=ignore;
           if (t!='|' && !compatibility_mode)
             err_print("! `=' sign missing, module name ignored");
-      		 
+
         }
       }
     } while (next_control<begin_C);
   }
-  
+
   { mod_pointer p; /* module name for the current section */
     switch (next_control)
     { default: return; /* no \Cee\ part present */
@@ -894,7 +890,7 @@ void scan_section (void)
     store_two_bytes(0xD000+section_count); /* record section number */
     scan_repl(section_body);
         /* now |cur_text| points to the replacement text */
-    
+
     { if (p == NULL) /* unnamed section, or bad module name */
       { *last_unnamed = cur_text; last_unnamed = &cur_text->text_link; }
       else
@@ -911,28 +907,28 @@ void scan_section (void)
 void phase_one (void)
 { phase=1; section_count=0; reset_input();
   while ((next_control=skip_ahead())!=new_section)
-    if (next_control==char_trans) 
+    if (next_control==char_trans)
                                 { int c;
                                   while (loc<limit && isspace((eight_bits)*loc)) ++loc; /* skip space */
                                   if (!(isxdigit((eight_bits)loc[0])&&
                                 	isxdigit((eight_bits)loc[1])&&
                                 	isspace ((eight_bits)loc[2])))
                                     err_print("! Two-digit hex number and space should follow `@l'");
-                                	       
+
                                   else if (sscanf(loc,"%x",&c),c<0x80)
                                     err_print("! You cannot translate characters < 0x80");
-                                	       
+
                                   else
                                   { char* p=trans_of(c); int i=0;
-                                    loc+=3; 
+                                    loc+=3;
                                     while (find_char() && isspace((eight_bits)*loc)) ++loc; /* skip space */
                                     if (!input_has_ended)
                                       while (isalnum((eight_bits)*loc) || *loc=='_')
                                 	if (++i<=trans_limit) *p++=*loc++;  else break;
                                     if (i>0) *p='\0'; /* terminate translation unless none was given */
-                                    
+
                                     if (i==0) err_print("! Translation string absent after `@l'");
-                                    		     
+
                                     else if (i>trans_limit) err_print("! Translation string too long");
                                     else if (!isspace((eight_bits)*loc))
                                       err_print("! Translation string not terminated by space");
@@ -952,4 +948,3 @@ report("replacement text", text_ptr-text_table, max_texts);
 report("token", tok_ptr-tok_mem, max_toks);
 }
 #endif
-
