@@ -4338,10 +4338,10 @@ void swiss_matrix_knife_wrapper(expression_base::level lev)
   int k = get<int_value>()->int_val();
   int i = get<int_value>()->int_val();
   shared_matrix src = get<matrix_value>();
-  const int_Matrix& A = src->val;
+  const int_Matrix& M = src->val;
   BitSet<8> flags (get<int_value>()->int_val());
 @)
-  int m = A.numRows(); int n= A.numColumns();
+  int m = M.numRows(); int n= M.numColumns();
   int lwb_r = flags[1] ? m-i : i;
   int upb_r = flags[2] ? m-k : k;
   int lwb_c = flags[4] ? n-j : j;
@@ -4356,7 +4356,7 @@ void swiss_matrix_knife_wrapper(expression_base::level lev)
   unsigned rev_flags = static_cast<unsigned>(flags[0])*0x1
                      ^ static_cast<unsigned>(flags[3])*0x2;
   @< Call instance |transform_copy<@[flags[6],flags[7]@]>| with arguments
-  |rev_flags|, |A|, |lwb_r|, |upb_r|, |lwb_c|, |upb_c|, and |result->val| @>
+  |rev_flags|, |M|, |lwb_r|, |upb_r|, |lwb_c|, |upb_c|, and |result->val| @>
 
   push_value(std::move(result));
 }
@@ -4408,18 +4408,18 @@ template arguments.
 if (flags[6])
 { if (flags[7])
     transform_copy<@[true,true@]>
-      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
   else
     transform_copy<@[true,false@]>
-      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
 }
 else
 { if (flags[7])
     transform_copy<@[false,true@]>
-      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
   else
     transform_copy<@[false,false@]>
-      (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
+      (rev_flags,M,lwb_r,upb_r,lwb_c,upb_c,result->val);
 }
 
 @ We continue with some more specialised mathematical functions. Here are
@@ -4460,13 +4460,13 @@ void Bezout_wrapper(expression_base::level l)
 
 @<Local function definitions @>=
 void echelon_wrapper(expression_base::level l)
-{ own_matrix A=get_own<matrix_value>();
+{ own_matrix M=get_own<matrix_value>();
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
   bool flip;
-  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
-  push_value(std::move(A));
+  BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
+  push_value(std::move(M));
   push_value(std::move(column));
   own_row p_list = std::make_shared<row_value>(0);
   p_list->val.reserve(pivots.size());
@@ -4504,24 +4504,24 @@ injector functions of these names.
 @<Local function definitions @>=
 void linear_solve_wrapper(expression_base::level l)
 { own_vector b=get_own<vector_value>();
-  own_matrix A=get_own<matrix_value>();
-  if (A->val.numRows()!=b->val.size())
+  own_matrix M=get_own<matrix_value>();
+  if (M->val.numRows()!=b->val.size())
   { std::ostringstream o;
     o << "Linear system size mismatch "
-      << A->val.numRows() << ':' << b->val.size();
+      << M->val.numRows() << ':' << b->val.size();
     throw runtime_error(o.str());
   }
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
   bool flip; // unused
-  const auto m = A->val.numColumns();
-  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
+  const auto m = M->val.numColumns();
+  BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
   try
   { static id_type affine_name=main_hash_table->match_literal("affine_subspace");
-    const auto k = A->val.numColumns(); // number of pivots
+    const auto k = M->val.numColumns(); // number of pivots
     arithmetic::big_int factor;
-    int_Vector ini_sol = matreduc::echelon_solve(A->val,pivots,b->val,factor);
+    int_Vector ini_sol = matreduc::echelon_solve(M->val,pivots,b->val,factor);
     push_value(std::make_shared<vector_value> @|
       (column->val.block(0,0,m,k)*ini_sol));
     push_value(std::make_shared<int_value>(std::move(factor)));
@@ -4657,8 +4657,7 @@ fails to exist (though it may fail to be unique).
 void section_wrapper(expression_base::level l)
 {
   shared_matrix m=get<matrix_value>();
-  BinaryMap A(m->val);
-  BinaryMap B=A.section();
+  BinaryMap B = BinaryMap(m->val).section();
   own_matrix res = std::make_shared<matrix_value>(
     int_Matrix(B.numRows(),B.numColumns()));
   for (unsigned int j=B.numColumns(); j-->0;)
