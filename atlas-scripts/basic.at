@@ -23,7 +23,7 @@ set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
-set bitset ([int] L) =
+set bitset ([int] L) = (int,(int->bool)):
   let map=[bool]:[], len=0 { invariant len=#map } in
   for x in L ~ { reversing loop minimises expansions for many lists }
   do if x<len then map[x]:=true
@@ -126,9 +126,18 @@ set min (int !seed) = ([int]->int):
 set max (int !seed) = ([int]->int):
   ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
-set gcd (int a,int b) = int:
-   if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
-   while let r=a%b in r.!= do a:=b; b:=r od; b
+set gcd = (int,int->int): { greatest common divisor; no size limit }
+   let limit = 2^31 in
+   (int a,int b) int:
+   if   case a then a:=-a in return abs(b) else a esac<limit then [a,b%a].gcd
+   elif case b then b:=-b in return a      else b esac<limit then [a%b,b].gcd
+   else { too big for |vec|, so do Euclid's algorithm explicitly }
+      while let r=a%b in r.!= do a:=b; b:=r od; b
+   fi
+
+{ the following cannot be called |gcd|: too cloase to built-in |gcd@vec| }
+set gcd_big([int] v) = int:
+   let d=0 in for x in v do if (d:=gcd(d,x))=1 then break fi od; d
 
 set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
 
@@ -155,8 +164,34 @@ set is_member ([int] v) = (int->bool):
 set isnt_member ([int] v) = (int->bool):
   (int val)bool: all(#v,(int i)bool: v[i]!=val)
 
+{ when |v| is known to be sorted (and long), this can be done faster }
+set is_member_sorted ([int] v) = (int->bool):
+  let l=#v in
+  case l { special cases for |l<=5| }
+  in (int .): false
+  , (int n): n=v[0]
+  , (int n): n=v[0] or n=v[1]
+  , (int n): case n-v[1] then n=v[0] in true else n=v[2] esac
+  , (int n): if n<v[2] then n=v[0] or n=v[1] else n=v[2] or n=v[3] fi
+  , (int n):
+       case n-v[2] then n=v[0] or n=v[1] in true else n=v[3] or n=v[4] esac
+  else
+     (int n)bool:
+     let m = binary_search_first((int i)bool:v[i]>=n,0,l)
+     in m<l and v[m]=n
+  esac
+set isnt_member_sorted ([int] v) = (int->bool):
+  let member = is_member_sorted(v) in (int n): not member(n)
+
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
+
+set is_subset_of_sorted ([int] sorted) = ([int]->bool):
+   let test = is_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
+   let test = isnt_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
@@ -282,20 +317,21 @@ set c_adjust (int w, string s) = string:
 set width (int n) = int: #int_format(n)
 
 set split_lines (string text) = [string]:
-  let last=0 in
+( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
+; let last=0 in
   for c@i in text
-  do if c=new_line else [] then [text[last:i]] next last:=i+1 fi
+  do if c=new_line then [text[last:i]] next last:=i+1 else [] fi
   od.##
+)
 
 set is_substring (string s, string text) = bool:
   let s0=for c in s do c od, t0=for c in text do c od in
   >=last(#t0-#s0,(int start):all(#s0,(int i):t0[start+i]=s0[i]))
 
 set fgrep (string s, string text) = [string]:
-  let result = [string]: [] in
   for line in split_lines(text)
-  do if is_substring(s,line) then result#:=line fi
-  od; result
+  do if is_substring(s,line) then [line] else [] fi
+  od.##
 
 {eliminate spaces, and "/1", for printing a ratvec}
 set compact_ratvec(ratvec v)=string:
@@ -382,12 +418,6 @@ set n_columns = #@mat { this one is built in as a # operator overload }
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
-set row (mat A,int i) = vec: (^A)[i]
-set column (mat A,int i) = vec: A[i]
-
-set rows (mat A) = [vec]: ^A
-set columns (mat A) = [vec]: A
-
 set ~ (mat A) = mat: { reverse rows and reverse columns }
   swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
 
@@ -409,17 +439,17 @@ set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 set = (mat m,int k) = bool: =(m-k)
 
 { add a column to a matrix, which is not predefined as operator # }
-set # (mat m, vec v) = mat: n_rows(m) { require size match } # (([vec]:m)#v)
-set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#([vec]:m))
+set # (mat m, vec v) = mat: n_rows(m) { require size match } # (columns(m)#v)
+set # (vec v, mat m) = mat: n_rows(m) { require size match } # (v#columns(m))
 
 { add row to a matrix, which is similar; use operator ^ for it }
-set ^ (mat m, vec v) = mat: n_columns(m) ^ (([vec]:^m)#v)
-set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#([vec]:^m))
+set ^ (mat m, vec v) = mat: n_columns(m) ^ (rows(m)#v)
+set ^ (vec v, mat m) = mat: n_columns(m) ^ (v#rows(m))
 
 set ## (mat A, mat B) = mat: { concatenate horizontally, must have same depth }
-   n_rows(B) # (([vec]:A)##([vec]:B))
+   n_rows(B) # (columns(A)##columns(B))
 set ^ (mat A, mat B) = mat: { concatenate vertically, must have same width }
-   n_columns(B) ^ (([vec]:^A)##([vec]:^B))
+   n_columns(B) ^ (rows(A)##rows(B))
 
 { concatenate horizontally a list of matrices; each of n rows }
 set ## (int n,[mat] L) = mat:
@@ -511,17 +541,17 @@ set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
 
-{ test all columns }
-set all (mat M,(vec->bool) predicate) = bool:
-  all(#M,(int i)bool:M[i].predicate)
-set any (mat M,(vec->bool) predicate) = bool:
-  any(#M,(int i)bool:M[i].predicate)
-set none (mat M,(vec->bool) predicate) = bool:
-  none(#M,(int i)bool:M[i].predicate)
-set first (mat M,(vec->bool) predicate) = int:
-  first(#M,(int i)bool:M[i].predicate)
-set last (mat M,(vec->bool) predicate) = int:
-  last(#M,(int i)bool:M[i].predicate)
+{ test all vectors in a list }
+set all ([vec] L,(vec->bool) predicate) = bool:
+  all(#L,(int i)bool:L[i].predicate)
+set any ([vec] L,(vec->bool) predicate) = bool:
+  any(#L,(int i)bool:L[i].predicate)
+set none ([vec] L,(vec->bool) predicate) = bool:
+  none(#L,(int i)bool:L[i].predicate)
+set first ([vec] L,(vec->bool) predicate) = int:
+  first(#L,(int i)bool:L[i].predicate)
+set last ([vec] L,(vec->bool) predicate) = int:
+  last(#L,(int i)bool:L[i].predicate)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   n_rows(m)# ## for col@j in m do if p(j,col) then [col] else [] fi od
@@ -533,21 +563,21 @@ set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
   for col in m do if p(col) then return solution(col) fi od; no_vec()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row@i in ^m do if p(i,row) then [row] else [] fi od
+  n_columns(m) ^ for row@i in rows(m) do if p(i,row) then [row] else [] fi od.##
 set rows_with ((vec->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row in ^m do if p(row) then [row] else [] fi od
+  n_columns(m) ^ for row in rows(m) do if p(row) then [row] else [] fi od.##
 set rows_with ((int->bool) p,mat m) = mat:
-  n_columns(m) ^ ## for row@i in ^m do if p(i) then [row] else [] fi od
+  n_columns(m) ^ for row@i in rows(m) do if p(i) then [row] else [] fi od.##
 set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in ^m do if p(row) then return solution(row) fi od; no_vec()
+  for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
 
 set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
 set <=(mat m) = bool: all(m,<=@vec)
 set <(mat m) = bool: all(m,<@vec)
 
-set lookup_column (vec v,mat m) = int: last(m,(vec w)bool: w=v)
-set lookup_row (vec v,mat m) = int: last(^m,(vec w)bool: w=v)
+set lookup_column (vec v,mat m) = int: last(columns(m),(vec w)bool: w=v)
+set lookup_row (vec v,mat m) = int: last(rows(m),(vec w)bool: w=v)
 
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
@@ -765,6 +795,42 @@ set semisimple (LieType t) = LieType:
 set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
 set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
+{ compute |t.semisimple.adjoint.two_rho| without constructing a |RootDatum| }
+set adjoint_2rho (LieType t) = vec: { $2\rho$ on basis of simple roots }
+  for (letter,n) in simple_factors(t)
+  do case ascii(letter)-ascii("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(n+n-i) od
+     ,  { C } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [16,30,42,22]
+     , { G2 } [10,6]
+     esac
+  od.##
+
+{ similarly $2\check\rho$ on basis of simple coroots }
+set simply_connected_2rho_check (LieType t) = vec:
+  for (letter,n) in simple_factors(t)
+  do case ascii(letter)-ascii("A")
+     in { A } for i:n from 1 do i*(1+n-i) od
+     ,  { B } for i:n from 1 do i*(1+n+n-i)   \ if i<n then 1 else 2 fi od
+     ,  { C } for i:n from 1 do i*(n+n-i) od
+     ,  { D } for i:n from 2 do (i-1)*(n+n-i) \ if i<n then 1 else 2 fi od
+     ,  { E } case n-6
+              in [16,22,30,42,30,16]
+	      ,  [34,49,66,96,75,52,27]
+	      ,  [92,136,182,270,220,168,114,58]
+	      esac
+     , { F4 } [22,42,30,16]
+     , { G2 } [6,10]
+     esac
+  od.##
+
 set str (LieType t) = string:
   (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
 
@@ -844,6 +910,10 @@ set is_long_root(RootDatum rd, int i) = bool:
 in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
 
 
+set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
+   let r=#simples in
+   matrix((r,r),(int i,int j)int: coroot(rd,simples[j])*root(rd,simples[i]))
+
 set rho (RootDatum rd) = ratvec: rd.two_rho/2
 set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
@@ -854,16 +924,14 @@ set two_rho_check (RootDatum rd,(int->bool) select) = vec:
    columns_with(select,poscoroots(rd)).sum
 
 set two_rho (RootDatum rd,[int] simples) = vec:
-   let orth = { linear form vanishing precisely on span of roots in |simples| }
-     ^kernel(rank(rd)^for i in simples do root(rd,i) od) in
-   two_rho(rd,(int i)bool: =orth*root(rd,i))
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=adjoint_2rho(lt)
+in (rd.rank # for pos@i in map do root(rd,simples[pos])*v[i] od).sum
 set two_rho_check (RootDatum rd,[int] simples) = vec:
-   let orth = { matrix right-annihilating precisely span of |simples| coroots }
-     kernel(rank(rd)^for i in simples do coroot(rd,i) od) in
-   two_rho_check(rd,(int i)bool: =coroot(rd,i)*orth)
+   let (lt,map) = Cartan_matrix_type(Cartan_matrix(rd,simples))
+   then v=simply_connected_2rho_check(lt)
+in (rd.rank # for pos@i in map do coroot(rd,simples[pos])*v[i] od).sum
 
-set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
-   for j in simples do for i in simples do coroot(rd,j)*root(rd,i) od od
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):
@@ -956,7 +1024,7 @@ set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
 set left_reflect (RootDatum rd, vec alpha, mat M) = mat:
   left_reflect(rd,root_index(rd,alpha),M)
 set right_reflect (RootDatum rd, mat M, int i) = mat: { M*reflection(rd,i) }
-  n_columns(M) ^ for row in ^M do coreflect(rd,row,i) od
+  n_columns(M) ^ for row in rows(M) do coreflect(rd,row,i) od
 set right_reflect (RootDatum rd, mat M, vec alpha) = mat:
   right_reflect(rd,M,root_index(rd,alpha))
 
@@ -970,7 +1038,7 @@ set conjugate (RootDatum rd, vec alpha, mat M) = mat:
 set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
   let in_S = is_member(S)
   then sub_simple_roots   =  columns_with(in_S,rd.simple_roots)
-  , tr_sub_simple_coroots = ^columns_with(in_S,rd.simple_coroots)
+  , tr_sub_simple_coroots =  rows_with(in_S,^rd.simple_coroots)
   then (M,d) = invert(tr_sub_simple_coroots * sub_simple_roots)
   then A=sub_simple_roots*M*tr_sub_simple_coroots
   then dd=gcd([d,gcd(A)])
@@ -1137,7 +1205,7 @@ set W_gens (RootDatum rd) = [WeylElt]:
   for s:rd.semisimple_rank do W_elt(rd,[s]) od
 set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
 set * (mat theta,WeylElt w) = mat:
-  theta.n_columns ^ for row in ^theta do row*w od
+  theta.n_columns ^ for row in rows(theta) do row*w od
 
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
   let len = #L in
@@ -1198,6 +1266,9 @@ set W_elt_of_reflection(RootDatum rd,int root) = WeylElt:
 set W_elt_of_reflection(RootDatum rd,vec alpha) = WeylElt:
    chamber(rd,reflect(rd,alpha,two_rho(rd)))
 
+{ |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
+  |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
+set convert_to (RootDatum rd, WeylElt w) = WeylElt: chamber(rd,w*two_rho(rd))
 
 { |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
   |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
@@ -1352,6 +1423,11 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
 set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
   KGB_elt(ic, x.involution, x.torus_factor)
 
+{ transfer to other inner class (or real form) that shares coordinates,
+  this can be used for instance to embed the KGB set of a Levi subgroup }
+set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
+  KGB_elt(ic, x.involution, x.torus_factor)
+
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
 
@@ -1478,7 +1554,7 @@ set no_Cplus_roots (KGBElt x) = bool:
 {                               Blocks                                  }
 
 set blocks (RealForm rf) = [Block]:
-   let ic=InnerClass:rf then sizes=(^block_sizes(ic))[rf.form_number] in
+   let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number) in
 ## for drf in dual_real_forms(ic)
    do if >sizes[drf.form_number] then [block(rf,drf)] else [] fi
    od
@@ -1530,11 +1606,11 @@ set is_dominant (Param p) = (bool,int):
   od; (true,-1)
 
 { whether gamma dominant, and if not witnessing integrally simple coroot }
-set is_integrally_dominant(Param p)=(bool,int):
+set is_integrally_dominant(Param p) = (bool,int):
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in integrality_datum(p).simple_coroots
   do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,-1)
+  od; (true,minus_1)
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,Param p) = bool:
@@ -1554,8 +1630,7 @@ set is_strongly_regular (Param p)=bool:
    in is_dominant(root_datum(G),ic-rho(G))
 
 { whether irreducible rpn survives translation functor from regular inf.char. }
-set survives (Param p) = bool:
-  is_final(p) { was recently defined to mean exactly that }
+set survives = (Param->bool): is_final@Param { defined to mean exactly that }
 
 set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
@@ -1880,7 +1955,7 @@ set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
 
 { pad string with blanks (for lining up columns in tables) }
-set pad(string s,int padding)=string: l_adjust(padding,s)
+set pad(string s,int width)=string: l_adjust(width,s)
 
 { for user convenience; a ParamPol is an associative array ParamPol->Split
   so selecting its monomials (Param values) by position is not reliable, but

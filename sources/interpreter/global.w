@@ -726,6 +726,7 @@ void global_forget_overload(id_type id, type_p type);
 void type_define_identifier
   (id_type id, type_p type, raw_id_pat ip, const source_location& loc);
 void process_type_definitions (raw_typedef_list l, const source_location& loc);
+void set_back_trace(const simple_list<std::string>& back_trace);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
 void type_of_type_name(id_type t);
@@ -736,14 +737,28 @@ the pointer variable |output_stream|, so that it can be redirected during the
 prelude. The same pointer is also used for all normal output from the
 evaluator, and can for that purpose also be redirected on a per-command basis.
 
+If a runtime errors occur, for instance during the evaluation of the expression
+in |global_set_identifier|, the thrown error object will contain a back-trace of
+the nested evaluations that were interrupted. The catch clauses for the error
+will then transfer the information to a variable accessed through
+|back_trace_pointer| to be defined here.
+
 @< Declarations of global variables @>=
 extern std::ostream* output_stream;
+extern shared_share back_trace_pointer;
 
-@ The |output_stream| will normally point to |std::cout|, but the pointer
-may be assigned to in the main program, which causes output redirection.
+@ The |output_stream| will normally point to |std::cout|, but the pointer may be
+assigned to in the main program, which causes output redirection. Similarly
+|back_trace_pointer| will be set by the main program once the corresponding
+``magic'' user variable has been created and installed into the global
+identifier table. It is important that we can access it without searching the
+identifier table, as we cannot exclude the possibility that the user has
+overridden the entry created there initially.
+
 
 @< Global variable definitions @>=
 std::ostream* output_stream= &std::cout;
+shared_share back_trace_pointer;
 
 @ Global identifiers can be introduced (or overridden) by the function
 |global_set_identifiers|, handling the \&{set} syntax with the same
@@ -1049,13 +1064,16 @@ pattern using |pattern_type| to do this.
 }
 
 
-@ We shall use the following static variable to signal
-that errors were encountered.
+@ We shall use the following static variable to signal that errors were
+encountered; it serves to set the exit status from |main| so that tools
+calling our interpreter with specific input can tell whether that input was
+cleanly processed.
 
 @< Declarations of global variables @>=
 extern bool clean;
 
-@~We start out cleanly
+@~We start out cleanly of course; this is the only point where |clean| is
+made~|true|.
 
 @< Global variable definitions @>=
 bool clean=true;
@@ -1072,12 +1090,15 @@ catch any |std::runtime_error| thrown from the library (rather than by our
 wrapper functions), although it hardly seems possible they could get through to
 here without being relabelled as (our) |runtime_error| by the back-trace
 producing code. This clause is in fact defined to catch any |std::exception| so
-that we really should not be letting any unexpected error through here.
+that we really should not be letting any unexpected error through here. We do
+want |handle| to get a reference to an |error_base| value, not to its base class
+|std::exception|, so when catching the latter we construct an |error_base| value
+with the message from |std::exception::what| to pass to |handle|; since it will
+have an empty |back_trace| this will give the desired behaviour in this case.
 
-Whether or not an error is caught, the pattern
-|pat| and the expression |rhs| should not be destroyed here, since the parser
-which aborts after calling this function should do that while clearing its
-parsing stack.
+Whether or not an error is caught, the pattern |pat| and the expression |rhs|
+should not be destroyed here, since the parser which aborts after calling this
+function should do that while clearing its parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
 catch (const program_error& err)
@@ -1089,18 +1110,21 @@ catch (const logic_error& err)
   handle(err,pat,phase,overload,loc);
 }
 catch (const std::exception& err)
-{@; handle(err,pat,phase,overload,loc); }
+{@; handle(error_base(err.what()),pat,phase,overload,loc); }
 
-@ Here is the common part for various |catch| clauses. We provide a uniform
-context for error messages to guide the user to the source of the problem;
-this context is not always available at the place where the error message
-proper is assembled, so it is a good thing that it can be added here.
+@ Here is the common part for various |catch| clauses. We report to the user the
+context in which the error arose to help locate the source of the problem, as
+well as the immediate error message |err.what()| that was provided at the point
+where the error was signalled. More detail is contained in the |back_trace|
+field of the error object which we copy to a ``magic'' user variable of that
+name using a function |set_back_trace| that will also be called (in |main|)
+when a runtime error happens during expression evaluation.
 
 @h "parsetree.h" // for output of |id_pat| value
 
 @< Define auxiliary functions for |do_global_set| @>=
 void handle
-  (const std::exception& err,const id_pat& pat, int phase, int overload,
+  (const error_base& err,const id_pat& pat, int phase, int overload,
    const source_location& loc)
 { static const char* message[3] = {"not executed","interrupted","failed"};
   std::cerr << "Error in 'set' command " << loc << ":\n" @|
@@ -1109,10 +1133,28 @@ void handle
   if (phase<2)
     std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
   std::cerr << ".\n";
+@/set_back_trace(err.back_trace);
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 
+@ The function |set_back_trace| converts the |simple_list| into an axis array.
+
+@< Global function definitions @>=
+void set_back_trace(const simple_list<std::string>& back_trace)
+{
+  if (not back_trace.empty())
+  {
+    std::shared_ptr<row_value> new_trace = std::make_shared<row_value>(0);
+    *back_trace_pointer=new_trace;
+    std::vector<shared_value>& trace = new_trace->val;
+    trace.reserve(length(back_trace));
+      // order inwards towards point of failure
+    for (auto it=back_trace.begin(); not back_trace.at_end(it); ++it)
+      trace.push_back(std::make_shared<string_value>(std::move(*it)));
+      // back trace element
+  }
+}
 
 @*2 Declaring and forgetting global identifiers.
 %
@@ -2166,8 +2208,8 @@ int_Vector row_to_vector(const row_value& r);
 own_row vector_to_row(const int_Vector& v);
 
 @ The |row_to_vector| conversion uses the |int_val| method to force the
-|big_int| entries in a list of |int_value| objects ti the |int| size of
-|int_Vector| entries; if too large values are found, the conversion will fail
+|big_int| entries in a list of |int_value| objects into the limited |int| size
+of |int_Vector| entries; if too large values are found, the conversion will fail
 and a |runtime_error| thrown. Of course |vector_to_row| knows no such potential
 difficulties.
 
@@ -2385,18 +2427,35 @@ void intlistlist_veclist_convert()
   push_value(r);
 }
 
-@ There are two corresponding externalising conversions for matrices. The
-second one uses the same auxiliary function |vector_to_row| that was used above.
+@ There are two corresponding externalising conversions for matrices, and also a
+conversion applying |vector_to_row| on each element of a list of vectors. Since
+they are very similar to the conversion of a matrix into a list of vectors, we
+also define wrappers for built-in functions |rows| and |columns| here; the
+second in fact does the same as the implicit conversion and is indeed called by
+it.
 
 @< Local function def... @>=
 
-void matrix_veclist_convert()
+void rows_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  own_row result = std::make_shared<row_value>(m->val.numRows());
+  for(unsigned int i=0; i<m->val.numRows(); ++i)
+    result->val[i]=std::make_shared<vector_value>(m->val.row(i));
+  push_value(result);
+}
+void columns_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
   own_row result = std::make_shared<row_value>(m->val.numColumns());
   for(unsigned int j=0; j<m->val.numColumns(); ++j)
     result->val[j]=std::make_shared<vector_value>(m->val.column(j));
   push_value(result);
 }
+void matrix_veclist_convert()
+{ columns_wrapper(expression_base::single_value); }
 @)
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
@@ -3193,6 +3252,36 @@ void matrix_shape_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ We have a functions for selecting a single row from a matrix (The latter can
+be done using subscription syntax as well, so it could have been omitted, but we
+do not want to associate even a slight efficiency penalty on using a named
+function instead, which can be more readable in certain contexts.)
+
+@< Local function definitions @>=
+inline std::string range_mess (int i,size_t n,const char* what)
+{ std::ostringstream o;
+  o << what << " index " << i << " out of range (0<= . <" << n << ')';
+  return o.str();
+}
+@)
+void matrix_row_wrapper(expression_base::level l)
+{ int i=get<int_value>()->int_val();
+  shared_matrix m=get<matrix_value>();
+  if (static_cast<unsigned int>(i) >= m->val.numRows())
+    throw runtime_error(range_mess(i,m->val.numRows(),"row"));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(m->val.row(i)));
+}
+@)
+void matrix_column_wrapper(expression_base::level l)
+{ int j=get<int_value>()->int_val();
+  shared_matrix m=get<matrix_value>();
+  if (static_cast<unsigned int>(j) >= m->val.numColumns())
+    throw runtime_error(range_mess(j,m->val.numColumns(),"column"));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(m->val.column(j)));
+}
+
 @ Here are functions for extending vectors one or many elements at a time.
 
 @< Local function definitions @>=
@@ -3964,6 +4053,10 @@ install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
+install_function(matrix_row_wrapper,"row","(mat,int->vec)");
+install_function(matrix_column_wrapper,"column","(mat,int->vec)");
+install_function(rows_wrapper,"rows","(mat->[vec])");
+install_function(columns_wrapper,"columns","(mat->[vec])");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");

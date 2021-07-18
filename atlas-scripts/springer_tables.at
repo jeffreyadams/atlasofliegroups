@@ -1,4 +1,5 @@
-<nilpotent_orbits.at
+<basic.at
+<nilpotent_orbits.at { type |ComplexNilpotent|, |diagram_normalized| }
 <character_tables.at
 <character_table_tensor.at
 
@@ -12,10 +13,10 @@ set_type [SpringerTable=
   (ComplexNilpotent->int) springer
   )]
 
-set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
-set characters(SpringerTable st)=[[int]]:st.ct.characters
+set root_datum(SpringerTable st) = RootDatum: st.ct.root_datum
+set characters(SpringerTable st) = [[int]]: st.ct.characters
 set generic_degree(SpringerTable st) = (int->int): st.ct.generic_degree
-set character_table(SpringerTable st)=CharacterTable: st.ct
+set character_table(SpringerTable st) = CharacterTable: st.ct
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:
