@@ -15,6 +15,11 @@ set_type [SpringerTable=
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 set characters(SpringerTable st)=[[int]]:st.ct.characters
 set generic_degree(SpringerTable st) = (int->int): st.ct.generic_degree
+set generic_degree_safe(SpringerTable st) = (int->int):(int i):
+ if st.ct.has_generic_degree(i) then st.ct.generic_degree(i) else -1 fi
+set generic_degree_string(SpringerTable st)=(int->string):(int i):
+ if st.ct.has_generic_degree(i) then st.ct.generic_degree(i).to_string else "" fi
+
 set character_table(SpringerTable st)=CharacterTable: st.ct
 
 {equality of normalized diagrams}
