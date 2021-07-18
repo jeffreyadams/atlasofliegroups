@@ -1000,8 +1000,8 @@ class root_datum_value : public value_base
   static root_datum_entry::Pooltype pool;
   static HashTable<root_datum_entry,unsigned short> hash;
   static std::vector<root_datum_weak_ptr> store;
-  mutable containers::simple_list @|
-    <std::pair<const WeightInvolution,inner_class_weak_ptr> > classes;
+  mutable simple_list<std::pair<const WeightInvolution,inner_class_weak_ptr> >
+    classes;
   mutable std::shared_ptr<WeylGroup> W_ptr;
 public:
   const RootDatum val;
@@ -1364,6 +1364,24 @@ void two_rho_check_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
 }
 
+@ Here is an auxiliary function that will facilitate the recurring task of
+converting a (co)root index from the user range (which has negative values for
+negative (co)roots) to the unsigned internal root numbering, while checking that
+the index is in the valid range.
+
+@< Local function definitions @>=
+RootNbr internal_root_index(const RootDatum& rd, int index, bool is_coroot)
+{
+  RootNbr npr = rd.numPosRoots();
+  RootNbr alpha = npr+index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal "<< (is_coroot ? "co" : "") << "root index " << index;
+    throw runtime_error(o.str());
+  }
+  return alpha;
+}
+
 @ The following functions allow us to look at individual simple roots and simple
 coroots stored in a root datum value. We adopt a convention that shifts root
 indices so that the simple (and positive) roots start at index~$0$, and such
@@ -1376,26 +1394,15 @@ apply a shift by the number of positive roots here.
 void root_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
+@)
 void coroot_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
@@ -1432,27 +1439,15 @@ roots respectively coroots, and we give the user access to these.
 void root_expression_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(rd->val.root_expr(alpha)));
 }
 
 void coroot_expression_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(rd->val.coroot_expr(alpha)));
 }
@@ -1467,27 +1462,15 @@ corresponding coroot is short.
 void is_long_root_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l!=expression_base::no_value)
     push_value(whether(is_long_root(rd->val,alpha)));
 }
 @)
 void is_long_coroot_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd = get<root_datum_value>();
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l!=expression_base::no_value)
     push_value(whether(is_long_coroot(rd->val,alpha)));
 }
@@ -1504,16 +1487,11 @@ signed indexing convention of root systems.
 void root_ladder_bottoms_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l==expression_base::no_value)
     return;
 
+  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
@@ -1524,18 +1502,13 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
 }
 @)
 void coroot_ladder_bottoms_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l==expression_base::no_value)
     return;
 
+  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
@@ -2356,7 +2329,7 @@ lies in another component of the diagram we have a Complex inner class.
 
 @< Compute the Lie type |type|, the inner class... @>=
 { DynkinDiagram diagram(rd.cartanMatrix());
-  containers::sl_list<RankFlags> comps =
+  sl_list<RankFlags> comps =
     diagram.components(); // connected components
   type = diagram.classify_semisimple(pi,true);
     // |pi| normalises to Bourbaki order
@@ -5144,7 +5117,7 @@ void KL_block_wrapper(expression_base::level l)
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
-  containers::sl_list<BlockElt> survivors;
+  sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z=0; z<block.size(); ++z)
     if (block.survives(z,singular))
@@ -5280,7 +5253,7 @@ void partial_KL_block_wrapper(expression_base::level l)
       subset.insert(y);
   @)
   const RankFlags singular = block.singular(gamma);
-  containers::sl_list<BlockElt> survivors;
+  sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z : subset)
     if (block.survives(z,singular))
@@ -5329,7 +5302,7 @@ void dual_KL_block_wrapper(expression_base::level l)
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
-  containers::sl_list<BlockElt> survivors; // indexes into |block|
+  sl_list<BlockElt> survivors; // indexes into |block|
   BlockEltList loc(block.size(),UndefBlock);
     // from |dual_block| index to |survivors| index
   const BlockElt last=block.size()-1;
