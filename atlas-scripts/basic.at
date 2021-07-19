@@ -846,12 +846,6 @@ set simply_connected (RootDatum rd) = RootDatum:
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
   root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
 
-{ root datum whose coroots are those integral on p.infinitesimal_character }
-set integrality_datum (Param p)= RootDatum:
-  integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
-set integrality_rank (Param p) = int: { this really should be built-in }
-  semisimple_rank(integrality_datum(p))
-
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
   In particular any subset of simple roots taken in any order will be valid. }
@@ -986,16 +980,6 @@ set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
 set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
   let (n,d) = %v in coreflect(rd,n,alpha)/d
 
-{ object-like versions: }
-set reflect (RootDatum rd) = ((int,ratvec)->ratvec):
-  (int i, ratvec v): ratvec: reflect(rd,i,v)
-set reflect (RootDatum rd) = ((vec,ratvec) -> ratvec):
-  (vec alpha, ratvec v): ratvec: reflect(rd,alpha,v)
-set coreflect (RootDatum rd)=((ratvec,int) -> ratvec):
-  (ratvec v, int i): ratvec: coreflect(rd,v,i)
-set coreflect (RootDatum rd)=((ratvec,vec) -> ratvec):
-  (ratvec v, vec alpha): ratvec: coreflect(rd,v,alpha)
-
 { in matrix version reflect becomes left_reflect and coreflect right_reflect }
 set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
   n_rows(M) # for v in M do reflect(rd,i,v) od
@@ -1070,8 +1054,7 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
   all(for x in numer(v)*poscoroots(rd) do !=x od)
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
-set is_integrally_dominant (RootDatum rd,ratvec v) = bool:
-  is_dominant(integrality_datum(rd,v),v)
+{ and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
 
 { reversing order, simplilar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
@@ -1082,6 +1065,8 @@ set is_regular (ratvec v, RootDatum rd)= bool: { tests all positive roots }
   all(for x in numer(v)*posroots(rd) do !=x od)
 set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
   =(v*simple_roots(rd)%1)
+set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
+  is_integrally_dominant(dual(rd),v)
 
 { the following should replace the needlessly complicacted built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
@@ -1536,6 +1521,12 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+
+{ root datum whose coroots are those integral on p.infinitesimal_character }
+set integrality_datum (Param p)= RootDatum:
+  integrality_datum(p.real_form, p.infinitesimal_character)
+set integrality_rank (Param p) = int:
+  integrality_rank(p.real_form, p.infinitesimal_character)
 
 { whether gamma dominant, and if not witnessing simple coroot for this }
 set is_dominant (Param p) = (bool,int):

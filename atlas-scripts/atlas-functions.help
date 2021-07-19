@@ -379,6 +379,10 @@ mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
   subsystem of the coroots of rd that take an integral value on gamma.
+integrality_rank: (RootDatum,ratvec->int): semisimple rank of integrality datum
+is_integrally_dominant: (RootDatum,ratvec->bool): dominance for integral coroots
+  So integrally_dominant(rd,gamma) holds if and only if there are no positive
+  coroots alpha_v for which alpha_v*gamma is a (strictly) negative integer
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:

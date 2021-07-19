@@ -1683,6 +1683,46 @@ void integrality_datum_wrapper(expression_base::level l)
       (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
 
+@ Some function to allow finding the (semisimple) rank and testing dominance for
+the integral system without constructing the full integrality datum.
+
+@< Local function definitions @>=
+void integrality_rank_wrapper(expression_base::level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>
+      (rootdata::integrality_rank(rd->val,lambda->val)));
+}
+@)
+void is_integrally_dominant_wrapper(expression_base::level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l==expression_base::no_value)
+    return;
+  PreRootDatum ipd = rootdata::integrality_predatum(rd->val,lambda->val);
+  for (unsigned int j=0; j<ipd.semisimple_rank(); ++j)
+    if (ipd.simple_coroot(j).dot(lambda->val.numerator())<0)
+    {@;
+      push_value(global_false); return;
+    }
+  push_value(global_true);
+}
+
 @ A related function computes a list of fractions of a line segment where the
 set of roots with integrality is non-empty.
 
@@ -1770,6 +1810,10 @@ install_function(mod_central_torus_info_wrapper,@|
 		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(integrality_datum_wrapper,@|
                  "integrality_datum","(RootDatum,ratvec->RootDatum)");
+install_function(integrality_rank_wrapper,@|
+                 "integrality_rank","(RootDatum,ratvec->int)");
+install_function(is_integrally_dominant_wrapper,@|
+                 "is_integrally_dominant","(RootDatum,ratvec->bool)");
 install_function(integrality_points_wrapper,@|
                  "integrality_points","(RootDatum,ratvec->[rat])");
 
