@@ -177,6 +177,21 @@ set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[(RealForm,vec)]:
    ##for L in list do let (b,v)=is_noticed_orbit_in_M (O,L) in if b then [(L,v)]
                          else [] fi od
 
+set Z_component_generators (RealForm G) = [ratvec]:
+   let (B,v)=filter_units(adapted_basis
+                ( (1-distinguished_involution(G))##simple_roots(G) ))
+   in if #v=0 then [null(rank(G))]
+        else let fcw=fundamental_coweights(G)
+	     in for i:#v do sum(rank(G), for a@j in fcw do a*B[i][j] od)
+	                 od fi
+
+{set center(RootDatum) = [ratvec]:
+  let (B,) = filter_units(adapted_basis(^simple_roots(rd)))
+  , fcws = fundamental_coweights(rd)
+  in for col in B { compute |fcws*col| }
+     do sum(rank(rd), for v@i in fcws do v*col[i] od)
+     od}
+
 set generators_of_component_group (RealNilpotent (H,x,()))=
 [(RealForm,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
   let rd=root_datum(x), G=real_form(x)
@@ -197,6 +212,33 @@ set generators_of_component_group (RealNilpotent (H,x,()))=
             = semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad)
    then Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od
    in (EL,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc) od
+
+set test_centers (RealForm G, (RealForm EL,vec H_L))=void:
+   let L=root_datum(EL),rd=root_datum(G)
+   then Lmod=mod_central_torus(L)
+   then Z_Lmod=elements_of_center(Lmod)
+   then L_rad=radical_basis(L)
+   then (,M)=Levi_of_subspace(rd,L_rad)
+   then Z_Lmod_reg=##for v in Z_Lmod do
+     if dimension(centralizer(M,lift(L,v)))=L.dimension then [v]
+     else [] fi od
+   then Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od
+   then (,Levi_H_L_M)=Levi_of_coweight(M,H_L)
+   then  (,Levi_H_L)=Levi_of_coweight(rd,H_L)
+   {then (indices,Z_Lmod_reg_lifted_cc)
+               = semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)}
+   then (indices,Z_Lmod_reg_lifted_cc)
+            = semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad)
+   then Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od
+   in  prints("Lmod= ",Lmod);
+        prints("Z_Lmod= ",Z_Lmod);
+	prints("L_rad= ",L_rad);
+	prints("M= ",M);
+	prints("Z_Lmod_reg= ",Z_Lmod_reg);
+	prints(" Z_Lmod_reg_lifted= ", Z_Lmod_reg_lifted);
+	prints("Levi_H_L_M= ",Levi_H_L_M);
+	prints("Levi_H_L= ",Levi_H_L)
+
 
 set component_datum(RealNilpotent O)=(RealNilpotent,[int],[(RealForm,[ratvec])]):
   if O.root_datum.is_abelian then
@@ -220,4 +262,3 @@ set is_K_conjugate(KGBElt x,vec mu,vec lambda)=bool:
    let ((,v),,,)=make_strongly_dominant(x,mu),
    ((,w),,,)=make_strongly_dominant(x,lambda)
    in v=w
-   
