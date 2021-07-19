@@ -1,0 +1,78 @@
+<all.at
+
+set conjugacy_classes_reflections_simple(RootDatum rd)=[WeylElt]:
+assert(rd.derived.is_simple,"Root Datum is not simple");
+let f=rd.invariant_form then
+l_0=f(rd.posroots[0],rd.posroots[0]) in
+let ()=prints("l_0=",l_0) in
+ let j=first(for i:#rd.posroots do i>0 and f(rd.posroots[i],rd.posroots[i]) != l_0 od) in
+ let ()=prints("j=",j) in
+ if j=-1 then [W_elt(rd,[0])] else [W_elt(rd,[0]),W_elt(rd,[j])] fi
+
+set conjugacy_classes_reflections(RootDatum rd)=
+##for f in rd.simple_factors do
+ for w in conjugacy_classes_reflections_simple(f) do prints("w=",w);W_elt(rd,w.matrix) od od
+
+{if you have the WeylClassTable this is better:}
+set conjugacy_classes_reflections(WeylClassTable wct)=[int]:
+##for w@j in wct.class_representatives do if w.length=1 then [j] else [] fi od
+
+set omega_L(CharacterTable ct, int j,(WeylElt->int) weight_function)=
+let char=ct.characters[j] in
+rat_as_int(sum(
+for i in conjugacy_classes_reflections(ct.class_table) do
+ char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od))
+
+
+
+
+{ adapted from standard_Levi_conjugacy_representatives in Levi_subgroups.at}
+set max_standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
+   let reps_by_rho ([[int]] list) = [[int]]: { list of chosen standard Levis }
+      let rho2s = [vec]:[] { list of known dominant $2\rho$ values }
+      in for subset in list
+	 do let rho2=dominant(rd,two_rho(rd,subset))
+	 in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
+	    then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
+	    else [] { |rho2| was already present, contribute nothing }
+	    fi
+	 od.## { wrap up contributing standard Levis as result |reps_by_rho| }
+   , r = rd.semisimple_rank
+in { now apply |reps_by_rho| to each size class, and concatenate the results }
+{   for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##}
+reps_by_rho(choices_from(#r,r-1))
+
+set max_Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in max_standard_Levi_conjugacy_representatives(rd)
+do complex_Levi(rd,simple_roots) od
+
+set f(RootDatum rd, CharacterTable ct,int i)=
+let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
+ prints("a_E: H=", H);
+ if H.is_abelian then prints("H is abelian: H=",H);1
+ else
+
+  {def of a_prime_E:}
+  let rec_fun a_prime_E(RootDatum L,CharacterTable ct_L,int j)=int:
+  prints("a_prime_E: L=", L);
+  if L.is_abelian then 1 else
+   max(
+   ##(##for M in  max_Levi_subgroups(L) do
+    let ct_M=M.character_table in
+    for char_M@k in  ct_M.characters do
+     let ind=ct_L.decompose(induce_character(M,L,ct_M,ct_L,char_M)) in
+     let ()=prints("ind: ", ind, "r=",r) in
+     if ind[r]>0 then [a_E(M,ct_M,k)] else [] fi
+    od
+   od))
+  fi {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
+  {end def of recursive function a_prime_E}
+  
+  in max(a_prime_E(H,ct_H,r).print,a_prime_E(H,ct_H,ct_H.tensor_sign_index(r).print))
+ fi {end if H.is_abelian}
+ {end def of recursive function a_E}
+in
+a_E(rd,ct,i) 
+
+
+set f(RootDatum rd,int i)=f(rd,rd.character_table,i)

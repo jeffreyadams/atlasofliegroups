@@ -213,7 +213,7 @@ simple_roots_of_L=[a_0,a_1,...] means that
 the simple roots of L are [G.posroots[a_0],...
 }
 set induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) in
+let L=subgroup_by_simple_indices(G,simple_roots_of_L) in
 induce_character(L,G,ct_G,pi_L)
 
 set induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
@@ -221,24 +221,24 @@ induce_character(G,G.character_table,simple_roots_of_L,pi_L)
 
 set induce_trivial(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
 let G=ct_G.root_datum then
-L=subgroup_by_simple(G,simple_roots_of_L) then
+L=subgroup_by_simple_indices(G,simple_roots_of_L) then
 ct_L=L.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.trivial)
 
 set induce_trivial(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) then
+let L=subgroup_by_simple_indices(G,simple_roots_of_L) then
 ct_L=L.character_table then
 ct_G=G.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.trivial)
 
 set induce_sign(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
 let G=ct_G.root_datum then
-L=subgroup_by_simple(G,simple_roots_of_L) then
+L=subgroup_by_simple_indices(G,simple_roots_of_L) then
 ct_L=L.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.sign)
 
 set induce_sign(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) then
+let L=subgroup_by_simple_indices(G,simple_roots_of_L) then
 ct_L=L.character_table then
 ct_G=G.character_table in
 induce_character(L,G,ct_L,ct_G,ct_L.sign)
@@ -247,7 +247,7 @@ induce_character(L,G,ct_L,ct_G,ct_L.sign)
  but included here because of their particular importance}
 set truncate_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
 {let L=Levi_datum(ct_G.root_datum,simple_roots_L) then}
-let L=subgroup_by_simple(ct_G.root_datum,simple_roots_L) then
+let L=subgroup_by_simple_indices(ct_G.root_datum,simple_roots_L) then
 n=nr_of_posroots(L) then
 ind=ct_G.decompose(induce_sign(ct_G,simple_roots_L)) then
 ()=prints("ind=", ind) then
@@ -260,7 +260,7 @@ od in
 assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
 
 set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=int:
-let L=subgroup_by_simple(ct_G.root_datum,simple_roots_L) then
+let L=subgroup_by_simple_indices(ct_G.root_datum,simple_roots_L) then
 n=nr_of_posroots(L) then
 ind=ct_G.decompose(induce_trivial(ct_G,simple_roots_L)) then
 rv=##for i:#ind do

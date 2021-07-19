@@ -44,8 +44,9 @@ set subgroup (RootDatum rd, [vec] roots) = (bool,RootDatum):
   fi
 
 {roots given by indices (in all roots) rather than vecs}
-set subgroup(RootDatum rd,[int] roots)=(bool,RootDatum):
-subgroup(rd,for j in roots do roots(rd)[j] od)
+{this has been replaced by sub_datum@(RootDatum,[int]) in basic.at}
+{set subgroup(RootDatum rd,[int] roots)=(bool,RootDatum):
+subgroup(rd,for j in roots do roots(rd)[j] od)}
 
 {only specify the positive roots}
 set subgroup_from_positive(RootDatum rd,[vec] roots)=(bool,RootDatum):
@@ -64,14 +65,20 @@ else root_datum(for v in roots do v od
 	       ,rd.prefers_coroots)
 fi
 
+set subgroup_by_simple_indices(RootDatum rd,[int] roots)=RootDatum:
+subgroup_by_simple(rd,for i in roots do rd.simple_roots[i] od)
+
 { do what |sub_datum| in basic.at does, but use allways-positive indices!
   in other words, this ONLY works if |roots| are indices into |rd.roots| }
-set subgroup_by_simple(RootDatum rd,[int] roots)=RootDatum:
+  {use sub_datum instead}
+  {note: roots(rd)[0] is a negative root}
+{set subgroup_by_simple(RootDatum rd,[int] roots)=RootDatum:
 if #roots=0 then complex_torus(rank(rd)) else
 root_datum(for i in roots do roots(rd)[i] od
 	  ,for i in roots do coroots(rd)[i] od
 	  ,rd.prefers_coroots)
 fi
+}
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U
@@ -447,7 +454,8 @@ set is_pseudo_Levi_in_simple_adjoint(RootDatum rd_L,RootDatum rd) = bool:
 
 set adjoint_image(RootDatum rd_L,RootDatum rd)=RootDatum:
 let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
-in subgroup_by_simple(rd.adjoint,simple_roots_L)
+{in subgroup_by_simple(rd.adjoint,simple_roots_L)}
+in sub_datum(rd.adjoint,simple_roots_L)
 
 set is_pseudo_Levi_in_simple(RootDatum rd_L,RootDatum rd)=bool:
 is_pseudo_Levi_in_simple_adjoint(adjoint_image(rd_L,rd),rd.adjoint)
