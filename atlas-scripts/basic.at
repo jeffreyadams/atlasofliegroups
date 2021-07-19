@@ -324,9 +324,8 @@ set split_lines (string text) = [string]:
   od.##
 )
 
-set is_substring (string s, string text) = bool:
-  let s0=for c in s do c od, t0=for c in text do c od in
-  >=last(#t0-#s0,(int start):all(#s0,(int i):t0[start+i]=s0[i]))
+set is_substring (string key, string text) = bool:
+  let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
   for line in split_lines(text)
@@ -1850,7 +1849,10 @@ set purity (ParamPol P)=(int,int,int):
 { find index of item in list, or -1 if not found; first does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
+set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }
+   let P = G.null_module + for q@i in L do (i+1{nonzero!},q) od
+   in (Param p) int: P[p].int_part-1
+set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
 set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)

@@ -8,11 +8,11 @@ set eval (i_poly_mat M, int k) = mat:
 { map from index in B1 to matching index in B2, and whether it's well defined }
 set permutation ([Param] B1, [Param] B2) = ([int],bool):
 ( if =#B2 then []
-  else let P = B2[0].null_module + for q@i in B2 do (Split:(i,1){nonzero!},q) od
+  else let find = find_in(B2[0].real_form,B2)
   in for p in B1
-     do let c=P[p] in
-        if =c then return ([],false) {signal failure to locate |p|}
-	else c.int_part { recover index at which |p| was contributed to |P| }
+     do let c=find(p) in
+        if c.< then return ([],false) {signal failure to locate some element}
+	else c
 	fi
      od
   fi
