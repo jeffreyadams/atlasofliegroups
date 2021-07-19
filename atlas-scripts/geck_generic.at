@@ -18,13 +18,13 @@ set conjugacy_classes_reflections(WeylClassTable wct)=[int]:
 ##for w@j in wct.class_representatives do if w.length=1 then [j] else [] fi od
 
 set omega_L(CharacterTable ct, int j,(WeylElt->int) weight_function)=
-let char=ct.characters[j] in
-rat_as_int(sum(
+let char=ct.characters[j] then
+r=rat_as_int(sum(
 for i in conjugacy_classes_reflections(ct.class_table) do
  char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od))
+ in prints("omega_L, j=", j, " ", r);r
 
-
-
+set default_weight_function=(WeylElt->int):(WeylElt w):1
 
 { adapted from standard_Levi_conjugacy_representatives in Levi_subgroups.at}
 set max_standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
@@ -49,7 +49,7 @@ do complex_Levi(rd,simple_roots) od
 set f(RootDatum rd, CharacterTable ct,int i)=
 let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
  prints("a_E: H=", H);
- if H.is_abelian then prints("H is abelian: H=",H);1
+ if H.is_abelian then prints("H is abelian: H=",H);0
  else
 
   {def of a_prime_E:}
@@ -68,7 +68,7 @@ let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
   fi {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
   {end def of recursive function a_prime_E}
   
-  in max(a_prime_E(H,ct_H,r).print,a_prime_E(H,ct_H,ct_H.tensor_sign_index(r).print))
+  in max(a_prime_E(H,ct_H,r).print,(a_prime_E(H,ct_H,ct_H.tensor_sign_index(r)) - omega_L(ct_H,r,default_weight_function@WeylElt)).print)
  fi {end if H.is_abelian}
  {end def of recursive function a_E}
 in
