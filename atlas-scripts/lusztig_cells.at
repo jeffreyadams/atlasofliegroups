@@ -109,7 +109,7 @@ else  {need induction; compute L, sigma_lusztig}
  ()=if sigma_lusztig_verbose
    then prints(("L=", L,new_line,"H_L=", H_L,new_line,"O_L:", O_L.H, " ", O_L.diagram) ) fi then
 { roots_L=for alpha in L.simple_roots do find(st_G.root_datum.roots,alpha) od then}{no: should be G.roots}
- roots_L=for alpha in L.simple_roots do find(G.roots,alpha) od then
+ roots_L=for alpha in L.simple_roots do {find(G.roots,alpha)} root_index(G,alpha) od then
 { ()=if sigma_lusztig_verbose then prints("L.simple_roots: ", L.simple_roots, new_line, "st_G.root.datum.roots: ", st_G.root_datum.roots) fi then}
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
  sigma_lusztig=[int]:
@@ -125,6 +125,7 @@ else  {need induction; compute L, sigma_lusztig}
  fi  {now have sigma_lusztig=character of L}{end if O_L=L.zero_orbit} then
  {next: induce sigma_lusztig}
   ()=if sigma_lusztig_verbose then prints("inducing character from L:", L,new_line, "roots_L: ", roots_L, new_line, "sigma_lusztig: ", sigma_lusztig) fi then
+  ()=prints("now L=",L, "roots_L=",roots_L) then
  ind=induce_character(G,ct_G,roots_L,sigma_lusztig) then
   ()=if sigma_lusztig_verbose then
    prints("finished inducing character from L:", L, new_line, "ind=(2)" , ind,new_line);
@@ -161,11 +162,13 @@ sort_u(
      let ()=if sigma_lusztig_verbose then prints("computing sigma_lusztig for orbit=", O, " ", O.diagram, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
  sigma_lusztig(G,st_G,O,M,H_M,y)
 od)
+
 set lusztig_cell_plus(RootDatum G,SpringerTable st_G,ComplexNilpotent orbit)=[[int]]:
-let basis=orbit.Bala_Carter_Levi.radical_basis in
+
 sort_u(
- let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
  ##for (M,H_M,y) in component_representatives_plus(orbit) do
+ let basis=M.radical_basis in
+ let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
   for v in variants do
      let ()=if sigma_lusztig_verbose then prints("y=", y, new_line, "v=",v/(G.coxeter_number+1)) fi  in
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
@@ -190,10 +193,10 @@ od
 
 set lusztig_cells_plus(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
 for orbit@counter in orbits do
-let basis=orbit.Bala_Carter_Levi.radical_basis in
- let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
  ##for (M,H_M,y) in component_representatives_plus(orbit) do
-  for v in variants do
+ let basis=M.radical_basis in
+ let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
+ for v in variants do
      let ()=if sigma_lusztig_verbose then prints("y=", y, new_line, "v=",v/(G.coxeter_number+1)) fi  in
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
      basis, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in

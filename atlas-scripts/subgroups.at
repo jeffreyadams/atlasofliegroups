@@ -66,7 +66,8 @@ else root_datum(for v in roots do v od
 fi
 
 set subgroup_by_simple_indices(RootDatum rd,[int] roots)=RootDatum:
-subgroup_by_simple(rd,for i in roots do rd.simple_roots[i] od)
+{subgroup_by_simple(rd,for i in roots do rd.simple_roots[i] od)}
+subgroup_by_simple(rd,for i in roots do rd.posroots[i] od)
 
 { do what |sub_datum| in basic.at does, but use allways-positive indices!
   in other words, this ONLY works if |roots| are indices into |rd.roots| }
@@ -453,7 +454,8 @@ set is_pseudo_Levi_in_simple_adjoint(RootDatum rd_L,RootDatum rd) = bool:
   rd_L.mod_central_torus.has_cyclic_center
 
 set adjoint_image(RootDatum rd_L,RootDatum rd)=RootDatum:
-let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
+let simple_roots_L=for alpha in simple_roots(rd_L) do {find(roots(rd),alpha)}
+root_index(rd,alpha) od
 {in subgroup_by_simple(rd.adjoint,simple_roots_L)}
 in sub_datum(rd.adjoint,simple_roots_L)
 
@@ -470,6 +472,7 @@ in subgroup_by_simple(rd,simple_roots_factor_L)
 set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
 let list=diagram_components(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
+let ()=prints("i=",i) in
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
 {semisimple element t so that L=Cent_G(t)^0}

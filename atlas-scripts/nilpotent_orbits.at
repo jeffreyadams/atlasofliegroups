@@ -781,12 +781,13 @@ od
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
 [(RootDatum,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
 for (L,H_L) in pseudo_Levis (rd,(),H) do
-{let ()=prints("doing H_L:",H_L) in
-let ()=prints("L=",L) in}
+let ()=prints("L=",L) in
  let Lmod=mod_central_torus(L) then
  Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
  L_rad=radical_basis(L) {central torus} then
+ ()=prints("OK") then
  (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
+ ()=prints("M=",M) then
 { A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
  { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to
 list of ratvecs}  then}
