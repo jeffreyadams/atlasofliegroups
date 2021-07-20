@@ -1,4 +1,4 @@
-{the Lusztig map goes from triples (O,x,xi) to W^
+{the Lusztig map goes from triples (O,x,xi) to W^ 
  this file implements an algorithm (conjectural)
  to implement this when xi=1
  the set obtained for fixed O, running over x,
