@@ -6,10 +6,7 @@
 <sort.at
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
-set fac (int n) = int:
-   if n<2 then assert(n.>=,"Factorial of negative integer"); 1
-   else let p=n in for i:n-2 from 2 do p*:=i od; p
-   fi
+{ |fac@int| is now defined in basic.at }
 
 set binom (int n, int k) = int:
    if n.>= and k+k>n then k:=n-k fi; { use symmetry to limit |k| }

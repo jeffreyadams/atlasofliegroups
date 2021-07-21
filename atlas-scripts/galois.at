@@ -29,12 +29,6 @@ let rf=ic.real_forms in for i in ic.strong_real_forms_indices do rf[i] od
 set print_strong_real (RealForm G) = void:
   print_strong_real(Cartan_class(G,0)) { no need to convert to InnerClass here }
 
-{ these redefine built-in behavior, but does it make any difference?
-  Isn't it that the most compact Cartan has _all_ real_forms of its InnerClass?
-}
-set real_forms (InnerClass ic)=[RealForm]: real_forms(Cartan_class(ic,0))
-set real_forms (RealForm G) = [RealForm]: real_forms(Cartan_class(G,0))
-
 { identify SO*(2m) via the information of square_classes(SO(2m,0)) }
 set SOstar (int n) = RealForm:
   let ic=InnerClass:SO(n,0) then sc1=square_classes(ic)[1] { starred forms }

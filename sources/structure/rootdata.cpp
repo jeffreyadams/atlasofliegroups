@@ -1585,6 +1585,24 @@ Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S)
   return sum;
 }
 
+bool is_long_root(const RootSystem& rs, RootNbr alpha)
+{ conjugate_to_simple(rs,alpha); // henceforth |alpha| is a simple root index
+  const RootNbr neg_alpha = rs.numPosRoots()-1-alpha;
+  for (unsigned int j=0; j<rs.numPosRoots(); ++j) // negative coroot index
+    if (rs.bracket(neg_alpha,j) < -1)
+      return true;
+  return false;
+}
+
+bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
+{ conjugate_to_simple(rs,alpha); // henceforth |alpha| is a simple coroot index
+  const RootNbr neg_alpha = rs.numPosRoots()-1-alpha;
+  for (unsigned int i=0; i<rs.numPosRoots(); ++i) // simple root index
+    if (rs.bracket(i,neg_alpha) < -1)
+      return true;
+  return false;
+}
+
 /*****************************************************************************
 
                 Chapter III -- Auxiliary methods.

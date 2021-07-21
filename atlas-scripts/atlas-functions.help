@@ -335,6 +335,14 @@ root_expression: (RootDatum,int->vec): Express root additively in simple roots
   where r=semisimple_rank(rd)
 coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
   So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
+is_long_root: (RootDatum,int->bool): Whether a root is considered to be long
+is_long_coroot: (RootDatum,int->bool): Whether a coroot is considered to be long
+  Being long is defined to mean having a pairing strictly less than -1 with
+  some (co)root other than its the dual of its own opposite. This gives usual
+  "long" in types Bn,Cn,G2,F4, and always "short" short simply laced types.
+root_involution : (RootDatum,int->vec): full system involution for reflection
+  Renumbering the full root system from 0 for the most negative root, this gives
+  the involution of those roots for the reflection for the given root/coroot
 root_ladder_bottoms: (RootDatum,int->[int] Starting indices of root ladders
   For (rd,i) the gives those j for which root(rd,j)-root(rd,i) is not a root
 coroot_ladder_bottoms: (RootDatum,int->[int] Starting indices of coroot ladders
@@ -374,6 +382,10 @@ mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
   subsystem of the coroots of rd that take an integral value on gamma.
+integrality_rank: (RootDatum,ratvec->int): semisimple rank of integrality datum
+is_integrally_dominant: (RootDatum,ratvec->bool): dominance for integral coroots
+  So integrally_dominant(rd,gamma) holds if and only if there are no positive
+  coroots alpha_v for which alpha_v*gamma is a (strictly) negative integer
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:
@@ -403,6 +415,9 @@ from_dominant: (vec,RootDatum->vec,WeylElt): write as dominant coweight * W-elt
   Called for (cowt,rd), find in the oribit of cowt under the Weyl group W of rd
   the dominant coweight v, and minimal w in W with cowt=v*w; return (v,w), Note
   that using form_dominant(dual(rd),cowt) instead would rather return (w^{-1},v)
+root_permutation : (WeylElt w->vec): defined permutation of full root system
+  Renumbering the full root system from 0 for the most negative root, this gives
+  the permutation of those roots of the left action of the Weyl group element
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
@@ -1049,7 +1064,7 @@ extended_KL_block: (Param,mat->[Param],mat): extended KL data for deform
   without singular descents among the simple generators of the extended block.
   The list is also truncated by removing any elements that are beyond p from it,
   so if present, p is the last element on the list. The matrix of KL polynomials
-  is condensed to a square matrix index by just the listed elements, as in
+  is condensed to a square matrix indexed by just the listed elements, as in
   partial_KL_block. Moreover, since the deformation algorithm can work with just
   the evaluations of the P polynomials at q=-1, these evaluations are computed
   (so that the result can be returned as a plain matrix, the second component)

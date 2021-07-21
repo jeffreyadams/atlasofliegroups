@@ -324,9 +324,8 @@ set split_lines (string text) = [string]:
   od.##
 )
 
-set is_substring (string s, string text) = bool:
-  let s0=for c in s do c od, t0=for c in text do c od in
-  >=last(#t0-#s0,(int start):all(#s0,(int i):t0[start+i]=s0[i]))
+set is_substring (string key, string text) = bool:
+  let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
   for line in split_lines(text)
@@ -862,12 +861,6 @@ set simply_connected (RootDatum rd) = RootDatum:
 set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
   root_datum(id_mat(semisimple_rank(rd)),Cartan_matrix(rd),rd.prefers_coroots)
 
-{ root datum whose coroots are those integral on p.infinitesimal_character }
-set integrality_datum (Param p)= RootDatum:
-  integrality_datum(p.real_form.root_datum,let (,,gamma) =%p in gamma)
-set integrality_rank (Param p) = int: { this really should be built-in }
-  semisimple_rank(integrality_datum(p))
-
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
   In particular any subset of simple roots taken in any order will be valid. }
@@ -904,10 +897,6 @@ set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
   let i=root_index(p) in if <i then minus_1-i else i fi
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if <i then minus_1-i else i fi
-
-set is_long_root(RootDatum rd, int i) = bool:
-   let alpha=root(rd,i:=if i.< then minus_1-i else i fi)
-in any(rd.nr_of_posroots,(int j)bool: i!=j and abs(coroot(rd,j)*alpha)>1)
 
 
 set Cartan_matrix (RootDatum rd,[int] simples) = mat: { NB strange convention }
@@ -1008,16 +997,6 @@ set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
 set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
   let (n,d) = %v in coreflect(rd,n,alpha)/d
 
-{ object-like versions: }
-set reflect (RootDatum rd) = ((int,ratvec)->ratvec):
-  (int i, ratvec v): ratvec: reflect(rd,i,v)
-set reflect (RootDatum rd) = ((vec,ratvec) -> ratvec):
-  (vec alpha, ratvec v): ratvec: reflect(rd,alpha,v)
-set coreflect (RootDatum rd)=((ratvec,int) -> ratvec):
-  (ratvec v, int i): ratvec: coreflect(rd,v,i)
-set coreflect (RootDatum rd)=((ratvec,vec) -> ratvec):
-  (ratvec v, vec alpha): ratvec: coreflect(rd,v,alpha)
-
 { in matrix version reflect becomes left_reflect and coreflect right_reflect }
 set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
   n_rows(M) # for v in M do reflect(rd,i,v) od
@@ -1092,8 +1071,7 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
   all(for x in numer(v)*poscoroots(rd) do !=x od)
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
-set is_integrally_dominant (RootDatum rd,ratvec v) = bool:
-  is_dominant(integrality_datum(rd,v),v)
+{ and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
 
 { reversing order, simplilar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
@@ -1104,6 +1082,8 @@ set is_regular (ratvec v, RootDatum rd)= bool: { tests all positive roots }
   all(for x in numer(v)*posroots(rd) do !=x od)
 set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
   =(v*simple_roots(rd)%1)
+set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
+  is_integrally_dominant(dual(rd),v)
 
 { the following should replace the needlessly complicacted built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
@@ -1212,12 +1192,6 @@ set product (RootDatum rd, [WeylElt] L) = WeylElt:
   if =len then id_W(rd)
   else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
   fi
-
-set root_permutation(WeylElt w) = [int]: { permutation of all roots renumbered }
-  let rd = w.root_datum then npr=nr_of_posroots (rd)
-  then images = for alpha in posroots(rd) do root_index(rd,w*alpha) od
-  in for index in images do minus_1-index+npr ~od ##
-     for index in images do index+npr od
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
@@ -1598,6 +1572,12 @@ set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 set codim (Param p) = int: codim(p.x)
 
+{ root datum whose coroots are those integral on p.infinitesimal_character }
+set integrality_datum (Param p)= RootDatum:
+  integrality_datum(p.real_form, p.infinitesimal_character)
+set integrality_rank (Param p) = int:
+  integrality_rank(p.real_form, p.infinitesimal_character)
+
 { whether gamma dominant, and if not witnessing simple coroot for this }
 set is_dominant (Param p) = (bool,int):
   let gamma=infinitesimal_character(p) in
@@ -1910,7 +1890,10 @@ set purity (ParamPol P)=(int,int,int):
 { find index of item in list, or -1 if not found; first does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
+set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }
+   let P = G.null_module + for q@i in L do (i+1{nonzero!},q) od
+   in (Param p) int: P[p].int_part-1
+set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
 set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
