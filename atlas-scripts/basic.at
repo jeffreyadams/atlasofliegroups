@@ -1147,12 +1147,6 @@ set product (RootDatum rd, [WeylElt] L) = WeylElt:
   else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
   fi
 
-set root_permutation(WeylElt w) = [int]: { permutation of all roots renumbered }
-  let rd = w.root_datum then npr=nr_of_posroots (rd)
-  then images = for alpha in posroots(rd) do root_index(rd,w*alpha) od
-  in for index in images do minus_1-index+npr ~od ##
-     for index in images do index+npr od
-
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
 set rho_check_diff (WeylElt w) = vec:

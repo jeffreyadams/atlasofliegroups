@@ -1475,6 +1475,20 @@ void is_long_coroot_wrapper(expression_base::level l)
     push_value(whether(is_long_coroot(rd->val,alpha)));
 }
 
+@ Here we use the built-in method |simple_root_permutation| that, in spite of
+its name, works for any positive root index (counting from~$0$).
+
+@< Local function def...@>=
+void root_involution_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l==expression_base::no_value)
+    return;
+  auto perm = rd->val.simple_root_permutation(rd->val.rt_abs(alpha));
+  push_value(std::make_shared<vector_value>(perm.begin(),perm.end()));
+}
+
 @ An information about roots and coroots that is precomputed in root data and
 can be useful for the user tells for each root or coroot $\alpha$ which are the
 other roots respectively coroots $\beta$ that are at bottom of a latter
@@ -1787,6 +1801,8 @@ install_function(coroot_expression_wrapper@|,"coroot_expression"
 install_function(is_long_root_wrapper@|,"is_long_root" ,"(RootDatum,int->bool)");
 install_function(is_long_coroot_wrapper@|,"is_long_coroot"
 		,"(RootDatum,int->bool)");
+install_function(root_involution_wrapper@|,"root_involution"
+		,"(RootDatum,int->vec)");
 install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
                 ,"(RootDatum,int->[int])");
 install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"
@@ -2044,7 +2060,7 @@ and (appropriate) square matrices.
 void W_elt_weight_prod_wrapper(expression_base::level l)
 { shared_vector v = get<vector_value>();
   shared_W_elt w = get<W_elt_value>();
-  auto& rd = w->rd->val;
+  const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
   { std::ostringstream o;
     o << "Rank and weight size mismatch " @|
@@ -2057,7 +2073,7 @@ void W_elt_weight_prod_wrapper(expression_base::level l)
 void coweight_W_elt_prod_wrapper(expression_base::level l)
 { shared_W_elt w = get<W_elt_value>();
   shared_vector v = get<vector_value>();
-  auto& rd = w->rd->val;
+  const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
   { std::ostringstream o;
     o << "Coweight size and rank mismatch " @|
@@ -2115,6 +2131,27 @@ void W_codecompose_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ It is easy and efficient to compute the action of Weyl group elements on
+roots, thanks to the method |RootSystem::permuted_root|, which taps directly
+into the stored tables of root permutations for (simple) root reflections.
+
+@< Local function def...@>=
+void root_permutation_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  const RootSystem& rs = w->rd->val;
+  if (l==expression_base::no_value)
+    return;
+  const auto ww = w->W.word(w->val);
+  int_Vector result(rs.numRoots());
+  for (unsigned i=0; i<rs.numPosRoots(); ++i)
+  { const auto alpha = rs.posRootNbr(i);
+    result[alpha] = rs.permuted_root(ww,alpha);
+    result[rs.negRootNbr(i)] = rs.rootMinus(result[alpha]);
+  }
+  push_value(std::make_shared<vector_value>(std::move(result)));
+}
+
+
 @ Finally we install everything related to Weyl groups elements. Note that since
 Weyl words and (co)weights have the same \.{atlas} type \&{vec}, we need to make
 a choice whether to associate the wrapper function |W_elt_word_prod_wrapper| or
@@ -2144,6 +2181,7 @@ install_function(W_decompose_wrapper,@|
                  "from_dominant","(RootDatum,vec->WeylElt,vec)");
 install_function(W_codecompose_wrapper,@|
                  "from_dominant","(vec,RootDatum->vec,WeylElt)");
+install_function(root_permutation_wrapper,"root_permutation","(WeylElt->vec)");
 
 
 @*1 A type for complex reductive groups equipped with an involution.
