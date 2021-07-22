@@ -52,7 +52,7 @@ set signature ({finite dimensional}Param p) = (int,int):
 {.signature as a string.}
 set signature_string ({finite dimensional}Param p) = string:
   if is_hermitian(p)  then 
-  let (p,q)=signature_trace(p) in "("+p.to_string+","+q.to_string+")" else "*" fi
+  let (p,q)=signature(p) in "("+p.to_string+","+q.to_string+")" else "*" fi
 
 {. index min(p,q) of Hermitian form on a finite dimensional representation.}
 set index ({finite dimensional}Param p) = int: min(signature(p))

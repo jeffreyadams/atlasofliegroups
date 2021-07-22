@@ -39,10 +39,10 @@ set weak_packet_int (SpringerTable st_int
 		    ,ratvec gamma_target) =
       ([([Param],[WCell])],[(int,int,Param)]):
       { (blocks_and_cells,[(int,int,Param)])}
-(  assert(integrality_datum(O_check.root_datum.dual,O_check.H/2) =
-          st_int.root_datum
+{(  assert(integrality_datum(O_check.root_datum.dual,O_check.H/2) =}
+(  { don't do this: }{assert(O_check.root_datum.dual=          st_int.root_datum
 	 ,"root datum mismatch, are you using the integrality datum?")
-; if #params=0 then ([],[])
+;} if #params=0 then ([],[])
   else let O=st_int.dual_map_i(O_check)
   in if cells_verbose
      then prints("gamma_target:",gamma_target)
@@ -155,6 +155,7 @@ set weak_packet_int (SpringerTable st_int,ComplexNilpotent O_check,RealForm G) =
 { we need to move this to st_int.root_datum.dual
   this uses a permutation, which we return since it is needed later
 }
+{this commmand is no longer needed}
 set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
       (ComplexNilpotent,mat):
    let rd = {the original root datum on the group side} O_check.root_datum.dual
@@ -170,7 +171,8 @@ in {by definition permutation should relate the Cartan matrices}
          ,"permutation does not relate the Cartan matrices");
 { Note: st_int.root_datum.dual is *adjoint*,
   so O_check_rd_int.diagram = O_check_rd_int.H }
-  ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
+{  ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)}
+  ((st_int.root_datum.dual,(),O_check_rd_int.H*permutation) , permutation)
 
 
 {This is the primary weak_packet function
@@ -195,13 +197,18 @@ set weak_packet (ComplexNilpotent O_check,RealForm G) =
       	   	   gamma_final+2*rho(G)
       then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
    in prints("gamma:",gamma); prints("gamma_final:",gamma_final)
-   ;  let rd_int=integrality_datum(rd,gamma)
-      then st_int=springer_table(rd_int)
-   in prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum)
-   ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)
+   ;  let rd_int=integrality_datum(rd,gamma) then
+{      then st_int=springer_table(rd_int) then}
+{   ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)}
+   O_check_int=integral_descent(O_check) then
+   st_int=springer_table(O_check_int.root_datum.dual) then
+   ()= prints("O_check_int.dual.rd: ", O_check_int.root_datum.dual) then
+   ()=prints("st_int.rd: ", st_int.root_datum)  then
+   ()=prints("equal: ", O_check_int.root_datum.dual=st_int.root_datum)
    in prints("O_check_int:", O_check_int)
    ;  prints("computing packet for:", O_check_int)
-   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
+{   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final{,permutation},id_mat(O_check_int.root_datum.rank))}
+   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final) 
    in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
    ;  (bc,wp).print
 fi
@@ -719,11 +726,12 @@ rd_int=integrality_datum(rd,gamma) then
 st_int=springer_table(rd_int) then
 ()=prints("integral data: st_int") then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
-(O_check_int,permutation)=integral_descent(st_int,O_check) then
+{(O_check_int,permutation)=integral_descent(st_int,O_check) then}
+O_check_int=integral_descent(O_check) then 
 ()=prints("O_check_int:", O_check_int) then
-()=prints("permutation: ", permutation) then
+{()=prints("permutation: ", permutation) then}
 ()=prints("computing packet for:", O_check_int) then
-(bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
+(bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final{,permutation})
 in
 if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;
 (bc,wp)

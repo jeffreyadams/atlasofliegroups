@@ -217,7 +217,6 @@ lusztig_cells(G,st,G.orbits)
 set show_lusztig_cells(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
 prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
 let all_data=lusztig_cells(G,st_G,orbits)     {[[(M,H_M,y,j_values)]]} then
-table_header=["O","dim","i","rd_int","M","H_M","v","L","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"] then
 table=
 ##for i:#all_data do
  let data=all_data[i] in
@@ -263,14 +262,14 @@ table=
  od {for orbit}
 in {table=[[string]]}
 tabulate(
-["O","dim","i","rd_int","M","H_M","v","L","sigma","dim","deg","gdeg","char"]#
+["O","dim","i","rd_int","M","H_M","v","L","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"]#
 ##table)
 
 {show lusztig cells, running over given list of nilpotents}
 set show_lusztig_cells_plus(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
 prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
-let all_data=lusztig_cells_plus(G,st_G,orbits)     {[[(M,H_M,y,j_values)]]} then
-table_header=["O","dim","i","rd_int","M","H_M","v","L","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"] then
+let table_header=["O","dim","i","rd_int","M","H_M","y","v","Cent(y+v)","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"] then
+all_data=lusztig_cells_plus(G,st_G,orbits)     {[[(M,H_M,y,j_values)]]} then
 table=
 ##for i:#all_data do
  let data=all_data[i] in
@@ -302,7 +301,7 @@ table=
     H_M.compact_ratvec,
     y.compact_ratvec,
     v.compact_ratvec,
-    centralizer(G,y).nice_format,
+    centralizer(G,y+v).nice_format,
     "sigma=" +
      if #j_values=1 then k.to_string else
      j_values.to_string + ":" + k.to_string
@@ -317,9 +316,7 @@ table=
    od  {/for i:#data}
  od {for orbit}
 in {table=[[string]]}
-tabulate(
-["O","dim","i","rd_int","M","H_M","y","v","L","sigma","dim","deg","fdeg","char"]#
-##table)
+tabulate(table_header#(##table))
 
 
 

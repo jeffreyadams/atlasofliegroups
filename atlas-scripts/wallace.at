@@ -17,7 +17,7 @@ in (G,L)
 set grommit(int n, int k)=
 let (G,L)=wallace(n,k) then
 ()=if wallace_verbose then prints(new_line,"G=", G, new_line, "L=", L) fi then
-root_numbers=for a in L.simple_roots do find(G.roots,a) od  then
+root_numbers=for a in L.simple_roots do root_index(G,a) od  then
 ct=G.character_table then
 ind=induce_sign(ct,root_numbers) then
 (degree,t_ind)=truncate(ct,ind,ct.degree) in
@@ -29,7 +29,7 @@ assert(#t_ind=1,"truncated induction not irreducible" + t_ind.to_string);
 set grommit(CharacterTable ct, int k)=
 let (G,L)=wallace(ct.root_datum.rank,k) then
 ()=if wallace_verbose then prints(new_line,"G=", G, new_line, "L=", L) fi then
-root_numbers=for a in L.simple_roots do find(G.roots,a) od  then
+root_numbers=for a in L.simple_roots do root_index(G,a) od  then
 ind=induce_sign(ct,root_numbers) then
 (degree,t_ind)=truncate(ct,ind,ct.degree) in
 if wallace_verbose then prints("full induced of sign: ");ct.view_char(ind);
