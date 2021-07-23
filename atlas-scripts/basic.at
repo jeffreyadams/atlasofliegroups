@@ -1149,6 +1149,9 @@ set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
 set * (mat theta,WeylElt w) = mat:
   theta.n_columns ^ for row in rows(theta) do row*w od
 
+{ morphism W(rd)->W(dual(rd)), involves transpose inverse on matrices }
+set for_dual_datum(WeylElt w) = WeylElt: W_elt(dual(w.root_datum), word(w))
+
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
   let len = #L in
   if =len then id_W(rd)
