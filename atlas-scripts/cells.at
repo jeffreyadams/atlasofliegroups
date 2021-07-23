@@ -2,7 +2,7 @@
 <W_reps.at { for type |WCell|; |cell_action@(WCell,WeylElt)| }
 <character_table_reps.at { |smallest_degree_summands| }
 <springer_tables.at
-<isomorphism_W.at {for permute_character}
+<isomorphism_W.at { |permute_character|, |root_permutation@(RootDatum^2)| }
 
 set cells_verbose=false
 
@@ -41,14 +41,20 @@ set cell_characterold (CharacterTable ct,WCell cell) = [int]:
 
 {. character of representation of W on cell .}
 set cell_character (CharacterTable ct,WCell cell) = [int]:
-let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
-()=assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell") in
-if P=id_mat(#P) then
- for w in ct.class_reps do trace(cell_action(cell,w)) od
-else
- if cells_verbose then prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P) fi;
- for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
-fi
+   let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) in
+   if assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell")
+   ; P=id_mat(#P)
+   then for w in ct.class_reps do trace(cell_action(cell,w)) od
+   else
+      if cells_verbose
+      then prints
+        ("Warning: permutation needed in cell_character@(CharacterTable,WCell)"
+	,new_line, P)
+      fi
+   ; for w in ct.class_reps
+     do trace(cell_action(cell,permute(int_mapping(P),w,cell.root_datum)))
+     od
+   fi
 
 
 set cell_character(CharacterTable ct) = (WCell cell)[int]:
@@ -85,8 +91,7 @@ in case #summands
 {note that ct.root_datum must be (isomorphic to) cell.root_datum,
  which is the integrality_datum of a parameter}
 set special_character (CharacterTable ct,WCell cell) = int:
-(  let (valid,P) =
-     root_permutation(ct.root_datum.derived,cell.root_datum.derived)
+(  let (valid,P) = root_permutation(ct.root_datum,cell.root_datum)
    in assert(valid,"No root system isomorphism")
 ;  let summands =
      smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
