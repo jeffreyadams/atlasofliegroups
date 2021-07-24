@@ -22,7 +22,7 @@ let char=ct.characters[j] then
 r=rat_as_int(sum(
 for i in conjugacy_classes_reflections(ct.class_table) do
  char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od))
- in prints("omega_L, j=", j, " ", r);r
+ in prints("omega_L: j=", j, " r=", r);r
 
 set default_weight_function=(WeylElt->int):(WeylElt w):1
 
@@ -46,15 +46,16 @@ set max_Levi_subgroups(RootDatum rd)=[RootDatum]:
 for simple_roots in max_standard_Levi_conjugacy_representatives(rd)
 do complex_Levi(rd,simple_roots) od
 
-set f(RootDatum rd, CharacterTable ct,int i)=
+set generic_degree(RootDatum rd, CharacterTable ct,int i)=
 let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
- prints("a_E: H=", H);
+ prints("-----------------",new_line,"a_E: H=", H);
  if H.is_abelian then prints("H is abelian: H=",H);0
  else
 
   {def of a_prime_E:}
   let rec_fun a_prime_E(RootDatum L,CharacterTable ct_L,int j)=int:
-  prints("a_prime_E: L=", L);
+  let value=
+  prints("++++++++++++++++++++",new_line,"a_prime_E: L=", L);
   if L.is_abelian then 1 else
    max(
    ##(##for M in  max_Levi_subgroups(L) do
@@ -65,14 +66,21 @@ let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
      if ind[r]>0 then [a_E(M,ct_M,k)] else [] fi
     od
    od))
-  fi {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
+  fi
+  in prints("a_prime_E: ", value);value 
+  {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
   {end def of recursive function a_prime_E}
-  
-  in max(a_prime_E(H,ct_H,r).print,(a_prime_E(H,ct_H,ct_H.tensor_sign_index(r)) - omega_L(ct_H,r,default_weight_function@WeylElt)).print)
+  then A=a_prime_E(H,ct_H,r),
+  B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(r)) then
+  ()= prints("A=", A, new_line, "B=", B) then
+  ()=prints("tensor sign: ", ct_H.tensor_sign_index(r))
+  in max(A,B- omega_L(ct_H,r,default_weight_function@WeylElt))
  fi {end if H.is_abelian}
  {end def of recursive function a_E}
 in
-a_E(rd,ct,i) 
+a_E(rd,ct,i)
 
 
-set f(RootDatum rd,int i)=f(rd,rd.character_table,i)
+set generic_degree(RootDatum rd,int i)=generic_degree(rd,rd.character_table,i)
+set generic_degrees(RootDatum rd,CharacterTable ct)=for i:ct.n_classes do
+prints(new_line,"================================",new_line,"i=",i,new_line);generic_degree(rd,ct,i) od
