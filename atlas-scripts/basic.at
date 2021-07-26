@@ -1132,6 +1132,21 @@ set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
      )
 )
 
+{ some code proceeds by "simple factor", isolating a |sub_datum| for each;
+  functions that expect a specific simple type can call |test_simple_type| }
+
+{ test |rd| for being of simple type T (a letter in "ABCDEFG"), and return (as
+  a list of integers) a map from standard diagam labelling to |rd| simple roots
+}
+set test_simple_type(string T, RootDatum rd) = [int]:
+(  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+   then factors=simple_factors(lt) then nf=#factors
+in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
+;  let (type,rank)=factors[0]
+in assert(type=T,"Not a simple type "+T+" root datum")
+;  map
+)
+
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
 set fundamental_coweights (RootDatum rd) = [ratvec]:
@@ -1146,7 +1161,6 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			    )
 			   ,rd.prefers_coroots
 			   )
-
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:

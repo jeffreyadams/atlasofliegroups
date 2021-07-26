@@ -1,8 +1,6 @@
 <basic.at
 <combinatorics.at { for |permutation_cycles|, |leq_bipartition| etc. }
-<classical_W_classes_and_reps.at { for |test_simple_type| }
 <character_tables.at
-<character_table_C.at
 
 { orbit sizes on long respectively short roots; these characterise classes }
 set class_signature (WeylElt w) = (Partition,Partition):
