@@ -13,32 +13,24 @@
 <springer_table_torus.at
 
 {previously the character tables were constructed from a possibly
-different root datum from the given one (same up to isogeny)}
+different root datum from the given one (same up to isogeny)
+now use the given root datum exactly}
 set springer_table_simple(RootDatum rd) = SpringerTable:
 let (letter,n)=simple_type(rd) in
-if letter="A" then
- springer_table_A(character_table(rd))
-elif letter="B" then
- springer_table_B(character_table(rd))
-elif letter="C" then
- springer_table_C(character_table(rd))
-elif letter="D" then
- springer_table_D(character_table(rd))
-elif letter="F" then
- springer_table_F4(character_table(rd))
-elif letter="G" then
- springer_table_G2()
-elif letter="E" and n=6 then
-{ let ct=character_table_E6() in}
- springer_table_E6(character_table(rd))
-elif letter="E" and n=7 then
- springer_table_E7(character_table(rd))
-elif letter="E" and n=8 then
- springer_table_E8(character_table(rd))
-elif is_abelian(rd) then
-  springer_table_torus(rd)
+if letter="A" then springer_table_A(character_table_A(rd))
+elif letter="B" then springer_table_B(character_table_B(rd))
+elif letter="C" then springer_table_C(character_table_C(rd))
+elif letter="D" then  springer_table_D(character_table_D(rd))
+elif letter="F" then  springer_table_F4(character_table(rd))
+elif letter="G" then  springer_table_G2()
+{don't need to construct chartacter_table first in type E}
+elif letter="E" and n=6 then springer_table_E6(character_table(rd))
+elif letter="E" and n=7 then springer_table_E7(character_table(rd))
+elif letter="E" and n=8 then springer_table_E8(character_table(rd))
+elif is_abelian(rd) then springer_table_torus(rd)
 else error("case not covered")
 fi
+
 
 set springer_table(RootDatum rd)=
 if rd.is_abelian then springer_table_torus(rd) else
@@ -48,3 +40,25 @@ for i:#factors-1 from 1 do
  st:=tensor(st,springer_table_simple(factors[i].derived)) od;st fi
 
 
+{under construction: combining springer tables not yet functional}
+{ 
+set combine(RootDatum rd,[ComplexNilpotent] factors)=ComplexNilpotent:
+(rd,(),sum(for f in factors do f.H od))
+
+set combine(RootDatum rd,[SpringerTable] tables)=
+let ct=combine(rd,for st in  tables do ct od) in springer_table(
+
+set springer_table(RootDatum rd) = SpringerTable:
+   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
+   then simples = simple_factors(Lie_type)
+   then root_data = [RootDatum]: { subdata with a single simple factor + torus }
+      let offset=0 in
+      for (,rank) in simples
+      do sub_datum(rd,for i:rank do map[offset+i] od)  next offset+:=rank
+
+   then simple_tables = [SpringerTable]: { tables for each of |root_data| }
+      for rdi@i in root_data
+      do let (letter,n)=simples[i] in springer_table_simple(rdi,letter,n)
+      od
+in combine(rd,simple_tables)
+}

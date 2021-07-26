@@ -57,12 +57,7 @@ set complex_nilpotent_A (Partition P) = ComplexNilpotent:  {for SL(n)}
 
 { to make it independent of the isogeny and center use the diagram }
 set complex_nilpotent_A(RootDatum rd,Partition P) =
-assert(sum(P)=rd.ss_rank+1,"rank mismatch");
-let O_SL=complex_nilpotent_A(P) then
-diag=O_SL.diagram_normalized then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=diag od) in
-orbits[index]
+orbit_isogeny(complex_nilpotent_A(P),rd)
 
 set partition_of_orbit_A(ComplexNilpotent O) = [int]:
 let orbit_partitions=partitions(O.root_datum.ss_rank+1) then

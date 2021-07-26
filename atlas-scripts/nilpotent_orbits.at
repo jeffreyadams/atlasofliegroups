@@ -1004,17 +1004,31 @@ for i:#factors do
 od;
 orbits
 
-
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 ##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
 
-
+{orbit_by_diagram should not be necessary. Also it is slow}
 set orbit_by_diagram([ComplexNilpotent] orbits, [vec] diagram)=ComplexNilpotent:
 let index=first(for i:#orbits do orbits[i].diagram_normalized=diagram od) in
 orbits[index]
 
 set orbit_by_diagram(RootDatum rd,[vec] diagram)=ComplexNilpotent:
 orbit_by_diagram(rd.orbits,diagram)
+
+{assume rd_in and rd_out are isogenous, with roots numbered the same way
+let M=rational change of basis matrix taking G_in.fundamental_coweight[i] to G_out.fundamental_coweight[i]
+then map (rd_in,(),H) to (rd_out,(),M*H)}
+set orbit_isogeny(ComplexNilpotent O,RootDatum rd_out)=
+let M=rd_out.fundamental_coweights*O.root_datum.fundamental_coweights.ratvecs_as_ratmat.inverse then
+O_out=ComplexNilpotent:(rd_out,(),(M*O.H).ratvec_as_vec) in
+assert(O.diagram=O_out.diagram, "Orbits diagrams don't match");O_out
+
+{for testing only}
+set test_orbit_isogeny(RootDatum rd_in,RootDatum rd_out)=
+for O in rd_in.orbits do
+ let O_out=orbit_isogeny(O,rd_out) in prints( O.root_datum, " ", O_out.root_datum, " ",
+O.H, " ", O.diagram, " ", O_out.diagram, " ", O.diagram=O_out.diagram) od
+
 
 {show commands moved to nilpotent_centralizer.at}
 {
@@ -1060,3 +1074,4 @@ set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
 
 set twist(mat delta,ComplexNilpotent O)=ComplexNilpotent:
 (O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right}
+

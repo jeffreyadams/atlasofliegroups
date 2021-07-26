@@ -17,7 +17,7 @@ set partitions_B(int n)=[Partition]: parity_restricted_partitions(false)(2*n+1)
 
 {diagram:
 
-ComplexOrbit O            (for Sp(2n) or PSp(2n)
+ComplexOrbit O            (for Sp(2n) or PSp(2n))
 Partition    P            (for orbit in type C)
 Pair of partitions (p,q)  (for representation of W(C_n))
 
@@ -49,13 +49,8 @@ for (i,m) in multiplicities do
 set complex_nilpotent_C(Partition P)=ComplexNilpotent:
 (Sp(sum(P)),(),ratvec_as_vec(2*semisimple_element_C(P)))
 
-{use the diagram: need this for G=PSp(2n) and also
- if G has a nontrivial central torus (but semisimple derived group)}
 set complex_nilpotent_C(RootDatum rd,Partition P)=ComplexNilpotent:
-let O_Sp=P.complex_nilpotent_C then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=O_Sp.diagram_normalized od) in
-orbits[index]
+orbit_isogeny(complex_nilpotent_C(P),rd)
 
 {O is an orbit for a *reductive* group G where G_d is simple of type C
 uses partitions_C(semisimple_rank), but returns orbits for G
@@ -67,7 +62,7 @@ index=first(for P in orbit_partitions do complex_nilpotent_C(O.root_datum,P)=O o
 orbit_partitions[index]
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
-set springer_C(Partition P)=(Partition,Partition):
+set springer_C_partition_pair(Partition P)=(Partition,Partition):
 assert(P.test_C,"Not a valid type C partition");
 let P=sort(P)  {increasing} then
 P=if is_even(#P) then P else 0#P fi {even # of parts} then
@@ -80,7 +75,7 @@ assert(#v=#w,"error, v and w should have the same size");
 (delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od))
 
 set springer_C(CharacterTable ct,ComplexNilpotent O)=int:
-let (a,b)=springer_C(partition_of_orbit_C(O)) then
+let (a,b)=springer_C_partition_pair(partition_of_orbit_C(O)) then
 n=O.root_datum.ss_rank then
 index=first(for i:ct.n_classes do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
@@ -94,7 +89,7 @@ let (P,Q)=partition_pair then n=sum(P)+sum(Q) then
 P:=sort(pad(P,n));
 Q:=sort(pad(Q,n)) then
 orbits=partitions_C(n) in
-let index=first(for O in orbits do let (A,B)=springer_C(O) in sort(pad(A,n))=P and sort(pad(B,n))=Q od)
+let index=first(for O in orbits do let (A,B)=springer_C_partition_pair(O) in sort(pad(A,n))=P and sort(pad(B,n))=Q od)
 in if index=-1 then (false,null(0))
 else
 (true,orbits[index])
