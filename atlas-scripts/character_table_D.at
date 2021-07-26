@@ -9,21 +9,20 @@ set class_word_D(Partition lambda,Partition mu) = [int]:
 ;  assert(=#mu%2, "mu has an odd number of parts")
 ;  assert(not(=mu and =lambda%2)
 	 , "mu is empty and lambda has even parts: split class")
-;  let n=sum(lambda), m=sum(mu)
-   ,  Mbars = let sum=minus_1 in for k in mu do sum+:=k od
-   ,  Lbars = let sum=minus_1 in for k in lambda do sum+:=k od
+;  let (n,,L_gens) = Levi_A(lambda), (m,,simples) =Levi_A(mu)
    ,  rise(int a,int len) = [int]: for i:len from a  do i od
    ,  fall(int a,int len) = [int]: for i:len from a ~do i od
-then  L_gens = complement(n,Lbars) { for lambda part, do the same as in type A }
-   ,  sign_pair(int k,int l) = [int]: { arguments are positions in |[0,m[| }
+then  sign_pair(int k,int l) = [int]: { arguments are positions in |[0,m[| }
          rise(n+l,m-1-l)##rise(n+k,m-k) { |m-k-2|, plus 2 final for signs }
        ##fall(n+k,m-2-k)##fall(n+l,m-1-l) { remainder of conjugation }
-then  M_gens = { each cycle pair from P gets sign flips when second end sensed }
-      let odd=false { parity of number of Mbars elements seen }, k=minus_1 in
+then  M_gens = { each cycle pair from |mu| get sign flips when second is done }
+      let odd=false { parity of number cycles from |mu| already treated }
+      , j=0 { position in |simples| }
+      , k=minus_1 { variable to record end of previous cycle } in
       for i:m
-      do if isnt_member(Mbars)(i) then [n+i] { extend our cycle }
+      do if j<#simples and i=simples[j] then j+:=1; [n+i] { extend our cycle }
          elif odd:=not odd
-	 then [] next k:=i { break cycle, save index, wait for sign }
+	 then [] next k:=i { break cycle, save index, wait for |sign_pair| }
 	 else sign_pair(k,i) { wrap up two cycles by adding signs }
 	 fi
       od.##

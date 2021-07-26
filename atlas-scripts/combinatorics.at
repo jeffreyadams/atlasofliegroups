@@ -147,6 +147,13 @@ set transpose ([int] parts) = Partition:
   fi
 }
 
+{ basic data for Levi factor of $A_{n-1}$ given by composition |parts| of $n$ }
+set Levi_A ([int] parts) = (int,LieType,[int]): {  |(n,Levi_type,simples)| }
+   let sum=minus_1, lt=Lie_type("")
+   then bars = [int]:
+      for p in parts do if p>1 then lt:=extend(lt,"A",p-1) fi; sum+:=p od
+in (sum+1,lt,complement(sum,bars))
+
 set compressed_string(Partition P) = string:
    let mult=1
    then result =

@@ -14,20 +14,18 @@
 { get an actual WeylElt from a partition <-> conjugacy class in W}
 set conjugacy_class_S(Partition P) = WeylElt:  {for GL(n)}
 (  assert(is_positive(P), "P is not a partition (has non-positive entries)")
-;  let n=sum(P)
-   , bars= let sum=-1 in for p in P do sum+:=p od { W generators to suppress }
-in W_elt(if =n then trivial_group else GL(n) fi,complement(n,bars))
+;  let (n, , simples) = Levi_A(P)
+in W_elt(if =n then trivial_group else GL(n) fi,simples)
 )
 
 { for other type A root data like SL(n), we need to work a bit harder }
 set conjugacy_class_A(RootDatum rd) = (Partition->WeylElt):
-   let map = test_simple_type("A",rd) then n=#map+1 in
+   let map = test_simple_type("A",rd) in
    (Partition P) WeylElt:
 (  assert(is_positive(P), "P is not a partition (has non-positive entries)")
-;  let bars= let sum=-1 in for p in P do sum+:=p od { W generators to suppress }
-in assert(!=#bars and bars~[0]=#map
-         ,"Partition is of "+(bars~[0]+1)+" rather than "+n)
-;  W_elt(rd,for s in complement(n,bars) do map[s] od)
+;  let (n, , simples) = Levi_A(P)
+in assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
+;  W_elt(rd,for s in simples do map[s] od)
 )
 
 { The inverse operation, find cycle type of a WeylElt for GL(n). This could be

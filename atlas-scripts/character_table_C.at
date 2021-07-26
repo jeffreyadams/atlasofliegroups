@@ -15,16 +15,16 @@ set BC_classes(int n) = [BC_class]:
 set class_word_BC(Partition P,Partition Q) = [int]:
 (  assert((P:=P.strip_to_partition).>, "P is not a partition")
 ;  assert((Q:=Q.strip_to_partition).>, "Q is not a partition")
-;  let nP=sum(P), nQ=sum(Q)
-   ,  Pbars = let sum=minus_1 in for p in P do sum+:=p od
-   ,  Qbars = let sum=minus_1 in for q in Q do sum+:=q od
-then  P_gens = complement(nP,Pbars) { for P part, do the same as in type A }
-   ,  Q_gens = { each cycle from Q gets a sign flip when its end is sensed }
+;  let (nP,,P_gens)=Levi_A(P) { for P part, do the same as in type A }
+   , (nQ,,simples)=Levi_A(Q) { for Q part we need to post-process |simples| }
+then
+   Q_gens = { each cycle from Q gets a sign flip when its end is sensed }
+      let j=0 { position in simples } in
       for i:nQ
       do let pos=nP+i { position in [0,n) where we are }
-      in if isnt_member(Qbars)(i) then [pos] { extend our cycle }
+      in if j<#simples and i=simples[j] then j+:=1; [pos] { extend our cycle }
          else { tack on a sign flip at the final element of the cycle }
-	    for j:nQ-i from pos do j od## for j:nQ-i-1 from pos do j ~od
+	    for k:nQ-i from pos do k od## for k:nQ-1-i from pos ~do k od
 	 fi
       od.##
 in P_gens##Q_gens
