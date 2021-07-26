@@ -1,9 +1,6 @@
 <basic.at
 
-<simple_character_table.at
-<character_table_B.at
-<character_table_C.at
-<character_table_D.at
+<classical_character_tables.at
 <character_table_F.at
 <character_table_G.at
 <character_table_E6.at
