@@ -57,7 +57,7 @@ set saturate(ComplexNilpotent O,mat inc,RootDatum rd) = ComplexNilpotent:
 set diagram(ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
-set diagram_normalized_simple(ComplexNilpotent O) = [int]:
+set stratified_diagram(ComplexNilpotent O) = [int]:
    diagram(complex_nilpotent(O.root_datum.stratify,O.H))
 
 { diagram_normalized returns [[int]] to allow for multiple simple factors }

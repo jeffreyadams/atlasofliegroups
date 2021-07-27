@@ -5,8 +5,38 @@
 <springer_tables.at
 <coordinates.at
 
-{Springer correspondence from nilpotent orbits to representations of W in type A
- orbit: partition -> representation= same partition}
+{ Springer correspondence from nilpotent orbits to representations of W in type A
+  Orbits and W-irreps both correspond to partitions of rank+1, which gives the
+  (here bijective) map from orbits to W-irreps for type A }
+
+{ Partition of $n$ to a ComplexNilpotent for a given type $A_{n-1}$ root datum }
+
+set nilpotent_orbit_GL ([int] parts) = ComplexNilpotent:
+   let (n,Levi_type,simples) = Levi_A(parts)
+   then rd = GL(n), v = adjoint_2rho(Levi_type)
+   then H = vec: sum(n # for pos@i in simples do coroot(rd,pos)*v[i] od)
+in complex_nilpotent(rd,H)
+
+set nilpotent_orbit_A(RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("A",rd) in
+   (Partition P) ComplexNilpotent:
+(  assert(is_positive(P), "P is not a partition (has non-positive entries)")
+;  let (n,Levi_type,simples) = Levi_A(P)
+   then v = assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
+          ; adjoint_2rho(Levi_type)
+   then H = sum(rd.rank # for pos@i in simples do coroot(rd,map[pos])*v[i] od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_A_to_partition ([int] diagram) = Partition:
+   assert(diagram=diagram~[:],"Stratified diagram should be a palindrome");
+   let freq = [int]: (0#diagram).cumulate_forward.frequencies
+   then n=#freq+1 { twice the largest part } then max=n\2
+   then mult(int i) = int: { mulitplicity of part |i| in partition }
+     let m = if i+2<=max then freq[max-i]-freq[max-i-2] else freq[max-i] fi
+     in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
 
 { ---------------- type A/SL(n) ------------------}
 
@@ -61,13 +91,14 @@ set complex_nilpotent_A(RootDatum rd,Partition P) = ComplexNilpotent:
    let diag = [int]: complex_nilpotent_A(P).diagram
    , orbits = nilpotent_orbits(rd) { build orbits for actual root datum |rd| }
    then index =  { look up for a match }
-     first(for O in orbits do O.diagram_normalized_simple=diag od)
+     first(for O in orbits do stratified_diagram(O)=diag od)
 in orbits[index]
 
 set partition_of_orbit_A(ComplexNilpotent O) = [int]:
-let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
-index=first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od) in
-orbit_partitions[index]
+   let orbit_partitions=partitions(O.root_datum.ss_rank+1)
+   then index =
+     first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od)
+in orbit_partitions[index]
 
 {
 set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
@@ -91,15 +122,15 @@ complex_nilpotent_A(P)
 
 {------------------ duality ----------------------------------}
 
-set A_dual(Partition P)=Partition:P.transpose
+set A_dual(Partition P) = Partition: P.transpose
 
-set dual_map_A(ComplexNilpotent O)=ComplexNilpotent:
-let P=partition_of_orbit_A(O) in
-complex_nilpotent_A(P.A_dual)
+set dual_map_A(ComplexNilpotent O) = ComplexNilpotent:
+   let P=partition_of_orbit_A(O) in complex_nilpotent_A(P.A_dual)
 
-set springer_table_A(CharacterTable ct)=
-let rd=ct.root_datum then
-orbits=rd.orbits then
-dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_A(O) then
-springer(ComplexNilpotent O)=springer_A(ct,O) in
-(ct,orbits,dual_map,dual_map,springer)
+set springer_table_A (CharacterTable ct) = SpringerTable:
+( ct
+, ct.root_datum.orbits
+, dual_map_A@ComplexNilpotent
+, dual_map_A@ComplexNilpotent
+, (ComplexNilpotent O) int: springer_A(ct,O)
+)

@@ -3,7 +3,7 @@
 
 set springer_by_signature(ComplexNilpotent O)=
 assert(O.root_datum.Lie_type=Lie_type("F4"),"Not type F_4");
-let d=O.diagram_normalized_simple in
+let d=stratified_diagram(O) in
 if d=[0,0,0,0] then [1,-1,-1]   {1 -> phi(1,24)}
 elif d=[1,0,0,0] then [2,0,-2]  {A1 -> phi(2,16)''}
 elif d=[0,0,0,1] then [4,-2,-2] {A1~ -> phi(4,13)}
@@ -38,7 +38,7 @@ set dual_orbit_F4(ComplexNilpotent O)=
 let rd=O.root_datum then
 dual_rd=dual(rd) then
 dual_orbits=dual_rd.orbits then
-d=O.diagram_normalized_simple then
+d=stratified_diagram(O) then
 dual_normalized=
   if d=[0,0,0,0] then [2,2,2,2]
 elif d=[1,0,0,0] then [2,2,0,2]
@@ -58,7 +58,7 @@ elif d=[2,2,0,2] then [0,0,0,1]
 elif d=[2,2,2,2] then [0,0,0,0]
 else error("error computing dual orbit") fi
 then
-dual_orbit_number=first(for O in dual_orbits do O.diagram_normalized_simple=dual_normalized od)
+dual_orbit_number=first(for O in dual_orbits do stratified_diagram(O)=dual_normalized od)
 in
 dual_orbits[dual_orbit_number]
 
