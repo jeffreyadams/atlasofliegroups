@@ -1019,8 +1019,10 @@ orbit_by_diagram(rd.orbits,diagram)
 let M=rational change of basis matrix taking G_in.fundamental_coweight[i] to G_out.fundamental_coweight[i]
 then map (rd_in,(),H) to (rd_out,(),M*H)}
 set orbit_isogeny(ComplexNilpotent O,RootDatum rd_out)=
-let M=rd_out.fundamental_coweights*O.root_datum.fundamental_coweights.ratvecs_as_ratmat.inverse then
-O_out=ComplexNilpotent:(rd_out,(),(M*O.H).ratvec_as_vec) in
+let S=ratvecs_as_ratmat(rd_out.fundamental_coweights) then
+T=ratmat:left_inverse(ratvecs_as_ratmat(O.root_datum.fundamental_coweights)) then
+ST=S*T then
+O_out=ComplexNilpotent:(rd_out,(),(S*T*O.H).ratvec_as_vec) in
 assert(O.diagram=O_out.diagram, "Orbits diagrams don't match");O_out
 
 {for testing only}

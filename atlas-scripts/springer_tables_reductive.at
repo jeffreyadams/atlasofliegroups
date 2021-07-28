@@ -16,7 +16,7 @@
 different root datum from the given one (same up to isogeny)
 now use the given root datum exactly}
 set springer_table_simple(RootDatum rd) = SpringerTable:
-let (letter,n)=simple_type(rd) in
+let (letter,n)=simple_type(rd.derived) in
 if letter="A" then springer_table_A(character_table_A(rd))
 elif letter="B" then springer_table_B(character_table_B(rd))
 elif letter="C" then springer_table_C(character_table_C(rd))
@@ -32,7 +32,7 @@ else error("case not covered")
 fi
 
 
-set springer_table(RootDatum rd)=
+set springer_table_old(RootDatum rd)=
 if rd.is_abelian then springer_table_torus(rd) else
 let factors=simple_factors(rd) then
 st=springer_table_simple(factors[0].derived) in
@@ -41,24 +41,58 @@ for i:#factors-1 from 1 do
 
 
 {under construction: combining springer tables not yet functional}
-{ 
+
+set split(RootDatum rd,ComplexNilpotent orbit)=[ComplexNilpotent]:
+let (factors,simple_roots_of_factors)=simple_factors_info(rd) in
+for i:#factors do
+ let factor=factors[i],
+ simple_roots=simple_roots_of_factors[i] in
+ complex_nilpotent(factor,
+  sum(for j:#simple_roots do ratvec_as_vec(orbit.H*rd.simple_roots[simple_roots[j]]*factor.fundamental_coweights[j]) od))
+ od
+
+{factors: one orbit for each simple factor}
 set combine(RootDatum rd,[ComplexNilpotent] factors)=ComplexNilpotent:
 (rd,(),sum(for f in factors do f.H od))
 
-set combine(RootDatum rd,[SpringerTable] tables)=
-let ct=combine(rd,for st in  tables do ct od) in springer_table(
+set combine(RootDatum rd,[[ComplexNilpotent]] factors)=[ComplexNilpotent]:
+let radix=for f in factors do #f od in
+ for v in all_words(radix) do
+  combine(rd,for i:#v do factors[i][v[i]] od) od
+
+{maps is a collection of functions for each simple factor of rd; combine them into a single function for rd}
+set combine(RootDatum rd, [(ComplexNilpotent->ComplexNilpotent)] maps)=(ComplexNilpotent->ComplexNilpotent):
+(ComplexNilpotent orbit):
+let orbit_factors=split(rd,orbit) in
+combine(rd,for orbit_factor@i in orbit_factors do maps[i](orbit_factor) od)
+
+set combine(RootDatum rd,[SpringerTable] springer_tables)=SpringerTable:
+let radix = for table in springer_tables do #table.orbits od then
+words = all_words(radix), { mixed radix representations of number of orbits}
+index= mixed_radix_nr(radix) { map from |word| to its index in |words| }
+in
+(   combine(rd,for table in springer_tables do table.ct od),
+    combine(rd,for table in springer_tables do table.orbits od),
+    combine(rd,for table in springer_tables do table.dual_map od),
+    combine(rd,for table in springer_tables do table.dual_map_i od),
+    (ComplexNilpotent orbit) int:
+     for proj@i in split(rd,orbit) do orbit_index(springer_tables[i],proj) od.index 
+     )
 
 set springer_table(RootDatum rd) = SpringerTable:
+ combine(rd,for factor in rd.simple_factors do prints(factor); factor.springer_table_simple od)
+
+{
+set character_table(RootDatum rd) = CharacterTable:
    let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
    then simples = simple_factors(Lie_type)
    then root_data = [RootDatum]: { subdata with a single simple factor + torus }
       let offset=0 in
       for (,rank) in simples
       do sub_datum(rd,for i:rank do map[offset+i] od)  next offset+:=rank
-
-   then simple_tables = [SpringerTable]: { tables for each of |root_data| }
+      od
+   then simple_tables = [CharacterTable]: { tables for each of |root_data| }
       for rdi@i in root_data
-      do let (letter,n)=simples[i] in springer_table_simple(rdi,letter,n)
+      do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
 in combine(rd,simple_tables)
-}
