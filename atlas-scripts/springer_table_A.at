@@ -90,7 +90,7 @@ set A_dual(Partition P)=Partition:P.transpose
 
 set dual_map_A(ComplexNilpotent O)=ComplexNilpotent:
 let P=partition_of_orbit_A(O) in
-complex_nilpotent_A(P.A_dual)
+complex_nilpotent_A(O.root_datum.dual,P.A_dual)
 
 set springer_table_A(CharacterTable ct)=
 let rd=ct.root_datum then

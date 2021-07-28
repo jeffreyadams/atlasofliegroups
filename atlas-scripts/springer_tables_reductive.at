@@ -48,7 +48,7 @@ for i:#factors do
  let factor=factors[i],
  simple_roots=simple_roots_of_factors[i] in
  complex_nilpotent(factor,
-  sum(for j:#simple_roots do ratvec_as_vec(orbit.H*rd.simple_roots[simple_roots[j]]*factor.fundamental_coweights[j]) od))
+    ratvec_as_vec(sum(rd.rank,for j:#simple_roots do orbit.H*rd.simple_roots[simple_roots[j]]*factor.fundamental_coweights[j] od)))
  od
 
 {factors: one orbit for each simple factor}
