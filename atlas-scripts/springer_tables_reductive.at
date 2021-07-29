@@ -74,13 +74,14 @@ in
 (   combine(rd,for table in springer_tables do table.ct od),
     combine(rd,for table in springer_tables do table.orbits od),
     combine(rd,for table in springer_tables do table.dual_map od),
-    combine(rd,for table in springer_tables do table.dual_map_i od),
+    combine(rd.dual,for table in springer_tables do table.dual_map_i od),
     (ComplexNilpotent orbit) int:
-     for proj@i in split(rd,orbit) do orbit_index(springer_tables[i],proj) od.index 
+     for proj@i in split(rd,orbit) do orbit_index(springer_tables[i],proj) od.index
      )
 
 set springer_table(RootDatum rd) = SpringerTable:
- combine(rd,for factor in rd.simple_factors do prints(factor); factor.springer_table_simple od)
+ if is_abelian(rd) then springer_table_torus(rd) else
+ combine(rd,for factor in rd.simple_factors do prints(factor); factor.springer_table_simple od) fi
 
 {
 set character_table(RootDatum rd) = CharacterTable:
@@ -95,4 +96,4 @@ set character_table(RootDatum rd) = CharacterTable:
       for rdi@i in root_data
       do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
-in combine(rd,simple_tables)
+in combine(rd,simple_tables)}
