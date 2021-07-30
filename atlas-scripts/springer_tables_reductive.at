@@ -12,43 +12,37 @@
 <springer_table_E8.at
 <springer_table_torus.at
 
-set springer_table_simple(RootDatum rd) = SpringerTable:
-let (letter,n)=simple_type(rd) in
-if letter="A" then
- let ct=character_table_A(SL(n+1)) in
- springer_table_A(ct)
-elif letter="B" then
- let ct=character_table_B(n) in
-  springer_table_B(ct)
-elif letter="C" then
- let ct=character_table_C(n) in
-  springer_table_C(ct)
-elif letter="D" then
- let ct=character_table_D(n) in
-  springer_table_D(ct)
-elif letter="F" then
- let ct=character_table_F(4) in
- springer_table_F4(ct)
-elif letter="G" then
- springer_table_G2()
-elif letter="E" and n=6 then
- let ct=character_table_E6() in
- springer_table_E6(ct)
-elif letter="E" and n=7 then
- let ct=character_table_E7() in
- springer_table_E7(ct)
-elif letter="E" and n=8 then
- springer_table_E8(character_table_E8())
-elif is_abelian(rd) then
-  springer_table_torus(rd)
-else error("case not covered")
-fi
+set springer_table_simple(RootDatum rd,string letter,int n) = SpringerTable:
+   let ct = character_table_simple(rd,letter,n) { should become unused }
+in case ascii(letter)-ascii("A")
+   in springer_table_A(rd)
+   ,  springer_table_B(ct)
+   ,  springer_table_C(ct)
+   ,  springer_table_D(ct)
+   ,  case n-6
+      in springer_table_E6(ct), springer_table_E7(ct), springer_table_E8(ct)
+      else error("wrong rank for type E")
+      esac
+   ,  assert(n=4,"wrong rank for type F"); springer_table_F4(ct)
+   ,  assert(n=2,"wrong rank for type G"); springer_table_G2()
+   else error("invalid type letter")
+   esac
 
+{ this is broken, but should parse }
 set springer_table(RootDatum rd)=
-if rd.is_abelian then springer_table_torus(rd) else
-let factors=simple_factors(rd) then
-st=springer_table_simple(factors[0].derived) in
-for i:#factors-1 from 1 do
- st:=tensor(st,springer_table_simple(factors[i].derived)) od;st fi
+   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
+   then simples = simple_factors(Lie_type)
+   then  simple_tables = [SpringerTable]:
+      let offset=0 in
+      for (letter,rank) in simples
+      do let simple_rd = sub_datum(rd,for i:rank do map[offset+i] od)
+      next offset+:=rank
+      in springer_table_simple(derived(simple_rd),letter,rank)
+      od
+in if rd.is_abelian then springer_table_torus(rd)
+   else let st = simple_tables[0] in
+      for i:#simples from 1 do st:=tensor(st,simple_tables[i]) od
+   ;  st
+   fi
 
 

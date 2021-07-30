@@ -10,8 +10,8 @@
 
 set simple_character_table(LieType lt) = CharacterTable:
 (  let (letter,rank)=lt.simple_type { this also asserts that |lt| is simple }
-in case char_index(letter,"ABCDEFG")
-   in character_table_A(SL(rank+1))
+in case ascii(letter)-ascii("A")
+   in let (table,,)=character_table_A(SL(rank+1)) in table
    ,  character_table_B(rank)
    ,  character_table_C(rank)
    ,  character_table_D(rank)
@@ -42,8 +42,8 @@ set character_table_simple(RootDatum rd,string letter,int n) = CharacterTable:
 	     , rd.nice_format)
   fi
 ; let ct=
-     case char_index(letter,"ABCDEFG")
-     in character_table_A(rd)
+     case ascii(letter)-ascii("A")
+     in let (table,,) = character_table_A(rd) in table
      , character_table_B(rd)
      , character_table_C(rd)
      , character_table_D(rd)

@@ -55,7 +55,7 @@ set class_table_A(RootDatum rd) = WeylClassTable:
 		  , (int i,int k)int: lookup(cycle_power(partitions[i],k))
 		  )
 
-set character_table_S(int n) = CharacterTable:
+set character_table_S(int n) = (CharacterTable,([int]->int),([int]->int)):
   let partitions_n = partitions(n)
   then classes = [WeylElt,classical_class,string]:
     for lambda in partitions_n
@@ -67,10 +67,16 @@ set character_table_S(int n) = CharacterTable:
        ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
        )
     od
-  in character_table(class_table_S(n),classes,irreps)
+  , lookup_partition = ([int]->int): index_partition(partitions_n)
+  , top = #partitions_n-1
+in ( character_table(class_table_S(n),classes,irreps)
+   , lookup_partition { find index among conjugacy classes }
+   , ([int] lambda) int: top - lookup_partition(lambda) { index among irreps }
+   )
 
-set character_table_A(RootDatum rd) = CharacterTable:
-  let partitions = [A_class]: partitions(rd.semisimple_rank+1)
+set character_table_A(RootDatum rd) =
+      (CharacterTable,([int]->int),([int]->int)):
+  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
   then classes = [WeylElt,classical_class,string]:
     for lambda in partitions
@@ -82,7 +88,12 @@ set character_table_A(RootDatum rd) = CharacterTable:
        ,for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
        )
     od
-  in character_table(class_table_A(rd),classes,irreps)
+  , lookup_partition = ([int]->int): index_partition(partitions)
+  , top = #partitions-1
+in ( character_table(class_table_A(rd),classes,irreps)
+   , lookup_partition { find index among conjugacy classes }
+   , ([int] lambda) int: top - lookup_partition(lambda) { index among irreps }
+   )
 
 {				types B,C				}
 
