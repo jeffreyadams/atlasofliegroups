@@ -181,7 +181,7 @@ in for (tau,)@i in graph.nodes do if tau=target then [i] else [] fi od.##
 unless #cell>=dim_special and
 some parameter p in cell has tau_complement(p)=singular roots on gamma}
 set potential_cell(RootDatum rd_int,WCell cell, ratvec gamma, int springer_dim)=bool:
-if #cell< springer_dim then prints("dim: ", #cell, " ", springer_dim);false
+if #cell< springer_dim and cells_verbose then prints("dim: ", #cell, " ", springer_dim);false
 elif
  let singular_roots=##for alpha@i in rd_int.simple_roots do if =alpha*gamma then [i] else [] fi od in
  let ()=prints("sr: ", singular_roots) in
@@ -212,12 +212,12 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  ##for cell@j in cells do
  let survivors=[(int,int,Param)]:[] in
  {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
- if #cell< springer_dim
+ if #cell< springer_dim and cells_verbose
   then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
  elif
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
-      prints("survive:", p, " ", gamma);
+      if cells_verbose then prints("survive:", p, " ", gamma) fi;
       survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
@@ -336,7 +336,7 @@ ct_L=L.character_table then
 index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
-()=prints("OK") in
+{()=prints("OK") in}
 (G,L,ct_G,ct_L,index_pi_L,char_L,d_L){
 chars_G=
 ##for i:st_G.ct.n_classes do

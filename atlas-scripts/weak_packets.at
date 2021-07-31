@@ -8,6 +8,8 @@
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
 
+set weak_packets_verbose=false
+
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
 
@@ -44,7 +46,7 @@ set weak_packet_int (SpringerTable st_int
 	 ,"root datum mismatch, are you using the integrality datum?")
 ;} if #params=0 then ([],[])
   else let O=st_int.dual_map_i(O_check)
-  in if cells_verbose
+  in {if cells_verbose
      then prints("gamma_target:",gamma_target)
      ; prints( "Computing weak packet for ", params[0].real_form, new_line
              , "given # parameters: ", #params,new_line
@@ -55,9 +57,11 @@ set weak_packet_int (SpringerTable st_int
 	     , " H: ", O_check.H, new_line
 	     , " dimension: ", O_check.dim_nilpotent)
      fi
-  ;  prints("Computing blocks and cells for ",#params, " parameters")
-  ;  let blocks_and_cells = blocks_and_cells(params)
-  in if cells_verbose
+  ; if weak_packets_verbose
+  then  prints("Computing blocks and cells for ",#params, " parameters")
+  fi
+  ;} let blocks_and_cells = blocks_and_cells(params)
+  in {if cells_verbose
      then prints
         ( "computed ", #blocks_and_cells
         , " blocks, of sizes: ", for (b,) in blocks_and_cells do #b od )
@@ -71,11 +75,12 @@ set weak_packet_int (SpringerTable st_int
 	, " H: ", O.H, new_line
 	, " dimension: ", O.dim_nilpotent)
      fi
-  ;  let sigma=st_int.springer(O)
-  in if cells_verbose then prints
+  ;}  let sigma=st_int.springer(O)
+  in { if cells_verbose then prints
         ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
      fi
-  ;  let parameters = parameters_given_AV_infinitesimal_character
+  ;}
+  let parameters = parameters_given_AV_infinitesimal_character
                       (st_int,O,blocks_and_cells,gamma_target)
   in (blocks_and_cells,parameters)
   fi
@@ -183,11 +188,11 @@ for example O_check can be chosen from G.dual_orbits
 }
 set weak_packet (ComplexNilpotent O_check,RealForm G) =
       ( [([Param],[WCell])] , [(int,int,Param)] ):
-   prints("Computing weak packets for ",G);
+   if weak_packets_verbose then prints("Computing weak packets for ",G) fi;
    let delta_check=  {distinguished involution on dual side}
        ^G.distinguished_involution in
    if not twist(delta_check,O_check)=O_check
-   then prints("Skipping orbit: dual orbit is not delta_check fixed")
+   then if weak_packets_verbose then prints("Skipping orbit: dual orbit is not delta_check fixed") fi
    ;  ([],[])
    elif is_abelian(G) {avoid constructing SpringerTable for torus}
    then ( blocks_and_cells(G.trivial) , [(0,0,G.trivial)] )
@@ -195,22 +200,25 @@ set weak_packet (ComplexNilpotent O_check,RealForm G) =
       let gamma_final=O_check.H/2
       then gamma = {this is the target infinitesimal character, need to pass it}
       	   	   gamma_final+2*rho(G)
-      then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
-   in prints("gamma:",gamma); prints("gamma_final:",gamma_final)
+      then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual in
+   if weak_packets_verbose then prints("gamma:",gamma);
+   prints("gamma_final:",gamma_final) fi
    ;  let rd_int=integrality_datum(rd,gamma) then
 {      then st_int=springer_table(rd_int) then}
 {   ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)}
    O_check_int=integral_descent(O_check) then
-   st_int=springer_table(O_check_int.root_datum.dual) then
-   ()= prints("O_check_int.dual.rd: ", O_check_int.root_datum.dual) then
-   ()=prints("st_int.rd: ", st_int.root_datum)  then
-   ()=prints("equal: ", O_check_int.root_datum.dual=st_int.root_datum)
-   in prints("O_check_int:", O_check_int)
-   ;  prints("computing packet for:", O_check_int)
+   st_int=springer_table(O_check_int.root_datum.dual) in
+   if weak_packets_verbose then
+   {()= } prints("O_check_int.dual.rd: ", O_check_int.root_datum.dual); {then}
+   {()= } prints("st_int.rd: ", st_int.root_datum);  {then}
+   {()= } prints("equal: ", O_check_int.root_datum.dual=st_int.root_datum);
+   {in } prints("O_check_int:", O_check_int);
+   prints("computing packet for:", O_check_int) fi
 {   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final{,permutation},id_mat(O_check_int.root_datum.rank))}
    ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final) 
-   in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
-   ;  (bc,wp).print
+   in if {G.is_split and } =#wp and weak_packets_verbose then
+   prints("ALERT: empty packet") fi
+   ;  if weak_packets_verbose then (bc,wp).print else (bc,wp) fi
 fi
 
 { run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
@@ -218,28 +226,28 @@ set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G) =
       [( [([Param],[WCell])] , [(int,int,Param)] )]:
 if is_abelian(G) {avoid constructing SpringerTable for torus}
 then [( blocks_and_cells(G.trivial) , [(0,0,G.trivial)] )]
-else prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+else if weak_packets_verbose then prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G) fi;
    let st = springer_table(G), G_orbits=G.orbits
 in for O_check in dual_orbits
    do let delta_check= {distinguished involution on dual side}
             ^G.distinguished_involution
    in if not twist(delta_check,O_check)=O_check
-      then prints("Skipping orbit: dual orbit is not delta_check fixed")
+      then if weak_packets_verbose then prints("Skipping orbit: dual orbit is not delta_check fixed") fi
       ;  ([],[])
       else
          let O_0=st.dual_map_i(O_check) {O_0 might on group differing by isogeny}
          then O = {get the orbit on the correct G}
                   orbit_by_diagram(G_orbits,O_0.diagram_normalized)
-         in prints("Orbit by diagram: ", O)
+         in if weak_packets_verbose then prints("Orbit by diagram: ", O) fi
          ;  if =#real_nilpotent_orbits(O,G)
-            then prints("Skipping dual orbit ", O_check
-	    	       ," (d(O_check) has no real forms for G)")
+            then if weak_packets_verbose then prints("Skipping dual orbit ",
+	    O_check," (d(O_check) has no real forms for G)") fi
             ;  ([],[])
-            else prints
+            else if weak_packets_verbose then prints
 	    	 ( new_line
                  , "Computing weak packet for orbit: ", O_check.root_datum
 	   	 , " ", O_check.H
-		 , " dim=", O_check.dim_nilpotent)
+		 , " dim=", O_check.dim_nilpotent) fi
 	    ;  weak_packet(O_check,G)
             fi
       fi

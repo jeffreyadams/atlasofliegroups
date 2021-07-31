@@ -472,7 +472,7 @@ in subgroup_by_simple(rd,simple_roots_factor_L)
 set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
 let list=diagram_components(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
-let ()=prints("i=",i) in
+{let ()=prints("i=",i) in}
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
 {semisimple element t so that L=Cent_G(t)^0}
