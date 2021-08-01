@@ -121,7 +121,6 @@ in if cells_verbose then prints
       , " H: ", O.H, new_line
       , " dimension: ", O.dim_nilpotent)
     fi
-;  prints("computing springer map of", O.diagram)
 ;  let sigma=st_int.springer(O)
 in if cells_verbose then prints
       ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
@@ -196,21 +195,22 @@ set weak_packet (ComplexNilpotent O_check,RealForm G) =
       then gamma = {this is the target infinitesimal character, need to pass it}
       	   	   gamma_final+2*rho(G)
       then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
-   in prints("gamma:",gamma); prints("gamma_final:",gamma_final)
+   in if cells_verbose then prints("gamma:",gamma); prints("gamma_final:",gamma_final) fi
    ;  let rd_int=integrality_datum(rd,gamma) then
 {      then st_int=springer_table(rd_int) then}
 {   ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)}
    O_check_int=integral_descent(O_check) then
    st_int=springer_table(O_check_int.root_datum.dual) then
-   ()= prints("O_check_int.dual.rd: ", O_check_int.root_datum.dual) then
-   ()=prints("st_int.rd: ", st_int.root_datum)  then
-   ()=prints("equal: ", O_check_int.root_datum.dual=st_int.root_datum)
-   in prints("O_check_int:", O_check_int)
-   ;  prints("computing packet for:", O_check_int)
-{   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final{,permutation},id_mat(O_check_int.root_datum.rank))}
-   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final) 
-   in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
-   ;  (bc,wp).print
+   ()=if cells_verbose then
+    prints("O_check_int.dual.rd: ", O_check_int.root_datum.dual);
+    prints("st_int.rd: ", st_int.root_datum);
+    prints("equal: ", O_check_int.root_datum.dual=st_int.root_datum);
+    prints("O_check_int:", O_check_int);
+    prints("computing integral packet for:", O_check_int) fi
+   in 
+  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final) 
+   in if {G.is_split and } =#wp then prints("ALERT: empty packet") fi
+   ;  (bc,wp){.print}
 fi
 
 { run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
@@ -230,16 +230,16 @@ in for O_check in dual_orbits
          let O_0=st.dual_map_i(O_check) {O_0 might on group differing by isogeny}
          then O = {get the orbit on the correct G}
                   orbit_by_diagram(G_orbits,O_0.diagram_normalized)
-         in prints("Orbit by diagram: ", O)
+         in if cells_verbose then prints("Orbit by diagram: ", O) fi
          ;  if =#real_nilpotent_orbits(O,G)
-            then prints("Skipping dual orbit ", O_check
-	    	       ," (d(O_check) has no real forms for G)")
+            then if cells_verbose then  prints("Skipping dual orbit ", O_check
+	    	       ," (d(O_check) has no real forms for G)") fi
             ;  ([],[])
-            else prints
+            else if cells_verbose then prints
 	    	 ( new_line
                  , "Computing weak packet for orbit: ", O_check.root_datum
 	   	 , " ", O_check.H
-		 , " dim=", O_check.dim_nilpotent)
+		 , " dim=", O_check.dim_nilpotent) fi
 	    ;  weak_packet(O_check,G)
             fi
       fi
@@ -251,7 +251,7 @@ all weak packets as you run over these dual orbits}
 set weak_packets(RealForm G)=
 [([([Param],[WCell])],[(int,int,Param)])]:
 {note: to deal with case of simple + torus, used .derived here,
- but this is better handles elsewhere, in springer_table_BC.at
+ but this is better handled elsewhere, in springer_table_BC.at
 }
 weak_packets(G.{derived.}dual_orbits,G)
 
@@ -630,6 +630,7 @@ let wp=weak_packets(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits then
 (ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
+if cells_verbose then
 prints("Orbits for the dual group: ", G.dual_quasisplit_form);
 show_nilpotent_orbits_very_long((ic,data));
 prints(new_line,"Information about orbit centralizers:");
@@ -643,7 +644,7 @@ prints();
 show(for (,,,,,,,,,ap)@i in data do ap od);
 show_short(wp);
 show(wp);
-show_long(wp);
+show_long(wp) fi;
 if G.is_relatively_split then
  let wp_sc = ##for weakpacket@i in wp do
  let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
@@ -708,10 +709,10 @@ prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
 {allow a central shift}
 set weak_packet(ComplexNilpotent O_check,RealForm G,ratvec shift)=([([Param],[WCell])],[(int,int,Param)]):
-let ()=prints("Computing weak packets for ",G) then
+let ()=if cells_verbose then prints("Computing weak packets for ",G) fi then
 delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
 if not twist(delta_check,O_check)=O_check then
-prints("Skipping orbit: dual orbit is not delta_check fixed");([],[]) elif
+if cells_verbose then prints("Skipping orbit: dual orbit is not delta_check fixed") fi;([],[]) elif
 is_abelian(G) then
  let characters=all_parameters_gamma(G,shift) in
  (##for p in characters do blocks_and_cells(p) od,for p@i in characters do (i,0,p) od)
@@ -720,17 +721,17 @@ let gamma_final=O_check.H/2+shift then
 gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
 all=all_parameters_gamma(G,gamma) then
 rd=O_check.root_datum.dual then
-()=prints("gamma:",gamma) then
-()=prints("gamma_final:",gamma_final) then
+{()=prints("gamma:",gamma) then
+()=prints("gamma_final:",gamma_final) then}
 rd_int=integrality_datum(rd,gamma) then
 st_int=springer_table(rd_int) then
-()=prints("integral data: st_int") then
-()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
+{()=prints("integral data: st_int") then
+()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then}
 {(O_check_int,permutation)=integral_descent(st_int,O_check) then}
 O_check_int=integral_descent(O_check) then 
-()=prints("O_check_int:", O_check_int) then
+{()=prints("O_check_int:", O_check_int) then}
 {()=prints("permutation: ", permutation) then}
-()=prints("computing packet for:", O_check_int) then
+{()=prints("computing packet for:", O_check_int) then}
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final{,permutation})
 in
 if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;

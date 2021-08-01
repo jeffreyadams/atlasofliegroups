@@ -53,7 +53,7 @@ let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
  else
 
   {def of a_prime_E:}
-  let rec_fun a_prime_E(RootDatum L,CharacterTable ct_L,int j)=int:
+  let  a_prime_E(RootDatum L,CharacterTable ct_L,int j)=int:
   let value=
   prints("++++++++++++++++++++",new_line,"a_prime_E: L=", L);
   if L.is_abelian then 1 else
@@ -67,9 +67,10 @@ let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
     od
    od))
   fi
-  in prints("a_prime_E: ", value);value 
+  in prints("a_prime_E: ", value);value
   {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
   {end def of recursive function a_prime_E}
+  
   then A=a_prime_E(H,ct_H,r),
   B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(r)) then
   ()= prints("A=", A, new_line, "B=", B) then

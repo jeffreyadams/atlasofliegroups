@@ -41,7 +41,6 @@ for i:#factors-1 from 1 do
 
 
 {under construction: combining springer tables not yet functional}
-
 set split(RootDatum rd,ComplexNilpotent orbit)=[ComplexNilpotent]:
 let (factors,simple_roots_of_factors)=simple_factors_info(rd) in
 for i:#factors do
@@ -51,37 +50,53 @@ for i:#factors do
     ratvec_as_vec(sum(rd.rank,for j:#simple_roots do orbit.H*rd.simple_roots[simple_roots[j]]*factor.fundamental_coweights[j] od)))
  od
 
-{factors: one orbit for each simple factor}
-set combine(RootDatum rd,[ComplexNilpotent] factors)=ComplexNilpotent:
-(rd,(),sum(for f in factors do f.H od))
+{don't need rd: this will always be orbit.root_datum?}
+set split(ComplexNilpotent orbit)=[ComplexNilpotent]:split(orbit.root_datum,orbit)
 
-set combine(RootDatum rd,[[ComplexNilpotent]] factors)=[ComplexNilpotent]:
+{factors: one orbit for each simple factor}
+set combine_orbit(RootDatum rd,[ComplexNilpotent] factors)=ComplexNilpotent:
+{let ()=prints("combine_orbit:  rd=", rd, new_line,"factors=", factors) in }
+complex_nilpotent(rd,sum(for f in factors do f.H od))   {n#for f in factors do f.H od where n is the rank}
+
+set combine_orbits(RootDatum rd,[[ComplexNilpotent]] factors)=[ComplexNilpotent]:
 let radix=for f in factors do #f od in
  for v in all_words(radix) do
-  combine(rd,for i:#v do factors[i][v[i]] od) od
+  combine_orbit(rd,for i:#v do factors[i][v[i]] od) od
 
 {maps is a collection of functions for each simple factor of rd; combine them into a single function for rd}
-set combine(RootDatum rd, [(ComplexNilpotent->ComplexNilpotent)] maps)=(ComplexNilpotent->ComplexNilpotent):
-(ComplexNilpotent orbit):
-let orbit_factors=split(rd,orbit) in
-combine(rd,for orbit_factor@i in orbit_factors do maps[i](orbit_factor) od)
+{each entry maps is a function from orbit.root_datum to rd.orbits}
+{assumption: rd_out.simple_factors [i] is isogenous to maps[i](orbit_factors).root_datum}
 
-set combine(RootDatum rd,[SpringerTable] springer_tables)=SpringerTable:
+set combine_orbit_functions(RootDatum rd_out, [(ComplexNilpotent->ComplexNilpotent)] maps)=(ComplexNilpotent->ComplexNilpotent):
+{can put in something here only depending on rd and maps, e.g. projection matrices, the factorization of rd}
+{reference: "currying" from Haskell Curry haskell programming language}
+(ComplexNilpotent orbit):
+let orbit_factors=split(orbit) then
+rd_out_factors=rd_out.simple_factors in
+{let ()=prints("combine_orbit: ", new_line,
+"orbitfactors=", orbit_factors, new_line,
+"maps=", maps) in}
+combine_orbit(rd_out,for i:#orbit_factors do  orbit_isogeny(maps[i](orbit_factors[i]),rd_out_factors[i]) od)
+
+
+
+set combine_springer_tables(RootDatum rd,[SpringerTable] springer_tables)=SpringerTable:
 let radix = for table in springer_tables do #table.orbits od then
 words = all_words(radix), { mixed radix representations of number of orbits}
 index= mixed_radix_nr(radix) { map from |word| to its index in |words| }
 in
-(   combine(rd,for table in springer_tables do table.ct od),
-    combine(rd,for table in springer_tables do table.orbits od),
-    combine(rd,for table in springer_tables do table.dual_map od),
-    combine(rd.dual,for table in springer_tables do table.dual_map_i od),
-    (ComplexNilpotent orbit) int:
-     for proj@i in split(rd,orbit) do orbit_index(springer_tables[i],proj) od.index
+(   combine(rd,for table in springer_tables do table.ct od), {character table}
+    combine_orbits(rd,for table in springer_tables do table.orbits od),  {orbit}
+    combine_orbit_functions(rd.dual,for table in springer_tables do table.dual_map od),  {dual_map}
+    combine_orbit_functions(rd,for table in springer_tables do table.dual_map_i od),     {dual_map_i}
+    (ComplexNilpotent orbit) int:           {Springer correspondence}
+     for proj@i in split(rd,orbit) do
+      springer_tables[i].springer(proj) od.index
      )
 
 set springer_table(RootDatum rd) = SpringerTable:
  if is_abelian(rd) then springer_table_torus(rd) else
- combine(rd,for factor in rd.simple_factors do prints(factor); factor.springer_table_simple od) fi
+ combine_springer_tables(rd,for factor in rd.simple_factors do  factor.springer_table_simple od) fi
 
 {
 set character_table(RootDatum rd) = CharacterTable:
