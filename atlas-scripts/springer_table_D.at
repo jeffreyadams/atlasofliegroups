@@ -23,48 +23,73 @@ ComplexOrbit O            (for SO(2n))
 Partition P               (for orbit of SO(2n))
 D_irrep                   (for representation of W(SO(2n)))
 }
-{from classical_W_classes_and_reps..at:
+{from combinatorics.at:
 
  D_irrep = { from folding pairs of partitions under swapping }
-   ( ([int],[int]) unsplit_irr { unequal partitions, larger first }
-   | (bool,[int]) split_irr { for pair of equal partitions, with sign }
-                            {switch order to avoid overlap with D_class}
-   )]
+   ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
+   | (Partition,bool) split_irr { for pair of equal partitions, with sign }
+   )
 }
 
-{valid partition in type D: odd parts have even multiplicity}
-set test_D(Partition P)=bool:
-all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)
+set partitions_D = (int->[Partition,bool]):
+  let gen =  parity_restricted_partitions(false) { restrict even parts }
+  in (int n) [Partition,bool]:
+     for lambda in gen(n+n)
+     do if =lambda%2 { all parts even } then [(lambda,false),(lambda,true)]
+        else [(lambda,false)]
+	fi
+     od.##
 
-{map from partition for an orbit of SO(2n) to semisimple element H}
-set semisimple_element_D(Partition P)=
-assert(P.test_D,"Not a valid type D partition");
-let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
-then v=ratvec:[] in
-let ()=for (i,m) in multiplicities do
- if i.is_odd then for j:m do v##:=rho(Sp(i-1)) od
-  else for j:m\2 do v##:=rho(GL(i)) od fi
-od
-then w=pad(v,sum(P)\2) in
-  dominant(SO(sum(P)),w)
+set freq_test_D ([int] frequencies, bool flip) = [int]:
+(  assert(=frequencies.even_places%2,"type D wrong partition")
+;  let odd_freq = frequencies.odd_places
+in assert(odd_freq.sum.is_even,"partition for type B, not D")
+;  if flip then assert(=odd_freq,"partition with odd parts cannot have flip") fi
+;  frequencies
+)
 
-{other direction: partition of 2n -> ComplexNilpotent for SO(2n+1)}
-set complex_nilpotent_D(Partition P)=ComplexNilpotent:
-(SO(sum(P)),(),ratvec_as_vec(2*semisimple_element_D(P)))
+{ from (Jordan) partition (or composition) to SO(2n+1) complex nilpotent orbit }
+set nilpotent_orbit_SO_even (Partition lambda, bool flip) = ComplexNilpotent:
+   let freqs = freq_test_D(frequencies(lambda),flip)
+   then H = part_mults_to_classical_H(freqs[1:]), rd=SO(sum(lambda))
+in if flip then H~[0] *:= minus_1 fi; complex_nilpotent(rd,H)
 
-{for Spin(2n+1) use the normalized diagram}
-set complex_nilpotent_D(RootDatum rd,Partition P)=ComplexNilpotent:
-let O_SO=P.complex_nilpotent_D then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in
-orbits[index]
+set nilpotent_orbit_D (RootDatum rd) = (Partition,bool->ComplexNilpotent):
+   let map = test_simple_type("D",rd) then n=#map { semisimple rank }
+in (Partition lambda,bool flip) ComplexNilpotent:
+(  assert(sum(lambda)=n+n,"Jordan type should be for D"+n)
+;  let freqs = freq_test_D(frequencies(lambda),flip)
+   then H_SO = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+     let v = cumulate_forward(H_SO) then (q,r) = v~[0]\%2 in assert(=r)
+     ; v~[0] := q {  half sum of |H_SO| }
+     ; v~[1] := q-H_SO~[0] { half sum of |H_SO| with final entry sign flipped }
+     ; sum(rd.rank # for c@i in v do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
 
-{outer automorphism of orbits in type D: switch
-last two coordinates of O.diagram
-corresponds to changing sign of  last coordinate of O.H}
-set out_D(vec diagram)=
-let a=diagram~[1] in
-diagram~[1]:=diagram~[0];diagram~[0]:=a;diagram
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_D_to_partition ([int] diagram) = (Partition,bool):
+   let (H_SO,flip) = (vec,bool): let (q,r)= (diagram~[0]-diagram~[1])\%2 in
+        assert(=r,"Invalid diagram, odd branch sum")
+      ; diagram~[0]:=q { modify our local copy that just serves in next line }
+      ; (cumulate_backward(diagram), q.<)
+   then freq_H = [int]: if flip then H_SO~[0] *:= minus_1 fi; frequencies(H_SO)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] *:= 2
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+in (for i:max from 1 ~ do for :mult(i) do i od od.##, flip)
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("D",rd)| }
+set partition_of_orbit_D (ComplexNilpotent O) = (Partition,bool):
+   let perm = test_simple_type("D",O.root_datum)
+   in stratified_diagram(O,perm).diagram_D_to_partition
+
+{ outer automorphism of orbits in type D: switch last two coordinates of
+  |O.diagram|; corresponds to changing sign of  last coordinate of O.H }
+set out_D (vec diagram) = vec: diagram[:2~]##[diagram~[0],diagram~[1]]
 
 {see page 423 of Carter
 ambiguity in map from partitions to orbits:
@@ -74,23 +99,23 @@ ambiguity in map from partitions to orbits:
  below
 }
 
-set partition_of_orbit_D(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.derived.simple_type in type="D","Not an orbit in type D (plus torus)");
-let orbit_partitions=partitions_D(O.root_datum.ss_rank) then
-diagram=O.diagram_normalized then
-{search for the partition mapping to given O}
-index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized=diagram od) in
-if index>=0 then orbit_partitions[index] else
-{orbit not in image: must be from very even orbit (all coordinates even)
- <-> last coordinate of O.H\ne 0}
-let out_diagram=out_D(diagram[0]) then
-index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized[0]=out_diagram od) in
-orbit_partitions[index] fi
+set partition_of_orbit_D (ComplexNilpotent O) = (Partition,bool):
+   assert(let (type,)=O.root_datum.derived.simple_type
+          in type="D","Not an orbit in type D (plus torus)");
+   let orbit_partitions = partitions_D(O.root_datum.semisimple_rank)
+   , diagram=O.diagram_normalized
+   then {search for the partition mapping to given O}
+      index=first
+        (for (P,flip) in orbit_partitions
+	 do nilpotent_orbit_SO_even(P,flip).diagram_normalized=diagram
+	 od)
+in orbit_partitions[index]
+
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
 {this is weak version of map from orbits to W-reps}
 set springer_D_weak(Partition P)=(Partition,Partition):
-assert(P.test_D,"Not a valid type D partition");
+assert(is_valid("D",P),"Not a valid type D partition");
 let P=sort(P)  {increasing} then
 P=if is_even(#P) then P else 0#P fi {even # of parts} then
 Q=P+for i:#P do i od {add [0,1,2,...,]}
@@ -101,23 +126,6 @@ assert(#v=#w,"error, v and w should have the same size");
 {let ()=prints("v=",v, " w=", w)}
 let (a,b)=(delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od)) in
 if leq_partitions(b,a) then (reverse_sort(a),reverse_sort(b)) else (reverse_sort(b),reverse_sort(a)) fi
-
-set springer_D_weak(ComplexNilpotent O)=(Partition,Partition):springer_D_weak(partition_of_orbit_D(O))
-
-{this method is not used}
-set springer_D_old(CharacterTable ct,ComplexNilpotent O)=int:
-let (a,b)=springer_D_weak(partition_of_orbit_D(O)) then
-{hard case: a=b, see page 423 of Carter
-see above in partition_of_orbit_D
-}
-rep=if a!=b then
-      (a,b).unsplit_irr else
-      {two cases have the same pair (a,b), use O itself to distinguish them, two choices here}
-      let index=first(for P in partitions_D(O.root_datum.rank) do complex_nilpotent_D(P).diagram_normalized=O.diagram_normalized od) in
-	prints("GOT:", index); (a,index>=0).split_irr
-    fi
-then ()=prints("representation:", rep) then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
-index_D_reps(reps,rep)
 
 {D_irrep -> character}
 set character_D(CharacterTable ct,D_irrep sigma)=[int]:
@@ -182,7 +190,7 @@ GL(n) subgroup, with roots e_1-e_2,...,e_{n-2}-e_{n-1}
 }
 
 set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:
-let (a,b)=springer_D_weak(partition_of_orbit_D(O)) in
+  let (a,b)=springer_D_weak(let (P,)=partition_of_orbit_D(O) in P) in
 {easy case}
 if a!=b then
     (a,b).unsplit_irr
@@ -299,7 +307,7 @@ P.D_collapse.transpose.D_collapse
 set test_duality_D(int n)=
 let all=partitions_D(n) in
 tabulate(
-for P in all do [P.to_string,P.D_dual.D_dual.to_string] od)
+for (P,) in all do [P.to_string,P.D_dual.D_dual.to_string] od)
 
 {Dangerous bend:
  the SpringerTable hash uses the (simple) simply connected root datum
@@ -316,10 +324,10 @@ springer(ComplexNilpotent O_0 {not necessarily for sc group})=  {=int}
  let O=orbit_by_diagram(rd,[O_0.diagram]) then
  rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
 dual_map(ComplexNilpotent O)=ComplexNilpotent:
- let P=partition_of_orbit_D(O) then
+ let (P,)=partition_of_orbit_D(O) then
  Q=D_dual(P) then
  rd_dual=O.root_datum.dual in
- if not is_very_even(P) then complex_nilpotent_D(rd_dual,Q)
+ if not is_very_even(P) then nilpotent_orbit_D(rd_dual)(Q,false)
  else
   {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
   let sigma=springer_hash_reps(O) {D_irrep} then

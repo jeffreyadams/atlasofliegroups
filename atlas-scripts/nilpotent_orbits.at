@@ -54,11 +54,16 @@ set saturate(ComplexNilpotent O,RootDatum rd) = ComplexNilpotent:
 set saturate(ComplexNilpotent O,mat inc,RootDatum rd) = ComplexNilpotent:
    complex_nilpotent(rd,O.H*inc)
 
-set diagram(ComplexNilpotent(rd,,H)) = [int]:
-   dominant(H,rd){action on coweight} * simple_roots(rd)
+set diagram(ComplexNilpotent O) = [int]:
+   assert(is_dominant(O.H,O.root_datum)); O.H * simple_roots(O.root_datum)
+
+{ with |map| a permutation of the simple generators from |Cartan_matrix_type| }
+set stratified_diagram(ComplexNilpotent O,[int] map) = [int]:
+   let rd = O.root_datum in assert(is_dominant(O.H,rd));
+   O.H*(rd.rank # for pos in map do root(rd,pos) od)
 
 set stratified_diagram(ComplexNilpotent O) = [int]:
-   diagram(complex_nilpotent(O.root_datum.stratify,O.H))
+   let (,pi) = Cartan_matrix_type(O.root_datum) in stratified_diagram(O,pi)
 
 { diagram_normalized returns [[int]] to allow for multiple simple factors }
 { however, there is no sorting of simple factors of |Lie_type(O.root_datum) }

@@ -1,25 +1,18 @@
 <springer_tables.at
 <nilpotent_orbit_partitions.at
 
-{Springer correspondence from nilpotent orbits to representations of W in type B/C
- orbit: partition -> representation= pair of partitions
- see Carter pg. 419}
-
-{all partitions for orbits of C_n, partitions of (even) n
-every odd part has even multiplicity}
-set partitions_C(int n)=[Partition]: parity_restricted_partitions(true)(2*n)
-
-{all partitions for orbits of B_n, partitions of (even) n
-every odd part has even multiplicity}
-set partitions_B(int n)=[Partition]: parity_restricted_partitions(false)(2*n+1)
+{ Springer correspondence from nilpotent orbits to representations of W
+  in type B/C
+  orbit: partition encoded as semisimple H -> W(C_n)-irrep as pair of partitions
+  see Carter pg. 419}
 
 { ---------------- type C ------------------}
 
 {diagram:
 
-ComplexOrbit O            (for Sp(2n) or PSp(2n)
-Partition    P            (for orbit in type C)
-Pair of partitions (p,q)  (for representation of W(C_n))
+ComplexOrbit:        O      (for Sp(2n) or PSp(2n)
+Partition of 2n:     P      (for orbit in type C)
+Pair of total sum n: (p,q)  (for irreducible representation of W(C_n))
 
 O->P:  P=partition_of_orbit(O)
 P->O:  O=complex_nilpotent_C(rd,P)
@@ -31,44 +24,109 @@ O-> (p,q): (p,q)=springer_C(P)
 (p,q)->P: O=inverse_springer_partition_C(P)
 }
 
-{valid partition in type C: odd parts have even multiplicity}
-set test_C(Partition P)=bool:
-all(for i:max(P) from 1 do if i.is_odd then multiplicity(i,P).is_even else true fi od)
+set partitions_C = (int->[Partition]):
+  let gen =  parity_restricted_partitions(true) { restrict odd parts }
+  in (int n) [Partition]: gen(n+n)
 
-{map from partition for an orbit of Sp(2n) to semisimple element H}
-set semisimple_element_C(Partition P)=
-assert(P.test_C,"Not a valid type C partition");
-let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
-then v=ratvec:[] in
-for (i,m) in multiplicities do
- if i.is_even then for j:m do v##:=rho(SO(i+1)) od
-  else for j:m\2 do v##:=rho(GL(i)) od fi od;
-  dominant(Sp(sum(P)),v)
 
-{partition of 2n -> ComplexNilpotent for Sp(2n)}
-set complex_nilpotent_C(Partition P)=ComplexNilpotent:
-(Sp(sum(P)),(),ratvec_as_vec(2*semisimple_element_C(P)))
+{ convert 1-based list of part multiplicities to H for Sp(2n) or SO(m) }
+set part_mults_to_classical_H ([int] frequencies_shifted) = vec:
+(  let freq_H = frequencies_shifted { vector to be modified }
+in for f@i in frequencies_shifted ~ { frequency |f| of |i+i|, decreasing |i| }
+   do if i>=2 then freq_H[i-2]+:=freq_H[i] fi { cumulate backward by steps 2 }
+   od
+;  freq_H[0]\:=2 { multiplicity of 0 in H was double counted, +1 for SO(odd) }
+;  for fH@i in freq_H ~do for :fH do i od od.##
+)
 
-{use the diagram: need this for G=PSp(2n) and also
- if G has a nontrivial central torus (but semisimple derived group)}
-set complex_nilpotent_C(RootDatum rd,Partition P)=ComplexNilpotent:
-let O_Sp=P.complex_nilpotent_C then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=O_Sp.diagram_normalized od) in
-orbits[index]
+set freq_test_C ([int] frequencies) = [int]:
+   assert(=frequencies.odd_places%2,"type C wrong partition"); frequencies
 
-{O is an orbit for a *reductive* group G where G_d is simple of type C
-uses partitions_C(semisimple_rank), but returns orbits for G
-}
-set partition_of_orbit_C(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.derived.simple_type in type="C","Not an orbit in smiple type C (plus torus)");
-let orbit_partitions=partitions_C(O.root_datum.ss_rank) then
-index=first(for P in orbit_partitions do complex_nilpotent_C(O.root_datum,P)=O od) in
-orbit_partitions[index]
+{ from (Jordan) partition (or composition) to Sp(2n) complex nilpotent orbit }
+set nilpotent_orbit_Sp (Partition lambda) = ComplexNilpotent:
+   let freqs = frequencies(lambda).freq_test_C
+in complex_nilpotent(Sp(sum(lambda)),part_mults_to_classical_H(freqs[1:]))
+
+set nilpotent_orbit_C (RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("C",rd) then n=#map { semisimple rank }
+in (Partition lambda) ComplexNilpotent:
+(  assert(sum(lambda)=n+n,"Jordan type should be for C"+n)
+;  let freqs = frequencies(lambda).freq_test_C
+   then H_Sp = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+     sum(rd.rank # for c@i in cumulate_forward(H_Sp) do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_C_to_partition ([int] diagram) = Partition:
+   let H_Sp = vec:
+      let (q,r) = diagram~[0]\%2 in assert(=r,"Final diagram entry is odd)")
+      ; diagram~[0]:=q
+      ; diagram.cumulate_backward
+   then freq_H = [int]: frequencies(H_Sp)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] *:= 2
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("C",rd)| }
+set partition_of_orbit_C (ComplexNilpotent O) = Partition:
+   let perm = test_simple_type("C",O.root_datum)
+   in stratified_diagram(O,perm).diagram_C_to_partition
+
+
+set partitions_B = (int->[Partition]):
+  let gen =  parity_restricted_partitions(false) { restrict even parts }
+  in (int n) [Partition]: gen(n+n+1)
+
+set freq_test_B ([int] frequencies) = [int]:
+(  assert(=frequencies.even_places%2,"type B wrong partition")
+;  assert(frequencies.odd_places.sum.is_odd,"partition for type D, not B")
+;  frequencies
+)
+
+{ from (Jordan) partition (or composition) to SO(2n+1) complex nilpotent orbit }
+set nilpotent_orbit_SO_odd (Partition lambda) = ComplexNilpotent:
+   let freqs = frequencies(lambda).freq_test_B
+in complex_nilpotent(SO(sum(lambda)),part_mults_to_classical_H(freqs[1:]))
+
+set nilpotent_orbit_B (RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("B",rd) then n=#map { semisimple rank }
+in (Partition lambda) ComplexNilpotent:
+(  assert(sum(lambda)=n+n+1,"Jordan type should be for B"+n)
+;  let freqs = frequencies(lambda).freq_test_B
+   then H_SO = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+     let v = cumulate_forward(H_SO) then (q,r) = v~[0]\%2 in assert(=r)
+     ; v~[0]:=q { correct for final simple coroot [0,..,0,2] of SO(2n+1) }
+     ; sum(rd.rank # for c@i in v do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_B_to_partition ([int] diagram) = Partition:
+   let H_SO = vec: diagram.cumulate_backward
+   then freq_H = [int]: frequencies(H_SO)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] +:= freq_H[0]+1
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("C",rd)| }
+set partition_of_orbit_B (ComplexNilpotent O) = Partition:
+   let perm = test_simple_type("B",O.root_datum)
+   in stratified_diagram(O,perm).diagram_B_to_partition
+
+
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
 set springer_C(Partition P)=(Partition,Partition):
-assert(P.test_C,"Not a valid type C partition");
+assert(is_valid("C",P),"Not a valid type C partition");
 let P=sort(P)  {increasing} then
 P=if is_even(#P) then P else 0#P fi {even # of parts} then
 Q=P+for i:#P do i od {add [0,1,2,...,]}
@@ -106,7 +164,7 @@ to ComplexNilpotent for Sp(2n)
 }
 set inverse_springer_C((Partition,Partition) partition_pair)=(bool,ComplexNilpotent):
 let (valid,P)=inverse_springer_partition_C(partition_pair) in
-if valid then (valid,complex_nilpotent_C(P)) else
+if valid then (valid,nilpotent_orbit_Sp(P)) else
 (false,trivial_group.zero_orbit) fi
 
 
@@ -135,50 +193,9 @@ O-> (p,q): (p,q)=springer_B(P)
 set pad([int] v,int N)=v##null(N-#v)
 set pad(ratvec v,int N)=v##null(N-#v)
 
-
-
-{valid partition in type B: odd parts have even multiplicity}
-set test_B(Partition P)=bool:
-all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)
-
-{map from partition for an orbit of SO(2n+1) to semisimple element H}
-set semisimple_element_B(Partition P)=
-assert(P.test_B,"Not a valid type B partition");
-let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
-then v=ratvec:[] in
-let ()=for (i,m) in multiplicities do
- if i.is_odd then for j:m do v##:=rho(Sp(i-1)) od
-  else for j:m\2 do v##:=rho(GL(i)) od fi
-od
-then w=pad(v,sum(P)\2) in
-  dominant(SO(sum(P)),w)
-
-{other direction: partition of 2n -> ComplexNilpotent for SO(2n+1)}
-set complex_nilpotent_B(Partition P)=ComplexNilpotent:
-(SO(sum(P)),(),ratvec_as_vec(2*semisimple_element_B(P)))
-
-{for Spin(2n+1) use the normalized diagram}
-{use the diagram: need this for G=Spin(2n+1), and also
- if G has a nontrivial central torus (but semisimple derived group)}
-set complex_nilpotent_B(RootDatum rd,Partition P)=ComplexNilpotent:
-let O_SO=P.complex_nilpotent_B then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in
-orbits[index]
-
-{O is an orbit for a *reductive* group G where G_d is simple of type B
-uses partitions_B(semisimple_rank), but returns orbits for G
-}
-set partition_of_orbit_B(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.derived.simple_type in type="B","Not an orbit in smiple type B (plus torus)");
-let orbit_partitions=partitions_B(O.root_datum.ss_rank) then
-diagram=O.diagram_normalized then
-index=first(for P in orbit_partitions do complex_nilpotent_B(P).diagram_normalized=diagram od) in
-orbit_partitions[index]
-
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
 set springer_B(Partition P)=(Partition,Partition):
-assert(P.test_B,"Not a valid type B partition");
+assert(is_valid("B",P),"Not a valid type B partition");
 let P=sort(P)  {increasing} then
 Q=P+for i:#P do i od {add [0,1,2,...,]}
 then v=[int]:[],w=[int]:[] in
@@ -217,9 +234,10 @@ fi
 both of size n, and sum(P)+sum(Q)=n,
 to ComplexNilpotent for SO(2n+1)
 }
-set inverse_springer_B((Partition,Partition) partition_pair)=(bool,ComplexNilpotent):
+set inverse_springer_B((Partition,Partition) partition_pair) =
+    (bool,ComplexNilpotent):
 let (valid,P)=inverse_springer_partition_B(partition_pair) in
-if valid then (valid,complex_nilpotent_B(P)) else
+if valid then (valid,nilpotent_orbit_SO_odd(P)) else
 (false,trivial_group.zero_orbit) fi
 
 
@@ -290,16 +308,12 @@ tabulate(
 for P in all do [P.to_string,P.BC_dual.BC_dual.to_string] od)
 
 set dual_map_C(ComplexNilpotent O_C)=ComplexNilpotent:
-let P=partition_of_orbit_C(O_C) then
-Q=BC_dual(P) then
-rd_dual=O_C.root_datum.dual in
-complex_nilpotent_B(rd_dual,Q)
+let P=partition_of_orbit_C(O_C) in
+nilpotent_orbit_B(O_C.root_datum.dual)(BC_dual(P))
 
 set dual_map_B(ComplexNilpotent O_B)=ComplexNilpotent:
-let P=partition_of_orbit_B(O_B) then
-Q=BC_dual(P) then
-rd_dual=O_B.root_datum.dual in
-complex_nilpotent_C(rd_dual,Q)
+let P=partition_of_orbit_B(O_B)
+in nilpotent_orbit_C(O_B.root_datum.dual)(BC_dual(P))
 
 set springer_table_C(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum then

@@ -18,8 +18,8 @@ set nilpotent_orbit_GL ([int] parts) = ComplexNilpotent:
 in complex_nilpotent(rd,H)
 
 set nilpotent_orbit_A(RootDatum rd) = (Partition->ComplexNilpotent):
-   let map = test_simple_type("A",rd) in
-   (Partition P) ComplexNilpotent:
+   let map = test_simple_type("A",rd)
+in (Partition P) ComplexNilpotent:
 (  assert(is_positive(P), "P is not a partition (has non-positive entries)")
 ;  let (n,Levi_type,simples) = Levi_A(P)
    then v = assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
@@ -31,7 +31,7 @@ in complex_nilpotent(rd,H)
 { an inverse operation, starting from |stratified_diagram(orbit)| }
 set diagram_A_to_partition ([int] diagram) = Partition:
    assert(diagram=diagram~[:],"Stratified diagram should be a palindrome");
-   let freq = [int]: (0#diagram).cumulate_forward.frequencies
+   let freq = [int]: (0#diagram.cumulate_forward).frequencies
    then max = { the largest part }
       let (q,r)= #freq \% 2 in assert(q=1,"Diagram has odd sum"); q+1
    then mult(int i) = int: { mulitplicity of part |i| in partition }
