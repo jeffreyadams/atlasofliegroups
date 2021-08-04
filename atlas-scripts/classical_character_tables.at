@@ -27,15 +27,15 @@ in assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
   done using |classic_permutation| and |cycle_type| from combinatorics.at, but
   knowing that we have a GL(n) element, we can be a bit more efficient.
 }
-set cycle_type_GL(WeylElt w) = Partition:
+set cycle_type_GL (WeylElt w) = Partition:
   let n=w.root_datum.rank in cycle_type((vec:#n)*w)
 
 { sometimes we can avoid sorting the cycles into decreasing length order }
-set unsorted_cycle_type_GL(WeylElt w) = [int]:
+set unsorted_cycle_type_GL (WeylElt w) = [int]:
   let n=w.root_datum.rank in
   for cycle in permutation_cycles((vec:#n)*w) do #cycle od
 
-set class_table_S(int n) = WeylClassTable:
+set class_table_S (int n) = WeylClassTable:
   let rd=GL(n), reps = [Partition]: partitions(n)
   then lookup = (Partition->int): index_partition(reps)
   in W_class_table(rd, for rep in reps do conjugacy_class_S(rep) od
@@ -44,7 +44,7 @@ set class_table_S(int n) = WeylClassTable:
 		  , (int i,int k)int: lookup(cycle_power(reps[i],k))
 		  )
 
-set class_table_A(RootDatum rd) = WeylClassTable:
+set class_table_A (RootDatum rd) = WeylClassTable:
   let partitions = [Partition]: partitions(rd.semisimple_rank+1)
   , type(WeylElt w) = Partition: cycle_type(classic_permutation(w))
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
@@ -55,7 +55,8 @@ set class_table_A(RootDatum rd) = WeylClassTable:
 		  , (int i,int k)int: lookup(cycle_power(partitions[i],k))
 		  )
 
-set character_table_S(int n) = (CharacterTable,([int]->int),([int]->int)):
+set character_table_S (int n) =
+     (CharacterTable,(Partition->int),(Partition->int)):
   let partitions_n = partitions(n)
   then classes = [WeylElt,classical_class,string]:
     for lambda in partitions_n
@@ -67,15 +68,16 @@ set character_table_S(int n) = (CharacterTable,([int]->int),([int]->int)):
        ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
        )
     od
-  , lookup_partition = ([int]->int): index_partition(partitions_n)
+  , lookup_partition = (Partition->int): index_partition(partitions_n)
   , top = #partitions_n-1
 in ( character_table(class_table_S(n),classes,irreps)
    , lookup_partition { find index among conjugacy classes }
-   , ([int] lambda) int: top - lookup_partition(lambda) { index among irreps }
+   , (Partition lambda) int: { index among irreps }
+        top - lookup_partition(lambda)
    )
 
-set character_table_A(RootDatum rd) =
-      (CharacterTable,([int]->int),([int]->int)):
+set character_table_A (RootDatum rd) =
+      (CharacterTable,(Partition->int),(Partition->int)):
   let partitions = [Partition]: partitions(rd.semisimple_rank+1)
   , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
   then classes = [WeylElt,classical_class,string]:
@@ -88,21 +90,22 @@ set character_table_A(RootDatum rd) =
        ,for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
        )
     od
-  , lookup_partition = ([int]->int): index_partition(partitions)
+  , lookup_partition = (Partition->int): index_partition(partitions)
   , top = #partitions-1
 in ( character_table(class_table_A(rd),classes,irreps)
    , lookup_partition { find index among conjugacy classes }
-   , ([int] lambda) int: top - lookup_partition(lambda) { index among irreps }
+   , (Partition lambda) int: { index among irreps }
+        top - lookup_partition(lambda)
    )
 
 {				types B,C				}
 
-set BC_classes(int n) = [Signed_cycles]:
+set BC_classes (int n) = [Signed_cycles]:
    for PQ in partition_pairs(n) do to_cycles(PQ) od
 
 { word representative in types B and C of conjugacy class for partition pair;
   the parts of P correspond to are cycles without flip, those of Q with flip }
-set class_word_BC(Partition P,Partition Q) = [int]:
+set class_word_BC (Partition P,Partition Q) = [int]:
 (  assert((P:=P.strip_to_partition).>, "P is not a partition")
 ;  assert((Q:=Q.strip_to_partition).>, "Q is not a partition")
 ;  let (nP,,P_gens)=Levi_A(P) { for P part, do the same as in type A }
@@ -122,7 +125,7 @@ in P_gens##Q_gens
 
 
 { for general type B root data, we need to look up and use the diagram order }
-set conjugacy_class_B(RootDatum rd) = (BiPartition->WeylElt):
+set conjugacy_class_B (RootDatum rd) = (BiPartition->WeylElt):
    let map = test_simple_type("B",rd) then n=#map in
    (BiPartition pair) WeylElt:
 (  let size = rank(pair)
@@ -130,7 +133,7 @@ in assert(size=n,"Cycles sum to "+size+" rather than "+n)
 ;  W_elt(rd,for s in class_word_BC(pair) do map[s] od)
 )
 
-set class_table_B(int n) = WeylClassTable:
+set class_table_B (int n) = WeylClassTable:
    let rd=SO(n+n+1), classes = [BiPartition]: partition_pairs(n)
    then lookup = (BiPartition->int): index_bipartition(classes)
 in W_class_table( rd, for pair in classes do W_elt(rd,class_word_BC(pair)) od
@@ -140,7 +143,7 @@ in W_class_table( rd, for pair in classes do W_elt(rd,class_word_BC(pair)) od
 		    cycle_power(classes[i].to_cycles,k).to_partition_pair.lookup
 		)
 
-set class_table_B(RootDatum rd) = WeylClassTable:
+set class_table_B (RootDatum rd) = WeylClassTable:
    let classes = [BiPartition]: partition_pairs(rd.semisimple_rank)
    , type_code(WeylElt w) = [int]: signed_cycle_type_code(classic_permutation(w))
    , class_rep = (BiPartition->WeylElt): conjugacy_class_B(rd)
@@ -152,42 +155,67 @@ in W_class_table( rd, for pair in classes do class_rep(pair) od
 		    cycle_power(classes[i].to_cycles,k).to_partition_pair.lookup
 		)
 
-set BC_irreps(int n) = [BiPartition]:
+set BC_irreps (int n) = [BiPartition]:
    pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
 
-set character_table_B(int n) = CharacterTable:
-   let class_list =  partition_pairs(n), rd=SO(n+n+1)
+{ for looking up a |BiPartition| among |BC_irreps|, use an adapted comparison: }
+set index_BC_irrep = ([BiPartition] -> (BiPartition->int)):
+   let leq (BiPartition (P,Q), BiPartition (R,S)) = bool:
+      case P.sum-R.sum
+      then false else true { size balance is decisive, inverted ordering! }
+      in { equal size case: reverse compare left or (if same) right partitions }
+	 if P=R else (R,P) then (S,Q) fi.leq_equal_sum_partitions
+      esac
+in ([BiPartition] list) (BiPartition->int): { assume |list| is sorted by |leq| }
+      (BiPartition PQ) int:
+	 binary_search_first( (int i)bool: leq(PQ,list[i]), 0, #list)
+
+set character_table_B (int n) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+   let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+   , rd=SO(n+n+1)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
    then classes = [WeylElt,classical_class,string]:
       for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
-      for rep in BC_irreps(n)
+      for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   in character_table(class_table_B(n),classes,irreps)
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+in ( character_table(class_table_B(n),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 
-set character_table_B(RootDatum rd) = CharacterTable:
+set character_table_B (RootDatum rd) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
    let n=rd.semisimple_rank
-   then class_list =  partition_pairs(n), class_rep = conjugacy_class_B(rd)
+   then class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+   , class_rep = conjugacy_class_B(rd)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: class_rep(class_list[i])
    then classes = [WeylElt,classical_class,string]:
       for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
-      for rep in BC_irreps(n)
+      for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   in character_table(class_table_B(rd),classes,irreps)
-
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+in ( character_table(class_table_B(n),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 
 
 { for general type C root data, we need to look up and use the diagram order }
-set conjugacy_class_C(RootDatum rd) = (BiPartition->WeylElt):
+set conjugacy_class_C (RootDatum rd) = (BiPartition->WeylElt):
    let map = test_simple_type("C",rd) then n=#map in
    (BiPartition pair) WeylElt:
 (  let size = rank(pair)
@@ -196,7 +224,7 @@ in assert(size=n,"Partition sizes sum to "+size+" rather than "+n)
 )
 
 { in class table construction we perfer |BiPartition| over |Signed_cycles| }
-set class_table_C(int n) = WeylClassTable:
+set class_table_C (int n) = WeylClassTable:
    let rd=Sp(n+n), classes = [BiPartition]: partition_pairs(n)
    then lookup = (BiPartition->int): index_bipartition(classes)
 in W_class_table( rd, for pair in classes do W_elt(rd,class_word_BC(pair)) od
@@ -206,7 +234,7 @@ in W_class_table( rd, for pair in classes do W_elt(rd,class_word_BC(pair)) od
 		    cycle_power(classes[i].to_cycles,k).to_partition_pair.lookup
 		)
 
-set class_table_C(RootDatum rd) = WeylClassTable:
+set class_table_C (RootDatum rd) = WeylClassTable:
    let classes = [BiPartition]: partition_pairs(rd.semisimple_rank)
    , type_code(WeylElt w) = vec: signed_cycle_type_code(classic_permutation(w))
    , class_rep = (BiPartition->WeylElt): conjugacy_class_C(rd)
@@ -218,8 +246,10 @@ in W_class_table( rd, for pair in classes do class_rep(pair) od
 		    cycle_power(classes[i].to_cycles,k).to_partition_pair.lookup
 		)
 
-set character_table_C(int n) = CharacterTable:
-   let class_list =  partition_pairs(n), rd=Sp(n+n)
+set character_table_C (int n) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+   let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+   , rd=Sp(n+n)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
    then classes = [WeylElt,classical_class,string]:
@@ -230,11 +260,18 @@ set character_table_C(int n) = CharacterTable:
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   in character_table(class_table_C(n),classes,irreps)
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+in ( character_table(class_table_B(n),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 
-set character_table_C(RootDatum rd) = CharacterTable:
+set character_table_C(RootDatum rd) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
    let n=rd.semisimple_rank
-   then class_list =  partition_pairs(n), class_rep = conjugacy_class_C(rd)
+   then class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+   , class_rep = conjugacy_class_C(rd)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: class_rep(class_list[i])
    then classes = [WeylElt,classical_class,string]:
@@ -245,8 +282,12 @@ set character_table_C(RootDatum rd) = CharacterTable:
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   in character_table(class_table_C(rd),classes,irreps)
-
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+in ( character_table(class_table_B(n),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 {				type D				}
 
 
