@@ -54,7 +54,7 @@ set A_dual(Partition P) = Partition: P.transpose
 
 set dual_map_A(ComplexNilpotent O) = ComplexNilpotent:
    let P=O.stratified_diagram.diagram_A_to_partition
-   in nilpotent_orbit_GL(P.A_dual)
+   in nilpotent_orbit_A(dual(O.root_datum))(transpose(P))
 
 set springer_table_A (CharacterTable ct) = SpringerTable:
 ( ct
@@ -66,7 +66,7 @@ set springer_table_A (CharacterTable ct) = SpringerTable:
 
 set springer_table_A (RootDatum rd) = SpringerTable:
    let (table, , irrep_of_partition) = character_table_A(rd)
-   , orbit = ([int]->ComplexNilpotent): nilpotent_orbit_A(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_A(rd)
    , rank = rd.semisimple_rank
 in ( table
    , for lambda in partitions(rank+1) do orbit(lambda) od

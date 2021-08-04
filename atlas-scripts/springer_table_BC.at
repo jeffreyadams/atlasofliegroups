@@ -1,5 +1,8 @@
+<basic.at
+<combinatorics.at { for |core_quotient_2| }
 <springer_tables.at
 <nilpotent_orbit_partitions.at
+<character_tables_reductive.at { for |character_table@RootDatum| }
 
 { Springer correspondence from nilpotent orbits to representations of W
   in type B/C
@@ -124,26 +127,30 @@ set partition_of_orbit_B (ComplexNilpotent O) = Partition:
 
 
 
-{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
-set springer_C(Partition P)=(Partition,Partition):
-assert(is_valid("C",P),"Not a valid type C partition");
-let P=sort(P)  {increasing} then
-P=if is_even(#P) then P else 0#P fi {even # of parts} then
-Q=P+for i:#P do i od {add [0,1,2,...,]}
-then v=[int]:[],w=[int]:[] in
-{each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
-for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od;
-assert(#v=#w,"error, v and w should have the same size");
-{let ()=prints("v=",v, " w=", w)}
-(delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od))
+{ Springer map from Cn nilpotent orbit to BiPartition indexing a W-irrep }
+set springer_C (ComplexNilpotent O) = BiPartition:
+   let (,(mu,lambda)) = { partitions are swapped for type C, see |wrep@Orbit| }
+      core_quotient_2(partition_of_orbit_C(O))
+   in (lambda,mu)
 
-set springer_C(CharacterTable ct,ComplexNilpotent O)=int:
-let (a,b)=springer_C(partition_of_orbit_C(O)) then
-n=O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
+{ Springer map from partition P of 2n to bipartition (P,Q) of total size n }
+set springer_C (Partition P) = BiPartition:
+(  assert(is_valid("C",P),"Not a valid type C partition")
+;  let (,(mu,lambda)) { partitions are swapped for type C, see |wrep@Orbit| }
+      = core_quotient_2(sort(P))
+   in (lambda~[:],mu~[:]) { return partitions in increasing order, why? }
+)
+
+set springer_C (CharacterTable ct,ComplexNilpotent O) = int:
+  let (a,b)=springer_C(partition_of_orbit_C(O))
+  , n=O.root_datum.semisimple_rank
+  then index=first
+    (for i:ct.n_classes
+     do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
-sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in
-{pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
+       sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))
+     od)
+in {pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
 
 
 set inverse_springer_partition_C((Partition,Partition) partition_pair)=(bool,Partition):
@@ -193,30 +200,32 @@ O-> (p,q): (p,q)=springer_B(P)
 set pad([int] v,int N)=v##null(N-#v)
 set pad(ratvec v,int N)=v##null(N-#v)
 
-{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
-set springer_B(Partition P)=(Partition,Partition):
-assert(is_valid("B",P),"Not a valid type B partition");
-let P=sort(P)  {increasing} then
-Q=P+for i:#P do i od {add [0,1,2,...,]}
-then v=[int]:[],w=[int]:[] in
-{each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
-for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od;
-assert(#v=#w+1,"error, #v should equal #w+1");
-(v-for i:#v do i od, w-for i:#w do i od)
+{ Springer map from Cn nilpotent orbit to BiPartition indexing a W-irrep }
+set springer_B (ComplexNilpotent O) = BiPartition:
+   let (,pair) = { partitions unswapped for type B, see |wrep@Orbit| }
+      core_quotient_2(partition_of_orbit_B(O))
+   in pair
 
-set springer_B(ComplexNilpotent O)=(Partition,Partition):
-springer_B(partition_of_orbit_B(O))
+{ Springer map from partition P of 2n+1 to bipartition (P,Q) of total size n }
+set springer_B (Partition P) = BiPartition:
+(  assert(is_valid("B",P),"Not a valid type C partition")
+;  let (,(lambda,mu)) { partitions unswapped for type B, see |wrep@Orbit| }
+      = core_quotient_2(sort(P))
+   in (lambda~[:],mu~[:]) { return partitions in increasing order, why? }
+)
 
-set springer_B(CharacterTable ct,ComplexNilpotent O)=int:
-let (a,b)=springer_B(partition_of_orbit_B(O)) then
-n=
-a:=a.delete_trailing_zeros;
-b:=b.delete_trailing_zeros;
-O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
+set springer_B(CharacterTable ct,ComplexNilpotent O) = int:
+( let (a,b)=springer_B(partition_of_orbit_B(O))
+  , n=O.root_datum.semisimple_rank
+in a:=a.delete_trailing_zeros; b:=b.delete_trailing_zeros
+; let index=first
+    (for i:ct.n_classes
+     do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
 {need n+1: sometimes a or b has length n+1 not n}
-sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in
-index
+          sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))
+     od)
+  in index
+)
 
 set inverse_springer_partition_B((Partition,Partition) partition_pair)=(bool,Partition):
 let (P,Q)=partition_pair then n=sum(P)+sum(Q) then
@@ -323,6 +332,17 @@ dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
 springer(ComplexNilpotent O)=springer_C(ct,O) in
 (ct,orbits,dual_map,dual_map_i,springer)
 
+set springer_table_C (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_bipartition) = character_table_C(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_C(rd)
+   , rank = rd.semisimple_rank
+in ( table
+   , for lambda in partitions_C(rank) do orbit(lambda) od
+   , dual_map_C@ComplexNilpotent
+   , dual_map_B@ComplexNilpotent { inverse of dual map is dual map for B }
+   , (ComplexNilpotent O) int: irrep_of_bipartition(springer_C(O))
+   )
+
 set springer_table_B(CharacterTable ct)=SpringerTable:
 let rd=ct.root_datum then
 orbits=rd.orbits then
@@ -330,3 +350,14 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_C(O) then
 springer(ComplexNilpotent O)=springer_B(ct,O) in
 (ct,orbits,dual_map,dual_map_i,springer)
+
+set springer_table_B (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_bipartition) = character_table_B(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_B(rd)
+   , rank = rd.semisimple_rank
+in ( table
+   , for lambda in partitions_B(rank) do orbit(lambda) od
+   , dual_map_B@ComplexNilpotent
+   , dual_map_C@ComplexNilpotent { inverse of dual map is dual map for C }
+   , (ComplexNilpotent O) int: irrep_of_bipartition(springer_B(O))
+   )
