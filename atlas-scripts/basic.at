@@ -1140,11 +1140,29 @@ set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
 }
 set test_simple_type(string T, RootDatum rd) = [int]:
 (  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
-   then factors=simple_factors(lt) then nf=#factors
-in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components)")
-;  let (type,rank)=factors[0]
-in assert(type=T,"Not a simple type "+T+" root datum")
-;  map
+in if lt=Lie_type("A1A1") and T="D" { unique reducible case that is accepted }
+   then return map
+   fi
+;  let factors=simple_factors(lt)
+in case #factors
+   else error("Reducible ",lt," found; simple type ",T," was required")
+   in error("Pure torus found where type ",T," root diagram was required")
+   , let (type,rank)=factors[0] in
+     if type=T then map { the main case }
+     else { accept some low rank types under an alternative designation }
+       case rank-1
+       in if T="B" or T="C" { and |rank=1| implies that |type="A"| }
+	  then return map { accept $A_1$ to be interpreted as $B_1$ or $C_1$ }
+	  fi
+       ,  { in rank 2 accept $B_2$ or $C_2$ as the reversed other }
+          if type="B" and T="C" or type="C" and T="B" then return map~[:] fi
+       ,  { in rank 3 accept $A_3$ as $D_3$ by putting middle node in front }
+       if type="A" and T="D" then return [map[1],map[0],map[2]] fi
+       else { in higher ranks there are no ambiguous cases: fall through } ()
+       esac
+     ; error(lt," found where type ",T," was required")
+     fi
+   esac
 )
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
