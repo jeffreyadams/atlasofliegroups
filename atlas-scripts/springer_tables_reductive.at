@@ -22,7 +22,7 @@ elif letter="B" then springer_table_B(character_table_B(rd))
 elif letter="C" then springer_table_C(character_table_C(rd))
 elif letter="D" then  springer_table_D(character_table_D(rd))
 elif letter="F" then  springer_table_F4(character_table(rd))
-elif letter="G" then  springer_table_G2()
+elif letter="G" then  springer_table_G2(character_table(rd))
 {don't need to construct chartacter_table first in type E}
 elif letter="E" and n=6 then springer_table_E6(character_table(rd))
 elif letter="E" and n=7 then springer_table_E7(character_table(rd))
@@ -111,4 +111,4 @@ set character_table(RootDatum rd) = CharacterTable:
       for rdi@i in root_data
       do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
-in combine(rd,simple_tables)}
+in combine(rd,simple_tables)}2
