@@ -1,0 +1,7 @@
+set G=F4_s
+set Gd=G.dual
+set st=G.springer_table
+set orbs=G.nilpotent_orbits
+set orbsdual = Gd.nilpotent_orbits
+void: for i:#orbsdual do prints(#orbsdual-1-i,"  ",st.dual_map_i(orbsdual[#orbsdual-1-i])) od
+void: for j:#orbs do prints(j,"  ",orbs[j]) od
