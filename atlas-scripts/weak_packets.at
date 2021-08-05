@@ -630,21 +630,31 @@ let wp=weak_packets(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits then
 (ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
+{TMI! put stuff you really want below}
 if cells_verbose then
-prints("Orbits for the dual group: ", G.dual_quasisplit_form);
-show_nilpotent_orbits_very_long((ic,data));
-prints(new_line,"Information about orbit centralizers:");
-for (,,,,cent,,,,,)@i in data do
-prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
-prints("isogeny information: ");
-show_centralizer_isogeny(orbits[i]);
-prints("-------------") od;
-prints();
-prints();
-show(for (,,,,,,,,,ap)@i in data do ap od);
-show_short(wp);
-show(wp);
-show_long(wp) fi;
+  prints("Orbits for the dual group: ", G.dual_quasisplit_form);
+  show_nilpotent_orbits_very_long((ic,data));
+  prints(new_line,"Information about orbit centralizers:");
+  for (,,,,cent,,,,,)@i in data do
+  prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
+  prints("isogeny information: ");
+  show_centralizer_isogeny(orbits[i]);
+  prints("-------------") od;
+  prints();
+  prints();
+  show(for (,,,,,,,,,ap)@i in data do ap od);
+  show_short(wp);
+  show(wp);
+  show_long(wp);
+  if G.is_relatively_split then
+   let wp_sc = ##for weakpacket@i in wp do
+   let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
+   test_conjecture_report(wp_sc,G)
+  fi;
+  prints(export(parameters(wp)))
+fi;
+{put stuff you really want here: ; at the end of each item}
+show_long(wp);
 if G.is_relatively_split then
  let wp_sc = ##for weakpacket@i in wp do
  let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
