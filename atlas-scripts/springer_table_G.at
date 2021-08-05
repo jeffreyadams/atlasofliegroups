@@ -8,26 +8,41 @@ springer(G2(a1))=characters[5] (dimension 1, degree 2)
 springer(G2)=characters[0] (dimension 1, degree 0: trivial)
 }
 
-set diagrams=[[0,0],[0,1],[1,0],[0,2],[2,2]]
-set dual_diagrams=[[2,2],[0,2],[0,2],[0,2],[0,0]]
+set G2_diagrams=[[0,0],[0,1],[1,0],[0,2],[2,2]]
+set G2_dual_diagrams=[[2,2],[0,2],[0,2],[0,2],[0,0]]
 
 set dual_map_G2(ComplexNilpotent O)=ComplexNilpotent:
 let diagram=O.diagram_normalized[0] then
-index=find(diagrams,diagram) then
-dual_diagram=dual_diagrams[index] in
+index=find(G2_diagrams,diagram) then
+dual_diagram=G2_dual_diagrams[index] in
 orbit_by_diagram(O.root_datum,[dual_diagram])
 
-set springer_G2=[3,1,4,5,0]
-set springer_G2(ComplexNilpotent O)=int:
-let diagram=O.diagram_normalized[0] then
-index=find(diagrams,diagram) in
-springer_G2[index]
+set springer_G2(int i)=int:[3,1,4,5,0][i]
+set springer_G2(RootDatum rd)=(int -> int):(int i):
+let (type,map)=Cartan_matrix_type(rd) in
+assert(type="G2", "not type G2");
+springer_G2(map[i])
 
-set springer_table_G2()=
-let ct=character_table_G(2) in
+
+set springer_G2_by_diagram=([int]->int):([int] diagram):
+springer_G2(find(G2_diagrams,diagram))
+
+set springer_G2_by_diagram(RootDatum rd)=([int]->int):([int] diagram):
+let (type,map)=Cartan_matrix_type(rd) in
+assert(type="G2", "not type G2");
+springer_G2_by_diagram(permute(map,diagram))
+
+set springer_G2(ComplexNilpotent orbit)=int:
+springer_G2_by_diagram(orbit.root_datum)(orbit.diagram)
+
+{requirement: ct.derived is of type G2}
+set springer_table_G2(CharacterTable ct)=
 (ct,
-simply_connected(G2).orbits,
+ct.root_datum.orbits,
 dual_map_G2@ComplexNilpotent,
 dual_map_G2@ComplexNilpotent,
 springer_G2@ComplexNilpotent
 )
+
+set springer_table_G2()=
+springer_table_G2(simply_connected(G2).character_table)
