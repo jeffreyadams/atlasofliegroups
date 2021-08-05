@@ -143,8 +143,12 @@ set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
 set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
 
 set degree(CharacterTable ct) = (int i)int: ct.degrees[i]
+set generic_degree_safe(CharacterTable ct)  = (int i)int:
+   if ct.has_generic_degree(i) then ct.generic_degree(i) else -1 fi
+set generic_degrees(CharacterTable ct)=[int]:for i:ct.n_classes do ct.generic_degree_safe(i) od
 set generic_degree_string(CharacterTable ct)  = (int i)string:
    if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
+
 
 set sum(CharacterTable ct) = ([int],[int]->[int]): ct.class_table.direct_sum
 set product(CharacterTable ct) = (([int],[int])->[int]): ct.class_table.tensor

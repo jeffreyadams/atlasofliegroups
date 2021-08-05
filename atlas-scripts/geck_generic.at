@@ -1,17 +1,17 @@
 <all.at
 
+set gg_verbose=false
+
 set conjugacy_classes_reflections_simple(RootDatum rd)=[WeylElt]:
 assert(rd.derived.is_simple,"Root Datum is not simple");
 let f=rd.invariant_form then
 l_0=f(rd.posroots[0],rd.posroots[0]) in
-let ()=prints("l_0=",l_0) in
  let j=first(for i:#rd.posroots do i>0 and f(rd.posroots[i],rd.posroots[i]) != l_0 od) in
- let ()=prints("j=",j) in
  if j=-1 then [W_elt(rd,[0])] else [W_elt(rd,[0]),W_elt(rd,[j])] fi
 
 set conjugacy_classes_reflections(RootDatum rd)=
 ##for f in rd.simple_factors do
- for w in conjugacy_classes_reflections_simple(f) do prints("w=",w);W_elt(rd,w.matrix) od od
+ for w in conjugacy_classes_reflections_simple(f) do W_elt(rd,w.matrix) od od
 
 {if you have the WeylClassTable this is better:}
 set conjugacy_classes_reflections(WeylClassTable wct)=[int]:
@@ -21,8 +21,9 @@ set omega_L(CharacterTable ct, int j,(WeylElt->int) weight_function)=
 let char=ct.characters[j] then
 r=rat_as_int(sum(
 for i in conjugacy_classes_reflections(ct.class_table) do
- char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od))
- in prints("omega_L: j=", j, " r=", r);r
+ char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od)) in
+ {prints("omega_L: j=", j, " omega_L=", r);}
+ r
 
 set default_weight_function=(WeylElt->int):(WeylElt w):1
 
@@ -46,42 +47,59 @@ set max_Levi_subgroups(RootDatum rd)=[RootDatum]:
 for simple_roots in max_standard_Levi_conjugacy_representatives(rd)
 do complex_Levi(rd,simple_roots) od
 
-set generic_degree(RootDatum rd, CharacterTable ct,int i)=
-let rec_fun a_E(RootDatum H,CharacterTable ct_H, int r)=int:
- prints("-----------------",new_line,"a_E: H=", H);
- if H.is_abelian then prints("H is abelian: H=",H);0
+set geck_generic_degree(RootDatum rd, CharacterTable ct,int index_rd)=
+let counter=0 in
+let rec_fun a_E(RootDatum H,CharacterTable ct_H, int index_H)=int:
+ if gg_verbose then prints("-----------------",counter,"---------",new_line,"a_E: H=", H) fi;
+ counter:=counter+1;
+ if H.is_abelian then if gg_verbose then prints("H is abelian: H=",H) fi;0
  else
 
   {def of a_prime_E:}
-  let  a_prime_E(RootDatum L,CharacterTable ct_L,int j)=int:
+  let  a_prime_E(RootDatum L,CharacterTable ct_L,int index_L)=int:
   let value=
-  prints("++++++++++++++++++++",new_line,"a_prime_E: L=", L);
+  if gg_verbose then prints("++++++++++++++++++++",new_line,"a_prime_E:",new_line,"L=", L) fi;
   if L.is_abelian then 1 else
    max(
    ##(##for M in  max_Levi_subgroups(L) do
     let ct_M=M.character_table in
-    for char_M@k in  ct_M.characters do
+    for char_M@t in  ct_M.characters do
      let ind=ct_L.decompose(induce_character(M,L,ct_M,ct_L,char_M)) in
-     let ()=prints("ind: ", ind, "r=",r) in
-     if ind[r]>0 then [a_E(M,ct_M,k)] else [] fi
+     let ()=if gg_verbose then prints("ind: ", ind, "t=",t) fi in
+     if ind[index_L]>0 then [a_E(M,ct_M,t)] else [] fi
     od
    od))
   fi
-  in prints("a_prime_E: ", value);value
+  in if gg_verbose then prints("a_prime_E: ", value) fi;value
   {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
-  {end def of recursive function a_prime_E}
-  
-  then A=a_prime_E(H,ct_H,r),
-  B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(r)) then
-  ()= prints("A=", A, new_line, "B=", B) then
-  ()=prints("tensor sign: ", ct_H.tensor_sign_index(r))
-  in max(A,B- omega_L(ct_H,r,default_weight_function@WeylElt))
+  {end def function a_prime_E}
+  then A=a_prime_E(H,ct_H,index_H),
+  B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(index_H)) then
+  {()= prints("(1)H=",H,"  A=", A, new_line, "B=", B) then
+  ()=prints("(2)H=",H,"   tensor sign: ", ct_H.tensor_sign_index(index_H)) then}
+  max=max(A,B- omega_L(ct_H,index_H,default_weight_function@WeylElt))
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"(4)H=",H,new_line," omega_L=", omega_L(ct_H,index_H,default_weight_function@WeylElt)) fi;
+  max
+
  fi {end if H.is_abelian}
  {end def of recursive function a_E}
 in
-a_E(rd,ct,i)
+a_E(rd,ct,index_rd)
 
 
-set generic_degree(RootDatum rd,int i)=generic_degree(rd,rd.character_table,i)
-set generic_degrees(RootDatum rd,CharacterTable ct)=for i:ct.n_classes do
-prints(new_line,"================================",new_line,"i=",i,new_line);generic_degree(rd,ct,i) od
+set geck_generic_degree(RootDatum rd,int i)=int:geck_generic_degree(rd,rd.character_table,i)
+set geck_generic_degrees(RootDatum rd,CharacterTable ct)=[int]:
+let ()=prints("number of characters: ", ct.n_classes) in
+for i:ct.n_classes do
+if gg_verbose then prints(new_line,"================================",new_line,"i=",i,new_line) fi;
+let g=geck_generic_degree(rd,ct,i)  in
+prints("i=",i, " dim=", dimension(ct,i),": g=",g);g od
+
+set geck_generic_degrees(RootDatum rd)=[int]:geck_generic_degrees(rd,rd.character_table)
+
+set test_geck_generic_degrees(CharacterTable ct, [int] computed_degrees)=bool:
+if all(for i:ct.n_classes do ct.generic_degrees[i]=-1 od) then
+ prints("generic degrees not computed for ct", new_line, "do: update_generic_degrees(ct,G)");true else
+all(for i:ct.n_classes do ct.generic_degrees[i]=-1 or ct.generic_degrees[i]=computed_degrees[i] od) fi
