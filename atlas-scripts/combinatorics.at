@@ -365,6 +365,8 @@ set_type BiPartition = (Partition,Partition)
 { no specific interpretation imposed here, but ordering should always have:
   positive/even/0/false/trivial repn BEFORE negative/odd/1/true/sign repn one }
 
+set sum (BiPartition(P,Q)) = int: sum(P)+sum(Q)
+
 { cycles with product of signs, for simple types B,C,D }
 set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
 
@@ -608,7 +610,7 @@ set from_core_quotient_2 (int d,BiPartition(lambda,mu)) = Partition:
   Also reverse the order to increasing, since this is what |merge@([int,[int])|
   defined in sort.at assumes. Before merging, we need to "even out" the
   (negative) heads of the lists by adding omitted terms to one of them, those
-  whose absent would produce gaps in the merged result. The first such term to
+  whose absence would produce gaps in the merged result. The first such term to
   be added (if any) is 3 more than the first omitted term in the other list.
 }
 (  let evens = for l@i in lambda do 2*(l-i-1+d) ~od { space out and reverse }
