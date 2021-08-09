@@ -1018,6 +1018,7 @@ orbit_by_diagram(rd.orbits,diagram)
 let M=rational change of basis matrix taking G_in.fundamental_coweight[i] to G_out.fundamental_coweight[i]
 then map (rd_in,(),H) to (rd_out,(),M*H)}
 set orbit_isogeny(ComplexNilpotent O,RootDatum rd_out)=
+{let ()=prints("O: ", O, ", ", O.root_datum.root_lengths, new_line, "rd_out: ", rd_out, " ", rd_out.root_lengths) in }
 let S=ratvecs_as_ratmat(rd_out.fundamental_coweights) then
 T=ratmat:left_inverse(ratvecs_as_ratmat(O.root_datum.fundamental_coweights)) then
 {()=prints("S=", S, new_line, "T=", T) then}

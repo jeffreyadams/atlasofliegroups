@@ -76,7 +76,7 @@ rd_out_factors=rd_out.simple_factors in
 {let ()=prints("combine_orbit: ", new_line,
 "orbitfactors=", orbit_factors, new_line,
 "maps=", maps) in}
-combine_orbit(rd_out,for i:#orbit_factors do  orbit_isogeny(maps[i](orbit_factors[i]),rd_out_factors[i]) od)
+combine_orbit(rd_out,for i:#orbit_factors do  orbit_isogeny({maps[i]}(orbit_factors[i]),rd_out_factors[i]) od)
 
 
 
@@ -111,4 +111,4 @@ set character_table(RootDatum rd) = CharacterTable:
       for rdi@i in root_data
       do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
-in combine(rd,simple_tables)}2
+in combine(rd,simple_tables)}

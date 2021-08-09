@@ -56,7 +56,10 @@ set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(Comp
 {orbit is special if O=special_closure(O)}
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
 if is_even(O) then true else {st.special_closure(O)=O this is slow}
-st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized
+{no: failed matrix comparison if simple factors have different ranks}
+{st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized}
+{this works?:}
+st.dual_map_i(st.dual_map(O))=O
 fi
 
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):
@@ -317,7 +320,6 @@ set springer_table(CharacterTable ct,[ComplexNilpotent] orbits,
   (ComplexNilpotent->int) springer
   )=
   SpringerTable:(ct,orbits,dual_map,dual_map_i,springer)
-  
 
 {set_type [SpringerTable=
   (CharacterTable ct,
