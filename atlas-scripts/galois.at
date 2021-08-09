@@ -40,11 +40,15 @@ set SOstar (int n) = RealForm:
   let ic=InnerClass:SO(n,0) then sc1=square_classes(ic)[1] { starred forms }
   in real_form(ic,sc1[0]) { select first of the starred real forms }
 set Spinstar (int n) =
-  let ic=InnerClass:Spin(n,0) then sc1=square_classes(ic)[1]
+  let ic=InnerClass:Spin(n,0) then sc1=square_classes(SO(n,0))[1]
   in real_form(ic,sc1[0])
-{ PSOstar used to take square_classes of SO(n,0) (no P); that cannot be right? }
+{ PSOstar used to take square_classes of SO(n,0) (no P); that cannot
+be right? }
+{Actually it's exactly right! DV 8/8/21. SO*(2n) is related to
+the second square_class (#1) of SO; of course for PSO there is only
+one square class, and square_classes(ic)[1] fails.}
 set PSOstar (int n) = RealForm:
-  let ic=InnerClass:PSO(n,0) then sc1=square_classes(ic)[1]
+  let ic=InnerClass:PSO(n,0) then sc1=square_classes(SO(n,0))[1]
   in real_form(ic,sc1[0])
 
 { find(vecs,k) returns the (smallest) int j such that k in occurs in vecs[j]
