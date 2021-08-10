@@ -1,10 +1,6 @@
 <nilpotent_orbits.at
 
-{set real_forms_of_orbit_with_Levi (RealForm G,[int] H)=[(RealNilpotent, RealForm, vec)]:
-   let (S,K)=Levi_of_H(H,G) then Levis=viable_Levis(G,S) then
-   list=##for M in Levis do test_real_orbit_plus (G,K,M,S) then
-   for psir
-}
+
 set test_real_orbit_plus (RealForm G,[int] H, RealForm M, [int] S) = [(KGBElt, KGBElt, RealForm)]:
  ##for x_M in KGB(M)
    do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
@@ -177,12 +173,12 @@ set noticed_elliptic_pseudo_Levis (RealNilpotent O)=[(RealForm,vec)]:
    ##for L in list do let (b,v)=is_noticed_orbit_in_M (O,L) in if b then [(L,v)]
                          else [] fi od
 
-set Z_component_generators (RealForm G) = [ratvec]:
+set Z_component_generators (RealForm L,RootDatum rd) = [ratvec]:
    let (B,v)=filter_units(adapted_basis
-                ( (1-distinguished_involution(G))##simple_roots(G) ))
-   in if #v=0 then [null(rank(G))]
-        else let fcw=fundamental_coweights(G)
-	     in for i:#v do sum(rank(G), for a@j in fcw do a*B[i][j] od)
+                ( (1-distinguished_involution(L))##simple_roots(L) ))
+   in if #v=0 then [null(rank(L))]
+        else let fcw=fundamental_coweights(rd)
+	     in for i:#v do sum(rank(rd), for a@j in fcw do a*B[i][j] od)
 	                 od fi
 
 {set center(RootDatum) = [ratvec]:
