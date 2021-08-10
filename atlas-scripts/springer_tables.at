@@ -58,8 +58,9 @@ set is_special(SpringerTable st,ComplexNilpotent O)=bool:
 if is_even(O) then true else {st.special_closure(O)=O this is slow}
 {no: failed matrix comparison if simple factors have different ranks}
 {st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized}
-{this works?:}
-st.dual_map_i(st.dual_map(O))=O
+{this works?: no: G=F4_s}
+{st.dual_map_i(st.dual_map(O))=O}
+true
 fi
 
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):

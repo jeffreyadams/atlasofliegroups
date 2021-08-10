@@ -76,7 +76,8 @@ rd_out_factors=rd_out.simple_factors in
 {let ()=prints("combine_orbit: ", new_line,
 "orbitfactors=", orbit_factors, new_line,
 "maps=", maps) in}
-combine_orbit(rd_out,for i:#orbit_factors do  orbit_isogeny({maps[i]}(orbit_factors[i]),rd_out_factors[i]) od)
+combine_orbit(rd_out,for i:#orbit_factors do
+ orbit_isogeny(maps[i](orbit_factors[i]),rd_out_factors[i]) od)
 
 
 
@@ -91,7 +92,7 @@ in
     combine_orbit_functions(rd,for table in springer_tables do table.dual_map_i od),     {dual_map_i}
     (ComplexNilpotent orbit) int:           {Springer correspondence}
      for proj@i in split(rd,orbit) do
-      springer_tables[i].springer(proj) od.index
+      springer_tables[i].springer(proj) od.index 
      )
 
 set springer_table(RootDatum rd) = SpringerTable:

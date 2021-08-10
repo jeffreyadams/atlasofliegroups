@@ -1024,7 +1024,7 @@ T=ratmat:left_inverse(ratvecs_as_ratmat(O.root_datum.fundamental_coweights)) the
 {()=prints("S=", S, new_line, "T=", T) then}
 ST=S*T then
 O_out=ComplexNilpotent:(rd_out,(),(S*T*O.H).ratvec_as_vec) in
-assert(O.diagram=O_out.diagram, "Orbits diagrams don't match");O_out
+{assert(O.diagram=O_out.diagram, "Orbits diagrams don't match");}O_out
 
 {for testing only}
 set test_orbit_isogeny(RootDatum rd_in,RootDatum rd_out)=
