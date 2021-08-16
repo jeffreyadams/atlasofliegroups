@@ -1,16 +1,16 @@
 <W_reps_type_BC.at
-<springer_table_D.at {for B_collapse}
+<springer_table_D.at {for B_adjust}
 <nilpotent_centralizer.at
 
 set partition_sum(Partition P,Partition Q)=Partition:
 if #P<=#Q then pad(P,#Q) + Q else pad(Q,#P)+P fi
 
 set dual_orbit(Partition P)=
-let P=reverse_sort(P) in 
+let P=reverse_sort(P) in
 if is_even(sum(P)) then  {G^vee type C/G type B}
-B_collapse(transpose(reverse_sort(B_collapse(add_one(P)))))
+B_adjust(transpose(reverse_sort(B_adjust(add_one(P)))))
 else
-C_collapse(transpose(reverse_sort(C_collapse(subtract_one(P)))))
+C_adjust(transpose(reverse_sort(C_adjust(subtract_one(P)))))
 fi
 
 set complex_nilpotent_from_partition(RootDatum rd, Partition p)=
@@ -50,7 +50,7 @@ let orbit=complex_nilpotent_from_partition(rd,P) in
  dim_nilpotent_partition(rd,P).to_string,
  orbit.centralizer.nice_format,
  orbit.component_datum.orders.to_string,
- P.dual_orbit.to_string] 
+ P.dual_orbit.to_string]
  od in
  tabulate(header#values,"lllllllll",2," ")
 
@@ -64,7 +64,7 @@ set print_nilpotent_orbit_partition(RootDatum rd,vec orbit)=
 let header=["Partition","H","diagram","symbol","Sp","dim"] then
 values=for P in [orbit] do
  [P.to_string,semisimple_element(rd,P).to_string,complex_nilpotent_from_partition(rd,P).diagram.to_string,P.symbol.to_string,P.special_star,dim_nilpotent_partition(rd,P).to_string] od in
- tabulate(header#values,"llllll",2," ") 
+ tabulate(header#values,"llllll",2," ")
 
 set_type ClassicalOrbitSymbol=(int,([int,int,bool]),int)
 set_type OrbitSymbol=([(int,int)],ClassicalOrbitSymbol)
@@ -103,7 +103,7 @@ if n.is_even then
   od
   then
   triples=##for P in partitions do
-   if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then 
+   if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then
     [let middle=for i:#P\2 do (P[2*i],P[2*i+1]) od in (-1,middle,P~[0])] else [] fi
   od
   in triples
@@ -114,8 +114,8 @@ else
     let P=reverse(Q) in
     let first=P[0] then
     P=delete(P,0) in
-    if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then 
-    [let middle=for i:#P\2 do (P[2*i],P[2*i+1]) od in (first,middle,-1)] else [] fi 
+    if all(for i:#P\2 do P[2*i]<P[2*i+1] od) {only keep if a_i<b_i all i}  then
+    [let middle=for i:#P\2 do (P[2*i],P[2*i+1]) od in (first,middle,-1)] else [] fi
    od
   in triples
 fi
@@ -179,7 +179,7 @@ all(
      od)
   od
 )  and
-if first=-1 then all(for (c,) in S_GL  do if c>last then c%2 != last%2 else true fi od) else true fi \ 
+if first=-1 then all(for (c,) in S_GL  do if c>last then c%2 != last%2 else true fi od) else true fi \
 and
 if last=-1 then all(for (c,) in S_GL  do if c<first then c%2 != first%2 else true fi od) else true fi
 
@@ -197,7 +197,7 @@ S=for w in possible_signs do
 ##for m in S do
 {let ()=prints("doing m:", m, " ", validate(first,m,last)) in}
  if {validate (first,m,last)} true then [(first,m,last)] else [] fi od
- 
+
 set valid_signs((int,[(int,int)],int) S)=
 let (first,middle,last)=S then
 bin=generate_all_binary(#middle) then
@@ -228,30 +228,30 @@ set dual_orbit(ClassicalOrbitSymbol S)=
 let p=S.p,q=S.q in
 if is_even(sum(q)) then
 {let ()=prints("type C->type B") in}
-{S is type C_n, dual of type B_n} 
+{S is type C_n, dual of type B_n}
  let qplus=add_one(q) then
- qplus_B=B_collapse(qplus) then
+ qplus_B=B_adjust(qplus) then
  punionqplus_B=sort(p##qplus_B) then
  punionqplus_Btranspose=transpose(reverse(punionqplus_B)) then
- final=B_collapse(punionqplus_Btranspose) in
+ final=B_adjust(punionqplus_Btranspose) in
  assert(sum(final)=2*S.rank+1,"rank mismatch1");final
 else
- {S is type B_n, dual of type C_n} 
+ {S is type B_n, dual of type C_n}
  let qminus=subtract_one(q) then
- qminus_C=C_collapse(qminus) then
+ qminus_C=C_adjust(qminus) then
  punionqminus_C=sort(p##qminus_C) then
  punionqminus_Ctranspose=transpose(reverse(punionqminus_C)) then
- final=C_collapse(punionqminus_Ctranspose) in
+ final=C_adjust(punionqminus_Ctranspose) in
  assert(sum(final)=2*S.rank,"rank mismatch2");final
 fi
 
 
 set dual_orbit(OrbitSymbol S)=Partition:
-let 
+let
 a=transpose(reverse_sort(##for (a,b) in S.GL_part do [a,b] od)) then
 b=dual_orbit(S.classical_part) then
 induced=partition_sum(a,b) in
-if sum(S).is_even then B_collapse(induced) else C_collapse(induced) fi
+if sum(S).is_even then B_adjust(induced) else C_adjust(induced) fi
 
 
 set GL_part(Partition P)=
@@ -473,7 +473,7 @@ let (gl,cl)=S then
 (a,b,c,d)=
 (for (x,) in gl do rho(GL(x)) od,
 for (x,y,z) in cl.middle do
- if z then  chain(x,y) 
+ if z then  chain(x,y)
  else chain(x,y)+(1/2)*ones((x+y)\2)
  fi
 od,
