@@ -47,7 +47,7 @@ Springer(O_L_x_v)=sign of W(G^)
 \otimes sgn=trivial of
 }
 
-set sigma_lusztig_verbose=true
+set sigma_lusztig_verbose=false
 
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user
  M is a pseudo-Levi
@@ -125,7 +125,6 @@ else  {need induction; compute L, sigma_lusztig}
  fi  {now have sigma_lusztig=character of L}{end if O_L=L.zero_orbit} then
  {next: induce sigma_lusztig}
   ()=if sigma_lusztig_verbose then prints("inducing character from L:", L,new_line, "roots_L: ", roots_L, new_line, "sigma_lusztig: ", sigma_lusztig) fi then
-  ()=prints("now L=",L, "roots_L=",roots_L) then
  ind=induce_character(G,ct_G,roots_L,sigma_lusztig) then
   ()=if sigma_lusztig_verbose then
    prints("finished inducing character from L:", L, new_line, "ind=(2)" , ind,new_line);
