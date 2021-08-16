@@ -22,7 +22,8 @@ set root_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
 if not is_locally_isomorphic(rd_1,rd_2) then [mat]:[]
 elif =rd_1.rank then [id_mat(0)] {empty root system case}
 else
- let S=symmetric_group(rd_1.rank) then
+{ let S=symmetric_group(rd_1.rank) then}
+ let S=symmetric_group(rd_1.ss_rank) then
  C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
  ##for P in S do if  P*C_1=C_2*P then [P] else [] fi od
 fi
@@ -33,7 +34,7 @@ reductive is allowed
 set root_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
 if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))  elif
 =rd_1.rank then (true,id_mat(0)) {empty root system case} else
- let S=symmetric_group(rd_1.rank) then
+ let S=symmetric_group(rd_1.ss_rank) then
  C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
  index=first(for g in S do g*C_1=C_2*g od) in
  if index=-1 then (false,null(0,0)) else (true,S[index]) fi
