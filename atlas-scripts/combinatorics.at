@@ -190,6 +190,10 @@ set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
   if sl!=sm then sl<sm else leq_equal_sum_partitions(pair) fi
 
+set cmp_partitions ((Partition,Partition) (lambda,mu):pair) = int:
+  let sl=lambda.sum, sm=mu.sum in
+  case sl-sm then minus_1 in cmp_equal_sum_partitions(pair) else 1 esac
+
 { look up partition in sorted list of partitions, all assumed of same sum }
 set index_partition([Partition] sorted_list) = (Partition->int):
 (  let l=#sorted_list in { precompute constant }
@@ -769,18 +773,34 @@ set D_classes (int n) = [D_class]:
       fi
    od.##
 
-set D_irreducibles (int n) = [D_irrep]:
- ##for (lambda,):pair in partition_pairs(n)
-   do if leq_partitions(pair) then [] else [pair.unsplit_irr] fi
-   od ##
-  (let (s,r)=n\%2 in
-   if =r else []
-   then
-    ##for lambda in partitions(s)
-      do [(lambda,false).split_irr,(lambda,true).split_irr]
+{ look up pair in sorted list of |D_class|es, all assumed for the s }
+set index_D_classes ([D_class] sorted_list) = (D_class->int):
+   let less_eq = [(D_class->bool)]:
+      for elt in sorted_list
+      do case elt
+	 | cycles.unsplit_class:
+	   let pair = cycles.to_partition_pair in
+	   (D_class C) bool:
+	      case C
+	      | cycles_C.unsplit_class: cycles_C.to_partition_pair<=pair
+	      | (lambda,).split_class: (lambda,lambda)<=pair
+	      esac
+	 | (nu,b1).split_class:
+	   (D_class C) bool:
+	      case C
+	      | cycles_C.unsplit_class:
+		cycles_C.to_partition_pair<=(nu,nu)
+	      | (lambda,b0).split_class:
+		case cmp_equal_sum_partitions(lambda,nu)
+		then true
+		in not b0 or b1 { same as |#b0<=#b1|; or |b0| implies |b1| }
+		else false
+		esac
+	      esac
+	 esac
       od
-   fi
-  )
+in (D_class C) int:
+      binary_search_first( (int i)bool: less_eq[i](C), 0, #sorted_list )
 
 set character (D_irrep chi, D_class c) = int:
    assert(chi.rank = c.rank,"Size mismatch");

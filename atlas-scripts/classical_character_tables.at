@@ -255,14 +255,14 @@ set character_table_C (int n) =
    then classes = [WeylElt,classical_class,string]:
       for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
-      for rep in BC_irreps(n)
+      for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   , lookup_class = (BiPartition->int): index_bipartition(class_list)
-   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_B(n),classes,irreps)
+   ,  lookup_class = (BiPartition->int): index_bipartition(class_list)
+   ,  lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+in ( character_table(class_table_C(n),classes,irreps)
    , lookup_class { find index among conjugacy classes }
    , lookup_irrep
    )
@@ -379,16 +379,57 @@ in W_class_table( rd, for class in classes do class_rep(class) od
 
 { all irreducible representations of D_n }
 set D_irreps (int n) = [D_irrep]:
-   for (lambda,mu):pair
+   for (lambda,):pair
      in pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
-   do if not leq_partitions(pair) then [pair.unsplit_irr]
-      elif lambda=mu then [(lambda,false).split_irr,(lambda,true).split_irr]
-      else []
-      fi
+   do case cmp_partitions(pair)
+      then { first is stricly less } []
+      in { an equal pair } [(lambda,false).split_irr,(lambda,true).split_irr]
+      else { first is stricly greater } [pair.unsplit_irr]
+      esac
    od.##
 
-set character_table_D(int n) = CharacterTable:
-   let class_list =  D_classes(n)
+{ look up pair in sorted list of partition pairs,  in ordering of |D_irreps| }
+set index_D_irreps = ([D_irrep]->(D_irrep->int)):
+   let flatten(D_irrep chi) = (BiPartition,int):
+      case chi
+      | pair.unsplit_irr: (pair,minus_1)
+      | (lambda,b).split_irr: ((lambda,lambda),#b)
+      esac
+   ,  before_eq (BiPartition(nu,):pair1,int flag1) = (BiPartition,int->bool):
+	   let sum_nu = sum(nu) in
+	   if flag1.<
+	   then { compare against unsplit }
+	      (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+		 case sum(mu)-sum_nu
+		 then false { smaller |sum(mu)|, so arg0 after arg1 }
+		 in pair1<=pair0 { reverse comparison, for |~[:]| above }
+		 else true
+		 esac
+	   else { compare against split }
+	      (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+		 case sum(mu)-sum_nu
+		 then false
+		 in if flag0.< then pair1<=pair0 { just reverse comparison }
+		    else { comparing two split irreps }
+		       case cmp_equal_sum_partitions(nu,mu) { reverse here too }
+		       then true in flag0<=flag1 else false
+		       esac
+		    fi
+		 else true
+		 esac
+	   fi
+   in ([D_irrep] sorted_list) (D_irrep->int):
+      let up_to = [(BiPartition,int->bool)]:
+	  for elt in sorted_list do before_eq(flatten(elt)) od
+      , len = #sorted_list
+      in (D_irrep chi) int:
+	 let key=flatten(chi)
+	 in binary_search_first( (int i)bool: up_to[i](key), 0, len)
+
+set character_table_D(int n) =
+      (CharacterTable,(D_class->int),(D_irrep->int)):
+   let class_list = D_classes(n)
+   ,   irrep_list = D_irreps(n)
    then classes = [WeylElt,classical_class,string]:
       for c in class_list
       do (conjugacy_class_SO(c),c.class_D,c.cycles_string)
@@ -399,21 +440,33 @@ set character_table_D(int n) = CharacterTable:
          , for class in class_list do character(rep,class) od
 	 )
       od
-in character_table(class_table_D(n),classes,irreps)
+   ,  lookup_class = (D_class->int): index_D_classes(class_list)
+   ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
+in ( character_table(class_table_D(n),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 
-set character_table_D(RootDatum rd) = CharacterTable:
-   let n=rd.semisimple_rank
-   , class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
-   then class_list =  D_classes(n)
+set character_table_D(RootDatum rd) =
+      (CharacterTable,(D_class->int),(D_irrep->int)):
+   let  n=rd.semisimple_rank
+   ,    class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
+   then irrep_list = D_irreps(n)
+   ,    class_list =  D_classes(n)
    then classes = [WeylElt,classical_class,string]:
       for c in class_list do (class_rep(c),c.class_D,c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
-      for rep in D_irreps(n)
+      for rep in irrep_list
       do ( rep.irrep_D, rep.irrep_string
          , for class in class_list do character(rep,class) od
 	 )
       od
-in character_table(class_table_D(rd),classes,irreps)
+   ,  lookup_class = (D_class->int): index_D_classes(class_list)
+   ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
+in ( character_table(class_table_D(rd),classes,irreps)
+   , lookup_class { find index among conjugacy classes }
+   , lookup_irrep
+   )
 
 { functions that expect a |CharacterTable| of simple type D }
 set split_class_nrs(CharacterTable ct) = [int]:

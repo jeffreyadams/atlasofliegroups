@@ -14,7 +14,7 @@ in case ascii(letter)-ascii("A")
    in let (table,,) = character_table_A(SL(rank+1)) in table
    ,  let (table,,) = character_table_B(rank) in table
    ,  let (table,,) = character_table_C(rank) in table
-   ,  character_table_D(rank)
+   ,  let (table,,) = character_table_D(rank) in table
    ,  error("Type E simple character table not implemented here")
    ,  character_table_F(4)
    ,  character_table_G(2)
@@ -46,7 +46,7 @@ set character_table_simple(RootDatum rd,string letter,int n) = CharacterTable:
      in let (table,,) = character_table_A(rd) in table
      ,  let (table,,) = character_table_B(rd) in table
      ,  let (table,,) = character_table_C(rd) in table
-     , character_table_D(rd)
+     ,  let (table,,) = character_table_D(rd) in table
      , case n-6
        in character_table_E6(rd), character_table_E7(rd), character_table_E8(rd)
        esac
