@@ -100,13 +100,14 @@ in let classes = [WeylElt,classical_class,string]:
 	)
      od
   , irreps = [classical_irrep,string,[int]]:
+  let ()=print("words: ", words) in
      for L in words
      do ( null_irrep()
 	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
-	, tensor(for n@i in L do factors[i].character(n) od)
+	, tensor(for n@i in L do factors[i].character(n) od).print
 	)
      od
-in character_table(Wct,classes,irreps)
+in prints("irreps: ", irreps);character_table(Wct,classes,irreps)
 )
 
 set character_table(RootDatum rd) = CharacterTable:
@@ -117,8 +118,9 @@ set character_table(RootDatum rd) = CharacterTable:
       for (,rank) in simples
       do sub_datum(rd,for i:rank do map[offset+i] od)  next offset+:=rank
       od
+      then ()=prints("root_data: ", root_data) 
    then simple_tables = [CharacterTable]: { tables for each of |root_data| }
       for rdi@i in root_data
       do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
-in combine(rd,simple_tables)
+in prints("simple tables: ", simple_tables);combine(rd,simple_tables)

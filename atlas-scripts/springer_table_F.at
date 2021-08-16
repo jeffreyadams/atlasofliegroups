@@ -58,7 +58,9 @@ elif d=[2,2,0,2] then [0,0,0,1]
 elif d=[2,2,2,2] then [0,0,0,0]
 else error("error computing dual orbit") fi
 in
-complex_nilpotent(dual_rd,permute(map,dual_normalized))
+{complex_nilpotent(dual_rd,permute(map,dual_normalized))}
+{orbit_by_diagram(dual_rd,[permute(map,dual_normalized)])}
+orbit_by_diagram(dual_rd,dual_normalized)
 
 
 set springer_table_F4(CharacterTable ct)=SpringerTable:

@@ -17,8 +17,11 @@ set_type
 ]
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
+{H can be a ratvec but must be convertible to a vec}
+set complex_nilpotent (RootDatum rd, ratvec H) = ComplexNilpotent: (rd,(),ratvec_as_vec(H))
 { an alias for people tired of typing "complex_" }
-set nilpotent = complex_nilpotent@(RootDatum,vec)
+set nilpotent(RootDatum rd,vec H) =ComplexNilpotent: complex_nilpotent(rd,H)
+set nilpotent(RootDatum rd,ratvec H) =ComplexNilpotent: complex_nilpotent(rd,H)
 
 {complex orbit; list of orders of conjugacy classes;
 for each conjugacy class a list of pairs (L,[ratvec])
@@ -38,8 +41,9 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
   sum(for alpha in posroots(rd) do case H*alpha in 0, 1 else 2 esac od)
 
-{synonym}
+{synonyms}
 set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
+set dimension (ComplexNilpotent O) = int:dim_nilpotent(O)
 
 {saturate an orbit from an equal rank subgroup to G: just replace the RootDatum}
 set saturate(ComplexNilpotent O,RootDatum rd) = ComplexNilpotent:(rd,(),O.H)
@@ -52,21 +56,61 @@ set saturate(ComplexNilpotent O,RootDatum rd,mat inc) = ComplexNilpotent:
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
+
+{under construction: combining springer tables not yet functional}
+{
+set split(RootDatum rd,ComplexNilpotent orbit)=[ComplexNilpotent]:
+let (factors,simple_roots_of_factors)=simple_factors_info(rd) in
+for i:#factors do
+ let factor=factors[i],
+ simple_roots=simple_roots_of_factors[i] in
+ complex_nilpotent(factor,
+    ratvec_as_vec(sum(rd.rank,for j:#simple_roots do orbit.H*rd.simple_roots[simple_roots[j]]*factor.fundamental_coweights[j] od)))
+ od
+}
+
+{the i^th entry is the ComplexNilpotent for the i^th simple factor}
+set simple_factors(ComplexNilpotent(rd,,H))=
+let components=rd.diagram_components then
+H_dom=dominant(H,rd) in
+for f@i in rd.simple_factors do
+{Note: projection on the i^th simple factor is given by
+       project_on_simple_factor(rd,components[i][0],H_dom)}
+ complex_nilpotent(f,project_on_simple_factor(rd,components[i][0],H_dom)) od
+
+{orbit_factors: one orbit for each simple factor}
+set combine_orbit(RootDatum rd,[ComplexNilpotent] orbit_factors)=ComplexNilpotent:
+{let ()=prints("combine_orbit:  rd=", rd, new_line,"orbit_factors=", orbit_factors) in }
+complex_nilpotent(rd,sum(for f in orbit_factors do f.H od))   {n#for f in orbit_factors do f.H od where n is the rank}
+
+{orbit_factors: an array of orbits for each simple factor}
+set combine_orbits(RootDatum rd,[[ComplexNilpotent]] orbit_factors)=[ComplexNilpotent]:
+let radix=for f in orbit_factors do #f od in
+ for v in all_words(radix) do
+  combine_orbit(rd,for i:#v do orbit_factors[i][v[i]] od) od
+
+
 set diagram_normalized_simple(ComplexNilpotent O) = [int]:
-   diagram(complex_nilpotent(O.root_datum.stratify,O.H))
+assert(O.root_datum.derived.is_simple,"Root datum of orbit (derived) is not simple");
+diagram(complex_nilpotent(O.root_datum.stratify,O.H))
+
+set diagram_normalized(ComplexNilpotent O) = [[int]]:
+for orbit in simple_factors(O) do diagram_normalized_simple(orbit) od
+
 
 {diagram_normalized returns [[int]] to allow for multiple simple factors}
-set diagram_normalized(ComplexNilpotent O) = [[int]]:
+set diagram_normalized_old(ComplexNilpotent O) = [[int]]:
    let H = vec: {coweight} dominant(O.H,O.root_datum)
    , factors = simple_factors(O.root_datum) { each factor Bourbaki ordered }
 in for f in factors do H*f.simple_roots od
 
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
-(rd,()
-,ratvec_as_vec
- (sum(rd.rank,for a@i in diagram do a*rd.fundamental_coweights[i] od))
-)
+complex_nilpotent(rd,sum(rd.rank,for a@i in diagram do a*rd.fundamental_coweights[i] od))
+
+{aliases}
+set orbit_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:complex_nilpotent_from_diagram(rd,diagram)
+set orbit_by_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:complex_nilpotent_from_diagram(rd,diagram)
 
 set sort_by((ComplexNilpotent->int) f) =
    ([ComplexNilpotent] v) [ComplexNilpotent]:

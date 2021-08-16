@@ -160,16 +160,19 @@ set lusztig_cell(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[[int]]:
 sort_u(
  for (M,H_M,y) in component_representatives_plus(O) do
      let ()=if sigma_lusztig_verbose then prints("computing sigma_lusztig for orbit=", O, " ", O.diagram, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
- sigma_lusztig(G,st_G,O,M,H_M,y)
+ prints("OK");sigma_lusztig(G,st_G,O,M,H_M,y)
 od)
 
 set lusztig_cell_plus(RootDatum G,SpringerTable st_G,ComplexNilpotent orbit)=[[int]]:
-
 sort_u(
  ##for (M,H_M,y) in component_representatives_plus(orbit) do
+ let ()=prints("ok") in
  let basis=M.radical_basis in
+  let ()=prints("ok2") in
  let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
+  let ()=prints("ok3", variants) in
   for v in variants do
+  let ()=prints("v=",v) in 
      let ()=if sigma_lusztig_verbose then prints("y=", y, new_line, "v=",v/(G.coxeter_number+1)) fi  in
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
      basis, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in

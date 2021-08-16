@@ -158,7 +158,8 @@ set complex_nilpotent_B(Partition P)=ComplexNilpotent:
 set complex_nilpotent_B(RootDatum rd,Partition P)=ComplexNilpotent:
 let O_SO=P.complex_nilpotent_B then
 orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in
+{index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in}
+index=first(for O in orbits do O.diagram=O_SO.diagram od) in
 orbits[index]
 
 {O is an orbit for a *reductive* group G where G_d is simple of type B
@@ -167,8 +168,9 @@ uses partitions_B(semisimple_rank), but returns orbits for G
 set partition_of_orbit_B(ComplexNilpotent O)=
 assert(let (type,)=O.root_datum.derived.simple_type in type="B","Not an orbit in smiple type B (plus torus)");
 let orbit_partitions=partitions_B(O.root_datum.ss_rank) then
-diagram=O.diagram_normalized then
-index=first(for P in orbit_partitions do complex_nilpotent_B(P).diagram_normalized=diagram od) in
+{diagram=O.diagram_normalized then}
+diagram=O.diagram then
+index=first(for P in orbit_partitions do complex_nilpotent_B(P).diagram=diagram od) in
 orbit_partitions[index]
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}

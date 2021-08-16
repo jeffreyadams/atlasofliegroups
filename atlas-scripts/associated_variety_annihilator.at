@@ -77,7 +77,10 @@ new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index
 "degree of special character: ", d_int) fi then
 chars_rd=
 ##for i:st_rd.ct.n_classes do
-{ let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
+ let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) then
+  a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) then
+  ()=prints("a=",a) in
+{ a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) in prints("a=",a) in}
  if ct_rd.degrees[i]=d_int and
   !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]))
   then  [i] else [] fi
