@@ -1,6 +1,6 @@
 <basic.at
 <character_tables.at
-<classical_W_classes_and_reps.at { for types |D_class|, |D_irrep| }
+<combinatorics.at { for types |D_class|, |D_irrep| }
 
 { word representative in types D of unsplit conjugacy class for partition pair }
 set class_word_D(Partition lambda,Partition mu) = [int]:
@@ -68,7 +68,7 @@ set class_table_D(int n) = WeylClassTable:
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool: c<=list[i], 0,#classes)]
 in W_class_table( rd, for class in classes do conjugacy_class_SO(class) od
-		, (int i)int: cycle_class_size(classes[i])
+		, (int i)int: class_size(classes[i])
 		, (WeylElt w)int: lookup(signed_permutation(w).to_D_class)
 		, (int i,int k)int: lookup(cycle_power(classes[i],k))
 		)
@@ -83,7 +83,7 @@ set class_table_D(RootDatum rd) = WeylClassTable:
       in (D_class c) int: { index in |classes| where one finds |c| }
          ranked[binary_search_first((int i)bool:c<=list[i], 0,#classes)]
 in W_class_table( rd, for class in classes do class_rep(class) od
-		, (int i)int: cycle_class_size(classes[i])
+		, (int i)int: class_size(classes[i])
 		, (WeylElt w)int: lookup(classic_permutation(w).to_D_class)
 		, (int i,int k)int: lookup(cycle_power(classes[i],k))
 		)

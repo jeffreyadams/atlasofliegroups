@@ -1,6 +1,6 @@
 <basic.at
 <combinatorics.at { for |classic_permutation| }
-<nilpotent_orbits.at { for the type |ComplexNilpotent| }
+<nilpotent_orbits.at { for the type |ComplexNilpotent|, |diagram_normalized| }
 
 <springer_tables.at
 <coordinates.at
@@ -32,7 +32,7 @@ O-> (p,q): (p,q)=springer_A(P)
   is the corresponding weight of SL(n). Since the SL(n) lattice X^* is the
   quotient of the GL(n) lattice by |[1,..,1]=ones(1)|, in which the basis is
   chosen to be the image of the first n-1 basis vectors, it suffices to map
-  the final basis vector to -ones(n1-)
+  the final basis vector to -ones(n-1)
 }
 set GL_to_SL_change_of_basis(int n) = mat:
   id_mat(n-1)#-ones(n-1)
@@ -46,18 +46,23 @@ inverse_change_basis(SL(n).dual,GL(n).simple_coroots)
 
 {map from partition for an orbit of GL(n) to semisimple element H}
 {in SL(n) coordinates}
-set semisimple_element_A(Partition P)=ratvec:  {for SL(n)}
+set semisimple_element_A(Partition P) = ratvec:  {a coweight for SL(n)}
   let rho2_GL(int a) = for i:a do i+i-a+1 od { ladder [-a+1,-a+3,...,a-3,a-1] }
   then v = ratvec: for a in P do rho2_GL(a) od.##/2 then n=#v
   in GL_to_SL_co_change_of_basis(n)*(dominant(GL(n),v))
 
-{partition of n -> ComplexNilpotent for GL(n)}
+{partition of n -> ComplexNilpotent for SL(n)}
 set complex_nilpotent_A (Partition P) = ComplexNilpotent:  {for SL(n)}
   complex_nilpotent(SL(sum(P)),ratvec_as_vec(2*semisimple_element_A(P)))
 
 { to make it independent of the isogeny and center use the diagram }
-set complex_nilpotent_A(RootDatum rd,Partition P) =
-orbit_isogeny(complex_nilpotent_A(P),rd)
+set complex_nilpotent_A(RootDatum rd,Partition P) = ComplexNilpotent:
+   assert(sum(P)=rd.semisimple_rank+1,"rank mismatch");
+   let diag = [int]: complex_nilpotent_A(P).diagram
+   , orbits = nilpotent_orbits(rd) { build orbits for actual root datum |rd| }
+   then index =  { look up for a match }
+     first(for O in orbits do O.diagram_normalized_simple=diag od)
+in orbits[index]
 
 set partition_of_orbit_A(ComplexNilpotent O) = [int]:
 let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
@@ -68,7 +73,7 @@ orbit_partitions[index]
 set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
   let P=O.partition_of_orbit_A, reps=ct.class_reps
   in first(#reps,(int i): cycle_type(classic_permutation(reps[i]))=P)
-}  
+}
 
 {Springer(orbit with partition P) = classical_irrep with partition P}
 set springer_A(CharacterTable ct,ComplexNilpotent O)=int:

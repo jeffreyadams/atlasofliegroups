@@ -265,6 +265,8 @@ tabulate (
       ]
    od
 )
+set irred_string(BiPartition(mu,lambda)) = string:
+   ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string
 
 set show_classes_long(CharacterTable ct) = void:
 tabulate (

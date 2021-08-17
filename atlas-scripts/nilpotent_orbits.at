@@ -1,3 +1,5 @@
+<basic.at
+<Levi_subgroups.at { for |standard_Levi_conjugacy_representatives| }
 <center.at { for |lie_compact_radical)@InnerClass| }
 <induction.at { for |is_coh_ind_from_finite_dimensional| }
 <all_finite_order.at
@@ -53,7 +55,7 @@ set saturate(ComplexNilpotent O,RootDatum rd) = ComplexNilpotent:(rd,(),O.H)
 set saturate(ComplexNilpotent O,RootDatum rd,mat inc) = ComplexNilpotent:
    (rd,(),inc*O.H)
 
-set diagram (ComplexNilpotent(rd,,H)) = [int]:
+set diagram(ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
 
@@ -136,7 +138,7 @@ od;rv
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if =k { level 0 is special: include torus and negative roots at this level }
    then rank(rd) + 2*count(for alpha in posroots(rd) do =alpha*H od)
-   else count(for alpha in posroots(rd) do alpha*H=k od)
+   else count(for alpha in posroots(rd) do H*alpha=k od)
    fi
 
 set max_eigenvalue (RootDatum rd, vec H) = int:
@@ -162,54 +164,52 @@ set blocku(RealForm G) = [Param]:
    do if for k in support(x(p)) do is_descent(k,p) od.all then [p] else [] fi
    od
 
-set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
-
-{. Auxiliary function: For a list of integers giving simple roots, compute
-  twice the sum of the corresponding fundamental coweights. .}
-set S_weight ([int] S, RootDatum rd) = ratvec:
-   sum(rd.rank, for k in S do 2*fundamental_coweight(rd,k) od)
-
-{. These are candidates H for the semisimple element of an SL(2) triple;
-   not necessarily a vec, for example in SL(3). .}
-set H_candidates (RootDatum rd) = [ratvec]:
-   for S in power_set(#rd.semisimple_rank) do S_weight (S,rd) od
-
 {. Choose the H among the candidates which correspond to distinguished
    nilpotent orbits. .}
-set distinguished_H (RootDatum rd_L) = [vec]:
- ##for H in H_candidates(rd_L)
-   do if dim_eigenspace(rd_L,H,2) =
-         dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then [ratvec_as_vec(H)]
-      else []
-      fi
-   od
+set distinguished_Hs_definition (RootDatum rd_L) = [vec]:
+   let S_weight([int] S) = ratvec: {twice sum of fundamental coweights for S}
+      sum(rd_L.rank, for k in S do fundamental_coweight(rd_L,k) od)*2
+   then H_candidates = [ratvec]:
+       for S in power_set(#rd_L.semisimple_rank) do S_weight(S) od
+in for H in H_candidates
+    do if dim_eigenspace(rd_L,H,2) =
+          dim_eigenspace(rd_L,H,0)-central_torus_rank(rd_L)
+       then [ratvec_as_vec(H)]
+       else []
+       fi
+    od.##
+
+set distinguished_Hs(RootDatum rd) = [vec]:
+   let r=semisimple_rank(rd)
+   then cwts = { all sums of a subset of fundamental coweights }
+      let fcws = for i:r do %fundamental_coweight(rd,i) od
+      then common = lcm(for (,d) in fcws do d od)
+      then M = rank(rd) # for (v,d) in fcws do v*(common\d) od
+        { same as: |let (M,common)=invert(^rd.root_coradical) in M := M[:r] ;| }
+      in for select in all_0_1_vecs(r) do M*select/common od
+   , pr=posroots(rd)
+in for v in cwts
+   do let count = r { start with dimension of torus mod central torus }
+   in
+   { get |dim_eigenspace(rd,v,0)-central_torus_rank(rd)-dim_eigenspace(rd,v,1)|,
+     computed by addding to torus contribution those from the root spaces }
+   for x in v*pr\1 do case x in count+:=2{pos+neg}, count-:=1 else () esac od
+   ; if =count then [ratvec_as_vec(v*2)] else [] fi
+   od.##
 
 set distinguished_H_diagrams (RootDatum rd, RootDatum rd_L) = [vec]:
- ##for H in H_candidates(rd_L)
-   do if dim_eigenspace(rd_L,H,2) =
-         dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then [diagram(rd,(),ratvec_as_vec(H))]
-      else []
-      fi
-   od
+   for H in distinguished_Hs(rd_L) do diagram(complex_nilpotent(rd,H)) od
 
 {. As previous function, with H dominant. .}
 set distinguished_H_dom (RootDatum rd, RootDatum rd_L) = [vec]:
- ##for H in H_candidates(rd_L)
-   do if dim_eigenspace(rd_L,H,2) =
-         dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then [ratvec_as_vec(dominant(H,rd))]
-      else []
-      fi
-   od
+   for H in distinguished_Hs(rd_L) do dominant(H,rd) od
 
 
 {. Given a Root Datum rd for a complex group G, list the neutral elements
    (dominant for G) corresponding to the complex nilpotent orbits. .}
 set all_H (RootDatum rd) = [vec]:
  ##for S in standard_Levi_conjugacy_representatives(rd)
-   do for H in distinguished_H(Levi_datum(rd,S)) do dominant(H,rd) od
+   do for H in distinguished_Hs(Levi_datum(rd,S)) do dominant(H,rd) od
    od
 
 {. As previous function, except the coweights H are given as sums of fundamental
@@ -217,10 +217,10 @@ set all_H (RootDatum rd) = [vec]:
    distinguished. This is the conjugate of H used for further calculation. .}
 set all_H_nd (RootDatum rd) = [vec]:
  ##for S in standard_Levi_conjugacy_representatives(rd)
-   do distinguished_H(Levi_datum(rd,S))
+   do distinguished_Hs(Levi_datum(rd,S))
    od
 
-{. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
+{. List all (complex) nilpotent orbits(with H dominant) for a complex group. .}
 set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
 
@@ -228,7 +228,7 @@ set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
 set orbits = (RootDatum->[ComplexNilpotent]): nilpotent_orbits@RootDatum
 
 set distinguished_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
-   for H in rd.distinguished_H do nilpotent(rd,H) od
+   for H in rd.distinguished_Hs do nilpotent(rd,H) od
 
 set distinguished_orbits = (RootDatum->[ComplexNilpotent]): { alias }
    distinguished_nilpotent_orbits@RootDatum
@@ -238,7 +238,7 @@ set distinguished_orbits = (RootDatum->[ComplexNilpotent]): { alias }
    giving the complex nilpotent orbits distinguished in M. .}
 set all_H_with_L (RootDatum rd) = [[int],[vec]]:
    for S in standard_Levi_conjugacy_representatives(rd)
-   do (S,distinguished_H(Levi_datum(rd,S)))
+   do (S,distinguished_Hs(Levi_datum(rd,S)))
    od
 
 set find_conjugate_coweight (RootDatum rd,[vec] m, vec H) = int:
@@ -678,7 +678,7 @@ set pseudo_Levis (ComplexNilpotent O)=
 let rd=O.root_datum then
 H=dominant(O.H{_of_triple},rd) in
 ##for L in pseudo_Levi_subgroups(rd) do
- let distinguished_H_L=distinguished_H(L) in
+ let distinguished_H_L=distinguished_Hs(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od
 
@@ -868,7 +868,7 @@ set Bala_Carter_Levi_plus (ComplexNilpotent O)=(RootDatum,vec):
 let rd=O.root_datum then
 H=dominant(O.H,rd) in
 for L@k in Levi_subgroups(rd) do
- let distinguished_H_L=distinguished_H(L) in
+ let distinguished_H_L=distinguished_Hs(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then return(L,distinguished_H_L[j]) fi od;
  (trivial_group,null(0))  {failure, shouldn't happen}

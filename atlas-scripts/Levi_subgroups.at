@@ -268,7 +268,7 @@ set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
      ~od
    then { convert |positions| to indices in |rd| of corresponding |roots| }
      perm= for alpha in roots do root_index(rd,alpha) od
-   in assert(all(ssr,is_member(perm)),"Not a complete system");
+   in assert(perm.sort=#ssr,"Not a complete system");
    (W_elt(rd,for pos in positions do perm[pos] od),perm)
 
 { for non-standard Levi: some conjugate standard Levi, and conjugator from it }
