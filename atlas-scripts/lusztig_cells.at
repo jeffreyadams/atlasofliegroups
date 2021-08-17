@@ -138,7 +138,7 @@ else  {need induction; compute L, sigma_lusztig}
     fi then
    char_indices=[int]:  
    ##for i:#ind_decomposed do
-      if (ind_decomposed[i]>0 and st_G.generic_degree_safe(i)=desired_generic_degree) then
+      if (ind_decomposed[i]>0 and st_G.ct.generic_degree_safe(i)=desired_generic_degree) then
        {probably never happens: correct generic degree and mult >1. If so print loud WARNING}
        if ind_decomposed[i]>1 then prints("WARNING: multiplicity >1: ", new_line, "i=", i, " mult= ",ind_decomposed[i],new_line,
        "ind_decomposed=",ind_decomposed) fi;
@@ -255,7 +255,7 @@ table=
     fi,
     dimension(st_G.ct,k).to_string,
     st_G.ct.degrees[k].to_string,
-    st_G.generic_degree_string(k),
+    st_G.ct.generic_degree_string(k),
     st_G.ct.character(k).to_string
    ]
    od {for k in j_values}
@@ -310,7 +310,7 @@ table=
     fi,
     dimension(st_G.ct,k).to_string,
     st_G.ct.degrees[k].to_string,
-    st_G.generic_degree_string(k),
+    st_G.ct.generic_degree_string(k),
     st_G.ct.character(k).to_string
    ]
    od {for k in j_values}
