@@ -208,7 +208,8 @@ let index=first(for (n,)@j in springer_by_name_table_E8 do n=name od) then
 (,pair)=springer_by_name_table_E8[index] in pair
 
 set springer_E8(ComplexNilpotent O)=
-assert(O.root_datum.Lie_type=Lie_type("E8"),"Not type E8");
+{assert(O.root_datum.Lie_type=Lie_type("E8"),"Not type E8");}
+assert(O.root_datum.derived.Lie_type=Lie_type("E8"),"Not type E8");
 let diagram=join(O.diagram) {string} then
 name=diagram_to_name_E8(diagram) in
 springer_by_name_E8(name)

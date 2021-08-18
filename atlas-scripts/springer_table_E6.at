@@ -84,7 +84,8 @@ complex_nilpotent_from_diagram(O.root_datum,dual_map_E6_diagram(O.diagram))
 
 
 set springer_by_signature_E6(ComplexNilpotent O)=
-assert(O.root_datum.Lie_type=Lie_type("E6"),"Not type E6");
+{assert(O.root_datum.Lie_type=Lie_type("E6"),"Not type E6");}
+assert(O.root_datum.derived.Lie_type=Lie_type("E6"),"Not type E6");
 let d=O.diagram in
   if d=[0,0,0,0,0,0] then [1,36]
 elif d=[0,1,0,0,0,0] then [6,25]

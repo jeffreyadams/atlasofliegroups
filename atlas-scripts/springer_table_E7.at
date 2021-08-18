@@ -226,7 +226,8 @@ set springer_by_signature_lookup_E7=
 ([2,2,2,2,2,2,2],(1,0))]
 
 set springer_by_signature_E7(ComplexNilpotent O)=
-assert(O.root_datum.Lie_type=Lie_type("E7"),"Not type E7");
+{assert(O.root_datum.Lie_type=Lie_type("E7"),"Not type E7");}
+assert(O.root_datum.derived.Lie_type=Lie_type("E7"),"Not type E7");
 let d=O.diagram then
 index=first(for i:#springer_by_signature_lookup_E7
  do let (v,)=springer_by_signature_lookup_E7[i] in v=d od) in
