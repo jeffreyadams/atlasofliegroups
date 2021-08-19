@@ -1429,11 +1429,6 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
 set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
   KGB_elt(ic, x.involution, x.torus_factor)
 
-{ transfer to other inner class (or real form) that shares coordinates,
-  this can be used for instance to embed the KGB set of a Levi subgroup }
-set KGB_elt (InnerClass ic, KGBElt x) = KGBElt:
-  KGB_elt(ic, x.involution, x.torus_factor)
-
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
 
