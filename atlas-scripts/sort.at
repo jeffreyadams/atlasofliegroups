@@ -74,6 +74,7 @@ in (int n) [int]:
    (0,n). { describes range of consecutive numbers to sort via |leq| }
    (rec_fun ms(int b,int size) [int]:
       case size-1
+      then [] { ensure termination for empty list }
       in [b], let e=b+1 in if leq(b,e) then [b,e] else [e,b] fi
       else let half=size\2 then chalf=size-half in
          combine( ms(b,half), ms(b+half,chalf) )
