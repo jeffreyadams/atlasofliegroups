@@ -501,16 +501,16 @@ in result ##:=
   its signed cycle type).
 
   Given a bi-partition |(lambda,mu)|, let |l=sum(lambda),m=sum(mu)|, let $K$ be
-  the $H_l\times H_m$ subgroup of $H_n$, restrict (back up the group morphisms
-  $H_k\to S_k$) the irreducible representations for |lambda| and |mu| of $S_l$
-  respectively $S_m$ to ones of $H_l$ respectively $H_m$, tensor the latter with
-  the axis-sign representation of $H_m$, then induce the resulting (outer tensor
-  product) representation of $K=H_l\times H_l$ from $K$ to $H_n$.
+  the $H_l\times H_m$ subgroup of $H_n$, restrict (back up the surjective group
+  morphisms $H_i\to S_i$) the irreducible representations for |lambda| and |mu|
+  of $S_l$ respectively $S_m$ to ones of $H_l$ respectively $H_m$, tensor the
+  latter with the axis-sign representation of $H_m$, then induce the resulting
+  (outer tensor product) representation of $K=H_l\times H_l$ from $K$ to $H_n$.
 }
 
 set hyperoctahedral_character (
-       BiPartition (lambda,mu):pair {irreducible: (trivial,sign) for {1,-1}}
-      ,Signed_cycles signed_cycle_type{describes a conjugacy class}
+       BiPartition (lambda,mu):pair { irreducible repn, sign applies to |mu| }
+      ,Signed_cycles signed_cycle_type { describes a conjugacy class }
       ) = int:
    assert(rank(pair)=rank(signed_cycle_type),"Size mismatch");
 { The formula implemented is recursive in the number of cycles, similarly to the
@@ -523,7 +523,8 @@ set hyperoctahedral_character (
   vertical adjacencies in the hook), and in case the hook was removed from |mu|
   by |sign| as well; the character value is the sum all the values so obtained.
 }
-   let alpha = signed_cycle_type.(sort_by((int l,bool.)int: l)) { do long first }
+   let alpha = signed_cycle_type. { preprocess putting longs cycles at end }
+               (sort_by((int l,bool.)int: l))
    then (c,d) = (int,int): { numbers of 1-cycles with - resp. + in |alpha| }
      for (l,sign) in alpha do if l>1 then break else s^#sign{use |Split|} fi
      od.sum.% { sum powers of |s|, then extract its two components }

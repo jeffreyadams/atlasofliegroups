@@ -245,17 +245,15 @@ induce_character(L,G,ct_L,ct_G,ct_L.sign)
 
 {these are special cases of truncate_induce in truncated_induction.at
  but included here because of their particular importance}
-set truncate_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
-let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
-n=nr_of_posroots(L) then
-ind=ct_G.decompose(induce_sign(ct_G,simple_roots_L)) then
-rv=##for i:#ind do
- if ind[i]!=0 and ct_G.degrees[i]=n then
-   if ind[i]!=1 then error("mult not one") else [i] fi
-  else []
-  fi
-od in
-assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
+set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
+   let L = Levi_datum(ct_G.root_datum,simple_roots_L)
+   , ind = [int]: ct_G.decompose(induce_sign(ct_G,simple_roots_L))
+   then list =
+     let  n=nr_of_posroots(L) in
+     for c@i in ind do if c!=0 and ct_G.degrees[i]=n then [i] else [] fi od.##
+in assert(#list=1,"truncate induced from sign is not irreducible");
+   assert(ind[list[0]]=1,"induction not multiplicity free");
+   list[0]
 
 set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=int:
 let L=Levi_datum(ct_G.root_datum,simple_roots_L) then

@@ -146,13 +146,20 @@ in for H in H_candidates
        fi
     od.##
 
-set distinguished_Hs(RootDatum rd) = [vec]:
+{ in order to implement the effect of |distinguished_Hs_definition| more
+  efficiently, each of the |H_candidates| can be represented by |v=H/2|, so that
+  when applied to a posroot, the integer value gives half the eigenvalue; the
+  the dimension difference above then is found by counting the occurrences of a
+  value 0 twice (as the opposite root also contributes here), minus the
+  occurrences of a value 1; when total is zero, we record |H=v*2| in the result.
+}
+set distinguished_Hs (RootDatum rd) = [vec]:
    let r=semisimple_rank(rd)
-   then cwts = { all sums of a subset of fundamental coweights }
+   then cwts = [ratvec]: { all sums of a subset of fundamental coweights }
       let fcws = for i:r do %fundamental_coweight(rd,i) od
-      then common = lcm(for (,d) in fcws do d od)
-      then M = rank(rd) # for (v,d) in fcws do v*(common\d) od
-        { same as: |let (M,common)=invert(^rd.root_coradical) in M := M[:r] ;| }
+      then common {denominator} = lcm(for (,d) in fcws do d od)
+      then M = mat: rank(rd) # for (v,d) in fcws do v*(common\d) od
+        { same as: |let (M,common)=invert(^rd.root_coradical) in M := M[:r]| }
       in for select in all_0_1_vecs(r) do M*select/common od
    , pr=posroots(rd)
 in for v in cwts
@@ -160,7 +167,7 @@ in for v in cwts
    in
    { get |dim_eigenspace(rd,v,0)-central_torus_rank(rd)-dim_eigenspace(rd,v,1)|,
      computed by addding to torus contribution those from the root spaces }
-   for x in v*pr\1 do case x in count+:=2{pos+neg}, count-:=1 else () esac od
+     for x in v*pr\1 do case x in count+:=2{pos+neg}, count-:=1 else () esac od
    ; if =count then [ratvec_as_vec(v*2)] else [] fi
    od.##
 
@@ -842,17 +849,22 @@ list of ratvecs}  then}
  (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
-{return Bala Carter Levi and distinguished H_L for L conjugate to given H}
-set Bala_Carter_Levi_plus (ComplexNilpotent O)=(RootDatum,vec):
-for L@k in Levi_subgroups(O.root_datum) do
- let distinguished_H_L=distinguished_Hs(L) in
- let j=first(for H_L in distinguished_H_L do dominant(H_L,O.root_datum)=O.H od)
- in if j>=0 then return(L,distinguished_H_L[j]) fi od;
- (trivial_group,null(0))  {failure, shouldn't happen}
+{ return Bala Carter Levi and distinguished H_L for L conjugate to given H }
+set Bala_Carter_Levi_plus (ComplexNilpotent O) = (RootDatum,vec):
+   for L in Levi_subgroups(O.root_datum)
+   do for H_L in distinguished_Hs(L)
+      do if dominant(H_L,O.root_datum)=O.H then return (L,H_L) fi
+      od
+   od; error("Nilpotent ",O," erroneous: no Bala-Carter Levi subgroup found")
 
-{Bala Carter Levi only}
+{ Bala-Carter Levi subgroup only }
 set Bala_Carter_Levi (ComplexNilpotent O) = RootDatum:
    let (L,)=O.Bala_Carter_Levi_plus in L
+
+set Bala_Carter_simples (ComplexNilpotent O) = [int]:
+   for alpha in Bala_Carter_Levi(O).simple_roots
+   do root_index(O.root_datum,alpha)
+   od
 
 {complex Levi of orbit: defined by H (not the Bala Carter Levi)}
 set complex_Levi(ComplexNilpotent O) = RootDatum:

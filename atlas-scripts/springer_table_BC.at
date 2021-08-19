@@ -92,7 +92,7 @@ set freq_test_B ([int] frequencies) = [int]:
 )
 
 { from (Jordan) partition (or composition) to SO(2n+1) complex nilpotent orbit }
-set nilpotent_orbit_SO_odd (Partition lambda) = ComplexNilpotent:
+set nilpotent_orbit_SO (Partition lambda) = ComplexNilpotent:
    let freqs = frequencies(lambda).freq_test_B
 in complex_nilpotent(SO(sum(lambda)),part_mults_to_classical_H(freqs[1:]))
 
@@ -228,12 +228,27 @@ in (is_valid("B",lambda),lambda)
 }
 set inverse_springer_C(BiPartition partition_pair) = (bool,ComplexNilpotent):
     let (valid,P)=inverse_springer_partition_B(partition_pair)
-in  if valid then (valid,nilpotent_orbit_SO_odd(P))
+in  if valid then (valid,nilpotent_orbit_SO(P))
     else (false,trivial_group.zero_orbit)
     fi
 
 
 {------------------ duality ----------------------------------}
+
+{ The function |C_adjust| takes an arbitrary partition of an even number, and
+  returns a modified version in which the multiplicity over every odd part size
+  is even. This is achieved by repeatedly moving a square of the diagram from a
+  row of odd length down to the end of the next row of strictly shorter odd
+  length (thus creating two new rows of even length, possibly the same length).
+  Progress is from longer to shorter rows, although given that the number of
+  rows of odd length must always be even, it could have been defined in to
+  opposite order with the same result: for the smallest odd row length with odd
+  multiplicity one square is borrowed from the next larger odd length row, then
+  repeat for the now smallest odd row length with odd multiplicity,and so on.
+  All in all a diagram valid for type C is found with minimal distance of
+  squares moved, though not necessarily with minimal number of squares moved (to
+  achieve that, odd lengths with even frequency would have to remain untouched).
+}
 
 set C_adjust (Partition P) = Partition:
 (  assert(sum(P).is_even,"Partition not even");
@@ -248,6 +263,23 @@ in while (l:=last(l,(int i)bool: freq[i+i+1].is_odd) ).>= { stop at "none" }
    od
 ;  repeat_parts(freq) { reconstruct a partition }
 )
+
+{ With respect to |C_adjust|, the function |B_adjust| only differs in that it
+  assumes a partition of an odd number is given (though this is less essential
+  for its functioning), and that the multiplicities of nonzero even row lengths
+  rather then of odd ones are made even, systematically replacing "odd length"
+  by "even length". The reasoning is somewhat modified, since the number of rows
+  with nonzero even length can have either parity; however if we need to move
+  down a box from the last nonzero even length with odd multiplicity, we can
+  move it to an empty row, thus adding a row of length~$1$. Therefore ordering
+  the traversal by decreasing row length is essential here. The number of rows
+  of nonzero length is always made odd, since the number of rows with odd length
+  must be odd, and that of nonzero even length is made even. To implement, we
+  manually set the frequency of parts of size zero to $1$, so that the search
+  for a smaller even length with odd multiplicity cannot fail (if it turns out
+  to be used, the loop will stop immediately thereafter; if not the frequency of
+  the zero length remains $1$, but this is ignored by the final |repeat_parts|).
+}
 
 set B_adjust (Partition P) = Partition:
 (  assert(sum(P).is_odd,"Partition not odd");
@@ -265,19 +297,42 @@ in
 ;  repeat_parts(freq) { reconstruct a partition }
 )
 
-set add_one(Partition P)=Partition:P[0]+:=1;P
-set subtract_one(Partition P)=Partition:P~[0]-:=1;P
-
-set BC_dual(Partition P)=
-if sum(P).is_odd then {from type B_n to type C_n}
-P.subtract_one.C_adjust.transpose.C_adjust
-else  {from type C_n to type B_n}
-P.add_one.B_adjust.transpose.B_adjust
-fi
+{ To map a partition of 2n+1 valid for type $B_n$ to a partition of 2n valid for
+  type $C_n$ we can conceptually first transpose (so every even nonzero column
+  length has even multiplicity), then remove a square from the last longest row,
+  run the transposed form of |C_adjust| (which ensures that all odd column
+  lengths occur with even multiplicity), and finally run the normal |C_adjust|.
+  This ensures that each maximal group of equal odd length rows starts at an
+  even index (so has an even number of preceding rows), and ends at an odd one.
+  To see this, the transposed |C_adjust| has ensured that each odd-indexed row
+  is shorter that the previous one by an even (possibly zero) amount, from which
+  one easily deduces that each maximal group of successive odd length rows
+  starts at an even index and has an even number of rows. The application of
+  normal |C_adjust| then operates within such groups, and any squares moved are
+  from an even-indexed row to the next row. As a consequence, the row length
+  property established by executing the transposed |C_adjust| still holds after
+  the normal |C_adjust| has run. The diagram of the resulting partition can then
+  be characterised by the fact that it meets all 2x2 squares of a doubly-sized
+  grid with the origin as vertex in an even number (0,2, or 4) of squares.
+}
 
 set B_to_C_dual (Partition lambda) = Partition:
-   lambda:=lambda.strip_to_partition; lambda~[0]-:=1;
-   lambda.C_adjust.transpose.C_adjust
+  lambda:=lambda.strip_to_partition; lambda~[0]-:=1;
+  lambda.C_adjust.transpose.C_adjust
+
+{ To map to a partition of 2n valid for type $C_n$ to a partition of 2n+1 valid
+  for type $B_n$, we conceptually first transpose, add a square to the first
+  column, run the transposed form of |B_adjust| (which ensures that all nonzero
+  ven column lengths occur with even multiplicity), and finally run the normal
+  |B_adjust|. This time row 0 has odd length, and following pairs of odd-index
+  and successive even-index rows have lengths of equal parity. Again every
+  square that moves is between two such successive rows, and the property
+  established by the transposed |B_adjust| is preserved by the normal
+  |B_adjust|. The diagram of the resulting partition can then be characterised
+  by the fact that it meets all 2x2 squares of a doubly-sized grid with $(1,1)$
+  as vertex, with the exception of the 2x2 square centered at the origin, in an
+  even number of squares
+}
 
 set C_to_B_dual (Partition lambda) = Partition:
    if =#lambda then lambda:=[1] else lambda[0]+:=1 fi;
@@ -305,10 +360,10 @@ in if perm = #semisimple_rank(rd) { case of standard order, somewhat easier }
    fi
 
 set dual_map_C (ComplexNilpotent O_C) = ComplexNilpotent:
-   O_C.root_datum.dual.nilpotent_orbit_B(BC_dual(partition_of_orbit_C(O_C)))
+   O_C.root_datum.dual.nilpotent_orbit_B(C_to_B_dual(partition_of_orbit_C(O_C)))
 
 set dual_map_B(ComplexNilpotent O_B)=ComplexNilpotent:
-   O_B.root_datum.dual.nilpotent_orbit_C(BC_dual(partition_of_orbit_B(O_B)))
+   O_B.root_datum.dual.nilpotent_orbit_C(B_to_C_dual(partition_of_orbit_B(O_B)))
 
 set springer_table_C (RootDatum rd) = SpringerTable:
    let (table, , irrep_of_bipartition) = character_table_C(rd)
@@ -343,4 +398,3 @@ set springer_table_B(CharacterTable ct)=SpringerTable:
    , dual_map_i = dual_map_C@ComplexNilpotent
    , springer(ComplexNilpotent O)=springer_B(ct,O)
 in (ct,orbits,dual_map,dual_map_i,springer)
-
