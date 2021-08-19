@@ -41,6 +41,7 @@ set cell_characterold (CharacterTable ct,WCell cell) = [int]:
 
 {. character of representation of W on cell .}
 set cell_character (CharacterTable ct,WCell cell) = [int]:
+if ct.root_datum.is_abelian then [1] else
 let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
 ()=assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell") in
 if P=id_mat(#P) then
@@ -49,7 +50,7 @@ else
  if cells_verbose then prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P) fi;
  for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
 fi
-
+fi
 
 set cell_character(CharacterTable ct) = (WCell cell)[int]:
   cell_character(ct,cell)

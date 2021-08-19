@@ -312,6 +312,7 @@ tabulate (
 )
 
 set show(CharacterTable ct) = void:
+   prints("G= ",ct.root_datum);
    prints("Classes:"); ct.show_classes;
    prints("Representations:"); ct.show_reps
 
