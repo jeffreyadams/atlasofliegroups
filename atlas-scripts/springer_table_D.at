@@ -207,9 +207,7 @@ set springer_D_by_induction (CharacterTable ct,ComplexNilpotent O) = D_irrep:
    then Levi = standard_Levi(rd,O.Bala_Carter_Levi)
    then simples = [int]: { a list of simple root indices }
       for alpha in Levi.simple_roots do root_index(rd,alpha) od
-then index= int: truncate_induce_sign(ct,
-       for i in simples do i+rd.nr_of_posroots od { fix indexing convention }
-     )
+then index = int: truncate_induce_sign(ct,simples)
    then sigma = D_irrep: ct.classical_reps(index).get_irrep_D
 in ct.tensor_sign_D(sigma)
 

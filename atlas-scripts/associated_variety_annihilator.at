@@ -20,21 +20,36 @@ set av_verbose=false
 {using truncated induction, incorporating permutation}
 {only need Springer table for G, character table for L=integrality datum}
 {new: includes permutation}
-set associated_variety_ann_ind(Param param,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
-let p=Finalize(param) then
-rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
-(,P)=Cartan_matrix_type(Cartan_matrix(rd_int)) then
-perm=P.permutation_matrix then
-special_character_int=special_character(ct_int,cell,perm) then
-()=if av_verbose then prints("p=",p, new_line,
-"rd_int: ", nice_format(rd_int), new_line,
-"special_character_int: ", special_character_int, ": ", ct_int.characters[special_character_int]) fi then
-character_G=truncate_by_degree_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
-(,orbit_0)=st_rd.springer_inverse(character_G) then
-orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) then
-()=if av_verbose then prints("character_G: ", character_G, ": ",st_rd.ct.characters[character_G],
-new_line,"diagram of orbit: ",orbit_0.diagram) fi in
-orbit
+set associated_variety_ann_ind \
+   ( Param param
+   , SpringerTable st_rd
+   , CharacterTable ct_int
+   , WCell cell
+   ) = ComplexNilpotent:
+   let p=Finalize(param)
+   then rd_int = integrality_datum(p.root_datum,p.infinitesimal_character)
+   then (,P)=Cartan_matrix_type(rd_int)
+   then perm=P.permutation_matrix
+   then special_character_int = special_character(ct_int,cell,perm)
+   then ()=
+       if av_verbose
+           then prints("p=",p, new_line
+		  ,"rd_int: ", nice_format(rd_int), new_line
+		  ,"special_character_int: ", special_character_int, ": "
+		  , ct_int.characters[special_character_int])
+       fi
+   then character_G = let char = ct_int.characters[special_character_int] in
+      truncate_by_degree_induce_character(ct_int.class_table,st_rd.ct,char)
+   then (,orbit_0) = st_rd.springer_inverse(character_G)
+   then orbit = orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized)
+   then ()=
+      if av_verbose
+      then prints("character_G: ", character_G, ": "
+      	   	 ,st_rd.ct.characters[character_G],new_line
+		 ,"diagram of orbit: ",orbit_0.diagram
+		 )
+      fi
+in orbit
 
 {given cell, SpringerTable for G, compute ct_int, using restriction}
 set associated_variety_ann_ind(Param p,SpringerTable st_rd,WCell cell)=ComplexNilpotent:
@@ -79,7 +94,9 @@ chars_rd=
 ##for i:st_rd.ct.n_classes do
 { let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
  if ct_rd.degrees[i]=d_int and
-  !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]))
+  !=ct_int.inner_product(char_int,
+    restrict_character(ct_rd.class_table,ct_int.class_table,ct_rd.characters[i])
+                        )
   then  [i] else [] fi
 od
 then
@@ -226,24 +243,24 @@ gamma_0=move(gamma_in,rd_in, rd) then
 gamma=dominant(rd,gamma_0) then
 ()=if av_verbose then prints("gamma_in: ", gamma_in, new_line, "gamma_0: ", gamma_0,new_line, "gamma: ", gamma) fi then
 ct=st.ct then
-rd_int=integrality_datum(rd,gamma) then 
+rd_int=integrality_datum(rd,gamma) then
 rd_singular=singular_root_datum(rd,gamma) then
 d=rd_singular.nr_of_posroots then
 ()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
 "target d: ", d) fi then
 chars_int=##for i:ct_int.n_classes do
  if ct_int.degrees[i]=d and
- !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
+ !=ct_singular.inner_product(ct_singular.sign,restrict_character(ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi
 od then
 ()=if av_verbose then prints("characters found: ", chars_int) fi then
 char_int=ct_int.characters[chars_int[0]] then
 char_int_sign=ct_int.tensor_sign(char_int) then
-()=if av_verbose then 
+()=if av_verbose then
  prints("char_int_sign: ", char_int_sign, new_line,
  "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line, "ct: ", ct.root_datum) fi then
 {index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then}
-index=truncate_by_degree_induce_character(rd_int,rd,ct,ct_int,char_int_sign) then
+index=truncate_by_degree_induce_character(ct.class_table,ct_int,char_int_sign) then
 (valid,orbit)=st.springer_inverse(index) then
 ()=assert(valid,"Can't compute springer_inverse");
 if av_verbose then
@@ -303,18 +320,18 @@ d=rd_singular.nr_of_posroots then
 "target d: ", d) fi then
 chars_int=##for i:ct_int.n_classes do
  if ct_int.degrees[i]=d and
- !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
+ !=ct_singular.inner_product(ct_singular.sign,restrict_character(ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi
 od then
 ()=if av_verbose then prints("characters found: ", chars_int) fi then
 char_int=ct_int.characters[chars_int[0]] then
 char_int_sign=ct_int.tensor_sign(char_int) then
-()=if av_verbose then 
+()=if av_verbose then
  prints("char_int_sign: ", char_int_sign, new_line,
  "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line) fi then
-gk_dim=#posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)] in 
+gk_dim=#posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)] in
 if av_verbose then prints("rd_int: ", rd_int, "#posroots(rd): ", #posroots(rd), new_line, "char_int_sign: ", char_int_sign,
-new_line, "index of char_int_sign: ", ct_int.character_index(char_int_sign), new_line, "degree: ", 
+new_line, "index of char_int_sign: ", ct_int.character_index(char_int_sign), new_line, "degree: ",
 ct_int.degrees[ct_int.character_index(char_int_sign)]) fi;
 gk_dim
 
@@ -324,4 +341,3 @@ ct_int=character_table(rd_int) then
 rd_singular=singular_root_datum(rd,gamma) then
 ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
 in GK_dim_maximal_ideal(rd,ct_int, ct_singular,gamma)
-
