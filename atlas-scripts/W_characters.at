@@ -536,6 +536,7 @@ in W_class_table( rd, reps
 		    for r@j in reps do if pred(r) then return j fi od; minus_1
 		)
 
+{ a version with no help to find conjugacy classes, so much slower }
 set W_class_table (RootDatum rd) = WeylClassTable:
    W_class_table( rd, conjugacy_class_reps(rd)
 		, size_of_conjugacy_class@WeylElt

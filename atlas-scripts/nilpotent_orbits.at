@@ -1,9 +1,10 @@
 <basic.at
 <Levi_subgroups.at { for |standard_Levi_conjugacy_representatives| }
+<parabolics.at { for type |Parabolic|, |maximal@Parabolic| etc. }
 <center.at { for |lie_compact_radical)@InnerClass| }
 <induction.at { for |is_coh_ind_from_finite_dimensional| }
 <all_finite_order.at
-<subgroups.at
+<subgroups.at { for |pseudo_Levi_subgroups| }
 <twisted_conjugacy.at
 
 set nilpotent_verbose=false
@@ -72,8 +73,9 @@ set diagram_normalized(ComplexNilpotent O) = [[int]]:
    , factors = simple_factors(O.root_datum) { each factor Bourbaki ordered }
 in for f in factors do H*f.simple_roots od
 
-{construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
-set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
+{ construct complex orbit (rd,(),H) from (rd,Dynkin diagram) }
+set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram) =
+      ComplexNilpotent:
 (  complex_nilpotent
    (rd
    ,ratvec_as_vec
@@ -188,15 +190,16 @@ set all_H (RootDatum rd) = [vec]:
 
 {. As previous function, except the coweights H are given as sums of fundamental
    weights for the standard (Bala-Carter) Levi M in which the orbit is
-   distinguished. This is the conjugate of H used for further calculation. .}
-set all_H_nd (RootDatum rd) = [vec]:
+   distinguished, rather than as dominant coweights for |rd|. .}
+set all_H_nd (RootDatum rd) = [vec]: { nd stands for non-dominant }
  ##for S in standard_Levi_conjugacy_representatives(rd)
    do distinguished_Hs(Levi_datum(rd,S))
    od
 
 {. List all (complex) nilpotent orbits(with H dominant) for a complex group. .}
 set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
-   for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
+   for H in all_H_nd(rd) { as |nilpotent| calls |dominant|, omit it here }
+   do nilpotent(rd,H) od.sort_by_dimension
 
 {tired of typing so many characters}
 set orbits = (RootDatum->[ComplexNilpotent]): nilpotent_orbits@RootDatum
@@ -207,29 +210,44 @@ set distinguished_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
 set distinguished_orbits = (RootDatum->[ComplexNilpotent]): { alias }
    distinguished_nilpotent_orbits@RootDatum
 
-{. For a complex group, for each standard Levi M given by a list of simple
-   roots, list the corresponding neutral elements H (dominant for M, not G)
-   giving the complex nilpotent orbits distinguished in M. .}
+{ return Bala-Carter Levi and distinguished H_L for it, conjugate to |O.H| }
+set Bala_Carter_Levi_plus (ComplexNilpotent O) = ([int],vec):
+   let rd = O.root_datum in
+   for S in standard_Levi_conjugacy_representatives(rd)
+   do for H_L in distinguished_Hs(Levi_datum(rd,S))
+      do if dominant(H_L,rd)=O.H then return (S,H_L) fi
+      od
+   od; error("Nilpotent ",O," erroneous: no Bala-Carter Levi subgroup found")
+
+{ Bala-Carter Levi subgroup only }
+set Bala_Carter_simples (ComplexNilpotent O) = [int]:
+   let (S,) = Bala_Carter_Levi_plus(O) in S
+
+{ Bala-Carter Levi subgroup only }
+set Bala_Carter_Levi (ComplexNilpotent O) = RootDatum:
+   Levi_datum(O.root_datum,Bala_Carter_simples(O))
+
+
+{. List all H's for |rd|, grouping them by standard Levi in which they are
+   disinguished .}
 set all_H_with_L (RootDatum rd) = [[int],[vec]]:
    for S in standard_Levi_conjugacy_representatives(rd)
    do (S,distinguished_Hs(Levi_datum(rd,S)))
    od
 
-set find_conjugate_coweight (RootDatum rd,[vec] m, vec H) = int:
-   first(#m, (int i)bool: dominant(m[i],rd)=dominant(H,rd))
-
 {. Given a coweight H corresponding to a complex nilpotent orbit, find the
    Levi M in which the orbit is distinguished. The output is the pair consisting
    of the simple roots for M, and the conjugate of H corresponding to the
-   standard Levi M (not dominant for G). The input H need not be dominant. .}
-set Levi_of_H (vec H,RootDatum rd)=([int],vec):
-   for (M,Hs) in all_H_with_L(rd)
-   do let i=find_conjugate_coweight(rd,Hs,H) in
-      if i.>= then return(M,Hs[i]) fi
+   standard Levi M (not dominant for G). The input H0 need not be dominant. .}
+set Levi_of_H (vec H0,RootDatum rd)=([int],vec):
+   let dom_H0 = dominant(H0,rd)
+in for (M,Hs) in all_H_with_L(rd)
+   do for H in Hs
+      do if dominant(H,rd)=dom_H0 then return (M,H) fi
+      od
    od; error("No Levi found")
 
-set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
-   sort_by((ratvec .,[vec] v) int:#v)
+{ parbolics.at defines type |Parabolic| and |KGPElt| as ([int] S, KGBElt x) }
 
 { find H which work for given q=q(x,H)=(L,u) }
 set find_H (Parabolic P) = [vec,mat]:
@@ -238,30 +256,22 @@ begin
    then u_p=columns_with(is_noncompact(x),nilrad_roots(P))
    , rho_L = rho(P.Levi)
    , theta_1 = involution(x)-1
-   in { prints("u_p:", u_p); }
- ##for H in all_H(P.real_form)
-   do { prints("H=", H, ", ", rho_L, ", ", H*rho_L); }
+in for H in all_H(P.real_form.root_datum)
+   do
       if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 }
       else []
       then let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
            [ (H,level_two_roots) ]
       fi
-   od
+   od.##
 end
 
-set max_only ([vec,mat] arg) = [vec,mat]:
-   if >#arg else [(null(0),null(0,0))] { one cannot pick a bald chicken }
-   then
-      let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last in
-    ##for (H,vectors) in arg do if #vectors=max then [(H,vectors)] else [] fi od
-   fi
-
-
 { containment order }
-set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
+set <= ([int] a,[int] b) = bool:
+   let test = is_member(b) in all(#a,(int i)bool: test(a[i]) )
 set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
-set  principal_block (RealForm G) = Block: block(G,dual_quasisplit_form(G))
+set principal_block (RealForm G) = Block: block(G,dual_quasisplit_form(G))
 
 { convert Block to [param] }
 set convert (Block B,ratvec gamma) = [Param]:
@@ -331,11 +341,13 @@ set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
    Aq_cells(principal_block(G),cells)
 
 
-{ |set_type RealNilpotent = (vec H, KGBElt x, void .)| defined above
+{				Real nilpotents
+
+  |set_type RealNilpotent = (vec H, KGBElt x, void .)| defined above
 
   A real nilpotent orbit is determined by a coweight H and a KGBElt x
   where x should be in the distinguished fiber, and H\in X_* is the semisimple
-v  element of a Lie triple.
+  element of a Lie triple.
   It is required that \theta_x(H)=H
   set q=parabolic_by_cwt(x,H), then
   orbit=induced from trivial orbit of Levi factor, equivalently
@@ -347,8 +359,6 @@ v  element of a Lie triple.
   in particular if H is not dominant it can be replaced by
   an equivalent one with H dominant
 }
-
-
 
 set real_nilpotent (vec H,KGBElt x) = RealNilpotent:(H,x,())
 
@@ -498,14 +508,15 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
 set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    for H in all_H_nd(G)
    do let K=dominant(H,root_datum(G))
-      then kgps=real_nilpotent_orbit_KGPs(G,H)
+      ,  kgps=real_nilpotent_orbit_KGPs(G,H)
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
 
-set number_real_nilpotent_orbits (RealForm G) = int:#G.real_nilpotent_orbits
-set number_real_nilpotent_orbits ([RealForm] groups) = [int]:for G in groups do G.number_real_nilpotent_orbits od
-set number_real_nilpotent_orbits (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.real_forms)
-{set number_real_nilpotent_orbits_e (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.strong_real_forms_e)}
+set number_real_nilpotent_orbits (RealForm G) = int: #G.real_nilpotent_orbits
+set number_real_nilpotent_orbits ([RealForm] groups) = [int]:
+   for G in groups do G.number_real_nilpotent_orbits od
+set number_real_nilpotent_orbits (InnerClass ic) = [int]:
+   number_real_nilpotent_orbits(ic.real_forms)
 
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
 set real_nilpotent_orbits (ComplexNilpotent OC,RealForm G) = [RealNilpotent]:
@@ -520,60 +531,63 @@ set number_real_nilpotent_orbits (ComplexNilpotent O,[RealForm] groups) = [int]:
    for G in groups do number_real_nilpotent_orbits(O,G) od
 set number_real_nilpotent_orbits (ComplexNilpotent O,InnerClass ic) = [int]:
    number_real_nilpotent_orbits(O,ic.real_forms)
-{set number_real_nilpotent_orbits_e (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.strong_real_forms_e)}
 
-{assuming real nilpotents have been computed, just keep the real forms of given OC}
-set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
-   ##for O in real_nilpotents do if complex_orbit(O)=OC then [O] else [] fi od
+{ filter |list| of real nilpotents, keeping the real forms of given OC }
+set real_nilpotent_orbits([RealNilpotent] list, ComplexNilpotent OC) =
+      [RealNilpotent]:
+   for O in list do if complex_orbit(O)=OC then [O] else [] fi od.##
 
 set make_dominant_H (RealNilpotent (H,x,):O) = RealNilpotent:
    real_nilpotent(dominant(H,root_datum(x)),x_min(parabolic_of_orbit(O)))
 
-{. Given a real nilpotent orbit, find all real Levi subgroups M so
-   that the orbit has an element that is distinguished in M. There
-   may be duplications. .}
+{. Given a real nilpotent orbit, find all real Levi subgroups M so that the
+   orbit has an element that is distinguished in M. There may be duplications.
+.}
 set Levis_with_distinguished_orbit (RealNilpotent (H,x,):O) =
        [(vec,KGBElt),RealForm]:
-   let G=x.real_form then (S,K)=Levi_of_H(H,G.root_datum) in
- ##for (M,xes) in for M in viable_Levis(G,S) do (M,test_real_orbit(G,K,M,S)) od
-   do
-    ##for y in xes
+   let G=x.real_form then (S,K)=Levi_of_H(H,G.root_datum)
+in for (M,xes) in for M in viable_Levis(G,S) do (M,test_real_orbit(G,K,M,S)) od
+   do for y in xes
       do if is_conjugate_orbit(O,real_nilpotent(K,y)) then [((K,y),M)]
          else []
          fi
-      od
-   od
+      od.##
+   od.##
 
 set find_vec (vec H, [vec] m) = int:
    first(#m, (int i)bool: m[i]=H)
 
 set is_w_conjugate ([vec] r1, [vec] r2, WeylElt w)=bool:
-   #r1=#r2 and all(for H in r1 do find_vec(w*H,r2)>=0 od)
+   #r1=#r2 and
+   for H in r1
+   do let Hw=H*w { this used to be |w*H|: improper action on coweights } in
+      for H2 in r2 do H2=Hw od.any
+   od.all
 
-set is_W_conjugate ([vec] r1, [vec] r2, RootDatum rd)=bool:
-   any (for w in W(rd) do is_w_conjugate (r1,r2,w) od)
+{ laborious test to see if acting by any w in W transforms r1 into r2 }
+set is_conjugate ([vec] r1, [vec] r2, [WeylElt] W) = bool:
+   for w in W do is_w_conjugate (r1,r2,w) od.any
+set is_W_conjugate ([vec] r1, [vec] r2, RootDatum rd) = bool:
+   is_conjugate(r1,r2,W(rd))
 
-set is_W_conjugate_by_w ([vec] r1, [vec] r2, RootDatum rd)=(bool,WeylElt):
-   let W=W(rd) then b=false, n=0, m=#W, w=W[0] in
-   while b=false and n<m do
-   if is_w_conjugate (r1,r2,W[n]) then b:=true;w:=W[n] else
-   n+:=1  fi od; (b,w)
+{ same, but export a witnessing |w| too }
+set is_W_conjugate_by_w ([vec] r1, [vec] r2, [WeylElt] W) = (bool,WeylElt):
+   for w in W
+   do if is_w_conjugate(r1,r2,w) then return(true,w) fi
+   od; (false,W[0])
 
-set is_W_conjugate_by_w ([vec] r1, [vec] r2, [WeylElt] W)=(bool,WeylElt):
-   let b=false, n=0, m=#W, w=W[0] in
-   while b=false and n<m do
-   if is_w_conjugate (r1,r2,W[n]) then b:=true;w:=W[n] else
-   n+:=1  fi od; (b,w)
+set is_W_conjugate_by_w ([vec] r1, [vec] r2, RootDatum rd) = (bool,WeylElt):
+   is_W_conjugate_by_w(r1,r2,W(rd))
 
-set is_conjugate ([vec] r1, [vec] r2, [WeylElt] W)=bool:
-   any (for w in W do is_w_conjugate (r1,r2,w) od )
+{ this function assumes elements of |S| are >=0, and |rd| has a |highest_root| }
+set pseudo_roots ([int] S, RootDatum rd) = [vec]:
+   for i in S
+   do if i<semisimple_rank(rd) then root(rd,i)
+      else {any higher index encodes lowest root} -highest_root(rd)
+      fi
+   od
 
-set pseudo_roots ([int] S, RootDatum rd)=[vec]:
-   for i in S do if i<ss_rank(rd) then simple_roots(rd)[i]
-   else -highest_root(rd) fi od
-
-set roots ([int] S, RootDatum rd) = [vec]: for i in S
-   do simple_roots(rd)[i] od
+set roots ([int] S, RootDatum rd) = [vec]: for i in S do root(rd,i) od
 
 set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
    dominant(rd,ratvec_as_vec(2*rho(complex_pseudo_Levi(rd,list))))
@@ -641,9 +655,10 @@ set d_L(RootDatum rd,RootDatum rd_L)=order_center(rd_L.mod_central_torus)
 
 {don't use this, use is_conjugate(rd,L,M) from conjugate.at instead}
 set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
-   let W=W(rd) in if #L!=#M then false
-   else let prl=pseudo_roots(L,rd),prm=pseudo_roots(M,rd) in
-   is_conjugate(prl,prm,W) fi
+   #L=#M and
+(  let W=W(rd), prl=pseudo_roots(L,rd), prm=pseudo_roots(M,rd)
+   in is_conjugate(prl,prm,W)
+)
 
 {replaces old pseudo_Levis_of_orbit
  also return H_L in L mapping to (conjugacy class of) H in rd
@@ -651,16 +666,16 @@ set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
  for use in generators_of_component_group
 }
 set pseudo_Levis (ComplexNilpotent O) = [RootDatum,vec]:
-##for L in pseudo_Levi_subgroups(O.root_datum)
-  do let distinguished_H_L=distinguished_Hs(L)
-     then j=first
-       (for H_L in distinguished_H_L do dominant(H_L,O.root_datum)=O.H od)
-  in if j>=0 then [(L,distinguished_H_L[j])] else [] fi
-  od
+   for L in pseudo_Levi_subgroups(O.root_datum)
+   do let distinguished_H_L=distinguished_Hs(L)
+      then j=first
+	(for H_L in distinguished_H_L do dominant(H_L,O.root_datum)=O.H od)
+   in if j>=0 then [(L,distinguished_H_L[j])] else [] fi
+   od.##
 
 {orbits in pseudo Levis which saturate to O}
 set saturating_orbits(ComplexNilpotent O) = [ComplexNilpotent]:
-for (L,H) in O.pseudo_Levis do (L,(),H) od
+   for (L,H) in O.pseudo_Levis do (L,(),H) od
 
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
@@ -677,11 +692,13 @@ give distint torus elements
 use this to filter result of Kac_diagrams_with_centralizer
 previously the filtering was done on the fly which was wasteful
 }
-set filter(RootDatum rd,[([int],WeylElt)] list)=[([int],WeylElt)]:
-let keep=[([int],WeylElt)]:[] in
-for (v,w) in list do
- if none(for (u,) in keep do is_conjugate_Kac(v,u,rd) od) then keep#:=(v,w) fi od;
-keep
+set filter(RootDatum rd,[[int],WeylElt] list) = [[int],WeylElt]:
+   let keep=[([int],WeylElt)]:[]
+in for (v,w) in list
+   do if none(for (u,) in keep do is_conjugate_Kac(v,u,rd) od)
+      then keep#:=(v,w)
+      fi
+   od; keep
 
 {use maybe_conjugate from conjugate.at to test conjugacy}
 {. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
@@ -849,33 +866,21 @@ list of ratvecs}  then}
  (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
-{ return Bala Carter Levi and distinguished H_L for L conjugate to given H }
-set Bala_Carter_Levi_plus (ComplexNilpotent O) = (RootDatum,vec):
-   for L in Levi_subgroups(O.root_datum)
-   do for H_L in distinguished_Hs(L)
-      do if dominant(H_L,O.root_datum)=O.H then return (L,H_L) fi
-      od
-   od; error("Nilpotent ",O," erroneous: no Bala-Carter Levi subgroup found")
-
-{ Bala-Carter Levi subgroup only }
-set Bala_Carter_Levi (ComplexNilpotent O) = RootDatum:
-   let (L,)=O.Bala_Carter_Levi_plus in L
-
-set Bala_Carter_simples (ComplexNilpotent O) = [int]:
-   for alpha in Bala_Carter_Levi(O).simple_roots
-   do root_index(O.root_datum,alpha)
-   od
-
-{complex Levi of orbit: defined by H (not the Bala Carter Levi)}
+{ complex Levi of orbit: defined by diagram of H (not the Bala Carter Levi) }
 set complex_Levi(ComplexNilpotent O) = RootDatum:
-let rd=O.root_datum in complex_Levi(rd, (int k): =O.H*rd.simple_roots[k])
+   let rd =O.root_datum
+   then S =
+     for alpha@i in rd.simple_roots do if =O.H*alpha then [i] else [] fi od.##
+   in sub_datum(rd,S)
 
-set order_in_A (ratvec v, RootDatum rd, vec H)=int:
-   let div=divisors(denom(v)) then
-   k=first(
-   for i in div do
-   let CL=centralizer(rd,i*v) then orb=complex_nilpotent(CL,H) then
-   (L,H_new)=Bala_Carter_Levi_plus(orb) in in_radical(i*v,L) od) in div[k]
+set order_in_A (ratvec v, RootDatum rd, vec H) = int:
+   let div=divisors(denom(v))
+   then k=first(#div,
+          (int i): let dv=div[i]*v then CL = RootDatum: centralizer(rd,dv)
+                   then L=Bala_Carter_Levi(complex_nilpotent(CL,H))
+	           in in_radical(dv,L)
+          )
+in div[k]
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
 (ComplexNilpotent,[int],[(RootDatum,[ratvec])]):
