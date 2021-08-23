@@ -362,8 +362,12 @@ set strict_partitions = (int n) [Partition]:
 
 {	Combinatorics specifically for (Weyl groups of) types B,C,D	}
 
-set is_very_even(Partition P) = bool: =P%2 { whether all parts are even }
+{ a condition relevant to which cycle types give split classes in $W(D_n)$ }
+set is_very_even (Partition P) = bool: =P%2 { whether all parts are even }
 
+{ a condition relevant to which $D_n$ nilpotent orbits are split from $O(2n)$ }
+set is_doubly_even (Partition P) = bool: { even parts even multiplicities only }
+  let freq = frequencies(P) in =freq.odd_places and =freq.even_places%2
 
 set_type BiPartition = (Partition,Partition)
 { no specific interpretation imposed here, but ordering should always have:
