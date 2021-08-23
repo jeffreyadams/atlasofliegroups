@@ -371,7 +371,7 @@ set springer_table_C (RootDatum rd) = SpringerTable:
 in ( table
    , for lambda in partitions_C(rd.semisimple_rank) do orbit(lambda) od
    , dual_map_C(rd)
-   , dual_map_B(dual(rd)) { inverse of dual map is dual map for B }
+   , dual_map_B(dual(rd)) { "inverse" of dual map is dual map for B }
    , (ComplexNilpotent O) int: irrep_of_bipartition(springer_C(O))
    )
 
@@ -381,7 +381,7 @@ set springer_table_B (RootDatum rd) = SpringerTable:
 in ( table
    , for lambda in partitions_B(rd.semisimple_rank) do orbit(lambda) od
    , dual_map_B(rd)
-   , dual_map_C(dual(rd)) { inverse of dual map is dual map for C }
+   , dual_map_C(dual(rd)) { "inverse" of dual map is dual map for C }
    , (ComplexNilpotent O) int: irrep_of_bipartition(springer_B(O))
    )
 
