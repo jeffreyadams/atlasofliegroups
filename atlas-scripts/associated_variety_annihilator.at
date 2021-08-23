@@ -78,6 +78,7 @@ new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index
 chars_rd=
 ##for i:st_rd.ct.n_classes do
  let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) then
+ ()=prints("RESTRICT: ", new_line, "rd=",rd,new_line,"L=",L, new_line,"ct_rd.rd: ", ct_rd.root_datum, new_line, "char: ", ct_rd.characters[i]) then
   a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) then
   ()=prints("a=",a) in
 { a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) in prints("a=",a) in}
@@ -103,6 +104,7 @@ associated_variety_ann_res(rd,st_rd,cell.root_datum.character_table,cell)
 {(slow) given cell, compute st_rd,ct_L}
 set associated_variety_ann_res(RootDatum rd,WCell cell)=ComplexNilpotent:
 associated_variety_ann_res(rd,rd.springer_table,cell.root_datum.character_table,cell)
+
 
 {given Param, SpringerTable for rd and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_res(Param p,SpringerTable st_rd,CharacterTable ct_L)=ComplexNilpotent:
