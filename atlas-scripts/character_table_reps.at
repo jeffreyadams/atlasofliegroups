@@ -131,51 +131,33 @@ need: L' -> L \subset G -> Gprime
 see embed(L,G,Lprime,Gprime) above
 }
 
-{requirement: simple roots of L are contained in the (positive) roots of G
- if not this will trigger an assert in embed(L,G,w)
-first version: assume character tables of L,G pre-computed
-}
+{ simplified versions; first provide embedding via |convert_to| }
 set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
       [int]:
    let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
    in induce_character(Wct_L,Wct_G,embed,pi_L)
 
-{ compute both character tables on the fly (slow) }
-set induce_character (RootDatum L,RootDatum G,[int] pi_L) = [int]:
-   induce_character(W_class_table(L),W_class_table(G),pi_L)
-
-{ this vrsion assumes ct_G computed, but not ct_L}
-set induce_character (RootDatum L,WeylClassTable Wct_G,[int] pi_L) = [int]:
-   induce_character(W_class_table(L),Wct_G,pi_L)
-
+{ this version assumes ct_G computed, but computes L, class table(L) on the fly }
 set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
-   induce_character(sub_datum(Wct_G.root_datum,simple_roots_of_L),Wct_G,pi_L)
-
-{ compute Levi datum and both character tables on the fly (slow) }
-set induce_character (RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-   induce_character(W_class_table(G),simple_roots_of_L,pi_L)
+      [int]:
+   let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
+in induce_character(W_class_table(L),Wct_G,pi_L)
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = W_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.trivial)
 
-set induce_trivial (RootDatum G,[int] simple_roots_of_L) = [int]:
-   induce_trivial(W_class_table(G),simple_roots_of_L)
-
 set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = W_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.sign)
 
-set induce_sign(RootDatum G,[int] simple_roots_of_L) = [int]:
-   induce_sign(W_class_table(G),simple_roots_of_L)
 
 { truncated induction is defined in general in truncated_induction.at
   special cases are done here to avoid needing that script (it's not hard) }
 set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
-   , induced_char = induce_sign(ct_G.class_table,simple_roots_L)
-   then Wct_L = W_class_table(L)
-   , target = int: nr_of_posroots(L)
+   then Wct_L = W_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_classes
       do if ct_G.degree(i)=target
@@ -192,8 +174,8 @@ in assert(#contributions=1,"truncate induced from sign is not irreducible");
 set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
    , induced_char = induce_trivial(ct_G.class_table,simple_roots_L)
-   then Wct_L = W_class_table(L)
-   , target = int: nr_of_posroots(L)
+   then Wct_L = W_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_classes
       do if ct_G.degree(i)=target
