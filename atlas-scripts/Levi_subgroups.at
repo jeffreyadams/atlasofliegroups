@@ -6,7 +6,7 @@
 { This file groups function concerning classification of and computation with
   Levi subgroups.
 
-  It regroups things that used to be in W_characters.at and conjugate.at
+  It regroups things that used to be in W_classes.at and conjugate.at
 }
 
 { We try as much as possible to work with Levi subgroups without building a

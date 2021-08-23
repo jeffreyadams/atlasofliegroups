@@ -5,7 +5,7 @@
 <Weylgroup.at { for |is_relatively_elliptic| }
 <tabulate.at { for |tabulate| }
 
-{ The purpose of this file is working with Weyl group characters.
+{ The purpose of this file is with Weyl group conjugacy classes and characters.
 
   A large initial part is dedicated to deciding conjugacy in the Weyl group, and
   finding an explicit witness of conjugacy from a class representative.

@@ -1,7 +1,7 @@
 <combinatorics.at { for |even_places@[int] }
 <parabolics.at { for |Levi@Parabolic|, |parabolic_by_cwt@(ratvec,KGBElt)| }
 <parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
-<W_characters.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
+<W_classes.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
 <K.at { for |K_0@RealForm| }
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
