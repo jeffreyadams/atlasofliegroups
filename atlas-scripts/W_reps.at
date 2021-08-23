@@ -1,6 +1,6 @@
 <basic.at
 <parabolics.at
-<W_characters.at
+<W_classes.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }

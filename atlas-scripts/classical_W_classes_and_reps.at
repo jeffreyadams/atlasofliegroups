@@ -1,6 +1,6 @@
 <basic.at
 <combinatorics.at { for types |Partition|, |Signed_cycles|, and many functions }
-<W_characters.at
+<W_classes.at
 <simple_factors.at
 
 {conjugacy classes and representations of classical Weyl groups

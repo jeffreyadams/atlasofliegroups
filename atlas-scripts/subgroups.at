@@ -3,7 +3,7 @@
 <center.at
 <poset.at
 <number_theory.at {for is_prime}
-<W_characters.at
+<W_classes.at
 
 {
   The functions deal with constructing Levi systems cut out by various linear
@@ -425,7 +425,7 @@ sort_by_dimension(##grouped_by_ss_rank)
 
 {  ----- Levi and pseudo-Levi subgroups ---- }
 
-{conjugacy classes of Levis as root data from W_characters.at}
+{conjugacy classes of Levis as root data from W_classes.at}
 set Levi_subgroups(RootDatum rd)=[RootDatum]:
 for simple_roots in standard_Levi_conjugacy_representatives(rd)
 do complex_Levi(rd,simple_roots) od

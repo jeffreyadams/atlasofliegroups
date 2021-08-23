@@ -3,7 +3,7 @@
 }
 <basic.at
 <combinatorics.at { for |permute@([int],vec)| }
-<W_characters.at { for type |WeylClassTable| }
+<W_classes.at { for type |WeylClassTable| }
 <character_tables.at { for type |CharacterTable| }
 <isomorphism.at { for |root_permutations| }
 

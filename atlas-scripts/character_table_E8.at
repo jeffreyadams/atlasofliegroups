@@ -1,6 +1,6 @@
 <basic.at
 <combinatorics { for |Partition| }
-<W_characters.at { for |WeylClassTable| }
+<W_classes.at { for |WeylClassTable| }
 <classical_W_classes_and_reps.at { for |test_simple_type| }
 <e8_gap.at { load the information from GAP }
 <character_tables.at

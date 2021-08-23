@@ -1,6 +1,6 @@
 <basic.at
 <combinatorics.at
-<W_characters.at
+<W_classes.at
 <character_tables.at
 
 { orbit sizes on roots; these characterise conjugacy classes for W(E6) }
