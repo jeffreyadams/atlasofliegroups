@@ -1,6 +1,6 @@
 <basic.at
-<combinatorics.at { for inverse of permutation }
-<classical_W_classes_and_reps.at
+<class_tables.at
+<classical_W_classes_and_reps.at { for |classical_class|, |classical_irrep| }
 <nilpotent_orbits.at
 <isomorphism.at
 
@@ -41,7 +41,6 @@ set_type
   , mat table { should be made function } { by row=character }
   )
 ]
-
 
 set character_table ( WeylClassTable Wct
     		    , [WeylElt,classical_class,string] class_reps
@@ -96,11 +95,11 @@ set character_table ( RootDatum rd
 		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-    character_table ( W_class_table(rd), class_reps, chars )
+    character_table ( class_table(rd), class_reps, chars )
 
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
-   let Wct = W_class_table(adjoint("")), id(int i)=int: i
+   let Wct = trivial_class_table, id(int i)=int: i
    then e=id_W(Wct.root_datum)
 in (Wct,1,[e],(int i):"e",(int i)classical_class: null_class()
    ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0]

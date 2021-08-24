@@ -123,67 +123,6 @@ set irrep_string(D_irrep chi) = string:
 
 {			some cases special to type D:			}
 
-{ rather than |signed_cycle_type_code|, $D_n$ classes need a finer analysis }
-set to_D_class ([int] sigma) { as from |classic_permutation } = D_class:
-   let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
-   then cycle_signs = for cyc in cycles do for i in cyc do <sigma[i] od.XOR od
-   then type_code =
-       for cyc@i in cycles do #cyc*sign(cycle_signs[i]) od.reverse_sort
-   , neg_count = count(cycle_signs) { number of cycles with odd flip count }
-in if neg_count.is_odd then error("Permutation is not in type D subgroup")
-   elif not(neg_count.= and type_code.is_very_even)
-   then type_code.as_signed_cycles.unsplit_class
-   else { we have a split cycle, count parities of flip positions for sign }
-      let parity =
-	 for cyc in cycles
-	 do for i@pos in cyc do <sigma[i] and pos.is_odd od.XOR
-	 od.XOR
-   in (type_code,parity).split_class
-   fi
-
-set eq_D_class = (D_class,D_class->bool):
-   let code(Signed_cycles c) = vec: for (l,flip) in c do l*sign(flip) od
-in (D_class c0,D_class c1) bool:
-   case c0
-   | cyc0.unsplit_class:
-     case c1 | cyc1.unsplit_class: code(cyc0)=code(cyc1) | else false esac
-   | (lambda,eps0).split_class:
-     case c1 | (mu,eps1).split_class: lambda=mu and eps0=eps1 | else false esac
-   esac
-
-{ a total ordering on equal size |Signed_cycles| values produced by |to.cycles|;
-  take one the is fast to test for; not the order produced by |D_classes|
-}
-set leq_D_class = (D_class,D_class->bool):
-   (D_class c0,D_class c1) bool:
-   case c0
-   | cyc0.unsplit_class:
-     case c1
-     | cyc1.unsplit_class:
-        ( for (l,flip0)@i in cyc0
-	  do let (k,flip1)=cyc1[i] { |cyc1[i]| exists if we come here }
-	  in if l!=k then return l<k
-	     elif flip0!=flip1 then return flip1 { consider |false<true| }
-	     fi
-	  od
-	; true { if |cyc0| exhausted then |cyc1| must be too; so equality }
-	)
-     | else true { consider that unsplit classes come before split ones }
-     esac
-   | (lambda,eps0).split_class:
-     case c1
-     | (mu,eps1).split_class:
-       if lambda!=mu then leq_equal_sum_partitions(lambda,mu)
-       elif eps0 then eps1 else true { equivalently |else #eps0<=#eps1| }
-       fi
-     | else false
-     esac
-   esac
-
-set = = eq_D_class@(D_class,D_class)
-set != (D_class c0,D_class c1) = bool: not(c0=c1)
-set <= = leq_D_class@(D_class,D_class)
-
 set is_split(D_class c) = bool:
    case c | (,).split_class: true | else false esac
 

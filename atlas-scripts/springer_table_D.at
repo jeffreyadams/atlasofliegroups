@@ -94,7 +94,7 @@ set outer_D (vec diagram) = vec: diagram[:2~]##[diagram~[0],diagram~[1]]
   is for the most part governed by the map |core_quotient_2| from Jordan types
   (partitions of $2n$ for type $D_n$) to pairs of partitions of sum $n$ (like
   for $C_n$ the core is always empty for valid nilpotent Jordan types). The
-  subtle point is "very even" Jordan types (only even parts, each as always in
+  subtle point is "doubly even" Jordan types (only even parts, each as always in
   type $D_n$ repeated an even number of times, so they only occur when $n$ is
   even) for which the $O(2n)$ nilpotent orbit splits into two $SO(2n)$ orbits,
   and for which the 2-quotient is $(\lambda,\lambda)$ where $\lambda$ is the
