@@ -85,10 +85,6 @@ set partition_of_orbit_D (ComplexNilpotent O) = (Partition,bool):
    let perm = test_simple_type("D",O.root_datum)
    in stratified_diagram(O,perm).diagram_D_to_partition
 
-{ outer automorphism of orbits in type D: switch last two coordinates of
-  |O.diagram|; corresponds to changing sign of  last coordinate of O.H }
-set outer_D (vec diagram) = vec: diagram[:2~]##[diagram~[0],diagram~[1]]
-
 
 { The Springer map from nilpotent orbits to irreducible W(D_n)-representations
   is for the most part governed by the map |core_quotient_2| from Jordan types
@@ -109,35 +105,38 @@ set outer_D (vec diagram) = vec: diagram[:2~]##[diagram~[0],diagram~[1]]
   The following appears to be the justification for this choice. On page 423 of
   Carter's book, a description is given couched in savant language of Richardson
   classes, parabolic subgroups of G, and Macdonald representations (obtained
-  from the $j$-operation defined on page 368). Concretely this appears to
-  translate into truncated induction of the sign representation from the
-  Bala-Carter Levi subgroup of $W(D_n)$ associated to the nilpotent orbit,
-  tensored (it appears one never misses an occasion for a twist) by the sign
-  representation of $W(D_n)$. This is implemented in |springer_D_by_induction|
-  below, but is slow (currently; possibly because it requires computing the
-  class table for the Levi, which it does using the generic methods). But since
-  |core_quotient_2| already computes everything except the distinction between a
-  pair of split irreducibles, we can focus on just getting that last information
-  from the evaluation on a particular split class. One can take for that the
-  "simplest" very even class, of $s_0s_2s_4..s_{n-2}$, whose signed cycle type
-  has $n/2$ cycles of length $2$ and positive sign, and whose discriminating
-  Boolean value is |false|; the character of any split irrep on it is nonzero,
-  and it is negative if and only if that irrep has Boolean |true| attached (this
-  can be deduced from the formula implemented in |hyperoctahedral_character|).
-  The question then boils down to finding the Boolean attached to the truncated
+  from the $j$-operation defined on page 368). For the doubly even Jordan types
+  this appears to translate into truncated induction of the sign representation
+  from the Bala-Carter Levi subgroup of $W(D_n)$ associated to the nilpotent
+  orbit, tensored (it appears one never misses an occasion for a twist) by the
+  sign representation of $W(D_n)$. Since we can focus on getting the information
+  distinguishing the two split irreducibles the evaluation on a particular split
+  class. We can take the "simplest" class with very even cycle type, namely the
+  class of $w=s_0s_2s_4..s_{n-2}$, whose signed cycle type has $n/2$ cycles,
+  each length $2$ and of positive cycle sign, and whose discriminating Boolean
+  value is |false|; the character of any split irrep on it is nonzero, and it is
+  negative if and only if that irrep has Boolean |true| attached (this can be
+  deduced from the formula implemented in |hyperoctahedral_character|). The
+  question then boils down to finding the Boolean attached to the truncated
   induction of the Bala-Carter Levi subgroup associated to |O|, and this appears
-  to be just whether its set of simple roots contains the final node of the
-  Dynkin diagram (rather than the other point of the fork, the node before). And
-  that condition is either equivalent or negated from (according to the parity
-  of $n/2$) the equivalent conditions of (1) whether the final entry of |O.H|
-  (dominant) is negative, (2) whether the final entry of |diagram(O)| is zero,
-  (3) the Boolean |b| for which |O| is |nilpotent_orbit_D(rd)(Jordan_type,b)|.
-  That twist finally is because, is we take $S$ to be a disjoint union of odd
-  rank type $A$ sub-diagrams separated by a single absent node and not
-  containing the final node of the $D_n$ diagram, the unique associated
+  to be the same as the discriminating Boolean attached to the split nilpotent
+  orbit; tensorsing with the sign representation then flips this with the sign
+  $(-1)^{n/2}$ of $w$, anf at is this flip that is implemented below (where
+  $n/2$ appears under the form of |sum(lambda)|). It may be noted that the
+  initial discriminating Boolean for |O| records the equivalent conditions (by
+  definition:) (0) |b| for which |O| is |nilpotent_orbit_D(rd)(Jordan_type,b)|,
+  (1) whether the final entry of |O.H| (dominant) is negative, (2) whether the
+  final entry of |diagram(O)| is zero. It is noteworthy that the condition
+  whether set of simple roots for the associated Bala-Carter Levi contains the
+  final node of the diagram is opposite to this condition whenever $n/2$ is odd,
+  a switch that apparently gets compensated to disappear in the truncated
+  induction process. The switch arises because, taking $S$ to be a disjoint
+  union of odd rank type $A$ sub-diagrams separated by a single absent node and
+  not containing the final node of the $D_n$ diagram, the unique associated
   distinguished $H$ has half its entries negative, which is $n/2$ in number, and
   making it dominant leaves a final negative entry if and only if $n/2$ is odd.
- }
+  At this time I (MvL) don't understand how truncated induction undoes the flip.
+}
 
 set springer_D (Partition Jordan,bool flip) = D_irrep:
 (  let (,(lambda,mu)) = core_quotient_2(Jordan)
@@ -151,124 +150,12 @@ in assert(is_valid("D",Jordan),"Not a valid type D nilpotent Jordan type")
 set springer_D (ComplexNilpotent O) = D_irrep:
    springer_D(partition_of_orbit_D(O))
 
-{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
-{ this is weak version of map from orbits to W-reps, essentially the 2-quotient }
-set springer_D_weak (Partition lambda) = (Partition,Partition):
-(   assert(is_valid("D",lambda),"Not a valid type D partition")
-;  let P=sort(lambda)  {increasing}
-   then Q= if is_odd(#P) then P:=0#P fi; for p@i in P do p+i od {strict increase}
-   then v=[int]:[],w=[int]:[]
-in {each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
-   for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od
-;  assert(#v=#w,"error, v and w should have the same size")
-;  {let ()=prints("v=",v, " w=", w)}
-   let a=delete_leading_zeros(for x@i in v do x-i od)
-   ,   b=delete_leading_zeros(for x@i in w do x-i od)
-in if leq_partitions(b,a)
-   then (reverse_sort(a),reverse_sort(b))
-   else (reverse_sort(b),reverse_sort(a))
-   fi
-)
 
-{ D_irrep -> character }
-{ same as |ct.character(lookup_irrep(sigma))|, latter from |character_table_D| }
-set character_D (CharacterTable ct, D_irrep sigma) = [int]:
-   let reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od
-   in ct.character(index_D_reps(reps,sigma))
-
-{ character -> D_irrep }
-set irrep_D (CharacterTable ct,[int] char) = D_irrep:
-   let index=first(for i:ct.n_classes do ct.characters[i]=char od)
-in ct.classical_reps(index).get_irrep_D
-
-set tensor_sign_D (CharacterTable ct,D_irrep sigma) = D_irrep:
-   irrep_D(ct,ct.tensor_sign(character_D(ct,sigma)))
-
-
-{fully valid Springer map:
- orbit -> pair of partitions (P,Q)
-
-*) if P\ne Q -> unsplit D_irrep  (two distinct partitions)
-
-*) if P=Q then need to use orbit itself (not just the (P,Q))
-   orbit -> Bala Carter Levi L -> truncated_ind(sgn) -> D_irrep
-truncated induction is slow. Instead use the following:
-
-We are given a pair of doubly even orbits for SO(4n). Let O be the (positive) one
-selected by |false|, for which $H$ has positive final entry (the others are
-always non-negative) so that the diagram ends in [...,0,2]. The Springer
-correspondence takes this orbit to the representation sigma= truncated induction
-of the sgn representation on the Bala Carter Levi. (Call the other one sigma').
-There is a pair of split classes labeled ([2,2,...,2],false/true), one of these
-has representative $w=s_0s_2,...,s_{n-4},s_{n-2}$, the other contains
-$s_0s_2,...,s_{n-4},s_{n-1}$ (call this $w'$). Now sigma satisfies:
-
-sigma(w)>0
-
-also:
-sigma'(w)<0)
-sigma'(w)<0
-sigma'(w')>0
-
-Conclusion: define the Springer correspondence by:
-
-the orbit ending in ...,0,2] -> the representation whose character
-at s_0...s_{n-2} is >0.
-
-the orbit ending in ...,2,0] -> the representation whose character
-at s_0...s_{n-2} is <0.
-
-Note: s_0...s_{n-2} is the Coxeter element of the standard
-GL(n) subgroup, with roots e_1-e_2,...,e_{n-2}-e_{n-1}
-
-(and not e_{n-2}+e_{n-1})
-
-}
-
-set springer_D (CharacterTable ct,ComplexNilpotent O) = D_irrep:
-   let (a,b)=springer_D_weak(let (P,)=partition_of_orbit_D(O) in P)
-in if a!=b then {easy case}  (a,b).unsplit_irr
-   else {hard case: a=b }
-      let rd=ct.root_datum
-      then half_n=rd.rank\2
-      then class = split_class(for i:half_n do 2 od,false)
-      then sign = if =O.diagram~[0] then 1 else -1 fi { seems unnatural }
-      ,    val  = character(split_irr(a,true),class) { this is always negative }
-   in split_irr(a,<=(sign*val*minus_1^half_n)).irrep_D.get_irrep_D
-   fi
-
+{ a function that were used during development, but no longer is }
 set springer_D_by_induction (CharacterTable ct,ComplexNilpotent O) = D_irrep:
    let index = int: truncate_induce_sign(ct,Bala_Carter_simples(O))
-in irrep_D(ct,ct.tensor_sign(ct.character(index)))
-
-    {same as:
-     set x=induce_trivial(ct,simple_roots_L))
-     then y=ct.tensor_sign(x)
-     then pick out unique term with correct degree}
-
-set springer_D_original (CharacterTable ct,ComplexNilpotent O) = D_irrep:
-   let (a,b) =
-      let (Jordan,) = partition_of_orbit_D(O) in springer_D_weak(Jordan)
-in if a=b else {easy case} (a,b).unsplit_irr
-   then
-   { algorithm:
-     orbit -> Bala Carter Levi L -> sigma= truncated induction from sign on L
-           ->sigma\otimes sgn
-     value of the induced representation on the Coxeter element of L is -1,
-     tensoring with sign gives 1
-   }
-      let sigma=(a,true).split_irr, tau=(a,false).split_irr
-      , gens = Bala_Carter_simples(O)
-      then index=ct.class_of(W_elt(ct.root_datum,gens)) { Levi Coxeter lifted }
-      then sigma_neg = character_D(ct,sigma)[index].<
-      ,    tau_neg   = character_D(ct,tau)[index].<
-   in prints( "sign_sigma: ", sign(sigma_neg), new_line
-      	    , "sign_tau: ", sign(tau_neg));
-      if   sigma_neg then tau
-      elif tau_neg then sigma
-      else error("no negative values")
-      fi
-   fi
+   then char = ct.tensor_sign(ct.character(index))
+in ct.classical_reps(ct.character_index(char)).get_irrep_D
 
 
 {------------------ duality ----------------------------------}
@@ -317,7 +204,7 @@ set D_dual (Partition Jordan,bool flip) = (Partition,bool):
    else (D_adjust(transpose(Jordan)),false)
    fi
 
-set dual_map_D(RootDatum rd) = (ComplexNilpotent->ComplexNilpotent):
+set dual_map_D (RootDatum rd) = (ComplexNilpotent->ComplexNilpotent):
    let perm = test_simple_type("D",rd), drd = dual(rd)
 in if perm = #semisimple_rank(rd) { case of standard order, somewhat easier }
    then (ComplexNilpotent O_D) ComplexNilpotent:
@@ -337,74 +224,37 @@ in ( table
    , (ComplexNilpotent O) int: lookup_D_irrep(springer_D(O))
    )
 
+{ for now we also need to accommodate an existing character table }
+set springer_table_D (CharacterTable ct) = SpringerTable:
+   let rd = ct.root_datum
+   then orbit = (Partition,bool->ComplexNilpotent): nilpotent_orbit_D(rd)
+   , lookup = (D_irrep->int):
+       for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od.index_D_reps
+in ( ct
+   , for pair in partitions_D(rd.semisimple_rank) do orbit(pair) od
+   , dual_map_D(rd)
+   , dual_map_D(dual(rd)) { "inverse" of dual map is same algorithm }
+   , (ComplexNilpotent O) int: lookup(springer_D(O))
+   )
 
 
-{this is a bit slow, only want to do it once:}
-set springer_D (CharacterTable ct) = [D_irrep]:
-   for O in ct.root_datum.orbits do springer_D(ct,O)  od
 
-{ assuming this has been done for all nilpotent orbits in order, the resulting
-  |D_irrep| values stored in |reps|, the following function locates by lookup }
-set springer_D_by_hash (RootDatum rd,[D_irrep] reps) =
-       (ComplexNilpotent -> D_irrep):
-   let orbits=rd.orbits
-in (ComplexNilpotent O) D_irrep: reps[first(#orbits,(int i): orbits[i]=O)]
-
-set springer_D_by_hash (CharacterTable ct) = (ComplexNilpotent -> D_irrep):
-   springer_D_by_hash(ct.root_datum,springer_D(ct))
-
-{Dangerous bend:
- the SpringerTable hash uses the (simple) simply connected root datum
- We'll be given an orbit for a given Root Datum rd,
-   which isn't necessarily simply connected
- Need to pass to simply connected root datum, using orbit_by_diagram
-}
-set springer_table_D(CharacterTable ct)= SpringerTable:
-let rd=ct.root_datum {simply connected} then
-orbits=rd.orbits then
-reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
-springer_hash_reps=springer_D_by_hash(ct) {ComplexNilpotent->D_irrep} then
-springer(ComplexNilpotent O_0 {not necessarily for sc group})=  {=int}
- let O=orbit_by_diagram(rd,[O_0.diagram]) then
- rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
-dual_map(ComplexNilpotent O)=ComplexNilpotent:
- let (P,):pair = partition_of_orbit_D(O) then
- Q_pair=D_dual(pair) then
- rd_dual=O.root_datum.dual in
- if not is_doubly_even(P) then nilpotent_orbit_D(rd_dual)(Q_pair)
- else
-  {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
-  let sigma=springer_hash_reps(O) {D_irrep} then
-  sigma_sgn=tensor_sign_D(ct,sigma) {D_irrep} then
-  index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in
-  orbits[index]
- fi then
-dual_map_i(ComplexNilpotent O_check {for adjoint group})=
-let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
-dual_map(O_check_lift) in
-(ct,orbits,dual_map,dual_map_i,springer)
-
-{
-set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:
-let orbits=ct.root_datum.orbits then
-index=index_D_reps(for orbit in orbits do springer_D(ct,orbit) od,sigma) in
-orbits[index]
- fi then
-dual_map_i(ComplexNilpotent O)=ComplexNilpotent:dual_map(O)
-in (ct,orbits,dual_map,dual_map_i,springer)
-}
-
-
-{    index_D_reps(reps,rep)}
-
-set show_D(SpringerTable st)=
-let orbits=st.root_datum.orbits in
-tabulate(["i","partition","O","d(O)","dd(O)","pi","special"] #
- for O@i in orbits do
-  let O_d=prints(i);st.dual_map(O) then
-  O_dd=st.dual_map_i(O_d) then
-  special=st.is_special(O) then
-  sigma_index=st.springer(O) then
-  sigma=st.ct.classical_reps(sigma_index).get_irrep_D in
-  [i.to_string,O.partition_of_orbit_D.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma.to_string,special.to_string]
- od)
+set show_D (SpringerTable st) = void:
+   let orbits=st.root_datum.orbits in
+( ["i","partition","O","d(O)","dd(O)","pi","special"]
+# for O@i in orbits
+  do let  O_d  = st.dual_map(O)
+     then O_dd = st.dual_map_i(O_d)
+     then special=st.is_special(O)
+     , sigma_index=st.springer(O)
+     then sigma=st.ct.classical_reps(sigma_index).get_irrep_D
+  in [i.to_string
+     ,O.partition_of_orbit_D.to_string
+     ,O.diagram.to_string
+     ,O_d.diagram.to_string
+     ,O_dd.diagram.to_string
+     ,sigma.to_string
+     ,special.to_string
+     ]
+ od
+).tabulate
