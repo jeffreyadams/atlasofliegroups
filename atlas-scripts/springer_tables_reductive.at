@@ -37,11 +37,11 @@ set springer_table(RootDatum rd)=
       for (letter,rank) in simples
       do let simple_rd = sub_datum(rd,for i:rank do map[offset+i] od)
       next offset+:=rank
-      in springer_table_simple(derived(simple_rd),letter,rank)
+      in springer_table_simple(simple_rd,letter,rank)
       od
 in if rd.is_abelian then springer_table_torus(rd)
    else let st = simple_tables[0] in
-      for i:#simples from 1 do st:=tensor(st,simple_tables[i]) od
+      for i:#simples-1 from 1 do st:=tensor(st,simple_tables[i]) od
    ;  st
    fi
 

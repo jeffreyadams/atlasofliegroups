@@ -208,7 +208,7 @@ set character_table_B (RootDatum rd) =
       od
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_B(n),classes,irreps)
+in ( character_table(class_table_B(rd),classes,irreps)
    , lookup_class { find index among conjugacy classes }
    , lookup_irrep
    )
@@ -284,7 +284,7 @@ set character_table_C(RootDatum rd) =
       od
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_B(n),classes,irreps)
+in ( character_table(class_table_C(rd),classes,irreps)
    , lookup_class { find index among conjugacy classes }
    , lookup_irrep
    )
