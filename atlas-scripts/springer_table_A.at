@@ -33,7 +33,7 @@ set diagram_A_to_partition ([int] diagram) = Partition:
    assert(diagram=diagram~[:],"Stratified diagram should be a palindrome");
    let freq = [int]: (0#diagram.cumulate_forward).frequencies
    then max = { the largest part }
-      let (q,r)= #freq \% 2 in assert(q=1,"Diagram has odd sum"); q+1
+      let (q,r)= #freq \% 2 in assert(r=1,"Diagram has odd sum"); q+1
    then mult(int i) = int: { mulitplicity of part |i| in partition }
       let m = if i+2<=max then freq[max-i]-freq[max-i-2] else freq[max-i] fi
       in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m

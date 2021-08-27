@@ -13,10 +13,10 @@ set_type [SpringerTable=
   (ComplexNilpotent->int) springer
   )]
 
+set character_table = ct@SpringerTable { longer name for the projector }
 set root_datum(SpringerTable st) = RootDatum: st.ct.root_datum
 set characters(SpringerTable st) = [[int]]: st.ct.characters
 set generic_degree(SpringerTable st) = (int->int): st.ct.generic_degree
-set character_table(SpringerTable st) = CharacterTable: st.ct
 
 set n_orbits(SpringerTable st) = int: #st.orbits
 
@@ -58,7 +58,7 @@ set special_closure (SpringerTable st) = (ComplexNilpotent->ComplexNilpotent):
 {orbit is special if O=special_closure(O)}
 set is_special (SpringerTable st,ComplexNilpotent O) = bool:
   is_even(O) or {st.special_closure(O)=O, but this is slow}
-  st.dual_map_i(st.dual_map(O)).diagram_normalized=O.diagram_normalized
+  st.dual_map_i(st.dual_map(O)).diagram=O.diagram
 
 
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):
@@ -151,7 +151,7 @@ rv=factors[0].derived then
 st1.root_datum can be anything semisimple,
 st2.root_datum must be simple
 }
-set tensor(SpringerTable st1,SpringerTable st2)=SpringerTable:
+set tensor (SpringerTable st1,SpringerTable st2) = SpringerTable:
 let ct=tensor(st1.ct,st2.ct), rd1=st1.root_datum, rd2=st2.root_datum
 , orbits =
   for O1 in st1.orbits do for O2 in st2.orbits do tensor(O1,O2) od od.##
@@ -265,7 +265,7 @@ in {by definition permutation should relate the Cartan matrices}
 
 set show(SpringerTable st)=void:
 tabulate(
-["diagram","dim","rep#","dim","deg", "fdeg","char"]#
+["diagram","dim","rep#","dim","deg", "gdeg","char"]#
 for orbit in st.orbits do
 let j=st.springer(orbit) in
 [orbit.diagram.to_string+st.special_star(orbit),
