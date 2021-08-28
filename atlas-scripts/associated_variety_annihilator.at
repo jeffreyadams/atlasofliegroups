@@ -2,7 +2,15 @@
 <sub_cells.at
 <K_types.at
 
-set av_verbose=false
+set restrict_character_long(RootDatum rd ,RootDatum L,CharacterTable ct_rd,CharacterTable ct_int,[int] char)=
+let ()=prints("RESTRICTING: ",new_line,
+"rd=", rd, rd.simple_roots,new_line,
+"L=", L, L.simple_roots,new_line,
+"ct_rd=", ct_rd.root_datum, ct_rd.root_datum.simple_roots,new_line,
+"ct_int=", ct_int.root_datum, ct_int.root_datum.simple_roots) in
+restrict_character(rd,L,ct_rd,ct_int,char)
+
+set av_verbose=true
 
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity
@@ -76,14 +84,13 @@ d_int=ct_int.degrees[index_pi_int] then
 new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index_pi_int],
 "degree of special character: ", d_int) fi then
 chars_rd=
+if av_verbose then
+ prints("rd: ", rd,new_line,rd.simple_roots, "L: ", L,new_line,L.simple_roots, "ct_rd: ", ct_rd.root_datum,new_line,ct_rd.root_datum.simple_roots,"ct_int: ", ct_int.root_datum,ct_int.root_datum.simple_roots) fi;
 ##for i:st_rd.ct.n_classes do
- let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) then
- ()=prints("RESTRICT: ", new_line, "rd=",rd,new_line,"L=",L, new_line,"ct_rd.rd: ", ct_rd.root_datum, new_line, "char: ", ct_rd.characters[i]) then
-  a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) then
-  ()=prints("a=",a) in
-{ a=restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) in prints("a=",a) in}
- if ct_rd.degrees[i]=d_int and
-  !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]))
+ let ()=if av_verbose then prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) fi  then
+   restriction=if av_verbose then restrict_character_long(rd,L,ct_rd,ct_int,ct_rd.characters[i])
+     else restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) fi  in
+ if ct_rd.degrees[i]=d_int and !=ct_int.inner_product(char_int,restriction)
   then  [i] else [] fi
 od
 then
@@ -104,7 +111,6 @@ associated_variety_ann_res(rd,st_rd,cell.root_datum.character_table,cell)
 {(slow) given cell, compute st_rd,ct_L}
 set associated_variety_ann_res(RootDatum rd,WCell cell)=ComplexNilpotent:
 associated_variety_ann_res(rd,rd.springer_table,cell.root_datum.character_table,cell)
-
 
 {given Param, SpringerTable for rd and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_res(Param p,SpringerTable st_rd,CharacterTable ct_L)=ComplexNilpotent:
@@ -166,10 +172,10 @@ for (p,orbit) in data do
 {G is a complex group; use left cell}
 set associated_variety_ann_res_complex(Param p)=ComplexNilpotent:
 assert(p.real_form.is_complex,"RootDatum is not complex");
-let cell=left_cell_of(p) {for left root datum} in
-associated_variety_ann_res(p.real_form.left_copy.derived,cell)
-
-
+{note: left_cell_of must be defined correctly for this to work,
+see sub_cells.at}
+let left_cell=left_cell_of(p) in
+associated_variety_ann_res(p.real_form.left_copy,left_cell)
 
 {rd=cell.root_datum then
 st_rd=rd.springer_table then
