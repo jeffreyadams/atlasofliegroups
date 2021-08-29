@@ -307,7 +307,7 @@ set show(SpringerTable st)=void:
 tabulate(
 ["diagram","dim","rep#","dim","deg", "gdeg","char"]#
 for orbit in st.orbits do
-let ()=prints("orbit: ", orbit) in
+{let ()=prints("orbit: ", orbit) in}
 let j=st.springer(orbit) in
 [orbit.diagram.to_string+st.special_star(orbit),
 orbit.dim_nilpotent.to_string,

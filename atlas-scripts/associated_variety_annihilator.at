@@ -10,24 +10,25 @@ let ()=prints("RESTRICTING: ",new_line,
 "ct_int=", ct_int.root_datum, ct_int.root_datum.simple_roots) in
 restrict_character(rd,L,ct_rd,ct_int,char)
 
-set av_verbose=true
+set av_verbose=false
 
-{SEVERAL VERSIONS
- associated_variety_ann_old should be ignored: this only works if some permutation is the identity
- associated_variety_ann_inid includes the permutation,
+{Main functions:
+ associated_variety_ann_ind includes the permutation,
    and uses truncated induction to go from the integrality_datum to G
  associated_variety_ann_res
    similar, but uses restriction instead of truncated induction, using:
    ind_{W(L)}^{W(G)}(sigma_L)= unique irreducible of W(G) with the same degree (b-value)
      containing sigma_L in the restriction
  associated_variety_ann is an alias to associated_variety_ann_res
+ associated_variety_ann_res_complex: faster algorithm for complex groups
+ associated_variety_ann_complex: alias
+ av_maximal_ideal: associated variety of maximal ideal at given infinitesimal character
+ GK_dim(p): Gelfand-Kirillov dimension of annihlator of p
+ GK_dim_maximal_ideal: GK dimension of maximal ideal at given infinitesimal character 
 }
 
-{old versions have been deleted}
-
-{using truncated induction, incorporating permutation}
+{using truncated induction}
 {only need Springer table for G, character table for L=integrality datum}
-{new: includes permutation}
 set associated_variety_ann_ind(Param param,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
 let p=Finalize(param) then
 rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
@@ -81,7 +82,8 @@ index_pi_int=ct_int.special_character(cell) then
 char_int=ct_int.characters[index_pi_int] then
 d_int=ct_int.degrees[index_pi_int] then
 ()=if av_verbose then prints("#cell: ", cell,
-new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index_pi_int],
+new_line,"special character(cell): ",new_line, index_pi_int, ": ",new_line,ct_int.characters[index_pi_int],new_line,
+"char_int: ", char_int,
 "degree of special character: ", d_int) fi then
 chars_rd=
 if av_verbose then
@@ -91,7 +93,7 @@ if av_verbose then
    restriction=if av_verbose then restrict_character_long(rd,L,ct_rd,ct_int,ct_rd.characters[i])
      else restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) fi  in
  if ct_rd.degrees[i]=d_int and !=ct_int.inner_product(char_int,restriction)
-  then  [i] else [] fi
+  then  {prints("GOT: ", i);}[i] else [] fi
 od
 then
 ()=if av_verbose then prints("chars_rd: ", chars_rd) fi then
@@ -153,7 +155,7 @@ set associated_variety_ann(Param p)=ComplexNilpotent:associated_variety_ann_res(
 
 {set GK_dim(Param p,SpringerTable st)=int:associated_variety_ann(p,st).dim_nilpotent\2}
 
-{ If you only want the GK dimension you don'tn need to compute the induction step.}
+{ If you only want the GK dimension you don't need to compute the induction step.}
 set GK_dim(Param p) = int:
 let cell=W_cell_of(Finalize(p)) then
 ct_L=cell.root_datum.character_table in
@@ -177,28 +179,8 @@ see sub_cells.at}
 let left_cell=left_cell_of(p) in
 associated_variety_ann_res(p.real_form.left_copy,left_cell)
 
-{rd=cell.root_datum then
-st_rd=rd.springer_table then
-
-ct_int=p.integrality_datum.character_table then
-L=cell.root_datum then
-index_pi_int=ct_int.special_character(cell) then
-char_int=ct_int.characters[index_pi_int] then
-d_int=ct_int.degrees[index_pi_int] then
-chars_rd=
-##for i:st_rd.ct.n_classes do
-{ let ()=prints("i: ",i, " ",  ct_int.degrees[i], " ", d_int) in }
- if ct_int.degrees[i]=d_int and
-  !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_int,ct_int,ct_int.characters[i]))
-  then  [i] else [] fi
-od
-then
-index_rd=chars_rd[0] then
-orbit_0=st_rd.springer_inverse(index_rd) then
-orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
-orbit
-
-}
+set associated_variety_ann_complex(Param p)=ComplexNilpotent:
+associated_variety_ann_res_complex(p)
 
 {G: real group, st: SpringerTable for GC,ct_int: CharacterTable for GC,gamma#gamma}
 {this is slow, see av_maximal_ideal for much faster version}
@@ -302,7 +284,7 @@ tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
 set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.springer_table)
 
 {GK_dim_maximal_ideal is like GK_dim: it returns just the dimension of the orbit,
-and can therefore skip (one of the) the induction step(s)}
+and can therefore skip (one of) the induction step(s)}
 set GK_dim_maximal_ideal(RootDatum rd,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
 let gamma_0=move(gamma_in,rd, rd) then
 gamma=dominant(rd,gamma_0) then

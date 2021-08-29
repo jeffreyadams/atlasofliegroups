@@ -82,7 +82,7 @@ combine_orbit(rd_out,for i:#orbit_factors do
 
 
 set combine_springer_tables(RootDatum rd,[SpringerTable] springer_tables)=SpringerTable:
-let radix = for table in springer_tables do #table.orbits od then
+let radix = for table in springer_tables do table.{orbits}ct.n_classes od then
 words = all_words(radix), { mixed radix representations of number of orbits}
 index= mixed_radix_nr(radix) { map from |word| to its index in |words| }
 in
