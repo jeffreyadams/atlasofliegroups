@@ -52,9 +52,11 @@ set dual_diagram_map_E6=[
 ([2,2,2,0,2,2],[0,1,0,0,0,0]),
 ([2,2,2,2,2,2],[0,0,0,0,0,0])]
 
-set dual_map_E6_diagram(vec v)=vec:
-let i=first(for i:#dual_diagram_map_E6 do let(x,)=dual_diagram_map_E6[i] in x=v od)
-then (,y)=dual_diagram_map_E6[i] in y
+set dual_map_E6_diagram(vec v) = vec:
+   let i =
+      first(#dual_diagram_map_E6, (int i):let(x,)=dual_diagram_map_E6[i] in x=v)
+   then (,y)=dual_diagram_map_E6[i]
+   in y
 
 set dual_map_E6(ComplexNilpotent O)=ComplexNilpotent:
 complex_nilpotent_from_diagram(O.root_datum,dual_map_E6_diagram(O.diagram))

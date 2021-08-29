@@ -1,7 +1,7 @@
 <springer_tables.at
 
 
-set springer_by_signature(ComplexNilpotent O)=
+set springer_by_signature(ComplexNilpotent O)= [int]: {signature of a character}
 assert(O.root_datum.Lie_type=Lie_type("F4"),"Not type F_4");
 let d=stratified_diagram(O) in
 if d=[0,0,0,0] then [1,-1,-1]   {1 -> phi(1,24)}
@@ -32,9 +32,9 @@ if sig=[6,0,0] then
  first(for v in characters do ct.signature(v)=sig od)
 fi
 
-set springer_F4(CharacterTable ct)=(ComplexNilpotent->int):(ComplexNilpotent O):springer_F4(ct,O)
+set springer_F4(CharacterTable ct)=(ComplexNilpotent O)int: springer_F4(ct,O)
 
-set dual_orbit_F4(ComplexNilpotent O)=
+set dual_orbit_F4(ComplexNilpotent O)= ComplexNilpotent:
 let rd=O.root_datum then
 dual_rd=dual(rd) then
 dual_orbits=dual_rd.orbits then

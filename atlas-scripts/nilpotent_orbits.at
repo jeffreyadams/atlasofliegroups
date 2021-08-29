@@ -40,7 +40,7 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
-  sum(for alpha in posroots(rd) do case H*alpha in 0, 1 else 2 esac od)
+   sum(for alpha in posroots(rd) do case H*alpha in 0, 1 else 2 esac od)
 
 { a synonym }
 set dim = dim_nilpotent@ComplexNilpotent
@@ -55,6 +55,13 @@ set saturate(ComplexNilpotent O,RootDatum rd) = ComplexNilpotent:
 set saturate(ComplexNilpotent O,mat inc,RootDatum rd) = ComplexNilpotent:
    complex_nilpotent(rd,O.H*inc)
 
+{ As will be mentioned for many "simple" Springer table constructions, it is
+  noteworthy that |diagram(O)| and |stratified_diagram(O)| allow |O.H| to have
+  a nonzero "radical component", which is ignored since only the evaluation on
+  roots is used. This property allows the construction of Springer tables for
+  general root data to pass an orbit to its "simple" sub-rootdata without
+  explicitly projecting away the part of |O.H| that is irrelevant for it.
+}
 set diagram(ComplexNilpotent O) = [int]:
    assert(is_dominant(O.H,O.root_datum)); O.H * simple_roots(O.root_datum)
 

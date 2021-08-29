@@ -80,7 +80,12 @@ set diagram_D_to_partition ([int] diagram) = (Partition,bool):
       in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
 in (for i:max from 1 ~ do for :mult(i) do i od od.##, flip)
 
-{ when |O| is an orbit for some |rd| passing |test_simple_type("D",rd)| }
+{ when |O| is an orbit for some |rd| passing |test_simple_type("D",rd)|, the
+  function |partition_of_orbit_D| will find the corresponding Jordan type and
+  for split orbits the Boolean value distinguishing the two (for other orbits
+  that value is always |false|). As in other classical cases, this function duly
+  ignores any radical component of |O.H| by using the (stratified) diagram.
+}
 set partition_of_orbit_D (ComplexNilpotent O) = (Partition,bool):
    let perm = test_simple_type("D",O.root_datum)
    in stratified_diagram(O,perm).diagram_D_to_partition

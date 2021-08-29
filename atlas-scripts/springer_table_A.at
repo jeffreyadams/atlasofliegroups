@@ -48,7 +48,17 @@ set springer_A (CharacterTable ct,ComplexNilpotent O) = int:
 set inverse_springer_A = nilpotent_orbit_GL@Partition
 
 
-{------------------ duality ----------------------------------}
+{ Springer table construction.
+
+  For the mapping parts (dual, dual dual, and Springer) we shall impose on the
+  "simple" Springer tables the constraint that these maps will ignore any
+  radical component of |O.H|, in other words that vanishes on the roots of
+  |O.root_datum|. This will allow, for a root datum with disconnected Dynkin
+  diagram, the orbits to be passed to the Springer tables for sub-rootdata for
+  the individual Dynkin diagram components without having to project away the
+  part for the other components. This constraint is automatically met if we
+  handle orbits using only their diagram, which has this independence property.
+}
 
 set A_dual(Partition P) = Partition: P.transpose
 
