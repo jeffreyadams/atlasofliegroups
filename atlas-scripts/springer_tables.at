@@ -264,35 +264,64 @@ in {by definition permutation should relate the Cartan matrices}
   ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
 
 
-set show(SpringerTable st)=void:
-tabulate(
-["diagram","dim","rep#","dim","deg", "gdeg","char"]#
-for orbit in st.orbits do
-let j=st.springer(orbit) in
-[orbit.diagram.to_string+st.special_star(orbit),
-orbit.dim_nilpotent.to_string,
-j.to_string,
-dimension(st.ct,j).to_string,
-st.ct.degree(j).to_string,
-st.ct.generic_degree_string(j),
- st.ct.characters[j].to_string] od)
+set show (SpringerTable st) = void:
+   let npr = st.root_datum.nr_of_posroots in
+tabulate (
+   [ "diagram"
+   , "dim(O)"
+   , "rep#"
+   , "dim(rep)"
+   , "deg"
+   , "gdeg"
+   , "char"
+   ]
+#  for orbit in st.orbits
+   do let j=st.springer(orbit), dim=orbit.dim_nilpotent
+      then deg=st.ct.degree(j)
+   in if dim\2 + deg != npr then prints("Problem at ",j,": ",dim\2+deg) fi
+   ;  [ orbit.diagram.to_string+st.special_star(orbit)
+      , dim.to_string
+      , j.to_string
+      , dimension(st.ct,j).to_string
+      , deg.to_string
+      , st.ct.generic_degree_string(j)
+      , st.ct.characters[j].to_string
+      ]
+   od
+)
 
 set show_long(SpringerTable st)=void:
-tabulate(
-["#orbit","diagram","dim","dual","dual-dim","rep#","dim","deg", "fdeg","char"]#
-for orbit@i in st.orbits do
-let  dual_orbit=st.dual_map(orbit) then
-j=st.springer(orbit) in
-[i.to_string,
-orbit.diagram.to_string+st.special_star(orbit),
-orbit.dim_nilpotent.to_string,
-dual_orbit.diagram.to_string,
-dual_orbit.dim_nilpotent.to_string,
-j.to_string,
-dimension(st.ct,j).to_string,
-st.ct.degree(j).to_string,
-st.ct.generic_degree_string(j),
-st.ct.characters[j].to_string] od)
+   let npr = st.root_datum.nr_of_posroots in
+tabulate (
+   [ "#orbit"
+   , "diagram"
+   , "dim(O)"
+   , "dual(O)"
+   , "dim(dual(O))"
+   , "rep#"
+   , "dim(rep)"
+   , "deg"
+   , "gdeg"
+   , "char"
+   ]
+#  for orbit@i in st.orbits
+   do let j=st.springer(orbit), dim=orbit.dim_nilpotent
+      , dual_orbit = st.dual_map(orbit)
+      then deg=st.ct.degree(j)
+   in if dim\2 + deg != npr then prints("Problem at ",j,": ",dim\2+deg) fi
+   ;  [ i.to_string
+      , orbit.diagram.to_string+st.special_star(orbit)
+      , orbit.dim_nilpotent.to_string
+      , dual_orbit.diagram.to_string
+      , dual_orbit.dim_nilpotent.to_string
+      , j.to_string
+      , dimension(st.ct,j).to_string
+      , st.ct.degree(j).to_string
+      , st.ct.generic_degree_string(j)
+      , st.ct.characters[j].to_string
+      ]
+   od
+)
 
 set show_reps(SpringerTable st)=void:
 let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in

@@ -241,22 +241,22 @@ in if =#degrees then [] { no multiplicities, empty result }
 
 set show_classes(CharacterTable ct) = void:
 tabulate (
-   ["i"
-   ,"order"
-   ,"class_size"
-   ,"|cent|"
-   ,"sgn(w)"
-   ,"chi_refl(w))"
-   ,"name"
+   [ "i"
+   , "order"
+   , "class_size"
+   , "|cent|"
+   , "sgn(w)"
+   , "chi_refl(w))"
+   , "name"
    ]
 #  for i:#ct.table
-   do [i.to_string
-      ,ct.class_order(i).to_string
-      ,ct.class_size(i).to_string
+   do [ i.to_string
+      , ct.class_order(i).to_string
+      , ct.class_size(i).to_string
       , ct.centralizer_order(i).to_string
-      ,ct.sign[i].to_string
-      ,ct.reflection[i].to_string
-      ,ct.class_label(i)
+      , ct.sign[i].to_string
+      , ct.reflection[i].to_string
+      , ct.class_label(i)
       ]
    od
 )

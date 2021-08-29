@@ -23,7 +23,7 @@ in case ascii(letter)-ascii("A")
       in springer_table_E6(ct), springer_table_E7(ct), springer_table_E8(ct)
       else error("wrong rank for type E")
       esac
-   ,  assert(n=4,"wrong rank for type F"); springer_table_F4(ct)
+   ,  assert(n=4,"wrong rank for type F"); springer_table_F(rd)
    ,  assert(n=2,"wrong rank for type G"); springer_table_G(rd)
    else error("invalid type letter")
    esac
