@@ -93,7 +93,7 @@ if av_verbose then
    restriction=if av_verbose then restrict_character_long(rd,L,ct_rd,ct_int,ct_rd.characters[i])
      else restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]) fi  in
  if ct_rd.degrees[i]=d_int and !=ct_int.inner_product(char_int,restriction)
-  then  {prints("GOT: ", i);}[i] else [] fi
+  then  [i] else [] fi
 od
 then
 ()=if av_verbose then prints("chars_rd: ", chars_rd) fi then

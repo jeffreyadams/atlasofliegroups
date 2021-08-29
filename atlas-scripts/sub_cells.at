@@ -139,9 +139,11 @@ set intersection([int] A,[int] B)=[int]:
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
-(sub_datum(graph.root_datum,S){.derived}
+let sub_datum=sub_datum(graph.root_datum,S) then
+root_renumbering=(int->int):(int i):find(sub_datum.simple_roots,graph.root_datum.simple_roots[i]) in
+(sub_datum
 ,for (tau,edges) in graph.nodes
- do ( intersection(S,tau)
+ do ( for j in intersection(S,tau) do root_renumbering(j) od
     , for (target,mult) in edges
       do let tau_target=tau(graph.nodes[target]) in
          if not is_subset(intersection(S,tau),tau_target)
@@ -157,11 +159,13 @@ underlying "real" character table. But it isn't good enough: if
 ct=GL(3,R).character_table and C is a left cell from GL(3,C), then ct
 cannot see C: the root datum of C is SL(3), and that for ct is GL(3). }
 set sub_graph(WGraph graph,[int] S)=WGraph:
-(sub_datum(graph.root_datum,S){.derived}
+let sub_datum=sub_datum(graph.root_datum,S) then
+root_renumbering=(int->int):(int i):find(sub_datum.simple_roots,graph.root_datum.simple_roots[i]) in
+(sub_datum
 ,for (tau,edges) in graph.nodes
- do (intersection(S,tau)
-    ,  for (target,mult) in edges
-       do let tau_target=tau(graph.nodes[target]) in
+ do (for j in intersection(S,tau) do root_renumbering(j) od
+    ,  for (target,mult) in edges do
+       let tau_target=tau(graph.nodes[target]) in
 	  if  not is_subset(intersection(S,tau),tau_target)
 	   or not is_subset(intersection(S,tau_target),tau)
 	  then [(target,mult)] else [] fi
