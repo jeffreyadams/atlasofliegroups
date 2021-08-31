@@ -91,7 +91,7 @@ d_int=ct_int.degrees[index_pi_int] then
 new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index_pi_int],
 "degree of special character: ", d_int) fi then
 chars_rd=
-##for i:st_rd.ct.n_classes do
+##for i:st_rd.ct.n_irreps do
 { let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
  if ct_rd.degrees[i]=d_int and
   !=ct_int.inner_product(char_int,
@@ -138,7 +138,7 @@ char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] in
 (rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L){
 chars_rd=
-##for i:st_rd.ct.n_classes do
+##for i:st_rd.ct.n_irreps do
  if ct.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(rd,L,ct_rd,ct_L,ct.characters[i]))
   then  [i] else [] fi
@@ -192,7 +192,7 @@ index_pi_int=ct_int.special_character(cell) then
 char_int=ct_int.characters[index_pi_int] then
 d_int=ct_int.degrees[index_pi_int] then
 chars_rd=
-##for i:st_rd.ct.n_classes do
+##for i:st_rd.ct.n_irreps do
 { let ()=prints("i: ",i, " ",  ct_int.degrees[i], " ", d_int) in }
  if ct_int.degrees[i]=d_int and
   !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_int,ct_int,ct_int.characters[i]))
@@ -248,7 +248,7 @@ rd_singular=singular_root_datum(rd,gamma) then
 d=rd_singular.nr_of_posroots then
 ()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
 "target d: ", d) fi then
-chars_int=##for i:ct_int.n_classes do
+chars_int=##for i:ct_int.n_irreps do
  if ct_int.degrees[i]=d and
  !=ct_singular.inner_product(ct_singular.sign,restrict_character(ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi
@@ -318,7 +318,7 @@ rd_singular=singular_root_datum(rd,gamma) then
 d=rd_singular.nr_of_posroots then
 ()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
 "target d: ", d) fi then
-chars_int=##for i:ct_int.n_classes do
+chars_int=##for i:ct_int.n_irreps do
  if ct_int.degrees[i]=d and
  !=ct_singular.inner_product(ct_singular.sign,restrict_character(ct_int,ct_singular,ct_int.characters[i]))
  then  [i] else [] fi

@@ -42,7 +42,7 @@ in for i:max from 1 ~ do for :mult(i) do i od od.##
 {Springer(orbit with partition P) = classical_irrep with partition P}
 set springer_A (CharacterTable ct,ComplexNilpotent O) = int:
   let P=O.stratified_diagram.diagram_A_to_partition
-  in first(ct.n_classes,(int i): ct.classical_reps(i).get_irrep_A=P)
+  in first(ct.n_irreps,(int i): ct.classical_reps(i).get_irrep_A=P)
 
 { inverse Springer map, from Partition of n to ComplexNilpotent for GL(n) }
 set inverse_springer_A = nilpotent_orbit_GL@Partition

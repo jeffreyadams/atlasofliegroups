@@ -143,7 +143,7 @@ set springer_C (CharacterTable ct,ComplexNilpotent O) = int:
   let (a,b)=springer_C(partition_of_orbit_C(O))
   , n=O.root_datum.semisimple_rank
   then index=first
-    (for i:ct.n_classes
+    (for i:ct.n_irreps
      do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
        sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))
@@ -210,7 +210,7 @@ set springer_B (CharacterTable ct,ComplexNilpotent O) = int:
   , n=O.root_datum.semisimple_rank
 in a:=a.delete_trailing_zeros; b:=b.delete_trailing_zeros
 ; let index=first
-    (for i:ct.n_classes
+    (for i:ct.n_irreps
      do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
 {need n+1: sometimes a or b has length n+1 not n}
           sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))

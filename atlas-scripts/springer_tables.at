@@ -14,11 +14,12 @@ set_type [SpringerTable=
   )]
 
 set character_table = ct@SpringerTable { longer name for the projector }
-set root_datum(SpringerTable st) = RootDatum: st.ct.root_datum
-set characters(SpringerTable st) = [[int]]: st.ct.characters
-set generic_degree(SpringerTable st) = (int->int): st.ct.generic_degree
+set root_datum (SpringerTable st) = RootDatum: st.ct.root_datum
+set characters (SpringerTable st) = [[int]]: st.ct.characters
+set orbit (SpringerTable st) = (int i) ComplexNilpotent: st.orbits[i]
+set generic_degree (SpringerTable st) = (int->int): st.ct.generic_degree
 
-set n_orbits(SpringerTable st) = int: #st.orbits
+set n_orbits (SpringerTable st) = int: #st.orbits
 
 {equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool: #a = #b and all(#a,(int i)bool: a[i]=b[i])
@@ -183,7 +184,7 @@ then springer(ComplexNilpotent O_0) = int:
   let O=orbit_by_diagram(orbits,O_0.diagram_normalized)
   then (O1,O2)=factor_orbit(O)
   then  i=springer(st1)(O1),j=springer(st2)(O2)
-  in i*(st2.ct.n_classes)+j
+  in i*(st2.ct.n_irreps)+j
 then dual_map_i(ComplexNilpotent O_check) =
   {O_check is for st.root_datum.dual,
   not the same as rd.dual}
@@ -297,7 +298,7 @@ set show_reps(SpringerTable st)=void:
 let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
 tabulate(
 ["rep#","orbit","dim","deg", "fdeg","char"]#
-for j:st.ct.n_classes do
+for j:st.ct.n_irreps do
 [j.to_string,
  let orbit_index=find(springer_reps,j) in
   if orbit_index>=0 then

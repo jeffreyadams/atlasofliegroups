@@ -323,7 +323,7 @@ index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
 chars_G=
-##for i:st_G.ct.n_classes do
+##for i:st_G.ct.n_irreps do
 { let ()=prints("i: ",i, " ",  ct_G.degrees[i], " ", d_L) in }
  if ct_G.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
@@ -344,7 +344,7 @@ d_L=ct_L.degrees[index_pi_L] then
 ()=prints("OK") in
 (G,L,ct_G,ct_L,index_pi_L,char_L,d_L){
 chars_G=
-##for i:st_G.ct.n_classes do
+##for i:st_G.ct.n_irreps do
  if ct.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct.characters[i]))
   then  [i] else [] fi

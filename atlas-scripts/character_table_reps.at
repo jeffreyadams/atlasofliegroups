@@ -160,7 +160,7 @@ set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
    then Wct_L = class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
    then contributions = [int]: { list of irrep indices }
-      for i: ct_G.n_classes
+      for i: ct_G.n_irreps
       do if ct_G.degree(i)=target
          then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
 	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]
@@ -178,7 +178,7 @@ set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
    then Wct_L = class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
    then contributions = [int]: { list of irrep indices }
-      for i: ct_G.n_classes
+      for i: ct_G.n_irreps
       do if ct_G.degree(i)=target
          then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
 	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]

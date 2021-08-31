@@ -229,7 +229,7 @@ set springer_table_D (CharacterTable ct) = SpringerTable:
    let rd = ct.root_datum
    then orbit = (Partition,bool->ComplexNilpotent): nilpotent_orbit_D(rd)
    , lookup = (D_irrep->int):
-       for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od.index_D_reps
+       for i:ct.n_irreps do ct.classical_reps(i).get_irrep_D od.index_D_reps
 in ( ct
    , for pair in partitions_D(rd.semisimple_rank) do orbit(pair) od
    , dual_map_D(rd)
