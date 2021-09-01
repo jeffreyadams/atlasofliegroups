@@ -84,6 +84,37 @@ set E8_dimensions= [int]: for (,,dim,,,) in E8_Springer_table_data do dim od
 set E8_special= [bool]: for (,,,b,,) in E8_Springer_table_data do b od
 set E8_dual_names= [string]: for (,,,,d,) in E8_Springer_table_data do d od
 
+set E8_nilpotent_orbit_dual_map = (vec->vec):
+   let n=#E8_diagrams
+   then dual_table = [vec,vec]:
+      let sigma = [int]: { at index |r| the number of diagram ranked |r| }
+         sort(n,(int i,int j):lex_lesseq(E8_diagrams[i],E8_diagrams[j]))
+      , tau = [int]: { at index |r| the number of name ranked |r| }
+         sort(n,(int i,int j):E8_names[i]<=E8_names[j])
+      then diagram_dual = [vec,string]:
+	 for i in sigma { traverse in order making diagrams sorted }
+	 do let (,diag,,,d,)=E8_Springer_table_data[i] in (diag,d)
+	 od
+      , name_diagram = [string,vec]:
+	 for i in tau { traverse in order making names sorted }
+	 do let (name,diag,,,d,)=E8_Springer_table_data[i] in (name,diag)
+	 od
+   in { dual_table = }
+      for (source,dual) in diagram_dual
+      do let k = binary_search_first
+         ((int i)bool: let (name,)=name_diagram[i] in dual<=name, 0, n)
+         then (found,image) =
+	    assert(k<n,"Name " ## dual ## " not found"); name_diagram[k]
+      in assert(dual=found,"Name " ## dual ## " not found")
+      ; (source,image)
+      od
+in (vec v) vec:
+   let  k = binary_search_first
+      ((int i)bool: let (diagram,)=dual_table[i] in lex_lesseq(v,diagram), 0, n)
+   then (found,image) =
+      assert(k<n,"Diagram " ## v.to_string ## " not found"); dual_table[k]
+   in assert(v=found,"Diagram " ## v.to_string ## " not found"); image
+
 set diagram_to_name_E8 ([int] diagram) = string:
    let index=first(#E8_Springer_table_data,(int j): E8_diagrams[j]=diagram)
 in E8_names[index]
