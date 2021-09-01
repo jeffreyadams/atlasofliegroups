@@ -21,8 +21,9 @@ set sign (bool b) = int: { |minus_1^#b|, i.e.: } if b then minus_1 else 1 fi
 
 set ^ = !=@(bool,bool) { exclusive or }
 
+set assert (bool b,(->string) report) = void: if not b then error(report()) fi
+set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
 set assert (bool b,string message) = void: if not b then error(message) fi
-set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
