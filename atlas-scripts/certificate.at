@@ -26,7 +26,9 @@ parameter in P has a form negative on one of them}
 set certificates ([Param] P) = [Param]:
 monomials(0*P[0] + ##for p in P do if not is_hermitian(p) then [] elif
 is_unitary(p) then [] else let F=hermitian_form_irreducible(p) in
-[first_param(s_part(F))] fi od)
+if height(first_param(s_part(F))) < height(first_param(int_part(F)))
+then [first_param(int_part(F))] else
+[first_param(s_part(F))] fi fi od)
 
 { produces a list of all spherical reps of F4_s with continuous
 parameter nu in [0,1]^4 having denominators 12. }
@@ -42,3 +44,8 @@ for j:#certs do prints(j," height = ",height(certs[j]),"  dim = ", dimension(K_t
 { would be nice to have an alternate show_certs_long that took a KGB
 element in the fundamental fiber and showed the highest weights in
 human coordinates }
+
+{ this takes the lambda for a K-type of G.complexification and returns
+the highest weight as a weight for G }
+{ set complexKwt(ratvec lambda) = for j:#lambda\2 do rat_as_int(lambda[j]
++ lambda[#lambda\2+j]) od }
