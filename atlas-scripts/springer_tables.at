@@ -278,7 +278,7 @@ tabulate (
 #  for orbit in st.orbits
    do let j=st.springer(orbit), dim=orbit.dim_nilpotent
       then deg=st.ct.degree(j)
-   in if dim\2 + deg != npr then prints("Problem at ",j,": ",dim\2+deg) fi
+   in if dim\2 + deg != npr then prints("Problem at ",orbit,": ",dim\2+deg) fi
    ;  [ orbit.diagram.to_string+st.special_star(orbit)
       , dim.to_string
       , j.to_string

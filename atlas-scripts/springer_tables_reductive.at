@@ -13,14 +13,13 @@
 <springer_table_torus.at
 
 set springer_table_simple(RootDatum rd,string letter,int n) = SpringerTable:
-   let ct = character_table_simple(rd,letter,n) { should become unused }
-in case ascii(letter)-ascii("A")
+   case ascii(letter)-ascii("A")
    in springer_table_A(rd)
    ,  springer_table_B(rd)
    ,  springer_table_C(rd)
    ,  springer_table_D(rd)
    ,  case n-6
-      in springer_table_E6(rd), springer_table_E7(rd), springer_table_E8(ct)
+      in springer_table_E6(rd), springer_table_E7(rd), springer_table_E8(rd)
       else error("wrong rank for type E")
       esac
    ,  assert(n=4,"wrong rank for type F"); springer_table_F(rd)

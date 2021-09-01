@@ -189,7 +189,7 @@ set springer_by_name_table_E8 = [string,int]:
       , ("D5(a1)+A2" ,   82  ) { (1344, 19) }
       , ("D6(a2)"    ,   49  ) { (4200, 18) }
       , ("E6(a3)+A1" ,   46  ) { (3150, 18) }
-      , ("E7(a5)"    ,   17  ) { (7168, 17) }
+      , ("E7(a5)"    ,  103  ) { (7168, 17) }
       , ("D5+A1"     ,   59  ) { (3200, 16) }
       , ("E8(a7)"    ,   52  ) { (4480, 16) }
       , ("A6"	     ,  106  ) { (4200, 15) }
@@ -222,6 +222,52 @@ set springer_by_name_table_E8 = [string,int]:
       , ("E8"	     ,    0  ) { (   1,  0) }
       ]
 
+set E8_Springer_map = (vec->int): { orbit diagrams as |vec| values }
+(  let tab = [vec,int]:
+      for (str,x) in springer_by_name_table_E8 do (str.name_to_diagram_E8,x) od
+   then leq (int i,int j) = bool: let (a,)=tab[i],(b,)=tab[j] in lex_lesseq(a,b)
+in tab := for i in  sort(#tab, leq) do tab[i] od { adjust |tab| to sorted form }
+;  { E8_Springer_map = }
+   (vec diagram) int:
+   let predicate(int i)= bool: let (key,)=tab[i] in lex_lesseq(diagram,key)
+   then k = binary_search_first(predicate,0,#tab)
+   then (source,image) = assert(k<#tab,"Wrong E8 diagram"); tab[k]
+   in assert(source=diagram,"Wrong E8 diagram"); image
+)
+
+set springer_table_E8 () = SpringerTable:
+   let ct=character_table_E8() then rd=ct.root_datum {simply_connected("E8")}
+   then drd = dual(rd)
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(drd,E8_nilpotent_orbit_dual_map(O.diagram))
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(rd,E8_nilpotent_orbit_dual_map(O.diagram))
+   , (ComplexNilpotent O) int: E8_Springer_map(O.diagram)
+   )
+
+{ In the general case we take into account the permutation of the simple root
+  indices returned by |test_simple_type| (it is a map from Bourbaki indices to
+  |rd| indices, which |stratified_diagram@(ComplexNilpotent,[int])| takes into
+  account to get into Bourbaki order, and which |permute| uses to transform the
+  dual diagram from |E8_nilpotent_orbit_dual_map| into the order of |dual(rd)|.
+}
+set springer_table_E8 (RootDatum rd) = SpringerTable:
+   let map = test_simple_type("E",rd), ct=character_table_F(rd), drd = dual(rd)
+in assert(#map=8,"Root datum has wrong rank "+#map);
+   ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = stratified_diagram(O,map)
+     then dual_O = vec: E8_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(drd,permute(map,dual_O))
+   , (ComplexNilpotent dual_O) ComplexNilpotent:
+     let diagram = stratified_diagram(dual_O,map)
+     then O = vec: E8_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(rd,permute(map,O))
+   , (ComplexNilpotent O) int: E8_Springer_map(stratified_diagram(O,map))
+   )
 set springer_by_name_E8 (string name) = int:
    let index=first(for (n,) in springer_by_name_table_E8 do n=name od)
    then (,pair)=springer_by_name_table_E8[index]
