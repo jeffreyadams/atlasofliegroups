@@ -1,45 +1,8 @@
 <basic.at
-<combinatorics.at
-<W_characters.at
-<character_tables.at
-
-{ orbit sizes on roots; these characterise conjugacy classes for W(E6) }
-set class_signature (WeylElt w) = Partition:
-   let rd=root_datum(w)
-in for c in root_orbits(w) do #c od.sort_to_partition
-
-set class_table_E6(RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: assert(#test_simple_type("E",rd)=6,"Not E6")
-	       ; conjugacy_class_reps(rd)
-   then sigs = [Partition]: for w in classes do class_signature(w) od
-   , leq = leq_equal_sum_partitions@(Partition,Partition)
-   then N=51840 { order_W("E6") }
-   ,  lookup = (Partition->int):
-      let ranked = sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
-      in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
-in W_class_table ( rd
-		 , classes
-		 , (int i) int: N\centralizer_order(classes[i])
-		 , (WeylElt w) int: lookup(class_signature(w))
-		 , (int i,int k) int: lookup(cycle_power(sigs[i],k))
-		 )
-
-{ we shall do storage of the class table for one particular E6 root datum }
-set !standard_datum_E6 = RootDatum: simply_connected("E6")
-
-{ voluntarily override previous definition to memoize for |standard_datum_E6| }
-set class_table_E6 = (RootDatum->WeylClassTable):
-   let Wct= trivial_character_table.class_table { place holder value }
-in (RootDatum rd) WeylClassTable:
-   if rd != standard_datum_E6 then class_table_E6(rd) { this is not recursion! }
-   elif =Wct.root_datum.rank { whether this is the first time we are called }
-   then Wct:=class_table_E6(rd) { compute and store the first time }
-   else Wct { any next time just return the previously computed value }
-   fi
-
-set class_table_E6() = WeylClassTable: class_table_E6(standard_datum_E6)
+<sort.at
+<W_classes.at
+<class_tables.at { for |class_table_E6| }
+<character_tables.at { for type |CharacterTable| }
 
 {from Magma}
 set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
@@ -116,7 +79,7 @@ set character_table_E6(RootDatum rd) = CharacterTable:
    then classes = [WeylElt,classical_class,string]:
       let reps = Wct.class_representatives
       in for j in reordering
-         do (reps[j],null_class(),class_signature(reps[j]).compressed_string)
+         do (reps[j],null_class(),class_signature_E6(reps[j]).compressed_string)
          od
    ,  irreps = [classical_irrep,string,[int]]:
       for line@i in e6_table

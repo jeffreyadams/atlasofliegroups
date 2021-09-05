@@ -8,8 +8,11 @@
 {closure relations for nilpotent orbits}
 
 {list of complex orbits and their closure relations}
-set_type NilpotentPoset=(RootDatum root_datum,[ComplexNilpotent] orbits,Poset orbit_closures)
+set_type NilpotentPoset =
+  (RootDatum root_datum, [ComplexNilpotent] orbits, Poset orbit_closures)
 
+set nilpotent_poset ((RootDatum, [ComplexNilpotent], Poset)triple) =
+   NilpotentPoset: triple { identity, for now }
 
 {sorting}
 set sort_by((ComplexNilpotent->int) f)=
@@ -33,15 +36,9 @@ let rv=[ComplexNilpotent]:[] in
 set sort_u ([ComplexNilpotent] orbits)=[ComplexNilpotent]:
    eliminate_duplicates(sort(orbits))
 
-{G-saturation of an orbit in a subgroup L: G-orbit = G.(L-orbit)
-simply use the same H{_of_triple}
-}
-set saturate(RootDatum rd,ComplexNilpotent O)=ComplexNilpotent:
-(rd,(),dominant(O.H{_of_triple},rd))
-
 {saturate the orbits of L together with their closure relations}
-set saturate(RootDatum rd,NilpotentPoset P)=NilpotentPoset:
-(rd,for O in P.orbits do saturate(rd,O) od,P.orbit_closures)
+set saturate (NilpotentPoset P,RootDatum rd) = NilpotentPoset:
+   nilpotent_poset(rd,for O in P.orbits do saturate(O,rd) od,P.orbit_closures)
 
 {combine two complex nilpotent posets
 P=(orbits_P,posets_P)
@@ -49,7 +46,7 @@ Q=(orbits_Q,posets_Q)
 new_orbit: sort_u(orbits_P##orbits_Q)
 new_posets: relations on new_orbits coming from posets_P and posets_Q
 }
-set merge(NilpotentPoset P,NilpotentPoset Q)=
+set merge(NilpotentPoset P,NilpotentPoset Q)= ([ComplexNilpotent],[[int]]) :
 assert(P.root_datum=Q.root_datum,"Posets do not have same root datum");
 let new_orbits=sort_u(P.orbits ##Q.orbits) then
 index_P=for O in P.orbits do find(new_orbits,O) od then
@@ -72,8 +69,7 @@ for O in new_orbits do
   fi
  in
  sort_u(P_contribution##Q_contribution)
-od in
-(new_orbits,new_index)
+od in (new_orbits,new_index)
 
 {variant of merge:
 assuming: P.orbits\subset Q.orbits
@@ -99,11 +95,10 @@ for O@i in new_orbits do
  then Q_contribution=[int]:Q.orbit_closures[i]
  in
  sort_u(P_contribution##Q_contribution)
-od in
-(P.root_datum,new_orbits,new_index) fi
+od in nilpotent_poset(P.root_datum,new_orbits,new_index) fi
 
 {seed with (list of complex nilpotents, trivial relations)
-trivial relations: 
+trivial relations:
 0 < everything < principal
 }
 set seed_complex_nilpotent_poset(RootDatum rd)=NilpotentPoset:
@@ -117,8 +112,7 @@ closures=
   else [0]
  fi
  od
-in
-(rd,orbits, closures)
+in nilpotent_poset(rd,orbits, closures)
 
 {other elementary relations:
 simple case:
@@ -144,8 +138,7 @@ for subregular@i in rd.subregular_orbits do
   od.##
  in closures[subregular_number]:=
    sort_u(closures[subregular_number] ## new_relations)
-od;
-(rd,orbits,closures)
+od; nilpotent_poset(rd,orbits,closures)
 
 {given poset of nilpotents, add the relations coming from the minimal orbits}
 set fill_nilpotent_posets_minimal(NilpotentPoset P)=NilpotentPoset:
@@ -159,8 +152,7 @@ for minimal@i in rd.minimal_orbits do
     if j !=minimal_number and project_on_simple_factor(orbit.H{_of_triple},i,rd) != null(rd.rank) then
     closures[j]:=sort_u(closures[j]#minimal_number) fi
  od
-od;
-(rd,orbits,closures)
+od; nilpotent_poset(rd,orbits,closures)
 
 {starting point:
 list of complex nilpotents
@@ -180,10 +172,10 @@ let rv=starting_complex_nilpotent_poset(rd) in
 for L in proper_subgroups(rd) do
 let ()=prints(L.derived.Lie_type.nice_format) in
  let poset_L=starting_complex_nilpotent_poset(L) in
-  rv:=submerge(saturate(rd,poset_L),rv) od;
+  rv:=submerge(saturate(poset_L,rd),rv) od;
   rv
   fi
-  
+
 {graph of NilpotentPoset
 this is the graph of the poset, together with labels
 (H,dimension) from the orbits
@@ -221,7 +213,7 @@ set sort_by((WeylElt->int) f) =
    ([WeylElt] v) [WeylElt]:
       for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
-set g(WeylElt w)=lusztig_of_special_elliptic(w).dim_nilpotent 
+set g(WeylElt w)=lusztig_of_special_elliptic(w).dim_nilpotent
 
 {sort [WeylElt] by dimension of Lusztig(w) (associated nilpotent),
  assuming each w is special elliptic so Lusztig(w) is known
@@ -248,7 +240,12 @@ this step is clumsy and should be improved, it requires
 computing lusztig_of_special_nilpotent several times}
 if =#special_elliptic_elements then (rd,[],[[]]) else
 let sp=sort_by_dimension_of_nilpotent(special_elliptic_elements) in
-(rd,for w in sp do lusztig_of_special_elliptic(w) od, poset_inverse(W_poset(sp))) fi
+  nilpotent_poset
+  (rd
+  ,for w in sp do lusztig_of_special_elliptic(w) od
+  , poset_inverse(W_poset(sp))
+  )
+fi
 
 set master_complex_nilpotent_poset(RootDatum rd)=NilpotentPoset:
 let seed=seed_complex_nilpotent_poset(rd) then
@@ -265,7 +262,7 @@ else
  for rd_sub@i in subs do
   let rv_1=rv then
   poset_sub=nilpotent_orbits_and_closures_saturate(rd_sub) then
-  rv_2=submerge(saturate(rd,poset_sub),rv_1) in
+  rv_2=submerge(saturate(poset_sub,rd),rv_1) in
   rv:=rv_2
  od;rv
 fi
@@ -273,14 +270,19 @@ fi
 
 {assume P is for a Levi}
 set simple_induce(RootDatum rd,NilpotentPoset P)=NilpotentPoset:
-(rd,##for O in P.orbits do
- let maybe=simple_induce(O,rd) in if any(maybe) then [req(maybe)] else [] fi od,
- P.orbit_closures)
-
+( nilpotent_poset
+  (rd
+  ,##for O in P.orbits
+     do let maybe=simple_induce(O,rd)
+     in if any(maybe) then [req(maybe)] else [] fi
+     od
+  , P.orbit_closures
+  )
+)
 
 set rec_fun nilpotent_orbits_and_closures_induce(RootDatum rd)=NilpotentPoset:
 if is_abelian(rd)
- then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
+ then nilpotent_poset(rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
 else
  let rv=master_complex_nilpotent_poset(rd) then
  subs=proper_subgroups(rd) in
@@ -292,8 +294,8 @@ else
  od;rv
 fi
 
-set test(NilpotentPoset P)=
-let loops=[] in
+set test(NilpotentPoset P)= [int,int]:
+let loops=[int,int]:[] in
 let poset=P.orbit_closures in
 for i:#poset do for j:#poset do
  if less(poset,i,j) and less(poset,j,i) and i!=j then loops#:=(i,j) fi od od;loops
@@ -301,14 +303,15 @@ for i:#poset do for j:#poset do
 {for testing: just go up to N}
 set rec_fun nilpotent_orbits_and_closures_test(RootDatum rd, int N)=NilpotentPoset:
 if is_abelian(rd)
- then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
+ then nilpotent_poset(rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
 else
  let rv=master_complex_nilpotent_poset(rd) then
  subs=proper_subgroups(rd) in
- for i:min(N,#subs) do let rd_sub=subs[i] in 
+ for i:min(N,#subs) do let rd_sub=subs[i] in
   let poset_sub=nilpotent_orbits_and_closures_test(rd_sub,N) in
-  let ()=prints("i=",i," L=",rd_sub);prints("new:", test(submerge(saturate(rd,poset_sub),rv))) in
-  rv:=submerge(saturate(rd,poset_sub),rv) 
+  let ()=prints("i=",i," L=",rd_sub)
+        ;prints("new:", test(submerge(saturate(poset_sub,rd),rv))) in
+  rv:=submerge(saturate(poset_sub,rd),rv)
  od;rv
 fi
 
@@ -324,7 +327,7 @@ prints(new_line,i, " ", subs[i].derived.Lie_type.nice_format);show(orbit_posets[
 set show_subgroup_orbit_nilpotent_map(RootDatum rd)=void:
 let values=
  ##for L in subgroups(rd) do
-  for orbit_L in nilpotent_orbits(L) do 
-  let orbit=saturate(rd,orbit_L) in
+  for orbit_L in nilpotent_orbits(L) do
+  let orbit=saturate(orbit_L,rd) in
   [L.derived.Lie_type.nice_format,orbit_L.diagram.to_string,orbit_L.H{_of_triple}.to_string,orbit_L.dim_nilpotent.to_string,orbit.diagram.to_string,orbit.H{_of_triple}.to_string,orbit.dim_nilpotent.to_string] od od
  in tabulate(["L","diagram_L","H_L","dim_L","diagram","H","dim"]#values)

@@ -1,6 +1,6 @@
 <basic.at
-<combinatorics.at { for inverse of permutation }
-<classical_W_classes_and_reps.at
+<class_tables.at
+<classical_W_classes_and_reps.at { for |classical_class|, |classical_irrep| }
 <nilpotent_orbits.at
 <isomorphism.at
 
@@ -27,7 +27,6 @@ set_type
 [ CharacterTable =
   ( WeylClassTable class_table
   {conjugacy classes}
-  , int n_classes  { number of conjugacy classes}
   , [WeylElt] class_reps  { should be made function } {list of class reps }
   , (int->string) class_label {derived from partitions in classical case}
   , (int ->classical_class) classes
@@ -41,7 +40,6 @@ set_type
   , mat table { should be made function } { by row=character }
   )
 ]
-
 
 set character_table ( WeylClassTable Wct
     		    , [WeylElt,classical_class,string] class_reps
@@ -77,7 +75,6 @@ then get_generic_degree(int i) = int:
 in
    ( { class_table } WeylClassTable: Wct
      {conjugacy classes}
-   , { n_classes } int: n
    , { class_reps } reps
    , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
    , { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
@@ -96,21 +93,23 @@ set character_table ( RootDatum rd
 		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-    character_table ( W_class_table(rd), class_reps, chars )
+    character_table ( class_table(rd), class_reps, chars )
 
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
-   let Wct = W_class_table(adjoint("")), id(int i)=int: i
+   let Wct = trivial_class_table, id(int i)=int: i
    then e=id_W(Wct.root_datum)
-in (Wct,1,[e],(int i):"e",(int i)classical_class: null_class()
+in (Wct,[e],(int i):"e",(int i)classical_class: null_class()
    ,(int i)classical_irrep: null_irrep(),(int i):"triv",[0]
    ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true, [[1]]
    )
 
 { attributes inhereited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
-set rank(CharacterTable ct) = ct.root_datum.rank
-set order(CharacterTable ct) = ct.root_datum.order_W
+set rank (CharacterTable ct) = ct.root_datum.rank
+set order_W (CharacterTable ct) = ct.root_datum.order_W
+set n_classes (CharacterTable ct) = ct.class_table.n_classes
+set n_irreps = n_classes@CharacterTable { alias, for readability }
 
 set class_representatives = class_reps@CharacterTable {synonym}
 set class_rep(CharacterTable ct,int i) = WeylElt: ct.class_reps[i]
@@ -122,7 +121,7 @@ set class_order(CharacterTable ct) = (int i) int:
 set class_sizes(CharacterTable ct) = ct.class_table.class_sizes
 set class_size(CharacterTable ct) = (int i) int: ct.class_sizes[i]
 set centralizer_order(CharacterTable ct) = (int i) int:
-  ct.order\ct.class_sizes[i]
+  ct.order_W\ct.class_sizes[i]
 set class_power(CharacterTable ct) = (int,int->int): ct.class_table.class_power
 
 set character_value(CharacterTable ct, int class) = (int i) int:
@@ -136,19 +135,15 @@ set character(CharacterTable t) = (int i) [int]: row(t.table,i)
 set characters(CharacterTable ct)=[[int]]: rows(ct.table)
 
 set character_index(CharacterTable ct) = ([int] char) int:
-  first(ct.n_classes,(int i): ct.characters[i]=char)
+  first(ct.n_irreps,(int i): ct.characters[i]=char)
 set index(CharacterTable ct,vec char) = int: ct.character_index(char)
 
 set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
 set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
 
 set degree(CharacterTable ct) = (int i)int: ct.degrees[i]
-set generic_degree_safe(CharacterTable ct)  = (int i)int:
-   if ct.has_generic_degree(i) then ct.generic_degree(i) else -1 fi
-set generic_degrees(CharacterTable ct)=[int]:for i:ct.n_classes do ct.generic_degree_safe(i) od
 set generic_degree_string(CharacterTable ct)  = (int i)string:
    if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
-
 
 set sum(CharacterTable ct) = ([int],[int]->[int]): ct.class_table.direct_sum
 set product(CharacterTable ct) = (([int],[int])->[int]): ct.class_table.tensor
@@ -186,7 +181,7 @@ set tensor_power(CharacterTable t) = (int i,int k)[int]:
    tensor_power(t.character(i),k)
 
 set Cartesian_power(CharacterTable ct) = ([int] x,int n)[int]:
-   assert(#x=ct.n_classes,"Wrong size"); for v in x do n*v od
+   assert(#x=ct.n_irreps,"Wrong size"); for v in x do n*v od
 
 set scalar_product (CharacterTable ct) = (int i0, int i1) int:
    ct.inner(ct.character(i0),ct.character(i1))
@@ -196,7 +191,7 @@ set inner_product = (CharacterTable->([int],[int]->int)):
    inner@CharacterTable { we already had that function }
 
 set check_orthogonality (CharacterTable ct) = bool:
-   let n=ct.n_classes in matrix((n,n),ct.scalar_product) = id_mat(n)
+   let n=ct.n_irreps in matrix((n,n),ct.scalar_product) = id_mat(n)
 
 { The following few functions assume |ct| has a simple root datum }
 
@@ -246,22 +241,22 @@ in if =#degrees then [] { no multiplicities, empty result }
 
 set show_classes(CharacterTable ct) = void:
 tabulate (
-   ["i"
-   ,"order"
-   ,"class_size"
-   ,"|cent|"
-   ,"sgn(w)"
-   ,"chi_refl(w))"
-   ,"name"
+   [ "i"
+   , "order"
+   , "class_size"
+   , "|cent|"
+   , "sgn(w)"
+   , "chi_refl(w))"
+   , "name"
    ]
 #  for i:#ct.table
-   do [i.to_string
-      ,ct.class_order(i).to_string
-      ,ct.class_size(i).to_string
+   do [ i.to_string
+      , ct.class_order(i).to_string
+      , ct.class_size(i).to_string
       , ct.centralizer_order(i).to_string
-      ,ct.sign[i].to_string
-      ,ct.reflection[i].to_string
-      ,ct.class_label(i)
+      , ct.sign[i].to_string
+      , ct.reflection[i].to_string
+      , ct.class_label(i)
       ]
    od
 )
@@ -301,7 +296,7 @@ tabulate (
    ,"gdeg"
    ,"name"
    ]
-#  for i:ct.n_classes
+#  for i:ct.n_irreps
    do [i.to_string
       ,character_value(ct,id_class)(i).to_string
       ,ct.degree(i).to_string
@@ -312,7 +307,6 @@ tabulate (
 )
 
 set show(CharacterTable ct) = void:
-   prints("G= ",ct.root_datum);
    prints("Classes:"); ct.show_classes;
    prints("Representations:"); ct.show_reps
 

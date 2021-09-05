@@ -1,77 +1,6 @@
 <basic.at
-<combinatorics.at { for |permutation_cycles|, |leq_bipartition| etc. }
-<classical_W_classes_and_reps.at { for |test_simple_type| }
-<character_tables.at
-<character_table_C.at
-
-{ orbit sizes on long respectively short roots; these characterise classes }
-set class_signature (WeylElt w) = (Partition,Partition):
-   let rd=root_datum(w), orbits = root_orbits(w)
-   then longs = Partition:
-     for c in orbits do if is_long_root(rd,c[0]) then [#c] else [] fi od.##
-   , shorts = Partition:
-     for c in orbits do if is_long_root(rd,c[0]) then [] else [#c] fi od.##
-   in (longs.sort_to_partition,shorts.sort_to_partition)
-
-{ list conjugacy classes in Kondo order; non standard ordering of diagram is
-  allowed: |map| maps Bourbaki indices to corresponding indices in |rd| }
-set classes_Kondo_F4(RootDatum F4, [int] map) = [WeylElt]:
-   let convert([int] word) = [int]: for letter in word do map[letter] od
-   then a = W_elt(F4,[1].convert), b=W_elt(F4,[2,1,2].convert)
-   , c=W_elt(F4,[2,3,2,1,2,3,2].convert), d=W_elt(F4,[0].convert)
-   , tau =W_elt(F4,[2].convert), sigma =W_elt(F4,[2,3].convert)
-   then e=(a*b*c*d)^2, z=(a*b*c*d)^3
-in for w in
-     [ id_W(F4)
-     , z { central element, acts as $-1$ }
-     , a*b
-     , e
-     , e*z
-     , a*d*b*d*c*d
-     , sigma
-     , sigma*z
-     , sigma*e
-     , sigma*e*z
-     , c*d*sigma
-     , d { long root reflection }
-     , d*z
-     , sigma*d
-     , sigma*d*z
-     , a*d*b
-     , tau { short root reflection }
-     , tau*z
-     , e*tau
-     , e*tau*z
-     , c*a*tau
-     , tau*d
-     , a*tau
-     , a*tau*z
-     , c*d*b*tau
-     ]
-   do minimal_representative(w)
-   od
-
-
-set class_table_F(RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: classes_Kondo_F4(rd,test_simple_type("F",rd))
-   then sigs = [BiPartition]: for class in classes do class_signature(class) od
-   then N=1152 { = order_W(rd) }
-   ,  lookup = (BiPartition->int):
-      let ranked = sort(#sigs,(int i,int j)bool: sigs[i]<=sigs[j])
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |<=| }
-      in (BiPartition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: sig<=list[i], 0,#list)]
-in W_class_table ( rd
-		 , classes
-		 , (int i) int: N\centralizer_order(classes[i])
-		 , (WeylElt w) int: lookup(class_signature(w))
-		 , (int i,int k) int:
-		   let (a,b) = sigs[i]
-		   in lookup(cycle_power(a,k),cycle_power(b,k))
-		 )
-
-set class_table_F(int n) = WeylClassTable:
-   assert(n=4,"Inexistent type F"+n); class_table_F(simply_connected("F4"))
+<class_tables.at { for |class_table_F| }
+<character_tables.at { for type |CharacterTable| }
 
 set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 {   e    ...             long refl ..  short refl ... }
@@ -117,7 +46,7 @@ set character_table_F(RootDatum rd) = CharacterTable:
    let Wct = class_table_F(rd)
    then classes = [WeylElt,classical_class,string]:
       for w@i in Wct.class_representatives
-      do (w,null_class(),class_signature(w).compressed_string)
+      do (w,null_class(),class_signature_F4(w).compressed_string)
       od
    , irreps = [classical_irrep,string,[int]]:
       for (line,degree,n_primes) in character_table_F4_data
@@ -127,4 +56,3 @@ set character_table_F(RootDatum rd) = CharacterTable:
 
 set character_table_F(int n) = CharacterTable:
    character_table_F(simply_connected("F4"))
-

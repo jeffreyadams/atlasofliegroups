@@ -2,7 +2,7 @@
 <conjugate.at
 <parabolics.at
 <affine.at
-<W_characters.at
+<W_classes.at
 
 {good conjugacy class representatives in W,
 constructed using the algorithm of He-Nie,

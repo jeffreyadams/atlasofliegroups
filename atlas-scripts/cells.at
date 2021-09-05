@@ -2,7 +2,7 @@
 <W_reps.at { for type |WCell|; |cell_action@(WCell,WeylElt)| }
 <character_table_reps.at { |smallest_degree_summands| }
 <springer_tables.at
-<isomorphism_W.at {for permute_character}
+<isomorphism_W.at { |permute_character|, |root_permutation@(RootDatum^2)| }
 
 set cells_verbose=false
 
@@ -41,16 +41,21 @@ set cell_characterold (CharacterTable ct,WCell cell) = [int]:
 
 {. character of representation of W on cell .}
 set cell_character (CharacterTable ct,WCell cell) = [int]:
-if ct.root_datum.is_abelian then [1] else
-let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) then
-()=assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell") in
-if P=id_mat(#P) then
- for w in ct.class_reps do trace(cell_action(cell,w)) od
-else
- if cells_verbose then prints("Warning: permutation needed in cell_character@(CharacterTable,WCell)", new_line, P) fi;
- for w in ct.class_reps do trace(cell_action(cell,permute(P,w,cell.root_datum))) od
-fi
-fi
+   let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) in
+   if assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell")
+   ; P=id_mat(#P)
+   then for w in ct.class_reps do trace(cell_action(cell,w)).print od
+   else
+      if cells_verbose
+      then prints
+        ("Warning: permutation needed in cell_character@(CharacterTable,WCell)"
+	,new_line, P)
+      fi
+   ; for w in ct.class_reps
+     do trace(cell_action(cell,permute(int_mapping(P),w,cell.root_datum)))
+     od
+   fi
+
 
 set cell_character(CharacterTable ct) = (WCell cell)[int]:
   cell_character(ct,cell)
@@ -86,8 +91,7 @@ in case #summands
 {note that ct.root_datum must be (isomorphic to) cell.root_datum,
  which is the integrality_datum of a parameter}
 set special_character (CharacterTable ct,WCell cell) = int:
-(  let (valid,P) =
-     root_permutation(ct.root_datum.derived,cell.root_datum.derived)
+(  let (valid,P) = root_permutation(ct.root_datum,cell.root_datum)
    in assert(valid,"No root system isomorphism")
 ;  let summands =
      smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,P)))
@@ -182,7 +186,7 @@ in for (tau,)@i in graph.nodes do if tau=target then [i] else [] fi od.##
 unless #cell>=dim_special and
 some parameter p in cell has tau_complement(p)=singular roots on gamma}
 set potential_cell(RootDatum rd_int,WCell cell, ratvec gamma, int springer_dim)=bool:
-if #cell< springer_dim then false
+if #cell< springer_dim then prints("dim: ", #cell, " ", springer_dim);false
 elif
  let singular_roots=##for alpha@i in rd_int.simple_roots do if =alpha*gamma then [i] else [] fi od in
  let ()=prints("sr: ", singular_roots) in
@@ -214,11 +218,11 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  let survivors=[(int,int,Param)]:[] in
  {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
  if #cell< springer_dim
-  then [(int,int,Param)]:[]
+  then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
  elif
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
-      if cells_verbose then prints("survive:", p, " ", gamma) fi;
+      prints("survive:", p, " ", gamma);
       survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
@@ -250,7 +254,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  let survivors=[(int,int,Param)]:[] in
  if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
  if #cell< springer_dim
-  then [(int,int,Param)]:[]
+  then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
  elif
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
@@ -319,7 +323,7 @@ index_pi_L=ct_L.special_character(cell) then
 char_L=ct_L.characters[index_pi_L] then
 d_L=ct_L.degrees[index_pi_L] then
 chars_G=
-##for i:st_G.ct.n_classes do
+##for i:st_G.ct.n_irreps do
 { let ()=prints("i: ",i, " ",  ct_G.degrees[i], " ", d_L) in }
  if ct_G.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct_G.characters[i]))
@@ -340,7 +344,7 @@ d_L=ct_L.degrees[index_pi_L] then
 ()=prints("OK") in
 (G,L,ct_G,ct_L,index_pi_L,char_L,d_L){
 chars_G=
-##for i:st_G.ct.n_classes do
+##for i:st_G.ct.n_irreps do
  if ct.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(G,L,ct_G,ct_L,ct.characters[i]))
   then  [i] else [] fi

@@ -10,14 +10,6 @@
 
 {-------------------------  dual of a block --------------------------}
 
-{ find permutation relating two lists of parameters
-  perm=permutation(B1,B2) =>
-   i^th entry gives index of B1[i] in B2
-   B1[i]=B2[perm[i]]
-}
-set permutation ([Param] B1, [Param] B2) = [int]:
-  assert(#B1=#B2,"B1 and B2 not the same size"); for b in B1 do find(B2,b) od
-
 { various functions for constructing dual block:
   dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)
   each returns ([Param] B_vee,[int] permutation)
@@ -26,13 +18,14 @@ set permutation ([Param] B1, [Param] B2) = [int]:
 }
 set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
   let B_vee=block_of(dual(B[0],dual_inner_class))
-  then B_dual=for p in B do dual(p,dual_inner_class) od
-  in
+  then (perm,success) =
+     let B_dual=for p in B do dual(p,dual_inner_class) od
+     in permutation(B_dual,B_vee)
+  in assert(success,"Parameters not in a single dual block"); (B_vee,perm)
   { B_vee is in length *increasing* order
     B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality
     B_vee=B_dual up to permutation, roughly reversing order
   }
-  (B_vee,permutation(B_dual,B_vee))
 
 {don't specify the inner class and/or the dual infinitesimal character}
 set dual_block ([Param] B) = ([Param],[int]):
@@ -42,25 +35,7 @@ set dual_ExtParameter (
        ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:
     (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
-{ matrix of P-polynomials for B, with signs if second argument is true
-  usually B and then the block returned by KL_block should be identical to B,
-  in the same order, so perm_B_block is the identity. In particular this
-  should hold if B was constructed using block_of().
-  Otherwise perm_B_block might be nontrivial
-  In the singular case the matrix is of size #survivors
-}
-{ The Q polynomials are obtained from KL_P_signed_polynomials(dual block)
-  after applying a permutation and transpose
-  should satisfy P_signed*Q=I
-  test this with P_signed*Q=identity_poly_matrix(#P)
-  assuming B is in standard length increasing order:
-  P and Q are  both upper triangular
-}
-set KL_Q_polynomials ([Param] B) = i_poly_mat:
-  let (B_vee,perm)=dual_block(B)
-  then Q_0=KL_P_polynomials(B_vee) in  { Q_0 is upper triangular }
-  let Q_1=poly_permute_basis(perm,Q_0) in  { Q_1 (usually) lower triangular }
-  transpose(Q_1) { (usually) upper triangular }
+{ KL_Q_polynomials@Param is defined in KL_polynomial_matrices }
 
 { individual Q polynomials
   given B to make sure we have the right basis in the right order

@@ -1,121 +1,12 @@
 <basic.at
 <combinatorics { for |Partition| }
-<W_characters.at { for |WeylClassTable| }
-<classical_W_classes_and_reps.at { for |test_simple_type| }
+<W_classes.at { for |WeylClassTable| }
+<class_tables.at { for |test_simple_type| }
 <e8_gap.at { load the information from GAP }
 <character_tables.at
 
 {atlas character table for W(E8)}
 {see character_table_E8.txt}
-
-{ orbit sizes on roots; these characterise conjugacy classes for W(E8) }
-set class_signature (WeylElt w) = Partition:
-   let rd=root_datum(w)
-in for c in root_orbits(w) do #c od.sort_to_partition
-
-set class_table_E8(RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: assert(#test_simple_type("E",rd)=8,"Not E8")
-	       ; conjugacy_class_reps(rd)
-   then sigs = [Partition]: for w in classes do class_signature(w) od
-   , leq = leq_equal_sum_partitions@(Partition,Partition)
-   then lookup = (Partition->int):
-      let ranked =
-         sort(#sigs,(int i,int j)bool: leq(sigs[i],sigs[j]))
-      then list = for i in ranked do sigs[i] od { |sigs| sorted by |leq| }
-      in (Partition sig) int: { index in |sigs| where one finds |sig| }
-         ranked[binary_search_first((int i)bool: leq(sig,list[i]), 0,#list)]
-   , sizes = [int]: { |for w in classes do 696729600\centralizer_order(w)| }
-     [1,120,3780,2240,80640,45360,37800,580608
-     ,604800,907200,3150,37800,100800,268800,113400,151200
-     ,1209600,1814400,5806080,1612800,4838400,1209600,2721600,37800
-     ,453600,1209600,3628800,4838400,6451200,806400,1612800,89600
-     ,907200,7257600,10886400,11612160,7257600,14515200,24883200,3780
-     ,680400,604800,2419200,5443200,8709120,8709120,2419200,100800
-     ,1209600,3225600,5443200,19353600,24883200,14515200,11612160,5806080
-     ,10886400,268800,1612800,2419200,80640,453600,120,14515200
-     ,19353600,2419200,4838400,268800,1209600,9676800,14515200,17418240
-     ,11612160,24883200,43545600,45360,907200,3628800,1814400,14515200
-     ,17418240,29030400,23224320,29030400,34836480,12902400,23224320,6451200
-     ,24883200,2419200,9676800,2419200,1161216,4838400,2419200,11612160
-     ,12902400,3628800,580608,5443200,4480,89600,268800,403200
-     ,806400,1209600,1161216,15120,2240,37800,4480,1
-     ]
-   , pows = [[int]]: { list |i| gives class of powers 2..order\2 of class |i| }
-     [[],[],[],[],[3,1],[2],[],[7]
-     ,[3,2],[2],[],[10],[3,10],[],[],[2]
-     ,[8,15,3,16,2],[11,17,10],[7,18,7,1],[13,1],[13,6],[3,6],[2],[]
-     ,[10],[3,23],[8,5,3,26,2],[29,11,31,27,10],[28,31,28],[31,10],[13,10],[]
-     ,[2],[8,32,3,33,2],[11,34,10],[35,7,35,3,7,35]
-       ,[8,9,3,36,2],[13,14],[38,38],[]
-     ,[10],[3,39],[13,39],[40,43,10],[7,44,7,39],[7,45,7,2],[13,2],[3,10]
-     ,[47,11,3,48,10],[13,10],[14],[28,57,28,51,31,51,28,62]
-         ,[38,52,38,52,38,62],[29,61,31,53,10]
-         ,[35,55,35,60,7,54,35,55,3,54,7,54,35,62],[7,55,7,62]
-     ,[40,56,10],[31,62],[13,62],[31,6],[3,62],[10],[],[29,24,31,63,10]
-     ,[28,67,28,64,31,64,28,1],[31,23],[13,23],[31,1]
-         ,[8,15,3,68,2],[46,15,13,69,2]
-         ,[48,17,47,70,11,70,3,17,48,70,10],[45,71,7,5,45,71,7,71,2]
-     ,[35,18,35,4,7,72,35,18,3,72,7,72,35,1],[38,73,38,73,38,1],[50,74,14],[2]
-       ,[39],[8,75,3,77,2],[11,78,10],[48,78,47,79,11,79,3,78,48,79,10]
-     ,[45,80,7,75,45,80,7,80,2],[42,76,13,81,39]
-              ,[86,92,86,100,106,82,86,92,110,82,106,82,86,111]
-	      ,[89,97,100,83,107,83,110,97,89,83,111]
-	    ,[92,84,106,107,92,84,106,84,111],[96,101,96,85,31,85,96,111]
-	    ,[86,106,86,110,106,86],[28,101,28,87,31,87,28,111]
-     ,[38,88,38,88,38,111],[100,107,110,89,111]
-            ,[102,107,13,90,111],[103,109,110,91,10]
-	    ,[106,92,106,111],[29,109,31,93,10]
-            ,[103,11,110,94,10],[35,98,35,108,7,95,35,98,3,95,7,95,35,111]
-     ,[96,31,96],[107,97,111],[7,98,7,111],[40,99,10]
-       ,[110,111],[31,111],[13,111]
-     ,[110,10],[31,10],[47,109,3,105,10],[106],[111],[3,111],[10],[],[]
-     ]
-in W_class_table ( rd
-		 , classes
-		 , (int i) int: sizes[i]
-		 , (WeylElt w) int: lookup(class_signature(w))
-		 , (int i,int k) int: { lookup(cycle_power(sigs[i],k)) }
-		   let n=classes[i].order, pow=pows[i] in
-		   if (k%:=n)<2 then case k in 0,i esac
-		   elif k<=n\2 then pow[k-2]
-		   elif k=n-1 then i
-		   else pow[n-k-2]
-		   fi
-		 )
-
-{ we shall do storage of the class table for one particular E8 root datum }
-set !standard_datum_E8 = RootDatum: simply_connected("E8")
-
-{ voluntarily override previous definition to memoize for |standard_datum_E8| }
-set class_table_E8 = (RootDatum->WeylClassTable):
-   let Wct= trivial_character_table.class_table { place holder value }
-in (RootDatum rd) WeylClassTable:
-   if rd != standard_datum_E8 then class_table_E8(rd) { this is not recursion! }
-   elif =Wct.root_datum.rank { whether this is the first time we are called }
-   then Wct:=class_table_E8(rd) { compute and store the first time }
-   else Wct { any next time just return the previously computed value }
-   fi
-
-set class_table_E8() = WeylClassTable: class_table_E8(standard_datum_E8)
-
-set GAP_reorder_E8(WeylClassTable Wct) = [int]: { map GAP to |Wct| numbers }
-   let Wct_prof = mat: { with shape (5,25) }
-      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
-      5 # for j:Wct.n_classes
-          do [ reps[j].order
-	     , sizes[j]
-	     , Wct.sign[j]
-	     , Wct.reflection[j]
-	     , Wct.reflection[Wct.class_power(j,3)]
-	     ]
-	  od
-   then profile_ranked = [int]: { columns |eg_gap_profile| ranked }
-      sort(#e8_gap_profile
-          ,(int i,int j): lex_lesseq(e8_gap_profile[i],e8_gap_profile[j])
-	  )
-   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
-      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
-   in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
 set character_table_E8(RootDatum rd) = CharacterTable:
    let Wct = class_table_E8(rd)
@@ -133,7 +24,7 @@ set character_table_E8(RootDatum rd) = CharacterTable:
       let reps = Wct.class_representatives
       in for j in reordering
 	 do (reps[j],null_class()
-	    ,to_string(class_signature(reps[j]).compressed_string
+	    ,to_string(class_signature_E8(reps[j]).compressed_string
 		      ," (GAP:",e8_gap_classes[j],")")
 	    )
 	 od

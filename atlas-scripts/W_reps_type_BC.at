@@ -84,7 +84,7 @@ set wrep (Orbit P) = Hn_rep:
    in if type_C then { switch } (mu,lambda) else { no switch } pair fi
 
 { JordanType -> Symbol (normalised), injective maps separately for types B, C }
-{ One has |symbol(lambda)=sumbol(wrep(lambda))| when |lambda| valid for B or C }
+{ One has |symbol(lambda)=symbol(wrep(lambda))| when |lambda| valid for B or C }
 set symbol (Orbit P) = Symbol:
    let type_C=is_even(sum(P)) in
 (  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
@@ -105,7 +105,7 @@ set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
       if #T0 != 1+#T1 then return [] fi
    ;  for t@i in T1
       do if   T0[i]>t
-        then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
+         then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
 	 elif t>T0[i+1]
 	 then if t-1 = T0[i+1] then T0[i+1]:=t; T1[i]:=t-1 else return [] fi
 	 fi { now |T0[i] <= T1[i] <= T0[i+1]| }

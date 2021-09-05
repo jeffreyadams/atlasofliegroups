@@ -1,71 +1,123 @@
+<basic
+<sort.at { for vector sorting, |lex_lesseq| }
+<character_table_F.at
 <springer_tables.at
 
-set springer_by_signature(ComplexNilpotent O)=
-{assert(O.root_datum.Lie_type=Lie_type("F4"),"Not type F_4");}
-assert(O.root_datum.derived.Lie_type=Lie_type("F4"),"Not type F_4");
-let d=O.diagram_normalized_simple in
-if d=[0,0,0,0] then [1,-1,-1]   {1 -> phi(1,24)}
-elif d=[1,0,0,0] then [2,0,-2]  {A1 -> phi(2,16)''}
-elif d=[0,0,0,1] then [4,-2,-2] {A1~ -> phi(4,13)}
-elif d=[2,0,0,0] then [8,0,-4]  {A2 -> phi(8,9)''}
-elif d=[0,1,0,0] then [9,-3,-3] {A1+A1~ -> phi(9,10)}
-elif d=[0,0,0,2] then [8,-4,0]  {A2~ -> phi(8,9)'}
-elif d=[0,0,1,0] then [4,2,-2]  {A2+A1~ -> phi(4,7)''}
-elif d=[2,0,0,1] then [9,3,-3]  {B2->phi(9,6)''}
-elif d=[0,1,0,1] then [6,0,0]   {A2~+A1 -> phi(6,6)''}  {ambiguous, determined by  sum()=15 {NOT 19}, see springer_F4 below; note this orbit is not special}
-elif d=[1,0,1,0] then [16,0,0]  {C3(a1) -> phi(16,5)}
-elif d=[0,2,0,0] then [12,0,0]  {F4(a3) -> phi(12,4)}
-elif d=[2,2,0,0] then [8,4,0]   {B3 -> phi(8,3)''}
-elif d=[1,0,1,2] then [8,0,4]   {C3 -> phi(8,3)'}
-elif d=[0,2,0,2] then [9,3,3]   {F4(a2) -> phi(9,2)}
-elif d=[2,2,0,2] then [4,2,2]   {F4(a1) -> phi(4,1)}
-elif d=[2,2,2,2] then [1,1,1]   {F4 -> phi(1,0)}
-else error("error in springer correspondence") fi
+{ Like for G2, the Springer table maps are given in tabular form, where
+  nilpotent orbits are analysed through their diagram. While for G2 many things
+  can be decided without knowing the numbering of the Dynkin diagram for a given
+  root datum (it only matters for the Springer correspondence proper, and it
+  sufficed to test for order reversal with respect to the Bourbaki numbering),
+  we need a stratified diagram for nearly everything in F4, so the functions
+  that deal with general F4 root data need to cater for arbitrary numberings.
+  A function that works with a fixed F4 root datum does not need such measures;
+  we shall first describe the maps for such a system and generalise it later.
+}
 
-set springer_F4(CharacterTable ct,ComplexNilpotent O)=int:
-let characters=ct.characters then
-sig=springer_by_signature(O) in
-if sig=[6,0,0] then
-{ first(for v in characters do ct.signature(v)=sig and sum(v)=19 od)}
- first(for v in characters do ct.signature(v)=sig and sum(v)=15 od)     {mistake corrected: phi(6,6)'' sum=19, phi(6,6)' sum=15}
- else
- first(for v in characters do ct.signature(v)=sig od)
-fi
+{ The "dual map" is given by the following mapping in terms of orbit diagrams;
+  the "source" diagram assumes the Bourbaki numbering for F4 (0--0=>0--0),
+  while the "image" diagram assumes the dual datum, numbered as (0--0<=0--0).
+}
+set F4_nilpotent_orbit_dual_map = (vec->vec): { orbit diagrams as |vec| values }
+(  let table = [vec,vec]: { (source,image) }
+      [ ([0,0,0,0] , [2,2,2,2])
+      , ([1,0,0,0] , [2,0,2,2])
+      , ([0,0,0,1] , [2,0,2,2])
+      , ([0,1,0,0] , [2,0,2,0])
+      , ([2,0,0,0] , [0,0,2,2])
+      , ([0,0,0,2] , [2,1,0,1])
+      , ([0,0,1,0] , [0,0,2,0])
+      , ([2,0,0,1] , [0,0,2,0])
+      , ([0,1,0,1] , [0,0,2,0])
+      , ([1,0,1,0] , [0,0,2,0])
+      , ([0,2,0,0] , [0,0,2,0])
+      , ([1,0,1,2] , [2,0,0,0])
+      , ([2,2,0,0] , [0,0,0,2])
+      , ([0,2,0,2] , [0,0,1,0])
+      , ([2,2,0,2] , [1,0,0,0])
+      , ([2,2,2,2] , [0,0,0,0])
+      ]
+   then leq (int i,int j) = bool:
+        let (a,)=table[i], (b,)=table[j] in lex_lesseq(a,b)
+   then sigma = sort(#table, leq)
+in table := for i in sigma do table[i] od { adjust table to sorted form }
+;  { F4_nilpotent_orbit_dual_map = }
+   (vec diagram) vec:
+   let predicate(int i)= bool: let (key,)=table[i] in lex_lesseq(diagram,key)
+   then k = binary_search_first(predicate,0,#table)
+   then (source,image) = assert(k<#table,"Wrong F4 diagram"); table[k]
+   in assert(source=diagram,"Wrong F4 diagram"); image
+)
 
-set springer_F4(CharacterTable ct)=(ComplexNilpotent->int):(ComplexNilpotent O):springer_F4(ct,O)
+{ The "Springer map" is given by the following mapping in terms of orbit
+  diagrams; the image value are character indices according to the numbering
+  of |character_table_F4_data| from character_table_F,at
+}
+set F4_Springer_map = (vec->int): { orbit diagrams as |vec| values }
+(  let table = [vec,int]: { (diagram,character index) }
+      [ ([0,0,0,0] ,  3) {phi(1,24)}
+      , ([1,0,0,0] ,  7) {phi(2,16)''}
+      , ([0,0,0,1] , 19) {phi(4,13)}
+      , ([0,1,0,0] , 12) {phi(9,10)}
+      , ([2,0,0,0] , 23) {phi(8,9)''}
+      , ([0,0,0,2] , 21) {phi(8,9)'}
+      , ([0,0,1,0] , 17) {phi(4,7)''}
+      , ([2,0,0,1] , 10) {phi(9,6)''}
+      , ([0,1,0,1] , 13) {phi(6,6)', the one with sum(char)=15 }
+      , ([1,0,1,0] , 24) {phi(16,5)}
+      , ([0,2,0,0] , 15) {phi(12,4)}
+      , ([1,0,1,2] , 22) {phi(8,3)'}
+      , ([2,2,0,0] , 20) {phi(8,3)''}
+      , ([0,2,0,2] ,  9) {phi(9,2)}
+      , ([2,2,0,2] , 16) {phi(4,1)}
+      , ([2,2,2,2] ,  0) {phi(1,0)}
+      ]
+   then leq (int i,int j) = bool:
+        let (a,)=table[i], (b,)=table[j] in lex_lesseq(a,b)
+   then sigma = sort(#table, leq)
+in table := for i in sigma do table[i] od { adjust table to sorted form }
+;  { F4_Springer_map = }
+   (vec diagram) int:
+   let predicate(int i)= bool: let (key,)=table[i] in lex_lesseq(diagram,key)
+   then k = binary_search_first(predicate,0,#table)
+   then (source,image) = assert(k<#table,"Wrong F4 diagram"); table[k]
+   in assert(source=diagram,"Wrong F4 diagram"); image
+)
 
-set dual_orbit_F4(ComplexNilpotent O)=
-let rd=O.root_datum then
-dual_rd=dual(rd) then
-d=O.diagram_normalized_simple then
-(,map)=Cartan_matrix_type(dual_rd) then
-dual_normalized=
-  if d=[0,0,0,0] then [2,2,2,2]
-elif d=[1,0,0,0] then [2,2,0,2]
-elif d=[0,0,0,1] then [2,2,0,2]
-elif d=[0,1,0,0] then [0,2,0,2]
-elif d=[2,0,0,0] then [2,2,0,0]
-elif d=[0,0,0,2] then [1,0,1,2]
-elif d=[0,0,1,0] then [0,2,0,0]
-elif d=[2,0,0,1] then [0,2,0,0]
-elif d=[0,1,0,1] then [0,2,0,0]
-elif d=[1,0,1,0] then [0,2,0,0]
-elif d=[0,2,0,0] then [0,2,0,0]
-elif d=[1,0,1,2] then [0,0,0,2]
-elif d=[2,2,0,0] then [2,0,0,0]
-elif d=[0,2,0,2] then [0,1,0,0]
-elif d=[2,2,0,2] then [0,0,0,1]
-elif d=[2,2,2,2] then [0,0,0,0]
-else error("error computing dual orbit") fi
-in
-{complex_nilpotent(dual_rd,permute(map,dual_normalized))}
-{orbit_by_diagram(dual_rd,[permute(map,dual_normalized)])}
-orbit_by_diagram(dual_rd,dual_normalized)
+set springer_table_F (int n) = SpringerTable:
+   let ct=character_table_F(n) then rd=ct.root_datum {simply_connected("F4")}
+   then drd = dual(rd)
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(drd,F4_nilpotent_orbit_dual_map(O.diagram))
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(rd,~F4_nilpotent_orbit_dual_map(~O.diagram))
+   , (ComplexNilpotent O) int: F4_Springer_map(O.diagram)
+   )
 
-
-set springer_table_F4(CharacterTable ct)=SpringerTable:
-{(ct,simply_connected(F4).orbits,}
-(ct,ct.root_datum.orbits,
-dual_orbit_F4@ComplexNilpotent,
-dual_orbit_F4@ComplexNilpotent,
-springer_F4(ct))
+{ In the general case we take into account the permutation of the simple root
+  indices returned by |test_simple_type| (it is a map from Bourbaki indices to
+  |rd| indices, which |stratified_diagram@(ComplexNilpotent,[int])| takes into
+  account to get into Bourbaki order, and which |permute| uses to transform the
+  dual diagram from |F4_nilpotent_orbit_dual_map| into the order of |dual(rd)|.
+  For the dual mapping in the opposite direction, both the input diagram and the
+  output diagram for |F4_nilpotent_orbit_dual_map| assume a reversal of the
+  diagram order with respect to the forward direction, so we prepare and use the
+  reverse |~map| of the |map| list on both occasions.
+}
+set springer_table_F (RootDatum rd) = SpringerTable:
+   let map = test_simple_type("F",rd), ct=character_table_F(rd), drd = dual(rd)
+   then reverse_map = ~map { reverse mapping, used for dual root datum }
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = stratified_diagram(O,map)
+     then dual_O = vec: F4_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(drd,permute(map,dual_O))
+   , (ComplexNilpotent dual_O) ComplexNilpotent:
+     let diagram = stratified_diagram(dual_O,reverse_map)
+     then O = vec: F4_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(rd,permute(reverse_map,O))
+   , (ComplexNilpotent O) int: F4_Springer_map(stratified_diagram(O,map))
+   )

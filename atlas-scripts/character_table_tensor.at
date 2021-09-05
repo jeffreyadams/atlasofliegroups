@@ -33,7 +33,6 @@ let m=ct1.n_classes, n=ct2.n_classes
 then f(int k)=(int,int): (k\n,k%n)
 , g(int a,int b)=int:a*n+b
 , Wct = product(ct1.class_table,ct2.class_table)
-, order=ct1.order*ct2.order
 , n_classes=m*n
 then
   class_label(int k)=let (a,b)=f(k) in ct1.class_label(a)##ct2.class_label(b)
@@ -51,7 +50,6 @@ then
 , table=kronecker_product(ct1.table,ct2.table)
 in
 ( Wct
-, n_classes
 , Wct.class_representatives
 , class_label
 , (int j): null_class()

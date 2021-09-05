@@ -1,5 +1,11 @@
+<basic.at
 <W_orbit.at
-<Weylgroup.at
+<Levi_subgroups.at
+<misc.at { for is_simple_root }
+<sort.at { for inv_standardisation }
+<Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
+<group_operations { for |is_relatively_split| }
+
 
 {! See "Parabolic Subgroups and Induction", in dropbox, ultimately on the
   Atlas web site.
@@ -43,11 +49,6 @@ More topics addressed in this file:
   $\theta$-stable parabolics;
   real parabolics.
 !}
-
-<misc.at { for is_simple_root }
-<sort.at { for inv_standardisation }
-<Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
-<group_operations { for is_relatively_split }
 
 set_type
 [
@@ -170,30 +171,25 @@ set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
 
 {			Complex Levi subgroups				}
 
-{. auxiliary function .}
-set complex_Levi (RootDatum rd, (int->bool) select) = RootDatum:
-  root_datum(columns_with(select,simple_roots(rd))
-            ,columns_with(select,simple_coroots(rd))
-	    ,rd.prefers_coroots
-            )
+{ like |Levi_datum| in Levi_subgroups.at, provide some aliases for |sub_datum| }
+set complex_Levi = sub_datum@(RootDatum,[int]) { defined in basic.at }
 
-{. Root datum of the Levi factor of a complex parabolic. .}
-set complex_Levi (RootDatum rd,[int] S) = RootDatum:
-  complex_Levi(rd,is_member(S))
+{ contrary to |sub_datum@(RootDatum,(int->bool)|, select from simples only: }
+set complex_Levi (RootDatum rd,(int->bool) select) = RootDatum:
+   complex_Levi(rd,list(rd.semisimple_rank,select))
 
-{synonm for complex_Levi}
-set Levi(ComplexParabolic P)=RootDatum:complex_Levi(P)
+{ a synonm for |complex_Levi|, and yet another one for |sub_datum| }
+set Levi = complex_Levi@ComplexParabolic { that's the first one above! }
 
-{a complex (standard) Levi determines a complex (standard) parabolic}
-set complex_parabolic(RootDatum rd,RootDatum rd_L)=ComplexParabolic:
-(rd,for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)od)
+set simple_root_indices (RootDatum rd,RootDatum rd_L) = [int]:
+  for alpha in rd_L.simple_roots
+  do let i=root_index(rd,alpha) in i { return |i|, but check if a simple root: }
+     next assert(i<rd.semisimple_rank,"Not a standard Levi")
+  od
 
-set simple_root_indices(RootDatum rd,RootDatum rd_L)=[int]:
-assert(all(for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)!=-1 od),"Not a standard Levi");
-for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha) od
-
-set complex_parabolic(RootDatum rd,RootDatum rd_L)=ComplexParabolic:
-(rd,simple_root_indices(rd,rd_L))
+{ a complex (standard) Levi determines a complex (standard) parabolic }
+set complex_parabolic((RootDatum,RootDatum) (rd,):pair)=ComplexParabolic:
+  (rd,simple_root_indices(pair))
 
 {all (complex) parabolics of a RootDatum}
 set parabolics(RootDatum rd)=[ComplexParabolic]:

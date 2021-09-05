@@ -4,7 +4,7 @@
 <synthetic.at
 <affine.at
 <W_orbit.at
-<W_characters.at
+<W_classes.at
 
 {. The labels m_i on the Dynkin diagram representing the coefficient of the
    simple roots in the highest root. The label of the lowest root is 1 (not
