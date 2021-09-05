@@ -4,46 +4,27 @@
 
 { orbit of |x| by cross actions from |gens|, with example transportin w }
 set cross_sub_orbit ([WeylElt] gens, KGBElt x) = [KGBElt,WeylElt]:
-( let rd = x.root_datum
-  then stack= [ [], [(x,id_W(rd))] ] { each level will be sorted by |x.number| }
-  , absent([KGBElt,WeylElt] level, int n_x) = bool:
-      let size=#level
-      then
-         k = binary_search_first((int i)bool: let(y,)=level[i] in n_x<=y.number
-				,0,size
-				)
-      in k=size or (let (y,)=level[k] in n_x<y.number)
-in { being done with |x|, we don't mind shadowing the name below }
-   while
-     let new_level =
-        for s in gens
-	do for (x,witness) in stack~[0]
-	   do let sx = cross(s,x) then n_sx=sx.number in
-	      if absent(stack~[1],n_sx) and absent(stack~[0],n_sx)
-	      then [(sx,s*witness)]
-	      else []
-	      fi
-	   od.##
-	od.##
-   in {while} >#new_level
-   do let pre = #new_level in
-      stack #:= { sort |new_level| by number of |x|, removing duplicates }
-     (let sort_u = sort_u
-        ((int i,int j)bool: let (x,)=new_level[i],(y,)=new_level[j] in #x<=#y)
-      in for i in sort_u(#new_level) do new_level[i] od
-     )
+(  let G = x.real_form
+   then index = for :KGB_size(G) do minus_1 od
+   , orbit = [(x,id_W(x.root_datum))]
+   , i=0
+in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
+;  while
+      let k=#orbit { variable future position of first new element to be found }
+      then news = [KGBElt,WeylElt]:
+         while i<#orbit
+         do let (y,witness) = orbit[i] next i+:=1
+         in for s in gens
+	    do let z=cross(s,y)
+	    in if index[#z].< then index[#z]:=k; k+:=1; [(z,s*witness)]
+	       else [] { already seen, ignore }
+	       fi
+	    od.##
+	 od.##
+   in {while} >#news
+   do orbit ##:= news
    od
-;  { to return merge of all |stack| levels, we need a bit of organisation: }
-   let list = [KGBElt,WeylElt]: { to access all pairs by simple |int| index }
-	      ##stack
-   , stops = [int]: for level in stack do #level od.cumulate_forward
-   , result = [int]: #(#stack[1]) { range of |list| indices for |stack[1] }
-   then merge =
-      merge((int i,int j) bool: let (x,)=list[i],(y,)=list[j] in #x <= #y)
-in for i:#stack-2 from 2
-   do result:=merge(result,for i:#stack[i] from stops[i-1] do i od)
-   od
-; for i in result do list[i] od { return all levels merged, so sorted }
+; for k@i in index do if k.>= then [orbit[k]] else [] fi od.##
 )
 
 set cross_orbit (KGBElt x) = [KGBElt,WeylElt]:
