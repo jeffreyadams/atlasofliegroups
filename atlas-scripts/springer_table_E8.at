@@ -254,9 +254,9 @@ in ( ct
   dual diagram from |E8_nilpotent_orbit_dual_map| into the order of |dual(rd)|.
 }
 set springer_table_E8 (RootDatum rd) = SpringerTable:
-   let map = test_simple_type("E",rd), ct=character_table_F(rd), drd = dual(rd)
+   let map = test_simple_type("E",rd), drd = dual(rd)
 in assert(#map=8,"Root datum has wrong rank "+#map);
-   ( ct
+   ( character_table_E8(rd)
    , orbits(rd)
    , (ComplexNilpotent O) ComplexNilpotent:
      let diagram = stratified_diagram(O,map)
