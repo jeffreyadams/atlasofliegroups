@@ -1,28 +1,67 @@
 <basic.at
+<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
 <Weylgroup.at
 
 { orbit of |x| by cross actions from |gens|, with example transportin w }
-set cross_sub_orbit ([WeylElt] gens, KGBElt x) = ([KGBElt],[WeylElt]):
-  let rd = x.root_datum then orbit= [x], ws = [id_W(rd)], done=0
-  then absent (KGBElt y) = bool: none(#orbit,(int i)bool:orbit[i]=y)
-  in
-  while done<#orbit
-  do
-    let a=orbit[done], w = ws[done] in done+:=1 { pop |(w,a)| from queue }
-  ; for s in gens
-    do let b=cross(s,a) in
-      if absent(b) then ws #:= s*w ;  orbit #:= b fi
-    od
-  od; (orbit,ws)
+set cross_sub_orbit ([WeylElt] gens, KGBElt x) = [KGBElt,WeylElt]:
+( let rd = x.root_datum
+  then stack= [ [], [(x,id_W(rd))] ] { each level will be sorted by |x.number| }
+  , absent([KGBElt,WeylElt] level, int n_x) = bool:
+      let size=#level
+      then
+         k = binary_search_first((int i)bool: let(y,)=level[i] in n_x<=y.number
+				,0,size
+				)
+      in k=size or (let (y,)=level[k] in n_x<y.number)
+in { being done with |x|, we don't mind shadowing the name below }
+   while
+     let new_level =
+        for s in gens
+	do for (x,witness) in stack~[0]
+	   do let sx = cross(s,x) then n_sx=sx.number in
+	      if absent(stack~[1],n_sx) and absent(stack~[0],n_sx)
+	      then [(sx,s*witness)]
+	      else []
+	      fi
+	   od.##
+	od.##
+   in {while} >#new_level
+   do let pre = #new_level in
+      stack #:= { sort |new_level| by number of |x|, removing duplicates }
+     (let sort_u = sort_u
+        ((int i,int j)bool: let (x,)=new_level[i],(y,)=new_level[j] in #x<=#y)
+      in for i in sort_u(#new_level) do new_level[i] od
+     )
+   od
+;  { to return merge of all |stack| levels, we need a bit of organisation: }
+   let list = [KGBElt,WeylElt]: { to access all pairs by simple |int| index }
+	      ##stack
+   , stops = [int]: for level in stack do #level od.cumulate_forward
+   , result = [int]: #(#stack[1]) { range of |list| indices for |stack[1] }
+   then merge =
+      merge((int i,int j) bool: let (x,)=list[i],(y,)=list[j] in #x <= #y)
+in for i:#stack-2 from 2
+   do result:=merge(result,for i:#stack[i] from stops[i-1] do i od)
+   od
+; for i in result do list[i] od { return all levels merged, so sorted }
+)
 
-set cross_orbit (KGBElt x) = ([KGBElt],[WeylElt]):
+set cross_orbit (KGBElt x) = [KGBElt,WeylElt]:
   cross_sub_orbit(x.root_datum.W_gens,x)
 
-{ solve for w in W in y=cross(w,x); at least one solution should exist }
-set cross_divide (KGBElt y,KGBElt x) = WeylElt:
-  let (orbit,ws)=cross_orbit(x) then i=first(#orbit,(int i)bool:orbit[i]=y) in
-  if i<0 then error("Did not find ",y," in orbit of ",x) fi; ws[i]
+{ whether |y| is in cross orbit of |x|, and if so a witness }
+set is_in_cross_orbit (KGBElt x) = (KGBElt->bool,WeylElt):
+   let orbit=cross_orbit(x) in
+   (KGBElt y) (bool,WeylElt):
+   let n_y=#y
+   then k =
+     binary_search_first((int i)bool: let (z,)=orbit[i] in n_y<=#z, 0,#orbit)
+   then found = k<#orbit and (let(z,)=orbit[k] in z=y)
+in (found, let (,witness)=orbit[if found then k else 0 fi] in witness)
 
-set is_in_cross_orbit (KGBElt x, KGBElt y) = (bool,WeylElt):
-  let (orbit,ws)=cross_orbit(x),b=true then i=first(#orbit,(int i)bool:orbit[i]=y) in
-  if i<0 then prints("Did not find ",y," in orbit of ",x);b:=false;i:=0 fi; (b,ws[i])
+{ solve for w in W in y=cross(w,x); at least one solution should exist }
+set cross_divide (KGBElt y,KGBElt x) {note argument order} = WeylElt:
+   let (found,witness) = is_in_cross_orbit(x)(y)
+in if found then witness
+   else error("Did not find ",y," in cross orbit of ",x)
+   fi
