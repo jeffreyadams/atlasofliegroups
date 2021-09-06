@@ -100,51 +100,58 @@ if y.is_integer then  {L=G, L=G, don't need induction}
  sigma=st_G.springer(O) {int} then
  ()=if sigma_lusztig_verbose then prints("sigma (no induction): ", sigma,new_line) fi  in
  [sigma]  {return value}
-else  {need induction; compute L, sigma_lusztig}
+else  {L proper in G, need induction; compute L, sigma_L on L}
  let ()=if sigma_lusztig_verbose then prints("need induction: ") fi in
  let L=centralizer(G,y) then
-{ let (,L)=subgroup(G,M.roots) then}
  H_L=dominant(H_M,L) then
  O_L=ComplexNilpotent:(L,(),H_L) then
  ()=if sigma_lusztig_verbose
    then prints(("L=", L,new_line,"H_L=", H_L,new_line,"O_L:", O_L.H, " ", O_L.diagram) ) fi then
-{ roots_L=for alpha in L.simple_roots do find(st_G.root_datum.roots,alpha) od then}{no: should be G.roots}
- roots_L=for alpha in L.simple_roots do {find(G.roots,alpha)} root_index(G,alpha) od then
-{ ()=if sigma_lusztig_verbose then prints("L.simple_roots: ", L.simple_roots, new_line, "st_G.root.datum.roots: ", st_G.root_datum.roots) fi then}
+ roots_L=for alpha in L.simple_roots do root_index(G,alpha) od then
  {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
- sigma_lusztig=[int]:
- if O_L=L.zero_orbit then    L.character_table.sign 
- elif O_L=L.principal_orbit then L.character_table.trivial
+ {first compute character sigma_L of L=springer(O_L)\otimes sgn
+        also desired_degree_sgn: the (fake) degree of sigma_L}
+(sigma_L_sgn,desired_degree_sgn)=([int],int):
+ if O_L=L.zero_orbit then (L.character_table.trivial,0)
+ elif O_L=L.principal_orbit then (L.character_table.sign,#L.posroots)
  else  {not 0 or principal orbit; need to compute L.springer_table: main work is here}
   let ()=if sigma_lusztig_verbose then prints(("computing st_L:") ) fi then
   st_L=L.springer_table then
    ()=if sigma_lusztig_verbose then prints(("done computing L.springer_table (not including generic degree)") ) fi then
-  sigma_lusztig_0=st_L.springer(O_L) then
-  char=st_L.ct.characters[sigma_lusztig_0] then
-   ()=if sigma_lusztig_verbose then prints("sigma_lusztig: ", char) fi  in char
- fi  {now have sigma_lusztig=character of L}{end if O_L=L.zero_orbit} then
- {next: induce sigma_lusztig}
-  ()=if sigma_lusztig_verbose then prints("inducing character from L:", L,new_line, "roots_L: ", roots_L, new_line, "sigma_lusztig: ", sigma_lusztig) fi then
- ind=induce_character(G,ct_G,roots_L,sigma_lusztig) then
+  sigma_L_sgn=tensor_sign_index(st_L.ct,st_L.springer(O_L)) {springer(O_L)\otimes sgn} then
+  char_sgn=st_L.ct.characters[sigma_L_sgn] then
+  deg_sgn=st_L.ct.degree(sigma_L_sgn)  then
+   ()=if sigma_lusztig_verbose then prints("sigma_lusztig: ", char) fi
+   in (char_sgn,deg_sgn)
+ fi  {now have (sigma_L_sgn=character of L,desired_degree_sign)}
+ {end if O_L=L.zero_orbit} then
+ {next: induce sigma_L_sgn}
+  ()=if sigma_lusztig_verbose then prints("inducing character from L:",
+       L,new_line, "roots_L: ", roots_L, new_line, "sigma_L_sgn:",
+       sigma_L_sgn) fi then
+  ind_sgn=induce_character(G,ct_G,roots_L,sigma_L_sgn) then
   ()=if sigma_lusztig_verbose then
-   prints("finished inducing character from L:", L, new_line, "ind=(2)" , ind,new_line);
-   ct_G.view_char(ind)
+    prints("finished inducing character from L:", L, new_line, "ind_sgn=(2)" , ind_sgn,new_line);
+    ct_G.view_char(ind_sgn)
   fi then
-  ind_decomposed=ct_G.decompose(ind) then
+  ind_decomposed_sgn=ct_G.decompose(ind_sgn) then
+ {this version of choosing the degree is not being used:
    springer_O=st_G.springer(O) then
    desired_generic_degree = st_G.ct.generic_degree(springer_O) then
-    ()=if sigma_lusztig_verbose then prints("getting desired generic degree: ", new_line, "O=",O.diagram, new_line, "springer(O): ", springer_O,
-     new_line, "sigma_lusztig for generic degree: ", sigma_lusztig, new_line,"desired_generic_degree: ", desired_generic_degree)
-    fi then
-   char_indices=[int]:  
-   ##for i:#ind_decomposed do
-      if (ind_decomposed[i]>0 and st_G.ct.generic_degree_safe(i)=desired_generic_degree) then
-       {probably never happens: correct generic degree and mult >1. If so print loud WARNING}
-       if ind_decomposed[i]>1 then prints("WARNING: multiplicity >1: ", new_line, "i=", i, " mult= ",ind_decomposed[i],new_line,
-       "ind_decomposed=",ind_decomposed) fi;
-      [i]  else [] fi
+   desired_degree = st_L.degree(springer(O_L)) then
+   ()=if sigma_lusztig_verbose then prints("getting desired degree: ", new_line, "O=",O.diagram, new_line, "springer(O): ", springer_O,
+     new_line, "sigma_lusztig for degree: ", sigma_lusztig,
+     new_line,"desired_degree: ", desired_degree)
+    fi  then }
+   char_indices_sgn=[int]:
+   ##for i:#ind_decomposed_sgn do
+      if (ind_decomposed_sgn[i]>0 and st_G.ct.degree(i)=desired_degree_sgn) then
+       {probably never happens: correct degree and mult >1. If so print loud WARNING}
+       if ind_decomposed_sgn[i]>1 then prints("WARNING: multiplicity >1: ", new_line, "i=", i, " mult= ",ind_decomposed_sgn[i],new_line,
+       "ind_decomposed_sgn=",ind_decomposed_sgn) fi;
+      [tensor_sign_index(st_G.ct,i)] {tensor with sign again} else [] fi
       od
-   in char_indices
+      in char_indices_sgn
 {   ()=if sigma_lusztig_verbose then  prints("O: ", O.diagram, new_line,"L: ", L,new_line,"O_L: ", O_L.diagram,new_line,"sigma_lusztig: ", sigma_lusztig,new_line);
     prints("induced char: ", ind,new_line, "decomposition(3):", ct_G.decompose(ind));ct_G.view_char(ind) fi
   then}
@@ -159,15 +166,19 @@ set lusztig_cell(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[[int]]:
 sort_u(
  for (M,H_M,y) in component_representatives_plus(O) do
      let ()=if sigma_lusztig_verbose then prints("computing sigma_lusztig for orbit=", O, " ", O.diagram, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
- sigma_lusztig(G,st_G,O,M,H_M,y)
+ prints("OK");sigma_lusztig(G,st_G,O,M,H_M,y)
 od)
 
 set lusztig_cell_plus(RootDatum G,SpringerTable st_G,ComplexNilpotent orbit)=[[int]]:
 sort_u(
  ##for (M,H_M,y) in component_representatives_plus(orbit) do
+ let ()=prints("ok") in
  let basis=M.radical_basis in
+  let ()=prints("ok2") in
  let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
+  let ()=prints("ok3", variants) in
   for v in variants do
+  let ()=prints("v=",v) in 
      let ()=if sigma_lusztig_verbose then prints("y=", y, new_line, "v=",v/(G.coxeter_number+1)) fi  in
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
      basis, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
@@ -191,6 +202,7 @@ od
 
 set lusztig_cells_plus(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
 for orbit@counter in orbits do
+ let ()=if sigma_lusztig_verbose then prints(new_line,"-------------------------------------------",new_line,"Orbit #",counter,new_line,"Orbit=",orbit.diagram) fi in
  ##for (M,H_M,y) in component_representatives_plus(orbit) do
  let basis=M.radical_basis in
  let variants=if =#basis then [null(G.rank)] else all_sums(basis) fi in
