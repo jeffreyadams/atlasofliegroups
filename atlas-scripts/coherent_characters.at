@@ -187,7 +187,8 @@ ct.irreducible_label(i)
  else ["","",""{,"",""}] fi##
 [a[i].to_string,b[i].to_string,c[i].to_string+st.special_representation_star(i)] od)
 
-set show_coherent_data(RealForm G)=void:show_coherent_data(G.springer_table,G)
+set show_coherent_data (RealForm G) = void:
+   show_coherent_data(Springer_table(G),G)
 
 {see Barbasch-Trapa, Stable Combinations...Proposition 3.2
 That says: V(O_check)\otimes sgn is the sum of Springer representations
@@ -249,7 +250,7 @@ set size_weak_packet(ComplexNilpotent O_check,SpringerTable st_G,[Param] params)
 let rd=O_check.root_datum.dual then
 gamma=O_check.H/2 then
 rd_int=integrality_datum(rd,gamma) then
-st_int=springer_table(rd_int) then
+st_int=Springer_table(rd_int) then
 (O_check_int,permutation)=integral_descent(st_int,O_check) in
 size_weak_packet_int(O_check_int,st_int,params)
 
@@ -263,19 +264,19 @@ for O_check in orbits do
 set sizes_weak_packets(SpringerTable st_G, RealForm G)=
 sizes_weak_packets(G.dual_orbits,st_G,G)
 
-set sizes_weak_packets(RealForm G)=sizes_weak_packets(G.springer_table,G)
+set sizes_weak_packets (RealForm G) = sizes_weak_packets(Springer_table(G),G)
 
 
 set show_coherent_data(SpringerTable st,[Param] block)=
  let data=coherent_data(st,block) in
  show_coherent_data(st,data);data
 {set show_coherent_data(SpringerTable st,RealForm G)=show_coherent_data(st,block_of(G.trivial))}
-set show_coherent_data(RealForm G)=show_coherent_data(G.springer_table,G)
+set show_coherent_data(RealForm G)=show_coherent_data(Springer_table(G),G)
 
 set show_coherent_data([RealForm] groups)=
 for G in groups do
 let ()=prints(new_line,"Coherent character data for: ", G) then
-st=G.springer_table in
+st=Springer_table(G) in
 show_coherent_data(st,G) od
 
 set groups=[SL(2,R),Sp(4,R),G2_s, Sp(6,R),Sp(8,R),F4_s,SL(3,R),SL(4,R),E6_q]

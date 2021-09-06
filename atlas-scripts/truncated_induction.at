@@ -176,16 +176,16 @@ in assert(valid,"induced orbit doesn't have Springer_inverse")
 
 { somewhat slow: compute Springer table for L }
 set induce_orbit(SpringerTable st_G,ComplexNilpotent O_L) = ComplexNilpotent:
-   induce_orbit(springer_table(O_L.root_datum), st_G, O_L)
+   induce_orbit(Springer_table(O_L.root_datum), st_G, O_L)
 
 { slower: computes Springer table for L and G }
 set induce_orbit (RootDatum G,ComplexNilpotent O_L) = ComplexNilpotent:
-   induce_orbit(springer_table(G), O_L)
+   induce_orbit(Springer_table(G), O_L)
 
 set test_induce_orbits(RootDatum G,[int] simple_roots_of_L) = void:
    let L=Levi_datum(G,simple_roots_of_L)
-   then st_G=G.springer_table
-   then st_L=L.springer_table
+   then st_G=G.Springer_table
+   then st_L=L.Springer_table
    then codim=G.dimension-L.dimension
    then ()=if ti_verbose then prints("codimension: ", codim)  fi
 in tabulate (

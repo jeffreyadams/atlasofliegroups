@@ -72,22 +72,3 @@ set Springer_table(RootDatum rd) = SpringerTable:
       do let (letter,n)=simples[i] in springer_table_simple(rdi,letter,n)
       od
 in combine(rd,simple_tables)
-
-{ this is broken, but should parse }
-set springer_table(RootDatum rd) = SpringerTable:
-   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
-   then simples = simple_factors(Lie_type)
-   then  simple_tables = [SpringerTable]:
-      let offset=0 in
-      for (letter,rank) in simples
-      do let simple_rd = sub_datum(rd,for i:rank do map[offset+i] od)
-      next offset+:=rank
-      in springer_table_simple(derived(simple_rd),letter,rank)
-      od
-in if rd.is_abelian then springer_table_torus(rd)
-   else let st = simple_tables[0] in
-      for i:#simples-1 from 1 do st:=tensor(st,simple_tables[i]) od
-   ;  st
-   fi
-
-
