@@ -149,7 +149,7 @@ in ( ct
   dual diagram from |E6_nilpotent_orbit_dual_map| into the order of |dual(rd)|.
 }
 set springer_table_E6 (RootDatum rd) = SpringerTable:
-   let map = test_simple_type("E",rd), ct=character_table_F(rd), drd = dual(rd)
+   let map = test_simple_type("E",rd), ct=character_table_E6(rd), drd = dual(rd)
 in assert(#map=6,"Root datum has wrong rank "+#map);
    ( ct
    , orbits(rd)

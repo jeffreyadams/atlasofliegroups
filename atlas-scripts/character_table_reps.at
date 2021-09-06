@@ -218,6 +218,17 @@ set restrict_character \
    (CharacterTable ct_L,CharacterTable ct_G,[int] pi_L) = [int]:
    restrict_character(ct_L.class_table,ct_G.class_table, pi_L)
 
+{given L, G, ct_L,ct_G
+L,G: give embedding of W(L) to W(G);
+map a character of ct_L -> character of ct_G
+use embed(L,G) followed by change_to(ct_G.root_datum) to
+convert the anser to the coordinate of ct_G
+}
+set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
+let Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
+f(WeylElt w)=convert_to(Gprime,W_elt(G,embed(L,G,w.word))) in
+restrict_character(ct_G,ct_L,f,pi_G)
 
 { the Steinberg character, for testing only }
 
@@ -231,53 +242,3 @@ set Steinberg_character (RootDatum rd) = [int]:
      do minus_1^#S * induce_trivial(ct_G,S)
      od.sum
   in assert(result=ct_G.sign); result
-{------------------------------------------------------------------- }
-
-set embed_simple_reflection{_or_coreflection}(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:
-let (valid_G,P_G)=root_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
-(valid_L,P_L)=root_permutation(L.derived,Lprime.derived) in  {P_L: L-> L'}
-assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
-assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
-{prints("P_L" ,P_L);
-prints("P_G" ,P_G);
-prints("index: ", permutation(P_G)[permutation(^P_L)[i]]);}
-{let M=embed_simple_reflection_or_coreflection(L,G,permutation(P_G)[permutation(^P_L)[i]]) {matrix, in W(Gprime)} then}
-let j=permutation(^P_L)[i]   {Lprime -> L} then
-M=embed_simple_reflection{_or_coreflection}(L,G,j) {matrix for G} then
-word_G=W_elt(G,M).word   {[int] for element of W_G} then
-word_Gprime=for i in word_G do permutation(P_G)[i] od 
-in  W_elt(Gprime,word_Gprime)
-
-set e(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
-embed_simple_reflection{_or_coreflection}(L,G,Lprime,Gprime,i)
-
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:embed_simple_reflection{_or_coreflection}(L,G,Lprime,Gprime,i)
-
-{takes a word for W(L) to a matrix for W(Gprime)}
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-{let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
-{let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
-let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
-{difference here: formerly Gprime.rank}
-
-{w\in W(L) -> W(Gprime)}
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(Gprime,embed(L,G,Lprime,Gprime,w.word))
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,Lprime,Gprime,w)
-
-set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
-let Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f=embed(L,G,Lprime,Gprime) in
-restrict_character(ct_G,ct_L,f,pi_G)
-
-{
-set embed_new(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, WeylElt w)=WeylElt:
-let y=W_elt(G,embed(L,G,w.word)) in convert_to(Gprime.derived,y)
-
-set embed_new(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):
-prints("embed_new: ",new_line,L,new_line,G,new_line,Lprime,new_line,Gprime);
-embed_new(L,G,Lprime,Gprime,w)
-}
-
-
- 

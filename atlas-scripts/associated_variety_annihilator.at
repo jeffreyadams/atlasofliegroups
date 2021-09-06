@@ -67,7 +67,7 @@ associated_variety_ann_ind(p,st_rd,cell.root_datum.character_table,cell)
 
 {(slow) given cell, compute st_G,ct_int}
 set associated_variety_ann_ind(Param p,WCell cell)=ComplexNilpotent:
-associated_variety_ann_ind(p,p.root_datum.springer_table,cell.root_datum.character_table,cell)
+associated_variety_ann_ind(p,p.root_datum.Springer_table,cell.root_datum.character_table,cell)
 
 {given Param, SpringerTable for G and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_ind(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
@@ -77,7 +77,7 @@ set associated_variety_ann_ind(Param p,SpringerTable st_G)=ComplexNilpotent:
 let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_ind(p,st_G,cell.root_datum.character_table,cell)
 
 set associated_variety_ann_ind(Param p)=ComplexNilpotent:
-associated_variety_ann_ind(p,p.root_datum.springer_table)
+associated_variety_ann_ind(p,p.root_datum.Springer_table)
 
 {-----------------using restriction-----------------------}
 
@@ -131,7 +131,7 @@ associated_variety_ann_res(rd,st_rd,cell.root_datum.character_table,cell)
 
 {(slow) given cell, compute st_rd,ct_L}
 set associated_variety_ann_res(RootDatum rd,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(rd,rd.springer_table,cell.root_datum.character_table,cell)
+associated_variety_ann_res(rd,rd.Springer_table,cell.root_datum.character_table,cell)
 
 {given Param, SpringerTable for rd and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_res(Param p,SpringerTable st_rd,CharacterTable ct_L)=ComplexNilpotent:
@@ -141,7 +141,7 @@ set associated_variety_ann_res(Param p,SpringerTable st_rd)=ComplexNilpotent:
 let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_res(p.real_form,st_rd,cell.root_datum.character_table,cell)
 
 set associated_variety_ann_res(Param p)=ComplexNilpotent:
-associated_variety_ann_res(p,p.root_datum.springer_table)
+associated_variety_ann_res(p,p.root_datum.Springer_table)
 
 set associated_variety_ann_res_test(SpringerTable st_rd,WCell cell)=
 let rd=st_rd.root_datum then
@@ -234,7 +234,7 @@ prints("diagram of orbit: ", orbit.diagram);orbit
 set av_maximal_ideal_0(RootDatum rd,ratvec gamma,SpringerTable st_C)=
 av_maximal_ideal_0(rd,gamma,st_C,character_table(integrality_datum(rd.complexification,gamma##gamma)))
 
-set av_maximal_ideal_0(RootDatum G,ratvec gamma)=av_maximal_ideal_0(G,gamma,G.complexification.springer_table)
+set av_maximal_ideal_0(RootDatum G,ratvec gamma)=av_maximal_ideal_0(G,gamma,G.complexification.Springer_table)
 
 {much faster version:
 rd_singular \subset rd_int \subset rd
@@ -296,7 +296,7 @@ ct_int=if rd_int=rd then st.ct else rd_int.character_table fi in
 av_maximal_ideal(rd,st,ct_int,gamma)
 
 set av_maximal_ideal(RootDatum rd,ratvec gamma)=
-let st=rd.springer_table then
+let st=rd.Springer_table then
 rd_int=integrality_datum(rd,gamma) then
 ct_int=if rd_int=rd then st.ct else rd_int.character_table fi then
 rd_singular=singular_root_datum(rd,gamma) then
@@ -318,7 +318,7 @@ tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
   st.dual_map_i(orbit_vee).diagram.to_string]
   od);all(rv)
 
-set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.springer_table)
+set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.Springer_table)
 
 {GK_dim_maximal_ideal is like GK_dim: it returns just the dimension of the orbit,
 and can therefore skip (one of the) the induction step(s)}
