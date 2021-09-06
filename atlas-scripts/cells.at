@@ -44,7 +44,7 @@ set cell_character (CharacterTable ct,WCell cell) = [int]:
    let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) in
    if assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell")
    ; P=id_mat(#P)
-   then for w in ct.class_reps do trace(cell_action(cell,w)).print od
+   then for w in ct.class_reps do trace(cell_action(cell,w)) od
    else
       if cells_verbose
       then prints

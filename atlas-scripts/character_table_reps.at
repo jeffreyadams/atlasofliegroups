@@ -62,12 +62,21 @@ set embed (RootDatum L, RootDatum G,[int] w) = mat:
    product(G.rank,for s in w do embed_simple_reflection(L,G,s) od)
    { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match }
 
+set embed(RootDatum L,RootDatum G,WeylElt w)=WeylElt:
+W_elt(G,embed(L,G,w.word))
+
 { These should not be necessary, use |convert_to(G,w)| instead
 set embed (RootDatum L,RootDatum G,WeylElt w) = WeylElt:
    W_elt(G,embed(L,G,w.word))
 set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
 }
 
+{assuming L is a subgroup of G, then convert to Gprime}
+set embed(RootDatum L,RootDatum G, RootDatum Gprime,WeylElt w)=WeylElt:
+convert_to(Gprime,W_elt(G,embed(L,G,w.word)))
+
+set embed(RootDatum L,RootDatum G, RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):
+convert_to(Gprime,W_elt(G,embed(L,G,w.word)))
 
 { ------------------- induction ------------------- }
 
@@ -143,6 +152,33 @@ set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
       [int]:
    let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
 in induce_character(class_table(L),Wct_G,pi_L)
+
+{need L,G, ct_L and ct_G, also pi_L}
+{set induce_character(RootDatum L,RootDatum G, CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
+let f(WeylElt w)=embed(L,G,ct_G.root_datum) in
+induce_character(ct_G,ct_L,f,pi_G)
+}
+
+{------------}
+{assume ct_G computed, but not ct_L}
+set induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
+let ct_L=L.character_table then
+Gprime=ct_G.root_datum then
+Lprime=ct_L.root_datum then
+f=embed(L,G,Gprime) in
+induce_character(ct_L,ct_G,f,pi_L)
+
+{Given G,ct_G, and define L in terms of posroots of G
+simple_roots_of_L=[a_0,a_1,...] means that
+the simple roots of L are [G.posroots[a_0],...
+}
+set induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
+let L=subgroup_by_simple_indices(G,simple_roots_of_L) in
+induce_character(L,G,ct_G,pi_L)
+
+set induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
+induce_character(G,G.character_table,simple_roots_of_L,pi_L)
+{------------}
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
@@ -225,9 +261,7 @@ use embed(L,G) followed by change_to(ct_G.root_datum) to
 convert the anser to the coordinate of ct_G
 }
 set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
-let Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f(WeylElt w)=convert_to(Gprime,W_elt(G,embed(L,G,w.word))) in
+let f=embed(L,G,ct_G.root_datum) in
 restrict_character(ct_G,ct_L,f,pi_G)
 
 { the Steinberg character, for testing only }
