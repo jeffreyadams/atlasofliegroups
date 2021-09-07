@@ -173,86 +173,78 @@ in {by definition permutation should relate the Cartan matrices}
   ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)
 
 
-{This is the primary weak_packet function
-weak Arthur packet(O_check,G)
-G is a RealForm
-O_check is a nilpotent orbit for G.root_datum.dual
-for example O_check can be chosen from G.dual_orbits
+{ This is the primary weak_packet function: weak Arthur packet(O_check,G)
+  |G| is a RealForm, |O_check| is a nilpotent orbit for |G.root_datum.dual|
+  for example O_check can be chosen from |dual_orbits(G)|
+  We allow a central shift |shift| to the infinitesimal character to be given
 }
-set weak_packet (ComplexNilpotent O_check,RealForm G) =
-      ( [([Param],[WCell])] , [(int,int,Param)] ):
+set weak_packet (ComplexNilpotent O_check,RealForm G,ratvec shift) =
+      ( [ [Param],[WCell] ] , [int,int,Param] ):
    prints("Computing weak packets for ",G);
-   let delta_check=  {distinguished involution on dual side}
-       ^G.distinguished_involution in
-   if not twist(delta_check,O_check)=O_check
-   then prints("Skipping orbit: dual orbit is not delta_check fixed")
-   ;  ([],[])
-   elif is_abelian(G) {avoid constructing SpringerTable for torus}
-   then ( blocks_and_cells(G.trivial) , [(0,0,G.trivial)] )
+   let delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
+in if not twist(delta_check,O_check)=O_check
+   then ([],[])
    else
-      let gamma_final=O_check.H/2
+      let gamma_final=O_check.H/2+shift
       then gamma = {this is the target infinitesimal character, need to pass it}
       	   	   gamma_final+2*rho(G)
       then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
-   in prints("gamma:",gamma); prints("gamma_final:",gamma_final)
+   in prints("gamma:",gamma,new_line, "gamma_final:",gamma_final)
    ;  let rd_int=integrality_datum(rd,gamma)
       then st_int=Springer_table(rd_int)
    in prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum)
    ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)
-   in prints("O_check_int:", O_check_int)
+   in prints("O_check_int:", O_check_int,new_line, "permutation",permutation)
    ;  prints("computing packet for:", O_check_int)
-   ;  let (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
+   ;  let (bc,wp) =
+         weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
    in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
-   ;  (bc,wp).print
+   ;  (bc,wp)
 fi
+
+set weak_packet (ComplexNilpotent O_check,RealForm G) =
+      ( [ [Param],[WCell] ] , [int,int,Param] ):
+   weak_packet(O_check,G,null(G.rank))
 
 { run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
-set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G) =
-      [( [([Param],[WCell])] , [(int,int,Param)] )]:
-if is_abelian(G) {avoid constructing SpringerTable for torus}
-then [( blocks_and_cells(G.trivial) , [(0,0,G.trivial)] )]
-else prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
-   let st = Springer_table(G), G_orbits=G.orbits
+set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift) =
+      [ [[Param],[WCell]] , [int,int,Param] ]:
+   prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+   let st = Springer_table(G)
+   ,  delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
 in for O_check in dual_orbits
-   do let delta_check= {distinguished involution on dual side}
-            ^G.distinguished_involution
-   in if not twist(delta_check,O_check)=O_check
+   do if not twist(delta_check,O_check)=O_check
       then prints("Skipping orbit: dual orbit is not delta_check fixed")
       ;  ([],[])
-      else
-         let O_0=st.dual_map_i(O_check) {O_0 might on group differing by isogeny}
-         then O = {get the orbit on the correct G}
-                  orbit_by_diagram(G_orbits,O_0.diagram_normalized)
-         in prints("Orbit by diagram: ", O)
-         ;  if =#real_nilpotent_orbits(O,G)
-            then prints("Skipping dual orbit ", O_check
-	    	       ," (d(O_check) has no real forms for G)")
-            ;  ([],[])
-            else prints
-	    	 ( new_line
-                 , "Computing weak packet for orbit: ", O_check.root_datum
-	   	 , " ", O_check.H
-		 , " dim=", O_check.dim_nilpotent)
-	    ;  weak_packet(O_check,G)
-            fi
+      elif =#real_nilpotent_orbits(st.dual_map_i(O_check),G)
+      then prints("Skipping dual orbit ", O_check
+		 ," (d(O_check) has no real forms for G)")
+      ;  ([],[])
+      else prints
+	   ( new_line
+	   , "Computing weak packet for orbit: ", O_check.root_datum
+	   , " ", O_check.H
+	   , " dim=", O_check.dim_nilpotent)
+      ;  weak_packet(O_check,G,shift)
       fi
    od
-fi
 
-{given just a RealForm G, compute the dual orbits then compute
-all weak packets as you run over these dual orbits}
-set weak_packets(RealForm G)=
-[([([Param],[WCell])],[(int,int,Param)])]:
-{note: to deal with case of simple + torus, used .derived here,
- but this is better handles elsewhere, in springer_table_BC.at
-}
-weak_packets(G.{derived.}dual_orbits,G)
+set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G) =
+      [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(dual_orbits,G,null(G.rank))
+
+
+{given just a RealForm G, compute the dual orbits then compute all weak packets
+ as you run over these dual orbits}
+set weak_packets (RealForm G) = [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(dual_orbits(G),G)
 
 {given just a RealForm G, compute the dual orbits, then
 all weak packets as you run over these dual orbits}
-set weak_packets_even(RealForm G)=
-[([([Param],[WCell])],[(int,int,Param)])]:
-weak_packets(G.even_dual_orbits,G)
+set weak_packets_even (RealForm G ) = [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(even_dual_orbits(G),G)
 
 {reporting functions}
 
@@ -614,7 +606,7 @@ od
 
 {compute all weak packets for G, and display tables of the result
  does not include information about induced unipotents
- 
+
 (diagram,dim,BC Levi,cent,Z(cent_0),C_2,orders of classes of A(O), #real orbits for all forms in inner class,arthur packets)
 
 }
@@ -697,67 +689,8 @@ prints(new_line,"Summary of weak packets:");for wp@i in m do
 prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
 
-{-----------------moved from thta_induced_unipotents.at------}
+{-----------------moved from theta_induced_unipotents.at------}
 
-{allow a central shift}
-set weak_packet(ComplexNilpotent O_check,RealForm G,ratvec shift)=([([Param],[WCell])],[(int,int,Param)]):
-let ()=prints("Computing weak packets for ",G) then
-delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
-if not twist(delta_check,O_check)=O_check then
-prints("Skipping orbit: dual orbit is not delta_check fixed");([],[]) elif
-is_abelian(G) then
- let characters=all_parameters_gamma(G,shift) in
- (##for p in characters do blocks_and_cells(p) od,for p@i in characters do (i,0,p) od)
-else
-let gamma_final=O_check.H/2+shift then
-gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
-all=all_parameters_gamma(G,gamma) then
-rd=O_check.root_datum.dual then
-()=prints("gamma:",gamma) then
-()=prints("gamma_final:",gamma_final) then
-rd_int=integrality_datum(rd,gamma) then
-st_int=Springer_table(rd_int) then
-()=prints("integral data: st_int") then
-()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
-(O_check_int,permutation)=integral_descent(st_int,O_check) then
-()=prints("O_check_int:", O_check_int) then
-()=prints("permutation: ", permutation) then
-()=prints("computing packet for:", O_check_int) then
-(bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
-in
-if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;
-(bc,wp)
-fi
-
-{allow a central shift}
-{run over a set of dual orbits
-check if dual(O_check) intersects \g^(-theta)}
-set weak_packets([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift)=
-[([([Param],[WCell])],[(int,int,Param)])]:
-{avoid constructing SpringerTable for torus}
-if is_abelian(G) then
- let p=all_parameters_gamma(G,shift)[0] in
-[(blocks_and_cells(p),[(0,0,p)])] else
-[([([Param],[WCell])],[(int,int,Param)])]:
-let st=prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
-Springer_table(G) then
-G_orbits=G.orbits then
-rv=[([([Param],[WCell])],[(int,int,Param)])]:[] in
-for O_check in dual_orbits do
-  let delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
-  if not twist(delta_check,O_check)=O_check then
-   prints("Skipping orbit: dual orbit is not delta_check fixed");rv#:=([],[])
-  else let
-  O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
-  O=orbit_by_diagram(G_orbits,O_0.diagram_normalized)  {get the orbit on the correct G} in
- let ()=prints("Orbit by diagram: ", O) in
- if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)");rv#:=([],[])
- else
- prints(new_line,"Computing weak packet for orbit: ", O_check.root_datum, " ", O_check.H, " dim=", O_check.dim_nilpotent);
- rv#:=weak_packet(O_check,G,shift)
-fi fi
-od;rv
-fi
 
 {allow a central shift}
 set unipotent_representations(RealForm G,ratvec shift)=[Param]:parameters(weak_packets(G.dual_orbits,G,shift))

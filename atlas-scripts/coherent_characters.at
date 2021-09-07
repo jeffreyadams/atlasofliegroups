@@ -149,43 +149,61 @@ ct.degree(i).to_string,
 {if st.is_special_representation(i)  then st.springer_inverse_special(i).diagram.to_string else "xx" fi,} "xx",
 a[i].to_string,b[i].to_string,c[i].to_string] od)
 
-set show_coherent_data(SpringerTable st,RealForm G)=
-let ct=st.ct then
-(a,b,c)=coherent_data(st,block_of(G.trivial)) in
-prints(
-"Coherent data for G=", G,new_line,
-"i: index of representation sigma of W",new_line,
-"dim: dimension of sigma",new_line,
-"deg: degree b(sigma) of sigma", new_line,
-"name: label of representation",new_line,
-"*: special",new_line,
-"orbit: Springer(orbit)=sigma",new_line,
-"RF: number of real forms of orbit",new_line,
-{"Cent: Cent(SL2)^0",new_line,
-"C2: #conjugacy classes in Cent of order 1,2",new_line,}
-"A(O): orders of conjugacy classes in A(O)",new_line,
-"mult of sigma in:",new_line,
-" B: W-rep on block B",new_line,
-" X: W-rep on KGB space X",new_line,
-" I: W-rep on involutions in W");
-tabulate(
-["i","dim","deg","name","orbit","RF",{"Cent","C2",}"A(O)","B","X","I"] #
-for i:st.ct.n_irreps do
-let  (valid,orbit)=st.springer_inverse(i) in
-[i.to_string+st.special_representation_star(i),
-dimension(ct,i).to_string,
-ct.degree(i).to_string,
-ct.irreducible_label(i)
-]##
- if valid then
-{  let cent=orbit.centralizer in}
-  [orbit.diagram.to_string,
-  number_real_nilpotent_orbits(orbit_by_diagram(G,orbit.diagram_normalized),G).to_string,
-{  cent.nice_format,
-  (#cent.compact_form.strong_real_forms_same_type).to_string,}
-  orbit.component_datum.orders.to_string]
- else ["","",""{,"",""}] fi##
-[a[i].to_string,b[i].to_string,c[i].to_string+st.special_representation_star(i)] od)
+set show_coherent_data = (SpringerTable,RealForm->):
+(  let message =
+      join
+      ( [ "i: index of representation sigma of W"
+	, "dim: dimension of sigma"
+	, "deg: degree b(sigma) of sigma"
+	, "name: label of representation"
+	, "*: special"
+	, "orbit: Springer(orbit)=sigma"
+	, "RF: number of real forms of orbit"
+	{,"Cent: Cent(SL2)^0"
+	 ,"C2: #conjugacy classes in Cent of order 1,2"
+	}
+	, "A(O): orders of conjugacy classes in A(O)"
+	, "mult of sigma in:"
+	, " B: W-rep on block B"
+	, " X: W-rep on KGB space X"
+	, " I: W-rep on involutions in W"
+	]
+      , new_line
+      ,""
+      )
+in (SpringerTable st,RealForm G) void:
+   let (a,b,c) = coherent_data(st,block_of(G.trivial))
+in prints( "Coherent data for G=",G, new_line, message)
+;  tabulate
+   ( ["i","dim","deg","name","orbit","RF",{"Cent","C2",}"A(O)","B","X","I"]
+   # for i:st.ct.n_irreps
+      do let (valid,orbit)=st.springer_inverse(i)
+      in [ i.to_string+st.special_representation_star(i)
+	 , dimension(st.ct,i).to_string
+	 , st.ct.degree(i).to_string
+	 , st.ct.irreducible_label(i)
+	 ]
+      ##
+	 if valid
+	 then
+	 {  let cent=orbit.centralizer in }
+	 [ orbit.diagram.to_string
+	 , number_real_nilpotent_orbits(orbit,G).to_string
+	 {
+	 ,  cent.nice_format
+	 ,  (#cent.compact_form.strong_real_forms_same_type).to_string
+	 }
+	 , orbit.component_datum.orders.to_string
+	 ]
+	 else ["","",""{,"",""}]
+	 fi
+      ## [ a[i].to_string
+	 , b[i].to_string
+	 , c[i].to_string+st.special_representation_star(i)
+	 ]
+      od
+   ) {tabulate}
+)
 
 set show_coherent_data (RealForm G) = void:
    show_coherent_data(Springer_table(G),G)
