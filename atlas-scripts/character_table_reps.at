@@ -43,9 +43,13 @@ set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
 for w in ct.class_reps do trace(cell_action(cell,w,permutation)) od
 
 set special_character(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
+   let summands =
+      let dec = ct.decompose(cell_character(ct,cell,permutation))
+      in smallest_degree_summands(ct,dec)
+in if #summands=1 then summands[0]
+   elif #summands=0 then error("no special summands?")
+   else error("not unique special representation")
+   fi
 
 set special_character(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
 special_character(ct,cell,permutation)
