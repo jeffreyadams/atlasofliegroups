@@ -39,10 +39,10 @@ set weak_packet_int (SpringerTable st_int
 		    ,ratvec gamma_target) =
       ([([Param],[WCell])],[(int,int,Param)]):
       { (blocks_and_cells,[(int,int,Param)])}
-{(  assert(integrality_datum(O_check.root_datum.dual,O_check.H/2) =}
-(  { don't do this: }{assert(O_check.root_datum.dual=          st_int.root_datum
+(  assert(integrality_datum(O_check.root_datum.dual,O_check.H/2) =
+          st_int.root_datum
 	 ,"root datum mismatch, are you using the integrality datum?")
-;} if #params=0 then ([],[])
+; if #params=0 then ([],[])
   else let O=st_int.dual_map_i(O_check)
   in if cells_verbose
      then prints("gamma_target:",gamma_target)
@@ -82,55 +82,6 @@ set weak_packet_int (SpringerTable st_int
 )
 
 
-{ same as previous command, with additional permutation:
-  for computing dual_map_i and springer(O) we do some case-by-case/table
-  constructions; the labeling of simple roots in the given root datum, and the
-  case-by-case constructed one (using simple_factors) may be different
-  permutation is the matrix taking i^th simple root of given root datum to i^th
-  simple root of the constructed one
-}
-set weak_packet_int (SpringerTable st_int
-    		    ,ComplexNilpotent O_check
-		    ,[Param] params
-		    ,ratvec gamma_target
-		    ,mat permutation) =
-      ([([Param],[WCell])],[(int,int,Param)]): { (blocks_and_cells,triples) }
-if =#params then ([],[])
-else
-   if cells_verbose
-   then prints("gamma_target:",gamma_target)
-   ;  prints
-      ( "Computing weak packet for ", params[0].real_form, new_line
-      , "dual orbit:",new_line
-      , " dual root datum: ", O_check.root_datum,new_line
-      , " diagram: ", O_check.diagram, new_line
-      , " normalized diagram: ", O_check.diagram_normalized, new_line
-      , " H: ", O_check.H, new_line
-      , " dimension: ", O_check.dim_nilpotent)
-   fi
-;  let blocks_and_cells=blocks_and_cells(params)
-in if cells_verbose
-   then prints("computed ", #blocks_and_cells, " blocks")
-   ; prints("inf. char.=",gamma_target)
-   fi
-;  let O=st_int.dual_map_i(O_check)
-in if cells_verbose then prints
-      ("orbit:",new_line, " root datum: ", O.root_datum, new_line
-      , " diagram: ", O.diagram, new_line
-      , " normalized diagram: ", O.diagram_normalized, new_line
-      , " H: ", O.H, new_line
-      , " dimension: ", O.dim_nilpotent)
-    fi
-;  let sigma=st_int.springer(O)
-in if cells_verbose then prints
-      ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
-   fi
-; let parameters = parameters_given_AV_infinitesimal_character
-                   (st_int,O,blocks_and_cells,gamma_target,permutation)
-in (blocks_and_cells,parameters)
-fi
-
-
 {this calls weak_packet_int(st_int,O_check,G,params,gamma_target)
 and is typically called as follows:
 params=all_parameters_gamma(G,O_check.H/2+2*rho(G))
@@ -151,28 +102,6 @@ set weak_packet_int (SpringerTable st_int,ComplexNilpotent O_check,RealForm G) =
    in weak_packet_int(st_int,O_check,all,gamma_target)
 )
 
-{ we need to move this to st_int.root_datum.dual
-  this uses a permutation, which we return since it is needed later
-}
-{this commmand is no longer needed}
-set integral_descent (SpringerTable st_int,ComplexNilpotent O_check) =
-      (ComplexNilpotent,mat):
-   let rd = {the original root datum on the group side} O_check.root_datum.dual
-   , O_check_rd_int = {orbit for rd_int_dual} O_check.integral_descent
-   then rd_int = {integrality datum on group side}
-                 integrality_datum(rd,O_check.H/2)
-   then {P is the permutation relating rd_int.derived and st_int.root_datum}
-        (,P)=Cartan_matrix_type(Cartan_matrix(rd_int))
-   then permutation=P.permutation_matrix
-in {by definition permutation should relate the Cartan matrices}
-   assert(permutation*st_int.root_datum.Cartan_matrix =
-          rd_int.Cartan_matrix*permutation
-         ,"permutation does not relate the Cartan matrices");
-{ Note: st_int.root_datum.dual is *adjoint*,
-  so O_check_rd_int.diagram = O_check_rd_int.H }
-{  ((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation) , permutation)}
-  ((st_int.root_datum.dual,(),O_check_rd_int.H*permutation) , permutation)
-
 
 { This is the primary weak_packet function: weak Arthur packet(O_check,G)
   |G| is a RealForm, |O_check| is a nilpotent orbit for |G.root_datum.dual|
@@ -189,17 +118,15 @@ in if not twist(delta_check,O_check)=O_check
    else
       let gamma_final=O_check.H/2+shift
       then gamma = {this is the target infinitesimal character, need to pass it}
-      	   	   gamma_final+2*rho(G)
+		   gamma_final+two_rho(G)
       then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
    in prints("gamma:",gamma,new_line, "gamma_final:",gamma_final)
    ;  let rd_int=integrality_datum(rd,gamma)
       then st_int=Springer_table(rd_int)
    in prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum)
-   ;  let (O_check_int,permutation)=integral_descent(st_int,O_check)
-   in prints("O_check_int:", O_check_int,new_line, "permutation",permutation)
-   ;  prints("computing packet for:", O_check_int)
-   ;  let (bc,wp) =
-         weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
+   ;  let O_check_int = integral_descent(O_check)
+   in prints("computing packet for:", O_check_int)
+   ;  let (bc,wp) = weak_packet_int(st_int,O_check_int,all,gamma_final)
    in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
    ;  (bc,wp)
 fi
@@ -616,30 +543,19 @@ let wp=weak_packets(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits then
 (ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
-{TMI! put stuff you really want below}
-if cells_verbose then
-  prints("Orbits for the dual group: ", G.dual_quasisplit_form);
-  show_nilpotent_orbits_very_long((ic,data));
-  prints(new_line,"Information about orbit centralizers:");
-  for (,,,,cent,,,,,)@i in data do
-  prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
-  prints("isogeny information: ");
-  show_centralizer_isogeny(orbits[i]);
-  prints("-------------") od;
-  prints();
-  prints();
-  show(for (,,,,,,,,,ap)@i in data do ap od);
-  show_short(wp);
-  show(wp);
-  show_long(wp);
-  if G.is_relatively_split then
-   let wp_sc = ##for weakpacket@i in wp do
-   let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
-   test_conjecture_report(wp_sc,G)
-  fi;
-  prints(export(parameters(wp)))
-fi;
-{put stuff you really want here: ; at the end of each item}
+prints("Orbits for the dual group: ", G.dual_quasisplit_form);
+show_nilpotent_orbits_very_long((ic,data));
+prints(new_line,"Information about orbit centralizers:");
+for (,,,,cent,,,,,)@i in data do
+prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
+prints("isogeny information: ");
+show_centralizer_isogeny(orbits[i]);
+prints("-------------") od;
+prints();
+prints();
+show(for (,,,,,,,,,ap)@i in data do ap od);
+show_short(wp);
+show(wp);
 show_long(wp);
 if G.is_relatively_split then
  let wp_sc = ##for weakpacket@i in wp do

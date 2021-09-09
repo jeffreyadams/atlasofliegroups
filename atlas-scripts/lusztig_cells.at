@@ -108,16 +108,16 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
  ()=if sigma_lusztig_verbose
    then prints(("L=", L,new_line,"H_L=", H_L,new_line,"O_L:", O_L.H, " ", O_L.diagram) ) fi then
  roots_L=for alpha in L.simple_roots do root_index(G,alpha) od then
- {avoid computing L.springer_table if orbit_L =0 or principal, only need L.character_table}
+ {avoid computing L.Springer_table if orbit_L =0 or principal, only need L.class_table}
  {first compute character sigma_L of L=springer(O_L)\otimes sgn
         also desired_degree_sgn: the (fake) degree of sigma_L}
 (sigma_L_sgn,desired_degree_sgn)=([int],int):
  if O_L=L.zero_orbit then (L.character_table.trivial,0)
  elif O_L=L.principal_orbit then (L.character_table.sign,#L.posroots)
- else  {not 0 or principal orbit; need to compute L.springer_table: main work is here}
+ else  {not 0 or principal orbit; need to compute L.Springer_table: main work is here}
   let ()=if sigma_lusztig_verbose then prints(("computing st_L:") ) fi then
-  st_L=L.springer_table then
-   ()=if sigma_lusztig_verbose then prints(("done computing L.springer_table (not including generic degree)") ) fi then
+  st_L=L.Springer_table then
+   ()=if sigma_lusztig_verbose then prints(("done computing L.Springer_table (not including generic degree)") ) fi then
   sigma_L_sgn=tensor_sign_index(st_L.ct,st_L.springer(O_L)) {springer(O_L)\otimes sgn} then
   char_sgn=st_L.ct.characters[sigma_L_sgn] then
   deg_sgn=st_L.ct.degree(sigma_L_sgn)  then
@@ -129,7 +129,8 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
   ()=if sigma_lusztig_verbose then prints("inducing character from L:",
        L,new_line, "roots_L: ", roots_L, new_line, "sigma_L_sgn:",
        sigma_L_sgn) fi then
-  ind_sgn=induce_character(G,ct_G,roots_L,sigma_L_sgn) then
+   ind_sgn=induce_character(L.class_table,ct_G.class_table,sigma_L_sgn) then
+
   ()=if sigma_lusztig_verbose then
     prints("finished inducing character from L:", L, new_line, "ind_sgn=(2)" , ind_sgn,new_line);
     ct_G.view_char(ind_sgn)
@@ -186,7 +187,7 @@ sort_u(
 od)
 
 {some shorthands which are handy but inefficient}
-set lusztig_cell(RootDatum G,ComplexNilpotent O)=[[int]]:lusztig_cell(G,G.springer_table,O)
+set lusztig_cell(RootDatum G,ComplexNilpotent O)=[[int]]:lusztig_cell(G,G.Springer_table,O)
 
 {compute lusztig cells, running over given list of nilpotents}
 {returns: array, one entry for each orbit
@@ -219,7 +220,7 @@ set lusztig_cells(RootDatum G,SpringerTable st_G)=[[(ComplexNilpotent,RootDatum,
 lusztig_cells(G,st_G,G.orbits)
 
 set lusztig_cells(RealForm G)=[[(ComplexNilpotent,RootDatum,vec,ratvec,[int])]]:
-let st=G.springer_table in
+let st=G.Springer_table in
 st.update_generic_degrees(G);
 lusztig_cells(G,st,G.orbits)
 
@@ -335,12 +336,12 @@ set show_lusztig_cells(RootDatum G,SpringerTable st_G)=show_lusztig_cells(G,st_G
 set show_lusztig_cells_plus(RootDatum G,SpringerTable st_G)=show_lusztig_cells_plus(G,st_G,G.orbits)
 
 set show_lusztig_cells(RootDatum G)=
-let st=G.springer_table in
+let st=G.Springer_table in
 st.update_generic_degrees(G.split_form);
 show_lusztig_cells(G,st)
 
 set show_lusztig_cells_plus(RootDatum G)=
-let st=G.springer_table in
+let st=G.Springer_table in
 st.update_generic_degrees(G.split_form);
 show_lusztig_cells_plus(G,st)
 

@@ -72,3 +72,16 @@ set Springer_table(RootDatum rd) = SpringerTable:
       do let (letter,n)=simples[i] in springer_table_simple(rdi,letter,n)
       od
 in combine(rd,simple_tables)
+
+set test_d(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.dual_map(a).diagram) od
+set test_di(SpringerTable st)=for a in st.root_datum.dual_orbits do prints(a.diagram, " ", st.dual_map_i(a).diagram) od
+set test_dual_map(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.dual_map(a).diagram) od
+set test_dual_map_i(SpringerTable st)=for a in st.root_datum.dual_orbits do prints(a.diagram, " ", st.dual_map_i(a).diagram) od
+set test_d(RootDatum G)=test_d(G.Springer_table)
+set test_springer(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.springer(a)) od
+set test_all(SpringerTable st)=
+prints(new_line,"G=", st.root_datum.nice_format);
+prints("dual map: ");test_dual_map(st);
+prints("dual map inverse: ");test_dual_map_i(st);
+prints("Springer correspondence: ");test_springer(st)
+set test_all(RootDatum G)=test_all(G.Springer_table)
