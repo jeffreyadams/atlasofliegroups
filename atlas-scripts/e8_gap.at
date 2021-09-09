@@ -3,6 +3,7 @@
 {gap character table for E8, processed to be input into atlas}
 {source file is in Dropbox: GAP version of E8 Weyl group character table.txt}
 
+{ this table determines numbering of W(E8) irreps used in springer_table_E8 }
 set e8_gap_table = [vec]: { a list of 112 rows, one for each irred. character }
 [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
  ,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1

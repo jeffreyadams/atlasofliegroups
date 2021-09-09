@@ -101,10 +101,10 @@ set merge_u ((int,int->bool) leq) = ([int] a,[int] b) [int]:
       od
     fi
 
-{ sort-unique for a general type: as for cooresponding |sort|, we have the
-  caller pass just the array size and comparison function. For |a| of type
-  [(string,T)], select elements sorted by |string| component, keeping onlt the
-  first pair with a given string as
+{ sort-unique for a general type: as for corresponding |sort|, we have the
+  caller pass just the array size and comparison function. For example, given
+  |a| of some type [(string,T)], select elements sorted by |string| component,
+  keeping only the first pair with a given string as
   |a:=for i in sort_u(#a,(int i,int j)bool: let(x,)=a[i],(y,)=a[j]) in x<=y)
       do a[i] od|
 }

@@ -38,9 +38,6 @@ set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
 
 {from magma} { orders, then class sizes, of conjugacy classes in magma order }
 
-set e6_sgn_index=1
-set e6_reflection_index=2
-
 set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
    let e6_orders_sizes = mat:
 	[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5

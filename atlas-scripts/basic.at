@@ -7,7 +7,10 @@ set_type
 , maybe_a_mat =     ( void no_mat | mat solution )
 ]
 
-set where() = void: for line in back_trace do prints(line) od
+set where() = void:
+   for line@i in back_trace
+   do if line[:3]="In " then prints([i]," ",line) fi
+   od
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
@@ -18,8 +21,9 @@ set sign (bool b) = int: { |minus_1^#b|, i.e.: } if b then minus_1 else 1 fi
 
 set ^ = !=@(bool,bool) { exclusive or }
 
+set assert (bool b,(->string) report) = void: if not b then error(report()) fi
+set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
 set assert (bool b,string message) = void: if not b then error(message) fi
-set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 

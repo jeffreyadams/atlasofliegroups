@@ -109,12 +109,12 @@ weak_packets(st,cell_and_character_data.real_form.dual_orbits,cell_and_character
 set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 [(([Param],[WCell]),[([int],[int])])] cell_and_character_data)=
 [([([Param],[WCell])],[(int,int,Param)])]:
-weak_packets(springer_table(G),dual_orbits,cell_and_character_data)
+weak_packets(Springer_table(G),dual_orbits,cell_and_character_data)
 
 set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 (([Param],[WCell]),[([int],[int])]) cell_and_character_data)=
 [([([Param],[WCell])],[(int,int,Param)])]:
-weak_packets(springer_table(G),dual_orbits,[cell_and_character_data])
+weak_packets(Springer_table(G),dual_orbits,[cell_and_character_data])
 
 {prepare cell_data for input to weak_packets(st,O,cell_data)}
 set cell_and_character_data(CharacterTable ct,[Param] parameters)=
@@ -181,7 +181,7 @@ set E8_cell_and_character_data=[cell_and_characters_big_block,cell_and_character
 {comment out either the first line or lines 2-4}
 prints("Springer table already defined")
 prints("Defining Springer table")
-set E8_st=springer_table(simply_connected(E8))
+set E8_st=Springer_table(simply_connected(E8))
 prints("defined Springer table")
 
 
@@ -194,10 +194,9 @@ prints("defined Springer table")
 /CUT}
 
 {assuming the lines between CUT and /CUT have been loaded,
-then weak_packets(st,orbits,all_cell_data) will 
+then weak_packets(st,orbits,all_cell_data) will
 compute all weak packets for E8_s
 weak_packets(st,orbits,cell_and_characters_*_block)
 where *=tiny,small,or big
 compute the weak packets coming from these blocks
 }
-

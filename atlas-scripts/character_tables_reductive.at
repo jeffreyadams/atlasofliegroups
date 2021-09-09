@@ -38,9 +38,9 @@ set character_table_simple (RootDatum rd,string letter,int n) = CharacterTable:
 
 set combine (RootDatum rd,[CharacterTable] factors) = CharacterTable:
 (  let Wct = combine(rd,for factor in factors do factor.class_table od)
-   , words = for factor in factors do factor.n_classes od.all_words
+   , words = for factor in factors do factor.n_irreps od.all_words
    then reps = Wct.class_representatives
-   , index = mixed_radix_nr(for factor in factors do factor.n_classes od)
+   , index = mixed_radix_nr(for factor in factors do factor.n_irreps od)
    , tensor([vec] chars) = [int]: { all products of entries }
         for word in words do product(for l@i in word do chars[i][l] od)	od
 in let classes = [WeylElt,classical_class,string]:

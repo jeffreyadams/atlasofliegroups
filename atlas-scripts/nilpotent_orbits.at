@@ -80,7 +80,7 @@ set diagram_normalized(ComplexNilpotent O) = [[int]]:
    , factors = simple_factors(O.root_datum) { each factor Bourbaki ordered }
 in for f in factors do H*f.simple_roots od
 
-{ construct complex orbit (rd,(),H) from (rd,Dynkin diagram) }
+{ construct complex orbit (rd,(),H) from (rd,labelled Dynkin diagram) }
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram) =
       ComplexNilpotent:
 (  complex_nilpotent
@@ -1059,14 +1059,6 @@ orbits
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 ##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
 
-
-set orbit_by_diagram([ComplexNilpotent] orbits, [vec]diagram) = ComplexNilpotent:
-let index=first(for i:#orbits do orbits[i].diagram_normalized=diagram od) in
-orbits[index]
-
-{ this generates all orbits for |rd| on the fly; expensive }
-set orbit_by_diagram(RootDatum rd,[vec] diagram) = ComplexNilpotent:
-   orbit_by_diagram(orbits(rd),diagram)
 
 {show commands moved to nilpotent_centralizer.at}
 {

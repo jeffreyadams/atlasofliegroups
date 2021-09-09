@@ -72,39 +72,3 @@ set Springer_table(RootDatum rd) = SpringerTable:
       do let (letter,n)=simples[i] in springer_table_simple(rdi,letter,n)
       od
 in combine(rd,simple_tables)
-
-{springer_table@RootDatum and Springer_table@RootDatum are defined to be
-the *same*}
-set springer_table(RootDatum rd) = SpringerTable:Springer_table(rd)
-
-{ this is broken, but should parse; renamed to old: should not be used}
-set springer_table_old(RootDatum rd) = SpringerTable:
-   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
-   then simples = simple_factors(Lie_type)
-   then  simple_tables = [SpringerTable]:
-      let offset=0 in
-      for (letter,rank) in simples
-      do let simple_rd = sub_datum(rd,for i:rank do map[offset+i] od)
-      next offset+:=rank
-      in springer_table_simple(derived(simple_rd),letter,rank)
-      od
-in if rd.is_abelian then springer_table_torus(rd)
-   else let st = simple_tables[0] in
-      for i:#simples-1 from 1 do st:=tensor(st,simple_tables[i]) od
-   ;  st
-   fi
-
-
-
-set test_d(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.dual_map(a).diagram) od
-set test_di(SpringerTable st)=for a in st.root_datum.dual_orbits do prints(a.diagram, " ", st.dual_map_i(a).diagram) od
-set test_dual_map(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.dual_map(a).diagram) od
-set test_dual_map_i(SpringerTable st)=for a in st.root_datum.dual_orbits do prints(a.diagram, " ", st.dual_map_i(a).diagram) od
-set test_d(RootDatum G)=test_d(G.springer_table)
-set test_springer(SpringerTable st)=for a in st.orbits do prints(a.diagram, " ", st.springer(a)) od
-set test_all(SpringerTable st)=
-prints(new_line,"G=", st.root_datum.nice_format);
-prints("dual map: ");test_dual_map(st);
-prints("dual map inverse: ");test_dual_map_i(st);
-prints("Springer correspondence: ");test_springer(st)
-set test_all(RootDatum G)=test_all(G.springer_table)

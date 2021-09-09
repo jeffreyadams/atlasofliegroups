@@ -14,11 +14,11 @@
 
 
 set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
-( ct.n_classes { size of degree lists being summed }
+( ct.n_irreps { size of degree lists being summed }
 # for cell in cells
   do let cell_char = [int]: ct.decompose(cell_character(ct,cell))
      then d() = ct.degree(special_irreducible(ct,cell_char))
-  in for i:ct.n_classes
+  in for i:ct.n_irreps
      do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
      od
    od
@@ -47,7 +47,7 @@ in prints("a(i)=generic degree(character #i)",new_line
 	 ,"*: special",new_line)
 ;  tabulate
    ( ["i","dim","a(i)","b(i)"]
-   # for i:ct.n_classes
+   # for i:ct.n_irreps
      do {don't know special_representation_star without springer table}
        [i.to_string
        ,dimension(ct,i).to_string {+ct.special_representation_star(i)}
