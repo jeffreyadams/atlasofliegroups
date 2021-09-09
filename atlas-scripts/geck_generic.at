@@ -3,7 +3,7 @@
 {computing generic degree
 reference; Geck, Some Applications of Chevie to the theory of algebraic groups}
 
-set gg_verbose=false
+set gg_verbose=true
 
 {representatives of conjugacy classes of reflections:
  one simple reflection of each root length}
@@ -70,13 +70,14 @@ let ct_G=tables[table_index] then
 {()=prints("got ct_G") then}
   a_prime=
   max(
-   ##(##for M in  max_Levi_subgroups(G) do
-{    let ()=prints("M=",M) in}
+   ##(##for M@k in  max_Levi_subgroups(G) do
+    let ()=if gg_verbose then prints("k=", k, " M=",M) fi in 
     let (index_M,P_M)=lookup_character_table(M,tables) then
     ct_M=tables[index_M] in
     for char_M@t in  ct_M.characters do
-     let ind=ct_G.decompose(induce_character(M,G,ct_M,ct_G,char_M)) in
-{     let ()=if gg_verbose then prints("ind: ", ind, "t=",t) fi in}
+     let ind_0=induce_character(ct_M,ct_G,char_M) then
+     ind=ct_G.decompose(ind_0) then
+     ()=if gg_verbose then prints("k: ", k, "t=", t, "  ind_0: ", ind_0) fi in
      if ind[character_index]>0 then [ct_M.generic_degrees[t]] else [] fi
     od
    od)) in
@@ -116,12 +117,18 @@ set has_all_generic_degrees(CharacterTable ct)=bool:
 all(for i:ct.n_classes do ct.has_generic_degree(i) od)
 
 {update all tables, reading from the right, assuming all the Levis
-of table at index j are found at index k>j}
-set rec_fun update_generic_degrees([CharacterTable] tables)=void:
+of table at index j are found at index k>j
+modifies the given list of tables, the return value is void
+}
+set rec_fun update_generic_degrees_geck_long([CharacterTable] tables)=void:
 let table_index=last(for i:#tables do not tables[i].has_all_generic_degrees od) in
 if table_index=-1 then () else
 let ()=update_one_table(tables,table_index) in
-update_generic_degrees(tables) fi;()
+update_generic_degrees_geck_long(tables) fi;()
+
+{just return the updated single table}
+set rec_fun update_generic_degrees_geck([CharacterTable] tables)=CharacterTable:
+update_generic_degrees_geck_long(tables);tables[0]
 
 {this is the precomputation step:
 compute the character tables of all Levis
@@ -140,14 +147,18 @@ tables
 
 {compute character tables of all Levis, then populate
 their generic degrees inductively from the right}
-set set_generic_degrees(RootDatum G)=[CharacterTable]:
-let tables=all_levi_tables(G) in update_generic_degrees(tables);tables
+set set_generic_degrees_geck_long(RootDatum G)=[CharacterTable]:
+let tables=all_levi_tables(G) in update_generic_degrees_geck_long(tables);tables
+
+set set_generic_degrees_geck(RootDatum G)=CharacterTable:set_generic_degrees_geck_long(G)[0]
 
 {compute character tables of all Levis
  then compute all generic degrees using cell calculation
  then use the Geck algorithm for the remaining ones}
 set set_generic_degrees_plus(RootDatum G)=[CharacterTable]:
-let tables=all_levi_tables_plus(G) in update_generic_degrees(tables);tables
+let tables=all_levi_tables_plus(G) in update_generic_degrees_geck(tables);tables
+
+set set_generic_degrees(RootDatum G)=CharacterTable:set_generic_degrees_plus(G)[0]
 
 {Geck gives a formula (using omega_L) for generic_degree(sigma\otimes
 sign) in terms of generic_degree(sigma). This can be used to fill
@@ -175,7 +186,7 @@ let tables=all_levi_tables_plus(G) then
 ()=prints("Computed Levi tables plus") then
 ()=update_generic_degrees_using_sign(tables) then
 ()=prints("updated generic degrees using sign") then
-()=update_generic_degrees(tables) then
+()=update_generic_degrees_geck(tables) then
 ()=prints("updated remaining generic degrees") in tables
 
 

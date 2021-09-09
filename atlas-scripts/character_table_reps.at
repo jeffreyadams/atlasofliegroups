@@ -117,7 +117,7 @@ in for w@i in Wct_L.class_representatives
    in values_G[j] +:= pi_L[i] * (index * class_size_L(i)/class_size_G(j))
    od; for v in values_G do v.rat_as_int od
 
-{ for convenience, allow calling with chracter tables as well }
+{ for convenience, allow calling with character tables as well }
 set induce_character \
    (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
    [int]: induce_character(ct_L.class_table,ct_G.class_table,f,pi_L)
@@ -137,6 +137,10 @@ set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
       [int]:
    let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
    in induce_character(Wct_L,Wct_G,embed,pi_L)
+
+{for convenience}
+set induce_character (CharacterTable ct_L, CharacterTable ct_G,[int] pi_L) =
+      [int]:induce_character(ct_L.class_table,ct_G.class_table,pi_L)
 
 { this version assumes ct_G computed, but computes L, class table(L) on the fly }
 set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
