@@ -95,7 +95,7 @@ let ()=if sigma_lusztig_verbose then  prints(new_line,"Computing sigma_lusztig: 
        "G=", G,new_line, "st_G: ", st_G.root_datum, new_line,"M=", M, new_line, "H_M=",H_M,new_line,"y=", y)  fi
 then
 ct_G=st_G.character_table in
-if y.is_integer then  {L=G, L=G, don't need induction}
+if is_integer(y*G.simple_roots)  {y is in weight lattice}  then  {L=G, L=G, don't need induction}
  let ()=if sigma_lusztig_verbose then prints("y is integer, no induction",new_line)  fi then
  sigma=st_G.springer(O) {int} then
  ()=if sigma_lusztig_verbose then prints("sigma (no induction): ", sigma,new_line) fi  in
@@ -132,7 +132,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
    ind_sgn=induce_character(L.class_table,ct_G.class_table,sigma_L_sgn) then
 
   ()=if sigma_lusztig_verbose then
-    prints("finished inducing character from L:", L, new_line, "ind_sgn=(2)" , ind_sgn,new_line);
+    prints("finished inducing character from L:", L, new_line, "ind_sgn[2]=" , ind_sgn,new_line);
     ct_G.view_char(ind_sgn)
   fi then
   ind_decomposed_sgn=ct_G.decompose(ind_sgn) then
@@ -161,7 +161,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
      let char_L_0=ct_G.characters[char_indices[0]] then
      ()=if sigma_lusztig_verbose then prints("character of L: ", char_indices[0], new_line, char_L_0) fi in
      ct_G.character_index(char_L_0)}
-fi  {end if y.is_integer}
+fi  {end if y is in weight lattice}
 
 set lusztig_cell(RootDatum G,SpringerTable st_G,ComplexNilpotent O)=[[int]]:
 sort_u(
