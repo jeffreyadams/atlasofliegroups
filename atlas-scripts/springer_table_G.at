@@ -25,13 +25,13 @@ in ( ct
    , (ComplexNilpotent O) ComplexNilpotent:
      let diagram = O.diagram in
      if =diagram then complex_nilpotent(drd,drd.two_rho_check)
-     elif diagram=[2,2] then complex_nilpotent(drd,null(2))
+     elif diagram=[2,2] then complex_nilpotent(drd,null(rd.rank))
      else complex_nilpotent(drd,[2,0]) { 2* fundamental weight for long coroot }
      fi
    , (ComplexNilpotent O) ComplexNilpotent:
      let diagram = O.diagram in
      if =diagram then complex_nilpotent(rd,rd.two_rho_check)
-     elif diagram=[2,2] then complex_nilpotent(rd,null(2))
+     elif diagram=[2,2] then complex_nilpotent(rd,null(rd.rank))
      else complex_nilpotent(rd,[2,4]) { 2* fundamental coweight for long root }
      fi
    , (ComplexNilpotent O) int:
@@ -61,13 +61,13 @@ in ( ct
    , (ComplexNilpotent O) ComplexNilpotent:
      let diagram = O.diagram in
      if =diagram then complex_nilpotent(drd,drd.two_rho_check)
-     elif diagram=[2,2] then complex_nilpotent(drd,null(2))
+     elif diagram=[2,2] then complex_nilpotent(drd,null(rd.rank))
      else complex_nilpotent(drd,wt)
      fi
    , (ComplexNilpotent O) ComplexNilpotent:
      let diagram = O.diagram in
      if =diagram then complex_nilpotent(rd,rd.two_rho_check)
-     elif diagram=[2,2] then complex_nilpotent(rd,null(2))
+     elif diagram=[2,2] then complex_nilpotent(rd,null(rd.rank))
      else complex_nilpotent(drd,cowt)
      fi
    , (ComplexNilpotent O) int: case O.diagram * form in 3, 1, 5, 4 else 0 esac
