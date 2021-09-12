@@ -1,5 +1,5 @@
 <basic.at
-<W_reps.at { for type |WCell|; |cell_action@(WCell,WeylElt)| }
+<W_reps.at { for type |WCell|; |vertex_and_cells| |cell_action@(WCell,WeylElt)| }
 <character_table_reps.at { |smallest_degree_summands| }
 <springer_tables.at
 <isomorphism_W.at { |permute_character|, |root_permutation@(RootDatum^2)| }
@@ -10,6 +10,8 @@ set cells_verbose=false
   "cell" will always refer to a structure that includes action matrices. This
   was not so for the built-in functions |W_cells|, not directly used here.
 }
+
+{ after generating cells using |vertex_and_W_cells|, single out cell for |p| }
 set vertex_and_W_cell(Param p) = (int,WCell):
    let (vertex,cells)=vertex_and_W_cells(p)
    then cell_nr = int:

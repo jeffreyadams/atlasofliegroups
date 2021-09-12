@@ -5,6 +5,7 @@
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
+<W_orbit { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -278,7 +279,7 @@ in for w_L@i in classes_L
 
 { the sign representation occurs in S^(nr_of_posroots)(reflection), and
   this is the maximum necessary exponent to get all irreducibles }
-{. smallest k so that pi occurs in S^k(reflection) .}
+{. smallest k so that |character| has factor in common with S^k(reflection) .}
 set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
@@ -286,32 +287,33 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
 
 { ------------ projection on isotypic subspace  ----------- }
 
-{ scalar multiple of projection of representation space of |ops| on isotoypic
-  subspace defined by character |char_values| of an irreducible representation
+{ If |chi| is the character of an irreducible W-representation, and |(dim,ops)|
+  describes a W_representation, compute a scalar multiple of projection of the
+  representation space of |ops| on isotoypic subspace defined by |chi|.
 
-  If and irreducible character |char_values| is not a constituent of the
+  If such |chi| is not a constituent of the
   representation defined by |ops|, this gives the null matrix; then since
-  the result depends linearly on |char_values|, we can even use this when the
+  the result depends linearly on |chi|, we can even use this when the
   character is reducible, but has a unique irreducible constituent in common
   with |ops|, giving (a multiple of) the projection for that isotypic subspace
 }
-set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
+set projector (WeylClassTable tab, W_rep (dim,ops), [int] chi) = mat:
   let rd=tab.root_datum, Q=null(dim,dim) in
   for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,w,char_values)*action
+  do Q+:=character_value(tab,w,chi)*action
   od; Q
 
 { restrict representation pi to isotypic subspace (image space of projector) }
-set restrict_representation_isotypic (
-    WeylClassTable Wct, W_rep pi, vec char_values) = W_rep:
-  let (basis,factors)=projector(Wct,pi,char_values).adapted_basis
+set restrict_representation_isotypic \
+   (WeylClassTable Wct, W_rep pi, vec chi) = W_rep:
+  let (basis,factors)=projector(Wct,pi,chi).adapted_basis
   { operators have integral matrices w.r.t. |basis|, so restriction is OK }
   then P=basis[:#factors] { saturated lattice basis of image of the projector }
   in (#P ,for T in pi.operators do restrict_action(T,P) od)
 
 { projector for a cell representation }
-set projector (WeylClassTable Wct, WCell cell, vec char_values) = mat:
-  projector(Wct,cell_representation(Wct,cell),char_values)
+set projector (WeylClassTable Wct, WCell cell, vec chi) = mat:
+  projector(Wct,cell_representation(Wct,cell),chi)
 
 { given a cell, compute the cell represetation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
