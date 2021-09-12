@@ -214,11 +214,12 @@ set Levi_weight (ComplexParabolic P) = vec:Levi_weight(P.root_datum,P.Levi)
 {coset representatives for W/W(L)
  see coset_reps@(RootDatum,RootDatum) below for more general case
 }
-set coset_reps_Levi(RootDatum rd,RootDatum rd_L)=
-let (,elts)=generate_from(rd, Levi_weight(rd,rd_L)) in elts
+set coset_reps_Levi (RootDatum rd,RootDatum rd_L) = [WeylElt]:
+   for (,w) in generate_from(rd, Levi_weight(rd,rd_L)) do w od
 
-set coset_reps_Levi_terminate(RootDatum rd,RootDatum rd_L,int bound)=
-let (,elts)=generate_from_terminate(rd, Levi_weight(rd,rd_L),bound) in elts
+set coset_reps_Levi_terminate (RootDatum rd,RootDatum rd_L,int bound) =
+      [WeylElt]:
+   for (,w) in generate_from_terminate(rd, Levi_weight(rd,rd_L),bound) do w od
 
 {. Test if a complex Levi defined by a set of simple roots $S$ is
    $\theta_x$-stable; .}
@@ -592,7 +593,7 @@ set findlambda (RootDatum rd, RootDatum L) = vec:
 { coset representatives for W(rd)/W(rd_L); with L non standard Levi subsystem.
   If L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
 set coset_reps (RootDatum rd, RootDatum rd_L) = [WeylElt]:
-  let lambda=findlambda(rd,rd_L) in let (,elts)=generate_from(rd,lambda) in elts
+   for (,w) in generate_from(rd,findlambda(rd,rd_L)) do w od
 
 
 
