@@ -100,8 +100,8 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 {
   // temporarily deactivate completion: default to file-name completion
 #ifndef NREADLINE
-  rl_compentry_func_t* old_completion_function = rl_completion_entry_function;
-  rl_compdisp_func_t * old_hook = rl_completion_display_matches_hook;
+  auto* old_completion_function = rl_completion_entry_function;
+  auto* old_hook = rl_completion_display_matches_hook;
   rl_completion_entry_function = nullptr;
   rl_completion_display_matches_hook = nullptr;
 
