@@ -93,7 +93,7 @@ set character_table ( RootDatum rd
 		    , [WeylElt,classical_class,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    ) =  CharacterTable:
-    character_table ( class_table(rd), class_reps, chars )
+    character_table ( construct_class_table(rd), class_reps, chars )
 
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:

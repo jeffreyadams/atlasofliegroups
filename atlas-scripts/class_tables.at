@@ -675,7 +675,8 @@ set class_table_simple (RootDatum rd,string letter,int n) = WeylClassTable:
    , class_table_G(rd)
    esac
 
-set class_table (RootDatum rd) = WeylClassTable:
+{ the name of this function highlights that it does considerable work }
+set construct_class_table (RootDatum rd) = WeylClassTable:
    let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
    then simples = simple_factors(Lie_type)
    then root_data = [RootDatum]: { subdata with a single simple factor + torus }

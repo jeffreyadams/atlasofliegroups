@@ -149,14 +149,16 @@ set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
 set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
       [int]:
    let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
-in induce_character(class_table(L),Wct_G,pi_L)
+in induce_character(construct_class_table(L),Wct_G,pi_L)
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
-   let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.trivial)
 
 set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
-   let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.sign)
 
 
@@ -164,7 +166,7 @@ in induce_character(Wct_L,Wct_G,Wct_L.sign)
   special cases are done here to avoid needing that script (it's not hard) }
 set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
-   then Wct_L = class_table(L), target = int: nr_of_posroots(L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_irreps
@@ -182,7 +184,7 @@ in assert(#contributions=1,"truncate induced from sign is not irreducible");
 set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
    , induced_char = induce_trivial(ct_G.class_table,simple_roots_L)
-   then Wct_L = class_table(L), target = int: nr_of_posroots(L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_irreps
@@ -231,7 +233,7 @@ set restrict_character \
   should equal the sign character (if it does not, this function fails) }
 
 set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=class_table(rd)
+  let ct_G=construct_class_table(rd)
   then result = vec: {from |sum@mat|}
      for S in power_set(rd.all_simples) { not empty; conversion [vec]->mat OK }
      do minus_1^#S * induce_trivial(ct_G,S)
