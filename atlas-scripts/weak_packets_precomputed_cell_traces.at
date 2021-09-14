@@ -117,24 +117,24 @@ set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 weak_packets(Springer_table(G),dual_orbits,[cell_and_character_data])
 
 {prepare cell_data for input to weak_packets(st,O,cell_data)}
-set cell_and_character_data(CharacterTable ct,[Param] parameters)=
-[(([Param],[WCell]),[([int],[int])])]:
-let bc=blocks_and_cells(parameters) then
-cells=[[int]]:[],
-characters=[[int]]:[] in
-for i:#bc do
-   let (parameters,cells)=bc[i] in
-   ((parameters,cells),for cell in cells do
-    let (params,,)=cell in
-    (params,ct.cell_character(cell))
-   od)
-od
+set cell_and_character_data (CharacterTable ct,[Param] parameters) =
+      [ ([Param],[WCell]) ,[ [int],[int] ] ]:
+   for (,cells):params_and_cells in blocks_and_cells(parameters)
+   do ( params_and_cells
+      , for cell in cells
+        do ( cell.labels, cell_character(ct.class_table,cell) )
+	od
+      )
+   od
 
-set cell_and_character_data(CharacterTable ct,RealForm G)=[(([Param],[WCell]),[([int],[int])])]:
-cell_and_character_data(ct,all_parameters_gamma(G,rho(G)))
+set cell_and_character_data (CharacterTable ct,RealForm G) =
+      [ ([Param],[WCell]) ,[ [int],[int] ] ]:
+   assert(ct.root_datum = G.root_datum, "Root datum mismatch");
+   cell_and_character_data(ct,all_parameters_gamma(G,rho(G)))
 
-set weak_packets_pre(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:
-weak_packets(G,G.dual_orbits,cell_and_character_data(character_table(G),G))
+set weak_packets_pre (RealForm G,CharacterTable ct) =
+      [ [[Param],[WCell]], [int,int,Param] ]:
+   weak_packets(G,G.dual_orbits,cell_and_character_data(ct,G))
 
 { stuff particular to E8:  }
 {compute cell_and_character_data for each block of G=E8_s (tiny, small, big)

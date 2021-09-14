@@ -35,8 +35,11 @@ cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph) in
-     for i:#w.word-1 from 1 do result:=result*cell_action(cell,w.word[i],permutation) od; result
+  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph)
+  in for i:#w.word-1 from 1
+     do result:=result*cell_action(cell,w.word[i],permutation)
+     od
+  ;  result
   fi
 
 set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:

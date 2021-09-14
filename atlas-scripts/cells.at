@@ -1,6 +1,7 @@
 <basic.at
-<W_reps.at { for type |WCell|; |vertex_and_cells| |cell_action@(WCell,WeylElt)| }
-<character_table_reps.at { |smallest_degree_summands| }
+<W_reps.at { type |WCell|; |vertex_and_cells| |cell_action@(WCell,WeylElt)|,.. }
+<character_tables.at { |smallest_degree_summands| }
+<character_table_reps { for |cell_character@(CharadcterTable,WCell,mat) }
 <springer_tables.at
 <isomorphism_W.at { |permute_character|, |root_permutation@(RootDatum^2)| }
 
@@ -42,7 +43,7 @@ set cell_characterold (CharacterTable ct,WCell cell) = [int]:
   for w in ct.class_reps do trace(cell_action(cell,w)) od
 
 {. character of representation of W on cell .}
-set cell_character (CharacterTable ct,WCell cell) = [int]:
+set cell_character_inefficient (CharacterTable ct,WCell cell) = [int]:
    let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) in
    if assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell")
    ; P=id_mat(#P)
@@ -59,29 +60,31 @@ set cell_character (CharacterTable ct,WCell cell) = [int]:
    fi
 
 
-set cell_character(CharacterTable ct) = (WCell cell)[int]:
-  cell_character(ct,cell)
-set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
-  for cell in cells do cell_character(ct, cell) od
+set cell_character_inefficient(CharacterTable ct) = (WCell cell)[int]:
+   cell_character_inefficient(ct,cell)
+set cell_characters_inefficient (CharacterTable ct,[WCell] cells) = [[int]]:
+   for cell in cells do cell_character_inefficient(ct, cell) od
 
-set cells_table (CharacterTable ct,[WCell] cells) = mat:
-  matrix_of_inner_products(ct.class_table,cell_characters(ct,cells))
+{ use |cell_characters@(WeylClassTable,[WCell])| from W_reps.at }
+set cells_table (WeylClassTable Wct,[WCell] cells) = mat:
+   matrix_of_inner_products(Wct,cell_characters(Wct,cells))
 
-set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
+set cells_table_augmented (WeylClassTable Wct, [WCell] cells) = mat:
   let characters =
-    cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
-  in matrix_of_inner_products(ct.class_table,characters)
+    cell_characters(Wct,cells) ## [ Wct.trivial, Wct.sign, Wct.reflection ]
+  in matrix_of_inner_products(Wct,characters)
 
-set cell_representation (CharacterTable ct,WCell cell) = W_rep:
-  (#cell.graph,
-   for i:ct.root_datum.semisimple_rank
-   do unsparse(cell_action(cell,i),#cell.graph) od)
+set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
+  ( #cell.graph
+  , for i:Wct.root_datum.semisimple_rank
+    do unsparse(cell_action(cell,i),#cell.graph) od
+  )
 
 { list of representations defined by an array of cells }
-set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
-  for cell in cells do cell_representation(ct,cell) od
+set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
+  for cell in cells do cell_representation(Wct,cell) od
 
-set special_irreducible(CharacterTable ct, [int] multiplicities) = int:
+set special_irreducible (CharacterTable ct, [int] multiplicities) = int:
    let summands = smallest_degree_summands(ct,multiplicities)
 in case #summands
    in assert(=multiplicities,"What?"); error("zero character, no special")
@@ -89,9 +92,11 @@ in case #summands
    else error("non-unique special representation")
    esac
 
-{NOTE: need to incorporate the permutation relating ct.root_datum and cell.root_datum}
-{note that ct.root_datum must be (isomorphic to) cell.root_datum,
- which is the integrality_datum of a parameter}
+set special_character(CharacterTable ct,[int] cell_character) = int:
+   special_irreducible(ct,ct.decompose(cell_character))
+
+
+{NO need to incorporate the permutation relating ct.root_datum and cell.root_datum}
 set special_character_inefficient (CharacterTable ct,WCell cell) = int:
 (  let (valid,P) = root_permutation(ct.root_datum,cell.root_datum)
    in assert(valid,"No root system isomorphism")
@@ -105,13 +110,6 @@ in if #summands>1 then error("not unique special representation")
 
 set special_character_inefficient(CharacterTable ct)=(WCell->int):(WCell cell):
   special_character_inefficient(ct,cell)
-
-set special_character(CharacterTable ct,[int] cell_character)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character)) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
-{set special_character(CharacterTable ct)=([int]->int):
- ([int] cell_character):special_character(ct,cell_character)}
 
 
 
@@ -132,7 +130,8 @@ set blocks ([Param] params) = [[Param]]:
    let block_list = [[Param],ParamPol]: {second component for quick search } []
 in for p in params
    do if for (,P) in block_list do =P[p] od.all
-      then let B=block_of(p) in block_list #:= (B,p.null_module+B)
+      then let B=block_of(p)
+      in block_list := (block_list next block_list:=[])#(B,p.null_module+B)
       fi
    od; for (B,) in block_list do B od
 
@@ -143,7 +142,8 @@ set blocks_and_cells([Param] params) = [[Param],[WCell]]:
   {if not, one can do simpler: |do let (,cell)=W_cells(b[0]) in (b,cell) od| }
   do let cell=W_cells_of(B[0]) in (B,cell) od
 
-set blocks_and_cells (Param p) = [[Param],[WCell]]: blocks_and_cells(block_of(p))
+set blocks_and_cells (Param p) = [[Param],[WCell]]:
+   blocks_and_cells(block_of(p))
 
 {really should be this, since it only returns one block:}
 set block_and_cells (Param p) = ([Param],[WCell]):

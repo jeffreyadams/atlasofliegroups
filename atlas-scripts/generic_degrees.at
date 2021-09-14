@@ -14,9 +14,11 @@
 
 
 set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
+   let Wct = ct.class_table in
 ( ct.n_irreps { size of degree lists being summed }
 # for cell in cells
-  do let cell_char = [int]: ct.decompose(cell_character(ct,cell))
+  do assert(Wct.root_datum=cell.root_datum,"Root datum ismatch in cell")
+  ;  let cell_char = [int]: ct.decompose(cell_character(Wct,cell))
      then d() = ct.degree(special_irreducible(ct,cell_char))
   in for i:ct.n_irreps
      do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
