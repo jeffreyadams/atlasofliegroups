@@ -1,8 +1,4 @@
-<basic.at
-<class_tables.at
-<W_reps.at { for type |W_rep=(int,[mat])| }
-<character_tables.at { for type |CharacterTable| }
-<character_tables_reductive.at { for |character_table@RootDatum| }
+<isomorphism_W.at
 
 set character (CharacterTable ct, W_rep r) = [int]: character(ct.class_table,r)
 set smallest_degree (CharacterTable ct,[int]chi) = int:
@@ -62,11 +58,11 @@ set embed (RootDatum L, RootDatum G,[int] w) = mat:
    product(G.rank,for s in w do embed_simple_reflection(L,G,s) od)
    { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match }
 
-{ These should not be necessary, use |convert_to(G,w)| instead
+
 set embed (RootDatum L,RootDatum G,WeylElt w) = WeylElt:
    W_elt(G,embed(L,G,w.word))
 set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
-}
+
 
 
 { ------------------- induction ------------------- }
@@ -122,16 +118,6 @@ set induce_character \
    (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
    [int]: induce_character(ct_L.class_table,ct_G.class_table,f,pi_L)
 
-{ given L\subset G, compute
-ct_G=G.character_table and
-ct_L=L.character_table
-the class_representatives for ct_G are in terms of Gprime=ct_G.root_datum
-the class_representatives for ct_L are in terms of Lprime=ct_L.root_datum
-the embedding of W(L) in W(G), on the other hand, is in terms of L and G
-need: L' -> L \subset G -> Gprime
-see embed(L,G,Lprime,Gprime) above
-}
-
 { simplified versions; first provide embedding via |convert_to| }
 set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
       [int]:
@@ -147,6 +133,27 @@ set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
       [int]:
    let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
 in induce_character(class_table(L),Wct_G,pi_L)
+
+{L\simeq L'\subset G, compute induction from W(L) to W(G) via this isomorphism
+more precisely:
+ M is a permutation matrix taking the simple roots of Wct_L.root_datum to  those of L_prime
+ the roots of L_prime are a subroot system of the roots of G, so convert_to(Wct_G.root_datum,y)
+ is defined for y in W(L_prime)
+ w\in W(L) ----> W(L_prime) ---> W(G)
+  permute(M,w,L_prime): w\in W(L) to W(L_prime)
+  convert_to(W_ct_G.root_datum,y): W(L_prime)->W(G)
+}
+set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
+   ()=assert(valid,"root data are not related by a permutation") then
+   f(WeylElt w)=WeylElt: convert_to(Wct_G.root_datum,permute(M,w,L_prime)) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{for convenience}
+set induce_character (CharacterTable ct_L,RootDatum L_prime, CharacterTable ct_G,[int] pi_L) =
+      [int]:induce_character(ct_L.class_table,L_prime,ct_G.class_table,pi_L)
+
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
