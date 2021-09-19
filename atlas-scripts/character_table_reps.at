@@ -1,4 +1,5 @@
 <isomorphism_W.at
+<character_tables_reductive.at
 
 set character (CharacterTable ct, W_rep r) = [int]: character(ct.class_table,r)
 set smallest_degree (CharacterTable ct,[int]chi) = int:
@@ -159,9 +160,15 @@ set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.trivial)
 
+set induce_trivial (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
+induce_trivial(ct_G.class_table,simple_roots_of_L)
+
 set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.sign)
+
+set induce_sign (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
+induce_sign(ct_G.class_table,simple_roots_of_L)
 
 
 { truncated induction is defined in general in truncated_induction.at
