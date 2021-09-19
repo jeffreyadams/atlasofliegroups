@@ -76,28 +76,9 @@ set springer_C (ComplexNilpotent O) = BiPartition:
       core_quotient_2(partition_of_orbit_C(O))
    in (lambda,mu)
 
-{ Springer map from partition P of 2n to bipartition (P,Q) of total size n }
-set springer_C (Partition P) = BiPartition:
-(  assert(is_valid("C",P),"Not a valid type C partition")
-;  let (,(mu,lambda)) { partitions are swapped for type C, see |wrep@Orbit| }
-      = core_quotient_2(sort(P))
-   in (lambda~[:],mu~[:]) { return partitions in increasing order, why? }
-)
-
-set springer_C (CharacterTable ct,ComplexNilpotent O) = int:
-  let (a,b)=springer_C(partition_of_orbit_C(O))
-  , n=O.root_datum.semisimple_rank
-  then index=first
-    (for i:ct.n_irreps
-     do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
-{prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
-       sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))
-     od)
-in {pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
-
-
 set inverse_springer_partition_C (BiPartition (P,Q)) =
-      (bool,Partition): { whether in image of springer_C, and if so pre-image }
+      (bool,Partition):
+      { whether in image of springer_C, and if so Jordan type of pre-image }
    let lambda = from_core_quotient_2(0,(Q,P))
 in (is_valid("C",lambda),lambda)
 
@@ -164,27 +145,6 @@ set springer_B (ComplexNilpotent O) = BiPartition:
    let (,pair) = { partitions unswapped for type B, see |wrep@Orbit| }
       core_quotient_2(partition_of_orbit_B(O))
    in pair
-
-{ Springer map from partition P of 2n+1 to bipartition (P,Q) of total size n }
-set springer_B (Partition P) = BiPartition:
-(  assert(is_valid("B",P),"Not a valid type C partition")
-;  let (,(lambda,mu)) { partitions unswapped for type B, see |wrep@Orbit| }
-      = core_quotient_2(sort(P))
-   in (lambda~[:],mu~[:]) { return partitions in increasing order, why? }
-)
-
-set springer_B (CharacterTable ct,ComplexNilpotent O) = int:
-( let (a,b)=springer_B(partition_of_orbit_B(O))
-  , n=O.root_datum.semisimple_rank
-in a:=a.delete_trailing_zeros; b:=b.delete_trailing_zeros
-; let index=first
-    (for i:ct.n_irreps
-     do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in
-{need n+1: sometimes a or b has length n+1 not n}
-          sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n))
-     od)
-  in index
-)
 
 set inverse_springer_partition_B (BiPartition partition_pair) =
       (bool,Partition): { whether in image of springer_C, and if so pre-image }
@@ -357,17 +317,3 @@ in ( table
    , dual_map_C(dual(rd)) { "inverse" of dual map is dual map for C }
    , (ComplexNilpotent O) int: irrep_of_bipartition(springer_B(O))
    )
-
-set springer_table_C(CharacterTable ct)=SpringerTable:
-   let orbits=orbits(ct.root_datum)
-   , dual_map = dual_map_C@ComplexNilpotent
-   , dual_map_i = dual_map_B@ComplexNilpotent
-   , springer(ComplexNilpotent O)=springer_C(ct,O)
-in (ct,orbits,dual_map,dual_map_i,springer)
-
-set springer_table_B(CharacterTable ct)=SpringerTable:
-   let orbits=orbits(ct.root_datum)
-   , dual_map = dual_map_B@ComplexNilpotent
-   , dual_map_i = dual_map_C@ComplexNilpotent
-   , springer(ComplexNilpotent O)=springer_B(ct,O)
-in (ct,orbits,dual_map,dual_map_i,springer)

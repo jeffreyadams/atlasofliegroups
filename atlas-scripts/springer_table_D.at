@@ -156,7 +156,7 @@ set springer_D (ComplexNilpotent O) = D_irrep:
    springer_D(partition_of_orbit_D(O))
 
 
-{ a function that were used during development, but no longer is }
+{ a function that was used during development, but no longer is }
 set springer_D_by_induction (CharacterTable ct,ComplexNilpotent O) = D_irrep:
    let index = int: truncate_induce_sign(ct,Bala_Carter_simples(O))
    then char = ct.tensor_sign(ct.character(index))

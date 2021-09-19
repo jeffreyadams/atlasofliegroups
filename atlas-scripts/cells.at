@@ -109,20 +109,20 @@ in if #summands>1 then error("not unique special representation")
 )
 
 set special_character_inefficient(CharacterTable ct)=(WCell->int):(WCell cell):
-  special_character_inefficient(ct,cell)
+   special_character_inefficient(ct,cell)
 
 
 
 set #(WCell cell) = int: #cell.labels { should also equal |#cell.graph| }
 
 set parameters([Param] block,WCell cell)=[Param]:
-  let (labels,,)=cell in for i in labels do block[i] od
+   let (labels,,)=cell in for i in labels do block[i] od
 
 set parameters([Param] block,[WCell] cells)=[Param]:
-##for cell in cells do parameters(block,cell) od
+   for cell in cells do parameters(block,cell) od.##
 
-set parameters([([Param],[WCell])] data)=[Param]:
-##for i:#data do parameters(data[i]) od
+set parameters([[Param],[WCell]] data)=[Param]:
+   for pair in data do parameters(pair) od.##
 
 
 { expand and partition set of params into blocks }
