@@ -9,46 +9,56 @@
 
 set character_table_S (int n) =
      (CharacterTable,(Partition->int),(Partition->int)):
-  let partitions_n = partitions(n)
-  then classes = [WeylElt,classical_class,string]:
-    for lambda in partitions_n
-    do (conjugacy_class_S(lambda),lambda.class_A,lambda.cycles_string)
-    od
-  , irreps = [classical_irrep,string,[int]]:
-    for lambda in partitions_n ~ { reversal to go from trivial to sign }
-    do (irrep_A(lambda),lambda.irrep_string
-       ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
-       )
-    od
-  , lookup_partition = (Partition->int): index_partition(partitions_n)
-  , top = #partitions_n-1
-in ( character_table(class_table_S(n),classes,irreps)
+(  let partitions_n = partitions(n)
+   then classes = [WeylElt,classical_class,string]:
+      for lambda in partitions_n
+      do (conjugacy_class_S(lambda),lambda.class_A,lambda.cycles_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for lambda in partitions_n ~ { reversal to go from trivial to sign }
+      do (irrep_A(lambda),lambda.irrep_string
+	 ,for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
+	 )
+      od
+   then ch_tab = character_table(class_table_S(n),classes,irreps)
+   , lookup_partition = (Partition->int): index_partition(partitions_n)
+   , top = #partitions_n-1
+in
+   for i:ch_tab.n_irreps
+   do ch_tab.set_generic_degree(i,@:ch_tab.degree(i),false) od
+;  ( ch_tab
    , lookup_partition { find index among conjugacy classes }
    , (Partition lambda) int: { index among irreps }
         top - lookup_partition(lambda)
    )
+)
 
 set character_table_A (RootDatum rd) =
       (CharacterTable,(Partition->int),(Partition->int)):
-  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
-  , class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
-  then classes = [WeylElt,classical_class,string]:
-    for lambda in partitions
-    do (class_rep(lambda),lambda.class_A,lambda.to_string)
-    od
-  , irreps = [classical_irrep,string,[int]]:
-    for lambda in partitions ~ { reversal to go from trivial to sign }
-    do (irrep_A(lambda),lambda.to_string
-       ,for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
-       )
-    od
+(  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
+   ,  class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
+   then classes = [WeylElt,classical_class,string]:
+      for lambda in partitions
+      do (class_rep(lambda),lambda.class_A,lambda.to_string)
+      od
+   ,  irreps = [classical_irrep,string,[int]]:
+      for lambda in partitions ~ { reversal to go from trivial to sign }
+      do (irrep_A(lambda),lambda.to_string
+	 ,for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
+	 )
+      od
+   then ch_tab = character_table(class_table_A(rd),classes,irreps)
   , lookup_partition = (Partition->int): index_partition(partitions)
   , top = #partitions-1
-in ( character_table(class_table_A(rd),classes,irreps)
+in
+   for i:ch_tab.n_irreps
+   do ch_tab.set_generic_degree(i,@:ch_tab.degree(i),false) od
+;  ( ch_tab
    , lookup_partition { find index among conjugacy classes }
    , (Partition lambda) int: { index among irreps }
         top - lookup_partition(lambda)
    )
+)
 
 {				types B,C				}
 
@@ -69,7 +79,7 @@ in ([BiPartition] list) (BiPartition->int): { assume |list| is sorted by |leq| }
 
 set character_table_B (int n) =
       (CharacterTable,(BiPartition->int),(BiPartition->int)):
-   let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+(  let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
    , rd=SO(n+n+1)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
@@ -81,16 +91,20 @@ set character_table_B (int n) =
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
+   then ch_tab = character_table(class_table_B(n),classes,irreps)
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_B(n),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
+in
+   for pair@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)
 
 set character_table_B (RootDatum rd) =
       (CharacterTable,(BiPartition->int),(BiPartition->int)):
-   let n=rd.semisimple_rank
+(  let n=rd.semisimple_rank
    then class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
    , class_rep = conjugacy_class_B(rd)
    then cycles = for pair in class_list do pair.to_cycles od
@@ -103,17 +117,20 @@ set character_table_B (RootDatum rd) =
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
+   then ch_tab = character_table(class_table_B(rd),classes,irreps)
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_B(rd),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
-
+in
+   for pair@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)
 
 set character_table_C (int n) =
       (CharacterTable,(BiPartition->int),(BiPartition->int)):
-   let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
+(  let class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
    , rd=Sp(n+n)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
@@ -125,16 +142,20 @@ set character_table_C (int n) =
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
+   then ch_tab = character_table(class_table_C(n),classes,irreps)
    ,  lookup_class = (BiPartition->int): index_bipartition(class_list)
    ,  lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_C(n),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
+in
+   for pair@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)
 
 set character_table_C (RootDatum rd) =
       (CharacterTable,(BiPartition->int),(BiPartition->int)):
-   let n=rd.semisimple_rank
+(  let n=rd.semisimple_rank
    then class_list =  partition_pairs(n), irrep_list = BC_irreps(n)
    , class_rep = conjugacy_class_C(rd)
    then cycles = for pair in class_list do pair.to_cycles od
@@ -147,14 +168,18 @@ set character_table_C (RootDatum rd) =
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
+   then ch_tab = character_table(class_table_B(rd),classes,irreps)
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
-in ( character_table(class_table_C(rd),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
+in
+   for pair@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)
 
-{				type D				}
+{				type D					}
 
 
 { all irreducible representations of D_n }
@@ -168,7 +193,11 @@ set D_irreps (int n) = [D_irrep]:
       esac
    od.##
 
-{ look up pair in sorted list of partition pairs,  in ordering of |D_irreps| }
+{ In list of |D_irrep|s sorted by ordering of |D_irreps|, look up a |D_irrep|.
+  The |D_irrep|s in the list are among those produced by |D_irreps|, so that
+  if unsplit, the larger (for |cmp_partition|) partition comes first; the
+  second |D_irrep| (whose index we look up) does not have to satisfy this.
+}
 set index_D_irreps = ([D_irrep]->(D_irrep->int)):
    let flatten(D_irrep chi) = (BiPartition,int):
       case chi
@@ -176,40 +205,44 @@ set index_D_irreps = ([D_irrep]->(D_irrep->int)):
       | (lambda,b).split_irr: ((lambda,lambda),#b)
       esac
    ,  before_eq (BiPartition(nu,):pair1,int flag1) = (BiPartition,int->bool):
-	   let sum_nu = sum(nu) in
-	   if flag1.<
-	   then { compare against unsplit }
-	      (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
-		 case sum(mu)-sum_nu
-		 then false { smaller |sum(mu)|, so arg0 after arg1 }
-		 in pair1<=pair0 { reverse comparison, for |~[:]| above }
-		 else true
-		 esac
-	   else { compare against split }
-	      (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
-		 case sum(mu)-sum_nu
-		 then false
-		 in if flag0.< then pair1<=pair0 { just reverse comparison }
-		    else { comparing two split irreps }
-		       case cmp_equal_sum_partitions(nu,mu) { reverse here too }
-		       then true in flag0<=flag1 else false
-		       esac
-		    fi
-		 else true
-		 esac
-	   fi
+	 let sum_nu = sum(nu) in
+	 if flag1.<
+	 then { compare against unsplit }
+	    (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+	       case sum(mu)-sum_nu
+	       then false { smaller |sum(mu)|, so arg0 after arg1 }
+	       in pair1<=pair0 { reverse comparison, for |~[:]| above }
+	       else true
+	       esac
+	 else { compare against split }
+	    (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+	       case sum(mu)-sum_nu
+	       then false
+	       in if flag0.< then pair1<=pair0 { just reverse comparison }
+		  else { comparing two split irreps }
+		     case cmp_equal_sum_partitions(nu,mu) { reverse here too }
+		     then true in flag0<=flag1 else false
+		     esac
+		  fi
+	       else true
+	       esac
+	 fi
    in ([D_irrep] sorted_list) (D_irrep->int):
       let up_to = [(BiPartition,int->bool)]:
 	  for elt in sorted_list do before_eq(flatten(elt)) od
       , len = #sorted_list
       in (D_irrep chi) int:
-	 let key=flatten(chi)
+	 let key = { like |flatten(chi)|, but maybe swap partitions }
+	    case chi
+	    | (lambda,mu):pair.unsplit_irr:
+	       (if leq_partitions(pair) then (mu,lambda) else pair fi,minus_1)
+	    | (lambda,b).split_irr: ((lambda,lambda),#b)
+	    esac
 	 in binary_search_first( (int i)bool: up_to[i](key), 0, len)
 
 set character_table_D(int n) =
       (CharacterTable,(D_class->int),(D_irrep->int)):
-   let class_list = D_classes(n)
-   ,   irrep_list = D_irreps(n)
+(  let class_list = D_classes(n), irrep_list = D_irreps(n)
    then classes = [WeylElt,classical_class,string]:
       for c in class_list
       do (conjugacy_class_SO(c),c.class_D,c.cycles_string)
@@ -220,16 +253,20 @@ set character_table_D(int n) =
          , for class in class_list do character(rep,class) od
 	 )
       od
+   then ch_tab = character_table(class_table_D(n),classes,irreps)
    ,  lookup_class = (D_class->int): index_D_classes(class_list)
    ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
-in ( character_table(class_table_D(n),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
+in
+   for chi@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(chi)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)
 
 set character_table_D(RootDatum rd) =
       (CharacterTable,(D_class->int),(D_irrep->int)):
-   let  n=rd.semisimple_rank
+(  let  n=rd.semisimple_rank
    ,    class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
    then irrep_list = D_irreps(n)
    ,    class_list =  D_classes(n)
@@ -241,9 +278,13 @@ set character_table_D(RootDatum rd) =
          , for class in class_list do character(rep,class) od
 	 )
       od
+   then ch_tab = character_table(class_table_D(rd),classes,irreps)
    ,  lookup_class = (D_class->int): index_D_classes(class_list)
    ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
-in ( character_table(class_table_D(rd),classes,irreps)
-   , lookup_class { find index among conjugacy classes }
-   , lookup_irrep
-   )
+in
+   for chi@i in irrep_list
+   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(chi)))
+   in ch_tab.set_generic_degree(i,gen_deg,false)
+   od
+;  ( ch_tab, lookup_class, lookup_irrep )
+)

@@ -185,7 +185,7 @@ in
 
 { while |D_dual| is rather simpler than |C_to_B_dual| (no square is added to the
   Jordan type, and so there is no need for an initial |D_adjust| as the argument
-  is assumed to be already valid), the way it works is differs in some ways.
+  is assumed to be already valid), the way it works differs in some ways.
   Notably the condition that after the transposition the parity of row lengths
   does not change from an odd indexed row to the (even indexed) next is not
   preserved in general (for instance |ones(2*n)| transposes to |[2*n]| which is

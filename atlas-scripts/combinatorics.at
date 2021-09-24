@@ -495,7 +495,7 @@ set pairs_of_total_sum (int n,(int->[Partition]) lister) = [BiPartition]:
 set partition_pairs (int n) = [BiPartition]:
   pairs_of_total_sum(n,partitions@int)
 
-set =(BiPartition (P,Q), BiPartition (R,S)) = bool: P=R and Q=S
+set = (BiPartition (P,Q), BiPartition (R,S)) = bool: P=R and Q=S
 
 { compare |BiPartition| values of same sum, in ordering of |partition_pairs| }
 set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
@@ -743,7 +743,7 @@ set symbol (BiPartition(lambda,mu)) = Symbol: { normalized }
      #(lambda:=strip_to_partition(lambda)) - (#(mu:=strip_to_partition(mu))+1)
 in case d { make |d=0| by zero-extending one of the paritions if necessary }
    then { #lambda<#mu+1 } lambda ##:= for : -d do 0 od
-   in { #lambda=#mu }     ()
+   in { #lambda=#mu+1 }     ()
    else { #lambda>#mu+1 } mu     ##:= for : d do 0 od
    esac
 ;  [ for i:#lambda do lambda~[i]+i od, for j:#mu do mu~[j]+j od ]
@@ -921,19 +921,36 @@ in (D_class C) int:
 
 set same_as (D_irrep chi) = (D_irrep->bool):
    case chi
-   | pair0.unsplit_irr:
-     (D_irrep psi) bool:
-     case psi | pair1.unsplit_irr: pair0=pair1 | else false esac
+   | (p0a,p0b):pair0.unsplit_irr: let swapped=(p0b,p0a) in
+     (D_irrep xi) bool:
+     case xi | pair1.unsplit_irr: pair0=pair1 or swapped=pair1 | else false esac
    | (lambda,b0).split_irr:
-     let freq=lambda.frequencies in
      (D_irrep psi) bool:
-     case psi | (mu,b1).split_irr: freq=mu.frequencies and b0=b1
-     | else false
-     esac
+     case psi | (mu,b1).split_irr: lambda=mu and b0=b1 | else false esac
    esac
 
 set = (D_irrep c0, D_irrep c1) = bool: c0.same_as(c1)
 set != (D_irrep c0,D_irrep c1) = bool: not c0.same_as(c1)
+
+set make_special (D_irrep chi) = D_irrep:
+   case chi
+   | (,).split_irr: chi
+   | (lambda,mu).unsplit_irr:
+           (let d=#lambda-#mu-1 in { make |lambda| one longer than |mu| }
+	    case d then lambda ##:= null(-d) in () else mu ##:= null(d) esac
+	   )
+	 ;  let spec = make_special
+	       (Symbol:[ for e@i in lambda do e-i ~od
+	               , for e@i in mu     do e-i ~od
+		       ] )
+	 { now in particular |spec[1][i]<=spec[0][i+1]| for all |i<#mu|, so
+	   the first partition below has strictly larger sum than the second:
+	   the only alternative would be both partitions being equal, but that
+	   cannot happen because |lambda| and |mu| differ, as one easily shows }
+	 in ( for i:#lambda do spec[0]~[i]+i od.strip_to_partition
+	    , for i:#mu do spec[1]~[i]+i od.strip_to_partition
+	    ).unsplit_irr
+   esac
 
 set character (D_irrep chi, D_class c) = int:
    assert(chi.rank = c.rank,"Size mismatch");
