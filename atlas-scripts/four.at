@@ -85,6 +85,7 @@ for Gd in dual_real_forms(G)
    do show_big_table(G,Gd,ct_G); prints(new_line)
    od
 
+set show_BXYI_tables (RealForm G)=show_BXYI_tables(G,character_table(G))
 
 set show_big_table(RealForm G)=show_big_table(G,G.character_table)
 {
