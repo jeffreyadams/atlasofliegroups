@@ -11,7 +11,7 @@ char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct
 set four_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[int] char_G)=
 let (valid,M)=root_permutation(G,ct_G.root_datum) then
 char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
-(ct_G.inner_product(char,character_coherent_B(G,ct_G)),
+(ct_G.inner_product(char,character_coherent_B(G,G_dual,ct_G)),
  ct_G.inner_product(char,character_coherent_X(G,ct_G)),
  ct_G.inner_product(char,character_coherent_Y(ct_G,G_dual)),
  ct_G.inner_product(char,character_coherent_I(ct_G)))
@@ -61,6 +61,28 @@ dimension(ct_G,i).to_string,
 ct_G.degree(i).to_string,
 if #ct_G.degrees>0 then ct_G.degrees[i].to_string else "" fi,
 a.to_string,b.to_string,bprime.to_string,c.to_string] od)
+
+set show_big_table(RealForm G,RealForm G_dual,CharacterTable ct_G)=
+prints("Dual Group: ", G_dual, new_line);
+let all=four_inner_products(G,G_dual,ct_G,ct_G.characters) in
+tabulate(
+["i","dim","deg", "gdeg","B","X","Y","I"]#
+for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
+[i.to_string,
+dimension(ct_G,i).to_string,
+ct_G.degree(i).to_string,
+if #ct_G.degrees>0 then ct_G.degrees[i].to_string else "" fi,
+a.to_string,b.to_string,bprime.to_string,c.to_string] od)
+
+set show_BXYI_tables (RealForm G, CharacterTable ct_G)=void:
+prints("i: #of character of W",new_line,
+"dim: dim(sigma)",new_line, "deg: degree(sigma)", new_line,
+ "gdeg: generic degree(sigma)", new_line,
+"mult of sigma in B,X,Y,I",new_line);
+for Gd in dual_real_forms(G)
+   do show_big_table(G,Gd,ct_G); prints(new_line)
+   od
+
 
 set show_big_table(RealForm G)=show_big_table(G,G.character_table)
 {
