@@ -121,7 +121,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
   sigma_L_sgn=tensor_sign_index(st_L.ct,st_L.springer(O_L)) {springer(O_L)\otimes sgn} then
   char_sgn=st_L.ct.characters[sigma_L_sgn] then
   deg_sgn=st_L.ct.degree(sigma_L_sgn)  then
-   ()=if sigma_lusztig_verbose then prints("sigma_lusztig: ", char) fi
+   ()=if sigma_lusztig_verbose then prints("char_sgn: ", char_sgn) fi
    in (char_sgn,deg_sgn)
  fi  {now have (sigma_L_sgn=character of L,desired_degree_sign)}
  {end if O_L=L.zero_orbit} then
@@ -221,7 +221,7 @@ lusztig_cells(G,st_G,G.orbits)
 
 set lusztig_cells(RealForm G)=[[(ComplexNilpotent,RootDatum,vec,ratvec,[int])]]:
 let st=G.Springer_table in
-st.update_generic_degrees(G);
+{st.update_generic_degrees(G);}
 lusztig_cells(G,st,G.orbits)
 
 {show lusztig cells, running over given list of nilpotents}
@@ -337,12 +337,12 @@ set show_lusztig_cells_plus(RootDatum G,SpringerTable st_G)=show_lusztig_cells_p
 
 set show_lusztig_cells(RootDatum G)=
 let st=G.Springer_table in
-st.update_generic_degrees(G.split_form);
+{st.update_generic_degrees(G.split_form);}
 show_lusztig_cells(G,st)
 
 set show_lusztig_cells_plus(RootDatum G)=
 let st=G.Springer_table in
-st.update_generic_degrees(G.split_form);
+{st.update_generic_degrees(G.split_form);}
 show_lusztig_cells_plus(G,st)
 
 

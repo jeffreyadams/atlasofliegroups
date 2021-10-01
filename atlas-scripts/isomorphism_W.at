@@ -39,20 +39,14 @@ set int_mapping(mat M) = (int->int): { where |M| must be a permutation matrix }
 }
 set permute((int->int) f,WeylElt w,RootDatum rd_new) = WeylElt:
    W_elt(rd_new,for i in w.word do f(i) od)
+set permute(mat M,WeylElt w,RootDatum rd_new)=WeylElt: permute(int_mapping(M),w,rd_new)
+set permute(mat M,[WeylElt] classes,RootDatum rd_new)=[WeylElt]:
+ let f=int_mapping(M) in for w in classes do permute(f,w,rd_new) od
+
+
 
 { with just |w| given, apply renumbering automorphism of W given by |f| to |w| }
 set permute((int->int) f,WeylElt w) = WeylElt: permute(f,w,w.root_datum)
-
-{
-set permute(mat M,[WeylElt] classes,RootDatum rd_new) = [WeylElt]:
-  for w in classes
-  do let test = is_conjugate_to(permute(int_mapping(M),w,rd_new))
-     in classes[first(#classes,(int i): test(classes[i]))]
-  od
-
-set permute(mat M,[WeylElt] classes) = [WeylElt]:
-  if #classes=0 then [] else permute(M,classes,classes[0].root_datum) fi
-}
 
 {M takes W_1 to W_2, given classes_1, classes_2, find the induced permutation
 on classes. This requires a lookup since M takes w\in W_1 to w'\in W_2, but

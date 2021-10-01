@@ -1,3 +1,5 @@
+<coherent_characters.at
+
 set permute_character(mat M,CharacterTable ct,[int] char)=[int]:permute_character(M,ct.class_table,char)
 
 set four_inner_products(RealForm G,CharacterTable ct_G,[int] char_G)=
@@ -227,3 +229,4 @@ set show_lusztig_sommers_cell(ComplexNilpotent O_v)=void:show_lusztig_sommers_ce
 set show_lusztig_sommers_cells(RootDatum G,SpringerTable st_G)=void:show_lusztig_sommers_cells(G,st_G,G.dual.springer_table,G.dual_orbits)
 }
 set show_lusztig_sommers_cells(RootDatum G)=void:show_lusztig_sommers_cells(G,G.springer_table,G.dual.springer_table,G.dual_orbits)
+}

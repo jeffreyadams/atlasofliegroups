@@ -1,9 +1,9 @@
-
+<generic_degrees.at
 
 {computing generic degree
 reference; Geck, Some Applications of Chevie to the theory of algebraic groups}
 
-set gg_verbose=true
+set gg_verbose=false
 
 {representatives of conjugacy classes of reflections:
  one simple reflection of each root length}
@@ -71,11 +71,11 @@ let ct_G=tables[table_index] then
   a_prime=
   max(
    ##(##for M@k in  max_Levi_subgroups(G) do
-    let ()=if gg_verbose then prints("k=", k, " M=",M) fi in 
+    let ()=if gg_verbose then prints("k=", k, " M=",M) fi in
     let (index_M,P_M)=lookup_character_table(M,tables) then
     ct_M=tables[index_M] in
     for char_M@t in  ct_M.characters do
-     let ind_0=induce_character(ct_M,ct_G,char_M) then
+     let ind_0=induce_character(ct_M,M,ct_G,char_M) then
      ind=ct_G.decompose(ind_0) then
      ()=if gg_verbose then prints("k: ", k, "t=", t, "  ind_0: ", ind_0) fi in
      if ind[character_index]>0 then [ct_M.generic_degrees[t]] else [] fi
@@ -84,9 +84,10 @@ let ct_G=tables[table_index] then
    if gg_verbose then prints("a_prime: ", a_prime) fi;a_prime
 fi
 
-{this updates a list of tables, modifying the generic_degree values
-in the specified table; the return value is void}
-set update_one_table([CharacterTable] tables, int table_index)=void:
+{given a list of tables, where tables for proper Levis are found to the right
+update a single table, assuming complete tables are known for all proper Levis
+use the Geck algorithm for all (unfilled) entries of the specified table}
+set update_one_table_geck([CharacterTable] tables, int table_index)=void:
 let table=tables[table_index] then
 G=table.root_datum in
 if G.is_abelian then
@@ -94,11 +95,11 @@ if G.is_abelian then
 else let
 ()=for character_index: table.n_classes do
 if table.has_generic_degree(character_index) then table else
- let ()=if gg_verbose then prints("character_index: ", character_index, "table_index: ", table_index) fi in 
+ let ()=if gg_verbose then prints("character_index: ", character_index,new_line, "table_index: ", table_index) fi in 
  let
   A=a_prime(G,tables,table_index,character_index) then
   B=a_prime(G,tables,table_index,table.tensor_sign_index(character_index)) then
- omega_L=omega_L(table,character_index,default_weight_function@WeylElt) then
+  omega_L=omega_L(table,character_index,default_weight_function@WeylElt) then
   max=max(A,B-omega_L)
   in
   if gg_verbose then
@@ -116,6 +117,36 @@ for table in tables do prints("");show(table) od
 set has_all_generic_degrees(CharacterTable ct)=bool:
 all(for i:ct.n_classes do ct.has_generic_degree(i) od)
 
+{given a list of tables, where tables for proper Levis are found to the right
+update a single table, assuming complete tables are known for all proper Levis
+use cell algorithm up to given size, then Geck}
+set update_one_table_mixed_strategy([CharacterTable] tables, int table_index, int cell_size_cutoff)=void:
+let table=tables[table_index] then
+G=table.root_datum in
+if G.is_abelian then
+ let d()=0 in table.set_generic_degree(0,d,true);()
+else let
+()=for character_index: table.n_classes do
+if table.has_generic_degree(character_index) then table else
+ let ()=if gg_verbose then prints("character_index: ", character_index, "table_index: ", table_index) fi in
+ let
+  A=a_prime(G,tables,table_index,character_index) then
+  B=a_prime(G,tables,table_index,table.tensor_sign_index(character_index)) then
+  omega_L=omega_L(table,character_index,default_weight_function@WeylElt) then
+  max=max(A,B-omega_L)
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"H=",H,new_line,"omega_L", omega_L) fi;
+   let d()=max in
+ table.set_generic_degree(character_index,d,true)
+  fi
+od
+in ()
+fi
+
+
+
+
 {update all tables, reading from the right, assuming all the Levis
 of table at index j are found at index k>j
 modifies the given list of tables, the return value is void
@@ -123,8 +154,19 @@ modifies the given list of tables, the return value is void
 set rec_fun update_generic_degrees_geck_long([CharacterTable] tables)=void:
 let table_index=last(for i:#tables do not tables[i].has_all_generic_degrees od) in
 if table_index=-1 then () else
-let ()=update_one_table(tables,table_index) in
+let ()=update_one_table_geck(tables,table_index) in
 update_generic_degrees_geck_long(tables) fi;()
+
+{update all tables, reading from the right, assuming all the Levis
+of table at index j are found at index k>j
+use the cell algorithm up to given cutoff, and then Geck
+}
+set rec_fun update_generic_degrees_geck_long([CharacterTable] tables, int cell_size_cutoff)=void:
+let table_index=last(for i:#tables do not tables[i].has_all_generic_degrees od) in
+if table_index=-1 then () else
+let ()=update_one_table_geck(tables,table_index) in
+update_generic_degrees_geck_long(tables, cell_size_cutoff) fi;()
+
 
 {just return the updated single table}
 set rec_fun update_generic_degrees_geck([CharacterTable] tables)=CharacterTable:
