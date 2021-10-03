@@ -73,8 +73,24 @@ for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
 [i.to_string,
 dimension(ct_G,i).to_string,
 ct_G.degree(i).to_string,
-if #ct_G.degrees>0 then ct_G.degrees[i].to_string else "" fi,
+{if #ct_G.degrees>0 then ct_G.degrees[i].to_string else} "" {fi},
 a.to_string,b.to_string,bprime.to_string,c.to_string] od)
+
+set show_big_table(RealForm G,RealForm G_dual)=
+   prints(new_line,"G = ",G,new_line,"Dual Group: ",G_dual,new_line);
+   let ct_G=character_table(G)
+   in prints("i: #of character of W",new_line,
+       "dim: dim(sigma)",new_line, "deg: degree(sigma)", new_line,
+        "gdeg: generic degree(sigma)", new_line,
+        "mult of sigma in B,X,Y,I",new_line);
+    let all=four_inner_products(G,G_dual,ct_G,ct_G.characters)
+    in tabulate(["i","dim","deg", "gdeg","B","X","Y","I"]#
+       for i:ct_G.n_classes
+         do let (a,b,bprime,c)=all[i]
+             in [i.to_string, dimension(ct_G,i).to_string,
+	         ct_G.degree(i).to_string,"",
+                 a.to_string,b.to_string,bprime.to_string,c.to_string]
+         od)
 
 set show_BXYI_tables (RealForm G, CharacterTable ct_G)=void:
 prints("i: #of character of W",new_line,
@@ -88,6 +104,17 @@ for Gd in dual_real_forms(G)
 set show_BXYI_tables (RealForm G)=show_BXYI_tables(G,character_table(G))
 
 set show_big_table(RealForm G)=show_big_table(G,G.character_table)
+
+set make_vector(Param p, [Param] list)=vec:
+  for q in list do if p=q then 1 else 0 fi od
+
+set make_vector(ParamPol P, [Param] list)=vec:
+   sum(for (m,q) in %P do split_as_int(m)*make_vector(q,list) od)
+
+set block_action_matrix ([Param] bl, int s)=mat:
+   let M=column(make_vector(coherent_std(bl[0],s),bl))
+   in for i:#bl-1 do M#:=make_vector(coherent_std(bl[i+1],s),bl)
+      od; M
 {
 set show_four_inner_products_special(RealForm G,SpringerTable st_G,SpringerTable st_G_v)=
 let tip=four_inner_products(G,st_G.ct,st_G.special_characters) then   {orbits indexed by special orbits in G}
