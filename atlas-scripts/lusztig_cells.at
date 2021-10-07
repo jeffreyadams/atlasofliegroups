@@ -10,8 +10,9 @@
 <coherent_characters.at
 <truncated_induction.at
 <isomorphism_W.at
-<generic_degrees.at 
+<generic_degrees.at
 <nci_nilrad_roots.at {for all_sums@([ratvec])}
+<springer_special_rep.at
 
 {sigma_lusztig (used to be sigma_L, the new name is better
 sigma_lusztig(O,x) is a of a representation of W(G)
@@ -211,7 +212,7 @@ for orbit@counter in orbits do
      let ()=if sigma_lusztig_verbose then prints("y=", y, new_line, "v=",v/(G.coxeter_number+1)) fi  in
      let ()=if sigma_lusztig_verbose then prints("lusztig_cell_plus", new_line, "orbit: ", orbit.diagram,
      basis, new_line,"M=", M, new_line,"H_M=",H_M,new_line, "y=", y)  fi in
-     let j_values=sigma_lusztig(G,st_G,orbit,M,H_M,y+v/(G.coxeter_number+1))
+     let j_values=sigma_lusztig(G,st_G,orbit,M,H_M,y+v/(G.coxeter_number+1)) 
  in (orbit,M,H_M,y,v/(G.coxeter_number+1),j_values)
 od
 od od
@@ -242,7 +243,8 @@ table=
     H_M.compact_ratvec,
     y.compact_ratvec,
     centralizer(G,y).nice_format,
-    "sigma=[]",
+    "[]",
+    "x",
     "x",
     "x",
     "x",
@@ -258,13 +260,14 @@ table=
     H_M.compact_ratvec,
     y.compact_ratvec,
     centralizer(G,y).nice_format,
-    "sigma=" +
+    "" +
      if #j_values=1 then k.to_string else
      j_values.to_string + ":" + k.to_string
     fi,
+    if =y then st_G.springer_special_rep(orbit).to_string else "" fi,
     dimension(st_G.ct,k).to_string,
     st_G.ct.degrees[k].to_string,
-    st_G.ct.generic_degree_string(k),
+{    st_G.ct.generic_degree_string(k),}
     st_G.ct.character(k).to_string
    ]
    od {for k in j_values}
@@ -273,13 +276,13 @@ table=
  od {for orbit}
 in {table=[[string]]}
 tabulate(
-["O","dim","i","rd_int","M","H_M","v","L","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"]#
+["O","dim","i","rd_int","M","H_M","v","L","sigma","special","dim","deg","char=ct.characters[sigma[0]]"]#
 ##table)
 
 {show lusztig cells, running over given list of nilpotents}
 set show_lusztig_cells_plus(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
 prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
-let table_header=["O","dim","i","rd_int","M","H_M","y","v","Cent(y+v)","sigma(s)","dim","deg","gdeg","char=ct.characters[sigma[0]]"] then
+let table_header=["O","dim","i","rd_int","M","H_M","y","v","Cent(y+v)","sigma","special","dim","deg","char=ct.characters[sigma[0]]"] then
 all_data=lusztig_cells_plus(G,st_G,orbits)     {[[(M,H_M,y,j_values)]]} then
 table=
 ##for i:#all_data do
@@ -287,7 +290,7 @@ table=
  for j:#data do
   let (orbit,M,H_M,y,v,j_values)=data[j] in
   if =#j_values then
-   [[orbit.diagram.to_string,
+   [[orbit.diagram.to_string + st_G.special_star(orbit),
     orbit.dim_nilpotent.to_string,
     i.to_string,
     integrality_datum(orbit).nice_format,
@@ -296,7 +299,8 @@ table=
     y.compact_ratvec,
     v.compact_ratvec,
     centralizer(G,y).nice_format,
-    "sigma=[]",
+    "[]",
+    "x",
     "x",
     "x",
     "x",
@@ -304,7 +308,7 @@ table=
    ]]
   else
    for k in j_values do
-   [orbit.diagram.to_string,
+   [orbit.diagram.to_string + st_G.special_star(orbit),
     orbit.dim_nilpotent.to_string,
     i.to_string,
     integrality_datum(orbit).nice_format,
@@ -313,13 +317,14 @@ table=
     y.compact_ratvec,
     v.compact_ratvec,
     centralizer(G,y+v).nice_format,
-    "sigma=" +
+    "" +
      if #j_values=1 then k.to_string else
      j_values.to_string + ":" + k.to_string
     fi,
+    if =y then st_G.springer_special_rep(orbit).to_string else "" fi,
     dimension(st_G.ct,k).to_string,
     st_G.ct.degrees[k].to_string,
-    st_G.ct.generic_degree_string(k),
+{    st_G.ct.generic_degree_string(k),}
     st_G.ct.character(k).to_string
    ]
    od {for k in j_values}
