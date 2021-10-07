@@ -1,0 +1,336 @@
+{W-rep sigma -> special W-rep sigma_s}
+{
+
+1) sigma =Springer(O,chi) -> Springer(O_s) where O is in the special piece of O_s
+
+2) different algorithm (that doesn't require Spriner(O,chi), which we don't currently have)
+
+Theorem (Lusztig).
+
+a) Suppose L is a Levi in G, and CL is a left cell of W(L). Then TGInd(CL) is a left cell for W.
+
+b) Suppose C is a left cell in W. Then C\otimes sgn is also a left cell in W.
+
+c) If W \ne 1, then for any left cell C in W, there is a proper L and a left cell CL in L so that EITHER TGInd(CL) = C, OR TGIND(CL\otimes sgn) = C\otimes sgn.
+
+*********
+So here is the algorithm for finding the special W-rep sigma_s attached to sigma.
+
+-1) if sigma is special return sigma
+0)  If W is trivial, then sigma_s = sigma = trivial. Assume W not trivial.
+1)  Try to find a proper Levi L and a W(L)-rep sigmaL so that sigma is contained in TGInd(sigmaL);
+    if you succeed, then sigma_s = TFInd(sigmaL_s) = TGInd(sigmaL_s).
+2)  If you fail, replace sigma by sigmaSgn = sigma\otimes sgn. Step 1) is guaranteed to succeed for sigmaSgn, giving sigmaSgn_s.
+3)  The dual special orbit to sigmaSgn_s (found by the duality algorithm) has Springer rep sigma_s.
+
+{note on 3:  sigma -> sigmaSgn -> sigmaSgn_s -> orbit_sgn -> dual(orbit_sgn) -> sigma_s
+except in exceptional cases in E7/E8: sigma_s=sigmaSgn_s\otimes sgn}
+}
+
+set fig_verbose=false
+
+{extract all terms sigma from given (reducible) character satisfying f(sigma)=desired_value
+ usually f = generic or fake degree}
+set select(CharacterTable ct, [int] character, int desired_value, (int->int) function)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function(i)=desired_value then  [(i,dec[i])] else[] fi
+od
+
+{select by fake degree}
+set select_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.degree)
+
+{select by generic degree}
+set select_generic_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.generic_degree)
+
+{select by two function values f_i(sigma)=desired_value_i}
+set select(CharacterTable ct, [int] character, int desired_value_1,int desired_value_2, (int->int) function_1,(int->int) function_2)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function_1(i)=desired_value_1 and function_2(i)=desired_value_2  then  [(i,dec[i])] else[] fi
+od
+
+{select all terms with specified fake degree and (possibly different) generic degree}
+set select_both_degrees(CharacterTable ct, [int] character, int desired_value_fake,int desired_value_generic)=[(int,int)]:
+select(ct,character,desired_value_fake,desired_value_generic,ct.degree,ct.generic_degree)
+
+{J-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L)}
+set J_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+select_generic_degree(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]), ct_L.generic_degree(index_character_L))
+
+{also version with RootDatum L included}
+set J_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
+select_generic_degree(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]), ct_L.generic_degree(index_character_L))
+
+{j-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with fdeg(sigma)=fdeg(sigma_L)}
+set j_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+select_degree(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]), ct_L.degree(index_character_L))
+
+{also version with RootDatum L included}
+set j_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
+select_degree(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]), ct_L.degree(index_character_L))
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L) AND fdeg(sigma)=fdeg(sigma_L)}
+set jJ_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+select_both_degrees(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]),
+		      ct_L.degree(index_character_L),ct_L.generic_degree(index_character_L))
+
+{also version with RootDatum L included}
+set jJ_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
+select_both_degrees(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]),
+		      ct_L.degree(index_character_L),ct_L.generic_degree(index_character_L))
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=fdeg(sigma)=desired_degree}
+set jJ_select_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L,int desired_degree)=
+select_both_degrees(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]),desired_degree,desired_degree)
+
+
+{assume generic degrees have been computed for all levis}
+set find_induced_generic([SpringerTable] levi_tables,
+                         int index_table_G {index of table in list},
+			 int index_char_G) {index of character in table_G}\
+			 =(bool,([SpringerTable],int,int)):  {(success/failure),[tables], index_table_L, index_char_L}
+let ()=if fig_verbose then
+    prints("find_induced_generic", new_line, "index_table_G=", index_table_G, " index_char_G=", index_char_G) fi in
+if  levi_tables[index_table_G].root_datum.is_abelian then
+  return(true,(levi_tables,index_table_G,index_char_G))
+else
+ let st=levi_tables[index_table_G] then
+ ct=st.ct then
+ G=ct.root_datum then
+ pi_G=ct.characters[index_char_G] then
+ gdeg=ct.generic_degree(index_char_G) then
+ ()=if fig_verbose then prints("generic degree: ", gdeg) fi in
+  let levis_0=proper_Levi_subgroups(G) then
+  levis=for i:#levis_0 do levis_0[i] od in
+  for L in levis do
+   let (index_table_L,)=lookup_springer_table(L,levi_tables) in
+   let ()=if fig_verbose then prints("index_table_G: ", index_table_G,new_line,
+             "index_char_G: ", index_char_G,new_line,"loop index_table_L=",index_table_L,new_line,
+             "----------------------------------------------",
+	     new_line, "index_table_G: ", index_table_G,new_line,"index_table_L: ", index_table_L,
+	     new_line,"L=", levi_tables[index_table_L].root_datum, new_line) fi in
+   let table_L=levi_tables[index_table_L] in
+{   ()=show(tables[0].ct) in}
+   for index_char_L:table_L.ct.n_classes do
+     let ()= if fig_verbose then
+         prints("trying: index_table_L=",index_table_L, " ", "index_char_L=",index_char_L, " ",table_L.generic_degree(index_char_L), new_line,
+	 "gdeg:", gdeg) fi in
+   if table_L.generic_degree(index_char_L)=gdeg then
+    let ()=if fig_verbose then prints("has correct generic degree: #", index_char_L) fi in
+   let ind_all=induce_character(table_L.ct,L,ct,table_L.ct.characters[index_char_L]) then
+      ()= if fig_verbose then prints("L=",table_L.root_datum, new_line,"ind_all: ");ct.view_char(ind_all) fi then
+    ind=J_induce(table_L.ct,L,ct,index_char_L)  then  {ind = [(index,mult)]}
+      ()=if fig_verbose then prints("J_induction: ", ind) fi in
+    if find(for (j,) in ind do j od,index_char_G)!=-1 then
+       if fig_verbose then prints("found") fi;
+    return(true,(levi_tables,index_table_L,index_char_L)) fi
+    fi
+   od   {end for index_char_L:table.n_classes}
+  od;    {end for index_table_L:#levi_tables-1}
+   return(false,([SpringerTable]:[],-1,-1)) 
+fi
+
+{assume generic degrees have been computed for all levis}
+{algorithm sketched above: compute (L,sigma_L_s), then sigma_s= ind(sigma_L_s) (selected by both fake and generic degree)}
+set special_long([SpringerTable] levi_springer_tables, int index_table_G, int index_char_G)=
+([SpringerTable],int,int,int,int):  {(tables,index_table_G,index_char_G,index_table_L, index_char_L)}
+let ()=if fig_verbose then prints("find_smooth: ", "index_table_G: ", index_table_G, "index_char_G: ", index_char_G) fi in
+let st=levi_springer_tables[index_table_G] then
+ct=st.ct then
+G=ct.root_datum in
+ let rec_fun my_function([SpringerTable] levi_tables, int index_table, int index_char)=([SpringerTable],int,int, int, int) :
+ let ()=if fig_verbose then
+     prints("rec_fun", " ", "rd=", levi_tables[index_table].root_datum, " index_table: ", index_table, " index_char: ", index_char) fi in
+ if is_abelian(levi_tables[index_table].root_datum)
+   then if fig_verbose then prints("DONE: abelian") fi; (levi_tables,index_table_G,index_char_G,index_table,0)
+ elif levi_springer_tables[index_table].is_special_representation(index_char) then
+  if fig_verbose then prints("DONE: Found special") fi; (levi_springer_tables,index_table_G,index_char_G,index_table,index_char)
+ else
+ let (success,g_induced)=find_induced_generic(levi_springer_tables,index_table,index_char) in
+ if success then
+  let (,new_table_index,new_char_index)=g_induced in if fig_verbose then prints("new_table_index: ", new_table_index) fi;
+      my_function(levi_springer_tables,new_table_index,new_char_index)
+ else
+  let ()=if fig_verbose then prints("failure,sgn") fi in
+  let (success_sgn,g_induced_sgn)=
+  find_induced_generic(levi_springer_tables,index_table,levi_springer_tables[index_table].ct.tensor_sign_index(index_char)) in
+  if success_sgn then
+   let ()=if fig_verbose then prints("success_sgn: ", success_sgn) fi in
+   let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)} 
+{  then new_levi_springer_table=levi_springer_tables[new_table_index] then
+   then orbit_sgn=springer_inverse(new_levi_springer_table,new_char_index)  then
+   dual_orbit_sgn=new_levi_springer_table.dual_map(orbit_sgn) then}
+   in (levi_springer_tables,index_table_G,index_char_G,new_table_index,levi_springer_tables[new_table_index].ct.tensor_sign_index(new_char_index))
+  else
+   assert(false,"error!!");([SpringerTable],int,int,int,int):([],index_table_G,index_char_G,-1,-1)  {should never get here, but need to return a value}
+  fi  {if success_sgn} fi
+ fi in my_function(levi_springer_tables,index_table_G,index_char_G)
+{
+set find_smooth_ind_rep([SpringerTable] levi_springer_tables, int index_table_G, int index_char_G)=
+let (tables,index_table_G,index_char_G,index_table_L,index_char_L)=
+  find_smooth_ind_rep_long(levi_springer_tables,index_table_G,index_char_G) then
+table_L=tables[index_table_L] in
+(table_L.character_table,table_L.characters[index_char_L],index_char_L)
+
+set find_smooth_ind_rep_plus([SpringerTable] levi_springer_tables, int index_table_G, int index_char_G)=(CharacterTable,int):
+let (tables,index_table_G,index_char_G,index_table_L,index_char_L)=
+  find_smooth_ind_rep_long(levi_springer_tables,index_table_G,index_char_G) then
+table_L=tables[index_table_L].character_table in
+if fig_verbose then levi_springer_tables[0].ct.view_char(induce_character(table_L,tables[0].character_table,table_L.characters[index_char_L])) fi;
+if fig_verbose then prints("target:  #",index_char_G,new_line,"generic degree: ",levi_springer_tables[0].ct.generic_degree(index_char_G)) fi;
+(table_L,index_char_L)
+}
+
+set special([SpringerTable] tables, int index_char_G)=
+let ct=tables[0].ct then
+(,,,index_table_L,index_char_L)=special_long(tables,0,index_char_G) then
+ct_L=tables[index_table_L].ct in
+{let ()=prints("index_char_G: ", index_char_G) then
+()=prints("index_table_L", index_table_L, new_line, "index_char_L: ", index_char_L) then
+()=prints("desired generic degree: ", ct.generic_degrees[index_char_G]) in}
+let reps=jJ_select_induce(ct_L,ct,index_char_L,ct.generic_degrees[index_char_G]) then
+reps_sgn=jJ_select_induce(ct_L,ct,ct_L.tensor_sign_index(index_char_L),ct.generic_degrees[index_char_G]) then
+{()=prints("reps: ", reps) then
+()=prints("reps_sgn: ", reps_sgn) then}
+()=assert(#reps>0,"no representations returned");
+assert(#reps=1,"More than one representation returned") then
+(index_G,mult)=reps[0] then
+()=if fig_verbose then prints("index=", index_G," mult=", mult)  fi in
+{assert(mult=1,"multiplicity>1");
+assert(tables[0].is_special_representation(index_G),"representation is not special");}
+assert(ct.degree(index_G)=tables[0].ct.degree(index_G),"wrong generic degree");
+index_G
+
+set test_special([SpringerTable] tables)=
+let ct=tables[0].ct then
+all=for i:ct.n_classes do special(tables,i) od in
+prints("G=", tables[0].root_datum.nice_format);
+tabulate(
+["sigma","deg/gdeg", "rep_name", "sigma_s","deg/gdeg", "name"]#
+for i:#all do
+ let i_s=all[i] in
+[i.to_string,ct.degree(i).to_string + "/" + ct.generic_degree(i),ct.irreducible_label(i),
+i_s.to_string,
+ct.degree(i_s).to_string + "/" + ct.generic_degree(i_s),
+ct.irreducible_label(i_s)] od);prints("");
+show(tables[0]);prints("");show(tables[0].ct)
+
+
+{
+
+{
+set bala_carter_rep_test([CharacterTable] levi_tables)=
+for index:levi_tables[0].n_classes do bala_carter_rep_test(levi_tables,index) od
+
+set bala_carter_rep_test(RootDatum G)=
+let tables=all_levi_tables(G)  then
+()=update_generic_degrees_geck(tables) in
+bala_carter_rep_test(tables)
+}
+set show([[(CharacterTable,int)]] data)=
+for i:#data do
+prints("i=",i);
+for (t,j) in data[i] do prints(t.root_datum," ",j) od od
+}
+
+{[tables],given index_table, given index_char, returned index_table_L  for Levi, returned index_char_L)}
+set show(([SpringerTable],int,int,int,int) data)=void:
+let (tables,index_table_G,index_char_G,index_table_L,index_char_L)=data in
+ let  table_G=tables[index_table_G].ct then
+ table_L=tables[index_table_L].ct then
+ ()=prints("G=",table_G.root_datum.nice_format,new_line,"target table#: ", index_table_G,
+  new_line, "target character#: ",index_char_G,new_line,
+ "target character dimension: ", dimension(table_G,index_char_G),new_line,
+ "TARGET GENERIC DEGREE: ", table_G.generic_degree(index_char_G),new_line,
+ "(fake degree of target: ", table_G.degrees[index_char_G],")",new_line,
+ "target character: ", new_line,table_G.characters[index_char_G],new_line,
+ "--------------------------------------------------------",new_line,"L=", table_L.root_datum.nice_format,new_line, 
+ "Levi table index: ", index_table_L,new_line,
+ "Levi character index: ", index_char_L,new_line,
+ "LEVI GENERIC DEGREE: ", table_L.generic_degree(index_char_L), new_line,
+ "(Levi  degree: ", table_L.degree(index_char_L),")",new_line,
+ "character_L: ",new_line, table_L.characters[index_char_L],new_line,"--------------------------------------------------------")
+ in
+prints("full induced from L to G:");
+tables[index_table_G].ct.view_char(induce_character(tables[index_table_L].ct,tables[index_table_G].ct,tables[index_table_L].ct.characters[index_char_L]));
+prints("TARGET GENERIC DEGREE: ", table_G.generic_degree(index_char_G));
+prints("answer: character #", index_char_L, " of L=", table_L.root_datum.nice_format, " (table # ", index_table_L,")")
+
+
+
+{[tables],given index_table, given index_char, returned index_table_L  for Levi, returned index_char_L)}
+set test(([SpringerTable],int,int,int,int) (tables,index_table_G,index_char_G,index_table_L,index_char_L))=bool:
+let ct_G=tables[index_table_G].ct then
+st_L=tables[index_table_L] then
+ct_L=st_L.ct then
+ind=induce_character(ct_L,ct_G,ct_L.characters[index_char_L]) in
+if fig_verbose then
+   prints("G=", ct_G.root_datum.nice_format, new_line,
+  "index of target character: ",new_line, index_char_G, new_line,
+  "generic degree of target character: ", ct_G.generic_degrees[index_char_G], new_line,
+  "L= ", ct_L.root_datum.nice_format, " (table# ", index_table_L,")",new_line,
+  "index of L character: ", index_char_L, new_line,
+  "generic degree of character_L: ", ct_L.generic_degrees[index_char_L],new_line,
+  "degree of target character: ", ct_L.degrees[index_char_L], new_line,
+  "multiplicity of target in induced: ", ct_G.inner_product(ct_G.characters[index_char_G],ind),new_line,
+  "multiplicity of target*sgn in induced: ", ct_G.inner_product(ct_G.characters[ct_G.tensor_sign_index(index_char_G)],ind)
+) fi;
+(ct_G.inner_product(ct_G.characters[index_char_G],ind)>0
+or
+ct_G.inner_product(ct_G.characters[ct_G.tensor_sign_index(index_char_G)],ind)>0) and \
+st_L.is_special_representation(index_char_L)
+
+set all_levi_Springer_tables(RootDatum G)=[SpringerTable]:
+let tables=all_levi_springer_tables(G) then
+()=update_generic_degrees_geck(tables) in tables
+
+set truncate_by_generic_degree_induce_character \
+  ( WeylClassTable Wct_L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(Wct_L,ct_G,pi_L,ct_G.generic_degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+set truncate_by_generic_degree_induce_character \
+  ( CharacterTable ct_L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(ct_L.class_table,ct_G,pi_L,ct_G.generic_degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+set truncate_by_degree_induce_character \
+  ( WeylClassTable Wct_L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(Wct_L,ct_G,pi_L,ct_G.degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+set truncate_by_degree_induce_character \
+  ( CharacterTable ct_L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(ct_L.class_table,ct_G,pi_L,ct_G.degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+
+set truncate_by_generic_degree_induce_character \
+  ( WeylClassTable Wct_L, RootDatum L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(Wct_L,ct_G,pi_L,ct_G.generic_degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+set truncate_by_generic_degree_induce_character \
+  ( CharacterTable ct_L, RootDatum L, CharacterTable ct_G, [int] pi_L) = [int]:
+(  let (,t) = truncate_degree_induce_character(ct_L.class_table,ct_G,pi_L,ct_G.generic_degree)
+in {assert(#t=1,"not a unique character in truncated induction");}{allow multiple values}
+t
+)
+
+
+

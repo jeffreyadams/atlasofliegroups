@@ -58,6 +58,13 @@ set lookup_character_table(RootDatum G,[CharacterTable] tables)=(int,ratmat):
 let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
 in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
 
+{find character table for given G in given list}
+set lookup_springer_table(RootDatum G,[SpringerTable] tables)=(int,ratmat):
+let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
+in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
+
+
+
 {to compute a'_E (of Geck), denoted a_prime here, you need to know
 all of the functions a_E for proper Levis; this is assumed to
 be known by induction}
@@ -231,10 +238,13 @@ let tables=all_levi_tables_plus(G) then
 ()=update_generic_degrees_geck(tables) then
 ()=prints("updated remaining generic degrees") in tables
 
+set character_table_generic_degrees(RootDatum G)=
+update_generic_degrees_geck(all_levi_tables(G))
 
-
-set slow(RealForm G)=
-let ct=G.character_table in update_generic_degrees(ct,G);ct
+set Springer_table_generic_degrees(RootDatum G)=
+let ct_generic=character_table_generic_degrees(G) then
+st=Springer_table(G) then
+()=st.ct:=ct_generic in st
 
 {
 set rec_fun geck_generic_degrees([CharacterTable] tables)=[CharacterTables]:
@@ -354,3 +364,11 @@ let
  ()=update_generic_degrees(ct1,G) in
  test_generic_degrees(ct,ct1)
 }
+
+
+set update_generic_degrees_geck([SpringerTable] springer_tables)=void:
+update_generic_degrees_geck(for st in springer_tables do st.ct od)
+
+set all_levi_springer_tables(RootDatum G)=
+let levis=Levi_subgroups(G) in
+ for i:#levis do Springer_table(levis~[i]) od
