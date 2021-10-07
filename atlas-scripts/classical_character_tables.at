@@ -168,7 +168,7 @@ set character_table_C (RootDatum rd) =
          , for c in cycles do hyperoctahedral_character(rep,c) od
 	 )
       od
-   then ch_tab = character_table(class_table_B(rd),classes,irreps)
+   then ch_tab = character_table(class_table_C(rd),classes,irreps)
    , lookup_class = (BiPartition->int): index_bipartition(class_list)
    , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
 in
