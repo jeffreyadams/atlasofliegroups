@@ -10,6 +10,15 @@ char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct
  ct_G.inner_product(char,character_coherent_Y(G,ct_G)),
  ct_G.inner_product(char,character_coherent_I(ct_G)))
 
+set five_inner_products(RealForm G,CharacterTable ct_G,[int] char_G)=
+let (valid,M)=root_permutation(G,ct_G.root_datum) then
+char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
+(ct_G.inner_product(char,character_coherent_B(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_X(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_Y(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_I(ct_G)),
+ ct_G.inner_product(char,character_coherent_T(G,ct_G)))
+
 set four_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[int] char_G)=
 let (valid,M)=root_permutation(G,ct_G.root_datum) then
 char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
@@ -18,11 +27,26 @@ char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct
  ct_G.inner_product(char,character_coherent_Y(ct_G,G_dual)),
  ct_G.inner_product(char,character_coherent_I(ct_G)))
 
+set five_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[int] char_G)=
+let (valid,M)=root_permutation(G,ct_G.root_datum) then
+char=assert(valid,"root data are not locally isomorphic");permute_character(M,ct_G,char_G) in
+(ct_G.inner_product(char,character_coherent_B(G,G_dual,ct_G)),
+ ct_G.inner_product(char,character_coherent_X(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_Y(ct_G,G_dual)),
+ ct_G.inner_product(char,character_coherent_I(ct_G)),
+ ct_G.inner_product(char,character_coherent_T(G,ct_G)))
+
 set four_inner_products(RealForm G,CharacterTable ct_G,[[int]] chars)=
 for char in chars do four_inner_products(G,ct_G,char) od
 
 set four_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[[int]] chars)=
 for char in chars do four_inner_products(G,G_dual,ct_G,char) od
+
+set five_inner_products(RealForm G,CharacterTable ct_G,[[int]] chars)=
+for char in chars do five_inner_products(G,ct_G,char) od
+
+set five_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[[int]] chars)=
+for char in chars do five_inner_products(G,G_dual,ct_G,char) od
 
 {_sgn version shouldn't be necessary, here for historical/debugging
  reasons, not called}
@@ -66,15 +90,15 @@ a.to_string,b.to_string,bprime.to_string,c.to_string] od)
 
 set show_big_table(RealForm G,RealForm G_dual,CharacterTable ct_G)=
 prints("Dual Group: ", G_dual, new_line);
-let all=four_inner_products(G,G_dual,ct_G,ct_G.characters) in
+let all=five_inner_products(G,G_dual,ct_G,ct_G.characters) in
 tabulate(
-["i","dim","deg", "gdeg","B","X","Y","I"]#
-for i:ct_G.n_classes do let (a,b,bprime,c)=all[i] in
+["i","dim","deg", "gdeg","B","X","Y","I","TI"]#
+for i:ct_G.n_classes do let (a,b,bprime,c,d)=all[i] in
 [i.to_string,
 dimension(ct_G,i).to_string,
 ct_G.degree(i).to_string,
 {if #ct_G.degrees>0 then ct_G.degrees[i].to_string else} "" {fi},
-a.to_string,b.to_string,bprime.to_string,c.to_string] od)
+a.to_string,b.to_string,bprime.to_string,c.to_string,d.to_string] od)
 
 set show_big_table(RealForm G,RealForm G_dual)=
    prints(new_line,"G = ",G,new_line,"Dual Group: ",G_dual,new_line);
@@ -92,16 +116,16 @@ set show_big_table(RealForm G,RealForm G_dual)=
                  a.to_string,b.to_string,bprime.to_string,c.to_string]
          od)
 
-set show_BXYI_tables (RealForm G, CharacterTable ct_G)=void:
+set show_BXYIT_tables (RealForm G, CharacterTable ct_G)=void:
 prints("i: #of character of W",new_line,
 "dim: dim(sigma)",new_line, "deg: degree(sigma)", new_line,
  "gdeg: generic degree(sigma)", new_line,
-"mult of sigma in B,X,Y,I",new_line);
+"mult of sigma in B,X,Y,I,TI",new_line);
 for Gd in dual_real_forms(G)
    do show_big_table(G,Gd,ct_G); prints(new_line)
    od
 
-set show_BXYI_tables (RealForm G)=show_BXYI_tables(G,character_table(G))
+set show_BXYIT_tables (RealForm G)=show_BXYIT_tables(G,character_table(G))
 
 set show_big_table(RealForm G)=show_big_table(G,G.character_table)
 
