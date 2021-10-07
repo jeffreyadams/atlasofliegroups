@@ -1,3 +1,6 @@
+<springer_tables.at
+<geck_generic.at
+
 {the Lusztig map goes from triples (O,x,xi) to W^ 
  this file implements an algorithm (conjectural)
  to implement this when xi=1
