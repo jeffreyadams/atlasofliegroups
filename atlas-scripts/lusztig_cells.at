@@ -352,3 +352,75 @@ show_lusztig_cells_plus(G,st)
 
 
 {four inner products stuff moved to inner_products.at}
+{---------------------------------------------------------------------------}
+{stuff that used to be in lusztig_cells_complete.at}
+
+{show lusztig cells, running over given list of nilpotents}
+set show_lusztig_cells_generic(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
+prints(new_line,"Lusztig cells",new_line,"G=", G.nice_format, new_line, "#orbits: ", #orbits);
+let all_data=lusztig_cells(G,st_G,orbits)     {[[(M,H_M,y,j_values)]]} then
+table=
+##for i:#all_data do
+ let data=all_data[i] in
+ for j:#data do
+  let (orbit,M,H_M,y,j_values)=data[j] in
+  if =#j_values then
+   [[orbit.diagram.to_string + st_G.special_star(orbit),
+    orbit.dim_nilpotent.to_string,
+    i.to_string,
+    integrality_datum(orbit).nice_format,
+    M.nice_format,
+    H_M.compact_ratvec,
+    y.compact_ratvec,
+    centralizer(G,y).nice_format,
+    "[]",
+    "x",
+    "x",
+    "x",
+    "x",
+    "x"
+   ]]
+  else
+   for k in j_values do
+   [orbit.diagram.to_string + st_G.special_star(orbit),
+    orbit.dim_nilpotent.to_string,
+    i.to_string,
+    integrality_datum(orbit).nice_format,
+    M.nice_format,
+    H_M.compact_ratvec,
+    y.compact_ratvec,
+    centralizer(G,y).nice_format,
+    "" +
+     if #j_values=1 then k.to_string else
+     j_values.to_string + ":" + k.to_string
+    fi,
+    if =y then st_G.springer_special_rep(orbit).to_string else "" fi,
+    dimension(st_G.ct,k).to_string,
+    st_G.ct.degrees[k].to_string,
+    st_G.ct.generic_degrees[k].to_string,
+{    st_G.ct.generic_degree_string(k),}
+    st_G.ct.character(k).to_string
+   ]
+   od {for k in j_values}
+   fi
+   od  {/for i:#data}
+ od {for orbit}
+in {table=[[string]]}
+tabulate(
+["O","dim","i","rd_int","M","H_M","v","L","sigma","special","dim","deg","gdeg","char=ct.characters[sigma[0]]"]#
+##table)
+
+set show_lusztig_cells_generic_long(RootDatum G,SpringerTable st_G,[ComplexNilpotent] orbits)=
+show_very_long(st_G.ct);
+show_long(st_G);
+show_lusztig_cells_generic(G,st_G,orbits)
+
+set show_lusztig_cells_generic(RootDatum G,SpringerTable st_G)=show_lusztig_cells_generic(G,st_G,G.orbits)
+set show_lusztig_cells_generic_long(RootDatum G,SpringerTable st_G)=show_lusztig_cells_generic_long(G,st_G,G.orbits)
+
+set show_lusztig_cells_generic(RootDatum G)=
+let st=Springer_table_generic_degrees(G) in show_lusztig_cells_generic(G,G.Springer_table)
+
+set show_lusztig_cells_generic_long(RootDatum G)=
+let st=Springer_table_generic_degrees(G) in
+show_lusztig_cells_generic_long(G,st)
