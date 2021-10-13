@@ -146,14 +146,15 @@ fi
 
 {assume generic degrees have been computed for all levis}
 {algorithm sketched above: compute (L,sigma_L_s), then sigma_s= ind(sigma_L_s) (selected by both fake and generic degree)}
-set special_long([SpringerTable] levi_springer_tables, int index_table_G, int index_char_G)=
-([SpringerTable],[(RootDatum,int,int)]):   {([tables],(L,index_table_L,index_char_L))}
-let ()=if fig_verbose then prints("find_smooth: ", "index_table_G: ", index_table_G, "index_char_G: ", index_char_G) fi in
+set special_long([SpringerTable] levi_springer_tables, int index_table_G, (int index_char_G,bool tensor_sgn))=
+([SpringerTable],[(RootDatum,int,(int,bool))]):   {([tables],(L,index_table_L,(index_char_L,bool_tensor_sgn))}
+let ()=if fig_verbose then
+   prints("find_smooth: ","index_table_G: ", index_table_G, "index_char_G: ", index_char_G, " tensor_sign:", tensor_sgn) fi in
 let st=levi_springer_tables[index_table_G] then
 ct=st.ct then
 G=ct.root_datum in
-let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,int)] triples)=(([SpringerTable],[RootDatum,int,int])):
- let (L,index_table_L,index_char_L)=triples~[0] in
+let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,(int,bool))] triples)=(([SpringerTable],[RootDatum,int,(int,bool)])):
+ let (L,index_table_L,(index_char_L,tensor_sign))=triples[0] in
  if is_abelian(L)
   then return(levi_tables,triples)
  elif levi_springer_tables[index_table_L].is_special_representation(index_char_L) then
@@ -162,57 +163,69 @@ let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,int)] triple
  let (success,g_induced)=find_induced_generic(levi_springer_tables,index_table_L,index_char_L) in
  if success then
   let ()=if fig_verbose then prints("success", "L=",L) fi in
-  let (,new_table_index,new_char_index)=g_induced in
-  let new=triples#(levi_tables[new_table_index].root_datum,new_table_index,new_char_index) in
-  let ()=if fig_verbose then prints("L=",L,new_line,"new_table_index=",new_table_index) fi in
-  my_function(levi_springer_tables,new)
+  let (,new_table_index,new_char_index)=g_induced then
+  new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,false)) then
+  ()=triples:=new#triples in
+  my_function(levi_springer_tables,triples)
  else
    let ()=if fig_verbose then prints("failure,sgn") fi in
    let (success_sgn,g_induced_sgn)=
    find_induced_generic(levi_springer_tables,index_table_L,levi_springer_tables[index_table_L].ct.tensor_sign_index(index_char_L)) in
    if success_sgn then
-    let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)}  in
+   let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)}  then
+   new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,true)) then
+   ()=triples:=new#triples in
+   my_function(levi_springer_tables,triples)   
  {  then new_levi_springer_table=levi_springer_tables[new_table_index] then
     then orbit_sgn=springer_inverse(new_levi_springer_table,new_char_index)  then
     dual_orbit_sgn=new_levi_springer_table.dual_map(orbit_sgn) then}
 {    in let ()=prints("L=",L, "new_table_index=", new_table_index,"new_char_index=", new_char_index)  }
-  (levi_springer_tables,triples#(levi_springer_tables[new_table_index].root_datum,new_table_index,levi_springer_tables[new_table_index].ct.tensor_sign_index(new_char_index)))
+{  (levi_springer_tables,triples#(levi_springer_tables[new_table_index].root_datum,new_table_index,levi_springer_tables[new_table_index].ct.tensor_sign_index(new_char_index)))}
    else
     assert(false,"error!!");return (levi_tables,triples) {should never get here, but need to return a value}
    fi  {if success_sgn}
   fi
- fi in  my_function(levi_springer_tables,[(G,index_table_G,index_char_G)])
+ fi in  my_function(levi_springer_tables,[(G,index_table_G,(index_char_G,false))])
 
+set special_long([SpringerTable] levi_springer_tables, int index_table_G,int index_char_G)=
+special_long(levi_springer_tables,index_table_G,(index_char_G,true))
+
+set special_long([SpringerTable] levi_springer_tables,int index_char_G)=
+special_long(levi_springer_tables,0,index_char_G)
 
 set all_levi_Springer_tables(RootDatum G)=[SpringerTable]:
 let tables=all_levi_springer_tables(G) then
 ()=update_generic_degrees_geck(tables) in tables
 
 
-set collapse([SpringerTable] tables, [(RootDatum,int,int)] triples)=
-if #triples=1 then triples[0]
-elif #triples=2 then triples[1] 
+set collapse([SpringerTable] tables, [(RootDatum,int,(int,bool))] triples)=
+if #triples=1 then
+ if fig_verbose then prints("collapse: returning special") fi;triples[0]
+elif #triples=2 then
+ if fig_verbose then prints("collapse: returning one step") fi;triples[0] 
 else
-{first put the triples in increasing order}
-let triples=for i:#triples do triples~[i] od then
+ let ()=if fig_verbose  then prints("collapsing, #triples=", #triples) fi then
 working_triple=triples[0] in
 for i:#triples-2 do
- let (L,index_table_L,index_char_L)=triples[i] in
- let (M,index_table_M,index_char_M)=triples[i+1] in
-{ let ()=prints("i=",i, " index_table_L=", index_table_L, " ", L, " index_char_L=", index_char_L) in
- let ()=prints("i=",i, " index_table_M=", index_table_M, " ", M, " index_char_M=", index_char_M) in}
-{ let (index_char_M,)=J_induce(tables[index_table_L].ct,L,tables[index_table_M].ct,index_char_L)[0] in}
- let (index_char_M,)=j_induce(tables[index_table_L].ct,L,tables[index_table_M].ct,index_char_L)[0] in
+ let (L,index_table_L,(index_char_L,tensor_sign_L))=triples[i] then
+ (M,index_table_M,(index_char_M,tensor_sign_M))=triples[i+1] then
+ {if tensor_sign_M=true, then
+    sigma_L -> sigma_L\otimes sign -> J_ind(sigma_L*sgn) -> [ J_ind(sigma_L*sgn)]*sgn
+}
+ (index_char_M,)=j_induce(tables[index_table_L].ct,L,tables[index_table_M].ct,index_char_L)[0] then
+ ()=if tensor_sign_L then index_char_M:=tables[index_table_M].ct.tensor_sign_index(index_char_M) fi in
+{ let ()=prints("step i: ",i,new_line, "M=", M,new_line, " L=", L, new_line,"index_char_L=", index_char_L, new_line,
+" index_char_M: ", index_char_M, new_line) in}
  assert(tables[index_table_M].is_special_representation(index_char_M),"character of M is not special");
- working_triple:=(M,index_table_M,index_char_M)
+ working_triple:=(M,index_table_M,(index_char_M,tensor_sign_M))
 od;
 working_triple
 fi
 
-set special([SpringerTable] levi_springer_tables, int index_table_G, int index_char_G)=
-(int,RootDatum,int,int,[(int,int)]):  {=index_table_L,L,index_table_G,index_char_L,[(index,mult)]}
-let (,triples)=special_long(levi_springer_tables,index_table_G,index_char_G) then
-(L,index_table_L,index_char_L)=collapse(levi_springer_tables,triples) then
+set special([SpringerTable] levi_springer_tables, int index_table_G, (int index_char_G,bool tensor_sign))=
+(int,RootDatum,int,int,int):  {=index_table_L,L,index_table_G,index_char_L,index)}
+let (,triples)=special_long(levi_springer_tables,index_table_G,(index_char_G,tensor_sign)) then
+(L,index_table_L,(index_char_L,tensor_sign_L))=collapse(levi_springer_tables,triples) then
 ct=levi_springer_tables[index_table_G].ct then
 ct_L=levi_springer_tables[index_table_L].ct then
 {ind=induce_character(ct_L,L,ct,ct_L.characters[index_char_L]) then
@@ -223,18 +236,37 @@ prints("mult_ind: ", mult_ind, new_line, "mult_ind_sgn: ", mult_ind_sgn);}
 {assert(mult_ind+mult_ind_sgn=1,"multiplicities wrong");}
 {()=prints("table L", index_table_L, " ", index_char_L) then}
 ()=assert(levi_springer_tables[index_table_L].is_special_representation(index_char_L),"representation of L is not special") then
-j_ind=j_induce(levi_springer_tables[index_table_L].ct,L,levi_springer_tables[index_table_G].ct,index_char_L)  in
-if #j_ind>0 then
- (index_table_L,L,index_table_G,index_char_L,j_ind) else let
-j_ind_sgn=j_induce(levi_springer_tables[index_table_L].ct,L,levi_springer_tables[index_table_G].ct,ct_L.tensor_sign_index(index_char_L))  in
-if (#j_ind_sgn)>0 then
-(index_table_L,L,index_table_G,index_char_L,j_ind_sgn)
-else(error("j/j_ind both failed"))
-fi
-fi
+{()=prints("index_char_G: ", index_char_G) then
+()=prints("tensor:", tensor_sign_L) then}
+target_index=
+ if tensor_sign_L
+  then ct.tensor_sign_index(index_char_G)
+ else
+  index_char_G
+ fi
+then
+target_generic_degree=ct.generic_degree(target_index) then
+{()=prints("target index: ", target_index, new_line, "target_generic_degree: ", target_generic_degree) then}
+ind=induce_character(ct_L,ct,ct_L.characters[index_char_L])  then
+()=if tensor_sign_L then ind:=ct.tensor_sign(ind) fi then
+char=select_degree(ct,ind,target_generic_degree) in
+{let ()=prints("char: ", char) in}
+assert(#char=1,"#char \ne 1");
+let (index,mult)=char[0] in
+ if mult !=1 then prints("warning: multiplicity for index ", index," is: ", mult) fi;
+index:=
+ if tensor_sign_L then ct.tensor_sign_index(index) else index fi;
+{prints("test:  generic degree given: ", ct.generic_degree(index_char_G), " index special: ", ct.generic_degree(index));}
+assert(ct.generic_degree(index_char_G)=ct.generic_degree(index),"Oh no! The generic degrees don't match");
+(index_table_L,L,index_table_G,index_char_L,index)
+
+
+set special([SpringerTable] levi_springer_tables, int index_table_G,int index_char_G)=
+special(levi_springer_tables,index_table_G,(index_char_G,true))
+
 
 set special([SpringerTable] levi_springer_tables, int index_char_G)=
-special(levi_springer_tables,0,index_char_G)
+special(levi_springer_tables,0,(index_char_G,true))
 
 set test_special([SpringerTable] tables)=
 let ct=tables[0].ct then
@@ -243,8 +275,7 @@ prints("G=", tables[0].root_datum.nice_format);
 tabulate(
 ["sigma","deg/gdeg", "rep_name", "sigma_s","deg/gdeg", "name"]#
 for i:#all do
- let (a,b,c,d,list)=all[i] then
- (i_s,)=list[0] in
+ let (a,b,c,d,i_s)=all[i] in
 [i.to_string,ct.degree(i).to_string + "/" + ct.generic_degree(i),ct.irreducible_label(i),
 i_s.to_string,
 ct.degree(i_s).to_string + "/" + ct.generic_degree(i_s),
@@ -257,3 +288,6 @@ induce_character(tables[index_table_L].ct,tables[index_table_G].ct, tables[index
 
 set induce([SpringerTable] tables,(int index_table_L, int index_table_G, int index_char_L))=
 induce_character(tables[index_table_L].ct,tables[index_table_G].ct, tables[index_table_L].characters[index_char_L])
+
+set induce_view([SpringerTable] tables,int index_table_L, int index_table_G, int index_char_L)=
+tables[index_table_G].ct.view_char(induce(tables,index_table_L,index_table_G,index_char_L))
