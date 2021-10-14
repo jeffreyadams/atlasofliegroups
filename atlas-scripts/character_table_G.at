@@ -22,3 +22,6 @@ in (RootDatum rd) CharacterTable:
 
 set character_table_G(int n) = CharacterTable:
    character_table_G(simply_connected("G2"))
+
+set to_special_G2 = (int i) int:
+   case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac
