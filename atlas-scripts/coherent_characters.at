@@ -121,6 +121,11 @@ sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 set trace_coherent(WeylElt w,[mat] involutions)=
 sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 
+set character_coherent_dual(CharacterTable ct,RealForm G_dual)=[int]:
+   let rd=root_datum(G_dual)
+   in for w in ct.class_representatives
+      do let y=W_elt(rd,w.word) in trace_coherent (y,twisted_involutions(G_dual)) od
+
 set character_coherent(CharacterTable ct,[WeylElt] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
 
@@ -129,6 +134,9 @@ for w in ct.class_representatives do trace_coherent(w,involutions) od
 
 set character_coherent_T(RealForm G, CharacterTable ct)=[int]:
    character_coherent(ct,twisted_involutions(G))
+
+set character_coherent_T_dual(CharacterTable ct,RealForm G_dual)=[int]:
+   character_coherent_dual(ct,G_dual)
 
 set character_coherent_I(CharacterTable ct)=[int]:
    character_coherent(ct,involutions(ct.root_datum))
