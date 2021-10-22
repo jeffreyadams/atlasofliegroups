@@ -11,11 +11,11 @@ set involutions([WeylElt] W)=[WeylElt]:
 
 set involutions(RootDatum rd)=[WeylElt]:involutions(rd.W)
 
-set twisted_involutions(mat dist_inv,[WeylElt] W, int rank)=[mat]:
-   ##for w in W do let M=dist_inv*matrix(w) in if M^2=id_mat(rank) then [M] else [] fi od
-
 set twisted_involutions(RealForm G)=[mat]:
-   let M=distinguished_involution(G), n=rank(G) in twisted_involutions(M,W(G),n)
+   let list=for x in KGB(quasisplit_form(G)) do involution(x) od in
+   ##for w@i in list do if i=0 then [w]
+                        elif list[i-1]=w then []
+			else [w] fi od
 
 {sign function (not character) on W coming from sgn
 character of imaginary roots}
@@ -37,6 +37,11 @@ set epsilon_i(mat inv,WeylElt w)=int:
 set epsilon_r(KGBElt x,WeylElt w)=int:
    assert(x.root_datum=w.root_datum,"root data don't match");
    (-1)^count(for a in x.real_posroots do not is_positive_root(x.root_datum,w*a) od)
+
+set epsilon_r(mat inv,WeylElt w)=int:
+  let rd=w.root_datum
+   in (-1)^count(for a in real_posroots(rd,inv) do not is_positive_root(rd,w*a) od)
+
 
 {FIX cross@(WeylElt,Param): wrong assert, w.root_datum should be the integrality
 datum for p}
@@ -72,7 +77,6 @@ character_coherent(ct,all_parameters_gamma(G,gamma))
 set character_coherent_gamma(RealForm G,CharacterTable ct)=[int]:character_coherent_gamma(G,ct,G.rho)
 
 set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,block_of(G.trivial))
-set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct)
 
 set character_coherent_B(RealForm G,RealForm Gd,CharacterTable ct)=[int]:
    character_coherent(ct,make_block(G,Gd))
@@ -121,10 +125,18 @@ sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 set trace_coherent(WeylElt w,[mat] involutions)=
 sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 
+set trace_coherent_r(WeylElt w,[mat] involutions)=
+sum(for y in fixed_involutions(w,involutions) do epsilon_r(y,w) od)
+
 set character_coherent_dual(CharacterTable ct,RealForm G_dual)=[int]:
    let rd=root_datum(G_dual)
    in for w in ct.class_representatives
       do let y=W_elt(rd,w.word) in trace_coherent (y,twisted_involutions(G_dual)) od
+
+set character_coherent_dual_r(CharacterTable ct,RealForm G_dual)=[int]:
+   let rd=root_datum(G_dual)
+   in for w in ct.class_representatives
+      do let y=W_elt(rd,w.word) in trace_coherent_r (y,twisted_involutions(G_dual)) od
 
 set character_coherent(CharacterTable ct,[WeylElt] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
@@ -132,11 +144,23 @@ for w in ct.class_representatives do trace_coherent(w,involutions) od
 set character_coherent(CharacterTable ct,[mat] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
 
+set character_coherent_r(CharacterTable ct,[mat] involutions)=
+for w in ct.class_representatives do trace_coherent_r(w,involutions) od
+
+
 set character_coherent_T(RealForm G, CharacterTable ct)=[int]:
    character_coherent(ct,twisted_involutions(G))
 
+set character_coherent_T_r(RealForm G, CharacterTable ct)=[int]:
+   character_coherent_r(ct,twisted_involutions(G))
+
+
 set character_coherent_T_dual(CharacterTable ct,RealForm G_dual)=[int]:
    character_coherent_dual(ct,G_dual)
+
+set character_coherent_T_dual_r(CharacterTable ct,RealForm G_dual)=[int]:
+   character_coherent_dual_r(ct,G_dual)
+
 
 set character_coherent_I(CharacterTable ct)=[int]:
    character_coherent(ct,involutions(ct.root_datum))

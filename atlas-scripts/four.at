@@ -29,8 +29,21 @@ char=assert(valid,"root data are not locally isomorphic");
  ct_G.inner_product(char,character_coherent_T(G,ct_G)),
  ct_G.inner_product(char,character_coherent_T_dual(ct_G,G_dual)))
 
+set five_inner_products_r(RealForm G,RealForm G_dual,CharacterTable ct_G,[int] char_G)=
+let (valid,M)=root_permutation(G,ct_G.root_datum) then
+char=assert(valid,"root data are not locally isomorphic");
+   permute_character(M,ct_G,char_G) in
+(ct_G.inner_product(char,character_coherent_B(G,G_dual,ct_G)),
+ ct_G.inner_product(char,character_coherent_X(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_Y(ct_G,G_dual)),
+ ct_G.inner_product(char,character_coherent_T(G,ct_G)),
+ ct_G.inner_product(char,character_coherent_T_dual_r(ct_G,G_dual)))
+
 set five_inner_products(RealForm G,RealForm G_dual,CharacterTable ct_G,[[int]] chars)=
 for char in chars do five_inner_products(G,G_dual,ct_G,char) od
+
+set five_inner_products_r(RealForm G,RealForm G_dual,CharacterTable ct_G,[[int]] chars)=
+for char in chars do five_inner_products_r(G,G_dual,ct_G,char) od
 
 set special_characters(SpringerTable st)=[[int]]: for orbit in st.special_orbits do st.ct.characters[st.springer(orbit)] od
 
@@ -39,6 +52,18 @@ prints("Dual Group: ", G_dual, new_line);
 let all=five_inner_products(G,G_dual,ct_G,ct_G.characters) in
 tabulate(
 ["i","dim","deg", "gdeg","B","X","Y","IX","IY"]#
+for i:ct_G.n_classes do let (a,b,bprime,c,d)=all[i] in
+[i.to_string,
+dimension(ct_G,i).to_string,
+ct_G.degree(i).to_string,
+{if #ct_G.degrees>0 then ct_G.degrees[i].to_string else} "" {fi},
+a.to_string,b.to_string,bprime.to_string,c.to_string,d.to_string] od)
+
+set show_big_table_r(RealForm G,RealForm G_dual,CharacterTable ct_G)=
+prints("Dual Group: ", G_dual, new_line);
+let all=five_inner_products_r(G,G_dual,ct_G,ct_G.characters) in
+tabulate(
+["i","dim","deg", "gdeg","B","X","Y","IX","IY*sgn"]#
 for i:ct_G.n_classes do let (a,b,bprime,c,d)=all[i] in
 [i.to_string,
 dimension(ct_G,i).to_string,
@@ -58,7 +83,13 @@ for Gd in dual_real_forms(G)
 
 set show_BXYI_tables (RealForm G)=show_BXYI_tables(G,character_table(G))
 
-set show_big_table(RealForm G,RealForm G_dual)=show_big_table(G,G_dual,G.character_table)
+set show_big_table_r(RealForm G,RealForm G_dual)=show_big_table_r(G,G_dual,G.character_table)
+
+{Test whether the Weyl group representation on the twisted involutions is invariant
+under tensoring with sign}
+set test_inv_conj(RealForm G)=bool:
+   let ct=character_table(G)
+   then char=character_coherent_T(G,ct) in char=ct.tensor_sign(char)
 
 set make_vector(Param p, [Param] list)=vec:
   for q in list do if p=q then 1 else 0 fi od
