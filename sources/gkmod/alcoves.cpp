@@ -118,8 +118,8 @@ RatNumList barycentre_eq
   (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
 {
   RatNumList result(walls.size(),RatNum(0,1));
-  auto comps = rootdata::components(rd,walls);
-  for (auto& comp : comps)
+  auto comps = rootdata::components(rd,walls); // list of subsets of all roots
+  for (const auto& comp : comps)
   {
     int_Matrix A(rd.rank(),comp.size());
     unsigned i=0;
@@ -131,16 +131,17 @@ RatNumList barycentre_eq
     if (k(0,0)<0)
       k.negate(); // ensure coefficents are positive
 
-    comp.andnot(integral_walls); // from here on, focus on walls we were not on
-    unsigned n_off = comp.size();
+    BitMap offs = comp; // will hold indices for walls in |comp| we are not on
+    unsigned n_off = offs.andnot(integral_walls).size(); // compute and count
     assert(n_off>0); // we are off at least one wall in each |walls| component
-    for (auto it=comp.begin(); it(); ++it)
+    for (auto it=offs.begin(); it(); ++it)
     {
-      const unsigned i = walls.position(*it);
-      assert(k(i,0)>0);
-      result[i] = RatNum(1,n_off*k(i,0)); // equidistribution if weighted by |k|
+      auto mult = k(comp.position(*it),0); // coefficient from coroot relation
+      assert(mult>0);
+      result[walls.position(*it)] // find slot in |result| we need to fill here
+	= RatNum(1,n_off*mult); // equidistribution when weighted by |mult|
     }
-  }
+  } // |for(comp:comps)|
   return result;
 } // |barycentre_eq|
 
