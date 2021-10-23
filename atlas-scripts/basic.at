@@ -332,6 +332,10 @@ set fgrep (string s, string text) = [string]:
   do if is_substring(s,line) then [line] else [] fi
   od.##
 
+set compact_string (ratvec v) = string:
+   let (a,b)=%v in
+   ([int]:a).to_string + if b=1 then "" else "/"+b.to_string fi
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
@@ -1128,13 +1132,21 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
-{ find a root of maximal level; if |rd| is simple this is the highest root }
-{.highest root.}
-set highest_root (RootDatum rd) = vec:
-{ root data produced by |dual@RootDatum| are not ordered by level, so do work: }
+{ list of all highest roots (one for each simple factor) }
+set highest_roots (RootDatum rd) = [vec]:
   let pr=posroots(rd) in
-  if =pr then error("Empty set of roots, none is highest")
-  elif not rd.prefers_coroots { when generated in root order, take short cut }
+##for alpha in pr
+  do if all(for beta in pr do not is_posroot(rd,alpha+beta) od)
+     then [alpha] else []
+     fi
+  od
+
+{ single highest root, or error if |rd| has not exactly one simple factor }
+set highest_root (RootDatum rd) = vec:
+  assert(derived_is_simple(rd),
+         "Multiple simple factors, no unique highest root");
+  let pr=posroots(rd) in
+  if not rd.prefers_coroots { when generated in root order, take short cut }
   then pr~[0] { since the last generated root will be a high root }
   else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
   fi
@@ -1350,7 +1362,6 @@ set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }
   in KGB_elt(rf,theta,v)    { find KGB element within rf }
 
-{ NB: elements produced by the following function test unequal to any others }
 set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
   let ic = inner_class(rd,theta)   { find the proper inner class }
   then rf = real_form(ic,theta,v)  { find real form within ic }
@@ -1461,6 +1472,9 @@ set dimension (KGBElt x) = int: { dimension as $K$-orbit on $G/B$ }
 + #columns_with(is_complex(x0.involution),posroots)\2
 )
 
+{ codimension as $K$-orbit on $G/B$ }
+set codimension(KGBElt x) = int: nr_of_posroots(root_datum(x))-dimension(x)
+
 
 set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
 set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
@@ -1541,7 +1555,7 @@ set is_dominant (Param p) = (bool,int):
   od; (true,-1)
 
 { whether gamma dominant, and if not witnessing integrally simple coroot }
-set is_integrally_dominant(Param p) = (bool,int):
+set is_integrally_dominant (Param p) = (bool,int):
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in integrality_datum(p).simple_coroots
   do if alpha_v*gamma<0 then return(false,i) fi
@@ -1891,7 +1905,7 @@ set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
 
 { pad string with blanks (for lining up columns in tables) }
-set pad(string s,int width)=string: l_adjust(width,s)
+set pad (string s,int width) = string: l_adjust(width,s)
 
 { for user convenience; a ParamPol is an associative array ParamPol->Split
   so selecting its monomials (Param values) by position is not reliable, but
