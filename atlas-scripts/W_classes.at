@@ -536,11 +536,15 @@ in W_class_table( rd, reps
 		    for r@j in reps do if pred(r) then return j fi od; minus_1
 		)
 
-set W_class_table (RootDatum rd) = WeylClassTable:
+{ a version with no help to find conjugacy classes, so much slower }
+set W_class_table_generic (RootDatum rd) = WeylClassTable:
    W_class_table( rd, conjugacy_class_reps(rd)
 		, size_of_conjugacy_class@WeylElt
 		, is_conjugate_to_He(classify_standard_Levis(rd))
 		)
+
+{ A valid class table that can be used to initialise local variables }
+set !trivial_class_table = W_class_table_generic(adjoint(""))
 
 set root_datum (WeylClassTable tab) = RootDatum:
     tab.class_representatives[0].root_datum { at least one class exists }

@@ -4,10 +4,7 @@
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
-
-{ this file is outdated with respect to the master branch; it should probably
-  be removed to be later reinstated from that branch, but since there is a
-  dependency of W_reps_type_BC.at on this file, we leave it as it is for now }
+<W_orbit { for |W_parabolic_act@(RootDatum,[int],int,[mat])| }
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -278,7 +275,7 @@ in for w_L@i in classes_L
 
 { the sign representation occurs in S^(nr_of_posroots)(reflection), and
   this is the maximum necessary exponent to get all irreducibles }
-{. smallest k so that pi occurs in S^k(reflection) .}
+{. smallest k so that |character| has factor in common with S^k(reflection) .}
 set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
@@ -289,10 +286,10 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
 {alternating sum, over all standard Levis, of induced from trivial
  should equal the sign character (if it does not, this function fails) }
 set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=W_class_table(rd)
+  let ct_G=W_class_table_generic(rd)
   then result =
      for L in standard_Levis(rd)
-     do let ct_L=W_class_table(L) in
+     do let ct_L=W_class_table_generic(L) in
         minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
      od
      .sum

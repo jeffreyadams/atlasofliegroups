@@ -175,7 +175,7 @@ set max_only ([vec,mat] arg) = [vec,mat]:
 set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
 set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
-set  principal_block (RealForm G) = Block: block(G,dual_quasisplit_form(G))
+set principal_block (RealForm G) = Block: block(G,dual_quasisplit_form(G))
 
 { convert Block to [param] }
 set convert (Block B,ratvec gamma) = [Param]:

@@ -7,7 +7,10 @@ set_type
 , maybe_a_mat =     ( void no_mat | mat solution )
 ]
 
-set where() = void: for line in back_trace do prints(line) od
+set where() = void:
+   for line@i in back_trace
+   do if line[:3]="In " then prints([i]," ",line) fi
+   od
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
@@ -18,8 +21,9 @@ set sign (bool b) = int: { |minus_1^#b|, i.e.: } if b then minus_1 else 1 fi
 
 set ^ = !=@(bool,bool) { exclusive or }
 
+set assert (bool b,(->string) report) = void: if not b then error(report()) fi
+set assert (bool b) = void: assert(b,@:"assertion failed") { default message }
 set assert (bool b,string message) = void: if not b then error(message) fi
-set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
@@ -1127,10 +1131,53 @@ set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
      )
 )
 
+{ some code proceeds by "simple factor", isolating a |sub_datum| for each;
+  functions that expect a specific simple type can call |test_simple_type| }
+
+{ test |rd| for being of simple type T (a letter in "ABCDEFG"), and return (as
+  a list of integers) a map from standard diagam labelling to |rd| simple roots
+}
+set test_simple_type(string T, RootDatum rd) = [int]:
+(  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+in if lt=Lie_type("A1A1") and T="D" { unique reducible case that is accepted }
+   then return map
+   fi
+;  let factors=simple_factors(lt)
+in case #factors
+   else error("Reducible ",lt," found; simple type ",T," was required")
+   in error("Pure torus found where type ",T," root diagram was required")
+   , let (type,rank)=factors[0] in
+     if type=T then map { the main case }
+     else { accept some low rank types under an alternative designation }
+       case rank-1
+       in if T="B" or T="C" { and |rank=1| implies that |type="A"| }
+	  then return map { accept $A_1$ to be interpreted as $B_1$ or $C_1$ }
+	  fi
+       ,  { in rank 2 accept $B_2$ or $C_2$ as the reversed other }
+          if type="B" and T="C" or type="C" and T="B" then return map~[:] fi
+       ,  { in rank 3 accept $A_3$ as $D_3$ by putting middle node in front }
+       if type="A" and T="D" then return [map[1],map[0],map[2]] fi
+       else { in higher ranks there are no ambiguous cases: fall through } ()
+       esac
+     ; error(lt," found where type ",T," was required")
+     fi
+   esac
+)
+
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
+
+{ root datum of singular roots }
+set singular_root_datum(RootDatum rd,ratvec gamma) = RootDatum:
+   let pcr = poscoroots(rd)
+   then pred(int i) = bool: { whether coroot |i| is singular } =pcr[i]*gamma
+in root_datum_from_positive((columns_with(pred,posroots(rd))
+			    ,columns_with(pred,pcr)
+			    )
+			   ,rd.prefers_coroots
+			   )
 
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:
@@ -1363,9 +1410,7 @@ set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   in KGB_elt(rf,theta,v)    { find KGB element within rf }
 
 set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
-  let ic = inner_class(rd,theta)   { find the proper inner class }
-  then rf = real_form(ic,theta,v)  { find real form within ic }
-  in KGB_elt(rf,theta,v)           { find KGB element within rf }
+  KGB_elt(inner_class(rd,theta), theta, v)
 
 { transfer to other inner class (or real form) that shares coordinates,
   this can be used for instance to embed the KGB set of a Levi subgroup }
@@ -1540,6 +1585,7 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+set codimension (Param p) = int: codimension(p.x)
 
 { root datum whose coroots are those integral on p.infinitesimal_character }
 set integrality_datum (Param p)= RootDatum:
