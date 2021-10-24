@@ -193,7 +193,7 @@ set show([(Param,ComplexNilpotent)] data)=void:
 tabulate(
 ["x","lambda","nu","diagram","dim:GK-dim"]#
 for (p,orbit) in data do
- [(#p.x).to_string, p.lambda.compact_ratvec,p.nu.compact_ratvec, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
+ [(#p.x).to_string, p.lambda.compact_string,p.nu.compact_string, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
 
 
 {G is a complex group; use left cell}

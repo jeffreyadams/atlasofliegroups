@@ -54,8 +54,8 @@ set restrict_representation_isotypic \
   in (#P ,for T in pi.operators do restrict_action(T,P) od)
 
 { projector for a cell representation }
-set projector (WeylClassTable Wct, WCell cell, vec chi) = mat:
-  projector(Wct,cell_representation(Wct,cell),chi)
+set projector (WeylClassTable Wct, WCell cell, vec char_values) = mat:
+  projector(Wct,cell_representation(Wct,cell),char_values)
 
 { since the preceding function is very slow for large W because of
   class_of(w), combine several uses of it into one loop:

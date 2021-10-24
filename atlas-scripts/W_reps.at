@@ -1,7 +1,6 @@
 <basic.at
 <parabolics.at
 <W_classes.at
-<class_tables.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 <sparse.at { for column-grouped |sparse_mat| type }
@@ -62,15 +61,12 @@ set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
 
 { Type definitions that facilitate handling the output from built-in |W_cells| }
 set_type
-[ WNode = ([int] tau,[int,int] out_list)
-, WGraph = (RootDatum root_datum,[WNode] nodes)
-, WCell = ([int] labels, WGraph graph,[sparse_mat] operators)
+[ WCell  = ([int] labels, WGraph graph,[sparse_mat] operators)
+, WGraph = (RootDatum root_datum, [WNode] nodes)
+, WNode  = ([int] tau,[int,int] out_list)
 ]
-{ now |W_cells@Block| returns      | [[int],[WNode]]  |
-  and |W_cells@Param| returns | (int,[[int],[WNode]]) | }
-set root_datum(WCell c) = RootDatum: c.graph.root_datum
-set nodes(WCell c) = [WNode]: c.graph.nodes
-set #(WGraph g) = int: #g.nodes
+set root_datum (WCell (,(rd,),)) = RootDatum: rd
+set # (WGraph (,nodes)) = int: #nodes
 
 { Description of the cell representation taken from messages/wcells.help
 
@@ -140,15 +136,15 @@ set #(WGraph g) = int: #g.nodes
 { the |cell_action| functions really operate on |WGraph| data }
 
 {. matrix for s of graph, of coherent continuation action on irreducibles. }
-set graph_action (WGraph (rd,graph),int s) = sparse_mat:
+set graph_action (WGraph (rd,nodes),int s) = sparse_mat:
    assert(s.>= and s<rd.semisimple_rank,"bad W generator: "+s);
    let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
-   for node@j in graph
+   for node@j in nodes
    do if node.tau_has_s
       then [(j,-1)] { single diagonal term -1 }
       else (j,1) { diagonal term, the rest come from outward edges } #
         for (i,):link in node.out_list
-        do if graph[i].tau_has_s then [link] else [] fi
+        do if nodes[i].tau_has_s then [link] else [] fi
         od.## { filter, keeping destination nodes with |s| in tau invariant }
       fi
    od
@@ -163,7 +159,7 @@ set graph_action (WGraph graph,[int] w) = mat:
   fi
 
 {. matrix of action of WeylElt on a cell .}
-set graph_action(WGraph graph,WeylElt w) = mat:
+set graph_action (WGraph graph,WeylElt w) = mat:
   graph_action(graph,w.word)
 
 
@@ -176,7 +172,7 @@ set cell_action (WCell cell,[int] w) = mat:
   graph_action(cell.graph,w)
 
 {. matrix of action of WeylElt on a cell .}
-set cell_action(WCell cell,WeylElt w) = mat:
+set cell_action (WCell cell,WeylElt w) = mat:
   graph_action(cell.graph,w.word)
 
 { |W_cells@Param| is built-in and returns (int,[[int],[[int],[int,int]]])
@@ -193,7 +189,7 @@ set cell_action(WCell cell,WeylElt w) = mat:
                  =(int,[ ([int],  WGraph,[sparse_mat]) ]_
                  =(int,[ (labels, (rd,[WNode]), [sparse_mat]) ])
 }
-set vertex_and_W_cells(Param p) = (int,[WCell]):
+set vertex_and_W_cells (Param p) = (int,[WCell]):
 let (vertex,cells) = (int,[[int],[WNode]]): W_cells(p)
 then cells_with_action = [WCell]:
   for (labels,nodes) in cells { of types |[int]| respectively |[WNode]| }
@@ -203,7 +199,7 @@ then cells_with_action = [WCell]:
   od
 in (vertex,cells_with_action) { |vertex| is number of |p| as used in |labels| }
 
-set W_cells_of(Param p) = [WCell]:
+set W_cells_of (Param p) = [WCell]:
   let (,cells) = vertex_and_W_cells(p) in cells
 
 {. character of representation of W on cell .}
@@ -227,7 +223,7 @@ set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
 	       do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
-set cell_representations(WeylClassTable Wct,[WCell] cells)=[W_rep]:
+set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
   for cell in cells do cell_representation(Wct,cell) od
 
 
