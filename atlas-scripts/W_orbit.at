@@ -1,4 +1,5 @@
-<basic.at  { for assert, #@int,... }
+<basic.at
+<sort.at
 
 {
   An optimised orbit generation procedure, which assumes that generators can
@@ -10,158 +11,232 @@
   partitioned into levels, with equality testing only within current level.
 
   Arguments are a row |S| of generating maps and a starting dominant weight |v|.
+  it returns a list of pairs of a weight |b| and a representative word in the
+  generators, which when applied right-to-left transforms |v| into |b|.
 
-  The algorithm is to generate parallel arrays of |[int]| and |vec| values,
-  with a counter |done| saying how many have been considered for successors, and
-  a marker |stop| saying where the newest level (where duplicates must be
-  avoided) starts.
+  The algorithm is to generate an array of such pairs, with a counter |done|
+  saying how many have been considered for successors, and a marker |stop|
+  saying where the newest level (where duplicates must be avoided) starts.
 }
-set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) = ([vec],[[int]]):
-  let words=[[int]]:[[]], orbit=[v], done=0, stop=1
-  then absent (vec y) = bool: { check down to last level marker }
-         none(#orbit-stop,(int i)bool:orbit~[i]=y)
-  in
-  while done<#orbit
-  do if done=stop then {prints("stop:", #orbit,new_line,"words:",words);} stop:=#orbit fi { hit end of level, define new level }
-  ; let w = words[done], a=orbit[done] in done+:=1
-  ; for f@i in S
-    do case f(a) | else () { skip when no new vector is returned }
-       | solution(b): if absent(b) then ( words #:= i#w, orbit #:= b ) fi
-       esac
-    od
-  od; (orbit,words)
+set generate_from_dominant ([(vec->maybe_a_vec)] S,vec start) = [vec,[int]]:
+(  let stack = [[vec,[int]]]: { each level |lex_lesseq|-sorted by its |vec| }
+               [ [], [(start,[])] ]
+   , absent([vec,[int]] level, vec target) = bool:
+      let size=#level
+      then k = binary_search_first
+         ((int i)bool: let(v,)=level[i] in lex_lesseq(target,v), 0,size	)
+      in k=size or (let (v,)=level[k] in target!=v)
+in while
+      let new_level =
+         for (a,word) in stack~[0]
+	 do for f@i in S
+	    do case f(a)
+	       | else [] { skip when no new vector is returned }
+	       | solution(b):
+	         if absent(stack~[1],b) and absent(stack~[0],b)
+		 then [(b,i#word)]
+		 else []
+		 fi
+	       esac
+	    od.##
+	 od.##
+      then gain=#new_level
+   in {while} >gain
+   do stack := (stack next stack:=[]) #
+   { sort |new_level| by number of |x|, removing duplicates }
+     (let sort_u = (int->[int]):
+         let leq(int i,int j)= bool:
+	    let (v,)=new_level[i],(w,)=new_level[j] in lex_lesseq(v,w)
+         in sort_u(leq)
+      in for i in sort_u(gain) do new_level[i] od
+     )
+   od
+;  ##stack { concatenate generated levels, without merging the (sorted) lists }
+)
 
-{ same as above, but also compose |gens_rep| matrices for applied generators }
-set generate_action_from_dom ([(vec->maybe_a_vec)] S,vec v
-                             ,int dim,[mat] gens_rep) =
-     ([vec],[[int]],[mat]):
-  let orbit=[v], words=[[int]]:[[]], actions=[id_mat(dim)], done=0, stop=1
-  then absent (vec y) = bool: { check down to last level marker }
-         none(#orbit-stop,(int i)bool:orbit~[i]=y)
-  in
-  while done<#orbit
-  do if done=stop then stop:=#orbit fi { hit end of level, define new level }
-  ; let a=orbit[done], w = words[done], act=actions[done] in done+:=1
-  ; for f@i in S
-    do case f(a) | else () { skip when no new vector is returned }
-       | solution(b):
-         if absent(b)
-         then orbit #:= b; words #:= i#w; actions #:= gens_rep[i]*act
-         fi
-       esac
-    od
-  od; (orbit,words,actions)
+{ Same as above, but also compose |gens_rep| matrices for applied generators;
+  for callers that need this, this avoids repeated matrix multiplications that
+  would occur when multiplying out the matrices for all the returned words.
+  This is typically used for representations of W other than the standard
+  reflection representation (for which |matrix@WeylElt| can find the action).
+}
+set generate_from_dominant_with_action \
+   ( [(vec->maybe_a_vec)] S
+   , vec start
+   , int dim
+   , [mat] gens_rep
+   ) = [vec,[int],mat]:
+(  let stack = [[vec,[int],mat]]: { each level |lex_lesseq|-sorted by its |vec| }
+               [ [], [(start,[],id_mat(dim))] ]
+   , absent([vec,[int],mat] level, vec target) = bool:
+      let size=#level
+      then k = binary_search_first
+         ((int i)bool: let(v,,)=level[i] in lex_lesseq(target,v), 0,size	)
+      in k=size or (let (v,,)=level[k] in target!=v)
+in while
+      let new_level =
+         for (a,word,act) in stack~[0]
+	 do for f@i in S
+	    do case f(a)
+	       | else [] { skip when no new vector is returned }
+	       | solution(b):
+	         if absent(stack~[1],b) and absent(stack~[0],b)
+		 then [(b,i#word,gens_rep[i]*act)]
+		 else []
+		 fi
+	       esac
+	    od.##
+	 od.##
+      then gain=#new_level
+   in {while} >gain
+   do stack := (stack next stack:=[]) #
+   { sort |new_level| by number of |x|, removing duplicates }
+     (let sort_u = (int->[int]):
+         let leq(int i,int j)= bool:
+	    let (v,,)=new_level[i],(w,,)=new_level[j] in lex_lesseq(v,w)
+         in sort_u(leq)
+      in for i in sort_u(gain) do new_level[i] od
+     )
+   od
+;  ##stack { concatenate generated levels, without merging the (sorted) lists }
+)
 
-
+{ define "lowering only" standard simple reflection actions on weights }
 set simple_actor (RootDatum rd, int i) = (vec->maybe_a_vec):
   let s=W_gen(rd,i), av=coroot(rd,i) in
   (vec x)maybe_a_vec: if (av*x).> then solution(s*x) else no_vec() fi
 
 { get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
   and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
-set generate_from (RootDatum rd,[int] S,vec v) = ([vec],[WeylElt]):
-  let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
-  then (orbit,words)=
-    generate_from_dom(for s in S do simple_actor(rd,s) od,dom_wt)
-  , to_dom= inverse(chamber)
-  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od)*to_dom od)
+set W_orbit_with_witness (RootDatum rd,[int] S,vec v) = [vec,WeylElt]:
+   let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
+   then orbit =
+      generate_from_dominant(for s in S do simple_actor(rd,s) od,dom_wt)
+   ,  to_dom= WeylElt: inverse(chamber)
+in for (x,word) in orbit do (x,W_elt(rd,for i in word do S[i] od)*to_dom) od
 
-{ like previous, but assuming |v| is dominant, and incorporating action }
-set generate_action_from_dom (RootDatum rd,[int] S,vec v
-                             ,int dim,[mat] gens_rep) = ([vec],[WeylElt],[mat]):
-  let (orbit,words,action)= generate_action_from_dom
-      (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
-  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od) od,action)
+{ like |generate_from_dominant|, but also returning action matrices }
+set generate_from_dominant_with_action \
+   ( RootDatum rd
+   , [int] S { simple reflections to consider }
+   , vec v { initial weight, assumed dominant }
+   , int dim { size of each action matrix }
+   , [mat] gens_rep { action matrices for considered simple reflections }
+   ) = [vec,WeylElt,mat]:
+   let orbit= generate_from_dominant_with_action
+       (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
+in for (x,word,act) in orbit do (x,W_elt(rd,for s in word do S[s] od),act) od
 
 { when no |WeylElt| elements are needed in the end, we can simplify a bit }
-set W_orbit (RootDatum rd,[int] S, vec v) = [vec]:
-  let (orbit,)=generate_from_dom(for i in S do simple_actor(rd,i) od,v) in orbit
+set W_orbit_of_dominant (RootDatum rd,[int] S, vec v) = [vec]:
+   for (x,) in generate_from_dominant(for i in S do simple_actor(rd,i) od,v)
+   do x od
 
-{ just the coset representatives for the stabilizer of |v| }
-set W_orbit_W_elements((RootDatum,[int],vec) triple) = [WeylElt]:
-  let (,W_elements)=generate_from(triple) in W_elements
+{ minimal coset representatives for stabilizer in $W_S$ of dominant weight |v| }
+set stabiliser_quotient_of_dominant (RootDatum rd,[int] S, vec v) = [WeylElt]:
+   for (,w) in generate_from_dominant(for i in S do simple_actor(rd,i) od,v)
+   do W_elt(rd,w) od
 
-{ default S to full set of simple roots }
-set generate_from (RootDatum rd,vec v) = ([vec],[WeylElt]):
-  generate_from(rd,all_simples(rd),v)
+{ minimal coset representatives for stabilizer in $W_S$ of (any weight) |v| }
+set stabiliser_quotient((RootDatum,[int],vec) triple) = [WeylElt]:
+   for (,w) in W_orbit_with_witness(triple) do w od
+
+{ default |S| to full set of simple roots }
+set W_orbit_with_witness (RootDatum rd,vec v) = [vec,WeylElt]:
+   W_orbit_with_witness(rd,all_simples(rd),v)
+set W_orbit_of_dominant (RootDatum rd, vec v) = [vec]:
+   W_orbit_of_dominant(rd,all_simples(rd),v)
 set W_orbit (RootDatum rd, vec v) = [vec]:
-  W_orbit(rd,all_simples(rd),v)
-set W_orbit_W_elements(RootDatum rd,vec v) = [WeylElt]:
-  W_orbit_W_elements(rd,all_simples(rd),v)
+   W_orbit_of_dominant(rd,dominant(rd,v))
+set stabiliser_quotient_of_dominant (RootDatum rd,vec v) = [WeylElt]:
+   stabiliser_quotient_of_dominant(rd,all_simples(rd),v)
+set stabiliser_quotient (RootDatum rd,vec v) = [WeylElt]:
+   stabiliser_quotient(rd,all_simples(rd),v)
 
 { enumerate parabolic subgroup of W }
 set W_parabolic (RootDatum rd, [int] gens) = [WeylElt]:
-   let result=[id_W(rd)] in
-   for s@i in gens
-   do let coset =
-     W_orbit_W_elements(rd,gens[:i+1],fundamental_weight(rd,s).numer)
-   in result := ## for x in coset do for y in result do x*y od od
-   od; result
+(  let result=[id_W(rd)] { $P_0$; set successively to $P_k$ (for |gens[:k]|) }
+in for s@i in gens
+   do let coset_reps = [WeylElt]: { representatives for $P_{i+1}/P_i$ }
+     stabiliser_quotient_of_dominant
+        (rd, gens[:i+1], fundamental_weight(rd,s).numer)
+   in result := for x in coset_reps do for y in result do x*y od od.##
+   od
+;  result
+)
 
 { enumerate parabolic subgroup of W, with their action defined by |gens_rep| }
-set W_parabolic_act (RootDatum rd, [int] gens, int dim, [mat] gens_rep) =
+set W_parabolic_with_action (RootDatum rd, [int] gens, int dim, [mat] gens_rep) =
       [WeylElt,mat]:
-   let result=[(id_W(rd),id_mat(dim))] in
+(  let result=[(id_W(rd),id_mat(dim))] in
    for s@i in gens
-   do let (,coset,action) = generate_action_from_dom
-     (rd,gens[:i+1],fundamental_weight(rd,s).numer,dim,gens_rep)
-   in result := ##
-     for x@k in coset do for (y,act) in result do (x*y,action[k]*act) od od
-   od; result
+   do result := { expand previous |result| to a new version }
+      for (,x,M) in generate_from_dominant_with_action
+      	  (rd,gens[:i+1],fundamental_weight(rd,s).numer,dim,gens_rep)
+      do for (y,act) in result do (x*y,M*act) od
+      od.##
+   od
+;  result
+)
 
 { all elements of Weyl group of RootDatum, in parabolic	quotient lex order }
-set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,#rd.semisimple_rank)
+set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,all_simples(rd))
 
-{ variants of the above for |vec| instead of |vec|; reduce to |vec| case }
-set generate_from (RootDatum rd,[int] S,ratvec rv) = ([ratvec],[WeylElt]):
-  let (v,d) = %rv then (orbit,W_elements) = generate_from(rd,S,v) in
-  (for x in orbit do x/d od,W_elements)
-set W_orbit (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
-  let (v,d) = %rv then orbit = W_orbit(rd,S,v) in for x in orbit do x/d od
-set generate_from (RootDatum rd,ratvec rv) = ([ratvec],[WeylElt]):
-  generate_from(rd,all_simples(rd),rv)
-set W_orbit (RootDatum rd, ratvec rv) = [ratvec]: W_orbit(rd,all_simples(rd),rv)
-
-{ orbit of <w_1,..,w_n> acting on v where w_i is an element of W (WeylElt),
-  (not always a simple reflection). Example use: for W^{\delta}-orbit of a root
-
-  Here we must use instead of |generate_from_dom| a simplified but less
-  efficient method, using linear search over the full orbit generated so for,
-  because nothing is known about how generators relate to dominance, or even
-  that the generated directed acyclic graph is graded
-}
-set generate ([(ratvec->ratvec)] S,ratvec v) = ([ratvec],[[int]]):
-  let words=[[int]]:[[]], orbit=[v], done=0
-  then absent (ratvec y) = bool: { check whole orbit }
-         none(#orbit,(int i)bool:y=orbit[i])
-  in
-  while done<#orbit
-  do let w = words[done], a=orbit[done] in done+:=1
-  ; for f@i in S
-    do let b= f(a) in if absent(b) then ( words #:= i#w, orbit #:= b ) fi od
-  od; (orbit,words)
+{ variants of the above for |ratvec| instead of |vec|; reduce to |vec| case }
+set W_orbit_with_witness (RootDatum rd,[int] S,ratvec rv) = [ratvec,WeylElt]:
+   let (v,d) = %rv in for (x,w) in W_orbit_with_witness(rd,S,v) do (x/d,w) od
+set W_orbit_of_dominant (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
+   let (v,d) = %rv in for x in W_orbit_of_dominant(rd,S,v) do x/d od
+set W_orbit_with_witness (RootDatum rd,ratvec rv) = [ratvec,WeylElt]:
+   W_orbit_with_witness(rd,all_simples(rd),rv)
+set W_orbit_of_dominant (RootDatum rd, ratvec rv) = [ratvec]:
+   let (v,d) = %rv
+in for x in W_orbit_of_dominant(rd,all_simples(rd),v) do x/d od
+set W_orbit (RootDatum rd, ratvec rv) = [ratvec]:
+   W_orbit_of_dominant(rd,dominant(rd,rv))
 
 {
-  The following reason was given that the |words| component remains unconverted
-  in the function |generate| below; we don't really understand it any more:
+  General orbit generation of |v| for the monoid generated by |S|
 
-  We cannot make a [WeylElt]-producing variant of |generate|, as there is
-  no way to synthesise a root datum for which the supplied set of Weyl
-  _words_ forms a set of simple generators (even in case one should exist).
-  The root datum in the supplied WeylElt values is NOT such a root datum
+  Nothing is assumed about how generators relate to dominance, or even that they
+  are involutions, or that the generated directed acyclic graph is graded
+
+  Here we must use instead of |generate_from_dominant| a simplified but less
+  efficient method, using linear search over the full orbit generated so far.
+  The running time will be quadratic in the size of the orbit produced.
 }
+set generate_orbit ([(ratvec->ratvec)] S,ratvec v) = [ratvec,[int]]:
+   let result = [ratvec,[int]]: [(v,[])], done=0
+   then absent (ratvec y) = bool: { check whole orbit }
+          none(#result,(int i)bool: let(x,)=result[i] in x=y)
+   in
+   while done<#result
+   do let (a,w) = result[done] next done+:=1
+   in for f@i in S
+      do let b=f(a) in if absent(b) then result #:= (b,i#w) fi
+      od
+   od; result
 
-set generate (RootDatum rd,[WeylElt] S,ratvec v) = ([ratvec],[WeylElt]):
-  let (orbit,words) = generate(for s in S do (ratvec x) ratvec: s*x od, v) in
-  (orbit,for word in words do product(rd,for i in word do S[i] od) od)
+{ The function |generate| builds an orbit of |v| for the action of the elements
+  <w_1,..,w_k> of |S|, where the elements $w_i$ of $W(rd)$ are arbitrary (they
+  need not form a set of simple generators of a subgroup, or even be
+  involutions). Example use: for $W^\delta$-orbit of a root.
+}
+set generate_W_orbit (RootDatum rd,[WeylElt] S,ratvec v) = [ratvec,WeylElt]:
+   for (x,word) in generate_orbit(for s in S do (ratvec x) ratvec: s*x od, v)
+   do (x,product(rd,for s in word do S[s] od))
+   od
 
 { find a |WeylElt| in the generated group <S> whose action sends |v| to |w|
   returns either (true,w) or (false,id)
 }
-set conjugate_to (RootDatum rd, [WeylElt] S, ratvec v,ratvec w) =
+set conjugate_to (RootDatum rd, [WeylElt] S, ratvec a,ratvec b) =
      (bool,WeylElt):
-  let (orbit,ws) = generate(rd,S,v) then k=first(#orbit,(int i):orbit[i]=w)
-  in if k.>= then (true,ws[k]) else (false,id_W(rd)) fi
+(  for (x,w) in generate_W_orbit(rd,S,a)
+   do if x=b then return (true,w) fi
+   od
+;  return (false,id_W(rd))
+)
 
 { find WeylElt |w| satisfying |w*v=u| }
 set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
@@ -169,75 +244,71 @@ set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
   (u_dom=v_dom, wu*/wv)
 
 
+
+{ same as unbounded case, but limit generating word length to |length_bound| }
+set bounded_generate_from_dominant_with_action \
+   ( [(vec->maybe_a_vec)] S
+   , vec start
+   , int dim
+   , [mat] gens_rep
+   , int length_bound
+   ) = [vec,[int],mat]:
+(  let stack = [[vec,[int],mat]]: { each level |lex_lesseq|-sorted by its |vec| }
+               [ [], [(start,[],id_mat(dim))] ]
+   , absent([vec,[int],mat] level, vec target) = bool:
+      let size=#level
+      then k = binary_search_first
+         ((int i)bool: let(v,,)=level[i] in lex_lesseq(target,v), 0,size	)
+      in k=size or (let (v,,)=level[k] in target!=v)
+   , length=0
+in while
+      if length>=length_bound then break {cannot use |and| here} fi
+      ;  length+:=1 { now |length| equals length of elements generated }
+      ;  let new_level =
+         for (a,word,act) in stack~[0]
+	 do for f@i in S
+	    do case f(a)
+	       | else [] { skip when no new vector is returned }
+	       | solution(b):
+	         if absent(stack~[1],b) and absent(stack~[0],b)
+		 then [(b,i#word,gens_rep[i]*act)]
+		 else []
+		 fi
+	       esac
+	    od.##
+	 od.##
+      then gain=#new_level
+   in {while} >gain
+   do stack := (stack next stack:=[]) #
+   { sort |new_level| by number of |x|, removing duplicates }
+     (let sort_u = (int->[int]):
+         let leq(int i,int j)= bool:
+	    let (v,,)=new_level[i],(w,,)=new_level[j] in lex_lesseq(v,w)
+         in sort_u(leq)
+      in for i in sort_u(gain) do new_level[i] od
+     )
+   od
+;  ##stack { concatenate generated levels, without merging the (sorted) lists }
+)
 {     orbit generation routines which terminate early based on length bound  }
 
-set generate_from_dom_terminate ([(vec->maybe_a_vec)] S,vec v, int length_bound) = ([vec],[[int]]):
-  let words=[[int]]:[[]], orbit=[v], done=0, stop=1, length=1
-  then absent (vec y) = bool: { check down to last level marker }
-         none(#orbit-stop,(int i)bool:orbit~[i]=y)
-  in
-  while length<=length_bound and  done<#orbit 
-  do if done=stop then {prints("stop:", #orbit,new_line,"words:",words);}length+:=1; stop:=#orbit fi { hit end of level, define new level }
-  ; let w = words[done], a=orbit[done] in done+:=1
-  ; for f@i in S
-    do case f(a) | else () { skip when no new vector is returned }
-       | solution(b): if absent(b)
-       and #(i#w)<=length_bound {this is necessary because termination step can run over}
-       then ( words #:= i#w, orbit #:= b ) fi
-       esac
-    od
-  od; (orbit,words)
-
-{ same as above, but also compose |gens_rep| matrices for applied generators }
-set generate_action_from_dom_terminate ([(vec->maybe_a_vec)] S,vec v
-                             ,int dim,[mat] gens_rep,int length_bound) =
-     ([vec],[[int]],[mat]):
-  let orbit=[v], words=[[int]]:[[]], actions=[id_mat(dim)], done=0, stop=1, length=1
-  then absent (vec y) = bool: { check down to last level marker }
-         none(#orbit-stop,(int i)bool:orbit~[i]=y)
-  in
-  while length<=length_bound and  done<#orbit
-  do if done=stop then stop:=#orbit;length+:=1 fi { hit end of level, define new level }
-  ; let a=orbit[done], w = words[done], act=actions[done] in done+:=1
-  ; for f@i in S
-    do case f(a) | else () { skip when no new vector is returned }
-       | solution(b): if absent(b)
-         and #(i#w)<=length_bound  {this is necessary because termination step can run over}
-         then orbit #:= b; words #:= i#w; actions #:= gens_rep[i]*act
-         fi
-       esac
-    od
-  od; (orbit,words,actions)
+set bounded_generate_from_dominant \
+   ([(vec->maybe_a_vec)] S,vec v, int length_bound) = [vec,[int]]:
+   let actions = [mat]: for in S do null(0,0) od
+in for (x,word,)
+   in bounded_generate_from_dominant_with_action(S,v,0,actions,length_bound)
+   do (x,word) od
 
 { get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
   and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
-set generate_from_terminate (RootDatum rd,[int] S,vec v,int bound) = ([vec],[WeylElt]):
-  let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
-  then (orbit,words)=
-    generate_from_dom_terminate(for s in S do simple_actor(rd,s) od,dom_wt,bound)
-  , to_dom= inverse(chamber)
-  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od)*to_dom od)
-
-{ like previous, but assuming |v| is dominant, and incorporating action }
-set generate_action_from_dom (RootDatum rd,[int] S,vec v
-                             ,int dim,[mat] gens_rep) = ([vec],[WeylElt],[mat]):
-  let (orbit,words,action)= generate_action_from_dom
-      (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
-  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od) od,action)
-
-{ when no |WeylElt| elements are needed in the end, we can simplify a bit }
-set W_orbit (RootDatum rd,[int] S, vec v) = [vec]:
-  let (orbit,)=generate_from_dom(for i in S do simple_actor(rd,i) od,v) in orbit
-
-{ just the coset representatives for the stabilizer of |v| }
-set W_orbit_W_elements((RootDatum,[int],vec) triple) = [WeylElt]:
-  let (,W_elements)=generate_from(triple) in W_elements
+set bounded_generate (RootDatum rd,[int] S,vec v,int bound) =
+      [vec,WeylElt]:
+   let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
+   then orbit = bounded_generate_from_dominant
+      (for s in S do simple_actor(rd,s) od,dom_wt,bound)
+   ,  to_dom= inverse(chamber)
+in for (x,word) in orbit do (x,W_elt(rd,for i in word do S[i] od)*to_dom) od
 
 { default S to full set of simple roots }
-set generate_from_terminate (RootDatum rd,vec v,int bound) = ([vec],[WeylElt]):
-  generate_from_terminate(rd,all_simples(rd),v,bound)
-
-set W_orbit (RootDatum rd, vec v) = [vec]:
-  W_orbit(rd,all_simples(rd),v)
-set W_orbit_W_elements(RootDatum rd,vec v) = [WeylElt]:
-  W_orbit_W_elements(rd,all_simples(rd),v)
+set bounded_generate (RootDatum rd,vec v,int bound) = [vec,WeylElt]:
+   bounded_generate(rd,all_simples(rd),v,bound)

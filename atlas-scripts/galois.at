@@ -18,34 +18,17 @@ set square_classes (InnerClass ic) = [[int]]:
   square_classes(Cartan_class(ic,0)) { the most compact Cartan }
 { for a RealForm just convert it to its InnerClass, Cartan(0) is the same }
 
-{list of integer labels of strong real forms}
-set strong_real_forms_indices(InnerClass ic)=[int]: sort(##square_classes(ic))
+{ list of integer labels of real forms, each repeated for strong real forms}
+set strong_real_forms_indices(InnerClass ic) = [int]:
+  sort(##square_classes(fundamental_Cartan(ic)))
 
-{list of real forms with multiplicity}
-set strong_real_forms(InnerClass ic)=[RealForm]:
+{ list of real forms, each repeated for strong real forms }
+set strong_real_forms(InnerClass ic) = [RealForm]:
 let rf=ic.real_forms in for i in ic.strong_real_forms_indices do rf[i] od
 
 { assume you want all strong real forms, i.e. Cartan 0 }
 set print_strong_real (RealForm G) = void:
-  print_strong_real(Cartan_class(G,0)) { no need to convert to InnerClass here }
-
-{ these redefine built-in behavior, but does it make any difference?
-  Isn't it that the most compact Cartan has _all_ real_forms of its InnerClass?
-}
-set real_forms (InnerClass ic)=[RealForm]: real_forms(Cartan_class(ic,0))
-set real_forms (RealForm G) = [RealForm]: real_forms(Cartan_class(G,0))
-
-{ identify SO*(2m) via the information of square_classes(SO(2m,0)) }
-set SOstar (int n) = RealForm:
-  let ic=InnerClass:SO(n,0) then sc1=square_classes(ic)[1] { starred forms }
-  in real_form(ic,sc1[0]) { select first of the starred real forms }
-set Spinstar (int n) =
-  let ic=InnerClass:Spin(n,0) then sc1=square_classes(ic)[1]
-  in real_form(ic,sc1[0])
-{ PSOstar used to take square_classes of SO(n,0) (no P); that cannot be right? }
-set PSOstar (int n) = RealForm:
-  let ic=InnerClass:PSO(n,0) then sc1=square_classes(ic)[1]
-  in real_form(ic,sc1[0])
+  print_strong_real(fundamental_Cartan(G)) { implicitly convert to InnerClass }
 
 { find(vecs,k) returns the (smallest) int j such that k in occurs in vecs[j]
   returns -1 otherwise

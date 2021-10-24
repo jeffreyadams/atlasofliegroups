@@ -2,18 +2,27 @@
 
 set projectors_verbose=true
 
-set projector (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=ct.root_datum, Q=null(dim,dim)  in
-  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
-{  do Q+:=character_value(tab,w,char_values)*action}
-  do Q+:=char_values[ct.class_of(w)]*action
- od; Q
+{ If |chi| is the character of an irreducible W-representation, and |(dim,ops)|
+  describes a W_representation, compute a scalar multiple of projection of the
+  representation space of |ops| on isotoypic subspace defined by |chi|.
+
+  If such |chi| is not a constituent of the
+  representation defined by |ops|, this gives the null matrix; then since
+  the result depends linearly on |chi|, we can even use this when the
+  character is reducible, but has a unique irreducible constituent in common
+  with |ops|, giving (a multiple of) the projection for that isotypic subspace
+}
+set projector (WeylClassTable tab, W_rep (dim,ops), [int] chi) = mat:
+  let rd=tab.root_datum, Q=null(dim,dim) in
+  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
+  do Q+:=character_value(tab,w,chi)*action
+  od; Q
 
 { since the preceding function is very slow for large W because of
 class_of(w), report on progress through W (if projectors_verbose=true}
 set projector_verbose (CharacterTable ct, W_rep (dim,ops), [int] char_values) = mat:
   let rd=ct.root_datum, Q=null(dim,dim), N=#(ct.root_datum.W) in
-  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
   do Q+:=char_values[ct.class_of(w)]*action; N-:= 1;
    if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
   od; Q
@@ -26,7 +35,7 @@ set projectors (CharacterTable ct, W_rep (dim,ops), [[int]] some_char_values) = 
 let rd=ct.root_datum,
 Q=for j:#some_char_values do null(dim,dim) od,
 N=#(ct.root_datum.W) in
-for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
  do let index = ct.class_of(w) in for j:#some_char_values do
  Q[j]+:=some_char_values[j][index]*action od; N-:= 1;
  if projectors_verbose then if (N%100 = 0) then prints("N=",N) fi fi
@@ -37,23 +46,23 @@ set projector (CharacterTable ct, W_rep (dim,ops), [int] char) = mat:
 projectors(ct,(dim,ops),[char])[0]
 
 { restrict representation pi to isotypic subspace (image space of projector) }
-set restrict_representation_isotypic (
-    CharacterTable ct, W_rep pi, vec char_values) = W_rep:
-  let (basis,factors)=projector(ct,pi,char_values).adapted_basis
+set restrict_representation_isotypic \
+   (WeylClassTable Wct, W_rep pi, vec chi) = W_rep:
+  let (basis,factors)=projector(Wct,pi,chi).adapted_basis
   { operators have integral matrices w.r.t. |basis|, so restriction is OK }
   then P=basis[:#factors] { saturated lattice basis of image of the projector }
   in (#P ,for T in pi.operators do restrict_action(T,P) od)
 
 { projector for a cell representation }
-set projector (CharacterTable ct, WCell cell, vec char_values) = mat:
-  projector(ct,cell_representation(ct,cell),char_values)
+set projector (WeylClassTable Wct, WCell cell, vec chi) = mat:
+  projector(Wct,cell_representation(Wct,cell),chi)
 
 { since the preceding function is very slow for large W because of
   class_of(w), combine several uses of it into one loop:
   some_char_values is a list of characters for which the isotypic
   projections are to be computed }
 set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
-  projectors(ct,cell_representation(ct,cell),some_char_values)
+  projectors(ct,cell_representation(ct.class_table,cell),some_char_values)
 
 
 { given a cell, compute the cell represetation pi, find the smallest k so that
@@ -61,24 +70,50 @@ set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
   irreducible in common is special; use the character of sym^k(reflection)
   to compute the projection operator onto the special
 }
+set special_projector (WeylClassTable Wct, WCell cell) = mat:
+  let cell_rep = cell_representation(Wct,cell)
+  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
+  in projector(Wct,cell_rep,char)
+
 set special_projector (CharacterTable ct, WCell cell) = mat:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in projector(ct,cell_rep,char)
+   special_projector(ct.class_table,cell)
+
+{ given a cell, compute the special_projector, and use this to construct
+  the special representation itself
+}
+set special_representation_of_cell (WeylClassTable Wct, WCell cell) = W_rep:
+  let cell_rep = cell_representation(Wct,cell)
+  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
+  in restrict_representation_isotypic(Wct,cell_rep,char)
 
 { given a cell, compute the special_projector, and use this to construct
   the special representation itself
 }
 set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in restrict_representation_isotypic(ct,cell_rep,char)
+   special_representation_of_cell(ct.class_table,cell)
+
+{special_projectors for a list of cells}
+set special_projectors(WeylClassTable Wct, [WCell] cells) = [mat]:
+  for cell in cells do special_projector(Wct,cell) od
 
 {special_projectors for a list of cells}
 set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
-  for cell in cells do special_projector(ct,cell) od
+   special_projectors(ct.class_table,cells)
 
+{test v, w same up to rational multiple}
+set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
 
+{ given list of nonzero vectors return [[int]]
+  where each [int] is the indices of the vectors
+  which are the same up to multiple
+  example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
+set group_vectors_up_to_scalar ([vec] list) = [[int]]:
+  let result=[[int]]: [], reps=[vec]: [] in
+   for v@i in list
+   do assert(!=v,"Cell member projects to 0: "+i);
+      let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
+      if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi
+   od; result
 
 { given list of nonzero vectors return [[int]]
   where each [int] is the indices of the vectors
@@ -88,7 +123,7 @@ set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
   the result is [[parameters in kernel], [usual result]]}
 set group_vectors_up_to_scalar_alt ([vec] list) =
   let result=[[int]]: [], reps=[vec]: [] then
-  kernel=[int]:[] in  
+  kernel=[int]:[] in
    for v@i in list
    do if =v then kernel#:=i else
       let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
@@ -99,3 +134,42 @@ set group_parameters_projection (WCell cell,mat projector) = [[int]]:
   let grouping=group_vectors_up_to_scalar_alt([vec]:projector{matrix columns})
   , parameters=cell.labels
   in for v in grouping do for w in v do parameters[w] od od
+
+
+{ given a cell, compute the projector onto the special representation
+  Then cell vertices give the same primitive ideal iff they map to scalar
+  multiples of the same vector in the special representation, i.e. the two
+  corresponding columns of the matrix are the same up to rational multiple
+}
+set group_parameters_by_primitive_ideal (WCell cell,mat projector) = [[int]]:
+  let grouping=group_vectors_up_to_scalar([vec]:projector{matrix columns})
+  , parameters=cell.labels
+  in for v in grouping do for w in v do parameters[w] od od
+
+{ nice output of primitive ideal information for a cell }
+set print_primitive_ideal_info ([WCell] cells,[mat] projectors) = void:
+  let data=
+     for cell@i in cells
+     do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P)
+     in [i.to_string,(#P).to_string,(#g).to_string,g.to_string]
+     od
+  in prints("Each line has 4 terms:",new_line
+           ,"# of cell",new_line,"size of cell", new_line
+           , "dimension of special representation of cell",new_line
+           , "grouping of parameters in cell by primitive ideal");
+     tabulate(data, "llll",2," ")
+
+{ variant function of previous (distinguished by ignored final string argument),
+  better suited to large cells
+}
+set print_primitive_ideal_info([WCell] cells,[mat] projectors,string .) = void:
+  for cell@i in cells
+  do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P) in
+    prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line
+          , "dimension of special: ", #g)
+  ; for a in g do prints(a) od
+  od
+
+
+
+{Param->[(int, ([int],(RootDatum,[([int],[(int,int)])],[sparse_mat]) )    )]}

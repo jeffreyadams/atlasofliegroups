@@ -1,10 +1,11 @@
 <basic.at
-<W_reps.at
+<class_tables.at
+<W_reps.at { for type |W_rep=(int,[mat])| }
 <character_tables.at { for type |CharacterTable| }
 <character_tables_reductive.at { for |character_table@RootDatum| }
 
-set character(CharacterTable ct,W_rep r) = [int]: character(ct.class_table,r)
-set smallest_degree(CharacterTable ct,[int]chi) = int:
+set character (CharacterTable ct, W_rep r) = [int]: character(ct.class_table,r)
+set smallest_degree (CharacterTable ct,[int]chi) = int:
    smallest_degree(ct.class_table,chi)
 
 {-----------------permuted versions of cell representations-----------------}
@@ -34,81 +35,46 @@ cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph) in
-     for i:#w.word-1 from 1 do result:=result*cell_action(cell,w.word[i],permutation) od; result
+  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph)
+  in for i:#w.word-1 from 1
+     do result:=result*cell_action(cell,w.word[i],permutation)
+     od
+  ;  result
   fi
 
 set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
 for w in ct.class_reps do trace(cell_action(cell,w,permutation)) od
 
 set special_character(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
+   let summands =
+      let dec = ct.decompose(cell_character(ct,cell,permutation))
+      in smallest_degree_summands(ct,dec)
+in if #summands=1 then summands[0]
+   elif #summands=0 then error("no special summands?")
+   else error("not unique special representation")
+   fi
 
 set special_character(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
 special_character(ct,cell,permutation)
 
-{embeddings of Weyl groups, needed for induction}
+{ embeddings of Weyl groups, not needed for induction, or at all really }
 
-{requirement: simple roots of L are contained in the (positive) roots of G}
-set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
-assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
-reflection(G,L.simple_roots[i])
+{ requirement: simple roots of L are contained in the (positive) roots of G }
+set embed_simple_reflection (RootDatum L,RootDatum G, int i) = mat:
+   assert(root_index(G,L.simple_roots[i])<G.nr_of_posroots
+         ,"Simple root for L is not a root for G");
+   reflection(G,L.simple_roots[i]) { just |reflection(L,i)|, if coroots match }
 
-set embed_simple_reflection_or_coreflection(RootDatum rd_L,RootDatum rd, int i)=mat:
-let i=find(rd.posroots,rd_L.simple_roots[i]) in
- if i>=0 then reflection(rd,i) else
-let j=find(rd.poscoroots,rd_L.simple_coroots[i]) in
- if j>=0 then reflection(rd,j)
-else error("neither root nor coroot of rd_L is a root/coroot in rd") fi fi
+set embed (RootDatum L, RootDatum G,[int] w) = mat:
+   product(G.rank,for s in w do embed_simple_reflection(L,G,s) od)
+   { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match }
 
-{abbreviation:}
-set embed(RootDatum rd_L,RootDatum rd, int i)=mat:embed_simple_reflection_or_coreflection(rd_L,rd,i)
-
-{embedding W: using either roots or coroots is allowed}
-set embed(RootDatum L,RootDatum G,[int] w)=mat:
- let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,i) od;rv
-set embed(RootDatum L,RootDatum G,WeylElt w)=WeylElt:W_elt(G,embed(L,G,w.word))
+{ These should not be necessary, use |convert_to(G,w)| instead
+set embed (RootDatum L,RootDatum G,WeylElt w) = WeylElt:
+   W_elt(G,embed(L,G,w.word))
 set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
-
-{take an element of W(Lprime) to an element of W(Gprime)}
-{int: i (simple root of Lprime) -> j (simple root of L) via root_permutation
- j -> matrix  for G.W via embed_simple_reflection_or_coreflection(L,G,j)
- -> WeyElt for G <1,3,2,...>
- -> [1,3,2,...]
- -> apply permutation to this sequence, then get a W_elt for Gprime
 }
-set embed_simple_reflection_or_coreflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:
-let (valid_G,P_G)=root_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
-(valid_L,P_L)=root_permutation(L.derived,Lprime.derived) in  {P_L: L-> L'}
-assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
-assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
-{prints("P_L" ,P_L);
-prints("P_G" ,P_G);
-prints("index: ", permutation(P_G)[permutation(^P_L)[i]]);}
-{let M=embed_simple_reflection_or_coreflection(L,G,permutation(P_G)[permutation(^P_L)[i]]) {matrix, in W(Gprime)} then}
-let j=permutation(^P_L)[i]   {Lprime -> L} then
-M=embed_simple_reflection_or_coreflection(L,G,j) {matrix for G} then
-word_G=W_elt(G,M).word   {[int] for element of W_G} then
-word_Gprime=for i in word_G do permutation(P_G)[i] od 
-in  W_elt(Gprime,word_Gprime)
 
-set e(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
-embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
-
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=WeylElt:embed_simple_reflection_or_coreflection(L,G,Lprime,Gprime,i)
-
-{takes a word for W(L) to a matrix for W(Gprime)}
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-{let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
-{let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv}
-let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed(L,G,Lprime,Gprime,i) od;rv
-{difference here: formerly Gprime.rank}
-
-{w\in W(L) -> W(Gprime)}
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(Gprime,embed(L,G,Lprime,Gprime,w.word))
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,Lprime,Gprime,w)
 
 { ------------------- induction ------------------- }
 
@@ -118,16 +84,19 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
 
 { induction from a Levi factor
 
-  L is and equal rank subgroup of G |pi_L| is a class function on W(L)
-  we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
+  $L$ is subgroup of $G$, or more generally a group mapped homomorphically by
+  $f:L\to G$, and |pi_L| is a tabulated class function on W(L),
+  we want to compute the class function $pi_G=\ind_L^G(pi_L)$ on $W(G)$
 
   formula: if C is a conjugacy class for G
-  pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
-  where the sum runs over the W(L)-conjugacy classes in C\cap W(L) (this follows
-  from Frobenius reciprocity, pairing pi_L with the indicator function for C)
+      pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
+  where the sum runs over the W(L)-conjugacy classes C_j that constitute
+  $C\cap W(L)$, or more generally the inverse image $f^{-1}(C)$ (this follows
+  from Frobenius reciprocity, by which pairing $\ind_L^G(pi_L)$ with the
+  indicator $\chi$ function of $C$ equals pairing $pi_L$ with $\chi\circ f$.
 
   In other words the value of |pi_L| on each class C_j in W(L) contributes to
-  the induced character value only at the class C of W(G) containing it, and for
+  the induced character value only at the class of f(C_j) in W(G), and for
   this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
 
   algorithm: initialize the result to be the 0-character
@@ -139,39 +108,28 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
 
-{Given an embedding f of W_L into W_G}
-set induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =[int]:
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
+set induce_character \
+      ( WeylClassTable Wct_L
+      , WeylClassTable Wct_G
+      , (WeylElt->WeylElt) f { embedding (or any group homomorphism) L->G }
+      , [int] pi_L
+      ) = [int]:
+   let rd_G = Wct_G.root_datum, rd_L = Wct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
-   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
-   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_G= [rat]: {will be [int] in the end} for c in classes_G do 0 od
-   , sizes_G = ct_G.class_sizes
-   , sizes_L = ct_L.class_sizes
-   in for w_L@i in classes_L do
-   let j=ct_G.class_of(f(w_L))  {see embed note below}
-   in
-{   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j], " pi: ", pi_L[i]) in}
-   values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
-od; values_G.ratvec_as_vec
+   then values_G = [rat]: {converted to [int] in the end} null(Wct_G.n_classes)
+   , class_size_G(int j) = int: Wct_G.class_sizes[j]
+   , class_size_L(int i) = int: Wct_L.class_sizes[i]
+in for w@i in Wct_L.class_representatives
+   do let j = Wct_G.class_of(f(w))
+   in values_G[j] +:= pi_L[i] * (index * class_size_L(i)/class_size_G(j))
+   od; for v in values_G do v.rat_as_int od
 
-{for debugging only: character value should be an integer}
-set induce_character_rat (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
-   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
-   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
-   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_G= [rat]: {will be [int] in the end} for c in classes_G do 0 od
-   , sizes_G = ct_G.class_sizes
-   , sizes_L = ct_L.class_sizes
-   in for w_L@i in classes_L do
-   let j=ct_G.class_of(f(w_L))  {see embed note below}
-   in
-{   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j]) in}
-   values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
-   od; values_G
+{ for convenience, allow calling with chracter tables as well }
+set induce_character \
+   (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
+   [int]: induce_character(ct_L.class_table,ct_G.class_table,f,pi_L)
 
-{given L\subset G, compute
+{ given L\subset G, compute
 ct_G=G.character_table and
 ct_L=L.character_table
 the class_representatives for ct_G are in terms of Gprime=ct_G.root_datum
@@ -181,259 +139,103 @@ need: L' -> L \subset G -> Gprime
 see embed(L,G,Lprime,Gprime) above
 }
 
-{requirement: simple roots of L are contained in the (positive) roots of G
- if not this will trigger an assert in embed(L,G,w)
-first version: assume character tables of L,G pre-computed
-}
-set induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
-let Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f=embed(L,G,Lprime,Gprime) in
-induce_character(ct_L,ct_G,f,pi_L)
+{ simplified versions; first provide embedding via |convert_to| }
+set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
+   in induce_character(Wct_L,Wct_G,embed,pi_L)
 
-{compute both character tables as needed (slow)}
-set induce_character(RootDatum L,RootDatum G,[int] pi_L)=
-let ct_G=G.character_table then
-ct_L=L.character_table then
-Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f=embed(L,G,Lprime,Gprime) in
-induce_character(ct_L,ct_G,f,pi_L)
+{ this version assumes ct_G computed, but computes L, class table(L) on the fly }
+set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
+      [int]:
+   let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
+in induce_character(construct_class_table(L),Wct_G,pi_L)
 
-{assume ct_G computed, but not ct_L}
-set induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
-let ct_L=L.character_table then
-Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f=embed(L,G,Lprime,Gprime) in
-induce_character(ct_L,ct_G,f,pi_L)
+set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+in induce_character(Wct_L,Wct_G,Wct_L.trivial)
 
-{Given G,ct_G, and define L in terms of posroots of G
-simple_roots_of_L=[a_0,a_1,...] means that
-the simple roots of L are [G.posroots[a_0],...
-}
-set induce_character(RootDatum G,CharacterTable ct_G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) in
-induce_character(L,G,ct_G,pi_L)
+set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+in induce_character(Wct_L,Wct_G,Wct_L.sign)
 
-set induce_character(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-induce_character(G,G.character_table,simple_roots_of_L,pi_L)
 
-set induce_trivial(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
-let G=ct_G.root_datum then
-L=subgroup_by_simple(G,simple_roots_of_L) then
-ct_L=L.character_table in
-induce_character(L,G,ct_L,ct_G,ct_L.trivial)
+{ truncated induction is defined in general in truncated_induction.at
+  special cases are done here to avoid needing that script (it's not hard) }
+set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
+   let L = Levi_datum(ct_G.root_datum,simple_roots_L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
+   then contributions = [int]: { list of irrep indices }
+      for i: ct_G.n_irreps
+      do if ct_G.degree(i)=target
+         then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
+	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]
+	    else []
+	    fi
+	 else []
+	 fi
+      od.##
+in assert(#contributions=1,"truncate induced from sign is not irreducible");
+   contributions[0]
 
-set induce_trivial(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) then
-ct_L=L.character_table then
-ct_G=G.character_table in
-induce_character(L,G,ct_L,ct_G,ct_L.trivial)
-
-set induce_sign(CharacterTable ct_G, [int] simple_roots_of_L)=[int]:
-let G=ct_G.root_datum then
-L=subgroup_by_simple(G,simple_roots_of_L) then
-ct_L=L.character_table in
-induce_character(L,G,ct_L,ct_G,ct_L.sign)
-
-set induce_sign(RootDatum G,[int] simple_roots_of_L,[int] pi_L)=
-let L=subgroup_by_simple(G,simple_roots_of_L) then
-ct_L=L.character_table then
-ct_G=G.character_table in
-induce_character(L,G,ct_L,ct_G,ct_L.sign)
-
-{these are special cases of truncate_induce in truncated_induction.at
- but included here because of their particular importance}
-set truncate_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
-let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
-n=nr_of_posroots(L) then
-ind=ct_G.decompose(induce_sign(ct_G,simple_roots_L)) then
-rv=##for i:#ind do
- if ind[i]!=0 and ct_G.degrees[i]=n then
-   if ind[i]!=1 then error("mult not one") else [i] fi
-  else []
-  fi
-od in
-assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
-
-set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=int:
-let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
-n=nr_of_posroots(L) then
-ind=ct_G.decompose(induce_trivial(ct_G,simple_roots_L)) then
-rv=##for i:#ind do
- if ind[i]!=0 and ct_G.degrees[i]=n then
-   if ind[i]!=1 then error("mult not one") else [i] fi
-  else []
-  fi
-od in
-assert(#rv=1,"truncate induced from sign is not irreducible");rv[0]
+set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
+   let L = Levi_datum(ct_G.root_datum,simple_roots_L)
+   , induced_char = induce_trivial(ct_G.class_table,simple_roots_L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
+   then contributions = [int]: { list of irrep indices }
+      for i: ct_G.n_irreps
+      do if ct_G.degree(i)=target
+         then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
+	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]
+	    else []
+	    fi
+	 else []
+	 fi
+      od.##
+in assert(#contributions=1,"truncate induced from trivial is not irreducible");
+   contributions[0]
 
 
 { ------------------- restriction ------------------- }
 
 {Given an embedding f of W_L into W_G}
-set restrict_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) f,[int] pi_G) =[int]:
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
-   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
-   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
-   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_L= [rat]: {will be [int] in the end} for c in classes_L do 0 od
-   , sizes_G = ct_G.class_sizes
-   , sizes_L = ct_L.class_sizes
-   in for w_L@i in classes_L do
-   let j=ct_G.class_of(f(w_L))  {see embed note below}
-   in
-   values_L[i] +:= pi_G[j]
-od; values_L.ratvec_as_vec
+set restrict_character \
+      ( WeylClassTable Wct_G
+      , WeylClassTable Wct_L
+      , (WeylElt->WeylElt) f { embedding (or any group homomorphism) L->G }
+      , [int] pi_G
+      ) = [int]:
+   for w in Wct_L.class_representatives do pi_G[Wct_G.class_of(f(w))] od
 
-set restrict_character(RootDatum G,RootDatum L,CharacterTable ct_G,CharacterTable ct_L,[int] pi_G)=
-let Gprime=ct_G.root_datum then
-Lprime=ct_L.root_datum then
-f=embed(L,G,Lprime,Gprime) in
-restrict_character(ct_G,ct_L,f,pi_G)
+{ with default embedding }
+set restrict_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_G) =
+      [int]:
+   let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
+in restrict_character(Wct_G,Wct_L,embed,pi_G)
 
-{ the Steinberg character (mainly for testing)}
+{ for convenience, allow calling with character tables as well }
+set restrict_character \
+   (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f, [int] pi_L) =
+      [int]:
+   restrict_character(ct_L.class_table,ct_G.class_table,f,pi_L)
 
-{alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character (it it does not, this function fails) }
+set restrict_character \
+   (CharacterTable ct_L,CharacterTable ct_G,[int] pi_L) = [int]:
+   restrict_character(ct_L.class_table,ct_G.class_table, pi_L)
 
-{the remainder of this file needs attention}
+{ the Steinberg character, for testing only }
 
+{ alternating sum, over all standard Levis, of induced from trivial;
+  should equal the sign character (if it does not, this function fails) }
 
 set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=W_class_table(rd)
-  then result =
-     for L in standard_Levis(rd)
-     do let ct_L=W_class_table(L) in
-        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
-     od
-     .sum
+  let ct_G=construct_class_table(rd)
+  then result = vec: {from |sum@mat|}
+     for S in power_set(rd.all_simples) { not empty; conversion [vec]->mat OK }
+     do minus_1^#S * induce_trivial(ct_G,S)
+     od.sum
   in assert(result=ct_G.sign); result
-
-{MOVED TO projectors_using_character_tables.at}
-{
-{ ------------ projection on isotypic subspace  ----------- }
-
-{ scalar multiple of projection of representation space of |ops| on isotoypic
-  subspace defined by character |char_values| of an irreducible representation
-
-  If and irreducible character |char_values| is not a constituent of the
-  representation defined by |ops|, this gives the null matrix; then since
-  the result depends linearly on |char_values|, we can even use this when the
-  character is reducible, but has a unique irreducible constituent in common
-  with |ops|, giving (a multiple of) the projection for that isotypic subspace
-}
-set projector (CharacterTable tab, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=tab.root_datum, Q=null(dim,dim) in
-  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,w,char_values)*action
-  od; Q
-
-{ restrict representation pi to isotypic subspace (image space of projector) }
-set restrict_representation_isotypic (
-    CharacterTable ct, W_rep pi, vec char_values) = W_rep:
-  let (basis,factors)=projector(ct,pi,char_values).adapted_basis
-  { operators have integral matrices w.r.t. |basis|, so restriction is OK }
-  then P=basis[:#factors] { saturated lattice basis of image of the projector }
-  in (#P ,for T in pi.operators do restrict_action(T,P) od)
-
-{ projector for a cell representation }
-set projector (CharacterTable ct, WCell cell, vec char_values) = mat:
-  projector(ct,cell_representation(ct,cell),char_values)
-
-{ given a cell, compute the cell represetation pi, find the smallest k so that
-  <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
-  irreducible in common is special; use the character of sym^k(reflection)
-  to compute the projection operator onto the special
-}
-set special_projector (CharacterTable ct, WCell cell) = mat:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in projector(ct,cell_rep,char)
-
-{ given a cell, compute the special_projector, and use this to construct
-  the special representation itself
-}
-set special_representation_of_cell (CharacterTable ct, WCell cell) = W_rep:
-  let cell_rep = cell_representation(ct,cell)
-  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
-  in restrict_representation_isotypic(ct,cell_rep,char)
-
-{special_projectors for a list of cells}
-set special_projectors(CharacterTable ct, [WCell] cells) = [mat]:
-  for cell in cells do special_projector(ct,cell) od
-
-{test v, w same up to rational multiple}
-set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
-
-{ given list of nonzero vectors return [[int]]
-  where each [int] is the indices of the vectors
-  which are the same up to multiple
-  example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
-set group_vectors_up_to_scalar ([vec] list) = [[int]]:
-  let result=[[int]]: [], reps=[vec]: [] in
-   for v@i in list
-   do assert(!=v,"Cell member projects to 0: "+i);
-      let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
-      if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi
-   od; result
-
-{ given a cell, compute the projector onto the special representation
-  Then cell vertices give the same primitive ideal iff they map to scalar
-  multiples of the same vector in the special representation, i.e. the two
-  corresponding columns of the matrix are the same up to rational multiple
-}
-set group_parameters_by_primitive_ideal (WCell cell,mat projector) = [[int]]:
-  let grouping=group_vectors_up_to_scalar([vec]:projector{matrix columns})
-  , parameters=cell.labels
-  in for v in grouping do for w in v do parameters[w] od od
-
-{ nice output of primitive ideal information for a cell }
-set print_primitive_ideal_info ([WCell] cells,[mat] projectors) = void:
-  let data=
-     for cell@i in cells
-     do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P)
-     in [i.to_string,(#P).to_string,(#g).to_string,g.to_string]
-     od
-  in prints("Each line has 4 terms:",new_line
-           ,"# of cell",new_line,"size of cell", new_line
-           , "dimension of special representation of cell",new_line
-           , "grouping of parameters in cell by primitive ideal");
-     tabulate(data, "llll",2," ")
-
-{ variant function of previous (distinguished by ignored final string argument),
-  better suited to large cells
-}
-set print_primitive_ideal_info([WCell] cells,[mat] projectors,string .) = void:
-  for cell@i in cells
-  do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P) in
-    prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line
-          , "dimension of special: ", #g)
-  ; for a in g do prints(a) od
-  od
-
-{given cell, compute the multiplicities of each irreducible
-in the cell, then choose the unique one with minimal degree
-}
-set special_character_of_cell(CharacterTable ct,WCell cell)=int:
-let mults=ct.decompose(ct.cell_character(cell)) then
-{()=prints("mults:",mults) then}
-characters=ct.characters then
-degrees=
- ##for i:#mults do
-  if mults[i]!=0 {character #i has nonzero multiplicity} then
-  [ct.d(characters[i])] {add its degree to list of degree} else [] fi
- od then
-{ ()=prints("degrees=",degrees) then}
-min_degree=min(degrees) then
-specials=##for i:#mults do
- if mults[i]!=0 and ct.d(characters[i])=min_degree then [i] else []
-fi od
-in
-if #specials >1 then error("more than one special representation found")
-elif #specials = 0 then error("no special representations found")
-else specials[0] fi
-
-end comment
-}

@@ -4,34 +4,31 @@
 #include  <ctype.h>
 #include  <limits.h>
 #include  "common.h"
-#define max_bytes  50000L \
-   
-#define max_modules  1000 
-#define max_idents  5000 
-#define max_sections  4000 \
-   
-#define hash_size  353 
-#define buf_size  200 
-#define longest_name  1000 \
-   
-#define long_buf_size  (buf_size+longest_name) 
+#define max_bytes  250000L
+#define max_modules  1000
+#define max_idents  10000
+#define max_sections  4000
+#define hash_size  353
+#define buf_size  200
+#define longest_name  1000
+#define long_buf_size  (buf_size+longest_name)
 #define local  static
 #define array_size(a) ((int)(sizeof(a)/sizeof(a[0])))
 #define false  (boolean) 0
 #define true  (boolean) 1
 #define ctangle  0
 #define cweave  1
-#define and_and  04 
-#define lt_lt  020 
-#define gt_gt  021 
-#define plus_plus  013 
-#define minus_minus  01 
-#define minus_gt  031 
-#define not_eq  032 
-#define lt_eq  034 
-#define gt_eq  035 
-#define eq_eq  036 
-#define or_or  037 
+#define and_and  04
+#define lt_lt  020
+#define gt_gt  021
+#define plus_plus  013
+#define minus_minus  01
+#define minus_gt  031
+#define not_eq  032
+#define lt_eq  034
+#define gt_eq  035
+#define eq_eq  036
+#define or_or  037
 #define find_char() (loc<=limit || get_line())
 #define id_index(p) ((sixteen_bits)((p)-id_table))
 #define id_at(i)    (&id_table[i])
@@ -43,39 +40,36 @@
 #define complete_name(p) ((p)->byte_start[-1]=='\0')
 #define print_mod(p) \
    printf(": <%s%s>",name_begin(p), complete_name(p) ? "" : "..." )
-#define spotless  0 
-#define harmless_message  1 
-#define error_message  2 
-#define fatal_message  3 
+#define spotless  0
+#define harmless_message  1
+#define error_message  2
+#define fatal_message  3
 #define mark_harmless() \
-    if (history==spotless) history=harmless_message;  else 
+    if (history==spotless) history=harmless_message;  else
 #define mark_error() (history=error_message)
-#define overflow(t) fatal("\n! Sorry, %s capacity exceeded",t) \
-			
-#define confusion(s) fatal("\n! This can't happen: %s",s) 
-#define show_banner  flags['b'] 
-#define show_happiness  flags['h'] 
-#define show_progress  flags['p'] 
-#define show_stats  flags['s'] 
-#define C_plus_plus  flags['+'] 
-#define compatibility_mode  flags['c'] 
-#define update_terminal() fflush(stdout) 
+#define overflow(t) fatal("\n! Sorry, %s capacity exceeded",t)
+#define confusion(s) fatal("\n! This can't happen: %s",s)
+#define show_banner  flags['b']
+#define show_happiness  flags['h']
+#define show_progress  flags['p']
+#define show_stats  flags['s']
+#define C_plus_plus  flags['+']
+#define compatibility_mode  flags['c']
+#define update_terminal() fflush(stdout)
 #define new_line() putchar('\n')
-#define term_write(string,leng) printf("%.*s",(int)(leng),string) 
-#define buffer_end   (&buffer[buf_size-2]) 
-#define max_include_depth  32 \
-  
-#define max_include_paths  16 \
-  
-#define max_path_length  200 
+#define term_write(string,leng) printf("%.*s",(int)(leng),string)
+#define buffer_end   (&buffer[buf_size-2])
+#define max_include_depth  32
+#define max_include_paths  16
+#define max_path_length  200
 #define lines_match() \
   (change_limit-change_buffer==limit-buffer \
   && strncmp(buffer, change_buffer, limit-buffer)==0)
-#define byte_mem_end   (&byte_mem[max_bytes]) 
-#define id_table_end   (&id_table[max_idents]) 
-#define mod_table_end  (&mod_table[max_modules]) 
-#define copy_char(c)  if (id_loc<mod_text_end) *id_loc++=c;  else (void)(c) 
-#include  <stdarg.h> 
+#define byte_mem_end   (&byte_mem[max_bytes])
+#define id_table_end   (&id_table[max_idents])
+#define mod_table_end  (&mod_table[max_modules])
+#define copy_char(c)  if (id_loc<mod_text_end) *id_loc++=c;  else (void)(c)
+#include  <stdarg.h>
 
 
 boolean names_match (id_pointer,char*,int,int);
@@ -88,7 +82,7 @@ int program, phase;
 char buffer[long_buf_size]; /* where each line of input goes */
 char *loc=buffer;
     /* points to the next character to be read from the buffer */
-char *limit=buffer; 
+char *limit=buffer;
 
 struct f file[max_include_depth]; /* stack of non-change files */
 struct f change; /* change file */
@@ -103,35 +97,35 @@ boolean print_where=false; /* should |CTANGLE| print line and file info? */
 local struct { char* name; int length; }
   at_h_path[max_include_paths],at_i_path;
   /* alternative search paths for \:h and \:i */
-boolean including_header_file=false; 
+boolean including_header_file=false;
 
 local boolean saved_changing; /* were we changing before it was suspended? */
 local char* saved_change_limit; /* end of suspended change line */
-local int saved_include_depth=0; 
+local int saved_include_depth=0;
 
 local char change_buffer[buf_size]; /* next line of |change_file| */
-local char *change_limit; 
+local char *change_limit;
 
 sixteen_bits section_count; /* the current section number */
-eight_bits changed_section[(max_sections+7)/8]; 
+eight_bits changed_section[(max_sections+7)/8];
 
 char byte_mem[max_bytes]; /* characters of names */
 char *byte_ptr=&byte_mem[0]; /* first unused position in |byte_mem| */
 id_info id_table[max_idents]; /* information about identifiers */
 id_pointer id_ptr=&id_table[0]; /* first unused position in |id_table| */
 mod_info mod_table[max_modules]; /* information about module names */
-mod_pointer mod_ptr=&mod_table[0]; 
+mod_pointer mod_ptr=&mod_table[0];
 
-id_pointer hash[hash_size]; 
+id_pointer hash[hash_size];
 
 mod_pointer root=NULL;
- 
+
 
 char mod_text[longest_name+1]; /* name being sought for */
 char *id_first; /* where the current identifier begins in the buffer */
-char *id_loc; 
+char *id_loc;
 
-int history=spotless; 
+int history=spotless;
 
 boolean flags[UCHAR_MAX+1]; /* an option for each character code */
 char C_file_name[max_file_name_length]; /* name of |C_file| */
@@ -139,16 +133,16 @@ local char tex_file_name[max_file_name_length]; /* name of |tex_file| */
 char idx_file_name[max_file_name_length]; /* name of index file */
 char scn_file_name[max_file_name_length]; /* name of module names file */
 local boolean change_file_explicit=false;
-  
+
 
 FILE *C_file; /* where output of \.{CTANGLE} goes */
-FILE *tex_file; 
+FILE *tex_file;
 
 local boolean term_line_empty=true;
-	
 
 
-enum mod_comparison 
+
+enum mod_comparison
 { less, /* the first name is lexicographically less than,
 	   but no prefix of the second */
   equal, /* the first name is equal to the second */
@@ -162,10 +156,10 @@ local void scan_args (int argc,char** argv);
 
 
 void common_init (int argc,char** argv,char* version)
-{ 
+{
   if (argc==2 && strcmp(argv[1],"--version")==0)
     { print("%s\n",version); exit(0); }
-  
+
   { char* cwebinputs=getenv("CWEBINPUTS");
     at_h_path[0].name=at_i_path.name=NULL; /* defaults */
   #ifdef CWEBHEADERS
@@ -184,13 +178,13 @@ void common_init (int argc,char** argv,char* version)
   #endif
     }
   }
-  
+
   { int i=hash_size; do hash[--i]=NULL; while(i>0); }
-  
-  *byte_ptr++='\0'; 
-  
+
+  *byte_ptr++='\0';
+
   mod_text[0]=' ';
-  
+
   show_banner=show_happiness=show_progress=true;
   scan_args(argc,argv);
 }
@@ -203,7 +197,7 @@ local boolean input_ln (FILE *f)
     if (k<=buffer_end) { *k++=c;  if (!isspace(c)) limit=k; }
   if (k>buffer_end)
   { loc=&buffer[0]; /* now |err_print| will display unbroken input line */
-    err_print ("! Input line too long");   
+    err_print ("! Input line too long");
     if (limit>buffer_end) limit=buffer_end; /* truncate line */
   }
   if (buffer[0]=='@' && limit>&buffer[1] && strchr("IXYZ",buffer[1])!=NULL)
@@ -218,7 +212,7 @@ boolean locate_file_name()
   else if (*loc=='<') delim='>',++loc; /* file name in angle brackets */
   if (loc>=limit)
   { err_print("! Include file name not given");
-	       
+
     return false;
   }
   id_first = loc;
@@ -240,18 +234,18 @@ boolean push_input_file(boolean header,boolean suspend)
     print(" (%d)",max_include_depth);
   }
   else
-  { 
+  {
     { char* k=cur_file_name;
       while (id_first<id_loc)
         if (k==&cur_file_name[max_file_name_length-1])
         { err_print("! Include file name truncated"); break; }
-    		     
+
         else *k++=*id_first++;
       *k='\0';
     }
     if (non_system && (cur_file=fopen(cur_file_name,"r"))!=NULL)
       success=true;
-    else 
+    else
          { char name_buf[max_path_length+max_file_name_length]; int i;
            if (header) /* \:h include file, or subsidiary \.{\#include} */
              for (i=0; i<max_include_paths; ++i)
@@ -269,7 +263,7 @@ boolean push_input_file(boolean header,boolean suspend)
          }
     if (success)
     { cur_line=0; print_where=true;
-      
+
       if (suspend)
       { saved_changing=changing; changing=false;
       saved_change_limit=change_limit; change_limit=change_buffer;
@@ -280,7 +274,7 @@ boolean push_input_file(boolean header,boolean suspend)
     { --include_depth;
       if (non_system) /* don't complain about system header files */
 	err_print("! Cannot open include file");
-		   
+
     }
   }
   return success;
@@ -312,26 +306,26 @@ local boolean get_web_line(void)
 local void prime_the_change_buffer (void)
 { change_limit=change_buffer;
     /* this value is used if the change file ends */
-  
+
   do
   { if (++change_line,!input_ln(change_file)) return;
     if (limit>&buffer[1] && buffer[0]=='@')
       if (buffer[1]=='x') break;
       else if (buffer[1]=='y' || buffer[1]=='z')
       { loc=&buffer[2]; /* point out error after \:y or \:z */
-        err_print ("! Where is the matching @x?"); 
+        err_print ("! Where is the matching @x?");
       }
-      else 
+      else
            { if (buffer[1]=='i' && !compatibility_mode)
              { loc=&buffer[2]; err_print ("! No includes allowed in change file"); }
-           }				    
+           }
   } while (true);
-  
+
   do
     if (++change_line,!input_ln(change_file))
     { loc=&buffer[0]; err_print("! Change file ended after @x"); return; }
-  while (limit==buffer); 
-  
+  while (limit==buffer);
+
   { int n=(int)(limit-buffer); change_limit=change_buffer+n;
     strncpy(change_buffer,buffer,n);
   }
@@ -344,22 +338,22 @@ local void check_change (void)
   print_where=true; /* indicate interrupted line sequencing */
   do
   { changing=true;
-    
+
     { if (++change_line,!input_ln(change_file))
       { loc=&buffer[0]; err_print("! Change file ended before @y");
-    			       
+
         change_limit=change_buffer; changing=false; return;
       }
       if (limit>&buffer[1] && buffer[0]=='@')
         if (buffer[1]=='y') break;
         else if (buffer[1]=='x' || buffer[1]=='z')
         { loc=&buffer[2]; err_print("! Where is the matching @y?"); }
-    				     
-        else 
+
+        else
              { if (buffer[1]=='i' && !compatibility_mode)
                { loc=&buffer[2]; err_print ("! No includes allowed in change file"); }
-             }				    
-      
+             }
+
       { int n=(int)(limit-buffer); change_limit=change_buffer+n;
         strncpy(change_buffer,buffer,n);
       }
@@ -368,27 +362,27 @@ local void check_change (void)
     if (!get_web_line())
     { loc=&buffer[0];
       err_print("! CWEB file ended during a change"); return;
-		 
+
     }
     if (!lines_match()) ++n;
   } while (true);
   if (n>0)
   { loc=&buffer[2];
     print("\n! Hmm... %d of the preceding lines failed to match",n);
-	    
+
     err_print("");
   }
 }
 
 void reset_input (void) /* initialise to read the web file and change file */
 { boolean use_change_file= change_file_name[0]!='\0';
-  
+
   { if ((web_file=fopen(web_file_name,"r"))!=NULL)
       strcpy(file[0].name,web_file_name);
     else if ((web_file=fopen(alt_web_file_name,"r"))!=NULL)
       strcpy(file[0].name,alt_web_file_name);
     else fatal("! Cannot open \"%s\" as input file", web_file_name);
-  	      
+
     web_file_open=true;
     if (use_change_file)
       if ((change_file=fopen(change_file_name,"r"))!=NULL)
@@ -396,7 +390,7 @@ void reset_input (void) /* initialise to read the web file and change file */
       else if (!change_file_explicit)
         use_change_file=false; /* forget about the change file */
       else fatal("! Cannot open \"%s\" as change file", change_file_name);
-  		
+
   }
   cur_line=0; change_line=0; include_depth=0;
   if (use_change_file) { changing=true; prime_the_change_buffer(); }
@@ -411,7 +405,7 @@ boolean get_line (void) /* inputs the next line */
 {
 restart:
   if (changing) mark_section_as_changed(section_count);
-  else 
+  else
        { if (get_web_line()
           && change_limit>change_buffer
           && limit-buffer==change_limit-change_buffer
@@ -419,9 +413,9 @@ restart:
             ) check_change();
        }
   if (changing)
-  { 
+  {
     { if (++change_line,!input_ln (change_file))
-      { err_print("! Change file ended without @z"); 
+      { err_print("! Change file ended without @z");
       buffer[0]='@'; buffer[1]='z'; limit=&buffer[2];
       }
       if (limit>&buffer[1] && buffer[0]=='@') /* check if the change has ended */
@@ -429,11 +423,11 @@ restart:
         { prime_the_change_buffer(); changing=false; print_where=true; }
         else if (buffer[1]=='x' || buffer[1]=='y')
         { loc=&buffer[2]; err_print("! Where is the matching @z?"); }
-    				     
-        else 
+
+        else
              { if (buffer[1]=='i' && !compatibility_mode)
                { loc=&buffer[2]; err_print ("! No includes allowed in change file"); }
-             }				    
+             }
     }
     if (!changing)
     { mark_section_as_changed(section_count); goto restart; }
@@ -447,7 +441,7 @@ restart:
   }
   if (limit-buffer>5
    && strncmp(buffer,"#line",5)==0 && isspace((eight_bits)buffer[5]))
-    
+
     { sixteen_bits line=0;
       print_where=true; /* output a \&{\#line} directive soon */
       loc=&buffer[6];  while (loc<limit && isspace((eight_bits)*loc)) ++loc;
@@ -465,7 +459,7 @@ restart:
         }
       }
       err_print("! Improper #line directive"); goto restart;
-    	    
+
     }
   return !input_has_ended;
 }
@@ -477,7 +471,7 @@ void check_complete (void) /* checks that all changes were picked up */
     changing=true; loc=buffer; web_file_open=true;
       /* prepare unmatched line for display */
     err_print("! Change file entry did not match");
-	       
+
   }
 }
 
@@ -492,15 +486,15 @@ id_pointer id_lookup (char* first,char* last,int ilk)
 { int l,h; /* length and hash code of the given identifier */
   if (last==NULL) last=first+(l=(int)strlen(first)); /* null-terminated string */
   else l=(int)(last-first); /* compute the length */
-  
+
   { char* p=first;
     h=*p; while (++p<last) h=((h<<1)+*p)%hash_size;
   }
-  
+
   { id_pointer p=hash[h]; /* the head of the hash list */
     while (p!=NULL && !names_match(p,first,l,ilk)) p=p->hash_link;
     if (p==NULL) /* we haven't seen this identifier before */
-    
+
     { p=id_ptr; /* this is where the new name entry will be created */
       if (id_ptr++>=id_table_end) overflow ("identifier");
       name_begin(p)=store_string(first,l);
@@ -537,38 +531,38 @@ local mod_pointer mod_name_lookup (char* name, int l)
     { case less: loc=&p->llink; break;
       case greater: loc=&p->rlink; break;
       case equal: case extension:
-	
+
 	{ enum mod_comparison cmp=
 	    mod_name_cmp(name+l0,l-l0,key+l0,(int)strlen(key+l0));
 	  switch(cmp)
 	  { case less: case greater:
-	      err_print("! Incompatible module name"); 
+	      err_print("! Incompatible module name");
 	      print("\nName inconsistently extends <%.*s...>.\n",l0,key);
-		     
+
 	      return NULL;
 	    case extension: case equal:
 	      if (complete_name(p))
 		if (cmp==equal) return p;
 		else
-		{ err_print("! Incompatible module name"); 
+		{ err_print("! Incompatible module name");
 		  print("\nPrefix exists: <%s>.\n",key); return NULL;
-			 
+
 		}
 	      name_begin(p)=store_string(name,l);
 	        /* install |name| in place of |key| */
-	      
+
 	         free(key-1);
 	      return p;
 	  }
 	}
       case prefix:
-	err_print("! Incompatible module name"); 
-	print("\nName is a prefix of <%s%s>.\n" 
+	err_print("! Incompatible module name");
+	print("\nName is a prefix of <%s%s>.\n"
 	     ,key, complete_name(p) ? "" : "...");
       return NULL; /* dummy module name */
     }
   }
-  
+
   { (p=make_mod_node(store_string(name,l)))->key_length=l; /* prepare new node */
     return *loc=p; /* install new node into tree */
   }
@@ -586,23 +580,23 @@ local mod_pointer prefix_lookup (char* name,int l)
       case greater: p=*(loc=&p->rlink); break;
       case equal: return p; /* a match, and no other matches are possible */
       case extension:
-	
+
 	{ enum mod_comparison cmp=
 	    mod_name_cmp(name+l0,l-l0,key+l0,(int)strlen(key+l0));
 	  switch(cmp)
 	  { case less: case greater:
-	      err_print("! Incompatible module name"); 
+	      err_print("! Incompatible module name");
 	      print("\nName inconsistently extends <%.*s...>.\n",l0,key);
-		     
+
 	      return NULL;
 	    case prefix: case equal: return p;
 	    case extension:
 	      if (complete_name(p))
-	      { err_print("! Incompatible module name"); 
-		print("\nPrefix exists: <%s>.\n",key); return NULL; 
+	      { err_print("! Incompatible module name");
+		print("\nPrefix exists: <%s>.\n",key); return NULL;
 	      }
-	      
-	      { 
+
+	      {
 	           free(key-1);
 	        if ((key=(char*)malloc(l+2))==NULL) fatal("Out of dynamic memory!");
 	        *key++='\1'; /* ensure that |complete_name(p)| is false afterwards */
@@ -615,14 +609,14 @@ local mod_pointer prefix_lookup (char* name,int l)
       case prefix:
 	if (match!=NULL)
 	{ err_print("! Ambiguous prefix"); return NULL; }
-		       
+
 	match=p; saved=p->rlink; p=p->llink; /* |loc| is irrelevant now */
    }
     if (p==NULL && match!=NULL)
       p=saved, saved=NULL; /* search other subtree */
   }
   if (match==NULL)
-    
+
     { char* key=(char*)malloc(l+2);
       if (key==NULL) fatal("Out of dynamic memory!");
       *key++='\1'; /* ensure that |complete_name(p)| is false afterwards */
@@ -635,19 +629,19 @@ local mod_pointer prefix_lookup (char* name,int l)
 }
 
 mod_pointer get_module_name (void)
-{ 
+{
   { eight_bits c; char* k=mod_text; /* points to last recorded character */
     do
     { if (!find_char())
       { err_print("! Input ended in module name"); break; }
-  		   
+
       c=*loc++;
-      
+
       if (c=='@')
       { if ((c=*loc++)=='>') break;
         if (isspace(c) || c=='*' || c=='~')
         { err_print("! Module name didn't end"); loc-=2; break; }
-      		   
+
         if (k<mod_text_end-1) *++k='@';
           /* record the `\.{@}', now |c==loc[-1]| again */
       }
@@ -656,7 +650,7 @@ mod_pointer get_module_name (void)
     } while(true);
     id_first=&mod_text[1];
     if (k>=mod_text_end-1)
-  { print("\n! Module name too long: "); 
+  { print("\n! Module name too long: ");
       term_write(id_first,25); err_print("..");
     }
     id_loc= *k==' ' && k>mod_text ? k : k+1;
@@ -675,11 +669,11 @@ boolean get_control_text(void)
       if ((c=*loc++)!='@')
       { if (c!='>')
 	  err_print("! Control codes are forbidden in control text");
-		     
+
 	return (id_loc=k-1)==id_first;
       }
   while(loc<=limit);
-  err_print("! Control text didn't end"); 
+  err_print("! Control text didn't end");
   return (id_loc=k)==id_first;
 }
 
@@ -692,7 +686,7 @@ void get_string(void)
   do
   { if (loc>=limit)
     { err_print("! String didn't end"); loc=limit; break; }
-		   
+
     copy_char(c=*loc++);
     if (c=='\\')
       if (loc<limit) copy_char(*loc++);
@@ -703,24 +697,24 @@ void get_string(void)
       else
       { loc=buffer;
         err_print("! Input ended in middle of string");
-		   
+
         break;
       }
     else if (!including_header_file && c=='@')
       if (*loc=='@') ++loc; /* undouble \:@ */
       else err_print("! Double @ required in strings");
-		      
+
   }
   while (c!=delim);
   if (id_loc>=mod_text_end)
-  { print("\n! String too long: "); 
+  { print("\n! String too long: ");
     term_write(mod_text+1,25); err_print("..");
   }
 }
 
 void err_print (char *s) /* prints `\..' and location of error message */
 { print(*s=='!' ? "\n%s." : "%s.",s);
-  if (web_file_open) 
+  if (web_file_open)
                      { char *k, *l=(loc<limit) ? loc : limit; /* pointers into |buffer| */
                        if (changing) printf(" (l. %d of change file)\n", change_line);
                        else if (include_depth==0) printf(" (l. %d)\n", cur_line);
@@ -740,7 +734,7 @@ void wrap_up (void)
 #ifdef STAT
   if (show_stats) print_stats(); /* print statistics about memory usage */
 #endif
-  
+
   { static char* mess[]=
     { "No errors were found.",
       "Did you see the warning message above?",
@@ -764,20 +758,20 @@ local void scan_args (int argc,char** argv)
   int files_found=0, paths_found= at_h_path[0].name==NULL ? 0 : 1;
   while (--argc>0) /* first ``argument'' (program name) is irrelevant */
     if (((*++argv)[0]=='+' || (*argv)[0]=='-') && (*argv)[1]!='\0')
-      
+
       { boolean flag_change=(**argv == '+');
         char* p=&(*argv)[1]; unsigned char c;
         while ((c=*p++)!='\0')
           if ((c=tolower(c))!='i') flags[c]=flag_change;
-          else 
+          else
                { size_t l=strlen(p);
                  if (l==0) err_print("! Empty include path");
-               		       
+
                  else if (l>max_path_length) err_print("! Include path too long");
-                 					 
+
                  else if (paths_found>=max_include_paths)
                    err_print("! Too many include paths");
-               	       
+
                  else
                  { at_h_path[paths_found].length=(int)l;
                    at_h_path[paths_found++].name=strcpy(byte_ptr,p);
@@ -793,7 +787,7 @@ local void scan_args (int argc,char** argv)
       dot_pos=strrchr(*argv,'.');
       switch (++files_found)
       { case 1:
-	
+
 	#ifndef CPPEXT
 	#define CPPEXT "cpp"
 	  /* extension for \Cpp\ file names; should not exceed 3 characters */
@@ -813,15 +807,15 @@ local void scan_args (int argc,char** argv)
 	    sprintf(scn_file_name,"%s.scn",*argv);
 	  }
 	}
- 
-      break; case 2: 
+
+      break; case 2:
                      if ((*argv)[0]=='-') change_file_name[0]='\0';
                      else if ((*argv)[0]!='+')
                      { change_file_explicit=true;
                        sprintf(change_file_name,dot_pos==NULL ? "%s.ch" : "%s", *argv);
                      }
- 
-      break; case 3: 
+
+      break; case 3:
                      if (program==ctangle)
                        if (dot_pos!=NULL) sprintf(C_file_name, "%s", *argv);
                        else sprintf(C_file_name,"%s.%s", *argv, C_plus_plus ? CPPEXT : "c");
@@ -832,16 +826,16 @@ local void scan_args (int argc,char** argv)
                        sprintf(idx_file_name,"%s.idx",*argv);
                        sprintf(scn_file_name,"%s.scn",*argv);
                      }
- 
-      break; default: 
-                      fatal("! Usage:\n" 
+
+      break; default:
+                      fatal("! Usage:\n"
                       "c%se [(+|-)options] cwebfile[.w] [(changefile[.ch]|+|-) [outputfile[.%s]]]"
                             , program==ctangle ? "tangl" : "weav"
                             , program==ctangle ? "c" : "tex");
       }
     }
-  if (files_found==0) 
-                    fatal("! Usage:\n" 
+  if (files_found==0)
+                    fatal("! Usage:\n"
                     "c%se [(+|-)options] cwebfile[.w] [(changefile[.ch]|+|-) [outputfile[.%s]]]"
                           , program==ctangle ? "tangl" : "weav"
                           , program==ctangle ? "c" : "tex");
@@ -855,7 +849,7 @@ void open_output_file(void)
   else  { name=tex_file_name; file=&tex_file; }
   if ((*file=fopen(name,"w"))==NULL)
     fatal("! Cannot open \"%s\" as output file",name);
-	   
+
 }
 
 void print(char* s,...)
@@ -869,4 +863,3 @@ void print_progress (char* s) { if (show_progress) print(s); }
 
 void print_section_progress (void)
 { if (show_progress) print("*%u",section_count); }
-

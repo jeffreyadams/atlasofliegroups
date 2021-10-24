@@ -6,31 +6,23 @@ set aql_verbose=false
 {. Given a parameter p for G and a real parabolic P, list all Weyl(G)
   conjugates of the infinitesimal character of p that are dominant for L. .}
 set inf_chars_dom_for_L (Param p, Parabolic P)=[ratvec]:
-  let rd=root_datum(p) in let L=Levi(P) in let rdl=root_datum(L) in
-  let orb=W_orbit(rd,infinitesimal_character(p)) in
-  let list=[] in for v in orb do if is_dominant(rdl,v) then
-  list#:=v fi od; list
+   let rd=root_datum(p), L=Levi(P)
+   then rdl=root_datum(L), orb=W_orbit(rd,infinitesimal_character(p))
+in for v in orb do if is_dominant(rdl,v) then [v] else [] fi od.##
+
+{. Given an infinitesimal character gamma for G and a theta-stable parabolic P,
+   list all infinitesimal characters v for L so that v+rho(u) is the
+   infinitesimal character of p. .}
+set inf_chars_for_L (ratvec gamma,Parabolic P)=[ratvec]:
+   let rd=root_datum(real_form(P)), L=Levi(P)
+   then rdl=root_datum(L), orb=W_orbit(rd,gamma), rho=rho_u(P)
+in for v in orb do if is_dominant(rdl,v-rho) then [v-rho] else [] fi od.##
 
 {. Given a parameter p for G and a theta-stable parabolic P, list all
   infinitesimal characters v for L so that v+rho(u) is the infinitesimal
   character of p. .}
 set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
-   let rd=root_datum(p) in let L=Levi(P) in let rdl=root_datum(L) in
-   let orb=W_orbit(rd,infinitesimal_character(p)) in 
-   let rho=rho_u(P) in
-   let list=[] in
-   for v in orb do if is_dominant(rdl,v-rho) then
-   list#:=v-rho fi od; list
-
-{. Given an infinitesimal character gamma for G and a theta-stable parabolic P, list  all infinitesimal characters v for L so that v+rho(u) is the infinitesimal
-  character of p. .}
-set inf_chars_for_L (ratvec gamma,Parabolic P)=[ratvec]:
-   let rd=root_datum(real_form(P)) in let L=Levi(P) in let rdl=root_datum(L) in
-   let orb=W_orbit(rd,gamma) in
-   let rho=rho_u(P) in
-   let list=[] in
-   for v in orb do if is_dominant(rdl,v-rho) then
-   list#:=v-rho fi od; list
+   inf_chars_for_L(infinitesimal_character(p),P)
 
 {. List all one-dimensional unitary characters with given
   infinitesimal character. .}

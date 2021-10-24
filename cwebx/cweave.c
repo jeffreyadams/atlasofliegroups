@@ -15,9 +15,9 @@
 #include  <ctype.h>
 #include  <limits.h>
 #include  "common.h"
-#define max_bytes  50000L
+#define max_bytes  250000L
 #define max_modules  1000
-#define max_idents  5000
+#define max_idents  10000
 #define max_sections  4000
 #define hash_size  353
 #define buf_size  500
@@ -1056,10 +1056,19 @@ int main (int argc,char** argv)
                                                         {function_head, "_~_"},only_plus_plus},
                                {284, {{function_head, unorbinop}},
                                                         {function_head, "_~o_"},only_plus_plus},
+                               {284, {{function_head, binop}},
+                                                        {function_head, "_~o_"},only_plus_plus},
                                {285, {{int_like, expression, int_like}},
                                                                {function_head,"_~_~_"},only_plus_plus},
-                               {285, {{int_like, expression, unorbinop}},
+                               {285, {{int_like, expression, unorbinop,semi}},
+                                                        {declaration, "_~_~o__"},only_plus_plus},
+                               {285, {{int_like, expression, binop,semi}},
+                                                        {declaration, "_~_~o__"},only_plus_plus},
+                               {285, {{int_like, expression, unorbinop,lbrace},-1},
                                                         {function_head, "_~_~o_"},only_plus_plus},
+                               {285, {{int_like, expression, binop,lbrace},-1},
+                                                        {function_head, "_~_~o_"},only_plus_plus},
+
                                {286, {{expression, binop, function_head}},
                                                         {expression,NULL},only_plus_plus},
                                {286, {{colon, function_head},1},

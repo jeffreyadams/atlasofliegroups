@@ -67,7 +67,7 @@ prints("Spin(p,q) type D")
 >"output/Spin71" void:weak_packet_report_ind (Spin(7,1))
 
 prints("SO*")
->"output/SOstar8" void:weak_packet_report_ind (SOstar(8))
+>"output/SO_star8" void:weak_packet_report_ind (SO_star(8))
 
 prints("G2")
 >"output/G2s" void:weak_packet_report_ind (G2_s)

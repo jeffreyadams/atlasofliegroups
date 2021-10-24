@@ -11,4 +11,4 @@ incorporated into associated_variety_annihilator.at }
 set GKfast(Param p) = int:
 let cell=W_cell_of(Finalize(p)) then
 ct_L=cell.root_datum.character_table in
-#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character(cell)]
+#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character_inefficient(cell)]

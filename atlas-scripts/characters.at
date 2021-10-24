@@ -1,11 +1,11 @@
-{ This contents of this file has been incoprorated into W_characters.at and
+{ This contents of this file has been incoprorated into W_classes.at and
   the file will therefore disappear from Atlas soon
 
   The interface has changed as follows:
 
   Rather than having variants of functions that generate the conjugacy classes
   of and W and their sizes, or use such values if passed as arguments, all
-  functions in W_characters assume this done during construction of a
+  functions in W_classes assume this done during construction of a
   |WeylClassTable| value; some functions are in fact part of such a value,
   others are produced by functions taking a |WeylClassTable| as argument; the
   calling syntax is the same in foth cases: |ct.function(arguments)| where |ct|
@@ -22,7 +22,7 @@
 
 <basic.at
 <Weylgroup.at { for |order_W@RootDatum| }
-<W_characters.at { for |conjugacy_class_reps| }
+<W_classes.at { for |conjugacy_class_reps| }
 
 {. data type for class functions .}
 set_type [ ClassFunction=([WeylElt] classes, [int] sizes, [int] values) ]

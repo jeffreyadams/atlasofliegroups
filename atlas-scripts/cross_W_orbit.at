@@ -1,28 +1,48 @@
 <basic.at
+<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
 <Weylgroup.at
 
 { orbit of |x| by cross actions from |gens|, with example transportin w }
-set cross_sub_orbit ([WeylElt] gens, KGBElt x) = ([KGBElt],[WeylElt]):
-  let rd = x.root_datum then orbit= [x], ws = [id_W(rd)], done=0
-  then absent (KGBElt y) = bool: none(#orbit,(int i)bool:orbit[i]=y)
-  in
-  while done<#orbit
-  do
-    let a=orbit[done], w = ws[done] in done+:=1 { pop |(w,a)| from queue }
-  ; for s in gens
-    do let b=cross(s,a) in
-      if absent(b) then ws #:= s*w ;  orbit #:= b fi
-    od
-  od; (orbit,ws)
+set cross_sub_orbit ([WeylElt] gens, KGBElt x) = [KGBElt,WeylElt]:
+(  let G = x.real_form
+   then index = for :KGB_size(G) do minus_1 od
+   , orbit = [(x,id_W(x.root_datum))]
+   , i=0
+in index[#x]:=0 { mark |x| as seen, and present in |orbit[0]| }
+;  while
+      let k=#orbit { variable future position of first new element to be found }
+      then news = [KGBElt,WeylElt]:
+         while i<#orbit
+         do let (y,witness) = orbit[i] next i+:=1
+         in for s in gens
+	    do let z=cross(s,y)
+	    in if index[#z].< then index[#z]:=k; k+:=1; [(z,s*witness)]
+	       else [] { already seen, ignore }
+	       fi
+	    od.##
+	 od.##
+   in {while} >#news
+   do orbit ##:= news
+   od
+; for k@i in index do if k.>= then [orbit[k]] else [] fi od.##
+)
 
-set cross_orbit (KGBElt x) = ([KGBElt],[WeylElt]):
+set cross_orbit (KGBElt x) = [KGBElt,WeylElt]:
   cross_sub_orbit(x.root_datum.W_gens,x)
 
-{ solve for w in W in y=cross(w,x); at least one solution should exist }
-set cross_divide (KGBElt y,KGBElt x) = WeylElt:
-  let (orbit,ws)=cross_orbit(x) then i=first(#orbit,(int i)bool:orbit[i]=y) in
-  if i<0 then error("Did not find ",y," in orbit of ",x) fi; ws[i]
+{ whether |y| is in cross orbit of |x|, and if so a witness }
+set is_in_cross_orbit (KGBElt x) = (KGBElt->bool,WeylElt):
+   let orbit=cross_orbit(x) in
+   (KGBElt y) (bool,WeylElt):
+   let n_y=#y
+   then k =
+     binary_search_first((int i)bool: let (z,)=orbit[i] in n_y<=#z, 0,#orbit)
+   then found = k<#orbit and (let(z,)=orbit[k] in z=y)
+in (found, let (,witness)=orbit[if found then k else 0 fi] in witness)
 
-set is_in_cross_orbit (KGBElt x, KGBElt y) = (bool,WeylElt):
-  let (orbit,ws)=cross_orbit(x),b=true then i=first(#orbit,(int i)bool:orbit[i]=y) in
-  if i<0 then prints("Did not find ",y," in orbit of ",x);b:=false;i:=0 fi; (b,ws[i])
+{ solve for w in W in y=cross(w,x); at least one solution should exist }
+set cross_divide (KGBElt y,KGBElt x) {note argument order} = WeylElt:
+   let (found,witness) = is_in_cross_orbit(x)(y)
+in if found then witness
+   else error("Did not find ",y," in cross orbit of ",x)
+   fi

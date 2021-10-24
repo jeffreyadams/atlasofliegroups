@@ -1,30 +1,6 @@
 <basic.at
-<classical_W_classes_and_reps.at { for |test_simple_type| }
-<character_tables.at
-
-set ! G2_class_words = [[],[0],[1],[0,1],[0,1,0,1],[0,1,0,1,0,1]]
-
-set class_table_G(RootDatum rd) = WeylClassTable:
-  let map=test_simple_type("G",rd)
-  then magic_coweight = 5*coroot(rd,map[0])+9*coroot(rd,map[1]), rho=rho(rd)\1
-  then type(WeylElt w) = int:
-    case magic_coweight*(w*rho) { mod 15; all collisions are conjugate }
-    in die, 5, 2, die, 1, die, die, 3, 4, die, die, 2, die, 1, 0
-    esac
-  , reps =
-      for word in G2_class_words do W_elt(rd,for bit in word do map[bit] od) od
-  in W_class_table( rd, reps
-		  , (int i) int: {class size} case i in 1,3,3,2,2,1 esac
-		  , {classify |w|} type
-		  , (int i,int k) int: {class powers}
-		    case i-3 else { order 2 } case k in 0,i esac
-		    in {i=3} case k in 0,3,4,5,4,3 esac
-		    ,  {i=4} case k in 0,4,4 esac
-		    esac
-		  )
-
-set class_table_G (int n) = WeylClassTable:
-   assert(n=2,"Inexistent type G"+n); class_table_G(simply_connected("G2"))
+<class_tables.at { for |class_table_G| }
+<character_tables.at { for type |CharacterTable| }
 
 set character_table_G = (RootDatum -> CharacterTable):
    let class_names = ["e", "S_short", "S_long", "R/6", "R/3", "R/2"]
@@ -46,3 +22,6 @@ in (RootDatum rd) CharacterTable:
 
 set character_table_G(int n) = CharacterTable:
    character_table_G(simply_connected("G2"))
+
+set to_special_G2 = (int i) int:
+   case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac
