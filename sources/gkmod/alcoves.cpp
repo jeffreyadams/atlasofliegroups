@@ -111,15 +111,15 @@ RootNbrSet wall_set
 
 /*
   Get fractional parts of wall evaluations, for special point in alcove.
-  This special point has zero evaluations on positive wall coroots, and balanced
-  nonzero evaluations on nogatve wall evaluations
+  This special point retains the evaluation at coroots for which it was integer
+  and balances fractional parts among coroots for which it was not integer
 */
 RatNumList barycentre_eq
   (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
 {
   RatNumList result(walls.size(),RatNum(0,1));
-  auto comps = rootdata::components(rd,walls);
-  for (auto& comp : comps)
+  auto comps = rootdata::components(rd,walls); // list of subsets of all roots
+  for (const auto& comp : comps)
   {
     int_Matrix A(rd.rank(),comp.size());
     unsigned i=0;
@@ -131,16 +131,17 @@ RatNumList barycentre_eq
     if (k(0,0)<0)
       k.negate(); // ensure coefficents are positive
 
-    comp.andnot(integral_walls); // from here on focus walls we were not on
-    unsigned n_off = comp.size();
-    assert(n_off>0); // every |walls| component has at least one negative coroot
-    for (auto it=comp.begin(); it(); ++it)
+    BitMap offs = comp; // will hold indices for walls in |comp| we are not on
+    unsigned n_off = offs.andnot(integral_walls).size(); // compute and count
+    assert(n_off>0); // we are off at least one wall in each |walls| component
+    for (auto it=offs.begin(); it(); ++it)
     {
-      const unsigned i = walls.position(*it);
-      assert(k(i,0)>0);
-      result[i] = RatNum(1,n_off*k(i,0));
+      auto mult = k(comp.position(*it),0); // coefficient from coroot relation
+      assert(mult>0);
+      result[walls.position(*it)] // find slot in |result| we need to fill here
+	= RatNum(1,n_off*mult); // equidistribution when weighted by |mult|
     }
-  }
+  } // |for(comp:comps)|
   return result;
 } // |barycentre_eq|
 
@@ -166,20 +167,20 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
   { unsigned int i=0;
     for (auto it=walls.begin(); it(); ++it, ++i)
       A.set_row(i,rd.coroot(*it).scaled(fracs[i].denominator()));
-    for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it, ++i)
+    for (auto it=rd.beginRadical(); it!=rd.endRadical(); ++it, ++i)
       A.set_row(i,it->scaled(gamma.denominator()));
   }
 
   Vec b; // will be right hand side of equation
   b.reserve(A.numRows());
-  // for each of the |walls|, the RHS takes it "fractional part" from |fracs|
+  // for each of the |walls|, the RHS takes its "fractional part" from |fracs|
   // but multiplying by |fracs[i].denominator()| makes equation |i| integer
   unsigned i=0;
   for (auto it = walls.begin(); it(); ++it,++i)
     b.push_back(fracs[i].numerator() // sets new fractional part
 	       +floor_eval(rd,*it,gamma)*fracs[i].denominator()); // keep floor
-  // on the radical part we do no change the coordinates of |gamma|
-  for (auto it=rd.beginCoradical(); it!=rd.endCoradical(); ++it)
+  // on the radical part we do not change the coordinates of |gamma|
+  for (auto it=rd.beginRadical(); it!=rd.endRadical(); ++it)
     b.push_back(gamma.numerator().dot(*it));
 
   try {
@@ -193,7 +194,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
     if (not (theta_plus_1*(new_gamma-gamma)).isZero())
     {
       std::cerr << new_gamma << '\n';
-      throw std::runtime_error("Attempted correction off -theta subspace");
+      throw std::runtime_error("Attempted correction off -theta fixed subspace");
     }
     return rc.sr_gamma(sr.x(),rc.lambda_rho(sr),new_gamma);
   }

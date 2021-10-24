@@ -22,6 +22,9 @@ ComplexNilpotent:(rd,(),semisimple_element(rd,p))
 set dim_nilpotent_partition(RootDatum rd,Partition p)=
 dim_nilpotent(complex_nilpotent_from_partition(rd,p))
 
+set star (bool b) = string: { return a star if the condition is met, else empty }
+   "*" * #b
+
 set print_nilpotent_orbit_partitions(RootDatum rd)=
 let orbits=nilpotent_orbit_partitions(rd) then
 header=["Partition","H","diagram","symbol","Sp","dim","cent","A(O)","dual"] then
@@ -511,7 +514,7 @@ O_check.to_string,
 O_check.special_star,
 S.birational_induction.to_string + S.validate.star,
 O_check.is_birigid.star,
-S.infinitesimal_character.compact_ratvec
+S.infinitesimal_character.compact_string
 ] od)
 
 set test_valid_only(RootDatum rd)=
@@ -532,7 +535,7 @@ O_check.to_string,
 O_check.special_star,
 S.birational_induction.to_string{+ S.validate.star},
 O_check.is_birigid.star,
-S.infinitesimal_character.compact_ratvec
+S.infinitesimal_character.compact_string
 ]
 od);
 prints("# of orbits: ",#rd.dual.orbits)
@@ -554,5 +557,5 @@ O_check.to_string,
 O_check.special_star,
 S.birational_induction.to_string + S.validate.star,
 O_check.is_birigid.star,
-S.infinitesimal_character.compact_ratvec
+S.infinitesimal_character.compact_string
 ] od)

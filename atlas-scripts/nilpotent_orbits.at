@@ -1,6 +1,9 @@
-<basic.at
-<Levi_subgroups.at { for |standard_Levi_conjugacy_representatives| }
-<parabolics.at { for type |Parabolic|, |maximal@Parabolic| etc. }
+<combinatorics.at { for |even_places@[int] }
+<parabolics.at { for |Levi@Parabolic|, |parabolic_by_cwt@(ratvec,KGBElt)| }
+<parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
+<W_classes.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
+<K.at { for |K_0@RealForm| }
+<induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
 <induction.at { for |is_coh_ind_from_finite_dimensional| }
 <all_finite_order.at
