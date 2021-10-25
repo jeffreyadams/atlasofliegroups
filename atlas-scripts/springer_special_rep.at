@@ -1,0 +1,25 @@
+<springer_tables_reductive.at
+<truncated_induction.at
+
+{orbit -> special representation in same family as springer(orbit) }
+
+set springer_special_rep (CharacterTable ct,ComplexNilpotent orbit) =
+   let (S_L,H_L) = Bala_Carter_Levi_plus(orbit)
+   then L=complex_Levi(orbit.root_datum,S_L)
+   then O_L=complex_nilpotent(L,H_L)
+   then st_L=Springer_table(L)
+   then sigma_L = int: st_L.springer(O_L)
+   then sigma=truncate_by_degree_induce_character
+     (ct,S_L,st_L.ct.character(st_L.ct.tensor_sign_index(sigma_L)))
+in ct.character_index(ct.character(ct.tensor_sign_index(sigma)))
+
+set springer_special_rep (SpringerTable st,ComplexNilpotent orbit) = int:
+   springer_special_rep(st.ct,orbit)
+
+set springer_special_rep (CharacterTable ct) = (ComplexNilpotent -> int):
+      (ComplexNilpotent orbit):
+   springer_special_rep(ct,orbit)
+
+set springer_special_rep (SpringerTable st) = (ComplexNilpotent -> int):
+      (ComplexNilpotent orbit):
+   springer_special_rep(st,orbit)
