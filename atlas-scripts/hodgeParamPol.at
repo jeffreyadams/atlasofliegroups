@@ -5,7 +5,7 @@
 {set P_t(G)={non-zero, final, standard, tempered parameter}
  this is precisely the set of "K-types" (parameters of G)
  p_i -> LKT(p_i) is a bijection with K^ (irreducible representations of K)
- 
+
 We write
 "K_type" to mean an element of P_t
 "K_rep": an irreducible representation of K
@@ -39,7 +39,7 @@ corresponding to \sum_{i=1}^n a_i(v)LKT(p_i) (finite sum of K_reps)
 data type: (hodgeParamPol,void)
 
 a hodgeParamPol is an _infinite_ sum of K_reps (with Z[v] coefficients)
-truncated at an integer bound it becomes a finite sum of K_reps with Z[v] 
+truncated at an integer bound it becomes a finite sum of K_reps with Z[v]
 coefficients, i.e. a KHodgeParamPol
 this is hodge_branch@(hodgeParamPol,int) and variants
 }
@@ -50,7 +50,7 @@ this is hodge_branch@(hodgeParamPol,int) and variants
 [P_0,...,P_m] -> (P_0+P_1*v+...+P_m*v^m)
 Write the union of monomials(P_i) as {p_0,...,p_r}.
 The order of this set matters.
-Write P_i=\sum a_{i,j}p_j where j\le r. 
+Write P_i=\sum a_{i,j}p_j where j\le r.
 Then this corresponds to
 \sum a_{i,0}v^i)p_0 +
 \sum a_{i,1}v^i)p_1 +
@@ -81,7 +81,7 @@ write P_i=\sum_0^r a_{i,j}p_j   i\le r, j\le m
 \sum a_{i,1}v^i)p_1 +
 ...
 \sum a_{i,r}v^i)p_r
- represented by 
+ represented by
 [
 ( [a_{0,0},a_{1,0},...,a_{m,0}],p_0),
 ( [a_{0,1},a_{1,1},...,a_{m,1}],p_1),
@@ -100,7 +100,7 @@ for p in monomials(pols) do
 {go other way:
  given f_0(v)p_0 + ... + f_n(v) p_n, take it to [P_0,...,P_m]
 [a_0+a_1v+...a_kv^k]*p_0 + [b_0+...+b_rv^r]*p_1 + ... [...]*p_n
- <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to 
+ <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to
  P_0+P_1*v^2+...+P_m*v^m, represented by
  [P_0,P_1,..,P_n]
 }
@@ -192,7 +192,7 @@ set rearrange(KHodgeParamPol KP)=[(i_poly,Param)]:rearrange(KP.P)
 {go other way:
  given (f_0(q)p_0 + ... + f_n(q) p_n,), take it to ([P_0,...,P_m],)
 [a_0+a_1q+...a_kv^k]*p_0 + [b_0+...+b_rv^r]*p_1 + ... [...]*p_n
- <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to 
+ <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to
  P_0+P_1*v^2+...+P_m*v^m, represented by
  [P_0,P_1,..,P_n]
 }
@@ -253,30 +253,30 @@ set show(hodgeParamPol P)=void:
 let header=["coeff","x","lambda"] then
 values=
 for (f,p) in rearrange(P) do
-[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
-tabulate(header#values) 
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in
+tabulate(header#values)
 
 {nice output}
 set show(KHodgeParamPol P)=void:
 let header=["coeff","x","lambda"] then
 values=
 for (f,p) in rearrange(P) do
-[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
-tabulate(header#values) 
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in
+tabulate(header#values)
 
 {alternative output version}
 set show_long(hodgeParamPol P,KGBElt x_K)=void:
 let header=["c","codim","x","lambda","hw","dim","height","mu"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x in
-[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
+[poly_format(c,"v"),codimension(x(p)).to_string,x.to_string,p.lambda.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
 height(p).to_string,p.mu.to_string] od in tabulate(header#values)
 
 set show_long(hodgeParamPol P)=void:
 let header=["c","codim","x","lambda","hw","dim","height","mu"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x in
-[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+[poly_format(c,"v"),codimension(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
 height(p).to_string,p.mu.to_string] od in tabulate(header#values)
 
 set show_long(KHodgeParamPol KP)=void:
@@ -284,7 +284,7 @@ let header=["c","codim","x","lambda","hw","dim","height","mu"] then
 P=KP.P then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x in
-[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+[poly_format(c,"v"),codimension(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
 height(p).to_string,p.mu.to_string] od in tabulate(header#values)
 
 set print_hodge_branch_std_builtin(Param p,int N)=void:print(hodge_branch_std_builtin(p,N))
@@ -301,10 +301,10 @@ set hodge_print_long([(vec,K_Type)] P)=void:show_long(dearrange(P))
 
 set coefficient(hodgeParamPol P,K_Type mu)=i_poly:
 let r=rearrange(P) then
-n=first(for (,p) in r do LKT(p)=mu od) in 
+n=first(for (,p) in r do LKT(p)=mu od) in
 if n=-1 then poly_0 else let (c,)=r[n] in c fi
 
 set coefficient(KHodgeParamPol KP,K_Type mu)=i_poly:
 let r=rearrange(KP) then
-n=first(for (,p) in r do LKT(p)=mu od) in 
+n=first(for (,p) in r do LKT(p)=mu od) in
 if n=-1 then poly_0 else let (c,)=r[n] in c fi

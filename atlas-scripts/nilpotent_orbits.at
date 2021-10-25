@@ -1,6 +1,9 @@
-<basic.at
-<Levi_subgroups.at { for |standard_Levi_conjugacy_representatives| }
-<parabolics.at { for type |Parabolic|, |maximal@Parabolic| etc. }
+<combinatorics.at { for |even_places@[int] }
+<parabolics.at { for |Levi@Parabolic|, |parabolic_by_cwt@(ratvec,KGBElt)| }
+<parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
+<W_classes.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
+<K.at { for |K_0@RealForm| }
+<induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
 <induction.at { for |is_coh_ind_from_finite_dimensional| }
 <all_finite_order.at
@@ -1074,7 +1077,7 @@ show_nilpotent_orbits(nilpotent_orbits(rd))
  rd=root datum on group side -> integrality_datum(rd,H/2)
  this is the dual of the root datum of a subgroup of G_check
 }
-set integrality_datum(ComplexNilpotent O_check) = RootDatum:
+set integrality_datum (ComplexNilpotent O_check) = RootDatum:
    integrality_datum(O_check.root_datum.dual,O_check.H/2)
 
 {given an orbit O_check on the dual side
@@ -1082,7 +1085,7 @@ set integrality_datum(ComplexNilpotent O_check) = RootDatum:
  rd_int_dual: dual(rd_int), root datum of subgroup on dual side
  return (rd_int_dual,(),O_check.H)
 }
-set integral_descent(ComplexNilpotent O_check)=ComplexNilpotent:
+set integral_descent (ComplexNilpotent O_check) = ComplexNilpotent:
    complex_nilpotent(integrality_datum(O_check).dual,O_check.H)
 
 {see weak_packets.at for integral_descent@(SpringerTable,ComplexNilpotent)}
@@ -1102,7 +1105,7 @@ set non_even_orbits(RootDatum rd) =[ComplexNilpotent]:
 set dual_orbits (RootDatum rd) = [ComplexNilpotent]: rd.dual.orbits
 set even_dual_orbits(RootDatum rd) = [ComplexNilpotent]:
    even_orbits(rd.dual_orbits)
-set non_even_dual_orbits(RootDatum rd) =[ComplexNilpotent]:
+set non_even_dual_orbits(RootDatum rd) = [ComplexNilpotent]:
    non_even_orbits(rd.dual_orbits)
 
 set twist(mat delta,ComplexNilpotent O) = ComplexNilpotent:

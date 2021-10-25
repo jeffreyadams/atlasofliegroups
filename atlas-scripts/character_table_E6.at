@@ -100,3 +100,20 @@ in (RootDatum rd) CharacterTable:
 
 set character_table_E6() = CharacterTable:
    character_table_E6(standard_datum_E6)
+
+set to_special_E6 = (int i) int:
+   case i
+   in 0{sp}, 1{sp}
+   , 2{sp}, 3{sp}
+   , 21
+   , 14, 14, 15, 15
+   , 9{sp}, 10{sp}, 21
+   , 12{sp}, 13{sp}
+   , 14{sp}, 15{sp}
+   , 16{sp}, 17{sp}, 21
+   , 19{sp}, 20{sp}
+   , 21{sp}
+   , 22{sp}, 23{sp}
+   , 21
+   else error("Wrong E6 irrep number")
+   esac

@@ -84,7 +84,8 @@ set associated_variety_ann_ind(Param p) = ComplexNilpotent:
 {-----------------using restriction-----------------------}
 
 {assuming integral infinitesimal character, no induction}
-set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
+set associated_variety_int (SpringerTable st,WCell cell) =ComplexNilpotent:
+   st.springer_inverse_special(st.ct.special_character_inefficient(cell))
 set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(Finalize(p)))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(Finalize(p)))
@@ -94,7 +95,7 @@ set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p)
 set associated_variety_ann_res \
    (SpringerTable st_rd, CharacterTable ct_int, WCell cell) = ComplexNilpotent:
 (  let rd  = st_rd.root_datum, ct_rd = st_rd.ct
-   , index_pi_int = ct_int.special_character(cell)
+   , index_pi_int = ct_int.special_character_inefficient(cell)
    then char_int  = ct_int.characters[index_pi_int]
    ,  d_int       = ct_int.degrees[index_pi_int]
 in if av_verbose
@@ -156,7 +157,7 @@ let rd=st_rd.root_datum
    then ct_rd=st_rd.ct
    then L=cell.root_datum
    then ct_L=L.character_table
-   then index_pi_L=ct_L.special_character(cell)
+   then index_pi_L=ct_L.special_character_inefficient(cell)
    then char_L=ct_L.characters[index_pi_L]
    then d_L=ct_L.degrees[index_pi_L] in
 (rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L){
@@ -193,7 +194,7 @@ set associated_variety_ann = (Param->ComplexNilpotent):
 set GK_dim(Param p) = int:
 let cell=W_cell_of(Finalize(p))
    then ct_L=cell.root_datum.character_table in
-#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character(cell)]
+#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character_inefficient(cell)]
 
 {set GK_dim(SpringerTable st)=(Param->int):(Param p):GK_dim(p,st)}
 
@@ -202,7 +203,7 @@ set show([(Param,ComplexNilpotent)] data)=void:
 tabulate(
 ["x","lambda","nu","diagram","dim:GK-dim"]#
 for (p,orbit) in data do
- [(#p.x).to_string, p.lambda.compact_ratvec,p.nu.compact_ratvec, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
+ [(#p.x).to_string, p.lambda.compact_string,p.nu.compact_string, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
 
 
 {G is a complex group; use left cell}
@@ -215,7 +216,7 @@ associated_variety_ann_res(p.real_form.left_copy,cell)
    then st_rd=Springer_table(rd)
    then ct_int=p.integrality_datum.character_table
    then L=cell.root_datum
-   then index_pi_int=ct_int.special_character(cell)
+   then index_pi_int=ct_int.special_character_inefficient(cell)
    then char_int=ct_int.characters[index_pi_int]
    then d_int=ct_int.degrees[index_pi_int]
    then chars_rd=

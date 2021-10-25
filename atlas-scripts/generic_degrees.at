@@ -1,16 +1,20 @@
 {generic degrees for representations of Weyl groups, using cells
 for Geck algorithm see geck_generic.at}
 
-<cells.at { for |cell_character@CharacterTable| }
+<W_reps.at { for |cell_character@CharacterTable| }
+<character_tables.at { type |CharacterTable| }
+<cells.at { for |special_irreducible| }
 <K_highest_weights.at {for all_parameters_gamma}
 
 {------------------- generic degrees ----------------}
 
 
 set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
+   let Wct = ct.class_table in
 ( ct.n_irreps { size of degree lists being summed }
 # for cell in cells
-  do let cell_char = [int]: ct.decompose(cell_character(ct,cell))
+  do assert(Wct.root_datum=cell.root_datum,"Root datum ismatch in cell")
+  ;  let cell_char = [int]: ct.decompose(cell_character(Wct,cell))
      then d() = ct.degree(special_irreducible(ct,cell_char))
   in for i:ct.n_irreps
      do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
@@ -39,8 +43,8 @@ set generic_degrees(CharacterTable ct,[WCell] cells, int cell_size_cutoff) = [in
 ( ct.n_irreps { size of degree lists being summed }
 # for cell in cells
   do
-   if #cell<cell_size_cutoff then 
-    let cell_char = [int]: ct.decompose(cell_character(ct,cell))
+   if #cell<cell_size_cutoff then
+    let cell_char = [int]: ct.decompose(cell_character(ct.class_table,cell))
     then d() = ct.degree(special_irreducible(ct,cell_char))
     in for i:ct.n_irreps
      do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi

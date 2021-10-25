@@ -1,3 +1,8 @@
+<basic.at
+<character_tables.at { for the type }
+<springer_tables.at { for the type }
+<geck_generic.at { for |lookup_springer_table| }
+
 {W-rep sigma -> special W-rep sigma_s}
 {
 
@@ -32,7 +37,7 @@ the algorithm produces
 [(L_n,table_n,char_n),...(L_1,table_1,char_1),(G,0,char_G)
 where each table_j,char_j is an integer
 start with tables[table_n].characters[char_n], this is special
-j-induction takes you 
+j-induction takes you
 
 }
 
@@ -62,40 +67,66 @@ let dec=ct.decompose(character)  {[int]} in
 od
 
 {select all terms with specified fake degree and (possibly different) generic degree}
-set select_both_degrees(CharacterTable ct, [int] character, int desired_value_fake,int desired_value_generic)=[(int,int)]:
+set select_both_degrees\
+ ( CharacterTable ct
+ , [int] character
+ , int desired_value_fake
+ , int desired_value_generic
+ ) = [(int,int)]:
 select(ct,character,desired_value_fake,desired_value_generic,ct.degree,ct.generic_degree)
 
 {J-induction from Lusztig's orange book page 77}
 {induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L)}
-set J_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
-select_generic_degree(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]), ct_L.generic_degree(index_character_L))
-
-{also version with RootDatum L included}
-set J_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
-select_generic_degree(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]), ct_L.generic_degree(index_character_L))
+set J_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_generic_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.generic_degree(index_character_L)
+    )
+)
 
 {j-induction from Lusztig's orange book page 77}
 {induce sigma_L from W(L) to W(G), and keep terms sigma with fdeg(sigma)=fdeg(sigma_L)}
-set j_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
-select_degree(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]), ct_L.degree(index_character_L))
-
-{also version with RootDatum L included}
-set j_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
-select_degree(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]), ct_L.degree(index_character_L))
+set j_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+( select_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    )
+)
 
 {induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L) AND fdeg(sigma)=fdeg(sigma_L)}
-set jJ_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
-select_both_degrees(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]),
-		      ct_L.degree(index_character_L),ct_L.generic_degree(index_character_L))
-
-{also version with RootDatum L included}
-set jJ_induce(CharacterTable ct_L,RootDatum L,CharacterTable ct_G,int index_character_L)=
-select_both_degrees(ct_G,induce_character(ct_L,L,ct_G,ct_L.characters[index_character_L]),
-		      ct_L.degree(index_character_L),ct_L.generic_degree(index_character_L))
+set jJ_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    , ct_L.generic_degree(index_character_L)
+    )
+)
 
 {induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=fdeg(sigma)=desired_degree}
-set jJ_select_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L,int desired_degree)=
-select_both_degrees(ct_G,induce_character(ct_L,ct_G,ct_L.characters[index_character_L]),desired_degree,desired_degree)
+set jJ_select_induce\
+  (CharacterTable ct_L
+  ,CharacterTable ct_G
+  ,int index_character_L
+  ,int desired_degree)=
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     )
+    ,desired_degree
+    ,desired_degree
+    )
+)
 
 
 {assume generic degrees have been computed for all levis}
@@ -133,7 +164,7 @@ else
     let ()=if fig_verbose then prints("has correct generic degree: #", index_char_L) fi in
    let ind_all=induce_character(table_L.ct,L,ct,table_L.ct.characters[index_char_L]) then
       ()= if fig_verbose then prints("L=",table_L.root_datum, new_line,"ind_all: ");ct.view_char(ind_all) fi then
-    ind=J_induce(table_L.ct,L,ct,index_char_L)  then  {ind = [(index,mult)]}
+    ind=J_induce(table_L.ct,ct,index_char_L)  then  {ind = [(index,mult)]}
       ()=if fig_verbose then prints("J_induction: ", ind) fi in
     if find(for (j,) in ind do j od,index_char_G)!=-1 then
        if fig_verbose then prints("found") fi;
@@ -141,7 +172,7 @@ else
     fi
    od   {end for index_char_L:table.n_classes}
   od;    {end for index_table_L:#levi_tables-1}
-   return(false,([SpringerTable]:[],-1,-1)) 
+   return(false,([SpringerTable]:[],-1,-1))
 fi
 
 {assume generic degrees have been computed for all levis}
@@ -175,7 +206,7 @@ let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,(int,bool))]
    let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)}  then
    new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,true)) then
    ()=triples:=new#triples in
-   my_function(levi_springer_tables,triples)   
+   my_function(levi_springer_tables,triples)
  {  then new_levi_springer_table=levi_springer_tables[new_table_index] then
     then orbit_sgn=springer_inverse(new_levi_springer_table,new_char_index)  then
     dual_orbit_sgn=new_levi_springer_table.dual_map(orbit_sgn) then}
@@ -202,7 +233,7 @@ set collapse([SpringerTable] tables, [(RootDatum,int,(int,bool))] triples)=
 if #triples=1 then
  if fig_verbose then prints("collapse: returning special") fi;triples[0]
 elif #triples=2 then
- if fig_verbose then prints("collapse: returning one step") fi;triples[0] 
+ if fig_verbose then prints("collapse: returning one step") fi;triples[0]
 else
  let ()=if fig_verbose  then prints("collapsing, #triples=", #triples) fi then
 working_triple=triples[0] in
@@ -212,7 +243,7 @@ for i:#triples-2 do
  {if tensor_sign_M=true, then
     sigma_L -> sigma_L\otimes sign -> J_ind(sigma_L*sgn) -> [ J_ind(sigma_L*sgn)]*sgn
 }
- (index_char_M,)=j_induce(tables[index_table_L].ct,L,tables[index_table_M].ct,index_char_L)[0] then
+ (index_char_M,)=j_induce(tables[index_table_L].ct,tables[index_table_M].ct,index_char_L)[0] then
  ()=if tensor_sign_L then index_char_M:=tables[index_table_M].ct.tensor_sign_index(index_char_M) fi in
 { let ()=prints("step i: ",i,new_line, "M=", M,new_line, " L=", L, new_line,"index_char_L=", index_char_L, new_line,
 " index_char_M: ", index_char_M, new_line) in}

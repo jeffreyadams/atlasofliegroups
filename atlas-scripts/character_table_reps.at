@@ -32,17 +32,24 @@ cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph) in
-     for i:#w.word-1 from 1 do result:=result*cell_action(cell,w.word[i],permutation) od; result
+  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph)
+  in for i:#w.word-1 from 1
+     do result:=result*cell_action(cell,w.word[i],permutation)
+     od
+  ;  result
   fi
 
 set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
 for w in ct.class_reps do trace(cell_action(cell,w,permutation)) od
 
 set special_character(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
+   let summands =
+      let dec = ct.decompose(cell_character(ct,cell,permutation))
+      in smallest_degree_summands(ct,dec)
+in if #summands=1 then summands[0]
+   elif #summands=0 then error("no special summands?")
+   else error("not unique special representation")
+   fi
 
 set special_character(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
 special_character(ct,cell,permutation)
@@ -133,7 +140,7 @@ set induce_character (CharacterTable ct_L, CharacterTable ct_G,[int] pi_L) =
 set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
       [int]:
    let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
-in induce_character(class_table(L),Wct_G,pi_L)
+in induce_character(construct_class_table(L),Wct_G,pi_L)
 
 {L\simeq L'\subset G, compute induction from W(L) to W(G) via this isomorphism
 more precisely:
@@ -157,14 +164,16 @@ set induce_character (CharacterTable ct_L,RootDatum L_prime, CharacterTable ct_G
 
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
-   let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.trivial)
 
 set induce_trivial (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
 induce_trivial(ct_G.class_table,simple_roots_of_L)
 
 set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
-   let Wct_L = class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
 in induce_character(Wct_L,Wct_G,Wct_L.sign)
 
 set induce_sign (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
@@ -175,7 +184,7 @@ induce_sign(ct_G.class_table,simple_roots_of_L)
   special cases are done here to avoid needing that script (it's not hard) }
 set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
-   then Wct_L = class_table(L), target = int: nr_of_posroots(L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_irreps
@@ -193,7 +202,7 @@ in assert(#contributions=1,"truncate induced from sign is not irreducible");
 set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
    let L = Levi_datum(ct_G.root_datum,simple_roots_L)
    , induced_char = induce_trivial(ct_G.class_table,simple_roots_L)
-   then Wct_L = class_table(L), target = int: nr_of_posroots(L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
    then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
    then contributions = [int]: { list of irrep indices }
       for i: ct_G.n_irreps
@@ -242,7 +251,7 @@ set restrict_character \
   should equal the sign character (if it does not, this function fails) }
 
 set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=class_table(rd)
+  let ct_G=construct_class_table(rd)
   then result = vec: {from |sum@mat|}
      for S in power_set(rd.all_simples) { not empty; conversion [vec]->mat OK }
      do minus_1^#S * induce_trivial(ct_G,S)

@@ -43,25 +43,6 @@ set nilpotent_orbit_partitions =
 set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
    nilpotent_orbit_partitions(Lie_type(rd))
 
-{ test if partition is valid orbit in type ABCD }
-set is_valid (string type,Partition P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
-  P:=P.strip_to_partition; { avoid frequencies of 0 }
-  case ascii(type)-ascii("A")
-  in { type A } true
-  , { type B } sum(P).is_odd and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  , { type C } sum(P).is_even and
-    all(for mult in P.frequencies.odd_places do mult.is_even od)
-  , { type D } sum(P).is_even and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  else false { exceptional types are not valid }
-  esac
-
-set is_valid (LieType t,vec P) = bool:
-  let tn=type_number(t), r=t.rank in
-  #P = case tn in r+1, r+r+1, r+r, r+r esac and is_valid("ABCD"[tn],P)
-
 { nilpotent orbits of dual group (types A-D only) }
 set dual_nilpotent_orbit_partitions(RootDatum rd)=[Partition]:
   nilpotent_orbit_partitions(dual(rd))
@@ -112,14 +93,19 @@ set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
   orbits[j] contained in the closures of orbits[i]
 }
 set closures([Partition] orbits) = [[int]]:
-  {pre-sort}
-   let orbits=for P in orbits do reverse_sort(P) od in
-   for P@i in orbits
+   for P@i in orbits := {pre-sort} for P in orbits do reverse_sort(P) od
    do
-   let ()=prints("P=",P, "i=",i) in
-   ## for j:#orbits 
-      do prints("j=",j);if j!=i and leq_dominance_order_partitions_presorted(orbits[j],P) then prints("got",i, " ", j);[j] else [] fi
-      od
+      prints("P=",P, "i=",i);
+      for lambda@j in orbits
+      do
+         prints("j=",j);
+	 if j!=i and leq_dominance_order_partitions_presorted(lambda,P)
+         then
+	    prints("got",i, " ", j);
+	    [j]
+	 else []
+	 fi
+      od.##
    od
 
 { this only works for simple classical groups, fails for exceptional groups;
@@ -133,4 +119,3 @@ ComplexNilpotent:(rd,(),semisimple_element(rd,p))
 
 set dim_nilpotent_partition(RootDatum rd,Partition p)=
 dim_nilpotent(complex_nilpotent_from_partition(rd,p))
-

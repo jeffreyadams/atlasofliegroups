@@ -359,64 +359,31 @@ set strict_partitions = (int n) [Partition]:
   fi
 
 
+{		Jordan types of nilpotent elements (or orbits)		}
 
-{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
+{ test if partition is valid (nilpotent orbit) JOrdan type in type ABCD }
+set is_valid (string type,Partition P) = bool:
+{ avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
+  P:=P.strip_to_partition; { avoid frequencies of 0 }
+  case ascii(type)-ascii("A")
+  in { type A } true
+  , { type B } sum(P).is_odd and
+    all(for mult in P.frequencies.even_places do mult.is_even od)
+  , { type C } sum(P).is_even and
+    all(for mult in P.frequencies.odd_places do mult.is_even od)
+  , { type D } sum(P).is_even and
+    all(for mult in P.frequencies.even_places do mult.is_even od)
+  else false { exceptional types are not valid }
+  esac
 
-{ a condition relevant to which cycle types give split classes in $W(D_n)$ }
-set is_very_even (Partition P) = bool: =P%2 { whether all parts are even }
-
-{ a condition relevant to which $D_n$ nilpotent orbits are split from $O(2n)$ }
-set is_doubly_even (Partition P) = bool: { even parts even multiplicities only }
-  let freq = frequencies(P) in =freq.odd_places and =freq.even_places%2
-
-set_type BiPartition = (Partition,Partition)
-{ no specific interpretation imposed here, but ordering should always have:
-  positive/even/0/false/trivial repn BEFORE negative/odd/1/true/sign repn one }
-
-set sum (BiPartition(P,Q)) = int: sum(P)+sum(Q)
-
-{ cycles with product of signs, for simple types B,C,D }
-set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
-
-{ equality is strict (don't want to force interpretation onto |[int,bool|]) }
-set = (Signed_cycles cyc0,Signed_cycles cyc1) = bool:
-   #cyc0=#cyc1 and
-   ( for (n,b)@i in cyc0
-     do let(m,c)=cyc1[i] in if n!=m or b!=c then return false fi
-     od
-   ; true
-   )
-set != (Signed_cycles cyc0,Signed_cycles cyc1) = bool: not(cyc0=cyc1)
-
-{ for equivalence up to permutation of cycles, use |c0.same_as(c1)| }
-set same_as (Signed_cycles cyc) = (Signed_cycles->bool):
-   let freq_pos = for (n,b) in cyc do if b then [] else [n] fi od.##.frequencies
-   ,   freq_neg = for (n,b) in cyc do if b then [n] else [] fi od.##.frequencies
-in (Signed_cycles c) bool:
-   freq_pos = for (n,b) in c do if b then [] else [n] fi od.##.frequencies and
-   freq_neg = for (n,b) in c do if b then [n] else [] fi od.##.frequencies
-
-{ The hyperoctahedral group $H_n$ can be represented by sigend permutation
-  matrices (where every row and column has a unique nonzero entry, which lies in
-  $\{-1,1\}$. There is a surjective group morphism to $S_n$ forgetting the signs.
-
-  This is the symmetry group of en $n$-dimensional hyperoctahedron (also of the
-  hypercube), centered at the origin, with 2 vertices on each coordinate axis.
-
-  Conjugacy classes of $H_n$ are given by signed cycle types: projection to
-  $S_n$ gives a cycle type (for the permutation of the axes), and to each cycle
-  is attached the product of the signs for the coordinate axes in the cycle.
-}
-
-{ converting partition pairs to signed cycle types, second has flipped cycles }
-set to_cycles (Partition lambda,Partition mu) = Signed_cycles:
-  for part in lambda do (part,false) od ## for part in mu do (part,true) od
-
-{ the inverse of |to_cycles@(Partition,Partition)| }
-set to_partition_pair(Signed_cycles cy) = (Partition,Partition):
-( for (part,b) in cy do if b then 0 else part fi od.sort_to_partition
-, for (part,b) in cy do if b then part else 0 fi od.sort_to_partition
-)
+set is_valid (LieType t) = (Partition->bool):
+   let codes = simple_factors(t)
+   then (letter,r)= assert(#codes=1,"Non-simple Lie type"); codes[0]
+   then n =
+      case ascii(letter)-ascii("A") in r+1, r+r+1, r+r, r+r
+      else error("Exceptional ",t)
+      esac
+in (Partition P) bool: #P = n and is_valid(letter,P)
 
 { partitions with even multiplicity of parts of one parity (odd or even) }
 set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
@@ -450,6 +417,72 @@ set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+{	Combinatorics specifically for (Weyl groups of) types B,C,D	}
+
+{ for conjugagy classes: cycles with product of signs, for simple types B,C,D }
+set_type Signed_cycles = [int,bool] { bool |b| encodes product |minus_1^#b| }
+
+{ for $W(C_n)$ irreducible representations: partition pairs of total size $n$ }
+set_type BiPartition = (Partition,Partition)
+{ no specific interpretation imposed here, but ordering should always have:
+  positive/even/0/false/trivial repn BEFORE negative/odd/1/true/sign repn one
+  parametrises irreps of the hyperoctahedral group $W(C_n)=W(B_n)$
+  also in bijection with |Signed_cycles| as (unflipped lengths,flipped lengths)
+}
+
+{ Sometimes (Springer correspondence) a transformation of |BiPartition| is used
+  The type to represent them is delibetately distinct from |BiPartition| }
+set_type Symbol = [[int]]  { must have 2 lists, first longer than second by 1 }
+{ both lists strictly INcreasing with non-negative entries
+  equivalence [a_1,...a_k]->[0,a_1+1,s_2+1,...a_k+1] can be used to adapt length
+  every symbol can be written with length difference 1 and at most one term 0
+}
+
+
+set rank (Signed_cycles cycles) = int: for (c,) in cycles do c od.sum
+set rank (BiPartition(lambda,mu)) = int: lambda.sum+mu.sum
+
+{ equality is strict (don't want to force interpretation onto |[int,bool|]) }
+set = (Signed_cycles cyc0,Signed_cycles cyc1) = bool:
+   #cyc0=#cyc1 and
+   ( for (n,b)@i in cyc0
+     do let(m,c)=cyc1[i] in if n!=m or b!=c then return false fi
+     od
+   ; true
+   )
+set != (Signed_cycles cyc0,Signed_cycles cyc1) = bool: not(cyc0=cyc1)
+
+{ for equivalence up to permutation of cycles, use |c0.same_as(c1)| }
+set same_as (Signed_cycles cyc) = (Signed_cycles->bool):
+   let freq_pos = for (n,b) in cyc do if b then [] else [n] fi od.##.frequencies
+   ,   freq_neg = for (n,b) in cyc do if b then [n] else [] fi od.##.frequencies
+in (Signed_cycles c) bool:
+   freq_pos = for (n,b) in c do if b then [] else [n] fi od.##.frequencies and
+   freq_neg = for (n,b) in c do if b then [n] else [] fi od.##.frequencies
+
+{ The hyperoctahedral group $H_n$ can be represented by sigend permutation
+  matrices (where every row and column has a unique nonzero entry, which lies in
+  $\{-1,1\}$. There is a surjective group morphism to $S_n$ forgetting the signs.
+
+  This is the symmetry group of en $n$-dimensional hyperoctahedron (also of the
+  hypercube), centered at the origin, with 2 vertices on each coordinate axis.
+
+  Conjugacy classes of $H_n$ are given by signed cycle types: projection to
+  $S_n$ gives a cycle type (for the permutation of the axes), and to each cycle
+  is attached the product of the signs for the coordinate axes in the cycle.
+}
+
+{ converting partition pairs to signed cycle types, second has flipped cycles }
+set to_cycles (BiPartition(lambda,mu)) = Signed_cycles:
+  for part in lambda do (part,false) od ## for part in mu do (part,true) od
+
+{ the inverse of |to_cycles@BiPartition| }
+set to_partition_pair(Signed_cycles cy) = BiPartition:
+( for (part,b) in cy do if b then 0 else part fi od.sort_to_partition
+, for (part,b) in cy do if b then part else 0 fi od.sort_to_partition
+)
+
+
 { generate pairs of partitions of total size |n| with size |k| components
   produced in the order in which |lister| lists them, starting all on left }
 set pairs_of_total_sum (int n,(int->[Partition]) lister) = [BiPartition]:
@@ -462,7 +495,7 @@ set pairs_of_total_sum (int n,(int->[Partition]) lister) = [BiPartition]:
 set partition_pairs (int n) = [BiPartition]:
   pairs_of_total_sum(n,partitions@int)
 
-set =(BiPartition (P,Q), BiPartition (R,S)) = bool: P=R and Q=S
+set = (BiPartition (P,Q), BiPartition (R,S)) = bool: P=R and Q=S
 
 { compare |BiPartition| values of same sum, in ordering of |partition_pairs| }
 set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
@@ -476,32 +509,6 @@ set <=(BiPartition (P,Q), BiPartition (R,S)) = bool:
 set index_bipartition ([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
-
-set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
-set rank (Signed_cycles cycles) = int: for (c,) in cycles do c od.sum
-
-set compressed_string(BiPartition(P,Q)) = string:
-(  let mult=1
-   then result =
-      for l@i in P
-      do if i=0 then "[ "
-	 elif l=P[i-1] then mult+:=1; ""
-	 elif mult=1 then P[i-1]+", "
-	 else P[i-1]+"^"+mult+", " next mult:=1
-	 fi
-      od.##
-in result ##:=
-      if mult=1 then P~[0].to_string else P~[0]+"^"+mult next mult:=1 fi
-;  result ##:=
-      for l@i in Q
-      do if i=0 then " L|S "
-	 elif l=Q[i-1] then mult+:=1; ""
-	 elif mult=1 then Q[i-1]+", "
-	 else Q[i-1]+"^"+mult+", " next mult:=1
-	 fi
-      od.##
-;  result ## if mult=1 then Q~[0].to_string else Q~[0]+"^"+mult fi ## " ]"
-)
 
 { counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
 
@@ -719,7 +726,64 @@ in for (l,sign) in cycles
     ##for l:m from 1 ~do for :n_cycles[l-1,b] do (l,kind) od od
    od
 
+{ a |Symbol| is a transformed |BiPartition|: reversed, strict, length diff. 1 }
+
+{ normalize symbol: |f|=|g|+1 and at most 1 zero }
+set normalize (Symbol S) = Symbol:
+   let normalize ([int] v) = [int]: { shrink |v| until it starts nonzero }
+      let nv=#v, i=0
+      in while i<nv and v[i]<=i do i+:=1 od ;  for e in v[i:] do e-i od
+  , expand([int] v, int r) = [int]: #r ## for c in v do c+r od
+  then f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
+  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
+{ all other functions taking |Symbol| assume that argument is normalized }
+
+set symbol (BiPartition(lambda,mu)) = Symbol: { normalized }
+(  let d =
+     #(lambda:=strip_to_partition(lambda)) - (#(mu:=strip_to_partition(mu))+1)
+in case d { make |d=0| by zero-extending one of the paritions if necessary }
+   then { #lambda<#mu+1 } lambda ##:= for : -d do 0 od
+   in { #lambda=#mu+1 }     ()
+   else { #lambda>#mu+1 } mu     ##:= for : d do 0 od
+   esac
+;  [ for i:#lambda do lambda~[i]+i od, for j:#mu do mu~[j]+j od ]
+)
+
+set symbol_to_bipartition (Symbol S) = BiPartition:
+( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
+, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
+)
+
+set is_special (Symbol S) = bool:
+   let S0=S[0],S1=S[1] in all(#S1,(int i)bool: S0[i]<=S1[i] and S1[i]<=S0[i+1])
+
+set make_special (Symbol S) = Symbol:
+   let S0=S[0],S1=S[1] then l=#S1 in { sort, using known increase in each list }
+(  for i:l
+   do let e=S0[i], j=i in while e>S1[j] do if (j+:=1)=l then break fi od
+   ;  if j>i
+      then S0[i]:=S1[i]; for k:j-1-i from i do S1[k]:=S1[k+1] od; S1[j-1]:=e
+      fi
+   ;  if (e:=S1[i],j:=i+1); while e>S0[j] do if (j+:=1)=l+1 then break fi od
+      ; j>i+1
+      then S1[i]:=S0[i+1]; for k:j-i-2 from i+1 do S0[k]:=S0[k+1] od; S0[j-1]:=e
+      fi
+   od
+;  [S0,S1]
+)
+
+set make_special (BiPartition bip) = BiPartition:
+   bip.symbol.make_special.symbol_to_bipartition
+
+
 { adaptation to the above to deal with Weyl groups of type Dn }
+
+{ a condition relevant to which cycle types give split classes in $W(D_n)$ }
+set is_very_even (Partition P) = bool: =P%2 { whether all parts are even }
+
+{ a condition relevant to which $D_n$ nilpotent orbits are split from $O(2n)$ }
+set is_doubly_even (Partition P) = bool: { even parts even multiplicities only }
+  let freq = frequencies(P) in =freq.odd_places and =freq.even_places%2
 
 set_type
 [ D_class = { cycle types restricted to Dn subgroup }
@@ -857,19 +921,36 @@ in (D_class C) int:
 
 set same_as (D_irrep chi) = (D_irrep->bool):
    case chi
-   | pair0.unsplit_irr:
-     (D_irrep psi) bool:
-     case psi | pair1.unsplit_irr: pair0=pair1 | else false esac
+   | (p0a,p0b):pair0.unsplit_irr: let swapped=(p0b,p0a) in
+     (D_irrep xi) bool:
+     case xi | pair1.unsplit_irr: pair0=pair1 or swapped=pair1 | else false esac
    | (lambda,b0).split_irr:
-     let freq=lambda.frequencies in
      (D_irrep psi) bool:
-     case psi | (mu,b1).split_irr: freq=mu.frequencies and b0=b1
-     | else false
-     esac
+     case psi | (mu,b1).split_irr: lambda=mu and b0=b1 | else false esac
    esac
 
 set = (D_irrep c0, D_irrep c1) = bool: c0.same_as(c1)
 set != (D_irrep c0,D_irrep c1) = bool: not c0.same_as(c1)
+
+set make_special (D_irrep chi) = D_irrep:
+   case chi
+   | (,).split_irr: chi
+   | (lambda,mu).unsplit_irr:
+           (let d=#lambda-#mu-1 in { make |lambda| one longer than |mu| }
+	    case d then lambda ##:= null(-d) in () else mu ##:= null(d) esac
+	   )
+	 ;  let spec = make_special
+	       (Symbol:[ for e@i in lambda do e-i ~od
+	               , for e@i in mu     do e-i ~od
+		       ] )
+	 { now in particular |spec[1][i]<=spec[0][i+1]| for all |i<#mu|, so
+	   the first partition below has strictly larger sum than the second:
+	   the only alternative would be both partitions being equal, but that
+	   cannot happen because |lambda| and |mu| differ, as one easily shows }
+	 in ( for i:#lambda do spec[0]~[i]+i od.strip_to_partition
+	    , for i:#mu do spec[1]~[i]+i od.strip_to_partition
+	    ).unsplit_irr
+   esac
 
 set character (D_irrep chi, D_class c) = int:
    assert(chi.rank = c.rank,"Size mismatch");
@@ -896,3 +977,28 @@ set character (D_irrep chi, D_class c) = int:
        in assert(=r,"Parity problem for split-split character value"); q
      esac
    esac
+
+
+{ for printing |BiPartition| values compactly }
+set compressed_string(BiPartition(P,Q)) = string:
+(  let mult=1
+   then result =
+      for l@i in P
+      do if i=0 then "[ "
+	 elif l=P[i-1] then mult+:=1; ""
+	 elif mult=1 then P[i-1]+", "
+	 else P[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+in result ##:=
+      if mult=1 then P~[0].to_string else P~[0]+"^"+mult next mult:=1 fi
+;  result ##:=
+      for l@i in Q
+      do if i=0 then " L|S "
+	 elif l=Q[i-1] then mult+:=1; ""
+	 elif mult=1 then Q[i-1]+", "
+	 else Q[i-1]+"^"+mult+", " next mult:=1
+	 fi
+      od.##
+;  result ## if mult=1 then Q~[0].to_string else Q~[0]+"^"+mult fi ## " ]"
+)

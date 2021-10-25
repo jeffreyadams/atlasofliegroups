@@ -118,7 +118,7 @@ set truncate_induce_character =
 set truncate_induce_character \
    ( RootDatum L, RootDatum G,[int] pi_L,(int->int) degree_function) =
       (int,[int]):
-   let ct_G=character_table(G), Wct_L=class_table(L)
+   let ct_G=character_table(G), Wct_L=construct_class_table(L)
 in truncate_induce_character(Wct_L,ct_G,pi_L,degree_function)
 
 { build ct_L on the fly }
@@ -128,7 +128,7 @@ set truncate_induce_character \
    , [int] pi_L
    , (int->int) degree_function
    ) =(int,[int]):
-   truncate_induce_character(class_table(L),ct_G,pi_L,degree_function)
+   truncate_induce_character(construct_class_table(L),ct_G,pi_L,degree_function)
 
 { L is given as a subgroup of G, by specifying the simple roots of L as a set
   of positive roots of G; for a Levi factor these roots are simple for G
