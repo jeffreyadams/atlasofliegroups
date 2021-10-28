@@ -2,8 +2,13 @@
 <hermitian.at
 <convert_c_form.at
 
-set to_ht(int N) = (ParamPol->ParamPol): (ParamPol P):
-    let (below,)=height_split(P,N+1) in below
+{ set to_ht(int N) = (ParamPol->ParamPol): (ParamPol P):
+    let (below,)=height_split(P,N+1) in below }
+
+set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+let result=0*P,left=P in
+while (not(height(first_param(left))> N)) do result+:=(first_term(left));
+left-:=(first_term(left)) od; result
 
 set full_deform_to_ht(Param p, int N) = to_ht(N)(full_deform(p))
 
@@ -34,7 +39,7 @@ set oriented_KL_sum_to_ht  (int N) = (Param->ParamPol):(Param p):
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
-set c_form_irreducible_to_ht (int N) = (Param->ParamPol):(Param p):
+set c_form_irreducible_to_ht (Param p,int N) = ParamPol:
   map(c_form_std_to_ht(N), oriented_KL_sum_to_ht(N)(p) )
 
 {    twisted_c_form_irreducible_to_ht   }
@@ -81,11 +86,10 @@ set twisted_c_form_irreducible_to_ht (Param p,int N) = ParamPol:
 initial term.}
 
 set hermitian_form_irreducible_to_ht (Param p,int N) = ParamPol:
-{  if is_equal_rank(real_form(p))
-  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
-  else } check_hermitian(p,true);
-  twisted_c_form_irreducible_to_ht(p,N).convert_cform_hermitian
-{  fi}
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_to_ht(p,N) { not twisted, in equal rank case this is faster }
+  else  check_hermitian(p,true); twisted_c_form_irreducible_to_ht(p,N)
+  fi.convert_cform_hermitian
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht (Param p,int N) = bool:
