@@ -50,14 +50,26 @@ in let classes = [WeylElt,classical_class,string]:
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)
      od
-  , irreps = [classical_irrep,string,[int]]:
+   , irreps = [classical_irrep,string,[int]]:
      for L in words
      do ( null_irrep()
 	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
 	, tensor(for n@i in L do factors[i].character(n) od)
 	)
      od
-in character_table(Wct,classes,irreps)
+   then table = character_table(Wct,classes,irreps)
+   , gdeg_positions = [[int]]:
+      for factor in factors
+      do for i:factor.n_irreps
+         do if factor.has_generic_degree(i) then [i] else [] fi
+	 od.##
+      od
+in for word in all_words(gdeg_positions)
+   do let gdeg() =
+      for letter@i in word do factors[i].generic_degree(letter) od.sum
+   in table.set_generic_degree(index(word),gdeg,false)
+   od
+;  table
 )
 
 set character_table(RootDatum rd) = CharacterTable:

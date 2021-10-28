@@ -145,49 +145,6 @@ set Magma_reorder_E7(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
       sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
    in compose_permutations(Wct_ranked,inverse(profile_ranked))
 
-set character_table_E7(RootDatum rd) = CharacterTable:
-   let Wct = class_table_E7(rd)
-   then reordering = Magma_reorder_E7(Wct)
-   then E7_name(vec chi) = string:
-      let psi = null(#chi)
-      then degree = { first reorder |chi| for |Wct| into |psi| }
-	 for j@i in reordering do psi[j]:=chi[i] od { inverse reordering }
-      ;  first(Wct.root_datum.nr_of_posroots+1
-	      ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-	      )
-      in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-   then classes = [WeylElt,classical_class,string]:
-      let reps = Wct.class_representatives
-      in for j in reordering
-	 do (reps[j],null_class()
-	    ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n
-	    )
-	 od
-   ,  irreps = [classical_irrep,string,[int]]:
-      for character@i in e7_characters
-      do (null_irrep()
-         ,case i in "trivial", "sign", "sign*reflection", "reflection"
-	  else E7_name(character)
-	  esac
-	 ,character
-	 )
-      od
-   in character_table(Wct,classes,irreps)
-
-{ voluntarily override previous definition to memoize for |standard_datum_E7| }
-set character_table_E7 = (RootDatum->CharacterTable):
-   let ct= trivial_character_table { place holder value }
-in (RootDatum rd) CharacterTable:
-   if rd != standard_datum_E7 then character_table_E7(rd) { no recursion! }
-   elif =ct.root_datum.rank { whether this is the first time we are called }
-   then ct:=character_table_E7(rd) { compute and store the first time }
-   else ct { any next time just return the previously computed value }
-   fi
-
-
-set character_table_E7() = CharacterTable:
-   character_table_E7(standard_datum_E7)
-
 set to_special_E7 = (int i) int:
    case i
    in 0{sp}, 1{sp}
@@ -214,3 +171,49 @@ set to_special_E7 = (int i) int:
    , 58{sp}, 58
    else error("Wrong E7 irrep number")
    esac
+
+
+{ voluntarily override previous definition to memoize for |standard_datum_E7| }
+set character_table_E7 = (RootDatum->CharacterTable):
+   let ct= trivial_character_table { place holder value }
+   , compute (RootDatum rd) = CharacterTable:
+      let Wct = class_table_E7(rd)
+      then reordering = Magma_reorder_E7(Wct)
+      then E7_name(vec chi) = string:
+	 let psi = null(#chi)
+	 then degree = { first reorder |chi| for |Wct| into |psi| }
+	    for j@i in reordering do psi[j]:=chi[i] od { inverse reordering }
+	 ;  first(Wct.root_datum.nr_of_posroots+1
+		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+		 )
+	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+      then classes = [WeylElt,classical_class,string]:
+	 let reps = Wct.class_representatives
+	 in for j in reordering
+	    do (reps[j],null_class()
+	       ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n
+	       )
+	    od
+      ,  irreps = [classical_irrep,string,[int]]:
+	 for character@i in e7_characters
+	 do (null_irrep()
+	    ,case i in "trivial", "sign", "sign*reflection", "reflection"
+	     else E7_name(character)
+	     esac
+	    ,character
+	    )
+	 od
+      then table = character_table(Wct,classes,irreps)
+      in for i: #irreps
+	 do table.set_generic_degree(i,@:table.degree(to_special_E7(i)),false)
+	 od
+      ;  table { result of |compute| }
+in (RootDatum rd) CharacterTable:
+   if rd != standard_datum_E7 then compute(rd)
+   elif =ct.root_datum.rank { whether this is the first time we are called }
+   then ct:=compute(rd) { compute and store the first time }
+   else ct { any next time just return the previously computed value }
+   fi
+
+set character_table_E7() = CharacterTable:
+   character_table_E7(standard_datum_E7)
