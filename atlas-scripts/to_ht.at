@@ -2,16 +2,25 @@
 <hermitian.at
 <convert_c_form.at
 {preferred to_ht(ParamPol,int)}
-{ set to_ht(int N) = (ParamPol->ParamPol): (ParamPol P):
+{ set to_ht0(int N) = (ParamPol->ParamPol): (ParamPol P):
     let (below,)=height_split(P,N+1) in below }
 
 {following is better in is_unitary_to_ht(E6_q.trivial,24):
 took 60 seconds versus 80 for above}
 
-set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+{set to_htA(int N) = (ParamPol->ParamPol):(ParamPol P):
 let result=0*P,zero=0*P,left=P in
 while (not(left=zero) and not(height(first_param(left))> N)) do result+:=(first_term(left));
-left-:=(first_term(left)) od; result
+left-:=(first_term(left)) od; result}
+
+{following is better still...}
+{set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
+let result=0*P, Mon = monomials(P), i=0 in
+while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result}
+
+set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+let Mon = monomials(P), i=0 in 
+0*P + while (i < #Mon and height(Mon[i])<N+1) do (P[Mon[i]],Mon[i]) next i+:=1 od
 
 set full_deform_to_ht(Param p, int N) = to_ht(N)(full_deform(p))
 
@@ -110,5 +119,19 @@ Variable Q: [Param]
 parameter nu in [0,1]^4 having denominators 12. }
 
 atlas> void:for q@j in Q do if(is_unitary_to_ht(q,11) and not is_unitary(q)) then prints(j,"  11  ",is_unitary_to_ht(q,11),"   15  ",is_unitary_to_ht(q,15),"    16  ",is_unitary_to_ht(q,16),"    22  ",is_unitary_to_ht(q,22),"   infty  ",is_unitary(q)) fi od
+
+}
+
+{
+set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
+let result=0*P, Mon = monomials(P), i=0 in
+while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result
+}
+
+{
+
+set CF=character_formula(E7_s.trivial)
+set TR = for j:25 do prints(j); to_ht(5*j)(CF) od
+set TR = for j:25 do prints(j); to_htB(5*j)(CF) od
 
 }
