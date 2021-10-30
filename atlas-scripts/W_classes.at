@@ -606,8 +606,8 @@ set print_classes(WeylClassTable tab) = void:
 {. index i for which w is conjugate to classes[i], in given WeylClassTable .}
 set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int: ct.class_of(w)
 
-{. value of character at w\in W .}
-set character_value (WeylClassTable ct, WeylElt w,[int] char) = int:
+{. value of character char at w\in W .}
+set character_value (WeylClassTable ct,[int] char, WeylElt w) = int:
   char[ct.class_of(w)]
 
 { Adams's operation (not Jeff's): evaluate character at class of $w^n$ }

@@ -43,7 +43,7 @@ set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
   fi
 
 set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
-for w in ct.class_reps do trace(cell_action(cell,w,permutation)) od
+for w in ct.class_representatives do trace(cell_action(cell,w,permutation)) od
 
 set special_character(CharacterTable ct,WCell cell,mat permutation)=
    let summands =

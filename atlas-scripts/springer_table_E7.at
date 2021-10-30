@@ -311,7 +311,7 @@ complex_nilpotent_from_diagram(O.root_datum
 [2,2,2,2,2,2,2] E7 	   1, 0
 }
 
-set springer_by_signature_lookup_E7=
+set springer_by_signature_lookup_E7 = [ [int],(int,int) ]:
 [
 ([0,0,0,0,0,0,0],(1,63)),
 ([1,0,0,0,0,0,0],(7,46)),
@@ -359,24 +359,23 @@ set springer_by_signature_lookup_E7=
 ([2,2,2,0,2,2,2],(7,1)),
 ([2,2,2,2,2,2,2],(1,0))]
 
-set springer_by_signature_E7(ComplexNilpotent O)=
-assert(O.root_datum.Lie_type=Lie_type("E7"),"Not type E7");
-let d=O.diagram then
-index=first(for i:#springer_by_signature_lookup_E7
- do let (v,)=springer_by_signature_lookup_E7[i] in v=d od) in
- let (,sig)=springer_by_signature_lookup_E7[index] in sig
+set springer_by_signature_E7 (ComplexNilpotent O) = (int,int):
+   assert(O.root_datum.Lie_type=Lie_type("E7"),"Not type E7");
+   for (v,sig) in springer_by_signature_lookup_E7
+   do if v=O.diagram then return sig fi
+   od; error("Unknown E7 nilpotent orbit ",O)
 
-set springer_E7(CharacterTable ct,ComplexNilpotent O)=int:
-let characters=ct.characters then
-(sig_0,sig_1)=springer_by_signature_E7(O) in
-first(for v@i in characters do
-v[0]=sig_0 and ct.degrees[i]=sig_1 od)
+set springer_E7 (CharacterTable ct,ComplexNilpotent O) = int:
+   let (sig_0,sig_1) = springer_by_signature_E7(O)
+   in for v@i in ct.characters
+   do ct.dimension(v)=sig_0 and ct.degree(i)=sig_1
+   od.first
 
-
-set springer_table_E7(CharacterTable ct)=
-let rd=ct.root_datum then
-orbits=rd.orbits then
-dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_E7(O) then
-dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_E7(O) then
-springer(ComplexNilpotent O)=springer_E7(ct,O) in
-(ct,orbits,dual_map,dual_map_i,springer)
+set springer_table_E7 (CharacterTable ct) = SpringerTable:
+   let springer(ComplexNilpotent O) = springer_E7(ct,O)
+in (ct
+   ,ct.root_datum.orbits
+   ,dual_map_E7@ComplexNilpotent
+   ,dual_map_E7@ComplexNilpotent
+   ,springer
+   )

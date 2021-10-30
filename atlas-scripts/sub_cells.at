@@ -240,12 +240,6 @@ let (tau,links)=g.nodes[i] in
 od
 )
 
-{. character of representation of W on cell .}
-
-set cell_character_C (CharacterTable ct,WCell cell) = [int]:
-for w in ct.class_reps do trace(cell_action(cell,w)) od
-
-
 { ----- output commands  -----------}
 set show(WGraph g)=void:
 tabulate(["node","tau","links"]#for (a,b)@i in g.nodes do

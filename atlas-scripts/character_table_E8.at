@@ -104,7 +104,7 @@ set character_table_E8 = (RootDatum->CharacterTable):
 	 for line@i in e8_gap_table
 	 do (null_irrep(),E8_name(line),line)
 	 od
-      then table = character_table(Wct,classes,irreps)
+      then table = character_table(Wct,classes,irreps,to_special_E8@int)
       in for i: #irreps
 	 do table.set_generic_degree(i,@:table.degree(to_special_E8(i)),false)
 	 od

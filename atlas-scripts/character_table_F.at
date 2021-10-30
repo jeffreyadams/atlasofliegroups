@@ -75,13 +75,12 @@ in (RootDatum rd) CharacterTable:
 	 for w@i in Wct.class_representatives
 	 do (w,null_class(),class_signature_F4(w).compressed_string)
 	 od
-      in character_table(Wct,classes,irreps)
+      in character_table(Wct,classes,irreps,to_special_F4@int)
 in for i: #irreps
    do table.set_generic_degree(i,@:table.degree(to_special_F4(i)),false)
    od
 ;  table
 )
-
 
 set character_table_F(int n) = CharacterTable:
    character_table_F(simply_connected("F4"))

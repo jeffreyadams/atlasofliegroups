@@ -36,25 +36,24 @@ set W_cell_of(([Param],[WCell],Param) arg) = WCell:
 
 
 { ----------- cell representations --------------}
-{{moved from character_table_reps.at}}
 
-{neglected to take permutation into account}
-set cell_characterold (CharacterTable ct,WCell cell) = [int]:
-  for w in ct.class_reps do trace(cell_action(cell,w)) od
+{ without permutation }
+set cell_character (CharacterTable ct,WCell cell) = [int]:
+  cell_character(ct.class_table,cell)
 
 {. character of representation of W on cell .}
 set cell_character_inefficient (CharacterTable ct,WCell cell) = [int]:
    let (valid,P)=root_permutation(ct.root_datum,cell.root_datum) in
    if assert(valid,"RootDatum mismatch in cell_character@(CharacterTable,WCell")
    ; P=id_mat(#P)
-   then for w in ct.class_reps do trace(cell_action(cell,w)) od
+   then for w in ct.class_representatives do trace(cell_action(cell,w)) od
    else
       if cells_verbose
       then prints
         ("Warning: permutation needed in cell_character@(CharacterTable,WCell)"
 	,new_line, P)
       fi
-   ; for w in ct.class_reps
+   ; for w in ct.class_representatives
      do trace(cell_action(cell,permute(int_mapping(P),w,cell.root_datum)))
      od
    fi

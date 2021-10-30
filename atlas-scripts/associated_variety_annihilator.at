@@ -86,8 +86,8 @@ set associated_variety_ann_res \
    (SpringerTable st_rd, CharacterTable ct_int, WCell cell) = ComplexNilpotent:
 (  let rd  = st_rd.root_datum, ct_rd = st_rd.ct
    , index_pi_int = ct_int.special_character_inefficient(cell)
-   then char_int  = ct_int.characters[index_pi_int]
-   ,  d_int       = ct_int.degrees[index_pi_int]
+   then char_int  = ct_int.character(index_pi_int)
+   ,  d_int       = ct_int.degree(index_pi_int)
 in if av_verbose
    then prints
       ( "#cell: ", cell, new_line
@@ -97,8 +97,8 @@ in if av_verbose
    fi
 ;  let chars_rd=
       for i:st_rd.ct.n_irreps
-      do { let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
-         if ct_rd.degrees[i]=d_int and
+      do { let ()=prints("i: ",i, " ",  ct_rd.degree(i), " ", d_int) in }
+         if ct_rd.degree(i)=d_int and
 	   (let res =
 	      restrict_character(ct_rd.class_table,ct_int.class_table
 				,ct_rd.characters[i])
@@ -149,11 +149,12 @@ let rd=st_rd.root_datum
    then ct_L=L.character_table
    then index_pi_L=ct_L.special_character_inefficient(cell)
    then char_L=ct_L.characters[index_pi_L]
-   then d_L=ct_L.degrees[index_pi_L] in
-(rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L){
+   then d_L=ct_L.degree(index_pi_L)
+in (rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L)
+{
 chars_rd=
 ##for i:st_rd.ct.n_irreps do
- if ct.degrees[i]=d_L and
+ if ct.degree(i)=d_L and
   !=ct_L.inner_product(char_L,restrict_character(rd,L,ct_rd,ct_L,ct.characters[i]))
   then  [i] else [] fi
 od
@@ -184,7 +185,7 @@ set associated_variety_ann = (Param->ComplexNilpotent):
 set GK_dim(Param p) = int:
 let cell=W_cell_of(Finalize(p))
    then ct_L=cell.root_datum.character_table in
-#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character_inefficient(cell)]
+#posroots(p.root_datum) - ct_L.degree(ct_L.special_character_inefficient(cell))
 
 {set GK_dim(SpringerTable st)=(Param->int):(Param p):GK_dim(p,st)}
 
@@ -210,11 +211,11 @@ associated_variety_ann_res(p.real_form.left_copy.derived,cell)
    then L=cell.root_datum
    then index_pi_int=ct_int.special_character_inefficient(cell)
    then char_int=ct_int.characters[index_pi_int]
-   then d_int=ct_int.degrees[index_pi_int]
+   then d_int=ct_int.degree(index_pi_int)
    then chars_rd=
 ##for i:st_rd.ct.n_irreps do
-{ let ()=prints("i: ",i, " ",  ct_int.degrees[i], " ", d_int) in }
- if ct_int.degrees[i]=d_int and
+{ let ()=prints("i: ",i, " ",  ct_int.degree(i), " ", d_int) in }
+ if ct_int.degree(i)=d_int and
   !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_int,ct_int,ct_int.characters[i]))
   then  [i] else [] fi
 od
@@ -285,7 +286,7 @@ in gamma :=
       fi
    then chars_int =
       for i:ct_int.n_irreps
-      do if ct_int.degrees[i]=d and
+      do if ct_int.degree(i)=d and
 	   (let res =
 	      restrict_character(ct_int,ct_singular,ct_int.characters[i])
 	    in !=ct_singular.inner_product(ct_singular.sign,res)
@@ -401,7 +402,7 @@ set GK_dim_maximal_ideal \
       fi
    then chars_int=
       for i:ct_int.n_irreps
-      do if ct_int.degrees[i]=d and
+      do if ct_int.degree(i)=d and
 	   (let res =
 	      restrict_character(ct_int,ct_singular,ct_int.characters[i])
 	    in !=ct_singular.inner_product(ct_singular.sign,res)
@@ -421,14 +422,14 @@ set GK_dim_maximal_ideal \
 		  )
       fi
    then gk_dim =
-      #posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)]
+      #posroots(rd)-ct_int.degree(ct_int.character_index(char_int_sign))
 in if av_verbose
    then prints( "rd_int: ", rd_int, "#posroots(rd): ", #posroots(rd), new_line
    	      , "char_int_sign: ", char_int_sign, new_line
 	      , "index of char_int_sign: "
 	         , ct_int.character_index(char_int_sign), new_line
 	      , "degree: "
-	         , ct_int.degrees[ct_int.character_index(char_int_sign)]
+	         , ct_int.degree(ct_int.character_index(char_int_sign))
 	      )
    fi
 ;  gk_dim

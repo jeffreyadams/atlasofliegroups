@@ -107,7 +107,7 @@ set character_table_E6 = (RootDatum->CharacterTable):
 	    ,line
 	    )
 	 od
-      then table = character_table(Wct,classes,irreps)
+      then table = character_table(Wct,classes,irreps,to_special_E6@int)
       in for i: #irreps
 	 do table.set_generic_degree(i,@:table.degree(to_special_E6(i)),false)
 	 od
