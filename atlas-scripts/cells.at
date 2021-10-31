@@ -57,31 +57,11 @@ set cell_character_inefficient (CharacterTable ct,WCell cell) = [int]:
      do trace(cell_action(cell,permute(int_mapping(P),w,cell.root_datum)))
      od
    fi
-
-
 set cell_character_inefficient(CharacterTable ct) = (WCell cell)[int]:
    cell_character_inefficient(ct,cell)
 set cell_characters_inefficient (CharacterTable ct,[WCell] cells) = [[int]]:
    for cell in cells do cell_character_inefficient(ct, cell) od
 
-{ use |cell_characters@(WeylClassTable,[WCell])| from W_reps.at }
-set cells_table (WeylClassTable Wct,[WCell] cells) = mat:
-   matrix_of_inner_products(Wct,cell_characters(Wct,cells))
-
-set cells_table_augmented (WeylClassTable Wct, [WCell] cells) = mat:
-  let characters =
-    cell_characters(Wct,cells) ## [ Wct.trivial, Wct.sign, Wct.reflection ]
-  in matrix_of_inner_products(Wct,characters)
-
-set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
-  ( #cell.graph
-  , for i:Wct.root_datum.semisimple_rank
-    do unsparse(cell_action(cell,i),#cell.graph) od
-  )
-
-{ list of representations defined by an array of cells }
-set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
-  for cell in cells do cell_representation(Wct,cell) od
 
 set special_irreducible (CharacterTable ct, [int] multiplicities) = int:
    let summands = smallest_degree_summands(ct,multiplicities)

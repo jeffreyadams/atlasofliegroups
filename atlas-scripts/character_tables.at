@@ -232,10 +232,10 @@ set show_classes (CharacterTable ct) = void:
 tabulate (
    [ "i"
    , "order"
-   , "class_size"
+   , "size"
    , "|cent|"
    , "sgn(w)"
-   , "chi_refl(w))"
+   , "tr(refl(w))"
    , "name"
    ]
 #  for i:#ct.table
@@ -243,14 +243,13 @@ tabulate (
       , ct.class_order(i).to_string
       , ct.class_size(i).to_string
       , ct.centralizer_order(i).to_string
-      , ct.sign[i].to_string
+      , if ct.sign[i].< then "-" else "+" fi
       , ct.reflection[i].to_string
       , ct.class_label(i)
       ]
    od
+,"rrrrrcl", 1, " "
 )
-set irred_string(BiPartition(mu,lambda)) = string:
-   ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string
 
 set show_classes_long(CharacterTable ct) = void:
 tabulate (
@@ -259,7 +258,7 @@ tabulate (
     ,"class_size"
     ,"|cent|"
     ,"sgn(w)"
-    ,"chi_refl(w))"
+    ,"tr(refl(w))"
     ,"name"
     ,"class rep"
     ]
@@ -268,12 +267,13 @@ tabulate (
       ,ct.class_order(i).to_string
       ,ct.class_size(i).to_string
       , ct.centralizer_order(i).to_string
-      ,ct.sign[i].to_string
+      , if ct.sign[i].< then "-" else "+" fi
       ,ct.reflection[i].to_string
       ,ct.class_label(i)
       ,ct.class_representative(i).to_string
       ]
    od
+,"rrrrrcll", 1, " "
 )
 
 set show_reps (CharacterTable ct) = void:

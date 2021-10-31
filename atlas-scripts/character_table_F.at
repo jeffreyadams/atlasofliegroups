@@ -83,4 +83,4 @@ in for i: #irreps
 )
 
 set character_table_F(int n) = CharacterTable:
-   character_table_F(simply_connected("F4"))
+   assert(n=4,"Inexistent type F"+n); character_table_F(simply_connected("F4"))
