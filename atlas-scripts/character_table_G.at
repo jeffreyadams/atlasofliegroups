@@ -26,10 +26,8 @@ set character_table_G = (RootDatum -> CharacterTable):
 in (RootDatum rd) CharacterTable:
 (  let class_table = class_table_G(rd)
    then table =
-      let classes = [WeylElt,classical_class,string]:
-	 for w@i in class_table.class_representatives
-	 do (w,null_class(),class_names[i])
-	 od
+      let classes = [WeylElt,string]:
+	 for w@i in class_table.class_representatives do (w,class_names[i]) od
       in character_table(class_table,classes,irreps,to_special_G2@int)
 in for i: #irreps
    do table.set_generic_degree(i,@:table.degree(to_special_G2(i)),false)

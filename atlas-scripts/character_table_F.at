@@ -71,9 +71,9 @@ set character_table_F = (RootDatum -> CharacterTable):
 in (RootDatum rd) CharacterTable:
    let table = CharacterTable:
       let Wct = class_table_F(rd)
-      then classes = [WeylElt,classical_class,string]:
+      then classes = [WeylElt,string]:
 	 for w@i in Wct.class_representatives
-	 do (w,null_class(),class_signature_F4(w).compressed_string)
+	 do (w,class_signature_F4(w).compressed_string)
 	 od
       in character_table(Wct,classes,irreps,to_special_F4@int)
 in for i: #irreps

@@ -44,10 +44,9 @@ set combine (RootDatum rd,[CharacterTable] factors) = CharacterTable:
       mixed_radix_nr(for factor in factors do factor.n_irreps od)
    , tensor([vec] chars) = [int]: { all products of entries }
         for word in words do product(for l@i in word do chars[i][l] od)	od
-in let classes = [WeylElt,classical_class,string]:
+in let classes = [WeylElt,string]:
      for word in words
      do ( reps[index(word)]
-	, null_class()
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)
      od

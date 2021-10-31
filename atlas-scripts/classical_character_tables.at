@@ -10,9 +10,9 @@
 set character_table_S (int n) =
      (CharacterTable,(Partition->int),(Partition->int)):
 (  let partitions_n = partitions(n)
-   then classes = [WeylElt,classical_class,string]:
+   then classes = [WeylElt,string]:
       for lambda in partitions_n
-      do (conjugacy_class_S(lambda),lambda.class_A,lambda.cycles_string)
+      do (conjugacy_class_S(lambda),lambda.cycles_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
       for lambda in partitions_n ~ { reversal to go from trivial to sign }
@@ -37,10 +37,8 @@ set character_table_A (RootDatum rd) =
       (CharacterTable,(Partition->int),(Partition->int)):
 (  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
    ,  class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
-   then classes = [WeylElt,classical_class,string]:
-      for lambda in partitions
-      do (class_rep(lambda),lambda.class_A,lambda.to_string)
-      od
+   then classes = [WeylElt,string]:
+      for lambda in partitions do (class_rep(lambda),lambda.to_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for lambda in partitions ~ { reversal to go from trivial to sign }
       do (irrep_A(lambda),lambda.to_string
@@ -84,8 +82,8 @@ set character_table_B (int n) =
    , rd=SO(n+n+1)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
-   then classes = [WeylElt,classical_class,string]:
-      for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
@@ -114,8 +112,8 @@ set character_table_B (RootDatum rd) =
    , class_rep = (BiPartition->WeylElt): conjugacy_class_B(rd)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: class_rep(class_list[i])
-   then classes = [WeylElt,classical_class,string]:
-      for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
@@ -143,8 +141,8 @@ set character_table_C (int n) =
    , rd=Sp(n+n)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
-   then classes = [WeylElt,classical_class,string]:
-      for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in irrep_list
       do ( rep.irrep_BC, rep.irrep_string
@@ -173,8 +171,8 @@ set character_table_C (RootDatum rd) =
    , class_rep = (BiPartition->WeylElt): conjugacy_class_C(rd)
    then cycles = for pair in class_list do pair.to_cycles od
    , class_rep(int i) = WeylElt: class_rep(class_list[i])
-   then classes = [WeylElt,classical_class,string]:
-      for c@i in cycles do ( class_rep(i), c.class_BC, c.cycles_string) od
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in BC_irreps(n)
       do ( rep.irrep_BC, rep.irrep_string
@@ -260,9 +258,9 @@ set character_table_D(int n) =
       (CharacterTable,(D_class->int),(D_irrep->int)):
 (  let class_list = [D_class]: D_classes(n)
    ,   irrep_list = [D_irrep]: D_irreps(n)
-   then classes = [WeylElt,classical_class,string]:
+   then classes = [WeylElt,string]:
       for c in class_list
-      do (conjugacy_class_SO(c),c.class_D,c.cycles_string)
+      do (conjugacy_class_SO(c),c.cycles_string)
       od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in D_irreps(n)
@@ -290,8 +288,8 @@ set character_table_D(RootDatum rd) =
    ,    class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
    then class_list = [D_class]: D_classes(n)
    ,    irrep_list = [D_irrep]: D_irreps(n)
-   then classes = [WeylElt,classical_class,string]:
-      for c in class_list do (class_rep(c),c.class_D,c.cycles_string) od
+   then classes = [WeylElt,string]:
+      for c in class_list do (class_rep(c),c.cycles_string) od
    ,  irreps = [classical_irrep,string,[int]]:
       for rep in irrep_list
       do ( rep.irrep_D, rep.irrep_string

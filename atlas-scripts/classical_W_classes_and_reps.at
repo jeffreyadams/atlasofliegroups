@@ -12,24 +12,16 @@ see character_table_*.at (A,B,C,D,E,F,G)
 springer_table_*.at (A,BC,D,E,F,G)
 }
 
-set_type A_class = Partition { parametrise W conjugacy classes in type A }
 set_type A_irrep = Partition
 
 { for types B and C, there is the type |Signed_cycles| from combinatorics.at
   Here we group cycles with |true| negative sign), then cycles with |false|
   (positive sign), each decreasingly sorted, to a order pair of |Paritition|s }
-set_type BC_class = Signed_cycles
 set_type BC_irrep = (Partition,Partition)
 
 { A type that allows grouping any of the above or none into a single value }
 set_type
-[ classical_class =
-    ( A_class class_A
-    | BC_class class_BC
-    | D_class  class_D
-    | void null_class { for an exceptional group }
-    )
-, classical_irrep =
+[ classical_irrep =
     ( A_irrep irrep_A
     | BC_irrep irrep_BC
     | D_irrep irrep_D
@@ -47,28 +39,6 @@ set unsplit_class(D_class c) = Signed_cycles:
    case c | unsplit_class(pair): pair | else error("class is split") esac
 
 
-
-set get_class_A(classical_class cl) = A_class:
-case cl
-| class_A(P): P
-| class_BC(x): error("wrong type")
-| class_D(x):  error("wrong type")
-| else	       []
-esac
-
-set get_class_BC(classical_class cl) = BC_class:
-case cl
-| class_A(x):   error("wrong type")
-| class_BC(PQ): PQ
-| class_D(x):   error("wrong type")
-| else          []
-esac
-
-set get_class_D(classical_class cl) = D_class:
-case cl
-| class_D(val): val
-| else          error("wrong type")
-esac
 
 {-------------------------------------------------------------------}
 
@@ -174,14 +144,6 @@ in (D_irrep rep) int:
    esac
 
 set index_D_reps ([D_irrep] L,D_irrep rep) = int: index_D_reps(L)(rep)
-
-set class_string(classical_class cl)=
-  case cl
-  | cl.class_A: cl.to_string
-  | cl.class_BC: cl.to_string
-  | cl.class_D: cl.cycles_string
-  | else ""
-  esac
 
 set irrep_string(classical_irrep rep)=
   case rep

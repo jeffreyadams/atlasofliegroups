@@ -23,9 +23,8 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 set_type
 [ CharacterTable =
   ( WeylClassTable class_table { conjugacy classes }
-  , (int->string) class_label {derived from partitions in classical case}
-  , (int ->classical_class) classes
-  {irreducible characters}
+  , (int->string) class_label { used to identify classes on output }
+{ irreducible characters }
   , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
   , mat table { by row=character }
@@ -37,12 +36,12 @@ set_type
 ]
 
 set character_table ( WeylClassTable Wct
-    		    , [WeylElt,classical_class,string] class_reps
+		    , [WeylElt,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    , (int->int) to_special
 		    ) =  CharacterTable:
 (  let rd  = Wct.root_datum, n = Wct.n_classes
-   , reps = for (w,,) in class_reps do w od
+   , reps = for (w,) in class_reps do w od
 in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
 ;  let irreps = [classical_irrep]: for (ci,,) in chars do ci od
 ,  labels = [string]: for (,s,) in chars do s od
@@ -70,9 +69,7 @@ then get_generic_degree(int i) = int:
    fi
 in
    ( { class_table } WeylClassTable: Wct
-   , { class_label } (int i)string: let (,,cl)=class_reps[i] in cl
-   , { classes } (int i)classical_class: let (,cc,)=class_reps[i] in cc
-     {irreducible characters}
+   , { class_label } (int i)string: let (,cl)=class_reps[i] in cl
    , { classical_reps } (int i)classical_irrep: irreps[i]
    , { irreducible_label } (int i)string: labels[i]
    , { table } mat: character_table
@@ -84,7 +81,7 @@ in
 )
 
 set character_table ( RootDatum rd
-		    , [WeylElt,classical_class,string] class_reps
+		    , [WeylElt,string] class_reps
 		    , [classical_irrep,string,[int]] chars
 		    , (int->int) to_special
 		    ) =  CharacterTable:
@@ -93,7 +90,7 @@ set character_table ( RootDatum rd
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
    let Wct = trivial_class_table, id(int i)=int: i
-in (Wct,(int i):"e",(int i)classical_class: null_class()
+in (Wct,(int i):"e"
    ,(int i)classical_irrep: null_irrep(),(int i):"triv", [[1]],[(0,0)]
    ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true
    )

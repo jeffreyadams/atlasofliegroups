@@ -187,10 +187,10 @@ set character_table_E7 = (RootDatum->CharacterTable):
 		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
 		 )
 	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-      then classes = [WeylElt,classical_class,string]:
+      then classes = [WeylElt,string]:
 	 let reps = Wct.class_representatives
 	 in for j in reordering
-	    do (reps[j],null_class()
+	    do (reps[j]
 	       ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n
 	       )
 	    od
