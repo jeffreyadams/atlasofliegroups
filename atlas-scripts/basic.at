@@ -201,7 +201,7 @@ set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for mulit-assign} in while !=k do set (k,r):=k\%n; r od
+  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
@@ -1895,7 +1895,7 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{ whether all coefficients are integer repectively integer mulitples of |s| }
+{ whether all coefficients are integer repectively integer multiples of |s| }
 set is_pure_1 (ParamPol P)=bool: all(for c in P do c.s_part.= od)
 set is_pure_s (ParamPol P)=bool: all(for c in P do c.int_part.= od)
 

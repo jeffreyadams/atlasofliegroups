@@ -58,7 +58,7 @@ set diagram_C_to_partition ([int] diagram) = Partition:
    then mult(int i) = int: { multiplicity of part |i| in result }
       let m =
          if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
-      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
 in for i:max from 1 ~ do for :mult(i) do i od od.##
 
 { when |O| is an orbit for some |rd| passing |test_simple_type("C",rd)|, the
@@ -131,7 +131,7 @@ set diagram_B_to_partition ([int] diagram) = Partition:
    then mult(int i) = int: { multiplicity of part |i| in result }
       let m =
          if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
-      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
 in for i:max from 1 ~ do for :mult(i) do i od od.##
 
 { when |O| is an orbit for some |rd| passing |test_simple_type("B",rd)|, the
