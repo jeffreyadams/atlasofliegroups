@@ -142,6 +142,9 @@ set inner(CharacterTable ct) = ([int],[int]->int): ct.class_table.inner
 set norm2(CharacterTable ct)= ([int] x)int: ct.class_table.inner(x,x)
 
 set degree(CharacterTable ct) = (int i)int: ct.degrees[i]
+set generic_degree_safe(CharacterTable ct)  = (int i)int:
+   if ct.has_generic_degree(i) then ct.generic_degree(i) else -1 fi
+set generic_degrees(CharacterTable ct)=[int]:for i:ct.n_classes do ct.generic_degree_safe(i) od
 set generic_degree_string(CharacterTable ct)  = (int i)string:
    if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
 
@@ -264,6 +267,7 @@ set irred_string(BiPartition(mu,lambda)) = string:
    ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string
 
 set show_classes_long(CharacterTable ct) = void:
+prints("Character table",new_line,"G=", ct.root_datum.nice_format);
 tabulate (
     ["i"
     ,"order"
@@ -307,14 +311,17 @@ tabulate (
 )
 
 set show(CharacterTable ct) = void:
+   prints("Character table",new_line,"G=", ct.root_datum.nice_format);
    prints("Classes:"); ct.show_classes;
    prints("Representations:"); ct.show_reps
 
 set show_long(CharacterTable ct) = void:
+   prints("Character table",new_line,"G=", ct.root_datum.nice_format);
    prints("Classes:"); ct.show_classes_long;
    prints("Representations:"); ct.show_reps
 
 set show_very_long(CharacterTable ct) = void:
+   prints("Character table",new_line,"G=", ct.root_datum.nice_format);
    prints("Classes:"); ct.show_classes_long;
    prints("Representations:"); ct.show_reps;
    prints("Character Table:"); prints(ct.table)

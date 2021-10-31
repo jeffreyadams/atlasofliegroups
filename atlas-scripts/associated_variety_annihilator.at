@@ -4,6 +4,16 @@
 
 set av_verbose=false
 
+{
+set restrict_character_long(RootDatum rd ,RootDatum L,CharacterTable ct_rd,CharacterTable ct_int,[int] char)=
+let ()=prints("RESTRICTING: ",new_line,
+"rd=", rd, rd.simple_roots,new_line,
+"L=", L, L.simple_roots,new_line,
+"ct_rd=", ct_rd.root_datum, ct_rd.root_datum.simple_roots,new_line,
+"ct_int=", ct_int.root_datum, ct_int.root_datum.simple_roots) in
+restrict_character(rd,L,ct_rd,ct_int,char)
+}
+
 {SEVERAL VERSIONS
  associated_variety_ann_old should be ignored: this only works if some permutation is the identity
  associated_variety_ann_inid includes the permutation,
@@ -200,9 +210,7 @@ for (p,orbit) in data do
 set associated_variety_ann_res_complex(Param p)=ComplexNilpotent:
 assert(p.real_form.is_complex,"RootDatum is not complex");
 let cell=left_cell_of(p) {for left root datum} in
-associated_variety_ann_res(p.real_form.left_copy.derived,cell)
-
-
+associated_variety_ann_res(p.real_form.left_copy,cell)
 
 {rd=cell.root_datum
    then st_rd=Springer_table(rd)

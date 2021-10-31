@@ -1,0 +1,375 @@
+<generic_degrees.at
+<springer_tables_reductive.at
+
+{computing generic degree
+reference; Geck, Some Applications of Chevie to the theory of algebraic groups}
+
+set gg_verbose=false
+
+{representatives of conjugacy classes of reflections:
+ one simple reflection of each root length}
+set conjugacy_classes_reflections_simple(RootDatum rd)=[WeylElt]:
+assert(rd.derived.is_simple,"Root Datum is not simple");
+let f=rd.invariant_form then
+l_0=f(rd.posroots[0],rd.posroots[0]) in
+ let j=first(for i:#rd.posroots do i>0 and f(rd.posroots[i],rd.posroots[i]) != l_0 od) in
+ if j=-1 then [W_elt(rd,[0])] else [W_elt(rd,[0]),W_elt(rd,[j])] fi
+
+{1 or 2 for each simple factor}
+set conjugacy_classes_reflections(RootDatum rd)=[WeylElt]:
+##for f in rd.simple_factors do
+ for w in conjugacy_classes_reflections_simple(f) do W_elt(rd,w.matrix) od od
+
+{if you have the WeylClassTable this is better:}
+set conjugacy_classes_reflections(WeylClassTable wct)=[int]:
+##for w@j in wct.class_representatives do if w.length=1 then [j] else [] fi od
+
+{function defined in Geck just before Definition 4.1}
+set omega_L(CharacterTable ct, int j,(WeylElt->int) weight_function)=int:
+let char=ct.characters[j] then
+r=rat_as_int(sum(
+for i in conjugacy_classes_reflections(ct.class_table) do
+ char[i] * ct.class_table.class_sizes[i]*weight_function(ct.class_table.class_representatives[i])/dimension(ct,j) od)) in
+r
+
+set default_weight_function=(WeylElt->int):(WeylElt w):1
+
+{ adapted from standard_Levi_conjugacy_representatives in Levi_subgroups.at}
+set max_standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
+   let reps_by_rho ([[int]] list) = [[int]]: { list of chosen standard Levis }
+      let rho2s = [vec]:[] { list of known dominant $2\rho$ values }
+      in for subset in list
+	 do let rho2=dominant(rd,two_rho(rd,subset))
+	 in if none(#rho2s,(int i)bool: rho2s[i]=rho2)
+	    then rho2s#:=rho2 { now we know |rho2|}; [subset] { contribute }
+	    else [] { |rho2| was already present, contribute nothing }
+	    fi
+	 od.## { wrap up contributing standard Levis as result |reps_by_rho| }
+   , r = rd.semisimple_rank
+in { now apply |reps_by_rho| to each size class, and concatenate the results }
+{   for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##}
+reps_by_rho(choices_from(#r,r-1))
+
+set max_Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in max_standard_Levi_conjugacy_representatives(rd)
+do complex_Levi(rd,simple_roots) od
+
+{find character table for given G in given list}
+set lookup_character_table(RootDatum G,[CharacterTable] tables)=(int,ratmat):
+let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
+in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
+
+{find character table for given G in given list}
+set lookup_springer_table(RootDatum G,[SpringerTable] tables)=(int,ratmat):
+let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
+in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
+
+
+
+{to compute a'_E (of Geck), denoted a_prime here, you need to know
+all of the functions a_E for proper Levis; this is assumed to
+be known by induction}
+set a_prime(RootDatum G,[CharacterTable] tables, int table_index, int character_index)=int:
+{let ()=prints("a_prime: G=", G, table_index,character_index) in}
+if G.is_abelian
+ then 0
+else
+let ct_G=tables[table_index] then
+{()=prints("got ct_G") then}
+  a_prime=
+  max(
+   ##(##for M@k in  max_Levi_subgroups(G) do
+    let ()=if gg_verbose then prints("k=", k, " M=",M) fi in
+    let (index_M,P_M)=lookup_character_table(M,tables) then
+    ct_M=tables[index_M] in
+    for char_M@t in  ct_M.characters do
+     let ind_0=induce_character(ct_M,M,ct_G,char_M) then
+     ind=ct_G.decompose(ind_0) then
+     ()=if gg_verbose then prints("k: ", k, "t=", t, "  ind_0: ", ind_0) fi in
+     if ind[character_index]>0 then [ct_M.generic_degrees[t]] else [] fi
+    od
+   od)) in
+   if gg_verbose then prints("a_prime: ", a_prime) fi;a_prime
+fi
+
+{given a list of tables, where tables for proper Levis are found to the right
+update a single table, assuming complete tables are known for all proper Levis
+use the Geck algorithm for all (unfilled) entries of the specified table}
+set update_one_table_geck([CharacterTable] tables, int table_index)=void:
+let table=tables[table_index] then
+G=table.root_datum in
+if G.is_abelian then
+ let d()=0 in table.set_generic_degree(0,d,true);()
+else let
+()=for character_index: table.n_classes do
+if table.has_generic_degree(character_index) then table else
+ let ()=if gg_verbose then prints("character_index: ", character_index,new_line, "table_index: ", table_index) fi in 
+ let
+  A=a_prime(G,tables,table_index,character_index) then
+  B=a_prime(G,tables,table_index,table.tensor_sign_index(character_index)) then
+  omega_L=omega_L(table,character_index,default_weight_function@WeylElt) then
+  max=max(A,B-omega_L)
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"H=",H,new_line,"omega_L", omega_L) fi;
+   let d()=max in
+ table.set_generic_degree(character_index,d,true)
+  fi
+od
+in ()
+fi
+
+set show([CharacterTable] tables)=void:
+for table in tables do prints("");show(table) od
+
+set has_all_generic_degrees(CharacterTable ct)=bool:
+all(for i:ct.n_classes do ct.has_generic_degree(i) od)
+
+{given a list of tables, where tables for proper Levis are found to the right
+update a single table, assuming complete tables are known for all proper Levis
+use cell algorithm up to given size, then Geck}
+set update_one_table_mixed_strategy([CharacterTable] tables, int table_index, int cell_size_cutoff)=void:
+let table=tables[table_index] then
+G=table.root_datum in
+if G.is_abelian then
+ let d()=0 in table.set_generic_degree(0,d,true);()
+else let
+()=for character_index: table.n_classes do
+if table.has_generic_degree(character_index) then table else
+ let ()=if gg_verbose then prints("character_index: ", character_index, "table_index: ", table_index) fi in
+ let
+  A=a_prime(G,tables,table_index,character_index) then
+  B=a_prime(G,tables,table_index,table.tensor_sign_index(character_index)) then
+  omega_L=omega_L(table,character_index,default_weight_function@WeylElt) then
+  max=max(A,B-omega_L)
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"H=",H,new_line,"omega_L", omega_L) fi;
+   let d()=max in
+ table.set_generic_degree(character_index,d,true)
+  fi
+od
+in ()
+fi
+
+
+
+
+{update all tables, reading from the right, assuming all the Levis
+of table at index j are found at index k>j
+modifies the given list of tables, the return value is void
+}
+set rec_fun update_generic_degrees_geck_long([CharacterTable] tables)=void:
+let table_index=last(for i:#tables do not tables[i].has_all_generic_degrees od) in
+if table_index=-1 then () else
+let ()=update_one_table_geck(tables,table_index) in
+update_generic_degrees_geck_long(tables) fi;()
+
+{update all tables, reading from the right, assuming all the Levis
+of table at index j are found at index k>j
+use the cell algorithm up to given cutoff, and then Geck
+}
+set rec_fun update_generic_degrees_geck_long([CharacterTable] tables, int cell_size_cutoff)=void:
+let table_index=last(for i:#tables do not tables[i].has_all_generic_degrees od) in
+if table_index=-1 then () else
+let ()=update_one_table_geck(tables,table_index) in
+update_generic_degrees_geck_long(tables, cell_size_cutoff) fi;()
+
+
+{just return the updated single table}
+set rec_fun update_generic_degrees_geck([CharacterTable] tables)=CharacterTable:
+update_generic_degrees_geck_long(tables);tables[0]
+
+{this is the precomputation step:
+compute the character tables of all Levis
+no including generic degrees}
+set all_levi_tables(RootDatum G)=
+let levis=Levi_subgroups(G) in
+ for i:#levis do levis~[i].character_table od
+
+{in this version precompute generic degrees using the
+*cell* computation, which (depending on the rank) may be
+faster}
+set all_levi_tables_plus(RootDatum G)=
+let tables=all_levi_tables(G) in
+for t in tables  do update_generic_degrees(t,t.root_datum.split_form) od;
+tables
+
+{compute character tables of all Levis, then populate
+their generic degrees inductively from the right}
+set set_generic_degrees_geck_long(RootDatum G)=[CharacterTable]:
+let tables=all_levi_tables(G) in update_generic_degrees_geck_long(tables);tables
+
+set set_generic_degrees_geck(RootDatum G)=CharacterTable:set_generic_degrees_geck_long(G)[0]
+
+{compute character tables of all Levis
+ then compute all generic degrees using cell calculation
+ then use the Geck algorithm for the remaining ones}
+set set_generic_degrees_plus(RootDatum G)=[CharacterTable]:
+let tables=all_levi_tables_plus(G) in update_generic_degrees_geck(tables);tables
+
+set set_generic_degrees(RootDatum G)=CharacterTable:set_generic_degrees_plus(G)[0]
+
+{Geck gives a formula (using omega_L) for generic_degree(sigma\otimes
+sign) in terms of generic_degree(sigma). This can be used to fill
+in some missing values.}
+set update_generic_degrees_using_sign(CharacterTable ct)=void:
+for i:ct.n_classes do
+ if not ct.has_generic_degree(i) then
+  let j=ct.tensor_sign_index(i) in 
+  if ct.has_generic_degree(j) then
+   let omega=omega_L(ct,j,default_weight_function@WeylElt) in 
+   ct.set_generic_degree(i,let d()=ct.generic_degree(j)+omega in d,true)
+  fi
+ fi
+od
+
+set update_generic_degrees_using_sign([CharacterTable] tables)=void:
+for t in tables do update_generic_degrees_using_sign(t) od
+
+set set_generic_degrees_2(RootDatum G)=[CharacterTable]:
+let tables=all_levi_tables_plus(G) in
+update_generic_degrees_using_sign(tables);tables
+
+set set_generic_degrees_3(RootDatum G)=[CharacterTable]:
+let tables=all_levi_tables_plus(G) then
+()=prints("Computed Levi tables plus") then
+()=update_generic_degrees_using_sign(tables) then
+()=prints("updated generic degrees using sign") then
+()=update_generic_degrees_geck(tables) then
+()=prints("updated remaining generic degrees") in tables
+
+set character_table_generic_degrees(RootDatum G)=
+update_generic_degrees_geck(all_levi_tables(G))
+
+set Springer_table_generic_degrees(RootDatum G)=
+let ct_generic=character_table_generic_degrees(G) then
+st=Springer_table(G) then
+()=st.ct:=ct_generic in st
+
+{
+set rec_fun geck_generic_degrees([CharacterTable] tables)=[CharacterTables]:
+let table_index=last(for i:#tables do tables[i].generic_degrees[0] = -1 od) in
+if table_index=-1 then [tables] else
+ let table=tables[index_table] then
+  H=table.root_datum then
+  for class_index:table.n_classes do
+  let a_prime=a_prime(H,tables,table_index,class_index)
+
+  {def of a_prime_E:}
+  let  a_prime_E(RootDatum L,CharacterTable ct_L,int index_L)=int:
+  let value=
+  if gg_verbose then prints("++++++++++++++++++++",new_line,"a_prime_E:",new_line,"L=", L) fi;
+  if L.is_abelian then 1 else
+   max(
+   ##(##for M in  proper_Levi_subgroups(L) do
+    let (index_M,P_M)=lookup_character_table(M,tables) then
+    ct_M=tables[index_M] in
+    for char_M@t in  ct_M.characters do
+     let ind=ct_L.decompose(induce_character(M,L,ct_M,ct_L,char_M)) in
+     let ()=if gg_verbose then prints("ind: ", ind, "t=",t) fi in
+     if ind[index_L]>0 then [a_E(M,ct_M,t)] else [] fi
+    od
+   od))
+  fi
+  in if gg_verbose then prints("a_prime_E: ", value) fi;value
+
+  then A=a_prime_E(H,ct_H,index_H),
+  B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(index_H)) then
+  {()= prints("(1)H=",H,"  A=", A, new_line, "B=", B) then
+  ()=prints("(2)H=",H,"   tensor sign: ", ct_H.tensor_sign_index(index_H)) then}
+  max=max(A,B- omega_L(ct_H,index_H,default_weight_function@WeylElt))
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"(4)H=",H,new_line," omega_L=", omega_L(ct_H,index_H,default_weight_function@WeylElt)) fi;
+  max
+  
+
+
+set geck_generic_degree(RootDatum rd, CharacterTable ct,int index_rd)=
+let counter=0 in
+let rec_fun a_E(RootDatum H,CharacterTable ct_H, int index_H)=int:
+ if gg_verbose then prints("-----------------",counter,"---------",new_line,"a_E: H=", H) fi;
+ counter:=counter+1;
+ if H.is_abelian then if gg_verbose then prints("H is abelian: H=",H) fi;0
+ else
+
+  {def of a_prime_E:}
+  let  a_prime_E(RootDatum L,CharacterTable ct_L,int index_L)=int:
+  let value=
+  if gg_verbose then prints("++++++++++++++++++++",new_line,"a_prime_E:",new_line,"L=", L) fi;
+  if L.is_abelian then 1 else
+   max(
+   ##(##for M in  max_Levi_subgroups(L) do
+    let ct_M=M.character_table in
+    for char_M@t in  ct_M.characters do
+     let ind=ct_L.decompose(induce_character(M,L,ct_M,ct_L,char_M)) in
+     let ()=if gg_verbose then prints("ind: ", ind, "t=",t) fi in
+     if ind[index_L]>0 then [a_E(M,ct_M,t)] else [] fi
+    od
+   od))
+  fi
+  in if gg_verbose then prints("a_prime_E: ", value) fi;value
+  {end if L.is_abelian}  {this is now the integer value of a_prime_E(...)}
+  {end def function a_prime_E}
+  then A=a_prime_E(H,ct_H,index_H),
+  B=a_prime_E(H,ct_H,ct_H.tensor_sign_index(index_H)) then
+  {()= prints("(1)H=",H,"  A=", A, new_line, "B=", B) then
+  ()=prints("(2)H=",H,"   tensor sign: ", ct_H.tensor_sign_index(index_H)) then}
+  max=max(A,B- omega_L(ct_H,index_H,default_weight_function@WeylElt))
+  in
+  if gg_verbose then
+   prints("max=", max, " A=",A, " B=", B, new_line,"(4)H=",H,new_line," omega_L=", omega_L(ct_H,index_H,default_weight_function@WeylElt)) fi;
+  max
+
+ fi {end if H.is_abelian}
+ {end def of recursive function a_E}
+in
+a_E(rd,ct,index_rd)
+
+
+set geck_generic_degree(RootDatum rd,int i)=int:geck_generic_degree(rd,rd.character_table,i)
+set geck_generic_degrees(RootDatum rd,CharacterTable ct)=[int]:
+let ()=prints("number of characters: ", ct.n_classes) in
+for i:ct.n_classes do
+if gg_verbose then prints(new_line,"================================",new_line,"i=",i,new_line) fi;
+let g=geck_generic_degree(rd,ct,i)  in
+prints("i=",i, " dim=", dimension(ct,i),": g=",g);g od
+
+set geck_generic_degrees(RootDatum rd)=[int]:geck_generic_degrees(rd,rd.character_table)
+}
+set test_geck_generic_degrees(CharacterTable ct, [int] computed_degrees)=bool:
+if all(for i:ct.n_classes do ct.generic_degrees[i]=-1 od) then
+ prints("generic degrees not computed for ct", new_line, "do: update_generic_degrees(ct,G)");true else
+all(for i:ct.n_classes do ct.generic_degrees[i]=-1 or ct.generic_degrees[i]=computed_degrees[i] od) fi
+
+set test_generic_degrees(CharacterTable ct1,CharacterTable ct2)=
+if all(for i:ct1.n_classes do ct1.generic_degrees[i]=-1 od) or
+   all(for i:ct2.n_classes do ct2.generic_degrees[i]=-1 od) then
+prints("generic degrees not computed for ct", new_line, "do: update_generic_degrees(ct,G)");false else
+all(for i:ct1.n_classes do
+  ct1.generic_degrees[i]=-1 or
+  ct2.generic_degrees[i]=-1 or
+  ct1.generic_degrees[i]=ct2.generic_degrees[i] od)
+  fi
+
+set test_generic_degrees(RealForm G,CharacterTable ct)=
+test_generic_degrees(
+let ct_G=G.character_table in update_generic_degrees(ct_G,G);ct, ct)
+{
+set test_generic_degrees(RealForm G)=
+let
+ ct=character_table(G) then
+ ct1=character_table(G) then
+ ()=set_generic_degrees(ct) then
+ ()=update_generic_degrees(ct1,G) in
+ test_generic_degrees(ct,ct1)
+}
+
+
+set update_generic_degrees_geck([SpringerTable] springer_tables)=void:
+update_generic_degrees_geck(for st in springer_tables do st.ct od)
+
+set all_levi_springer_tables(RootDatum G)=
+let levis=Levi_subgroups(G) in
+ for i:#levis do Springer_table(levis~[i]) od

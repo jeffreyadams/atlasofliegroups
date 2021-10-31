@@ -11,18 +11,40 @@ set involutions([WeylElt] W)=[WeylElt]:
 
 set involutions(RootDatum rd)=[WeylElt]:involutions(rd.W)
 
+set twisted_involutions(RealForm G)=[mat]:
+   let list=for x in KGB(quasisplit_form(G)) do involution(x) od in
+   ##for w@i in list do if i=0 then [w]
+                        elif list[i-1]=w then []
+			else [w] fi od
+
 {sign function (not character) on W coming from sgn
 character of imaginary roots}
 set epsilon_i(WeylElt involution, WeylElt w)=int:
 assert(involution.root_datum=w.root_datum,"root data don't match");
 let rd=w.root_datum in
-(-1)^count(for a in imaginary_posroots(rd,involution.matrix) do not is_positive_root(rd,w*a) od)
+(-1)^count(for a in imaginary_posroots(rd,involution.matrix)
+             do not is_positive_root(rd,w*a) od)
+
 set epsilon_i(KGBElt x,WeylElt w)=int:
 assert(x.root_datum=w.root_datum,"root data don't match");
 (-1)^count(for a in x.imaginary_posroots do not is_positive_root(x.root_datum,w*a) od)
 set epsilon_i(Param p,WeylElt w)=int:epsilon_i(p.x,w)
 
-{FIX cross@(WeylElt,Param): wrong assert, w.root_datum should be the integrality datum for p}
+set epsilon_i(mat inv,WeylElt w)=int:
+   let rd=w.root_datum
+   in (-1)^count(for a in imaginary_posroots(rd,inv) do not is_positive_root(rd,w*a) od)
+
+set epsilon_r(KGBElt x,WeylElt w)=int:
+   assert(x.root_datum=w.root_datum,"root data don't match");
+   (-1)^count(for a in x.real_posroots do not is_positive_root(x.root_datum,w*a) od)
+
+set epsilon_r(mat inv,WeylElt w)=int:
+  let rd=w.root_datum
+   in (-1)^count(for a in real_posroots(rd,inv) do not is_positive_root(rd,w*a) od)
+
+
+{FIX cross@(WeylElt,Param): wrong assert, w.root_datum should be the integrality
+datum for p}
 set cross (WeylElt w,Param p) = Param:
 {  assert(w.root_datum=p.root_datum);}
   for s in w.word ~do p:=cross(s,p) od; p
@@ -40,6 +62,10 @@ set trace_coherent(WeylElt w,[Param] params)=int:
 assert(w.root_datum=params[0].root_datum,"roots data don't match");
 sum(for p in fixed_params(w,params) do epsilon_i(p,w) od)
 
+set make_block (RealForm G, RealForm Gd)=[Param]:
+   let bl=block(G,Gd)
+   in for i:#bl do element(bl,i).parameter od
+
 set character_coherent(CharacterTable ct,[Param] params)=[int]:
 let rd=params[0].root_datum in
 for w_0 in ct.class_representatives do
@@ -51,7 +77,9 @@ character_coherent(ct,all_parameters_gamma(G,gamma))
 set character_coherent_gamma(RealForm G,CharacterTable ct)=[int]:character_coherent_gamma(G,ct,G.rho)
 
 set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,block_of(G.trivial))
-set character_coherent_B(RealForm G,CharacterTable ct)=[int]:character_coherent_B(G,ct)
+
+set character_coherent_B(RealForm G,RealForm Gd,CharacterTable ct)=[int]:
+   character_coherent(ct,make_block(G,Gd))
 
 {fixed points of w acting on KGB}
 set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
@@ -60,9 +88,18 @@ set fixed_kgb(WeylElt w,[KGBElt] X)=[KGBElt]:
 set trace_coherent(WeylElt w,[KGBElt] X)=int:
 sum(for x in fixed_kgb(w,X) do epsilon_i(x,w) od)
 
+set trace_coherent_r(WeylElt w,[KGBElt] X)=int:
+   sum(for x in fixed_kgb(w,X) do epsilon_r(x,w) od)
+
 set character_coherent(CharacterTable ct,[KGBElt] X)=[int]:
 for w in ct.class_representatives do trace_coherent(w,X) od
 set character_coherent_X(RealForm G,CharacterTable ct)=[int]:character_coherent(ct,KGB(G))
+
+set character_coherent_r(CharacterTable ct,[KGBElt] X)=[int]:
+  for w in ct.class_representatives do trace_coherent_r(w,X) od
+
+set character_coherent_r_X(RealForm G,CharacterTable ct)=[int]:
+   character_coherent_r(ct,KGB(G))
 
 set character_coherent_dual(CharacterTable ct,[KGBElt] Y)=[int]:
 let rd_dual=Y[0].root_datum in
@@ -75,16 +112,56 @@ character_coherent_dual(ct,KGB(G_dual))
 set character_coherent_Y(RealForm G,CharacterTable ct)=[int]:
 character_coherent_Y(ct,G.dual.quasisplit_form)
 
-
 {involutions in W fixed by conjugation action of w}
 set fixed_involutions(WeylElt w,[WeylElt] involutions)=[WeylElt]:
 ##for y in involutions do if w*y=y*w then [y] else [] fi od
 
+set fixed_involutions(WeylElt w, [mat] involutions)=[mat]:
+##for M in involutions do if w*M=M*w then [M] else [] fi od
+
 set trace_coherent(WeylElt w,[WeylElt] involutions)=
 sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
 
+set trace_coherent(WeylElt w,[mat] involutions)=
+sum(for y in fixed_involutions(w,involutions) do epsilon_i(y,w) od)
+
+set trace_coherent_r(WeylElt w,[mat] involutions)=
+sum(for y in fixed_involutions(w,involutions) do epsilon_r(y,w) od)
+
+set character_coherent_dual(CharacterTable ct,RealForm G_dual)=[int]:
+   let rd=root_datum(G_dual)
+   in for w in ct.class_representatives
+      do let y=W_elt(rd,w.word) in trace_coherent (y,twisted_involutions(G_dual)) od
+
+set character_coherent_dual_r(CharacterTable ct,RealForm G_dual)=[int]:
+   let rd=root_datum(G_dual)
+   in for w in ct.class_representatives
+      do let y=W_elt(rd,w.word) in trace_coherent_r (y,twisted_involutions(G_dual)) od
+
 set character_coherent(CharacterTable ct,[WeylElt] involutions)=
 for w in ct.class_representatives do trace_coherent(w,involutions) od
+
+set character_coherent(CharacterTable ct,[mat] involutions)=
+for w in ct.class_representatives do trace_coherent(w,involutions) od
+
+set character_coherent_r(CharacterTable ct,[mat] involutions)=
+for w in ct.class_representatives do trace_coherent_r(w,involutions) od
+
+
+set character_coherent_T(RealForm G, CharacterTable ct)=[int]:
+   character_coherent(ct,twisted_involutions(G))
+
+set character_coherent_T_r(RealForm G, CharacterTable ct)=[int]:
+   character_coherent_r(ct,twisted_involutions(G))
+
+
+set character_coherent_T_dual(CharacterTable ct,RealForm G_dual)=[int]:
+   character_coherent_dual(ct,G_dual)
+
+set character_coherent_T_dual_r(CharacterTable ct,RealForm G_dual)=[int]:
+   character_coherent_dual_r(ct,G_dual)
+
+
 set character_coherent_I(CharacterTable ct)=[int]:
    character_coherent(ct,involutions(ct.root_datum))
 

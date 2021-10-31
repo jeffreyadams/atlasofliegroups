@@ -36,9 +36,18 @@
 <sommers.at
 <projectors_using_character_tables.at
 <new_conjugacy.at
+<test_braid.at
 {<lucas.at
 <self_intersection.at}
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }
+<certificate.at
+<geck_generic.at
+<lusztig_cells.at
+<four.at {four_inner_products BXYI}
+<special_rep.at
+
+
+
 

@@ -2,13 +2,6 @@
 <class_tables.at { for |class_table_F| }
 <character_tables.at { for type |CharacterTable| }
 
-{ the function |classes_Kondo_F4| define in character_tables.at lists conjugacy
-  class representatives for any $F_4T_k$ type root datum in a fixed order, which
-  order is used below to write down characters below. The numbering of the
-  $W(F_4)$ irreducibles is determined by the |character_table_F4_data| table.
-  The following funtions efunction |character_table_F| will then construct
-  a valid character table, which those numberings, for any such root datum. }
-
 set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 {   e    ...             long refl ..  short refl ... }
 [([ 1, 1,1,1,1,1,1,1,1,1,1,  1,  1,1,1,1,  1, 1,1,1,1,1,1,1,1]          ,0,0)
@@ -38,6 +31,76 @@ set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 ,([16, -16,0,-2,2,0,-2,2,-2,2,0,  0,  0,0,0,0,   0,  0,0,0,0,0,0,0,0]   ,5,0)
 ]
 
+
+{
+Representations (including Kondo names, entered by hand
+see Carter page 413
+i   dim  deg  gdeg  name
+0   1    0    0     phi(1,0)    chi(1,1)
+1   1    12   4     phi(1,12)''	chi(1,2)
+2   1    12   4     phi(1,12)'	chi(1,3
+3   1    24   24    phi(1,24)	chi(1,4)
+4   2    4    1     phi(2,4)''	chi(2,1)
+5   2    16   13    phi(2,16)'	chi(2,2)
+6   2    4    1     phi(2,4)'	chi(2,3)
+7   2    16   13    phi(2,16)''	chi(2,4)
+8   4    8    4     phi(4,8)	chi(4,1)
+9   9    2    2     phi(9,2)	chi(9,1)
+10  9    6    4     phi(9,6)''	chi(9,2)
+11  9    6    4     phi(9,6)'	chi(9,3)
+12  9    10   10    phi(9,10)	chi(9,4)
+13  6    6    4     phi(6,6)'	chi(6,1)
+14  6    6    4     phi(6,6)''	chi(6,2)
+15  12   4    4     phi(12,4)	chi(12,1)
+16  4    1    1     phi(4,1)	chi(4,2)
+17  4    7    4     phi(4,7)''	chi(4,3)
+18  4    7    4     phi(4,7)'	chi(4,4)
+19  4    13   13    phi(4,13)	chi(4,5)
+20  8    3    3     phi(8,3)''	chi(8,1)
+21  8    9    9     phi(8,9)'	chi(8,2)
+22  8    3    3     phi(8,3)'	chi(8,3)
+23  8    9    9     phi(8,9)''	chi(8,4)
+24  16   5    4     phi(16,5)	chi(16,1)
+}
+
+set F4_name_table=
+[("phi(1,0)","chi(1,1)"),
+("phi(1,12)''","chi(1,2)"),
+("phi(1,12)'","chi(1,3"),
+("phi(1,24)","chi(1,4)"),
+("phi(2,4)''","chi(2,1)"),
+("phi(2,16)'","chi(2,2)"),
+("phi(2,4)'","chi(2,3)"),
+("phi(2,16)''","chi(2,4)"),
+("phi(4,8)","chi(4,1)"),
+("phi(9,2)","chi(9,1)"),
+("phi(9,6)''","chi(9,2)"),
+("phi(9,6)'","chi(9,3)"),
+("phi(9,10)","chi(9,4)"),
+("phi(6,6)'","chi(6,1)"),
+("phi(6,6)''","chi(6,2)"),
+("phi(12,4)","chi(12,1)"),
+("phi(4,1)","chi(4,2)"),
+("phi(4,7)''","chi(4,3)"),
+("phi(4,7)'","chi(4,4)"),
+("phi(4,13)","chi(4,5)"),
+("phi(8,3)''","chi(8,1)"),
+("phi(8,9)'","chi(8,2)"),
+("phi(8,3)'","chi(8,3)"),
+("phi(8,9)''","chi(8,4)"),
+("phi(16,5)","chi(16,1)")]
+
+set F4_name(int dim, int degree, int n_primes) = string:   ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
+
+set F4_name_Kondo(int dim, int degree, int n_primes) = string:
+for (name,kondo_name)@i in F4_name_table do
+ if name=F4_name(dim,degree,n_primes) then return(kondo_name)   else "no" fi
+od; "no"
+
+set F4_full_name(int dim, int degree, int n_primes) = string:
+let short_name=F4_name(dim,degree,n_primes) in 
+short_name+ (12-#short_name)*" " + F4_name_Kondo(dim,degree,n_primes)
+
 set check_F4_degrees() = bool: { function that checks the above table degrees }
    let Wct = class_table_F(4)
 in for (chi,deg,) in character_table_F4_data
@@ -46,8 +109,20 @@ in for (chi,deg,) in character_table_F4_data
 	   )=deg
    od.all
 
-set F4_name(int dim, int degree, int n_primes) = string:
-   ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
+set character_table_F(RootDatum rd) = CharacterTable:
+   let Wct = class_table_F(rd)
+   then classes = [WeylElt,classical_class,string]:
+      for w@i in Wct.class_representatives
+      do (w,null_class(),class_signature_F4(w).compressed_string)
+      od
+   , irreps = [classical_irrep,string,[int]]:
+      for (line,degree,n_primes) in character_table_F4_data
+      do (null_irrep(),F4_full_name(line[0],degree,n_primes),line)
+      od
+   in character_table(Wct,classes,irreps)
+
+set character_table_F(int n) = CharacterTable:
+   character_table_F(simply_connected("F4"))
 
 set to_special_F4 = (int i) int:
    case i
@@ -62,26 +137,3 @@ set to_special_F4 = (int i) int:
    , 15
    else error("Wrong F4 irrep number")
    esac
-
-set character_table_F = (RootDatum -> CharacterTable):
-(  let irreps = [classical_irrep,string,[int]]:
-      for (line,degree,n_primes) in character_table_F4_data
-      do (null_irrep(),F4_name(line[0],degree,n_primes),line)
-      od
-in (RootDatum rd) CharacterTable:
-   let table = CharacterTable:
-      let Wct = class_table_F(rd)
-      then classes = [WeylElt,classical_class,string]:
-	 for w@i in Wct.class_representatives
-	 do (w,null_class(),class_signature_F4(w).compressed_string)
-	 od
-      in character_table(Wct,classes,irreps)
-in for i: #irreps
-   do table.set_generic_degree(i,@:table.degree(to_special_F4(i)),false)
-   od
-;  table
-)
-
-
-set character_table_F(int n) = CharacterTable:
-   character_table_F(simply_connected("F4"))

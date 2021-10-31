@@ -204,8 +204,11 @@ set char_poly (WeylElt w) = vec: char_poly(matrix(w))
 set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,all_simples(rd))
 
 {. Coxeter number .}
-set coxeter_number (RootDatum rd) = int:
+set coxeter_number_simple (RootDatum rd) = int:
+assert(rd.derived.is_simple,"derived RootDatum is not simple");
   rat_as_int(highest_root(rd)*rho_check(rd)+1)
+
+set coxeter_number(RootDatum rd)=int: sum(for f in rd.simple_factors do f.coxeter_number_simple od)
 
 {. torus element representing the Coxeter Weyl group element .}
 set coxeter_torus_element (RootDatum rd) = ratvec:

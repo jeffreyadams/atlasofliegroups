@@ -1,11 +1,14 @@
 <basic.at
 <springer_tables.at
+<geck_generic { for |Springer_table_generic_degrees| }
 
 {the Lusztig map goes from triples (O,x,xi) to W^
  this file implements an algorithm (conjectural)
  to implement this when xi=1
  the set obtained for fixed O, running over x,
  is a Lusztig (left) cell
+ Note: this used to involve the dual group but this has been changed,
+ the dual version will be moved to lusztig_cells_dual.at
 }
 <basic.at
 <coherent_characters.at
@@ -519,3 +522,11 @@ set show_lusztig_cells_generic (RootDatum G,SpringerTable st_G) = void:
 
 set show_lusztig_cells_generic_long (RootDatum G,SpringerTable st_G) = void:
    show_lusztig_cells_generic_long(G,st_G,G.orbits)
+
+set show_lusztig_cells_generic (RootDatum G) = void:
+let st=Springer_table_generic_degrees(G)
+in show_lusztig_cells_generic(G,G.Springer_table)
+
+set show_lusztig_cells_generic_long (RootDatum G) = void:
+let st=Springer_table_generic_degrees(G)
+in show_lusztig_cells_generic_long(G,st)
