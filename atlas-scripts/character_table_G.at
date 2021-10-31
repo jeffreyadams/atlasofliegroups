@@ -2,6 +2,17 @@
 <class_tables.at { for |class_table_G| }
 <character_tables.at { for type |CharacterTable| }
 
+{ the list |G2_class_words| of conjugacy class representatives is fixed in
+  character_tables.at, and |character_table_G@RootDatum| will produce a
+  corresponding |[WeylElt]|; the character data below follow this ordering.
+  The numbering (and naming) of the $W(G_2)$ irreducibles is fixed (locally) in
+  |character_table_G@RootDatum| below, so we can define data relative to this
+  numbering. The result is a valid table for any $G_2T_k$ type root datum.
+}
+
+set to_special_G2 = (int i) int:
+   case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac
+
 set character_table_G = (RootDatum -> CharacterTable):
    let class_names = ["e", "S_short", "S_long", "R/6", "R/3", "R/2"]
    , irreps = [classical_irrep,string,[int]]:
@@ -13,15 +24,18 @@ set character_table_G = (RootDatum -> CharacterTable):
      ,( null_irrep(),  "hexagonal reflection",  [2,0,0,1,-1,-2])
      ]
 in (RootDatum rd) CharacterTable:
-   let class_table = class_table_G(rd)
-   then classes = [WeylElt,classical_class,string]:
-      for w@i in class_table.class_representatives
-      do (w,null_class(),class_names[i])
-      od
-   in character_table(class_table,classes,irreps)
+(  let class_table = class_table_G(rd)
+   then table =
+      let classes = [WeylElt,classical_class,string]:
+	 for w@i in class_table.class_representatives
+	 do (w,null_class(),class_names[i])
+	 od
+      in character_table(class_table,classes,irreps)
+in for i: #irreps
+   do table.set_generic_degree(i,@:table.degree(to_special_G2(i)),false)
+   od
+;  table
+)
 
-set character_table_G(int n) = CharacterTable:
+set character_table_G (int n) = CharacterTable:
    character_table_G(simply_connected("G2"))
-
-set to_special_G2 = (int i) int:
-   case i in 0, 5, 5, 3, 5, 5 else error("Wrong G2 irrep number") esac

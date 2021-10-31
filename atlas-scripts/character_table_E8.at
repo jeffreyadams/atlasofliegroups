@@ -1,49 +1,120 @@
 <basic.at
 <combinatorics { for |Partition| }
 <W_classes.at { for |WeylClassTable| }
-<class_tables.at { for |test_simple_type| }
-<e8_gap.at { load the information from GAP }
+<class_tables.at { for |test_simple_type|, |GAP_reorder_E8| }
 <character_tables.at
 
-{atlas character table for W(E8)}
-{see character_table_E8.txt}
+<e8_gap.at { load the information from GAP }
 
-set character_table_E8(RootDatum rd) = CharacterTable:
-   let Wct = class_table_E8(rd)
-   then reordering = GAP_reorder_E8(Wct)
-   then E8_name(vec chi) = string:
-      let psi = null(#chi)
-      then degree = { first reorder |chi| for |Wct| into |psi| }
-	 for j@i in reordering do psi[j]:=chi[i] od { apply inverse reordering }
-      ;  first(Wct.root_datum.nr_of_posroots+1
-	      ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
-	      )
-      in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+{ atlas character table for W(E8)
+  for history of its construction see character_table_E8.txt in Dropbox }
 
-   then classes = [WeylElt,classical_class,string]:
-      let reps = Wct.class_representatives
-      in for j in reordering
-	 do (reps[j],null_class()
-	    ,to_string(class_signature_E8(reps[j]).compressed_string
-		      ," (GAP:",e8_gap_classes[j],")")
-	    )
-	 od
-   ,  irreps = [classical_irrep,string,[int]]:
-      for line@i in e8_gap_table
-      do (null_irrep(),E8_name(line),line)
-      od
-   in character_table(Wct,classes,irreps)
+set to_special_E8 = (int i) int:
+   case i
+{1x}    in   0{sp}, 1{sp}
+{28x}   , 71, 72
+{35x}   , 4{sp}, 5{sp}
+{70y}   , 52
+{50x}   , 14, 15
+{84x}   , 71, 72
+{168y}  , 52
+{175x}  , 42, 43
+{210x}  , 14{sp},15{sp}
+{420y}  , 52
+{300x}  , 28, 29
+{350x}  , 42, 43
+{525x}  , 21{sp}, 22{sp}
+{567x}  , 23{sp}, 24{sp}
+{1134y} , 52
+{700xx} , 96, 97
+{700x}  , 28{sp}, 29{sp}
+{1400y} , 52
+{840x}  , 63, 64
+{1680y} , 52
+{972x}  , 53, 54
+{1050x} , 42, 43
+{2100y} , 38{sp}
+{1344x} , 92, 93
+{2688y} , 52
+{1400x} , 42{sp}, 43{sp}
+{1575x} , 42, 43
+{3150y} , 52
+{2100x} , 96, 97
+{4200y} , 52
+{2240x} , 50{sp}, 51{sp}
+{4480y} , 52{sp}
+{2268x} , 53{sp}, 54{sp}
+{4536y} , 52
+{2835x} , 56{sp}, 57{sp}
+{5670y} , 52
+{3200x} , 110, 111
+{4096x} , 104, 62{sp}
+{4200x} , 63{sp}, 64{sp}
+{6075x} , 65{sp}, 66{sp}
+{8z}    , 67{sp}, 68{sp}
+{56z}   , 92, 93
+{112z}  , 71{sp}, 72{sp}
+{160z}  , 14, 15
+{448w}  , 52
+{400z}  , 28, 29
+{448z}  , 92, 93
+{560z}  , 80{sp}, 81{sp}
+{1344w} , 52
+{840z}  , 50, 51
+{1008z} , 92, 93
+{2016w} , 52
+{1296z} , 53, 54
+{1400zz}, 50, 51
+{1400z} , 92{sp}, 93{sp}
+{2400z} , 110, 111
+{2800z} , 96{sp}, 97{sp}
+{5600w} , 52
+{3240z} , 99{sp}, 100{sp}
+{3360z} , 63, 64
+{7168w} , 52
+{4096z} , 104{sp}, 62
+{4200z} , 106{sp}, 107{sp}
+{4536z} , 108{sp}, 109{sp}
+{5600z} , 110{sp}, 111{sp}
+   else error("Wrong E8 irrep number")
+   esac
 
-{ voluntarily override previous definition to memoize for |standard_datum_E8| }
 set character_table_E8 = (RootDatum->CharacterTable):
    let ct= trivial_character_table { place holder value }
+   , compute (RootDatum rd) = CharacterTable:
+      let Wct = class_table_E8(rd)
+      then reordering = GAP_reorder_E8(Wct)
+      then E8_name(vec chi) = string:
+	 let psi = null(#chi)
+	 then degree = { first reorder |chi| for |Wct| into |psi| }
+	    for j@i in reordering do psi[j]:=chi[i] od { inverse reordering }
+	 ;  first(Wct.root_datum.nr_of_posroots+1
+		 ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+		 )
+	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+      then classes = [WeylElt,classical_class,string]:
+	 let reps = Wct.class_representatives
+	 in for j in reordering
+	    do (reps[j],null_class()
+	       ,to_string(class_signature_E8(reps[j]).compressed_string
+			 ," (GAP:",e8_gap_classes[j],")")
+	       )
+	    od
+      ,  irreps = [classical_irrep,string,[int]]:
+	 for line@i in e8_gap_table
+	 do (null_irrep(),E8_name(line),line)
+	 od
+      then table = character_table(Wct,classes,irreps)
+      in for i: #irreps
+	 do table.set_generic_degree(i,@:table.degree(to_special_E8(i)),false)
+	 od
+      ;  table { result of |compute| }
 in (RootDatum rd) CharacterTable:
-   if rd != standard_datum_E8 then character_table_E8(rd) { no recursion! }
+   if rd != standard_datum_E8 then compute(rd)
    elif =ct.root_datum.rank { whether this is the first time we are called }
-   then ct:=character_table_E8(rd) { compute and store the first time }
+   then ct:=compute(rd) { compute and store the first time }
    else ct { any next time just return the previously computed value }
    fi
-
 
 set character_table_E8() = CharacterTable:
    character_table_E8(standard_datum_E8)

@@ -322,8 +322,9 @@ set class_signature_F4 (WeylElt w) = (Partition,Partition):
 
 { list conjugacy classes in Kondo order; non standard ordering of diagram is
   allowed: |map| maps Bourbaki indices to corresponding indices in |rd| }
-set classes_Kondo_F4 (RootDatum F4, [int] map) = [WeylElt]:
-   let convert([int] word) = [int]: for letter in word do map[letter] od
+set classes_Kondo_F4 (RootDatum F4) = [WeylElt]:
+   let map = [int]: test_simple_type("F",F4)
+   then convert([int] word) = [int]: for letter in word do map[letter] od
    then a = W_elt(F4,[1].convert), b=W_elt(F4,[2,1,2].convert)
    , c=W_elt(F4,[2,3,2,1,2,3,2].convert), d=W_elt(F4,[0].convert)
    , tau =W_elt(F4,[2].convert), sigma =W_elt(F4,[2,3].convert)
@@ -360,7 +361,7 @@ in for w in
 
 
 set class_table_F (RootDatum rd) = WeylClassTable:
-   let classes = [WeylElt]: classes_Kondo_F4(rd,test_simple_type("F",rd))
+   let classes = [WeylElt]: classes_Kondo_F4(rd)
    then sigs = [BiPartition]:
       for class in classes do class_signature_F4(class) od
    then N=1152 { = order_W(rd) }
