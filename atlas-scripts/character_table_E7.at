@@ -194,13 +194,12 @@ set character_table_E7 = (RootDatum->CharacterTable):
 	       ,let (P,n)=class_signature_E7(reps[j]) in P.compressed_string + n
 	       )
 	    od
-      ,  irreps = [classical_irrep,string,[int]]:
+      ,  irreps = [[int],string]:
 	 for character@i in e7_characters
-	 do (null_irrep()
-	    ,case i in "trivial", "sign", "sign*reflection", "reflection"
-	     else E7_name(character)
-	     esac
-	    ,character
+	 do ( character
+	    , case i in "trivial", "sign", "sign*reflection", "reflection"
+	      else E7_name(character)
+	      esac
 	    )
 	 od
       then table = character_table(Wct,classes,irreps,to_special_E7@int)

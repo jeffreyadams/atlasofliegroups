@@ -64,9 +64,9 @@ set to_special_F4 = (int i) int:
    esac
 
 set character_table_F = (RootDatum -> CharacterTable):
-(  let irreps = [classical_irrep,string,[int]]:
+(  let irreps = [[int],string]:
       for (line,degree,n_primes) in character_table_F4_data
-      do (null_irrep(),F4_name(line[0],degree,n_primes),line)
+      do (line,F4_name(line[0],degree,n_primes))
       od
 in (RootDatum rd) CharacterTable:
    let table = CharacterTable:

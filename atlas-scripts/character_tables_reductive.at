@@ -50,11 +50,10 @@ in let classes = [WeylElt,string]:
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)
      od
-   , irreps = [classical_irrep,string,[int]]:
+   , irreps = [[int],string]:
      for L in words
-     do ( null_irrep()
+     do ( tensor(for n@i in L do factors[i].character(n) od)
 	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
-	, tensor(for n@i in L do factors[i].character(n) od)
 	)
      od
    , to_special (int j) = int:

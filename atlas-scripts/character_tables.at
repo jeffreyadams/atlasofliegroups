@@ -1,8 +1,5 @@
 <basic.at
 <class_tables.at
-<classical_W_classes_and_reps.at { for |classical_class|, |classical_irrep| }
-<nilpotent_orbits.at
-<isomorphism.at
 
 { free function on characters; avoid |vec| to allow very large representations }
 set sum ([int] v,[int] w) = [int]:
@@ -25,7 +22,6 @@ set_type
   ( WeylClassTable class_table { conjugacy classes }
   , (int->string) class_label { used to identify classes on output }
 { irreducible characters }
-  , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
   , mat table { by row=character }
   , [int,int] deg_spec { degree, and associated special irreducible }
@@ -37,20 +33,19 @@ set_type
 
 set character_table ( WeylClassTable Wct
 		    , [WeylElt,string] class_reps
-		    , [classical_irrep,string,[int]] chars
+		    , [[int],string] chars
 		    , (int->int) to_special
 		    ) =  CharacterTable:
 (  let rd  = Wct.root_datum, n = Wct.n_classes
    , reps = for (w,) in class_reps do w od
 in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
-;  let irreps = [classical_irrep]: for (ci,,) in chars do ci od
-,  labels = [string]: for (,s,) in chars do s od
-,  character_table = mat: n^for (,,char) in chars do char od { |char| is a row }
+;  let labels = [string]: for (,s) in chars do s od
+,  character_table = mat: n^for (char,) in chars do char od { |char| is a row }
 ,  sizes = Wct.class_sizes
 ,  degrees = [int]:
    for i:n
    do
-     let (,,char)=chars[i] in
+     let (char,)=chars[i] in
      first(rd.nr_of_posroots+1
           ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
    od
@@ -70,7 +65,6 @@ then get_generic_degree(int i) = int:
 in
    ( { class_table } WeylClassTable: Wct
    , { class_label } (int i)string: let (,cl)=class_reps[i] in cl
-   , { classical_reps } (int i)classical_irrep: irreps[i]
    , { irreducible_label } (int i)string: labels[i]
    , { table } mat: character_table
    , { deg_spec } [int,int]: for deg@i in degrees do (deg,to_special(i)) od
@@ -82,7 +76,7 @@ in
 
 set character_table ( RootDatum rd
 		    , [WeylElt,string] class_reps
-		    , [classical_irrep,string,[int]] chars
+		    , [[int],string] chars
 		    , (int->int) to_special
 		    ) =  CharacterTable:
     character_table ( construct_class_table(rd), class_reps, chars, to_special )
@@ -90,8 +84,9 @@ set character_table ( RootDatum rd
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
    let Wct = trivial_class_table, id(int i)=int: i
-in (Wct,(int i):"e"
-   ,(int i)classical_irrep: null_irrep(),(int i):"triv", [[1]],[(0,0)]
+in ( Wct, (int i):"e"
+   , (int i):"triv", [[1]]
+   , [(0,0)]
    ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true
    )
 
@@ -145,9 +140,9 @@ set ext_power (CharacterTable tab) = tab.class_table.ext_power
 set character(CharacterTable t) = (int i) [int]: row(t.table,i)
 set characters(CharacterTable ct)=[[int]]: rows(ct.table)
 
-set character_index(CharacterTable ct) = ([int] char) int:
+set character_index (CharacterTable ct) = ([int] char) int:
   first(ct.n_irreps,(int i): ct.characters[i]=char)
-set index(CharacterTable ct,vec char) = int: ct.character_index(char)
+set index (CharacterTable ct,vec char) = int: ct.character_index(char)
 
 set degree (CharacterTable ct) = (int i)int: let (d,) = ct.deg_spec[i] in d
 set special (CharacterTable ct) = (int i)int: let (,s) = ct.deg_spec[i] in s

@@ -10,7 +10,6 @@
 <springer_table_E6.at
 <springer_table_E7.at
 <springer_table_E8.at
-<springer_table_torus.at
 
 set springer_table_simple(RootDatum rd,string letter,int n) = SpringerTable:
    case ascii(letter)-ascii("A")

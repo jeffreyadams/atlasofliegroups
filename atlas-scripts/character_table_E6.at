@@ -97,11 +97,10 @@ set character_table_E6 = (RootDatum->CharacterTable):
 	 in for j in reordering
 	    do (reps[j],class_signature_E6(reps[j]).compressed_string)
 	    od
-      ,  irreps = [classical_irrep,string,[int]]:
+      ,  irreps = [[int],string]:
 	 for line@i in e6_table
-	 do (null_irrep()
-	    ,case i in "trivial", "sign", "reflection" else E6_name(line) esac
-	    ,line
+	 do ( line
+	    , case i in "trivial", "sign", "reflection" else E6_name(line) esac
 	    )
 	 od
       then table = character_table(Wct,classes,irreps,to_special_E6@int)

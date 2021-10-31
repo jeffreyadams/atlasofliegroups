@@ -15,13 +15,13 @@ set to_special_G2 = (int i) int:
 
 set character_table_G = (RootDatum -> CharacterTable):
    let class_names = ["e", "S_short", "S_long", "R/6", "R/3", "R/2"]
-   , irreps = [classical_irrep,string,[int]]:
-     [( null_irrep(), "trivial"   , [1,1,1,1,1,1]   )
-     ,( null_irrep(), "short sign", [1,-1,1,-1,1,-1])
-     ,( null_irrep(), "long sign" , [1,1,-1,-1,1,-1])
-     ,( null_irrep(), "full sign" , [1,-1,-1,1,1,1] )
-     ,( null_irrep(),  "triangular reflection", [2,0,0,-1,-1,2])
-     ,( null_irrep(),  "hexagonal reflection",  [2,0,0,1,-1,-2])
+   , irreps = [[int],string]:
+     [ ( [1,1,1,1,1,1]   ,  "trivial" )
+     , ( [1,-1,1,-1,1,-1], "short sign" )
+     , ( [1,1,-1,-1,1,-1], "long sign" )
+     , ( [1,-1,-1,1,1,1] , "full sign" )
+     , ( [2,0,0,-1,-1,2] , "triangular reflection" )
+     , ( [2,0,0,1,-1,-2] , "hexagonal reflection" )
      ]
 in (RootDatum rd) CharacterTable:
 (  let class_table = class_table_G(rd)

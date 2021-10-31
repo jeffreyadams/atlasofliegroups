@@ -12,23 +12,6 @@ see character_table_*.at (A,B,C,D,E,F,G)
 springer_table_*.at (A,BC,D,E,F,G)
 }
 
-set_type A_irrep = Partition
-
-{ for types B and C, there is the type |Signed_cycles| from combinatorics.at
-  Here we group cycles with |true| negative sign), then cycles with |false|
-  (positive sign), each decreasingly sorted, to a order pair of |Paritition|s }
-set_type BC_irrep = (Partition,Partition)
-
-{ A type that allows grouping any of the above or none into a single value }
-set_type
-[ classical_irrep =
-    ( A_irrep irrep_A
-    | BC_irrep irrep_BC
-    | D_irrep irrep_D
-    | void null_irrep{for an exceptional group}
-    )
-]
-
 { functions to extract form the union; for user convenience only, for
   programming purpusos always use discrimination clauses (case..esac as below) }
 
@@ -39,27 +22,9 @@ set unsplit_class(D_class c) = Signed_cycles:
    case c | unsplit_class(pair): pair | else error("class is split") esac
 
 
-
-{-------------------------------------------------------------------}
-
-
-set get_irrep_A(classical_irrep rep) = [int]:
-   case rep | P.irrep_A: P | else error("wrong type") esac
-
-set get_irrep_BC(classical_irrep rep) = ([int],[int]):
-   case rep | PQ.irrep_BC: PQ | else error("wrong type") esac
-
-set get_irrep_D(classical_irrep rep) = D_irrep:
-   case rep | val.irrep_D: val | else error("wrong type") esac
-
-
 {			string representations				}
 
 set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
-set cycles_string = ([int]->string): to_string@[int]
-set irrep_string ([int] cycles) = string:
-   (  "{", cycles.parts_string ,  "}" ).to_string
-
 set sign_string (bool s) = string: if s then "-" else "+" fi
 set parts_string (Partition lambda) = string: { partition without brackets }
   lambda.to_string[1:1~]
@@ -74,21 +39,11 @@ set cycles_string ([int,bool] cycles) = string:
 ,  "]"
 ).to_string
 
-set irrep_string(BiPartition(lambda,mu)) = string:
-   ("{ ", lambda.parts_string, " +|- ", mu.parts_string, " }").to_string
-
 set cycles_string (D_class c) = string:
     case c
     | cycles.unsplit_class: cycles.cycles_string
     | (alpha,s).split_class: (alpha,sign_string(s)).to_string
     esac
-set irrep_string(D_irrep chi) = string:
-  case chi
-  | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
-    ("{ ",mu.parts_string," | ",lambda.parts_string," }").to_string
-  | (mu,s).split_irr:
-    ("{ ",mu.parts_string," | ",mu.parts_string," }",s.sign_string).to_string
-  esac
 
 
 {			some cases special to type D:			}
@@ -144,11 +99,3 @@ in (D_irrep rep) int:
    esac
 
 set index_D_reps ([D_irrep] L,D_irrep rep) = int: index_D_reps(L)(rep)
-
-set irrep_string(classical_irrep rep)=
-  case rep
-  | lambda.irrep_A: lambda.to_string
-  | pair.irrep_BC: pair.to_string
-  | r.irrep_D: r.irrep_string
-  | else ""
-  esac
