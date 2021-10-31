@@ -69,17 +69,12 @@ set character_table_F = (RootDatum -> CharacterTable):
       do (line,F4_name(line[0],degree,n_primes))
       od
 in (RootDatum rd) CharacterTable:
-   let table = CharacterTable:
-      let Wct = class_table_F(rd)
-      then classes = [WeylElt,string]:
-	 for w@i in Wct.class_representatives
-	 do (w,class_signature_F4(w).compressed_string)
-	 od
-      in character_table(Wct,classes,irreps,to_special_F4@int)
-in for i: #irreps
-   do table.set_generic_degree(i,@:table.degree(to_special_F4(i)),false)
-   od
-;  table
+   let Wct = class_table_F(rd)
+   then classes = [WeylElt,string]:
+      for w@i in Wct.class_representatives
+      do (w,class_signature_F4(w).compressed_string)
+      od
+   in character_table(Wct,classes,irreps,to_special_F4@int)
 )
 
 set character_table_F(int n) = CharacterTable:

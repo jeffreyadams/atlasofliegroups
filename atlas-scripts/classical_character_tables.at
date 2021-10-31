@@ -22,13 +22,9 @@ set character_table_S (int n) =
          ,lambda.partition_as_irrep_label
 	 )
       od
-   then ch_tab = character_table(class_table_S(n),classes,irreps,(int i):i)
-   , lookup_partition = (Partition->int): index_partition(partitions_n)
+   then lookup_partition = (Partition->int): index_partition(partitions_n)
    , top = #partitions_n-1
-in
-   for i:ch_tab.n_irreps
-   do ch_tab.set_generic_degree(i,@:ch_tab.degree(i),false) od
-;  ( ch_tab
+in ( character_table(class_table_S(n),classes,irreps,(int i):i)
    , lookup_partition { find index among conjugacy classes }
    , (Partition lambda) int: { index among irreps }
         top - lookup_partition(lambda)
@@ -47,13 +43,9 @@ set character_table_A (RootDatum rd) =
          ,lambda.partition_as_irrep_label
 	 )
       od
-   then ch_tab = character_table(class_table_A(rd),classes,irreps,(int i):i)
-  , lookup_partition = (Partition->int): index_partition(partitions)
+   then lookup_partition = (Partition->int): index_partition(partitions)
   , top = #partitions-1
-in
-   for i:ch_tab.n_irreps
-   do ch_tab.set_generic_degree(i,@:ch_tab.degree(i),false) od
-;  ( ch_tab
+in ( character_table(class_table_A(rd),classes,irreps,(int i):i)
    , lookup_partition { find index among conjugacy classes }
    , (Partition lambda) int: { index among irreps }
         top - lookup_partition(lambda)
@@ -101,12 +93,7 @@ set character_table_B (int n) =
       (class_table_B(n),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for pair@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )
 
 set character_table_B (RootDatum rd) =
@@ -131,12 +118,7 @@ set character_table_B (RootDatum rd) =
       (class_table_B(rd),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for pair@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )
 
 set character_table_C (int n) =
@@ -160,12 +142,7 @@ set character_table_C (int n) =
       (class_table_C(n),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for pair@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )
 
 set character_table_C (RootDatum rd) =
@@ -190,12 +167,7 @@ set character_table_C (RootDatum rd) =
       (class_table_C(rd),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for pair@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(pair)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )
 
 {				type D					}
@@ -285,12 +257,7 @@ set character_table_D(int n) =
       (class_table_D(n),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for chi@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(chi)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )
 
 set character_table_D(RootDatum rd) =
@@ -311,10 +278,5 @@ set character_table_D(RootDatum rd) =
       (class_table_D(rd),classes,irreps
       ,(int i)int: irrep_list[i].make_special.lookup_irrep
       )
-in
-   for chi@i in irrep_list
-   do let gen_deg() = ch_tab.degree(lookup_irrep(make_special(chi)))
-   in ch_tab.set_generic_degree(i,gen_deg,false)
-   od
-;  ( ch_tab, lookup_class, lookup_irrep )
+in ( ch_tab, lookup_class, lookup_irrep )
 )

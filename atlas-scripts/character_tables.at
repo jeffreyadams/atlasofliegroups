@@ -25,9 +25,6 @@ set_type
   , (int->string) irreducible_label
   , mat table { by row=character }
   , [int,int] deg_spec { degree, and associated special irreducible }
-  , (int->int) generic_degree
-  , (int,(->int),bool->int) set_generic_degree
-  , (int->bool) has_generic_degree
   )
 ]
 
@@ -49,28 +46,12 @@ in Wct:=reorder(Wct,reps) { henceforth |Wct| has class order we imposed }
      first(rd.nr_of_posroots+1
           ,(int k) bool: !=Wct.inner(char,Wct.sym_power_refl(k)))
    od
-   , generic_degrees = vec: -ones(n)
-then get_generic_degree(int i) = int:
-   if generic_degrees[i].<
-   then error("Generic degree of irrep "+i+" was not set")
-   else generic_degrees[i]
-   fi
-,  set_generic_degree(int i,(->int) d, bool check) = int:
-   if generic_degrees[i].<
-   then generic_degrees[i]:=d()
-   else
-     if check then assert(generic_degrees[i]=d(),"Generic degree change") fi
-   ; generic_degrees[i]
-   fi
 in
    ( { class_table } WeylClassTable: Wct
    , { class_label } (int i)string: let (,cl)=class_reps[i] in cl
    , { irreducible_label } (int i)string: labels[i]
    , { table } mat: character_table
    , { deg_spec } [int,int]: for deg@i in degrees do (deg,to_special(i)) od
-   , { generic_degree } (int->int): get_generic_degree
-   , { set_generic_degree } (int,(->int),bool->int): set_generic_degree
-   , { has_generic_degree } (int i) bool: generic_degrees[i].>=
    )
 )
 
@@ -84,11 +65,7 @@ set character_table ( RootDatum rd
 { A valid character table that can be used to initialise local variables }
 set !trivial_character_table = CharacterTable:
    let Wct = trivial_class_table, id(int i)=int: i
-in ( Wct, (int i):"e"
-   , (int i):"triv", [[1]]
-   , [(0,0)]
-   ,(int i)int: 0, ((int,(->int),bool).)int:0, (int i)bool:true
-   )
+in ( Wct, (int i):"e", (int i):"triv", [[1]], [(0,0)] )
 
 { attributes inhereited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
@@ -146,9 +123,7 @@ set index (CharacterTable ct,vec char) = int: ct.character_index(char)
 
 set degree (CharacterTable ct) = (int i)int: let (d,) = ct.deg_spec[i] in d
 set special (CharacterTable ct) = (int i)int: let (,s) = ct.deg_spec[i] in s
-
-set generic_degree_string (CharacterTable ct) = (int i)string:
-   if ct.has_generic_degree(i) then ct.generic_degree(i).to_string else "" fi
+set generic_degree (CharacterTable ct) = (int i)int: ct.degree(ct.special(i))
 
 { tensor_sign: defined on any charater: [int] -> [int] }
 set tensor_sign (CharacterTable ct) = ([int]->[int]):
@@ -283,7 +258,7 @@ tabulate (
       ,dimension(ct,i).to_string
       ,ct.degree(i).to_string
       ,let sp=ct.special(i) in if i=sp then "*" else sp.to_string fi
-      ,ct.generic_degree_string(i)
+      ,ct.generic_degree(i).to_string
       ,ct.irreducible_label(i).to_string
       ]
    od
@@ -311,7 +286,7 @@ set view_multiplicities (CharacterTable ct,vec v {multiplicities}) = void:
 	    ,mult.to_string
 	    ,dimension(ct,i).to_string
 	    ,ct.degree(i).to_string
-	    ,ct.generic_degree_string(i)
+	    ,ct.generic_degree(i).to_string
 	    ]
 	 ]
 	 fi

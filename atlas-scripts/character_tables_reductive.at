@@ -58,19 +58,7 @@ in let classes = [WeylElt,string]:
      od
    , to_special (int j) = int:
       for letter@i in words[j] do factors[i].special(letter) od.index
-   then table = character_table(Wct,classes,irreps,to_special)
-   , gdeg_positions = [[int]]:
-      for factor in factors
-      do for i:factor.n_irreps
-         do if factor.has_generic_degree(i) then [i] else [] fi
-	 od.##
-      od
-in for word in all_words(gdeg_positions)
-   do let gdeg() =
-      for letter@i in word do factors[i].generic_degree(letter) od.sum
-   in table.set_generic_degree(index(word),gdeg,false)
-   od
-;  table
+in character_table(Wct,classes,irreps,to_special)
 )
 
 set character_table (RootDatum rd) = CharacterTable:
