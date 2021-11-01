@@ -1977,11 +1977,14 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (ParamPol P) = int:
-  max(0)(for p in monomials(P) do height(p) od)
+set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}
-set monomials([ParamPol] list)=[Param]:
-   let sum=null_module(real_form(list[0])) in
-   for P in list do for c@p in P do sum+:=p od od;monomials(sum)
+set monomials([ParamPol] list) = [Param]:
+   if =#list then []
+   else
+      let G=real_form(list[0]) then O=null_module(G)
+      then sum = sum(G,for P in list do O+for @p in P do (1,p) od od)
+   in monomials(sum)
+   fi
