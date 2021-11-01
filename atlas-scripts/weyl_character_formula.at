@@ -1,8 +1,8 @@
+<basic.at
 <cyclotomic.at
 <W_orbit.at
 <representations.at
 <finite_dimensional.at
-<subgroups.at {for centralizer@(RootDatum,ratvec)}
 
 {! Weyl character formula computed at elements of finite order
 
@@ -43,6 +43,10 @@ set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
 { action is by dual(rd) since v is in X_*(T)_Q }
 set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
    reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
+
+{ the dual notion to |integrality_datum@(RootDatum,ratvec)| }
+set centralizer(RootDatum rd,ratvec cowt) = RootDatum:
+   sub_datum(rd,(int i)bool: (cowt*root(rd,i)).is_integer)
 
 {. order of element of Q/Z.}
 set QmodZ_order(ratvec v)=int:denom(v)

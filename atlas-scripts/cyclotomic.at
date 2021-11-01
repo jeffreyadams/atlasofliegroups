@@ -175,10 +175,6 @@ set ^ (CyclotomicFieldElement z,int k) = CyclotomicFieldElement:
    ;  p
    fi
 
-set / (CyclotomicFieldElement(v,F), CyclotomicFieldElement z) =
-      CyclotomicFieldElement:
-   (a_solution(matrix_of_multiplication(z),v),F)
-
 { order of element of F, returns 0 if element not of finite order }
 set order(CyclotomicFieldElement x)= int:
    let one=x.F.one, div=divisors(x.F.order*2)

@@ -1059,77 +1059,17 @@ definition altogether, as in
 
 For types introduced in a general type definition, this also removes from the
 overload tables any projection or injection function introduced there. This
-operation of forgetting will not break and functions that were defined using the
+operation of forgetting will not break functions that were defined using the
 type name and/or associated field names; in particular the type name may occur
 in the type of such functions (or other values), and they will be continued to
-be output using the "forgotten" type name (because in the case of recursive
-types no other finite representation of the type is available).
+be output using the "forgotten" type name (this is done because, in the case of
+recursive types, no other finite representation of the type is available).
 
-The definition of a defined type name with name T can be viewed by typing
+The language allows, and gives no warning about, declaring recursive types that
+are not useful. For instance after 'set_type [ L = (int,L) ]' it is impossible
+to form any values of type L, which would in effect be infinitely large (and
+axis, unlike lazy languages, cannot handle such values).
 
-  atlas> whattype T
-
-which in the cases where T is 'Gaussian_int' or 'maybe_a_vec' above will write
-
-  Defined type: ( int re , int im )
-
-respectively
-
-  Defined type: ( void no_solution | vec solution )
-
-The 'set_type' command can introduce multiple types at once, and the definitions
-can be (mutually) recursive. For instance one can define a type for a search
-tree of integers by the recursive definitions
-
-  atlas> set_type tree = (void leaf | tree_node node ),
-                  tree_node = (tree left , int key, tree right )
-
-which replies
-
-  Type name 'tree' defined as (void|tree_node)
-    with injectors: leaf, node.
-  Type name 'tree_node' defined as (tree,int,tree)
-    with projectors: left, key, right.
-
-As indicated this defines two mutually recursive types, with two injectors
-respectively three projectors. In case of recursive types, a 'set_type' command
-is indispensable to work with them, since they stand for infinite (but
-repetitive) type expressions. With the above definition one can build a tree:
-
-  atlas>
-    ((().leaf,1,().leaf).node,2,((().leaf,3,().leaf).node,5,().leaf).node).node
-
-which prints as exactly the same expression; asking for its type gives
-
-  atlas> whattype $
-  Type: (void|tree_node)
-
-which is just the same type as 'tree':
-
-  atlas> whattype tree
-  Defined type: ( void leaf | tree_node node )
-  atlas> whattype node ?
-  tree_node->(void|tree_node)
-
-It is allowed to enclose everything after 'set_type' until the end of the
-command in square brackets, as in 'set_type [ tree = ... , node = ...]'; this
-does not alter the meaning in any way, but just makes it more clear that the
-command has multiple clauses (and avoids prematurely considering it complete).
-
-The language allows declaring recursive types that are not useful. For instance
-after 'set_type L=(int,L)' it is impossible to form any values of type L, which
-would in effect be infinitely large (and unlike lazy languages, axis cannot
-handle such values); the user is however not informed of this impossibility.
-
-There is only one restriction to type definitions, in order to rule out
-completely circular definitions like 'set_type X=Y, Y=X': none of the right hand
-sides can be just a single type identifier. Right hand sides are allowed to be
-primitive types like 'int' or 'KGBElt', in which the definition just introduces
-a synonym for the type. In general a defined type name is not any form of an
-abstraction: it is just another name for the type it is defined to stand for,
-even if sometimes these names will be used on output (and this is essential to
-ensure that recursive types print in a terminating way). Also field names are
-just provided for convenience, but are not part of the defined type.
 
 7 Defining functions and operators
 
@@ -1678,15 +1618,15 @@ union, then the expression F_i is evaluated to yield a function, which
 function is then called with argument C.
 
 The more elaborate discrimination expressions use tags that are associated to
-the variants of the union. These tags must be introduced in a type definition
-for the union type, and serve as "injector functions", converting "free"
-(non-union) values of type T into a value of the union type for one of its
-variants, which must have type T. For instance if 'int_val' (not a good name)
-is a tag for the first variant of the type (int|vec), then 'int_val(4)' or the
-equivalent '4.int_val' will yield a value of the first variant of the union,
-with as component value 4. The discrimination expression now uses patterns of
-that form to head each of the branches; if t_i denotes the tag for variant i,
-then the discrimination expression takes the general form:
+the variants of the union. These tags must be introduced in a (general) type
+definition (see above) for the union type, and serve as "injector functions",
+converting "free" (non-union) values of type T into a value of the union type
+for one of its variants, which must have type T. For instance if 'int_val' (not
+a good name) is a tag for the first variant of the type (int|vec), then
+'int_val(4)' or the equivalent '4.int_val' will yield a value of the first
+variant of the union, with as component value 4. The discrimination expression
+now uses patterns of that form to head each of the branches; if t_i denotes the
+tag for variant i, then the discrimination expression takes the general form:
 
   case U
   |  t_0(p_0): body_0

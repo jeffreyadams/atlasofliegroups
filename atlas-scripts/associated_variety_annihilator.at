@@ -20,108 +20,139 @@ set av_verbose=false
 {using truncated induction, incorporating permutation}
 {only need Springer table for G, character table for L=integrality datum}
 {new: includes permutation}
-set associated_variety_ann_ind(Param param,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
-let p=Finalize(param) then
-rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
-(,P)=Cartan_matrix_type(Cartan_matrix(rd_int)) then
-perm=P.permutation_matrix then
-special_character_int=special_character(ct_int,cell,perm) then
-()=if av_verbose then prints("p=",p, new_line,
-"rd_int: ", nice_format(rd_int), new_line,
-"special_character_int: ", special_character_int, ": ", ct_int.characters[special_character_int]) fi then
-character_G=truncate_by_degree_induce_character(rd_int,p.root_datum,ct_int,st_rd.ct,ct_int.characters[special_character_int]) then
-(,orbit_0)=st_rd.springer_inverse(character_G) then
-orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) then
-()=if av_verbose then prints("character_G: ", character_G, ": ",st_rd.ct.characters[character_G],
-new_line,"diagram of orbit: ",orbit_0.diagram) fi in
-orbit
+set associated_variety_ann_ind \
+   ( Param param
+   , SpringerTable st_rd
+   , CharacterTable ct_int
+   , WCell cell
+   ) = ComplexNilpotent:
+   let p=Finalize(param)
+   then rd_int = integrality_datum(p.root_datum,p.infinitesimal_character)
+   then (,P)=Cartan_matrix_type(rd_int)
+   then perm=P.permutation_matrix
+   then special_character_int = special_character(ct_int,cell,perm)
+   then ()=
+       if av_verbose
+           then prints("p=",p, new_line
+		  ,"rd_int: ", nice_format(rd_int), new_line
+		  ,"special_character_int: ", special_character_int, ": "
+		  , ct_int.characters[special_character_int])
+       fi
+   then character_G = let char = ct_int.characters[special_character_int] in
+      truncate_by_degree_induce_character(ct_int.class_table,st_rd.ct,char)
+   then (,orbit) = st_rd.springer_inverse(character_G)
+   then ()=
+      if av_verbose
+      then prints("character_G: ", character_G, ": "
+      	   	 ,st_rd.ct.characters[character_G],new_line
+		 ,"diagram of orbit: ",orbit.diagram
+		 )
+      fi
+in orbit
 
 {given cell, SpringerTable for G, compute ct_int, using restriction}
-set associated_variety_ann_ind(Param p,SpringerTable st_rd,WCell cell)=ComplexNilpotent:
-associated_variety_ann_ind(p,st_rd,cell.root_datum.character_table,cell)
+set associated_variety_ann_ind (Param p,SpringerTable st_rd,WCell cell) =
+      ComplexNilpotent:
+   associated_variety_ann_ind(p,st_rd,character_table(cell.root_datum),cell)
 
 {(slow) given cell, compute st_G,ct_int}
-set associated_variety_ann_ind(Param p,WCell cell)=ComplexNilpotent:
-associated_variety_ann_ind(p,p.root_datum.springer_table,cell.root_datum.character_table,cell)
+set associated_variety_ann_ind (Param p,WCell cell) = ComplexNilpotent:
+  associated_variety_ann_ind( p,Springer_table(p.root_datum)
+			    , character_table(cell.root_datum),cell)
 
 {given Param, SpringerTable for G and CharacterTable for integrality_datum,compute W_cell}
 set associated_variety_ann_ind(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
 associated_variety_ann_ind(p,st_G,ct_int,W_cell_of(Finalize(p)))
 
-set associated_variety_ann_ind(Param p,SpringerTable st_G)=ComplexNilpotent:
-let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_ind(p,st_G,cell.root_datum.character_table,cell)
+set associated_variety_ann_ind(Param p,SpringerTable st_G) = ComplexNilpotent:
+   let cell=W_cell_of(Finalize(p))
+in associated_variety_ann_ind(p,st_G,character_table(cell.root_datum),cell)
 
-set associated_variety_ann_ind(Param p)=ComplexNilpotent:
-associated_variety_ann_ind(p,p.root_datum.springer_table)
+set associated_variety_ann_ind(Param p) = ComplexNilpotent:
+   associated_variety_ann_ind(p,Springer_table(p.root_datum))
 
 {-----------------using restriction-----------------------}
 
 {assuming integral infinitesimal character, no induction}
-set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))
+set associated_variety_int (SpringerTable st,WCell cell) =ComplexNilpotent:
+   st.springer_inverse_special(st.ct.special_character_inefficient(cell))
 set associated_variety_int(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):associated_variety_int(st,cell)
 set associated_variety_int(SpringerTable st,Param p)=ComplexNilpotent:associated_variety_int(st,W_cell_of(Finalize(p)))
 set associated_variety_int(SpringerTable st)=(Param->ComplexNilpotent):(Param p):associated_variety_int(st,W_cell_of(Finalize(p)))
 
-{given cell, SpringerTable for G and CharacterTable for integrality_datum, using restriction}
-{need RootDatum rd since it isn't specified by cell (only the integrality datum is given by the cell)}
-set associated_variety_ann_res(RootDatum rd,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
-{let G=st_rd.root_datum then}
-let ct_rd=st_rd.ct then
-L=cell.root_datum then
-{ct_int=L.character_table then}
-index_pi_int=ct_int.special_character(cell) then
-char_int=ct_int.characters[index_pi_int] then
-d_int=ct_int.degrees[index_pi_int] then
-()=if av_verbose then prints("#cell: ", cell,
-new_line,"special character(cell): ", index_pi_int, ": ",ct_int.characters[index_pi_int],
-"degree of special character: ", d_int) fi then
-chars_rd=
-##for i:st_rd.ct.n_classes do
-{ let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
- if ct_rd.degrees[i]=d_int and
-  !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_rd,ct_int,ct_rd.characters[i]))
-  then  [i] else [] fi
-od
-then
-()=if av_verbose then prints("chars_rd: ", chars_rd) fi then
-index_rd=chars_rd[0] then
-()=if av_verbose then prints("index_rd: ", index_rd) fi then
-(valid,orbit_0)=st_rd.springer_inverse(index_rd) then
-()=assert(valid,"can't compute springer_inverse");
-if av_verbose then prints("character(s) found: ", chars_rd,
-new_line,"diagram of orbit: ", orbit_0.diagram) fi then
-orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
-orbit
+{ given cell, SpringerTable for G and CharacterTable for integrality_datum,
+  using restriction}
+set associated_variety_ann_res \
+   (SpringerTable st_rd, CharacterTable ct_int, WCell cell) = ComplexNilpotent:
+(  let rd  = st_rd.root_datum, ct_rd = st_rd.ct
+   , index_pi_int = ct_int.special_character_inefficient(cell)
+   then char_int  = ct_int.characters[index_pi_int]
+   ,  d_int       = ct_int.degrees[index_pi_int]
+in if av_verbose
+   then prints
+      ( "#cell: ", cell, new_line
+      , "special character(cell): ", index_pi_int, ": "
+      , ct_int.characters[index_pi_int]
+      , "degree of special character: ", d_int)
+   fi
+;  let chars_rd=
+      for i:st_rd.ct.n_irreps
+      do { let ()=prints("i: ",i, " ",  ct_rd.degrees[i], " ", d_int) in }
+         if ct_rd.degrees[i]=d_int and
+	   (let res =
+	      restrict_character(ct_rd.class_table,ct_int.class_table
+				,ct_rd.characters[i])
+	    in !=ct_int.inner_product(char_int,res)
+	   )
+	 then [i] else []
+	 fi
+      od.##
+   then ()= if av_verbose then prints("chars_rd: ", chars_rd) fi
+   then index_rd=chars_rd[0]
+   then ()= if av_verbose then prints("index_rd: ", index_rd) fi
+   then (valid,orbit)=st_rd.springer_inverse(index_rd)
+   then ()=assert(valid,"can't compute springer_inverse")
+          ; if av_verbose
+	    then prints("character(s) found: ", chars_rd,new_line
+	    	       ,"diagram of orbit: ", orbit.diagram)
+	    fi
+   in orbit
+)
 
 {given cell, SpringerTable for G, compute ct_L, using restriction}
-set associated_variety_ann_res(RootDatum rd,SpringerTable st_rd,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(rd,st_rd,cell.root_datum.character_table,cell)
+set associated_variety_ann_res(SpringerTable st_rd,WCell cell) =
+      ComplexNilpotent:
+   associated_variety_ann_res(st_rd,character_table(cell.root_datum),cell)
 
 {(slow) given cell, compute st_rd,ct_L}
 set associated_variety_ann_res(RootDatum rd,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(rd,rd.springer_table,cell.root_datum.character_table,cell)
+  associated_variety_ann_res( Springer_table(rd)
+                            , character_table(cell.root_datum), cell)
 
-{given Param, SpringerTable for rd and CharacterTable for integrality_datum,compute W_cell}
-set associated_variety_ann_res(Param p,SpringerTable st_rd,CharacterTable ct_L)=ComplexNilpotent:
-associated_variety_ann_res(p.real_form,st_rd,ct_L,W_cell_of(Finalize(p)))
+{given Param, SpringerTable for rd and CharacterTable for integrality_datum,
+ compute W_cell}
+set associated_variety_ann_res \
+   (Param p,SpringerTable st_rd,CharacterTable ct_L) = ComplexNilpotent:
+   associated_variety_ann_res(st_rd,ct_L,W_cell_of(Finalize(p)))
 
 set associated_variety_ann_res(Param p,SpringerTable st_rd)=ComplexNilpotent:
-let cell=W_cell_of(Finalize(p)) in  associated_variety_ann_res(p.real_form,st_rd,cell.root_datum.character_table,cell)
+   let cell=W_cell_of(Finalize(p))
+in associated_variety_ann_res(st_rd,cell.root_datum.character_table,cell)
 
-set associated_variety_ann_res(Param p)=ComplexNilpotent:
-associated_variety_ann_res(p,p.root_datum.springer_table)
+set associated_variety_ann_res(Param p) = ComplexNilpotent:
+   associated_variety_ann_res(p,Springer_table(p.root_datum))
 
 set associated_variety_ann_res_test(SpringerTable st_rd,WCell cell)=
-let rd=st_rd.root_datum then
-ct_rd=st_rd.ct then
-L=cell.root_datum then
-ct_L=L.character_table then
-index_pi_L=ct_L.special_character(cell) then
-char_L=ct_L.characters[index_pi_L] then
-d_L=ct_L.degrees[index_pi_L] in
+let rd=st_rd.root_datum
+   then ct_rd=st_rd.ct
+   then L=cell.root_datum
+   then ct_L=L.character_table
+   then index_pi_L=ct_L.special_character_inefficient(cell)
+   then char_L=ct_L.characters[index_pi_L]
+   then d_L=ct_L.degrees[index_pi_L] in
 (rd,L,ct_rd,ct_L,index_pi_L,char_L,d_L){
 chars_rd=
-##for i:st_rd.ct.n_classes do
+##for i:st_rd.ct.n_irreps do
  if ct.degrees[i]=d_L and
   !=ct_L.inner_product(char_L,restrict_character(rd,L,ct_rd,ct_L,ct.characters[i]))
   then  [i] else [] fi
@@ -131,22 +162,29 @@ index_rd=chars_rd[0] in
 st_rd.springer_inverse(index_rd)
 }
 
-{default: associated_variety_ann_res}
-set associated_variety_ann(RootDatum rd,SpringerTable st_rd,CharacterTable ct_int,WCell cell)=ComplexNilpotent:
-associated_variety_ann_res(rd,st_rd,ct_int,cell)
-set associated_variety_ann(RootDatum rd,SpringerTable st_rd,WCell cell)=ComplexNilpotent:associated_variety_ann_res(rd,st_rd,cell)
-set associated_variety_ann(RootDatum rd,WCell cell)=ComplexNilpotent:associated_variety_ann_res(rd,cell)
-set associated_variety_ann(Param p,SpringerTable st_rd,CharacterTable ct_int)=ComplexNilpotent:associated_variety_ann_res(p,st_rd,ct_int)
-set associated_variety_ann(Param p,SpringerTable st_rd)=ComplexNilpotent:associated_variety_ann_res(p,st_rd)
-set associated_variety_ann(Param p)=ComplexNilpotent:associated_variety_ann_res(p)
+{some aliases}
+set associated_variety_ann =
+   (SpringerTable,CharacterTable,WCell->ComplexNilpotent):
+   associated_variety_ann_res@(SpringerTable,CharacterTable,WCell)
+
+set associated_variety_ann = (SpringerTable,WCell->ComplexNilpotent):
+   associated_variety_ann_res@(SpringerTable,WCell)
+
+set associated_variety_ann = (RootDatum,WCell->ComplexNilpotent):
+   associated_variety_ann_res@(RootDatum,WCell)
+set associated_variety_ann =
+   (Param,SpringerTable,CharacterTable->ComplexNilpotent):
+   associated_variety_ann_res@(Param,SpringerTable,CharacterTable)
+set associated_variety_ann = (Param->ComplexNilpotent):
+   associated_variety_ann_res@Param
 
 {set GK_dim(Param p,SpringerTable st)=int:associated_variety_ann(p,st).dim_nilpotent\2}
 
 { If you only want the GK dimension you don'tn need to compute the induction step.}
 set GK_dim(Param p) = int:
-let cell=W_cell_of(Finalize(p)) then
-ct_L=cell.root_datum.character_table in
-#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character(cell)]
+let cell=W_cell_of(Finalize(p))
+   then ct_L=cell.root_datum.character_table in
+#posroots(p.root_datum) - ct_L.degrees[ct_L.special_character_inefficient(cell)]
 
 {set GK_dim(SpringerTable st)=(Param->int):(Param p):GK_dim(p,st)}
 
@@ -155,7 +193,7 @@ set show([(Param,ComplexNilpotent)] data)=void:
 tabulate(
 ["x","lambda","nu","diagram","dim:GK-dim"]#
 for (p,orbit) in data do
- [(#p.x).to_string, p.lambda.compact_ratvec,p.nu.compact_ratvec, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
+ [(#p.x).to_string, p.lambda.compact_string,p.nu.compact_string, orbit.diagram.to_string,orbit.dim_nilpotent.to_string + ":" + (orbit.dim_nilpotent\2).to_string] od)
 
 
 {G is a complex group; use left cell}
@@ -166,45 +204,44 @@ associated_variety_ann_res(p.real_form.left_copy.derived,cell)
 
 
 
-{rd=cell.root_datum then
-st_rd=rd.springer_table then
-
-ct_int=p.integrality_datum.character_table then
-L=cell.root_datum then
-index_pi_int=ct_int.special_character(cell) then
-char_int=ct_int.characters[index_pi_int] then
-d_int=ct_int.degrees[index_pi_int] then
-chars_rd=
-##for i:st_rd.ct.n_classes do
+{rd=cell.root_datum
+   then st_rd=Springer_table(rd)
+   then ct_int=p.integrality_datum.character_table
+   then L=cell.root_datum
+   then index_pi_int=ct_int.special_character_inefficient(cell)
+   then char_int=ct_int.characters[index_pi_int]
+   then d_int=ct_int.degrees[index_pi_int]
+   then chars_rd=
+##for i:st_rd.ct.n_irreps do
 { let ()=prints("i: ",i, " ",  ct_int.degrees[i], " ", d_int) in }
  if ct_int.degrees[i]=d_int and
   !=ct_int.inner_product(char_int,restrict_character(rd,L,ct_int,ct_int,ct_int.characters[i]))
   then  [i] else [] fi
 od
 then
-index_rd=chars_rd[0] then
-orbit_0=st_rd.springer_inverse(index_rd) then
-orbit=orbit_by_diagram(rd,orbit_0.diagram_normalized) in
-orbit
+index_rd=chars_rd[0]
+   then orbit=st_rd.springer_inverse(index_rd)
+in orbit
 
 }
 
 {G: real group, st: SpringerTable for GC,ct_int: CharacterTable for GC,gamma#gamma}
 {this is slow, see av_maximal_ideal for much faster version}
 set av_maximal_ideal_0(RootDatum G,ratvec gamma,SpringerTable st,CharacterTable ct_int)=
-let GC=complexification(G) then
-p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
-()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
-()=if av_verbose then prints("computing associated_variety_ann_res of ",p_final) fi then
-av=associated_variety_ann(p_final,st,ct_int) then
-H=av.H then
-orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
+let GC=complexification(G)
+   then p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param
+   then ()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation")
+   then ()=if av_verbose then prints("computing associated_variety_ann_res of ",p_final) fi
+   then av=associated_variety_ann(p_final,st,ct_int)
+   then H=av.H
+   then orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
 prints("diagram of orbit: ", orbit.diagram);orbit
 
 set av_maximal_ideal_0(RootDatum rd,ratvec gamma,SpringerTable st_C)=
 av_maximal_ideal_0(rd,gamma,st_C,character_table(integrality_datum(rd.complexification,gamma##gamma)))
 
-set av_maximal_ideal_0(RootDatum G,ratvec gamma)=av_maximal_ideal_0(G,gamma,G.complexification.springer_table)
+set av_maximal_ideal_0 (RootDatum G,ratvec gamma) =
+   av_maximal_ideal_0(G,gamma,Springer_table(G.complexification))
 
 {much faster version:
 rd_singular \subset rd_int \subset rd
@@ -216,112 +253,191 @@ tensor with sign, and truncated induce to get
 return springer_inverse(tau)
 
 precompute:
-rd.springer_table
-rd_int.character_table
-rd_singular.character_table
+Springer_table(rd)
+character_table(rd_int)
+character_table(rd_singular)
 }
-set av_maximal_ideal(RootDatum rd_in,SpringerTable st,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
-let rd=st.root_datum then
-gamma_0=move(gamma_in,rd_in, rd) then
-gamma=dominant(rd,gamma_0) then
-()=if av_verbose then prints("gamma_in: ", gamma_in, new_line, "gamma_0: ", gamma_0,new_line, "gamma: ", gamma) fi then
-ct=st.ct then
-rd_int=integrality_datum(rd,gamma) then 
-rd_singular=singular_root_datum(rd,gamma) then
-d=rd_singular.nr_of_posroots then
-()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
-"target d: ", d) fi then
-chars_int=##for i:ct_int.n_classes do
- if ct_int.degrees[i]=d and
- !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
- then  [i] else [] fi
-od then
-()=if av_verbose then prints("characters found: ", chars_int) fi then
-char_int=ct_int.characters[chars_int[0]] then
-char_int_sign=ct_int.tensor_sign(char_int) then
-()=if av_verbose then 
- prints("char_int_sign: ", char_int_sign, new_line,
- "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line, "ct: ", ct.root_datum) fi then
-{index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign) then}
-index=truncate_by_degree_induce_character(rd_int,rd,ct,ct_int,char_int_sign) then
-(valid,orbit)=st.springer_inverse(index) then
-()=assert(valid,"Can't compute springer_inverse");
-if av_verbose then
-prints("index: ", index, new_line,"truncated induced character: ", index, ":", st.ct.characters[index], new_line,
-"orbit", orbit.diagram_normalized) fi in
-orbit_by_diagram(rd,orbit.diagram_normalized)
+set av_maximal_ideal \
+   ( SpringerTable st
+   , CharacterTable ct_int
+   , CharacterTable ct_singular
+   , ratvec gamma
+   ) = ComplexNilpotent:
+(  let rd=st.root_datum
+in gamma :=
+   (  let dom = dominant(rd,gamma) in
+      if av_verbose
+      then prints( "gamma_in: ", gamma, new_line,  "gamma: ", dom)
+      fi
+   ;  dom
+   )
+;  let ct=st.ct
+   then rd_int=integrality_datum(rd,gamma)
+   then rd_singular=singular_root_datum(rd,gamma)
+   then d=rd_singular.nr_of_posroots
+   then ()=
+      if av_verbose
+      then prints( "gamma=",gamma,new_line
+		 , "rd_int: ", nice_format(rd_int), new_line
+		 , "rd_singular: ", nice_format(rd_singular), new_line
+		 , "target d: ", d
+		 )
+      fi
+   then chars_int =
+      for i:ct_int.n_irreps
+      do if ct_int.degrees[i]=d and
+	   (let res =
+	      restrict_character(ct_int,ct_singular,ct_int.characters[i])
+	    in !=ct_singular.inner_product(ct_singular.sign,res)
+	   )
+	 then [i] else []
+	 fi
+      od.##
+   then ()=if av_verbose then prints("characters found: ", chars_int) fi
+   then char_int=ct_int.characters[chars_int[0]]
+   then char_int_sign=ct_int.tensor_sign(char_int)
+   then ()=
+      if av_verbose
+      then  prints( "char_int_sign: ", char_int_sign, new_line
+      	    	  , "rd_int: ", rd_int,new_line
+		  , "rd: ", rd,new_line
+		  , "ct_int: ", ct_int.root_datum,new_line
+		  , "ct: ", ct.root_datum
+		  )
+      fi
+  {then index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign)}
+   then index =
+     truncate_by_degree_induce_character(ct.class_table,ct_int,char_int_sign)
+   then (valid,orbit)=st.springer_inverse(index)
+   then ()=assert(valid,"Can't compute springer_inverse")
+      ; if av_verbose
+        then prints("index: ", index, new_line
+	           ,"truncated induced character: ", index, ":"
+		   , st.ct.characters[index], new_line
+		   ,"orbit", orbit.diagram_normalized
+		   )
+	fi
+     in orbit
+)
 
 {precompute st,ct_int}
-set av_maximal_ideal(RootDatum rd,SpringerTable st,CharacterTable ct_int,ratvec gamma)=
-let
-rd_singular=singular_root_datum(rd,gamma) then
-ct_singular=if rd_singular=ct_int.root_datum then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+set av_maximal_ideal \
+   (SpringerTable st,CharacterTable ct_int,ratvec gamma) =  ComplexNilpotent:
+   let rd_singular=singular_root_datum(st.root_datum,gamma)
+   then ct_singular =
+      if rd_singular=ct_int.root_datum then ct_int
+      else character_table(rd_singular)
+      fi
+in av_maximal_ideal(st,ct_int,ct_singular,gamma)
 
 {precompute st}
-set av_maximal_ideal(RootDatum rd,SpringerTable st,ratvec gamma)=
-let
-rd_int=integrality_datum(rd,gamma) then
-ct_int=if rd_int=rd then st.ct else rd_int.character_table fi in
-av_maximal_ideal(rd,st,ct_int,gamma)
+set av_maximal_ideal (SpringerTable st,ratvec gamma) = ComplexNilpotent:
+   let rd_int=integrality_datum(st.root_datum,gamma)
+   then ct_int =
+      if rd_int=st.root_datum then st.ct else character_table(rd_int) fi
+in av_maximal_ideal(st,ct_int,gamma)
 
 set av_maximal_ideal(RootDatum rd,ratvec gamma)=
-let st=rd.springer_table then
-rd_int=integrality_datum(rd,gamma) then
-ct_int=if rd_int=rd then st.ct else rd_int.character_table fi then
-rd_singular=singular_root_datum(rd,gamma) then
-ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
-in av_maximal_ideal(rd,st,ct_int,ct_singular,gamma)
+   let st=Springer_table(rd)
+   , rd_int=integrality_datum(rd,gamma)
+   then ct_int = if rd_int=rd then st.ct else character_table(rd_int) fi
+   then rd_singular=singular_root_datum(rd,gamma)
+   then ct_singular =
+      if rd_singular=rd_int then ct_int else character_table(rd_singular) fi
+in av_maximal_ideal(st,ct_int,ct_singular,gamma)
 
-set test_av_maximal_ideal(SpringerTable st)=bool:
-let rv=[bool]:[] in
-prints("testing av_maximal_idea(O_vee.H/2)=dual(O_vee)");
-tabulate(["O_v","dual(O_v)","av_max(O_vee.H/2)"]#
- for orbit_vee@i in st.root_datum.dual_orbits do
- let gamma=orbit_vee.H/2 then
- av=av_maximal_ideal(st.root_datum,st,gamma) then
- dual_of_orbit_vee=st.dual_map_i(orbit_vee) in
- rv#:= (av.diagram_normalized=dual_of_orbit_vee.diagram_normalized);
- if av_verbose then prints("O^v: ", orbit_vee.diagram.to_string,new_line,"d(O_v):", dual_of_orbit_vee.diagram,new_line) fi;
- [orbit_vee.diagram.to_string,
-  av.diagram.to_string,
-  st.dual_map_i(orbit_vee).diagram.to_string]
-  od);all(rv)
+set test_av_maximal_ideal(SpringerTable st) = bool:
+(  prints("testing av_maximal_idea(O_vee.H/2)=dual(O_vee)");
+   let successes = [bool]:[]
+in tabulate
+   ( ["O_v","dual(O_v)","av_max(O_vee.H/2)"]
+   # for orbit_vee@i in dual_orbits(st.root_datum)
+     do let av=av_maximal_ideal(st,orbit_vee.H/2)
+   	,  dual_of_orbit_vee=st.dual_map_i(orbit_vee)
+     in successes #:= { add a test result }
+        equal(av.diagram_normalized,dual_of_orbit_vee.diagram_normalized)
+     ;  if av_verbose
+        then prints("O^v: ", orbit_vee.diagram.to_string,new_line
+	           ,"d(O_v):", dual_of_orbit_vee.diagram,new_line
+		   )
+	fi
+     ; [ orbit_vee.diagram.to_string
+       , av.diagram.to_string
+       , st.dual_map_i(orbit_vee).diagram.to_string
+       ]
+    od
+    )
+;  all(successes) { return whether everything succeeded }
+)
 
-set test_av_maximal_ideal(RootDatum rd)=bool:test_av_maximal_ideal(rd.springer_table)
+set test_av_maximal_ideal (RootDatum rd) = bool:
+   test_av_maximal_ideal(Springer_table(rd))
 
 {GK_dim_maximal_ideal is like GK_dim: it returns just the dimension of the orbit,
 and can therefore skip (one of the) the induction step(s)}
-set GK_dim_maximal_ideal(RootDatum rd,CharacterTable ct_int,CharacterTable ct_singular,ratvec gamma_in)=
-let gamma_0=move(gamma_in,rd, rd) then
-gamma=dominant(rd,gamma_0) then
-()=if av_verbose then prints("gamma_in: ", gamma_in, new_line, "gamma_0: ", gamma_0,new_line, "gamma: ", gamma) fi then
-rd_int=integrality_datum(rd,gamma) then
-rd_singular=singular_root_datum(rd,gamma) then
-d=rd_singular.nr_of_posroots then
-()=if av_verbose then prints("gamma=",gamma,new_line,"rd_int: ", nice_format(rd_int), new_line, "rd_singular: ", nice_format(rd_singular), new_line,
-"target d: ", d) fi then
-chars_int=##for i:ct_int.n_classes do
- if ct_int.degrees[i]=d and
- !=ct_singular.inner_product(ct_singular.sign,restrict_character(rd_int,rd_singular,ct_int,ct_singular,ct_int.characters[i]))
- then  [i] else [] fi
-od then
-()=if av_verbose then prints("characters found: ", chars_int) fi then
-char_int=ct_int.characters[chars_int[0]] then
-char_int_sign=ct_int.tensor_sign(char_int) then
-()=if av_verbose then 
- prints("char_int_sign: ", char_int_sign, new_line,
- "rd_int: ", rd_int,new_line, "rd: ", rd,new_line, "ct_int: ", ct_int.root_datum,new_line) fi then
-gk_dim=#posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)] in 
-if av_verbose then prints("rd_int: ", rd_int, "#posroots(rd): ", #posroots(rd), new_line, "char_int_sign: ", char_int_sign,
-new_line, "index of char_int_sign: ", ct_int.character_index(char_int_sign), new_line, "degree: ", 
-ct_int.degrees[ct_int.character_index(char_int_sign)]) fi;
-gk_dim
+set GK_dim_maximal_ideal \
+   ( RootDatum rd
+   , CharacterTable ct_int
+   , CharacterTable ct_singular
+   , ratvec gamma
+   ) = int:
+(  gamma :=
+   (  let dom = dominant(rd,gamma) in
+      if av_verbose
+      then prints( "gamma_in: ", gamma, new_line,  "gamma: ", dom)
+      fi
+   ;  dom
+   )
+;  let rd_int=integrality_datum(rd,gamma)
+   then rd_singular=singular_root_datum(rd,gamma)
+   then d=rd_singular.nr_of_posroots
+   then ()=
+      if av_verbose
+      then prints( "gamma=",gamma,new_line
+		 , "rd_int: ", nice_format(rd_int), new_line
+		 , "rd_singular: ", nice_format(rd_singular)
+		 , new_line, "target d: ", d
+		 )
+      fi
+   then chars_int=
+      for i:ct_int.n_irreps
+      do if ct_int.degrees[i]=d and
+	   (let res =
+	      restrict_character(ct_int,ct_singular,ct_int.characters[i])
+	    in !=ct_singular.inner_product(ct_singular.sign,res)
+	   )
+	 then [i] else []
+	 fi
+      od.##
+   then ()=if av_verbose then prints("characters found: ", chars_int) fi
+   then char_int=ct_int.characters[chars_int[0]]
+   then char_int_sign=ct_int.tensor_sign(char_int)
+   then ()=
+      if av_verbose
+      then  prints( "char_int_sign: ", char_int_sign, new_line
+      	    	  , "rd_int: ", rd_int,new_line
+		  , "rd: ", rd,new_line
+		  , "ct_int: ", ct_int.root_datum
+		  )
+      fi
+   then gk_dim =
+      #posroots(rd)-ct_int.degrees[ct_int.character_index(char_int_sign)]
+in if av_verbose
+   then prints( "rd_int: ", rd_int, "#posroots(rd): ", #posroots(rd), new_line
+   	      , "char_int_sign: ", char_int_sign, new_line
+	      , "index of char_int_sign: "
+	         , ct_int.character_index(char_int_sign), new_line
+	      , "degree: "
+	         , ct_int.degrees[ct_int.character_index(char_int_sign)]
+	      )
+   fi
+;  gk_dim
+)
 
-set GK_dim_maximal_ideal(RootDatum rd,ratvec gamma)=int:
-let rd_int=integrality_datum(rd,gamma) then
-ct_int=character_table(rd_int) then
-rd_singular=singular_root_datum(rd,gamma) then
-ct_singular=if rd_singular=rd_int then ct_int else rd_singular.character_table fi
+set GK_dim_maximal_ideal(RootDatum rd,ratvec gamma) = int:
+   let rd_int=integrality_datum(rd,gamma)
+   then ct_int=character_table(rd_int)
+   then rd_singular=singular_root_datum(rd,gamma)
+   then ct_singular =
+      if rd_singular=rd_int then ct_int else rd_singular.character_table fi
 in GK_dim_maximal_ideal(rd,ct_int, ct_singular,gamma)
-

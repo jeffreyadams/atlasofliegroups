@@ -190,9 +190,20 @@ in  if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
 set SO (int p,int q,RootDatum rd) = RealForm:
   real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
 
+set SO_star (int n, bool second, RootDatum rd) = RealForm:
+  let (rank,parity)=n\%2 in
+  assert(=parity,"Starred real forms require even index");
+  assert(#test_simple_type("D",rd)=rank,"Semisimple rank should be "+rank);
+  if second then assert(=rank%2,"No second starred from int type D"+rank) fi;
+  real_form(inner_class(rd,SO_inner_class(n,0)),n\8+1+#second)
+
 set Spin (int p,int q) = RealForm: SO(p,q,Spin(p+q))
 set SO (int p,int q)   = RealForm: SO(p,q,SO(p+q))
 set PSO (int p,int q)  = RealForm: SO(p,q,PSO(p+q))
+
+set Spin_star (int n) = RealForm: SO_star(n,false,Spin(n))
+set SO_star (int n)   = RealForm: SO_star(n,false,SO(n))
+set PSO_star (int n)  = RealForm: SO_star(n,false,PSO(n))
 
 { exceptional groups }
 

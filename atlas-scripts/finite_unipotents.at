@@ -1,4 +1,4 @@
-<W_characters.at
+<W_classes.at
 <simple_factors.at
 <group_operations.at
 <subgroups.at
@@ -7,8 +7,8 @@
 set tri(int n)=rat_as_int(n*(n+1)/2)
 
 {number of conjugacy class in the Weyl group}
-set cc_BC(int n)=int:if =n then 1 else #conjugacy_classes(Sp(2*n)) fi
-set cc_D(int n)=int:if  =n then 1 else #conjugacy_classes(SO(2*n)) fi
+set cc_BC(int n)=int:if =n then 1 else #conjugacy_class_reps(Sp(2*n)) fi
+set cc_D(int n)=int:if  =n then 1 else #conjugacy_class_reps(SO(2*n)) fi
 
 {number of unipotent representations over the finite field}
 set number_unipotents_BC(int n)=int:
@@ -51,15 +51,15 @@ let n=1 in
 {mainly for testing:}
 set print_number_unipotents(int n)=
 prints("number of conjugacy classes in  W(SL(n)):");
-for i:n from 1 do prints("n:",i, " ", #conjugacy_classes(SL(i))) od;
+for i:n from 1 do prints("n:",i, " ", #conjugacy_class_reps(SL(i))) od;
 prints("number of unipotent representations of SL(n):");
 for i:n from 1 do prints("n:",i, " ", number_unipotents(SL(i))) od;
 prints("number of conjugacy classes in  W(Sp(2n)):");
-for i:n+1  do prints("2n:",2*i, " ", #conjugacy_classes(Sp(2*i))) od;
+for i:n+1  do prints("2n:",2*i, " ", #conjugacy_class_reps(Sp(2*i))) od;
 prints("number of unipotent representations of Sp(2n):");
 for i:n from 1 do prints("2n:",2*i, " ", number_unipotents(Sp(2*i))) od;
 prints("number of conjugacy classes in  W(SO(2n)):");
-for i:n+1 do prints("2n:", 2*i, " ", #conjugacy_classes(SO(2*i))) od;
+for i:n+1 do prints("2n:", 2*i, " ", #conjugacy_class_reps(SO(2*i))) od;
 prints("number of unipotent representations of SO(2n)):");
 for i:n+1  do prints("2n:",2*i, " ", number_unipotents(SO(2*i))) od;
 prints("number of unipotent representations of G2: ",number_unipotents(simply_connected(G2)));

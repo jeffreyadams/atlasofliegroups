@@ -90,6 +90,9 @@ Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww);
 Weight root_sum(const RootDatum& rd, const RootNbrSet& S);
 Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
 
+bool is_long_root(const RootSystem& rs, RootNbr i);
+bool is_long_coroot(const RootSystem& rs, RootNbr i);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/

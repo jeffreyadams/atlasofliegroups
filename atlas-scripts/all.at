@@ -14,7 +14,7 @@
 <hodge_tensor.at
 <K_Nilpotent.at
 <exceptionalNilpotentData.at
-<good.at
+<good_W_representatives.at
 <finite_unipotents.at
 <weyltosemisimple.at
 <cyclotomic_field_bracket.at
@@ -35,7 +35,6 @@
 {<coherent_characters.at}
 <sommers.at
 <projectors_using_character_tables.at
-<lusztig_cells.at
 <new_conjugacy.at
 {<lucas.at
 <self_intersection.at}

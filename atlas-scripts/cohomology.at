@@ -5,7 +5,7 @@
 {dim(H^k(G/P))=|{w\in W/W(L)| length(w)=k}
  Here P=LU and length(w) is the minimal length
  of elements in the coset wW(L)
- 
+
 Note: H^k(G/P) only depends on the conjugacy class of L=Levi(P),
 since G/P=L/L\cap K and the latter only depends on L
 }
@@ -30,7 +30,7 @@ collect(for w in coset_reps_Levi(rd,rd_L) do length(w) od)
 set cohom(RootDatum rd, RootDatum rd_L)=
 let dim=(dimension(rd)-dimension(rd_L))\2 then
 bound=dim\2 in
-let half=collect(for w in coset_reps_Levi_terminate(rd,rd_L,bound) do length(w) od) in
+let half=collect(for w in bounded_coset_reps_Levi(rd,rd_L,bound) do length(w) od) in
 if is_odd(dim) then {no middle term} [int]:half##(reverse(half))
 else
 {is a middle term, need to delete it so it doesn't get counted twice}
@@ -102,4 +102,3 @@ for rd in root_data do show_cohom(rd) od
 
 set listD=[SO(6),SO(8),SO(10),SO(12),SO(14)]
 set listB=[SO(7),SO(9),SO(11),SO(13),SO(15)]
-

@@ -14,11 +14,6 @@
   pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
   note that symbol is of type [[int]] (always with two parts)
   Hn_rep is of type ([int],[int]), both [int]s being partitions
-  symbol:
-  0 \le f_1 < f_2 < ... < f_a
-  0 \le g_1 < f_2 < ....< g_b
-  equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
-  every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
 {this test aborts via an assert, or returns void}
@@ -28,22 +23,8 @@ assert(rd.type_number=1 or rd.type_number=2,"root datum not type B or C")
 
 set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
-set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
-set_type Hn_rep  =(Partition,Partition)
+set_type Hn_rep = BiPartition
   { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
-
-{ use equivalence relation on symbols to get one with at most one 0 }
-set normalize ([int] v) = [int]:
-   let nv=#v, i=0 in while i<nv and v[i]<=i do i+:=1 od;
-   for e in v[i:] do e-i od
-
-{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
-set expand([int] v, int r) = [int]: #r ## for c in v do c+r od
-
-{ normalize symbol: |f|=|g|+1 and at most 1 zero }
-set normalize (Symbol S) = Symbol:
-  let f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
-  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
 
 { if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n,
   independently of equivalence classes of f and g rank(f)=sum f_i -n(n-1)/2
@@ -51,28 +32,11 @@ set normalize (Symbol S) = Symbol:
 set symbol_ranks (Symbol S) = (int,int):
    let f=S[0],g=S[1] in (sum(f)-binom(#f,2), sum(g)-binom(#g,2))
 
-{ maps between Orbits, Symbols and Hn_reps: Orbit -> Symbol <--> Hn_rep }
-
-{ Symbol to Hn_rep (bijection) }
-set wrep (Symbol S) = Hn_rep:
-( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
-, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
-)
-
-{Hn_rep to Symbol}
-set symbol (Hn_rep(lambda,mu)) = Symbol:
-(  let d=#lambda-(#mu+1)
-in case d
-   then { #lambda<#mu+1 } lambda##:= for : -d do 0 od
-   in { #lambda=#mu } ()
-   else { #lambda>#mu+1 } mu##:=for : d do 0 od
-   esac
-; [ for i:#lambda do lambda~[i]+i od, for j:#mu do mu~[j]+j od ]
-)
+{ maps between |Orbit|s and |Hn_rep|s of |Symbol|s }
 
 { The map from nilpotent Jordan types to |Hn_rep| should be such that the
   regular nilpotent class [2n] (type $C_n$) or [2n+1] (type $B_n$) or [2n-1,1]
-  (type $D_n$) map to the trivial representation { -|+ n}. Given that the
+  (type $D_n$) map to the trivial representation {n +|- }. Given that the
   |BiPartition| produced by |core_quotient_2| has the partition form the
   even-class (with an edge just after the main diagonal) before the partition
   from the odd-class edges, this means partitions need to be swapped in type C.
@@ -80,11 +44,14 @@ in case d
 
 { this is correct in types B and C, see Carter pp. 421-422}
 set wrep (Orbit P) = Hn_rep:
-   let (d,(lambda,mu):pair) = core_quotient_2(P), type_C=is_even(sum(P))
-   in if type_C then { switch } (mu,lambda) else { no switch } pair fi
+   let (d,(lambda,mu):pair) = core_quotient_2(P)
+   then type_C = =d { or more weakly |P.sum.is_even| }
+in if type_C then { switch } (mu,lambda)
+   else assert(d=1,"Wrong type B Jordan type"); { no switch } pair
+   fi
 
 { JordanType -> Symbol (normalised), injective maps separately for types B, C }
-{ One has |symbol(lambda)=sumbol(wrep(lambda))| when |lambda| valid for B or C }
+{ One has |symbol(lambda)=symbol(wrep(lambda))| when |lambda| valid for B or C }
 set symbol (Orbit P) = Symbol:
    let type_C=is_even(sum(P)) in
 (  if type_C and is_even(#P) then P#:=0 { make length odd in all cases } fi
@@ -105,7 +72,7 @@ set (orbit_C,orbit_B) = ((Symbol->Orbit),(Symbol->Orbit)):
       if #T0 != 1+#T1 then return [] fi
    ;  for t@i in T1
       do if   T0[i]>t
-        then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
+         then if T0[i] = t+1 then T0[i]:=t; T1[i]:=t+1 else return [] fi
 	 elif t>T0[i+1]
 	 then if t-1 = T0[i+1] then T0[i+1]:=t; T1[i]:=t-1 else return [] fi
 	 fi { now |T0[i] <= T1[i] <= T0[i+1]| }
@@ -125,7 +92,9 @@ set orbit (string type,Symbol S) = Orbit:
   else error("wrong type")
   esac
 set orbit (RootDatum rd,Symbol S) = Orbit:
-  let (letter,)=rd.simple_type in orbit(letter,S)
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,S)
 
 set large_symbol_C(Symbol S)=Symbol:
 [for i:#S[0] do S[0][i]+i od,for j:#S[1] do S[1][j]+j+1 od]
@@ -164,8 +133,10 @@ set orbit(string type,Hn_rep(pi)) = Orbit:
   else error("wrong type")
   fi
 
-set orbit(RootDatum rd,Hn_rep(pi))=
-let (letter,)=rd.simple_type in orbit(letter,pi)
+set orbit (RootDatum rd, Hn_rep(pi)) = Orbit:
+  let sf=simple_factors(Lie_type(rd))
+  then (letter,) = assert(#sf=1,"not a simple type"); sf[0]
+  in orbit(letter,pi)
 
 { equality of Hn_reps }
 set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
@@ -220,12 +191,6 @@ set special_first([Symbol] symbols)=[Symbol]:
 let index=first(for S in symbols do S.is_special od) in
 symbols[index]#symbols[:index]##symbols[index+1:]
 
-{these commands were based on orbits, which was misguided, see new version below}
-set symbols (RootDatum rd) = [Symbol]:
-   for P in nilpotent_orbit_partitions(rd) do symbol(P) od
-set wreps (RootDatum rd)=[Hn_rep]:
-   for P in nilpotent_orbit_partitions(rd) do wrep(P) od
-
 
 {wreps for B_n/C_n are the same: all (p,q) with |p|+|q|=n
  symbols are the same (apply symbol to (p,q))
@@ -240,8 +205,8 @@ let (,rank)=rd.simple_type in
  od
 od
 
-set symbols(RootDatum rd)=[Symbol]:
-for rep in wreps(rd) do symbol(rep) od
+set symbols (RootDatum rd) = [Symbol]:
+   for rep in wreps(rd) do symbol(rep) od
 
 set large_symbols(RootDatum rd)=[Symbol]:
 for S in rd.symbols do large_symbol(rd,S) od
@@ -473,7 +438,10 @@ set max_Hn_reps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_Hn_rep_compact (Block B, [int] cell) = void:
    let rep=max_Hn_rep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(B.real_form,rep))
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+	 ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
 
 set print_Hn_reps_compact (Block B, [[int]] cells) = void:
    prints("cell             Aq's             special_rep        orbit");
@@ -502,7 +470,7 @@ in (rank,A_Levis,AC_Levis,Partition:[],Partition:[]) { initial values } .
    (rec_fun f
          (int rank, [Partition] A_Levis, [(int,Partition)] AC_Levis
          , Partition p, Partition q)
-         (Partition,Partition):
+         Hn_rep:
       if #A_Levis=0 and #AC_Levis=0
       then prints("Done with p=",p, "q=",q)
       ;  assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank")
@@ -538,7 +506,10 @@ set wreps (Block B,[[int]] cells) = [Hn_rep]:
 
 set print_wrep_cpt (Block B, [int] cell) = void:
    let rep=wrep(B,cell), spc=" "*15 in
-   prints(cell,spc,Aq_reps(B,cell),spc,rep,special_star(rep),spc,orbit(B.real_form,rep))
+   prints(cell,spc
+	 ,Aq_reps(B,cell),spc
+         ,rep,special_star(rep),spc
+	 ,orbit(B.real_form,rep))
 
 set print_wrep(Block B, [int] cell) = void:
 (  let rep=wrep(B,cell)
@@ -610,7 +581,7 @@ test_simple_BC(rd);
 let orig=support(large_symbol(rd,symbol(pi))) in
 ##for sigma in all_reps_BC(rd) do if support(large_symbol(rd,sigma))=orig then [sigma] else [] fi od
 
-set springer_cells_classical(RootDatum rd) =[[Symbol]]:
+set springer_cells_classical(RootDatum rd) = [[Symbol]]:
 test_simple_BC(rd);
 let rv=[[Symbol]]:[] in
 for T in large_symbols(rd) do
@@ -620,18 +591,35 @@ od;
 {now process to put the special one first}
 for symbols in rv do special_first(symbols) od
 
-set show_lusztig_cells_classical(RootDatum rd)=void:
-let symbols=lusztig_cells_classical(rd) in
-for i:#symbols do
- prints(new_line,"support: ", support(symbols[i][0]));
- tabulate([" ","symbol","rep"]#for S in symbols[i] do [" ",S.to_string, wrep(S).to_string] od)
+set show_lusztig_cells_classical (RootDatum rd) = void:
+   for symbol in lusztig_cells_classical(rd)
+   do prints(new_line,"support: ", support(symbol[0]))
+   ;  tabulate
+      ( [" ","symbol","rep"]
+      # for S in symbol
+        do [" ",S.to_string, S.symbol_to_bipartition.to_string]
+	od
+      )
 od
 
-set show_springer_cells_classical(RootDatum rd)=void:
-let large_symbols=springer_cells_classical(rd) in
-for i:#large_symbols do
- let small_symbol=small_symbol(rd,large_symbols[i][0]) in
-  prints(new_line,"orbit: ", orbit(rd,small_symbol), "  support: ", support(large_symbols[i][0]) );
-tabulate([" ","symbol","large symbol","rep","orbit"]#for T in large_symbols[i] do
-  let S=small_symbol(rd,T) in [" ",S.to_string+S.special_star,T.to_string, wrep(S).to_string, orbit(rd,S).to_string] od)
-od
+set show_springer_cells_classical (RootDatum rd) = void:
+   for large_symbol_list in springer_cells_classical(rd)
+   do let large_symbol = large_symbol_list[0]
+      then small_symbol = small_symbol(rd,large_symbol)
+   in prints( new_line
+            , "orbit: ", orbit(rd,small_symbol)
+            , "  support: ", support(large_symbol)
+	    )
+   ;  tabulate
+      ( [" ","symbol","large symbol","rep","orbit"]
+      # for T in large_symbol_list
+        do let S=small_symbol(rd,T)
+	in [ " "
+	   , S.to_string+S.special_star
+	   , T.to_string
+	   , S.symbol_to_bipartition.to_string
+	   , orbit(rd,S).to_string
+	   ]
+	od
+      )
+   od

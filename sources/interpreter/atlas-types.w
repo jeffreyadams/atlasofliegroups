@@ -1000,8 +1000,8 @@ class root_datum_value : public value_base
   static root_datum_entry::Pooltype pool;
   static HashTable<root_datum_entry,unsigned short> hash;
   static std::vector<root_datum_weak_ptr> store;
-  mutable containers::simple_list @|
-    <std::pair<const WeightInvolution,inner_class_weak_ptr> > classes;
+  mutable simple_list<std::pair<const WeightInvolution,inner_class_weak_ptr> >
+    classes;
   mutable std::shared_ptr<WeylGroup> W_ptr;
 public:
   const RootDatum val;
@@ -1364,6 +1364,24 @@ void two_rho_check_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
 }
 
+@ Here is an auxiliary function that will facilitate the recurring task of
+converting a (co)root index from the user range (which has negative values for
+negative (co)roots) to the unsigned internal root numbering, while checking that
+the index is in the valid range.
+
+@< Local function definitions @>=
+RootNbr internal_root_index(const RootDatum& rd, int index, bool is_coroot)
+{
+  RootNbr npr = rd.numPosRoots();
+  RootNbr alpha = npr+index;
+  if (alpha>=2*npr)
+  { std::ostringstream o;
+    o << "Illegal "<< (is_coroot ? "co" : "") << "root index " << index;
+    throw runtime_error(o.str());
+  }
+  return alpha;
+}
+
 @ The following functions allow us to look at individual simple roots and simple
 coroots stored in a root datum value. We adopt a convention that shifts root
 indices so that the simple (and positive) roots start at index~$0$, and such
@@ -1376,26 +1394,15 @@ apply a shift by the number of positive roots here.
 void root_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
+@)
 void coroot_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l!=expression_base::no_value)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
@@ -1425,6 +1432,62 @@ void coroot_index_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(index));
 }
 
+@ The library knows additive decompositions of roots and coroots into simple
+roots respectively coroots, and we give the user access to these.
+
+@< Local function definitions @>=
+void root_expression_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.root_expr(alpha)));
+}
+
+void coroot_expression_wrapper(expression_base::level l)
+{ int coroot_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.coroot_expr(alpha)));
+}
+
+@ Occasionally it is useful to distinguish long and short roots and coroots,
+which is a notion relative to the component of the Dynkin diagram the root
+belongs to. By convention for simply laced components all roots and coroots are
+considered short, while for other components a root is long if and only if the
+corresponding coroot is short.
+
+@< Local function def...@>=
+void is_long_root_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l!=expression_base::no_value)
+    push_value(whether(is_long_root(rd->val,alpha)));
+}
+@)
+void is_long_coroot_wrapper(expression_base::level l)
+{ int coroot_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
+  if (l!=expression_base::no_value)
+    push_value(whether(is_long_coroot(rd->val,alpha)));
+}
+
+@ Here we use the built-in method |simple_root_permutation| that, in spite of
+its name, works for any positive root index (counting from~$0$).
+
+@< Local function def...@>=
+void root_involution_wrapper(expression_base::level l)
+{ int root_index = get<int_value>()->int_val();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
+  if (l==expression_base::no_value)
+    return;
+  auto perm = rd->val.simple_root_permutation(rd->val.rt_abs(alpha));
+  push_value(std::make_shared<vector_value>(perm.begin(),perm.end()));
+}
 
 @ An information about roots and coroots that is precomputed in root data and
 can be useful for the user tells for each root or coroot $\alpha$ which are the
@@ -1438,16 +1501,11 @@ signed indexing convention of root systems.
 void root_ladder_bottoms_wrapper(expression_base::level l)
 { int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal root index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,root_index,false);
   if (l==expression_base::no_value)
     return;
 
+  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
@@ -1458,18 +1516,13 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
 }
 @)
 void coroot_ladder_bottoms_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->int_val();
+{ int coroot_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
-  RootNbr npr = rd->val.numPosRoots();
-  RootNbr alpha = npr+root_index;
-  if (alpha>=2*npr)
-  { std::ostringstream o;
-    o << "Illegal coroot index " << root_index;
-    throw runtime_error(o.str());
-  }
+  RootNbr alpha = internal_root_index(rd->val,coroot_index,true);
   if (l==expression_base::no_value)
     return;
 
+  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
@@ -1644,6 +1697,46 @@ void integrality_datum_wrapper(expression_base::level l)
       (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
 
+@ Some function to allow finding the (semisimple) rank and testing dominance for
+the integral system without constructing the full integrality datum.
+
+@< Local function definitions @>=
+void integrality_rank_wrapper(expression_base::level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>
+      (rootdata::integrality_rank(rd->val,lambda->val)));
+}
+@)
+void is_integrally_dominant_wrapper(expression_base::level l)
+{ shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Length " << lambda->val.size() @|
+      << " of rational vector differs from rank " << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+@.Length of rational vector...@>
+  if (l==expression_base::no_value)
+    return;
+  PreRootDatum ipd = rootdata::integrality_predatum(rd->val,lambda->val);
+  for (unsigned int j=0; j<ipd.semisimple_rank(); ++j)
+    if (ipd.simple_coroot(j).dot(lambda->val.numerator())<0)
+    {@;
+      push_value(global_false); return;
+    }
+  push_value(global_true);
+}
+
 @ A related function computes a list of fractions of a line segment where the
 set of roots with integrality is non-empty.
 
@@ -1701,6 +1794,15 @@ install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
 install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
+install_function(root_expression_wrapper@|,"root_expression"
+		,"(RootDatum,int->vec)");
+install_function(coroot_expression_wrapper@|,"coroot_expression"
+		,"(RootDatum,int->vec)");
+install_function(is_long_root_wrapper@|,"is_long_root" ,"(RootDatum,int->bool)");
+install_function(is_long_coroot_wrapper@|,"is_long_coroot"
+		,"(RootDatum,int->bool)");
+install_function(root_involution_wrapper@|,"root_involution"
+		,"(RootDatum,int->vec)");
 install_function(root_ladder_bottoms_wrapper,@|"root_ladder_bottoms"
                 ,"(RootDatum,int->[int])");
 install_function(coroot_ladder_bottoms_wrapper,@|"coroot_ladder_bottoms"
@@ -1724,6 +1826,10 @@ install_function(mod_central_torus_info_wrapper,@|
 		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(integrality_datum_wrapper,@|
                  "integrality_datum","(RootDatum,ratvec->RootDatum)");
+install_function(integrality_rank_wrapper,@|
+                 "integrality_rank","(RootDatum,ratvec->int)");
+install_function(is_integrally_dominant_wrapper,@|
+                 "is_integrally_dominant","(RootDatum,ratvec->bool)");
 install_function(integrality_points_wrapper,@|
                  "integrality_points","(RootDatum,ratvec->[rat])");
 
@@ -1954,7 +2060,7 @@ and (appropriate) square matrices.
 void W_elt_weight_prod_wrapper(expression_base::level l)
 { shared_vector v = get<vector_value>();
   shared_W_elt w = get<W_elt_value>();
-  auto& rd = w->rd->val;
+  const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
   { std::ostringstream o;
     o << "Rank and weight size mismatch " @|
@@ -1967,7 +2073,7 @@ void W_elt_weight_prod_wrapper(expression_base::level l)
 void coweight_W_elt_prod_wrapper(expression_base::level l)
 { shared_W_elt w = get<W_elt_value>();
   shared_vector v = get<vector_value>();
-  auto& rd = w->rd->val;
+  const auto& rd = w->rd->val;
   if (v->val.size()!=rd.rank())
   { std::ostringstream o;
     o << "Coweight size and rank mismatch " @|
@@ -2025,6 +2131,27 @@ void W_codecompose_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ It is easy and efficient to compute the action of Weyl group elements on
+roots, thanks to the method |RootSystem::permuted_root|, which taps directly
+into the stored tables of root permutations for (simple) root reflections.
+
+@< Local function def...@>=
+void root_permutation_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  const RootSystem& rs = w->rd->val;
+  if (l==expression_base::no_value)
+    return;
+  const auto ww = w->W.word(w->val);
+  int_Vector result(rs.numRoots());
+  for (unsigned i=0; i<rs.numPosRoots(); ++i)
+  { const auto alpha = rs.posRootNbr(i);
+    result[alpha] = rs.permuted_root(ww,alpha);
+    result[rs.negRootNbr(i)] = rs.rootMinus(result[alpha]);
+  }
+  push_value(std::make_shared<vector_value>(std::move(result)));
+}
+
+
 @ Finally we install everything related to Weyl groups elements. Note that since
 Weyl words and (co)weights have the same \.{atlas} type \&{vec}, we need to make
 a choice whether to associate the wrapper function |W_elt_word_prod_wrapper| or
@@ -2054,6 +2181,7 @@ install_function(W_decompose_wrapper,@|
                  "from_dominant","(RootDatum,vec->WeylElt,vec)");
 install_function(W_codecompose_wrapper,@|
                  "from_dominant","(vec,RootDatum->vec,WeylElt)");
+install_function(root_permutation_wrapper,"root_permutation","(WeylElt->vec)");
 
 
 @*1 A type for complex reductive groups equipped with an involution.
@@ -2283,7 +2411,7 @@ lies in another component of the diagram we have a Complex inner class.
 
 @< Compute the Lie type |type|, the inner class... @>=
 { DynkinDiagram diagram(rd.cartanMatrix());
-  containers::sl_list<RankFlags> comps =
+  sl_list<RankFlags> comps =
     diagram.components(); // connected components
   type = diagram.classify_semisimple(pi,true);
     // |pi| normalises to Bourbaki order
@@ -5071,7 +5199,7 @@ void KL_block_wrapper(expression_base::level l)
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
-  containers::sl_list<BlockElt> survivors;
+  sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z=0; z<block.size(); ++z)
     if (block.survives(z,singular))
@@ -5207,7 +5335,7 @@ void partial_KL_block_wrapper(expression_base::level l)
       subset.insert(y);
   @)
   const RankFlags singular = block.singular(gamma);
-  containers::sl_list<BlockElt> survivors;
+  sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z : subset)
     if (block.survives(z,singular))
@@ -5256,7 +5384,7 @@ void dual_KL_block_wrapper(expression_base::level l)
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
-  containers::sl_list<BlockElt> survivors; // indexes into |block|
+  sl_list<BlockElt> survivors; // indexes into |block|
   BlockEltList loc(block.size(),UndefBlock);
     // from |dual_block| index to |survivors| index
   const BlockElt last=block.size()-1;

@@ -43,10 +43,10 @@ set matrix ((int,int)(r,c),(int,int->rat) f) = ratmat:
 set n_rows (ratmat(M,,))= int: n_rows(M)
 set n_columns (ratmat(M,,))= int: n_columns(M)
 
-set columns (ratmat(M,,d)) = [ratvec]: for c in M do c/d od
-set rows (ratmat(M,,d)) = [ratvec]: for c in ^M do c/d od
+set columns (ratmat(M,,d)) = [ratvec]: for c in columns(M) do c/d od
+set rows (ratmat(M,,d)) = [ratvec]: for c in rows(M) do c/d od
 set column (ratmat(M,,d),int j) = ratvec: M[j]/d
-set row (ratmat(M,,d),int i)    = ratvec: (^M)[i]/d
+set row (ratmat(M,,d),int i)    = ratvec: row(M,i)/d
 
 set columns_with ((int,ratvec->bool) p,ratmat(M,,d)) = ratmat:
   let res = [vec]: [] in
@@ -57,10 +57,12 @@ set columns_with ((int->bool) p,ratmat(M,,d)) = ratmat:
   { we can use mat version here } columns_with(p,M) / d
 
 set rows_with ((int,ratvec->bool) p,ratmat(M,,d)) = ratmat:
-  let res = [vec]: [] in
-  for row@i in ^M do if p(i,row/d) then res #:= row fi od; n_columns(M)^res / d
+( n_columns(M)
+^ for row@i in rows(M) do if p(i,row/d) then [row] else [] fi od.##
+/ d
+)
 set rows_with ((ratvec->bool) p,ratmat T) = ratmat:
-  rows_with(((int,ratvec)(,row))bool: p(row),T)
+  rows_with((int .,ratvec row)bool: p(row),T)
 set rows_with ((int->bool) p,ratmat(M,,d)) = ratmat:
   { we can use mat version here } rows_with(p,M) / d
 
@@ -70,7 +72,7 @@ set ^ (ratmat(M,,d)) { transpose } = ratmat: (^M,s,d)
 
 set + (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M+d*MM,s,d*dd)
 set - (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(dd*M-d*MM,s,d*dd)
-set - (ratmat(M,,d)) = (-M,d,())
+set - (ratmat(M,s,d)) = ratmat: (-M,s,d)
 
 set * (ratvec v,ratmat(M,,d)) = ratvec: v*M/d
 set * (ratmat(M,,d),ratvec v) = ratvec: M*v/d

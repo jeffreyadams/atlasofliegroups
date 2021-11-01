@@ -31,15 +31,16 @@ m_2(alpha)=#{beta| beta has same restriction to T and <beta,H_L>=2}
 m(alpha)  =m_0-m_2 \in {0,1}
 alpha restricted to T is a root of T in Cent(O) <=> m(alpha)=1
 }
-set m_0(ComplexNilpotent O,vec alpha)=int:
-let (L,H_L)=O.Bala_Carter_Levi_plus in
-#(##for beta in roots_same_restriction(O,alpha) do if beta*H_L=0 then [beta] else [] fi od)
+set m_0 (ComplexNilpotent O,vec alpha) = int:
+   let (,H_L)=O.Bala_Carter_Levi_plus
+in for beta in roots_same_restriction(O,alpha)
+   do #(=H_L*beta) od.sum { count successes: convert |bool| to |int| and sum }
 
-set m_2(ComplexNilpotent O,vec alpha)=int:
-let (L,H_L)=O.Bala_Carter_Levi_plus in
-#(##for beta in roots_same_restriction(O,alpha) do if beta*H_L=2 then [beta] else [] fi od)
+set m_2 (ComplexNilpotent O,vec alpha) = int:
+   let (,H_L)=O.Bala_Carter_Levi_plus
+in for beta in roots_same_restriction(O,alpha) do #(H_L*beta=2) od.sum
 
-set m(ComplexNilpotent O,vec alpha)=int:m_0(O,alpha)-m_2(O,alpha)
+set m (ComplexNilpotent O,vec alpha) = int: m_0(O,alpha)-m_2(O,alpha)
 
 {roots of centralizer are those with m(alpha)=1
 returns a set roots of G, and their restrictions to T (eliminating duplications)
@@ -71,14 +72,14 @@ coroots_G=[] then
 coroots_C=[] in
 for alpha in roots_C do
  let pullback_alpha=let j=first(for beta in roots_G do T.restrict(beta)=alpha od) in roots_G[j] then
- v=sum(##(for beta in roots_G do 
-  if T.restrict(beta)=alpha then  [coroot(O.root_datum,beta)] 
-   else [] 
+ v=sum(##(for beta in roots_G do
+  if T.restrict(beta)=alpha then  [coroot(O.root_datum,beta)]
+   else []
   fi od)) then
  w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
  corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
  coroots_G#:=v;
- coroots_C#:=ratvec_as_vec(corestrict_w) 
+ coroots_C#:=ratvec_as_vec(corestrict_w)
 od;
 (roots_G,coroots_G,roots_C,coroots_C)
 
@@ -108,7 +109,7 @@ root_datum_from_positive((roots_C,coroots_C),O.root_datum.prefers_coroots) fi
 set dim_centralizer(ComplexNilpotent O)=int:O.centralizer.dimension
 
 {X is a nilpotent element, orbit=G.x
-dimension of the nilradical of Cent(X) 
+dimension of the nilradical of Cent(X)
 orbit -> C=Cent(O) -> C=C_red*C_u
  dim(O)=dim(G/C)=dim(G)-dim(C_red)-dim(C_u)
  dim(C_u)=dim(G)-dim(C_red)-dim(O)
@@ -117,17 +118,22 @@ orbit -> C=Cent(O) -> C=C_red*C_u
 set dim_centralizer_nilradical(ComplexNilpotent O)=int:
 O.root_datum.dimension - O.dim_centralizer - O.dim
 
-{for testing only}
-set test(ComplexNilpotent O)=
-let (L,H_L)=O.Bala_Carter_Levi_plus then
-(roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O) then
-C=centralizer(O) in
-let ()=prints("------",new_line,"H_L=", H_L,new_line,"dim:", O.dim_nilpotent,new_line,"L=",L,new_line,"simple roots of L: ", L.simple_roots,new_line,"nilrad: ", (O.root_datum,L).nilrad_roots) in
-prints("#roots_G:",#roots_G);
-prints("#roots_C:  ", #roots_C,new_line, "#coroots_C:", #coroots_C);
-prints("roots_C:",roots_C);
-prints("coroots_C:", coroots_C);
-prints("C:",C.nice_format)
+{ for testing only, as the name suggests }
+set test (ComplexNilpotent O) = void:
+  let (S,H_L)=O.Bala_Carter_Levi_plus then L=sub_datum(O.root_datum,S)
+  then (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O)
+  , C=centralizer(O)
+in prints("------",new_line
+         ,"H_L=", H_L,new_line
+	 ,"dim:", O.dim_nilpotent,new_line
+	 ,"L=",L,new_line
+	 ,"simple roots of L: ", L.simple_roots,new_line
+	 ,"nilrad: ", (O.root_datum,L).nilrad_roots);
+   prints("#roots_G:",#roots_G);
+   prints("#roots_C:  ", #roots_C,new_line, "#coroots_C:", #coroots_C);
+   prints("roots_C:",roots_C);
+   prints("coroots_C:", coroots_C);
+   prints("C:",C.nice_format)
 
 {
 {compact listing: i H diagram dim BC-Levi Cent A(O)}
@@ -214,7 +220,7 @@ for  orbit@i in orbits do
 let d=orbit.component_datum then
 H=orbit.centralizer then
 C_2=conjugacy_classes_involutions(H) in
-{C_2=#strong_real_forms_same_type(compact_form(H)) in} 
+{C_2=#strong_real_forms_same_type(compact_form(H)) in}
 [i.to_string,
 ([int]:orbit.H).to_string,
 orbit.diagram.to_string,

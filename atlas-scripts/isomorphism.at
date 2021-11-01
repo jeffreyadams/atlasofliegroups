@@ -1,43 +1,38 @@
-<lietypes.at
-<conjugate.at
+<basic.at
+<lietypes.at { for |is_locally_isomorphic| }
+<conjugate.at { for |symmetric_groups| }
 
 {permutations relating Cartan matrices
  isomorphism of root systems (local isomorphism)
  isomorphism of root data (semisimple case (mainly))
 }
 
-{return all permutations preserving the inner products
-note this only depends on the derived root data
-Condition: P*Cartan_matrix_1=Cartan_matrix_2*P
-never returns an error (possibly the empty list)
-reductive is allowed
-each P satisfies: permutation(P)[i]=j means
- L_1.simple_roots[i] -> L_2.simple_roots[j]  and
- L_1.simple_coroots[i] -> L_2.simple_coroots[j] preserves the inner products
-explicitly:
-L_1.simple_roots[i]*L_1.simple_coroots[j] = 
-L_2.simple_roots[permutation(P)[i]]*L_2.simple_coroots[permutation(P)[j]]
+{ find all Dynkin diagram isomorphisms: maps $f: #rank(rd1) -> #rank(rd2)$
+  transforming the Cartan matrices: $C_1[i,j]=C_2[f(i),f(j)]$ for all $i,j$,
+  where $C_k$ is the Cartan matrix of $rd_k$. This $f$ is represented by its
+  permutation matrix, the one the sends $e_j$ to $e_{f(j)}$, so $PC_1=C_2P$.
+  If the Dynkin diagrams are not isomorphic, this returns an empty list.
 }
-set root_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
-if not is_locally_isomorphic(rd_1,rd_2) then [mat]:[]
-elif =rd_1.rank then [id_mat(0)] {empty root system case}
-else
- let S=symmetric_group(rd_1.rank) then
- C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
- ##for P in S do if  P*C_1=C_2*P then [P] else [] fi od
-fi
+set root_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
+   if not is_locally_isomorphic(rd_1,rd_2) then [mat]:[] { don't bother searching }
+   elif =rd_1.semisimple_rank then [id_mat(0)] {empty root system case}
+   else { very laboriously try all possible bijections }
+      let C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
+      for P in symmetric_group(rd_1.semisimple_rank)
+      do if P*C_1=C_2*P then [P] else [] fi
+      od.##
+   fi
 
-{return (bool, one permutation matrix)
-reductive is allowed
-}
-set root_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
-if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))  elif
-=rd_1.rank then (true,id_mat(0)) {empty root system case} else
- let S=symmetric_group(rd_1.rank) then
- C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
- index=first(for g in S do g*C_1=C_2*g od) in
- if index=-1 then (false,null(0,0)) else (true,S[index]) fi
-fi
+{return (bool, one permutation matrix), reductive is allowed }
+set root_permutation (RootDatum rd_1, RootDatum rd_2) = (bool,mat):
+   if not is_locally_isomorphic(rd_1,rd_2) then (false,id_mat(0))
+   elif =rd_1.semisimple_rank then (true,id_mat(0)) {empty root system case}
+   else
+      let S=symmetric_group(rd_1.semisimple_rank)
+      then C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
+      then index=first(#S,(int i)bool:let g=S[i] in g*C_1=C_2*g)
+   in if index.< then (false,null(0,0)) else (true,S[index]) fi
+   fi
 
 {find g\in GL(n,Q) and permutation matrix P so that
 P is a root_permutation (as above), i.e.

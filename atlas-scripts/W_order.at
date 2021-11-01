@@ -43,4 +43,4 @@ let w=W[i] in
 graph(W_poset(W),labels)
 
 set elliptic_W_Graph(RootDatum rd)=string:
-W_graph(elliptic_conjugacy_classes(rd))
+W_graph(elliptic_conjugacy_class_reps(rd))

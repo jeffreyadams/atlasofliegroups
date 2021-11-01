@@ -19,7 +19,7 @@ set enumerate_class (WeylElt !w0) = ([WeylElt],[(int,int)]):
    then pairs= [(int,int)]:[(-1,-1)], current=0, ssr=semisimple_rank(rd)
    , absent (WeylElt x) = none(for y in class do @: y=x od)
 in while current<#class
-   do let  w=class[current] in 
+   do let  w=class[current] in
    for s:ssr
       do let sws=s#w#s in
          if absent(sws) then class #:= sws; pairs #:= (current,s) fi
@@ -64,14 +64,14 @@ let (class,pairs)=enumerate_class(w) in
 operators(class,pairs,simple_operators,dim)
 
 set operators(CharacterTable ct,WeylElt w,WCell cell)=
-let (dim,simple_ops)=cell_representation(ct,cell)
+let (dim,simple_ops)=cell_representation(ct.class_table,cell)
 in operators(w,for a in simple_ops do sparse(a) od, dim)
 
 {operators for single w, multiple cells, run enumerate_class(w) only once}
 set operators(CharacterTable ct,WeylElt w,[WCell] cells)=
 let (class,pairs)=enumerate_class(w) in
 for cell in cells do
- let (dim,simple_ops)=cell_representation(ct,cell) in
+ let (dim,simple_ops)=cell_representation(ct.class_table,cell) in
  operators(w,for a in simple_ops do a.sparse od,dim)
 od
 

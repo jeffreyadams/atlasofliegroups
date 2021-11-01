@@ -1,105 +1,87 @@
 <basic.at
 <combinatorics.at { for |classic_permutation| }
-<nilpotent_orbits.at { for the type |ComplexNilpotent| }
+<nilpotent_orbits.at { for the type |ComplexNilpotent|, |diagram_normalized| }
 
 <springer_tables.at
-<coordinates.at
+<classical_character_tables.at { for |character_table_A| }
 
-{Springer correspondence from nilpotent orbits to representations of W in type A
- orbit: partition -> representation= same partition}
+{ Springer correspondence from nilpotent orbits to representations of W in type A
+  Orbits and W-irreps both correspond to partitions of rank+1, which gives the
+  (here bijective) map from orbits to W-irreps for type A }
 
-{ ---------------- type A/SL(n) ------------------}
+{ Partition of $n$ to a ComplexNilpotent for a given type $A_{n-1}$ root datum }
 
-{diagram:
+set nilpotent_orbit_GL ([int] parts) = ComplexNilpotent:
+   let (n,Levi_type,simples) = Levi_A(parts)
+   then rd = GL(n), v = adjoint_2rho(Levi_type)
+   then H = vec: sum(n # for pos@i in simples do coroot(rd,pos)*v[i] od)
+in complex_nilpotent(rd,H)
 
-ComplexOrbit O            (for SL(n))
-Partition    P            (for orbit in type A)
-Pair of partitions (p,q)  (for representation of W(A_n))
+set nilpotent_orbit_A(RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("A",rd)
+in (Partition P) ComplexNilpotent:
+(  assert(is_positive(P), "P is not a partition (has non-positive entries)")
+;  let (n,Levi_type,simples) = Levi_A(P)
+   then v = assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
+          ; adjoint_2rho(Levi_type)
+   then H = sum(rd.rank # for pos@i in simples do coroot(rd,map[pos])*v[i] od)
+in complex_nilpotent(rd,H)
+)
 
-O->P:  P=partition_of_orbit(O)
-P->O:  O=complex_nilpotent_A(rd,P)
-
-P-> (p,q): (p,q)=springer_A(P)
-O-> (p,q): (p,q)=springer_A(P)
-
-(p,q)->O: O=inverse_springer_A(rd,P)
-(p,q)->P: O=inverse_springer_partition_A(P)
-}
-
-{ natural coordinates are for GL(n), so we need to map to and from for SL(n) }
-
-{ transfer map for X^*: for a GL(n) weight |v|, |GL_to_SL_change_of_basis(n)*v|
-  is the corresponding weight of SL(n). Since the SL(n) lattice X^* is the
-  quotient of the GL(n) lattice by |[1,..,1]=ones(1)|, in which the basis is
-  chosen to be the image of the first n-1 basis vectors, it suffices to map
-  the final basis vector to -ones(n1-)
-}
-set GL_to_SL_change_of_basis(int n) = mat:
-  id_mat(n-1)#-ones(n-1)
-
-{ change of basis for X_*
-  set A=GL_to_SL_co_change_of_basis(n)
-  then, for example, A*rho_check(GL(n))=rho_check(SL(n))
-}
-set GL_to_SL_co_change_of_basis(int n)=ratmat:
-inverse_change_basis(SL(n).dual,GL(n).simple_coroots)
-
-{map from partition for an orbit of GL(n) to semisimple element H}
-{in SL(n) coordinates}
-set semisimple_element_A(Partition P)=ratvec:  {for SL(n)}
-  let rho2_GL(int a) = for i:a do i+i-a+1 od { ladder [-a+1,-a+3,...,a-3,a-1] }
-  then v = ratvec: for a in P do rho2_GL(a) od.##/2 then n=#v
-  in GL_to_SL_co_change_of_basis(n)*(dominant(GL(n),v))
-
-{partition of n -> ComplexNilpotent for GL(n)}
-set complex_nilpotent_A (Partition P) = ComplexNilpotent:  {for SL(n)}
-  complex_nilpotent(SL(sum(P)),ratvec_as_vec(2*semisimple_element_A(P)))
-
-{ to make it independent of the isogeny and center use the diagram }
-set complex_nilpotent_A(RootDatum rd,Partition P) =
-assert(sum(P)=rd.ss_rank+1,"rank mismatch");
-let O_SL=complex_nilpotent_A(P) then
-diag=O_SL.diagram_normalized then
-orbits=rd.orbits then
-index=first(for O in orbits do O.diagram_normalized=diag od) in
-orbits[index]
-
-set partition_of_orbit_A(ComplexNilpotent O) = [int]:
-let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
-index=first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od) in
-orbit_partitions[index]
-
-{
-set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
-  let P=O.partition_of_orbit_A, reps=ct.class_reps
-  in first(#reps,(int i): cycle_type(classic_permutation(reps[i]))=P)
-}  
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_A_to_partition ([int] diagram) = Partition:
+   assert(diagram=diagram~[:],"Stratified diagram should be a palindrome");
+   let freq = [int]: (0#diagram.cumulate_forward).frequencies
+   then max = { the largest part }
+      let (q,r)= #freq \% 2 in assert(r=1,"Diagram has odd sum"); q+1
+   then mult(int i) = int: { mulitplicity of part |i| in partition }
+      let m = if i+2<=max then freq[max-i]-freq[max-i-2] else freq[max-i] fi
+      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
 
 {Springer(orbit with partition P) = classical_irrep with partition P}
-set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
-  let P=O.partition_of_orbit_A
-  in first(ct.n_classes,(int i): ct.classical_reps(i).get_irrep_A=P)
+set springer_A (CharacterTable ct,ComplexNilpotent O) = int:
+  let P=O.stratified_diagram.diagram_A_to_partition
+  in first(ct.n_irreps,(int i): ct.classical_reps(i).get_irrep_A=P)
 
-set inverse_springer_partition_A(Partition P)=Partition: P
+{ inverse Springer map, from Partition of n to ComplexNilpotent for GL(n) }
+set inverse_springer_A = nilpotent_orbit_GL@Partition
 
-{inverse Springer map, from pair Partition of n
-to ComplexNilpotent for GL(n)
+
+{ Springer table construction.
+
+  For the mapping parts (dual, dual dual, and Springer) we shall impose on the
+  "simple" Springer tables the constraint that these maps will ignore any
+  radical component of |O.H|, in other words that vanishes on the roots of
+  |O.root_datum|. This will allow, for a root datum with disconnected Dynkin
+  diagram, the orbits to be passed to the Springer tables for sub-rootdata for
+  the individual Dynkin diagram components without having to project away the
+  part for the other components. This constraint is automatically met if we
+  handle orbits using only their diagram, which has this independence property.
 }
-set inverse_springer_A(Partition P)=ComplexNilpotent:
-complex_nilpotent_A(P)
 
+set A_dual(Partition P) = Partition: P.transpose
 
-{------------------ duality ----------------------------------}
+set dual_map_A(ComplexNilpotent O) = ComplexNilpotent:
+   let P=O.stratified_diagram.diagram_A_to_partition
+   in nilpotent_orbit_A(dual(O.root_datum))(transpose(P))
 
-set A_dual(Partition P)=Partition:P.transpose
+set springer_table_A (CharacterTable ct) = SpringerTable:
+( ct
+, ct.root_datum.orbits
+, dual_map_A@ComplexNilpotent
+, dual_map_A@ComplexNilpotent
+, (ComplexNilpotent O) int: springer_A(ct,O)
+)
 
-set dual_map_A(ComplexNilpotent O)=ComplexNilpotent:
-let P=partition_of_orbit_A(O) in
-complex_nilpotent_A(P.A_dual)
-
-set springer_table_A(CharacterTable ct)=
-let rd=ct.root_datum then
-orbits=rd.orbits then
-dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_A(O) then
-springer(ComplexNilpotent O)=springer_A(ct,O) in
-(ct,orbits,dual_map,dual_map,springer)
+set springer_table_A (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_partition) = character_table_A(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_A(rd)
+   , rank = rd.semisimple_rank
+in ( table
+   , for lambda in partitions(rank+1) do orbit(lambda) od
+   , dual_map_A@ComplexNilpotent
+   , dual_map_A@ComplexNilpotent { inverse of transposition is transposition }
+   , (ComplexNilpotent O) int:
+     O.stratified_diagram.diagram_A_to_partition.irrep_of_partition
+   )
