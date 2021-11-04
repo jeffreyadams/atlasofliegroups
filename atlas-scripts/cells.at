@@ -188,7 +188,7 @@ in for (tau,)@i in graph.nodes do if tau=target then [i] else [] fi od.##
 unless #cell>=dim_special and
 some parameter p in cell has tau_complement(p)=singular roots on gamma}
 set potential_cell(RootDatum rd_int,WCell cell, ratvec gamma, int springer_dim)=bool:
-if #cell< springer_dim then prints("dim: ", #cell, " ", springer_dim);false
+if #cell< springer_dim then if cells_verbose then prints("dim: ", #cell, " ", springer_dim) fi;false
 elif
  let singular_roots=##for alpha@i in rd_int.simple_roots do if =alpha*gamma then [i] else [] fi od in
  let ()=prints("sr: ", singular_roots) in
@@ -229,13 +229,13 @@ in if cells_verbose
       in
    {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
          if #cell< springer_dim
-  	 then prints("dim: ", #cell, " ", springer_dim)
+  	 then if cells_verbose then prints("dim: ", #cell, " ", springer_dim) fi
 	 ;  [(int,int,Param)]:[]
  	 elif
 	    for p in parameters(block,cells[j])
 	    do if I_will_survive(p,gamma)
-   	       then prints("survive:", p, " ", gamma)
-	       ; survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
+   	       then{ prints("survive:", p, " ", gamma)
+	       ;} survivors#:=(i,j,first_param(coherent_family_irr(p,gamma)))
     	       fi {I_will_survive}
    	    od {/##for p}
 	 ; {elif} =#survivors
@@ -265,7 +265,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  let survivors=[(int,int,Param)]:[] in
  if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
  if #cell< springer_dim
-  then prints("dim: ", #cell, " ", springer_dim);[(int,int,Param)]:[]
+  then {prints("dim: ", #cell, " ", springer_dim);}[(int,int,Param)]:[]
  elif
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma)
