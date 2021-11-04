@@ -213,6 +213,9 @@ set standard_Levi_witness (RootDatum rd,RootDatum rd_L) = WeylElt:
    let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L))
    in assert(any(w), "Error finding standard_Levi_witness"); req(w)
 
+set Levi_witness(RootDatum rd, RootDatum rd_L,RootDatum rd_M)=
+inverse(standard_Levi_witness(rd,rd_M))*standard_Levi_witness(rd,rd_L)
+
 {automorphisms given by permutations of simple roots/coroots
 automorphism of Lie algebra
 }

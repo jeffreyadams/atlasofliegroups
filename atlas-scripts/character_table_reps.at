@@ -142,21 +142,50 @@ set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
    let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
 in induce_character(construct_class_table(L),Wct_G,pi_L)
 
-{L\simeq L'\subset G, compute induction from W(L) to W(G) via this isomorphism
-more precisely:
- M is a permutation matrix taking the simple roots of Wct_L.root_datum to  those of L_prime
- the roots of L_prime are a subroot system of the roots of G, so convert_to(Wct_G.root_datum,y)
- is defined for y in W(L_prime)
- w\in W(L) ----> W(L_prime) ---> W(G)
-  permute(M,w,L_prime): w\in W(L) to W(L_prime)
-  convert_to(W_ct_G.root_datum,y): W(L_prime)->W(G)
+{given Wct_L, with RootDatum L, and L\simeq L'\subset G
+have character table for L, but L' is the subgroup we want
+to induce from 
+induce from W(L) to W(G) via this isomorphism
+That is:
+  W(L)  --> w --> W(L')
+   |               |
+   |               x
+   |               |
+   v               v
+  W(L)  --> w --> W(L')
+
+y=  w^{-1}xw: W(L) -> W(L)
+
+x\in W(L) -> convert_to(G,w^{-1}xw) in W(G)
 }
 set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+      let ()=prints("INDUCING Wct_L:", Wct_L.root_datum, new_line,"Lprime:", L_prime, new_line, "Wct_G: ",Wct_G.root_datum) in
+   let rd=Wct_G.root_datum then
+   rd_L=Wct_L.root_datum then
+   ()=prints("induce_character: ");
+   prints("rd=",rd, new_line, "rd_L=", rd_L) then
+   w=matrix(Levi_witness(rd,L_prime,rd_L)) then
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+set induce_character_plus (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,WeylElt w,[int] pi_L) =
+      [int]:
+      let ()=prints("INDUCING Wct_L:", Wct_L.root_datum, new_line,"Lprime:", L_prime, new_line, "Wct_G: ",Wct_G.root_datum) in
+   let rd=Wct_G.root_datum then
+   rd_L=Wct_L.root_datum then
+   ()=prints("induce_character: ");
+   prints("rd=",rd, new_line, "rd_L=", rd_L) then
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
       [int]:
    let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
    ()=assert(valid,"root data are not related by a permutation") then
    f(WeylElt w)=WeylElt: convert_to(Wct_G.root_datum,permute(M,w,L_prime)) in
    induce_character(Wct_L,Wct_G,f,pi_L)
+}
 
 {for convenience}
 set induce_character (CharacterTable ct_L,RootDatum L_prime, CharacterTable ct_G,[int] pi_L) =
