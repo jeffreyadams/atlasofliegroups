@@ -50,7 +50,8 @@ set down(K_Type mu) = ParamPol:
    then result=zeroPol
      in for avee@j in poscoroots(rd)
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R =  to_ht(HT-1)(standardize(standardize(parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
                    in for m in monomials(R)
 	              do if find(q,branch_std(m,HT)) then result+:=m
                          fi
@@ -96,6 +97,24 @@ then R = S- to_ht(HT)(S)
  in if (Lambda*avee >= 0 and not(is_compact(j,x))) then R
  else zero fi
 od od
+
+set up_new(K_Type mu)=ParamPol:
+   let ktf=K_type_formula(mu)
+   then result=null_module(real_form(mu))
+   in for (c,p) in %ktf
+       do if int_part(c)<0 then result+:=p fi
+       od; result
+
+set up_new_plus(K_Type mu)=ParamPol:
+   let NM=null_module(real_form(mu)),start=up_new(mu)
+   then result=NM
+   in while start!=NM do let p=monomials(start)[0]
+                         in for q in monomials(start)
+			    do if p!=q and find(q,K_type_formula(p))
+			       then start-:=q
+			       fi
+			    od; start-:=p; result+:=p
+		      od; result
 
 set rec_fun up_cone(K_Type mu, int bound) = K_Type_Pol:
 if to_ht(bound)(up(mu)) = 0*mu then 0*mu
