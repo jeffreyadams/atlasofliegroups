@@ -26,6 +26,9 @@ set standardize(K_Type_Pol P) = K_Type_Pol:
 
 set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 
+set find(Param p,ParamPol P)=bool:
+   let list=monomials(P) in any(for q in list do p=q od)
+
 {down assumes mu = (x',lambda') is standard and nonzero but perhaps
 not normal. Moves one (possibly non-simple) step down in the partial
 order.}
@@ -142,9 +145,6 @@ print_branch_?_long}
 for j:#all do prints(new_line,j,"  ",height(all[j]),"  ",all[j]*0);
 print_K_types(down_cone(K_type(all[j]*0)), KGB(G,3))  od
 }
-
-set find(Param p,ParamPol P)=bool:
-   let list=monomials(P) in any(for q in list do p=q od)
 
 set test_down(K_Type mu)=void:
    let h=height(parameter(mu)),q=parameter(mu)
