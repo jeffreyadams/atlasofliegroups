@@ -29,6 +29,13 @@ set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 set find(Param p,ParamPol P)=bool:
    let list=monomials(P) in any(for q in list do p=q od)
 
+set L_packet(K_Type (x,lam))=ParamPol:
+   let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam,x)
+   then kgbs=for y in KGB(L) do embed_KGB(y,G) od
+   then result=null_module(G)
+   in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
+                     od; result
+
 {down assumes mu = (x',lambda') is standard and nonzero but perhaps
 not normal. Moves one (possibly non-simple) step down in the partial
 order.}
@@ -45,7 +52,7 @@ lambda-posroots(rd)[j], zeronu))*0))
  in if (Lambda*avee > 0 and not(is_compact(j,x)))
      then R else zero fi od od}
 
-set down(K_Type mu) = ParamPol:
+set down_old(K_Type mu) = ParamPol:
    let q=parameter(mu), Q=LKT(parameter(mu))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
@@ -62,6 +69,13 @@ set down(K_Type mu) = ParamPol:
 	 fi od;
    result
 
+set down(ParamPol P)=ParamPol:
+   let G=real_form(P), list=##for p in monomials(P) do LKTs(p) od
+   then result=null_module(G)
+   in for mu in list do result+:=down_old(mu)
+                     od; result
+
+set down(K_Type mu)=down(L_packet(mu))
 
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
@@ -111,7 +125,7 @@ set up_new(K_Type mu)=ParamPol:
 set up_new_plus(K_Type mu)=ParamPol:
    let NM=null_module(real_form(mu)),start=up_new(mu)
    then result=NM
-   in while start!=NM do let p=monomials(start)[0]
+   in while start!=NM do let p=first_param(start)
                          in for q in monomials(start)
 			    do if p!=q and find(q,K_type_formula(p))
 			       then start-:=q
