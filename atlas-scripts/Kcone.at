@@ -40,21 +40,21 @@ set R_packet(K_Type (x,lam))=ParamPol:
    in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
                      od; result
 
-{down assumes mu = (x',lambda') is standard and nonzero but perhaps
-not normal. Moves one (possibly non-simple) step down in the partial
-order.}
-{case avee noncompact imaginary needs an explicit Cayley??}
+set pre_down(K_Type mu) = ParamPol:
+   let q=parameter(mu), Q=LKT(parameter(mu))
+   then HT=height(q), lambda =Q.lambda
+   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=zeroPol
+     in for avee@j in poscoroots(rd)
+        do if (Lambda*avee > 0 and not( is_compact(j,x)))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+                   in result+:=R
+	   fi
+	od; result
 
-{set down(K_Type mu) = K_Type_Pol:
-let q=parameter(mu), Q=LKTs(parameter(mu)) then HT=height(q), lambda =
-Q[0].lambda then Lambda = lambda + (Q[0].x.involution)*lambda,
-rd=mu.root_datum, zeroPol = null_module(q.real_form),
-zero = 0*mu, zeronu=0*lambda in
-zero+ ##for p in Q do let x=p.x  in for avee@j in
-poscoroots(rd) do let R =  to_ht(HT-1)(standardize(standardize(parameter(x,
-lambda-posroots(rd)[j], zeronu))*0))
- in if (Lambda*avee > 0 and not(is_compact(j,x)))
-     then R else zero fi od od}
+set pre_down(Param p)=pre_down(LKTs(p)[0])
 
 set down_old(K_Type mu) = ParamPol:
    let q=parameter(mu), Q=LKT(parameter(mu))
@@ -73,13 +73,29 @@ set down_old(K_Type mu) = ParamPol:
 	 fi od;
    result
 
-set down(ParamPol P)=ParamPol:
+
+set down_alt(ParamPol P)=ParamPol:
    let G=real_form(P), list=##for p in monomials(P) do LKTs(p) od
    then result=null_module(G)
-   in for mu in list do result+:=down_old(mu)
+   in for mu in list do result+:=pre_down(mu)
                      od; result
 
-set down(K_Type mu)=down(R_packet(mu))
+set down(ParamPol P)=ParamPol:
+   let G=real_form(P), list=monomials(P)
+   then HT=height(list[0]), result=null_module(G)
+   in for p in list
+       do for m in monomials(pre_down(p))
+          do if any(for r in list do find(r,branch_std(m,HT)) od)
+	     then result+:=m
+	     fi
+	  od
+	od; result
+
+set down_alt(K_Type mu)=prints("Height of mu= ",height(parameter(mu)));
+   down_alt(R_packet(mu))
+
+set down(K_Type mu)=prints("Height of mu= ",height(parameter(mu)));
+   down(R_packet(mu))
 
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
