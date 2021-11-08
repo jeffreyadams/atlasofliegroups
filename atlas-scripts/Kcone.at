@@ -29,9 +29,13 @@ set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 set find(Param p,ParamPol P)=bool:
    let list=monomials(P) in any(for q in list do p=q od)
 
-set L_packet(K_Type (x,lam))=ParamPol:
-   let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam,x)
-   then kgbs=for y in KGB(L) do embed_KGB(y,G) od
+set R_packet(K_Type (x,lam))=ParamPol:
+   let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam+x.involution*lam,x)
+   then kgbs=##for y in KGB(L)
+               do let xprime = embed_KGB(y,G)
+                 in if xprime.involution = x.involution then [xprime] else []
+	            fi
+	       od
    then result=null_module(G)
    in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
                      od; result
@@ -75,7 +79,7 @@ set down(ParamPol P)=ParamPol:
    in for mu in list do result+:=down_old(mu)
                      od; result
 
-set down(K_Type mu)=down(L_packet(mu))
+set down(K_Type mu)=down(R_packet(mu))
 
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
