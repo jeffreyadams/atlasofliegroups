@@ -6,6 +6,9 @@
   is not yet taken into account here; it will need a different alcove notion
 }
 
+{ The key function "promote_in_alcove is broken; see the note at its
+definition }
+
 <basic.at
 <sort.at
 
@@ -156,6 +159,15 @@ set correction(RootDatum rd, [int,bool,int] walls, [rat] fracs) = ratvec:
    then (A_1,d) = invert(A) { a |A_inv[i]/d| dual base of coroots }
 in sum(rd.rank,for f@i in fracs[:k]##fracs[k+1:] do (A_1[i]/d)*(coefs[i]-f) od)
 )
+
+{ running this on
+
+p = parameter(KGB(F4_s,154),[2,4,-5,1]/1,[1,4,-5,1]/6)
+
+leads to the runtime error "correction leaves alcove"
+
+So there is some sort of bug; but in many simpler examples, the code
+seems to work fine. }
 
 set promote_in_alcove(Param p) = Param:
 (  let rd=p.real_form.root_datum, (x,lr,gamma) = %p
