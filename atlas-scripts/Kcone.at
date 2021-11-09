@@ -29,6 +29,7 @@ set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 set find(Param p,ParamPol P)=bool:
    let list=monomials(P) in any(for q in list do p=q od)
 
+{all K_types that occur with mu as LKTs in some standard module}
 set R_packet(K_Type (x,lam))=ParamPol:
    let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam+x.involution*lam,x)
    then kgbs=##for y in KGB(L)
@@ -40,6 +41,7 @@ set R_packet(K_Type (x,lam))=ParamPol:
    in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
                      od; result
 
+{Move one step down from mu in the partial order; may result in extra terms}
 set pre_down(K_Type mu) = ParamPol:
    let q=parameter(mu), Q=LKT(parameter(mu))
    then HT=height(q), lambda =Q.lambda
@@ -73,13 +75,16 @@ set down_old(K_Type mu) = ParamPol:
 	 fi od;
    result
 
-
+{The function down@ParamPol (below) without test for removal}
 set down_alt(ParamPol P)=ParamPol:
    let G=real_form(P), list=##for p in monomials(P) do LKTs(p) od
    then result=null_module(G)
    in for mu in list do result+:=pre_down(mu)
                      od; result
 
+{Move down one step in the partial order for a list of K-types, assumed to
+be in one R-packet; remove any K-types whose standard does not contain any K-type
+from the list}
 set down(ParamPol P)=ParamPol:
    let G=real_form(P), list=monomials(P)
    then HT=height(list[0]), result=null_module(G)
@@ -99,13 +104,12 @@ set down(K_Type mu)=prints("Height of mu= ",height(parameter(mu)));
 
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
-not(down(mu) = 0*mu)
+    down(mu) = 0*mu
 
 set rec_fun down_cone(K_Type mu) = K_Type_Pol:
-let result = 0*mu in
-{ if bottom(mu) then result+:=0*mu else }
-result +:= down(mu) + for
-c@p in down(mu) do down_cone(K_type(p)) od {fi}
+   let result = 0*mu
+   in result +:= down(mu) + for c@p in down(mu) do down_cone(K_type(p))
+                                               od
 
 {up assumes mu = (x',lambda') is standard but perhaps not normal, and
 nonzero. Moves one (possibly non-simple) step up in the partial
@@ -118,7 +122,7 @@ HOPE that the formula
 lambda' = lambda-(lambda*avee)*posroots(rd)[j]\2
 then gives lambda'*avee = 1.
 }
-set up(K_Type mu) = K_Type_Pol:
+set up_old(K_Type mu) = K_Type_Pol:
 let q=parameter(mu), Q=LKTs(parameter(mu)) then HT=height(q), lambda =
 Q[0].lambda then Lambda = lambda + (Q[0].x.involution)*lambda,
 rd=mu.root_datum, zeroPol = null_module(q.real_form),
@@ -135,15 +139,19 @@ then R = S- to_ht(HT)(S)
  else zero fi
 od od
 
-set up_new(K_Type mu)=ParamPol:
-   let ktf=K_type_formula(mu)
+{Move one step up in the partial order of K-types}
+set up(K_Type mu)=ParamPol:
+   let list=monomials(R_packet(mu))
    then result=null_module(real_form(mu))
-   in for (c,p) in %ktf
-       do if int_part(c)<0 then result+:=p fi
-       od; result
+   in for m in list do for (c,p) in %K_type_formula(m)
+                        do if int_part(c)<0 then result+:=p fi
+                        od
+		    od; result
 
-set up_new_plus(K_Type mu)=ParamPol:
-   let NM=null_module(real_form(mu)),start=up_new(mu)
+{As previous function, but remove some terms that are further
+up in the partial order}
+set up_plus(K_Type mu)=ParamPol:
+   let NM=null_module(real_form(mu)),start=up(mu)
    then result=NM
    in while start!=NM do let p=first_param(start)
                          in for q in monomials(start)
@@ -154,10 +162,11 @@ set up_new_plus(K_Type mu)=ParamPol:
 		      od; result
 
 set rec_fun up_cone(K_Type mu, int bound) = K_Type_Pol:
-if to_ht(bound)(up(mu)) = 0*mu then 0*mu
-else let result = 0*mu in
-result +:= to_ht(bound)(up(mu)) + for
-c@p in up(mu) do up_cone(K_type(p),bound) od fi
+     if to_ht(bound)(up(mu)) = 0*mu then 0*mu
+      else let result = 0*mu
+            in result +:= to_ht(bound)(up(mu))
+	         + for c@p in up(mu) do up_cone(K_type(p),bound)
+		                     od fi
 
 {
 testing:
@@ -186,6 +195,12 @@ set test_down(K_Type mu)=void:
    for p in monomials(down(mu))
       do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
 
+set test_down_alt(K_Type mu)=void:
+   let h=height(parameter(mu)),q=parameter(mu)
+   in prints("height of mu: ",h);
+   for p in monomials(down_alt(mu))
+      do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
+
 set test_down_cone(K_Type mu)=void:
    let h=height(parameter(mu)),q=parameter(mu)
    in prints("height of mu: ",h);
@@ -204,3 +219,14 @@ set test_up_cone(K_Type mu,int n)=void:
    for p in monomials(up_cone(mu,n))
       do prints(p," ",height(p)," ",find(p,branch_std(q,height(p)))) od
 
+{Test functions}
+set rec_fun down_cone_alt(K_Type mu) = K_Type_Pol:
+   let result = 0*mu
+     in result +:= down_alt(mu) + for c@p in down_alt(mu) do down_cone_alt(K_type(p))
+                                                       od
+
+set test_down_cone_alt(K_Type mu)=void:
+   let h=height(parameter(mu)),q=parameter(mu)
+   in prints("height of mu: ",h);
+   for p in monomials(down_cone_alt(mu))
+   do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
