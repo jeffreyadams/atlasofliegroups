@@ -169,6 +169,29 @@ set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_
    f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
    induce_character(Wct_L,Wct_G,f,pi_L)
 
+{I think this is misguided: one should always *specify* the root permutation in question}
+set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
+   ()=assert(valid,"root data are not related by a permutation") then
+   f(WeylElt w)=WeylElt: convert_to(Wct_G.root_datum,permute(M,w,L_prime)) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{P is a matrix taking simple roots of L=Wct_L.root_datum to the simple roots
+ of a subgroup of G=Wct_G.root_datum
+Note that P is not necessarily the matrix of an element of G
+example:
+L,M are Levi subgroups of G
+L is G-conjugate to a Levi subgroup L' of M
+we are given the character table of L, and want to induce W(L') -> W(M).
+In this case P is the matrix of a Weyl group element of G (but not necessarily M)
+}
+
+set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L, mat P) =
+let f(WeylElt w)=WeylElt: W_elt(Wct_G.root_datum,inverse(P)*w.matrix*P) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{
 set induce_character_plus (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,WeylElt w,[int] pi_L) =
       [int]:
       let ()=prints("INDUCING Wct_L:", Wct_L.root_datum, new_line,"Lprime:", L_prime, new_line, "Wct_G: ",Wct_G.root_datum) in
@@ -176,9 +199,9 @@ set induce_character_plus (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable
    rd_L=Wct_L.root_datum then
    ()=prints("induce_character: ");
    prints("rd=",rd, new_line, "rd_L=", rd_L) then
-   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in
    induce_character(Wct_L,Wct_G,f,pi_L)
-
+}
 {set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
       [int]:
    let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
@@ -188,9 +211,8 @@ set induce_character_plus (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable
 }
 
 {for convenience}
-set induce_character (CharacterTable ct_L,RootDatum L_prime, CharacterTable ct_G,[int] pi_L) =
-      [int]:induce_character(ct_L.class_table,L_prime,ct_G.class_table,pi_L)
-
+set induce_character (CharacterTable ct_L, CharacterTable ct_G,[int] pi_L, mat P) =
+      [int]:induce_character(ct_L.class_table,ct_G.class_table,pi_L, P)
 
 set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
    let Wct_L =

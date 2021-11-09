@@ -6,6 +6,35 @@ reference; Geck, Some Applications of Chevie to the theory of algebraic groups}
 
 set gg_verbose=false
 
+
+{given G and Levi subgroups L,M of G
+ satisfying: L is G-conjugate to a Levi subgroup of M
+ find the Levi subgroup L' of M which is G-conjugate to L
+application:
+G, tables=[SpringerTable] for Levi subgroups of G
+L,G in list of Levi subgroups of G
+have the Springer tables tables[i] for M, tables[j] for L
+Can induce from W(L) to W(G)
+Want to induce from [conjugate of] W(L) to W(M)
+need to find L'\subset M which is G-conjugate to L}
+
+set equal_subgroups(RootDatum L,RootDatum M)=bool:
+if is_abelian(L)  and is_abelian (M) then
+ L.rank=M.rank
+elif is_abelian(L) or is_abelian(M) then
+ false
+else sort(L.simple_roots)=sort(M.simple_roots)
+fi
+
+set find_Levi(RootDatum G,RootDatum M,RootDatum L)=(RootDatum,WeylElt):
+let L_std= standard_Levi(G,L) then
+levis_M=Levi_subgroups(M) then
+index=first(for Lprime in Levi_subgroups(M) do standard_Levi(G,Lprime)=L_std od) then
+levi_M=levis_M[index] in
+(levi_M,standard_Levi_witness(G,levi_M))
+
+
+
 {representatives of conjugacy classes of reflections:
  one simple reflection of each root length}
 set conjugacy_classes_reflections_simple(RootDatum rd)=[WeylElt]:
@@ -55,15 +84,15 @@ for simple_roots in max_standard_Levi_conjugacy_representatives(rd)
 do complex_Levi(rd,simple_roots) od
 
 {find character table for given G in given list}
-set lookup_character_table(RootDatum G,[CharacterTable] tables)=(int,ratmat):
+set lookup_character_table_old(RootDatum G,[CharacterTable] tables)=(int,ratmat):
 let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
 in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
 
-{find character table for given G in given list}
-set lookup_springer_table(RootDatum G,[SpringerTable] tables)=(int,ratmat):
-let index=first(for t in tables do is_locally_isomorphic(G,t.root_datum) od)
-in (index,local_isomorphism(G.derived,tables[index].root_datum.derived))
-
+set lookup_character_table(RootDatum M,[CharacterTable] tables)=(int,WeylElt):
+let G=tables[0].root_datum then
+(M_canonical,w)=standard_Levi_and_witness(G,M) then
+index=first(for t@i in tables do t.root_datum=M_canonical od) in
+(index,w)
 
 
 {to compute a'_E (of Geck), denoted a_prime here, you need to know
@@ -80,10 +109,11 @@ let ct_G=tables[table_index] then
   max(
    ##(##for M@k in  max_Levi_subgroups(G) do
     let ()=if gg_verbose then prints("k=", k, " M=",M) fi in
-    let (index_M,P_M)=lookup_character_table(M,tables) then
+    let (index_M,w)=lookup_character_table(M,tables) then
     ct_M=tables[index_M] in
     for char_M@t in  ct_M.characters do
-     let ind_0=induce_character(ct_M,M,ct_G,char_M) then
+{     let ind_0=induce_character(ct_M,M,ct_G,char_M) then}
+     let ind_0=induce_character(ct_M,ct_G,char_M,w.matrix) then
      ind=ct_G.decompose(ind_0) then
      ()=if gg_verbose then prints("k: ", k, "t=", t, "  ind_0: ", ind_0) fi in
      if ind[character_index]>0 then [ct_M.generic_degrees[t]] else [] fi
