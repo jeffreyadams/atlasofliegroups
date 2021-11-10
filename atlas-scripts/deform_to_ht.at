@@ -1,0 +1,196 @@
+<basic.at
+<polynomial.at { for type |i_poly| and function |eval| }
+<convert_c_form.at { final part of unitarity computation }
+<alcove.at { new code for simplifying |nu| in parameters }
+<to_ht.at {to truncate ParamPols}
+
+{ this file defines commands that are equivalent to the |full_deform| command
+  that is now built-in; it therefore serves mainly documentation (and
+  historic) purposes, and should not be required for any other scripts. In
+  fact we added some initial commands that mimick the methods |KL_sum_at_s|
+  and |deformation_terms| that were already originally implemented directly in
+  the library, and used through the |deform| atlas command, in order to show
+  after the fact how this could have been done as an atlas script
+}
+
+set deformation_terms (Param p) = ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    then l = vec: for q in block do q.length od, n=#block
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    in
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    )
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(=r,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od
+  fi
+
+set deform_to_ht(int N) = (Param->ParamPol):(Param p):
+if height(p) > N then 0*p
+else to_ht(N)(deform(p)) fi
+
+{ the original version of this file started here }
+
+set has_nu0 (Param p) = bool: =nu(p)
+set d_verbose=false
+
+{ if at reducibility point stay there, otherwise go to next lower one }
+set weak_lower (Param p) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+  then lim = #rp
+  in param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
+
+{ go to next reducibility point (move even if at reducibility point) }
+set lower (Param p) = Param:
+  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+  then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
+  in  param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
+
+set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
+  (lower(p),deform(p)) { here |deform| may be replaced by |deformation_terms| }
+
+set recursive_deform_to_ht (int N) = (Param->ParamPol):(Param p):
+if height(p) > N then 0*p else 
+  if d_verbose then prints("recursive_deform_to_ht with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)) in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def_to_ht (Split sc,Param p, int N) ParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      { p := promote_in_alcove(p); } {drop because of bug}
+      prints("full_def with: sc=", sc, ", p=", p, p.infinitesimal_character);
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=ParamPol: sc*(p.at_nu_0) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=deform(p_def) { bypass built-in |deform| here }
+        in
+	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+        at_nu0 +:= full_def_to_ht(sc*k,q,N) { gather harvest from those deformations }
+      od
+    ; prints("full_def complete, result:",at_nu0)
+    ; at_nu0
+    end
+  else rec_fun full_def_to_ht (Split sc,Param p, int N) ParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+    if height(p) > N then 0*p else
+      { p := promote_in_alcove(p); } {drop because of bug}
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=ParamPol: sc*(p.at_nu_0) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:=deform_to_ht(N)(p*factor) od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def_to_ht(sc*k,q,N) od
+    ; at_nu0
+    fi
+    end
+  fi { apply that recursive function to the initial argument: } (1,p,N)
+fi
+
+{ code that follows is adapted from hermitian.at to do unitarity computation
+  in terms of the above functions rather than built-ins
+}
+
+{ already in to_ht.at }
+{ set oriented_KL_sum_to_ht (int N) = (Param->ParamPol):(Param p):
+   let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
+   for c@q in KL_sum_at_s_to_ht(N)(p) do
+   (c*orientation_nr_term(ori_nr_p,q),q) od }
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
+set c_form_irreducible_rpt_to_ht (int N) = (Param->ParamPol):(Param p):
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; recursive_deform_to_ht(N)(p)
+  in prints("Fully deforming ",nP," terms to height ",N); map(f, P)
+
+set c_form_irreducible_to_ht (int N) = (Param->ParamPol):(Param p):
+ map(recursive_deform_to_ht(N), oriented_KL_sum_to_ht(N)(p) )
+
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions (Param p) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then fixed_terms=G.null_module, unfixed_terms=G.null_module
+  in
+  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
+  do if twist(q)=q
+     then fixed_terms+:=(half(c)*orientation_nr_term(ori_nr_p,q),q)
+     else unfixed_terms+:=(c*orientation_nr_term(ori_nr_p,q),q)
+     fi
+  od; (fixed_terms,unfixed_terms)
+
+{ for now we do not have any script for the twisted deformation; use built-in }
+set twisted_c_form_irreducible_to_ht (int N)= (Param->ParamPol):(Param p):
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  , count=0
+  then nf=#fixed
+  then
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform(p)
+  in prints("Fully twisted deforming ",nf, " terms to height ",N,
+  " terms (",#unfixed," unfixed).")
+; map(f,fixed)+half(unfixed.at_nu_0)
+)
+
+{.whether J(p) admits an invariant Hermitian form.}
+set is_hermitian (Param p) = bool: equivalent(twist(p),p)
+
+set check_hermitian (Param p) = void:
+  assert(p.is_hermitian
+        ,"Irreducible module does not admit any invariant Hermitian form"
+	)
+set hermitian_form_irreducible_to_ht (Param p,int N) = ParamPol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_to_ht(N)(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian(p); twisted_c_form_irreducible_to_ht(N)(p)
+  
+  fi.convert_cform_hermitian
+
+{ compute Hermitian form on p, and report if it is unitary }
+set is_unitary_to_ht (Param p, int N) = bool:
+  p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
