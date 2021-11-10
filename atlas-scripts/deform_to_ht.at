@@ -166,12 +166,19 @@ set twisted_c_form_irreducible_contributions (Param p) =
 set twisted_c_form_irreducible_to_ht (int N)= (Param->ParamPol):(Param p):
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in map(twisted_full_deform_to_ht(N),fixed)+half(unfixed.at_nu_0)
+)
+
+{ for now we do not have any script for the twisted deformation; use built-in }
+set twisted_c_form_irreducible_rpt_to_ht (int N)= (Param->ParamPol):(Param p):
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   , count=0
   then nf=#fixed
   then
     f(Param p) = if count<11 or count%10=0 or nf-count<=10
                  then prints("Term ",count,": ",p)
-		 fi; count+:=1; twisted_full_deform(p)
+		 fi; count+:=1; twisted_full_deform_to_ht(N)(p)
   in prints("Fully twisted deforming ",nf, " terms to height ",N,
   " terms (",#unfixed," unfixed).")
 ; map(f,fixed)+half(unfixed.at_nu_0)
@@ -188,9 +195,18 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = ParamPol:
   if is_equal_rank(real_form(p))
   then c_form_irreducible_to_ht(N)(p) { not twisted, in equal rank case this is faster }
   else check_hermitian(p); twisted_c_form_irreducible_to_ht(N)(p)
+  fi.convert_cform_hermitian
+
+set hermitian_form_irreducible_rpt_to_ht (Param p,int N) = ParamPol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible_rpt_to_ht(N)(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian(p); twisted_c_form_irreducible_rpt_to_ht(N)(p)
   
   fi.convert_cform_hermitian
 
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary_to_ht (Param p, int N) = bool:
   p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+
+set is_unitary_rpt_to_ht (Param p, int N) = bool:
+  p.is_hermitian and hermitian_form_irreducible_rpt_to_ht(p,N).is_pure
