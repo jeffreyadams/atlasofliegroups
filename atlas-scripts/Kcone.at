@@ -24,8 +24,6 @@ standardize(parameter(mu)*0)
 set standardize(K_Type_Pol P) = K_Type_Pol:
 0*P + for c@p in P do standardize(p*0) od
 
-set height(K_Type mu)=height(parameter(mu))
-
 set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 
 set find(Param p,ParamPol P)=bool:
@@ -43,8 +41,6 @@ set R_packet(K_Type (x,lam))=ParamPol:
    then result=null_module(G)
    in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
                      od; result
-
-set R_packet(Param p)=R_packet(LKTs(p)[0])
 
 {Move one step down from mu in the partial order; may result in extra terms}
 set pre_down(K_Type mu) = ParamPol:
@@ -81,15 +77,19 @@ set down_old(K_Type mu) = ParamPol:
 	 fi od;
    result
 
+
 {The function down@ParamPol (below) without test for removal}
+{This gives incorrectly too many terms in G=Sp(4,R)
+      down_alt((KGB(G,6),[2,1]/1))
+Answer includes (KGB(Sp(G,3),[1,0]) which is wrong.
+Comes from subtracting root 0 = [1,-1] from lambda, giving nonfinal
+parameter (KGB(G,6),[1,2],[0,0]), which standardizes to sum of TWO
+limits of discrete series: (G, 3 or 1, [1,0], [0,0]). The "1" is
+right, the "3" is wrong; don't understand why.}
+
 set down_alt(ParamPol P)=ParamPol:
 let result=null_module(P.real_form) in
 for @p in P do result+:=pre_down(p) od; result
-
-{ let G=real_form(P), list=##for p in monomials(P) do LKTs(p) od
-   then result=null_module(G)
-   in for mu in list do result+:=pre_down(mu)
-                     od; result}
 
 {Move down one step in the partial order for a list of K-types, assumed to
 be in one R-packet; remove any K-types whose K_type_formula does not
@@ -113,7 +113,7 @@ set down_alt(K_Type mu)= { prints("Height of mu=
 set down(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
    down(R_packet(mu))
 
-set down(Param p)=down(R_packet(p))
+set down(Param p)=down(R_packet(first_K_type(standardize(p*0))))
 
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
@@ -165,15 +165,13 @@ od od
 
 {Move one step up in the partial order of K-types}
 set up(K_Type mu)=ParamPol:
-   let list=monomials(R_packet(mu))
-   then result=null_module(real_form(mu))
-   in for m in list do for (c,p) in %K_type_formula(m)
-                        do if int_part(c)<0 then result+:=p fi
-                        od
-		    od; result
+null_module(mu.real_form) + 
+  for @p in R_packet(mu) do null_module(mu.real_form) + ##for c@m in
+  K_type_formula(p) do if split_as_int(c)<0 then [m] else [] fi od od
 
 {As previous function, but remove some terms that are further
 up in the partial order}
+{DV: this looks wrong?? haven't thought carefully}
 set up_plus(K_Type mu)=ParamPol:
    let NM=null_module(real_form(mu)),start=up(mu)
    then result=NM
@@ -184,13 +182,27 @@ set up_plus(K_Type mu)=ParamPol:
 			       fi
 			    od; start-:=p; result+:=p
 		      od; result
+{DV: starting to try to fix, not yet succeeding 
+set up_plus(K_Type mu)=ParamPol:
+   let NM=null_module(real_form(mu)),start=up(mu)
+   then result=NM
+   in while start!=NM do let p=first_param(start)
+                         in for c@q in start
+			    do if split_as_int(K_type_formula(p)[q]) <
+			    0 then 
+			       then start-:=(c,q)
+			       fi
+			    od; start-:=p; result+:=p
+		      od; result
+}
 
+
+{have not incorporate MvL suggestions about avoiding recalculation of
+"up" with something "seen."}
 set rec_fun up_cone(K_Type mu, int bound) = K_Type_Pol:
-     if to_ht(bound)(up(mu)) = 0*mu then 0*mu
-      else let result = 0*mu
-            in result +:= to_ht(bound)(up(mu))
-	         + for c@p in up(mu) do up_cone(K_type(p),bound)
-		                     od fi
+0*mu + for @tauprime in R_packet(mu) do
+ let muprime = K_type(tauprime) then start = to_ht(bound)(up(muprime)) in
+ start + for @p in start do up_cone(K_type(p),bound) od od
 
 {
 testing:

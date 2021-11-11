@@ -18,9 +18,14 @@ left-:=(first_term(left)) od; result}
 let result=0*P, Mon = monomials(P), i=0 in
 while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result}
 
-set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+{set to_htC(int N) = (ParamPol->ParamPol):(ParamPol P):
 let Mon = monomials(P), i=0 in 
-0*P + while (i < #Mon and height(Mon[i])<N+1) do (P[Mon[i]],Mon[i]) next i+:=1 od
+0*P + while (i < #Mon and height(Mon[i])<N+1) do (P[Mon[i]],Mon[i]) next i+:=1 od}
+
+{per Marc 11/11/21! MUCH faster}
+set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+null_module(P.real_form) + for c@p in P do if (height(p) <= N) then
+(c,p) else break fi od
 
 set full_deform_to_ht(Param p, int N) = to_ht(N)(full_deform(p))
 
