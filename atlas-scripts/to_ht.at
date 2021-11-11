@@ -8,10 +8,15 @@
 {following is better in is_unitary_to_ht(E6_q.trivial,24):
 took 60 seconds versus 80 for above}
 
-set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+{set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
 let result=0*P,zero=0*P,left=P in
 while (not(left=zero) and not(height(first_param(left))> N)) do result+:=(first_term(left));
-left-:=(first_term(left)) od; result
+left-:=(first_term(left)) od; result}
+
+{per Marc 11/11/21! MUCH faster}
+set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
+null_module(P.real_form) + for c@p in P do if (height(p) <= N) then
+(c,p) else break fi od
 
 set full_deform_to_ht(Param p, int N) = to_ht(N)(full_deform(p))
 
