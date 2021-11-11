@@ -360,16 +360,20 @@ set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([[int]] alphabets) = mat:
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
-     else final-:=1; let limit=limits[final] in
+     else final-:=1; let alphabet=alphabets[final] in
           for prefix in generate(final)
-          do for i:limit do prefix#i od
+          do for letter in alphabet do prefix#letter od
 	  od.##
      fi
-  , size=#limits
+  , size=#alphabets
   in size # generate(size) { ensure column size |size|, even for empty set }
+
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+   for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
@@ -864,6 +868,8 @@ set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
 
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
+  indices: [-n,...,0,1,...,n-1] where n is the number of positive roots
+  simple roots are numbered [0,1,...,rank-1]
   In particular any subset of simple roots taken in any order will be valid. }
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let r = rd.rank in

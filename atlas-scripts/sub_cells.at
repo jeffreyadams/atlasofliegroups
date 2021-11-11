@@ -139,9 +139,11 @@ set intersection([int] A,[int] B)=[int]:
 }
 
 set sub_digraph(WGraph graph,[int] S)=WGraph:
-(sub_datum(graph.root_datum,S).derived
+let sub_datum=sub_datum(graph.root_datum,S) then
+root_renumbering=(int->int):(int i):find(sub_datum.simple_roots,graph.root_datum.simple_roots[i]) in
+(sub_datum
 ,for (tau,edges) in graph.nodes
- do ( intersection(S,tau)
+ do ( for j in intersection(S,tau) do root_renumbering(j) od
     , for (target,mult) in edges
       do let tau_target=tau(graph.nodes[target]) in
          if not is_subset(intersection(S,tau),tau_target)
@@ -157,11 +159,13 @@ underlying "real" character table. But it isn't good enough: if
 ct=GL(3,R).character_table and C is a left cell from GL(3,C), then ct
 cannot see C: the root datum of C is SL(3), and that for ct is GL(3). }
 set sub_graph(WGraph graph,[int] S)=WGraph:
-(sub_datum(graph.root_datum,S).derived
+let sub_datum=sub_datum(graph.root_datum,S) then
+root_renumbering=(int->int):(int i):find(sub_datum.simple_roots,graph.root_datum.simple_roots[i]) in
+(sub_datum
 ,for (tau,edges) in graph.nodes
- do (intersection(S,tau)
-    ,  for (target,mult) in edges
-       do let tau_target=tau(graph.nodes[target]) in
+ do (for j in intersection(S,tau) do root_renumbering(j) od
+    ,  for (target,mult) in edges do
+       let tau_target=tau(graph.nodes[target]) in
 	  if  not is_subset(intersection(S,tau),tau_target)
 	   or not is_subset(intersection(S,tau_target),tau)
 	  then [(target,mult)] else [] fi
@@ -221,9 +225,49 @@ set left_cells(RealForm G, WCell cell) = [WCell]:
 set right_cells(RealForm G,WCell cell)=[WCell]:
 sub_cells(cell,right_root_indices(G))
 
+{dangerous bend
+p is for a complex group
+p -> p.integrality_datum is also complex
+left_cell_of(p) has root_datum a "left" copy of p.integrality_datum
+on the other hand we're going to be inducing a character of the Weyl
+ group from this root datum to a "left" copy of p.root_datum
+in other words we need guarantee:
+
+** left_roots of p.integrality_datum is a subsystem of left_roots of p.real_form **
+
+[note: to be precise, left_roots is defined on a (complex) real form, not a root datum
+to define left_roots of p.integrality_datum (which we're NOT going to do) do this:
+inner_class(p.integrality_datum,p.x.involution).quasisplit_form]
+
+since taking a left copy isn't unique this might fail (see below for example)
+solution:
+compute p.integrality_datum
+choose the simple roots in this which occur in p.real_form.left_copy
+}
 set left_cell_of(Param p) = WCell:
-   let (vertex,cell)=vertex_and_W_cell(p)
-   then cells = left_cells(p.real_form,cell)
+   let (vertex,cell)=vertex_and_W_cell(p) then
+   left_integral_roots=
+   ##for v@i in p.integrality_datum.simple_roots do
+    let index=find(p.real_form.left_copy.roots,v) in
+     if index !=-1 then [i] else [] fi od
+   then
+   cells=sub_cells(cell,left_integral_roots)
+   then j = int:
+      let test = contains(vertex)
+      in first(#cells,(int i)bool: test(cells[i].labels))
+in cells[j]
+
+{this version failed in this example:
+set G=GL(5,C)
+set p=parameter(KGB(G,33),[1,0,0,-1,-2,2,2,0,-1,-1]/1,[13,11,6,14,1,-13,-1,-6,-11,-14]/8)
+associated_variety_ann_res_complex(p) fails, because
+inner_class(p.integrality_datum,p.x.involution).quasisplit_form.left_copy is
+not a sub-system of p.real_form.left_copy
+}
+set left_cell_of_old(Param p) = WCell:
+   let (vertex,cell)=vertex_and_W_cell(p) then
+   G_int=inner_class(p.integrality_datum,p.x.involution).quasisplit_form  then
+   cells = left_cells(G_int,cell)
    then j = int:
       let test = contains(vertex)
       in first(#cells,(int i)bool: test(cells[i].labels))

@@ -31,6 +31,76 @@ set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 ,([16, -16,0,-2,2,0,-2,2,-2,2,0,  0,  0,0,0,0,   0,  0,0,0,0,0,0,0,0]   ,5,0)
 ]
 
+
+{
+Representations (including Kondo names, entered by hand
+see Carter page 413
+i   dim  deg  gdeg  name
+0   1    0    0     phi(1,0)    chi(1,1)
+1   1    12   4     phi(1,12)''	chi(1,2)
+2   1    12   4     phi(1,12)'	chi(1,3
+3   1    24   24    phi(1,24)	chi(1,4)
+4   2    4    1     phi(2,4)''	chi(2,1)
+5   2    16   13    phi(2,16)'	chi(2,2)
+6   2    4    1     phi(2,4)'	chi(2,3)
+7   2    16   13    phi(2,16)''	chi(2,4)
+8   4    8    4     phi(4,8)	chi(4,1)
+9   9    2    2     phi(9,2)	chi(9,1)
+10  9    6    4     phi(9,6)''	chi(9,2)
+11  9    6    4     phi(9,6)'	chi(9,3)
+12  9    10   10    phi(9,10)	chi(9,4)
+13  6    6    4     phi(6,6)'	chi(6,1)
+14  6    6    4     phi(6,6)''	chi(6,2)
+15  12   4    4     phi(12,4)	chi(12,1)
+16  4    1    1     phi(4,1)	chi(4,2)
+17  4    7    4     phi(4,7)''	chi(4,3)
+18  4    7    4     phi(4,7)'	chi(4,4)
+19  4    13   13    phi(4,13)	chi(4,5)
+20  8    3    3     phi(8,3)''	chi(8,1)
+21  8    9    9     phi(8,9)'	chi(8,2)
+22  8    3    3     phi(8,3)'	chi(8,3)
+23  8    9    9     phi(8,9)''	chi(8,4)
+24  16   5    4     phi(16,5)	chi(16,1)
+}
+
+set F4_name_table=
+[("phi(1,0)","chi(1,1)"),
+("phi(1,12)''","chi(1,2)"),
+("phi(1,12)'","chi(1,3"),
+("phi(1,24)","chi(1,4)"),
+("phi(2,4)''","chi(2,1)"),
+("phi(2,16)'","chi(2,2)"),
+("phi(2,4)'","chi(2,3)"),
+("phi(2,16)''","chi(2,4)"),
+("phi(4,8)","chi(4,1)"),
+("phi(9,2)","chi(9,1)"),
+("phi(9,6)''","chi(9,2)"),
+("phi(9,6)'","chi(9,3)"),
+("phi(9,10)","chi(9,4)"),
+("phi(6,6)'","chi(6,1)"),
+("phi(6,6)''","chi(6,2)"),
+("phi(12,4)","chi(12,1)"),
+("phi(4,1)","chi(4,2)"),
+("phi(4,7)''","chi(4,3)"),
+("phi(4,7)'","chi(4,4)"),
+("phi(4,13)","chi(4,5)"),
+("phi(8,3)''","chi(8,1)"),
+("phi(8,9)'","chi(8,2)"),
+("phi(8,3)'","chi(8,3)"),
+("phi(8,9)''","chi(8,4)"),
+("phi(16,5)","chi(16,1)")]
+
+set F4_name(int dim, int degree, int n_primes) = string:   ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
+
+set F4_name_Kondo(int dim, int degree, int n_primes) = string:
+for (name,kondo_name)@i in F4_name_table do
+ if name=F4_name(dim,degree,n_primes) then return(kondo_name)   else "no" fi
+od; "no"
+
+set F4_full_name(int dim, int degree, int n_primes) = string:
+let short_name=F4_name(dim,degree,n_primes) in 
+short_name+ (12-#short_name)*" " + F4_name_Kondo(dim,degree,n_primes)
+
 set check_F4_degrees() = bool: { function that checks the above table degrees }
    let Wct = class_table_F(4)
 in for (chi,deg,) in character_table_F4_data
@@ -38,9 +108,6 @@ in for (chi,deg,) in character_table_F4_data
            ,(int k) bool: Wct.inner(chi,Wct.sym_power_refl(k)).>
 	   )=deg
    od.all
-
-set F4_name(int dim, int degree, int n_primes) = string:
-   ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
 
 set character_table_F(RootDatum rd) = CharacterTable:
    let Wct = class_table_F(rd)
@@ -50,7 +117,7 @@ set character_table_F(RootDatum rd) = CharacterTable:
       od
    , irreps = [classical_irrep,string,[int]]:
       for (line,degree,n_primes) in character_table_F4_data
-      do (null_irrep(),F4_name(line[0],degree,n_primes),line)
+      do (null_irrep(),F4_full_name(line[0],degree,n_primes),line)
       od
    in character_table(Wct,classes,irreps)
 

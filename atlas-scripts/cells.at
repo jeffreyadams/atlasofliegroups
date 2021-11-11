@@ -207,7 +207,7 @@ fi
 set parameters_given_AV_infinitesimal_character \
    ( SpringerTable st
    , ComplexNilpotent O
-   , [([Param],[WCell])] blocks_and_cells
+   , [ [Param],[WCell] ] blocks_and_cells
    , ratvec gamma
    ) = [int,int,Param]: {[(block number, cell number, parameter)]}
 (  let springer_O= int: st.springer(O) {index in |st.ct| of an irrep }
@@ -217,7 +217,7 @@ in if cells_verbose
    	      , "O=",O,new_line
 	      ,"Springer table:");
    show(st);
-   prints("bc:", #blocks_and_cells)
+   prints("blocks_and_cells:", blocks_and_cells)
    fi
 ;  for (block,cells)@i in blocks_and_cells
    do if cells_verbose
@@ -225,12 +225,12 @@ in if cells_verbose
       	   	 , "number of cells: ", #cells)
       fi
    ;  for cell@j in cells
-      do let survivors=[(int,int,Param)]:[]
+      do let survivors=[ int,int,Param ]:[]
       in
    {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
          if #cell< springer_dim
-  	 then if cells_verbose then prints("dim: ", #cell, " ", springer_dim) fi
-	 ;  [(int,int,Param)]:[]
+  	 then prints("dim: ", #cell, " ", springer_dim)
+	 ; []
  	 elif
 	    for p in parameters(block,cells[j])
 	    do if I_will_survive(p,gamma)
@@ -239,10 +239,10 @@ in if cells_verbose
     	       fi {I_will_survive}
    	    od {/##for p}
 	 ; {elif} =#survivors
-  	 then {don't bother checking cell representation} [(int,int,Param)]:[]
+  	 then {don't bother checking cell representation} []
  	 elif st.ct.special_character_inefficient(cell)=springer_O
    	 then survivors
- 	 else [(int,int,Param)]:[]
+ 	 else []
  	 fi
       od.##  {/for cell}
    od.##  {/for block}

@@ -1,0 +1,277 @@
+<basic.at
+<character_tables.at { for the type }
+<springer_tables.at { for the type }
+<geck_generic.at { for |lookup_springer_table| }
+<truncated_induction.at {for |J_induce|}
+set fig_verbose=false
+{W-rep sigma -> special W-rep sigma_s}
+{
+
+1) sigma =Springer(O,chi) -> Springer(O_s) where O is in the special piece of O_s
+
+2) different algorithm (that doesn't require Springer(O,chi), which we don't currently have)
+
+Theorem (Lusztig).
+
+1a) Suppose L is a Levi in G, and CL is a left cell of W(L). Then TGInd(CL) is a left cell for W.
+
+b) Suppose C is a left cell in W. Then C\otimes sgn is also a left cell in W.
+
+c) If W \ne 1, then for any left cell C in W, there is a proper L and a left cell CL in L so that
+  EITHER TGInd(CL) = C, OR TGIND(CL\otimes sgn) = C\otimes sgn.
+
+*********
+So here is the algorithm for finding the special W-rep sigma_s attached to sigma.
+
+-1) if sigma is special return sigma (this step isn't necessary but speeds up the algorithm)
+0)  If W is trivial, then sigma_s = sigma = trivial. Assume W not trivial.
+1)  Try to find a proper Levi L and a W(L)-rep sigmaL so that sigma is contained in TGInd(sigmaL);
+    if you succeed, then sigma_s = TFInd(sigmaL_s) = TGInd(sigmaL_s).
+2)  If you fail, replace sigma by sigmaSgn = sigma\otimes sgn. Step 1) is guaranteed to succeed for sigmaSgn, giving sigmaSgn_s.
+3)  The dual special orbit to sigmaSgn_s (found by the duality algorithm) has Springer rep sigma_s.
+
+{note on 3:  sigma -> sigmaSgn -> sigmaSgn_s -> orbit_sgn -> dual(orbit_sgn) -> sigma_s
+except in exceptional cases in E7/E8: sigma_s=sigmaSgn_s\otimes sgn}
+}
+
+{given G, tables=all_levi_Springer_tables(G), int char_G
+the algorithm produces
+[(L_n,table_n,char_n),...(L_1,table_1,char_1),(G,0,char_G)
+where each table_j,char_j is an integer
+start with tables[table_n].characters[char_n], this is special
+j-induction takes you
+
+}
+
+{assume generic degrees have been computed for all levis}
+set find_induced_generic([SpringerTable] levi_tables,
+                         int index_table_M {index of table in list},
+			 int index_char_M) {index of character in table_M}\
+			 =(bool,([SpringerTable],int,int)):  {(success/failure),[tables], index_table_L, index_char_L}
+let ()=if fig_verbose then
+    prints("find_induced_generic", new_line, "index_table_M=", index_table_M, " index_char_M=", index_char_M) fi in
+if  levi_tables[index_table_M].root_datum.is_abelian then
+  return(true,(levi_tables,index_table_M,index_char_M))
+else
+ let ct_M=levi_tables[index_table_M].ct then
+ M=ct_M.root_datum then
+ pi_M=ct_M.characters[index_char_M] then
+ gdeg=ct_M.generic_degree(index_char_M) then
+ G=levi_tables[0].root_datum then
+ ()=if fig_verbose then prints("generic degree: ", gdeg) fi in
+ let levis_M= proper_Levi_subgroups(M) in 
+ for Lprime@i in levis_M do let
+  (L,w)=find_Levi(G,M,Lprime) then
+  index_table_L=first(for i:#levi_tables do equal_subgroups(levi_tables[i].root_datum,w*L) od)  then
+  ()=if fig_verbose then prints("loop on L: ", new_line,"index_table_M: ", index_table_M,new_line,
+       "index_char_M: ", index_char_M,new_line,"loop index_table_L=",index_table_L,new_line,
+       "----------------------------------------------",
+       new_line, "index_table_M: ", index_table_M,new_line,"index_table_L: ", index_table_L,
+       new_line,"L=", levi_tables[index_table_L].root_datum, new_line) fi
+  in let st_L=levi_tables[index_table_L] then
+  ct_L=st_L.ct in
+  for index_char_L:ct_L.n_classes do
+   let ()= if fig_verbose then
+     prints("trying: index_table_L=",index_table_L, " ",
+            "index_char_L=",index_char_L, " ",st_L.generic_degree(index_char_L), new_line, "gdeg:", gdeg) fi
+   in if st_L.generic_degree(index_char_L)=gdeg then
+    let ()=if fig_verbose then prints("has correct generic degree: #", index_char_L) fi then
+    (,w)=find_Levi(G,M,L) then
+    P=w.matrix then
+    ind_all=induce_character(ct_L,ct_M,ct_L.characters[index_char_L], P) then
+    ()= if fig_verbose then prints("L=",L, new_line,"ct_M=",ct_M.root_datum,new_line,"ind_all2: ");ct_M.view_char(ind_all) fi then
+    ()=if fig_verbose then prints("L=",L, " ", index_char_L) fi then
+    ind=J_induce(ct_L,ct_M,index_char_L,P)  then  {ind = [(index,mult)]}
+      ()=if fig_verbose then prints("J_induction: ", ind) fi in
+    if find(for (j,) in ind do j od,index_char_M)!=-1 then
+       if fig_verbose then prints("found") fi;
+    return(true,(levi_tables,index_table_L,index_char_L)) fi
+   fi
+   od   {end for index_char_L:table.n_classes}
+  od;    {end for index_table_L:#levi_tables-1}
+   return(false,([SpringerTable]:[],-1,-1))
+fi
+
+{assume generic degrees have been computed for all levis
+algorithm sketched above: compute (L,sigma_L_s), then sigma_s= ind(sigma_L_s) (selected by both fake and generic degree)
+this is an internal function}
+set special_geck_data([SpringerTable] levi_springer_tables, int index_table_G, (int index_char_G,bool tensor_sgn))=
+([SpringerTable],[(RootDatum,int,(int,bool))]):   {([tables],(L,index_table_L,(index_char_L,bool_tensor_sgn))}
+let ()=if fig_verbose then
+  prints("find_smooth: ","index_table_G: ", index_table_G, "index_char_G: ", index_char_G, " tensor_sign:", tensor_sgn) fi in
+let st=levi_springer_tables[index_table_G] then
+ct=st.ct then
+G=ct.root_datum in
+let rec_fun my_function([SpringerTable] levi_tables,[(RootDatum,int,(int,bool))] triples)=(([SpringerTable],[RootDatum,int,(int,bool)])):
+ let (L,index_table_L,(index_char_L,tensor_sign))=triples[0] in
+ if is_abelian(L)
+  then return(levi_tables,triples)
+ elif levi_springer_tables[index_table_L].is_special_representation(index_char_L) then
+  return(levi_tables,triples)
+ else {/is_abelian}
+  let (success,g_induced)=find_induced_generic(levi_springer_tables,index_table_L,index_char_L) in
+  if success then
+   let ()=if fig_verbose then prints("success ", "L=",L) fi in
+   let (,new_table_index,new_char_index)=g_induced then
+   new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,false)) then
+   ()=triples:=new#triples in
+   my_function(levi_springer_tables,triples)
+  else
+   let ()=if fig_verbose then prints("failure,sgn") fi in
+   let (success_sgn,g_induced_sgn)=
+   find_induced_generic(levi_springer_tables,index_table_L,levi_springer_tables[index_table_L].ct.tensor_sign_index(index_char_L)) in
+   if success_sgn then
+    let (,new_table_index,new_char_index)=g_induced_sgn  {in my_function(levi_springer_tables,new_table_index,new_char_index)}  then
+    new=(levi_tables[new_table_index].root_datum,new_table_index,(new_char_index,true)) then
+    ()=triples:=new#triples in
+    my_function(levi_springer_tables,triples)
+   else
+    assert(false,"error!!");return (levi_tables,triples) {should never get here, but need to return a value}
+   fi {\if success_sgn}
+  fi {\if success}
+ fi {\if is_abelian} in
+my_function(levi_springer_tables,[(G,index_table_G,(index_char_G,false))])
+
+{special case: (index_char,true)}
+set special_geck_data([SpringerTable] levi_springer_tables, int index_table_G,int index_char_G)=
+([SpringerTable],[(RootDatum,int,(int,bool))]):   {([tables],(L,index_table_L,(index_char_L,bool_tensor_sgn))}
+special_geck_data(levi_springer_tables,index_table_G,(index_char_G,true))
+
+{special case: index_table_G=0}
+set special_geck_data([SpringerTable] levi_springer_tables,int index_char_G)=
+([SpringerTable],[(RootDatum,int,(int,bool))]):   {([tables],(L,index_table_L,(index_char_L,bool_tensor_sgn)))}
+special_geck_data(levi_springer_tables,0,index_char_G)
+
+{given chain
+ (L_1,char_1,bool_1) -> (L_2,char_2,bool_2) -> ...
+ inductive induce from char_i [times sign] W(L_i) -> W(L_{i+1})
+ sign term is included iff bool is true
+}
+set collapse([SpringerTable] tables, [(RootDatum,int,(int,bool))] triples)=(RootDatum,int,(int,bool)):
+if #triples=1 then
+ if fig_verbose then prints("collapse: returning special") fi;triples[0]
+elif #triples=2 then
+ if fig_verbose then prints("collapse: returning one step") fi;triples[0]
+else
+ let ()=if fig_verbose  then prints("collapsing, #triples=", #triples) fi then
+ ct_G=tables[0].ct then
+ G=ct_G.root_datum then
+working_triple=triples[0] in
+for i:#triples-2 do
+ let ()=if fig_verbose then prints("doing i=", i) fi in
+ let (L,index_table_L,(index_char_L,tensor_sign_L))=triples[i] then
+ ct_L=tables[index_table_L].ct then
+ ()=if fig_verbose then prints("L=", L,new_line, "index_table_L=", index_table_L,new_line, "index_char_L=", index_char_L,new_line,"tensor_sign_L: ", tensor_sign_L) fi then
+ (M,index_table_M,(index_char_M,tensor_sign_M))=triples[i+1] then
+ ct_M=tables[index_table_M].ct then
+ ()=if fig_verbose then prints("index_table_M=", index_table_M) fi then
+ (Lprime,w)=find_Levi(G,M,L) then
+ ()=if tensor_sign_L then index_char_M:=tables[index_table_M].ct.tensor_sign_index(index_char_M) fi in
+ { assert(tables[index_table_M].is_special_representation(index_char_M),"character of M is not special");}
+ let ()=if not tables[index_table_M].is_special_representation(index_char_M)
+  then prints("warning: not special on M=", M, "index_char_M: ", index_char_M) fi
+ in
+ working_triple:=(M,index_table_M,(index_char_M,tensor_sign_M))
+od;
+working_triple
+fi
+
+{([table],index_table_G,(char,bool)) -> (i,L,j,k,s):
+[table]: list of Springer tables of all Levis of G
+i: index of Springer table st_L of L in [tables]
+L=Levi subgroup
+j=index of table of target group H (often j=0,H=G)
+k=index of character in st_L.ct
+s=index of *special* character of H
+}
+set to_special_geck_long([SpringerTable] levi_springer_tables, int index_table_G, (int index_char_G,bool tensor_sign))=(int,RootDatum,int,int,int):
+let (,triples)=special_geck_data(levi_springer_tables,index_table_G,(index_char_G,tensor_sign)) then
+(L,index_table_L,(index_char_L,tensor_sign_L))=collapse(levi_springer_tables,triples) then
+ct=levi_springer_tables[index_table_G].ct then
+ct_L=levi_springer_tables[index_table_L].ct then
+target_index=index_char_G then
+target_generic_degree=ct.generic_degree(target_index) then
+(,w)=find_Levi(ct.root_datum,ct.root_datum,L) then
+ind=induce_character(ct_L,ct,ct_L.characters[index_char_L],w.matrix)  then
+()=if tensor_sign_L then ind:=ct.tensor_sign(ind) fi then
+char=select_both_degrees(ct,ind,target_generic_degree,target_generic_degree) in
+let (index,mult)=char[0] in
+ if mult !=1 then prints("warning: multiplicity for index ", index," is: ", mult) fi;
+assert(ct.generic_degree(index)=ct.degree(index),"not special");
+(index_table_L,L,index_table_G,index_char_L,index)
+
+{assume bool=true}
+set to_special_geck_long([SpringerTable] levi_springer_tables, int index_table_G,int index_char_G)=(int,RootDatum,int,int,int):
+to_special_geck_long(levi_springer_tables,index_table_G,(index_char_G,true))
+
+{assume bool=true, index_table_G=0}
+set to_special_geck_long([SpringerTable] levi_springer_tables, int index_char_G)=(int,RootDatum,int,int,int):
+to_special_geck_long(levi_springer_tables,0,(index_char_G,true))
+
+{just return index s of special of H}
+set to_special_geck([SpringerTable] levi_springer_tables, int index_table_G,int index_char_G)=int:
+let (,,,,index)=to_special_geck_long(levi_springer_tables,index_table_G,(index_char_G,true)) in index
+
+{assume index_table_G=0,just return index s of special of G}
+set to_special_geck([SpringerTable] levi_springer_tables, int index_char_G)=int:
+to_special_geck(levi_springer_tables,0,index_char_G)
+
+set test_special_geck([SpringerTable] tables)=void:
+let ct=tables[0].ct then
+all=for i:ct.n_classes do to_special_geck_long(tables,i) od in
+prints("G=", tables[0].root_datum.nice_format);
+tabulate(
+["sigma","deg/gdeg", "rep_name", "sigma_s","deg/gdeg", "name"]#
+for i:#all do
+ let (a,b,c,d,i_s)=all[i] in
+[i.to_string,ct.degree(i).to_string + "/" + ct.generic_degree(i),ct.irreducible_label(i),
+i_s.to_string,
+ct.degree(i_s).to_string + "/" + ct.generic_degree(i_s),
+ct.irreducible_label(i_s)] od);prints("");
+show(tables[0]);prints("");show(tables[0].ct)
+
+set to_special(RootDatum G)=(int->int):
+assert(G.derived.is_simple,"G must be simple");
+let (type,rank)=simple_type(G) in
+ assert(type="E" or type="F" or type="G", "G must be exceptional");
+ if type="G" and rank=2 then to_special_G2@int
+ elif type="F" and rank=4 then to_special_F4@int
+ elif type="E" and rank=6 then to_special_E6@int
+ elif type="E" and rank=7 then to_special_E6@int
+ elif type="E" and rank=8 then to_special_E6@int
+ else error("something is terribly wrong")
+fi
+
+set to_special_geck(RootDatum G,int i)=int:to_special_geck(all_Levi_Springer_tables(G),i)
+
+set test_special_maps(RootDatum G)=bool:
+let tables=all_Levi_Springer_tables(G) in
+all(for i:tables[0].ct.n_classes do
+to_special(G)(i)=to_special_geck(tables,i) od)
+
+set test_special_maps([RootDatum] groups)=[bool]:
+for G in groups do 
+let result=test_special_maps(G) in prints(G.nice_format, ": ", result);result od
+
+set test_special_maps()=
+let groups=[
+simply_connected(G2)
+,simply_connected(F4)
+,simply_connected(E6)
+,simply_connected(E7)
+{,simply_connected(E8)}]
+in test_special_maps(groups)
+
+{for convenience}
+set induce([SpringerTable] tables, int table_L, int table_G,int char_L)=[int]:
+let ct_L=tables[table_L].ct then
+ct_G=tables[table_G].ct then
+(M,P)=find_Levi(tables[0].root_datum,ct_G.root_datum, ct_L.root_datum) in
+induce_character(ct_L,ct_G,ct_L.characters[char_L],P.matrix)
+
+
+
+
+
+
+
