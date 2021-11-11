@@ -34,7 +34,6 @@ levi_M=levis_M[index] in
 (levi_M,standard_Levi_witness(G,levi_M))
 
 
-
 {representatives of conjugacy classes of reflections:
  one simple reflection of each root length}
 set conjugacy_classes_reflections_simple(RootDatum rd)=[WeylElt]:
@@ -400,6 +399,6 @@ let
 set update_generic_degrees_geck([SpringerTable] springer_tables)=void:
 update_generic_degrees_geck(for st in springer_tables do st.ct od)
 
-set all_levi_springer_tables(RootDatum G)=
+set all_Levi_Springer_tables(RootDatum G)=
 let levis=Levi_subgroups(G) in
  for i:#levis do Springer_table(levis~[i]) od
