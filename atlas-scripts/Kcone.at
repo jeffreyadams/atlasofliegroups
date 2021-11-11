@@ -24,6 +24,8 @@ standardize(parameter(mu)*0)
 set standardize(K_Type_Pol P) = K_Type_Pol:
 0*P + for c@p in P do standardize(p*0) od
 
+set height(K_Type mu)=height(parameter(mu))
+
 set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 
 set find(Param p,ParamPol P)=bool:
@@ -41,6 +43,8 @@ set R_packet(K_Type (x,lam))=ParamPol:
    then result=null_module(G)
    in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
                      od; result
+
+set R_packet(Param p)=R_packet(LKTs(p)[0])
 
 {Move one step down from mu in the partial order; may result in extra terms}
 set pre_down(K_Type mu) = ParamPol:
@@ -95,8 +99,7 @@ set down(ParamPol P)=ParamPol:
    let result=null_module(P.real_form) in
   for @p in P
        do for @m in pre_down(p)
-          do if any(for @r in P do { find(r,branch_std(m,HT)) od) }
-	     		     	     split_as_int(K_type_formula(m)[r])
+          do if any(for @r in P do split_as_int(K_type_formula(m)[r])
 				     < 0 od)
 	     then result+:=m
 	     fi
@@ -110,18 +113,19 @@ set down_alt(K_Type mu)= { prints("Height of mu=
 set down(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
    down(R_packet(mu))
 
+set down(Param p)=down(R_packet(p))
+
 {test whether the K-type is at the bottom of the preorder}
 set bottom(K_Type mu) = bool:
     down(mu) = 0*mu
 
-
-
 set down_cone(K_Type mu) = K_Type_Pol:
-let seen=ParamPol:null_module(mu.real_form) then result=seen in
-parameter(mu).( rec_fun F (Param tau) void:
-if seen[tau].!= then ()
-else seen +:= tau; for @p in down(tau) do F(p); result +:= p od
-fi); result
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down(tau) do F(p); result +:= p od
+        fi); result
 
 { omit testing }
 set down_cone_alt(K_Type mu) = K_Type_Pol:
