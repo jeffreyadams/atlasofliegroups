@@ -34,18 +34,10 @@ set diagram_A_to_partition ([int] diagram) = Partition:
    let freq = [int]: (0#diagram.cumulate_forward).frequencies
    then max = { the largest part }
       let (q,r)= #freq \% 2 in assert(r=1,"Diagram has odd sum"); q+1
-   then mult(int i) = int: { mulitplicity of part |i| in partition }
+   then mult(int i) = int: { multiplicity of part |i| in partition }
       let m = if i+2<=max then freq[max-i]-freq[max-i-2] else freq[max-i] fi
-      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
 in for i:max from 1 ~ do for :mult(i) do i od od.##
-
-{Springer(orbit with partition P) = classical_irrep with partition P}
-set springer_A (CharacterTable ct,ComplexNilpotent O) = int:
-  let P=O.stratified_diagram.diagram_A_to_partition
-  in first(ct.n_irreps,(int i): ct.classical_reps(i).get_irrep_A=P)
-
-{ inverse Springer map, from Partition of n to ComplexNilpotent for GL(n) }
-set inverse_springer_A = nilpotent_orbit_GL@Partition
 
 
 { Springer table construction.
@@ -60,19 +52,9 @@ set inverse_springer_A = nilpotent_orbit_GL@Partition
   handle orbits using only their diagram, which has this independence property.
 }
 
-set A_dual(Partition P) = Partition: P.transpose
-
 set dual_map_A(ComplexNilpotent O) = ComplexNilpotent:
    let P=O.stratified_diagram.diagram_A_to_partition
    in nilpotent_orbit_A(dual(O.root_datum))(transpose(P))
-
-set springer_table_A (CharacterTable ct) = SpringerTable:
-( ct
-, ct.root_datum.orbits
-, dual_map_A@ComplexNilpotent
-, dual_map_A@ComplexNilpotent
-, (ComplexNilpotent O) int: springer_A(ct,O)
-)
 
 set springer_table_A (RootDatum rd) = SpringerTable:
    let (table, , irrep_of_partition) = character_table_A(rd)

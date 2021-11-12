@@ -15,7 +15,7 @@ set projectors_verbose=true
 set projector (WeylClassTable tab, W_rep (dim,ops), [int] chi) = mat:
   let rd=tab.root_datum, Q=null(dim,dim) in
   for (w,action) in W_parabolic_with_action(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,w,chi)*action
+  do Q+:=character_value(tab,chi,w)*action
   od; Q
 
 { since the preceding function is very slow for large W because of

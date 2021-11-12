@@ -1,73 +1,26 @@
-{generic degrees for representations of Weyl groups, using cells
-for Geck algorithm see geck_generic.at}
+<basic.at
+<character_tables.at { for type |CharacterTable| }
+<cells.at { for |cell_character@CharacterTable| }
 
-<W_reps.at { for |cell_character@CharacterTable| }
-<character_tables.at { type |CharacterTable| }
-<cells.at { for |special_irreducible| }
-<K_highest_weights.at {for all_parameters_gamma}
 
 {------------------- generic degrees ----------------}
 
-
 set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
-   let Wct = ct.class_table in
-( ct.n_irreps { size of degree lists being summed }
-# for cell in cells
-  do assert(Wct.root_datum=cell.root_datum,"Root datum ismatch in cell")
-  ;  let cell_char = [int]: ct.decompose(cell_character(Wct,cell))
-     then d() = ct.degree(special_irreducible(ct,cell_char))
-  in for i:ct.n_irreps
-     do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
+   let Wct = ct.class_table, result = for :ct.n_irreps do minus_1 od in
+( for cell in cells
+  do assert(Wct.root_datum=cell.root_datum,"Root datum mismatch in cell")
+  ;  let multiplicities = [int]: ct.decompose(cell_character(Wct,cell.print))
+     then d = ct.degree(special_irreducible(ct,multiplicities))
+  in for m@i in multiplicities
+     do if !=m
+        then assert(ct.generic_degree(i)=d,"Wrong generic degree")
+	; result[i]:=d
+	fi
      od
    od
-).sum
-
-{ if only side-effect of |generic_degrees| is desired, have name reflect that }
-set update_generic_degrees(CharacterTable ct,[WCell] cells) = void:
-   generic_degrees(ct,cells)
+;  result
+)
 
 set generic_degrees(CharacterTable ct,[Param] parameters) = [int]:
    let cells= for b in blocks(parameters) do W_cells_of(b[0]) od.##
 in generic_degrees(ct,cells)
-
-set update_generic_degrees(CharacterTable ct,RealForm G) = void:
-   generic_degrees(ct,all_parameters_gamma(G,rho(G)))
-
-set update_generic_degrees(CharacterTable ct)=(RealForm->void):(RealForm G):update_generic_degrees(ct,G)
-set update_generic_degrees(SpringerTable st,RealForm G)=void:update_generic_degrees(st.ct,G)
-set update_generic_degrees(SpringerTable st)=(RealForm->void):(RealForm G):update_generic_degrees(st.ct,G)
-
-{-------------------versions with cell_size_cutoff------------------}
-
-set generic_degrees(CharacterTable ct,[WCell] cells, int cell_size_cutoff) = [int]:
-( ct.n_irreps { size of degree lists being summed }
-# for cell in cells
-  do
-   if #cell<cell_size_cutoff then
-    let cell_char = [int]: ct.decompose(cell_character(ct.class_table,cell))
-    then d() = ct.degree(special_irreducible(ct,cell_char))
-    in for i:ct.n_irreps
-     do if =cell_char[i] then 0 else ct.set_generic_degree(i,d,true) fi
-    od
-   else -10#null(ct.n_irreps-1) fi
-  od
-).sum
-
-set show_degrees(CharacterTable ct) = void:
-(  let generic_degree(int i) =
-     if ct.has_generic_degree(i) then -1 else ct.generic_degree(i) fi
-in prints("a(i)=generic degree(character #i)",new_line
-	 ,"b(i)=degree(character #i)",new_line
-	 ,"*: special",new_line)
-;  tabulate
-   ( ["i","dim","a(i)","b(i)"]
-   # for i:ct.n_irreps
-     do {don't know special_representation_star without springer table}
-       [i.to_string
-       ,dimension(ct,i).to_string {+ct.special_representation_star(i)}
-       ,generic_degree(i).to_string
-       ,ct.degree(i).to_string
-       ]
-     od
-   )
-)

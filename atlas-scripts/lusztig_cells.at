@@ -148,7 +148,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
 	  then prints("done computing L.Springer_table (without generic degree)")
 	  fi
 	then sigma_L_sgn = {springer(O_L)\otimes sgn}
-	  tensor_sign_index(st_L.ct,st_L.springer(O_L))
+	  st_L.ct.tensor_sign_index(st_L.springer(O_L))
 	then char_sgn=st_L.ct.characters[sigma_L_sgn]
 	then deg_sgn=st_L.ct.degree(sigma_L_sgn)
 	then ()=if sigma_lusztig_verbose then prints("char_sgn: ", char_sgn) fi
@@ -193,7 +193,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
 		     , "ind_decomposed_sgn=",ind_decomposed_sgn
 		     )
 	  fi;
-	  [tensor_sign_index(st_G.ct,i)] {tensor with sign again}
+	  [st_G.ct.tensor_sign_index(i)] {tensor with sign again}
 	fi
      od.##
  in char_indices_sgn
@@ -339,7 +339,7 @@ let table = [ [string] ]:
 	       fi
 	     , if =y then st_G.springer_special_rep(orbit).to_string else "" fi
 	     ,dimension(st_G.ct,k).to_string
-	     ,st_G.ct.degrees[k].to_string
+	     ,st_G.ct.degree(k).to_string
 	     ,st_G.ct.character(k).to_string
 	     ]
 	    od {for k in values}
@@ -410,7 +410,7 @@ let table_header =
 	     fi
 	    ,if =y then st_G.springer_special_rep(orbit).to_string else "" fi
 	    ,dimension(st_G.ct,k).to_string
-	    ,st_G.ct.degrees[k].to_string
+	    ,st_G.ct.degree(k).to_string
 	    ,st_G.ct.character(k).to_string
 	    ]
 	    od {for k in values}
@@ -470,8 +470,8 @@ let table = [ [string] ]: { concatenation of all [string] values from |data| }
 	      fi
 	     ,if =y then st_G.springer_special_rep(orbit).to_string else "" fi
 	     ,dimension(st_G.ct,k).to_string
-	     ,st_G.ct.degrees[k].to_string
-	     ,st_G.ct.generic_degree_string(k)
+	     ,st_G.ct.degree(k).to_string
+	     ,st_G.ct.generic_degree(k).to_string
 	     ,st_G.ct.character(k).to_string
 	     ]
 	     od {for k in values}

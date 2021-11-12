@@ -64,7 +64,7 @@ set odd_places  ([int] v) = for i:#v\2 do v[2*i+1] od
 
 {				Permutations				}
 
-{ Matrix whose left-mulitplication to a column vector permutes it by |pi|.
+{ Matrix whose left-multiplication to a column vector permutes it by |pi|.
   It has nonzero entries at each (pi(j),j), it could have been defined (using
   |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
 }

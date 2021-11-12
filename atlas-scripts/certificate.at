@@ -1,52 +1,26 @@
 <hermitian.at
-<K_types.at
 
 set negative_terms(Param p)=[(Param,int)]:
-   let P=hermitian_form_irreducible(p) then ht=height(p) then
-     list=%P then (c,)=list[0] in let a=0, b=0 in if int_part(c)!=0 then a:=1
-     fi; if s_part(c)!=0 then b:=1 fi; if a*b=1 then prints("The LKT is indefinite.")
-     fi; let
-   result=[(Param,int)]:[] in
-   for (k,q) in list do let npart=b*int_part(k)+a*s_part(k) in
-      if npart!=0 and height(q)=ht then result#:=(q,height(q))
-      elif npart!=0 and height(q)>ht and
-        none(for (,n) in result do n>ht and height(q)>n od) then
-      result#:=(q,height(q)) fi od; result
-
-{output is a list all negative terms in the signature formula. Those of
-lowest height have LKTs contributing to the negative form}
+(  let P=hermitian_form_irreducible(p), ht_p=height(p)
+   then c=first_param(P)
+   then a= #(!=int_part(c)), b=#(!=s_part(c)) { each one 0 or 1 }
+   , ht_lim=ht_p { to ensure monotonicity }
+in if a*b=1 then prints("The LKT is indefinite.") fi
+;  for k@q in P
+   do let npart = int: b*int_part(k)+a*s_part(k) { |s_part(k*(a+b*s))| }
+   ,  ht_q = height(q)
+   in if npart!=0 and
+        (ht_q=ht_p or
+	 ht_q>ht_p and ht_q>=ht_lim and (ht_lim:=ht_q; true)
+	)
+      then [(q,ht_q)]
+      else []
+      fi
+   od.##
+)
 
 set certificate (Param p) =[(Param,int)]:
-   if not is_hermitian(p) then prints("not hermitian");[]
-   elif is_unitary(p) then prints("unitary");[]
-   else prints("hermitian indefinite"); negative_terms(p) fi
-
-{output is a list of minimal height K-types so every nonunitary
-parameter in P has a form negative on one of them}
-
-set certificates ([Param] P) = [Param]:
-monomials(0*P[0] + ##for p in P do if not is_hermitian(p) then [] elif
-is_unitary(p) then [] else let F=hermitian_form_irreducible(p) in
-if height(first_param(s_part(F))) < height(first_param(int_part(F)))
-then [first_param(int_part(F))] else
-[first_param(s_part(F))] fi fi od)
-
-{ produces a list of all spherical reps of F4_s with continuous
-parameter nu in [0,1]^4 having denominators 12. }
-
-{ set N=13^4 }
-{ set sph(ratvec nu) = parameter(x_open(F4_s),F4_s.rho,nu) }
-{ set Q= for j:N do sph([j%13,(j\13)%13,(j\169)%13,(j\2197)%13]/12) od }
-{ set ct4=certificates(Q) }
-
-set show_certs([Param] certs) = void:
-for j:#certs do prints(j," height = ",height(certs[j]),"  dim = ", dimension(K_type(certs[j])), "  ",certs[j]) od
-
-{ would be nice to have an alternate show_certs_long that took a KGB
-element in the fundamental fiber and showed the highest weights in
-human coordinates }
-
-{ this takes the lambda for a K-type of G.complexification and returns
-the highest weight as a weight for G }
-{ set complexKwt(ratvec lambda) = for j:#lambda\2 do rat_as_int(lambda[j]
-+ lambda[#lambda\2+j]) od }
+   if not is_hermitian(p) then prints("not hermitian"); []
+   elif is_unitary(p) then prints("unitary"); []
+   else prints("hermitian indefinite"); negative_terms(p)
+   fi

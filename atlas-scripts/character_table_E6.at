@@ -92,26 +92,19 @@ set character_table_E6 = (RootDatum->CharacterTable):
 		   ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
 		   )
 	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
-      then classes = [WeylElt,classical_class,string]:
+      then classes = [WeylElt,string]:
 	 let reps = Wct.class_representatives
 	 in for j in reordering
-	    do (reps[j]
-	       ,null_class()
-	       ,class_signature_E6(reps[j]).compressed_string
-	       )
+	    do (reps[j],class_signature_E6(reps[j]).compressed_string)
 	    od
-      ,  irreps = [classical_irrep,string,[int]]:
+      ,  irreps = [[int],string]:
 	 for line@i in e6_table
-	 do (null_irrep()
-	    ,case i in "trivial", "sign", "reflection" else E6_name(line) esac
-	    ,line
+	 do ( line
+	    , case i in "trivial", "sign", "reflection" else E6_name(line) esac
 	    )
 	 od
-      then table = character_table(Wct,classes,irreps)
-      in for i: #irreps
-	 do table.set_generic_degree(i,@:table.degree(to_special_E6(i)),false)
-	 od
-      ;  table { result of |compute| }
+      in { result of |compute| }
+	 character_table(Wct,classes,irreps,to_special_E6@int)
 in (RootDatum rd) CharacterTable:
    if rd != standard_datum_E6 then compute(rd)
    elif =ct.root_datum.rank { whether this is the first time we are called }

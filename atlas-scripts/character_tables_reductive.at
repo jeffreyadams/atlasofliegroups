@@ -40,39 +40,28 @@ set combine (RootDatum rd,[CharacterTable] factors) = CharacterTable:
 (  let Wct = combine(rd,for factor in factors do factor.class_table od)
    , words = for factor in factors do factor.n_irreps od.all_words
    then reps = Wct.class_representatives
-   , index = mixed_radix_nr(for factor in factors do factor.n_irreps od)
+   , index = (vec->int):
+      mixed_radix_nr(for factor in factors do factor.n_irreps od)
    , tensor([vec] chars) = [int]: { all products of entries }
         for word in words do product(for l@i in word do chars[i][l] od)	od
-in let classes = [WeylElt,classical_class,string]:
+in let classes = [WeylElt,string]:
      for word in words
      do ( reps[index(word)]
-	, null_class()
 	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
 	)
      od
-   , irreps = [classical_irrep,string,[int]]:
+   , irreps = [[int],string]:
      for L in words
-     do ( null_irrep()
+     do ( tensor(for n@i in L do factors[i].character(n) od)
 	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
-	, tensor(for n@i in L do factors[i].character(n) od)
 	)
      od
-   then table = character_table(Wct,classes,irreps)
-   , gdeg_positions = [[int]]:
-      for factor in factors
-      do for i:factor.n_irreps
-         do if factor.has_generic_degree(i) then [i] else [] fi
-	 od.##
-      od
-in for word in all_words(gdeg_positions)
-   do let gdeg() =
-      for letter@i in word do factors[i].generic_degree(letter) od.sum
-   in table.set_generic_degree(index(word),gdeg,false)
-   od
-;  table
+   , to_special (int j) = int:
+      for letter@i in words[j] do factors[i].special(letter) od.index
+in character_table(Wct,classes,irreps,to_special)
 )
 
-set character_table(RootDatum rd) = CharacterTable:
+set character_table (RootDatum rd) = CharacterTable:
    let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
    then simples = simple_factors(Lie_type)
    then root_data = [RootDatum]: { subdata with a single simple factor + torus }

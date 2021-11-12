@@ -140,7 +140,6 @@ in {by definition permutation should relate the Cartan matrices}
 
 
 set show (SpringerTable st) = void:
-prints("Springer table", new_line,"G=", st.root_datum.nice_format);
    let npr = st.root_datum.nr_of_posroots in
 tabulate (
    [ "diagram"
@@ -160,14 +159,13 @@ tabulate (
       , j.to_string
       , dimension(st.ct,j).to_string
       , deg.to_string
-      , st.ct.generic_degree_string(j)
+      , st.ct.generic_degree(j).to_string
       , st.ct.characters[j].to_string
       ]
    od
 )
 
 set show_long(SpringerTable st)=void:
-prints("Springer table",new_line, "G=", st.root_datum.nice_format);
    let npr = st.root_datum.nr_of_posroots in
 tabulate (
    [ "#orbit"
@@ -194,25 +192,29 @@ tabulate (
       , j.to_string
       , dimension(st.ct,j).to_string
       , st.ct.degree(j).to_string
-      , st.ct.generic_degree_string(j)
+      , st.ct.generic_degree(j).to_string
       , st.ct.characters[j].to_string
       ]
    od
 )
 
-set show_reps(SpringerTable st)=void:
-let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
-tabulate(
-["rep#","orbit","dim","deg", "fdeg","char"]#
-for j:st.ct.n_irreps do
-[j.to_string,
- let orbit_index=find(springer_reps,j) in
-  if orbit_index>=0 then
-   let orbit=st.orbits[orbit_index] in orbit.diagram.to_string + st.special_star(orbit)
-  else ""
-  fi,
-dimension(st.ct,j).to_string,
-st.ct.degree(j).to_string,
-st.ct.generic_degree_string(j),
-st.ct.characters[j].to_string] od)
-
+set show_reps (SpringerTable st) = void:
+(  let springer_reps = [int]: for orbit@i in st.orbits do st.springer(orbit) od
+in tabulate
+   ( ["rep#","orbit","dim","deg", "fdeg","char"]
+   # for j:st.ct.n_irreps
+     do [ j.to_string
+	, let orbit_index=find(springer_reps,j) in
+	  if orbit_index>=0
+	  then let orbit=st.orbits[orbit_index] in
+	     orbit.diagram.to_string + st.special_star(orbit)
+	  else ""
+	  fi
+	, dimension(st.ct,j).to_string
+	, st.ct.degree(j).to_string
+	, st.ct.generic_degree(j).to_string
+	, st.ct.characters[j].to_string
+	]
+     od
+   )
+)
