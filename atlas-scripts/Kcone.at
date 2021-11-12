@@ -26,8 +26,6 @@ set standardize(K_Type_Pol P) = K_Type_Pol:
 
 set height(K_Type mu)=height(parameter(mu))
 
-set first_K_type(K_Type_Pol P) = K_type(first_param(P))
-
 set find(Param p,ParamPol P)=bool:
    let list=monomials(P) in any(for q in list do p=q od)
 
@@ -86,11 +84,6 @@ set down_alt(ParamPol P)=ParamPol:
 let result=null_module(P.real_form) in
 for @p in P do result+:=pre_down(p) od; result
 
-{ let G=real_form(P), list=##for p in monomials(P) do LKTs(p) od
-   then result=null_module(G)
-   in for mu in list do result+:=pre_down(mu)
-                     od; result}
-
 {Move down one step in the partial order for a list of K-types, assumed to
 be in one R-packet; remove any K-types whose K_type_formula does not
 contain any negative term from the list}
@@ -109,6 +102,8 @@ set down(ParamPol P)=ParamPol:
 set down_alt(K_Type mu)= { prints("Height of mu=
    ",height(parameter(mu))); }
    down_alt(R_packet(mu))
+
+set down_alt(Param p)=down_alt(R_packet(p))
 
 set down(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
    down(R_packet(mu))
@@ -139,38 +134,16 @@ fi); result
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
 
-{S needs a separate case for avee real parity: CAYLEY. This should
-only be needed when avee is simple as a real root(??). In that case
-lambda*avee is meant to be ODD (otherwise the K-type was not final). I
-HOPE that the formula
-lambda' = lambda-(lambda*avee)*posroots(rd)[j]\2
-then gives lambda'*avee = 1.
-}
-set up_old(K_Type mu) = K_Type_Pol:
-let q=parameter(mu), Q=LKTs(parameter(mu)) then HT=height(q), lambda =
-Q[0].lambda then Lambda = lambda + (Q[0].x.involution)*lambda,
-rd=mu.root_datum, zeroPol = null_module(q.real_form),
-zero = 0*mu, zeronu=0*lambda in
-zero+ ##for p in Q do let x=p.x  in for avee@j in
-poscoroots(rd) do let S=
-case #is_real(j,x)
- in standardize(standardize(parameter(x,lambda+posroots(rd)[j], zeronu))*0),
-standardize(standardize(parameter(Cayley(j,x), lambda-((lambda*avee)\2)*posroots(rd)[j], zeronu))*0) +
-  standardize(standardize(parameter(cross(j,Cayley(j,x)), lambda-((lambda*avee)\2)*posroots(rd)[j]\2, zeronu))*0)
-esac
-then R = S- to_ht(HT)(S)
- in if (Lambda*avee >= 0 and not(is_compact(j,x))) then R
- else zero fi
-od od
 
 {Move one step up in the partial order of K-types}
 set up(K_Type mu)=ParamPol:
-   let list=monomials(R_packet(mu))
-   then result=null_module(real_form(mu))
-   in for m in list do for (c,p) in %K_type_formula(m)
+   let result=null_module(real_form(mu))
+   in for @m in R_packet(mu)
+       do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=p fi
                         od
 		    od; result
+
 
 {As previous function, but remove some terms that are further
 up in the partial order}
@@ -179,8 +152,8 @@ set up_plus(K_Type mu)=ParamPol:
    then result=NM
    in while start!=NM do let p=first_param(start)
                          in for q in monomials(start)
-			    do if p!=q and find(q,K_type_formula(p))
-			       then start-:=q
+			    do if p!=q and K_type_formula(p)[q]!=0
+			    then start-:=q
 			       fi
 			    od; start-:=p; result+:=p
 		      od; result
@@ -192,26 +165,14 @@ set rec_fun up_cone(K_Type mu, int bound) = K_Type_Pol:
 	         + for c@p in up(mu) do up_cone(K_type(p),bound)
 		                     od fi
 
-{
-testing:
+{set down_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down(tau) do F(p); result +:= p od
+        fi); result}
 
-set G=Sp(4,R)
-set all = all_parameters_gamma(G,[4,2])
-
- for j:#all do prints(j,bottom(K_type(all[j]*0))) od
-
-for j:#all do prints(j,"  ",height(all[j]),"  ",K_type(all[j]*0),"  ",
-down(K_type(all[j]*0)),new_line)
-od
-
-for j:#all do prints(j,"  ",height(all[j])),"  ",K_type(all[j]*0),"  ",
-down_cone(K_type(all[j]*0)),new_line)  od
-
-{This is awful: need to replace print_K_types by output routine from
-print_branch_?_long}
-for j:#all do prints(new_line,j,"  ",height(all[j]),"  ",all[j]*0);
-print_K_types(down_cone(K_type(all[j]*0)), KGB(G,3))  od
-}
 
 set test_down(K_Type mu)=void:
    let h=height(parameter(mu)),q=parameter(mu)
