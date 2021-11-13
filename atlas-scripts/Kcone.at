@@ -134,11 +134,11 @@ set down_cone(K_Type mu) = K_Type_Pol:
 
 { omit testing }
 set down_cone_alt(K_Type mu) = K_Type_Pol:
-let seen=ParamPol:null_module(mu.real_form) then result=seen in
-parameter(mu).( rec_fun F (Param tau) void:
-if seen[tau].!= then ()
-else seen +:= tau; for @p in down_alt(tau) do F(p); result +:= p od
-fi); result
+    let seen=ParamPol:null_module(mu.real_form) then result=seen in
+    parameter(mu).( rec_fun F (Param tau) void:
+      if seen[tau].!= then ()
+      else seen +:= tau; for @p in down_alt(tau) do F(p); result +:= p od
+      fi); result
 
 {up assumes mu = (x',lambda') is standard but perhaps not normal, and
 nonzero. Moves one (possibly non-simple) step up in the partial
@@ -146,43 +146,34 @@ order.}
 
 
 {Move one step up in the partial order of K-types}
-set up(K_Type mu)=ParamPol:
+set pre_up(K_Type mu)=ParamPol:
    let result=null_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=p fi
                         od
-		    od; result
-
-{null_module(mu.real_form) + 
-  for @p in R_packet(mu) do null_module(mu.real_form) + ##for c@m in
-  K_type_formula(p) do if split_as_int(c)<0 then [m] else [] fi od od}
-
-
+       od; result
 
 {As previous function, but remove some terms that are further
 up in the partial order}
-{Do we want to check if q occurs, or if it occurs with negative coeff?}
-set up_plus(K_Type mu)=K_Type_Pol:
-   let NM=null_module(real_form(mu)),start=up(mu)
+set up(K_Type mu)=K_Type_Pol:
+   let NM=null_module(real_form(mu)),start=pre_up(mu)
    then result=NM
-   in while start!=NM do let p=first_param(start)
-                         in for c@q in start
-			    do if {split_as_int(K_type_formula(p)[q]) < 0}
-                                  K_type_formula(p)[q] !=0
-			        then start-:=c*q
-			       fi
-			    od; start-:=start[p]*p; result+:=p
+   in while start!=NM do let p=last_param(start)
+                         in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
+			    then result+:=p fi; start-:=start[p]*p
 		      od; result
 
+set up(Param p)=up(first_K_type(standardize(p*0)))
 
-{have not incorporate MvL suggestions about avoiding recalculation of
-"up" with something "seen."}
-set rec_fun up_cone(K_Type mu, int bound) = K_Type_Pol:
-0*mu + for @tauprime in R_packet(mu) do
- let muprime = K_type(tauprime) then start = to_ht(bound)(up(muprime)) in
- start + for @p in start do up_cone(K_type(p),bound) od od
-
+{All K-types above mu up to height bound}
+set up_cone(K_Type mu, int bound) = K_Type_Pol:
+    let seen=ParamPol:null_module(mu.real_form)
+    then result=seen
+     in parameter(mu).(rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:=tau; for @p in to_ht(bound)(up(tau)) do F(p);
+           result +:=p od fi); result
 
 set test_down(K_Type mu)=void:
    let h=height(parameter(mu)),q=parameter(mu)
@@ -196,32 +187,9 @@ set test_down_alt(K_Type mu)=void:
    for p in monomials(down_alt(mu))
       do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
 
-set test_down_cone(K_Type mu)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(down_cone(mu))
-      do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
-
 set test_up(K_Type mu)=void:
    let h=height(parameter(mu)),q=parameter(mu)
    in prints("height of mu: ",h);
    for p in monomials(up(mu))
       do prints(p," ",height(p)," ",find(p,branch_std(q,height(p)))) od
 
-set test_up_cone(K_Type mu,int n)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(up_cone(mu,n))
-      do prints(p," ",height(p)," ",find(p,branch_std(q,height(p)))) od
-
-{Test functions}
-set rec_fun down_cone_alt(K_Type mu) = K_Type_Pol:
-   let result = 0*mu
-     in result +:= down_alt(mu) + for c@p in down_alt(mu) do down_cone_alt(K_type(p))
-                                                       od
-
-set test_down_cone_alt(K_Type mu)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(down_cone_alt(mu))
-   do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
