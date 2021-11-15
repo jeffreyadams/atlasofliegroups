@@ -143,14 +143,17 @@ set truncate_induce_character \
 in truncate(ct_G,ind,degree_function)
 
 { standard form: by degree, returns int }
-set truncate_by_degree_induce_character \
+{ this should not be used}
+{set truncate_by_degree_induce_character \
    ( CharacterTable ct_G, [int] simple_roots_of_L, [int] pi_L) = int:
    let ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
    then (,t)=truncate(ct_G,ind,ct_G.degree)
 in assert(#t=1,"not a unique character in truncated induction"); t[0]
+}
 
 { same as previous, build ct_G on the fly, but use provided |degree_function| }
-set truncate_induce_character \
+{ this should not be used}
+{set truncate_induce_character \
    ( RootDatum G
    , [int] simple_roots_of_L
    , [int] pi_L
@@ -160,7 +163,7 @@ set truncate_induce_character \
    then ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
    then (,t)=truncate(ct_G,ind,degree_function)
 in t
-
+}
 { induction of orbits }
 
 { for this we need Springer table for both L and G }

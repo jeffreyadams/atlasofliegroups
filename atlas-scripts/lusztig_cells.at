@@ -17,8 +17,6 @@
 <generic_degrees.at
 <nci_nilrad_roots.at {for all_sums@([ratvec])}
 
-<springer_special_rep.at { for eponymous function, used for output only }
-
 {sigma_lusztig (used to be sigma_L, the new name is better
 sigma_lusztig(O,x) is a of a representation of W(G)
 conjecturally it is the same as
@@ -337,7 +335,7 @@ let table = [ [string] ]:
 	       if #values=1 then k.to_string
 	       else values.to_string + ":" + k.to_string
 	       fi
-	     , if =y then st_G.springer_special_rep(orbit).to_string else "" fi
+	     , if =y then st_G.ct.special(st_G.springer(orbit)).to_string else "" fi
 	     ,dimension(st_G.ct,k).to_string
 	     ,st_G.ct.degree(k).to_string
 	     ,st_G.ct.character(k).to_string
@@ -394,8 +392,7 @@ let table_header =
 	    ,"x"
 	    ]]
 	 else
-	    for k in values
-	    do
+	    for k in values do
 	    [orbit.diagram.to_string + st_G.special_star(orbit)
 	    ,orbit.dim_nilpotent.to_string
 	    ,i.to_string
@@ -408,7 +405,7 @@ let table_header =
 	    ,if #values=1 then k.to_string
 	     else values.to_string + ":" + k.to_string
 	     fi
-	    ,if =y then st_G.springer_special_rep(orbit).to_string else "" fi
+	     , if =y then st_G.ct.special(st_G.springer(orbit)).to_string else "" fi
 	    ,dimension(st_G.ct,k).to_string
 	    ,st_G.ct.degree(k).to_string
 	    ,st_G.ct.character(k).to_string
@@ -468,7 +465,7 @@ let table = [ [string] ]: { concatenation of all [string] values from |data| }
 	     ,if #values=1 then k.to_string { mention unique |k| }
 	      else values.to_string + ":" + k.to_string { mention |k| from list }
 	      fi
-	     ,if =y then st_G.springer_special_rep(orbit).to_string else "" fi
+	     ,if =y then st_G.ct.special(st_G.springer(orbit)).to_string else "" fi
 	     ,dimension(st_G.ct,k).to_string
 	     ,st_G.ct.degree(k).to_string
 	     ,st_G.ct.generic_degree(k).to_string
