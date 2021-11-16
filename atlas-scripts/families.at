@@ -1,0 +1,27 @@
+<character_tables.at
+
+{reps should have a single representation, sort them with special
+first, then numerically, used to sort a family with the unique special first}
+set sort_special_first(CharacterTable ct,[int] reps)=[int]:
+{get index of special from list, should be only 1}
+let specials=##for i:#reps do if ct.is_special_representation(reps[i]) then [i] else [] fi od in
+assert(#specials=1,"number of specials is not 1");
+[reps[specials[0]]]##delete(sort(reps),specials[0])
+
+{return [[int]], one entry for each special representation
+i^th lists the indices of the characters in the same
+family; the first one in the list is the special,
+the others are in ascending order}
+set families(CharacterTable ct)=[[int]]:
+let v=for i:ct.n_classes do [] od then
+()=for j:ct.n_classes do v[ct.special(j)] #:= j od then
+rv=[[int]]:[] in
+for i:#v do if #v[i]>0 then rv#:=v[i] fi od;
+prints("rv=",rv);
+for a in rv do sort_special_first(ct,a) od
+
+set family(CharacterTable ct, int i)=
+let sp=ct.special(i) in 
+sort_special_first(ct, ##for j:ct.n_classes do if  ct.special(j)=sp then [j] else [] fi od)
+
+set family(CharacterTable ct)=(int->[int]):(int i):family(ct,i)

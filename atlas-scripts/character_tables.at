@@ -248,16 +248,16 @@ let id_class=ct.id_class in
 tabulate (
    [ "i"
    , "dim"
-   , "deg"
    , "spcl"
+   , "deg"
    , "gdeg"
    , "name"
    ]
 #  for i:ct.n_irreps
    do [i.to_string
       ,dimension(ct,i).to_string
-      ,ct.degree(i).to_string
       ,let sp=ct.special(i) in if i=sp then "*" else sp.to_string fi
+      ,ct.degree(i).to_string
       ,ct.generic_degree(i).to_string
       ,ct.irreducible_label(i).to_string
       ]
@@ -297,3 +297,14 @@ set view_char(CharacterTable ct,vec character) = void:
    view_multiplicities(ct,ct.decompose(character))
 
 set view_char(CharacterTable ct) = (vec v)void: view_char(ct,v)
+
+{stuff about special representations moved from springer_tables.at}
+
+set is_special_representation(CharacterTable ct, int i)=bool:ct.special(i)=i
+set is_special_representation(CharacterTable ct)=(int ->bool):(int i):ct.special(i)=i
+set special_representations(CharacterTable ct)=[int]:
+##for i:ct.n_classes do if ct.is_special_representation(i) then [i] else [] fi od
+set special_representation_star(CharacterTable ct)=(int ->string):(int i):
+if ct.is_special_representation(i) then "*" else "" fi 
+
+
