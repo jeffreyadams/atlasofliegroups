@@ -28,10 +28,6 @@ set height(K_Type mu)=height(parameter(mu))
 
 set first_K_type(K_Type_Pol P) = K_type(first_param(P))
 
-set find(Param p,ParamPol P)=bool:
-   let list=monomials(P) in any(for q in list do p=q od)
-
-
 {all K_types that occur with mu as LKTs in some standard module}
 set R_packet(K_Type (x,lam))=ParamPol:
    let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam+x.involution*lam,x)
@@ -47,7 +43,7 @@ set R_packet(Param p)=R_packet(LKTs(p)[0])
 
 {Move one step down from mu in the partial order; may result in extra terms}
 set pre_down(K_Type mu) = ParamPol:
-   let q=parameter(mu), Q=LKT(parameter(mu))
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
         zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
@@ -60,10 +56,12 @@ set pre_down(K_Type mu) = ParamPol:
 	   fi
 	od; result
 
-set pre_down(Param p)=pre_down(LKTs(p)[0])
+set pre_down(Param p)=pre_down(first_K_type(standardize(p*0)))
 
-set down_old(K_Type mu) = ParamPol:
-   let q=parameter(mu), Q=LKT(parameter(mu))
+{Move one step down from mu in the partial order <_tr; remove terms
+for which mu does not occur in the K-type formula}
+set down_tr(K_Type mu) = ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
         zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
@@ -72,16 +70,56 @@ set down_old(K_Type mu) = ParamPol:
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
               then let R=to_ht(HT-1)(standardize(standardize
 	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in for m in monomials(R)
-	              do if {find(q,branch_std(m,HT)) then result+:=m}
-		      	    split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
+                   in for @ m in R
+	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
                          fi
 	              od
 	 fi od;
    result
 
+set down_tr(Param p)=down_tr(first_K_type(standardize(p*0)))
 
-{The function down@ParamPol (below) without test for removal}
+{Move down one step in the partial order for a list of K-types, assumed to
+be in one R-packet; remove any K-types whose K_type_formula does not
+contain any negative term from the list}
+set down(ParamPol P)=ParamPol:
+   let result=null_module(P.real_form) in
+  for @p in P
+       do for @m in pre_down(p)
+          do if any(for @r in P do split_as_int(K_type_formula(m)[r])
+				     < 0 od)
+	     then result+:=m
+	     fi
+	  od
+	od; result
+
+
+set down_R(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
+   down(R_packet(mu))
+
+set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
+
+{test whether the K-type is at the bottom of the preorder; not used?}
+set bottom(K_Type mu) = bool:
+    pre_down(mu) = 0*mu
+
+set down_R_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_R(tau) do F(p); result +:= p od
+        fi); result
+
+set down_tr_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_tr(tau) do F(p); result +:= p od
+        fi); result
+
+{The function down@ParamPol (above) without test for removal}
 {This gives incorrectly too many terms in G=Sp(4,R)
       down_alt((KGB(G,6),[2,1]/1))
 Answer includes (KGB(Sp(G,3),[1,0]) which is wrong.
@@ -94,46 +132,13 @@ set down_alt(ParamPol P)=ParamPol:
 let result=null_module(P.real_form) in
 for @p in P do result+:=pre_down(p) od; result
 
-{Move down one step in the partial order for a list of K-types, assumed to
-be in one R-packet; remove any K-types whose K_type_formula does not
-contain any negative term from the list}
-set down(ParamPol P)=ParamPol:
- {  let G=real_form(P), list=monomials(P) }
-   let result=null_module(P.real_form) in
-  for @p in P
-       do for @m in pre_down(p)
-          do if any(for @r in P do split_as_int(K_type_formula(m)[r])
-				     < 0 od)
-	     then result+:=m
-	     fi
-	  od
-	od; result
-
 set down_alt(K_Type mu)= { prints("Height of mu=
    ",height(parameter(mu))); }
    down_alt(R_packet(mu))
 
 set down_alt(Param p)=down_alt(R_packet(p))
 
-set down(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
-   down(R_packet(mu))
-
-set down(Param p)=down(R_packet(first_K_type(standardize(p*0))))
-
-{test whether the K-type is at the bottom of the preorder}
-set bottom(K_Type mu) = bool:
-    down(mu) = 0*mu
-
-set down_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
-   then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
-        if seen[tau].!= then ()
-        else seen +:= tau; for @p in down(tau) do F(p); result +:= p od
-        fi); result
-
-{ omit testing }
-set down_cone_alt(K_Type mu) = K_Type_Pol:
+set down_alt_cone(K_Type mu) = K_Type_Pol:
     let seen=ParamPol:null_module(mu.real_form) then result=seen in
     parameter(mu).( rec_fun F (Param tau) void:
       if seen[tau].!= then ()
@@ -144,52 +149,57 @@ set down_cone_alt(K_Type mu) = K_Type_Pol:
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
 
-
 {Move one step up in the partial order of K-types}
 set pre_up(K_Type mu)=ParamPol:
+   let result=null_module(real_form(mu))
+   in for c@p in K_type_formula(mu)
+                        do if int_part(c)<0 then result+:=p fi
+                        od; result
+
+{As previous function, but remove some terms that are further
+up in the partial order}
+set up_tr(K_Type mu)=K_Type_Pol:
+   let NM=null_module(real_form(mu)),start=pre_up(mu)
+   then result=NM
+   in while start!=NM do let p=last_param(start)
+                        in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
+			    then result+:=p fi; start-:=start[p]*p
+		      od; result
+
+set up_tr(Param p)=up_tr(first_K_type(standardize(p*0)))
+
+{All K-types above mu up to height bound}
+set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
+    let seen=ParamPol:null_module(mu.real_form)
+    then result=seen
+     in parameter(mu).(rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:=tau; for @p in to_ht(bound)(up_tr(tau)) do F(p);
+           result +:=p od fi); result
+
+set pre_up_R(K_Type mu)=ParamPol:
    let result=null_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=p fi
                         od
-       od; result
+      od; result
 
-{As previous function, but remove some terms that are further
-up in the partial order}
-set up(K_Type mu)=K_Type_Pol:
-   let NM=null_module(real_form(mu)),start=pre_up(mu)
+set up_R(K_Type mu)=K_Type_Pol:
+    let NM=null_module(real_form(mu)),start=pre_up_R(mu)
    then result=NM
    in while start!=NM do let p=last_param(start)
-                         in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
+                        in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
 			    then result+:=p fi; start-:=start[p]*p
 		      od; result
 
-set up(Param p)=up(first_K_type(standardize(p*0)))
+set up_R(Param p)=up_R(first_K_type(standardize(p*0)))
 
-{All K-types above mu up to height bound}
-set up_cone(K_Type mu, int bound) = K_Type_Pol:
+set up_R_cone(K_Type mu, int bound) = K_Type_Pol:
     let seen=ParamPol:null_module(mu.real_form)
     then result=seen
      in parameter(mu).(rec_fun F (Param tau) void:
         if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(bound)(up(tau)) do F(p);
+        else seen +:=tau; for @p in to_ht(bound)(up_R(tau)) do F(p);
            result +:=p od fi); result
-
-set test_down(K_Type mu)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(down(mu))
-      do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
-
-set test_down_alt(K_Type mu)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(down_alt(mu))
-      do prints(p," ",height(p)," ",find(q,branch_std(p,h))) od
-
-set test_up(K_Type mu)=void:
-   let h=height(parameter(mu)),q=parameter(mu)
-   in prints("height of mu: ",h);
-   for p in monomials(up(mu))
-      do prints(p," ",height(p)," ",find(p,branch_std(q,height(p)))) od
 
