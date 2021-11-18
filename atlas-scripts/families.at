@@ -17,7 +17,6 @@ let v=for i:ct.n_classes do [] od then
 ()=for j:ct.n_classes do v[ct.special(j)] #:= j od then
 rv=[[int]]:[] in
 for i:#v do if #v[i]>0 then rv#:=v[i] fi od;
-prints("rv=",rv);
 for a in rv do sort_special_first(ct,a) od
 
 set family(CharacterTable ct, int i)=
