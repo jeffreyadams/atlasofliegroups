@@ -203,3 +203,12 @@ set up_R_cone(K_Type mu, int bound) = K_Type_Pol:
         else seen +:=tau; for @p in to_ht(bound)(up_R(tau)) do F(p);
            result +:=p od fi); result
 
+{Testing whether down_tr_cone yields all K-types that are below mu. The entry list
+should be all K-types of K-norm less than the K-norm of mu.}
+set test_down(K_Type mu, [K_Type] list)=bool:
+   let downlist=down_tr_cone(mu)
+   then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
+   			       	       else [] fi
+				    od
+   in for kt in candidates do prints(kt," ",height(kt)) od;
+      all (for kt in candidates do up_tr_cone(kt,height(mu))[parameter(mu)]=0 od)
