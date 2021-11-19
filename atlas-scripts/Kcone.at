@@ -41,110 +41,6 @@ set R_packet(K_Type (x,lam))=ParamPol:
                      od; result
 set R_packet(Param p)=R_packet(LKTs(p)[0])
 
-{Move one step down from mu in the partial order; may result in extra terms}
-set pre_down(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
-   then HT=height(q), lambda =Q.lambda
-   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
-   then result=zeroPol
-     in for avee@j in poscoroots(rd)
-        do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in result+:=R
-	   fi
-	od; result
-
-set pre_down(Param p)=pre_down(first_K_type(standardize(p*0)))
-
-{Move one step down from mu in the partial order <_tr; remove terms
-for which mu does not occur in the K-type formula}
-set down_tr(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
-   then HT=height(q), lambda =Q.lambda
-   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
-   then result=zeroPol
-     in for avee@j in poscoroots(rd)
-        do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in for @ m in R
-	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
-                         fi
-	              od
-	 fi od;
-   result
-
-set down_tr(Param p)=down_tr(first_K_type(standardize(p*0)))
-
-{Move down one step in the partial order for a list of K-types, assumed to
-be in one R-packet; remove any K-types whose K_type_formula does not
-contain any negative term from the list}
-set down(ParamPol P)=ParamPol:
-   let result=null_module(P.real_form) in
-  for @p in P
-       do for @m in pre_down(p)
-          do if any(for @r in P do split_as_int(K_type_formula(m)[r])
-				     < 0 od)
-	     then result+:=m
-	     fi
-	  od
-	od; result
-
-
-set down_R(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
-   down(R_packet(mu))
-
-set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
-
-{test whether the K-type is at the bottom of the preorder; not used?}
-set bottom(K_Type mu) = bool:
-    pre_down(mu) = 0*mu
-
-set down_R_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
-   then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
-        if seen[tau].!= then ()
-        else seen +:= tau; for @p in down_R(tau) do F(p); result +:= p od
-        fi); result
-
-set down_tr_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
-   then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
-        if seen[tau].!= then ()
-        else seen +:= tau; for @p in down_tr(tau) do F(p); result +:= p od
-        fi); result
-
-{The function down@ParamPol (above) without test for removal}
-{This gives incorrectly too many terms in G=Sp(4,R)
-      down_alt((KGB(G,6),[2,1]/1))
-Answer includes (KGB(Sp(G,3),[1,0]) which is wrong.
-Comes from subtracting root 0 = [1,-1] from lambda, giving nonfinal
-parameter (KGB(G,6),[1,2],[0,0]), which standardizes to sum of TWO
-limits of discrete series: (G, 3 or 1, [1,0], [0,0]). The "1" is
-right, the "3" is wrong; don't understand why.}
-
-set down_alt(ParamPol P)=ParamPol:
-let result=null_module(P.real_form) in
-for @p in P do result+:=pre_down(p) od; result
-
-set down_alt(K_Type mu)= { prints("Height of mu=
-   ",height(parameter(mu))); }
-   down_alt(R_packet(mu))
-
-set down_alt(Param p)=down_alt(R_packet(p))
-
-set down_alt_cone(K_Type mu) = K_Type_Pol:
-    let seen=ParamPol:null_module(mu.real_form) then result=seen in
-    parameter(mu).( rec_fun F (Param tau) void:
-      if seen[tau].!= then ()
-      else seen +:= tau; for @p in down_alt(tau) do F(p); result +:= p od
-      fi); result
-
 {up assumes mu = (x',lambda') is standard but perhaps not normal, and
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
@@ -202,6 +98,133 @@ set up_R_cone(K_Type mu, int bound) = K_Type_Pol:
         if seen[tau].!= then ()
         else seen +:=tau; for @p in to_ht(bound)(up_R(tau)) do F(p);
            result +:=p od fi); result
+
+set is_ge_tr(K_Type tau,K_Type mu)=bool:
+    if tau=mu then true
+    elif height(tau)<=height(mu) then false
+    else up_tr_cone(mu,height(tau))[parameter(tau)]!=0 fi
+
+{Move one step down from mu in the partial order; may result in extra terms}
+set pre_down(K_Type mu) = ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+   then HT=height(q), lambda =Q.lambda
+   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=zeroPol
+     in for avee@j in poscoroots(rd)
+        do if (Lambda*avee > 0 and not( is_compact(j,x)))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+                   in result+:=R
+	   fi
+	od; result
+
+set pre_down(Param p)=pre_down(first_K_type(standardize(p*0)))
+
+{Move one step down from mu in the partial order <_tr; remove terms
+for which mu does not occur in the K-type formula}
+set down_tr(K_Type mu) = ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+   then HT=height(q), lambda =Q.lambda
+   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=zeroPol
+     in for avee@j in poscoroots(rd)
+        do if (Lambda*avee > 0 and not( is_compact(j,x)))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+                   in for @ m in R
+	              do if is_ge_tr(Q,K_type(m)) then result+:=m
+                         fi
+	              od
+	 fi od;
+   result
+
+set down_tr_old(K_Type mu) = ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+   then HT=height(q), lambda =Q.lambda
+   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=zeroPol
+     in for avee@j in poscoroots(rd)
+        do if (Lambda*avee > 0 and not( is_compact(j,x)))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+                   in for @ m in R
+	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
+                         fi
+	              od
+	 fi od;
+   result
+
+
+set down_tr(Param p)=down_tr(first_K_type(standardize(p*0)))
+
+{Move down one step in the partial order for a list of K-types, assumed to
+be in one R-packet; remove any K-types whose K_type_formula does not
+contain any negative term from the list}
+set down(ParamPol P)=ParamPol:
+   let result=null_module(P.real_form) in
+  for @p in P
+       do for @m in pre_down(p)
+          do if any(for @r in P do is_ge_tr(K_type(r),K_type(m)) od)
+	     then result+:=m
+	     fi
+	  od
+	od; result
+
+
+set down_R(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
+   down(R_packet(mu))
+
+set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
+
+{test whether the K-type is at the bottom of the preorder; not used?}
+set bottom(K_Type mu) = bool:
+    pre_down(mu) = 0*mu
+
+set down_R_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_R(tau) do F(p); result +:= p od
+        fi); result
+
+set down_tr_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_tr(tau) do F(p); result +:= p od
+        fi); result
+
+{The function down@ParamPol (above) without test for removal}
+{This gives incorrectly too many terms in G=Sp(4,R)
+      down_alt((KGB(G,6),[2,1]/1))
+Answer includes (KGB(Sp(G,3),[1,0]) which is wrong.
+Comes from subtracting root 0 = [1,-1] from lambda, giving nonfinal
+parameter (KGB(G,6),[1,2],[0,0]), which standardizes to sum of TWO
+limits of discrete series: (G, 3 or 1, [1,0], [0,0]). The "1" is
+right, the "3" is wrong; don't understand why.}
+
+set down_alt(ParamPol P)=ParamPol:
+let result=null_module(P.real_form) in
+for @p in P do result+:=pre_down(p) od; result
+
+set down_alt(K_Type mu)= { prints("Height of mu=
+   ",height(parameter(mu))); }
+   down_alt(R_packet(mu))
+
+set down_alt(Param p)=down_alt(R_packet(p))
+
+set down_alt_cone(K_Type mu) = K_Type_Pol:
+    let seen=ParamPol:null_module(mu.real_form) then result=seen in
+    parameter(mu).( rec_fun F (Param tau) void:
+      if seen[tau].!= then ()
+      else seen +:= tau; for @p in down_alt(tau) do F(p); result +:= p od
+      fi); result
+
 
 {Testing whether down_tr_cone yields all K-types that are below mu. The entry list
 should be all K-types of K-norm less than the K-norm of mu.}
