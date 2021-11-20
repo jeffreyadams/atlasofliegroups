@@ -127,16 +127,18 @@ set down_tr(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+        zeroPol = null_module(q.real_form), x=Q.x
+   then rhoL=rho(Levi_by_wt(Lambda,x)), pr=posroots(rd)
    then result=zeroPol
      in for avee@j in poscoroots(rd)
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+              then let R=to_ht(HT-1)(composition_series(standardize
+	                  (parameter(x,lambda-pr[j], rhoL-pr[j]))))
                    in for @ m in R
-	              do if is_ge_tr(Q,K_type(m)) then result+:=m
+	              do for lkt in LKTs(m)
+		         do if is_ge_tr(Q,lkt) then result+:=parameter(lkt)
                          fi
-	              od
+	              od od
 	 fi od;
    result
 
@@ -151,11 +153,29 @@ set down_tr_old(K_Type mu) = ParamPol:
               then let R=to_ht(HT-1)(standardize(standardize
 	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
                    in for @ m in R
-	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
+	              do if is_ge_tr(Q,K_type(m)) then result+:=m
                          fi
 	              od
 	 fi od;
    result
+
+
+{set down_tr_old(K_Type mu) = ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+   then HT=height(q), lambda =Q.lambda
+   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=zeroPol
+     in for avee@j in poscoroots(rd)
+        do if (Lambda*avee > 0 and not( is_compact(j,x)))
+              then let R=to_ht(HT-1)(standardize(standardize
+	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+                   in for @ m in R
+	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
+                         fi
+	              od
+	 fi od;
+   result}
 
 
 set down_tr(Param p)=down_tr(first_K_type(standardize(p*0)))
