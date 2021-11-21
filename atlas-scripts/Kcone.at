@@ -52,6 +52,8 @@ set pre_up(K_Type mu)=ParamPol:
                         do if int_part(c)<0 then result+:=p fi
                         od; result
 
+set pre_up(Param p)=pre_up(first_K_type(standardize(p*0)))
+
 {As previous function, but remove some terms that are further
 up in the partial order}
 set up_tr(K_Type mu)=K_Type_Pol:
@@ -65,12 +67,20 @@ set up_tr(K_Type mu)=K_Type_Pol:
 set up_tr(Param p)=up_tr(first_K_type(standardize(p*0)))
 
 {All K-types above mu up to height bound}
-set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
+{set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
     let seen=ParamPol:null_module(mu.real_form)
     then result=seen
      in parameter(mu).(rec_fun F (Param tau) void:
         if seen[tau].!= then ()
         else seen +:=tau; for @p in to_ht(bound)(up_tr(tau)) do F(p);
+           result +:=p od fi); result}
+
+set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
+    let seen=ParamPol:null_module(mu.real_form)
+    then result=seen
+     in parameter(mu).(rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:=tau; for @p in to_ht(bound)(pre_up(tau)) do F(p);
            result +:=p od fi); result
 
 set pre_up_R(K_Type mu)=ParamPol:
@@ -253,5 +263,5 @@ set test_down(K_Type mu, [K_Type] list)=bool:
    then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
    			       	       else [] fi
 				    od
-   in for kt in candidates do prints(kt," ",height(kt)) od;
+   in {for kt in candidates do prints(kt," ",height(kt)) od;}
       all (for kt in candidates do up_tr_cone(kt,height(mu))[parameter(mu)]=0 od)
