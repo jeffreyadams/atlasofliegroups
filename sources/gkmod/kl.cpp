@@ -452,7 +452,7 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     case DescentStatus::ImaginaryCompact:
       { // $(q+1)P_{x,sy}$
 	Pxy = KL_pol(x,sy);
-	Pxy.safeAdd(Pxy,1); // mulitply by $1+q$
+	Pxy.safeAdd(Pxy,1); // multiply by $1+q$
       }
       break;
     case DescentStatus::ComplexDescent:

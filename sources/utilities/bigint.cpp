@@ -1,7 +1,7 @@
 /*
   This is bigint.cpp.
 
-  Copyright (C) 017 Marc van Leeuwen
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
