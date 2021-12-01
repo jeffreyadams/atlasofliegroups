@@ -1,7 +1,10 @@
 <stable.at  {in_tau@(Param,int)}
 
 set tab_verbose=true
-
+set tau_picture(Param p)=
+ ##for i:p.root_datum.ss_rank do
+ if in_tau(i,p) then "+" else "-" fi od
+  
 set tau_sig(Param p, int i, int j)=(in_tau(i,p), in_tau(j,p))
 set swap(bool x,bool y)=(y,x)
 set =((bool x,bool y),(bool z,bool w))=x=z and y=w
@@ -32,7 +35,9 @@ while #todo>0 do
  for (i,j) in pairs do
   let tab=tab(q,i,j) in
   if #tab>0 then
-   if result[tab[0]]=0 then result+:=tab[0] fi
+   for k:#tab do
+     if result[tab[k]]=0 then result+:=tab[k];todo+:=tab[k] fi
+    od
   fi
  od; {for (i,j)}
  todo:=todo-q
