@@ -68,10 +68,11 @@ up in the partial order}
 set up_tr(K_Type mu)=K_Type_Pol:
    let NM=null_module(real_form(mu)),start=pre_up(mu)
    then result=NM
-   in while start!=NM do let p=last_param(start)
-                        in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
-			    then result+:=p fi; start-:=start[p]*p
-		      od; result
+   in while start!=NM
+       do let p=last_param(start)
+           in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
+	      then result+:=p fi; start-:=start[p]*p
+       od; result
 
 set up_tr(Param p)=up_tr(first_K_type(standardize(p*0)))
 
@@ -104,8 +105,8 @@ set up_R(K_Type mu)=K_Type_Pol:
     let NM=null_module(real_form(mu)),start=pre_up_R(mu)
    then result=NM
    in while start!=NM do let p=last_param(start)
-                        in if all(for c@q in start do p=q or K_type_formula(q)[p]=0 od)
-			    then result+:=p fi; start-:=start[p]*p
+              in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
+	         then result+:=p fi; start-:=start[p]*p
 		      od; result
 
 set up_R(Param p)=up_R(first_K_type(standardize(p*0)))
@@ -142,7 +143,7 @@ set pre_down(Param p)=pre_down(first_K_type(standardize(p*0)))
 
 {Move one step down from mu in the partial order <_tr; remove terms
 for which mu does not occur in the K-type formula}
-{set down_tr(K_Type mu) = ParamPol:
+set down_tr_one_root(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
@@ -155,11 +156,12 @@ for which mu does not occur in the K-type formula}
 	                  (parameter(x,lambda-pr[j], rhoL-pr[j]))))
                    in for @ m in R
 	              do for lkt in LKTs(m)
-		         do if is_ge_tr(Q,lkt) then result+:=parameter(lkt)
-                         fi
+		         do if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
+			    then result+:=parameter(lkt)
+                            fi
 	              od od
 	 fi od;
-   result}
+   result
 
 set down_tr(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
@@ -174,13 +176,14 @@ set down_tr(K_Type mu) = ParamPol:
                  (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
                    in for @ m in R
              do for lkt in LKTs(m)
-        do if is_ge_tr(Q,lkt) then result+:=parameter(lkt)
+        do if
+   (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt)) then result+:=parameter(lkt)
                          fi od od od;
    for j in usedpcr do for k:j do let R=to_ht(HT-1)(composition_series(standardize
                  (parameter(x,lambda-pr[j]-pr[k], rho_r(x)-pr[j]-pr[k]))))
                    in for @m in R
              do for lkt in LKTs(m)
-        do if is_ge_tr(Q,lkt) then result+:=parameter(lkt)
+        do if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt)) then result+:=parameter(lkt)
                          fi od od od od;
 result
 
