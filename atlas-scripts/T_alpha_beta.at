@@ -1,3 +1,5 @@
+<stable.at  {in_tau@(Param,int)}
+
 set tab_verbose=true
 
 set tau_sig(Param p, int i, int j)=(in_tau(i,p), in_tau(j,p))
