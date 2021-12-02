@@ -81,6 +81,15 @@ for Gd in dual_real_forms(G)
    do show_big_table(G,Gd,ct_G); prints(new_line)
    od
 
+set show_X (RealForm G)=void:
+let ct_G=character_table(G) then
+cohX = character_coherent_X(G,ct_G) then list=for char in ct_G.characters do
+ct_G.inner_product(char,cohX) od
+in tabulate(["i","dim","X"]#
+for i:ct_G.n_classes do let a=list[i] in
+[i.to_string,
+dimension(ct_G,i).to_string,a.to_string] od)
+
 set show_BXYI_tables (RealForm G)=show_BXYI_tables(G,character_table(G))
 
 set show_big_table_r(RealForm G,RealForm G_dual)=show_big_table_r(G,G_dual,G.character_table)
