@@ -163,6 +163,8 @@ set down_tr_one_root(K_Type mu) = ParamPol:
 	 fi od;
    result
 
+set down_tr_one_root(Param p)=down_tr_one_root(first_K_type(standardize(p*0)))
+
 set down_tr(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda, x=Q.x
@@ -175,17 +177,18 @@ set down_tr(K_Type mu) = ParamPol:
      in for j in usedpcr do let R=to_ht(HT-1)(composition_series(standardize
                  (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
                    in for @ m in R
-             do for lkt in LKTs(m)
-        do if
-   (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt)) then result+:=parameter(lkt)
-                         fi od od od;
-   for j in usedpcr do for k:j do let R=to_ht(HT-1)(composition_series(standardize
-                 (parameter(x,lambda-pr[j]-pr[k], rho_r(x)-pr[j]-pr[k]))))
-                   in for @m in R
-             do for lkt in LKTs(m)
-        do if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt)) then result+:=parameter(lkt)
-                         fi od od od od;
-result
+             do for lkt in LKTs(m) do
+	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
+	       then result+:=parameter(lkt)
+                fi od od od;
+   for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+            in for @m in R do
+	       for lkt in LKTs(m) do
+	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
+	       then result+:=parameter(lkt)
+               fi od od od od;
+    result
 
 set down_tr_old(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
@@ -264,6 +267,14 @@ set down_tr_cone(K_Type mu) = K_Type_Pol:
         else seen +:= tau; for @p in down_tr(tau) do F(p); result +:= p od
         fi); result
 
+set down_tr_one_cone(K_Type mu) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_tr_one_root(tau) do F(p); result +:= p od
+        fi); result
+
 {The function down@ParamPol (above) without test for removal}
 {This gives incorrectly too many terms in G=Sp(4,R)
       down_alt((KGB(G,6),[2,1]/1))
@@ -307,3 +318,18 @@ set test_down(RealForm G,int bound)=void:
 	      od
    then list=K_parameters_height_upto(G,bound-1)
    in for kt in kts do prints(kt," ",test_down(kt,list)) od
+
+set test_down_one(K_Type mu, [K_Type] list)=bool:
+   let downlist=down_tr_one_cone(mu)
+   then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
+   			       	       else [] fi
+				    od
+   in {for kt in candidates do prints(kt," ",height(kt)) od;}
+      all (for kt in candidates do up_tr_cone(kt,height(mu))[parameter(mu)]=0 od)
+
+set test_down_one(RealForm G,int bound)=void:
+   let kts=##for kt in K_parameters_height_upto(G,bound)
+              do if height(kt)=bound then [kt] else [] fi
+	      od
+   then list=K_parameters_height_upto(G,bound-1)
+   in for kt in kts do prints(kt," ",test_down_one(kt,list)) od
