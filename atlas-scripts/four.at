@@ -83,8 +83,8 @@ for Gd in dual_real_forms(G)
 
 set show_X (RealForm G)=void:
 let ct_G=character_table(G) then
-list=for char in ct_G.characters do
-ct_G.inner_product(char,character_coherent_X(G,ct_G)) od
+cohX = character_coherent_X(G,ct_G), list=for char in ct_G.characters do
+ct_G.inner_product(char,cohX) od
 in tabulate(["i","dim","X"]#
 for i:ct_G.n_classes do let a=list[i] in
 [i.to_string,
