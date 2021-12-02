@@ -537,3 +537,11 @@ H.derived.order_center.to_string,
 C_2.to_string,
 d.orders.to_string,
 st.dual_map(orbit).diagram.to_string] od)
+
+{simple table of real nilpotent orbits}
+set show_real_nilpotent_orbits(RealForm G)=void:
+let header=["#","H","x","dim"] then
+values=
+for O@i in G.real_nilpotent_orbits do
+[i.to_string,O.H.to_string,let (,n)=%O.x in n.to_string,dimension(O).to_string] od in
+tabulate(header#values,"llll",1," ")
