@@ -53,7 +53,7 @@ set dimension(Param p) = int:
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:
-  let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
+  let dom = dominant(root_datum(p), ((1+p.x.involution)*p.lambda).ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
 {
