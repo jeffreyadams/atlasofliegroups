@@ -41,5 +41,4 @@ while #todo>0 do
   fi
  od; {for (i,j)}
  todo:=todo-q
-od  {while};result
-
+od  {while};monomials(result)
