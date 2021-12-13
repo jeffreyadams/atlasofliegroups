@@ -1,0 +1,177 @@
+{very preliminary version of twisted endoscopic lifting
+given: (G,delta^v)
+G=(split) real group
+delta^v=distinguished involution of G^v
+H^v=identity component of (G^v)^delta
+H = dual group of H.split_form
+  = endoscopic group for G 
+[Of course G shouldn't have to be split, and then H 
+will be the appropriate quasisplit form of H]
+
+endoscopic(G,delta^v) returns (H,M)
+H is complex (you should take its split_form
+and M is a matrix relating T_H and T_G
+
+At the moment this has been designed for G=GL(n,R)
+it probably doesn't work in other cases: the embed_KGB 
+function is clumsy
+}
+<mezo.at
+
+set twisted_root_datum(RootDatum G,mat T)=TwistedRootDatum:(G,T)
+
+set pre_folded(TwistedRootDatum (rd,delta))=(mat,mat):
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
+{T is nxr where n=rd.rank and r=dimension(T)}
+{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
+ ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
+}
+roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then
+coroots=[] in
+for alpha in roots do
+ let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
+ v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+   else []
+  fi od)) then
+ w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+ corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+ coroots#:=ratvec_as_vec(corestrict_w)
+od;(roots,coroots)
+
+set Folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
+{assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");}
+assert(is_distinguished(rd,delta),"delta is not distinguished");
+let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
+{T is nxr where n=rd.rank and r=dimension(T)}
+{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
+ ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
+}
+roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
+{roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then}
+roots=mat:##(for alpha in roots_nonreduced do if find(2*roots_nonreduced,alpha)=-1 then [alpha] else [] fi od) then
+coroots=[] in
+for alpha in roots do
+ let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
+ v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
+   else []
+  fi od)) then
+ w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+ corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+ coroots#:=ratvec_as_vec(corestrict_w)
+od;
+(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
+
+{this returns: (RootDatum H,mat M) where
+ Gd=G.dual, T_Gd=Cartan of Gd
+ Hd=identity component of Gd^{delta^t}
+ T_Hd=Cartan of G_d= identity component of (T_Gd)^{delta^t}
+ H=Hd.dual = (twisted) endoscopic group of G
+ left multiplication by M: H.simple_roots -> root_lattice of G
+ left multiplication by ^M: G.simple_coroots -> coroot_lattice of H
+ }
+set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
+let Gd=G.dual then
+trd=twisted_root_datum(Gd,^delta) then
+(Hd,T)=Folded(Gd,delta) then
+H=Hd.dual in
+(H,T)
+
+
+{atlas> set G=GL(5,R)
+Variable G: RealForm (overriding previous instance, which had type RealForm)
+atlas> set delta=G.distinguished_involution 
+Variable delta: mat (overriding previous instance, which had type mat)
+atlas> set (H,M)=endoscopic (G,delta)
+Variable H: RootDatum (overriding previous instance, which had type RootDatum)
+Variable M: mat
+atlas> H
+Value: adjoint root datum of Lie type 'B2'
+atlas> M*H.simple_coroots
+Value: 
+|  1,  0 |
+| -1,  2 |
+|  0,  0 |
+|  1, -2 |
+| -1,  0 |
+
+atlas> M*H.simple_roots
+Value: 
+|  1,  0 |
+| -1,  1 |
+|  0,  0 |
+|  1, -1 |
+| -1,  0 |
+
+atlas> ^M*G.simple_coroots
+Value: 
+| -1,  0,  0, -1 |
+|  1, -1, -1,  1 |
+}
+
+set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
+   case solve(M,A*M) | B.solution: B
+   | else null(0,0)
+   esac
+
+set embed(KGBElt x_H,mat M,[KGBElt] KGB_G)=
+let m_H=x_H.involution in
+let all=##for x in KGB_G do
+ if restrict_action_weak(x.involution,M) = m_H then [x] else [] fi od
+in all
+
+set embed(KGBElt x_H,mat M,RealForm G)=embed(x_H,M,KGB(G))
+
+set embed_KGB(RealForm H,mat M,RealForm G)=
+let KGB_G=KGB(G) in
+for x in KGB(H) do (x,embed(x,M,KGB_G)) od
+
+set simple_imaginary_roots(KGBElt x)=
+let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
+
+set simple_imaginary_reflections(KGBElt x)=
+for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
+
+set L_packet(Param p)=
+for (,w) in cross_sub_orbit(simple_imaginary_reflections(p.x),p.x) do
+ parameter(cross(w,p.x),p.lambda,p.nu) od
+
+set L_packet_representative(Param p)=
+first_param(param_pol(L_packet(p)))
+
+set L_packet_representative(ParamPol P)=
+let rv=null_module(P.real_form) in
+while #P>0 do
+ let (c,p)=first_term(P) in
+ P+:=-c*p; 
+  if rv[L_packet_representative(p)] = 0 then
+   rv+:=c*p
+  fi
+ od;rv
+
+
+set lift(Param p,mat M,RealForm G, mat delta)=
+let x=embed(p.x,M,G)[0] then
+lift_0=parameter((x,M*p.lambda,M*p.nu)) in 
+(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0
+
+set lift(ParamPol P,mat M,RealForm G,mat delta)=
+null_module(G) + for (c,p) in %L_packet_representative(P) do c*lift(p,M,G,delta) od
+
+set extended_character_formula (Param p,[Param] B,mat delta) = 
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
+P=big_KL_P_signed_polynomials(B,delta) then
+index=find(complete_indices,(find(B,p),1)) in
+null_module(p.real_form) + 
+for i:#complete_indices
+do let f=eval(P[i][index],s) in
+ let (j,c)=complete_indices[i] in f*c*B[j] 
+od
+
+set lift_trivial(RealForm G)=
+let (H,M)=endoscopic(G,G.distinguished_involution) in
+lift(H.split_form.trivial.character_formula,M,G,G.distinguished_involution)
+
+set test(RealForm G)=
+(lift_trivial(G), extended_character_formula(G.trivial, block_of(G.trivial), G.distinguished_involution))
