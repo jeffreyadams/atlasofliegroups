@@ -169,6 +169,8 @@ do let f=eval(P[i][index],s) in
  let (j,c)=complete_indices[i] in f*c*B[j] 
 od
 
+set extended_character_formula (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)
+
 set lift_trivial(RealForm G)=
 let (H,M)=endoscopic(G,G.distinguished_involution) in
 lift(H.split_form.trivial.character_formula,M,G,G.distinguished_involution)
