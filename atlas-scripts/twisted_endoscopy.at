@@ -74,7 +74,7 @@ od;
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
-(Hd,T)=Folded(Gd,delta) then
+(Hd,T)=Folded(Gd,^delta) then
 H=Hd.dual in
 (H,T)
 
