@@ -713,6 +713,8 @@ infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
   gamma, so to find the x value uniquely associated to the representation for
   the parameter, one should apply the function 'dominant' to the parameter
   first, after which the value of infinitesimal_character is indeed dominant
+operators =, != : (Param,Param): strict equality of parameters in the same block
+  Equality of parameters implies equality of their real forms
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module

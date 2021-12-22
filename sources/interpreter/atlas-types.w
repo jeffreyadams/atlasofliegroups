@@ -4722,18 +4722,21 @@ on~$\gamma$ should it be required that the evaluation be non-negative. But
 since making this concrete requires an overhaul of the entire block
 construction process, we stick to unqualified dominance for now.)
 
-In accordance with their behaviour when incorporating virtual modules, the
-equality operator for parameters will test for \emph{equivalence} when both
-are standard; otherwise it tests strict equality. Equivalence of standard
-parameters amounts to testing for equality after the parameters are made
-dominant (at least that claim was not contested at the time of writing this).
-We provide this test, which will be bound to the equality operator. Unlike
-earlier equality tests, we \emph{require} the parameters to be associated to
-the same real form, giving a runtime error (rather than returning false) if
-not; this avoids confusion if there were some subtle difference of real forms
-for otherwise similar parameters. If some operation is used to produce
-parameters that may of may not be associated to the same real form, then one
-should test those forms for equality before testing the parameters.
+While the equality and inequality operators for module parameters test for
+strict equality of all components (including of the real forms, which the method
+|StandardRepr::operator==| must simply assume to be equal), a separate function
+tests for \emph{equivalence}; this is a weaker condition when both parameters
+are standard. (When at least one parameter fails to be standard, the equivalence
+test reverts to testing strict equality.) Equivalence of standard parameters
+amounts to testing for equality after the parameters are made dominant (at least
+that claim was not contested at the time of writing this). This test will be
+bound to the name |equivalent|. Unlike the equality tests, it \emph{requires}
+the parameters to be associated to the same real form, giving a runtime error
+(rather than returning false) if not; this avoids confusion if there were some
+subtle difference of real forms for otherwise similar parameters. If some
+operation is used to produce parameters that may of may not be associated to the
+same real form, then one should test those forms for equality before testing
+equivalence of the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
