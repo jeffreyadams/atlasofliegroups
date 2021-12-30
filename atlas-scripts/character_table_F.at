@@ -2,6 +2,13 @@
 <class_tables.at { for |class_table_F| }
 <character_tables.at { for type |CharacterTable| }
 
+{ the function |classes_Kondo_F4| define in character_tables.at lists conjugacy
+  class representatives for any $F_4T_k$ type root datum in a fixed order, which
+  order is used below to write down characters below. The numbering of the
+  $W(F_4)$ irreducibles is determined by the |character_table_F4_data| table.
+  The following funtions efunction |character_table_F| will then construct
+  a valid character table, which those numberings, for any such root datum. }
+
 set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
 {   e    ...             long refl ..  short refl ... }
 [([ 1, 1,1,1,1,1,1,1,1,1,1,  1,  1,1,1,1,  1, 1,1,1,1,1,1,1,1]          ,0,0)
@@ -42,21 +49,6 @@ in for (chi,deg,) in character_table_F4_data
 set F4_name(int dim, int degree, int n_primes) = string:
    ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
 
-set character_table_F(RootDatum rd) = CharacterTable:
-   let Wct = class_table_F(rd)
-   then classes = [WeylElt,classical_class,string]:
-      for w@i in Wct.class_representatives
-      do (w,null_class(),class_signature_F4(w).compressed_string)
-      od
-   , irreps = [classical_irrep,string,[int]]:
-      for (line,degree,n_primes) in character_table_F4_data
-      do (null_irrep(),F4_name(line[0],degree,n_primes),line)
-      od
-   in character_table(Wct,classes,irreps)
-
-set character_table_F(int n) = CharacterTable:
-   character_table_F(simply_connected("F4"))
-
 set to_special_F4 = (int i) int:
    case i
    in 0{sp}, 15, 15, 3{sp}
@@ -70,3 +62,20 @@ set to_special_F4 = (int i) int:
    , 15
    else error("Wrong F4 irrep number")
    esac
+
+set character_table_F = (RootDatum -> CharacterTable):
+(  let irreps = [[int],string]:
+      for (line,degree,n_primes) in character_table_F4_data
+      do (line,F4_name(line[0],degree,n_primes))
+      od
+in (RootDatum rd) CharacterTable:
+   let Wct = class_table_F(rd)
+   then classes = [WeylElt,string]:
+      for w@i in Wct.class_representatives
+      do (w,class_signature_F4(w).compressed_string)
+      od
+   in character_table(Wct,classes,irreps,to_special_F4@int)
+)
+
+set character_table_F(int n) = CharacterTable:
+   assert(n=4,"Inexistent type F"+n); character_table_F(simply_connected("F4"))

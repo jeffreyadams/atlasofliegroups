@@ -1,4 +1,5 @@
 <K_types.at
+<K_highest_weights.at { |LKT@Param|, |dimension@K_Type| }
 <K_norm.at
 <nci_nilrad_roots.at
 
@@ -10,8 +11,8 @@ set N=100 {cutoff for branching}
 }
 
 {add up the dimensions of terms in a K_Type_Pol}
-set dimension(K_Type_Pol P)=
-sum(for c@p in P do  split_as_int(c)*dimension(LKT(p)) od)
+set dimension (K_Type_Pol P) = int:
+   sum(for c@p in P do split_as_int(c)*dimension(LKT(p)) od)
 
 set dimension_u_cap_s(Parabolic P)=int:#nci_nilrad_roots_restricted_to_H_theta(P.x_min,P)
 set dimension_wedge_u_cap_s(Parabolic P)=int:2^dimension_u_cap_s(P)

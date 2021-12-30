@@ -210,7 +210,7 @@ set Z_2 (RealForm G) = [vec]:
   get a set of generators for the center.
 
   The value returned are the set of rational weights $M*(A[i])$, where the
-  mulitplication by $M$ transfers us back to the original $X_*$ coordinates.
+  multiplication by $M$ transfers us back to the original $X_*$ coordinates.
   The numbers $c[i]$ are forgotten, but in fact will appear as demoninators
   of the rational vectors returned, due to the way they were obtained.
 }

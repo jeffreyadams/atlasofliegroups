@@ -38,9 +38,15 @@ set is_isomorphic (WeylClassTable tab, W_rep pi, W_rep sigma) = bool:
      )
 
 {. matrix of inner products of characters of representations .}
-set matrix_of_inner_products (WeylClassTable tab,[[int]] characters) = mat:
-  let n=#characters
-  in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
+set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
+(  let n=#characters
+   , triangle = [[int]]:
+      for f@i in characters do for g in characters[i:] do tab.inner(f,g) od od
+   in matrix
+     ((n,n)
+     ,(int i,int j): if i<=j then triangle[i][j-i] else triangle[j][i-j] fi
+     )
+)
 
 { filter list of representations to a unique copy of any occurring character }
 set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
@@ -211,16 +217,18 @@ set cell_characters (WeylClassTable Wct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(Wct, cell) od
 
 set cells_table (WeylClassTable Wct,[WCell] cells) = mat:
-  matrix_of_inner_products(Wct,cell_characters(Wct,cells))
+  Wct.matrix_of_inner_products(cell_characters(Wct,cells))
 
 set cells_table_augmented (WeylClassTable Wct, [WCell] cells) = mat:
   let characters =
     cell_characters(Wct,cells) ## [ Wct.trivial, Wct.sign, Wct.reflection ]
-  in matrix_of_inner_products(Wct,characters)
+  in Wct.matrix_of_inner_products(characters)
 
 set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
-  (#cell.graph,for i:Wct.root_datum.semisimple_rank
-	       do unsparse(cell_action(cell,i),#cell.graph) od)
+  ( #cell.graph
+  , for i:Wct.root_datum.semisimple_rank
+    do unsparse(cell_action(cell,i),#cell.graph) od
+  )
 
 { list of representations defined by an array of cells }
 set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
@@ -228,10 +236,6 @@ set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
 
 
 { ------------------- induction ------------------- }
-
-{. promote w in W(Levi) to W(G) }
-set promote (WeylClassTable Wct, WeylElt w_L) = WeylElt:
-  W_elt(Wct.root_datum, matrix(w_L))
 
 { all 2^n standard Levis }
 set standard_Levis (RootDatum rd) = [RootDatum]:
@@ -256,7 +260,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   for each conjugacy class representative w_L compute  w_G = class_of (w_L,G)
   and add to the character value at (the class) w_G the  value:
   pi_L(w_L) * index(W(G):W(L))*|conjugacy class of w_L|/|conjugacy class of w|
-  The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
+  The factor by which pi_L(w_L) is multiplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
 set induce_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_L) =
@@ -269,7 +273,7 @@ set induce_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_L) =
    , sizes_G = Wct_G.class_sizes
    , sizes_L = Wct_L.class_sizes
 in for w_L@i in classes_L
-   do let j=Wct_G.class_of(W_elt(rd_G,w_L.matrix))
+   do let j=Wct_G.class_of(convert_to(rd_G,w_L))
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 

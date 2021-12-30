@@ -1,0 +1,44 @@
+<stable.at  {in_tau@(Param,int)}
+
+set tab_verbose=true
+set tau_picture(Param p)=
+ ##for i:p.root_datum.ss_rank do
+ if in_tau(i,p) then "+" else "-" fi od
+  
+set tau_sig(Param p, int i, int j)=(in_tau(i,p), in_tau(j,p))
+set swap(bool x,bool y)=(y,x)
+set =((bool x,bool y),(bool z,bool w))=x=z and y=w
+set valid(Param p, int i, int j)=
+let (x,y)=tau_sig(p,i,j) in
+ not (i=j) and not (is_orthogonal(p.root_datum,i,j)) and ((x and not y) or (y and not x))
+
+set tab(Param p,int i, int j)=
+if not valid(p,i,j) then [Param]:[] else 
+let (a,b,c,d)=(cross(i,p), cross(j,p), Cayley_set(i,p), Cayley_set(j,p))
+then given=tau_sig(p,i,j) in
+ remove_duplicates(if given = swap(tau_sig(a,i,j)) then [a] else [] fi
+ ##if given = swap(tau_sig(b,i,j)) then [b] else [] fi
+ ##if given = swap(tau_sig(c[0],i,j)) then [c[0]] else [] fi
+ ##(##for k:#c do if given = swap(tau_sig(c[k],i,j)) then [c[k]] else [] fi od)
+ ##(##for k:#d do if given = swap(tau_sig(d[k],i,j)) then [d[k]] else [] fi od))
+ fi
+
+set tab_pairs(RootDatum G)=[(int,int)]:
+##(##for i:G.ss_rank do for j:i do if not is_orthogonal(G,i,j) then [(j,i)] else [] fi od od)
+
+set tab_orbit(Param p)=
+let pairs=tab_pairs(p.root_datum) then
+todo=ParamPol:p  then {all coefficients should be 1}
+result=todo in   {all coefficients should be 1}
+while #todo>0 do
+ let q=first_param(todo) in
+ for (i,j) in pairs do
+  let tab=tab(q,i,j) in
+  if #tab>0 then
+   for k:#tab do
+     if result[tab[k]]=0 then result+:=tab[k];todo+:=tab[k] fi
+    od
+  fi
+ od; {for (i,j)}
+ todo:=todo-q
+od  {while};monomials(result)

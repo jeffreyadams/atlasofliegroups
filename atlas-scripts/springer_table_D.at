@@ -77,7 +77,7 @@ set diagram_D_to_partition ([int] diagram) = (Partition,bool):
    then mult(int i) = int: { multiplicity of part |i| in result }
       let m =
          if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
-      in assert(m.>=,"Invalid diagram, negative mulitplicity of "+i); m
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
 in (for i:max from 1 ~ do for :mult(i) do i od od.##, flip)
 
 { when |O| is an orbit for some |rd| passing |test_simple_type("D",rd)|, the
@@ -156,13 +156,6 @@ set springer_D (ComplexNilpotent O) = D_irrep:
    springer_D(partition_of_orbit_D(O))
 
 
-{ a function that was used during development, but no longer is }
-set springer_D_by_induction (CharacterTable ct,ComplexNilpotent O) = D_irrep:
-   let index = int: truncate_induce_sign(ct,Bala_Carter_simples(O))
-   then char = ct.tensor_sign(ct.character(index))
-in ct.classical_reps(ct.character_index(char)).get_irrep_D
-
-
 {------------------ duality ----------------------------------}
 
 { after the initial |assert| statement, |D_adjust| is identical to |B_adjust| }
@@ -228,38 +221,3 @@ in ( table
    , dual_map_D(dual(rd)) { "inverse" of dual map is same algorithm }
    , (ComplexNilpotent O) int: lookup_D_irrep(springer_D(O))
    )
-
-{ for now we also need to accommodate an existing character table }
-set springer_table_D (CharacterTable ct) = SpringerTable:
-   let rd = ct.root_datum
-   then orbit = (Partition,bool->ComplexNilpotent): nilpotent_orbit_D(rd)
-   , lookup = (D_irrep->int):
-       for i:ct.n_irreps do ct.classical_reps(i).get_irrep_D od.index_D_reps
-in ( ct
-   , for pair in partitions_D(rd.semisimple_rank) do orbit(pair) od
-   , dual_map_D(rd)
-   , dual_map_D(dual(rd)) { "inverse" of dual map is same algorithm }
-   , (ComplexNilpotent O) int: lookup(springer_D(O))
-   )
-
-
-
-set show_D (SpringerTable st) = void:
-   let orbits=st.root_datum.orbits in
-( ["i","partition","O","d(O)","dd(O)","pi","special"]
-# for O@i in orbits
-  do let  O_d  = st.dual_map(O)
-     then O_dd = st.dual_map_i(O_d)
-     then special=st.is_special(O)
-     , sigma_index=st.springer(O)
-     then sigma=st.ct.classical_reps(sigma_index).get_irrep_D
-  in [i.to_string
-     ,O.partition_of_orbit_D.to_string
-     ,O.diagram.to_string
-     ,O_d.diagram.to_string
-     ,O_dd.diagram.to_string
-     ,sigma.to_string
-     ,special.to_string
-     ]
- od
-).tabulate
