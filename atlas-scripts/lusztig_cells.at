@@ -1,11 +1,5 @@
-<basic.at
-<springer_tables.at
 <geck_generic { for |Springer_table_generic_degrees| }
-<basic.at
-<coherent_characters.at
-<truncated_induction.at
-<isomorphism_W.at
-<generic_degrees.at
+<restricted_roots.at {for remove_zeros@[vec]}
 <nci_nilrad_roots.at {for all_sums@([ratvec])}
 
 {the Lusztig map goes from triples (O,x,xi) to W^
