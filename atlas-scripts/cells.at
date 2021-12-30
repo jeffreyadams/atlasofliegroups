@@ -208,8 +208,8 @@ in if cells_verbose
       in
    {if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;}
          if #cell< springer_dim
-  	 then prints("dim: ", #cell, " ", springer_dim)
-	 ; []
+  	 then {prints("dim: ", #cell, " ", springer_dim);}
+	  []
  	 elif
 	    for p in parameters(block,cells[j])
 	    do if I_will_survive(p,gamma)

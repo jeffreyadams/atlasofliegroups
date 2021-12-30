@@ -490,7 +490,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
  and q=l+u is the corresponding standard parabolic
 }
 
-{. Parabolic attached to KHighestWeight by Vogan algorithm. .}
+ {. Parabolic attached to KHighestWeight by Vogan algorithm. .}
 set parabolic_LKT (KHighestWeight(,x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig

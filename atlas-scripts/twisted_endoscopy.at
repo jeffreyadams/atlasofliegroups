@@ -18,6 +18,77 @@ function is clumsy
 }
 <mezo.at
 
+set is_stable(ParamPol P)=bool:
+let (M,)=stable(monomials(P)) then
+v=[int]: for (c,p) in %P do c.split_as_int od in
+in_lattice(^M,v)
+
+set partial_KL_P_polynomials (Param p, mat delta) = i_poly_mat:
+   let (,P,polys) = KL_block(p,delta)
+in for row in rows(P) { mat to i_pol_mat convention flip }
+   do for index in row do if index.< then -polys[-index] else polys[index] fi od
+   od
+   
+set partial_fixed_block_of(mat delta,Param p)=
+##for a in partial_block(p) do if is_fixed(delta,a) then [a] else [] fi od
+
+set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
+  let B=partial_fixed_block_of(delta,p) in
+  let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+  then B_delta = for i in I_delta do B[i] od
+  , P=KL_P_polynomials(p)
+  then P_delta=KL_P_polynomials(p,delta)
+  in
+  if =#P_delta
+  then prints("Note: block not delta-fixed")
+  ; KL_P_polynomials(B) {block is not fixed by delta}
+  else let n=#complete_indices then rv=zero_poly_matrix(n) in
+     for a:n
+     do let (i,epsilon_i)=complete_indices[a] in
+        for b:n-a from a
+        do let (j,epsilon_j)=complete_indices[b] in
+{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
+           if a=b
+           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
+           then let x=g[i], y=g[j] in
+{ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
+	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	   elif epsilon_i*epsilon_j=minus_1
+	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
+	     rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
+	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
+	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   elif epsilon_i=0 and epsilon_j=0
+	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
+	     rv:=update_matrix_entry
+		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
+           fi
+        od
+     od
+  ; rv
+  fi
+
+set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
+  let B=partial_fixed_block_of(delta,p) in
+  let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
+  if =#I_delta then KL_P_signed_polynomials(B)
+  else
+     let P=big_KL_P_polynomials(p,delta)
+     , lengths = for i:#g do length(B[i]) od
+     , n=#complete_indices
+     in
+     for a:n do for b:n
+     do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
+        P:=update_matrix_entry(P,a,b,P[a][b]*minus_1^(lengths[i]+lengths[j]))
+     od od
+  ; P
+  fi
+
+
+
 set twisted_root_datum(RootDatum G,mat T)=TwistedRootDatum:(G,T)
 
 set pre_folded(TwistedRootDatum (rd,delta))=(mat,mat):
@@ -115,18 +186,27 @@ set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
    | else null(0,0)
    esac
 
-set embed(KGBElt x_H,mat M,[KGBElt] KGB_G)=
-let m_H=x_H.involution in
-let all=##for x in KGB_G do
- if restrict_action_weak(x.involution,M) = m_H then [x] else [] fi od
-in all
 
+set lift(mat m,RootDatum H, RootDatum G,mat M)=WeylElt:
+let W=G.W then
+i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od) 
+in W[i]
+
+set lift(WeylElt w_H,RootDatum H, RootDatum G,mat M)=WeylElt:
+lift(w_H.matrix,H,G,M)
+
+set lift(KGBElt x_H,mat M,RealForm G, mat delta)=KGBElt:
+let lift=lift(x_H.involution,x_H.root_datum,G,M) in
+KGB(G,first(for x in KGB(G) do lift.matrix*delta=x.involution od))
+
+{Note: M*theta_x=theta_y*M where y=lift(x,M,G,delta)}
+{
 set embed(KGBElt x_H,mat M,RealForm G)=embed(x_H,M,KGB(G))
 
 set embed_KGB(RealForm H,mat M,RealForm G)=
 let KGB_G=KGB(G) in
 for x in KGB(H) do (x,embed(x,M,KGB_G)) od
-
+}
 set simple_imaginary_roots(KGBElt x)=
 let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
 
@@ -150,30 +230,71 @@ while #P>0 do
   fi
  od;rv
 
+set sign_difference(Param p_G, mat delta)=int:
+(-1)^(length(p_G)-delta_l_int(p_G,delta))
 
-set lift(Param p,mat M,RealForm G, mat delta)=
-let x=embed(p.x,M,G)[0] then
-lift_0=parameter((x,M*p.lambda,M*p.nu)) in 
-(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0
+set lift_std(Param p_H,mat M,RealForm G, mat delta)=
+let x=lift(p_H.x,M,G,delta) then
+lift_0=parameter((x,M*p_H.lambda,M*p_H.nu)) in
+{(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0}
+sign_difference(lift_0,delta)*lift_0
 
-set lift(ParamPol P,mat M,RealForm G,mat delta)=
-null_module(G) + for (c,p) in %L_packet_representative(P) do c*lift(p,M,G,delta) od
+set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
+null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
-set extended_character_formula (Param p,[Param] B,mat delta) = 
+set lift_irr(Param p_H, mat M, RealForm G, mat delta)=
+lift(p_H.character_formula,M,G,delta)
+
+set inverse_lift_std(Param p_G,mat delta)=
+let G=p_G.real_form then
+(H,M)=endoscopic(G,delta) then
+H=H.split_form then
+x_H= let index_H=first(for x in KGB(H) do lift(x,M,G,delta)=p_G.x od) in KGB(H,index_H) then
+p_H=parameter(x_H,left_inverse(M)*p_G.lambda,left_inverse(M)*p_G.nu) in
+sign_difference(p_G,delta)*param_pol(L_packet(p_H))
+
+set extended_character_formula (Param p,mat delta) =
+let B=partial_fixed_block_of(delta,p) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
-P=big_KL_P_signed_polynomials(B,delta) then
+P=big_KL_P_signed_polynomials(p,delta) then
 index=find(complete_indices,(find(B,p),1)) in
-null_module(p.real_form) + 
+null_module(p.real_form) +
 for i:#complete_indices
 do let f=eval(P[i][index],s) in
- let (j,c)=complete_indices[i] in f*c*B[j] 
+ let (j,c)=complete_indices[i] in f*c*B[j]
 od
 
-set extended_character_formula (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)
+{set extended_character_formula_2 (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)}
+
+set inverse_lift_irr(Param p_G,mat delta,RealForm H)=
+let P=extended_character_formula(p_G,delta) in
+composition_series(null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od)
+
+set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
+null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
 set lift_trivial(RealForm G)=
 let (H,M)=endoscopic(G,G.distinguished_involution) in
 lift(H.split_form.trivial.character_formula,M,G,G.distinguished_involution)
 
 set test(RealForm G)=
-(lift_trivial(G), extended_character_formula(G.trivial, block_of(G.trivial), G.distinguished_involution))
+{(lift_trivial(G), extended_character_formula(G.trivial, block_of(G.trivial), G.distinguished_involution))}
+(lift_trivial(G), extended_character_formula(G.trivial,  G.distinguished_involution))
+set test(RealForm G)=
+{(lift_trivial(G), extended_character_formula(G.trivial, block_of(G.trivial), G.distinguished_involution))}
+(lift_trivial(G), extended_character_formula(G.trivial,  G.distinguished_involution))
+
+
+set test(Param p_G,mat delta)=
+let G=p_G.real_form then
+(H,M)=endoscopic(G,G.distinguished_involution) then
+H=H.split_form then
+p_H=inverse_lift_irr(p_G,delta,H) then  
+lift_p_H=lift(p_H,M,G,delta) then
+lift=lift(p_H.composition_series,M,G,G.distinguished_involution) then
+ex=extended_character_formula(p_G,delta) in
+prints(lift=ex or lift=-ex);(lift,ex)
+
+{the lattice spanned by the columns of M is T-stable}
+set is_stable(mat T, mat M)=bool:any(solve(M,T*M))
+set is_stable(WeylElt w, mat M)=bool:is_stable(w.matrix,M)
