@@ -165,6 +165,24 @@ set down_tr_one_root(K_Type mu) = ParamPol:
 
 set down_tr_one_root(Param p)=down_tr_one_root(first_K_type(standardize(p*0)))
 
+set down_tr_two_roots(K_Type mu)=ParamPol:
+   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+   then HT=height(q), lambda =Q.lambda, x=Q.x
+   then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_module(q.real_form)
+   then pr=posroots(rd),
+        usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
+   not( is_compact(j,x))) then [j] else [] fi od
+   then result=zeroPol
+     in for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+            in for @m in R do
+	       for lkt in LKTs(m) do
+	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
+	       then result+:=parameter(lkt);prints(pr[j]," ",pr[usedpcr[k]])
+               fi od od od od;
+    result
+
 set down_tr(K_Type mu) = ParamPol:
    let q=parameter(mu) then Q=first_K_type(standardize(q*0))
    then HT=height(q), lambda =Q.lambda, x=Q.x
@@ -319,17 +337,18 @@ set test_down(RealForm G,int bound)=void:
    then list=K_parameters_height_upto(G,bound-1)
    in for kt in kts do prints(kt," ",test_down(kt,list)) od
 
-set test_down_one(K_Type mu, [K_Type] list)=bool:
+set test_down_one(K_Type mu, [K_Type] list)=(bool,[K_Type]):
    let downlist=down_tr_one_cone(mu)
    then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
    			       	       else [] fi
 				    od
-   in {for kt in candidates do prints(kt," ",height(kt)) od;}
-      all (for kt in candidates do up_tr_cone(kt,height(mu))[parameter(mu)]=0 od)
+   then result=##for kt in candidates
+                 do if up_tr_cone(kt,height(mu))[parameter(mu)]=0 then [] else [kt] fi od
+   in (#result=0,result)
 
 set test_down_one(RealForm G,int bound)=void:
    let kts=##for kt in K_parameters_height_upto(G,bound)
               do if height(kt)=bound then [kt] else [] fi
 	      od
    then list=K_parameters_height_upto(G,bound-1)
-   in for kt in kts do prints(kt," ",test_down_one(kt,list)) od
+   in for kt in kts do prints(LKT(parameter(kt))," ",test_down_one(kt,list)) od
