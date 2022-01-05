@@ -746,12 +746,12 @@ cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
   This first argument indexes (starting at 0) a simple root for the subsystem
   for the given parameter p: integrality_datum(infinitesimal_character(p))
 Cayley: (int,Param->Param): Cayley transform for (Weyl generator,parameter)
-  If (and only if) the transform is undefined it returns the same parameter
-  Find out possible second value by applying cross action to the result
-inv_Cayley: (int,Param->Param): inverse Cayley transform
-  If (and only if) the inverse transform is undefined it returns the same
-  parameter. Find out possible second value of inverse transform by applying
-  cross action to the result, which either produces it or else fixes result
+  The Weyl generator is an index into the simple roots of the _integral_ system
+  for the parameter. If a Cayley transform in either direction is defined for
+  the generator and the parameter, it will be applied, choosing one of the
+  values in case of a two-valued transform; the other value, if any, can be
+  obtained by applying the cross action for the same generator to the result.
+  If no Cayley transform is defined at all, the parameter is returned unchanged.
 cross: (vec,Param->Param): cross action for (root,parameter)
 Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
   These two functions should do the same as the three before, but taking the

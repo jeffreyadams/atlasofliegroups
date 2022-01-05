@@ -8,7 +8,6 @@
 
 forget cross@(int,Param)
 forget Cayley@(int,Param)
-forget inv_Cayley@(int,Param)
 
 set old_block = block@Param
 forget block@Param
@@ -28,8 +27,6 @@ set cross(int s,Param p) = Param:
 
 set Cayley(int s,Param p) = Param:
   let id = integrality_datum(p) in Cayley(root(id,s),p)
-
-set inv_Cayley = Cayley@(int,Param)
 
 set block (Param p) = ([Param],int):
   let id = integrality_datum(p)

@@ -4789,12 +4789,12 @@ parity) they throw a |Cayley_error| value, which is caught here and translated
 in make the whole function a no-operation (so that the caller gets an occasion
 to test the condition).
 
-Like for KGB elements there is the possibilty of double values, this time both
-for the Cayley and inverse Cayley transforms. The ``solution'' to this
-difficulty is the same here: the user can find out by herself about a possible
-second image by applying a cross action to the result. In the current case
-this approach has in fact already been adopted in the methods that are called
-here, which present a single-minded interface to these transforms.
+Like for KGB elements there is the possibility of double values for the Cayley
+transforms, in either direction. The ``solution'' to this difficulty is the same
+here: the user can find out by herself about a possible second image by applying
+a cross action to the result. In the current case this approach has in fact
+already been adopted in the method that is called here, which presents a
+single-valued interface to the Cayley transform.
 
 @< Local function def...@>=
 void parameter_cross_wrapper(expression_base::level l)
@@ -4829,30 +4829,6 @@ void parameter_Cayley_wrapper(expression_base::level l)
   try {
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().Cayley(s,p->val)));
-  }
-  catch (error::Cayley_error& e) // ignore undefined Cayley transforms
-  {@;
-    push_value(std::move(p));
-  }
-}
-
-void parameter_inv_Cayley_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  int s = get<int_value>()->int_val();
-  unsigned int r =
-    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
-  if (static_cast<unsigned>(s)>=r)
-  { std::ostringstream o;
-    o << "Illegal simple reflection: " << s
-      << ", should be <" << r;
-    throw runtime_error(o.str());
-  }
-  if (l==expression_base::no_value)
-    return;
-
-  try {
-    push_value(std::make_shared<module_parameter_value>
-		(p->rf,p->rc().inv_Cayley(s,p->val)));
   }
   catch (error::Cayley_error& e) // ignore undefined Cayley transforms
   {@;
@@ -5758,8 +5734,6 @@ install_function(parameter_equivalent_wrapper,@|"equivalent"
                 ,"(Param,Param->bool)");
 install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
-install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
-                ,"(int,Param->Param)");
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
 install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");

@@ -7,14 +7,9 @@
 
 { ------------ Cayleys as sums of one or two terms ---------- }
 
-{ nci Cayley transform as a sum of one or two terms }
-set nci_Cayley (int k,Param p) = ParamPol:
+{ Cayley transform as a sum of one or two terms }
+set Cayley_sum (int k,Param p) = ParamPol:
   let c1=Cayley(k,p) then c2=cross(k,c1) in
-  if c1=c2 then c1 else c1+c2 fi
-
-{ real Cayley transform as a sum of one or two terms }
-set r1_Cayley (int k,Param p) = ParamPol:
-  let c1=inv_Cayley(k,p) then c2=cross(k,c1) in
   if c1=c2 then c1 else c1+c2 fi
 
 { -----------coherent continuation in basis of standards----------- }
@@ -38,7 +33,7 @@ set coherent_std_reg (Param p,int s) = ParamPol:
   assert(is_regular(p),"infinitesimal character is not regular");
   let type=status(s,x(p)) in
   if   type=1 { compact imaginary }     then -p
-  elif type=3 { non-compact imaginary } then nci_Cayley(s,p)-cross(s,p)
+  elif type=3 { non-compact imaginary } then Cayley_sum(s,p)-cross(s,p)
   else        { complex or real }            cross(s,p)
   fi
 

@@ -844,68 +844,52 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
 
   const auto& conj = subsys.to_simple(s); // word in full system
   const KGBElt conj_x = kgb.cross(conj,z.x());
-  if (kgb.status(subsys.simple(s),conj_x)!=
-      gradings::Status::ImaginaryNoncompact)
-    throw error::Cayley_error();
-  const auto new_x = kgb.cross(kgb.cayley(subsys.simple(s),conj_x),conj);
-  RatWeight gamma_lambda = this->gamma_lambda(z);
-
-  const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb.inv_nr(new_x));
-  RootNbrSet real_flip = upstairs_real_roots;
-  real_flip ^= i_tab.real_roots(kgb.inv_nr(z.x())); // remove downstairs reals
-
   RootNbrSet pos_neg = pos_to_neg(rd,conj);
-  pos_neg &= real_flip; // posroots that change real status and map to negative
-  gamma_lambda += root_sum(rd,pos_neg); // correction of $\rho_r$'s
-
-  // correct in case the parity condition fails for our raised |gamma_lambda|
-  const Coweight& alpha_hat = rd.coroot(parent_s);
-  const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
-    alpha_hat.dot(rd.twoRho(upstairs_real_roots))/2;
-  const int eval = gamma_lambda.dot(alpha_hat);
-  if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
-    gamma_lambda += RatWeight(rd.root(parent_s),2); // add half-alpha
-
-  const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho(rd));
-  return sr_gamma(new_x,lambda_rho,gamma);
-}
-
-StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
-{
-  make_dominant(z);
-  const RootDatum& rd = root_datum();
-  const auto& i_tab = involution_table();
-  const KGB& kgb = this->kgb();
-  const RatWeight& gamma = z.gamma(); // now get the infinitesimal character
-  const SubSystem& subsys = SubSystem::integral(rd,gamma);
-  const auto parent_s = subsys.parent_nr_simple(s);
-
-  const auto& real_roots = i_tab.real_roots(kgb.inv_nr(z.x()));
-  if (not real_roots.isMember(parent_s))
-    throw error::Cayley_error();
   RatWeight gamma_lambda = this->gamma_lambda(z);
   const Coweight& alpha_hat = rd.coroot(parent_s);
-  const int eval = gamma_lambda.dot(alpha_hat);
-  const int rho_r_corr = alpha_hat.dot(rd.twoRho(real_roots))/2;
-  if ((eval+rho_r_corr)%2==0) // then |s| is real nonparity at |z|
-    throw error::Cayley_error();
+  KGBElt new_x;
 
-  const auto& conj = subsys.to_simple(s); // word in full system
-  const KGBElt conj_x = kgb.cross(conj,z.x());
-  const KGBElt new_x =
-    kgb.cross(kgb.inverseCayley(subsys.simple(s),conj_x).first,conj);
+  if (kgb.status(subsys.simple(s),conj_x)==
+      gradings::Status::ImaginaryNoncompact)
+  {
+    new_x = kgb.cross(kgb.cayley(subsys.simple(s),conj_x),conj);
 
-  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
-  const RootNbrSet real_flip = real_roots^i_tab.real_roots(kgb.inv_nr(new_x));
-  pos_neg &= real_flip; // posroots that change real status and map to negative
-  gamma_lambda += root_sum(rd,pos_neg); // correction of $\rho_r$'s
-  // now |gamma_lambda| is still in the $X^*$-coset of $\gamma-\rho$
-  // it might not be in the $-1$ eigenspace for |new_x|, but |sr_gamma| projects
+    const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb.inv_nr(new_x));
+    RootNbrSet real_flip = upstairs_real_roots;
+    real_flip ^= i_tab.real_roots(kgb.inv_nr(z.x())); // remove downstairs reals
+
+    pos_neg &= real_flip; // posroots that change real status and map to negative
+    gamma_lambda += root_sum(rd,pos_neg); // correction of $\rho_r$'s
+
+    // correct in case the parity condition fails for our raised |gamma_lambda|
+    const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
+      alpha_hat.dot(rd.twoRho(upstairs_real_roots))/2;
+    const int eval = gamma_lambda.dot(alpha_hat);
+    if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
+      gamma_lambda += RatWeight(rd.root(parent_s),2); // add half-alpha
+  }
+  else
+  {
+    const auto& real_roots = i_tab.real_roots(kgb.inv_nr(z.x()));
+    if (not real_roots.isMember(parent_s))
+      throw error::Cayley_error();
+    const int eval = gamma_lambda.dot(alpha_hat);
+    const int rho_r_corr = alpha_hat.dot(rd.twoRho(real_roots))/2;
+    if ((eval+rho_r_corr)%2==0) // then |s| is real nonparity at |z|
+      throw error::Cayley_error();
+
+    new_x = kgb.cross(kgb.inverseCayley(subsys.simple(s),conj_x).first,conj);
+
+    const RootNbrSet real_flip = real_roots^i_tab.real_roots(kgb.inv_nr(new_x));
+    pos_neg &= real_flip; // posroots that change real status and map to negative
+    gamma_lambda += root_sum(rd,pos_neg); // correction of $\rho_r$'s
+    // now |gamma_lambda| is still in the $X^*$-coset of $\gamma-\rho$; it might
+    // not be in the $-1$ eigenspace for |new_x|, but |sr_gamma| projects to it
+  }
 
   const Weight lambda_rho = gamma.integer_diff<int>(gamma_lambda+rho(rd));
   return sr_gamma(new_x,lambda_rho,gamma);
 }
-
 
 /*
   Compute shift in |lambda| component of parameter for Cayley transform by a
