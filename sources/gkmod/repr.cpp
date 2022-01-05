@@ -2161,6 +2161,8 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z=alcove_center(*this,z);
   const auto& delta = inner_class().distinguished();
 
   RatNumList rp=reducibility_points(z);
