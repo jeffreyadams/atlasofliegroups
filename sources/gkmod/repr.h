@@ -499,7 +499,7 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
-  const K_type_poly& deformation(const StandardRepr& z);
+  const K_type_poly& deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms

@@ -1857,13 +1857,13 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 } // |Rep_table::KL_column|
 
 
-const K_type_poly& Rep_table::deformation(const StandardRepr& z_org)
+const K_type_poly& Rep_table::deformation(StandardRepr z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
-  assert(is_final(z_org));
-  StandardRepr z = z_org.gamma().denominator() > (1LL<<rank())
-    ? alcove_center(*this,z_org) : z_org;
+  assert(is_final(z));
+  if (z.gamma().denominator() > (1LL<<rank()))
+    z = alcove_center(*this,z);
   RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
 
   deformation_unit zn(*this,z);
