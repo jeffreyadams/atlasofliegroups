@@ -256,7 +256,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   for each conjugacy class representative w_L compute  w_G = class_of (w_L,G)
   and add to the character value at (the class) w_G the  value:
   pi_L(w_L) * index(W(G):W(L))*|conjugacy class of w_L|/|conjugacy class of w|
-  The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
+  The factor by which pi_L(w_L) is multiplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
 set induce_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_L) =

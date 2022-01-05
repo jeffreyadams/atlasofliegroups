@@ -1881,7 +1881,7 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{ whether all coefficients are integer repectively integer mulitples of |s| }
+{ whether all coefficients are integer repectively integer multiples of |s| }
 set is_pure_1 (ParamPol P)=bool: all(for c in P do c.s_part.= od)
 set is_pure_s (ParamPol P)=bool: all(for c in P do c.int_part.= od)
 

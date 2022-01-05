@@ -5702,16 +5702,15 @@ into a list of parameters and three tables in the form of matrices.
 }
 
 @ The following function generates an extended block, computes their extended
-KL polynomials and evaluates them at $-1$ (since this turns out to be
-sufficient for their use in the deformation algorithm), and then rewrites
-elements that have singular descents in terms of those that have not (the
-``survivors''), reduces the matrix to be indexed by those elements only, and
-finally negates entries at positions with odd length difference for the block
-elements corresponding to row and column. All this work is actually performed
-inside call to |ext_kl::ext_KL_matrix|.
+KL polynomials, and then rewrites elements that have singular descents in terms
+of those that have not (the ``survivors''), reduces the matrix to be indexed by
+those elements only, and finally negates entries at positions with odd length
+difference for the block elements corresponding to row and column. All this work
+is actually performed inside call to |ext_kl::ext_KL_matrix|.
 
-The function returns the extended block as list of parameters, and the matrix
-just described.
+The function returns the extended block as list of parameters, a matrix, and
+finally a list of vectors, to be interpreted as polynomials, and into which list
+the matrix entries are indices.
 
 @< Local function def...@>=
 void extended_KL_block_wrapper(expression_base::level l)
@@ -5794,7 +5793,7 @@ install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
-install_function(extended_KL_block_wrapper,@|"extended_KL_block"
+install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
                 ,"(Param,mat->[Param],mat,[vec])");
 
 @*1 Polynomials formed from parameters.
