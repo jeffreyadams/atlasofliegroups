@@ -28,8 +28,8 @@ class big_int
 
   std::vector<digit> d;
 
-static unsigned char_val (char c) // for reading from strings
-{ return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
+  static unsigned char_val (char c) // for reading from strings
+  { return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
 
 public:
 
@@ -41,9 +41,11 @@ public:
   explicit big_int (int n) // normal constructor only for single |digit| case
     : d(1,static_cast<digit>(n)) {}
   static big_int from_signed (long long n);  // factory for up to 2-digit signed
-  static big_int from_unsigned (unsigned long long n); // up to 3-digit unsigned
-  big_int (const char * p, unsigned char base, // from text in base |base|
-	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
+  static big_int from_unsigned (unsigned long long n); // up to 2-digit unsigned
+  explicit big_int (const char * p,
+		    unsigned char base = 10, // from text in base |base|
+		    unsigned (*convert)(char) = &char_val); // custom conversion
+
   int int_val() const; // extract 32-bits signed value, or throw an error
   arithmetic::Numer_t long_val() const; // extract 64 bits signed value
   arithmetic::Denom_t ulong_val() const; // extract 64 bits unsigned value
@@ -63,6 +65,10 @@ public:
   big_int& negate ()     { compl_neg(d.begin(),true); return *this; }
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
 
+  big_int& operator= (unsigned long long n) { return *this = from_unsigned(n); }
+  big_int& operator= (int n) { return *this = big_int(n); }
+
+  big_int& operator*= (digit x);
   big_int& operator*= (int x);
   big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
   big_int operator* (const big_int&) const;
@@ -114,6 +120,8 @@ public:
   big_int power (unsigned int e) const;
   size_t size () const { return d.size(); }
 
+  double as_double() const;
+
 private:
   void carry(std::vector<digit>::iterator it); // carry into position |*it|
   void borrow(std::vector<digit>::iterator it); // borrow into position |*it|
@@ -127,8 +135,8 @@ private:
   void compl_neg(std::vector<digit>::iterator it,bool negate);
 
   void mult_add (digit x, digit a);
-  void LSL (unsigned char n); // logical shift left (unsigned)
-  void LSR (unsigned char n); // logical shift right (unsigned)
+  void LSL (unsigned char n); // fixed size logical shift left (unsigned)
+  void LSR (unsigned char n); // fixed size logical shift right (unsigned)
 }; // |class big_int|
 
 std::ostream& operator<< (std::ostream& out, big_int&& number);

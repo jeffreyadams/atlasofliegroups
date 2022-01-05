@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <cstring>
+#include <cmath>
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -48,38 +49,43 @@ template<> long long big_int::convert<long long> () const { return long_val(); }
   strictly shorter number is added or subtracted from |*this|)
  */
 
+// carry a unit into position |*it|, which points into |d|, and propagate
 void big_int::carry(std::vector<digit>::iterator it)
 { while (it != d.end()-1)
-    if (++(*it) != 0) // stop when something else than $0$ is produced
-    { if (*it == neg_flag and ++it == d.end()-1 and ~*it == 0)
+    if (++(*it) != 0) // stop when something other than $0$ is produced
+    { // but first check if moving towards 0 now allows dropping a sign digit
+      if (*it == neg_flag and ++it == d.end()-1 and ~*it == 0)
 	d.pop_back(); // negative number with leading |~0| can drop that digit
       return;
     }
-    else ++it;
+    else ++it; // propagate carry into next more sigificant digit
 
-  if (++(*it)==neg_flag) // arrived at leading word; test signed overflow here
+  if (++(*it)==neg_flag) // arrived at leading digit; test signed overflow here
     d.push_back(0); // extend to preserve positive sign
   // no need for |shrink_pos|: by precondition |*it==0| implies size was 1
 }
 
+// borrow a unit from position |*it|, which points into |d|, and propagate
 void big_int::borrow(std::vector<digit>::iterator it)
 { while (it != d.end()-1)
-    if (~ --(*it) != 0) // stop when something else than $-1$ is produced
-    { if (*it == ~neg_flag and ++it == d.end()-1 and *it == 0)
+    if (~ --(*it) != 0) // stop when something other than $-1$ is produced
+    { // but first check if moving towards 0 now allows dropping a sign digit
+      if (*it == ~neg_flag and ++it == d.end()-1 and *it == 0)
 	d.pop_back(); // positive number with leading |0| can drop that digit
       return;
     }
-    else ++it;
+    else ++it; // propagate borrow into next more sigificant digit
 
-  if (--*it == ~neg_flag) //  arrived at leading word; test signed underflow
+  if (--*it == ~neg_flag) // arrived at leading word; test signed underflow here
     d.push_back(-1); // sign bit negative number flipped, so push ~0 padding
   // no need for |shrink_neg|: by precondition |*it==-1| implies size was 1
 }
 
+// either complement (x -> -1-x) of negate (x -> -x), from |it| upwards
 void big_int::compl_neg(std::vector<digit>::iterator it, bool negate)
 { for ( ; it != d.end()-1; ++it)
   { *it = ~ *it + static_cast<digit>(negate);
-    negate = negate and (*it)==0;
+    negate = negate and (*it)==0; // propagate any |negate| only for 0->0
   }
   *it = ~ *it + static_cast<digit>(negate);
   if (negate and *it==neg_flag)
@@ -346,14 +352,13 @@ void big_int::mult_add (digit x, digit a)
 }
 
 big_int& big_int::operator*= (int x0)
-{ digit x=x0; // convert type to |digit|, just to be sure
-  if (x<neg_flag)
-    mult_add(x,0);
-  else
-  { negate();
-    mult_add(x,0);
+{ const bool neg = (x0<0)xor(is_negative()); // whether result is negative
+  digit x = x0<0 ? -static_cast<digit>(x0) : x0; // convert type to |digit|
+  if (is_negative())
+    negate(); // now |*this| has been made non-negative
+  mult_add(x,0);
+  if (neg)
     negate();
-  }
   return *this;
 }
 
@@ -414,6 +419,32 @@ big_int big_int::power (unsigned int e) const
   do result *= *this;
   while (--e>1); // repeat |e-1| times
   return result;
+}
+
+std::int32_t as_signed(std::uint32_t n)
+{ // pedantic code needed to avoid UB converting too large unsigned to signed
+  constexpr std::uint32_t sign_bit = 1U << 31;
+  constexpr std::int32_t max_neg = std::numeric_limits<std::int32_t>::min();
+  return (n&sign_bit)==0 ? static_cast<std::int32_t>(n)
+    : static_cast<std::int32_t>(n-sign_bit)+max_neg;
+}
+
+double big_int::as_double() const
+{
+  if (size()==1) return static_cast<double>(as_signed(d[0]));
+  two_digits high = (static_cast<two_digits>(d.back())<<32)+*(d.end()-2);
+  const bool neg = is_negative();
+  if (neg) high = ~high; // ensures positive, so |last_bit(high)<=63|
+  int bit_shift = 63-bits::lastBit(high);
+  if (bit_shift!=0)
+  {
+    high <<= bit_shift;
+    digit low = size()==2 ? 0 : *(d.end()-3);
+    high |= (neg ? ~low : low) >> (64-bit_shift);
+  }
+  int shift = static_cast<int>(32*(size()-2))-bit_shift;
+  double abs_result = high * std::pow(2.0,shift);
+  return neg ? -abs_result : abs_result;
 }
 
 // divide by base, return remainder
@@ -647,24 +678,27 @@ big_int big_int::reduce_mod (const big_int& divisor)
   return quotient;
 } // |big_int::reduce_mod|
 
+// shift left bits in fixed length array |d|; caller assumes responsability
 void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
 {
-  assert(n!=0); // caller should avoid this, shift by 32 would be undefined
+  assert(n!=0); // caller will avoid this, and shift by 32 would be undefined
   auto it=d.end();
   while (--it!=d.begin()) // loop |size()-1| times
-  { *it <<= n; // shift bits that remain in the same word (lost bits were used)
-    *it |= *(it-1)>> (32-n); // lower bits from previous (parentheses redundant)
+  { *it <<= n; // shift bits that are to remain in the same digit
+    *it |= *(it-1)>> (32-n); // get lower bits from digit to the right
+                     // the parentheses around 32-n are redundant
   }
   *it <<= n; // this shifts zeros into the lowest |n| bits
 }
 
+// shift right bits in fixed length array |d|; caller assumes responsability
 void big_int::LSR (unsigned char n) // unsigned down-shift (divide by $2^n$)
 {
   assert(n!=0); // caller should avoid this, shift by 32 would be undefined
   auto it=d.rend();
   while (--it!=d.rbegin()) // loop |size()-1| times
-  { *it >>= n; // shift bits that remain in the same word (lost bits were used)
-    *it |= *(it-1)<< (32-n); // higher bits from previous word
+  { *it >>= n; // shift bits that remain in the same digit
+    *it |= *(it-1)<< (32-n); // get higher bits from digit to the left
   }
   *it >>= n; // this shifts zeros into the highest |n| bits
 }
