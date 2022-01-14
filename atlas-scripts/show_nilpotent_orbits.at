@@ -33,14 +33,14 @@ set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_ch
 if ic.is_equal_rank then
 let O_check_int=O_check.integral_descent then
 rd_int=O_check_int.root_datum  then
-()=prints("rd_int: ", rd_int) then
-()=prints("O_check_int: ", O_check_int) then
-ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
-()=prints("ic_check_int: ", ic_check_int) in
+{()=prints("rd_int: ", rd_int) then
+()=prints("O_check_int: ", O_check_int) then}
+ic_check_int=inner_class(rd_int,ic.distinguished_involution) in
+{()=prints("ic_check_int: ", ic_check_int) in}
 {rf_int=real_forms(ic_check_int) in} 
 for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) do
 {srf_int_correct_type=strong_real_forms_type(central_invariant(O_check_int,inner_class_int)) {[int]} in}
-prints("G: ", G, "number: ", number_real_nilpotent_orbits(O_check_int,G));
+{prints("G: ", G, "number: ", number_real_nilpotent_orbits(O_check_int,G));}
 number_real_nilpotent_orbits(O_check_int,G) od
 {for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
 elif O_check.is_even then
@@ -537,3 +537,11 @@ H.derived.order_center.to_string,
 C_2.to_string,
 d.orders.to_string,
 st.dual_map(orbit).diagram.to_string] od)
+
+{simple table of real nilpotent orbits}
+set show_real_nilpotent_orbits(RealForm G)=void:
+let header=["#","H","x","dim"] then
+values=
+for O@i in G.real_nilpotent_orbits do
+[i.to_string,O.H.to_string,let (,n)=%O.x in n.to_string,dimension(O).to_string] od in
+tabulate(header#values,"llll",1," ")

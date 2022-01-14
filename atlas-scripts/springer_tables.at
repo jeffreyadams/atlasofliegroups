@@ -39,7 +39,6 @@ set is_special (SpringerTable st,ComplexNilpotent O) = bool:
   is_even(O) or {st.special_closure(O)=O, but this is slow}
   st.dual_map_i(st.dual_map(O)).diagram=O.diagram
 
-
 set is_special(SpringerTable st)=(ComplexNilpotent->bool):
    (ComplexNilpotent O): is_special(st,O)
 
@@ -102,21 +101,16 @@ set springer_inverse_special(SpringerTable st,int special_character_number)=Comp
 let (,orbit)=springer_inverse(st,special_character_number) in orbit
 set springer_inverse_special(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse_special(st,j)
 
-set special_star(SpringerTable st,ComplexNilpotent O)=string:
-if is_special(st,O) then "*" else "" fi
+set special_star(SpringerTable st,ComplexNilpotent O)=string:if is_special(st,O) then "*" else "" fi
 
-set special_star(SpringerTable st)=(ComplexNilpotent ->string):
-(ComplexNilpotent O):special_star(st,O)
+set special_star(SpringerTable st)=(ComplexNilpotent ->string):(ComplexNilpotent O):special_star(st,O)
 
-
-{all special representations}
-set special_representations(SpringerTable st)=[int]:
-sort(for orbit in st.special_orbits do st.springer(orbit) od)
-set is_special_representation(SpringerTable st,int i)=in_list(st.special_representations,i)
-set is_special_representation(SpringerTable st)=(int->bool):(int i):is_special_representation(st,i)
-set special_representation_star(SpringerTable st)=(int->string):(int i):
-if is_special_representation(st,i) then "*" else "" fi
-
+{special representations defined in  character_tables.at
+these versions for SpringerTable call those for the associated CharacterTable}
+set special_representations(SpringerTable st)=[int]:special_representations(st.ct)
+set is_special_representation(SpringerTable st,int i)=bool:is_special_representation(st.ct,i)
+set is_special_representation(SpringerTable st)=(int->bool):(int i):st.ct.is_special_representation(i)
+set special_representation_star(SpringerTable st)=(int->string):(int i):special_representation_star(st.ct)(i)
 
 { this version of integral_descent is used in weak_packets.at
   this uses a permutation, which we return since it is needed later
@@ -159,7 +153,7 @@ tabulate (
       , j.to_string
       , dimension(st.ct,j).to_string
       , deg.to_string
-      , st.ct.generic_degree_string(j)
+      , st.ct.generic_degree(j).to_string
       , st.ct.characters[j].to_string
       ]
    od
@@ -192,24 +186,29 @@ tabulate (
       , j.to_string
       , dimension(st.ct,j).to_string
       , st.ct.degree(j).to_string
-      , st.ct.generic_degree_string(j)
+      , st.ct.generic_degree(j).to_string
       , st.ct.characters[j].to_string
       ]
    od
 )
 
-set show_reps(SpringerTable st)=void:
-let springer_reps=for orbit@i in st.orbits do st.springer(orbit) od  in
-tabulate(
-["rep#","orbit","dim","deg", "fdeg","char"]#
-for j:st.ct.n_irreps do
-[j.to_string,
- let orbit_index=find(springer_reps,j) in
-  if orbit_index>=0 then
-   let orbit=st.orbits[orbit_index] in orbit.diagram.to_string + st.special_star(orbit)
-  else ""
-  fi,
-dimension(st.ct,j).to_string,
-st.ct.degree(j).to_string,
-st.ct.generic_degree_string(j),
-st.ct.characters[j].to_string] od)
+set show_reps (SpringerTable st) = void:
+(  let springer_reps = [int]: for orbit@i in st.orbits do st.springer(orbit) od
+in tabulate
+   ( ["rep#","orbit","dim","deg", "fdeg","char"]
+   # for j:st.ct.n_irreps
+     do [ j.to_string
+	, let orbit_index=find(springer_reps,j) in
+	  if orbit_index>=0
+	  then let orbit=st.orbits[orbit_index] in
+	     orbit.diagram.to_string + st.special_star(orbit)
+	  else ""
+	  fi
+	, dimension(st.ct,j).to_string
+	, st.ct.degree(j).to_string
+	, st.ct.generic_degree(j).to_string
+	, st.ct.characters[j].to_string
+	]
+     od
+   )
+)

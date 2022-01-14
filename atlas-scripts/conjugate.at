@@ -201,6 +201,8 @@ set is_conjugate_weak(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
 is_conjugate(rd,rho(sub_1),rho(sub_2))
 
 { which standard Levi is (the non-standard) L conjugate to? }
+{ actually: L -> standard Levi in the list of representatives of conjugacy classes of Levi
+  L can be non-standard, but even if it is standard it will get moved if it isn't the given representative}
 set standard_Levi (RootDatum rd,RootDatum rd_L) = RootDatum:
    let v = dominant(rho_check(rd_L),rd)
    , reps = standard_Levi_conjugacy_representatives(rd)
@@ -212,6 +214,13 @@ set standard_Levi (RootDatum rd,RootDatum rd_L) = RootDatum:
 set standard_Levi_witness (RootDatum rd,RootDatum rd_L) = WeylElt:
    let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L))
    in assert(any(w), "Error finding standard_Levi_witness"); req(w)
+
+{return both RootDatum and WeylElt}
+set standard_Levi_and_witness(RootDatum rd,RootDatum rd_L)=(RootDatum,WeylElt):
+let w=standard_Levi_witness(rd,rd_L) in (w*rd_L,w)
+
+set Levi_witness(RootDatum rd, RootDatum rd_L,RootDatum rd_M)=
+inverse(standard_Levi_witness(rd,rd_M))*standard_Levi_witness(rd,rd_L)
 
 {automorphisms given by permutations of simple roots/coroots
 automorphism of Lie algebra

@@ -201,7 +201,7 @@ set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 { convert to base n as polynomial: small coef polynomial evaluating to k at n }
 set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
-  let r=0{dummy for mulit-assign} in while !=k do set (k,r):=k\%n; r od
+  let r=0{dummy for multi-assign} in while !=k do set (k,r):=k\%n; r od
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
@@ -360,16 +360,20 @@ set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([[int]] alphabets) = mat:
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
-     else final-:=1; let limit=limits[final] in
+     else final-:=1; let alphabet=alphabets[final] in
           for prefix in generate(final)
-          do for i:limit do prefix#i od
+          do for letter in alphabet do prefix#letter od
 	  od.##
      fi
-  , size=#limits
+  , size=#alphabets
   in size # generate(size) { ensure column size |size|, even for empty set }
+
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+   for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
@@ -631,6 +635,8 @@ set requisition (string message) = (maybe_a_vec->vec):
    (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
 set requisition = requisition("No solution found; having one was required")
 
+set any (maybe_a_mat M) = bool: case M  | solution: true | no_mat: false esac
+
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
 { multiplicative order of a matrix, hangs unless finite }
@@ -864,6 +870,8 @@ set adjoint (RootDatum rd) = RootDatum: { change weight basis to simple roots }
 
 { in |sub_datum| the (co)roots at indices |S| must give a valid Cartan matrix,
   but they need not be positive, and will be taken in the order specified.
+  indices: [-n,...,0,1,...,n-1] where n is the number of positive roots
+  simple roots are numbered [0,1,...,rank-1]
   In particular any subset of simple roots taken in any order will be valid. }
 set sub_datum (RootDatum rd, [int]S) = RootDatum:
   let r = rd.rank in
@@ -1891,7 +1899,7 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{ whether all coefficients are integer repectively integer mulitples of |s| }
+{ whether all coefficients are integer repectively integer multiples of |s| }
 set is_pure_1 (ParamPol P)=bool: all(for c in P do c.s_part.= od)
 set is_pure_s (ParamPol P)=bool: all(for c in P do c.int_part.= od)
 
@@ -1973,11 +1981,14 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (ParamPol P) = int:
-  max(0)(for p in monomials(P) do height(p) od)
+set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}
-set monomials([ParamPol] list)=[Param]:
-   let sum=null_module(real_form(list[0])) in
-   for P in list do for c@p in P do sum+:=p od od;monomials(sum)
+set monomials([ParamPol] list) = [Param]:
+   if =#list then []
+   else
+      let G=real_form(list[0]) then O=null_module(G)
+      then sum = sum(G,for P in list do O+for @p in P do (1,p) od od)
+   in monomials(sum)
+   fi

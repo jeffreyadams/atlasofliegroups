@@ -6,7 +6,7 @@
   (RootDatum rd,ratvec v,mat theta) representing \exp(2i\pi v) \sigma_w d
   where \theta is the the action of wd on X^*, with w\in W and d is a
   distinguished involution of that lattice (we need to allow both d=\delta and
-  d=identity in order to get a group, with mulitplication and inverse). We can
+  d=identity in order to get a group, with multiplication and inverse). We can
   do without explicitly representing d, since we shall work with the image
   under \theta of the set of positive (co)roots, which set d stabilises.
 

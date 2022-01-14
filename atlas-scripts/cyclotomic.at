@@ -94,7 +94,7 @@ set - (CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
 set * (rat r, CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
    (for c in v do r*c od,F)
 
-{.cyclotomic field mulitplication.}
+{.cyclotomic field multiplication.}
 set * (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
    assert(F=G,"cyclotomic fields do not agree"); F.element(convolve(v,w))
@@ -116,7 +116,7 @@ set zeta_power (int k, CyclotomicField F) = CyclotomicFieldElement:
    F.element(for :k%F.order do rat:0 od # (rat:1) )
    { equivalent to |F.element([rat]:id_mat(F.order)[k%F.order]| if you prefer }
 
-{ the Galois group over $\Q$ of |F| is the mulitplicative group mod |F.order|
+{ the Galois group over $\Q$ of |F| is the multiplicative group mod |F.order|
   the function |Galois_matrix| gives the matrix on the standard basis (the
   initial powers of |zeta|) of the action of the Galois group element for |k|
 }

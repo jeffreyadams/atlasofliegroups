@@ -1,3 +1,4 @@
+
 <basic.at
 <class_tables.at
 <character_table_reps.at { for |induce| and friends }
@@ -71,11 +72,30 @@ in if ti_verbose then prints("computed truncation of induced", new_line
 ;  pair
 )
 
+{need version where L is specified instead of f}
+{set truncate_induce_character \
+   ( CharacterTable ct_L
+   , RootDatum L
+   , CharacterTable ct_G
+   , (int->int) degree_function
+   , [int] pi_L
+   ) = (int,[int]):
+(  if ti_verbose then prints("Computing induced character: ") fi
+;  let ind=induce_character(ct_L,L,ct_G,pi_L)
+in if ti_verbose then prints("computed induced character: ", ind) fi
+;  let (,t): pair = truncate(ct_G,ind,degree_function)
+in if ti_verbose then prints("computed truncation of induced", new_line
+                            ,"induced: ", t) fi
+;  pair
+)
+}
+
+
 set truncate_degree_induce_character \
    ( WeylClassTable Wct_L
    , CharacterTable ct_G
    , [int] pi_L
-   , (int->int) degree_function
+   , (int->int) degree_function  
    ) = (int,[int]):
    let embed(WeylElt w) = WeylElt: convert_to(ct_G.root_datum,w)
 in truncate_induce_character(Wct_L,ct_G,embed,degree_function,pi_L)
@@ -123,14 +143,17 @@ set truncate_induce_character \
 in truncate(ct_G,ind,degree_function)
 
 { standard form: by degree, returns int }
-set truncate_by_degree_induce_character \
+{ this should not be used}
+{set truncate_by_degree_induce_character \
    ( CharacterTable ct_G, [int] simple_roots_of_L, [int] pi_L) = int:
    let ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
    then (,t)=truncate(ct_G,ind,ct_G.degree)
 in assert(#t=1,"not a unique character in truncated induction"); t[0]
+}
 
-{ same as previous, build ct_G on the fly, but use privided |degree_function| }
-set truncate_induce_character \
+{ same as previous, build ct_G on the fly, but use provided |degree_function| }
+{ this should not be used}
+{set truncate_induce_character \
    ( RootDatum G
    , [int] simple_roots_of_L
    , [int] pi_L
@@ -140,7 +163,7 @@ set truncate_induce_character \
    then ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
    then (,t)=truncate(ct_G,ind,degree_function)
 in t
-
+}
 { induction of orbits }
 
 { for this we need Springer table for both L and G }
@@ -198,3 +221,114 @@ in tabulate (
       ,(O_L.dim_nilpotent+codim-O.dim_nilpotent).to_string
       ]
    od )
+{-------------------------------------------------------------------}
+{extract all terms sigma from given (reducible) character satisfying f(sigma)=desired_value
+ usually f = generic or fake degree}
+set select(CharacterTable ct, [int] character, int desired_value, (int->int) function)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function(i)=desired_value then  [(i,dec[i])] else[] fi
+od
+
+{select by fake degree}
+set select_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.degree)
+
+{select by generic degree}
+set select_generic_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.generic_degree)
+
+{select by two function values f_i(sigma)=desired_value_i}
+set select(CharacterTable ct, [int] character, int desired_value_1,int desired_value_2, (int->int) function_1,(int->int) function_2)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function_1(i)=desired_value_1 and function_2(i)=desired_value_2  then  [(i,dec[i])] else[] fi
+od
+
+{select all terms with specified fake degree and (possibly different) generic degree}
+set select_both_degrees\
+ ( CharacterTable ct
+ , [int] character
+ , int desired_value_fake
+ , int desired_value_generic
+ ) = [(int,int)]:
+select(ct,character,desired_value_fake,desired_value_generic,ct.degree,ct.generic_degree)
+
+{J-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L)}
+set J_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_generic_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{version with mat P}
+set J_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L, mat P) =
+( select_generic_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     ,P)
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{j-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with fdeg(sigma)=fdeg(sigma_L)}
+set j_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+( select_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    )
+)
+
+{version with mat P}
+set j_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L, mat P)=
+( select_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     ,P)
+    , ct_L.degree(index_character_L)
+    )
+)
+
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L) AND fdeg(sigma)=fdeg(sigma_L)}
+set jJ_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=fdeg(sigma)=desired_degree}
+set jJ_select_induce\
+  (CharacterTable ct_L
+  ,CharacterTable ct_G
+  ,int index_character_L
+  ,int desired_degree)=
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     )
+    ,desired_degree
+    ,desired_degree
+    )
+)
+
