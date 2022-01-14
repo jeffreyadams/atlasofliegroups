@@ -460,13 +460,13 @@ class InnerClass
    conjugates the canonical representative back to |sigma|. Thus after the
    call the involution corresponding to |sigma| satisfies:
 
-  (1) the sum of the positive real roots is dominant (call it $SR$)
+  (1) the sum of the positive real roots for |sigma| is dominant (call it $SR$)
   (2) in the subsystem of roots orthogonal to $SR$ (which contains all the
-      imaginary roots), the sum of the imaginary roots (call it $SI$) is
-      dominant \emph{for the subsystem}
+      imaginary roots), the sum of the imaginary roots for |sigma| (call it
+      $SI$) is dominant \emph{for the subsystem}
   (3) in the subsystem of roots orthogonal to both $SR$ and $SI$, the
-      involution corresponding to twisted involution fixes (globally) the
-      dominant chamber of the subsystem (it permutes its simple roots).
+      involution corresponding to |sigma| fixes (globally) the dominant chamber
+      of the subsystem (the involution permutes its simple roots).
 */
   WeylWord canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
   WeylWord canonicalize(TwistedInvolution& sigma) const

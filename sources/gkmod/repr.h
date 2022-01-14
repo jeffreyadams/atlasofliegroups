@@ -293,7 +293,6 @@ class Rep_context
   // the following take |z| by value, modifying and in some cases returning it
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
-  StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inner_twisted(StandardRepr z) const;
   StandardRepr twisted(StandardRepr z, const WeightInvolution& delta) const;
 
@@ -500,7 +499,7 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
   // full deformation to $\nu=0$ of |z|
-  const K_type_poly& deformation(const StandardRepr& z);
+  const K_type_poly& deformation(StandardRepr z); // by value
 
   // like |deformation_terms|; caller multiplies returned coefficients by $1-s$
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
