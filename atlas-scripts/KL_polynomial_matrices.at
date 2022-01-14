@@ -88,7 +88,8 @@ set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
 )
 
 set KL_P_polynomials (Param p, mat delta) = i_poly_mat:
-   let (,P,polys) = KL_block(p,delta)
+{   let (,P,polys) = KL_block(p,delta)}
+   let (,P,polys) = partial_extended_KL_block(p,delta)
 in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od

@@ -4,8 +4,8 @@ G=(split) real group
 delta^v=distinguished involution of G^v
 H^v=identity component of (G^v)^delta
 H = dual group of H.split_form
-  = endoscopic group for G 
-[Of course G shouldn't have to be split, and then H 
+  = endoscopic group for G
+[Of course G shouldn't have to be split, and then H
 will be the appropriate quasisplit form of H]
 
 endoscopic(G,delta^v) returns (H,M)
@@ -13,10 +13,14 @@ H is complex (you should take its split_form
 and M is a matrix relating T_H and T_G
 
 At the moment this has been designed for G=GL(n,R)
-it probably doesn't work in other cases: the embed_KGB 
+it probably doesn't work in other cases: the embed_KGB
 function is clumsy
 }
 <mezo.at
+
+{this should be a built-in, or at least in some other file}
+set partial_extended_block(Param p,mat delta)=[Param]:
+let (B,,)=partial_extended_KL_block(p,delta) in B
 
 set is_stable(ParamPol P)=bool:
 let (M,)=stable(monomials(P)) then
@@ -24,16 +28,19 @@ v=[int]: for (c,p) in %P do c.split_as_int od in
 in_lattice(^M,v)
 
 set partial_KL_P_polynomials (Param p, mat delta) = i_poly_mat:
-   let (,P,polys) = KL_block(p,delta)
+   let (,P,polys) = partial_extended_KL_block(p,delta)
 in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od
-   
+{
 set partial_fixed_block_of(mat delta,Param p)=
 ##for a in partial_block(p) do if is_fixed(delta,a) then [a] else [] fi od
+}
 
 set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
-  let B=partial_fixed_block_of(delta,p) in
+{  let B=partial_fixed_block_of(delta,p) in}
+  let (B,,)=partial_extended_KL_block(p,delta) in
+
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do B[i] od
   , P=KL_P_polynomials(p)
@@ -72,7 +79,8 @@ set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
   fi
 
 set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
-  let B=partial_fixed_block_of(delta,p) in
+{  let B=partial_fixed_block_of(delta,p) in}
+  let (B,,)=partial_extended_KL_block(p,delta) in
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
   if =#I_delta then KL_P_signed_polynomials(B)
   else
@@ -152,7 +160,7 @@ H=Hd.dual in
 
 {atlas> set G=GL(5,R)
 Variable G: RealForm (overriding previous instance, which had type RealForm)
-atlas> set delta=G.distinguished_involution 
+atlas> set delta=G.distinguished_involution
 Variable delta: mat (overriding previous instance, which had type mat)
 atlas> set (H,M)=endoscopic (G,delta)
 Variable H: RootDatum (overriding previous instance, which had type RootDatum)
@@ -160,7 +168,7 @@ Variable M: mat
 atlas> H
 Value: adjoint root datum of Lie type 'B2'
 atlas> M*H.simple_coroots
-Value: 
+Value:
 |  1,  0 |
 | -1,  2 |
 |  0,  0 |
@@ -168,7 +176,7 @@ Value:
 | -1,  0 |
 
 atlas> M*H.simple_roots
-Value: 
+Value:
 |  1,  0 |
 | -1,  1 |
 |  0,  0 |
@@ -176,7 +184,7 @@ Value:
 | -1,  0 |
 
 atlas> ^M*G.simple_coroots
-Value: 
+Value:
 | -1,  0,  0, -1 |
 |  1, -1, -1,  1 |
 }
@@ -189,7 +197,7 @@ set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
 
 set lift(mat m,RootDatum H, RootDatum G,mat M)=WeylElt:
 let W=G.W then
-i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od) 
+i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
 in W[i]
 
 set lift(WeylElt w_H,RootDatum H, RootDatum G,mat M)=WeylElt:
@@ -224,7 +232,7 @@ set L_packet_representative(ParamPol P)=
 let rv=null_module(P.real_form) in
 while #P>0 do
  let (c,p)=first_term(P) in
- P+:=-c*p; 
+ P+:=-c*p;
   if rv[L_packet_representative(p)] = 0 then
    rv+:=c*p
   fi
@@ -254,7 +262,7 @@ p_H=parameter(x_H,left_inverse(M)*p_G.lambda,left_inverse(M)*p_G.nu) in
 sign_difference(p_G,delta)*param_pol(L_packet(p_H))
 
 set extended_character_formula (Param p,mat delta) =
-let B=partial_fixed_block_of(delta,p) in
+let (B,,)=partial_extended_KL_block(p,delta) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
 P=big_KL_P_signed_polynomials(p,delta) then
 index=find(complete_indices,(find(B,p),1)) in
@@ -289,7 +297,7 @@ set test(Param p_G,mat delta)=
 let G=p_G.real_form then
 (H,M)=endoscopic(G,G.distinguished_involution) then
 H=H.split_form then
-p_H=inverse_lift_irr(p_G,delta,H) then  
+p_H=inverse_lift_irr(p_G,delta,H) then
 lift_p_H=lift(p_H,M,G,delta) then
 lift=lift(p_H.composition_series,M,G,G.distinguished_involution) then
 ex=extended_character_formula(p_G,delta) in
