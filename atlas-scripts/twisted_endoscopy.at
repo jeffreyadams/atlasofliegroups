@@ -89,7 +89,7 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
   if =#I_delta then KL_P_signed_polynomials(B)
   else
-     let P=big_KL_P_signed_polynomials(p,delta)
+     let P=big_KL_P_signed_polynomials(B,delta)
      , lengths = for i:#g do length(B[i]) od
      , n=#complete_indices
      in
@@ -334,3 +334,4 @@ prints(lift=ex or lift=-ex);(lift,ex)
 {the lattice spanned by the columns of M is T-stable}
 set is_stable(mat T, mat M)=bool:any(solve(M,T*M))
 set is_stable(WeylElt w, mat M)=bool:is_stable(w.matrix,M)
+}
