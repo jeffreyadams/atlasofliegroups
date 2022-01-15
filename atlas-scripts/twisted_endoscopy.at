@@ -261,15 +261,32 @@ x_H= let index_H=first(for x in KGB(H) do lift(x,M,G,delta)=p_G.x od) in KGB(H,i
 p_H=parameter(x_H,left_inverse(M)*p_G.lambda,left_inverse(M)*p_G.nu) in
 sign_difference(p_G,delta)*param_pol(L_packet(p_H))
 
+set inverse_lift_std_by_search(Param p_G,mat delta)=
+let G=p_G.real_form then
+(H_0,M)=endoscopic(G,delta) then
+ H=H_0.split_form then
+inf_char_H=left_inverse(M)*p_G.infinitesimal_character then
+() =assert(M*inf_char_H=p_G.infinitesimal_character,"inf chars don't match") then 
+all=all_parameters_gamma(H,inf_char_H) then
+index=int:first(for p in all do first_param(lift_std(p,M,G,delta))=p_G od) in
+all[index]
+
+set inverse_lift_std(Param p,mat delta)=inverse_lift_std_by_search(p,delta)
+
 set extended_character_formula (Param p,mat delta) =
 let (B,,)=partial_extended_KL_block(p,delta) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
-P=big_KL_P_signed_polynomials(p,delta) then
+{P=big_KL_P_signed_polynomials(p,delta) then}
+P=big_KL_P_polynomials(p,delta) then
+()=printPolyMatrix(P) then
 index=find(complete_indices,(find(B,p),1)) in
+let ()=prints("index=", index) in
 null_module(p.real_form) +
 for i:#complete_indices
 do let f=eval(P[i][index],s) in
- let (j,c)=complete_indices[i] in f*c*B[j]
+let ()=prints(new_line,"i= ", i, " f=",f) in
+ let (j,c)=complete_indices[i] in
+ let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in f*c*B[j]
 od
 
 {set extended_character_formula_2 (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)}
