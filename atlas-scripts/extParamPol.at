@@ -251,13 +251,21 @@ set full_deform = recursive_deform@(Param,mat,int)
 
 set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   , P=big_KL_P_signed_polynomials(B,delta)
-   then index=find(complete_indices,(find(B,p),1))
-   in
+   , P=big_KL_P_signed_polynomials(B,delta) then
+   index=find(complete_indices,(find(B,p),1)) then
+   ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
+   
+   ()=prints("number of complete indices: ", #complete_indices) then
+   ()=prints("index of parameter in complete indices: ", index) then
+   ()=prints("complete index: ", complete_indices[index]) then
+   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in matrix",new_line) then
+   data=[["(i,c)","m","c*m","c*m*p"]] in
    for i:#complete_indices
-   do let f=eval(P[i][index],s) in
-      if f!=0 then prints(complete_indices[i], ": ", prettyPrint(f)) fi
-   od
+   do let f=eval(P[i][index],s) then
+   (j,c)=complete_indices[i] in
+      if c*f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(c*f),  prettyPrint(c*f) + "*" + B[j].to_string]  fi 
+   od;
+   tabulate(data)
 
 set print_extended_character_formula (Param p,mat delta) = void:
    print_extended_character_formula(p,singular_block_of(p),delta)

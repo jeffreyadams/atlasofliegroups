@@ -15,8 +15,13 @@ and M is a matrix relating T_H and T_G
 At the moment this has been designed for G=GL(n,R)
 it probably doesn't work in other cases: the embed_KGB
 function is clumsy
+
+also inverse_lift_std is now done by a brute force search,
+until we figure out the right way
 }
 <mezo.at
+
+set te_verbose=true
 
 {this should be a built-in, or at least in some other file}
 set partial_extended_block(Param p,mat delta)=[Param]:
@@ -84,7 +89,7 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
   if =#I_delta then KL_P_signed_polynomials(B)
   else
-     let P=big_KL_P_polynomials(p,delta)
+     let P=big_KL_P_signed_polynomials(p,delta)
      , lengths = for i:#g do length(B[i]) od
      , n=#complete_indices
      in
@@ -261,15 +266,16 @@ x_H= let index_H=first(for x in KGB(H) do lift(x,M,G,delta)=p_G.x od) in KGB(H,i
 p_H=parameter(x_H,left_inverse(M)*p_G.lambda,left_inverse(M)*p_G.nu) in
 sign_difference(p_G,delta)*param_pol(L_packet(p_H))
 
-set inverse_lift_std_by_search(Param p_G,mat delta)=
+set inverse_lift_std_by_search(Param p_G,mat delta)=ParamPol:
 let G=p_G.real_form then
 (H_0,M)=endoscopic(G,delta) then
  H=H_0.split_form then
 inf_char_H=left_inverse(M)*p_G.infinitesimal_character then
-() =assert(M*inf_char_H=p_G.infinitesimal_character,"inf chars don't match") then 
+() =assert(M*inf_char_H=p_G.infinitesimal_character,"inf chars don't match") then
 all=all_parameters_gamma(H,inf_char_H) then
-index=int:first(for p in all do first_param(lift_std(p,M,G,delta))=p_G od) in
-all[index]
+index=int: first(for p@i in all do  first_param(lift_std(p,M,G,delta))=p_G od) in 
+sign_difference(p_G,delta)*param_pol(L_packet(all[index]))
+
 
 set inverse_lift_std(Param p,mat delta)=inverse_lift_std_by_search(p,delta)
 
@@ -278,23 +284,28 @@ let (B,,)=partial_extended_KL_block(p,delta) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
 {P=big_KL_P_signed_polynomials(p,delta) then}
 P=big_KL_P_polynomials(p,delta) then
-()=printPolyMatrix(P) then
+()=if te_verbose then printPolyMatrix(P) fi  then
 index=find(complete_indices,(find(B,p),1)) in
-let ()=prints("index=", index) in
+{let ()=prints("index=", index) in}
 null_module(p.real_form) +
 for i:#complete_indices
 do let f=eval(P[i][index],s) in
-let ()=prints(new_line,"i= ", i, " f=",f) in
+{let ()=prints(new_line,"i= ", i, " f=",f) in}
  let (j,c)=complete_indices[i] in
- let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in f*c*B[j]
+ {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
 od
 
 {set extended_character_formula_2 (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)}
 
 set inverse_lift_irr(Param p_G,mat delta,RealForm H)=
-let P=extended_character_formula(p_G,delta) in
-composition_series(null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od)
+let P=extended_character_formula(p_G,delta) then
+()=if te_verbose then prints("P=",P) fi then
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od in
+{let ()=prints("PH=", PH) in
+(PH,composition_series(PH))}
+composition_series(PH)
 
+{
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
