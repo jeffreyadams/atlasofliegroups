@@ -21,7 +21,7 @@ until we figure out the right way
 }
 <mezo.at
 
-set te_verbose=true
+set te_verbose=false
 
 {this should be a built-in, or at least in some other file}
 set partial_extended_block(Param p,mat delta)=[Param]:
@@ -250,6 +250,9 @@ lift_0=parameter((x,M*p_H.lambda,M*p_H.nu)) in
 {(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0}
 sign_difference(lift_0,delta)*lift_0
 
+set lift_std(Param p_H,RealForm G, mat delta)=
+let (,M)=endoscopic(G,delta) in lift_std(p_H,M,G,delta)
+
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
@@ -274,8 +277,9 @@ let G=p_G.real_form then
 inf_char_H=left_inverse(M)*p_G.infinitesimal_character then
 () =assert(M*inf_char_H=p_G.infinitesimal_character,"inf chars don't match") then
 all=all_parameters_gamma(H,inf_char_H) then
-index=int: first(for p@i in all do  first_param(lift_std(p,M,G,delta))=p_G od) in 
-sign_difference(p_G,delta)*param_pol(L_packet(all[index]))
+index=int: first(for p@i in all do  first_param(lift_std(p,M,G,delta))=p_G od) in
+if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p);null_module(H) else
+sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 
 
 set inverse_lift_std(Param p,mat delta)=inverse_lift_std_by_search(p,delta)
@@ -316,7 +320,19 @@ for p@i in params do
  prints(new_line,"i=",i, " p=", p,new_line,"inverse_lift: ", inv)
 od
 
+set abv(Param p_H,mat M,RealForm G,mat delta)=
+let lift_std=first_param(lift_std(p_H,M,G,delta)) then
+()=if te_verbose then prints("lift_std=", lift_std) fi in
+inverse_lift_irr(lift_std,delta) 
 
+set abv(Param p_H,RealForm G,mat delta)=
+let (,M)=endoscopic(G,delta) in abv(p_H,M,G,delta)
+
+set abv([Param] params_H,RealForm G,mat delta)=
+for p_H in params_H do let
+(,M)=endoscopic(G,delta) then
+abv=abv(p_H,M,G,delta) in
+prints(new_line,"p_H=",p_H,new_line,"infinitesimal character of p_H: ", p_H.infinitesimal_character,new_line,"abv.infinitesimal character:", abv.infinitesimal_character,new_line,"abv=", abv);abv od
 {
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
