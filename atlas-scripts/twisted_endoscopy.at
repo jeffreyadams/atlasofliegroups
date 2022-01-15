@@ -100,8 +100,6 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
   ; P
   fi
 
-
-
 set twisted_root_datum(RootDatum G,mat T)=TwistedRootDatum:(G,T)
 
 set pre_folded(TwistedRootDatum (rd,delta))=(mat,mat):
@@ -258,6 +256,9 @@ null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,
 set lift_irr(Param p_H, mat M, RealForm G, mat delta)=
 lift(p_H.character_formula,M,G,delta)
 
+set lift_irr(Param p_H, RealForm G, mat delta)=
+let (,M)=endoscopic(G,delta) in lift_irr(p_H,M,G,delta)
+
 set inverse_lift_std(Param p_G,mat delta)=
 let G=p_G.real_form then
 (H,M)=endoscopic(G,delta) then
@@ -304,6 +305,17 @@ PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od in
 {let ()=prints("PH=", PH) in
 (PH,composition_series(PH))}
 composition_series(PH)
+
+set inverse_lift_irr(Param p_G,mat delta)=
+let (H,)=endoscopic(G,delta) in 
+inverse_lift_irr(p_G,delta, H.split_form)
+
+set inverse_lifts_irr_long([Param] params,mat delta)=
+for p@i in params do
+ let inv=inverse_lift_irr(p,delta) in
+ prints(new_line,"i=",i, " p=", p,new_line,"inverse_lift: ", inv)
+od
+
 
 {
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
