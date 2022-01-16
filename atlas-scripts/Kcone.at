@@ -374,9 +374,9 @@ set tensor_product(Param p,Param q)=ParamPol:
    let K=real_form(p),(,,mu)=highest_weight(p),(,,tau)=highest_weight(q)
    in tensor_product(K,mu,tau)
 
-set K_param_from_K0_param (Param p)=Param:
+set K_param_from_K0_param (KGBElt x, Param p)=Param:
    let (,,v)=highest_weight(p)
-   then hwt= K_highest_weight_from_K0_weight (KGB(G,0),v)
+   then hwt= K_highest_weight_from_K0_weight (x,v)
    in hwt.K_type.parameter
 
 {. Tensor product of two K-types; this assumes K is connected. The first entry is
@@ -387,7 +387,7 @@ set tensor_product(K_Type tau,KHighestWeight mu)=ParamPol:
    let p=K0_param(tau),q=K0_param(K_type(mu))
    then tp=tensor_product(p,q)
    then result=null_module(G)
-   in for c@r in tp do result+:=c*K_param_from_K0_param(r) od;
+   in for c@r in tp do result+:=c*K_param_from_K0_param(KGB(G,0),r) od;
    result
 
 set down_P (K_Type mu,[KHighestWeight] pktype)=ParamPol:
