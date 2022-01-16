@@ -352,3 +352,58 @@ set test_down_one(RealForm G,int bound)=void:
 	      od
    then list=K_parameters_height_upto(G,bound-1)
    in for kt in kts do prints(LKT(parameter(kt))," ",test_down_one(kt,list)) od
+
+{.constructs parameter for the algebraic finite-dimensional of
+extremal weight lambda.}
+set finite_dimensional(RealForm G, vec lambda) = Param:
+let lambdadomrho = dominant(G,lambda)+G.rho  in
+parameter(x_open(G),lambdadomrho,lambdadomrho)
+
+set ht(RealForm G, vec lambda) = int:
+rat_as_int(dominant(G,lambda)*G.rho_check*2)
+
+{.tensor product of algebraic reps of G of extremal wts gamma1 and gamma2,
+returned as ParamPol of corresponding G parameters}
+set tensor_product(RealForm G, vec gamma1, vec gamma2) = ParamPol:
+let GC=G.complexification then gamma=finite_dimensional(GC,gamma1##gamma2)
+then B=branch_irr(gamma, ht(GC,gamma1##gamma2)) in
+sum(G, for c@p in B do c*finite_dimensional(G,complex_LKT(p)) od )
+
+{tensor product of two K0-parameters}
+set tensor_product(Param p,Param q)=ParamPol:
+   let K=real_form(p),(,,mu)=highest_weight(p),(,,tau)=highest_weight(q)
+   in tensor_product(K,mu,tau)
+
+set K_param_from_K0_param (Param p)=Param:
+   let (,,v)=highest_weight(p)
+   then hwt= K_highest_weight_from_K0_weight (KGB(G,0),v)
+   in hwt.K_type.parameter
+
+{. Tensor product of two K-types; this assumes K is connected. The first entry is
+given as KType, the second as KHighestWeight .}
+set tensor_product(K_Type tau,KHighestWeight mu)=ParamPol:
+   let G=real_form(tau)
+   in assert(components_rank(G)=0, "K is disconnected");
+   let p=K0_param(tau),q=K0_param(K_type(mu))
+   then tp=tensor_product(p,q)
+   then result=null_module(G)
+   in for c@r in tp do result+:=c*K_param_from_K0_param(r) od;
+   result
+
+set down_P (K_Type mu,[KHighestWeight] pktype)=ParamPol:
+   let n=height(mu)
+   then list=null_module(real_form(mu))
+   in for tau in pktype
+       do for c@r in tensor_product(mu,tau)
+         do if height(r)<=n then list+:=r fi od od;
+   list
+
+set down_P(Param p,[KHighestWeight] pkt)=down_P(first_K_type(standardize(p*0)),pkt)
+
+set down_P_cone(K_Type mu,[KHighestWeight] pktype) = K_Type_Pol:
+   let seen=ParamPol:null_module(mu.real_form)
+   then result=seen
+    in parameter(mu).( rec_fun F (Param tau) void:
+        if seen[tau].!= then ()
+        else seen +:= tau; for @p in down_P(tau,pktype) do F(p); result +:= p od
+        fi); result
