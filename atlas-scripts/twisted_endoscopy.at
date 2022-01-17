@@ -218,28 +218,6 @@ set embed_KGB(RealForm H,mat M,RealForm G)=
 let KGB_G=KGB(G) in
 for x in KGB(H) do (x,embed(x,M,KGB_G)) od
 }
-set simple_imaginary_roots(KGBElt x)=
-let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
-
-set simple_imaginary_reflections(KGBElt x)=
-for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
-
-set L_packet(Param p)=
-for (,w) in cross_sub_orbit(simple_imaginary_reflections(p.x),p.x) do
- parameter(cross(w,p.x),p.lambda,p.nu) od
-
-set L_packet_representative(Param p)=
-first_param(param_pol(L_packet(p)))
-
-set L_packet_representative(ParamPol P)=
-let rv=null_module(P.real_form) in
-while #P>0 do
- let (c,p)=first_term(P) in
- P+:=-c*p;
-  if rv[L_packet_representative(p)] = 0 then
-   rv+:=c*p
-  fi
- od;rv
 
 set sign_difference(Param p_G, mat delta)=int:
 (-1)^(length(p_G)-delta_l_int(p_G,delta))

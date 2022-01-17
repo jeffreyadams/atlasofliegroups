@@ -1,0 +1,57 @@
+<Vogan_dual.at
+
+set is_valid(KGBElt y,ratvec gamma)=bool:is_integer(square(y)-gamma)
+
+set dual_inner_class (ratvec gamma, KGBElt x) = InnerClass:
+dual(inner_class(integrality_datum(x.root_datum,gamma),involution(x)))
+
+set fiber(RealForm G,mat theta)=[KGBElt]:
+##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
+
+set simple_imaginary_roots(KGBElt x)=mat:
+let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
+
+set simple_imaginary_reflections(KGBElt x)=[WeylElt]:
+for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
+
+set fiber(KGBElt x)=[KGBElt]:
+for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
+
+{y is a KGB element on the dual side, possibly for a subgroup H^v of G^v
+ return all KGB elements for G compatible with y, i.e.
+ transpose(theta_x)=-theta_y, so that
+ parameter(x,y) is allowed, i.e.
+ parameter(x,y,gamma) is allowed for appropriate gamma
+usually: H^v is the subgroup on the dual side corresponding to integral
+ root system; precisely given gamma\in X^*_Q,
+ H=integrality_datum(G,gamma) is on the group side (endoscopic group)
+ dual(H) is a subgroup on G^v)
+}
+set dual_KGB(RealForm G,KGBElt y)=[KGBElt]:fiber(G,-involution(y))
+
+set dual_real_form(Param p)=dual(p).real_form
+
+set L_packet(RealForm G,ratvec gamma, KGBElt y)=
+assert(is_valid(y,gamma), "(y,gamma) is not valid");
+let fiber=fiber(G,-y.involution) in
+for x in fiber do parameter(x,y,gamma) od
+
+set L_packet(Param p)=
+for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
+
+{these two should agree:
+L_packet(p) and L_packet(p.real_form,p.infinitesimal_character, dual(p).x)}
+
+set L_packet_representative(Param p)=
+first_param(param_pol(L_packet(p)))
+
+set L_packet_representative(ParamPol P)=
+let rv=null_module(P.real_form) in
+while #P>0 do
+ let (c,p)=first_term(P) in
+ P+:=-c*p;
+  if rv[L_packet_representative(p)] = 0 then
+   rv+:=c*p
+  fi
+ od;rv
+
