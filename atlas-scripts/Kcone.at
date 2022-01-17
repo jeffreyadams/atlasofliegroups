@@ -415,3 +415,14 @@ set down_R_cone_true (K_Type mu)=ParamPol:
                          in if up_R_cone(kt,h)[parameter(mu)]!=0
 			    then result+:=p
 			    fi od; result
+
+set print_K_types_nice (ParamPol P,KGBElt x) = void:
+   let header=["m","x","lambda","hw","dim","height"]
+   then values=for c@q in P
+               do let hw=highest_weight(LKT(q),x)
+                  in [c.split_as_int.to_string,
+		      let (,n)=%q.x in n.to_string,
+		      q.lambda.to_string,
+		      let (,v)=highest_weight_plain(hw)in v.to_string,
+		      dimension(LKT(q)).to_string,height(q).to_string]
+	       od in tabulate(header#values)
