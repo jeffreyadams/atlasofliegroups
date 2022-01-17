@@ -407,3 +407,11 @@ set down_P_cone(K_Type mu,[KHighestWeight] pktype) = K_Type_Pol:
         if seen[tau].!= then ()
         else seen +:= tau; for @p in down_P(tau,pktype) do F(p); result +:= p od
         fi); result
+
+set down_R_cone_true (K_Type mu)=ParamPol:
+   let h=height(mu),G=real_form(mu) then list=K_parameters_height_upto(G,h-1)
+   then result=null_module(G)
+   in for kt in list do let p=parameter(kt)
+                         in if up_R_cone(kt,h)[parameter(mu)]!=0
+			    then result+:=p
+			    fi od; result
