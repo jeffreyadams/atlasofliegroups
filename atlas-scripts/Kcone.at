@@ -93,11 +93,19 @@ set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
         else seen +:=tau; for @p in to_ht(bound)(pre_up(tau,bound)) do F(p);
            result +:=p od fi); result
 
-set pre_up_R(K_Type mu)=ParamPol:
+{set pre_up_R(K_Type mu)=ParamPol:
    let result=null_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=p fi
+                        od
+      od; result}
+
+set pre_up_R(K_Type mu)=ParamPol:
+   let result=null_module(real_form(mu))
+   in for @m in R_packet(mu)
+       do for c@p in K_type_formula(m)
+                        do if int_part(c)<0 then result+:=R_packet(p) fi
                         od
       od; result
 
