@@ -1,9 +1,18 @@
-<Vogan_dual.at
+<Vogan-dual.at
 
 set is_valid(KGBElt y,ratvec gamma)=bool:is_integer(square(y)-gamma)
 
+set dual_inner_class (ratvec gamma, InnerClass ic) = InnerClass:
+dual_integral(ic,gamma)
+set dual_real_forms(ratvec gamma,InnerClass ic)=[RealForm]:
+real_forms(dual_inner_class(gamma,ic))
+
 set dual_inner_class (ratvec gamma, KGBElt x) = InnerClass:
-dual(inner_class(integrality_datum(x.root_datum,gamma),involution(x)))
+dual_inner_class(gamma,x.inner_class)
+
+set dual_real_forms (ratvec gamma, KGBElt x) = [RealForm]:
+dual_real_forms(gamma,x.inner_class)
+
 
 set fiber(RealForm G,mat theta)=[KGBElt]:
 ##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
@@ -27,13 +36,12 @@ usually: H^v is the subgroup on the dual side corresponding to integral
  H=integrality_datum(G,gamma) is on the group side (endoscopic group)
  dual(H) is a subgroup on G^v)
 }
-set dual_KGB(RealForm G,KGBElt y)=[KGBElt]:fiber(G,-involution(y))
-
+set dual_KGB(RealForm G,KGBElt y)=[KGBElt]:fiber(G,-^involution(y))
 set dual_real_form(Param p)=dual(p).real_form
 
 set L_packet(RealForm G,ratvec gamma, KGBElt y)=
 assert(is_valid(y,gamma), "(y,gamma) is not valid");
-let fiber=fiber(G,-y.involution) in
+let fiber=fiber(G,-^y.involution) in
 for x in fiber do parameter(x,y,gamma) od
 
 set L_packet(Param p)=
