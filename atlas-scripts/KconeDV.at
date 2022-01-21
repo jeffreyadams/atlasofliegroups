@@ -467,11 +467,15 @@ od
 set dim_A_x (KGBElt x) = int:
    let ((,C,r),,,)=x.Cartan_class.Cartan_info in C+r
 
+set ratpwtsIRC(KGBElt x) = [ratvec]:for v in pwtsIRC(x) do ratvec:v
+od ## for i:dim_A_x(x) do null(rank(x.root_datum))/1 od
+
 {This was meant to avoid recomputing; but it is wasteful, in that it
 ought to ignore those x for which \theta_x does not permute nonreal
 roots; those x will never appear in a K_type_formula.}
 set pwts(RealForm G) = [[vec]]:
 for x in KGB(G) do pwtsIRC(x) od
+
 
 {The terms in the ParamPol at the end are all standard with nu=0, but
 not necessarily normal or final. This seems to be harmless.}
@@ -481,6 +485,7 @@ set add_T_x_weights(Param p) = ParamPol:
    in for v in pwtsIRC(x)
       do result+:= standardize(parameter(x,lambda+v,0*lambda))*0
       od; result
+      
 {The terms in the ParamPol at the end are all standard with nu=0, but
 not necessarily normal or final. This seems to be harmless.}
 set add_T_x_weights(Param p, [[vec]] Pwts) = ParamPol:
@@ -491,6 +496,11 @@ set add_T_x_weights(Param p, [[vec]] Pwts) = ParamPol:
 set tensor_with_p (K_Type mu)=ParamPol:
     let P=K_type_formula(mu)
     in sum(mu.real_form, for c@p in P do c*add_T_x_weights(p) od)
+
+{should be same as above}
+set tensor_with_pJDA (K_Type mu) = ParamPol:
+    add_weights(mu,ratpwtsIRC@KGBElt)
+    {tensor_product(mulong,ratpwtsIRC@KGBElt)}
 
 {This cures the non-standard/ non-final terms in tensor_with_p, but I
 think it isn't needed.}
