@@ -371,24 +371,33 @@ set ht(RealForm G, vec lambda) = int:
 rat_as_int(dominant(G,lambda)*G.rho_check*2)
 
 {.tensor product of algebraic reps of G of extremal wts gamma1 and gamma2,
-returned as ParamPol of corresponding G parameters}
+returned as ParamPol of corresponding G parameters. BAD bacause
+branch_irr does a big KL computation; removed from code below}
 set tensor_product(RealForm G, vec gamma1, vec gamma2) = ParamPol:
 let GC=G.complexification then gamma=finite_dimensional(GC,gamma1##gamma2)
 then B=branch_irr(gamma, ht(GC,gamma1##gamma2)) in
 sum(G, for c@p in B do c*finite_dimensional(G,complex_LKT(p)) od )
 
-{tensor product of two K0-parameters}
+{.tensor product of two K0-parameters}
 set tensor_product(Param p,Param q)=ParamPol:
+   let G=real_form(p), rd=root_datum(p),(,,mu)=highest_weight(p),
+   (,,tau)=highest_weight(q)
+   then TP = tensor_product(rd,mu,tau) in
+   sum(G, for c@p in TP do c*finite_dimensional(G,complex_LKT(p)) od )
+
+{. BAD because it invokes a large KL computation}
+set tensor_productOLD(Param p,Param q)=ParamPol:
    let K=real_form(p),(,,mu)=highest_weight(p),(,,tau)=highest_weight(q)
    in tensor_product(K,mu,tau)
+
 
 set K_param_from_K0_param (KGBElt x, Param p)=Param:
    let (,,v)=highest_weight(p)
    then hwt= K_highest_weight_from_K0_weight (x,v)
    in hwt.K_type.parameter
 
-{. Tensor product of two K-types; this assumes K is connected. The first entry is
-given as KType, the second as KHighestWeight .}
+{. Tensor product of two K-types; this assumes K is connected. The
+first entry is given as KType, the second as KHighestWeight .}
 set tensor_product(K_Type tau,KHighestWeight mu)=ParamPol:
    let G=real_form(tau)
    in assert(components_rank(G)=0, "K is disconnected");
