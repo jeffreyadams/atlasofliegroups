@@ -18,40 +18,56 @@ set dimension_u_cap_s(Parabolic P)=int:#nci_nilrad_roots_restricted_to_H_theta(P
 set dimension_wedge_u_cap_s(Parabolic P)=int:2^dimension_u_cap_s(P)
 
 {simply add H to p.lambda and standardize the result}
-set add_weight (Param p,ratvec H)=ParamPol:
-  let shift=if =H then null(rank(p.root_datum)) else H fi in   
+set add_weightOLD (Param p,ratvec H)=ParamPol:
+  let shift=if =H then null(rank(p.root_datum)) else H fi in
    standardize(parameter(p.x,p.lambda+shift,p.nu))*0
 
-set add_weights (Param p,(KGBElt->[ratvec]) weights)=ParamPol:
+set add_weight (Param p,ratvec H)=ParamPol:
+   standardize(parameter(p.x,p.lambda+H,0*p.nu))*0
+
+set add_weightsOLD (Param p,(KGBElt->[ratvec]) weights)=ParamPol:
    let rv=null_module(p.real_form) in
     for H in weights(p.x) do rv+:=add_weight(p,H) od;rv
 
+set add_weights (Param p,(KGBElt->[ratvec]) weights)=ParamPol:
+    sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
+
 {simply add H to each term of P, standardize the results}
-set add_weight (ParamPol P,ratvec H)=ParamPol:
+set add_weightOLD (ParamPol P,ratvec H)=ParamPol:
    let result=null_module(P.real_form) in
    for coeff@p in P do result+:=coeff*add_weight(p,H) od;
    result
 
+set add_weight (ParamPol P,ratvec H)=ParamPol:
+   sum(P.real_form, for coeff@p in P do coeff*add_weight(p,H) od)
+
 {given a function f: KGBElt -> ratvec, replace each p=(x,lambda,nu) with 
 standard(parameter(x,lambda+f(x),nu))}
-set add_weight (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
+set add_weightOLD (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
    let result=null_module(P.real_form) in
    for coeff@p in P do
     let H=f(p.x) in prints("NOW H=",H);
     result+:=coeff*add_weight(p,H) od;
    result
 
+set add_weight (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
+   sum(P.real_form, for coeff@p in P do coeff*add_weight(p,f(p.x)) od)
+
 {same as previous, applied to a ParamPol}
-set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
+set add_weightsOLD (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
    let result=null_module(P.real_form) in
    for coeff@p in P do
-   if #f(p.x)!=0 then 
-    for H in f(p.x) do 
+   if #f(p.x)!=0 then
+    for H in f(p.x) do
       result+:=coeff*add_weight(p,H)
     od
    fi
    od;
    result
+
+set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
+   let G=P.real_form in sum(G, for coeff@p in P do sum(G,for H in
+   f(p.x) do coeff*add_weight(p,H) od) od)
 
 {add weight (given by function f) to K_type_formula(mu)}
 set add_weight (K_Type mu,(KGBElt->ratvec) f)=ParamPol:
