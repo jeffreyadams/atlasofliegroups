@@ -231,6 +231,7 @@ sign_difference(lift_0,delta)*lift_0
 set lift_std(Param p_H,RealForm G, mat delta)=
 let (,M)=endoscopic(G,delta) in lift_std(p_H,M,G,delta)
 
+
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
@@ -256,7 +257,7 @@ inf_char_H=left_inverse(M)*p_G.infinitesimal_character then
 () =assert(M*inf_char_H=p_G.infinitesimal_character,"inf chars don't match") then
 all=all_parameters_gamma(H,inf_char_H) then
 index=int: first(for p@i in all do  first_param(lift_std(p,M,G,delta))=p_G od) in
-if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p);null_module(H) else
+if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 
 
@@ -289,7 +290,7 @@ PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od in
 composition_series(PH)
 
 set inverse_lift_irr(Param p_G,mat delta)=
-let (H,)=endoscopic(G,delta) in 
+let (H,)=endoscopic(p_G.real_form,delta) in 
 inverse_lift_irr(p_G,delta, H.split_form)
 
 set inverse_lifts_irr_long([Param] params,mat delta)=
