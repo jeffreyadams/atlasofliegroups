@@ -1,3 +1,8 @@
+<L_packet.at
+<hodgeParamLaurentPol.at
+<stable.at
+<extParamPol.at
+
 {very preliminary version of twisted endoscopic lifting
 given: (G,delta^v)
 G=(split) real group
@@ -19,24 +24,58 @@ function is clumsy
 also inverse_lift_std is now done by a brute force search,
 until we figure out the right way
 }
-<mezo.at
+{<mezo.at}
+
+{from mezo.at:}
+set delta_l_int_long(Param p,mat delta)=(int,int,int,rat):
+if not is_fixed(delta,p) then (-1,-1,-1,-1) else
+let rd=p.root_datum then
+G=p.real_form then
+ic=inner_class(rd,delta) then
+rd_H_check=K_0(ic.quasicompact_form).root_datum then
+rd_H=dual(rd_H_check) then
+H=rd_H.split_form then
+{()=prints("H=",H) then}
+x_G=KGB(G,0) then
+{proj_H=cocharacter_lattice_K(ic) then}
+proj_H=projection_to_K_matrix(x_G) then
+G=p.real_form then
+gamma=p.infinitesimal_character then
+{()=prints("p=",p) then}
+{()=prints("proj_H:",proj_H) then}
+{()=prints("gamma:", gamma) then}
+gamma_H=proj_H*gamma then
+{()=prints("gamma:H=",gamma_H) then}
+theta=p.x.involution then
+theta_H=proj_H*theta*right_inverse(proj_H) then
+{()=prints("theta_H:", theta_H) then}
+compact_rank_H=#kernel(theta_H-1) then
+constant=split_rank(H.fundamental_Cartan) then
+roots=##for alpha in rd_H.posroots do
+ if is_positive_root(rd_H,theta_H*alpha) then [alpha] else [] fi od
+in (#roots,compact_rank_H,constant, (#roots+compact_rank_H-constant)/2)
+fi
+
+set delta_l_int(Param p,mat delta)=int:
+let (,,,x)=delta_l_int_long(p,delta) in rat_as_int(x)
 
 set te_verbose=false
 
 {this should be a built-in, or at least in some other file}
-set partial_extended_block(Param p,mat delta)=[Param]:
-let (B,,)=partial_extended_KL_block(p,delta) in B
+{set partial_extended_block(Param p,mat delta)=[Param]:
+let (B,,)=partial_extended_KL_block(p,delta) in B}
 
 set is_stable(ParamPol P)=bool:
 let (M,)=stable(monomials(P)) then
 v=[int]: for (c,p) in %P do c.split_as_int od in
 in_lattice(^M,v)
-
+{
 set partial_KL_P_polynomials (Param p, mat delta) = i_poly_mat:
    let (,P,polys) = partial_extended_KL_block(p,delta)
 in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od
+   }
 {
 set partial_fixed_block_of(mat delta,Param p)=
 ##for a in partial_block(p) do if is_fixed(delta,a) then [a] else [] fi od
@@ -197,7 +236,6 @@ set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
    | else null(0,0)
    esac
 
-
 set lift(mat m,RootDatum H, RootDatum G,mat M)=WeylElt:
 let W=G.W then
 i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
@@ -206,9 +244,24 @@ in W[i]
 set lift(WeylElt w_H,RootDatum H, RootDatum G,mat M)=WeylElt:
 lift(w_H.matrix,H,G,M)
 
-set lift(KGBElt x_H,mat M,RealForm G, mat delta)=KGBElt:
-let lift=lift(x_H.involution,x_H.root_datum,G,M) in
-KGB(G,first(for x in KGB(G) do lift.matrix*delta=x.involution od))
+{set lift_old(KGBElt x_H,mat M,RealForm G, mat delta)=KGBElt:
+let lift_involution=lift(x_H.involution,x_H.root_datum,G,M) in
+KGB_elt(G,first(for x in KGB(G) do lift_involution.matrix*delta=x.involution od))
+}
+
+set inverse_lift(KGBElt_gen x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
+let action_H=restrict_action(x_G.involution,M) then
+torus_factor_H=^M*x_G.torus_factor then
+()=prints("action_H: ", action_H, new_line, "torus_factor_H: ", torus_factor_H) in
+KGB_elt_gen(H,action_H,torus_factor_H)
+
+set inverse_lift(KGBElt x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
+let action_H=restrict_action(x_G.involution,M) then
+torus_factor_H=^M*x_G.torus_factor then
+()=prints("action_H: ", action_H, new_line, "torus_factor_H: ", torus_factor_H) in
+KGB_elt_gen(H,action_H,torus_factor_H)
+
+{
 
 {Note: M*theta_x=theta_y*M where y=lift(x,M,G,delta)}
 {
@@ -231,7 +284,6 @@ sign_difference(lift_0,delta)*lift_0
 set lift_std(Param p_H,RealForm G, mat delta)=
 let (,M)=endoscopic(G,delta) in lift_std(p_H,M,G,delta)
 
-
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
@@ -241,12 +293,22 @@ lift(p_H.character_formula,M,G,delta)
 set lift_irr(Param p_H, RealForm G, mat delta)=
 let (,M)=endoscopic(G,delta) in lift_irr(p_H,M,G,delta)
 
-set inverse_lift_std(Param p_G,mat delta)=
+set inverse_lift_std_old(Param p_G,mat delta)=
 let G=p_G.real_form then
 (H,M)=endoscopic(G,delta) then
 H=H.split_form then
 x_H= let index_H=first(for x in KGB(H) do lift(x,M,G,delta)=p_G.x od) in KGB(H,index_H) then
 p_H=parameter(x_H,left_inverse(M)*p_G.lambda,left_inverse(M)*p_G.nu) in
+sign_difference(p_G,delta)*param_pol(L_packet(p_H))
+
+set inverse_lift_std(Param p_G,mat delta)=
+let G=p_G.real_form then
+(H,M)=endoscopic(G,delta) then
+H=H.split_form then
+x_H= let index_H=first(for x in KGB(H) do lift(x,M,G,delta)=p_G.x od) in KGB(H,index_H) then
+packet=L_packet(H,
+
+
 sign_difference(p_G,delta)*param_pol(L_packet(p_H))
 
 set inverse_lift_std_by_search(Param p_G,mat delta)=ParamPol:
@@ -259,7 +321,6 @@ all=all_parameters_gamma(H,inf_char_H) then
 index=int: first(for p@i in all do  first_param(lift_std(p,M,G,delta))=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
-
 
 set inverse_lift_std(Param p,mat delta)=inverse_lift_std_by_search(p,delta)
 
@@ -290,7 +351,7 @@ PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,delta) od in
 composition_series(PH)
 
 set inverse_lift_irr(Param p_G,mat delta)=
-let (H,)=endoscopic(p_G.real_form,delta) in 
+let (H,)=endoscopic(p_G.real_form,delta) in
 inverse_lift_irr(p_G,delta, H.split_form)
 
 set inverse_lifts_irr_long([Param] params,mat delta)=
@@ -302,7 +363,7 @@ od
 set abv(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std=first_param(lift_std(p_H,M,G,delta)) then
 ()=if te_verbose then prints("lift_std=", lift_std) fi in
-inverse_lift_irr(lift_std,delta) 
+inverse_lift_irr(lift_std,delta)
 
 set abv(Param p_H,RealForm G,mat delta)=
 let (,M)=endoscopic(G,delta) in abv(p_H,M,G,delta)
@@ -341,4 +402,4 @@ prints(lift=ex or lift=-ex);(lift,ex)
 {the lattice spanned by the columns of M is T-stable}
 set is_stable(mat T, mat M)=bool:any(solve(M,T*M))
 set is_stable(WeylElt w, mat M)=bool:is_stable(w.matrix,M)
-}
+}}

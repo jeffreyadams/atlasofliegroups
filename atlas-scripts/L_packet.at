@@ -1,6 +1,57 @@
 <Vogan-dual.at
 
-set is_valid(KGBElt y,ratvec gamma)=bool:is_integer(square(y)-gamma)
+set square (KGBElt_gen x)=ratvec:
+  square_unnormalized(inner_class(x),involution(x),(torus_factor(x)+rho_check(x.inner_class))/2)
+
+set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
+
+set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
+set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
+assert(is_valid(y,p.infinitesimal_character),"y_gen(p) is not valid");y
+
+set simple_imaginary_roots(KGBElt x)=mat:
+let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
+
+set simple_imaginary_reflections(KGBElt x)=[WeylElt]:
+for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
+
+set fiber(KGBElt x)=[KGBElt]:
+for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
+
+set fiber(RealForm G,mat theta)=[KGBElt]:
+##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
+
+set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=
+assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");
+let fiber=fiber(G,-^y_gen.involution) in
+for x in fiber do parameter(x,y_gen,gamma) od
+
+set L_packet(Param p)=
+for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
+
+set L_packet_representative(Param p)=
+first_param(param_pol(L_packet(p)))
+
+set L_packet_representative(ParamPol P)=
+let rv=null_module(P.real_form) in
+while #P>0 do
+ let (c,p)=first_term(P) in
+ P+:=-c*p;
+  if rv[L_packet_representative(p)] = 0 then
+   rv+:=c*p
+  fi
+ od;rv
+
+
+
+
+{p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
+
+
+
+
+{
+
 
 set dual_inner_class (ratvec gamma, InnerClass ic) = InnerClass:
 dual_integral(ic,gamma)
@@ -14,17 +65,9 @@ set dual_real_forms (ratvec gamma, KGBElt x) = [RealForm]:
 dual_real_forms(gamma,x.inner_class)
 
 
-set fiber(RealForm G,mat theta)=[KGBElt]:
-##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
 
-set simple_imaginary_roots(KGBElt x)=mat:
-let (simple_imaginary_roots,)=simple_imaginary_subsystem(x) in simple_imaginary_roots
 
-set simple_imaginary_reflections(KGBElt x)=[WeylElt]:
-for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 
-set fiber(KGBElt x)=[KGBElt]:
-for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
 {y is a KGB element on the dual side, possibly for a subgroup H^v of G^v
  return all KGB elements for G compatible with y, i.e.
@@ -44,24 +87,14 @@ assert(is_valid(y,gamma), "(y,gamma) is not valid");
 let fiber=fiber(G,-^y.involution) in
 for x in fiber do parameter(x,y,gamma) od
 
-set L_packet(Param p)=
-for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
+
 
 {these two should agree:
 L_packet(p) and L_packet(p.real_form,p.infinitesimal_character, dual(p).x)}
 
-set L_packet_representative(Param p)=
-first_param(param_pol(L_packet(p)))
 
-set L_packet_representative(ParamPol P)=
-let rv=null_module(P.real_form) in
-while #P>0 do
- let (c,p)=first_term(P) in
- P+:=-c*p;
-  if rv[L_packet_representative(p)] = 0 then
-   rv+:=c*p
-  fi
- od;rv
+
+
 
 
 {
@@ -70,6 +103,7 @@ set dual_KGB (KGBElt x,ratvec gamma, InnerClass dual_int_ic) = KGBElt:
   let  dual_tf=gamma-x.root_datum.rho
   then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
   then (simple_ims,) =
+quit
     simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta))
   then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
     = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))

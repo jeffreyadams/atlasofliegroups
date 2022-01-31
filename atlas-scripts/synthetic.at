@@ -12,6 +12,8 @@ set_type
   $\xi=\exp_{-1}(torus_factor)exp(i\pi rho^\vee)\sigma_w\xi_0
 }
 
+set KGB_elt_gen(InnerClass ic,mat involution, ratvec torus_factor)=KGBElt_gen:(ic,involution,torus_factor)
+
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
 { alternative to KGB_elt that incorporates shift by rho_check_i }
