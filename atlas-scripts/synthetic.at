@@ -13,6 +13,8 @@ set_type
 }
 
 set KGB_elt_gen(InnerClass ic,mat involution, ratvec torus_factor)=KGBElt_gen:(ic,involution,torus_factor)
+set KGB_elt_gen(KGBElt x)=KGB_elt_gen(x.inner_class,x.involution,x.torus_factor)
+set KGB_elt(KGBElt_gen x)=KGB_elt(x.inner_class,x.involution,x.torus_factor)
 
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 

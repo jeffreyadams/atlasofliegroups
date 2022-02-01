@@ -236,24 +236,96 @@ set restrict_action_weak (mat A, mat M) =  { shapes A: n by n, M: n by m }
    | else null(0,0)
    esac
 
-set lift(mat m,RootDatum H, RootDatum G,mat M)=WeylElt:
+set lift(mat m, RootDatum G,mat M)=WeylElt:
 let W=G.W then
 i=first(for w in W do any(solve(M,w.matrix*M)) and restrict_action(w.matrix,M)=m od)
 in W[i]
 
-set lift(WeylElt w_H,RootDatum H, RootDatum G,mat M)=WeylElt:
-lift(w_H.matrix,H,G,M)
+set lift(WeylElt w_H, RootDatum G,mat M)=WeylElt:
+lift(w_H.matrix,G,M)
+{
+set lift(KGBElt_gen x_H_gen,mat M, RealForm G,mat delta)=KGBElt_gen:
+KGB_elt_gen(G,
+lift(x_H_gen.involution,G,M).matrix,
+M*x_H_gen.torus_factor)}
 
-{set lift_old(KGBElt x_H,mat M,RealForm G, mat delta)=KGBElt:
-let lift_involution=lift(x_H.involution,x_H.root_datum,G,M) in
-KGB_elt(G,first(for x in KGB(G) do lift_involution.matrix*delta=x.involution od))
-}
+set lifts(KGBElt x_H,mat M, RealForm G,mat delta)={KGBElt:}
+let lift_involution=lift(x_H.involution,G,M) in
+let correct_involution=##for x in KGB(G) do if lift_involution.matrix*delta=x.involution then [x] else [] fi od
+in
+let correct_torus_factor=##for x in correct_involution do
+ if  ^M*x.torus_factor = x_H.torus_factor then  [x] else [] fi od
+ in (correct_involution,correct_torus_factor)
+
+set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
+let (,lifts)=lifts(x_H,M,G,delta) in lifts[0]
+
+set sign_difference(Param p_G, mat delta)=int:
+(-1)^(length(p_G)-delta_l_int(p_G,delta))
+
+set lift_std(Param p_H,mat M,RealForm G, mat delta)=
+let x=lift(p_H.x,M,G,delta) then
+lift_0=parameter(x,M*p_H.lambda,M*p_H.nu) in
+{(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0}
+sign_difference(lift_0,delta)*lift_0
+
+set extended_character_formula (Param p,mat delta) =
+let (B,,)=partial_extended_KL_block(p,delta) in
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
+{P=big_KL_P_signed_polynomials(p,delta) then}
+P=big_KL_P_polynomials(p,delta) then
+()=if te_verbose then printPolyMatrix(P) fi  then
+index=find(complete_indices,(find(B,p),1)) in
+{let ()=prints("index=", index) in}
+null_module(p.real_form) +
+for i:#complete_indices
+do let f=eval(P[i][index],s) in
+{let ()=prints(new_line,"i= ", i, " f=",f) in}
+ let (j,c)=complete_indices[i] in
+ {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
+od
 
 set inverse_lift(KGBElt_gen x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
 let action_H=restrict_action(x_G.involution,M) then
 torus_factor_H=^M*x_G.torus_factor then
 ()=prints("action_H: ", action_H, new_line, "torus_factor_H: ", torus_factor_H) in
 KGB_elt_gen(H,action_H,torus_factor_H)
+
+set inverse_lift(KGBElt x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
+inverse_lift(KGB_elt_gen(x_G),H,M,delta)
+
+set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta)=
+let y_G=y_gen(p_G) then
+action_H=restrict_action(y_G.involution,M) then
+y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,^M*y_G.torus_factor) in
+{let y_H=KGB_elt(KGB_elt_gen) in}
+sign_difference(p_G,delta)*param_pol(L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen))
+
+set inverse_lift_irr(Param p_G,RealForm H,mat delta)=
+let P=extended_character_formula(p_G,delta) then
+()=if te_verbose then prints("P=",P) fi then
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta) od in
+composition_series(PH)
+
+
+
+
+
+set abv(Param p_H,mat M,RealForm G,mat delta)=
+let lift_std=lift_std(p_H,M,G,delta) then
+()=if te_verbose then prints("lift_std=", lift_std) fi in
+inverse_lift_irr(first_param(lift_std),p_H.real_form,delta)
+
+
+
+{
+
+{set lift_old(KGBElt x_H,mat M,RealForm G, mat delta)=KGBElt:
+let lift_involution=lift(x_H.involution,x_H.root_datum,G,M) in
+KGB_elt(G,first(for x in KGB(G) do lift_involution.matrix*delta=x.involution od))
+}
+
+
 
 set inverse_lift(KGBElt x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
 let action_H=restrict_action(x_G.involution,M) then
@@ -272,9 +344,8 @@ let KGB_G=KGB(G) in
 for x in KGB(H) do (x,embed(x,M,KGB_G)) od
 }
 
-set sign_difference(Param p_G, mat delta)=int:
-(-1)^(length(p_G)-delta_l_int(p_G,delta))
 
+}
 set lift_std(Param p_H,mat M,RealForm G, mat delta)=
 let x=lift(p_H.x,M,G,delta) then
 lift_0=parameter((x,M*p_H.lambda,M*p_H.nu)) in
@@ -283,7 +354,7 @@ sign_difference(lift_0,delta)*lift_0
 
 set lift_std(Param p_H,RealForm G, mat delta)=
 let (,M)=endoscopic(G,delta) in lift_std(p_H,M,G,delta)
-
+{
 set lift(ParamPol P_H,mat M,RealForm G,mat delta)=
 null_module(G) + for (c,p) in %L_packet_representative(P_H) do c*lift_std(p,M,G,delta) od
 
@@ -324,21 +395,7 @@ sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 
 set inverse_lift_std(Param p,mat delta)=inverse_lift_std_by_search(p,delta)
 
-set extended_character_formula (Param p,mat delta) =
-let (B,,)=partial_extended_KL_block(p,delta) in
-let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
-{P=big_KL_P_signed_polynomials(p,delta) then}
-P=big_KL_P_polynomials(p,delta) then
-()=if te_verbose then printPolyMatrix(P) fi  then
-index=find(complete_indices,(find(B,p),1)) in
-{let ()=prints("index=", index) in}
-null_module(p.real_form) +
-for i:#complete_indices
-do let f=eval(P[i][index],s) in
-{let ()=prints(new_line,"i= ", i, " f=",f) in}
- let (j,c)=complete_indices[i] in
- {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
-od
+
 
 {set extended_character_formula_2 (Param p,mat delta) = extended_character_formula(p,block_of(p),delta)}
 
