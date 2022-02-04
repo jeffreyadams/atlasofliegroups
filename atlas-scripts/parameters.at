@@ -24,12 +24,12 @@ set unnormalized_torus_factor (KGBElt x) = ratvec:
       =v*(1+theta)+rho^v*(1-theta)/2
       =rho^v + (2*v-rho^v)*(1+theta)/2
 }
-set square_unnormalized (
-  InnerClass ic,mat theta,ratvec unnormalized_torus_factor) = ratvec:
+set square_unnormalized (InnerClass ic,mat theta,ratvec unnormalized_torus_factor) = ratvec:
   (unnormalized_torus_factor*(1+theta)+rho_check(ic)*(1-theta)/2)%1
 
 set square_normalized (InnerClass ic,mat theta,ratvec torus_factor) = ratvec:
   square_unnormalized(ic,theta,(torus_factor+rho_check(ic))/2)
+  {= ([(torus_factor+rho_check(ic))/2]*(1+theta) +rho_check(ic)*(1-theta)/2)%1}
 
 { for valid arguments one should have
   square(ic,theta,tf)=square(real_form(ic,theta,tf))

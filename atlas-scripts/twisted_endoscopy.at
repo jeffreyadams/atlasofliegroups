@@ -287,7 +287,8 @@ od
 
 set inverse_lift(KGBElt_gen x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
 let action_H=restrict_action(x_G.involution,M) then
-torus_factor_H=^M*x_G.torus_factor then
+{torus_factor_H=^M*x_G.torus_factor then}
+torus_factor_H=left_inverse(M)*x_G.torus_factor then
 ()=prints("action_H: ", action_H, new_line, "torus_factor_H: ", torus_factor_H) in
 KGB_elt_gen(H,action_H,torus_factor_H)
 
@@ -297,11 +298,13 @@ inverse_lift(KGB_elt_gen(x_G),H,M,delta)
 set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta)=
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
-y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,^M*y_G.torus_factor) in
+y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,left_inverse(M)*y_G.torus_factor) then
 {let y_H=KGB_elt(KGB_elt_gen) in}
-sign_difference(p_G,delta)*param_pol(L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen))
+lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
+()=prints("lp=", lp) in
+sign_difference(p_G,delta)*param_pol(lp)
 
-set inverse_lift_irr(Param p_G,RealForm H,mat delta)=
+set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta)=
 let P=extended_character_formula(p_G,delta) then
 ()=if te_verbose then prints("P=",P) fi then
 PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta) od in
@@ -314,7 +317,7 @@ composition_series(PH)
 set abv(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std=lift_std(p_H,M,G,delta) then
 ()=if te_verbose then prints("lift_std=", lift_std) fi in
-inverse_lift_irr(first_param(lift_std),p_H.real_form,delta)
+inverse_lift_irr(first_param(lift_std),p_H.real_form,M,delta)
 
 
 
