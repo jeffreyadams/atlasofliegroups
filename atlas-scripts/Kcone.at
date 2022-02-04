@@ -416,13 +416,22 @@ set down_P_cone(K_Type mu,[KHighestWeight] pktype) = K_Type_Pol:
         else seen +:= tau; for @p in down_P(tau,pktype) do F(p); result +:= p od
         fi); result
 
+set down_P_cone_alt(K_Type mu,[KHighestWeight] pktype)= K_Type_Pol:
+   let result=null_module(real_form(mu))
+   in for c@p in down_P_cone(mu,pktype) do result+:=p od; result
+
 set down_R_cone_true (K_Type mu)=ParamPol:
-   let h=height(mu),G=real_form(mu) then list=K_parameters_height_upto(G,h-1)
+   let h=height(mu),G=real_form(mu)
    then result=null_module(G)
-   in for kt in list do let p=parameter(kt)
-                         in if up_R_cone(kt,h)[parameter(mu)]!=0
-			    then result+:=p
-			    fi od; result
+   in if h>0
+      then let list=K_parameters_height_upto(G,h-1)
+      	   in for kt in list
+	      do let p=parameter(kt)
+                 in if up_R_cone(kt,h)[parameter(mu)]!=0
+		    then result+:=p
+		    fi
+	      od
+      fi; result
 
 set print_K_types_nice (ParamPol P,KGBElt x) = void:
    let header=["m","x","lambda","hw","dim","height"]
@@ -434,3 +443,84 @@ set print_K_types_nice (ParamPol P,KGBElt x) = void:
 		      let (,v)=highest_weight_plain(hw)in v.to_string,
 		      dimension(LKT(q)).to_string,height(q).to_string]
 	       od in tabulate(header#values)
+
+{This works only when \theta_x permutes the non-real positive roots;
+that is always true for a normalized Param with nu=0, as for example a
+term in a K_type_formula.}
+set pwtsIRC(KGBElt x) = [vec]:
+    let (G,posRoots,inv) = (x.real_form,posroots(x.real_form),x.involution)
+    in ##for i:#posRoots do if {I} is_imaginary(i,x)
+       	     		    then if {NC*} is_noncompact(i,x)
+			          then [posRoots[i],-posRoots[i]]
+				  else []
+				  fi{NC}
+			    else if {R*} is_real(i,x)
+			         then [posRoots[i]]
+				 else if {1st*} find(posRoots,inv*posRoots[i]) > i
+				      then [posRoots[i],-posRoots[i]]
+				      else []
+				      fi{1st}
+				 fi{R}
+	 		    fi{I}
+			 od
+
+
+set dim_A_x (KGBElt x) = int:
+   let ((,C,r),,,)=x.Cartan_class.Cartan_info in C+r
+
+set ratpwtsIRC(KGBElt x) = [ratvec]:for v in pwtsIRC(x) do ratvec:v
+od ## for i:dim_A_x(x) do null(rank(x.root_datum))/1 od
+
+{This was meant to avoid recomputing; but it is wasteful, in that it
+ought to ignore those x for which \theta_x does not permute nonreal
+roots; those x will never appear in a K_type_formula.}
+set pwts(RealForm G) = [[vec]]:
+for x in KGB(G) do pwtsIRC(x) od
+
+
+{The terms in the ParamPol at the end are all standard with nu=0, but
+not necessarily normal or final. This seems to be harmless.}
+set add_T_x_weights(Param p) = ParamPol:
+   let x=p.x, lambda=p.lambda {, nu=p.nu}
+   then result=dim_A_x(x)*p
+   in for v in pwtsIRC(x)
+      do result+:= standardize(parameter(x,lambda+v,0*lambda))*0
+      od; result
+      
+{The terms in the ParamPol at the end are all standard with nu=0, but
+not necessarily normal or final. This seems to be harmless.}
+set add_T_x_weights(Param p, [[vec]] Pwts) = ParamPol:
+    let (G,j)= %p.x, lambda=p.lambda, x=p.x
+    in dim_A_x(p.x)*p + sum(G,for v in Pwts[j] do
+    standardize(parameter(x,lambda+v,0*lambda))*0 od)
+
+set tensor_with_p (K_Type mu)=ParamPol:
+    let P=K_type_formula(mu)
+    in sum(mu.real_form, for c@p in P do c*add_T_x_weights(p) od)
+
+{should be same as above}
+set tensor_with_pJDA (K_Type mu) = ParamPol:
+    add_weights(mu,ratpwtsIRC@KGBElt)
+    {tensor_product(mulong,ratpwtsIRC@KGBElt)}
+
+{This cures the non-standard/ non-final terms in tensor_with_p, but I
+think it isn't needed.}
+set tensor_with_p0 (K_Type mu) = standardize(tensor_with_p(mu))
+
+{same as tensor_with_p, trying to avoid recomputation of pwtsIRC}
+set tensor_with_p1 (K_Type mu)=ParamPol:
+   let P=K_type_formula(mu), Pwts=pwts(mu.real_form) in
+   sum(P.real_form,for c@p in P do c*add_T_x_weights(p,Pwts) od)
+
+set down_B(K_Type mu,[Param] B)=ParamPol:
+   let n=height(mu)
+   then result=null_module(real_form(mu))
+    in for p in B
+        do for tau in highest_weights(p)
+	   do for c@r in tensor_product(mu,tau)
+              do if height(r)<=n
+	         then result+:=r
+		 fi
+	      od
+	   od
+	od; result
