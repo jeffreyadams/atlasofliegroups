@@ -434,8 +434,9 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
 
 { all K parameters with same d_lambda as (x,lambda) }
 set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
+let r=rank(real_form(x)) then v_0=null(r)/1 in
 ##(for v in all_lambda_differential_0(x) do if
-is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else
+is_final(parameter(x,lambda+v)) then [LKT(parameter(x,lambda+v,v_0))] else
 [(KGBElt,ratvec)]:[] fi od)
 {  for v in all_lambda_differential_0(x) do (x,lambda+v) od}
 
