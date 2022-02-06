@@ -243,11 +243,15 @@ in W[i]
 
 set lift(WeylElt w_H, RootDatum G,mat M)=WeylElt:
 lift(w_H.matrix,G,M)
-{
+
 set lift(KGBElt_gen x_H_gen,mat M, RealForm G,mat delta)=KGBElt_gen:
-KGB_elt_gen(G,
-lift(x_H_gen.involution,G,M).matrix,
-M*x_H_gen.torus_factor)}
+let tf_H_raw=x_H_gen.unnormalized_torus_factor then 
+tf_G_raw=M*tf_H_raw then
+tf_G=2*tf_G_raw-G.rho_check in
+KGB_elt_gen(G,lift(x_H_gen.involution,G,M).matrix,tf_G)
+
+{set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt_gen:
+lift(KGB_elt_gen(x_H),M,G,delta)}
 
 set lifts(KGBElt x_H,mat M, RealForm G,mat delta)={KGBElt:}
 let lift_involution=lift(x_H.involution,G,M) in
@@ -257,8 +261,8 @@ let correct_torus_factor=##for x in correct_involution do
  if  ^M*x.torus_factor = x_H.torus_factor then  [x] else [] fi od
  in (correct_involution,correct_torus_factor)
 
-set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
-let (,lifts)=lifts(x_H,M,G,delta) in lifts[0]
+{set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
+let (,lifts)=lifts(x_H,M,G,delta) in lifts[0]}
 
 set sign_difference(Param p_G, mat delta)=int:
 (-1)^(length(p_G)-delta_l_int(p_G,delta))

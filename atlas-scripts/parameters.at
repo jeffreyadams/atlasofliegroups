@@ -24,30 +24,45 @@ set unnormalized_torus_factor (KGBElt x) = ratvec:
       =v*(1+theta)+rho^v*(1-theta)/2
       =rho^v + (2*v-rho^v)*(1+theta)/2
 }
+
+{this is the square of exp(2\pi iv)sigma_w\xi_0,
+i.e. v is the unnormalized torus factor of a generalized KGB element}
+
+set square(InnerClass ic,mat theta, ratvec v)=ratvec:
+v*(1+theta) + ic.rho_check*(1-theta)/2
+
+set square_is_central(InnerClass ic,mat theta, ratvec v)=bool:
+is_integer(square(ic,theta,v)*ic.simple_roots)
+
+{of course this should be true, this is included for debugging}
+set square_is_central(KGBElt x)=bool:
+square_is_central(x.inner_class,x.involution,unnormalized_torus_factor(x))
+
+{
 set square_unnormalized (InnerClass ic,mat theta,ratvec unnormalized_torus_factor) = ratvec:
-  (unnormalized_torus_factor*(1+theta)+rho_check(ic)*(1-theta)/2)%1
+
 
 set square_normalized (InnerClass ic,mat theta,ratvec torus_factor) = ratvec:
   square_unnormalized(ic,theta,(torus_factor+rho_check(ic))/2)
   {= ([(torus_factor+rho_check(ic))/2]*(1+theta) +rho_check(ic)*(1-theta)/2)%1}
+  }
 
 { for valid arguments one should have
   square(ic,theta,tf)=square(real_form(ic,theta,tf))
 }
+{
 set square = square_normalized@(InnerClass,mat,ratvec)
 set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
   (tf*(1+theta)+2*rho_check(ic))%2 { this should always be twice |square| }
+}  
 
 { the following is ths same as central_cocharacter@RealForm in Vogan-dual.at }
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 set square (KGBElt x) = ratvec: square(real_form(x))
 
-{ tf=normalized torus_factor: xi=exp(\pi i(tf\rho^v))\sigma_w\xi_0
-  so square_is_central(ic,theta(x),torus_factor(x)) should always be true
-}
-set square_is_central (InnerClass ic,mat theta,ratvec tf) = bool:
-  let sq = square(ic,theta,tf), alpha = simple_roots(ic) in
-  all(n_columns(alpha), (int i): is_integer(sq*alpha[i]) )
+
+
+
 
 set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ( let x = x(p), gamma=infinitesimal_character(p) in

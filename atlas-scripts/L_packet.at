@@ -1,11 +1,11 @@
 <Vogan-dual.at
 
-set square_unnormalized (KGBElt_gen x)=ratvec:
+{set square_unnormalized (KGBElt_gen x)=ratvec:
 {  square_unnormalized(inner_class(x),involution(x),(torus_factor(x)+rho_check(x.inner_class))/2)}
   square_unnormalized(inner_class(x),involution(x),unnormalized_torus_factor(x))  {this is same but clearer}
-
-set square_normalized (KGBElt_gen x)=ratvec:
-  square_normalized(inner_class(x),involution(x),torus_factor(x))
+}
+set square (KGBElt_gen x)=ratvec:
+square(x.inner_class,x.involution,x.unnormalized_torus_factor)
   
 set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
 
@@ -25,8 +25,10 @@ for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 set fiber(RealForm G,mat theta)=[KGBElt]:
 ##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
 
+{given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
+
 set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=
-assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");
+assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");  
 let fiber=fiber(G,-^y_gen.involution) in
 for x in fiber do parameter(x,y_gen,gamma) od
 

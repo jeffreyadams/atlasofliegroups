@@ -144,9 +144,11 @@ end
 set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
   let t1=1+theta in in_lattice(t1,t1*(v-w))
 
-
 set unnormalized_torus_factor (KGBElt_gen x) = ratvec:
   (x.torus_factor+rho_check(x.inner_class))/2
+
+set square (KGBElt_gen x)=ratvec:
+square(x.inner_class,x.involution,x.unnormalized_torus_factor)
 
 { Note: square_is_central(KGB_elt y) gives the correct answer
   =square_is_central(inner_class(y),involution(y), torus_factor(y))
@@ -175,3 +177,7 @@ set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
 set is_fixed (mat delta,KGBElt_gen y) = bool: y = delta*y
+
+set square_is_central(KGBElt_gen x)=bool:
+let v=unnormalized_torus_factor(x) in 
+square_is_central(x.inner_class,x.involution,v)
