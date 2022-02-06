@@ -30,6 +30,7 @@
 #include "kgb.h"
 #include "subsystem.h"
 #include "polynomials.h"
+#include "K_repr.h"  // |K_type|
 
 namespace atlas {
 
@@ -324,45 +325,6 @@ class Rep_context
 using SR_poly = Rep_context::poly;
 
 
-class K_type // compact representation of parameters at $\nu=0$
-{
-  KGBElt d_x;
-  Weight lam_rho;
-
-public:
-  K_type(const Rep_context& rc, const StandardRepr& sr)
-    : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
-
-  K_type(K_type&&) = default;
-
-  KGBElt x () const { return d_x;  }
-  const Weight& lambda_rho () const { return lam_rho; }
-
-  StandardRepr sr (const Rep_context& rc) const // represent as full parameter
-  { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }
-
-  bool operator< (const K_type& another) const
-  {
-    if (d_x!=another.d_x)
-      return d_x<another.d_x;
-    assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
-    for (unsigned i=0; i<lam_rho.size(); ++i)
-      if (lam_rho[i]!=another.lam_rho[i])
-	return lam_rho[i]<another.lam_rho[i];
-    return false; // we found equality
-  }
-
-  using Pooltype = std::vector<K_type>;
-  bool operator!= (const K_type& another) const
-  { return d_x!=another.d_x or lam_rho!=another.lam_rho; }
-  size_t hashCode (size_t modulus) const
-  {
-    size_t h = 3*d_x;
-    for (auto c : lam_rho)
-      h = (17*h&(modulus-1)) + c;
-    return h&(modulus-1);
-  }
-}; // |class K_type|
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
 
@@ -451,8 +413,8 @@ class Rep_table : public Rep_context
   Reduced_param::Pooltype reduced_pool;
   HashTable<Reduced_param,unsigned long> reduced_hash;
 
-  K_type::Pooltype K_type_pool;
-  HashTable<K_type,K_type_nr> K_type_hash;
+  K_repr::K_type::Pooltype K_type_pool;
+  HashTable<K_repr::K_type,K_type_nr> K_type_hash;
 
   PosPolEntry::Pooltype KL_poly_pool;
   KL_hash_Table KL_poly_hash;
@@ -490,7 +452,10 @@ class Rep_table : public Rep_context
   size_t match_reduced_hash(const StandardReprMod& srm)
   { return reduced_hash.match(Reduced_param(*this,srm)); }
 
-  StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
+  StandardRepr K_type_sr(K_type_nr i)
+  { const auto& K_tp = K_type_pool[i]; const auto& lr = K_tp.lambda_rho();
+    return sr(K_tp.x(),lr,RatWeight(lr.size()));
+  }
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$

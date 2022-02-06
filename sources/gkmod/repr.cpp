@@ -26,8 +26,6 @@
 #include "subsystem.h" // |SubSystem| methods
 #include "alcoves.h"
 
-#include "alcoves.h"
-
 #include "kl.h"
 
 #include "ext_block.h"
@@ -1877,7 +1875,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
   K_type_poly result {std::less<K_type_nr>()};
   for (const auto& sr : finals_for(z0))
   {
-    K_type_nr h = K_type_hash.match(K_type(*this,sr));
+    K_type_nr h = K_type_hash.match(K_repr::K_type(sr.x(),lambda_rho(sr)));
     result.add_term(h,Split_integer(1,0));
   }
 
@@ -2192,7 +2190,8 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const std::pair<StandardRepr,bool>& p : L)
     {
-      auto h = K_type_hash.match(K_type(*this,p.first));
+      auto h = K_type_hash.match
+	(K_repr::K_type(p.first.x(),lambda_rho(p.first)));
       result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
 			? Split_integer(1,0) : Split_integer(0,1) );
     }

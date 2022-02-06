@@ -153,6 +153,17 @@ namespace arithmetic {
   }
 } // |namespace arithmetic|
 
+namespace K_repr {
+
+std::ostream& print_K_type
+  (std::ostream& out, const K_type& val, const repr::Rep_context& rc)
+{
+  return out << " <x=" << val.x() << ", lambda = rho+" << val.lambda_rho()
+	     << '>';
+}
+
+} // |namespace K_repr|
+
 namespace repr {
 
 std::ostream& print_stdrep
@@ -192,16 +203,9 @@ std::ostream& print_SR_poly
   return out;
 }
 
-std::ostream& print_K_type
-  (std::ostream& out, const repr::K_type& val, const Rep_context& rc)
-{
-  return out << " <x=" << val.x() << ", lambda = rho+" << val.lambda_rho()
-	     << '>';
-}
-
 std::ostream& print_K_type_poly
   (std::ostream& out,
-   const repr::K_type_poly& val, const std::vector<K_type>& pool,
+   const repr::K_type_poly& val, const std::vector<K_repr::K_type>& pool,
    const Rep_context& rc)
 {
   for (const auto& term : val)

@@ -870,7 +870,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
   const RootDatum& rd=root_datum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr); // is non-dominant for |alpha|, so |sr| is not normal
-  assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
+  assert(rd.is_posroot(alpha)); // indeed |alpha| simply-imaginary for |a.tw()|
 
   HechtSchmid id(sr); // start with |sr| on the left hand side
   size_t i=0; // simple root index (value will be set in following loop)
@@ -920,7 +920,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 
 /*
   The method |HS_id| is only called when |lambda| is non-dominant for |alpha|
-  and therefore gives a second term with a strictly more dominant weight.
+  and therefore gives a second LHS term with a strictly more dominant weight.
 
   For those simple-imaginary $\alpha$ with $\<\lambda,\alpha^\vee>=0$ the
   corresponding Hecht-Schmid identity has equal weights in the left hand
