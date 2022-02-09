@@ -29,19 +29,19 @@ namespace K_repr {
 class K_type // compact representation of parameters at $\nu=0$
 {
   KGBElt d_x;
+  unsigned int hght;
   Weight lam_rho;
 
 public:
 
-  K_type(KGBElt x, const Weight& lam_rho) : d_x(x), lam_rho(lam_rho) {}
-
-  // K_type(const Rep_context& rc, const StandardRepr& sr)
-  //   : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
+  K_type(KGBElt x, const Weight& lam_rho,unsigned int h)
+    : d_x(x), hght(h), lam_rho(lam_rho) {}
 
   K_type(K_type&&) = default;
 
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
+  unsigned int height() const { return hght; }
 
   // StandardRepr sr (const Rep_context& rc) const // represent as full parameter
   // { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }

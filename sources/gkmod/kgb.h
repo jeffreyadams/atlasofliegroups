@@ -86,7 +86,7 @@ class KGB_base
 
   // tables defining local (generation) ordering of involutions
   std::vector<InvolutionNbr> inv_nrs; // |inv_index| means index into |inv_nrs|
-  std::vector<inv_index> inv_loc; // parital inverse, indexed |InvolutionNbr|
+  std::vector<inv_index> inv_loc; // parital inverse, indexed by |InvolutionNbr|
 
   // to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|

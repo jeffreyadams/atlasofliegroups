@@ -191,6 +191,8 @@ class Rep_context
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
+  K_repr::K_type sr_K(KGBElt x, Weight lambda_rho) const;
+
   RatWeight gamma // compute (representative of) infinitesimal character
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
   StandardRepr sr_gamma // use this one when infinitesimal character is known

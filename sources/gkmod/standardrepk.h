@@ -422,8 +422,8 @@ public:
 
 /*
   This class serves to store tables of previously computed mappings from "bad"
-  standard representations to good ones. Also the information necessary to
-  interpret the |d_lambda| field in |StandardRepK| are stored here
+  standard representations to good ones. Since K-type formula
+  computations use these, they are methods of this class
 */
 class KhatContext : public SRK_context
 {
@@ -493,8 +493,9 @@ class KhatContext : public SRK_context
 }; // |class KhatContext|
 
 // This class serves to store tables of previously computed mappings from
-// "bad" standard representations to good ones. Also the information
-// necessary to interpret the d_lambda field in StandardRepK are stored here
+// "bad" standard representations to good ones. Since the $q$-K-type formula
+// computations use these, they are methods of this class
+
 class qKhatContext : public SRK_context
 {
   typedef HashTable<StandardRepK,seq_no> Hash;

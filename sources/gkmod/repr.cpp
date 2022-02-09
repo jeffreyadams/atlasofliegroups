@@ -110,12 +110,24 @@ size_t Rep_context::rank() const { return root_datum().rank(); }
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 { return inner_class().involution_of_Cartan(cn); }
 
+K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
+{
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  i_tab.lambda_unique(i_x,lambda_rho);
+  const auto& theta = i_tab.matrix(i_x);
+  auto th1_lambda = lambda_rho+theta*lambda_rho+i_tab.theta_plus_1_rho(i_x);
+  return {x,lambda_rho,height(th1_lambda)};
+}
+
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
   // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
 
-  const auto& theta = kgb().involution_matrix(x);
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
   auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
     gamma.numerator()+theta*gamma.numerator();
 
@@ -128,15 +140,13 @@ StandardRepr Rep_context::sr_gamma
   }
 #ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
   {
-    int_Matrix theta1 = theta+1;
     Weight image = // $(\theta+1)(\gamma-\rho)$
-      th1_gamma-(theta1*root_datum().twoRho()/2); // exact division
-    matreduc::find_solution(theta1,image); // a solution must exist
+      th1_gamma-i_tab.theta_plus_1_rho(i_x);
+    matreduc::find_solution(theta+1,image); // assert that a solution exists
   }
 #endif
 
-  const InvolutionTable& i_tab = involution_table();
-  return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma,
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho), gamma,
 		      height(th1_gamma));
 } // |sr_gamma|
 
@@ -144,8 +154,11 @@ StandardRepr Rep_context::sr_gamma
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const
 {
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
   auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
-    gamma.numerator()+kgb().involution_matrix(x)*gamma.numerator();
+    gamma.numerator()+theta*gamma.numerator();
 
   // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
   Weight th1_gamma(th1_gamma_num.size());
@@ -155,8 +168,8 @@ StandardRepr Rep_context::sr_gamma
     th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
   }
 
-  return StandardRepr(x, involution_table().y_pack(kgb().inv_nr(x),lambda_rho),
-		      std::move(gamma), height(th1_gamma));
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho),std::move(gamma),
+		      height(th1_gamma));
 } // |sr_gamma|
 
 StandardRepr Rep_context::sr
@@ -247,25 +260,24 @@ RatWeight Rep_context::gamma_lambda
   const InvolutionTable& i_tab = involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
+  // |y_lift(i_x,y_bits==(1-theta)*(lambda-rho)|; get |(1-theta)(gamma-lambda)|
   const RatWeight gamma_rho = gamma - rho(root_datum());
   return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))
     /static_cast<arithmetic::Numer_t>(2);
 }
 
-// compute $\gamma-\lambda-\rho$ from same information
+// compute $\gamma-\lambda-\rho$ from same information; with respect to above,
+// change from subtracting |(1-theta)*rho| to adding |(1+theta)*rho|
 RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
 {
   const InvolutionTable& i_tab = involution_table();
   InvolutionNbr i_x = kgb().inv_nr(sr.x());
   const WeightInvolution& theta = i_tab.matrix(i_x);
+  const RatWeight& gamma = sr.gamma();
 
-  const Weight& rho2 = root_datum().twoRho();
-  RatWeight result = sr.gamma()*static_cast<arithmetic::Numer_t>(2);
-  (result -= theta*(result-rho2)) += rho2;
-
-  // the next subtraction is |RatWeight::operator-(const Weight&) &&|:
-  return ( std::move(result) - i_tab.y_lift(i_x,sr.y())*2 )
-    /static_cast<arithmetic::Numer_t>(4);
+  return (  gamma - theta*gamma
+	 + (i_tab.theta_plus_1_rho(i_x) - i_tab.y_lift(i_x,sr.y()))
+	 ) /static_cast<arithmetic::Numer_t>(2);
 }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
@@ -1875,7 +1887,8 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
   K_type_poly result {std::less<K_type_nr>()};
   for (const auto& sr : finals_for(z0))
   {
-    K_type_nr h = K_type_hash.match(K_repr::K_type(sr.x(),lambda_rho(sr)));
+    K_type_nr h = K_type_hash.match
+      (K_repr::K_type(sr.x(),lambda_rho(sr),sr.height()));
     result.add_term(h,Split_integer(1,0));
   }
 
@@ -2191,7 +2204,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     for (const std::pair<StandardRepr,bool>& p : L)
     {
       auto h = K_type_hash.match
-	(K_repr::K_type(p.first.x(),lambda_rho(p.first)));
+	(K_repr::K_type(p.first.x(),lambda_rho(p.first),p.first.height()));
       result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
 			? Split_integer(1,0) : Split_integer(0,1) );
     }
