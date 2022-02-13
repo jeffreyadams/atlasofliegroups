@@ -41,6 +41,8 @@ set R_packet(K_Type (x,lam))=ParamPol:
                      od; result
 set R_packet(Param p)=R_packet(LKTs(p)[0])
 
+set R_packet(ParamPol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) od)
+
 {up assumes mu = (x',lambda') is standard but perhaps not normal, and
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
@@ -269,7 +271,7 @@ set down(ParamPol P)=ParamPol:
 
 
 set down_R(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
-   down(R_packet(mu))
+   down(R_packet(mu)).R_packet
 
 set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
 
@@ -486,7 +488,7 @@ set add_T_x_weights(Param p) = ParamPol:
    in for v in pwtsIRC(x)
       do result+:= standardize(parameter(x,lambda+v,0*lambda))*0
       od; result
-      
+
 {The terms in the ParamPol at the end are all standard with nu=0, but
 not necessarily normal or final. This seems to be harmless.}
 set add_T_x_weights(Param p, [[vec]] Pwts) = ParamPol:
@@ -524,3 +526,7 @@ set down_B(K_Type mu,[Param] B)=ParamPol:
 	      od
 	   od
 	od; result
+
+set test_down_R_cone (K_Type mu) = bool:
+   let P1=monomials(down_R_cone(mu)), P2=monomials(down_R_cone_true(mu))
+   in #P1=#P2 and all(for i:#P1 do P1[i]=P2[i] od)
