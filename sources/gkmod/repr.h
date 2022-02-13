@@ -214,6 +214,12 @@ class Rep_context
        const standardrepk::SRK_context& srkc,
        const RatWeight& nu) const;
 
+  // Handling of |K_repr::K_type| values
+
+  // ensure that |(1+theta)*lambda| is dominant also for complex coroots
+  // "standard" condition is assumed: |lambda| is dominant for imaginary coroots
+  void make_dominant(K_repr::K_type& z) const;
+
   // component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
 

@@ -110,16 +110,6 @@ size_t Rep_context::rank() const { return root_datum().rank(); }
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 { return inner_class().involution_of_Cartan(cn); }
 
-K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
-{
-  const InvolutionTable& i_tab = involution_table();
-  auto i_x = kgb().inv_nr(x);
-  i_tab.lambda_unique(i_x,lambda_rho);
-  const auto& theta = i_tab.matrix(i_x);
-  auto th1_lambda = lambda_rho+theta*lambda_rho+i_tab.theta_plus_1_rho(i_x);
-  return {x,lambda_rho,height(th1_lambda)};
-}
-
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
@@ -699,14 +689,14 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
 
   const RootDatum& rd = root_datum();
 
-  RankFlags simple_singulars;
+  RankFlags singular_simples;
   { const auto& numer = z0.infinitesimal_char.numerator();
     for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+      singular_simples.set(s,rd.simpleCoroot(s).dot(numer)==0);
   }
 
-  to_singular_canonical(simple_singulars,z0);
-  to_singular_canonical(simple_singulars,z1);
+  to_singular_canonical(singular_simples,z0);
+  to_singular_canonical(singular_simples,z1);
 
   return z0==z1;
 } // |Rep_context::equivalent|

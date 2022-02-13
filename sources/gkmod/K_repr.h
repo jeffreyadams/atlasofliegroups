@@ -28,6 +28,7 @@ namespace K_repr {
 
 class K_type // compact representation of parameters at $\nu=0$
 {
+  friend class repr::Rep_context;
   KGBElt d_x;
   unsigned int hght;
   Weight lam_rho;
@@ -38,6 +39,7 @@ public:
     : d_x(x), hght(h), lam_rho(lam_rho) {}
 
   K_type(K_type&&) = default;
+  K_type& operator=(K_type&&) = default;
 
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
