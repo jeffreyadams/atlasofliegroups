@@ -1018,7 +1018,7 @@ set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
 set wall_projector ((RootDatum,[int]) arg) = (mat,int):
    let (A,d)=root_span_projector(arg) in (d-A,d)
 
-
+{ for (anti)dominant |v|, find simple generators of its singular subsystem }
 set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
   ## for a@j in simple_coroots(rd) do if =a*v then [j] else [] fi od
 

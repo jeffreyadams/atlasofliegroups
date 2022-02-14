@@ -215,10 +215,15 @@ class Rep_context
        const RatWeight& nu) const;
 
   // Handling of |K_repr::K_type| values
+  // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
 
   // ensure that |(1+theta)*lambda| is dominant also for complex coroots
-  // "standard" condition is assumed: |lambda| is dominant for imaginary coroots
-  void make_dominant(K_repr::K_type& z) const;
+  void make_dominant (K_repr::K_type& z) const;
+  // make the involution the preferred one for the Cartan class
+  void to_canonical_involution (K_repr::K_type& z, RankFlags gens) const;
+  void to_canonical_involution (K_repr::K_type& z) const
+  { return to_canonical_involution
+      (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
 
   // component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -323,9 +328,11 @@ class Rep_context
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
  private:
+  RankFlags singular_simples (const StandardRepr& z) const;
+  WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
-  void singular_cross (weyl::Generator s,StandardRepr& z) const;
+  void complex_crosses (StandardRepr& z, const WeylWord& ww) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|

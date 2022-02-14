@@ -56,5 +56,24 @@ void Rep_context::make_dominant (K_repr::K_type& t) const
   i_tab.lambda_unique(kgb().inv_nr(x),lr); // to preferred coset representative
 }
 
+void Rep_context::to_canonical_involution
+     (K_repr::K_type& t, RankFlags gens) const
+{
+  KGBElt& x=t.d_x; Weight& lr = t.lam_rho; // operate directly on components
+
+  const auto& rd = root_datum();
+  const InvolutionTable& i_tab = involution_table();
+
+  TwistedInvolution sigma = kgb().involution(x);
+  WeylWord ww = inner_class().canonicalize(sigma,gens);
+  for (auto s : ww)
+  {
+    assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
+    x = kgb().cross(s,x);
+    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+  }
+  i_tab.lambda_unique(kgb().inv_nr(x),lr); // to preferred coset representative
+}
+
   } // |namespace repr|
 } // |namespace atlas|

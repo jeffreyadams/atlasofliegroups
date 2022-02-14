@@ -419,7 +419,7 @@ bool Rep_context::is_normal(const StandardRepr& z) const
   return z_normal==z;
 }
 
-// |z| final means that no singular real roots satisfy the parity condition
+// |z| semifinal means that no singular real roots satisfy the parity condition
 // we do not assume |gamma| to be dominant, so all real roots must be tested
 bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
 {
@@ -534,6 +534,35 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 } // |orientation_number|
 
+RankFlags Rep_context::singular_simples (const StandardRepr& z) const
+{
+  const auto& rd=root_datum();
+  assert(is_dominant_ratweight(rd,z.infinitesimal_char));
+  const auto& numer = z.infinitesimal_char.numerator();
+  RankFlags result;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    result.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  return result;
+}
+
+WeylWord Rep_context::complex_descent_word (KGBElt x, RankFlags singulars) const
+{
+  WeylWord result;
+  { RankFlags::iterator it;
+    do
+      for (it=singulars.begin(); it(); ++it)
+	if (kgb().isComplexDescent(*it,x))
+	{
+	  auto s=*it;
+	  x = kgb().cross(s,x);
+	  result.push_back(s);
+	  break; // out of the loop |for(it)|
+	} // |if(isComplexDescent)|
+    while (it()); // wait until inner loop runs to completion
+  }
+  return result;
+}
+
 void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -566,56 +595,35 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
-void Rep_context::singular_cross (weyl::Generator s,StandardRepr& z) const
+// apply sequence of cross actions by singular complex simple generators
+void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 {
-  assert(root_datum().simpleCoroot(s).dot(z.gamma().numerator())==0);
   Weight lr = lambda_rho(z); auto& x=z.x_part;
-  root_datum().simple_reflect
-    (s, lr, kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
-  x = kgb().cross(s,x);
-  z.y_bits = // reinsert $y$ bits component
-    involution_table().y_pack(kgb().inv_nr(x),lr);
+
+  for (auto s : ww)
+  {
+    assert(root_datum().simpleCoroot(s).dot(z.gamma().numerator())==0);
+    x = kgb().cross(s,x);
+    root_datum().simple_reflect(s, lr, 1);
+  }
+
+  // reinsert $y$ bits component
+  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
-// auxiliary: move to a canonical for the |gens| (singular) subgroup of $W$
+// auxiliary: move to canonical involution for (singular) |gens| subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
 { // simply-singular coroots are simple, so no need to constuct a subsystem
   TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
-  WeylWord ww = inner_class().canonicalize(tw,gens);
-  for (auto it=ww.begin(); it!=ww.end(); ++it) // move to that involution
-    singular_cross(*it,z);
+  complex_crosses(z,inner_class().canonicalize(tw,gens));
   assert(tw == kgb().involution(z.x_part));
 }
 
-// make dominant, then descend though any singular complex descents
+// make dominant, then greedily descend though any singular complex descents
 void Rep_context::deform_readjust(StandardRepr& z) const
 {
   make_dominant(z); // typically may have gone negative only for complex coroots
-  const RootDatum& rd = root_datum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  // the following are non-|const|, and modified in the loop below
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-
-  { RankFlags::iterator it;
-    do
-      for (it=simple_singulars.begin(); it(); ++it)
-	if (kgb().isComplexDescent(*it,x))
-	{
-	  weyl::Generator s=*it;
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-    while (it()); // wait until inner loop runs to completion
-  }
-  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
+  complex_crosses(z,complex_descent_word(z.x(),singular_simples(z)));
 } // |deform_readjust|
 
 // this also ensures a chosen singular-complex minumum when there are multiple
@@ -623,48 +631,18 @@ void Rep_context::deform_readjust(StandardRepr& z) const
 void Rep_context::normalise(StandardRepr& z) const
 {
   make_dominant(z);
-  const RootDatum& rd = root_datum();
 
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
+  RankFlags singulars = singular_simples(z);
+  to_singular_canonical(singulars,z);
 
-  to_singular_canonical(simple_singulars,z);
-
-  // the following are non-|const|, and modified in the loop below
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-
-  { RankFlags::iterator it;
-    do
-      for (it=simple_singulars.begin(); it(); ++it)
-	if (kgb().isComplexDescent(*it,x))
-	{
-	  weyl::Generator s=*it;
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-    while (it()); // wait until inner loop runs to completion
-  }
-  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
+  complex_crosses(z,complex_descent_word(z.x(),singulars));
 } // |normalise|
 
 bool Rep_context::is_twist_fixed
   (StandardRepr z, const WeightInvolution& delta) const
 {
   make_dominant(z);
-  const RootDatum& rd = root_datum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  to_singular_canonical(simple_singulars,z);
+  to_singular_canonical(singular_simples(z),z);
 
   return z==twisted(z,delta);
 } // |is_twist_fixed|
@@ -687,16 +665,9 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   if (z0.infinitesimal_char!=z1.infinitesimal_char)
     return false;
 
-  const RootDatum& rd = root_datum();
-
-  RankFlags singular_simples;
-  { const auto& numer = z0.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      singular_simples.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  to_singular_canonical(singular_simples,z0);
-  to_singular_canonical(singular_simples,z1);
+  RankFlags singulars = singular_simples(z0);
+  to_singular_canonical(singulars,z0);
+  to_singular_canonical(singulars,z1);
 
   return z0==z1;
 } // |Rep_context::equivalent|
@@ -1083,9 +1054,7 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
   make_dominant(z); // ensures singular subsystem is generated by simple roots
   const RatWeight& gamma=z.gamma();
 
-  RankFlags singular; // subset of simple roots that is singular at |gamma|
-  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    singular.set(s,rd.simpleCoroot(s).dot(gamma.numerator())==0);
+  RankFlags singular = singular_simples(z);
 /* the simple roots flagged in |singular| coincide with the singular
    integrally-simple roots (simple roots of integral subsystem), so we can
    proceed without constructing the integral subsystem (even less the block) */
@@ -1094,7 +1063,7 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
   auto rit=result.begin();
   do
   { const KGBElt x=rit->x();
-    for (const auto s : singular)
+    for (const weyl::Generator s : singular)
       // as |break| from loop is not available within |switch|, use |goto| below
       switch (kgb().status(s,x))
       {
@@ -1104,7 +1073,7 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
       case gradings::Status::Complex:
         if (kgb().isDescent(s,x))
 	{ // replace |*rit| by its complex descent for |s|
-	  singular_cross(s,*rit);
+	  complex_crosses(*rit,WeylWord{s});
 	  goto repeat; // reconsider all singular roots for the new parameter
 	}
 	break;
@@ -1116,8 +1085,8 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
 	    const KGBEltPair p = kgb().inverseCayley(s,x);
 	    Weight lr = lambda_rho(*rit);
 	    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	    *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
-	    if (p.second!=UndefKGB) // insert second inverse Cayley after first
+	    *rit = sr_gamma(p.first,lr,gamma); // replace by first Cayley descent
+	    if (p.second!=UndefKGB) // insert second Cayley descent after first
 	      result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
 	    goto repeat;
 	  }
