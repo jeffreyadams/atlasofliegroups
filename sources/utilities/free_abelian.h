@@ -122,9 +122,9 @@ template<typename T, typename C, typename Compare>
   This should save quite a bit of space when |T| is a small type, but costs a
   bit of complexity if small insertions are frequent. To alleviate this burden,
   term insertions that are not matched (so would produce a fresh term) are
-  stored in a temporary |containers::sl_list| that will be merge into to main
+  stored in a temporary |containers::sl_list| that will be merged into to main
   vector once it gets large relative to the square root of the size of the main
-  vector; thus insertion costs are amorised square root of the size per element
+  vector; thus insertion costs are amortised square root of the size per element
   at worst. Term deletions, assumed rare, are performed on the vector directly.
 */
 template<typename T, typename C, typename Compare>
@@ -217,6 +217,8 @@ explicit
     return { std::move(result), cmp() }; // transform |poly| into |self|
   }
 
+  // for each |poly| in |L|, keep current and end iterators
+  // also maintain iterator |min| to minimum term in this and further |poly|s
   struct triple
   { using iter = typename poly::iterator;
     using citer = typename poly::const_iterator;
@@ -253,7 +255,7 @@ explicit
   private:
     bool pop(typename triplist::iterator top);
     void skip_zeros(); // advance until no longer pointing at zero term
-    }; // |class const_iterator|
+  }; // |class const_iterator|
 
   struct iterator : public const_iterator
   {
@@ -268,7 +270,7 @@ explicit
   iterator end() { return {triplist(),cmp()}; } // with empty |stack|
   const_iterator end() const { return {triplist(),cmp()}; } // with empty |stack|
 
- private:
+private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
   void insert(poly&& v); // incorporate |v|, which has all disjoint exponents
 

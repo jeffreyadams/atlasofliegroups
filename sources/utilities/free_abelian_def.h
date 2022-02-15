@@ -255,7 +255,7 @@ template<typename T, typename C, typename Compare>
   for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
   {
     auto lead = (*it)->begin(); // iterator to leading term of current poly
-    typename poly::iterator min =
+    typename poly::iterator min = // make it refer to minimum seen so far:
       stack.empty() or cmp()(lead->first,stack.front().min->first)
       ? lead : stack.front().min;
     stack.emplace_front(min,lead,(*it)->end());
@@ -269,7 +269,7 @@ template<typename T, typename C, typename Compare>
   void Free_Abelian_light<T,C,Compare>::const_iterator::skip_zeros()
 {
   while (not stack.empty() and stack.front().min->second==C(0))
-    pop(stack.begin());
+    pop(stack.begin()); // remove a term with zero coefficient, and continue
 }
 
 template<typename T, typename C, typename Compare>
@@ -293,7 +293,7 @@ template<typename T, typename C, typename Compare>
     if ((it->min = ++it->cur) != it->end)
       return false; // one unfinished iteration remains here
     stack.erase(it); // this clears |stack| after |it|
-    return true;
+    return true; // indicate iteration has terminated; no more term found
   }
   if (it->min==it->cur) // iterator comparison: whether minimum came from |*it|
   { // if so advance iteration in |*it|

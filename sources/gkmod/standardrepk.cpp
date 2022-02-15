@@ -347,7 +347,7 @@ bool SRK_context::isNormal(Weight lambda, CartanNbr cn) const
   for (unsigned int i=0; i<sc.size(); ++i)
     if (lambda.dot(sc[i])<0)
     {
-      offender=i; return false; // |witness| indicates a complex simple root
+      offender=i; return false; // |offender| indicates a complex simple root
     }
 
   return true;
