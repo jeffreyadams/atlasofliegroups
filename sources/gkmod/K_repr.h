@@ -45,14 +45,14 @@ public:
   const Weight& lambda_rho () const { return lam_rho; }
   unsigned int height() const { return hght; }
 
-  // StandardRepr sr (const Rep_context& rc) const // represent as full parameter
-  // { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }
-
   bool operator< (const K_type& another) const
   {
+    if (hght!=another.hght)
+      return hght<another.hght;
     if (d_x!=another.d_x)
       return d_x<another.d_x;
     assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
+    // since |lambda_unique| is always called on |lam_rho|, we can compare them
     for (unsigned i=0; i<lam_rho.size(); ++i)
       if (lam_rho[i]!=another.lam_rho[i])
 	return lam_rho[i]<another.lam_rho[i];

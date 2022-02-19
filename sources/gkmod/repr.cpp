@@ -217,6 +217,11 @@ StandardRepr
   return result;
 }
 
+  StandardRepr Rep_context::sr
+      (const standardrepk::StandardRepK& srk,
+       const standardrepk::SRK_context& srkc) const
+  { return sr(srk,srkc,RatWeight(srkc.root_datum().rank())); }
+
 const WeightInvolution& Rep_context::theta (const StandardRepr& z) const
 { return involution_table().matrix(kgb().inv_nr(z.x())); }
 

@@ -6588,6 +6588,54 @@ void srk_height_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(p->val.height()));
 }
 
+@ And here is a function simpler that |branch| that just performs the initial
+|standardize| part of the computation. We retain the call to |normalize|, even
+though it would seem that this is not necessary, given that all contributions
+to the result are ``final'' anyway. And a second function that does the same,
+but using the new |K_type| representation and the |finals_for| method associated
+to them.
+
+@< Local function def...@>=
+void standardrepk_standardize_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const Rep_context rc = p->rc();
+  RealReductiveGroup& G=p->rf->val;
+  KhatContext& khc = p->rf->khc();
+  StandardRepK srk=
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  if (l==expression_base::no_value)
+    return;
+@)
+  khc.normalize(srk); // is this necessary ?
+  standardrepk::combination combo=khc.standardize(srk);
+  const RatWeight zero_nu(G.rank());
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (auto it=combo.begin(); it!=combo.end(); ++it)
+    // loop over finals from |combo|
+  {
+    StandardRepr z = rc.sr(khc.rep_no(it->first),khc);
+    acc->val.add_term(z,Split_integer(it->second));
+  }
+  push_value(std::move(acc));
+}
+@)
+void K_type_standardize_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const Rep_context rc = p->rc();
+  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto combo=rc.finals_for(std::move(srk));
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (auto it=combo.begin(); not combo.at_end(it); ++it)
+    // loop over finals from |combo|
+    acc->val.add_term(rc.sr(it->first),Split_integer(it->second));
+  push_value(std::move(acc));
+}
+
 @*2 Deformation formulas.
 Here is one important application of virtual modules.
 %
@@ -6935,6 +6983,10 @@ install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
+install_function(standardrepk_standardize_wrapper,@|"standardrepk_standardize"
+		,"(Param->ParamPol)");
+install_function(K_type_standardize_wrapper,@|"K_type_standardize"
+		,"(Param->ParamPol)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");

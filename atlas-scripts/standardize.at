@@ -1,0 +1,30 @@
+<basic.at
+
+set coherent_simple_reflect (int s,ParamPol P) = ParamPol:
+  (P.real_form
+  , for coef@p in P
+    do case status(s,x(p))
+       in {C-} coef*cross(s,p)
+       ,  {ic} (-coef)*p
+       ,  {r}  coef*cross(s,p)
+       ,  {nc} let C1=Cayley(s,p) then cp=cross(s,p), C2=cross(s,C1) in
+	       coef*if C1=C2 then C1-cp else C1+C2-cp fi
+       ,  {C+} coef*cross(s,p)
+       else error("Illegal KGB status")
+       esac
+    od
+  ).sum
+
+set coherent_act(WeylElt w,ParamPol P) = ParamPol:
+  assert(w.root_datum=P.root_datum);
+  for s in word(w) do P:=coherent_simple_reflect(s,P) od; P
+
+set coherent_act_K(WeylElt w,ParamPol P) = ParamPol: coherent_act(w,P)*0
+
+set restandard (WeylElt w,Param p) = ParamPol:
+  assert(w.root_datum=p.root_datum);
+  standardrepk_standardize(parameter(p.x,w*p.lambda,p.nu*0))
+
+set finals(WeylElt w,Param p) = ParamPol:
+  assert(w.root_datum=p.root_datum);
+  K_type_standardize(parameter(p.x,w*p.lambda,p.nu*0))

@@ -191,7 +191,7 @@ class Rep_context
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
-  K_repr::K_type sr_K(KGBElt x, Weight lambda_rho) const;
+  K_repr::K_type sr_K(KGBElt x, Weight lambda_rho) const; // 2nd by value
 
   RatWeight gamma // compute (representative of) infinitesimal character
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
@@ -214,6 +214,13 @@ class Rep_context
        const standardrepk::SRK_context& srkc,
        const RatWeight& nu) const;
 
+  StandardRepr
+    sr(const standardrepk::StandardRepK& srk,
+       const standardrepk::SRK_context& srkc) const;
+
+  StandardRepr sr (const K_repr::K_type& t) const
+  { return sr(t.x(),t.lambda_rho(),RatWeight(t.lambda_rho().size())); }
+
   // Handling of |K_repr::K_type| values
   // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
 
@@ -225,12 +232,15 @@ class Rep_context
   { return to_canonical_involution
       (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
 
-  // component extraction
+  simple_list<std::pair<K_repr::K_type,unsigned int> >
+    finals_for(K_repr::K_type t) const;
+
+  // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
 
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
-  { return rho(root_datum()).normalize()+lambda_rho(z); }
+  { return rho(root_datum())+lambda_rho(z); }
   RatWeight gamma_lambda
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
   RatWeight gamma_lambda(const StandardRepr& z) const

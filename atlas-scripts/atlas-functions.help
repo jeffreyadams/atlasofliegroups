@@ -872,7 +872,7 @@ K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   restriction to K is expressed as linear combination of restrictions to K of
   standard representations, and a polynomial giving their parameters returned.
 K_type_formula: (Param,int->ParamPol) Height-truncated version of K_type_formula
-  This returns the reuslt of the previous version of K_type_formula, after
+  This returns the result of the previous version of K_type_formula, after
   removal of all terms of greater height than indicated in the second argument,
   which must be a non negative number. This truncation is incorporated in the
   computation itself, which avoids any work that can only affect terms that
@@ -898,6 +898,16 @@ height: (Param->int) W-invariant height measure standardrepn restricted to K
   This is the sum of absolute values of the scalar products of (1+theta)lambda
   and the positive coroots; it ignores the nu component of the parameter.
   This is the same function as used in branch to compare with the given limit.
+
+standardrepk_standardize(Param-ParamPol):
+K_type_standardize(Param-ParamPol): rewrite nonstandard as combination of finals
+  These experimental functions ignore any nu part of the parameter (so restrict
+  to K), then rewrite the possibly non-standard K-type as a linear combination
+  of final standard K-types, returned in the form of a parameter polynomial.
+  Both functions should give the same result, but are implemented differently.
+  This is related to coherent continuation action, namely for the Weyl group
+  element needed to make the imaginary part of the infinitesimal character
+  dominant (with the real part being projected away).
 
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are

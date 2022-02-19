@@ -1593,19 +1593,23 @@ set integrality_datum (Param p)= RootDatum:
 set integrality_rank (Param p) = int:
   integrality_rank(p.real_form, p.infinitesimal_character)
 
-{ whether gamma dominant, and if not witnessing simple coroot for this }
-set is_dominant (Param p) = (bool,int):
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (Param p) = [int]:
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in p.root_datum.simple_coroots
-  do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,-1)
+  do if (alpha_v*gamma).< then [i] else [] fi
+  od.##
 
-{ whether gamma dominant, and if not witnessing integrally simple coroot }
-set is_integrally_dominant (Param p) = (bool,int):
+{ list of integrally simple poscoroots that exhibit integral-non-dominance }
+set non_integrally_dominant_simples (Param p) = [vec]:
   let gamma=infinitesimal_character(p) in
-  for alpha_v@i in integrality_datum(p).simple_coroots
-  do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,minus_1)
+  for alpha_v in integrality_datum(p.real_form,gamma).simple_coroots
+  do if (alpha_v*gamma).< then [alpha_v] else [] fi
+  od.##
+
+{ whether gamma dominant respectiveley integrally dominant }
+set is_dominant (Param p) = bool: =#p.non_dominant_simples
+set is_integrally_dominant (Param p) = bool: =#p.non_integrally_dominant_simples
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,Param p) = bool:
