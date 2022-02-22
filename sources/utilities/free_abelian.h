@@ -131,11 +131,14 @@ template<typename T, typename C, typename Compare>
   class Free_Abelian_light
   : private Compare // derived to allow for Empty Base Optimization
 {
-  using term_type = std::pair<T,C>;
   using self = Free_Abelian_light<T,C,Compare>;
+
+public:
+  using term_type = std::pair<T,C>;
   using poly = std::vector<term_type>;
   using poly_list = containers::simple_list<poly>;
 
+private:
   poly_list L; // list by decreasing length, at least halving each time
 
 public:
@@ -147,9 +150,23 @@ public:
 explicit
   Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
   : Compare(c), L { { std::make_pair(p,C(1L)) } } {}
+  Free_Abelian_light(T&& p, Compare c=Compare()) // monomial
+  : Compare(c), L()
+  { poly mononom; // we cannot build a single-term vector from a moved argument
+    mononom.emplace_back(std::move(p),C(1L)); // manually add one term to empty
+    L.push_front(std::move(mononom));
+  }
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
   : Compare(c), L { { std::make_pair(p,m) } }
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
+  Free_Abelian_light(T&& p,C m, Compare c=Compare()) // mononomial
+    : Compare(c), L()
+  { if (m!=C(0)) // ensure absence of terms with zero coefficient
+    { poly mononom; // for reasons as above, start with empty vector, and
+      mononom.emplace_back(std::move(p),std::move(m)); // manually add a term
+      L.push_front(std::move(mononom));
+    }
+  }
 
   Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
 
@@ -170,6 +187,10 @@ explicit
   self& add_term(const T& p, C m);
   self& operator+=(const T& p) { return add_term(p,C(1)); }
   self& operator-=(const T& p) { return add_term(p,C(-1)); }
+
+  self& add_term(T&& p, C m);
+  self& operator+=(T&& p) { return add_term(std::move(p),C(1)); }
+  self& operator-=(T&& p) { return add_term(std::move(p),C(-1)); }
 
   self& add_multiple(const self& p, C m) &;
   self& add_multiple(self&& p, C m) &;
