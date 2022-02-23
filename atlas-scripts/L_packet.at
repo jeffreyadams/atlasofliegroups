@@ -76,8 +76,8 @@ dual_real_forms(gamma,x.inner_class)
 usually: H^v is the subgroup on the dual side corresponding to integral
  root system; precisely given gamma\in X^*_Q,
  H=integrality_datum(G,gamma) is on the group side (endoscopic group)
- dual(H) is a subgroup on G^v)
-}
+ dual(H) is a subgroup on G^v}
+
 set dual_KGB(RealForm G,KGBElt y)=[KGBElt]:fiber(G,-^involution(y))
 set dual_real_form(Param p)=dual(p).real_form
 
@@ -114,3 +114,4 @@ quit
              dual_theta,
              phi+integral_shift)
 	     }
+}	     

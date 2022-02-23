@@ -425,3 +425,4 @@ set strong_test (Param p)=bool:
 
 set branch_c_form_irreducible(Param p, int N) = ParamPol:
   branch(c_form_irreducible(p),N)
+
