@@ -28,3 +28,24 @@ set restandard (WeylElt w,Param p) = ParamPol:
 set finals(WeylElt w,Param p) = ParamPol:
   assert(w.root_datum=p.root_datum);
   K_type_standardize(parameter(p.x,w*p.lambda,p.nu*0))
+
+set KGP_set (KGBElt x) = [KGBElt]:
+(  let G=x.real_form then r=G.semisimple_rank in
+   while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s.>=
+   do x:=cross(s,x) od
+;  let real_gens =
+     for s:r do if status(s,x.print)=2 then [s] else [] fi od.##.print
+   , seen = for i:G.KGB_size do i=#x od, queue = [x]
+in while !=#queue
+   do let x=queue[0] next queue:=queue[1:]
+   in for s in real_gens
+      do for y in
+	    case status(s,x)
+	    in [cross(s,x)],[],[Cayley(s,x),cross(s,x)],[cross(s,x)],[]
+	    esac
+         do if not seen[#y] then seen[#y]:=true; queue#:=y fi
+	 od
+      od
+   od
+;  for b@i in seen ~ do if b then [KGB(G,i)] else [] fi od.##
+)

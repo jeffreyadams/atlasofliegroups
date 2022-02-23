@@ -523,7 +523,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   the parity of the (integer) pairing of c with the simple root. Here "odd"
   corresponds to grading 0, due to the mentioned rho_check: so c differs by
   rho_check from some "infinitesimal cocharacter" g chosen for the real form.
-  A standard choice for c is determined by the base grading for the  weak real
+  A standard choice for c is determined by the base grading for the weak real
   form, whence the name of this function. However for real forms synthesized
   by the function real_form@(InnerClass,mat,ratvec), the arguments of that
   call may determine a different value of z, in which case a different choice
@@ -640,12 +640,9 @@ KGB: (RealForm,int->KGBElt): select a KGB element x among those of a real form
 Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
 involution: (KGBElt->mat): the involution of X^* associated to the KGB element
 length: (KGBElt->int): length of the element within its KGB set
-status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
+status: (int,KGBElt->int): status of root (by index) on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4: Complex ascent
-status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
-  The value status(alpha,x) gives the status of the root alpha at x; the
-  encoding of statuses is the same as for the function status@(int,KGBElt)
 cross: (int,KGBElt->KGBElt): cross action for (posrootnr,KGB element)
   Returns result of cross action by root reflection of the given KGB element
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)

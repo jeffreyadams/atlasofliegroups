@@ -502,6 +502,8 @@ namespace atlas {
   using standardrepk::KhatContext;
 
   namespace repr {
+    using level = unsigned int; // for height statistic of K type and parameters
+
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
     class StandardReprMod; // represent an $X^*$-shift class of |StandardRepr|
     class Reduced_param; // even coarser representation, mod integral orthogonal

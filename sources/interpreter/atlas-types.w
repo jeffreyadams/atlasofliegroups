@@ -4017,7 +4017,7 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 { RootNbr alpha= root_index<0 ? -1-root_index : root_index;
   if (alpha>=n_posroots)
   { std::ostringstream o;
-    o << "Illegal reflection: " << root_index;
+    o << "Illegal root index: " << root_index;
     throw runtime_error(o.str());
   }
   return alpha;
@@ -6388,7 +6388,7 @@ void K_type_formula_trunc_wrapper(expression_base::level l)
     standardrepk::combination st=khc.standardize(it->first);
     for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
     {
-      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
+      StandardRepr term = rc.sr(khc.rep_no(stit->first),khc,zero_nu);
       Split_integer coef (it->second*stit->second);
       auto finals = p->rc().finals_for(term);
       for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
@@ -6611,11 +6611,11 @@ void standardrepk_standardize_wrapper(expression_base::level l)
   const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
     (new virtual_module_value(p->rf, repr::SR_poly()));
-  for (auto it=combo.begin(); it!=combo.end(); ++it)
-    // loop over finals from |combo|
+  for (const auto& term : combo)
+    // loop over standard parameters from |combo|
   {
-    StandardRepr z = rc.sr(khc.rep_no(it->first),khc);
-    acc->val.add_term(z,Split_integer(it->second));
+    StandardRepr z = rc.sr(khc.rep_no(term.first),khc);
+    acc->val.add_term(z,Split_integer(term.second));
   }
   push_value(std::move(acc));
 }
@@ -6635,6 +6635,48 @@ void K_type_standardize_wrapper(expression_base::level l)
     acc->val.add_term(rc.sr(it->first),Split_integer(it->second));
   push_value(std::move(acc));
 }
+
+@ Here are two more experimental functions, |KGB_sum| which is an auxiliary to
+the other, |K_type_denom|, which should ultimately replace |K_type_formula|.
+
+@< Local function def...@>=
+void KGP_sum_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const Rep_context rc = p->rc();
+  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
+  if (not rc.is_semifinal(srk))
+    throw runtime_error@|("K-type has parity real roots (so not semifinal)");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto combo=rc.KGP_sum(srk);
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (const auto& term : combo) // loop over K-type terms from |combo|
+    acc->val.add_term(rc.sr(term.first),Split_integer(term.second));
+  push_value(std::move(acc));
+}
+@)
+void K_type_denom_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const Rep_context rc = p->rc();
+  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
+  if (not rc.is_semifinal(srk))
+    throw runtime_error@|("K-type has parity real roots (so not semifinal)");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto combo=rc.K_type_formula(srk,-1);
+@/own_virtual_module acc @|
+    (new virtual_module_value(p->rf, repr::SR_poly()));
+  for (auto&& term : combo ) // loop over K-types from |combo|
+  { auto finals=rc.finals_for(std::move(term.first));
+    for (auto it=finals.begin(); not finals.at_end(it); ++it)
+      acc->val.add_term(rc.sr(it->first),Split_integer(it->second*term.second));
+  }
+  push_value(std::move(acc));
+}
+
 
 @*2 Deformation formulas.
 Here is one important application of virtual modules.
@@ -6987,6 +7029,9 @@ install_function(standardrepk_standardize_wrapper,@|"standardrepk_standardize"
 		,"(Param->ParamPol)");
 install_function(K_type_standardize_wrapper,@|"K_type_standardize"
 		,"(Param->ParamPol)");
+install_function(KGP_sum_wrapper,@|"KGP_sum","(Param->ParamPol)");
+install_function(K_type_denom_wrapper,@|"K_type_denom","(Param->ParamPol)");
+
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");

@@ -396,7 +396,8 @@ class SRK_context
 
 // private methods
  private:
-  // alternating sum over |sub_KGB(q)| of |RawRep| values deduced from |lambda|
+  // alternating sum over subset |sub=sub_KGB(q)| of the KGB set of |RawRep|
+  // values $(\mu,x)$ "reflected" from |lambda-rho| at maximal |x| in |sub|
   RawChar KGB_sum(const PSalgebra& q, const Weight& lambda) const;
 
   Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda) const;

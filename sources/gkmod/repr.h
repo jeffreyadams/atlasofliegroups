@@ -30,7 +30,7 @@
 #include "kgb.h"
 #include "subsystem.h"
 #include "polynomials.h"
-#include "K_repr.h"  // |K_type|
+#include "K_repr.h"  // |K_type|, |K_type_pol|
 
 namespace atlas {
 
@@ -222,10 +222,28 @@ class Rep_context
   { return sr(t.x(),t.lambda_rho(),RatWeight(t.lambda_rho().size())); }
 
   // Handling of |K_repr::K_type| values
+
+  bool is_standard  // whether $(1+\theta)*\lambda| is imaginarily dominant
+    (const K_repr::K_type& z) const;
+  bool is_dominant  // whether $(1+\theta)*\lambda| is dominant
+    (const K_repr::K_type& z) const;
+  bool is_nonzero  // absence of singular simply-imaginary compact roots
+    (const K_repr::K_type& z) const;
+  bool is_canonical // whether involution is canonical one for the Cartan class
+    (const K_repr::K_type& z) const;
+  bool is_theta_stable // absence of complex descents (theta-stable parabolic)
+    (const K_repr::K_type& z) const;
+  bool is_semifinal  // absence of real parity roots
+    (const K_repr::K_type& z) const;
+  bool is_final // dominant, no singular descents: all above except canonical
+    (const K_repr::K_type& z) const;
+
   // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
 
   // ensure that |(1+theta)*lambda| is dominant also for complex coroots
   void make_dominant (K_repr::K_type& z) const;
+  // exhaust simple complex descents for the involution
+  void make_theta_stable (K_repr::K_type& z) const;
   // make the involution the preferred one for the Cartan class
   void to_canonical_involution (K_repr::K_type& z, RankFlags gens) const;
   void to_canonical_involution (K_repr::K_type& z) const
@@ -234,6 +252,10 @@ class Rep_context
 
   simple_list<std::pair<K_repr::K_type,unsigned int> >
     finals_for(K_repr::K_type t) const;
+
+  // apart from producing a result, these two methods also make |t| theta-stable
+  K_repr::K_type_pol KGP_sum (K_repr::K_type& t) const;
+  K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
 
   // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -344,7 +366,10 @@ class Rep_context
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
   void complex_crosses (StandardRepr& z, const WeylWord& ww) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
-  unsigned int height(Weight theta_plus_1_gamma) const;
+  level height(Weight theta_plus_1_gamma) const;
+
+  K_repr::K_type_pol monomial_product
+    (const K_repr::K_type_pol& P, const Weight& e,level cutoff) const;
 }; // |Rep_context|
 
 using SR_poly = Rep_context::poly;
@@ -353,7 +378,6 @@ using SR_poly = Rep_context::poly;
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
 
-using K_term_type = std::pair<K_type_nr,Split_integer>;
 using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*

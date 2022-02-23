@@ -38,12 +38,17 @@ public:
   K_type(KGBElt x, const Weight& lam_rho,unsigned int h)
     : d_x(x), hght(h), lam_rho(lam_rho) {}
 
+  K_type(KGBElt x, Weight&& lam_rho,unsigned int h)
+    : d_x(x), hght(h), lam_rho(std::move(lam_rho)) {}
+
   K_type(K_type&&) = default;
   K_type& operator=(K_type&&) = default;
 
   KGBElt x () const { return d_x;  }
   const Weight& lambda_rho () const { return lam_rho; }
-  unsigned int height() const { return hght; }
+  unsigned int height () const { return hght; }
+
+  K_type copy () const { return {d_x,lam_rho,hght}; }
 
   bool operator< (const K_type& another) const
   {
@@ -70,6 +75,8 @@ public:
     return h&(modulus-1);
   }
 }; // |class K_type|
+
+using K_type_pol = Free_Abelian_light<K_type,int>;
 
 } // |namespace K_repr|
 
