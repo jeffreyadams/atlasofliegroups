@@ -232,7 +232,7 @@ class Rep_context
   { return to_canonical_involution
       (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
 
-  simple_list<std::pair<K_repr::K_type,unsigned int> >
+  simple_list<std::pair<K_repr::K_type,int> >
     finals_for(K_repr::K_type t) const;
 
   // parameter component extraction

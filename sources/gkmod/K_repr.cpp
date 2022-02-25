@@ -75,9 +75,8 @@ void Rep_context::to_canonical_involution
   i_tab.lambda_unique(kgb().inv_nr(x),lr); // to preferred coset representative
 } // |to_canonical_involution|
 
-using term = std::pair<K_repr::K_type,unsigned int>;
+using term = std::pair<K_repr::K_type, int>;
 using term_list = simple_list<term>;
-
 
 void insert(term&& trm, term_list& L) // assumes |L| is sorted decreasingly
 { auto it = L.begin();
@@ -102,7 +101,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 
   term_list result, todo;
   // there is no way to initialise |simple_list| from move-only type values
-  todo.push_front(term(std::move(t),1u)); // so move |t| to front term manually
+  todo.push_front(term(std::move(t),1)); // so move |t| to front term manually
 
   // the following loop is by decreasing height; new terms of lesser height
   // may be inserted into |result| en route, and will be encountered later
@@ -170,21 +169,22 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	  else continue; // nothing to do for a singular complex ascent
 	case gradings::Status::Real:
 	  assert(eval==0);
-	  auto eval = rd.simpleCoroot(s).dot(lr);
-	  if (eval%2 != 0) // then $\alpha_s$ is a parity real root
+	  // now evaluation on |lr| counts
+	  const auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	  if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
 	  {
-	    lr -= rd.simpleRoot(s)*((eval+1)/2);
+	    lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
 	    assert( rd.simpleCoroot(s).dot(lr) == -1 );
 	    KGBEltPair Cxs = kgb().inverseCayley(s,x);
-	    K_repr::K_type t1 = sr_K(Cxs.first,lr);
-	    assert( t1.height() == current.first.height() );
-	    insert(std::make_pair(std::move(t1),current.second),todo);
 	    if (Cxs.second!=UndefKGB)
 	    {
 	      K_repr::K_type t2 = sr_K(Cxs.second,lr);
 	      assert( t2.height() == current.first.height() );
 	      insert(std::make_pair(std::move(t2),current.second),todo);
 	    }
+	    K_repr::K_type t1 = sr_K(Cxs.first,std::move(lr));
+	    assert( t1.height() == current.first.height() );
+	    insert(std::make_pair(std::move(t1),current.second),todo);
 	    goto drop; // we've destroyed |current|, don't contribute it
 	  }
 	  else continue; // nothing to do for a (singular) real nonparity root
