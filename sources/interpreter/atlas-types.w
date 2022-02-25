@@ -6035,16 +6035,15 @@ void virtual_module_size_wrapper(expression_base::level l)
 
 
 @ We allow implicitly converting a parameter to a virtual module. This invokes
-conversion by the |Rep_context::expand_final| method to \emph{final}
-parameters (there can be zero, one, or more of them), to initiate the
-invariant that only standard nonzero final parameters with dominant $\gamma$
-can be stored in a |virtual_module_value| (the |expand_final| method calls
-|normalise| internally, so we don't have to do that here).
+conversion by the |Rep_context::expand_final| method to \emph{final} parameters
+(there can be zero, one, or more of them, and they can have positive or negative
+integer coefficients), to initiate the invariant that only standard nonzero
+final parameters with dominant $\gamma$ can be stored in a
+|virtual_module_value|.
 
 @< Local function def...@>=
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
-@/test_standard(*p,"Cannot convert non standard Param to ParamPol");
   const auto& rf=p->rf;
   push_value(std::make_shared<virtual_module_value> @|
     (rf,rf->rc().expand_final(p->val)));
