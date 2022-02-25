@@ -227,15 +227,18 @@ class Rep_context
     (const K_repr::K_type& z) const;
   bool is_dominant  // whether $(1+\theta)*\lambda| is dominant
     (const K_repr::K_type& z) const;
-  bool is_nonzero  // absence of singular simply-imaginary compact roots
-    (const K_repr::K_type& z) const;
   bool is_canonical // whether involution is canonical one for the Cartan class
     (const K_repr::K_type& z) const;
   bool is_theta_stable // absence of complex descents (theta-stable parabolic)
     (const K_repr::K_type& z) const;
+  bool is_nonzero  // absence of singular compact simply-imaginary roots
+    (const K_repr::K_type& z) const;
   bool is_semifinal  // absence of real parity roots
     (const K_repr::K_type& z) const;
-  bool is_final // dominant, no singular descents: all above except canonical
+  // call next predicate only for standard, dominant, nonzero, semifinal |z|
+  bool is_normal // absence of singular complex descents
+    (const K_repr::K_type& z) const; // complex simple witness
+  bool is_final // standard, dominant, no singular descents of any kind
     (const K_repr::K_type& z) const;
 
   // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
@@ -309,7 +312,7 @@ class Rep_context
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
   bool is_normal // whether |z==normalise(z)|: has no singular complex descents
-    (const StandardRepr& z) const; // complex simple witness
+    (const StandardRepr& z) const;
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
   bool is_final // dominant nonzero without singular descents: all of the above

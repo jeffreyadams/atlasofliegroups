@@ -699,6 +699,7 @@ status: (int,Block,int->int): status at a block element of a simple reflection
   status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
   5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
+K_type: (KGBElt,vec->KType): form $K$-type from (x,lambda-rho)
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
@@ -715,7 +716,7 @@ operators =, != : (Param,Param): strict equality of parameters in the same block
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module
-  True whenever gamma is singular on a compact (for x) simple-imaginary root
+  True whenever gamma is singular on a compact (for x) simply-imaginary root
 is_semifinal: (Param->bool): whether parameter has no singular real descents
   False whenever associated standard representation is combination of others
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
@@ -875,11 +876,11 @@ K_type_formula: (Param,int->ParamPol) Height-truncated version of K_type_formula
   computation itself, which avoids any work that can only affect terms that
   exceed the given height bound; in some cases this may be considerably faster.
 branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
-  The first argument is taken as standard representation, and is interpreted
-  as restricted to K (the nu component is replaced by a zero vector), while
-  the second argument is a bound on the height; the result should be
-  interpreted as linear combination of K-types, each standard final parameter
-  term (which will have nu=0) standing for its lowest K-type.
+  The first argument is taken as standard representation, and is interpreted as
+  restricted to K (the nu component is replaced by a zero vector), while the
+  second argument is a bound on the height; the result should be interpreted as
+  linear combination of K-types (the coefficients are integer)), each standard
+  final parameter term (which will have nu=0) standing for its lowest K-type.
 branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
   This is just forming the Split-linear combination for all terms of the
   results of branch on the standard representations for those terms

@@ -369,7 +369,7 @@ StandardReprMod& Rep_context::shift
   return srm;
 }
 
-// |z| standard means (weakly) dominant on the (simple-)imaginary roots
+// |z| standard means (weakly) dominant on the (simply-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = root_datum();
@@ -424,26 +424,8 @@ bool Rep_context::is_normal(const StandardRepr& z) const
   return z_normal==z;
 }
 
-bool Rep_context::is_semifinal(const K_repr::K_type& z) const
-{
-  const RootDatum& rd = root_datum();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = involution_table();
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
-  const Weight test_wt = z.lambda_rho()*2 // $2(\lambda-\rho)$
-	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
-
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
-  {
-    const Weight& av = root_datum().coroot(*it);
-    if (av.dot(test_wt)%4 !=0) // doubled odd value means parity real root
-      return false; // which invalidates the semi-final condition
-  }
-  return true;
-}
-
 // |z| semifinal means that no singular real roots satisfy the parity condition
-// we do not assume |gamma| to be dominant, so all real roots must be tested
+// no assumptions about the real subsytem, so all real roots must be tested
 bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = root_datum();

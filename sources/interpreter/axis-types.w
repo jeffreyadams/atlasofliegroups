@@ -3493,7 +3493,7 @@ vector_type, matrix_type, rational_vector_type,
 complex_lie_type_type , root_datum_type, Weyl_element_type,
 inner_class_type, real_form_type,
 Cartan_class_type, KGB_element_type, block_type,
-module_parameter_type, split_integer_type, virtual_module_type, @[@]
+K_type_type, module_parameter_type, split_integer_type, virtual_module_type, @[@]
 
 
 @~The following list must match that of the previous module, for proper
@@ -3502,7 +3502,7 @@ functioning of I/O.
 @< Other primitive type names @>=
 "vec", "mat", "ratvec",
 "LieType","RootDatum", "WeylElt", "InnerClass", "RealForm",
-"CartanClass", "KGBElt", "Block", "Param", "Split", "ParamPol", @[@]
+"CartanClass", "KGBElt", "Block", "KType", "Param", "Split", "ParamPol", @[@]
 
 @* Index.
 

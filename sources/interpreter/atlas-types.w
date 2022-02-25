@@ -4537,18 +4537,253 @@ install_function(block_Cayley_wrapper,@|"Cayley","(int,Block,int->int)");
 install_function(block_inverse_Cayley_wrapper,@|"inverse_Cayley"
                 ,"(int,Block,int->int)");
 
-@*1 Standard module parameters.
+@*1 A class for split integers.
 %
-We implement a data type for holding parameters that represent standard
-modules. Such a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$
-is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
-relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
-involution associated to $x$, and $\nu$ is a rational weight in the kernel of
-$1+\theta_x$. Such parameters are stored in instances of the class
-|StandardRepr|, which is defined in the file \.{repr.h}.
+We introduce a type extending integers to elements of the group
+algebra over $\Zee$ of a (cyclic) group of order~$2$, in other words
+$\Zee$-linear combinations of $1$ and another unit, written~$s$ and satisfying
+$s^2=1$. We call these numbers split integers, and in the \.{atlas} language
+designate the corresponding basic type as \.{Split}. The type will serve notably
+to keep track of signatures of Hermitian forms.
+
+@< Includes needed in the header file @>=
+#include "arithmetic.h"
+
+@ Although the necessary operations could easily be defined in the \.{axis}
+programming language using pairs of integers, it is preferable to make them an
+Atlas type, since this allows distinguishing them from pairs of integers used
+for other purposes, and to provide special output and conversion facilities.
+
+@< Type definitions @>=
+
+struct split_int_value : public value_base
+{ Split_integer val;
+@)
+  explicit split_int_value(Split_integer v) : val(v) @+ {}
+  ~split_int_value()@+ {}
+  void print(std::ostream& out) const;
+  static const char* name() @+{@; return "split integer"; }
+  split_int_value (const split_int_value& v) = default;
+    // we use |get_own<split_int_value>|
+};
+@)
+typedef std::unique_ptr<split_int_value> split_int_ptr;
+typedef std::shared_ptr<const split_int_value> shared_split_int;
+typedef std::shared_ptr<split_int_value> own_split_int;
+
+@ Like for parameter values, a printing function |print_split| on the level
+of a bare |Split_integer| value is defined in the library, which can be used
+also in situations where the method |split_int_value::print| cannot. The latter
+method simply calls it.
+
+@< Function def... @>=
+
+void split_int_value::print(std::ostream& out) const @+
+{@; print_split(out,val); }
+
+@ Here are some basic relations and arithmetic operations.
+
+@< Local function definitions @>=
+
+void split_unary_eq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i.is_zero()));
+}
+void split_unary_neq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(not i.is_zero()));
+}
+@)
+void split_eq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i==j));
+}
+void split_neq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i!=j));
+}
+@)
+void split_plus_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val+=j; push_value(std::move(i)); }
+}
+
+void split_minus_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val-=j; push_value(std::move(i)); }
+}
+@)
+void split_unary_minus_wrapper(expression_base::level l)
+{ own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val.negate(); push_value(std::move(i)); }
+}
+
+void split_times_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<split_int_value>(i*j));
+}
+
+@ We also provide implicit conversions from integers or pairs of integers to
+split integers, and an explicit operator for converting back to a pair.
+
+@< Local function definitions @>=
+
+void int_to_split_coercion()
+{ int a=get<int_value>()->int_val();
+@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
+}
+@)
+void pair_to_split_coercion()
+{ push_tuple_components();
+  int b=get<int_value>()->int_val();
+  int a=get<int_value>()->int_val();
+  push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
+}
+@)
+void from_split_wrapper(expression_base::level l)
+{ Split_integer si = get<split_int_value>()->val;
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<int_value>(si.e()));
+  push_value(std::make_shared<int_value>(si.s()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@*1 $K$-types.
+%
+We implement a data type for representing either a standard or irreducible
+representation (depending on the context, the latter interpretation being the
+unique irreducible quotient of the former) of the complexified maximal compact
+subgroup $K$ for a real reductive group. We call these values $K$-types, and in
+the \.{atlas} language designate the corresponding basic type as \.{KType}. A
+$K$-type is defined by a pair $(x,\lambda-\rho)$ where $x$ is a KGB element,
+$\lambda-\rho$ is a weight in $X^*$ that indirectly represents a character
+$\lambda$ of the $\rho$-cover of a real Cartan subgroup; the value of the latter
+is a class modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
+involution associated to $x$, and $\lambda$ is therefore always reduced to an
+elected representative modulo that lattice. The internal type used to represent
+$K$-types is called |K_repr::K_type|, defined in the file~\.{K\_repr.h}. Most
+actions on values of this type, including their construction, are performed by
+methods of the class |Rep_context| defined in the file~\.{repr.h}.
 
 @<Includes needed in the header file @>=
+#include "K_repr.h"
 #include "repr.h"
+
+@*2 Class definition.
+Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as parameters for it exist, and we
+can access notably the |Rep_context| that it provides.
+
+@< Type definitions @>=
+struct K_type_value : public value_base
+{ shared_real_form rf;
+  K_repr::K_type val;
+@)
+  K_type_value(const shared_real_form& form, K_repr::K_type&& v)
+  : rf(form), val(std::move(v)) @+{}
+  ~K_type_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "K-type"; }
+  K_type_value (const K_type_value& v) : rf(v.rf), val(v.val.copy()) {}
+    // we use |get_own<K_type_value>|
+
+@)
+  const Rep_context& rc() const @+{@; return rf->rc(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
+};
+@)
+typedef std::unique_ptr<K_type_value> K_type_ptr;
+typedef std::shared_ptr<const K_type_value> shared_K_type;
+typedef std::shared_ptr<K_type_value> own_K_type;
+
+@ When printing a $K$-type, we shall indicate a pair $(x,\lambda)$ that defines
+it. Since we shall need to print |K_repr::K_type| values in other contexts as
+well, an auxiliary output function |repr::print_K_type| is defined
+in \.{basic\_io.h}, which takes and additional |Rep_context| argument; we shall
+call that function from |K_type_value::print|. By choosing a name for the
+auxiliary function different from |print|, we avoid having that call being
+mistaken for a recursive call.
+
+The virtual method |K_type_value::print|, is used when printing a
+value of type \.{KType} (as opposed to for instance printing a term of
+a \.{KTypePol}). Here we prefix the $K$-type text proper with additional
+information about the $K$-type that may be relevant to the \.{atlas} user.
+
+@< Function definition... @>=
+void K_type_value::print(std::ostream& out) const
+{@;
+  out << @< Expression for adjectives that apply to a $K$-type @>@;@;;
+  print_K_type(out << " K-type",val,rc());
+}
+
+@ We call a root singular if the corresponding coroot vanishes on
+$(1+\theta_x)\lambda$ (for real roots this is always the case, for imaginary
+roots it is equivalent to vanishing on~$\lambda$). We then classify different
+levels of ``niceness'' of $K$-type by one of the adjectives ``non-standard''
+(when $(1+\theta_x)\lambda$ fails to be imaginary-dominant), ``non-dominant''
+(when $(1+\theta_x)\lambda$ fails to be dominant), ``zero'' (there are singular
+compact simply-imaginary roots), ``non-final'' (there are real parity roots),
+``non-normal'' (there are complex singular descent roots, making the $K$-type
+equivalent to one at a lower involution in the Cartan class), or finally
+``final'' (the good ones that could go into a \.{KTypePol} value; the condition
+|is_final| should apply, though it is not tested here).
+
+@< Expression for adjectives that apply to a $K$-type @>=
+( not rc().is_standard(val) ? "non-standard"
+@|: not rc().is_dominant(val) ? "non-dominant"
+@|: not rc().is_nonzero(val) ? "zero"
+@|: not rc().is_semifinal(val) ? "non-final"
+@|: not rc().is_normal(val) ? "non-normal"
+@|: "final")
+
+@ To make a $K$-type, one should provide a KGB element~$x$, and a weight
+$\lambda-\rho\in X^*$.
+
+@< Local function def...@>=
+void K_type_wrapper(expression_base::level l)
+{ shared_vector lam_rho(get<vector_value>());
+  shared_KGB_elt x = get<KGB_elt_value>();
+  if (lam_rho->val.size()!=x->rf->val.rank())
+  { std::ostringstream o;
+    o << "Rank mismatch: (" @|
+        << x->rf->val.rank() << ',' << lam_rho->val.size() << ")";
+    throw runtime_error(o.str());
+  }
+@.Rank mismatch@>
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<K_type_value> @|
+      (x->rf, x->rf->rc().sr_K(x->val,lam_rho->val)));
+}
+
+@*1 Standard module parameters.
+%
+We implement a data type for holding parameters that represent a standard module
+or, depending on the context, its unique irreducible quotient. We call these
+values standard module parameters, often shortened to simply parameters, and in
+the \.{atlas} language designate the corresponding basic type as \.{Param}. Such
+a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$ is a KGB element,
+$\lambda$ is a weight in the coset $\rho+X^*$ whose value is relevant only
+modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the involution
+associated to $x$, and $\nu$ is a rational weight in the kernel of $1+\theta_x$.
+Such parameters are stored in instances of the class |StandardRepr|, which is
+defined in the file \.{repr.h}.
 
 @*2 Class definition.
 Like for KGB elements, we maintain a shared pointer to the real form value, so
@@ -4583,9 +4818,9 @@ typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 @ When printing a module parameter, we shall indicate a triple $(x,\lambda,\nu)$
 that defines it. Since we shall need to print |StandardRepr| values in other
 contexts as well, an auxiliary output function |repr::print_stdrep| is defined
-in \.{repr.h}, which takes and additional |Rep_context| argument; we shall call
-that function from |module_parameter_value::print|. By choosing a name for the
-auxiliary function different from |print|, we avoid having that call being
+in \.{basic\_io.h}, which takes and additional |Rep_context| argument; we shall
+call that function from |module_parameter_value::print|. By choosing a name for
+the auxiliary function different from |print|, we avoid having that call being
 mistaken for a recursive call.
 
 The virtual method |module_parameter_value::print|, is used when printing a
@@ -4600,18 +4835,19 @@ void module_parameter_value::print(std::ostream& out) const
   print_stdrep(out << ' ',val,rc());
 }
 
-@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and
-therefore $\lambda$ fails to be imaginary-dominant), ``zero'' (the standard
-module vanishes due to the singular infinitesimal character, namely by the
-presence of a singular compact simple-imaginary root), ``non-final'' (the
-standard module is non-zero, but can be expressed in terms of standard modules
-at more compact Cartans using a singular real root satisfying the parity
-condition), ``non-normal'' (the parameter differs from its normal form; when
-we come to this point it implies there is a complex singular descent), or
-finally ``final'' (the good ones that could go into a \.{ParamPol} value; the
-condition |is_final| should apply, though it is not tested here).
+@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and therefore
+$\lambda$ fails to be imaginary-dominant), ``non-dominant'' (when $\gamma$ fails
+to be dominant), ``zero'' (the standard module vanishes due to the singular
+infinitesimal character, namely by the presence of a singular compact
+simply-imaginary root), ``non-final'' (the standard module is non-zero, but can
+be expressed in terms of standard modules at more compact Cartans using a
+singular real root satisfying the parity condition), ``non-normal'' (the
+parameter differs from its normal form; when we come to this point it implies
+there is a complex singular descent), or finally ``final'' (the good ones that
+could go into a \.{ParamPol} value; the condition |is_final| should apply,
+though it is not tested here).
 
-@< Expression for adjectives... @>=
+@< Expression for adjectives that apply to a module parameter @>=
 ( not rc().is_standard(val,witness) ? "non-standard"
 @|: not rc().is_dominant(val,witness) ? "non-dominant"
 @|: not rc().is_nonzero(val,witness) ? "zero"
@@ -5716,6 +5952,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 
 @ Finally we install everything related to module parameters.
 @< Install wrapper functions @>=
+install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
 install_function(module_parameter_wrapper,@|"param"
                 ,"(KGBElt,vec,ratvec->Param)");
 install_function(unwrap_parameter_wrapper,@|"%"
@@ -5773,133 +6010,13 @@ install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
 @*1 Polynomials formed from parameters.
 %
 When working with parameters for standard modules, and notably with the
-deformation formulas, the need arises to keep track of formal sums of
-standard modules with coefficients of a type that allows keeping track of the
-signatures of the modules. These coefficients, which we shall call split
-integers and give the type \.{Split} in \.{atlas}, are elements of the group
-algebra over $\Zee$ of a (cyclic) group of order~$2$.
+deformation formulas, the need arises to keep track of formal sums of standard
+modules, or their irreducible quotients (the interpretation will depend on the
+context) with split integer coefficients. We call these formal sums virtual
+modules, and in the \.{atlas} language designate the corresponding basic type
+as \.{ParamPol}.
 
-@< Includes needed in the header file @>=
-#include "arithmetic.h"
-
-@*2 A class for split integers.
-%
-Although the necessary operations could easily be defined in the \.{axis}
-programming language using pairs of integers, it is preferable to make them an
-Atlas type, since this allows distinguishing them from pairs of integers used
-for other purposes, and to provide special output and conversion facilities.
-
-@< Type definitions @>=
-
-struct split_int_value : public value_base
-{ Split_integer val;
-@)
-  explicit split_int_value(Split_integer v) : val(v) @+ {}
-  ~split_int_value()@+ {}
-  void print(std::ostream& out) const;
-  static const char* name() @+{@; return "split integer"; }
-  split_int_value (const split_int_value& v) = default;
-    // we use |get_own<split_int_value>|
-};
-@)
-typedef std::unique_ptr<split_int_value> split_int_ptr;
-typedef std::shared_ptr<const split_int_value> shared_split_int;
-typedef std::shared_ptr<split_int_value> own_split_int;
-
-@ Like for parameter values, a printing function |print_split| on the level
-of a bare |Split_integer| value is defined in the library, which can be used
-also in situations where the method |split_int_value::print| cannot. The latter
-method simply calls it.
-
-@< Function def... @>=
-
-void split_int_value::print(std::ostream& out) const @+
-{@; print_split(out,val); }
-
-@ Here are some basic relations and arithmetic operations.
-
-@< Local function definitions @>=
-
-void split_unary_eq_wrapper(expression_base::level l)
-{ Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i.is_zero()));
-}
-void split_unary_neq_wrapper(expression_base::level l)
-{ Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(not i.is_zero()));
-}
-@)
-void split_eq_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i==j));
-}
-void split_neq_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i!=j));
-}
-@)
-void split_plus_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val+=j; push_value(std::move(i)); }
-}
-
-void split_minus_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val-=j; push_value(std::move(i)); }
-}
-@)
-void split_unary_minus_wrapper(expression_base::level l)
-{ own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val.negate(); push_value(std::move(i)); }
-}
-
-void split_times_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<split_int_value>(i*j));
-}
-
-@ We also provide implicit conversions from integers or pairs of integers to
-split integers, and an explicit operator for converting back to a pair.
-
-@< Local function definitions @>=
-
-void int_to_split_coercion()
-{ int a=get<int_value>()->int_val();
-@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
-}
-@)
-void pair_to_split_coercion()
-{ push_tuple_components();
-  int b=get<int_value>()->int_val();
-  int a=get<int_value>()->int_val();
-  push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
-}
-@)
-void from_split_wrapper(expression_base::level l)
-{ Split_integer si = get<split_int_value>()->val;
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<int_value>(si.e()));
-  push_value(std::make_shared<int_value>(si.s()));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
-}
-
-@*2 Class definition for virtual modules.
+@*2 Class definition.
 %
 The library provides a type |repr::SR_poly| in which such sums can be
 efficiently maintained. In order to use it we must have seen the header file

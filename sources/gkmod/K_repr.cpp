@@ -23,6 +23,95 @@ K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
   return {x,std::move(lambda_rho),height(th1_lambda)};
 }
 
+// |z| standard means $\lambda (weakly) dominant on the (simply-)imaginary roots
+bool Rep_context::is_standard(const K_repr::K_type& z) const
+{
+  const RootDatum& rd = root_datum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = involution_table();
+
+  for (RootNbr alpha : i_tab.imaginary_basis(i_x))
+    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)<0)
+      return false;
+  return true;
+}
+
+// |z| dominant means that $(1+theta_x)\lambda$ fails to be (weakly) dominant
+bool Rep_context::is_dominant(const K_repr::K_type& z) const
+{
+  const RootDatum& rd = root_datum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = involution_table();
+  // we shall use $\alpha^\check\cdot(1+theta_x)\lambda\
+     =(\alpha^\check+\alpha^\check\theta_x)\cdot\lambda$
+  const Weight& lr=z.lambda_rho();
+
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+  { RootNbr beta = i_tab.root_involution(i_x,rd.simpleRootNbr(s));
+    if (rd.simpleCoroot(s).dot(lr)+1+rd.coroot(beta).dot(lr)+rd.colevel(beta)<0)
+      return false;
+  }
+  return true;
+}
+
+// |z| zero means that no singular simply-imaginary roots are compact
+// we assume |is_standard(z)|, so singular imaginary system is simply generated
+bool Rep_context::is_nonzero(const K_repr::K_type& z) const
+{
+  const RootDatum& rd = root_datum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = involution_table();
+
+  for (RootNbr alpha : i_tab.imaginary_basis(i_x)) // simple-imaginary
+    if (rd.coroot(alpha).dot(z.lambda_rho())+rd.colevel(alpha)==0 // singular
+	and not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
+      return false;
+  return true;
+}
+
+// |z| semifinal means the absence of real parity roots. We do not assume
+// |is_theta_stable|, so all really-simple roots must be tested
+bool Rep_context::is_semifinal(const K_repr::K_type& z) const
+{
+  const RootDatum& rd = root_datum();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = involution_table();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const Weight test_wt = z.lambda_rho()*2 // $2(\lambda-\rho)$
+	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
+
+  for (RootNbr alpha : i_tab.real_basis(i_x))
+    if (rd.coroot(alpha).dot(test_wt)%4 !=0) // doubled odd: parity real root
+      return false; // which invalidates the semi-final condition
+  return true;
+}
+
+// absence of complex singular descents; assumes properties asserted below
+bool Rep_context::is_normal(const K_repr::K_type& z) const
+{
+  assert (is_standard(z)); // othewise the notion is not defined
+  assert (is_dominant(z)); // this is necessary fot the normal form
+
+  // although we could define the predicate without the next two assumptions,
+  // this would be harder to implement, while the predicate is less interesting
+  assert (is_nonzero(z) and is_semifinal(z));
+
+  const auto& rd = root_datum();
+  const auto i_x = kgb().inv_nr(z.x());
+  const auto& lr = z.lambda_rho();
+  const InvolutionTable& i_tab = involution_table();
+  const auto& theta = i_tab.matrix(i_x);
+
+  Weight im_wt = lr + theta*lr + i_tab.theta_plus_1_rho(i_x);
+
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    if (kgb().isComplexDescent(s,z.x()) and rd.simpleCoroot(s).dot(im_wt)==0)
+      return false;
+
+  return true;
+}
+
+
 void Rep_context::make_dominant (K_repr::K_type& t) const
 {
   KGBElt& x=t.d_x; Weight& lr = t.lam_rho; // operate directly on components

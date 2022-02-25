@@ -329,8 +329,9 @@ RealForm	real form within an inner class
 CartanClass     class of Cartan subgroups within an inner class
 KGBElt		element of the set K\G/B associated to some RealForm value
 Block		block for a pair of RealForm values (at dual inner classes)
-Param		value representing a standard module or its irreducible quotient
 Split		"split integer" a + b.s where s is "split unit" with s^2=1
+KType		value for standard K-representation or its irreducible quotient
+Param		value representing a standard module or its irreducible quotient
 ParamPol	virtual module with signature (Param values with Split coefs)
 
 Constant values of type bool, int and string can be entered as usual (use
