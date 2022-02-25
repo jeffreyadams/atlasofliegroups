@@ -98,6 +98,9 @@ class StandardRepr
   const TorusPart& y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
+  // precomputed height is first criterion for ordering
+  // therefore comparison involves no further |Rep_context| dependency
+  bool operator<(const StandardRepr&) const;
   bool operator==(const StandardRepr&) const;
 
 // special members required by HashTable
@@ -253,7 +256,7 @@ class Rep_context
   { return to_canonical_involution
       (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
 
-  simple_list<std::pair<K_repr::K_type,unsigned int> >
+  simple_list<std::pair<K_repr::K_type,int> >
     finals_for(K_repr::K_type t) const;
 
   // apart from producing a result, these two methods also make |t| theta-stable
@@ -348,17 +351,14 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  struct compare
-  {
-    bool operator()(const StandardRepr& r,const StandardRepr& s) const;
-  }; // |compare|
-
-  using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
+  using poly = Free_Abelian<StandardRepr,Split_integer>;
 
   poly scale(const poly& P, const RatNum& f) const;
   poly scale_0(const poly& P) const;
 
   sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
+    (StandardRepr z) const; // by value
+  simple_list<std::pair<StandardRepr,int> > finals // like |finals_for| K-type
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 

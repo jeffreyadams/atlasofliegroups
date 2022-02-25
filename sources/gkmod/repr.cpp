@@ -1010,19 +1010,18 @@ StandardRepr Rep_context::twisted
 }
 
 
-bool Rep_context::compare::operator()
-  (const StandardRepr& r,const StandardRepr& s) const
+bool StandardRepr::operator<(const StandardRepr& s) const
 {
-  if (r.height()!=s.height()) // order by increasing height first
-    return r.height()<s.height();
-  if (r.x()!=s.x()) // then order by decreasing numeric value of |x|
-    return r.x()>s.x(); // (height tends to change in opposite sense to |x|)
-  if (r.y()!=s.y()) // then order by increasing internal value of |y|
-    return r.y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
+  if (height()!=s.height()) // order by increasing height first
+    return height()<s.height();
+  if (x()!=s.x()) // then order by decreasing numeric value of |x|
+    return x()>s.x(); // (height tends to change in opposite sense to |x|)
+  if (y()!=s.y()) // then order by increasing internal value of |y|
+    return y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
 
   // finally in rare cases individual components of |gamma| need comparison
-  auto r_vec = s.gamma().numerator()*r.gamma().denominator(); // cross multiply
-  auto s_vec = r.gamma().numerator()*s.gamma().denominator(); // cross multiply
+  auto r_vec = s.gamma().numerator()*gamma().denominator(); // cross multiply
+  auto s_vec = gamma().numerator()*s.gamma().denominator(); // cross multiply
 
   return r_vec<s_vec;
 }
@@ -1107,11 +1106,132 @@ sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
   return result;
 } // |Rep_context::finals_for|
 
+using sr_term = std::pair<StandardRepr,int>;
+using sr_term_list = simple_list<sr_term>;
+
+// insert (add) a new term into list |L|, assumed sorted decreasingly
+void insert(StandardRepr&& z, int coef, sr_term_list& L)
+{ auto it = L.begin();
+  while (not L.at_end(it))
+    if (z < it->first)
+      ++it; // skip higher terms
+    else if (it->first < z) // then we are looking at lower terms
+      break; // so break loop and insert before those lower terms
+    else  // matching term; operate on coefficient
+    { if ((it->second += coef) == 0)
+        L.erase(it);
+      return; // whether by coefficient update or erasure, we are done
+    }
+  L.insert(it,std::make_pair(std::move(z),coef));
+}
+
+sr_term_list Rep_context::finals(StandardRepr z) const
+{
+  const RootDatum& rd = root_datum();
+
+  sr_term_list result, to_do;
+  to_do.emplace_front(std::move(z),1);
+
+  do
+  {
+    KGBElt x = to_do.front().first.x();
+    Weight lr = lambda_rho(to_do.front().first);
+    auto height = to_do.front().first.height();
+    RatWeight gamma = std::move(to_do.front().first.infinitesimal_char);
+    auto coef = to_do.front().second;
+    to_do.pop_front();
+
+  restart:
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+      // as |break| from loop is not available within |switch|, use |goto| below
+    { auto eval = // morally evaluation coroot at |gamma|, but only sign matters
+	rd.simpleCoroot(s).dot(gamma.numerator());
+      if (eval<=0)
+	switch (kgb().status(s,x))
+	{
+	case gradings::Status::ImaginaryCompact:
+	  if (eval<0) // then reflect |lambda| and negate sign
+	  {
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    coef = -coef;
+	    goto restart;
+	  }
+	  else goto drop; // parameter is zero
+	case gradings::Status::ImaginaryNoncompact:
+	  if (eval<0) // then also add Cayley transform terms
+	  {
+	    KGBElt sx = kgb().cross(s,x);
+	    KGBElt Cx = kgb().cayley(s,x);
+	    StandardRepr t1 = sr_gamma(Cx,lr,gamma);
+	    assert( t1.height() < height );
+	    insert(std::move(t1),coef,to_do);
+	    if (sx==x) // then type 2 Cayley
+	    {
+	      StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
+	      assert( t2.height() < height );
+	      insert(std::move(t2),coef,to_do);
+	    }
+	    x = sx; // after testing we can update |x| for nci cross action
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    coef = -coef; // reflect, negate, and continue with modified values
+	    goto restart;
+	  }
+	  else // nothing to do for singular nci generator
+	    continue; // continue loop on |s|
+	case gradings::Status::Complex:
+	  if (eval<0 or kgb().isDescent(s,x))
+	  {
+	    x = kgb().cross(s,x);
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    // keep |coef| unchanged
+	    goto restart;
+	  }
+	  else // nothing to do for singular complex ascent
+	    continue; // continue loop on |s|
+	break;
+	case gradings::Status::Real:
+	  if (eval<0)
+	  {
+	    x = kgb().cross(s,x);
+	    rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
+	    rd.simple_reflect(s,gamma.numerator());
+	    // keep |coef| unchanged
+	    goto restart;
+	  }
+	  else
+	  { // singular real root; only do something if parity condition holds
+	    auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	    if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
+	    { // found parity root; |kgb()| can distinguish type 1 and type 2
+	      lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
+	      assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	      const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	      if (Cxs.second!=UndefKGB)
+		insert(sr_gamma(Cxs.second,lr,gamma),coef,to_do);
+	      insert(sr_gamma(Cxs.first,lr,std::move(gamma)),coef,to_do);
+	      goto drop; // we have rewritten |current|, don't contribute it
+	    }
+	    else continue; // nothing to do for a (singular) real nonparity root
+	  } // |else| (singular real root)
+	} // |switch| and |if(eval<=0)|
+    } // |for(s)|
+    // if loop terminates, then contribute modified, now final, parameter
+    result.emplace_front(sr_gamma(x,lr,gamma),coef);
+  drop: {} // when jumping here, proceed without contributing
+  }
+  while (not to_do.empty());
+  return result;
+} // |Rep_context::finals|
+
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
+  auto terms = finals(std::move(z));
   poly result;
-  for (const auto& sr : finals_for(z))
-    result += sr;
+  for (auto it=terms.begin(); not terms.at_end(it); ++it)
+    result.add_term(it->first,Split_integer(it->second));
   return result;
 } // |Rep_context::expand_final|
 
