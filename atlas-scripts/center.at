@@ -190,9 +190,10 @@ set Z_2 (RealForm G) = [vec]:
 
   order(t_i)=denominator of the ratvec v_i
 
-  We assume that |rd| is a semisimple root datum. The value returned more
-  generally for reductive groups appears to describe the center of the group
-  modulo its central torus, NOT that of the derived group (for instance for
+  In center@RootDatum the RootDatum must be semisimple or an error is
+  returned. The value returned by center_torsion_quotien for a
+  reductive group appears to describe the center of the group modulo
+  its central torus, NOT that of the derived group (for instance for
   GL(n) it returnes a trivial center). The generators are in G itself.
 
   Method: one can present the center as $Z(G)=P^v/X_*$, where $P^v$ is the
@@ -214,12 +215,16 @@ set Z_2 (RealForm G) = [vec]:
   The numbers $c[i]$ are forgotten, but in fact will appear as demoninators
   of the rational vectors returned, due to the way they were obtained.
 }
-set center(RootDatum rd) = [ratvec]:
+set center_torsion_quotient(RootDatum rd) = [ratvec]:
   let (B,) = filter_units(adapted_basis(^simple_roots(rd)))
   , fcws = fundamental_coweights(rd)
   in for col in B { compute |fcws*col| }
      do sum(rank(rd), for v@i in fcws do v*col[i] od)
      od
+
+set center(RootDatum rd)=[ratvec]:
+  assert(rd.is_semisimple,"Groups is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
+  center_torsion_quotient(rd)
 
 set type_center(RootDatum rd) =[int]:
    assert(is_semisimple(rd),"Root Datum is not semisimple");
