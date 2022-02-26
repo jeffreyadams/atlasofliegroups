@@ -245,17 +245,20 @@ set lift(mat theta_H,mat M,RealForm G)=mat:
 let i=first(for x in KGB(G) do any(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
 KGB(G,i).involution
 
-set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
+set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=(InnerClass,mat,ratvec):
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
-()=prints("OK") then
+theta_G=lift(x_H_gen.involution,M,G) then
+()=prints("tf_H_raw=",tf_H_raw) then
 tf_G_raw=M*tf_H_raw then
 ()=prints("tf_G_raw=", tf_G_raw) then
-tf_G=2*tf_G_raw-G.rho_check then
+{tf_G=2*tf_G_raw-G.rho_check then}
+tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 then
+()=prints("okkk") then
+()=prints("G=",G) then
+()=prints("theta_G: ", theta_G) then
 ()=prints("tf_G=", tf_G) then
-theta_G=lift(x_H_gen.involution,M,G) in
-let ()=prints("ok") in
-let ()=prints("theta_G: ", theta_G) in 
-KGB_elt_gen(G,theta_G,tf_G)
+z=KGB_elt_gen(G,theta_G,tf_G) in
+let ()=prints("got z: ", z) in z
 
 set lift(KGBElt x_H,mat M, RealForm G)=KGBElt:KGB_elt(lift(KGB_elt_gen(x_H),M,G))
 
