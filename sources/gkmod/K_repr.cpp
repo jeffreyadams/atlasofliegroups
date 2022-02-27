@@ -23,6 +23,16 @@ K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
   return {x,std::move(lambda_rho),height(th1_lambda)};
 }
 
+int // $\check\alpha\dot(1+\theta_x)\lambda$, often needed for its sign
+Rep_context::theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const
+{
+  const auto& rd = root_datum();
+  RootNbr beta = involution_table().root_involution(kgb().inv_nr(t.x()),alpha);
+  const auto& lr = t.lambda_rho();
+  return rd.coroot(alpha).dot(lr)+rd.colevel(alpha)
+	+rd.coroot(beta).dot(lr)+rd.colevel(beta);
+}
+
 // |z| standard means $\lambda (weakly) dominant on the (simply-)imaginary roots
 bool Rep_context::is_standard(const K_repr::K_type& z) const
 {
@@ -40,17 +50,11 @@ bool Rep_context::is_standard(const K_repr::K_type& z) const
 bool Rep_context::is_dominant(const K_repr::K_type& z) const
 {
   const RootDatum& rd = root_datum();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = involution_table();
-  // we shall use $\alpha^\check\cdot(1+theta_x)\lambda\
-     =(\alpha^\check+\alpha^\check\theta_x)\cdot\lambda$
-  const Weight& lr=z.lambda_rho();
 
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-  { RootNbr beta = i_tab.root_involution(i_x,rd.simpleRootNbr(s));
-    if (rd.simpleCoroot(s).dot(lr)+1+rd.coroot(beta).dot(lr)+rd.colevel(beta)<0)
+    if ( theta_plus_1_eval(z,rd.simpleRootNbr(s)) < 0 )
       return false;
-  }
+
   return true;
 }
 
@@ -97,20 +101,61 @@ bool Rep_context::is_normal(const K_repr::K_type& z) const
   assert (is_nonzero(z) and is_semifinal(z));
 
   const auto& rd = root_datum();
-  const auto i_x = kgb().inv_nr(z.x());
-  const auto& lr = z.lambda_rho();
-  const InvolutionTable& i_tab = involution_table();
-  const auto& theta = i_tab.matrix(i_x);
-
-  Weight im_wt = lr + theta*lr + i_tab.theta_plus_1_rho(i_x);
 
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    if (kgb().isComplexDescent(s,z.x()) and rd.simpleCoroot(s).dot(im_wt)==0)
+    if (kgb().isComplexDescent(s,z.x()) and
+	theta_plus_1_eval(z,rd.simpleRootNbr(s))==0)
       return false;
+
+  return true;
+} // |is_normal|
+
+// absence of any singular descents
+bool Rep_context::is_final(const K_repr::K_type& z) const
+{
+  const auto& rd = root_datum();
+  KGBElt x = z.x();
+  const auto& lr = z.lambda_rho();
+
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+  {
+    auto eval = theta_plus_1_eval(z,rd.simpleRootNbr(s));
+    if (eval>0)
+      continue;
+    else if (eval<0)
+      return false;
+
+    // now simple coroot |s| is singular, check for descents
+    switch (kgb().status(s,x))
+    {
+    case gradings::Status::ImaginaryCompact:
+      return false; // fails |is_nonzero|
+    case gradings::Status::Real:
+      if (rd.simpleCoroot(s).dot(lr)%2 != 0) // then $\alpha_s$ is parity
+	return false;
+      break;
+    case gradings::Status::Complex:
+      if (kgb().isDescent(s,x))
+	return false; // faile |is_normal|
+      break;
+    default:
+      break; // ImaginaryNoncompact is fine
+    } // |switch|
+  } // |for (s)|
 
   return true;
 }
 
+bool
+Rep_context::equivalent(K_repr::K_type z0, K_repr::K_type z1) const // by value
+{
+  if (kgb().Cartan_class(z0.x())!=kgb().Cartan_class(z1.x()))
+    return false; // this non-equivalence requires little work to see
+  to_canonical_involution(z0);
+  to_canonical_involution(z1);
+  // at the canonical involution equivalence means equal |x| and |lambda_rho|
+  return z0==z1;
+}
 
 void Rep_context::make_dominant (K_repr::K_type& t) const
 {
@@ -124,15 +169,15 @@ void Rep_context::make_dominant (K_repr::K_type& t) const
     const auto i_x = kgb().inv_nr(x);
     const auto& theta = i_tab.matrix(i_x);
     im_wt = lr + theta*lr + i_tab.theta_plus_1_rho(i_x);
-    for (RootNbr s : i_tab.imaginary_basis(i_x))
-      if (rd.simpleCoroot(s).dot(im_wt)<0)
+    for (RootNbr alpha : i_tab.imaginary_basis(i_x))
+      if (rd.coroot(alpha).dot(lr)+rd.colevel(alpha)<0)
 	throw std::runtime_error("Non standard K-type in make_dominant");
   }
 
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimple_rank(); ++s)
-	if (rd.simpleCoroot(s).dot(im_wt)<0)
+	if (theta_plus_1_eval(t,rd.simpleRootNbr(s))<0)
 	{
 	  assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
 	  x = kgb().cross(s,x);
@@ -185,6 +230,32 @@ void Rep_context::to_canonical_involution
   }
   i_tab.lambda_unique(kgb().inv_nr(x),lr); // to preferred coset representative
 } // |to_canonical_involution|
+
+void Rep_context::normalise(K_repr::K_type& z) const
+{
+  to_canonical_involution(z);
+  // at the canonical involution equivalence means equal |x| and |lambda_rho|
+  // so it only remains to ensure moving to a final class member if one exists
+
+  const auto& rd = root_datum();
+  KGBElt& x=z.d_x; Weight& lr = z.lam_rho; // operate directly on components
+
+  { weyl::Generator s;
+    do // a variation of |make_theta_stable|: exhaust singular complex descents
+      for (s=0; s<rd.semisimple_rank(); ++s)
+      { auto eval = theta_plus_1_eval(z,rd.simpleRootNbr(s));
+	if (kgb().status(x).isComplex(s) and
+	    (eval<=0 or (eval==0 and kgb().isDescent(s,x))))
+	{
+	  x = kgb().cross(s,x);
+	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  break; // out of the loop |for(s)|
+	} // |if(v<0)| and |for(s)|
+      }
+    while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
+  }
+  involution_table().lambda_unique(kgb().inv_nr(x),lr);
+}
 
 using term = std::pair<K_repr::K_type, int>;
 using term_list = simple_list<term>;
@@ -357,13 +428,13 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
 	  if (not present.isMember(Csx))
 	  {
 	    present.insert(Csx);
-	    result.add_term(sr_K(Csx,new_lr),sign);
+	    result.add_term(sr_K(Csx,new_lr),Split_integer(sign));
 	    Q.push(std::make_pair(Csx,new_lr));
 	  }
 	  if ((Csx=pair.second)!=UndefKGB and not present.isMember(Csx))
 	  {
 	    present.insert(Csx);
-	    result.add_term(sr_K(Csx,new_lr),sign);
+	    result.add_term(sr_K(Csx,new_lr),Split_integer(sign));
 	    Q.push(std::make_pair(Csx,std::move(new_lr)));
 	  }
 	}
@@ -376,7 +447,7 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
 	    present.insert(sx);
 	    Weight new_lr = rd.simple_reflection(s,lam_rho);
 	    auto sign = (max_l-kgb.length(sx))%2==0 ? 1 : -1;
-	    result.add_term(sr_K(sx,new_lr),sign);
+	    result.add_term(sr_K(sx,new_lr),Split_integer(sign));
 	    Q.push(std::make_pair(sx,std::move(new_lr)));
 	  }
 	}

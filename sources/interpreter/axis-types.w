@@ -2012,8 +2012,9 @@ extern const type_expr rd_type; // \.{RootDatum}
 extern const type_expr ic_type; // \.{InnerClass}
 extern const type_expr rf_type; // \.{RealForm}
 extern const type_expr split_type; // \.{Split}
-extern const type_expr param_type; // \.{RealForm}
-extern const type_expr param_pol_type; // \.{RealForm}
+extern const type_expr KType_type; // \.{KType}
+extern const type_expr param_type; // \.{Param}
+extern const type_expr param_pol_type; // \.{ParamPol}
 
 @ The definitions below have all become self-contained, due to the use of
 |mk_type_expr| for non-primitive types. Indeed, since we cannot have sharing
@@ -2043,6 +2044,7 @@ const type_expr rd_type(root_datum_type);
 const type_expr ic_type(inner_class_type);
 const type_expr rf_type(real_form_type);
 const type_expr split_type(split_integer_type);
+const type_expr KType_type(K_type_type);
 const type_expr param_type(module_parameter_type);
 const type_expr param_pol_type(virtual_module_type);
 

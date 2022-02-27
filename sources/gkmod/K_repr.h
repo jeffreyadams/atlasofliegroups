@@ -50,23 +50,26 @@ public:
 
   K_type copy () const { return {d_x,lam_rho,hght}; }
 
-  bool operator< (const K_type& another) const
+  bool operator== (const K_type& other) const
   {
-    if (hght!=another.hght)
-      return hght<another.hght;
-    if (d_x!=another.d_x)
-      return d_x<another.d_x;
-    assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
+    return d_x==other.d_x and hght==other.hght and lam_rho==other.lam_rho;
+  }
+  bool operator != (const K_type& other) const { return not operator==(other); }
+  bool operator< (const K_type& other) const
+  {
+    if (hght!=other.hght)
+      return hght<other.hght;
+    if (d_x!=other.d_x)
+      return d_x<other.d_x;
+    assert(lam_rho.size()==other.lam_rho.size()); // this is always assumed
     // since |lambda_unique| is always called on |lam_rho|, we can compare them
     for (unsigned i=0; i<lam_rho.size(); ++i)
-      if (lam_rho[i]!=another.lam_rho[i])
-	return lam_rho[i]<another.lam_rho[i];
+      if (lam_rho[i]!=other.lam_rho[i])
+	return lam_rho[i]<other.lam_rho[i];
     return false; // we found equality
   }
 
   using Pooltype = std::vector<K_type>;
-  bool operator!= (const K_type& another) const
-  { return d_x!=another.d_x or lam_rho!=another.lam_rho; }
   size_t hashCode (size_t modulus) const
   {
     size_t h = 3*d_x;
@@ -76,7 +79,7 @@ public:
   }
 }; // |class K_type|
 
-using K_type_pol = Free_Abelian_light<K_type,int>;
+using K_type_pol = Free_Abelian_light<K_type,Split_integer>;
 
 } // |namespace K_repr|
 

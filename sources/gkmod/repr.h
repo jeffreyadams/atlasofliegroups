@@ -243,6 +243,7 @@ class Rep_context
     (const K_repr::K_type& z) const; // complex simple witness
   bool is_final // standard, dominant, no singular descents of any kind
     (const K_repr::K_type& z) const;
+  bool equivalent(K_repr::K_type z0, K_repr::K_type z1) const; // by value
 
   // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
 
@@ -255,6 +256,7 @@ class Rep_context
   void to_canonical_involution (K_repr::K_type& z) const
   { return to_canonical_involution
       (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
+  void normalise(K_repr::K_type& z) const; // which ensures a normalised form
 
   simple_list<std::pair<K_repr::K_type,int> >
     finals_for(K_repr::K_type t) const;
@@ -363,6 +365,8 @@ class Rep_context
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
  private:
+  // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
+  int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
   RankFlags singular_simples (const StandardRepr& z) const;
   WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
   // make integrally dominant, with precomputed integral subsystem; return path

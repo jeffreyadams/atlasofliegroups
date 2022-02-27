@@ -702,7 +702,9 @@ Here is a list of all implicit type conversions
   InnerClass -> RootDatum (inheritance)
   RealForm   -> InnerClass (inheritance)
   RealForm   -> RootDatum (inheritance)
+  KType      -> Param    (parameter is created with nu=0)
   Param	     -> ParamPol (parameter is converted to final parameter(s) first)
+  KType      -> ParamPol (K type is converted to finals, which extend nu=0)
 
 The one-directional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:

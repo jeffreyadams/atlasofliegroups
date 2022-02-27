@@ -155,11 +155,43 @@ namespace arithmetic {
 
 namespace K_repr {
 
-std::ostream& print_K_type
-  (std::ostream& out, const K_type& val, const repr::Rep_context& rc)
+std::ostream& print_K_type (std::ostream& out, const K_type& val)
 {
   return out << " <x=" << val.x() << ", lambda = rho+" << val.lambda_rho()
 	     << '>';
+}
+
+std::ostream& print_K_type_pol (std::ostream& out, const K_type_pol& val)
+{
+ if (val.is_zero())
+    { out << "Empty sum of K-types"; return out; }
+
+  // embellishment: locate systematic zero component
+  bool has_one=false, has_s=false;
+  for (const auto& term : val)
+  { if (term.second.e()!=0)
+      has_one=true;
+    if (term.second.s()!=0)
+      has_s=true;
+    if (has_one and has_s)
+      break;
+  }
+  assert (has_one or has_s); // otherwise the module would have been empty
+
+  for (const auto& term : val)
+  {
+    out << '\n';
+    if (has_one and has_s)
+      print_split(out,term.second); // print coefficient
+    else if (has_one)
+      out << term.second.e();
+    else
+      out << term.second.s() << 's';
+
+    print_K_type(out << '*',term.first);
+    out << " [" << term.first.height() << ']';
+  }
+  return out;
 }
 
 } // |namespace K_repr|
@@ -199,19 +231,6 @@ std::ostream& print_SR_poly
       out << pair.second.s() << 's';
     print_stdrep(out << '*',pair.first,rc); // print parameter
     out << " [" << pair.first.height() << ']';
-  }
-  return out;
-}
-
-std::ostream& print_K_type_poly
-  (std::ostream& out,
-   const repr::K_type_poly& val, const std::vector<K_repr::K_type>& pool,
-   const Rep_context& rc)
-{
-  for (const auto& term : val)
-  {
-    print_split(out,term.second) << "*[" << term.first << ']';
-    print_K_type(out,pool[term.first],rc) << '\n';
   }
   return out;
 }

@@ -700,17 +700,58 @@ status: (int,Block,int->int): status at a block element of a simple reflection
   5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
 K_type: (KGBElt,vec->KType): form $K$-type from (x,lambda-rho)
+operator % : (KType->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from KType
+real_form: (KType->RealForm): recover the real form from a KType value
+operators =, != : (KType,KType): strict equality of KTypes
+  Equality of KTypes implies equality of their real forms
+is_standard: (KType->bool): whether KType defines a standard K-representation
+  This is true whenever lambda is dominant relative to the imaginary roots
+is_zero: (KType->bool): whether parameter defines a zero  K-representation
+  True whenever lambda is singular on a compact (for x) simply-imaginary root
+is_semifinal: (KType->bool): whether KType has no real descents
+  When false, the standard $K$ representation is combination of others
+  on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
+  true provided no real coroots satisfy the parity condition.
+is_final: (KType->bool): whether $K$-type has no singular descents at all
+  This means that is_standard(p), not is_zero(p) and is_semifinal(p) hold,
+  and the K-type has no singular (for (1+theta_x)lambda) complex descents.
+  KTypes that satisfy |is_final(p)| are precisely the ones that can occur as
+  monomials in a |KTypePol| value.
+equivalent : (KType,KType->bool): test equivalence of KTypes
+  Equivalence allows the infinitesimal character (representative) of any
+  standard KType to be made dominant, and among such KTypes is defined
+  as reachability of one from the other using singular complex cross actions.
+  If either KType fails to be standard, this reverts to strict equality,
+  otherwise the equivalent(p,q) amounts to the same as normal(p)=normal(q).
+dominant: (KType->KType): ensure KType has dominant (1+theta_x)lambda
+  This gives an equivalent form of the KType in which infinitesimal character
+  has been made dominant (it may not be unique for this property within its
+  equivalence class); calling this function reauires is_standard to hold for the
+  K-type, and an error will be reported if it is not.
+to_canonical_fiber: (KType->KType): move to elected fiber for its Cartan class
+  In every Cartan class of involutions one is singled out, and every K-type for
+  this Cartan class can be moved into the fiber over this involution in a unique
+  way; this function returns the K-type in that fiber obtained in this way.
+normal: (KType->KType): bring KType to a unique form under equivalence
+  This form can be computed for all K-types, and only depends on its
+  equivalence class; moreover if the class contains a K-type that satisfies
+  is_final, then it is unique and it will be produced by this function.
+theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
+  The name theta-stable refers to the parabolic subalgebra associated to the
+  involution theta of the x component of the K-type: the subalgebra whose Levi
+  factor has the real roots and whose nilpotent radical has the remaining
+  positive roots is theta-stable, maning that theta permutes those remaining
+  positive roots among each other. In terms of the K-type it means there are no
+  complex descents, which is obtained by greedily perfoming any complex
+  descents; multiple candidate results may exist, among which one is chosen.
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
-operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
+operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,gamma) from param
+  Here x and lambda-rho are as for K-types, and gamma is the infinitesimal
+  character. These components are not invariant under equivalence of parameters,
+  and are transformed in specific ways when a function like 'dominant' is
+  applied (the latter indeed serves to ensure that gamma is dominant).
 real_form: (Param->RealForm): recover the real form from a Param value
-infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
-  This is actually a representative of the infinitesimal character, given by
-  gamma = ((1+theta)lambda+(1-theta)nu)/2. The meaning of the x component of
-  the parameter is determined by its position relative to this representative
-  gamma, so to find the x value uniquely associated to the representation for
-  the parameter, one should apply the function 'dominant' to the parameter
-  first, after which the value of infinitesimal_character is indeed dominant
 operators =, != : (Param,Param): strict equality of parameters in the same block
   Equality of parameters implies equality of their real forms
 is_standard: (Param->bool): whether parameter defines a standard module

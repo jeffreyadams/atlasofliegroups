@@ -84,8 +84,9 @@ namespace arithmetic {
 
 namespace K_repr {
 
-std::ostream& print_K_type
-  (std::ostream& out, const K_type& val, const repr::Rep_context& rc);
+std::ostream& print_K_type (std::ostream& out, const K_type& val);
+
+std::ostream& print_K_type_pol (std::ostream& out, const K_type_pol& val);
 
 } // |namespace K_repr|
 
@@ -96,11 +97,6 @@ std::ostream& print_stdrep
 
 std::ostream& print_SR_poly
 (std::ostream& out, const repr::SR_poly& val, const Rep_context& rc);
-
-std::ostream& print_K_type_poly
-  (std::ostream& out,
-   const repr::K_type_poly& val, const std::vector<K_repr::K_type>& pool,
-   const Rep_context& rc);
 
 } // |namespace repr|
 
