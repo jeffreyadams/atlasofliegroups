@@ -6018,7 +6018,7 @@ as \.{ParamPol}.
 
 @*2 Class definition.
 %
-The library provides a type |repr::SR_poly| in which such sums can be
+The library provides a type |SR_poly| in which such sums can be
 efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
@@ -6038,11 +6038,11 @@ that it will be assured to survive as long as parameters for it exist.
 @< Type definitions @>=
 struct virtual_module_value : public value_base
 { shared_real_form rf;
-  repr::SR_poly val;
+  SR_poly val;
 @)
-  virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
+  virtual_module_value(const shared_real_form& form, const SR_poly& v)
   : rf(form), val(v) @+{}
-  virtual_module_value(const shared_real_form& form, repr::SR_poly&& v)
+  virtual_module_value(const shared_real_form& form, SR_poly&& v)
   : rf(form), val(std::move(v)) @+{}
   ~virtual_module_value() @+{}
 @)
@@ -6061,7 +6061,7 @@ typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 
 @ Printing a virtual module value calls the free function |repr::print_SR_poly|
 to do the actual work. It traverses the |std::map| that is hidden in the
-|Free_Abelian| class template, and print individual terms by printing the
+|Free_Abelian| class template, and prints individual terms by printing the
 |Split_integer| coefficient, followed by the parameter through a call of
 |print_stdrep|. When either all coefficients are integers or all coefficients
 are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
@@ -6089,7 +6089,7 @@ is found.
 void virtual_module_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<virtual_module_value> @| (rf,repr::SR_poly()));
+    push_value(std::make_shared<virtual_module_value> @| (rf,SR_poly()));
 }
 @)
 void real_form_of_virtual_module_wrapper(expression_base::level l)
@@ -6341,7 +6341,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
-        (m->rf,repr::SR_poly()));
+        (m->rf,SR_poly()));
   }
   else
   { own_virtual_module m = get_own<virtual_module_value>();
@@ -6349,7 +6349,7 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
     pop_value();
     assert(c!=0); // we tested that above
     if (l!=expression_base::no_value)
-    { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
+    { for (SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
         it->second *= c;
       push_value(std::move(m));
     }
@@ -6362,7 +6362,7 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
+  for (SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
     // no |++it| here!
     if ((it->second *= c)==Split_integer(0,0))
       m->val.erase(it++); // advance, then delete the node just abandoned
@@ -6459,7 +6459,7 @@ void K_type_formula_wrapper(expression_base::level l)
    // don't need |first==srk|
   const RatWeight zero_nu(p->rf->val.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (auto it=formula.begin(); it!=formula.end(); ++it)
   {
     standardrepk::combination st=khc.standardize(it->first);
@@ -6498,7 +6498,7 @@ void K_type_formula_trunc_wrapper(expression_base::level l)
   const standardrepk::Char formula = khc.K_type_formula(srk,bound).second;
   const RatWeight zero_nu(p->rf->val.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (auto it=formula.begin(); it!=formula.end(); ++it)
   {
     standardrepk::combination st=khc.standardize(it->first);
@@ -6556,7 +6556,7 @@ void branch_wrapper(expression_base::level l)
   standardrepk::combination combo=khc.standardize(srk);
   const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (auto it=combo.begin(); it!=combo.end(); ++it)
     // loop over finals from |srk|
   {
@@ -6589,7 +6589,7 @@ void branch_pol_wrapper(expression_base::level l)
   const Rep_context rc = P->rc();
   KhatContext& khc = P->rf->khc();
   auto P0 = rc.scale_0(P->val);
-@/own_virtual_module acc @| (new virtual_module_value(P->rf, repr::SR_poly()));
+@/own_virtual_module acc @| (new virtual_module_value(P->rf, SR_poly()));
   RatWeight zero_nu(G.rank());
   for (auto it=P0.begin(); it!=P0.end(); ++it)
     // loop over terms of |P0|
@@ -6726,7 +6726,7 @@ void standardrepk_standardize_wrapper(expression_base::level l)
   standardrepk::combination combo=khc.standardize(srk);
   const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (const auto& term : combo)
     // loop over standard parameters from |combo|
   {
@@ -6745,7 +6745,7 @@ void K_type_standardize_wrapper(expression_base::level l)
 @)
   auto combo=rc.finals_for(std::move(srk));
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (auto it=combo.begin(); not combo.at_end(it); ++it)
     // loop over finals from |combo|
     acc->val.add_term(rc.sr(it->first),Split_integer(it->second));
@@ -6767,7 +6767,7 @@ void KGP_sum_wrapper(expression_base::level l)
 @)
   auto combo=rc.KGP_sum(srk);
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (const auto& term : combo) // loop over K-type terms from |combo|
     acc->val.add_term(rc.sr(term.first),Split_integer(term.second));
   push_value(std::move(acc));
@@ -6784,7 +6784,7 @@ void K_type_denom_wrapper(expression_base::level l)
 @)
   auto combo=rc.K_type_formula(srk,-1);
 @/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
+    (new virtual_module_value(p->rf, SR_poly()));
   for (auto&& term : combo ) // loop over K-types from |combo|
   { auto finals=rc.finals_for(std::move(term.first));
     for (auto it=finals.begin(); not finals.at_end(it); ++it)
@@ -6822,7 +6822,7 @@ void deform_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   rt.make_dominant(p->val);
   const auto& gamma = p->val.gamma(); // after being made dominant
-  repr::SR_poly result;
+  SR_poly result;
   auto finals = rc.finals_for(p->val);
   for (auto it=finals.begin(); it!=finals.end(); ++it)
   {
@@ -6878,7 +6878,7 @@ void twisted_deform_wrapper(expression_base::level l)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
 					     singular_orbits,
                                              diff,p->val.gamma());
-  repr::SR_poly result;
+  SR_poly result;
   for (auto&& term : terms)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
@@ -6907,7 +6907,7 @@ void full_deform_wrapper(expression_base::level l)
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     res += p->rt().deformation(*it);
 @)
-  repr::SR_poly result;
+  SR_poly result;
   for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
@@ -6932,7 +6932,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
                     ,flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
 @)
-  repr::SR_poly result;
+  SR_poly result;
   for (const auto& t : res) // transform to |std::map|
     result.emplace(p->rt().K_type_sr(t.first),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
@@ -7088,7 +7088,7 @@ void finalize_extended_wrapper(expression_base::level l)
     return;
 @)
   auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
-  repr::SR_poly result;
+  SR_poly result;
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
                    ,it->second ? Split_integer(0,1) : Split_integer(1,0));

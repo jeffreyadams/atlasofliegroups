@@ -505,6 +505,7 @@ namespace atlas {
     using level = unsigned int; // for height statistic of K type and parameters
 
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
+    using SR_poly = Free_Abelian<StandardRepr,Split_integer>;
     class StandardReprMod; // represent an $X^*$-shift class of |StandardRepr|
     class Reduced_param; // even coarser representation, mod integral orthogonal
     class Repr_mod_entry;
@@ -513,6 +514,7 @@ namespace atlas {
     class Rep_table;	// storage class for |StandardRepr| compuations
   }
   using repr::StandardRepr;
+  using repr::SR_poly;
   using repr::StandardReprMod;
   using repr::Reduced_param;
   using repr::common_context;

@@ -375,8 +375,6 @@ class Rep_context
     (const K_repr::K_type_pol& P, const Weight& e,level cutoff) const;
 }; // |Rep_context|
 
-using SR_poly = Rep_context::poly;
-
 
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
