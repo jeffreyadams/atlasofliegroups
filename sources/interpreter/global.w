@@ -3205,6 +3205,7 @@ void sizeof_vector_wrapper(expression_base::level l);
 void sizeof_ratvec_wrapper(expression_base::level l);
 void sizeof_string_wrapper(expression_base::level l);
 void matrix_ncols_wrapper(expression_base::level l);
+void K_type_pol_size_wrapper(expression_base::level l);
 void virtual_module_size_wrapper(expression_base::level l);
 
 @ The definitions are straightforward.

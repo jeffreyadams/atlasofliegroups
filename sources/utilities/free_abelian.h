@@ -226,10 +226,18 @@ explicit
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   size_t size() const // only provides upper bound: zero terms are not ignored
   { size_t s=0;
-    for (auto it = L.wbegin(); not L.at_end(it); ++it) s += it->size();
+    for (auto it = L.wcbegin(); it != L.wcend(); ++it) s += it->size();
     return s;
   }
 
+  size_t count_terms() const // return true number of (nonzero) terms held
+  {
+    size_t count=0;
+    auto nonzero =  [](const term_type& t) { return not t.second.is_zero(); };
+    for (auto it = L.wcbegin(); it != L.wcend(); ++it)
+      count += std::count_if(it->begin(),it->end(), nonzero);
+    return count;
+  }
   self flatten () && // transform into single-poly form without zeros
   {
     poly result; result.reserve(size());

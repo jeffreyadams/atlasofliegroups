@@ -4930,27 +4930,6 @@ void K_type_theta_stable_wrapper(expression_base::level l)
 }
 
 
-@ Finally we install everything related to $K$-types.
-@< Install wrapper functions @>=
-install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
-install_function(unwrap_K_type_wrapper,@|"%","(KType->KGBElt,vec)");
-install_function(real_form_of_K_type_wrapper,@|"real_form"
-		,"(KType->RealForm)");
-install_function(K_type_is_standard_wrapper,@|"is_standard" ,"(KType->bool)");
-install_function(K_type_is_zero_wrapper,@|"is_zero" ,"(KType->bool)");
-install_function(K_type_is_semifinal_wrapper,@|"is_semifinal" ,"(KType->bool)");
-install_function(K_type_is_final_wrapper,@|"is_final" ,"(KType->bool)");
-install_function(K_type_eq_wrapper,@|"=", "(KType,KType->bool)");
-install_function(K_type_neq_wrapper,@|"!=", "(KType,KType->bool)");
-install_function(K_type_equivalent_wrapper,@|"equivalent"
-                ,"(KType,KType->bool)");
-install_function(K_type_dominant_wrapper,@|"dominant" ,"(KType->KType)");
-install_function(to_canonical_fiber_wrapper,@|"to_canonical_fiber"
-		,"(KType->KType)");
-install_function(K_type_normal_wrapper,@|"normal" ,"(KType->KType)");
-install_function(K_type_theta_stable_wrapper,@|"theta_stable"
-		,"(KType->KType)");
-
 @*1 Polynomials formed from $K$-types.
 %
 When working with $K$-types, and notably when produced by the deformation
@@ -4974,7 +4953,17 @@ the test for the sum being zero therefore mathematically correct.
 #include "free_abelian.h" // needed to make |SR_poly| a complete type
 
 @~Like for KGB elements, we maintain a shared pointer to the real form value, so
-that it will be assured to survive as long as $K$-types for it exist.
+that it will be assured to survive as long as $K$-types for it exist. Since
+|K_repr::K_type_pol| is a move-only type (it has a move constructor but no copy
+constructor), we only allow move construction of a |K_type_pol_value| from a
+|K_repr::K_type_pol|. In doing so we have the occasion to simplify the stored
+value by calling the |flatten| method, which takes its object by
+rvalue-reference and returns the object after modification. Thus many
+polynomials produced by built-in functions will start off without zero terms,
+but the user may perform operations like adding single terms which can be
+realised at less cost if we occasionally allow zero terms to be created in the
+internal representation; therefore neither flattened form nor absence of zero
+terms will not be a class invariant for |K_type_pol_value|.
 
 @< Type definitions @>=
 struct K_type_pol_value : public value_base
@@ -4982,7 +4971,7 @@ struct K_type_pol_value : public value_base
   K_repr::K_type_pol val;
 @)
   K_type_pol_value(const shared_real_form& form, K_repr::K_type_pol&& v)
-  : rf(form), val(std::move(v)) @+{}
+  : rf(form), val(std::move(v).flatten()) @+{}
   ~K_type_pol_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -5010,6 +4999,130 @@ combinations of $K$-types.
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
 {@; print_K_type_pol(out,val); }
+
+@*2 Functions for $K$-type polynomials.
+%
+To start off a |K_type_pol_value|, one usually takes an empty sum, but one needs
+to specify a real form to fill the |rf| field. The information allows us to
+extract the real form from a $K$-type polynomial even if it is empty. We allow
+testing the number of terms of the sum, and directly testing the sum to be
+empty.
+
+Testing two $K$-type polynomials for equality is also implemented. This could be
+done by subtracting and then testing the result for being zero (empty), but it
+is more efficient to just traverse both in parallel and stop once a difference
+is found.
+
+@< Local function def...@>=
+void K_type_pol_wrapper(expression_base::level l)
+{ shared_real_form rf = get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<K_type_pol_value> @| (rf,K_repr::K_type_pol()));
+}
+@)
+void real_form_of_K_type_pol_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(m->rf);
+}
+@)
+void K_type_pol_unary_eq_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(m->val.is_zero()));
+}
+
+void K_type_pol_unary_neq_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(not m->val.is_zero()));
+}
+
+@)
+void K_type_pol_eq_wrapper(expression_base::level l)
+{ shared_K_type_pol n = get<K_type_pol_value>();
+  shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(whether(false));
+      return; }
+  push_value(whether
+      (mit==m->val.end() and nit==n->val.end()));
+}
+void K_type_pol_neq_wrapper(expression_base::level l)
+{ shared_K_type_pol n = get<K_type_pol_value>();
+  shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(whether(true));
+      return; }
+  push_value(whether
+    (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+@ This function must be global, it is declared in the header file \.{global.h}.
+
+@< Function definitions @>=
+void K_type_pol_size_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.count_terms()));
+}
+
+
+@ We allow implicitly converting a $K$-type to a $K$-type polynomial, which
+involve expansion into \emph{final} $K$-types (there can be zero, one, or more
+of them, and they can have positive or negative integer coefficients), to
+initiate the invariant that only (standard) final $K$-types (with dominant
+$(1+\theta_x)\lambda$) can be stored in a |K_type_pol_value|.
+
+@< Local function def...@>=
+void K_type_to_poly()
+{ own_K_type p = get_own<K_type_value>();
+  const auto& rf=p->rf;
+  auto final_K_types = rf->rc().finals_for(std::move(p->val));
+  K_repr::K_type_pol result;
+  for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
+    result.add_term(std::move(it->first),Split_integer(it->second));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+}
+
+@ Finally we install everything related to $K$-types.
+@< Install wrapper functions @>=
+install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
+install_function(unwrap_K_type_wrapper,@|"%","(KType->KGBElt,vec)");
+install_function(real_form_of_K_type_wrapper,@|"real_form"
+		,"(KType->RealForm)");
+install_function(K_type_is_standard_wrapper,@|"is_standard" ,"(KType->bool)");
+install_function(K_type_is_zero_wrapper,@|"is_zero" ,"(KType->bool)");
+install_function(K_type_is_semifinal_wrapper,@|"is_semifinal" ,"(KType->bool)");
+install_function(K_type_is_final_wrapper,@|"is_final" ,"(KType->bool)");
+install_function(K_type_eq_wrapper,@|"=", "(KType,KType->bool)");
+install_function(K_type_neq_wrapper,@|"!=", "(KType,KType->bool)");
+install_function(K_type_equivalent_wrapper,@|"equivalent"
+                ,"(KType,KType->bool)");
+install_function(K_type_dominant_wrapper,@|"dominant" ,"(KType->KType)");
+install_function(to_canonical_fiber_wrapper,@|"to_canonical_fiber"
+		,"(KType->KType)");
+install_function(K_type_normal_wrapper,@|"normal" ,"(KType->KType)");
+install_function(K_type_theta_stable_wrapper,@|"theta_stable"
+		,"(KType->KType)");
+install_function(K_type_pol_wrapper,@|"null_K_module","(RealForm->KTypePol)");
+install_function(real_form_of_K_type_pol_wrapper,@|"real_form"
+		,"(KTypePol->RealForm)");
+install_function(K_type_pol_unary_eq_wrapper,@|"=","(KTypePol->bool)");
+install_function(K_type_pol_unary_neq_wrapper,@|"!=","(KTypePol->bool)");
+install_function(K_type_pol_eq_wrapper,@|"=","(KTypePol,KTypePol->bool)");
+install_function(K_type_pol_neq_wrapper,@|"!=","(KTypePol,KTypePol->bool)");
+install_function(K_type_pol_size_wrapper,@|"#","(KTypePol->int)");
 
 @*1 Standard module parameters.
 %
@@ -6386,26 +6499,32 @@ void virtual_module_size_wrapper(expression_base::level l)
 }
 
 
-@ We allow implicitly converting a $K$-type to a module parameter (extending the
-value by setting $\nu=0$), and either a $K$-type or parameter to a virtual
-module. The two latter involve expansion into ``final'' elements
-conversion by the |Rep_context::expand_final| method to \emph{final} parameters
-(there can be zero, one, or more of them, and they can have positive or negative
-integer coefficients), to initiate the invariant that only standard nonzero
-final parameters with dominant $\gamma$ can be stored in a
-|virtual_module_value|. The conversion from $K$-type directly to virtual module
-uses the |finals_for| method for $K$-types followed by conversion of individual
-final $K$-types to module parameters, both because this might be a bit more
-efficient and because it allows to check commutativity with the other possible
-conversion, passing to a module parameter first and then performing
-|expand_finals|.
+@ We allow implicitly converting a module parameter to a $K$-type (restricting
+to $K$, and therefore forgetting $\nu$), as well as to a virtual module. The
+latter involves expansion by the |Rep_context::expand_final| method
+to \emph{final} parameters (there can be zero, one, or more of them, and they
+can have positive or negative integer coefficients), to initiate the invariant
+that only (dominant, standard, nonzero) final parameters can be stored in a
+|virtual_module_value|. Finally virtual modules can be implicitly converted to
+$K$-type polynomials (restricting each term to $K$) and
+module parameters directly to virtual module $K$-type polynomials, the
+conversion doing first the restriction to $K$ and then the expansion into
+finals. The other composition of implicit conversions, expanding to a virtual
+module first, would give the same result but would be a bit less efficient.
+It may be noted that if we had defined implicit conversions from $K$-types to
+module parameters, setting $\nu=0$, and similarly for their polynomials, then
+the corresponding commutation of conversions would not hold, since the expansion
+of a non standard module parameter with $\nu=0$ can have terms with
+nonzero~$\nu$. It is for this reason that these conversion are not defined, by
+the principle that implicit conversions should correspond to reinterpretations
+of values without any subtleties of surprises.
 
 @< Local function def...@>=
-void K_type_to_param()
-{ shared_K_type p = get<K_type_value>();
+void param_to_K_type()
+{ shared_module_parameter p = get<module_parameter_value>();
   const auto& rf=p->rf;
-  push_value(std::make_shared<module_parameter_value> @|
-    (rf,rf->rc().sr(p->val)));
+  push_value(std::make_shared<K_type_value> @|
+    (rf,rf->rc().sr_K(p->val)));
 }
 @)
 void param_to_poly()
@@ -6414,15 +6533,27 @@ void param_to_poly()
   push_value(std::make_shared<virtual_module_value> @|
     (rf,rf->rc().expand_final(p->val)));
 }
-
-void K_type_to_poly()
-{ auto p = get_own<K_type_value>();
+@)
+void param_poly_to_K_type_poly()
+{ shared_virtual_module p = get<virtual_module_value>();
   const auto& rf=p->rf;
-  auto final_K_types = rf->rc().finals_for(std::move(p->val));
-  SR_poly result;
+  K_repr::K_type_pol result;
+  for (const auto& term : p->val)
+  { auto finals = rf->rc().finals_for(rf->rc().sr_K(term.first));
+    for (auto it = finals.begin(); not finals.at_end(it); ++it)
+       result.add_term(std::move(it->first),term.second*it->second);
+  }
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+}
+@)
+void param_to_K_type_poly()
+{ shared_module_parameter p = get<module_parameter_value>();
+  const auto& rf=p->rf;
+  auto final_K_types = rf->rc().finals_for(rf->rc().sr_K(p->val));
+  K_repr::K_type_pol result;
   for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
-    result.add_term(rf->rc().sr(it->first),Split_integer(it->second));
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+    result.add_term(std::move(it->first),Split_integer(it->second));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
 @ There also is function to extract the coefficient (multiplicity) of a given
@@ -7915,9 +8046,11 @@ Finally we collect here all coercions related to specific Atlas types.
   coercion(rf_type,rd_type,"RdRf",real_form_to_root_datum_coercion);
   coercion(int_type,split_type,"SpI",int_to_split_coercion);
   coercion(int_int_type,split_type,"Sp(I,I)",pair_to_split_coercion);
-  coercion(KType_type,param_type,"PK",K_type_to_param);
+  coercion(KType_type,KTypePol_type,"KpolK",K_type_to_poly);
+  coercion(param_type,KType_type,"KP",param_to_K_type);
   coercion(param_type,param_pol_type,"PolP",param_to_poly);
-  coercion(KType_type,param_pol_type,"PolK",K_type_to_poly);
+  coercion(param_pol_type,KTypePol_type,"KpolPol",param_poly_to_K_type_poly);
+  coercion(param_type,KTypePol_type,"KpolP",param_to_K_type_poly);
 }
 
 

@@ -1639,6 +1639,8 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
 set W_cross ([int] w,Param p) = Param:
   for s in w ~ do p:=cross(s,p) od; p
 
+set param(KType t)=Param:  let (x,lr)=%t in param(x,lr,null(#lr))
+
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
 }

@@ -331,6 +331,7 @@ KGBElt		element of the set K\G/B associated to some RealForm value
 Block		block for a pair of RealForm values (at dual inner classes)
 Split		"split integer" a + b.s where s is "split unit" with s^2=1
 KType		value for standard K-representation or its irreducible quotient
+KTypePol	Split-linear combination of final K-types
 Param		value representing a standard module or its irreducible quotient
 ParamPol	virtual module with signature (Param values with Split coefs)
 
@@ -702,11 +703,12 @@ Here is a list of all implicit type conversions
   InnerClass -> RootDatum (inheritance)
   RealForm   -> InnerClass (inheritance)
   RealForm   -> RootDatum (inheritance)
-  KType      -> Param    (parameter is created with nu=0)
+  KType	     -> KTypePol (K-type is converted to final K-type(s) first)
+  Param	     -> KType    (the component 'nu' is forgotten)
   Param	     -> ParamPol (parameter is converted to final parameter(s) first)
-  KType      -> ParamPol (K type is converted to finals, which extend nu=0)
+  Param      -> KTypePol (composition of conversions Param->KType->KTypePol)
 
-The one-directional conversions int->rat and string->LieType are mainly a
+The unidirectional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:
 
   atlas> 3+1/7       { same as 3/1+1/7 }
