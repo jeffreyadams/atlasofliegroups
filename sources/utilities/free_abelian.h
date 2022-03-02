@@ -150,23 +150,12 @@ public:
 explicit
   Free_Abelian_light(const T& p, Compare c=Compare()) // monomial
   : Compare(c), L { { std::make_pair(p,C(1L)) } } {}
-  Free_Abelian_light(T&& p, Compare c=Compare()) // monomial
-  : Compare(c), L()
-  { poly mononom; // we cannot build a single-term vector from a moved argument
-    mononom.emplace_back(std::move(p),C(1L)); // manually add one term to empty
-    L.push_front(std::move(mononom));
-  }
+explicit
+  Free_Abelian_light(T&& p, Compare c=Compare()); // move construct monomial
   Free_Abelian_light(const T& p,C m, Compare c=Compare()) // mononomial
   : Compare(c), L { { std::make_pair(p,m) } }
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
-  Free_Abelian_light(T&& p,C m, Compare c=Compare()) // mononomial
-    : Compare(c), L()
-  { if (m!=C(0)) // ensure absence of terms with zero coefficient
-    { poly mononom; // for reasons as above, start with empty vector, and
-      mononom.emplace_back(std::move(p),std::move(m)); // manually add a term
-      L.push_front(std::move(mononom));
-    }
-  }
+  Free_Abelian_light(T&& p,C m, Compare c=Compare()); // mononomial
 
   Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
 
@@ -222,6 +211,8 @@ explicit
   self& operator-=(self&& p) { return add_multiple(std::move(p),C(-1)); }
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
+  void clear_coefficient (const T& t); // remove |t| by clearing its coefficient
+  void set_coefficient (const T& t, C m); // make coefficient of |t| become |m|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   size_t size() const // only provides upper bound: zero terms are not ignored
@@ -258,6 +249,7 @@ explicit
   using triplist = containers::simple_list<triple>;
 
   class const_iterator
+    : public std::iterator<std::forward_iterator_tag, term_type>
   {
     friend self;
   protected:
@@ -286,6 +278,37 @@ explicit
     void skip_zeros(); // advance until no longer pointing at zero term
   }; // |class const_iterator|
 
+  class const_reverse_iterator
+    : public std::iterator<std::forward_iterator_tag, term_type>
+  {
+    friend self;
+  protected:
+    triplist stack;
+    Compare less;
+  public:
+    const_reverse_iterator(triplist&& s,Compare c)
+    : stack(std::move(s)), less(c) {}
+
+    bool has_ended() const { return stack.empty(); }
+    bool operator== (const const_reverse_iterator& other)
+    { return other.stack.empty() ? stack.empty()
+	: not stack.empty() and stack.front().min==other.stack.front().min;
+    }
+    bool operator!= (const const_reverse_iterator& other)
+    { return other.stack.empty() ? not stack.empty()
+	: stack.empty() or stack.front().min!=other.stack.front().min;
+    }
+
+    const term_type& operator*() const  { return *stack.front().min; }
+    const term_type* operator->() const { return &operator*(); }
+
+    const_reverse_iterator& operator++(); // advance (backwards) to nonzero term
+
+  private:
+    bool pop(typename triplist::iterator top); // workhorse function for |++|
+    void skip_zeros(); // advance backwards until no longer pointing at zero term
+  }; // |class const_reverse_iterator|
+
   struct iterator : public const_iterator
   {
     iterator(triplist&& s,Compare c) : const_iterator(std::move(s),c) {}
@@ -294,13 +317,30 @@ explicit
     iterator& operator++() { const_iterator::operator++(); return *this; }
   }; // |struct iterator|
 
+  struct reverse_iterator : public const_reverse_iterator
+  {
+    reverse_iterator(triplist&& s,Compare c)
+      : const_reverse_iterator(std::move(s),c) {}
+    term_type& operator*() const  { return * this->stack.front().min; }
+    term_type* operator->() const { return &operator*(); }
+    reverse_iterator& operator++()
+    { const_reverse_iterator::operator++(); return *this; }
+  }; // |struct iterator|
+
   iterator begin(); // set up initial iterator and |skip_zeros|
   const_iterator begin() const { return const_cast<self*>(this)->begin(); }
   iterator end() { return {triplist(),cmp()}; } // with empty |stack|
-  const_iterator end() const { return {triplist(),cmp()}; } // with empty |stack|
+  const_iterator end() const { return {triplist(),cmp()}; }
+
+  reverse_iterator rbegin(); // set up initial reverse iterator and |skip_zeros|
+  const_reverse_iterator rbegin() const
+  { return const_cast<self*>(this)->rbegin(); }
+  reverse_iterator rend() { return {triplist(),cmp()}; } // with empty |stack|
+  const_reverse_iterator rend() const { return {triplist(),cmp()}; }
 
 private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
+  const C* find(const T& e) const; // |const version|, returns ptr to |const|
   void insert(poly&& v); // incorporate |v|, which has all disjoint exponents
 
 }; // |class Free_Abelian_light|
