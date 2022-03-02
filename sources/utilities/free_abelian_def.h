@@ -99,6 +99,23 @@ Monoid_Ring<T,C,Compare>
 //				|Free_Abelian_light|
 
 template<typename T, typename C, typename Compare>
+  Free_Abelian_light<T,C,Compare>::Free_Abelian_light(T&& p, Compare c)
+  : Compare(c), L()
+  { poly mononom; // we cannot build a single-term vector from a moved argument
+    mononom.emplace_back(std::move(p),C(1L)); // manually add one term to empty
+    L.push_front(std::move(mononom));
+  }
+
+template<typename T, typename C, typename Compare>
+  Free_Abelian_light<T,C,Compare>::Free_Abelian_light(T&& p,C m, Compare c)
+  : Compare(c), L()
+  { if (m!=C(0)) // ensure absence of terms with zero coefficient
+    { poly mononom; // for reasons as above, start with empty vector, and
+      mononom.emplace_back(std::move(p),std::move(m)); // manually add a term
+      L.push_front(std::move(mononom));
+    }
+  }
+template<typename T, typename C, typename Compare>
   Free_Abelian_light<T,C,Compare>::Free_Abelian_light(poly&& vec, Compare c)
   : Compare(c), L()
 {
@@ -128,18 +145,26 @@ template<typename T, typename C, typename Compare>
   return nullptr; // if nothing was found, indicate this by a null pointer
 }
 
-// find coefficient of |e| in |*this|
+// find the coefficient of |e| in |*this|
 template<typename T, typename C, typename Compare>
-  C Free_Abelian_light<T,C,Compare>::operator[] (const T& e) const
-{ // we redo the work of |find|, which we cannot call because of |const|ness
+  const C* Free_Abelian_light<T,C,Compare>::find(const T& e) const
+{
   auto comp = [this](const term_type& t, const T& e){ return cmp()(t.first,e); };
   for (auto L_it = L.wbegin(); not L.at_end(L_it); ++L_it)
   {
     auto it = std::lower_bound(L_it->begin(),L_it->end(),e,comp);
     if (it != L_it->end() and not cmp()(e,it->first))
-      return it->second;
+      return &it->second;
   }
-  return C(0);
+  return nullptr; // if nothing was found, indicate this by a null pointer
+}
+
+// find coefficient of |e| in |*this|
+template<typename T, typename C, typename Compare>
+  C Free_Abelian_light<T,C,Compare>::operator[] (const T& e) const
+{
+  auto p = find(e);
+  return p==nullptr ? C(0) : *p;
 }
 
 // incorporate |v|, its exponents are disjoint from $L$
@@ -206,7 +231,7 @@ template<typename T, typename C, typename Compare>
   poly v; v.reserve(p.size());
   for (const auto& entry : p) // flatten |p| virtually by iteration over it
   {
-    C c = entry.second*m;
+    C c = entry.second*m; // might be zero, even though both factors are nonzero
     if (c != C(0))
     {
       C* ptr = find(entry.first);
@@ -282,13 +307,67 @@ template<typename T, typename C, typename Compare>
   return *this;
 }
 
+/* for reverse iteration, the |triple| contained in a |reverse_iterator| are
+   ordinary (non reverse) vector iterators, but |cur| traverses backwards, and
+   |end| is actually the iterator from |begin()|. The convention will be that
+   |cur| and |min| are dereferencable (no need to apply |std::prev| to them
+   first when dereferencing), which means that for instance when |cur==end|, it
+   is not yet out-of-range; when further incrementing would make |cur|
+   out-of-range, the containing |triple| gets popped of |stack|, so no problem
+   with an illegal iterator value arises.
+*/
+template<typename T, typename C, typename Compare>
+  typename Free_Abelian_light<T,C,Compare>::reverse_iterator
+    Free_Abelian_light<T,C,Compare>::rbegin()
+{
+  containers::simple_list<poly*> ptrs; // pointers to entries of |L|, reversed
+  for (auto it=L.wbegin(); not L.at_end(it); ++it)
+    assert(not it->empty()),ptrs.push_front(&*it);
+
+  triplist stack;
+  for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
+  {
+    auto lead = std::prev((*it)->end()); // to trailing term of current poly
+    typename poly::iterator max = // make it refer to maximum seen so far:
+      stack.empty() or cmp()(stack.front().min->first,lead->first)
+      ? lead : stack.front().min;
+    stack.emplace_front(max,lead,(*it)->begin());
+  }
+  reverse_iterator result(std::move(stack),cmp());
+  result.skip_zeros();
+  return result;
+}
+
+// while here |skip_zeros| moves backwards, this is hidden in the |pop| method
+template<typename T, typename C, typename Compare>
+  void Free_Abelian_light<T,C,Compare>::const_reverse_iterator::skip_zeros()
+{
+  while (not stack.empty() and stack.front().min->second==C(0))
+    pop(stack.begin()); // remove a term with zero coefficient, and continue
+}
+
+// the same remark applies to |operator++|, which in fact moves backwards
+template<typename T, typename C, typename Compare>
+  auto Free_Abelian_light<T,C,Compare>::const_reverse_iterator::operator++()
+  -> const_reverse_iterator&
+{
+  assert(not stack.empty());
+  while (not pop(stack.begin()) // does the work; returns whether stack emptied
+	 and stack.front().min->second==C(0)) {} // continue while zero appears
+  return *this;
+}
+
+// The |pop| method moves |min| to the next position, possibly increasing |cur|
+// It an argument |it| originally equal to |stack.begin()|
+// This allows it to call itself recusively for a tail portion of |stack|
+// The return value signal whether nothing was left to point |min| to.
 template<typename T, typename C, typename Compare>
   bool Free_Abelian_light<T,C,Compare>::const_iterator::pop
     (typename triplist::iterator it)
 {
   assert(not stack.at_end(it)); // otherwise one should not call |pop|
   const auto nit = std::next(it); // so this is well defined
-  if (stack.at_end(nit))
+  if (stack.at_end(nit)) // then just one vector remains to iterate in
   {
     if ((it->min = ++it->cur) != it->end)
       return false; // one unfinished iteration remains here
@@ -306,9 +385,43 @@ template<typename T, typename C, typename Compare>
   else // the minumum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
       return it->min=it->cur,false; // one unfinished iteration remains here
+
+  // if we arrive here, increment was done inside the recursive call; what
+  // remains to do is update |it->min| to "minimum" of |it->cur| and |nit->min|
   it->min = less(it->cur->first,nit->min->first) ? it->cur : nit->min;
   return false; // at least two more unfinished iterations remain here
-} // |pop|
+} // |const_iterator::pop|
+
+template<typename T, typename C, typename Compare>
+  bool Free_Abelian_light<T,C,Compare>::const_reverse_iterator::pop
+    (typename triplist::iterator it)
+{
+  assert(not stack.at_end(it)); // otherwise one should not call |pop|
+  const auto nit = std::next(it); // so this is well defined
+  if (stack.at_end(nit)) // then just one vector remains to iterate in
+  {
+    if (it->cur!=it->end) // the we can back up within this last vector
+      return (it->min = --it->cur), false; // do that; report not yet finished
+    stack.erase(it); // this clears |stack| after |it|
+    return true; // indicate iteration has terminated; no more term found
+  }
+  if (it->min==it->cur) // iterator comparison: whether minimum came from |*it|
+  { // if so back up iteration in |*it|
+    if (it->cur == it->end) // then we have exhausted our current vector
+    { // remove our current vector; remainder already refers to next candidate
+      stack.erase(it); // remove empty font node, no |it->min| to set
+      return false; // return whether the rest is absent too, which it isn't
+    }
+  }
+  else // the minumum came from further down the list, recurse
+    if (pop(nit)) // if so, |*it| is now the last valid node
+      return (it->min= --it->cur),false; // anx unfinished iteration remains here
+
+  // if we arrive here, decrement was done inside the recursive call;; what
+  // remains to do is update |it->min| to "maximum" of |it->cur| and |nit->min|
+  it->min = less(nit->min->first,it->cur->first) ? it->cur : nit->min;
+  return false; // at least two more unfinished iterations remain here
+} // |const_reverse_iterator::pop|
 
   } // |namespace free_abelian|
 } // |namespace atlas|
