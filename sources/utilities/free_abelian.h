@@ -174,6 +174,10 @@ explicit
   self& operator+=(const T& p) { return add_term(p,C(1)); }
   self& operator-=(const T& p) { return add_term(p,C(-1)); }
 
+  self& add_term(T&& p, C m);
+  self& operator+=(T&& p) { return add_term(std::move(p),C(1)); }
+  self& operator-=(T&& p) { return add_term(std::move(p),C(-1)); }
+
   self& add_multiple(const self& p, C m) &;
   self& add_multiple(self&& p, C m) &;
   self&& add_multiple(const self& p, C m) &&
@@ -204,6 +208,8 @@ explicit
   self& operator-=(self&& p) { return add_multiple(std::move(p),C(-1)); }
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
+  void clear_coefficient (const T& t); // remove |t| by clearing its coefficient
+  void set_coefficient (const T& t, C m); // make coefficient of |t| become |m|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   size_t size() const // only provides upper bound: zero terms are not ignored

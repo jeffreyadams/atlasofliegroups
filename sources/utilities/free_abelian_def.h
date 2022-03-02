@@ -120,7 +120,7 @@ template<typename T, typename C, typename Compare>
   : Compare(c), L()
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
-    (vec.begin(),vec.end(),[](term_type x){return x.second==C(0);});
+    (vec.begin(),vec.end(),[](const term_type& x){return x.second==C(0);});
   if (it==vec.begin())
     return; // nothing left, so leave |L| empty
   vec.erase(it,vec.end()); // otherwise collect the garbage, reducing size
@@ -165,6 +165,24 @@ template<typename T, typename C, typename Compare>
 {
   auto p = find(e);
   return p==nullptr ? C(0) : *p;
+}
+
+template<typename T, typename C, typename Compare>
+  void Free_Abelian_light<T,C,Compare>::clear_coefficient (const T& e)
+{
+  auto p = find(e);
+  if (p!=nullptr)
+    *p = C(0);
+}
+
+template<typename T, typename C, typename Compare>
+  void Free_Abelian_light<T,C,Compare>::set_coefficient (const T& e, C m)
+{
+  auto p = find(e);
+  if (p==nullptr)
+    add_term(e,m);
+  else
+    *p = m;
 }
 
 // incorporate |v|, its exponents are disjoint from $L$
@@ -219,6 +237,21 @@ template<typename T, typename C, typename Compare>
     *ptr += m;
   else
     insert(poly{term_type(e,m)});
+  return *this;
+}
+
+template<typename T, typename C, typename Compare>
+  Free_Abelian_light<T,C,Compare>&
+    Free_Abelian_light<T,C,Compare>::add_term(T&& e, C m)
+{
+  C* ptr = find(e);
+  if (ptr!=nullptr)
+    *ptr += m;
+  else
+  { poly mononom; // we cannot build a single-term vector from a moved argument
+    mononom.emplace_back(std::move(e),std::move(m)); // so manually add one term
+    insert(std::move(mononom));
+  }
   return *this;
 }
 
