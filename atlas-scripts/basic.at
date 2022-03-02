@@ -1963,7 +1963,7 @@ set pad (string s,int width) = string: l_adjust(width,s)
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
 }
-set monomials (ParamPol P) = [Param]: for c@p in P do p od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}

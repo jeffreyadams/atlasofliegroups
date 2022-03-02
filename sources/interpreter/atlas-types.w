@@ -5095,6 +5095,31 @@ void K_type_to_poly()
   push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
+@ There also is function to extract the coefficient (multiplicity) of a given
+$K$-type in a $K$-type polynomial. However, it is bound to the array subscription
+syntax, and therefore does not have a wrapper function. Instead, it is
+implemented the \.{axis} module, as the |evaluate| method of the
+|K_Type_pol_coefficient| class derived from |subscr_base|.
+
+In a subscription of a $K$-type polynomial by a $K$-type, the arguments are not
+initially on the stack, but come from evaluating the |array| and |index| fields
+of the |K_type_coefficient| expression.
+
+@h "axis.h" // for |module_coefficient|
+
+@< Function def... @>=
+void K_type_pol_coefficient::evaluate(level l) const
+{ shared_K_type_pol m = (array->eval(),get<K_type_pol_value>());
+  shared_K_type p = (index->eval(),get<K_type_value>());
+  if (m->rf!=p->rf and m->rf->val!=p->rf->val)
+    // test like |real_form_new_wrapper| does
+    throw runtime_error @|
+      ("Real form mismatch when subscripting KTypePol value");
+  test_final(*p,"In subscription of KTypePol value");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<split_int_value>(m->val[p->val]));
+}
+
 @ Finally we install everything related to $K$-types.
 @< Install wrapper functions @>=
 install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
@@ -5575,7 +5600,26 @@ void test_standard(const module_parameter_value& p, const char* descr)
   os << "\n  Parameter not standard, negative on coroot #" << witness;
   throw runtime_error(os.str());
 }
-
+@)
+void test_final(const K_type_value& p, const char* descr)
+{ if (p.rc().is_final(p.val))
+    return;
+  std::string reason;
+  if (not p.rc().is_standard(p.val))
+    reason = "not standard";
+  if (not p.rc().is_dominant(p.val))
+    reason = "not dominant";
+  else if (not p.rc().is_nonzero(p.val))
+    reason = "zero";
+  else if (not p.rc().is_normal(p.val))
+    reason = "not normal";
+  else if (p.rc().is_semifinal(p.val))
+    reason = "not semifinal";
+  else throw logic_error("Unknown obstruction to K-type finality");
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+@/os << "\n  K-type is " << reason;
+  throw runtime_error(os.str());
+}
 void test_final(const module_parameter_value& p, const char* descr)
 { RootNbr witness; std::string reason;
   bool OK = p.rc().is_dominant(p.val,witness);

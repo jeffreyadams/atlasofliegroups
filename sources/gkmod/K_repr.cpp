@@ -110,7 +110,7 @@ bool Rep_context::is_normal(const K_repr::K_type& z) const
   return true;
 } // |is_normal|
 
-// absence of any singular descents
+// dominance of $(1+theta_x)\lambda$ and absence of any singular descents
 bool Rep_context::is_final(const K_repr::K_type& z) const
 {
   const auto& rd = root_datum();
