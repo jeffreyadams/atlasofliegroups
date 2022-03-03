@@ -3681,7 +3681,6 @@ from a string).
 bool subscr_base::assignable(subscr_base::sub_type t)
 { switch (t)
   { case ratvec_entry: case string_char:
-    case K_type_poly_term: case mod_poly_term:
     case not_so: return false;
     default: return true;
   }
@@ -7184,6 +7183,14 @@ void component_assignment<reversed>::assign
     case subscr_base::matrix_column:
   @/@< Replace column at |index| in matrix |loc| by value on stack @>
   @+break;
+    case subscr_base::K_type_poly_term:
+  @/@< Replace coefficient at |index| in $K$-type polynomial |loc|
+       by value on stack @>
+  @+break;
+    case subscr_base::mod_poly_term:
+  @/@< Replace coefficient at |index| in virtual module |loc|
+       by value on stack @>
+  @+break;
   default: {} // remaining cases are eliminated in type analysis
   }
 }
@@ -7271,6 +7278,36 @@ for matching column length.
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);
     // copy value of |int_Vector| into the matrix
+  if (lev==no_value)
+    execution_stack.pop_back(); // pop the vector if result not needed
+}
+
+@ For |K_type_pol_value| coefficient assignments the type of the aggregate
+object is $K$-type polynomial, and the value assigned a split integer. The
+latter certainly needs no expansion, so we either leave it on the stack, or
+remove it if the value of the component assignment expression is not used.
+
+@< Replace coefficient at |index| in $K$-type polynomial |loc|... @>=
+{ index->eval();
+  auto t = get<K_type_value>();
+  auto* poly = uniquify<K_type_pol_value>(aggregate);
+  const auto& top = force<split_int_value>(execution_stack.back().get());
+  poly->assign_coef(*t,top->val);
+  if (lev==no_value)
+    execution_stack.pop_back(); // pop the vector if result not needed
+}
+
+@ For |virtual_module_value| coefficient assignments the type of the aggregate
+object is ``virtual module'', and the value assigned a split integer, again
+needing no expansion. The main differences between this module and the previous
+one are hidden in the respective |assign_coef| methods.
+
+@< Replace coefficient at |index| in virtual module |loc|... @>=
+{ index->eval();
+  auto t = get<module_parameter_value>();
+  auto* poly = uniquify<virtual_module_value>(aggregate);
+  const auto& top = force<split_int_value>(execution_stack.back().get());
+  poly->assign_coef(*t,top->val);
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }

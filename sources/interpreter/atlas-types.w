@@ -4976,11 +4976,12 @@ struct K_type_pol_value : public value_base
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "module $K$-type"; }
-  K_type_pol_value (const K_type_pol_value& v) = default;
-    // we use |get_own<K_type_pol_value>|
+  K_type_pol_value (const K_type_pol_value& v);
+    // we use |uniquify<K_type_pol_value>|
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
   Rep_table& rt() const @+{@; return rf->rt(); }
+  void assign_coef(const K_type_value& t, const Split_integer& c);
 };
 @)
 typedef std::unique_ptr<K_type_pol_value> K_type_pol_ptr;
@@ -4999,6 +5000,25 @@ combinations of $K$-types.
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
 {@; print_K_type_pol(out,val); }
+
+@ For once we need a non-defaulted copy constructor, because |K_repr::K_type|
+has no copy constructor, providing instead a method |copy| that must be
+explicitly called (this was designed in order to better control the places where
+actual copies must be made). Since this is a component type buried inside the
+container |K_repr::K_type_pol| we copy the individual terms from the |val| field
+first into a vector |accumulator|, and then move-construct a new
+|K_repr::K_type_pol| (which has a constructor for that purpose) from the vector.
+
+@< Function def...@>=
+K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
+: rf(v.rf), val()
+{
+  K_repr::K_type_pol::poly accumulator;
+  accumulator.reserve(v.val.size());
+  for (const auto& term : v.val)
+    accumulator.emplace_back(term.first.copy(),term.second);
+  val = K_repr::K_type_pol(std::move(accumulator),v.val.cmp());
+}
 
 @*2 Functions for $K$-type polynomials.
 %
@@ -5118,6 +5138,25 @@ void K_type_pol_coefficient::evaluate(level l) const
   test_final(*p,"In subscription of KTypePol value");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<split_int_value>(m->val[p->val]));
+}
+
+@ For modifying an individual coefficient in a |K_type_pol_value| (possibly
+adding or removing a term in the process), a method |assign_coef| is provided.
+It will be called from the \.{axis} compilation unit (the programming language
+interpreter). The implementation is quite simple; the only subtlety is that for
+the probably common case of setting a coefficient to~$0$, a call to the method
+|clear_coefficient| is made, which is more appropriate for this purpose than
+calling |set_coefficient| with a zero value.
+
+@< Function def...@>=
+void K_type_pol_value::assign_coef
+  (const K_type_value& t, const Split_integer& c)
+{
+  test_final(t,"In coefficient assignment for KTypePol value");
+  if (c.is_zero())
+    val.clear_coefficient(t.val);
+  else
+    val.set_coefficient(t.val.copy(),c);
 }
 
 @ Finally we install everything related to $K$-types.
@@ -6445,6 +6484,7 @@ struct virtual_module_value : public value_base
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
   Rep_table& rt() const @+{@; return rf->rt(); }
+  void assign_coef(const module_parameter_value& t, const Split_integer& c);
 };
 @)
 typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
@@ -6626,6 +6666,29 @@ void module_coefficient::evaluate(level l) const
   p->rc().make_dominant(sr);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<split_int_value>(m->val[sr]));
+}
+
+@ For modifying an individual coefficient in a |virtual_module_value| (possibly
+adding or removing a term in the process), a method |assign_coef| is provided.
+It will be called from the \.{axis} compilation unit (the programming language
+interpreter). The implementation is similar to that of |Free_Abelian::add_term|,
+using the |std:map| interface from which |Free_Abelian| was derived; as is the
+case there a term can get created, modified, or deleted, of nothing can happen
+at all,
+
+@< Function def...@>=
+void virtual_module_value::assign_coef
+  (const module_parameter_value& t, const Split_integer& c)
+{
+  test_final(t,"In coefficient assignment for ParamPol value");
+  auto interval = val.equal_range(t.val);
+  if (interval.first==interval.second) // no term present
+  { if (not c.is_zero())
+    val.insert(interval.first,std::make_pair(t.val,c));
+  }
+  else if (c.is_zero())
+    val.erase(interval.first);
+  else interval.first->second = c;
 }
 
 @ The main operations for virtual modules are addition and subtraction of

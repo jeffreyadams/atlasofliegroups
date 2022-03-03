@@ -1639,7 +1639,14 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
 set W_cross ([int] w,Param p) = Param:
   for s in w ~ do p:=cross(s,p) od; p
 
-set param(KType t)=Param:  let (x,lr)=%t in param(x,lr,null(#lr))
+set param (KType t)= Param: let (x,lr)=%t in param(x,lr,null(#lr))
+set x (KType t) = KGBElt: let (x,)=%t in x
+set lambda_rho (KType t) = vec: let (,lr)=%t in lr
+set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+set real_form (KType t) = RealForm: t.x.real_form
+
+set param_pol (KTypePol P) = ParamPol:
+   null_module(P.real_form) + for c@t in P do (c,param(t)) od
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
@@ -1651,7 +1658,7 @@ set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
 
 { set parameter ensuring (upon sucess) that the infinitesimal char. is |gamma|;
   achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
-set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
+set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
   { ((1-theta)*lambda+(1+theta)*gamma)/2 = lambda+(1+theta)*(gamma-lambda)/2 }
   parameter(G,nx,lambda+(1+theta)*(gamma-lambda)/2,gamma)
