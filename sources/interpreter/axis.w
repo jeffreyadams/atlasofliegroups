@@ -5856,12 +5856,18 @@ include its header file. We implement the $4$ reversal variants; since terms are
 sorted by ``height'' of a $K$-type, reversal at the source may make sense in
 some cases. This reversal is implemented by using reverse iterators to control
 the loop; the loop body itself is textually identical, though the type of |it|
-differs between them.
+differs between them. Something that is specific for the |Free_Abelian_light|
+container class template used to implement |K_type_pol_value| is that its |size|
+method only produces an upper bound for the actual number of (nonzero) terms
+encountered during an iteration; therefore we must check after iteration whether
+the expected number of items was copied into |result|. These checks are
+independent of the traversal direction, so it is outside the conditional on
+|in_forward(flags)| (the checks have to test |out_forward(flags)| instead).
 
 @h "atlas-types.h"
 @< Perform a loop over the terms of a $K$-type polynomial @>=
 { shared_K_type_pol pol_val = get<K_type_pol_value>();
-  size_t n=pol_val->val.size();
+  size_t n=pol_val->val.size(); // an upper bound for the number of nonzero terms
   if (l!=no_value)
   { result = std::make_shared<row_value>(n);
     dst = out_forward(flags) ? result->val.begin() : result->val.end();
@@ -5869,23 +5875,26 @@ differs between them.
   if (in_forward(flags))
   { const auto start=pol_val->val.begin();
     auto it = start; // need these in |catch| clause
-    try {
-    for ( ; it!=pol_val->val.end(); ++it)
-      @< Loop body for iterating over terms of a $K$-type polynomial @>
+    try
+    {
+      for ( ; it!=pol_val->val.end(); ++it)
+        @< Loop body for iterating over terms of a $K$-type polynomial @>
     }
     @< Catch block for reporting iteration number within loop over
        terms in a $K$-type polynomial @>
   }
-  else
+  else // not |in_forward(flags)|
   { const auto start=pol_val->val.rbegin();
     auto it = start; // need these in |catch| clause
-    try {
-    for (; it!=pol_val->val.rend(); ++it)
-      @< Loop body for iterating over terms of a $K$-type polynomial @>
+    try
+    {
+      for (; it!=pol_val->val.rend(); ++it)
+        @< Loop body for iterating over terms of a $K$-type polynomial @>
     }
     @< Catch block for reporting iteration number within loop over
        terms in a $K$-type polynomial @>
   }
+  @< Adjust |result| in case loop produced fewer items that predicted @>
 }
 
 @ The catch clause is similar to those for other types of loops,
@@ -5921,6 +5930,26 @@ catch (error_base& e)
    }
    @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |fr|
+
+@ The kind of adjustments to |result| that are needed when fewer items than
+expected were contributed are the same as when any kind of loop is interrupted
+by an explicit |break_expr|: we must drop the slots in |result| that were not
+filled, and in case of an output-reversed loop, we must first shift the actual
+contributions to the beginning of the vector.
+
+@< Adjust |result| in case loop produced fewer items that predicted @>=
+{
+  if (out_forward(flags))
+  { if (dst!=result->val.end())
+      result->val.resize(dst-result->val.begin());
+  }
+  else
+  { if (dst!=result->val.begin())
+  {
+    dst = std::move(dst,result->val.end(), result->val.begin());
+    result->val.resize(dst-result->val.begin());
+  }}
+}
 
 @ The loop over terms of a virtual module is similar to that over those of a
 $K$-type polynomial.

@@ -5105,7 +5105,7 @@ In a subscription of a $K$-type polynomial by a $K$-type, the arguments are not
 initially on the stack, but come from evaluating the |array| and |index| fields
 of the |K_type_coefficient| expression.
 
-@h "axis.h" // for |module_coefficient|
+@h "axis.h" // for |K_type_pol_coefficient|
 
 @< Function def... @>=
 void K_type_pol_coefficient::evaluate(level l) const
