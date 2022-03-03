@@ -176,11 +176,11 @@ template<typename T, typename C, typename Compare>
 }
 
 template<typename T, typename C, typename Compare>
-  void Free_Abelian_light<T,C,Compare>::set_coefficient (const T& e, C m)
+  void Free_Abelian_light<T,C,Compare>::set_coefficient (T e, C m)
 {
   auto p = find(e);
   if (p==nullptr)
-    add_term(e,m);
+    add_term(std::move(e),m);
   else
     *p = m;
 }

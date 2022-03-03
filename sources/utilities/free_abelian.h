@@ -212,7 +212,7 @@ explicit
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
   void clear_coefficient (const T& t); // remove |t| by clearing its coefficient
-  void set_coefficient (const T& t, C m); // make coefficient of |t| become |m|
+  void set_coefficient (T t, C m); // make coefficient of |t| become |m|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   size_t size() const // only provides upper bound: zero terms are not ignored
