@@ -195,10 +195,15 @@ class Split_integer
   Split_integer times_s() const
   { return Split_integer(ev_1,-ev_minus_1,raw_tag()); }
   Split_integer& times_1_s() // multiply by |1-s|
-  { ev_1=0; /* see "Who Killed the ELectric Car" */
+  { ev_1=0; /* see "Who Killed the Electric Car" */
     ev_minus_1*=2; return *this; }
   Split_integer times_1_s() const
   { return Split_integer(0,2*ev_minus_1,raw_tag()); }
+
+  Split_integer& times_1_plus_s() // multiply by |1+s|
+  { ev_1*=2; ev_minus_1=0; return *this; }
+  Split_integer times_1_plus_s() const
+  { return Split_integer(2*ev_1,0,raw_tag()); }
 
   int s_to_1() const { return ev_1; }
   int s_to_minus_1() const { return ev_minus_1; }

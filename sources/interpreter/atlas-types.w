@@ -6698,10 +6698,9 @@ parameters to or from them.
 void add_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
-      ("Real form mismatch when adding standard module to a module");
+      ("Real form mismatch when adding a Param to a ParamPol");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val+= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
@@ -6714,7 +6713,7 @@ void subtract_module_wrapper(expression_base::level l)
 @/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
-      ("Real form mismatch when subtracting standard module from a module");
+      ("Real form mismatch when subtracting a Param from a ParamPol");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val-= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
@@ -6734,15 +6733,15 @@ void add_module_term_wrapper(expression_base::level l)
   own_module_parameter p = get_own<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
-  if (accumulator->rf!=p->rf)
+
+if (accumulator->rf!=p->rf)
     throw runtime_error@|("Real form mismatch when adding a term to a module");
   if (l==expression_base::no_value)
     return;
 @)
-  auto finals = p->rc().finals_for(p->val);
+  auto finals = p->rc().finals(p->val);
   for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
-    accumulator->val.add_term(*it,coef);
+    accumulator->val.add_term(it->first,coef*it->second);
   push_value(std::move(accumulator));
 }
 
@@ -6764,12 +6763,11 @@ void add_module_termlist_wrapper(expression_base::level l)
     Split_integer coef=force<split_int_value>(t->val[0].get())->val;
     const module_parameter_value* p =
       force<module_parameter_value>(t->val[1].get());
-@/    test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
     if (accumulator->rf!=p->rf)
       throw runtime_error@|("Real form mismatch when adding terms to a module");
-     auto finals = p->rc().finals_for(p->val);
+     auto finals = p->rc().finals(p->val);
      for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
-       accumulator->val.add_term(*it,coef);
+       accumulator->val.add_term(it->first,coef*it->second);
    }
   push_value(std::move(accumulator));
 }
@@ -6803,35 +6801,26 @@ void subtract_virtual_modules_wrapper(expression_base::level l)
 
 @ Scalar multiplication potentially makes coefficients zero, in which case the
 corresponding terms need to be removed to preserve the invariant that no zero
-terms are stored in a virtual module. For integer multiplication we just need
-to check for multiplication by $0$, and produce an empty module when this
-happens. Because the integer is not on the stack top, this requires a somewhat
-unusual manoeuvre. The case of multiplication by zero needs to be handled
-separately, since we cannot allow introducing terms with zero coefficients. It
-could have been handled more easily though, by testing the factor~|c| just
-before the |for| loop, and performing |m->erase()| instead if |c==0|; this is
-what we used to do. However that might involve duplicating the virtual module
-and then erasing the copy, which is inefficient, and now avoided. This might
-seem a rare case, but it is not really: often functions handling
-a \.{ParamPol} argument $P$ need to start with an empty module for the same real
-form; writing $0*P$ is quite a convenient way to achieve this.
-
-Matters are similar but somewhat subtler for scalar multiplication by split
-integers, because these have zero divisors. Therefore we need to
-test \emph{each} coefficient produced by multiplication in this case, and
-remove the term when the coefficient becomes zero. We must take care to
-advance the iterator ``manually'' before doing that, and as a consequence
-cannot as usual advance the iterator in the |for| clause. In this case we do
-not bother handling the case of an entirely zero split integer
-multiplier separately; that case \emph{is} rare, and the given code works
-correctly for it (albeit not in the fastest possible way).
+terms are stored in a virtual module. For integer multiplication we just need to
+check for multiplication by $0$, and produce an empty module when this happens.
+Because the integer is not on the stack top, this requires a somewhat unusual
+manoeuvre. The case of multiplication by zero needs to be handled separately,
+since we cannot allow introducing terms with zero coefficients. It could have
+been handled more easily though, by testing the factor~|c| just before the |for|
+loop, and performing |m->erase()| instead if |c==0|; this is what we used to do.
+However that might involve duplicating the virtual module and then erasing the
+copy, which is inefficient, and now avoided. This might seem a rare case, but it
+is not really: often functions handling a \.{ParamPol} argument $P$ need to
+start with an empty module for the same real form; writing $0*P$ is quite a
+convenient way to achieve this.
 
 @< Local function... @>=
 
 void int_mult_virtual_module_wrapper(expression_base::level l)
 { int c =
-    force<int_value>(execution_stack[execution_stack.size()-2].get())->int_val();
-  // below top
+    force<int_value>(execution_stack[execution_stack.size()-2].get())
+    // value below top
+    ->int_val();
   if (c==0) // then do multiply by $0$ efficiently:
   { shared_virtual_module m = get<virtual_module_value>();
       // |m| is needed for |m->rc()|
@@ -6844,32 +6833,76 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
   { own_virtual_module m = get_own<virtual_module_value>();
      // will modify our copy now
     pop_value();
-    assert(c!=0); // we tested that above
     if (l!=expression_base::no_value)
-    { for (SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
-        it->second *= c;
+    { for (auto& term : m->val)
+        term.second *= c;
       push_value(std::move(m));
     }
   }
 }
-@)
+
+@ Matters are similar but somewhat subtler for scalar multiplication by split
+integers, because these have zero divisors. We make a $4$-way branch depending
+on whether the split integer multiplicand has zero evaluation are $s=1$ and/or
+at $s=-1$: if either of these is the case we have a zero divisor, and may expect
+some terms to be killed by the multiplication, and if both hold we are
+multiplying by $0$. In presence of a nonzero zero divisor, we do not call
+|get_own| to true to modify the argument in place, as it seems more efficient to
+just reconstruct a potentially small product separately. As in the previous
+function we pick up the multiplicand (which is the first argument) when it is
+not at the top of the stack; later on, we do not pop it off the stack either,
+but rather overwrite it by move-assigning the returned |virtual_module_value| to
+the stack top location |execution_stack.back()|. Since no tests are performed
+here, the |no_value| case can be handled right at the beginning, by simply
+dropping the arguments from the stack when it applies.
+
+@< Local function... @>=
+
 void split_mult_virtual_module_wrapper(expression_base::level l)
-{ own_virtual_module m = get_own<virtual_module_value>();
-  Split_integer c = get<split_int_value>()->val;
-  if (l==expression_base::no_value)
+{  if (l==expression_base::no_value)
+   {@; pop_value();
+       pop_value();
+       return;
+   }
+   auto c =
+    force<split_int_value>(execution_stack[execution_stack.size()-2].get())
+    // below top
+    ->val;
+  if (c.s_to_1()==0)
+  // then coefficient is multiple of $1-s$; don't try to modify module in place
+  { shared_virtual_module m = get<virtual_module_value>();
+    SR_poly result;
+    if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
+      for (const auto& term: m->val)
+        if (term.second.s_to_minus_1()!=0)
+          result.add_term(term.first,term.second*c);
+    execution_stack.back()=  // replace stack top
+        std::make_shared<virtual_module_value>(m->rf,result);
     return;
+  }
 @)
-  for (SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
-    // no |++it| here!
-    if ((it->second *= c)==Split_integer(0,0))
-      m->val.erase(it++); // advance, then delete the node just abandoned
-    else ++it;
-  push_value(std::move(m));
+  else if (c.s_to_minus_1()==0)
+  // then coefficient is multiple of $1+s$; don't modify in place
+  { shared_virtual_module m = get<virtual_module_value>();
+    SR_poly result;
+    for (const auto& term: m->val)
+      if (term.second.s_to_1()!=0)
+        result.add_term(term.first,term.second*c);
+    execution_stack.back()= // replace stack top
+        std::make_shared<virtual_module_value>(m->rf,result);
+    return;
+  }
+  // now we are multiplying by a non zero-divisor
+  own_virtual_module m = get_own<virtual_module_value>();
+     // will modify our copy now
+  for (auto& term : m->val)
+        term.second *= c; // multiply coefficients by split integer
+  execution_stack.back()=std::move(m);  // replace stack top
 }
 
-@ For a nonzero virtual module, it is useful to be able to select a component
-that is present without looping over all terms. The most useful choice it the
-final term, be we allow taking the first term as well.
+@ For a nonzero virtual module, it is useful to be able to select some term that
+is present, without looping over all terms. The most useful choice it the final
+term, be we allow taking the first term as well.
 
 @< Local function... @>=
 void last_term_wrapper (expression_base::level l)
