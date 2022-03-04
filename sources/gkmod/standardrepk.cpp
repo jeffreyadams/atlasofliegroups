@@ -322,7 +322,7 @@ level SRK_context::height_bound(const Weight& lambda)
   while (new_negatives.any());
 
   level sp=mu.dot(rd.dual_twoRho());
-  level d=4*get_projection(negatives).denom; // quadruple to match |height|
+  level d=2*get_projection(negatives).denom; // double to match |height|
   return (sp+d-1)/d; // round upwards, since height is always integer
 } // |SRK_context::height_bound|
 
@@ -793,6 +793,7 @@ q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
   const RootDatum& rd=root_datum();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   // Get theta stable parabolic subalgebra
 
@@ -834,7 +835,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
     typedef free_abelian::Monoid_Ring<Weight,q_CharCoeff>
       polynomial; // with weight exponents and $q$-polynomials as coefficients
-    const WeightInvolution theta = innerClass().matrix(strong.tw());
+    const InvolutionNbr i_theta = i_tab.nr(strong.tw());
+    const WeightInvolution& theta = i_tab.matrix(i_theta);
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -846,10 +848,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	Weight lambda=term->first;
-	(lambda*=2) += rd.twoRho();
-	lambda += theta*lambda;
-	if (height_bound(lambda)>bound)
+	const Weight& mu=term->first;
+	if (height_bound(mu+theta*mu+i_tab.theta_plus_1_rho(i_theta)) > bound)
 	  pol.erase(term++);
 	else
 	  term++;
