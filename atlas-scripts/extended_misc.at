@@ -152,8 +152,8 @@ set translate_to_dominant (ExtParam
   in
    ((ic,delta, gamma+shift,lambda_rho+shift,theta, g,l,omega, tau,t) , shift)
 
-set square_is_central(InnerClass ic,mat theta, ratvec v)=bool:
-is_integer((v*(1+theta) + ic.rho_check*(1-theta)/2)*ic.simple_roots)
+set square_is_central(InnerClass ic,mat theta, ratvec v)=bool:true
+{is_integer((v*(1+theta) + ic.rho_check*(1-theta)/2)*ic.simple_roots)}
 
 set valid (
     ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
@@ -166,7 +166,7 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif omega!=-^theta then prints("Cartan involutions are not compatible")
   elif !=(g-l-rho_check(ic))*(1-theta)
   then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)")
-  elif !=(gamma-lambda_rho-rho(ic))*(1-omega)
+  elif  !=(gamma-lambda_rho-rho(ic))*(1-omega)
   then prints("(1-^omega)gamma\ne (1-^omega)(lambda_rho+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
   elif -(1-delta)*lambda_rho!=(1-theta)*tau { recall that -theta=^omega }

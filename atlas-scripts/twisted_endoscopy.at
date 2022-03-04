@@ -187,17 +187,21 @@ od;
 {this returns: (RootDatum H,mat M) where
  Gd=G.dual, T_Gd=Cartan of Gd
  Hd=identity component of Gd^{delta^t}
- T_Hd=Cartan of G_d= identity component of (T_Gd)^{delta^t}
+ T_Hd=Cartan of Gd= identity component of (T_Gd)^{delta^t}
  H=Hd.dual = (twisted) endoscopic group of G
+ M:  X^*(T_H) -> X^*(T_G)  OR X_*(T_{Hd}) -> X_*(T_{Gd})
+
+ ^M: X_*(T_G) -> X_*(T_H)  OR X^*(T_{Gd}) -> X^*(T_{Hd})
+   
  left multiplication by M: H.simple_roots -> root_lattice of G
  left multiplication by ^M: G.simple_coroots -> coroot_lattice of H
  }
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
-(Hd,T)=Folded(Gd,^delta) then
+(Hd,M)=Folded(Gd,^delta) then
 H=Hd.dual in
-(H,T)
+(H,M)
 
 
 {atlas> set G=GL(5,R)
@@ -224,6 +228,7 @@ Value:
 |  0,  0 |
 |  1, -1 |
 | -1,  0 |
+{THIS SAYS:  M: X_*(T_Hd) -> X_*(T_Gd);  Hd.simple_coroots -> (sums of) Gd.simple_coroots}
 
 atlas> ^M*G.simple_coroots
 Value:
@@ -245,7 +250,7 @@ set lift(mat theta_H,mat M,RealForm G)=mat:
 let i=first(for x in KGB(G) do any(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
 KGB(G,i).involution
 
-set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=(InnerClass,mat,ratvec):
+set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then
 ()=prints("tf_H_raw=",tf_H_raw) then
@@ -256,34 +261,44 @@ tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 then
 ()=prints("okkk") then
 ()=prints("G=",G) then
 ()=prints("theta_G: ", theta_G) then
-()=prints("tf_G=", tf_G) then
-z=KGB_elt_gen(G,theta_G,tf_G) in
-let ()=prints("got z: ", z) in z
+()=prints("tf_Gx=", tf_G) in 
+{z=KGB_elt_gen(G,theta_G,tf_G) in}
+{let ()=prints("got z: ", z) in }
+KGB_elt_gen(G.inner_class,theta_G,tf_G)
 
-set lift(KGBElt x_H,mat M, RealForm G)=KGBElt:KGB_elt(lift(KGB_elt_gen(x_H),M,G))
-
-set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
-KGB_elt(lift(KGB_elt_gen(x_H),M,G))
-
-set lifts(KGBElt x_H,mat M, RealForm G,mat delta)={KGBElt:}
-let lift_involution=lift(x_H.involution,G,M) in
-let correct_involution=##for x in KGB(G) do if lift_involution.matrix*delta=x.involution then [x] else [] fi od
-in
-let correct_torus_factor=##for x in correct_involution do
- if  ^M*x.torus_factor = x_H.torus_factor then  [x] else [] fi od
- in (correct_involution,correct_torus_factor)
-
-{set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
-let (,lifts)=lifts(x_H,M,G,delta) in lifts[0]}
-
-set sign_difference(Param p_G, mat delta)=int:
-(-1)^(length(p_G)-delta_l_int(p_G,delta))
+set lift(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
+lift(KGB_elt_gen(x_H),M,G)
 
 set lift_std(Param p_H,mat M,RealForm G, mat delta)=
-let x=lift(p_H.x,M,G,delta) then
-lift_0=parameter(x,M*p_H.lambda,M*p_H.nu) in
-{(-1)^(length(lift_0)-delta_l_int(lift_0,delta))*lift_0}
-sign_difference(lift_0,delta)*lift_0
+let E_H=E(p_H.real_form.distinguished_involution,p_H) then
+x=lift(p_H.x,M,G) then
+gamma_G=M*p_H.infinitesimal_character then
+lambda_rho_G=(M*(p_H.lambda)-G.rho)\1 {vec}  then
+theta_G=lift(p_H.involution,G,M).matrix*delta then
+{g_G=^M*E_H.g then
+l_G=^M*E_H.l then
+t_G=^M*E_H.t then
+tau_G=M*E_H.tau in}
+{g_G=solve(left_inverse(M),E_H.g).requisition then
+l_G=solve(left_inverse(M),E_H.l).requisition then
+tau_G=solve(left_inverse(M),E_H.tau).requisition then
+t_G=solve(left_inverse(M),E_H.t).requisition in}
+g_G=M*E_H.g then
+l_G=M*E_H.l then
+tau_G=solve(^M,E_H.tau).requisition then
+t_G=solve(^M,E_H.t).requisition in
+ExtParam:(
+G.inner_class,
+G.distinguished_involution,
+gamma_G,
+lambda_rho_G,
+theta_G,
+g_G,
+l_G,
+-^theta_G,
+tau_G,
+t_G)
+
 
 set extended_character_formula (Param p,mat delta) =
 let (B,,)=partial_extended_KL_block(p,delta) in
@@ -300,6 +315,53 @@ do let f=eval(P[i][index],s) in
  let (j,c)=complete_indices[i] in
  {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
 od
+
+set sign_difference(Param p_G, mat delta)=int:
+(-1)^(length(p_G)-delta_l_int(p_G,delta))
+
+set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta)=
+let y_G=y_gen(p_G) then
+action_H=restrict_action(y_G.involution,M) then
+tf_u_G=y_G.torus_factor+p_G.real_form.rho then
+tf_u_H=left_inverse(M)*tf_u_G then
+tf_H=(1+action_H)*(2*tf_u_H+H.rho)/2 then
+()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) then
+y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
+()=prints("y_H_gen=", y_H_gen) then 
+{let y_H=KGB_elt(KGB_elt_gen) in}
+lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
+()=prints("lp=", lp) in
+sign_difference(p_G,delta)*param_pol(lp)
+
+set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta)=
+let P=extended_character_formula(p_G,delta) then
+()=if te_verbose then prints("P=",P) fi then
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta) od in
+composition_series(PH)
+
+
+{sign_difference(lift_0,delta)*lift_0}
+
+
+{set lift(KGBElt x_H,mat M, RealForm G)=lift(KGB_elt_gen(x_H),M,G)}
+{
+set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
+KGB_elt(lift(KGB_elt_gen(x_H),M,G))
+
+set lifts(KGBElt x_H,mat M, RealForm G,mat delta)={KGBElt:}
+let lift_involution=lift(x_H.involution,G,M) in
+let correct_involution=##for x in KGB(G) do if lift_involution.matrix*delta=x.involution then [x] else [] fi od
+in
+let correct_torus_factor=##for x in correct_involution do
+ if  ^M*x.torus_factor = x_H.torus_factor then  [x] else [] fi od
+ in (correct_involution,correct_torus_factor)
+
+{set lift(KGBElt x_H,mat M, RealForm G,mat delta)=KGBElt:
+let (,lifts)=lifts(x_H,M,G,delta) in lifts[0]}
+
+
+
+
 
 set inverse_lift(KGBElt_gen x_G, RealForm H, mat M, mat delta)=KGBElt_gen:
 let action_H=restrict_action(x_G.involution,M) then

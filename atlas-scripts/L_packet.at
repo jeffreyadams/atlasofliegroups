@@ -3,6 +3,7 @@
 set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
 
 set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
+
 set y_gen(Param p)=KGBElt_gen: let y=(dual(p.inner_class),-^p.x.involution,p.infinitesimal_character-p.lambda) in
 assert(is_valid(y,p.infinitesimal_character),"y_gen(p) is not valid");y
 
