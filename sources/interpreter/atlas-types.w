@@ -6898,19 +6898,19 @@ latter involves expansion by the |Rep_context::expand_final| method
 to \emph{final} parameters (there can be zero, one, or more of them, and they
 can have positive or negative integer coefficients), to initiate the invariant
 that only (dominant, standard, nonzero) final parameters can be stored in a
-|virtual_module_value|. Finally virtual modules can be implicitly converted to
-$K$-type polynomials (restricting each term to $K$) and
-module parameters directly to virtual module $K$-type polynomials, the
-conversion doing first the restriction to $K$ and then the expansion into
-finals. The other composition of implicit conversions, expanding to a virtual
-module first, would give the same result but would be a bit less efficient.
-It may be noted that if we had defined implicit conversions from $K$-types to
-module parameters, setting $\nu=0$, and similarly for their polynomials, then
-the corresponding commutation of conversions would not hold, since the expansion
-of a non standard module parameter with $\nu=0$ can have terms with
-nonzero~$\nu$. It is for this reason that these conversion are not defined, by
-the principle that implicit conversions should correspond to reinterpretations
-of values without any subtleties of surprises.
+|virtual_module_value|. Finally module parameters can be implicitly converted
+directly to virtual module $K$-type polynomials, the conversion doing first the
+restriction to $K$ and then the expansion into finals. The conversion from
+module parameters to $K$-types can be extended linearly to a map from virtual
+modules to $K$-type polynomials (still defined mathematically by restriction
+to$~K$), but we don't want this map to be an implicit conversion, since that
+makes it impossible to define operations with the same name both for
+types \.{KTypePol} and \.{ParamPol}; for instance we have built-in instances
+of the operator \.* with arguments types \.{(int,KTypePol)}
+and \.{(Split,ParamPol)}, and these would be considered conflicting in the
+presence of an implicit conversion from \.{ParamPol} to \.{KTypePol}. For this
+reason the conversion |param_poly_to_K_type_poly_wrapper| is defined instead as a named
+function.
 
 @< Local function def...@>=
 void param_to_K_type()
@@ -6927,8 +6927,10 @@ void param_to_poly()
     (rf,rf->rc().expand_final(p->val)));
 }
 @)
-void param_poly_to_K_type_poly()
+void param_poly_to_K_type_poly_wrapper(expression_base::level l)
 { shared_virtual_module p = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
   const auto& rf=p->rf;
   K_repr::K_type_pol result;
   for (const auto& term : p->val)
@@ -7941,6 +7943,8 @@ install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
+install_function(param_poly_to_K_type_poly_wrapper,@|"at_nu_0"
+		,"(ParamPol->KTypePol)");
 install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
 install_function(virtual_module_unary_neq_wrapper,@|"!=","(ParamPol->bool)");
 install_function(virtual_module_eq_wrapper,@|"=","(ParamPol,ParamPol->bool)");
@@ -8489,7 +8493,6 @@ Finally we collect here all coercions related to specific Atlas types.
   coercion(KType_type,KTypePol_type,"KpolK",K_type_to_poly);
   coercion(param_type,KType_type,"KP",param_to_K_type);
   coercion(param_type,param_pol_type,"PolP",param_to_poly);
-  coercion(param_pol_type,KTypePol_type,"KpolPol",param_poly_to_K_type_poly);
   coercion(param_type,KTypePol_type,"KpolP",param_to_K_type_poly);
 }
 

@@ -753,10 +753,10 @@ theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
   complex descents, which is obtained by greedily perfoming any complex
   descents; multiple candidate results may exist, among which one is chosen.
 
-null_K_module: (RealForm->KTypePol): empty sum of parameters for the real form
+null_K_module: (RealForm->KTypePol): empty sum of $K$-types for the real form
 real_form: (KTypePol->RealForm): recover the real form from a KTypePol value
 operator # : (KTypePol->int): number of nonzero terms of the formal sum
-operators =, != : (KTypePol->bool): test linear combination for being zero
+operators =, != : (KTypePol->bool): efficient test for formal sum being zero
 operators =, != : (KTypePol,KTypePol->bool): test difference for being zero
 operator +, - : (KTypePol,KType->KTypePol): add/subtract parameter to formal sum
 operator + : (KTypePol,(Split,KType)->KTypePol): add parameter with coefficient
