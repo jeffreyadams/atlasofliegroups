@@ -699,6 +699,14 @@ status: (int,Block,int->int): status at a block element of a simple reflection
   status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
   5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
+operators =, != : (Split->bool): test split integer against Split:(0,0)
+operators =, != : (Split,Split->bool): equality/inequality of split integers
+operator + : (Split,Split->Split): addition of split integers
+operator - : (Split,Split->Split): subtraction of split integers
+operator - : (Split->Split): negation of a split integer
+operator * : (Split,Split->Split): multiplication of split integers
+operator % : (Split,int,int): decomposition of split integer into components
+
 K_type: (KGBElt,vec->KType): form $K$-type from (x,lambda-rho)
 operator % : (KType->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from KType
 real_form: (KType->RealForm): recover the real form from a KType value
@@ -745,11 +753,19 @@ theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
   complex descents, which is obtained by greedily perfoming any complex
   descents; multiple candidate results may exist, among which one is chosen.
 
-null_module: (RealForm->KTypePol): empty sum of parameters for the real form
+null_K_module: (RealForm->KTypePol): empty sum of parameters for the real form
 real_form: (KTypePol->RealForm): recover the real form from a KTypePol value
 operator # : (KTypePol->int): number of nonzero terms of the formal sum
 operators =, != : (KTypePol->bool): test linear combination for being zero
 operators =, != : (KTypePol,KTypePol->bool): test difference for being zero
+operator +, - : (KTypePol,KType->KTypePol): add/subtract parameter to formal sum
+operator + : (KTypePol,(Split,KType)->KTypePol): add parameter with coefficient
+operator + : (KTypePol,[(Split,KType)]->KTypePol): add terms to formal sum
+operators +, - : (KTypePol,KTypePol->KTypePol): addition/subtraction formal sums
+operator * : (int,KTypePol->KTypePol): integer multiple of a formal sum
+operator * : (Split,KTypePol->KTypePol): split integer multiple of a formal sum
+last_term: (KTypePol->Split,KType): highest term of non-zero K-module
+first_term: (KTypePol->Split,KType): lowest term of non-zero K-module
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,gamma) from param
@@ -885,14 +901,6 @@ extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   sign flip (for the index corresponding by subtraction from -1), and the value
   n indicates absence of a link.
 
-operators =, != : (Split->bool): test split integer against Split:(0,0)
-operators =, != : (Split,Split->bool): equality/inequality of split integers
-operator + : (Split,Split->Split): addition of split integers
-operator - : (Split,Split->Split): subtraction of split integers
-operator - : (Split->Split): negation of a split integer
-operator * : (Split,Split->Split): multiplication of split integers
-operator % : (Split,int,int): decomposition of split integer into components
-
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
 real_form: (ParamPol->RealForm): recover the real form from a ParamPol value
 operator # : (ParamPol->int): number of nonzero terms of the formal sum
@@ -904,8 +912,8 @@ operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
-last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-empty module
-first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-empty module
+last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-zero module
+first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-zero module
 operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
   After scaling the continuous part of the parameter in each term, some may no
   longer be dominant or final, and need to be rewritten in the same way as

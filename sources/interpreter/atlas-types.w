@@ -4664,6 +4664,19 @@ void from_split_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Here we install the built-in functions for split integers.
+
+@< Install wrapper functions @>=
+install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
+install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
+install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
+install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
+install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
+install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
+install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
+install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
+install_function(from_split_wrapper,@|"%","(Split->int,int)");
+
 @*1 $K$-types.
 %
 We implement a data type for representing either a standard or irreducible
@@ -5159,6 +5172,284 @@ void K_type_pol_value::assign_coef
     val.set_coefficient(t.val.copy(),c);
 }
 
+@ The main operations for $K$-type polynomials are addition and subtraction of
+$K$-types to or from them. Although only one $K$-type is provided here, we
+must apply |finals_for| to expand it into a linear combination of final
+$K$-types, and call |accumulator.add_term| with each of them.
+
+@< Local function def...@>=
+void add_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=p->rf)
+    throw runtime_error @|
+      ("Real form mismatch when adding a KType to a KTypePol");
+  if (l==expression_base::no_value)
+    return;
+  auto finals = p->rc().finals_for(p->val.copy());
+    for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
+       accumulator->val.add_term(std::move(it->first),Split_integer(it->second));
+  push_value(std::move(accumulator));
+}
+
+void subtract_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=p->rf)
+    throw runtime_error @|
+      ("Real form mismatch when subtracting a KType from a KTypePol");
+  if (l==expression_base::no_value)
+    return;
+  auto finals = p->rc().finals_for(p->val.copy());
+  for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
+    accumulator->val.add_term(std::move(it->first),Split_integer(-it->second));
+  push_value(std::move(accumulator));
+}
+
+@ More generally than adding or subtracting, we can incorporate a term with
+specified coefficient; this is almost the same as the previous two functions.
+
+@< Local function def...@>=
+
+void add_K_type_term_wrapper(expression_base::level l)
+{ push_tuple_components(); // second argument is a pair |(coef,p)|
+  auto p = get<K_type_value>();
+  Split_integer coef=get<split_int_value>()->val;
+  auto accumulator = get_own<K_type_pol_value>();
+
+if (accumulator->rf!=p->rf)
+    throw runtime_error@|("Real form mismatch when adding a term to a K_type");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto finals = p->rc().finals_for(p->val.copy());
+  for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+    accumulator->val.add_term(std::move(it->first),coef*it->second);
+  push_value(std::move(accumulator));
+}
+
+@ When producing a $K$-type polynomial value, the user will most often want to
+provide all terms in a list at once, since repeatedly adding contributions to a
+named variable will, currently and without special trickery, lead to above calls
+to |get_own| having to duplicate the accumulator before each addition, since the
+variable still holds a reference to the value on the stack. The following
+built-in function, which will be bound to the operator \.+, does this, but does
+require an initial (in practice often empty) $K$-type polynomial as first
+operand to provide the real form, in case the list of terms is empty. We try to
+modify the initial argument in place (since of course it does not have to start
+out empty), but in practice it is more likely that the second argument is
+unshared and voluminous (being the result of a |for| loop). For that reason we
+do effort here to at least move the individual $K$-types into the returned
+polynomial, rather than copying them, if we can. This can only be achieved by
+calling |force_own| at several places, so that copies are made if parts of the
+term list are shared and cannot be moved from. The most likely cause of the
+latter situation is if there is sharing already at the top level of the term
+list; if this is detected, we apply different code that does not attempt to get
+unique ownership, but instead copies the $K$-types at the point where they get
+converted into final $K$-type for the accumulator. Comparing the cases below is
+instructive to see what needs to change if one sets out to reuse component
+values of a row-of-tuples argument.
+
+@< Local function... @>=
+void add_K_type_termlist_wrapper(expression_base::level l)
+{ shared_row r = get<row_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (r.unique())
+  { auto own_r = std::const_pointer_cast<row_value>(r);
+    for (auto it=own_r->val.begin(); it!=own_r->val.end(); ++it)
+    { auto tup = force_own<tuple_value>(std::move(*it));
+      Split_integer coef=force<split_int_value>(tup->val[0].get())->val;
+      auto t = force_own<K_type_value>(std::move(tup->val[1]));
+      if (accumulator->rf!=t->rf)
+        throw runtime_error@|
+          ("Real form mismatch when adding terms to a K_type");
+       auto finals = t->rc().finals_for(std::move(t->val));
+       for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(std::move(it->first),coef*it->second);
+     }
+  }
+  else // there is top level sharing, so avoid duplicating all alon
+    for (auto it=r->val.cbegin(); it!=r->val.cend(); ++it)
+    { auto tup = force<tuple_value>(it->get());
+      Split_integer coef=force<split_int_value>(tup->val[0].get())->val;
+      auto t = force<K_type_value>(tup->val[1].get());
+      if (accumulator->rf!=t->rf)
+        throw runtime_error@|
+          ("Real form mismatch when adding terms to a K_type");
+       auto finals = t->rc().finals_for(t->val.copy());
+       for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(std::move(it->first),coef*it->second);
+     }
+  push_value(std::move(accumulator));
+}
+
+@ Naturally we also want to define addition and subtraction of two $K$-type
+polynomials.
+
+@< Local function... @>=
+void add_K_type_pols_wrapper(expression_base::level l)
+{
+  own_K_type_pol addend = get_own<K_type_pol_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=addend->rf)
+    throw runtime_error @|("Real form mismatch when adding two K_types");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val += std::move(addend->val);
+    push_value(std::move(accumulator));
+  }
+}
+@)
+void subtract_K_type_pols_wrapper(expression_base::level l)
+{
+  own_K_type_pol subtrahend = get_own<K_type_pol_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=subtrahend->rf)
+    throw runtime_error@|("Real form mismatch when subtracting two K_types");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val -= std::move(subtrahend->val);
+    push_value(std::move(accumulator));
+  }
+}
+
+@ Scalar multiplication potentially makes coefficients zero, in which case the
+corresponding terms need to be removed to preserve the invariant that no zero
+terms are stored in a $K$-type polynomial. For integer multiplication we just
+need to check for multiplication by $0$, and produce an empty module when this
+happens. Because the integer is not on the stack top, this requires a somewhat
+unusual manoeuvre. The case of multiplication by zero needs to be handled
+separately, since we cannot allow introducing terms with zero coefficients. It
+could have been handled more easily though, by testing the factor~|c| just
+before the |for| loop, and performing |m->erase()| instead if |c==0|; this is
+what we used to do. However that might involve duplicating the $K$-type
+polynomial and then erasing the copy, which is inefficient, and now avoided.
+This might seem a rare case, but it is not really: often functions handling
+a \.{KTypePol} argument $P$ need to start with an empty module for the same real
+form; writing $0*P$ is quite a convenient way to achieve this.
+
+@< Local function... @>=
+
+void int_mult_K_type_pol_wrapper(expression_base::level l)
+{ int c =
+    force<int_value>(execution_stack[execution_stack.size()-2].get())
+    // value below top
+    ->int_val();
+  if (c==0) // then do multiply by $0$ efficiently:
+  { shared_K_type_pol m = get<K_type_pol_value>();
+      // |m| is needed for |m->rc()|
+    pop_value();
+    if (l!=expression_base::no_value)
+    @/push_value@|(std::make_shared<K_type_pol_value>
+        (m->rf,K_repr::K_type_pol()));
+  }
+  else
+  { own_K_type_pol m = get_own<K_type_pol_value>();
+     // will modify our copy now
+    pop_value();
+    if (l!=expression_base::no_value)
+    { for (auto& term : m->val)
+        term.second *= c;
+      push_value(std::move(m));
+    }
+  }
+}
+
+@ Matters are similar but somewhat subtler for scalar multiplication by split
+integers, because these have zero divisors. We make a $4$-way branch depending
+on whether the split integer multiplicand has zero evaluation are $s=1$ and/or
+at $s=-1$: if either of these is the case we have a zero divisor, and may expect
+some terms to be killed by the multiplication, and if both hold we are
+multiplying by $0$. In presence of a nonzero zero divisor, we do not call
+|get_own| to true to modify the argument in place, as it seems more efficient to
+just reconstruct a potentially small product separately. As in the previous
+function we pick up the multiplicand (which is the first argument) when it is
+not at the top of the stack; later on, we do not pop it off the stack either,
+but rather overwrite it by move-assigning the returned |K_type_pol_value| to
+the stack top location |execution_stack.back()|. Since no tests are performed
+here, the |no_value| case can be handled right at the beginning, by simply
+dropping the arguments from the stack when it applies.
+
+@< Local function... @>=
+
+void split_mult_K_type_pol_wrapper(expression_base::level l)
+{  if (l==expression_base::no_value)
+   {@; pop_value();
+       pop_value();
+       return;
+   }
+   auto c =
+    force<split_int_value>(execution_stack[execution_stack.size()-2].get())
+    // below top
+    ->val;
+  if (c.s_to_1()==0)
+  // then coefficient is multiple of $1-s$; don't try to modify module in place
+  { shared_K_type_pol m = get<K_type_pol_value>();
+    K_repr::K_type_pol result;
+    if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
+      for (const auto& term: m->val)
+        if (term.second.s_to_minus_1()!=0)
+          result.add_term(term.first.copy(),term.second*c);
+    execution_stack.back()=  // replace stack top
+        std::make_shared<K_type_pol_value>(m->rf,std::move(result));
+    return;
+  }
+@)
+  else if (c.s_to_minus_1()==0)
+  // then coefficient is multiple of $1+s$; don't modify in place
+  { shared_K_type_pol m = get<K_type_pol_value>();
+    K_repr::K_type_pol result;
+    for (const auto& term: m->val)
+      if (term.second.s_to_1()!=0)
+        result.add_term(term.first.copy(),term.second*c);
+    execution_stack.back()= // replace stack top
+        std::make_shared<K_type_pol_value>(m->rf,std::move(result));
+    return;
+  }
+  // now we are multiplying by a non zero-divisor
+  own_K_type_pol m = get_own<K_type_pol_value>();
+     // will modify our copy now
+  for (auto& term : m->val)
+        term.second *= c; // multiply coefficients by split integer
+  execution_stack.back()=std::move(m);  // replace stack top
+}
+
+@ For a nonzero $K$-type polynomial, it is useful to be able to select some term
+that is present, without looping over all terms. The most useful choice it the
+final term, be we allow taking the first term as well.
+
+@< Local function... @>=
+void last_K_type_term_wrapper (expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (m->val.is_zero())
+    throw runtime_error("Empty KTypePol has no last term");
+  const auto& term = *m->val.rbegin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<K_type_value>
+	(m->rf,term.first.copy()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void first_K_type_term_wrapper (expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (m->val.is_zero())
+    throw runtime_error("Empty KTypePol has no first term");
+  const auto& term = *m->val.begin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<K_type_value>
+  	(m->rf,term.first.copy()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
 @ Finally we install everything related to $K$-types.
 @< Install wrapper functions @>=
 install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
@@ -5187,6 +5478,24 @@ install_function(K_type_pol_unary_neq_wrapper,@|"!=","(KTypePol->bool)");
 install_function(K_type_pol_eq_wrapper,@|"=","(KTypePol,KTypePol->bool)");
 install_function(K_type_pol_neq_wrapper,@|"!=","(KTypePol,KTypePol->bool)");
 install_function(K_type_pol_size_wrapper,@|"#","(KTypePol->int)");
+install_function(add_K_type_wrapper,@|"+","(KTypePol,KType->KTypePol)");
+install_function(subtract_K_type_wrapper,@|"-","(KTypePol,KType->KTypePol)");
+install_function(add_K_type_term_wrapper,@|"+"
+		,"(KTypePol,(Split,KType)->KTypePol)");
+install_function(add_K_type_termlist_wrapper,@|"+"
+		,"(KTypePol,[(Split,KType)]->KTypePol)");
+install_function(add_K_type_pols_wrapper,@|"+"
+		,"(KTypePol,KTypePol->KTypePol)");
+install_function(subtract_K_type_pols_wrapper,@|"-"
+		,"(KTypePol,KTypePol->KTypePol)");
+install_function(int_mult_K_type_pol_wrapper,@|"*"
+		,"(int,KTypePol->KTypePol)");
+install_function(split_mult_K_type_pol_wrapper,@|"*"
+		,"(Split,KTypePol->KTypePol)");
+install_function(last_K_type_term_wrapper,@|"last_term"
+		,"(KTypePol->Split,KType)");
+install_function(first_K_type_term_wrapper,@|"first_term"
+		,"(KTypePol->Split,KType)");
 
 @*1 Standard module parameters.
 %
@@ -6710,7 +7019,6 @@ void add_module_wrapper(expression_base::level l)
 void subtract_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
       ("Real form mismatch when subtracting a Param from a ParamPol");
@@ -6730,7 +7038,7 @@ its final parameters.
 
 void add_module_term_wrapper(expression_base::level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
-  own_module_parameter p = get_own<module_parameter_value>();
+  shared_module_parameter p = get<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
   own_virtual_module accumulator = get_own<virtual_module_value>();
 
@@ -6772,8 +7080,9 @@ void add_module_termlist_wrapper(expression_base::level l)
   push_value(std::move(accumulator));
 }
 
-@ Naturally we also want to define addition and scalar multiplication of
-virtual modules.
+@ Naturally we also want to define addition and subtraction of two virtual
+modules.
+
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
 {
@@ -7628,15 +7937,6 @@ void finalize_extended_wrapper(expression_base::level l)
 
 @ Finally we install everything related to polynomials formed from parameters.
 @< Install wrapper functions @>=
-install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
-install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
-install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
-install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
-install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
-install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
-install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
-install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
-install_function(from_split_wrapper,@|"%","(Split->int,int)");
 install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
