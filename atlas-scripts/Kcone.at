@@ -279,6 +279,8 @@ set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
 set bottom(K_Type mu) = bool:
     pre_down(mu) = 0*mu
 
+{This function does not give the correct answer - use down_R_cone_true instead.}
+{Example: Sp(4,R) K-type (KGB(G,4),[2,1]}
 set down_R_cone(K_Type mu) = K_Type_Pol:
    let seen=ParamPol:null_module(mu.real_form)
    then result=seen
@@ -520,7 +522,33 @@ set down_B(K_Type mu,[Param] B)=ParamPol:
     in for p in B
         do for tau in highest_weights(p)
 	   do for c@r in tensor_product(mu,tau)
-              do if height(r)<=n
+              do if height(r)<n
+	         then result+:=r
+		 fi
+	      od
+	   od
+	od; result
+
+set down_B_alt(K_Type mu,[Param] B)=ParamPol:
+   let n=height(mu)
+    in sum(real_form(mu),##for p in B
+        		   do ##for tau in highest_weights(p)
+	                        do ##for c@r in tensor_product(mu,tau)
+                                     do if height(r)<n
+	         		        then [1*r]
+		 		        else []
+		 		        fi
+	                             od
+	   		        od
+			   od)
+
+set up_B(K_Type mu,[Param] B)=ParamPol:
+   let n=height(mu)
+    then result=null_module(real_form(mu))
+    in for p in B
+        do for tau in highest_weights(p)
+	   do for c@r in tensor_product(mu,tau)
+              do if height(r)>n
 	         then result+:=r
 		 fi
 	      od
@@ -530,3 +558,11 @@ set down_B(K_Type mu,[Param] B)=ParamPol:
 set test_down_R_cone (K_Type mu) = bool:
    let P1=monomials(down_R_cone(mu)), P2=monomials(down_R_cone_true(mu))
    in #P1=#P2 and all(for i:#P1 do P1[i]=P2[i] od)
+
+set down_PP(K_Type mu,int N) = ParamPol:
+   let list=monomials(branch_std(trivial(real_form(mu)),N))
+   in down_B(mu,list)
+
+set up_PP(K_Type mu,int N) = ParamPol:
+   let list=monomials(branch_std(trivial(real_form(mu)),N))
+   in up_B(mu,list)
