@@ -24,7 +24,10 @@ set fiber(RealForm G,mat theta)=[KGBElt]:
 set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=
 assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");  
 let fiber=fiber(G,-^y_gen.involution) in
-for x in fiber do parameter(x,y_gen,gamma) od
+##for x in fiber do
+ let p=parameter(x,y_gen,gamma)  then
+ P=finalize(p) in
+ monomials(P) od
 
 set L_packet(Param p)=
 for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
