@@ -419,8 +419,8 @@ template<typename T, typename C, typename Compare>
     if (pop(nit)) // if so, |*it| is now the last valid node
       return it->min=it->cur,false; // one unfinished iteration remains here
 
-  // if we arrive here, increment was done inside the recursive call; what
-  // remains to do is update |it->min| to "minimum" of |it->cur| and |nit->min|
+  // if we arrive here, increment was done in |cur| or in the recursive call;
+  // it remains to update |it->min| to "minimum" of |it->cur| and |nit->min|
   it->min = less(it->cur->first,nit->min->first) ? it->cur : nit->min;
   return false; // at least two more unfinished iterations remain here
 } // |const_iterator::pop|
@@ -445,13 +445,14 @@ template<typename T, typename C, typename Compare>
       stack.erase(it); // remove empty font node, no |it->min| to set
       return false; // return whether the rest is absent too, which it isn't
     }
+    --it->cur; // otherwise back up |cur|; |min| will be set below
   }
   else // the minumum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
-      return (it->min= --it->cur),false; // anx unfinished iteration remains here
+      return (it->min= --it->cur),false; // an unfinished iteration remains here
 
-  // if we arrive here, decrement was done inside the recursive call;; what
-  // remains to do is update |it->min| to "maximum" of |it->cur| and |nit->min|
+  // if we arrive here, decrement was done in |cur| or in the recursive call;
+  // it remains to update |it->min| to "maximum" of |it->cur| and |nit->min|
   it->min = less(nit->min->first,it->cur->first) ? it->cur : nit->min;
   return false; // at least two more unfinished iterations remain here
 } // |const_reverse_iterator::pop|
