@@ -7943,7 +7943,7 @@ install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
-install_function(param_poly_to_K_type_poly_wrapper,@|"at_nu_0"
+install_function(param_poly_to_K_type_poly_wrapper,@|"K_type_pol"
 		,"(ParamPol->KTypePol)");
 install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
 install_function(virtual_module_unary_neq_wrapper,@|"!=","(ParamPol->bool)");
