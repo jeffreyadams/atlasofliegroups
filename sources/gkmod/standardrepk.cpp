@@ -94,7 +94,7 @@ size_t StandardRepK::hashCode(size_t modulus) const
 {
   size_t hash=13*d_fiberElt.data().to_ulong()+d_cartan;
   for (size_t i=0; i<d_lambda.first.size(); ++i)
-    hash+=(hash<<2)+d_lambda.first[i];
+    hash+=(hash<<3)+(hash<<12)+d_lambda.first[i];
   return (hash+(hash<<5)+d_lambda.second.to_ulong())&(modulus-1);
 }
 
