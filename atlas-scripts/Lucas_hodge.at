@@ -1,0 +1,43 @@
+<all.at
+
+set zeros (int n) = ratvec: for i:n do 0 od
+
+set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
+   let GC=complexification(G),r=rank(G)
+   then p=parameter_m(GC,chi,zeros(r))
+   then (list,)= hodge_branch_std(p,20)
+   then hwts= for P in list
+        do for c@q in P do (c,highest_weight(LKT(q)))
+	                od
+	od
+    in hwts
+
+set fold (vec long)= vec:
+   let n=rat_as_int(#long/2)
+    in for i:n do long[i]+long[i+n] od
+
+set second_step ([[(Split,KHighestWeight)]] list)=[[(Split,vec)]]:
+   for level in list
+    do for (n,(,y,lam)) in level
+        do (n,fold(lam))
+	od
+    od
+
+set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
+   for level in list
+    do sum(G, for (n,v) in level
+       do let p =parameter(x_open(G),v+rho(G),v+rho(G))
+          in n*branch_irr(p,20)
+       od)
+    od
+
+set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
+   for level in list
+    do sum(G,for c@p in level do c*K_type_formula(p) od)
+    od
+
+set steps_one_fourA (RealForm G, vec chi) = [(i_poly,Param)]:
+   let list1=first_step(G,chi)
+   then list2=second_step(list1)
+   then list3=third_step(G,list2)
+   in step_fourA (G,list3).rearrange
