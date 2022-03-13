@@ -1643,8 +1643,9 @@ set param (KType t)= Param: let (x,lr)=%t in param(x,lr,null(#lr))
 set x (KType t) = KGBElt: let (x,)=%t in x
 set lambda_rho (KType t) = vec: let (,lr)=%t in lr
 set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
-set real_form (KType t) = RealForm: t.x.real_form
 
+set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
+set param_pol (KType t) = ParamPol: param(t)
 set param_pol (KTypePol P) = ParamPol:
    null_module(P.real_form) + for c@t in P do (c,param(t)) od
 

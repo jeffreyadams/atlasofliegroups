@@ -6892,29 +6892,42 @@ void virtual_module_size_wrapper(expression_base::level l)
 }
 
 
-@ We allow implicitly converting a module parameter to a $K$-type (restricting
-to $K$, and therefore forgetting $\nu$), as well as to a virtual module. The
-latter involves expansion by the |Rep_context::expand_final| method
+@ We provide a conversion from a module parameter to a $K$-type (restricting to
+$K$, and therefore forgetting the $\nu$ component of the infinitesimal
+character). We also allow implicit conversion of a module parameter to a virtual
+module, which involves expansion by the |Rep_context::expand_final| method
 to \emph{final} parameters (there can be zero, one, or more of them, and they
 can have positive or negative integer coefficients), to initiate the invariant
 that only (dominant, standard, nonzero) final parameters can be stored in a
-|virtual_module_value|. Finally module parameters can be implicitly converted
-directly to virtual module $K$-type polynomials, the conversion doing first the
-restriction to $K$ and then the expansion into finals. The conversion from
+|virtual_module_value|. Then there is a conversion from module parameters
+directly to $K$-type polynomials, the conversion doing first the restriction to
+$K$ and then the expansion into final $K$-types. Finally, the conversion from
 module parameters to $K$-types can be extended linearly to a map from virtual
-modules to $K$-type polynomials (still defined mathematically by restriction
-to$~K$), but we don't want this map to be an implicit conversion, since that
-makes it impossible to define operations with the same name both for
-types \.{KTypePol} and \.{ParamPol}; for instance we have built-in instances
+modules to $K$-type polynomials, still defined mathematically by restriction
+to$~K$.
+
+We don't want the restriction maps to be implicit conversions. For the
+restriction on the level of polynomials, such conversion would make it
+impossible to define certain operations with the same name both for
+types \.{KTypePol} and \.{ParamPol}~: for instance we have (built-in) instances
 of the operator \.* with arguments types \.{(int,KTypePol)}
-and \.{(Split,ParamPol)}, and these would be considered conflicting in the
-presence of an implicit conversion from \.{ParamPol} to \.{KTypePol}. For this
-reason the conversion |param_poly_to_K_type_poly_wrapper| is defined instead as a named
-function.
+and \.{(Split,ParamPol)}, and in the presence of an implicit conversion
+from \.{ParamPol} to \.{KTypePol} this combination would be forbidden, due to
+possible ambiguity for \.* with argument types \.{int} and \.{ParamPol}. An
+implicit conversion from module parameters to $K$-types would be problematic for
+similar reasons: it would create divergent implicit conversions from
+the \.{Param} type, leading to ambiguity when and argument could match two
+different overloads using one or the other of these conversions. Although
+currently the system does not test for such divergences, its logic assumes that
+when there are implicit conversions from a same type to two different types,
+then there is also at least one conversion between those two types so that
+there is either a hierarchy or an equivalence of inter-convertible types.
 
 @< Local function def...@>=
-void param_to_K_type()
+void param_to_K_type_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
   const auto& rf=p->rf;
   push_value(std::make_shared<K_type_value> @|
     (rf,rf->rc().sr_K(p->val)));
@@ -6938,16 +6951,6 @@ void param_poly_to_K_type_poly_wrapper(expression_base::level l)
     for (auto it = finals.begin(); not finals.at_end(it); ++it)
        result.add_term(std::move(it->first),term.second*it->second);
   }
-  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
-}
-@)
-void param_to_K_type_poly()
-{ shared_module_parameter p = get<module_parameter_value>();
-  const auto& rf=p->rf;
-  auto final_K_types = rf->rc().finals_for(rf->rc().sr_K(p->val));
-  K_repr::K_type_pol result;
-  for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
-    result.add_term(std::move(it->first),Split_integer(it->second));
   push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
@@ -7943,6 +7946,7 @@ install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
+install_function(param_to_K_type_wrapper,@|"K_type", "(Param->KType)");
 install_function(param_poly_to_K_type_poly_wrapper,@|"K_type_pol"
 		,"(ParamPol->KTypePol)");
 install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
@@ -8491,9 +8495,7 @@ Finally we collect here all coercions related to specific Atlas types.
   coercion(int_type,split_type,"SpI",int_to_split_coercion);
   coercion(int_int_type,split_type,"Sp(I,I)",pair_to_split_coercion);
   coercion(KType_type,KTypePol_type,"KpolK",K_type_to_poly);
-  coercion(param_type,KType_type,"KP",param_to_K_type);
   coercion(param_type,param_pol_type,"PolP",param_to_poly);
-  coercion(param_type,KTypePol_type,"KpolP",param_to_K_type_poly);
 }
 
 
