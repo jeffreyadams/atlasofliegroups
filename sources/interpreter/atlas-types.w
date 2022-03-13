@@ -5608,18 +5608,23 @@ void module_parameter_wrapper(expression_base::level l)
 
 @*2 Functions operating on module parameters.
 %
-The following function, which we shall bind to the monadic operator `|%|',
+The unwrapping function below, which we shall bind to the operator~`|%|',
 transforms a parameter value into a triple of values $(x,\lambda-\rho,\gamma)$
 that defines it, where $\gamma$ is taken to be (a representative of) the
-infinitesimal character. (This function used to produce $\nu$ as third
-component, but in practice obtaining the infinitesimal character directly
-turned out to often be more useful. If needed $\nu$ is easily computed as
-$\nu={1+\theta_x\over2}\gamma$; as the opposite conversion requires more work,
-we had a separate function returning$~\gamma$ which is now superfluous.) The
-triple returned here is not unique, since $\lambda$ is determined only modulo
-$(1-\theta_x)X^*$, and this function should make a unique choice. But that
-fact (and the choice made) is hidden in the implementation of |StandardRepr|,
-of which we just call methods here.
+infinitesimal character. (The function used to produce just the $\nu$ part
+of the infinitesimal character as third component, but in practice obtaining the
+infinitesimal character directly turns out to often be more useful. If needed,
+$\nu$ is easily computed as $\nu={1+\theta_x\over2}\gamma$; the opposite
+conversion, which would be needed to be programmed if we returned $\nu$ here,
+requires more work.) While triple returned here is not unique, since $\lambda$
+is determined only modulo $(1-\theta_x)X^*$, we choose a unique representative
+for~|lambda|, which choice is in fact determined by the implementation of
+|StandardRepr|.
+
+We also provide a function directly extracting the real form from a module
+parameter (which would otherwise require extracting it from the |x| component),
+and a conversion from a module parameter to a $K$-type (restricting to $K$, and
+therefore forgetting the $\nu$ component).
 
 @< Local function def...@>=
 void unwrap_parameter_wrapper(expression_base::level l)
@@ -5641,6 +5646,26 @@ void real_form_of_parameter_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(p->rf);
 }
+
+@)
+
+void param_to_K_type_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rf=p->rf;
+  push_value(std::make_shared<K_type_value> @|
+    (rf,rf->rc().sr_K(p->val)));
+}
+void K_type_to_param_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rf=p->rf;
+  push_value(std::make_shared<module_parameter_value> @|
+    (rf,rf->rc().sr(p->val)));
+}
+
 
 @ Here are some more attributes, in the form of predicates.
 
@@ -6702,6 +6727,8 @@ install_function(unwrap_parameter_wrapper,@|"%"
                 ,"(Param->KGBElt,vec,ratvec)");
 install_function(real_form_of_parameter_wrapper,@|"real_form"
 		,"(Param->RealForm)");
+install_function(param_to_K_type_wrapper,@|"K_type", "(Param->KType)");
+install_function(K_type_to_param_wrapper,@|"param", "(KType->Param)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
@@ -6924,15 +6951,6 @@ then there is also at least one conversion between those two types so that
 there is either a hierarchy or an equivalence of inter-convertible types.
 
 @< Local function def...@>=
-void param_to_K_type_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
-  const auto& rf=p->rf;
-  push_value(std::make_shared<K_type_value> @|
-    (rf,rf->rc().sr_K(p->val)));
-}
-@)
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rf=p->rf;
@@ -7946,7 +7964,6 @@ install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
-install_function(param_to_K_type_wrapper,@|"K_type", "(Param->KType)");
 install_function(param_poly_to_K_type_poly_wrapper,@|"K_type_pol"
 		,"(ParamPol->KTypePol)");
 install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");

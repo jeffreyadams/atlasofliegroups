@@ -1639,7 +1639,6 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
 set W_cross ([int] w,Param p) = Param:
   for s in w ~ do p:=cross(s,p) od; p
 
-set param (KType t)= Param: let (x,lr)=%t in param(x,lr,null(#lr))
 set x (KType t) = KGBElt: let (x,)=%t in x
 set lambda_rho (KType t) = vec: let (,lr)=%t in lr
 set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
