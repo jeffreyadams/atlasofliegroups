@@ -1,10 +1,43 @@
 <all.at
 
-set zeros (int n) = ratvec: for i:n do 0 od
+set zeros (int n) = vec: for i:n do 0 od
+
+set kwts(KGBElt x) = [vec]:
+    let (G,posRoots,inv) = (x.real_form,posroots(x.real_form),x.involution)
+    in ##for i:#posRoots do if is_imaginary(i,x)
+       	     		    then if is_compact(i,x)
+			          then [posRoots[i],-posRoots[i]]
+				  else []
+				  fi
+			    else if find(posRoots,inv*posRoots[i]) > i
+				 then [posRoots[i],-posRoots[i]]
+				 else if is_real(i,x)
+			              then [posRoots[i]]
+				      else []
+				      fi
+			     fi fi
+			 od
+
+set kwts(RealForm G) = [[vec]]:
+   for x in KGB(G) do kwts(x) od
+
+set dim_T_x (KGBElt x) = int:
+   let ((c,C,r),,,)=x.Cartan_class.Cartan_info in C+c
+
+set add_T_x_weights_for_k(Param p, [[vec]] Pwts) = ParamPol:
+    let (G,j)= %p.x, lambda=p.lambda, x=p.x
+    in dim_T_x(p.x)*p + sum(G,for v in Pwts[j] do
+    standardize(parameter(x,lambda+v,0*lambda))*0 od)
+
+
+set tensor_with_k (K_Type mu) = ParamPol:
+   let G=real_form(mu), P=K_type_formula(mu)
+    then Q= sum(G, for c@p in P do c*add_T_x_weights_for_k(p,kwts(G)) od)
+    in branch_std(Q,20)
 
 set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
-   then p=parameter_m(GC,chi,zeros(r))
+   then p=parameter_m(GC,chi,zeros(r)/1)
    then (list,)= hodge_branch_std(p,20)
    then hwts= for P in list
         do for c@q in P do (c,highest_weight(LKT(q)))
@@ -27,7 +60,7 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
-          in n*branch_irr(p,20)
+          in n*branch_irr(p,30)
        od)
     od
 
@@ -36,7 +69,7 @@ set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
     do sum(G,for c@p in level do c*K_type_formula(p) od)
     od
 
-set steps_one_fourA (RealForm G, vec chi) = [(i_poly,Param)]:
+set steps_one_through_fourA (RealForm G, vec chi) = [(i_poly,Param)]:
    let list1=first_step(G,chi)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
