@@ -2,6 +2,12 @@
 
 set zeros (int n) = vec: for i:n do 0 od
 
+set sets_of_card_n ([[int]] ps, int n)=[[int]]:
+   ##for ints in ps do if #ints=n then [ints] else [] fi od
+
+set dim_T_x (KGBElt x) = int:
+   let ((c,C,r),,,)=x.Cartan_class.Cartan_info in C+c
+
 set kwts(KGBElt x) = [vec]:
     let (G,posRoots,inv) = (x.real_form,posroots(x.real_form),x.involution)
     in ##for i:#posRoots do if is_imaginary(i,x)
@@ -9,7 +15,8 @@ set kwts(KGBElt x) = [vec]:
 			          then [posRoots[i],-posRoots[i]]
 				  else []
 				  fi
-			    else if find(posRoots,inv*posRoots[i]) > i
+			    else if (find(posRoots,inv*posRoots[i]) > i
+			            or find(posRoots,-inv*posRoots[i]) > i)
 				 then [posRoots[i],-posRoots[i]]
 				 else if is_real(i,x)
 			              then [posRoots[i]]
@@ -19,21 +26,40 @@ set kwts(KGBElt x) = [vec]:
 			 od
 
 set kwts(RealForm G) = [[vec]]:
-   for x in KGB(G) do kwts(x) od
+   let zero=zeros(rank(G)) in
+   for x in KGB(G)
+    do let CSA=for i:dim_T_x(x)
+               do zero
+	       od
+	in CSA##kwts(x)
+    od
 
-set dim_T_x (KGBElt x) = int:
-   let ((c,C,r),,,)=x.Cartan_class.Cartan_info in C+c
+set wedge_weights ([[vec]] wts, [[int]] ps, int n) =[[vec]]:
+   let list=sets_of_card_n(ps,n)
+   in for xwts in wts
+      do for subset in list
+         do sum(for i in subset do xwts[i] od)
+	 od
+      od
 
-set add_T_x_weights_for_k(Param p, [[vec]] Pwts) = ParamPol:
+set add_weights (Param p, [[vec]] wts) = ParamPol:
     let (G,j)= %p.x, lambda=p.lambda, x=p.x
-    in dim_T_x(p.x)*p + sum(G,for v in Pwts[j] do
+    in sum(G,for v in wts[j] do
     standardize(parameter(x,lambda+v,0*lambda))*0 od)
 
+set add_weights (ParamPol P,[[vec]] wts)= ParamPol:
+   sum(real_form(P),for c@p in P do c*add_weights(p,wts) od)
 
-set tensor_with_k (K_Type mu) = ParamPol:
+set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
+   let G=real_form(mu), P=K_type_formula(mu)
+    then Q= add_weights (P,wedge_weights(kwts(G),ps,n))
+    in branch_std(Q,20)
+
+{set tensor_with_k (K_Type mu) = ParamPol:
    let G=real_form(mu), P=K_type_formula(mu)
     then Q= sum(G, for c@p in P do c*add_T_x_weights_for_k(p,kwts(G)) od)
-    in branch_std(Q,20)
+    in branch_std(Q,20)}
+
 
 set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
@@ -69,8 +95,22 @@ set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
     do sum(G,for c@p in level do c*K_type_formula(p) od)
     od
 
-set steps_one_through_fourA (RealForm G, vec chi) = [(i_poly,Param)]:
+
+set last_step ([ParamPol] start,int kdim,RealForm G)=[ParamPol]:
+   let wts=kwts(G), ps=power_set(kdim)
+   then add_on=[ParamPol]:for i:kdim do 1*null_module(G) od
+   then result=start##add_on
+   in for i:kdim from 1
+        do let ww=wedge_weights(wts,ps,i)
+	   in for j:#start
+	      do result[j+i]+:=result[j]+(-1)^i*add_weights(start[j],ww)
+	      od
+	od;
+    for P in result do branch_std(P,50) od
+
+set Lucas_algorithm (RealForm G,int kdim, vec chi) = [ParamPol]:
    let list1=first_step(G,chi)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
-   in step_fourA (G,list3).rearrange
+   then start= step_fourA (G,list3)
+   in last_step(start,kdim,G)
