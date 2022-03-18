@@ -1,5 +1,7 @@
 <all.at
 
+set hb=40
+
 set zeros (int n) = vec: for i:n do 0 od
 
 set sets_of_card_n ([[int]] ps, int n)=[[int]]:
@@ -34,6 +36,9 @@ set kwts(RealForm G) = [[vec]]:
 	in CSA##kwts(x)
     od
 
+set height_bound([[vec]] list, RealForm G)=int:
+   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))
+
 set wedge_weights ([[vec]] wts, [[int]] ps, int n) =[[vec]]:
    let list=sets_of_card_n(ps,n)
    in for xwts in wts
@@ -52,19 +57,16 @@ set add_weights (ParamPol P,[[vec]] wts)= ParamPol:
 
 set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
    let G=real_form(mu), P=K_type_formula(mu)
-    then Q= add_weights (P,wedge_weights(kwts(G),ps,n))
-    in branch_std(Q,20)
-
-{set tensor_with_k (K_Type mu) = ParamPol:
-   let G=real_form(mu), P=K_type_formula(mu)
-    then Q= sum(G, for c@p in P do c*add_T_x_weights_for_k(p,kwts(G)) od)
-    in branch_std(Q,20)}
+    then wts=kwts(G)
+    then bd=height_bound(wts,G)
+    then Q= add_weights (P,wedge_weights(wts,ps,n))
+    in branch_std(Q,hb)
 
 
 set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
-   then (list,)= hodge_branch_std(p,20)
+   then (list,)= hodge_branch_std(p,hb)
    then hwts= for P in list
         do for c@q in P do (c,highest_weight(LKT(q)))
 	                od
@@ -86,9 +88,14 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
-          in n*branch_irr(p,30)
+          in n*branch_irr(p,hb)
        od)
     od
+
+set steps_one_two_three (RealForm G,vec chi)=[ParamPol]:
+   let list1=first_step(G,chi)
+   then list2=second_step(list1)
+   in third_step(G,list2)
 
 set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
    for level in list
@@ -103,10 +110,10 @@ set last_step ([ParamPol] start,int kdim,RealForm G)=[ParamPol]:
    in for i:kdim from 1
         do let ww=wedge_weights(wts,ps,i)
 	   in for j:#start
-	      do result[j+i]+:=result[j]+(-1)^i*add_weights(start[j],ww)
+	      do result[j+i]+:=(-1)^i*add_weights(start[j],ww)
 	      od
 	od;
-    for P in result do branch_std(P,50) od
+    for P in result do branch_std(P,hb) od
 
 set Lucas_algorithm (RealForm G,int kdim, vec chi) = [ParamPol]:
    let list1=first_step(G,chi)
