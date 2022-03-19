@@ -3202,24 +3202,32 @@ void KGB_size_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(rf->val.KGB_size()));
 }
 
-@ Here is a somewhat technical function that will facilitate working ``in
-coordinates'' with KGB elements for this real form. It returns a rational
-coweight that determines the base grading for the real form, and which is an
-offset that will be added to |torus_bits| values when computing the
-|torus_factor| they represent. It is defined so that a zero value corresponds
-to a quasisplit real form, which proves the most useful base point. This does
-imply that a standard choice for the ``infinitesimal cocharacter''~$g$ for the
-real from must differ by ${}^\vee\!\rho$ from the value produced here (the
-|RealReductiveGroup| member that stores it is called |g_rho_check()|).
+@ Here are two somewhat technical function that will facilitate working ``in
+coordinates'' with KGB elements for this real form. The first one, called
+|base_grading_vector|, returns a rational coweight that determines the base
+grading for the real form, and which is an offset that will be added to
+|torus_bits| values when computing the |torus_factor| they represent. It is
+defined so that a zero value corresponds to a quasisplit real form, which proves
+the most useful base point. This does imply that a standard choice for the
+``infinitesimal cocharacter''~$g$ for the real from must differ by
+${}^\vee\!\rho$ from the value produced here, which is obtained directly from
+the |RealReductiveGroup| class using the |g_rho_check| method (which name should
+be read as $g-{}^\vee\!\rho$).
 
-We used to ensure that the coweight returned is dominant, while remaining in the
-coset of $2X_*$ defined by |G.g_rho_check| so as to no affect the torus element
-$\exp(\pi\ii t)$ giving the actual base grading. There is however no obvious
-best way to do this, and the easy way that used to be employed could give
-coweights unnecessarily far inside the dominant chamber; in addition this shift
-may destroy the ${}^t\delta$-invariance of |G.g_rho_check| that is hard to
-reestablish without risk of leaving the coset. Therefore we just return
-|G.g_rho_check| unchanged.
+We used to ensure that the coweight returned as |base_grading_vector| is
+dominant, while remaining in the coset of $2X_*$ defined by |G.g_rho_check()| so
+as to not affect the torus element $\exp(\pi\ii t)$ giving the actual base
+grading. There is however no obvious best way to do this, and the easy way that
+used to be employed could give coweights unnecessarily far inside the dominant
+chamber; in addition this shift may destroy the ${}^t\delta$-invariance of
+|G.g_rho_check| that is hard to reestablish without risk of leaving the coset.
+Since dominance is not a vital property, we therefore now just return
+|G.g_rho_check()| unchanged.
+
+The other function |initial_torus_bits| gives access to the value that is used
+internally to initialise the full KGB construction, and which distinguishes this
+real from other ones in the same square class (which share the same
+|base_grading_vector|).
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
