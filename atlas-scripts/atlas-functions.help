@@ -627,11 +627,10 @@ central_fiber: (RealForm->[vec]): Set of torus bits not affecting any gradings
   (including compactness of imaginary roots) to every simple root; adding any
   of these values to torus bits defines an automorphism of the KGB structure
 initial_torus_bits: (RealForm->vec) Torus bits for initial KGB element
-  This is a test function, computing what should be the torus bits of KGB(G,0)
-  independently of what is currently set in the implementation. They could
-  differ from reality by an element of |central_fiber(G)|. This function can
-  be removed once the same computation will actually replace the implemented
-  choice for the torus bits with which the KGB construction starts off.
+  This test computes the torus bits of KGB(G,0) as used in the implementation to
+  initialise the construction of the KGB structure for G. Contrary to computing
+  torus_bits(KGB(G,0)), calling this function does not require the KGB set for
+  G to be actually generated, so it should be fast even when that set is large.
 
 KGB: (RealForm,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
