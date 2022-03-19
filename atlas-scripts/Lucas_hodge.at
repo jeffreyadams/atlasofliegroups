@@ -66,7 +66,7 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
 set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
-   then (list,)= hodge_branch_std(p,hb)
+   then (list,)= hodge_branch_std(p,60)
    then hwts= for P in list
         do for c@q in P do (c,highest_weight(LKT(q)))
 	                od
@@ -115,8 +115,8 @@ set last_step ([ParamPol] start,int kdim,RealForm G)=[ParamPol]:
 	od;
     for P in result do branch_std(P,hb) od
 
-set Lucas_algorithm (RealForm G,int kdim, vec chi) = [ParamPol]:
-   let list1=first_step(G,chi)
+set Lucas_algorithm (RealForm G, vec chi) = [ParamPol]:
+   let kdim=dimension(K_0(G)), list1=first_step(G,chi)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
