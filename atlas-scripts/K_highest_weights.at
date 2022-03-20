@@ -99,9 +99,9 @@ set LKT_verbose=false
 
 {. Equality of KHighestWeights; (,x,mu)=(,x',mu') iff x=x', and mu and mu'
    differ by (1-theta)X^* or compact Weyl group action. .}
-set = (KHighestWeight(,x,mu), KHighestWeight(,y,tau)) = bool:
-  real_form(x)=real_form(y) and
-  x=y and
+set = (KHighestWeight khw0, KHighestWeight khw1) = bool:
+  let x=khw0.x, y=khw1.x, mu=khw0.mu, tau=khw1.mu in
+  x=y { which implies theay are associated to the same real form } and
   ( let  K_0=K_0(x)
     , mu_1=project_K(x,mu)   {element of X^*(T_{K_0})}
     , tau_1=project_K(x,tau) {element of X^*(T_{K_0})}
@@ -123,21 +123,17 @@ set = (KHighestWeight(,x,mu), KHighestWeight(,y,tau)) = bool:
 
 {. List of LKTs (as final tempered limit parameters) of a module given by a
    parameter. .}
-set LKTs (Param p) = [K_Type]:
-  for q in monomials(finalize(p.at_nu_0)) do K_type(q) od
+set LKTs (KType t) = [KType]:
+  for @q in KTypePol: t do q od
+set LKTs (Param p) = [KType]: p.K_type.LKTs
 
-{. LKT of module given by a parameter, if it is unique
-  (otherwise error message) .}
-set LKT (Param p) = K_Type:
-  let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
+set LKT (KType t) = KType:
+  let lkts=LKTs(t) in
+  assert(#lkts=1,"No unique lowest K-type; use LKTs instead of LKT"); lkts[0]
+set LKT (Param p) = KType: p.K_type.LKT
 
-
-{. Replace a K-type mu by its unique standard, final, nonzero parameter .}
-set k_type(K_Type mu) = K_Type: LKT(parameter(mu))
-
-{. Equivalence (actually: equality) of K-types. .}
-set equivalent (K_Type mu,K_Type tau)=bool:
-   equivalent(parameter(mu),parameter(tau))
+{. Replace a K-type mu by its (supposed) unique final K-type .}
+set final = LKT@KType
 
 
 {---------------- map from K_types to KHighestWeights ----------------}
@@ -145,40 +141,37 @@ set equivalent (K_Type mu,K_Type tau)=bool:
 
 {. Test if parameter p for G is G-spherical: G must be rel. split, all roots
    in tau(p). .}
-set is_split_spherical(Param p)=bool:
-  assert(is_final(p), "parameter is not final");
-  is_relatively_split(real_form(p)) and
-  #x(p) = KGB_size(real_form(p))-1 and
-  all(for alpha_check in simple_coroots(root_datum(p))
-      do is_even(rat_as_int( (lambda(p)-rho(root_datum(p))) *alpha_check))
-      od)
+set is_split_spherical (KType t) = bool:
+  assert(is_final(t), "K-type is not final");
+  let G=real_form(t) in
+  is_relatively_split(G) and x(t)=x_open(G) and
+  for alpha_check in simple_coroots(G)
+  do (alpha_check*lambda_minus_rho(t)).is_even
+  od.all
 
 {. Test if a K-type is G-spherical: must be LKT of G-spherical p. .}
-set is_split_spherical(K_Type p)=bool:
-   is_split_spherical(parameter(p))
+set is_split_spherical(Param p) = bool: p.K_type.is_split_spherical
 
 {. Highest weight of a G-spherical K-type (necessarily unique). .}
-set highest_weight_split_spherical(K_Type p)=KHighestWeight:
-  assert(is_split_spherical(p), "p is not a spherical rep of a split group");
-  let x=x(p),G=real_form(x(p)) then x_K=KGB(G,0)
-  then rd=root_datum(p)
+set highest_weight_split_spherical (KType t) = KHighestWeight:
+  assert(is_split_spherical(t), "not a spherical rep of a split group");
+  let x=x(t),G=real_form(t) then x_K=KGB(G,0), rd=root_datum(G)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K),rd.prefers_coroots)
-  then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
-  in { prints("mu=", mu); }
-  for alpha_check@i in simple_coroots(i_rd) do mu-:=mu*alpha_check*fw[i] od;
+  then fw=fundamental_weights(i_rd), mu = ratvec: lambda_minus_rho(t)
+  in { project mu to the orthogonal of the |i_rd| roots }
+  for alpha_check@i in simple_coroots(i_rd) do mu-:=fw[i]*(alpha_check*mu) od;
 { prints("mu modified=", mu); }
   assert(all(for alpha_check in simple_coroots(i_rd) do mu*alpha_check=0 od)
         ,"error, mu isn't orthogonal to all roots");
-  k_highest_weight(KGB(real_form(x),0),ratvec_as_vec(mu))
+  k_highest_weight(KGB(G,0),ratvec_as_vec(mu))
 
 {. Highest weight of LKT of a G-spherical parameter (is unique). .}
 set highest_weight_split_spherical (Param p) = KHighestWeight:
-  highest_weight_split_spherical(K_type(p.at_nu_0))
+  highest_weight_split_spherical(K_type(p))
 
 {. Highest weight of LKT of G-spherical K-type w.r.t. x_K (is unique). .}
-set highest_weight_split_spherical (K_Type p,KGBElt x_K) = KHighestWeight:
-  let (,x,mu)=highest_weight_split_spherical(p) in
-  k_highest_weight(move_weight((x,mu),x_K))
+set highest_weight_split_spherical (KType t,KGBElt x_K) = KHighestWeight:
+  let hw=highest_weight_split_spherical(t) in move_weight(hw,x_K)
 
 {. Highest weight of LKT of a G-spherical parameter w.r.t. x_K (is unique). .}
 set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
@@ -186,10 +179,10 @@ set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
 
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
-set highest_weight_one (K_Type p) = KHighestWeight:
-(  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots")
-;  p:=p.to_no_Cminus
-;  let (Q,pL)=theta_stable_data(parameter(p))
+set highest_weight_one (KType t) = KHighestWeight:
+(  assert(is_semifinal(t),"K-type has singular real parity roots")
+;  t:=t.to_no_Cminus
+;  let (Q,pL)=theta_stable_data(param(t))
    then (,x_L,mu_L)=highest_weight_split_spherical(pL)
    then x_G=x_min(Q)
    then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
@@ -206,37 +199,35 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 )
 
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
-set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:
-  move_weight(highest_weight_one(p),x_K)
+set highest_weight_one (KType t,KGBElt x_K) = KHighestWeight:
+  move_weight(highest_weight_one(t),x_K)
 
 {. All highest weights of a K-type; R-group acts on one KHighestWeight of
    previous function (number of terms is |R(K)/R(K,mu)|). .}
-set highest_weights (K_Type p) = [KHighestWeight]:
-  R_K_dom_mu_orbit(highest_weight_one(p))
+set highest_weights (KType t) = [KHighestWeight]:
+  R_K_dom_mu_orbit(highest_weight_one(t))
 
 {. All highest weights of a K-type w.r.t. x_K. .}
-set highest_weights (K_Type p,KGBElt x_K) = [KHighestWeight]:
-  for mu in highest_weights(p) do move_weight(mu,x_K) od
+set highest_weights (KType t,KGBElt x_K) = [KHighestWeight]:
+  for mu in highest_weights(t) do move_weight(mu,x_K) od
 
 {. List of all highest weights of all LKTs of a parameter. .}
 set highest_weights (Param p) = [KHighestWeight]:
-  let result=[KHighestWeight]: [] in
-  for q in LKTs(p) do result##:=highest_weights(q) od;
-  result
+  for q in LKTs(p) do highest_weights(q) od.##
 
 {. List of all highest weights of all LKTs of a parameter w.r.t. x_K. .}
 set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
   for khwt in highest_weights(p) do move_weight(khwt,x_K) od
 
 {. Unique highest weight of a K-type (or error if not unique). .}
-set highest_weight (K_Type p) = KHighestWeight:
-  let hwts=highest_weights(p) in
+set highest_weight (KType t) = KHighestWeight:
+  let hwts=highest_weights(t) in
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
 {. Unique highest weight of a K-type w.r.t. x_K (or error if not unique). .}
-set highest_weight (K_Type p,KGBElt x_K) = KHighestWeight:
-  let hwts=highest_weights(p,x_K) in
+set highest_weight (KType t,KGBElt x_K) = KHighestWeight:
+  let hwts=highest_weights(t,x_K) in
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
@@ -384,7 +375,7 @@ set reduce ([Param] parameters) = [Param]:
 
 { to reduce a list of KParams, convert to list of parameters, reduce,
   then convert back }
-set reduce ([K_Type] Kparameters) = [K_Type]:
+set reduce ([KType] Kparameters) = [KType]:
   let parameters = for kp in Kparameters do parameter(kp) od in
   for p in reduce(parameters) do K_type(p) od
 
@@ -433,10 +424,11 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
 
 { all K parameters with same d_lambda as (x,lambda) }
-set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
-##(for v in all_lambda_differential_0(x) do if
-is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else
-[(KGBElt,ratvec)]:[] fi od)
+set all_equal_dlambda_K_parameters (KType t) = [KType]:
+   for v in all_lambda_differential_0(t.x)
+   do let new_t = K_type(t.x,t.lambda_minus_rho+v)
+   in if new_t.is_final then [new_t] else [] fi
+   od.##
 {  for v in all_lambda_differential_0(x) do (x,lambda+v) od}
 
 { all actual parameters with same d_lambda as p, same nu }
@@ -473,14 +465,14 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
 
 
 {. All G-spherical K-types with same differential as given one. .}
-set all_G_spherical_same_differential(K_Type mu)=[K_Type]:
+set all_G_spherical_same_differential(KType mu)=[KType]:
   let p=parameter(mu) in
   ##for q in all_parameters_x_gamma(p.x,p.infinitesimal_character) do
   if is_split_spherical(q) then [LKT(q)] else [] fi od
 
 {. All G-spherical K-types with same differential as the LKT of parameter p. .}
-set all_G_spherical_same_differential (Param p) = [K_Type]:
-  all_G_spherical_same_differential(K_type(p.at_nu_0))
+set all_G_spherical_same_differential (Param p) = [KType]:
+  p.K_type.all_G_spherical_same_differential
 
 { see KHatHowe, end of Section 13
   mu-> phi=lambda-mu_2-2rho_c+rho
@@ -497,8 +489,8 @@ set parabolic_LKT (KHighestWeight(,x,mu)) = Parabolic:
   then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in Parabolic:(S,y)
 
-{ go from KHighestWeight mu to K_types [K_Type]  mu -> [p_1,...,p_r]
-  multivalued: highest_weight(p_i)=mu
+{ go from KHighestWeight mu to K_types [KType]  mu -> [t_1,...,t_r]
+  multivalued: highest_weight(t_i)=mu
  algorithm:
  1) G-spherical case: mu\in X^*/(1-delta)X^*, satisfying <mu,\alpha^\vee>=0
     for all alpha in Delta(G,T_{K_0})
@@ -509,15 +501,11 @@ set make_strongly_dominant (KHighestWeight(,x,v))=
    let (mu,w,y,b)=make_strongly_dominant(x,v) in
    (k_highest_weight(mu),w,y,b)
 
-set find_x_with_dominant_rho_c (RealForm G)=KGBElt:
-   let i=0, done=false in let x=KGB(G,0) in
-   while not done do
-     if is_dominant(G,rho_c(x)) then done:=true
-        else i+:=1; x:=KGB(G,i)
-     fi od; assert(x=KGB(G,0), "x_0 does not have dominant rho_c");
-     x
+set find_x_with_dominant_rho_c (RealForm G) = KGBElt:
+   for x in KGB(G) do if is_dominant(G,rho_c(x)) then return x fi od;
+   error("Real form ",G," does not have KGB element with dominant rho_c")
 
-set find_x_with_dominant_rho_c (KGPElt Q)=(KGBElt,bool):
+set find_x_with_dominant_rho_c (KGPElt Q) = (KGBElt,bool):
    assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
    let G=real_form(Q),
    C=equivalence_class_of(Q) in let n=#C, done=false in
@@ -559,7 +547,7 @@ set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
 
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
-set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
+set K_types (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
 in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
@@ -579,7 +567,7 @@ in assert (k>0,"There is no suitable weight in the R-group orbit.");
 
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
-set K_type (KHighestWeight khwt) = K_Type:
+set K_type (KHighestWeight khwt) = KType:
   let ktypes=K_types(khwt) in
   assert(#ktypes=1,
       ##["more than one K-type maps to this KHighestWeight;", new_line,
@@ -602,8 +590,8 @@ set dimension (KHighestWeight mu) = int:
   dimension(K0_param_from_highest_weight(mu))
 
 {. Dimension of a K-type. .}
-set dimension (K_Type p) = int:
-  let (,x,):mu=highest_weights(p)[0] in
+set dimension (KType t) = int:
+  let (,x,):mu=highest_weights(t)[0] in
   dimension(mu)*#R_K_dom(x)\#R_K_dom_mu(mu)
 
 { given mu in X^*(T_K)=X^*(H)/(1-delta)X^*(H), choose representative in X^*(H)
@@ -625,14 +613,14 @@ set fundamental_weights_K_H (KGBElt x) = [ratvec]:
 
 {. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K;
    x_K must be in the fundamental fiber. .}
-set K0_param (K_Type p,KGBElt x_K) = Param:
-  let (,,tau)=highest_weight_one(p,x_K) in
+set K0_param (KType t,KGBElt x_K) = Param:
+  let (,,tau)=highest_weight_one(t,x_K) in
   finite_dimensional(K_0(x_K),project_K(x_K,tau))
 
 {. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K;
    x_K is taken to be KGB element #0. .}
-set K0_param (K_Type p) = Param:
-  K0_param(p,KGB(real_form(x(p)),0))
+set K0_param (KType t) = Param:
+  K0_param(t,KGB(real_form(t),0))
 
 {. All K_0-types in the restriction of the LKTs of parameter p to K_0; x_K must
 be in the distinguished fiber. .}

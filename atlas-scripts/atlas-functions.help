@@ -706,32 +706,35 @@ operator - : (Split->Split): negation of a split integer
 operator * : (Split,Split->Split): multiplication of split integers
 operator % : (Split,int,int): decomposition of split integer into components
 
-K_type: (KGBElt,vec->KType): form $K$-type from (x,lambda-rho)
-operator % : (KType->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from KType
+K_type: (KGBElt,vec->KType): form a K-type from the pair (x,lambda-rho)
+operator % : (KType->KGBElt,vec): recover (x,lambda-rho) from a KType
 real_form: (KType->RealForm): recover the real form from a KType value
+height: (KType->int): height of a K-type
 operators =, != : (KType,KType): strict equality of KTypes
   Equality of KTypes implies equality of their real forms
-is_standard: (KType->bool): whether KType defines a standard K-representation
+is_standard: (KType->bool): whether K-type defines a standard K-representation
   This is true whenever lambda is dominant relative to the imaginary roots
-is_zero: (KType->bool): whether parameter defines a zero  K-representation
+is_dominant: (KType->bool): whether K-type is dominant for full positive system
+  This is true whenever (1+theta_x)lambda is dominant (for all simple roots)
+is_zero: (KType->bool): whether K-type defines a zero K-representation
   True whenever lambda is singular on a compact (for x) simply-imaginary root
-is_semifinal: (KType->bool): whether KType has no real descents
+is_semifinal: (KType->bool): whether K-type has no real descents
   When false, the standard $K$ representation is combination of others
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
   true provided no real coroots satisfy the parity condition.
-is_final: (KType->bool): whether $K$-type has no singular descents at all
+is_final: (KType->bool): whether K-type has no singular descents at all
   This means that is_standard(p), not is_zero(p) and is_semifinal(p) hold,
   and the K-type has no singular (for (1+theta_x)lambda) complex descents.
   KTypes that satisfy |is_final(p)| are precisely the ones that can occur as
   monomials in a |KTypePol| value.
-equivalent : (KType,KType->bool): test equivalence of KTypes
+equivalent : (KType,KType->bool): test equivalence of K-types
   Equivalence allows the infinitesimal character (representative) of any
-  standard KType to be made dominant, and among such KTypes is defined
+  standard K-type to be made dominant, and among such K-types is defined
   as reachability of one from the other using singular complex cross actions.
-  If either KType fails to be standard, this reverts to strict equality,
+  If either K-type fails to be standard, this reverts to strict equality,
   otherwise the equivalent(p,q) amounts to the same as normal(p)=normal(q).
-dominant: (KType->KType): ensure KType has dominant (1+theta_x)lambda
-  This gives an equivalent form of the KType in which infinitesimal character
+dominant: (KType->KType): ensure K-type has dominant (1+theta_x)lambda
+  This gives an equivalent form of the K-type in which infinitesimal character
   has been made dominant (it may not be unique for this property within its
   equivalence class); calling this function reauires is_standard to hold for the
   K-type, and an error will be reported if it is not.
@@ -739,7 +742,7 @@ to_canonical_fiber: (KType->KType): move to elected fiber for its Cartan class
   In every Cartan class of involutions one is singled out, and every K-type for
   this Cartan class can be moved into the fiber over this involution in a unique
   way; this function returns the K-type in that fiber obtained in this way.
-normal: (KType->KType): bring KType to a unique form under equivalence
+normal: (KType->KType): bring K-type to a unique form under equivalence
   This form can be computed for all K-types, and only depends on its
   equivalence class; moreover if the class contains a K-type that satisfies
   is_final, then it is unique and it will be produced by this function.
@@ -773,10 +776,16 @@ operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,gamma) from param
   and are transformed in specific ways when a function like 'dominant' is
   applied (the latter indeed serves to ensure that gamma is dominant).
 real_form: (Param->RealForm): recover the real form from a Param value
+height: (Param->int) W-invariant height measure standardrepn restricted to K
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots; it ignores the nu component of the parameter.
+  This is the same function as used in branch to compare with the given limit.
 operators =, != : (Param,Param): strict equality of parameters in the same block
   Equality of parameters implies equality of their real forms
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
+is_dominant: (Param->bool): whether parameter is dominant for full system
+  This is true whenever (1+theta_x)gamma is dominant (for all simple roots)
 is_zero: (Param->bool): whether parameter defines a zero standard module
   True whenever gamma is singular on a compact (for x) simply-imaginary root
 is_semifinal: (Param->bool): whether parameter has no singular real descents
@@ -946,20 +955,28 @@ q_branch: (Param,int->[vec,Param]) q-analgue of branch@(Param,int)
   used replace integer coefficients in the result by polynomials is the one
   used in the Fokko command qbranch (and qKtypeform and qKtypemat as well)
 to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
-height: (Param->int) W-invariant height measure standardrepn restricted to K
-  This is the sum of absolute values of the scalar products of (1+theta)lambda
-  and the positive coroots; it ignores the nu component of the parameter.
-  This is the same function as used in branch to compare with the given limit.
 
-standardrepk_standardize(Param-ParamPol):
-K_type_standardize(Param-ParamPol): rewrite nonstandard as combination of finals
-  These experimental functions ignore any nu part of the parameter (so restrict
-  to K), then rewrite the possibly non-standard K-type as a linear combination
+standardrepk_standardize: (Param->ParamPol): rewrite as combination of finals
+  This experimental function ignores any nu part of the parameter (so restricts
+  to K), then rewrites the possibly non-standard K-type as a linear combination
   of final standard K-types, returned in the form of a parameter polynomial.
-  Both functions should give the same result, but are implemented differently.
+  One should always have K_type_pol(standardrepk_standardize(p))=K_type_pol(p).
   This is related to coherent continuation action, namely for the Weyl group
   element needed to make the imaginary part of the infinitesimal character
   dominant (with the real part being projected away).
+KGP_sum: (KType->KTypePol) sun of subset of KGB associated to theta_stable(t)
+  It is required that the argument KType t be semifinal, and it will be moved to
+  an equivalent theta-stable position before doing the main work. The terms in
+  the sum are those obtained from theta_stable(t) by operating by (real root)
+  generators of the Levi factor of the corresponding theta-stable parabolic
+  subalgebra; the significance of these terms is that they serve as starting
+  points for contributions that define the K-type formula for t
+K_type_formula: (KType,int->KTypePol): formula for K-types as irreducibles
+  Express irreducible K representation as linear combination of standard
+  representations, limiting (for efficiency) the height of resulting terms to be
+  at most the second argument, unless that argument is negative. This is like
+  the function of the same name, and should give the result of the latter
+  restricted to K, but the implementations are entirely separate.
 
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are

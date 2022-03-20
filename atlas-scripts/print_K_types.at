@@ -1,11 +1,12 @@
-<K_types.at
+<basic.at
+
 {
-this used to be called K_types.at
+this file used to be called K_types.at
 now consists almost exclusively of printing functions
 }
 
-<basic.at     { for *@(Param,rat) }
-<hermitian.at { for hermitian_form_irreducible }
+<K_types.at
+<hermitian.at { for |hermitian_form_irreducible| }
 
 {the following functions have already been defined in K_types.at:
 set branch_std (ParamPol P,int bound) = ParamPol:
@@ -20,7 +21,7 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
 }
 set print_branch_irr (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
-  do prints(mult, "*", highest_weight_plain(highest_weights(q,x)[0])) od
+  do let wts0 = highest_weights(q,x)[0] in prints(mult,"*",(wts0.x,wts0.mu)) od
 
 set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_irr(P,KGB(real_form(P),0),bound)
@@ -32,7 +33,7 @@ set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
 set print_branch_irr_long (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw), " ", dimension(LKT(q))
+    prints(mult, "*", (hw.x,hw.mu), " ", dimension(LKT(q))
           , "    ", height(q))
   od
 
@@ -53,7 +54,7 @@ set print_branch_irr_long (Param p, int bound) = void:
 set print_branch_std (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_std(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw))
+    prints(mult, "*", (hw.x,hw.mu))
   od
 
 set print_branch_std (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
@@ -67,7 +68,7 @@ set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
 ( prints("rho_K=", rho_K(x))
 ; for (mult,q) in sort_by_height(branch_std(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw), " ", dimension(LKT(q))
+    prints(mult, "*", (hw.x,hw.mu), " ", dimension(LKT(q))
           ,  "    ", height(q))
   od
 )

@@ -4823,6 +4823,18 @@ void real_form_of_K_type_wrapper(expression_base::level l)
     push_value(p->rf);
 }
 
+@ Here is one more useful function: computing the height of a $K$-type. This is
+the same height when comparing to the |bound| argument in functions like
+|K_type_formla| and |branch|. This height is precomputed and stored inside
+|K_repr::K_type| values themselves, so we simply get it from there.
+
+@< Local function def...@>=
+void K_type_height_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(p->val.height()));
+}
+
 @ The various predicates that are used above in printing a $K$-type are also
 available as functions returning a Boolean value. The function |is_normal| is
 excluded here because that method assumes it is only called when |is_nonzero|
@@ -4840,6 +4852,12 @@ void K_type_is_standard_wrapper(expression_base::level l)
 { shared_K_type p = get<K_type_value>();
   if (l!=expression_base::no_value)
     push_value(whether(p->rc().is_standard(p->val)));
+}
+
+void K_type_is_dominant_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_dominant(p->val)));
 }
 
 void K_type_is_zero_wrapper(expression_base::level l)
@@ -4949,6 +4967,7 @@ void K_type_theta_stable_wrapper(expression_base::level l)
     push_value(std::move(p));
   }
 }
+
 
 
 @*1 Polynomials formed from $K$-types.
@@ -5127,9 +5146,9 @@ $(1+\theta_x)\lambda$) can be stored in a |K_type_pol_value|.
 
 @< Local function def...@>=
 void K_type_to_poly()
-{ own_K_type p = get_own<K_type_value>();
+{ shared_K_type p = get<K_type_value>();
   const auto& rf=p->rf;
-  auto final_K_types = rf->rc().finals_for(std::move(p->val));
+  auto final_K_types = rf->rc().finals_for(p->val.copy());
   K_repr::K_type_pol result;
   for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
     result.add_term(std::move(it->first),Split_integer(it->second));
@@ -5140,7 +5159,7 @@ void K_type_to_poly()
 $K$-type in a $K$-type polynomial. However, it is bound to the array subscription
 syntax, and therefore does not have a wrapper function. Instead, it is
 implemented the \.{axis} module, as the |evaluate| method of the
-|K_Type_pol_coefficient| class derived from |subscr_base|.
+|K_type_pol_coefficient| class derived from |subscr_base|.
 
 In a subscription of a $K$-type polynomial by a $K$-type, the arguments are not
 initially on the stack, but come from evaluating the |array| and |index| fields
@@ -5464,7 +5483,9 @@ install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
 install_function(unwrap_K_type_wrapper,@|"%","(KType->KGBElt,vec)");
 install_function(real_form_of_K_type_wrapper,@|"real_form"
 		,"(KType->RealForm)");
+install_function(K_type_height_wrapper,@|"height" ,"(KType->int)");
 install_function(K_type_is_standard_wrapper,@|"is_standard" ,"(KType->bool)");
+install_function(K_type_is_dominant_wrapper,@|"is_dominant" ,"(KType->bool)");
 install_function(K_type_is_zero_wrapper,@|"is_zero" ,"(KType->bool)");
 install_function(K_type_is_semifinal_wrapper,@|"is_semifinal" ,"(KType->bool)");
 install_function(K_type_is_final_wrapper,@|"is_final" ,"(KType->bool)");
@@ -5683,6 +5704,13 @@ void is_standard_wrapper(expression_base::level l)
   RootNbr witness;
   if (l!=expression_base::no_value)
     push_value(whether(p->rc().is_standard(p->val,witness)));
+}
+
+void is_dominant_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_dominant(p->val,witness)));
 }
 
 void is_zero_wrapper(expression_base::level l)
@@ -6738,6 +6766,7 @@ install_function(real_form_of_parameter_wrapper,@|"real_form"
 install_function(param_to_K_type_wrapper,@|"K_type", "(Param->KType)");
 install_function(K_type_to_param_wrapper,@|"param", "(KType->Param)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
+install_function(is_dominant_wrapper,@|"is_dominant" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
@@ -7314,7 +7343,7 @@ coefficients that these two methods produce.
 
 @< Local function def...@>=
 
-void K_type_formula_wrapper(expression_base::level l)
+void K_type_formula_param_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RealReductiveGroup& G = p->rf->val;
   const Rep_context& rc = p->rc();
@@ -7568,7 +7597,7 @@ method |SRK_context::height|, the height is now stored inside |StandardRepr|
 values themselves, so we get it from there.
 
 @< Local function def...@>=
-void srk_height_wrapper(expression_base::level l)
+void parameter_height_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(p->val.height()));
@@ -7605,60 +7634,42 @@ void standardrepk_standardize_wrapper(expression_base::level l)
   }
   push_value(std::move(acc));
 }
-@)
-void K_type_standardize_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  const Rep_context rc = p->rc();
-  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
-  if (l==expression_base::no_value)
-    return;
-@)
-  auto combo=rc.finals_for(std::move(srk));
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, SR_poly()));
-  for (auto it=combo.begin(); not combo.at_end(it); ++it)
-    // loop over finals from |combo|
-    acc->val.add_term(rc.sr(it->first),Split_integer(it->second));
-  push_value(std::move(acc));
-}
 
-@ Here are two more experimental functions, |KGB_sum| which is an auxiliary to
-the other, |K_type_denom|, which should ultimately replace |K_type_formula|.
+@ Here are two more experimental functions: |KGB_sum|, which makes available a
+function mainly used internally as auxiliary to the other one, |K_type_denom|.
+The latter is intended to ultimately replace |K_type_formula|, so its name it
+a temporary one meant to be able to compare old and new implementations.
+
+@h <limits> // for |max|
 
 @< Local function def...@>=
 void KGP_sum_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ shared_K_type p = get<K_type_value>();
   const Rep_context rc = p->rc();
-  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
+  auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
-  if (l==expression_base::no_value)
-    return;
-@)
-  auto combo=rc.KGP_sum(srk);
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, SR_poly()));
-  for (const auto& term : combo) // loop over K-type terms from |combo|
-    acc->val.add_term(rc.sr(term.first),Split_integer(term.second));
-  push_value(std::move(acc));
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<K_type_pol_value>(p->rf,rc.KGP_sum(srk)));
 }
 @)
-void K_type_denom_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+void K_type_formula_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_K_type p = get<K_type_value>();
   const Rep_context rc = p->rc();
-  auto srk = rc.sr_K(p->val.x(),rc.lambda_rho(p->val));
+  auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
   if (l==expression_base::no_value)
     return;
 @)
-  auto combo=rc.K_type_formula(srk,-1);
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, SR_poly()));
+  repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
+  auto combo=rc.K_type_formula(srk,h);
+@/own_K_type_pol acc (new K_type_pol_value(p->rf,K_repr::K_type_pol()));
   for (auto&& term : combo ) // loop over K-types from |combo|
   { auto finals=rc.finals_for(std::move(term.first));
     for (auto it=finals.begin(); not finals.at_end(it); ++it)
-      acc->val.add_term(rc.sr(it->first),term.second*it->second);
+      acc->val.add_term(std::move(it->first),term.second*it->second);
   }
   push_value(std::move(acc));
 }
@@ -7996,20 +8007,20 @@ install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
-install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
+install_function(K_type_formula_param_wrapper,@|"K_type_formula"
+		,"(Param->ParamPol)");
 install_function(K_type_formula_trunc_wrapper,@|"K_type_formula"
 		,"(Param,int->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
-install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
+install_function(parameter_height_wrapper,@|"height" ,"(Param->int)");
 install_function(standardrepk_standardize_wrapper,@|"standardrepk_standardize"
 		,"(Param->ParamPol)");
-install_function(K_type_standardize_wrapper,@|"K_type_standardize"
-		,"(Param->ParamPol)");
-install_function(KGP_sum_wrapper,@|"KGP_sum","(Param->ParamPol)");
-install_function(K_type_denom_wrapper,@|"K_type_denom","(Param->ParamPol)");
+install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->KTypePol)");
+install_function(K_type_formula_wrapper,@|"K_type_formula"
+		,"(KType,int->KTypePol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");

@@ -1431,9 +1431,8 @@ set cross (vec alpha,KGBElt x) = KGBElt:
 set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
-{ cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
-set W_cross ([int] w,KGBElt x) = KGBElt:
-  for s in w ~ do x:=cross(s,x) od; x
+set W_cross (WeylElt w,KGBElt x) = KGBElt:
+  for s in w.word ~ do x:=cross(s,x) od; x
 
 set KGB_status_text (int i) = string:
   case i in "C-","ic","r ","nc","C+" else error("Illegal KGB status") esac
@@ -1569,6 +1568,42 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
+{				K types					}
+
+set root_datum (KType t) = RootDatum: real_form(t)
+set inner_class (KType t) = InnerClass: real_form(t)
+
+set null_K_module (KType t) = KTypePol:
+  null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
+
+set x (KType t) = KGBElt: let (x,)=%t in x
+set lambda_minus_rho (KType t) = vec: let (,lr)=%t in lr
+set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+set theta_plus_1_lambda (KType t) = vec:
+    let (x,lr) =%t in ratvec_as_vec((1+involution(x))*(rho(x.real_form)+lr))
+
+set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
+
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (KType t) = [int]:
+  let lambda=lambda(t) in
+  for alpha_v@i in t.root_datum.simple_coroots
+  do if (alpha_v*lambda).< then [i] else [] fi
+  od.##
+
+{ questions about status of x component with respect to full datum simple root }
+set is_noncompact_imaginary (int i,KType t) = bool:
+  is_noncompact_imaginary(t.root_datum.simple_roots[i],t.x)
+set is_compact_imaginary (int i,KType t) = bool:
+  is_compact_imaginary(t.root_datum.simple_roots[i],t.x)
+
+set involution (KType t) = mat: involution(t.x)
+
+{			  Polynomials in K-types			}
+
+set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
+set null_K_module = null_module@KTypePol { allow more explicit name }
+set -(ParamPol P) = ParamPol: minus_1*P
 
 {                           Module parameters                           }
 
@@ -1576,12 +1611,14 @@ set root_datum (Param p) = RootDatum: real_form(p)
 set inner_class (Param p) = InnerClass: real_form(p)
 
 set null_module (Param p) = ParamPol:
-  null_module(real_form(p)) { avoid using ParamPol version below, could throw }
+  null_module(real_form(p)) { avoid useless conversion to ParamPol }
 
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
+set theta_plus_1_lambda (Param p) = vec:
+    let (x,,gamma) =%p in ratvec_as_vec((1+involution(x))*gamma)
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
@@ -1607,8 +1644,7 @@ set non_integrally_dominant_simples (Param p) = [vec]:
   do if (alpha_v*gamma).< then [alpha_v] else [] fi
   od.##
 
-{ whether gamma dominant respectiveley integrally dominant }
-set is_dominant (Param p) = bool: =#p.non_dominant_simples
+{ whether gamma integrally dominant }
 set is_integrally_dominant (Param p) = bool: =#p.non_integrally_dominant_simples
 
 { questions about status of x component with respect to full datum simple root }
@@ -1635,18 +1671,11 @@ set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
-{ cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
-set W_cross ([int] w,Param p) = Param:
-  for s in w ~ do p:=cross(s,p) od; p
-
-set x (KType t) = KGBElt: let (x,)=%t in x
-set lambda_rho (KType t) = vec: let (,lr)=%t in lr
-set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+set cross (WeylElt w,Param p) = Param:
+  for s in w.word ~ do p:=cross(s,p) od; p
 
 set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
 set param_pol (KType t) = ParamPol: param(t)
-set param_pol (KTypePol P) = ParamPol:
-   null_module(P.real_form) + for c@t in P do (c,param(t)) od
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
@@ -1813,6 +1842,9 @@ set print_extended_block = (Param,mat->):
 
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
+
+set param_pol (KTypePol P) = ParamPol:
+   null_module(P.real_form) + for c@t in P do (c,param(t)) od
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p

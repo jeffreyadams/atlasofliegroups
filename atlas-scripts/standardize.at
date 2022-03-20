@@ -25,9 +25,9 @@ set restandard (WeylElt w,Param p) = ParamPol:
   assert(w.root_datum=p.root_datum);
   standardrepk_standardize(parameter(p.x,w*p.lambda,p.nu*0))
 
-set finals(WeylElt w,Param p) = ParamPol:
-  assert(w.root_datum=p.root_datum);
-  K_type_standardize(parameter(p.x,w*p.lambda,p.nu*0))
+set finals (WeylElt w,Param p) = KTypePol:
+  let rd=w.root_datum in assert(rd=p.root_datum);
+  K_type(p.x,ratvec_as_vec(w*p.lambda-rd.rho)) { implicitly finalized }
 
 set KGP_set (KGBElt x) = [KGBElt]:
 (  let G=x.real_form then r=G.semisimple_rank in
