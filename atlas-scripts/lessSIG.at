@@ -13,17 +13,22 @@ p*0 \le SIG p
 
 }
 { change from #P to #alcove_center(P) is gain from alcove_center }
+
+set alcove_count = bool: false
+
 set alcove_center(ParamPol P) = sum(P.real_form,for p in monomials(P)
 do alcove_center(p) od)
 
-{ thought this might be a bit faster, but tests same }
-set alcove_center2(ParamPol P) = sum(P.real_form,for @p in P do alcove_center(p) od)
-
 { All the parameters p*r, with r in reducibility_points(p), and p a
 term of P}
-set red_line(ParamPol P) = ParamPol:
+set red_lineOLD(ParamPol P) = ParamPol:
 let G=P.real_form, zero = 0*P in P + sum(G, for p in monomials(P) do sum(G,for r
 in reducibility_points(p) do if r<1 then 1*(p*r) else zero fi od) od)
+
+set red_line(ParamPol P) = ParamPol:
+let G=P.real_form, zero = 0*P, one=1+0*s in P + ##for @p in P do ##for r
+in reducibility_points(p) do if r<1 then [(one,p*r)] else [] fi od od
+
 
 { Implements iterative construction of all terms that can appear in the
   deformation calculation. During the iteration...
@@ -35,40 +40,62 @@ in reducibility_points(p) do if r<1 then 1*(p*r) else zero fi od) od)
   deformed (initialized as 1*p). Idea is to apply this function repeatedly,
   starting at (1*p,0*p,0*p) }
 
+set_type PP3 = (ParamPol,ParamPol, ParamPol)
+
+
+set sig_down(RealForm G, (Param->ParamPol) gen) = (PP3->PP3):
+(  let !zero = null_module(G)
+in (PP3 (Pw,P1,P0)) PP3:
+   let redPw = Pw+red_line(Pw)
+   , max_den = max
+     (([1]##for @p in Pw do denom(nu(p)) od).max, ([1]##for @p in P1 do denom(nu(p)) od).max)
+   in prints("cardinalities for (Pw,P1,P0) are ("
+      	,#Pw,",",#P1,",",#P0,"); largest denominator = ", max_den);
+   P0 := (P0 next P0:=zero) + Pw*0;
+   Pw :=(let list = [Param]:
+         for @p in redPw
+	 do if =P1[p] else []
+	    then let P = gen(p) then c=P[p] in monomials((P next P:=zero)-c*p)
+	    fi { P[p]:=0 }
+	 od.## in zero+list);
+   (Pw,(P1 next P1:=zero)+redPw,P0)
+)
+
 set sig_down_3(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
-let G=Pw.real_form , zero = 0*Pw, redPw = Pw+red_line(Pw), denoms =
-for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
-"); largest denominator = ", max(denoms));
-  (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
-  composition_series(p) - p else zero fi od),P1+redPw, P0+Pw*0)
+sig_down(Pw.real_form,composition_series@Param)(Pw,P1,P0)
 
 { same thing, but tries to speed up computation by replacing
 composition_series(p) by partial_block(p). This should be a weakly
 larger set, and in the present iterative setting should lead to
 _nearly_ the same (slightly larger?) full_sig_down }
 
+
+set partial_block_pol(Param p) = param_pol(partial_block(p), p.real_form)
+
 set sig_down_partial(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
-let G=Pw.real_form , zero = 0*Pw, redPw = Pw+red_line(Pw), denoms =
-for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
-"); largest denominator = ", max(denoms));
-  (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
-  param_pol(partial_block(p)[:1~],G) else zero fi od),P1+redPw, P0+Pw*0)
+sig_down(Pw.real_form,partial_block_pol@Param)(Pw,P1,P0)
 
-{ same thing, but replacing each parameter encountered by the CENTER
-of the corresponding alcove of parameters. This version is to
-illustrate the memory savings and smaller denominators provided by
-using alcove-center }
+
+set sig_down_partial2(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol, ParamPol, ParamPol):
+let G=Pw.real_form , zero = 0*Pw, redPw = Pw+red_line(Pw), max_den = max
+     (([1]##for @p in Pw do denom(nu(p)) od).max, ([1]##for @p in P1 do denom(nu(p)) od).max) in
+prints("cardinalities for (Pw,P1,P0) are (",#Pw,",",#P1,",",#P0,
+"); largest denominator = ", max_den);
+  (param_pol(##for p in monomials(redPw) do if P1[p] = 0 then
+  partial_block(p)[:1~] else [] fi od,G),P1+redPw, P0+Pw*0)
+
+{ same thing, but replacing each parameter q encountered by
+alcove_center(q). This version is to illustrate the memory savings and
+smaller denominators provided by using alcove-center }
 
 set sig_down_alcove(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
-let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)), denoms =
-for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
-"); largest denominator = ", max(denoms));
+let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)), max_den = max
+     (([1]##for @p in Pw do denom(nu(p)) od).max, ([1]##for @p in P1 do denom(nu(p)) od).max) in
+prints("cardinalities for (Pw,P1,P0) are (",#Pw,",",#P1,",",#P0,
+"); largest denominator = ", max_den);
   (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
   alcove_center(composition_series(p) - p) else zero fi od),P1+redPw,
   P0+Pw*0)
@@ -81,7 +108,7 @@ set sig_down_inv(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
 let G=Pw.real_form , zero = 0*Pw, redPw = Pw+red_line(Pw), denoms =
 for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
+prints("cardinalities for (Pw,P1,P0) are (",#Pw,",",#P1,",",#P0,
 "); largest denominator = ", max(denoms));
   (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
   sum(G, for (,q,) in KL_column(p) do 1*q od)-p else zero fi od),
@@ -91,9 +118,9 @@ prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P
 
 set sig_down_inv_alcove(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
-let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)), denoms =
-for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
+let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)),
+denoms = for p in monomials(Pw+P1) do denom(nu(p)) od in
+prints("cardinalities for (Pw,P1,P0) are (",#Pw,",",#P1,",",#P0,
 "); largest denominator = ", max(denoms));
   (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
   alcove_center(character_formula(p) - p) else zero fi od),P1+redPw,
@@ -105,9 +132,9 @@ sig_down_alcove }
 
 set sig_down_partial_alcove(ParamPol Pw, ParamPol P1, ParamPol P0) = (ParamPol,
 ParamPol, ParamPol):
-let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)), denoms =
-for p in monomials(Pw+P1) do denom(nu(p)) od in
-prints("cardinalities for (Pw,P1,P0,P1+P0) are (",#Pw,",",#P1,",",#P0,",",#(P1+P0),
+let G=Pw.real_form , zero = 0*Pw, redPw = alcove_center(Pw+red_line(Pw)),
+denoms = for p in monomials(Pw+P1) do denom(nu(p)) od in
+prints("cardinalities for (Pw,P1,P0) are (",#Pw,",",#P1,",",#P0,
 "); largest denominator = ", max(denoms));
   (sum(G,for p in monomials(redPw) do if P1[p] = 0 then
   alcove_center(param_pol(partial_block(p)[:1~],G)) else zero fi od),P1+redPw,
@@ -126,39 +153,46 @@ terms that could appear. }
 set full_sig_down(Param p) = void: let triple = (1*p,0*p,0*p) in while
 to_do(triple) >0 do triple:=sig_down_3(triple) od;
 let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
-"); largest denominator = ", max(denoms));
-prints("number of alcoves = ",#alcove_center(P1))
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
+"); largest denominator = ", max(denoms)) ;
+if alcove_count = true then prints("number of alcoves = ",#alcove_center(P1)) fi
 
 set full_sig_down_partial(Param p) = void: let triple = (1*p,0*p,0*p) in while
 to_do(triple) >0 do triple:=sig_down_partial(triple) od;
 let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
 "); largest denominator = ", max(denoms));
-prints("number of alcoves = ",#alcove_center(P1))
+if alcove_count = true then prints("number of alcoves = ",#alcove_center(P1)) fi
 
-set full_sig_down_alcove(Param p) = void: let triple = (1*p,0*p,0*p) in while
-to_do(triple) >0 do triple:=sig_down_alcove(triple) od;
-let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
-"); largest denominator = ", max(denoms))
+set full_sig_down_partial2(Param p) = void: let triple = (1*p,0*p,0*p) in while
+to_do(triple) >0 do triple:=sig_down_partial2(triple) od;
+let (,P1,P0) = triple then denoms = for @p in P1 do denom(nu(p)) od in
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
+"); largest denominator = ", max(denoms));
+if alcove_count = true then prints("number of alcoves = ",#alcove_center(P1)) fi
+
+set full_sig_down_alcove(Param p) = void: let triple = (1*p,0*p,0*p)
+in while to_do(triple) >0 do triple:=sig_down_alcove(triple) od; let
+(,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
+"); largest denominator = ",max(denoms))
 
 set full_sig_down_inv(Param p) = void: let triple = (1*p,0*p,0*p) in while
 to_do(triple) >0 do triple:=sig_down_inv(triple) od;
 let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
 "); largest denominator = ", max(denoms));
-prints("number of alcoves = ",#alcove_center(P1))
+if alcove_count = true then prints("number of alcoves = ",#alcove_center(P1)) fi
 
-set full_sig_down_inv_alcove(Param p) = void: let triple = (1*p,0*p,0*p) in while
-to_do(triple) >0 do triple:=sig_down_inv_alcove(triple) od;
-let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
+set full_sig_down_inv_alcove(Param p) = void: let triple = (1*p,0*p,0*p)
+in while to_do(triple) >0 do triple:=sig_down_inv_alcove(triple) od; let
+(,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
 "); largest denominator = ", max(denoms))
 
-set full_sig_down_partial_alcove(Param p) = void: let triple = (1*p,0*p,0*p) in while
-to_do(triple) >0 do triple:=sig_down_partial_alcove(triple) od;
+set full_sig_down_partial_alcove(Param p) = void: let triple = (1*p,0*p,0*p)
+in while to_do(triple) >0 do triple:=sig_down_partial_alcove(triple) od; 
 let (,P1,P0) = triple then denoms = for p in monomials(P1) do denom(nu(p)) od in
-prints("Final cardinalities for (P1,P0,P1+P0) are (",#P1,",",#P0,",",#(P1+P0),
+prints("Final cardinalities for (P1,P0) are (",#P1,",",#P0,
 "); largest denominator = ", max(denoms))
 
