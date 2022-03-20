@@ -78,9 +78,10 @@ set final_subset ([Param] B) = [Param]:
   presence of |delta|, and is therefore dropped
 }
 
-{ undo signedness of |extended_KL_block|, using negative index for negated poly }
+{ undo signedness of |partial_extended_KL_block|, using a negative index for any
+  negated poly }
 set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
-  let (block,P,polys) = extended_KL_block(p,delta) in
+  let (block,P,polys) = partial_extended_KL_block(p,delta) in
 ( block
 , for col@j in P
   do let len_j=length(block[j]) in
@@ -114,7 +115,7 @@ set KL_P_polynomials_at_minus_one ([Param] B_fixed, mat delta) = mat:
   eval(KL_P_polynomials(B_fixed,delta),minus_1)
 
 set KL_P_signed_polynomials (Param p, mat delta) = i_poly_mat:
-   let (,P,polys) = extended_KL_block(p,delta) in
+   let (,P,polys) = partial_extended_KL_block(p,delta) in
    for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do polys[index] od
    od
@@ -125,7 +126,7 @@ set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
 set KL_P_signed_polynomials([Param] B, mat delta) = i_poly_mat:
   assert(all(for p in B do is_fixed(delta,p) od)
         ,"not all parameters in B_fixed are fixed");
-  let (block,P,polys)=extended_KL_block(B~[0],delta)
+  let (block,P,polys)=partial_extended_KL_block(B[0],delta)
   then (perm,valid)=permutation(B,block), n=#block
 in assert(valid,"given list of parameters does agree with a block");
   for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
@@ -133,8 +134,8 @@ in assert(valid,"given list of parameters does agree with a block");
 set KL_P_signed_polynomials_at_minus_one([Param] B, mat delta) = mat:
   eval(KL_P_signed_polynomials(B,delta),minus_1)
 
-{ since there is no "dual_extended_KL_block", define the Q-polynomials as
-  inverse of the signed P-matrix
+{ since there is no "dual_partial_extended_KL_block", define the Q-polynomials
+  as inverse of the signed P-matrix
 }
 set KL_Q_polynomials (Param p, mat delta) = i_poly_mat:
   upper_unitriangular_inverse (KL_P_signed_polynomials(p,delta))

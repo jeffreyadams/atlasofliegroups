@@ -2084,7 +2084,7 @@ struct rational_vector_value : public value_base
    : val(v) @+{@; val.normalize();}
   explicit rational_vector_value(rat_Vector&& v)
    : val(std::move(v)) @+{@; val.normalize();}
-  rational_vector_value(const int_Vector& v,int d)
+  rational_vector_value(const int_Vector& v,arithmetic::Denom_t d)
    : val(v,d) @+ {@; val.normalize(); }
   rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
                        arithmetic::Denom_t d)
