@@ -1,4 +1,5 @@
 <all.at
+<Kcone.at
 
 set hb=40
 
@@ -66,7 +67,7 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
 set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
-   then (list,)= hodge_branch_std(p,60)
+   then (list,)= hodge_branch_std(p,30)
    then hwts= for P in list
         do for c@q in P do (c,highest_weight(LKT(q)))
 	                od
@@ -88,7 +89,7 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
-          in n*branch_irr(p,hb)
+          in n*branch_irr(p,height(K_Type:(KGB(G,0),v)))
        od)
     od
 
