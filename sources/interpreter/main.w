@@ -232,7 +232,7 @@ not being defined.
 #define isatty(x) true // if we cannot find out, guess it is ``yes''
 #define chdir(x) (-1) // just fail for every argument
 #else
-#include <unistd.h>
+#include <unistd.h> // for |isatty| and |STDIN_FILENO|
 #endif
 
 

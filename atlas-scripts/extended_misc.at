@@ -25,21 +25,19 @@ set canonical_g (Param p)  = ratvec: canonical_g(real_form(p))
 
 { some variants of Cayley transforms }
 
-{ use vector-based cross/Cayley when possible, obviates inv_Cayley }
+{ use vector-based cross/Cayley when possible }
 forget cross@(int,Param)
 forget Cayley@(int,Param)
-forget inv_Cayley@(int,Param)
 
 set cross (int s,Param p) = Param:
-  let alpha = simple_roots(
-    integrality_datum(real_form(p),infinitesimal_character(p)))
+  let alpha =
+    integrality_datum(real_form(p),infinitesimal_character(p)).simple_roots
   in cross(alpha[s],p)
 
 set Cayley (int s,Param p) = Param:
   let alpha = simple_roots(
     integrality_datum(real_form(p),infinitesimal_character(p)))
   in Cayley(alpha[s],p)
-set inv_Cayley = Cayley@(int,Param) { leave this defined for other scripts }
 
 { Cayley transform as a set (actually an array, but order doesn't matter) }
 set Cayley_set (int j,Param p) = [Param]:

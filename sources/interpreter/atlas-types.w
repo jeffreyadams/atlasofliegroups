@@ -3202,24 +3202,32 @@ void KGB_size_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(rf->val.KGB_size()));
 }
 
-@ Here is a somewhat technical function that will facilitate working ``in
-coordinates'' with KGB elements for this real form. It returns a rational
-coweight that determines the base grading for the real form, and which is an
-offset that will be added to |torus_bits| values when computing the
-|torus_factor| they represent. It is defined so that a zero value corresponds
-to a quasisplit real form, which proves the most useful base point. This does
-imply that a standard choice for the ``infinitesimal cocharacter''~$g$ for the
-real from must differ by ${}^\vee\!\rho$ from the value produced here (the
-|RealReductiveGroup| member that stores it is called |g_rho_check()|).
+@ Here are two somewhat technical function that will facilitate working ``in
+coordinates'' with KGB elements for this real form. The first one, called
+|base_grading_vector|, returns a rational coweight that determines the base
+grading for the real form, and which is an offset that will be added to
+|torus_bits| values when computing the |torus_factor| they represent. It is
+defined so that a zero value corresponds to a quasisplit real form, which proves
+the most useful base point. This does imply that a standard choice for the
+``infinitesimal cocharacter''~$g$ for the real from must differ by
+${}^\vee\!\rho$ from the value produced here, which is obtained directly from
+the |RealReductiveGroup| class using the |g_rho_check| method (which name should
+be read as $g-{}^\vee\!\rho$).
 
-We used to ensure that the coweight returned is dominant, while remaining in the
-coset of $2X_*$ defined by |G.g_rho_check| so as to no affect the torus element
-$\exp(\pi\ii t)$ giving the actual base grading. There is however no obvious
-best way to do this, and the easy way that used to be employed could give
-coweights unnecessarily far inside the dominant chamber; in addition this shift
-may destroy the ${}^t\delta$-invariance of |G.g_rho_check| that is hard to
-reestablish without risk of leaving the coset. Therefore we just return
-|G.g_rho_check| unchanged.
+We used to ensure that the coweight returned as |base_grading_vector| is
+dominant, while remaining in the coset of $2X_*$ defined by |G.g_rho_check()| so
+as to not affect the torus element $\exp(\pi\ii t)$ giving the actual base
+grading. There is however no obvious best way to do this, and the easy way that
+used to be employed could give coweights unnecessarily far inside the dominant
+chamber; in addition this shift may destroy the ${}^t\delta$-invariance of
+|G.g_rho_check| that is hard to reestablish without risk of leaving the coset.
+Since dominance is not a vital property, we therefore now just return
+|G.g_rho_check()| unchanged.
+
+The other function |initial_torus_bits| gives access to the value that is used
+internally to initialise the full KGB construction, and which distinguishes this
+real from other ones in the same square class (which share the same
+|base_grading_vector|).
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
@@ -4722,18 +4730,21 @@ on~$\gamma$ should it be required that the evaluation be non-negative. But
 since making this concrete requires an overhaul of the entire block
 construction process, we stick to unqualified dominance for now.)
 
-In accordance with their behaviour when incorporating virtual modules, the
-equality operator for parameters will test for \emph{equivalence} when both
-are standard; otherwise it tests strict equality. Equivalence of standard
-parameters amounts to testing for equality after the parameters are made
-dominant (at least that claim was not contested at the time of writing this).
-We provide this test, which will be bound to the equality operator. Unlike
-earlier equality tests, we \emph{require} the parameters to be associated to
-the same real form, giving a runtime error (rather than returning false) if
-not; this avoids confusion if there were some subtle difference of real forms
-for otherwise similar parameters. If some operation is used to produce
-parameters that may of may not be associated to the same real form, then one
-should test those forms for equality before testing the parameters.
+While the equality and inequality operators for module parameters test for
+strict equality of all components (including of the real forms, which the method
+|StandardRepr::operator==| must simply assume to be equal), a separate function
+tests for \emph{equivalence}; this is a weaker condition when both parameters
+are standard. (When at least one parameter fails to be standard, the equivalence
+test reverts to testing strict equality.) Equivalence of standard parameters
+amounts to testing for equality after the parameters are made dominant (at least
+that claim was not contested at the time of writing this). This test will be
+bound to the name |equivalent|. Unlike the equality tests, it \emph{requires}
+the parameters to be associated to the same real form, giving a runtime error
+(rather than returning false) if not; this avoids confusion if there were some
+subtle difference of real forms for otherwise similar parameters. If some
+operation is used to produce parameters that may of may not be associated to the
+same real form, then one should test those forms for equality before testing
+equivalence of the parameters.
 
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
@@ -4786,12 +4797,12 @@ parity) they throw a |Cayley_error| value, which is caught here and translated
 in make the whole function a no-operation (so that the caller gets an occasion
 to test the condition).
 
-Like for KGB elements there is the possibilty of double values, this time both
-for the Cayley and inverse Cayley transforms. The ``solution'' to this
-difficulty is the same here: the user can find out by herself about a possible
-second image by applying a cross action to the result. In the current case
-this approach has in fact already been adopted in the methods that are called
-here, which present a single-minded interface to these transforms.
+Like for KGB elements there is the possibility of double values for the Cayley
+transforms, in either direction. The ``solution'' to this difficulty is the same
+here: the user can find out by herself about a possible second image by applying
+a cross action to the result. In the current case this approach has in fact
+already been adopted in the method that is called here, which presents a
+single-valued interface to the Cayley transform.
 
 @< Local function def...@>=
 void parameter_cross_wrapper(expression_base::level l)
@@ -4826,30 +4837,6 @@ void parameter_Cayley_wrapper(expression_base::level l)
   try {
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().Cayley(s,p->val)));
-  }
-  catch (error::Cayley_error& e) // ignore undefined Cayley transforms
-  {@;
-    push_value(std::move(p));
-  }
-}
-
-void parameter_inv_Cayley_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  int s = get<int_value>()->int_val();
-  unsigned int r =
-    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
-  if (static_cast<unsigned>(s)>=r)
-  { std::ostringstream o;
-    o << "Illegal simple reflection: " << s
-      << ", should be <" << r;
-    throw runtime_error(o.str());
-  }
-  if (l==expression_base::no_value)
-    return;
-
-  try {
-    push_value(std::make_shared<module_parameter_value>
-		(p->rf,p->rc().inv_Cayley(s,p->val)));
   }
   catch (error::Cayley_error& e) // ignore undefined Cayley transforms
   {@;
@@ -5699,16 +5686,15 @@ into a list of parameters and three tables in the form of matrices.
 }
 
 @ The following function generates an extended block, computes their extended
-KL polynomials and evaluates them at $-1$ (since this turns out to be
-sufficient for their use in the deformation algorithm), and then rewrites
-elements that have singular descents in terms of those that have not (the
-``survivors''), reduces the matrix to be indexed by those elements only, and
-finally negates entries at positions with odd length difference for the block
-elements corresponding to row and column. All this work is actually performed
-inside call to |ext_kl::ext_KL_matrix|.
+KL polynomials, and then rewrites elements that have singular descents in terms
+of those that have not (the ``survivors''), reduces the matrix to be indexed by
+those elements only, and finally negates entries at positions with odd length
+difference for the block elements corresponding to row and column. All this work
+is actually performed inside call to |ext_kl::ext_KL_matrix|.
 
-The function returns the extended block as list of parameters, and the matrix
-just described.
+The function returns the extended block as list of parameters, a matrix, and
+finally a list of vectors, to be interpreted as polynomials, and into which list
+the matrix entries are indices.
 
 @< Local function def...@>=
 void extended_KL_block_wrapper(expression_base::level l)
@@ -5756,8 +5742,6 @@ install_function(parameter_equivalent_wrapper,@|"equivalent"
                 ,"(Param,Param->bool)");
 install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
-install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
-                ,"(int,Param->Param)");
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
 install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
@@ -5791,7 +5775,7 @@ install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
-install_function(extended_KL_block_wrapper,@|"extended_KL_block"
+install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
                 ,"(Param,mat->[Param],mat,[vec])");
 
 @*1 Polynomials formed from parameters.
