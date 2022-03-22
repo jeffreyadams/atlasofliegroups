@@ -1,0 +1,95 @@
+<simple_factors.at { for simple_factors }
+<affine.at { to try to avoid conflicting definitions }
+
+{ Goal is to write representatives of all affine facets in the
+fundamental parallelepiped
+  gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])
+
+Just do this for SIMPLE root datum rd.
+
+Big problem is that there are TWO affine Weyl groups. The one
+considered here uses translation by ROOTS and acts on X^*. In this
+group the "simple affine root" involves the highest COROOT. The other
+possibility, which I'll try not to use in this file, uses translation
+by COROOTS and acts on X_*. That is the one considered in DV notes
+alcoves.pdf, and useful for understanding elements of finite order in
+G.
+
+Write simple coroots as betav[1]...betav[ell-1], lowest coroot as
+
+   betav[0] = -(rd.dual).highest_root
+   betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell
+
+}
+
+{ An affine root datum is a root datum rd (which in atlas means with
+chosen pos_roots), and a list of the lowest coroots betav[j] in each
+rd[j] in simple_factors(rd). Since I want to use this to look for
+unitary reps, simple rd is the most important case }
+set_type SimpleAffine = RootDatum
+
+set aff_rank(SimpleAffine Affd) = ss_rank(Affd) + 1
+
+set_type AffineCoroot = (vec,int)
+
+{first apply w, then translate by tau}
+set_type AffineCoWeylElt = (vec tau, WeylElt w)
+set *(AffineCoWeylElt (tau,w) , vec gamma) = w*gamma + tau
+set *(AffineCoWeylElt (tau,w) , ratvec gamma) = w*gamma + tau
+set *(AffineCoWeylElt(tau1,w1) , AffineCoWeylElt(tau2,w2)) = (w1*tau2 +
+tau1, w1*w2)
+
+set aff_simple_coroots(SimpleAffine Affd) = [AffineCoroot]:
+for j:Affd.aff_rank do 
+if j=0 then (-coroot(Affd, highest_short_root(Affd)),1) else
+(Affd.simple_coroots[j-1],0) fi od
+
+set aff_simple_roots(SimpleAffine Affd) = for j:Affd.aff_rank do
+if j=0 then -highest_short_root(Affd) else
+Affd.simple_roots[j-1] fi od
+
+set labels(SimpleAffine Affd) = [int]:
+for j:Affd.aff_rank do
+if j=0 then 1 else rat_as_int(Affd.fundamental_weights[j-1] *
+coroot(Affd, highest_short_root(Affd))) fi od
+
+set root(AffineCoroot (betav,m),SimpleAffine Affd) = root(Affd,betav)
+
+set *(AffineCoroot (betav,m), vec v) = betav*v + m
+
+
+set reflection(AffineCoroot Betav, SimpleAffine Affd, vec v) = v -
+(Betav*v)*root(Betav,Affd)
+
+set reflection(AffineCoroot Betav, SimpleAffine Affd, ratvec v) =
+reflection(Betav, Affd, v.numer)/v.denom
+
+{a k-diml facet in n-diml simplex is cut out by a collection of
+(k+1) AffineCoroot inequalities and (n-k) AffineCoRoot equalities. The total
+collection of affine coroots appearing 
+must be a set of simple roots for the affine datum.}
+
+set_type Facet = ([AffineCoroot] pos,[AffineCoroot] zero)
+
+{ set stabilizer(Facet (pos,zero)) = root_datum(??, }
+
+{ vertices of fundamental alcove }
+set fundamental_vertices(SimpleAffine Affd) = [ratvec]:
+for j:Affd.aff_rank + 1 do 
+if j=0 then null(Affd.rank)/1 else
+Affd.fundamental_weights[j-1]/Affd.labels[j-1] fi od
+
+set fund_facets(SimpleAffine Affd) = [Facet]:
+let n = Affd.aff_rank, Sv = Affd.aff_simple_coroots then P =
+power_set(n) in for i:2^n-1 from 1 do (for j in P[i] do Sv[j] od, for
+k in complement(n,P[i]) do Sv[k] od) od 
+
+set fund_barycenters(SimpleAffine Affd) = [ratvec]:
+let  n = Affd.aff_rank, LAB = Affd.labels,
+FWts=Affd.fundamental_weights then P = power_set(n) in for i:2^n - 1
+from 1 do sum(n-1,let m = #P[i] in for j in P[i] do if j=0 then
+null(n-1)/1 else FWts[j-1]/(m*LAB[j]) fi od) od
+
+set W_fund_barycenters(SimpleAffine Affd) = [ratvec]:
+## for gamma in fund_barycenters(Affd) do for w in
+stabiliser_quotient_of_dominant(Affd,gamma.numer) do w*gamma od od
