@@ -1,7 +1,8 @@
 <all.at
 <Kcone.at
 
-set hb=40
+set add_ht (RealForm G)=int:
+   let rc=rho_check(G), rk=rho_c(G) in ceil(4*rc*rk)
 
 set zeros (int n) = vec: for i:n do 0 od
 
@@ -37,9 +38,6 @@ set kwts(RealForm G) = [[vec]]:
 	in CSA##kwts(x)
     od
 
-set height_bound([[vec]] list, RealForm G)=int:
-   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))
-
 set wedge_weights ([[vec]] wts, [[int]] ps, int n) =[[vec]]:
    let list=sets_of_card_n(ps,n)
    in for xwts in wts
@@ -64,10 +62,10 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
     in branch_std(Q,hb)
 
 
-set first_step (RealForm G, vec chi) = [[(Split,KHighestWeight)]]:
+set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
-   then (list,)= hodge_branch_std(p,30)
+   then (list,)= hodge_branch_std(p,hb)
    then hwts= for P in list
         do for c@q in P do (c,highest_weight(LKT(q)))
 	                od
@@ -89,7 +87,7 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
-          in n*branch_irr(p,height(K_Type:(KGB(G,0),v)))
+          in n*branch_irr(p, height(K_Type:(KGB(G,0),v)))
        od)
     od
 
@@ -104,8 +102,8 @@ set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
     od
 
 
-set last_step ([ParamPol] start,int kdim,RealForm G)=[ParamPol]:
-   let wts=kwts(G), ps=power_set(kdim)
+set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
+   let wts=kwts(G), ps=power_set(kdim), ah=add_ht(G)
    then add_on=[ParamPol]:for i:kdim do 1*null_module(G) od
    then result=start##add_on
    in for i:kdim from 1
@@ -114,11 +112,11 @@ set last_step ([ParamPol] start,int kdim,RealForm G)=[ParamPol]:
 	      do result[j+i]+:=(-1)^i*add_weights(start[j],ww)
 	      od
 	od;
-    for P in result do branch_std(P,hb) od
+    for P in result do branch_std(P,hb+ah) od
 
-set Lucas_algorithm (RealForm G, vec chi) = [ParamPol]:
-   let kdim=dimension(K_0(G)), list1=first_step(G,chi)
+set Lucas_algorithm (RealForm G, vec chi, int hb) = [ParamPol]:
+   let kdim=dimension(K_0(G)), list1=first_step(G,chi,hb)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
-   in last_step(start,kdim,G)
+   in last_step(start,kdim,G,hb)
