@@ -6,6 +6,9 @@ set add_ht (RealForm G)=int:
 
 set zeros (int n) = vec: for i:n do 0 od
 
+set height_bound([[vec]] list, RealForm G)=int:
+   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))
+
 set sets_of_card_n ([[int]] ps, int n)=[[int]]:
    ##for ints in ps do if #ints=n then [ints] else [] fi od
 
@@ -59,7 +62,7 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
     then wts=kwts(G)
     then bd=height_bound(wts,G)
     then Q= add_weights (P,wedge_weights(wts,ps,n))
-    in branch_std(Q,hb)
+    in branch_std(Q,height(mu)+add_ht(G))
 
 
 set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
@@ -91,8 +94,8 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
        od)
     od
 
-set steps_one_two_three (RealForm G,vec chi)=[ParamPol]:
-   let list1=first_step(G,chi)
+set steps_one_two_three (RealForm G,vec chi,int hb)=[ParamPol]:
+   let list1=first_step(G,chi,hb)
    then list2=second_step(list1)
    in third_step(G,list2)
 
