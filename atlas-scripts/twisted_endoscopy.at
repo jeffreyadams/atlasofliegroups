@@ -336,7 +336,39 @@ set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
    fi
 
 
-set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
+{gamma_H is the known infinitesimal character for H}
+set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
+let y_G=y_gen(p_G) then
+action_H=restrict_action(y_G.involution,M) then
+tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then  
+theta=p_G.x.involution then
+N=(1+theta)##id_mat(n_rows(theta)) then
+()=if te_verbose then prints(M##N) fi then
+tf_u_H_maybe=solve(M,N,tf_u_G) {solution to: M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_*}  then
+tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
+        2*tf_u_H_maybe.requisition  {factor of 2}
+fi  then
+tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} then
+()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
+y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
+()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
+if is_valid(y_H_gen,gamma_H) then
+ let ()=if te_verbose then prints("is valid") fi in
+ let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
+ ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
+ sign_difference(p_G,delta)*param_pol(lp)
+else
+ let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
+ error("not valid")
+fi
+
+set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+let all=all_parameters_gamma(H,gamma_H) then
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
+sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
+
+set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
 tf_u_G=y_G.unnormalized_torus_factor then
@@ -353,33 +385,41 @@ tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
 ()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(y_H_gen,left_inverse(M)*p_G.infinitesimal_character) then
+if is_valid(y_H_gen,gamma_H) then 
  let ()=if te_verbose then prints("is valid") fi in
- let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
+ let  lp=L_packet(H,gamma_H,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
  sign_difference(p_G,delta)*param_pol(lp)
 else
  let ()=prints("not valid, using inverse_lift_std_by_search instead") in 
- null_module(H)
+ inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
-set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta)=ParamPol:
-let inf_char_H=left_inverse(M)*p_G.infinitesimal_character then
-all=all_parameters_gamma(H,inf_char_H) then
-index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
-if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
-sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
-
+{
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
 let P=inverse_lift_std(p_G,H,M,delta) in
  if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(p_G,H,M,delta)
  else P fi
-
-set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta)=
+}
+set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
 let P=extended_character_formula(p_G,delta) then
 ()=if te_verbose then prints("P=",P) fi then
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta) od in
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od in
 composition_series(PH)
+
+set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
+let P=extended_character_formula(p_G,delta) then
+()=if te_verbose then prints("P=",P) fi then
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta,gamma_H) od in
+composition_series(P)
+
+{to use: set G=GL(n,R), delta=G.distinguished_involution,
+(H,M)=endoscopic(G,delta) to define H,M,G,delta}
+set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol):
+let lift_std_ext=lift_std(p_H,M,G,delta) then
+lift_std=parameter(lift_std_ext) then 
+()=if te_verbose then prints("lift_std=", lift_std) fi in
+(p_H,lift_std_ext.parameter,inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character))
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
@@ -387,7 +427,7 @@ set abv(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol):
 let lift_std_ext=lift_std(p_H,M,G,delta) then
 lift_std=parameter(lift_std_ext) then 
 ()=if te_verbose then prints("lift_std=", lift_std) fi in
-(p_H,lift_std_ext.parameter,inverse_lift_irr(lift_std,p_H.real_form,M,delta))
+(p_H,lift_std_ext.parameter,inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character))
 
 
 
