@@ -31,22 +31,27 @@ set_type SimpleAffine = RootDatum
 set aff_rank(SimpleAffine Affd) = ss_rank(Affd) + 1
 
 set_type AffineCoroot = (vec,int)
+set *(AffineCoroot (betav,m), ratvec gamma) = m+betav*gamma
 
 {first apply w, then translate by tau}
 set_type AffineCoWeylElt = (vec tau, WeylElt w)
+
 set *(AffineCoWeylElt (tau,w) , vec gamma) = w*gamma + tau
 set *(AffineCoWeylElt (tau,w) , ratvec gamma) = w*gamma + tau
 set *(AffineCoWeylElt(tau1,w1) , AffineCoWeylElt(tau2,w2)) = (w1*tau2 +
 tau1, w1*w2)
+set *(AffineCoWeylElt(tau,w) , AffineCoroot(betav,m)) = AffineCoroot:
+(w*betav, m-betav*tau)
+set inverse(AffineCoWeylElt(tau,w)) = AffineCoWeylElt:
+(-inverse(w)*tau, inverse(w))
 
 set aff_simple_coroots(SimpleAffine Affd) = [AffineCoroot]:
-for j:Affd.aff_rank do 
+for j:Affd.aff_rank do
 if j=0 then (-coroot(Affd, highest_short_root(Affd)),1) else
 (Affd.simple_coroots[j-1],0) fi od
 
-set aff_simple_roots(SimpleAffine Affd) = for j:Affd.aff_rank do
-if j=0 then -highest_short_root(Affd) else
-Affd.simple_roots[j-1] fi od
+{compute facet of a point in fundamental alcove, where all positive
+roots are in [0,1]}
 
 set labels(SimpleAffine Affd) = [int]:
 for j:Affd.aff_rank do
@@ -70,6 +75,14 @@ collection of affine coroots appearing
 must be a set of simple roots for the affine datum.}
 
 set_type Facet = ([AffineCoroot] pos,[AffineCoroot] zero)
+
+set facet(SimpleAffine Affd, ratvec gamma0) = Facet:
+let S=Affd.aff_simple_coroots in (##for j:Affd.aff_rank do if S[j]*gamma0 != 0
+then [S[j]] else [] fi od, ##for j:Affd.aff_rank do if S[j]*gamma0 = 0
+then [S[j]] else [] fi od)
+set aff_simple_roots(SimpleAffine Affd) = for j:Affd.aff_rank do
+if j=0 then -highest_short_root(Affd) else
+Affd.simple_roots[j-1] fi od
 
 { set stabilizer(Facet (pos,zero)) = root_datum(??, }
 
@@ -114,5 +127,38 @@ FPtau(Affd,gamma) do gamma+tau od od
 
 {this eliminates repetition}
 set FPP_barycenters_unique(SimpleAffine Affd) = [ratvec]:
-let longList = FPP_barycenters(Affd) in ##for j:#longList do if all(for i:j-1
+let longList = FPP_barycenters(Affd) in ##for j:#longList do if all(for i:j
 do longList[i] != longList[j] od) then [longList[j]] else [] fi od
+
+{ Computes translation part of affine Weyl group element moving gamma
+to the fundamental alcove: subtract roots until gamma lands in W*A0 =
+set where gamma1 is at most one on every coroot.  Precisely,
+gamma - tau(gamma) is in W*(fundamental alcove).
+
+This version uses more integer arithmetic. First make simple root
+coords smaller than 1.}
+
+set TAU(RootDatum rd,ratvec gamma) = vec:
+let COROOTS = rd.coroots, ROOTS = rd.roots, gamma0NUM=gamma.numer,
+DENOM = gamma.denom, m0= 0, q0=0 then d=#COROOTS in if d!=0
+then for j:#rd.fundamental_coweights do let (num,den) =
+(rd.fundamental_coweights[j].numer, rd.fundamental_coweights[j].denom) in
+gamma0NUM := (gamma0NUM -
+( ( ( num*gamma0NUM )\(DENOM*den))*DENOM*den)*rd.simple_roots[j]) od;
+while (m0:=max_loc(for j:d do COROOTS[d-j-1]*gamma0NUM od); (q0:=
+COROOTS[d-m0-1]*gamma0NUM; q0 > DENOM)) do gamma0NUM:= gamma0NUM -
+ceil(q0/(2*DENOM))*DENOM*ROOTS[d-m0-1] od fi;
+(gamma-gamma0NUM/DENOM).ratvec_as_vec
+
+{ Computes INVERSE OF a (nonunique) aff Weyl gp elt (w,tau) moving
+gamma to the fundamental alcove, and the (unique) image of gamma in that
+fundamental alcove, trying to do integer arithmetic. }
+set from_fundamental_alcove(RootDatum rd, ratvec gamma) = (WeylElt,
+vec, ratvec): let tau = TAU(rd,gamma) then (w,gamma0TIMESDEN) = from_dominant
+(rd,gamma.numer - gamma.denom*tau) in
+{assert (gamma=w*gamma0 + tau,"Bad affine!");}
+(w,tau,gamma0TIMESDEN/gamma.denom)
+
+{set facet(SimpleAffine Affd, ratvec gamma) = Facet:}
+
+
