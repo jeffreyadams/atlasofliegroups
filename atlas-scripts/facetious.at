@@ -93,3 +93,26 @@ null(n-1)/1 else FWts[j-1]/(m*LAB[j]) fi od) od
 set W_fund_barycenters(SimpleAffine Affd) = [ratvec]:
 ## for gamma in fund_barycenters(Affd) do for w in
 stabiliser_quotient_of_dominant(Affd,gamma.numer) do w*gamma od od
+
+{ integral weight to be added to gamma to land in fundamental
+parallelepiped where all simple coroots take values in [0,1] }
+{need to make a list of all possible tau; if g is an integer, use
+either -g or -g+1.}
+
+set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]: let g=for
+j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od then INT =
+##for j:#Affd.simple_coroots do if is_integer(g[j]) then [j] else []
+fi od in for S in power_set(#INT) do sum(Affd.rank, for
+j:#Affd.simple_coroots do -floor(g[j])*Affd.fundamental_weights[j]
+od) + sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od) od
+
+{this includes all barycenters of facets in the fundamental
+parallelepiped. Should be reorganized by dimension!}
+set FPP_barycenters(SimpleAffine Affd) = [ratvec]:
+## for gamma in W_fund_barycenters(Affd) do for tau in
+FPtau(Affd,gamma) do gamma+tau od od
+
+{this eliminates repetition}
+set FPP_barycenters_unique(SimpleAffine Affd) = [ratvec]:
+let longList = FPP_barycenters(Affd) in ##for j:#longList do if all(for i:j-1
+do longList[i] != longList[j] od) then [longList[j]] else [] fi od
