@@ -1,6 +1,8 @@
 <K.at
 <K_types.at
 <to_ht.at
+<K_norm.at
+<tensor_product.at
 
 {.compute the cones of K-types above and below a fixed one.}
 {
