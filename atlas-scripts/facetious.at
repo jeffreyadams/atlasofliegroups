@@ -199,16 +199,31 @@ do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 
 { this includes all barycenters of facets in the fundamental
 parallelepiped, organized by dimension }
-set FPP_barycenters(SimpleAffine Affd) = [[ratvec]]:
-for d:Affd.aff_rank do{DIM} ## for gamma in W_fund_barycenters(Affd)[d]
-do{WA0} for tau in FPtau(Affd,gamma) do{TAU} gamma+tau od{TAU} od{WA0} od{DIM}
+set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
+let WBs = W_fund_barycenters(Affd) in for d:Affd.aff_rank do{DIM} ##
+for gamma in WBs[d] do{WA0} for tau in FPtau(Affd,gamma) do{TAU}
+gamma+tau od{TAU} od{WA0} od{DIM}
 
 {this eliminates repetition}
-set FPP_barycenters_unique(SimpleAffine Affd) = [[ratvec]]:
-for d:Affd.aff_rank do{DIM} let longList = FPP_barycenters(Affd)[d] in
-##for j:#longList do{LIST} if all(for i:j
+set FPP_barycenters_unique(SimpleAffine Affd) = [[FacetB]]:
+let FPPBs = FPP_barycenters(Affd) in for d:Affd.aff_rank do{DIM} let
+longList = FPPBs[d] in ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 [] fi od{LIST} od{DIM}
+
+{ vertex sets for all facets in the fundamental parallelepiped,
+organized by dimension }
+set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+let WVs = W_fund_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM}
+##for gammas in WVs[d] do{WA0} for tau in FPtau(Affd, sum(Affd.rank,gammas)/(d+1)) do{TAU} for gamma in gammas do{GAM}
+gamma+tau od{GAM} od{TAU} od{WA0} od{DIM}
+
+{this eliminates repetition}
+set FPP_vertex_sets_unique(SimpleAffine Affd) = [[FacetV]]:
+let FPPVs = FPP_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM} let
+longList = FPPVs[d] in ##for j:#longList do{LIST} if all(for i:j
+do{SRCH} sum(Affd.rank,longList[i]) != sum(Affd.rank,longList[j])
+od{SRCH}) then [longList[j]] else [] fi od{LIST} od{DIM}
 
 { Computes translation part of affine Weyl group element moving gamma
 to the fundamental alcove: subtract roots until gamma lands in W*A0 =
@@ -260,3 +275,9 @@ set facetV(SimpleAffine Affd, ratvec gamma) = FacetV:
 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
 Verts = facetV0(Affd,gamma0) in for gamma0v in Verts
 do wtilde*gamma0v od
+
+{ computes vertex list as indices in a pre-computed vertex list }
+
+set facetVnum(SimpleAffine Affd, [ratvec] vert_list, FacetV facet) =
+vec:
+for gammav in facet do find(vert_list,gammav) od.sort
