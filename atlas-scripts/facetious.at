@@ -1,14 +1,19 @@
 <simple_factors.at { for simple_factors }
 <affine.at { to try to avoid conflicting definitions }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]) }
+<hermitian.at { for is_unitary }
 
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
-  gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])
+  gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
 
-Just do this for SIMPLE root datum rd.
+{ Just do this for SIMPLE root datum rd.}
 
-One problem is that there are TWO affine Weyl groups. The one
+{ at the end is a function "spherical" which (if G has simple derived
+group) might return which facets correspond to non-cohomologically
+induced spherical principal series. Haven't proven this. }
+
+{ One problem is that there are TWO affine Weyl groups. The one
 considered here uses translation by ROOTS and acts on X^*. In this
 group the "simple affine root" involves the highest COROOT. The other
 possibility, which I'll try not to use in this file, uses translation
@@ -19,13 +24,13 @@ G. I think it's the primary topic in affine.at.
 Write simple coroots as betav[1]...betav[ell-1], lowest coroot as
 
    betav[0] = -(rd.dual).highest_root
-   betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell
+   betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell) }
 
-}
 
-{ There are three notions of "facet": a set Facet of affine equalities and
-inequalities defining it (NOT UNIQUE); the set FacetV of vertices; and
-the barycenter FacetB. I like FacetV the best: you can take the
+
+{ There are three notions of "facet": a set Facet of affine equalities
+and inequalities defining it (NOT UNIQUE); the set FacetV of vertices;
+and the barycenter FacetB. I like FacetV the best: you can take the
 closure of F just by looking at subsets of the vertices; and the
 "opening" (all facets having F in their closure) bu looking at all
 enlargements of the vertex set. Passage from FacetV to FacetB is
@@ -139,7 +144,7 @@ set fund_barycenters(SimpleAffine Affd) = [[FacetB]]:
 let  n = Affd.aff_rank, LAB = Affd.labels,
 FWts=Affd.fundamental_weights then listn = for j:n do j od
 in for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN} 
-sum(n-1, for j in S do{VERT} if j=0 then null(n-1)/1 else
+sum(Affd.rank, for j in S do{VERT} if j=0 then null(Affd.rank)/1 else
 FWts[j-1]/((d+1)*LAB[j]) fi od{VERT}) od{BIN} od{DIM}
 
 { vertex sets for facets in the fundamental alcove, organized by
@@ -168,9 +173,10 @@ set W_fund_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
 let n=Affd.aff_rank, Verts = fundamental_vertices(Affd) then listn=for
 j:n do j od in
 for d:n do{DIM} ## for S in choices_from(listn,d+1) do{BIN} for w in
-stabiliser_quotient_of_dominant(Affd, ratvec_as_vec(sum(n-1,for j in S do{VERTS}
-Verts[j].numer od{VERTS}))) do{W} for j in S do{VERTS} w*Verts[j] od{VERTS}
-od{W} od{BIN} od{DIM}
+stabiliser_quotient_of_dominant(Affd, ratvec_as_vec(sum(Affd.rank,for
+j in S do{VERTS}
+Verts[j].numer od{VERTS}))) do{W} for j in S do{VERTS} w*Verts[j]
+od{VERTS} od{W} od{BIN} od{DIM}
 
 { integral weights to be added to gamma to land in fundamental
 parallelepiped where all simple coroots take values in [0,1] }
@@ -298,31 +304,87 @@ do wtilde*gamma0v od
 set facet_status([[ratvec]] FPPB) = [[string]]:
 for d:#FPPB do for j:#FPPB[d] do "?" od od
 
-{ meant to update facet unitarity status by testing a point in each
-alcove }
+set show([[string]] status) = void:
+for d:#status do let (countT,countF,countQ) = (0,0,0) in for
+j:#status[d] do if status[d][j]="T" then countT+:=1 elif
+status[d][j]="F" then countF+:=1 else countQ+:=1 fi od; 
+prints("Facet dimension ",d,": ", countT, " unitary, ",
+countF, " nonunitary, ", countQ, " undecided.") od
+
+{ test function; meant to update facet unitarity status by testing a
+point in each alcove }
 set new_statusALC(RealForm G, [[ratvec]] FPPB,
 [[vec]] FPPind,  [[string]] status) = [[string]]: 
 let D = #status-1, new_status = status in for
 j:#status[D] do{ALC} 
 let result = if status[D][j] != "?" then status[D][j] else
-if(is_unitary(parameter(x_open(G), G.rho,FPPB[D][j]))) then "T" else
-"F" fi fi then nsD = new_status[D] in nsD[j] := result;
+if(is_unitary(parameter(x_open(G), G.rho,FPPB[D][j]))) then "T" else"F" fi fi then nsD = new_status[D] in nsD[j] := result;
 new_status[D]:= nsD; if result="T"
 then for d:D  do{DIMS} let nsd = new_status[d] in for k:#nsd do{FAC}
 if  is_subset_of_sorted(FPPind[D][j])(FPPind[d][k]) then
 nsd[k] := "T"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{ALC};
 new_status
 
-{ meant to update facet unitarity status by testing each vertex }
+{ test function; meant to update facet unitarity status by testing
+each vertex }
 set new_statusVERT(RealForm G, [[ratvec]] FPPB,
 [[vec]] FPPind, [[string]] status) = [[string]]:
 let D = #status-1, new_status = status in for
-j:#status[0] do{ALC} 
+j:#status[0] do{VERT} 
 let result = if status[0][j] != "?" then status[0][j] else
 if(is_unitary(parameter(x_open(G), G.rho,FPPB[0][j])))
 then  "T" else "F" fi fi then ns0 = new_status[0] in ns0[j] := result;
 new_status[0]:= ns0; if result="F"
 then for d:D from 1  do{DIMS} let nsd = new_status[d] in for k:#nsd
 do{FAC} if  is_subset_of_sorted(FPPind[d][k])(FPPind[0][j]) then
-nsd[k] := "F"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{ALC};
+nsd[k] := "F"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{VERT};
 new_status
+
+{ meant to get the facets for spherical not cohom induced in
+nonquasisplit G }
+
+set pick_not_cohom(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
+([[ratvec]],[[vec]]):
+let inv=x_open(G).involution then tworhoM = G.rho + inv*G.rho
+then FPPBnc = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do
+if FPPB[d][j]*inv + FPPB[d][j] = tworhoM then [FPPB[d][j]]
+else [] fi od od,
+FPPindnc = [[vec]]: for d:#FPPind do ##for j:#FPPind[d] do
+if FPPB[d][j]*inv + FPPB[d][j] = tworhoM then
+[FPPind[d][j]] else [] fi od od in (FPPBnc,FPPindnc)
+
+{this eliminates the nonhermitian facets from the lists. Would be good
+also to organize the new lists by dimension of the hermitian part,
+which is d-(# unfixed vertices)/2.}
+set pick_hermitian(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
+([[ratvec]],[[vec]]):
+let FPPBh = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do if
+is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then [FPPB[d][j]]
+else [] fi od od,
+FPPindh = [[vec]]: for d:#FPPind do ##for j:#FPPind[d] do
+if is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then
+[FPPind[d][j]] else [] fi od od in (FPPBh,FPPindh)
+
+{ Need simple derived group }
+set spherical(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
+[[string]]:
+let (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
+(FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+then status = facet_status(FPPBnch) in for d:#status do{DIMd} let nsd
+= status[d] in prints(); show(status);
+for j:#status[d] do{FACd} let result = if{RES}
+nsd[j]!="?" then nsd[j]
+else if{NEWU}
+(is_unitary(first_param(standardize(parameter(x_open(G), G.rho,
+FPPBnch[d][j])))))
+then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
+nse=status[e] in for k:#nse do{FACe} if{SUB}
+is_subset_of_sorted(FPPindnch[e][k])(FPPindnch[d][j])
+then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
+nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
+od{DIMd};
+prints(); show(status); status
+
+{ still need simple derived group }
+set spherical(RealForm G) = [[string]]:
+spherical(G,FPP_barycenters(G),FPP_vertex_sets_indices(G))
