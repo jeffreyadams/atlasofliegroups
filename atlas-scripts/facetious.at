@@ -185,45 +185,63 @@ j:#Affd.simple_coroots do -floor(g[j])*Affd.fundamental_weights[j]
 od) + sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od) od
 
 { this includes all vertices of facets in the fundamental
-parallelepiped }
-set FPP_vertices(SimpleAffine Affd) = [ratvec]:
+parallelepiped, with repetitions }
+set FPP_vertices_rep(SimpleAffine Affd) = [ratvec]:
 ## for gamma in W_fund_vertices(Affd)
 do{WA0} for tau in FPtau(Affd,gamma) do{TAU} gamma+tau od{TAU} od{WA0}
 
 {this eliminates repetition}
-set FPP_vertices_unique(SimpleAffine Affd) = [ratvec]:
-let longList = FPP_vertices(Affd) in
+set FPP_vertices(SimpleAffine Affd) = [ratvec]:
+let longList = FPP_vertices_rep(Affd) in
 ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 [] fi od{LIST}
 
 { this includes all barycenters of facets in the fundamental
-parallelepiped, organized by dimension }
-set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
+parallelepiped, organized by dimension, with repetitions }
+set FPP_barycenters_rep(SimpleAffine Affd) = [[FacetB]]:
 let WBs = W_fund_barycenters(Affd) in for d:Affd.aff_rank do{DIM} ##
 for gamma in WBs[d] do{WA0} for tau in FPtau(Affd,gamma) do{TAU}
 gamma+tau od{TAU} od{WA0} od{DIM}
 
 {this eliminates repetition}
-set FPP_barycenters_unique(SimpleAffine Affd) = [[FacetB]]:
-let FPPBs = FPP_barycenters(Affd) in for d:Affd.aff_rank do{DIM} let
+set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
+let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM} let
 longList = FPPBs[d] in ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 [] fi od{LIST} od{DIM}
 
 { vertex sets for all facets in the fundamental parallelepiped,
-organized by dimension }
-set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+organized by dimension, with some repetitions }
+set FPP_vertex_sets_rep(SimpleAffine Affd) = [[FacetV]]:
 let WVs = W_fund_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM}
 ##for gammas in WVs[d] do{WA0} for tau in FPtau(Affd, sum(Affd.rank,gammas)/(d+1)) do{TAU} for gamma in gammas do{GAM}
 gamma+tau od{GAM} od{TAU} od{WA0} od{DIM}
 
 {this eliminates repetition}
-set FPP_vertex_sets_unique(SimpleAffine Affd) = [[FacetV]]:
-let FPPVs = FPP_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM} let
-longList = FPPVs[d] in ##for j:#longList do{LIST} if all(for i:j
+set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+let FPPVs = FPP_vertex_sets_rep(Affd) in for d:Affd.aff_rank do{DIM}
+let longList = FPPVs[d] in ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} sum(Affd.rank,longList[i]) != sum(Affd.rank,longList[j])
 od{SRCH}) then [longList[j]] else [] fi od{LIST} od{DIM}
+
+
+{ computes vertex list as indices in a pre-computed vertex list }
+
+set facetVnum([ratvec] vert_list, FacetV facet) =
+vec:
+for gammav in facet do find(vert_list,gammav) od.sort
+
+set FPP_vertex_sets_indices(SimpleAffine Affd,[ratvec] vertex_list) =
+[[vec]]:
+let FPPV = FPP_vertex_sets(Affd) in for d:Affd.aff_rank do
+if d=0 then for j:#FPPV[0] do [j] od else
+for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
+
+set FPP_vertex_sets_indices(SimpleAffine Affd) = [[vec]]:
+let FPPV = FPP_vertex_sets(Affd) then vertex_list = ##FPPV[0]
+in for d:Affd.aff_rank do if d=0 then for j:#FPPV[0] do [j] od else
+for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
 
 { Computes translation part of affine Weyl group element moving gamma
 to the fundamental alcove: subtract roots until gamma lands in W*A0 =
@@ -276,8 +294,35 @@ let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
 Verts = facetV0(Affd,gamma0) in for gamma0v in Verts
 do wtilde*gamma0v od
 
-{ computes vertex list as indices in a pre-computed vertex list }
+{ meant to record information about unitarity for all facets }
+set facet_status([[ratvec]] FPPB) = [[string]]:
+for d:#FPPB do for j:#FPPB[d] do "?" od od
 
-set facetVnum(SimpleAffine Affd, [ratvec] vert_list, FacetV facet) =
-vec:
-for gammav in facet do find(vert_list,gammav) od.sort
+{ meant to update facet unitarity status by testing a point in each
+alcove }
+set new_statusALC(RealForm G, [[ratvec]] FPPB,
+[[vec]] FPPind,  [[string]] status) = [[string]]: 
+let D = #status-1, new_status = status in for
+j:#status[D] do{ALC} 
+let result = if status[D][j] != "?" then status[D][j] else
+if(is_unitary(parameter(x_open(G), G.rho,FPPB[D][j]))) then "T" else
+"F" fi fi then nsD = new_status[D] in nsD[j] := result;
+new_status[D]:= nsD; if result="T"
+then for d:D  do{DIMS} let nsd = new_status[d] in for k:#nsd do{FAC}
+if  is_subset_of_sorted(FPPind[D][j])(FPPind[d][k]) then
+nsd[k] := "T"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{ALC};
+new_status
+
+{ meant to update facet unitarity status by testing each vertex }
+set new_statusVERT(RealForm G, [[ratvec]] FPPB,
+[[vec]] FPPind, [[string]] status) = [[string]]:
+let D = #status-1, new_status = status in for
+j:#status[0] do{ALC} 
+let result = if status[0][j] != "?" then status[0][j] else
+if(is_unitary(parameter(x_open(G), G.rho,FPPB[0][j])))
+then  "T" else "F" fi fi then ns0 = new_status[0] in ns0[j] := result;
+new_status[0]:= ns0; if result="F"
+then for d:D from 1  do{DIMS} let nsd = new_status[d] in for k:#nsd
+do{FAC} if  is_subset_of_sorted(FPPind[d][k])(FPPind[0][j]) then
+nsd[k] := "F"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{ALC};
+new_status
