@@ -215,6 +215,8 @@ explicit
   void set_coefficient (T t, C m); // make coefficient of |t| become |m|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
+  const term_type& front() const { return *begin(); } // undefined if |is_zero|
+
   size_t size() const // only provides upper bound: zero terms are not ignored
   { size_t s=0;
     for (auto it = L.wcbegin(); it != L.wcend(); ++it) s += it->size();

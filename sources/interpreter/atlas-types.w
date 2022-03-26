@@ -7437,7 +7437,7 @@ involve a longer rewriting process (using Hecht-Schmid identities) than the
 expansion into finals.
 
 @< Local function def...@>=
-void branch_wrapper(expression_base::level l)
+void branch_param_wrapper(expression_base::level l)
 { int bound = get<int_value>()->int_val();
   // not ``branch and bound'' but ``branch up to bound''
   shared_module_parameter p = get<module_parameter_value>();
@@ -7645,18 +7645,32 @@ a temporary one meant to be able to compare old and new implementations.
 @< Local function def...@>=
 void KGP_sum_wrapper(expression_base::level l)
 { shared_K_type p = get<K_type_value>();
-  const Rep_context rc = p->rc();
+@/const Rep_context rc = p->rc();
   auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<K_type_pol_value>(p->rf,rc.KGP_sum(srk)));
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto length = rc.kgb().length(srk.x());
+  auto list = rc.KGP_set(srk);
+  own_row result = std::make_shared<row_value>(list.size());
+  auto res_p=result->val.begin();
+  for (auto&& t : list)
+  {
+    auto tup = std::make_shared<tuple_value>(2);
+    auto dl = length - rc.kgb().length(t.x());
+    tup->val[0] = std::make_shared<int_value>(dl%2==0 ? 1 : -1);
+    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(t));
+    *res_p++ = std::move(tup);
+  }
+  push_value(std::move(result));
 }
 @)
 void K_type_formula_wrapper(expression_base::level l)
 { int bound = get<int_value>()->int_val();
   shared_K_type p = get<K_type_value>();
-  const Rep_context rc = p->rc();
+@/const Rep_context rc = p->rc();
   auto srk = p->val.copy();
   if (not rc.is_semifinal(srk))
     throw runtime_error@|("K-type has parity real roots (so not semifinal)");
@@ -7664,14 +7678,23 @@ void K_type_formula_wrapper(expression_base::level l)
     return;
 @)
   repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
-  auto combo=rc.K_type_formula(srk,h);
-@/own_K_type_pol acc (new K_type_pol_value(p->rf,K_repr::K_type_pol()));
-  for (auto&& term : combo ) // loop over K-types from |combo|
-  { auto finals=rc.finals_for(std::move(term.first));
-    for (auto it=finals.begin(); not finals.at_end(it); ++it)
-      acc->val.add_term(std::move(it->first),term.second*it->second);
-  }
-  push_value(std::move(acc));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,rc.K_type_formula(srk,h)));
+}
+
+@ Here is a function that uses the |K_type_formula| internally.
+@< Local function def...@>=
+void branch_wrapper(expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  own_K_type_pol P = get_own<K_type_pol_value>();
+  if (arg<0)
+    throw runtime_error("Maximum level in branch cannot be negative");
+  if (l==expression_base::no_value)
+    return;
+@)
+  unsigned int bound=arg;
+  const Rep_context rc = P->rc();
+  auto result = rc.branch(std::move(P->val),bound);
+  push_value(std::make_shared<K_type_pol_value>(P->rf,std::move(result)));
 }
 
 
@@ -8011,16 +8034,17 @@ install_function(K_type_formula_param_wrapper,@|"K_type_formula"
 		,"(Param->ParamPol)");
 install_function(K_type_formula_trunc_wrapper,@|"K_type_formula"
 		,"(Param,int->ParamPol)");
-install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
+install_function(branch_param_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(parameter_height_wrapper,@|"height" ,"(Param->int)");
 install_function(standardrepk_standardize_wrapper,@|"standardrepk_standardize"
 		,"(Param->ParamPol)");
-install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->KTypePol)");
+install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
 install_function(K_type_formula_wrapper,@|"K_type_formula"
 		,"(KType,int->KTypePol)");
+install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");

@@ -11,6 +11,28 @@
 #include "repr.h"
 
 namespace atlas {
+  namespace K_repr {
+
+template<typename F>
+const K_type_pol& K_type_to_pol_table::put (K_type t, F f)
+{
+  auto i = hash.find(t);
+  if (i!=hash.empty)
+    return poly[i];
+  K_type_pol value = f(t.copy());
+  return poly[hash.match(std::move(t))] = std::move(value);
+}
+
+const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
+{
+  auto i = hash.find(t);
+  if (i!=hash.empty)
+    throw std::runtime_error("Looking up polynimal not stored in table");
+  return poly[i];
+}
+
+  } // |namespace K_repr|
+
   namespace repr {
 
 K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
@@ -384,7 +406,7 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
   return result;
 } // |Rep_context::finals_for|
 
-K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
+sl_list<K_repr::K_type> Rep_context::KGP_set (K_repr::K_type& t) const
 {
   const auto& rd = root_datum();
   const InvolutionTable& i_tab = involution_table();
@@ -401,13 +423,12 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
       Levi_gens.push_back(s);
     }
 
-  const auto max_l = kgb.length(t.x());
-
   BitMap present (kgb.size());
   present.insert(t.x());
   using pre_K_type = std::pair<KGBElt,Weight>;
   containers::queue<pre_K_type> Q { std::make_pair(t.x(), t.lambda_rho()) };
-  K_repr::K_type_pol result { t.copy() }; // keep |t| itself for caller
+  sl_list<K_repr::K_type> result;
+  result.push_back(t.copy()); // keep |t| itself for caller
 
   do
   {
@@ -420,21 +441,21 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
       case gradings::Status::Real:
 	{
 	  auto pair = kgb.inverseCayley(s,x);
-	  KGBElt Csx=pair.first;
+	  KGBElt Csx; auto it = result.end();
 	  auto eval = rd.simpleCoroot(s).dot(lam_rho);
 	  assert(eval%2==0); // "non-parity"; from final condition
 	  Weight new_lr = lam_rho - rd.simpleRoot(s)*(eval/2);
-	  auto sign = (max_l-kgb.length(Csx))%2==0 ? 1 : -1;
-	  if (not present.isMember(Csx))
-	  {
-	    present.insert(Csx);
-	    result.add_term(sr_K(Csx,new_lr),Split_integer(sign));
-	    Q.push(std::make_pair(Csx,new_lr));
-	  }
+	  // with the first of |pair| more likely to be inserted, try it last
 	  if ((Csx=pair.second)!=UndefKGB and not present.isMember(Csx))
 	  {
 	    present.insert(Csx);
-	    result.add_term(sr_K(Csx,new_lr),Split_integer(sign));
+	    result.insert(it,sr_K(Csx,new_lr));
+	    Q.push(std::make_pair(Csx,new_lr));
+	  }
+	  if (not present.isMember(Csx=pair.first))
+	  {
+	    present.insert(Csx);
+	    result.push_back(sr_K(Csx,new_lr));
 	    Q.push(std::make_pair(Csx,std::move(new_lr)));
 	  }
 	}
@@ -446,8 +467,7 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
 	  {
 	    present.insert(sx);
 	    Weight new_lr = rd.simple_reflection(s,lam_rho);
-	    auto sign = (max_l-kgb.length(sx))%2==0 ? 1 : -1;
-	    result.add_term(sr_K(sx,new_lr),Split_integer(sign));
+	    result.push_back(sr_K(sx,new_lr));
 	    Q.push(std::make_pair(sx,std::move(new_lr)));
 	  }
 	}
@@ -461,7 +481,7 @@ K_repr::K_type_pol Rep_context::KGP_sum (K_repr::K_type& t) const
 } // |Rep_context::KGP_sum|
 
 K_repr::K_type_pol Rep_context::monomial_product
-  (const K_repr::K_type_pol& P, const Weight& e,level max_level) const
+  (const K_repr::K_type_pol& P, const Weight& e) const
 {
   const InvolutionTable& i_tab = involution_table();
   K_repr::K_type_pol::poly result;
@@ -474,9 +494,7 @@ K_repr::K_type_pol Rep_context::monomial_product
     i_tab.lambda_unique(i_x,new_exp); // ensure unique representative
     const auto& theta = i_tab.matrix(i_x);
     auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
-    if (ht<=max_level)
-      result.emplace_back
-	(K_repr::K_type{x,std::move(new_exp),ht},term.second);
+    result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
   return { std::move(result),P.cmp() };
 } // |Rep_context::monomial_product|
@@ -486,15 +504,16 @@ K_repr::K_type_pol Rep_context::K_type_formula
 {
   const auto& rd = root_datum();
   const InvolutionTable& i_tab = involution_table();
-  auto terms = KGP_sum(t); // this also moves |t| to a theta-stable parabolic
+  auto terms = KGP_set(t); // this also moves |t| to a theta-stable parabolic
   // nilpotents of the parabolic subalgebra at |t|:
+  auto max_l = kgb().length(t.x());
   RootNbrSet radical_posroots = rd.posRootSet();
   radical_posroots.andnot(i_tab.real_roots(kgb().inv_nr(t.x())));
   K_repr::K_type_pol result;
 
   for (auto&& term : terms)
   {
-    KGBElt x = term.first.x();
+    KGBElt x = term.x();
     const InvolutionNbr i_x = kgb().inv_nr(x);
     RootNbrSet sum_set{rd.numRoots()};
     for (const auto i : radical_posroots)
@@ -508,13 +527,49 @@ K_repr::K_type_pol Rep_context::K_type_formula
 	  status(kgb(),x,i)==gradings::Status::ImaginaryNoncompact);
     }
     // |for(i : radical_posroots)|
-    K_repr::K_type_pol product (std::move(term.first),term.second);
+
+    int sign = (max_l-kgb().length(x))%2==0 ? 1 : -1;
+    K_repr::K_type_pol product (std::move(term),Split_integer(sign));
     for (const auto i : sum_set)
-      product -= monomial_product(product,rd.root(i),max_level);
-    result += std::move(product);
+      product -= monomial_product(product,rd.root(i));
+    for (auto&& t : product)
+    { auto finals = finals_for(std::move(t.first));
+      for (auto it=finals.begin(); not finals.at_end(it); ++it)
+	if (it->first.height()<=max_level)
+	  result.add_term (std::move(it->first),t.second*it->second);
+    }
   }
   return result;
+} // |Rep_context::K_type_formula|
+
+K_repr::K_type_pol
+  Rep_context::branch(K_repr::K_type_pol remainder, repr::level cutoff) const
+{
+  K_repr::K_type_pol result;
+  auto it = remainder.begin();
+  if (it==remainder.end())
+    return result;
+  auto h = it->first.height();
+  do
+  {
+    const auto& term = remainder.front();
+    auto lead = term.first.copy(); // need a modifiable lvalue
+
+    // periodically flatten |remainder| to remove leading zero terms
+    if (lead.height()!=h)
+    {
+      remainder=std::move(remainder).flatten();
+      h=lead.height();
+    }
+
+    auto formula = K_type_formula(lead,cutoff);
+    result.add_term(std::move(lead),term.second);
+    remainder.add_multiple(std::move(formula),-term.second);
+  }
+  while (not remainder.is_zero());
+  return result;
 }
+
 
   } // |namespace repr|
 } // |namespace atlas|

@@ -1,7 +1,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009-2020 Marc van Leeuwen
+  Copyright (C) 2009-2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -264,8 +264,9 @@ class Rep_context
     finals_for(K_repr::K_type t) const;
 
   // apart from producing a result, these two methods also make |t| theta-stable
-  K_repr::K_type_pol KGP_sum (K_repr::K_type& t) const;
+  sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
   K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
+  K_repr::K_type_pol branch(K_repr::K_type_pol P, level cutoff) const;
 
   // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -378,7 +379,7 @@ class Rep_context
   level height(Weight theta_plus_1_gamma) const;
 
   K_repr::K_type_pol monomial_product
-    (const K_repr::K_type_pol& P, const Weight& e,level cutoff) const;
+    (const K_repr::K_type_pol& P, const Weight& e) const;
 }; // |Rep_context|
 
 
