@@ -26,8 +26,6 @@ Write simple coroots as betav[1]...betav[ell-1], lowest coroot as
    betav[0] = -(rd.dual).highest_root
    betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell) }
 
-
-
 { There are three notions of "facet": a set Facet of affine equalities
 and inequalities defining it (NOT UNIQUE); the set FacetV of vertices;
 and the barycenter FacetB. I like FacetV the best: you can take the
@@ -37,6 +35,14 @@ enlargements of the vertex set. Passage from FacetV to FacetB is
 trivial (average the vertices) There are functions facet, facetV and
 facetB at the end which compute each of these three representations of
 the facet containing a given ratvec gamma in X^*_Q. }
+
+{ remove repetitions }
+set NoReps([ratvec] list) = ## for j:#list do if all(for i:j do
+list[i] != list [j] od) then [list[j]] else [] fi od
+
+{ remove repetitions from a list of SORTED vectors }
+set NoReps([vec] list) = ## for j:#list do if all(for i:j do
+list[i] != list [j] od) then [list[j]] else [] fi od
 
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
@@ -196,12 +202,9 @@ set FPP_vertices_rep(SimpleAffine Affd) = [ratvec]:
 ## for gamma in W_fund_vertices(Affd)
 do{WA0} for tau in FPtau(Affd,gamma) do{TAU} gamma+tau od{TAU} od{WA0}
 
-{this eliminates repetition}
+{ this eliminates repetition }
 set FPP_vertices(SimpleAffine Affd) = [ratvec]:
-let longList = FPP_vertices_rep(Affd) in
-##for j:#longList do{LIST} if all(for i:j
-do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
-[] fi od{LIST}
+NoReps(FPP_vertices_rep(Affd))
 
 { this includes all barycenters of facets in the fundamental
 parallelepiped, organized by dimension, with repetitions }
@@ -210,43 +213,70 @@ let WBs = W_fund_barycenters(Affd) in for d:Affd.aff_rank do{DIM} ##
 for gamma in WBs[d] do{WA0} for tau in FPtau(Affd,gamma) do{TAU}
 gamma+tau od{TAU} od{WA0} od{DIM}
 
-{this eliminates repetition}
+{ this eliminates repetition in vertices only }
+set FPP_barycenters0(SimpleAffine Affd) = [[FacetB]]:
+let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM}
+if d= 0 then NoReps(FPPBs[0]) else FPPBs[d] fi od{DIM} 
+
+{ this eliminates repetition }
 set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
 let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM} let
 longList = FPPBs[d] in ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 [] fi od{LIST} od{DIM}
 
+{ convert a FacetV to a FacetB }
+set facetB(FacetV facet) = ratvec:
+let n = #facet[0], d = #facet in sum(n, facet)/(d+1)
+
 { vertex sets for all facets in the fundamental parallelepiped,
 organized by dimension, with some repetitions }
 set FPP_vertex_sets_rep(SimpleAffine Affd) = [[FacetV]]:
 let WVs = W_fund_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM}
-##for gammas in WVs[d] do{WA0} for tau in FPtau(Affd, sum(Affd.rank,gammas)/(d+1)) do{TAU} for gamma in gammas do{GAM}
+##for gammas in WVs[d] do{WA0} for tau in FPtau(Affd, facetB(gammas))
+do{TAU} for gamma in gammas do{GAM}
 gamma+tau od{GAM} od{TAU} od{WA0} od{DIM}
 
-{this eliminates repetition}
+{ this eliminates repetition in the vertices only }
+set FPP_vertex_sets0(SimpleAffine Affd) = [[FacetV]]:
+let FPPVs = FPP_vertex_sets_rep(Affd) in for d:Affd.aff_rank do{DIM}
+if d=0 then (let longList = FPPVs[0] in ##(for j:#longList do{LIST} if
+all(for i:j do{SRCH} longList[i][0] != longList[j][0]
+od{SRCH}) then [longList[j]] else [] fi od{LIST})) else FPPVs[d] fi od{DIM}
+
+{ this eliminates repetition }
 set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
 let FPPVs = FPP_vertex_sets_rep(Affd) in for d:Affd.aff_rank do{DIM}
 let longList = FPPVs[d] in ##for j:#longList do{LIST} if all(for i:j
 do{SRCH} sum(Affd.rank,longList[i]) != sum(Affd.rank,longList[j])
 od{SRCH}) then [longList[j]] else [] fi od{LIST} od{DIM}
 
-
 { computes vertex list as indices in a pre-computed vertex list }
 
+set_type FacetVI = vec
+
 set facetVnum([ratvec] vert_list, FacetV facet) =
-vec:
+FacetVI:
 for gammav in facet do find(vert_list,gammav) od.sort
 
+{ computes barycenter from a facet as a vertex list }
+set facetB([ratvec] vert_list, FacetVI facet) = FacetB:
+sum(#vert_list[0], for k:#facet do vert_list[facet[k]] od)/(#facet) 
+
 set FPP_vertex_sets_indices(SimpleAffine Affd,[ratvec] vertex_list) =
-[[vec]]:
+[[FacetVI]]:
 let FPPV = FPP_vertex_sets(Affd) in for d:Affd.aff_rank do
 if d=0 then for j:#FPPV[0] do [j] od else
 for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
 
-set FPP_vertex_sets_indices(SimpleAffine Affd) = [[vec]]:
+set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVI]]:
 let FPPV = FPP_vertex_sets(Affd) then vertex_list = ##FPPV[0]
 in for d:Affd.aff_rank do if d=0 then for j:#FPPV[0] do [j] od else
+for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
+
+set FPP_vertex_sets_indices0(SimpleAffine Affd) = [[vec]]:
+let FPPV = FPP_vertex_sets0(Affd) then vertex_list = ##FPPV[0]
+in for d:Affd.aff_rank do if d=0 then for j:#vertex_list do [j] od else
 for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
 
 { Computes translation part of affine Weyl group element moving gamma
@@ -311,35 +341,6 @@ status[d][j]="F" then countF+:=1 else countQ+:=1 fi od;
 prints("Facet dimension ",d,": ", countT, " unitary, ",
 countF, " nonunitary, ", countQ, " undecided.") od
 
-{ test function; meant to update facet unitarity status by testing a
-point in each alcove }
-set new_statusALC(RealForm G, [[ratvec]] FPPB,
-[[vec]] FPPind,  [[string]] status) = [[string]]: 
-let D = #status-1, new_status = status in for
-j:#status[D] do{ALC} 
-let result = if status[D][j] != "?" then status[D][j] else
-if(is_unitary(parameter(x_open(G), G.rho,FPPB[D][j]))) then "T" else"F" fi fi then nsD = new_status[D] in nsD[j] := result;
-new_status[D]:= nsD; if result="T"
-then for d:D  do{DIMS} let nsd = new_status[d] in for k:#nsd do{FAC}
-if  is_subset_of_sorted(FPPind[D][j])(FPPind[d][k]) then
-nsd[k] := "T"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{ALC};
-new_status
-
-{ test function; meant to update facet unitarity status by testing
-each vertex }
-set new_statusVERT(RealForm G, [[ratvec]] FPPB,
-[[vec]] FPPind, [[string]] status) = [[string]]:
-let D = #status-1, new_status = status in for
-j:#status[0] do{VERT} 
-let result = if status[0][j] != "?" then status[0][j] else
-if(is_unitary(parameter(x_open(G), G.rho,FPPB[0][j])))
-then  "T" else "F" fi fi then ns0 = new_status[0] in ns0[j] := result;
-new_status[0]:= ns0; if result="F"
-then for d:D from 1  do{DIMS} let nsd = new_status[d] in for k:#nsd
-do{FAC} if  is_subset_of_sorted(FPPind[d][k])(FPPind[0][j]) then
-nsd[k] := "F"  fi od{FAC}; new_status[d] := nsd od{DIMS} fi od{VERT};
-new_status
-
 { meant to get the facets for spherical not cohom induced in
 nonquasisplit G }
 
@@ -347,10 +348,10 @@ set pick_not_cohom(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
 ([[ratvec]],[[vec]]):
 let inv=x_open(G).involution then tworhoM = G.rho + inv*G.rho
 then FPPBnc = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do
-if FPPB[d][j]*inv + FPPB[d][j] = tworhoM then [FPPB[d][j]]
+if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then [FPPB[d][j]]
 else [] fi od od,
 FPPindnc = [[vec]]: for d:#FPPind do ##for j:#FPPind[d] do
-if FPPB[d][j]*inv + FPPB[d][j] = tworhoM then
+if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then
 [FPPind[d][j]] else [] fi od od in (FPPBnc,FPPindnc)
 
 {this eliminates the nonhermitian facets from the lists. Would be good
@@ -366,9 +367,11 @@ if is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then
 [FPPind[d][j]] else [] fi od od in (FPPBh,FPPindh)
 
 { Need simple derived group }
-set spherical(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
+set spherical(RealForm G, [ratvec] vlist, [[vec]] FPPind) =
 [[string]]:
-let (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
+let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
+facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} then
+(FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
 (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
 then status = facet_status(FPPBnch) in for d:#status do{DIMd} let nsd
 = status[d] in prints(); show(status);
@@ -387,4 +390,7 @@ prints(); show(status); status
 
 { still need simple derived group }
 set spherical(RealForm G) = [[string]]:
-spherical(G,FPP_barycenters(G),FPP_vertex_sets_indices(G))
+spherical(G,FPP_vertices(G),FPP_vertex_sets_indices(G))
+
+set spherical0(RealForm G) = [[string]]:
+spherical(G,FPP_vertices(G),FPP_vertex_sets_indices0(G))
