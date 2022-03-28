@@ -2,6 +2,7 @@
 <affine.at { to try to avoid conflicting definitions }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]) }
 <hermitian.at { for is_unitary }
+<to_ht.at { for is_unitary_to_ht }
 
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
@@ -344,8 +345,8 @@ countF, " nonunitary, ", countQ, " undecided.") od
 { meant to get the facets for spherical not cohom induced in
 nonquasisplit G }
 
-set pick_not_cohom(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
-([[ratvec]],[[vec]]):
+set pick_not_cohom(RealForm G, [[FacetB]] FPPB, [[FacetVI]] FPPind) =
+([[FacetB]],[[FacetVI]]):
 let inv=x_open(G).involution then tworhoM = G.rho + inv*G.rho
 then FPPBnc = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do
 if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then [FPPB[d][j]]
@@ -357,9 +358,9 @@ if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then
 {this eliminates the nonhermitian facets from the lists. Would be good
 also to organize the new lists by dimension of the hermitian part,
 which is d-(# unfixed vertices)/2.}
-set pick_hermitian(RealForm G, [[ratvec]] FPPB, [[vec]] FPPind) =
-([[ratvec]],[[vec]]):
-let FPPBh = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do if
+set pick_hermitian(RealForm G, [[FacetB]] FPPB, [[FacetVI]] FPPind) =
+([[ratvec]],[[FacetVI]]):
+let FPPBh = [[FacetB]]: for d:#FPPB do ##for j:#FPPB[d] do if
 is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then [FPPB[d][j]]
 else [] fi od od,
 FPPindh = [[vec]]: for d:#FPPind do ##for j:#FPPind[d] do
@@ -367,8 +368,8 @@ if is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then
 [FPPind[d][j]] else [] fi od od in (FPPBh,FPPindh)
 
 { Need simple derived group }
-set spherical(RealForm G, [ratvec] vlist, [[vec]] FPPind) =
-[[string]]:
+set spherical(RealForm G, [ratvec] vlist, [[FacetVI]] FPPind) =
+([[string]],[ratvec],[[FacetVI]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
 facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} then
 (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
@@ -386,11 +387,75 @@ is_subset_of_sorted(FPPindnch[e][k])(FPPindnch[d][j])
 then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
 nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
 od{DIMd};
-prints(); show(status); status
+prints(); show(status); (status,vlist,FPPindnch)
+
+set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVI]] FPPind,
+int bound) =
+([[string]],[ratvec],[[FacetVI]]):
+let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
+facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} then
+(FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
+(FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+then status = facet_status(FPPBnch) in for d:#status do{DIMd} let nsd
+= status[d] in prints(); show(status);
+for j:#status[d] do{FACd} let result = if{RES}
+nsd[j]!="?" then nsd[j]
+else if{NEWU}
+(is_unitary_to_ht(first_param(standardize(parameter(x_open(G), G.rho,
+FPPBnch[d][j]))),bound))
+then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
+nse=status[e] in for k:#nse do{FACe} if{SUB}
+is_subset_of_sorted(FPPindnch[e][k])(FPPindnch[d][j])
+then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
+nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
+od{DIMd};
+prints(); show(status); (status,vlist,FPPindnch)
+
+{ to be applied after a previous to_ht computation; FPPind is assumed
+already to be cut to not cohom and hermitian }
+set spherical_to_ht(RealForm G, [[string]] status, [ratvec] vlist,
+[[FacetVI]] FPPind, int bound) =
+([[string]],[ratvec],[[FacetVI]]):
+let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
+facetB(vlist, FPPind[d][j]) od{FAC} od{DIM}
+in for d:#status do{DIMd} let nsd = status[d] in prints(); show(status);
+for j:#status[d] do{FACd} let result = if{RES}
+nsd[j]="F" then nsd[j]
+else if{NEWU}
+(is_unitary_to_ht(first_param(standardize(parameter(x_open(G), G.rho,
+FPPB[d][j]))),bound))
+then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
+nse=status[e] in for k:#nse do{FACe} if{SUB}
+is_subset_of_sorted(FPPind[e][k])(FPPind[d][j])
+then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
+nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
+od{DIMd};
+prints(); show(status); (status,vlist,FPPind)
+
+{ idea is to apply this to (G, previous output, new_bound)}
+set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
+[[FacetVI]] FPPind), int bound) =
+([[string]],[ratvec],[[FacetVI]]):
+spherical_to_ht(G,status,vlist,FPPind, bound)
 
 { still need simple derived group }
-set spherical(RealForm G) = [[string]]:
+set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVI]]):
 spherical(G,FPP_vertices(G),FPP_vertex_sets_indices(G))
 
-set spherical0(RealForm G) = [[string]]:
+set spherical_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVI]]):
+spherical_to_ht(G,FPP_vertices(G),FPP_vertex_sets_indices(G),bound)
+
+set spherical0(RealForm G) = ([[string]],[ratvec],[[FacetVI]]):
 spherical(G,FPP_vertices(G),FPP_vertex_sets_indices0(G))
+
+set spherical0_to_ht(RealForm G,int bound) = ([[string]],[ratvec],[[FacetVI]]):
+spherical_to_ht(G,FPP_vertices(G),FPP_vertex_sets_indices0(G),bound)
+
+set update_status([[string]] status, [ratvec] vlist, [[FacetVI]]
+Cand) = ([[string]], [ratvec], [[FacetVI]]):
+let newCand = for d:#status do assert(#Cand[d] = #status[d],
+"size mismatch between status and Cand"); ##for j:#status[d] do if
+status[d][j] = "F" then [] else [Cand[d][j]] fi od od,  newstatus =
+for d:#status do  ##for j:#status[d] do if
+status[d][j] = "F" then [] else [status[d][j]] fi od od in
+(newstatus,vlist,newCand)
