@@ -227,7 +227,7 @@ do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
 
 { convert a FacetV to a FacetB }
 set facetB(FacetV facet) = ratvec:
-let n = #facet[0], d = #facet in sum(n, facet)/(d+1)
+let n = #facet[0], D = #facet in sum(n, facet)/D
 
 { vertex sets for all facets in the fundamental parallelepiped,
 organized by dimension, with some repetitions }
