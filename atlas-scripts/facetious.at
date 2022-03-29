@@ -603,9 +603,10 @@ nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
 od{DIMd};
 prints(); show(status); (status,vlist,FPPindnch)
 
-{ Meant to be applied to output of spherical_to_h. Need simple derived group }
- set spherical(RealForm G, [[string]] status, [ratvec] vlist,
- [[FacetVI]] FPPind) = ([[string]],[ratvec],[[FacetVI]]):
+{ Meant to be applied to (G,output of spherical_to_h). Need simple
+ derived group }
+ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
+ [[FacetVI]] FPPind)) = ([[string]],[ratvec],[[FacetVI]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
 facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} in for d:#status do{DIMd}
 if facet_verbose then prints("start dim ",d,
@@ -622,12 +623,6 @@ then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
 nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
 od{DIMd};
 prints(); show(status); (status,vlist,FPPind)
-
-{ idea is to apply this to (G, previous output of to_h)}
-set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
-[[FacetVI]] FPPind), int bound) =
-([[string]],[ratvec],[[FacetVI]]):
-spherical_to_ht(G,status,vlist,FPPind, bound)
 
 { in output, "F" is certain, "T" means "true to height=bound" }
 set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVI]] FPPind,
@@ -654,12 +649,12 @@ nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
 od{DIMd};
 prints(); show(status); (status,vlist,FPPindnch)
 
-{ to be applied after a previous to_ht computation; FPPind is assumed
+{ to be applied to result of a previous to_ht computation; FPPind is assumed
 already to be cut to not cohom and hermitian }
 { in this calculation, don't trust old "T", which meant "true to some
 previous height }
-set spherical_to_ht(RealForm G, [[string]] status, [ratvec] vlist,
-[[FacetVI]] FPPind, int bound) =
+set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
+[[FacetVI]] FPPind), int bound) =
 ([[string]],[ratvec],[[FacetVI]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
 facetB(vlist, FPPind[d][j]) od{FAC} od{DIM}
@@ -679,12 +674,6 @@ then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
 nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
 od{DIMd};
 prints(); show(status); (status,vlist,FPPind)
-
-{ idea is to apply this to (G, previous output, new_bound)}
-set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
-[[FacetVI]] FPPind), int bound) =
-([[string]],[ratvec],[[FacetVI]]):
-spherical_to_ht(G,status,vlist,FPPind, bound)
 
 { still need simple derived group }
 set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVI]]):
