@@ -61,7 +61,6 @@ set add_weights (ParamPol P,[[vec]] wts)= ParamPol:
 set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
    let G=real_form(mu), P=K_type_formula(mu)
     then wts=kwts(G)
-    then bd=height_bound(wts,G)
     then Q= add_weights (P,wedge_weights(wts,ps,n))
     in branch_std(Q,height(mu)+add_ht(G))
 
@@ -71,7 +70,7 @@ set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
    then p=parameter_m(GC,chi,zeros(r)/1)
    then (list,)= hodge_branch_std(p,hb)
    then hwts= for P in list
-        do for c@q in P do (c,highest_weight(LKT(q)))
+        do for c@q in P do prints(height(q));(c,highest_weight(LKT(q)))
 	                od
 	od
     in hwts
@@ -95,10 +94,23 @@ set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
        od)
     od
 
+set third_step_test (RealForm G,[[(Split,vec)]] list,int bd)=[ParamPol]:
+   for level in list
+    do sum(G, for (n,v) in level
+       do let p =parameter(x_open(G),v+rho(G),v+rho(G))
+          in n*branch_irr(p,bd)
+       od)
+    od
+
 set steps_one_two_three (RealForm G,vec chi,int hb)=[ParamPol]:
    let list1=first_step(G,chi,hb)
    then list2=second_step(list1)
    in third_step(G,list2)
+
+set steps_one_two_three_test (RealForm G,vec chi,int hb,int n3)=[ParamPol]:
+   let list1=first_step(G,chi,hb)
+   then list2=second_step(list1)
+   in third_step_test(G,list2,n3)
 
 set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
    for level in list
@@ -106,7 +118,7 @@ set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
     od
 
 
-set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
+set last_step_old ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
    let wts=kwts(G), ps=power_set(kdim), ah=add_ht(G)
    then add_on=[ParamPol]:for i:kdim do 1*null_module(G) od
    then result=start##add_on
@@ -118,9 +130,28 @@ set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
 	od;
     for P in result do branch_std(P,hb+ah) od
 
+set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
+   let n=#start,  wts=kwts(G), ps=power_set(kdim), ah=add_ht(G)
+   then result=start
+   in for i:kdim from 1
+        do let ww=wedge_weights(wts,ps,i)
+	   in for j:n-i
+	      do result[j+i]+:=(-1)^i*add_weights(start[j],ww)
+	      od
+	od;
+    for P in result do branch_std(P,hb) od
+
 set Lucas_algorithm (RealForm G, vec chi, int hb) = [ParamPol]:
-   let kdim=dimension(K_0(G)), list1=first_step(G,chi,hb)
+   let kdim=dimension(K_0(G)), ah=add_ht(G)
+   then list1=first_step(G,chi,hb-ah)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
    in last_step(start,kdim,G,hb)
+
+set Lucas_algorithm_old (RealForm G, vec chi, int hb) = [ParamPol]:
+   let kdim=dimension(K_0(G)), list1=first_step(G,chi,hb)
+   then list2=second_step(list1)
+   then list3=third_step(G,list2)
+   then start= step_fourA (G,list3)
+   in last_step_old(start,kdim,G,hb)
