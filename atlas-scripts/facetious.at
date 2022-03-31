@@ -133,6 +133,7 @@ if j=0 then -highest_short_root(Affd) else
 Affd.simple_roots[j-1] fi od
 
 { vertices of fundamental alcove }
+{ set has aff_rank elements }
 set fundamental_vertices(SimpleAffine Affd) = [ratvec]:
 for j:Affd.aff_rank do 
 if j=0 then null(Affd.rank)/1 else
@@ -155,6 +156,8 @@ let Verts = facetV0(Affd,gamma0) in sum(Affd.rank, for v in Verts do v/#Verts
 od)
 
 { list of facets in the fundamental alcove, organized by dimension }
+{ is aff_rank = n, set has 2^n - 1 elements, (n choose d+1) in dim d
+for 0 \le d \le n-1. }
 set fund_facets(SimpleAffine Affd) = [[Facet]]:
 let n = Affd.aff_rank, Sv = Affd.aff_simple_coroots
 then listn = for j:n do j od {, P = power_set(n)} in
@@ -206,6 +209,23 @@ then listn = for j:n do{DIM} j od
 in for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN}
 for j in S do{VERTS} Verts_numer[j] od{VERTS} od{BIN} od{DIM}
 
+{ calculates the number of vertices in W*(fundamental alcove }
+set W_fund_vertices_card(SimpleAffine Affd) = int:
+let n=Affd.ss_rank, N=#W(Affd) then listn=for j:n do j od in
+1+sum(for S in choices_from(listn,n-2) do
+rat_as_int(N/#W(Levi(Affd,S))) od )
+
+{ cardinality of W_fund_vertices[d] }
+set W_fund_d_facets_card(SimpleAffine Affd,int d) = int:
+let n=Affd.ss_rank, N=#W(Affd) then listn=for j:n do j od in
+if d=n then N else sum(for T in choices_from(listn,n-d) do
+rat_as_int(N/#W(Levi(Affd,T))) od) +
+sum(for S in choices_from(listn,n-d-1) do
+rat_as_int(N/#W(Levi(Affd,S))) od ) fi
+
+{ cardinalities of all elts of W_fund_vertices }
+set W_fund_facets_card(SimpleAffine Affd) = [int]:
+for d:Affd.aff_rank do W_fund_d_facets_card(Affd,d) od
 
 { vertices in W*(fundamental alcove) }
 set W_fund_vertices(SimpleAffine Affd) = [ratvec]:
@@ -356,181 +376,61 @@ Verts = facetV0(Affd,gamma0) in for gamma0v in Verts
 do wtilde*gamma0v od
 
 { this includes all vertices of facets in the fundamental
-parallelepiped, with repetitions }
-set FPP_vertices_rep(SimpleAffine Affd) = [ratvec]:
-if facet_verbose then prints("start FPP_vertices_rep.") fi;
-## for gamma in W_fund_vertices(Affd)
-do{WA0} for tau in FPtau(Affd,gamma) do{TAU} gamma+tau od{TAU} od{WA0}
-
-{ this eliminates repetition }
-set FPP_verticesOLD(SimpleAffine Affd) = [ratvec]:
-NoReps(FPP_vertices_rep(Affd))
-
-{ this eliminates repetition at least ten times faster }
+parallelepiped }
 set FPP_vertices(SimpleAffine Affd) = [ratvec]:
 if facet_verbose then prints("start FPP_vertices.") fi;
-let FPP_verts = FPP_vertices_rep(Affd), G=Affd.split_form then xopen =
-x_open(G), Grho=G.rho in for p in
-monomials(sum(G, for nu in FPP_verts do{REP} parameter(xopen,Grho,nu)
-od{REP})) do{MON} p.nu od{MON}
+let GI = root_datum(null(Affd.rank,0),
+null(Affd.rank,0),true).split_form
+in for p in monomials(sum(GI, for gamma in W_fund_vertices(Affd)
+do{WA0} sum(GI, for tau in FPtau(Affd,gamma) do{TAU}
+parameter(GI,0,GI.rho,gamma+tau) od{TAU}) od{WA0})) do p.nu od
 
-{ this includes all vertex.numer's in the fundamental parallelepiped,
-with repetitions; divide by denom(Affd) for values }
-{ this is MUCH slower than FPP_vertices_rep: factor more than 10 for
-D5. Don't understand. }
-set FPP_vertices_rep_numer(SimpleAffine Affd) = [vec]:
-if facet_verbose then prints("start FPP_vertices_rep_numer.") fi;
-## for gamma in W_fund_vertices_numer(Affd)
-do{WA0} for tau in FPtau_numer(Affd,gamma) do{TAU} gamma+tau od{TAU} od{WA0}
-
-{ this eliminates repetition }
-set FPP_vertices_numerOLD(SimpleAffine Affd) = [vec]:
-if facet_verbose then prints("start FPP_vertices_numerOLD.") fi;
-NoReps(FPP_vertices_rep_numer(Affd))
-
-{ this eliminates repetition faster}
-set FPP_vertices_numer(SimpleAffine Affd) = [vec]:
-if facet_verbose then prints("start FPP_vertices_numer.") fi;
-let FPP_verts_numer = FPP_vertices_rep_numer(Affd), G=Affd.split_form then
-xopen = x_open(G), Grho=G.rho in for p in monomials(sum(G, for nu in
-FPP_verts_numer do{REP} parameter(xopen,Grho,nu)
-od{REP})) do{MON} ratvec_as_vec(p.nu) od{MON}
-
-{ this includes all barycenters of facets in the fundamental
-parallelepiped, organized by dimension, with repetitions }
-set FPP_barycenters_rep(SimpleAffine Affd) = [[FacetB]]:
-let WBs = W_fund_barycenters(Affd) in for d:Affd.aff_rank do{DIM}
-if facet_verbose then prints("start FPP_barycenters_rep, dim = ",d) fi;
-##for gamma in WBs[d] do{WA0} for tau in FPtau(Affd,gamma) do{TAU}
-gamma+tau od{TAU} od{WA0} od{DIM}
-
-{ this eliminates repetition in vertices only }
-set FPP_barycenters0OLD(SimpleAffine Affd) = [[FacetB]]:
-if facet_verbose then prints("start FPP_barycenters0OLD.") fi;
-let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM}
-if d= 0 then NoReps(FPPBs[0])
-else FPPBs[d] fi od{DIM}
-
-{ this eliminates repetition in vertices only }
-set FPP_barycenters0(SimpleAffine Affd) = [[FacetB]]:
-if facet_verbose then prints("start FPP_barycenters0.") fi;
-let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM}
-if d= 0 then
-let FPPBs = FPP_barycenters_rep(Affd), G=Affd.split_form then
-xopen = x_open(G), Grho=G.rho in for p in monomials(sum(G, for nu in
-##FPPBs do{REP} parameter(xopen,Grho,nu)
-od{REP})) do{MON} ratvec_as_vec(p.nu) od{MON}
-else FPPBs[d] fi od{DIM}
-
-{ this eliminates repetition }
-set FPP_barycentersOLD(SimpleAffine Affd) = [[FacetB]]:
-if facet_verbose then prints("start FPP_barycentersOLD.") fi;
-let FPPBs = FPP_barycenters_rep(Affd) in for d:Affd.aff_rank do{DIM} let
-longList = FPPBs[d] in ##for j:#longList do{LIST} if all(for i:j
-do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
-[] fi od{LIST} od{DIM}
-
-{ this eliminates repetition FAST! }
 set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
 if facet_verbose then prints("start FPP_barycenters.") fi;
-let FPPBs = FPP_barycenters_rep(Affd), G=Affd.split_form then xopen =
-x_open(G), Grho=G.rho in for d:Affd.aff_rank do{DIM} for p in
-monomials(sum(G, for nu in FPPBs[d] do{REP} parameter(xopen,Grho,nu)
-od{REP})) do{MON} p.nu od{MON} od{DIM}
-
-{ this includes all barycenter.numer's of facets in the fundamental
-parallelepiped, organized by dimension, with repetitions }
-set FPP_barycenters_rep_numer(SimpleAffine Affd) = [[vec]]:
-if facet_verbose then prints("start FPP_barycenters_rep_numer.") fi;
-let WBs = W_fund_barycenters_numer(Affd) in for d:Affd.aff_rank do{DIM} ##
-for gamma in WBs[d] do{WA0} for tau in FPtau_Bnumer(Affd,gamma) do{TAU}
-gamma+tau od{TAU} od{WA0} od{DIM}
-
-{ this eliminates repetition in vertices only }
-set FPP_barycenters_numer0OLD(SimpleAffine Affd) = [[vec]]:
-if facet_verbose then prints("start FPP_barycenters_numer0OLD.") fi;
-let FPPBs = FPP_barycenters_rep_numer(Affd) in for d:Affd.aff_rank do{DIM}
-if d= 0 then NoReps(FPPBs[0]) else FPPBs[d] fi od{DIM} 
-
-{ this eliminates repetition }
-set FPP_barycenters_numer(SimpleAffine Affd) = [[vec]]:
-if facet_verbose then prints("start FPP_barycenters_numer.") fi;
-let FPPBs = FPP_barycenters_rep_numer(Affd) in for d:Affd.aff_rank do{DIM} let
-longList = FPPBs[d] in ##for j:#longList do{LIST} if all(for i:j
-do{SRCH} longList[i] != longList[j] od{SRCH}) then [longList[j]] else
-[] fi od{LIST} od{DIM}
+let WBs = W_fund_barycenters(Affd), GI = root_datum(null(Affd.rank,0),
+null(Affd.rank,0),true).split_form in for d:Affd.aff_rank do{DIM}
+if facet_verbose then prints("start FPP_barycenters, dim = ",d) fi;
+for p in monomials(sum(GI, for gamma in WBs[d] do{WA0} sum(GI, for tau in
+FPtau(Affd,gamma) do{TAU} parameter(GI,0,GI.rho,gamma+tau) od{TAU})
+od{WA0})) do p.nu od od{DIM}
 
 { convert a FacetV to a FacetB }
 set facetB(FacetV facet) = ratvec:
 let n = #facet[0], D = #facet in sum(n, facet)/D
 
-{ vertex sets for all facets in the fundamental parallelepiped,
-organized by dimension, with some repetitions }
-set FPP_vertex_sets_rep(SimpleAffine Affd) = [[FacetV]]:
-let WVs = W_fund_vertex_sets(Affd) in for d:Affd.aff_rank do{DIM}
-if facet_verbose then prints("start dim ",d," in FPP_vertex_sets") fi;
-##for gammas in WVs[d] do{WA0} for tau in FPtau(Affd, facetB(gammas))
-do{TAU} for gamma in gammas do{GAM}
-gamma+tau od{GAM} od{TAU} od{WA0} od{DIM}
-
-{ this eliminates repetition in the vertices only }
-
-set FPP_vertex_sets0old(SimpleAffine Affd) = [[FacetV]]:
-let FPPVs = FPP_vertex_sets_rep(Affd) in for d:Affd.aff_rank do{DIM}
-if d=0 then (let longList = FPPVs[0] in ##(for j:#longList do{LIST} if
-all(for i:j do{SRCH} longList[i][0] != longList[j][0]
-od{SRCH}) then [longList[j]] else [] fi od{LIST})) else FPPVs[d] fi od{DIM}
-
-{ this eliminates repetition in the vertices only FAST }
-set FPP_vertex_sets0(SimpleAffine Affd) = [[FacetV]]:
-if facet_verbose then prints("start FPP_vertex_sets0") fi;
-let FPPVs = FPP_vertex_sets_rep(Affd), G=Affd.split_form then xopen =
-x_open(G), Grho = G.rho in for d:Affd.aff_rank do{DIM}
-if d=0 then let longList = ##FPPVs[0] in for p
-in monomials(sum(G, for nu in longList do{NUS}
-parameter(xopen,Grho,nu) od{NUS})) do{MON} [p.nu] od{MON} else
-FPPVs[d] fi od{DIM}
-
-{ this eliminates repetition }
-set FPP_vertex_setsOLD(SimpleAffine Affd) = [[FacetV]]:
-let FPPVs = FPP_vertex_sets_rep(Affd) in for d:Affd.aff_rank do{DIM}
-let longList = FPPVs[d] in ##for j:#longList do{LIST} if all(for i:j
-do{SRCH} sum(Affd.rank,longList[i]) != sum(Affd.rank,longList[j])
-od{SRCH}) then [longList[j]] else [] fi od{LIST} od{DIM}
-
 { using nu...}
 set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
 if facet_verbose then prints("start FPP_vertex_sets") fi;
 let FPPBs = FPP_barycenters(Affd) in for d:Affd.aff_rank do{DIM}
+if facet_verbose then prints("start dim ",d," in FPP_vertex_sets") fi;
 for b in FPPBs[d] do{FAC} facetV(Affd,b) od{FAC} od{DIM}
 
 set facetVnum([ratvec] vert_list, FacetV facet) = FacetVI:
 for gammav in facet do find(vert_list,gammav) od.sort
 
+{ creates the indexing ParamPol }
+set index([ratvec] list) = ParamPol:
+let G1=root_datum(null(#list[0],0),null(#list[0],0),true).split_form in
+sum(G1,for v@j in list do (j+1)*parameter(G1,0,G1.rho,v) od)
+
+set find(ParamPol Index,ratvec v) = int:
+let GI = Index.real_form in
+split_as_int(Index[parameter(GI,0,GI.rho,v)]) - 1 
+
+{ same as facetVnum using a precreated ParamPol as index set }
+set facetVnum(ParamPol Index, FacetV facet) = FacetVI:
+for gammav in facet do find(Index,gammav) od.sort
+
 { computes barycenter from a facet as a vertex list }
 set facetB([ratvec] vert_list, FacetVI facet) = FacetB:
 sum(#vert_list[0], for k:#facet do vert_list[facet[k]] od)/(#facet) 
 
-{ removed this because even if vertex_list is known in advance, it
-isn't much faster than the next function }
-{ set FPP_vertex_sets_indices(SimpleAffine Affd,[ratvec] vertex_list) =
-[[FacetVI]]:
-let FPPV = FPP_vertex_sets(Affd) in for d:Affd.aff_rank do
-if d=0 then for j:#FPPV[0] do [j] od else
-for facet in FPPV[d] do facetVnum(vertex_list,facet) od fi od }
-
 set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVI]]:
-let FPPV = FPP_vertex_sets(Affd) then vertex_list = ##FPPV[0]
+let FPPV = FPP_vertex_sets(Affd) then vertexIndex=index(##FPPV[0])
 in for d:Affd.aff_rank do
 if facet_verbose then prints("start dim ",d," in FPP_vertex_sets_indices") fi;
 if d=0 then for j:#FPPV[0] do [j] od else
-for facet in FPPV[d] do facetVnum(vertex_list,facet) od fi od
-
-set FPP_vertex_sets_indices0(SimpleAffine Affd) = [[vec]]:
-if facet_verbose then prints("start FPP_vertex_sets_indices0") fi;
-let FPPV = FPP_vertex_sets0(Affd) then vertex_list = ##FPPV[0]
-in for d:Affd.aff_rank do if d=0 then for j:#vertex_list do [j] od else
-for facet_V in FPPV[d] do facetVnum(vertex_list,facet_V) od fi od
+for facet in FPPV[d] do facetVnum(vertexIndex,facet) od fi od
 
 { Computes translation part of affine Weyl group element moving gamma
 to the fundamental alcove: subtract roots until gamma lands in W*A0 =
@@ -683,14 +583,6 @@ spherical(G,vlist,FPP_vertex_sets_indices(G))
 set spherical_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVI]]):
 let vlist = FPP_vertices(G) in spherical_to_ht(G, vlist,
 FPP_vertex_sets_indices(G),bound)
-
-set spherical0(RealForm G) = ([[string]],[ratvec],[[FacetVI]]):
-let vlist = FPP_vertices(G) in
-spherical(G,vlist,FPP_vertex_sets_indices0(G))
-
-set spherical0_to_ht(RealForm G,int bound) = ([[string]],[ratvec],[[FacetVI]]):
-let vlist = FPP_vertices(G) in
-spherical_to_ht(G,vlist,FPP_vertex_sets_indices0(G),bound)
 
 set update_status([[string]] status, [ratvec] vlist, [[FacetVI]]
 Cand) = ([[string]], [ratvec], [[FacetVI]]):
