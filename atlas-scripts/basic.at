@@ -473,7 +473,11 @@ set product (int n, [mat] L) = mat:
   else let p=L~[0] in assert(shape(p)=(n,n)); for i:len-1 ~do p *:= L[i] od; p
   fi
 
-set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
+set gcd(mat M) = int:
+   let d=0 in
+   for col in M
+   do d := case d in gcd(col), return 1 else gcd(d,gcd(col%d)) esac
+   od; d
 
 { integer division }
 set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
@@ -1573,9 +1577,6 @@ set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set root_datum (KType t) = RootDatum: real_form(t)
 set inner_class (KType t) = InnerClass: real_form(t)
 
-set null_K_module (KType t) = KTypePol:
-  null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
-
 set x (KType t) = KGBElt: let (x,)=%t in x
 set lambda_minus_rho (KType t) = vec: let (,lr)=%t in lr
 set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
@@ -1601,9 +1602,12 @@ set involution (KType t) = mat: involution(t.x)
 
 {			  Polynomials in K-types			}
 
+set null_module (KType t) = KTypePol:
+  null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
 set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
+set null_K_module = null_module@KType    { allow more explicit name }
 set null_K_module = null_module@KTypePol { allow more explicit name }
-set -(ParamPol P) = ParamPol: minus_1*P
+set -(KTypePol P) = KTypePol: minus_1*P
 
 {                           Module parameters                           }
 
