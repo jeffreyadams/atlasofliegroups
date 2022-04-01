@@ -228,10 +228,18 @@ set W_fund_facets_card(SimpleAffine Affd) = [int]:
 for d:Affd.aff_rank do W_fund_d_facets_card(Affd,d) od
 
 { vertices in W*(fundamental alcove) }
-set W_fund_vertices(SimpleAffine Affd) = [ratvec]:
+set W_fund_verticesOLD(SimpleAffine Affd) = [ratvec]:
 ## for gamma in fundamental_vertices(Affd) do{VERT} for w in
 stabiliser_quotient_of_dominant(Affd,gamma.numer) do{W} w*gamma od{W}
 od{VERT}
+
+set W_fund_vertices(SimpleAffine Affd) = [ratvec]:
+let GC=Affd.complexification, r=Affd.rank, shift = Bdenom(Affd)*Affd.rho
+then rhoC = GC.rho in
+## for gamma in fundamental_vertices(Affd) do{VERT} for p in
+block_of(parameter(GC,0,shift##gamma.numer, shift##gamma.numer)) do{P}
+let (,v) = p.LKT in ratvec: for j:r do{GAM} (v[j+r] + v[j] -
+shift[j])/gamma.denom od{GAM} od{P} od{VERT}
 
 { vertex numers in W*(fundamental alcove); for actuals divide by denom(Affd) }
 set W_fund_vertices_numer(SimpleAffine Affd) = [vec]:
@@ -240,13 +248,29 @@ stabiliser_quotient_of_dominant(Affd,gamma) do{W} w*gamma od{W}
 od{VERT}
 
 { barycenters in W*(fundamental alcove), organized by dimension }
-set W_fund_barycenters(SimpleAffine Affd) = [[FacetB]]:
+set W_fund_barycentersOLD(SimpleAffine Affd) = [[FacetB]]:
 for d:Affd.aff_rank do{DIM}
 if facet_verbose then prints("start dim ",d," in W_fund_barycenters.")
 fi;
 ## for gamma in fund_barycenters(Affd)[d]
 do{BIN} for w in stabiliser_quotient_of_dominant(Affd,gamma.numer)
 do{W} w*gamma od{W} od{BIN} od{DIM}
+
+{ barycenters in W*(fundamental alcove), organized by
+dimension. Compute W orbits using block_of command in GC. The shift
+BDenom(Affd) is required to exceed the pairing of gamma.numer with any
+coroot. }
+set W_fund_barycenters(SimpleAffine Affd) = [[FacetB]]:
+let GC=Affd.complexification, r=Affd.rank, shift = Bdenom(Affd)*Affd.rho
+then rhoC = GC.rho in
+for d:Affd.aff_rank do{DIM}
+if facet_verbose then prints("start dim ",d," in W_fund_barycenters.")
+fi;
+## for gamma in fund_barycenters(Affd)[d]
+do{BIN} for p in
+block_of(parameter(GC,0,shift##gamma.numer, shift##gamma.numer)) do{P}
+let (,v) = p.LKT in ratvec: for j:r do{GAM} (v[j+r] + v[j] -
+shift[j])/gamma.denom od{GAM} od{P} od{BIN} od{DIM}
 
 { barycenter numers in W*(fundamental alcove), organized by dimension }
 set W_fund_barycenters_numer(SimpleAffine Affd) = [[vec]]:
@@ -592,3 +616,7 @@ status[d][j] = "F" then [] else [Cand[d][j]] fi od od,  newstatus =
 for d:#status do  ##for j:#status[d] do if
 status[d][j] = "F" then [] else [status[d][j]] fi od od in
 (newstatus,vlist,newCand)
+
+{idea is in a session to say ">> FILENAME write(status,vlist,Cand)"}
+set write([[string]] status, [ratvec] vlist, [[FacetVI]] Cand) = void:
+prints("set status = ",status); prints("set vlist = ",vlist); prints("set Cand = ",Cand)
