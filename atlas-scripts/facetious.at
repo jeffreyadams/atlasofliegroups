@@ -3,7 +3,7 @@
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]) }
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
-
+<K_highest_weights.at { for LKT }
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
