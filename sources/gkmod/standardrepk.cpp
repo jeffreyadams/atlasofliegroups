@@ -674,6 +674,9 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     const InvolutionNbr i_theta = i_tab.nr(strong.tw());
     const WeightInvolution& theta = i_tab.matrix(i_theta);
 
+    if (height_bound(mu+theta*mu+i_tab.theta_plus_1_rho(i_theta)) > bound)
+      continue;
+
     RootNbrSet A(rd.numRoots()); // oversized: negative roots unused
     // collect in |A| all positive roots that are nci or first of a C+ pair
     for (BitMap::iterator rt=p.radical().begin(); rt(); ++rt)
@@ -703,8 +706,8 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	const Weight& mu=term->first; // $-\rho$-centered
-	if (height_bound(mu+theta*mu+i_tab.theta_plus_1_rho(i_theta)) > bound)
+	const Weight& nu=term->first; // $-\rho$-centered
+	if (height_bound(nu+theta*nu+i_tab.theta_plus_1_rho(i_theta)) > bound)
 	  pol.erase(term++);
 	else
 	  term++;

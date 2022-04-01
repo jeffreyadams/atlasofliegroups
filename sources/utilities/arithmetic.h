@@ -81,6 +81,8 @@ public:
   UI true_denominator() const { return denom; }
 
   bool is_zero() const { return num==0; }
+  bool is_positive() const { return num>0; }
+  bool is_negative() const { return num<0; }
 
   // these operators all return normalised results
   Rational operator+(Rational q) const;

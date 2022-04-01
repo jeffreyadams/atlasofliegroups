@@ -90,7 +90,7 @@ Monoid_Ring<T,C,Compare>
 {
   Monoid_Ring<T,C,Compare> result(base::base::key_compare);
   for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
-    result.add_mutiple(*this,src->second,src->first);
+    result.add_multiple(*this,src->second,src->first);
 
   return result;
 }
