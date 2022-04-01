@@ -27,16 +27,23 @@ Write simple coroots as betav[1]...betav[ell-1], lowest coroot as
    betav[0] = -(rd.dual).highest_root
    betav[j] = rd.simple_coroots[j-1] (1 \le j \le ell) }
 
-{ There are three notions of "facet": a set Facet of affine equalities
-and inequalities defining it (NOT UNIQUE); the set FacetV of vertices;
-and the barycenter FacetB. I like FacetV the best: you can take the
+{ There are four notions of "facet":
+1) a ([AffineCoroot],[AffineCoroot]) Facet of affine inequalities and
+equalities defining it (NOT UNIQUE);
+2) the [ratvec] FacetVerts of vertices;
+3) the barycenter FacetBary; and
+4) the [vec] of indices of the vertices in a fixed list of vertices
+
+I like FacetVerts the best: you can take the
 closure of F just by looking at subsets of the vertices; and the
 "opening" (all facets having F in their closure) bu looking at all
-enlargements of the vertex set. Passage from FacetV to FacetB is
-trivial (average the vertices) There are functions facet, facetV and
-facetB at the end which compute each of these three representations of
+enlargements of the vertex set. Passage from FacetVerts to FacetBary is
+trivial (average the vertices) There are functions facet, facetVerts and
+facetBary which compute each of these three representations of
 the facet containing a given ratvec gamma in X^*_Q. }
 
+{ useful to assign this to 'true" to get information about the progress
+of long calculations }
 set facet_verbose=false
 
 { remove repetitions }
@@ -55,11 +62,11 @@ set_type SimpleAffine = RootDatum
 
 set aff_rank(SimpleAffine Affd) = ss_rank(Affd) + 1
 
-set_type AffineCoroot = (vec,int)
+set_type [AffineCoroot = (vec,int)]
 set *(AffineCoroot (betav,m), ratvec gamma) = m+betav*gamma
 
 {first apply w, then translate by tau}
-set_type AffineCoWeylElt = (vec tau, WeylElt w)
+set_type [AffineCoWeylElt = (vec tau, WeylElt w)]
 
 set *(AffineCoWeylElt (tau,w) , vec gamma) = w*gamma + tau
 set *(AffineCoWeylElt (tau,w) , ratvec gamma) = w*gamma + tau
@@ -75,8 +82,8 @@ for j:Affd.aff_rank do
 if j=0 then (-coroot(Affd, highest_short_root(Affd)),1) else
 (Affd.simple_coroots[j-1],0) fi od
 
-{compute facet of a point in fundamental alcove, where all positive
-roots are in [0,1]}
+{ compute facet of a point in fundamental alcove, where all positive
+roots are in [0,1] }
 
 set labels(SimpleAffine Affd) = [int]:
 for j:Affd.aff_rank do
@@ -92,7 +99,6 @@ set root(AffineCoroot (betav,m),SimpleAffine Affd) = root(Affd,betav)
 
 set *(AffineCoroot (betav,m), vec v) = betav*v + m
 
-
 set reflection(AffineCoroot Betav, SimpleAffine Affd, vec v) = v -
 (Betav*v)*root(Betav,Affd)
 
@@ -105,23 +111,23 @@ collection of affine coroots appearing must be a set of simple roots
 for the affine datum. IF THE FACET IS NOT AN ALCOVE, THIS
 REPRESENTATION IS NOT UNIQUE }
 
-set_type Facet = ([AffineCoroot] pos,[AffineCoroot] zero)
+set_type [Facet = ([AffineCoroot] pos,[AffineCoroot] zero)]
 
 { a UNIQUE characterization of a k-diml facet is as a set of
 k+1 vertices }
 
-set_type FacetV = [ratvec]
+set_type [FacetVerts = [ratvec]]
 
 { Maybe the smallest UNIQUE characterization is as the barycenter }
 
-set_type FacetB = ratvec
+set_type [FacetBary = ratvec]
 
 { actual barycenter is this divided by Bdenom(Affd) }
-set_type FacetBNum = vec
+set_type FacetBaryNum = vec
 
 {represents a k-diml facet as k+1 indices into a list of vertices
 (held elsewhere)}
-set_type FacetVI = vec
+set_type [FacetVertsIndex = vec]
 
 { computes the Facet of a point gamma0 in the fundamental alcove }
 set facet0(SimpleAffine Affd, ratvec gamma0) = Facet:
@@ -145,18 +151,18 @@ for j:Affd.aff_rank do
 if j=0 then null(Affd.rank) else
 ratvec_as_vec(denom(Affd)*Affd.fundamental_weights[j-1]/Affd.labels[j]) fi od
 
-{ computes the FacetV of a point gamma0 in the fundamental alcove }
-set facetV0(SimpleAffine Affd, ratvec gamma0) = FacetV:
+{ computes the FacetVerts of a point gamma0 in the fundamental alcove }
+set facet_verts0(SimpleAffine Affd, ratvec gamma0) = FacetVerts:
 let S=Affd.aff_simple_coroots, V=fundamental_vertices(Affd) in
 ##for d:#S do if !=S[d]*gamma0 then [V[d]] else [] fi od
 
-{ computes the FacetB of a point gamma0 in the fundamental alcove }
-set facetB0(SimpleAffine Affd, ratvec gamma0) = FacetB:
-let Verts = facetV0(Affd,gamma0) in sum(Affd.rank, for v in Verts do v/#Verts
-od)
+{ computes the FacetBary of a point gamma0 in the fundamental alcove }
+set facet_bary0(SimpleAffine Affd, ratvec gamma0) = FacetBary:
+let Verts = facet_verts0(Affd,gamma0) in sum(Affd.rank,
+for v in Verts do v/#Verts od)
 
 { list of facets in the fundamental alcove, organized by dimension }
-{ is aff_rank = n, set has 2^n - 1 elements, (n choose d+1) in dim d
+{ if aff_rank = n, set has 2^n - 1 elements, (n choose d+1) in dim d
 for 0 \le d \le n-1. }
 set fund_facets(SimpleAffine Affd) = [[Facet]]:
 let n = Affd.aff_rank, Sv = Affd.aff_simple_coroots
@@ -165,17 +171,31 @@ for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN} (for j in S
 do{TRMSA} Sv[j] od{TRMSA}, for k in complement(n,S) do{TRMSB} Sv[k]
 od{TRMSB}) od{BIN} od{DIM}
 
-{ for i:2^n-1 from 1 do (for j in P[i] do Sv[j] od, for
-k in complement(n,P[i]) do Sv[k] od) od }
+{ list of d-dimensional facets in the fundamental alcove }
+{ if aff_rank = n, set has (n choose d+1) elements }
+set fund_facets(SimpleAffine Affd,int d) = [Facet]:
+let n = Affd.aff_rank, Sv = Affd.aff_simple_coroots
+then listn = for j:n do j od  in
+for S in choices_from(listn,d+1) do{BIN} (for j in S
+do{TRMSA} Sv[j] od{TRMSA}, for k in complement(n,S) do{TRMSB} Sv[k]
+od{TRMSB}) od{BIN}
 
 { barycenters of facets in the fundamental alcove, organized by
 dimension }
-set fund_barycenters(SimpleAffine Affd) = [[FacetB]]:
+set fund_barycenters(SimpleAffine Affd) = [[FacetBary]]:
 let  n = Affd.aff_rank, LAB = Affd.labels,
 FWts=Affd.fundamental_weights then listn = for j:n do j od
-in for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN} 
+in for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN}
 sum(Affd.rank, for j in S do{VERT} if j=0 then null(Affd.rank)/1 else
 FWts[j-1]/((d+1)*LAB[j]) fi od{VERT}) od{BIN} od{DIM}
+
+{ barycenters of d-dimensional facets in the fundamental alcove }
+set fund_barycenters(SimpleAffine Affd, int d) = [FacetBary]:
+let  n = Affd.aff_rank, LAB = Affd.labels,
+FWts=Affd.fundamental_weights then listn = for j:n do j od
+in for S in choices_from(listn,d+1) do{BIN}
+sum(Affd.rank, for j in S do{VERT} if j=0 then null(Affd.rank)/1 else
+FWts[j-1]/((d+1)*LAB[j]) fi od{VERT}) od{BIN}
 
 { a common denominator for all barycenters of facets }
 set Bdenom(SimpleAffine Affd) = int:
@@ -194,11 +214,17 @@ null(Affd.rank)/1 else FWts[j-1]/((d+1)*LAB[j]) fi od{VERT})) od{BIN} od{DIM}
 { vertex sets for facets in the fundamental alcove, organized by
 dimension }
 
-set fund_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+set fund_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
 let  n = Affd.aff_rank, Verts=fundamental_vertices(Affd)
 then listn = for j:n do{DIM} j od
 in for d:n do{DIM} for S in choices_from(listn,d+1) do{BIN}
 for j in S do{VERTS} Verts[j] od{VERTS} od{BIN} od{DIM}
+
+set fund_vertex_sets(SimpleAffine Affd, int d) = [FacetVerts]:
+let  n = Affd.aff_rank, Verts=fundamental_vertices(Affd)
+then listn = for j:n do{DIM} j od
+in for S in choices_from(listn,d+1) do{BIN}
+for j in S do{VERTS} Verts[j] od{VERTS} od{BIN}
 
 { vertex set numerators for facets in the fundamental alcove, organized by
 dimension; actual are these divided by denom(Affd) }
@@ -248,19 +274,27 @@ stabiliser_quotient_of_dominant(Affd,gamma) do{W} w*gamma od{W}
 od{VERT}
 
 { barycenters in W*(fundamental alcove), organized by dimension }
-set W_fund_barycentersOLD(SimpleAffine Affd) = [[FacetB]]:
+set W_fund_barycentersOLD(SimpleAffine Affd) = [[FacetBary]]:
 for d:Affd.aff_rank do{DIM}
-if facet_verbose then prints("start dim ",d," in W_fund_barycenters.")
+if facet_verbose then prints("start dim ",d," in W_fund_barycentersOLD.")
 fi;
 ## for gamma in fund_barycenters(Affd)[d]
 do{BIN} for w in stabiliser_quotient_of_dominant(Affd,gamma.numer)
 do{W} w*gamma od{W} od{BIN} od{DIM}
 
+{ barycenters of d-dimensional facets in W*(fundamental alcove) }
+set W_fund_barycentersOLD(SimpleAffine Affd,int d) = [FacetBary]:
+if facet_verbose then prints("start dim ",d," in W_fund_barycentersOLD.")
+fi;
+## for gamma in fund_barycenters(Affd)[d]
+do{BIN} for w in stabiliser_quotient_of_dominant(Affd,gamma.numer)
+do{W} w*gamma od{W} od{BIN}
+
 { barycenters in W*(fundamental alcove), organized by
 dimension. Compute W orbits using block_of command in GC. The shift
 BDenom(Affd) is required to exceed the pairing of gamma.numer with any
 coroot. }
-set W_fund_barycenters(SimpleAffine Affd) = [[FacetB]]:
+set W_fund_barycenters(SimpleAffine Affd) = [[FacetBary]]:
 let GC=Affd.complexification, r=Affd.rank, shift = Bdenom(Affd)*Affd.rho
 then rhoC = GC.rho in
 for d:Affd.aff_rank do{DIM}
@@ -271,6 +305,21 @@ do{BIN} for p in
 block_of(parameter(GC,0,shift##gamma.numer, shift##gamma.numer)) do{P}
 let (,v) = p.LKT in ratvec: for j:r do{GAM} (v[j+r] + v[j] -
 shift[j])/gamma.denom od{GAM} od{P} od{BIN} od{DIM}
+
+{ barycenters of d-dimensional facets in W*(fundamental
+alcove). Compute W orbits using block_of command in GC. The shift 
+BDenom(Affd) is required to exceed the pairing of gamma.numer with any
+coroot. }
+set W_fund_barycenters(SimpleAffine Affd, int d) = [FacetBary]:
+let GC=Affd.complexification, r=Affd.rank, shift = Bdenom(Affd)*Affd.rho
+then rhoC = GC.rho in
+if facet_verbose then prints("start dim ",d," in W_fund_barycenters.")
+fi;
+## for gamma in fund_barycenters(Affd)[d]
+do{BIN} for p in
+block_of(parameter(GC,0,shift##gamma.numer, shift##gamma.numer)) do{P}
+let (,v) = p.LKT in ratvec: for j:r do{GAM} (v[j+r] + v[j] -
+shift[j])/gamma.denom od{GAM} od{P} od{BIN}
 
 { barycenter numers in W*(fundamental alcove), organized by dimension }
 set W_fund_barycenters_numer(SimpleAffine Affd) = [[vec]]:
@@ -283,7 +332,7 @@ do{W} w*gamma od{W} od{BIN} od{DIM}
 
 { vertex sets for facets in W*(fundamental alcove), organized by
 dimension }
-set W_fund_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+set W_fund_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
 let n=Affd.aff_rank, Verts = fundamental_vertices(Affd) then listn=for
 j:n do j od in
 for d:n do{DIM}
@@ -294,6 +343,18 @@ stabiliser_quotient_of_dominant(Affd, ratvec_as_vec(sum(Affd.rank,for
 j in S do{VERTS}
 Verts[j].numer od{VERTS}))) do{W} for j in S do{VERTS} w*Verts[j]
 od{VERTS} od{W} od{BIN} od{DIM}
+
+{ vertex sets for d-dimensional facets in W*(fundamental alcove) }
+set W_fund_vertex_sets(SimpleAffine Affd, int d) = [FacetVerts]:
+let n=Affd.aff_rank, Verts = fundamental_vertices(Affd) then listn=for
+j:n do j od in
+if facet_verbose then prints("start dim ",d," in W_fund_vertex_sets.")
+fi; 
+## for S in choices_from(listn,d+1) do{BIN} for w in
+stabiliser_quotient_of_dominant(Affd, ratvec_as_vec(sum(Affd.rank,for
+j in S do{VERTS}
+Verts[j].numer od{VERTS}))) do{W} for j in S do{VERTS} w*Verts[j]
+od{VERTS} od{W} od{BIN}
 
 { vertex set numers for facets in W*(fundamental alcove), organized by
 dimension; for actuals divide by denom(Affd)}
@@ -386,17 +447,17 @@ let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
 do wtilde*betav od , for betav in F0zero
 do wtilde*betav od)
 
-{ computes the FacetB of any ratvec }
+{ computes the FacetBary of any ratvec }
 
-set facetB(SimpleAffine Affd, ratvec gamma) = FacetB:
+set facet_bary(SimpleAffine Affd, ratvec gamma) = FacetBary:
 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) in
-wtilde*facetB0(Affd,gamma0) 
+wtilde*facet_bary0(Affd,gamma0) 
 
-{ computes the FacetV (vertex set) of any ratvec }
+{ computes the FacetVerts (vertex set) of any ratvec }
 
-set facetV(SimpleAffine Affd, ratvec gamma) = FacetV:
+set facet_verts(SimpleAffine Affd, ratvec gamma) = FacetVerts:
 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
-Verts = facetV0(Affd,gamma0) in for gamma0v in Verts
+Verts = facet_verts0(Affd,gamma0) in for gamma0v in Verts
 do wtilde*gamma0v od
 
 { this includes all vertices of facets in the fundamental
@@ -409,7 +470,15 @@ in for p in monomials(sum(GI, for gamma in W_fund_vertices(Affd)
 do{WA0} sum(GI, for tau in FPtau(Affd,gamma) do{TAU}
 parameter(GI,0,GI.rho,gamma+tau) od{TAU}) od{WA0})) do p.nu od
 
-set FPP_barycenters(SimpleAffine Affd) = [[FacetB]]:
+set FPP_verticesOLD(SimpleAffine Affd) = [ratvec]:
+if facet_verbose then prints("start FPP_vertices.") fi;
+let GI = root_datum(null(Affd.rank,0),
+null(Affd.rank,0),true).split_form
+in for p in monomials(sum(GI, for gamma in W_fund_verticesOLD(Affd)
+do{WA0} sum(GI, for tau in FPtau(Affd,gamma) do{TAU}
+parameter(GI,0,GI.rho,gamma+tau) od{TAU}) od{WA0})) do p.nu od
+
+set FPP_barycenters(SimpleAffine Affd) = [[FacetBary]]:
 if facet_verbose then prints("start FPP_barycenters.") fi;
 let WBs = W_fund_barycenters(Affd), GI = root_datum(null(Affd.rank,0),
 null(Affd.rank,0),true).split_form in for d:Affd.aff_rank do{DIM}
@@ -418,18 +487,18 @@ for p in monomials(sum(GI, for gamma in WBs[d] do{WA0} sum(GI, for tau in
 FPtau(Affd,gamma) do{TAU} parameter(GI,0,GI.rho,gamma+tau) od{TAU})
 od{WA0})) do p.nu od od{DIM}
 
-{ convert a FacetV to a FacetB }
-set facetB(FacetV facet) = ratvec:
+{ convert a FacetVerts to a FacetBary }
+set facet_bary(FacetVerts facet) = ratvec:
 let n = #facet[0], D = #facet in sum(n, facet)/D
 
 { using nu...}
-set FPP_vertex_sets(SimpleAffine Affd) = [[FacetV]]:
+set FPP_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
 if facet_verbose then prints("start FPP_vertex_sets") fi;
 let FPPBs = FPP_barycenters(Affd) in for d:Affd.aff_rank do{DIM}
 if facet_verbose then prints("start dim ",d," in FPP_vertex_sets") fi;
-for b in FPPBs[d] do{FAC} facetV(Affd,b) od{FAC} od{DIM}
+for b in FPPBs[d] do{FAC} facet_verts(Affd,b) od{FAC} od{DIM}
 
-set facetVnum([ratvec] vert_list, FacetV facet) = FacetVI:
+set facetVnum([ratvec] vert_list, FacetVerts facet) = FacetVertsIndex:
 for gammav in facet do find(vert_list,gammav) od.sort
 
 { creates the indexing ParamPol }
@@ -442,14 +511,14 @@ let GI = Index.real_form in
 split_as_int(Index[parameter(GI,0,GI.rho,v)]) - 1 
 
 { same as facetVnum using a precreated ParamPol as index set }
-set facetVnum(ParamPol Index, FacetV facet) = FacetVI:
+set facetVnum(ParamPol Index, FacetVerts facet) = FacetVertsIndex:
 for gammav in facet do find(Index,gammav) od.sort
 
 { computes barycenter from a facet as a vertex list }
-set facetB([ratvec] vert_list, FacetVI facet) = FacetB:
+set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
 sum(#vert_list[0], for k:#facet do vert_list[facet[k]] od)/(#facet) 
 
-set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVI]]:
+set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVertsIndex]]:
 let FPPV = FPP_vertex_sets(Affd) then vertexIndex=index(##FPPV[0])
 in for d:Affd.aff_rank do
 if facet_verbose then prints("start dim ",d," in FPP_vertex_sets_indices") fi;
@@ -475,15 +544,15 @@ for d:#FPPind do for j:#FPPind[d] do "?" od od
 set show([[string]] status) = void:
 for d:#status do let (countT,countF,countQ) = (0,0,0) in for
 j:#status[d] do if status[d][j]="T" then countT+:=1 elif
-status[d][j]="F" then countF+:=1 else countQ+:=1 fi od; 
+status[d][j]="F" then countF+:=1 else countQ+:=1 fi od;
 prints("Facet dimension ",d,": ", countT, " unitary, ",
 countF, " nonunitary, ", countQ, " undecided.") od
 
 { meant to get the facets for spherical not cohom induced in
 nonquasisplit G }
 
-set pick_not_cohom(RealForm G, [[FacetB]] FPPB, [[FacetVI]] FPPind) =
-([[FacetB]],[[FacetVI]]):
+set pick_not_cohom(RealForm G, [[FacetBary]] FPPB, [[FacetVertsIndex]] FPPind) =
+([[FacetBary]],[[FacetVertsIndex]]):
 let inv=x_open(G).involution then tworhoM = G.rho + inv*G.rho
 then FPPBnc = [[ratvec]]: for d:#FPPB do ##for j:#FPPB[d] do
 if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then [FPPB[d][j]]
@@ -495,9 +564,9 @@ if inv*FPPB[d][j] + FPPB[d][j] = tworhoM then
 {this eliminates the nonhermitian facets from the lists. Would be good
 also to organize the new lists by dimension of the hermitian part,
 which is d-(# unfixed vertices)/2.}
-set pick_hermitian(RealForm G, [[FacetB]] FPPB, [[FacetVI]] FPPind) =
-([[ratvec]],[[FacetVI]]):
-let FPPBh = [[FacetB]]: for d:#FPPB do ##for j:#FPPB[d] do if
+set pick_hermitian(RealForm G, [[FacetBary]] FPPB, [[FacetVertsIndex]] FPPind) =
+([[ratvec]],[[FacetVertsIndex]]):
+let FPPBh = [[FacetBary]]: for d:#FPPB do ##for j:#FPPB[d] do if
 is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then [FPPB[d][j]]
 else [] fi od od,
 FPPindh = [[vec]]: for d:#FPPind do ##for j:#FPPind[d] do
@@ -505,10 +574,10 @@ if is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j])) then
 [FPPind[d][j]] else [] fi od od in (FPPBh,FPPindh)
 
 { Need simple derived group }
-set spherical(RealForm G, [ratvec] vlist, [[FacetVI]] FPPind) =
-([[string]],[ratvec],[[FacetVI]]):
+set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
+([[string]],[ratvec],[[FacetVertsIndex]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} then
+facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM} then
 (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
 (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
 then status = facet_status(FPPBnch) in for d:#status do{DIMd}
@@ -530,9 +599,9 @@ prints(); show(status); (status,vlist,FPPindnch)
 { Meant to be applied to (G,output of spherical_to_h). Need simple
  derived group }
  set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
- [[FacetVI]] FPPind)) = ([[string]],[ratvec],[[FacetVI]]):
+ [[FacetVertsIndex]] FPPind)) = ([[string]],[ratvec],[[FacetVertsIndex]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} in for d:#status do{DIMd}
+facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM} in for d:#status do{DIMd}
 if facet_verbose then prints("start dim ",d,
 " in spherical(G,status,vlist,FPPind)") fi;
 let nsd = status[d] in if facet_verbose then prints(); show(status) fi;
@@ -549,11 +618,11 @@ od{DIMd};
 prints(); show(status); (status,vlist,FPPind)
 
 { in output, "F" is certain, "T" means "true to height=bound" }
-set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVI]] FPPind,
+set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
 int bound) =
-([[string]],[ratvec],[[FacetVI]]):
+([[string]],[ratvec],[[FacetVertsIndex]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facetB(vlist, FPPind[d][j]) od{FAC} od{DIM} then
+facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM} then
 (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
 (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
 then status = facet_status(FPPBnch) in for d:#status do{DIMd}
@@ -578,10 +647,10 @@ already to be cut to not cohom and hermitian }
 { in this calculation, don't trust old "T", which meant "true to some
 previous height }
 set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
-[[FacetVI]] FPPind), int bound) =
-([[string]],[ratvec],[[FacetVI]]):
+[[FacetVertsIndex]] FPPind), int bound) =
+([[string]],[ratvec],[[FacetVertsIndex]]):
 let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facetB(vlist, FPPind[d][j]) od{FAC} od{DIM}
+facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM}
 in for d:#status do{DIMd} 
 if facet_verbose then prints("start dim ",d,
 " in spherical(G,status,vlist,FPPind)") fi;
@@ -600,16 +669,16 @@ od{DIMd};
 prints(); show(status); (status,vlist,FPPind)
 
 { still need simple derived group }
-set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVI]]):
+set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
 let vlist = FPP_vertices(G) in
 spherical(G,vlist,FPP_vertex_sets_indices(G))
 
-set spherical_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVI]]):
+set spherical_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVertsIndex]]):
 let vlist = FPP_vertices(G) in spherical_to_ht(G, vlist,
 FPP_vertex_sets_indices(G),bound)
 
-set update_status([[string]] status, [ratvec] vlist, [[FacetVI]]
-Cand) = ([[string]], [ratvec], [[FacetVI]]):
+set update_status([[string]] status, [ratvec] vlist, [[FacetVertsIndex]]
+Cand) = ([[string]], [ratvec], [[FacetVertsIndex]]):
 let newCand = for d:#status do assert(#Cand[d] = #status[d],
 "size mismatch between status and Cand"); ##for j:#status[d] do if
 status[d][j] = "F" then [] else [Cand[d][j]] fi od od,  newstatus =
@@ -618,5 +687,5 @@ status[d][j] = "F" then [] else [status[d][j]] fi od od in
 (newstatus,vlist,newCand)
 
 {idea is in a session to say ">> FILENAME write(status,vlist,Cand)"}
-set write([[string]] status, [ratvec] vlist, [[FacetVI]] Cand) = void:
+set write([[string]] status, [ratvec] vlist, [[FacetVertsIndex]] Cand) = void:
 prints("set status = ",status); prints("set vlist = ",vlist); prints("set Cand = ",Cand)
