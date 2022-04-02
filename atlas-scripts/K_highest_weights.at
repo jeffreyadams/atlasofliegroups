@@ -371,7 +371,7 @@ prints ("B=",B);}
   returns a list of inequivalent parameters }
 set reduce ([Param] parameters) = [Param]:
   if #parameters=0 then [Param]:[]
-  else monomials(virtual(real_form(parameters[0]),parameters))
+  else monomials(as_pol(real_form(parameters[0]),parameters))
   fi
 
 { to reduce a list of KParams, convert to list of parameters, reduce,

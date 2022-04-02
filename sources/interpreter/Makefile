@@ -91,7 +91,6 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/bitvector.o \
  $(sources_dir)/structure/subquotient.o \
  $(sources_dir)/utilities/matreduc.o \
- $(sources_dir)/gkmod/standardrepk.o \
  $(sources_dir)/gkmod/K_repr.o \
  $(sources_dir)/gkmod/repr.o \
  $(sources_dir)/gkmod/alcoves.o \

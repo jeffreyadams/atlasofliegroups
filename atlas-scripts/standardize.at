@@ -21,9 +21,9 @@ set coherent_act(WeylElt w,ParamPol P) = ParamPol:
 
 set coherent_act_K(WeylElt w,ParamPol P) = ParamPol: coherent_act(w,P)*0
 
-set restandard (WeylElt w,Param p) = ParamPol:
-  assert(w.root_datum=p.root_datum);
-  standardrepk_standardize(parameter(p.x,w*p.lambda,p.nu*0))
+set restandard (WeylElt w,KType p) = KTypePol:
+  let rd=w.root_datum in
+  assert(rd=p.root_datum); K_type(p.x,(w*p.lambda-rd.rho).ratvec_as_vec)
 
 set finals (WeylElt w,Param p) = KTypePol:
   let rd=w.root_datum in assert(rd=p.root_datum);

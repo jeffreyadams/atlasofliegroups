@@ -1602,12 +1602,52 @@ set involution (KType t) = mat: involution(t.x)
 
 {			  Polynomials in K-types			}
 
+set root_datum (KTypePol P) = RootDatum: real_form(P)
+
 set null_module (KType t) = KTypePol:
   null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
 set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
 set null_K_module = null_module@KType    { allow more explicit name }
 set null_K_module = null_module@KTypePol { allow more explicit name }
 set -(KTypePol P) = KTypePol: minus_1*P
+
+set first_K_type (KTypePol P) = KType: let (,p)=first_term(P) in p
+set last_K_type (KTypePol P)  = KType: let (,p)=last_term(P) in p
+
+set s_to_1       (KTypePol P) = KTypePol: 0*P + for x@q in P do (+%x,q) od
+set s_to_minus_1 (KTypePol P) = KTypePol: 0*P + for x@q in P do (-%x,q) od
+
+{ counterpart to built-in +@(KTypePol,(Split,KType)) }
+set - (KTypePol a, (Split,KType) (c,p)) = KTypePol: a+(-c,p)
+
+set + (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_1,p) od
+set - (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_minus_1,p) od
+
+{ |KTypePol| summation by divide and conquer to privilege balanced additions }
+set sum = (RealForm,[KTypePol]->KTypePol):
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([KTypePol] Ps) = KTypePol: { |Ps| has at least one term }
+        let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
+  in (RealForm G,[KTypePol] Ps) KTypePol:
+  if =#Ps then G.null_K_module else s(Ps) fi
+
+set + (KTypePol P,[KTypePol] Ps) = KTypePol: P+sum(P.real_form,Ps)
+set - (KTypePol P,[KTypePol] Ps) = KTypePol: P-sum(P.real_form,Ps)
+
+set map ((KType->KType)f, KTypePol P) = KTypePol:
+  0*P + for c@p in P ~do (c,f(p)) od
+
+set map ((KType->KTypePol)f, KTypePol P) = KTypePol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+
+set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
+{ inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
+set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
+
+set as_pol (KType p) = KTypePol: p { for making implicit conversion explcit }
+set as_pol (RealForm G, [KType] ps) = KTypePol:
+  let one=Split:(1,0) in null_K_module(G)+for p in ps do (one,p) od
+{ DON'T define as_pol ([KType] pp): cannot be correctly defined when #pp=0 }
 
 {                           Module parameters                           }
 
@@ -1844,6 +1884,8 @@ set print_extended_block = (Param,mat->):
 
 {                   Polynomials in module parameters                    }
 
+set root_datum (ParamPol P) = RootDatum: real_form(P)
+
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
 
@@ -1853,7 +1895,7 @@ set param_pol (KTypePol P) = ParamPol:
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
-set s_to_1 (ParamPol P)       = ParamPol: 0*P + for x@q in P do (+%x,q) od
+set s_to_1       (ParamPol P) = ParamPol: 0*P + for x@q in P do (+%x,q) od
 set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
@@ -1884,20 +1926,15 @@ set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
 set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
 
-{ simulate coercion (KGBElt->RealForm) in some cases }
-set root_datum (ParamPol P) = RootDatum: real_form(P)
-
-set virtual (Param p) = ParamPol: p { for making implicit conversion explcit }
-set virtual (RealForm G, [Param] ps) = ParamPol:
+set as_pol (Param p) = ParamPol: p { for making implicit conversion explcit }
+set as_pol (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
-{ DON'T define virtual ([Param] pp): cannot be correctly defined when #pp=0 }
+{ DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
 
 { branch to get only the coefficient of a specific K-type }
-set branch (Param std, Param K_type) = int:
-  branch(std,height(K_type))[K_type].int_part
+set branch (KTypePol P, KType t) = int: branch(P,height(t))[t].int_part
 
-set branch (ParamPol P, Param K_type) = Split: { Split coefficients possible }
-  branch(P,height(K_type))[K_type]
+set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 
 { nice output of ParamPol: split_format the coefficients }
 set pol_format (ParamPol P)= string:

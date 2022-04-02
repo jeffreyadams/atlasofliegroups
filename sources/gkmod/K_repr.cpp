@@ -9,7 +9,6 @@
 
 #include "K_repr.h"
 #include "repr.h"
-#include "standardrepk.h"
 
 namespace atlas {
   namespace K_repr {
@@ -623,91 +622,6 @@ K_repr::K_type_pol
   return result;
 } // |Rep_context::branch|, basic version
 
-K_repr::K_type_pol Rep_context::K_type_formula
-  (standardrepk::SRK_context& khc,K_repr::K_type& t,level max_level) const
-{
-  const auto& rd = root_datum();
-  const InvolutionTable& i_tab = involution_table();
-  auto terms = KGP_set(t); // this also moves |t| to a theta-stable parabolic
-  // nilpotents of the parabolic subalgebra at |t|:
-  auto max_l = kgb().length(t.x());
-  RootNbrSet radical_posroots = rd.posRootSet();
-  radical_posroots.andnot(i_tab.real_roots(kgb().inv_nr(t.x())));
-  K_repr::K_type_pol result;
-
-  for (auto&& term : terms)
-  {
-    KGBElt x = term.x(); const auto& lr = term.lambda_rho();
-    const InvolutionNbr i_x = kgb().inv_nr(x);
-    auto theta_plus_1_lambda =
-      lr + i_tab.matrix(i_x)*lr + i_tab.theta_plus_1_rho(i_x);
-    if (khc.height_bound(theta_plus_1_lambda)>max_level)
-      continue;
-
-    RootNbrSet sum_set{rd.numRoots()};
-    for (const auto i : radical_posroots)
-    { assert(not i_tab.real_roots(i_x).isMember(i)); // no new real roots here
-      // though some of the non-radical posroots will no longer be real
-       if (i_tab.complex_roots(i_x).isMember(i))
-	sum_set.set_to(i,
-	  i_tab.root_involution(i_x,i)>i); // first complex of a swapped pair
-      else
-	sum_set.set_to(i,
-	  status(kgb(),x,i)==gradings::Status::ImaginaryNoncompact);
-    }
-    // |for(i : radical_posroots)|
-
-    int sign = (max_l-kgb().length(x))%2==0 ? 1 : -1;
-    K_repr::K_type_pol product (std::move(term),Split_integer(sign));
-    for (const auto i : sum_set)
-    {
-      auto mp = monomial_product(product,rd.root(i));
-      for (auto&& t : mp)
-      {
-	const auto& lr = t.first.lambda_rho();
-	auto theta_plus_1_lambda =
-	  lr + i_tab.matrix(i_x)*lr + i_tab.theta_plus_1_rho(i_x);
-	if (khc.height_bound(theta_plus_1_lambda)<=max_level)
-	  product.add_term(std::move(t.first),-t.second);
-      }
-    }
-    for (auto&& t : product)
-    { auto finals = finals_for(std::move(t.first));
-      for (auto it=finals.begin(); not finals.at_end(it); ++it)
-	if (it->first.height()<=max_level)
-	  result.add_term (std::move(it->first),t.second*it->second);
-    }
-  }
-  return result;
-} // |Rep_context::K_type_formula|, using |SRK_context|
-
-K_repr::K_type_pol
-Rep_context::branch(standardrepk::SRK_context& khc,
-		    K_repr::K_type_pol remainder, repr::level cutoff) const
-{
-  K_repr::K_type_pol result;
-  auto it = remainder.begin();
-  if (it==remainder.end())
-    return result;
-  size_t count=0;
-  do
-  {
-    ++count;
-    // periodically flatten |remainder| to remove leading zero terms
-    if (count*count>2*remainder.size())
-    {
-      remainder=std::move(remainder).flatten();
-      count=0;
-    }
-    const auto& term = remainder.front();
-
-    auto lead = term.first.copy(); // need a modifiable lvalue
-    result.add_term(lead.copy(),term.second);
-    remainder.add_multiple(K_type_formula(khc,lead,cutoff),-term.second);
-  }
-  while (not remainder.is_zero());
-  return result;
-} // |Rep_context::branch|, version using projections form |SRK_context|
 
   } // |namespace repr|
 } // |namespace atlas|

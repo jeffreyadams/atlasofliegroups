@@ -1,7 +1,7 @@
 /*
   This is repr.cpp
 
-  Copyright (C) 2009-2020 Marc van Leeuwen
+  Copyright (C) 2009-2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -22,7 +22,6 @@
 #include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
-#include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 #include "alcoves.h"
 
@@ -198,29 +197,6 @@ RatWeight Rep_context::gamma
 			     diff.denominator()); // theta(lambda-nu)
   return ((lambda+nu+theta_diff)/=2).normalize();
 }
-
-StandardRepr
-  Rep_context::sr
-    (const standardrepk::StandardRepK& srk,
-     const standardrepk::SRK_context& srkc,
-     const RatWeight& nu) const
-{
-  const TitsElt a = srkc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= kgb().lookup(a);
-  Weight lambda_rho = srkc.lift(srk)-root_datum().twoRho();
-  lambda_rho/=2; // undo doubled coordinates
-
-  auto result = sr(x,lambda_rho,nu);
-
-  // while standard, final and nonzero, |result| need not be normal
-  normalise(result); // prepare |result| for direct inclusion in an |SR_poly|
-  return result;
-}
-
-  StandardRepr Rep_context::sr
-      (const standardrepk::StandardRepK& srk,
-       const standardrepk::SRK_context& srkc) const
-  { return sr(srk,srkc,RatWeight(srkc.root_datum().rank())); }
 
 const WeightInvolution& Rep_context::theta (const StandardRepr& z) const
 { return involution_table().matrix(kgb().inv_nr(z.x())); }
@@ -574,15 +550,15 @@ void Rep_context::make_dominant(StandardRepr& z) const
 
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part; // the |x_part| will be modified in-place
-  Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
+  KGBElt& x = z.x_part; // the |z.x_part| will be modified in-place
+  Ratvec_Numer_t& numer = // and |z.infinitesimal_char| as well
+    z.infinitesimal_char.numerator();
 
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimple_rank(); ++s)
 	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
-	  rd.simple_reflect(s,numer);
 	  int offset; // used to pivot |lr| around $\rho_r-\rho$
 	  switch (kgb().status(s,x))
 	  {
@@ -591,6 +567,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  default: // |s| is an imaginary root; we will not cope with that here
 	    throw std::runtime_error("Non standard parameter in make_dominant");
 	  }
+	  rd.simple_reflect(s,numer); // real or complex reflection of |gamma|
 	  rd.simple_reflect(s,lr,offset);
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
@@ -603,13 +580,18 @@ void Rep_context::make_dominant(StandardRepr& z) const
 // apply sequence of cross actions by singular complex simple generators
 void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 {
-  Weight lr = lambda_rho(z); auto& x=z.x_part;
+  const auto& rd = root_datum();
+  const InvolutionTable& i_tab = involution_table();
+  auto& x = z.x_part; // directly operate on |x| component inside |z|
+  Weight lr = lambda_rho(z);
+  // |z.infinitesimal_char| is unchanged by singular reflections
 
   for (auto s : ww)
   {
-    assert(root_datum().simpleCoroot(s).dot(z.gamma().numerator())==0);
+    assert(rd.simpleCoroot(s).dot(z.gamma().numerator())==0);
+    assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
     x = kgb().cross(s,x);
-    root_datum().simple_reflect(s, lr, 1);
+    rd.simple_reflect(s, lr, 1);
   }
 
   // reinsert $y$ bits component

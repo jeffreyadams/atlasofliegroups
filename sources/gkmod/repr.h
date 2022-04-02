@@ -50,13 +50,13 @@ class common_context;
   by this relation. The difference $\gamma-\lambda_0$, i.e., the projection of
   $\gamma$ on the $-1$-eigenspace, is called $\nu$. This $\nu$ is the
   information one is adding here with respect to the values encoded in the
-  |standardrepk::StandardRepK| type. The part of $\tilde\lambda$ that is
-  independent of $\lambda_0$ is its "torsion part" (due to the disconnectedness
-  of $H(R)_c$), which would be represented in the |Block| structure by the
-  |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$). In fact
-  we also convert it internally to a |TorusPart| here, called |y_bits|. It
-  represents an element of the quotient of $(X^*)^{-\theta}$ by the image
-  $(1-\theta)X^*$; from it we can recover $\tilde\lambda-\lambda_0$, using
+  |K_repr::K_type| type. The part of $\tilde\lambda$ that is independent of
+  $\lambda_0$ is its "torsion part" (due to the disconnectedness of $H(R)_c$),
+  which would be represented in the |Block| structure by the |TorusPart|
+  component of the |TitsElt| of the dual KGB-element ($y$). In fact we also
+  convert it internally to a |TorusPart| here, called |y_bits|. It represents an
+  element of the quotient of $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$;
+  from it we can recover $\tilde\lambda-\lambda_0$, using
   |involutions::InvolutionTable::unpack|.
 
   In principle $\gamma$ could take any complex values compatible with
@@ -213,15 +213,6 @@ class Rep_context
   StandardRepr sr
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
-
-  StandardRepr
-    sr(const standardrepk::StandardRepK& srk,
-       const standardrepk::SRK_context& srkc,
-       const RatWeight& nu) const;
-
-  StandardRepr
-    sr(const standardrepk::StandardRepK& srk,
-       const standardrepk::SRK_context& srkc) const;
 
   StandardRepr sr (const K_repr::K_type& t) const
   { return sr(t.x(),t.lambda_rho(),RatWeight(t.lambda_rho().size())); }

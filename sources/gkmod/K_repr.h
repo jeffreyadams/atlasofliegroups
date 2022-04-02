@@ -8,7 +8,7 @@
 */
 // Classes and utilities for manipulating $K$-representations
 
-// This compilation unit is meant to ultimately replace the standardrepk unit
+// This compilation unit replaces the ancient standardrepk compilation unit
 
 #ifndef K_REPR_H  /* guard against multiple inclusions */
 #define K_REPR_H
