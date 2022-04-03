@@ -391,6 +391,11 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
 
+Weyl_orbit: (RootDatum,vec->mat): Weyl group orbit of a weight
+Weyl_orbit: (vec,RootDatum->mat): Weyl group orbit of a coweight
+  In both functions the weights or coweights are the columns of the result;
+  the order of these columns is not specified (though there is a system to it)
+
 W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element

@@ -3,7 +3,7 @@
    Class definitions and function declarations for the RootDatum class.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2020 Marc van Leeuwen
+  Copyright (C) 2006--2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -92,6 +92,9 @@ Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
 
 bool is_long_root(const RootSystem& rs, RootNbr i);
 bool is_long_coroot(const RootSystem& rs, RootNbr i);
+
+int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
+int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
 
 } // |namespace rootdata|
 

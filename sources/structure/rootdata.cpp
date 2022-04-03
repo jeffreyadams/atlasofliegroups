@@ -2,7 +2,7 @@
   This is rootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2020 Marc van Leeuwen
+  Copyright (C) 2006--2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -1603,35 +1603,126 @@ bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
   return false;
 }
 
+struct orbit_elem // auxiliary data while generating orbit
+{
+  Weight v; // current orbit element
+  weyl::Generator s; // generator used to reach it
+  unsigned int prev; // index of orbit element it was reached from
+  orbit_elem(Weight v, weyl::Generator s, unsigned int prev)
+    : v(std::move(v)), s(s), prev(prev) {}
+};
+
+template<bool dual>
+sl_list<orbit_elem> basic_orbit
+  (const RootDatum& rd, RankFlags& stab, weyl::Generator i)
+{
+  assert(not stab.test(i));
+  auto fw = dual
+    ? rd.fundamental_coweight(i).numerator()
+    : rd.fundamental_weight(i).numerator();
+  Weight e (fw.begin(),fw.end()); // certainly |int| should not overflow
+
+  stab.set(i); // hencefort add |i| to |stab|: full set of generators considered
+  sl_list<orbit_elem> result;
+  result.emplace_back(e,-1,-1);
+  auto start = result.end();
+  if (dual)
+    rd.simple_coreflect(e,i);
+  else rd.simple_reflect(i,e);
+  result.emplace_back(e,i,0);
+  auto finish = result.end();
+  auto previous = result.begin();
+  unsigned int count=1; // number of element currently generated from
+  while (true) // generate from |start|; possible |return| near end of loop
+  {
+    for (auto it=start; it!=finish; ++it,++count)
+      for (auto s : stab)
+      {
+	auto new_wt = dual
+	  ? rd.simple_coreflection(it->v,s)
+	  : rd.simple_reflection(s,it->v);
+	auto jt = previous;
+	do // test if |new_wt| is present from |previous| to current end
+	{ if (jt->v==new_wt)
+	    break;
+	  ++jt;
+	}
+	while (not result.at_end(jt));
+	if (result.at_end(jt)) // whether not yet present
+	  result.emplace_back(std::move(new_wt),s,count);
+      } // for |it| and |s|
+    if (finish==result.end()) // whether nothing new was contributed
+      return result; // if so, we are done and return directly
+    previous = start; start = finish; finish = result.end(); // advance, repeat
+  } // |while(true)|
+} // |basic_orbit|
+
+template<bool dual>
+void extend_orbit
+  (const RootDatum& rd,
+   sl_list<Weight>& orbit, RankFlags& stab, weyl::Generator i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<Weight*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.emplace(it, dual
+				? rd.simple_coreflection(*ref[jt->prev],jt->s)
+				: rd.simple_reflection(jt->s,*ref[jt->prev])
+	);
+      ref.push_back(&*it); // push pointer to just created |Weight|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit|
+
+int_Matrix Weyl_orbit(const RootDatum& rd, Weight v)
+{
+  rd.make_dominant(v);
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,rd.simpleCoroot(s).dot(v) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<Weight> orbit;
+  orbit.push_back(std::move(v));
+  for (auto s : non_stab)
+    extend_orbit<false>(rd,orbit,stab,s);
+  return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
+}
+
+int_Matrix Weyl_orbit(Weight v, const RootDatum& rd)
+{
+  rd.make_codominant(v);
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,v.dot(rd.simpleRoot(s)) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<Weight> orbit;
+  orbit.push_back(std::move(v));
+  for (auto s : non_stab)
+    extend_orbit<true>(rd,orbit,stab,s);
+  return { orbit.begin(),orbit.end(),rd.rank(),tags::IteratorTag() };
+}
+
 /*****************************************************************************
 
-                Chapter III -- Auxiliary methods.
+                Chapter III -- Template instantiations
 
 ******************************************************************************/
 
-
-// a class for making a compare object for indices, backwards lexicographic
-class weight_compare
-{
-  const WeightList& alpha; // weights being compared
-  CoweightList phi; // coweights by increasing priority
-
-public:
-  weight_compare(const WeightList& roots, const CoweightList& f)
-    : alpha(roots), phi(f) {}
-
-  void add_coweight(const Coweight& f) { phi.push_back(f); }
-
-  bool operator() (unsigned int i, unsigned int j)
-  {
-    int x,y;
-    for (unsigned int k=phi.size(); k-->0; )
-      if ((x=phi[k].dot(alpha[i])) != (y=phi[k].dot(alpha[j])))
-	return x<y;
-
-    return false; // weights compare equal under all coweights
-  }
-}; // |class weight_compare|
 
 template
 void RootSystem::toRootBasis
