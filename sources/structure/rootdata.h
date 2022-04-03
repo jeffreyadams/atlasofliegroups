@@ -579,7 +579,7 @@ class RootDatum
   WeylWord factor_codominant (Coweight& lambda) const;
   WeylWord to_codominant(Weight lambda) const; // by value; reversed result
   Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
-  { factor_dominant(lambda); return lambda; }
+  { factor_codominant(lambda); return lambda; }
 
   template<typename C>
     void act(const WeylWord& ww, matrix::Vector<C>& lambda) const
