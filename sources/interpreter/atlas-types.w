@@ -1785,6 +1785,33 @@ void integrality_points_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ Here are two functions for (hopefully) rapid Weyl group orbit generation,
+which can be done using only a root datum. They are implemented by free
+functions |Weyl_orbit| defined in the \.{rootdata} compilation unit, that differ
+by the order of their arguments, as is also the case for the exported built-in
+functions.
+
+@< Local function definitions @>=
+void Weyl_orbit_wrapper(expression_base::level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(rd->val,v->val)));
+}
+@)
+void Weyl_coorbit_wrapper(expression_base::level l)
+{
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val,rd->val)));
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
@@ -1855,6 +1882,10 @@ install_function(is_integrally_dominant_wrapper,@|
                  "is_integrally_dominant","(RootDatum,ratvec->bool)");
 install_function(integrality_points_wrapper,@|
                  "integrality_points","(RootDatum,ratvec->[rat])");
+
+install_function(Weyl_orbit_wrapper@|,"Weyl_orbit","(RootDatum,vec->mat)");
+install_function(Weyl_coorbit_wrapper@|,"Weyl_orbit","(vec,RootDatum->mat)");
+
 
 @*1 Weyl group elements.
 %
