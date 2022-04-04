@@ -2,13 +2,20 @@
 <sort.at
 
 {
+  The next function is not needed for generating orbits for the reflection
+  representations of the Weyl group on weights and coweights, for which the
+  built-in |Weyl_orbit| can be used to find the orbit, and |from_dominant| to
+  recover for each orbit element a representative Weyl group element. Therefore
+  the name of the function, which reflects the orginal main used to generate the
+  orbit of a dominant weight, is no longer very appropriate.
+
   An optimised orbit generation procedure, which assumes that generators can
   detect and eliminate (by returning |no_vec|) backwards or stationary steps
-  (in the main application we generate the orbit of a dominant weight, whence
-  the function name, and "forward" will then mean subtracting posroots) and that
-  the poset structure on the orbit is graded (as is true for the weak order on
-  $W$ or on $W/P$ for a parabolic subgroup $P$). This allows the orbit to be
-  partitioned into levels, with equality testing only within current level.
+  (for instance in generating the orbit of a dominant weight, moving "forward"
+  would mean subtracting posroots) and that the poset structure on the orbit is
+  graded (as is true for the weak order on $W$ or on $W/P$ for a parabolic
+  subgroup $P$). This allows the orbit to be partitioned into levels, with
+  equality testing only within current level.
 
   Arguments are a row |S| of generating maps and a starting dominant weight |v|.
   it returns a list of pairs of a weight |b| and a representative word in the
@@ -141,17 +148,17 @@ set stabiliser_quotient_of_dominant (RootDatum rd,[int] S, vec v) = [WeylElt]:
 set stabiliser_quotient((RootDatum,[int],vec) triple) = [WeylElt]:
    for (,w) in W_orbit_with_witness(triple) do w od
 
-{ default |S| to full set of simple roots }
-set W_orbit_with_witness (RootDatum rd,vec v) = [vec,WeylElt]:
-   W_orbit_with_witness(rd,all_simples(rd),v)
-set W_orbit_of_dominant (RootDatum rd, vec v) = [vec]:
-   W_orbit_of_dominant(rd,all_simples(rd),v)
-set W_orbit (RootDatum rd, vec v) = [vec]:
-   W_orbit_of_dominant(rd,dominant(rd,v))
+{ for reflection representation with |S| all simple roots, use built-in instead }
+set W_orbit = (RootDatum,vec->mat): Weyl_orbit@(RootDatum,vec)
+set W_orbit_of_dominant = { same }  Weyl_orbit@(RootDatum,vec)
 set stabiliser_quotient_of_dominant (RootDatum rd,vec v) = [WeylElt]:
-   stabiliser_quotient_of_dominant(rd,all_simples(rd),v)
+   for vv in Weyl_orbit(rd,v) do chamber(rd,vv) od
 set stabiliser_quotient (RootDatum rd,vec v) = [WeylElt]:
-   stabiliser_quotient(rd,all_simples(rd),v)
+   let (w,dom)=from_dominant(rd,v) then w1=/w in
+   for vv in Weyl_orbit(rd,dom) do chamber(rd,vv)*w1 od
+set W_orbit_with_witness (RootDatum rd,vec v) = [vec,WeylElt]:
+   let (w,dom)=from_dominant(rd,v) then w1=/w in
+   for vv in Weyl_orbit(rd,dom) do (vv,chamber(rd,vv)*w1) od
 
 { enumerate parabolic subgroup of W }
 set W_parabolic (RootDatum rd, [int] gens) = [WeylElt]:
@@ -160,7 +167,8 @@ in for s@i in gens
    do let coset_reps = [WeylElt]: { representatives for $P_{i+1}/P_i$ }
      stabiliser_quotient_of_dominant
         (rd, gens[:i+1], fundamental_weight(rd,s).numer)
-   in result := for x in coset_reps do for y in result do x*y od od.##
+   in print(#coset_reps)
+   ; result := for x in coset_reps do for y in result do x*y od od.##
    od
 ;  result
 )
@@ -183,17 +191,20 @@ set W_parabolic_with_action (RootDatum rd, [int] gens, int dim, [mat] gens_rep) 
 set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,all_simples(rd))
 
 { variants of the above for |ratvec| instead of |vec|; reduce to |vec| case }
-set W_orbit_with_witness (RootDatum rd,[int] S,ratvec rv) = [ratvec,WeylElt]:
-   let (v,d) = %rv in for (x,w) in W_orbit_with_witness(rd,S,v) do (x/d,w) od
+set W_orbit (RootDatum rd, ratvec rv) = [ratvec]:
+   let (v,d) = %rv in for x in W_orbit(rd,v) do x/d od
+set W_orbit_of_dominant  = { same } W_orbit@(RootDatum,ratvec)
+
+{ here we just adapt definition of |W_orbit_with_witness@(RootDatum,vec)| }
+set W_orbit_with_witness (RootDatum rd,ratvec rv) = [ratvec,WeylElt]:
+   let (v,d) = %rv then (w,dom)=from_dominant(rd,v) then w1=/w in
+   for vv in Weyl_orbit(rd,dom) do (vv/d,chamber(rd,vv)*w1) od
+
+{ for the remaiing function, use the non built-in machinery above instead }
 set W_orbit_of_dominant (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
    let (v,d) = %rv in for x in W_orbit_of_dominant(rd,S,v) do x/d od
-set W_orbit_with_witness (RootDatum rd,ratvec rv) = [ratvec,WeylElt]:
-   W_orbit_with_witness(rd,all_simples(rd),rv)
-set W_orbit_of_dominant (RootDatum rd, ratvec rv) = [ratvec]:
-   let (v,d) = %rv
-in for x in W_orbit_of_dominant(rd,all_simples(rd),v) do x/d od
-set W_orbit (RootDatum rd, ratvec rv) = [ratvec]:
-   W_orbit_of_dominant(rd,dominant(rd,rv))
+set W_orbit_with_witness (RootDatum rd,[int] S,ratvec rv) = [ratvec,WeylElt]:
+   let (v,d) = %rv in for (x,w) in W_orbit_with_witness(rd,S,v) do (x/d,w) od
 
 {
   General orbit generation of |v| for the monoid generated by |S|
