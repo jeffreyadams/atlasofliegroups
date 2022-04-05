@@ -4,6 +4,7 @@
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
 <K_highest_weights.at { for LKT }
+<alcove.at { for wall_set }
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -95,7 +96,7 @@ set inverse(AffineCoWeylElt(tau,w)) = AffineCoWeylElt:
 
 {.simple affine coroots: number 0 is affine, rest are simple for RootDatum.}
 set aff_simple_coroots (SimpleAffine affd) = [AffineCoroot]:
-    (highest_root(dual(affd)),1) #
+    (-highest_root(dual(affd)),1) #
     for alpha_v in simple_coroots(affd) do (alpha_v,0) od
 
 {.sum of simple affine coroots times their labels is (null(rank),1).}
@@ -126,10 +127,49 @@ REPRESENTATION IS NOT UNIQUE }
 
 set_type [Facet = ([AffineCoroot] pos,[AffineCoroot] zero)]
 
+{ at the moment this does not work, because wall_set does not work }
+
+set facet_MVL(SimpleAffine Affd, ratvec gamma) = Facet:
+    let walls = wall_set(Affd,gamma), D=#Affd.posroots
+    then affcoroots = for j:#walls
+    	 do
+    	 let betav = Affd.coroots[D+walls[j]] in (betav, -floor(betav*gamma))
+	 od
+    then pos = for j:#affcoroots
+    	 do
+	 if affcoroots[j]*gamma>0
+	 then [affcoroots[j]]
+	 else[]
+	 fi
+	 od.##,
+    zero = for j:#affcoroots
+    	 do
+	 if affcoroots[j]*gamma=0
+	 then [affcoroots[j]]
+	 else[]
+	 fi
+	 od.##
+    in (pos,zero)
+
+
 { a UNIQUE characterization of a k-diml facet is as a set of
 k+1 vertices }
 
 set_type FacetVerts = [ratvec]
+
+{ Using Marc's calculation of the defining equations of an alcove of gamma }
+set facet_vertsMVL(SimpleAffine Affd, ratvec gamma) = FacetVerts:
+    let (pos,zero) = facet_MVL(Affd,gamma)
+    then M = ^(for (betav,) in pos do betav od)##(for (betav,) in zero
+    	 do betav od),
+    mu = (for (,m) in pos do m od)##(for (,m) in zero
+        do m od)
+    in for j:#pos
+    do
+    let Mj = ^(for row@i in rows(M) do if i!=j then [row] else [] fi od.##),
+    muj = for m@i in mu do if i!=j then [m] else [] fi od.##
+    in case solve(Mj,-muj/1) | v.solution: v | else null(Affd.rank)/1 esac
+    od
 
 set *(WeylElt w, FacetVerts FV) = FacetVerts:
     for v in FV do w*v od
@@ -1149,70 +1189,128 @@ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
 
 { in output, "F" is certain, "T" means "true to height=bound" }
 set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
-int bound) =
-([[string]],[ratvec],[[FacetVertsIndex]]):
-let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM} then
-(FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind) then
-(FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
-then status = facet_status(FPPBnch) in for d:#status do{DIMd}
-if facet_verbose then prints("start dim ",d,
-" in spherical_to_ht(G,vlist,FPPind,bound)") fi;
-let nsd = status[d] in if facet_verbose then prints(); show(status) fi;
-for j:#status[d] do{FACd} let result = if{RES}
-nsd[j]!="?" then nsd[j]
-else if{NEWU}
-(is_unitary_to_ht(first_param(standardize(parameter(x_open(G), G.rho,
-FPPBnch[d][j]))),bound))
-then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
-nse=status[e] in for k:#nse do{FACe} if{SUB}
-is_subset_of_sorted(FPPindnch[e][k])(FPPindnch[d][j])
-then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
-nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
-od{DIMd};
-prints(); show(status); (status,vlist,FPPindnch)
+    int bound) = ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let FPPB = for d:G.aff_rank
+    do
+    for j:#FPPind[d]
+    	do facet_bary(vlist, FPPind[d][j]) od
+    od
+    then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
+    then (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+    then status = facet_status(FPPBnch)
+    in for d:#status
+    do
+    if facet_verbose then prints("start dim ",d,
+       " in spherical_to_ht(G,vlist,FPPind,",bound,")")
+    fi;
+    let nsd = status[d]
+    in
+    if facet_verbose
+    then prints(); show(status)
+    fi;
+    for j:#status[d]
+    do
+    let result =
+    	if nsd[j]!="?"
+	then nsd[j]
+	else
+		if (is_unitary_to_ht(first_param(
+			 standardize(parameter(x_open(G), G.rho,
+			 		FPPBnch[d][j]))),bound))
+		then nsd[j]:="T"
+		else for e: #status-d-1 from d+1
+		do
+		let nse=status[e]
+		in for k:#nse
+		   do
+		   if is_subset_of_sorted(FPPindnch[e][k])(FPPindnch[d][j])
+		   then nse[k]:= "F"
+		   fi
+		   od;
+		status[e]:=nse
+		od;
+		nsd[j]:="F"
+		fi
+	fi
+	in result
+    od;
+    status[d]:=nsd
+    od;
+    prints();
+    show(status);
+    (status,vlist,FPPindnch)
 
 { to be applied to result of a previous to_ht computation; FPPind is assumed
 already to be cut to not cohom and hermitian }
 { in this calculation, don't trust old "T", which meant "true to some
 previous height }
 set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
-[[FacetVertsIndex]] FPPind), int bound) =
-([[string]],[ratvec],[[FacetVertsIndex]]):
-let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM}
-in for d:#status do{DIMd}
-if facet_verbose then prints("start dim ",d,
-" in spherical(G,status,vlist,FPPind)") fi;
-let nsd = status[d] in if facet_verbose then prints(); show(status) fi;
-for j:#status[d] do{FACd} let result = if{RES}
-nsd[j]="F" then nsd[j]
-else if{NEWU}
-(is_unitary_to_ht(first_param(standardize(parameter(x_open(G), G.rho,
-FPPB[d][j]))),bound))
-then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
-nse=status[e] in for k:#nse do{FACe} if{SUB}
-is_subset_of_sorted(FPPind[e][k])(FPPind[d][j])
-then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
-nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
-od{DIMd};
-prints(); show(status); (status,vlist,FPPind)
+    [[FacetVertsIndex]] FPPind), int bound) =
+    ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let FPPB = for d:G.aff_rank
+    	do
+	for j:#FPPind[d]
+	    do
+	    facet_bary(vlist, FPPind[d][j])
+	    od
+	od
+    in
+    for d:#status
+    do
+    if facet_verbose
+    then prints("start dim ",d," in spherical(G,status,vlist,FPPind)")
+    fi;
+    let nsd = status[d]
+    in
+    if facet_verbose
+    then prints(); show(status)
+    fi;
+    for j:#status[d]
+    	do
+	let result =
+	    if nsd[j]="F"
+	    then nsd[j]
+	    else
+	    	 if (is_unitary_to_ht(first_param(
+		 	  standardize(parameter(x_open(G), G.rho,
+			  FPPB[d][j]))),bound))
+		 then nsd[j]:="T"
+		 else for e: #status-d-1 from d+1
+		 do
+		 let nse=status[e]
+		 in for k:#nse
+		    do
+		    if is_subset_of_sorted(FPPind[e][k])(FPPind[d][j])
+		    then nse[k]:= "F"
+		    fi
+		    od;
+		    status[e]:=nse
+		 od;
+		 nsd[j]:="F"
+		 fi
+	    fi
+	in result
+	od;
+	status[d]:=nsd
+    od;
+    prints(); show(status);
+    (status,vlist,FPPind)
 
 { still need simple derived group }
-{need vlist to match FPP_vertex_sets_indices; now does not}
+{need vlist to match FPP_vertex_sets_indices}
 set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let vlist = FPP_vertices(G) 
+    let vlist = FPP_vertices(G)
     in spherical(G,vlist,FPP_vertex_sets_indices(G))
 
-set spherical_to_ht(RealForm G, int bound) = 
+set spherical_to_ht(RealForm G, int bound) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let vlist = FPP_vertices(G) 
+    let vlist = FPP_vertices(G)
     in spherical_to_ht(G, vlist, FPP_vertex_sets_indices(G),bound)
 
-set update_status([[string]] status, [ratvec] vlist, 
+set update_status([[string]] status, [ratvec] vlist,
     [[FacetVertsIndex]] Cand) = ([[string]], [ratvec], [[FacetVertsIndex]]):
-    let newCand = for d:#status 
-    	do assert(#Cand[d] = #status[d], 
+    let newCand = for d:#status
+    	do assert(#Cand[d] = #status[d],
 	"size mismatch between status and Cand");
 	for j:#status[d]
 	    do
