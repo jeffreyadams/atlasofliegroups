@@ -70,7 +70,7 @@ set_type SimpleAffine = RootDatum
 
 set aff_rank(SimpleAffine Affd) = ss_rank(Affd) + 1
 
-set_type [AffineCoroot = (vec,int)]
+set_type AffineCoroot = (vec,int)
 
 {.evaluate AffineCoroot at weight.}
 set *(AffineCoroot (betav,m), vec gamma) = m+betav*gamma
@@ -79,7 +79,7 @@ set *(AffineCoroot (betav,m), vec gamma) = m+betav*gamma
 set *(AffineCoroot (betav,m), ratvec gamma) = m+betav*gamma
 
 {.first apply w, then translate by tau.}
-set_type [AffineCoWeylElt = (vec tau, WeylElt w)]
+set_type AffineCoWeylElt = (vec tau, WeylElt w)
 
 {.apply AffineCoWeylElt to weight.}
 set *(AffineCoWeylElt (tau,w) , vec gamma) = w*gamma + tau
@@ -1096,24 +1096,56 @@ prints(); show(status); (status,vlist,FPPindnch)
 
 { Meant to be applied to (G,output of spherical_to_h). Need simple
  derived group }
- set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
- [[FacetVertsIndex]] FPPind)) = ([[string]],[ratvec],[[FacetVertsIndex]]):
-let FPPB = for d:G.aff_rank do{DIM} for j:#FPPind[d] do{FAC}
-facet_bary(vlist, FPPind[d][j]) od{FAC} od{DIM} in for d:#status do{DIMd}
-if facet_verbose then prints("start dim ",d,
-" in spherical(G,status,vlist,FPPind)") fi;
-let nsd = status[d] in if facet_verbose then prints(); show(status) fi;
-for j:#status[d] do{FACd} let result = if{RES}
-nsd[j]="F" then "F" else if{NEWU}
-(is_unitary(first_param(standardize(parameter(x_open(G), G.rho,
-FPPB[d][j])))))
-then nsd[j]:="T" else{NEWU} for e: #status-d-1 from d+1 do{DIMe} let
-nse=status[e] in for k:#nse do{FACe} if{SUB}
-is_subset_of_sorted(FPPind[e][k])(FPPind[d][j])
-then nse[k]:= "F" fi{SUB} od{FACe}; status[e]:=nse od{DIMe};
-nsd[j]:="F" fi{NEWU} fi{RES} in result od{FACd}; status[d]:=nsd
-od{DIMd};
-prints(); show(status); (status,vlist,FPPind)
+set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
+    [[FacetVertsIndex]] FPPind)) = ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let FPPB = for d:G.aff_rank
+    do{DIM}
+    for j:#FPPind[d]
+    	do{FAC}
+	facet_bary(vlist, FPPind[d][j])
+	od{FAC}
+	    od{DIM}
+    	    in
+    	    for d:#status
+    	    do{DIMd}
+    	    if facet_verbose
+    	    then prints("start dim ",d, " in spherical(G,status,vlist,FPPind)")
+    	    fi;
+    	    let nsd = status[d]
+    	    in
+    	    if facet_verbose
+    	    then prints(); show(status)
+    	    fi;
+    	    for j:#status[d]
+    	    	do{FACd}
+    		let result =
+    		if{RES} nsd[j]="F"
+    		then "F"
+    		else
+		if{NEWU} (is_unitary(first_param(standardize(
+			 parameter(x_open(G), G.rho, FPPB[d][j])))))
+		then nsd[j]:="T"
+		else{NEWU}
+		for e: #status-d-1 from d+1
+		    do{DIMe}
+		    let nse=status[e]
+		    in
+		    for k:#nse
+	    	    	do{FACe}
+	    		if{SUB} is_subset_of_sorted(FPPind[e][k])(FPPind[d][j])
+	    		then nse[k]:= "F"
+	    		fi{SUB}
+	    		od{FACe};
+		    status[e]:=nse
+		    od{DIMe};
+		nsd[j]:="F"
+		fi{NEWU}
+    		fi{RES}
+    	in result
+    	od{FACd};
+    status[d]:=nsd
+    od{DIMd};
+    prints(); show(status); (status,vlist,FPPind)
 
 { in output, "F" is certain, "T" means "true to height=bound" }
 set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
