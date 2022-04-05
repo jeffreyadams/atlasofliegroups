@@ -167,8 +167,7 @@ in for s@i in gens
    do let coset_reps = [WeylElt]: { representatives for $P_{i+1}/P_i$ }
      stabiliser_quotient_of_dominant
         (rd, gens[:i+1], fundamental_weight(rd,s).numer)
-   in print(#coset_reps)
-   ; result := for x in coset_reps do for y in result do x*y od od.##
+   in result := for x in coset_reps do for y in result do x*y od od.##
    od
 ;  result
 )
