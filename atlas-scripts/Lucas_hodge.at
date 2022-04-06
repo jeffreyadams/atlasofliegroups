@@ -2,13 +2,52 @@
 <Kcone.at
 <complex.at
 
+set ht_of_wt(RootDatum rd,ratvec alpha)=int:
+   abs(rat_as_int(2*rho_check(rd)*alpha))
+
+set ht_of_ratwt(RootDatum rd,ratvec v)=rat:
+    abs(2*rho_check(rd)*v)
+
+set fundamental_fiber (RealForm G)=[KGBElt]:
+   ##for x in KGB(G) do if Cartan_class(x)=Cartan_class(KGB(G,0))
+                        then [x] else [] fi
+		     od
+
+set pos_nc_roots (KGBElt x)=[vec]:
+   let pr=posroots(real_form(x))
+   in ##for alpha in pr
+        do if is_noncompact_imaginary(alpha,x) then [alpha] else []
+	   fi
+	od
+
+set min_nc (RealForm G)=int:
+   min(##for x in fundamental_fiber(G)
+         do for a in pos_nc_roots(x)
+	     do height(G,a) od od)
+
+set max_nc (RealForm G)=int:
+   max(##for x in fundamental_fiber(G)
+         do for a in pos_nc_roots(x)
+	     do height(G,a) od od)
+
+set ht_shift (RealForm G)=int:
+   let rd=root_datum(G)
+   in {max(for x in distinguished_fiber(G)
+        do ceil(ht_of_ratwt(rd,rho_c(x)-rho_nci(x))) od)}
+    ceil(ht_of_ratwt(rd,rho_c(G)-rho(G)))
+
+set ht_shift_alt (RealForm G)=int:
+   let rd=root_datum(G)
+   in max(for x in distinguished_fiber(G)
+        do ceil(ht_of_ratwt(rd,rho_c(x)-rho_nci(x))) od)
+
 set add_ht (RealForm G)=int:
    let rc=rho_check(G), rk=rho_c(G) in ceil(4*rc*rk)
 
 set zeros (int n) = vec: for i:n do 0 od
 
-set height_bound([[vec]] list, RealForm G)=int:
-   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))
+{set height_bound([[vec]] list, RealForm G)=int:
+   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))}
 
 set sets_of_card_n ([[int]] ps, int n)=[[int]]:
    ##for ints in ps do if #ints=n then [ints] else [] fi od
@@ -70,7 +109,7 @@ set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
    then p=parameter_m(GC,chi,zeros(r)/1)
    then (list,)= hodge_branch_std(p,hb)
    then hwts= for P in list
-        do for c@q in P do prints(height(q));(c,highest_weight(LKT(q)))
+        do for c@q in P do {prints(height(q));}(c,highest_weight(LKT(q)))
 	                od
 	od
     in hwts
@@ -131,7 +170,7 @@ set last_step_old ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
     for P in result do branch_std(P,hb+ah) od
 
 set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
-   let n=#start,  wts=kwts(G), ps=power_set(kdim), ah=add_ht(G)
+   let n=#start,  wts=kwts(G), ps=power_set(kdim)
    then result=start
    in for i:kdim from 1
         do let ww=wedge_weights(wts,ps,i)
@@ -142,16 +181,37 @@ set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
     for P in result do branch_std(P,hb) od
 
 set Lucas_algorithm (RealForm G, vec chi, int hb) = [ParamPol]:
-   let kdim=dimension(K_0(G)), ah=add_ht(G)
-   then list1=first_step(G,chi,hb-ah)
+   let kdim=dimension(K_0(G)), ah=add_ht(G), M=max_nc(G), m=min_nc(G)
+   then d=floor((hb+ht_shift(G))/(2*m))
+   then bd=2*M*d
+   then list1=first_step(G,chi,bd+ah)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
-   in last_step(start,kdim,G,hb)
+   then last=last_step(start,kdim,G,hb+ah)
+   in for i:d+1 do to_ht(hb)(last[i]) od
 
 set Lucas_algorithm_old (RealForm G, vec chi, int hb) = [ParamPol]:
-   let kdim=dimension(K_0(G)), list1=first_step(G,chi,hb)
+   let kdim=dimension(K_0(G)),  ah=add_ht(G)
+   then list1=first_step(G,chi,hb+ah)
    then list2=second_step(list1)
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
    in last_step_old(start,kdim,G,hb)
+
+set test_hodge_heights (RealForm G, vec v, int n) = void:
+   let list=Lucas_algorithm_old(G,v,n) then p=#list
+   then pos_levels=int: let i=0 in while i<p and all(for c@q in list[i]
+			             do int_part(c)>0 od)
+			     do i+:=1 od; i
+      then terms=[(int,int,int)]:
+      for i:pos_levels
+      do (sum(for c@q in list[i] do int_part(c) od),
+          max(for c@q in list[i] do height(q) od),
+	  min(for c@q in list[i] do height(q) od))
+      od
+   in prints(n," no levels: ",p,"    no pos levels: ", pos_levels,new_line,
+             "no terms and max/min height: ", terms)
+
+set test_heights(RealForm G, vec v, int d, int ht, int hb)=[ParamPol]:
+   for i:d do to_ht(ht)(Lucas_algorithm(G,v,hb)[i]) od
