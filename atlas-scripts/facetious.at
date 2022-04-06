@@ -4,7 +4,7 @@
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
 <K_highest_weights.at { for LKT }
-<alcove.at { for wall_set }
+
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -130,10 +130,10 @@ set_type [Facet = ([AffineCoroot] pos,[AffineCoroot] zero)]
 { at the moment this does not work, because wall_set does not work }
 
 set facet_MVL(SimpleAffine Affd, ratvec gamma) = Facet:
-    let walls = wall_set(Affd,gamma), D=#Affd.posroots
+    let walls = walls(Affd,gamma)
     then affcoroots = for j:#walls
     	 do
-    	 let betav = Affd.coroots[D+walls[j]] in (betav, -floor(betav*gamma))
+    	 let betav = Affd.coroots[walls[j]] in (betav, -floor(betav*gamma))
 	 od
     then pos = for j:#affcoroots
     	 do
@@ -153,10 +153,10 @@ set facet_MVL(SimpleAffine Affd, ratvec gamma) = Facet:
 
 {.this is wrong if gamma is integral; fails to incorporate the adjustment of the "affine" affine coroot made in facet_vertsMVL.}
 set alcove_MVL(SimpleAffine Affd, ratvec gamma) = [AffineCoroot]:
-    let walls = wall_set(Affd,gamma), D=#Affd.posroots
+    let walls = walls(Affd,gamma)
     in for j:#walls
     do
-    let betav = Affd.coroots[D+walls[j]] in (betav, -floor(betav*gamma))
+    let betav = Affd.coroots[walls[j]] in (betav, -floor(betav*gamma))
     od
 
 
@@ -167,8 +167,7 @@ set_type FacetVerts = [ratvec]
 
 { Using Marc's calculation of the defining equations of an alcove of gamma }
 set facet_vertsMVL(SimpleAffine Affd, ratvec gamma) = FacetVerts:
-    let D=#Affd.posroots
-    then coroots = mat: for j in wall_set(Affd,gamma) do Affd.coroots[D+j] od
+    let coroots = mat: for j in walls(Affd,gamma) do Affd.coroots[j] od
     then M= mat: ^coroots
     then lab = kernel(coroots)[0],
     	 mu = for j:#coroots do -floor(coroots[j]*gamma) od {these are meant}
