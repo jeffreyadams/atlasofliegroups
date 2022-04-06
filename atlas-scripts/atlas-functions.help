@@ -1025,12 +1025,15 @@ simplify: (Param->Param,int): Find simpler parameter in its alcove
   This tries to make N*p.infinitesimal_character integral for a minimal power N
   of 2; returns new parameter and N. Actually just maximizes integral rank.
 walls: (RootDatum,ratvec->[int]) Find set of coroots defining walls of alcove
-  The alcove is the one defined by the given rational weight, the alcove being
-  characterized by the integral parts of evaluations on all positive coroots.
+  The alcove is the one containing the given rational weight gamma, and such
+  that the half-line from gamma in any strictly dominant direction enters into
+  the interior of the alcove (where all coroot evaluations are non integral).
+  This makes the alcove unique, and means that among coroots with integral
+  evaluation at gamma, only positive coroots are candidate to define a wall.
   The value returned is the minimal set of indices into |coroots(rd)| of coroots
-  that define the alcove. For these coroots the evaluation is integral on a some
-  wall of the alcove, and increases when going from that wall to the interior.
-  In case of a negative coroot, the wall itself is not part of the alcove.
+  that define the alcove (by requring a specific integral part of their
+  evaluation). For these coroots the exact integral evaluation is attained on
+  some wall bounding the alcove, increasing towards the interior of the alcove.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
   all the positive coroots, as in the walls function. The "central" point is

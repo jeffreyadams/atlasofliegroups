@@ -41,34 +41,40 @@ RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma)
 using level_pair = std::pair<RootNbr,RatNum>;
 using level_list = containers::sl_list<level_pair>;
 
-// put minima in front, returning iterator to rest; possibly permute remainder
+/* Put minima in front retaining relative order; return iterator to remainder
+
+   Although not essential for our application, this actually performs a stable
+   permutation: it preserves relative order among all equal-level subsets.
+*/
+
 level_list::const_iterator get_minima(level_list& L)
 { if (L.empty())
     return L.cbegin();
   auto tail = std::next(L.cbegin()), rest=tail;
+  // we keep positions |rest<=tail|; minima before |rest|, unseen after |tail|
   RatNum min = L.front().second;
   while (not L.at_end(tail))
   {
-    if (tail->second > min)
-      ++tail;
-    else if (tail->second ==  min)
+    if (tail->second > min) // node not to be considered
+      ++tail; // so skip it
+    else if (tail->second ==  min) // new occurence of current minimum
     {
       if (tail==rest) // now |splice| would be no-op, but we must advance
-	rest = ++tail;
+	rest = ++tail; // move both across this new minimum
       else
 	rest=L.splice(rest,L,tail); // move node from |tail| to |rest|, advancing
     }
     else // a new minimum is hit, abandon old one
     {
-      min = tail->second;
-      rest = L.splice(L.cbegin(),L,tail);
+      min = tail->second; // set new current minimum value
+      rest = L.splice(L.cbegin(),L,tail); // move one node to front, |rest| next
     }
   }
   return rest;
 }
 
-// splice from |L| elements whose coroot is sum of coroot |i| and another coroot
-// return list of the elements removed
+// Splice from |L| elements whose coroot is sum of coroot |i| and another coroot
+// Return list of the elements removed
 level_list filter_up(const RootDatum& rd,RootNbr alpha,level_list& L)
 {
   const RootNbrSet& bottoms = rd.min_coroots_for(alpha);
@@ -81,6 +87,25 @@ level_list filter_up(const RootDatum& rd,RootNbr alpha,level_list& L)
   return out;
 }
 
+/* Find coroots defining the walls of an alcove that contains |gamma|, and such
+   that any such coroots that have integral evaluation on |gamma| are positive
+   coroots. Equivalently, this is the unique alcove into whose interior one goes
+   by moving from |gamma| by a small amount in a strictly dominant direction.
+   This disambiguation is achieved by the fact that sorting by |frac_eval|
+   values moves coroots with integral evaluation to the front if they are
+   positive, but to the rear if they are negative. Although among such integral
+   evaluation positive coroots the level is not actually made nonzero (by a
+   small displacement to |gamma|, which would ensure that |get_minima| presents
+   these coroots in an order that will make the greedy method implemented below
+   work), they are preserved by |get_minima| in their original order in |rd|,
+   which is consistent with \emph{some} such dominant displacement, which means
+   that our method will always succeed without needing any such adjustments.
+
+   For the case |gamma| is in the interior of its alcove (all coroot evaluations
+   are non integral), the correctness of our method can be easily proven for the
+   case of the fundamental alcove, from which the general case follows by affine
+   Weyl group symmetry.
+ */
 RootNbrSet wall_set
   (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& on_wall_coroots)
 {
