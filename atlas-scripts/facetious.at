@@ -151,6 +151,14 @@ set facet_MVL(SimpleAffine Affd, ratvec gamma) = Facet:
 	 od.##
     in (pos,zero)
 
+{.this is wrong if gamma is integral; fails to incorporate the adjustment of the "affine" affine coroot made in facet_vertsMVL.}
+set alcove_MVL(SimpleAffine Affd, ratvec gamma) = [AffineCoroot]:
+    let walls = wall_set(Affd,gamma), D=#Affd.posroots
+    in for j:#walls
+    do
+    let betav = Affd.coroots[D+walls[j]] in (betav, -floor(betav*gamma))
+    od
+
 
 { a UNIQUE characterization of a k-diml facet is as a set of
 k+1 vertices }
@@ -159,17 +167,33 @@ set_type FacetVerts = [ratvec]
 
 { Using Marc's calculation of the defining equations of an alcove of gamma }
 set facet_vertsMVL(SimpleAffine Affd, ratvec gamma) = FacetVerts:
-    let (pos,zero) = facet_MVL(Affd,gamma)
-    then M = ^(for (betav,) in pos do betav od)##(for (betav,) in zero
-    	 do betav od),
-    mu = (for (,m) in pos do m od)##(for (,m) in zero
-        do m od)
-    in for j:#pos
+    let D=#Affd.posroots
+    then coroots = mat: for j in wall_set(Affd,gamma) do Affd.coroots[D+j] od
+    then M= mat: ^coroots
+    then lab = kernel(coroots)[0],
+    	 mu = for j:#coroots do -floor(coroots[j]*gamma) od {these are meant}
+	    {to be integer parts of the coroot walls. But if gamma is integral,
+	    one of them is incorrect: needs to be adjusted by 1.}
+    then epsilon = lab*mu
+    in if epsilon = 0 then let j = first(for k:#lab do lab[k]^2 = 1 od)
+    in mu[j]:=mu[j]+lab[j]; epsilon := 1 {this is the adjustment}
+    fi;
+    for j:Affd.aff_rank
     do
-    let Mj = ^(for row@i in rows(M) do if i!=j then [row] else [] fi od.##),
-    muj = for m@i in mu do if i!=j then [m] else [] fi od.##
-    in case solve(Mj,-muj/1) | v.solution: v | else null(Affd.rank)/1 esac
-    od
+    let muprime = mu
+    in
+    if coroots[j]*gamma != -mu[j]
+    then let muprime = ratvec:
+    	 for k:Affd.aff_rank do
+	     if k=j
+	     then [mu[j] - epsilon/lab[j]]
+	     else [mu[k]/1]
+	     fi
+	     od.##
+    in [solve(M,-muprime).requisition]
+    else []
+    fi
+    od.##
 
 set *(WeylElt w, FacetVerts FV) = FacetVerts:
     for v in FV do w*v od
@@ -216,6 +240,12 @@ split_as_int(Index[parameter(GI,0,GI.rho,v)]) - 1
 { same as facet_verts_index using a precreated ParamPol as index set }
 set facet_verts_index(ParamPol Index, FacetVerts facet) = FacetVertsIndex:
 for gammav in facet do find(Index,gammav) od.sort
+
+{.same as facet_verts_index using a precreated ParamPol as index set, starting with barycenter; or in fact any point of the facet.}
+set facet_verts_index(SimpleAffine Affd, ParamPol Index, FacetBary gamma) =
+    FacetVertsIndex:
+    for gammav in facet_vertsMVL(Affd, gamma) do find(Index,gammav) od.sort
+
 
 {.computes the Facet of a point gamma0 in the fundamental alcove.}
 set facet0(SimpleAffine Affd, ratvec gamma0) = Facet:
@@ -995,6 +1025,19 @@ set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVertsIndex]]:
 	od
     od
 
+set FPP_vertex_sets_indices(SimpleAffine Affd, [[FacetBary]] FPPBs) =
+    [[FacetVertsIndex]]:
+    let vertexIndex=index(FPPBs[0])
+    in for d:#FPPBs
+    do
+    if facet_verbose
+    then prints("start dim ",d," in FPP_vertex_sets_indices([[FacetBary]])")
+    fi;
+    for v in FPPBs[d]
+    	do facet_verts_index(Affd, vertexIndex, v)
+	od
+    od
+
 { meant to record information about unitarity for all facets }
 set facet_status([[ratvec]] FPPB) = [[string]]:
     for d:#FPPB do for j:#FPPB[d] do "?" od od
@@ -1301,6 +1344,11 @@ set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
 set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let vlist = FPP_vertices(G)
     in spherical(G,vlist,FPP_vertex_sets_indices(G))
+
+set sphericalMVL(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let FPPBs = FPP_barycenters(G)
+    then FPPVI = FPP_vertex_sets_indices(G,FPPBs)
+    in spherical(G,FPPBs[0],FPPVI)
 
 set spherical_to_ht(RealForm G, int bound) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
