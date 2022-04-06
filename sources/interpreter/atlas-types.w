@@ -5556,6 +5556,12 @@ void walls_wrapper(expression_base::level l)
 {
   shared_rational_vector gamma = get<rational_vector_value>();
   shared_root_datum rd = get<root_datum_value>();
+  if (gamma->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Rational weight size mismatch: "
+      << gamma->val.size() << ':' << rd->val.rank();
+    throw runtime_error(o.str());
+  }
   if (l==expression_base::no_value)
     return;
   RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
