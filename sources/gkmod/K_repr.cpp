@@ -613,10 +613,16 @@ K_repr::K_type_pol
       count=0;
     }
 
-    const auto& term = remainder.front();
-    auto lead = term.first.copy(); // need a modifiable lvalue
-    result.add_term(lead.copy(),term.second);
-    remainder.add_multiple(K_type_formula(lead,cutoff),-term.second);
+    auto it = remainder.begin();
+    if (it->first.height()>cutoff)
+    {
+      remainder.erase(it); // drop any input terms that are already too heigh
+      continue;
+    }
+    auto lead = it->first.copy(); // need a modifiable lvalue of K-type
+    auto coef = it->second;
+    result.add_term(lead.copy(),coef);
+    remainder.add_multiple(K_type_formula(lead,cutoff),-coef);
   }
   while (not remainder.is_zero());
   return result;

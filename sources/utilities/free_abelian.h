@@ -327,7 +327,7 @@ explicit
     term_type* operator->() const { return &operator*(); }
     reverse_iterator& operator++()
     { const_reverse_iterator::operator++(); return *this; }
-  }; // |struct iterator|
+  }; // |struct reverse_iterator|
 
   iterator begin(); // set up initial iterator and |skip_zeros|
   const_iterator begin() const { return const_cast<self*>(this)->begin(); }
@@ -339,6 +339,8 @@ explicit
   { return const_cast<self*>(this)->rbegin(); }
   reverse_iterator rend() { return {triplist(),cmp()}; } // with empty |stack|
   const_reverse_iterator rend() const { return {triplist(),cmp()}; }
+
+  void erase (iterator it) { it->second=C(0); }
 
 private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
