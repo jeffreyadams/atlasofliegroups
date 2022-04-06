@@ -210,6 +210,10 @@ set_type FacetBary = ratvec
 {for d-dimensional facet, entry 0 is barycenter, 1 to d+1 are vertices}
 set_type FacetBaryVerts = [ratvec]
 
+{.for d-dimensional facet, vec is barycenter, vec is d+1 indices into
+      list of vertices held elsewhere.} 
+set_type FacetBaryInds = (ratvec,vec)
+
 { actual barycenter is this divided by Bdenom(Affd) }
 set_type FacetBaryNum = vec
 
@@ -244,7 +248,6 @@ for gammav in facet do find(Index,gammav) od.sort
 set facet_verts_index(SimpleAffine Affd, ParamPol Index, FacetBary gamma) =
     FacetVertsIndex:
     for gammav in facet_vertsMVL(Affd, gamma) do find(Index,gammav) od.sort
-
 
 {.computes the Facet of a point gamma0 in the fundamental alcove.}
 set facet0(SimpleAffine Affd, ratvec gamma0) = Facet:
@@ -411,6 +414,148 @@ set fund_vertex_sets_numer(SimpleAffine Affd) = [[[vec]]]:
 	   do for j in S do Verts_numer[j] od
 	   od
 	od
+
+{ integral weights to be added to gamma to land in fundamental
+parallelepiped where all simple coroots take values in [0,1] }
+{need to make a list of all possible tau; if g is an integer, use
+either -g or -g+1.}
+
+set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
+    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
+    then INT = ##for j:#Affd.simple_coroots
+    	 do
+	 if is_integer(g[j]) then [j] else []
+	 fi
+	 od
+    in
+    for S in power_set(#INT)
+    do
+    sum(Affd.rank, for j:#Affd.simple_coroots
+    		   do -floor(g[j])*Affd.fundamental_weights[j] od) +
+    sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
+    od
+
+{ sums of roots to be added to gamma to land in FPP }
+set FPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
+    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
+    then INT = ##for j:#Affd.simple_coroots
+    	 do
+	 if is_integer(g[j]) then [j] else []
+	 fi
+	 od
+    in
+    for S in power_set(#INT)
+    do
+    let tau = sum(Affd.rank, for j:#Affd.simple_coroots
+    	      do -floor(g[j])*Affd.fundamental_weights[j] od) +
+    	   sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
+    in
+    if(all(
+	for j:Affd.ss_rank
+	do is_integer((Affd.fundamental_coweights[j])*tau) od))
+    then [ratvec_as_vec(tau)]
+    else []
+    fi
+    od.##
+
+{ numerators; to get actual values, divide by denom(Affd) }
+set FPtau_numer(SimpleAffine Affd, ratvec gamma) = [vec]: let g=for
+j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
+denom(Affd) then FW_numer = for v in Affd.fundamental_weights do
+ratvec_as_vec(DENOM*v) od  then INT =
+##for j:#Affd.simple_coroots do if =g[j]%DENOM then [j] else []
+fi od in for S in power_set(#INT) do sum(for j:#Affd.simple_coroots do
+-floor(g[j]/DENOM)*FW_numer[j] od) + if =#S then null(Affd.rank) else
+sum(for j in S do FW_numer[INT[j]] od) fi od
+
+{ numerators; to get actual values, divide by denom(Affd) }
+set FPtau_numer_int(SimpleAffine Affd, vec gamma) = [vec]: let g= vec:
+for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
+denom(Affd) then FW_numer = for v in Affd.fundamental_weights do
+ratvec_as_vec(DENOM*v) od  then INT {list of integral simple coroot
+nrs} = ##for j:#Affd.simple_coroots do if =g[j]%DENOM then [j] else []
+fi od in for S in power_set(#INT) do sum(for j:#Affd.simple_coroots do
+-floor(g[j]/DENOM)*FW_numer[j] od) + if =#S then null(Affd.rank) else
+sum(for j in S do FW_numer[INT[j]] od) fi od
+
+{ Bnumerators; to get actual values, divide by Bdenom(Affd) }
+set FPtau_Bnumer(SimpleAffine Affd, ratvec gamma) = [vec]: let g=for
+j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
+Bdenom(Affd)  then INT =
+##for j:#Affd.simple_coroots do if is_integer(g[j]) then [j] else []
+fi od in for S in power_set(#INT) do ratvec_as_vec(DENOM*(sum(Affd.rank, for
+j:#Affd.simple_coroots do -floor(g[j])*Affd.fundamental_weights[j]
+od) + sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od))) od
+
+{ Computes translation part of affine Weyl group element moving gamma
+to the fundamental alcove: subtract roots until gamma lands in W*A0 =
+set where gamma1 is at most one on every coroot.  Precisely,
+gamma - tau(gamma) is in W*(fundamental alcove).
+
+Uses mostly integer arithmetic. First make simple root
+coords smaller than 1. }
+
+set TAU(RootDatum rd,ratvec gamma) = vec:
+    let COROOTS = rd.coroots, ROOTS = rd.roots, gamma0NUM=gamma.numer,
+    	DENOM = gamma.denom, m0= 0, q0=0 then d=#COROOTS
+    in
+    if d!=0
+    then for j:#rd.fundamental_coweights
+    do
+    let (num,den) = (rd.fundamental_coweights[j].numer,
+    	rd.fundamental_coweights[j].denom)
+    in
+    gamma0NUM := (gamma0NUM -
+    ( ( ( num*gamma0NUM )\(DENOM*den))*DENOM*den)*rd.simple_roots[j])
+    od;
+    while (m0:=max_loc(for j:d do COROOTS[d-j-1]*gamma0NUM od);
+    	  (q0:= COROOTS[d-m0-1]*gamma0NUM; q0 > DENOM))
+    do
+    gamma0NUM:= gamma0NUM - ceil(q0/(2*DENOM))*DENOM*ROOTS[d-m0-1]
+    od
+    fi;
+    (gamma-gamma0NUM/DENOM).ratvec_as_vec
+
+{ Computes INVERSE OF a (nonunique) aff Weyl gp elt wtilde moving
+gamma to the fundamental alcove, and the (unique) image of gamma in that
+fundamental alcove, trying to do integer arithmetic. }
+set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
+    (AffineCoWeylElt,ratvec):
+    let tau = TAU(rd,gamma)
+    then (w,gamma0TIMESDEN) = from_dominant(rd,gamma.numer - gamma.denom*tau)
+    in
+    {assert (gamma=w*gamma0 + tau,"Bad affine!");}
+    ((tau,w),gamma0TIMESDEN/gamma.denom)
+
+set facet_verts(SimpleAffine Affd, ratvec gamma) = FacetVerts:
+    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    in wtilde*facet_verts0(Affd,gamma0)
+
+{.same as facet_verts_index using a precreated ParamPol as index set, starting with barycenter; or in fact any point of the facet.}
+set facet_verts_index(SimpleAffine Affd, ParamPol Index, FacetBary gamma) =
+    FacetVertsIndex:
+    for gammav in facet_verts(Affd, gamma) do find(Index,gammav) od.sort
+
+{ computes the (that is, a non-unique representation of the) facet of
+any ratvec }
+
+set facet(SimpleAffine Affd, ratvec gamma) = Facet:
+    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    then (F0pos,F0zero) = facet0(Affd,gamma0)
+    in (for betav in F0pos do wtilde*betav od ,
+       for betav in F0zero do wtilde*betav od)
+
+{ computes the FacetBary of any ratvec }
+
+set facet_bary(SimpleAffine Affd, ratvec gamma) = FacetBary:
+    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    in	wtilde*facet_bary0(Affd,gamma0)
+
+{ computes the FacetVerts (vertex set) of any ratvec }
+
+set facet_bary_verts(SimpleAffine Affd, ratvec gamma) = FacetBaryVerts:
+let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    in wtilde*facet_bary_verts0(Affd,gamma0)
 
 { calculates the number of vertices in W*(fundamental alcove }
 set W_fund_vertices_card(SimpleAffine Affd) = int:
@@ -740,143 +885,6 @@ stabiliser_quotient_of_dominant(Affd, sum(for j in S do{VERTS}
 Verts_numer[j] od{VERTS})) do{W}
 for j in S do{VERTS} w*Verts_numer[j] od{VERTS} od{W} od{BIN} od{DIM}
 
-{ integral weights to be added to gamma to land in fundamental
-parallelepiped where all simple coroots take values in [0,1] }
-{need to make a list of all possible tau; if g is an integer, use
-either -g or -g+1.}
-
-set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
-    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-    	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od
-    in
-    for S in power_set(#INT)
-    do
-    sum(Affd.rank, for j:#Affd.simple_coroots
-    		   do -floor(g[j])*Affd.fundamental_weights[j] od) +
-    sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
-    od
-
-{ sums of roots to be added to gamma to land in FPP }
-set FPtauRoots(SimpleAffine Affd, ratvec gamma) = [ratvec]:
-    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-    	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od
-    in
-    for S in power_set(#INT)
-    do
-    let tau = sum(Affd.rank, for j:#Affd.simple_coroots
-    	      do -floor(g[j])*Affd.fundamental_weights[j] od) +
-    	   sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
-    in
-    if(all(
-	for j:Affd.ss_rank
-	do is_integer((Affd.fundamental_coweights[j])*tau) od))
-    then [tau]
-    else []
-    fi
-    od.##
-
-{ numerators; to get actual values, divide by denom(Affd) }
-set FPtau_numer(SimpleAffine Affd, ratvec gamma) = [vec]: let g=for
-j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
-denom(Affd) then FW_numer = for v in Affd.fundamental_weights do
-ratvec_as_vec(DENOM*v) od  then INT =
-##for j:#Affd.simple_coroots do if =g[j]%DENOM then [j] else []
-fi od in for S in power_set(#INT) do sum(for j:#Affd.simple_coroots do
--floor(g[j]/DENOM)*FW_numer[j] od) + if =#S then null(Affd.rank) else
-sum(for j in S do FW_numer[INT[j]] od) fi od
-
-{ numerators; to get actual values, divide by denom(Affd) }
-set FPtau_numer_int(SimpleAffine Affd, vec gamma) = [vec]: let g= vec:
-for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
-denom(Affd) then FW_numer = for v in Affd.fundamental_weights do
-ratvec_as_vec(DENOM*v) od  then INT {list of integral simple coroot
-nrs} = ##for j:#Affd.simple_coroots do if =g[j]%DENOM then [j] else []
-fi od in for S in power_set(#INT) do sum(for j:#Affd.simple_coroots do
--floor(g[j]/DENOM)*FW_numer[j] od) + if =#S then null(Affd.rank) else
-sum(for j in S do FW_numer[INT[j]] od) fi od
-
-{ Bnumerators; to get actual values, divide by Bdenom(Affd) }
-set FPtau_Bnumer(SimpleAffine Affd, ratvec gamma) = [vec]: let g=for
-j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od, DENOM =
-Bdenom(Affd)  then INT =
-##for j:#Affd.simple_coroots do if is_integer(g[j]) then [j] else []
-fi od in for S in power_set(#INT) do ratvec_as_vec(DENOM*(sum(Affd.rank, for
-j:#Affd.simple_coroots do -floor(g[j])*Affd.fundamental_weights[j]
-od) + sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od))) od
-
-{ Computes translation part of affine Weyl group element moving gamma
-to the fundamental alcove: subtract roots until gamma lands in W*A0 =
-set where gamma1 is at most one on every coroot.  Precisely,
-gamma - tau(gamma) is in W*(fundamental alcove).
-
-Uses mostly integer arithmetic. First make simple root
-coords smaller than 1. }
-
-set TAU(RootDatum rd,ratvec gamma) = vec:
-    let COROOTS = rd.coroots, ROOTS = rd.roots, gamma0NUM=gamma.numer,
-    	DENOM = gamma.denom, m0= 0, q0=0 then d=#COROOTS
-    in
-    if d!=0
-    then for j:#rd.fundamental_coweights
-    do
-    let (num,den) = (rd.fundamental_coweights[j].numer,
-    	rd.fundamental_coweights[j].denom)
-    in
-    gamma0NUM := (gamma0NUM -
-    ( ( ( num*gamma0NUM )\(DENOM*den))*DENOM*den)*rd.simple_roots[j])
-    od;
-    while (m0:=max_loc(for j:d do COROOTS[d-j-1]*gamma0NUM od);
-    	  (q0:= COROOTS[d-m0-1]*gamma0NUM; q0 > DENOM))
-    do
-    gamma0NUM:= gamma0NUM - ceil(q0/(2*DENOM))*DENOM*ROOTS[d-m0-1]
-    od
-    fi;
-    (gamma-gamma0NUM/DENOM).ratvec_as_vec
-
-{ Computes INVERSE OF a (nonunique) aff Weyl gp elt wtilde moving
-gamma to the fundamental alcove, and the (unique) image of gamma in that
-fundamental alcove, trying to do integer arithmetic. }
-set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
-    (AffineCoWeylElt,ratvec):
-    let tau = TAU(rd,gamma)
-    then (w,gamma0TIMESDEN) = from_dominant(rd,gamma.numer - gamma.denom*tau)
-    in
-    {assert (gamma=w*gamma0 + tau,"Bad affine!");}
-    ((tau,w),gamma0TIMESDEN/gamma.denom)
-
-{ computes the (that is, a non-unique representation of the) facet of
-any ratvec }
-
-set facet(SimpleAffine Affd, ratvec gamma) = Facet:
-    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
-    then (F0pos,F0zero) = facet0(Affd,gamma0)
-    in (for betav in F0pos do wtilde*betav od ,
-       for betav in F0zero do wtilde*betav od)
-
-{ computes the FacetBary of any ratvec }
-
-set facet_bary(SimpleAffine Affd, ratvec gamma) = FacetBary:
-    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
-    in	wtilde*facet_bary0(Affd,gamma0)
-
-{ computes the FacetVerts (vertex set) of any ratvec }
-
-set facet_verts(SimpleAffine Affd, ratvec gamma) = FacetVerts:
-    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
-    in wtilde*facet_verts0(Affd,gamma0)
-
-set facet_bary_verts(SimpleAffine Affd, ratvec gamma) = FacetBaryVerts:
-let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
-    in wtilde*facet_bary_verts0(Affd,gamma0)
-
 {.this includes all vertex sets of facets in the fundamental
 parallelepiped, each exactly once.}
 set FPP_vertices(SimpleAffine Affd) = [ratvec]:
@@ -954,6 +962,33 @@ set FPP_barycenters(SimpleAffine Affd) = [[FacetBary]]:
     	od.##
      od
 
+{.vertex list for FPP and list of vertices of all facets in FPP.}
+set FPP_vlist_indices(SimpleAffine Affd) = ([ratvec],[[FacetVertsIndex]]):
+    if facet_verbose then prints("start FPP_vlist_indices.")
+    fi;
+    let WBs = W_fund_barycentersID(Affd)
+    then VERTS = for gamma in WBs[0]
+    	do
+	for tau in FPtauRoots(Affd,gamma) do gamma+tau od
+	od.##
+    then Index = index(VERTS)
+    in (VERTS,
+    [for v@j in VERTS do vec: [j] od] ##
+    for d:Affd.aff_rank - 1 from 1
+    do
+    if facet_verbose
+    then prints("start dim ",d," in FPP_vlist_indices.")
+    fi;
+    for gamma in WBs[d]
+    	do
+    	for tau in FPtauRoots(Affd,gamma)
+	    do
+	    let v = gamma+tau
+	    in facet_verts_index(Affd,Index,v)
+	    od
+    	od.##
+     od)
+
 {.all (facet barycenter, facet vertices) for facets in FPP, each once.}
 set FPP_barycenters_verts(SimpleAffine Affd) = [[FacetBaryVerts]]:
     if facet_verbose then prints("start FPP_barycenters_verts.")
@@ -1012,7 +1047,7 @@ set FPP_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
 set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
     sum(#vert_list[0], for k:#facet do vert_list[facet[k]] od)/(#facet) 
 
-set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVertsIndex]]:
+set FPP_vertex_sets_indicesOLD(SimpleAffine Affd) = [[FacetVertsIndex]]:
     let FPPV = FPP_vertex_sets(Affd) then vertexIndex=index(##FPPV[0])
     in for d:Affd.aff_rank
     do
@@ -1021,6 +1056,19 @@ set FPP_vertex_sets_indices(SimpleAffine Affd) = [[FacetVertsIndex]]:
     fi;
     for facet in FPPV[d]
     	do facet_verts_index(vertexIndex,facet)
+	od
+    od
+
+set FPP_vertex_sets_indicesMVL(SimpleAffine Affd, [[FacetBary]] FPPBs) =
+    [[FacetVertsIndex]]:
+    let vertexIndex=index(FPPBs[0])
+    in for d:#FPPBs
+    do
+    if facet_verbose
+    then prints("start dim ",d," in FPP_vertex_sets_indices([[FacetBary]])")
+    fi;
+    for v in FPPBs[d]
+    	do facet_verts_index(Affd, vertexIndex, v)
 	od
     od
 
@@ -1341,8 +1389,12 @@ set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
 { still need simple derived group }
 {need vlist to match FPP_vertex_sets_indices}
 set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let (vlist,FPPVI) = FPP_vlist_indices(G)
+    in spherical(G,vlist,FPPVI)
+
+set sphericalOLD(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let vlist = FPP_vertices(G)
-    in spherical(G,vlist,FPP_vertex_sets_indices(G))
+    in spherical(G,vlist,FPP_vertex_sets_indicesOLD(G))
 
 set sphericalMVL(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let FPPBs = FPP_barycenters(G)
@@ -1351,8 +1403,8 @@ set sphericalMVL(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
 
 set spherical_to_ht(RealForm G, int bound) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let vlist = FPP_vertices(G)
-    in spherical_to_ht(G, vlist, FPP_vertex_sets_indices(G),bound)
+    let (vlist,FPPVI) = FPP_vlist_indices(G)
+    in spherical_to_ht(G, vlist, FPPVI,bound)
 
 set update_status([[string]] status, [ratvec] vlist,
     [[FacetVertsIndex]] Cand) = ([[string]], [ratvec], [[FacetVertsIndex]]):
