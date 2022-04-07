@@ -32,22 +32,13 @@ set max_nc (RealForm G)=int:
 
 set ht_shift (RealForm G)=int:
    let rd=root_datum(G)
-   in {max(for x in distinguished_fiber(G)
-        do ceil(ht_of_ratwt(rd,rho_c(x)-rho_nci(x))) od)}
-    ceil(ht_of_ratwt(rd,rho_c(G)-rho(G)))
-
-set ht_shift_alt (RealForm G)=int:
-   let rd=root_datum(G)
    in max(for x in distinguished_fiber(G)
-        do ceil(ht_of_ratwt(rd,rho_c(x)-rho_nci(x))) od)
+        do ht_of_wt(rd,2*rho_c(x)-rho(G)) od)
 
 set add_ht (RealForm G)=int:
    let rc=rho_check(G), rk=rho_c(G) in ceil(4*rc*rk)
 
 set zeros (int n) = vec: for i:n do 0 od
-
-{set height_bound([[vec]] list, RealForm G)=int:
-   ceil(max(##for ar in list do for v in ar do v*rho_check(G) od od))}
 
 set sets_of_card_n ([[int]] ps, int n)=[[int]]:
    ##for ints in ps do if #ints=n then [ints] else [] fi od
