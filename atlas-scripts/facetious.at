@@ -1139,6 +1139,19 @@ set show([[string]] status) = void:
 	countF, " nonunitary, ", countQ, " undecided.")
     od
 
+{dth coordinate is number of unsettled terms in status[d]}
+set COUNT([[string]] status) = vec:
+    for d:#status
+    do
+    #(for j:#status[d]
+	do
+	if (status[d][j]="?" or (#status[d][j] > 1 and status[d][j][1]="t")) then [true]
+	else []
+	fi
+	od.##)
+     od
+
+
 { meant to get the facets for spherical not cohom induced in
 nonquasisplit G }
 
@@ -1209,23 +1222,26 @@ set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
 	od{DIM}
     then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
     then (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
-    then status = facet_statusu(G,FPPBnch)
+    then status = [[string]]: facet_statusu(G,FPPBnch)
     in
+
     for d:#status
     	do{DIMd}
 	if facet_verbose
-	then prints("start dim ",d," in spherical(G,vlist,FPPind)")
+	then prints(); show(status); prints("start dim ",d,
+	     " in spherical(G,vlist,FPPind); testing ",COUNT(status)[d]," parameters.")
 	fi;
-	let nsd = status[d]
+	let nsd = status[d], COUNTd = int: 0, GOALd = int: COUNT(status)[d]
 	in
-	if facet_verbose then prints(); show(status)
-	fi;
 		for j:#status[d]
 		do{FACd}
 		let result =
 		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[1] !="t")
 		then nsd[j]
-		else
+		else if facet_verbose
+		     then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+		     	  fi; COUNTd:=COUNTd+1
+		     fi;
 			if{NEWU}(is_unitary(first_param(
 				standardize(parameter(
 					x_open(G), G.rho, FPPBnch[d][j])))))
@@ -1360,8 +1376,6 @@ set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
 
 { to be applied to result of a previous to_ht computation; FPPind is assumed
 already to be cut to not cohom and hermitian }
-{ in this calculation, don't trust old "T", which meant "true to some
-previous height }
 set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
     [[FacetVertsIndex]] FPPind), int bound) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
