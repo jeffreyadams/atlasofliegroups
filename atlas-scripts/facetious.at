@@ -558,7 +558,7 @@ set facet_bary_verts(SimpleAffine Affd, ratvec gamma) = FacetBaryVerts:
 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
     in wtilde*facet_bary_verts0(Affd,gamma0)
 
-{ calculates the number of vertices in W*(fundamental alcove }
+{ calculates the number of vertices in W*(fundamental alcove) }
 set W_fund_vertices_card(SimpleAffine Affd) = int:
     let n=Affd.ss_rank, N=#W(Affd)
     then listn=for j:n do j od
@@ -1236,7 +1236,7 @@ set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
 		for j:#status[d]
 		do{FACd}
 		let result =
-		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[1] !="t")
+		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 		then nsd[j]
 		else if facet_verbose
 		     then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
@@ -1283,19 +1283,20 @@ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
     	    for d:#status
     	    do{DIMd}
     	    if facet_verbose
-    	    then prints("start dim ",d, " in spherical(G,status,vlist,FPPind)")
+    	    then prints(); show(status); prints("start dim ",d,
+	    	 " in spherical(G,status,vlist,FPPind); testing ",COUNT(status)[d]," parameters.")
     	    fi;
-    	    let nsd = status[d]
+    	    let nsd = status[d],  COUNTd = int: 0, GOALd = int: COUNT(status)[d]
     	    in
-    	    if facet_verbose
-    	    then prints(); show(status)
-    	    fi;
     	    for j:#status[d]
     	    	do{FACd}
     		let result =
-    		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[1] !="t")
+    		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
     		then nsd[j]
-    		else
+    		else if facet_verbose
+		     then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+		     	  fi; COUNTd:=COUNTd+1
+		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
 			 parameter(x_open(G), G.rho, FPPB[d][j])))))
 		then nsd[j]:="T"
@@ -1321,6 +1322,8 @@ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
     od{DIMd};
     prints(); show(status); (status,vlist,FPPind)
 
+
+
 { in output, "F" is certain, "Tto[bound]" means "true to height=bound" }
 set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
     int bound) = ([[string]],[ratvec],[[FacetVertsIndex]]):
@@ -1335,9 +1338,10 @@ set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
     in for d:#status
     do
     if facet_verbose then prints("start dim ",d,
-       " in spherical_to_ht(G,vlist,FPPind,",bound,")")
+       " in spherical_to_ht(G,vlist,FPPind,",bound,"); testing ",
+       COUNT(status)[d]," parameters.")
     fi;
-    let nsd = status[d]
+    let nsd = status[d], COUNTd = int: 0, GOALd = int: COUNT(status)[d]
     in
     if facet_verbose
     then prints(); show(status)
@@ -1347,7 +1351,10 @@ set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
     let result =
     	if nsd[j] = "F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 	then nsd[j]
-	else
+	else if facet_verbose
+             then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+                          fi; COUNTd:=COUNTd+1
+                     fi;
 		if (is_unitary_to_ht(first_param(
 			 standardize(parameter(x_open(G), G.rho,
 			 		FPPBnch[d][j]))),bound))
@@ -1390,19 +1397,20 @@ set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
     for d:#status
     do
     if facet_verbose
-    then prints("start dim ",d," in spherical(G,status,vlist,FPPind)")
+    then prints(); show(status); prints("start dim ",d,
+    	 " in spherical(G,status,vlist,FPPind); testing ",COUNT(status)[d]," parameters.")
     fi;
-    let nsd = status[d]
+    let nsd = status[d], COUNTd = int: 0, GOALd = int: COUNT(status)[d]
     in
-    if facet_verbose
-    then prints(); show(status)
-    fi;
-    for j:#status[d]
+	for j:#status[d]
     	do
 	let result =
 	    if nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 	    then nsd[j]
-	    else
+	    else if facet_verbose
+                 then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+                      fi; COUNTd:=COUNTd+1
+                 fi;
 	    	 if (is_unitary_to_ht(first_param(
 		 	  standardize(parameter(x_open(G), G.rho,
 			  FPPB[d][j]))),bound))
