@@ -822,7 +822,8 @@ set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
 		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 		then nsd[j]
 		else if facet_verbose
-		     then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+		     then if COUNTd <=  10 or COUNTd% (1+GOALd\10) =
+    	0 then prints("started test #",COUNTd, " of ",GOALd)
 		     	  fi; COUNTd:=COUNTd+1
 		     fi;
 			if{NEWU}(is_unitary(first_param(
@@ -878,7 +879,8 @@ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
     		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
     		then nsd[j]
     		else if facet_verbose
-		     then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+		     then if COUNTd <=10 or COUNTd% (1+GOALd\10) = 0
+ then prints("started test #",COUNTd," of ",GOALd)
 		     	  fi; COUNTd:=COUNTd+1
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
@@ -921,7 +923,7 @@ set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
     then status = facet_statusu(G,FPPBnch)
     in for d:#status
     do
-    if facet_verbose then prints("start dim ",d,
+    if facet_verbose then prints(); show(status); prints("start dim ",d,
        " in spherical_to_ht(G,vlist,FPPind,",bound,"); testing ",
        COUNT(status)[d]," parameters.")
     fi;
@@ -936,7 +938,8 @@ set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
     	if nsd[j] = "F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 	then nsd[j]
 	else if facet_verbose
-             then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+             then if COUNTd <= 10 or COUNTd% (1+GOALd\10) = 0 then
+	     prints("started test #",COUNTd, " of ",GOALd)
                           fi; COUNTd:=COUNTd+1
                      fi;
 		if (is_unitary_to_ht(first_param(
@@ -993,7 +996,8 @@ set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
 	    if nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 	    then nsd[j]
 	    else if facet_verbose
-                 then if COUNTd% (1+GOALd\10) = 0 then prints("started test #",COUNTd)
+                 then if COUNTd <= 10 or COUNTd% (1+GOALd\10) = 0
+		 then prints("started test #",COUNTd," of ",GOALd)
                       fi; COUNTd:=COUNTd+1
                  fi;
 	    	 if (is_unitary_to_ht(first_param(
