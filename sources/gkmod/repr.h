@@ -340,7 +340,8 @@ class Rep_context
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
-  StandardRepr scale_0(StandardRepr sr) const; // |sr| by value
+  K_repr::K_type scale_0(const StandardRepr& sr) const
+  { return sr_K(sr); } // used to return |StandardRepr|, now is just an alias
 
   RatNumList reducibility_points(const StandardRepr& z) const; // normalised
 
@@ -356,7 +357,7 @@ class Rep_context
   using poly = Free_Abelian<StandardRepr,Split_integer>;
 
   poly scale(const poly& P, const RatNum& f) const;
-  poly scale_0(const poly& P) const;
+  K_repr::K_type_pol scale_0(const poly& P) const;
 
   sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
     (StandardRepr z) const; // by value
@@ -379,10 +380,19 @@ class Rep_context
     (const K_repr::K_type_pol& P, const Weight& e) const;
 }; // |Rep_context|
 
-
+/* In internal computations for deformation, it will be important to have a
+   quite compact representation of (twisted) deformation formulas. To this end
+   we shall make (inside a |Rep_table|) a table of K-types encountered (the
+   number of possible K-types for a given real form is fairly limited), and
+   represent linear coefficients as a map from such K-types to the ring of
+   coefficients (in practice |Split_integer|). Moreover, for storing formulas as
+   collections of key-value pairs, we wish to avoid using the |Free_Abelian|
+   container, derived from |std::map| which requires a lot of additional memory
+   per node stored, preferring to it our tailor made |Free_Abelian_light| which
+   has no per-node memory overhead.
+*/
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
-
 using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*

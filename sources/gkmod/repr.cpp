@@ -669,9 +669,6 @@ StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
   return z;
 }
 
-StandardRepr Rep_context::scale_0(StandardRepr z) const
-{ z.infinitesimal_char = gamma_0(z); return z; }
-
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -1020,14 +1017,14 @@ SR_poly Rep_context::scale(const poly& P, const RatNum& f) const
   return result;
 }
 
-SR_poly Rep_context::scale_0(const poly& P) const
+K_repr::K_type_pol Rep_context::scale_0(const poly& P) const
 {
-  poly result;
+  K_repr::K_type_pol result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
     auto finals = finals_for(scale_0(z));
-    for (const StandardRepr& final : finals)
-      result.add_term(final,it->second);
+    for (auto it=finals.begin(); not finals.at_end(it); ++it)
+      result.add_term(std::move(it->first),Split_integer(it->second));
   }
   return result;
 }
@@ -1678,40 +1675,45 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   return block;
 } // |Rep_table::lookup|
 
-// in the following type the second component is a multiplicity so we are in fact
-// dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
+/* In the following type the second component is a multiplicity so we are
+   dealing with a sparse representation of polynomials with |BlockElt|
+   exponents. This is intended for the expansion of non-final elements into
+   final ones; we expect few, relative to the block size, terms per polynomial
+*/
+using BlockElt_term =  std::pair<BlockElt,int>;
+using BlockElt_pol = sl_list<BlockElt_term>;
 
-typedef std::pair<BlockElt,int>  term;
-typedef sl_list<term> pair_list;
-
-pair_list combine (pair_list a, pair_list b) // by value, will move from rvalues
-{ // |a| and |b| are assumed to be sorted
-  a.merge(std::move(b),
-	  [](const term& x, const term& y) { return x.first<y.first; });
+// addition polynomials whose elements are sorted by increasing |BlockElt|
+BlockElt_pol combine (BlockElt_pol a, BlockElt_pol b) // by value
+{ a.merge(std::move(b),
+	  [](const BlockElt_term& x, const BlockElt_term& y)
+	    { return x.first<y.first; });
   // now any like terms are neigbours, combine them whenever this occurs
   for (auto it=a.begin(); not a.at_end(it); ++it)
   {
     auto it1=std::next(it);
     if (not a.at_end(it1) and it->first==it1->first)
     {
-      it->second += it1->second;
-      a.erase(it1);
+      it->second += it1->second; // accumulate towards first ot the terms
+      a.erase(it1); // then erase the second; next |++it| correctly executes
     }
   }
   return a;
 }
 
-pair_list flip (int sign, pair_list list) // by value
+BlockElt_pol flip (int sign, BlockElt_pol list) // by value
 { if (sign!=1)
     for (auto& p : list)
       p.second *= sign;
   return list;
 }
 
-std::vector<pair_list> contributions
+// Expand block elements up to |y| into final ones for the |singular| system.
+// This version is for a |common_block|, so no twist is involved in expansion
+std::vector<BlockElt_pol> contributions
   (blocks::common_block& block, RankFlags singular, BlockElt y)
 {
-  std::vector<pair_list> result(y+1); // initally every |result[z]| is empty
+  std::vector<BlockElt_pol> result(y+1); // initally every |result[z]| is empty
   for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
   {
     const DescentStatus& desc=block.descent(z);
@@ -1746,12 +1748,13 @@ std::vector<pair_list> contributions
 } // |Rep_table::contributions|
 
 
-// compute |extended_finialise| in |BlockElt| form, on initial range of |eblock|
-std::vector<pair_list> contributions
+// Expand block elements up to |y| into final ones for |singular| system.
+// Being for an |ext_block|, the expansion involves signs (twisted case)
+std::vector<BlockElt_pol> contributions
   (const ext_block::ext_block& eblock, RankFlags singular_orbits,
    BlockElt limit) // where to stop computing contributions
 {
-  std::vector<pair_list> result(limit); // each|result[z]| is initially empty
+  std::vector<BlockElt_pol> result(limit); // each|result[z]| is initially empty
   for (BlockElt z=0; z<limit; ++z)
   {
     auto s = eblock.first_descent_among(singular_orbits,z);
@@ -1788,7 +1791,8 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   if (block.length(y)==0)
     return result; // easy case, null result
 
-  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),y);
+  std::vector<BlockElt_pol> contrib =
+    contributions(block,block.singular(gamma),y);
   sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
@@ -1882,7 +1886,8 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 	 .isZero());
 
   const auto& gamma=sr.gamma();
-  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
+  std::vector<BlockElt_pol> contrib =
+    contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
@@ -1949,13 +1954,12 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
       return pool[h].def_formula();
   }
 
-  StandardRepr z0 = scale_0(z);
+  auto base_pol = finals_for(scale_0(z));
   K_type_poly result {std::less<K_type_nr>()};
-  for (const auto& sr : finals_for(z0))
+  for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
   {
-    K_type_nr h = K_type_hash.match
-      (K_repr::K_type(sr.x(),lambda_rho(sr),sr.height()));
-    result.add_term(h,Split_integer(1,0));
+    K_type_nr h = K_type_hash.match(std::move(it->first));
+    result.add_term(h,Split_integer(it->second)); // purely integer coefficient
   }
 
   for (unsigned i=rp.size(); i-->0; )
