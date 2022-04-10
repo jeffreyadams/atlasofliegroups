@@ -683,16 +683,13 @@ set FPP_vlist_indicesOLD(SimpleAffine Affd) =
     do
     if facet_verbose
     then prints("start dim ",d,
-    	 " in FPP_vlist_indices")
+    	 " in FPP_vlist_indicesOLD")
     fi;
     for FBV in FPPBVs[d]
     	do for j:d+1 from 1 do find(vertexIndex, FBV[j]) od
 	od
     od)
 
-
-
-{These seem to test a tiny bit slower than FPP_vlist_indices}
 set FPP_vlist_indices(SimpleAffine Affd) =
     ([ratvec],[[FacetVertsIndex]]):
     let vlist = [ratvec]: FPP_vertices(Affd),
@@ -703,7 +700,7 @@ set FPP_vlist_indices(SimpleAffine Affd) =
     do
     if facet_verbose
     then prints("start dim ",d,
-    	 " in FPP_vlist_indicesNEW")
+    	 " in FPP_vlist_indices")
     fi;
     for FV in fundVerts[d]
     do
@@ -732,7 +729,7 @@ set FPP_vlist_indices(SimpleAffine Affd, int d, ParamPol vertexIndex) =
     [FacetVertsIndex]:
     if facet_verbose
     then prints("start dim ",d,
-    	 " in FPP_vlist_indicesNEW")
+    	 " in FPP_vlist_indices")
     fi;
     for FBV in fund_barycenters_verts(Affd)[d]
     do
@@ -1122,6 +1119,8 @@ set spherical_to_ht(RealForm G, int bound) =
     let (vlist,FPPVI) = FPP_vlist_indices(G)
     in spherical_to_ht(G, vlist, FPPVI,bound)
 
+{.status ought to refer to a fixed vertex list, which can contain
+nonunitary or nonhermitian nu.}
 set update_status([[string]] status, [ratvec] vlist,
     [[FacetVertsIndex]] Cand) = ([[string]], [ratvec], [[FacetVertsIndex]]):
     let newCand = for d:#status
