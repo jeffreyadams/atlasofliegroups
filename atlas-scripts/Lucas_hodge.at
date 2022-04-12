@@ -2,12 +2,14 @@
 <Kcone.at
 <complex.at
 
+{Height of an arbitrary weight}
 set ht_of_wt(RootDatum rd,ratvec alpha)=int:
    abs(rat_as_int(2*rho_check(rd)*alpha))
 
 set ht_of_ratwt(RootDatum rd,ratvec v)=rat:
     abs(2*rho_check(rd)*v)
 
+{All KGB elements attached to the fundamental Cartan}
 set fundamental_fiber (RealForm G)=[KGBElt]:
    ##for x in KGB(G) do if Cartan_class(x)=Cartan_class(KGB(G,0))
                         then [x] else [] fi
@@ -20,21 +22,26 @@ set pos_nc_roots (KGBElt x)=[vec]:
 	   fi
 	od
 
+{minimal height of noncompact roots}
 set min_nc (RealForm G)=int:
    min(##for x in fundamental_fiber(G)
          do for a in pos_nc_roots(x)
 	     do height(G,a) od od)
 
+{maximal height of noncompact roots}
 set max_nc (RealForm G)=int:
    max(##for x in fundamental_fiber(G)
          do for a in pos_nc_roots(x)
 	     do height(G,a) od od)
 
+{maximal height difference between a K-type and its highest weight}
 set ht_shift (RealForm G)=int:
    let rd=root_datum(G)
    in max(for x in distinguished_fiber(G)
         do ht_of_wt(rd,2*rho_c(x)-rho(G)) od)
 
+{maximal hight difference between K-type and its tensor product with
+ wedge(k)}
 set add_ht (RealForm G)=int:
    let rc=rho_check(G), rk=rho_c(G) in ceil(4*rc*rk)
 
@@ -46,6 +53,7 @@ set sets_of_card_n ([[int]] ps, int n)=[[int]]:
 set dim_T_x (KGBElt x) = int:
    let ((c,C,r),,,)=x.Cartan_class.Cartan_info in C+c
 
+{weights of k}
 set kwts(KGBElt x) = [vec]:
     let (G,posRoots,inv) = (x.real_form,posroots(x.real_form),x.involution)
     in ##for i:#posRoots do if is_imaginary(i,x)
@@ -63,21 +71,29 @@ set kwts(KGBElt x) = [vec]:
 			     fi fi
 			 od
 
+{weights of k; one list for each KGB element; an empty list if x has C- roots}
 set kwts(RealForm G) = [[vec]]:
    let zero=zeros(rank(G)) in
    for x in KGB(G)
-    do let CSA=for i:dim_T_x(x)
-               do zero
-	       od
-	in CSA##kwts(x)
+    do if no_Cminus_roots(x)
+       then let CSA=for i:dim_T_x(x)
+                    do zero
+	            od
+	     in CSA##kwts(x)
+	else []
+	fi
     od
 
+{Weights occurring in wedge(k)^n; an empty list for x with C- roots}
 set wedge_weights ([[vec]] wts, [[int]] ps, int n) =[[vec]]:
    let list=sets_of_card_n(ps,n)
    in for xwts in wts
-      do for subset in list
-         do sum(for i in subset do xwts[i] od)
-	 od
+      do if #xwts = 0
+         then []
+	 else for subset in list
+              do sum(for i in subset do xwts[i] od)
+	      od
+         fi
       od
 
 set add_weights (Param p, [[vec]] wts) = ParamPol:
