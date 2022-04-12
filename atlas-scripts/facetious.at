@@ -3,6 +3,7 @@
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]) }
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
+<TWOHEIGHTS.at { for HT, HTT, HTA }
 <springer_tables_reductive.at { for Springer_table }
 
 { Goal is to write representatives of all affine facets in the
@@ -1159,3 +1160,10 @@ set write([[string]] status, [ratvec] vlist, [[FacetVertsIndex]] Cand) = void:
     prints("set vlist = ",vlist);
     prints("set Cand = [[vec]]:",Cand)
 
+set leq([Param] Plist) = (int i, int j) bool:
+    HTA(Plist[i]) <= HTA(Plist[j])
+
+{.given a list Plist of Params, sort it according to HTA.}
+set HTA_sort([Param] Plist) = [Param]:
+    let listSorter = [int]: sort(leq(Plist))(#Plist)
+    in [Param]: for j:#Plist do Plist[listSorter[j]] od
