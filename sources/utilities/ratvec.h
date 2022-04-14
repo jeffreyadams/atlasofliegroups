@@ -103,12 +103,12 @@ class RationalVector
   // when left operand is rvalue reference, use destructive operators
   RationalVector operator+ (const RationalVector& v) && { return *this += v; }
   RationalVector operator- (const RationalVector& v) && { return *this -= v; }
-  RationalVector operator- () &&     { return negate(); }
+  RationalVector operator- () &&     { return std::move(negate()); }
 
   // when right operand is rvalue reference, use destructive operators too
   RationalVector operator+ (RationalVector&& v) const & { return v+=*this; }
   RationalVector operator- (RationalVector&& v) const &
-					     { return v.negate_add(*this); }
+				    { return std::move(v.negate_add(*this)); }
 
   // when both operands are rvalue references, give priority to the left
   RationalVector operator+ (RationalVector&& v) && { return *this += v; }
@@ -128,11 +128,17 @@ class RationalVector
     RationalVector operator-(const matrix::Vector<C1>& v) const &
     { return RationalVector(*this)-= v; }
   template <typename C1>
+    RationalVector subtract_from(const matrix::Vector<C1>& v) const &
+    { RationalVector a(*this); a.negate()+=v; return a; }
+  template <typename C1>
     RationalVector operator+(const matrix::Vector<C1>& v) &&
     { return (*this)+=v; }
   template <typename C1>
     RationalVector operator-(const matrix::Vector<C1>& v) &&
-    { return (*this)-= v; }
+    { return RationalVector(std::move(*this))-= v; }
+  template <typename C1>
+    RationalVector subtract_from(const matrix::Vector<C1>& v) &&
+    { RationalVector a(std::move(*this)); a.negate()+=v; return a; }
 
   RationalVector& operator*=(const arithmetic::Rational<C>& r);
   RationalVector& operator/=(const arithmetic::Rational<C>& r);

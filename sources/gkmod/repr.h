@@ -520,10 +520,7 @@ class Rep_table : public Rep_context
   size_t match_reduced_hash(const StandardReprMod& srm)
   { return reduced_hash.match(Reduced_param(*this,srm)); }
 
-  StandardRepr K_type_sr(K_type_nr i)
-  { const auto& K_tp = K_type_pool[i]; const auto& lr = K_tp.lambda_rho();
-    return sr(K_tp.x(),lr,RatWeight(lr.size()));
-  }
+  K_repr::K_type stored_K_type(K_type_nr i) { return K_type_pool[i].copy(); }
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$

@@ -1,5 +1,5 @@
 /*
-  This is repr.h
+  This is K_repr.h
 
   Copyright (C) 2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
@@ -29,7 +29,7 @@ namespace K_repr {
 
 class K_type // compact representation of parameters at $\nu=0$
 {
-  friend class repr::Rep_context;
+  friend class atlas::repr::Rep_context; // avoid juxtaposition of 'class repr'
   KGBElt d_x;
   unsigned int hght;
   Weight lam_rho;

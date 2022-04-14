@@ -2494,7 +2494,9 @@ K_repr::K_type_pol extended_restrict_to_K
 	else if (eval==0 and i_tab.complex_is_descent(i_theta,s))
 	{ // no change to |gamma_E| is needed as relevant reflections fix it
 	  containers::sl_list<ext_param> links;
+#ifndef NDEBUG
 	  auto type =
+#endif
 	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
 	  assert(is_complex(type) or
 		 type==two_semi_real or type==three_semi_real);

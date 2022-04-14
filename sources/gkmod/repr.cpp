@@ -581,7 +581,9 @@ void Rep_context::make_dominant(StandardRepr& z) const
 void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 {
   const auto& rd = root_datum();
+#ifndef NDEBUG
   const InvolutionTable& i_tab = involution_table();
+#endif
   auto& x = z.x_part; // directly operate on |x| component inside |z|
   Weight lr = lambda_rho(z);
   // |z.infinitesimal_char| is unchanged by singular reflections
@@ -1115,7 +1117,9 @@ sr_term_list Rep_context::finals(StandardRepr z) const
   {
     KGBElt x = to_do.front().first.x();
     Weight lr = lambda_rho(to_do.front().first);
+#ifndef NDEBUG
     auto height = to_do.front().first.height();
+#endif
     RatWeight gamma = std::move(to_do.front().first.infinitesimal_char);
     auto coef = to_do.front().second;
     to_do.pop_front();

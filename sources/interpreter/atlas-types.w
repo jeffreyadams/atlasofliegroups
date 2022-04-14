@@ -7520,16 +7520,14 @@ void full_deform_wrapper(expression_base::level l)
     return;
 @)
   const auto& rc = p->rc();
-  rc.normalise(p->val);
-  auto finals = rc.finals_for(p->val);
-  repr::K_type_poly res;
-  for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    res += p->rt().deformation(*it);
-@)
-  SR_poly result;
-  for (const auto& t : res) // transform to |std::map|
-    result.emplace(p->rt().K_type_sr(t.first),t.second);
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+  @;repr::K_type_poly res;
+  for (const StandardRepr& final : rc.finals_for(p->val))
+    res += p->rt().deformation(final);
+@) // now convert from (tabled) |@;repr::K_type_poly| to |K_repr::K_type_pol|
+  K_repr::K_type_pol result;
+  for (const auto& t : res)
+    result.add_term(p->rt().stored_K_type(t.first),t.second);
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
@@ -7553,7 +7551,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   SR_poly result;
   for (const auto& t : res) // transform to |std::map|
-    result.emplace(p->rt().K_type_sr(t.first),t.second);
+    result.emplace(rc.sr(p->rt().stored_K_type(t.first)),t.second);
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
@@ -7748,7 +7746,7 @@ install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
-install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
+install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
