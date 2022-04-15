@@ -204,8 +204,8 @@ set find(ParamPol Index,ratvec v) = int:
 set find(ParamPol Index, [ratvec] FV) = vec:
     let GI = Index.real_form 
     in
-    vec: for j:#FV 
-    do split_as_int(Index[parameter(GI,0,GI.rho,FV[j])]) - 1 
+    vec: for v in FV
+    do split_as_int(Index[parameter(GI,0,GI.rho,v)]) - 1 
     od
 
 { same as facet_verts_index using a precreated ParamPol as index set }
@@ -314,7 +314,6 @@ set fund_barycenters_verts(SimpleAffine Affd, int d) = [FacetBaryVerts]:
     od
 
 
-
 {.FacetBaryVerts of gamma0 in the fundamental alcove.}
 set facet_bary_verts0(SimpleAffine Affd, ratvec gamma0) = FacetBaryVerts:
     let S=Affd.aff_simple_coroots, V=fundamental_vertices(Affd),
@@ -322,14 +321,13 @@ set facet_bary_verts0(SimpleAffine Affd, ratvec gamma0) = FacetBaryVerts:
     in
     [sum(Affd.rank, Verts)/#Verts]##Verts
 
-
 { integral weights to be added to gamma to land in fundamental
 parallelepiped where all simple coroots take values in [0,1] }
 {need to make a list of all possible tau; if g is an integer, use
 either -g or -g+1.}
 
 set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
-    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
+    let g=for betav in Affd.simple_coroots do betav*gamma od
     then INT = ##for j:#Affd.simple_coroots
     	 do
 	 if is_integer(g[j]) then [j] else []
@@ -338,14 +336,14 @@ set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
     in
     for S in power_set(#INT)
     do
-    sum(Affd.rank, for j:#Affd.simple_coroots
-    		   do -floor(g[j])*Affd.fundamental_weights[j] od) +
+    sum(Affd.rank, for xi@j in Affd.fundamental_weights
+    		   do -floor(g[j])*xi od) +
     sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
     od
 
 { sums of roots to be added to gamma to land in FPP }
 set FPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
-    let g=for j:#Affd.simple_coroots do Affd.simple_coroots[j]*gamma od
+    let g=for betav in Affd.simple_coroots do betav*gamma od
     then INT = ##for j:#Affd.simple_coroots
     	 do
 	 if is_integer(g[j]) then [j] else []
@@ -354,13 +352,13 @@ set FPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     in
     for S in power_set(#INT)
     do
-    let tau = sum(Affd.rank, for j:#Affd.simple_coroots
-    	      do -floor(g[j])*Affd.fundamental_weights[j] od) +
+    let tau = sum(Affd.rank, for xi@j in Affd.fundamental_weights
+    	      do -floor(g[j])*xi od) +
     	   sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
     in
     if(all(
-	for j:Affd.ss_rank
-	do is_integer((Affd.fundamental_coweights[j])*tau) od))
+	for xiv in Affd.fundamental_coweights
+	do is_integer(xiv*tau) od))
     then [ratvec_as_vec(tau)]
     else []
     fi
@@ -379,10 +377,9 @@ set TAU(RootDatum rd,ratvec gamma) = vec:
     	DENOM = gamma.denom, m0= 0, q0=0 then d=#COROOTS
     in
     if d!=0
-    then for j:#rd.fundamental_coweights
+    then for xiv@j in rd.fundamental_coweights
     do
-    let (num,den) = (rd.fundamental_coweights[j].numer,
-    	rd.fundamental_coweights[j].denom)
+    let (num,den) = (xiv.numer, xiv.denom)
     in
     gamma0NUM := (gamma0NUM -
     ( ( ( num*gamma0NUM )\(DENOM*den))*DENOM*den)*rd.simple_roots[j])
@@ -430,14 +427,14 @@ set facet_bary(SimpleAffine Affd, ratvec gamma) = FacetBary:
     let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
     in	wtilde*facet_bary0(Affd,gamma0)
 
-{ calculates the number of vertices in W*(fundamental alcove) }
+{.number of vertices in W*(fundamental alcove).}
 set W_fund_vertices_card(SimpleAffine Affd) = int:
     let n=Affd.ss_rank, N=#W(Affd)
     then listn=for j:n do j od
     in
     1+sum(for S in choices_from(listn,n-2) do rat_as_int(N/#W(Levi(Affd,S))) od )
 
-{ cardinality of W_fund_vertices[d] }
+{.number of d-diml facets in W*(fundamental alcove).}
 set W_fund_d_facets_card(SimpleAffine Affd,int d) = int:
     let n=Affd.ss_rank, N=#W(Affd)
     then listn=for j:n do j od
@@ -448,7 +445,7 @@ set W_fund_d_facets_card(SimpleAffine Affd,int d) = int:
     	 sum(for S in choices_from(listn,n-d-1) do rat_as_int(N/#W(Levi(Affd,S))) od)
     fi
 
-{ cardinalities of all elts of W_fund_vertices }
+{.number of facets in W*(fundamental alcove).}
 set W_fund_facets_card(SimpleAffine Affd) = [int]:
     for d:Affd.aff_rank
     	do W_fund_d_facets_card(Affd,d)
@@ -810,7 +807,7 @@ set show([[string]] status) = void:
 	then countQ+:=1
 	elif status[d][j][1]="t"
 	then countTto+:=1
-	elif status[d][j]="Ti"
+	elif status[d][j][0]="T" and status[d][j][1]="i"
 	then countTi+:=1
 	elif status[d][j][1]="i"
 	then countFi+:=1
@@ -866,6 +863,21 @@ set pick_not_cohom(RealForm G, [[FacetBary]] FPPB,
 	  od
     in (FPPBnc,FPPindnc)
 
+set pick_not_cohom(RealForm G, [[FacetBary]] FPPB) = [[FacetBary]]:
+    let inv=x_open(G).involution
+    then tworhoM = G.rho + inv*G.rho
+    then FPPBnc = [[FacetBary]]:
+    	 for d:#FPPB
+	 do for j:#FPPB[d]
+	    do
+	    if inv*FPPB[d][j] + FPPB[d][j] = tworhoM
+	    then [FPPB[d][j]]
+	    else []
+	    fi
+	    od.##
+	 od
+    in FPPBnc
+
 {this eliminates the nonhermitian facets from the lists. Would be good
 also to organize the new lists by dimension of the hermitian part,
 which is d-(# unfixed vertices)/2.}
@@ -895,62 +907,112 @@ set pick_hermitian(RealForm G, [[FacetBary]] FPPB,
 	od
     in (FPPBh,FPPindh)
 
-{ Need simple derived group }
-set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
+set pick_hermitian(RealForm G, [[FacetBary]] FPPB) = [[FacetBary]]:
+    let FPPBh = [[FacetBary]]:
+    	for d:#FPPB
+	do
+		for j:#FPPB[d]
+		do
+		if is_hermitian(parameter(x_open(G),G.rho,FPPB[d][j]))
+		then [FPPB[d][j]]
+		else []
+		fi
+		od.##
+    	od
+    in FPPBh
+
+{. The next family of functions all need simple derived group. Always vlist should be ALL vertices in the FPP. The facet lists carried by [[FacetBary]] or [[FacetVertsIndex]] may be pruned of reps not interesting for unitarity, but the indices will alway refer to a constant vlist.}
+
+{.eliiminate nonfinal, nonhermitian parameters.}
+set down_to_business(RealForm G, ([ratvec] vlist, [[FacetVertsIndex]] FPPind)) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let FPPB = for d:G.aff_rank
-    	do{DIM}
+        let FPPB = for d:G.aff_rank
+    	do
 		for j:#FPPind[d]
-		do{FAC}
+		do
 		facet_bary(vlist, FPPind[d][j])
+		od
+	od
+    then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
+    then (FPPBnch,FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+    then status = [[string]]: facet_statusu(G,FPPBnch)
+    in
+    if facet_verbose then prints("completing down_to_business"); show(status) fi;
+    (status,vlist,FPPindnch)
+
+{.eliiminate nonfinal, nonhermitian parameters.}
+set down_to_business_bary(RealForm G, ([ratvec] vlist, [[FacetBary]] FPPB)) =
+    ([[string]],[ratvec],[[FacetBary]]):
+    let Index = index(vlist)
+    then FPPind = for d:G.aff_rank
+    	do
+		for j:#FPPB[d]
+		do
+		facet_verts_index(G,Index, FPPB[d][j])
+		od
+	od
+    then(FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
+    then (FPPBnch,FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+    then status = [[string]]: facet_statusu(G,FPPBnch)
+    in
+    if facet_verbose then prints("completing down_to_business"); show(status) fi;
+    (status,vlist,FPPBnch)
+{.meant to be applied to facets already pruned by down_to_business.}
+set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPindnch) =
+    ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let FPPBnch = for d:G.aff_rank
+    	do{DIM}
+		for FB in FPPindnch[d]
+		do{FAC}
+		facet_bary(vlist, FB)
 		od{FAC}
 	od{DIM}
+{
     then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
     then (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
+}
     then status = [[string]]: facet_statusu(G,FPPBnch)
     in
     for d:#status
-    	do{DIMd}
+    	do
 	if facet_verbose
 	then show(status); prints(); prints("start dim ",d,
 	     " in spherical(G,vlist,FPPind); testing ",COUNT(status)[d]," parameters.")
 	fi;
 	let nsd = status[d], COUNTd = int: 0, GOALd = int: COUNT(status)[d]
 	in
-		for j:#status[d]
-		do{FACd}
+		for Fdind@j in FPPindnch[d]
+		do
 		let result =
-		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
+		if nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
 		then nsd[j]
 		else if facet_verbose
-		     then if COUNTd <=  10 or COUNTd% (1+GOALd\10) =
-    	0 then prints("started test #",COUNTd, " of ",GOALd)
+		     then if COUNTd <=  10 or COUNTd% (1+GOALd\10) = 0
+    		     	  then prints("started test #",COUNTd, " of ",GOALd)
 		     	  fi; COUNTd:=COUNTd+1
 		     fi;
-			if{NEWU}(is_unitary(first_param(
-				standardize(parameter(
+			if (is_unitary(first_param(standardize(parameter(
 					x_open(G), G.rho, FPPBnch[d][j])))))
 			then nsd[j]:="T"
-			else{NEWU}
+			else
 				for e: #status-d-1 from d+1
-				do{DIMe}
+				do
 				let nse=status[e]
-				in for k:#nse
-				   do{FACe}
-				   if{SUB} is_subset_of_sorted(
-				   	   FPPindnch[e][k])(FPPindnch[d][j])
+				in for Feind@k in FPPindnch[e]
+				   do
+				   if is_subset_of_sorted(Feind)(Fdind)
 				   then nse[k]:= "F"
-				   fi{SUB}
-				   od{FACe};
+				   fi
+				   od;
 				status[e]:=nse
-				od{DIMe};
+				od;
 			nsd[j]:="F"
-			fi{NEWU}
-		fi{RES}
+			fi
+		fi
 		in result
-		od{FACd};
+		od;
 		status[d]:=nsd
-	od{DIMd};
+	od;
 	if(facet_verbose) then show(status) fi;
 	(status,vlist,FPPindnch)
 
@@ -959,26 +1021,27 @@ set spherical(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
 set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
     [[FacetVertsIndex]] FPPind)) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let FPPB = for d:G.aff_rank
-    do{DIM}
-    for j:#FPPind[d]
-    	do{FAC}
-	facet_bary(vlist, FPPind[d][j])
-	od{FAC}
-	    od{DIM}
-    	    in
-    	    for d:#status
-    	    do{DIMd}
-    	    if facet_verbose
-    	    then show(status); prints(); prints("start dim ",d,
+    do
+    for Find in FPPind[d]
+    	do
+	facet_bary(vlist, Find)
+	od
+    od
+    in
+    for statusd@d in status
+    	do{DIMd}
+    	if facet_verbose
+    	then show(status); prints(); prints("start dim ",d,
 	    	 " in spherical(G,status,vlist,FPPind); testing ",
 		 COUNT(status)[d]," parameters.")
     	    fi;
-    	    let nsd = status[d],  COUNTd = int: 0, GOALd = int: COUNT(status)[d]
+    	    let nsd = statusd,  COUNTd = int: 0, GOALd = int: COUNT(status)[d]
     	    in
     	    for j:#status[d]
     	    	do{FACd}
     		let result =
-    		if{RES} nsd[j]="F" or nsd[j]="T" or (#nsd[j]>1 and nsd[j][1] !="t")
+    		if{RES} nsd[j][0]="F" or nsd[j]="T" or (#nsd[j]>1 and
+			nsd[j][1] !="t")
     		then nsd[j]
     		else if facet_verbose
 		     then if COUNTd <=10 or COUNTd% (1+GOALd\10) = 0
@@ -1014,19 +1077,18 @@ set spherical(RealForm G, ([[string]] status, [ratvec] vlist,
 
 
 { in output, "F" is certain, "Tto[bound]" means "true to height=bound" }
-set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind,
+{ meant to be applied to output of down_to_business }
+set spherical_to_ht(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPindnch,
     int bound) = ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let FPPB = for d:G.aff_rank
+    let FPPBnch = for d:G.aff_rank
     do
-    for j:#FPPind[d]
-    	do facet_bary(vlist, FPPind[d][j]) od
+    for FBI in FPPindnch[d]
+    	do facet_bary(vlist, FBI) od
     od
-    then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
-    then (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
     then status = facet_statusu(G,FPPBnch)
     in for d:#status
     do
-    if facet_verbose then prints(); show(status); prints(); 
+    if facet_verbose then prints(); show(status); prints();
        prints("start dim ",d," in spherical_to_ht(G,vlist,FPPind,",
        bound,"); testing ", COUNT(status)[d]," parameters.")
     fi;
@@ -1131,19 +1193,20 @@ set spherical_to_ht(RealForm G, ([[string]] status, [ratvec] vlist,
 {need vlist to match FPP_vertex_sets_indices}
 set spherical(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let (vlist,FPPVI) = FPP_vlist_indices(G)
-    in spherical(G,vlist,FPPVI)
+    then (status,,FPPVInch) = down_to_business(G,(vlist,FPPVI))
+    in spherical(G,vlist,FPPVInch)
 
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G must have simple derived group.} 
 set JustTheFactsSimple(RealForm G) = [(bool,ratvec)]:
-    let (statuss,verts,FVinds) = spherical(G)
+    let (statusDONE,verts,FVinds) = spherical(G)
     in
     ##(for d:#FVinds
     	 do for FVI@j in FVinds[d]
 	    do (
-	       if statuss[d][j][0]="T" then true
-	       elif statuss[d][j][0] = "F" then false
-	       else prints("OOPS at d = ",d,", j = ",j); true
+	       if statusDONE[d][j][0]="T" then true
+	       elif statusDONE[d][j][0] = "F" then false
+	       else prints("ERROR at d = ",d,", j = ",j); false
 	       fi,
 	    	facet_bary(verts,FVI)
 		)
@@ -1182,19 +1245,24 @@ set JustTheFacts(RealForm G) = [(bool,ratvec)]:
 	     od.##
      esac
 
-{ meant to record information about unitarity for all facets }
-{now marks unipotent parameters as "T[number of dual nilpotent]"
-Also examines induction from all maximal Levis}
-set facet_statusu_ind(RealForm G,[[ratvec]] FPPB) = [[string]]:
-    let statusQuo = facet_statusu(G,FPPB)
+{.record information about unitarity for all facets.}
+{Examines induction from all maximal Levis. Marks unipotent parameters as
+"T[number of dual nilpotent]", induced as "Ti" or "Fi"
+FPPB should first be pruned by down_to_business}
+set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] FPPind) =
+[[string]]:
+    let FPPB = for d:#FPPind do for Find in FPPind[d] do facet_bary(vlist,Find) od od
     then allStatusQuo = [string]: ##statusQuo, allFPPB = [ratvec]: ##FPPB,
     allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
     maxLevis = [RealForm]: for i:G.ss_rank
     	     do real_Levi_by_wt(G.fundamental_weights[i],x_open(G)) od
+{indices to convert from statusQuo to allStatusQuo}
+    then Ns = for d:#statusQuo do sum(for e:d do #statusQuo[e] od) od
     then Index= ParamPol: index(allFPPB)
     then JTFLs = [ [(bool,ratvec)] ]:
     	 for L in maxLevis
 	 do JustTheFacts(L) od
+{ update StatusQuo working through Levis }
     then temp = for L@j in maxLevis
     do
     for (uboolL,nuL) in JTFLs[j]
@@ -1204,124 +1272,70 @@ set facet_statusu_ind(RealForm G,[[ratvec]] FPPB) = [[string]]:
 	    let nuG = first_param(InuL).nu
 	    then nG = find(Index, nuG)
 	    then trouble = void: if nG = -1
-	    	 then {prints("TROUBLE: ",j,"  ",L, "  ",nuL) fi;}
-		 nG := find(Index,facet_bary(G,nuG)) fi
+	    	 then nG := find(Index,facet_bary(G,nuG)) fi
+	    then trouble = if nG=-1 then prints("TROUBLE: ",j,"  ",L, "  ",nuL) fi
+	    then (d,j)=allLABELS[nG]
 	    then result =
-	    {if inducing rep is unitary, so is induced}
+	    {if inducing rep is unitary, so is induced, and facets in closure}
 	    	if(uboolL)
-		then if allStatusQuo[nG]="?" then "Ti" else allStatusQuo[nG] fi
+		then if allStatusQuo[nG]="?"
+		     then for e:d
+		     do
+		     for k:#statusQuo[e]
+		      	do{FACe}
+		      	if{SUB} is_subset_of_sorted(
+		      	      FPPind[d][j])(FPPind[e][k]) and
+			      allStatusQuo[Ns[e]+k]="?"
+		      	then allStatusQuo[Ns[e]+k]:= "Ticlosure"
+		      	fi{SUB}
+		     	od{FACe}
+		     od; "Ti"
+		     else allStatusQuo[nG]
+		     fi
 	    {if inducing is not hermitian nonunitary,
 		and induction is irreducible, then
-		induced is hermitian nonunitary}
-	   	else if #InuL = 1 and allStatusQuo[nG]="?" then "Fi"
+		induced is hermitian nonunitary, along with facets in opening}
+	   	else if #InuL = 1 and allStatusQuo[nG]="?"
+		     then for e: #statusQuo-d-1 from d+1
+		     do
+		     for k:#statusQuo[e]
+		      	do{FACe}
+		      	if{SUB} is_subset_of_sorted(
+		      	      FPPind[e][k])(FPPind[d][j])
+		      	then allStatusQuo[Ns[e]+k]:= "Fiopen"
+		      	fi{SUB}
+		     	od{FACe}
+		     od; "Fi"
 		     else allStatusQuo[nG]
 		     fi
 		fi
 	     in allStatusQuo[nG]:= result
 	 od
     od
-    then Ns = for d:#statusQuo do sum(for e:d do #statusQuo[e] od) od
-    in
-    for d:#statusQuo
-    do
+{now update statusQuo}
+     in
+     for d:#statusQuo
+     do
 	for j:#statusQuo[d] from Ns[d]
 	do allStatusQuo[j] od
-    od
+     od
 
 set facet_statusu_ind(RealForm G) = [[string]]:
-    facet_statusu_ind(G,FPP_barycenters(G))
-
+    let (vlist, FPPind) = FPP_vlist_indices(G)
+    then (statusu,,FPPind) = down_to_business(G,(vlist,FPPind))
+    in facet_statusu_ind(G,statusu,vlist,FPPind)
 
 {.spherical unitarity data one simple factor at a time.}
 set genSpherical(RealForm G) = [ ([[string]],[ratvec],[[FacetVertsIndex]]) ]:
 for G0 in real_simple_factors(G) do spherical(G0) od
 
-{ Need simple derived group. Uses information from maximal Levis}
-set sphericalIND(RealForm G, [ratvec] vlist, [[FacetVertsIndex]] FPPind) =
-    ([[string]],[ratvec],[[FacetVertsIndex]]):
-    let FPPB = for d:G.aff_rank
-    	do{DIM}
-		for j:#FPPind[d]
-		do{FAC}
-		facet_bary(vlist, FPPind[d][j])
-		od{FAC}
-	od{DIM}
-    then (FPPBnc,FPPindnc) = pick_not_cohom(G,FPPB,FPPind)
-    then (FPPBnch, FPPindnch) = pick_hermitian(G,FPPBnc,FPPindnc)
-    then status = [[string]]: facet_statusu_ind(G,FPPBnch)
-    then statusUp = {gets additional "F" from closure}
-    for d:#status
-    	do
-	let nsd = status[d]
-	in
-		for j:#status[d]
-		do
-		if nsd[j] = "Fi" then
-		   for e: #status-d-1 from d+1
-		   do
-		   let nse=status[e]
-		   in for k:#nse
-		      do{FACe}
-		      if{SUB} is_subset_of_sorted(
-		      	      FPPindnch[e][k])(FPPindnch[d][j])
-		      then nse[k]:= "Fiopen"
-		      fi{SUB}
-		      od{FACe}; status[e]:= nse
-		   od
-		fi
-		od; status[d]:= nsd
-	od
-    in
-    if(facet_verbose) then show(statusUp) fi;
-    for d:#statusUp
-    	do{DIMd}
-	if facet_verbose
-	then show(statusUp); prints(); prints("start dim ",d,
-	     " in spherical(G,vlist,FPPind); testing ",COUNT(statusUp)[d]," parameters.")
-	fi;
-	let nsd = statusUp[d], COUNTd = int: 0, GOALd = int: COUNT(statusUp)[d]
-	in
-		for j:#statusUp[d]
-		do{FACd}
-		let result =
-		if{RES} nsd[j][0]="F" or nsd[j]="T" or (#nsd[j]>1 and
-			nsd[j][1] !="t")
-		then nsd[j]
-		else if facet_verbose
-		     then if COUNTd <=  10 or COUNTd% (1+GOALd\10) =
-    	0 then prints("started test #",COUNTd, " of ",GOALd)
-		     	  fi; COUNTd:=COUNTd+1
-		     fi;
-			if{NEWU}(is_unitary(first_param(
-				standardize(parameter(
-					x_open(G), G.rho, FPPBnch[d][j])))))
-			then nsd[j]:="T"
-			else{NEWU}
-				for e: #statusUp-d-1 from d+1
-				do{DIMe}
-				let nse=statusUp[e]
-				in for k:#nse
-				   do{FACe}
-				   if{SUB} is_subset_of_sorted(
-				   	   FPPindnch[e][k])(FPPindnch[d][j])
-				   then nse[k]:= "F"
-				   fi{SUB}
-				   od{FACe};
-				statusUp[e]:=nse
-				od{DIMe};
-			nsd[j]:="F"
-			fi{NEWU}
-		fi{RES}
-		in result
-		od{FACd};
-		statusUp[d]:=nsd
-	od{DIMd};
-if(facet_verbose) then prints(); show(statusUp) fi; (statusUp,vlist,FPPindnch)
 
 {.same, using induced info.}
 set sphericalIND(RealForm G) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let (vlist,FPPVI) = FPP_vlist_indices(G)
-    in sphericalIND(G,vlist,FPPVI)
+    then (statusu,,FPPind) = down_to_business(G,(vlist,FPPVI))
+    then statusuIND = facet_statusu_ind(G,statusu,vlist,FPPind)
+    in spherical(G,(statusuIND,vlist,FPPind))
 
 { still need simple derived group }
 {need vlist to match FPP_vertex_sets_indices}
