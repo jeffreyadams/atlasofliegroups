@@ -45,7 +45,7 @@ facetBary which compute each of these three representations of
 the facet containing a given ratvec gamma in X^*_Q. }
 
 {ORGANIZATION: Main functions are spherical@RealForm and
-spherical_to_ht@(RealForm,int), defined around line 1030. 
+spherical_to_ht@(RealForm,int), defined around line 1070.
 
 Here is a brief outline. Following Barbasch and Steve
 Miller, calculate things related to the FUNDAMENTAL PARALLELEPIPED
@@ -54,7 +54,7 @@ take values in [0,1]. The FPP is partitioned into facets of various
 dimensions from 0 to the semisimple rank. Each d-dimensional facet is
 determined by its barycenter (a ratvec) or by its vertices (a list of
 d+1 ratvecs). The idea for computing all facets in the FPP is to
-compute all a list vlist of all vertices in the FPP (done by
+compute a list vlist of all vertices in the FPP (done by
 FPP_vertices@RootDatum); then for each d-dimensional facet to store a
 rank d+1 vec giving the indices of the vertices in vlist (done by
 FPP_vertex_sets_indices).
@@ -62,21 +62,21 @@ FPP_vertex_sets_indices).
 What's needed to get going is a list of all barycenters of facets in
 the FPP. These are calculated by
 
-Theorem. Every barycenter gamma (not just in FPP) can be written as
-w*gamma0 + tau, with gamma0 a barycenter of a facet in the fundamental
-alcove, w in W (finite Weyl group), and tau in the root lattice. If we
-require
+Theorem. Every [barycenter of a facet] gamma (not just in FPP) can be
+written as w*gamma0 + tau, with gamma0 unique [barycenter of a facet]
+in the fundamental alcove, w in W (finite Weyl group), and tau in the
+root lattice. If we require
 
    w*gamma0 is integrally dominant
 
 then w*gamma0 is unique, and so tau is unique.
 
-There are 2^{semisimpls rank - 1} gamma0; not too many. Marc kindly
-provided a very fast listing of the W-orbits W*gamma0. Picking out the
-integrally dominant ones is now done stupidly in functions with names
-like W_fund_barycentersID: stupid in the sense that it would have been
-cleverer to sort out the integrally dominant terms in the library.
-}
+There are 2^{semisimple rank - 1} facet barycenters gamma0 in the
+fundamental alcove.; not too many. Marc kindly provided a very fast
+listing of the W-orbits W*gamma0. Picking out the integrally dominant
+ones is now done stupidly in functions with names like
+W_fund_barycentersID: stupid in the sense that it would have been
+cleverer to sort out the integrally dominant terms in the library.  }
 
 { useful to assign this to 'true" to get information about the progress
 of long calculations }
@@ -1103,7 +1103,7 @@ set JustTheFacts(RealForm G) = [(bool,ratvec)]:
     then JTFs = for Gj in Gs do JustTheFactsSimple(Gj) od
     in
     case #Gs
-    	 in [],
+    	 in [(true,null(G.rank)/1)],
     	 JTFs[0],
     	 for (stat0,nu0) in JTFs[0]
     	     do for (stat1,nu1) in JTFs[1]
@@ -1124,10 +1124,10 @@ set JustTheFacts(RealForm G) = [(bool,ratvec)]:
 FPPind should first be pruned by down_to_business}
 set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] FPPind) =
 [[string]]:
-    let FPPB = for d:#FPPind do for Find in FPPind[d] do facet_bary(vlist,Find) od od
+    let FPPB = for d:#FPPind do for Find in FPPind[d] do facet_bary(vlist,Find) od od {,}
     then allStatusQuo = [string]: ##statusQuo, allFPPB = [ratvec]: ##FPPB,
-    allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
-    maxLevis = [RealForm]: for i:G.ss_rank
+    	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
+    	 maxLevis = [RealForm]: for i:G.ss_rank
     	     do real_Levi_by_wt(G.fundamental_weights[i],x_open(G)) od
 {indices to convert from statusQuo to allStatusQuo}
     then Ns = for d:#statusQuo do sum(for e:d do #statusQuo[e] od) od
@@ -1138,20 +1138,28 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] F
 { update StatusQuo working through Levis }
     then temp = for L@j in maxLevis
     do
+    let xL = x_open(L), rhoL = L.rho
+    in
     for (uboolL,nuL) in JTFLs[j]
     	do
-	let InuL = real_induce_irreducible(parameter(x_open(L),L.rho,nuL),G)
+	{let gammaG = dominant(G,nuL + tworhoM/2)
+	in if (1+invG)*gammaG != tworhoM then []}
+	let InuLstd = real_induce_standard(parameter(xL, rhoL, nuL), G)
+	then nuG=first_param(InuLstd).nu
+	then nG = find(Index, nuG)
+	then trouble = void: if nG = -1
+	     then nG := find(Index,facet_bary(G,nuG)) fi
+	then bigTrouble = if nG=-1 then prints("TROUBLE: ",j,"  ",L, "  ",nuL) fi
+	then (d,j)=allLABELS[nG]
 	in
-	    let nuG = first_param(InuL).nu
-	    then nG = find(Index, nuG)
-	    then trouble = void: if nG = -1
-	    	 then nG := find(Index,facet_bary(G,nuG)) fi
-	    then trouble = if nG=-1 then prints("TROUBLE: ",j,"  ",L, "  ",nuL) fi
-	    then (d,j)=allLABELS[nG]
-	    then result =
-	    {if inducing rep is unitary, so is induced, and facets in closure}
+	let result =
+	    if allStatusQuo[nG]!="?"
+	    then allStatusQuo[nG]
+	    else 
+	    let InuL = real_induce_irreducible(parameter(x_open(L),L.rho,nuL),G)
+	    in
+		{if inducing rep is unitary, so is induced, and facets in closure}
 	    	if(uboolL)
-		then if allStatusQuo[nG]="?"
 		     then for e:d
 		     do
 		     for FIe@k in FPPind[e]
@@ -1163,12 +1171,10 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] F
 		      	fi{SUB}
 		     	od{FACe}
 		     od; "Ti"
-		     else allStatusQuo[nG]
-		     fi
-	    {if inducing is not hermitian nonunitary,
-		and induction is irreducible, then
-		induced is hermitian nonunitary, along with facets in opening}
-	   	else if #InuL = 1 and allStatusQuo[nG]="?"
+	    	{if inducing is hermitian nonunitary,
+		    and induction is irreducible, then induced is hermitian nonunitary,
+		    along with facets in opening}
+	   	else if #InuL = 1
 		     then for e: #statusQuo-d-1 from d+1
 		     do
 		     for FIe@k in FPPind[e]
@@ -1182,6 +1188,7 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] F
 		     else allStatusQuo[nG]
 		     fi
 		fi
+	     fi
 	     in allStatusQuo[nG]:= result
 	 od
     od
