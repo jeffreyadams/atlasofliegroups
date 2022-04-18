@@ -1235,7 +1235,7 @@ set spherical_to_htC(RealForm G, int bound) =
 
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G must have simple derived group.}
-set JustTheFactsSimple(RealForm G) = [(bool,ratvec)]:
+set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
     let (statusDONE,verts,FVinds) = spherical(G)
     in
     ##(for d:#FVinds
@@ -1250,18 +1250,75 @@ set JustTheFactsSimple(RealForm G) = [(bool,ratvec)]:
 	    od
 	 od)
 
-{.haven't accounted for COMPLEX simple factors yet.}
+{.forget dimension info; just (for each spherical hermitian barycenter)
+whether or not unitary, inducing nu. G must be simple derived group.}
+set JustTheFacts_C_simple(RealForm G) = [(bool,ratvec)]:
+    let (statusDONE,verts,FVinds) = sphericalC(G)
+    in
+    ##(for d:#FVinds
+    	 do for FVI@j in FVinds[d]
+	    do (
+	       if statusDONE[d][j][0]="T" then true
+	       elif statusDONE[d][j][0] = "F" then false
+	       else prints("ERROR at d = ",d,", j = ",j); false
+	       fi,
+	    	facet_bary(verts,FVI)
+		)
+	    od
+	 od)
+
+{.doesn't account for COMPLEX simple factors.}
 set real_simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor
     in
     for rd in simple_factors(G) do real_form(inner_class(rd,delta),delta,tf) od
 
-set JustTheFacts(RealForm G) = [(bool,ratvec)]:
-    let Gs = real_simple_factors(G)
-    then JTFs = for Gj in Gs do JustTheFactsSimple(Gj) od
+{.haven't accounted for COMPLEX simple factors yet.}
+set real_and_complex_simple_factors(RealForm G) = ([RealForm],[RealForm]):
+    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
+    	simpleFactors = simple_factors(G),
+    	RealFactors = [RealForm]:[], ComplexFactors = [RealForm]:[]
     in
-    case #Gs
-    	 in [(true,null(G.rank)/1)],
+    for rd@i in simpleFactors
+    do
+    let root = simple_roots(rd)[0]
+    then newRoot = delta*root
+    then simpleRootIndex = simple_root_index(G,root),
+    	 newSimpleRootIndex = simple_root_index(G,newRoot)
+    then diagram = diagram_component(G,simpleRootIndex),
+    	 newDiagram = diagram_component(G,newSimpleRootIndex)
+    in  if diagram=newDiagram then RealFactors##:=
+    	 [real_form(inner_class(rd,delta), delta, tf)]
+	 else if diagram[0] < newDiagram[0] then ComplexFactors##:=
+	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
+		delta), delta, tf)]
+	      fi
+	fi
+    od; (RealFactors,ComplexFactors)
+
+set max_real_Levis(RealForm G) = [RealForm]:
+    let xopen=x_open(G), Grho = G.rho
+    then inv=xopen.involution
+    then tworhoM = (1+inv)*Grho
+     then MRL= [RealForm]: []
+    in for xi@j in G.fundamental_weights
+    do
+    let restrFund = (1-inv)*xi
+    in if all(for i:j do restrFund*G.simple_coroots[i] = 0 od)
+       then MRL##:= [real_Levi_by_wt(restrFund, xopen)]
+       fi
+    od; MRL
+
+{restricted to L having three simple factors; meant to be applied to a
+maximal Levi in a simple G.}
+set JustTheFacts(RealForm L) = [(bool,ratvec)]:
+    let (LRs,LCs) = real_and_complex_simple_factors(L)
+    then JTFs = for LRj in LRs do JustTheFacts_R_simple(LRj) od ##
+    	 for LCk in LCs do JustTheFacts_C_simple(LCk) od
+
+    in
+    case #LRs + #LCs
+    	 in [(true,null(L.rank)/1)],
     	 JTFs[0],
     	 for (stat0,nu0) in JTFs[0]
     	     do for (stat1,nu1) in JTFs[1]
@@ -1277,16 +1334,16 @@ set JustTheFacts(RealForm G) = [(bool,ratvec)]:
 	     od.##
      esac
 
+
 {.like facet_statusu, adding info from real induction.}
 {Marks unipotent parameters as "T[number of dual nilpotent]", induced as "Ti..." or "Fi..."
 FPPind should first be pruned by down_to_business}
-set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] FPPind) =
-[[string]]:
+set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist,
+    [[vec]] FPPind) = [[string]]:
     let FPPB = for d:#FPPind do for Find in FPPind[d] do facet_bary(vlist,Find) od od {,}
     then allStatusQuo = [string]: ##statusQuo, allFPPB = [ratvec]: ##FPPB,
     	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
-    	 maxLevis = [RealForm]: for i:G.ss_rank
-    	     do real_Levi_by_wt(G.fundamental_weights[i],x_open(G)) od
+    	 maxLevis = [RealForm]: max_real_Levis(G)
 {indices to convert from statusQuo to allStatusQuo}
     then Ns = for d:#statusQuo do sum(for e:d do #statusQuo[e] od) od
     then Index= ParamPol: index(allFPPB)
@@ -1298,25 +1355,30 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] F
     do
     let xL = x_open(L), rhoL = L.rho
     in
-    for (uboolL,nuL) in JTFLs[j]
+    for (uboolL,gammaL) in JTFLs[j]
     	do
-	{let gammaG = dominant(G,nuL + tworhoM/2)
+	{let gammaG = dominant(G,gammaL)
 	in if (1+invG)*gammaG != tworhoM then []}
-	let InuLstd = real_induce_standard(parameter(xL, rhoL, nuL), G)
-	then nuG=first_param(InuLstd).nu
-	then nG = find(Index, nuG)
+	let IgammaLstd = real_induce_standard(parameter(xL, rhoL, gammaL), G)
+	then gammaG=first_param(IgammaLstd).infinitesimal_character
+	then nG = find(Index, gammaG)
 	then trouble = void: if nG = -1
-	     then nG := find(Index,facet_bary(G,nuG)) fi
-	then bigTrouble = if nG=-1 then prints("TROUBLE: ",j,"  ",L, "  ",nuL) fi
-	then (d,j)=allLABELS[nG]
+	     then nG := find(Index,facet_bary(G,gammaG)) fi
+	then bigTrouble = if nG=-1 then prints("TROUBLE at MaxLevi #",j,
+	     "  which is ",L, ",  and gammaL = ",gammaL) fi
+	     {
+	     at this point should just go on to the next (uboolL,gammaL);
+	     }
+	then (d,j) = allLABELS[nG]
 	in
 	let result =
 	    if allStatusQuo[nG]!="?"
 	    then allStatusQuo[nG]
 	    else 
-	    let InuL = real_induce_irreducible(parameter(x_open(L),L.rho,nuL),G)
+	    let IgammaL = real_induce_irreducible(parameter(x_open(L),L.rho,gammaL),G)
 	    in
-		{if inducing rep is unitary, so is induced, and facets in closure}
+		{if inducing rep is unitary, so is induced, and facets
+		    in closure}
 	    	if(uboolL)
 		     then for e:d
 		     do
@@ -1330,9 +1392,9 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist, [[vec]] F
 		     	od{FACe}
 		     od; "Ti"
 	    	{if inducing is hermitian nonunitary,
-		    and induction is irreducible, then induced is hermitian nonunitary,
-		    along with facets in opening}
-	   	else if #InuL = 1
+		    and induction is irreducible, then induced is hermitian
+		    nonunitary, along with facets in opening}
+	   	else if #IgammaL = 1
 		     then for e: #statusQuo-d-1 from d+1
 		     do
 		     for FIe@k in FPPind[e]
