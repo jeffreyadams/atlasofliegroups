@@ -422,10 +422,13 @@ set facet(SimpleAffine Affd, ratvec gamma) = Facet:
     in (for betav in F0pos do wtilde*betav od ,
        for betav in F0zero do wtilde*betav od)
 
-{ computes the FacetBary of any ratvec }
-set facet_bary(SimpleAffine Affd, ratvec gamma) = FacetBary:
-    let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
-    in	wtilde*facet_bary0(Affd,gamma0)
+{ computes the FacetBary of any ratvec, for possibly nonsimple rd}
+set facet_bary(RootDatum rd, ratvec gamma) = FacetBary:
+    sum(rd.rank, for Affd in simple_factors(rd)
+    		 do
+    		 let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+    		 in	wtilde*facet_bary0(Affd,gamma0)
+		 od)
 
 {.number of vertices in W*(fundamental alcove).}
 set W_fund_vertices_card(SimpleAffine Affd) = int:
@@ -962,11 +965,14 @@ set down_to_business(RealForm G, ([ratvec] vlist, [[FacetVertsIndex]] FPPind)) =
     if facet_verbose then prints("completing down_to_business"); show(status) fi;
     (status,vlist,FPPindnch)
 
-{.eliiminate nonfinal, nonhermitian parameters for COMPLEX G.}
+{.eliiminate (nonfinal and) nonhermitian parameters for COMPLEX G.}
 set down_to_businessC(RealForm G, ([ratvec] vlistL,
     [[FacetVertsIndex]] FPPindL)) = 
     ([[string]],[ratvec],[[FacetVertsIndex]]):
-	let GL=simple_factors(G)[0]
+	let GL=simple_factors(G)[0], one_minus_theta =
+	    (1-x_open(G).involution)
+	then vlistC = for gammaL in vlistL
+	     do one_minus_theta*gammaL od
 	then w0L = GL.w0
         then FPPBL = [[FacetBary]]:
 	for FPPindLd in FPPindL
@@ -995,7 +1001,7 @@ set down_to_businessC(RealForm G, ([ratvec] vlistL,
     	then status = [[string]]: facet_statusu(GL.split_form,FPPBnch)
     	in
     	if facet_verbose then prints("completing down_to_businessC"); show(status) fi;
-    	(status, vlistL, FPPindnch)
+    	(status, vlistC, FPPindnch)
 
 {.eliiminate nonfinal, nonhermitian parameters.}
 set down_to_business_bary(RealForm G, ([ratvec] vlist, [[FacetBary]] FPPB)) =
@@ -1088,7 +1094,7 @@ set sphericalC(RealForm G, ([[string]] status, [ratvec] vlist,
 		     	  fi
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
-			 parameter(xopen, G.rho, 2*TODOBd[k])))))
+			 parameter(xopen, G.rho, TODOBd[k])))))
 		then nsd[j]:="T"
 		else{NEWU}
 		for e: #status-d-1 from d+1
@@ -1218,8 +1224,8 @@ set sphericalC(RealForm G) =
     ([[string]],[ratvec],[[FacetVertsIndex]]):
     let GL = simple_factors(G)[0]
     then (vlistL,FPPVIL) = FPP_vlist_indices(GL)
-    then (status,,FPPVInch) = down_to_businessC(G,(vlistL,FPPVIL))
-    in sphericalC(G,(status,vlistL,FPPVInch))
+    then (status,vlistC,FPPVInch) = down_to_businessC(G,(vlistL,FPPVIL))
+    in sphericalC(G,(status,vlistC,FPPVInch))
 
 set spherical_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVertsIndex]]):
     let (vlist,FPPVI) = FPP_vlist_indices(G)
@@ -1340,7 +1346,9 @@ set JustTheFacts(RealForm L) = [(bool,ratvec)]:
 FPPind should first be pruned by down_to_business}
 set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist,
     [[vec]] FPPind) = [[string]]:
-    let FPPB = for d:#FPPind do for Find in FPPind[d] do facet_bary(vlist,Find) od od {,}
+    {let ... make FPPB compatible with complex case?}
+    let FPPB = for d:#FPPind do for Find in FPPind[d] do
+    	facet_bary(vlist,Find) od od, GL=simple_factors(G)[0]
     then allStatusQuo = [string]: ##statusQuo, allFPPB = [ratvec]: ##FPPB,
     	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
     	 maxLevis = [RealForm]: max_real_Levis(G)
@@ -1365,11 +1373,12 @@ set facet_statusu_ind(RealForm G,[[string]] statusQuo, [ratvec] vlist,
 	then trouble = void: if nG = -1
 	     then nG := find(Index,facet_bary(G,gammaG)) fi
 	then bigTrouble = if nG=-1 then prints("TROUBLE at MaxLevi #",j,
-	     "  which is ",L, ",  and gammaL = ",gammaL) fi
+	     "  which is ",L, ",  and gammaL = ",gammaL, ", gammaG = ",
+	     	gammaG) fi
 	     {
 	     at this point should just go on to the next (uboolL,gammaL);
 	     }
-	then (d,j) = allLABELS[nG]
+	then (d,j) = allLABELS[nG] 
 	in
 	let result =
 	    if allStatusQuo[nG]!="?"
@@ -1444,7 +1453,16 @@ set spherical_ind_to_ht(RealForm G, int bound) = ([[string]],[ratvec],[[FacetVer
     let (vlist,FPPVI) = FPP_vlist_indices(G)
     then (statusu,,FPPind) = down_to_business(G,(vlist,FPPVI))
     then statusuIND = facet_statusu_ind(G,statusu,vlist,FPPind)
-    in spherical_to_ht(G, (statusuIND,vlist, FPPVI),bound)
+    in spherical_to_ht(G, (statusuIND,vlist, FPPind),bound)
+
+{.version for complex simple G.}
+set spherical_indC(RealForm G) =
+    ([[string]],[ratvec],[[FacetVertsIndex]]):
+    let GL = simple_factors(G)[0]
+    then (vlistL,FPPVIL) = FPP_vlist_indices(GL)
+    then (statusu,vlistC,FPPVInch) = down_to_businessC(G,(vlistL,FPPVIL))
+    then statusuIND = facet_statusu_ind(G,statusu,vlistC,FPPVInch)
+    in sphericalC(G,(statusuIND,vlistC,FPPVInch))
 
 {idea is in a session to say
   >> FILENAME write(status,vlist,Cand)
