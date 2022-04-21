@@ -110,7 +110,8 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
     then Q= add_weights (P,wedge_weights(wts,ps,n))
     in branch_std(Q,height(mu)+add_ht(G))
 
-
+{Form parameter of complexification of G with lambda=chi, compute hodge
+ filtration and list highest weights}
 set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
@@ -125,6 +126,8 @@ set fold (vec long)= vec:
    let n=rat_as_int(#long/2)
     in for i:n do long[i]+long[i+n] od
 
+{Turn highest weights for complexification (in previous step) into highest
+weights for G}
 set second_step ([[(Split,KHighestWeight)]] list)=[[(Split,vec)]]:
    for level in list
     do for (n,(,y,lam)) in level
@@ -132,6 +135,9 @@ set second_step ([[(Split,KHighestWeight)]] list)=[[(Split,vec)]]:
 	od
     od
 
+{Restrict finite dimensionals with highest weights computed in second step
+to K; with hodge degrees and split coefficients carried forward from
+step 1, this gives a KHodgeParamPol}
 set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
    for level in list
     do sum(G, for (n,v) in level
@@ -158,6 +164,7 @@ set steps_one_two_three_test (RealForm G,vec chi,int hb,int n3)=[ParamPol]:
    then list2=second_step(list1)
    in third_step_test(G,list2,n3)
 
+{Replace K-types in output of step 3 by their K-type formulas}
 set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
    for level in list
     do sum(G,for c@p in level do c*K_type_formula(p) od)
@@ -176,6 +183,8 @@ set last_step_old ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
 	od;
     for P in result do branch_std(P,hb+ah) od
 
+{For each external power i, add (-1)^i*the appropriate weights to each parameter
+and move the result up by i degrees; then do branch_std to convert back to K-types}
 set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
    let n=#start,  wts=kwts(G), ps=power_set(kdim)
    then result=start
