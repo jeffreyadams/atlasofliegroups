@@ -283,7 +283,7 @@ class context // holds values that remain fixed across extended block
 }; // |context|
 
 
-// A variant of |ext_block::param| that avoids fixing |gamma|
+// A variant of (now removed) |ext_block::param| that avoids fixing |gamma|
 // Identical (supplementary) data fields, method absent: |restrict|
 struct ext_param // allow public member access; methods ensure no invariants
 {

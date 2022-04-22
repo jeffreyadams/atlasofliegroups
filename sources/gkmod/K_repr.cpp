@@ -384,11 +384,11 @@ term_list Rep_context::finals_for(K_repr::K_type t) const
 	    {
 	      K_repr::K_type t2 = sr_K(Cxs.second,lr);
 	      assert( t2.height() == current.first.height() );
-	      insert(std::make_pair(std::move(t2),current.second),todo);
+	      insert(std::make_pair(std::move(t2),coef),todo);
 	    }
 	    K_repr::K_type t1 = sr_K(Cxs.first,std::move(lr));
 	    assert( t1.height() == current.first.height() );
-	    insert(std::make_pair(std::move(t1),current.second),todo);
+	    insert(std::make_pair(std::move(t1),coef),todo);
 	    goto drop; // we've destroyed |current|, don't contribute it
 	  }
 	  else continue; // nothing to do for a (singular) real nonparity root

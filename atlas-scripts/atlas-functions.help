@@ -937,16 +937,16 @@ extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   into the list of parameters and an index in the delta-folded Dynkin diagram
   (an extended generator), and containing for the first matrix a code for the
   type of the parameter for the generator, and for the other two matrices the
-  indices of the neighbors for this generator (two for double-valued Cayley
-  transforms or for single-valued ones with in addition a cross action, one for
-  a complex cross action, none for cases like a compact imaginary generator).
-  Every parameter in the extended block has an implicit choice of extended
-  parameter attached, with respect to which choices certain neighbor relations
-  may involve a sign flip, which is indicated in the corresponding matrix entry
-  (link value): if the extended block has size n, then link values from 0 to n-1
-  indicate a neighbor with no flip, negative values from -1 to -n indicate a
-  sign flip (for the index corresponding by subtraction from -1), and the value
-  n indicates absence of a link.
+  indices of the neighbors for this generator: two for Cayley transforms (either
+  the double-valued transform, or the single-valued transform with in addition
+  the cross action); one for a complex cross action; none for cases like a
+  compact imaginary generator. Every parameter in the extended block has an
+  implicit choice of extended parameter attached, with respect to which choices
+  certain neighbor relations may involve a sign flip, which is indicated in the
+  corresponding matrix entry (link value): if the extended block has size n,
+  then link values from 0 to n-1 indicate a neighbor with no flip, negative
+  values from -1 to -n indicate a sign flip (for the index corresponding by
+  subtraction from -1), and the value n indicates absence of a link.
 
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
 real_form: (ParamPol->RealForm): recover the real form from a ParamPol value

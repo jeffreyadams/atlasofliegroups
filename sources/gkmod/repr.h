@@ -599,18 +599,17 @@ public:
 }; // |class common_context|
 
 /*
-  This class is for |paramin| below what |ext_block::context| is for
-  |ext_block::param|: it holds relevant values that remain fixed across an
-  |extended block|. Data fields that are removed with respect to
-  |ext_block::param| are |d_gamma|, |lambda_shifts|. Methods that are absent:
-  |gamma|, |lambda_shift|
+  This class holds relevant values that remain fixed across an extended block,
+  and are unchaged under integral changes to |gamma|. Data fields that are
+  removed with respect to |ext_block::context| are |d_gamma|, |lambda_shifts|.
+  Methods that are absent: |gamma|, |lambda_shift|
 */
 class Ext_common_context : public common_context
 {
   const WeightInvolution d_delta;
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
-  RootNbrSet delta_fixed_roots;
-  weyl::Twist twist;
+  RootNbrSet delta_fixed_roots; // as subset of full root system
+  weyl::Twist twist; // of the full Dynkin diagram
   int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
@@ -622,6 +621,7 @@ class Ext_common_context : public common_context
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+  // in |l_shift| (only!), |s| is an index into the |sub| simple roots
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$

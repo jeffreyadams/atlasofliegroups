@@ -513,7 +513,7 @@ BlockElt twisted (const Block& block,
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
    root system of |c| to a simple root, and return the left-conjugating word
    that was applied. This may fail, if after some conjugation one ends up with
-   the long root of a nontrivially folded A2 subsystem (in which case there
+   the high root of a nontrivially folded A2 subsystem (in which case there
    cannot be any solution because |alpha| is fixed by the involution but none
    of the simple roots in its component of the root system is). In this case
    |alpha| is left as that non simple root, and the result conjugates to it.
@@ -772,9 +772,9 @@ void validate(const ext_param& E)
   on the |gamma_lambda| and |l| components are not purely reflections. The
   difference with respect to pure reflection action can be computed comparing
   |rho_r| values (half sums of positive real roots in the full system) with
-  the reflected image of that value taken as the starting point, respectively
+  the reflected image of that value taken at the starting point, respectively
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
-  "correction" terms below.
+  "correction" terms |rho_r_shift| and |dual_rho_im_shift| below.
  */
 ext_param complex_cross(const repr::Ext_common_context& ctxt,
 			const ext_gen& p,
@@ -904,7 +904,7 @@ void z_align (const ext_param& E, ext_param& F, bool extra_flip, int t_mu)
 
 // compute type of |p| for |E|, and export adjacent |ext_param| values in |links|
 DescValue star (const repr::Ext_common_context& ctxt,
-		const ext_param& E, const ext_gen& p,
+		const ext_param& E, const ext_gen& p, // for |ctxt.subsys()|
 		containers::sl_list<ext_param>& links)
 {
   ext_param E0=E; // a copy of |E| that might be modified below to "normalise"
@@ -919,7 +919,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
   switch (p.type)
   {
   default: assert(false);
-    result=one_complex_ascent; // shut up "maybe uninitialsed" warning
+    result=one_complex_ascent; // shut up "maybe uninitialised" warning
   case ext_gen::one:
     { const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
       const Weight& alpha = rd.root(n_alpha);
@@ -979,7 +979,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	else
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
 
-	  auto new_gamma_lambda = E.gamma_lambda; auto new_tau = E.tau;
+	  auto new_gam_lam = E.gamma_lambda; auto new_tau = E.tau;
 	  if (not rd.is_simple_root(alpha_simple))
 	  {
 	    --tau_coef; // the parity change and decrease are both relevant
@@ -988,7 +988,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	    RootNbr first = // corresponding root summand, conjugated back
 	      rd.permuted_root(rd.simpleRootNbr(s),ww);
 	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
-	    new_gamma_lambda -= rd.root(first);
+	    new_gam_lam -= rd.root(first);
 	    new_tau -= rd.root(first);
 	  }
 
@@ -1007,7 +1007,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 
 	  ext_param F0(E.ctxt,new_tw,
-		     new_gamma_lambda - rho_r_shift,
+		     new_gam_lam - rho_r_shift,
 		     new_tau - alpha*(tau_coef/2),
 		     E.l + alpha_v*(tf_alpha/2), E.t);
 	  ext_param F1(E.ctxt,new_tw,
@@ -1050,15 +1050,15 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	    return one_real_pair_switched; // case 1r1s
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
-	  const RatWeight new_gamma_lambda =
+	  const RatWeight new_gam_lam =
 	    E.gamma_lambda + rho_r_shift - alpha*(level/2);
-	  assert(new_gamma_lambda.dot(alpha_v)==0); // check effect of |level_a|
+	  assert(new_gam_lam.dot(alpha_v)==0); // check effect of |level_a|
 
 	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  ext_param F0(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l          , E0.t);
-	  ext_param F1(E.ctxt,new_tw,new_gamma_lambda, E.tau, E.l + alpha_v, E0.t);
+	  ext_param F0(E.ctxt,new_tw,new_gam_lam, E.tau, E.l          , E0.t);
+	  ext_param F1(E.ctxt,new_tw,new_gam_lam, E.tau, E.l + alpha_v, E0.t);
 
 	  z_align(E0,F0,flipped);
 	  z_align(E0,F1,flipped);
@@ -1096,9 +1096,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	    return one_real_nonparity; // case 1rn, no link added here
 	  result = one_real_single; // case 1r2
 
-	  const RatWeight new_gamma_lambda =
+	  const RatWeight new_gam_lam =
 	    E.gamma_lambda + rho_r_shift - alpha*(level/2);
-	  assert(new_gamma_lambda.dot(alpha_v)==0); // check effect of |level_a|
+	  assert(new_gam_lam.dot(alpha_v)==0); // check effect of |level_a|
 
 	  const Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
@@ -1110,7 +1110,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  E1.gamma_lambda -= alpha;
 	  assert(not same_standard_reps(E0,E1));
 
-	  ext_param F(E.ctxt,new_tw, new_gamma_lambda, new_tau, E.l, E0.t);
+	  ext_param F(E.ctxt,new_tw, new_gam_lam, new_tau, E.l, E0.t);
 
 
 	  z_align(E0,F,flipped);
@@ -1261,7 +1261,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
 
-	const RatWeight new_gamma_lambda = E.gamma_lambda + rho_r_shift
+	const RatWeight new_gam_lam = E.gamma_lambda + rho_r_shift
 	  - alpha*(a_level/2) - beta*(b_level/2);
 
 	int ta = E.t.dot(alpha); int tb = E.t.dot(beta);
@@ -1285,9 +1285,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  assert(E1.t.dot(alpha)==m and E1.t.dot(beta)==-m);
 
 	  ext_param F0(E.ctxt, new_tw,
-		     new_gamma_lambda,E.tau, E.l+alpha_v*m, E0.t);
+		     new_gam_lam,E.tau, E.l+alpha_v*m, E0.t);
 	  ext_param F1(E.ctxt, new_tw,
-		     new_gamma_lambda,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t);
+		     new_gam_lam,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t);
 
 	  z_align(E0,F0,flipped,m*((b_level-a_level)/2));
 	  z_align(E1,F1,flipped,m*((a_level-b_level)/2));
@@ -1320,9 +1320,9 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	  // Cayley links
 	  ext_param F0(E.ctxt, new_tw,
-		     new_gamma_lambda, E.tau, E.l+alpha_v*m, E0.t);
+		     new_gam_lam, E.tau, E.l+alpha_v*m, E0.t);
 	  ext_param F1(E.ctxt, new_tw,
-		     new_gamma_lambda, E.tau, E.l+alpha_v*mm, E1.t);
+		     new_gam_lam, E.tau, E.l+alpha_v*mm, E1.t);
 
 	  z_align(E0,F0,flipped,m *((b_level-a_level)/2));
 	  z_align(E1,F1,flipped,mm*((b_level-a_level)/2));
@@ -1343,7 +1343,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  E1.t = E0.t; // cross action, keeps adaptation of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
-	  ext_param F(E.ctxt, new_tw, new_gamma_lambda, E.tau, E.l, E0.t);
+	  ext_param F(E.ctxt, new_tw, new_gam_lam, E.tau, E.l, E0.t);
 
 	  z_align(E0,F,flipped); // no 4th arg, as |E.t.dot(alpha)==0| etc.
 	  z_align(F,E1,flipped);
@@ -1354,7 +1354,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
       else // length 2 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
-	{ // twisted non-commutation with |s0.s1|
+	{ // non $\theta$-stable plane: twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
 	  links.push_back(complex_cross(ctxt,p,E));
 	}
@@ -1381,7 +1381,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  // number of times $\alpha$ is subtracted from $\gamma-\lambda$
 
 
-	  const RatWeight new_gamma_lambda =
+	  const RatWeight new_gam_lam =
 	    E.gamma_lambda - alpha*f - rho_r_shift;
 	  // both $\gamma-\lambda$ and $\tau$ get $f*alpha$ subtracted by
 	  // $\alpha$-reflection; adapt $\tau$ for vanishing $1-\delta$ image
@@ -1393,7 +1393,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  const Coweight new_l = E.l + alpha_v*dual_f;
 	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
-	  ext_param F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
+	  ext_param F (E.ctxt, new_tw, new_gam_lam, new_tau, new_l, new_t,
 		     E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Ci case
@@ -1420,7 +1420,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
 
-	  const RatWeight new_gamma_lambda = // \emph{reflect} parallel to alpha
+	  const RatWeight new_gam_lam = // \emph{reflect} parallel to alpha
 	    E.gamma_lambda + rho_r_shift - alpha*f;
 	  const Weight new_tau = rd.reflection(n_alpha,E.tau) - alpha*f;
 
@@ -1429,7 +1429,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
-	  ext_param F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
+	  ext_param F (E.ctxt, new_tw, new_gam_lam, new_tau, new_l, new_t,
 		   E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Cr case
@@ -1517,19 +1517,19 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
-	const RatWeight new_gamma_lambda = // make level for |kappa| 0
+	const RatWeight new_gam_lam = // make level for |kappa| 0
 	  E.gamma_lambda+rho_r_shift - alpha*(a_level+b_level); // even multiple
 
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	E0.gamma_lambda -= alpha*(a_level+b_level); // even multiple of |alpha|
 	E0.tau += beta_alpha*((a_level+b_level)/2);
 	assert(same_sign(E,E0)); // neither |t| change nor 2*real_root matter
-	assert(E0.gamma_lambda+rho_r_shift==new_gamma_lambda);
+	assert(E0.gamma_lambda+rho_r_shift==new_gam_lam);
 	validate(E0);
 
 	flipped = not flipped; // January unsurprise for 3r
 
-	ext_param F(E.ctxt, new_tw, new_gamma_lambda,E0.tau,E0.l,E0.t);
+	ext_param F(E.ctxt, new_tw, new_gam_lam,E0.tau,E0.l,E0.t);
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
@@ -1554,12 +1554,12 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  int dtf_alpha = E.gamma_lambda.dot(alpha_v);
-	  RatWeight new_gamma_lambda = E.gamma_lambda - rho_r_shift; // for now
+	  RatWeight new_gam_lam = E.gamma_lambda - rho_r_shift; // for now
 
 	  if (ascent) // 3Ci
 	  {
 	    if (dtf_alpha%2!=0)
-	    { new_gamma_lambda -= beta_alpha;
+	    { new_gam_lam -= beta_alpha;
 	      E0.gamma_lambda -= beta_alpha;
 	      E0.tau -= beta_alpha;
 	    }
@@ -1568,7 +1568,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	    validate(E0);
 	    assert(E0.t.dot(kappa)==0);
 
-	    ext_param F(E.ctxt,new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
+	    ext_param F(E.ctxt,new_tw, new_gam_lam, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Ci
 	    z_align(E0,F, flipped^(not same_sign(E,E0)));
@@ -1577,7 +1577,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  else // descent, so 3Cr
 	  {
 	    E0.gamma_lambda  -= kappa*dtf_alpha;
-	    new_gamma_lambda -= kappa*dtf_alpha;
+	    new_gam_lam -= kappa*dtf_alpha;
 
 	    E0.t -= kappa_v*(kappa.dot(E.t)/2); // makes |E0.t.dot(kappa)==0|
 	    if (tf_alpha%2!=0)
@@ -1586,7 +1586,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	      E0.l += b_a;
 	      E0.t -= b_a;
 	    }
-	    ext_param F(E.ctxt, new_tw, new_gamma_lambda, E0.tau, E0.l, E0.t);
+	    ext_param F(E.ctxt, new_tw, new_gam_lam, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Cr
 	    z_align(E0,F,flipped^not same_sign(E,E0));
@@ -2264,6 +2264,7 @@ KGBElt ext_param::x() const
 const WeightInvolution& ext_param::theta () const
   { return ctxt.inner_class().matrix(tw); }
 
+// restrict from extended group to |G|, which requires providing inf. character
 repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
 {
   const RatWeight gamma_rho = gamma-rho(rc().root_datum());
@@ -2312,13 +2313,15 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
   // it will be convenent to have a working (modifiable) copy of |gamma|
   RatWeight gamma = scaled_sr.gamma(); // a working copy
-  KGBElt x = scaled_sr.x(); // another variable, for convenience
+  KGBElt x = scaled_sr.x(); // another variable, only used to record involution
 
   ext_param E0 = ext_param::default_extend(ctxt,sr);
 
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
-  int_Vector r_g_eval (rd.semisimple_rank()); // simple root evaluations at |-gr|
+  // pre-compute a vector of offsets to apply in dual action on |l| component
+  // simple root evaluations at |-(g-rho_check)=rho_check-g|, whence the name
+  int_Vector r_g_eval (rd.semisimple_rank());
   { const RatCoweight& g_r=ctxt.g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
@@ -2374,7 +2377,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	  break;
 
       assert((not soit())==orbit_simple.at_end(it));
-      if (not soit()) // previous loop ran to completion
+      if (orbit_simple.at_end(it)) // previous loop ran to completion
 	break;
 
       // find orbit among |integral_orbits| corresponding to that ComplexDescent
@@ -2385,7 +2388,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       containers::sl_list<ext_param> links;
       auto type = // compute neighbours in extended block
 	star(block_ctxt,E1,p,links);
-      assert(is_complex(type) or type==two_semi_real);
+      assert(is_complex(type) or type==two_semi_real or type==three_semi_real);
       E1 = *links.begin(); // replace |E| by descended parameter
       E1.flip(has_october_surprise(type)); // to undo extra flip |star|
       assert(x>E1.x()); // make sure we advance; we did simple complex descents
@@ -2411,7 +2414,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const ext_param& E)
+  (const repr::Ext_common_context& ctxt,
+   const ext_gen& kappa, const ext_param& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
@@ -2466,7 +2470,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
-  { const ext_param E= to_do.front();
+  { const ext_param E= std::move(to_do.front());
     to_do.pop(); // we are done with |head|
     auto s = first_descent_among(ctxt,singular_orbits,orbits,E);
     if (s>=orbits.size()) // no singular descents, so append to result
@@ -2478,6 +2482,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin(); RootNbr witness;
+	// filtering out those becoming zero at |sr.gamma()| is probably overly
+	// prudent, as future |is_like_compact(type)| would skip them anyway:
 	if (rc.is_nonzero(l_it->restrict(sr.gamma()),witness))
 	{
 	  l_it->flip(flip);

@@ -2255,11 +2255,11 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==RatNum(1,1)); // should make first reduction at |z|
-    // here we continue, with |flip_start| recording whether we already flipped
+    // here we continue, with |flip| recording whether we already flipped
   }
 
   deformation_unit zu(*this,z);
-  { // if formula for |z| was previously stored, return it with |s^flip_start|
+  { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return pool[h].twisted_def_formula();

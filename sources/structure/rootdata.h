@@ -75,7 +75,9 @@ RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 // semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
+// involution of the Dynkin diagram for |rd| define by distinguished |delta|
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
+// orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta);
 

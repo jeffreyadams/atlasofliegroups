@@ -7541,8 +7541,8 @@ void twisted_full_deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto finals =
-    ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
+  auto finals = @;ext_block::
+    extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_poly res;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
@@ -7689,7 +7689,8 @@ are paired with a Boolean attribute recording a possible flip of extended
 parameters accumulated when the term. This flip is recorded with as
 coefficient the split integer unit~$s$, since it should be interpreted as a
 signature flip (in the ordinary finalisation procedure flips never occur).
-The function |finalise| in the module \\{ext\_block} does the actual work.
+The function |extended_finalise| in the module \\{ext\_block} does the actual
+work.
 
 @< Local function def...@>=
 
@@ -7868,7 +7869,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb = block.extended_block(delta->val);
+    @;ext_block::ext_block eb = block.extended_block(delta->val);
     std::vector<ext_kl::Pol> pool;
     ext_KL_hash_Table hash(pool,4);
     ext_kl::KL_table klt(eb,&hash); klt.fill_columns();
