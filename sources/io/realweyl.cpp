@@ -99,7 +99,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginaryCompact.assign(nic,e);
 
   for (size_t j = 0; j < nic; ++j) {
-    W.mult(d_imaginaryCompact[j],rd.reflectionWord(rw.imaginaryCompact(j)));
+    W.mult(d_imaginaryCompact[j],rd.reflection_word(rw.imaginaryCompact(j)));
   }
 
   size_t nir = rw.numImaginaryR();
@@ -109,7 +109,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
     const SmallBitVector& c = rw.imaginaryR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
-	W.mult(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
+	W.mult(d_imaginaryR[j],rd.reflection_word(rw.imaginaryOrth(i)));
       }
   }
 
@@ -117,14 +117,14 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginary.assign(ni,e);
 
   for (size_t j = 0; j < ni; ++j) {
-    W.mult(d_imaginary[j],rd.reflectionWord(rw.imaginary(j)));
+    W.mult(d_imaginary[j],rd.reflection_word(rw.imaginary(j)));
   }
 
   size_t nrc = rw.numRealCompact();
   d_realCompact.assign(nrc,e);
 
   for (size_t j = 0; j < nrc; ++j) {
-    W.mult(d_realCompact[j],rd.reflectionWord(rw.realCompact(j)));
+    W.mult(d_realCompact[j],rd.reflection_word(rw.realCompact(j)));
   }
 
   size_t nrr = rw.numRealR();
@@ -134,7 +134,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
     const SmallBitVector& c = rw.realR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
-	W.mult(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
+	W.mult(d_realR[j],rd.reflection_word(rw.realOrth(i)));
       }
   }
 
@@ -142,7 +142,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_real.assign(nr,e);
 
   for (size_t j = 0; j < nr; ++j) {
-    W.mult(d_real[j],rd.reflectionWord(rw.real(j)));
+    W.mult(d_real[j],rd.reflection_word(rw.real(j)));
   }
 
   size_t nc = rw.numComplex();
@@ -150,9 +150,9 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
 
   for (size_t j = 0; j < nc; ++j) {
     RootNbr rn = rw.complex(j);
-    W.mult(d_complex[j],rd.reflectionWord(rn));
+    W.mult(d_complex[j],rd.reflection_word(rn));
     rn = cc.involution_image_of_root(rn);
-    W.mult(d_complex[j],rd.reflectionWord(rn));
+    W.mult(d_complex[j],rd.reflection_word(rn));
   }
 
   return;

@@ -610,7 +610,6 @@ class Ext_common_context : public common_context
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   RootNbrSet delta_fixed_roots; // as subset of full root system
   weyl::Twist twist; // of the full Dynkin diagram
-  int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
   Ext_common_context (const Rep_context& rc, const WeightInvolution& delta,
@@ -621,8 +620,6 @@ class Ext_common_context : public common_context
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
-  // in |l_shift| (only!), |s| is an index into the |sub| simple roots
-  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;

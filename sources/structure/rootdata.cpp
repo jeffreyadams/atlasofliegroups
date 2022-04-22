@@ -568,7 +568,7 @@ RootSystem::root_permutation(const Permutation& twist) const
   return extend_to_roots(simple_image);
 }
 
-WeylWord RootSystem::reflectionWord(RootNbr alpha) const
+WeylWord RootSystem::reflection_word(RootNbr alpha) const
 {
   make_positive(*this,alpha);
 
@@ -1026,7 +1026,7 @@ WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
   return result;
 }
 
-WeylWord RootDatum::reflectionWord(RootNbr alpha) const
+WeylWord RootDatum::reflection_word(RootNbr alpha) const
 {
   return to_dominant(reflection(alpha,twoRho()));
 }

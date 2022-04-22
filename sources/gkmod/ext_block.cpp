@@ -777,27 +777,34 @@ void validate(const ext_param& E)
   "correction" terms |rho_r_shift| and |dual_rho_im_shift| below.
  */
 ext_param complex_cross(const repr::Ext_common_context& ctxt,
-			const ext_gen& p,
+			int length, /* 1,2, or 3 */ RootNbr alpha,
 			ext_param E) // by-value for |E|; it is modified
 { const RootDatum& rd = E.rc().root_datum();
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   auto &tW = E.rc().twisted_Weyl_group(); // caution: |p| refers to integr. datum
-  const SubSystem& subs=ctxt.subsys();
 
   InvolutionNbr theta = i_tab.nr(E.tw);
   const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
   Weight rho_r_shift = rd.twoRho(theta_real_roots);
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
-  for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
-  { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(subs.reflection(s),E.tw);
-    subs.simple_reflect(s,E.gamma_lambda.numerator());
-    subs.simple_reflect(s,rho_r_shift);
-    subs.simple_reflect(s,E.tau);
-    subs.simple_coreflect(E.l,s,ctxt.l_shift(s));
-    subs.simple_coreflect(dual_rho_im_shift,s);
-    subs.simple_coreflect(E.t,s);
+  sl_list<RootNbr> kappa { alpha }; // reflections to be applied
+  if (length>1)
+  {
+    kappa.push_front(ctxt.delta_of(alpha));
+    if (length==3)
+      kappa.push_front(alpha);
+  }
+
+  for (auto beta : kappa)
+  {
+    tW.twistedConjugate(rd.reflection_word(beta),E.tw);
+    rd.reflect(beta,E.gamma_lambda.numerator());
+    rd.reflect(beta,rho_r_shift);
+    rd.reflect(beta,E.tau);
+    rd.coreflect(E.l,beta,-E.rc().g_rho_check().dot(rd.root(beta)));
+    rd.coreflect(dual_rho_im_shift,beta);
+    rd.coreflect(E.t,beta);
   }
 
   InvolutionNbr new_theta = i_tab.nr(E.tw);
@@ -815,15 +822,15 @@ ext_param complex_cross(const repr::Ext_common_context& ctxt,
   assert(ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
   validate(E);
 
-  RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
+  RootNbr alpha_simple = alpha; // working copy
   const WeylWord to_simple = fixed_conjugate_simple(ctxt,alpha_simple);
+  assert(rd.is_simple_root(alpha_simple)); // cannot fail to become simple here
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
-  assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
-				                subs.parent_nr_simple(p.s1))));
+  assert(rd.is_simple_root(rd.permuted_root(to_simple,ctxt.delta_of(alpha))));
   // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
   E.flip(ctxt.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
-  E.flip(p.length()==2); // to parallel the 2i,2r flips
+  E.flip(length==2); // to parallel the 2i,2r flips
 
   return E;
 } // |complex_cross|
@@ -1126,7 +1133,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(ctxt,p,E));
+	links.push_back(complex_cross(ctxt,1,n_alpha,E));
       }
     }
     break;
@@ -1356,7 +1363,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // non $\theta$-stable plane: twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(ctxt,p,E));
+	  links.push_back(complex_cross(ctxt,2,n_alpha,E));
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -1455,7 +1462,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
       assert (kappa==alpha+beta);
       const Coweight& kappa_v = rd.coroot(n_kappa);
       assert (kappa_v==alpha_v+beta_v);
-      WeylWord s_kappa = rd.reflectionWord(n_kappa);
+      WeylWord s_kappa = rd.reflection_word(n_kappa);
 
       const Weight beta_alpha = beta - alpha;
 
@@ -1598,7 +1605,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(ctxt,p,E));
+	  links.push_back(complex_cross(ctxt,3,n_alpha,E));
 	}
       }
     }

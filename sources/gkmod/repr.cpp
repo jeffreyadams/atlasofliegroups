@@ -777,7 +777,7 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   Ratvec_Numer_t& lambda_numer = gam_lam_shifted.numerator();
 
   // transform |x|, |i_x|, and |gam_lam_shifted|, reflecting them by |alpha|
-  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(rt),x) );
+  i_x = kgb().inv_nr( x = kgb().cross(rd.reflection_word(rt),x) );
   rd.reflect(rt,lambda_numer);
 
   // shift back by $\rho_\R$ at (now) destination |i_x|
@@ -898,7 +898,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 
 	  // reflect |gamma| by |alpha|
 	  gamma_num.subtract(rd.root(alpha).begin(),v);
-	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(alpha),x) );
+	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflection_word(alpha),x) );
 	  rd.reflect(alpha,lambda2_shifted);
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)|
@@ -2453,16 +2453,11 @@ Ext_common_context::Ext_common_context
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts(sub.rank())
 {
   const RootDatum& rd = rc.root_datum();
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
-  // the reflections for |E.l| pivot around |g_rho_check()|
-  const RatCoweight minus_g_rho_check = -rc.g_rho_check();
-  for (unsigned i=0; i<sub.rank(); ++i)
-    l_shifts[i] = minus_g_rho_check.dot(sub.simple_root(i));
 } // |Ext_common_context::Ext_common_context|
 
 

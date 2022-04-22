@@ -785,7 +785,7 @@ common_block::common_block // full block constructor
       auto alpha = // generating root expressed as root for |integral_sys|
 	integral_sys.from_parent(generator_roots[i]);
       assert(alpha!=RootNbr(-1)); // renaming to subsystem should work
-      reflect[i] = integral_sys.reflectionWord(alpha); // word in integral gen's
+      reflect[i] = integral_sys.reflection_word(alpha); // word in integral gen's
     }
 
     containers::sl_list<StandardReprMod> queue { z };
@@ -1006,7 +1006,7 @@ common_block::common_block // full block constructor
 
 	    // push any new neighbours of |x| onto |to_do|
 	    for (RootNbr alpha : imaginary_generators)
-	      to_do.push(kgb.cross(rd.reflectionWord(alpha),x));
+	      to_do.push(kgb.cross(rd.reflection_word(alpha),x));
 	  }
 	  while (not to_do.empty());
 	  assert (z_pool.size()==info.size());

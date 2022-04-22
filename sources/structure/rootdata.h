@@ -304,7 +304,7 @@ public:
   Permutation extend_to_roots(const RootNbrList& simple_images) const;
 
 
-  WeylWord reflectionWord(RootNbr r) const;
+  WeylWord reflection_word(RootNbr r) const;
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
@@ -666,7 +666,7 @@ class RootDatum
 
   LatticeMatrix action_matrix(const WeylWord& ww) const;
 
-  WeylWord reflectionWord(RootNbr r) const;
+  WeylWord reflection_word(RootNbr r) const;
 
   // express root in basis of simple roots
   int_Vector inSimpleRoots(RootNbr alpha) const { return root_expr(alpha); }
