@@ -2436,19 +2436,19 @@ StandardReprMod common_context::up_Cayley
 }
 
 
-Weight common_context::to_simple_shift
+Weight Rep_context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(full_root_datum(),S);
+  return root_sum(root_datum(),S);
 }
 
 
 //			|Ext_common_context| methods
 
 Ext_common_context::Ext_common_context
-  (const Rep_context& rc, const WeightInvolution& delta, const SubSystem& sub)
-    : repr::common_context(rc,sub)
+  (const Rep_context& rc, const WeightInvolution& delta)
+    : rep_con(rc)
     , d_delta(delta)
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
@@ -2463,8 +2463,8 @@ Ext_common_context::Ext_common_context
 
 bool Ext_common_context::is_very_complex
   (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = involution_table();
-  const auto& rd = full_root_datum();
+{ const auto& i_tab = rep_con.involution_table();
+  const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
@@ -2488,7 +2488,7 @@ bool Ext_common_context::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not full_root_datum().sum_is_root(*it,delta_of(*it)))
+	not root_datum().sum_is_root(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable

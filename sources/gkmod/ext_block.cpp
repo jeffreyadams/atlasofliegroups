@@ -520,7 +520,7 @@ BlockElt twisted (const Block& block,
  */
 WeylWord fixed_conjugate_simple
   (const repr::Ext_common_context& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.full_root_datum();
+{ const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
@@ -911,7 +911,8 @@ void z_align (const ext_param& E, ext_param& F, bool extra_flip, int t_mu)
 
 // compute type of |p| for |E|, and export adjacent |ext_param| values in |links|
 DescValue star (const repr::Ext_common_context& ctxt,
-		const ext_param& E, const ext_gen& p, // for |ctxt.subsys()|
+		const ext_param& E,
+		int length, RootNbr n_alpha,
 		containers::sl_list<ext_param>& links)
 {
   ext_param E0=E; // a copy of |E| that might be modified below to "normalise"
@@ -921,15 +922,13 @@ DescValue star (const repr::Ext_common_context& ctxt,
   const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
   const RootDatum& rd = E.rc().root_datum();
-  const SubSystem& subs = ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
-  switch (p.type)
+  switch (length)
   {
   default: assert(false);
     result=one_complex_ascent; // shut up "maybe uninitialised" warning
-  case ext_gen::one:
-    { const RootNbr n_alpha = subs.parent_nr_simple(p.s0);
-      const Weight& alpha = rd.root(n_alpha);
+  case 1:
+    { const Weight& alpha = rd.root(n_alpha);
       const Coweight& alpha_v = rd.coroot(n_alpha);
       const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
 
@@ -940,7 +939,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
 	// noncompact case
-	const TwistedInvolution new_tw= tW.prod(subs.reflection(p.s0),E.tw);
+	const TwistedInvolution new_tw =
+	  tW.prod(rd.reflection_word(n_alpha),E.tw);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1; // upstairs
 
 	int tau_coef = alpha_v.dot(E.tau); // take $\tau_\alpha$ of table 2
@@ -1035,7 +1035,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const TwistedInvolution new_tw = // downstairs
-	  tW.prod(subs.reflection(p.s0),E.tw);
+	  tW.prod(rd.reflection_word(n_alpha),E.tw);
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
@@ -1138,12 +1138,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
     }
     break;
 
-  case ext_gen::two:
-    { RootNbr n_alpha = subs.parent_nr_simple(p.s0);
-      const Weight& alpha = rd.root(n_alpha);
+  case 2:
+    { const Weight& alpha = rd.root(n_alpha);
       const Coweight& alpha_v = rd.coroot(n_alpha);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      RootNbr n_beta = ctxt.delta_of(n_alpha);
       const Weight& beta = rd.root(n_beta);
       const Coweight& beta_v = rd.coroot(n_beta);
       // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
@@ -1158,7 +1157,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 	// noncompact case
 	const TwistedInvolution new_tw =
-	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
+	  tW.prod(rd.reflection_word(n_beta),
+		  tW.prod(rd.reflection_word(n_alpha),E.tw));
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
@@ -1248,7 +1248,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 	const TwistedInvolution new_tw = // downstairs
-	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
+	  tW.prod(rd.reflection_word(n_beta),
+		  tW.prod(rd.reflection_word(n_alpha),E.tw));
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
@@ -1370,7 +1371,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	  result = two_semi_imaginary;
 
 	  TwistedInvolution new_tw = E.tw;
-	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
+	  tW.twistedConjugate(rd.reflection_word(n_alpha),new_tw);
+	  // using |n_beta| instead of |n_alpha| would give the same result
 
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
@@ -1413,7 +1415,8 @@ DescValue star (const repr::Ext_common_context& ctxt,
 	{ result = two_semi_real;
 
 	  TwistedInvolution new_tw = E.tw;
-	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
+	  tW.twistedConjugate(rd.reflection_word(n_alpha),new_tw);
+	  // using |n_beta| instead of |n_alpha| would give the same result
 
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
@@ -1448,12 +1451,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
       }
     }
     break;
-  case ext_gen::three:
-    { RootNbr n_alpha = subs.parent_nr_simple(p.s0);
-      const Weight& alpha = rd.root(n_alpha);
+  case 3:
+    { const Weight& alpha = rd.root(n_alpha);
       const Coweight& alpha_v = rd.coroot(n_alpha);
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-      RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      RootNbr n_beta = ctxt.delta_of(n_alpha);
       const Weight& beta = rd.root(n_beta);
       const Coweight& beta_v = rd.coroot(n_beta);
 
@@ -1613,7 +1615,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
   }
 
   // October surprise: add a flip to links with a length difference of 2
-  if (p.length()-(has_defect(result)?1:0)==2)
+  if (length-(has_defect(result)?1:0)==2)
   { auto it=links.begin(); auto c=scent_count(result);
     for (unsigned i=0; i<c; ++i,++it) // only affect ascent/descent links
       it->flip(); // do the flip
@@ -1624,8 +1626,7 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
-  repr::Ext_common_context ctxt
-    (block.context(),delta,block.integral_subsystem());
+  repr::Ext_common_context ctxt (block.context(),delta);
   repr::Ext_rep_context param_ctxt(block.context(),delta);
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
@@ -1633,7 +1634,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
     const ext_param E(param_ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      auto tp = star(ctxt,E,p,links);
+      RootNbr n_alpha = block.integral_subsystem().parent_nr_simple(p.s0);
+      auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type
       {
@@ -2360,10 +2362,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	       E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    repr::Ext_common_context block_ctxt(rc,delta,SubSystem::integral(rd,gamma));
-    const ext_gens integral_orbits = block_ctxt.subsys().fold_orbits(delta);
+    repr::Ext_common_context block_ctxt(rc,delta);
+    const auto subsys = SubSystem::integral(rd,gamma);
+    const ext_gens integral_orbits = subsys.fold_orbits(delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
-      reduce_to(integral_orbits,block_ctxt.subsys().singular_generators(gamma));
+      reduce_to(integral_orbits,subsys.singular_generators(gamma));
     /*
       |singular_orbits| are in fact orbits of simple roots, because we have
       ensured |gamma| is dominant, so the singular subsystem of |rd|
@@ -2372,7 +2375,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
      // record the corresponding simple root indices in |rd|, in order
     containers::sl_list<unsigned> orbit_simple;
     for (auto it=singular_orbits.begin(); it(); ++it)
-    { auto alpha=block_ctxt.subsys().parent_nr_simple(integral_orbits[*it].s0);
+    { auto alpha=subsys.parent_nr_simple(integral_orbits[*it].s0);
       orbit_simple.push_back(rd.simpleRootIndex(alpha));
     }
 
@@ -2389,12 +2392,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
       // find orbit among |integral_orbits| corresponding to that ComplexDescent
       ext_gen p=integral_orbits[*soit];
-      assert(block_ctxt.subsys().parent_nr_simple(p.s0)
-	     ==rd.simpleRootNbr(*it)); // check that we located it
+      // check that we located it
+      assert(subsys.parent_nr_simple(p.s0) ==rd.simpleRootNbr(*it));
 
       containers::sl_list<ext_param> links;
       auto type = // compute neighbours in extended block
-	star(block_ctxt,E1,p,links);
+	star(block_ctxt,E1,p.length(),rd.simpleRootNbr(*it),links);
       assert(is_complex(type) or type==two_semi_real or type==three_semi_real);
       E1 = *links.begin(); // replace |E| by descended parameter
       E1.flip(has_october_surprise(type)); // to undo extra flip |star|
@@ -2421,12 +2424,10 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-  (const repr::Ext_common_context& ctxt,
-   const ext_gen& kappa, const ext_param& E)
+(const repr::Ext_common_context& ctxt, RootNbr n_alpha, const ext_param& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
-  const RootNbr n_alpha = ctxt.subsys().parent_nr_simple(kappa.s0);
   const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
   const RootDatum& rd = E.rc().root_datum();
   assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
@@ -2443,10 +2444,10 @@ bool is_descent
 } // |is_descent|
 
 weyl::Generator first_descent_among
-  (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
-   const ext_gens& orbits, const ext_param& E)
+(const repr::Ext_common_context& ctxt, const SubSystem& subsys,
+   RankFlags singular_orbits, const ext_gens& orbits, const ext_param& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
-    if (is_descent(ctxt,orbits[*it],E))
+    if (is_descent(ctxt,subsys.parent_nr_simple(orbits[*it].s0),E))
       return *it;
   return orbits.size(); // no singular descents found
 }
@@ -2465,12 +2466,12 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
   repr::Ext_rep_context param_ctxt(rc,delta);
-  repr::Ext_common_context ctxt
-    (rc,delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
+  const auto subsys = SubSystem::integral(rc.root_datum(),sr.gamma());
+  repr::Ext_common_context ctxt(rc,delta);
 
-  const ext_gens orbits = ctxt.subsys().fold_orbits(delta);
+  const ext_gens orbits = subsys.fold_orbits(delta);
   const RankFlags singular_orbits =
-    reduce_to(orbits,ctxt.subsys().singular_generators(sr.gamma()));
+    reduce_to(orbits,subsys.singular_generators(sr.gamma()));
 
   containers::queue<ext_param>
     to_do { ext_param::default_extend(param_ctxt,sr) };
@@ -2479,13 +2480,15 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   do
   { const ext_param E= std::move(to_do.front());
     to_do.pop(); // we are done with |head|
-    auto s = first_descent_among(ctxt,singular_orbits,orbits,E);
+    auto s = first_descent_among(ctxt,subsys,singular_orbits,orbits,E);
     if (s>=orbits.size()) // no singular descents, so append to result
       result.emplace_back
 	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
     else // |s| is a singular descent orbit
     { containers::sl_list<ext_param> links;
-      auto type = star(ctxt,E,orbits[s],links);
+      auto type =
+	star(ctxt,E,orbits[s].length(),subsys.parent_nr_simple(orbits[s].s0),
+	     links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin(); RootNbr witness;

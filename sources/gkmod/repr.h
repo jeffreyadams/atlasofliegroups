@@ -365,6 +365,9 @@ class Rep_context
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
+
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
   int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
@@ -593,9 +596,6 @@ public:
     status(weyl::Generator s, KGBElt x) const;
   bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
 
-  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
-			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
-
 }; // |class common_context|
 
 /*
@@ -604,23 +604,28 @@ public:
   removed with respect to |ext_block::context| are |d_gamma|, |lambda_shifts|.
   Methods that are absent: |gamma|, |lambda_shift|
 */
-class Ext_common_context : public common_context
+class Ext_common_context
 {
+  const Rep_context& rep_con;
   const WeightInvolution d_delta;
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   RootNbrSet delta_fixed_roots; // as subset of full root system
   weyl::Twist twist; // of the full Dynkin diagram
 
  public:
-  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta,
-		      const SubSystem& integral_subsystem);
+  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta);
 
   // accessors
+  const RootDatum& root_datum () const { return rep_con.root_datum(); }
+  const Rep_context& rc() const { return rep_con; }
   const WeightInvolution& delta () const { return d_delta; }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
 
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const // |pos_to_neg| by value
+  { return rep_con.to_simple_shift(theta,theta_p,pos_to_neg); }
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
