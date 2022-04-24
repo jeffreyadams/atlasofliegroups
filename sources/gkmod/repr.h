@@ -197,6 +197,7 @@ class Rep_context
   K_repr::K_type sr_K(KGBElt x, Weight lambda_rho) const; // 2nd by value
   K_repr::K_type sr_K(const StandardRepr& sr) const // restriction to K
   { return {sr.x(),lambda_rho(sr),sr.height()}; }
+  Weight theta_plus_1_lambda (const K_repr::K_type& t) const;
 
   RatWeight gamma // compute (representative of) infinitesimal character
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;

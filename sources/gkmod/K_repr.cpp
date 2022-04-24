@@ -35,6 +35,16 @@ const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
 
   namespace repr {
 
+Weight // $(1+\theta_x)\lambda$
+Rep_context::theta_plus_1_lambda (const K_repr::K_type& t) const
+{
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(t.x());
+  const auto& lr = t.lambda_rho();
+  const auto& theta = i_tab.matrix(i_x);
+  return theta*lr + lr + i_tab.theta_plus_1_rho(i_x);
+}
+
 K_repr::K_type Rep_context::sr_K(KGBElt x, Weight lambda_rho) const
 {
   const InvolutionTable& i_tab = involution_table();

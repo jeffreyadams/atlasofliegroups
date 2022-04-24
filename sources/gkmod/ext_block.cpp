@@ -2280,6 +2280,14 @@ repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
   return rc().sr_gamma(x(),lambda_rho,gamma);
 } // |restrict|
 
+// restrict from extended group to |K|, using vaue of $(1+\theta)*\lambda$
+K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
+{
+  theta_plus_1_lambda -= rc().root_datum().twoRho(); // now: $2*(\gamma-\rho)$
+  const RatWeight gamma_rho ( theta_plus_1_lambda, 2);
+  return rc().sr_K(x(),gamma_rho.integer_diff<int>(gamma_lambda));
+} // |restrict|
+
 
 
 
@@ -2414,6 +2422,119 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   return result;
 
 } // |scaled_extended_dominant|
+
+/*
+  This function serves to compute restriction to $K$ for the extended group, so
+  keeping track of the sign that may by associated to the transformation.
+  Setting $\nu=0$ in the parameter may mean the |gamma|, which we assume
+  initially dominant and fixed by |delta|, crosses some (complex) walls into
+  another chamber, and may also place it precisely on some coroot walls (as
+  happens for all real coroots) and among these new singular coroots there may
+  be descents to be applied (to make the result final).
+
+  To find the required sign, we need to keep track of all extended parameter
+  components inherited from the default extension at |sr|, transforming them from
+  the default choices for |sr|, and at the end comparing the transformed values
+  to the default choices at the final parametera.
+ */
+K_repr::K_type_pol extended_restrict_to_K
+  (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta)
+{
+  const RootDatum& rd=rc.root_datum();
+  const InvolutionTable& i_tab = rc.involution_table();
+  const TwistedWeylGroup& tW = rc.twisted_Weyl_group();
+
+  repr::Ext_rep_context ctxt(rc,delta);
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta); // orbits of simples
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  K_repr::K_type restricted_sr = rc.sr_K(sr.x(),rc.lambda_rho(sr));
+
+  // for convenience, make a (modifiable) copy of twice |gamma| at |nu==0|
+  Weight gamma_E = rc.theta_plus_1_lambda(restricted_sr); // $\theta$-fixed
+
+  ext_param E = ext_param::default_extend(ctxt,sr); // start extension at |sr|
+  E.gamma_lambda -= rc.nu(sr); // shift extended parameter for restriction to K
+  assert(E.gamma_lambda==RatWeight(gamma_E,1)-rc.lambda(sr));
+
+  // now finalise |restricted_sr|, making |gamma_E| dominant, while updating |E|
+  // similar to |Rep_context::finals_for(K_repr::K_type)| defined in K_repr.cpp
+  // but without many "imaginary" concerns, as we remain "imaginary dominant"
+  K_repr::K_type_pol result;
+
+  using q_element = std::pair<ext_param,Weight>;
+  queue<q_element> to_do;
+  to_do.emplace(std::move(E),std::move(gamma_E));
+  while (not to_do.empty())
+  {
+    // the variables that used to hold initial values now serve as temporaries:
+    E = std::move(to_do.front().first);
+    gamma_E = std::move(to_do.front().second);
+    to_do.pop();
+    InvolutionNbr i_theta = i_tab.nr(E.tw);
+
+  restart: // go here when |E| and |gamma_E| have been modified
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+      if (i_tab.is_complex_simple(i_theta,s))
+      { const auto eval = rd.simpleCoroot(s).dot(gamma_E);
+	if (eval<0)
+	{ const WeylWord& kappa = orbits[s].w_kappa;
+
+	  rd.act(kappa,gamma_E); // change infin.character representative
+
+	  tW.twistedConjugate(kappa,E.tw);
+	  rd.act(kappa,E.gamma_lambda); // corresponding operation on |E|
+	  rd.act(kappa,E.tau);
+	  for (auto s : kappa)
+	    rd.simple_coreflect(E.l,s,-ctxt.g_rho_check().dot(rd.simpleRoot(s)));
+	  rd.dual_act(E.t,kappa);
+	  E.flip(kappa.size()==2); // record flip for every 2C+/2C- done
+	  goto restart;
+	} // |if(eval<0)|
+	else if (eval==0 and i_tab.complex_is_descent(i_theta,s))
+	{ // no change to |gamma_E| is needed as relevant reflections fix it
+	  containers::sl_list<ext_param> links;
+	  auto type =
+	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
+	  assert(is_complex(type) or
+		 type==two_semi_real or type==three_semi_real);
+	  assert(links.singleton()); // just one cross of Cayley link
+	  E = std::move(links.front());
+	  goto restart;
+	}
+      } // |i_tab.is_complex_simple(i_theta,s))|
+      else if ((i_tab.is_real_simple(i_theta,s)))
+      {	assert(rd.simpleCoroot(s).dot(gamma_E)==0); // so |gamma_E| unchanged
+	containers::sl_list<ext_param> links;
+	auto type =
+	  star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
+	if (is_like_compact(type))
+	  goto drop;
+        const bool flip = has_october_surprise(type);
+	E = std::move(links.front());
+	E.flip(flip); // for October suprises |star| did an extra flip; undo it
+	if (has_double_image(type)) // then queue up second image value
+	{ const auto it = std::next(links.begin());
+	  it->flip(flip); // like above undo etra flip
+	  to_do.emplace(std::move(*it),gamma_E);
+	}
+	// now continue with |(E,gamma_E)| in loop on |s|
+      }
+      else
+      { assert(i_tab.is_imaginary_simple(i_theta,s));
+	assert(rd.simpleCoroot(s).dot(gamma_E)>=0); // K-type remains standard
+	assert(rd.simpleCoroot(s).dot(gamma_E)>0 or // singular = >noncompact
+	       (E.ctxt.g_rho_check() - E.l).dot(rd.simpleRoot(s))%2==0);
+	// now continue with |(E,gamma_E)| in loop on |s|
+      } // multi |if| and |for(s)|
+    // contribute |E| here with coefficient |s^(not is_default(E))|
+    result.add_term(E.restrict_K(std::move(gamma_E)),
+		    is_default(E) ? Split_integer(1,0) : Split_integer(0,1));
+  drop: {} // when jumping here, proceed without contributing |current|
+  } // |while(nont todo.empty())|
+
+  return result;
+} // |extended_restrict_to_K|
 
 /*
   The following function determines whether an extended parameter has a descent

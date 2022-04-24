@@ -330,6 +330,7 @@ struct ext_param // allow public member access; methods ensure no invariants
   KGBElt x() const; // reconstruct |x| component
   // underlying unextended representation
   repr::StandardRepr restrict(const RatWeight& gamma) const;
+  K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
 
 
@@ -339,6 +340,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  RatNum factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // output only, records whether and extended flip was recorded
  );
+
+K_repr::K_type_pol extended_restrict_to_K
+  (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);
 
 // expand parameter into a signed sum of extended nonzero final parameters
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
