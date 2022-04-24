@@ -413,16 +413,16 @@ set print_c_form_irreducible_big_long ((Param,mat,int)triple) = void:
 
 {  "big" versions }
 
+set reduce (ExtParamPol(plus,minus,)) = ParamPol: plus+s*minus
 
-set hermitian_form_irreducible_big (Param p) = ParamPol:
+set hermitian_form_irreducible_big (Param p) = KTypePol:
    let delta = real_form(p).distinguished_involution
-   then (plus,minus,) = c_form_irreducible_big(p,delta,1)
-in convert_cform_hermitian(plus+s*minus)
+in c_form_irreducible_big(p,delta,1).reduce.K_type_pol.convert_cform_hermitian
 
 set is_unitary_big (Param p) = bool: is_pure(hermitian_form_irreducible_big(p))
 
 set print_is_unitary_big (Param p) = void:
-   let P=hermitian_form_irreducible_big(p) in
+   let P=KTypePol: hermitian_form_irreducible_big(p) in
    if is_pure(P) then prints("Unitary")
    else let (real,nonreal,mixed)=purity(P) in
       prints("Non-Unitary",new_line, real, " real terms", new_line
@@ -433,4 +433,3 @@ set print_is_unitary_big (Param p) = void:
 set is_weakly_unitary_big (Param p) = bool:
   is_weakly_unitary(hermitian_form_irreducible_big(p))
 
-set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus

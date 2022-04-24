@@ -53,20 +53,20 @@ set print_branch_irr_long (Param p,KGBElt x, int bound) = void:
 set print_branch_irr_long (Param p, int bound) = void:
   print_branch_irr_long(ParamPol:p,bound)
 
-set print_branch_std (ParamPol P,KGBElt x,int bound) = void:
+set print_branch_std (KTypePol P,KGBElt x,int bound) = void:
   for mult@q in branch_std(P,bound)
   do let hw=highest_weights(q,x)[0] in
     prints(mult, "*", (hw.x,hw.mu))
   od
 
-set print_branch_std (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
+set print_branch_std (KTypePol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_std(P,KGB(real_form(P),0),bound)
 
 { K-types of standard p, up to given bound, sorted by height, the
   output includes multiplicity, highest weight (on the identity component of
   K), dimension and height
 }
-set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
+set print_branch_std_long (KTypePol P,KGBElt x,int bound) = void:
 ( prints("rho_K=", rho_K(x))
 ; for mult@q in branch_std(P,bound)
   do let hw=highest_weights(q,x)[0] in
@@ -75,18 +75,18 @@ set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
   od
 )
 
-set print_branch_std_long (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
+set print_branch_std_long (KTypePol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_std_long(P,KGB(real_form(P),0),bound)
 
-{ these definitions promote Param->ParamPol without relying on coercion }
-set print_branch_std (Param p,KGBElt x, int bound) = void:
-  print_branch_std(ParamPol:p,x,bound)
-set print_branch_std (Param p, int bound) = void:
-  print_branch_std(ParamPol:p,bound)
-set print_branch_std_long (Param p,KGBElt x, int bound) = void:
-  print_branch_std_long(ParamPol:p,x,bound)
-set print_branch_std_long (Param p, int bound) = void:
-  print_branch_std_long(ParamPol:p,bound)
+{ these definitions promote KType->KTypePol without relying on coercion }
+set print_branch_std (KType p,KGBElt x, int bound) = void:
+  print_branch_std(KTypePol:p,x,bound)
+set print_branch_std (KType p, int bound) = void:
+  print_branch_std(KTypePol:p,bound)
+set print_branch_std_long (KType p,KGBElt x, int bound) = void:
+  print_branch_std_long(KTypePol:p,x,bound)
+set print_branch_std_long (KType p, int bound) = void:
+  print_branch_std_long(KTypePol:p,bound)
 
 
 

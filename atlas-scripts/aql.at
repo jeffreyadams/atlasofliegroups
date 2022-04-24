@@ -251,7 +251,8 @@ set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
      fi;
      let hfl=hermitian_form_irreducible(p_L) in
      if aql_verbose then prints(hfl," p_L unitary: ",is_pure(hfl)) fi;
-     let result=theta_induce_parampol(hfl,G) in (result,is_pure(result))
+     let result=theta_induce_parampol(param_pol(hfl),G)
+     in (result,is_pure(result))
    fi
 
 {. As previous function, but only returns true/false. .}

@@ -51,13 +51,13 @@ set test_genuine(KTypePol P, int height_bound) = (KTypePol,bool):
   this doesn't exist. Temporarily (until merge jeff->master) add this
   command.
 }
-set hermitian_form_irreducible_normalized = (Param->ParamPol):
+set hermitian_form_irreducible_normalized = (Param->KTypePol):
   hermitian_form_irreducible@Param
 
 { test hermitian form on irreducible is genuine }
 set is_hermitian_form_irreducible_genuine (Param p,int height_bound) = bool:
-  is_genuine(hermitian_form_irreducible_normalized(p).K_type_pol,height_bound)
+  is_genuine(hermitian_form_irreducible_normalized(p),height_bound)
 
 set test_hermitian_form_irreducible_genuine (Param p,int height_bound)=
     (KTypePol,bool):
-  test_genuine(hermitian_form_irreducible_normalized(p).K_type_pol,height_bound)
+  test_genuine(hermitian_form_irreducible_normalized(p),height_bound)

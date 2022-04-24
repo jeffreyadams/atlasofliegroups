@@ -1008,12 +1008,13 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
 
-full_deform: (Param->ParamPol): perform deformation all the way to nu=0
+full_deform: (Param->KTypePol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
-  as they do not have nu=0; all terms in the result therefore have nu=0.
-twisted_full_deform: (Param->ParamPol): inner class twisted deformation to nu=0
+  as they do not have nu=0. Having nu=0, the terms of the result can be and are
+  represented as |KType|; they are made final, and gathered into a |KTypePol|.
+twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
   This is like full_deform, but uses the twisted KL polynomials (for the inner
-  class involution) instead. The parameter must be fixed under that twist.
+  class involution) instead. The argument must be fixed under that twist.
   It must also be fully prepared for deformation, that is, have dominant
   infinitesimal character and be final; this is because interpretation of the
   result depends (by a sign) on the chosen default extension for the parameter,

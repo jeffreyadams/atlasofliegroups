@@ -28,8 +28,7 @@ set mult_irr (KType p_K,ParamPol P) = int:
   (branch_irr(P,height(p_K))[p_K]).int_part
 
 set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
-  let b=branch(hermitian_form_irreducible(p).K_type_pol,bound) in
-  (int_part(b),s_part(b) )
+  let b=branch(hermitian_form_irreducible(p),bound) in (int_part(b),s_part(b) )
 
 set signed_mult (KType p_K,Param p) = (int,int):
   let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
