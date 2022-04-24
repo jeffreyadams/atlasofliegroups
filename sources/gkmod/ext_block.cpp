@@ -519,7 +519,7 @@ BlockElt twisted (const Block& block,
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
 WeylWord fixed_conjugate_simple
-  (const repr::Ext_common_context& ctxt, RootNbr& alpha)
+  (const repr::Ext_rep_context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
@@ -776,7 +776,7 @@ void validate(const ext_param& E)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms |rho_r_shift| and |dual_rho_im_shift| below.
  */
-ext_param complex_cross(const repr::Ext_common_context& ctxt,
+ext_param complex_cross(const repr::Ext_rep_context& ctxt,
 			int length, /* 1,2, or 3 */ RootNbr alpha,
 			ext_param E) // by-value for |E|; it is modified
 { const RootDatum& rd = E.rc().root_datum();
@@ -910,7 +910,7 @@ void z_align (const ext_param& E, ext_param& F, bool extra_flip, int t_mu)
 
 
 // compute type of |p| for |E|, and export adjacent |ext_param| values in |links|
-DescValue star (const repr::Ext_common_context& ctxt,
+DescValue star (const repr::Ext_rep_context& ctxt,
 		const ext_param& E,
 		int length, RootNbr n_alpha,
 		containers::sl_list<ext_param>& links)
@@ -1626,12 +1626,11 @@ DescValue star (const repr::Ext_common_context& ctxt,
 
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
-  repr::Ext_common_context ctxt (block.context(),delta);
-  repr::Ext_rep_context param_ctxt(block.context(),delta);
+  repr::Ext_rep_context ctxt (block.context(),delta);
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const ext_param E(param_ctxt,block.x(z),block.gamma_lambda(z));
+    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       RootNbr n_alpha = block.integral_subsystem().parent_nr_simple(p.s0);
@@ -1665,7 +1664,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  ext_param F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default
+	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1681,7 +1680,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m!=UndefBlock) // don't fall off the edge of a partial block
 	  {
 	    BlockElt Cz = this->z(m); // corresponding element of block
-	    ext_param F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	    assert(same_standard_reps(q0,F));
 	    if (not same_sign(q0,F))
 	      flip_edge(s,n,m);
@@ -1689,7 +1688,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
 	  {
 	    BlockElt cz = this->z(m);
-	    ext_param Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
+	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
 	    assert(same_standard_reps(q1,Fc));
 	    if (not same_sign(q1,Fc))
 	      flip_edge(s,n,m);
@@ -1704,7 +1703,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  ext_param F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1722,7 +1721,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1733,7 +1732,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz = this->z(m.second);
-	  ext_param F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1751,7 +1750,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1762,7 +1761,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz= this->z(m.second);
-	  ext_param F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -2242,7 +2241,7 @@ ext_param ext_param::default_extend
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
 
-  auto srm =  repr::StandardReprMod::mod_reduce(ec,sr);
+  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
   // get default representative at |gamma%1|, normalised
   auto gamma_lambda=ec.gamma_lambda(srm);
   return ext_param(ec,sr.x(),gamma_lambda);
@@ -2362,7 +2361,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	       E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    repr::Ext_common_context block_ctxt(rc,delta);
+    repr::Ext_rep_context block_ctxt(rc,delta);
     const auto subsys = SubSystem::integral(rd,gamma);
     const ext_gens integral_orbits = subsys.fold_orbits(delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
@@ -2424,7 +2423,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-(const repr::Ext_common_context& ctxt, RootNbr n_alpha, const ext_param& E)
+(const repr::Ext_rep_context& ctxt, RootNbr n_alpha, const ext_param& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
@@ -2444,7 +2443,7 @@ bool is_descent
 } // |is_descent|
 
 weyl::Generator first_descent_among
-(const repr::Ext_common_context& ctxt, const SubSystem& subsys,
+(const repr::Ext_rep_context& ctxt, const SubSystem& subsys,
    RankFlags singular_orbits, const ext_gens& orbits, const ext_param& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
     if (is_descent(ctxt,subsys.parent_nr_simple(orbits[*it].s0),E))
@@ -2465,16 +2464,15 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
-  repr::Ext_rep_context param_ctxt(rc,delta);
+  repr::Ext_rep_context ctxt(rc,delta);
   const auto subsys = SubSystem::integral(rc.root_datum(),sr.gamma());
-  repr::Ext_common_context ctxt(rc,delta);
 
   const ext_gens orbits = subsys.fold_orbits(delta);
   const RankFlags singular_orbits =
     reduce_to(orbits,subsys.singular_generators(sr.gamma()));
 
   containers::queue<ext_param>
-    to_do { ext_param::default_extend(param_ctxt,sr) };
+    to_do { ext_param::default_extend(ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do

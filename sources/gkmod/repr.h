@@ -557,18 +557,6 @@ class Rep_table : public Rep_context
 }; // |Rep_table|
 
 
-// a slight extension of |Rep_context|, fix |delta| for extended representations
-class Ext_rep_context : public Rep_context
-{
-  const WeightInvolution d_delta;
-public:
-  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
-  Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
-
-  const WeightInvolution& delta () const { return d_delta; }
-
-}; // |class Ext_rep_context|
-
 // another extension of |Rep_context|, fix integral system for common block
 class common_context
 {
@@ -604,7 +592,7 @@ public:
   removed with respect to |ext_block::context| are |d_gamma|, |lambda_shifts|.
   Methods that are absent: |gamma|, |lambda_shift|
 */
-class Ext_common_context
+class Ext_rep_context
 {
   const Rep_context& rep_con;
   const WeightInvolution d_delta;
@@ -613,15 +601,22 @@ class Ext_common_context
   weyl::Twist twist; // of the full Dynkin diagram
 
  public:
-  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta);
+  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  Ext_rep_context (const Rep_context& rc, const WeightInvolution& delta);
 
   // accessors
-  const RootDatum& root_datum () const { return rep_con.root_datum(); }
   const Rep_context& rc() const { return rep_con; }
   const WeightInvolution& delta () const { return d_delta; }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+
+  const RootDatum& root_datum () const { return rep_con.root_datum(); }
+  const InnerClass& inner_class() const { return rep_con.inner_class(); }
+  RealReductiveGroup& real_group() const { return rep_con.real_group(); }
+  const RatCoweight& g_rho_check() const { return rep_con.g_rho_check(); }
+  RatWeight gamma_lambda(const StandardReprMod& z) const
+  { return rep_con.gamma_lambda(z); }
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const // |pos_to_neg| by value
@@ -631,7 +626,7 @@ class Ext_common_context
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
-}; // |Ext_common_context|
+}; // |Ext_rep_context|
 
 // 				Functions
 

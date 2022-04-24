@@ -297,14 +297,14 @@ struct ext_param // allow public member access; methods ensure no invariants
   bool flipped; // whether tensored with the flipping representation
 
   ext_param (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
-	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
-	   bool flipped=false);
+	     RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
+	     bool flipped=false);
 
   // default extension choice:
   ext_param (const repr::Ext_rep_context& ec,
 	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   static ext_param default_extend
-  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+    (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
 
   ext_param (const ext_param& p) = default;
   ext_param (ext_param&& p)
@@ -323,7 +323,7 @@ struct ext_param // allow public member access; methods ensure no invariants
 
   void flip (bool whether=true) { flipped=(whether!=flipped); }
 
-  const repr::Rep_context& rc() const { return ctxt; } // reference base object
+  const repr::Rep_context& rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const;
 

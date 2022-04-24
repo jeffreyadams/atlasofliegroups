@@ -2444,9 +2444,9 @@ Weight Rep_context::to_simple_shift
 }
 
 
-//			|Ext_common_context| methods
+//			|Ext_rep_context| methods
 
-Ext_common_context::Ext_common_context
+Ext_rep_context::Ext_rep_context
   (const Rep_context& rc, const WeightInvolution& delta)
     : rep_con(rc)
     , d_delta(delta)
@@ -2458,10 +2458,13 @@ Ext_common_context::Ext_common_context
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
-} // |Ext_common_context::Ext_common_context|
+} // |Ext_rep_context::Ext_rep_context|
+
+Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
+  : Ext_rep_context(rc, rc.inner_class().distinguished()) {}
 
 
-bool Ext_common_context::is_very_complex
+bool Ext_rep_context::is_very_complex
   (InvolutionNbr theta, RootNbr alpha) const
 { const auto& i_tab = rep_con.involution_table();
   const auto& rd = root_datum();
@@ -2481,7 +2484,7 @@ bool Ext_common_context::is_very_complex
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
-bool Ext_common_context::shift_flip
+bool Ext_rep_context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
@@ -2494,16 +2497,6 @@ bool Ext_common_context::shift_flip
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
   return count%4!=0;
 }
-
-// |Ext_rep_context| methods
-
-Ext_rep_context::Ext_rep_context
-  (const repr::Rep_context& rc, const WeightInvolution& delta)
-: Rep_context(rc), d_delta(delta) {}
-
-Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
-: Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
-
 
   } // |namespace repr|
 } // |namespace atlas|
