@@ -7,7 +7,7 @@
 set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
   full_deform@Param { built-in }
 
-set twisted_c_form_std = (Param->ParamPol): { c-form on extended group }
+set twisted_c_form_std = (Param->KTypePol): { c-form on extended group }
   twisted_full_deform@Param { built-in }
 
 {    c_form on irreducible representations   }
@@ -59,10 +59,10 @@ set twisted_c_form_irreducible_contributions (Param p) =
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
-  , f(Param p) = ParamPol: let result = twisted_full_deform(p) in
+  , f(Param p) = KTypePol: let result = twisted_full_deform(p) in
       prints(new_line,"Twisted full deform of ",p,":",result); result
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  then final= map(f,fixed).K_type_pol
+  then final= map(f,fixed)
   in prints(new_line,new_line,"Final result:",final)
   ; final+half(unfixed.K_type_pol)
 )
@@ -129,7 +129,7 @@ set twisted_c_form_irreducible_long (Param p) =
   let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
   then G=p.real_form
   , fixed_contribs = [(Param,Split,KTypePol)]:
-      for c@q in fixed do (q,c,c*K_type_pol(twisted_full_deform(q))) od
+      for c@q in fixed do (q,c,c*twisted_full_deform(q)) od
   , unfixed_contribs = [(Param,Split,KType)]:
       for c@q in unfixed
       do { now |1+s| devides |c|, which justifies not using |scale_extended|: }
@@ -200,7 +200,7 @@ set hermitian_dual (Param p) = Param: normal(twist(p))
 set hermitian_form_std (Param p) = KTypePol:
   if is_equal_rank(real_form(p))
   then c_form_std(p)
-  else check_hermitian(p,false); K_type_pol(twisted_c_form_std(p))
+  else check_hermitian(p,false); twisted_c_form_std(p)
   fi. convert_cform_hermitian
 
 {.Hermitian form on a irreducible module, normalization from p0.}
@@ -311,7 +311,7 @@ set analyse_hermitian_form_irreducible (Param p) = void:
     if !=fixed then prints("Twist-fixed contributions:") fi
   ; c_form+:=
     for c@q in fixed
-    do let contribution = c*K_type_pol(twisted_full_deform(q)) in
+    do let contribution = c*twisted_full_deform(q) in
       prints(c,"* form on I(",q,"), fully deformed:",contribution,new_line)
     ; contribution
     od
@@ -352,7 +352,7 @@ set hermitian_form_is_pure (Param p) = bool:
     then set (cur_unfix,unfixed):=height_split(unfixed,height)
     else cur_unfix:=G.null_module
     fi
-  ; result +:= K_type_pol(map(twisted_full_deform@Param,cur_fix))
+  ; result +:= map(twisted_full_deform@Param,cur_fix)
     	      +K_type_pol(cur_unfix)
   ; let (cur_result,later_result)=height_split(result,height) in
     if not convert_cform_hermitian(cur_result,tp0).is_pure_1

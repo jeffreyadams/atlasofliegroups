@@ -177,7 +177,7 @@ set twisted_c_form_irreducible (Param p) = KTypePol:
   then
     f(Param p) = if count<11 or count%10=0 or nf-count<=10
                  then prints("Term ",count,": ",p)
-		 fi; count+:=1; K_type_pol(twisted_full_deform(p))
+		 fi; count+:=1; twisted_full_deform(p)
   in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
 ; map(f,fixed)+half(unfixed.K_type_pol)
 )

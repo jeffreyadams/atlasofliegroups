@@ -44,7 +44,7 @@ set select(ratvec gamma) = (ParamPol P):
   od
 
 set fd (ParamPol P) = KTypePol: map(full_deform@Param,P)
-set tfd (ParamPol P) = KTypePol: map(twisted_full_deform@Param,P).K_type_pol
+set tfd (ParamPol P) = KTypePol: map(twisted_full_deform@Param,P)
 
 set dpts (Param p) = [Param,bool]:
   for f in reducibility_points(p) do scale_extended(p,delta,f) od

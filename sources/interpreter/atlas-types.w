@@ -7541,18 +7541,16 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly res;
+  K_repr::K_type_pol result;
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
     const auto& def = p->rt().twisted_deformation(it->first,flip);
-    res.add_multiple(def @|
-                    ,flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+    for (const auto& t : def)
+      result.add_term(p->rt().stored_K_type(t.first)
+                     ,flip!=it->second ? t.second.times_s() : t.second);
   }
 @)
-  SR_poly result;
-  for (const auto& t : res) // transform to |std::map|
-    result.emplace(rc.sr(p->rt().stored_K_type(t.first)),t.second);
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
@@ -7748,7 +7746,7 @@ install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
-                ,"(Param->ParamPol)");
+                ,"(Param->KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
