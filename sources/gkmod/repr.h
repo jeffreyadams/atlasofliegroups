@@ -520,7 +520,8 @@ class Rep_table : public Rep_context
   size_t match_reduced_hash(const StandardReprMod& srm)
   { return reduced_hash.match(Reduced_param(*this,srm)); }
 
-  K_repr::K_type stored_K_type(K_type_nr i) { return K_type_pool[i].copy(); }
+  K_repr::K_type stored_K_type(K_type_nr i) const
+  { return K_type_pool[i].copy(); }
 
   // a signed multiset of final parameters needed to be taken into account
   // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
@@ -638,6 +639,8 @@ Weight Cayley_shift (const InnerClass& G,
 
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
+
+K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P);
 
 } // |namespace repr|
 

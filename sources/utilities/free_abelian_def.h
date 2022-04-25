@@ -185,7 +185,7 @@ template<typename T, typename C, typename Compare>
     *p = m;
 }
 
-// incorporate |v|, its exponents are disjoint from $L$
+// incorporate |v|, its exponents are sorted and disjoint from $L$
 template<typename T, typename C, typename Compare>
   void Free_Abelian_light<T,C,Compare>::insert(poly&& v)
 {

@@ -345,7 +345,7 @@ explicit
 private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
   const C* find(const T& e) const; // |const version|, returns ptr to |const|
-  void insert(poly&& v); // incorporate |v|, which has all disjoint exponents
+  void insert(poly&& v); // add sorted |v| with exponents disjoint from |*this|
 
 }; // |class Free_Abelian_light|
 

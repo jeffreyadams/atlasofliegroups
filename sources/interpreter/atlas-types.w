@@ -7519,15 +7519,13 @@ void full_deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
-  @;repr::K_type_poly res;
-  for (const StandardRepr& final : rc.finals_for(p->val))
-    res += p->rt().deformation(final);
-@) // now convert from (tabled) |@;repr::K_type_poly| to |K_repr::K_type_pol|
-  K_repr::K_type_pol result;
-  for (const auto& t : res)
-    result.add_term(p->rt().stored_K_type(t.first),t.second);
-  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+  repr::K_type_poly result;
+    // this is the data type used by |Rep_table::deformation|
+  for (const StandardRepr& final : p->rc().finals_for(p->val))
+    result += p->rt().deformation(final);
+@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+  push_value(std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),result)));
 }
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
@@ -7541,16 +7539,16 @@ void twisted_full_deform_wrapper(expression_base::level l)
 @)
   auto finals = @;ext_block::
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  K_repr::K_type_pol result;
-  for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+  repr::K_type_poly result;
+    // this is the data type used by |Rep_table::deformation|
+  for (const StandardRepr& final : p->rc().finals_for(p->val))
   { bool flip;
-    const auto& def = p->rt().twisted_deformation(it->first,flip);
-    for (const auto& t : def)
-      result.add_term(p->rt().stored_K_type(t.first)
-                     ,flip!=it->second ? t.second.times_s() : t.second);
+    const auto& def = p->rt().twisted_deformation(final,flip);
+    result.add_multiple(def, flip ? Split_integer(0,1) : Split_integer(1,0));
   }
-@)
-  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+  push_value(std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
