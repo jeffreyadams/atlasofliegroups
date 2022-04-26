@@ -7541,10 +7541,11 @@ void twisted_full_deform_wrapper(expression_base::level l)
     extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::K_type_poly result;
     // this is the data type used by |Rep_table::deformation|
-  for (const StandardRepr& final : p->rc().finals_for(p->val))
+  for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
-    const auto& def = p->rt().twisted_deformation(final,flip);
-    result.add_multiple(def, flip ? Split_integer(0,1) : Split_integer(1,0));
+    const auto& def = p->rt().twisted_deformation(it->first,flip);
+    result.add_multiple(def,
+	flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
 @) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
   push_value(std::make_shared<K_type_pol_value>@|
