@@ -7204,7 +7204,7 @@ if (accumulator->rf!=p->rf)
   if (l==expression_base::no_value)
     return;
 @)
-  auto finals = p->rc().finals(p->val);
+  auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
     accumulator->val.add_term(it->first,coef*it->second);
   push_value(std::move(accumulator));
@@ -7230,7 +7230,7 @@ void add_module_termlist_wrapper(expression_base::level l)
       force<module_parameter_value>(t->val[1].get());
     if (accumulator->rf!=p->rf)
       throw runtime_error@|("Real form mismatch when adding terms to a module");
-     auto finals = p->rc().finals(p->val);
+     auto finals = p->rc().finals_for(p->val);
      for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
        accumulator->val.add_term(it->first,coef*it->second);
    }
@@ -7433,25 +7433,22 @@ arguments to be final, we apply |finals_for| to |p->val| and sum over any
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
   auto& rt=p->rt();
   const auto& rc = p->rc();
-  rt.make_dominant(p->val);
-  const auto& gamma = p->val.gamma(); // after being made dominant
-  SR_poly result;
+@/SR_poly result;
   auto finals = rc.finals_for(p->val);
-  for (auto it=finals.begin(); it!=finals.end(); ++it)
+  for (auto it=finals.begin(); not finals.at_end(it); ++it)
   {
-    auto& q = *it;
+    auto& q = it->first;
     BlockElt q_index; // will hold index of |q| in the block
     auto& block = rt.lookup(q,q_index); // generate partial common block
     RatWeight diff = rc.offset(q,block.representative(q_index));
-    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma))
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,q.gamma()))
     result.add_term(std::move(term.first),
-                    Split_integer(term.second,-term.second));
+                    Split_integer(term.second,-term.second)*it->second);
   }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
@@ -7515,14 +7512,15 @@ within the |real_form_value|.
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  test_standard(*p,"Cannot compute full deformation");
   if (l==expression_base::no_value)
     return;
 @)
   repr::K_type_poly result;
     // this is the data type used by |Rep_table::deformation|
-  for (const StandardRepr& final : p->rc().finals_for(p->val))
-    result += p->rt().deformation(final);
+  auto finals = p->rc().finals_for(p->val);
+  for (auto it=finals.begin(); not finals.at_end(it); ++it)
+    for (auto&& term : p->rt().deformation(std::move(it->first)))
+      result.add_term(std::move(term.first),term.second*it->second);
 @) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
   push_value(std::make_shared<K_type_pol_value>@|
     (p->rf,export_K_type_pol(p->rt(),result)));

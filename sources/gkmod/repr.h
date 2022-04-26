@@ -360,10 +360,8 @@ class Rep_context
   poly scale(const poly& P, const RatNum& f) const;
   K_repr::K_type_pol scale_0(const poly& P) const;
 
-  sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
-    (StandardRepr z) const; // by value
-  simple_list<std::pair<StandardRepr,int> > finals // like |finals_for| K-type
-    (StandardRepr z) const; // by value
+  simple_list<std::pair<StandardRepr,int> >
+    finals_for (StandardRepr z) const; // like |finals_for| K-type (by value)
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
@@ -523,8 +521,8 @@ class Rep_table : public Rep_context
   K_repr::K_type stored_K_type(K_type_nr i) const
   { return K_type_pool[i].copy(); }
 
-  // a signed multiset of final parameters needed to be taken into account
-  // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
+  // a signed multiset of final parameters needed to be considered (i.e., their
+  // deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
      const RatWeight& diff, const RatWeight& gamma);
