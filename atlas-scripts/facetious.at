@@ -6,6 +6,7 @@
 <TWOHEIGHTS.at { for HT, HTT, HTA }
 <springer_tables_reductive.at { for Springer_table }
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
+<lietypes.at { for simple_type }
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -799,19 +800,25 @@ set FPPopenureAlcoves([[FacetStatusVertsIndex]] FPPInd, FacetVertsIndex Base) = 
     if is_subset_of_sorted(Find.verts)(Base) then [j] else [] fi
     od.##
 
-{.Indices[e] should index verts in e-dimensional facest in FPPInd. If Base has dimension d (d+1 vertices)
-then output[m] indexes facets of dimension d+1+m with Base in closure.}
-set FPPopenureFacets([[FacetStatusVertsIndex]] FPPInd, [ParamPol] Indices, FacetVertsIndex Base) = [vec]:
-    let Alcoves = [FacetVertsIndex]: for j in FPPopenureAlcoves(FPPInd, Base)
-    	do FPPInd~[0][j].verts od
-    then BaseComps = [FacetVertsIndex]:
+{.allow for the possibility that not all alcoves are indexed. Finds all alcoves in FPP containing Base in closure, even if not indexed.}
+set FPPopenureAllAlcoves(SimpleAffine Affd, [ratvec] vlist, ParamPol Index,
+    FacetVertsIndex Base) = [FacetVertsIndex]:
+    for FV in openure(Affd, facet_bary(vlist, Base))
+    do let FVI = facet_verts_index(Index,FV)
+    in if FVI.>= then [FVI] else [] fi
+    od.##
+
+{.Given a list of alcoves represented as FacetVertsIndex, and a base
+FacetVertsIndex Base, finds all indexed facets E having Base in closure
+Indices[e] should index verts in e-dimensional facets in FPPInd. If
+Base has dimension d (d+1 vertices) then output[m] indexes facets of
+dimension d+1+m with Base in closure.}
+set FPPopenureFacets([FacetVertsIndex] Alcoves, [ParamPol] Indices,
+    FacetVertsIndex Base) = [vec]:
+    let BaseComps = [FacetVertsIndex]:
     	 for A in Alcoves
 	 do  for j in A do if isnt_member(Base)(j) then [j] else [] fi od.##
 	 od
-{
-then FacetVertsRepetitions = for m:#BaseComps[0]
-    do [vec]: ##(for BC in BaseComps
-}
     in [vec]: for m:#BaseComps[0]
 	   do vec:
 	       ##(for BC in BaseComps
@@ -822,6 +829,12 @@ then FacetVertsRepetitions = for m:#BaseComps[0]
 		  od.##
 	       od)
 	    od
+
+set FPPopenureFacets([[FacetStatusVertsIndex]] FPPInd, [ParamPol] Indices,
+    FacetVertsIndex Base) = [vec]:
+    let Alcoves = [FacetVertsIndex]: for j in FPPopenureAlcoves(FPPInd, Base)
+    	do FPPInd~[0][j].verts od
+    in FPPopenureFacets(Alcoves, Indices, Base)
 
 {.given a single nonunitary facet F, updates the status of all E with F contained in
 	E-bar to nonunitary. Uses Indices into the FacetVerts sets}
@@ -844,7 +857,8 @@ set update([vec] OpenureFacets, [ParamPol] Indices, [[FacetStatusVertsIndex]] St
 
 set update([ParamPol] Indices, [[FacetStatusVertsIndex]] StInd,
     FacetStatusVertsIndex nonUnitary) = [[FacetStatusVertsIndex]]:
-    update(FPPopenureFacets(StInd, Indices, nonUnitary.verts), Indices, StInd, nonUnitary)
+    update(FPPopenureFacets(StInd, Indices, nonUnitary.verts), Indices,
+    StInd, nonUnitary)
 
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
 set downdate([ParamPol] Indices, [[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
@@ -883,65 +897,52 @@ barycenters of facets of dimension 0 or 1. Also I THINK that dimension
 set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]] 
     FPPstInd)) = FacetData:
     let FPPstIndQuo = FPPstInd, VIndex0 =
-    	index(for (,Find) in FPPstInd[0] do vlist[Find[0]] od) {,
-    	VIndex1 = ParamPol: if #FPPind <= 1 then 0*Vindex0
-		else index(for ind in FPPind[1] do
-		(vlist(ind[0]) + vlist(ind[1]))/2 od)}
-    then FPPstInd0 = FPPstIndQuo[0]
+    	index(for (,Find) in FPPstInd[0] do vlist[Find[0]] od) ,
+    	VIndex1 = ParamPol: if #FPPstInd=0 then index([vlist[0]])
+		  	    else index(for (,ind) in FPPstInd[1] do (vlist[ind[0]] + vlist[ind[1]])/2 od)
+			    fi,
+			    (X,r) = simple_type(G.derived),  st= G.dual.Springer_table
+    then FPPstInd0 = FPPstInd[0], FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi
     then () = if not(is_split(G))
-    	 then
-	 let st= G.dual.Springer_table in
+    	 then for O@j in st.orbits
+	 do
+	 let gamma = O.H/2
+	 then m0 = find(VIndex0,gamma)
+	 in if m0 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
+	    dim(st.dual_map(O))/2
+	    then FPPstInd0[m0] :=  ("T"##to_string(j),FPPstInd0[m0].verts)
+	    fi
+	 od; FPPstIndQuo[0] := FPPstInd0
+    	 else
 	 for O@j in st.orbits
 	 do
 	 let gamma = O.H/2
 	 then m0 = find(VIndex0,gamma)
-	 in if m0 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
-	    dim(st.dual_map(O))/2
-	    then FPPstInd0[m0] :=  ("T"##to_string(j),FPPstInd0[m0].verts)
-	    fi
-	 od; FPPstIndQuo[0] := FPPstInd0
-    	 else
-	 for O@j in G.dual.Springer_table.orbits
-	 do
-	 let gamma = O.H/2
-	 then m0 = find(VIndex0,gamma)
 	 in if m0 >= 0 then FPPstInd0[m0] :=
 	    ("T"##to_string(j),FPPstInd0[m0].verts)
-	      { else let m1 = find(VIndex1,gamma)
-	      	   in
-	      	   if m1 >= 0 then status1[m1] := "T"##to_string(j) fi }
 	    fi
 	 od; FPPstIndQuo[0] := FPPstInd0
 	 fi
- { TRYING TO INCLUDE ODD TYPE A NILPOTENTS, WHICH GIVE FACETS OF DIM 1
-	then () = let typed = Lie_type(G.derived)
-	      then FPPstInd1 = if type = Lie_type(SL(G.ss_rank + 1)) and G.ss_rank > 1
-	      	   then () = if not(is_split(G))
-    	 	   then
-	 	   let st= G.dual.Springer_table in
-	 	   for O@j in st.orbits
-	 	   do
-	 	   let gamma = O.H/2
-	 then m0 = find(VIndex0,gamma)
-	 in if m0 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
-	    dim(st.dual_map(O))/2
-	    then FPPstInd0[m0] :=  ("T"##to_string(j),FPPstInd0[m0].verts)
-	    fi
-	 od; FPPstIndQuo[0] := FPPstInd0
-    	 else
-	 for O@j in G.dual.Springer_table.orbits
-	 do
-	 let gamma = O.H/2
-	 then m0 = find(VIndex0,gamma)
-	 in if m0 >= 0 then FPPstInd0[m0] :=
-	    ("T"##to_string(j),FPPstInd0[m0].verts)
-	      { else let m1 = find(VIndex1,gamma)
-	      	   in
-	      	   if m1 >= 0 then status1[m1] := "T"##to_string(j) fi }
-	    fi
-	 od; FPPstIndQuo[0] := FPPstInd0
-	 fi
-}
+ { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
+	then () = if X = "A" and r>1 and not(is_split(G))
+	     then for O@j in st.orbits
+	     do
+	     let gamma = O.H/2
+	     then m1 = find(VIndex1,gamma)
+	     in if m1 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
+	     	dim(st.dual_map(O))/2
+	    	then FPPstInd1[m1] :=  ("T"##to_string(j),FPPstInd1[m1].verts)
+	    	fi
+	     od; FPPstIndQuo[1] := FPPstInd1
+	     else for O@j in st.orbits
+	     do
+	     let gamma = O.H/2
+	     then m1 = find(VIndex1,gamma)
+	     in if m1 >= 0 then FPPstInd1[m1] :=
+	     	("T"##to_string(j),FPPstInd1[m1].verts)
+		fi
+	     od; FPPstIndQuo[1] := FPPstInd1
+	     fi
     in (vlist, FPPstIndQuo)
 
 
@@ -1036,8 +1037,11 @@ set down_to_businessC(RealForm G, ([ratvec] vlistL,
 set spherical(RealForm G, ([ratvec] vlist,
     [[FacetStatusVertsIndex]] FPPstInd)) = FacetData:
     let xopen = x_open(G), Grho = G.rho, Indices = [ParamPol]:
-    	for FPPstIndd in FPPstInd do index(FPPstIndd) od
-    then temp = 
+    	for FPPstIndd in FPPstInd do index(FPPstIndd) od{;
+    if facet_verbose then prints("backing up FPPstInd");
+    > "backup" void: prints("set FPPstInd=",FPPstInd)
+    fi}
+    then temp =
     for d:#FPPstInd
     	do{DIMd}
 	let FPPstIndd = FPPstInd[d]
@@ -1053,7 +1057,7 @@ set spherical(RealForm G, ([ratvec] vlist,
 		let Find = FPPstIndd[j]
     		then result =
     		    if facet_verbose
-		     then if k <=10 or k% (1+#FPPstIndd\10) = 0
+		     then if k <=5 or k% (1+#FPPstIndd\10) = 0
  		     	  then prints("started test #",k," of ",#TODOd)
 		     	  fi
 		     fi;
@@ -1069,7 +1073,11 @@ set spherical(RealForm G, ([ratvec] vlist,
 		fi
     	in result
     	od{FACd};
-    FPPstInd[d]:=FPPstIndd
+    FPPstInd[d]:=FPPstIndd{;
+    if facet_verbose then {void: prints("backing up FPPstInd[",
+       to_string(d),"]");}
+    >> "backup" void: prints("FPPstInd[", to_string(d),"]:=",
+       FPPstInd[d]) fi}
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
     in (vlist,FPPstInd)
@@ -1106,7 +1114,7 @@ set sphericalC(RealForm G, ([ratvec] vlist,
 		if{NEWU} (is_unitary(first_param(standardize(
 			 parameter(xopen, Grho, TODOBd[k])))))
 		then FPPstIndd[j]:=("T",FPPstIndd[j].verts)
-		else{NEWU}
+		else{NEWU} {alcoves containing Find.verts may have gone}
 		FPPstInd:=update(Indices, FPPstInd, ("F",Find.verts));
 		FPPstIndd[j]:=("F",FPPstIndd[j].verts)
 		fi{NEWU}
@@ -1195,7 +1203,8 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
 			 parameter(xopen, Grho, TODOBd[k]))),bound))
 		then FPPstIndd[j]:=("Tto"##to_string(bound),FPPstIndd[j].verts)
 		else{NEWU}
-		FPPstInd:= update(Indices, FPPstInd, ("F",Find.verts)); Find
+		FPPstInd:= update(Indices, FPPstInd, ("F",Find.verts)); Find;
+		FPPstIndd[j]:=("F",Find.verts)
 		fi{NEWU}
     	in result
     	od{FACd};
@@ -1210,13 +1219,14 @@ set spherical(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
     in spherical(G,dataIndncH)
 
 set sphericalC(RealForm G) =
-    ([ratvec],[[FacetStatusVertsIndex]]):
+    ([ratvec], [[FacetStatusVertsIndex]]):
     let GL = simple_factors(G)[0]
     then dataL = FPP_vlist_indices_status(GL)
     then dataC = down_to_businessC(G,dataL)
     in sphericalC(G,dataC)
 
-set spherical_to_ht(RealForm G, int bound) = ([ratvec],[[FacetStatusVertsIndex]]):
+set spherical_to_ht(RealForm G, int bound) = ([ratvec],
+    [[FacetStatusVertsIndex]]):
     let data = FPP_vlist_indices_status(G)
     then dataIndncH = down_to_business(G,data)
     in spherical_to_ht(G,dataIndncH,bound)
