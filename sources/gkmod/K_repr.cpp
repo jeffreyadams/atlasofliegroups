@@ -277,7 +277,7 @@ void Rep_context::normalise(K_repr::K_type& z) const
       for (s=0; s<rd.semisimple_rank(); ++s)
       { auto eval = theta_plus_1_eval(z,rd.simpleRootNbr(s));
 	if (kgb().status(x).isComplex(s) and
-	    (eval<=0 or (eval==0 and kgb().isDescent(s,x))))
+	    (eval<0 or (eval==0 and kgb().isDescent(s,x))))
 	{
 	  x = kgb().cross(s,x);
 	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection

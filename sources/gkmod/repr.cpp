@@ -333,7 +333,7 @@ RatWeight Rep_context::offset
   unsigned int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((codec.coroots_matrix*result).isZero());
+  assert((codec.coroots_matrix*result).is_zero());
   return result;
 }
 
@@ -1231,7 +1231,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   const auto& num = g.numerator();
   const auto denom = g.denominator();
   // take into account free part of $\lambda$
-  for (int c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
+  for (auto c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
     hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
@@ -1831,7 +1831,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   auto& block = lookup(sr,z);
   RatWeight diff = offset(sr,block.representative(z));
   assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
-	 .isZero());
+	 .is_zero());
 
   const auto& gamma=sr.gamma();
   std::vector<BlockElt_pol> contrib =
@@ -1919,7 +1919,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     auto& block = lookup(zi,new_z);
     RatWeight diff = offset(zi, block.representative(new_z));
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
-	   .isZero());
+	   .is_zero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto& term : dt)
     {
@@ -1998,7 +1998,7 @@ SR_poly twisted_KL_column_at_s
   common_context ctxt(rc,zm.gamma_lambda());
   blocks::common_block block(ctxt,zm,entry); // build full block
   RatWeight diff = rc.offset(z, block.representative(entry));
-  assert(diff.isZero()); // because we custom-built our |block| above
+  assert(diff.is_zero()); // because we custom-built our |block| above
   // the code below handles still |diff| as it should if it were nonzero
 
   block.shift(diff);
@@ -2214,18 +2214,10 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   }
 
   K_type_poly result { std::less<K_type_nr>() };
-  { // initialise |result| to fully deformed parameter expanded to finals
-    bool flipped; // contrary to |flip|, influences |result| to be stored in |zu|
-    auto z0 = ext_block::scaled_extended_dominant
-		(*this,z,delta,RatNum(0,1),flipped); // deformation to $\nu=0$
-    auto L = ext_block::extended_finalise(*this,z0,delta);
-    for (const std::pair<StandardRepr,bool>& p : L)
-    {
-      auto h = K_type_hash.match
-	(K_repr::K_type(p.first.x(),lambda_rho(p.first),p.first.height()));
-      result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
-			? Split_integer(1,0) : Split_integer(0,1) );
-    }
+  { // initialise |result| to restriction of |z| expanded to finals
+    auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
+    for (auto&& term : z_K) // convert |K_repr::K_type_pol| to |K_type_poly|
+      result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
 
   // compute the deformation terms at all reducibility points

@@ -1349,7 +1349,7 @@ void common_block::swallow
     const RatWeight diff = pair.shift; // take a copy: |sub.shift| modifies it
     sub.shift(diff); // align the |sub| block to this extended block
     shift(diff); // and adapt our block to match, so |embed| remains valid
-    assert(pair.shift.isZero());
+    assert(pair.shift.is_zero());
     auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
