@@ -830,7 +830,7 @@ ext_param complex_cross(const repr::Ext_rep_context& ctxt,
   // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
   E.flip(ctxt.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
-  E.flip(length==2); // to parallel the 2i,2r flips
+  E.flip(length==2); // October surprise; to parallel the 2i,2r flips
 
   return E;
 } // |complex_cross|
@@ -1133,7 +1133,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(ctxt,1,n_alpha,E));
+	links.push_back(complex_cross(ctxt,1,n_alpha,E)); // 1C+ and 1C-
       }
     }
     break;
@@ -1170,6 +1170,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
+	// October surprise:
 	flipped = not flipped; // because of wedge correction for 2i/2r cases
 
 	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
@@ -1257,6 +1258,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
+	// October surprise:
 	flipped = not flipped; // because of wedge correction for 2i/2r cases
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1364,7 +1366,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // non $\theta$-stable plane: twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(ctxt,2,n_alpha,E));
+	  links.push_back(complex_cross(ctxt,2,n_alpha,E)); // 2C+ and 2C-
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -1607,7 +1609,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(ctxt,3,n_alpha,E));
+	  links.push_back(complex_cross(ctxt,3,n_alpha,E)); // 3C+ and 3C-
 	}
       }
     }
@@ -2407,7 +2409,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	star(block_ctxt,E1,p.length(),rd.simpleRootNbr(*it),links);
       assert(is_complex(type) or type==two_semi_real or type==three_semi_real);
       E1 = *links.begin(); // replace |E| by descended parameter
-      E1.flip(has_october_surprise(type)); // to undo extra flip |star|
+      E1.flip(has_october_surprise(type)); // to undo extra flip in |star|
       assert(x>E1.x()); // make sure we advance; we did simple complex descents
       x = E1.x(); // adapt |x| for complex descent test
     } // |while| a singular complex descent exists
@@ -2479,7 +2481,8 @@ K_repr::K_type_pol extended_restrict_to_K
       if (i_tab.is_complex_simple(i_theta,s))
       { const auto eval = rd.simpleCoroot(s).dot(gamma_E);
 	if (eval<0)
-	{ const WeylWord& kappa = orbits[s].w_kappa;
+	{ // apply complex reflections: anti-dominant to dominant for |kappa|
+	  const WeylWord& kappa = orbits[s].w_kappa;
 
 	  rd.act(kappa,gamma_E); // change infin.character representative
 	  tW.twistedConjugate(kappa,E.tw);
@@ -2496,14 +2499,13 @@ K_repr::K_type_pol extended_restrict_to_K
 		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
 	{ // no change to |gamma_E| is needed as relevant reflections fix it
 	  containers::sl_list<ext_param> links;
-#ifndef NDEBUG
 	  auto type =
-#endif
 	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
 	  assert(is_complex(type) or
 		 type==two_semi_real or type==three_semi_real);
 	  assert(links.singleton()); // just one cross of Cayley link
 	  E = std::move(links.front());
+	  E.flip(has_october_surprise(type)); // to undo extra flip in |star|
 	  i_theta = i_tab.nr(E.tw); // update involution
 	  goto restart;
 	}
