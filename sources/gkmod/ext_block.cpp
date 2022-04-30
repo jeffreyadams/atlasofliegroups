@@ -2533,10 +2533,12 @@ K_repr::K_type_pol extended_restrict_to_K
       else
       { assert(i_tab.is_imaginary_simple(i_theta,s));
 	assert(rd.simpleCoroot(s).dot(gamma_E)>=0); // K-type remains standard
-	assert(rd.simpleCoroot(s).dot(gamma_E)>0 or // singular = >noncompact
-	       (E.ctxt.g_rho_check() - E.l).dot(rd.simpleRoot(s))%2==0);
+	if (rd.simpleCoroot(s).dot(gamma_E)==0 and // |s| is singular and
+	    (E.ctxt.g_rho_check()-E.l).dot(rd.simpleRoot(s)) %2!=0) // compact
+	  goto drop; // since |E| satisfies "is zero" condition
 	// now continue with |(E,gamma_E)| in loop on |s|
-      } // multi |if| and |for(s)|
+      } // closes the repeated |if|, and also |for(s)|
+
     // contribute |E| here with coefficient |s^(not is_default(E))|
     result.add_term(E.restrict_K(std::move(gamma_E)),
 		    is_default(E) ? Split_integer(1,0) : Split_integer(0,1));
@@ -2548,10 +2550,13 @@ K_repr::K_type_pol extended_restrict_to_K
 
 /*
   The following function determines whether an extended parameter has a descent
-  for generator |kappa|, which is an orbit of singularly-simple roots, and since
-  |gamma| is supposed dominant here these are actually simple roots. Rather than
-  call |star| here to do the full analysis, we can do a simplified (there is no
-  |to_simple_shift|) test of notably the parity condition in the real case.
+  for generator |kappa|, which is an orbit of singularly-simple roots, that are
+  actually simple roots. The hypothesis may be satisfied either because the
+  caller is considering simple roots of the full system, or because they are
+  taking simple roots of the integral subsystem for a dominant weight; this
+  explains why it is easiest to pass the root as a |RootNbr|. Rather than to
+  call |star| to do the full analysis, we here do a simplified test (there is no
+  |to_simple_shift|) of notably the parity condition in the real case.
  */
 bool is_descent
 (const repr::Ext_rep_context& ctxt, RootNbr n_alpha, const ext_param& E)
