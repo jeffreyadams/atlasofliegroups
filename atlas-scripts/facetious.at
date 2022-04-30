@@ -1107,7 +1107,7 @@ set sphericalC(RealForm G, ([ratvec] vlist,
 		let Find = FPPstIndd[j]
     		then result =
     		    if facet_verbose
-		     then if k <=10 or k% (1+{GOALd}#TODOd\10) = 0
+		     then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
  		     	  then prints("started test #",k," of ",{GOALd}#TODOd)
 		     	  fi
 		     fi;
@@ -1149,7 +1149,7 @@ set spherical_to_ht(RealForm G, ([ratvec] vlist,
 		let Find = FPPstIndd[j]
     		then result =
     		    if facet_verbose
-		     then if k <=10 or k% (1+{GOALd}#TODOd\10) = 0
+		     then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
  		     	  then prints("started test #",k," of ",{GOALd}#TODOd)
 		     	  fi
 		     fi;
@@ -1195,7 +1195,7 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
     		let Find = FPPstIndd[j]
 		then result =
     		    if facet_verbose
-		     then if k <=10 or k% (1+{GOALd}#TODOd\10) = 0
+		     then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
  		     	  then prints("started test #",k," of ",{GOALd}#TODOd)
 		     	  fi
 		     fi;

@@ -2,21 +2,8 @@
 <hermitian.at
 <convert_c_form.at
 {preferred to_ht(ParamPol,int)}
-{ set to_ht0(int N) = (ParamPol->ParamPol): (ParamPol P):
-    let (below,)=height_split(P,N+1) in below }
 
-{following is better in is_unitary_to_ht(E6_q.trivial,24):
-took 60 seconds versus 80 for above}
-
-{set to_htA(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P,zero=0*P,left=P in
-while (not(left=zero) and not(height(first_param(left))> N)) do result+:=(first_term(left));
-left-:=(first_term(left)) od; result}
-
-{following is better still...}
-{set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P, Mon = monomials(P), i=0 in
-while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result}
+set herm_report = bool: false
 
 set to_ht(int N) = (ParamPol->ParamPol):(ParamPol P):
 let Mon = monomials(P), i=0 in 
@@ -52,7 +39,16 @@ set oriented_KL_sum_to_ht  (int N) = (Param->ParamPol):(Param p):
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible_to_ht (Param p,int N) = ParamPol:
+  if not(herm_report) then
   map(c_form_std_to_ht(N), oriented_KL_sum_to_ht(N)(p) )
+  else
+  let P=oriented_KL_sum_to_ht(N)(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+                 fi; count+:=1; full_deform(p)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
+  fi
 
 {    twisted_c_form_irreducible_to_ht   }
 
@@ -91,7 +87,18 @@ standardrepKs.}
 set twisted_c_form_irreducible_to_ht (Param p,int N) = ParamPol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions_to_ht(p,N)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  in map(twisted_c_form_std_to_ht(N),fixed)+half(unfixed.at_nu_0)
+  in
+  if not herm_report
+  then map(twisted_c_form_std_to_ht(N),fixed)+half(unfixed.at_nu_0)
+  else let nf = #fixed, count=0
+  then
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform_to_ht(N)(p)
+    in prints("Fully twisted deforming ",nf," terms (",#unfixed,
+    " unfixed).");
+    map(f,fixed)+half(unfixed.at_nu_0)
+  fi
 )
 
 {.Hermitian form to ht on a irreducible module, normalization from its
@@ -106,32 +113,3 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = ParamPol:
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht (Param p,int N) = bool:
   p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
-
-{
-atlas> set N=13^4   (28561)
-Variable N: int (overriding previous instance, which had type int)
-atlas>  set sph(ratvec nu) = parameter(x_open(F4_s),F4_s.rho,nu)
-Defined sph: (ratvec->Param)
-atlas> set Q= for j:N do sph([j%13,(j\13)%13,(j\169)%13,(j\2197)%13]/12) od
-Variable Q: [Param]
-
-{ A list of the 28561 spherical reps of F4_s with continuous
-parameter nu in [0,1]^4 having denominators 12. }
-
-atlas> void:for q@j in Q do if(is_unitary_to_ht(q,11) and not is_unitary(q)) then prints(j,"  11  ",is_unitary_to_ht(q,11),"   15  ",is_unitary_to_ht(q,15),"    16  ",is_unitary_to_ht(q,16),"    22  ",is_unitary_to_ht(q,22),"   infty  ",is_unitary(q)) fi od
-
-}
-
-{
-set to_htB(int N) = (ParamPol->ParamPol):(ParamPol P):
-let result=0*P, Mon = monomials(P), i=0 in
-while (i < #Mon and height(Mon[i])<N+1) do result+:=(P[Mon[i]],Mon[i]); i+:=1 od; result
-}
-
-{
-
-set CF=character_formula(E7_s.trivial)
-set TR = for j:25 do prints(j); to_ht(5*j)(CF) od
-set TR = for j:25 do prints(j); to_htB(5*j)(CF) od
-
-}
