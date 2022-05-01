@@ -5862,6 +5862,8 @@ encountered during an iteration; therefore we must check after iteration whether
 the expected number of items was copied into |result|. These checks are
 independent of the traversal direction, so it is outside the conditional on
 |in_forward(flags)| (the checks have to test |out_forward(flags)| instead).
+These checks are conditional on |l!=no_value| however, since otherwise |result|
+still holds a null (shared) pointer and the test would crash.
 
 @h "atlas-types.h"
 @< Perform a loop over the terms of a $K$-type polynomial @>=
@@ -5893,7 +5895,8 @@ independent of the traversal direction, so it is outside the conditional on
     @< Catch block for reporting iteration number within loop over
        terms in a $K$-type polynomial @>
   }
-  @< Adjust |result| in case loop produced fewer items that predicted @>
+  if (l!=no_value)
+    @< Adjust |result| in case loop produced fewer items that predicted @>
 }
 
 @ The catch clause is similar to those for other types of loops,
@@ -5951,7 +5954,9 @@ contributions to the beginning of the vector.
 }
 
 @ The loop over terms of a virtual module is similar to that over those of a
-$K$-type polynomial.
+$K$-type polynomial; however if the loop completes normally, there is no need to
+check for an incomplete |result| since the exact number of iterations was
+predicted (from |pol_val->val.size()|) before the loop started.
 
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();

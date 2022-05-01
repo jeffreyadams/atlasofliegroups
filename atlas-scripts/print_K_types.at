@@ -5,6 +5,7 @@ this file used to be called K_types.at
 now consists almost exclusively of printing functions
 }
 
+<K_highest_weights.at { for eponymous function }
 <K_types.at
 <hermitian.at { for |hermitian_form_irreducible| }
 
