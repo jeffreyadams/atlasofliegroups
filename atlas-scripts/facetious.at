@@ -845,8 +845,10 @@ set update([vec] OpenureFacets, [ParamPol] Indices, [[FacetStatusVertsIndex]] St
     then temp = for e:#StInd - #NUverts from #NUverts
     	 do let opene = OpenureFacets[e-#NUverts], StInde= newStInd[e]
 	    in for j in opene
-    	    do
-	    if StInde[j].status = "?"
+    	    do let stej = StInde[j].status
+	    in
+	    if stej = "?" or (#stej > 1
+	       and stej[1]="t")
 	    {Still fails!	then StInde[j].status:=nonUnitary.status}
             then StInde[j] := (nonUnitary.status, StInde[j].verts)
 	    fi
@@ -873,8 +875,12 @@ set downdate([ParamPol] Indices, [[FacetStatusVertsIndex]] StInd,FacetStatusVert
     	do
 	let j = find(Indices[e], S)
 	in
-	if j >= 0 and StInde[j].status = "?" {can we assign to component?}
-	then StInde[j]:=(Unitary.status, StInde[j].verts)
+	if j >= 0 then
+	   let stej = StInde[j].status
+	   in
+	   if stej = "?" or (#stej > 1 and stej[1]="t")
+	   then StInde[j]:=(Unitary.status, StInde[j].verts)
+	   fi
 	fi
 	od;
     StInd[e]:=StInde
