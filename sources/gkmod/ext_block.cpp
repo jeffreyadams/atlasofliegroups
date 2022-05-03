@@ -2275,11 +2275,11 @@ const WeightInvolution& ext_param::theta () const
   { return ctxt.inner_class().matrix(tw); }
 
 // restrict from extended group to |G|, which requires providing inf. character
-repr::StandardRepr ext_param::restrict(const RatWeight& gamma) const
+repr::StandardRepr ext_param::restrict(RatWeight gamma) const
 {
   const RatWeight gamma_rho = gamma-rho(rc().root_datum());
   const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
-  return rc().sr_gamma(x(),lambda_rho,gamma);
+  return rc().sr_gamma(x(),lambda_rho,std::move(gamma));
 } // |restrict|
 
 // restrict from extended group to |K|, using vaue of $(1+\theta)*\lambda$
@@ -2545,7 +2545,7 @@ K_repr::K_type_pol extended_restrict_to_K
     result.add_term(E.restrict_K(std::move(gamma_E)),
 		    is_default(E) ? Split_integer(1,0) : Split_integer(0,1));
   drop: {} // when jumping here, proceed without contributing |current|
-  } // |while(nont todo.empty())|
+  } // |while(not todo.empty())|
 
   return result;
 } // |extended_restrict_to_K|
@@ -2590,60 +2590,133 @@ weyl::Generator first_descent_among
 }
 
 /*
- This function is destined to be used after |scaled_extended_dominant|, to
- express the standard representation as linear combination of ones without
- singular descents, while keeping track (unlike |Rep_context::expand_final|)
- of flips that might occur during the process.
+ This function does the same as |Rep_context::finals_for| (except that it
+ requires |sr| to be already standard), but also recording in the boolean
+ returned the net flip to the choice of default extension. It achieves this by
+ performing the necessary reflections on a full |ext_param|. While the
+ requirement of being standard avoids complications with imaginary reflections
+ (where we really have no idea how to handle an |ext_param|) we do handle real
+ simple reflections to obtain real dominance; however handling of |ext_param|
+ for that case, which does not occur in deformation, is experimental for now
  */
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
-  (const repr::Rep_context& rc,
-   const StandardRepr& sr, const WeightInvolution& delta)
-{ // in order that |singular_generators| generate the whole singular system:
-  assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
-  // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
+  (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta)
+{
+  { RootNbr witness; assert(rc.is_standard(sr,witness)); }
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  const RootDatum& rd=rc.root_datum();
+  const InvolutionTable& i_tab = rc.involution_table();
+  const TwistedWeylGroup& tW = rc.twisted_Weyl_group();
 
   repr::Ext_rep_context ctxt(rc,delta);
-  const auto subsys = SubSystem::integral(rc.root_datum(),sr.gamma());
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta); // orbits of simples
 
-  const ext_gens orbits = subsys.fold_orbits(delta);
-  const RankFlags singular_orbits =
-    reduce_to(orbits,subsys.singular_generators(sr.gamma()));
+  RatWeight gamma = sr.gamma(); // a working copy
+  ext_param E = ext_param::default_extend(ctxt,sr); // start extension at |sr|
 
-  containers::queue<ext_param>
-    to_do { ext_param::default_extend(ctxt,sr) };
+  // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
+  // similar to |extended_restrict_to_K| above
+
   containers::sl_list<std::pair<StandardRepr,bool> > result;
+  using q_element = std::pair<ext_param,RatWeight>;
+  queue<q_element> to_do;
+  to_do.emplace(std::move(E),std::move(gamma));
+  while (not to_do.empty())
+  {
+    // the variables that used to hold initial values now serve as temporaries:
+    E = std::move(to_do.front().first);
+    gamma = std::move(to_do.front().second);
+    to_do.pop();
+    InvolutionNbr i_theta = i_tab.nr(E.tw);
 
-  do
-  { const ext_param E= std::move(to_do.front());
-    to_do.pop(); // we are done with |head|
-    auto s = first_descent_among(ctxt,subsys,singular_orbits,orbits,E);
-    if (s>=orbits.size()) // no singular descents, so append to result
-      result.emplace_back
-	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
-    else // |s| is a singular descent orbit
-    { containers::sl_list<ext_param> links;
-      auto type =
-	star(ctxt,E,orbits[s].length(),subsys.parent_nr_simple(orbits[s].s0),
-	     links);
-      if (not is_like_compact(type)) // some descent, push to front of |to_do|
-      { bool flip = has_october_surprise(type); // to undo extra flip |star|
-	auto l_it=links.begin(); RootNbr witness;
-	// filtering out those becoming zero at |sr.gamma()| is probably overly
-	// prudent, as future |is_like_compact(type)| would skip them anyway:
-	if (rc.is_nonzero(l_it->restrict(sr.gamma()),witness))
-	{
-	  l_it->flip(flip);
-	  to_do.push(*l_it);
+  restart: // go here when |E| and |gamma| and/or |i_theta| have been modified
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+      if (i_tab.is_complex_simple(i_theta,s))
+      { const auto eval = rd.simpleCoroot(s).dot(gamma.numerator());
+	if (eval<0)
+	{ // apply complex reflections: anti-dominant to dominant for |kappa|
+	  const WeylWord& kappa = orbits[s].w_kappa;
+
+	  rd.act(kappa,gamma); // change infin.character representative
+	  tW.twistedConjugate(kappa,E.tw);
+	  i_theta = i_tab.nr(E.tw); // update involution
+	  rd.act(kappa,E.gamma_lambda); // corresponding operation on |E|
+	  rd.act(kappa,E.tau);
+	  for (auto s : kappa)
+	    rd.simple_coreflect(E.l,s,-ctxt.g_rho_check().dot(rd.simpleRoot(s)));
+	  rd.dual_act(E.t,kappa);
+	  E.flip(kappa.size()==2); // record flip for every 2C+/2C- done
+	  goto restart;
+	} // |if(eval<0)|
+	else if (eval==0 and
+		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
+	{ // no change to |gamma| is needed as relevant reflections fix it
+	  containers::sl_list<ext_param> links;
+	  auto type =
+	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
+	  assert(is_complex(type) or
+		 type==two_semi_real or type==three_semi_real);
+	  assert(links.singleton()); // just one cross of Cayley link
+	  E = std::move(links.front());
+	  E.flip(has_october_surprise(type)); // to undo extra flip in |star|
+	  i_theta = i_tab.nr(E.tw); // update involution
+	  goto restart;
 	}
-	if (has_double_image(type)  // then maybe add second node after |head|
-	    and rc.is_nonzero((++l_it)->restrict(sr.gamma()),witness))
-	{ l_it->flip(flip);
-	  to_do.push(*l_it);
+	// else |s| is a complex ascent; skip this |s|
+      } // |i_tab.is_complex_simple(i_theta,s))|
+      else if ((i_tab.is_real_simple(i_theta,s)))
+      {	const auto eval = rd.simpleCoroot(s).dot(gamma.numerator());
+	if (eval<0)
+	{
+	  const WeylWord& kappa = orbits[s].w_kappa;
+
+	  rd.act(kappa,gamma); // change infin.character representative
+	  for (auto s : kappa)
+	    rd.simple_reflect(s,E.gamma_lambda.numerator(),
+			      E.gamma_lambda.denominator()); // $-\rho$ centered
+	  rd.act(kappa,E.tau);
+	  // that the next line is required is just my guess (MvL, May 2022)
+	  E.flip(kappa.size()==2); // record flip for each "two real" reflection
+	  goto restart;
+	}
+	else if (eval==0)
+	{
+	  if (E.gamma_lambda.dot(rd.simpleCoroot(s)) %2!=0) // nonparity?
+	    continue; // then |s| is an ascent; skip it
+	  containers::sl_list<ext_param> links;
+	  auto type =
+	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
+	  if (is_like_compact(type)) // real parity switched has 0 descents
+	    goto drop;
+	  assert(not links.empty());
+	  const bool flip = has_october_surprise(type);
+	  E = std::move(links.front());
+	  i_theta = i_tab.nr(E.tw); // update involution
+	  E.flip(flip); // for October suprises |star| did an extra flip; undo it
+	  if (has_double_image(type)) // then queue up second image value
+	  { const auto it = std::next(links.begin());
+	    it->flip(flip); // like above undo etra flip
+	    to_do.emplace(std::move(*it),gamma);
+	  }
+	  goto restart;
 	}
       }
-    }
-  }
-  while(not to_do.empty());
+      else
+      { auto eval = rd.simpleCoroot(s).dot(gamma.numerator()); // for sign only
+	assert(i_tab.is_imaginary_simple(i_theta,s));
+	assert(eval>=0); // (extended) parameters remain standard here
+	if (eval==0 and // |s| is singular and
+	    (E.ctxt.g_rho_check()-E.l).dot(rd.simpleRoot(s)) %2!=0) // compact
+	  goto drop; // since |E| satisfies "is zero" condition
+	// otherwise continue with |(E,gamma)| in loop on |s|
+      } // closes the repeated |if|, and also |for(s)|
+
+    // contribute |E| here with Boolean |not is_default(E)|
+    result.emplace_back
+      (std::make_pair(E.restrict(std::move(gamma)),not is_default(E)));
+  drop: {} // when jumping here, proceed without contributing |current|
+  } // |while(not todo.empty())|
 
   return result;
 } // |extended_finalise|

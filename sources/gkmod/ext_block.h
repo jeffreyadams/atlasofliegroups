@@ -284,7 +284,6 @@ class context // holds values that remain fixed across extended block
 
 
 // A variant of (now removed) |ext_block::param| that avoids fixing |gamma|
-// Identical (supplementary) data fields, method absent: |restrict|
 struct ext_param // allow public member access; methods ensure no invariants
 {
   const repr::Ext_rep_context& ctxt;
@@ -329,7 +328,7 @@ struct ext_param // allow public member access; methods ensure no invariants
 
   KGBElt x() const; // reconstruct |x| component
   // underlying unextended representation
-  repr::StandardRepr restrict(const RatWeight& gamma) const;
+  repr::StandardRepr restrict(RatWeight gamma) const; // by value
   K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
 
@@ -341,13 +340,19 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  bool& flipped // output only, records whether and extended flip was recorded
  );
 
+// restrict to K expanding to final K types, taking into account extended flips
 K_repr::K_type_pol extended_restrict_to_K
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);
 
-// expand parameter into a signed sum of extended nonzero final parameters
+// similar operation for scaling of $\nu$ by strictly positive |factor|
+std::pair<StandardRepr,bool> scaled_extended_finalise
+  (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
+   RatNum factor);
+
+// combined making dominant and expansion into finals, accounting for flips
+// the only assumption on |sr| is that it is standard and |delta|-fixed
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
-  (const repr::Rep_context& rc,
-   const StandardRepr& sr, const WeightInvolution& delta);
+  (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta);
 
 // check quadratic relation for |s| at |x|
 bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x);

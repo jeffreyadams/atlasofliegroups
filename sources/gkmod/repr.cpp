@@ -1122,7 +1122,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
 	case gradings::Status::Real:
 	  if (eval<0)
 	  {
-	    x = kgb().cross(s,x);
+	    // |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
 	    rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
 	    rd.simple_reflect(s,gamma.numerator());
 	    // keep |coef| unchanged
@@ -1151,7 +1151,7 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
   }
   while (not to_do.empty());
   return result;
-} // |Rep_context::finals|
+} // |Rep_context::finals_for| StandardRepr
 
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
@@ -2216,6 +2216,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   K_type_poly result { std::less<K_type_nr>() };
   { // initialise |result| to restriction of |z| expanded to finals
     auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
+    // the following loop reorders terms by |std::less<K_type_nr>|
     for (auto&& term : z_K) // convert |K_repr::K_type_pol| to |K_type_poly|
       result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
