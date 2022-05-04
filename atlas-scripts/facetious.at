@@ -987,6 +987,36 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 
 set show(FacetData FD) = show(FD.facet_status_inds)
 
+set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
+   for n in facet do vertices[n] od
+
+set unitary_facets ([FacetStatusVertsIndex] FSVI)=[vec]:
+   ##for (u,fac) in FSVI
+   do if u!="F" then [fac] else [] fi od
+
+set remove_closure ([vec] short,[vec] long) =[vec]:
+   ##for v in short do if none (for w in long do all(for k in v do find(w,k)!=-1 od) od)
+                     then [v] else [] fi od
+
+set remove_closure ([[vec]] all, int k) =[[vec]]:
+   for level@i in all do if i<k
+               then remove_closure (level,all[k])
+	       else level
+	       fi od
+
+set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist)=void:
+   let n=#FSVIlist-1
+   then ulist= for facets in FSVIlist
+               do unitary_facets(facets) od
+   in for i:n do ulist:=remove_closure(ulist,n-i) od;
+   for i:n+1
+    do prints(new_line,"Unitary facets of dimension ",i,":",new_line);
+        for fac in ulist[i]
+	do  prints(look_up_vertices(vertices,fac))
+        od
+    od
+
+
 {.picks the facets for hermitian, final parameters.}
 {This eliminates a lot more than pick_not_cohom used to in the nonquasisplit case,
  but maybe it's OK.}
