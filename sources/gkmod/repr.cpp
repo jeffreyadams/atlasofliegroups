@@ -1893,10 +1893,10 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = alcove_center(*this,z);
-  RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
+  RatNumList rp=reducibility_points(z);
 
   deformation_unit zn(*this,z);
-  { // look up if deformation formula for |z_near| is already known and stored
+  { // look up if deformation formula for |z| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();

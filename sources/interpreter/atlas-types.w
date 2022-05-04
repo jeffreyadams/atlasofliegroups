@@ -7528,7 +7528,7 @@ void full_deform_wrapper(expression_base::level l)
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const auto& rc=p->rc();
+  const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
   if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
@@ -7541,7 +7541,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
     // this is the data type used by |Rep_table::deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
-    const auto& def = p->rt().twisted_deformation(it->first,flip);
+    const auto& def = rt.twisted_deformation(std::move(it->first),flip);
     result.add_multiple(def,
 	flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
   }

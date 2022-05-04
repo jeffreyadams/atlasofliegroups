@@ -2211,12 +2211,27 @@ ext_param::ext_param
 
 // contructor used for default extension once |x| and |gamma_lamba| are chosen
 ext_param::ext_param
-(const repr::Ext_rep_context& ec,
+  (const repr::Ext_rep_context& ec,
    KGBElt x, const RatWeight& gamma_lambda, bool flipped)
   : ctxt(ec)
   , tw(ec.real_group().kgb().involution(x)) // now computing |theta()| is valid
   , l(ell(ec.real_group().kgb(),x))
   , gamma_lambda(gamma_lambda)
+  , tau(matreduc::find_solution
+	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
+  , t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , flipped(flipped)
+{
+  validate(*this);
+}
+
+ext_param::ext_param
+  (const repr::Ext_rep_context& ec, KGBElt x, RatWeight&& gam_lam, bool flipped)
+  : ctxt(ec)
+  , tw(ec.real_group().kgb().involution(x)) // now computing |theta()| is valid
+  , l(ell(ec.real_group().kgb(),x))
+  , gamma_lambda(std::move(gam_lam))
   , tau(matreduc::find_solution
 	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
   , t(matreduc::find_solution
@@ -2238,15 +2253,17 @@ ext_param::ext_param
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
-ext_param ext_param::default_extend
+ext_param default_extend
   (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
+  return default_extend(ec,repr::StandardReprMod::mod_reduce(ec.rc(),sr));
+}
 
-  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
-  // get default representative at |gamma%1|, normalised
-  auto gamma_lambda=ec.gamma_lambda(srm);
-  return ext_param(ec,sr.x(),gamma_lambda);
+ext_param default_extend
+  (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm)
+{
+  return ext_param(ec,srm.x(),ec.gamma_lambda(std::move(srm)));
 }
 
 ext_param& ext_param::operator= (const ext_param& p)
@@ -2333,7 +2350,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, only used to record involution
 
-  ext_param E0 = ext_param::default_extend(ctxt,sr);
+  ext_param E0 = default_extend(ctxt,sr);
 
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
@@ -2420,7 +2437,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   // but the whole point of this function is to record the relative flip too!
   flipped = // compare |E1| to default
-    not same_sign(E1,ext_param::default_extend(ctxt,result));
+    not same_sign(E1,default_extend(ctxt,result));
   return result;
 
 } // |scaled_extended_dominant|
@@ -2455,7 +2472,7 @@ K_repr::K_type_pol extended_restrict_to_K
   // for convenience, make a (modifiable) copy of twice |gamma| at |nu==0|
   Weight gamma_E = rc.theta_plus_1_lambda(restricted_sr); // $\theta$-fixed
 
-  ext_param E = ext_param::default_extend(ctxt,sr); // start extension at |sr|
+  ext_param E = default_extend(ctxt,sr); // start extension at |sr|
   E.gamma_lambda -= rc.nu(sr); // shift extended parameter for restriction to K
   // now |E.gamma_lambda| should be |RatWeight(gamma_E,2)-rc.lambda(sr)| up to
   // an element of $(1-theta)X^*$, but such an |assert| is hard to formulate
@@ -2613,7 +2630,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const ext_gens orbits = rootdata::fold_orbits(rd,delta); // orbits of simples
 
   RatWeight gamma = sr.gamma(); // a working copy
-  ext_param E = ext_param::default_extend(ctxt,sr); // start extension at |sr|
+  ext_param E = default_extend(ctxt,sr); // start extension at |sr|
 
   // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
   // similar to |extended_restrict_to_K| above

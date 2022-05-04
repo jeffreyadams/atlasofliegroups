@@ -302,8 +302,8 @@ struct ext_param // allow public member access; methods ensure no invariants
   // default extension choice:
   ext_param (const repr::Ext_rep_context& ec,
 	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
-  static ext_param default_extend
-    (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+  ext_param (const repr::Ext_rep_context& ec,
+	     KGBElt x, RatWeight&& gamma_lambda, bool flipped=false);
 
   ext_param (const ext_param& p) = default;
   ext_param (ext_param&& p)
@@ -331,6 +331,11 @@ struct ext_param // allow public member access; methods ensure no invariants
   repr::StandardRepr restrict(RatWeight gamma) const; // by value
   K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
+
+ext_param default_extend
+    (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+ext_param default_extend
+    (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm);
 
 
 // a variation of |Rep_context::make_dominant|, used during extended deformation

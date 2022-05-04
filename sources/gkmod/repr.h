@@ -139,7 +139,8 @@ class StandardReprMod
     (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
   KGBElt x() const { return x_part; }
-  RatWeight gamma_lambda() const { return gamlam; }
+  RatWeight gamma_lambda() const & { return gamlam; }
+  RatWeight&& gamma_lambda() && { return std::move(gamlam); }
 
   // since pseudo constructors map |rgl| to fundamental domain, equality is easy
   bool operator==(const StandardReprMod& other) const
@@ -307,6 +308,8 @@ class Rep_context
 
   RatWeight gamma_lambda(const StandardReprMod& z) const
   { return z.gamma_lambda(); }
+  RatWeight&& gamma_lambda(StandardReprMod&& z) const
+  { return std::move(z).gamma_lambda(); }
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
 
