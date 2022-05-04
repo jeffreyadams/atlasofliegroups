@@ -869,7 +869,7 @@ bool same_sign (const ext_param& E, const ext_param& F)
 }
 
 inline bool is_default (const ext_param& E)
-  { return same_sign(E,ext_param(E.ctxt,E.x(),E.gamma_lambda)); }
+{ return same_sign(E,default_extend(E.ctxt,E.restrict_mod())); }
 
 
 /*
@@ -2290,6 +2290,12 @@ KGBElt ext_param::x() const
 
 const WeightInvolution& ext_param::theta () const
   { return ctxt.inner_class().matrix(tw); }
+
+// restrict from extended group to |G|, remaining modulo shift |gamma|,|lambda|
+repr::StandardReprMod ext_param::restrict_mod() const
+{
+  return StandardReprMod::build(rc(),x(),gamma_lambda);
+} // |restrict_mod|
 
 // restrict from extended group to |G|, which requires providing inf. character
 repr::StandardRepr ext_param::restrict(RatWeight gamma) const

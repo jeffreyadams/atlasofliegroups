@@ -327,7 +327,8 @@ struct ext_param // allow public member access; methods ensure no invariants
   const WeightInvolution& theta () const;
 
   KGBElt x() const; // reconstruct |x| component
-  // underlying unextended representation
+  // underlying unextended (common) representation or K-type
+  repr::StandardReprMod restrict_mod() const;
   repr::StandardRepr restrict(RatWeight gamma) const; // by value
   K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
