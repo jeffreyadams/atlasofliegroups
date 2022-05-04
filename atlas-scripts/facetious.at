@@ -1079,11 +1079,7 @@ set spherical(RealForm G, ([ratvec] vlist,
 		fi
     	in result
     	od{FACd};
-    FPPstInd[d]:=FPPstIndd{;
-    if facet_verbose then {void: prints("backing up FPPstInd[",
-       to_string(d),"]");}
-    >> "backup" void: prints("FPPstInd[", to_string(d),"]:=",
-       FPPstInd[d]) fi}
+    FPPstInd[d]:=FPPstIndd
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
     in (vlist,FPPstInd)
