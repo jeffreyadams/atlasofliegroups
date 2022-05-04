@@ -2197,9 +2197,11 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   RatNumList rp=reducibility_points(z);
   flip = false; // ensure no flip is recorded when shrink wrapping is not done
   if (not rp.empty() and rp.back()!=RatNum(1,1))
-  { // then shrink wrap toward $\nu=0$
+  { // shrink wrap toward $\nu=0$ to get useful parameter to store result for
     const RatNum f=rp.back();
-    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip);
+    std::pair<StandardRepr,bool> p =
+      ext_block::scaled_extended_finalise(*this,z,delta,f);
+    z = p.first; flip=p.second;
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==RatNum(1,1)); // should make first reduction at |z|
@@ -2224,37 +2226,35 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    RatNum r=rp[i]; bool flipped;
-    auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-    auto L =
-      ext_block::extended_finalise(*this,zi,delta); // rarely a long list
+    std::pair<StandardRepr,bool> p =
+      ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
+    StandardRepr zi = std::move(p.first);
+    const bool flip_p = p.second;
+    BlockElt index;
+    auto& block = lookup(zi,index);
+    RatWeight diff = offset(zi,block.representative(index));
+    block.shift(diff); // adapt representatives for extended block construction
+    assert(block.representative(index)==
+	   StandardReprMod::mod_reduce(*this,zi));
+    auto& eblock = block.extended_block(&poly_hash);
+    block.shift(-diff);
 
-    for (std::pair<StandardRepr,bool>& p : L)
-    {
-      const bool flip_p = flipped!=p.second;
-      BlockElt new_z;
-      auto& block = lookup(p.first,new_z);
-      RatWeight diff = offset(p.first,block.representative(new_z));
-      block.shift(diff); // adapt representatives for extended block construction
-      assert(block.representative(new_z)==
-	     StandardReprMod::mod_reduce(*this,p.first));
-      auto& eblock = block.extended_block(&poly_hash);
-      block.shift(-diff);
+    RankFlags singular = block.singular(zi.gamma());
+    RankFlags singular_orbits; // flag singulars among orbits
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
-      RankFlags singular = block.singular(p.first.gamma());
-      RankFlags singular_orbits; // flag singulars among orbits
-      for (weyl::Generator s=0; s<eblock.rank(); ++s)
-	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-
-      auto terms = twisted_deformation_terms(block,eblock,new_z,
-					     singular_orbits,diff,zi.gamma());
-      for (auto const& term : terms)
-      { bool flip_def;
-	const auto& def = twisted_deformation(term.first,flip_def); // recursion
-	result.add_multiple(def,
-	   flip_p!=flip_def ? Split_integer(-term.second,term.second)
-			    : Split_integer(term.second,-term.second));
-      }
+    auto terms = twisted_deformation_terms(block,eblock,index,
+					   singular_orbits,diff,zi.gamma());
+    for (auto&& term : terms)
+    { bool flip_def;
+      const auto& def =
+	twisted_deformation(std::move(term.first),flip_def); // recursion
+      result.add_multiple
+	(def,
+	 flip_p!=flip_def ? Split_integer(-term.second,term.second)
+			  : Split_integer(term.second,-term.second)
+	 );
     }
   }
 

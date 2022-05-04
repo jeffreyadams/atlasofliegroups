@@ -2744,6 +2744,88 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   return result;
 } // |extended_finalise|
 
+/*
+  This function handles scaling of $\nu$ by a strictly positive factor followed
+  by rewriting as a final parameter, at the level of extended parameters. It
+  reports whether a net flip of the default extension choice occurred as the
+  second component of the returned value. It is simpler than |extended_finalise|
+  because it requires |sr| to be initially final. The dominance for imaginary
+  and real subsystems is unaffected by scaling, so that restoring dominance
+  only involves complex simple reflections, and since scaling does move onto new
+  real walls (no new real singular roots) nor affects the parity condition for
+  real singular roots, the only singular descents possible are complex ones.
+ */
+std::pair<StandardRepr,bool> scaled_extended_finalise
+(const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
+ RatNum factor)
+{
+  assert(rc.is_final(sr));
+  assert(factor.is_positive()); // so no real root becomes singular that was not
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  const RootDatum& rd=rc.root_datum();
+  const InvolutionTable& i_tab = rc.involution_table();
+  const TwistedWeylGroup& tW = rc.twisted_Weyl_group();
+
+  repr::Ext_rep_context ctxt(rc,delta);
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta); // orbits of simples
+
+  // first approximation to result is scaled input
+  // importantly, $\lambda$ (or equivalently |lambda_rho|) is held fixed here
+  auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+  // it will be convenent to have a working (modifiable) copy of |gamma|
+  RatWeight gamma = scaled_sr.gamma(); // a working copy
+
+  ext_param E = default_extend(ctxt,sr); // start extension at |sr|
+  E.gamma_lambda += gamma-sr.gamma(); // shift |E.gamma_lambda| by $\nu$ change
+
+  // now make |gamma| dominant and finalise |scaled_sr|, while updating |E|
+  // similar to |extended_restrict_to_K| above, but we only need to treat
+  // complex coroots (both for dominance and finality)
+
+  InvolutionNbr i_theta = i_tab.nr(E.tw);
+
+  weyl::Generator s;
+  do
+    for ( s=0; s<rd.semisimple_rank(); ++s)
+      if (i_tab.is_complex_simple(i_theta,s))
+      { const auto eval = rd.simpleCoroot(s).dot(gamma.numerator());
+	if (eval<0)
+	{ // apply complex reflections: anti-dominant to dominant for |kappa|
+	  const WeylWord& kappa = orbits[s].w_kappa;
+
+	  rd.act(kappa,gamma); // change infin.character representative
+	  tW.twistedConjugate(kappa,E.tw);
+	  i_theta = i_tab.nr(E.tw); // update involution
+	  rd.act(kappa,E.gamma_lambda); // corresponding operation on |E|
+	  rd.act(kappa,E.tau);
+	  for (auto s : kappa)
+	    rd.simple_coreflect(E.l,s,-ctxt.g_rho_check().dot(rd.simpleRoot(s)));
+	  rd.dual_act(E.t,kappa);
+	  E.flip(kappa.size()==2); // record flip for every 2C+/2C- done
+	  break;
+	} // |if(eval<0)|
+	else if (eval==0 and
+		 i_tab.complex_is_descent(i_theta,rd.simpleRootNbr(s)))
+	{ // no change to |gamma| is needed as relevant reflections fix it
+	  containers::sl_list<ext_param> links;
+	  auto type =
+	    star(ctxt,E,orbits[s].length(),rd.simpleRootNbr(s),links);
+	  assert(is_complex(type) or
+		 type==two_semi_real or type==three_semi_real);
+	  assert(links.singleton()); // just one cross of Cayley link
+	  E = std::move(links.front());
+	  E.flip(has_october_surprise(type)); // to undo extra flip in |star|
+	  i_theta = i_tab.nr(E.tw); // update involution
+	  break;
+	}
+	// else |s| is a complex ascent; skip this |s|
+      } // |i_tab.is_complex_simple(i_theta,s))| and |for(s)|
+  while(s<rd.semisimple_rank());
+  return std::make_pair<StandardRepr,bool>
+    (E.restrict(std::move(gamma)),not is_default(E));
+} // |scaled_extended_finalise|
+
 template containers::simple_list<BlockElt> ext_block::condense
 (matrix::Matrix<ext_kl::Pol>& M, RankFlags sing_orbs) const;
 
