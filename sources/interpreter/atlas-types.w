@@ -5683,8 +5683,7 @@ information about the parameter that may be relevant to the \.{atlas} user.
 
 @< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
-{ RootNbr witness; // dummy needed in call
-  out << @< Expression for adjectives that apply to a module parameter @>@;@;;
+{ out << @< Expression for adjectives that apply to a module parameter @>@;@;;
   print_stdrep(out << ' ',val,rc());
 }
 
@@ -5701,10 +5700,10 @@ could go into a \.{ParamPol} value; the condition |is_final| should apply,
 though it is not tested here).
 
 @< Expression for adjectives that apply to a module parameter @>=
-( not rc().is_standard(val,witness) ? "non-standard"
-@|: not rc().is_dominant(val,witness) ? "non-dominant"
-@|: not rc().is_nonzero(val,witness) ? "zero"
-@|: not rc().is_semifinal(val,witness) ? "non-final"
+( not rc().is_standard(val) ? "non-standard"
+@|: not rc().is_dominant(val) ? "non-dominant"
+@|: not rc().is_nonzero(val) ? "zero"
+@|: not rc().is_semifinal(val) ? "non-final"
 @|: not rc().is_normal(val) ? "non-normal"
 @|: "final")
 
@@ -5854,30 +5853,26 @@ void parameter_equivalent_wrapper(expression_base::level l)
 @< Local function def...@>=
 void is_standard_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_standard(p->val,witness)));
+    push_value(whether(p->rc().is_standard(p->val)));
 }
 
 void is_dominant_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_dominant(p->val,witness)));
+    push_value(whether(p->rc().is_dominant(p->val)));
 }
 
 void is_zero_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(not p->rc().is_nonzero(p->val,witness)));
+    push_value(whether(not p->rc().is_nonzero(p->val)));
 }
 
 void is_semifinal_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_semifinal(p->val,witness)));
+    push_value(whether(p->rc().is_semifinal(p->val)));
 }
 
 void is_final_wrapper(expression_base::level l)
@@ -6111,11 +6106,10 @@ in terms of the situation before applying |normalise|
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p, const char* descr)
-{ RootNbr witness;
-  if (p.rc().is_standard(p.val,witness))
+{ if (p.rc().is_standard(p.val))
     return;
   std::ostringstream os; p.print(os << descr << ":\n  ");
-  os << "\n  Parameter not standard, negative on coroot #" << witness;
+  os << "\n  Parameter not standard";
   throw runtime_error(os.str());
 }
 @)
@@ -6139,15 +6133,15 @@ void test_final(const K_type_value& p, const char* descr)
   throw runtime_error(os.str());
 }
 void test_final(const module_parameter_value& p, const char* descr)
-{ RootNbr witness; std::string reason;
-  bool OK = p.rc().is_dominant(p.val,witness);
+{ std::string reason;
+  bool OK = p.rc().is_dominant(p.val);
   if (not OK)
     reason = "not dominant";
   else if (not (OK=p.rc().is_normal(p.val)))
     reason = "not normal";
-  else if (not(OK = p.rc().is_nonzero(p.val,witness)))
+  else if (not(OK = p.rc().is_nonzero(p.val)))
     reason = "zero";
-  else if (not(OK = p.rc().is_semifinal(p.val,witness)))
+  else if (not(OK = p.rc().is_semifinal(p.val)))
     reason = "not semifinal";
   else return; // nothing to report
   std::ostringstream os; p.print(os << descr << ":\n  ");
@@ -7695,8 +7689,6 @@ void finalize_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (not is_dominant_ratweight(rc.root_datum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)

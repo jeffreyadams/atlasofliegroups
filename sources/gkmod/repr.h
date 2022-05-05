@@ -313,17 +313,16 @@ class Rep_context
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
 
-  // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
-    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+    (const StandardRepr& z) const; // simply-imaginary witness
   bool is_dominant  // whether |gamma| is dominant
-    (const StandardRepr& z, RootNbr& witness) const; // simple witness
+    (const StandardRepr& z) const; // simple witness
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
-    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+    (const StandardRepr& z) const; // simply-imaginary witness
   bool is_normal // whether |z==normalise(z)|: has no singular complex descents
     (const StandardRepr& z) const;
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
-    (const StandardRepr& z, RootNbr& witness) const; // singular real witness
+    (const StandardRepr& z) const; // singular real witness
   bool is_final // dominant nonzero without singular descents: all of the above
     (const StandardRepr& z) const;
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;

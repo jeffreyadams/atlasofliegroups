@@ -2317,23 +2317,28 @@ K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
 
 
 /*
-  This function serves to replace and circumvent |Rep_context::make_dominant|
-  applied to a scaled parameter (as occurs in the ordinary deformation function
-  by calling |finals_for| or |normalise|, both of which call |make_dominant|,
-  after calling |scale|), where |make_dominant| maps any ordinary parameter to
-  one with a dominant |gamma| component, and moreover descends through singular
-  complex descents in the block to the lowest parameter equivalent to the
-  initial parameter. The reason that this is necessary is that scaling only
-  affects the |nu| component of the infinitesimal character, so it may make it
-  traverse walls of Weyl chambers. Indeed the caller should make sure |sr|
-  itself has dominant |gamma|, which moreover is assumed to be fixed by |delta|
-  (if not, don't use this function).
+  This function serves to replace and circumvent calling calling |finals_for|
+  (or |deform_readjust|, |dominant| or |normalise|) for a scaled parameter
+  during twisted deformation. While this is fine during ordinary deformation
+  function, doing so in twisted deformation would ignore changes to the choice
+  of default extension that might be caused by these changes to the parameter,
+  which need to be taken into account.
 
-  The difference with the functioning of |make_dominant| is that here we keep
-  track of all extended parameter components inherited from |sr| (so before
-  scaling its |nu| part by |factor|), transforming them from the default choices
-  for |sr|, and at the end comparing the transformed values to the default
-  choices at the final parameter reached, recording the sign in |flipped|.
+  The reason such a modification is necessary in the first place is that scaling
+  may traverse or land on walls of Weyl chambers defined by complex coroots,
+  causing failure of dominance respectively finality even if those conditions
+  hold for the original parameter |sr|, something that will be assumed here.
+
+  The difference with the functioning of |Rep_context::deform_readjust| is that
+  here we keep track of all components of an extended parameter initialised to
+  the default extension for |sr| (so before scaling |nu| by |factor|), and at
+  the end compare the transformed values to the default choices at the final
+  parameter reached, recording the sign in |flipped|.
+
+  While used in the deformation algorithm before, this function is used
+  currently only to implement the built-in |scale_extended|. Moreover that
+  function will soon use |scaled_extended_finalise| instead; this one will go.
+
  */
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
@@ -2625,7 +2630,7 @@ weyl::Generator first_descent_among
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta)
 {
-  { RootNbr witness; assert(rc.is_standard(sr,witness)); }
+  assert(rc.is_standard(sr));
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
   const RootDatum& rd=rc.root_datum();

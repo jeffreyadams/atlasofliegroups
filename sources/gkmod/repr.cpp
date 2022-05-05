@@ -346,7 +346,7 @@ StandardReprMod& Rep_context::shift
 }
 
 // |z| standard means (weakly) dominant on the (simply-)imaginary roots
-bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_standard(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -357,26 +357,26 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   {
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (rd.coroot(alpha).dot(numer)<0)
-      return witness=alpha,false;
+      return false;
   }
   return true;
 }
 
 // |z| dominant means precisely |gamma| is (weakly) dominant
-bool Rep_context::is_dominant(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_dominant(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const auto& numer = z.gamma().numerator();
 
   for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
     if (it->dot(numer)<0)
-      return witness=rd.simpleRootNbr(it-rd.beginSimpleCoroot()),false;
+      return false;
   return true;
 }
 
 // |z| zero means that no singular simple-imaginary roots are compact; this
 // code assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
-bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_nonzero(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -388,7 +388,7 @@ bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (rd.coroot(alpha).dot(numer)==0 and // simple-imaginary, singular
 	not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
-      return witness=alpha,false;
+      return false;
   }
   return true;
 }
@@ -402,7 +402,7 @@ bool Rep_context::is_normal(const StandardRepr& z) const
 
 // |z| semifinal means that no singular real roots satisfy the parity condition
 // no assumptions about the real subsytem, so all real roots must be tested
-bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_semifinal(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -416,7 +416,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
     const Weight& av = root_datum().coroot(*it);
     if (av.dot(z.gamma().numerator())==0 and
 	av.dot(test_wt)%4 !=0) // singular yet odd on shifted lambda
-      return witness=*it,false;
+      return false;
   }
   return true;
 }
@@ -449,8 +449,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
       default: {} // ImaginaryNoncompact is fine
       } // tests on |v|
   } // |for(s)|
-  RootNbr witness;
-  return is_nonzero(z,witness); // check \emph{all} simply-imaginary coroots
+  return is_nonzero(z); // check \emph{all} simply-imaginary coroots
 }
 
 
@@ -608,11 +607,41 @@ void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
   assert(tw == kgb().involution(z.x_part));
 }
 
-// make dominant, then greedily descend though any singular complex descents
+// make dominant and descend though any singular complex descents
+// this is a version of |make_dominant| also doing singular |complex_crosses|
 void Rep_context::deform_readjust(StandardRepr& z) const
 {
-  make_dominant(z); // typically may have gone negative only for complex coroots
-  complex_crosses(z,complex_descent_word(z.x(),singular_simples(z)));
+  const RootDatum& rd = root_datum();
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part; // the |z.x_part| will be modified in-place
+  Ratvec_Numer_t& numer = // and |z.infinitesimal_char| as well
+    z.infinitesimal_char.numerator();
+
+  { weyl::Generator s;
+    do
+      for (s=0; s<rd.semisimple_rank(); ++s)
+	if (kgb().status(s,x) == gradings::Status::Complex)
+	{
+	  auto eval = rd.simpleCoroot(s).dot(numer); // needed for sign only
+	  if (eval<0)
+	  {
+	    rd.simple_reflect(s,numer); // real or complex reflection of |gamma|
+	    rd.simple_reflect(s,lr,1);
+	    x = kgb().cross(s,x);
+	    break; // out of the loop |for(s)|
+	  }
+	else if (eval==0 and kgb().isDescent(s,x))
+	{ // here |numer| will be unchanged
+	  rd.simple_reflect(s,lr,1);
+	  x = kgb().cross(s,x);
+	  break; // out of the loop |for(s)|: other complex descents possible
+	}
+      } // |for(s)|
+    while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
+  }
+  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |deform_readjust|
 
 // this also ensures a chosen singular-complex minumum when there are multiple
@@ -643,8 +672,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
     return false; // this non-equivalence can be seen before |make_dominant|
 
   { // preempt failing of |make_dominant| on non standard parameters
-    RootNbr witness;
-    if (not (is_standard(z0,witness) and is_standard(z1,witness)))
+    if (not (is_standard(z0) and is_standard(z1)))
       return z0==z1; // strict equality unless both are parameters standard
   }
 
@@ -1902,12 +1930,14 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
       return pool[h].def_formula();
   }
 
-  auto base_pol = finals_for(scale_0(z));
   K_type_poly result {std::less<K_type_nr>()};
-  for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
   {
-    K_type_nr h = K_type_hash.match(std::move(it->first));
-    result.add_term(h,Split_integer(it->second)); // purely integer coefficient
+    auto base_pol = finals_for(scale_0(z)); // a $\Z$-linear combin. of K-types
+    for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
+    {
+      K_type_nr h = K_type_hash.match(std::move(it->first));
+      result.add_term(h,Split_integer(it->second)); // purely integer coefficient
+    }
   }
 
   for (unsigned i=rp.size(); i-->0; )
