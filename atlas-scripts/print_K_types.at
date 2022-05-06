@@ -1,11 +1,13 @@
-<K_types.at
+<basic.at
+
 {
-this used to be called K_types.at
+this file used to be called K_types.at
 now consists almost exclusively of printing functions
 }
 
-<basic.at     { for *@(Param,rat) }
-<hermitian.at { for hermitian_form_irreducible }
+<K_highest_weights.at { for eponymous function }
+<K_types.at
+<hermitian.at { for |hermitian_form_irreducible| }
 
 {the following functions have already been defined in K_types.at:
 set branch_std (ParamPol P,int bound) = ParamPol:
@@ -19,8 +21,10 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
  sum +:= c*branch_irr(p,bound) od; sum
 }
 set print_branch_irr (ParamPol P,KGBElt x,int bound) = void:
-  for (mult,q) in sort_by_height(branch_irr(P,bound))
-  do prints(mult, "*", highest_weight_plain(highest_weights(q,x)[0])) od
+  for mult@q in branch_irr(P,bound)
+  do let wts0 = highest_weights(q,x)[0]
+     in prints(mult,"*",(wts0.x,wts0.mu))
+  od
 
 set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_irr(P,KGB(real_form(P),0),bound)
@@ -30,9 +34,9 @@ set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   component of K), dimension and height
 }
 set print_branch_irr_long (ParamPol P,KGBElt x,int bound) = void:
-  for (mult,q) in sort_by_height(branch_irr(P,bound))
+  for mult@q in branch_irr(P,bound)
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw), " ", dimension(LKT(q))
+    prints(mult, "*", (hw.x,hw.mu), " ", dimension(LKT(q))
           , "    ", height(q))
   od
 
@@ -50,40 +54,40 @@ set print_branch_irr_long (Param p,KGBElt x, int bound) = void:
 set print_branch_irr_long (Param p, int bound) = void:
   print_branch_irr_long(ParamPol:p,bound)
 
-set print_branch_std (ParamPol P,KGBElt x,int bound) = void:
-  for (mult,q) in sort_by_height(branch_std(P,bound))
+set print_branch_std (KTypePol P,KGBElt x,int bound) = void:
+  for mult@q in branch_std(P,bound)
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw))
+    prints(mult, "*", (hw.x,hw.mu))
   od
 
-set print_branch_std (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
+set print_branch_std (KTypePol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_std(P,KGB(real_form(P),0),bound)
 
 { K-types of standard p, up to given bound, sorted by height, the
   output includes multiplicity, highest weight (on the identity component of
   K), dimension and height
 }
-set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
+set print_branch_std_long (KTypePol P,KGBElt x,int bound) = void:
 ( prints("rho_K=", rho_K(x))
-; for (mult,q) in sort_by_height(branch_std(P,bound))
+; for mult@q in branch_std(P,bound)
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", highest_weight_plain(hw), " ", dimension(LKT(q))
+    prints(mult, "*", (hw.x,hw.mu), " ", dimension(LKT(q))
           ,  "    ", height(q))
   od
 )
 
-set print_branch_std_long (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
+set print_branch_std_long (KTypePol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_std_long(P,KGB(real_form(P),0),bound)
 
-{ these definitions promote Param->ParamPol without relying on coercion }
-set print_branch_std (Param p,KGBElt x, int bound) = void:
-  print_branch_std(ParamPol:p,x,bound)
-set print_branch_std (Param p, int bound) = void:
-  print_branch_std(ParamPol:p,bound)
-set print_branch_std_long (Param p,KGBElt x, int bound) = void:
-  print_branch_std_long(ParamPol:p,x,bound)
-set print_branch_std_long (Param p, int bound) = void:
-  print_branch_std_long(ParamPol:p,bound)
+{ these definitions promote KType->KTypePol without relying on coercion }
+set print_branch_std (KType p,KGBElt x, int bound) = void:
+  print_branch_std(KTypePol:p,x,bound)
+set print_branch_std (KType p, int bound) = void:
+  print_branch_std(KTypePol:p,bound)
+set print_branch_std_long (KType p,KGBElt x, int bound) = void:
+  print_branch_std_long(KTypePol:p,x,bound)
+set print_branch_std_long (KType p, int bound) = void:
+  print_branch_std_long(KTypePol:p,bound)
 
 
 

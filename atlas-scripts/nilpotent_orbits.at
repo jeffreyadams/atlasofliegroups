@@ -374,9 +374,10 @@ set all_real_nilpotent_orbit_KGBs (RealForm G,[int] H) = [KGBElt]:
  ##for M in Levis do test_real_orbit(G,K,M,S) od
 
 set is_conjugate_orbit (RealNilpotent O,RealNilpotent P) = bool:
+   assert(O.real_form=P.real_form);
    let (H,x,)=move_to_distinguished_fiber(O)
    ,   (K,y,)=move_to_distinguished_fiber(P)
-   then (,L)=move_coweight((y,K),x)
+   then L=K*inverse(cross_divide(x,y))
    in any(for w in stabilizer_of_x(x) do L*w=H od)
 
 {. Replace (H,x) with equivalent (H',x') with H' dominant. .}

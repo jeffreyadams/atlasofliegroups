@@ -3393,27 +3393,29 @@ We have seen expressions to build lists, and although vectors and matrices can
 be made out of them using coercions, we so far are not able to access their
 components once they are constructed. To that end we shall now introduce
 operations to index such values. We allow subscription of rows, but also of
-vectors, rational vectors, matrices, strings, and of the Atlas \.{ParamPol}
-values. Since after type analysis we know which of the cases applies for a
-given expression, we define several classes among which type analysis will
-choose. These classes differ mostly by their |evaluate| method, so we first
-derive an intermediate class from |expression_base|, and derive the others
-from it. This class also serves to host an enumeration type and some static
-methods that will serve later. We include a case here, |mod_poly_term|, that
-is related to a type defined in \.{atlas-types}.
+vectors, rational vectors, matrices, strings, and of value of the
+Atlas \.{KTypePol} and \.{ParamPol} types. Since after type analysis we know
+which of the cases applies for a given expression, we define several classes
+among which type analysis will choose. These classes differ mostly by their
+|evaluate| method, so we first derive an intermediate class from
+|expression_base|, and derive the others from it. This class also serves to host
+an enumeration type and some static methods that will serve later. We include
+two cases here, |K_type_poly_term| and |mod_poly_term|, that are related to
+types defined in \.{atlas-types}.
 
-At the same time we shall define ``slices'', which differ from subscriptions
-in selecting a whole range of index values. The name is not really
-appropriate, as it more evokes subscripting at certain index positions while
-leaving other positions vary (an example would be selecting a row from
-a matrix); we don't (yet?) support that as a form of slicing, though selecting
-an entire column from a matrix is possible as a special form of subscripting.
+At the same time we shall define ``slices'', which differ from subscriptions in
+selecting a whole range of index values, producing a value of the same type as
+the original, though with fewer elements. The name is not really appropriate, as
+it more evokes subscripting at certain index positions while leaving other
+positions vary (an example would be selecting a row from a matrix); we don't
+(yet?) support that as a form of slicing, though selecting an entire column from
+a matrix is possible as a special form of subscripting.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type
   { row_entry, vector_entry, ratvec_entry, string_char
-  , matrix_entry, matrix_column, mod_poly_term, not_so };
+  , matrix_entry, matrix_column, K_type_poly_term, mod_poly_term, not_so };
   expression_ptr array, index; // the two parts of the subscription expression
 @)
   subscr_base(expression_ptr&& a, expression_ptr&& i)
@@ -3422,7 +3424,9 @@ struct subscr_base : public expression_base
   @+{}
   virtual ~subscr_base() = default;
 @)
-  virtual void print(std::ostream&out) const@+{} // never used; avoid warning
+  virtual void print(std::ostream&out) const
+  // used only for cases without reversal option
+  {@; out << *array << '[' << *index << ']'; }
   void print (std::ostream& out, bool reversed) const; // non |virtual|
   static sub_type index_kind
   (const type_expr& aggr,
@@ -3504,13 +3508,24 @@ struct matrix_get_column : public subscr_base
   virtual void print(std::ostream& out) const
   @+{@; subscr_base::print(out,reversed); }
 };
+
+@ The final two classes derived from |subscr_base| are slightly different, in
+that the are not templated over |reversed| (since these are indexing associative
+arrays, there is no notion of reverse indexing). As a consequence they need not
+redefine the virtual |subscr_base::print| method.
+
+@< Type definitions @>=
+
+struct K_type_pol_coefficient : public subscr_base
+{ K_type_pol_coefficient(expression_ptr&& pol, expression_ptr&& K_type)
+@/: subscr_base(std::move(pol),std::move(K_type)) @+{}
+  virtual void evaluate(level l) const;
+};
 @)
 struct module_coefficient : public subscr_base
 { module_coefficient(expression_ptr&& pol, expression_ptr&& param)
 @/: subscr_base(std::move(pol),std::move(param)) @+{}
   virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const
-  @+{@; out << *array << '[' << *index << ']'; }
 };
 
 
@@ -3567,13 +3582,17 @@ struct matrix_slice : public slice_base
 };
 
 
-@ These subscriptions and slices are printed in the usual syntax. The
-templated virtual |print| methods transform their template argument to a
-runtime value, and call the non |virtual| member |slice_base::print| with that
-value as second argument. For matrix subscriptions, where the index type
-is \.{(int,int)}, the index expression is quite likely to be a tuple display,
-in which case we suppress parentheses. Since we have passed the type check
-here, we know that any tuple display is necessarily a pair.
+@ These subscriptions and slices are printed in the usual source syntax, with a
+tilde after the array name if it is conceptually reversed before the selection
+or slice, and in case of slices possibly after each bound, in case that bound
+counts displacement from the rear rather than from the front end. The templated
+virtual |print| methods transform their template argument to a runtime value,
+and call the non |virtual| member |slice_base::print| with that value as second
+argument. For matrix subscriptions, where the index type is \.{(int,int)}, the
+index expression is quite likely to be a tuple display; therefore we do some
+effort to suppress parentheses for that case, in accordance with allowed source
+syntax. Since we have passed the type check here, we know that any tuple display
+in the index position is necessarily a pair.
 
 @< Function definitions @>=
 void subscr_base::print(std::ostream& out,bool reversed) const
@@ -3596,11 +3615,13 @@ void slice_base::print(std::ostream& out, unsigned flags) const
 }
 
 @ It shall be useful to have a function recognising valid aggregate-index
-combinations. Upon success, the last two parameters serve to store the type
-the subscription will result in, and an element of the |sub_type| enumeration
-that indicates the kind of subscription that was found. The |mod_poly_term|
-case indicates that a ``parameter polynomial'' can be subscripted with a
-parameter to return a split integer result.
+combinations. Upon success, the last two parameters serve to store the type the
+subscription will result in, and an element of the |sub_type| enumeration that
+indicates the kind of subscription that was found. The |K_type_poly_term| case
+indicates that a ``$K$-type polynomial'' can be subscripted with a $K$-type to
+return a split integer result, and the |mod_poly_term| case similarly indicates
+that a ``parameter polynomial'' can be subscripted with a parameter to return a
+split integer result.
 
 @< Function def... @>=
 subscr_base::sub_type subscr_base::index_kind
@@ -3624,6 +3645,9 @@ subscr_base::sub_type subscr_base::index_kind
         return matrix_entry;
       else if (index==int_type and subscr.specialise(vec_type))
         return matrix_column;
+    break; case K_type_pol_type:
+      if (index==KType_type and subscr.specialise(split_type))
+        return K_type_poly_term;
     break; case virtual_module_type:
       if (index==param_type and subscr.specialise(split_type))
         return mod_poly_term;
@@ -3656,7 +3680,7 @@ from a string).
 @< Function def... @>=
 bool subscr_base::assignable(subscr_base::sub_type t)
 { switch (t)
-  { case ratvec_entry: case string_char: case mod_poly_term:
+  { case ratvec_entry: case string_char:
     case not_so: return false;
     default: return true;
   }
@@ -3695,7 +3719,7 @@ case subscription:
 
 @ This is a large |switch| statement (the first of several) that is required to
 separately and explicitly specify each class template instance that our
-program uses (there are $13$ of them here).
+program uses (there are $14$ of them here).
 
 The decision whether the subscription is allowed, and what will be the
 resulting |subscr_type| are made by the static method |subscr_base::index_kind|.
@@ -3750,6 +3774,11 @@ case subscr_base::matrix_column:
     subscr.reset(new
       matrix_get_column<false>(std::move(array),std::move(index)));
 break;
+case subscr_base::K_type_poly_term:
+  if (subsn.reversed)
+    throw expr_error(e,"Cannot do reversed subscription of a KTypePol");
+  subscr.reset(new K_type_pol_coefficient(std::move(array),std::move(index)));
+break;
 case subscr_base::mod_poly_term:
   if (subsn.reversed)
     throw expr_error(e,"Cannot do reversed subscription of a ParamPol");
@@ -3763,12 +3792,14 @@ case subscr_base::not_so:
 }
 
 @ For slices we shall similarly need $5$ kinds of slice each with $8$ values
-of the template parameter |flags| for $40$ classes in all. Convert a runtime
-values |flags| a template argument (which must be a compile time constant) can
-basically only be done by listing all applicable values. To avoid extreme
+of the template parameter |flags| for $40$ classes in all. Converting a runtime
+value |flags| into a template argument (which must be a compile time constant)
+can basically only be done by listing all applicable values. To avoid extreme
 repetitiveness, we use for this a function that is itself templated over the
-class template that takes |flags| as template argument; there will be $5$
-different such class templates used in calls of |make_slice|.
+class template |slice| that takes |flags| as template argument. In calls to
+|make_slice|, its template argument will be specified to one of the $5$
+different class templates |row_slice|, |vector_slice|, |ratvec_slice|,
+|string_slice|, and |matrix_slice|.
 
 @< Local function definitions @>=
 template < @[ template < unsigned > class @+ slice @] >
@@ -3832,7 +3863,7 @@ case slice:
 }
 
 
-@ Here are the |evaluate| methods for the various subscription expressions.
+@ Here are the |evaluate| methods for the simpler subscription expressions.
 They all follow the same straightforward pattern, and differ only in the way
 the result value push on the stack is constructed. The |static_cast<unsigned
 int>| allows a range check of the (signed) integer index with a single
@@ -3901,7 +3932,9 @@ void string_subscription<reversed>::evaluate(level l) const
 }
 
 @ And here are the cases for matrix indexing and column selection, which are
-just slightly more complicated.
+just slightly more complicated. The remaining Atlas-related classes
+|K_type_coefficient| and |module_coefficient| have their |evaluate| methods
+defined in \.{atlas-types.w}.
 
 @< Function definitions @>=
 template <bool reversed>
@@ -3937,7 +3970,7 @@ void matrix_get_column<reversed>::evaluate(level l) const
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
 
-@ For slice these are template functions. This is where the actual reversals
+@ For slices these are template functions. This is where the actual reversals
 happen.
 @< Function definitions @>=
 void slice_range_error
@@ -5349,17 +5382,20 @@ usually takes place when a pattern list is completed, but this reversal does
 not happen for the $2$-element list used for the patterns in for-loops.)
 
 Apart from iterating over row value of any type, we allow iteration over
-vectors, rational vectors, strings, and matrix columns (types that are
-indexable by integers), and also over the terms of a parameter polynomial
-(representing isotypical components of a virtual module). The syntax of the
-for loop is the same for all these cases. However the constructed |expression|
-will be of a class templated on |kind| describing the kind of value iterated
-over, so that their |evaluate| methods will be specialised to that kind. We
-also template over the |flags| that indicate the reversal options (determined
-by by the precise syntax used), so that these get built into the evaluate
-method as well. Bit |0x1| of |flags| controls reverse traversal at input,
-while bit |0x2| indicates reverse accumulation of values for the result.
-Altogether we use $4\times6=24$ instances of |for_expression|.
+vectors, rational vectors, strings, and matrix columns (types that are indexable
+by integers), and also over the terms of a $K$-type polynomial or a parameter
+polynomial (also called virtual module, of which each term represents an
+isotypical component). The only thing we can select by subscription but not loop
+over is individual matrix entries (the corresponding |subscr_base::sub_type|
+value is |matrix_entry|). The syntax of the for loop is the same for all
+these cases. However the constructed |expression| will be of a class templated
+on |kind| describing the kind of value iterated over, so that their |evaluate|
+methods will be specialised to that kind. We also template over the |flags| that
+indicate the reversal options (determined by by the precise syntax used), so
+that these get built into the evaluate method as well. Bit |0x1| of |flags|
+controls reverse traversal at input, while bit |0x2| indicates reverse
+accumulation of values for the result. Altogether we use $4\times7=28$ instances
+of |for_expression|.
 
 @< Type def... @>=
 template <unsigned flags, subscr_base::sub_type kind>
@@ -5482,6 +5518,19 @@ expression make_for_loop
       (id,std::move(i),std::move(b));
     default: assert(false); return(nullptr);
     }
+  case subscr_base::K_type_poly_term:
+    switch (flags)
+    {
+    case 0: return new for_expression<@[0,subscr_base::K_type_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 1: return new for_expression<@[1,subscr_base::K_type_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 2: return new for_expression<@[2,subscr_base::K_type_poly_term@]>
+      (id,std::move(i),std::move(b));
+    case 3: return new for_expression<@[3,subscr_base::K_type_poly_term@]>
+      (id,std::move(i),std::move(b));
+    default: assert(false); return(nullptr);
+    }
   case subscr_base::mod_poly_term:
     switch (flags)
     {
@@ -5565,7 +5614,10 @@ from such a subscription. We also make |tp| point to the index type used.
 { type_expr comp_type; const_type_p inx_type;
   which = subscr_base::index_kind(in_type,*(inx_type=&int_type),comp_type);
   if (which==subscr_base::not_so)
-    // if not integer-indexable, try parameter-indexable
+    // if not integer-indexable, try $K$-type indexable
+    which = subscr_base::index_kind(in_type,*(inx_type=&KType_type),comp_type);
+  if (which==subscr_base::not_so)
+    // if not integer-indexable, try parameter indexable
     which = subscr_base::index_kind(in_type,*(inx_type=&param_type),comp_type);
   if (which==subscr_base::not_so) // if its not that either, it is wrong
   { std::ostringstream o;
@@ -5712,9 +5764,9 @@ case subscr_base::string_char:
 
 @ Here are the remaining cases. The case |matrix_column| is ever so slightly
 different because the iteration count~|n| is given by the number of columns,
-rather than the size, of |inv_val->val|. The case |mod_poly_term| has more
-important differences, to be detailed later. The other two cases should never
-arise.
+rather than the size, of |inv_val->val|. The cases |K_type_poly_term| and
+|mod_poly_term| have more important differences, to be detailed later. The other
+two cases should never arise.
 
 @< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::matrix_column:
@@ -5731,6 +5783,9 @@ case subscr_base::matrix_column:
     @< Catch block for reporting iteration number within loop that threw @>
   }
   @+break;
+case subscr_base::K_type_poly_term:
+  @< Perform a loop over the terms of a $K$-type polynomial @>
+  break;
 case subscr_base::mod_poly_term:
   @< Perform a loop over the terms of a virtual module @>
   break;
@@ -5794,16 +5849,115 @@ these things properly handled, the evaluation of the loop body is standard.
    @< Catch block for providing a trace-back of local variables @>
 } // restore context upon destruction of |fr|
 
-@ The loop over terms of a virtual module is slightly different, and since it
-handles values defined in the modules \.{atlas-types.w} we shall include its
-header file. We implement the $4$ reversal variants, even though reversal at
-the source makes little sense unless the internal order of the terms in the
-polynomial (over which the user has no control) are meaningful to the user.
-This reversal is implemented by using reverse iterators to control the loop;
-the loop body itself is textually identical, though the type of |it| differs
-between them.
+@ The loop over terms of a $K$-type polynomial is slightly different, and since
+it handles values defined in the compilation unit \.{atlas-types}, we shall
+include its header file. We implement the $4$ reversal variants; since terms are
+sorted by ``height'' of a $K$-type, reversal at the source may make sense in
+some cases. This reversal is implemented by using reverse iterators to control
+the loop; the loop body itself is textually identical, though the type of |it|
+differs between them. Something that is specific for the |Free_Abelian_light|
+container class template used to implement |K_type_pol_value| is that its |size|
+method only produces an upper bound for the actual number of (nonzero) terms
+encountered during an iteration; therefore we must check after iteration whether
+the expected number of items was copied into |result|. These checks are
+independent of the traversal direction, so it is outside the conditional on
+|in_forward(flags)| (the checks have to test |out_forward(flags)| instead).
+These checks are conditional on |l!=no_value| however, since otherwise |result|
+still holds a null (shared) pointer and the test would crash.
 
 @h "atlas-types.h"
+@< Perform a loop over the terms of a $K$-type polynomial @>=
+{ shared_K_type_pol pol_val = get<K_type_pol_value>();
+  size_t n=pol_val->val.size(); // an upper bound for the number of nonzero terms
+  if (l!=no_value)
+  { result = std::make_shared<row_value>(n);
+    dst = out_forward(flags) ? result->val.begin() : result->val.end();
+  }
+  if (in_forward(flags))
+  { const auto start=pol_val->val.begin();
+    auto it = start; // need these in |catch| clause
+    try
+    {
+      for ( ; it!=pol_val->val.end(); ++it)
+        @< Loop body for iterating over terms of a $K$-type polynomial @>
+    }
+    @< Catch block for reporting iteration number within loop over
+       terms in a $K$-type polynomial @>
+  }
+  else // not |in_forward(flags)|
+  { const auto start=pol_val->val.rbegin();
+    auto it = start; // need these in |catch| clause
+    try
+    {
+      for (; it!=pol_val->val.rend(); ++it)
+        @< Loop body for iterating over terms of a $K$-type polynomial @>
+    }
+    @< Catch block for reporting iteration number within loop over
+       terms in a $K$-type polynomial @>
+  }
+  if (l!=no_value)
+    @< Adjust |result| in case loop produced fewer items that predicted @>
+}
+
+@ The catch clause is similar to those for other types of loops,
+but we use |std::distance| to compute the offset of |it| from its initial value
+|start|.
+@< Catch block for reporting iteration number within loop over terms in
+   a $K$-type polynomial @>=
+catch (error_base& e)
+{
+  std::ostringstream o;
+  o << "During iteration " << std::distance(start,it) @|
+    << " of the for-loop over KTypePol";
+  e.trace(o.str());
+  throw;
+}
+
+
+@~And here is the loop body  that is included twice identically.
+
+@< Loop body for iterating over terms of a $K$-type polynomial @>=
+{ loop_var->val[0] =
+    std::make_shared<K_type_value>(pol_val->rf,it->first.copy());
+  loop_var->val[1] = std::make_shared<split_int_value>(it->second);
+  frame fr(pattern);
+  fr.bind(loop_var);
+  try {
+    if (l==no_value)
+      body->void_eval();
+    else
+    {@; body->eval();
+      *(out_forward(flags) ? dst++ : --dst) = pop_value();
+    }
+   }
+   @< Catch block for providing a trace-back of local variables @>
+} // restore context upon destruction of |fr|
+
+@ The kind of adjustments to |result| that are needed when fewer items than
+expected were contributed are the same as when any kind of loop is interrupted
+by an explicit |break_expr|: we must drop the slots in |result| that were not
+filled, and in case of an output-reversed loop, we must first shift the actual
+contributions to the beginning of the vector.
+
+@< Adjust |result| in case loop produced fewer items that predicted @>=
+{
+  if (out_forward(flags))
+  { if (dst!=result->val.end())
+      result->val.resize(dst-result->val.begin());
+  }
+  else
+  { if (dst!=result->val.begin())
+  {
+    dst = std::move(dst,result->val.end(), result->val.begin());
+    result->val.resize(dst-result->val.begin());
+  }}
+}
+
+@ The loop over terms of a virtual module is similar to that over those of a
+$K$-type polynomial; however if the loop completes normally, there is no need to
+check for an incomplete |result| since the exact number of iterations was
+predicted (from |pol_val->val.size()|) before the loop started.
+
 @< Perform a loop over the terms of a virtual module @>=
 { shared_virtual_module pol_val = get<virtual_module_value>();
   size_t n=pol_val->val.size();
@@ -7034,6 +7188,14 @@ void component_assignment<reversed>::assign
     case subscr_base::matrix_column:
   @/@< Replace column at |index| in matrix |loc| by value on stack @>
   @+break;
+    case subscr_base::K_type_poly_term:
+  @/@< Replace coefficient at |index| in $K$-type polynomial |loc|
+       by value on stack @>
+  @+break;
+    case subscr_base::mod_poly_term:
+  @/@< Replace coefficient at |index| in virtual module |loc|
+       by value on stack @>
+  @+break;
   default: {} // remaining cases are eliminated in type analysis
   }
 }
@@ -7121,6 +7283,36 @@ for matching column length.
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);
     // copy value of |int_Vector| into the matrix
+  if (lev==no_value)
+    execution_stack.pop_back(); // pop the vector if result not needed
+}
+
+@ For |K_type_pol_value| coefficient assignments the type of the aggregate
+object is $K$-type polynomial, and the value assigned a split integer. The
+latter certainly needs no expansion, so we either leave it on the stack, or
+remove it if the value of the component assignment expression is not used.
+
+@< Replace coefficient at |index| in $K$-type polynomial |loc|... @>=
+{ index->eval();
+  auto t = get<K_type_value>();
+  auto* poly = uniquify<K_type_pol_value>(aggregate);
+  const auto& top = force<split_int_value>(execution_stack.back().get());
+  poly->assign_coef(*t,top->val);
+  if (lev==no_value)
+    execution_stack.pop_back(); // pop the vector if result not needed
+}
+
+@ For |virtual_module_value| coefficient assignments the type of the aggregate
+object is ``virtual module'', and the value assigned a split integer, again
+needing no expansion. The main differences between this module and the previous
+one are hidden in the respective |assign_coef| methods.
+
+@< Replace coefficient at |index| in virtual module |loc|... @>=
+{ index->eval();
+  auto t = get<module_parameter_value>();
+  auto* poly = uniquify<virtual_module_value>(aggregate);
+  const auto& top = force<split_int_value>(execution_stack.back().get());
+  poly->assign_coef(*t,top->val);
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }

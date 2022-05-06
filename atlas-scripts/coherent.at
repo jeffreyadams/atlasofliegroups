@@ -52,7 +52,7 @@ set coherent_std_reg (ParamPol P,int s) = ParamPol:
   this applies to all other invocations of coherent_*
 }
 set coherent_std_reg (Param p,[int] w) = ParamPol:
-  let P=virtual(p) in for s in w do P:=coherent_std_reg(P,s) od; P
+  let P=p.as_pol in for s in w do P:=coherent_std_reg(P,s) od; P
 
 { in singular case,
   move to regular infinitesimal character, apply w, and move back
@@ -146,7 +146,7 @@ set phi(term(p,type), int s, ratvec v) = module:
            "this is not translation away from a single root wall");
     assert(#singular_roots(rd,gamma)=1,
            "this is not translation away from a single root wall");
-   (virtual(translate_to(p,v)),type) + coherent(s,(translate_to(p,v),type))
+   (as_pol(translate_to(p,v)),type) + coherent(s,(translate_to(p,v),type))
 
 { -----------phi_alpha: translation of ParamPol away from one  wall---------- }
 
@@ -181,9 +181,9 @@ set skew_symmetrize_coherent(module(P,type)) = module:
 
 { same as previous, applied to standard or irreducible }
 set skew_symmetrize_coherent([int] S,term(p,type)) = module:
-  skew_symmetrize_coherent(S,(virtual(p),type))
+  skew_symmetrize_coherent(S,(as_pol(p),type))
 set skew_symmetrize_coherent(term(p,type)) = module:
-  skew_symmetrize_coherent(virtual(p),type)
+  skew_symmetrize_coherent(as_pol(p),type)
 
 }
 

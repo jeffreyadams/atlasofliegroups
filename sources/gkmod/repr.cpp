@@ -1,7 +1,7 @@
 /*
   This is repr.cpp
 
-  Copyright (C) 2009-2020 Marc van Leeuwen
+  Copyright (C) 2009-2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -22,10 +22,7 @@
 #include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// the |blocks::common_block| class, |dual_involution|
-#include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
-#include "alcoves.h"
-
 #include "alcoves.h"
 
 #include "kl.h"
@@ -117,7 +114,9 @@ StandardRepr Rep_context::sr_gamma
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
   // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
 
-  const auto& theta = kgb().involution_matrix(x);
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
   auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
     gamma.numerator()+theta*gamma.numerator();
 
@@ -130,15 +129,13 @@ StandardRepr Rep_context::sr_gamma
   }
 #ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
   {
-    int_Matrix theta1 = theta+1;
     Weight image = // $(\theta+1)(\gamma-\rho)$
-      th1_gamma-(theta1*root_datum().twoRho()/2); // exact division
-    matreduc::find_solution(theta1,image); // a solution must exist
+      th1_gamma-i_tab.theta_plus_1_rho(i_x);
+    matreduc::find_solution(theta+1,image); // assert that a solution exists
   }
 #endif
 
-  const InvolutionTable& i_tab = involution_table();
-  return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma,
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho), gamma,
 		      height(th1_gamma));
 } // |sr_gamma|
 
@@ -146,8 +143,11 @@ StandardRepr Rep_context::sr_gamma
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const
 {
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
   auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
-    gamma.numerator()+kgb().involution_matrix(x)*gamma.numerator();
+    gamma.numerator()+theta*gamma.numerator();
 
   // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
   Weight th1_gamma(th1_gamma_num.size());
@@ -157,8 +157,8 @@ StandardRepr Rep_context::sr_gamma
     th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
   }
 
-  return StandardRepr(x, involution_table().y_pack(kgb().inv_nr(x),lambda_rho),
-		      std::move(gamma), height(th1_gamma));
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho),std::move(gamma),
+		      height(th1_gamma));
 } // |sr_gamma|
 
 StandardRepr Rep_context::sr
@@ -198,24 +198,6 @@ RatWeight Rep_context::gamma
   return ((lambda+nu+theta_diff)/=2).normalize();
 }
 
-StandardRepr
-  Rep_context::sr
-    (const standardrepk::StandardRepK& srk,
-     const standardrepk::SRK_context& srkc,
-     const RatWeight& nu) const
-{
-  const TitsElt a = srkc.titsElt(srk); // was reduced during construction |srk|
-  const KGBElt x= kgb().lookup(a);
-  Weight lambda_rho = srkc.lift(srk)-root_datum().twoRho();
-  lambda_rho/=2; // undo doubled coordinates
-
-  auto result = sr(x,lambda_rho,nu);
-
-  // while standard, final and nonzero, |result| need not be normal
-  normalise(result); // prepare |result| for direct inclusion in an |SR_poly|
-  return result;
-}
-
 const WeightInvolution& Rep_context::theta (const StandardRepr& z) const
 { return involution_table().matrix(kgb().inv_nr(z.x())); }
 
@@ -249,25 +231,24 @@ RatWeight Rep_context::gamma_lambda
   const InvolutionTable& i_tab = involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
+  // |y_lift(i_x,y_bits==(1-theta)*(lambda-rho)|; get |(1-theta)(gamma-lambda)|
   const RatWeight gamma_rho = gamma - rho(root_datum());
   return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))
     /static_cast<arithmetic::Numer_t>(2);
 }
 
-// compute $\gamma-\lambda-\rho$ from same information
+// compute $\gamma-\lambda-\rho$ from same information; with respect to above,
+// change from subtracting |(1-theta)*rho| to adding |(1+theta)*rho|
 RatWeight Rep_context::gamma_lambda_rho (const StandardRepr& sr) const
 {
   const InvolutionTable& i_tab = involution_table();
   InvolutionNbr i_x = kgb().inv_nr(sr.x());
   const WeightInvolution& theta = i_tab.matrix(i_x);
+  const RatWeight& gamma = sr.gamma();
 
-  const Weight& rho2 = root_datum().twoRho();
-  RatWeight result = sr.gamma()*static_cast<arithmetic::Numer_t>(2);
-  (result -= theta*(result-rho2)) += rho2;
-
-  // the next subtraction is |RatWeight::operator-(const Weight&) &&|:
-  return ( std::move(result) - i_tab.y_lift(i_x,sr.y())*2 )
-    /static_cast<arithmetic::Numer_t>(4);
+  return (  gamma - theta*gamma
+	 + (i_tab.theta_plus_1_rho(i_x) - i_tab.y_lift(i_x,sr.y()))
+	 ) /static_cast<arithmetic::Numer_t>(2);
 }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
@@ -352,7 +333,7 @@ RatWeight Rep_context::offset
   unsigned int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
-  assert((codec.coroots_matrix*result).isZero());
+  assert((codec.coroots_matrix*result).is_zero());
   return result;
 }
 
@@ -364,8 +345,8 @@ StandardReprMod& Rep_context::shift
   return srm;
 }
 
-// |z| standard means (weakly) dominant on the (simple-)imaginary roots
-bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
+// |z| standard means (weakly) dominant on the (simply-)imaginary roots
+bool Rep_context::is_standard(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -376,26 +357,26 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   {
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (rd.coroot(alpha).dot(numer)<0)
-      return witness=alpha,false;
+      return false;
   }
   return true;
 }
 
 // |z| dominant means precisely |gamma| is (weakly) dominant
-bool Rep_context::is_dominant(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_dominant(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const auto& numer = z.gamma().numerator();
 
   for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
     if (it->dot(numer)<0)
-      return witness=rd.simpleRootNbr(it-rd.beginSimpleCoroot()),false;
+      return false;
   return true;
 }
 
 // |z| zero means that no singular simple-imaginary roots are compact; this
 // code assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
-bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_nonzero(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -407,7 +388,7 @@ bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (rd.coroot(alpha).dot(numer)==0 and // simple-imaginary, singular
 	not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
-      return witness=alpha,false;
+      return false;
   }
   return true;
 }
@@ -419,9 +400,9 @@ bool Rep_context::is_normal(const StandardRepr& z) const
   return z_normal==z;
 }
 
-// |z| final means that no singular real roots satisfy the parity condition
-// we do not assume |gamma| to be dominant, so all real roots must be tested
-bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
+// |z| semifinal means that no singular real roots satisfy the parity condition
+// no assumptions about the real subsytem, so all real roots must be tested
+bool Rep_context::is_semifinal(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -435,7 +416,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
     const Weight& av = root_datum().coroot(*it);
     if (av.dot(z.gamma().numerator())==0 and
 	av.dot(test_wt)%4 !=0) // singular yet odd on shifted lambda
-      return witness=*it,false;
+      return false;
   }
   return true;
 }
@@ -468,8 +449,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
       default: {} // ImaginaryNoncompact is fine
       } // tests on |v|
   } // |for(s)|
-  RootNbr witness;
-  return is_nonzero(z,witness); // check \emph{all} simply-imaginary coroots
+  return is_nonzero(z); // check \emph{all} simply-imaginary coroots
 }
 
 
@@ -534,21 +514,50 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 } // |orientation_number|
 
+RankFlags Rep_context::singular_simples (const StandardRepr& z) const
+{
+  const auto& rd=root_datum();
+  assert(is_dominant_ratweight(rd,z.infinitesimal_char));
+  const auto& numer = z.infinitesimal_char.numerator();
+  RankFlags result;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    result.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  return result;
+}
+
+WeylWord Rep_context::complex_descent_word (KGBElt x, RankFlags singulars) const
+{
+  WeylWord result;
+  { RankFlags::iterator it;
+    do
+      for (it=singulars.begin(); it(); ++it)
+	if (kgb().isComplexDescent(*it,x))
+	{
+	  auto s=*it;
+	  x = kgb().cross(s,x);
+	  result.push_back(s);
+	  break; // out of the loop |for(it)|
+	} // |if(isComplexDescent)|
+    while (it()); // wait until inner loop runs to completion
+  }
+  return result;
+}
+
 void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
 
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part; // the |x_part| will be modified in-place
-  Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
+  KGBElt& x = z.x_part; // the |z.x_part| will be modified in-place
+  Ratvec_Numer_t& numer = // and |z.infinitesimal_char| as well
+    z.infinitesimal_char.numerator();
 
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimple_rank(); ++s)
 	if (rd.simpleCoroot(s).dot(numer)<0)
 	{
-	  rd.simple_reflect(s,numer);
 	  int offset; // used to pivot |lr| around $\rho_r-\rho$
 	  switch (kgb().status(s,x))
 	  {
@@ -557,6 +566,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
 	  default: // |s| is an imaginary root; we will not cope with that here
 	    throw std::runtime_error("Non standard parameter in make_dominant");
 	  }
+	  rd.simple_reflect(s,numer); // real or complex reflection of |gamma|
 	  rd.simple_reflect(s,lr,offset);
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
@@ -566,54 +576,70 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
-void Rep_context::singular_cross (weyl::Generator s,StandardRepr& z) const
+// apply sequence of cross actions by singular complex simple generators
+void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 {
-  assert(root_datum().simpleCoroot(s).dot(z.gamma().numerator())==0);
-  Weight lr = lambda_rho(z); auto& x=z.x_part;
-  root_datum().simple_reflect
-    (s, lr, kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
-  x = kgb().cross(s,x);
-  z.y_bits = // reinsert $y$ bits component
-    involution_table().y_pack(kgb().inv_nr(x),lr);
+  const auto& rd = root_datum();
+#ifndef NDEBUG
+  const InvolutionTable& i_tab = involution_table();
+#endif
+  auto& x = z.x_part; // directly operate on |x| component inside |z|
+  Weight lr = lambda_rho(z);
+  // |z.infinitesimal_char| is unchanged by singular reflections
+
+  for (auto s : ww)
+  {
+    assert(rd.simpleCoroot(s).dot(z.gamma().numerator())==0);
+    assert(i_tab.is_complex_simple(kgb().inv_nr(x),s));
+    x = kgb().cross(s,x);
+    rd.simple_reflect(s, lr, 1);
+  }
+
+  // reinsert $y$ bits component
+  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
-// auxiliary: move to a canonical for the |gens| (singular) subgroup of $W$
+// auxiliary: move to canonical involution for (singular) |gens| subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
 { // simply-singular coroots are simple, so no need to constuct a subsystem
   TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
-  WeylWord ww = inner_class().canonicalize(tw,gens);
-  for (auto it=ww.begin(); it!=ww.end(); ++it) // move to that involution
-    singular_cross(*it,z);
+  complex_crosses(z,inner_class().canonicalize(tw,gens));
   assert(tw == kgb().involution(z.x_part));
 }
 
-// make dominant, then descend though any singular complex descents
+// make dominant and descend though any singular complex descents
+// this is a version of |make_dominant| also doing singular |complex_crosses|
 void Rep_context::deform_readjust(StandardRepr& z) const
 {
-  make_dominant(z); // typically may have gone negative only for complex coroots
   const RootDatum& rd = root_datum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
 
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
+  KGBElt& x = z.x_part; // the |z.x_part| will be modified in-place
+  Ratvec_Numer_t& numer = // and |z.infinitesimal_char| as well
+    z.infinitesimal_char.numerator();
 
-  { RankFlags::iterator it;
+  { weyl::Generator s;
     do
-      for (it=simple_singulars.begin(); it(); ++it)
-	if (kgb().isComplexDescent(*it,x))
+      for (s=0; s<rd.semisimple_rank(); ++s)
+	if (kgb().status(s,x) == gradings::Status::Complex)
 	{
-	  weyl::Generator s=*it;
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
+	  auto eval = rd.simpleCoroot(s).dot(numer); // needed for sign only
+	  if (eval<0)
+	  {
+	    rd.simple_reflect(s,numer); // real or complex reflection of |gamma|
+	    rd.simple_reflect(s,lr,1);
+	    x = kgb().cross(s,x);
+	    break; // out of the loop |for(s)|
+	  }
+	else if (eval==0 and kgb().isDescent(s,x))
+	{ // here |numer| will be unchanged
+	  rd.simple_reflect(s,lr,1);
 	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-    while (it()); // wait until inner loop runs to completion
+	  break; // out of the loop |for(s)|: other complex descents possible
+	}
+      } // |for(s)|
+    while (s<rd.semisimple_rank()); // wait until inner loop runs to completion
   }
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |deform_readjust|
@@ -623,48 +649,18 @@ void Rep_context::deform_readjust(StandardRepr& z) const
 void Rep_context::normalise(StandardRepr& z) const
 {
   make_dominant(z);
-  const RootDatum& rd = root_datum();
 
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
+  RankFlags singulars = singular_simples(z);
+  to_singular_canonical(singulars,z);
 
-  to_singular_canonical(simple_singulars,z);
-
-  // the following are non-|const|, and modified in the loop below
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-
-  { RankFlags::iterator it;
-    do
-      for (it=simple_singulars.begin(); it(); ++it)
-	if (kgb().isComplexDescent(*it,x))
-	{
-	  weyl::Generator s=*it;
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-    while (it()); // wait until inner loop runs to completion
-  }
-  z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
+  complex_crosses(z,complex_descent_word(z.x(),singulars));
 } // |normalise|
 
 bool Rep_context::is_twist_fixed
   (StandardRepr z, const WeightInvolution& delta) const
 {
   make_dominant(z);
-  const RootDatum& rd = root_datum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  to_singular_canonical(simple_singulars,z);
+  to_singular_canonical(singular_simples(z),z);
 
   return z==twisted(z,delta);
 } // |is_twist_fixed|
@@ -676,8 +672,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
     return false; // this non-equivalence can be seen before |make_dominant|
 
   { // preempt failing of |make_dominant| on non standard parameters
-    RootNbr witness;
-    if (not (is_standard(z0,witness) and is_standard(z1,witness)))
+    if (not (is_standard(z0) and is_standard(z1)))
       return z0==z1; // strict equality unless both are parameters standard
   }
 
@@ -687,16 +682,9 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   if (z0.infinitesimal_char!=z1.infinitesimal_char)
     return false;
 
-  const RootDatum& rd = root_datum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z0.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  to_singular_canonical(simple_singulars,z0);
-  to_singular_canonical(simple_singulars,z1);
+  RankFlags singulars = singular_simples(z0);
+  to_singular_canonical(singulars,z0);
+  to_singular_canonical(singulars,z1);
 
   return z0==z1;
 } // |Rep_context::equivalent|
@@ -710,9 +698,6 @@ StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
   (z.infinitesimal_char/=2).normalize();
   return z;
 }
-
-StandardRepr Rep_context::scale_0(StandardRepr z) const
-{ z.infinitesimal_char = gamma_0(z); return z; }
 
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
 {
@@ -822,7 +807,7 @@ StandardRepr Rep_context::cross(const Weight& alpha, StandardRepr z) const
   Ratvec_Numer_t& lambda_numer = gam_lam_shifted.numerator();
 
   // transform |x|, |i_x|, and |gam_lam_shifted|, reflecting them by |alpha|
-  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(rt),x) );
+  i_x = kgb().inv_nr( x = kgb().cross(rd.reflection_word(rt),x) );
   rd.reflect(rt,lambda_numer);
 
   // shift back by $\rho_\R$ at (now) destination |i_x|
@@ -943,7 +928,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 
 	  // reflect |gamma| by |alpha|
 	  gamma_num.subtract(rd.root(alpha).begin(),v);
-	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflectionWord(alpha),x) );
+	  i_x = kgb().inv_nr( x = kgb().cross(rd.reflection_word(alpha),x) );
 	  rd.reflect(alpha,lambda2_shifted);
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)|
@@ -1034,19 +1019,18 @@ StandardRepr Rep_context::twisted
 }
 
 
-bool Rep_context::compare::operator()
-  (const StandardRepr& r,const StandardRepr& s) const
+bool StandardRepr::operator<(const StandardRepr& s) const
 {
-  if (r.height()!=s.height()) // order by increasing height first
-    return r.height()<s.height();
-  if (r.x()!=s.x()) // then order by decreasing numeric value of |x|
-    return r.x()>s.x(); // (height tends to change in opposite sense to |x|)
-  if (r.y()!=s.y()) // then order by increasing internal value of |y|
-    return r.y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
+  if (height()!=s.height()) // order by increasing height first
+    return height()<s.height();
+  if (x()!=s.x()) // then order by decreasing numeric value of |x|
+    return x()>s.x(); // (height tends to change in opposite sense to |x|)
+  if (y()!=s.y()) // then order by increasing internal value of |y|
+    return y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
 
   // finally in rare cases individual components of |gamma| need comparison
-  auto r_vec = s.gamma().numerator()*r.gamma().denominator(); // cross multiply
-  auto s_vec = r.gamma().numerator()*s.gamma().denominator(); // cross multiply
+  auto r_vec = s.gamma().numerator()*gamma().denominator(); // cross multiply
+  auto s_vec = gamma().numerator()*s.gamma().denominator(); // cross multiply
 
   return r_vec<s_vec;
 }
@@ -1054,90 +1038,155 @@ bool Rep_context::compare::operator()
 SR_poly Rep_context::scale(const poly& P, const RatNum& f) const
 {
   poly result;
-  for (auto it=P.begin(); it!=P.end(); ++it)
-  { auto z=it->first; // take a copy for modification
-    auto finals = finals_for(scale(z,f));
-    for (const StandardRepr& final : finals)
-      result.add_term(final,it->second);
+  for (const auto& term : P)
+  {
+    auto finals_term = finals_for(scale(term.first,f));
+    for (auto it = finals_term.begin(); not finals_term.at_end(it); ++it)
+      result.add_term(std::move(it->first),term.second*it->second);
   }
   return result;
 }
 
-SR_poly Rep_context::scale_0(const poly& P) const
+K_repr::K_type_pol Rep_context::scale_0(const poly& P) const
 {
-  poly result;
+  K_repr::K_type_pol result;
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto finals = finals_for(scale_0(z));
-    for (const StandardRepr& final : finals)
-      result.add_term(final,it->second);
+    auto finals = finals_for(scale_0(z)); // a |simple_list| of K-type terms
+    for (auto it=finals.begin(); not finals.at_end(it); ++it)
+      result.add_term(std::move(it->first),Split_integer(it->second));
   }
   return result;
 }
 
-sl_list<StandardRepr> Rep_context::finals_for(StandardRepr z) const
+using sr_term = std::pair<StandardRepr,int>;
+using sr_term_list = simple_list<sr_term>;
+
+// insert (add) a new term into list |L|, assumed sorted decreasingly
+void insert(StandardRepr&& z, int coef, sr_term_list& L)
+{ auto it = L.begin();
+  while (not L.at_end(it))
+    if (z < it->first)
+      ++it; // skip higher terms
+    else if (it->first < z) // then we are looking at lower terms
+      break; // so break loop and insert before those lower terms
+    else  // matching term; operate on coefficient
+    { if ((it->second += coef) == 0)
+        L.erase(it);
+      return; // whether by coefficient update or erasure, we are done
+    }
+  L.insert(it,std::make_pair(std::move(z),coef));
+}
+
+sr_term_list Rep_context::finals_for(StandardRepr z) const
 {
   const RootDatum& rd = root_datum();
-  const InvolutionTable& i_tab = involution_table();
 
-  make_dominant(z); // ensures singular subsystem is generated by simple roots
-  const RatWeight& gamma=z.gamma();
+  sr_term_list result, to_do;
+  to_do.emplace_front(std::move(z),1);
 
-  RankFlags singular; // subset of simple roots that is singular at |gamma|
-  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    singular.set(s,rd.simpleCoroot(s).dot(gamma.numerator())==0);
-/* the simple roots flagged in |singular| coincide with the singular
-   integrally-simple roots (simple roots of integral subsystem), so we can
-   proceed without constructing the integral subsystem (even less the block) */
-
-  sl_list<StandardRepr> result { z };
-  auto rit=result.begin();
   do
-  { const KGBElt x=rit->x();
-    for (const auto s : singular)
+  {
+    KGBElt x = to_do.front().first.x();
+    Weight lr = lambda_rho(to_do.front().first);
+#ifndef NDEBUG
+    auto height = to_do.front().first.height();
+#endif
+    RatWeight gamma = std::move(to_do.front().first.infinitesimal_char);
+    auto coef = to_do.front().second;
+    to_do.pop_front();
+
+  restart:
+    for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
       // as |break| from loop is not available within |switch|, use |goto| below
-      switch (kgb().status(s,x))
-      {
-      case gradings::Status::ImaginaryCompact:
-	result.erase(rit); // discard zero parameter
-	goto repeat;
-      case gradings::Status::Complex:
-        if (kgb().isDescent(s,x))
-	{ // replace |*rit| by its complex descent for |s|
-	  singular_cross(s,*rit);
-	  goto repeat; // reconsider all singular roots for the new parameter
-	}
-	break;
-      case gradings::Status::Real:
-	{ // only do something for parity roots
-	  const InvolutionNbr i_x = kgb().inv_nr(x);
-	  if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
-	  { // found parity root; |kgb()| can distinguish type 1 and type 2
-	    const KGBEltPair p = kgb().inverseCayley(s,x);
-	    Weight lr = lambda_rho(*rit);
-	    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	    *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
-	    if (p.second!=UndefKGB) // insert second inverse Cayley after first
-	      result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
-	    goto repeat;
+    { auto eval = // morally evaluation coroot at |gamma|, but only sign matters
+	rd.simpleCoroot(s).dot(gamma.numerator());
+      if (eval<=0)
+	switch (kgb().status(s,x))
+	{
+	case gradings::Status::ImaginaryCompact:
+	  if (eval<0) // then reflect |lambda| and negate sign
+	  {
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    coef = -coef;
+	    goto restart;
 	  }
-	}
+	  else goto drop; // parameter is zero
+	case gradings::Status::ImaginaryNoncompact:
+	  if (eval<0) // then also add Cayley transform terms
+	  {
+	    KGBElt sx = kgb().cross(s,x);
+	    KGBElt Cx = kgb().cayley(s,x);
+	    StandardRepr t1 = sr_gamma(Cx,lr,gamma);
+	    assert( t1.height() < height );
+	    insert(std::move(t1),coef,to_do);
+	    if (sx==x) // then type 2 Cayley
+	    {
+	      StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
+	      assert( t2.height() < height );
+	      insert(std::move(t2),coef,to_do);
+	    }
+	    x = sx; // after testing we can update |x| for nci cross action
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    coef = -coef; // reflect, negate, and continue with modified values
+	    goto restart;
+	  }
+	  else // nothing to do for singular nci generator
+	    continue; // continue loop on |s|
+	case gradings::Status::Complex:
+	  if (eval<0 or kgb().isDescent(s,x))
+	  {
+	    x = kgb().cross(s,x);
+	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	    rd.simple_reflect(s,gamma.numerator());
+	    // keep |coef| unchanged
+	    goto restart;
+	  }
+	  else // nothing to do for singular complex ascent
+	    continue; // continue loop on |s|
 	break;
-      case gradings::Status::ImaginaryNoncompact:
-        break; // like for complex ascent or real nonparity, do nothing here
-      } // end of |switch| and of |for (s:singular)|
-    ++rit; // no singular descents found: consolidate |*rit|
-  repeat: {} // continue modifications at |*rit| after jump here
+	case gradings::Status::Real:
+	  if (eval<0)
+	  {
+	    // |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
+	    rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
+	    rd.simple_reflect(s,gamma.numerator());
+	    // keep |coef| unchanged
+	    goto restart;
+	  }
+	  else
+	  { // singular real root; only do something if parity condition holds
+	    auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	    if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
+	    { // found parity root; |kgb()| can distinguish type 1 and type 2
+	      lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
+	      assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	      const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	      if (Cxs.second!=UndefKGB)
+		insert(sr_gamma(Cxs.second,lr,gamma),coef,to_do);
+	      insert(sr_gamma(Cxs.first,lr,std::move(gamma)),coef,to_do);
+	      goto drop; // we have rewritten |current|, don't contribute it
+	    }
+	    else continue; // nothing to do for a (singular) real nonparity root
+	  } // |else| (singular real root)
+	} // |switch| and |if(eval<=0)|
+    } // |for(s)|
+    // if loop terminates, then contribute modified, now final, parameter
+    result.emplace_front(sr_gamma(x,lr,gamma),coef);
+  drop: {} // when jumping here, proceed without contributing
   }
-  while (not result.at_end(rit));
+  while (not to_do.empty());
   return result;
-} // |Rep_context::finals_for|
+} // |Rep_context::finals_for| StandardRepr
 
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
+  auto terms = finals_for(std::move(z));
   poly result;
-  for (const auto& sr : finals_for(z))
-    result += sr;
+  for (auto it=terms.begin(); not terms.at_end(it); ++it)
+    result.add_term(std::move(it->first),Split_integer(it->second));
   return result;
 } // |Rep_context::expand_final|
 
@@ -1210,7 +1259,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
   const auto& num = g.numerator();
   const auto denom = g.denominator();
   // take into account free part of $\lambda$
-  for (int c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
+  for (auto c : (theta*num+num)/denom) // over temporary |arithmetic::Numer_t|
     hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
@@ -1602,40 +1651,45 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   return block;
 } // |Rep_table::lookup|
 
-// in the following type the second component is a multiplicity so we are in fact
-// dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
+/* In the following type the second component is a multiplicity so we are
+   dealing with a sparse representation of polynomials with |BlockElt|
+   exponents. This is intended for the expansion of non-final elements into
+   final ones; we expect few, relative to the block size, terms per polynomial
+*/
+using BlockElt_term =  std::pair<BlockElt,int>;
+using BlockElt_pol = sl_list<BlockElt_term>;
 
-typedef std::pair<BlockElt,int>  term;
-typedef sl_list<term> pair_list;
-
-pair_list combine (pair_list a, pair_list b) // by value, will move from rvalues
-{ // |a| and |b| are assumed to be sorted
-  a.merge(std::move(b),
-	  [](const term& x, const term& y) { return x.first<y.first; });
+// addition polynomials whose elements are sorted by increasing |BlockElt|
+BlockElt_pol combine (BlockElt_pol a, BlockElt_pol b) // by value
+{ a.merge(std::move(b),
+	  [](const BlockElt_term& x, const BlockElt_term& y)
+	    { return x.first<y.first; });
   // now any like terms are neigbours, combine them whenever this occurs
   for (auto it=a.begin(); not a.at_end(it); ++it)
   {
     auto it1=std::next(it);
     if (not a.at_end(it1) and it->first==it1->first)
     {
-      it->second += it1->second;
-      a.erase(it1);
+      it->second += it1->second; // accumulate towards first ot the terms
+      a.erase(it1); // then erase the second; next |++it| correctly executes
     }
   }
   return a;
 }
 
-pair_list flip (int sign, pair_list list) // by value
+BlockElt_pol flip (int sign, BlockElt_pol list) // by value
 { if (sign!=1)
     for (auto& p : list)
       p.second *= sign;
   return list;
 }
 
-std::vector<pair_list> contributions
+// Expand block elements up to |y| into final ones for the |singular| system.
+// This version is for a |common_block|, so no twist is involved in expansion
+std::vector<BlockElt_pol> contributions
   (blocks::common_block& block, RankFlags singular, BlockElt y)
 {
-  std::vector<pair_list> result(y+1); // initally every |result[z]| is empty
+  std::vector<BlockElt_pol> result(y+1); // initally every |result[z]| is empty
   for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
   {
     const DescentStatus& desc=block.descent(z);
@@ -1670,12 +1724,13 @@ std::vector<pair_list> contributions
 } // |Rep_table::contributions|
 
 
-// compute |extended_finialise| in |BlockElt| form, on initial range of |eblock|
-std::vector<pair_list> contributions
+// Expand block elements up to |y| into final ones for |singular| system.
+// Being for an |ext_block|, the expansion involves signs (twisted case)
+std::vector<BlockElt_pol> contributions
   (const ext_block::ext_block& eblock, RankFlags singular_orbits,
    BlockElt limit) // where to stop computing contributions
 {
-  std::vector<pair_list> result(limit); // each|result[z]| is initially empty
+  std::vector<BlockElt_pol> result(limit); // each|result[z]| is initially empty
   for (BlockElt z=0; z<limit; ++z)
   {
     auto s = eblock.first_descent_among(singular_orbits,z);
@@ -1712,7 +1767,8 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   if (block.length(y)==0)
     return result; // easy case, null result
 
-  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),y);
+  std::vector<BlockElt_pol> contrib =
+    contributions(block,block.singular(gamma),y);
   sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
@@ -1803,10 +1859,11 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   auto& block = lookup(sr,z);
   RatWeight diff = offset(sr,block.representative(z));
   assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
-	 .isZero());
+	 .is_zero());
 
   const auto& gamma=sr.gamma();
-  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
+  std::vector<BlockElt_pol> contrib =
+    contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
@@ -1864,21 +1921,23 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = alcove_center(*this,z);
-  RatNumList rp=reducibility_points(z); // this is OK before |make_dominant|
+  RatNumList rp=reducibility_points(z);
 
   deformation_unit zn(*this,z);
-  { // look up if deformation formula for |z_near| is already known and stored
+  { // look up if deformation formula for |z| is already known and stored
     unsigned long h=alcove_hash.find(zn);
     if (h!=alcove_hash.empty and pool[h].has_deformation_formula())
       return pool[h].def_formula();
   }
 
-  StandardRepr z0 = scale_0(z);
   K_type_poly result {std::less<K_type_nr>()};
-  for (const auto& sr : finals_for(z0))
   {
-    K_type_nr h = K_type_hash.match(K_type(*this,sr));
-    result.add_term(h,Split_integer(1,0));
+    auto base_pol = finals_for(scale_0(z)); // a $\Z$-linear combin. of K-types
+    for (auto it=base_pol.begin(); not base_pol.at_end(it); ++it)
+    {
+      K_type_nr h = K_type_hash.match(std::move(it->first));
+      result.add_term(h,Split_integer(it->second)); // purely integer coefficient
+    }
   }
 
   for (unsigned i=rp.size(); i-->0; )
@@ -1890,7 +1949,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     auto& block = lookup(zi,new_z);
     RatWeight diff = offset(zi, block.representative(new_z));
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
-	   .isZero());
+	   .is_zero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
     for (auto& term : dt)
     {
@@ -1969,7 +2028,7 @@ SR_poly twisted_KL_column_at_s
   common_context ctxt(rc,zm.gamma_lambda());
   blocks::common_block block(ctxt,zm,entry); // build full block
   RatWeight diff = rc.offset(z, block.representative(entry));
-  assert(diff.isZero()); // because we custom-built our |block| above
+  assert(diff.is_zero()); // because we custom-built our |block| above
   // the code below handles still |diff| as it should if it were nonzero
 
   block.shift(diff);
@@ -2168,70 +2227,64 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   RatNumList rp=reducibility_points(z);
   flip = false; // ensure no flip is recorded when shrink wrapping is not done
   if (not rp.empty() and rp.back()!=RatNum(1,1))
-  { // then shrink wrap toward $\nu=0$
+  { // shrink wrap toward $\nu=0$ to get useful parameter to store result for
     const RatNum f=rp.back();
-    z = ext_block::scaled_extended_dominant(*this,z,delta,f,flip);
+    std::pair<StandardRepr,bool> p =
+      ext_block::scaled_extended_finalise(*this,z,delta,f);
+    z = p.first; flip=p.second;
     for (auto& a : rp)
       a/=f; // rescale reducibility points to new parameter |z|
     assert(rp.back()==RatNum(1,1)); // should make first reduction at |z|
-    // here we continue, with |flip_start| recording whether we already flipped
+    // here we continue, with |flip| recording whether we already flipped
   }
 
   deformation_unit zu(*this,z);
-  { // if formula for |z| was previously stored, return it with |s^flip_start|
+  { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
       return pool[h].twisted_def_formula();
   }
 
   K_type_poly result { std::less<K_type_nr>() };
-  { // initialise |result| to fully deformed parameter expanded to finals
-    bool flipped; // contrary to |flip|, influences |result| to be stored in |zu|
-    auto z0 = ext_block::scaled_extended_dominant
-		(*this,z,delta,RatNum(0,1),flipped); // deformation to $\nu=0$
-    auto L = ext_block::extended_finalise(*this,z0,delta);
-    for (const std::pair<StandardRepr,bool>& p : L)
-    {
-      auto h = K_type_hash.match(K_type(*this,p.first));
-      result.add_term(h,p.second==flipped // if |p.second!=flipped| do |times_s|
-			? Split_integer(1,0) : Split_integer(0,1) );
-    }
+  { // initialise |result| to restriction of |z| expanded to finals
+    auto z_K = ext_block::extended_restrict_to_K(*this,z,delta);
+    // the following loop reorders terms by |std::less<K_type_nr>|
+    for (auto&& term : z_K) // convert |K_repr::K_type_pol| to |K_type_poly|
+      result.add_term(K_type_hash.match(std::move(term.first)),term.second);
   }
 
   // compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    RatNum r=rp[i]; bool flipped;
-    auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-    auto L =
-      ext_block::extended_finalise(*this,zi,delta); // rarely a long list
+    std::pair<StandardRepr,bool> p =
+      ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
+    StandardRepr zi = std::move(p.first);
+    const bool flip_p = p.second;
+    BlockElt index;
+    auto& block = lookup(zi,index);
+    RatWeight diff = offset(zi,block.representative(index));
+    block.shift(diff); // adapt representatives for extended block construction
+    assert(block.representative(index)==
+	   StandardReprMod::mod_reduce(*this,zi));
+    auto& eblock = block.extended_block(&poly_hash);
+    block.shift(-diff);
 
-    for (std::pair<StandardRepr,bool>& p : L)
-    {
-      const bool flip_p = flipped!=p.second;
-      BlockElt new_z;
-      auto& block = lookup(p.first,new_z);
-      RatWeight diff = offset(p.first,block.representative(new_z));
-      block.shift(diff); // adapt representatives for extended block construction
-      assert(block.representative(new_z)==
-	     StandardReprMod::mod_reduce(*this,p.first));
-      auto& eblock = block.extended_block(&poly_hash);
-      block.shift(-diff);
+    RankFlags singular = block.singular(zi.gamma());
+    RankFlags singular_orbits; // flag singulars among orbits
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
-      RankFlags singular = block.singular(p.first.gamma());
-      RankFlags singular_orbits; // flag singulars among orbits
-      for (weyl::Generator s=0; s<eblock.rank(); ++s)
-	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-
-      auto terms = twisted_deformation_terms(block,eblock,new_z,
-					     singular_orbits,diff,zi.gamma());
-      for (auto const& term : terms)
-      { bool flip_def;
-	const auto& def = twisted_deformation(term.first,flip_def); // recursion
-	result.add_multiple(def,
-	   flip_p!=flip_def ? Split_integer(-term.second,term.second)
-			    : Split_integer(term.second,-term.second));
-      }
+    auto terms = twisted_deformation_terms(block,eblock,index,
+					   singular_orbits,diff,zi.gamma());
+    for (auto&& term : terms)
+    { bool flip_def;
+      const auto& def =
+	twisted_deformation(std::move(term.first),flip_def); // recursion
+      result.add_multiple
+	(def,
+	 flip_p!=flip_def ? Split_integer(-term.second,term.second)
+			  : Split_integer(term.second,-term.second)
+	 );
     }
   }
 
@@ -2241,6 +2294,14 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
+K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
+{
+  K_repr::K_type_pol::poly result; // an instance of |std::vector|
+  result.reserve(P.size());
+  for (const auto& term : P)
+    result.emplace_back(rt.stored_K_type(term.first),term.second);
+  return { std::move(result) }; // sort, convert to |K_repr::K_type_poly|
+}
 
 //			|common_context| methods
 
@@ -2354,40 +2415,38 @@ StandardReprMod common_context::up_Cayley
 }
 
 
-Weight common_context::to_simple_shift
+Weight Rep_context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(full_root_datum(),S);
+  return root_sum(root_datum(),S);
 }
 
 
-//			|Ext_common_context| methods
+//			|Ext_rep_context| methods
 
-Ext_common_context::Ext_common_context
-  (const Rep_context& rc, const WeightInvolution& delta, const SubSystem& sub)
-    : repr::common_context(rc,sub)
+Ext_rep_context::Ext_rep_context
+  (const Rep_context& rc, const WeightInvolution& delta)
+    : rep_con(rc)
     , d_delta(delta)
     , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts(sub.rank())
 {
   const RootDatum& rd = rc.root_datum();
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
-  // the reflections for |E.l| pivot around |g_rho_check()|
-  const RatCoweight minus_g_rho_check = -rc.g_rho_check();
-  for (unsigned i=0; i<sub.rank(); ++i)
-    l_shifts[i] = minus_g_rho_check.dot(sub.simple_root(i));
-} // |Ext_common_context::Ext_common_context|
+} // |Ext_rep_context::Ext_rep_context|
+
+Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
+  : Ext_rep_context(rc, rc.inner_class().distinguished()) {}
 
 
-bool Ext_common_context::is_very_complex
+bool Ext_rep_context::is_very_complex
   (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = involution_table();
-  const auto& rd = full_root_datum();
+{ const auto& i_tab = rep_con.involution_table();
+  const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
@@ -2404,29 +2463,19 @@ bool Ext_common_context::is_very_complex
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
-bool Ext_common_context::shift_flip
+bool Ext_rep_context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not full_root_datum().sum_is_root(*it,delta_of(*it)))
+	not root_datum().sum_is_root(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
   return count%4!=0;
 }
-
-// |Ext_rep_context| methods
-
-Ext_rep_context::Ext_rep_context
-  (const repr::Rep_context& rc, const WeightInvolution& delta)
-: Rep_context(rc), d_delta(delta) {}
-
-Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
-: Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
-
 
   } // |namespace repr|
 } // |namespace atlas|

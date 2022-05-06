@@ -322,17 +322,17 @@ class SRK_context
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ positive imaginary
    Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
-   Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
-   Final: $\<\lambda,\alpha\vee>$ odd for all simple-real roots $\alpha$
+   Zero: $\<\lambda,\alpha\vee>=0$ for some simply-imaginary compact $\alpha$
+   Final: $\<\lambda,\alpha\vee>$ odd for all simply-real roots $\alpha$
 
   The condition Zero is a sufficient, but possibly not necessary, condition
   for the parameter to determine a zero representation.
 
   On a negative result, these functions set the value of |offender| to the
   number of a root that witnesses the failure to be Standard, non-Zero, final.
-  This number can be retrieved (and is then cleared) by calling |witness|.
-  For |isNormal| the stored number indexes |sum_coroots|, so is not a root
-  number (use |bi_ortho.n_th_bit| for that) but otherwise use is the same.
+  This number can be retrieved (and is then cleared) by calling |witness|. For
+  |isNormal| the stored number indexes |sum_coroots|, so is not a root number
+  (apply |bi_ortho.n_th_bit| to it for that) but otherwise use is the same.
 */
   bool isStandard(const StandardRepK& sr) const;
   bool isNormal(Weight lambda, CartanNbr cn) const;
@@ -396,7 +396,8 @@ class SRK_context
 
 // private methods
  private:
-  // alternating sum over |sub_KGB(q)| of |RawRep| values deduced from |lambda|
+  // alternating sum over subset |sub=sub_KGB(q)| of the KGB set of |RawRep|
+  // values $(\mu,x)$ "reflected" from |lambda-rho| at maximal |x| in |sub|
   RawChar KGB_sum(const PSalgebra& q, const Weight& lambda) const;
 
   Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda) const;
@@ -422,8 +423,8 @@ public:
 
 /*
   This class serves to store tables of previously computed mappings from "bad"
-  standard representations to good ones. Also the information necessary to
-  interpret the |d_lambda| field in |StandardRepK| are stored here
+  standard representations to good ones. Since K-type formula
+  computations use these, they are methods of this class
 */
 class KhatContext : public SRK_context
 {
@@ -493,8 +494,9 @@ class KhatContext : public SRK_context
 }; // |class KhatContext|
 
 // This class serves to store tables of previously computed mappings from
-// "bad" standard representations to good ones. Also the information
-// necessary to interpret the d_lambda field in StandardRepK are stored here
+// "bad" standard representations to good ones. Since the $q$-K-type formula
+// computations use these, they are methods of this class
+
 class qKhatContext : public SRK_context
 {
   typedef HashTable<StandardRepK,seq_no> Hash;

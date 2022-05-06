@@ -568,7 +568,7 @@ RootSystem::root_permutation(const Permutation& twist) const
   return extend_to_roots(simple_image);
 }
 
-WeylWord RootSystem::reflectionWord(RootNbr alpha) const
+WeylWord RootSystem::reflection_word(RootNbr alpha) const
 {
   make_positive(*this,alpha);
 
@@ -1026,7 +1026,7 @@ WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
   return result;
 }
 
-WeylWord RootDatum::reflectionWord(RootNbr alpha) const
+WeylWord RootDatum::reflection_word(RootNbr alpha) const
 {
   return to_dominant(reflection(alpha,twoRho()));
 }
@@ -1200,13 +1200,11 @@ void RootDatum::fillStatus()
 
 ******************************************************************************/
 
-RatWeight rho (const RootDatum& rd) { return RatWeight(rd.twoRho(),2); }
-// RatWeight rho (const RootDatum& rd, const RootNbrSet& sub_posroots)
-//   { return RatWeight(rd.twoRho(sub_posroots),2); }
+RatWeight rho (const RootDatum& rd)
+{ return RatWeight(rd.twoRho(),2).normalize(); }
+
 RatCoweight rho_check (const RootDatum& rd)
-  { return RatCoweight(rd.dual_twoRho(),2); }
-// RatCoweight rho_check (const RootDatum& rd, const RootNbrSet& sub_posroots)
-//   { return RatCoweight(rd.dual_twoRho(sub_posroots),2); }
+{ return RatCoweight(rd.dual_twoRho(),2).normalize(); }
 
 /*
   Return matrix of dual fundamental involution related to fundamental |q|

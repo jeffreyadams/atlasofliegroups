@@ -3205,6 +3205,7 @@ void sizeof_vector_wrapper(expression_base::level l);
 void sizeof_ratvec_wrapper(expression_base::level l);
 void sizeof_string_wrapper(expression_base::level l);
 void matrix_ncols_wrapper(expression_base::level l);
+void K_type_pol_size_wrapper(expression_base::level l);
 void virtual_module_size_wrapper(expression_base::level l);
 
 @ The definitions are straightforward.
@@ -3421,13 +3422,13 @@ void ratvec_unary_eq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(v->val.isZero()));
+  push_value(whether(v->val.is_zero()));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(not v->val.isZero()));
+  push_value(whether(not v->val.is_zero()));
 }
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector w=get<rational_vector_value>();

@@ -4,54 +4,45 @@
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
 
-set sort_by_height (ParamPol P) = [(Split,Param)]:
-  sort_by_height(for c@p in P do (c,p) od)
+set int_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.int_part,t) od
+set s_part (KTypePol P) = KTypePol:
+   P.null_K_module + for c@t in P do (c.s_part,t) od
 
-set branch_std = (Param, int-> ParamPol): branch@(Param,int) { built-in }
+set branch_std = (KTypePol,int->KTypePol): branch@(KTypePol,int) { built-in }
+set branch_std (KType t, int cut_off) = KTypePol: branch_std(KTypePol:t,cut_off)
+set branch_std (ParamPol P, int bound) = KTypePol: branch(K_type_pol(P),bound)
 
-set branch_std = (ParamPol ,int -> ParamPol): branch@(ParamPol,int) { built-in }
+set branch_irr (Param p, int bound) = KTypePol:
+  branch_std(K_type_pol(character_formula(p)),bound)
 
-set branch_irr (Param p, int bound) = ParamPol:
-  branch_std(character_formula(p),bound)
-
-set branch_irr (ParamPol P,int bound) = ParamPol:
-  let sum=0*P in for c@p in P do sum +:= c*branch_irr(p,bound) od; sum
+set branch_irr (ParamPol P,int bound) = KTypePol:
+  branch_std(K_type_pol(character_formula(P)),bound)
 
 { multiplicity of K-type p_K in standard module p }
-set mult_std (Param p_K,Param p) = int:
-  split_as_int(branch_std(p,height(p_K))[p_K])
+set mult_std (KType p_K,KTypePol P) = int:
+  (branch_std(P,height(p_K))[p_K]).int_part
 
 { multiplicity of K-type p_K in irreducible module p }
-set mult_irr (Param p_K,Param p) = int:
-  split_as_int(branch_irr(p,height(p_K))[p_K])
+set mult_irr (KType p_K,ParamPol P) = int:
+  (branch_irr(P,height(p_K))[p_K]).int_part
 
-set mult_std(Param p_K, ParamPol P) = Split:
-  sum(for c@p in P do c*mult_std(p_K,p) od)
-set mult_irr(Param p_K, ParamPol P) = Split:
-  sum(for c@p in P do c*mult_irr(p_K,p) od)
+set K_signature_irr (Param p,int bound) = (KTypePol,KTypePol):
+  let b=branch(hermitian_form_irreducible(p),bound) in (int_part(b),s_part(b) )
 
-set K_signature_irr (Param p,int bound) = (ParamPol,ParamPol):
-  let form=hermitian_form_irreducible(p) in
-  ( branch_std(int_part(form),bound) , branch_std(s_part(form),bound) )
-
-set signed_mult (Param p_K,Param p) = (int,int):
-  let (P,Q)=K_signature_irr(p,height(p_K)) in
-   ( split_as_int(branch_std(P,height(p_K))[p_K])
-   , split_as_int(branch_std(Q,height(p_K))[p_K])
-   )
+set signed_mult (KType p_K,Param p) = (int,int):
+  let (P,Q)=K_signature_irr(p,height(p_K)) in (P[p_K].int_part,Q[p_K].int_part)
 
 { this should be modified to print all LKTs }
 set print_K_types (ParamPol P) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
+  for c@p in P
   do let mu=highest_weight_one(LKT(p)) in
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))
   od
 
 set print_K_types (ParamPol P, KGBElt x_K) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
+  for c@p in P
   do let mu=highest_weight_one(LKT(p),x_K) in
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))

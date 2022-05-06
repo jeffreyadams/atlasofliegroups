@@ -89,6 +89,7 @@ in for col@j in A do result := divide(result,col,fA[j]) od; result~[0]
 
 set Kostant_partition_function (RootDatum rd, vec v) = int:
    let f=rd.rho_check then (level,d)=%(f*v) in
-   if d=1 then partition_count(rd.posroots,f,level)[monomial(v)].split_as_int
+   if d=1 and level.>=
+   then partition_count(rd.posroots,f,level)[monomial(v)].split_as_int
    else 0
    fi

@@ -107,6 +107,7 @@ public:
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
+  bool is_positive() const { return not(is_negative() or is_zero()); }
   bool is_one() const { return d.size()==1 and d[0]==1; }
   bool operator== (digit v) const { return d[0]==v and d.size()==1; }
   bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
@@ -181,6 +182,7 @@ public:
   Rational<Numer_t> rat_val() const // to limited precision, or throw an error
   { return Rational<Numer_t>(num.long_val(),den.ulong_val()); }
 
+  bool is_positive() const { return num.is_positive(); }
   bool is_negative() const { return num.is_negative(); }
   bool is_zero() const { return num.is_zero(); }
   bool operator<  (const big_rat& x) const { return num*x.den<x.num*den; }

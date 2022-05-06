@@ -44,8 +44,8 @@ set signature ({finite dimensional}Param p) = (int,int):
   then height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))
   then (pos,neg)=K_signature_irr(p,height)
   in
-( sum(for c@p in pos do split_as_int(c)*dimension(K_type(p)) od)
-, sum(for c@p in neg do split_as_int(c)*dimension(K_type(p)) od)
+( sum(for c@t in pos do split_as_int(c)*dimension(t) od)
+, sum(for c@t in neg do split_as_int(c)*dimension(t) od)
 )
 
 {.signature as a string.}

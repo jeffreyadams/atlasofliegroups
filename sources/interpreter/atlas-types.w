@@ -3010,14 +3010,12 @@ public:
 @)
   real_form_value (shared_inner_class icp,RealFormNbr f,token)
 @/: ic_ptr(icp), val(icp->val,f)
-  , khc_p(nullptr)
   , rt_p(nullptr) @+{}
 @)
   real_form_value
     (shared_inner_class icp,RealFormNbr f
     ,const RatCoweight& coch, TorusPart tp) @/
   : ic_ptr(icp), val(icp->val,f,coch,tp)
-  , khc_p(nullptr)
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
@@ -3031,11 +3029,9 @@ public:
 @)
   const KGB& kgb () const @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
-  KhatContext& khc() const;
   const Rep_context& rc() const;
   Rep_table& rt() const;
 private:
-  mutable KhatContext* khc_p;
   mutable Rep_table* rt_p;
     // owned pointers, initially |nullptr|, assigned at most once
 };
@@ -3083,8 +3079,7 @@ shared_real_form real_form_value::build @|
 }
 
 
-@ The method |khc| ensures a |KhatContext| value is constructed at |*khc_p|,
-and similarly |rc| and |rt| ensure a |Rep_table| value is constructed at
+@ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
 |*rt_p|, and then these methods return an appropriate reference. The value so
 obtained will serve to manipulate parameters for standard modules, for which
 we shall define an Atlas type below. Storing the value here ensures that it
@@ -3092,14 +3087,12 @@ will be shared between different parameters for the same real form, and that
 it will live as long as those parameter values do.
 
 @< Function def...@>=
-  KhatContext& real_form_value::khc() const
-    {@; return *(khc_p==nullptr ? khc_p=new KhatContext(val) : khc_p); }
   const Rep_context& real_form_value::rc() const
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
   Rep_table& real_form_value::rt() const
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
 @)
-  real_form_value::~real_form_value () @+{@; delete khc_p; delete rt_p; }
+  real_form_value::~real_form_value () @+{@; delete rt_p; }
 
 @ When printing a real form, we give the name by which it is known in the parent
 inner class, and provide some information about its topology. The names of the
@@ -4025,7 +4018,7 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 { RootNbr alpha= root_index<0 ? -1-root_index : root_index;
   if (alpha>=n_posroots)
   { std::ostringstream o;
-    o << "Illegal reflection: " << root_index;
+    o << "Illegal root index: " << root_index;
     throw runtime_error(o.str());
   }
   return alpha;
@@ -4545,18 +4538,1105 @@ install_function(block_Cayley_wrapper,@|"Cayley","(int,Block,int->int)");
 install_function(block_inverse_Cayley_wrapper,@|"inverse_Cayley"
                 ,"(int,Block,int->int)");
 
-@*1 Standard module parameters.
+@*1 A class for split integers.
 %
-We implement a data type for holding parameters that represent standard
-modules. Such a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$
-is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
-relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
-involution associated to $x$, and $\nu$ is a rational weight in the kernel of
-$1+\theta_x$. Such parameters are stored in instances of the class
-|StandardRepr|, which is defined in the file \.{repr.h}.
+We introduce a type extending integers to elements of the group
+algebra over $\Zee$ of a (cyclic) group of order~$2$, in other words
+$\Zee$-linear combinations of $1$ and another unit, written~$s$ and satisfying
+$s^2=1$. We call these numbers split integers, and in the \.{atlas} language
+designate the corresponding basic type as \.{Split}. The type will serve notably
+to keep track of signatures of Hermitian forms.
+
+@< Includes needed in the header file @>=
+#include "arithmetic.h"
+
+@ Although the necessary operations could easily be defined in the \.{axis}
+programming language using pairs of integers, it is preferable to make them an
+Atlas type, since this allows distinguishing them from pairs of integers used
+for other purposes, and to provide special output and conversion facilities.
+
+@< Type definitions @>=
+
+struct split_int_value : public value_base
+{ Split_integer val;
+@)
+  explicit split_int_value(Split_integer v) : val(v) @+ {}
+  ~split_int_value()@+ {}
+  void print(std::ostream& out) const;
+  static const char* name() @+{@; return "split integer"; }
+  split_int_value (const split_int_value& v) = default;
+    // we use |get_own<split_int_value>|
+};
+@)
+typedef std::unique_ptr<split_int_value> split_int_ptr;
+typedef std::shared_ptr<const split_int_value> shared_split_int;
+typedef std::shared_ptr<split_int_value> own_split_int;
+
+@ Like for parameter values, a printing function |print_split| on the level
+of a bare |Split_integer| value is defined in the library, which can be used
+also in situations where the method |split_int_value::print| cannot. The latter
+method simply calls it.
+
+@< Function def... @>=
+
+void split_int_value::print(std::ostream& out) const @+
+{@; print_split(out,val); }
+
+@ Here are some basic relations and arithmetic operations.
+
+@< Local function definitions @>=
+
+void split_unary_eq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i.is_zero()));
+}
+void split_unary_neq_wrapper(expression_base::level l)
+{ Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(not i.is_zero()));
+}
+@)
+void split_eq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i==j));
+}
+void split_neq_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(whether(i!=j));
+}
+@)
+void split_plus_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val+=j; push_value(std::move(i)); }
+}
+
+void split_minus_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val-=j; push_value(std::move(i)); }
+}
+@)
+void split_unary_minus_wrapper(expression_base::level l)
+{ own_split_int i=get_own<split_int_value>();
+  if (l!=expression_base::no_value)
+  {@; i->val.negate(); push_value(std::move(i)); }
+}
+
+void split_times_wrapper(expression_base::level l)
+{ Split_integer j=get<split_int_value>()->val;
+  Split_integer i=get<split_int_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<split_int_value>(i*j));
+}
+
+@ We also provide implicit conversions from integers or pairs of integers to
+split integers, and an explicit operator for converting back to a pair.
+
+@< Local function definitions @>=
+
+void int_to_split_coercion()
+{ int a=get<int_value>()->int_val();
+@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
+}
+@)
+void pair_to_split_coercion()
+{ push_tuple_components();
+  int b=get<int_value>()->int_val();
+  int a=get<int_value>()->int_val();
+  push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
+}
+@)
+void from_split_wrapper(expression_base::level l)
+{ Split_integer si = get<split_int_value>()->val;
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<int_value>(si.e()));
+  push_value(std::make_shared<int_value>(si.s()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here we install the built-in functions for split integers.
+
+@< Install wrapper functions @>=
+install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
+install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
+install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
+install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
+install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
+install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
+install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
+install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
+install_function(from_split_wrapper,@|"%","(Split->int,int)");
+
+@*1 $K$-types.
+%
+We implement a data type for representing either a standard or irreducible
+representation (depending on the context, the latter interpretation being the
+unique irreducible quotient of the former) of the complexified maximal compact
+subgroup $K$ for a real reductive group. We call these values $K$-types, and in
+the \.{atlas} language designate the corresponding basic type as \.{KType}. A
+$K$-type is defined by a pair $(x,\lambda-\rho)$ where $x$ is a KGB element,
+$\lambda-\rho$ is a weight in $X^*$ that indirectly represents a character
+$\lambda$ of the $\rho$-cover of a real Cartan subgroup; the value of the latter
+is a class modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
+involution associated to $x$, and $\lambda$ is therefore always reduced to an
+elected representative modulo that lattice. The internal type used to represent
+$K$-types is called |K_repr::K_type|, defined in the file~\.{K\_repr.h}. Most
+actions on values of this type, including their construction, are performed by
+methods of the class |Rep_context| defined in the file~\.{repr.h}.
 
 @<Includes needed in the header file @>=
+#include "K_repr.h"
 #include "repr.h"
+
+@*2 Class definition.
+Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as parameters for it exist, and we
+can access notably the |Rep_context| that it provides.
+
+@< Type definitions @>=
+struct K_type_value : public value_base
+{ shared_real_form rf;
+  K_repr::K_type val;
+@)
+  K_type_value(const shared_real_form& form, K_repr::K_type&& v)
+  : rf(form), val(std::move(v)) @+{}
+  ~K_type_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "K-type"; }
+  K_type_value (const K_type_value& v) : rf(v.rf), val(v.val.copy()) {}
+    // we use |get_own<K_type_value>|
+
+@)
+  const Rep_context& rc() const @+{@; return rf->rc(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
+};
+@)
+typedef std::unique_ptr<K_type_value> K_type_ptr;
+typedef std::shared_ptr<const K_type_value> shared_K_type;
+typedef std::shared_ptr<K_type_value> own_K_type;
+
+@ When printing a $K$-type, we shall indicate a pair $(x,\lambda)$ that defines
+it. Since we shall need to print |K_repr::K_type| values in other contexts as
+well, an auxiliary output function |repr::print_K_type| is defined
+in \.{basic\_io.h}, which takes and additional |Rep_context| argument; we shall
+call that function from |K_type_value::print|. By choosing a name for the
+auxiliary function different from |print|, we avoid having that call being
+mistaken for a recursive call.
+
+The virtual method |K_type_value::print|, is used when printing a
+value of type \.{KType} (as opposed to for instance printing a term of
+a \.{KTypePol}). Here we prefix the $K$-type text proper with additional
+information about the $K$-type that may be relevant to the \.{atlas} user.
+
+@< Function definition... @>=
+void K_type_value::print(std::ostream& out) const
+{
+  out << @< Expression for adjectives that apply to a $K$-type @>@;@;;
+  print_K_type(out << " K-type",val);
+}
+
+@ We call a root singular if the corresponding coroot vanishes on
+$(1+\theta_x)\lambda$ (for real roots this is always the case, for imaginary
+roots it is equivalent to vanishing on~$\lambda$). We then classify different
+levels of ``niceness'' of $K$-type by one of the adjectives ``non-standard''
+(when $(1+\theta_x)\lambda$ fails to be imaginary-dominant), ``non-dominant''
+(when $(1+\theta_x)\lambda$ fails to be dominant), ``zero'' (there are singular
+compact simply-imaginary roots), ``non-final'' (there are real parity roots),
+``non-normal'' (there are complex singular descent roots, making the $K$-type
+equivalent to one at a lower involution in the Cartan class), or finally
+``final'' (the good ones that could go into a \.{KTypePol} value; the condition
+|is_final| should apply, though it is not tested here).
+
+@< Expression for adjectives that apply to a $K$-type @>=
+( not rc().is_standard(val) ? "non-standard"
+@|: not rc().is_dominant(val) ? "non-dominant"
+@|: not rc().is_nonzero(val) ? "zero"
+@|: not rc().is_semifinal(val) ? "non-final"
+@|: not rc().is_normal(val) ? "non-normal"
+@|: "final")
+
+@ To make a $K$-type, one should provide a KGB element~$x$, and a weight
+$\lambda-\rho\in X^*$.
+
+@< Local function def...@>=
+void K_type_wrapper(expression_base::level l)
+{ shared_vector lam_rho(get<vector_value>());
+  shared_KGB_elt x = get<KGB_elt_value>();
+  if (lam_rho->val.size()!=x->rf->val.rank())
+  { std::ostringstream o;
+    o << "Rank mismatch: (" @|
+        << x->rf->val.rank() << ',' << lam_rho->val.size() << ")";
+    throw runtime_error(o.str());
+  }
+@.Rank mismatch@>
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<K_type_value> @|
+      (x->rf, x->rf->rc().sr_K(x->val,lam_rho->val)));
+}
+
+@*2 Functions operating on $K$-types.
+%
+The following function, which we shall bind to the monadic operator `|%|',
+transforms a $K$-type value into a pair of values $(x,\lambda-\rho)$
+that defines it. Although $\lambda$ is determined only modulo
+$(1-\theta_x)X^*$, a fixed representative is always chosen, and it is impossible
+to influence this choice, or to have distinct $K$-types that differ only in the
+choice of representative. That functionality is ensured by the implementation of
+|K_repr::K_type|, so here we need not worry about it.
+
+@< Local function def...@>=
+void unwrap_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<KGB_elt_value>(p->rf,p->val.x()));
+  push_value(std::make_shared<vector_value>(p->val.lambda_rho()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@)
+
+void real_form_of_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(p->rf);
+}
+
+@ Here is one more useful function: computing the height of a $K$-type. This is
+the same height when comparing to the |bound| argument in functions like
+|K_type_formla| and |branch|. This height is precomputed and stored inside
+|K_repr::K_type| values themselves, so we simply get it from there.
+
+@< Local function def...@>=
+void K_type_height_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(p->val.height()));
+}
+
+@ While the equality and inequality operators for $K$-types test for strict
+equality of all components (including of the real forms, which the method
+|K_repr::K_type::operator==| simply assumes to be equal, as it has no access to
+the real form), a separate function |equivalent| that tests an equivalence
+relation generated by action by complex simple reflections (on the $x$ component
+by cross action and on the $\lambda$ component) to move between fibres over
+involutions for the same Cartan class. For two $K$-types in a fiber over a same
+involution, this equivalence amounts to equality. Unlike the equality tests, one
+must ensure the arguments are associated to the same real form before calling
+|equivalent|, since a runtime error (rather than returning false) will occur
+when this is not the case.
+
+@< Local function def...@>=
+void K_type_eq_wrapper(expression_base::level l)
+{ shared_K_type q = get<K_type_value>();
+  shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rf->val==q->rf->val and p->val==q->val));
+}
+void K_type_neq_wrapper(expression_base::level l)
+{ shared_K_type q = get<K_type_value>();
+  shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rf->val!=q->rf->val or p->val!=q->val));
+}
+@)
+void K_type_equivalent_wrapper(expression_base::level l)
+{ auto q = get_own<K_type_value>();
+  auto p = get_own<K_type_value>();
+  if (p->rf->val!=q->rf->val)
+    throw runtime_error @|
+      ("Real form mismatch when testing equivalence");
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().equivalent(std::move(p->val),std::move(q->val))));
+}
+
+@ The various predicates that are used above in printing a $K$-type are also
+available as functions returning a Boolean value. The function |is_normal| is
+excluded here because that method assumes it is only called when |is_nonzero|
+and |is_semifinal| both hold, in which case a simple implementation works. We
+can ensure that property whenever it is called internally, but not when calling
+as a built-in function (without additional code to test for and implement the
+more general case). Instead there is a built-in |is_final| that tests for the
+absence of \emph{any} singular descent (which is equivalent to |is_normal| in
+the case |is_nonzero| and |is_semifinal| both hold), and we define a built-in
+function |normalize| below that produces a unique representative in any
+equivalence class of $K$-types.
+
+@< Local function def...@>=
+void K_type_is_standard_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_standard(p->val)));
+}
+
+void K_type_is_dominant_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_dominant(p->val)));
+}
+
+void K_type_is_zero_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(not p->rc().is_nonzero(p->val)));
+}
+
+void K_type_is_semifinal_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_semifinal(p->val)));
+}
+
+void K_type_is_final_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_final(p->val)));
+}
+
+@ Here are functions to transform a $K$-type to an equivalent one that is
+dominant, which is only possible is the parameter is already standard, and to
+one that is the elected representative of its equivalence class. The test for
+being standard is not present in |K_type_dominant_wrapper|, because the
+|make_dominant| method signals failure of being standard on the fly by throwing
+an exception. The other three functions below will accept any $K$-type;
+|to_canonical_fiber| moves it to the elected fiber for its Cartan class, while
+|normal| produces an elected representative of the equivalence class of the
+$K$-type, and |theta_stable| ensures the absence of any complex descents. The
+$K$-type returned by |normal| has the additional property of satisfying
+|is_final| whenever such a $K$-type exists in the equivalence class, and in any
+case being complex-dominant and not having any singular (for
+$(1+\theta_x)\lambda$) complex descents. Both |theta_stable| and |normal|
+greedily perform complex reflections (descents in the former case, ones towards
+complex dominance or singular descents in the latter case) in a chosen order,
+which leads to a choice of one among possibly multiple candidate results. In
+case of |normal| dependence on the initial class representative is removed by
+applying |to_canonical_fiber|; also if a final representative exists, it is
+unique.
+
+@< Local function def...@>=
+void K_type_dominant_wrapper(expression_base::level l)
+{ own_K_type p = get_own<K_type_value>();
+
+  if (l!=expression_base::no_value)
+  {@; p->rc().make_dominant(p->val);
+    push_value(std::move(p));
+  }
+}
+@)
+void to_canonical_fiber_wrapper(expression_base::level l)
+{ own_K_type p = get_own<K_type_value>();
+
+  if (l!=expression_base::no_value)
+  @/{@; p->rc().to_canonical_involution(p->val);
+    push_value(std::move(p));
+  }
+}
+@)
+void K_type_normal_wrapper(expression_base::level l)
+{ own_K_type p = get_own<K_type_value>();
+  if (l!=expression_base::no_value)
+  {@; p->rc().normalise(p->val);
+    push_value(std::move(p));
+  }
+}
+@)
+void K_type_theta_stable_wrapper(expression_base::level l)
+{ own_K_type p = get_own<K_type_value>();
+  if (l!=expression_base::no_value)
+  @/{@; p->rc().make_theta_stable(p->val);
+    push_value(std::move(p));
+  }
+}
+
+
+
+@*1 Polynomials formed from $K$-types.
+%
+When working with $K$-types, and notably when produced by the deformation
+formulas, the need arises to keep track of formal sums of them with split
+integer coefficients. We call these formal sums $K$-type polynomials, and in
+the \.{atlas} language designate the corresponding basic type as \.{KTypePol}.
+
+@*2 Class definition.
+%
+The library provides a type |K_repr::K_type_pol| in which such sums can be
+efficiently maintained. In order to use it we must have seen the header file
+for the module \.{free\_abelian} on which the implementation is based. While
+that class itself does not have such an invariant, the handling of these
+formal sums in \.{atlas} will be such that all terms are ensured to have the
+predicate |is_final| true, which ensures that all contributions are rewritten
+into a unique form under the set of relations given by representation theory.
+This will in particular ensure that equivalent terms are always be combined, and
+the test for the sum being zero therefore mathematically correct.
+
+@< Includes needed in the header file @>=
+#include "free_abelian.h" // needed to make |SR_poly| a complete type
+
+@~Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as $K$-types for it exist. Since
+|K_repr::K_type_pol| is a move-only type (it has a move constructor but no copy
+constructor), we only allow move construction of a |K_type_pol_value| from a
+|K_repr::K_type_pol|. In doing so we have the occasion to simplify the stored
+value by calling the |flatten| method, which takes its object by
+rvalue-reference and returns the object after modification. Thus many
+polynomials produced by built-in functions will start off without zero terms,
+but the user may perform operations like adding single terms which can be
+realised at less cost if we occasionally allow zero terms to be created in the
+internal representation; therefore neither flattened form nor absence of zero
+terms will not be a class invariant for |K_type_pol_value|.
+
+@< Type definitions @>=
+struct K_type_pol_value : public value_base
+{ shared_real_form rf;
+  K_repr::K_type_pol val;
+@)
+  K_type_pol_value(const shared_real_form& form, K_repr::K_type_pol&& v)
+  : rf(form), val(std::move(v).flatten()) @+{}
+  ~K_type_pol_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "module $K$-type"; }
+  K_type_pol_value (const K_type_pol_value& v);
+    // we use |uniquify<K_type_pol_value>|
+@)
+  const Rep_context& rc() const @+{@; return rf->rc(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
+  void assign_coef(const K_type_value& t, const Split_integer& c);
+};
+@)
+typedef std::unique_ptr<K_type_pol_value> K_type_pol_ptr;
+typedef std::shared_ptr<const K_type_pol_value> shared_K_type_pol;
+typedef std::shared_ptr<K_type_pol_value> own_K_type_pol;
+
+@ Printing a virtual module value calls the free function
+|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map| that is hidden in the
+|Free_Abelian| class template, and prints individual terms by printing the
+|Split_integer| coefficient, followed by the $K$-type through a call of
+|print_stdrep|. When either all coefficients are integers or all coefficients
+are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
+this is particularly useful if polynomials are used to encode $\Zee$-linear
+combinations of $K$-types.
+
+@< Function def...@>=
+void K_type_pol_value::print(std::ostream& out) const
+{@; print_K_type_pol(out,val); }
+
+@ For once we need a non-defaulted copy constructor, because |K_repr::K_type|
+has no copy constructor, providing instead a method |copy| that must be
+explicitly called (this was designed in order to better control the places where
+actual copies must be made). Since this is a component type buried inside the
+container |K_repr::K_type_pol| we copy the individual terms from the |val| field
+first into a vector |accumulator|, and then move-construct a new
+|K_repr::K_type_pol| (which has a constructor for that purpose) from the vector.
+
+@< Function def...@>=
+K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
+: rf(v.rf), val()
+{
+  K_repr::K_type_pol::poly accumulator;
+  accumulator.reserve(v.val.size());
+  for (const auto& term : v.val)
+    accumulator.emplace_back(term.first.copy(),term.second);
+  val = K_repr::K_type_pol(std::move(accumulator),v.val.cmp());
+}
+
+@*2 Functions for $K$-type polynomials.
+%
+To start off a |K_type_pol_value|, one usually takes an empty sum, but one needs
+to specify a real form to fill the |rf| field. The information allows us to
+extract the real form from a $K$-type polynomial even if it is empty. We allow
+testing the number of terms of the sum, and directly testing the sum to be
+empty.
+
+Testing two $K$-type polynomials for equality is also implemented. This could be
+done by subtracting and then testing the result for being zero (empty), but it
+is more efficient to just traverse both in parallel and stop once a difference
+is found.
+
+@< Local function def...@>=
+void K_type_pol_wrapper(expression_base::level l)
+{ shared_real_form rf = get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<K_type_pol_value> @| (rf,K_repr::K_type_pol()));
+}
+@)
+void real_form_of_K_type_pol_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(m->rf);
+}
+@)
+void K_type_pol_unary_eq_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(m->val.is_zero()));
+}
+
+void K_type_pol_unary_neq_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(not m->val.is_zero()));
+}
+
+@)
+void K_type_pol_eq_wrapper(expression_base::level l)
+{ shared_K_type_pol n = get<K_type_pol_value>();
+  shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(whether(false));
+      return; }
+  push_value(whether
+      (mit==m->val.end() and nit==n->val.end()));
+}
+void K_type_pol_neq_wrapper(expression_base::level l)
+{ shared_K_type_pol n = get<K_type_pol_value>();
+  shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto mit=m->val.begin(), nit=n->val.begin(); // keep outside loop
+  for (; mit!=m->val.end() and nit!=n->val.end(); ++mit,++nit)
+    if (mit->first!=nit->first or mit->second!=nit->second)
+    @/{@;  push_value(whether(true));
+      return; }
+  push_value(whether
+    (mit!=m->val.end() or nit!=n->val.end()));
+}
+
+@ This function must be global, it is declared in the header file \.{global.h}.
+
+@< Function definitions @>=
+void K_type_pol_size_wrapper(expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(m->val.count_terms()));
+}
+
+
+@ We allow implicitly converting a $K$-type to a $K$-type polynomial, which
+involve expansion into \emph{final} $K$-types (there can be zero, one, or more
+of them, and they can have positive or negative integer coefficients), to
+initiate the invariant that only (standard) final $K$-types (with dominant
+$(1+\theta_x)\lambda$) can be stored in a |K_type_pol_value|.
+
+@< Local function def...@>=
+void K_type_to_poly()
+{ shared_K_type p = get<K_type_value>();
+  const auto& rf=p->rf;
+  auto final_K_types = rf->rc().finals_for(p->val.copy());
+  K_repr::K_type_pol result;
+  for (auto it=final_K_types.begin(); not final_K_types.at_end(it); ++it)
+    result.add_term(std::move(it->first),Split_integer(it->second));
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+}
+
+@ There also is function to extract the coefficient (multiplicity) of a given
+$K$-type in a $K$-type polynomial. However, it is bound to the array subscription
+syntax, and therefore does not have a wrapper function. Instead, it is
+implemented the \.{axis} module, as the |evaluate| method of the
+|K_type_pol_coefficient| class derived from |subscr_base|.
+
+In a subscription of a $K$-type polynomial by a $K$-type, the arguments are not
+initially on the stack, but come from evaluating the |array| and |index| fields
+of the |K_type_coefficient| expression.
+
+@h "axis.h" // for |K_type_pol_coefficient|
+
+@< Function def... @>=
+void K_type_pol_coefficient::evaluate(level l) const
+{ shared_K_type_pol m = (array->eval(),get<K_type_pol_value>());
+  shared_K_type p = (index->eval(),get<K_type_value>());
+  if (m->rf!=p->rf and m->rf->val!=p->rf->val)
+    // test like |real_form_new_wrapper| does
+    throw runtime_error @|
+      ("Real form mismatch when subscripting KTypePol value");
+  test_final(*p,"In subscription of KTypePol value");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<split_int_value>(m->val[p->val]));
+}
+
+@ For modifying an individual coefficient in a |K_type_pol_value| (possibly
+adding or removing a term in the process), a method |assign_coef| is provided.
+It will be called from the \.{axis} compilation unit (the programming language
+interpreter). The implementation is quite simple; the only subtlety is that for
+the probably common case of setting a coefficient to~$0$, a call to the method
+|clear_coefficient| is made, which is more appropriate for this purpose than
+calling |set_coefficient| with a zero value.
+
+@< Function def...@>=
+void K_type_pol_value::assign_coef
+  (const K_type_value& t, const Split_integer& c)
+{
+  test_final(t,"In coefficient assignment for KTypePol value");
+  if (c.is_zero())
+    val.clear_coefficient(t.val);
+  else
+    val.set_coefficient(t.val.copy(),c);
+}
+
+@ The main operations for $K$-type polynomials are addition and subtraction of
+$K$-types to or from them. Although only one $K$-type is provided here, we
+must apply |finals_for| to expand it into a linear combination of final
+$K$-types, and call |accumulator.add_term| with each of them.
+
+@< Local function def...@>=
+void add_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=p->rf)
+    throw runtime_error @|
+      ("Real form mismatch when adding a KType to a KTypePol");
+  if (l==expression_base::no_value)
+    return;
+  auto finals = p->rc().finals_for(p->val.copy());
+    for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
+       accumulator->val.add_term(std::move(it->first),Split_integer(it->second));
+  push_value(std::move(accumulator));
+}
+
+void subtract_K_type_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=p->rf)
+    throw runtime_error @|
+      ("Real form mismatch when subtracting a KType from a KTypePol");
+  if (l==expression_base::no_value)
+    return;
+  auto finals = p->rc().finals_for(p->val.copy());
+  for (auto it = finals.wbegin(); it!=finals.wend(); ++it)
+    accumulator->val.add_term(std::move(it->first),Split_integer(-it->second));
+  push_value(std::move(accumulator));
+}
+
+@ More generally than adding or subtracting, we can incorporate a term with
+specified coefficient; this is almost the same as the previous two functions.
+
+@< Local function def...@>=
+
+void add_K_type_term_wrapper(expression_base::level l)
+{ push_tuple_components(); // second argument is a pair |(coef,p)|
+  auto p = get<K_type_value>();
+  Split_integer coef=get<split_int_value>()->val;
+  auto accumulator = get_own<K_type_pol_value>();
+
+if (accumulator->rf!=p->rf)
+    throw runtime_error@|("Real form mismatch when adding a term to a K_type");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto finals = p->rc().finals_for(p->val.copy());
+  for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+    accumulator->val.add_term(std::move(it->first),coef*it->second);
+  push_value(std::move(accumulator));
+}
+
+@ When producing a $K$-type polynomial value, the user will most often want to
+provide all terms in a list at once, since repeatedly adding contributions to a
+named variable will, currently and without special trickery, lead to above calls
+to |get_own| having to duplicate the accumulator before each addition, since the
+variable still holds a reference to the value on the stack. The following
+built-in function, which will be bound to the operator \.+, does this, but does
+require an initial (in practice often empty) $K$-type polynomial as first
+operand to provide the real form, in case the list of terms is empty. We try to
+modify the initial argument in place (since of course it does not have to start
+out empty), but in practice it is more likely that the second argument is
+unshared and voluminous (being the result of a |for| loop). For that reason we
+do effort here to at least move the individual $K$-types into the returned
+polynomial, rather than copying them, if we can. This can only be achieved by
+calling |force_own| at several places, so that copies are made if parts of the
+term list are shared and cannot be moved from. The most likely cause of the
+latter situation is if there is sharing already at the top level of the term
+list; if this is detected, we apply different code that does not attempt to get
+unique ownership, but instead copies the $K$-types at the point where they get
+converted into final $K$-type for the accumulator. Comparing the cases below is
+instructive to see what needs to change if one sets out to reuse component
+values of a row-of-tuples argument.
+
+@< Local function... @>=
+void add_K_type_termlist_wrapper(expression_base::level l)
+{ shared_row r = get<row_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (r.unique())
+  { auto own_r = std::const_pointer_cast<row_value>(r);
+    for (auto it=own_r->val.begin(); it!=own_r->val.end(); ++it)
+    { auto tup = force_own<tuple_value>(std::move(*it));
+      Split_integer coef=force<split_int_value>(tup->val[0].get())->val;
+      auto t = force_own<K_type_value>(std::move(tup->val[1]));
+      if (accumulator->rf!=t->rf)
+        throw runtime_error@|
+          ("Real form mismatch when adding terms to a K_type");
+       auto finals = t->rc().finals_for(std::move(t->val));
+       for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(std::move(it->first),coef*it->second);
+     }
+  }
+  else // there is top level sharing, so avoid duplicating all alon
+    for (auto it=r->val.cbegin(); it!=r->val.cend(); ++it)
+    { auto tup = force<tuple_value>(it->get());
+      Split_integer coef=force<split_int_value>(tup->val[0].get())->val;
+      auto t = force<K_type_value>(tup->val[1].get());
+      if (accumulator->rf!=t->rf)
+        throw runtime_error@|
+          ("Real form mismatch when adding terms to a K_type");
+       auto finals = t->rc().finals_for(t->val.copy());
+       for (auto it=finals.wbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(std::move(it->first),coef*it->second);
+     }
+  push_value(std::move(accumulator));
+}
+
+@ Naturally we also want to define addition and subtraction of two $K$-type
+polynomials.
+
+@< Local function... @>=
+void add_K_type_pols_wrapper(expression_base::level l)
+{
+  own_K_type_pol addend = get_own<K_type_pol_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=addend->rf)
+    throw runtime_error @|("Real form mismatch when adding two K_types");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val += std::move(addend->val);
+    push_value(std::move(accumulator));
+  }
+}
+@)
+void subtract_K_type_pols_wrapper(expression_base::level l)
+{
+  own_K_type_pol subtrahend = get_own<K_type_pol_value>();
+  own_K_type_pol accumulator = get_own<K_type_pol_value>();
+  if (accumulator->rf!=subtrahend->rf)
+    throw runtime_error@|("Real form mismatch when subtracting two K_types");
+  if (l!=expression_base::no_value)
+  @/{@; accumulator->val -= std::move(subtrahend->val);
+    push_value(std::move(accumulator));
+  }
+}
+
+@ Scalar multiplication potentially makes coefficients zero, in which case the
+corresponding terms need to be removed to preserve the invariant that no zero
+terms are stored in a $K$-type polynomial. For integer multiplication we just
+need to check for multiplication by $0$, and produce an empty module when this
+happens. Because the integer is not on the stack top, this requires a somewhat
+unusual manoeuvre. The case of multiplication by zero needs to be handled
+separately, since we cannot allow introducing terms with zero coefficients. It
+could have been handled more easily though, by testing the factor~|c| just
+before the |for| loop, and performing |m->erase()| instead if |c==0|; this is
+what we used to do. However that might involve duplicating the $K$-type
+polynomial and then erasing the copy, which is inefficient, and now avoided.
+This might seem a rare case, but it is not really: often functions handling
+a \.{KTypePol} argument $P$ need to start with an empty module for the same real
+form; writing $0*P$ is quite a convenient way to achieve this.
+
+@< Local function... @>=
+
+void int_mult_K_type_pol_wrapper(expression_base::level l)
+{ int c =
+    force<int_value>(execution_stack[execution_stack.size()-2].get())
+    // value below top
+    ->int_val();
+  if (c==0) // then do multiply by $0$ efficiently:
+  { shared_K_type_pol m = get<K_type_pol_value>();
+      // |m| is needed for |m->rc()|
+    pop_value();
+    if (l!=expression_base::no_value)
+    @/push_value@|(std::make_shared<K_type_pol_value>
+        (m->rf,K_repr::K_type_pol()));
+  }
+  else
+  { own_K_type_pol m = get_own<K_type_pol_value>();
+     // will modify our copy now
+    pop_value();
+    if (l!=expression_base::no_value)
+    { for (auto& term : m->val)
+        term.second *= c;
+      push_value(std::move(m));
+    }
+  }
+}
+
+@ Matters are similar but somewhat subtler for scalar multiplication by split
+integers, because these have zero divisors. We make a $4$-way branch depending
+on whether the split integer multiplicand has zero evaluation are $s=1$ and/or
+at $s=-1$: if either of these is the case we have a zero divisor, and may expect
+some terms to be killed by the multiplication, and if both hold we are
+multiplying by $0$. In presence of a nonzero zero divisor, we do not call
+|get_own| to true to modify the argument in place, as it seems more efficient to
+just reconstruct a potentially small product separately. As in the previous
+function we pick up the multiplicand (which is the first argument) when it is
+not at the top of the stack; later on, we do not pop it off the stack either,
+but rather overwrite it by move-assigning the returned |K_type_pol_value| to
+the stack top location |execution_stack.back()|. Since no tests are performed
+here, the |no_value| case can be handled right at the beginning, by simply
+dropping the arguments from the stack when it applies.
+
+@< Local function... @>=
+
+void split_mult_K_type_pol_wrapper(expression_base::level l)
+{  if (l==expression_base::no_value)
+   {@; pop_value();
+       pop_value();
+       return;
+   }
+   auto c =
+    force<split_int_value>(execution_stack[execution_stack.size()-2].get())
+    // below top
+    ->val;
+  if (c.s_to_1()==0)
+  // then coefficient is multiple of $1-s$; don't try to modify module in place
+  { shared_K_type_pol m = get<K_type_pol_value>();
+    K_repr::K_type_pol result;
+    if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
+      for (const auto& term: m->val)
+        if (term.second.s_to_minus_1()!=0)
+          result.add_term(term.first.copy(),term.second*c);
+    execution_stack.back()=  // replace stack top
+        std::make_shared<K_type_pol_value>(m->rf,std::move(result));
+    return;
+  }
+@)
+  else if (c.s_to_minus_1()==0)
+  // then coefficient is multiple of $1+s$; don't modify in place
+  { shared_K_type_pol m = get<K_type_pol_value>();
+    K_repr::K_type_pol result;
+    for (const auto& term: m->val)
+      if (term.second.s_to_1()!=0)
+        result.add_term(term.first.copy(),term.second*c);
+    execution_stack.back()= // replace stack top
+        std::make_shared<K_type_pol_value>(m->rf,std::move(result));
+    return;
+  }
+  // now we are multiplying by a non zero-divisor
+  own_K_type_pol m = get_own<K_type_pol_value>();
+     // will modify our copy now
+  for (auto& term : m->val)
+        term.second *= c; // multiply coefficients by split integer
+  execution_stack.back()=std::move(m);  // replace stack top
+}
+
+@ For a nonzero $K$-type polynomial, it is useful to be able to select some term
+that is present, without looping over all terms. The most useful choice it the
+final term, be we allow taking the first term as well.
+
+@< Local function... @>=
+void last_K_type_term_wrapper (expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (m->val.is_zero())
+    throw runtime_error("Empty KTypePol has no last term");
+  const auto& term = *m->val.rbegin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<K_type_value>
+	(m->rf,term.first.copy()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void first_K_type_term_wrapper (expression_base::level l)
+{ shared_K_type_pol m = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (m->val.is_zero())
+    throw runtime_error("Empty KTypePol has no first term");
+  const auto& term = *m->val.begin();
+  push_value(std::make_shared<split_int_value>(term.second));
+  push_value(std::make_shared<K_type_value>
+  	(m->rf,term.first.copy()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@*2 Computing with $K$-types.
+%
+A main application of $K$-types is branching to~$K$: the decomposition of a
+standard representation into $K$-types. Because this decomposition is infinite,
+we allow computing it up to a given limit in the height of the $K$-types. The
+rewriting of (possibly non standard) $K$-types into linear combinations of final
+$K$-types used to be a separate functionality provided here, but it is now
+incorporated into the general behaviour of $K$-type polynomials. What we are
+left with is two auxiliary functions, making these operations that are used
+internally by branching also available separately for the user, and the actual
+branching function.
+
+The first auxiliary function |KGP_sum|, produces a set of values from which the
+second auxiliary function |K_type_formula| builds a finite $K$-type polynomial
+that will be used in the long division. The values of the |KGP_sum| are
+represented as $K$-types with a sign attached, but since the $K$-types need not
+be standard, representing this result as a $K$-type polynomial would not
+be right (regardless of whether it would be mathematically correct or not, the
+conversion to final $K$-types is not done in the internal implementation of
+|K_type_formula|, so it would be unhelpful to do it in the corresponding
+built-in function); therefore we return a list of pairs of an integer (sign) and
+a $K$-type.
+
+@h <limits> // for |max|
+
+@< Local function def...@>=
+void KGP_sum_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+@/const Rep_context rc = p->rc();
+  auto srk = p->val.copy();
+  if (not rc.is_semifinal(srk))
+    throw runtime_error@|("K-type has parity real roots (so not semifinal)");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto length = rc.kgb().length(srk.x());
+  auto list = rc.KGP_set(srk);
+  own_row result = std::make_shared<row_value>(list.size());
+  auto res_p=result->val.begin();
+  for (auto&& t : list)
+  {
+    auto tup = std::make_shared<tuple_value>(2);
+    auto dl = length - rc.kgb().length(t.x());
+    tup->val[0] = std::make_shared<int_value>(dl%2==0 ? 1 : -1);
+    tup->val[1] = std::make_shared<K_type_value>(p->rf,std::move(t));
+    *res_p++ = std::move(tup);
+  }
+  push_value(std::move(result));
+}
+
+@ While the |KGP_sum| returns a result only depending on the initial $K$-type,
+the following function |K_type_formula| allows pruning its result to terms that
+will be useful for branching up to a given height, thus in many cases allowing
+for much more efficient computation and handling afterwards. Therefore we
+provide a height bound argument, which may however be given as a negative number
+to indicate that no pruning should be done, an the full (still finite) $K$-type
+formula should be computed. Since there is only one method
+|Rep_context::K_typ_formula|, we here transform such a negative integer into the
+highest possible value of the unsigned type |repr::level|.
+
+@< Local function def...@>=
+void K_type_formula_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_K_type p = get<K_type_value>();
+@/const Rep_context rc = p->rc();
+  auto srk = p->val.copy();
+  if (not rc.is_semifinal(srk))
+    throw runtime_error@|("K-type has parity real roots (so not semifinal)");
+  if (l==expression_base::no_value)
+    return;
+@)
+  repr::level h = bound<0 ? std::numeric_limits<repr::level>::max() : bound;
+  push_value(std::make_shared<K_type_pol_value>(p->rf,rc.K_type_formula(srk,h)));
+}
+
+@ Here is the function that implements branching. Because it is a long division
+(of formal power series) type operation, where a remainder expression is
+repeatedly modified by subtracting off contributions that can be determined by
+the leading (lowest) terms of the current remainder, it is implemented directly
+for \.{KTypePol} arguments rather than for individual \.{KType} values; if
+needed a \.{KType} can be implicitly converted to \.{KTypePol} first. Also a
+bound on the height is an obligatory argument, since only with such a height
+bound can the computation terminate.
+
+uses the |K_type_formula| internally.
+@< Local function def...@>=
+void branch_wrapper(expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  own_K_type_pol P = get_own<K_type_pol_value>();
+  if (arg<0)
+    throw runtime_error("Maximum level in branch cannot be negative");
+  if (l==expression_base::no_value)
+    return;
+@)
+  unsigned int bound=arg;
+  const Rep_context rc = P->rc();
+  auto result = rc.branch(std::move(P->val),bound);
+  push_value(std::make_shared<K_type_pol_value>(P->rf,std::move(result)));
+}
+
+@ Finally we install everything related to $K$-types.
+@< Install wrapper functions @>=
+install_function(K_type_wrapper,"K_type","(KGBElt,vec->KType)");
+install_function(unwrap_K_type_wrapper,@|"%","(KType->KGBElt,vec)");
+install_function(real_form_of_K_type_wrapper,@|"real_form"
+		,"(KType->RealForm)");
+install_function(K_type_height_wrapper,@|"height" ,"(KType->int)");
+install_function(K_type_eq_wrapper,@|"=", "(KType,KType->bool)");
+install_function(K_type_neq_wrapper,@|"!=", "(KType,KType->bool)");
+install_function(K_type_equivalent_wrapper,@|"equivalent","(KType,KType->bool)");
+install_function(K_type_is_standard_wrapper,@|"is_standard" ,"(KType->bool)");
+install_function(K_type_is_dominant_wrapper,@|"is_dominant" ,"(KType->bool)");
+install_function(K_type_is_zero_wrapper,@|"is_zero" ,"(KType->bool)");
+install_function(K_type_is_semifinal_wrapper,@|"is_semifinal" ,"(KType->bool)");
+install_function(K_type_is_final_wrapper,@|"is_final" ,"(KType->bool)");
+install_function(K_type_dominant_wrapper,@|"dominant" ,"(KType->KType)");
+install_function(to_canonical_fiber_wrapper,@|"to_canonical_fiber"
+		,"(KType->KType)");
+install_function(K_type_normal_wrapper,@|"normal" ,"(KType->KType)");
+install_function(K_type_theta_stable_wrapper,@|"theta_stable"
+		,"(KType->KType)");
+@)
+install_function(K_type_pol_wrapper,@|"null_K_module","(RealForm->KTypePol)");
+install_function(real_form_of_K_type_pol_wrapper,@|"real_form"
+		,"(KTypePol->RealForm)");
+install_function(K_type_pol_unary_eq_wrapper,@|"=","(KTypePol->bool)");
+install_function(K_type_pol_unary_neq_wrapper,@|"!=","(KTypePol->bool)");
+install_function(K_type_pol_eq_wrapper,@|"=","(KTypePol,KTypePol->bool)");
+install_function(K_type_pol_neq_wrapper,@|"!=","(KTypePol,KTypePol->bool)");
+install_function(K_type_pol_size_wrapper,@|"#","(KTypePol->int)");
+install_function(add_K_type_wrapper,@|"+","(KTypePol,KType->KTypePol)");
+install_function(subtract_K_type_wrapper,@|"-","(KTypePol,KType->KTypePol)");
+install_function(add_K_type_term_wrapper,@|"+"
+		,"(KTypePol,(Split,KType)->KTypePol)");
+install_function(add_K_type_termlist_wrapper,@|"+"
+		,"(KTypePol,[(Split,KType)]->KTypePol)");
+install_function(add_K_type_pols_wrapper,@|"+"
+		,"(KTypePol,KTypePol->KTypePol)");
+install_function(subtract_K_type_pols_wrapper,@|"-"
+		,"(KTypePol,KTypePol->KTypePol)");
+install_function(int_mult_K_type_pol_wrapper,@|"*"
+		,"(int,KTypePol->KTypePol)");
+install_function(split_mult_K_type_pol_wrapper,@|"*"
+		,"(Split,KTypePol->KTypePol)");
+install_function(last_K_type_term_wrapper,@|"last_term"
+		,"(KTypePol->Split,KType)");
+install_function(first_K_type_term_wrapper,@|"first_term"
+		,"(KTypePol->Split,KType)");
+@)
+install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
+install_function(K_type_formula_wrapper,@|"K_type_formula"
+		,"(KType,int->KTypePol)");
+install_function(branch_wrapper,@|"branch" ,"(KTypePol,int->KTypePol)");
+
+@*1 Standard module parameters.
+%
+We implement a data type for holding parameters that represent a standard module
+or, depending on the context, its unique irreducible quotient. We call these
+values standard module parameters, often shortened to simply parameters, and in
+the \.{atlas} language designate the corresponding basic type as \.{Param}. Such
+a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$ is a KGB element,
+$\lambda$ is a weight in the coset $\rho+X^*$ whose value is relevant only
+modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the involution
+associated to $x$, and $\nu$ is a rational weight in the kernel of $1+\theta_x$.
+Such parameters are stored in instances of the class |StandardRepr|, which is
+defined in the file \.{repr.h}.
 
 @*2 Class definition.
 Like for KGB elements, we maintain a shared pointer to the real form value, so
@@ -4591,9 +5671,9 @@ typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 @ When printing a module parameter, we shall indicate a triple $(x,\lambda,\nu)$
 that defines it. Since we shall need to print |StandardRepr| values in other
 contexts as well, an auxiliary output function |repr::print_stdrep| is defined
-in \.{repr.h}, which takes and additional |Rep_context| argument; we shall call
-that function from |module_parameter_value::print|. By choosing a name for the
-auxiliary function different from |print|, we avoid having that call being
+in \.{basic\_io.h}, which takes and additional |Rep_context| argument; we shall
+call that function from |module_parameter_value::print|. By choosing a name for
+the auxiliary function different from |print|, we avoid having that call being
 mistaken for a recursive call.
 
 The virtual method |module_parameter_value::print|, is used when printing a
@@ -4603,27 +5683,27 @@ information about the parameter that may be relevant to the \.{atlas} user.
 
 @< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
-{ RootNbr witness; // dummy needed in call
-  out << @< Expression for adjectives that apply to a module parameter @>@;@;;
+{ out << @< Expression for adjectives that apply to a module parameter @>@;@;;
   print_stdrep(out << ' ',val,rc());
 }
 
-@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and
-therefore $\lambda$ fails to be imaginary-dominant), ``zero'' (the standard
-module vanishes due to the singular infinitesimal character, namely by the
-presence of a singular compact simple-imaginary root), ``non-final'' (the
-standard module is non-zero, but can be expressed in terms of standard modules
-at more compact Cartans using a singular real root satisfying the parity
-condition), ``non-normal'' (the parameter differs from its normal form; when
-we come to this point it implies there is a complex singular descent), or
-finally ``final'' (the good ones that could go into a \.{ParamPol} value; the
-condition |is_final| should apply, though it is not tested here).
+@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and therefore
+$\lambda$ fails to be imaginary-dominant), ``non-dominant'' (when $\gamma$ fails
+to be dominant), ``zero'' (the standard module vanishes due to the singular
+infinitesimal character, namely by the presence of a singular compact
+simply-imaginary root), ``non-final'' (the standard module is non-zero, but can
+be expressed in terms of standard modules at more compact Cartans using a
+singular real root satisfying the parity condition), ``non-normal'' (the
+parameter differs from its normal form; when we come to this point it implies
+there is a complex singular descent), or finally ``final'' (the good ones that
+could go into a \.{ParamPol} value; the condition |is_final| should apply,
+though it is not tested here).
 
-@< Expression for adjectives... @>=
-( not rc().is_standard(val,witness) ? "non-standard"
-@|: not rc().is_dominant(val,witness) ? "non-dominant"
-@|: not rc().is_nonzero(val,witness) ? "zero"
-@|: not rc().is_semifinal(val,witness) ? "non-final"
+@< Expression for adjectives that apply to a module parameter @>=
+( not rc().is_standard(val) ? "non-standard"
+@|: not rc().is_dominant(val) ? "non-dominant"
+@|: not rc().is_nonzero(val) ? "zero"
+@|: not rc().is_semifinal(val) ? "non-final"
 @|: not rc().is_normal(val) ? "non-normal"
 @|: "final")
 
@@ -4655,18 +5735,21 @@ void module_parameter_wrapper(expression_base::level l)
 
 @*2 Functions operating on module parameters.
 %
-The following function, which we shall bind to the monadic operator `|%|',
+The unwrapping function below, which we shall bind to the operator~`|%|',
 transforms a parameter value into a triple of values $(x,\lambda-\rho,\gamma)$
 that defines it, where $\gamma$ is taken to be (a representative of) the
-infinitesimal character. (This function used to produce $\nu$ as third
-component, but in practice obtaining the infinitesimal character directly
-turned out to often be more useful. If needed $\nu$ is easily computed as
-$\nu={1+\theta_x\over2}\gamma$; as the opposite conversion requires more work,
-we had a separate function returning$~\gamma$ which is now superfluous.) The
-triple returned here is not unique, since $\lambda$ is determined only modulo
-$(1-\theta_x)X^*$, and this function should make a unique choice. But that
-fact (and the choice made) is hidden in the implementation of |StandardRepr|,
-of which we just call methods here.
+infinitesimal character. (The function used to produce just the $\nu$ part
+of the infinitesimal character as third component, but in practice obtaining the
+infinitesimal character directly turns out to often be more useful. If needed,
+$\nu$ is easily computed as $\nu={1+\theta_x\over2}\gamma$; the opposite
+conversion, which would be needed to be programmed if we returned $\nu$ here,
+requires more work.) While triple returned here is not unique, since $\lambda$
+is determined only modulo $(1-\theta_x)X^*$, we choose a unique representative
+for~|lambda|, which choice is in fact determined by the implementation of
+|StandardRepr|.
+
+We also provide a function directly extracting the real form from a module
+parameter (which would otherwise require extracting it from the |x| component).
 
 @< Local function def...@>=
 void unwrap_parameter_wrapper(expression_base::level l)
@@ -4680,57 +5763,51 @@ void unwrap_parameter_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<3>();
 }
-
 @)
-
 void real_form_of_parameter_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
     push_value(p->rf);
 }
 
-@ Here are some more attributes, in the form of predicates.
+@ We provide explicit conversions between a module parameter and a $K$-type,
+restricting to $K$ (and ignoring $\nu$) in one direction, and extending with
+$\nu=0$ in the opposite direction.
 
 @< Local function def...@>=
-void is_standard_wrapper(expression_base::level l)
+void param_to_K_type_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
-  if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_standard(p->val,witness)));
+  if (l==expression_base::no_value)
+    return;
+  const auto& rf=p->rf;
+  push_value(std::make_shared<K_type_value> @|
+    (rf,rf->rc().sr_K(p->val)));
+}
+void K_type_to_param_wrapper(expression_base::level l)
+{ shared_K_type p = get<K_type_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rf=p->rf;
+  push_value(std::make_shared<module_parameter_value> @|
+    (rf,rf->rc().sr(p->val)));
 }
 
-void is_zero_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
-  if (l!=expression_base::no_value)
-    push_value(whether(not p->rc().is_nonzero(p->val,witness)));
-}
+@ Another simple function is computing the height of a parameter (ignoring the
+$\nu$ component). This is the same height as that of the $K$-type to which the
+parameter can be restricted, and to the height displayed when
+printing \.{ParamPol} values. The height is stored inside each |StandardRepr|
+value, so it can be obtained from there there; this is somewhat more efficient
+than constructing a $K$-type from the parameter and taking the height of that.
 
-void is_semifinal_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  RootNbr witness;
-  if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_semifinal(p->val,witness)));
-}
-
-void is_final_wrapper(expression_base::level l)
+@< Local function def...@>=
+void parameter_height_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_final(p->val)));
+    push_value(std::make_shared<int_value>(p->val.height()));
 }
 
-@ Before constructing (non-integral) blocks, it is essential that the
-infinitesimal character is made dominant, and that possible singular (simple)
-complex descents are applied to the parameter, as the result of the block
-construction will only be mathematically meaningful under these circumstances.
-This operation is therefore applied automatically in several places, but it is
-useful to give the user an easy way to apply it explicitly. (In fact integral
-dominance should be sufficient: only for those coroots with integral evaluation
-on~$\gamma$ should it be required that the evaluation be non-negative. But
-since making this concrete requires an overhaul of the entire block
-construction process, we stick to unqualified dominance for now.)
 
-While the equality and inequality operators for module parameters test for
+@ While the equality and inequality operators for module parameters test for
 strict equality of all components (including of the real forms, which the method
 |StandardRepr::operator==| must simply assume to be equal), a separate function
 tests for \emph{equivalence}; this is a weaker condition when both parameters
@@ -4747,22 +5824,7 @@ same real form, then one should test those forms for equality before testing
 equivalence of the parameters.
 
 @< Local function def...@>=
-void parameter_dominant_wrapper(expression_base::level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
-  {@; p->rc().make_dominant(p->val);
-    push_value(std::move(p));
-  }
-}
 
-void parameter_normal_wrapper(expression_base::level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
-  {@; p->rc().normalise(p->val);
-    push_value(std::move(p));
-  }
-}
-@)
 void parameter_eq_wrapper(expression_base::level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
@@ -4785,6 +5847,69 @@ void parameter_equivalent_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(whether(p->rc().equivalent(p->val,q->val)));
 }
+
+@ Here are some more attributes, in the form of predicates.
+
+@< Local function def...@>=
+void is_standard_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_standard(p->val)));
+}
+
+void is_dominant_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_dominant(p->val)));
+}
+
+void is_zero_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(not p->rc().is_nonzero(p->val)));
+}
+
+void is_semifinal_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_semifinal(p->val)));
+}
+
+void is_final_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_final(p->val)));
+}
+
+@ Before constructing (non-integral) blocks, it is essential that the
+infinitesimal character is made dominant, and that possible singular (simple)
+complex descents are applied to the parameter, as the result of the block
+construction will only be mathematically meaningful under these circumstances.
+This operation is therefore applied automatically in several places, but it is
+useful to give the user an easy way to apply it explicitly. (In fact integral
+dominance should be sufficient: only for those coroots with integral evaluation
+on~$\gamma$ should it be required that the evaluation be non-negative. But
+since making this concrete requires an overhaul of the entire block
+construction process, we stick to unqualified dominance for now.)
+
+
+@< Local function def...@>=
+void parameter_dominant_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {@; p->rc().make_dominant(p->val);
+    push_value(std::move(p));
+  }
+}
+
+void parameter_normal_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {@; p->rc().normalise(p->val);
+    push_value(std::move(p));
+  }
+}
+
 
 @ While parameters can be used to compute blocks of (other) parameters, it can
 be useful to have available the basic operations of cross actions and Cayley
@@ -4952,8 +6077,9 @@ void reducibility_points_wrapper(expression_base::level l)
 @ Scaling the continuous component~$\nu$ of a parameter is an important
 ingredient for calculating signatures of Hermitian forms. This was for a long
 time done with a user defined function, but having this built in is more
-efficient. Moreover scaling by~$0$ (called ``deformation to $\nu=0$'') can be
-done even more efficiently by specialised code.
+efficient. For scaling by~$0$ (called ``deformation to $\nu=0$''), the
+construction of a $K$-type from a parameter is often a better alternative, as
+then the result type makes clear that information about $\nu$ has been erased.
 
 @< Local function def...@>=
 void scale_parameter_wrapper(expression_base::level l)
@@ -4961,14 +6087,6 @@ void scale_parameter_wrapper(expression_base::level l)
   own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
 @/{@; p->val = p->rc().scale(p->val,f->rat_val());
-    push_value(std::move(p));
-  }
-}
-
-void scale_0_parameter_wrapper(expression_base::level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
-  if (l!=expression_base::no_value)
-@/{@; p->val = p->rc().scale_0(p->val);
     push_value(std::move(p));
   }
 }
@@ -4988,24 +6106,42 @@ in terms of the situation before applying |normalise|
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p, const char* descr)
-{ RootNbr witness;
-  if (p.rc().is_standard(p.val,witness))
+{ if (p.rc().is_standard(p.val))
     return;
   std::ostringstream os; p.print(os << descr << ":\n  ");
-  os << "\n  Parameter not standard, negative on coroot #" << witness;
+  os << "\n  Parameter not standard";
   throw runtime_error(os.str());
 }
-
+@)
+void test_final(const K_type_value& p, const char* descr)
+{ if (p.rc().is_final(p.val))
+    return;
+  std::string reason;
+  if (not p.rc().is_standard(p.val))
+    reason = "not standard";
+  if (not p.rc().is_dominant(p.val))
+    reason = "not dominant";
+  else if (not p.rc().is_nonzero(p.val))
+    reason = "zero";
+  else if (not p.rc().is_normal(p.val))
+    reason = "not normal";
+  else if (p.rc().is_semifinal(p.val))
+    reason = "not semifinal";
+  else throw logic_error("Unknown obstruction to K-type finality");
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+@/os << "\n  K-type is " << reason;
+  throw runtime_error(os.str());
+}
 void test_final(const module_parameter_value& p, const char* descr)
-{ RootNbr witness; std::string reason;
-  bool OK = p.rc().is_dominant(p.val,witness);
+{ std::string reason;
+  bool OK = p.rc().is_dominant(p.val);
   if (not OK)
     reason = "not dominant";
   else if (not (OK=p.rc().is_normal(p.val)))
     reason = "not normal";
-  else if (not(OK = p.rc().is_nonzero(p.val,witness)))
+  else if (not(OK = p.rc().is_nonzero(p.val)))
     reason = "zero";
-  else if (not(OK = p.rc().is_semifinal(p.val,witness)))
+  else if (not(OK = p.rc().is_semifinal(p.val)))
     reason = "not semifinal";
   else return; // nothing to report
   std::ostringstream os; p.print(os << descr << ":\n  ");
@@ -5501,24 +6637,12 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
-@ Here is a temporary function for exploring |simplify| in \.{alcoves.cpp}.
+@ Here are two functions making available to the user the |wall_set| and
+|alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
+efficiency and safety against rational number overflow of the deformation
+algorithm.
 
 @h "alcoves.h"
-
-@< Local function def...@>=
-void simplify_wrapper(expression_base::level l)
-{ own_module_parameter p = get_own<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
-  auto N = simplify(p->rc(),p->val);
-  push_value(std::move(p));
-  push_value(std::make_shared<int_value>(N));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
-}
-
-@ And similarly here are two to experiment with the |wall_set| and
-|alcove_center| functions.
 
 @< Local function def...@>=
 void walls_wrapper(expression_base::level l)
@@ -5736,16 +6860,20 @@ install_function(unwrap_parameter_wrapper,@|"%"
                 ,"(Param->KGBElt,vec,ratvec)");
 install_function(real_form_of_parameter_wrapper,@|"real_form"
 		,"(Param->RealForm)");
+install_function(parameter_height_wrapper,@|"height" ,"(Param->int)");
+install_function(param_to_K_type_wrapper,@|"K_type", "(Param->KType)");
+install_function(K_type_to_param_wrapper,@|"param", "(KType->Param)");
+install_function(parameter_eq_wrapper,@|"=", "(Param,Param->bool)");
+install_function(parameter_neq_wrapper,@|"!=", "(Param,Param->bool)");
+install_function(parameter_equivalent_wrapper,@|"equivalent"
+                ,"(Param,Param->bool)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
+install_function(is_dominant_wrapper,@|"is_dominant" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
-install_function(parameter_eq_wrapper,@|"=", "(Param,Param->bool)");
-install_function(parameter_neq_wrapper,@|"!=", "(Param,Param->bool)");
-install_function(parameter_equivalent_wrapper,@|"equivalent"
-                ,"(Param,Param->bool)");
 install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
@@ -5756,7 +6884,7 @@ install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
-install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
+@)
 install_function(print_c_block_wrapper,@|"print_block","(Param->)");
 install_function(print_pc_block_wrapper,@|"print_partial_block","(Param->)");
 install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
@@ -5774,7 +6902,6 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
-install_function(simplify_wrapper,"simplify","(Param->Param,int)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
@@ -5787,135 +6914,15 @@ install_function(extended_KL_block_wrapper,@|"partial_extended_KL_block"
 @*1 Polynomials formed from parameters.
 %
 When working with parameters for standard modules, and notably with the
-deformation formulas, the need arises to keep track of formal sums of
-standard modules with coefficients of a type that allows keeping track of the
-signatures of the modules. These coefficients, which we shall call split
-integers and give the type \.{Split} in \.{atlas}, are elements of the group
-algebra over $\Zee$ of a (cyclic) group of order~$2$.
+deformation formulas, the need arises to keep track of formal sums of standard
+modules, or their irreducible quotients (the interpretation will depend on the
+context) with split integer coefficients. We call these formal sums virtual
+modules, and in the \.{atlas} language designate the corresponding basic type
+as \.{ParamPol}.
 
-@< Includes needed in the header file @>=
-#include "arithmetic.h"
-
-@*2 A class for split integers.
+@*2 Class definition.
 %
-Although the necessary operations could easily be defined in the \.{axis}
-programming language using pairs of integers, it is preferable to make them an
-Atlas type, since this allows distinguishing them from pairs of integers used
-for other purposes, and to provide special output and conversion facilities.
-
-@< Type definitions @>=
-
-struct split_int_value : public value_base
-{ Split_integer val;
-@)
-  explicit split_int_value(Split_integer v) : val(v) @+ {}
-  ~split_int_value()@+ {}
-  void print(std::ostream& out) const;
-  static const char* name() @+{@; return "split integer"; }
-  split_int_value (const split_int_value& v) = default;
-    // we use |get_own<split_int_value>|
-};
-@)
-typedef std::unique_ptr<split_int_value> split_int_ptr;
-typedef std::shared_ptr<const split_int_value> shared_split_int;
-typedef std::shared_ptr<split_int_value> own_split_int;
-
-@ Like for parameter values, a printing function |print_split| on the level
-of a bare |Split_integer| value is defined in the library, which can be used
-also in situations where the method |split_int_value::print| cannot. The latter
-method simply calls it.
-
-@< Function def... @>=
-
-void split_int_value::print(std::ostream& out) const @+
-{@; print_split(out,val); }
-
-@ Here are some basic relations and arithmetic operations.
-
-@< Local function definitions @>=
-
-void split_unary_eq_wrapper(expression_base::level l)
-{ Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i.is_zero()));
-}
-void split_unary_neq_wrapper(expression_base::level l)
-{ Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(not i.is_zero()));
-}
-@)
-void split_eq_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i==j));
-}
-void split_neq_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(whether(i!=j));
-}
-@)
-void split_plus_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val+=j; push_value(std::move(i)); }
-}
-
-void split_minus_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val-=j; push_value(std::move(i)); }
-}
-@)
-void split_unary_minus_wrapper(expression_base::level l)
-{ own_split_int i=get_own<split_int_value>();
-  if (l!=expression_base::no_value)
-  {@; i->val.negate(); push_value(std::move(i)); }
-}
-
-void split_times_wrapper(expression_base::level l)
-{ Split_integer j=get<split_int_value>()->val;
-  Split_integer i=get<split_int_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<split_int_value>(i*j));
-}
-
-@ We also provide implicit conversions from integers or pairs of integers to
-split integers, and an explicit operator for converting back to a pair.
-
-@< Local function definitions @>=
-
-void int_to_split_coercion()
-{ int a=get<int_value>()->int_val();
-@/push_value(std::make_shared<split_int_value>(Split_integer(a)));
-}
-@)
-void pair_to_split_coercion()
-{ push_tuple_components();
-  int b=get<int_value>()->int_val();
-  int a=get<int_value>()->int_val();
-  push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
-}
-@)
-void from_split_wrapper(expression_base::level l)
-{ Split_integer si = get<split_int_value>()->val;
-  if (l==expression_base::no_value)
-    return;
-@)
-  push_value(std::make_shared<int_value>(si.e()));
-  push_value(std::make_shared<int_value>(si.s()));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
-}
-
-@*2 Class definition for virtual modules.
-%
-The library provides a type |repr::SR_poly| in which such sums can be
+The library provides a type |SR_poly| in which such sums can be
 efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
@@ -5926,20 +6933,17 @@ character. Only under such restriction can it be guaranteed that equivalent
 terms (which now must actually be equal) will always be combined, and the test
 for the sum being zero therefore mathematically correct.
 
-@< Includes needed in the header file @>=
-#include "free_abelian.h" // needed to make |repr::SR_poly| a complete type
-
 @~Like for KGB elements, we maintain a shared pointer to the real form value, so
 that it will be assured to survive as long as parameters for it exist.
 
 @< Type definitions @>=
 struct virtual_module_value : public value_base
 { shared_real_form rf;
-  repr::SR_poly val;
+  SR_poly val;
 @)
-  virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
+  virtual_module_value(const shared_real_form& form, const SR_poly& v)
   : rf(form), val(v) @+{}
-  virtual_module_value(const shared_real_form& form, repr::SR_poly&& v)
+  virtual_module_value(const shared_real_form& form, SR_poly&& v)
   : rf(form), val(std::move(v)) @+{}
   ~virtual_module_value() @+{}
 @)
@@ -5950,6 +6954,7 @@ struct virtual_module_value : public value_base
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
   Rep_table& rt() const @+{@; return rf->rt(); }
+  void assign_coef(const module_parameter_value& t, const Split_integer& c);
 };
 @)
 typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;
@@ -5958,7 +6963,7 @@ typedef std::shared_ptr<virtual_module_value> own_virtual_module;
 
 @ Printing a virtual module value calls the free function |repr::print_SR_poly|
 to do the actual work. It traverses the |std::map| that is hidden in the
-|Free_Abelian| class template, and print individual terms by printing the
+|Free_Abelian| class template, and prints individual terms by printing the
 |Split_integer| coefficient, followed by the parameter through a call of
 |print_stdrep|. When either all coefficients are integers or all coefficients
 are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
@@ -5986,7 +6991,7 @@ is found.
 void virtual_module_wrapper(expression_base::level l)
 { shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<virtual_module_value> @| (rf,repr::SR_poly()));
+    push_value(std::make_shared<virtual_module_value> @| (rf,SR_poly()));
 }
 @)
 void real_form_of_virtual_module_wrapper(expression_base::level l)
@@ -6048,20 +7053,57 @@ void virtual_module_size_wrapper(expression_base::level l)
 }
 
 
-@ We allow implicitly converting a parameter to a virtual module. This invokes
-conversion by the |Rep_context::expand_final| method to \emph{final}
-parameters (there can be zero, one, or more of them), to initiate the
-invariant that only standard nonzero final parameters with dominant $\gamma$
-can be stored in a |virtual_module_value| (the |expand_final| method calls
-|normalise| internally, so we don't have to do that here).
+@ We provide a conversion from a module parameter to a $K$-type (restricting to
+$K$, and therefore forgetting the $\nu$ component of the infinitesimal
+character). We also allow implicit conversion of a module parameter to a virtual
+module, which involves expansion by the |Rep_context::expand_final| method
+to \emph{final} parameters (there can be zero, one, or more of them, and they
+can have positive or negative integer coefficients), to initiate the invariant
+that only (dominant, standard, nonzero) final parameters can be stored in a
+|virtual_module_value|. Then there is a conversion from module parameters
+directly to $K$-type polynomials, the conversion doing first the restriction to
+$K$ and then the expansion into final $K$-types. Finally, the conversion from
+module parameters to $K$-types can be extended linearly to a map from virtual
+modules to $K$-type polynomials, still defined mathematically by restriction
+to$~K$.
+
+We don't want the restriction maps to be implicit conversions. For the
+restriction on the level of polynomials, such conversion would make it
+impossible to define certain operations with the same name both for
+types \.{KTypePol} and \.{ParamPol}~: for instance we have (built-in) instances
+of the operator \.* with arguments types \.{(int,KTypePol)}
+and \.{(Split,ParamPol)}, and in the presence of an implicit conversion
+from \.{ParamPol} to \.{KTypePol} this combination would be forbidden, due to
+possible ambiguity for \.* with argument types \.{int} and \.{ParamPol}. An
+implicit conversion from module parameters to $K$-types would be problematic for
+similar reasons: it would create divergent implicit conversions from
+the \.{Param} type, leading to ambiguity when and argument could match two
+different overloads using one or the other of these conversions. Although
+currently the system does not test for such divergences, its logic assumes that
+when there are implicit conversions from a same type to two different types,
+then there is also at least one conversion between those two types so that
+there is either a hierarchy or an equivalence of inter-convertible types.
 
 @< Local function def...@>=
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
-@/test_standard(*p,"Cannot convert non standard Param to ParamPol");
   const auto& rf=p->rf;
   push_value(std::make_shared<virtual_module_value> @|
     (rf,rf->rc().expand_final(p->val)));
+}
+@)
+void param_poly_to_K_type_poly_wrapper(expression_base::level l)
+{ shared_virtual_module p = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rf=p->rf;
+  K_repr::K_type_pol result;
+  for (const auto& term : p->val)
+  { auto finals = rf->rc().finals_for(rf->rc().sr_K(term.first));
+    for (auto it = finals.begin(); not finals.at_end(it); ++it)
+       result.add_term(std::move(it->first),term.second*it->second);
+  }
+  push_value(std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
 }
 
 @ There also is function to extract the coefficient (multiplicity) of a given
@@ -6092,6 +7134,29 @@ void module_coefficient::evaluate(level l) const
     push_value(std::make_shared<split_int_value>(m->val[sr]));
 }
 
+@ For modifying an individual coefficient in a |virtual_module_value| (possibly
+adding or removing a term in the process), a method |assign_coef| is provided.
+It will be called from the \.{axis} compilation unit (the programming language
+interpreter). The implementation is similar to that of |Free_Abelian::add_term|,
+using the |std:map| interface from which |Free_Abelian| was derived; as is the
+case there a term can get created, modified, or deleted, of nothing can happen
+at all,
+
+@< Function def...@>=
+void virtual_module_value::assign_coef
+  (const module_parameter_value& t, const Split_integer& c)
+{
+  test_final(t,"In coefficient assignment for ParamPol value");
+  auto interval = val.equal_range(t.val);
+  if (interval.first==interval.second) // no term present
+  { if (not c.is_zero())
+    val.insert(interval.first,std::make_pair(t.val,c));
+  }
+  else if (c.is_zero())
+    val.erase(interval.first);
+  else interval.first->second = c;
+}
+
 @ The main operations for virtual modules are addition and subtraction of
 parameters to or from them.
 
@@ -6099,10 +7164,9 @@ parameters to or from them.
 void add_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
-      ("Real form mismatch when adding standard module to a module");
+      ("Real form mismatch when adding a Param to a ParamPol");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val+= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
@@ -6112,10 +7176,9 @@ void add_module_wrapper(expression_base::level l)
 void subtract_module_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert to term in ParamPol");
   if (accumulator->rf!=p->rf)
     throw runtime_error @|
-      ("Real form mismatch when subtracting standard module from a module");
+      ("Real form mismatch when subtracting a Param from a ParamPol");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val-= p->rc().expand_final(p->val);
     push_value(std::move(accumulator));
@@ -6132,18 +7195,18 @@ its final parameters.
 
 void add_module_term_wrapper(expression_base::level l)
 { push_tuple_components(); // second argument is a pair |(coef,p)|
-  own_module_parameter p = get_own<module_parameter_value>();
+  shared_module_parameter p = get<module_parameter_value>();
   Split_integer coef=get<split_int_value>()->val;
   own_virtual_module accumulator = get_own<virtual_module_value>();
-@/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
-  if (accumulator->rf!=p->rf)
+
+if (accumulator->rf!=p->rf)
     throw runtime_error@|("Real form mismatch when adding a term to a module");
   if (l==expression_base::no_value)
     return;
 @)
   auto finals = p->rc().finals_for(p->val);
   for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
-    accumulator->val.add_term(*it,coef);
+    accumulator->val.add_term(it->first,coef*it->second);
   push_value(std::move(accumulator));
 }
 
@@ -6165,18 +7228,18 @@ void add_module_termlist_wrapper(expression_base::level l)
     Split_integer coef=force<split_int_value>(t->val[0].get())->val;
     const module_parameter_value* p =
       force<module_parameter_value>(t->val[1].get());
-@/    test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
     if (accumulator->rf!=p->rf)
       throw runtime_error@|("Real form mismatch when adding terms to a module");
      auto finals = p->rc().finals_for(p->val);
      for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
-       accumulator->val.add_term(*it,coef);
+       accumulator->val.add_term(it->first,coef*it->second);
    }
   push_value(std::move(accumulator));
 }
 
-@ Naturally we also want to define addition and scalar multiplication of
-virtual modules.
+@ Naturally we also want to define addition and subtraction of two virtual
+modules.
+
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
 {
@@ -6204,73 +7267,108 @@ void subtract_virtual_modules_wrapper(expression_base::level l)
 
 @ Scalar multiplication potentially makes coefficients zero, in which case the
 corresponding terms need to be removed to preserve the invariant that no zero
-terms are stored in a virtual module. For integer multiplication we just need
-to check for multiplication by $0$, and produce an empty module when this
-happens. Because the integer is not on the stack top, this requires a somewhat
-unusual manoeuvre. The case of multiplication by zero needs to be handled
-separately, since we cannot allow introducing terms with zero coefficients. It
-could have been handled more easily though, by testing the factor~|c| just
-before the |for| loop, and performing |m->erase()| instead if |c==0|; this is
-what we used to do. However that might involve duplicating the virtual module
-and then erasing the copy, which is inefficient, and now avoided. This might
-seem a rare case, but it is not really: often functions handling
-a \.{ParamPol} argument $P$ need to start with an empty module for the same real
-form; writing $0*P$ is quite a convenient way to achieve this.
-
-Matters are similar but somewhat subtler for scalar multiplication by split
-integers, because these have zero divisors. Therefore we need to
-test \emph{each} coefficient produced by multiplication in this case, and
-remove the term when the coefficient becomes zero. We must take care to
-advance the iterator ``manually'' before doing that, and as a consequence
-cannot as usual advance the iterator in the |for| clause. In this case we do
-not bother handling the case of an entirely zero split integer
-multiplier separately; that case \emph{is} rare, and the given code works
-correctly for it (albeit not in the fastest possible way).
+terms are stored in a virtual module. For integer multiplication we just need to
+check for multiplication by $0$, and produce an empty module when this happens.
+Because the integer is not on the stack top, this requires a somewhat unusual
+manoeuvre. The case of multiplication by zero needs to be handled separately,
+since we cannot allow introducing terms with zero coefficients. It could have
+been handled more easily though, by testing the factor~|c| just before the |for|
+loop, and performing |m->erase()| instead if |c==0|; this is what we used to do.
+However that might involve duplicating the virtual module and then erasing the
+copy, which is inefficient, and now avoided. This might seem a rare case, but it
+is not really: often functions handling a \.{ParamPol} argument $P$ need to
+start with an empty module for the same real form; writing $0*P$ is quite a
+convenient way to achieve this.
 
 @< Local function... @>=
 
 void int_mult_virtual_module_wrapper(expression_base::level l)
 { int c =
-    force<int_value>(execution_stack[execution_stack.size()-2].get())->int_val();
-  // below top
+    force<int_value>(execution_stack[execution_stack.size()-2].get())
+    // value below top
+    ->int_val();
   if (c==0) // then do multiply by $0$ efficiently:
   { shared_virtual_module m = get<virtual_module_value>();
       // |m| is needed for |m->rc()|
     pop_value();
     if (l!=expression_base::no_value)
     @/push_value@|(std::make_shared<virtual_module_value>
-        (m->rf,repr::SR_poly()));
+        (m->rf,SR_poly()));
   }
   else
   { own_virtual_module m = get_own<virtual_module_value>();
      // will modify our copy now
     pop_value();
-    assert(c!=0); // we tested that above
     if (l!=expression_base::no_value)
-    { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
-        it->second *= c;
+    { for (auto& term : m->val)
+        term.second *= c;
       push_value(std::move(m));
     }
   }
 }
-@)
+
+@ Matters are similar but somewhat subtler for scalar multiplication by split
+integers, because these have zero divisors. We make a $4$-way branch depending
+on whether the split integer multiplicand has zero evaluation are $s=1$ and/or
+at $s=-1$: if either of these is the case we have a zero divisor, and may expect
+some terms to be killed by the multiplication, and if both hold we are
+multiplying by $0$. In presence of a nonzero zero divisor, we do not call
+|get_own| to true to modify the argument in place, as it seems more efficient to
+just reconstruct a potentially small product separately. As in the previous
+function we pick up the multiplicand (which is the first argument) when it is
+not at the top of the stack; later on, we do not pop it off the stack either,
+but rather overwrite it by move-assigning the returned |virtual_module_value| to
+the stack top location |execution_stack.back()|. Since no tests are performed
+here, the |no_value| case can be handled right at the beginning, by simply
+dropping the arguments from the stack when it applies.
+
+@< Local function... @>=
+
 void split_mult_virtual_module_wrapper(expression_base::level l)
-{ own_virtual_module m = get_own<virtual_module_value>();
-  Split_integer c = get<split_int_value>()->val;
-  if (l==expression_base::no_value)
+{  if (l==expression_base::no_value)
+   {@; pop_value();
+       pop_value();
+       return;
+   }
+   auto c =
+    force<split_int_value>(execution_stack[execution_stack.size()-2].get())
+    // below top
+    ->val;
+  if (c.s_to_1()==0)
+  // then coefficient is multiple of $1-s$; don't try to modify module in place
+  { shared_virtual_module m = get<virtual_module_value>();
+    SR_poly result;
+    if (c.s_to_minus_1()!=0) // otherwise coefficient is $0$ and keep null module
+      for (const auto& term: m->val)
+        if (term.second.s_to_minus_1()!=0)
+          result.add_term(term.first,term.second*c);
+    execution_stack.back()=  // replace stack top
+        std::make_shared<virtual_module_value>(m->rf,result);
     return;
+  }
 @)
-  for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
-    // no |++it| here!
-    if ((it->second *= c)==Split_integer(0,0))
-      m->val.erase(it++); // advance, then delete the node just abandoned
-    else ++it;
-  push_value(std::move(m));
+  else if (c.s_to_minus_1()==0)
+  // then coefficient is multiple of $1+s$; don't modify in place
+  { shared_virtual_module m = get<virtual_module_value>();
+    SR_poly result;
+    for (const auto& term: m->val)
+      if (term.second.s_to_1()!=0)
+        result.add_term(term.first,term.second*c);
+    execution_stack.back()= // replace stack top
+        std::make_shared<virtual_module_value>(m->rf,result);
+    return;
+  }
+  // now we are multiplying by a non zero-divisor
+  own_virtual_module m = get_own<virtual_module_value>();
+     // will modify our copy now
+  for (auto& term : m->val)
+        term.second *= c; // multiply coefficients by split integer
+  execution_stack.back()=std::move(m);  // replace stack top
 }
 
-@ For a nonzero virtual module, it is useful to be able to select a component
-that is present without looping over all terms. The most useful choice it the
-final term, be we allow taking the first term as well.
+@ For a nonzero virtual module, it is useful to be able to select some term that
+is present, without looping over all terms. The most useful choice it the final
+term, be we allow taking the first term as well.
 
 @< Local function... @>=
 void last_term_wrapper (expression_base::level l)
@@ -6303,8 +7401,8 @@ void first_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ Here are variations of the scaling functions for parameters that operate on
-entire virtual modules.
+@ Here is a variation of the scaling function for parameters that operates on
+entire virtual module.
 
 @< Local function def...@>=
 void scale_poly_wrapper(expression_base::level l)
@@ -6313,293 +7411,6 @@ void scale_poly_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value@|(std::make_shared<virtual_module_value>
       (P->rf,P->rc().scale(P->val,f->rat_val())));
-}
-
-void scale_0_poly_wrapper(expression_base::level l)
-{ shared_virtual_module P = get<virtual_module_value>();
-  if (l!=expression_base::no_value)
-    push_value@|(std::make_shared<virtual_module_value>
-      (P->rf,P->rc().scale_0(P->val)));
-}
-
-@*2 Computing with $K$-types.
-%
-The ``restriction to $K$'' component of the Atlas library has for a long time
-had an isolated existence, in part because the ``nonzero final standard
-$K$ parameters'' used to designate $K$-types are both hard to decipher and do
-not seem to relate easily to values used elsewhere. However, these parameters
-do in fact correspond to the subset of module pareters with $\nu=0$.
-
-The function |K_type_formula| converts its parameter to a |StandardRepK|
-value~|srk|, for which it calls the method |SRK_context::K_type_formula|. Since
-the terms of that formula are not necessarily standard, one needs to pass each
-term though |KhatContext::standardize|; finally, to incorporate the resulting
-terms into a |virtual_module|, they need to be passed through
-|Rep_context::expand_final|. One must not forget to multiply the small integer
-coefficients that these two methods produce.
-
-@h "standardrepk.h"
-
-@< Local function def...@>=
-
-void K_type_formula_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  RealReductiveGroup& G = p->rf->val;
-  const Rep_context& rc = p->rc();
-  KhatContext& khc = p->rf->khc();
-  StandardRepK srk =
-    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  @< Check that |srk| is final, and if not |throw| an error @>
-  if (l==expression_base::no_value)
-    return;
-@)
-  const standardrepk::Char formula = khc.K_type_formula(srk).second;
-   // don't need |first==srk|
-  const RatWeight zero_nu(p->rf->val.rank());
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
-  for (auto it=formula.begin(); it!=formula.end(); ++it)
-  {
-    standardrepk::combination st=khc.standardize(it->first);
-    for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
-    {
-      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
-      Split_integer coef (it->second*stit->second);
-      auto finals = p->rc().finals_for(term);
-      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
-         acc->val.add_term(*jt,coef);
-    }
-  }
-  push_value(std::move(acc));
-}
-
-@ Here is a variation of the previous function that passes a bound value on to
-@< Local function def...@>=
-
-void K_type_formula_trunc_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->int_val();
-  shared_module_parameter p = get<module_parameter_value>();
-  if (bound<0)
-  { std::ostringstream o;
-    o << "Negative height bound " << bound;
-    throw runtime_error(o.str());
-  }
-  RealReductiveGroup& G = p->rf->val;
-  const Rep_context& rc = p->rc();
-  KhatContext& khc = p->rf->khc();
-  StandardRepK srk =
-    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  @< Check that |srk| is final, and if not |throw| an error @>
-  if (l==expression_base::no_value)
-    return;
-@)
-  const standardrepk::Char formula = khc.K_type_formula(srk,bound).second;
-  const RatWeight zero_nu(p->rf->val.rank());
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
-  for (auto it=formula.begin(); it!=formula.end(); ++it)
-  {
-    standardrepk::combination st=khc.standardize(it->first);
-    for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
-    {
-      StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
-      Split_integer coef (it->second*stit->second);
-      auto finals = p->rc().finals_for(term);
-      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
-         acc->val.add_term(*jt,coef);
-    }
-  }
-  push_value(std::move(acc));
-}
-
-@ We must test the parameter for being final, or else the method
-|K_type_formula| will fail. The error message mentions restriction to $K$,
-since the parameter itself reported here might be final.
-
-@< Check that |srk| is final, and if not |throw| an error @>=
-{ if (not khc.isFinal(srk))
-  { std::ostringstream os;
-    print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
-      << "\n  (witness " << khc.root_datum().coroot(khc.witness()) << ')';
-    throw runtime_error(os.str());
-  }
-}
-
-@ A main function is the actual branching to~$K$: decomposition of a standard
-representation into $K$-types, up to a given limit. This used to be limited to
-final representations, but it turns out that |KhatContext::standardize| will
-expand non-final |StandardRepK| values into sums of final ones, so we decided
-to drop that restriction without otherwise changing the code below. Since
-|KhatContext::standardize| also does what its name suggests, it seems likely
-that we could drop the ``standard'' condition as well, though this will
-involve a longer rewriting process (using Hecht-Schmid identities) than the
-expansion into finals.
-
-@< Local function def...@>=
-void branch_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->int_val();
-  // not ``branch and bound'' but ``branch up to bound''
-  shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Branching of non-standard parameter is not allowed");
-  const Rep_context rc = p->rc();
-  RealReductiveGroup& G=p->rf->val;
-  KhatContext& khc = p->rf->khc();
-  StandardRepK srk=
-    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
-  if (l==expression_base::no_value)
-    return;
-@)
-  khc.normalize(srk);
-  standardrepk::combination combo=khc.standardize(srk);
-  const RatWeight zero_nu(G.rank());
-@/own_virtual_module acc @|
-    (new virtual_module_value(p->rf, repr::SR_poly()));
-  for (auto it=combo.begin(); it!=combo.end(); ++it)
-    // loop over finals from |srk|
-  {
-    standardrepk::combination chunk = khc.branch(it->first,bound);
-    for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
-    {
-      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(z,Split_integer(it->second*jt->second));
-    }
-  }
-  push_value(std::move(acc));
-}
-
-@ One can also branch from a polynomial. Since terms of a polynomial are
-guaranteed to be final, we can transform its terms to |StandardRepK| values
-that can be directly fed to |KhatContext::branch| without passing through
-|standardize|. We did need to add a method |KhatContext::match_final| to
-transform |srk| into a sequence number inside |khc|, which is what branching
-needs.
-
-@< Local function def...@>=
-void branch_pol_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->int_val();
-  // not ``branch and bound'' but ``branch up to bound''
-  shared_virtual_module P = get<virtual_module_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  RealReductiveGroup& G=P->rf->val;
-  const Rep_context rc = P->rc();
-  KhatContext& khc = P->rf->khc();
-  auto P0 = rc.scale_0(P->val);
-@/own_virtual_module acc @| (new virtual_module_value(P->rf, repr::SR_poly()));
-  RatWeight zero_nu(G.rank());
-  for (auto it=P0.begin(); it!=P0.end(); ++it)
-    // loop over terms of |P0|
-  {
-    StandardRepK srk= khc.std_rep_rho_plus
-       (rc.lambda_rho(it->first),G.kgb().titsElt(it->first.x()));
-    assert(khc.isNormal(srk));
-    standardrepk::combination chunk = khc.branch(khc.match_final(srk),bound);
-    for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
-    {
-      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(z,it->second*jt->second);
-    }
-  }
-  push_value(std::move(acc));
-}
-
-@ Here is a variant of branch that keeps branch of an additional statistic, and
-therefore returns a linear combination of parameters with polynomial rather than
-integer coefficients. Mostly, this amounts to replacing the call to
-|KhatContext::branch| by one to |qKhatContext::branch| which results from
-constructing a |qHatContext| rather than a |KhatContext|. The type returned by
-the called method is now |q_combin|, which is a linear combination with
-|Polynomial<int>| coefficients; these polynomials are converted to \&{vec}
-values for the \.{atlas} user.
-
-@< Local function def...@>=
-void q_branch_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->int_val();
-  // not ``branch and bound'' but ``branch up to bound''
-  shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Branching of non-standard parameter is not allowed");
-  const Rep_context rc = p->rc();
-  RealReductiveGroup& G=p->rf->val;
-  standardrepk::qKhatContext khc(G);
-  StandardRepK srk=
-    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
-  if (l==expression_base::no_value)
-    return;
-@)
-  khc.normalize(srk);
-  standardrepk::q_combin input=khc.standardize(srk);
-  const RatWeight zero_nu(G.rank());
-  standardrepk::q_combin sum(khc.height_order());
-  for (auto it=input.begin(); it!=input.end(); ++it)
-    // loop over finals from |srk|
-  {
-    standardrepk::q_combin chunk = khc.branch(it->first,bound);
-    sum.add_multiple(chunk,it->second);
-  }
-
-@/own_row result = std::make_shared<row_value>(sum.size());
-  auto res_p=result->val.begin();
-  for (auto it=sum.begin(); it!=sum.end(); ++it)
-  {
-    own_vector coef = // convert polynomial to |vector_value|
-      std::make_shared<vector_value>(it->second.begin(),it->second.end());
-    auto tup = std::make_shared<tuple_value>(2);
-    StandardRepr term = rc.sr(khc.rep_no(it->first),khc,zero_nu);
-    tup->val[0] = std::move(coef);
-    tup->val[1] = std::make_shared<module_parameter_value>
-	(p->rf,std::move(term));
-    *res_p++ = std::move(tup);
-  }
-  push_value(std::move(result));
-}
-
-@ In the K-type code, standard representations restricted to $K$ are always
-given on the canonical twisted involution of their Cartan class. In order to
-be able to understand what a parameter will look like in this representation,
-we provide a function that performs a similar transformation of a parameter,
-ignoring its $\nu$ component. The operation simply consists of applying
-complex cross actions on~$x$ until it is canonical for its Cartan class, and
-applying the corresponding simple reflections to~$\lambda$.
-
-@< Local function def...@>=
-void to_canonical_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  const InnerClass& G=p->rf->val.innerClass();
-  const KGB& kgb = p->rf->kgb();
-  const RootDatum& rd=G.rootDatum();
-@)
-  KGBElt x = p->val.x();
-  TwistedInvolution sigma = kgb.involution(x);
-  WeylWord w = G.canonicalize(sigma); // $x\times w$ lies over |sigma| canonical
-  Weight two_lambda = p->rc().lambda_rho(p->val)*2 + rd.twoRho();
-@)
-  x = kgb.cross(x,w);
-  assert(kgb.involution(x)==sigma);
-   // we should now be at canonical twisted involution
-  rd.act_inverse(two_lambda,w);
-  if (l==expression_base::no_value)
-    return;
-@)
-  RatWeight zero_nu(p->rf->val.rank());
-  StandardRepr result = p->rc().sr(x,(two_lambda-rd.twoRho())/2,zero_nu);
-  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
-}
-
-@ Here is one more useful function: computing the height of a parameter
-(ignoring the $\nu$ component). This is the same height displayed when
-printing \.{ParamPol} values, and it is also used when comparing to the
-|bound| argument to |branch| above. While this used to be obtained from the
-method |SRK_context::height|, the height is now stored inside |StandardRepr|
-values themselves, so we get it from there.
-
-@< Local function def...@>=
-void srk_height_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(p->val.height()));
 }
 
 @*2 Deformation formulas.
@@ -6622,25 +7433,22 @@ arguments to be final, we apply |finals_for| to |p->val| and sum over any
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
   auto& rt=p->rt();
   const auto& rc = p->rc();
-  rt.make_dominant(p->val);
-  const auto& gamma = p->val.gamma(); // after being made dominant
-  repr::SR_poly result;
+@/SR_poly result;
   auto finals = rc.finals_for(p->val);
-  for (auto it=finals.begin(); it!=finals.end(); ++it)
+  for (auto it=finals.begin(); not finals.at_end(it); ++it)
   {
-    auto& q = *it;
+    auto& q = it->first;
     BlockElt q_index; // will hold index of |q| in the block
     auto& block = rt.lookup(q,q_index); // generate partial common block
     RatWeight diff = rc.offset(q,block.representative(q_index));
-    for (auto&& term : rt.deformation_terms(block,q_index,diff,gamma))
+    for (auto&& term : rt.deformation_terms(block,q_index,diff,q.gamma()))
     result.add_term(std::move(term.first),
-                    Split_integer(term.second,-term.second));
+                    Split_integer(term.second,-term.second)*it->second);
   }
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
@@ -6686,7 +7494,7 @@ void twisted_deform_wrapper(expression_base::level l)
   auto terms = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
 					     singular_orbits,
                                              diff,p->val.gamma());
-  repr::SR_poly result;
+  SR_poly result;
   for (auto&& term : terms)
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second));
@@ -6704,46 +7512,42 @@ within the |real_form_value|.
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
-  test_standard(*p,"Cannot compute full deformation");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
-  rc.normalise(p->val);
-  auto finals = rc.finals_for(p->val);
-  repr::K_type_poly res;
-  for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
-    res += p->rt().deformation(*it);
-@)
-  repr::SR_poly result;
-  for (const auto& t : res) // transform to |std::map|
-    result.emplace(p->rt().K_type_sr(t.first),t.second);
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+  repr::K_type_poly result;
+    // this is the data type used by |Rep_table::deformation|
+  auto finals = p->rc().finals_for(p->val);
+  for (auto it=finals.begin(); not finals.at_end(it); ++it)
+    for (auto&& term : p->rt().deformation(std::move(it->first)))
+      result.add_term(std::move(term.first),term.second*it->second);
+@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+  push_value(std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),result)));
 }
 @)
 void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const auto& rc=p->rc();
+  const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
   if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
-  auto finals =
-    ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
-  repr::K_type_poly res;
+  auto finals = @;ext_block::
+    extended_finalise(rc,p->val,rc.inner_class().distinguished());
+  repr::K_type_poly result;
+    // this is the data type used by |Rep_table::deformation|
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
   { bool flip;
-    const auto& def = p->rt().twisted_deformation(it->first,flip);
-    res.add_multiple(def @|
-                    ,flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
+    const auto& def = rt.twisted_deformation(std::move(it->first),flip);
+    result.add_multiple(def,
+	flip!=it->second ? Split_integer(0,1) : Split_integer(1,0));
   }
-@)
-  repr::SR_poly result;
-  for (const auto& t : res) // transform to |std::map|
-    result.emplace(p->rt().K_type_sr(t.first),t.second);
-  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+@) // now convert from (tabled) |repr::K_type_poly| to |K_repr::K_type_pol|
+  push_value(std::make_shared<K_type_pol_value>@|
+    (p->rf,export_K_type_pol(p->rt(),result)));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
@@ -6832,18 +7636,17 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 
 @ The function |scale_extended| is intended for use with in the deformation
 algorithm when interpreting parameters as specifying a representation of he
-extended group. One can arrange that deformation starts with a parameter for
-which $\gamma$ is dominant, but when deforming this condition may be lost. In
-the ordinary deformation algorithm this is taken care of by an implicit
-|dominant| conversion of the parameter when it gets used to construct a block
-or when it is contributed to a virtual module. However this may potentially
-cause the default choice of extended representation associated to the
-parameter to flip (at the time of writing this, it appears to be a very rare
-event, if it occurs at all). the function below will scale the parameter,
-perform the conversion to dominant using extended parameters, and return the
-scaled parameter made dominant plus an indication of whether a flip occurred.
-The function |scaled_extended_dominant| in the module \\{ext\_block} does the
-actual work.
+extended group. One can arrange that deformation starts with a final parameter,
+for which $\gamma$ is dominant and which has no singular descent (simple)
+reflections, but when deforming this condition may be lost. In the ordinary
+deformation algorithm this is taken care of by an implicit conversion of the
+parameter when it gets used to construct a block or when it is contributed to a
+virtual module. However this may potentially cause the default choice of
+extended representation associated to the parameter to flip. The function below
+will scale the parameter, perform the conversion to a final parameter using
+extended parameters, and return the resulting parameter plus an indication of
+whether a flip occurred. The function |scaled_extended_finalise| in the
+module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
@@ -6853,9 +7656,9 @@ void scale_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   const StandardRepr sr = p->val;
   const auto& rc = p->rc();
-  test_standard(*p,"Cannot scale extended parameter");
-  if (not is_dominant_ratweight(rc.root_datum(),sr.gamma()))
-    throw runtime_error("Parameter to be scaled not dominant");
+  test_final(*p,"Cannot scale extended parameter");
+  if (not factor->val.is_positive())
+    throw runtime_error("Factor in scale_extended must be positive");
   test_compatible(p->rc().inner_class(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error@|
@@ -6863,22 +7666,52 @@ void scale_extended_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  bool flipped;
-  auto result = @;ext_block::scaled_extended_dominant
-    (rc,sr,delta->val,factor->rat_val(),flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
-  push_value(whether(flipped));
+  auto result = @;ext_block::scaled_extended_finalise
+    (rc,sr,delta->val,factor->rat_val());
+  push_value(std::make_shared<module_parameter_value>
+    (p->rf,std::move(result.first)));
+  push_value(whether(result.second));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
 
+@ The function |K_type_pol_extended| is like |scale_extended|, but is used for
+scaling by a factor~$0$. As a consequence the result can be represented in the
+format of $K$-types rather than parameters, and there need not a single $K$-type
+produced from a given parameter, due to the possibility of singular real and
+imaginary reflections being applied (the former might produce one or two
+contributions from a Hecht-Schmid identity, the latter might remove a
+contribution). Since we handle failure of dominance and of finality for
+$K$-types anyway, we need only require the argument parameter to satisfy
+|is_standard| here. The function |extended_restrict_to_K| in the
+module \\{ext\_block} does the actual work.
+
+@< Local function def...@>=
+
+void K_type_pol_extended_wrapper(expression_base::level l)
+{ auto delta = get<matrix_value>();
+  auto p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  test_standard(*p,"Parameter in K_type_pol_extended| must be standard");
+  test_compatible(rc.inner_class(),delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto result = @;ext_block::extended_restrict_to_K(rc,p->val,delta->val);
+  push_value (std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+}
+
+
 @ The function |finalize_extended| is useful in expanding a single module
 parameter into a linear combination of such parameters. The terms on the list
 are paired with a Boolean attribute recording a possible flip of extended
-parameters accumulated when the term. This flip is recorded with as
-coefficient the split integer unit~$s$, since it should be interpreted as a
-signature flip (in the ordinary finalisation procedure flips never occur).
-The function |finalise| in the module \\{ext\_block} does the actual work.
+parameters accumulated when the term. This flip is recorded with as coefficient
+the split integer unit~$s$, since it should be interpreted as a signature flip
+(in the ordinary finalisation procedure, coefficients are purely integer, i.e.,
+split integers without any $s$ component). The function |extended_finalise| in
+the module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
@@ -6890,13 +7723,11 @@ void finalize_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (not is_dominant_ratweight(rc.root_datum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
   auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
-  repr::SR_poly result;
+  SR_poly result;
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
                    ,it->second ? Split_integer(0,1) : Split_integer(1,0));
@@ -6906,19 +7737,12 @@ void finalize_extended_wrapper(expression_base::level l)
 
 @ Finally we install everything related to polynomials formed from parameters.
 @< Install wrapper functions @>=
-install_function(split_unary_eq_wrapper,@|"=","(Split->bool)");
-install_function(split_unary_neq_wrapper,@|"!=","(Split->bool)");
-install_function(split_eq_wrapper,@|"=","(Split,Split->bool)");
-install_function(split_neq_wrapper,@|"!=","(Split,Split->bool)");
-install_function(split_plus_wrapper,@|"+","(Split,Split->Split)");
-install_function(split_minus_wrapper,@|"-","(Split,Split->Split)");
-install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
-install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
-install_function(from_split_wrapper,@|"%","(Split->int,int)");
 install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
 install_function(real_form_of_virtual_module_wrapper,@|"real_form"
 		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
+install_function(param_poly_to_K_type_poly_wrapper,@|"K_type_pol"
+		,"(ParamPol->KTypePol)");
 install_function(virtual_module_unary_eq_wrapper,@|"=","(ParamPol->bool)");
 install_function(virtual_module_unary_neq_wrapper,@|"!=","(ParamPol->bool)");
 install_function(virtual_module_eq_wrapper,@|"=","(ParamPol,ParamPol->bool)");
@@ -6940,20 +7764,12 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
-install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
-install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
-install_function(K_type_formula_trunc_wrapper,@|"K_type_formula"
-		,"(Param,int->ParamPol)");
-install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
-install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
-install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
-install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
-install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
+
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
-install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
+install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
-                ,"(Param->ParamPol)");
+                ,"(Param->KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
@@ -6962,6 +7778,8 @@ install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
                 ,"(Param,mat,rat->Param,bool)");
+install_function(K_type_pol_extended_wrapper,@|"K_type_pol_extended"
+                ,"(Param,mat->KTypePol)");
 install_function(finalize_extended_wrapper,@|"finalize_extended"
                 ,"(Param,mat->ParamPol)");
 
@@ -7072,7 +7890,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb = block.extended_block(delta->val);
+    @;ext_block::ext_block eb = block.extended_block(delta->val);
     std::vector<ext_kl::Pol> pool;
     ext_KL_hash_Table hash(pool,4);
     ext_kl::KL_table klt(eb,&hash); klt.fill_columns();
@@ -7457,6 +8275,7 @@ Finally we collect here all coercions related to specific Atlas types.
   coercion(rf_type,rd_type,"RdRf",real_form_to_root_datum_coercion);
   coercion(int_type,split_type,"SpI",int_to_split_coercion);
   coercion(int_int_type,split_type,"Sp(I,I)",pair_to_split_coercion);
+  coercion(KType_type,KTypePol_type,"KpolK",K_type_to_poly);
   coercion(param_type,param_pol_type,"PolP",param_to_poly);
 }
 

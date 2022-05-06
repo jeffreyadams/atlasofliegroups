@@ -329,8 +329,10 @@ RealForm	real form within an inner class
 CartanClass     class of Cartan subgroups within an inner class
 KGBElt		element of the set K\G/B associated to some RealForm value
 Block		block for a pair of RealForm values (at dual inner classes)
-Param		value representing a standard module or its irreducible quotient
 Split		"split integer" a + b.s where s is "split unit" with s^2=1
+KType		value for standard K-representation or its irreducible quotient
+KTypePol	Split-linear combination of final K-types
+Param		value representing a standard module or its irreducible quotient
 ParamPol	virtual module with signature (Param values with Split coefs)
 
 Constant values of type bool, int and string can be entered as usual (use
@@ -701,9 +703,12 @@ Here is a list of all implicit type conversions
   InnerClass -> RootDatum (inheritance)
   RealForm   -> InnerClass (inheritance)
   RealForm   -> RootDatum (inheritance)
+  KType	     -> KTypePol (K-type is converted to final K-type(s) first)
+  Param	     -> KType    (the component 'nu' is forgotten)
   Param	     -> ParamPol (parameter is converted to final parameter(s) first)
+  Param      -> KTypePol (composition of conversions Param->KType->KTypePol)
 
-The one-directional conversions int->rat and string->LieType are mainly a
+The unidirectional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:
 
   atlas> 3+1/7       { same as 3/1+1/7 }
@@ -937,8 +942,13 @@ As a convenience one can write 'x +:= y' instead of 'x := x + y', and
 similarly for any operator in the place of '+', so in the above examples one
 could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
-It should be noted that this requires a simple variable as left operand: the
-parser will reject for instance v[i]+:=1; this should be written v[i]:=v[i]+1.
+The left hand side must be an expression that is accepted for assignment, which
+(currently) means eaither a variable or a simply subscritped variable (if v is a
+vector and i an integer then both v[i]:=5 and v[i]*:=5 are valid, and even
+v[i*:=2]+:=1 is accepted (the parser tranforms it into 'let $=(i*:=2) in
+v[$]:=v[$]*2' where $ designates a fresh identifier); although this also works
+for matrix entries, as in A[i,j] *:= -1, one cannot for a list of lists L
+(having a type [[T]] for some type T) directly assign to L[i][j].
 
 The rules for assignment are quite different from the introduction of a
 variable (by 'set' or 'let'): the variable must have been introduced
@@ -2403,24 +2413,30 @@ often the case, then the final expression produces the value of the clause).
 
 (d) Tertiary expressions: assignments.
 
-The three kinds of assignments are tertiary level expressions: simple
-assignments, component assignments and compound assignments (compound
-component assignments are not currently possible). Each of them end with ":="
-followed by a tertiary level expression. To the left of ":=" they have
+The various kinds of assignments are tertiary level expressions: simple
+assignments, component assignments like v[i]:=3, and compound assignments like
+n+:=1, or even compound component assignments like v[i]-:=1. Each of them end
+with ":=" followed by a tertiary level expression. To the left of ":=" they have
 respectively an identifier, a subscripted identifier (the subscript being an
-expression enclosed in '[' and ']'), and an expression followed by an operator
-symbol. For a component assignment to be valid it is necessary that the type
-of identifier and index are such that the subscription would be a valid
-expression, but component assignments are not allowed for identifiers of type
-'string', 'ratvec', or 'ParamPol'. When valid, a component assignment is
-handled as a primitive operation in the evaluator. The meaning of a compound
-assignment of the form 'ident # := expr' on the other hand (where # represents
-any infix operator) is by definition that of 'indent := ident # (expr)'; in
-other words it is determined by the overload of the operator for operand types
-of the identifier and the expression, whether built-in or user-defined.
-Currently compound statements are transformed into that form by the parser
-(compound assignments might be handled by the evaluator instead in the future,
-but only so as to achieve the same effect possibly more efficiently.)
+expression enclosed in '[' and ']'), or a possibly subscritped identifier
+followed by an operator symbol. For a component assignment to be valid it is
+necessary that the type of identifier and index are such that the subscription
+would be a valid expression, but component assignments are not allowed for
+identifiers of type 'string', or 'ratvec'. When valid, a component assignment is
+handled as a primitive operation in the evaluator: an assignment v[i]:=c in fact
+assigns to the variable v a new value that differs from the old value only at
+index i, where the new entry is c. In a component assignment involving an
+identifier whose value is of type KTypePol or ParamPol, the "index" has to be a
+value of type KType respectively Param, and it has to satisfy is_final (since
+only sich terms can arise in these polynomials); the value assigned is the
+coefficient of the term for that KType or Param, which term is created if
+needed, and may disappear if the coefficient assigned is zero. On the other hand
+compound assignments are just rewritten as a non-compund assignement in a more
+complicated context; notably, a compound assignement 'ident # := expr' is
+rewritten as 'indent := ident # (expr)'; the same goes for any infix operator in
+the place of '#'. As a consequence, the meaning of a compound assignement it is
+determined an instance of the operator used, overloaded for operand types of the
+'ident' and 'expr', and that overload can be either built-in or user-defined.
 
 (e) Secondary expressions: formulas.
 
