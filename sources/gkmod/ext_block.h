@@ -339,13 +339,6 @@ ext_param default_extend
     (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm);
 
 
-// a variation of |Rep_context::make_dominant|, used during extended deformation
-StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
-(const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
- RatNum factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // output only, records whether and extended flip was recorded
- );
-
 // restrict to K expanding to final K types, taking into account extended flips
 K_repr::K_type_pol extended_restrict_to_K
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);

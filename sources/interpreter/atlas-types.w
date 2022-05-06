@@ -7630,18 +7630,17 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 
 @ The function |scale_extended| is intended for use with in the deformation
 algorithm when interpreting parameters as specifying a representation of he
-extended group. One can arrange that deformation starts with a parameter for
-which $\gamma$ is dominant, but when deforming this condition may be lost. In
-the ordinary deformation algorithm this is taken care of by an implicit
-|dominant| conversion of the parameter when it gets used to construct a block
-or when it is contributed to a virtual module. However this may potentially
-cause the default choice of extended representation associated to the
-parameter to flip (at the time of writing this, it appears to be a very rare
-event, if it occurs at all). the function below will scale the parameter,
-perform the conversion to dominant using extended parameters, and return the
-scaled parameter made dominant plus an indication of whether a flip occurred.
-The function |scaled_extended_dominant| in the module \\{ext\_block} does the
-actual work.
+extended group. One can arrange that deformation starts with a final parameter,
+for which $\gamma$ is dominant and which has no singular descent (simple)
+reflections, but when deforming this condition may be lost. In the ordinary
+deformation algorithm this is taken care of by an implicit conversion of the
+parameter when it gets used to construct a block or when it is contributed to a
+virtual module. However this may potentially cause the default choice of
+extended representation associated to the parameter to flip. The function below
+will scale the parameter, perform the conversion to a final parameter using
+extended parameters, and return the resulting parameter plus an indication of
+whether a flip occurred. The function |scaled_extended_finalise| in the
+module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
@@ -7651,9 +7650,9 @@ void scale_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   const StandardRepr sr = p->val;
   const auto& rc = p->rc();
-  test_standard(*p,"Cannot scale extended parameter");
-  if (not is_dominant_ratweight(rc.root_datum(),sr.gamma()))
-    throw runtime_error("Parameter to be scaled not dominant");
+  test_final(*p,"Cannot scale extended parameter");
+  if (not factor->val.is_positive())
+    throw runtime_error("Factor in scale_extended must be positive");
   test_compatible(p->rc().inner_class(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error@|
@@ -7661,23 +7660,52 @@ void scale_extended_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  bool flipped;
-  auto result = @;ext_block::scaled_extended_dominant
-    (rc,sr,delta->val,factor->rat_val(),flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,std::move(result)));
-  push_value(whether(flipped));
+  auto result = @;ext_block::scaled_extended_finalise
+    (rc,sr,delta->val,factor->rat_val());
+  push_value(std::make_shared<module_parameter_value>
+    (p->rf,std::move(result.first)));
+  push_value(whether(result.second));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
 
+@ The function |K_type_pol_extended| is like |scale_extended|, but is used for
+scaling by a factor~$0$. As a consequence the result can be represented in the
+format of $K$-types rather than parameters, and there need not a single $K$-type
+produced from a given parameter, due to the possibility of singular real and
+imaginary reflections being applied (the former might produce one or two
+contributions from a Hecht-Schmid identity, the latter might remove a
+contribution). Since we handle failure of dominance and of finality for
+$K$-types anyway, we need only require the argument parameter to satisfy
+|is_standard| here. The function |extended_restrict_to_K| in the
+module \\{ext\_block} does the actual work.
+
+@< Local function def...@>=
+
+void K_type_pol_extended_wrapper(expression_base::level l)
+{ auto delta = get<matrix_value>();
+  auto p = get<module_parameter_value>();
+  const auto& rc = p->rc();
+  test_standard(*p,"Parameter in K_type_pol_extended| must be standard");
+  test_compatible(rc.inner_class(),delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto result = @;ext_block::extended_restrict_to_K(rc,p->val,delta->val);
+  push_value (std::make_shared<K_type_pol_value>(p->rf,std::move(result)));
+}
+
+
 @ The function |finalize_extended| is useful in expanding a single module
 parameter into a linear combination of such parameters. The terms on the list
 are paired with a Boolean attribute recording a possible flip of extended
-parameters accumulated when the term. This flip is recorded with as
-coefficient the split integer unit~$s$, since it should be interpreted as a
-signature flip (in the ordinary finalisation procedure flips never occur).
-The function |extended_finalise| in the module \\{ext\_block} does the actual
-work.
+parameters accumulated when the term. This flip is recorded with as coefficient
+the split integer unit~$s$, since it should be interpreted as a signature flip
+(in the ordinary finalisation procedure, coefficients are purely integer, i.e.,
+split integers without any $s$ component). The function |extended_finalise| in
+the module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
@@ -7744,6 +7772,8 @@ install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
                 ,"(Param,mat,rat->Param,bool)");
+install_function(K_type_pol_extended_wrapper,@|"K_type_pol_extended"
+                ,"(Param,mat->KTypePol)");
 install_function(finalize_extended_wrapper,@|"finalize_extended"
                 ,"(Param,mat->ParamPol)");
 

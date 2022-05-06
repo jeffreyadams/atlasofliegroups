@@ -2,11 +2,9 @@
 <polynomial.at
 <bigMatrices.at
 <hermitian.at
-
+<ext_deform.at { for |ed_verbose| }
 
 { implement ParamPol for extended parameters }
-
-ed_verbose:=false
 
 set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind) ]
 { (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->

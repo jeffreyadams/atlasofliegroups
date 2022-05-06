@@ -1033,13 +1033,22 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
   (the twist is for the distinguished involution) instead of ordinary KLV
   polynomials. The actual value depends on sign choices for Hecke module
-  generators associated to the terms, so individual terms in the result are
-  mathematically well defined only up to a possible factor -1; however
-  consistent internal choices (default extensions) make the signs well-defined
+  generators (extended parameters) for each of the terms; these choices, which
+  cannot be made explicit in terms of ordinary parameters only, affect the signs
+  of the coeficients of these terms. However a consistent choice of a default
+  extension is made internally for each parameter value, which make those signs
+  well-defined. When modifications are made to parameters, like changing to an
+  equivalent one with different infinitesimal character representative, or
+  scaling their nu component, the change may "flip" the default extension in the
+  sense that the corresponding change at the level of an extended parameter
+  applied to an initial default extension may result in an extended parameter
+  with opposite sign choice with respect to the default for the modified
+  (ordinary) parameter; special functions are provided below to track such flips
 twisted_KL_sum_at_s: (Param,mat->ParamPol): sum of delta-twisted KLV polynomials
   This version takes an explicit external involution matrix delta as second
   argument. The parameter should be delta-fixed. Unlike the previous two, this
   function does not tabulate results or look up previously computed ones.
+
 scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   When interpreting parameters as representing a representation of the
   delta-extended group (where delta is the second argument, a distinguished
@@ -1047,23 +1056,34 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   changes to parameters may flip the default choice of extended representation;
   this function takes care to record such a flip for the operation of scaling
   the continuous component nu by a rational factor. With arguments (p,delta,f)
-  it is supposed that gamma(p) is dominant (if not, the function dominant is
-  applied without recording any flips); then a new parameter q is formed by
-  scaling the component nu(p) by f. In case gamma(q) is non-dominant (due to
-  some complex roots), it is then made dominant; in this phase any flip to the
-  default choice of delta-extended representation is recorded. Finally the
-  modified q and a Boolean telling whether a flip occurred are returned.
+  it is assumed that the parameter p is_final, and the factor f is positive.
+  A new parameter is formed by scaling the component nu(p) by f, and it is made
+  final, as in ParamPol:p*f; under the given assuptions this involves applying
+  only complex reflections, so the result is a single parameter which is the
+  first component of the result. The second component records wheher this
+  transformation at the level of extended parameter involves a flip with respect
+  to the default extension, as described above under "twisted_KL_sum_at_s"
+K_type_pol_extended: (Param,mat->K_type_pol): extended restrict to K
+  The argument parameter must satisfy is_standard and be fixed under delta,
+  the second argument (a distinguished involution commuting with the one
+  defining the inner class). Like in scale_extended it is scaled and the
+  result is then made final, taking into account flips with respect to the
+  default extension; here the factor by which the nu component is scaled is
+  zero, so that a K-type is obtained; this being the case the finalization
+  process does not necessarily result in a single $K$-type, whence the result is
+  represented as a KTypePol. Any flip associated to a $K$-type produced is
+  recorded as a factor of (split integer unit) s in its coefficient.
 finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
   Like scale_extended, this function is about tracking flips in the default
   choice of extended representation, this time for the operation of expanding a
-  parameter in terms of parameters that have no singular descents that occurs
-  implicitly when they enter into a ParamPol. When interpreting the parameter as
-  specifying a delta-extended representation, the process is somewhat modified
-  and flips may be encountered. This function applied to (p,delta) requires p to
-  be delta-fixed; if it finds a singular descent, it replaces p by the sum of
-  the parameters descended from it in the extended block, and when there is a
-  "sign flip" along the edge used, the resulting parameter is multiplied by s.
-  And this is repeated recursively as long as singular descents are present.
+  parameter in terms of "final" parameters as happens when they enter into a
+  ParamPol (their infinitesimal character is dominant and they have no singular
+  descent simple reflections). When interpreting parameters as specifying a
+  delta-extended representation using a per-parameter specific default choice of
+  extension, the finalization process on extended parameters may involve flips
+  with respect to the default choices for the terms of the finalization as an
+  ordinary parameter; such flips are recorded as a factor of (split integer
+  unit) s in the coefficient if the parameter in question.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
