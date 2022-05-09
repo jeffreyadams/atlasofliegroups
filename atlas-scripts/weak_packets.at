@@ -1,0 +1,704 @@
+{computing weak unipotent Arthur packets}
+
+<basic.at
+<nilpotent_orbits.at { for |ComplexNilpotent| type, |dual_orbits| }
+<springer_tables_reductive.at
+<show_nilpotent_orbits.at
+<arthur_parameters.at
+<cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
+<Vogan-dual.at { for |is_dual_Aq| }
+
+{extract just the parameters from [(int,int,Param)]}
+set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
+
+{extract just the parameters from output of weak_packet(..)}
+set parameters(([([Param],[WCell])],[(int,int,Param)]) (,triples))=[Param]:
+parameters(triples)
+
+{extract just the parameters from output of weak_packets(..)}
+set parameters([([([Param],[WCell])],[(int,int,Param)])] data)=[Param]:
+##for pair in data do parameters(pair) od
+
+{extract just the cells (parameter indices) from output of weak_packet(...)}
+set cells(([([Param],[WCell])],[(int,int,Param)]) (pairs,))=[[int]]:
+##for (,cells) in pairs do for (param_indices,,) in cells do param_indices od od
+
+{SpringerTable: table of Springer data, see springer_tables.at
+ NOTE: this must be the SpringerTable for the integral root system
+ ComplexNilpotent: complex orbit for dual group
+ [Param]: list of parameters, should be all_parameters_gamma(G,gamma) where
+   gamma is regular and differs from gamma_target by X^*
+ ratvec gamma_target: target infinitesimal character, probably O.H/2
+result: ([list of parameters],[(int,int,Param)]=[(block number, cell number, parameter)])}
+
+{weak_packet, given Springer table for the integrality datum of O_check.H/2,
+ a list of parameters at regular infinitesimal character, and a target infinitesimal character}
+set weak_packet_int (SpringerTable st_int
+                    ,ComplexNilpotent O_check
+		    ,[Param] params
+		    ,ratvec gamma_target) =
+      ([([Param],[WCell])],[(int,int,Param)]):
+      { (blocks_and_cells,[(int,int,Param)])}
+(  assert(integrality_datum(O_check.root_datum.dual,O_check.H/2) =
+          st_int.root_datum
+	 ,"root datum mismatch, are you using the integrality datum?")
+; if #params=0 then ([],[])
+  else let O=st_int.dual_map_i(O_check)
+  in if cells_verbose
+     then prints("gamma_target:",gamma_target)
+     ; if cells_verbose then prints( "Computing weak packet for ", params[0].real_form, new_line
+             , "given # parameters: ", #params,new_line
+	     , "dual orbit:",new_line
+	     , " dual root datum: ", O_check.root_datum,new_line
+	     , " diagram: ", O_check.diagram, new_line
+	     , " normalized diagram: ", O_check.diagram_normalized, new_line
+	     , " H: ", O_check.H, new_line
+	     , " dimension: ", O_check.dim_nilpotent) fi
+     fi
+  ;  if cells_verbose then prints("Computing blocks and cells for ",#params, " parameters") fi
+  ;  let blocks_and_cells = blocks_and_cells(params)
+  in if cells_verbose
+     then prints
+        ( "computed ", #blocks_and_cells
+        , " blocks, of sizes: ", for (b,) in blocks_and_cells do #b od )
+     fi
+  ;  if cells_verbose then prints("inf. char.=",gamma_target) fi
+  ;  if cells_verbose then prints
+        ( "orbit:",new_line
+	, " root datum: ", O.root_datum, new_line
+	, " diagram: ", O.diagram, new_line
+	, " normalized diagram: ", O.diagram_normalized, new_line
+	, " H: ", O.H, new_line
+	, " dimension: ", O.dim_nilpotent)
+     fi
+  ;  let sigma=st_int.springer(O)
+  in if cells_verbose then prints
+        ("sigma=", sigma, " of dimension ",dimension(st_int.ct,sigma))
+     fi
+  ;  let parameters = parameters_given_AV_infinitesimal_character
+                      (st_int,O,blocks_and_cells,gamma_target)
+  in (blocks_and_cells,parameters)
+  fi
+)
+
+
+{this calls weak_packet_int(st_int,O_check,G,params,gamma_target)
+and is typically called as follows:
+params=all_parameters_gamma(G,O_check.H/2+2*rho(G))
+gamma_target=O_check.H/2
+st_int = integrality_datum(G,gamma_target)
+}
+set weak_packet_int (SpringerTable st_int,ComplexNilpotent O_check,RealForm G) =
+      ([([Param],[WCell])],[(int,int,Param)]):
+{returns (blocks_and_cells,[(int,int,Param)])}
+(  if cells_verbose then prints
+      ( "weak_packets(st_int,O_check,G):", new_line
+      , "O_check: ", O_check.diagram,new_line
+      , "G: ", G)
+   fi
+;  let rd=st_int.root_datum, gamma_target=O_check.H/2
+   then gamma_reg=gamma_target+2*rho(rd)
+   then all=all_parameters_gamma(G,gamma_reg)
+   in weak_packet_int(st_int,O_check,all,gamma_target)
+)
+
+
+{ This is the primary weak_packet function: weak Arthur packet(O_check,G)
+  |G| is a RealForm, |O_check| is a nilpotent orbit for |G.root_datum.dual|
+  for example O_check can be chosen from |dual_orbits(G)|
+  We allow a central shift |shift| to the infinitesimal character to be given
+}
+set weak_packet (ComplexNilpotent O_check,RealForm G,ratvec shift) =
+      ( [ [Param],[WCell] ] , [int,int,Param] ):
+   if cells_verbose then prints("Computing weak packets for ",G) fi;
+   let delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
+in if not twist(delta_check,O_check)=O_check
+   then ([],[])
+   else
+      let gamma_final=O_check.H/2+shift
+      then gamma = {this is the target infinitesimal character, need to pass it}
+		   gamma_final+two_rho(G)
+      then all=all_parameters_gamma(G,gamma), rd=O_check.root_datum.dual
+   in if cells_verbose then prints("gamma:",gamma,new_line, "gamma_final:",gamma_final) fi
+   ;  let rd_int=integrality_datum(rd,gamma)
+      then st_int=Springer_table(rd_int)
+   in {prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum)
+   ;}  let O_check_int = integral_descent(O_check)
+   in if cells_verbose then prints("computing packet for:", O_check_int) fi
+   ;  let (bc,wp) = weak_packet_int(st_int,O_check_int,all,gamma_final)
+   in if {G.is_split and } =#wp then prints("ALERT: , empty packet") fi
+   ;  (bc,wp)
+fi
+
+set weak_packet (ComplexNilpotent O_check,RealForm G) =
+      ( [ [Param],[WCell] ] , [int,int,Param] ):
+   weak_packet(O_check,G,null(G.rank))
+
+{ run over a set of dual orbits; check if dual(O_check) intersects \g^(-theta) }
+set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift) =
+      [ [[Param],[WCell]] , [int,int,Param] ]:
+   prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+   let st = Springer_table(G)
+   ,  delta_check= {distinguished involution of |G|, viewed on dual side}
+            ^G.distinguished_involution {NOT |G.dual.distinguished_involution| }
+in for O_check in dual_orbits
+   do if not twist(delta_check,O_check)=O_check
+      then prints("Skipping orbit: dual orbit is not delta_check fixed")
+      ;  ([],[])
+      elif =#real_nilpotent_orbits(st.dual_map_i(O_check),G)
+      then prints("Skipping dual orbit ", O_check
+		 ," (d(O_check) has no real forms for G)")
+      ;  ([],[])
+      else if cells_verbose then prints
+	   ( new_line
+	   , "Computing weak packet for orbit: ", O_check.root_datum
+	   , " ", O_check.H
+	   , " dim=", O_check.dim_nilpotent) fi
+      ;  weak_packet(O_check,G,shift)
+      fi
+   od
+
+set weak_packets ([ComplexNilpotent] dual_orbits,RealForm G) =
+      [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(dual_orbits,G,null(G.rank))
+
+
+{given just a RealForm G, compute the dual orbits then compute all weak packets
+ as you run over these dual orbits}
+set weak_packets (RealForm G) = [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(dual_orbits(G),G)
+
+{given just a RealForm G, compute the dual orbits, then
+all weak packets as you run over these dual orbits}
+set weak_packets_even (RealForm G ) = [ [[Param],[WCell]] , [int,int,Param] ]:
+   weak_packets(even_dual_orbits(G),G)
+
+{reporting functions}
+
+set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv+:=1 fi
+od;rv
+
+set mult([(int,int,Param)] packet)=((int,int)->int):(int block,int cell):
+let rv=0 in
+for (b,c,p) in packet do
+ if b=block and c=cell then rv+:=1 fi
+od;rv
+
+set parameters_map([[(int,int,Param)]] packet)=((int,int,int)->[Param]):(int orbit,int block,int cell):
+let rv=[Param]:[] in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv#:=p fi
+od;rv
+
+set parameters_map([(int,int,Param)] packet)=((int,int)->[Param]):(int block,int cell):
+let rv=[Param]:[] in
+for (b,c,p) in packet do
+ if b=block and c=cell then rv#:=p fi
+od;rv
+
+{number of time given block appears, i.e. number of parameters in this block}
+set mult_block([(int,int,Param)] packet)=(int->int):(int block):
+let rv=0 in
+for (b,c,p) in packet do
+ if b=block  then rv+:=1 fi
+od;rv
+
+{number of times the (orbit,block) pairs appears, in other words number of parameters
+in given pair}
+set mult_orbit_block([[(int,int,Param)]] packet)=((int,int)->int):(int orbit,int block):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block  then rv+:=1 fi
+od;rv
+
+set blocks([(int,int,Param)] packet)=[int]:sort_u(for (b,,) in packet do b od )
+set cells([(int,int,Param)] packet)=[int]:sort_u(for (,c,) in packet do c od )
+set cells([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
+set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
+
+set unipotent_representations(RealForm G)=[Param]:G.weak_packets.parameters
+set unipotents(RealForm G)=[Param]:unipotent_representations(G)
+
+set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv+:=1 fi
+od;rv
+
+{  output routines: show_...   }
+
+set show_short([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
+let packets=for (,packet) in blocks_and_cells_and_packets do packet od then
+grand_total=0 then
+blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","|packet|"]#
+ ##for i:#packets do
+  let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
+ in if total!=0 then grand_total+:=total;[[i.to_string,total.to_string]] else [] fi
+od
+#["Total",grand_total.to_string]
+);prints()
+
+set show_short(([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=void:
+show_short([blocks_and_cells_and_packet])
+
+set show( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=void:
+let (bc,packet)=blocks_and_cells_and_packet then
+blocks=blocks(packet) then
+cells=cells(packet) then
+G=let (params,)=bc[0] in params[0].real_form then
+m=mult(packet) in
+prints("*: dual(cell) contains an Aq(lambda)");
+tabulate(
+ ["block#","cell#","|packet|"]#
+{ ##for i:#packets do}
+  ##for b in blocks do
+   ##for c in cells do
+    if m(b,c)!=0 then
+     let (params,cells)=bc[b] then
+     p=params[0] then
+     cell=cells[c] then
+     cell_flag= if is_dual_Aq(params,cell) then "*" else "" fi in
+[[b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi
+   od
+  od
+      #["Total","",(#parameters(packet)).to_string]
+  );prints()
+
+set show( [([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
+prints("*: dual(cell) contains an Aq(lambda)");
+tabulate(
+ ["orbit#","block#","cell#","parameters"]#
+ ##for i:#blocks_and_cells_and_packets do
+ let (bc,packet)=blocks_and_cells_and_packets[i] then
+ blocks=blocks(packet) then
+ cells=cells(packet) then
+ m=mult(packet) in
+  ##for b in blocks do
+   ##for c in cells do
+    if m(b,c)!=0 then
+     let (params,cells)=bc[b] then
+     p=params[0] then
+     cell=cells[c] then
+     cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} in
+[[i.to_string,b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi
+   od
+  od
+ od
+     #["Total","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
+  );prints()
+
+
+set show_long(([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=void:
+let (bc,packet)=blocks_and_cells_and_packet then
+blocks=blocks(packet) then
+cells=cells(packet) then
+m=mult_block(packet) in
+prints("*: dual(cell) contains an Aq(lambda)");
+prints("*: dual(p) is an Aq(lambda)");
+tabulate(
+ ["block#","cell#","parameters", "inf. char."]#
+  ##for b in blocks do
+   ##for c in cells do
+    for p in packet.parameters_map(b,c) do
+     let (params,cells)=bc[b] then
+     cell=cells[c] then
+     cell_flag= is_dual_Aq(params,cell).star {fi} then
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
+    [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
+   od
+  od
+ od
+     #["Total","",(#parameters(packet)).to_string,""]
+  );prints()
+
+set show_long([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
+prints("*: dual(cell) contains an Aq(lambda)");
+prints("*: dual(p) is an Aq(lambda)");
+tabulate(
+ ["orbit#","block#","cell#","parameters", "inf. char."]#
+ ##for i:#blocks_and_cells_and_packets do
+ let (bc,packet)=blocks_and_cells_and_packets[i] then
+ blocks=blocks(packet) then
+ packet_cells=cells(packet) in
+{ m=mult_block(packet) in}
+  ##for b in blocks do
+   ##for c in packet_cells do
+    for p in packet.parameters_map(b,c) do
+     let (params,cells)=bc[b] then
+     cell=cells[c] then
+     cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
+    [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
+   od
+  od
+ od
+od
+     #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
+  );prints()
+
+set export([Param] parameters)=void:
+prints("set parameters=[");
+for p@i in parameters do
+ let comma=if i<#parameters-1 then "," else "" fi then
+ (,n)=%p.x, lambda=p.lambda, nu=p.nu in
+ prints("parameter(G,",n,",",lambda,",",nu,")",comma) od;
+prints("]")
+
+
+
+{--------------------inducing unipotents-----------------}
+
+{run over all maximal real parabolics P, all
+unipotent representations of P.Levi, and induced up to G}
+set induced_unipotents(RealForm G)=[Param]:
+remove_duplicates(
+##for P in maximal_real_parabolics(G) do
+ ##for p in unipotent_representations(P.Levi) do
+  monomials(real_induce_irreducible(p,G))
+ od
+od)
+
+{show long, including flag to mark induced unipotents}
+set show_long(( ( [([Param],[WCell])],    {wp} [(int,int,Param)] ),{[(int,int,Param)]} [Param])  {induced_unipotents} data)=void:
+let (blocks_and_cells_and_packet,induced_unipotents)=data then
+(bc,packet)=blocks_and_cells_and_packet then
+blocks=blocks(packet) then
+cells=cells(packet) then
+m=mult_block(packet) in
+prints("*: dual(cell) contains an Aq(lambda)");
+prints("*: dual(p) is an Aq(lambda)");
+tabulate(
+ ["block#","cell#","parameters", "inf. char."]#
+  ##for b in blocks do
+   ##for c in cells do
+    for p in packet.parameters_map(b,c) do
+     let induced_flag=if find(induced_unipotents,p)>=0 then "(I)" else "" fi then
+     (params,cells)=bc[b] then
+     cell=cells[c] then
+     cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi in
+    [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag+induced_flag, p.infinitesimal_character.to_string]
+   od
+  od
+ od
+     #["Total","",(#parameters(packet)).to_string,""]#["Induced","",(#induced_unipotents).to_string,""]
+  );prints()
+
+set show_long(( [( [([Param],[WCell])],    {wp} [(int,int,Param)] )],{[(int,int,Param)]} [Param])  {induced_unipotents} data)=void:
+let (blocks_and_cells_and_packets,induced_unipotents)=data in
+tabulate(
+ ["orbit#","block#","cell#","parameters", "inf. char."]#
+ ##for i:#blocks_and_cells_and_packets do
+ let (bc,packet)=blocks_and_cells_and_packets[i] then
+ blocks=blocks(packet) then
+ packet_cells=cells(packet) in
+{ m=mult_block(packet) in}
+  ##for b in blocks do
+   ##for c in packet_cells do
+    for p in packet.parameters_map(b,c) do
+     let (params,cells)=bc[b] then
+     cell=cells[c] then
+     cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
+     param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_param(p)).star fi then
+     induced_flag=if find(induced_unipotents,p)>=0 then "(I)" else "" fi in
+    [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string + param_flag+ induced_flag, p.infinitesimal_character.to_string]
+   od
+  od
+ od
+od
+     #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]#["Induced","","",(#induced_unipotents).to_string,""]
+  );prints()
+
+{(induced unipotents, unipotents of G, complement of first in second)}
+set induced_unipotents_long(RealForm G)=([Param],[Param],[Param]):
+let ind=induced_unipotents(G) then
+all=unipotents(G) in
+if not is_subset(ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(ind,all) in
+prints("#unipotents: ", #all,new_line, "#induced unipotents: ", #ind, new_line,
+"#non-induced: ", #comp);
+(ind,all,comp)
+
+
+{   the remainder of this file was copied (and modified) from unipotent_conjecture.at   }
+
+{------------include information about dual_Aq cells  ------}
+
+{this applies to output of weak_packet(...) or each entry
+of output of weak_packets(...)
+returns true if each cell which occurs satisfies is_dual_Aq(cell)}
+set packets_disjoint( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=bool:
+let (bc,packet)=blocks_and_cells_and_packet then
+blocks=blocks(packet) then
+cells=cells(packet) then
+m=mult(packet) in
+all(##for b in blocks do
+ ##for c in cells do
+  let (params,cells)=bc[b] in
+  if m(b,c)!=0 then [is_dual_Aq(params,cells[c])] else [] fi
+ od
+od
+)
+
+{dual nilpotents with A(O)=1}
+set simply_connected_dual_orbits(RootDatum rd)=[ComplexNilpotent]:
+##for O in rd.dual_orbits do
+if #O.component_datum.orders=1 then [O] else [] fi od
+
+{if A(O^vee)=1 and all Arthur packets for O^vee are disjoint
+then there is a guess for the size of the weak packet of O^vee
+based just conjugacy classes of elements of H=Cent(O^vee)
+of order 1 or 2
+see notesOnUnipotentParameters.pdf in Dropbox
+return value:
+(int a,[int] v ,int c)
+a=#conjugacy classes of H), if it isn't 1 we don't care
+v=data for computing the guess
+c=guess for order of Pi(Psi)
+this is only reasonable if A(O^vee)=1 (which is included in the output)
+and the packets for O^vee are disjoint (which is not, since this depends
+on actually computing the weak packet
+}
+set number_unipotents_guess(ComplexNilpotent O_check)=(int,[int],int):
+let H=centralizer(O_check) then
+real_forms=real_forms(compact_form(H)) then
+strong_real_forms=strong_real_forms_same_type(compact_form(H))
+{this is conjugacy classes x with x^2=1} then
+my_real_forms=for i in strong_real_forms do real_forms[i] od
+{list of corresponding real forms, with multiplicity} then
+rv=for X in my_real_forms do  2^components_rank(X)
+{order of component group of Cent_H(x)} od in
+(#O_check.component_datum.orders,rv,sum(rv))
+
+{test the conjectural formula for order of Pi(Psi) is correct
+returns:
+int: #conjugacy classes of H), if it isn't 1 we don't care
+[int]: data for computing the guess
+int: guess for order of Pi(Psi)
+int: number of real forms of unipotent
+bool: Arthur packets are disjoint
+int: 0 (conjecture doesn't apply) or \pm 1 (conjecture true/false)
+mainly used as input to teste_conjecture_report
+}
+set test_conjecture([([([Param],[WCell])],[(int,int,Param)])] wp,RealForm G)=
+[(int,[int],int,int,bool,int)]:
+let orbits=simply_connected_dual_orbits(G) in
+for O_check@i in orbits do
+let weak_packet=wp[i] then
+is_disjoint=packets_disjoint(weak_packet) then
+number_unipotents=let (,x)=weak_packet in #x then
+(A,data, guess)=number_unipotents_guess(O_check) then
+rv=if not is_disjoint then 0 elif number_unipotents=guess then 1 else -1 fi
+in
+(A,data,guess,number_unipotents,is_disjoint,rv) od
+
+set test_conjecture_report([([([Param],[WCell])],[(int,int,Param)])] wp,RealForm G)=void:
+{assuming: wp is for simply_connected_dual_orbits(G)}
+let tc=test_conjecture(wp,G) in
+prints("Testing conjecture about size of weak Arthur packets for ",new_line, " ",G,new_line,
+"i:  number of orbit (with A(O)=1)",new_line,
+"data: combinatorial data derived from the orbit",new_line,
+"guess: conjectural size of weak Arthur packet",new_line,
+"actual: size of weak Arthur packet",new_line,
+"A: A(O), if it isn't 1 the conjecture doesn't apply",new_line,
+"disjoint: Arthur packets are disjoint, if false the conjecture doesn't apply",new_line,
+"conjecture: validity for given orbit");
+prints(new_line,"Orbits for G with A(O)=1:");
+show_nilpotent_orbits_long(simply_connected_dual_orbits(G));
+prints();
+tabulate(["i","data","guess","actual","A","disjoint","conjecture"] #
+ for (a,data,guess,number,id,rv)@i in tc do
+ [i.to_string,data.to_string,guess.to_string,number.to_string,a.to_string,id.to_string,
+ if rv=1 then "true" elif rv=-1 then "false" else "N/A" fi] od);
+ prints("-------------------------------------------------------------")
+
+set test_conjecture_report(RealForm G)=void:
+test_conjecture_report(weak_packets(simply_connected_dual_orbits(G),G),G)
+
+set test_conjecture_report([RealForm] groups)=void:
+for G in groups do
+ let wp=weak_packets(simply_connected_dual_orbits(G),G) in
+ test_conjecture_report(wp,G)
+od
+
+
+{reports}
+
+{compute all weak packets for G, and display tables of the result
+ does not include information about induced unipotents
+
+(diagram,dim,BC Levi,cent,Z(cent_0),C_2,orders of classes of A(O), #real orbits for all forms in inner class,arthur packets)
+
+}
+set weak_packet_report(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:
+let wp=weak_packets(G) in
+prints(new_line,"===============================================================================");
+let orbits=G.dual_orbits then
+(ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
+prints("Orbits for the dual group: ", G.dual_quasisplit_form);
+show_nilpotent_orbits_very_long((ic,data));
+prints(new_line,"Information about orbit centralizers:");
+for (,,,,cent,,,,,)@i in data do
+prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
+prints("isogeny information: ");
+show_centralizer_isogeny(orbits[i]);
+prints("-------------") od;
+prints();
+prints();
+show(for (,,,,,,,,,ap)@i in data do ap od);
+show_short(wp);
+show(wp);
+show_long(wp);
+if G.is_relatively_split then
+ let wp_sc = ##for weakpacket@i in wp do
+ let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
+ test_conjecture_report(wp_sc,G)
+fi;
+prints(export(parameters(wp)));
+wp
+
+set weak_packet_report_ind(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:
+let wp=weak_packets(G) then
+ind=induced_unipotents(G) then
+ap=arthur_parameters_by_orbit(G) in
+prints(new_line,"===============================================================================");
+let orbits=G.dual_orbits then
+(ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
+prints("Orbits for the dual group: ", G.dual_quasisplit_form);
+show_nilpotent_orbits_very_long((ic,data));
+prints(new_line,"Information about orbit centralizers:");
+for (,,,,cent,,,,,)@i in data do
+prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
+prints("isogeny information: ");
+show_centralizer_isogeny(orbits[i]);
+prints("-------------") od;
+prints();show(ap);
+prints();
+show_short(wp);
+show(wp);
+show_long(wp,ind);
+if G.is_relatively_split then
+ let wp_sc = ##for weakpacket@i in wp do
+ let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
+ test_conjecture_report(wp_sc,G)
+fi;
+prints(export(parameters(wp)));
+wp
+
+{----------------more output routines: running over real forms---------------------------------}
+
+set weak_packets([RealForm] list)=[([([Param],[WCell])],[(int,int,Param)])]:
+##for G in list do
+ ##for H in real_forms(G) do weak_packets(H)
+od
+od
+
+set weak_packets_all_forms(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:weak_packets([G])
+
+set show_weak_packets_all_forms(RealForm G)=void:
+let rf=real_forms(G) then
+m=weak_packets_all_forms(G) in
+for wp@i in m do prints(rf[i]); show(wp)
+od
+
+set show_weak_packets_all_forms_long([RealForm] groups)=void:
+let rf=[RealForm]:[] then
+()= for G in groups do rf##:=real_forms(G) od then
+m=weak_packets(groups) in
+prints(new_line,"Summary of weak packets:");for wp@i in m do
+prints("------------------------------------------",new_line,rf[i]); show(wp) od
+
+
+{-----------------moved from theta_induced_unipotents.at------}
+
+
+{allow a central shift}
+set unipotent_representations(RealForm G,ratvec shift)=[Param]:parameters(weak_packets(G.dual_orbits,G,shift))
+set unipotents(RealForm G,ratvec shift)=[Param]:unipotent_representations(G,shift)
+
+set theta_induced_unipotents(RealForm G)=[Param]:
+remove_duplicates(
+##for P in maximal_theta_parabolics(G) do
+ ##for p in unipotent_representations(P.Levi,-rho_u(P)) do
+  let ()=prints("inducing: ", p.real_form,  " ", p) in
+  monomials(theta_induce_irreducible(p,G))
+ od
+od)
+
+
+set theta_induced_unipotents_long(RealForm G)=([Param],[Param],[Param]):
+let ind=theta_induced_unipotents(G) then
+all=unipotents(G) in
+if not is_subset(ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(ind,all) in
+prints("#unipotents: ", #all,new_line, "#induced unipotents: ", #ind, new_line,
+"#non-induced: ", #comp);
+(ind,all,comp)
+
+set all_induced_unipotents_long(RealForm G)=
+let real_ind=induced_unipotents(G) then
+theta_ind=theta_induced_unipotents(G) then
+all_ind=remove_duplicates(real_ind##theta_ind) then
+all=unipotents(G) in
+if not is_subset(all_ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(all_ind,all) in
+prints("#unipotents: ",
+#all,new_line,
+"#real induced unipotents: ", #real_ind,new_line,
+"#theta induced unipotents: ", #theta_ind,new_line,
+"#all induced unipotents: ", #all_ind,new_line,
+"#non-induced: ", #comp);
+(real_ind,theta_ind,all_ind,all,comp)
+
+set show([Param] real_ind,[Param] theta_ind,[Param] all_ind,[Param] unipotents,[Param] non_ind)=void:
+prints(new_line,"real induced: ", #real_ind);
+for p in real_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"theta induced: ", #theta_ind);
+for p in theta_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"all induced: ", #all_ind);
+for p in all_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"unipotents : ", #unipotents);
+for p in unipotents do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"non induced: ", #non_ind);
+for p in non_ind do prints(p, " ", p.infinitesimal_character) od
+
+{all simple simply connected or adjoint groups up to rank n
+compute weak_packet_report, which includes computing
+weak_packets for all Levi factors of real maximal parabolics,
+so this is long list of many non-semisimple groups}
+set test_weak_packets(int n)=
+let groups=
+  ##(for i:n do all_simple_simply_connected_rank(i) od
+  ##for i:n do all_simple_adjoint_rank(i) od) in
+ for G in groups  do prints(G) od;prints();
+ for G in groups do weak_packet_report_ind(G) od
+
+{
+set x(ComplexNilpotent O_check)=
+let rd=O_check.root_datum.dual in
+KGB_elt(integrality_datum(rd,O_check.H/2).dual,id_mat(rd.rank),O_check.H/2)
+
+set central_invariant(ComplexNilpotent O_check)=(RootDatum,int):
+let rd=make_x(O_check).real_form in (rd,central_invariant(rd))
+}
+
+set show_tempered([([([Param],[WCell])],[(int,int,Param)])] wp)=void:
+prints(new_line,"tempered unipotent representations:");
+for i:#wp do let (a,b)=wp[i] in for (,,p) in b do if =p.nu then prints(i, " ", p) fi od od
+
+set show_unipotent_tempered(RealForm G)=void:
+show_tempered(weak_packets(G))
+
+set unipotent_representations(RealForm G)=[Param]:
+parameters(weak_packets(G))
+
+set unipotent_representations_by_orbit(RealForm G)=[[Param]]:
+let wp=weak_packets(G) in for (,b) in wp do parameters(b) od

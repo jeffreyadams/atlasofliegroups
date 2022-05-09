@@ -1,94 +1,87 @@
-{ the functions in this file have not been carefully checked }
-
 <basic.at
-<kl.at { for |composition_series| }
+{<is_normal.at}
+set translate_debug=false
 
-{
-  translate Param p, representing a standard module, at infinitesimal character
-  gamma, to a new infinitesimal character gamma_new
-  assumes gamma,gamma_new are dominant, shift=gamma_new-gamma is integral
-  replaces (x,lambda,nu) with (x,lambda+shift,nu+shift)
-  if gamma,gamma_new are regular, p and T(p,gamma_new) will have
-    identical block structure
-  if gamma is regular and gamma_new is singular, block of T(p,gamma_new)
-    will be a quotient of block at gamma
-  if gamma or gamma_new is not dominant, no guarantees (but no test either)
+{various versions of the Zuckerman translation principle
+ mainly staying within a Weyl chamber (for the integral roots)
 }
-set translate_by (Param p, vec shift) = Param:
+
+{formal translation of parameters
+translation_param_by(p,shift):
+translate Param p, at infinitesimal character gamma,
+to new infinitesimal character gamma+shift
+takes parameter(x,lambda,nu) to parameter(x,lambda+shift,nu+shift)
+which has infinitesimal character
+gamma+(1+theta)shift/2 + (1-theta)shift/2=gamma+shift
+the result may fail to be final, standard, non-zero, etc.
+}
+
+{translation of parameters}
+set translate_param_by (Param p, vec shift) = Param:
   let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
 
-{ translate to infinitesimal character |gamma_new|, must lie in $\gamma+X^*$ }
-set T (Param p, ratvec gamma_new) = ParamPol:
-  let (shift,d) = %(gamma_new-infinitesimal_character(p)) in
-  assert(d=1,"cannot translate to "+to_string(gamma_new));
-  ParamPol: { finalize } translate_by(p,shift)
-
 { translate a |ParamPol| by translating each term }
-set translate_by (ParamPol P, vec shift) = ParamPol:
-  P.null_module + for w@q in P do (w,translate_by(q,shift)) od
+set translate_param_by (ParamPol P, vec shift) = ParamPol:
+  P.null_module + for w@q in P do (w,translate_param_by(q,shift)) od
+{Problem: can't put non-standard Param in a ParamPol}
 
-{ the same, specifying destination infinitesimal character for first term; this
-  should only be used when all terms of |P| have same infinitesimal character
-}
-set T (ParamPol P, ratvec gamma_new) = ParamPol:
+{ translate to infinitesimal character |gamma_target|, must lie in $\gamma+X^*
+ the result is a Param, possibly non-final, non-standard, or zero}
+set T_param (Param p, ratvec gamma_target) = Param:
+  let (shift,d) = %(gamma_target-infinitesimal_character(p)) in
+  assert(d=1,"cannot translate to "+to_string(gamma_target));
+  {ParamPol:  finalize } translate_param_by(p,shift)
+
+{ T_param of ParamPol of parameters, assuming each term has the
+ same infinitesimal character}
+set T_param (ParamPol P, ratvec gamma_target) = ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
-    let gamma = infinitesimal_character(first_param(P))
-    in { finalize } translate_by(P,ratvec_as_vec(gamma_new-gamma))
+    let gamma = infinitesimal_character(P) {error if not well defined}
+    in ParamPol: translate_param_by(P,ratvec_as_vec(gamma_target-gamma))
   fi
 
-{ weight such that shift by its negative sends |gamma| to integral wall |k|,
-  projecting parallel to all other walls
+
+
+{translation of standard modules}
+
+{recall p.final => p.normal => p.is_dominant
+(infinitesimal character is (weakly) dominant for all positive roots}
+
+{translation of irreducible or standard modules is only reasonable
+ if the target is at least as singular as the origin, in other
+ words the target is not_less_singular}
+
+set is_not_less_singular(RootDatum rd,ratvec gamma,ratvec gamma_target)=bool:
+all (for alpha_check in rd.simple_coroots do
+ alpha_check*gamma!=0 or =alpha_check*gamma_target  od)
+
+{T_std(p,gamma_target) is only defined if p.is_dominant
+ (recall final => normal => is_dominant, but p.is_standard does not imply p.is_dominant)
+ and target is integrally dominant
 }
-set to_wall (RootDatum id, int k, ratvec gamma) = ratvec:
-  fundamental_weight(id,k)*(coroot(id,k)*gamma)
 
-{ translate parameter p to simple root wall #k of the integral root system }
-set Psi (Param p,int k) = ParamPol:
-  let gamma=infinitesimal_character(p)
-  then id = integrality_datum(root_datum(p),gamma)
-  then (shift,d) = % -to_wall (id,k,gamma)
-  in assert(d=1,"cannot project to wall "+k); { finalize } translate_by(p,shift)
+set T_std(Param p,ratvec gamma_target)=ParamPol:
+assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(is_dominant(p),"p is not dominant");
+assert(is_integrally_dominant(p.root_datum,gamma_target),"T_std: target is not integrally dominant");
+T_param(p,gamma_target)
 
-{ translate p to intersection of set of simple root walls of integral system }
-set Psi (Param p, [int] S) = ParamPol:
-( let gamma=infinitesimal_character(p)
-  then id=integrality_datum(root_datum(p),gamma)
-  then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
-  in assert(d=1,"cannot project to wall intersection "+to_string(S))
-; { finalize } translate_by(p,shift)
-)
+{ translate a |ParamPol| by translating each term }
+set T_std (ParamPol P, ratvec gamma_target) = ParamPol:
+  P.null_module + for w@q in P do w*T_std(q,gamma_target) od
 
-{ translate |P| from assumed initial infinitesimal character |gamma| to the
-  root wall #k of the integral root system }
-set Psi (ParamPol P,ratvec gamma,int k) = ParamPol:
-( let id = integrality_datum(root_datum(P),gamma)
-  then (shift,d) = % -to_wall (id,k,gamma)
-  in assert(d=1,"cannot project to wall "+k)
-; P.null_module + for w@q in P do (w,translate_by(q,shift)) od
-)
+{ T_param of ParamPol of parameters, assuming each term has the
+ same infinitesimal character}
+set T_std (ParamPol P, ratvec gamma_target) = ParamPol:
+  if =P then P { without any terms, there is nothing to change }
+  else
+    let gamma = infinitesimal_character(P) {only needed to return error if not well defined}
+    in ParamPol: T_param(P,gamma_target)
+  fi
 
-{ translate |P| from assumed initial infinitesimal character |gamma| to the
-  intersection of set of simple root walls for |S| of the integral system,
-  parallel to other walls (calling this is not very meaningful if the assumption
-  about the infinitesimal character fails).
-}
-set Psi (ParamPol P, ratvec gamma, [int] S)= ParamPol:
-( let  id=integrality_datum(root_datum(P),gamma)
-  then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
-  in assert(d=1,"cannot project to wall intersection "+to_string(S))
-; translate_by(P,shift)
-)
-
-{ assuming that all terms of |P| have same infinitesimal character, deduce
-  |gamma| in |Psi@(ParamPol,ratvec,int)| from the first term of |P|, if any }
-set Psi (ParamPol P, int k)= ParamPol:
-  if =P then P else Psi(P,infinitesimal_character(P.first_param),k) fi
-
-{ assuming that all terms of |P| have same infinitesimal character, deduce
-  |gamma| in |Psi@(ParamPol,ratvec,[int])| from the first term of |P|, if any }
-set Psi (ParamPol P, [int] S)= ParamPol:
-  if =P then P else Psi(P,infinitesimal_character(P.first_param),S) fi
+{irreducible module is non-zero when translated to a wall,
+needed for T_irr}
 
 { corrected version handles non-integral infinitesimal character
   whether translation of irreducible parameter p to gamma is non-zero
@@ -99,43 +92,117 @@ set I_will_survive (Param p,ratvec gamma) = bool:
    do is_descent(i,p) and =alpha_v*gamma
    od.none { no singular simple descents of integral subsystem }
 
-{ translation functor of irreducible; returns |ParamPol| with at most one term }
-set T_irr (Param p,ratvec v) = ParamPol:
-if p.infinitesimal_character=v then p { trivial case }
-elif is_dominant(p.root_datum,v)
-then
-{ p.infinitesimal character is assumed to be dominant, if v is also dominant
-  then we're staying in the chamber, and T_irr(p) is simply shifting the
-  parameter, just like for a standard module. However that the result is 0 iff:
-  <alpha^vee,lambda>=0 where alpha is a simple root in the tau-invariant of p}
-  #I_will_survive(p,v)*T(p,v) { multiply by 1 or 0 }
-else { hard case (maybe crossing a wall): to standards, shift, back to irreds }
-  T(character_formula(p),v).composition_series
+{translation of irreducible modules}
+{T_irr(p,gamma_target) is only defined if p.infinitesimal_character is
+ dominant (for example if p is final) and gamma_target is integrally dominant
+dominant condition avoid things like: parameter(KGB(G,2),[1],[-1/2])
+for SL(2,R). This is integrally dominant but not dominant, and
+putting it in a ParamPol automatically converts it to (KGB(G,2)),[1],[1/2])
+}
+
+{ translation functor of irreducible; returns |ParamPol| with at most one term
+  gamma_target must at least as singular and integrally dominant}
+set T_irr (Param p,ratvec gamma_target) = ParamPol:  {with at most 1 term}
+assert(is_not_less_singular(p.root_datum,p.infinitesimal_character,gamma_target),"translating to less singular infinitesimal character");
+assert(is_dominant(p),"p is not dominant");
+assert(is_integrally_dominant(p.root_datum,gamma_target),"T_irr: target is not integrally dominant:" + gamma_target.to_string);
+if p.infinitesimal_character=gamma_target then p { trivial case }
+else  #I_will_survive(p,gamma_target)*T_param(p,gamma_target) { multiply by 1 or 0 }
 fi
+{check: translate param(KGB(G,2),[1],[1/2])  -> -1/2: non-dominant gets made dominant}
+{Question: if p is not standard then trouble - allow this?}
 
-{ return an actual Param if nonzero }
-set T_irr_nonzero (Param p,ratvec v) = Param:
-  let P=T_irr(p,v) in
-  assert(!=P,"module is 0");
-  assert(#P=1,"module is not irreducible");
-  first_param(P)
+{return an actual Param if nonzero}
+set T_irr_nonzero(Param p,ratvec gamma_target)=Param:
+let P=T_irr(p,gamma_target) in
+assert(#P!=0,"module is 0");
+assert(#P=1,"module is not irreducible");
+first_param(P)
 
-{translate an irreducible from singular to regular}
-{move an irreducible parameter to regular infinitesimal character}
-set make_regular_irr (Param p) = Param:
-   T_irr_nonzero(p,p.infinitesimal_character +two_rho(p.root_datum))
-
-{ translate a |ParamPol| by translating each term by the same shift }
-set T_irr (ParamPol P, ratvec gamma_new)= ParamPol:
+{ translate a ParamPol of irreducibles by translating each term by the same shift }
+set T_irr (ParamPol P, ratvec gamma_target)= ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
-    let gamma = infinitesimal_character(first_param(P))
-    then shift = ratvec_as_vec(gamma_new-gamma)
-    in sum(P.real_form,for w@q in P do w*T_irr(q,shift) od)
+    let gamma = infinitesimal_character(P)  {error if not well defined}
+    in sum(P.real_form,for w@q in P do w*T_irr(q,gamma_target) od)
   fi
 
-set Psi_irr (ParamPol P,int k) = ParamPol:
-  composition_series(Psi(character_formula(P),k))
+{ weight such that shift by its negative sends |gamma| to integral wall |k|,
+  projecting parallel to all other walls
+}
+set to_wall (RootDatum id, int k, ratvec gamma) = ratvec:
+  fundamental_weight(id,k)*(coroot(id,k)*gamma)
+
+{ translate J(p) p to simple root wall #k of the integral root system,
+ get irreducible or 0}
+set Psi_irr (Param p,int k) = ParamPol:
+  let gamma=infinitesimal_character(p) then
+  id = integrality_datum(root_datum(p),gamma) then
+  (shift,d) = % -to_wall (id,k,gamma) in
+  assert(d=1,"cannot project to wall "+k);
+  {#I_will_survive=0 or 1}
+  #I_will_survive(p,gamma-shift)*translate_param_by(p,shift)
+
+{ translate J(p) to intersection of set of simple root walls of integral system
+get irreducible or 0}
+set Psi_irr (Param p, [int] S) = ParamPol:
+( let gamma=infinitesimal_character(p)
+  then id=integrality_datum(root_datum(p),gamma)
+  then (shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od )
+  in assert(d=1,"cannot project to wall intersection "+to_string(S));
+  #I_will_survive(p,gamma-shift)*translate_param_by(p,shift)
+)
+
+{ translate ParamPol of irreducibles, from assumed initial infinitesimal character |gamma| to the
+  root wall #k of the integral root system }
+set Psi_irr (ParamPol P,ratvec gamma,int k) = ParamPol:
+( let id = integrality_datum(root_datum(P),gamma)
+  then (shift,d) = % -to_wall (id,k,gamma)
+  in assert(d=1,"cannot project to wall "+k)
+; P.null_module + for w@q in P do w*#I_will_survive(q,gamma-shift)*translate_param_by(q,shift) od
+)
+
+{ translate ParamPol of irreducibles
+  to intersection of set of simple root walls of integral system
+  requirement: each term of P has same infinitesimal character, or get an error
+  from infinitesimal_character(P)
+}
+set Psi_irr (ParamPol P,  [int] S)= ParamPol:
+let gamma=P.infinitesimal_character then
+id=integrality_datum(root_datum(P),gamma) then
+(shift,d) = % - sum( rank(id), for k in S do to_wall(id,k,gamma) od ) in
+assert(d=1,"cannot project to wall intersection "+to_string(S));
+translate_param_by(P,shift)
+
+{set Psi(ParamPol P,[int] v)= ParamPol:
+  let gamma=P.infinitesimal_character then
+  id = integrality_datum(root_datum(P),gamma) then
+  shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od ) then
+  rv= null_module(real_form(P))  in
+   for w@q in P do rv+:=w*translate_by(q,shift) od;rv
+}
+
+
+
+{translate an irreducible parameter from singular to regular}
+{this is well defined, however it can happen that I(p)=I(p')
+ but p\ne p' (although they are equivalent), and
+ make_regular_irr(p)\ne make_regular_irr(p')
+}
+set make_regular_param(Param p)=Param:T_param(p,p.infinitesimal_character +two_rho(p.root_datum))
+
+{ translate a ParamPol by translating each term }
+{set T_irr(ParamPol P, ratvec gamma_target)= ParamPol:
+  if =P then P { without any terms, there is nothing to change }
+  else
+    let rv=0*P in
+{    let gamma = infinitesimal_character(first_param(P))
+    then shift = ratvec_as_vec(gamma_target-gamma) 
+    for w@q in P do rv+:=w*T_irr(q,shift) od;rv}
+     for w@q in P do rv+:=w*T_irr(q,gamma_target) od;rv
+fi
+}
+
 
 { the "pseudo-tau" invariant }
 { this is a subset of simple integral roots such that:
@@ -151,14 +218,16 @@ set Psi_irr (ParamPol P,int k) = ParamPol:
   Psi(p,k)=0 or its x(Psi(p,k)) gets changed by finalize
   (here Psi(p,k) is the translation of the standard module for p)
 }
-
+{
 set pseudo_tau_bitset (Param p)= (int,(int->bool)):
   let gamma = infinitesimal_character(p)
   then id=integrality_datum(real_form(p),gamma)
   in
   ( semisimple_rank(id)
-  , (int k): let (shift,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
-    in d=1 and =translate_by(p,shift)
+  , (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
+    in d=1 and
+      (let p0=first_param(translate_by_(p,-n))
+       in is_zero(p0) or x(p0)!=x(first_param(ParamPol:p0)))
   )
 
 { set of integers, defining a subset of the simple integral roots }
@@ -170,4 +239,25 @@ set pseudo_tau_complement (Param p)= [int]: complement(pseudo_tau_bitset(p))
 { push Param p to the most singular place where the irreducible is non-zero,
   i.e. to all of the root walls not in the pseudo_tau_invariant
 }
-set make_maximally_singular (Param p) = ParamPol: Psi(p,pseudo_tau_complement(p))
+set make_maximally_singular (Param p)= ParamPol: Psi(p,pseudo_tau_complement(p))
+}
+{
+  translate each term in a list of parameters to all the simple root walls
+  not in its tau_invariant, and test if it is unitary.
+  The even special unipotents of G should (all?) show up this way, varying
+  over all blocks at rho
+}
+{set test_even_unipotent (Param p)= void:
+( let q=make_maximally_singular(p)
+  then Q=hermitian_form_irreducible(q)
+  in
+  prints(""); prints("original parameter: ",p)
+; prints("translated parameter: ",q,", ", infinitesimal_character(q))
+; prints("translated irreducible is unitary: ",is_unitary(Q))
+; if translate_debug then prints(Q.pol_format) fi
+)
+
+{ test_even_unipotent of a list of parameters }
+set test_even_unipotent ([Param] params)= void:
+  for p in params do  test_even_unipotent(p) od
+}

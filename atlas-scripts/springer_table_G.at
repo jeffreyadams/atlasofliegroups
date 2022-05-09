@@ -1,0 +1,74 @@
+<basic.at
+<character_table_G.at
+<springer_tables.at { for type |SpringerTable| }
+
+{ for |rd="G2".simply_connected|, the command |orbits(rd)| returns 5 orbits,
+  whose diagrams are, in order, [0,0],[0,1],[1,0],[0,2],[2,2]. The springer map
+  send these respectively to the (full) sign, short-root-reflection sign,
+  triangluar reflection, reflection, and trivial representations of W(G2) (in
+  the numbering of irreducibles fixed in |character_table_G|, numbers 3,1,4,5,0
+  respectively). The dual map sends the same orbits to just 3 dual orbits, whose
+  stratified diagrams (so the dual Dynkin diagram order is reversed) are
+  respectively [2,2],[0,2],[0,2],[0,2],[0,0].
+
+  Below we take an ad hoc approach too the dual map, testing explicitly for the
+  two extreme cases. Since we are supposed to ignore any radical component of
+  |O.H|, we avoid testing |O.H| directly for being zero or |rd.two_rho_check|,
+  computing the diagram instead which will do the required ignoring.
+}
+
+set springer_table_G (int n) = SpringerTable:
+   let ct=character_table_G(n) then rd=ct.root_datum {simply_connected("G2")}
+   then drd = dual(rd)
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = O.diagram in
+     if =diagram then complex_nilpotent(drd,drd.two_rho_check)
+     elif diagram=[2,2] then complex_nilpotent(drd,null(rd.rank))
+     else complex_nilpotent(drd,[2,0]) { 2* fundamental weight for long coroot }
+     fi
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = O.diagram in
+     if =diagram then complex_nilpotent(rd,rd.two_rho_check)
+     elif diagram=[2,2] then complex_nilpotent(rd,null(rd.rank))
+     else complex_nilpotent(rd,[2,4]) { 2* fundamental coweight for long root }
+     fi
+   , (ComplexNilpotent O) int:
+     case O.diagram*[3,1] in {0,0}3, {0,1}1, {0,2}5, {1,0}4 else {2,2}0 esac
+   )
+
+{ The main challenge for this file is to do the same when |rd| is any root datum
+  with Cartan matrix of type $G_2$. The fact that we do not know the coordiantes
+  used by |rd| makes us express the explicit weight/coweight above as linear
+  combinations of simple ones for |rd|
+}
+
+set springer_table_G (RootDatum rd) = SpringerTable:
+   let ct=character_table_G(rd), drd = dual(rd), swap = bool: is_long_root(rd,0)
+   then (wt,cowt,form) = (vec,vec,vec): { "magic" constants used below }
+      if swap
+      then { reverse coefficents with respect to |else| branch }
+         ( simple_roots(rd)*[2,4], simple_coroots(rd)*[4,2], [1,3] )
+      else
+         ( simple_roots(rd)*[4,2]   { 2* fund. weight for long coroot of |rd| }
+	 , simple_coroots(rd)*[2,4] { 2* fund. coweight for long root of |rd| }
+	 , [3,1]
+	 )
+      fi
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = O.diagram in
+     if =diagram then complex_nilpotent(drd,drd.two_rho_check)
+     elif diagram=[2,2] then complex_nilpotent(drd,null(rd.rank))
+     else complex_nilpotent(drd,wt)
+     fi
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = O.diagram in
+     if =diagram then complex_nilpotent(rd,rd.two_rho_check)
+     elif diagram=[2,2] then complex_nilpotent(rd,null(rd.rank))
+     else complex_nilpotent(drd,cowt)
+     fi
+   , (ComplexNilpotent O) int: case O.diagram * form in 3, 1, 5, 4 else 0 esac
+   )

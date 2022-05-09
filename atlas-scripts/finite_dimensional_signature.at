@@ -2,6 +2,7 @@
 <representations.at { for |finite_dimensional@(RealForm,vec)| }
 <K_types.at  { for |K_signature_irr| }
 <weyl_character_formula.at { for |trace_strong_real@(Param,ratvec)| }
+<K_highest_weights.at
 
 {some functions related to Frobenius-Schur indicator,
 real/quaternionic indicator, and sign of Hermitian form
@@ -50,7 +51,8 @@ set signature ({finite dimensional}Param p) = (int,int):
 
 {.signature as a string.}
 set signature_string ({finite dimensional}Param p) = string:
-  if is_hermitian(p) else "*" then signature(p).to_string fi
+  if is_hermitian(p)  then 
+  let (p,q)=signature(p) in "("+p.to_string+","+q.to_string+")" else "*" fi
 
 {. index min(p,q) of Hermitian form on a finite dimensional representation.}
 set index ({finite dimensional}Param p) = int: min(signature(p))
@@ -111,7 +113,8 @@ set signature_trace ({equal rank finite dimensional}Param p) = (int,int):
 
 {.signature as a string.}
 set signature_trace_string ({equal rank finite dimensional}Param p) = string:
-  if is_hermitian(p) else "*" then signature_trace(p).to_string fi
+  if is_hermitian(p) else "*" then
+  let (p,q)=signature_trace(p) in "("+p.to_string+","+q.to_string+")" fi
 
 set index_trace ({equal rank finite dimensional}Param p) = int:
    min(signature_trace(p))
@@ -142,8 +145,7 @@ set fd_report_trace (RealForm G, int k) = void:
     ,"signature:  signature (p,q) of Hermitian form (if Hermitian)",new_line
     ,"index: index min(p,q) of Hermitian form (if Hermitian)",new_line
     ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
-    ,"(if Hermitian)",new_line
-    ,"computing directly from the Hermitian form")
+    ,"(if Hermitian)")
   fi; let rd=G.root_datum in
   for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
   do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in

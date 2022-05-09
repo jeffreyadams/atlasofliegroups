@@ -1,5 +1,7 @@
 <basic.at
 <sort.at { for |sort@[int]| }
+<group_operations.at {for is_abelian@RootDatum}
+<simple_factors.at { for |simple_factors@RootDatum| }
 { Functions for computing with Weyl group elements }
 
 set sgn(WeylElt w)=int:(-1)^length(w)
@@ -135,6 +137,14 @@ set to_no_Cplus (KGBElt x) = KGBElt:  let (,y)=from_no_Cplus(x) in y
 set to_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
 set to_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q
 
+{action of invertible matrix on RootDatum}
+set *(mat M,RootDatum rd)=RootDatum:
+root_datum(M*simple_roots(rd)
+	  ,^inverse(M)*simple_coroots(rd)
+	  ,rd.prefers_coroots)
+
+set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
+
 {  order of the Weyl group }
 set labels_simple ((string,int)simple_type) = [int]:
    highest_root(Lie_type(simple_type).adjoint)
@@ -176,6 +186,22 @@ in for (,rank):code in codes { traverse the simple factors }
    next offset +:= rank
    od
 
+{w in rd.W, factor_strong(w)=[w_1,...,w_n]:
+ w_i is in very_simple_factor(rd)[i]
+ these are distinct root data and not directly related
+}
+set factor_strong(WeylElt w)=[WeylElt]:
+if w.root_datum.is_abelian then [w] else
+let sf=simple_factors(w.root_datum) {derived group of each factor is simple} then
+factors_w=w.factor  {[w_1,...,w_n]: w_i \in W(rd) } in
+for i:#sf do
+ let sub=sf[i]  {same rank as rd, derived group is simple} then
+ sub_d=sub.derived {simple}  then
+ x=W_elt(sub,factors_w[i].matrix)  {matrix of size rank(rd)} in
+ W_elt(sub_d,x.word)   {corresponding WeylElt of actual simple factor}
+od
+fi
+
 set char_poly (WeylElt w) = vec: char_poly(matrix(w))
 
 {    Coxeter element    }
@@ -184,9 +210,35 @@ set char_poly (WeylElt w) = vec: char_poly(matrix(w))
 set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,all_simples(rd))
 
 {. Coxeter number .}
-set coxeter_number (RootDatum rd) = int:
+set coxeter_number_simple (RootDatum rd) = int:
+assert(rd.derived.is_simple,"derived RootDatum is not simple");
   rat_as_int(highest_root(rd)*rho_check(rd)+1)
+
+set coxeter_number(RootDatum rd)=int: sum(for f in rd.simple_factors do f.coxeter_number_simple od)
 
 {. torus element representing the Coxeter Weyl group element .}
 set coxeter_torus_element (RootDatum rd) = ratvec:
   rho_check(rd)/coxeter_number(rd)
+
+{lift Weyl group element to simply connected group}
+set lift_sc(WeylElt w)=W_elt(w.root_datum.simply_connected,w.word)
+
+{Weyl group element of a KGB element}
+
+set w(KGBElt x)=W_elt(x.real_form,x.involution*x.real_form.distinguished_involution)
+set w(Param p)=p.x.w
+
+{need invariant_form to (easily) determine if a root is short/long}
+
+set is_long(RootDatum rd,vec alpha) = bool:
+   assert(is_root(rd,alpha),"not a root");
+   let L=simple_factor(rd,alpha)
+   then f = (ratvec,ratvec->rat): invariant_form(L)
+   , beta=highest_root(L)
+   in f(alpha,alpha)=f(beta,beta)
+
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
+
+set root_lengths(RootDatum rd)=void:
+let rv="" in
+for alpha in rd.simple_roots do if is_short(rd,alpha) then rv+:="S" else rv+:="L" fi od;prints(rv)

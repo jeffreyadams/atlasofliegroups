@@ -17,6 +17,7 @@ set_type { more expensive formats, unbounded coefficients; dummy final part }
   needed. This gives the right thing for coefficient vectors of polynomials.
 }
 
+
 set fix_add = +@(vec,vec)
 set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
 set dot_product = *@(vec,vec) { and scalar product }
@@ -108,7 +109,7 @@ set * (int_poly(X,a,), int_poly(,b,)) = int_poly:
 , () { dummy }
 )
 set monic_divide (int_poly(X,P,), int_poly(,D,)) =
-       (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
+   (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
    assert(#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
@@ -391,6 +392,8 @@ set upper_unitriangular_inverse (i_poly_mat P) = i_poly_mat:
       od
   ~od
 
+set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+
 { compute PMP^{-1} where P is a permutation of [1,,,n]
   and M is a polynomial matrix
 }
@@ -452,6 +455,9 @@ set to_string (rat_poly(X,cs,)) = string:
 
 { nice printing of a polynomial }
 set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
+set printPoly (i_poly v,string q) = void: prints(poly_format(v,q))
+{synonym}
+set show(i_poly v)=void:printPoly(v)
 
 { M=poly_mat is a polynomial matrix; e.g.
   expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
@@ -460,16 +466,14 @@ set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
    0 +1
 }
 
-set printPolyMatrix(i_poly_mat M,int space_size)= void:
-   let string_mat = for row in M do for e in row do poly_format(e,"q") od od
-   then space= " "*space_size, wd =
-     if =#string_mat then []
-     else for j:#M[0] do for row in string_mat do #row[j] od.max od
-     fi
-in for s_row in string_mat
-   do for s@j in s_row do space+l_adjust(wd[j],s) od.##.prints
-   od
-
+set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
+  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,char) od)
+  in
+    for row in M
+    do prints(##for v in row do space+l_adjust(wd,poly_format(v,char)) od)
+    od
+set printPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
 set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3)
 
 { this provides maybe more meaningful names for |flex_add| and friends }
@@ -495,3 +499,10 @@ set is_non_negative = (i_poly->bool): >=@vec { same condition as "dominance" }
 
 set top_left_square_block (i_poly_mat M,int size) = i_poly_mat:
   for row in M[:size] do row[:size] od
+
+set vee=i_poly:[0,1]  {polynomial v}
+set v_power(int k)=i_poly:vee^k
+set vshow(i_poly v)=void:printPoly(v,"v")
+
+{write f(q) as a polynomial in v^2=q}
+set at_v_squared(i_poly f)=i_poly: ##for a in f do [a,0] od

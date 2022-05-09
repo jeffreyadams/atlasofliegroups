@@ -1,0 +1,76 @@
+<basic.at
+
+<class_tables.at
+<classical_character_tables.at
+<character_table_F.at
+<character_table_G.at
+<character_table_E6.at
+<character_table_E7.at
+<character_table_E8.at
+
+
+set simple_character_table (LieType lt) = CharacterTable:
+(  let (letter,rank)=lt.simple_type { this also asserts that |lt| is simple }
+in case ascii(letter)-ascii("A")
+   in let (table,,) = character_table_A(SL(rank+1)) in table
+   ,  let (table,,) = character_table_B(rank) in table
+   ,  let (table,,) = character_table_C(rank) in table
+   ,  let (table,,) = character_table_D(rank) in table
+   ,  error("Type E simple character table not implemented here")
+   ,  character_table_F(4)
+   ,  character_table_G(2)
+   else error("Classification of simple types exploded!")
+   esac
+)
+
+set character_table_simple (RootDatum rd,string letter,int n) = CharacterTable:
+   case ascii(letter)-ascii("A")
+   in let (table,,) = character_table_A(rd) in table
+   ,  let (table,,) = character_table_B(rd) in table
+   ,  let (table,,) = character_table_C(rd) in table
+   ,  let (table,,) = character_table_D(rd) in table
+   , case n-6
+     in character_table_E6(rd), character_table_E7(rd), character_table_E8(rd)
+     esac
+   , character_table_F(rd)
+   , character_table_G(rd)
+   esac
+
+set combine (RootDatum rd,[CharacterTable] factors) = CharacterTable:
+(  let Wct = combine(rd,for factor in factors do factor.class_table od)
+   , words = for factor in factors do factor.n_irreps od.all_words
+   then reps = Wct.class_representatives
+   , index = (vec->int):
+      mixed_radix_nr(for factor in factors do factor.n_irreps od)
+   , tensor([vec] chars) = [int]: { all products of entries }
+        for word in words do product(for l@i in word do chars[i][l] od)	od
+in let classes = [WeylElt,string]:
+     for word in words
+     do ( reps[index(word)]
+	, join(for n@i in word do factors[i].class_label(n) od,"*","{}")
+	)
+     od
+   , irreps = [[int],string]:
+     for L in words
+     do ( tensor(for n@i in L do factors[i].character(n) od)
+	, join(for n@i in L do factors[i].irreducible_label(n) od,".","triv")
+	)
+     od
+   , to_special (int j) = int:
+      for letter@i in words[j] do factors[i].special(letter) od.index
+in character_table(Wct,classes,irreps,to_special)
+)
+
+set character_table (RootDatum rd) = CharacterTable:
+   let (Lie_type,map) = Cartan_matrix_type(rd.Cartan_matrix)
+   then simples = simple_factors(Lie_type)
+   then root_data = [RootDatum]: { subdata with a single simple factor + torus }
+      let offset=0 in
+      for (,rank) in simples
+      do sub_datum(rd,for i:rank do map[offset+i] od)  next offset+:=rank
+      od
+   then simple_tables = [CharacterTable]: { tables for each of |root_data| }
+      for rdi@i in root_data
+      do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
+      od
+in combine(rd,simple_tables)

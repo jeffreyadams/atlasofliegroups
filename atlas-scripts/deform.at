@@ -19,7 +19,8 @@ set compress { output from old |partial_KL_block| to a more useful form } (
   let polys_at_minus_1 = for p in polys do eval(p,minus_1) od
   then KL_mat_at_minus_1 = mat: { matrix of polynomial evaluations at -1 }
     for col in KL_mat do for inx in col do polys_at_minus_1[inx] od od
-  then reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
+  then
+  reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
   , survivor_lengths = let l=0 in
     for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
   in
@@ -101,7 +102,7 @@ set recursive_deform (Param p) = KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
       p := promote_in_alcove(p);
-      prints("full_def with: sc=", sc, ", p=", p);
+      prints("full_def with: sc=", sc, ", p=", p, p.infinitesimal_character);
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in

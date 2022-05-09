@@ -1,5 +1,6 @@
 <basic.at { for (at least) radical_basis }
 <lattice.at { for image_subspace@mat }
+<ratmat.at
 
 { center Z and dual Z_hat of complex group or real form }
 {
@@ -31,13 +32,16 @@
 set lie_radical = (RootDatum->mat): { kernel(^simple_roots(rd)) }
   radical_basis@RootDatum { defined in basic.at (and actually a better name) }
 
-{ ss_part(rd,v)=projection of v\in X^*\otimes Q onto Q-span of the roots }
-set ss_part (RootDatum rd, ratvec v) = ratvec:
+{ semisimple_part(rd,v): the projection of v\in X^*\otimes Q onto the
+  Q-span of the roots }
+set semisimple_part (RootDatum rd, ratvec v) = ratvec:
   let fw= [ratvec]: fundamental_weights(rd) in
-  sum(rank(rd), for coord@i in (^simple_coroots(rd))*v do coord*fw[i] od)
+  { this would be |fw|*(v*simple_coroots(rd))| if |fw| were a rational matrix: }
+  sum(rank(rd), for coord@i in v*simple_coroots(rd) do fw[i]*coord od)
 
 { lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto Lie coradical }
-set lie_coradical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)
+set lie_coradical_part (RootDatum rd, ratvec v) = ratvec:
+  v-semisimple_part(rd,v)
 
 { Q-basis of Lie algebra of split part of radical; columns are coweights }
 set split_radical_basis (InnerClass G) =  mat:
@@ -64,7 +68,7 @@ set split_coradical_basis (InnerClass G) =  mat:
 set lie_split_radical_hat (InnerClass G) = mat:
   image_subspace((1-distinguished_involution(G))*lie_radical_hat(G))
 
-{ Q-basis of split part of coradical; columns are weights }
+{ Q-basis of compact part of coradical; columns are weights }
 set compact_coradical_basis (InnerClass G) =  mat:
   kernel( (^simple_coroots(G)) ^ {stack up} (1-distinguished_involution(G)) )
 { equivalent: Q-basis of dual of compact part of radical of (complex) group }
@@ -74,9 +78,9 @@ set lie_compact_radical_hat (InnerClass G) = mat:
 
 {
   dual of center of complex group G
-  return value: (ss_part,radical)
-  ss_part is the center of G/radical(G)
-  ss_part=(mat,vec)
+  return value: (semisimple_part,radical)
+  semisimple_part is the center of G/radical(G)
+  semisimple_part=(mat,vec)
   every entry d@j in the vec part means column j is a generator of order d
   radical=mat
     whose columns form a Q-basis of the dual of the Lie algebra of the radical
@@ -84,10 +88,11 @@ set lie_compact_radical_hat (InnerClass G) = mat:
   where R^\vee is the coroots, and perp is taken in X^*\otimes Q
 }
 set Z_hat (RootDatum rd) = ((mat,vec),mat):
-( { semisimple part determined by invariant factors other than 1 from Smith: }
-  filter_units(Smith(simple_roots(rd)))
-, lie_radical(rd)
-)
+   let (B,v) = filter_units(adapted_basis(simple_roots(rd)))
+in ( { semisimple part determined by invariant factors other than 1: }
+     (B[:#v],v)
+   , lie_radical(rd)
+   )
 
 {
   dual of center of real form G
@@ -105,10 +110,12 @@ set Z_hat (RootDatum rd) = ((mat,vec),mat):
   number of columns = number of R^+ factors in radical
 }
 set Z_hat (InnerClass G) = ((mat,vec),(mat,mat)):
-( { finite part determined by invariant factors other than 1 from Smith: }
-  filter_units(Smith( (1-distinguished_involution(G))##simple_roots(G) ))
-, (lie_compact_radical_hat(G),lie_split_radical_hat(G))
-)
+   let (B,v) = filter_units(adapted_basis
+                ( (1-distinguished_involution(G))##simple_roots(G) ))
+in ( { finite part determined by invariant factors other than 1: }
+     (B[:#v],v)
+   , (lie_compact_radical_hat(G),lie_split_radical_hat(G))
+   )
 
 { output routine for center of complex group }
 
@@ -116,29 +123,30 @@ set finite_center_string (mat ., vec ds) = string:
   ## for d@i in ds do if =i then "" else " x " fi + "Z/"+(d+"Z") od
 
 set print_Z (RootDatum rd) = void:
-  let ((,ds):ss_part,rad)=Z_hat(rd) then n_finite=#ds, n_rad=n_columns(rad) in
-  if =n_finite
+   let ((,ds):semisimple_part,rad)=Z_hat(rd)
+   then n_finite=#ds, n_rad=n_columns(rad)
+in if =n_finite
   then
     if =n_rad then  prints("Center is trivial")
     else prints("Center is a connected complex torus of rank ", n_rad)
     fi
   else { n_finite !=0 }
-    let finite_part= finite_center_string(ss_part) in
+    let finite_part= finite_center_string(semisimple_part) in
     if =n_rad
     then prints("Group is semisimple",new_line,"center=",finite_part)
     else
       prints("Split exact sequence:",new_line,"1->S->Z->Z/S->1");
       prints("S=complex torus of rank ", n_rad);
-      prints("S/Z=Center(G/S)=",finite_part)
+      prints("Z/S=Center(G/S)=",finite_part)
     fi
   fi
 
 { output routine for center of real form }
 set print_Z (InnerClass G) = void:
-( let ((,ds):ss_part,(cptrad,splitrad))=Z_hat(G)
+( let ((,ds):semisimple_part,(cptrad,splitrad))=Z_hat(G)
   then n_finite = #ds
   , cpt_rank=n_columns(cptrad), split_rank=n_columns(splitrad)
-  , finite_part= finite_center_string(ss_part)
+  , finite_part= finite_center_string(semisimple_part)
   in
   if =(cpt_rank+split_rank) { i.e., if both are zero }
   then { group is semisimple }
@@ -157,15 +165,15 @@ set print_Z (InnerClass G) = void:
 )
 
 { elements of order 2 in the center of G(R)
-  this is very clumsy, should be improved
   needed for  all_G_spherical_same_differential in K_highest_weight.at
   algorithm: run over 2^n elements h=(epsilon_1,...,epsilon_n)\in H
   check if delta(h)=h, i.e. (1+delta)*h has all even entries
   and alpha(h)=1 for all roots alpha
+  This can, and should, be improved using some Z/2Z-vector space functions.
 }
 set Z_2 (RealForm G) = [vec]:
   let delta1=1+distinguished_involution(G), sr=simple_roots(G)
-  in ## { filter values from H(2)}
+  in{ filter values from H(2)}
   for h in all_0_1_vecs(rank(G))
   do
     if ((h*delta1)%2).= { test (1+^delta)*h is null vector modulo 2}
@@ -173,4 +181,105 @@ set Z_2 (RealForm G) = [vec]:
     then [h]
     else []
     fi
-  od
+  od.##
+
+{-------center of a semisimple complex group ----------}
+
+{ Return rational coweights [v_1,..., v_n] so that for $t_j=\exp(2\pi iv_j)$,
+  the group elements $t_1,...,t_n$ generate the center of the complex group
+
+  order(t_i)=denominator of the ratvec v_i
+
+  We assume that |rd| is a semisimple root datum. The value returned more
+  generally for reductive groups appears to describe the center of the group
+  modulo its central torus, NOT that of the derived group (for instance for
+  GL(n) it returnes a trivial center). The generators are in G itself.
+
+  Method: one can present the center as $Z(G)=P^v/X_*$, where $P^v$ is the
+  (full rank) lattice of $X_*\tensor\Q$ spanned by the fundamental coweights.
+
+  Choose fundamental coweights as basis for $P^v$, so that (old) generators of
+  $X_*$ are given as columns of an integral square matrix $N$ (inverse of the
+  rational matrix $M$ with the fundamental coweights as columns). In fact, since
+  coordinates of a coweight $v$ with respect to the basis of fundamental
+  coweights are by definition pairings of $v$ with the simple roots, $N$ is just
+  the transpose of |simple_roots(rd)|. Applying |adapted_basis| to $N$ gives
+  $(A,c)$ where $A$ is an invertible integral matrix, so that the sublattice
+  $X_*$ is spanned by the multiples $c[i]A[i]$ of the columns of $A$. Applying
+  |filter_units| discards pairs for which |c[i]=1|, as these are not needed to
+  get a set of generators for the center.
+
+  The value returned are the set of rational weights $M*(A[i])$, where the
+  multiplication by $M$ transfers us back to the original $X_*$ coordinates.
+  The numbers $c[i]$ are forgotten, but in fact will appear as demoninators
+  of the rational vectors returned, due to the way they were obtained.
+}
+set center(RootDatum rd) = [ratvec]:
+  let (B,) = filter_units(adapted_basis(^simple_roots(rd)))
+  , fcws = fundamental_coweights(rd)
+  in for col in B { compute |fcws*col| }
+     do sum(rank(rd), for v@i in fcws do v*col[i] od)
+     od
+
+set type_center(RootDatum rd) =[int]:
+   assert(is_semisimple(rd),"Root Datum is not semisimple");
+   let (,v) = filter_units(adapted_basis(^simple_roots(rd))) in { convert } v
+
+set order_center(RootDatum rd) = int: product(type_center(rd))
+
+set has_cyclic_center(RootDatum rd) = bool:
+   is_semisimple(rd) and #type_center(rd)<=1
+
+{ list of elements in center,  for |rd| semisimple }
+set elements_of_center(RootDatum rd) = [ratvec]:
+   let Z=center(rd) in
+   if =#Z then [null(rank(rd))] { just the identity here }
+   else let denoms= for i:#Z do let (,d)=%Z[i]  in d od
+   in columns(Z.ratvecs_as_ratmat*all_words(denoms))
+   fi
+
+{ rd semisimple, map arbitrary element v of P^vee to
+one of the given elements_of_center(rd):
+this is the element_of_center(rd) which is equal to v mod Z^n
+}
+set map_to_center(RootDatum rd,ratvec v)=ratvec:
+  let Z=rd.elements_of_center, v1=v%1 { compute modulo $\Z^n$ } in
+  Z[first(#Z,(int i)bool: Z[i]%1=v1)]
+
+{ a matrix A lifting an element of T/Z(G)^0 to T, i.e. satisfying:
+  for the quotient group Gmod of G by its central torus (with own coordinates)
+    A*simple_coroots(Gmod)=simple_coroots(G)
+ Gmod is semisimple so simple_coroots(Gmod) is (square and) invertible/Q
+ => A=simple_coroots(G)*inverse(simple_coroots(Gmod))
+ this is applied to L
+}
+set lift(RootDatum rd,ratvec v) = ratvec:
+  let A = mod_central_torus(rd).simple_coroots
+  then coords = requisition(solve(A,v)) { exress |v| in basis |columns(A)| }
+  in simple_coroots(rd)*coords
+
+{list of elements of center of derived group,
+ as elements of the original group}
+set elements_of_center_derived(RootDatum rd) = [ratvec]:
+  let (drs,M)=derived_info(rd) in
+  for v in elements_of_center(drs) do v*M od { right multiply to embed coweight }
+
+{ dually: the fundamental group of a complex group given by a semisimple |rd| }
+
+{ return (|mat| generators,[int] orders):
+  the fundamental group is X_*/R^v, presented as a quotient of Z^n by a lattice
+  the columns of |generators| represent generators of the quotient, where
+  |generators[i]| has non-unit order |orders[i]| and the fundamental groups
+  is the product of the cyclic groups generated by each of the generators
+}
+set fundamental_group (RootDatum rd) = (mat,[int]):
+  assert(is_semisimple(rd),"Root Datum is not semisimple");
+  let (B,c)=filter_units(adapted_basis(simple_coroots(rd))) in (B,c)
+
+{ now generate all funcdamental group elements exhaustively }
+set elements_of_fundamental_group(RootDatum rd)=
+  let (gens,orders) = fundamental_group(rd) in gens*all_words(orders)
+
+set relative_fundamental_group(RootDatum rd) = (mat,[int]):
+  let (B,c)= fundamental_group(rd.mod_central_torus)
+  in (B.n_rows # for v in B do ratvec_as_vec(lift(rd,v)) od,c)

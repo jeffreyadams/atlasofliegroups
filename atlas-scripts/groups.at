@@ -1,9 +1,14 @@
 <basic.at
+<torus.at
+
+set !trivial_group = RootDatum: root_datum(null(0,0),null(0,0),false)
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex (RootDatum rd) = RealForm:
   let r = rank(rd) then id_2r=id_mat(r+r), twice (mat m) = block_matrix(m,m)
-  then rd_C = root_datum(twice(rd.simple_roots),twice(rd.simple_coroots))
+  then rd_C = root_datum(twice(rd.simple_roots)
+			,twice(rd.simple_coroots)
+			,rd.prefers_coroots)
   in quasisplit_form(inner_class(rd_C, id_2r[r:] ## id_2r[:r] ))
 
 { complexification of a real group, another name for the same }
@@ -27,9 +32,9 @@ set SL_coroots (int n) = mat: { equals |GL_roots(n)| without its final row }
 set SL_roots (int n) = mat: { like |SL_coroots(n)|, but add 1 in final column }
   matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
 
-set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
-set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n))
-set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
+set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r,false)
+set SL (int n) = RootDatum: root_datum(SL_roots(n),SL_coroots(n),false)
+set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n),true)
 
 { roots and coroots in nice coordinates for roots in types B,C,D }
 
@@ -50,25 +55,25 @@ set type_D_roots (int n) = mat:
 
 set Sp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(type_C_roots(m),type_B_roots(m))
+  in root_datum(type_C_roots(m),type_B_roots(m),false)
 
 set PSp (int n) = RootDatum: { same as adjoint(Sp(n)) }
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
-  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m))
+  in root_datum(id_mat(m),^type_C_roots(m)*type_B_roots(m),false)
 
 set GSp (int n) = RootDatum:
   let (m,r) = n\%2 then ()= if r=1 then error("Odd symplectic datum") fi
   , type = LieType:
      if m>1 then "C" elif m=1 then "A" else "T" fi+int_format(m)+".T1"
-  in root_datum(type,quotient_basis(type,[[1/2,1/2]]))
+  in root_datum(type,quotient_basis(type,[[1/2,1/2]]),false)
 
 { type B/D root data }
 
 { use the standard basis for SO(n) }
 set SO (int n)= RootDatum:
   let (m,r)=n\%2 in
-  if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
-  else let roots=type_D_roots(m) in root_datum(roots,roots)
+  if r=1 then root_datum(type_B_roots(m),type_C_roots(m),false)
+  else let roots=type_D_roots(m) in root_datum(roots,roots,false)
   fi
 
 set (Spin,PSO) { two functions that share a local definition } =
@@ -185,9 +190,20 @@ in  if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
 set SO (int p,int q,RootDatum rd) = RealForm:
   real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
 
+set SO_star (int n, bool second, RootDatum rd) = RealForm:
+  let (rank,parity)=n\%2 in
+  assert(=parity,"Starred real forms require even index");
+  assert(#test_simple_type("D",rd)=rank,"Semisimple rank should be "+rank);
+  if second then assert(=rank%2,"No second starred from int type D"+rank) fi;
+  real_form(inner_class(rd,SO_inner_class(n,0)),n\8+1+#second)
+
 set Spin (int p,int q) = RealForm: SO(p,q,Spin(p+q))
 set SO (int p,int q)   = RealForm: SO(p,q,SO(p+q))
 set PSO (int p,int q)  = RealForm: SO(p,q,PSO(p+q))
+
+set Spin_star (int n) = RealForm: SO_star(n,false,Spin(n))
+set SO_star (int n)   = RealForm: SO_star(n,false,SO(n))
+set PSO_star (int n)  = RealForm: SO_star(n,false,PSO(n))
 
 { exceptional groups }
 
@@ -225,11 +241,7 @@ set E7_D6A1 = real_form(E7_ic_e,2)
 set E7_s = real_form(E7_ic_e,3)
 set E7_A7 = real_form(E7_ic_e,3)
 
-set E8_ic = let ic=inner_class("T0",[ratvec]:[],""), first=true in @:
-  if first then ic:=inner_class(simply_connected("E8"),"e") next first:=false
-  else ic
-  fi
-
-set E8_c () = real_form(E8_ic(),0)
-set E8_q () = real_form(E8_ic(),1)
-set E8_s () = real_form(E8_ic(),2)
+set E8_ic = inner_class(simply_connected("E8"),"e")
+set E8_c = real_form(E8_ic,0)
+set E8_q = real_form(E8_ic,1)
+set E8_s = real_form(E8_ic,2)

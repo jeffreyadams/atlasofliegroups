@@ -180,15 +180,12 @@ set G_K_roots_and_coroots (KGBElt x) = (mat,mat):
   let ((roots,coroots),(inj,pullback)) = G_K_roots_and_coroots_raw(x)
   in (^inj*roots,pullback*coroots)
 
-{ extract simple roots, coroots by computing pairing with rho,rho^v }
-set G_K_simple_roots_and_coroots (KGBElt x) = (mat,mat):
-  x.G_K_roots_and_coroots.simple_system_from_positive
-
 set rank_K (RealForm G) = int: compact_rank(Cartan_class(G,0))
 
 { here x is required to be in the distinguished fiber: }
 set K_root_datum (KGBElt x) = RootDatum:
-  root_datum(G_K_simple_roots_and_coroots(x))
+  root_datum_from_positive(G_K_roots_and_coroots(x)
+			  ,x.root_datum.prefers_coroots)
 set K_0 (KGBElt x) = RealForm:
   let rd = K_root_datum(x)
   in quasicompact_form(inner_class(rd,id_mat(rank(rd))))
@@ -263,7 +260,7 @@ set K_norm = (KTypePol->int):
 
 set leading_terms (KTypePol P) = KTypePol:
    let max=K_norm(P) in null_K_module(P)+
-   for c@p in P do if K_norm(p)=max then [(c,p)] else [] fi od.##
+   for c@t in P do if K_norm(t)=max then [(c,t)] else [] fi od.##
 
 set all_K_norms = K_norms@KTypePol { no need to sort; already sorted }
 

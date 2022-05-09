@@ -101,10 +101,10 @@ set merge_u ((int,int->bool) leq) = ([int] a,[int] b) [int]:
       od
     fi
 
-{ sort-unique for a general type: as for cooresponding |sort|, we have the
-  caller pass just the array size and comparison function. For |a| of type
-  [(string,T)], select elements sorted by |string| component, keeping onlt the
-  first pair with a given string as
+{ sort-unique for a general type: as for corresponding |sort|, we have the
+  caller pass just the array size and comparison function. For example, given
+  |a| of some type [(string,T)], select elements sorted by |string| component,
+  keeping only the first pair with a given string as
   |a:=for i in sort_u(#a,(int i,int j)bool: let(x,)=a[i],(y,)=a[j]) in x<=y)
       do a[i] od|
 }
@@ -170,6 +170,8 @@ set sort_by ( (KType->int) f ) = ([KType] v) [KType]:
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
+set sort_by ( (Split,KType->int) f) = ([(Split,KType)] v) [(Split,KType)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
@@ -200,12 +202,15 @@ set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
-{ Sort list of parameters by height }
+{ Sort list of K-type or parameters by height }
+set sort_by_height = ([KType] -> [KType]): sort_by( height@KType )
 set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
 
-{ Same for a list of parameters with a Split attached (ignored for sorting) }
+{ Same with a Split attached , which is ignored for sorting }
+set sort_by_height = ([(Split,KType)] -> [(Split,KType)]):
+  sort_by( (Split .,KType t) int: height(t) )
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
- sort_by( (Split s,Param p) int: height(p) )
+  sort_by( (Split .,Param p) int: height(p) )
 
 { sorting fixed size vectors lexicographically }
 set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }

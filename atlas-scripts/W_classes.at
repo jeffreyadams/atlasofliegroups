@@ -589,25 +589,13 @@ in if class_map = #n then tab { no reordering needed }
 
 set class_representative (WeylClassTable tab) = (int i) WeylElt:
    tab.class_representatives[i]
-
-set print_classes(WeylClassTable tab) = void:
-   let data = ["nr","count","order","length","Levi type","representative"] #
-     for w@i in tab.class_representatives
-     do [ i.to_string
-        , tab.class_sizes[i].to_string
-        , w.order.to_string
-        , w.length.to_string
-        , w.Levi_datum.Lie_type.semisimple.str
-	, w.to_string
-        ]
-     od
-   in tabulate(data,"rrrrll",2," ")
+set class_size (WeylClassTable tab) = (int i) int: tab.class_sizes[i]
 
 {. index i for which w is conjugate to classes[i], in given WeylClassTable .}
 set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int: ct.class_of(w)
 
-{. value of character at w\in W .}
-set character_value (WeylClassTable ct, WeylElt w,[int] char) = int:
+{. value of character char at w\in W .}
+set character_value (WeylClassTable ct,[int] char, WeylElt w) = int:
   char[ct.class_of(w)]
 
 { Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
@@ -650,6 +638,18 @@ forget WeylElt_or_none
 
 { Convenience functions }
 
+set show (WeylClassTable tab) = void:
+   let data = ["nr","count","order","length","Levi type","representative"] #
+     for w@i in tab.class_representatives
+     do [ i.to_string
+        , tab.class_sizes[i].to_string
+        , w.order.to_string
+        , w.length.to_string
+        , w.Levi_datum.Lie_type.semisimple.str
+	, w.to_string
+        ]
+     od
+   in tabulate(data,"rrrrll",2," ")
 
 { test: sum of sizes of conjugacy class = |W| }
 set test_size_of_conjugacy_classes (RootDatum rd,[WeylElt] c) = (int,int):

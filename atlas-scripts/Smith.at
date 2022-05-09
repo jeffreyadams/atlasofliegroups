@@ -41,7 +41,7 @@ in if =#non_0 then (0,M) { return gcd=0, no column operations }
 )
 
 
-{ no-overflow matrix mulitplication }
+{ no-overflow matrix multiplication }
 set safe_prod (Mat A, Vec B ) = Vec:
    assert(#A=#B,"size mismatch");
    let tA = for i:#A[0] do for col in A do col[i] od od in

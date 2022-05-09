@@ -1,0 +1,101 @@
+<basic.at
+<combinatorics.at { for types |Partition|, |Signed_cycles|, and many functions }
+<W_classes.at
+<simple_factors.at
+
+{conjugacy classes and representations of classical Weyl groups
+this file consists mainly of some union types to
+aggregate A/BC/D constructions into a uniform type
+see character_tables.at
+springer_tables.at
+see character_table_*.at (A,B,C,D,E,F,G)
+springer_table_*.at (A,BC,D,E,F,G)
+}
+
+{ functions to extract form the union; for user convenience only, for
+  programming purpusos always use discrimination clauses (case..esac as below) }
+
+set split_class (D_class c) = (Partition,bool):
+   case c | split_class(pair): pair | else error("class is not split") esac
+
+set unsplit_class(D_class c) = Signed_cycles:
+   case c | unsplit_class(pair): pair | else error("class is split") esac
+
+
+{			string representations				}
+
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set sign_string (bool s) = string: if s then "-" else "+" fi
+set parts_string (Partition lambda) = string: { partition without brackets }
+  lambda.to_string[1:1~]
+{ |cycles@(Partition,Partition)| tacks booleans one cycle lengths, the do this: }
+set cycles_string ([int,bool] cycles) = string:
+(  "["
+,  for (l,s)@pos in cycles
+   do if =pos then l.to_string##s.sign_string
+      else "," ##  l.to_string##s.sign_string
+      fi
+   od.##
+,  "]"
+).to_string
+
+set cycles_string (D_class c) = string:
+    case c
+    | cycles.unsplit_class: cycles.cycles_string
+    | (alpha,s).split_class: (alpha,sign_string(s)).to_string
+    esac
+
+
+{			some cases special to type D:			}
+
+set is_split(D_class c) = bool:
+   case c | (,).split_class: true | else false esac
+
+set split_and_unsplit_classes([D_class] list) =
+      (([Partition,bool],[int]),([Signed_cycles],[int])):
+let split=[Partition,bool]:[], map_split=[int]:[]
+,   unsplit=[Signed_cycles]:[], map_unsplit=[int]:[]
+in for x@i in list
+   do case x
+      | split_class(s):    split  #:= s;  map_split#:=i
+      | unsplit_class(us): unsplit #:=us; map_unsplit#:=i
+      esac
+   od; ((split,map_split),(unsplit,map_unsplit))
+
+set is_split(D_irrep pi) = bool:
+   case pi | (,).split_irr: true | else false esac
+
+set split_irrep (D_irrep pi) = (Partition,bool):
+   case pi | pair.split_irr: pair | else error("rep is unsplit") esac
+
+set unsplit_irrep (D_irrep pi) = (Partition,Partition):
+   case pi | pair.unsplit_irr: pair | else error("rep is split") esac
+
+
+set split_and_unsplit_reps([D_irrep] list) =
+      (([Partition,bool],[int]), ([Partition,Partition],[int])):
+let  split=[Partition,bool]:[], map_split=[int]:[]
+,  unsplit=[Partition,Partition]:[], map_unsplit=[int]:[]
+in for x@i in list
+   do case x
+      | split_irr(r):    split  #:= r;  map_split#:=i
+      | unsplit_irr(ur): unsplit #:=ur; map_unsplit#:=i
+      esac
+   od; ((split,map_split),(unsplit,map_unsplit))
+
+{ curried first }
+set index_D_reps([D_irrep] L) = (D_irrep->int):
+   let ((split,map_split),(unsplit,map_unsplit)) = split_and_unsplit_reps(L)
+in (D_irrep rep) int:
+   case rep
+   | split_irr(P,boolean):
+      let ix=first(#split,(int i)bool: let (a,b)=split[i] in a=P and b=boolean)
+      in map_split[ix]
+   | unsplit_irr(lambda,mu):
+     let ix=first(#unsplit
+                 ,(int i)bool: let (a,b)=unsplit[i] in a=lambda and b=mu
+		 )
+     in map_unsplit[ix]
+   esac
+
+set index_D_reps ([D_irrep] L,D_irrep rep) = int: index_D_reps(L)(rep)

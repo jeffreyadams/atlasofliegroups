@@ -1,0 +1,131 @@
+{<basic.at
+<torus.at}
+<tabulate.at
+<deform_plus.at
+
+set chamber(Param p)=vec:
+let gamma=p.infinitesimal_character in
+for a in p.root_datum.poscoroots do a*gamma\1 od
+
+set_type paramChamberTable=[(KGBElt,[(ratvec,[(vec,[ratvec])])])]
+
+set real_form(paramChamberTable t)=RealForm:
+if #t=0 then compact_torus(0) else let (x,)=t[0] in x.real_form fi
+
+set find_x(paramChamberTable t,KGBElt x)=(int,[(ratvec,[(vec,[ratvec])])]):
+let i=first(for (y,) in t do x=y od) in
+ if i=-1 then (int,[(ratvec,[(vec,[ratvec])])]):(-1,[]) else
+ let (,rv)=t[i] in (i,rv) fi
+
+set find_lambda([(ratvec,[(vec,[ratvec])])] x_table,ratvec lambda)=(int,[(vec,[ratvec])]):
+let i=first(for (lam,) in x_table do lam=lambda od) in
+ if i=-1  then (int,[(vec,[ratvec])]):(-1,[]) else
+    let (,rv)=x_table[i] in (i,rv)
+ fi
+
+set find_chamber([(vec,[ratvec])] chamber_list,vec chamber)=(int,[ratvec]):
+let i=first(for (cham,) in chamber_list do cham=chamber od) in
+   if i=-1 then (int,[ratvec]):(-1,[]) else
+    let (,rv)=chamber_list[i] in (i,rv)
+   fi
+
+set param_chamber_table([Param] params)=
+let pct=paramChamberTable:[] in
+let ()=for p in params do
+ let (index_x,list_x)=find_x(pct,p.x) in
+ {list_x: [(ratvec,[(vec,[ratvec])])]}
+  if index_x=-1 then pct#:=(p.x,[(p.lambda,[(p.chamber,[p.nu])])])
+  else let (index_lambda,list_lambda)=find_lambda(list_x,p.lambda) in
+  {list_lambda: [(vec,[ratvec])]}
+   if index_lambda=-1 then
+    list_x#:=(p.lambda,[(p.chamber,[p.nu])]);
+    pct[index_x]:=(p.x,list_x)
+    else let (index_chamber,list_chamber)=find_chamber(list_lambda,p.chamber) in
+    {list_chamber: [ratvec]}
+     if index_chamber=-1 then
+      list_lambda#:=(p.chamber,[p.nu]);
+      list_x[index_lambda]:=(p.lambda,list_lambda);
+      pct[index_x]:=(p.x,list_x)
+     else
+       {list_chamber: [ratvec]}
+       let nus=list_chamber in
+       nus#:=p.nu;  {nus: [ratvec]}
+       list_chamber:=nus;
+       list_lambda[index_chamber]:=(p.chamber,list_chamber);
+       list_x[index_lambda]:=(p.lambda,list_lambda);
+       pct[index_x]:=(p.x,list_x)
+     fi
+   fi
+  fi
+ od in pct
+
+set show(paramChamberTable t)=
+let num_params=
+ sum(##for (x,lambdas) in t do
+  ##for (lambda,chambers) in lambdas do
+   for (chamber,nus) in chambers do #nus
+   od
+  od
+ od) then
+num_chambers=
+ sum(##for (x,lambdas) in t do
+  for (lambda,chambers) in lambdas do
+   #chambers
+   od
+ od) in
+prints("number of parameters: ", num_params);
+prints("number of distinct chambers: ", num_chambers);
+prints("multiplicities: ",
+ ##for (x,lambdas) in t do
+  ##for (lambda,chambers) in lambdas do
+   ##for (chamber,nus) in chambers do
+   if #nus>1 then [#nus] else [] fi
+   od
+  od
+ od);
+tabulate(["x","lambda","chamber","nu","mult"]#
+##for (x,lambdas) in t do
+ ##for (lambda,chambers) in lambdas do
+  ##for (chamber,nus) in chambers do
+   for nu in nus do
+   [(#x).to_string,
+   lambda.to_string,
+   chamber.to_string,
+   nu.to_string,
+   (#nus).to_string]
+   od
+  od
+ od
+od)
+
+set show_table([Param] params)=show(param_chamber_table(params))
+
+set show_short(paramChamberTable t)=
+let num_params=
+ sum(##for (x,lambdas) in t do
+  ##for (lambda,chambers) in lambdas do
+   for (chamber,nus) in chambers do #nus
+   od
+  od
+ od) then
+num_chambers=
+ sum(##for (x,lambdas) in t do
+  for (lambda,chambers) in lambdas do
+   #chambers
+   od
+ od) in
+prints("number of parameters: ", num_params);
+prints("number of distinct chambers: ", num_chambers);
+prints("multiplicities: ",
+ ##for (x,lambdas) in t do
+  ##for (lambda,chambers) in lambdas do
+   ##for (chamber,nus) in chambers do
+   if #nus>1 then [#nus] else [] fi
+   od
+  od
+ od)
+
+set show_short([Param] params)=show_short(param_chamber_table(params))
+
+
+

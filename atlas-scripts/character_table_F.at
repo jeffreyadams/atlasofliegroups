@@ -1,0 +1,81 @@
+<basic.at
+<class_tables.at { for |class_table_F| }
+<character_tables.at { for type |CharacterTable| }
+
+{ the function |classes_Kondo_F4| define in character_tables.at lists conjugacy
+  class representatives for any $F_4T_k$ type root datum in a fixed order, which
+  order is used below to write down characters below. The numbering of the
+  $W(F_4)$ irreducibles is determined by the |character_table_F4_data| table.
+  The following funtions efunction |character_table_F| will then construct
+  a valid character table, which those numberings, for any such root datum. }
+
+set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }
+{   e    ...             long refl ..  short refl ... }
+[([ 1, 1,1,1,1,1,1,1,1,1,1,  1,  1,1,1,1,  1, 1,1,1,1,1,1,1,1]          ,0,0)
+,([ 1, 1,1,1,1,1,1,1,1,1,1,  1,  1,1,1,1, -1, -1,-1,-1,-1,-1,-1,-1,-1]  ,12,2)
+,([ 1, 1,1,1,1,1,1,1,1,1,1, -1, -1,-1,-1,-1, 1, 1,1,1,1,-1,-1,-1,-1]    ,12,1)
+,([ 1, 1,1,1,1,1,1,1,1,1,1, -1, -1,-1,-1,-1, -1, -1,-1,-1,-1,1,1,1,1]   ,24,0)
+,([ 2, 2,2,2,2,2,-1,-1,-1,-1,-1,  2,  2,-1,-1,2, 0,  0,0,0,0,0,0,0,0]   ,4,2)
+,([ 2, 2,2,2,2,2,-1,-1,-1,-1,-1, -2, -2,1,1,-2,  0,  0,0,0,0,0,0,0,0]   ,16,1)
+,([ 2, 2,2,-1,-1,2,2,2,-1,-1,-1,  0,  0,0,0,0,   2,  2,-1,-1,2,0,0,0,0] ,4,1)
+,([ 2, 2,2,-1,-1,2,2,2,-1,-1,-1,  0,  0,0,0,0,  -2, -2,1,1,-2,0,0,0,0]  ,16,2)
+,([ 4, 4,4,-2,-2,4,-2,-2,1,1,1,   0,  0,0,0,0,   0,  0,0,0,0,0,0,0,0]   ,8,0)
+,([ 9, 9,1,0,0,-3,0,0,0,0,0,      3,  3,0,0,-1,  3,  3,0,0,-1,1,1,1,-1]  ,2,0)
+,([ 9, 9,1,0,0,-3,0,0,0,0,0,      3,  3,0,0,-1, -3, -3,0,0,1,-1,-1,-1,1] ,6,2)
+,([ 9, 9,1,0,0,-3,0,0,0,0,0,     -3, -3,0,0,1,   3,  3,0,0,-1,-1,-1,-1,1],6,1)
+,([ 9, 9,1,0,0,-3,0,0,0,0,0,     -3, -3,0,0,1,  -3, -3,0,0,1,1,1,1,-1]   ,10,0)
+,([ 6, 6,-2,0,0,2,0,0,3,3,-1,     0,  0,0,0,0,   0,  0,0,0,0,2,-2,-2,0] ,6,1)
+,([ 6, 6,-2,0,0,2,0,0,3,3,-1,     0,  0,0,0,0,   0,  0,0,0,0,-2,2,2,0]  ,6,2)
+,([12, 12,-4,0,0,4,0,0,-3,-3,1,   0,  0,0,0,0,   0,  0,0,0,0,0,0,0,0]   ,4,0)
+,([ 4, -4,0,1,-1,0,1,-1,-2,2,0,   2, -2,-1,1,0,  2, -2,-1,1,0,0,2,-2,0] ,1,0)
+,([ 4, -4,0,1,-1,0,1,-1,-2,2,0,   2, -2,-1,1,0, -2,  2,1,-1,0,0,-2,2,0] ,7,2)
+,([ 4, -4,0,1,-1,0,1,-1,-2,2,0,  -2,  2,1,-1,0,  2, -2,-1,1,0,0,-2,2,0] ,7,1)
+,([ 4, -4,0,1,-1,0,1,-1,-2,2,0,  -2,  2,1,-1,0, -2,  2,1,-1,0,0,2,-2,0] ,13,0)
+,([ 8, -8,0,2,-2,0,-1,1,2,-2,0,   4, -4,1,-1,0,  0,  0,0,0,0,0,0,0,0]   ,3,2)
+,([ 8, -8,0,2,-2,0,-1,1,2,-2,0,  -4,  4,-1,1,0,  0,  0,0,0,0,0,0,0,0]   ,9,1)
+,([ 8, -8,0,-1,1,0,2,-2,2,-2,0,   0,  0,0,0,0,   4, -4,1,-1,0,0,0,0,0]  ,3,1)
+,([ 8, -8,0,-1,1,0,2,-2,2,-2,0,   0,  0,0,0,0,  -4,  4,-1,1,0,0,0,0,0]  ,9,2)
+,([16, -16,0,-2,2,0,-2,2,-2,2,0,  0,  0,0,0,0,   0,  0,0,0,0,0,0,0,0]   ,5,0)
+]
+
+set check_F4_degrees() = bool: { function that checks the above table degrees }
+   let Wct = class_table_F(4)
+in for (chi,deg,) in character_table_F4_data
+   do first(Wct.root_datum.nr_of_posroots+1
+           ,(int k) bool: Wct.inner(chi,Wct.sym_power_refl(k)).>
+	   )=deg
+   od.all
+
+set F4_name(int dim, int degree, int n_primes) = string:
+   ("phi(", dim, ",", degree,")").to_string +n_primes*"'"
+
+set to_special_F4 = (int i) int:
+   case i
+   in 0{sp}, 15, 15, 3{sp}
+   , 16, 19, 16, 19
+   , 15
+   , 9{sp}, 15, 15, 12{sp}
+   , 15, 15
+   , 15{sp}
+   , 16{sp}, 15, 15, 19{sp}
+   , 20{sp}, 21{sp}, 22{sp}, 23{sp}
+   , 15
+   else error("Wrong F4 irrep number")
+   esac
+
+set character_table_F = (RootDatum -> CharacterTable):
+(  let irreps = [[int],string]:
+      for (line,degree,n_primes) in character_table_F4_data
+      do (line,F4_name(line[0],degree,n_primes))
+      od
+in (RootDatum rd) CharacterTable:
+   let Wct = class_table_F(rd)
+   then classes = [WeylElt,string]:
+      for w@i in Wct.class_representatives
+      do (w,class_signature_F4(w).compressed_string)
+      od
+   in character_table(Wct,classes,irreps,to_special_F4@int)
+)
+
+set character_table_F(int n) = CharacterTable:
+   assert(n=4,"Inexistent type F"+n); character_table_F(simply_connected("F4"))

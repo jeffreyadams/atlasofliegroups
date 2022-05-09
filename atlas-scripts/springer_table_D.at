@@ -1,0 +1,223 @@
+<basic.at
+<combinatorics.at { for |parity_restricted_partitions| and |character| for Dn }
+<springer_tables.at
+<character_table_reps.at
+<nilpotent_orbit_partitions.at
+<springer_table_BC.at { for |part_mults_to_classical_H| }
+
+{ Springer correspondence from nilpotent orbits to representations of W, type D }
+
+{ ---------------- type D ------------------}
+
+{Springer correspondence from nilpotent orbits to representations of W in type D
+ orbit: partition -> representation= pair of partitions
+ see Carter pg. 419}
+
+{diagram:
+
+ComplexOrbit O            (for SO(2n))
+Partition P               (for orbit of SO(2n))
+D_irrep                   (for representation of W(SO(2n)))
+}
+{from combinatorics.at:
+
+ D_irrep = { from folding pairs of partitions under swapping }
+   ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
+   | (Partition,bool) split_irr { for pair of equal partitions, with sign }
+   )
+}
+
+set partitions_D = (int->[Partition,bool]):
+  let gen =  parity_restricted_partitions(false) { restrict even parts }
+  in (int n) [Partition,bool]:
+     for lambda in gen(n+n)
+     do if =lambda%2 { all parts even } then [(lambda,false),(lambda,true)]
+        else [(lambda,false)]
+	fi
+     od.##
+
+set freq_test_D ([int] frequencies, bool flip) = [int]:
+(  assert(=frequencies.even_places%2,"type D wrong partition")
+;  let odd_freq = frequencies.odd_places
+in assert(odd_freq.sum.is_even,"partition for type B, not D")
+;  if flip then assert(=odd_freq,"partition with odd parts cannot have flip") fi
+;  frequencies
+)
+
+{ from (Jordan) partition (or composition) with possible even-even flip
+  to SO(2n) complex nilpotent orbit }
+set nilpotent_orbit_SO (Partition lambda, bool flip) = ComplexNilpotent:
+   let freqs = freq_test_D(frequencies(lambda),flip)
+   then H = part_mults_to_classical_H(freqs[1:]), rd=SO(sum(lambda))
+in if flip then H~[0] *:= minus_1 fi; complex_nilpotent(rd,H)
+
+set nilpotent_orbit_D (RootDatum rd) = (Partition,bool->ComplexNilpotent):
+   let map = test_simple_type("D",rd) then n=#map { semisimple rank }
+in (Partition lambda,bool flip) ComplexNilpotent:
+(  assert(sum(lambda)=n+n,"Jordan type should be for D"+n)
+;  let freqs = freq_test_D(frequencies(lambda),flip)
+   then H_SO = part_mults_to_classical_H(freqs[1:])
+   then H = vec:
+       if flip then H_SO~[0] *:= minus_1 fi
+     ; let v = cumulate_forward(H_SO) then (q,r) = v~[0]\%2 in assert(=r)
+     ; v~[0] := q {  half sum of |H_SO| }
+     ; v~[1] := q-H_SO~[0] { half sum of |H_SO| with final entry sign flipped }
+     ; sum(rd.rank # for c@i in v do coroot(rd,map[i])*c od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_D_to_partition ([int] diagram) = (Partition,bool):
+   let (H_SO,flip) = (vec,bool): let (q,r)= (diagram~[0]-diagram~[1])\%2 in
+        assert(=r,"Invalid diagram, odd branch sum")
+      ; diagram~[0]:=q { modify our local copy that just serves in next line }
+      ; (cumulate_backward(diagram), q.<)
+   then freq_H = [int]: if flip then H_SO~[0] *:= minus_1 fi; frequencies(H_SO)
+   then max = #freq_H { maximal entry plus one } next freq_H[0] *:= 2
+   then mult(int i) = int: { multiplicity of part |i| in result }
+      let m =
+         if i+1<max then freq_H[i-1]-freq_H[i+1] else freq_H[i-1] fi
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
+in (for i:max from 1 ~ do for :mult(i) do i od od.##, flip)
+
+{ when |O| is an orbit for some |rd| passing |test_simple_type("D",rd)|, the
+  function |partition_of_orbit_D| will find the corresponding Jordan type and
+  for split orbits the Boolean value distinguishing the two (for other orbits
+  that value is always |false|). As in other classical cases, this function duly
+  ignores any radical component of |O.H| by using the (stratified) diagram.
+}
+set partition_of_orbit_D (ComplexNilpotent O) = (Partition,bool):
+   let perm = test_simple_type("D",O.root_datum)
+   in stratified_diagram(O,perm).diagram_D_to_partition
+
+
+{ The Springer map from nilpotent orbits to irreducible W(D_n)-representations
+  is for the most part governed by the map |core_quotient_2| from Jordan types
+  (partitions of $2n$ for type $D_n$) to pairs of partitions of sum $n$ (like
+  for $C_n$ the core is always empty for valid nilpotent Jordan types). The
+  subtle point is "doubly even" Jordan types (only even parts, each as always in
+  type $D_n$ repeated an even number of times, so they only occur when $n$ is
+  even) for which the $O(2n)$ nilpotent orbit splits into two $SO(2n)$ orbits,
+  and for which the 2-quotient is $(\lambda,\lambda)$ where $\lambda$ is the
+  partition of $n/2$ whose Young diagram is that of the Jordan type shrunk by a
+  factor 2 both horizontally and vertically. That partition pair determines a
+  "split irrep" for $W(D_n)$ and we need to consider the mapping from the
+  Boolean distinguishing the nilpotent orbits to the one distinguishing the
+  split irreducibles. The mapping is bijective, and in the end easy to describe:
+  it is the identity when the rank $n$ is divisible by 4, and Boolean NOT
+  (swapping |false| end |true|) when $n$ is (even but) not divisible by 4.
+
+  The following appears to be the justification for this choice. On page 423 of
+  Carter's book, a description is given couched in savant language of Richardson
+  classes, parabolic subgroups of G, and Macdonald representations (obtained
+  from the $j$-operation defined on page 368). For the doubly even Jordan types
+  this appears to translate into truncated induction of the sign representation
+  from the Bala-Carter Levi subgroup of $W(D_n)$ associated to the nilpotent
+  orbit, tensored (it appears one never misses an occasion for a twist) by the
+  sign representation of $W(D_n)$. Since we can focus on getting the information
+  distinguishing the two split irreducibles the evaluation on a particular split
+  class. We can take the "simplest" class with very even cycle type, namely the
+  class of $w=s_0s_2s_4..s_{n-2}$, whose signed cycle type has $n/2$ cycles,
+  each length $2$ and of positive cycle sign, and whose discriminating Boolean
+  value is |false|; the character of any split irrep on it is nonzero, and it is
+  negative if and only if that irrep has Boolean |true| attached (this can be
+  deduced from the formula implemented in |hyperoctahedral_character|). The
+  question then boils down to finding the Boolean attached to the truncated
+  induction of the Bala-Carter Levi subgroup associated to |O|, and this appears
+  to be the same as the discriminating Boolean attached to the split nilpotent
+  orbit; tensorsing with the sign representation then flips this with the sign
+  $(-1)^{n/2}$ of $w$, anf at is this flip that is implemented below (where
+  $n/2$ appears under the form of |sum(lambda)|). It may be noted that the
+  initial discriminating Boolean for |O| records the equivalent conditions (by
+  definition:) (0) |b| for which |O| is |nilpotent_orbit_D(rd)(Jordan_type,b)|,
+  (1) whether the final entry of |O.H| (dominant) is negative, (2) whether the
+  final entry of |diagram(O)| is zero. It is noteworthy that the condition
+  whether set of simple roots for the associated Bala-Carter Levi contains the
+  final node of the diagram is opposite to this condition whenever $n/2$ is odd,
+  a switch that apparently gets compensated to disappear in the truncated
+  induction process. The switch arises because, taking $S$ to be a disjoint
+  union of odd rank type $A$ sub-diagrams separated by a single absent node and
+  not containing the final node of the $D_n$ diagram, the unique associated
+  distinguished $H$ has half its entries negative, which is $n/2$ in number, and
+  making it dominant leaves a final negative entry if and only if $n/2$ is odd.
+  At this time I (MvL) don't understand how truncated induction undoes the flip.
+}
+
+set springer_D (Partition Jordan,bool flip) = D_irrep:
+(  let (,(lambda,mu)) = core_quotient_2(Jordan)
+in assert(is_valid("D",Jordan),"Not a valid type D nilpotent Jordan type")
+;  if lambda=mu then split_irr(lambda,flip^sum(lambda).is_odd)
+   elif flip then error("Cannot associate flip with ",Jordan," with odd part")
+   else unsplit_irr(lambda,mu)
+   fi
+)
+
+set springer_D (ComplexNilpotent O) = D_irrep:
+   springer_D(partition_of_orbit_D(O))
+
+
+{------------------ duality ----------------------------------}
+
+{ after the initial |assert| statement, |D_adjust| is identical to |B_adjust| }
+
+set D_adjust (Partition P) = Partition:
+(  assert(sum(P).is_even,"Partition not even");
+   let freq=frequencies(P)
+   then l=(#freq+1)\2 { so |2*(l-1)<#freq| }
+   next freq[0]:=1 { potential part to increase, ignored by |repeat_parts| }
+in
+   while (l:=last(l,(int i)bool: freq[i+i].is_odd) ).> { stop at none, or |l=0| }
+   do let k=last(l,(int i)bool: freq[i+i].>) { for next even part that occurs }
+   in assert(k.>=) { because if no other, |i=0| makes |freq[i+i].>| }
+   ; (let L=l+l in freq[L]-:=1; freq[L-1]+:=1)
+   ; (let K=k+k in freq[K+1]+:=1; freq[K]-:=1)
+   ; l:=k+1 { so search for next smaller |l| will start at |k| }
+   od
+;  repeat_parts(freq) { reconstruct a partition }
+)
+
+{ while |D_dual| is rather simpler than |C_to_B_dual| (no square is added to the
+  Jordan type, and so there is no need for an initial |D_adjust| as the argument
+  is assumed to be already valid), the way it works differs in some ways.
+  Notably the condition that after the transposition the parity of row lengths
+  does not change from an odd indexed row to the (even indexed) next is not
+  preserved in general (for instance |ones(2*n)| transposes to |[2*n]| which is
+  adjusted to [2*n-1,1]|, which is valid for type D but not the transpose of
+  another such valid partition). After transposition the initial part is always
+  even; if its multiplicity is odd, a square moves from an even indexed even row
+  to an odd indexed shorter even row, but doing so it may jump over some odd
+  length rows (an even number of them). If the initial even part has even
+  multiplicity, then next smaller part will be even; continuing, one sees at
+  least one pair of odd parts is created, unless one has a doubly even partition
+  initially. In the latter case nothing happens apart from the transposition. So
+  we get one of a split orbit if and only if we had one initially. In that case
+  the |flip| records whether the character of the associated split irrep takes a
+  negative value at the class of $w=s_0s_2s_4..s_{n-2}$, and tensoring with the
+  sign representation will affect this by the sign $(-1)^{n/2}$ of $w$, so we
+  negate |flip| if and only if the number |n\2=sum(Jordan)\4| is odd.
+}
+set D_dual (Partition Jordan,bool flip) = (Partition,bool):
+   if Jordan.is_doubly_even
+   then (transpose(Jordan),flip^is_odd(sum(Jordan)\4))
+   else (D_adjust(transpose(Jordan)),false)
+   fi
+
+set dual_map_D (RootDatum rd) = (ComplexNilpotent->ComplexNilpotent):
+   let perm = test_simple_type("D",rd), drd = dual(rd)
+in if perm = #semisimple_rank(rd) { case of standard order, somewhat easier }
+   then (ComplexNilpotent O_D) ComplexNilpotent:
+      drd.nilpotent_orbit_D(diagram(O_D).diagram_D_to_partition.D_dual)
+   else (ComplexNilpotent O_D) ComplexNilpotent:
+      drd.nilpotent_orbit_D
+        (stratified_diagram(O_D,perm).diagram_D_to_partition.D_dual)
+   fi
+
+set springer_table_D (RootDatum rd) = SpringerTable:
+   let (table, , lookup_D_irrep) = character_table_D(rd)
+   , orbit = (Partition,bool->ComplexNilpotent): nilpotent_orbit_D(rd)
+in ( table
+   , for pair in partitions_D(rd.semisimple_rank) do orbit(pair) od
+   , dual_map_D(rd)
+   , dual_map_D(dual(rd)) { "inverse" of dual map is same algorithm }
+   , (ComplexNilpotent O) int: lookup_D_irrep(springer_D(O))
+   )

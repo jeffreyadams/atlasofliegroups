@@ -1,0 +1,29 @@
+<cells.at
+
+set m(RootDatum rd,int i, int j)=int:
+let M=rd.Cartan_matrix in M[i,j]*M[j,i] 
+
+
+{Given: RootDatum, one operator for each simple roots
+test all braid relations, return bool,
+and (in case of false) all tests (i,j,bool)}
+set test_braid(RootDatum rd,[mat] ops)=
+let results=##for i:rd.ss_rank do
+ for j:rd.ss_rank do
+  if i=j then (i,j,ops[i]*ops[j]=id_mat(#ops[0]))
+ else
+  let m=m(rd,i,j) in
+   if m=0 then (i,j,ops[i]*ops[j]=ops[j]*ops[i]) 
+   elif m=1 then (i,j,ops[i]*ops[j]*ops[i]=ops[j]*ops[i]*ops[j])
+   elif m=2 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i])
+   elif m=3 then (i,j,ops[i]*ops[j]*ops[i]*ops[j]*ops[i]*ops[j]=ops[j]*ops[i]*ops[j]*ops[i]*ops[j]*ops[i])
+   else error("m>3???")
+  fi
+fi
+od od
+then all=all(for (,,tf) in results do tf od) in
+if not all then prints(results) fi ;all 
+
+set test_braid(WCell cell)=
+let rd=cell.root_datum in
+test_braid(rd,for i:rd.ss_rank do cell_action(cell,[i]) od)

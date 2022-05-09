@@ -97,8 +97,8 @@ set ext_cross(
     let lambda_rho1 = w*lambda_rho + (w*rho-rho-rho_r_shift)\1
     in  lambda_rho1 + ratvec_as_vec(gamma2 - gamma1)
   , tau1 = w*tau - ratvec_as_vec( (delta-1)*rho_r_shift/2 )
-  , l1 = ratvec_as_vec(g-rho_check(rd)-torus_factor(x1))
-  { l*w1 + ( (g-rho_check(rd))*(1-w1)-(rho_check_i(x)*w1-rho_check_i(x1)) )\1 }
+  , l1 = { ratvec_as_vec(g-rho_check(rd)-torus_factor(x1)) reverting back to previous version}
+   l*w1 + ( (g-rho_check(rd))*(1-w1)-(rho_check_i(x)*w1-rho_check_i(x1)) )\1 {previous version}
   , t1 = t*w1 - ratvec_as_vec( (rho_check_i(x)*w1-rho_check_i(x1))*(delta-1)/2 )
   then result =
      ExtParam:(ic,delta,gamma2,lambda_rho2,theta1,g,l1,-^theta1,tau1,t1)

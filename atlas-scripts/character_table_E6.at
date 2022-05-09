@@ -1,0 +1,117 @@
+<basic.at
+<sort.at
+<W_classes.at
+<class_tables.at { for |class_table_E6| }
+<character_tables.at { for type |CharacterTable| }
+
+{from Magma}
+set !e6_table = [vec]: { characters, with conjugacy classes in Magma order }
+[[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]           { trivial }
+,[1,-1,1,1,-1,1,1,1,1,-1,-1,1,1,1,1,-1,1,-1,1,-1,-1,1,-1,-1,1] { sign }
+,[6,4,-2,2,0,-3,3,0,2,-2,2,0,1,1,1,1,-2,-2,-1,0,0,0,-1,1,-1]   { reflection }
+,[6,-4,-2,2,0,-3,3,0,2,2,-2,0,1,1,1,-1,-2,2,-1,0,0,0,1,-1,-1]
+,[10,0,-6,2,0,1,-2,4,2,0,0,-2,0,-3,0,0,0,0,2,0,0,1,0,0,-1]
+,[15,-5,7,3,-1,-3,0,3,-1,-3,1,1,0,1,-2,-2,1,1,0,-1,1,0,0,0,-1]
+,[15,-5,-1,-1,3,6,3,0,3,-1,-1,-1,0,2,-1,1,2,-2,-1,0,1,0,0,-1,0]
+,[15,5,7,3,1,-3,0,3,-1,3,-1,1,0,1,-2,2,1,-1,0,1,-1,0,0,0,-1]
+,[15,5,-1,-1,-3,6,3,0,3,1,1,-1,0,2,-1,-1,2,2,-1,0,-1,0,0,1,0]
+,[20,10,4,4,2,2,5,-1,0,2,2,0,0,-2,1,1,1,1,1,-1,0,-1,0,-1,0]
+,[20,-10,4,4,-2,2,5,-1,0,-2,-2,0,0,-2,1,-1,1,-1,1,1,0,-1,0,1,0]
+,[20,0,4,-4,0,-7,2,2,4,0,0,0,0,1,-2,0,-2,0,2,0,0,-1,0,0,1]
+,[24,4,8,0,4,6,0,3,0,0,0,0,-1,2,2,-2,-1,1,0,1,0,0,-1,0,0]
+,[24,-4,8,0,-4,6,0,3,0,0,0,0,-1,2,2,2,-1,-1,0,-1,0,0,1,0,0]
+,[30,-10,-10,2,2,3,3,3,-2,4,0,0,0,-1,-1,-1,-1,-1,-1,-1,0,0,0,1,1]
+,[30,10,-10,2,-2,3,3,3,-2,-4,0,0,0,-1,-1,1,-1,1,-1,1,0,0,0,-1,1]
+,[60,10,-4,4,2,6,-3,-3,0,-2,-2,0,0,2,-1,1,-1,1,1,-1,0,0,0,1,0]
+,[60,-10,-4,4,-2,6,-3,-3,0,2,2,0,0,2,-1,-1,-1,-1,1,1,0,0,0,-1,0]
+,[60,0,12,4,0,-3,-6,0,4,0,0,0,0,-3,0,0,0,0,-2,0,0,0,0,0,1]
+,[64,16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,-2,0,-2,0,0,0,1,1,0,0]
+,[64,-16,0,0,0,-8,4,-2,0,0,0,0,-1,0,0,2,0,2,0,0,0,1,-1,0,0]
+,[80,0,-16,0,0,-10,-4,2,0,0,0,0,0,2,2,0,2,0,0,0,0,-1,0,0,0]
+,[81,9,9,-3,-3,0,0,0,-3,3,-1,-1,1,0,0,0,0,0,0,0,1,0,-1,0,0]
+,[81,-9,9,-3,3,0,0,0,-3,-3,1,-1,1,0,0,0,0,0,0,0,-1,0,1,0,0]
+,[90,0,-6,-6,0,9,0,0,2,0,0,2,0,-3,0,0,0,0,0,0,0,0,0,0,-1]
+]
+
+
+{ some stuff to figure out in what order Magma has listed classes }
+
+{from magma} { orders, then class sizes, of conjugacy classes in magma order }
+
+set e6_profile = mat: { 4*25 matrix with unique columns, characterising a class }
+   let e6_orders_sizes = mat:
+	[1, 2, 2,  2,  2, 3,  3,  3,  4,  4,   4,   4,   5
+                     ,  6,   6,   6,   6,   6,   6,   6,   8,   9,  10,  12,  12
+	|1,36,45,270,540,80,240,480,540,540,1620,3240,5184
+		     ,720,1440,1440,1440,1440,2160,4320,6480,5760,5184,4320,4320
+	]
+   , sgn_index=1
+   , reflection_index=2
+in e6_orders_sizes ^ ^[e6_table[sgn_index],e6_table[reflection_index]]
+
+set Magma_reorder_E6(WeylClassTable Wct) = [int]: { map Magma to |Wct| numbers }
+   let Wct_prof = mat: { with shape (4,25) }
+      let reps=Wct.class_representatives, sizes=Wct.class_sizes in
+      4 # for j:Wct.n_classes
+	  do [reps[j].order, sizes[j], Wct.sign[j], Wct.reflection[j] ]
+	  od
+   then profile_ranked = [int]: { columns |e6_profile| ranked |lex_lesseq| }
+      sort(#e6_profile
+	  ,(int i,int j)bool: lex_lesseq(e6_profile[i],e6_profile[j]))
+   , Wct_ranked = { columns of |Wct_prof| ranked by |lex_lesseq| }
+      sort(#Wct_prof,(int i,int j): lex_lesseq(Wct_prof[i],Wct_prof[j]))
+in compose_permutations(Wct_ranked,inverse(profile_ranked))
+
+set to_special_E6 = (int i) int:
+   case i
+   in 0{sp}, 1{sp}
+   , 2{sp}, 3{sp}
+   , 21
+   , 14, 14, 15, 15
+   , 9{sp}, 10{sp}, 21
+   , 12{sp}, 13{sp}
+   , 14{sp}, 15{sp}
+   , 16{sp}, 17{sp}, 21
+   , 19{sp}, 20{sp}
+   , 21{sp}
+   , 22{sp}, 23{sp}
+   , 21
+   else error("Wrong E6 irrep number")
+   esac
+
+set character_table_E6 = (RootDatum->CharacterTable):
+   let ct= trivial_character_table { place holder value }
+   , compute (RootDatum rd) = CharacterTable:
+      let Wct = class_table_E6(rd)
+      then reordering = Magma_reorder_E6(Wct)
+      then E6_name(vec chi) = string:
+	 let psi = null(#chi)
+	 then degree = { first reorder |chi| for |Wct| into |psi| }
+	   for j@i in reordering do psi[j]:=chi[i] od { inverse reorder }
+	   ;  first(Wct.root_datum.nr_of_posroots+1
+		   ,(int k) bool: Wct.inner(psi,Wct.sym_power_refl(k)).>
+		   )
+	 in to_string("irrep(dim:",psi[0],",deg:",degree,")")
+      then classes = [WeylElt,string]:
+	 let reps = Wct.class_representatives
+	 in for j in reordering
+	    do (reps[j],class_signature_E6(reps[j]).compressed_string)
+	    od
+      ,  irreps = [[int],string]:
+	 for line@i in e6_table
+	 do ( line
+	    , case i in "trivial", "sign", "reflection" else E6_name(line) esac
+	    )
+	 od
+      in { result of |compute| }
+	 character_table(Wct,classes,irreps,to_special_E6@int)
+in (RootDatum rd) CharacterTable:
+   if rd != standard_datum_E6 then compute(rd)
+   elif =ct.root_datum.rank { whether this is the first time we are called }
+   then ct:=compute(rd) { compute and store the first time }
+   else ct { any next time just return the previously computed value }
+   fi
+
+
+set character_table_E6() = CharacterTable:
+   character_table_E6(standard_datum_E6)

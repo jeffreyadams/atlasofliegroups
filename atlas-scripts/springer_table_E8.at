@@ -1,0 +1,290 @@
+<springer_tables.at
+<character_tables.at
+<character_table_reps.at
+<character_table_E8.at
+
+{name,diagram,dim,special,dual,A/Abar}
+
+set !E8_Springer_table_data = [string,[int],int,bool,string,string]:
+      [ ("0"        , [0,0,0,0,0,0,0,0] ,   0,  true, "E8"        , "1"     )
+      , ("A1"       , [0,0,0,0,0,0,0,1] ,  58,  true, "E8(a1)"    , "1"     )
+      , ("2A1"      , [1,0,0,0,0,0,0,0] ,  92,  true, "E8(a2)"    , "1"     )
+      , ("3A1"      , [0,0,0,0,0,0,1,0] , 112, false, "E8(a3)"    , "1"     )
+      , ("A2"       , [0,0,0,0,0,0,0,2] , 114,  true, "E8(a3)"    , "S2"    )
+      , ("4A1"      , [0,1,0,0,0,0,0,0] , 128, false, "E8(a4)"    , "1"     )
+      , ("A2+A1"    , [1,0,0,0,0,0,0,1] , 136,  true, "E8(a4)"    , "S2"    )
+      , ("A2+2A1"   , [0,0,0,0,0,1,0,0] , 146,  true, "E8(b4)"    , "1"     )
+      , ("A3"       , [1,0,0,0,0,0,0,2] , 148,  true, "E7(a1)"    , "1"     )
+      , ("A2+3A1"   , [0,0,1,0,0,0,0,0] , 154, false, "E8(a5)"    , "1"     )
+      , ("2A2"      , [2,0,0,0,0,0,0,0] , 156,  true, "E8(a5)"    , "S2"    )
+      , ("2A2+A1"   , [1,0,0,0,0,0,1,0] , 162, false, "E8(b5)"    , "1"     )
+      , ("A3+A1"    , [0,0,0,0,0,1,0,1] , 164, false, "E8(b5)"    , "1"     )
+      , ("D4(a1)"   , [0,0,0,0,0,0,2,0] , 166,  true, "E8(b5)"    , "S3"    )
+      , ("D4"       , [0,0,0,0,0,0,2,2] , 168,  true, "E6"        , "1"     )
+      , ("2A2+2A1"  , [0,0,0,0,1,0,0,0] , 168, false, "E8(a6)"    , "1"     )
+      , ("A3+2A1"   , [0,0,1,0,0,0,0,1] , 172, false, "E8(a6)"    , "1"     )
+      , ("D4(a1)+A1", [0,1,0,0,0,0,1,0] , 176,  true, "E8(a6)"    , "S3"    )
+      , ("A3+A2"    , [1,0,0,0,0,1,0,0] , 178,  true, "D7(a1)"    , "S2:1"  )
+      , ("A4"       , [2,0,0,0,0,0,0,2] , 180,  true, "E7(a3)"    , "S2"    )
+      , ("A3+A2+A1" , [0,0,0,1,0,0,0,0] , 182, false, "E8(b6)"    , "1"     )
+      , ("D4+A1"    , [0,1,0,0,0,0,1,2] , 184, false, "E6(a1)"    , "1"     )
+      , ("D4(a1)+A2", [0,2,0,0,0,0,0,0] , 184,  true, "E8(b6)"    , "S2"    )
+      , ("A4+A1"    , [1,0,0,0,0,1,0,1] , 188,  true, "E6(a1)+A1" , "S2"    )
+      , ("2A3"      , [1,0,0,0,1,0,0,0] , 188, false, "D7(a2)"    , "1"     )
+      , ("D5(a1)"   , [1,0,0,0,0,1,0,2] , 190,  true, "E6(a1)"    , "S2"    )
+      , ("A4+2A1"   , [0,0,0,1,0,0,0,1] , 192,  true, "D7(a2)"    , "S2"    )
+      , ("A4+A2"    , [0,0,0,0,0,2,0,0] , 194,  true, "D5+A2"     , "1"     )
+      , ("A5"       , [2,0,0,0,0,1,0,1] , 196, false, "D6(a1)"    , "1"     )
+      , ("D5(a1)+A1", [0,0,0,1,0,0,0,2] , 196,  true, "E7(a4)"    , "1"     )
+      , ("A4+A2+A1" , [0,0,1,0,0,1,0,0] , 196,  true, "A6+A1"     , "1"     )
+      , ("D4+A2"    , [0,2,0,0,0,0,0,2] , 198,  true, "A6"        , "S2:1"  )
+      , ("E6(a3)"   , [2,0,0,0,0,0,2,0] , 198,  true, "D6(a1)"    , "S2"    )
+      , ("D5"       , [2,0,0,0,0,0,2,2] , 200,  true, "D5"          ,"1"     )
+      , ("A4+A3"    , [0,0,0,1,0,0,1,0] , 200, false, "E8(a7)"    , "1"     )
+      , ("A5+A1"    , [1,0,0,1,0,0,0,1] , 202, false, "E8(a7)"    , "1"     )
+      , ("D5(a1)+A2", [0,0,1,0,0,1,0,1] , 202, false, "E8(a7)"    , "1"     )
+      , ("D6(a2)"   , [0,1,1,0,0,0,1,0] , 204, false, "E8(a7)"    , "S2"    )
+      , ("E6(a3)+A1", [1,0,0,0,1,0,1,0] , 204, false, "E8(a7)"    , "S2"    )
+      , ("E7(a5)"   , [0,0,0,1,0,1,0,0] , 206, false, "E8(a7)"    , "S3"    )
+      , ("D5+A1"    , [1,0,0,0,1,0,1,2] , 208, false, "E6(a3)"    , "1"     )
+      , ("E8(a7)"   , [0,0,0,0,2,0,0,0] , 208,  true, "E8(a7)"    , "S5"    )
+      , ("A6"       , [2,0,0,0,0,2,0,0] , 210,  true, "D4+A2"     , "1"     )
+      , ("D6(a1)"   , [0,1,1,0,0,0,1,2] , 210,  true, "E6(a3)"    , "S2"    )
+      , ("A6+A1"    , [1,0,0,1,0,1,0,0] , 212,  true, "A4+A2+A1"  , "1"     )
+      , ("E7(a4)"   , [0,0,0,1,0,1,0,2] , 212,  true, "D5(a1)+A1" , "S2:1"  )
+      , ("E6(a1)"   , [2,0,0,0,0,2,0,2] , 214,  true, "D5(a1)"    , "S2"    )
+      , ("D5+A2"    , [0,0,0,0,2,0,0,2] , 214,  true, "A4+A2"     , "S2:1"  )
+      , ("D6"       , [2,1,1,0,0,0,1,2] , 216, false, "A4"        , "1"     )
+      , ("E6"       , [2,0,0,0,0,2,2,2] , 216,  true, "D4"        , "1"     )
+      , ("D7(a2)"   , [1,0,0,1,0,1,0,1] , 216,  true, "A4+2A1"    , "S2"    )
+      , ("A7"       , [1,0,0,1,0,1,1,0] , 218, false, "D4(a1)+A2" , "1"     )
+      , ("E6(a1)+A1", [1,0,0,1,0,1,0,2] , 218,  true, "A4+A1"     , "S2"    )
+      , ("E7(a3)"   , [2,0,0,1,0,1,0,2] , 220,  true, "A4"        , "S2"    )
+      , ("E8(b6)"   , [0,0,0,2,0,0,0,2] , 220,  true, "D4(a1)+A2" , "S3:S2" )
+      , ("D7(a1)"   , [2,0,0,0,2,0,0,2] , 222,  true, "A3+A2"     , "S2:1"  )
+      , ("E6+A1"    , [1,0,0,1,0,1,2,2] , 222, false, "D4(a1)"    , "1"     )
+      , ("E7(a2)"   , [0,1,1,0,1,0,2,2] , 224, false, "D4(a1)"    , "1"     )
+      , ("E8(a6)"   , [0,0,0,2,0,0,2,0] , 224,  true, "D4(a1)+A1" , "S3"    )
+      , ("D7"       , [2,1,1,0,1,1,0,1] , 226, false, "2A2"       , "1"     )
+      , ("E8(b5)"   , [0,0,0,2,0,0,2,2] , 226,  true, "D4(a1)"    , "S3"    )
+      , ("E7(a1)"   , [2,1,1,0,1,0,2,2] , 228,  true, "A3"        , "1"     )
+      , ("E8(a5)"   , [2,0,0,2,0,0,2,0] , 228,  true, "2A2"       , "S2"    )
+      , ("E8(b4)"   , [2,0,0,2,0,0,2,2] , 230,  true, "A2+2A1"    , "S2:1"  )
+      , ("E7"       , [2,1,1,0,1,2,2,2] , 232, false, "A2"        , "1"     )
+      , ("E8(a4)"   , [2,0,0,2,0,2,0,2] , 232,  true, "A2+A1"     , "S2"    )
+      , ("E8(a3)"   , [2,0,0,2,0,2,2,2] , 234,  true, "A2"        , "S2"    )
+      , ("E8(a2)"   , [2,2,2,0,2,0,2,2] , 236,  true, "2A1"       , "1"     )
+      , ("E8(a1)"   , [2,2,2,0,2,2,2,2] , 238,  true, "A1"        , "1"     )
+      , ("E8"       , [2,2,2,2,2,2,2,2] , 240,  true, "0"         , "1"     )
+      ]
+
+set E8_names = [string]: for (name,,,,,) in E8_Springer_table_data do name od
+set E8_diagrams= [[int]]: for (,diag,,,,) in E8_Springer_table_data do diag od
+set E8_dimensions= [int]: for (,,dim,,,) in E8_Springer_table_data do dim od
+set E8_special= [bool]: for (,,,b,,) in E8_Springer_table_data do b od
+set E8_dual_names= [string]: for (,,,,d,) in E8_Springer_table_data do d od
+
+set name_to_diagram_E8 = (string->vec):
+   let n=#E8_names
+   then name_diagram = [string,vec]:
+      for k in sort(n,(int i,int j):E8_names[i]<=E8_names[j]) { ranked |k| }
+      do let (name,diag,,,,)=E8_Springer_table_data[k] in (name,diag)
+      od
+in (string key) vec:
+    let k = binary_search_first
+         ((int i)bool: let (name,)=name_diagram[i] in key<=name, 0, n)
+         then (found,image) =
+	    assert(k<n,"Name " ## key ## " not found"); name_diagram[k]
+      in assert(key=found,"Name " ## key ## " not found"); image
+
+set E8_nilpotent_orbit_dual_map = (vec->vec):
+   let n=#E8_diagrams
+   then dual_table = [vec,vec]:
+      let sigma = [int]: { at index |r| the number of diagram ranked |r| }
+         sort(n,(int i,int j):lex_lesseq(E8_diagrams[i],E8_diagrams[j]))
+      then diagram_dual = [vec,string]:
+	 for i in sigma { traverse in order making diagrams sorted }
+	 do let (,diag,,,d,)=E8_Springer_table_data[i] in (diag,d)
+	 od
+   in { dual_table = }
+      for (source,dual) in diagram_dual do (source,name_to_diagram_E8(dual)) od
+in (vec v) vec:
+   let  k = binary_search_first
+      ((int i)bool: let (diagram,)=dual_table[i] in lex_lesseq(v,diagram), 0, n)
+   then (found,image) =
+      assert(k<n,"Diagram " ## v.to_string ## " not found"); dual_table[k]
+   in assert(v=found,"Diagram " ## v.to_string ## " not found"); image
+
+set diagram_to_name_E8 ([int] diagram) = string:
+   let index=first(#E8_Springer_table_data,(int j): E8_diagrams[j]=diagram)
+in E8_names[index]
+
+set dual_diagram_E8([int] diagram) = [int]:
+   let index=first(for text in E8_diagrams do text=diagram od)
+   then dual_name=E8_dual_names[index]
+   then index=first(for text in E8_names do text=dual_name od)
+in E8_diagrams[index]
+
+set digit_to_int (string str) =
+   let d = ascii(str)-ascii("0") in assert(d.>= and d<10,"Bad digit"); d
+
+
+set string_to_diagram(string str) = [int]:
+for digit in str do digit.digit_to_int od
+
+set join ([int] list) = string: ##for i in list do i.to_string od
+
+set !dual_diagram_table_E8 = [[int],[int]]:
+   for diagram in E8_diagrams do (diagram,dual_diagram_E8(diagram)) od
+
+set dual_diagram_E8([int] diagram) = [int]:
+  let index=first(for (diag,) in dual_diagram_table_E8 do diagram=diag od)
+  then (,dual_diagram)=dual_diagram_table_E8[index]
+in dual_diagram
+
+set dual_E8 (ComplexNilpotent O) = ComplexNilpotent:
+   complex_nilpotent_from_diagram(O.root_datum,dual_diagram_E8(O.diagram))
+
+{ The "Springer map" is given by the following mapping in terms of orbit names;
+  the image value are character indices according to the numbering of
+  |e8_gap_table| from e8_gap.at; this needs update if ordering there changes.
+}
+set springer_by_name_table_E8 = [string,int]:
+      [ ("0"         ,    1  ) { (   1,120) } { (dim,degree); this one: sign }
+      , ("A1"	     ,   68  ) { (   8, 91) }
+      , ("2A1"	     ,    5  ) { (  35, 74) }
+      , ("3A1"	     ,   10  ) { (  84, 64) }
+      , ("A2"	     ,   72  ) { ( 112, 63) }
+      , ("4A1"	     ,    8  ) { (  50, 56) }
+      , ("A2+A1"     ,   15  ) { ( 210, 52) }
+      , ("A2+2A1"    ,   81  ) { ( 560, 47) }
+      , ("A3"	     ,   24  ) { ( 567, 46) }
+      , ("A2+3A1"    ,   77  ) { ( 400, 43) }
+      , ("2A2"	     ,   29  ) { ( 700, 42) }
+      , ("2A2+A1"    ,   79  ) { ( 448, 39) }
+      , ("A3+A1"     ,   40  ) { (1344, 38) }
+      , ("D4(a1)"    ,   93  ) { (1400, 37) }
+      , ("D4"	     ,   22  ) { ( 525, 36) }
+      , ("2A2+2A1"   ,   13  ) { ( 175, 36) }
+      , ("A3+2A1"    ,   37  ) { (1050, 34) }
+      , ("D4(a1)+A1" ,   43  ) { (1400, 32) }
+      , ("A3+A2"     ,  100  ) { (3240, 31) }
+      , ("A4"	     ,   54  ) { (2268, 30) }
+      , ("A3+A2+A1"  ,   91  ) { (1400, 29) }
+      , ("D4+A1"     ,   27  ) { ( 700, 28) }
+      , ("D4(a1)+A2" ,   51  ) { (2240, 28) }
+      , ("A4+A1"     ,   62  ) { (4096, 26) }
+      , ("2A3"	     ,   32  ) { ( 840, 26) }
+      , ("D5(a1)"    ,   97  ) { (2800, 25) }
+      , ("A4+2A1"    ,   64  ) { (4200, 24) }
+      , ("A4+A2"     ,  109  ) { (4536, 23) }
+      , ("A5"	     ,   60  ) { (3200, 22) }
+      , ("D5(a1)+A1" ,   66  ) { (6075, 22) }
+      , ("A4+A2+A1"  ,   57  ) { (2835, 22) }
+      , ("D4+A2"     ,  107  ) { (4200, 21) }
+      , ("E6(a3)"    ,  111  ) { (5600, 21) }
+      , ("D5"	     ,   38  ) { (2100, 20) }
+      , ("A4+A3"     ,   16  ) { ( 420, 20) }
+      , ("A5+A1"     ,   87  ) { (2016, 19) }
+      , ("D5(a1)+A2" ,   82  ) { (1344, 19) }
+      , ("D6(a2)"    ,   49  ) { (4200, 18) }
+      , ("E6(a3)+A1" ,   46  ) { (3150, 18) }
+      , ("E7(a5)"    ,  103  ) { (7168, 17) }
+      , ("D5+A1"     ,   59  ) { (3200, 16) }
+      , ("E8(a7)"    ,   52  ) { (4480, 16) }
+      , ("A6"	     ,  106  ) { (4200, 15) }
+      , ("D6(a1)"    ,  110  ) { (5600, 15) }
+      , ("A6+A1"     ,   56  ) { (2835, 14) }
+      , ("E7(a4)"    ,   65  ) { (6075, 14) }
+      , ("E6(a1)"    ,   96  ) { (2800, 13) }
+      , ("D5+A2"     ,  108  ) { (4536, 13) }
+      , ("D6"	     ,   34  ) { ( 972, 12) }
+      , ("E6"	     ,   21  ) { ( 525, 12) }
+      , ("D7(a2)"    ,   63  ) { (4200, 12) }
+      , ("A7"	     ,   90  ) { (1400, 11) }
+      , ("E6(a1)+A1" ,  104  ) { (4096, 11) }
+      , ("E7(a3)"    ,   53  ) { (2268, 10) }
+      , ("E8(b6)"    ,   50  ) { (2240, 10) }
+      , ("D7(a1)"    ,   99  ) { (3240,  9) }
+      , ("E6+A1"     ,   78  ) { ( 448,  9) }
+      , ("E7(a2)"    ,   39  ) { (1344,  8) }
+      , ("E8(a6)"    ,   42  ) { (1400,  8) }
+      , ("D7"	     ,   76  ) { ( 400,  7) }
+      , ("E8(b5)"    ,   92  ) { (1400,  7) }
+      , ("E7(a1)"    ,   23  ) { ( 567,  6) }
+      , ("E8(a5)"    ,   28  ) { ( 700,  6) }
+      , ("E8(b4)"    ,   80  ) { ( 560,  5) }
+      , ("E7"	     ,    9  ) { (  84,  4) }
+      , ("E8(a4)"    ,   14  ) { ( 210,  4) }
+      , ("E8(a3)"    ,   71  ) { ( 112,  3) }
+      , ("E8(a2)"    ,    4  ) { (  35,  2) }
+      , ("E8(a1)"    ,   67  ) { (   8,  1) }
+      , ("E8"	     ,    0  ) { (   1,  0) }
+      ]
+
+set E8_Springer_map = (vec->int): { orbit diagrams as |vec| values }
+(  let tab = [vec,int]:
+      for (str,x) in springer_by_name_table_E8 do (str.name_to_diagram_E8,x) od
+   then leq (int i,int j) = bool: let (a,)=tab[i],(b,)=tab[j] in lex_lesseq(a,b)
+in tab := for i in  sort(#tab, leq) do tab[i] od { adjust |tab| to sorted form }
+;  { E8_Springer_map = }
+   (vec diagram) int:
+   let predicate(int i)= bool: let (key,)=tab[i] in lex_lesseq(diagram,key)
+   then k = binary_search_first(predicate,0,#tab)
+   then (source,image) = assert(k<#tab,"Wrong E8 diagram"); tab[k]
+   in assert(source=diagram,"Wrong E8 diagram"); image
+)
+
+set springer_table_E8 () = SpringerTable:
+   let ct=character_table_E8() then rd=ct.root_datum {simply_connected("E8")}
+   then drd = dual(rd)
+in ( ct
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(drd,E8_nilpotent_orbit_dual_map(O.diagram))
+   , (ComplexNilpotent O) ComplexNilpotent:
+     complex_nilpotent_from_diagram(rd,E8_nilpotent_orbit_dual_map(O.diagram))
+   , (ComplexNilpotent O) int: E8_Springer_map(O.diagram)
+   )
+
+{ In the general case we take into account the permutation of the simple root
+  indices returned by |test_simple_type| (it is a map from Bourbaki indices to
+  |rd| indices, which |stratified_diagram@(ComplexNilpotent,[int])| takes into
+  account to get into Bourbaki order, and which |permute| uses to transform the
+  dual diagram from |E8_nilpotent_orbit_dual_map| into the order of |dual(rd)|.
+}
+set springer_table_E8 (RootDatum rd) = SpringerTable:
+   let map = test_simple_type("E",rd), drd = dual(rd)
+in assert(#map=8,"Root datum has wrong rank "+#map);
+   ( character_table_E8(rd)
+   , orbits(rd)
+   , (ComplexNilpotent O) ComplexNilpotent:
+     let diagram = stratified_diagram(O,map)
+     then dual_O = vec: E8_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(drd,permute(map,dual_O))
+   , (ComplexNilpotent dual_O) ComplexNilpotent:
+     let diagram = stratified_diagram(dual_O,map)
+     then O = vec: E8_nilpotent_orbit_dual_map(diagram)
+     in complex_nilpotent_from_diagram(rd,permute(map,O))
+   , (ComplexNilpotent O) int: E8_Springer_map(stratified_diagram(O,map))
+   )
+set springer_by_name_E8 (string name) = int:
+   let index=first(for (n,) in springer_by_name_table_E8 do n=name od)
+   then (,pair)=springer_by_name_table_E8[index]
+in pair
+
+set springer_E8 (ComplexNilpotent O) = int:
+(  assert(O.root_datum.Lie_type = Lie_type("E8"),"Not type E8")
+;  springer_by_name_E8(diagram_to_name_E8(O.diagram))
+)
+
+set springer_E8(CharacterTable ct,ComplexNilpotent O)=int:
+   springer_E8(O)
+
+set springer_table_E8(CharacterTable ct)=
+let rd=ct.root_datum then
+orbits=rd.orbits then
+dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
+dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
+springer(ComplexNilpotent O)=springer_E8(ct,O) in
+(ct,orbits,dual_map,dual_map_i,springer)

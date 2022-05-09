@@ -1,5 +1,6 @@
 <dual.at
-
+<laurentPolynomial.at
+<hodgeParamPol.at
 {I=standard, J'=irreducible
  Q(J',I)=\sum a_i q^i
  a_{(l(I)-l(J')-n)/2}=mult of J' in level n F_n of Jantzen filtration
@@ -42,61 +43,205 @@ multiplicity of J' in F^{2+2r} is a_{k-r}
 multiplicity of J' in F^{2+2k} is a_{0}  [note: 2+2k=l(I)-l(J')]
 }
 
-set graded_multiplicities ([Param] B,i_poly_mat Q,Param irr, Param std) = vec:
+{singular infinitesimal character:
+ B should be singular_block_of(Param p), so that non-final and non-normal
+ parameters are discarded
+ Q should be KL_Q_polynomials(p) which correctly deals with cumulation etc.,
+  rather than KL_Q_polynomials(block_of(p)) which gives the wrong size matrix
+  or KL_Q_polynomials(singular_block_of(p)) which fails with an error
+}
+set graded_multiplicity ([Param] B,i_poly_mat Q,Param irr, Param std) = i_poly:
    if irr=std then [1]
+   elif length(std)-length(irr)<0 then i_poly:[]
    else
       let f=KL_Q_polynomial(B,Q,irr,std), d=length(std)-length(irr)
       then v=null(d+1)
    in for i:#f do v[d-2*i] := f[i] od; v
    fi
 
-set graded_multiplicities ([Param] B,Param irr, Param std) = vec:
-   graded_multiplicities(B,KL_Q_polynomials(B),irr,std)
-set graded_multiplicities (Param irr, Param std) = vec:
-   graded_multiplicities(block_of(irr),irr,std)
+{B should be singular_block_of(irr)}
+set graded_multiplicity ([Param] B,Param irr, Param std) = i_poly:
+   {note: KL_Q_polynoials(irr) here, not KL_Q_polynomials(B)}
+   graded_multiplicity(B,KL_Q_polynomials(irr),irr,std)
+set graded_multiplicity (Param irr, Param std) = i_poly:
+   graded_multiplicity(singular_block_of(irr),irr,std)
 
-set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = [Param,vec]:
- ##for irr in B
-   do {let f=KL_Q_polynomial(B,Q,irr,std) in}
-      let f=graded_multiplicities(B,Q,irr,std) in
-      {if f != zero_poly and #f !=0 then }
-      if sum(f).> then [(irr,f)] else [] fi
-   od
+{\sum Q(gamma,delta)J(gamma)}
+set graded_standard(Param std)=hodgeParamPol:
+let b=block_of(std) then
+Q=KL_Q_polynomials(std) then
+rv=nullHodgeParamPol(std.real_form) in
+for irr in b do
+ let f=KL_Q_polynomial(b,Q,irr,std) in
+  if sum(f).> then rv+:=f.at_v_squared*hodge_param_pol(irr) fi
+ od;rv
 
-set graded_composition_series ([Param] B,Param std) = [Param,vec]:
-   graded_composition_series(B,KL_Q_polynomials(B),std)
-set graded_composition_series (Param std) = [Param,vec]:
-   graded_composition_series(block_of(std),std)
+{B should be singular_block_of(std), and Q should be KL_Q_polynomials(std)}
+{similar to graded_standard but include shift by difference in lengths}
+set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = hodgeParamPol:
+dearrange(for irr in B
+	  do {let f=KL_Q_polynomial(B,Q,irr,std) in}
+	     let f=graded_multiplicity(B,Q,irr,std) in
+	     if sum(f).> then [(f,irr)] else [] fi
+	  od.##
+	 ,std.real_form)
+
+{B should be singular_block_of(std)}
+set graded_composition_series ([Param] B,Param std) = hodgeParamPol:
+   graded_composition_series(B,KL_Q_polynomials(std),std)
+set graded_composition_series (Param std) = hodgeParamPol:
+   graded_composition_series(singular_block_of(std),std)
+
+set print_graded_composition_series ([Param] B,i_poly_mat Q,Param std) = void:
+   let max_length_diff=length(B~[0])-length(B[0])
+   then max_length_vector = max_length_diff+1 then
+   ()=prints("max length vector: ", max_length_vector)  in
+prints("G=", real_form(std));
+   prints("graded composition series of standard module:");
+   prints(std);
+   prints("length=", length(std));
+   prints("l=length, ld=length difference, Q=Q(irr,std)");
+{   let gcs=graded_composition_series(singular_block_of(std),std)}
+   let gcs=rearrange(graded_composition_series(singular_block_of(std),Q,std))  {[(param,i_poly)]} in
+   tabulate(["x","lambda","nu","l","ld","Q","filtration"]#
+   for (m,p) in gcs
+   do let m=delete_trailing_zeros(m) then
+   string_m="" in
+      for i:max_length_vector
+      do string_m +:=
+{         if i<=#m-1 and is_even(#m-1-i) then m[i]+" " else ". " fi}
+         if i<=(std.length-p.length) and is_even(std.length-p.length-i) then
+	  if i<#m then m[i]+" " else "0 " fi else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,p.lambda.to_string,p.nu.to_string,
+   p.length.to_string,
+   (std.length-p.length).to_string,
+   poly_format(KL_Q_polynomial(B,Q,p,std),"q"),
+   "[" +  string_m + "]"]
+   od)
+
+set print_graded_composition_series ([Param] B,Param std) = void:
+print_graded_composition_series(B,KL_Q_polynomials(std),std)
 
 set print_graded_composition_series (Param std) = void:
-   let B=block_of(std)
-   then max_length_diff=length(B~[0])-length(B[0])
+print_graded_composition_series(singular_block_of(std),KL_Q_polynomials(std),std)
+
+set print_graded_composition_series ([Param] B,i_poly_mat Q,(Param->i_laurent_poly) shifts,Param std) = void:
+   let max_length_diff=length(B~[0])-length(B[0])
+   then max_length_vector = max_length_diff+1 then
+   ()=prints("max length vector: ", max_length_vector)  in
+   prints("G=", real_form(std));
+   prints("graded composition series of standard module:");
+   prints(std);
+   prints("length=", length(std));
+   prints("l=length, ld=length difference, Q=Q(irr,std)");
+{   let gcs=graded_composition_series(singular_block_of(std),std)}
+   let gcs=rearrange(graded_composition_series(singular_block_of(std),Q,std))  {[(param,i_poly)]} in
+   tabulate(["x","lambda","nu","l","ld","Q","filtration"]#
+   for (m,p) in gcs ~
+   do let m=delete_trailing_zeros(m) then
+   string_m="" in
+      for i:max_length_vector
+      do string_m +:=
+{         if i<=#m-1 and is_even(#m-1-i) then m[i]+" " else ". " fi}
+         if i<=(std.length-p.length) and is_even(std.length-p.length-i) then
+	  if i<#m then m[i]+" " else "0 " fi else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,p.lambda.to_string,p.nu.to_string,
+   p.length.to_string,
+   (std.length-p.length).to_string,
+   poly_format(KL_Q_polynomial(B,Q,p,std),"q"),
+   "[" +  string_m + "]"]
+   od)
+
+
+set print_graded_composition_series ([Param] B,i_poly_mat Q,(Param->i_laurent_poly) shifts, Param std) = void:
+   let gs=graded_standard(std) then
+   factors=monomials(gs) then
+   factors=std.composition_series.monomials then
+   i=find(B,std) then
+   lowest_power=min(for p in factors do lowest_power(shifts(p)) od) then
+   ()=prints("lowest power: ", lowest_power) then
+   shift_term=v_laurent_power(max(0,-lowest_power)) then
+   max_length_diff=length(B~[0])-length(B[0]) then
+   max_length_vector = max_length_diff+1 then
+   lowest_power=min(for p in factors do lowest_power(shifts(p)) od) then
+   shift_term=v_laurent_power(max(0,-lowest_power)) then
+   ()=prints("max length vector: ", max_length_vector)  in
+   prints("G=", real_form(std));
+   prints("graded composition series of standard module:");
+   prints(std);
+   prints("length=", length(std));
+   prints("l=length, ld=length difference, Q=Q(irr,std)");
+   let gcs=rearrange(graded_composition_series(singular_block_of(std),Q,std))  {[(param,i_poly)]} in
+   tabulate(["x","lambda","nu","l","ld","Q","f","filtration"]#
+   for (m_in,p) in gcs ~ do
+   let f=shifts(p)  {laurent polynomial} then
+   ()=prints("p=",p, " f=", f) then
+   f_as_poly=laurent_poly_as_poly(shift_term*f) then
+   m=poly_product(m_in,f_as_poly) then
+   m=delete_trailing_zeros(m) then
+   string_m="" in
+      for i:max_length_vector
+      do string_m +:=
+{         if i<=#m-1 and is_even(#m-1-i) then m[i]+" " else ". " fi}
+         if i<=(std.length-p.length) and is_even(std.length-p.length-i) then
+	  if i<#m then m[i]+" " else "0 " fi else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,p.lambda.to_string,p.nu.to_string,
+   p.length.to_string,
+   (std.length-p.length).to_string,
+   poly_format(KL_Q_polynomial(B,Q,p,std),"q"),
+   poly_format(f_as_poly, "q"),
+   "[" +  string_m + "]"]
+
+   od)
+{
+set print_graded_composition_series([Param] B,i_poly_mat Q, (Param->i_laurent_poly) shifts, Param std)=void:
+let gs=graded_standard(std) then
+factors=monomials(gs) then
+gcs=graded_composition_series(singular_block_of(std),Q,std) then
+factors=std.composition_series.monomials then
+i=find(B,std) then
+lowest_power=min(for p in factors do lowest_power(shifts(p)) od) then
+shift_term=v_laurent_power(max(0,-lowest_power)) then
+max_length_diff=length(B~[0])-length(B[0])
    then max_length_vector = max_length_diff+1
-   , Q=KL_Q_polynomials(B)
 in prints("G=", real_form(std));
    prints("graded composition series of standard module:");
    prints(std);
    prints("length=", length(std));
    prints("l=length, ld=length difference, Q=Q(irr,std)");
-   let gcs=graded_composition_series(block_of(std),std)
-   then max_0=max(for (p,) in gcs do #to_string(p) od)
+{   let gcs=graded_composition_series(singular_block_of(std),std)} let ()=1 then
+        max_0=max(for (p,) in gcs do #to_string(p) od)
    ,    max_1=max(for (p,) in gcs do #to_string(length(p)) od)
    ,    max_2=max(for (p,) in gcs do #to_string(length(std)-length(p)) od)
    ,    max_3=max(for (p,) in gcs
                   do #to_string(poly_format(KL_Q_polynomial(B,Q,p,std),"q"))
                   od)
 in prints(pad("parameter",max_0), "  ",pad("l",max_1),"  "
-         ,pad("ld",max_2),"  ", pad("Q",max_3));
-   for (p,m) in gcs
-   do let string_m=string:"" in
-      for i:max_length_vector
+         ,pad("ld",max_2),"  ", pad("Q",max_3), "  ", pad("f", max_3));
+   for (p,m)@j in gcs
+   do
+   let f=shifts(p)  {laurent polynomial} then
+   f_as_poly=laurent_poly_as_poly(shift_term*f) then
+{   m=poly_product(Q[j][i],f_as_poly)  then}
+   g=KL_Q_polynomial(B,Q,p,std) then
+   string_m=string:"" in
+      for k:max_length_vector
       do string_m +:=
-         if i<=#m-1 and is_even(#m-1-i) then m[i]+" " else ". " fi
+         if k<=#m-1 and is_even(#m-1-k) then m[k]+" " else ". " fi
       od
    ;  prints(pad(to_string(p),max_0), "  "
             ,pad(to_string(length(p)),max_1),"  "
             ,pad(to_string(length(std)-length(p)),max_2), "  "
-            ,pad(poly_format(KL_Q_polynomial(B,Q,p,std),"q"),max_3)
+            ,pad(poly_format(KL_Q_polynomial(B,Q,p,std),"q"),max_3), "  "
+	    ,pad(poly_format(f_as_poly,"q"),max_3)
             , "  [", string_m,"]"
             )
    od
+
+}

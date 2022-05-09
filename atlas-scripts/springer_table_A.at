@@ -1,0 +1,69 @@
+<basic.at
+<combinatorics.at { for |classic_permutation| }
+<nilpotent_orbits.at { for the type |ComplexNilpotent|, |diagram_normalized| }
+
+<springer_tables.at
+<classical_character_tables.at { for |character_table_A| }
+
+{ Springer correspondence from nilpotent orbits to representations of W in type A
+  Orbits and W-irreps both correspond to partitions of rank+1, which gives the
+  (here bijective) map from orbits to W-irreps for type A }
+
+{ Partition of $n$ to a ComplexNilpotent for a given type $A_{n-1}$ root datum }
+
+set nilpotent_orbit_GL ([int] parts) = ComplexNilpotent:
+   let (n,Levi_type,simples) = Levi_A(parts)
+   then rd = GL(n), v = adjoint_2rho(Levi_type)
+   then H = vec: sum(n # for pos@i in simples do coroot(rd,pos)*v[i] od)
+in complex_nilpotent(rd,H)
+
+set nilpotent_orbit_A(RootDatum rd) = (Partition->ComplexNilpotent):
+   let map = test_simple_type("A",rd)
+in (Partition P) ComplexNilpotent:
+(  assert(is_positive(P), "P is not a partition (has non-positive entries)")
+;  let (n,Levi_type,simples) = Levi_A(P)
+   then v = assert(n=#map+1,"Partition is of "+ n +" rather than "+(#map+1))
+          ; adjoint_2rho(Levi_type)
+   then H = sum(rd.rank # for pos@i in simples do coroot(rd,map[pos])*v[i] od)
+in complex_nilpotent(rd,H)
+)
+
+{ an inverse operation, starting from |stratified_diagram(orbit)| }
+set diagram_A_to_partition ([int] diagram) = Partition:
+   assert(diagram=diagram~[:],"Stratified diagram should be a palindrome");
+   let freq = [int]: (0#diagram.cumulate_forward).frequencies
+   then max = { the largest part }
+      let (q,r)= #freq \% 2 in assert(r=1,"Diagram has odd sum"); q+1
+   then mult(int i) = int: { multiplicity of part |i| in partition }
+      let m = if i+2<=max then freq[max-i]-freq[max-i-2] else freq[max-i] fi
+      in assert(m.>=,"Invalid diagram, negative multiplicity of "+i); m
+in for i:max from 1 ~ do for :mult(i) do i od od.##
+
+
+{ Springer table construction.
+
+  For the mapping parts (dual, dual dual, and Springer) we shall impose on the
+  "simple" Springer tables the constraint that these maps will ignore any
+  radical component of |O.H|, in other words that vanishes on the roots of
+  |O.root_datum|. This will allow, for a root datum with disconnected Dynkin
+  diagram, the orbits to be passed to the Springer tables for sub-rootdata for
+  the individual Dynkin diagram components without having to project away the
+  part for the other components. This constraint is automatically met if we
+  handle orbits using only their diagram, which has this independence property.
+}
+
+set dual_map_A(ComplexNilpotent O) = ComplexNilpotent:
+   let P=O.stratified_diagram.diagram_A_to_partition
+   in nilpotent_orbit_A(dual(O.root_datum))(transpose(P))
+
+set springer_table_A (RootDatum rd) = SpringerTable:
+   let (table, , irrep_of_partition) = character_table_A(rd)
+   , orbit = (Partition->ComplexNilpotent): nilpotent_orbit_A(rd)
+   , rank = rd.semisimple_rank
+in ( table
+   , for lambda in partitions(rank+1) do orbit(lambda) od
+   , dual_map_A@ComplexNilpotent
+   , dual_map_A@ComplexNilpotent { inverse of transposition is transposition }
+   , (ComplexNilpotent O) int:
+     O.stratified_diagram.diagram_A_to_partition.irrep_of_partition
+   )

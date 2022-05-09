@@ -50,11 +50,20 @@ set twisted_c_form_irreducible_contributions (Param p) =
   separately and at the end divide the sum of such contributions by 2.
 }
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
-set twisted_c_form_irreducible (Param p) = KTypePol:
+set twisted_c_form_irreducible_unnormalized (Param p) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
   in map(twisted_c_form_std@Param,fixed)+half(unfixed.K_type_pol)
 )
+
+{ normalization here means making the leading term 1 (rather than |s|) }
+set twisted_c_form_irreducible (Param p) = KTypePol:
+   let unnormalized=twisted_c_form_irreducible_unnormalized(p)
+   then (c,)=first_term(unnormalized)
+in if c=1 then unnormalized
+   elif c=s then s*unnormalized
+   else error("leading coefficient is not 1 or s")
+   fi
 
 {.whether J(p) admits an invariant Hermitian form.}
 set is_hermitian (Param p) = bool: equivalent(twist(p),p)
@@ -396,8 +405,8 @@ set test_line (Param p) = void:
       let t=(points[i]+points[i-1])/2
       then q=param(x,lambda_minus_rho,gamma*t)         { mid point interval }
       ,    r=param(x,lambda_minus_rho,gamma*points[i]) { end point interval }
-      in prints(nu(p)*t,": ", is_unitary(q))
-      ;  prints(nu(p)*points[i],": ", is_unitary(r))
+      in prints(nu(p)*t,": ", is_unitary(first_param(finalize(q))))
+      ;  prints(nu(p)*points[i],": ", is_unitary(first_param(finalize(r))))
     od
   fi
 )
@@ -418,3 +427,6 @@ set strong_test (Param p)=bool:
   then OK = =bad { return whether bad terms are absent }
   in prints("number of terms: ", #formula);
   if not OK then prints("bad terms:", bad) fi; OK
+
+set branch_c_form_irreducible(Param p, int N) = KTypePol:
+  branch(c_form_irreducible(p),N)

@@ -1,5 +1,5 @@
 <basic.at
-
+<tits.at
 { various ways of defining parameters }
 
 { torus_factor, aka "normalized torus factor", is $\theta$-fixed,
@@ -128,6 +128,20 @@ set choose_g (KGBElt x, KGBElt y)=ratvec:
 set choose_g (Param p) = ratvec:
   choose_g(real_form(p),dual(integrality_datum(p)))
 
+{contragredient of a parameter}
+set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
+set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
+set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
+
+{contragredient: (x,lambda,nu) -> (w_0\times x,-w_0\lambda,-w_0\nu)
+ sketch: the contragredient is given by the Chevalley involution (of the real group)
+ which acts by -1 on lambda,nu, but keeps the same x (it doesn't change the "group")
+ -lambda,-nu are in the wrong chamber (for our fixed parabolic), so use w_0 (the long
+ element of the Weyl group)
+}
+set contragredient(Param p)=Param:
+let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
+
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
   parameter(x,lambda(gamma,x,y),nu(gamma,x)) { final argument gamma would work }
@@ -135,6 +149,58 @@ set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
 { the next function used to be wrong, with choose_g(x,y) instead }
 set parameter (KGBElt x, KGBElt y)=Param:
   parameter(x,y,choose_g(y,x)) { computes gamma from real_form(y), x-dominant }
+
+{A is a subset of B}
+set is_subset([Param] A,[Param] B)=bool:
+all(for a in A do find (B,a)!=-1 od)
+
+{A is a proper subset of B}
+set is_proper_subset([Param] A,[Param] B)=bool:
+is_subset(A,B) and #A<#B
+
+{complement of A in B}
+set complement([Param] A,[Param] B)=[Param]:
+##for p in B do if find(A,p)=-1 then [p] else [] fi od
+
+{turn [Param] into a ParamPol}
+set param_pol ([Param] params,RealForm G) = ParamPol:
+  G.null_module + for p in params do (1,p) od
+
+{turn [Param] into a ParamPol; error if #params=0}
+set param_pol ([Param] params) = ParamPol:
+assert(#params>0,"Parameter list is empty, use (param_pol([Param],RealForm)) instead");
+  params[0].real_form.null_module + for p in params do (1,p) od
+
+{replace [Param] with list with multiplicity one
+uses properties of ParamPols}
+set remove_duplicates([Param] list)=[Param]:
+if #list=0 then [] else monomials(param_pol(list)) fi
+
+{compare two lists of parameters}
+set compare([Param] A_in,[Param] B_in)=
+let A=remove_duplicates(A_in),
+B=remove_duplicates(B_in) then
+B_minus_A=complement(A,B) then
+A_minus_B=complement(B,A) then
+A_cap_B=complement(B_minus_A,B) then
+A_union_B=remove_duplicates(A##B) in
+prints("#A\cup B: ", #A_union_B,new_line,
+"#A\cap B: ", #A_cap_B,new_line,
+"#A-B: ", #A_minus_B,new_line,
+"#B-A: ", #B_minus_A);
+(A_union_B,A_cap_B,A_minus_B,B_minus_A)
+
+set compare_long([Param] A_in,[Param] B_in)=
+let (union,intersection,AminusB,BminusA)=compare(A_in,B_in) in
+prints("union: ", #union);
+for p in union do prints(p) od;
+prints("intersection: ", #intersection);
+for p in intersection do prints(p) od;
+prints("A minus B: ", #AminusB);
+for p in AminusB do prints(p) od;
+prints("B minus A: ", #BminusA);
+for p in BminusA do prints(p) od
+
 
 {see Vogan-dual.at}
 {this gives a parameter for the dual group with infinitesimal character g}

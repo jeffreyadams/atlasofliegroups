@@ -13,7 +13,7 @@
 }
 
 <basic.at
-<matrix.at
+<matrix.at { for |ech_up@(mat,[int])|, used for one-sided inverses }
 
 set_type [ ratmat = (mat,string,int) ] { matrix, slash, common denominator }
 { the void component avoids unary/binary conflicts, as for -@(mat,int) }
@@ -157,6 +157,15 @@ set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
 { convert ratmat, i.e. (mat,string,int), to [[rat]] }
 set ratmat_to_bigmat (ratmat(A,,d)) = [[rat]]:
   for i:n_columns(A) do [rat]: A[i]/d od
+
+set ## (ratmat A, ratmat B) =ratmat: { concatenate horizontally, must have same depth }
+ratvecs_as_ratmat(for i:A.n_columns do column(A,i) od ## for i:B.n_columns do column(B,i) od)
+
+set ## (ratmat A, mat B) =ratmat: { concatenate horizontally, must have same depth }
+A##B.mat_as_ratmat
+
+set ## (mat A, ratmat B) =ratmat: { concatenate horizontally, must have same depth }
+A.mat_as_ratmat##B
 
 set show (ratmat(M,,d)) = void:
    for v in M do prints(ratvec_to_string(v/d)) od

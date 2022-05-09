@@ -1,5 +1,3 @@
-{see K_parameters.at}
-
 <basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
@@ -47,3 +45,23 @@ set print_K_types (ParamPol P, KGBElt x_K) = void:
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))
   od
+
+{K_basis is the basis of a vector space, v is a vector in this basis
+ return sum_i v[i]*K_types[i]
+ need G only if #K_basis=0}
+set expand ([int] v,[KType] K_basis, RealForm G) = KTypePol:
+   null_K_module(G) + for c@i in v do c*K_basis[i] od
+
+{ convenience function; gives error if K_basis=[] }
+set expand ([int] v,[KType] K_basis) =KTypePol:
+  expand(v,K_basis,K_basis[0].real_form)
+
+{find KType in list of K_types}
+set find ([KType] list,KType mu) = int: first(#list,(int i)bool:list[i]=mu)
+
+{sort KTypes uniquely}
+set sort_u ([KType] K_types) = [KType]:
+  if =#K_types then []
+  else
+     for @t in K_types[0].null_K_module+for Kt in K_types do (1,Kt) od do t od
+  fi

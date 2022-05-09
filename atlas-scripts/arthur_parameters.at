@@ -1,0 +1,77 @@
+<disconnected.at
+<galois.at {strong_real_forms_same_type}
+
+{parametrizing sets of unipotent Arthur parameters: see notesOnUnipotentParamters.pdf in Dropbox}
+
+{see galois.at for strong_real_forms_central_invariant_e}
+
+{Arthur parameters for inner class corresponding to given dual complex orbit
+ where Psi(SL(2,C)) <-> O_check
+ conceptual algorithm: run over conjugacy classes of order 2
+  in the (disconnected) centralizer_{G^v}(O_check)
+ actual algorithm:
+  rd_dual=O_check.root_datum
+  run over strong real forms y_1,...,y_n of rd_dual
+  let K^\vee_i=centralizer in rd_dual of y_i (
+       the complexified maximal compact of the corresponding real form of rd_dual
+  collect the nilpotent orbits of K^\vee_i whose saturation to G^v is equal to O_check
+  since K^\vee_i can be disconnected this is a ComplexNilpotent_d object,
+   first run over orbits for the identity component, and then mod out by
+    conjugation by the component group (see disconnected.at)
+the return value is [ComplexNilpotent_d], each of which is a complex nilpotent
+orbit for a (possibly disconnected) group K^vee_i
+}
+set arthur_parameters(InnerClass ic,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
+assert(ic.dual.root_datum=O_check.root_datum,"Root datum mismatch");
+let dual_forms=strong_real_forms_central_invariant_e(ic.dual) in
+##for Gd@i in dual_forms do
+ ##for O_d in Gd.K.orbits do
+ if saturate(O_d,O_check.root_datum,injection_from_K_matrix(Gd))=O_check then [O_d]  else [] fi od 
+od
+
+{arthur parameters, listed by dual unipotent orbit;
+the return valule is [[ComplexNilpotent_d]]
+the i^th array [ComplexNilpotent_d] is an array
+ of orbits, for various K^\vee_j, whose G^\vee-saturation
+ is the i^th unipotent G^\vee-orbit
+
+}
+set arthur_parameters_by_orbit(InnerClass ic)=[[ComplexNilpotent_d]]:
+for O_check in ic.dual_orbits do arthur_parameters(ic,O_check) od
+
+{by_orbit  is the default}
+set arthur_parameters(InnerClass ic)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(ic)
+
+{arthur parameters, listed by dual strong real forms y
+the return valule is [[ComplexNilpotent_d]]
+the i^th [ComplexNipotent_d] is the list of unipotent orbits
+ for K^\vee_i
+}
+set arthur_parameters_by_y(InnerClass ic)=[[ComplexNilpotent_d]]:
+let dual_forms=strong_real_forms_central_invariant_e(ic.dual) in
+for Gd in dual_forms do Gd.K.orbits od
+
+set show([[ComplexNilpotent]] list)=void:
+for orbits@i in list do
+prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O)", #orbits);
+tabulate(["K_0","H","diagram"]#
+ for O in orbits do
+ [O.root_datum.to_string,O.H.to_string,O.diagram.to_string] od) od
+
+set show([[ComplexNilpotent_d]] list)=void:
+prints("Arthur parameters listed by orbit: ");
+let v=for orbits_d in list do #orbits_d od in
+prints("#parameters by orbit: ",v,new_line, "Total: ", sum(v));
+for orbits_d@i in list do
+prints(new_line,"orbit #",i," for G",new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
+tabulate(["K_0","H","diagram","dim","mult"]#
+ for O_d in orbits_d do
+ let mult=#intersect(O_d) in
+ [O_d.rd_d.rd.to_string,O_d.H.to_string,intersect(O_d)[0].diagram.to_string,intersect(O_d)[0].dim_nilpotent.to_string,mult.to_string] od) od
+
+
+
+
+
+
+

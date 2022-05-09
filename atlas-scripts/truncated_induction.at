@@ -1,0 +1,334 @@
+
+<basic.at
+<class_tables.at
+<character_table_reps.at { for |induce| and friends }
+
+{ if L is a Levi subgroup of G, and pi an irreducible representation of W_L,
+  then truncated induction from L to G takes pi to the unique irreducible
+  in Ind_{W(L)}^{W(G)}(pi_L) of minimal degree (signal an error if not unique)
+
+  |truncate| returns a pair (int min_degree,[int] characters)
+  |min_degree| is the minimal value of |degree_function| at all irreducibles
+  that occur in Ind(pi_L); |characters| is the list of indices for those
+  irreps for which this minimal value was obtained
+  this list *should* have exactly one element
+}
+
+set ti_verbose=false
+
+{ truncate (already indeuced) character: keep the irreps of minimal degree,
+  according to |degree_function| (to be either |degree| or |generic_degree|),
+  though negative values of degree function mean ignore the irrep altogether.
+  the function returns (degree, list of indices of characters of this degree)
+  the coefficient of the irrep is presumably 1 but neither tested nor returned
+}
+
+{degree_function: degree or generic_degree}
+set truncate(CharacterTable ct_G,[int] char,(int->int) degree_function) =
+      (int,[int]):  {first argument: value of degree function}
+(  let dec=ct_G.decompose(char) in
+   if ti_verbose
+   then prints("truncating character: ", char, new_line,"decomposed: ", dec)
+   fi;
+   if ti_verbose
+   then prints("all terms: "
+              , ##for a@i in dec do if !=a then [(i,a)] else [] fi od)
+   fi;
+   let min_degree=ct_G.root_datum.nr_of_posroots
+   , rv=[int]:[]
+in for c@i in dec { an irrep index }
+   do let degree= degree_function(i) in
+      if degree>=0 and !=c
+      then
+         if degree<min_degree then rv:=[i]; min_degree:=degree { new minimum }
+         elif degree=min_degree then rv#:=i { extend list for current minimun }
+	 fi
+      fi
+   od;
+   if ti_verbose
+   then  prints("degree: ", min_degree,new_line
+               ,"index of character: ", rv[0], "  (all: ",rv,")")
+   fi;
+   (min_degree,rv)
+)
+
+{induce and truncate}
+{basic version, using given embedding f
+ degree function is either degree or generic_degree
+ return value is [int] since this can happen in the generic_degree case}
+set truncate_induce_character \
+   ( WeylClassTable Wct_L
+   , CharacterTable ct_G
+   , (WeylElt->WeylElt) f
+   , (int->int) degree_function
+   , [int] pi_L
+   ) = (int,[int]):
+(  if ti_verbose then prints("Computing induced character: ") fi
+;  let ind=induce_character(Wct_L,ct_G.class_table,f,pi_L)
+in if ti_verbose then prints("computed induced character: ", ind) fi
+;  let (,t): pair = truncate(ct_G,ind,degree_function)
+in if ti_verbose then prints("computed truncation of induced", new_line
+                            ,"induced: ", t) fi
+;  pair
+)
+
+{need version where L is specified instead of f}
+{set truncate_induce_character \
+   ( CharacterTable ct_L
+   , RootDatum L
+   , CharacterTable ct_G
+   , (int->int) degree_function
+   , [int] pi_L
+   ) = (int,[int]):
+(  if ti_verbose then prints("Computing induced character: ") fi
+;  let ind=induce_character(ct_L,L,ct_G,pi_L)
+in if ti_verbose then prints("computed induced character: ", ind) fi
+;  let (,t): pair = truncate(ct_G,ind,degree_function)
+in if ti_verbose then prints("computed truncation of induced", new_line
+                            ,"induced: ", t) fi
+;  pair
+)
+}
+
+
+set truncate_degree_induce_character \
+   ( WeylClassTable Wct_L
+   , CharacterTable ct_G
+   , [int] pi_L
+   , (int->int) degree_function  
+   ) = (int,[int]):
+   let embed(WeylElt w) = WeylElt: convert_to(ct_G.root_datum,w)
+in truncate_induce_character(Wct_L,ct_G,embed,degree_function,pi_L)
+
+{ standard form: using ordinary (fake) degree }
+set truncate_by_degree_induce_character \
+  ( WeylClassTable Wct_L, CharacterTable ct_G, [int] pi_L) = int:
+(  let (,t) = truncate_degree_induce_character(Wct_L,ct_G,pi_L,ct_G.degree)
+in assert(#t=1,"not a unique character in truncated induction")
+;  t[0]
+)
+
+{ an alias }
+set truncate_induce_character =
+   truncate_degree_induce_character \
+   @(WeylClassTable,CharacterTable,[int],(int->int))
+
+
+{build Wct_L, ct_G on the fly (slow); degree function must still be supplied }
+set truncate_induce_character \
+   ( RootDatum L, RootDatum G,[int] pi_L,(int->int) degree_function) =
+      (int,[int]):
+   let ct_G=character_table(G), Wct_L=construct_class_table(L)
+in truncate_induce_character(Wct_L,ct_G,pi_L,degree_function)
+
+{ build ct_L on the fly }
+set truncate_induce_character \
+   ( RootDatum L
+   , CharacterTable ct_G
+   , [int] pi_L
+   , (int->int) degree_function
+   ) =(int,[int]):
+   truncate_induce_character(construct_class_table(L),ct_G,pi_L,degree_function)
+
+{ L is given as a subgroup of G, by specifying the simple roots of L as a set
+  of positive roots of G; for a Levi factor these roots are simple for G
+}
+set truncate_induce_character \
+   ( CharacterTable ct_G
+   , [int] simple_roots_of_L
+   , [int] pi_L
+   , (int->int) degree_function
+   ) =(int,[int]):
+   let ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
+in truncate(ct_G,ind,degree_function)
+
+{ standard form: by degree, returns int }
+{ this should not be used}
+{set truncate_by_degree_induce_character \
+   ( CharacterTable ct_G, [int] simple_roots_of_L, [int] pi_L) = int:
+   let ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
+   then (,t)=truncate(ct_G,ind,ct_G.degree)
+in assert(#t=1,"not a unique character in truncated induction"); t[0]
+}
+
+{ same as previous, build ct_G on the fly, but use provided |degree_function| }
+{ this should not be used}
+{set truncate_induce_character \
+   ( RootDatum G
+   , [int] simple_roots_of_L
+   , [int] pi_L
+   , (int->int) degree_function
+   ) = [int]:
+   let ct_G=G.character_table
+   then ind = induce_character(ct_G.class_table,simple_roots_of_L,pi_L)
+   then (,t)=truncate(ct_G,ind,degree_function)
+in t
+}
+{ induction of orbits }
+
+{ for this we need Springer table for both L and G }
+<springer_tables_reductive.at { for type |SpringerTable| and its constructor }
+
+{ allow a SpringerTable to be provided, although it is not necessary }
+set truncate (SpringerTable st_G,[int] char,(int->int) degree_function) =
+      (int,[int]):
+   truncate(st_G.ct,char,degree_function)
+
+set induce_orbit \
+   ( SpringerTable st_L
+   , SpringerTable st_G
+   , ComplexNilpotent O_L
+   ) = ComplexNilpotent:
+(  let L=O_L.root_datum then char_L_inx = int: st_L.springer(O_L)
+   then ()=if ti_verbose
+           then prints("orbit_L: ", O_L.diagram,  new_line
+   	              ,"index of character_L: ", char_L_inx
+		      ," (degree: ",st_L.ct.degree(char_L_inx),")") fi
+   then degree_function = (int->int): st_G.ct.degree
+   , Wct_L = st_L.ct.class_table
+   then (,char_G) = let char_L = [int]: st_L.ct.character(char_L_inx) in
+           truncate_induce_character(Wct_L,st_G.ct,char_L,degree_function)
+   then ()=assert(#char_G=1,"not a unique term with given degree")
+   then (valid,orbit)=st_G.springer_inverse(char_G[0])
+in assert(valid,"induced orbit doesn't have Springer_inverse")
+;  if ti_verbose
+   then prints("induced orbit: ", orbit.diagram,st_G.special_star(orbit))
+   fi
+;  orbit
+)
+
+{ somewhat slow: compute Springer table for L }
+set induce_orbit(SpringerTable st_G,ComplexNilpotent O_L) = ComplexNilpotent:
+   induce_orbit(Springer_table(O_L.root_datum), st_G, O_L)
+
+{ slower: computes Springer table for L and G }
+set induce_orbit (RootDatum G,ComplexNilpotent O_L) = ComplexNilpotent:
+   induce_orbit(Springer_table(G), O_L)
+
+set test_induce_orbits(RootDatum G,[int] simple_roots_of_L) = void:
+   let L=Levi_datum(G,simple_roots_of_L)
+   then st_G=G.Springer_table
+   then st_L=L.Springer_table
+   then codim=G.dimension-L.dimension
+   then ()=if ti_verbose then prints("codimension: ", codim)  fi
+in tabulate (
+   for O_L in L.orbits
+   do let O=induce_orbit(st_L,st_G,O_L) in
+      [O_L.diagram.to_string
+      ,O_L.dim_nilpotent.to_string
+      ,O.diagram.to_string
+      ,O.dim_nilpotent.to_string
+      ,(O_L.dim_nilpotent+codim-O.dim_nilpotent).to_string
+      ]
+   od )
+{-------------------------------------------------------------------}
+{extract all terms sigma from given (reducible) character satisfying f(sigma)=desired_value
+ usually f = generic or fake degree}
+set select(CharacterTable ct, [int] character, int desired_value, (int->int) function)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function(i)=desired_value then  [(i,dec[i])] else[] fi
+od
+
+{select by fake degree}
+set select_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.degree)
+
+{select by generic degree}
+set select_generic_degree(CharacterTable ct, [int] character, int desired_value)=[(int,int)]:
+select(ct,character,desired_value,ct.generic_degree)
+
+{select by two function values f_i(sigma)=desired_value_i}
+set select(CharacterTable ct, [int] character, int desired_value_1,int desired_value_2, (int->int) function_1,(int->int) function_2)=[(int,int)]:
+let dec=ct.decompose(character)  {[int]} in
+##for i:#dec do
+ if dec[i]>0 and function_1(i)=desired_value_1 and function_2(i)=desired_value_2  then  [(i,dec[i])] else[] fi
+od
+
+{select all terms with specified fake degree and (possibly different) generic degree}
+set select_both_degrees\
+ ( CharacterTable ct
+ , [int] character
+ , int desired_value_fake
+ , int desired_value_generic
+ ) = [(int,int)]:
+select(ct,character,desired_value_fake,desired_value_generic,ct.degree,ct.generic_degree)
+
+{J-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L)}
+set J_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_generic_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{version with mat P}
+set J_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L, mat P) =
+( select_generic_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     ,P)
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{j-induction from Lusztig's orange book page 77}
+{induce sigma_L from W(L) to W(G), and keep terms sigma with fdeg(sigma)=fdeg(sigma_L)}
+set j_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L)=
+( select_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    )
+)
+
+{version with mat P}
+set j_induce (CharacterTable ct_L,CharacterTable ct_G,int index_character_L, mat P)=
+( select_degree
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     ,P)
+    , ct_L.degree(index_character_L)
+    )
+)
+
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=gdeg(sigma_L) AND fdeg(sigma)=fdeg(sigma_L)}
+set jJ_induce(CharacterTable ct_L,CharacterTable ct_G,int index_character_L) =
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L))
+    , ct_L.degree(index_character_L)
+    , ct_L.generic_degree(index_character_L)
+    )
+)
+
+{induce sigma_L from W(L) to W(G), and keep terms sigma with gdeg(sigma)=fdeg(sigma)=desired_degree}
+set jJ_select_induce\
+  (CharacterTable ct_L
+  ,CharacterTable ct_G
+  ,int index_character_L
+  ,int desired_degree)=
+( select_both_degrees
+    (ct_G
+    ,induce_character(ct_L.class_table
+		     ,ct_G.class_table
+		     ,ct_L.character(index_character_L)
+		     )
+    ,desired_degree
+    ,desired_degree
+    )
+)
+

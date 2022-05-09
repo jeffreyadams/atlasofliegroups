@@ -1,0 +1,299 @@
+<nilpotent_orbits.at
+<galois.at {for conjugacy_classes_involutions}
+
+{computing the centralizer of a complex nilpotent}
+
+{O is a complex nilpotent orbit <-> (H,E,F)
+ and corresponding SL(2)
+ the reductive part of Cent_G(E) is Cent_G(SL(2))
+
+we refer to this group as the "centralizer" Cent_G(E)
+or Cent_G(O)
+we need to compute Cent_G(O)^0 as a connected reductive group,
+and Cent_G(O)/Cent_G(O)^0
+
+The Bala Carter Levi plays a role here, we denote it L}
+
+{the Cartan subgroup of Cent(O) is the radical of the Bala Carter Levi of O}
+set torus(ComplexNilpotent O)=SubTorus:O.Bala_Carter_Levi.radical_basis
+
+{roots of G with same restriction to T as alpha}
+set roots_same_restriction(ComplexNilpotent O,vec alpha)=
+let T=O.torus in
+##for beta in O.root_datum.roots do
+ if =T.restrict(beta-alpha)  then [beta] else [] fi od
+
+{given (O,alpha)
+let H_L be the conjugate of O.H which is dominant for L
+define:
+m_0(alpha)=#{beta| beta has same restriction to T and <beta,H_L>=0}
+m_2(alpha)=#{beta| beta has same restriction to T and <beta,H_L>=2}
+m(alpha)  =m_0-m_2 \in {0,1}
+alpha restricted to T is a root of T in Cent(O) <=> m(alpha)=1
+}
+set m_0 (ComplexNilpotent O,vec alpha) = int:
+   let (,H_L)=O.Bala_Carter_Levi_plus
+in for beta in roots_same_restriction(O,alpha)
+   do #(=H_L*beta) od.sum { count successes: convert |bool| to |int| and sum }
+
+set m_2 (ComplexNilpotent O,vec alpha) = int:
+   let (,H_L)=O.Bala_Carter_Levi_plus
+in for beta in roots_same_restriction(O,alpha) do #(H_L*beta=2) od.sum
+
+set m (ComplexNilpotent O,vec alpha) = int: m_0(O,alpha)-m_2(O,alpha)
+
+{roots of centralizer are those with m(alpha)=1
+returns a set roots of G, and their restrictions to T (eliminating duplications)
+}
+set centralizer_roots(ComplexNilpotent O)=([vec],[vec]):
+let L=O.Bala_Carter_Levi in
+let roots_G=##for alpha in nilrad_roots(O.root_datum,L) do
+ let m=m(O,alpha) in
+  assert(m=0 or m=1,"m is not 0 or 1");
+  if m=1 then [alpha] else [] fi od
+then T=O.torus in
+(roots_G,sort_u(for alpha in roots_G do T.restrict(alpha) od))
+
+{to compute the centralizer coroots, start with the centralizer roots
+ given a root alpha_C of T in Cent(O), compute the coroot:
+ v:=sum of coroots beta^vee, for all roots beta of G roots restricting to alpha_C
+ pullback_alpha=one of the roots of G restricting to alpha_C
+ alpha_C^\vee=2*v/<v,pullback_alpha>
+ returns:
+(roots_G, coroots_G,roots_C,coroots_C)
+roots_G: roots of G restricting to roots of C on T
+coroots_G: elements of X_*(H), living in X_*(T)
+roots_C: roots of T in C=Cent(O)
+coroots_C: coroots of T in C, obtained by writing the coroots_G in the given basis of X_*(T)
+}
+set centralizer_roots_and_coroots(ComplexNilpotent O,[vec] roots_G,[vec] roots_C)=([vec],[vec],[vec],[vec]):
+let T=O.torus then
+coroots_G=[] then
+coroots_C=[] in
+for alpha in roots_C do
+ let pullback_alpha=let j=first(for beta in roots_G do T.restrict(beta)=alpha od) in roots_G[j] then
+ v=sum(##(for beta in roots_G do
+  if T.restrict(beta)=alpha then  [coroot(O.root_datum,beta)]
+   else []
+  fi od)) then
+ w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
+ corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
+ coroots_G#:=v;
+ coroots_C#:=ratvec_as_vec(corestrict_w)
+od;
+(roots_G,coroots_G,roots_C,coroots_C)
+
+{compute centralizer coroots from scratch}
+set centralizer_roots_and_coroots(ComplexNilpotent O)=([vec],[vec],[vec],[vec]):
+let (roots_G,roots_C)=O.centralizer_roots in centralizer_roots_and_coroots(O,roots_G,roots_C)
+
+{put it all together: compute the identity component of Cent_G(O) as a reductive group
+ more precisely: the (id component of) reductive part of Cent_G(X), or Cent_G(SL(2))
+Note: Cent_G(O) is finite <=> O is distinguished
+Suppose C=Cent_G(O)^0 has a central torus. If C has a non-trivial semisimple part,
+then the rank of C is determined (by the length of the vectors in question),
+i.e. the dimension of the radical is determined.
+However if Cent_G(O)^0 is a torus (closely related to be not equivlanet to quasi-distinguished),
+then there are non roots to use to determine the rank of the torus.
+In this case (only): the rank of the torus is the dimension of the radical (maximal central torus)
+of the Bala-Carter Levi of the orbit
+}
+set centralizer(ComplexNilpotent O)=RootDatum:
+let (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O) in
+if #roots_C=0
+ then Bala_Carter_Levi(O).radical
+else
+root_datum_from_positive((roots_C,coroots_C),O.root_datum.prefers_coroots) fi
+
+{this is the dimension of Cent(O), i.e. the reductive part of Cent(X)}
+set dim_centralizer(ComplexNilpotent O)=int:O.centralizer.dimension
+
+{X is a nilpotent element, orbit=G.x
+dimension of the nilradical of Cent(X)
+orbit -> C=Cent(O) -> C=C_red*C_u
+ dim(O)=dim(G/C)=dim(G)-dim(C_red)-dim(C_u)
+ dim(C_u)=dim(G)-dim(C_red)-dim(O)
+ recall dim(C_red)=dim_centralizer(orbit)
+}
+set dim_centralizer_nilradical(ComplexNilpotent O)=int:
+O.root_datum.dimension - O.dim_centralizer - O.dim
+
+{ for testing only, as the name suggests }
+set test (ComplexNilpotent O) = void:
+  let (S,H_L)=O.Bala_Carter_Levi_plus then L=sub_datum(O.root_datum,S)
+  then (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O)
+  , C=centralizer(O)
+in prints("------",new_line
+         ,"H_L=", H_L,new_line
+	 ,"dim:", O.dim_nilpotent,new_line
+	 ,"L=",L,new_line
+	 ,"simple roots of L: ", L.simple_roots,new_line
+	 ,"nilrad: ", (O.root_datum,L).nilrad_roots);
+   prints("#roots_G:",#roots_G);
+   prints("#roots_C:  ", #roots_C,new_line, "#coroots_C:", #coroots_C);
+   prints("roots_C:",roots_C);
+   prints("coroots_C:", coroots_C);
+   prints("C:",C.nice_format)
+
+{
+{compact listing: i H diagram dim BC-Levi Cent A(O)}
+set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","A(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+d.orders.to_string] od)
+
+set show_nilpotent_orbits(RootDatum rd)=void:
+show_nilpotent_orbits(nilpotent_orbits(rd))
+
+
+
+{longer, less compact output,
+including simple roots and corootsof the centralizers
+}
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits)=void:
+for  orbit@i in orbits do
+let C=orbit.centralizer in
+prints(new_line,"orbit #",i,
+new_line,"diagram: ",orbit.diagram,
+new_line,"dim:", orbit.dim_nilpotent,
+new_line,"Bala Carter Levi: ", orbit.Bala_Carter_Levi.nice_format,
+new_line,"A(O): ", orbit.component_datum.orders,
+new_line,"Centralizer: ", C.nice_format,
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line,"simple roots of centralizer:", C.simple_roots,
+new_line,"simple coroots of centralizer:", C.simple_coroots
+) od
+set show_nilpotent_orbits_long(RootDatum rd)=void:
+prints(new_line,"Nilpotent orbits for ", rd.nice_format);
+show_nilpotent_orbits_long(nilpotent_orbits(rd))
+
+{i H diagram dim Cent A(O)}
+set show_nilpotent_orbits_long([RootDatum] rds)=void:
+for rd in rds do show_nilpotent_orbits_long(rd) od
+
+set list=[SL(2),Sp(4),Sp(6),Sp(8),SO(7),SO(8),SO(9),simply_connected(G2),simply_connected(F4)]
+
+set show_nilpotent_orbits_plus([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","Z","C_2","A(O)"]#for  orbit@i in orbits do
+let d=orbit.component_datum then
+cent=orbit.centralizer in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+cent.nice_format,
+cent.derived.order_center.to_string,
+(#cent.compact_form.strong_real_forms_same_type).to_string,
+d.orders.to_string
+] od)
+
+set show_nilpotent_orbits_plus(RootDatum rd)=void:
+show_nilpotent_orbits_plus(rd.orbits)
+
+{----- show commands for orbits of RealForm G------}
+{includes: number of real forms of the orbit}
+
+{compact listing: i H diagram dim BC-Levi Cent A(O) #RF C_2}
+set show_nilpotent_orbits([ComplexNilpotent] orbits,RealForm G)=void:
+prints(new_line,"complex nilpotent orbits for ", G,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z(Cent^0)","A(O)","#RF(O)","C_2"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C_2=conjugacy_classes_involutions(H) in
+{C_2=#strong_real_forms_same_type(compact_form(H)) in}
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+d.orders.to_string,
+(#real_nilpotent_orbits(orbit,G)).to_string,  {this line (only) requires a RealForm}
+C_2.to_string
+] od)
+
+set show_nilpotent_orbits(RealForm G)=void:
+show_nilpotent_orbits(nilpotent_orbits(G),G)
+}
+
+set describe_isogeny(RootDatum rd)=void:
+let sf=simple_factors(rd) in
+prints("centralizer: ",rd.nice_format);
+prints("center: ", print_Z(rd));
+for factor in sf do
+prints(factor.derived) od
+
+set describe_isogeny(ComplexNilpotent O)=void:describe_isogeny(centralizer(O))
+
+{useful in determining the precise structure of the centralizer}
+set show_centralizer_isogeny(ComplexNilpotent O)=void:
+let cent=centralizer(O) then
+sf=very_simple_factors(cent) in
+prints("Centralizer: ",cent.nice_format);
+print_Z(cent);
+for factor in sf do
+prints(factor.derived) od
+
+set show_centralizer_isogenies(RootDatum rd)=void:
+for orbit in rd.orbits do
+prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);
+show_centralizer_isogeny(orbit) od
+
+
+{ checking condition on orbits:
+
+}
+
+set dim_nilradical_parabolic_H(ComplexNilpotent O)=int:
+(O.root_datum.dimension-O.complex_Levi.dimension)\2
+
+{recall dim_centralizer_nilradical(ComplexNilpotent O)
+is the dimension of the nilradical of the centralizer of X\in O}
+
+set check_nilradical_dimensions(ComplexNilpotent O)=
+let a=O.dim_centralizer_nilradical, b=O.dim_nilradical_parabolic_H in (a,b,a=b)
+
+{run over orbits of rd
+for each orbit O, with X\in O, test
+dimension of nilpotent part of centralizer of X = dimension of nilradical of parabolic defined by O.H
+display table of results,
+returns [int] indices of the orbits passing the test
+}
+set check_nilradical_dimensions(RootDatum rd)=[int]:
+let orbits=rd.orbits then
+rv=[int]:[] then
+table=[[string]]:[] in
+for i:#orbits do
+ let orbit=orbits[i] in
+ let (dim_nilrad_cent,dim_nilrad_parabolic,test)=orbit.check_nilradical_dimensions in
+  if test then rv#:=i fi;
+ table#:=[i.to_string,orbit.diagram.to_string,orbit.dim.to_string,dim_nilrad_cent.to_string,dim_nilrad_parabolic.to_string,test.to_string]
+ od;
+ prints("G=", rd);
+ prints("testing: dim(nilradical centralizer of nilpotent X)=dim(nilradical of parabolic of O.H)");
+ prints("dim: dimension of orbit");
+ prints("dim_1: dimension of nilradical of centralizer of X");
+ prints("dim_2: dimension of nilradical of parabolic of O.H");
+ prints("test: dim_1=dim_2");
+ tabulate(["i","diagram","dim","dim_1","dim_2","test"]#table);rv

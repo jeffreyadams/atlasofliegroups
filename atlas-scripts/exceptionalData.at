@@ -1,0 +1,126 @@
+<exceptional.at
+
+{Tables of Weyl group conjugacy classes and Nilpotent Orbits
+ for the exceptional groups
+}
+
+{data type for table of elliptic conjugacy classes
+ could be expanded to all conjugacy classes
+}
+set_type EllipticDatum = (WeylElt w,[int] charpoly, int order, int length, string name, int size)
+set_type EllipticTable=[EllipticDatum]
+
+{table is assumed non-empty and all WeylElt are for same RootDatum}
+set root_datum(EllipticTable T)=T[0].w.root_datum
+
+set lookup_by_name(EllipticTable T,string name)=int:
+first(for row in T do row.name=name od)
+
+{nice output of table}
+set show(EllipticTable T)=void:
+let values=
+for row in T do
+[row.charpoly.to_string,row.order.to_string,row.length.to_string,row.name.to_string,row.size.to_string] od
+in tabulate(["CharPoly","order","length","name","size"]#values)
+
+{include a representative of each class}
+set show_long(EllipticTable T)=void:
+let values=
+for row in T do
+[row.charpoly.to_string,row.order.to_string,row.length.to_string,row.name.to_string,row.size.to_string,row.w.word.to_string] od
+in tabulate(["CharPoly","order","length","name","size","w"]#values)
+
+{data type for a table of information about nilpotent orbits}
+{name: according to Carter
+alt_name: Spaltenstein/Mizuno etc., when different
+special: 1 or 0
+closure: orbits in the closure (not including itself)
+dual: name of dual orbit
+A: string giving A(O)
+Abar: Lusztig's quotient
+diagram: labeled Dynkin diagram
+}
+set_type NilpotentDatum=(RootDatum root_datum,string name ,string alt_name,int special,[int] closure,string dual,string A,string Abar,[int] diagram)
+set_type NilpotentTable=[NilpotentDatum]
+set root_datum(NilpotentTable T)=RootDatum:T[0].root_datum
+set lookup_by_name(NilpotentTable T,string name)=int:first(for row in T do row.name=name od)
+set lookup_by_alt_name(NilpotentTable T,string alt_name)=int:
+first(for row in T do row.alt_name=alt_name or (row.alt_name="" and row.name=alt_name) od)
+
+{nice output}
+set show(NilpotentTable T)=void:
+let values=
+for row@i in T do
+[i.to_string,row.name,row.alt_name,row.special.to_string,row.closure.to_string,row.dual,row.A,row.Abar,row.diagram.to_string] od
+in tabulate(["#","Name", "AltName", "special","closure","dual","A","Abar","diagram"]#values)
+
+{extract NilpotentPoset from the table}
+set nilpotent_poset(NilpotentTable T)=NilpotentPoset:
+let rd=T.root_datum then
+orbits=for row in T do complex_nilpotent_from_diagram(rd,row.diagram) od then
+poset=for row in T do row.closure od
+in (rd,orbits,poset)
+
+{fill in all orbits in the closure of each given one (not just covering relations)}
+set closure(NilpotentTable T)=NilpotentTable:
+let P=closure(nilpotent_poset(T).orbit_closures) in
+for row@j in T do 
+ let (rd,name,alt_name,special,closure,dual,A,Abar,diagram)=row in
+(rd,name,alt_name,special,P[j],dual,A,Abar,diagram) od
+
+{extract table given by rows
+the closure relations require work (throwing out terms and renumbering)
+}
+set sub_table(NilpotentTable T, [int] S)=NilpotentTable:
+let T_closure=T.closure in
+for j in S do
+ let (rd,name,alt_name,special,closure,dual,A,Abar,diagram)=T_closure[j] in
+(rd,name,alt_name,special,
+##for k in closure do let index=find(S,k) in if index=-1 then [] else [index] fi od,
+dual,A,Abar,diagram) od
+
+{save a table in a form that can be read in by atlas}
+set text_save(NilpotentTable T,string name)=
+let rv="set " + name + "= " + new_line + "[" in
+for row@i in T do
+let extra=if i=0 then "[int]:" else "" fi then
+final_comma=if i<#T-1 then "," else "" fi in
+rv +:="(rd,""" + row.name + """,""" + row.alt_name + """," + row.special.to_string + "," + extra + row.closure.to_string + ",""" + row.dual + """,""" + row.A + """,""" + row.Abar + """," + row.diagram.to_string + ")"  + final_comma + new_line od;
+rv+:="]"
+
+{tool for fixing the closures, the source files numbered starting
+at 1 not 0, this shouldn't be needed any more}
+set shift_closures_by_one(NilpotentTable T)=NilpotentTable:
+for row in T do
+ (row.root_datum,row.name,row.alt_name,row.special,
+for i in row.closure do i-1 od
+,row.dual,row.A,row.Abar,row.diagram) od
+
+{graph from a table, with specified labels}
+set graph(NilpotentTable T,[string] labels)=string:
+graph(T.nilpotent_poset.orbit_closures,labels)
+
+{graph from a table, with labels
+integer, name and alt_name (when different)
+}
+set graph(NilpotentTable T)=string:
+graph(T, for i:#T do i.to_string + " " + T[i].name + ":" + T[i].alt_name od )
+
+{given function from strings -> strings, find preimage}
+set preimage([(string ,string)] pairs,string y)=string:
+let j=first(for (a,b)@i in pairs do b=y od) in
+assert(j!=-1,"problem in preimage");
+let (a,)=pairs[j] in a 
+
+{graph showing closure relations in the image of Lusztig's map from [W] to
+N, restricted to elliptic elements}
+set lusztig_graph(NilpotentTable T,[(string,string)] lusztig_map)=
+let image=
+ for (w_name,alt_name) in lusztig_map do  lookup_by_alt_name(T,alt_name) od then
+ T_sub=sub_table(T,image)  then
+ labels=for row@i in T_sub do
+  let name=if #(row.alt_name) != 0 then row.alt_name else row.name fi then
+  w=preimage(lusztig_map,name) in
+  i.to_string + ":" + w + "->" + row.name + "/" + row.alt_name
+ od in
+graph(T_sub,labels) 

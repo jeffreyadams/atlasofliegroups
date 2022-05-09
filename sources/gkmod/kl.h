@@ -38,18 +38,13 @@ wgraph::WGraph wGraph(const KL_table&);
 
 /* Namely: the definition of KL_table itself */
 
-struct KL_pair
-{ BlockElt x; KLIndex P;
-  KL_pair (BlockElt x=UndefBlock, KLIndex P=0) : x(x), P(P) {}
-  bool operator< (const KL_pair& other) const { return x<other.x; }
-};
 struct Mu_pair
 { BlockElt x; MuCoeff coef;
   Mu_pair (BlockElt x,MuCoeff coef) : x(x), coef(coef) {}
   bool operator< (const Mu_pair& other) const { return x<other.x; }
 };
 
-using KL_column = std::vector<KL_pair>;
+using KL_column = std::vector<KLIndex>;
 using Mu_column = std::vector<Mu_pair>;
 using Mu_list = containers::sl_list<Mu_pair>;
 using KLStore = PosPolEntry::Pooltype;
@@ -76,7 +71,7 @@ class KL_table
 
   BitMap d_holes; // columns to fill; its |capacity| limits ambition to do so
 
-// Entry |d_KL[y]| is a sorted vector of pairs |(x,P(x,y))|
+// Entry |d_KL[y]| is a vector of |KLIndex|es for |P(x,y)| with |x| primitive
   std::vector<KL_column> d_KL;
 
 // Entry |d_mu[y]| is a vector of pairs of an $x$ and corresponding |mu(x,y)|
@@ -158,18 +153,16 @@ class KL_table
   void silent_fill(BlockElt limit); // called by public |fill| when not verbose
   void verbose_fill(BlockElt limit); // called by public |fill| when verbose
 
-  // fill column for |y| in the KL-table, all previous ones having been filled
-  size_t fill_KL_column(std::vector<KLPol>& klv, BlockElt y,
-			KL_hash_Table& hash);
+  void fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash);
   void recursion_column(BlockElt y, weyl::Generator s,
 			std::vector<KLPol>& klv);
   void mu_correction(const BlockEltList& extremals,
 		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
 		     std::vector<KLPol>& klv);
-  size_t complete_primitives(std::vector<KLPol>& klv, BlockElt y,
-			     KL_hash_Table& hash);
-  void new_recursion_column (std::vector<KLPol>& klv, BlockElt y,
-			     KL_hash_Table& hash);
+  void complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
+			   KL_hash_Table& hash);
+  void new_recursion_column(std::vector<KLPol>& klv, BlockElt y,
+			    KL_hash_Table& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 

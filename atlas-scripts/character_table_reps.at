@@ -1,0 +1,311 @@
+<isomorphism_W.at
+<character_tables_reductive.at
+<W_reps.at {for W_rep}
+
+set character (CharacterTable ct, W_rep r) = [int]: character(ct.class_table,r)
+set smallest_degree (CharacterTable ct,[int]chi) = int:
+   smallest_degree(ct.class_table,chi)
+
+{-----------------permuted versions of cell representations-----------------}
+{the unpermuted versions are in cells.at}
+
+{computing cell actions in presence of a permutation of the simple roots}
+
+set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
+for w in W do if length(w)=0 then w else W_elt(W[0].root_datum,for i in w.word do permutation(i) od) fi od
+
+set permute([WeylElt] W,[int] permutation)=[WeylElt]:
+let f(int i)=permutation[i] in permute(W,f)
+
+set permute([WeylElt] W,mat M)=[WeylElt]:
+{M should be a permutation matrix}
+let f(int i)=first(for j:#M do M[i][j]=1 od) in permute(W,f)
+
+set conjugate_to_simple(RootDatum rd,vec alpha)=
+for beta in rd.simple_roots do
+ let (success,w)=conjugate_to(rd,alpha,beta) in
+ if success then return(w) fi od ;id_W(rd)
+
+{cell action in the presence of a permutation isomorphism of the root datum}
+set cell_action(WCell cell, int i, mat permutation)=sparse_mat:
+cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
+
+set cell_action(WCell cell,WeylElt w,mat permutation)=mat:
+  let n={prints("sparse");}#cell.graph in
+  if =#w.word then id_mat(n)
+  else let result=unsparse(cell_action(cell,w.word[0],permutation),#cell.graph)
+  in for i:#w.word-1 from 1
+     do result:=result*cell_action(cell,w.word[i],permutation)
+     od
+  ;  result
+  fi
+
+set cell_character (CharacterTable ct,WCell cell,mat permutation) = [int]:
+for w in ct.class_representatives do trace(cell_action(cell,w,permutation)) od
+
+set special_character(CharacterTable ct,WCell cell,mat permutation)=
+   let summands =
+      let dec = ct.decompose(cell_character(ct,cell,permutation))
+      in smallest_degree_summands(ct,dec)
+in if #summands=1 then summands[0]
+   elif #summands=0 then error("no special summands?")
+   else error("not unique special representation")
+   fi
+
+set special_character(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
+special_character(ct,cell,permutation)
+
+{ embeddings of Weyl groups, not needed for induction, or at all really }
+
+{ requirement: simple roots of L are contained in the (positive) roots of G }
+set embed_simple_reflection (RootDatum L,RootDatum G, int i) = mat:
+   assert(root_index(G,L.simple_roots[i])<G.nr_of_posroots
+         ,"Simple root for L is not a root for G");
+   reflection(G,L.simple_roots[i]) { just |reflection(L,i)|, if coroots match }
+
+set embed (RootDatum L, RootDatum G,[int] w) = mat:
+   product(G.rank,for s in w do embed_simple_reflection(L,G,s) od)
+   { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match }
+
+
+set embed (RootDatum L,RootDatum G,WeylElt w) = WeylElt:
+   W_elt(G,embed(L,G,w.word))
+set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
+
+
+
+{ ------------------- induction ------------------- }
+
+{ all 2^n standard Levis }
+set standard_Levis (RootDatum rd) = [RootDatum]:
+  for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
+
+{ induction from a Levi factor
+
+  $L$ is subgroup of $G$, or more generally a group mapped homomorphically by
+  $f:L\to G$, and |pi_L| is a tabulated class function on W(L),
+  we want to compute the class function $pi_G=\ind_L^G(pi_L)$ on $W(G)$
+
+  formula: if C is a conjugacy class for G
+      pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
+  where the sum runs over the W(L)-conjugacy classes C_j that constitute
+  $C\cap W(L)$, or more generally the inverse image $f^{-1}(C)$ (this follows
+  from Frobenius reciprocity, by which pairing $\ind_L^G(pi_L)$ with the
+  indicator $\chi$ function of $C$ equals pairing $pi_L$ with $\chi\circ f$.
+
+  In other words the value of |pi_L| on each class C_j in W(L) contributes to
+  the induced character value only at the class of f(C_j) in W(G), and for
+  this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
+
+  algorithm: initialize the result to be the 0-character
+  run over conjugacy class representatives in L
+  for each conjugacy class representative w_L compute  w_G = class_of (w_L,G)
+  and add to the character value at (the class) w_G the  value:
+  pi_L(w_L) * index(W(G):W(L))*|conjugacy class of w_L|/|conjugacy class of w|
+  The factor by which pi_L(w_L) is multiplied is integer, as it is the index of
+  the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
+}
+
+set induce_character \
+      ( WeylClassTable Wct_L
+      , WeylClassTable Wct_G
+      , (WeylElt->WeylElt) f { embedding (or any group homomorphism) L->G }
+      , [int] pi_L
+      ) = [int]:
+   let rd_G = Wct_G.root_datum, rd_L = Wct_L.root_datum
+   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
+   then values_G = [rat]: {converted to [int] in the end} null(Wct_G.n_classes)
+   , class_size_G(int j) = int: Wct_G.class_sizes[j]
+   , class_size_L(int i) = int: Wct_L.class_sizes[i]
+in for w@i in Wct_L.class_representatives
+   do let j = Wct_G.class_of(f(w))
+   in values_G[j] +:= pi_L[i] * (index * class_size_L(i)/class_size_G(j))
+   od; for v in values_G do v.rat_as_int od
+
+{ for convenience, allow calling with character tables as well }
+set induce_character \
+   (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
+   [int]: induce_character(ct_L.class_table,ct_G.class_table,f,pi_L)
+
+{ simplified versions; first provide embedding via |convert_to| }
+set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
+   in induce_character(Wct_L,Wct_G,embed,pi_L)
+
+{for convenience}
+set induce_character (CharacterTable ct_L, CharacterTable ct_G,[int] pi_L) =
+      [int]:induce_character(ct_L.class_table,ct_G.class_table,pi_L)
+
+{ this version assumes ct_G computed, but computes L, class table(L) on the fly }
+set induce_character (WeylClassTable Wct_G,[int] simple_roots_of_L,[int] pi_L) =
+      [int]:
+   let L = sub_datum(Wct_G.root_datum,simple_roots_of_L)
+in induce_character(construct_class_table(L),Wct_G,pi_L)
+
+{given Wct_L, with RootDatum L, and L\simeq L'\subset G
+have character table for L, but L' is the subgroup we want
+to induce from 
+induce from W(L) to W(G) via this isomorphism
+That is:
+  W(L)  --> w --> W(L')
+   |               |
+   |               x
+   |               |
+   v               v
+  W(L)  --> w --> W(L')
+
+y=  w^{-1}xw: W(L) -> W(L)
+
+x\in W(L) -> convert_to(G,w^{-1}xw) in W(G)
+}
+set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+      let ()=prints("INDUCING Wct_L:", Wct_L.root_datum, new_line,"Lprime:", L_prime, new_line, "Wct_G: ",Wct_G.root_datum) in
+   let rd=Wct_G.root_datum then
+   rd_L=Wct_L.root_datum then
+   ()=prints("induce_character: ");
+   prints("rd=",rd, new_line, "rd_L=", rd_L) then
+   w=matrix(Levi_witness(rd,L_prime,rd_L)) then
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in 
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{I think this is misguided: one should always *specify* the root permutation in question}
+set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
+   ()=assert(valid,"root data are not related by a permutation") then
+   f(WeylElt w)=WeylElt: convert_to(Wct_G.root_datum,permute(M,w,L_prime)) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{P is a matrix taking simple roots of L=Wct_L.root_datum to the simple roots
+ of a subgroup of G=Wct_G.root_datum
+Note that P is not necessarily the matrix of an element of G
+example:
+L,M are Levi subgroups of G
+L is G-conjugate to a Levi subgroup L' of M
+we are given the character table of L, and want to induce W(L') -> W(M).
+In this case P is the matrix of a Weyl group element of G (but not necessarily M)
+}
+
+set induce_character (WeylClassTable Wct_L,WeylClassTable Wct_G,[int] pi_L, mat P) =
+let f(WeylElt w)=WeylElt: W_elt(Wct_G.root_datum,inverse(P)*w.matrix*P) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+
+{
+set induce_character_plus (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,WeylElt w,[int] pi_L) =
+      [int]:
+      let ()=prints("INDUCING Wct_L:", Wct_L.root_datum, new_line,"Lprime:", L_prime, new_line, "Wct_G: ",Wct_G.root_datum) in
+   let rd=Wct_G.root_datum then
+   rd_L=Wct_L.root_datum then
+   ()=prints("induce_character: ");
+   prints("rd=",rd, new_line, "rd_L=", rd_L) then
+   f(WeylElt x)=WeylElt: W_elt(rd,inverse(w)*matrix(x)*w)  {embedding} in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+}
+{set induce_character (WeylClassTable Wct_L,RootDatum L_prime,WeylClassTable Wct_G,[int] pi_L) =
+      [int]:
+   let (valid,M)=root_permutation(Wct_L.root_datum,L_prime) then
+   ()=assert(valid,"root data are not related by a permutation") then
+   f(WeylElt w)=WeylElt: convert_to(Wct_G.root_datum,permute(M,w,L_prime)) in
+   induce_character(Wct_L,Wct_G,f,pi_L)
+}
+
+{for convenience}
+set induce_character (CharacterTable ct_L, CharacterTable ct_G,[int] pi_L, mat P) =
+      [int]:induce_character(ct_L.class_table,ct_G.class_table,pi_L, P)
+
+set induce_trivial (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+in induce_character(Wct_L,Wct_G,Wct_L.trivial)
+
+set induce_trivial (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
+induce_trivial(ct_G.class_table,simple_roots_of_L)
+
+set induce_sign (WeylClassTable Wct_G, [int] simple_roots_of_L) = [int]:
+   let Wct_L =
+      construct_class_table(sub_datum(Wct_G.root_datum,simple_roots_of_L))
+in induce_character(Wct_L,Wct_G,Wct_L.sign)
+
+set induce_sign (CharacterTable  ct_G, [int] simple_roots_of_L) = [int]:
+induce_sign(ct_G.class_table,simple_roots_of_L)
+
+
+{ truncated induction is defined in general in truncated_induction.at
+  special cases are done here to avoid needing that script (it's not hard) }
+set truncate_induce_sign (CharacterTable ct_G,[int] simple_roots_L) = int:
+   let L = Levi_datum(ct_G.root_datum,simple_roots_L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.sign)
+   then contributions = [int]: { list of irrep indices }
+      for i: ct_G.n_irreps
+      do if ct_G.degree(i)=target
+         then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
+	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]
+	    else []
+	    fi
+	 else []
+	 fi
+      od.##
+in assert(#contributions=1,"truncate induced from sign is not irreducible");
+   contributions[0]
+
+set truncate_induce_trivial(CharacterTable ct_G,[int] simple_roots_L) = int:
+   let L = Levi_datum(ct_G.root_datum,simple_roots_L)
+   , induced_char = induce_trivial(ct_G.class_table,simple_roots_L)
+   then Wct_L = construct_class_table(L), target = int: nr_of_posroots(L)
+   then induced_char = induce_character(Wct_L,ct_G.class_table,Wct_L.trivial)
+   then contributions = [int]: { list of irrep indices }
+      for i: ct_G.n_irreps
+      do if ct_G.degree(i)=target
+         then let coef = ct_G.inner_product(induced_char,ct_G.character(i)) in
+	    if !=coef then assert(coef=1,"induction not multiplicity free"); [i]
+	    else []
+	    fi
+	 else []
+	 fi
+      od.##
+in assert(#contributions=1,"truncate induced from trivial is not irreducible");
+   contributions[0]
+
+
+{ ------------------- restriction ------------------- }
+
+{Given an embedding f of W_L into W_G}
+set restrict_character \
+      ( WeylClassTable Wct_G
+      , WeylClassTable Wct_L
+      , (WeylElt->WeylElt) f { embedding (or any group homomorphism) L->G }
+      , [int] pi_G
+      ) = [int]:
+   for w in Wct_L.class_representatives do pi_G[Wct_G.class_of(f(w))] od
+
+{ with default embedding }
+set restrict_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_G) =
+      [int]:
+   let embed(WeylElt w){for L} = WeylElt:{for G} convert_to(Wct_G.root_datum,w)
+in restrict_character(Wct_G,Wct_L,embed,pi_G)
+
+{ for convenience, allow calling with character tables as well }
+set restrict_character \
+   (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f, [int] pi_L) =
+      [int]:
+   restrict_character(ct_L.class_table,ct_G.class_table,f,pi_L)
+
+set restrict_character \
+   (CharacterTable ct_L,CharacterTable ct_G,[int] pi_L) = [int]:
+   restrict_character(ct_L.class_table,ct_G.class_table, pi_L)
+
+{ the Steinberg character, for testing only }
+
+{ alternating sum, over all standard Levis, of induced from trivial;
+  should equal the sign character (if it does not, this function fails) }
+
+set Steinberg_character (RootDatum rd) = [int]:
+  let ct_G=construct_class_table(rd)
+  then result = vec: {from |sum@mat|}
+     for S in power_set(rd.all_simples) { not empty; conversion [vec]->mat OK }
+     do minus_1^#S * induce_trivial(ct_G,S)
+     od.sum
+  in assert(result=ct_G.sign); result

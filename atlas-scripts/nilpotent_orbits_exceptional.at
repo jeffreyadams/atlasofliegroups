@@ -181,7 +181,7 @@ set nilpotent_lambdas_E (int n) = [ratvec]:
   else error("wrong rank for type E")
   esac
 
-set nilpotent_lambdas (RootDatum rd) = [ratvec]:
+set nilpotent_lambdas (RootDatum rd) = [ratvec]: { this assumes |rd| is simple }
   case type_number(rd)-4
   then nilpotent_lambdas_classical(rd)
   in { exceptional numbers 4..6 for E,F,G }

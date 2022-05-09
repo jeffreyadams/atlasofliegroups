@@ -1,0 +1,94 @@
+{some isomorphisms of Weyl groups not neceessarily coming from root systems
+ for example W(rd)\simeq W(dual(rd))
+}
+<basic.at
+<combinatorics.at { for |permute@([int],vec)| }
+<W_classes.at { for type |WeylClassTable| }
+<character_tables.at { for type |CharacterTable| }
+<isomorphism.at { for |root_permutations| }
+
+{ look up index of |v|, assumed to be a standard basis vector }
+set index_standard_basis(vec v) = int:
+  let n = #v then j = v * #n in assert(e(n,j)=v); j
+
+set no_F_factor(RootDatum rd) = bool:
+   none(for (letter,) in simple_factors(Lie_type(rd)) do letter="F" od)
+
+{M=permutation matrix ->
+permutation of [0,1,...,n-1] defined by a
+M*e(n,j)=e(n,M*j)
+atlas> M
+Value:
+| 0, 1, 0 |
+| 0, 0, 1 |
+| 1, 0, 0 |
+atlas> M*e(3,0)=e(3,2)
+Value: true
+atlas> M*0=2
+Value: true
+atlas> all(for i:3 do M*e(3,i)=e(3,M*i) od)
+Value: true
+}
+set int_mapping(mat M) = (int->int): { where |M| must be a permutation matrix }
+    let trans = vec: #n_columns(M) * M in (int j)int: trans[j]
+
+{set *(mat M,WeylElt w)=WeylElt: W_elt(w.root_datum,for i in w.word do M*i od)}
+
+{ for isomorphism renumbering |f| from generators of some W to generators of
+  W(rd_new), transform element w of W(rd) into an element of W(rd)
+}
+set permute((int->int) f,WeylElt w,RootDatum rd_new) = WeylElt:
+   W_elt(rd_new,for i in w.word do f(i) od)
+set permute(mat M,WeylElt w,RootDatum rd_new)=WeylElt: permute(int_mapping(M),w,rd_new)
+set permute(mat M,[WeylElt] classes,RootDatum rd_new)=[WeylElt]:
+ let f=int_mapping(M) in for w in classes do permute(f,w,rd_new) od
+
+
+
+{ with just |w| given, apply renumbering automorphism of W given by |f| to |w| }
+set permute((int->int) f,WeylElt w) = WeylElt: permute(f,w,w.root_datum)
+
+{M takes W_1 to W_2, given classes_1, classes_2, find the induced permutation
+on classes. This requires a lookup since M takes w\in W_1 to w'\in W_2, but
+not necessarily a conjugacy classes representative in W_2}
+set induced_bijection_on_classes(
+   mat M, [WeylElt] classes, [WeylElt] classes_new) = [int]:
+   let rd_new = classes_new[0].root_datum
+in for w in classes
+   do let test = is_conjugate_to(permute(int_mapping(M),w,rd_new))
+   in first(#classes_new,(int i)bool: test(classes_new[i]) )
+   od
+
+set induced_permutation_on_classes (mat M,[WeylElt] classes) = [int]:
+   induced_bijection_on_classes(M,classes,classes)
+
+{given M relating classes and classes_new, convert character for W_1 to W_2}
+set map_character(mat M,[WeylElt] classes,[WeylElt] classes_new,[int] char)=
+      [int]:
+   let map = induced_bijection_on_classes(M,classes,classes_new) in
+   permute(map,char) { move values from position |i| to position |map[i]| }
+
+set permute_character(mat M,[WeylElt] classes,[int] char) = [int]:
+   map_character(M,classes,classes,char)
+
+set permute_character(mat M,WeylClassTable Wct,[int] char) = [int]:
+   let f = int_mapping(M)
+   then map = for w in Wct.class_representatives do Wct.class_of(permute(f,w)) od
+   in permute(map,char)
+
+{ map from W(rd) to W(dual(rd)), for F4 (or trivially for simply laced) }
+set exchange_long_short(WeylClassTable Wct,[int] char) = [int]:
+  let rd=Wct.root_datum in
+  if no_F_factor(rd)
+  then char { what about G2 factors? }
+  else let M=root_permutations(rd,dual(rd))[0] in
+    if M=id_mat(#M)
+    then char
+    else permute_character(M,Wct,char)
+    fi
+  fi
+
+set exchange_long_short_index(CharacterTable ct,int index) = int:
+   ct.character_index(exchange_long_short(ct.class_table,ct.character(index)))
+
+

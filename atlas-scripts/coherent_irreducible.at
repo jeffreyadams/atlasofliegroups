@@ -1,0 +1,532 @@
+<basic.at
+<W_reps.at { |WCell|, |WGraph|, |WNode| type, and functions }
+<coherent.at
+<hodgeParamLaurentPol.at
+<stable.at
+
+set length_sign (int k,int l) =int: minus_1^(k-l)
+set sign (Param p,Param q)=int: length_sign(length(p),length(q))
+
+{W_graph@Param is built-in, returns (int,WGraph)
+ here is just the W_graph, analogous to block_of@Param}
+set W_graph_of (Param p) = let (,g)=W_graph(p) in (p.root_datum,g)
+
+{ The mu function, obtained from W_graph }
+set mu (WGraph graph,int i,int j) = int:
+  let list=graph.nodes[i].out_list then high(int p) = let (k,)=list[p] in k>=j
+  then loc = binary_search_first(high,0,#list)
+  in if loc=#list then 0 else let (k,mu)=list[loc] in if k=j then mu else 0 fi fi
+
+set mu([Param] params,WGraph graph, Param p,Param q)=int:
+  mu(graph,find(params,p),find(params,q))
+
+{ matrix of Hecke algebra operator $T_\alpha$, given by a W-graph, at $q=1$
+  on the basis of length-parity flipped irreducibles
+
+  Note: the Hecke action on W-generators is given by the negated matrices of the
+  coherent continuation action. Basis change from irreducibles to length-parity
+  flipped irreducibles restores non-negative off-diagonal entries (same ones as
+  coherent continuation matrices). but diagonal entries remain opposite.
+
+  In practice one should avoid building the full |graph_Hecke_action| sparse
+  matrix, prefer using |graph_Hecke_action_column|
+}
+
+set graph_Hecke_action (WGraph graph,int s) = sparse_mat:
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   for node@j in graph.nodes
+   do if node.tau_has_s
+      then [(j,1)] { single diagonal term 1 }
+      else (j,-1) { diagonal term, the rest come from outwardard edges } #
+        for (i,):link in node.out_list
+        do if graph.nodes[i].tau_has_s then [link] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
+      fi
+   od
+
+{ single column of matrix of Hecke action of T_s, coming from W-graph, with q=1
+  Example: big block of SL(2,R)
+  graph_Hecke_action_column(graph,0,0)=[(0,-1),(2,1)]
+  graph_Hecke_action_column(graph,1,0)=[(1,-1),(2,1)]
+  graph_Hecke_action_column(graph,2,0)=[(2,1)]
+  graph_Hecke_action(graph,0)= (list of these columns) -> matrix
+
+  -1  0  0
+   0 -1  0
+   1  1  1
+
+   see filtrations.pdf
+}
+set graph_Hecke_action_column (WGraph graph,int col_number,int s) =
+      sparse_column:
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s)
+   , node=graph.nodes[col_number]
+in if node.tau_has_s
+   then [(col_number,1)]
+   else (col_number,-1) #
+        for (i,):link in node.out_list
+        do if graph.nodes[i].tau_has_s then [link] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
+   fi
+
+{ same as previous, except in the basis of irreducibles. Since length difference
+  is odd across all graph edges, just multipl off-diagonal part by -1 }
+
+set graph_Hecke_irr_action_column (WGraph graph,int col_number,int s) =
+     sparse_column:
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s)
+   , node=graph.nodes[col_number]
+in if node.tau_has_s
+   then [(col_number,1)]
+   else (col_number,-1) #
+        for (i,mu) in node.out_list
+        do if graph.nodes[i].tau_has_s then [(i,-mu)] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
+   fi
+
+{ just as graph_Hecke_action was mainly for testing, this function
+  isn't essential but is a useful tool}
+set graph_Hecke_irr_action ([Param] params,WGraph graph,int s) = sparse_mat:
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   for node@j in graph.nodes
+   do if node.tau_has_s
+      then [(j,1)] { single diagonal term 1 }
+      else (j,-1) { diagonal term, the rest come from outwardard edges } #
+        for (i,mu) in node.out_list
+        do if graph.nodes[i].tau_has_s then [(i,-mu)] else [] fi
+        od.## { filter, keeping destination nodes with |s| in tau invariant }
+      fi
+   od
+
+set graph_Hecke_action ([sparse_mat] matrices,int col_number,int s) =
+      sparse_column:
+   matrices[s][col_number]
+
+{ coherent continuation of irreducibles is defined using the W-graph,
+  keeping in mind the W-graph is the action in the basis of (-1)^length(p)p
+}
+set coherent_irr([Param] block,WGraph graph,Param p,int s) = ParamPol:
+   assert(is_regular(p),"infinitesimal character is not regular");
+   assert(s<p.root_datum.ss_rank,"not a root");
+   let index_p=find(block,p) in
+   let gac=graph_Hecke_action_column(graph,index_p,s) in
+{   prints("got gac, p=",p, new_line,"s=",s, new_line, gac);}
+   null_module(p.real_form) + for (i,coeff) in gac do ((-1)^(#(index_p=i))*coeff,block[i]) od
+
+{variants: ParamPol P, [int] w, WeylElt w}
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
+  0*P + for coeff@p in P do coeff*coherent_irr(block,graph,p,s) od
+set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
+   let P=ParamPol:p
+in for s in w {note NO ~ here, see coherent.at}
+   do P:=coherent_irr(block,graph,P,s) od; P
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
+  for s in ~w do P:=coherent_irr(block,graph,P,s) od; P
+set coherent_irr ([Param] block,WGraph graph,Param p,WeylElt w) = ParamPol:
+ coherent_irr(block,graph,p,w.word)
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
+  for s in w do P:=coherent_irr(block,graph,P,s) od; P
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,WeylElt w) = ParamPol:
+  coherent_irr(block,graph,P,w.word)
+
+{replace coherent_irr(p,i) with coherent_irr(block_of(p),W_graph_of(p),p,s)}
+set coherent_irr_new (Param p,int s) = ParamPol:
+  coherent_irr(block_of(p),W_graph_of(p),p,s)
+set coherent_irr_new (ParamPol P,int s) = ParamPol:
+  coherent_irr(block_of(P.first_param),W_graph_of(P.first_param),P,s)
+set coherent_irr_new (Param p,[int] w) = ParamPol:
+  coherent_irr(block_of(p),W_graph_of(p),p,w)
+set coherent_irr_new (ParamPol P,[int] w) = ParamPol:
+  coherent_irr(block_of(P.first_param),W_graph_of(P.first_param),P,w)
+set coherent_irr_new (Param p,WeylElt w) = ParamPol:
+  coherent_irr(block_of(p),W_graph_of(p),p,w)
+set coherent_irr_new (ParamPol P,WeylElt w) = ParamPol:
+  coherent_irr(block_of(P.first_param),W_graph_of(P.first_param),P,w)
+
+
+{-----------------------Hecke action-------------------}
+
+{the action of \tilde T_alpha=v^{-1}(-T_alpha+v^2)
+ see filtrations.pdf in Dropbox
+\tilde T_alpha(J(delta))=(v+1/v)J + \sum J(delta') + \sum mu(gamma,delta)J(gamma)
+}
+
+{tT stands for \tilde T=v^{-1}(-T+v^2)
+action of \tilde T_\alpha in basis of irreducibles}
+set tT ([Param] params,WGraph graph,Param p,int i {simple root}) =
+      hodgeParamLaurentPol:
+if in_tau(i,p)
+ then nullHodgeParamLaurentPol(p.real_form)
+ else
+ let rv=v_sum*p in
+  for q in params do
+   if (length(q)<length(p) or length(q)=length(p)+1) and in_tau(i,q) then
+    rv+:=mu(params,graph,q,p)*hodge_param_laurent_pol(q)
+   fi
+  od;rv
+ fi
+
+{action of \tilde T_\alpha on hodgeParamLaurentPol}
+set tT ([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=
+      hodgeParamLaurentPol:
+let r=rearrange(hplp) { f_0(v)p_0 + ... f_n(v)p_n} then
+rv=nullHodgeParamLaurentPol(hplp.real_form) in
+ for (f,p) in r do
+ let x=f*tT(params,graph,p,i) in
+  rv+:=f*tT(params,graph,p,i)
+ od;
+rv
+
+{action of \tilde T_\alpha on hodgeParamPol}
+set tT ([Param] params,WGraph graph,hodgeParamPol hpp,int i) =
+      hodgeParamLaurentPol:
+   tT(params,graph,hodge_param_laurent_pol(hpp),i)
+
+{action Weyl group element [int] on hodgeParamLaurentPol}
+set tT ([Param] params,WGraph graph,hodgeParamLaurentPol hplp,[int] w) =
+      hodgeParamLaurentPol:
+    for j in w ~ do hplp:=tT(params,graph,hplp,j) od;hplp
+
+{action Weyl group element WeylElt on hodgeParamLaurentPol}
+set tT ([Param] params,WGraph graph,hodgeParamLaurentPol hplp,WeylElt w) =
+      hodgeParamLaurentPol:
+   tT(params,graph,hplp,w.word)
+
+{get ordinary T_alpha from tT=\tilde T: T=v\tilde T+v^2}
+set T ([Param] params,WGraph graph,Param p,int i) = hodgeParamLaurentPol:
+   minus_1*vee*tT(params,graph,p,i) +
+   v_laurent_squared*hodge_param_laurent_pol(p)
+
+{ get ordinary T_alpha from tT=\tilde T: T=v\tilde T+v^2
+  acting on hodgeParamLaurentPol }
+set T([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i) =
+      hodgeParamLaurentPol:
+   minus_1*vee*tT(params,graph,hplp,i) + v_laurent_squared*hplp
+
+{ get ordinary T_alpha from tT=\tilde T: T=v\tilde T+v^2 acting on hodgeParamPol}
+set T ([Param] params,WGraph graph,hodgeParamPol hpp,int i) =
+      hodgeParamLaurentPol:
+   T(params,graph,hodge_param_laurent_pol(hpp),i)
+
+{get ordinary product of T_alpha's, given by [int]}
+set T ([Param] params,WGraph graph,hodgeParamLaurentPol hplp,[int] w) =
+     hodgeParamLaurentPol:
+  for j in w ~do hplp:=T(params,graph,hplp,j) od; hplp
+
+{get ordinary product of T_alpha's, given by WeylElt}
+set T([Param] params,WGraph graph,hodgeParamPol hpp,WeylElt w) =
+      hodgeParamLaurentPol:
+   T(params,graph,hodge_param_laurent_pol(hpp),w.word)
+
+{T^{-1}=v^{-2}T +(v^2-1)}
+set T_inv ([Param] params,WGraph graph,Param p,int i) = hodgeParamLaurentPol:
+v_minus_two*T(params,graph,p,i)+(v_minus_two-1)*hodge_param_laurent_pol(p)
+
+set T_inv([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=hodgeParamLaurentPol:
+v_minus_two*T(params,graph,hplp,i)+(v_minus_two-1)*hplp
+
+{S=-T: S at v=1 is coherent continuation, i.e.
+S(b,g,p,i).v_to_1=coherent_irr(p,i)}
+set S([Param] params,WGraph graph,Param p,int i)=hodgeParamLaurentPol:minus_1*T(params,graph,p,i)
+set S([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=hodgeParamLaurentPol:minus_1*T(params,graph,hplp,i)
+set S([Param] params,WGraph graph,hodgeParamPol hpp,int i)=hodgeParamLaurentPol:S(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set S([Param] params,WGraph graph, hodgeParamLaurentPol hplp,[int] w)=hodgeParamLaurentPol:
+for j in w ~ do hplp:=S(params,graph,hplp,j) od;hplp
+
+set S([Param] params,WGraph graph,Param p,[int] w)=hodgeParamLaurentPol:
+S(params,graph,hodge_param_laurent_pol(p),w)
+
+set S([Param] params,WGraph graph, hodgeParamLaurentPol hplp,WeylElt w)=hodgeParamLaurentPol:
+S(params,graph,hplp,w.word)
+
+set S([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+tT(params,graph,hodge_param_laurent_pol(p),w)
+
+{S_inv=S^{-1}=(-T)^-1}
+set S_inv([Param] params,WGraph graph,Param p,int i)=hodgeParamLaurentPol:minus_1*T_inv(params,graph,p,i)
+set S_inv([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=hodgeParamLaurentPol:minus_1*T_inv(params,graph,hplp,i)
+set S_inv([Param] params,WGraph graph,hodgeParamPol hpp,int i)=hodgeParamLaurentPol:S_inv(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set S_inv([Param] params,WGraph graph, hodgeParamLaurentPol hplp,[int] w)=hodgeParamLaurentPol:
+for j in w ~ do hplp:=S_inv(params,graph,hplp,j) od;hplp
+
+set S_inv([Param] params,WGraph graph,Param p,[int] w)=hodgeParamLaurentPol:
+S_inv(params,graph,hodge_param_laurent_pol(p),w)
+
+set S_inv([Param] params,WGraph graph, hodgeParamPol hpp,[int] w)=hodgeParamLaurentPol:
+S_inv(params,graph,hodge_param_laurent_pol(hpp),w)
+
+set S_inv([Param] params,WGraph graph, hodgeParamLaurentPol hplp,WeylElt w)=hodgeParamLaurentPol:
+S_inv(params,graph,hplp,w.word)
+
+set S_inv([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+tT(params,graph,hodge_param_laurent_pol(p),w.word)
+
+set S_inv([Param] params,WGraph graph, hodgeParamPol hpp,WeylElt w)=hodgeParamLaurentPol:
+S_inv(params,graph,hodge_param_laurent_pol(hpp),w)
+
+{hodgeParamPol giving grading on standard module}
+set graded_standard(Param std)=hodgeParamLaurentPol:
+let b=block_of(std) then
+Q=KL_Q_polynomials(std) then
+rv=nullHodgeParamLaurentPol(std.real_form) in
+for irr in b do
+ let f=KL_Q_polynomial(b,Q,irr,std) in
+  if sum(f).> then let
+     f1=poly_as_laurent_poly(f.at_v_squared)*v_laurent_power(length(irr)-length(std))  then
+     f2=hodge_param_laurent_pol(irr)
+     in rv+:=f1*f2
+     fi
+ od;
+rv
+
+set reverse(hodgeParamLaurentPol hplp)=ParamPol: character_formula(hplp.v_to_1)
+
+set quad_test([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=
+let tp=tT(params,graph,hplp,i) then
+x=tT(params,graph,tp,i) then
+y=tT(params,graph,x,i) in
+(x,y,v_sum*x=y)
+
+set quad_test([Param] params,WGraph graph,Param p,int i)=
+quad_test(params,graph,hodge_param_laurent_pol(p),i)
+
+set quad_test([Param] params,WGraph graph,[Param] list,int i)=
+for p in list do let (,,z)=quad_test(params,graph,p,i) in z od
+
+
+{
+cross(p)=q^{-1/2}(tTp-q^{-1/2}
+         =v^{-1}(tTp)-v^{-2}p
+}
+set cross([Param] params,WGraph graph,  hodgeParamLaurentPol hplp,int i)=
+v_inverse*tT(params,graph,hplp,i)-v_minus_two*hplp
+
+set cross([Param] params,WGraph graph, hodgeParamPol hpp,int i)=
+cross(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set cross([Param] params,WGraph graph,  ParamPol P,int i)=
+cross(params,graph,hodge_param_laurent_pol(P),i)
+
+set cross([Param] params,WGraph graph, Param p,int i)=
+cross(params,graph,hodge_param_laurent_pol(p),i)
+
+set cross([Param] params,WGraph graph,hodgeParamLaurentPol hplp,[int] w)=
+for j in w ~ do hplp:=cross(params,graph,hplp,j) od;hplp
+
+set cross([Param] params,WGraph graph,hodgeParamPol hpp,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(hpp),w)
+
+set cross([Param] params,WGraph graph,ParamPol P,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(P),w)
+
+set cross([Param] params,WGraph graph,Param p,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(p),w)
+
+set icross([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=
+vee*tT(params,graph,hplp,i)-v_laurent_power(2)*hplp
+
+set cross([Param] params,WGraph graph,hodgeParamPol hpp,int i)=hodgeParamLaurentPol:
+cross(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set cross_graded([Param] params,WGraph graph,Param p,int i)=
+cross(params,graph,graded_standard(p),i)
+
+set cross_graded([Param] params,WGraph graph,Param p,[int] w)=
+cross(params,graph,graded_standard(p),w)
+
+set icross([Param] params,WGraph graph, hodgeParamPol hpp,int i)=hodgeParamLaurentPol:
+icross(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set icross([Param] params,WGraph graph, Param p,int i)=
+icross(params,graph,hodge_param_laurent_pol(p),i)
+
+set icross_graded([Param] params,WGraph graph, Param p,int i)=
+icross(params,graph,graded_standard(p),i)
+
+set cross_square([Param] params,WGraph graph, hodgeParamLaurentPol hplp,int i)=
+icross(params,graph,cross(params,graph,hplp,i),i)
+
+set cross_square([Param] params,WGraph graph, hodgeParamPol hpp,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(hpp),i)
+
+set cross_square([Param] params,WGraph graph, Param p,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(p),i)
+
+set cross_square([Param] params,WGraph graph, ParamPol P,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(P),i)
+
+set cross_square_test([Param] params,WGraph graph, ParamPol P,int i)=bool:
+cross_square(params,graph,P,i)=hodge_param_laurent_pol(P)
+
+set cross_square_test([Param] params,WGraph graph, Param p,int i)=bool:
+cross_square(params,graph,p,i)=hodge_param_laurent_pol(p)
+
+{moved from induction.at to avoid circularity issue}
+
+{ in singular case,
+  move to regular infinitesimal character, apply w, and move back
+  Dangerous Bend (example):
+
+  atlas> set G=Sp(6,R)
+  atlas> set p=parameter(KGB(G,3),[3,2,2],[0,0,0])
+  Value: zero parameter (x=3,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+
+  the root e2-e3 is compact, so this limit of DS is zero
+  however its coherent continuation is not zero
+
+  atlas> coherent_std(0,p)
+  Value:
+  -1*final parameter (x=4,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+  1*final parameter (x=9,lambda=[3,2,2]/1,nu=[1,-1,0]/2)
+}
+
+{ action of simple root on parameter, basis of standards }
+{need to provide block and graph at regular infinitesimal character }
+{
+set coherent_irr ([Param] block_reg,WGraph graph_reg,Param p,int s) = ParamPol:
+  if is_regular(p) then
+    let block_gamma=for q in block_reg do first_param(T_irr(q,p.infinitesimal_character)) od in
+    coherent_irr_reg(block_gamma,graph,p,s)
+  else
+    let gamma=infinitesimal_character(p)
+    then p_reg=T(p,gamma+rho(real_form(p))) then
+    block_gamma=for q in block_reg do first_param(T_irr(q,p.infinitesimal_character)) od
+    in T(coherent_irr_reg(block_gamma,graph,p_reg,s),gamma)
+  fi
+  }
+
+
+{use: set (G,p,b,g,gs,w)=h_init(G)
+then
+show_long(S_inv(b,g,gs,w)
+}
+set h_init(RealForm G)=
+let p=G.trivial then
+b=block_of(p) then
+g=W_graph_of(p) then
+gs=graded_standard(p) then
+w=G.w0.word then
+p=G.trivial
+in
+(G,p,b,g,gs,w)
+
+set is_positive(hodgeParamLaurentPol hplp)=bool:
+all(for ((v,),) in rearrange(hplp) do is_non_negative(v) od)
+
+{keep all the intermediate results}
+set S_inv_plus([Param] params,WGraph graph, hodgeParamLaurentPol hplp,[int] w)=
+let list=[hodgeParamLaurentPol]:[] then
+terms=for j in w ~ do
+ let new=S_inv(params,graph,hplp,j) then
+ hplp=new in
+ new
+od in
+(terms,hplp)
+
+{G should be split}
+set h_test(RealForm G)=
+let ps=all_parameters_x_gamma(G.x_open,G.rho) then
+w=G.w0.word then
+rv=##for p in ps do
+let (terms,)=S_inv_plus(block_of(p),W_graph_of(p),graded_standard(p),w) in terms
+ od
+in let pass=all(for hplp in rv do is_positive(hplp) od) in
+prints("#terms computed: ", 2^ss_rank(G), "*", #w, "=", #rv,new_line,"result: ", pass);
+(rv,pass)
+
+{then valid=all(for (,,,x) in rv do x od) in
+prints("number of terms: ", #rv,new_line,"result: ",valid);
+(rv,valid)
+}
+
+set h_test([RealForm] list)=void:for G in list do prints(new_line,G);h_test(G) od
+
+set list=[SL(2,R),SL(3,R),SL(4,R),GL(4,R),Sp(4,R), Sp(6,R),Spin(4,3),Spin(5,4),G2_s]
+
+
+
+{ ----- normalized version of S_inv ------------}
+
+{for Stephen Miller
+intended for use (only?) with minimal principal series:
+ given a parameter p of a minimal principal series, replace p with
+ p_new, so that S_inv(params,graph,p_new,w) has the same composition
+ factors as p
+ Note: S_inv(params,graph,p,w) replaces the M-parameter lambda of p with w\times\lambda,
+ so for p_new use: lambda_new=cross(w^{-1},p).lambda
+}
+
+{typical usage:
+ set p=parameter(G.x_open,lambda,nu)  {at regular infinitesimal character}
+ set b=block_of(p)
+ set g=W_graph_of(p)
+ for w=[int] or WeylElt do:
+ show_long(millers_crossing(b,g,p,w))
+}
+
+{compute graded composition series of principal series in the w-chamber}
+set millers_crossing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+if (not (p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series \
+of a split group, so probably not what you want") fi;
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+{prints("w=",w);
+prints("params: ", params);
+prints("graph: ", graph);}
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\
+of a split group, so probably not what you want") fi;
+let w=W_elt(p.root_datum,w) in
+{ let ()=prints("w=",w) in}
+prints("target parameter: ", p);
+prints("starting parameter: ", cross(w.inverse,p));
+S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
+
+{singular infinitesimal character}
+set millers_crossing_sing([Param] params,WGraph graph, Param p,WeylElt w)=hodgeParamLaurentPol:
+let gamma=p.infinitesimal_character then
+gamma_reg=gamma+p.root_datum.two_rho then
+p_reg=first_param(T_param(p,gamma_reg)) then
+m_reg=millers_crossing(for p in params do first_param(T_param(p,gamma_reg)) od,graph,p_reg,w) in
+T_irr_dominant(m_reg,gamma)
+
+set millers_crossing_sing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
+millers_crossing_sing(params,graph,p,W_elt(p.root_datum,w))
+
+{Second version using coherent continuation of irreducibles:
+ using W_graph version of coherent_continuation
+block: block for G of the induced representation
+graph: W_graph of the block
+}
+
+set theta_induce_irreducible_wgraph ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
+   assert(is_final(p), "parameter is not final");
+   let rd=root_datum(G), N=find_N (p,G), rho_u=G.rho-p.root_datum.rho
+   then q=translate_param_by (p,N*two_rho(G)){.monomials[0]}
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+   then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
+    {w:gamma_dom -> p.infinitesimal_character _rho_u}
+   then P=coherent_irr(block,graph,ind,w{.inverse})  {see theta_induce_irreducible_coherent in induction.at}
+   in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
+
+{this is slow and probably negates the possible speed advantage of theta_induce_irreducible_wgraph,
+but useful for testing
+}
+set theta_induce_irreducible_wgraph (Param p, RealForm G)=ParamPol:
+   if is_weakly_good(p,G) then theta_induce_irreducible(p,G)
+   else
+    let rd=root_datum(G), N=find_N (p,G), rho_u=G.rho-p.root_datum.rho
+    then q=translate_param_by (p,N*two_rho(G))
+    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rho_u,nu(q))
+    {=theta_induce_std(q,G), but this hasn't been defined yet}
+    then block=block_of(ind)
+    then graph=W_graph_of(ind)
+    then (w,gamma_dom)=from_dominant(integrality_datum(ind),p.infinitesimal_character+rho_u)
+     {w:gamma_dom -> p.infinitesimal_character _rho_u}
+    then P=coherent_irr(block,graph,ind,w{.inverse})
+    in G.null_module + for c@q in P do c*T_irr(q,gamma_dom) od
+   fi

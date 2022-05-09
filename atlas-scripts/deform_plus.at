@@ -1,0 +1,65 @@
+<basic.at
+<polynomial.at { for type |i_poly| and function |eval| }
+<deform.at { for |deformation_terms| }
+<Weylgroup.at
+
+set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
+  (lower(p),deform(p)) { here |deform| may be replaced by |deformation_terms| }
+
+set recursive_deform_plus (Param p) =([Param],KTypePol):
+{  if d_verbose then prints("recursive_deform with:", p) fi;}
+  if not is_final(p) then error("improper parameter") fi;
+  let !empty = ParamPol: null_module(real_form(p))
+  then terms_computed = empty  {extra information}
+  in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (Split sc,Param p) ([Param],KTypePol):
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      prints("full_def with: sc=", sc, ", p=", p);
+      terms_computed+:=p;  {every time full_def is called ad p to terms_computed}
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type_pol) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=deformation_terms(p_def) { bypass built-in |deform| here }
+        in
+          prints("adding deformation term: p=", p_def, new_line,"adding:", def);
+          acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+      	let (,P)=full_def(sc*k,q) in
+        at_nu0+:=P; { gather harvest from those deformations }
+        terms_computed+:=q  {add q to terms_computed}
+      od
+    ; prints("full_def complete, result:",at_nu0)
+    ; (monomials(terms_computed),at_nu0)
+    end
+  else rec_fun full_def (Split sc,Param p) ([Param],KTypePol):
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      assert(is_standard(p),"non standard parameter in deformation");
+      terms_computed+:=p;  {every time full_def is called ad p to terms_computed}
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type_pol) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do
+      acc+:=deformation_terms(p*factor);
+      terms_computed+:=p*factor
+{      ;prints("terms_computed is now: ",#terms_computed)}
+    od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+       do
+        let (,P)= full_def(sc*k,q)  in
+        at_nu0 +:= P;
+        terms_computed+:=q
+      od
+    ;(monomials(terms_computed), at_nu0)
+    end
+  fi { apply that recursive function to the initial argument: } (1,p)
+
+set chamber_rep(Param p)=Param:
+parameter(p.x, p.lambda, p.nu\1 + p.root_datum.rho/(p.root_datum.coxeter_number+1))

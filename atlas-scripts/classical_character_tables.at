@@ -1,0 +1,282 @@
+<basic.at
+<combinatorics.at { for |partitions@int| and many more functions }
+<class_tables.at  { for W-conjugacy class related definitions }
+<classical_W_classes_and_reps.at
+<character_tables.at
+
+{				type A				}
+
+set partition_as_irrep_label (Partition lambda) = string:
+   ( "{", lambda.parts_string, "}" ).to_string
+
+set character_table_S (int n) =
+     (CharacterTable,(Partition->int),(Partition->int)):
+(  let partitions_n = partitions(n)
+   then classes = [WeylElt,string]:
+      for lambda in partitions_n
+      do (conjugacy_class_S(lambda),lambda.to_string)
+      od
+   ,  irreps = [[int],string]:
+      for lambda in partitions_n ~ { reversal to go from trivial to sign }
+      do (for cyc_type in partitions_n do Murnaghan_Nakayama(lambda,cyc_type) od
+         ,lambda.partition_as_irrep_label
+	 )
+      od
+   then lookup_partition = (Partition->int): index_partition(partitions_n)
+   , top = #partitions_n-1
+in ( character_table(class_table_S(n),classes,irreps,(int i):i)
+   , lookup_partition { find index among conjugacy classes }
+   , (Partition lambda) int: { index among irreps }
+        top - lookup_partition(lambda)
+   )
+)
+
+set character_table_A (RootDatum rd) =
+      (CharacterTable,(Partition->int),(Partition->int)):
+(  let partitions = [Partition]: partitions(rd.semisimple_rank+1)
+   ,  class_rep = (Partition->WeylElt): conjugacy_class_A(rd)
+   then classes = [WeylElt,string]:
+      for lambda in partitions do (class_rep(lambda),lambda.to_string) od
+   ,  irreps = [[int],string]:
+      for lambda in partitions ~ { reversal to go from trivial to sign }
+      do (for cyc_type in partitions do Murnaghan_Nakayama(lambda,cyc_type) od
+         ,lambda.partition_as_irrep_label
+	 )
+      od
+   then lookup_partition = (Partition->int): index_partition(partitions)
+  , top = #partitions-1
+in ( character_table(class_table_A(rd),classes,irreps,(int i):i)
+   , lookup_partition { find index among conjugacy classes }
+   , (Partition lambda) int: { index among irreps }
+        top - lookup_partition(lambda)
+   )
+)
+
+{				types B,C				}
+
+set BC_irreps (int n) = [BiPartition]:
+   pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
+
+{ for looking up a |BiPartition| among |BC_irreps|, use an adapted comparison: }
+set index_BC_irrep = ([BiPartition] -> (BiPartition->int)):
+   let leq (BiPartition (P,Q), BiPartition (R,S)) = bool:
+      case P.sum-R.sum
+      then false else true { size balance is decisive, inverted ordering! }
+      in { equal size case: reverse compare left or (if same) right partitions }
+	 if P=R else (R,P) then (S,Q) fi.leq_equal_sum_partitions
+      esac
+in ([BiPartition] list) (BiPartition->int): { assume |list| is sorted by |leq| }
+      (BiPartition PQ) int:
+	 binary_search_first( (int i)bool: leq(PQ,list[i]), 0, #list)
+
+set bipartition_as_irrep_label (BiPartition(lambda,mu)) = string:
+   ("{ ", lambda.parts_string, " +|- ", mu.parts_string, " }").to_string
+
+set character_table_B (int n) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+(  let class_list = [BiPartition]: partition_pairs(n)
+   , irrep_list = [BiPartition]: BC_irreps(n)
+   , rd=SO(n+n+1)
+   then cycles = for pair in class_list do pair.to_cycles od
+   , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.to_string) od
+   ,  irreps = [[int],string]:
+      for rep in irrep_list
+      do ( for c in cycles do hyperoctahedral_character(rep,c) od
+	 , rep.bipartition_as_irrep_label
+	 )
+      od
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+   then ch_tab = character_table
+      (class_table_B(n),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)
+
+set character_table_B (RootDatum rd) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+(  let n=rd.semisimple_rank
+   then class_list = [BiPartition]: partition_pairs(n)
+   , irrep_list = [BiPartition]: BC_irreps(n)
+   , class_rep = (BiPartition->WeylElt): conjugacy_class_B(rd)
+   then cycles = for pair in class_list do pair.to_cycles od
+   , class_rep(int i) = WeylElt: class_rep(class_list[i])
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.to_string) od
+   ,  irreps = [[int],string]:
+      for rep in irrep_list
+      do ( for c in cycles do hyperoctahedral_character(rep,c) od
+	 , rep.bipartition_as_irrep_label
+	 )
+      od
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+   then ch_tab = character_table
+      (class_table_B(rd),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)
+
+set character_table_C (int n) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+(  let class_list = [BiPartition]: partition_pairs(n)
+   , irrep_list = [BiPartition]: BC_irreps(n)
+   , rd=Sp(n+n)
+   then cycles = for pair in class_list do pair.to_cycles od
+   , class_rep(int i) = WeylElt: W_elt(rd,class_word_BC(class_list[i]))
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.to_string) od
+   ,  irreps = [[int],string]:
+      for rep in irrep_list
+      do ( for c in cycles do hyperoctahedral_character(rep,c) od
+	 , rep.bipartition_as_irrep_label
+	 )
+      od
+   ,  lookup_class = (BiPartition->int): index_bipartition(class_list)
+   ,  lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+   then ch_tab = character_table
+      (class_table_C(n),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)
+
+set character_table_C (RootDatum rd) =
+      (CharacterTable,(BiPartition->int),(BiPartition->int)):
+(  let n=rd.semisimple_rank
+   then class_list = [BiPartition]: partition_pairs(n)
+   , irrep_list = [BiPartition]: BC_irreps(n)
+   , class_rep = (BiPartition->WeylElt): conjugacy_class_C(rd)
+   then cycles = for pair in class_list do pair.to_cycles od
+   , class_rep(int i) = WeylElt: class_rep(class_list[i])
+   then classes = [WeylElt,string]:
+      for c@i in cycles do ( class_rep(i), c.to_string) od
+   ,  irreps = [[int],string]:
+      for rep in BC_irreps(n)
+      do ( for c in cycles do hyperoctahedral_character(rep,c) od
+	 , rep.bipartition_as_irrep_label
+	 )
+      od
+   , lookup_class = (BiPartition->int): index_bipartition(class_list)
+   , lookup_irrep = (BiPartition->int): index_BC_irrep(irrep_list)
+   then ch_tab = character_table
+      (class_table_C(rd),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)
+
+{				type D					}
+
+
+{ all irreducible representations of D_n }
+set D_irreps (int n) = [D_irrep]:
+   for (lambda,):pair
+     in pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
+   do case cmp_partitions(pair)
+      then { first is stricly less } []
+      in { an equal pair } [(lambda,false).split_irr,(lambda,true).split_irr]
+      else { first is stricly greater } [pair.unsplit_irr]
+      esac
+   od.##
+
+{ In list of |D_irrep|s sorted by ordering of |D_irreps|, look up a |D_irrep|.
+  The |D_irrep|s in the list are among those produced by |D_irreps|, so that
+  if unsplit, the larger (for |cmp_partition|) partition comes first; the
+  second |D_irrep| (whose index we look up) does not have to satisfy this.
+}
+set index_D_irreps = ([D_irrep]->(D_irrep->int)):
+   let flatten(D_irrep chi) = (BiPartition,int):
+      case chi
+      | pair.unsplit_irr: (pair,minus_1)
+      | (lambda,b).split_irr: ((lambda,lambda),#b)
+      esac
+   ,  before_eq (BiPartition(nu,):pair1,int flag1) = (BiPartition,int->bool):
+	 let sum_nu = sum(nu) in
+	 if flag1.<
+	 then { compare against unsplit }
+	    (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+	       case sum(mu)-sum_nu
+	       then false { smaller |sum(mu)|, so arg0 after arg1 }
+	       in pair1<=pair0 { reverse comparison, for |~[:]| above }
+	       else true
+	       esac
+	 else { compare against split }
+	    (BiPartition(mu,):pair0,int flag0) bool: { whether before arg1 }
+	       case sum(mu)-sum_nu
+	       then false
+	       in if flag0.< then pair1<=pair0 { just reverse comparison }
+		  else { comparing two split irreps }
+		     case cmp_equal_sum_partitions(nu,mu) { reverse here too }
+		     then true in flag0<=flag1 else false
+		     esac
+		  fi
+	       else true
+	       esac
+	 fi
+   in ([D_irrep] sorted_list) (D_irrep->int):
+      let up_to = [(BiPartition,int->bool)]:
+	  for elt in sorted_list do before_eq(flatten(elt)) od
+      , len = #sorted_list
+      in (D_irrep chi) int:
+	 let key = { like |flatten(chi)|, but maybe swap partitions }
+	    case chi
+	    | (lambda,mu):pair.unsplit_irr:
+	       (if leq_partitions(pair) then (mu,lambda) else pair fi,minus_1)
+	    | (lambda,b).split_irr: ((lambda,lambda),#b)
+	    esac
+	 in binary_search_first( (int i)bool: up_to[i](key), 0, len)
+
+set irrep_label (D_irrep chi) = string:
+  case chi
+  | (mu,lambda).unsplit_irr: { here we keep the stored order of partitions }
+    ("{ ",mu.parts_string," | ",lambda.parts_string," }").to_string
+  | (mu,s).split_irr:
+    ("{ ",mu.parts_string," | ",mu.parts_string," }",s.sign_string).to_string
+  esac
+
+set character_table_D(int n) =
+      (CharacterTable,(D_class->int),(D_irrep->int)):
+(  let class_list = [D_class]: D_classes(n)
+   ,   irrep_list = [D_irrep]: D_irreps(n)
+   then classes = [WeylElt,string]:
+      for c in class_list
+      do (conjugacy_class_SO(c),c.to_string)
+      od
+   ,  irreps = [[int],string]:
+      for rep in D_irreps(n)
+      do ( for class in class_list do character(rep,class) od, rep.irrep_label )
+      od
+   ,  lookup_class = (D_class->int): index_D_classes(class_list)
+   ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
+   then ch_tab = character_table
+      (class_table_D(n),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)
+
+set character_table_D(RootDatum rd) =
+      (CharacterTable,(D_class->int),(D_irrep->int)):
+(  let  n=rd.semisimple_rank
+   ,    class_rep = (D_class->WeylElt): conjugacy_class_D(rd)
+   then class_list = [D_class]: D_classes(n)
+   ,    irrep_list = [D_irrep]: D_irreps(n)
+   then classes = [WeylElt,string]:
+      for c in class_list do (class_rep(c),c.to_string) od
+   ,  irreps = [[int],string]:
+      for rep in irrep_list
+      do ( for class in class_list do character(rep,class) od, rep.irrep_label )
+      od
+   ,  lookup_class = (D_class->int): index_D_classes(class_list)
+   ,  lookup_irrep = (D_irrep->int): index_D_irreps(irrep_list)
+   then ch_tab = character_table
+      (class_table_D(rd),classes,irreps
+      ,(int i)int: irrep_list[i].make_special.lookup_irrep
+      )
+in ( ch_tab, lookup_class, lookup_irrep )
+)

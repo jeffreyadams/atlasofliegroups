@@ -38,9 +38,15 @@ set is_isomorphic (WeylClassTable tab, W_rep pi, W_rep sigma) = bool:
      )
 
 {. matrix of inner products of characters of representations .}
-set matrix_of_inner_products (WeylClassTable tab,[[int]] characters) = mat:
-  let n=#characters
-  in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
+set matrix_of_inner_products (WeylClassTable tab) = ([[int]] characters) mat:
+(  let n=#characters
+   , triangle = [[int]]:
+      for f@i in characters do for g in characters[i:] do tab.inner(f,g) od od
+   in matrix
+     ((n,n)
+     ,(int i,int j): if i<=j then triangle[i][j-i] else triangle[j][i-j] fi
+     )
+)
 
 { filter list of representations to a unique copy of any occurring character }
 set sort_u (WeylClassTable tab,[W_rep] list) = [W_rep]:
@@ -211,16 +217,18 @@ set cell_characters (WeylClassTable Wct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(Wct, cell) od
 
 set cells_table (WeylClassTable Wct,[WCell] cells) = mat:
-  matrix_of_inner_products(Wct,cell_characters(Wct,cells))
+  Wct.matrix_of_inner_products(cell_characters(Wct,cells))
 
 set cells_table_augmented (WeylClassTable Wct, [WCell] cells) = mat:
   let characters =
     cell_characters(Wct,cells) ## [ Wct.trivial, Wct.sign, Wct.reflection ]
-  in matrix_of_inner_products(Wct,characters)
+  in Wct.matrix_of_inner_products(characters)
 
 set cell_representation (WeylClassTable Wct,WCell cell) = W_rep:
-  (#cell.graph,for i:Wct.root_datum.semisimple_rank
-	       do unsparse(cell_action(cell,i),#cell.graph) od)
+  ( #cell.graph
+  , for i:Wct.root_datum.semisimple_rank
+    do unsparse(cell_action(cell,i),#cell.graph) od
+  )
 
 { list of representations defined by an array of cells }
 set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
@@ -228,10 +236,6 @@ set cell_representations (WeylClassTable Wct,[WCell] cells) = [W_rep]:
 
 
 { ------------------- induction ------------------- }
-
-{. promote w in W(Levi) to W(G) }
-set promote (WeylClassTable Wct, WeylElt w_L) = WeylElt:
-  W_elt(Wct.root_datum, matrix(w_L))
 
 { all 2^n standard Levis }
 set standard_Levis (RootDatum rd) = [RootDatum]:
@@ -269,7 +273,7 @@ set induce_character (WeylClassTable Wct_G,WeylClassTable Wct_L,[int] pi_L) =
    , sizes_G = Wct_G.class_sizes
    , sizes_L = Wct_L.class_sizes
 in for w_L@i in classes_L
-   do let j=Wct_G.class_of(W_elt(rd_G,w_L.matrix))
+   do let j=Wct_G.class_of(convert_to(rd_G,w_L))
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
@@ -280,121 +284,3 @@ set smallest_degree (WeylClassTable Wct, [int] character) = int:
   first(Wct.root_datum.nr_of_posroots+1
        ,(int k) bool: !=Wct.inner(character,Wct.sym_power_refl(k))
        )
-
-{ the Steinberg character (mainly for testing)}
-
-{alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character (if it does not, this function fails) }
-set Steinberg_character (RootDatum rd) = [int]:
-  let ct_G=W_class_table_generic(rd)
-  then result =
-     for L in standard_Levis(rd)
-     do let ct_L=W_class_table_generic(L) in
-        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
-     od
-     .sum
-  in assert(result=ct_G.sign); result
-
-{ ------------ projection on isotypic subspace  ----------- }
-
-{ scalar multiple of projection of representation space of |ops| on isotoypic
-  subspace defined by character |char_values| of an irreducible representation
-
-  If and irreducible character |char_values| is not a constituent of the
-  representation defined by |ops|, this gives the null matrix; then since
-  the result depends linearly on |char_values|, we can even use this when the
-  character is reducible, but has a unique irreducible constituent in common
-  with |ops|, giving (a multiple of) the projection for that isotypic subspace
-}
-set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
-  let rd=tab.root_datum, Q=null(dim,dim) in
-  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
-  do Q+:=character_value(tab,w,char_values)*action
-  od; Q
-
-{ restrict representation pi to isotypic subspace (image space of projector) }
-set restrict_representation_isotypic\
-   (WeylClassTable Wct, W_rep pi, vec char_values) = W_rep:
-  let (basis,factors)=projector(Wct,pi,char_values).adapted_basis
-  { operators have integral matrices w.r.t. |basis|, so restriction is OK }
-  then P=basis[:#factors] { saturated lattice basis of image of the projector }
-  in (#P ,for T in pi.operators do restrict_action(T,P) od)
-
-{ projector for a cell representation }
-set projector (WeylClassTable Wct, WCell cell, vec char_values) = mat:
-  projector(Wct,cell_representation(Wct,cell),char_values)
-
-{ given a cell, compute the cell represetation pi, find the smallest k so that
-  <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
-  irreducible in common is special; use the character of sym^k(reflection)
-  to compute the projection operator onto the special
-}
-set special_projector (WeylClassTable Wct, WCell cell) = mat:
-  let cell_rep = cell_representation(Wct,cell)
-  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
-  in projector(Wct,cell_rep,char)
-
-{ given a cell, compute the special_projector, and use this to construct
-  the special representation itself
-}
-set special_representation_of_cell (WeylClassTable Wct, WCell cell) = W_rep:
-  let cell_rep = cell_representation(Wct,cell)
-  then char = Wct.sym_power_refl(smallest_degree(Wct,character(Wct,cell_rep)))
-  in restrict_representation_isotypic(Wct,cell_rep,char)
-
-{special_projectors for a list of cells}
-set special_projectors (WeylClassTable Wct, [WCell] cells) = [mat]:
-  for cell in cells do special_projector(Wct,cell) od
-
-{test v, w same up to rational multiple}
-set is_rational_multiple (vec v,vec w) = bool: rank(mat:[v,w])<2
-
-{ given list of nonzero vectors return [[int]]
-  where each [int] is the indices of the vectors
-  which are the same up to multiple
-  example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
-set group_vectors_up_to_scalar ([vec] list) = [[int]]:
-  let result=[[int]]: [], reps=[vec]: [] in
-   for v@i in list
-   do assert(!=v,"Cell member projects to 0: "+i);
-      let j=first(#reps,(int k)bool: is_rational_multiple(reps[k],v)) in
-      if j.< then result #:= [i]; reps#:=v else result[j] #:= i fi
-   od; result
-
-{ given a cell, compute the projector onto the special representation
-  Then cell vertices give the same primitive ideal iff they map to scalar
-  multiples of the same vector in the special representation, i.e. the two
-  corresponding columns of the matrix are the same up to rational multiple
-}
-set group_parameters_by_primitive_ideal (WCell cell,mat projector) = [[int]]:
-  let grouping=group_vectors_up_to_scalar([vec]:projector{matrix columns})
-  , parameters=cell.labels
-  in for v in grouping do for w in v do parameters[w] od od
-
-{ nice output of primitive ideal information for a cell }
-set print_primitive_ideal_info ([WCell] cells,[mat] projectors) = void:
-  let data=
-     for cell@i in cells
-     do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P)
-     in [i.to_string,(#P).to_string,(#g).to_string,g.to_string]
-     od
-  in prints("Each line has 4 terms:",new_line
-           ,"# of cell",new_line,"size of cell", new_line
-           , "dimension of special representation of cell",new_line
-           , "grouping of parameters in cell by primitive ideal");
-     tabulate(data, "llll",2," ")
-
-{ variant function of previous (distinguished by ignored final string argument),
-  better suited to large cells
-}
-set print_primitive_ideal_info ([WCell] cells,[mat] projectors,string .) = void:
-  for cell@i in cells
-  do let P=projectors[i] then g=group_parameters_by_primitive_ideal(cell,P) in
-    prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line
-          , "dimension of special: ", #g)
-  ; for a in g do prints(a) od
-  od
-
-
-
-{Param->[(int, ([int],(RootDatum,[([int],[(int,int)])],[sparse_mat]) )    )]}

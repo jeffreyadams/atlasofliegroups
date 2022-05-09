@@ -1,6 +1,13 @@
 <Weylgroup.at { dominant }
 
 { finite dimensional representations of G(C)}
+
+{.constructs parameter for the algebraic finite-dimensional of
+extremal weight lambda.}
+set finite_dimensional(RealForm G, vec lambda) = Param:
+let lambdadomrho = dominant(G,lambda)+G.rho  in
+parameter(x_open(G),lambdadomrho,lambdadomrho)
+
 {.whether p is finite dimensional.}
 set is_finite_dimensional (Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
@@ -28,9 +35,15 @@ set Weyl_dim (RootDatum rd, vec lambda) = int:
   for a in poscoroots(rd) do (lambda+rho)*a/(rho*a) od.product.rat_as_int
 )
 
+{ If split torus in the center not necessarily a vec, this could fail.
+  Leave it for now because otherwise weyl_character_formula.at fails to load }
 {.highest weight of finite dimensional in X^* coordinates.}
 set highest_weight_finite_dimensional (Param p) = vec:
    (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
+
+{allow ratvec if G has split central torus}
+set highest_weight_finite_dimensional_ratvec (Param p) = ratvec:
+   (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho)
 
 set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
    (v*simple_coroots(rd)).ratvec_as_vec
@@ -39,14 +52,15 @@ set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
 set fundamental_weight_coordinates (Param p) = vec:
    on_fundamental_weights(highest_weight_finite_dimensional(p),root_datum(p))
 
+{use highest_weight_finite_dimensional_ratvec to all split central torus}
 {.dimension of finite dimensional parameter.}
 set dimension(Param p) = int:
-   dimension(root_datum(p),highest_weight_finite_dimensional(p))
+   dimension(root_datum(p),highest_weight_finite_dimensional_ratvec(p))
 
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:
-  let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
+  let dom = dominant(root_datum(p), ((1+p.x.involution)*p.lambda).ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
 {
@@ -54,3 +68,26 @@ set complex_LKT (Param p) = vec:
   and sign of Hermitian form on finite dimensional representation are
   MOVED TO finite_dimensional_signature.at
 }
+
+set ht(RealForm G, vec lambda) = int:
+rat_as_int(dominant(G,lambda)*G.rho_check*2)
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as KTypePol of corresponding GC K-types }
+set tensor_product(RootDatum rd, vec gamma1, vec gamma2) = KTypePol:
+   let GC = rd.complexification
+   then repn = finite_dimensional(GC,gamma1##gamma2)
+   then gamma_rho = ratvec_as_vec(repn.infinitesimal_character - rho(GC))
+   then module = minus_1^length(x_open(GC))*
+     (GC.null_K_module +
+      for x in KGB(GC) do (minus_1^length(x),K_type(x,gamma_rho)) od)
+in branch(module, ht(GC,gamma1##gamma2))
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as list of (multiplicity,highest weight)}
+set tensor_product_weights(RootDatum rd, vec gamma1, vec gamma2) = [(int,vec)]:
+   let r=rd.rank, rho2=two_rho(rd)
+in for c@p in tensor_product(rd,gamma1,gamma2)
+   do let lambda_rho = p.lambda_minus_rho
+   in (split_as_int(c), lower(r,lambda_rho)+upper(r,lambda_rho)+rho2 )
+   od

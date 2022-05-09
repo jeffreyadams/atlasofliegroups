@@ -1,0 +1,69 @@
+< basic.at
+< character_tables.at
+
+{ Calculates the degrees in which a rep of W appears harmonically }
+{ I think that harm and invariants are useful functions to have, but
+of course I'm sure that they can be improved enormously; then I would
+suggest incorporating them in character_tables.at }
+{ A flaw or dangerous bend is that these are the invariant degrees for
+W acting on the adjoint group, because the argument is a
+CharacterTable rather than a root datum:
+
+invariants(GL(3,R).character_table) = [2,3]
+
+(not [1,2,3]). I'm not sure whether there ought to be
+invariants(RootDatum rd) which would add a 1 for each dimension of the
+center.}
+
+{number of positive roots from character table}
+set number_pos(CharacterTable ct) = ct.root_datum.nr_of_posroots
+
+{multiplicity of W irr by number in symmetric powers  of
+reflection. Power must be at most #pos roots}
+set mult(CharacterTable ct, int rep, int deg) = int:
+if deg < 0 then 0 else
+ct.inner(ct.characters[rep],ct.sym_power_refl(deg)) fi
+
+{multiplicity of W irr by number "rep" in symm power "deg" mod poly alg with
+generators in degrees "list"}
+set partial_harm(CharacterTable ct, int rep, int deg, [int] list) = int:
+let h = 0 in
+for k:#list+1 do
+for S in choices_from(list,k) do if is_even(k) then h := h +
+mult(ct,rep,deg-sum(S)) else h := h-mult(ct,rep,deg-sum(S))
+fi od
+od;
+h
+
+{list of degrees of generators of invariant polynomials to degree deg}
+set rec_fun invariants_to(CharacterTable ct, int deg) = [int]:
+if =deg then []
+else let list=invariants_to(ct,deg-1) in
+list## for i:partial_harm(ct, 0,deg,list) do deg od
+fi
+
+{ fundamental invariant degrees }
+set invariants(CharacterTable ct) = [int]:
+   invariants_to(ct,nr_of_posroots(ct.root_datum))
+
+{ multiplicity of W irr by number "rep" in harmonics of degree "deg" }
+set harm(CharacterTable ct, int rep, int deg) = int:
+   let list=invariants(ct) in partial_harm(ct,rep, deg, list)
+
+{ multiplicity of W irr by number "rep" in harmonics of degree "deg",
+with precomputed invariants }
+set harm(CharacterTable ct, [int] invts, int rep, int deg) =
+partial_harm(ct,rep, deg, invts)
+
+{ array of multiplicities of W irr by number "rep" in harmonics }
+set harm(CharacterTable ct, int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,rep,j) od
+
+{ array of multiplicities of W irr by number "rep" in harmonics }
+set harm(CharacterTable ct,int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,rep,j) od
+
+{ array of multiplicities of W irr by number "rep" in harmonics with
+precomputed invariants }
+set harm(CharacterTable ct, [int] invts, int rep) = [int]:
+   for j:ct.root_datum.nr_of_posroots +1 do harm(ct,invts,rep,j) od

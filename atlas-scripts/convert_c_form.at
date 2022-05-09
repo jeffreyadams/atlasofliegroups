@@ -19,7 +19,19 @@ set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
 { mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
 { formula: mu(p) = < torus_factor(x)+rho^\vee , (1+theta_x)(lambda+rho)/2 > }
 set mu (Param p) = rat:
+{ Since |p.x.torus_factor| is unchanged under right multiplication by
+  |1+x.involution|, the following formula is equivalent to the original one:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
+}
+  p.real_form.rho_check * lambda_plus_rho_res_T(p.x,p.lambda) +
+  p.x.torus_factor*(p.lambda+p.root_datum.rho)
+
+{ In fact it only depends on the K-type. Here we use the original formula }
+set mu (KType t) = rat:
+  (t.x.torus_factor+t.root_datum.rho_check) *
+  ((1+t.x.involution)
+  *(t.lambda_minus_rho+two_rho(t.root_datum))
+  ) / 2
 
 {  converting to Hermitian forms in unequal rank case  }
 

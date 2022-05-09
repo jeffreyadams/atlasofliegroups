@@ -1,12 +1,53 @@
 {Load this file to load all recommended .at files}
 <extParamPol.at
-<nilpotent_orbits.at
 <complex.at
 <test_unitarity.at
 <modules.at
 <print_K_types.at
-<tits.at
 <galois.at
 <jantzen.at
 <finite_dimensional_signature.at
 <W_reps.at
+<hodge_K_type_formula.at
+<all_finite_order.at
+<hodge_test.at
+<hodge_tensor.at
+<K_Nilpotent.at
+<exceptionalNilpotentData.at
+<good_W_representatives.at
+<finite_unipotents.at
+<weyltosemisimple.at
+<cyclotomic_field_bracket.at
+<tits_centralizer.at
+<bruhat.at
+<stable.at
+<GK_dimension.at
+<restricted_roots.at
+<nilpotent_centralizer.at
+<weak_packets_precomputed_cell_traces.at
+<arthur_parameters.at
+<coherent_irreducible.at
+ { <deform_plus.at Removed by DV 12/23: this now makes is_unitary use the VERY SLOW script version}
+<truncated_induction.at
+<dirac_index.at
+<sub_cells.at
+<associated_variety_annihilator.at
+{<coherent_characters.at}
+<sommers.at
+<projectors_using_character_tables.at
+<new_conjugacy.at
+<test_braid.at
+{<lucas.at
+<self_intersection.at}
+{this is slow to load:
+<unipotent_representations_exceptional.at
+}
+<certificate.at
+<geck_generic.at
+<lusztig_cells.at
+<four.at {four_inner_products BXYI}
+<special_rep.at
+<families.at
+
+
+

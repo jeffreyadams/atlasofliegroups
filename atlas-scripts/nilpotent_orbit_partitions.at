@@ -1,10 +1,6 @@
 <basic.at
-<combinatorics.at { for |Partition| type ans partition generators }
-<coordinates.at
-<groups.at
-<sort.at {for reverse_sort}
-<Weylgroup.at
-<partitions.at
+<combinatorics.at { for |Partition| type, partition generators, dominance order }
+<nilpotent_orbits.at
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -46,24 +42,6 @@ set nilpotent_orbit_partitions =
 }
 set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
    nilpotent_orbit_partitions(Lie_type(rd))
-
-{ test if partition is valid orbit in type ABCD }
-set is_valid (string type,vec P) = bool:
-{ avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
-  case ascii(type)-ascii("A")
-  in true
-  , { type B } sum(P).is_odd and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  , { type C } sum(P).is_even and
-    all(for mult in P.frequencies.odd_places do mult.is_even od)
-  , { type D } sum(P).is_even and
-    all(for mult in P.frequencies.even_places do mult.is_even od)
-  else false { exceptional types are not valid }
-  esac
-
-set is_valid (LieType t,vec P) = bool:
-  let tn=type_number(t), r=t.rank in
-  #P = case tn in r+1, r+r+1, r+r, r+r esac and is_valid("ABCD"[tn],P)
 
 { nilpotent orbits of dual group (types A-D only) }
 set dual_nilpotent_orbit_partitions(RootDatum rd)=[Partition]:
@@ -108,31 +86,26 @@ set nilpotent_orbit_ss_elements (LieType t) = [vec]:
 set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
   for P in nilpotent_orbit_partitions(rd) do semisimple_element(rd,P) od
 
-
-
-set lesseq_partition (Partition v,Partition w) = bool:
-   assert(sum(v)=sum(w),"not comparable");
-   assert(v.>= and w.>= , "negative terms");
-   v:=reverse_sort(v); w:=reverse_sort(w);
-   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
-
-{ same as previous but assume each term is already reverse sorted,
-  and all terms are comparable }
-set lesseq_partition_presorted (Partition v,Partition w) = bool:
-   for i:min(#v,#w)+1 do if v[i]!=w[i] then return v[i]<w[i] fi od;true
+{moved lesseq_partition (and renamed it) to combinatorics.at}
 
 { orbits=[v_1,...,v_n]
   closures(orbits)[i] is the set of j (not including i itself) such that
   orbits[j] contained in the closures of orbits[i]
 }
 set closures([Partition] orbits) = [[int]]:
-  {pre-sort}
-   let orbits=for P in orbits do reverse_sort(P) od in
-   for P@i in orbits
+   for P@i in orbits := {pre-sort} for P in orbits do reverse_sort(P) od
    do
-   ## for j:#orbits
-      do if j!=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi
-      od
+      prints("P=",P, "i=",i);
+      for lambda@j in orbits
+      do
+         prints("j=",j);
+	 if j!=i and leq_dominance_order_partitions_presorted(lambda,P)
+         then
+	    prints("got",i, " ", j);
+	    [j]
+	 else []
+	 fi
+      od.##
    od
 
 { this only works for simple classical groups, fails for exceptional groups;
@@ -140,3 +113,9 @@ set closures([Partition] orbits) = [[int]]:
   simple exceptional case also }
 set nilpotent_lambdas_classical (RootDatum rd) = [ratvec]:
     for lambda in nilpotent_orbit_ss_elements(dual(rd)) do lambda/2 od
+
+set complex_nilpotent_from_partition(RootDatum rd, Partition p)=
+ComplexNilpotent:(rd,(),semisimple_element(rd,p))
+
+set dim_nilpotent_partition(RootDatum rd,Partition p)=
+dim_nilpotent(complex_nilpotent_from_partition(rd,p))

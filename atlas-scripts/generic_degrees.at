@@ -1,0 +1,26 @@
+<basic.at
+<character_tables.at { for type |CharacterTable| }
+<cells.at { for |cell_character@CharacterTable| }
+
+
+{------------------- generic degrees ----------------}
+
+set generic_degrees(CharacterTable ct,[WCell] cells) = [int]:
+   let Wct = ct.class_table, result = for :ct.n_irreps do minus_1 od in
+( for cell in cells
+  do assert(Wct.root_datum=cell.root_datum,"Root datum mismatch in cell")
+  ;  let multiplicities = [int]: ct.decompose(cell_character(Wct,cell.print))
+     then d = ct.degree(special_irreducible(ct,multiplicities))
+  in for m@i in multiplicities
+     do if !=m
+        then assert(ct.generic_degree(i)=d,"Wrong generic degree")
+	; result[i]:=d
+	fi
+     od
+   od
+;  result
+)
+
+set generic_degrees(CharacterTable ct,[Param] parameters) = [int]:
+   let cells= for b in blocks(parameters) do W_cells_of(b[0]) od.##
+in generic_degrees(ct,cells)
