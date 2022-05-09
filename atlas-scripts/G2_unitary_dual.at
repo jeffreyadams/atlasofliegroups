@@ -88,3 +88,10 @@ let gamma=gamma_l(m,v) then   {gamma not necessarily dominant}
 all=all_parameters_x_gamma(x_l,gamma) then {final, can be 2 limits of DS}
 ()=assert(#all>0,"not found") in all
 
+set test_s(int m, rat v0, rat v1, rat step_size)=
+let number_steps=(v1-v0)\step_size in
+for i:number_steps do let v=v0+i*step_size in prints(v, " ", is_unitary(p_s(m,v)[0])) od
+
+set test_l(int m, rat v0, rat v1, rat step_size)=
+let number_steps=(v1-v0)\step_size in
+for i:number_steps do let v=v0+i*step_size in prints(v, " ", p_l(m,v), " ", is_unitary(p_l(m,v)[0])) od

@@ -457,7 +457,7 @@ print_extended_character_formula_old_a(p,singular_block_of(p),delta)
 
 set T_std_extended(Param p,ratvec gamma,mat delta)=
 let p_gamma=T_param(p,gamma) in
-finalize_extended(p,delta)
+finalize_extended(p_gamma,delta)
 
 set T_std_extended(ParamPol P, ratvec gamma, mat delta)=
 null_module(P.real_form) + for (c,p) in %P do c*T_std_extended(p,gamma,delta) od
