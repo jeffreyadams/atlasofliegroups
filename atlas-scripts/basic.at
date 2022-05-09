@@ -356,17 +356,21 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
-{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+{ all words with letter |i| running over elements of |alphabets[i]| }
+set all_words ([[int]] alphabets) = mat:
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
-     else final-:=1; let limit=limits[final] in
+     else final-:=1; let alphabet=alphabets[final] in
           for prefix in generate(final)
-          do for i:limit do prefix#i od
+          do for letter in alphabet do prefix#letter od
 	  od.##
      fi
-  , size=#limits
+  , size=#alphabets
   in size # generate(size) { ensure column size |size|, even for empty set }
+
+{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+set all_words ([int] limits) = mat:
+   for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
 
@@ -386,6 +390,12 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
       fi
     in from_first(#S,k)
   fi
+
+set all_0_1_vecs_with_sum (int n,int k) = [vec]:
+   let !zero = null(n) in
+   for S in choices_from(#n,k)
+   do let v=zero in for i in S do v[i]:=1 od; v
+   od
 
 { index of |word| in |all_words(radix)| }
 set mixed_radix_nr([int] radix) = (vec->int):
@@ -1268,7 +1278,6 @@ set W_elt_of_reflection(RootDatum rd,int root) = WeylElt:
 set W_elt_of_reflection(RootDatum rd,vec alpha) = WeylElt:
    chamber(rd,reflect(rd,alpha,two_rho(rd)))
 
-
 { |convert_to| serves when |rd| differs from |w.root_datum|, but nonetheless
   |W_elt(rd,matrix(w)| is defined; it computes that value more efficiently }
 set convert_to (RootDatum rd, WeylElt w) = WeylElt: chamber(rd,w*two_rho(rd))
@@ -1584,6 +1593,10 @@ set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
 set theta_plus_1_lambda (KType t) = vec:
     let (x,lr) =%t in (1+involution(x))*(x.real_form.rho+lr) \ 1
 
+{ this constructor could be called |K_type|, but that would be confusing }
+set K_type_lambda (KGBElt x, ratvec lambda) = KType:
+  K_type(x,ratvec_as_vec(lambda-rho(x.root_datum)))
+
 set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
 
 { list or poscoroot indices that exhibit non-dominance of the parameter }
@@ -1604,6 +1617,8 @@ set involution (KType t) = mat: involution(t.x)
 {			  Polynomials in K-types			}
 
 set root_datum (KTypePol P) = RootDatum: real_form(P)
+
+set K_type_formula (KType t) = KTypePol: K_type_formula(t,minus_1) { no cutoff }
 
 set null_module (KType t) = KTypePol:
   null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
@@ -2057,15 +2072,29 @@ set pad (string s,int width) = string: l_adjust(width,s)
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
 }
+set monomials (KTypePol P) = [KType]: for @t in P do t od
 set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (ParamPol P) = int:
-  max(0)(for p in monomials(P) do height(p) od)
+set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
+set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
-{. Convert a list of ParamPols into the list of distinct parameters occuring;
+{. Convert a list of KTypePol into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}
-set monomials([ParamPol] list)=[Param]:
-   let sum=null_module(real_form(list[0])) in
-   for P in list do for c@p in P do sum+:=p od od;monomials(sum)
+set monomials([KTypePol] list) = [KType]:
+   if =#list then []
+   else
+      let sum = list[0].null_K_module +
+	  for P in list do for @p in P do (split_1,p) od od.##
+   in monomials(sum)
+   fi
+
+set monomials([ParamPol] list) = [Param]:
+   if =#list then []
+   else
+      let sum = list[0].null_module +
+	  for P in list do for @p in P do (split_1,p) od od.##
+   in monomials(sum)
+   fi
