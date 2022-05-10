@@ -992,7 +992,7 @@ set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
 
 set unitary_facets ([FacetStatusVertsIndex] FSVI)=[vec]:
    ##for (u,fac) in FSVI
-   do if u!="F" then [fac] else [] fi od
+   do if u[0]!="F" then [fac] else [] fi od
 
 set remove_closure ([vec] short,[vec] long) =[vec]:
    ##for v in short do if none (for w in long do all(for k in v do find(w,k)!=-1 od) od)

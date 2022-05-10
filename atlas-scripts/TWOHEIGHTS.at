@@ -29,3 +29,16 @@ set HTA(Param p) = rat:
 {set BELOW = for p in P do monomials(composition_series(p)) od}
 {set BELOWHTA = for j:#P do for k:#BELOW[j] do HTA(BELOW[j][k]) od od}
 {all(for j:53 do all(for k:#BELOWHTA[j] -1 from 1 do BELOWHTA[j][k] < BELOWHTA[j][0] od) od)}
+
+{
+how to sort a [ratvec] by some rat-valued function on the indices
+
+say list = [ratvec] and params = [Param] is a corresponding list of
+Param's
+
+set leq(int i, int j) = HTA(params[i] <= HTA(params[j])
+set listsorter = sort(leq@(int,int))(#list)
+set sortedList = for i:#list do list[listsorter[i]] od
+set sortedParams = for i:#list do params[listsorter[i]] od
+
+}
