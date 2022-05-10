@@ -16,6 +16,7 @@
 
 #include <cstring>
 #include <cassert>
+#include <initializer_list>
 
 #include "constants.h"
 #include "tags.h"
@@ -71,12 +72,13 @@ Twist make_twist(const RootDatum& rd,
 /******** main class definitions *******************************************/
 
 class WeylWord : public std::vector<Generator>
-{
+{ // often used to accumulate short words, we reserve 32 letters in advance
   using Base = std::vector<Generator>;
  public:
-  WeylWord () : Base () {}
+  WeylWord () : Base () { Base::reserve(32); }
   WeylWord (Base&& v) : Base(std::move(v)) {}
   WeylWord (const Base& v) : Base(v) {}
+  WeylWord (std::initializer_list<Generator> l) : Base(l.begin(), l.end()) {}
 };
 
 /*

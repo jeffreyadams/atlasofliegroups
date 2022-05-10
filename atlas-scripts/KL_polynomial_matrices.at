@@ -1,6 +1,6 @@
 <basic.at
 <polynomial.at { for |poly_plus@(vec,vec)| and friends, |i_poly_mat| type }
-<ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
+<extended_misc.at { for |is_fixed@(mat,Param)| }
 
 set eval (i_poly_mat M, int k) = mat:
   matrix (shape(M), (int i,int j)int: eval(M[i][j], k))

@@ -384,9 +384,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
    assert(is_parabolic_theta_stable(make_parabolic(real_form(P),G)),
           "L is not Levi of theta_stable parabolic");
-   let result = null_module(G) in
-   for coeff@p in P do result+:=coeff*theta_induce_standard(p,G) od;
-   result
+   sum(G,for coeff@p in P do coeff*theta_induce_standard(p,G) od)
 
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
    sum of standards for G; uses the character formula to write J(p_L)

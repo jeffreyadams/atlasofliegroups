@@ -90,7 +90,7 @@ Monoid_Ring<T,C,Compare>
 {
   Monoid_Ring<T,C,Compare> result(base::base::key_compare);
   for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
-    result.add_mutiple(*this,src->second,src->first);
+    result.add_multiple(*this,src->second,src->first);
 
   return result;
 }
@@ -176,16 +176,16 @@ template<typename T, typename C, typename Compare>
 }
 
 template<typename T, typename C, typename Compare>
-  void Free_Abelian_light<T,C,Compare>::set_coefficient (const T& e, C m)
+  void Free_Abelian_light<T,C,Compare>::set_coefficient (T e, C m)
 {
   auto p = find(e);
   if (p==nullptr)
-    add_term(e,m);
+    add_term(std::move(e),m);
   else
     *p = m;
 }
 
-// incorporate |v|, its exponents are disjoint from $L$
+// incorporate |v|, its exponents are sorted and disjoint from $L$
 template<typename T, typename C, typename Compare>
   void Free_Abelian_light<T,C,Compare>::insert(poly&& v)
 {
@@ -313,7 +313,7 @@ template<typename T, typename C, typename Compare>
   for (auto it = ptrs.wcbegin(); not ptrs.at_end(it); ++it)
   {
     auto lead = (*it)->begin(); // iterator to leading term of current poly
-    typename poly::iterator min =
+    typename poly::iterator min = // make it refer to minimum seen so far:
       stack.empty() or cmp()(lead->first,stack.front().min->first)
       ? lead : stack.front().min;
     stack.emplace_front(min,lead,(*it)->end());
@@ -327,7 +327,7 @@ template<typename T, typename C, typename Compare>
   void Free_Abelian_light<T,C,Compare>::const_iterator::skip_zeros()
 {
   while (not stack.empty() and stack.front().min->second==C(0))
-    pop(stack.begin());
+    pop(stack.begin()); // remove a term with zero coefficient, and continue
 }
 
 template<typename T, typename C, typename Compare>
@@ -405,7 +405,7 @@ template<typename T, typename C, typename Compare>
     if ((it->min = ++it->cur) != it->end)
       return false; // one unfinished iteration remains here
     stack.erase(it); // this clears |stack| after |it|
-    return true;
+    return true; // indicate iteration has terminated; no more term found
   }
   if (it->min==it->cur) // iterator comparison: whether minimum came from |*it|
   { // if so advance iteration in |*it|
@@ -419,8 +419,8 @@ template<typename T, typename C, typename Compare>
     if (pop(nit)) // if so, |*it| is now the last valid node
       return it->min=it->cur,false; // one unfinished iteration remains here
 
-  // if we arrive here, increment was done inside the recursive call; what
-  // remains to do is update |it->min| to "minimum" of |it->cur| and |nit->min|
+  // if we arrive here, increment was done in |cur| or in the recursive call;
+  // it remains to update |it->min| to "minimum" of |it->cur| and |nit->min|
   it->min = less(it->cur->first,nit->min->first) ? it->cur : nit->min;
   return false; // at least two more unfinished iterations remain here
 } // |const_iterator::pop|
@@ -445,13 +445,14 @@ template<typename T, typename C, typename Compare>
       stack.erase(it); // remove empty font node, no |it->min| to set
       return false; // return whether the rest is absent too, which it isn't
     }
+    --it->cur; // otherwise back up |cur|; |min| will be set below
   }
   else // the minumum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
-      return (it->min= --it->cur),false; // anx unfinished iteration remains here
+      return (it->min= --it->cur),false; // an unfinished iteration remains here
 
-  // if we arrive here, decrement was done inside the recursive call;; what
-  // remains to do is update |it->min| to "maximum" of |it->cur| and |nit->min|
+  // if we arrive here, decrement was done in |cur| or in the recursive call;
+  // it remains to update |it->min| to "maximum" of |it->cur| and |nit->min|
   it->min = less(nit->min->first,it->cur->first) ? it->cur : nit->min;
   return false; // at least two more unfinished iterations remain here
 } // |const_reverse_iterator::pop|

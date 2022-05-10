@@ -9,24 +9,31 @@ set hodge_test_verbose=true
 
 set test_positive(i_poly_mat M)=bool:all(for i:#M do is_non_negative(transpose(M)[i]) od)
 
-set test_positive_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,i_poly_mat,bool):
+set test_positive_hodge_K_type_mat(KType mu,int N)=(i_poly_mat,i_poly_mat,bool):
 let (A,B)=hodge_K_type_mat(mu,N) in (A,B,test_positive(B))
 
-set test_positive_hodge_K_type_mat([K_Type] ktypes,int N)=bool:
+set test_positive_hodge_K_type_mat([KType] ktypes,int N)=bool:
 all(for mu in ktypes do let (,,rv)=test_positive_hodge_K_type_mat(mu,N) in rv od)
 
+{ legacy |hodge_grading_*| return |ParamPol| rather than |KTypePol|; convert}
 {Note: these tests only verify the formulas for hodge gradings in terms
 of tempered, see below for tests involving tempered representations}
-set test_elementary_hodge_grading_std_at_1(Param p)=bool:hodge_grading_std(p).v_to_1=p*0
-set test_elementary_hodge_grading_std_at_s(Param p)=bool:hodge_grading_std(p).v_to_s=c_form_std(p)
-set test_elementary_hodge_grading_irr_at_1(Param p)=bool:hodge_grading_irreducible(p).v_to_1=character_formula(p)*0
-set test_elementary_hodge_grading_irr_at_s(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
+set test_elementary_hodge_grading_std_at_1 (Param p) = bool:
+  K_type_pol(hodge_grading_std(p).v_to_1)=K_type_pol(p)
+set test_elementary_hodge_grading_std_at_s(Param p)=bool:
+  K_type_pol(hodge_grading_std(p).v_to_s)=c_form_std(p)
+set test_elementary_hodge_grading_irr_at_1(Param p)=bool:
+  K_type_pol(hodge_grading_irreducible(p).v_to_1)=
+  K_type_pol(character_formula(p))
+set test_elementary_hodge_grading_irr_at_s(Param p) = bool:
+  K_type_pol(hodge_grading_irreducible(p).v_to_s)=c_form_irreducible(p)
 
 {tests involving tempered representations: checking on individual K-types up to height N}
-set test_hodge_grading_std_at_1(Param p,int N)=bool:hodge_branch_std(p,N).v_to_1=branch_std(p,N)
-set test_hodge_grading_std_at_s(Param p,int N)=
-assert(is_equal_rank(p.real_form),"G is not equal rank, test is not defined");
-bool:hodge_branch_std(p,N).v_to_s=c_form_branch_std(p,N)
+set test_hodge_grading_std_at_1(Param p,int N) = bool:
+  hodge_branch_std(p,N).v_to_1=branch_std(p,N)
+set test_hodge_grading_std_at_s(Param p,int N) = bool:
+  assert(is_equal_rank(p.real_form),"G is not equal rank, test is not defined");
+  hodge_branch_std(p,N).v_to_s=c_form_branch_std(p,N)
 
 {several tests together}
 set hodge_test(Param p, int N)=
@@ -40,7 +47,7 @@ c=test_elementary_hodge_grading_irr_at_1(p) then
 d=test_elementary_hodge_grading_irr_at_s(p) then
  ()=if hodge_test_verbose then prints("test_elementary_hodge_grading_irr_at_s(p): ",d) fi in
 if is_equal_rank(p.real_form) then
-let 
+let
  e= test_hodge_grading_std_at_1(p,N) then
   ()=if hodge_test_verbose then prints("test_hodge_grading_std_at_1(p): ",e) fi then
  f=test_hodge_grading_std_at_s(p,N) then
@@ -75,24 +82,24 @@ let groups=
 (SO(7,1),80),
 (Sp(4,C),20),
 (complexification(G2_s),50)]
-in for i:k do let (G,N)=groups[i] in hodge_test(G,N) od 
+in for i:k do let (G,N)=groups[i] in hodge_test(G,N) od
 
 set run_hodge_tests()=run_hodge_tests(6)
 
 
 
 {test: all entries of B matrix (for K-type mu) are non-negative}
-set test_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,[bool],bool):
+set test_hodge_K_type_mat(KType mu,int N)=(i_poly_mat,[bool],bool):
 let (A,B)=hodge_K_type_mat(mu,N) in let
 results=for i:#B do is_non_negative(transpose(B)[i]) od in (B,results,all(results))
 
 {test: all entries of each B matrix (running over set of Kptypes) are non-negative}
-set test_hodge_K_type_mat([K_Type] mus,int N)=([([[vec]],bool)],bool):
+set test_hodge_K_type_mat([KType] mus,int N)=([([[vec]],bool)],bool):
 let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od in
 (pairs, all( for (,r) in pairs do r od))
 
 {print out hodge_K_type matrices A and B for given K-type}
-set print_hodge_K_type_mat(K_Type mu, int N)=(int,[K_Type],i_poly_mat,i_poly_mat):
+set print_hodge_K_type_mat(KType mu, int N)=(int,[KType],i_poly_mat,i_poly_mat):
 let (a,b,A,B)=hodge_K_type_mat_long(mu,N)
 in prints("G=",mu.real_form,new_line,"mu=",mu,new_line,"N=",N,new_line,"set (a,b,A,B)=hodge_K_type_mat_long(mu,N)");
 prints("columns of A: graded version of the formula for the LKT of standard (finite number of terms)");
@@ -104,7 +111,5 @@ prints("B=");
 printPolyMatrix(B,"v");
 (a,b,A,B)
 
-set print_hodge_K_type_mat_trivial(RealForm G, int N)=(int,[K_Type],i_poly_mat,i_poly_mat):
+set print_hodge_K_type_mat_trivial(RealForm G, int N)=(int,[KType],i_poly_mat,i_poly_mat):
 print_hodge_K_type_mat(LKT(trivial(G)),N)
-
-

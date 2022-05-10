@@ -25,69 +25,81 @@ K_norm(x,lambda) + 2*<rho_r(x),rho^v_r(x)>
 (the precise form of the final term is not set in stone)
 }
 
-{modified K-norm}
-set K_norm (RootDatum rd) = (K_Type->int): (K_Type(x,lambda)):
-  let (,mu)=from_dominant(rd,(1+involution(x))*lambda)
-  in rat_as_int(mu*rho_check(rd) + rho_r(x)*rho_check_r(x)*2)
+set K_norm (RootDatum rd) = (KType->int): { ignore |rd| } height@KType
 
-{the next commands sets the K-norm back to the unmodified one}
-{comment out this line to use the modified K-norm}
-set K_norm (RootDatum rd) = (K_Type->int): (K_Type mu):height(parameter(mu))
+{modified K-norm; uncomment if you want to override the one defined above
+  set K_norm (RootDatum rd) = (KType->int): (KType t):
+    let mu=dominant(rd,(1+involution(t.x))*t.lambda)
+    in rat_as_int(rho_check(rd)*mu + rho_check_r(t.x)*rho_r(t.x)*2)
+}
 
-set K_norm (RootDatum rd,K_Type p) = int: K_norm(rd)(p)
+{ we can ignore a lot more than just |rd| }
+set K_norm (RootDatum rd,KType p) = int: K_norm(rd)(p)
 set K_norm (RootDatum rd,Param p) =  int: K_norm(rd)(K_type(p))
-set K_norm (RootDatum rd,Split s,K_Type p)=int: K_norm(rd)(p)
+set K_norm (RootDatum rd,Split s,KType p)=int: K_norm(rd)(p)
 set K_norm (RootDatum rd,Split s,Param p)=int:  K_norm(rd)(K_type(p))
-set K_norm (K_Type p) =int: K_norm(root_datum(p))(p)
+set K_norm (KType p) =int: K_norm(root_datum(p))(p)
 set K_norm (Param p)  =int: K_norm(K_type(p))
-set K_norm (Split s,K_Type p) = int: K_norm(p)
+set K_norm (Split s,KType p) = int: K_norm(p)
 
-{ K_norm of P is the max of K_norm(terms) }
-set K_norms (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) [int]:
-  for @p in P do norm(K_type(p)) od
+{ K_norm of a KTypePol is the max of K_norm(terms) }
+set K_norms (RootDatum rd) = (KTypePol->[int]):
+  let norm=K_norm(rd) in
+  (KTypePol P) [int]: for @p in P do norm(p) od
 
-set K_norms (K_Type_Pol P) = [int]: K_norms(root_datum(P)) (P)
+set K_norms (KTypePol P) = [int]: root_datum(P).K_norms(P)
 
-set K_norm (RootDatum rd,K_Type_Pol P) = int: let norms=K_norms(rd) in
-  if =P then 0 else max(norms(P)) fi
+set K_norm (RootDatum rd,KTypePol P) = int: max(0)(rd.K_norms(P))
 
-set K_norm (K_Type_Pol P) =int: K_norm(root_datum(P),P)
+set K_norm (KTypePol P) =int: K_norm(root_datum(P),P)
 
-set leading_terms (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P): K_Type_Pol:
-  let max=K_norm(rd,P), result=null_module(real_form(P)) in
-  for c@p in P do if norm(K_type(p))=max then result+:=c*p fi od; result
+set all_K_norms (RootDatum rd) = (KTypePol->[int]):
+   (KTypePol P) [int]: sort(rd.K_norms(P))
 
-set all_K_norms (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) [int]:
-  sort(for c@p in P do norm(K_type(p)) od)
+set all_K_norms(KTypePol P) = [int]: all_K_norms(root_datum(P)) (P)
 
-set all_K_norms(K_Type_Pol P) = [int]: all_K_norms(root_datum(P)) (P)
+{ sort [KType] by K_norm(v) }
+set sort_by_K_norm (RootDatum rd) = ([KType] -> [KType]): sort_by(K_norm(rd))
 
-{ sort [K_Type] by K_norm(v) }
-set sort_by_K_norm (RootDatum rd) = ([K_Type] -> [K_Type]): sort_by(K_norm(rd))
+set sort_KTypePol_by_K_norm (RootDatum rd) = (KTypePol->[Split,KType]):
+  let norm=K_norm(rd) in
+  (KTypePol P)[Split,KType]:
+     for c@p in P do (c,p) od . (sort_by((Split .,KType p):norm(p)))
 
-set sort_K_Type_Pol_by_K_norm (RootDatum rd) = let norm=K_norm(rd) in
-  ([(Split,K_Type)] -> [(Split,K_Type)]): sort_by((Split s,K_Type p):norm(p))
+set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType )
+set sort_by_K_norm = ([(Split,KType)] -> [(Split,KType)]):
+  sort_by( K_norm@(Split,KType) )
 
-set sort_by_K_norm = ([K_Type] -> [K_Type]): sort_by( K_norm@K_Type )
-set sort_by_K_norm = ([(Split,K_Type)] -> [(Split,K_Type)]):
-  sort_by( K_norm@(Split,K_Type) )
+set print_by_K_norm_short (RootDatum rd) = (KTypePol P) void:
+   let norm=K_norm(rd)
+in for (c,p) in sort_KTypePol_by_K_norm(rd)(P)
+   do prints(split_as_int(c),"*(",#x(p),",",lambda(p),") ", norm(p))
+   od
 
-set print_by_K_norm_short (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) void:
-  let result=sort_K_Type_Pol_by_K_norm(rd)(for c@p in P do (c,K_type(p)) od)
-  in for (c,p) in result do prints(split_as_int(c),"*(",#x(p),",",lambda(p),") ", K_norm(rd)(p)) od
+set print_by_K_norm (RootDatum rd) =
+  let norm=K_norm(rd) in
+  (KTypePol P) void:
+  for (c,p) in sort_KTypePol_by_K_norm(rd)(P)
+  do let hw=highest_weight(p)
+  in prints
+    ( split_as_int(c)
+    , "*(",#x(p),",",lambda(p),") "
+    , " (", #hw.x, ",", hw.mu, ")   "
+    ,  norm(p), "   [", dimension(p),"]"
+    )
+  od
 
-set print_by_K_norm (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) void:
-  let result=sort_K_Type_Pol_by_K_norm(rd)(for c@p in P do (c,K_type(p)) od)
-  in for (c,p) in result do let ((),x_hw,lambda_hw)=highest_weight(p) in
-prints(split_as_int(c),"*(",#x(p),",",lambda(p),") ", " (", #x_hw, ",", lambda_hw, ")   ",  K_norm(rd)(p), "   [", dimension(p),"]") od
+set print_by_K_norm (RootDatum rd,KTypePol P) = void: print_by_K_norm(rd)(P)
 
-set print_by_K_norm (RootDatum rd,K_Type_Pol P) = void: print_by_K_norm(rd)(P)
-
-set print_by_K_norm (K_Type_Pol P) = void:
+set print_by_K_norm (KTypePol P) = void:
   print_by_K_norm(root_datum(P),P)
 
-set leading_terms (K_Type_Pol P) = K_Type_Pol:
-  leading_terms(root_datum(P))(P)
+set leading_terms ((KType->int) norm) = (KTypePol P): KTypePol:
+   let max = max(0)(for @t in P do norm(t) od)
+in null_K_module(P) +
+   for c@t in P do if norm(t)=max then [(c,t)] else [] fi od.##
+set leading_terms (KTypePol P) = KTypePol:
+   leading_terms(K_norm(P.root_datum))(P)
 
 {element of X^* restricted to identity component of the center}
 set radical_character(RootDatum rd, vec lambda)=vec:lambda*radical_basis(rd)
@@ -162,11 +174,13 @@ if find(rv,tau)=-1 then rv#:=tau fi  od;rv
 { run over G-dominant gamma_G\in X^*;
    run over L-dominant conjugates gamma_L of gamma
     for each one solve for lambda\in X^*-rho(L) so that (1+theta)lambda=gamma}
-set lambda_rho_from_dominant_height_upto (KGBElt x_L, RootDatum rd, ratvec v, int N) = mat:
+set lambda_rho_from_dominant_height_upto \
+  (KGBElt x_L, RootDatum rd, ratvec v, int N) = mat:
   let th1=1+involution(x_L), rho_L=rho(root_datum(x_L)), result=[vec]:[] in
   for mu_G in all_dominant_height_upto(rd,v,N) do
    for mu_L in L_dominant_conjugates(root_datum(x_L), rd, mu_G)
-  do case solve(th1,mu_L-ratvec_as_vec(th1*rho_L))   {solution v is lambda-rho_L \in X^*}
+  do case solve(th1,mu_L-ratvec_as_vec(th1*rho_L))
+     {solution v is lambda-rho_L \in X^*}
      | no_vec: ()
      | solution(s): result #:= s
      esac
@@ -177,61 +191,62 @@ od od; #rho_L{rank} # result
 { basic usage: typically G is semisimple
   more generally: no compact central torus}
 {. All K-parameters for G with given x, height up to N.}
-set K_parameters_height_upto(KGBElt x, int N)=[K_Type]:
+set K_parameters_height_upto(KGBElt x, int N)=[KType]:
   let rd=x.root_datum in
   let lrs = lambda_rho_from_dominant_height_upto(x,rho_check(rd),N) in
-  ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
+  ## for lr in lrs do all_equal_dlambda_K_parameters(K_type(x,lr))  od
 
 { G allowed to be reductive }
 {. All K-parameters for G with given x, height up to N.}
-set K_parameters_height_upto(KGBElt x, int N, ratvec v)=[K_Type]:
+set K_parameters_height_upto(KGBElt x, int N, ratvec v)=[KType]:
   let rd=x.root_datum in
   let lrs = lambda_rho_from_dominant_height_upto(x,v,N) in
-  ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
+  ## for lr in lrs do all_equal_dlambda_K_parameters(K_type(x,lr))  od
 
-set K_parameters_height_upto(RealForm G, int N)=[K_Type]:
+set K_parameters_height_upto(RealForm G, int N)=[KType]:
 ##(for x in ##(for x in KGB(G) do if no_Cminus_roots(x)
 then  [(x)] else [(KGBElt)]:[] fi od) do K_parameters_height_upto(x,N) od)
 
-set K_parameters_height_upto(RealForm G, int N,ratvec v)=[K_Type]:
+set K_parameters_height_upto(RealForm G, int N,ratvec v)=[KType]:
 ##(for x in ##(for x in KGB(G) do if no_Cminus_roots(x)
 then  [(x)] else [(KGBElt)]:[] fi od) do K_parameters_height_upto(x,N,v) od)
 
-{ all L\cap K-parameters, up to height N, where height is defined by pairing with v}
-{algorithm:
-find (x_L,lambda) so that (1+theta_x)lambda is L-dominant, and
-the G-dominant conjugate lambda' of this satisfies <lambda',rho_check(G)><=N
-for each such lambda find all (L\cap K)-parameters with the same differential
+{ all L\cap K-parameters, up to height N, where height is defined by pairing
+  with v.
+algorithm:
+  find (x_L,lambda) so that (1+theta_x)lambda is L-dominant, and
+  the G-dominant conjugate lambda' of this satisfies <lambda',rho_check(G)><=N
+  for each such lambda find all (L\cap K)-parameters with the same differential
 }
-set K_parameters_height_upto (KGBElt x_L ,RootDatum rd, int N,ratvec v) = [K_Type]: {L\cap K-types}
-  let lrs = lambda_rho_from_dominant_height_upto(x_L,rd,v,N),
-  rho=rho(root_datum(x_L))
-  in ## for lr in lrs do all_equal_dlambda_K_parameters(x_L,lr+rho)  od
+set K_parameters_height_upto (KGBElt x_L ,RootDatum rd, int N,ratvec v) =
+      [KType]: {L\cap K-types}
+  let lrs = lambda_rho_from_dominant_height_upto(x_L,rd,v,N)
+  in ## for lr in lrs do all_equal_dlambda_K_parameters(K_type(x_L,lr))  od
 
 {variant: same function, different input syntax}
-set K_parameters_height_upto ((KGBElt,RootDatum,int)(x,rd,N):triple) = [K_Type]: {L\cap K-types}
+set K_parameters_height_upto ((KGBElt,RootDatum,int)(x,rd,N):triple) = [KType]: {L\cap K-types}
 K_parameters_height_upto(x,rd,N,rho_check(rd))
 
 { }
-set K_parameters_height_upto(RealForm G,RootDatum rd, int N, ratvec v)=[K_Type]: {L\cap K-types}
+set K_parameters_height_upto(RealForm G,RootDatum rd, int N, ratvec v)=[KType]: {L\cap K-types}
 ##(for x in ##(for x in KGB(G) do if no_Cminus_roots(x)
 then  [(x)] else [(KGBElt)]:[] fi od) do K_parameters_height_upto(x,rd,N,v) od)
 
-{set K_parameters_height_upto(RealForm G,InnerClass ic, int N)=[K_Type]:K_parameters_height_upto(G,ic,N,rho_check(ic))}
+{set K_parameters_height_upto(RealForm G,InnerClass ic, int N)=[KType]:K_parameters_height_upto(G,ic,N,rho_check(ic))}
 
 
 
 { since K_norm >= height, {mu| K_norm<=N} is a subset of {mu|height <= N}}
 
-set K_parameters_norm_upto(RealForm G,RootDatum rd, int N, ratvec v)=[K_Type]:
+set K_parameters_norm_upto(RealForm G,RootDatum rd, int N, ratvec v)=[KType]:
 ##for mu in K_parameters_height_upto(G,rd,N,v)
  do if K_norm(mu)<=N then [mu] else [] fi od
 
-set K_parameters_norm_upto(RealForm G, int N, ratvec v)=[K_Type]:
+set K_parameters_norm_upto(RealForm G, int N, ratvec v)=[KType]:
 ##for mu in K_parameters_height_upto(G,N,v)
  do if K_norm(mu)<=N then [mu] else [] fi od
 
-set K_parameters_norm_upto(RealForm G, int N)=[K_Type]:
+set K_parameters_norm_upto(RealForm G, int N)=[KType]:
 ##for mu in K_parameters_height_upto(G,N)
  do if K_norm(mu)<=N then [mu] else [] fi od
 
@@ -239,17 +254,17 @@ set number_K_parameters_norm_upto(RealForm G, int N, ratvec v)=int:#K_parameters
 set number_K_parameters_norm_upt(RealForm G, int N)=int:#K_parameters_norm_upto(G,N)
 
 {sort by K-norm or height for printing}
-set sort_by((K_Type->int) f)=([K_Type] v) [K_Type]:
+set sort_by((KType->int) f)=([KType] v) [KType]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by_height = ([K_Type] -> [K_Type]): sort_by((K_Type mu) int: height(parameter(mu)))
-{set sort_by_K_norm = ([K_Type] -> [K_Type]): sort_by((K_Type mu) int: K_norm(mu))}
-set sort_by_K_norm = ([K_Type] -> [K_Type]): sort_by(K_norm@K_Type)
+set sort_by_height = ([KType] -> [KType]): sort_by((KType mu) int: height(parameter(mu)))
+{set sort_by_K_norm = ([KType] -> [KType]): sort_by((KType mu) int: K_norm(mu))}
+set sort_by_K_norm = ([KType] -> [KType]): sort_by(K_norm@KType)
 
 set shorten(ratvec v)=string:
 if is_integer(v) then to_string([int]:numer(v)) else
 to_string([int]:numer(v))+"/"+to_string(denom(v)) fi
 
-set print_K_parameters(KGBElt x_K_in,[K_Type] ktypes,([K_Type]->[K_Type]) f)=void:
+set print_K_parameters(KGBElt x_K_in,[KType] ktypes,([KType]->[KType]) f)=void:
 let strings=[["x","lambda","x_K","lambda_K","dim","ht","Knorm"]] in
 prints("(x,lambda):  K-type",new_line, "(x_K,lambda_K): K-highest weight");
 for p in f(ktypes) do
@@ -258,17 +273,17 @@ strings#:=[to_string(#x(p)),shorten(lambda(p)), to_string(#x_K), shorten(lambda_
 to_string(height(parameter(p))),to_string(K_norm(p))] od;
 tabulate(strings,"l",2," ")
 
-set print_K_parameters_by_height(KGBElt x_K_in,[K_Type] ktypes)=void:
-print_K_parameters(x_K_in,ktypes,sort_by_height@[K_Type])
-set print_K_parameters_by_K_norm(KGBElt x_K_in,[K_Type] ktypes)=void:
-print_K_parameters(x_K_in,ktypes,sort_by_K_norm@[K_Type])
+set print_K_parameters_by_height(KGBElt x_K_in,[KType] ktypes)=void:
+print_K_parameters(x_K_in,ktypes,sort_by_height@[KType])
+set print_K_parameters_by_K_norm(KGBElt x_K_in,[KType] ktypes)=void:
+print_K_parameters(x_K_in,ktypes,sort_by_K_norm@[KType])
 
-set print_K_parameters_by_height([K_Type] ktypes)=void:
+set print_K_parameters_by_height([KType] ktypes)=void:
 print_K_parameters_by_height(KGB(ktypes[0].real_form,0),ktypes)
 
-set print_K_parameters_by_K_norm([K_Type] ktypes)=void:
+set print_K_parameters_by_K_norm([KType] ktypes)=void:
 print_K_parameters_by_K_norm(KGB(ktypes[0].real_form,0),ktypes)
 
 {default: by height}
-set print_K_parameters([K_Type] ktypes)=void:print_K_parameters_by_height(ktypes)
-set print_K_parameters(KGBElt x_K,[K_Type] ktypes)=void:print_K_parameters_by_height(x_K,ktypes)
+set print_K_parameters([KType] ktypes)=void:print_K_parameters_by_height(ktypes)
+set print_K_parameters(KGBElt x_K,[KType] ktypes)=void:print_K_parameters_by_height(x_K,ktypes)

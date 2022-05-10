@@ -216,7 +216,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
     arithmetic::big_int factor;
     Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
     RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
-    if (not (theta_plus_1*(new_gamma-gamma)).isZero())
+    if (not (theta_plus_1*(new_gamma-gamma)).is_zero())
     {
       std::cerr << new_gamma << '\n';
       throw std::runtime_error("Attempted correction off -theta fixed subspace");

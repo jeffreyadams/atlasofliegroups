@@ -1,3 +1,5 @@
+<basic.at
+<cross_W_orbit.at { for |cross_divide| }
 <K_types.at
 <K_highest_weights.at
 <nilpotent_orbits.at
@@ -6,22 +8,23 @@ set move_weight ((KGBElt x,ratvec mu),KGBElt y) = (KGBElt,ratvec):
   assert(real_form(x)=real_form(y),"Real form mismatch");
   let w=cross_divide(y,x) in (y,w*mu)
 
-
-set add_weight (Param p, KGBElt x, ratvec H)=Param:
+{ some anti-slimness exercises }
+set add_weight (KType p, KGBElt x, ratvec H) = KType:
    let y=x(p), lam=lambda(p) then (z,w)=move_to_distinguished_fiber(y)
-   then (,new_H)=move_weight((x,H),z) in
-   parameter(y,lam+inverse(w)*new_H,nu(p))
+   then (,new_H)=move_weight((x,H),z)
+in K_type_lambda(y,lam+inverse(w)*new_H)
 
-set add_weight (ParamPol P, KGBElt x, ratvec H)=ParamPol:
-   let result=null_module(real_form(x)) in
-   for coeff@p in P do result+:=coeff*(standardize(add_weight (p,x,H)))*0 od;
-   result
+set add_weight (KTypePol P, KGBElt x, ratvec H) =KTypePol:
+   sum(real_form(x)
+      , for coeff@p in P
+        do coeff*(standardize(add_weight(p,x,H).param_pol)).K_type_pol od
+      )
 
-set add_weight (K_Type mu, KGBElt x, ratvec H)=ParamPol:
-   let P=K_type_formula(mu) in add_weight(P,x,H)
+set add_weight (KType mu, KGBElt x, ratvec H)=KTypePol:
+   add_weight(K_type_formula(mu),x,H)
 
-set Tensor_product_Sp4 (K_Type mu, K_Type tau)=K_Type_Pol:
-   let (,x,H)=highest_weight(tau),n=dimension(tau) then root=2*rho_c(x)
-   then result=null_module(real_form(x)) in
-   for i:n do result+:=add_weight(mu,x,H-i*root) od;
-   branch_std(result,100)
+set Tensor_product_Sp4 (KType mu, KType tau) = KTypePol:
+   let hw=highest_weight(tau),n=dimension(tau) then root=2*rho_c(hw.x)
+   then result =
+     sum(real_form(hw.x),for i:n do add_weight(mu,hw.x,hw.mu-i*root) od)
+in branch_std(result,100)
