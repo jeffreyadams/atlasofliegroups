@@ -155,13 +155,15 @@ namespace arithmetic {
 
 namespace K_repr {
 
-std::ostream& print_K_type (std::ostream& out, const K_type& val)
+std::ostream& print_K_type
+  (std::ostream& out, const K_type& val, const Rep_context& rc)
 {
-  return out << " <x=" << val.x() << ", lambda = rho+" << val.lambda_rho()
-	     << '>';
+  return out << " K_type(x=" << val.x()
+	     << ", lambda=" << rho(rc.root_datum())+val.lambda_rho() << ')';
 }
 
-std::ostream& print_K_type_pol (std::ostream& out, const K_type_pol& val)
+std::ostream& print_K_type_pol
+  (std::ostream& out, const K_type_pol& val, const Rep_context& rc)
 {
  if (val.is_zero())
     { out << "Empty sum of K-types"; return out; }
@@ -188,7 +190,7 @@ std::ostream& print_K_type_pol (std::ostream& out, const K_type_pol& val)
     else
       out << term.second.s() << 's';
 
-    print_K_type(out << '*',term.first);
+    print_K_type(out << '*',term.first,rc);
     out << " [" << term.first.height() << ']';
   }
   return out;

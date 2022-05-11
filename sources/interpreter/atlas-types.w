@@ -4744,7 +4744,7 @@ information about the $K$-type that may be relevant to the \.{atlas} user.
 void K_type_value::print(std::ostream& out) const
 {
   out << @< Expression for adjectives that apply to a $K$-type @>@;@;;
-  print_K_type(out << " K-type",val);
+  print_K_type(out << " K-type",val,rc());
 }
 
 @ We call a root singular if the corresponding coroot vanishes on
@@ -5033,7 +5033,7 @@ combinations of $K$-types.
 
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
-{@; print_K_type_pol(out,val); }
+{@; print_K_type_pol(out,val,rc()); }
 
 @ For once we need a non-defaulted copy constructor, because |K_repr::K_type|
 has no copy constructor, providing instead a method |copy| that must be
