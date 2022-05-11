@@ -4744,7 +4744,7 @@ information about the $K$-type that may be relevant to the \.{atlas} user.
 void K_type_value::print(std::ostream& out) const
 {
   out << @< Expression for adjectives that apply to a $K$-type @>@;@;;
-  print_K_type(out << " K-type",val);
+  print_K_type(out << " K-type",val,rc());
 }
 
 @ We call a root singular if the corresponding coroot vanishes on
@@ -5033,7 +5033,7 @@ combinations of $K$-types.
 
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
-{@; print_K_type_pol(out,val); }
+{@; print_K_type_pol(out,val,rc()); }
 
 @ For once we need a non-defaulted copy constructor, because |K_repr::K_type|
 has no copy constructor, providing instead a method |copy| that must be
@@ -5051,7 +5051,7 @@ K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
   accumulator.reserve(v.val.size());
   for (const auto& term : v.val)
     accumulator.emplace_back(term.first.copy(),term.second);
-  val = K_repr::K_type_pol(std::move(accumulator),v.val.cmp());
+  val = K_repr::K_type_pol(std::move(accumulator),false,v.val.cmp());
 }
 
 @*2 Functions for $K$-type polynomials.
@@ -5471,6 +5471,35 @@ void first_K_type_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Sometimes we want to ignore $K$-types whose height exceeds a given limit.
+Since terms are sorted by height this can be done fairly efficiently, and the
+built-in |truncate_above_height| will do this.
+
+@< Local function... @>=
+void truncate_K_type_poly_above_wrapper (expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  shared_K_type_pol P = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  sl_list<K_repr::K_type_pol::value_type> L;
+  if (arg>=0)
+  { unsigned bound = arg; // use |unsigned| value for height comparison
+    for (const auto& term : P->val)
+      if (term.first.height()<=bound)
+        L.emplace_back(term.first.copy(),term.second);
+      else
+        goto wrap_up;
+     push_value(P); // if loop ran to completion, just return |P|
+     return; // and skip returning |L|
+  }
+  wrap_up:
+    push_value(std::make_shared<K_type_pol_value>@|
+      (P->rf,K_repr::K_type_pol(std::move(L).to_vector(),false)));
+      // no need to sort again
+}
+
+
 @*2 Computing with $K$-types.
 %
 A main application of $K$-types is branching to~$K$: the decomposition of a
@@ -5619,6 +5648,8 @@ install_function(last_K_type_term_wrapper,@|"last_term"
 		,"(KTypePol->Split,KType)");
 install_function(first_K_type_term_wrapper,@|"first_term"
 		,"(KTypePol->Split,KType)");
+install_function(truncate_K_type_poly_above_wrapper,@|"truncate_above_height"
+		,"(KTypePol,int->KTypePol)");
 @)
 install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
 install_function(K_type_formula_wrapper,@|"K_type_formula"
@@ -7401,6 +7432,34 @@ void first_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Sometimes we want to ignore parameters whose height exceeds a given limit.
+Since are sorted by height this can be done fairly efficiently, and the built-in
+|truncate_above_height| will do this.
+
+@h <algorithm>
+@< Local function... @>=
+
+void truncate_param_poly_above_wrapper (expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  shared_virtual_module P = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto point = P->val.begin(); // default to no terms
+  if (arg>=0)
+  {
+    unsigned bound = arg; // use |unsigned| value for height comparison
+    auto predicate = @/ @[ [bound](const SR_poly::value_type& term)
+      {@; return term.first.height()<=bound; } @];
+    point = std::partition_point(point,P->val.end(),predicate);
+  }
+  if (point== P->val.end())
+    push_value(P); // if all terms are selected, just return |P|
+  else
+    push_value(std::make_shared<virtual_module_value>@|
+      (P->rf,SR_poly(P->val.begin(),point)));
+}
+
 @ Here is a variation of the scaling function for parameters that operates on
 entire virtual module.
 
@@ -7763,6 +7822,8 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
+install_function(truncate_param_poly_above_wrapper,@|"truncate_above_height"
+		,"(ParamPol,int->ParamPol)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");

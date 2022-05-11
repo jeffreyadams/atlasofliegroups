@@ -115,8 +115,10 @@ template<typename T, typename C, typename Compare>
       L.push_front(std::move(mononom));
     }
   }
+
 template<typename T, typename C, typename Compare>
-  Free_Abelian_light<T,C,Compare>::Free_Abelian_light(poly&& vec, Compare c)
+  Free_Abelian_light<T,C,Compare>::Free_Abelian_light
+    (poly&& vec, bool do_sort, Compare c)
   : Compare(c), L()
 {
   auto it = std::remove_if // squeeze out any terms with zero coefficients
@@ -127,7 +129,8 @@ template<typename T, typename C, typename Compare>
 
   auto less = [this](const term_type& a, const term_type& b)
 		    { return cmp()(a.first,b.first); };
-  std::sort(vec.begin(),vec.end(),less); // ensure elements are sorted by |cmp()|
+  if (do_sort) // if requested, ensure elements are sorted by |cmp()|
+    std::sort(vec.begin(),vec.end(),less);
   L.push_front(std::move(vec));
 }
 
