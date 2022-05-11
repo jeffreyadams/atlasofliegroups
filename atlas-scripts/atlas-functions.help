@@ -770,8 +770,9 @@ operator + : (KTypePol,[(Split,KType)]->KTypePol): add terms to formal sum
 operators +, - : (KTypePol,KTypePol->KTypePol): addition/subtraction formal sums
 operator * : (int,KTypePol->KTypePol): integer multiple of a formal sum
 operator * : (Split,KTypePol->KTypePol): split integer multiple of a formal sum
-last_term: (KTypePol->Split,KType): highest term of non-zero K-module
-first_term: (KTypePol->Split,KType): lowest term of non-zero K-module
+first_term: (KTypePol->Split,KType): lowest term (by height) of nonzero K-module
+last_term: (KTypePol->Split,KType): highest term (by height) of nonzero K-module
+truncate_above_height: (KTypePol,int->KTypePol): drop terms with height>limit
 
 KGP_sum: (KType->[int,KType]) signed subset of KGB associated to theta_stable(t)
   It is required that the argument KType t be semifinal, and it will be moved to
@@ -959,8 +960,9 @@ operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
-last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-zero module
-first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-zero module
+first_term: (ParamPol->Split,Param): lowest term (by height) of nonzero module
+last_term: (ParamPol->Split,Param): highest term (by height) of nonzero module
+truncate_above_height: (ParamPol,int->ParamPol): drop terms with height>limit
 operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
   After scaling the continuous part of the parameter in each term, some may no
   longer be dominant or final, and need to be rewritten in the same way as

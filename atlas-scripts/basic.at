@@ -1971,12 +1971,10 @@ set infinitesimal_character(ParamPol P) = ratvec:
   od; gamma
 
 { split up a KTypePol or ParamPol into terms below a given height and others }
-set height_split (KTypePol P, int h) = (KTypePol,KTypePol):
-  let below = 0*P + for c@q in P do if q.height<h then [(c,q)] else [] fi od.##
-  in (below,P-below)
-set height_split (ParamPol P, int h) = (ParamPol,ParamPol):
-  let below = 0*P + for c@q in P do if q.height<h then [(c,q)] else [] fi od.##
-  in (below,P-below)
+set height_split ((KTypePol,int)(P,):pair) = (KTypePol,KTypePol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
+set height_split ((ParamPol,int)(P,):pair) = (ParamPol,ParamPol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
 
 { more generally, groups terms into different ParamPol, by value of gamma }
 set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
