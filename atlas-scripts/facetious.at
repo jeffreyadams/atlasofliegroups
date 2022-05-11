@@ -7,6 +7,10 @@
 <springer_tables_reductive.at { for Springer_table }
 <associated_variety_annihilator.at { for GK_dim, used in identifying unipotent reps }
 <lietypes.at { for simple_type }
+<parabolics.at {for parabolic_by_wt}
+<K_highest_weights.at {for all_parameters_x_gamma}
+<lattice.at {for vec_solve}
+
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -187,6 +191,7 @@ set_type FacetVertsIndex = vec
 set_type [FacetStatusVertsIndex = (string status, vec verts)]
 
 set_type FacetData = ([ratvec] vlist, [[FacetStatusVertsIndex]] facet_status_inds)
+
 set facet_verts_index([ratvec] vert_list, FacetVerts facet) = FacetVertsIndex:
     for gammav in facet do find(vert_list,gammav) od.sort
 
@@ -1496,3 +1501,70 @@ set HTA_sort([Param] Plist) = [Param]:
     let listSorter = [int]: sort(leq(Plist))(#Plist)
     in [Param]: for j:#Plist do Plist[listSorter[j]] od
 
+set cohom_ind(KGBElt x) = KGPElt:
+    let G=x.real_form, theta = x.involution
+    then fund_wts=fundamental_weights(G)
+    then lambda = sum(G.rank, for v in fund_wts do
+    	 if find(fund_wts,theta*v) =-1 then [] else [v] fi od.##)
+    in parabolic_by_wt(lambda,x)
+
+set hardKGB(RealForm G) = [KGBElt]:
+     for x in KGB(G)
+     do if cohom_ind(x).Levi = G then [x] else [] fi
+     od.##
+
+{.Find barycenters in FPP defining a good lambda for KGBElt x.}
+{dth term in result says which entries of FB[d] qualify, and gives
+qualifying lambda0 = lambda-rho}
+
+set goodFPP(KGBElt x, [[FacetBary]] FB) = [[(int,vec)]]:
+    let rho = rho(x.real_form), th1 = 1+involution(x)
+    in
+    for FBd in FB
+    do for v@j in FBd
+       do
+       case vec_solve(th1,th1*v)
+       | else [(int,vec)]: [] {if no solns, this facet can't occur}
+       | solution (lr): [(j,lr)]
+       esac
+       od.##
+    od
+
+{.Find hermitian irrs with final param involving x, not good range
+cohom induced.}
+{Last coord K in [0,2^n -1) says which twists of lambda0 are allowed}
+{cand_lambda_rho meant to come from goodFPP}
+
+set non_cohom_herm(KGBElt x, [[(int,vec)]] cand_lambda_rho,
+    [[FacetBary]] FB) = [[(int,vec,vec)]]:
+    let all_d_zero = all_lambda_differential_0(x), rho=rho(x.real_form)
+    in
+    for cand_d@d in cand_lambda_rho
+    do for (j,lr) in cand_d
+       do let twists = vec: for v@k in all_d_zero
+       	  do let p=parameter(x, lr+rho+v, FB[d][j])
+       	  in
+       	  if p.infinitesimal_character=FB[d][j] and Finalize(p).x = x
+	     and is_hermitian(p) then [k] else [] fi
+       	  od.##
+       in if #twists  > 0 then [(j,lr,twists)] else [] fi
+       od.##
+    od
+
+{probably this is all unitary attached to x that are not cohom
+induced}
+
+set non_cohom_unitary(KGBElt x, [[(int,vec,vec)]] herm_cand_lambda_rho,
+    [[FacetBary]] FB) = [[(int,vec,vec,[string])]]:
+    let all_d_zero = all_lambda_differential_0(x), rho=rho(x.real_form)
+    in
+    for herm_cand_d@d in herm_cand_lambda_rho
+    do for (j,lr,twists) in herm_cand_d
+       do let ustatus = for k@m in twists
+       	  do let p=parameter(x, lr+rho+all_d_zero[k], FB[d][j])
+	  in
+	  if is_unitary(p) then "T" else "F" fi
+	  od
+       in (j,lr,twists,ustatus)
+       od
+    od
