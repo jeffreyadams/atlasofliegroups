@@ -138,6 +138,9 @@ public:
   using poly = std::vector<term_type>;
   using poly_list = containers::simple_list<poly>;
 
+  using value_type = term_type;
+  using size_type = std::size_t;
+
 private:
   poly_list L; // list by decreasing length, at least halving each time
 
@@ -157,7 +160,8 @@ explicit
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
   Free_Abelian_light(T&& p,C m, Compare c=Compare()); // mononomial
 
-  Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
+  // sanitise, buid singleton |L|; |do_sort| says whether sorting is needed
+  Free_Abelian_light(poly&& vec,bool do_sort, Compare c=Compare());
 
   // construct from another aggregate of (monomial,coefficient) pairs
   template<typename InputIterator> // iterator over (T,coef_t) pairs
@@ -217,13 +221,13 @@ explicit
   bool is_zero () const { return begin()==end(); } // this ignores zeros
   const term_type& front() const { return *begin(); } // undefined if |is_zero|
 
-  size_t size() const // only provides upper bound: zero terms are not ignored
+  size_type size() const // only gives upper bound: zero terms are not ignored
   { size_t s=0;
     for (auto it = L.wcbegin(); it != L.wcend(); ++it) s += it->size();
     return s;
   }
 
-  size_t count_terms() const // return true number of (nonzero) terms held
+  size_type count_terms() const // return true number of (nonzero) terms held
   {
     size_t count=0;
     auto nonzero =  [](const term_type& t) { return not t.second.is_zero(); };
@@ -236,7 +240,7 @@ explicit
     poly result; result.reserve(size());
     for (auto it=begin(); not it.has_ended(); ++it)
       result.push_back(std::move(*it));
-    return { std::move(result), cmp() }; // transform |poly| into |self|
+    return { std::move(result), false, cmp() }; // transform |poly| into |self|
   }
 
   // for each |poly| in |L|, keep current and end iterators

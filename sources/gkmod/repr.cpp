@@ -2300,7 +2300,7 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
   result.reserve(P.size());
   for (const auto& term : P)
     result.emplace_back(rt.stored_K_type(term.first),term.second);
-  return { std::move(result) }; // sort, convert to |K_repr::K_type_poly|
+  return { std::move(result), true }; // sort, convert to |K_repr::K_type_poly|
 }
 
 //			|common_context| methods

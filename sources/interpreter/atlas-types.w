@@ -5051,7 +5051,7 @@ K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
   accumulator.reserve(v.val.size());
   for (const auto& term : v.val)
     accumulator.emplace_back(term.first.copy(),term.second);
-  val = K_repr::K_type_pol(std::move(accumulator),v.val.cmp());
+  val = K_repr::K_type_pol(std::move(accumulator),false,v.val.cmp());
 }
 
 @*2 Functions for $K$-type polynomials.
