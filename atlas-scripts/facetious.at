@@ -1437,8 +1437,8 @@ set facet_statusu_ind(RealForm G, ([ratvec] vlist,
 	    fi
 	    then temp = (); FPPnewd[j]:= (result,FPPnewd[j].verts)
 	    in FPPnew[d] := FPPnewd
-	od; if old_facet_verbose then prints("completed Levi ",j," using ",countUp, " updates and "
-	       			      		,countDown, " downdates") fi
+	od; if old_facet_verbose then prints("completed Levi ",j," using ",
+	    countUp, " updates and ", countDown, " downdates") fi
     od; facet_verbose := old_facet_verbose
     in
     (vlist, FPPnew)
@@ -1513,58 +1513,120 @@ set hardKGB(RealForm G) = [KGBElt]:
      do if cohom_ind(x).Levi = G then [x] else [] fi
      od.##
 
+{.Meant to refer to a particular KGBElt x and a particular list of
+FacetBary's FB[d]; (j,lr) means that there is a parameter (x,lr+rho,nu)
+of infinitesimal character FB[d][j].}
+set_type CandLambda = (int,vec)
+
+{.The dth term of facet_barycenters is a complete list of barycenters of
+d-dimensional facets. The dth term of candidate_lambdas is a list of
+pairs (j,lr) so that the jth facet is represented at KGB_Elt
+by lambda-rho = lr.} 
+
+set_type KGBFacets = (KGBElt KGB_elt, [[FacetBary]]
+facet_barys, [[CandLambda]] cand_lambdas)
+
 {.Find barycenters in FPP defining a good lambda for KGBElt x.}
-{dth term in result says which entries of FB[d] qualify, and gives
+{dth term in result lists which entries of FB[d][j] qualify, and gives
 qualifying lambda0 = lambda-rho}
 
-set goodFPP(KGBElt x, [[FacetBary]] FB) = [[(int,vec)]]:
+set goodFPP(KGBElt x, [[FacetBary]] FB) = KGBFacets:
     let rho = rho(x.real_form), th1 = 1+involution(x)
     in
-    for FBd in FB
+    (x, FB, for FBd in FB
     do for v@j in FBd
        do
-       case vec_solve(th1,th1*v)
+       case vec_solve(th1,th1*(v-rho))
        | else [(int,vec)]: [] {if no solns, this facet can't occur}
        | solution (lr): [(j,lr)]
        esac
        od.##
-    od
+    od)
+
+{.Meant to refer to a particular KGBElt x, a particular list of
+FacetBary's FB[d], and the list comp_chars of elements of X*
+representing chraacters of the component group of H(x).
+(j,lr,v,[FacetStatus]) means that for each coordinate k@m of v, there is a
+final hermitian parameter (x,lr+rho+comp_chars[k],nu) of infinitesimal
+character FB[d][j], whose unitarity status is recorded by the mth
+entry of [FacetStatus]}
+set_type CandLambdaTwistsStatus = (int,vec, vec, [string])
+
+{.Supplement KGBFacets by including list comp_chars of elements of X^*
+representing all characters of component group of Cartan for KGB_elt;
+then [[(vec,[string])]] recording for each cand_lambda (j,lr) a
+twist_status (whose
+entries index the twists of lr giving hermitian final Params, }
+
+set_type KGBFacetsTwists = (KGBElt KGB_elt, [[FacetBary]]
+facet_barys, [vec] comp_chars, [[CandLambdaTwistsStatus]] twist_statuses)
 
 {.Find hermitian irrs with final param involving x, not good range
 cohom induced.}
-{Last coord K in [0,2^n -1) says which twists of lambda0 are allowed}
+{Third coord of triple, list of elts of [0,2^n),  says which twists of lambda0
+are allowed}
 {cand_lambda_rho meant to come from goodFPP}
 
-set non_cohom_herm(KGBElt x, [[(int,vec)]] cand_lambda_rho,
-    [[FacetBary]] FB) = [[(int,vec,vec)]]:
+set non_cohom_herm(KGBFacets (x, FB,  CLs)) = KGBFacetsTwists:
     let all_d_zero = all_lambda_differential_0(x), rho=rho(x.real_form)
     in
-    for cand_d@d in cand_lambda_rho
-    do for (j,lr) in cand_d
+    (x, FB, all_d_zero, for CLsd@d in CLs
+    do for (j,lr) in CLsd
        do let twists = vec: for v@k in all_d_zero
        	  do let p=parameter(x, lr+rho+v, FB[d][j])
        	  in
-       	  if p.infinitesimal_character=FB[d][j] and Finalize(p).x = x
-	     and is_hermitian(p) then [k] else [] fi
+       	  if not(is_zero(p)) and p.infinitesimal_character=FB[d][j]
+	     and first_param(finalize(p)).x = x and is_hermitian(p)
+	  then [k] else [] fi
        	  od.##
-       in if #twists  > 0 then [(j,lr,twists)] else [] fi
+       in if #twists  > 0 then [(j,lr,twists, [string]: for k:#twists
+       	  do "?" od)] else [] fi
        od.##
-    od
+    od)
 
 {probably this is all unitary attached to x that are not cohom
 induced}
-
-set non_cohom_unitary(KGBElt x, [[(int,vec,vec)]] herm_cand_lambda_rho,
-    [[FacetBary]] FB) = [[(int,vec,vec,[string])]]:
-    let all_d_zero = all_lambda_differential_0(x), rho=rho(x.real_form)
-    in
-    for herm_cand_d@d in herm_cand_lambda_rho
-    do for (j,lr,twists) in herm_cand_d
-       do let ustatus = for k@m in twists
-       	  do let p=parameter(x, lr+rho+all_d_zero[k], FB[d][j])
+set non_cohom_unitary(KGBFacetsTwists (x, FB, twists, CLTs)) =
+(KGBElt,[vec],[[CandLambdaTwistsStatus]]):
+    let rho = rho(x.real_form) in 
+    (x, twists,
+    for CLTsd@d in CLTs
+    do for (j,lr,which_twists,status) in CLTsd
+       do let ustatus = for k@m in which_twists
+       	  do let p=parameter(x, lr+rho+twists[k], FB[d][j])
 	  in
 	  if is_unitary(p) then "T" else "F" fi
 	  od
-       in (j,lr,twists,ustatus)
+       in (j,lr,which_twists,ustatus)
        od
     od
+    )
+
+set non_cohom_unitary(KGBElt x) = (KGBElt,[vec],[[CandLambdaTwistsStatus]]):
+    non_cohom_unitary(non_cohom_herm(goodFPP(x,
+    FPP_barycenters(x.real_form))))
+
+{.goodFPP for all hard_KGB elements.}
+set goodFPP(RealForm G, [[FacetBary]] FB) = [(KGBElt, [[CandLambda]])]:
+    let hard_KGB = hardKGB(G) in
+    for x in hard_KGB do let (,,CLs) = goodFPP(x, FB) in  (x,CLs) od
+
+
+set non_cohom_herm(RealForm G, [[FacetBary]] FB, [(KGBElt,
+    [[(int,vec)]])] cand_lambda_rho) = [(KGBElt,[vec],
+		[[CandLambdaTwistsStatus]])]:
+    let rho = rho(G) in
+	for (x, CLs) in cand_lambda_rho
+	do let (,,twists,candTws) =
+    	   non_cohom_herm(x,FB,CLs) in (x,twists,candTws) od
+
+set non_cohom_unitary(RealForm G, [[FacetBary]] FB, [(KGBElt, [vec],
+    [[CandLambdaTwistsStatus]])] candTw) = [(KGBElt,[vec],
+    [[CandLambdaTwistsStatus]])]:
+    for (x, twists, CLs) in candTw do non_cohom_unitary(x,FB,twists,
+    CLs) od
+
+set non_cohom_unitary(RealForm G) = [(KGBElt,[vec],
+    [[CandLambdaTwistsStatus]])]:
+    let FB =  FPP_barycenters(G) in non_cohom_unitary(G, FB,
+    non_cohom_herm(G, FB, goodFPP(G,FB)))
