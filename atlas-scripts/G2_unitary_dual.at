@@ -2,6 +2,9 @@
 set G=G2_s
 set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
 
+set short_format(Param p)=string:
+"(x="+ p.x.number.to_string+","+shorten(p.lambda)+ "," + shorten(p.nu)+")"
+
 {need to modify all_parameters_x_gamma so it doesn't make gamma dominant}
 { all parameters with given infinitesimal character and attached to given x }
 set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
@@ -83,6 +86,12 @@ set x_l=KGB(G,3)
  [2,3]*gamma_l(m,v)=m so this is a valid gamma for x_l
 }
 
+set coords(RootDatum G,ratvec v)=[rat]:for a in G.simple_coroots do a*v od
+
+set in_fpp(ratvec v)=bool:all(for x in v do x>=0 and x<=1 od)
+set in_fpp(RootDatum G,ratvec v)=bool:in_fpp(coords(G,v))
+set in_fpp(Param p)=bool:in_fpp(p.real_form,p.infinitesimal_character)
+
 set p_l(rat m, rat v)=[Param]:  {allow [Param] for limits of DS  p_s(even,0)}
 let gamma=gamma_l(m,v) then   {gamma not necessarily dominant}
 all=all_parameters_x_gamma(x_l,gamma) then {final, can be 2 limits of DS}
@@ -90,8 +99,45 @@ all=all_parameters_x_gamma(x_l,gamma) then {final, can be 2 limits of DS}
 
 set test_s(int m, rat v0, rat v1, rat step_size)=
 let number_steps=(v1-v0)\step_size in
-for i:number_steps do let v=v0+i*step_size in prints(v, " ", is_unitary(p_s(m,v)[0])) od
+tabulate(
+ ["v","coordinates","p","unitary", "in FPP", "conj","L"]#
+ for i:number_steps do let v=v0+i*step_size in
+  let p=p_s(m,v)[0] then
+  unitary=is_unitary(p) then
+  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
+  in_fpp=in_fpp(coords) then
+  (check,L)=(string,string):if in_fpp then ("","")
+        elif not unitary then ("","")
+        else
+         let ind=is_good_range_induced_from(p) in
+ 	 if =#ind then ("false","")
+	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
+	 else ("true", ind[0].real_form.nice_format.to_string)
+        fi
+  fi
+  in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
+ od
+)
 
 set test_l(int m, rat v0, rat v1, rat step_size)=
 let number_steps=(v1-v0)\step_size in
-for i:number_steps do let v=v0+i*step_size in prints(v, " ", p_l(m,v), " ", is_unitary(p_l(m,v)[0])) od
+tabulate(
+ ["v","coordinates","p","unitary", "in FPP", "conj","L"]#
+ for i:number_steps do let v=v0+i*step_size in
+  let p=p_l(m,v)[0] then
+  unitary=is_unitary(p) then
+  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
+  in_fpp=in_fpp(coords) then
+  (check,L)=(string,string):if in_fpp then ("","")
+        elif not unitary then ("","")
+        else
+         let ind=is_good_range_induced_from(p) in
+ 	 if =#ind then ("false","")
+	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
+	 else ("true", ind[0].real_form.nice_format.to_string)
+        fi
+  fi
+  in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
+ od
+)
+
