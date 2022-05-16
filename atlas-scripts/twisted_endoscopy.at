@@ -3,7 +3,7 @@
 <stable.at
 <extParamPol.at
 
-set te_verbose=false
+set te_verbose=true
 
 {very preliminary version of twisted endoscopic lifting
 given: (G,delta^v)
@@ -54,8 +54,6 @@ fi
 
 set delta_l_int(Param p,mat delta)=int:
 let (,,,x)=delta_l_int_long(p,delta) in rat_as_int(x)
-
-set te_verbose=false
 
 {this should be a built-in, or at least in some other file}
 {set partial_extended_block(Param p,mat delta)=[Param]:
@@ -401,33 +399,40 @@ let P=inverse_lift_std(p_G,H,M,delta) in
  if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(p_G,H,M,delta)
  else P fi
 }
+{returns a sum of standards}
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
 let P=extended_character_formula(p_G,delta) then
 ()=if te_verbose then prints("P=",P) fi then
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od in
-composition_series(PH)
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then
+()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
+{composition_series(PH)}
+PH
 
+{returns a sum of standards}
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
 let P=extended_character_formula(p_G,delta) then
 ()=if te_verbose then prints("P=",P) fi then
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta,gamma_H) od in
-composition_series(P)
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta,gamma_H) od then
+()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
+PH
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
-set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol):
+set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std_ext=lift_std(p_H,M,G,delta) then
-lift_std=parameter(lift_std_ext) then 
-()=if te_verbose then prints("lift_std=", lift_std) fi in
-(p_H,lift_std_ext.parameter,inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character))
+lift_std=parameter(lift_std_ext) then
+inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
+()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
+(p_H,lift_std,inverse_lift,composition_series(inverse_lift))
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
-set abv(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol):
+set abv(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std_ext=lift_std(p_H,M,G,delta) then
-lift_std=parameter(lift_std_ext) then 
+lift_std=parameter(lift_std_ext) then
+inverse_lift=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
 ()=if te_verbose then prints("lift_std=", lift_std) fi in
-(p_H,lift_std_ext.parameter,inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character))
+(p_H,lift_std,inverse_lift,composition_series(inverse_lift))
 
 
 
