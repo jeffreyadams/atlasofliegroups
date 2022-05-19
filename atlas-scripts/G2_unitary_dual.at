@@ -112,7 +112,7 @@ tabulate(
          let ind=is_good_range_induced_from(p) in
  	 if =#ind then ("false","")
 	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
-	 else ("true", ind[0].real_form.nice_format.to_string)
+	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
         fi
   fi
   in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
@@ -134,7 +134,7 @@ tabulate(
          let ind=is_good_range_induced_from(p) in
  	 if =#ind then ("false","")
 	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
-	 else ("true", ind[0].real_form.nice_format.to_string)
+	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
         fi
   fi
   in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]

@@ -295,19 +295,25 @@ t_G)
 
 
 set extended_character_formula (Param p,mat delta) =
-let (B,,)=partial_extended_KL_block(p,delta) in
+{let (B,,)=partial_extended_KL_block(p,delta) in}
+let B=singular_block_of(p) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
 {P=big_KL_P_signed_polynomials(p,delta) then}
-P=big_KL_P_polynomials(p,delta) then
+P=big_KL_P_polynomials(B,delta) then
 ()=if te_verbose then printPolyMatrix(P) fi  then
 index=find(complete_indices,(find(B,p),1)) in
 {let ()=prints("index=", index) in}
 null_module(p.real_form) +
 for i:#complete_indices
 do let f=eval(P[i][index],s) in
-{let ()=prints(new_line,"i= ", i, " f=",f) in}
+ let ()=prints(new_line,"i= ", i, " f=",f) in
  let (j,c)=complete_indices[i] in
- {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
+ let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in 
+ if c=1 then f*B[j]
+ elif c=-1 then f*s*B[j]
+ elif c=0 then f*(1+s)*B[j] 
+ else error("error c\ne 0,\pm 1")
+ fi
 od
 
 set sign_difference(Param p_G, mat delta)=int:
