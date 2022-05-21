@@ -72,9 +72,71 @@ set deformation_terms (Param p) = ParamPol:
     od
   fi
 
+set deformation_terms_by_dual (Param p) = ParamPol:
+  assert(p.is_final,"deformation requires a final parameter");
+  let (block,KL_mat,P_polys) = partial_KL_block(p)
+  , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
+  then pol_eval =  for P in P_polys do eval(P,minus_1) od
+  , dual_pol_eval = for P in dual_polys do eval(P,minus_1) od
+  , l_sg = for q in block do minus_1^length(q) od
+  , to_full = (int->int):
+    let map = p.null_module + for q@i in full_block do (Split:(i,1),q) od
+    in (int i) int: let c=map[block[i]] in assert(!=c,"absent"); c.int_part
+  then P_mat = mat:
+    for col@j in KL_mat do for e@i in col do l_sg[i]*l_sg[j]*pol_eval[e] od od
+  , Q_mat = mat:
+    for col in ^dual_KL_mat do for e in col do dual_pol_eval[e] od od
+  , opposite_parity=1-length(p)%2 { opposite to that of |length(p)| }
+  then solution = sum
+    ( #block { size of vectors being summed (after conversion to matrix) }
+    # for q@i in block
+      do if length(q)%2=opposite_parity
+	 then [ Q_mat[i.to_full,start]*P_mat[i] ]
+	 else []
+	 fi
+      od.##
+    )
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in block
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od
+
+set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
+(  assert(p.is_final,"deformation requires a final parameter")
+;  assert(p.length<=max_height,"height bound kills term to deform")
+;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
+   then subset = [int]:
+     for q@i in full_block do if q.height<=max_height then [i] else [] fi od.##
+   , ev = for P in polys do eval(P,minus_1) od
+   , Q_col = vec:[] { vector variable to be assigned below }
+   then Q_mat = mat: { transpose, select rows/cols from |subset|, set $q:=-1$ }
+     for i in subset
+     do let col = vec: for j in subset do ev[dual_KL_mat[i,j]] od
+     in if i=start then Q_col:=col else col fi { store the column for |p| }
+     od
+   , block = [Param]: for i in subset do full_block[i] od
+   then signed_P_mat = { $(-1)^{l(x,y)}P_{x,y}[q:=-1]$ for $x,y$ in |block| }
+      inverse(Q_mat)
+   , lp_parity=p.length%2 { parity of length that is excluded below }
+   then solution = vec:
+      { compute more efficiently: |signed_P_mat*diagonal(odd_levels)*Q_col|,
+        where |odd_levels=vec: for q@i in block do #q.length%2!=lp_parity| }
+        subset := { reuse local variable, now for selecting odd levels }
+           for q@i in block do if q.length%2=lp_parity then [] else [i] fi od.##
+      ; (mat: signed_P_mat.n_rows # for j in subset do signed_P_mat[j] od)
+       *(vec: for i in subset do Q_col[i] od)
+  , !on_p = orientation_nr(p)
+in null_module(p) +
+   for q@i in block
+   do { twist (1-s)*solution according to orientation numbers of its terms }
+     ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
+   od
+)
+
 { the original version of this file started here }
 
-set has_nu0 (Param p) = bool: =nu(p)
 set d_verbose=false
 
 { if at reducibility point stay there, otherwise go to next lower one }
