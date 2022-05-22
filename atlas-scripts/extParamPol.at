@@ -161,37 +161,46 @@ set deform_old (Param p, mat delta, int type) = ExtParamPol:
 set deform (ExtParam E, mat delta) = ExtParamPol:
    deform(parameter(E), delta, sign(E))
 
+{P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
 set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
+assert(is_fixed(delta,P),"P is not delta-fixed");
 let monomials=[Param]:[] in
 for c@p in P do
  let f=find(monomials,twist(delta,p)) in
-  if f=-1 then monomials#:=p fi
+  if f=-1 then prints("p=",p);monomials#:=p fi
 od;
 null_module(P.real_form) + for p in monomials do P[p]*p od
 
+set fixed_terms(ParamPol P,mat delta)=ParamPol:
+let rv=null_module(P.real_form) in 
+ for c@p in P do if is_fixed(delta,p) then rv+:=c*p fi od;
+rv
 
-set finalize_extended(ExtParamPol E,RealForm G,mat delta)=
-let (P,Q,R)=E then
-plus=null_module(P.real_form) then
+set unfixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
+
+set convert_to_ExtParamPol(ParamPol P,mat delta)=ExtParamPol:
+let plus=null_module(P.real_form) then
 minus=null_module(P.real_form) then
-ind=null_module(P.real_form) then 
+ind=null_module(P.real_form) then
 ()=for c@p in P do
- let p_f=finalize_extended(p,delta) in
-  for d@q in p_f do plus+:=c*int_part(d)*q od;
-  for d@q in p_f do minus+:=c*int_part(d)*q od
-od then
- ()=for c@p in Q do
- let p_f=finalize_extended(p,delta) in
-  for d@q in p_f do minus+:=c*int_part(d)*q od;
-  for d@q in p_f do plus+:=c*int_part(d)*q od
-od then
- R_f=null_module(G) + for c@p in R do c*finalize(p) od then
- R1=null_module(G) + for p in monomials(twisted_orbit_reps(R_f,delta)) do R_f[p]*p od then
- ind=R1 in
- (plus,minus,ind)
-{given extended parameter (p,type) multiply nu(p) by rat r
- uses finalize_extended
-}
+ if is_fixed(delta,p) then
+  plus+:=int_part(c)*p;
+  minus+:=s_part(c)*p
+ else
+  ind +:=c*p
+ fi
+od in
+(plus,minus,ind)
+
+set finalize_extended_to_ExtParamPol(Param p, mat delta)=ExtParamPol:
+let f=finalize(p) in
+convert_to_ExtParamPol(finalize_extended(p,delta) + unfixed_terms(f,delta),delta)
+
+set finalize_extended_to_ExtParamPol(ParamPol P, mat delta)=ExtParamPol:
+let rv=null_ext_module(P.real_form) in
+for c@p in P do rv+:=finalize_extended_to_ExtParamPol(p,delta) od;
+rv
+
 set change_nu (Param p, rat factor, int type) = ExtParamPol:
   let G=real_form(p)
   then delta=G.distinguished_involution
