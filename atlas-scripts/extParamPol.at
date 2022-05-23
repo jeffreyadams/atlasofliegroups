@@ -196,7 +196,7 @@ set Finalize_extended(Param p, mat delta)=ParamPol:
 if is_fixed(delta,p) then
  finalize_extended(p,delta) + non_fixed_terms(finalize(p),delta)
 else
- (1+s)*finalize(p) + non_fixed_terms(finalize(p),delta)
+ (1+s)*fixed_terms(finalize(p),delta) + non_fixed_terms(finalize(p),delta)
 fi
 
 set Finalize_extended(ParamPol P,mat delta)=ParamPol:
@@ -297,7 +297,7 @@ let G=p.real_form then
 rv=null_module(G) then
 B=block_of(p) then
 (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-P=big_KL_P_polynomials(B,delta) then
+P=big_KL_P_signed_polynomials(B,delta) then
 index=find(complete_indices,(find(B,p),1)) in
 for (j,type)@i in complete_indices do
  let c=eval(P[i][index],s) in
@@ -321,13 +321,35 @@ fi
 
 set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   , P=big_KL_P_signed_polynomials(B,delta)
-   then index=find(complete_indices,(find(B,p),1))
-   in
+   , P=big_KL_P_signed_polynomials(B,delta) then
+{   , P=big_KL_P_polynomials(B,delta) then}
+
+   index=find(complete_indices,(find(B,p),1)) then
+   ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
+   
+   ()=prints("number of complete indices: ", #complete_indices) then
+   ()=prints("index of parameter in complete indices: ", index) then
+   ()=prints("complete index: ", complete_indices[index]) then
+   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in matrix",new_line) then
+   data=[["(i,c)","m","c*m","c*m*p"]] in
    for i:#complete_indices
-   do let f=eval(P[i][index],s) in
-      if f!=0 then prints(complete_indices[i], ": ", prettyPrint(f)) fi
-   od
+   do let f=eval(P[i][index],s) then
+   (j,c)=complete_indices[i] in
+   let c_term=
+   if c=1 then 1
+    elif c=-1 then s
+    elif c=0 then {(1+s)}1
+    else error("c\ne 0,\pm 1")
+   fi
+   in
+{let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in}
+
+   if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi 
+   od;
+   tabulate(data)
+
+set print_extended_character_formula (Param p,mat delta) = void:
+   print_extended_character_formula(p,singular_block_of(p),delta)
 
 set print_extended_character_formula (Param p,mat delta) = void:print_extended_character_formula(p,singular_block_of(p),delta)
 
@@ -488,3 +510,16 @@ set is_weakly_unitary_big (Param p) = bool:
 set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus
 
 }
+
+{given extended formul in terms of Z[s], set s=1,
+ and also replace each nonfixed term q with q + delta(q)}
+set extended_s_to_1(ParamPol P,mat delta)=ParamPol:
+let rv=null_module(P.real_form) in 
+ for c@p in P do 
+  if is_fixed(delta,p) 
+   then rv+:=c*p 
+  else 
+   rv+:=c*(p + twist(delta,p))
+  fi
+ od;
+rv.s_to_1
