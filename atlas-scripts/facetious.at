@@ -1220,8 +1220,15 @@ set spherical(RealForm G, ([ratvec] vlist,
 
 set sphericalC(RealForm G, ([ratvec] vlist,
     [[FacetStatusVertsIndex]] FPPstInd)) = ([ratvec],[[FacetStatusVertsIndex]]):
-    let xopen = x_open(G), Grho = rho(G), Indices = [ParamPol]:
-    for FPPstIndd in FPPstInd do index(FPPstIndd) od,
+    let xopen = x_open(G), Grho = rho(G),
+    	FBs = [[FacetBary]]:
+    	for FPPstIndd in FPPstInd
+	    do for Find in FPPstIndd
+	       do facet_bary(vlist, Find.verts) od
+	    od,
+	Indices = [ParamPol]:
+    	for FPPstIndd in FPPstInd
+	    do index(FPPstIndd) od,
     GL = simple_factors(G)[0]
     then vlistL = FPP_vertices(GL) {should pass from down_to_businessC}
     then temp =
@@ -1229,9 +1236,7 @@ set sphericalC(RealForm G, ([ratvec] vlist,
     	do{DIMd}
 	let FPPstIndd = FPPstInd[d]
 	then TODOd = to_do(FPPstIndd)
-	then TODOBd = for j in TODOd
-	     	      do facet_bary(vlist, FPPstIndd[j].verts) od,
-	     	      GOALd = #TODOd;
+	then GOALd = #TODOd;
 	if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
 	     " in sphericalC(G,status,(vlist,FPPstInd)); testing ",
@@ -1248,8 +1253,10 @@ set sphericalC(RealForm G, ([ratvec] vlist,
 		     	  fi
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
-			 parameter(xopen, Grho, TODOBd[k])))))
-		then FPPstIndd[j]:=("T",FPPstIndd[j].verts)
+			 parameter(xopen, Grho, FBs[d][j])))))
+		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef",
+    		     Find.verts),  FBs[d][j]);
+		FPPstIndd[j]:=("T",FPPstIndd[j].verts)
 		else{NEWU} {alcoves containing Find.verts may have gone}
 		FPPstInd:=update(Indices, FPPstInd, ("F",Find.verts));
 		FPPstIndd[j]:=("F",FPPstIndd[j].verts)
@@ -1264,8 +1271,13 @@ set sphericalC(RealForm G, ([ratvec] vlist,
 set spherical_to_ht(RealForm G, ([ratvec] vlist,
     [[FacetStatusVertsIndex]] FPPstInd), int bound) =
     ([ratvec],[[FacetStatusVertsIndex]]):
-    let xopen = x_open(G), Grho = G.rho, Indices = [ParamPol]:
-        for FPPstIndd in FPPstInd do index(FPPstIndd) od
+    let xopen = x_open(G), Grho = G.rho, FBs = [[FacetBary]]:
+    	      for FPPstIndd in FPPstInd
+	      do for Find in FPPstIndd
+	       	 do facet_bary(vlist, Find.verts) od
+	      od,
+	Indices = [ParamPol]:
+        	for FPPstIndd in FPPstInd do index(FPPstIndd) od
     then temp =
     for d:#FPPstInd
     	do{DIMd}
@@ -1291,7 +1303,9 @@ set spherical_to_ht(RealForm G, ([ratvec] vlist,
 		     fi;
 		if{NEWU} (is_unitary_to_ht(first_param(standardize(
 			 parameter(xopen, Grho, TODOBd[k]))),bound))
-		then FPPstIndd[j]:=("Tto"##to_string(bound), FPPstIndd[j].verts)
+		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef",
+    		     Find.verts),  FBs[d][j]);
+		FPPstIndd[j]:=("Tto"##to_string(bound), FPPstIndd[j].verts)
 		else{NEWU}
 		{dammit why can't I do this?
 		FPPstIndd[j]:=("F",FPPstIndd[j].verts)}
@@ -1308,8 +1322,14 @@ set spherical_to_ht(RealForm G, ([ratvec] vlist,
 set spherical_to_htC(RealForm G, ([ratvec] vlist,
     [[FacetStatusVertsIndex]] FPPstInd), int bound) = ([ratvec],
     [[FacetStatusVertsIndex]]):
-    let xopen = x_open(G), Grho = rho(G), Indices = [ParamPol]:
-        for FPPstIndd in FPPstInd do index(FPPstIndd) od,
+    let xopen = x_open(G), Grho = rho(G),
+    	FBs = [[FacetBary]]:
+    	    for FPPstIndd in FPPstInd
+	    	do for Find in FPPstIndd
+	       	   do facet_bary(vlist, Find.verts) od
+	    	od,
+	Indices = [ParamPol]:
+            for FPPstIndd in FPPstInd do index(FPPstIndd) od,
         GL = simple_factors(G)[0]
     then vlistL = FPP_vertices(GL) {should pass from down_to_businessC}
     then temp =
@@ -1317,9 +1337,7 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
     	do{DIMd}
 	let FPPstIndd = FPPstInd[d]
 	then TODOd = to_do(FPPstIndd)
-	then TODOBd = for j in TODOd
-	     	      do facet_bary(vlist, FPPstIndd[j].verts) od,
-	     	      GOALd = #TODOd;
+	then GOALd = #TODOd;
 	if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
 	     " in spherical_to_htC(G,status,(vlist,FPPstInd)); testing ",
@@ -1336,8 +1354,10 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
 		     	  fi
 		     fi;
 		if{NEWU} (is_unitary_to_ht(first_param(standardize(
-			 parameter(xopen, Grho, TODOBd[k]))),bound))
-		then FPPstIndd[j]:=("Tto"##to_string(bound),FPPstIndd[j].verts)
+			 parameter(xopen, Grho, FBs[d][j]))),bound))
+		then FPPstInd:=updateTrue(G, FPPstInd, FBs, (
+		     "Tto"##to_string(bound), Find.verts),  FBs[d][j]);
+		FPPstIndd[j]:=("Tto"##to_string(bound),FPPstIndd[j].verts)
 		else{NEWU}
 		FPPstInd:= update(Indices, FPPstInd, ("F",Find.verts)); Find;
 		FPPstIndd[j]:=("F",Find.verts)
