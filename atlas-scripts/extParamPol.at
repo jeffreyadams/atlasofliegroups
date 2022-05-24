@@ -315,9 +315,13 @@ if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_fo
 else
  let preg=make_regular_param(p) then
  gamma=p.infinitesimal_character then
- ecfreg=extended_character_formula_reg(preg,delta) in
- Finalize_extended(T_param(ecfreg,gamma),delta)
-fi
+ ecfreg=extended_character_formula_reg(preg,delta) then
+ {need to apply T_param term by term because putting in a ParamPol
+  finalizes each term which is not OK}
+ rv=null_module(p.real_form) in
+   for c@p in ecfreg do rv+:=c*Finalize_extended(T_param(p,gamma),delta) od;
+ rv
+ fi
 
 set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
