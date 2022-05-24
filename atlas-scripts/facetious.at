@@ -165,7 +165,7 @@ The total collection of affine coroots appearing must be a set of simple coroots
 for the affine datum. IF THE FACET IS NOT AN ALCOVE, THIS
 REPRESENTATION IS NOT UNIQUE }
 
-set_type [Facet = ([AffineCoroot] pos,[AffineCoroot] zero)]
+set_type Facet = ([AffineCoroot] pos,[AffineCoroot] zero)
 
 { a UNIQUE characterization of a k-diml facet is as a set of
 k+1 vertices }
@@ -226,7 +226,7 @@ set update([[FacetStatusVertsIndex]] StInd, FacetStatusVertsIndex nonUnitary) =
     od
     in StInd
 
-set update([FacetStatusVertsIndex] allInd,FacetStatusVertsIndex nonUnitary,int START) =
+set update([FacetStatusVertsIndex] allInd, FacetStatusVertsIndex nonUnitary,int START) =
     [FacetStatusVertsIndex]:
     assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets");
     let NUverts = nonUnitary.verts
@@ -507,6 +507,78 @@ set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
     in
     {assert (gamma=w*gamma0 + tau,"Bad affine!");}
     ((tau,w),gamma0TIMESDEN/gamma.denom)
+
+{.restored from 3/30/22 version for use in computing bigger facets with
+same unitarity status.}
+set facet(SimpleAffine Affd, ratvec gamma) = Facet:
+let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
+(F0pos,F0zero) = facet0(Affd,gamma0) in (for betav in F0pos
+do wtilde*betav od , for betav in F0zero
+do wtilde*betav od)
+
+{.This (over) counts the integral hyperplanes that have a chance to
+contribute to reducibility of p. p is assumed final. Maybe this means
+that if alpha is not real, then both dots with gamma MUST be positive?}
+set NumRedHyps(Param p) = int:
+    let id = integrality_datum(p), theta = (p.x).involution, gamma =
+    p.infinitesimal_character, rhoR = (p.x).rho_r
+    in sum(for alpha@ell in id.posroots
+       	       do let em = root_index(id, -theta*alpha)
+	       in if
+	       	  em >= 0
+		  and {complex integral roots changing sign under
+		  theta are automatically nonsingular in final case}
+		  (em != ell
+		  {id.poscoroots[ell] * gamma > 0
+	       	  and id.poscoroots[em] * gamma > 0}
+	       	  or (em = ell and rat_as_int(id.poscoroots[ell] * (gamma
+		  -p.lambda -rhoR)) % 2 = 1))
+		  {is_parity is defined only for simple roots}
+		  {maybe should count singular real parity roots as reducible?}
+	       then 1 else 0 fi
+	       od)
+
+{this is meant to be a crude version for the spherical case only}
+set NumRedHyps(RealForm G, Facet (A,B)) = int:
+    let corootsInt = G.rank # for (v,m) in B do v od,
+    coroots0 = G.rank # for (v,m) in B do if m = 0 then [v] else [] fi od.##
+    then rootsInt = G.rank # for v in corootsInt do root(G,v) od,
+    roots0 = G.rank # for v in coroots0 do root(G,v) od
+    then rdInt = root_datum(rootsInt, corootsInt), rd0 = root_datum(roots0,
+    coroots0)
+    in #rdInt.posroots - #rd0.posroots
+
+{.if the bigger facet arises by relaxing pos AffineCoroot's that are NOT reducibility
+hyperplanes, then unitarity IS inherited by the bigger facet. This assumes all facets
+in StInd are hermitian.}
+set updateTrue(RealForm G, [[FacetStatusVertsIndex]] StInd,
+[[FacetBary]] FBs, FacetStatusVertsIndex Unitary, FacetBary FB) =
+    [[FacetStatusVertsIndex]]:
+    assert(Unitary.status[0] = "T","update only applies to unitary facets");
+    let Uverts = Unitary.verts, p = parameter(x_open(G),G.rho,FB)
+    then NRHF = NumRedHyps(p)
+    then () = for e:#StInd - #Uverts from #Uverts
+    do
+    let StInde = StInd[e]
+    then TODOe = to_do(StInde)
+    in
+    for j in TODOe
+    	do
+	if is_subset_of_sorted(StInde[j].verts)(Uverts) and
+	   StInde[j].status = "?"
+{need to test that pos AffineCoroot's for j which are zero on the
+barycenter of F (# = codim of F in E) are NOT reducibility
+hyperplanes}
+{need to count reducibility affine coroots in Ezero, hope it's equal
+to number in Fzero}
+        then let NRHE = NumRedHyps(parameter(x_open(G),G.rho, FBs[e][j]))
+	in if NRHE = NRHF then StInde[j] := (Unitary.status,
+	   StInde[j].verts) fi
+	fi
+	od;
+    StInd[e]:=StInde
+    od
+    in StInd
 
 {.computes the collection of vertex sets of alcoves containing gamma in their closures.}
 set openure(SimpleAffine Affd, ratvec gamma) = [FacetVerts]:
@@ -907,7 +979,9 @@ barycenters of facets of dimension 0 or 1. Also I THINK that dimension
 1 can only happen in type A?? So this could be simplified.}
 set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]] 
     FPPstInd)) = FacetData:
-    let FPPstIndQuo = FPPstInd, VIndex0 =
+    let FBs = [[FacetBary]]: for Findd in FPPstInd do for Find in
+    Findd do facet_bary(vlist, Find.verts) od od
+    then FPPstIndQuo = FPPstInd, VIndex0 =
     	index(for (,Find) in FPPstInd[0] do vlist[Find[0]] od) ,
     	VIndex1 = ParamPol: if #FPPstInd=0 then index([vlist[0]])
 		  	    else index(for (,ind) in FPPstInd[1] do (vlist[ind[0]] + vlist[ind[1]])/2 od)
@@ -921,38 +995,55 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
 	 then m0 = find(VIndex0,gamma)
 	 in if m0 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
 	    dim(st.dual_map(O))/2
-	    then FPPstInd0[m0] :=  ("T"##to_string(j),FPPstInd0[m0].verts)
+	    then FPPstInd0[m0] :=
+	    ("T"##to_string(j),FPPstInd0[m0].verts);
+	    FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
+	    ("Tdef"##to_string(j),FPPstInd0[m0].verts), FBs[0][m0])
 	    fi
-	 od; FPPstIndQuo[0] := FPPstInd0
+	 od
     	 else
 	 for O@j in st.orbits
 	 do
 	 let gamma = O.H/2
 	 then m0 = find(VIndex0,gamma)
 	 in if m0 >= 0 then FPPstInd0[m0] :=
-	    ("T"##to_string(j),FPPstInd0[m0].verts)
+	    ("T"##to_string(j),FPPstInd0[m0].verts);
+	     FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
+	    ("Tdef"##to_string(j),FPPstInd0[m0].verts), FBs[0][m0])
 	    fi
-	 od; FPPstIndQuo[0] := FPPstInd0
-	 fi
+	 od
+	 fi; FPPstIndQuo[0] := FPPstInd0
  { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
-	then () = if X = "A" and r>1 and not(is_split(G))
-	     then for O@j in st.orbits
-	     do
-	     let gamma = O.H/2
-	     then m1 = find(VIndex1,gamma)
-	     in if m1 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
-	     	dim(st.dual_map(O))/2
-	    	then FPPstInd1[m1] :=  ("T"##to_string(j),FPPstInd1[m1].verts)
-	    	fi
-	     od; FPPstIndQuo[1] := FPPstInd1
-	     else for O@j in st.orbits
-	     do
-	     let gamma = O.H/2
-	     then m1 = find(VIndex1,gamma)
-	     in if m1 >= 0 then FPPstInd1[m1] :=
-	     	("T"##to_string(j),FPPstInd1[m1].verts)
-		fi
-	     od; FPPstIndQuo[1] := FPPstInd1
+       	then () = if X = "A" and r > 1
+	     then let FPPstInd1 = FPPstIndQuo[1]
+	     then VIndex1 = ParamPol:
+	     	  index(for (,ind) in FPPstIndQuo[1] do (vlist[ind[0]]
+		  	    + vlist[ind[1]])/2 od)
+	     in if not(is_split(G)) then
+	     	for O@j in st.orbits
+	     	do
+	     	let gamma = O.H/2
+	     	then m1 = find(VIndex1,gamma)
+	     	in if m1 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
+	     	   dim(st.dual_map(O))/2
+	    	   then FPPstInd1[m1] :=
+		   ("T"##to_string(j),FPPstInd1[m1].verts);
+		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
+	    	   ("Tdef"##to_string(j),FPPstInd0[m1].verts), FBs[1][m1])
+	    	   fi
+	     	od
+	     	else
+	     	for O@j in st.orbits
+	     	do
+	     	let gamma = O.H/2
+	     	then m1 = find(VIndex1,gamma)
+	     	in if m1 >= 0 then FPPstInd1[m1] :=
+	     	   ("T"##to_string(j),FPPstInd1[m1].verts);
+		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
+	    	   ("Tdef"##to_string(j),FPPstInd0[m1].verts), FBs[1][m1])
+		   fi
+	     	od
+	     	fi; FPPstIndQuo[1] := FPPstInd1
 	     fi
     in (vlist, FPPstIndQuo)
 
@@ -963,14 +1054,15 @@ set facet_status([[vec]] FPPind) = [[string]]:
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
     do
-    let (countTu, countTto, countTi, countT, countF, countFi, countQ) =
-    	(0, 0, 0,0,0,0,0)
+    let (countTu, countTto, countTi, countTdef, countT,
+    countFi, countFdef, countF, countQ) = 
+    	(0, 0, 0,0,0,0,0, 0, 0)
     in
 	for stFind in FPPstIndd
 	do
 	if stFind.status="T"
 	then countT+:=1
-	elif stFind.status="F"
+	elif stFind.status[0]="F"
 	then countF+:=1
 	elif stFind.status="?"
 	then countQ+:=1
@@ -980,13 +1072,19 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 	then countTi+:=1
 	elif stFind.status[1]="i"
 	then countFi+:=1
+	elif stFind.status[0] = "T" and stFind.status[1]="d"
+	then countTdef+:=1
+	elif stFind.status[0] = "F" and stFind.status[1]="d"
+	then countFdef+:=1
 	else countTu+:=1
 	fi
 	od;
 	prints("Facet dimension ",d,": ", countTu, " unipotent, ",countTi,
-	" unitarily induced, ",countT, " other unitary,  ", countTto,
+	" unitarily induced, ",countTdef, " deformed from unitary, ",
+    	countT, " other unitary,  ", countTto, 
 	" unitary_to_ht", new_line, "       ",countFi,
-	" induced nonunitarily, ",countF, " other nonunitary, ",
+	" induced nonunitarily, ",countFdef,
+	" deformed from nonunitary, ",countF, " other nonunitary, ",
 	countQ, " undecided.",new_line)
     od
 
@@ -1077,11 +1175,13 @@ set down_to_businessC(RealForm G, ([ratvec] vlistL,
   eliminated). Need simple derived group.}
 set spherical(RealForm G, ([ratvec] vlist,
     [[FacetStatusVertsIndex]] FPPstInd)) = FacetData:
-    let xopen = x_open(G), Grho = G.rho, Indices = [ParamPol]:
-    	for FPPstIndd in FPPstInd do index(FPPstIndd) od{;
-    if facet_verbose then prints("backing up FPPstInd");
-    > "backup" void: prints("set FPPstInd=",FPPstInd)
-    fi}
+    let xopen = x_open(G), Grho = G.rho, FBs = [[FacetBary]]:
+    	for FPPstIndd in FPPstInd
+	    do for Find in FPPstIndd
+	       do facet_bary(vlist, Find.verts) od
+	    od,
+	Indices = [ParamPol]:
+    	for FPPstIndd in FPPstInd do index(FPPstIndd) od
     then temp =
     for d:#FPPstInd
     	do{DIMd}
@@ -1103,13 +1203,12 @@ set spherical(RealForm G, ([ratvec] vlist,
 		     	  fi
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
-			 parameter(xopen, Grho,
-			 facet_bary(vlist,Find.verts))))))
-		then FPPstIndd[j]:=("T",Find.verts)
+			 parameter(xopen, Grho, FBs[d][j])))))
+			 {facet_bary(vlist,Find.verts)}
+		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef", Find.verts), FBs[d][j]);
+ 		FPPstIndd[j]:=("T",Find.verts)
 		else{NEWU}
-		{dammit why can't I do this?
-		FPPstIndd[j]:=("F",FPPstIndd[j].verts)}
-		FPPstInd:=update(Indices, FPPstInd, ("F",Find.verts));
+		FPPstInd:=update(Indices, FPPstInd, ("Fdef",Find.verts));
 		FPPstIndd[j]:=("F",Find.verts)
 		fi
     	in result
@@ -1427,7 +1526,9 @@ set facet_statusu_ind(RealForm G, ([ratvec] vlist,
 		{if inducing rep is unitary, so is induced, and facets
 		    in closure}
 	    elif uboolL then countDown := countDown+1;
-	    	 {FPPnew := downdate(Indices, FPPnew,("Ticlosure",FPPnew[d][j].verts));} "Ti"
+	    	{FPPnew := downdate(Indices,
+		FPPnew,("Ticlosure",FPPnew[d][j].verts));}
+		updateTrue(G, FPPnew, FPPB, ("Tiopen",Find.verts), FPPB[d][j]); "Ti"
 	    	{if inducing is hermitian nonunitary,
 		    and induction is irreducible, then induced is hermitian
 		    nonunitary, along with facets in opening}
@@ -1546,11 +1647,14 @@ set goodFPP(KGBElt x, [[FacetBary]] FB) = KGBFacets:
 {.Meant to refer to a particular KGBElt x, a particular list of
 FacetBary's FB[d], and the list comp_chars of elements of X*
 representing chraacters of the component group of H(x).
-(j,lr,v,[FacetStatus]) means that for each coordinate k@m of v, there is a
+(j,lr,v, NRH, [FacetStatus]) means that for each coordinate k@m of v, there is a
 final hermitian parameter (x,lr+rho+comp_chars[k],nu) of infinitesimal
 character FB[d][j], whose unitarity status is recorded by the mth
-entry of [FacetStatus]}
-set_type CandLambdaTwistsStatus = (int,vec, vec, [string])
+entry of [FacetStatus]. The mth entry of NRH is the number of
+reducibility hyperplanes for this facet at
+(x,lr+rho+comp_chars[k],*). }
+set_type CandLambdaTwistsStatus = (int x, vec lambda0 , vec
+twists, vec NRH, [string] status)
 
 {.Supplement KGBFacets by including list comp_chars of elements of X^*
 representing all characters of component group of Cartan for KGB_elt;
@@ -1568,20 +1672,25 @@ are allowed}
 {cand_lambda_rho meant to come from goodFPP}
 
 set non_cohom_herm(KGBFacets (x, FB,  CLs)) = KGBFacetsTwists:
-    let all_d_zero = all_lambda_differential_0(x), rho=rho(x.real_form)
-    in
-    (x, FB, all_d_zero, for CLsd@d in CLs
+    let all_d_zero = all_lambda_differential_0(x),
+    rho=rho(x.real_form), theta = x.involution
+    in (x, FB, all_d_zero,
+    for CLsd@d in CLs
     do for (j,lr) in CLsd
-       do let twists = vec: for v@k in all_d_zero
-       	  do let p=parameter(x, lr+rho+v, FB[d][j])
+       do let gamma = FB[d][j]
+       	  then twists = vec: for v@k in all_d_zero
+       	  do let p=parameter(x, lr+rho+v, gamma)
        	  in
-       	  if not(is_zero(p)) and p.infinitesimal_character=FB[d][j]
+       	  if not(is_zero(p)) and p.infinitesimal_character=gamma
 	     and first_param(finalize(p)).x = x and is_hermitian(p)
 	  then [k] else [] fi
        	  od.##
-       in if #twists  > 0 then [(j,lr,twists, [string]: for k:#twists
+       	  then NRH = vec: for k in twists
+	       	     do NumRedHyps(parameter(x,lr+rho+all_d_zero[k], gamma))
+    		     od
+       	  in if #twists  > 0 then [(j,lr,twists, NRH, [string]: for k:#twists
        	  do "?" od)] else [] fi
-       od.##
+     od.##
     od)
 
 {probably this is all unitary attached to x that are not cohom
@@ -1591,13 +1700,13 @@ set non_cohom_unitary(KGBFacetsTwists (x, FB, twists, CLTs)) =
     let rho = rho(x.real_form) in 
     (x, twists,
     for CLTsd@d in CLTs
-    do for (j,lr,which_twists,status) in CLTsd
+    do for (j,lr,which_twists, NRH, status) in CLTsd
        do let ustatus = for k@m in which_twists
        	  do let p=parameter(x, lr+rho+twists[k], FB[d][j])
 	  in
 	  if is_unitary(p) then "T" else "F" fi
 	  od
-       in (j,lr,which_twists,ustatus)
+       in (j,lr,which_twists,NRH,ustatus)
        od
     od
     )
@@ -1630,3 +1739,32 @@ set non_cohom_unitary(RealForm G) = [(KGBElt,[vec],
     [[CandLambdaTwistsStatus]])]:
     let FB =  FPP_barycenters(G) in non_cohom_unitary(G, FB,
     non_cohom_herm(G, FB, goodFPP(G,FB)))
+
+set show(RealForm G, [[FacetBary]] FB,
+[(KGBElt,[vec],[[CandLambdaTwistsStatus]])] candTW) = void:
+    let rho = rho(G) in 
+    prints("Non-cohomologically induced unitary reps for ",G);
+    for (x,twists,CLTs) in candTW
+    do
+    prints(new_line,x);
+    	for CLTsd@d in CLTs
+	do
+	    for (j,lr,which_twists,NRH,statuses) in CLTsd
+	    do
+		for k@m in which_twists
+	    	do
+		if statuses[m][0] = "T" then
+		   prints(parameter(x, lr+rho+twists[k], FB[d][j]),
+		   "  ",FB[d][j])
+		fi
+		od
+	    od
+	od
+     od
+
+set show_non_cohom_unitary(RealForm G) = void:
+    let FB=FPP_barycenters(G), NCU = non_cohom_unitary(G)
+    in
+    show(G, FB, NCU)
+
+
