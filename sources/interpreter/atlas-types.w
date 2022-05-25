@@ -5023,13 +5023,13 @@ typedef std::shared_ptr<const K_type_pol_value> shared_K_type_pol;
 typedef std::shared_ptr<K_type_pol_value> own_K_type_pol;
 
 @ Printing a virtual module value calls the free function
-|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map| that is hidden in the
-|Free_Abelian| class template, and prints individual terms by printing the
-|Split_integer| coefficient, followed by the $K$-type through a call of
-|print_stdrep|. When either all coefficients are integers or all coefficients
-are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
-this is particularly useful if polynomials are used to encode $\Zee$-linear
-combinations of $K$-types.
+|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map|
+that is hidden in the |Free_Abelian| class template, and prints individual terms
+by printing the |Split_integer| coefficient, followed by the $K$-type through a
+call of |print_stdrep|. When either all coefficients are integers or all
+coefficients are (integer) multiples of~$s$, it suppresses the component that is
+always~$0$; this is particularly useful if polynomials are used to encode
+$\Zee$-linear combinations of $K$-types.
 
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
@@ -6368,7 +6368,8 @@ void KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
+  @< Push list of parameters corresponding to |survivors| in |block|
+     at infinitesimal character |gamma| @>
   if (loc[start]==UndefBlock)
     push_value(std::make_shared<int_value>(-1));
   else
@@ -6423,7 +6424,8 @@ by constructing a new polynomial |Pol(P)|.
 }
 
 @ Here is another module that will be shared.
-@< Push list of parameters corresponding to |survivors| in |block| @>=
+@< Push list of parameters corresponding to |survivors| in |block|
+   at infinitesimal character |gamma| @>=
 { own_row param_list = std::make_shared<row_value>(0);
   param_list->val.reserve(survivors.size());
   for (BlockElt z : survivors)
@@ -6505,7 +6507,8 @@ void partial_KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
+  @< Push list of parameters corresponding to |survivors| in |block|
+    at infinitesimal character |gamma| @>
   @< Group distinct polynomials in |M| into a list,... @>
 @)
   if (l==expression_base::single_value)
@@ -6532,49 +6535,82 @@ void dual_KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index into |block| of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
+@/const auto& gamma = p->val.gamma();
   RatWeight diff = p->rc().offset(p->val,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
-  const auto& gamma = p->val.gamma();
-  const RankFlags singular = block.singular(gamma);
+  // fill entire KL table, don't share polys
 @)
   sl_list<BlockElt> survivors; // indexes into |block|
   BlockEltList loc(block.size(),UndefBlock);
-    // from |dual_block| index to |survivors| index
-  const BlockElt last=block.size()-1;
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (block.survives(z,singular))
-    @/{@;
-      loc[last-z] = survivors.size();
-      survivors.push_back(z);
-    }
+    // map |block| element to index into |survivors|
+  @< Fill |survivors| with elements from |block| that survive at |gamma|,
+     and for each, put into its slot in |loc| the index at which |survivors|
+     contains it @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
-  if (loc[last-start]==UndefBlock)
-    push_value(std::make_shared<int_value>(-1));
-  else
-    push_value(std::make_shared<int_value>(loc[last-start]));
+  @< Push list of parameters corresponding to |survivors| in |block|
+     at infinitesimal character |gamma| @>
+  push_value(std::make_shared<int_value>@|
+    (loc[start]==UndefBlock ? -1 : loc[start]));
 @)
-  const auto n_survivors = survivors.size();
-  typedef polynomials::Polynomial<int> Pol;
-  std::vector<Pol> pool = { Pol(), Pol(1) };
-  { HashTable<IntPolEntry,unsigned int> hash(pool);
-    own_matrix M_ind = std::make_shared<matrix_value>(int_Matrix(n_survivors));
-    for (auto jt = survivors.begin(); not survivors.at_end(jt); ++jt)
-    { BlockElt y = last-*jt; // index into |dual_block|
-      for (auto it = jt; not survivors.at_end(it); ++it)
-      { BlockElt x = last-*it; // index into |dual_block|
-         M_ind->val(loc[x],loc[y]) = hash.match(Pol(kl_tab.KL_pol(x,y)));
-      }
-    }
-    push_value(std::move(M_ind));
-  }
+  using Pol = polynomials::Polynomial<int>;
+  std::vector<Pol> pool { Pol(), Pol(1) };
+@/@< Enumerate distinct Kazhdan-Lusztig polynomials from |kl_tab| into |pool|,
+     and push lower unitriangular matrix with at position $(x,y)$ the index of
+     the polynomial $P_{x',y'}$ returned by |kl_tab.KL_pol| for |dual_block|
+     elements $x',y'$ corresponding respectively to $x,y$ @>
 @)
   @< Transfer the coefficient vectors of the polynomials from |pool| to an array,
      and push that array @>
 @)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
+}
+
+@ Whether an element survives as |gamma| is determined using methods |singular|
+and |survives| from |blocks::common_block|.
+
+@< Fill |survivors| with elements from |block| that survive at |gamma|,
+     and for each, put into its slot in |loc| the index at which |survivors|
+     contains it @>=
+{
+  const RankFlags singular = block.singular(gamma);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z,singular))
+    @/{@;
+      loc[z] = survivors.size();
+      survivors.push_back(z);
+    }
+}
+
+@ The |int_Matrix| constructor with a single |int| argument produces an identity
+matrix of the specified size. We proceed to fill just the part strictly below
+the diagonal from |kl_tab|. Since that table holds polynomials with |unsigned|
+coefficients, we need to convert them (using the |Polynomial<int>| constructor)
+to a signed type, so that the vectors can then be moved into the row of vectors
+returned to the user. Calling |hash_match| for the converted polynomial both
+ensures that it is copied to |pool| if not yet present, and replaces it by its
+index into |pool|.
+
+@< Enumerate distinct Kazhdan-Lusztig polynomials from |kl_tab| into |pool|,
+   and push lower unitriangular matrix with at position $(x,y)$ the index of
+   the polynomial $P_{x',y'}$ returned by |kl_tab.KL_pol| for |dual_block|
+   elements $x',y'$ corresponding respectively to $x,y$ @>=
+{
+  const auto n_survivors = survivors.size();
+  HashTable<IntPolEntry,unsigned int> hash(pool);
+  own_matrix M_ind = std::make_shared<matrix_value>(int_Matrix(n_survivors));
+  const BlockElt last=block.size()-1;
+    // mapping |block->dual_block| is subtraction from |last|
+  for (auto jt = survivors.begin(); not survivors.at_end(jt); ++jt)
+  { BlockElt y = *jt; // index into |block|
+    for (auto it = jt; not survivors.at_end(it); ++it)
+    { BlockElt x = *it; // index into |block|
+       M_ind->val(loc[x],loc[y]) =
+         hash.match(Pol(kl_tab.KL_pol(last-x,last-y)));
+    }
+  }
+  push_value(std::move(M_ind));
 }
 
 @ Rather than exporting the detailed KL data, the following functions compute

@@ -52,8 +52,8 @@ struct Mu_pair
 using KL_column = std::vector<KL_pair>;
 using Mu_column = std::vector<Mu_pair>;
 using Mu_list = containers::sl_list<Mu_pair>;
-using KLStore = PosPolEntry::Pooltype;
-using KLPolRef = KLStore::const_reference;
+using KLStore = PosPolEntry::Pooltype; // |std::vector<SafePoly<KLCoeff> >|
+using KLPolRef = KLStore::const_reference; // |const KLCoeff|, an unsigned type
 
 struct Poly_hash_export // auxiliary to export possibly temporary hash table
 {
