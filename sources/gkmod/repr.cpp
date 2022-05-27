@@ -1690,7 +1690,7 @@ std::vector<BlockElt_pol> contributions
   (blocks::common_block& block, RankFlags singular, BlockElt y)
 {
   std::vector<BlockElt_pol> result(y+1); // initally every |result[z]| is empty
-  for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
+  for (BlockElt z=0; z<=y; ++z) // compute in |result[z]| the finals for |z|
   {
     const DescentStatus& desc=block.descent(z);
     auto it=singular.begin();

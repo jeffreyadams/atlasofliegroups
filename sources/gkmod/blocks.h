@@ -192,14 +192,17 @@ public:
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
   BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
-  kl::KL_table& kl_tab
-    (KL_hash_Table* pol_hash, BlockElt limit=0, bool verbose=false)
+  kl::KL_table& kl_tab // create, fiil, and return KL table
+    (KL_hash_Table* pol_hash, // extend hash table of KL polynomials if provided
+     BlockElt limit=0, bool verbose=false) // default to silently fill entirely
   { fill_kl_tab(limit,pol_hash,verbose); return *kl_tab_ptr; }
 
  protected:
   void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
  private:
   void fill_Bruhat();
+
+  // partial fill up to column |limit| exclusive, or fill entirely if |limit==0|
   void fill_kl_tab(BlockElt limit, KL_hash_Table* pol_hash, bool verbose);
 
 }; // |class Block_base|

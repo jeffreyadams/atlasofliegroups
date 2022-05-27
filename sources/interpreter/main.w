@@ -57,7 +57,8 @@ specific \Cpp\ classes (as is the case for most modules of the Atlas library).
 In general these interpreter modules are more interdependent
 than those of the main Atlas library, and the subdivision is more arbitrary
 and subject to change. We list here the source files for these modules, and
-their dependencies notably at the level of their header files.
+their dependencies (via \&{\#include}) notably at the level of their header
+files.
 
 \point The file \.{buffer.w} defines the classes |BufferedInput| providing an
 interface to input streams, and |Hash_table| storing and providing a
@@ -65,36 +66,45 @@ translation from \axis. identifiers to small integers |id_type|.
 
 \point The file \.{parsetree.w} defines the |expr| structure representing
 parsed \axis. expressions, and many related types, and node constructing
-functions for use by the parser. Its header file includes \.{buffer.h}, and
-declares some pointer types to types that will be defined in \.{axis-types.h}.
+functions for use by the parser. It defines two header files:
+\.{parse\_types.h} declaring |expr| and other types needed in its recursive
+definition (it includes \.{buffer.h} for representing
+identifiers and \.{axis-types.h} for representing user type definitions),
+and \.{parsetree.h} which declares the functions exported from this compilation
+unit (in only includes \.{parse\_types.h} and \.{parser.tab.h}).
 
 \point The file \.{parser.y} is the source for \.{bison}-generated the parser
-file \.{parser.tab.c}. The header file \.{parser.tab.h} includes nothing, but
-contains definitions depending on \.{parse\_types.h} having been included.
+file \.{parser.tab.c}. The header file \.{parser.tab.h} includes no other files
+(because we cannot make it do so), but contains definitions depending
+on \.{parse\_types.h} having been included.
 
 \point The file \.{lexer.w} defines the lexical analyser class
-|Lexical_analyser| and the readline completion function |id_completion_func|.
-Its header file includes \.{buffer.h}, \.{parse\_types.h} and \.{parser.tab.h}.
+|Lexical_analyser|, which provides an interface to the input stream at a higher
+level than |BufferedInput| (to an instance of which it stores a reference
+received at construction): its methods present the input as a sequence of
+complete tokens (keywords, literals, identifiers, symbols, punctuation). Its
+header file \.{lexer.h} includes \.{buffer.h}, \.{parse\_types.h}
+and \.{parser.tab.h}.
 
 \point The file \.{axis-types.w} defines the main base classes for the \axis.
 evaluator, |type_expr| for representing \axis. types, |value_base| for dynamic
 values, |shared_context| for dynamic evaluation contexts, |expression_base|
 for ``compiled'' expressions, |program_error| for exceptions, and numerous
-types related to these. Its header file includes \.{parsetree.h} (which is
-needed for the error classes only).
+types related to these. Its header file includes \.{buffer.h} (since it needs
+|id_type| to represent type names).
 
 \point The file \.{global.w} defines primitive \axis. types like integers,
 rationals, matrices. Also some global aspects of the interpreter like
-operating the global identifier tables. Its header file
-includes \.{axis-types.h} and some headers from the Atlas library.
+operating the global identifier tables. Its header file includes
+\.{buffer.h}, \.{axis-types.h} and some headers from the Atlas library.
 
 \point The file \.{atlas-types.w} defines types primitive to \.{atlas} which
 encapsulate types of the Atlas library, and their interface functions. Its
-header file includes \.{types.h} and many headers from the Atlas library.
+header file includes \.{axis-types.h} and many headers from the Atlas library.
 
 \point The file \.{axis.w} Defines the \axis. type-checker and evaluator. It
 defines many classes derived from |expression_base|. Its header file
-includes \.{lexer.h} and \.{global.h}.
+includes \.{axis-types.h} and \.{global.h}.
 
 \point The file \.{main.w}, the current module, brings everything together and
 defining the main program. It has no header file.
@@ -645,60 +655,45 @@ We define a completion function |id_completion_func| that will be used by the
 |BufferedInput::getline|, if the user asks for it by hitting the ``tab'' key.
 The function prototype is dictated by the \.{readline} library.
 
-The completion function will find identifiers matching the given prefix that
-are currently either known in the overload or global identifier tables, or
-have such a low code that they are keywords or predefined types. All such
-identifiers are known in |main_hash_table|, so that is what our primary loop
-is over, but upon finding a partial match we test the stated conditions. Those
-additional tests prevent names of local identifiers of functions loaded and
-accidentally typed erroneous identifiers to ``pollute the completion space''.
-
-The completion function has some strange characteristics that are dictated by
-the \.{readline} library. It must perform a loop that is actually
-started \emph{outside} the function body, so the only possible way to keep
-track of the loop state is using static variables. The |state| parameter
-signals (by being~|0|) when a new loop starts, so in that case it is time to
-(re-)initialise the static variables. A part of the loop can be picked up
-inside the function body, namely the search for the next match to the supplied
-prefix |text|. A tricky point is that once a partial match is found, we must
-increment the static iterator before returning, since that |return| jumps out
-of our local loop. For this reason we increment |i| right away while picking
-its identifier from the hash table. Otherwise there are no other
-complications, except having to produce a string allocated by |malloc|; this
-used to be done by calling |strdup|, but since that function appears not to be
-part of standard \Cpp\ at all, we do the duplication explicitly. If our local
-loop terminates normally there are no more matches and we return |nullptr| to
-indicate that circumstance.
+The actual completion is done in the function |completions| defined in
+\.{buffer.w}. Here we deal mainly with the strange characteristics that are
+dictated by the \.{readline} library. The loop that sequentially produces the
+completions is done by the \.{readline} function |rl_completion_matches|, which
+calls our function from inside that loop; since we must return matches on
+successive calls, the only possible way to keep track of our progress is to use
+a static variable |comps|. The |state| parameter in our call signals (by
+being~|0|) when a new loop starts, so in that case it is time to (re-)initialise
+the static variable. Our static variable is a |sl_list|, and since we need to
+return each completion only once, we pop it off the front of the list before
+returning. Also we have to produce a copy of the completion string allocated by
+|malloc| (the list |comps| itself contains pointers into the identifier table
+that should not be freed). This used to be done by calling |strdup|, but
+since that function appears not to be part of standard \Cpp\ at all, we do the
+duplication explicitly. When our list runs out we return |nullptr| to indicate
+that there are no further completions; we also do this in the unlikely case
+that |malloc| runs out of memory (if that really is the case, not completing is
+preferable to crashing out of the program).
 
 @h <cstdlib>
+@h "sl_list.h"
+
 @< Definitions of global namespace functions @>=
 extern "C"
 char* id_completion_func(const char* text, int state)
-{ using namespace atlas::interpreter;
-  static size_t l; static id_type i,n;
+{ using namespace atlas;
+  char* result = nullptr;
+  static containers::sl_list<const char*> comps;
   if (state==0)
-  { i=0; n=main_hash_table->nr_entries();
-    l=std::strlen(text); // fix length for during search
+    comps = interpreter::completions(text);
+  if (comps.empty())
+    return result; /* if loop terminates, report failure */
+  { result=static_cast<char*>(std::malloc(std::strlen(comps.front())+1));
+    if (result!=nullptr)
+      std::strcpy(result,comps.front());
   }
-  while (i<n)
-    // |i| is initialised above when |state==0|, and incremented below
-  { id_type id=i++; // take next identifier code and increment
-    const char* s=main_hash_table->name_of(id);
-      // get stored identifier and increment loop
-    if (std::strncmp(text,s,l) == 0 // is |text| a prefix of |s|?
-      and (id<lex->first_identifier() @| or
-          not global_overload_table->variants(id).empty() @| or
-          global_id_table->present(id)))
-    { char* result=static_cast<char*>(std::malloc(std::strlen(s)+1));
-      if (result==nullptr)
-        throw std::bad_alloc();
-      return std::strcpy(result,s);
-    }
-  }
-  return nullptr; /* if loop terminates, report failure */
+  comps.pop_front(); // remove completion so it won't be returned next time
+  return result;
 }
-@
-@c
 
 @ The readline library needs to know where to break the input into words that
 may be completed. The value |lexical_break_chars| reflects what our lexical
@@ -739,10 +734,11 @@ we ask for file name completion, and since input will most likely come from the
 directory in |first_path|, if any was specified, we temporarily change directory
 there if only characters~\.<, and at least one, were present. In the more common
 case where file name completion is not called for, we call the readline function
-|rl_completion_matches| with |text| to get us a list of possible completions,
-which it does by calling our |id_completion_func| repeatedly, and we pass the
-pointer to the list of completions back to our caller (which is probably some
-|readline| action function).
+|rl_completion_matches| with |text| and our |id_completion_func| to get us a
+list of possible completions (which it presumably does by calling
+|id_completion_func| repeatedly), and we pass its result, a pointer to the array
+of completions, back to our caller (which is probably some |readline| action
+function).
 
 @< Definitions of global namespace functions @>=
 #ifndef NREADLINE
