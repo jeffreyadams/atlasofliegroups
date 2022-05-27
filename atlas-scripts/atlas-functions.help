@@ -87,6 +87,13 @@ prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty
 ascii: (int->string): string of length 1 with given ASCII code (if safe value)
 
+readline_completions: (string->[string]): list of completions of a prefix
+  The result of this function depends on the atlas session and evolves during
+  each session. Interpreting the argument as a prefix of an identifier, the
+  result is the list of all identifiers currently in use, as well as keywords,
+  whose name starts with that prefix. Being currently in use means either being
+  defined as a (global) variable, or being defined at least once as a function.
+
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
 frac: (rat->int): fractional part of rational (same as r%1 or as r-floor(r))
