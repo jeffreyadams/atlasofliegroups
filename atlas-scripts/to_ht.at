@@ -6,7 +6,7 @@
 set herm_report = bool: false
 
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
-  let (below,)=height_split(P,N+1) in below
+  let (below,)=height_split(P,N) in below
 
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N+1) in below
