@@ -3191,6 +3191,30 @@ void ascii_char_wrapper(expression_base::level l)
     push_value(std::make_shared<string_value>(std::string(1,c)));
 }
 
+@ A rather strange function is |readline_completions|, which maps a (prefix)
+string to the list of its possible completions. One of its strange features is
+that it is built-in, but its operation is variable among sessions and even
+within a single session. Its main purpose is to allow non-human users of the
+\.{atlas} executable (i.e., programs that run \.{atlas} behind the scenes) to
+interrogate what the |readline| interface would propose as completions to human
+users; with this information such programs can propose a similar interface too
+their own users. The functionality itself is provided by the |completions|
+function defined in \.{buffer.w}.
+
+@h "buffer.h"
+@< Local function definitions @>=
+void readline_completions_wrapper(expression_base::level l)
+{ shared_string c=get<string_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  sl_list<const char*> comps = completions(c->val.c_str());
+@/own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(comps.size());
+  for (const auto* s : comps)
+    result->val.push_back(std::make_shared<string_value>(s));
+  push_value(std::move(result));
+}
 
 @*1 Special instances of size-of and other generic operators.
 %
@@ -3205,6 +3229,7 @@ void sizeof_vector_wrapper(expression_base::level l);
 void sizeof_ratvec_wrapper(expression_base::level l);
 void sizeof_string_wrapper(expression_base::level l);
 void matrix_ncols_wrapper(expression_base::level l);
+void K_type_pol_size_wrapper(expression_base::level l);
 void virtual_module_size_wrapper(expression_base::level l);
 
 @ The definitions are straightforward.
@@ -3421,13 +3446,13 @@ void ratvec_unary_eq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(v->val.isZero()));
+  push_value(whether(v->val.is_zero()));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(not v->val.isZero()));
+  push_value(whether(not v->val.is_zero()));
 }
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector w=get<rational_vector_value>();
@@ -4044,6 +4069,8 @@ install_function(string_concatenate_wrapper,"##","(string,string->string)");
 install_function(concatenate_strings_wrapper,"##","([string]->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
+install_function(readline_completions_wrapper,@|"readline_completions",
+   "(string->[string])");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
@@ -4806,9 +4833,9 @@ install_function(diagonal_wrapper,"diagonal","(vec->mat)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
-install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
+install_function(swiss_matrix_knife_wrapper,@|"swiss_matrix_knife"
     ,"(int,mat,int,int,int,int->mat)");
-install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
+install_function(swiss_matrix_knife_wrapper,@|"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
 install_function(gcd_wrapper,"gcd","(vec->int)");

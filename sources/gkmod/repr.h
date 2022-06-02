@@ -1,7 +1,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009-2020 Marc van Leeuwen
+  Copyright (C) 2009-2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -30,6 +30,7 @@
 #include "kgb.h"
 #include "subsystem.h"
 #include "polynomials.h"
+#include "K_repr.h"  // |K_type|, |K_type_pol|
 
 namespace atlas {
 
@@ -49,13 +50,13 @@ class common_context;
   by this relation. The difference $\gamma-\lambda_0$, i.e., the projection of
   $\gamma$ on the $-1$-eigenspace, is called $\nu$. This $\nu$ is the
   information one is adding here with respect to the values encoded in the
-  |standardrepk::StandardRepK| type. The part of $\tilde\lambda$ that is
-  independent of $\lambda_0$ is its "torsion part" (due to the disconnectedness
-  of $H(R)_c$), which would be represented in the |Block| structure by the
-  |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$). In fact
-  we also convert it internally to a |TorusPart| here, called |y_bits|. It
-  represents an element of the quotient of $(X^*)^{-\theta}$ by the image
-  $(1-\theta)X^*$; from it we can recover $\tilde\lambda-\lambda_0$, using
+  |K_repr::K_type| type. The part of $\tilde\lambda$ that is independent of
+  $\lambda_0$ is its "torsion part" (due to the disconnectedness of $H(R)_c$),
+  which would be represented in the |Block| structure by the |TorusPart|
+  component of the |TitsElt| of the dual KGB-element ($y$). In fact we also
+  convert it internally to a |TorusPart| here, called |y_bits|. It represents an
+  element of the quotient of $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$;
+  from it we can recover $\tilde\lambda-\lambda_0$, using
   |involutions::InvolutionTable::unpack|.
 
   In principle $\gamma$ could take any complex values compatible with
@@ -97,6 +98,9 @@ class StandardRepr
   const TorusPart& y() const { return y_bits; }
   unsigned int height() const { return hght; }
 
+  // precomputed height is first criterion for ordering
+  // therefore comparison involves no further |Rep_context| dependency
+  bool operator<(const StandardRepr&) const;
   bool operator==(const StandardRepr&) const;
 
 // special members required by HashTable
@@ -135,7 +139,8 @@ class StandardReprMod
     (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
   KGBElt x() const { return x_part; }
-  RatWeight gamma_lambda() const { return gamlam; }
+  RatWeight gamma_lambda() const & { return gamlam; }
+  RatWeight&& gamma_lambda() && { return std::move(gamlam); }
 
   // since pseudo constructors map |rgl| to fundamental domain, equality is easy
   bool operator==(const StandardReprMod& other) const
@@ -190,6 +195,11 @@ class Rep_context
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
+  K_repr::K_type sr_K(KGBElt x, Weight lambda_rho) const; // 2nd by value
+  K_repr::K_type sr_K(const StandardRepr& sr) const // restriction to K
+  { return {sr.x(),lambda_rho(sr),sr.height()}; }
+  Weight theta_plus_1_lambda (const K_repr::K_type& t) const;
+
   RatWeight gamma // compute (representative of) infinitesimal character
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const;
   StandardRepr sr_gamma // use this one when infinitesimal character is known
@@ -206,17 +216,63 @@ class Rep_context
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
 
-  StandardRepr
-    sr(const standardrepk::StandardRepK& srk,
-       const standardrepk::SRK_context& srkc,
-       const RatWeight& nu) const;
+  StandardRepr sr (const K_repr::K_type& t) const
+  { return sr(t.x(),t.lambda_rho(),RatWeight(t.lambda_rho().size())); }
 
-  // component extraction
+  // Handling of |K_repr::K_type| values
+
+  bool is_standard  // whether $(1+\theta)*\lambda| is imaginarily dominant
+    (const K_repr::K_type& z) const;
+  bool is_dominant  // whether $(1+\theta)*\lambda| is dominant
+    (const K_repr::K_type& z) const;
+  bool is_canonical // whether involution is canonical one for the Cartan class
+    (const K_repr::K_type& z) const;
+  bool is_theta_stable // absence of complex descents (theta-stable parabolic)
+    (const K_repr::K_type& z) const;
+  bool is_nonzero  // absence of singular compact simply-imaginary roots
+    (const K_repr::K_type& z) const;
+  bool is_semifinal  // absence of real parity roots
+    (const K_repr::K_type& z) const;
+  // call next predicate only for standard, dominant, nonzero, semifinal |z|
+  bool is_normal // absence of singular complex descents
+    (const K_repr::K_type& z) const; // complex simple witness
+  bool is_final // standard, dominant, no singular descents of any kind
+    (const K_repr::K_type& z) const;
+  bool equivalent(K_repr::K_type z0, K_repr::K_type z1) const; // by value
+
+  // "standard" (|lambda| is dominant for imaginary coroots) is assumed here
+
+  // ensure that |(1+theta)*lambda| is dominant also for complex coroots
+  void make_dominant (K_repr::K_type& z) const;
+  // exhaust simple complex descents for the involution
+  void make_theta_stable (K_repr::K_type& z) const;
+  // make the involution the preferred one for the Cartan class
+  void to_canonical_involution (K_repr::K_type& z, RankFlags gens) const;
+  void to_canonical_involution (K_repr::K_type& z) const
+  { return to_canonical_involution
+      (z,RankFlags(constants::lMask[root_datum().semisimple_rank()])); }
+  void normalise(K_repr::K_type& z) const; // which ensures a normalised form
+
+  simple_list<std::pair<K_repr::K_type,int> >
+    finals_for(K_repr::K_type t) const;
+
+  // conservative estimate for lowest height that can be obtained from |lambda|
+  level height_bound(RatWeight lambda) const; // "projecting to dominant cone"
+  // apart from producing a result, these two methods also make |t| theta-stable
+  sl_list<K_repr::K_type> KGP_set (K_repr::K_type& t) const;
+  K_repr::K_type_pol K_type_formula (K_repr::K_type& t,level cutoff) const;
+  K_repr::K_type_pol K_type_formula (SRK_context& srk, // for pruning
+				     K_repr::K_type& t,level cutoff) const;
+  K_repr::K_type_pol branch(K_repr::K_type_pol P, level cutoff) const;
+  K_repr::K_type_pol branch(SRK_context& srk, // use projections for pruning
+			    K_repr::K_type_pol P, level cutoff) const;
+
+  // parameter component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
 
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
-  { return rho(root_datum()).normalize()+lambda_rho(z); }
+  { return rho(root_datum())+lambda_rho(z); }
   RatWeight gamma_lambda
     (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
   RatWeight gamma_lambda(const StandardRepr& z) const
@@ -252,20 +308,21 @@ class Rep_context
 
   RatWeight gamma_lambda(const StandardReprMod& z) const
   { return z.gamma_lambda(); }
+  RatWeight&& gamma_lambda(StandardReprMod&& z) const
+  { return std::move(z).gamma_lambda(); }
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
 
-  // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
-    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+    (const StandardRepr& z) const; // simply-imaginary witness
   bool is_dominant  // whether |gamma| is dominant
-    (const StandardRepr& z, RootNbr& witness) const; // simple witness
+    (const StandardRepr& z) const; // simple witness
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
-    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+    (const StandardRepr& z) const; // simply-imaginary witness
   bool is_normal // whether |z==normalise(z)|: has no singular complex descents
-    (const StandardRepr& z) const; // complex simple witness
+    (const StandardRepr& z) const;
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
-    (const StandardRepr& z, RootNbr& witness) const; // singular real witness
+    (const StandardRepr& z) const; // singular real witness
   bool is_final // dominant nonzero without singular descents: all of the above
     (const StandardRepr& z) const;
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
@@ -286,7 +343,8 @@ class Rep_context
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
-  StandardRepr scale_0(StandardRepr sr) const; // |sr| by value
+  K_repr::K_type scale_0(const StandardRepr& sr) const
+  { return sr_K(sr); } // used to return |StandardRepr|, now is just an alias
 
   RatNumList reducibility_points(const StandardRepr& z) const; // normalised
 
@@ -299,74 +357,46 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  struct compare
-  {
-    bool operator()(const StandardRepr& r,const StandardRepr& s) const;
-  }; // |compare|
-
-  using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
+  using poly = Free_Abelian<StandardRepr,Split_integer>;
 
   poly scale(const poly& P, const RatNum& f) const;
-  poly scale_0(const poly& P) const;
+  K_repr::K_type_pol scale_0(const poly& P) const;
 
-  sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
-    (StandardRepr z) const; // by value
+  simple_list<std::pair<StandardRepr,int> >
+    finals_for (StandardRepr z) const; // like |finals_for| K-type (by value)
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
+
  private:
+  // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
+  int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
+  RankFlags singular_simples (const StandardRepr& z) const;
+  WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
-  void singular_cross (weyl::Generator s,StandardRepr& z) const;
+  void complex_crosses (StandardRepr& z, const WeylWord& ww) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
-  unsigned int height(Weight theta_plus_1_gamma) const;
+  level height(Weight theta_plus_1_gamma) const;
+
+  K_repr::K_type_pol monomial_product
+    (const K_repr::K_type_pol& P, const Weight& e) const;
 }; // |Rep_context|
 
-using SR_poly = Rep_context::poly;
-
-
-class K_type // compact representation of parameters at $\nu=0$
-{
-  KGBElt d_x;
-  Weight lam_rho;
-
-public:
-  K_type(const Rep_context& rc, const StandardRepr& sr)
-    : d_x(sr.x()), lam_rho(rc.lambda_rho(sr)) {}
-
-  K_type(K_type&&) = default;
-
-  KGBElt x () const { return d_x;  }
-  const Weight& lambda_rho () const { return lam_rho; }
-
-  StandardRepr sr (const Rep_context& rc) const // represent as full parameter
-  { return rc.sr(d_x,lam_rho,RatWeight(lam_rho.size())); }
-
-  bool operator< (const K_type& another) const
-  {
-    if (d_x!=another.d_x)
-      return d_x<another.d_x;
-    assert(lam_rho.size()==another.lam_rho.size()); // this is always assumed
-    for (unsigned i=0; i<lam_rho.size(); ++i)
-      if (lam_rho[i]!=another.lam_rho[i])
-	return lam_rho[i]<another.lam_rho[i];
-    return false; // we found equality
-  }
-
-  using Pooltype = std::vector<K_type>;
-  bool operator!= (const K_type& another) const
-  { return d_x!=another.d_x or lam_rho!=another.lam_rho; }
-  size_t hashCode (size_t modulus) const
-  {
-    size_t h = 3*d_x;
-    for (auto c : lam_rho)
-      h = (17*h&(modulus-1)) + c;
-    return h&(modulus-1);
-  }
-}; // |class K_type|
+/* In internal computations for deformation, it will be important to have a
+   quite compact representation of (twisted) deformation formulas. To this end
+   we shall make (inside a |Rep_table|) a table of K-types encountered (the
+   number of possible K-types for a given real form is fairly limited), and
+   represent linear coefficients as a map from such K-types to the ring of
+   coefficients (in practice |Split_integer|). Moreover, for storing formulas as
+   collections of key-value pairs, we wish to avoid using the |Free_Abelian|
+   container, derived from |std::map| which requires a lot of additional memory
+   per node stored, preferring to it our tailor made |Free_Abelian_light| which
+   has no per-node memory overhead.
+*/
 
 using K_type_nr = unsigned int; // hashed in |Rep_table| below
-
-using K_term_type = std::pair<K_type_nr,Split_integer>;
 using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*
@@ -451,8 +481,8 @@ class Rep_table : public Rep_context
   Reduced_param::Pooltype reduced_pool;
   HashTable<Reduced_param,unsigned long> reduced_hash;
 
-  K_type::Pooltype K_type_pool;
-  HashTable<K_type,K_type_nr> K_type_hash;
+  K_repr::K_type::Pooltype K_type_pool;
+  HashTable<K_repr::K_type,K_type_nr> K_type_hash;
 
   PosPolEntry::Pooltype KL_poly_pool;
   KL_hash_Table KL_poly_hash;
@@ -490,10 +520,11 @@ class Rep_table : public Rep_context
   size_t match_reduced_hash(const StandardReprMod& srm)
   { return reduced_hash.match(Reduced_param(*this,srm)); }
 
-  StandardRepr K_type_sr(K_type_nr i) { return K_type_pool[i].sr(*this); }
+  K_repr::K_type stored_K_type(K_type_nr i) const
+  { return K_type_pool[i].copy(); }
 
-  // a signed multiset of final parameters needed to be taken into account
-  // (deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
+  // a signed multiset of final parameters needed to be considered (i.e., their
+  // deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
      const RatWeight& diff, const RatWeight& gamma);
@@ -525,18 +556,6 @@ class Rep_table : public Rep_context
 }; // |Rep_table|
 
 
-// a slight extension of |Rep_context|, fix |delta| for extended representations
-class Ext_rep_context : public Rep_context
-{
-  const WeightInvolution d_delta;
-public:
-  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
-  Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
-
-  const WeightInvolution& delta () const { return d_delta; }
-
-}; // |class Ext_rep_context|
-
 // another extension of |Rep_context|, fix integral system for common block
 class common_context
 {
@@ -564,43 +583,49 @@ public:
     status(weyl::Generator s, KGBElt x) const;
   bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
 
-  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
-			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
-
 }; // |class common_context|
 
 /*
-  This class is for |paramin| below what |ext_block::context| is for
-  |ext_block::param|: it holds relevant values that remain fixed across an
-  |extended block|. Data fields that are removed with respect to
-  |ext_block::param| are |d_gamma|, |lambda_shifts|. Methods that are absent:
-  |gamma|, |lambda_shift|
+  This class holds relevant values that remain fixed across an extended block,
+  and are unchaged under integral changes to |gamma|. Data fields that are
+  removed with respect to |ext_block::context| are |d_gamma|, |lambda_shifts|.
+  Methods that are absent: |gamma|, |lambda_shift|
 */
-class Ext_common_context : public common_context
+class Ext_rep_context
 {
+  const Rep_context& rep_con;
   const WeightInvolution d_delta;
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
-  RootNbrSet delta_fixed_roots;
-  weyl::Twist twist;
-  int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
+  RootNbrSet delta_fixed_roots; // as subset of full root system
+  weyl::Twist twist; // of the full Dynkin diagram
 
  public:
-  Ext_common_context (const Rep_context& rc, const WeightInvolution& delta,
-		      const SubSystem& integral_subsystem);
+  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  Ext_rep_context (const Rep_context& rc, const WeightInvolution& delta);
 
   // accessors
+  const Rep_context& rc() const { return rep_con; }
   const WeightInvolution& delta () const { return d_delta; }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
-  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
+  const RootDatum& root_datum () const { return rep_con.root_datum(); }
+  const InnerClass& inner_class() const { return rep_con.inner_class(); }
+  RealReductiveGroup& real_group() const { return rep_con.real_group(); }
+  const RatCoweight& g_rho_check() const { return rep_con.g_rho_check(); }
+  RatWeight gamma_lambda(const StandardReprMod& z) const
+  { return rep_con.gamma_lambda(z); }
+
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const // |pos_to_neg| by value
+  { return rep_con.to_simple_shift(theta,theta_p,pos_to_neg); }
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
-}; // |Ext_common_context|
+}; // |Ext_rep_context|
 
 // 				Functions
 
@@ -614,6 +639,8 @@ Weight Cayley_shift (const InnerClass& G,
 
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
+
+K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P);
 
 } // |namespace repr|
 

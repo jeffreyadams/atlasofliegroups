@@ -163,21 +163,17 @@ set sort_by ((ratvec,[vec]->int) f) = ([ratvec,[vec]] v) [ratvec,[vec]]:
 
 
 
-{for use in K_norm.at: sorting of KParams}
-set sort_by ( ( (KGBElt,ratvec) -> int) f ) =
-  ([KGBElt,ratvec] v) [KGBElt,ratvec]:
+{ for use in K.at: sorting of [KType] }
+set sort_by ( (KType->int) f ) = ([KType] v) [KType]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
+set sort_by ( (Split,KType->int) f) = ([(Split,KType)] v) [(Split,KType)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-{ for use in K_norm.at, sorting of KParamPol }
-set sort_by ( (Split,(KGBElt,ratvec)->int) f) =
-  ([(Split,(KGBElt,ratvec))] v) [(Split,(KGBElt,ratvec))]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 { one more, used in combinatorics.at }
 set sort_by ( (int,bool->int) f) =
@@ -206,12 +202,15 @@ set sort_by_reducibility_points = ([(Param,bool)]->[(Param,bool)]):
 set sort_by_reducibility = ([Param]->[Param]):
   sort_by((Param p) int: #reducibility_points(p) )
 
-{ Sort list of parameters by height }
+{ Sort list of K-type or parameters by height }
+set sort_by_height = ([KType] -> [KType]): sort_by( height@KType )
 set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
 
-{ Same for a list of parameters with a Split attached (ignored for sorting) }
+{ Same with a Split attached , which is ignored for sorting }
+set sort_by_height = ([(Split,KType)] -> [(Split,KType)]):
+  sort_by( (Split .,KType t) int: height(t) )
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
- sort_by( (Split s,Param p) int: height(p) )
+  sort_by( (Split .,Param p) int: height(p) )
 
 { sorting fixed size vectors lexicographically }
 set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }

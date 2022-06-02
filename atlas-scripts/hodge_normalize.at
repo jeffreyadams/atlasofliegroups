@@ -26,7 +26,7 @@ gamma=infinitesimal character
 alpha: simple complex root
 beta=theta_x(alpha)
 nu=0 => <gamma,beta^v>=<gamma,alpha^v>
-Suppose: <gamma,alpha^v><=0 
+Suppose: <gamma,alpha^v><=0
   alpha simple, complex root (not necessarily integral)
 
 a) If theta_x(alpha)<0 (alpha is a complex descent) then
@@ -76,14 +76,14 @@ if is_descent(i,p.x)
 elif is_ascent(i,p.x) and n=0
   then [([1],p)]
 else {is_ascent(i,p.x) and n>0, the complicated formula}
-let rv=[(vee,q)] in 
+let rv=[(vee,q)] in
   for k:n\2 from 1 do let
    f=poly_plus(vee^tau(n,k),[-1])  in {f=(v^2-1) except in special case k=n/2: f=(v-1)}
    if hodge_normalize_verbose then
     prints("q.x=",q.x, new_line, "q.lambda=",q.lambda, new_line, "alpha=",alpha);
     prints("k=",k, " f=");printPoly(f)
    fi;
-   rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu)) 
+   rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu))
   od;
  rv
 fi
@@ -141,7 +141,7 @@ fi
 set hodge_reflection(Param p, int i)=
 assert(is_complex(i,p.x) or is_imaginary(p.root_datum.simple_roots[i],p.x),
 "root is not complex or imaginary");
-if is_complex(i,p.x) then  hodge_reflection_complex(p,i) 
+if is_complex(i,p.x) then  hodge_reflection_complex(p,i)
 else hodge_reflection_imaginary(p,i) fi
 
 {apply reflection #root_number to term #index}
@@ -175,18 +175,11 @@ let rec_fun f ([(vec,Param)] R)=[(vec,Param)]:
  in f(Q)
 
 {main version: return hodgeParamPol}
-set hodge_normalize([(vec,Param)] Q)=hodgeParamPol:
-let R=hodge_normalize_0(Q) in
-assert(let (normal,,)=is_normal(R) in normal,"R is not normal");
-dearrange(R)
+set hodge_normalize([(vec,Param)] Q,RealForm G) = hodgeParamPol:
+   let R=hodge_normalize_0(Q) in
+   assert(let (normal,,)=is_normal(R) in normal,"R is not normal");
+   dearrange(R,G)
 
-set hodge_normalize_0(Param p)=[(vec,Param)]:hodge_normalize_0([([1],p)])
-set hodge_normalize(Param p)=hodgeParamPol:hodge_normalize([([1],p)])
-
-
-
-
-
-
-
-
+set hodge_normalize_0 (Param p) = [(vec,Param)]: hodge_normalize_0([([1],p)])
+set hodge_normalize (Param p) = hodgeParamPol:
+   hodge_normalize([([1],p)],p.real_form)

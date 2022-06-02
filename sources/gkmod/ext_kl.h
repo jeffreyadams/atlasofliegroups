@@ -114,12 +114,12 @@ class KL_table
   std::unique_ptr<IntPolEntry::Pooltype> own; // to |storage_pool| if we own
   const IntPolEntry::Pooltype& storage_pool; // the distinct actual polynomials
 
-  using KLColumn = std::vector<kl::KLIndex>;
+  using KLColumn = std::vector<ext_kl::KLIndex>;
   std::vector<KLColumn> column; // columns are lists of polynomial pointers
 
   // the constructors will ensure that |storage_pool| contains 0, 1 at beginning
   enum { zero = 0, one  = 1 }; // indices of polynomials 0,1 in |storage_pool|
-  // use |enum| rather than |static constxepr kl::KLIndex|: avoid any references
+  // use |enum| rather than |static constxepr ext_kl::KLIndex|: avoid references
 
  public:
   KL_table(const ext_block::ext_block& b, ext_KL_hash_Table* poly_hash);
@@ -136,7 +136,7 @@ class KL_table
   unsigned l(BlockElt y, BlockElt x) const { return aux.block.l(y,x); }
 
   const IntPolEntry::Pooltype& polys() const { return storage_pool;}
-  std::pair<kl::KLIndex,bool> KL_pol_index(BlockElt x, BlockElt y) const;
+  std::pair<ext_kl::KLIndex,bool> KL_pol_index(BlockElt x, BlockElt y) const;
 
   // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   Pol P(BlockElt x, BlockElt y) const;
@@ -157,7 +157,7 @@ class KL_table
   Poly_hash_export polynomial_hash_table ();
   void swallow (KL_table&& sub, const BlockEltList& embed);
  private:
-  using PolHash = HashTable<IntPolEntry,kl::KLIndex>;
+  using PolHash = HashTable<IntPolEntry,ext_kl::KLIndex>;
   void fill_column(BlockElt y,PolHash& hash);
 
   // component of basis element $a_x$ in product $(T_s+1)C_{sy}$

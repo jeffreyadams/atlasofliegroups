@@ -41,7 +41,8 @@
 	(types '("int" "rat" "string" "bool" "void"
 		 "vec" "mat" "ratvec"
 		 "LieType" "RootDatum" "InnerClass" "RealForm"
-		 "CartanClass" "KGBElt" "Block" "Param" "Split" "ParamPol"))
+		 "CartanClass" "KGBElt" "Block"
+		  "Split" "KType" "KTypePol" "Param" "ParamPol"))
 	)
     (list (regexp-opt keywords 'words)
 	  (cons (regexp-opt types 'words) 'font-lock-type-face)

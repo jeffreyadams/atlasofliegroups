@@ -122,20 +122,26 @@ template<typename T, typename C, typename Compare>
   This should save quite a bit of space when |T| is a small type, but costs a
   bit of complexity if small insertions are frequent. To alleviate this burden,
   term insertions that are not matched (so would produce a fresh term) are
-  stored in a temporary |containers::sl_list| that will be merge into to main
+  stored in a temporary |containers::sl_list| that will be merged into to main
   vector once it gets large relative to the square root of the size of the main
-  vector; thus insertion costs are amorised square root of the size per element
+  vector; thus insertion costs are amortised square root of the size per element
   at worst. Term deletions, assumed rare, are performed on the vector directly.
 */
 template<typename T, typename C, typename Compare>
   class Free_Abelian_light
   : private Compare // derived to allow for Empty Base Optimization
 {
-  using term_type = std::pair<T,C>;
   using self = Free_Abelian_light<T,C,Compare>;
+
+public:
+  using term_type = std::pair<T,C>;
   using poly = std::vector<term_type>;
   using poly_list = containers::simple_list<poly>;
 
+  using value_type = term_type;
+  using size_type = std::size_t;
+
+private:
   poly_list L; // list by decreasing length, at least halving each time
 
 public:
@@ -154,7 +160,8 @@ explicit
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
   Free_Abelian_light(T&& p,C m, Compare c=Compare()); // mononomial
 
-  Free_Abelian_light(poly&& vec, Compare c=Compare()); // sanitise; singleton
+  // sanitise, buid singleton |L|; |do_sort| says whether sorting is needed
+  Free_Abelian_light(poly&& vec,bool do_sort, Compare c=Compare());
 
   // construct from another aggregate of (monomial,coefficient) pairs
   template<typename InputIterator> // iterator over (T,coef_t) pairs
@@ -209,23 +216,35 @@ explicit
 
   C operator[] (const T& t) const; // find coefficient of |t| in |*this|
   void clear_coefficient (const T& t); // remove |t| by clearing its coefficient
-  void set_coefficient (const T& t, C m); // make coefficient of |t| become |m|
+  void set_coefficient (T t, C m); // make coefficient of |t| become |m|
 
   bool is_zero () const { return begin()==end(); } // this ignores zeros
-  size_t size() const // only provides upper bound: zero terms are not ignored
+  const term_type& front() const { return *begin(); } // undefined if |is_zero|
+
+  size_type size() const // only gives upper bound: zero terms are not ignored
   { size_t s=0;
-    for (auto it = L.wbegin(); not L.at_end(it); ++it) s += it->size();
+    for (auto it = L.wcbegin(); it != L.wcend(); ++it) s += it->size();
     return s;
   }
 
+  size_type count_terms() const // return true number of (nonzero) terms held
+  {
+    size_t count=0;
+    auto nonzero =  [](const term_type& t) { return not t.second.is_zero(); };
+    for (auto it = L.wcbegin(); it != L.wcend(); ++it)
+      count += std::count_if(it->begin(),it->end(), nonzero);
+    return count;
+  }
   self flatten () && // transform into single-poly form without zeros
   {
     poly result; result.reserve(size());
     for (auto it=begin(); not it.has_ended(); ++it)
       result.push_back(std::move(*it));
-    return { std::move(result), cmp() }; // transform |poly| into |self|
+    return { std::move(result), false, cmp() }; // transform |poly| into |self|
   }
 
+  // for each |poly| in |L|, keep current and end iterators
+  // also maintain iterator |min| to minimum term in this and further |poly|s
   struct triple
   { using iter = typename poly::iterator;
     using citer = typename poly::const_iterator;
@@ -263,7 +282,7 @@ explicit
   private:
     bool pop(typename triplist::iterator top);
     void skip_zeros(); // advance until no longer pointing at zero term
-    }; // |class const_iterator|
+  }; // |class const_iterator|
 
   class const_reverse_iterator
     : public std::iterator<std::forward_iterator_tag, term_type>
@@ -312,7 +331,7 @@ explicit
     term_type* operator->() const { return &operator*(); }
     reverse_iterator& operator++()
     { const_reverse_iterator::operator++(); return *this; }
-  }; // |struct iterator|
+  }; // |struct reverse_iterator|
 
   iterator begin(); // set up initial iterator and |skip_zeros|
   const_iterator begin() const { return const_cast<self*>(this)->begin(); }
@@ -325,10 +344,12 @@ explicit
   reverse_iterator rend() { return {triplist(),cmp()}; } // with empty |stack|
   const_reverse_iterator rend() const { return {triplist(),cmp()}; }
 
- private:
+  void erase (iterator it) { it->second=C(0); }
+
+private:
   C* find(const T& e); // point to coefficient of term of |e|, or |nullptr|
   const C* find(const T& e) const; // |const version|, returns ptr to |const|
-  void insert(poly&& v); // incorporate |v|, which has all disjoint exponents
+  void insert(poly&& v); // add sorted |v| with exponents disjoint from |*this|
 
 }; // |class Free_Abelian_light|
 

@@ -83,9 +83,9 @@ let (f,)=r[i] in f fi
 
 {go other way:
  given f_0(v)p_0 + ... + f_r(v) p_r, take it to ([P_0,...,P_m],n)
-} 
+}
 set dearrange([(i_laurent_poly,Param)] pairs,RealForm G)=hodgeParamLaurentPol:
-if =#pairs then nullHodgeParamLaurentPol(G) else 
+if =#pairs then nullHodgeParamLaurentPol(G) else
 let pairs_0=[((i_poly,Param),int)]:for (f,p) in pairs do  {(f,p)=(i_laurent_poly,Param), f=(i_poly,int)}
  let (g,shift_f)=f   {(g,shift_f)=(i_poly,int)}
                      {(g,p)=(i_poly,Param), can apply dearrange from hodgeParamPol.at
@@ -97,8 +97,8 @@ pairs=for ((f,p),n) in pairs_0 do     {max_negative_shift<= n, i.e. n-max_negati
   assert(d>=0,"d is negative");
   ((null(d)##f,p),max_negative_shift) od   {equivalent, and all terms have same shift (second component)}
 in                                         {pairs = [((f,p),max_negative_shift)] f is an i_poly}
-let d=dearrange(for ((f,p),) in pairs do (f,p) od) {d=hodgeParamPol}
-in (d,max_negative_shift) 
+let d=dearrange(for ((f,p),) in pairs do (f,p) od,G) {d=hodgeParamPol}
+in (d,max_negative_shift)
 fi
 
 {set *(i_laurent_poly f,Param p)=hodgeParamLaurentPol: dearrange([(f,p)],p.real_form)}
@@ -185,13 +185,6 @@ p.lambda.to_string,
 p.nu.to_string] od in
 tabulate(header#values)
 
-set hodge_print(hodgeParamPol P)=void:show(P)
-set hodge_print([(vec,Param)] P)=void:show(dearrange(P))
-set hodge_print([(vec,K_Type)] P)=void:show(dearrange(P))
-
-set hodge_print_long(hodgeParamPol P)=void:show_long(P)
-set hodge_print_long([(vec,Param)] P)=void:show_long(dearrange(P))
-set hodge_print_long([(vec,K_Type)] P)=void:show_long(dearrange(P))
 
 {
 set G=SL(2,R)
@@ -296,4 +289,3 @@ set show_long([Param] b,hodgeParamLaurentPol hplp) =void:
    laurent_poly_format(f,"v"),
    "[" +  string_m + "]"]
    od)
-
