@@ -1,0 +1,312 @@
+{Let G be a complex reductive algebraic group and let O be a rigid nilpotent G-orbit. In "Unipotent Ideals and HC Bimodules", the authors
+define a maximal primitive ideal I(O) in U(g). Let gamma be the infinitesimal character of I(O) and let d=dim(O). The `rigid datum' associated
+to O is the pair (gamma,d). The purpose of this file is to define a function rigid_data(G) which generates a list 
+of all rigid data for a given group G. The group G is entered as a root datum and the rigid data are returned as pairs (ratvec,int). We note that 
+the set of rigid data includes the special unipotent infinitesimal characters hv/2 for some (but not all!) distinguished nilpotent Gv-orbits, along
+with some additional infinitesimal characters (such as the infinitesimal character of the Joseph ideal) which do not arise via the hv/2 construction.
+
+The construction of rigid_data(G) reduces to the case when G has a simple derived subgroup. In this case, Der(G) is either classical or exceptional.
+In the classical case, the rigid nilpotent orbits are enumerated using a well-known condition on the corresponding partitions (see e.g. Collingwood-McGovern, Sec 7), and
+the corresponding infinitesimal characters can be computed from the partitions using the algorithm appearing in "Unipotent Ideals and HC Bimodules", Sec 8. 
+In the exceptional case, a complete list of rigid data can be found in "Unipotent Ideals for Spin and Exceptional Groups".}
+
+<basic.at
+<partitions.at {for paritions(n) and some related functions}
+<ratmat.at {for rational_inverse}
+<simple_factors.at
+
+
+{Create new data type for pairs rigid data}
+
+set_type rigid_datum=(ratvec infl_char,int dimension)
+
+{~~Partition combinatorics~~}
+
+{ Define the function \rho^+(p) defined in "Unipotent Ideals and HC Bimodules", Def 8.2.1: for each part p[i]
+append the positive elements of [(p[i]-1)/2, (p[i]-3)/2, ..., (1-p[i])/2] and then zeroes as needed
+so there are floor(|p|/2) entries}
+
+set inflchar_int(int N) = ratvec:
+let n=floor(N/2) in
+for i:n do (N-1)/2-i od 
+
+set inflchar_no_padding(Partition p)=ratvec:
+let n=floor(sum(p)/2) in
+##for j in p do inflchar_int(j) od
+
+set inflchar(Partition p)=ratvec:
+let n=floor(sum(p)/2), lambda=inflchar_no_padding(p) in
+##(lambda,null(n-#lambda))   
+
+
+{ Count indices i such that p[i]>p[i+1]+1 }
+
+set two_jumps(Partition p)=int:
+let q=#(p,0) in
+sum(for j:#p do #(q[j]>q[j+1]+1) od)
+
+
+{ Count even parts of p which occur with multiplicity exactly 2 }
+
+set even_mult_two(Partition p)=int:
+let q=transpose(p) then
+ r=#(q,0) in
+sum(for j:#r-1 do #(r[j]=r[j+1]+2 and is_odd(j)) od)
+
+{ Count odd parts of p which occur with multiplicity exactly 2 }
+
+set odd_mult_two(Partition p)=int:
+let q=transpose(p) then
+r=#(q,0) in
+sum(for j:#r-1 do #(r[j]=r[j+1]+2 and is_even(j)) od)
+
+{ Count all odd parts of p }
+
+set odd_parts(Partition p)=int:
+sum(for j in p do #(is_odd(j)) od)
+
+{ Sum of squares of parts of a partition }
+
+set sum_of_squares(Partition p)=int:
+sum(for j in p do j*j od)
+
+
+
+{~~Type A functions~~}
+
+set rigid_data_A(RootDatum rd) = [rigid_datum]:
+[(rd.rho,0)]
+
+
+{~~Type C functions~~}
+
+{Dimension of nilpotent orbit corresponding to an arbitrary C-partition}
+
+set dim_C(Partition p) = int:
+let q=transpose(p), n=floor(sum(p)/2) in
+floor(2*n*n+n-(1/2)*(sum_of_squares(q)+odd_parts(p)))
+
+
+{Decide whether a given C-partition corresponds to a rigid nilpotent orbit. Condition is given in
+Collingwood-McGovern, Cor 7.3.5: no two-jumps and no even parts with multiplicity exactly two}
+
+set is_rigid_C(Partition p) = bool:
+if two_jumps(p)=0 and even_mult_two(p)=0 then true else false fi
+
+{ Generate list of rigid C-partitions of 2n}
+
+set rigid_partitions_C(int n) = [Partition]:
+let all_p = partitions(2*n), output=[[int]]:[] in
+for p in all_p do if is_valid("C",p) and is_rigid_C(p) then output:=#(output,p)
+else output:=output fi od; output
+
+{ Define operation f_C from "Unipotent Ideals and HC Bimodules", Def 8.2.2: for every even i with 
+q_i \geq q_{i+1}+2, move one box from q_i to q_{i+1} and then add a single box to q_1 }
+
+set f_C(Partition p) = Partition:
+let q=#(p,0), output=[] in
+for i:#q do if i=0 then output:=#(output,q[0]+1) else 
+if is_odd(i) and i<#q-1 and q[i]>q[i+1]+1 then output:=#(output,q[i]-1) else
+if is_even(i) and q[i-1]>q[i]+1 then output:=#(output,q[i]+1) else
+output:=#(output,q[i]) fi fi fi od; output 
+
+{ Produce unipotent infinitesimal character attached to nilpotent orbit corresponding to a C-partition p,
+see Prop 8.2.3 in "Unipotent Ideals and HC Bimodules". Note: output is only sensible if partition 
+is C-partition and orbit is rigid, but these conditions are not checked}
+
+set rigid_infl_char_C(Partition p) = ratvec:
+inflchar(f_C(transpose(p)))
+
+{ Produce a list of all rigid data for Sp(2n). Infl chars are expressed in standard Sp(2n) coordinates}
+
+set rigid_data_C_std(int n) = [rigid_datum]:
+let all_rigid=rigid_partitions_C(n) in
+for p in all_rigid do (rigid_infl_char_C(p),dim_C(p)) od
+
+{Produce a list of all rigid data for a group G with simple derived group of type C. Infl chars are expressed
+in atlas coordinates for G}
+
+set rigid_data_C(RootDatum rd)=[rigid_datum]:
+let n=semisimple_rank(rd) then
+order=test_simple_type("C",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(Sp(2*n))) in
+for x in rigid_data_C_std(n) do (M*infl_char(x),dimension(x)) od
+
+
+{~~Type B/D functions~~}
+
+set dim_B(Partition p) = int:
+let q=transpose(p), n=floor(sum(p)/2) in
+floor(2*n*n+n-(1/2)*(sum_of_squares(q)-odd_parts(p)))
+
+set dim_D(Partition p) = int:
+let q=transpose(p), n=floor(sum(p)/2) in
+floor(2*n*n-n-(1/2)*(sum_of_squares(q)-odd_parts(p)))
+
+{Decide whether a given B/D-partition corresponds to a rigid nilpotent orbit. Condition is given in
+Collingwood-McGovern, Cor 7.3.5: no two-jumps and no odd parts with multiplicity exactly two}
+
+set is_rigid_BD(Partition p) = bool:
+if two_jumps(p)=0 and odd_mult_two(p)=0 then true else false fi
+
+
+{ Generate list of rigid B-partitions of 2n+1}
+
+set rigid_partitions_B(int n) = [Partition]:
+let all_p = partitions(2*n+1), output=[[int]]:[] in
+for p in all_p do if is_valid("B",p) and is_rigid_BD(p) then output:=#(output,p)
+else output:=output fi od; output
+
+{ Generate list of rigid D-partitions of 2n}
+
+set rigid_partitions_D(int n) = [Partition]:
+let all_p = partitions(2*n), output=[[int]]:[] in
+for p in all_p do if is_valid("D",p) and is_rigid_BD(p) then output:=#(output,p)
+else output:=output fi od; output
+
+
+{ Define operation f_BD from "Unipotent Ideals and HC Bimodules", Def 8.2.2: for every odd i with
+q_i \geq q_{i+1}+2, move one box from q_i to q_{i+1}}
+
+set f_BD(Partition p) = Partition:
+let q=#(p,0), output=[] in
+for i:#q do if is_even(i) and i<#q-1 and q[i]>q[i+1]+1 then output:=#(output,q[i]-1) else
+if is_odd(i) and q[i-1]>q[i]+1 then output:=#(output,q[i]+1) else
+output:=#(output,q[i]) fi fi od; output
+
+{ Produce unipotent infinitesimal character attached to nilpotent orbit corresponding to a B/D-partition p,
+see Prop 8.2.3 in "Unipotent Ideals and HC Bimodules". Note: output is only sensible if partition
+is B/D-partition and orbit is rigid, but these conditions are not checked}
+
+set rigid_infl_char_BD(Partition p) = ratvec:
+inflchar(f_BD(transpose(p)))
+
+{ Produce a list of all rigid data for SO(2n+1). Infl chars are expressed in standard SO(2n+1) coordinates}
+
+set rigid_data_B_std(int n) = [rigid_datum]:
+let all_rigid=rigid_partitions_B(n) in
+for p in all_rigid do (rigid_infl_char_BD(p),dim_B(p)) od
+
+{ Produce a list of all rigid data for SO(2n). Infl chars are expressed in standard SO(2n) coordinates}
+
+set rigid_data_D_std(int n) = [rigid_datum]:
+let all_rigid=rigid_partitions_D(n) in
+for p in all_rigid do (rigid_infl_char_BD(p),dim_D(p)) od
+
+{ Produce a list of all rigid data for a group G with simple derived group of type B. Infl chars are expressed
+in atlas coordinates for G}
+
+set rigid_data_B(RootDatum rd)=[rigid_datum]:
+let n=semisimple_rank(rd) then
+order=test_simple_type("B",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*n+1))) in
+for x in rigid_data_B_std(n) do (M*infl_char(x),dimension(x)) od
+
+{Produce a list of all rigid data for a group G with simple derived group of type D. Infl chars are expressed 
+in atlas coordinates for G}
+
+set rigid_data_D(RootDatum rd)=[rigid_datum]:
+let n=semisimple_rank(rd) then
+order=test_simple_type("D",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(SO(2*n))) in
+for x in rigid_data_D_std(n) do (M*infl_char(x),dimension(x)) od
+
+
+{~~Exceptional types~~}
+
+{ Create lists of rigid data for all simple exceptional groups. Here, infl chars are expressed in fundamental weight coordinates}
+
+set rigid_data_G2_fund = [([1,1],0),([3,1]/3,6),([1,1]/2,8)]
+
+set rigid_data_F4_fund = [([1,1,1,1],0),([1,1,2,2]/2,16),([1,0,1,1],22),([1,0,1,0],28),([1,1,2,2]/4,34),
+([1,1,1,1]/3,36)]
+
+set rigid_data_E6_fund = [([1,1,1,1,1,1],0),([1,1,1,0,1,1],22),([1,1,1,1,1,1]/2,40),([1,1,1,1,1,1]/3,54)]
+
+set rigid_data_E7_fund = [([1,1,1,1,1,1,1],0),([1,1,1,0,1,1,1],34),([1,1,1,0,1,0,1],52),([1,1,1,1,1,1,2]/2,64),
+([1,1,1,1,1,1,1]/2,70),([1,0,0,1,0,0,1],82),([1,1,1,1,1,1,1]/3,90),([1,1,0,1,0,1,1]/2,92)]
+
+set rigid_data_E8_fund = [([1,1,1,1,1,1,1,1],0),([1,1,1,0,1,1,1,1],58),([1,1,1,0,1,0,1,1],92),([1,1,1,1,1,1,2,2]/2,112),
+([1,1,1,1,1,1,1,1]/2,128),([1,0,0,1,0,1,0,1],136),([1,0,0,1,0,0,1,1],146),([1,1,1,0,1,1,1,1]/2,154),([1,1,1,1,1,1,1,3]/3,162),
+([1,1,0,1,0,1,1,2]/2,164),([1,1,1,1,1,1,1,1]/3,168),([1,1,1,0,1,0,1,1]/2,172),([0,0,0,1,0,0,1,0],176),([1,0,0,1,0,1,1,1]/2,182),
+([1,1,1,1,1,1,1,1]/4,188),([1,1,1,1,1,1,1,1]/5,200),([2,2,1,1,1,1,1,1]/6,202),([1,1,1,0,1,1,1,1]/4,202)]
+
+set rigid_data_G2(RootDatum rd) = [rigid_datum]:
+let order=test_simple_type("G",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(G2_s.root_datum)) in
+for x in rigid_data_G2_fund do (M*infl_char(x),dimension(x)) od
+
+set rigid_data_F4(RootDatum rd) = [rigid_datum]:
+let order=test_simple_type("F",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(F4_s.root_datum)) in
+for x in rigid_data_F4_fund do (M*infl_char(x),dimension(x)) od
+
+set rigid_data_E6(RootDatum rd) = [rigid_datum]:
+let order=test_simple_type("E",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(E6_s.root_datum)) in
+for x in rigid_data_E6_fund do (M*infl_char(x),dimension(x)) od
+
+set rigid_data_E7(RootDatum rd) = [rigid_datum]:
+let order=test_simple_type("E",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(E7_s.root_datum)) in
+for x in rigid_data_E7_fund do (M*infl_char(x),dimension(x)) od
+
+set rigid_data_E8(RootDatum rd) = [rigid_datum]:
+let order=test_simple_type("E",rd) then
+M=simple_roots(rd)*permutation_matrix(order)*rational_inverse(simple_roots(E8_s.root_datum)) in
+for x in rigid_data_E8_fund do (M*infl_char(x),dimension(x)) od
+
+
+{~~General case~~}
+
+
+{ Generate list of rigid data for an arbitrary group G with simple derived group}
+
+set rigid_data_simple(RootDatum rd) = [rigid_datum]:
+let type=Lie_type(rd) then
+(letter,n)=simple_factors(type)[0] in
+case ascii(letter)-ascii("A") in
+rigid_data_A(rd),
+rigid_data_B(rd),
+rigid_data_C(rd),
+rigid_data_D(rd),
+case n-6 in
+rigid_data_E6(rd), rigid_data_E7(rd), rigid_data_E8(rd) esac,
+rigid_data_F4(rd),
+rigid_data_G2(rd)
+esac
+
+{ Sum a list of rigid data }
+
+set *([rigid_datum] rds)=rigid_datum:
+(sum(#infl_char(rds[0]),for rd in rds do infl_char(rd) od), sum(for rd in rds do dimension(rd) od))
+
+{ Generate a list of lists of rigid data (one list for each simple factor) from a group G}
+
+set rigid_by_factor(RootDatum rd) = [[rigid_datum]]:
+let sf=simple_factors(rd) in
+for x in sf do rigid_data_simple(x) od
+
+{ Generate a list of integers, counting number of rigid data for each simple factor, from group G}
+
+set sizes(RootDatum rd)=[int]:
+let sf=simple_factors(rd) in
+for x in sf do #rigid_data_simple(x) od
+
+{ Form a list of rigid data from a list of lists of rigid data and a list of indices}
+
+set select([[rigid_datum]] list,[int] indices) = [rigid_datum]:
+for i:#list do list[i][indices[i]] od
+
+{ Generate list of rigid data for an arbitrary group G}
+
+set rigid_data(RootDatum rd) = [rigid_datum]:
+if #simple_factors(rd)=0 then [(ratvec:null(rank(rd)),0)] else
+let I=all_words(sizes(rd)) in
+for x in I do *(select(rigid_by_factor(rd),x)) od fi
+
+{ Prints rigid data for an arbitraray group G}
+
+set print_rigid_data(RootDatum rd) = void:
+let rig=rigid_data(rd) in
+for x in rig do prints("infl char = ", infl_char(x), "   dim = ", dimension(x))od
