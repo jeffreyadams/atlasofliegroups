@@ -78,7 +78,6 @@ set partial_fixed_block_of(mat delta,Param p)=
 set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
   let (B,,)=partial_extended_KL_block(p,delta) in
-
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do B[i] od
   , P=KL_P_polynomials(p)
@@ -292,7 +291,7 @@ tau_G,
 t_G)
 
 
-set extended_character_formula (Param p,mat delta) =
+set extended_character_formula_te (Param p,mat delta) =
 let (B,,)=partial_extended_KL_block(p,delta) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
 {P=big_KL_P_signed_polynomials(p,delta) then}
@@ -393,6 +392,7 @@ else
  inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
+
 {
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
 let P=inverse_lift_std(p_G,H,M,delta) in
@@ -400,17 +400,19 @@ let P=inverse_lift_std(p_G,H,M,delta) in
  else P fi
 }
 {returns a sum of standards}
-set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
-let P=extended_character_formula(p_G,delta) then
-()=if te_verbose then prints("P=",P) fi then
+set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+let ecf=extended_character_formula(p_G,delta) then 
+P=convert_to_param_pol(ecf) then
+()=if te_verbose then prints("ecf=",ecf) fi then
+()=if te_verbose then prints("NOW P=",P) fi then
 PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then
 ()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
 {composition_series(PH)}
 PH
 
 {returns a sum of standards}
-set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=
-let P=extended_character_formula(p_G,delta) then
+set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+let P=convert_to_param_pol(extended_character_formula(p_G,delta)) then
 ()=if te_verbose then prints("P=",P) fi then
 PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta,gamma_H) od then
 ()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
