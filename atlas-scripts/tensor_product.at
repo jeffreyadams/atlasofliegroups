@@ -28,7 +28,7 @@ set add_weight (Param p,ratvec H) = KTypePol:
 set add_weights (Param p,(KGBElt->[ratvec]) weights) = KTypePol:
    sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
 
-set add_weights (Param p,(KGBElt->[ratvec]) weights)=ParamPol:
+set add_weights (Param p,(KGBElt->[ratvec]) weights)=KTypePol:
     sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
 
 {simply add H to each term of P, standardize the results}
@@ -40,7 +40,7 @@ standard(parameter(x,lambda+f(x),nu))}
 set add_weight (ParamPol P,(KGBElt->ratvec) f) = KTypePol:
    sum(P.real_form, for coef@p in P do coef*add_weight(p,f(p.x)) od)
 
-set add_weight (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
+set add_weight (ParamPol P,(KGBElt->ratvec) f)=KTypePol:
    sum(P.real_form, for coeff@p in P do coeff*add_weight(p,f(p.x)) od)
 
 {same as previous, applied to a ParamPol}
@@ -61,7 +61,7 @@ set add_weights (KTypePol P,(KGBElt ->[vec]) weights) = KTypePol:
    do let (x,lr)=%t in for H in weights(x) do (coef,K_type(x,lr+H)) od
    od.##
 
-set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
+set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=KTypePol:
    let G=P.real_form in sum(G, for coeff@p in P do sum(G,for H in
    f(p.x) do coeff*add_weight(p,H) od) od)
 

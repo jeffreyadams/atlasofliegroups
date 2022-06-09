@@ -1,3 +1,4 @@
+{This file will not load because is uses the old types for K_Type and K_Type_Pol.}
 <K.at
 <K_types.at
 <to_ht.at
@@ -20,38 +21,41 @@ understood by looking at the branching to K algorithm. I haven't done
 that with enough care, but I think that they are close to what is
 impleented below.  }
 
-set standardize(K_Type mu) = K_Type_Pol:
-standardize(parameter(mu)*0)
+set standardize(KType mu) = KTypePol:
+   K_type_pol(standardize(parameter(mu)*0))
 
-set standardize(K_Type_Pol P) = K_Type_Pol:
-0*P + for c@p in P do standardize(p*0) od
-
-set height(K_Type mu)=height(parameter(mu))
-
-set first_K_type(K_Type_Pol P) = K_type(first_param(P))
+set standardize(KTypePol P) = KTypePol:
+0*P + for c@p in P do standardize(p) od
 
 {all K_types that occur with mu as LKTs in some standard module}
-set R_packet(K_Type (x,lam))=ParamPol:
-   let G=real_form(x),zero=0*lam, L=Levi_by_wt(lam+x.involution*lam,x)
+set R_packet(KType t)=KTypePol:
+   let G=real_form(t),lam=lambda(t), x=x(t)
+   then zero=lam*0, L=Levi_by_wt(lam+x.involution*lam,x)
    then kgbs=##for y in KGB(L)
                do let xprime = embed_KGB(y,G)
                  in if xprime.involution = x.involution then [xprime] else []
 	            fi
 	       od
-   then result=null_module(G)
-   in for xp in kgbs do result+:=standardize(parameter(xp,lam,zero))
-                     od; result
+   then result=null_K_module(G)
+   in for xp in kgbs
+       do for m in monomials(standardize(parameter(xp,lam,zero)))
+           do result+:= LKT(m)
+           od
+       od; result
+
 set R_packet(Param p)=R_packet(LKTs(p)[0])
 
 set R_packet(ParamPol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) od)
+
+set R_packet(KTypePol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) od)
 
 {up assumes mu = (x',lambda') is standard but perhaps not normal, and
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
 
 {Move one step up in the partial order of K-types}
-set pre_up(K_Type mu)=ParamPol:
-   let result=null_module(real_form(mu))
+set pre_up(KType mu)=KTypePol:
+   let result=null_K_module(real_form(mu))
    in for c@p in K_type_formula(mu)
                         do if int_part(c)<0 then result+:=p fi
                         od; result

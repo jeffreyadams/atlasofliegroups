@@ -1,6 +1,7 @@
 <hodge_K_type_formula.at
-<Kcone.at
+{<Kcone.at}
 <complex.at
+<to_ht.at
 
 {Height of an arbitrary weight}
 set ht_of_wt(RootDatum rd,ratvec alpha)=int:
@@ -104,10 +105,13 @@ set add_weights (Param p, [[vec]] wts) = ParamPol:
 set add_weights (ParamPol P,[[vec]] wts)= ParamPol:
    sum(real_form(P),for c@p in P do c*add_weights(p,wts) od)
 
-set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
+set add_weights (KTypePol P, [[vec]] wts) = KTypePol:
+   K_type_pol(add_weights(param_pol(P),wts))
+
+set tensor_with_Wedge_k (KType mu,[[int]] ps,int n)=KTypePol:
    let G=real_form(mu), P=K_type_formula(mu)
     then wts=kwts(G)
-    then Q= add_weights (P,wedge_weights(wts,ps,n))
+    then Q= add_weights (param_pol(P),wedge_weights(wts,ps,n))
     in branch_std(Q,height(mu)+add_ht(G))
 
 {Form parameter of complexification of G with lambda=chi, compute hodge
@@ -115,7 +119,7 @@ set tensor_with_Wedge_k (K_Type mu,[[int]] ps,int n)=ParamPol:
 set first_step (RealForm G, vec chi, int hb) = [[(Split,KHighestWeight)]]:
    let GC=complexification(G),r=rank(G)
    then p=parameter_m(GC,chi,zeros(r)/1)
-   then (list,)= hodge_branch_std(p,hb)
+   then list = hodge_branch_std(p,hb)
    then hwts= for P in list
         do for c@q in P do {prints(height(q));}(c,highest_weight(LKT(q)))
 	                od
@@ -138,15 +142,15 @@ set second_step ([[(Split,KHighestWeight)]] list)=[[(Split,vec)]]:
 {Restrict finite dimensionals with highest weights computed in second step
 to K; with hodge degrees and split coefficients carried forward from
 step 1, this gives a KHodgeParamPol}
-set third_step (RealForm G,[[(Split,vec)]] list)=[ParamPol]:
+set third_step (RealForm G,[[(Split,vec)]] list)=[KTypePol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
-          in n*branch_irr(p, height(K_Type:(KGB(G,0),v)))
+          in n*branch_irr(p, height(K_type(KGB(G,0),v)))
        od)
     od
 
-set third_step_test (RealForm G,[[(Split,vec)]] list,int bd)=[ParamPol]:
+set third_step_test (RealForm G,[[(Split,vec)]] list,int bd)=[KTypePol]:
    for level in list
     do sum(G, for (n,v) in level
        do let p =parameter(x_open(G),v+rho(G),v+rho(G))
@@ -154,26 +158,26 @@ set third_step_test (RealForm G,[[(Split,vec)]] list,int bd)=[ParamPol]:
        od)
     od
 
-set steps_one_two_three (RealForm G,vec chi,int hb)=[ParamPol]:
+set steps_one_two_three (RealForm G,vec chi,int hb)=[KTypePol]:
    let list1=first_step(G,chi,hb)
    then list2=second_step(list1)
    in third_step(G,list2)
 
-set steps_one_two_three_test (RealForm G,vec chi,int hb,int n3)=[ParamPol]:
+set steps_one_two_three_test (RealForm G,vec chi,int hb,int n3)=[KTypePol]:
    let list1=first_step(G,chi,hb)
    then list2=second_step(list1)
    in third_step_test(G,list2,n3)
 
 {Replace K-types in output of step 3 by their K-type formulas}
-set step_fourA (RealForm G,[ParamPol] list) = [ParamPol]:
+set step_fourA (RealForm G,[KTypePol] list) = [KTypePol]:
    for level in list
     do sum(G,for c@p in level do c*K_type_formula(p) od)
     od
 
 
-set last_step_old ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
+set last_step_old ([KTypePol] start,int kdim,RealForm G,int hb)=[KTypePol]:
    let wts=kwts(G), ps=power_set(kdim), ah=add_ht(G)
-   then add_on=[ParamPol]:for i:kdim do 1*null_module(G) od
+   then add_on=[KTypePol]:for i:kdim do 1*null_K_module(G) od
    then result=start##add_on
    in for i:kdim from 1
         do let ww=wedge_weights(wts,ps,i)
@@ -185,7 +189,7 @@ set last_step_old ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
 
 {For each external power i, add (-1)^i*the appropriate weights to each parameter
 and move the result up by i degrees; then do branch_std to convert back to K-types}
-set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
+set last_step ([KTypePol] start,int kdim,RealForm G,int hb)=[KTypePol]:
    let n=#start,  wts=kwts(G), ps=power_set(kdim)
    then result=start
    in for i:kdim from 1
@@ -196,7 +200,7 @@ set last_step ([ParamPol] start,int kdim,RealForm G,int hb)=[ParamPol]:
 	od;
     for P in result do branch_std(P,hb) od
 
-set Lucas_algorithm (RealForm G, vec chi, int hb) = [ParamPol]:
+set Lucas_algorithm (RealForm G, vec chi, int hb) = [KTypePol]:
    let kdim=dimension(K_0(G)), ah=add_ht(G), M=max_nc(G), m=min_nc(G)
    then d=floor((hb+ht_shift(G))/(2*m))
    then bd=2*M*d
@@ -205,9 +209,9 @@ set Lucas_algorithm (RealForm G, vec chi, int hb) = [ParamPol]:
    then list3=third_step(G,list2)
    then start= step_fourA (G,list3)
    then last=last_step(start,kdim,G,hb+ah)
-   in for i:d+1 do to_ht(hb)(last[i]) od
+   in for i:d+1 do to_ht(last[i],hb) od
 
-set Lucas_algorithm_old (RealForm G, vec chi, int hb) = [ParamPol]:
+set Lucas_algorithm_old (RealForm G, vec chi, int hb) = [KTypePol]:
    let kdim=dimension(K_0(G)),  ah=add_ht(G)
    then list1=first_step(G,chi,hb+ah)
    then list2=second_step(list1)
@@ -229,5 +233,5 @@ set test_hodge_heights (RealForm G, vec v, int n) = void:
    in prints(n," no levels: ",p,"    no pos levels: ", pos_levels,new_line,
              "no terms and max/min height: ", terms)
 
-set test_heights(RealForm G, vec v, int d, int ht, int hb)=[ParamPol]:
-   for i:d do to_ht(ht)(Lucas_algorithm(G,v,hb)[i]) od
+set test_heights(RealForm G, vec v, int d, int ht, int hb)=[KTypePol]:
+   for i:d do to_ht(Lucas_algorithm(G,v,hb)[i],ht) od
