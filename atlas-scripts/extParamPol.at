@@ -416,9 +416,15 @@ else
  {need to apply T_param term by term because putting in a ParamPol
   finalizes each term which is not OK}
  rv=null_ext_module(p.real_form) in
-   for c@p in plus do  let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
-   for c@p in minus do let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta))) in rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
-   for c@p in ind do let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+   for c@p in plus do
+     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta))
+      in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+   for c@p in minus do
+     let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta)))
+      in rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
+   for c@p in ind do
+     let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta))
+      in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
  rv
  fi
 
@@ -627,3 +633,13 @@ let rv=null_module(P.real_form) in
   fi
  od;
 rv.s_to_1
+
+{given extended formul in terms of Z[t], set t=1,
+ and also replace each nonfixed term q with q + delta(q)}
+set extended_t_to_1(ExtParamPol E,mat xi)=
+let (P,Q,R)=E then
+rv=null_module(P.real_form) in
+ for c@p in P do rv+:=c*p od;
+ for c@p in Q do rv+:=-c*p od;
+ for c@p in R do rv+:=-c*(p+twist(xi,p)) od;
+rv

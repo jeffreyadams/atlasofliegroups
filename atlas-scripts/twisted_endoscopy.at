@@ -405,7 +405,8 @@ let ecf=extended_character_formula(p_G,delta) then
 P=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("NOW P=",P) fi then
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then
+{PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then}
+PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od then
 ()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
 {composition_series(PH)}
 PH
@@ -425,7 +426,8 @@ let lift_std_ext=lift_std(p_H,M,G,delta) then
 lift_std=parameter(lift_std_ext) then
 inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
 ()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
-(p_H,lift_std,inverse_lift,composition_series(inverse_lift))
+{(p_H,lift_std,inverse_lift,composition_series(inverse_lift))}
+(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
@@ -434,7 +436,7 @@ let lift_std_ext=lift_std(p_H,M,G,delta) then
 lift_std=parameter(lift_std_ext) then
 inverse_lift=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
 ()=if te_verbose then prints("lift_std=", lift_std) fi in
-(p_H,lift_std,inverse_lift,composition_series(inverse_lift))
+(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
 
 
 
