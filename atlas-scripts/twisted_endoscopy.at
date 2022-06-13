@@ -246,9 +246,9 @@ KGB(G,i).involution
 set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then
-()=if te_verbose then prints("tf_H_raw=",tf_H_raw) fi then
+{()=if te_verbose then prints("tf_H_raw=",tf_H_raw) fi then}
 tf_G_raw=M*tf_H_raw then
-()=if te_verbose then prints("tf_G_raw=", tf_G_raw) fi then
+{()=if te_verbose then prints("tf_G_raw=", tf_G_raw) fi then}
 tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
 
@@ -401,10 +401,10 @@ let P=inverse_lift_std(p_G,H,M,delta) in
 }
 {returns a sum of standards}
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
-let ecf=extended_character_formula(p_G,delta) then 
+let ecf=extended_character_formula(p_G,delta) then
 P=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
-()=if te_verbose then prints("NOW P=",P) fi then
+()=if te_verbose then prints("P=",P) fi then
 {PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then}
 PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od then
 ()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
@@ -445,4 +445,5 @@ let (p_H,p_G,)=data[0] then
 ()=prints("H=", p_H.real_form,new_line, "G=", p_G.real_form) in
 for (p_H,p_G,abv)@i in data do
 prints(new_line,"i: ", i, new_line, "p_H: ", p_H,new_line,"inf char(p_H): ", p_H.infinitesimal_character,
-new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od 
+new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od
+

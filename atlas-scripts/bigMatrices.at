@@ -130,8 +130,7 @@ set big_KL_P_polynomials ([Param] B,mat delta) = i_poly_mat:
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do B[i] od
   , P=KL_P_polynomials(B)
-  then P_delta=KL_P_polynomials(B_delta,delta)
-  in
+  then P_delta=KL_P_polynomials(B_delta,delta) in 
   if =#P_delta
   then prints("Note: block not delta-fixed")
   ; KL_P_polynomials(B) {block is not fixed by delta}

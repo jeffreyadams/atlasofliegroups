@@ -357,7 +357,6 @@ set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
 
    index=find(complete_indices,(find(B,p),1)) then
    ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
-   
    ()=prints("number of complete indices: ", #complete_indices) then
    ()=prints("index of parameter in complete indices: ", index) then
    ()=prints("complete index: ", complete_indices[index]) then
@@ -385,7 +384,9 @@ set print_extended_character_formula_old (Param p,mat delta) = void:
 set print_extended_character_formula_old (Param p,mat delta) = void:print_extended_character_formula_old(p,singular_block_of(p),delta)
 
 {--- new version of extended character formula--}
-
+{this should be modified to work with the partial extended block instead of the entire block:
+ replace P=big_KL_P_signed_polynomials(B,delta) with
+         P=big_KL_P_signed_polynomials(p,delta)} 
 set extended_character_formula_reg (Param p,mat delta) =ExtParamPol:
 assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
 let G=p.real_form then
@@ -399,7 +400,7 @@ for (j,type)@i in complete_indices do
  if !=c then
   if type=1 then plus+:=c*B[j]
     elif type=-1 then minus+:= c*B[j]
-    elif type=0 then prints("ind=", ind,"c=",c," j=",j);ind+:=c*B[j]
+    elif type=0 then {prints("ind=", ind,"c=",c," j=",j);} ind+:=c*B[j]
     else error("c\ne 0,\pm 1")
   fi
  fi
@@ -417,14 +418,14 @@ else
   finalizes each term which is not OK}
  rv=null_ext_module(p.real_form) in
    for c@p in plus do
-     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta))
-      in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+{     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+      rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
    for c@p in minus do
-     let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta)))
-      in rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
+{     let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta))) in}
+      rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
    for c@p in ind do
-     let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta))
-      in rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+     {let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+      rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
  rv
  fi
 
@@ -435,7 +436,7 @@ set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
 
    index=find(complete_indices,(find(B,p),1)) then
    ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
-   
+
    ()=prints("number of complete indices: ", #complete_indices) then
    ()=prints("index of parameter in complete indices: ", index) then
    ()=prints("complete index: ", complete_indices[index]) then
