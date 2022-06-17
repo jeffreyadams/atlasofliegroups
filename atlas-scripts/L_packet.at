@@ -45,7 +45,30 @@ while #P>0 do
   fi
  od;rv
 
+{lifting from quasisplit group to inner form}
+{on parameter level: formal, take (x,lambda,nu) 
+to \sum (x_i,lambda,nu) for G where {x_i} is the fiber
+for G over p.x.involution}
+set inner_lift_std(Param p,RealForm G)=ParamPol:
+param_pol(for x in fiber(G,p.x.involution) do parameter(x,p.lambda,p.nu) od,G)
 
+{for ParamPol, replace each sum p_i over an L-packet with a single p_i,
+since inner_lift_std stabilizes it}
+set inner_lift_std(ParamPol P,RealForm G)=ParamPol:
+null_module(G) + for c@p in L_packet_representative(P) do c*inner_lift_std(p,G) od
+
+{P is a sum of irreducibles; it  should be stable, although we don't test for this
+inner_lift(P,G):
+  P -> cf=character_formula(P)
+    -> inner_lift_std(cf)
+    -> composition_series($)
+}    
+set inner_lift(ParamPol P,RealForm G)=ParamPol:
+composition_series(inner_lift_std(character_formula(P),G))
+
+set inner_lift_std(Param p,int i)=ParamPol: inner_lift_std(p,p.real_form.real_forms[i])
+set inner_lift_std(ParamPol P,int i)=ParamPol: inner_lift_std(P,P.real_form.real_forms[i])
+set inner_lift(Param p,int i)=ParamPol: inner_lift(p,p.real_form.real_forms[i])
 
 
 {p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
