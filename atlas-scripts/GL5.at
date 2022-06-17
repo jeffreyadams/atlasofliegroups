@@ -187,7 +187,7 @@ set action_H=restrict_action(y_G.involution,M)
 set tf_u_G=y_G.unnormalized_torus_factor 
 set tf_u_H=left_inverse(M)*tf_u_G 
 set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 
-set ()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) 
+{set ()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) }
 set y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H)
 
 set y_H_good=y_gen(ph)
