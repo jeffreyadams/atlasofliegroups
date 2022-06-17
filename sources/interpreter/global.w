@@ -3197,7 +3197,7 @@ that it is built-in, but its operation is variable among sessions and even
 within a single session. Its main purpose is to allow non-human users of the
 \.{atlas} executable (i.e., programs that run \.{atlas} behind the scenes) to
 interrogate what the |readline| interface would propose as completions to human
-users; with this information such programs can propose a similar interface too
+users; with this information such programs can propose a similar interface to
 their own users. The functionality itself is provided by the |completions|
 function defined in \.{buffer.w}.
 
