@@ -69,7 +69,7 @@ composition_series(inner_lift_std(character_formula(P),G))
 set inner_lift_std(Param p,int i)=ParamPol: inner_lift_std(p,p.real_form.real_forms[i])
 set inner_lift_std(ParamPol P,int i)=ParamPol: inner_lift_std(P,P.real_form.real_forms[i])
 set inner_lift(Param p,int i)=ParamPol: inner_lift(p,p.real_form.real_forms[i])
-
+set inner_lift(ParamPol P,int i)=ParamPol: inner_lift(P,P.real_form.real_forms[i])
 
 {p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
 
