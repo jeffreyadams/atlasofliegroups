@@ -19,23 +19,33 @@ set permutation ([Param] B1, [Param] B2) = ([int],bool):
 , true
 )
 
+{default: polynomials for the partial block, use _full the whole block}
 set KL_P_polynomials (Param p) = i_poly_mat:
-  let (,,P,polys)=KL_block(p) in
+  let (,P,polys)=partial_KL_block(p) in
   for row in rows(P) do for entry in row do polys[entry] od od
 
 set KL_P_polynomials_at_minus_one (Param p) = mat:
   eval(KL_P_polynomials(p),minus_1)
 
 set KL_P_signed_polynomials (Param p) = i_poly_mat:
-  let (block,,P,polys)=KL_block(p) in
+  let (block,P,polys)=partial_KL_block(p) in
   for row@i in rows(P) do for entry@j in row
   do minus_1^(block[j].length-block[i].length)*polys[entry] od od
 
-set KL_P_signed_polynomials_at_minus_one (Param p) = mat:
-  eval(KL_P_signed_polynomials(p),minus_1)
+{full versions}
+set KL_P_polynomials_full (Param p) = i_poly_mat:
+  let (,,P,polys)=KL_block(p) in
+  for row in rows(P) do for entry in row do polys[entry] od od
 
+set KL_P_polynomials_at_minus_one_full (Param p) = mat:
+  eval(KL_P_polynomials_full(p),minus_1)
+
+set KL_P_signed_polynomials_at_minus_one_full (Param p) = mat:
+  eval(KL_P_polynomials_full(p),minus_1)
+
+{given [Param] b argument, essentially the same as _full}
 set KL_P_polynomials([Param] B)=i_poly_mat:
-  let (block,,P,polys)=KL_block(B[0])
+  let (block,,P,polys)=KL_block(B[0])  {this gives KL_block for full block}
   then (perm,valid)=permutation(B,block), n=#block
   in assert(valid,"given [Param] B does not agree with block_of B[0]");
     for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
@@ -54,8 +64,9 @@ set KL_P_signed_polynomials ([Param] B) = i_poly_mat:
 set KL_P_signed_polynomials_at_minus_one ([Param] B) = mat:
   eval(KL_P_signed_polynomials(B),minus_1)
 
+{Q versions: only the full block currently implemented}
 set KL_Q_polynomials (Param p) = i_poly_mat:
-  let (block,,M,polys) = dual_KL_block(p) then n=#block in
+  let (block,,M,polys) = dual_KL_block(p) {this is the full dual block, non partial} then n=#block in
   for i:n do let col = M[i] in for j:n do polys[col[j]] od od { transpose }
 
 set KL_Q_polynomials ([Param] B) = i_poly_mat:
@@ -79,6 +90,7 @@ set final_subset ([Param] B) = [Param]:
   negated poly }
 set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
   let (block,P,polys) = partial_extended_KL_block(p,delta) in
+{  let (block,P,polys) = KL_block(p,delta) in}
 ( block
 , for col@j in P
   do let len_j=length(block[j]) in
@@ -89,7 +101,8 @@ set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
 
 set KL_P_polynomials (Param p, mat delta) = i_poly_mat:
 {   let (,P,polys) = KL_block(p,delta)}
-   let (,P,polys) = partial_extended_KL_block(p,delta)
+{   let (,P,polys) = partial_extended_KL_block(p,delta)}
+    let (,P,polys) = KL_block(p,delta) 
 in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od

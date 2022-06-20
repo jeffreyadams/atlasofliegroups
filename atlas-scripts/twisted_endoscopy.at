@@ -26,7 +26,6 @@ function is clumsy
 also inverse_lift_std is now done by a brute force search,
 until we figure out the right way
 }
-{<mezo.at}
 
 {from mezo.at:}
 set delta_l_int_long(Param p,mat delta)=(int,int,int,rat):
@@ -114,6 +113,51 @@ set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
      od
   ; rv
   fi
+
+set partial_KL_P_polynomials (Param p) =
+  let (,P,polys)=partial_KL_block(p) in
+  for row in rows(P) do for entry in row do polys[entry] od od
+
+set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
+{  let B=partial_fixed_block_of(delta,p) in}
+  let (B,,)=partial_extended_KL_block(p,delta) in
+  let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+  then B_delta = for i in I_delta do B[i] od
+  , P=partial_KL_P_polynomials(p)
+  then P_delta=KL_P_polynomials(p,delta)
+  in
+  if =#P_delta
+  then prints("Note: block not delta-fixed")
+  ; KL_P_polynomials(B) {block is not fixed by delta}
+  else let n=#complete_indices then rv=zero_poly_matrix(n) in
+     for a:n
+     do let (i,epsilon_i)=complete_indices[a] in
+        for b:n-a from a
+        do let (j,epsilon_j)=complete_indices[b] in
+{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
+           if a=b
+           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
+           then let x=g[i], y=g[j] in
+{ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
+	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
+	   elif epsilon_i*epsilon_j=minus_1
+	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
+	     rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
+	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
+	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
+	   then rv:=update_matrix_entry(rv,a,b,P[i][j])
+	   elif epsilon_i=0 and epsilon_j=0
+	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
+	     rv:=update_matrix_entry
+		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
+           fi
+        od
+     od
+  ; rv
+  fi
+
 
 set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
@@ -269,15 +313,12 @@ tau_G=M*E_H.tau in}
 l_G=solve(left_inverse(M),E_H.l).requisition then
 tau_G=solve(left_inverse(M),E_H.tau).requisition then
 t_G=solve(left_inverse(M),E_H.t).requisition in}
-
-
 {g_G=M*E_H.g then
 l_G=M*E_H.l then}
 g_G=G.rho_check then 
 l_G=null(#g_G) then
 tau_G=solve(^M,E_H.tau).requisition then
 t_G=solve(^M,E_H.t).requisition in
-
 ExtParam:(
 G.inner_class,
 G.distinguished_involution,
@@ -290,8 +331,8 @@ l_G,
 tau_G,
 t_G)
 
-
-set extended_character_formula_te (Param p,mat delta) =
+{moved to ExtParamPol.at
+set extended_character_formula_t(Param p,mat delta) =
 let (B,,)=partial_extended_KL_block(p,delta) in
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
 {P=big_KL_P_signed_polynomials(p,delta) then}
@@ -306,6 +347,7 @@ do let f=eval(P[i][index],s) in
  let (j,c)=complete_indices[i] in
  {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
 od
+}
 
 set sign_difference(Param p_G, mat delta)=int:
 (-1)^(length(p_G)-delta_l_int(p_G,delta))
@@ -332,9 +374,30 @@ set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
     ().no_ratvec
    fi
 
+{key part of the next algorithm:
+
+given y_G=generalized KGB element for G
+construct y_H = generalized KGB element for H satisfying:
+
+1) action is by theta_H=restrict_action(y.involution,M)  (easy)
+2) correct torus factor (hard)
+
+torus factor:
+
+y_G -> tf_u_G (unnormalized torus factor for G)
+    -> tf_u_H satisfying M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_* (appropriate equivalence condition)
+    -> 2*tf_u_H (some factor of 2)
+    -> tf_H=(1+theta_H)(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} 
+    -> y_H (KGB element for H)
+should satisfy: is_valid(y_H,gamma_H)  (given gamma_H)
+    i.e. is_integer(square(y_H)-gamma_H)
+
+recall square (KGBElt_gen x)=ratvec:torus_factor(x)+inner_class(x).rho_check
+
+}
 
 {gamma_H is the known infinitesimal character for H}
-set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
+set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=(bool,ParamPol):
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
 tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then  
@@ -353,10 +416,10 @@ if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
- sign_difference(p_G,delta)*param_pol(lp)
+ (true,sign_difference(p_G,delta)*param_pol(lp))
 else
  let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
- error("not valid")
+ (false,null_module(H))
 fi
 
 set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
@@ -366,78 +429,113 @@ if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_m
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
-let y_G=y_gen(p_G) then
-action_H=restrict_action(y_G.involution,M) then
-tf_u_G=y_G.unnormalized_torus_factor then
-{tf_u_H=left_inverse(M)*tf_u_G then}
-theta=p_G.x.involution then
-N=(1+theta)##id_mat(n_rows(theta)) then
-()=if te_verbose then prints(M##N) fi then
-tf_u_H_maybe=solve(M,N,tf_u_G) then
-tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
-        2*tf_u_H_maybe.requisition 
-fi  then
-{tf_u_H=left_inverse(M)*tf_u_G then lift}
-tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 then
-()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
-y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
-()=if te_verbose then prints("y_H_gen=", y_H_gen) fi in
-if is_valid(y_H_gen,gamma_H) then 
- let ()=if te_verbose then prints("is valid") fi in
- let  lp=L_packet(H,gamma_H,y_H_gen) then
- ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
- sign_difference(p_G,delta)*param_pol(lp)
+let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
+if valid
+ then P_H
 else
- let ()=prints("not valid, using inverse_lift_std_by_search instead") in 
  inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
+{fails if inverse_lift_std of any single term fails}
+set inverse_lift_std(ParamPol P,RealForm H,mat M, mat delta,ratvec gamma_H)=(bool,ParamPol):
+let rv=null_module(H) in
+for (c,p) in %P do let (valid,P)=inverse_lift_std(p,H,M,delta,gamma_H) in
+ if valid then rv+:=c*P
+else
+ return(false,null_module(H))
+fi
+od;
+(true,rv)
+
+set inverse_lift_std_by_search(ParamPol P,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od 
+
+set inverse_lift_std_mixed(ParamPol P,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
+let (valid,P_H)=inverse_lift_std(P,H,M,delta,gamma_H) in
+if valid
+ then P_H
+else
+ return(inverse_lift_std_by_search(P,H,M,delta,gamma_H))
+fi
 
 {
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
 let P=inverse_lift_std(p_G,H,M,delta) in
- if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(p_G,H,M,delta)
- else P fi
+if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(p_G,H,M,delta)
+else P fi
 }
 {returns a sum of standards}
+set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
+let ecf=extended_character_formula(p_G,delta) then
+P_G=convert_to_param_pol(ecf) then
+()=if te_verbose then prints("ecf=",ecf) fi then
+()=if te_verbose then prints("P_G=",P_G) fi then
+(valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
+()=if te_verbose then prints("inverse lift as sum of standards: ", P_H) fi in
+(valid,P_H)
+
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 let ecf=extended_character_formula(p_G,delta) then
-P=convert_to_param_pol(ecf) then
+P_G=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
-()=if te_verbose then prints("P=",P) fi then
-{PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_mixed(p,H,M,delta,gamma_H) od then}
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od then
-()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
-{composition_series(PH)}
-PH
+()=if te_verbose then prints("P_G=",P_G) fi then
+(valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
+()=if te_verbose then prints("inverse lift as sum of standards: ", P_H) fi in
+if valid
+ then P_H
+else
+ inverse_lift_std_mixed(P_G,H,M,delta,gamma_H)
+fi
 
-{returns a sum of standards}
-set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
-let P=convert_to_param_pol(extended_character_formula(p_G,delta)) then
-()=if te_verbose then prints("P=",P) fi then
-PH=null_module(H) + for (c,p) in %P do c*inverse_lift_std(p,H,M,delta,gamma_H) od then
-()=if te_verbose then prints("inverse lift as sum of standards: ", PH) fi in
-PH
+
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
-set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
-let lift_std_ext=lift_std(p_H,M,G,delta) then
-lift_std=parameter(lift_std_ext) then
-inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
-()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
-{(p_H,lift_std,inverse_lift,composition_series(inverse_lift))}
+set abv(Param p_H,mat M,RealForm G,mat delta)=(bool,(Param,Param,ParamPol,ParamPol)):
+let lift_std=lift_std(p_H,M,G,delta).parameter then
+(valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
+if valid then
+ let ()=if te_verbose then prints("lift_std=", lift_std) fi in
+ (true,(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1))
+else
+ let ()=if te_verbose then prints("lift_std failed") fi in
+ (false,(p_H,lift_std,inverse_lift,null_module(p_H.real_form)))
+fi
+
+set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
+let lift_std=lift_std(p_H,M,G,delta).parameter then
+(valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
+if valid then
+ let ()=if te_verbose then prints("lift_std=", lift_std) fi in
+ (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
+else
+ let ()=if te_verbose then prints("abv failed, using mixed instead") fi then
+ inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
+ (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
+fi
+
+
+set abv_mixed_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
+let lift_std=lift_std(p_H,M,G,delta).parameter then
+lift_std_reg=make_regular(lift_std) then
+gamma_H=left_inverse(M)*lift_std_reg.infinitesimal_character then
+inverse_lift_reg=inverse_lift_irr_mixed(lift_std_reg,p_H.real_form,M,delta,gamma_H) {sum of standards} then
+()=if te_verbose then prints("inverse_lift_reg: (sum of stds): ", inverse_lift_reg) fi then
+inverse_lift=T_param(inverse_lift_reg,p_H.infinitesimal_character) in
 (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
 
-{to use: set G=GL(n,R), delta=G.distinguished_involution,
-(H,M)=endoscopic(G,delta) to define H,M,G,delta}
-set abv(Param p_H,mat M,RealForm G,mat delta)=
-let lift_std_ext=lift_std(p_H,M,G,delta) then
-lift_std=parameter(lift_std_ext) then
-inverse_lift=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
-()=if te_verbose then prints("lift_std=", lift_std) fi in
-(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
-
+set abv_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
+let lift_std=lift_std(p_H,M,G,delta).parameter then
+lift_std_reg=make_regular(lift_std) then
+()=if te_verbose then prints("lift_std_reg=", lift_std_reg) fi then
+gamma_H=left_inverse(M)*lift_std_reg.infinitesimal_character then
+(valid,inverse_lift_reg)=inverse_lift_irr(lift_std_reg,p_H.real_form,M,delta,gamma_H) in
+if valid then
+ let inverse_lift=T_param(inverse_lift_reg,p_H.infinitesimal_character) in
+ (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
+else
+ (p_H,lift_std,null_module(p_H.real_form),null_module(p_H.real_form))
+fi
 
 
 set print([(Param,Param,ParamPol)] data)=void:
