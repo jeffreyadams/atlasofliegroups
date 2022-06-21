@@ -1,0 +1,47 @@
+{scripts to calculate Dirac inequality attached to a K-type}
+{works only when rank(G) = rank(K)}
+
+{list of theta-stable positive systems for fundamental Cartan}
+set thetaStable(RealForm G) = [KGBElt]:
+    let delta = G.distinguished_involution in
+    for x in KGB(G) do if x.involution = delta then [x] else [] fi od.##
+
+{corr K_0's in equal rank case}
+set Ks(RealForm G) = [RealForm]:
+    let delta = G.distinguished_involution in
+    for x in KGB(G) do if x.involution = delta then [K_0(x)] else [] fi
+    od.##
+
+{list of PRV components of mu\otimes spin(s), equal rank case}
+{one term for each x in fundamental fiber. Term for x is highest
+weight for K_0(x) of PRV component of mu \otimes rho_n(x)^*, plus rho_c(x)}
+set muPRVs(KType mu) = [ratvec]:
+	let Xth = thetaStable(mu.real_form), ks=Ks(mu.real_form), rhoo
+	= rho(mu.real_form)
+	then muth = for x in Xth do highest_weight(mu,x).mu od
+	in
+	for mu@j in  muth do dominant(ks[j],
+	(mu + rho_c(Xth[j]) - rhoo))+rho_c(Xth[j])  od
+
+{Dirac infl char estimate for mu, equal rank case}
+set DiracIC(KType mu) = ratvec:
+	let mutildes=muPRVs(mu), G= mu.real_form
+	then rhocheck = rho_check(G)
+	then ics= for muprime in mutildes do dominant(G,muprime) od 
+	then minloc = min_loc(for ic in ics do ic*rhocheck od)
+	in ics[minloc]
+
+{this calculates all unitary reps containing mu for which mu
+contributes to Dirac cohom}
+set DiracCoh(KType mu) = [Param]:
+    let ic =  DiracIC(mu), G= mu.real_form
+    then ht = rat_as_int(2*ic*rho_check(G)), allic = all_parameters_gamma(G,ic)
+    in
+	for p in allic do
+    	if height(p) <= ht then 
+	      if is_unitary(p) and branch_irr(p,ht)[mu] != 0
+	      then [p]
+	      else []
+	      fi
+	else break
+	fi od.##
