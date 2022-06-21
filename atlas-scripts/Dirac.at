@@ -43,5 +43,5 @@ set DiracCoh(KType mu) = [Param]:
 	      then [p]
 	      else []
 	      fi
-	else [] {case height(p) > ht; prefer to break here?}
+	else break
 	fi od.##
