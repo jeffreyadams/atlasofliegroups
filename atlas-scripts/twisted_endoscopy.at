@@ -58,10 +58,6 @@ let (,,,x)=delta_l_int_long(p,delta) in rat_as_int(x)
 {set partial_extended_block(Param p,mat delta)=[Param]:
 let (B,,)=partial_extended_KL_block(p,delta) in B}
 
-set is_stable(ParamPol P)=bool:
-let (M,)=stable(monomials(P)) then
-v=[int]: for (c,p) in %P do c.split_as_int od in
-in_lattice(^M,v)
 {
 set partial_KL_P_polynomials (Param p, mat delta) = i_poly_mat:
    let (,P,polys) = partial_extended_KL_block(p,delta)
@@ -514,7 +510,7 @@ else
  (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
 fi
 
-
+{
 set abv_mixed_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
 let lift_std=lift_std(p_H,M,G,delta).parameter then
 lift_std_reg=make_regular(lift_std) then
@@ -536,7 +532,7 @@ if valid then
 else
  (p_H,lift_std,null_module(p_H.real_form),null_module(p_H.real_form))
 fi
-
+}
 
 set print([(Param,Param,ParamPol)] data)=void:
 let (p_H,p_G,)=data[0] then

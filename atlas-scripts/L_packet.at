@@ -21,7 +21,7 @@ set fiber(RealForm G,mat theta)=[KGBElt]:
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 
-set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=
+set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=[Param]:
 assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");  
 let fiber=fiber(G,-^y_gen.involution) in
 ##for x in fiber do
@@ -29,13 +29,39 @@ let fiber=fiber(G,-^y_gen.involution) in
  P=finalize(p) in
  monomials(P) od
 
-set L_packet(Param p)=
+set L_packet(Param p)=[Param]:
 for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
 
-set L_packet_representative(Param p)=
+set L_packet_representative(Param p)=Param:
 first_param(param_pol(L_packet(p)))
 
-set L_packet_representative(ParamPol P)=
+set L_packet_stable_sum(Param p)=ParamPol:
+param_pol(L_packet(p))
+
+{union of L-packets, with multiplicity one, for each parameter occuring
+ these L-packets can contain parameters NOT in the given [Param]}
+set L_packets([Param] params)=[[Param]]:
+let representatives=[Param]:[] in
+for p in params do
+ let rep=L_packet_representative(p) in 
+ if find(representatives,rep)=-1 then representatives#:=rep fi
+ od;
+for p in representatives do L_packet(p) od
+
+{P is a sum of standards:}
+set is_stable_std(ParamPol P)=bool:
+all(for p in monomials(P) do P[p]=P[L_packet_representative(p)] od)
+
+{P is a sum of irreducibles:}
+set is_stable_irr(ParamPol P)=bool:
+is_stable_std(character_formula(P))
+
+{default: sum of irreducibles}
+set is_stable(ParamPol P)=bool:is_stable_irr(P)
+
+
+{misguided:}
+set L_packet_representative(ParamPol P)=ParamPol:
 let rv=null_module(P.real_form) in
 while #P>0 do
  let (c,p)=first_term(P) in
@@ -44,6 +70,34 @@ while #P>0 do
    rv+:=c*p
   fi
  od;rv
+
+{
+set L_packets_old([Param] list)=[[Param]]:
+let P=param_pol(list) then
+P_reps=L_packet_representative(P) in
+for p in monomials(P_reps) do
+  ##for x in fiber(p.x) do
+   let p_new=parameter(x,p.lambda,p.nu) in
+   if P[p_new]!=0 then [p_new] else [] fi
+  od
+od
+
+set stable_matrix([[Param]] packets)=
+let all=##packets then
+M=null(#all,#packets) then
+increment=0 in
+for col_number:#packets do
+  for j:#packets[col_number] do
+     M[col_number,increment+j]:=1
+  od
+od;
+M
+}
+
+
+
+
+
 
 {lifting from quasisplit group to inner form}
 {on parameter level: formal, take (x,lambda,nu) 
