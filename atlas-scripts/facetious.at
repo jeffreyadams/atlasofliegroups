@@ -10,6 +10,7 @@
 <parabolics.at {for parabolic_by_wt}
 <K_highest_weights.at {for all_parameters_x_gamma}
 <lattice.at {for vec_solve}
+<twisted_root_datum.at {to produce cofolded root datum}
 
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
@@ -102,6 +103,25 @@ set NoReps([vec] list) =
        else []
        fi
     od.##
+
+{If the distinguished involution delta of G is nontrivial, then all
+UNITARY infinitesimal characters must be delta-fixed, and so lie in
+(h*)^\delta. They are most efficiently calculated not using the affine
+Weyl group of G, but rather the "cofolded" affine Weyl group explained
+in the notes affine.pdf ("Affine Weyl group alcoves") around 3.4. The
+character lattice for this cofolded datum is (X^*)^\delta. The script
+twisted_root_datum calculates the DUAL folded root datum; so what we
+need here is the dual of folded(dual of G.root_datum)). I think...}
+
+{The cofolded RootDatum has character lattice (X^*)^\delta, coroots
+the restrictions to (X^*)^\delta of the coroots of rd. The matrix is a
+map from the character lattice of the cofolded datum to the character
+lattice of G.}
+
+set cofolded(TwistedRootDatum (rd,delta)) = (RootDatum, mat):
+    let (rd1,M1) = folded(rd.dual,^delta) in (rd1.dual,M1)
+
+set cofolded(RealForm G) = cofolded(G.root_datum, G.distinguished_involution) 
 
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
@@ -313,7 +333,7 @@ set find(ParamPol Index, [ratvec] FV) = vec:
     do split_as_int(Index[parameter(GI,0,GI.rho,v)]) - 1
     od
 
-{.assumes all verts are same size.}
+{.assumes all verts are ratvecs of the same size.}
 set index([FacetStatusVertsIndex] FVSI) = ParamPol:
     let G1=root_datum(null(#FVSI[0].verts,0),null(#FVSI[0].verts,0),true).split_form
     in sum(G1,for (,V)@j in FVSI do (j+1)*parameter(G1,0,G1.rho,V/1) od)
@@ -1029,7 +1049,7 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
 	    	   then FPPstInd1[m1] :=
 		   ("T"##to_string(j),FPPstInd1[m1].verts);
 		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-	    	   ("Tdef"##to_string(j),FPPstInd0[m1].verts), FBs[1][m1])
+	    	   ("Tdef"##to_string(j),FPPstInd1[m1].verts), FBs[1][m1])
 	    	   fi
 	     	od
 	     	else
@@ -1040,7 +1060,7 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
 	     	in if m1 >= 0 then FPPstInd1[m1] :=
 	     	   ("T"##to_string(j),FPPstInd1[m1].verts);
 		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-	    	   ("Tdef"##to_string(j),FPPstInd0[m1].verts), FBs[1][m1])
+	    	   ("Tdef"##to_string(j),FPPstInd1[m1].verts), FBs[1][m1])
 		   fi
 	     	od
 	     	fi; FPPstIndQuo[1] := FPPstInd1
@@ -1371,6 +1391,14 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
 
 set spherical(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
     let data = FPP_vlist_indices_status(G)
+    then dataIndncH = down_to_business(G,data)
+    in spherical(G,dataIndncH)
+
+set sphericalFold(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
+    let (rd,M) = cofolded(G)
+    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd)
+    then verts = for v in vertsFold do M*v od
+    then data = (verts,FVFold)
     then dataIndncH = down_to_business(G,data)
     in spherical(G,dataIndncH)
 
