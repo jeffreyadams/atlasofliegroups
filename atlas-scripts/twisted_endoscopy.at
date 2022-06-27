@@ -498,16 +498,20 @@ else
  (false,(p_H,lift_std,inverse_lift,null_module(p_H.real_form)))
 fi
 
-set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
+set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let lift_std=lift_std(p_H,M,G,delta).parameter then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
  let ()=if te_verbose then prints("lift_std=", lift_std) fi in
- (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
+  let stable_sum=composition_series(inverse_lift).s_to_1 in
+  if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
+  stable_sum
 else
  let ()=if te_verbose then prints("abv failed, using mixed instead") fi then
- inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
- (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
+ inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
+ stable_sum=composition_series(inverse_lift).s_to_1 in
+ if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
+ stable_sum
 fi
 
 {
