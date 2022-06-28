@@ -10,7 +10,7 @@
 <parabolics.at {for parabolic_by_wt}
 <K_highest_weights.at {for all_parameters_x_gamma}
 <lattice.at {for vec_solve}
-<twisted_root_datum.at {to produce cofolded root datum}
+{<twisted_root_datum.at {to produce cofolded root datum}}
 
 {Need to fix facet_statusu around line 1000 to find all E6 unipotent reps}
 {cofolding doesn't work in type A_{2n}, when cofolding is nonreduced BC_n}
@@ -187,7 +187,7 @@ affine Weyl group to act on delta-fixed weights; and the unique label
 j0 (or -1) for a simple coroot needing to be divided by two to get
 full FPP}
 set cofolded(RealForm G) = (RootDatum, mat, int):
-    let (rdB,rdC,M) = cofolded(G.root_datum, G.distinguished_involution)
+    let (rdB,rdC,M) = cofoldedBOTH(G.root_datum, G.distinguished_involution)
     then j0=
     	 first(
 	 for alpha@j in rdB.simple_roots do alpha != rdC.simple_roots[j] od
@@ -548,10 +548,10 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     fi
     od.##
 
-{ same thing, with one simple root j0 for which FPP takes values in
+{ same thing, with (perhaps) one simple root j0 for which FPP takes values in
 [0,2] on coroot j0. So need to use values -floor(g[j0]),
 -floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
-it's an integer. }
+g[j0] is an integer. }
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
     let g=for betav in Affd.simple_coroots do betav*gamma od
     then INT = ##for j:#Affd.simple_coroots
@@ -1189,7 +1189,7 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
  { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
  { OOPS! ERROR! also type E6 has four dual nilpotents (#2,7,8,15) giving
  facets of dim 1. This needs to run in E6 also.}
-       	then () = if X = "A" and r > 1
+       	then () = if X = "A" and r > 1 or X="E" and r=6
 	     then let FPPstInd1 = FPPstIndQuo[1]
 	     then VIndex1 = ParamPol:
 	     	  index(for (,ind) in FPPstIndQuo[1] do (vlist[ind[0]]
@@ -1549,7 +1549,7 @@ set spherical(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
     then dataIndncH = down_to_business(G,data)
     in spherical(G,dataIndncH)
 
-{this seems OK EXCEPT  when cofolded is non-reduced: GL(odd)}
+{this seems OK}
 set sphericalFold(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
     let (rd,M,j0) = cofolded(G)
     {NEED TO USE j0 and FPPtauRoots to construct FPP}
@@ -1572,6 +1572,15 @@ set spherical_to_ht(RealForm G, int bound) = ([ratvec],
     then dataIndncH = down_to_business(G,data)
     in spherical_to_ht(G,dataIndncH,bound)
 
+set spherical_to_htFold(RealForm G, int bound) = ([ratvec],
+    [[FacetStatusVertsIndex]]):
+    let (rd,M,j0) = cofolded(G)
+    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd,M,j0)
+    then verts = for v in vertsFold do M*v od
+    then data = (verts,FVFold)
+    then dataIndncH = down_to_business(G,data)
+    in spherical_to_ht(G,dataIndncH,bound)
+
 set spherical_to_htC(RealForm G, int bound) =
     ([ratvec],[[FacetStatusVertsIndex]]):
     let GL = simple_factors(G)[0]
@@ -1583,6 +1592,23 @@ set spherical_to_htC(RealForm G, int bound) =
 whether or not unitary, inducing nu. G must have simple derived group.}
 set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
     let (vlist,FVstInd) = spherical(G)
+    in
+    ##(for d:#FVstInd
+    	 do for FVI@j in FVstInd[d]
+	    do (
+	       if FVI.status[0]="T" then true
+	       elif FVI.status[0] = "F" then false
+	       else prints("ERROR at d = ",d,", j = ",j); false
+	       fi,
+	    	facet_bary(vlist,FVI.verts)
+		)
+	    od
+	 od)
+
+{.forget dimension info; just (for each spherical hermitian barycenter)
+whether or not unitary, inducing nu. G must have simple derived group.}
+set JustTheFacts_R_simpleFold(RealForm G) = [(bool,ratvec)]:
+    let (vlist,FVstInd) = sphericalFold(G)
     in
     ##(for d:#FVstInd
     	 do for FVI@j in FVstInd[d]
@@ -1681,6 +1707,28 @@ set JustTheFacts(RealForm L) = [(bool,ratvec)]:
 	     od.##
      esac
 
+set JustTheFactsFold(RealForm L) = [(bool,ratvec)]:
+    let (LRs,LCs) = real_and_complex_simple_factors(L)
+    then JTFs = for LRj in LRs do JustTheFacts_R_simpleFold(LRj) od ##
+    	 for LCk in LCs do JustTheFacts_C_simple(LCk) od
+
+    in
+    case #LRs + #LCs
+    	 in [(true,null(L.rank)/1)],
+    	 JTFs[0],
+    	 for (stat0,nu0) in JTFs[0]
+    	     do for (stat1,nu1) in JTFs[1]
+	     	do (stat0 and stat1, nu0+nu1)
+		od
+	     od.##,
+	 for (stat0,nu0) in JTFs[0]
+    	     do for (stat1,nu1) in JTFs[1]
+	     	do for (stat2,nu2) in JTFs[2]
+	     	   do (stat0 and stat1 and stat2, nu0+nu1+nu2)
+		   od
+	     	od.##
+	     od.##
+     esac
 
 {.like facet_statusu, adding info from real induction.}
 {Marks unipotent parameters as "T[number of dual nilpotent]", induced
