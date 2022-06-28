@@ -12,6 +12,8 @@
 <lattice.at {for vec_solve}
 <twisted_root_datum.at {to produce cofolded root datum}
 
+{Need to fix facet_statusu around line 1000 to find all E6 unipotent reps}
+{cofolding doesn't work in type A_{2n}, when cofolding is nonreduced BC_n}
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -108,21 +110,90 @@ set NoReps([vec] list) =
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
 (h*)^\delta. They are most efficiently calculated not using the affine
 Weyl group of G, but rather the "cofolded" affine Weyl group explained
-in the notes affine.pdf ("Affine Weyl group alcoves") around 3.4. The
+in the notes alcoves.pdf ("Affine Weyl group alcoves") around 3.4. The
 character lattice for this cofolded datum is (X^*)^\delta. The script
 twisted_root_datum calculates the DUAL folded root datum; so what we
 need here is the dual of folded(dual of G.root_datum)). I think...}
+
+set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
+    assert(is_distinguished(rd,delta),"delta is not distinguished");
+    let Tstar = SubTorus:eigen_lattice(delta,1)
+{Tstar =(X^*)^\delta; columns are a basis of (X^*)^\delta}
+{Tstar is nxr where n=rd.rank and r=dimension(Tstar)}
+{ Tstar: matrix of map Tstar->X^*(H) \simeq Z^r -> Z^n: this is Tstar.inject
+ ^Tstar: matrix of map X_*(H)->X_*(Tstar) \simeq Z^n->Z^r:   this is
+ Tstar.project=Tstar.restrict}
+    then coroots_nonreduced=sort_u(
+    	 for alphavee in rd.poscoroots do Tstar.restrict(alphavee) od
+	 )
+    then {DISCARDS COROOTS FOR WHICH ALPHAVEE/2 IS COROOT}
+	corootsC =mat:##(for alphavee in coroots_nonreduced
+    	 do if all (for x in alphavee/2 do is_integer(x) od)
+	    and find(coroots_nonreduced,ratvec_as_vec(alphavee/2))!=-1
+	    then [] else [alphavee] fi
+	 od),
+    	 {THIS DISCARDS COROOTS FOR WHICH 2*ALPHAVEE IS COROOT}
+	  corootsB=mat:##(for alphavee in coroots_nonreduced
+    	 do if find(coroots_nonreduced,2*alphavee)!=-1
+	    then [] else [alphavee] fi
+	 od)
+    then rootsC = [] in
+    	 for alphavee in corootsC do
+	     let pullback_alphavee = let j = first(
+	     	 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
+    		 alphavee od
+	     )
+	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
+	 then v = sum(##( for betavee in rd.poscoroots do
+	     	 if Tstar.restrict(betavee) = alphavee
+		 then [root(rd,betavee)]
+		 else []
+		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
+	  then w = 2*v/(v*pullback_alphavee)
+	  then corestrict_w = solve(Tstar,w).requisition
+    	  in
+	  rootsC#:=ratvec_as_vec(corestrict_w)
+	  od;
+    	  let rootsB = [] in
+    	  for alphavee in corootsB do
+	     let pullback_alphavee = let j = first(
+	     	 for betavee in rd.poscoroots do Tstar.restrict(betavee) =
+    		 alphavee od
+	     )
+	      in rd.poscoroots[j] {ONE coroot restricting to alphavee}
+	 then v = sum(##( for betavee in rd.poscoroots do
+	     	 if Tstar.restrict(betavee) = alphavee
+		 then [root(rd,betavee)]
+		 else []
+		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
+	  then w = 2*v/(v*pullback_alphavee)
+	  then corestrict_w = solve(Tstar,w).requisition
+    	  in
+	  rootsB#:=ratvec_as_vec(corestrict_w)
+	  od;
+	  (root_datum_from_positive((rootsB,corootsB),rd.prefers_coroots),
+	  root_datum_from_positive((rootsC,corootsC),rd.prefers_coroots),Tstar)
 
 {The cofolded RootDatum has character lattice (X^*)^\delta, coroots
 the restrictions to (X^*)^\delta of the coroots of rd. The matrix is a
 map from the character lattice of the cofolded datum to the character
 lattice of G.}
 
-set cofolded(TwistedRootDatum (rd,delta)) = (RootDatum, mat):
-    let (rd1,M1) = folded(rd.dual,^delta) in (rd1.dual,M1)
+{set cofolded(TwistedRootDatum (rd,delta)) = (RootDatum, mat):
+    let (rd1,M1) = folded(rd.dual,^delta) in (rd1.dual,M1)}
 
-set cofolded(RealForm G) = cofolded(G.root_datum, G.distinguished_involution) 
-
+{returns the cofolded root system, needed to construct the correct
+affine Weyl group to act on delta-fixed weights; and the unique label
+j0 (or -1) for a simple coroot needing to be divided by two to get
+full FPP}
+set cofolded(RealForm G) = (RootDatum, mat, int):
+    let (rdB,rdC,M) = cofolded(G.root_datum, G.distinguished_involution)
+    then j0=
+    	 first(
+	 for alpha@j in rdB.simple_roots do alpha != rdC.simple_roots[j] od
+	 )
+    in (rdB,M,j0)
+    
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
 rd[j] in simple_factors(rd). Since I want to use this to look for
@@ -477,6 +548,40 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     fi
     od.##
 
+{ same thing, with one simple root j0 for which FPP takes values in
+[0,2] on coroot j0. So need to use values -floor(g[j0]),
+-floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
+it's an integer. }
+set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
+    let g=for betav in Affd.simple_coroots do betav*gamma od
+    then INT = ##for j:#Affd.simple_coroots
+    	 do
+	 if is_integer(g[j]) and j!=j0 then [j] else []
+	 fi
+	 od {) ##(if j0 >= 0 then [j0] else [] fi)}
+    in
+    let tau0 = sum(Affd.rank, for xi@j in Affd.fundamental_weights
+    	      do -floor(g[j])*xi od)
+    then taus = for S in power_set(#INT)
+    	 do tau0+ sum(
+	    Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od
+	    	     )
+         od
+    then () = if j0 >=0 and not is_integer(g[j0]) then
+    	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+              elif j0 >=0 and is_integer(g[j0]) then
+    	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+    	      	   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
+	      fi
+    in
+    for tau in taus do
+    	if(all(
+	for xiv in Affd.fundamental_coweights do is_integer(xiv*tau) od))
+    	then [ratvec_as_vec(tau)]
+    	else []
+    fi
+    od.##
+
 {.Computes translation part of affine Weyl group element moving gamma
 to the fundamental alcove.}
 {Goal is to subtract roots until gamma lands in
@@ -713,6 +818,17 @@ set FPP_vertices(SimpleAffine Affd) = [ratvec]:
         do gamma+tau od
     od.##
 
+{.this includes all vertex sets of facets in the fundamental
+parallelepiped, each exactly once. j0 is possible label of a simple coroot that can be up to 2 on FPP}
+set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
+    if facet_verbose then prints("start FPP_vertices.")
+    fi;
+    for gamma in W_fund_verticesID(Affd)
+    do
+    for tau in FPPtauRoots(Affd,gamma,j0)
+        do gamma+tau od
+    od.##
+
 set FPP_barycenters(SimpleAffine Affd) = [[FacetBary]]:
     if facet_verbose then prints("start FPP_barycenters.")
     fi;
@@ -846,6 +962,43 @@ set FPP_vlist_indices_status(SimpleAffine Affd) =
        let (w,) = from_dominant(Affd,wFB)
        in
 	[(string, vec)]: for tau in FPPtauRoots(Affd,wFB)
+       	do
+       	("?", vec: find(vertexIndex, (tau,w)*FV))
+       	od
+       od.##{ now type [string,vec] }
+    od.##
+    od)
+
+{extra argument is a possible simple coroot allowed to be 2 on FPP}
+set FPP_vlist_indices_status(SimpleAffine Affd, mat M, int j0) =
+    ([ratvec],[[FacetStatusVertsIndex]]):
+    let vlist = [ratvec]: FPP_vertices(Affd,j0),
+    fundVerts = fund_vertex_sets(Affd)
+    {then fundVertsG = for FVd in fundVerts do for FV in FVd do M*FV od od}
+    then vertexIndex=index(vlist), N= [(string,vec)]: for j:#vlist do ("?",[j]) od
+    in (vlist, [[(string,vec)]]: [N]##
+    for d:Affd.ss_rank from 1
+    do
+    if facet_verbose
+    then prints("start dim ",d,
+    	 " in FPP_vlist_indices_status")
+    fi;
+    for FV in fundVerts[d]
+    do
+    let FB=FacetBary: sum(Affd.rank,FV)/(d+1)
+    then WBsID= [FacetBary]:
+    	for wFBn in Weyl_orbit(Affd,FB.numer)
+        do
+        if is_integrally_dominant(Affd,wFBn/FB.denom)
+        then [wFBn/FB.denom]
+	else []
+        fi
+        od.##
+    in [FacetStatusVertsIndex]: for wFB in WBsID
+       do
+       let (w,) = from_dominant(Affd,wFB)
+       in
+	[(string, vec)]: for tau in FPPtauRoots(Affd,wFB,j0)
        	do
        	("?", vec: find(vertexIndex, (tau,w)*FV))
        	od
@@ -1034,6 +1187,8 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
 	 od
 	 fi; FPPstIndQuo[0] := FPPstInd0
  { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
+ { OOPS! ERROR! also type E6 has four dual nilpotents (#2,7,8,15) giving
+ facets of dim 1. This needs to run in E6 also.}
        	then () = if X = "A" and r > 1
 	     then let FPPstInd1 = FPPstIndQuo[1]
 	     then VIndex1 = ParamPol:
@@ -1394,9 +1549,11 @@ set spherical(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
     then dataIndncH = down_to_business(G,data)
     in spherical(G,dataIndncH)
 
+{this seems OK EXCEPT  when cofolded is non-reduced: GL(odd)}
 set sphericalFold(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
-    let (rd,M) = cofolded(G)
-    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd)
+    let (rd,M,j0) = cofolded(G)
+    {NEED TO USE j0 and FPPtauRoots to construct FPP}
+    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd,M,j0)
     then verts = for v in vertsFold do M*v od
     then data = (verts,FVFold)
     then dataIndncH = down_to_business(G,data)
