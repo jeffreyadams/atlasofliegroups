@@ -491,7 +491,8 @@ set abv(Param p_H,mat M,RealForm G,mat delta)=(bool,(Param,Param,ParamPol,ParamP
 let lift_std=lift_std(p_H,M,G,delta).parameter then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
- let ()=if te_verbose then prints("lift_std=", lift_std) fi in
+ let ()=assert(is_stable(inverse_lift), "purported Arthur lift is not stable");
+   if te_verbose then prints("lift_std=", lift_std) fi in
  (true,(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1))
 else
  let ()=if te_verbose then prints("lift_std failed") fi in
@@ -502,13 +503,14 @@ set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let lift_std=lift_std(p_H,M,G,delta).parameter then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
- let ()=if te_verbose then prints("lift_std=", lift_std) fi in
+  let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in 
+  let ()=if te_verbose then prints("lift_std=", lift_std) fi in
   let stable_sum=composition_series(inverse_lift).s_to_1 in
-  if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
   stable_sum
 else
- let ()=if te_verbose then prints("abv failed, using mixed instead") fi then
- inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
+  let ()=if te_verbose then prints("abv failed, using mixed instead") fi then
+  inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) then
+  ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") then
  stable_sum=composition_series(inverse_lift).s_to_1 in
  if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
  stable_sum
