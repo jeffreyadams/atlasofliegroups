@@ -110,34 +110,47 @@ public:
   big_int& operator|= (const big_int& x);
   big_int& operator^= (const big_int& x);
   big_int& bitwise_subtract (const big_int& x);
-  big_int& bitwise_subtract (big_int&& x);
 
-  // when second argument is rv-ref modify it and move it this avoids extending
-  big_int& operator&= (big_int&& x)
-  {
-    if (is_negative() and d.size()<x.d.size())
-      return *this=std::move(x&=static_cast<const big_int&>(*this));
+  // non destructive versions copy an argument no shorter than the result
+  big_int operator& (const big_int& x) const
+  { // copy the shorter positive argument, or if none the longer (negative) one
+    if (is_negative()
+	? x.is_negative() and d.size()>=x.d.size()
+	: x.is_negative() or  d.size()<=x.d.size())
+      return big_int(*this) &= x;
     else
-      return *this&=static_cast<const big_int&>(x);
+      return big_int(x) &= *this;
   }
-  big_int& operator|= (big_int&& x)
-  {
-    if (not is_negative() and d.size()<x.d.size())
-      return *this=std::move(x|=static_cast<const big_int&>(*this));
+  big_int operator| (const big_int& x) const
+  { // copy the shorter negative argument, or if none the longer (positive) one
+    if (is_negative()
+	? not x.is_negative() or  d.size()<=x.d.size()
+	: not x.is_negative() and d.size()>=x.d.size())
+      return big_int(*this) |= x;
     else
-      return *this|=static_cast<const big_int&>(x);
+      return big_int(x) |= *this;
   }
-  big_int& operator^= (big_int&& x)
-  {
-    if (d.size()<x.d.size())
-      return *this=std::move(x^=static_cast<const big_int&>(*this));
+  big_int& operator^ (const big_int& x) const
+  { // copy the longer argument
+    if (d.size()>=x.d.size())
+      return big_int(*this) ^= x;
     else
-      return *this^=static_cast<const big_int&>(x);
+      return big_int(x) ^= *this;
+  }
+  big_int bitwise_subtract (const big_int& x) const
+  { // copy the shorter positive contrinution; if none the longer (negative) one
+    if (is_negative()
+	? not x.is_negative() and d.size()>=x.d.size()
+	: not x.is_negative() or  d.size()<=x.d.size())
+      return big_int(*this).bitwise_subtract(x);
+    else // we don't want to use |bitwise_subtract|; perform |NOT_AND| into |x|
+      return big_int(x).complement() &= *this;
   }
 
-  bool bitwise_contains (const big_int& x) const;
-  int lowest_set_bit() const; // index of rightmost bit 1, or -1 when zero
-  int leading_bit() const; // position of leftmost bit differing from sign bit
+  // when using |bitwise_subtract| only to see whether |is_zero| holds, prefer:
+  bool bitwise_subset (const big_int& x) const;
+  int index_of_set_bit(unsigned n) const; // index of n-th set bit; |-1| if none
+  int bit_length() const; // position of leftmost bit differing from sign bit
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }

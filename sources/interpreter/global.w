@@ -2770,6 +2770,42 @@ void xor_wrapper(expression_base::level l)
   j->val ^= i->val;
   push_value(j);
 }
+void and_not_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bitwise_subtract(j->val)));
+}
+
+@ And here are some more bitwise operations on integers.
+@< Local function definitions @>=
+void bitwise_subset_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(whether(i->val.bitwise_subset(j->val)));
+}
+void nth_set_bit_wrapper(expression_base::level l)
+{ int n=get<int_value>()->int_val();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  if (n>=0)
+    push_value(std::make_shared<int_value>(i->val.index_of_set_bit(n)));
+  else // complement |n| and look for |n|-th cleared bit
+  {
+    big_int v=i->val; v.complement();
+    push_value(std::make_shared<int_value>(v.index_of_set_bit(-1-n)));
+  }
+}
+void bit_length_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bit_length()));
+}
 
 @*1 Rationals.
 %
@@ -4041,6 +4077,10 @@ install_function(power_wrapper,"^","(int,int->int)");
 install_function(and_wrapper,"AND","(int,int->int)");
 install_function(or_wrapper,"OR","(int,int->int)");
 install_function(xor_wrapper,"XOR","(int,int->int)");
+install_function(and_not_wrapper,"AND_NOT","(int,int->int)");
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_function(bit_length_wrapper,"bit_length","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''
