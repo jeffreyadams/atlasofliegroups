@@ -12,8 +12,6 @@
 <lattice.at {for vec_solve}
 {<twisted_root_datum.at {to produce cofolded root datum}}
 
-{Need to fix facet_statusu around line 1000 to find all E6 unipotent reps}
-{cofolding doesn't work in type A_{2n}, when cofolding is nonreduced BC_n}
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -1225,6 +1223,24 @@ set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
 
 set facet_status([[vec]] FPPind) = [[string]]:
     for d:#FPPind do for j:#FPPind[d] do "?" od od
+
+{vlist is a collection of possible infinitesimal characters for reps
+(x,lambda,?), typically vertices from FPP. If vlist[i] shows up as
+a vertex of a unitary facet, then there is another vertex vlist[j] so that
+
+theta(vlist[i]) = -vlist[j] + (1+theta)lambda
+
+The sequence [int] records the permutation i |--> j. The actual
+vertices of the unitary facet are (vlist[i] + vlist[j])/2.
+
+So this can be used to compute the actual facets of unitary
+parameters, which are indeed simplices.  In the non-equal rank case,
+one should apply this function to cofolded vertices, to be sure that
+everything in sight is hermitian.}
+set thetaAct(KGBElt x, ratvec lambda, [ratvec] vlist) = [int]:
+    let vlistInd = index(vlist), theta = x.involution
+    then thetaPlus = (1+theta)*lambda
+    in for v in vlist do find (vlistInd, -theta*v + thetaPlus) od
 
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
