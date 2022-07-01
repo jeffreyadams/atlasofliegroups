@@ -678,6 +678,130 @@ big_int big_int::reduce_mod (const big_int& divisor)
   return quotient;
 } // |big_int::reduce_mod|
 
+big_int& big_int::operator&= (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (neg and x_neg) // test whether result will be negative
+  { // if so, the result will be as long as the longer of the two
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we need to extend with digits from |x|
+    {
+      i = d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+    }
+    else // we are no shorter than |x|, but no shrinking can be necessary
+      i = x.d.size();
+
+    while (i-->0)
+      d[i]&=x.d[i]; // do |AND| of remaiing digits
+  }
+  else if (neg!=x_neg and (neg ? d.size()<x.d.size() : d.size()>x.d.size()))
+  { // positive number has strictly more digits than the negative one
+    if (neg) // if we were the negative one, we need to copy digits from |x|
+    {
+      size_t i=d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+      while (i-->0)
+	d[i]&=x.d[i];
+    }
+    else // we were positive and longer, keep our leading digits (and sign)
+      for (size_t i = x.d.size(); i-->0; )
+	d[i]&=x.d[i];
+  }
+  else
+  { // some positive argument, and maybe a negative one not shorter than it
+    size_t i = // size of positive argument; the shorter one if there are two
+      neg ? x.d.size() : x_neg ? d.size() : std::min(d.size(),x.d.size());
+    // positive result will have size at most |i|; see whether it shrinks more
+    while (--i,(d[i]&=x.d[i])==0)
+      if (i==0)
+	break; // don't make |i| negative
+    d.erase(d.begin()+ ((d[i]&neg_flag)==0 ? i+1 : i+2),d.end()); // shrink
+    while (i-->0)
+      d[i]&=x.d[i]; // do |AND| of remaiing digits
+  }
+  return *this;
+} // |big_int::operator&=|
+
+big_int& big_int::operator|= (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (not neg and not x_neg) // test whether result will be positive
+  { // if so, the result will be as long as the longer of the two
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we need to extend with digits from |x|
+    {
+      i = d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+    }
+    else // we are no shorter than |x|, but no shrinking can be necessary
+      i = x.d.size();
+
+    while (i-->0)
+      d[i]|=x.d[i]; // do |OR| of remaiing digits
+  }
+  else if (neg!=x_neg and (neg ? d.size()>x.d.size() : d.size()<x.d.size()))
+  { // negative number has strictly more digits than the positive one
+    if (x_neg) // if we were the positive one, we need to copy digits from |x|
+    {
+      size_t i=d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+      while (i-->0)
+	d[i]|=x.d[i];
+    }
+    else // we were negative and longer, keep our leading digits (and sign)
+      for (size_t i = x.d.size(); i-->0; )
+	d[i]|=x.d[i];
+  }
+  else
+  { // some negative argument, and maybe a positive one not shorter than it
+    size_t i = // size of negative argument; the shorter one if there are two
+      neg ? x_neg ? std::min(d.size(),x.d.size()) : d.size() : x.d.size();
+    // negative result will have size at most |i|; see whether it shrinks more
+    while (--i,(d[i]|=x.d[i])==digit(-1))
+      if (i==0)
+	break; // don't make |i| negative
+    d.erase(d.begin()+ ((d[i]&neg_flag)!=0 ? i+1 : i+2),d.end()); // shrink
+    while (i-->0)
+      d[i]|=x.d[i]; // do |OR| of remaining digits
+  }
+  return *this;
+} // |big_int::operator|= |
+
+big_int& big_int::operator^= (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (d.size()==x.d.size())
+  { // in equal size case, the result might shrink
+    for (size_t i = d.size(); i-->0; )
+      d[i]^=x.d[i]; // do |XOR| of all digits
+    shrink();
+  }
+  else
+  { // in unqual size case, result size is the longer one in all cases
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we must grow
+    { i = d.size();
+      if (neg)
+      { d.reserve(x.d.size());
+	for (auto it=x.d.begin()+i; it!=x.d.end(); ++it)
+	  d.push_back(~*it); // complement and copy
+      }
+      else // we are positive; copy leading digits from |x| unchanged
+	d.insert(d.end(),x.d.begin()+i,x.d.end());
+    }
+    else
+    { i = x.d.size();
+      if (x_neg) // then we need to complement our leading digits
+        for (auto it=d.begin()+i; it!=d.end(); ++it)
+	  *it=~*it;
+    }
+    while (i-->0)
+      d[i]^=x.d[i]; // do |XOR| of remaiing digits
+  }
+  return *this;
+} // |big_int::operator^= |
+
 // shift left bits in fixed length array |d|; caller assumes responsability
 void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
 {

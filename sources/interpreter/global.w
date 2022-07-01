@@ -2744,6 +2744,33 @@ void power_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(b->val.power(n)));
 }
 
+@ Here is the first of the bitwise operations on integers.
+@< Local function definitions @>=
+void and_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val &= i->val;
+  push_value(j);
+}
+void or_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val |= i->val;
+  push_value(j);
+}
+void xor_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val ^= i->val;
+  push_value(j);
+}
+
 @*1 Rationals.
 %
 As mentioned above the operator `/' applied to integers will not denote
@@ -4011,6 +4038,9 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-","(int->int)");
 install_function(power_wrapper,"^","(int,int->int)");
+install_function(and_wrapper,"AND","(int,int->int)");
+install_function(or_wrapper,"OR","(int,int->int)");
+install_function(xor_wrapper,"XOR","(int,int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''

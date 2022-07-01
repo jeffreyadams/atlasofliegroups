@@ -26,7 +26,7 @@ class big_int
   typedef std::uint32_t digit;
   typedef std::uint64_t two_digits;
 
-  std::vector<digit> d;
+  std::vector<digit> d; // has at least one entry; highest one determines sign
 
   static unsigned char_val (char c) // for reading from strings
   { return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
@@ -104,6 +104,40 @@ public:
 	return *this; // simplifying by $\gcd=1$ is common with rationals
       return *this = reduce_mod(divisor); // else replace remainder by quotient
     }
+
+  // bitwise operations, viewing integers as finite or cofinite sets of naturals
+  big_int& operator&= (const big_int& x);
+  big_int& operator|= (const big_int& x);
+  big_int& operator^= (const big_int& x);
+  big_int& bitwise_subtract (const big_int& x);
+  big_int& bitwise_subtract (big_int&& x);
+
+  // when second argument is rv-ref modify it and move it this avoids extending
+  big_int& operator&= (big_int&& x)
+  {
+    if (is_negative() and d.size()<x.d.size())
+      return *this=std::move(x&=static_cast<const big_int&>(*this));
+    else
+      return *this&=static_cast<const big_int&>(x);
+  }
+  big_int& operator|= (big_int&& x)
+  {
+    if (not is_negative() and d.size()<x.d.size())
+      return *this=std::move(x|=static_cast<const big_int&>(*this));
+    else
+      return *this|=static_cast<const big_int&>(x);
+  }
+  big_int& operator^= (big_int&& x)
+  {
+    if (d.size()<x.d.size())
+      return *this=std::move(x^=static_cast<const big_int&>(*this));
+    else
+      return *this^=static_cast<const big_int&>(x);
+  }
+
+  bool bitwise_contains (const big_int& x) const;
+  int lowest_set_bit() const; // index of rightmost bit 1, or -1 when zero
+  int leading_bit() const; // position of leftmost bit differing from sign bit
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
