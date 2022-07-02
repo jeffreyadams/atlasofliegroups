@@ -2724,24 +2724,118 @@ void unary_minus_wrapper(expression_base::level l)
 }
 @)
 void power_wrapper(expression_base::level l)
-{ static shared_int one = std::make_shared<int_value>(1);
+{ static shared_int zero = std::make_shared<int_value>(0);
+  static shared_int one = std::make_shared<int_value>(1);
   // constants shared between calls
   static shared_int minus_one  = std::make_shared<int_value>(-1);
 @)
-  int n=get<int_value>()->int_val(); // exponent is small
-  shared_int b=get<int_value>(); // base can be large
+  shared_int exponent = get<int_value>();
+  shared_int b=get<int_value>();
   bool unit_base = b->val.size()==1 and std::abs(b->int_val())==1;
-  if (n<0 and not unit_base)
-    throw runtime_error("Negative power of integer");
+  if (not unit_base)
+  { if (exponent->val.is_negative())
+      throw runtime_error("Negative power of integer");
+    else if (not b->val.is_zero() and exponent->val.size()>1)
+      throw runtime_error("Exponent too large in power of integer");
+  }
   if (l==expression_base::no_value)
     return;
 @)
   if (unit_base)
-  {@; push_value(n%2!=0 and b->val.is_negative() ? minus_one : one);
+  @/{@; push_value(b->val.is_negative() and exponent->val.is_odd() ? minus_one : one);
       return;
   }
 @)
-  push_value(std::make_shared<int_value>(b->val.power(n)));
+  if (b->val.is_zero())
+    {@; push_value(exponent->val.is_zero() ? one : zero); return; }
+
+  push_value(std::make_shared<int_value>(b->val.power(exponent->int_val())));
+}
+
+@ Here is the first of the bitwise operations on integers.
+@< Local function definitions @>=
+void and_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val &= i->val;
+  push_value(j);
+}
+void or_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val |= i->val;
+  push_value(j);
+}
+void xor_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val ^= i->val;
+  push_value(j);
+}
+void and_not_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bitwise_subtract(j->val)));
+}
+
+@ And here are some more bitwise operations on integers.
+@< Local function definitions @>=
+void bitwise_subset_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(whether(i->val.bitwise_subset(j->val)));
+}
+void nth_set_bit_wrapper(expression_base::level l)
+{ int n=get<int_value>()->int_val();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  if (n>=0)
+    push_value(std::make_shared<int_value>(i->val.index_of_set_bit(n)));
+  else // complement |n| and look for |n|-th cleared bit
+  {
+    big_int v=i->val; v.complement();
+    push_value(std::make_shared<int_value>(v.index_of_set_bit(-1-n)));
+  }
+}
+void bit_length_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bit_length()));
+}
+
+@ Although a set of natural numbers represented as a list could be converted
+to an integer representing it as a bitset using repeated use of exponentiation
+of the base~$2$ and the bitwise |OR| operations, it is more efficient to have a
+built-in function for this. Since numbers exceeding $2^{31}$ in the list would
+certainly cause trouble, the function below takes a |vector_value| as argument.
+
+@h "bitmap.h"
+@< Local function definitions @>=
+void vec_to_bitset_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  unsigned cap=0;
+  for (const auto n : v->val)
+    if (n<0)
+      throw runtime_error("Negative entry in conversion to bitset");
+    else if (static_cast<unsigned>(n)>=cap)
+      cap = n+1; // ensure sufficient capacity to store |n| in bitset
+  if (l==expression_base::no_value)
+    return;
+@)
+  BitMap b(cap,v->val.begin(),v->val.end());
+  push_value(std::make_shared<int_value>(big_int(b)));
 }
 
 @*1 Rationals.
@@ -3197,7 +3291,7 @@ that it is built-in, but its operation is variable among sessions and even
 within a single session. Its main purpose is to allow non-human users of the
 \.{atlas} executable (i.e., programs that run \.{atlas} behind the scenes) to
 interrogate what the |readline| interface would propose as completions to human
-users; with this information such programs can propose a similar interface too
+users; with this information such programs can propose a similar interface to
 their own users. The functionality itself is provided by the |completions|
 function defined in \.{buffer.w}.
 
@@ -4011,6 +4105,14 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-","(int->int)");
 install_function(power_wrapper,"^","(int,int->int)");
+install_function(and_wrapper,"AND","(int,int->int)");
+install_function(or_wrapper,"OR","(int,int->int)");
+install_function(xor_wrapper,"XOR","(int,int->int)");
+install_function(and_not_wrapper,"AND_NOT","(int,int->int)");
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_function(bit_length_wrapper,"bit_length","(int->int)");
+install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''

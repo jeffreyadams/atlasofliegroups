@@ -187,15 +187,28 @@ set is_member_sorted ([int] v) = (int->bool):
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
 
-set contains (int val) = ([int]->bool): ([int] v)bool:
-  any(#v,(int i)bool:v[i]=val)
 
-set is_subset_of_sorted ([int] sorted) = ([int]->bool):
-   let test = is_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
-set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
-   let test = isnt_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_member_fast  (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+set isnt_member_fast  (vec L) = (int->bool):
+   let B = ~L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+
+set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
+set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
+
+set contains (vec S) = (vec->bool):
+   let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool):
+   let b = 2^s in (vec L)bool: bitwise_subset(b,L.to_bitset)
+
+set is_subset_of (vec L) = (vec->bool):
+   let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+set is_disjoint_from (vec L) = (vec->bool):
+   let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+
+set set_bit_positions (int n) = vec:
+   assert(n.>=,"Infinite number of set bits for negative number");
+   while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
@@ -2029,7 +2042,7 @@ set purity (KTypePol P) = (int,int,int):
 
 {                   Miscellaneous find functions                     }
 
-{ find index of item in list, or -1 if not found; first does this }
+{ find index of item in list, or -1 if not found; |first| does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
 set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }

@@ -94,6 +94,23 @@ readline_completions: (string->[string]): list of completions of a prefix
   whose name starts with that prefix. Being currently in use means either being
   defined as a (global) variable, or being defined at least once as a function.
 
+{ in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
+  if (n<0) set of natural numbers, the positions (from 0 on theright) of their
+  set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
+
+AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
+AND_NOT: (int,int->int): bitwise AND NOT: AND_NOT(n,m) = AND(n,-1-m)
+bitwise_subset: (int,int->bool): fast test whether AND_NOT(arguments)=0
+nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
+  Here n is the first argument, and k the second argument of nth_set_bit.
+  If k>=0 then number N(k) of bits 1 of k is finite; for n>=N(k) returns -1.
+  If k<0 and n>=0 this always returns a nonegative number (indeed at least n)
+  If n<0 returns nth_set_bit(-1-k,-1-n), so searches among the bits 0 of k
+bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
+  If n<0 returns the well defined negative value -1-bit_length(-1-n)
+to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
+  Negative vector entries are refjected, and result is always non-negative
+
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
 frac: (rat->int): fractional part of rational (same as r%1 or as r-floor(r))

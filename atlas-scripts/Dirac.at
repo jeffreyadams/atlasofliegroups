@@ -1,6 +1,12 @@
 {scripts to calculate Dirac inequality attached to a K-type}
 {works only when rank(G) = rank(K)}
 
+<basic.at
+<K.at { for |K_0| }
+<K_highest_weights.at { for |highest_weight| }
+<hermitian.at { for |is_unitary| }
+<K_types.at { for |branch_irr| }
+
 {list of theta-stable positive systems for fundamental Cartan}
 set thetaStable(RealForm G) = [KGBElt]:
     let delta = G.distinguished_involution in
@@ -27,7 +33,7 @@ set muPRVs(KType mu) = [ratvec]:
 set DiracIC(KType mu) = ratvec:
 	let mutildes=muPRVs(mu), G= mu.real_form
 	then rhocheck = rho_check(G)
-	then ics= for muprime in mutildes do dominant(G,muprime) od 
+	then ics= for muprime in mutildes do dominant(G,muprime) od
 	then minloc = min_loc(for ic in ics do ic*rhocheck od)
 	in ics[minloc]
 
@@ -38,7 +44,7 @@ set DiracCoh(KType mu) = [Param]:
     then ht = rat_as_int(2*ic*rho_check(G)), allic = all_parameters_gamma(G,ic)
     in
 	for p in allic do
-    	if height(p) <= ht then 
+    	if height(p) <= ht then
 	      if is_unitary(p) and branch_irr(p,ht)[mu] != 0
 	      then [p]
 	      else []
