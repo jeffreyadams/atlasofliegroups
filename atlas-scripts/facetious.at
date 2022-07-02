@@ -403,9 +403,12 @@ set find(ParamPol Index, [ratvec] FV) = vec:
     od
 
 {.assumes all verts are ratvecs of the same size.}
+{FAILS if #FVSI = 0}
 set index([FacetStatusVertsIndex] FVSI) = ParamPol:
+if #FVSI = 0 then character_formula(GL(1,R).trivial) else 
     let G1=root_datum(null(#FVSI[0].verts,0),null(#FVSI[0].verts,0),true).split_form
-    in sum(G1,for (,V)@j in FVSI do (j+1)*parameter(G1,0,G1.rho,V/1) od)
+    in sum(G1,for (,V)@j in FVSI do (j+1)*parameter(G1,0,G1.rho,V/1)
+    od) fi
 
 set find(ParamPol Index, vec verts) = int:
     let GI = Index.real_form
@@ -1067,7 +1070,8 @@ set FPPopenureFacets([FacetVertsIndex] Alcoves, [ParamPol] Indices,
     	 for A in Alcoves
 	 do  for j in A do if isnt_member(Base)(j) then [j] else [] fi od.##
 	 od
-    in [vec]: for m:#BaseComps[0]
+    in if #BaseComps = 0 then []
+       else [vec]: for m:#BaseComps[0]
 	   do vec:
 	       ##(for BC in BaseComps
 	       do vec:
@@ -1077,6 +1081,7 @@ set FPPopenureFacets([FacetVertsIndex] Alcoves, [ParamPol] Indices,
 		  od.##
 	       od)
 	    od
+	    fi
 
 set FPPopenureFacets([[FacetStatusVertsIndex]] FPPInd, [ParamPol] Indices,
     FacetVertsIndex Base) = [vec]:
@@ -1241,6 +1246,45 @@ set thetaAct(KGBElt x, ratvec lambda, [ratvec] vlist) = [int]:
     let vlistInd = index(vlist), theta = x.involution
     then thetaPlus = (1+theta)*lambda
     in for v in vlist do find (vlistInd, -theta*v + thetaPlus) od
+
+
+
+{makes the FPP facets into facets of actual unitary parameters}
+{WOULD LIKE: eliminate the empty lists at the end of the output (when there
+are no actual unitary facets of the highest dimension}
+set actualize(KGBElt x, ratvec lambda, [ratvec] vlist,
+[[FacetStatusVertsIndex]] FPPstInd) = ([ratvec], [[FacetStatusVertsIndex]]):
+    let Perm = thetaAct(x, lambda, vlist)
+    then vlistAct = [ratvec]:
+    	for v@i in vlist do let j = Perm[i] in
+	    if j=i then [v]
+	    else if j > i then [(v+vlist[j])/2]
+	    else []
+	    fi fi
+	od.##
+    then vlistActInd = index(vlistAct)
+    then mapAct = [int]: for v@i in vlist do let j = Perm[i] in
+    	 	if j=i then find(vlistActInd,v)
+		else if j > i then find(vlistActInd,(v+vlist[j])/2)
+		else -1
+		fi fi
+	od
+    then FSVIAct = [[FacetStatusVertsIndex]]: for j:#FPPstInd do
+    [FacetStatusVertsIndex]: [] od
+    then () = for FSVId@d in FPPstInd do
+    	     for stFind in FSVId do
+	     if stFind.status[0] = "T" then
+	     	 let v = stFind.verts
+		 then vAct = vec: for i in v do if mapAct[i] >= 0 then
+		      [mapAct[i]]
+		 else [] fi od.##
+		 then FSVId0 = FSVIAct[#vAct -1]
+		 then () = FSVId0 ##:= [(stFind.status, vAct)]
+		 in FSVIAct[#vAct - 1]:=FSVId0
+		 fi
+		 od
+		 od
+    in (vlistAct, FSVIAct)
 
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
