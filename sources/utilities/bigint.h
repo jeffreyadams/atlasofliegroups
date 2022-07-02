@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include "arithmetic.h"
+#include "bitmap.h" // only needed for one specific constructor
 
 namespace atlas {
 namespace arithmetic {
@@ -45,6 +46,7 @@ public:
   explicit big_int (const char * p,
 		    unsigned char base = 10, // from text in base |base|
 		    unsigned (*convert)(char) = &char_val); // custom conversion
+  explicit big_int (const bitmap::BitMap& b, bool negative=false);
 
   int int_val() const; // extract 32-bits signed value, or throw an error
   arithmetic::Numer_t long_val() const; // extract 64 bits signed value

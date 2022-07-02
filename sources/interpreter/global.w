@@ -2815,6 +2815,29 @@ void bit_length_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(i->val.bit_length()));
 }
 
+@ Although a set of natural numbers represented as a list could be converted
+to an integer representing it as a bitset using repeated use of exponentiation
+of the base~$2$ and the bitwise |OR| operations, it is more efficient to have a
+built-in function for this. Since numbers exceeding $2^{31}$ in the list would
+certainly cause trouble, the function below takes a |vector_value| as argument.
+
+@h "bitmap.h"
+@< Local function definitions @>=
+void vec_to_bitset_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  unsigned cap=0;
+  for (const auto n : v->val)
+    if (n<0)
+      throw runtime_error("Negative entry in conversion to bitset");
+    else if (static_cast<unsigned>(n)>=cap)
+      cap = n+1; // ensure sufficient capacity to store |n| in bitset
+  if (l==expression_base::no_value)
+    return;
+@)
+  BitMap b(cap,v->val.begin(),v->val.end());
+  push_value(std::make_shared<int_value>(big_int(b)));
+}
+
 @*1 Rationals.
 %
 As mentioned above the operator `/' applied to integers will not denote
@@ -4089,6 +4112,7 @@ install_function(and_not_wrapper,"AND_NOT","(int,int->int)");
 install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
 install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
 install_function(bit_length_wrapper,"bit_length","(int->int)");
+install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''

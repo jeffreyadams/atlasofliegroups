@@ -1,7 +1,7 @@
 /*
   This is bigint.cpp.
 
-  Copyright (C) 2017 Marc van Leeuwen
+  Copyright (C) 2017, 2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -373,6 +373,23 @@ big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
 
   while (*p!='\0')
     mult_add(base,convert(*p++));
+}
+
+big_int::big_int (const bitmap::BitMap& b, bool negative)
+  : d()
+{
+  const auto cap=b.capacity();
+  d.reserve(cap/32+1);
+  unsigned int i; // this needs to survive following loop
+  for (i=0; i+32<=cap; i+=32)
+    d.push_back(b.range(i,i+32));
+  // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
+  digit lead = i==cap ? 0 : b.range(i,i+32);
+  if (negative) // then set sign bit and extend
+    lead |= ~ constants::lMask[cap-i];
+  d.push_back(lead); // now all bits from |b| and |negative| are transferred
+
+  shrink(); // needed if |b| has at least 32 leading copies of |negative|
 }
 
 big_int big_int::operator* (const big_int& x) const
