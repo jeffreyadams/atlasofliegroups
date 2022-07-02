@@ -156,6 +156,7 @@ public:
   bool is_zero() const { return d.size()==1 and d[0]==0; }
   bool is_positive() const { return not(is_negative() or is_zero()); }
   bool is_one() const { return d.size()==1 and d[0]==1; }
+  bool is_odd() const { return (d[0]&1) != 0; }
   bool operator== (digit v) const { return d[0]==v and d.size()==1; }
   bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
   bool operator<  (const big_int& x) const;

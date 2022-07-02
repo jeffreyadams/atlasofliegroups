@@ -2724,24 +2724,32 @@ void unary_minus_wrapper(expression_base::level l)
 }
 @)
 void power_wrapper(expression_base::level l)
-{ static shared_int one = std::make_shared<int_value>(1);
+{ static shared_int zero = std::make_shared<int_value>(0);
+  static shared_int one = std::make_shared<int_value>(1);
   // constants shared between calls
   static shared_int minus_one  = std::make_shared<int_value>(-1);
 @)
-  int n=get<int_value>()->int_val(); // exponent is small
-  shared_int b=get<int_value>(); // base can be large
+  shared_int exponent = get<int_value>();
+  shared_int b=get<int_value>();
   bool unit_base = b->val.size()==1 and std::abs(b->int_val())==1;
-  if (n<0 and not unit_base)
-    throw runtime_error("Negative power of integer");
+  if (not unit_base)
+  { if (exponent->val.is_negative())
+      throw runtime_error("Negative power of integer");
+    else if (not b->val.is_zero() and exponent->val.size()>1)
+      throw runtime_error("Exponent too large in power of integer");
+  }
   if (l==expression_base::no_value)
     return;
 @)
   if (unit_base)
-  {@; push_value(n%2!=0 and b->val.is_negative() ? minus_one : one);
+  @/{@; push_value(b->val.is_negative() and exponent->val.is_odd() ? minus_one : one);
       return;
   }
 @)
-  push_value(std::make_shared<int_value>(b->val.power(n)));
+  if (b->val.is_zero())
+    {@; push_value(exponent->val.is_zero() ? one : zero); return; }
+
+  push_value(std::make_shared<int_value>(b->val.power(exponent->int_val())));
 }
 
 @ Here is the first of the bitwise operations on integers.
