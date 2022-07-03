@@ -2028,6 +2028,36 @@ set purity (KTypePol P) = (int,int,int):
   od; (x,y,z)
 
 
+{		Rapid look-up in certain fixed structures		}
+
+set index_in ([vec] L) { equal size vectors } = (vec->int):
+  if =#L then (vec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+     then x0 = KGB(G,0)
+     then P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+  in (vec v) int: P[K_type(x0,v)].int_part-1
+  fi
+
+set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
+  if =#L then (ratvec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+     then x0 = KGB(G,0), zero = null(n)
+     then P = null_module(G) + for v@i in L do (i+1,param(x0,zero,v)) od
+  in (ratvec v) int: P[param(x0,zero,v)].int_part-1
+  fi
+
+set index_in ([Param] L) = (Param->int): { an efficiency hack: }
+  if =#L then (Param .)int: minus_1 { search in empty list always fails }
+  else
+     let G=L[0].real_form
+     then P = G.null_module + for q@i in L do (i+1,q) od
+  in (Param p) int: P[p].int_part-1
+  fi
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
@@ -2035,9 +2065,6 @@ set purity (KTypePol P) = (int,int,int):
 { find index of item in list, or -1 if not found; first does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }
-   let P = G.null_module + for q@i in L do (i+1{nonzero!},q) od
-   in (Param p) int: P[p].int_part-1
 set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
