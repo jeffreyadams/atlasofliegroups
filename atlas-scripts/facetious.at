@@ -197,31 +197,34 @@ chosen pos_roots), and a list of the lowest coroots betav[j] in each
 rd[j] in simple_factors(rd). Since I want to use this to look for
 unitary reps, simple rd is the most important case }
 set_type SimpleAffine = RootDatum
+set_type
+[ AffineCoroot = (vec linear_coroot, int shift)
+, AffineCoWeylElt = (vec tau, WeylElt w) { apply |w|, then translate by |tau| }
+]
 
-set aff_rank(SimpleAffine Affd) = ss_rank(Affd) + 1
-
-set_type AffineCoroot = (vec,int)
+set aff_rank (SimpleAffine Affd) = semisimple_rank(Affd) + 1
 
 {.evaluate AffineCoroot at weight.}
-set *(AffineCoroot (betav,m), vec gamma) = m+betav*gamma
+set * (AffineCoroot (linear_coroot,shift), vec gamma) = int:
+  linear_coroot*gamma + shift
 
 {.evaluate AffineCoroot at rational weight.}
-set *(AffineCoroot (betav,m), ratvec gamma) = m+betav*gamma
-
-{.first apply w, then translate by tau.}
-set_type AffineCoWeylElt = (vec tau, WeylElt w)
+set * (AffineCoroot (linear_coroot,shift), ratvec gamma) = rat:
+  linear_coroot*gamma + shift
 
 {.apply AffineCoWeylElt to weight.}
-set *(AffineCoWeylElt (tau,w) , vec gamma) = w*gamma + tau
-set *(AffineCoWeylElt (tau,w) , ratvec gamma) = w*gamma + tau
+set *(AffineCoWeylElt (tau,w) , vec gamma)    = vec:    tau + w*gamma
+set *(AffineCoWeylElt (tau,w) , ratvec gamma) = ratvec: tau + w*gamma
 
 {.compose AffineCoWeylElts.}
 set *(AffineCoWeylElt(tau1,w1) , AffineCoWeylElt(tau2,w2)) = AffineCoWeylElt:
     (tau1 + w1*tau2, w1*w2)
-set *(AffineCoWeylElt(tau,w) , AffineCoroot(betav,m)) = AffineCoroot:
-    let bvw1=betav*inverse(w) in (bvw1, m-bvw1*tau)
 set inverse(AffineCoWeylElt(tau,w)) = AffineCoWeylElt:
     let w1=inverse(w) in (-w1*tau,w1)
+
+{. act by AffineCoWeylElt on an AffineCoroot .}
+set *(AffineCoWeylElt(tau,w) , AffineCoroot(betav,m)) = AffineCoroot:
+    let bvw1=betav*inverse(w) in (bvw1, m-bvw1*tau)
 
 {.simple affine coroots: number 0 is affine, rest are simple for RootDatum.}
 set aff_simple_coroots (SimpleAffine affd) = [AffineCoroot]:
@@ -252,12 +255,12 @@ set reflection(AffineCoroot Betav, SimpleAffine affd, ratvec v) = ratvec:
 (k+1) AffineCoroot strict inequalities and (n-k) AffineCoRoot equalities.
 The total collection of affine coroots appearing must be a set of simple coroots
 for the affine datum. IF THE FACET IS NOT AN ALCOVE, THIS
-REPRESENTATION IS NOT UNIQUE }
+REPRESENTATION IS NOT UNIQUE. This representation is therefore not often used,
+but see |facet0| (way) below }
 
-set_type Facet = ([AffineCoroot] pos,[AffineCoroot] zero)
+set_type [Facet = ([AffineCoroot] pos,[AffineCoroot] zero)]
 
-{ a UNIQUE characterization of a k-diml facet is as a set of
-k+1 vertices }
+{ a UNIQUE characterization of a k-diml facet is as a set of k+1 vertices }
 
 set_type FacetVerts = [ratvec]
 
@@ -275,11 +278,12 @@ set_type FacetBary = ratvec
 
 {represents a k-diml facet as k+1 indices into a list of vertices
 (held elsewhere)}
-set_type FacetVertsIndex = vec
+set_type FacetVertsIndex = vec { of length k+1 for k-dimensional facet }
 
-set_type [FacetStatusVertsIndex = (string status, vec verts)]
-
-set_type FacetData = ([ratvec] vlist, [[FacetStatusVertsIndex]] facet_status_inds)
+set_type
+[ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
+, FacetData = ([ratvec] vlist, [[FacetStatusVertsIndex]] facet_status_inds)
+]
 
 set facet_verts_index([ratvec] vert_list, FacetVerts facet) = FacetVertsIndex:
     for gammav in facet do find(vert_list,gammav) od.sort
@@ -426,21 +430,13 @@ set find(ParamPol Index, vec verts) = int:
 set facet_verts_index(ParamPol Index, FacetVerts facet) = FacetVertsIndex:
 for gammav in facet do find(Index,gammav) od.sort
 
-{.computes the Facet of a point gamma0 in the fundamental alcove.}
-set facet0(SimpleAffine Affd, ratvec gamma0) = Facet:
-    let S=Affd.aff_simple_coroots in
-    (for j:Affd.aff_rank
-    do if S[j]*gamma0 != 0
-       then [S[j]]
-       else []
-       fi
-    od.##,
-    for j:Affd.aff_rank
-    do if S[j]*gamma0 = 0
-       then [S[j]]
-       else []
-       fi
-    od.##)
+{.computes the |Facet| of a point |gamma| in the fundamental alcove.}
+set facet0(SimpleAffine Affd, ratvec gamma) = Facet:
+    let S = [AffineCoroot]: { the simple system for the fundamental alcove }
+       Affd.aff_simple_coroots
+in ( for av in S do if =av*gamma then [] else [av] fi od.## { positives }
+   , for av in S do if =av*gamma then [av] else [] fi od.## { zeros }
+   )
 
 {.simple roots corresponding to simple affine coroots: number 0 is
 affine,  rest are simple for RootDatum.}
@@ -507,17 +503,16 @@ set fund_vertex_sets(SimpleAffine Affd, int d) = [FacetVerts]:
 	do for j in S do Verts[j] od
 	od
 
-{.integral weights to be added to gamma to land in fundamental
-parallelepiped where all simple coroots take values in [0,1].}
-{need to make a list of all possible tau; if g[j] is an integer, use
-either -g[j] or -g[j]+1.}
-set FPPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
-    let g=for betav in Affd.simple_coroots do betav*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od
+{ integral weights to be added to gamma to land in fundamental
+parallelepiped where all simple coroots take values in [0,1]
+Since we are asking about the closed parallelepiped, there will be multiple
+such weights if (and only if) we land on the boundary. For every simple coroot
+with integral evaluation g at gamma, include shifts by both -g and by -g+1}
+
+set FPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
+    let g = { evaluations at gamma of the simple coroots }
+       for av in Affd.simple_coroots do av*gamma od
+    then INT = for e@j in g do if is_integer(e) then [j] else [] fi od.##
     in
     for S in power_set(#INT)
     do
@@ -526,9 +521,9 @@ set FPPtau(SimpleAffine Affd, ratvec gamma) = [ratvec]:
     sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
     od
 
-{ sums of roots to be added to gamma to land in FPP }
+{ enumerate sums of roots to be added to gamma to land in FPP }
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
-    let g=for betav in Affd.simple_coroots do betav*gamma od
+    let g=for av in Affd.simple_coroots do av*gamma od
     then INT = ##for j:#Affd.simple_coroots
 	 do
 	 if is_integer(g[j]) then [j] else []
@@ -764,16 +759,14 @@ set W_fund_facets_card(SimpleAffine Affd) = [int]:
     for d:Affd.aff_rank
 	do W_fund_d_facets_card(Affd,d)
 	od
-{.integrally dominant vertices.}
+{.integrally dominant weights W-conjugate to a fundamental alcove vertex .}
 set W_fund_verticesID(SimpleAffine Affd) = [ratvec]:
     for gamma in fundamental_vertices(Affd)
-    do
-    for gammawn in Weyl_orbit(Affd,gamma.numer)
-	do
-	if is_integrally_dominant(Affd,gammawn/gamma.denom)
-	then [gammawn/gamma.denom]
-	else []
-	fi
+    do  for gammawn in Weyl_orbit(Affd,gamma.numer)
+    	do if is_integrally_dominant(Affd,gammawn/gamma.denom)
+	   then [gammawn/gamma.denom]
+	   else []
+	   fi
 	od.##
     od.##
 
