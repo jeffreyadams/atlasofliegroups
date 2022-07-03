@@ -1,0 +1,92 @@
+{ some help with exponential generating series, which are lazily computed
+  formal series in $X^n/n!$ for $n\in\N$, with integer coefficients
+}
+
+<basic.at
+<combinatorics.at { for binomial coefficients }
+<lazy_lists.at
+
+{ we can reuse |sum| from lazy_lists for addition of exponential series
+  but for multiplication we need a modification:
+}
+
+set exp_multiply (inf_list f, inf_list g) = inf_list:
+(  let coefs = [int,int]: []
+in (rec_fun m () inf_node:
+      let n=#coefs, (a,new_f)=f(), (b,new_g)=g() { get new values }
+   in  f:=new_f; g:=new_g; coefs := (coefs next coefs:=[]) # (a,b)
+   ;   ( for (a,)@i in coefs do let (,b)=coefs~[i] in binom(n,i)*a*b od.sum
+       , m
+       )
+   )
+  .memoize
+)
+
+{ for instance to count permutations with allowed cycles of distinct lengths
+  given in a list |L|, one can compute $\exp(\sum_{l\in L}{X^l\over l})$,
+  which by the property of the exponential can be done as follows
+}
+set count_permutations_with_cycles ([int] L) = inf_list:
+   let prod = one
+in for l in L
+   do prod := exp_multiply(prod,series((int n)int:
+      { compute coefficient of $X^n/n!$ in $\exp({X^l\over l})$ : }
+      let (q,r)=n\%l in if =r else 0 then
+        { $n! / (l^q*q!)$: product of numbers in [1,n] not divisible by $l$ }
+	for i:q do for j:l-1 from 1 do l*i+j od.product od.product
+      fi
+   ))
+   od; prod
+
+{ Here is more general exponentiation }
+set exp_of_exponential_series (inf_list S) = inf_list:
+   let (c,thunk)=S() then coef = 1 next
+      assert(c=0,"Exponential map needs zero constant term")
+   , coefs = [int,int]: [] { pairs of result coef and coef from |S| }
+in ( @ inf_node:
+     ( coef
+     , rec_fun exp() inf_node:
+	   let n=#coefs
+	in set (c,thunk) := thunk()
+	;  coefs := (coefs next coefs:=[]) # (coef,c)
+	;( coef := { save the last coefficient contributed for next time around }
+	   for (a,)@i in coefs do let (,b)=coefs~[i] in binom(n,i)*a*b od.sum
+	 , exp
+	 )
+     )
+   ).
+   memoize { we must avoid having |memoize| inside |@ inf_node:| body }
+
+{ as an example of using |exp_of_exponential_series|, consider the question of
+  counting permutations with a condition on the cycle length, but which is not
+  given by a finite list of allowed cycles (for example, any odd length cycles
+  are allowed). This would require an infinite product to be made in
+  |count_permutations_with_cycles|, and indeed infinite products can be dealt
+  with. But the product comes from in infinite sum under the |exp| operator, so
+  instead we can just produce an exponential generating series and then apply
+  |exp_of_exponential_series| to it. We do this here, where the argument is an
+  |inf_list|, supposed strictly increasing and of positive integers, that
+  describes the set of allowed cycle lengths.
+}
+set count_permutations_with_cycles (inf_list allowed_cycles) = inf_list:
+   let series = inf_list:
+     ( @ inf_node:
+       ( 0
+       , let (c,thunk)=allowed_cycles(), length = 1
+	 in assert (c.>,"Only positive length cycles can be allowed")
+	 ; rec_fun f() inf_node:
+	   if length<c { whether |length| is absent from |allowed_cycles| }
+	   then length+:=1; (0,f) { emit a zero term, try next length }
+	   else { now |length| is allowed; emit term and advance |c| }
+	      set (c,thunk):=thunk()
+	   ;  assert (c>length,"Allowed cycle lengths not increasing")
+	   ;  (fac(length-1) { for $X^l\over l$ } next length+:=1,f)
+	   fi
+       )
+     ).memoize
+in exp_of_exponential_series(series)
+
+{ for example here is how to count derangements without the alternating formula }
+derangement_numbers : count_permutations_with_cycles(series((int n):n+2))
+
+{ also try <number_theory.at, then |count_permutations_with_cycles(primes)| }
