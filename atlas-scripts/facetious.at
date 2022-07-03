@@ -282,11 +282,14 @@ set_type FacetVertsIndex = vec { of length k+1 for k-dimensional facet }
 
 set_type
 [ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
-, FacetData = ([ratvec] vlist, [[FacetStatusVertsIndex]] facet_status_inds)
+, VertexData = ([ratvec] list, (ratvec->int) lookup)
+, FacetData = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds)
 ]
 
-set facet_verts_index([ratvec] vert_list, FacetVerts facet) = FacetVertsIndex:
-    for gammav in facet do find(vert_list,gammav) od.sort
+set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
+
+set facet_verts_index((ratvec->int) lookup, FacetVerts facet) = FacetVertsIndex:
+    for gammav in facet do lookup(gammav) od.sort
 
 {.list of unsettled terms in statusIndex.}
 set to_do([FacetStatusVertsIndex] statusIndex) = vec:
@@ -297,27 +300,33 @@ set to_do([FacetStatusVertsIndex] statusIndex) = vec:
     fi
     od.##
 
+set sorted_is_subset([int] a, [int] b) = bool:
+   let i=0, l=#b in
+   for x in a
+   do while if i<l then b[i]<x else return false fi do i+:=1 od
+   ;  if x<b[i] then return false fi
+   od; true
+
 {.given a single nonunitary facet F, updates the status of all E with F contained in
 	E-bar to nonunitary.}
 set update([[FacetStatusVertsIndex]] StInd, FacetStatusVertsIndex nonUnitary) =
     [[FacetStatusVertsIndex]]:
-    assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets");
-    let NUverts = nonUnitary.verts
-    then () = for e:#StInd - #NUverts from #NUverts
-    do
-    let StInde = StInd[e]
-    then TODOe = to_do(StInde)
-    in
-    for j in TODOe
-	do
-	if is_subset_of_sorted(StInde[j].verts)(NUverts) and StInde[j].status = "?"
-	{Still fails!	then StInde[j].status:=nonUnitary.status}
-	then StInde[j] := (nonUnitary.status, StInde[j].verts)
-	fi
-	od;
-    StInd[e]:=StInde
-    od
-    in StInd
+(  assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets")
+;  let NUverts = nonUnitary.verts then nNU = #NUverts
+in for e:#StInd - nNU from nNU { only traverse facets of diemsion >=nNU }
+   do let StInde = StInd[e]
+   in for j in to_do(StInde)
+      do let facet_info = StInde[j]
+      in if facet_info.status = "?"
+         and sorted_is_subset(NUverts,facet_info.verts)
+	 then facet_info.status := nonUnitary.status
+	 ; StInde[j] := facet_info
+	 fi
+      od
+   ; StInd[e]:=StInde
+   od
+;  StInd
+)
 
 set update([FacetStatusVertsIndex] allInd, FacetStatusVertsIndex nonUnitary,int START) =
     [FacetStatusVertsIndex]:
@@ -483,7 +492,7 @@ set fund_barycenters(SimpleAffine affd, int d) = [FacetBary]:
 { vertex sets for facets in the fundamental alcove, organized by
 dimension }
 
-set fund_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
+set facets_fundamental(SimpleAffine Affd) = [[FacetVerts]]:
     let  n = Affd.aff_rank, Verts=fundamental_vertices(Affd)
     then listn = for j:n do j od
     in
@@ -495,7 +504,7 @@ set fund_vertex_sets(SimpleAffine Affd) = [[FacetVerts]]:
 	   od
 	od
 
-set fund_vertex_sets(SimpleAffine Affd, int d) = [FacetVerts]:
+set facets_fundamental(SimpleAffine Affd, int d) = [FacetVerts]:
     let  n = Affd.aff_rank, Verts=fundamental_vertices(Affd)
     then listn = for j:n do j od
     in
@@ -631,11 +640,11 @@ set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
 
 {.restored from 3/30/22 version for use in computing bigger facets with
 same unitarity status.}
-set facet(SimpleAffine Affd, ratvec gamma) = Facet:
-let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma) then
-(F0pos,F0zero) = facet0(Affd,gamma0) in (for betav in F0pos
-do wtilde*betav od , for betav in F0zero
-do wtilde*betav od)
+set facet (SimpleAffine Affd, ratvec gamma) = Facet:
+   let (wtilde,gamma0) = from_fundamental_alcove(Affd, gamma)
+   then (F0pos,F0zero) = facet0(Affd,gamma0)
+   in (for betav in F0pos do wtilde*betav od
+      ,for betav in F0zero do wtilde*betav od)
 
 {.This (over) counts the integral hyperplanes that have a chance to
 contribute to reducibility of p. p is assumed final. Maybe this means
@@ -703,7 +712,7 @@ to number in Fzero}
 
 {.computes the collection of vertex sets of alcoves containing gamma in their closures.}
 set openure(SimpleAffine Affd, ratvec gamma) = [FacetVerts]:
-    let rdI = integrality_datum(Affd, gamma), FVS = fund_vertex_sets(Affd, Affd.ss_rank)[0]
+    let rdI = integrality_datum(Affd, gamma), FVS = facets_fundamental(Affd, Affd.ss_rank)[0]
     then (fromFund,) = (AffineCoWeylElt,ratvec): from_fundamental_alcove(Affd,gamma)
     then shakers = [AffineCoWeylElt]: for x in W(rdI)
 	 do (ratvec_as_vec(gamma - x*gamma),x) od
@@ -877,7 +886,7 @@ set FPP_vertex_sets(SimpleAffine Affd, int d) = [FacetVerts]:
 
 { computes barycenter from a facet as a vertex list }
 set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
-    sum(#vert_list[0], for k:#facet do vert_list[facet[k]] od)/(#facet)
+    sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
 
 
 set FPP_vertex_sets_indices(SimpleAffine Affd, [[FacetBary]] FPPBs) =
@@ -893,84 +902,47 @@ set FPP_vertex_sets_indices(SimpleAffine Affd, [[FacetBary]] FPPBs) =
 	od
     od
 
-set FPP_vlist_indices(SimpleAffine Affd) =
-    ([ratvec],[[FacetVertsIndex]]):
-    let vlist = [ratvec]: FPP_vertices(Affd),
-    fundVerts = fund_vertex_sets(Affd)
-    then vertexIndex=index(vlist), N= [vec]: for j:#vlist do [j] od
-    in (vlist, [[vec]]: [N]##
-    for d:Affd.ss_rank from 1
-    do
-    if facet_verbose
-    then prints("start dim ",d,
-	 " in FPP_vlist_indices")
-    fi;
-    for FV in fundVerts[d]
-    do
-    let FB=FacetBary: sum(Affd.rank,FV)/(d+1)
-    then WBsID= [FacetBary]:
-	for wFBn in Weyl_orbit(Affd,FB.numer)
-	do
-	if is_integrally_dominant(Affd,wFBn/FB.denom)
-	then [wFBn/FB.denom]
-	else []
-	fi
-	od.##
-    in [FacetVertsIndex]: for wFB in WBsID
-       do
-       let (w,) = from_dominant(Affd,wFB)
-       in
-	[vec]: for tau in FPPtauRoots(Affd,wFB)
-	do
-	vec: find(vertexIndex, (tau,w)*FV)
-	od
-       od.## { now type [vec] }
-    od.##
-    od)
+set FPP_vertex_data (SimpleAffine Affd) = VertexData:
+   Affd.FPP_vertices.to_vertex_data
 
-set FPP_vlist_indices_status(SimpleAffine Affd) =
-    ([ratvec],[[FacetStatusVertsIndex]]):
-    let vlist = [ratvec]: FPP_vertices(Affd),
-    fundVerts = fund_vertex_sets(Affd)
-    then vertexIndex=index(vlist), N= [(string,vec)]: for j:#vlist do ("?",[j]) od
-    in (vlist, [[(string,vec)]]: [N]##
-    for d:Affd.ss_rank from 1
-    do
-    if facet_verbose
-    then prints("start dim ",d,
-	 " in FPP_vlist_indices_status")
-    fi;
-    for FV in fundVerts[d]
-    do
-    let FB=FacetBary: sum(Affd.rank,FV)/(d+1)
-    then WBsID= [FacetBary]:
-	for wFBn in Weyl_orbit(Affd,FB.numer)
-	do
-	if is_integrally_dominant(Affd,wFBn/FB.denom)
-	then [wFBn/FB.denom]
-	else []
-	fi
+set FPP_facets (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
+   let facets = [[FacetVerts]]: facets_fundamental(Affd)
+in ([FacetVertsIndex]: for j: #vd.list do [j] od) { singleton indices} #
+   for dim: Affd.semisimple_rank from 1
+   do if facet_verbose then prints("start dim ",dim, " in FPP_facets") fi
+   ; for FV in facets[dim]
+     do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+     then bary_orbit_int_dom = [FacetBary]:
+	for wFBn in Weyl_orbit(Affd,bary_F.numer)
+	do if is_integrally_dominant(Affd,wFBn/bary_F.denom)
+	   then [wFBn/bary_F.denom]
+	   else []
+	   fi
 	od.##
-    in [FacetStatusVertsIndex]: for wFB in WBsID
-       do
-       let (w,) = from_dominant(Affd,wFB)
-       in
-	[(string, vec)]: for tau in FPPtauRoots(Affd,wFB)
-	do
-	("?", vec: find(vertexIndex, (tau,w)*FV))
-	od
-       od.##{ now type [string,vec] }
-    od.##
-    od)
+     in [FacetVertsIndex]:
+	for wFB in bary_orbit_int_dom
+	do let (w,) = from_dominant(Affd,wFB) in
+	   for tau in FPPtauRoots(Affd,wFB)
+	   do FacetVertsIndex:
+	      for v in (AffineCoWeylElt:(tau,w))*FV do vd.lookup(v) od
+	   od { type here is [FacetVertsIndex], and remains so on next 2 lines }
+	od.##
+     od.##
+   od
+
+set FPP_vlist_indices_status(SimpleAffine Affd) = FacetData:
+   let vd = FPP_vertex_data(Affd)
+   then facets_indexed = FPP_facets(Affd,vd)
+in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
 
 {extra argument is a possible simple coroot allowed to be 2 on FPP}
 set FPP_vlist_indices_status(SimpleAffine Affd, mat M, int j0) =
-    ([ratvec],[[FacetStatusVertsIndex]]):
+    FacetData:
     let vlist = [ratvec]: FPP_vertices(Affd,j0),
-    fundVerts = fund_vertex_sets(Affd)
+    fundVerts = facets_fundamental(Affd)
     {then fundVertsG = for FVd in fundVerts do for FV in FVd do M*FV od od}
     then vertexIndex=index(vlist), N= [(string,vec)]: for j:#vlist do ("?",[j]) od
-    in (vlist, [[(string,vec)]]: [N]##
+    in (vlist.to_vertex_data, [[(string,vec)]]: [N]##
     for d:Affd.ss_rank from 1
     do
     if facet_verbose
@@ -1003,7 +975,7 @@ set FPP_vlist_indices_status(SimpleAffine Affd, mat M, int j0) =
 {.facet vertex indices for all d-diml facets in FPP.}
 set FPP_indices(SimpleAffine Affd, [ratvec] vlist, int d) =
     [FacetVertsIndex]:
-    let fundVertsd = fund_vertex_sets(Affd,d)
+    let fundVertsd = facets_fundamental(Affd,d)
     then vertexIndex=index(vlist)
     in
     if facet_verbose
@@ -1044,10 +1016,11 @@ set FPPopenureAlcoves([[FacetStatusVertsIndex]] FPPInd, FacetVertsIndex Base) = 
     if is_subset_of_sorted(Find.verts)(Base) then [j] else [] fi
     od.##
 
-{.allow for the possibility that not all alcoves are indexed. Finds all alcoves in FPP containing Base in closure, even if not indexed.}
+{.allow for the possibility that not all alcoves are indexed. Finds all alcoves
+ in FPP containing Base in closure, even if not indexed.}
 set FPPopenureAllAlcoves(SimpleAffine Affd, [ratvec] vlist, ParamPol Index,
     FacetVertsIndex Base) = [FacetVertsIndex]:
-    for FV in openure(Affd, facet_bary(vlist, Base))
+    for FV in openure(Affd, facet_bary(vlist,Base))
     do let FVI = facet_verts_index(Index,FV)
     in if FVI.>= then [FVI] else [] fi
     od.##
@@ -1146,78 +1119,97 @@ set facet_status([[vec]] FPPind) = [[string]]:
 {I THINK that for a simple G, all unipotent parameters must be
 barycenters of facets of dimension 0 or 1. Also I THINK that dimension
 1 can only happen in type A?? So this could be simplified.}
-set facet_statusu(RealForm G, ([ratvec] vlist, [[FacetStatusVertsIndex]]
-    FPPstInd)) = FacetData:
-    let FBs = [[FacetBary]]: for Findd in FPPstInd do for Find in
-    Findd do facet_bary(vlist, Find.verts) od od
-    then FPPstIndQuo = FPPstInd, VIndex0 =
-	index(for (,Find) in FPPstInd[0] do vlist[Find[0]] od) ,
-	VIndex1 = ParamPol: if #FPPstInd=0 then index([vlist[0]])
-			    else index(for (,ind) in FPPstInd[1] do (vlist[ind[0]] + vlist[ind[1]])/2 od)
-			    fi,
-			    (X,r) = simple_type(G.derived),  st= G.dual.Springer_table
-    then FPPstInd0 = FPPstInd[0], FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi
-    then () = if not(is_split(G))
-	 then for O@j in st.orbits
-	 do
-	 let gamma = O.H/2
+set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
+(  let FBs = [[FacetBary]]:
+      for Findd in FPPstInd
+      do for Find in Findd do facet_bary(vd.list, Find.verts) od
+      od
+   then FPPstIndQuo = FPPstInd
+   , VIndex0 = index(for (,Find) in FPPstInd[0] do vd.list[Find[0]] od)
+   , VIndex1 = ParamPol:
+       if #FPPstInd=0 then index([vd.list[0]])
+       else index
+        (for (,ind) in FPPstInd[1] do (vd.list[ind[0]] + vd.list[ind[1]])/2 od)
+       fi
+   , (X,r) = simple_type(G.derived)
+   , st = G.dual.Springer_table
+   then FPPstInd0 = FPPstInd[0]
+   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi
+in
+   if not(is_split(G))
+   then
+      for O@j in st.orbits
+      do let gamma = O.H/2
 	 then m0 = find(VIndex0,gamma)
-	 in if m0 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
-	    dim(st.dual_map(O))/2
-	    then FPPstInd0[m0] :=
-	    ("T"##to_string(j),FPPstInd0[m0].verts);
-	    FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-	    ("Tdef"##to_string(j),FPPstInd0[m0].verts), FBs[0][m0])
-	    fi
-	 od
-	 else
-	 for O@j in st.orbits
-	 do
-	 let gamma = O.H/2
+      in if m0 >= 0 and
+	    GK_dim(parameter(x_open(G),G.rho,gamma)) = dim(st.dual_map(O))/2
+	 then FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
+	 ;    FPPstIndQuo := updateTrue
+	       (G, FPPstIndQuo, FBs
+	       ,("Tdef"##to_string(j),FPPstInd0[m0].verts)
+	       , FBs[0][m0]
+	       )
+	 fi
+      od
+   else
+      for O@j in st.orbits
+      do let gamma = O.H/2
 	 then m0 = find(VIndex0,gamma)
-	 in if m0 >= 0 then FPPstInd0[m0] :=
-	    ("T"##to_string(j),FPPstInd0[m0].verts);
-	     FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-	    ("Tdef"##to_string(j),FPPstInd0[m0].verts), FBs[0][m0])
-	    fi
-	 od
-	 fi; FPPstIndQuo[0] := FPPstInd0
+      in if m0 >= 0
+	 then FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
+	 ;    FPPstIndQuo := updateTrue
+	       (G, FPPstIndQuo, FBs
+	       ,("Tdef"##to_string(j),FPPstInd0[m0].verts)
+	       , FBs[0][m0]
+	       )
+	 fi
+      od
+   fi
+;  FPPstIndQuo[0] := FPPstInd0
  { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
  { OOPS! ERROR! also type E6 has four dual nilpotents (#2,7,8,15) giving
  facets of dim 1. This needs to run in E6 also.}
-	then () = if X = "A" and r > 1 or X="E" and r=6
-	     then let FPPstInd1 = FPPstIndQuo[1]
-	     then VIndex1 = ParamPol:
-		  index(for (,ind) in FPPstIndQuo[1] do (vlist[ind[0]]
-			    + vlist[ind[1]])/2 od)
-	     in if not(is_split(G)) then
-		for O@j in st.orbits
-		do
-		let gamma = O.H/2
-		then m1 = find(VIndex1,gamma)
-		in if m1 >= 0 and GK_dim(parameter(x_open(G),G.rho,gamma)) =
-		   dim(st.dual_map(O))/2
-		   then FPPstInd1[m1] :=
-		   ("T"##to_string(j),FPPstInd1[m1].verts);
-		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-		   ("Tdef"##to_string(j),FPPstInd1[m1].verts), FBs[1][m1])
-		   fi
-		od
-		else
-		for O@j in st.orbits
-		do
-		let gamma = O.H/2
-		then m1 = find(VIndex1,gamma)
-		in if m1 >= 0 then FPPstInd1[m1] :=
-		   ("T"##to_string(j),FPPstInd1[m1].verts);
-		   FPPstIndQuo := updateTrue(G, FPPstIndQuo, FBs,
-		   ("Tdef"##to_string(j),FPPstInd1[m1].verts), FBs[1][m1])
-		   fi
-		od
-		fi; FPPstIndQuo[1] := FPPstInd1
-	     fi
-    in (vlist, FPPstIndQuo)
-
+;  if X = "A" and r > 1 or X="E" and r=6
+   then
+      let FPPstInd1 = FPPstIndQuo[1]
+      then VIndex1 = ParamPol:
+	 index(for (,ind) in FPPstIndQuo[1]
+	       do (vd.list[ind[0]] + vd.list[ind[1]])/2
+	       od)
+   in if not(is_split(G))
+      then
+	 for O@j in st.orbits
+	 do let gamma = O.H/2
+	    then m1 = find(VIndex1,gamma)
+	 in if m1 >= 0 and
+	       GK_dim(parameter(x_open(G),G.rho,gamma)) =
+	       dim(st.dual_map(O))/2
+	    then FPPstInd1[m1] := ("T"##to_string(j),FPPstInd1[m1].verts)
+	    ;    FPPstIndQuo := updateTrue
+	      (G, FPPstIndQuo, FBs
+	      ,("Tdef"##to_string(j),FPPstInd1[m1].verts)
+	      ,FBs[1][m1]
+	      )
+	    fi
+	 od
+      else
+	 for O@j in st.orbits
+	 do let gamma = O.H/2
+	    then m1 = find(VIndex1,gamma)
+	 in if m1 >= 0
+	    then FPPstInd1[m1] := ("T"##to_string(j),FPPstInd1[m1].verts)
+	    ;    FPPstIndQuo := updateTrue
+	      (G, FPPstIndQuo, FBs
+	      ,("Tdef"##to_string(j),FPPstInd1[m1].verts)
+	      ,FBs[1][m1]
+	      )
+	    fi
+	 od
+      fi
+   ; FPPstIndQuo[1] := FPPstInd1
+   fi
+; (vd, FPPstIndQuo)
+)
 
 set facet_status([[vec]] FPPind) = [[string]]:
     for d:#FPPind do for j:#FPPind[d] do "?" od od
@@ -1246,7 +1238,7 @@ set thetaAct(KGBElt x, ratvec lambda, [ratvec] vlist) = [int]:
 {WOULD LIKE: eliminate the empty lists at the end of the output (when there
 are no actual unitary facets of the highest dimension}
 set actualize(KGBElt x, ratvec lambda, [ratvec] vlist,
-[[FacetStatusVertsIndex]] FPPstInd) = ([ratvec], [[FacetStatusVertsIndex]]):
+[[FacetStatusVertsIndex]] FPPstInd) = FacetData:
     let Perm = thetaAct(x, lambda, vlist)
     then vlistAct = [ratvec]:
 	for v@i in vlist do let j = Perm[i] in
@@ -1277,7 +1269,7 @@ set actualize(KGBElt x, ratvec lambda, [ratvec] vlist,
 		 fi
 		 od
 		 od
-    in (vlistAct, FSVIAct)
+    in (vlistAct.to_vertex_data, FSVIAct)
 
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
@@ -1352,61 +1344,64 @@ set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist)=void:
 {This eliminates a lot more than pick_not_cohom used to in the nonquasisplit case,
  but maybe it's OK.}
 
-set pick(RealForm G, [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) =
-    ([ratvec], [[FacetStatusVertsIndex]]):
+set pick(RealForm G, VertexData D, [[FacetStatusVertsIndex]] FPPstInd) =
+    FacetData:
     let xopen = x_open(G), Grho = G.rho
-    in (vlist,
-    for FPPstIndd in FPPstInd
-    do
-	for FstInd in FPPstIndd
-	do
-	let FB = facet_bary(vlist, FstInd.verts)
-	then p = parameter(xopen, Grho, FB)
-	in if (is_final(p) and is_hermitian(p) and
-	   (p.infinitesimal_character = FB)) then [FstInd] else [] fi
-	od.##
-    od)
-
-
-{. The next family of functions all need simple derived group. Always vlist should be ALL vertices in the FPP. The facet lists carried by [[FacetBary]] or [[FacetVertsIndex]] may be pruned of reps not interesting for unitarity, but the indices will alway refer to a constant vlist.}
-
-set down_to_business(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPstInd)) = FacetData:
-    let (,FPPstIndFinalH) = pick(G, vlist, FPPstInd)
     in
-    if facet_verbose then prints("completing down_to_business"); show(FPPstIndFinalH) fi;
-    facet_statusu(G, (vlist, FPPstIndFinalH))
+    ( D
+    , for FPPstIndd in FPPstInd
+      do
+	  for FstInd in FPPstIndd
+	  do
+	  let FB = facet_bary(D.list, FstInd.verts)
+	  then p = parameter(xopen, Grho, FB)
+	  in if (is_final(p) and is_hermitian(p) and
+	     (p.infinitesimal_character = FB)) then [FstInd] else [] fi
+	  od.##
+      od
+    )
 
-set down_to_businessC(RealForm G, ([ratvec] vlistL,
-    [[FacetStatusVertsIndex]] FPPstIndL)) = FacetData:
-	let GL=simple_factors(G)[0], one_minus_theta =
-	    (1-x_open(G).involution)
-	then vlistC = for gammaL in vlistL
-	     do one_minus_theta*gammaL od
-	then w0L = matrix(GL.w0)
-	then FPPstIndnch = [[FacetStatusVertsIndex]]:
-	for FPPstIndLd in FPPstIndL
-	do
-		for Find in FPPstIndLd
-		do
-		let FBL = facet_bary(vlistL,Find.verts)
-		in if =(w0L+1)*FBL then [Find] else [] fi
-		od.##
-	od
-	then FPPstIndu = facet_statusu(GL.split_form,(vlistL, FPPstIndnch))
-	in
-	if facet_verbose then prints("completing down_to_businessC");
-	show(FPPstIndu) fi;
-	(vlistC, FPPstIndu.facet_status_inds)
+
+{. The next family of functions all need simple derived group. Always |D.list|
+should be ALL vertices in the FPP. The facet lists carried by [[FacetBary]] or
+[[FacetVertsIndex]] may be pruned of reps not interesting for unitarity, but the
+indices will always refer to a constant vlist.}
+
+set down_to_business(RealForm G, FacetData D) = FacetData:
+    let (,FPPstIndFinalH) = pick(G, D.v_data, D.facet_status_inds)
+    in
+    if facet_verbose
+    then prints("completing down_to_business"); show(FPPstIndFinalH)
+    fi; facet_statusu(G, (D.v_data,FPPstIndFinalH))
+
+
+set down_to_businessC(RealForm G, FacetData DL) = FacetData:
+   let GL=simple_factors(G)[0]
+   , one_minus_theta = (1-x_open(G).involution)
+   , vlistL = DL.v_data.list
+   then vlistC = for gammaL in vlistL do one_minus_theta*gammaL od
+   , w0L = matrix(GL.w0)
+   then FPPstIndnch = [[FacetStatusVertsIndex]]:
+      for FPPstIndLd in DL.facet_status_inds
+      do
+	 for Find in FPPstIndLd
+	 do
+	   let FBL = facet_bary(vlistL,Find.verts)
+	   in if =(w0L+1)*FBL then [Find] else [] fi
+	 od.##
+      od
+   then FPPstIndu = facet_statusu(GL.split_form, (DL.v_data,FPPstIndnch))
+in if facet_verbose
+   then prints("completing down_to_businessC"); show(FPPstIndu)
+   fi; (vlistC.to_vertex_data, FPPstIndu.facet_status_inds)
 
 {.Meant to be applied to output of down_to_business (with nonhermitian
   eliminated). Need simple derived group.}
-set spherical(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPstInd)) = FacetData:
+set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
     let xopen = x_open(G), Grho = G.rho, FBs = [[FacetBary]]:
 	for FPPstIndd in FPPstInd
 	    do for Find in FPPstIndd
-	       do facet_bary(vlist, Find.verts) od
+	       do facet_bary(vd.list, Find.verts) od
 	    od,
 	Indices = [ParamPol]:
 	for FPPstIndd in FPPstInd do index(FPPstIndd) od
@@ -1417,7 +1412,7 @@ set spherical(RealForm G, ([ratvec] vlist,
 	then TODOd = to_do(FPPstIndd)
 	then temp = (); if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical(G,status,vlist,FPPind); testing ",
+	     " in spherical(G,status,vd.list,FPPind); testing ",
 	       #TODOd," parameters.")
 	fi
 	in
@@ -1432,7 +1427,7 @@ set spherical(RealForm G, ([ratvec] vlist,
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
 			 parameter(xopen, Grho, FBs[d][j])))))
-			 {facet_bary(vlist,Find.verts)}
+			 {facet_bary(vd.list,Find.verts)}
 		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef", Find.verts), FBs[d][j]);
 		FPPstIndd[j]:=("T",Find.verts)
 		else{NEWU}
@@ -1444,15 +1439,14 @@ set spherical(RealForm G, ([ratvec] vlist,
     FPPstInd[d]:=FPPstIndd
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
-    in (vlist,FPPstInd)
+    in (vd,FPPstInd)
 
-set sphericalC(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPstInd)) = ([ratvec],[[FacetStatusVertsIndex]]):
+set sphericalC(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
     let xopen = x_open(G), Grho = rho(G),
 	FBs = [[FacetBary]]:
 	for FPPstIndd in FPPstInd
 	    do for Find in FPPstIndd
-	       do facet_bary(vlist, Find.verts) od
+	       do facet_bary(vd.list, Find.verts) od
 	    od,
 	Indices = [ParamPol]:
 	for FPPstIndd in FPPstInd
@@ -1467,7 +1461,7 @@ set sphericalC(RealForm G, ([ratvec] vlist,
 	then GOALd = #TODOd;
 	if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in sphericalC(G,status,(vlist,FPPstInd)); testing ",
+	     " in sphericalC(G,status,(vd.list,FPPstInd)); testing ",
 	       #TODOd," parameters.")
 	fi
 	in
@@ -1494,15 +1488,13 @@ set sphericalC(RealForm G, ([ratvec] vlist,
     FPPstInd[d]:=FPPstIndd
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
-    in (vlist,FPPstInd)
+    in (vd,FPPstInd)
 
-set spherical_to_ht(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPstInd), int bound) =
-    ([ratvec],[[FacetStatusVertsIndex]]):
+set spherical_to_ht(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
     let xopen = x_open(G), Grho = G.rho, FBs = [[FacetBary]]:
 	      for FPPstIndd in FPPstInd
 	      do for Find in FPPstIndd
-		 do facet_bary(vlist, Find.verts) od
+		 do facet_bary(vd.list, Find.verts) od
 	      od,
 	Indices = [ParamPol]:
 		for FPPstIndd in FPPstInd do index(FPPstIndd) od
@@ -1512,11 +1504,11 @@ set spherical_to_ht(RealForm G, ([ratvec] vlist,
 	let FPPstIndd = FPPstInd[d]
 	then TODOd = to_do(FPPstIndd)
 	then TODOBd = for j in TODOd
-		      do facet_bary(vlist, FPPstIndd[j].verts) od,
+		      do facet_bary(vd.list, FPPstIndd[j].verts) od,
 		      GOALd = #TODOd;
 	if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical_to_ht(G,vlist,FPPstInd); testing ",
+	     " in spherical_to_ht(G,vd.list,FPPstInd); testing ",
 	       #TODOd," parameters.")
 	fi
 	in
@@ -1545,16 +1537,14 @@ set spherical_to_ht(RealForm G, ([ratvec] vlist,
     FPPstInd[d]:=FPPstIndd
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
-    in (vlist,FPPstInd)
+    in (vd,FPPstInd)
 
-set spherical_to_htC(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPstInd), int bound) = ([ratvec],
-    [[FacetStatusVertsIndex]]):
+set spherical_to_htC(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
     let xopen = x_open(G), Grho = rho(G),
 	FBs = [[FacetBary]]:
 	    for FPPstIndd in FPPstInd
 		do for Find in FPPstIndd
-		   do facet_bary(vlist, Find.verts) od
+		   do facet_bary(vd.list, Find.verts) od
 		od,
 	Indices = [ParamPol]:
 	    for FPPstIndd in FPPstInd do index(FPPstIndd) od,
@@ -1568,7 +1558,7 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
 	then GOALd = #TODOd;
 	if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical_to_htC(G,status,(vlist,FPPstInd)); testing ",
+	     " in spherical_to_htC(G,status,(vd.list,FPPstInd)); testing ",
 	       #TODOd," parameters.")
 	fi
 	in
@@ -1595,47 +1585,44 @@ set spherical_to_htC(RealForm G, ([ratvec] vlist,
     FPPstInd[d]:=FPPstIndd
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
-    in (vlist,FPPstInd)
+    in (vd,FPPstInd)
 
-set spherical(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
+set spherical(RealForm G) = FacetData:
     let data = FPP_vlist_indices_status(G)
     then dataIndncH = down_to_business(G,data)
     in spherical(G,dataIndncH)
 
 {this seems OK}
-set sphericalFold(RealForm G) = ([ratvec],[[FacetStatusVertsIndex]]):
+set sphericalFold(RealForm G) = FacetData:
     let (rd,M,j0) = cofolded(G)
     {NEED TO USE j0 and FPPtauRoots to construct FPP}
-    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd,M,j0)
-    then verts = for v in vertsFold do M*v od
-    then data = (verts,FVFold)
+    then (vd, FVFold) = FPP_vlist_indices_status(rd,M,j0)
+    then verts = for v in vd.list do M*v od
+    then data = (verts.to_vertex_data,FVFold)
     then dataIndncH = down_to_business(G,data)
     in spherical(G,dataIndncH)
 
 set sphericalC(RealForm G) =
-    ([ratvec], [[FacetStatusVertsIndex]]):
+    FacetData:
     let GL = simple_factors(G)[0]
     then dataL = FPP_vlist_indices_status(GL)
     then dataC = down_to_businessC(G,dataL)
     in sphericalC(G,dataC)
 
-set spherical_to_ht(RealForm G, int bound) = ([ratvec],
-    [[FacetStatusVertsIndex]]):
+set spherical_to_ht(RealForm G, int bound) = FacetData:
     let data = FPP_vlist_indices_status(G)
     then dataIndncH = down_to_business(G,data)
     in spherical_to_ht(G,dataIndncH,bound)
 
-set spherical_to_htFold(RealForm G, int bound) = ([ratvec],
-    [[FacetStatusVertsIndex]]):
+set spherical_to_htFold(RealForm G, int bound) = FacetData:
     let (rd,M,j0) = cofolded(G)
-    then (vertsFold, FVFold) = FPP_vlist_indices_status(rd,M,j0)
-    then verts = for v in vertsFold do M*v od
-    then data = (verts,FVFold)
+    then (vd, FVFold) = FPP_vlist_indices_status(rd,M,j0)
+    then verts = for v in vd.list do M*v od
+    then data = (verts.to_vertex_data,FVFold)
     then dataIndncH = down_to_business(G,data)
     in spherical_to_ht(G,dataIndncH,bound)
 
-set spherical_to_htC(RealForm G, int bound) =
-    ([ratvec],[[FacetStatusVertsIndex]]):
+set spherical_to_htC(RealForm G, int bound) = FacetData:
     let GL = simple_factors(G)[0]
     then dataL = FPP_vlist_indices_status(GL)
     then dataC = down_to_businessC(G,dataL)
@@ -1644,7 +1631,7 @@ set spherical_to_htC(RealForm G, int bound) =
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G must have simple derived group.}
 set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
-    let (vlist,FVstInd) = spherical(G)
+    let (vd,FVstInd) = spherical(G)
     in
     ##(for d:#FVstInd
 	 do for FVI@j in FVstInd[d]
@@ -1653,7 +1640,7 @@ set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
 	       elif FVI.status[0] = "F" then false
 	       else prints("ERROR at d = ",d,", j = ",j); false
 	       fi,
-		facet_bary(vlist,FVI.verts)
+		  facet_bary(vd.list,FVI.verts)
 		)
 	    od
 	 od)
@@ -1661,7 +1648,7 @@ set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G must have simple derived group.}
 set JustTheFacts_R_simpleFold(RealForm G) = [(bool,ratvec)]:
-    let (vlist,FVstInd) = sphericalFold(G)
+    let (vd,FVstInd) = sphericalFold(G)
     in
     ##(for d:#FVstInd
 	 do for FVI@j in FVstInd[d]
@@ -1670,7 +1657,7 @@ set JustTheFacts_R_simpleFold(RealForm G) = [(bool,ratvec)]:
 	       elif FVI.status[0] = "F" then false
 	       else prints("ERROR at d = ",d,", j = ",j); false
 	       fi,
-		facet_bary(vlist,FVI.verts)
+		 facet_bary(vd.list,FVI.verts)
 		)
 	    od
 	 od)
@@ -1678,7 +1665,7 @@ set JustTheFacts_R_simpleFold(RealForm G) = [(bool,ratvec)]:
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G must be simple derived group.}
 set JustTheFacts_C_simple(RealForm G) = [(bool,ratvec)]:
-    let (vlist,FVstInd) = sphericalC(G)
+    let (vd,FVstInd) = sphericalC(G)
     in
     ##(for d:#FVstInd
 	 do for FVI@j in FVstInd[d]
@@ -1687,7 +1674,7 @@ set JustTheFacts_C_simple(RealForm G) = [(bool,ratvec)]:
 	       elif FVI.status[0] = "F" then false
 	       else prints("ERROR at d = ",d,", j = ",j); false
 	       fi,
-		facet_bary(vlist,FVI.verts)
+		facet_bary(vd.list,FVI.verts)
 		)
 	    od
 	 od)
@@ -1786,12 +1773,11 @@ set JustTheFactsFold(RealForm L) = [(bool,ratvec)]:
 {.like facet_statusu, adding info from real induction.}
 {Marks unipotent parameters as "T[number of dual nilpotent]", induced
 as "Ti..." or "Fi..." FPPQuo should first be pruned by down_to_business}
-set facet_statusu_ind(RealForm G, ([ratvec] vlist,
-    [[FacetStatusVertsIndex]] FPPQuo)) = FacetData:
+set facet_statusu_ind(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
     let old_facet_verbose = facet_verbose next
 	if facet_verbose then prints("starting FPPB in facet_statusu_ind") fi
     then FPPB = for d:#FPPQuo do for Find in FPPQuo[d] do
-	facet_bary(vlist,Find.verts) od od next facet_verbose := false
+	facet_bary(vd.list,Find.verts) od od next facet_verbose := false
     then allFPPB = [ratvec]: ##FPPB, FPPnew = FPPQuo,
 	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
 	 maxLevis = [RealForm]: max_real_Levis(G)
@@ -1848,7 +1834,7 @@ set facet_statusu_ind(RealForm G, ([ratvec] vlist,
 	    countUp, " updates and ", countDown, " downdates") fi
     od; facet_verbose := old_facet_verbose
     in
-    (vlist, FPPnew)
+    (vd, FPPnew)
 
 set facet_statusu_ind(RealForm G) = FacetData:
     let data_ind = FPP_vlist_indices_status(G)
@@ -1856,7 +1842,7 @@ set facet_statusu_ind(RealForm G) = FacetData:
     in facet_statusu_ind(G,data_indncH)
 
 {.spherical unitarity data one simple factor at a time.}
-set genSpherical(RealForm G) = [ ([ratvec],[[FacetStatusVertsIndex]]) ]:
+set genSpherical(RealForm G) = [ FacetData ]:
 for G0 in real_simple_factors(G) do spherical(G0) od
 
 
@@ -1880,7 +1866,7 @@ set spherical_indC(RealForm G) = FacetData:
     then dataCuind = facet_statusu_ind(G,dataC)
     in sphericalC(G,dataCuind)
 
-set spherical_ind_to_htC(RealForm G, int bound) = ([ratvec],[[FacetStatusVertsIndex]]):
+set spherical_ind_to_htC(RealForm G, int bound) = FacetData:
     let GL = simple_factors(G)[0]
     then dataGL = FPP_vlist_indices_status(GL)
     then dataC = down_to_businessC(G,dataGL)
