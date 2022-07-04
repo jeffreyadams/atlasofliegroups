@@ -382,9 +382,9 @@ big_int::big_int (const bitmap::BitMap& b, bool negative)
   d.reserve(cap/32+1);
   unsigned int i; // this needs to survive following loop
   for (i=0; i+32<=cap; i+=32)
-    d.push_back(b.range(i,i+32));
+    d.push_back(b.range(i,32));
   // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
-  digit lead = i==cap ? 0 : b.range(i,i+32);
+  digit lead = i==cap ? 0 : b.range(i,32);
   if (negative) // then set sign bit and extend
     lead |= ~ constants::lMask[cap-i];
   d.push_back(lead); // now all bits from |b| and |negative| are transferred
