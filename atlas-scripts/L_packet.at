@@ -34,8 +34,10 @@ for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
+{if G is quasisplit this is guaranteed to work
+ if not, it will fail with an error if there is no x with x.involution=theta}
 set fiber(RealForm G,mat theta)=[KGBElt]:
-##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
+fiber(KGB_elt(G,theta,G.base_grading_vector))
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 
@@ -214,6 +216,25 @@ let ss=stable_sums_irr_in_basis_of_standards(list) in
 ##for (B,M) in ss do
  for P in M do composition_series(P) od
 od
+
+set stable_sums_irr_mat([Param] list)=([Param],mat):
+let ssi=stable_sums_irr(list) then
+M=null(#list,#ssi) in
+ for i:#ssi do 
+  for c@p in ssi[i] do
+   M[find(list,p),i]:=c.int_part
+  od
+ od;
+ (monomials(ssi),M)
+
+set show([Param] list,mat M)=void:
+prints("Stable sums:");
+prints("#parameters: ",#list);
+for p in list do prints(p) od;
+prints("# stable sums: ", n_columns(M));
+prints("each column gives a stable sum in the above basis");
+prints(M)
+
 
 set q(RealForm G)=rat:(dimension(G) - dimension(K_0(G)))/2
 

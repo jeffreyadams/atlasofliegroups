@@ -5,6 +5,33 @@
 
 set te_verbose=true
 
+{find and remove_duplicates should be moved elsewhere (basic?)}
+set find ([ParamPol] pols,ParamPol P) = int:   first(#pols,(int i)bool:pols[i]=P)
+
+{replace [ParamPol] pols with ([ParamPol] unique,[int] indices)
+ unique is list of unique elements of pols (#unique <= #pols)
+ indices has same length as pols
+ indices[i] tells where in unique to find pols[i]
+ so set (unique,indices)=remove_duplicates(pols),
+ then pols[i] = unique[b[i]] for i\le #indices=#polsa
+
+atlas> set (unique,indices)=remove_duplicates(pols)
+atlas> all(for i:#indices do pols[i]=unique[indices[i]] od)
+Value: true
+}
+set remove_duplicates([ParamPol] pols)=
+let rv=[ParamPol]:[] then
+indices=[int]:[] in
+for P@i in pols do
+ let index=find(rv,P) in
+ if index=-1 then
+   indices#:=#rv;
+   rv#:=P
+ else
+   indices#:=index
+ fi
+od;(rv,indices)
+ 
 {very preliminary version of twisted endoscopic lifting
 given: (G,delta^v)
 G=(split) real group
@@ -350,8 +377,8 @@ set sign_difference(Param p_G, mat delta)=int:
 
 {M  mxn integral matrix
  N  mxr integral matrix
- v= rational vector size m
- solve: M*w=v mod N
+ v= rational m-vector
+ solve: M*w=v mod N   for w=rational n-vector
   i.e. Mw=v modulo the lattice spanned by the columns of N
   algorithm:  M##N is an mx(n+r) matrix
   solve M##N*w=v
@@ -359,7 +386,10 @@ set sign_difference(Param p_G, mat delta)=int:
   w=(w1,w2) #w1=r,#w2=n
   M##Nw=Mw1+Nw2=v
   Mw1=v-Nw2
-  }
+
+see after the definition for the application
+}
+
 set solve(mat M,mat N,ratvec v)=maybe_a_ratvec:
   let sol=solve(M##N,v) in
   let ()=if te_verbose then prints("solving: ", v) fi in
@@ -381,9 +411,9 @@ construct y_H = generalized KGB element for H satisfying:
 torus factor:
 
 y_G -> tf_u_G (unnormalized torus factor for G)
-    -> tf_u_H satisfying M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_* (appropriate equivalence condition)
-    -> 2*tf_u_H (some factor of 2)
-    -> tf_H=(1+theta_H)(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} 
+    -> tf_u_H satisfying M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta]+X_* (appropriate equivalence condition) [see previous solve function]
+    -> 2*tf_u_H (some factor of 2) [?]
+    -> tf_H=(1+theta_H)(2*tf_u_H-H.rho)/2 {convert to normalized torus factor}
     -> y_H (KGB element for H)
 should satisfy: is_valid(y_H,gamma_H)  (given gamma_H)
     i.e. is_integer(square(y_H)-gamma_H)
@@ -404,6 +434,7 @@ tf_u_H_maybe=solve(M,N,tf_u_G) {solution to: M*tf_u_H=tf_u_G mod (X^*_Q)^[-theta
 tf_u_H=if not any(tf_u_H_maybe) then error("no solution") else
         2*tf_u_H_maybe.requisition  {factor of 2}
 fi  then
+()=if te_verbose then prints("tf_u_H=", tf_u_H) fi then
 tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 {convert to normalized torus factor} then
 ()=if te_verbose then prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) fi then
 y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H) then
@@ -420,6 +451,44 @@ fi
 
 set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 let all=all_parameters_gamma(H,gamma_H) then
+{let y_G=y_gen(p_G) then
+action_H=-^restrict_action(y_G.involution,M) then
+all=##for x in fiber(H,action_H) do all_parameters_x_gamma(x,gamma_H) od then}
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
+sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
+
+set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+let ()=prints("inverse lift of: ", p_G) then
+y_G=y_gen(p_G) then
+action_H=-^restrict_action(y_G.involution,M) then
+x=KGB_elt(H,action_H,H.base_grading_vector) then
+n_x=x.number then
+n=KGB_size(H) in
+for i:n-n_x from n_x do
+ let all=all_parameters_x_gamma(KGB(H,i), gamma_H) then
+ index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+ if index!=-1 then
+  prints("found solution with x=",i);
+  return(sign_difference(p_G,delta)*param_pol(L_packet(all[index])))
+ else
+  prints("no solution at x=",i)
+ fi
+od;
+prints("inverse_lift_by_search failed");
+null_module(H)
+
+set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
+let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
+if valid
+ then P_H
+else
+ inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
+fi
+
+set inverse_lift_std_by_search_old(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+{let all=all_parameters_gamma(H,gamma_H) then}
+let all=all_parameters_gamma(H,gamma_H)  then
 index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
@@ -429,8 +498,9 @@ let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
 if valid
  then P_H
 else
- inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
+inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
+
 
 {fails if inverse_lift_std of any single term fails}
 set inverse_lift_std(ParamPol P,RealForm H,mat M, mat delta,ratvec gamma_H)=(bool,ParamPol):
@@ -463,7 +533,7 @@ else P fi
 {returns a sum of standards}
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
 let ecf=extended_character_formula(p_G,delta) then
-P_G=convert_to_param_pol(ecf) then
+P_G=convert_to_param_pol(ecf).s_to_1 then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
 (valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
@@ -471,7 +541,7 @@ P_G=convert_to_param_pol(ecf) then
 (valid,P_H)
 
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
-let ecf=extended_character_formula(p_G,delta) then
+let ecf=extended_character_formula(p_G,delta).s_to_1 then
 P_G=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
@@ -487,23 +557,11 @@ fi
 
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
-set abv(Param p_H,mat M,RealForm G,mat delta)=(bool,(Param,Param,ParamPol,ParamPol)):
+set abv(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
 let lift_std=lift_std(p_H,M,G,delta).parameter then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
- let ()=assert(is_stable(inverse_lift), "purported Arthur lift is not stable");
-   if te_verbose then prints("lift_std=", lift_std) fi in
- (true,(p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1))
-else
- let ()=if te_verbose then prints("lift_std failed") fi in
- (false,(p_H,lift_std,inverse_lift,null_module(p_H.real_form)))
-fi
-
-set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
-let lift_std=lift_std(p_H,M,G,delta).parameter then
-(valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
-if valid then
-  let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in 
+  let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in
   let ()=if te_verbose then prints("lift_std=", lift_std) fi in
   let stable_sum=composition_series(inverse_lift).s_to_1 in
   stable_sum
@@ -515,6 +573,13 @@ else
  if not is_stable(stable_sum) then prints("WARNING: not stable") fi;
  stable_sum
 fi
+
+{if you compute abv(p_H_i,M,G,delta) over a list of p_H_i, the resulting [ParamPol] may have multiplicity
+ better to avoid this:
+}
+set abv([Param] pols_H,mat M,RealForm G,mat delta)=([ParamPol],[int]):
+let abv_with_duplicates = for p_H@i in pols_H do prints("i=",i);abv(p_H,M,G,delta) od in
+remove_duplicates(abv_with_duplicates)
 
 {
 set abv_mixed_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
@@ -547,3 +612,51 @@ for (p_H,p_G,abv)@i in data do
 prints(new_line,"i: ", i, new_line, "p_H: ", p_H,new_line,"inf char(p_H): ", p_H.infinitesimal_character,
 new_line, "p_G=lift(p_H): ", p_G, new_line,"inf_ char(p_G): ", p_G.infinitesimal_character	, new_line,"Packet(p_H): ", abv) od
 
+set packets(Param p,[ParamPol] packets)=[int]:
+##for lp@i in packets do if lp[p]!=0 then [i] else [] fi od
+
+set packets_valid_only(Param p,[ParamPol] packets,[int] invalid_packets)=[int]:
+##for lp@i in packets do if lp[p]!=0 and find(invalid_packets,i) =-1 then [i] else [] fi od
+
+set packets_tmp(Param p,[ParamPol] packets,[int] invalid_packets)=([int],[int]):(packets(p,packets),packets_valid_only(p,packets,invalid_packets))
+
+set matches(int i,[ParamPol] packets)=[int]:
+##for Q@j in packets do if i!=j and packets[j]=packets[i] then [j] else [] fi od
+
+set report([Param] all_H_u,[ParamPol] abv, [int] indices, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
+let ()=prints("Number of parameters: ", #all_H_u,new_line,
+"#distinct packets: ", #abv,new_line,
+"map from parameters to packets: ", indices)  in
+for p@i in all_H_u do
+ let orbit=first(for O in dual_orbits do p.infinitesimal_character=O.H/2 od) then
+ ()=prints(new_line,"---------------------------------------------------------",new_line,"parameter #:",i, new_line, "packet #: ", indices[i], new_line,
+ "unipotent: ",p,new_line,"infchar: ", p.infinitesimal_character,new_line,"orbit=",orbit,new_line) then
+ P=abv[indices[i]] in
+ for (c,q)@j in %P do
+{  prints(new_line,"i=",i," j=",j);a}
+{  for (c,q) in %P do}
+  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "[u#:  " + to_string(index) + "]"  else "[]" fi in
+  prints(int_part(c),"*",q," ",unipotent_star, " ", packets(q,abv)) od
+{ od}
+od
+
+
+set report_tmp([Param] all_H_u,[ParamPol] abv, [int] indices, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits,[int] invalid_packets)=void:
+let ()=prints("unipotent parameter for H: ", new_line, for p@i in all_H_u do prints(i, " ", p) od) in
+let ()=prints("Number of parameters: ", #all_H_u,new_line,
+"#distinct packets: ", #abv,new_line,
+"map from parameters to packets: ", indices)  in
+for p@i in all_H_u do
+ let orbit=first(for O in dual_orbits do p.infinitesimal_character=O.H/2 od) then
+ ()=prints(new_line,"---------------------------------------------------------",new_line,"parameter #:",i, new_line, "packet #: ", indices[i], new_line,
+ "unipotent: ",p,new_line,"infchar: ", p.infinitesimal_character,new_line,"orbit=",orbit) then
+ P=abv[indices[i]] then
+ valid=all(for p in monomials(P) do find(all_H_u,p) !=-1 od) in
+ if not valid then prints("SKIPPING (packet not valid, contains non-unipotents)") fi;
+ for (c,q)@j in %P do
+{  prints(new_line,"i=",i," j=",j);a}
+{  for (c,q) in %P do}
+  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "(parameter #" + to_string(index) + ")"  else "[]" fi in
+  prints(int_part(c),"*",q," ",unipotent_star, " ", packets_tmp(q,abv,invalid_packets)) od 
+{ od}
+od
