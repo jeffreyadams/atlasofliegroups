@@ -294,10 +294,10 @@ set facet_verts_index((ratvec->int) lookup, FacetVerts facet) = FacetVertsIndex:
 {.list of unsettled terms in statusIndex.}
 set to_do([FacetStatusVertsIndex] statusIndex) = vec:
     for stindj@j in statusIndex
-    do
-    if (stindj.status="?" or (#stindj.status > 1 and stindj.status[1]="t")) then [j]
-    else []
-    fi
+    do if (stindj.status="?" or
+	 (#stindj.status > 1 and stindj.status[1]="t"))
+       then [j] else []
+       fi
     od.##
 
 set sorted_is_subset([int] a, [int] b) = bool:
@@ -307,18 +307,19 @@ set sorted_is_subset([int] a, [int] b) = bool:
    ;  if x<b[i] then return false fi
    od; true
 
-{.given a single nonunitary facet F, updates the status of all E with F contained in
-	E-bar to nonunitary.}
+{.given a single nonunitary facet F, updates the status of all strictly larger
+  E with F contained in E-bar (F on the boundary of E) to nonunitary.}
 set update([[FacetStatusVertsIndex]] StInd, FacetStatusVertsIndex nonUnitary) =
     [[FacetStatusVertsIndex]]:
 (  assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets")
 ;  let NUverts = nonUnitary.verts then nNU = #NUverts
-in for e:#StInd - nNU from nNU { only traverse facets of diemsion >=nNU }
-   do let StInde = StInd[e]
+in { we traverse |StInd| while modifying sublists, so counted loop is best here }
+   for e:#StInd - nNU from nNU { only traverse facets of dimesion >=nNU }
+   do let StInde = StInd[e] { take a modifiable copy of the list }
    in for j in to_do(StInde)
       do let facet_info = StInde[j]
-      in if facet_info.status = "?"
-         and sorted_is_subset(NUverts,facet_info.verts)
+      in if facet_info.status = "?" and
+            sorted_is_subset(NUverts,facet_info.verts)
 	 then facet_info.status := nonUnitary.status
 	 ; StInde[j] := facet_info
 	 fi
@@ -328,74 +329,71 @@ in for e:#StInd - nNU from nNU { only traverse facets of diemsion >=nNU }
 ;  StInd
 )
 
-set update([FacetStatusVertsIndex] allInd, FacetStatusVertsIndex nonUnitary,int START) =
-    [FacetStatusVertsIndex]:
-    assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets");
-    let NUverts = nonUnitary.verts
-    then newAllInd = allInd
-    then temp = for Find@j in allInd[START:]
-	do
-	if is_subset_of_sorted(Find.verts)(NUverts) and newAllInd[j+START].status = "?"
-	{Still fails!	then StInde[j].status:=nonUnitary.status}
-	then newAllInd[j+START] := (nonUnitary.status, Find.verts)
-	fi
-	od
-    in newAllInd
+set update \
+   ( [FacetStatusVertsIndex] allInd { just one level of lists here }
+   , FacetStatusVertsIndex nonUnitary
+   , int START { offset into |allInd| at which work starts }
+   ) = [FacetStatusVertsIndex]:
+(  assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets")
+;  for facet_info@j in allInd[START:] { this makes a copy of tail of |allInd| }
+   do if facet_info.status = "?" and
+	 sorted_is_subset(nonUnitary.verts,facet_info.verts)
+      then let f_i=facet_info { need a modifyable copy }
+      in f_i.status := nonUnitary.status
+      ; allInd[START+j] := f_i { update in place in argument |allInd| }
+      fi
+   od
+;  allInd { return modified argument }
+)
 
  {.this version REMOVES nonunitary facets from the lists.}
-set updateCUT([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex nonUnitary) =
-    [[FacetStatusVertsIndex]]:
-    assert(nonUnitary.status[0] = "F",
-			"update only applies to NONunitary facets");
-    let NUverts=nonUnitary.verts
-    then () =  for e:#StInd - #NUverts from #NUverts
-    do
-    let StInde = StInd[e]
-    then tempe = for Find in StInde
-	do
-	if is_subset_of_sorted(Find.verts)(NUverts)
-	then []
-	else [Find]
-	fi
+set updateCUT ( [[FacetStatusVertsIndex]] StInd, FacetStatusVertsIndex nonUnitary) =
+   [[FacetStatusVertsIndex]]:
+(   assert(nonUnitary.status[0] = "F",
+			"update only applies to NONunitary facets")
+;   let NUverts=nonUnitary.verts
+in  for e:#StInd - #NUverts from #NUverts
+    do  StInd[e] :=
+        for facet in StInd[e]
+        do if sorted_is_subset(NUverts,facet.verts)
+	   then [] else [facet]
+	   fi
 	od.##
-    in StInd[e]:=tempe
     od
-    in StInd
+;   StInd
+)
 
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
-set downdate([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) = [[FacetStatusVertsIndex]]:
-    assert(Unitary.status[0] = "T","downdate only applies to unitary facets");
-    let Uverts = Unitary.verts
-    then test = is_subset_of_sorted(Uverts)
-    then () = for e:#Uverts-1
-    do
-    let StInde = StInd[e]
-    then TODOe = to_do(StInde)
-    in
-    for j in TODOe
-	do
-	if test(StInde[j].verts) and StInde[j].status = "?" {can we assign to component?}
-	then StInde[j]:=(Unitary.status, StInde[j].verts)
-	fi
-	od;
-    StInd[e]:=StInde
+set downdate ([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
+   [[FacetStatusVertsIndex]]:
+(   assert(Unitary.status[0] = "T","downdate only applies to unitary facets")
+;   for e:#Unitary.verts-1 { only try facet lists up to dimension of |Unitary| facet }
+    do  let StInde = StInd[e]
+    in  for j in to_do(StInde)
+	do let facet=StInde[j]
+	in if facet.status = "?" and sorted_is_subset(facet.verts,Unitary.verts)
+	   then facet.status:=Unitary.status
+	   ; StInde[j]:=facet
+	   fi
+	od
+    ; StInd[e]:=StInde
     od
-    in StInd
+;   StInd
+)
 
-{.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
+{ same but with just one level of list, which is considered only up to position |END| }
 set downdate([FacetStatusVertsIndex] allInd,FacetStatusVertsIndex Unitary, int END) =
     [FacetStatusVertsIndex]:
-    assert(Unitary.status[0] = "T","downdate only applies to unitary facets");
-    let Uverts = Unitary.verts
-    then test = is_subset_of_sorted(Uverts)
-    then newAllInd = allInd
-    then temp =for Find@j in allInd[:END]
-	do
-	if test(Find.verts) and Find.status = "?" {can we assign to component?}
-	then newAllInd[j]:=(Unitary.status, Find.verts)
-	fi
-	od
-    in newAllInd
+(   assert(Unitary.status[0] = "T","downdate only applies to unitary facets")
+;   for facet_info@j in allInd[:END]
+    do if facet_info.status = "?" and sorted_is_subset(facet_info.verts,Unitary.verts)
+       then let f_i=facet_info { need a modifyable copy }
+       in f_i.status := Unitary.status
+       ; allInd[j] := f_i { update in place in argument |allInd| }
+       fi
+    od
+;  allInd { return modified argument }
+)
 
 { creates the indexing ParamPol }
 { this only works if the list elements are distinct! }
@@ -687,14 +685,14 @@ set updateTrue(RealForm G, [[FacetStatusVertsIndex]] StInd,
     assert(Unitary.status[0] = "T","update only applies to unitary facets");
     let Uverts = Unitary.verts, p = parameter(x_open(G),G.rho,FB)
     then NRHF = NumRedHyps(p)
-    then () = for e:#StInd - #Uverts from #Uverts
+    then () = for e:#StInd - #Unitary.verts from #Unitary.verts
     do
     let StInde = StInd[e]
     then TODOe = to_do(StInde)
     in
     for j in TODOe
 	do
-	if is_subset_of_sorted(StInde[j].verts)(Uverts) and
+	if is_subset_of_sorted(StInde[j].verts)(Unitary.verts) and
 	   StInde[j].status = "?"
 {need to test that pos AffineCoroot's for j which are zero on the
 barycenter of F (# = codim of F in E) are NOT reducibility
