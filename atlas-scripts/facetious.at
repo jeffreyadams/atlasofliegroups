@@ -1279,6 +1279,9 @@ set actualize(KGBElt x, ratvec lambda, [ratvec] vlist,
 		 od
     in (vlistAct.to_vertex_data, FSVIAct)
 
+set actualize(KGBElt x, ratvec lambda, FacetData FD) =
+    actualize(x, lambda, FD.v_data.list, FD.facet_status_inds)
+
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
     do
@@ -1347,6 +1350,7 @@ set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist)=void:
 	od
     od
 
+set show_long(FacetData FD) = show_long(FD.v_data.list, FD.facet_status_inds)
 
 {.picks the facets for hermitian, final parameters.}
 {This eliminates a lot more than pick_not_cohom used to in the nonquasisplit case,
