@@ -1010,11 +1010,18 @@ set FPP_indices(SimpleAffine Affd, ParamPol vertexIndex, int d) =
     od.## { now type [vec] }
 
 {.output is the indices in FPPInd~[0] to alcoves containing Base in their closures.}
-set FPPopenureAlcoves([[FacetStatusVertsIndex]] FPPInd, FacetVertsIndex Base) = vec:
-    for Find@j in FPPInd~[0]
-    do
-    if is_subset_of_sorted(Find.verts)(Base) then [j] else [] fi
-    od.##
+set FPPopenureAlcoves([[FacetStatusVertsIndex]] FPPInd,
+FacetVertsIndex Base) = (int, vec):
+    let d = #FPPInd
+    then (degree,result) = (int, vec): (d-1, [])
+    then () =for k:#FPPInd do 
+    	    result := for Find@j in FPPInd[d-k-1]
+    	    do
+    	    if is_subset_of_sorted(Find.verts)(Base) then [j] else [] fi
+    	    od.##;
+	    if #result > 0 then degree:= d-k-1; break fi
+	od
+    in (degree, result)
 
 {.allow for the possibility that not all alcoves are indexed. Finds all alcoves
  in FPP containing Base in closure, even if not indexed.}
@@ -1051,8 +1058,9 @@ set FPPopenureFacets([FacetVertsIndex] Alcoves, [ParamPol] Indices,
 
 set FPPopenureFacets([[FacetStatusVertsIndex]] FPPInd, [ParamPol] Indices,
     FacetVertsIndex Base) = [vec]:
-    let Alcoves = [FacetVertsIndex]: for j in FPPopenureAlcoves(FPPInd, Base)
-	do FPPInd~[0][j].verts od
+    let (d,Alcs) = FPPopenureAlcoves(FPPInd, Base)
+    then Alcoves = [FacetVertsIndex]: for j in Alcs
+    	do FPPInd[d][j].verts od
     in FPPopenureFacets(Alcoves, Indices, Base)
 
 {.given a single nonunitary facet F, updates the status of all E with F contained in
@@ -1061,7 +1069,7 @@ set update([vec] OpenureFacets, [ParamPol] Indices, [[FacetStatusVertsIndex]] St
     FacetStatusVertsIndex nonUnitary) = [[FacetStatusVertsIndex]]:
     assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets");
     let NUverts = nonUnitary.verts, newStInd = StInd
-    then temp = for e:#StInd - #NUverts from #NUverts
+    then temp = for e:#OpenureFacets from #NUverts
 	 do let opene = OpenureFacets[e-#NUverts], StInde= newStInd[e]
 	    in for j in opene
 	    do let stej = StInde[j].status
