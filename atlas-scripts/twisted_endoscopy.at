@@ -4,7 +4,10 @@
 <extParamPol.at
 
 set te_verbose=true
-
+{move nice_format elsewhere}
+set nice_format(Param p)=string:
+ "p=(" + p.x.number.to_string + "," + p.lambda.compact_string + "," + p.nu.compact_string + ")"
+ 
 {find and remove_duplicates should be moved elsewhere (basic?)}
 set find ([ParamPol] pols,ParamPol P) = int:   first(#pols,(int i)bool:pols[i]=P)
 
@@ -31,6 +34,25 @@ for P@i in pols do
    indices#:=index
  fi
 od;(rv,indices)
+
+set remove_duplicates_and_invalids([ParamPol] pols,[Param] unipotents)=
+let rv=[ParamPol]:[] then
+indices=[int]:[] in
+for P@i in pols do
+ let index=find(rv,P) in
+ if index=-1 
+ then
+   if all(for p in monomials(P) do find(unipotents,p) !=-1 od) then
+    indices#:=#rv;
+    rv#:=P
+   else
+    indices#:=#rv
+   fi
+ else
+   indices#:=index
+ fi
+od;(rv,indices)
+
  
 {very preliminary version of twisted endoscopic lifting
 given: (G,delta^v)
@@ -443,13 +465,17 @@ if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
- (true,sign_difference(p_G,delta)*param_pol(lp))
+ if lift_std(lp[0],M,p_G.real_form,delta).parameter=p_G then
+  (true,sign_difference(p_G,delta)*param_pol(lp))
+ else
+  let ()=prints("valid, but wrong answer") in
+   (false,null_module(H)) fi
 else
  let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
  (false,null_module(H))
 fi
 
-set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+{set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 let all=all_parameters_gamma(H,gamma_H) then
 {let y_G=y_gen(p_G) then
 action_H=-^restrict_action(y_G.involution,M) then
@@ -457,6 +483,7 @@ all=##for x in fiber(H,action_H) do all_parameters_x_gamma(x,gamma_H) od then}
 index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
+}
 
 set inverse_lift_std_by_search(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 let ()=prints("inverse lift of: ", p_G) then
@@ -480,27 +507,33 @@ null_module(H)
 
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
-if valid
- then P_H
+if valid then
+ if lift_std(first_param(P_H),M,p_G.real_form,delta).parameter=p_G then 
+  P_H
+ else
+  let ()=prints("inverse_lift_std_mixed is valid, but gives wrong answer") in
+   inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
+  fi
 else
  inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
 
-set inverse_lift_std_by_search_old(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+{set inverse_lift_std_by_search_old(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let all=all_parameters_gamma(H,gamma_H) then}
 let all=all_parameters_gamma(H,gamma_H)  then
 index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
+}
 
-set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
+{set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
 if valid
  then P_H
 else
 inverse_lift_std_by_search(p_G,H,M,delta,gamma_H)
 fi
-
+}
 
 {fails if inverse_lift_std of any single term fails}
 set inverse_lift_std(ParamPol P,RealForm H,mat M, mat delta,ratvec gamma_H)=(bool,ParamPol):
@@ -623,40 +656,77 @@ set packets_tmp(Param p,[ParamPol] packets,[int] invalid_packets)=([int],[int]):
 set matches(int i,[ParamPol] packets)=[int]:
 ##for Q@j in packets do if i!=j and packets[j]=packets[i] then [j] else [] fi od
 
-set report([Param] all_H_u,[ParamPol] abv, [int] indices, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
+set orbit(Param p,[ComplexNilpotent] orbits)=int: first(for O in orbits do p.infinitesimal_character=O.H/2 od)
+
+set report([Param] all_H_u,[ParamPol] abv, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
+let (unique,indices)=remove_duplicates(abv) in 
 let ()=prints("Number of parameters: ", #all_H_u,new_line,
-"#distinct packets: ", #abv,new_line,
+"#distinct packets: ", #unique,new_line,
 "map from parameters to packets: ", indices)  in
+let ()=prints("parameters/packets:") in
+let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,orbits).to_string, packets(p,unique).to_string] od) in 
+let ()=prints(new_line,"packets/parameters:") in
+let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique do
+                 let lp=for p in monomials(packet) do find(all_H_u,p) od
+                  in [i.to_string,lp.to_string] od) in 
 for p@i in all_H_u do
- let orbit=first(for O in dual_orbits do p.infinitesimal_character=O.H/2 od) then
- ()=prints(new_line,"---------------------------------------------------------",new_line,"parameter #:",i, new_line, "packet #: ", indices[i], new_line,
- "unipotent: ",p,new_line,"infchar: ", p.infinitesimal_character,new_line,"orbit=",orbit,new_line) then
- P=abv[indices[i]] in
+ let ()=prints(new_line,"---------------------------------------------------------",
+ new_line,
+ "parameter #:",i,new_line,
+ "orbit=",orbit(p,dual_orbits), new_line,
+ "parameter: ", p,new_line,
+ "inf char: ", p.infinitesimal_character, new_line,
+ "packet #: ", indices[i],new_line,
+ "Arthur stable sum:",new_line) in let
+  P=unique[indices[i]] in
  for (c,q)@j in %P do
 {  prints(new_line,"i=",i," j=",j);a}
 {  for (c,q) in %P do}
-  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "[u#:  " + to_string(index) + "]"  else "[]" fi in
-  prints(int_part(c),"*",q," ",unipotent_star, " ", packets(q,abv)) od
-{ od}
-od
+  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "(#" + to_string(index) + ")"  else "[]" fi in
+  prints(int_part(c),"*",q," ",unipotent_star, " ", packets(q,unique))
+od;prints();
+  show_stable_sums_irr(monomials(P))
+od;
+prints("=============================================================");
+show_nilpotent_orbits_long(H.dual_quasisplit_form);
+prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+show_long(wp)
 
 
-set report_tmp([Param] all_H_u,[ParamPol] abv, [int] indices, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits,[int] invalid_packets)=void:
-let ()=prints("unipotent parameter for H: ", new_line, for p@i in all_H_u do prints(i, " ", p) od) in
-let ()=prints("Number of parameters: ", #all_H_u,new_line,
-"#distinct packets: ", #abv,new_line,
-"map from parameters to packets: ", indices)  in
+set report_valid_only([Param] all_H_u,[ParamPol] abv, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
+let (unique_valid,indices_valid)=remove_duplicates_and_invalids(abv,all_H_u) in
+let (unique,indices)=remove_duplicates(abv) in 
+let ()=prints("Number of parameters:", #all_H_u,new_line,
+"#distinct packets: ", #unique,new_line,
+"#distinct valid packets: ", #unique_valid,new_line,
+"map from parameters to valid packets: ", indices_valid)  in
+let ()=prints("parameters/packets:") in
+let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,orbits).to_string, packets(p,unique_valid).to_string] od) in 
+let ()=prints("packets/parameters: ") in
+let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique_valid do
+                 let lp=for p in monomials(packet) do find(all_H_u,p) od
+                  in [i.to_string,lp.to_string] od) in 
 for p@i in all_H_u do
- let orbit=first(for O in dual_orbits do p.infinitesimal_character=O.H/2 od) then
- ()=prints(new_line,"---------------------------------------------------------",new_line,"parameter #:",i, new_line, "packet #: ", indices[i], new_line,
- "unipotent: ",p,new_line,"infchar: ", p.infinitesimal_character,new_line,"orbit=",orbit) then
- P=abv[indices[i]] then
- valid=all(for p in monomials(P) do find(all_H_u,p) !=-1 od) in
- if not valid then prints("SKIPPING (packet not valid, contains non-unipotents)") fi;
+ let ()=prints(new_line,"---------------------------------------------------------",
+ new_line,
+ "parameter #:",i,new_line,
+ "orbit=",orbit(p,dual_orbits), new_line,
+ "parameter: ", p,new_line,
+ "inf char: ", p.infinitesimal_character, new_line,
+ "packet #: ", indices_valid[i],new_line,
+ "Arthur stable sum:",new_line) in let
+  P=unique_valid[indices_valid[i]] in
  for (c,q)@j in %P do
 {  prints(new_line,"i=",i," j=",j);a}
 {  for (c,q) in %P do}
-  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "(parameter #" + to_string(index) + ")"  else "[]" fi in
-  prints(int_part(c),"*",q," ",unipotent_star, " ", packets_tmp(q,abv,invalid_packets)) od 
-{ od}
-od
+  let unipotent_star=let index=find(all_H_u,q) in if index!=-1  then "(#" + to_string(index) + ")"  else "[]" fi in
+  prints(int_part(c),"*",q," ",unipotent_star, " ", packets(q,unique_valid))
+od;prints();
+  show_stable_sums_irr(monomials(P))
+od;
+prints("=============================================================");
+show_nilpotent_orbits_long(H.dual_quasisplit_form);
+prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+show_long(wp)

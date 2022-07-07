@@ -235,6 +235,9 @@ prints("# stable sums: ", n_columns(M));
 prints("each column gives a stable sum in the above basis");
 prints(M)
 
+set show_stable_sums_irr([Param] list)=void:
+show(stable_sums_irr_mat(list))
+
 
 set q(RealForm G)=rat:(dimension(G) - dimension(K_0(G)))/2
 
