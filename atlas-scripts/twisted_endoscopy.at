@@ -665,7 +665,7 @@ let ()=prints("Number of parameters: ", #all_H_u,new_line,
 "map from parameters to packets: ", indices)  in
 let ()=prints("parameters/packets:") in
 let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
-  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,orbits).to_string, packets(p,unique).to_string] od) in 
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique).to_string] od) in 
 let ()=prints(new_line,"packets/parameters:") in
 let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique do
                  let lp=for p in monomials(packet) do find(all_H_u,p) od
@@ -689,7 +689,7 @@ od;prints();
   show_stable_sums_irr(monomials(P))
 od;
 prints("=============================================================");
-show_nilpotent_orbits_long(H.dual_quasisplit_form);
+show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
 
@@ -703,7 +703,7 @@ let ()=prints("Number of parameters:", #all_H_u,new_line,
 "map from parameters to valid packets: ", indices_valid)  in
 let ()=prints("parameters/packets:") in
 let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
-  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,orbits).to_string, packets(p,unique_valid).to_string] od) in 
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique_valid).to_string] od) in 
 let ()=prints("packets/parameters: ") in
 let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique_valid do
                  let lp=for p in monomials(packet) do find(all_H_u,p) od
@@ -727,6 +727,6 @@ od;prints();
   show_stable_sums_irr(monomials(P))
 od;
 prints("=============================================================");
-show_nilpotent_orbits_long(H.dual_quasisplit_form);
+show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
