@@ -935,12 +935,18 @@ set FPP_indices (SimpleAffine Affd, VertexData vd, int d) = [FacetVertsIndex]:
     od.## { now type is [vec] agin }
 )
 
-{.output is the indices in FPPInd~[0] to alcoves containing Base in their closures.}
-set FPPopenureAlcoves([[FacetStatusVertsIndex]] FPPInd, FacetVertsIndex Base) = vec:
-    for Find@j in FPPInd~[0]
-    do
-    if is_subset_of_sorted(Find.verts)(Base) then [j] else [] fi
-    od.##
+{.output is |dim| and indices into |FPPInd[dim]| to alcoves containing Base in
+  their closure, for the largest |dim| for which this is non empty.}
+set FPPopenureAlcoves \
+   ([[FacetStatusVertsIndex]] FPPInd, FacetVertsIndex Base) = (int, vec):
+    let degree = #FPPInd { initial too high value }
+in  for L@dim in FPPInd { run through dimensions in decreasing order }
+   ~do  let result =
+        for facet@j in L
+	do  if sorted_is_subset(Base,facet.verts) then [j] else [] fi
+	od.##
+    in  if >#result then return(dim,vec: result) fi
+    od; (minus_1,[]) { if nothing found, report failure }
 
 {.allow for the possibility that not all alcoves are indexed. Finds all alcoves
  in FPP containing Base in closure, even if not indexed.}
@@ -984,8 +990,8 @@ set FPPopenureFacets \
     , [(vec->int)] lookups
     , FacetVertsIndex Base
     ) = [vec]:
-    let Alcoves = [FacetVertsIndex]: for j in FPPopenureAlcoves(FPPInd, Base)
-	do FPPInd~[0][j].verts od
+    let (d,Alcs) = FPPopenureAlcoves(FPPInd, Base)
+    then Alcoves = [FacetVertsIndex]: for j in Alcs do FPPInd[d][j].verts od
     in FPPopenureFacets(Alcoves, lookups, Base)
 
 {.given a single nonunitary facet F, updates the status of all E with F contained in
@@ -997,9 +1003,9 @@ set update \
     ) = [[FacetStatusVertsIndex]]:
 (   assert(nonUnitary.status[0] = "F"
     	  ,"update only applies to NONunitary facets")
-;   let NUverts = nonUnitary.verts, newStInd = StInd
-in  for e:#StInd - #NUverts from #NUverts
-    do  let opene = OpenureFacets[e-#NUverts], StInde= newStInd[e]
+;   let NUverts = nonUnitary.verts
+in  for e:#OpenureFacets from #NUverts
+    do  let opene = OpenureFacets[e-#NUverts], StInde= StInd[e]
 	in for j in opene
 	do let stej = StInde[j].status
 	in
@@ -1218,6 +1224,9 @@ in  for FSVId@d in FPPstInd
 ; (vlistAct.to_vertex_data, FSVIAct)
 )
 
+set actualize(KGBElt x, ratvec lambda, FacetData FD) = FacetData:
+    actualize(x, lambda, FD.v_data.list, FD.facet_status_inds)
+
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
     do
@@ -1277,7 +1286,7 @@ set remove_closure ([[vec]] all, int k) =[[vec]]:
 	       else level
 	       fi od
 
-set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist)=void:
+set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist) = void:
    let n=#FSVIlist-1
    then ulist= for facets in FSVIlist
 	       do unitary_facets(facets) od
@@ -1289,6 +1298,8 @@ set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist)=void:
 	od
     od
 
+set show_long (FacetData FD) = void:
+   show_long(FD.v_data.list, FD.facet_status_inds)
 
 {.picks the facets for hermitian, final parameters.}
 {This eliminates a lot more than pick_not_cohom used to in the nonquasisplit case,
