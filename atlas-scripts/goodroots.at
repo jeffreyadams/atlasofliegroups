@@ -2,6 +2,8 @@
 <<K.at {for K_0}
 <<hermitian.at {for is_hermitian}
 <<Vogan-dual.at {for dual@Param}
+<<translate.at {for translate_param_by}
+<<kl.at {for composition_series}
 
 {Before introducing L1, first command failed for  G=GL(2,R),
 limit of discrete series
@@ -42,8 +44,46 @@ set w0_good_matrix(Param p) = ratmat:
     the Weyl element for L carrying theta(x0) to distinguished
     involution for L. But problem doesn't arise in lots of tests.}
 
+{This version fails in SO(6,4) when the Weyl group of good roots is
+meant to be B2 x B2; it finds 12 roots restricting to the B2 x B2
+system, but these do not form a root system in D5}
+{set w0_good_matrix2(Param p) = mat:
+    let (w,) = from_dlambda_dom(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix,
+    	(Q,pL) = theta_stable_quasi_data(p)
+    then L = Q.Levi, pL0 = pL*0, x0=pL.x
+    {infinitesimal character of pL0 vanishes on all roots of L}
+    {difficulty with this L is that x0 need not be x_open(L), so
+    pL0.dual need not be in the fundamental fiber.}
+    then xL = L.x_open, pLup = translate_param_by(pL, ratvec_as_vec(2*rho(L)))
+    then p0up = Param: let p0s = [Param]: for p in  all_parameters_x_gamma(x_open(L),pLup.infinitesimal_character)
+    	 do if composition_series(p)[pLup] != 0 then [p] else [] fi od.## in p0s[0]
+    then p0 = translate_param_by(p0up,-ratvec_as_vec(2*rho(L)))*0
+    {now p0 is attached to x_open(L)}
+    then Ltest = ratvec_as_vec(p0.lambda - L.rho)
+    then Rgoodvec = for alpha@j in L.posroots do
+    	 if is_real(alpha,xL) and {is_parity(alpha,p0)}
+	    is_odd(L.poscoroots[j]*Ltest) then [] else [alpha] fi od.##
+    then Rveegoodvec = for alphavee@j in L.poscoroots do
+    	 if is_real(L.posroots[j],xL) and {is_parity(L.posroots[j],p0)}
+	    is_odd(alphavee*Ltest)
+    	 then [] else [alphavee] fi od.##
+    then Rgood = mat: if #Rgoodvec > 0 then Rgoodvec else null(L.rank,0) fi,
+    	 Rveegood = mat: if #Rveegoodvec > 0 then Rveegoodvec else null(L.rank,0) fi
+    then RDgood = root_datum_from_positive((Rgood,Rveegood),true)
+    in chw*(RDgood.w0.matrix)*chwinv}
+
 set is_pos_on_LKTs(Param p) = bool:
     let () = if not is_hermitian(p) then
-    	 prints("oops, parameter is not hermitian"); return false fi
+    	 { prints("oops, parameter is not hermitian");} return false fi
+    then () = if #LKTs(p) = 1 then return true fi
     then nu = p.nu, wpos = w0_good_matrix(p)
     in wpos*nu = -nu
+
+{fails because w0_good_matrix2 doesn't yet work.}
+{set is_pos_on_LKTs2(Param p) = bool:
+    let () = if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} return false fi
+    then () = if #LKTs(p) = 1 then return true fi
+    then nu = p.nu, wpos = w0_good_matrix2(p)
+    in wpos*nu = -nu}
