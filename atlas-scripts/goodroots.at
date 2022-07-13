@@ -31,7 +31,7 @@ set w0_good_matrix(Param p) = ratmat:
     {need to find something in block_of(q0d) that DOES live on fund fiber}
     then L0d = q0d.real_form, q1d = last_param(character_formula(q0d))
     then K0d = K_0(q1d.x),
-    	 deltad = L0d.distinguished_involution
+    	 deltad = L0d.distinguished_involution {=qld.x.involution}
     { then () = assert(2^components_rank(L0d) >= #LKTs(p),
 	 "#LKTs doesn't match comps of L0d") |}
     then w0d = w0(K0d).matrix, B = injection_from_K_matrix(q1d.x)
@@ -44,34 +44,65 @@ set w0_good_matrix(Param p) = ratmat:
     the Weyl element for L carrying theta(x0) to distinguished
     involution for L. But problem doesn't arise in lots of tests.}
 
-{This version fails in SO(6,4) when the Weyl group of good roots is
-meant to be B2 x B2; it finds 12 roots restricting to the B2 x B2
-system, but these do not form a root system in D5}
-{set w0_good_matrix2(Param p) = mat:
+set long_elt(RootDatum R) = mat:
+    let R_remaining = R
+    then M = id_mat(R.rank)
+    then r = #R_remaining.poscoroots
+    then () = while r > 0 do
+    	 M *:= reflection(R_remaining, r -1);
+	 R_remaining :=
+    	 	     centralizer([R_remaining.poscoroots[r-1]],R_remaining);
+         r:=#R_remaining.poscoroots
+	 od
+    in M
+    
+{this version takes also a distinguished involution MinusTheta of R,
+    assumed to be of order 2, and a vec d in X* (defined mod
+    (1+MinusTheta)X*) defining a character of H^theta; and computes a
+    representative of the long element of the good reduced root system.}
+set w0_good_long_elt(RootDatum R, mat MinusTheta, vec d) = mat:
+    let R_remaining = R
+    then M = id_mat(R.rank)
+    then r = #R_remaining.poscoroots
+    then rold = 2*r
+    then () = while r > 0 and  r<rold do
+    	 rold :=r;
+    	 for j:r do let alphavee = R_remaining.poscoroots[r-j-1]
+	 in if alphavee*MinusTheta != alphavee then
+	    let S = reflection(R_remaining, r-j-1) in 
+    	    M *:= S * MinusTheta *S *MinusTheta;
+	    R_remaining := centralizer([alphavee +
+    	    alphavee*MinusTheta],R_remaining);
+	    r:=#R_remaining.poscoroots; break
+	 elif is_even(alphavee*d) then {want essentially nonparity
+    	      			       real roots}
+	    M *:= reflection(R_remaining, r - j - 1);
+	    R_remaining := centralizer([alphavee],R_remaining);
+            r:=#R_remaining.poscoroots; break
+	 fi
+	 od
+	 od
+    in M
+ 
+{Version of w0_good_matrix using w0_good_long_elt. The iterations over
+all positive coroots make it rather slow compared to w0_good_matrix: }
+
+set w0_good_matrix2(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix,
     	(Q,pL) = theta_stable_quasi_data(p)
     then L = Q.Levi, pL0 = pL*0, x0=pL.x
     {infinitesimal character of pL0 vanishes on all roots of L}
-    {difficulty with this L is that x0 need not be x_open(L), so
-    pL0.dual need not be in the fundamental fiber.}
-    then xL = L.x_open, pLup = translate_param_by(pL, ratvec_as_vec(2*rho(L)))
+    {difficulty with this L is that x0 need not be x_open(L).}
+    then xL = L.x_open, pLup = translate_param_by(pL0, ratvec_as_vec(2*rho(L))) {change from pL to pL0}
     then p0up = Param: let p0s = [Param]: for p in  all_parameters_x_gamma(x_open(L),pLup.infinitesimal_character)
     	 do if composition_series(p)[pLup] != 0 then [p] else [] fi od.## in p0s[0]
     then p0 = translate_param_by(p0up,-ratvec_as_vec(2*rho(L)))*0
     {now p0 is attached to x_open(L)}
     then Ltest = ratvec_as_vec(p0.lambda - L.rho)
-    then Rgoodvec = for alpha@j in L.posroots do
-    	 if is_real(alpha,xL) and {is_parity(alpha,p0)}
-	    is_odd(L.poscoroots[j]*Ltest) then [] else [alpha] fi od.##
-    then Rveegoodvec = for alphavee@j in L.poscoroots do
-    	 if is_real(L.posroots[j],xL) and {is_parity(L.posroots[j],p0)}
-	    is_odd(alphavee*Ltest)
-    	 then [] else [alphavee] fi od.##
-    then Rgood = mat: if #Rgoodvec > 0 then Rgoodvec else null(L.rank,0) fi,
-    	 Rveegood = mat: if #Rveegoodvec > 0 then Rveegoodvec else null(L.rank,0) fi
-    then RDgood = root_datum_from_positive((Rgood,Rveegood),true)
-    in chw*(RDgood.w0.matrix)*chwinv}
+    then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
+    in chw*(wzero)*chwinv
+
 
 set is_pos_on_LKTs(Param p) = bool:
     let () = if not is_hermitian(p) then
@@ -80,10 +111,11 @@ set is_pos_on_LKTs(Param p) = bool:
     then nu = p.nu, wpos = w0_good_matrix(p)
     in wpos*nu = -nu
 
-{fails because w0_good_matrix2 doesn't yet work.}
-{set is_pos_on_LKTs2(Param p) = bool:
+{Version using w0_good_matrix2}
+set is_pos_on_LKTs2(Param p) = bool:
     let () = if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} return false fi
     then () = if #LKTs(p) = 1 then return true fi
     then nu = p.nu, wpos = w0_good_matrix2(p)
-    in wpos*nu = -nu}
+    in wpos*nu = -nu
+
