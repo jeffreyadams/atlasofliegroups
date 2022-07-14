@@ -65,16 +65,16 @@ set w0_good_long_elt(RootDatum R, mat MinusTheta, vec d) = mat:
 	    then let S = reflection(R,i) in 
     	    M *:= (S * MinusTheta)^2
 	    ; roots_remaining:=
-	    for j in roots_remaining
-	    do if =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
+	    for j in roots_remaining {should only go up to i!}
+	    do if j<i and =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
 	       then [j] else [] fi
 	    od.##
 	    ; break
 	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
 	 then M *:= reflection(R,i)
 	 ; roots_remaining:=
-	    for j in roots_remaining
-	    do if is_orthogonal(R,i,j) then [j] else [] fi
+	    for j in roots_remaining {should only go up to i!}
+	    do if j<i and is_orthogonal(R,i,j) then [j] else [] fi
 	    od.##
 	    ; break
 	 fi
