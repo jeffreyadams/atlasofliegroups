@@ -4,13 +4,7 @@
 <<Vogan-dual.at {for dual@Param}
 <<translate.at {for translate_param_by}
 <<kl.at {for composition_series}
-
-{Before introducing L1, first command failed for  G=GL(2,R),
-limit of discrete series
-
-p = final parameter(x=0,lambda=[1,1]/2,nu=[0,0]/1)
-
-}
+<K_highest_weights.at {for all_parameters_x_gamma}
 
 {.long element for the good Weyl group. Hope that the condition to be
 Hermitian and positive on LKTs is w0_good_matrix(p) * p.nu = -p.nu.
@@ -55,48 +49,59 @@ set long_elt(RootDatum R) = mat:
          r:=#R_remaining.poscoroots
 	 od
     in M
-    
+
 {this version takes also a distinguished involution MinusTheta of R,
     assumed to be of order 2, and a vec d in X* (defined mod
     (1+MinusTheta)X*) defining a character of H^theta; and computes a
     representative of the long element of the good reduced root system.}
 set w0_good_long_elt(RootDatum R, mat MinusTheta, vec d) = mat:
-    let R_remaining = R
-    then M = id_mat(R.rank)
-    then r = #R_remaining.poscoroots
-    then rold = 2*r
-    then () = while r > 0 and  r<rold do
-    	 rold :=r;
-    	 for j:r do let alphavee = R_remaining.poscoroots[r-j-1]
-	 in if alphavee*MinusTheta != alphavee then
-	    let S = reflection(R_remaining, r-j-1) in 
-    	    M *:= S * MinusTheta *S *MinusTheta;
-	    R_remaining := centralizer([alphavee +
-    	    alphavee*MinusTheta],R_remaining);
-	    r:=#R_remaining.poscoroots; break
-	 elif is_even(alphavee*d) then {want essentially nonparity
-    	      			       real roots}
-	    M *:= reflection(R_remaining, r - j - 1);
-	    R_remaining := centralizer([alphavee],R_remaining);
-            r:=#R_remaining.poscoroots; break
+    ( let roots_remaining = #R.nr_of_posroots, M=id_mat(R.rank)
+      then old_size = #roots_remaining+1
+    in while #roots_remaining<old_size
+    	 do old_size :=#roots_remaining
+    	 ; for i in roots_remaining
+	 ~do let alpha_vee = coroot(R,i)
+	 in if alpha_vee*MinusTheta != alpha_vee
+	    then let S = reflection(R,i) in 
+    	    M *:= (S * MinusTheta)^2
+	    ; roots_remaining:=
+	    for j in roots_remaining
+	    do if =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
+	       then [j] else [] fi
+	    od.##
+	    ; break
+	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
+	 then M *:= reflection(R,i)
+	 ; roots_remaining:=
+	    for j in roots_remaining
+	    do if is_orthogonal(R,i,j) then [j] else [] fi
+	    od.##
+	    ; break
 	 fi
 	 od
-	 od
-    in M
- 
+    od
+    ; M
+    )
+
 {Version of w0_good_matrix using w0_good_long_elt. The iterations over
 all positive coroots make it rather slow compared to w0_good_matrix: }
 
 set w0_good_matrix2(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
-    then chw = w.matrix, chwinv = w.inverse.matrix,
-    	(Q,pL) = theta_stable_quasi_data(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix
+    ,	(Q,pL) = theta_stable_quasi_data(p)
     then L = Q.Levi, pL0 = pL*0, x0=pL.x
     {infinitesimal character of pL0 vanishes on all roots of L}
     {difficulty with this L is that x0 need not be x_open(L).}
-    then xL = L.x_open, pLup = translate_param_by(pL0, ratvec_as_vec(2*rho(L))) {change from pL to pL0}
-    then p0up = Param: let p0s = [Param]: for p in  all_parameters_x_gamma(x_open(L),pLup.infinitesimal_character)
-    	 do if composition_series(p)[pLup] != 0 then [p] else [] fi od.## in p0s[0]
+    then xL = L.x_open
+    ,pLup = translate_param_by(pL0
+    , ratvec_as_vec(2*rho(L))) {change from pL to pL0}
+    then p0up = Param: 
+    let val = Param: p { dummy value; |val| will be assigned to below} in
+    for p in all_parameters_x_gamma(x_open(L),pLup.infinitesimal_character)
+    do if composition_series(p)[pLup] != 0 then val:=p; break fi
+    od
+    ; val { value to initialise |p0up| }
     then p0 = translate_param_by(p0up,-ratvec_as_vec(2*rho(L)))*0
     {now p0 is attached to x_open(L)}
     then Ltest = ratvec_as_vec(p0.lambda - L.rho)
