@@ -203,6 +203,21 @@ set cuspidal_data (Param p) = (Parabolic,Param):
    )
   )
 
+{. Tempered data associated to a parameter p: a real parabolic
+subgroup P = MN and tempered mod center parameter p_M so that
+Ind(I(p_M)) = I(p) This is the canonical real parabolic arising in the
+Langlands classification .}
+set tempered_data(Param p) = (Parabolic,Param):
+    let(,p1) = p.from_nu_dom
+    then nu1 = p1.nu, x1=p1.x
+    then theta1 = x1.involution
+    then P1 = parabolic_by_wt(nu1,x1)
+    then M1 = P1.Levi
+    then x1_M1=inverse_embed_KGB(x1,M1)
+    in
+    (P1, parameter(x1_M1, lambda(p1) - rho_r(p1.x) + rho_r(x1_M1)-(1-theta1)*
+    	 (rho_S(x1) - rho_S(x1_M1)), nu(p1)))
+
 {  ----------------------   theta-stable data   -----------------------------}
 
 {. Theta-stable data associated to a parameter p: a theta-stable parabolic P=LN
@@ -224,8 +239,8 @@ set theta_stable_data (Param p) = (Parabolic,Param):
 
 {. Theta-stable data associated to a parameter q: a theta-stable
 parabolic Q=LU with L quasisplit, and parameter q_L for a fine
-principal series representation so that is obtained by cohomological
-parabolic induction from q_L.}
+principal series representation so that q is obtained by cohomological
+parabolic induction from q_L .}
 set theta_stable_quasi_data (Param q) = (Parabolic,Param):
     {assert(is_final(q),"parameter is not final")}
     let (,q1)=q.from_dlambda_dom

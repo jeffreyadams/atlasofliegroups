@@ -13,7 +13,7 @@ parabolic; at the end chw is change of variable to get back to
 (G,x,lambda).}
 { really this only depends on the pair (x,lambda), but as far as I
 know there isn't a type (KGBElt,ratvec) like that??? }
-set w0_good_matrix(Param p) = ratmat:
+set w0_good_matrix_old(Param p) = ratmat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix,
     	(Q,pL) = theta_stable_quasi_data(p)
@@ -57,23 +57,26 @@ set long_elt(RootDatum R) = mat:
 set w0_good_long_elt (RootDatum R, mat MinusTheta, vec d) = mat:
 (  let roots_remaining = #R.nr_of_posroots, M=id_mat(R.rank)
 in while let !old_size = #roots_remaining { remember size at entry, for test }
-   in for i in roots_remaining
+   in for i@k in roots_remaining
      ~do let alpha_vee = coroot(R,i)
       in if alpha_vee*MinusTheta != alpha_vee
          then let S = reflection(R,i)
 	 in M *:= (S * MinusTheta)^2
 	 ; roots_remaining:=
-	   for j@pos in roots_remaining[:pos]
-	   do if =(alpha_vee+alpha_vee*MinusTheta)*root(R,j) then [j] else [] fi
-	   od.##
+	 for j in roots_remaining[:k]
+	 do if
+	    =(alpha_vee+alpha_vee*MinusTheta)*root(R,j)
+	   then [j] else [] fi
+	 od.##
 	 ; break
 	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
 	 then M *:= reflection(R,i)
 	 ; roots_remaining:=
-	   for j in roots_remaining[:pos]
-	   do if is_orthogonal(R,i,j) then [j] else [] fi
+	   for j in roots_remaining[:k]
+	   do if
+	      is_orthogonal(R,i,j) then [j] else [] fi
 	   od.##
-	 ; break
+	   ; break
 	 fi
       od
    ;  #roots_remaining<old_size { continue while a |break| was executed above }
@@ -113,10 +116,9 @@ in for j:R.nr_of_posroots
 ; M
 )
 
-{Version of w0_good_matrix using w0_good_long_elt. The iterations over
-all positive coroots make it rather slow compared to w0_good_matrix: }
+{. Version of w0_good_matrix using w0_good_long_elt .} 
 
-set w0_good_matrix2(Param p) = mat:
+set w0_good_matrix(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix
     ,	(Q,pL) = theta_stable_quasi_data(p)
@@ -129,26 +131,26 @@ set w0_good_matrix2(Param p) = mat:
       () = { find the proper value for p1 }
         for q in { Cands_up_at_xL = }
 	  all_parameters_x_gamma(xL,pL.infinitesimal_character+tworhoL)
-        do  let q1 = ParamPol: translate_param_by(q,-tworhoL) { finalize }
-    	in if q1[pL] != 0 then p1:=q1; break { we are done } fi
+        do  let q1 = translate_param_by(q,-tworhoL)
+    	in if finalize(q1)[pL] != 0 then p1:=q1; break { we are done } fi
 	od
     then Ltest = ratvec_as_vec(p1.lambda - L.rho)
     then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
  in chw*(wzero)*chwinv
 
 
-set is_pos_on_LKTs(Param p) = bool:
+set is_pos_on_LKTs_old(Param p) = bool:
     let () = if not is_hermitian(p) then
     	 { prints("oops, parameter is not hermitian");} return false fi
     then () = if #LKTs(p) = 1 then return true fi
-    then nu = p.nu, wpos = w0_good_matrix(p)
+    then nu = p.nu, wpos = w0_good_matrix_old(p)
     in wpos*nu = -nu
 
-{Version using w0_good_matrix2}
-set is_pos_on_LKTs2(Param p) = bool:
+{Version using new w0_good_matrix}
+set is_pos_on_LKTs(Param p) = bool:
    if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} false
-   else #LKTs(p) = 1 or w0_good_matrix2(p)*p.nu = -p.nu
+   else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
    fi
 set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
     sum(R.rank, for alpha@j in R.posroots do

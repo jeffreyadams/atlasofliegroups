@@ -137,6 +137,11 @@ set from_dlambda_dom(Param p) = (WeylElt, Param):
     then winv = w.inverse
     in (w,parameter(cross(winv,p.x), winv*p.lambda, winv*p.nu))
 
+set from_nu_dom(Param p) = (WeylElt, Param):
+    let (w,) = from_dominant(p.root_datum, p.nu)
+    then winv = w.inverse
+    in (w,parameter(cross(winv,p.x), winv*p.lambda, winv*p.nu))
+
 set to_no_Cminus (KGBElt x) = KGBElt: let (,y)=from_no_Cminus(x) in y
 set to_no_Cplus (KGBElt x) = KGBElt:  let (,y)=from_no_Cplus(x) in y
 set to_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
