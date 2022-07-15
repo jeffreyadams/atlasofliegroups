@@ -50,73 +50,68 @@ set long_elt(RootDatum R) = mat:
 	 od
     in M
 
-{this version takes also a distinguished involution MinusTheta of R,
-    assumed to be of order 2, and a vec d in X* (defined mod
-    (1+MinusTheta)X*) defining a character of H^theta; and computes a
-    representative of the long element of the good reduced root system.}
-set w0_good_long_elt(RootDatum R, mat MinusTheta, vec d) = mat:
-    ( let roots_remaining = #R.nr_of_posroots, M=id_mat(R.rank)
-      then old_size = #roots_remaining+1
-    in while #roots_remaining<old_size
-    	 do old_size :=#roots_remaining
-    	 ; for i@k in roots_remaining
-	 ~do let alpha_vee = coroot(R,i)
-	 in if alpha_vee*MinusTheta != alpha_vee
-	    then let S = reflection(R,i) in 
-    	    M *:= (S * MinusTheta)^2
-	    ; roots_remaining:=
-	    for j in roots_remaining[:k]
-	    	{j in roots_remaining should only go up to i!}
-	    do if
-	       =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
-	       then [j] else [] fi
-	    od.##
-	    ; break
+{ this version takes also a distinguished involution MinusTheta of R,
+  assumed to be of order 2, and a vec d in X* (defined mod (1+MinusTheta)X*)
+  defining a character of H^theta; and computes a representative of
+  the long element of the good reduced root system. }
+set w0_good_long_elt (RootDatum R, mat MinusTheta, vec d) = mat:
+(  let roots_remaining = #R.nr_of_posroots, M=id_mat(R.rank)
+in while let !old_size = #roots_remaining { remember size at entry, for test }
+   in for i in roots_remaining
+     ~do let alpha_vee = coroot(R,i)
+      in if alpha_vee*MinusTheta != alpha_vee
+         then let S = reflection(R,i)
+	 in M *:= (S * MinusTheta)^2
+	 ; roots_remaining:=
+	   for j@pos in roots_remaining[:pos]
+	   do if =(alpha_vee+alpha_vee*MinusTheta)*root(R,j) then [j] else [] fi
+	   od.##
+	 ; break
 	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
 	 then M *:= reflection(R,i)
 	 ; roots_remaining:=
-	    for j in roots_remaining[:k]
-	    {j in roots_remaining should only go up to i!}
-	    do if
-	       is_orthogonal(R,i,j) then [j] else [] fi
-	    od.##
-	    ; break
+	   for j in roots_remaining[:pos]
+	   do if is_orthogonal(R,i,j) then [j] else [] fi
+	   od.##
+	 ; break
 	 fi
-	 od
-    od
-    ; M
-    )
+      od
+   ;  #roots_remaining<old_size { continue while a |break| was executed above }
+   do ()
+   od
+;  M
+)
 
 {modify previous to pass through positive roots only once}
 set w0_good_long_elt_new(RootDatum R, mat MinusTheta, vec d) = mat:
-    ( let to_do = [bool]: for j: R.nr_of_posroots do true od, M=id_mat(R.rank)
-    in for j:R.nr_of_posroots
-    	  ~do if to_do[j]
-	      then let alpha_vee = coroot(R,j)
-	      in if alpha_vee*MinusTheta != alpha_vee
-	      then let S = reflection(R,j) in
-    	      M *:= (S * MinusTheta)^2
-	      ; for k:j
-	      	    do
-		    if  to_do[k] and
-			!=(alpha_vee + alpha_vee*MinusTheta)*root(R,k)
-	       	    	then to_do[k] := false
-	       	    fi
-		    od
-	       elif is_even(alpha_vee*d) {want essentially nonparity real roots}
-	       then M *:= reflection(R,j)
-	       ; for k:j
-	       	    do
-		    if to_do[k] and
-	       	    not is_orthogonal(R,k,j)
+( let to_do = [bool]: for j: R.nr_of_posroots do true od, M=id_mat(R.rank)
+in for j:R.nr_of_posroots
+      ~do if to_do[j]
+	  then let alpha_vee = coroot(R,j)
+	  in if alpha_vee*MinusTheta != alpha_vee
+	  then let S = reflection(R,j) in
+	  M *:= (S * MinusTheta)^2
+	  ; for k:j
+		do
+		if  to_do[k] and
+		    !=(alpha_vee + alpha_vee*MinusTheta)*root(R,k)
 		    then to_do[k] := false
-		    fi
-		    od
-	          fi
+		fi
+		od
+	   elif is_even(alpha_vee*d) {want essentially nonparity real roots}
+	   then M *:= reflection(R,j)
+	   ; for k:j
+		do
+		if to_do[k] and
+		not is_orthogonal(R,k,j)
+		then to_do[k] := false
+		fi
+		od
 	      fi
-	 od
-    ; M
-    )
+	  fi
+     od
+; M
+)
 
 {Version of w0_good_matrix using w0_good_long_elt. The iterations over
 all positive coroots make it rather slow compared to w0_good_matrix: }
@@ -125,18 +120,21 @@ set w0_good_matrix2(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix
     ,	(Q,pL) = theta_stable_quasi_data(p)
-    then L = Q.Levi, x0=pL.x
-    then xL = x_open(L), tworhoL = ratvec_as_vec(2*L.rho), val=pL
+    then L = Q.Levi
+    then xL = x_open(L), tworhoL = ratvec_as_vec(2*L.rho)
+    , p1= Param: pL { dummy value overriden below }
+    then { x0=pL.x, pL0 = K_type(pL), }
     {infinitesimal character of pL0 vanishes on all roots of L}
     {difficulty with this L is that x0 need not be x_open(L).}
-    then Cands_up_at_xL = all_parameters_x_gamma(xL,pL.infinitesimal_character+tworhoL)
-    then p1 = Param: for q in Cands_up_at_xL do
-    	 let q1 = translate_param_by(q,-tworhoL)
-    	 in if finalize(q1)[pL] != 0 then val:=q1; break
-	 fi od; val
-     then Ltest = ratvec_as_vec(p1.lambda - L.rho)
+      () = { find the proper value for p1 }
+        for q in { Cands_up_at_xL = }
+	  all_parameters_x_gamma(xL,pL.infinitesimal_character+tworhoL)
+        do  let q1 = ParamPol: translate_param_by(q,-tworhoL) { finalize }
+    	in if q1[pL] != 0 then p1:=q1; break { we are done } fi
+	od
+    then Ltest = ratvec_as_vec(p1.lambda - L.rho)
     then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
-    in chw*(wzero)*chwinv
+ in chw*(wzero)*chwinv
 
 
 set is_pos_on_LKTs(Param p) = bool:
@@ -148,13 +146,10 @@ set is_pos_on_LKTs(Param p) = bool:
 
 {Version using w0_good_matrix2}
 set is_pos_on_LKTs2(Param p) = bool:
-    let () = if not is_hermitian(p) then
-    	 {prints("oops, parameter is not hermitian");} return false fi
-    then () = if #LKTs(p) = 1 then return true fi
-    then nu = p.nu, wpos = w0_good_matrix2(p)
-    in wpos*nu = -nu
-
-
+   if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   else #LKTs(p) = 1 or w0_good_matrix2(p)*p.nu = -p.nu
+   fi
 set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
     sum(R.rank, for alpha@j in R.posroots do
     	    if MinusTheta*alpha != alpha then [alpha]
