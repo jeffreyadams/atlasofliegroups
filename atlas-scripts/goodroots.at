@@ -59,27 +59,62 @@ set w0_good_long_elt(RootDatum R, mat MinusTheta, vec d) = mat:
       then old_size = #roots_remaining+1
     in while #roots_remaining<old_size
     	 do old_size :=#roots_remaining
-    	 ; for i in roots_remaining
+    	 ; for i@k in roots_remaining
 	 ~do let alpha_vee = coroot(R,i)
 	 in if alpha_vee*MinusTheta != alpha_vee
 	    then let S = reflection(R,i) in 
     	    M *:= (S * MinusTheta)^2
 	    ; roots_remaining:=
-	    for j in roots_remaining {should only go up to i!}
-	    do if j<i and =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
+	    for j in roots_remaining[:k]
+	    	{j in roots_remaining should only go up to i!}
+	    do if
+	       =(alpha_vee + alpha_vee*MinusTheta)*root(R,j)
 	       then [j] else [] fi
 	    od.##
 	    ; break
 	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
 	 then M *:= reflection(R,i)
 	 ; roots_remaining:=
-	    for j in roots_remaining {should only go up to i!}
-	    do if j<i and is_orthogonal(R,i,j) then [j] else [] fi
+	    for j in roots_remaining[:k]
+	    {j in roots_remaining should only go up to i!}
+	    do if
+	       is_orthogonal(R,i,j) then [j] else [] fi
 	    od.##
 	    ; break
 	 fi
 	 od
     od
+    ; M
+    )
+
+{modify previous to pass through positive roots only once}
+set w0_good_long_elt_new(RootDatum R, mat MinusTheta, vec d) = mat:
+    ( let to_do = [bool]: for j: R.nr_of_posroots do true od, M=id_mat(R.rank)
+    in for j:R.nr_of_posroots
+    	  ~do if to_do[j]
+	      then let alpha_vee = coroot(R,j)
+	      in if alpha_vee*MinusTheta != alpha_vee
+	      then let S = reflection(R,j) in
+    	      M *:= (S * MinusTheta)^2
+	      ; for k:j
+	      	    do
+		    if  to_do[k] and
+			!=(alpha_vee + alpha_vee*MinusTheta)*root(R,k)
+	       	    	then to_do[k] := false
+	       	    fi
+		    od
+	       elif is_even(alpha_vee*d) {want essentially nonparity real roots}
+	       then M *:= reflection(R,j)
+	       ; for k:j
+	       	    do
+		    if to_do[k] and
+	       	    not is_orthogonal(R,k,j)
+		    then to_do[k] := false
+		    fi
+		    od
+	          fi
+	      fi
+	 od
     ; M
     )
 
@@ -90,21 +125,16 @@ set w0_good_matrix2(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix
     ,	(Q,pL) = theta_stable_quasi_data(p)
-    then L = Q.Levi, pL0 = pL*0, x0=pL.x
+    then L = Q.Levi, x0=pL.x
+    then xL = x_open(L), tworhoL = ratvec_as_vec(2*L.rho), val=pL
     {infinitesimal character of pL0 vanishes on all roots of L}
     {difficulty with this L is that x0 need not be x_open(L).}
-    then xL = L.x_open
-    ,pLup = translate_param_by(pL0
-    , ratvec_as_vec(2*rho(L))) {change from pL to pL0}
-    then p0up = Param: 
-    let val = Param: p { dummy value; |val| will be assigned to below} in
-    for p in all_parameters_x_gamma(x_open(L),pLup.infinitesimal_character)
-    do if composition_series(p)[pLup] != 0 then val:=p; break fi
-    od
-    ; val { value to initialise |p0up| }
-    then p0 = translate_param_by(p0up,-ratvec_as_vec(2*rho(L)))*0
-    {now p0 is attached to x_open(L)}
-    then Ltest = ratvec_as_vec(p0.lambda - L.rho)
+    then Cands_up_at_xL = all_parameters_x_gamma(xL,pL.infinitesimal_character+tworhoL)
+    then p1 = Param: for q in Cands_up_at_xL do
+    	 let q1 = translate_param_by(q,-tworhoL)
+    	 in if finalize(q1)[pL] != 0 then val:=q1; break
+	 fi od; val
+     then Ltest = ratvec_as_vec(p1.lambda - L.rho)
     then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
     in chw*(wzero)*chwinv
 
@@ -124,3 +154,9 @@ set is_pos_on_LKTs2(Param p) = bool:
     then nu = p.nu, wpos = w0_good_matrix2(p)
     in wpos*nu = -nu
 
+
+set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
+    sum(R.rank, for alpha@j in R.posroots do
+    	    if MinusTheta*alpha != alpha then [alpha]
+	    elif is_even(R.poscoroots[j]*d) then [2*alpha]
+	    else [] fi od.##)/4
