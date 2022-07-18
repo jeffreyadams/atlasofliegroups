@@ -251,6 +251,22 @@ set theta_stable_quasi_data (Param q) = (Parabolic,Param):
     in
     (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
 
+{. Theta-stable data associated to a parameter q: a theta-stable
+parabolic Q=LU with L quasisplit, and parameter q_L for a fine
+principal series representation so that is obtained by cohomological
+parabolic induction from q_L. But now we shrink L so the Cartan is the
+maximally split one in L.}
+set theta_stable_quasi_data_im (Param q) = (Parabolic,Param):
+    let qIm = parameter(q.x, q.lambda + 2*rho_i(q.x), q.nu)
+    {assert(is_final(q),"parameter is not final")}
+    then (,q2)=qIm.from_dlambda_dom
+    then dlambda2 = d_lambda(q2), x2=q2.x, lambda2=q2.lambda
+    then Q2 = parabolic_by_wt(dlambda2,x2)
+    then L2 = Q2.Levi
+    then x2_L2=inverse_embed_KGB(x2,L2)
+    in
+    (Q2, parameter(x2_L2, lambda2 -2*rho_i(x2) -rho(real_form(q2))+rho(L2), q2.nu))
+
 {---------------------standardize-----------------------------------------}
 
 {on the compact Cartan, coherent continuation is well defined even

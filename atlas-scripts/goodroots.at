@@ -1,9 +1,9 @@
-<<induction.at {for theta_stable_quasi_data}
-<<K.at {for K_0}
-<<hermitian.at {for is_hermitian}
-<<Vogan-dual.at {for dual@Param}
-<<translate.at {for translate_param_by}
-<<kl.at {for composition_series}
+<induction.at {for theta_stable_quasi_data, theta_stable_quasi_data_im}
+<K.at {for K_0}
+<hermitian.at {for is_hermitian}
+<Vogan-dual.at {for dual@Param}
+<translate.at {for translate_param_by}
+<kl.at {for composition_series}
 <K_highest_weights.at {for all_parameters_x_gamma}
 
 {.long element for the good Weyl group. Hope that the condition to be
@@ -152,8 +152,37 @@ set is_pos_on_LKTs(Param p) = bool:
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
    fi
+
+{. half sum of positive good restricted roots, in special case of
+quasisplit G, x_open, fine parameter; d is lambda-rho .}
 set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
     sum(R.rank, for alpha@j in R.posroots do
     	    if MinusTheta*alpha != alpha then [alpha]
 	    elif is_even(R.poscoroots[j]*d) then [2*alpha]
 	    else [] fi od.##)/4
+
+{. first try at GENERAL half sum of positive good restricted .}
+set rho_good(Param p) = ratvec:
+    let (Q,pL) = theta_stable_quasi_data_im(p)
+    in rho_good(pL.real_form, -pL.x.involution,
+    lambda_minus_rho(pL))
+
+
+{ Biggest: W^theta }
+set theta_Weyl(KGBElt x) = [WeylElt]:
+    let W=x.real_form.W, thetax = x.involution
+    in for w in W do if thetax*w.matrix = w.matrix*thetax then [w]
+       else [] fi od.##
+
+{ Next biggest: stuff in W coming from K }
+set real_Weyl(KGBElt x) = [WeylElt]:
+    let W = x.real_form.W
+    in for w in W do if cross(w,x) = x then [w] else [] fi od.##
+
+{still too small: want this to include Weyl group of compact imaginary roots}
+set stab_W_param(Param p) = [WeylElt]:
+    let rho = p.real_form.rho
+    then x = p.x, lr = p.lambda - rho, nu = p.nu
+    in for w in real_Weyl(p.x) do if p = parameter(p.x, w*lr + rho
+    , w*p.nu)
+    	then [w] else [] fi od.##
