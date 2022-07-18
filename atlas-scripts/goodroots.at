@@ -155,17 +155,28 @@ set is_pos_on_LKTs(Param p) = bool:
 
 {. half sum of positive good restricted roots, in special case of
 quasisplit G, x_open, fine parameter; d is lambda-rho .}
+{ACTUALLY the "is_even" condition should be replaced by "not
+is_parity" for a corresponding parameter. So this function is no good
+if R is not split .}
 set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
     sum(R.rank, for alpha@j in R.posroots do
     	    if MinusTheta*alpha != alpha then [alpha]
 	    elif is_even(R.poscoroots[j]*d) then [2*alpha]
 	    else [] fi od.##)/4
 
-{. first try at GENERAL half sum of positive good restricted .}
+{. first try at GENERAL half sum of positive good restricted. Think
+it's still not right, because theta_stable_quasi_data composed with
+theta_stable_quasi_data_im is not right .}
 set rho_good(Param p) = ratvec:
-    let (Q,pL) = theta_stable_quasi_data_im(p)
-    in rho_good(pL.real_form, -pL.x.involution,
-    lambda_minus_rho(pL))
+    let (,pL1) = theta_stable_quasi_data_im(p)
+    then (,pL) = theta_stable_quasi_data(pL1)
+    then E = pL.real_form, xL = pL.x
+    in sum(E.rank, for alpha@j in E.posroots do
+    	    if not is_real(alpha, xL) then [alpha]
+	    elif not is_parity(alpha,pL) then [2*alpha]
+	    else [] fi od.##)/4
+{Used to say "rho_good(pL.real_form, -pL.x.involution,
+    lambda_minus_rho(pL))" but that doesn't work.}
 
 
 { Biggest: W^theta }
@@ -179,7 +190,7 @@ set real_Weyl(KGBElt x) = [WeylElt]:
     let W = x.real_form.W
     in for w in W do if cross(w,x) = x then [w] else [] fi od.##
 
-{still too small: want this to include Weyl group of compact imaginary roots}
+{this seems close to what's wanted}
 set stab_W_param(Param p) = [WeylElt]:
     let rho = p.real_form.rho
     then x = p.x, lr = p.lambda - rho, nu = p.nu
