@@ -1,0 +1,67 @@
+<goodroots.at
+
+{Algorithm for computing the c-form on pi_LKT, the space of lowest K-types (of multiplicity 1)
+of an irreducible hermitian representation pi, by converting the c-form, which is positive
+on pi_LKT, using convert_cform_hermitian.
+
+Note that convert_cform_hermitian@KTypePol takes the KTypePol P which represents the
+c-form for the *extended* group on the space of LKTs. That is, \pi~ is an irreducible
+representation of the extended group, and:
+
+1*p means the extended K-type (p,+) occurs as a LKT of \pi~
+s*p means the extended K-type (p,-) occurs as a LKT of \pi~
+
+(and the c-form is positive on these).
+
+The algorithm is:
+
+given a Hermitian parameter p (delta=distinguished involution of G):
+
+p1=p*0
+p2=dominant(p1)   (dominant, possibly non-final parameter)
+p3=finalize_extended(p2,delta)
+cf=K_type_pol(p3)   (this is the KTypePol representing the c-form on the LKTs)
+hf=convert_cform_hermitian(cf,delta)
+}
+
+set LKT_form_long(Param p)=(KTypePol,KTypePol): {c-form on LKT, Hermitian form on LKT}
+assert(is_hermitian(p), "parameter is not Hermitian");
+let delta=p.real_form.distinguished_involution then
+p1=p*0 then
+p2=dominant(p1) then
+p3=finalize_extended(p2,delta) then
+cf=K_type_pol(p3) {c-form on th extended group} then
+hf=convert_cform_hermitian(cf,delta) in
+(cf,hf)
+
+set LKT_form(Param p)=KTypePol: {Hermitian form on LKT}
+let (,hf)=LKT_form_long(p) in hf
+
+set LKT_signature(Param p)=(int,int):  {signature of Hermitian form on LKT; unitary on LKT <=> (n,0) or (0,n)}
+let hf=LKT_form(p) in
+(sum(for c@p in int_part(hf) do c od).split_as_int,sum(for c@p in  s_part(hf) do c od).split_as_int)
+
+{Hermitian form is definite on LKTs}
+set LKT_is_unitary(Param p)=bool:let (r,s)=LKT_signature(p) in r*s=0
+
+{run over list of params, assumed to be Hermitian, and test: is_pos_on_LKT(s)=LKT_is_unitary(p)}
+set test_LKT_is_unitary([Param] params)=
+let ()=prints("testing ", #params, " parameters",new_line,
+"LKT_sig: LKT_signature(p) [computed by converting the c-form]", new_line,
+"is_pos: is_pos_on_LKTs(p) [computing using good roots]",new_line,
+"agree: both methods give same answer") then
+data=for p@i in params do
+ let LKT_sig=LKT_signature(p) then
+ is_pos=is_pos_on_LKTs(p) then
+ rv=let (r,s)=LKT_sig in ( r*s=0 = is_pos) in
+ (i,p,LKT_sig,is_pos,rv)
+od in
+tabulate(["i","p","LKT_sig","is_pos", "agree:"] #for (i,p,LKT_sig,is_pos,rv) in data do [i.to_string,p.to_string,let (r,s)=LKT_sig in "(" + r.to_string+ "," + s.to_string + ")",is_pos.to_string,rv.to_string] od);
+all(for (,,,,rv) in data do rv od)
+
+{run over all parameters of given infinitesimal character, which are Hermitian, and have >1 LKT}
+set test_LKT_is_unitary(RealForm G,ratvec gamma)=
+let all=all_parameters_gamma(G,gamma) then
+list=##for p in all do if is_hermitian(p) and #LKTs(p)>1 then [p] else [] fi od in
+let ()=prints("all parameters: ", #all,new_line, "subset of hermitian, #LKTs>1: ", #list) in
+test_LKT_is_unitary(list)
