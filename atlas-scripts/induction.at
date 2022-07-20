@@ -518,12 +518,23 @@ set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
 set dim_u_cap_p (Parabolic (,x):P) = int:
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
-  let sum=0/1 in
+  let sum=0/1 then
+  {for efficiency: define is_complex and is_noncompact_imaginary as functions: root->bool
+   see basic.at}
+  is_complex=is_complex(x) then
+  is_noncompact_imaginary=is_noncompact_imaginary(x) in
   for alpha in nilrad_roots(P) do
-    if is_complex(alpha,x) then sum +:= 1/2
-    elif is_noncompact_imaginary(alpha,x) then sum+:=1
+    if is_complex(alpha) then sum +:= 1/2
+    elif is_noncompact_imaginary(alpha) then sum+:=1
     fi
   od; rat_as_int(sum)
+
+{alternate version - appears to be about the same speed}
+set dim_u_cap_p_alt (Parabolic (,x):P) = int:
+assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+let L=P.Levi, G=x.real_form
+in length(x_open(G)) - length(x_open(L))
+
 
 {. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated
   to x. .}

@@ -1,6 +1,6 @@
 <goodroots.at
 
-{Algorithm for computing the c-form on pi_LKT, the space of lowest K-types (of multiplicity 1)
+{Algorithm for computing the Hermitian form on pi_LKT, the space of lowest K-types (of multiplicity 1)
 of an irreducible hermitian representation pi, by converting the c-form, which is positive
 on pi_LKT, using convert_cform_hermitian.
 
@@ -20,17 +20,19 @@ given a Hermitian parameter p (delta=distinguished involution of G):
 p1=p*0
 p2=dominant(p1)   (dominant, possibly non-final parameter)
 p3=finalize_extended(p2,delta)
-cf=K_type_pol(p3)   (this is the KTypePol representing the c-form on the LKTs)
+cf=K_type_pol(p3)   (this is the KTypePol representing the c-form on the (extended) LKTs)
 hf=convert_cform_hermitian(cf,delta)
 }
 
 set LKT_form_long(Param p)=(KTypePol,KTypePol): {c-form on LKT, Hermitian form on LKT}
 assert(is_hermitian(p), "parameter is not Hermitian");
 let delta=p.real_form.distinguished_involution then
-p1=p*0 then
+{p1=p*0 then
 p2=dominant(p1) then
-p3=finalize_extended(p2,delta) then
-cf=K_type_pol(p3) {c-form on th extended group} then
+p3=finalize_extended(p2,delta) then}
+{do it in one step:}
+p3=finalize_extended(p*0,delta) then
+cf=K_type_pol(p3) {c-form on the extended group} then
 hf=convert_cform_hermitian(cf,delta) in
 (cf,hf)
 
