@@ -48,6 +48,9 @@ set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
 set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
   P+S*extParamPol(p,type)
 
+set swap(ExtParamPol (P,Q,R))=ExtParamPol: (Q,P,R)
+set s_to_1(ExtParamPol (P,Q,R))=ExtParamPol: (P.s_to_1,Q.s_to_1,R.s_to_1)
+
 set display (ExtParamPol(A,B,C)) = void:
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
 set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (N,N,N)
@@ -161,9 +164,75 @@ set deform_old (Param p, mat delta, int type) = ExtParamPol:
 set deform (ExtParam E, mat delta) = ExtParamPol:
    deform(parameter(E), delta, sign(E))
 
-{given extended parameter (p,type) multiply nu(p) by rat r
- uses finalize_extended
+{P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
+set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
+assert(is_fixed(delta,P),"P is not delta-fixed");
+let monomials=[Param]:[] in
+for c@p in P do
+ let f=find(monomials,twist(delta,p)) in
+  if f=-1 then prints("p=",p);monomials#:=p fi
+od;
+null_module(P.real_form) + for p in monomials do P[p]*p od
+
+set fixed_terms(ParamPol P,mat delta)=ParamPol:
+let rv=null_module(P.real_form) in 
+ for c@p in P do if is_fixed(delta,p) then rv+:=c*p fi od;
+rv
+
+set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
+
+set convert_to_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
+let plus=null_module(P.real_form) then
+minus=null_module(P.real_form) then
+ind=null_module(P.real_form) then
+()=for c@p in P do
+ if is_fixed(delta,p) then
+  plus+:=int_part(c)*p;
+  minus+:=s_part(c)*p
+ else
+  ind +:=c*p
+ fi
+od in
+(plus,minus,ind)
+
+{E=(P,Q,R)
+  corresponding to xi (not delta)
+  P,Q,R can have Z[s] coefficients
+  converting to ParamPol means: the *twisted* character, i.e. the value of the character off the identity component
+  take P-Q:
+    that is, a term (p,q,0) has twisted character p-q
 }
+set convert_to_param_pol(ExtParamPol E)=ParamPol:
+let (P,Q,R)=E in P-Q
+
+set finalize_extended_s(Param p, mat delta)=ParamPol:
+if is_fixed(delta,p) then
+ finalize_extended(p,delta) + non_fixed_terms(finalize(p),delta)
+else
+ (1+s)*fixed_terms(finalize(p),delta) + non_fixed_terms(finalize(p),delta)
+fi
+
+{this function probably should only by applied to a ParamPol with integer coefficients}
+set finalize_extended_s(ParamPol P,mat delta)=ParamPol:
+let rv=null_module(P.real_form) in
+ for c@p in P do rv+:=c*finalize_extended_s(p,delta) od;
+rv
+
+set finalize_extended_t(Param p, mat xi)=ExtParamPol:
+convert_to_ext_param_pol(finalize_extended_s(p,xi),xi)
+
+set finalize_extended_t(ParamPol P, mat xi)=ExtParamPol:
+let rv=null_ext_module(P.real_form) in
+ for c@p in P do rv+:=c*finalize_extended_t(p,xi) od;
+rv
+
+set finalize_extended_t(ExtParamPol E, mat xi)=ExtParamPol:
+let (P,Q,R)=E in
+finalize_extended_t(P,xi) +
+swap(finalize_extended_t(Q,xi)) +
+finalize_extended_t(R,xi)
+
+
 set change_nu (Param p, rat factor, int type) = ExtParamPol:
   let G=real_form(p)
   then delta=G.distinguished_involution
@@ -249,14 +318,45 @@ in if ed_verbose { choose verbose or non-verbose version of the function }
 
 set full_deform = recursive_deform@(Param,mat,int)
 
-set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
+set extended_character_formula_reg_old (Param p,mat delta) = ParamPol:
+assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
+let G=p.real_form then
+rv=null_module(G) then
+B=block_of(p) then
+(I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+P=big_KL_P_signed_polynomials(B,delta) then
+index=find(complete_indices,(find(B,p),1)) in
+for (j,type)@i in complete_indices do
+ let c=eval(P[i][index],s) in
+ rv +:=
+ if type=1 then c*B[j]
+   elif type=-1 then c*s*B[j] 
+   elif type=0 then c*B[j] 
+   else error("c\ne 0,\pm 1")
+ fi
+od;
+rv
+
+set extended_character_formula_old (Param p,mat delta) = ParamPol:
+if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg_old(p,delta)
+else
+ let preg=make_regular_param(p) then
+ gamma=p.infinitesimal_character then
+ ecfreg=extended_character_formula_reg_old(preg,delta) then
+ {need to apply T_param term by term because putting in a ParamPol
+  finalizes each term which is not OK}
+ rv=null_module(p.real_form) in
+   for c@p in ecfreg do rv+:=c*finalize_extended(T_param(p,gamma),delta) od;
+ rv
+ fi
+
+set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-{   , P=big_KL_P_signed_polynomials(B,delta) then}
-   , P=big_KL_P_polynomials(B,delta) then
+   , P=big_KL_P_signed_polynomials(B,delta) then
+{   , P=big_KL_P_polynomials(B,delta) then}
 
    index=find(complete_indices,(find(B,p),1)) then
    ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
-   
    ()=prints("number of complete indices: ", #complete_indices) then
    ()=prints("index of parameter in complete indices: ", index) then
    ()=prints("complete index: ", complete_indices[index]) then
@@ -268,11 +368,91 @@ set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let c_term=
    if c=1 then 1
     elif c=-1 then s
-    elif c=0 then (1+s)
+    elif c=0 then {(1+s)}1
     else error("c\ne 0,\pm 1")
    fi
    in
-let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in
+{let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in}
+
+   if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi 
+   od;
+   tabulate(data)
+
+set print_extended_character_formula_old (Param p,mat delta) = void:
+   print_extended_character_formula_old(p,singular_block_of(p),delta)
+
+set print_extended_character_formula_old (Param p,mat delta) = void:print_extended_character_formula_old(p,singular_block_of(p),delta)
+
+{--- new version of extended character formula--}
+{this should be modified to work with the partial extended block instead of the entire block:
+ replace P=big_KL_P_signed_polynomials(B,delta) with
+         P=big_KL_P_signed_polynomials(p,delta)} 
+set extended_character_formula_reg (Param p,mat delta) =ExtParamPol:
+assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
+let G=p.real_form then
+(plus,minus,ind)=null_ext_module(p.real_form) then
+B=block_of(p) then
+(I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+P=big_KL_P_signed_polynomials(B,delta) then
+index=find(complete_indices,(find(B,p),1)) in
+for (j,type)@i in complete_indices do
+ let c=eval(P[i][index],s) in
+ if !=c then
+  if type=1 then plus+:=c*B[j]
+    elif type=-1 then minus+:= c*B[j]
+    elif type=0 then {prints("ind=", ind,"c=",c," j=",j);} ind+:=c*B[j]
+    else error("c\ne 0,\pm 1")
+  fi
+ fi
+od;
+(plus,minus,ind)
+
+set extended_character_formula (Param p,mat delta) = ExtParamPol:
+if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg(p,delta)
+else
+ let preg=make_regular_param(p) then
+ gamma=p.infinitesimal_character then
+ ecfreg=extended_character_formula_reg(preg,delta) then
+ (plus,minus,ind)=ecfreg then
+ {need to apply T_param term by term because putting in a ParamPol
+  finalizes each term which is not OK}
+ rv=null_ext_module(p.real_form) in
+   for c@p in plus do
+{     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+      rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+   for c@p in minus do
+{     let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta))) in}
+      rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
+   for c@p in ind do
+     {let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+      rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
+ rv
+ fi
+
+set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
+   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+   , P=big_KL_P_signed_polynomials(B,delta) then
+{   , P=big_KL_P_polynomials(B,delta) then}
+
+   index=find(complete_indices,(find(B,p),1)) then
+   ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
+
+   ()=prints("number of complete indices: ", #complete_indices) then
+   ()=prints("index of parameter in complete indices: ", index) then
+   ()=prints("complete index: ", complete_indices[index]) then
+   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in matrix",new_line) then
+   data=[["(i,c)","m","c*m","c*m*p"]] in
+   for i:#complete_indices
+   do let f=eval(P[i][index],s) then
+   (j,c)=complete_indices[i] in
+   let c_term=
+   if c=1 then 1
+    elif c=-1 then s
+    elif c=0 then {(1+s)}1
+    else error("c\ne 0,\pm 1")
+   fi
+   in
+{let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in}
 
    if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi 
    od;
@@ -281,6 +461,9 @@ let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in
 set print_extended_character_formula (Param p,mat delta) = void:
    print_extended_character_formula(p,singular_block_of(p),delta)
 
+set print_extended_character_formula (Param p,mat delta) = void:print_extended_character_formula(p,singular_block_of(p),delta)
+
+{--end new versions of extended character formula --}
 set print_extended_composition_series (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
    then index=find(complete_indices,(find(B,p),1))
@@ -299,26 +482,6 @@ set print_extended_indices([Param] B,mat delta) = void:
          ,"delta-fixed parameters:=",I_delta,new_line
          , "complete indices=", complete_indices,new_line
          ,"delta_action=",delta_action)
-
-set character_formula (Param p,mat delta,int type) = ExtParamPol:
-(  let G=p.real_form, (B,index)=singular_block(p)
-   then delta=distinguished_involution(G)
-   then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   then Index= find(complete_indices,(index,type))
-   , ori_nr_p = orientation_nr(p)
-   , result=null_ext_module(G)
-   , N=null_module(G)
-   , P=big_KL_P_signed_polynomials(B,delta)
-in for (j,type)@i in complete_indices
-   do let c=eval(P[i][Index],s) in
-      result +:=
-	 if type=1 then (c*B[j],N,N)
-	 elif type=minus_1 then (N,c*B[j],N)
-	 else (N,N,c*B[j])
-	 fi
-   od
-;  result
-)
 
 {.c-form of std module for the extended group is just full_def.}
 set c_form_std_big = full_deform@(Param,mat,int)
@@ -347,20 +510,23 @@ in for c@q in P_ind do (P_plus+:=c*q, P_minus+:=c*q) od
 ;  (P_plus,P_minus,null_module(real_form(p)))
 )
 
-set c_form_irreducible_big (Param p,mat delta, int type) = ExtParamPol:
-   c_form_irreducible_big(p,delta,type,character_formula(p,delta,type))
 
-set c_form_irreducible_big_as_sum_of_standards (Param p,mat delta, int type) =
+
+{
+set c_form_irreducible_big (Param p,mat delta) = ExtParamPol:
+   c_form_irreducible_big(p,delta,type,character_formula(p,delta))
+
+set c_form_irreducible_big_as_sum_of_standards (Param p,mat delta) =
       ExtParamPol:
    let ori_nr_p = orientation_nr(p)
-   , (plus,minus,induced)=character_formula(p,delta,type)
+   , (plus,minus,induced)=character_formula(p,delta)
    , (Plus,Minus,Induced)=null_ext_module(real_form(p))
 in for c@q in plus    do   Plus +:=orientation_nr_term(ori_nr_p,q)*c*q od;
    for c@q in minus   do   Minus+:=orientation_nr_term(ori_nr_p,q)*c*q od;
    for c@q in induced do Induced+:=orientation_nr_term(ori_nr_p,q)*c*q od;
    (Plus,Minus,Induced)
 
-set c_form_irreducible_big_long (Param p,mat delta, int type) =
+set c_form_irreducible_big_long (Param p,mat delta) =
       (ExtParamPol
       ,[(Split,Param),ExtParamPol]
       ,[(Split,Param),ExtParamPol]
@@ -368,7 +534,7 @@ set c_form_irreducible_big_long (Param p,mat delta, int type) =
       ,ExtParamPol
       ):
 (   let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p))
-    , (plus,minus,induced)=character_formula(p,delta,type)
+    , (plus,minus,induced)=character_formula(p,delta)
     , (plus_terms,minus_terms,induced_terms)=([],[],[])
 in for coeff@q in plus
    do let new_term =
@@ -453,3 +619,28 @@ set is_weakly_unitary_big (Param p) = bool:
   is_weakly_unitary(hermitian_form_irreducible_big(p))
 
 set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus
+
+}
+
+{given extended formul in terms of Z[s], set s=1,
+ and also replace each nonfixed term q with q + delta(q)}
+set extended_s_to_1(ParamPol P,mat delta)=ParamPol:
+let rv=null_module(P.real_form) in 
+ for c@p in P do 
+  if is_fixed(delta,p) 
+   then rv+:=c*p 
+  else 
+   rv+:=c*(p + twist(delta,p))
+  fi
+ od;
+rv.s_to_1
+
+{given extended formul in terms of Z[t], set t=1,
+ and also replace each nonfixed term q with q + delta(q)}
+set extended_t_to_1(ExtParamPol E,mat xi)=
+let (P,Q,R)=E then
+rv=null_module(P.real_form) in
+ for c@p in P do rv+:=c*p od;
+ for c@p in Q do rv+:=-c*p od;
+ for c@p in R do rv+:=-c*(p+twist(xi,p)) od;
+rv

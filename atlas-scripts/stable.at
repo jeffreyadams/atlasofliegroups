@@ -7,6 +7,22 @@
 <parameters.at { for |make_regular@(RootDatum,ratvec)| }
 <weak_packets.at { for |parameters@[int,int,Param]| }
 
+{Almost this entire file is probably unnecessary: L_packet.at for
+is_stable@ParamPol and variants
+These in_tau functions are needed, should be moved elsewhere}
+set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
+   let (,b)= tau_bitset(p) in b(s)
+set in_tau ([int] S,Param p) = bool:  { whether $S\subset\tau(p)$ }
+   all(#S, (int i)bool: in_tau(S[i],p))
+set in_tau([*] S,Param p) = bool: true { whether $\emptyset\subset\tau(p)$ }
+
+set in_tau_complement (int s,Param p) = bool: { whether s not in tau(p) }
+   not in_tau(s,p)
+set in_tau_complement ([int] S,Param p) = bool: { whether $S\cap\tau(p)$ empty }
+   all(#S, (int i)bool: in_tau_complement(S[i],p))
+set in_tau_complement([*] S,Param p) = bool: true
+
+{Remainder of the file commented out:
 
 {stable virtual characters}
 {some elementary operations needed, these should be moved elsewhere}
@@ -47,18 +63,8 @@ set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
 set permutation_matrix_sort([int] S) = mat:
   let n=#S, sorted=sort(S) in matrix((n,n),(int i,int j)int: #(sorted[i]=S[j]) )
 
-set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
-   let (,b)= tau_bitset(p) in b(s)
-set in_tau ([int] S,Param p) = bool:  { whether $S\subset\tau(p)$ }
-   all(#S, (int i)bool: in_tau(S[i],p))
-set in_tau([*] S,Param p) = bool: true { whether $\emptyset\subset\tau(p)$ }
 
-set in_tau_complement (int s,Param p) = bool: { whether s not in tau(p) }
-   not in_tau(s,p)
-set in_tau_complement ([int] S,Param p) = bool: { whether $S\cap\tau(p)$ empty }
-   all(#S, (int i)bool: in_tau_complement(S[i],p))
-set in_tau_complement([*] S,Param p) = bool: true
-
+{
 { translate irreducibles to singular infinitesimal character,
   only keep those for which tau(p)\subset S-complement }
 set Psi_irr ([Param] params,[int] S) = [Param]:
@@ -301,23 +307,53 @@ set print_stable_at_singular ([*] S,[Param] B,[Param] subset) = void:
 
 print_stable_at_singular([int]:S,B,subset)
 
-set stable ([Param] params) = (mat,[Param]):
+set blocks_of([Param] list)=[[Param]]:
+    let rv=[[Param]]:[] in
+    for p in list do
+    	let j=find(##rv,p) in
+             if j=-1 then rv#:=block_of(p)
+	fi
+    od;
+rv
+
+set divide_into_blocks([Param] list)=[[Param]]:
+let rv=[[Param]]:[] in
+for p in list do
+ let index=first(for i:#rv do find(rv[i],p)!=-1 od) in
+  if index=-1 then rv#:=block_of(p) fi
+od;
+rv
+
+set project_onto_blocks(ParamPol P)=[ParamPol]:
+let blocks=divide_into_blocks(monomials(P)) then
+rv=[ParamPol]:for i:#blocks do null_module(P.real_form)  od in
+for (c,p) in %P do
+  let index=first(for i:#blocks do find(blocks[i],p) !=-1 od) in
+  rv[index]+:=c*p
+od;rv
+
+set stable ([Param] params) = [(mat,[Param])]:
   assert(has_infinitesimal_character(params)
         ,"terms do not all have same infinitesimal character");
-  let G=real_form(params[0])
-  then p=params[0]
-  then gamma=infinitesimal_character(p)
-  then shift=ratvec_as_vec(make_regular(root_datum(p),gamma)-gamma)
-  then S=singular_simple_indices(G,infinitesimal_character(p))
-  then params_reg=for p in params do translate_param_by(p,shift) od
-  then B=block_of(params_reg[0])
+  let G=real_form(params[0]) then
+  gamma=infinitesimal_character(params[0]) then
+  blocks=divide_into_blocks(params) in
+  for B in blocks do 
+   let shift=ratvec_as_vec(make_regular(G,gamma)-gamma)
+   then S=singular_simple_indices(G,gamma) 
+   then   ()=prints("S=",S) 
+   then params_reg=for p in B do translate_param_by(p,shift) od
+   then ()=prints("B=",B) 
   in stable_at_singular(S,B,params_reg)
+od
 
 set print_stable([Param] params) = void:
   if >#params
-  then let G=params[0].real_form, (M,params)=stable(params) in
+  then let G=params[0].real_form, st=stable(params) in
+    for (M,list) in st do 
     prints("dimension space of stable sums:", n_rows(M));
-    for i:n_rows(M) do prints(make_param_pol(G,row(M,i),params)) od
+    for i:n_rows(M) do prints(make_param_pol(G,row(M,i),list)) od
+   od
   fi
 
 set stable_test_Aq_packet (RealForm G,ComplexParabolic P) = void:
@@ -353,3 +389,6 @@ set print_stable_sums([[(int,int,Param)]] lists)=void:
 prints("Stable sums for ",#lists," packets:");
 for list@i in lists do prints("-----------------------------------",new_line,"Packet #",i);print(stable_sums(parameters(list))) od
 
+}
+
+}
