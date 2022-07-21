@@ -16,7 +16,7 @@ set find ([ParamPol] pols,ParamPol P) = int:   first(#pols,(int i)bool:pols[i]=P
  indices has same length as pols
  indices[i] tells where in unique to find pols[i]
  so set (unique,indices)=remove_duplicates(pols),
- then pols[i] = unique[b[i]] for i\le #indices=#polsa
+ then pols[i] = unique[indices[i]] for i\le #indices=#polsa
 
 atlas> set (unique,indices)=remove_duplicates(pols)
 atlas> all(for i:#indices do pols[i]=unique[indices[i]] od)
@@ -35,6 +35,7 @@ for P@i in pols do
  fi
 od;(rv,indices)
 
+{also remove a ParamPol unless all of its parameters are unipotent}
 set remove_duplicates_and_invalids([ParamPol] pols,[Param] unipotents)=
 let rv=[ParamPol]:[] then
 indices=[int]:[] in
@@ -54,11 +55,11 @@ for P@i in pols do
 od;(rv,indices)
 
  
-{very preliminary version of twisted endoscopic lifting
-given: (G,delta^v)
-G=(split) real group
-delta^v=distinguished involution of G^v
-H^v=identity component of (G^v)^delta
+{preliminary version of twisted endoscopic lifting
+given: (G,delta)
+G=real group, delta=some distinguished involution (not necessarily the inner class one)
+delta_v=transpose(delta)=distinguished involution of G^v
+H^v=identity component of (G^v)^delta_v
 H = dual group of H.split_form
   = endoscopic group for G
 [Of course G shouldn't have to be split, and then H
