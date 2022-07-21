@@ -218,10 +218,10 @@ class BitMap
     d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
   }
 
-  void set_to(unsigned long n,bool b)
-  { if (b) insert(n); else remove(n); }
+  bool set_to(unsigned long n,bool b)
+  { if (b) insert(n); else remove(n); return b; }
 
-  void set_mod2(unsigned long n, unsigned long v) { set_to(n,(v&1)!=0); }
+  bool set_mod2(unsigned long n, unsigned long v) { return set_to(n,(v&1)!=0); }
 
   void flip(unsigned long n)
   {

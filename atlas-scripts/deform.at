@@ -135,26 +135,19 @@ in null_module(p) +
 )
 
 set_type
-[ ParamDown       = (Param down | KType drop_to )
-, ReductionStatus = (void reducible | Param lower | KType tempered )
+[ ReductionStatus = (void reducible | Param lower )
 ]
 
 { go to next reducibility point (move even if at reducibility point) }
 set reduction_at (Param p) = ReductionStatus:
-   let rp=reducibility_points(p)
-in if =#rp  { |p| already at |nu=0| or absence of reductions from |p| to there }
-   then tempered(p.K_type)
-   elif rp~[0]=1 then reducible()
+   let rp=(0/1)#reducibility_points(p)
+in if rp~[0]=1 then reducible()
    else lower(p*rp~[0])
    fi
 
-set down_strict (Param p) = ParamDown:
-(  let rp=reducibility_points(p)
-in if >#rp and rp~[0]=1 then rp:=rp[:1~] fi { ignore any final 0 }
-;  if =#rp then drop_to(p.K_type)
-   else down(p*rp~[0])
-   fi
-)
+set next_down (Param p) = Param:
+   let rp=(0/1)#reducibility_points(p)
+in assert(rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
 
 { use |deformation_terms_by dual| for a full deformation, in which we try to
   group all successive deformations involving a same block together }
@@ -164,7 +157,6 @@ set deform_to_height (Param p,int max_height) = KTypePol:
    then !K_empty=null_K_module(G), !empty=null_module(G)
 in { first ensure there is a potential deformation at |p| }
    case reduction_at(p)
-      | tempered(t): return KTypePol: t
       | lower(q): p:=q
       | reducible(): () { keep p }
       esac
@@ -177,21 +169,16 @@ in while >#queue or
    do { invariant of the loop: all terms in |queue| have potential deformation }
       let (c0,q):term = first_term(queue)
    in queue:= (queue next queue:=empty) - term
-   ;  case down_strict(q)
-      | down(qq):
-          lower:= (lower next lower:=empty) + (c0,qq)
-      | drop_to(t):
-          result := (result next result:=K_empty) + (c0,t)
-      esac
+   ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
+      else lower:= (lower next lower:=empty) + (c0,next_down(q))
+      fi
    ;  let terms = deformation_terms_by_dual(q,max_height)
    in for c@r in terms
       do case reduction_at(r)
-         | tempered(t):
-	   result := (result next result:=K_empty) + (c0*c,t)
-         | lower(qq): { element of initial block, but no further deformation }
-	    lower:= (lower next lower:=empty) + (c0*c,qq)
          | reducible():
 	    queue:= (queue next queue:=empty) + (c0*c,r)
+         | lower(qq): { element of initial block, but no further deformation }
+	    lower:= (lower next lower:=empty) + (c0*c,qq)
          esac
       od
    od

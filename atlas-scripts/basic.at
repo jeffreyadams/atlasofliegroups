@@ -1968,6 +1968,9 @@ set as_pol (RealForm G, [Param] ps) = ParamPol:
 set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
 set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 
+set full_deform (ParamPol P) = KTypePol:
+  sum(P.real_form, for c@q in P do c*full_deform(q) od )
+
 { nice output of KTypePol and ParamPol: split_format the coefficients }
 set pol_format (KTypePol P)= string:
   ## for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od

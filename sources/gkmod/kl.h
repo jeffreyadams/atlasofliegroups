@@ -137,7 +137,10 @@ class KL_table
 
 // manipulators
 
-  // partial fill, up to column |limit| exclusive; fill all if |limit==0|
+  // If some column doesn't interest us, calling |plug_hole| makes it ignored }
+  void plug_hole(BlockElt y); // callers responsibility that it won't be used
+
+  // partial fill of columns for holes |<=limit|; fill all holes if |limit==0|
   void fill (BlockElt limit=0, bool verbose=false);
 
   Poly_hash_export polynomial_hash_table ();
@@ -155,6 +158,7 @@ class KL_table
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
 
   // manipulators
+
   void silent_fill(BlockElt limit); // called by public |fill| when not verbose
   void verbose_fill(BlockElt limit); // called by public |fill| when verbose
 
