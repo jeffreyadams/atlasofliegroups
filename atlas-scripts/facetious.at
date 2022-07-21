@@ -192,6 +192,7 @@ set cofolded(RealForm G) = (RootDatum, mat, int):
 	 )
     in (rdB,M,j0)
 
+
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
 rd[j] in simple_factors(rd). Since I want to use this to look for
@@ -1067,7 +1068,7 @@ set facet_status([[vec]] FPPind) = [[string]]:
 {now marks unipotent parameters as "T[number of dual nilpotent]"}
 {I THINK that for a simple G, all unipotent parameters must be
 barycenters of facets of dimension 0 or 1. Also I THINK that dimension
-1 can only happen in type A?? So this could be simplified.}
+1 can only happen in type A?? (NO, also E6!) So this could be simplified.}
 set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
 (  let FBs = [[FacetBary]]:
       for Findd in FPPstInd
@@ -1076,7 +1077,8 @@ set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
    then FPPstIndQuo = FPPstInd
    , lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
      index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
-   , (X,r) = simple_type(G.derived)
+   , (X,r) = simple_type(simple_factors(G)[0].derived) {this allows complex
+     	  				    simple G}
    , st = G.dual.Springer_table
    then FPPstInd0 = FPPstInd[0]
    , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi
@@ -1179,9 +1181,9 @@ set thetaAct (KGBElt x, ratvec lambda, VertexData vd) = [int]:
 
 
 
-{makes the FPP facets into facets of actual unitary parameters}
-{WOULD LIKE: eliminate the empty lists at the end of the output (when there
-are no actual unitary facets of the highest dimension}
+{makes the FPP facets into facets of actual unitary parameters} {as
+for thetaAct, need to in the unequal rank case to apply this to
+cofolded vertices to get nice answers}
 set actualize \
   ( KGBElt x, ratvec lambda
   , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetData:
@@ -1206,7 +1208,7 @@ set actualize \
 	 od
     then FSVIAct = [[FacetStatusVertsIndex]]:
         for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
-in  for FSVId@d in FPPstInd
+    then () = for FSVId@d in FPPstInd
     do  for stFind in FSVId
 	do  if stFind.status[0] = "T"
 	    then
@@ -1221,7 +1223,8 @@ in  for FSVId@d in FPPstInd
 	    fi
 	od
     od
-; (vlistAct.to_vertex_data, FSVIAct)
+    then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
+    in (vlistAct.to_vertex_data, FSVIAct[:dAct+1])
 )
 
 set actualize(KGBElt x, ratvec lambda, FacetData FD) = FacetData:
