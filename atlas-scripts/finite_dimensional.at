@@ -1,6 +1,13 @@
 <Weylgroup.at { dominant }
 
 { finite dimensional representations of G(C)}
+
+{.constructs parameter for the algebraic finite-dimensional of
+extremal weight lambda.}
+set finite_dimensional(RealForm G, vec lambda) = Param:
+let lambdadomrho = dominant(G,lambda)+G.rho  in
+parameter(x_open(G),lambdadomrho,lambdadomrho)
+
 {.whether p is finite dimensional.}
 set is_finite_dimensional (Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
@@ -53,7 +60,7 @@ set dimension(Param p) = int:
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:
-  let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
+  let dom = dominant(root_datum(p), ((1+p.x.involution)*p.lambda).ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
 {
@@ -61,3 +68,24 @@ set complex_LKT (Param p) = vec:
   and sign of Hermitian form on finite dimensional representation are
   MOVED TO finite_dimensional_signature.at
 }
+
+set ht(RealForm G, vec lambda) = int:
+rat_as_int(dominant(G,lambda)*G.rho_check*2)
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1 and gamma2, returned as ParamPol of corresponding GC parameters (nu=0)}
+set tensor_product(RootDatum rd, vec gamma1, vec gamma2) = ParamPol:
+let GC = rd.complexification then gamma=finite_dimensional(GC,gamma1##gamma2)
+then infchar = gamma.infinitesimal_character
+then Gamma = (-1)^length(x_open(GC))*sum(GC,for x in KGB(GC) do
+(-1)^length(x)*parameter(x,infchar,infchar) od)
+in branch(Gamma, ht(GC,gamma1##gamma2))
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1 and gamma2, returned as list of (multiplicity,highest weight)}
+set tensor_product_weights(RootDatum rd, vec gamma1, vec gamma2) = [(int,vec)]:
+let GC=rd.complexification, r= rd.rank
+then gamma=finite_dimensional(GC,gamma1##gamma2)
+then infchar = gamma.infinitesimal_character
+then Gamma = (-1)^length(x_open(GC))*sum(GC,for x in KGB(GC) do
+(-1)^length(x)*parameter(x,infchar,infchar) od)
+in for c@p in branch(Gamma, ht(GC,gamma1##gamma2)) do
+(split_as_int(c),ratvec_as_vec(lower(r,p.lambda) + upper(r,p.lambda))) od

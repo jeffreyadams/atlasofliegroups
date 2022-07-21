@@ -1,4 +1,5 @@
 <geck_generic { for |Springer_table_generic_degrees| }
+<restricted_roots.at {for remove_zeros@[vec]}
 <nci_nilrad_roots.at {for all_sums@([ratvec])}
 <restricted_roots.at {for remove_zeros@[vec]}
 
