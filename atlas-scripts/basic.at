@@ -1971,6 +1971,26 @@ set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 set full_deform (ParamPol P) = KTypePol:
   sum(P.real_form, for c@q in P do c*full_deform(q) od )
 
+set deform_to_height (ParamPol P, int height) = KTypePol:
+( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
+  then output = empty_K, def = empty
+  in
+  P := empty +
+  { snap every term down to a reducibility point, or tempered parameter }
+    for c@p in P
+    do let rp = reducibility_points(p) in
+       if =#rp then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+    od.##
+; while >#P
+  do set (def,P) :=
+        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  ;  let kt = for c@q in def do if =nu(q) then [(c,q.K_type)] else [] fi od.##
+     ,   pp = for c@q in def do if =nu(q) then [] else [(c,q)] fi od.##
+  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  od
+; output
+)
+
 { nice output of KTypePol and ParamPol: split_format the coefficients }
 set pol_format (KTypePol P)= string:
   ## for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od
