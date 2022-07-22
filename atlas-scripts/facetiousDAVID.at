@@ -1,5 +1,5 @@
 <simple_factors.at { for simple_factors }
-<affine.at { to try to avoid conflicting definitions }
+{ <affine.at { to try to avoid conflicting definitions } }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), is_subset_of_sorted }
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
