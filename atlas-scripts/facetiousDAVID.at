@@ -1,9 +1,8 @@
 <simple_factors.at { for simple_factors }
-{ <affine.at { to try to avoid conflicting definitions } }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), is_subset_of_sorted }
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
-<TWOHEIGHTS.at { for HT, HTT, HTA }
+{ <TWOHEIGHTS.at { for HT, HTT, HTA }}
 { <springer_tables_reductive.at { for Springer_table }}
 { <associated_variety_annihilator.at { for GK_dim, used in identifying
 unipotent reps } }
@@ -1870,13 +1869,13 @@ set write([[string]] status, [ratvec] vlist, [[FacetVertsIndex]] Cand) = void:
     prints("set Cand = [[vec]]:",Cand)
 
 
-set leq([Param] Plist) = (int i, int j) bool:
-    HTA(Plist[i]) <= HTA(Plist[j])
+{ set leq([Param] Plist) = (int i, int j) bool:
+    HTA(Plist[i]) <= HTA(Plist[j]) }
 
 {.given a list Plist of Params, sort it according to HTA.}
-set HTA_sort([Param] Plist) = [Param]:
+{ set HTA_sort([Param] Plist) = [Param]:
     let listSorter = [int]: sort(leq(Plist))(#Plist)
-    in [Param]: for j:#Plist do Plist[listSorter[j]] od
+    in [Param]: for j:#Plist do Plist[listSorter[j]] od }
 
 set cohom_ind(KGBElt x) = KGPElt:
     let G=x.real_form, theta = x.involution
