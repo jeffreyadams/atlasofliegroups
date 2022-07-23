@@ -1869,7 +1869,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     {
       auto it = queue.find(q);
       if (it==queue.end())
-	result.emplace_back(std::move(q),0);
+	result.emplace_back(std::move(q),Split_integer(0));
       else
       {
 	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
