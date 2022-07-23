@@ -6368,7 +6368,8 @@ void KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block|
+  @< Push list of parameters corresponding to |survivors| in |block|,
+     with difference |diff| of $\gamma-\lambda$ values, and
      at infinitesimal character |gamma| @>
   if (loc[start]==UndefBlock)
     push_value(std::make_shared<int_value>(-1));
@@ -6424,7 +6425,8 @@ by constructing a new polynomial |Pol(P)|.
 }
 
 @ Here is another module that will be shared.
-@< Push list of parameters corresponding to |survivors| in |block|
+@< Push list of parameters corresponding to |survivors| in |block|,
+   with difference |diff| of $\gamma-\lambda$ values, and
    at infinitesimal character |gamma| @>=
 { own_row param_list = std::make_shared<row_value>(0);
   param_list->val.reserve(survivors.size());
@@ -6507,8 +6509,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block|
-    at infinitesimal character |gamma| @>
+  @< Push list of parameters corresponding to |survivors| in |block|,... @>
   @< Group distinct polynomials in |M| into a list,... @>
 @)
   if (l==expression_base::single_value)
@@ -6548,8 +6549,7 @@ void dual_KL_block_wrapper(expression_base::level l)
      and for each, put into its slot in |loc| the index at which |survivors|
      contains it @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block|
-     at infinitesimal character |gamma| @>
+  @< Push list of parameters corresponding to |survivors| in |block|,... @>
   push_value(std::make_shared<int_value>@|
     (loc[start]==UndefBlock ? -1 : loc[start]));
 @)
@@ -7597,11 +7597,58 @@ void twisted_deform_wrapper(expression_base::level l)
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
-@ Here is a recursive form of this deformation, which stores intermediate
+@ An intermediate between a single deformation at a parameter and a full
+recursive deformation to tempered parameters of all terms produced by such a
+deformation (plus the original parameter itself), here is a function that
+continues deformations within a given block until no more terms are produced,
+and then slides down all the contributions from this block, either to the next
+reducibility point or all the way to a tempered parameter. Due to the way this
+is set up, it is suited for a truncated computation where all terms above a
+given height bound are ignored, so we provide such a bound argument. Also, since
+we are dealing with a whole block, it will be more efficient if we collectively
+treat a set of terms at hand that all live in a same block. This is achieved by
+providing a polynomial |accumulator| and an initial parameter (presumably
+corresponding to a term in |accumulator|); all terms in the block of |p| are
+extracted from |accumulator| and deformed to give the first component of the
+result, with the second component being the remainder of |accumulator|.
+Returning two parts can be helpful in understanding the details of the
+deformation, but in practice the deformed terms are probably to be added back to
+the accumulator after which another block is deformed.
+
+@s SR_poly vector
+
+@< Local function def...@>=
+void block_deform_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  SR_poly result;
+  if (not p->rc().nu(p->val).is_zero())
+  {
+    auto deformed = p->rt().block_deformation_to_height @|
+      (p->val,accumulator->val
+      ,bound>=0 ? static_cast<repr::level>(bound) : repr::level(-1));
+    for (const auto& term : deformed)
+    { auto rps = p->rc().reducibility_points(term.first);
+      auto i =
+        rps.size()>0 and rps.back()==RatNum(1) ? rps.size()-1 : rps.size();
+      RatNum f = i>0 ? rps[i-1] : RatNum(0);
+      result.add_term(p->rc().scale(term.first,f),term.second);
+    }
+  }
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+  push_value(accumulator);
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is a recursive form of the deformation, which stores intermediate
 results for efficiency in the |Rep_table| structure |p->rt()| that is stored
 within the |real_form_value|.
 
-@s SR_poly vector
 @s K_type_poly vector
 
 @< Local function def...@>=
@@ -7864,6 +7911,8 @@ install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
+install_function(block_deform_wrapper,@|"block_deform"
+                ,"(Param,ParamPol,int->ParamPol,ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");

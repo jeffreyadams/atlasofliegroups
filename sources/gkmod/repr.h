@@ -25,7 +25,7 @@
 
 #include "hashtable.h"
 #include "free_abelian.h"
-#include "arithmetic.h" // |SplitInteger|
+#include "arithmetic.h" // |Split_integer|
 #include "gradings.h"
 #include "kgb.h"
 #include "subsystem.h"
@@ -528,6 +528,17 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
      const RatWeight& diff, const RatWeight& gamma);
+
+/*
+   compute the signed multiset of final parameters "post deformation"
+   (subsequently they will be deformed towards zero without reduction here)
+   obtained from the elements of the block of |p|, with their "pre deformation"
+   coefficients taken (and removed) from |queue|, where all block elements of
+   high strictly above |height_bound| are ignored
+*/
+  sl_list<SR_poly::value_type> block_deformation_to_height
+    (StandardRepr p, SR_poly& queue, level height_bound); // |p| by value
+
 
   // full deformation to $\nu=0$ of |z|
   const K_type_poly& deformation(StandardRepr z); // by value

@@ -95,7 +95,7 @@ readline_completions: (string->[string]): list of completions of a prefix
   defined as a (global) variable, or being defined at least once as a function.
 
 { in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
-  if (n<0) set of natural numbers, the positions (from 0 on theright) of their
+  if (n<0) set of natural numbers, the positions (from 0 on the right) of their
   set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
 
 AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
@@ -355,8 +355,8 @@ coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
   The indexing is as in the root/coroot functions above, so if found, the
   index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 root_expression: (RootDatum,int->vec): Express root additively in simple roots
-  So v= root_expression(rd,i) means that root(rd,i) is sum_j=0^rv[j]root(rd,j)
-  where r=semisimple_rank(rd)
+  So for v=root_expression(rd,i) one has root(rd,i)=sum_j=0^{r-1}v[j]root(rd,j)
+  where r=semisimple_rank(rd). The root (index) can be negative or positive.
 coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
   So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
 is_long_root: (RootDatum,int->bool): Whether a root is considered to be long
@@ -1033,6 +1033,22 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   result depends (by a sign) on the chosen default extension for the parameter,
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
+block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
+  Here the Param argument just serves to define its block, the ParamPol argument
+  associates (Split) coefficients to the final elements of this block (and to
+  other final parmaters as well, but these terms will remain passive), and the
+  int argument gives a height bound above which contributions will be ignored
+  (which may speed up computation; a negative bound means nothing is ignored).
+  The terms in the block are extracted, and |deform| is applied to each of them,
+  from the top of the block downwards; once done the deformed parameter is
+  marked as such and its coefficient will not change any more. The deformation
+  terms from this parameter (which are of course multiplied by the coefficient
+  of the term it came from) are added to the ones remaining to be processed
+  (they are lower in the block). Once all terms are deformed, the
+  post-deformation terms are added to form the first ParamPol of the output
+  (these should be moved down to the next reducibility point towards nu=0 when
+  full deformation is to be done), while the terms of the ParamPol argument that
+  were not extracted for deformation are returned as the second argument.
 
 full_deform: (Param->KTypePol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
