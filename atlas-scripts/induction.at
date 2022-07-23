@@ -540,9 +540,8 @@ assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
 let L=P.Levi, G=x.real_form
 in length(x_open(G)) - length(x_open(L))
 
-
 {. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated
-  to x. .}
+  to x .}
 set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
