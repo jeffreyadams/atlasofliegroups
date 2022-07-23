@@ -1506,6 +1506,10 @@ set spherical_to_ht(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
     if(facet_verbose) then show(FPPstInd) fi
     in (vd,FPPstInd)
 
+set spherical_to_htFold(RealForm G, FacetData(vd,FPPstInd), int bound) =
+    actualize(x_open(G), G.rho, FacetData: spherical_to_ht(G,
+    (vd,FPPstInd), bound))
+
 set spherical_to_htC(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
     let xopen = x_open(G), Grho = rho(G),
 	FBs = [[FacetBary]]:
@@ -1567,7 +1571,7 @@ set sphericalFold(RealForm G) = FacetData:
     then verts = for v in vd.list do M*v od
     then data = (verts.to_vertex_data,FVFold)
     then dataIndncH = down_to_business(G,data)
-    in spherical(G,dataIndncH)
+    in actualize(x_open(G), G.rho, spherical(G,dataIndncH))
 
 set sphericalC(RealForm G) =
     FacetData:
@@ -1587,7 +1591,7 @@ set spherical_to_htFold(RealForm G, int bound) = FacetData:
     then verts = for v in vd.list do M*v od
     then data = (verts.to_vertex_data,FVFold)
     then dataIndncH = down_to_business(G,data)
-    in spherical_to_ht(G,dataIndncH,bound)
+    in actualize(x_open(G), G.rho, spherical_to_ht(G,dataIndncH,bound))
 
 set spherical_to_htC(RealForm G, int bound) = FacetData:
     let GL = simple_factors(G)[0]
