@@ -82,7 +82,16 @@ fundamental alcove.; not too many. Marc kindly provided a very fast
 listing of the W-orbits W*gamma0. Picking out the integrally dominant
 ones is now done stupidly in functions with names like
 W_fund_barycentersID: stupid in the sense that it would have been
-cleverer to sort out the integrally dominant terms in the library.  }
+cleverer to sort out the integrally dominant terms in the library.
+
+Addenda 7/23/22. In unequal rank (and harmless in general) better to
+work with the cofolded root datum, and the corresponding (smaller) set
+of weights fixed by the distinguished involution. (Every unitary infl
+character must be of this form.) The main functions for working this
+way now have "Fold" in their names, and the plan is that these should
+be ultimately be the only ones used. In particular, the special
+scripts like sphericalC for dealing with complex groups can and should
+now be replaced by sphericalFold.}
 
 { useful to assign this to 'true" to get information about the progress
 of long calculations }
@@ -1066,9 +1075,8 @@ set facet_status([[vec]] FPPind) = [[string]]:
 
 { meant to record information about unitarity for all facets }
 {now marks unipotent parameters as "T[number of dual nilpotent]"}
-{I THINK that for a simple G, all unipotent parameters must be
-barycenters of facets of dimension 0 or 1. Also I THINK that dimension
-1 can only happen in type A?? (NO, also E6!) So this could be simplified.}
+{Now that we are emphasizing cofolded G, I THINK that for a simple G(R), all unipotent parameters must be
+barycenters of (cofolded) facets of dimension 0.}
 set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
 (  let FBs = [[FacetBary]]:
       for Findd in FPPstInd
@@ -1077,11 +1085,11 @@ set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
    then FPPstIndQuo = FPPstInd
    , lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
      index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
-   , (X,r) = simple_type(simple_factors(G)[0].derived) {this allows complex
-     	  				    simple G}
+{   , (X,r) = simple_type(simple_factors(G)[0].derived) {this allows complex
+     	  				    simple G} }
    , st = G.dual.Springer_table
    then FPPstInd0 = FPPstInd[0]
-   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi
+{   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi}
 in
    if not(is_split(G))
    then
@@ -1116,7 +1124,7 @@ in
  { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
  { OOPS! ERROR! also type E6 has four dual nilpotents (#2,7,8,15) giving
  facets of dim 1. This needs to run in E6 also.}
-;  if X = "A" and r > 1 or X="E" and r=6
+;  { if X = "A" and r > 1 or X="E" and r=6
    then
       let FPPstInd1 = FPPstIndQuo[1]
       then lookup1 = (ratvec->int):
@@ -1155,8 +1163,8 @@ in
 	 od
       fi
    ; FPPstIndQuo[1] := FPPstInd1
-   fi
-; (vd, FPPstIndQuo)
+   fi 
+;} (vd, FPPstIndQuo)
 )
 
 set facet_status([[vec]] FPPind) = [[string]]:
@@ -1289,6 +1297,7 @@ set remove_closure ([[vec]] all, int k) =[[vec]]:
 	       else level
 	       fi od
 
+{. The "interior" of the unitary dual set .}
 set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist) = void:
    let n=#FSVIlist-1
    then ulist= for facets in FSVIlist
@@ -1301,7 +1310,22 @@ set show_long ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist) = void:
 	od
     od
 
+{. Same, including also all boundary facets .}
+set show_long_all ([ratvec] vertices,[[FacetStatusVertsIndex]] FSVIlist) = void:
+   let n=#FSVIlist-1
+   then ulist= for facets in FSVIlist
+	       do unitary_facets(facets) od
+   in for i:n+1
+    do prints(new_line,"Unitary facets of dimension ",i,":",new_line);
+	for fac in ulist[i]
+	do  prints(look_up_vertices(vertices,fac))
+	od
+    od
+
 set show_long (FacetData FD) = void:
+   show_long(FD.v_data.list, FD.facet_status_inds)
+
+set show_long_all (FacetData FD) = void:
    show_long(FD.v_data.list, FD.facet_status_inds)
 
 {.picks the facets for hermitian, final parameters.}
@@ -2001,12 +2025,22 @@ set non_cohom_unitary(RealForm G, [[FacetBary]] FB, [(KGBElt, [vec],
     [[CandLambdaTwistsStatus]])] candTw) = [(KGBElt,[vec],
     [[CandLambdaTwistsStatus]])]:
     for (x, twists, CLs) in candTw do non_cohom_unitary(x,FB,twists,
-    CLs) od
+    CLs)  od
 
 set non_cohom_unitary(RealForm G) = [(KGBElt,[vec],
     [[CandLambdaTwistsStatus]])]:
     let FB =  FPP_barycenters(G) in non_cohom_unitary(G, FB,
     non_cohom_herm(G, FB, goodFPP(G,FB)))
+
+set non_cohom_unitaryFold(RealForm G) = [(KGBElt,[vec],
+    [[CandLambdaTwistsStatus]])]:
+    let (rd,M,j0) = cofolded(G)
+    {NEED TO USE j0 and FPPtauRoots to construct FPP}
+    then (vd, FVFold) = FPP_vlist_indices_status(rd,M,j0)
+    then verts = for v in vd.list do M*v od
+    then data = (verts.to_vertex_data,FVFold)
+    then FB = [[FacetBary]]:  for FVd in FVFold do for FVI in FVd do facet_bary(verts, FVI.verts) od od
+    in  non_cohom_unitary(G, FB, non_cohom_herm(G, FB, goodFPP(G,FB)))
 
 set show(RealForm G, [[FacetBary]] FB,
 [(KGBElt,[vec],[[CandLambdaTwistsStatus]])] candTW) = void:
