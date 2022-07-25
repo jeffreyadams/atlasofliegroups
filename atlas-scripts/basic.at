@@ -187,8 +187,28 @@ set is_member_sorted ([int] v) = (int->bool):
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
 
-set contains (int val) = ([int]->bool): ([int] v)bool:
-  any(#v,(int i)bool:v[i]=val)
+
+set is_member_fast  (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+set isnt_member_fast  (vec L) = (int->bool):
+   let B = ~L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+
+set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
+set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
+
+set contains (vec S) = (vec->bool):
+   let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool):
+   let b = 2^s in (vec L)bool: bitwise_subset(b,L.to_bitset)
+
+set is_subset_of (vec L) = (vec->bool):
+   let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+set is_disjoint_from (vec L) = (vec->bool):
+   let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+
+set set_bit_positions (int n) = vec:
+   assert(n.>=,"Infinite number of set bits for negative number");
+   while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
 set is_subset_of_sorted ([int] sorted) = ([int]->bool):
    let test = is_member_sorted(sorted) in
@@ -1967,9 +1987,31 @@ set as_pol (RealForm G, [Param] ps) = ParamPol:
 { DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
 
 { branch to get only the coefficient of a specific K-type }
-set branch (KTypePol P, KType t) = int: branch(P,height(t))[t].int_part
-
+set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
 set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
+
+set full_deform (ParamPol P) = KTypePol:
+  sum(P.real_form, for c@q in P do c*full_deform(q) od )
+
+set deform_to_height (ParamPol P, int height) = KTypePol:
+( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
+  then output = empty_K, def = empty
+  in
+  P := empty +
+  { snap every term down to a reducibility point, or tempered parameter }
+    for c@p in P
+    do let rp = reducibility_points(p) in
+       if =#rp then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+    od.##
+; while >#P
+  do set (def,P) :=
+        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  ;  let kt = for c@q in def do if =nu(q) then [(c,q.K_type)] else [] fi od.##
+     ,   pp = for c@q in def do if =nu(q) then [] else [(c,q)] fi od.##
+  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  od
+; output
+)
 
 { nice output of KTypePol and ParamPol: split_format the coefficients }
 set pol_format (KTypePol P)= string:
@@ -1987,12 +2029,10 @@ set infinitesimal_character(ParamPol P) = ratvec:
   od; gamma
 
 { split up a KTypePol or ParamPol into terms below a given height and others }
-set height_split (KTypePol P, int h) = (KTypePol,KTypePol):
-  let below = 0*P + for c@q in P do if q.height<=h then [(c,q)] else [] fi od.##
-  in (below,P-below)
-set height_split (ParamPol P, int h) = (ParamPol,ParamPol):
-  let below = 0*P + for c@q in P do if q.height<=h then [(c,q)] else [] fi od.##
-  in (below,P-below)
+set height_split ((KTypePol,int)(P,):pair) = (KTypePol,KTypePol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
+set height_split ((ParamPol,int)(P,):pair) = (ParamPol,ParamPol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
 
 { more generally, groups terms into different ParamPol, by value of gamma }
 set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
@@ -2062,7 +2102,7 @@ set index_in ([Param] L) = (Param->int): { an efficiency hack: }
 
 {                   Miscellaneous find functions                     }
 
-{ find index of item in list, or -1 if not found; first does this }
+{ find index of item in list, or -1 if not found; |first| does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
 set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)

@@ -395,7 +395,8 @@ void Block_base::fill_kl_tab(BlockElt limit,
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
     kl_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
-  kl_tab_ptr->fill(limit,verbose); // extend tables to contain |last_y|
+  // now extend tables to contain |limit-1|, or fill entirely if |limit==0|
+  kl_tab_ptr->fill(limit,verbose);
 }
 
 // free function

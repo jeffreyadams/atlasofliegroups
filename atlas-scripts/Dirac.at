@@ -44,7 +44,7 @@ set DiracCoh(KType mu) = [Param]:
     then ht = rat_as_int(2*ic*rho_check(G)), allic = all_parameters_gamma(G,ic)
     in
 	for p in allic do
-	if height(p) <= ht then
+    	if height(p) <= ht then
 	      if is_unitary(p) and branch_irr(p,ht)[mu] != 0
 	      then [p]
 	      else []

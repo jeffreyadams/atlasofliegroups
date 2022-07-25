@@ -17,6 +17,7 @@
 #include <stdexcept>
 
 #include "arithmetic.h"
+#include "bitmap.h" // only needed for one specific constructor
 
 namespace atlas {
 namespace arithmetic {
@@ -26,7 +27,7 @@ class big_int
   typedef std::uint32_t digit;
   typedef std::uint64_t two_digits;
 
-  std::vector<digit> d;
+  std::vector<digit> d; // has at least one entry; highest one determines sign
 
   static unsigned char_val (char c) // for reading from strings
   { return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
@@ -45,6 +46,7 @@ public:
   explicit big_int (const char * p,
 		    unsigned char base = 10, // from text in base |base|
 		    unsigned (*convert)(char) = &char_val); // custom conversion
+  explicit big_int (const bitmap::BitMap& b, bool negative=false);
 
   int int_val() const; // extract 32-bits signed value, or throw an error
   arithmetic::Numer_t long_val() const; // extract 64 bits signed value
@@ -105,10 +107,58 @@ public:
       return *this = reduce_mod(divisor); // else replace remainder by quotient
     }
 
+  // bitwise operations, viewing integers as finite or cofinite sets of naturals
+  big_int& operator&= (const big_int& x);
+  big_int& operator|= (const big_int& x);
+  big_int& operator^= (const big_int& x);
+  big_int& bitwise_subtract (const big_int& x);
+
+  // non destructive versions copy an argument no shorter than the result
+  big_int operator& (const big_int& x) const
+  { // copy the shorter positive argument, or if none the longer (negative) one
+    if (is_negative()
+	? x.is_negative() and d.size()>=x.d.size()
+	: x.is_negative() or  d.size()<=x.d.size())
+      return big_int(*this) &= x;
+    else
+      return big_int(x) &= *this;
+  }
+  big_int operator| (const big_int& x) const
+  { // copy the shorter negative argument, or if none the longer (positive) one
+    if (is_negative()
+	? not x.is_negative() or  d.size()<=x.d.size()
+	: not x.is_negative() and d.size()>=x.d.size())
+      return big_int(*this) |= x;
+    else
+      return big_int(x) |= *this;
+  }
+  big_int& operator^ (const big_int& x) const
+  { // copy the longer argument
+    if (d.size()>=x.d.size())
+      return big_int(*this) ^= x;
+    else
+      return big_int(x) ^= *this;
+  }
+  big_int bitwise_subtract (const big_int& x) const
+  { // copy the shorter positive contrinution; if none the longer (negative) one
+    if (is_negative()
+	? not x.is_negative() and d.size()>=x.d.size()
+	: not x.is_negative() or  d.size()<=x.d.size())
+      return big_int(*this).bitwise_subtract(x);
+    else // we don't want to use |bitwise_subtract|; perform |NOT_AND| into |x|
+      return big_int(x).complement() &= *this;
+  }
+
+  // when using |bitwise_subtract| only to see whether |is_zero| holds, prefer:
+  bool bitwise_subset (const big_int& x) const;
+  int index_of_set_bit(unsigned n) const; // index of n-th set bit; |-1| if none
+  int bit_length() const; // position of leftmost bit differing from sign bit
+
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
   bool is_positive() const { return not(is_negative() or is_zero()); }
   bool is_one() const { return d.size()==1 and d[0]==1; }
+  bool is_odd() const { return (d[0]&1) != 0; }
   bool operator== (digit v) const { return d[0]==v and d.size()==1; }
   bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
   bool operator<  (const big_int& x) const;

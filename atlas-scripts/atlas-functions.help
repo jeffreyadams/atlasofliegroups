@@ -87,6 +87,30 @@ prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty
 ascii: (int->string): string of length 1 with given ASCII code (if safe value)
 
+readline_completions: (string->[string]): list of completions of a prefix
+  The result of this function depends on the atlas session and evolves during
+  each session. Interpreting the argument as a prefix of an identifier, the
+  result is the list of all identifiers currently in use, as well as keywords,
+  whose name starts with that prefix. Being currently in use means either being
+  defined as a (global) variable, or being defined at least once as a function.
+
+{ in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
+  if (n<0) set of natural numbers, the positions (from 0 on the right) of their
+  set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
+
+AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
+AND_NOT: (int,int->int): bitwise AND NOT: AND_NOT(n,m) = AND(n,-1-m)
+bitwise_subset: (int,int->bool): fast test whether AND_NOT(arguments)=0
+nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
+  Here n is the first argument, and k the second argument of nth_set_bit.
+  If k>=0 then number N(k) of bits 1 of k is finite; for n>=N(k) returns -1.
+  If k<0 and n>=0 this always returns a nonegative number (indeed at least n)
+  If n<0 returns nth_set_bit(-1-k,-1-n), so searches among the bits 0 of k
+bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
+  If n<0 returns the well defined negative value -1-bit_length(-1-n)
+to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
+  Negative vector entries are refjected, and result is always non-negative
+
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
 frac: (rat->int): fractional part of rational (same as r%1 or as r-floor(r))
@@ -331,8 +355,8 @@ coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
   The indexing is as in the root/coroot functions above, so if found, the
   index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 root_expression: (RootDatum,int->vec): Express root additively in simple roots
-  So v= root_expression(rd,i) means that root(rd,i) is sum_j=0^rv[j]root(rd,j)
-  where r=semisimple_rank(rd)
+  So for v=root_expression(rd,i) one has root(rd,i)=sum_j=0^{r-1}v[j]root(rd,j)
+  where r=semisimple_rank(rd). The root (index) can be negative or positive.
 coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
   So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
 is_long_root: (RootDatum,int->bool): Whether a root is considered to be long
@@ -775,8 +799,9 @@ operator + : (KTypePol,[(Split,KType)]->KTypePol): add terms to formal sum
 operators +, - : (KTypePol,KTypePol->KTypePol): addition/subtraction formal sums
 operator * : (int,KTypePol->KTypePol): integer multiple of a formal sum
 operator * : (Split,KTypePol->KTypePol): split integer multiple of a formal sum
-last_term: (KTypePol->Split,KType): highest term of non-zero K-module
-first_term: (KTypePol->Split,KType): lowest term of non-zero K-module
+first_term: (KTypePol->Split,KType): lowest term (by height) of nonzero K-module
+last_term: (KTypePol->Split,KType): highest term (by height) of nonzero K-module
+truncate_above_height: (KTypePol,int->KTypePol): drop terms with height>limit
 
 KGP_sum: (KType->[int,KType]) signed subset of KGB associated to theta_stable(t)
   It is required that the argument KType t be semifinal, and it will be moved to
@@ -964,8 +989,9 @@ operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
-last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-zero module
-first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-zero module
+first_term: (ParamPol->Split,Param): lowest term (by height) of nonzero module
+last_term: (ParamPol->Split,Param): highest term (by height) of nonzero module
+truncate_above_height: (ParamPol,int->ParamPol): drop terms with height>limit
 operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
   After scaling the continuous part of the parameter in each term, some may no
   longer be dominant or final, and need to be rewritten in the same way as
@@ -1012,6 +1038,22 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   result depends (by a sign) on the chosen default extension for the parameter,
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
+block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
+  Here the Param argument just serves to define its block, the ParamPol argument
+  associates (Split) coefficients to the final elements of this block (and to
+  other final parmaters as well, but these terms will remain passive), and the
+  int argument gives a height bound above which contributions will be ignored
+  (which may speed up computation; a negative bound means nothing is ignored).
+  The terms in the block are extracted, and |deform| is applied to each of them,
+  from the top of the block downwards; once done the deformed parameter is
+  marked as such and its coefficient will not change any more. The deformation
+  terms from this parameter (which are of course multiplied by the coefficient
+  of the term it came from) are added to the ones remaining to be processed
+  (they are lower in the block). Once all terms are deformed, the
+  post-deformation terms are added to form the first ParamPol of the output
+  (these should be moved down to the next reducibility point towards nu=0 when
+  full deformation is to be done), while the terms of the ParamPol argument that
+  were not extracted for deformation are returned as the second argument.
 
 full_deform: (Param->KTypePol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long

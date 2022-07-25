@@ -1,7 +1,7 @@
 /*
   This is bigint.cpp.
 
-  Copyright (C) 2017 Marc van Leeuwen
+  Copyright (C) 2017, 2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -375,6 +375,23 @@ big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
     mult_add(base,convert(*p++));
 }
 
+big_int::big_int (const bitmap::BitMap& b, bool negative)
+  : d()
+{
+  const auto cap=b.capacity();
+  d.reserve(cap/32+1);
+  unsigned int i; // this needs to survive following loop
+  for (i=0; i+32<=cap; i+=32)
+    d.push_back(b.range(i,32));
+  // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
+  digit lead = i==cap ? 0 : b.range(i,32);
+  if (negative) // then set sign bit and extend
+    lead |= ~ constants::lMask[cap-i];
+  d.push_back(lead); // now all bits from |b| and |negative| are transferred
+
+  shrink(); // needed if |b| has at least 32 leading copies of |negative|
+}
+
 big_int big_int::operator* (const big_int& x) const
 {
   big_int result;
@@ -677,6 +694,229 @@ big_int big_int::reduce_mod (const big_int& divisor)
 
   return quotient;
 } // |big_int::reduce_mod|
+
+big_int& big_int::operator&= (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (neg and x_neg) // test whether result will be negative
+  { // if so, the result will be as long as the longer of the two
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we need to extend with digits from |x|
+    {
+      i = d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+    }
+    else // we are no shorter than |x|, but no shrinking can be necessary
+      i = x.d.size();
+
+    while (i-->0)
+      d[i]&=x.d[i]; // do |AND| of remaiing digits
+  }
+  else if (neg!=x_neg and (neg ? d.size()<x.d.size() : d.size()>x.d.size()))
+  { // positive number has strictly more digits than the negative one
+    if (neg) // if we were the negative one, we need to copy digits from |x|
+    {
+      size_t i=d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+      while (i-->0)
+	d[i] &= x.d[i]; // do |AND| of remaiing digits
+    }
+    else // we were positive and longer, keep our leading digits (and sign)
+      for (size_t i = x.d.size(); i-->0; )
+	d[i] &= x.d[i]; // do |AND| of remaiing digits
+  }
+  else
+  { // some positive argument, and maybe a negative one not shorter than it
+    size_t i = // size of positive argument; the shorter one if there are two
+      neg ? x.d.size() : x_neg ? d.size() : std::min(d.size(),x.d.size());
+    // positive result will have size at most |i|; see whether it shrinks more
+    while (--i,(d[i] &= x.d[i])==0)
+      if (i==0)
+	break; // don't make |i| negative
+    d.erase(d.begin()+ ((d[i]&neg_flag)==0 ? i+1 : i+2),d.end()); // shrink
+    while (i-->0)
+      d[i] &= x.d[i]; // do |AND| of remaiing digits
+  }
+  return *this;
+} // |big_int::operator&=|
+
+big_int& big_int::operator|= (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (not neg and not x_neg) // test whether result will be positive
+  { // if so, the result will be as long as the longer of the two
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we need to extend with digits from |x|
+    {
+      i = d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+    }
+    else // we are no shorter than |x|, but no shrinking can be necessary
+      i = x.d.size();
+
+    while (i-->0)
+      d[i] |= x.d[i]; // do |OR| of remaiing digits
+  }
+  else if (neg!=x_neg and (neg ? d.size()>x.d.size() : d.size()<x.d.size()))
+  { // negative number has strictly more digits than the positive one
+    if (x_neg) // if we were the positive one, we need to copy digits from |x|
+    {
+      size_t i=d.size();
+      d.insert(d.end(),x.d.begin()+i,x.d.end()); // copy leading digits from |x|
+      while (i-->0)
+	d[i] |= x.d[i]; // do |OR| of remaiing digits
+    }
+    else // we were negative and longer, keep our leading digits (and sign)
+      for (size_t i = x.d.size(); i-->0; )
+	d[i]|=x.d[i];
+  }
+  else
+  { // some negative argument, and maybe a positive one not shorter than it
+    size_t i = // size of negative argument; the shorter one if there are two
+      neg ? x_neg ? std::min(d.size(),x.d.size()) : d.size() : x.d.size();
+    // negative result will have size at most |i|; see whether it shrinks more
+    while (--i,(d[i]|=x.d[i])==digit(-1))
+      if (i==0)
+	break; // don't make |i| negative
+    d.erase(d.begin()+ ((d[i]&neg_flag)!=0 ? i+1 : i+2),d.end()); // shrink
+    while (i-->0)
+      d[i] |= x.d[i]; // do |OR| of remaiing digits
+  }
+  return *this;
+} // |big_int::operator|= |
+
+big_int& big_int::operator^= (const big_int& x)
+{
+  if (d.size()==x.d.size())
+  { // in equal size case, the result might shrink
+    for (size_t i = d.size(); i-->0; )
+      d[i]^=x.d[i]; // do |XOR| of all digits
+    shrink();
+  }
+  else
+  { // in unqual size case, result size is the longer one in all cases
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we must grow
+    { i = d.size();
+      if (is_negative())
+      { d.reserve(x.d.size());
+	for (auto it=x.d.begin()+i; it!=x.d.end(); ++it)
+	  d.push_back(~*it); // complement and copy
+      }
+      else // we are positive; copy leading digits from |x| unchanged
+	d.insert(d.end(),x.d.begin()+i,x.d.end());
+    }
+    else
+    { i = x.d.size();
+      if (x.is_negative()) // then we need to complement our leading digits
+        for (auto it=d.begin()+i; it!=d.end(); ++it)
+	  *it=~*it;
+    }
+    while (i-->0)
+      d[i]^=x.d[i]; // do |XOR| of remaiing digits
+  }
+  return *this;
+} // |big_int::operator^= |
+
+big_int& big_int::bitwise_subtract (const big_int& x)
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (neg and not x_neg) // test whether result will be negative
+  { // if so, the result will be as long as the longer of the two
+    size_t i; // will be set to shorter length of arguments
+    if (d.size()<x.d.size()) // whether we need to extend with digits from |x|
+    {
+      i = d.size();
+      d.reserve(x.d.size());
+      for (auto it=x.d.begin()+i; it!=x.d.end(); ++it)
+	d.push_back(~*it); // complement and copy
+    }
+    else // we are no shorter than |x|, but no shrinking can be necessary
+      i = x.d.size();
+
+    while (i-->0)
+      d[i] &= ~x.d[i]; // do |AND_NOT| of remaiing digits
+  }
+  else if (neg==x_neg and (neg ? d.size()<x.d.size() : d.size()>x.d.size()))
+  { // positive contribution has strictly more digits than the negative one
+    if (neg) // if we were negative, we need to copy complemented digits from |x|
+    {
+      size_t i = d.size();
+      d.reserve(x.d.size());
+      for (auto it=x.d.begin()+i; it!=x.d.end(); ++it)
+	d.push_back(~*it); // complement and copy
+      while (i-->0)
+	d[i] &= ~x.d[i]; // do |AND_NOT| of remaiing digits
+    }
+    else // we were positive and longer, keep our leading digits (and sign)
+      for (size_t i = x.d.size(); i-->0; )
+	d[i] &= ~x.d[i]; // do |AND_NOT| of remaiing digits
+  }
+  else
+  { // some positive contribution, and maybe a negative one not shorter than it
+    size_t i = // size of positive contribution; shorter one if there are two
+      neg ? x.d.size() : x_neg ? std::min(d.size(),x.d.size()) : d.size() ;
+    // positive result will have size at most |i|; see whether it shrinks more
+    while (--i,(d[i] &= ~x.d[i])==0)
+      if (i==0)
+	break; // don't make |i| negative
+    d.erase(d.begin()+ ((d[i]&neg_flag)==0 ? i+1 : i+2),d.end()); // shrink
+    while (i-->0)
+      d[i] &= ~x.d[i]; // do |AND_NOT| of remaiing digits
+  }
+  return *this;
+} // |big_int::bitwise_subtract|
+
+bool big_int::bitwise_subset (const big_int& x) const
+{
+  const auto neg = is_negative(), x_neg = x.is_negative();
+  if (neg and not x_neg) // test whether |bitwise_subtract| is negative
+    return false; // infinitely many bits witness this
+  if (neg==x_neg and (neg ? d.size()<x.d.size() : d.size()>x.d.size()))
+  { // positive contribution has strictly more digits than the negative one
+    return false; // leading bit (of positive contribution) witnesses this
+  }
+  // positive contribution exists, and maybe a negative one not shorter than it
+  size_t i = // size of positive contribution; shorter one if there are two
+    neg ? x.d.size() : x_neg ? std::min(d.size(),x.d.size()) : d.size() ;
+  // see whether bitwise inclusion hods in lower |i| digits
+  while (i-->0)
+    if ((d[i] & ~x.d[i])!=0)
+      return false; // at least one witnessing bit found
+
+  return true; // if we came here, there are no bits witnessing falsity
+} // |big_int::bitwise_subset|
+
+int big_int::index_of_set_bit(unsigned n) const
+{
+  unsigned i=0;
+  for ( ; i<d.size(); ++i)
+  {
+    digit dig = d[i];
+    auto count = bits::bitCount(dig);
+    if (count>n)
+    {
+      while (n-->0)
+	dig &= dig-1; // clear the lowest |n| bits in |dig|
+      return 32*i + bits::firstBit(dig);
+    }
+    n -= count;
+  }
+
+  // now loop ran to completion without finding the $n$-th set bit
+  if (is_negative()) // then find set bit among infinitely many implicit ones
+    return 32*i+n;
+
+  return -1; // finally we report that there was no $n$-th bit
+}
+
+int big_int::bit_length() const
+{
+  if (is_negative())
+    return -1-(32*(d.size()-1)+ bits::lastBit(~d.back()));
+  else
+    return 32*(d.size()-1)+ bits::lastBit(d.back());
+}
 
 // shift left bits in fixed length array |d|; caller assumes responsability
 void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)

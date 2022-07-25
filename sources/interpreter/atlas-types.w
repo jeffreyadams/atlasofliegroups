@@ -4775,7 +4775,7 @@ information about the $K$-type that may be relevant to the \.{atlas} user.
 void K_type_value::print(std::ostream& out) const
 {
   out << @< Expression for adjectives that apply to a $K$-type @>@;@;;
-  print_K_type(out << " K-type",val);
+  print_K_type(out << " K-type",val,rc());
 }
 
 @ We call a root singular if the corresponding coroot vanishes on
@@ -5054,17 +5054,17 @@ typedef std::shared_ptr<const K_type_pol_value> shared_K_type_pol;
 typedef std::shared_ptr<K_type_pol_value> own_K_type_pol;
 
 @ Printing a virtual module value calls the free function
-|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map| that is hidden in the
-|Free_Abelian| class template, and prints individual terms by printing the
-|Split_integer| coefficient, followed by the $K$-type through a call of
-|print_stdrep|. When either all coefficients are integers or all coefficients
-are (integer) multiples of~$s$, it suppresses the component that is always~$0$;
-this is particularly useful if polynomials are used to encode $\Zee$-linear
-combinations of $K$-types.
+|K_repr::print_K_type_pol| to do the actual work. It traverses the |std::map|
+that is hidden in the |Free_Abelian| class template, and prints individual terms
+by printing the |Split_integer| coefficient, followed by the $K$-type through a
+call of |print_stdrep|. When either all coefficients are integers or all
+coefficients are (integer) multiples of~$s$, it suppresses the component that is
+always~$0$; this is particularly useful if polynomials are used to encode
+$\Zee$-linear combinations of $K$-types.
 
 @< Function def...@>=
 void K_type_pol_value::print(std::ostream& out) const
-{@; print_K_type_pol(out,val); }
+{@; print_K_type_pol(out,val,rc()); }
 
 @ For once we need a non-defaulted copy constructor, because |K_repr::K_type|
 has no copy constructor, providing instead a method |copy| that must be
@@ -5082,7 +5082,7 @@ K_type_pol_value::K_type_pol_value(const K_type_pol_value& v)
   accumulator.reserve(v.val.size());
   for (const auto& term : v.val)
     accumulator.emplace_back(term.first.copy(),term.second);
-  val = K_repr::K_type_pol(std::move(accumulator),v.val.cmp());
+  val = K_repr::K_type_pol(std::move(accumulator),false,v.val.cmp());
 }
 
 @*2 Functions for $K$-type polynomials.
@@ -5502,6 +5502,35 @@ void first_K_type_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Sometimes we want to ignore $K$-types whose height exceeds a given limit.
+Since terms are sorted by height this can be done fairly efficiently, and the
+built-in |truncate_above_height| will do this.
+
+@< Local function... @>=
+void truncate_K_type_poly_above_wrapper (expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  shared_K_type_pol P = get<K_type_pol_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  sl_list<K_repr::K_type_pol::value_type> L;
+  if (arg>=0)
+  { unsigned bound = arg; // use |unsigned| value for height comparison
+    for (const auto& term : P->val)
+      if (term.first.height()<=bound)
+        L.emplace_back(term.first.copy(),term.second);
+      else
+        goto wrap_up;
+     push_value(P); // if loop ran to completion, just return |P|
+     return; // and skip returning |L|
+  }
+  wrap_up:
+    push_value(std::make_shared<K_type_pol_value>@|
+      (P->rf,K_repr::K_type_pol(std::move(L).to_vector(),false)));
+      // no need to sort again
+}
+
+
 @*2 Computing with $K$-types.
 %
 A main application of $K$-types is branching to~$K$: the decomposition of a
@@ -5650,6 +5679,8 @@ install_function(last_K_type_term_wrapper,@|"last_term"
 		,"(KTypePol->Split,KType)");
 install_function(first_K_type_term_wrapper,@|"first_term"
 		,"(KTypePol->Split,KType)");
+install_function(truncate_K_type_poly_above_wrapper,@|"truncate_above_height"
+		,"(KTypePol,int->KTypePol)");
 @)
 install_function(KGP_sum_wrapper,@|"KGP_sum","(KType->[int,KType])");
 install_function(K_type_formula_wrapper,@|"K_type_formula"
@@ -6368,7 +6399,9 @@ void KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
+  @< Push list of parameters corresponding to |survivors| in |block|,
+     with difference |diff| of $\gamma-\lambda$ values, and
+     at infinitesimal character |gamma| @>
   if (loc[start]==UndefBlock)
     push_value(std::make_shared<int_value>(-1));
   else
@@ -6423,7 +6456,9 @@ by constructing a new polynomial |Pol(P)|.
 }
 
 @ Here is another module that will be shared.
-@< Push list of parameters corresponding to |survivors| in |block| @>=
+@< Push list of parameters corresponding to |survivors| in |block|,
+   with difference |diff| of $\gamma-\lambda$ values, and
+   at infinitesimal character |gamma| @>=
 { own_row param_list = std::make_shared<row_value>(0);
   param_list->val.reserve(survivors.size());
   for (BlockElt z : survivors)
@@ -6505,7 +6540,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   matrix::Matrix<Pol> M(survivors.size(),survivors.size(),Pol());
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
+  @< Push list of parameters corresponding to |survivors| in |block|,... @>
   @< Group distinct polynomials in |M| into a list,... @>
 @)
   if (l==expression_base::single_value)
@@ -6532,49 +6567,81 @@ void dual_KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index into |block| of the initial element
   auto& block = p->rt().lookup_full_block(p->val,start);
+@/const auto& gamma = p->val.gamma();
   RatWeight diff = p->rc().offset(p->val,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
-  const auto& gamma = p->val.gamma();
-  const RankFlags singular = block.singular(gamma);
+  // fill entire KL table, don't share polys
 @)
   sl_list<BlockElt> survivors; // indexes into |block|
   BlockEltList loc(block.size(),UndefBlock);
-    // from |dual_block| index to |survivors| index
-  const BlockElt last=block.size()-1;
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (block.survives(z,singular))
-    @/{@;
-      loc[last-z] = survivors.size();
-      survivors.push_back(z);
-    }
+    // map |block| element to index into |survivors|
+  @< Fill |survivors| with elements from |block| that survive at |gamma|,
+     and for each, put into its slot in |loc| the index at which |survivors|
+     contains it @>
 @)
-  @< Push list of parameters corresponding to |survivors| in |block| @>
-  if (loc[last-start]==UndefBlock)
-    push_value(std::make_shared<int_value>(-1));
-  else
-    push_value(std::make_shared<int_value>(loc[last-start]));
+  @< Push list of parameters corresponding to |survivors| in |block|,... @>
+  push_value(std::make_shared<int_value>@|
+    (loc[start]==UndefBlock ? -1 : loc[start]));
 @)
-  const auto n_survivors = survivors.size();
-  typedef polynomials::Polynomial<int> Pol;
-  std::vector<Pol> pool = { Pol(), Pol(1) };
-  { HashTable<IntPolEntry,unsigned int> hash(pool);
-    own_matrix M_ind = std::make_shared<matrix_value>(int_Matrix(n_survivors));
-    for (auto jt = survivors.begin(); not survivors.at_end(jt); ++jt)
-    { BlockElt y = last-*jt; // index into |dual_block|
-      for (auto it = jt; not survivors.at_end(it); ++it)
-      { BlockElt x = last-*it; // index into |dual_block|
-         M_ind->val(loc[x],loc[y]) = hash.match(Pol(kl_tab.KL_pol(x,y)));
-      }
-    }
-    push_value(std::move(M_ind));
-  }
+  using Pol = polynomials::Polynomial<int>;
+  std::vector<Pol> pool { Pol(), Pol(1) };
+@/@< Enumerate distinct Kazhdan-Lusztig polynomials from |kl_tab| into |pool|,
+     and push lower unitriangular matrix with at position $(x,y)$ the index of
+     the polynomial $P_{x',y'}$ returned by |kl_tab.KL_pol| for |dual_block|
+     elements $x',y'$ corresponding respectively to $x,y$ @>
 @)
   @< Transfer the coefficient vectors of the polynomials from |pool| to an array,
      and push that array @>
 @)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
+}
+
+@ Whether an element survives as |gamma| is determined using methods |singular|
+and |survives| from |blocks::common_block|.
+
+@< Fill |survivors| with elements from |block| that survive at |gamma|,
+     and for each, put into its slot in |loc| the index at which |survivors|
+     contains it @>=
+{
+  const RankFlags singular = block.singular(gamma);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z,singular))
+    @/{@;
+      loc[z] = survivors.size();
+      survivors.push_back(z);
+    }
+}
+
+@ The |int_Matrix| constructor with a single |int| argument produces an identity
+matrix of the specified size. We proceed to fill just the part strictly below
+the diagonal from |kl_tab|. Since that table holds polynomials with |unsigned|
+coefficients, we need to convert them (using the |Polynomial<int>| constructor)
+to a signed type, so that the vectors can then be moved into the row of vectors
+returned to the user. Calling |hash_match| for the converted polynomial both
+ensures that it is copied to |pool| if not yet present, and replaces it by its
+index into |pool|.
+
+@< Enumerate distinct Kazhdan-Lusztig polynomials from |kl_tab| into |pool|,
+   and push lower unitriangular matrix with at position $(x,y)$ the index of
+   the polynomial $P_{x',y'}$ returned by |kl_tab.KL_pol| for |dual_block|
+   elements $x',y'$ corresponding respectively to $x,y$ @>=
+{
+  const auto n_survivors = survivors.size();
+  HashTable<IntPolEntry,unsigned int> hash(pool);
+  own_matrix M_ind = std::make_shared<matrix_value>(int_Matrix(n_survivors));
+  const BlockElt last=block.size()-1;
+    // mapping |block->dual_block| is subtraction from |last|
+  for (auto jt = survivors.begin(); not survivors.at_end(jt); ++jt)
+  { BlockElt y = *jt; // index into |block|
+    for (auto it = jt; not survivors.at_end(it); ++it)
+    { BlockElt x = *it; // index into |block|
+       M_ind->val(loc[x],loc[y]) =
+         hash.match(Pol(kl_tab.KL_pol(last-x,last-y)));
+    }
+  }
+  push_value(std::move(M_ind));
 }
 
 @ Rather than exporting the detailed KL data, the following functions compute
@@ -7432,6 +7499,34 @@ void first_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Sometimes we want to ignore parameters whose height exceeds a given limit.
+Since are sorted by height this can be done fairly efficiently, and the built-in
+|truncate_above_height| will do this.
+
+@h <algorithm>
+@< Local function... @>=
+
+void truncate_param_poly_above_wrapper (expression_base::level l)
+{ int arg = get<int_value>()->int_val();
+  shared_virtual_module P = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto point = P->val.begin(); // default to no terms
+  if (arg>=0)
+  {
+    unsigned bound = arg; // use |unsigned| value for height comparison
+    auto predicate = @/ @[ [bound](const SR_poly::value_type& term)
+      {@; return term.first.height()<=bound; } @];
+    point = std::partition_point(point,P->val.end(),predicate);
+  }
+  if (point== P->val.end())
+    push_value(P); // if all terms are selected, just return |P|
+  else
+    push_value(std::make_shared<virtual_module_value>@|
+      (P->rf,SR_poly(P->val.begin(),point)));
+}
+
 @ Here is a variation of the scaling function for parameters that operates on
 entire virtual module.
 
@@ -7533,11 +7628,58 @@ void twisted_deform_wrapper(expression_base::level l)
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
 }
 
-@ Here is a recursive form of this deformation, which stores intermediate
+@ An intermediate between a single deformation at a parameter and a full
+recursive deformation to tempered parameters of all terms produced by such a
+deformation (plus the original parameter itself), here is a function that
+continues deformations within a given block until no more terms are produced,
+and then slides down all the contributions from this block, either to the next
+reducibility point or all the way to a tempered parameter. Due to the way this
+is set up, it is suited for a truncated computation where all terms above a
+given height bound are ignored, so we provide such a bound argument. Also, since
+we are dealing with a whole block, it will be more efficient if we collectively
+treat a set of terms at hand that all live in a same block. This is achieved by
+providing a polynomial |accumulator| and an initial parameter (presumably
+corresponding to a term in |accumulator|); all terms in the block of |p| are
+extracted from |accumulator| and deformed to give the first component of the
+result, with the second component being the remainder of |accumulator|.
+Returning two parts can be helpful in understanding the details of the
+deformation, but in practice the deformed terms are probably to be added back to
+the accumulator after which another block is deformed.
+
+@s SR_poly vector
+
+@< Local function def...@>=
+void block_deform_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  own_virtual_module accumulator = get_own<virtual_module_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  SR_poly result;
+  if (not p->rc().nu(p->val).is_zero())
+  {
+    auto deformed = p->rt().block_deformation_to_height @|
+      (p->val,accumulator->val
+      ,bound>=0 ? static_cast<repr::level>(bound) : repr::level(-1));
+    for (const auto& term : deformed)
+    { auto rps = p->rc().reducibility_points(term.first);
+      auto i =
+        rps.size()>0 and rps.back()==RatNum(1) ? rps.size()-1 : rps.size();
+      RatNum f = i>0 ? rps[i-1] : RatNum(0);
+      result.add_term(p->rc().scale(term.first,f),term.second);
+    }
+  }
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+  push_value(accumulator);
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is a recursive form of the deformation, which stores intermediate
 results for efficiency in the |Rep_table| structure |p->rt()| that is stored
 within the |real_form_value|.
 
-@s SR_poly vector
 @s K_type_poly vector
 
 @< Local function def...@>=
@@ -7794,10 +7936,14 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
+install_function(truncate_param_poly_above_wrapper,@|"truncate_above_height"
+		,"(ParamPol,int->ParamPol)");
 install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
 
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
+install_function(block_deform_wrapper,@|"block_deform"
+                ,"(Param,ParamPol,int->ParamPol,ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");

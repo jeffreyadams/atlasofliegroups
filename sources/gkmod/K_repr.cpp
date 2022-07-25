@@ -506,7 +506,8 @@ K_repr::K_type_pol Rep_context::monomial_product
     auto ht = height(new_exp+theta*new_exp+i_tab.theta_plus_1_rho(i_x));
     result.emplace_back(K_repr::K_type{x,std::move(new_exp),ht},term.second);
   } // |for(term)|
-  return { std::move(result),P.cmp() };
+  return // convert to |K_repr::K_type_pol|, sorting the shifted terms again
+    { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
 // compute height of "orthongonal projection to dominant cone" (closest point)
