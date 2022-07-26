@@ -93,6 +93,9 @@ be ultimately be the only ones used. In particular, the special
 scripts like sphericalC for dealing with complex groups can and should
 now be replaced by sphericalFold.}
 
+{ assigning this to "false" uses is_unitary_to_ht_old }
+set new_to_ht = true
+
 { useful to assign this to 'true" to get information about the progress
 of long calculations }
 set facet_verbose=false
@@ -1422,8 +1425,9 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
 		if{NEWU} (is_unitary(first_param(standardize(
 			 parameter(xopen, Grho, FBs[d][j])))))
 			 {facet_bary(vd.list,Find.verts)}
-		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef", Find.verts), FBs[d][j]);
-		FPPstIndd[j]:=("T",Find.verts)
+		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef",
+		     Find.verts), FBs[d][j]);
+		     FPPstIndd[j]:=("T",Find.verts)
 		else{NEWU}
 		FPPstInd:=update(lookups, FPPstInd, ("Fdef",Find.verts));
 		FPPstIndd[j]:=("F",Find.verts)
@@ -1516,8 +1520,13 @@ set spherical_to_ht(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
 			  then prints("started test #",k," of ",{GOALd}#TODOd)
 			  fi
 		     fi;
-		if{NEWU} (is_unitary_to_ht(first_param(standardize(
-			 parameter(xopen, Grho, TODOBd[k]))),bound))
+		if{NEWU} (if new_to_ht
+		             then is_unitary_to_ht(first_param(standardize(
+			     	  parameter(xopen, Grho,
+    				  TODOBd[k]))),bound)
+    			   else is_unitary_to_ht_old(first_param(standardize(
+			     	  parameter(xopen, Grho, TODOBd[k]))),bound)
+    			   fi)
 		then FPPstInd:=updateTrue(G, FPPstInd, FBs, ("Tdef",
 		     Find.verts),  FBs[d][j]);
 		FPPstIndd[j]:=("Tto"##to_string(bound), FPPstIndd[j].verts)
@@ -1570,8 +1579,12 @@ set spherical_to_htC(RealForm G, FacetData(vd,FPPstInd), int bound) = FacetData:
 			  then prints("started test #",k," of ",{GOALd}#TODOd)
 			  fi
 		     fi;
-		if{NEWU} (is_unitary_to_ht(first_param(standardize(
-			 parameter(xopen, Grho, FBs[d][j]))),bound))
+		if{NEWU} ( if new_to_ht
+			      then is_unitary_to_ht(first_param(standardize(
+			      	   parameter(xopen, Grho, FBs[d][j]))),bound)
+			      else is_unitary_to_ht_old(first_param(standardize(
+			      	   parameter(xopen, Grho, FBs[d][j]))),bound)
+			    fi)
 		then FPPstInd:=updateTrue(G, FPPstInd, FBs, (
 		     "Tto"##to_string(bound), Find.verts),  FBs[d][j]);
 		FPPstIndd[j]:=("Tto"##to_string(bound),FPPstIndd[j].verts)
