@@ -6154,10 +6154,10 @@ void test_final(const K_type_value& p, const char* descr)
     reason = "not dominant";
   else if (not p.rc().is_nonzero(p.val))
     reason = "zero";
-  else if (not p.rc().is_normal(p.val))
-    reason = "not normal";
-  else if (p.rc().is_semifinal(p.val))
+  else if (not p.rc().is_semifinal(p.val))
     reason = "not semifinal";
+  else if (not p.rc().is_normal(p.val)) // this predicate must come last
+    reason = "not normal";
   else throw logic_error("Unknown obstruction to K-type finality");
   std::ostringstream os; p.print(os << descr << ":\n  ");
 @/os << "\n  K-type is " << reason;
