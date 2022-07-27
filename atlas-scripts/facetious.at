@@ -1,6 +1,6 @@
 <simple_factors.at { for simple_factors }
 <affine.at { to try to avoid conflicting definitions }
-<basic.at { for power_set, choices_from, sum@(int,[ratvec]), is_subset_of_sorted }
+<basic.at { for power_set, choices_from, sum@(int,[ratvec]) }
 <hermitian.at { for is_unitary }
 <to_ht.at { for is_unitary_to_ht }
 <TWOHEIGHTS.at { for HT, HTT, HTA }
@@ -339,7 +339,8 @@ in { we traverse |StInd| while modifying sublists, so counted loop is best here 
    in for j in to_do(StInde)
       do let facet_info = StInde[j]
       in if facet_info.status = "?" and
-            sorted_is_subset(NUverts,facet_info.verts)
+            {sorted_is_subset(NUverts,facet_info.verts)}
+	     is_subset_of(facet_info.verts)(NUverts)
 	 then facet_info.status := nonUnitary.status
 	 ; StInde[j] := facet_info
 	 fi
@@ -357,7 +358,8 @@ set update \
 (  assert(nonUnitary.status[0] = "F","update only applies to NONunitary facets")
 ;  for facet_info@j in allInd[START:] { this makes a copy of tail of |allInd| }
    do if facet_info.status = "?" and
-	 sorted_is_subset(nonUnitary.verts,facet_info.verts)
+	 {sorted_is_subset(nonUnitary.verts,facet_info.verts)}
+	 is_subset_of_sorted(facet_info.verts)(nonUnitary.verts)
       then let f_i=facet_info { need a modifyable copy }
       in f_i.status := nonUnitary.status
       ; allInd[START+j] := f_i { update in place in argument |allInd| }
@@ -375,7 +377,8 @@ set updateCUT ( [[FacetStatusVertsIndex]] StInd, FacetStatusVertsIndex nonUnitar
 in  for e:#StInd - #NUverts from #NUverts
     do  StInd[e] :=
         for facet in StInd[e]
-        do if sorted_is_subset(NUverts,facet.verts)
+        do if {sorted_is_subset(NUverts,facet.verts)}
+	      is_subset_of(facet.verts)(NUverts)
 	   then [] else [facet]
 	   fi
 	od.##
@@ -391,7 +394,8 @@ set downdate ([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
     do  let StInde = StInd[e]
     in  for j in to_do(StInde)
 	do let facet=StInde[j]
-	in if facet.status = "?" and sorted_is_subset(facet.verts,Unitary.verts)
+	in if facet.status = "?" and {sorted_is_subset(facet.verts,Unitary.verts)}
+	      is_subset_of(Unitary.verts)(facet.verts)
 	   then facet.status:=Unitary.status
 	   ; StInde[j]:=facet
 	   fi
@@ -408,7 +412,8 @@ set downdate \
 (   assert(Unitary.status[0] = "T","downdate only applies to unitary facets")
 ;   for facet_info@j in allInd[:END]
     do if facet_info.status = "?" and
-    sorted_is_subset(facet_info.verts,Unitary.verts)
+    {sorted_is_subset(facet_info.verts,Unitary.verts)}
+    is_subset_of(Unitary.verts)(facet_info.verts)
        then let f_i=facet_info { need a modifyable copy }
        in f_i.status := Unitary.status
        ; allInd[j] := f_i { update in place in argument |allInd| }
@@ -962,7 +967,8 @@ set FPPopenureAlcoves \
 in  for L@dim in FPPInd { run through dimensions in decreasing order }
    ~do  let result =
         for facet@j in L
-	do  if sorted_is_subset(Base,facet.verts) then [j] else [] fi
+	do  if {sorted_is_subset(Base,facet.verts)}
+	    is_subset_of(facet.verts)(Base) then [j] else [] fi
 	od.##
     in  if >#result then return(dim,vec: result) fi
     od; (minus_1,[]) { if nothing found, report failure }
