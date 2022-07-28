@@ -17,7 +17,7 @@ rigid cover of O. Note: it may be the case that O admits several distinct birati
 ideal attached to the universal cover of O, which may or may not be birationally rigid). This file contains three main functions: rigid_data, birigid_data, and semirigid_data.
 All three functions take a root datum G and produce a list of unipotent data. The function `rigid_data' generates a list of unipotent data corresponding
 to rigid nilpotent G-orbits. The function `birigid_data' generates a list of unipotent data corresponding to birationally rigid nilpotent G-orbits. And the function `semirigid_data' generates a list
-of unipotent data attached to semirigid orbits.  
+of unipotent data attached to semirigid orbits.  }
 
 
 

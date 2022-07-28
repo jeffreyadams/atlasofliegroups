@@ -359,7 +359,7 @@ set update \
 ;  for facet_info@j in allInd[START:] { this makes a copy of tail of |allInd| }
    do if facet_info.status = "?" and
 	 {sorted_is_subset(nonUnitary.verts,facet_info.verts)}
-	 is_subset_of_sorted(facet_info.verts)(nonUnitary.verts)
+	 is_subset_of(facet_info.verts)(nonUnitary.verts)
       then let f_i=facet_info { need a modifyable copy }
       in f_i.status := nonUnitary.status
       ; allInd[START+j] := f_i { update in place in argument |allInd| }
@@ -389,37 +389,43 @@ in  for e:#StInd - #NUverts from #NUverts
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
 set downdate ([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
    [[FacetStatusVertsIndex]]:
-(   assert(Unitary.status[0] = "T","downdate only applies to unitary facets")
-;   for e:#Unitary.verts-1 { only try facet lists up to dimension of |Unitary| facet }
+(   assert(Unitary.status[0] = "T",
+    		"downdate only applies to unitary facets");
+    let tester = is_subset_of(Unitary.verts)
+    then () = for e:#Unitary.verts-1 { only try facet lists up
+	    		       to dimension of |Unitary| facet }
     do  let StInde = StInd[e]
-    in  for j in to_do(StInde)
-	do let facet=StInde[j]
-	in if facet.status = "?" and {sorted_is_subset(facet.verts,Unitary.verts)}
-	      is_subset_of(Unitary.verts)(facet.verts)
+    	in  for j in to_do(StInde)
+	    do let facet=StInde[j]
+	    in if facet.status = "?" and
+	   {sorted_is_subset(facet.verts,Unitary.verts)}
+	      tester(facet.verts)
 	   then facet.status:=Unitary.status
 	   ; StInde[j]:=facet
 	   fi
-	od
+	   od
     ; StInd[e]:=StInde
     od
-;   StInd
+    in StInd
 )
 
 { same but with just one level of list, which is considered only up to position |END| }
 set downdate \
    ( [FacetStatusVertsIndex] allInd,FacetStatusVertsIndex Unitary, int END) =
      [FacetStatusVertsIndex]:
-(   assert(Unitary.status[0] = "T","downdate only applies to unitary facets")
-;   for facet_info@j in allInd[:END]
-    do if facet_info.status = "?" and
-    {sorted_is_subset(facet_info.verts,Unitary.verts)}
-    is_subset_of(Unitary.verts)(facet_info.verts)
-       then let f_i=facet_info { need a modifyable copy }
+(   assert(Unitary.status[0] = "T",
+    	        "downdate only applies to unitary facets");
+    let tester = is_subset_of(Unitary.verts)
+    then () = for facet_info@j in allInd[:END]
+    	 do if facet_info.status = "?" and
+    	 {sorted_is_subset(facet_info.verts,Unitary.verts)}
+    	 tester(facet_info.verts)
+       	 then let f_i=facet_info { need a modifyable copy }
        in f_i.status := Unitary.status
        ; allInd[j] := f_i { update in place in argument |allInd| }
        fi
     od
-;  allInd { return modified argument }
+    in allInd { return modified argument }
 )
 
 set index_in_facet_list ([FacetStatusVertsIndex] L) = (vec->int):
