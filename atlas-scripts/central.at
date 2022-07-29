@@ -18,6 +18,7 @@ set finite_part_central_character_long(ratvec v, RealForm G)=([(int,int)],(ratve
 let ((M_f,w),(M_ell,M_R))=((mat,vec),(mat,mat)):Z_hat(G) then
 proj_f=mat:projector_to_image(M_f) then   {square of size rank(G)}
 proj_f_nonzero=##for col in proj_f do  if !=col then [col]  else [] fi od then  {only the non-zero columns}
+proj_f_nonzero= if !=#proj_f_nonzero then mat:proj_f_nonzero else null(0,0) fi then
 {the number of nonzero columns should equal #w}
 ()=assert(n_columns(proj_f_nonzero)=#w,"mismatch") then
 finite_part_unnormalized=ratvec:^proj_f_nonzero * v then
