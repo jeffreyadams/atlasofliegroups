@@ -1,0 +1,66 @@
+{central character of a parameter}
+<center.at
+<tabulate.at
+
+{semisimple (finite) case}
+set central_character_semisimple(ratvec v, RootDatum rd)=
+let ((B,w),X)=Z_hat(rd) then
+proj=projector_to_image(B)  then
+proj_v=proj*v then
+z=##for col in proj do  if !=col then [proj*col]  else [] fi od then
+zz=for v@i in z do v/w[i] od then
+ans=^zz*v then
+()=prints("B=",B, new_line, "w=",w,new_line,"proj=", proj, new_line, "proj_v=", proj_v, new_line, "z=",z,new_line,"zz=",zz,new_line,"ans=",ans) in 
+(proj*v,w,z,zz,[rat]:ans)
+
+{for testing}
+set finite_part_central_character_long(ratvec v, RealForm G)=([(int,int)],(ratvec,mat,vec,mat,[vec],ratvec)):
+let ((M_f,w),(M_ell,M_R))=((mat,vec),(mat,mat)):Z_hat(G) then
+proj_f=mat:projector_to_image(M_f) then   {square of size rank(G)}
+proj_f_nonzero=##for col in proj_f do  if !=col then [col]  else [] fi od then  {only the non-zero columns}
+{the number of nonzero columns should equal #w}
+()=assert(n_columns(proj_f_nonzero)=#w,"mismatch") then
+finite_part_unnormalized=ratvec:^proj_f_nonzero * v then
+{finite_part=for a@i in  finite_part_unnormalized do a/w[i] od in}
+finite_part=[(int,int)]:for a@i in  finite_part_unnormalized do  (rat_as_int(a%w[i]),w[i]) od in
+(finite_part,(v,M_f,w,proj_f,proj_f_nonzero,finite_part_unnormalized))
+
+{just the finite part}
+set finite_part_central_character(ratvec v, RealForm G)=let (a,)=finite_part_central_character_long(v,G) in a
+
+set show(([rat],(ratvec,mat,vec,mat,[vec],ratvec)) data)=void:
+let (finite_part,(v,M_f,w,proj_f,proj_f_nonzero,finite_part_unnormalized))=data in 
+prints("finite_part: ", finite_part,new_line,
+"v: ", v, new_line,
+"M_f: ", M_f, new_line,
+"w: ", w, new_line,
+"proj_f: ", proj_f, new_line,
+"proj_f_nonzero: ", proj_f_nonzero, new_line,
+"finite_part_unnormalized: ", finite_part_unnormalized)
+
+{full central character}
+set central_character(vec v_f, ratvec v_a, RealForm G)=([(int,int)],vec,ratvec):
+let ((M_f,w),(M_ell,M_R))=((mat,vec),(mat,mat)):Z_hat(G) in
+(finite_part_central_character(v_f,G),projector_to_image(M_ell)*v_f, projector_to_image(M_R)*v_a)
+
+set show(([(int,int)],vec,ratvec) data)=void:
+let (finite_part,radical_c,radical_R)=data then
+finite_part_string="" then
+() =for (a,b) in finite_part do finite_part_string +:="("+a.to_string+"/"+b.to_string+")" od in
+tabulate([["finite part", "[" + finite_part_string + "]"],
+["compact radical: ", compact_string(radical_c)],
+["split radical:   ", compact_string(radical_R)]])
+
+set show_one_line(([(int,int)],vec,ratvec) data)=void:
+let (finite_part,radical_c,radical_R)=data then
+finite_part_string="" then
+() =for (a,b) in finite_part do finite_part_string +:="("+a.to_string+"/"+b.to_string+")" od in
+prints("finite part" +  "[" + finite_part_string + "]" + 
+"compact radical: " +  compact_string(radical_c) + 
+"split radical:   "+ compact_string(radical_R))
+
+set finite_part_central_character_long(Param p)=([(int,int)],(ratvec,mat,vec,mat,[vec],ratvec)):
+finite_part_central_character_long(p.lambda+rho(p.root_datum), p.real_form)
+
+set central_character(Param p)=([(int,int)],vec,ratvec):
+central_character(ratvec_as_vec(p.lambda+rho(p.root_datum)), p.nu,p.real_form)
