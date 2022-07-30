@@ -2,9 +2,11 @@
 <goodroots.at
 
 { To test a bunch of parameters attached to one KGB element x, and one
-lambda, a good
-idea might be to compute N =  next_to_lowest((x,lambda)); then on each
-parameter p run unitarity_test(p,N) }
+lambda, a good idea might be to compute N =
+next_to_lowest((x,lambda)); then on each parameter p run
+unitarity_test(p,N). Maybe even better: if mu is a LKT, compute tau =
+next_to_lowest(mu), and then run unitary_test(p, height (tau),
+next_height(tau) }
 
 {. gives (one of) the K-types of lowest height above mu in the
 standard of LKT mu .}
@@ -33,54 +35,34 @@ set is_unitary_test(Param p, int N) = bool:
     is_unitary_to_ht(p, N) and
     is_unitary(p)
 
-set is_unitary_test2(Param p) = bool:
-    is_pos_on_LKTs(p) and
-    is_unitary_to_ht(p, height(p) + 4) and
+set is_unitary_test(Param p, int N1, int N2) = bool:
+    { is_pos_on_LKTs(p) and }
+    is_unitary_to_ht(p, N1) and
+    is_unitary_to_ht(p, N2) and
     is_unitary(p)
 
-
-set is_unitary_test3(Param p) = bool:
-    is_pos_on_LKTs(p) and
-    is_unitary_to_ht(p, height(p) + 4) and
-    is_unitary_to_ht(p, next_height(p)) and
+set is_unitary_test(Param p, int N1, int N2, int N3) = bool:
+    { is_pos_on_LKTs(p) and }
+    is_unitary_to_ht(p, N1) and
+    is_unitary_to_ht(p, N2) and
+    is_unitary_to_ht(p, N3) and
     is_unitary(p)
 
-set is_unitary_testSPHF48(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary(p)
+{ these commands are useful for speed tests over bunches of parameters
 
-set is_unitary_testSPHF411(Param p) = bool:
-    is_unitary_to_ht(p, 11) and
-    is_unitary(p)
+set G4 =F4_s
+set nus4 = for b in box(5,4) do b/4 od
+set x4 = x_open(G4)
+set ps4 = for nu in nus4 do parameter(x4,[1,1,1,1],nu) od
 
-set is_unitary_testSPHF4811(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary_to_ht(p,11) and
-    is_unitary(p)
+set G6 = E6_q
+set nus6 = for b in box(4,6) do b/3 od
+set x6 = x_open(G6)
+set ps6 = for nu in nus6 do Finalize(parameter(x6,[1,1,1,1,1,1],nu)) od
 
-set is_unitary_testSPHF481115(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary_to_ht(p,11) and
-    is_unitary_to_ht(p,15) and
-    is_unitary(p)
+set G7 = E7_s
+set nus7 = for b in box(4,7) do b/3 od
+set x7 = x_open(G7)
+set ps7 = for nu in nus7 do parameter(x7,[1,1,1,1,1,1,1],nu) od
 
-set is_unitary_testSPHF4815(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary_to_ht(p,15) and
-    is_unitary(p)
-
-set is_unitary_testSPHF4816(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary_to_ht(p,16) and
-    is_unitary(p)
-
-set is_unitary_testSPHF481121(Param p) = bool:
-    is_unitary_to_ht(p, 8) and
-    is_unitary_to_ht(p,11) and
-    is_unitary_to_ht(p,21) and
-    is_unitary(p)
-
-set G=F4_s
-set nus = for b in box(5,4) do b/4 od
-set x = x_open(G)
-set ps = for nu in nus do parameter(x,[1,1,1,1],nu) od
+}
