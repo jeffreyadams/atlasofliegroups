@@ -668,7 +668,7 @@ set updateTrue(RealForm G, [[FacetStatusVertsIndex]] StInd,
     in
     for j in TODOe
 	do
-	if is_subset_of_sorted(StInde[j].verts)(Unitary.verts) and
+	if is_subset_of(StInde[j].verts)(Unitary.verts) and
 	   StInde[j].status = "?"
 {need to test that pos AffineCoroot's for j which are zero on the
 barycenter of F (# = codim of F in E) are NOT reducibility
