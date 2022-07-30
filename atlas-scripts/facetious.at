@@ -1897,18 +1897,19 @@ set spherical_ind_to_htC(RealForm G, int bound) = FacetData:
     then dataCuind = facet_statusu_ind(G,dataC)
     in spherical_to_htC(G, dataCuind, bound)
 
-{idea is in a session to say
-  >> FILENAME write(status,vlist,Cand)
+{
+idea is in a session to say
+  >> FILENAME write(FD)
 
 Then in another session you can write
 << FILENAME
-set STN=spherical_to_ht(G,(status,vlist,Cand),N)}
-
-set write([[string]] status, [ratvec] vlist, [[FacetVertsIndex]] Cand) = void:
-    prints("set status = ",status);
-    prints("set vlist = ",vlist);
-    prints("set Cand = [[vec]]:",Cand)
-
+which will give you FacetData FD_saved, to which you can apply spherical.
+}
+set write(FacetData (vdata, FVI)) = void:
+    prints("set FD_saved = FacetData:");
+    prints(" let vlist_saved = ", vdata.list);
+    prints("then FVI_saved = [[FacetStatusVertsIndex]]:",FVI);
+    prints("in (to_vertex_data(vlist_saved),FVI_saved)")
 
 set leq([Param] Plist) = (int i, int j) bool:
     HTA(Plist[i]) <= HTA(Plist[j])
