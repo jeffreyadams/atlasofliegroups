@@ -391,7 +391,7 @@ set downdate ([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
    [[FacetStatusVertsIndex]]:
 (   assert(Unitary.status[0] = "T",
     		"downdate only applies to unitary facets");
-    let tester = is_subset_of(Unitary.verts)
+    let tester = is_subset_of(Unitary.verts), label = Unitary.status##"closure"
     then () = for e:#Unitary.verts-1 { only try facet lists up
 	    		       to dimension of |Unitary| facet }
     do  let StInde = StInd[e]
@@ -400,7 +400,7 @@ set downdate ([[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary) =
 	    in if facet.status = "?" and
 	   {sorted_is_subset(facet.verts,Unitary.verts)}
 	      tester(facet.verts)
-	   then facet.status:=Unitary.status
+	   then facet.status:=label
 	   ; StInde[j]:=facet
 	   fi
 	   od
@@ -420,7 +420,7 @@ set downdate \
     	 do if facet_info.status = "?" and
     	 {sorted_is_subset(facet_info.verts,Unitary.verts)}
     	 tester(facet_info.verts)
-       	 then let f_i=facet_info { need a modifyable copy }
+       	 then let f_i=facet_info { need a modifiable copy }
        in f_i.status := Unitary.status
        ; allInd[j] := f_i { update in place in argument |allInd| }
        fi
@@ -678,6 +678,39 @@ to number in Fzero}
 	then let NRHE = NumRedHyps(parameter(x_open(G),G.rho, FBs[e][j]))
 	in if NRHE = NRHF then StInde[j] := (Unitary.status,
 	   StInde[j].verts) fi
+	fi
+	od;
+    StInd[e]:=StInde
+    od
+    in StInd
+
+{ also label as unitary all facets in the closure of new facets. This
+is not yet working, since it doesn't relabel the big new facets
+found. }
+set updateTrueClosure(RealForm G, [[FacetStatusVertsIndex]] StInd,
+[[FacetBary]] FBs, FacetStatusVertsIndex Unitary, FacetBary FB) =
+    [[FacetStatusVertsIndex]]:
+    assert(Unitary.status[0] = "T","update only applies to unitary facets");
+    let Uverts = Unitary.verts, p = parameter(x_open(G),G.rho,FB)
+    then NRHF = NumRedHyps(p)
+    then () = for e:#StInd - #Unitary.verts from #Unitary.verts
+    do
+    let StInde = StInd[e]
+    then TODOe = to_do(StInde)
+    in
+    for j in TODOe
+	do
+	if is_subset_of(StInde[j].verts)(Unitary.verts) and
+	   StInde[j].status = "?"
+{need to test that pos AffineCoroot's for j which are zero on the
+barycenter of F (# = codim of F in E) are NOT reducibility
+hyperplanes}
+{need to count reducibility affine coroots in Ezero, hope it's equal
+to number in Fzero}
+	then let NRHE = NumRedHyps(parameter(x_open(G),G.rho, FBs[e][j]))
+	in if NRHE = NRHF then StInd := downdate(StInd, (Unitary.status, StInde[j].verts))
+	{PROBLEM: need also to do StInde[j] := (Unitary.status, StInde[j].verts)}
+	   fi
 	fi
 	od;
     StInd[e]:=StInde

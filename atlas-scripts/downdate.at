@@ -1,0 +1,13 @@
+< facetious.at
+
+{label all facets in closure of unitary as unitary}
+
+set DownDate(FacetData (vdata, FVDI)) = FacetData:
+    let () = for d: #FVDI-1
+    	do
+    	for big_facet in FVDI[d+1] do
+    	    if big_facet.status[0]="T" then
+	       FVDI:=downdate(FVDI, big_facet)
+	    fi od
+    	od
+    in (vdata,FVDI)
