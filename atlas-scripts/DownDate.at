@@ -9,11 +9,31 @@ set DownDate(FacetData (vdata, FVDI)) = FacetData:
     let () = for d: #FVDI-1
     	do
 	if facet_verbose
-	then prints("start dim ", d, "in DownDate")
+	then prints("start dim ", d+1, "in DownDate")
 	fi;
     	for big_facet in FVDI[d+1] do
     	    if big_facet.status[0]="T" then
 	       FVDI:=downdate(FVDI, big_facet)
+	    fi od
+    	od
+    in (vdata,FVDI)
+
+set UpDate(RealForm G, FacetData (vdata, FVDI)) = FacetData:
+    let list = vdata.list
+    then FBs = [[FacetBary]]:
+    	for FVDId in [[FacetStatusVertsIndex]]: FVDI
+	do for facet in FVDId
+	   do facet_bary(list, facet.verts) od
+	od
+    then () = for d: #FVDI-1
+    	do
+	if facet_verbose
+	then prints("start dim ", d, "in UpDate")
+	fi;
+    	for small_facet in FVDI[d] do
+	    if small_facet.status[0]="T" then
+	       FVDI:=updateTrue(G, FVDI, FBs, small_facet,
+	       			   facet_bary(list,small_facet.verts))
 	    fi od
     	od
     in (vdata,FVDI)
