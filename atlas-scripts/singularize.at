@@ -1,0 +1,72 @@
+< facetious.at { for types VertexData, FacetVertsIndex... }
+{
+Setting is a (big) facet F indexed by a vec
+ F = [F[0],...,F[d-1]]; the entries F[i] are indices into a  [ratvec]
+ vlist. Write f = barycenter(F).
+
+CLAIM (with the right choice of vlist...) given (x,lambda), then there
+is an (x,lambda,nu) of infinitesimal character f IF AND ONLY IF all
+v[i] = vlist[F[i]] satisfy
+
+(1+theta(x))*v[i] = (1+theta(x))*lambda.
+
+In this case v[i] is the infinitesimal character of a parameter
+
+p[i] = parameter(x, lambda, (1 - theta(x))*v[i]/2),
+
+and
+
+p(f) = parameter(x, lambda, (1-theta(x))*f/2)
+
+has infinitesimal character f.
+
+Assume also that we have a face E of F, given by a subset
+
+( j[0],...,j[e-1] ) \subset ( 0,....,d-1 ),
+
+with barycenter e. Then there is a map (function defined here!)
+
+singularize(F,E): (reps of infl char f) ---> (reps of infl char e)
+
+defined on standards by p(f) ---> p(e).
+
+(This is not defined for all (x,lambda), but it ought to be defined
+for all (x,lambda) so that (x,lambda,nu) has infinitesimal character
+f.)
+
+With a good choice of vlist, it should be true that
+
+singularize carries irrs to sums of irrs, preserves restriction to K,
+carries hermitian to hermitian, and preserves signature.
+
+There is a boolean
+
+is_perturbed(F,E, irr J(p(f)) of infl char f)
+
+which is true if singularize(J(p(f)) = J(p(e)); in this case
+
+J(p(e)) unitary implies J(p(f)) unitary
+
+so that test should be used in updateTrue in facetious
+}
+
+set singularize(VertexData vd, FacetVertsIndex F, FacetVertsIndex E) = \ 
+    (Param -> ParamPol):
+    (Param p):
+    let e = facet_bary(vd.list, E), f = facet_bary(vd.list,F)
+    in assert(p.infinitesimal_character = f, 
+      "p doesn't have infinitesimal character barycenter(F)");
+    1*parameter(p.x, p.lambda, e)
+
+set singularize(VertexData vd, FacetVertsIndex F, FacetVertsIndex E) = \ 
+    (ParamPol -> ParamPol):
+    (ParamPol P):
+sum(P.real_form, for c@p in P do c*singularize(vd, F, E)(p) od)
+
+set is_perturbed(VertexData vd, FacetVertsIndex F, FacetVertsIndex E, 
+    			    Param p) = bool:
+    let p0 = singularize(vd, F, E)(p)
+    in
+    #p0 = 1 and
+    character_formula(Finalize(first_param(p0))) =
+    			singularize(vd, F, E)(character_formula(p))
