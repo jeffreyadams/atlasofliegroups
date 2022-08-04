@@ -31,7 +31,7 @@ atlas> for p@i in good do prints(i, " ", p) od
 }
 
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
-set abv=for p in all_H_u do abv_mixed(p,M,G,delta) od
+set abv=for p in all_H_u do abv(p,M,G,delta) od
 
 {output:
 atlas> for (p,(,,,d))@i in abv_good do prints(new_line,"i=",i,new_line,"p=",p,new_line,"ABV(p)=", d) od
