@@ -265,7 +265,7 @@ let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
 {the old version of folded @(TwistedRootDatum in root_datum.at should work}
 {(Hd,M)=Folded(Gd,^delta) then}
-(Hd,M)=folded(Gd,^delta) then
+(Hd,M)=Folded(Gd,^delta) then
 H=Hd.dual in
 (H,M)
 

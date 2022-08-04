@@ -1,3 +1,4 @@
+<all.at
 <twisted_endoscopy.at
 set G=GL(5,R)
 set delta=G.distinguished_involution
