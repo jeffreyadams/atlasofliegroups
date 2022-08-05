@@ -170,8 +170,7 @@ set all_H=all_parameters_gamma(H,H.rho)
 
 set p_H=all_H_u[5]
 set E_H=E(H.distinguished_involution,p_H)
-set E_G=lift_std(p_H,M,G,delta)
-set p_G=parameter(E_G)
+set p_G=lift_std(p_H,M,G,delta)
 set ecf=extended_character_formula(p_G,delta)
 set m=monomials(convert_to_param_pol(ecf))
 
@@ -180,16 +179,12 @@ set bad=m[0]
 set p=bad
 set list=all_parameters_gamma(H,left_inverse(M)*bad.infinitesimal_character)
 set ph=list[1]
-set E_G=lift_std(ph,M,G,delta)
-set p_G=E_G.parameter
-{lift_std(ph,M,G,delta).parameter=p  is true}
+set p_G=lift_std(ph,M,G,delta)
 set y_G=y_gen(p)
-set action_H=restrict_action(y_G.involution,M) 
-{set tf_u_G=y_G.torus_factor+bad.real_form.rho }
-set tf_u_G=y_G.unnormalized_torus_factor 
-set tf_u_H=left_inverse(M)*tf_u_G 
-set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 
-{set ()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) }
+set action_H=restrict_action(y_G.involution,M)
+set tf_u_G=y_G.unnormalized_torus_factor
+set tf_u_H=left_inverse(M)*tf_u_G
+set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2
 set y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H)
 
 set y_H_good=y_gen(ph)

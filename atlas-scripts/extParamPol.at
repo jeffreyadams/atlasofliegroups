@@ -374,7 +374,7 @@ set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
    in
 {let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in}
 
-   if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi 
+   if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi
    od;
    tabulate(data)
 
@@ -386,9 +386,9 @@ set print_extended_character_formula_old (Param p,mat delta) = void:print_extend
 {--- new version of extended character formula--}
 {this should be modified to work with the partial extended block instead of the entire block:
  replace P=big_KL_P_signed_polynomials(B,delta) with
-         P=big_KL_P_signed_polynomials(p,delta)} 
+         P=big_KL_P_signed_polynomials(p,delta)}
 set extended_character_formula_reg (Param p,mat delta) =ExtParamPol:
-assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
+{assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");}
 let G=p.real_form then
 (plus,minus,ind)=null_ext_module(p.real_form) then
 B=block_of(p) then
@@ -408,6 +408,9 @@ od;
 (plus,minus,ind)
 
 set extended_character_formula (Param p,mat delta) = ExtParamPol:
+extended_character_formula_reg(p,delta)
+
+set extended_character_formula_new (Param p,mat delta) = ExtParamPol:
 if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg(p,delta)
 else
  let preg=make_regular_param(p) then

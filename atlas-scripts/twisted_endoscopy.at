@@ -104,6 +104,10 @@ fi
 set delta_l_int(Param p,mat delta)=int:
 let (,,,x)=delta_l_int_long(p,delta) in rat_as_int(x)
 
+
+set sign_difference(Param p_G, mat delta)=int:
+(-1)^(length(p_G)-delta_l_int(p_G,delta))
+
 {this should be a built-in, or at least in some other file}
 {set partial_extended_block(Param p,mat delta)=[Param]:
 let (B,,)=partial_extended_KL_block(p,delta) in B}
@@ -222,53 +226,13 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
   ; P
   fi
 
-{this is a very small modification of folded@TwistedRootDatum in twisted_root_datum.at
- it does not appear to be necessary.
-This function is called only in one place (below)}
-set Folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-{assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");}
-assert(is_distinguished(rd,delta),"delta is not distinguished");
-let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-{T is nxr where n=rd.rank and r=dimension(T)}
-{ T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
- ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
-}
-roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
-{roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then}
-roots=mat:##(for alpha in roots_nonreduced do if find(2*roots_nonreduced,alpha)=-1 then [alpha] else [] fi od) then
-coroots=[] in
-for alpha in roots do
- let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then
- v=sum(##(for beta in rd.roots do if T.restrict(beta)=alpha then  [coroot(rd,beta)]
-   else []
-  fi od)) then
- w=2*v/(v*pullback_alpha) {element of X_*(H) which lives in X_*(T)} then
- corestrict_w=solve(T,w).requisition {coordinates of w in the given basis of X_*(T)} in
- coroots#:=ratvec_as_vec(corestrict_w)
-od;
-(root_datum_from_positive((roots,coroots),rd.prefers_coroots),T)
-
-{this returns: (RootDatum H,mat M) where
- Gd=G.dual, T_Gd=Cartan of Gd
- Hd=identity component of Gd^{delta^t}
- T_Hd=Cartan of Gd= identity component of (T_Gd)^{delta^t}
- H=Hd.dual = (twisted) endoscopic group of G
-
-M:  X^*(T_H) -> X^*(T_G)  OR X_*(T_{Hd}) -> X_*(T_{Gd})
-^M: X_*(T_G) -> X_*(T_H)  OR X^*(T_{Gd}) -> X^*(T_{Hd})
-
- left multiplication by M: H.simple_roots -> root_lattice of G
- left multiplication by ^M: G.simple_coroots -> coroot_lattice of H
- }
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
 {the old version of folded @(TwistedRootDatum in root_datum.at should work}
-{(Hd,M)=Folded(Gd,^delta) then}
-(Hd,M)=Folded(Gd,^delta) then
+(Hd,M)=folded(Gd,^delta) then
 H=Hd.dual in
 (H,M)
-
 
 {atlas> set G=GL(5,R)
 Variable G: RealForm (overriding previous instance, which had type RealForm)
@@ -316,39 +280,44 @@ set lift(mat theta_H,mat M,RealForm G)=mat:
 let i=first(for x in KGB(G) do any(solve(M,x.involution*M)) and restrict_action(x.involution,M)=theta_H od) in
 KGB(G,i).involution
 
+{lift generalized KGB element:
+ involution is straightforward
+ unnormalize torus factor: M*unnormalized_torus_factor for H
+ this requires a computation to get the normalized torus factor for G}
 set lift(KGBElt_gen x_H_gen,mat M, RealForm G)=KGBElt_gen:
 let tf_H_raw=x_H_gen.unnormalized_torus_factor then
 theta_G=lift(x_H_gen.involution,M,G) then
-{()=if te_verbose then prints("tf_H_raw=",tf_H_raw) fi then}
 tf_G_raw=M*tf_H_raw then
-{()=if te_verbose then prints("tf_G_raw=", tf_G_raw) fi then}
 tf_G=(2*tf_G_raw-G.rho_check)*(1+theta_G)/2 in
 KGB_elt_gen(G.inner_class,theta_G,tf_G)
 
 set lift(KGBElt x_H,mat M, RealForm G)=KGBElt_gen:
 lift(KGB_elt_gen(x_H),M,G)
 
-set lift_std(Param p_H,mat M,RealForm G, mat delta)=
+{list standard module: (x,lambda,nu)
+ easiest to say this in terms of extended parameters
+ (gamma,lambda_rho,g,l,tau,t) for H -> 
+ (gamma=M*gamma,
+  lambda_rho=M*lambda_H - rho_G,
+  g=rho_check(G),
+  l=0,
+  tau,
+  t)
+  where
+  ^M*tau_G=tau_H
+  ^M*t_G=t
+}
+set lift_std(Param p_H,mat M,RealForm G, mat delta)=Param:
 let E_H=E(p_H.real_form.distinguished_involution,p_H) then
 x=lift(p_H.x,M,G) then
 gamma_G=M*p_H.infinitesimal_character then
 lambda_rho_G=(M*(p_H.lambda)-G.rho)\1 {vec}  then
 theta_G=lift(p_H.involution,G,M).matrix*delta then
-{g_G=^M*E_H.g then
-l_G=^M*E_H.l then
-t_G=^M*E_H.t then
-tau_G=M*E_H.tau in}
-{g_G=solve(left_inverse(M),E_H.g).requisition then
-l_G=solve(left_inverse(M),E_H.l).requisition then
-tau_G=solve(left_inverse(M),E_H.tau).requisition then
-t_G=solve(left_inverse(M),E_H.t).requisition in}
-{g_G=M*E_H.g then
-l_G=M*E_H.l then}
-g_G=G.rho_check then 
+g_G=G.rho_check then
 l_G=null(#g_G) then
 tau_G=solve(^M,E_H.tau).requisition then
-t_G=solve(^M,E_H.t).requisition in
-ExtParam:(
+t_G=solve(^M,E_H.t).requisition then
+E_G=ExtParam:(
 G.inner_class,
 G.distinguished_involution,
 gamma_G,
@@ -358,28 +327,9 @@ g_G,
 l_G,
 -^theta_G,
 tau_G,
-t_G)
+t_G) in
+E_G.parameter
 
-{moved to ExtParamPol.at
-set extended_character_formula_t(Param p,mat delta) =
-let (B,,)=partial_extended_KL_block(p,delta) in
-let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta),
-{P=big_KL_P_signed_polynomials(p,delta) then}
-P=big_KL_P_polynomials(p,delta) then
-()=if te_verbose then printPolyMatrix(P) fi  then
-index=find(complete_indices,(find(B,p),1)) in
-{let ()=prints("index=", index) in}
-null_module(p.real_form) +
-for i:#complete_indices
-do let f=eval(P[i][index],s) in
-{let ()=prints(new_line,"i= ", i, " f=",f) in}
- let (j,c)=complete_indices[i] in
- {let ()=prints("j=",j, " f=",f, " c=",c, " ", "f*c=", f*c, "  ",B[j]) in} f*c*B[j]
-od
-}
-
-set sign_difference(Param p_G, mat delta)=int:
-(-1)^(length(p_G)-delta_l_int(p_G,delta))
 
 {M  mxn integral matrix
  N  mxr integral matrix
@@ -449,7 +399,7 @@ if is_valid(y_H_gen,gamma_H) then
  let ()=if te_verbose then prints("is valid") fi in
  let  lp=L_packet(H,left_inverse(M)*p_G.infinitesimal_character,y_H_gen) then
  ()= if te_verbose then prints("lp="); for a in lp do prints(a) od fi in
- if lift_std(lp[0],M,p_G.real_form,delta).parameter=p_G then
+ if lift_std(lp[0],M,p_G.real_form,delta)=p_G then
   (true,sign_difference(p_G,delta)*param_pol(lp))
  else
   let ()=prints("valid, but wrong answer") in
@@ -464,7 +414,7 @@ let all=all_parameters_gamma(H,gamma_H) then
 {let y_G=y_gen(p_G) then
 action_H=-^restrict_action(y_G.involution,M) then
 all=##for x in fiber(H,action_H) do all_parameters_x_gamma(x,gamma_H) od then}
-index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 }
@@ -478,7 +428,7 @@ n_x=x.number then
 n=KGB_size(H) in
 for i:n-n_x from n_x do
  let all=all_parameters_x_gamma(KGB(H,i), gamma_H) then
- index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+ index=first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
  if index!=-1 then
   prints("found solution with x=",i);
   return(sign_difference(p_G,delta)*param_pol(L_packet(all[index])))
@@ -492,7 +442,7 @@ null_module(H)
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
 if valid then
- if lift_std(first_param(P_H),M,p_G.real_form,delta).parameter=p_G then 
+ if lift_std(first_param(P_H),M,p_G.real_form,delta)=p_G then 
   P_H
  else
   let ()=prints("inverse_lift_std_mixed is valid, but gives wrong answer") in
@@ -505,7 +455,7 @@ fi
 {set inverse_lift_std_by_search_old(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let all=all_parameters_gamma(H,gamma_H) then}
 let all=all_parameters_gamma(H,gamma_H)  then
-index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta).parameter)=p_G od) in
+index=int: first(for p@i in all do  Finalize(lift_std(p,M,p_G.real_form,delta))=p_G od) in
 if index=-1 then prints("inverse_lift_std_by_search failed for p_G=",p_G);null_module(H) else
 sign_difference(p_G,delta)*param_pol(L_packet(all[index])) fi
 }
@@ -549,6 +499,7 @@ else P fi
 }
 {returns a sum of standards}
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
+{let ecf=extended_character_formula(p_G,delta) then}
 let ecf=extended_character_formula(p_G,delta) then
 P_G=convert_to_param_pol(ecf).s_to_1 then
 ()=if te_verbose then prints("ecf=",ecf) fi then
@@ -558,6 +509,7 @@ P_G=convert_to_param_pol(ecf).s_to_1 then
 (valid,P_H)
 
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
+{let ecf=extended_character_formula(p_G,delta).s_to_1 then}
 let ecf=extended_character_formula(p_G,delta).s_to_1 then
 P_G=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
@@ -575,7 +527,7 @@ fi
 {to use: set G=GL(n,R), delta=G.distinguished_involution,
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
 set abv(Param p_H,mat M,RealForm G,mat delta)=ParamPol:
-let lift_std=lift_std(p_H,M,G,delta).parameter then
+let lift_std=lift_std(p_H,M,G,delta) then
 (valid,inverse_lift)=inverse_lift_irr(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) in
 if valid then
   let ()=assert(is_stable_std(inverse_lift), "purported Arthur lift is not stable") in
@@ -600,7 +552,7 @@ remove_duplicates(abv_with_duplicates)
 
 {
 set abv_mixed_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
-let lift_std=lift_std(p_H,M,G,delta).parameter then
+let lift_std=lift_std(p_H,M,G,delta) then
 lift_std_reg=make_regular(lift_std) then
 gamma_H=left_inverse(M)*lift_std_reg.infinitesimal_character then
 inverse_lift_reg=inverse_lift_irr_mixed(lift_std_reg,p_H.real_form,M,delta,gamma_H) {sum of standards} then
@@ -609,7 +561,7 @@ inverse_lift=T_param(inverse_lift_reg,p_H.infinitesimal_character) in
 (p_H,lift_std,inverse_lift,composition_series(inverse_lift).s_to_1)
 
 set abv_alt(Param p_H,mat M,RealForm G,mat delta)=(Param,Param,ParamPol,ParamPol):
-let lift_std=lift_std(p_H,M,G,delta).parameter then
+let lift_std=lift_std(p_H,M,G,delta) then
 lift_std_reg=make_regular(lift_std) then
 ()=if te_verbose then prints("lift_std_reg=", lift_std_reg) fi then
 gamma_H=left_inverse(M)*lift_std_reg.infinitesimal_character then
