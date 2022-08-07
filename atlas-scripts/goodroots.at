@@ -116,7 +116,7 @@ in for j:R.nr_of_posroots
 ; M
 )
 
-{. Version of w0_good_matrix using w0_good_long_elt .} 
+{. Version of w0_good_matrix using w0_good_long_elt .}
 
 set w0_good_matrix(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
@@ -138,6 +138,9 @@ set w0_good_matrix(Param p) = mat:
     then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
  in chw*(wzero)*chwinv
 
+{. Written by Annegret Paul at DV request; produces an
+induced-from-discrete series (as opposed to limit) parameter from
+which p is induced .}
 set anti_finalize (Param p)=Param:
    let G = p.real_form
    then Gs = singular_root_datum(G, p.infinitesimal_character)
@@ -152,6 +155,8 @@ set anti_finalize (Param p)=Param:
 			test := rhoc*(p.x.involution)
 		   fi od; p
 
+{. Version of w0_good_matrix using w0_good_long_elt and Annegret's
+anti_finalize .}
 set w0_good_matrixAP(Param p) = mat:
     let (w,) = from_dlambda_dom(p)
     then chw = w.matrix, chwinv = w.inverse.matrix
