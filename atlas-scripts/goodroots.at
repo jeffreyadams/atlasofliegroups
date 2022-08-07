@@ -138,6 +138,29 @@ set w0_good_matrix(Param p) = mat:
     then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
  in chw*(wzero)*chwinv
 
+set anti_finalize (Param p)=Param:
+   let G = p.real_form
+   then Gs = singular_root_datum(G, p.infinitesimal_character)
+   then sr=simple_roots(Gs), n= int:minus_1, rhoc = G.rho_check
+   then test = rhoc*(p.x.involution)
+     in while (n:= first( for i:#sr do test*sr[i]>0 od)) >= 0
+		   do  if (is_noncompact_imaginary(sr[n],p.x)) then
+		      	p:= Cayley(sr[n],p);
+			test := rhoc*(p.x.involution)
+		   	else
+			p:= cross(sr[n],p);
+			test := rhoc*(p.x.involution)
+		   fi od; p
+
+set w0_good_matrixAP(Param p) = mat:
+    let (w,) = from_dlambda_dom(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix
+    ,	(Q,pL) = theta_stable_quasi_data(p)
+    then L = Q.Levi, p1 = anti_finalize(pL)
+    then xL = x_open(L), Ltest = ratvec_as_vec(p1.lambda - L.rho)
+    then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
+ in chw*(wzero)*chwinv
+
 
 set is_pos_on_LKTs_old(Param p) = bool:
     let () = if not is_hermitian(p) then
@@ -151,6 +174,12 @@ set is_pos_on_LKTs(Param p) = bool:
    if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
+   fi
+
+set is_pos_on_LKTsAP(Param p) = bool:
+   if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   else #LKTs(p) = 1 or w0_good_matrixAP(p)*p.nu = -p.nu
    fi
 
 {. half sum of positive good restricted roots, in special case of

@@ -703,7 +703,7 @@ set updateSing(RealForm G, FacetData (vd, StInd),
     in
     for j in TODOe
 	do
-	if StInde[j].status = "?" and 
+	if StInde[j].status = "?" and
 	is_subset_of(StInde[j].verts)(verts0) and
 	K_type_pol(character_formula(finalize(parameter(x_open(G), G.rho,
 	{FBs[e][j]} facet_bary(vd.list, StInde[j].verts))))) = CFK0
@@ -768,7 +768,7 @@ set updateSingClosure(RealForm G, FacetData (vd, StInd),
     in
     for j in TODOe
 	do
-	if StInde[j].status = "?" and 
+	if StInde[j].status = "?" and
 	is_subset_of(StInde[j].verts)(verts0) and
 	K_type_pol(character_formula(finalize(parameter(x_open(G), G.rho,
 	{FBs[e][j]} facet_bary(vd.list, StInde[j].verts))))) = CFK0
@@ -1437,7 +1437,7 @@ set show_long_all (FacetData FD) = void:
 {This eliminates a lot more than pick_not_cohom used to in the nonquasisplit case,
  but maybe it's OK.}
 
-set pick(RealForm G, VertexData D, [[FacetStatusVertsIndex]] FPPstInd) =
+set pick(RealForm G, FacetData(D, FPPstInd)) =
     FacetData:
     let xopen = x_open(G), Grho = G.rho
     in
@@ -1448,12 +1448,11 @@ set pick(RealForm G, VertexData D, [[FacetStatusVertsIndex]] FPPstInd) =
 	  do
 	  let FB = facet_bary(D.list, FstInd.verts)
 	  then p = parameter(xopen, Grho, FB)
-	  in if (is_final(p) and is_hermitian(p) and
+	  in if ({is_final(p) and } is_hermitian(p) and
 	     (p.infinitesimal_character = FB)) then [FstInd] else [] fi
 	  od.##
       od
     )
-
 
 {. The next family of functions all need simple derived group. Always |D.list|
 should be ALL vertices in the FPP. The facet lists carried by [[FacetBary]] or
@@ -1461,7 +1460,7 @@ should be ALL vertices in the FPP. The facet lists carried by [[FacetBary]] or
 indices will always refer to a constant vlist.}
 
 set down_to_business(RealForm G, FacetData D) = FacetData:
-    let (,FPPstIndFinalH) = pick(G, D.v_data, D.facet_status_inds)
+    let (,FPPstIndFinalH) = pick(G, D)
     in
     if facet_verbose
     then prints("completing down_to_business"); show(FPPstIndFinalH)
@@ -1493,12 +1492,12 @@ in if facet_verbose
 set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
     let xopen = x_open(G)
     , Grho = G.rho
-    , FBs = [[FacetBary]]:
+    {, FBs = [[FacetBary]]:
 	for FPPstIndd in [[FacetStatusVertsIndex]]: FPPstInd
 	do for facet in FPPstIndd
 	   do facet_bary(vd.list, facet.verts) od
-	od
-    , lookups = [(vec->int)]: { lookup functions for equidiemnsional facets }
+	od}
+    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
         for L in FPPstInd do index_in_facet_list(L) od
     then temp =
     for d:#FPPstInd
@@ -1507,7 +1506,7 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
 	then TODOd = to_do(FPPstIndd)
 	then temp = (); if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical(G,status,vd.list,FPPind); testing ",
+	     " in spherical(G,status,(vd,FPPind)); testing ",
 	       #TODOd," parameters.")
 	fi
 	in
@@ -1521,8 +1520,7 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
 			  fi
 		     fi;
 		if{NEWU} (is_unitary(first_param(standardize(
-			 parameter(xopen, Grho, FBs[d][j])))))
-			 {facet_bary(vd.list,Find.verts)}
+			 parameter(xopen, Grho, facet_bary(vd.list,Find.verts))))))
 		then FPPstInd:=updateSing(G, (vd, FPPstInd), ("Tdef",
 		     Find.verts));
 		     FPPstIndd[j]:=("T",Find.verts)
@@ -1680,8 +1678,7 @@ set spherical_testC(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) 
 		FPPstIndd[j]:=("Ttotester",FPPstIndd[j].verts)
 		else{NEWU}
 		FPPstInd:= update(lookups, FPPstInd, ("F",Find.verts)); Find;
-		FPPstIndd[j]:=("F",Find.verts)
-		fi{NEWU}
+		FPPstIndd[j]:=("F",Find.verts)		fi{NEWU}
 	in result
 	od{FACd};
     FPPstInd[d]:=FPPstIndd
@@ -1701,7 +1698,7 @@ set sphericalFold(RealForm G) = FacetData:
     then (vd, FVFold) = facet_data_fold(rd,M,j0)
     then verts = for v in vd.list do M*v od
     then data = (verts.to_vertex_data,FVFold)
-    then dataIndncH = down_to_business(G,data)
+    then dataIndncH = down_to_business(G,data) {??? folded case ???}
     in actualize(x_open(G), G.rho, spherical(G,dataIndncH))
 
 set sphericalC(RealForm G) =
