@@ -1,6 +1,7 @@
 <induction.at {for theta_stable_quasi_data, theta_stable_quasi_data_im}
 <K.at {for K_0}
 <hermitian.at {for is_hermitian}
+<convert_c_form.at {for convert_cform_hermitian}
 <Vogan-dual.at {for dual@Param}
 <translate.at {for translate_param_by}
 <kl.at {for composition_series}
@@ -185,6 +186,12 @@ set is_pos_on_LKTsAP(Param p) = bool:
    if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrixAP(p)*p.nu = -p.nu
+   fi
+
+set is_pos_on_LKTsJDA(Param p) = bool:
+   if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(K_type_pol(p)))
    fi
 
 {. half sum of positive good restricted roots, in special case of
