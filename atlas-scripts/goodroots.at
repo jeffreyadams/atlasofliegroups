@@ -176,7 +176,7 @@ set is_pos_on_LKTs_old(Param p) = bool:
     in wpos*nu = -nu
 
 {Version using new w0_good_matrix}
-set is_pos_on_LKTs(Param p) = bool:
+set is_pos_on_LKTsDV(Param p) = bool:
    if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} false
    else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
@@ -188,11 +188,14 @@ set is_pos_on_LKTsAP(Param p) = bool:
    else #LKTs(p) = 1 or w0_good_matrixAP(p)*p.nu = -p.nu
    fi
 
-set is_pos_on_LKTsJDA(Param p) = bool:
-   if not is_hermitian(p) then
+{. this is Jeff's version, which is fastest .}
+set is_pos_on_LKTs(Param p) = bool:
+    let delta = p.real_form.distinguished_involution
+    in if not is_hermitian(p) then
     	 {prints("oops, parameter is not hermitian");} false
-   else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(K_type_pol(p)))
-   fi
+   	 else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(
+   	 	  K_type_pol(finalize_extended(p*0, delta))))
+       fi
 
 {. half sum of positive good restricted roots, in special case of
 quasisplit G, x_open, fine parameter; d is lambda-rho .}
