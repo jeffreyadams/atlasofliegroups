@@ -1,12 +1,47 @@
-{determines whether a ratvec q is contained in the convex hull of a list P of ratvecs}
+{Let G be a root datum, and let R be the interior of the convex hull of a finite set V \subset X^*(T) \otimes_Z Q. The affine co-roots for G induce a decomposition of R
+into a finite number of regions S1,...,Sn, and each Si is the interior of the convex hull of a finite set Wi \subset X^*(T) \otimes_Z Q. If we assume that Wi are minimal (i.e. that each
+Wi is the *vertex set* of Si), then the sets Wi are well-defined. The main function in this file chop_coroots(G,V) outputs the list [W1,...,Wn]}
+
 
 <basic.at
 <subgroups.at { for (paradoxically) |Levi_subgroups| }
-<facetious.at { for |FPP_vertex_sets| }
 
-set in_hull([ratvec] P, ratvec q) = bool:
-let x=sum(#q,for p in P do p-q od) in
-#P != sum(for p in P do #(x*(p-q)>0) od)
+
+set almost_LI([ratvec] V) = bool:
+let M=mat:for v in V do numer(v) od in
+rank(M)+1=#V
+
+set almost_LI_subsets([ratvec] V) = [[ratvec]]:
+if #V=0 then [[ratvec]]:[[]] else
+let r=rank(mat:for v in V do numer(v) od) then
+subsets=choices_from(V,r+1) in
+##(for S in subsets do if almost_LI(S) then [S] else [] fi od) fi
+
+set bad_index([ratvec] V) = int:
+min(##(for j:#V do if rank(mat:for i:j+1 do numer(V[i]) od)=j then [j] else [] fi od))
+
+set find_basis([ratvec] V) = (mat,ratvec):
+let k=bad_index(V) in
+(mat:##(for i:k do numer(V[i]) od, for i:#V-k-1 from k+1 do numer(V[i]) od), V[k])
+
+set in_hull_0_almost_LI([ratvec] V) = bool:
+if #V=0 then false else
+let S=required_solution(find_basis(V)) in
+sum(for s in S do #(s>0) od)=0 fi
+
+set in_hull_0([ratvec] V) = bool:
+let subsets=almost_LI_subsets(V) in
+sum(for S in subsets do #(in_hull_0_almost_LI(S)) od)>0
+
+set in_hull([ratvec] V, ratvec p) = bool:
+let W=for v in V do v-p od in
+in_hull_0(W)
+
+{given list of distinct ratvecs, extracts vertices of convex hull}
+
+set vertices_of_hull([ratvec] V) = [ratvec]:
+##(for k:#V do if not(in_hull(##(for i:k do V[i] od, for i:#V-k-1 from k+1 do V[i] od),V[k])) then [V[k]] else [] fi od)
+
 
 {given the vertex set P of a convex region and a pair of indices i,j, determines whether P[i],P[j] are joined by an edge}
 
@@ -51,16 +86,26 @@ let n=#list in
 fi od)) od)
 
 
+set chop_big([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+(x,y)=(min(e),max(e)) in
+if is_integer(x) then if is_integer(y) then for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od
+                                            else ##(for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od,[extractright(V,f,floor(y))]) fi
+                      else if is_integer(y) then ##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od)
+                                            else ##(##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od),[extractright(V,f,floor(y))]) fi fi
+
+set chop_small([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+I=intseq(e) in
+for n in I do extract(V,f,n,n) od
+
+
 set chop([ratvec] V, vec f) = [[ratvec]]:
 let e=for v in V do f*v od then
 (x,y)=(min(e),max(e)) in
-if floor(x)>=ceil(y)-1 then [V] {in this case, there are no new *max diml* regions}
+if floor(x)>=ceil(y)-1 then [V]
 else let V=##(V,new_verts(V,f)) in
-if is_integer(x) then if is_integer(y) then for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od
-                                            else ##(for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od,[extractright(V,f,floor(y))]) fi
-
-                      else if is_integer(y) then ##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od)
-                                            else ##(##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od),[extractright(V,f,floor(y))]) fi fi fi
+for R in ##(chop_small(V,f),chop_big(V,f)) do vertices_of_hull(R) od fi
 
 set bary([ratvec] vertices) = ratvec:
 let n=#vertices, l=#vertices[0] in
@@ -74,27 +119,13 @@ for c in C do output:=##(for region in output do chop(region,c) od) od; output
 
 set chop_coroots_verbose(RootDatum G, [ratvec] vertices) = void:
 let C=poscoroots(G), output=[[ratvec]]:[vertices] in
-for c@i in C do output:=##(for region in output do chop(region,c) od); prints("coroot ", i, ": ", #output, " convex regions") od
+for c@i in C do output:=##(for region in output do chop(region,c) od); prints("coroot ", i, ": ", #output, " convex regions") od;
+prints("Final output: "); for R@i in output do prints("Region ", i, ": ", #R, " vertices, barycenter = ", bary(R))od
 
-
-
-
-{You can ignore the functions below...}
-
-
-
-{determined whether a ratvec in X^*(T) \otimes_Z Q is contained in W*FPP(G)}
-
-set in_FPP_pt(RootDatum G, ratvec x) = bool:
-let y=dominant(G,x), S=simple_coroots(G) in
-sum(for s in S do #(s*y<=1) od)=#S
-
-
-{determine whether a convex region in X^*(T) \otimes_Z Q, specified by vertices, is contained in W*FPP(G)}
-
-set in_FPP(RootDatum G, [ratvec] vertices) = bool:
-let all_regions = chop_coroots(G,vertices) in
-sum(for R in all_regions do #(in_FPP_pt(G,bary(R))) od) = #all_regions
+set chop_coroots_bary(RootDatum G, [ratvec] vertices) = [ratvec]:
+let C=poscoroots(G), output=[[ratvec]]:[vertices] in
+for c in C do output:=##(for region in output do chop(region,c) od) od; 
+for R in output do bary(R) od
 
 
 {list maximal levis}
@@ -104,52 +135,4 @@ let levis=Levi_subgroups(G), output=[RootDatum]:[] in
 for L in levis do if ss_rank(L) = ss_rank(G)-1 then output:=#(output,L) else output:=output fi od; output
 
 
-{list max dim facets in simple group}
 
-set max_facets_simple(RootDatum L) = [[ratvec]]:
-let n=#FPP_vertex_sets(L) in
-FPP_vertex_sets(L)[n-1]
-
-
-{compute product of a sequence of facets}
-
-set prod([[ratvec]] facets) = [ratvec]:
-let indices=all_words(for f in facets do #f od) in
-for I in indices do sum(#facets[0][0],for x@i in I do facets[i][x] od) od
-
-
-{list max dim facets of non-simple group L}
-
-set max_facets(RootDatum L) = [[ratvec]]:
-let S=simple_factors(L) in
-if #S=1 then max_facets_simple(L) else
-let indices = all_words(for s in S do #max_facets_simple(s) od) in
-for I in indices do prod(for x@i in I do max_facets_simple(S[i])[x] od) od fi
-
-
-
-
-{Run over all maximal Levi subgroups L in G. Test whether all L-facets are contained in W*FPP(G)}
-
-set in_FPP_Levi(RootDatum G) = void:
-let T=max_levis(G) in
-for L in T do if sum(for R in max_facets(L) do #(in_FPP(G,R)) od)=#max_facets(L)
-then prints("FPP of Levi factor ", L, " is contained in W*FPP(G)") else prints("FPP of Levi factor ", L, " is not contained in W*FPP(G)") fi od
-
-
-
-
-{Unrelated function: tests irreducibility at several random points in a facet}
-
-set is_irred(RealForm G, ratvec nu) = bool:
-let p=character_formula(parameter(x_open(G),G.rho,nu)) then
-q=as_pol(first_param(p)) in
-p=q
-
-
-
-set is_irred(RealForm G, [ratvec] F) = void:
-let n=#F then
-X=box(5,n) then
-Y=##(for I in X do if sum(for i:n do #(I[i]=0) od)=0 then [I] else [] fi od) in
-prints("# of points = ", #Y, " number of irred points = ", sum(for I in Y do #(is_irred(G,sum(#F[0],for i:n do F[i]*I[i] od)/sum(for i:n do I[i] od))) od))
