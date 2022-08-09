@@ -1003,12 +1003,13 @@ in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
 {extra argument is a possible simple coroot allowed to be 2 on FPP}
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
     FacetData:
-(   let vertex_data = FPP_vertex_data(Affd,j0)
+(   let vertex_dataFold = FPP_vertex_data(Affd,j0)
     , fundVerts = facets_fundamental(Affd)
-    {then fundVertsG = for FVd in fundVerts do for FV in FVd do M*FV od od}
-    then N= [(string,vec)]: for @j in vertex_data.list do ("?",[j]) od
+    then vertex_listG = for v in vertex_dataFold.list do M*v od
+    then vertex_dataG = vertex_listG.to_vertex_data
+    then N= [(string,vec)]: for @j in vertex_dataFold.list do ("?",[j]) od
     in
-    ( vertex_data
+    ( vertex_dataG
     , [[(string,vec)]]:
       N #
       for d: Affd.semisimple_rank from 1
@@ -1028,7 +1029,7 @@ set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
 	      do  let (w,) = from_dominant(Affd,wFB)
 	      in  [(string, vec)]:
 		  for tau in FPPtauRoots(Affd,wFB,j0)
- 		  do ("?", vec: facet_indices(vertex_data.lookup, (tau,w)*FV))
+ 		  do ("?", vec: facet_indices(vertex_dataFold.lookup, (tau,w)*FV))
 		  od
 	      od.##{ now type [string,vec] }
 	  od.##
@@ -1037,10 +1038,11 @@ set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
 )
 
 set facet_data_fold(RealForm G) = FacetData:
-    let (rd,M,j0) = cofolded(G)
-    then (vd,FVFold) = facet_data_fold(rd,M,j0)
+{ let (rd,M,j0) = cofolded(G)}
+    facet_data_fold(cofolded(G))
+{ then (vd,FVFold) = facet_data_fold(rd,M,j0)
     then verts = for v in vd.list do M*v od
-    in (verts.to_vertex_data, FVFold)
+    in (verts.to_vertex_data, FVFold) }
 
 {.facet vertex indices for all d-diml facets in FPP.}
 set FPP_indices (SimpleAffine Affd, VertexData vd, int d) = [FacetVertsIndex]:
@@ -1323,8 +1325,8 @@ set actualize \
         for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
     then () = for FSVId@d in FPPstInd
     do  for stFind in FSVId
-	do  if stFind.status[0] = "T"
-	    then
+	do  { if stFind.status[0] = "T"
+	    then }
 	       let v = stFind.verts
 	       then vAct = vec:
 		   for i in v
@@ -1333,7 +1335,7 @@ set actualize \
 	       then FSVId0 = FSVIAct[#vAct -1]
 	    in  FSVId0 ##:= [(stFind.status, vAct)]
 	    ;   FSVIAct[#vAct - 1]:=FSVId0
-	    fi
+	    { fi }
 	od
     od
     then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
@@ -1591,7 +1593,7 @@ set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) =
 	 for FPPstIndd in FPPstInd
 	 do for Find in FPPstIndd do facet_bary(vd.list, Find.verts) od
 	 od
-    , lookups = [(vec->int)]: { lookup functions for equidiemnsional facets }
+    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
         for L in FPPstInd do index_in_facet_list(L) od
     then temp =
     for d:#FPPstInd
@@ -1693,11 +1695,7 @@ set spherical(RealForm G) = FacetData:
 
 {this seems OK}
 set sphericalFold(RealForm G) = FacetData:
-    let (rd,M,j0) = cofolded(G)
-    {NEED TO USE j0 and FPPtauRoots to construct FPP}
-    then (vd, FVFold) = facet_data_fold(rd,M,j0)
-    then verts = for v in vd.list do M*v od
-    then data = (verts.to_vertex_data,FVFold)
+    let data = facet_data_fold(G)
     then dataIndncH = down_to_business(G,data) {??? folded case ???}
     in actualize(x_open(G), G.rho, spherical(G,dataIndncH))
 
@@ -1713,13 +1711,13 @@ set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
     then dataIndncH = down_to_business(G,data)
     in spherical_test(G,dataIndncH,tester)
 
+{. apply actualize to the FacetData before computing unitarity; should mean that output is already actualized .}
 set spherical_testFold(RealForm G, (Param -> bool) tester) = FacetData:
     let (rd,M,j0) = cofolded(G)
-    then (vd, FVFold) = facet_data_fold(rd,M,j0)
-    then verts = for v in vd.list do M*v od
-    then data = (verts.to_vertex_data,FVFold)
-    then dataIndncH = down_to_business(G,data)
-    in actualize(x_open(G), G.rho, spherical_test(G,dataIndncH,tester))
+    then dataFold = facet_data_fold(rd,M,j0)
+    then dataAct = actualize(x_open(G), G.rho, dataFold)
+    then dataIndncH = down_to_business(G,dataAct)
+    in spherical_test(G,dataIndncH,tester)
 
 set spherical_testC(RealForm G, (Param -> bool) tester) = FacetData:
     let GL = simple_factors(G)[0]
