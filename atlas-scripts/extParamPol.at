@@ -3,57 +3,96 @@
 <bigMatrices.at
 <hermitian.at
 
-
-{ implement ParamPol for extended parameters }
+set is_int(Split z)=bool: =s_part(z)
 
 ed_verbose:=false
 
-set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind) ]
+set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta),
+           ZExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta),
+	   ZParamPol = ParamPol]
+
+{
+ ZExtParamPol <--> ParamPol  <--> virtual parameter for the extended group G-delta, with integer coefficients
+ Recall also: ParamPol <-> Hermitian forms for G
+ ExtParamPol  <--> Hermitian forms for G-delta, virtual characters of doubly extended group
+ there is no ParamPol version of an ExtParamPol (if not a ZExtParamPol)
+
+ ZExtParamPol <--> ParamPol
+ both sides represent integer sum of parameters for G-delta
+ ParamPol: assume it is delta-fixed: \sum (a_i+b_is)*p_i + \sum (c_j+sd_j)*(q_j+ delta(q_j))
+ -> ExtParamPol: (\sum a_ip_i, \sum_i b_i p_i, \sum(c_j+d_j)q_j
+ In the other direction
+ ExtParamPol (P,Q,R,delta) = (\sum a_i p_i, \sum b_ip_i, \sum c_j q_j) ->
+ ParamPol:  (a_i+b_is)p_i + \sum_j c_j q_j
+ Caution: ZExtParamPol (0,0,p) <--> ParamPol p+delta(p)
+ so:       ZExtParamPol (0,0,p+delta(p)) <--> ParamPol 2(p+delta(p)) probably not what is intended
+
+ Equality of ExtParamPols: (P,Q,R) = (P',Q',R') if P=P', Q=Q' and
+ (0,0,(a+bs)p + (c+ds)delta(p)) = (0,0,(a+b+c+d)p)
+ i.e.: (1+delta)R|s=1 = (1+delta)R'|s=1
+ i.e. s_to_1(one_plus_delta(R,delta))=s_to_1(one_plus_delta(R',delta))
+}
+
+set is_ZParamPol(ParamPol P)=bool:
+all(for (c,) in %P do is_int(c) od)
+
+set is_ZExtParamPol(ExtParamPol (P,Q,R,))=bool:
+is_ZParamPol(P) and is_ZParamPol(Q) and is_ZParamPol(R)
+
+set one_plus_delta(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for (c,p) in %P do c*(p + twist(p,delta)) od
+
+set =(ZExtParamPol (P,Q,R,delta),ZExtParamPol (S,T,U,epsilon))=bool:
+delta=epsilon and P=S and Q=T and s_to_1(one_plus_delta(R,delta))=s_to_1(one_plus_delta(U,delta))
+
+
 { (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
   \sum_i s_iE(p_i,+) + \sum_j t_j E(q_j,-) + \sum_k u_k E(r_k,ind)
 }
 
-set *(Split s,ExtParamPol(P_plus,P_minus,P_ind))= ExtParamPol:
-  (s*P_plus,s*P_minus,s*P_ind)
+set *(Split s,ExtParamPol(P_plus,P_minus,P_ind,delta))= ExtParamPol:
+  (s*P_plus,s*P_minus,s*P_ind,delta)
 
 set extParamPol (ExtParam E) = ExtParamPol:
   let p=parameter(E) then N=null_module(real_form(p)) then F=N+p in
-  if not is_fixed(E.ic.distinguished_involution,p) then (N,N,F)
-  elif sign(E)=1 then (F,N,N)
-  else (N,F,N)
+  if not is_fixed(E.ic.distinguished_involution,p) then (N,N,F,E.delta)
+  elif sign(E)=1 then (F,N,N,E.delta)
+  else (N,F,N,E.delta)
   fi
 
 { presumably type is in range {-1,0,1} here }
-set extParamPol (Param p,int type) = ExtParamPol:
+set extParamPol (Param p,int type,mat delta) = ExtParamPol:
   let N=null_module(real_form(p)) in
-  if type=1 then (N+p,N,N)
-  elif type=minus_1 then (N,N+p,N)
-  else (N,N,N+p)
+  if type=1 then (N+p,N,N,delta)
+  elif type=minus_1 then (N,N+p,N,delta)
+  else (N,N,N+p,delta)
   fi
 
 set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
 
-set + (ExtParamPol(P_plus_1,P_minus_1,P_ind_1)
-      ,ExtParamPol (P_plus_2,P_minus_2,P_ind_2)
+set + (ExtParamPol(P_plus_1,P_minus_1,P_ind_1,delta)
+      ,ExtParamPol (P_plus_2,P_minus_2,P_ind_2,epsilon)
       ) = ExtParamPol:
-  (P_plus_1+P_plus_2,P_minus_1+P_minus_2,P_ind_1+P_ind_2)
+      assert(delta=epsilon,"deltas don't match");
+  (P_plus_1+P_plus_2,P_minus_1+P_minus_2,P_ind_1+P_ind_2,delta)
 
-set -(ExtParamPol(P_plus_1,P_minus_1,P_ind_1)
-     ,ExtParamPol (P_plus_2,P_minus_2,P_ind_2)
+set -(ExtParamPol(P_plus_1,P_minus_1,P_ind_1,delta)
+     ,ExtParamPol (P_plus_2,P_minus_2,P_ind_2,epsilon)
      ) = ExtParamPol:
-  (P_plus_1-P_plus_2,P_minus_1-P_minus_2,P_ind_1-P_ind_2)
+     assert(delta=epsilon,"deltas don't match");
+  (P_plus_1-P_plus_2,P_minus_1-P_minus_2,P_ind_1-P_ind_2,delta)
 
 set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
   let rv=P in for R in Q do rv+:=R od;rv
 set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
-  P+S*extParamPol(p,type)
+  P+S*extParamPol(p,type,P.delta)
 
-set swap(ExtParamPol (P,Q,R))=ExtParamPol: (Q,P,R)
-set s_to_1(ExtParamPol (P,Q,R))=ExtParamPol: (P.s_to_1,Q.s_to_1,R.s_to_1)
+set swap(ExtParamPol (P,Q,R,delta))=ExtParamPol: (Q,P,R,delta)
+set s_to_1(ExtParamPol (P,Q,R,delta))=ExtParamPol: (P.s_to_1,Q.s_to_1,R.s_to_1,delta)
 
-set display (ExtParamPol(A,B,C)) = void:
+set display (ExtParamPol(A,B,C,)) = void:
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
-set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (N,N,N)
+set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (N,N,N,G.distinguished_involution)
 
 set find ([(int,int)] complete_indices,(int,int)pair) =int:
   first(#complete_indices,(int i)bool:complete_indices[i]=pair)
@@ -95,15 +134,15 @@ in for q_ind : nB
       then onr=minus_1^half(on_p-orientation_nr(B[ordinary_index_q]))
       then term=(1-s)*onr*f*B[ordinary_index_q]
       in
-      if epsilon_q=1 then (term,N,N)
-      elif epsilon_q=minus_1 then (N,term,N)
-      else (N,N,term)
+      if epsilon_q=1 then (term,N,N,delta)
+      elif epsilon_q=minus_1 then (N,term,N,delta)
+      else (N,N,term,delta)
       fi
     od
 )
 
 set deform = deform_unreduced@(Param,mat,int)
-
+{
 set deform_old (Param p, mat delta, int type) = ExtParamPol:
 (
   if ed_verbose
@@ -160,16 +199,17 @@ set deform_old (Param p, mat delta, int type) = ExtParamPol:
      in (1-s)*outer_sum
   fi
 )
+}
 
-set deform (ExtParam E, mat delta) = ExtParamPol:
-   deform(parameter(E), delta, sign(E))
+set deform (ExtParam E) = ExtParamPol:
+   deform(parameter(E), E.delta, sign(E))
 
 {P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
 set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
 assert(is_fixed(delta,P),"P is not delta-fixed");
 let monomials=[Param]:[] in
 for c@p in P do
- let f=find(monomials,twist(delta,p)) in
+ let f=find(monomials,twist(p,delta)) in
   if f=-1 then prints("p=",p);monomials#:=p fi
 od;
 null_module(P.real_form) + for p in monomials do P[p]*p od
@@ -181,19 +221,39 @@ rv
 
 set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
 
-set convert_to_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
+
+
+{ParamPol <-> ZExtParamPol (see above), conversion in both directions}
+{ZExtParamPol: (P,Q,R) have no s-terms: represents an ordinary ParamPol,
+convert to ordinary ParamPol}
+set convert_to_param_pol(ZExtParamPol EP)=ParamPol:
+assert(is_ZExtParamPol(EP),"not a ZExtParamPol");
+let (P,Q,R,delta)=EP in P + s*Q + one_plus_delta(R,delta)
+
+{convert ParamPol P_in (with s-terms) to ZExtParamPol (P,Q,R) (no s-terms)}
+{assumption: P_in is delta-fixed, i.e. if delta(p)\ne p then
+ coefficient(p) = coefficient(delta(p))
+ P_in= (a+bs)*p + (a+bs)*delta(p) -> (0,0,(a+b)*p) = (0,0,(a+b)*delta(p))
+ suppose P_in=(a+bs)q + (a+bs)delta(q), this <-> ind((a+b)q)=ind((a+b)delta(q))
+ on the other hand this corresponds to the ExtParamPol (P,Q,(a+b)q) or (P,Q,(a+b)delta(q))
+}
+
+set convert_to_Z_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
+assert(is_fixed(delta,P), "ParamPol is not delta-fixed");
+let Q=twisted_orbit_reps(P,delta) in 
 let plus=null_module(P.real_form) then
 minus=null_module(P.real_form) then
 ind=null_module(P.real_form) then
-()=for c@p in P do
+()=for c@p in Q do
  if is_fixed(delta,p) then
   plus+:=int_part(c)*p;
   minus+:=s_part(c)*p
  else
-  ind +:=c*p
+  ind +:=(int_part(c)+s_part(c))*p
  fi
 od in
-(plus,minus,ind)
+assert(is_ZExtParamPol((plus,minus,ind,delta)), "not a ZExtParamPol");
+(plus,minus,ind,delta) 
 
 {E=(P,Q,R)
   corresponding to xi (not delta)
@@ -202,8 +262,8 @@ od in
   take P-Q:
     that is, a term (p,q,0) has twisted character p-q
 }
-set convert_to_param_pol(ExtParamPol E)=ParamPol:
-let (P,Q,R)=E in P-Q
+{set convert_to_param_pol(ExtParamPol E)=ParamPol:
+let (P,Q,R,delta)=E in P-Q}
 
 set finalize_extended_s(Param p, mat delta)=ParamPol:
 if is_fixed(delta,p) then
@@ -213,24 +273,26 @@ else
 fi
 
 {this function probably should only by applied to a ParamPol with integer coefficients}
-set finalize_extended_s(ParamPol P,mat delta)=ParamPol:
+set finalize_extended_s(ZParamPol P,mat delta)=ParamPol:
+assert(is_ZParamPol(P),"Not a ZParamPol");
 let rv=null_module(P.real_form) in
  for c@p in P do rv+:=c*finalize_extended_s(p,delta) od;
 rv
 
 set finalize_extended_t(Param p, mat xi)=ExtParamPol:
-convert_to_ext_param_pol(finalize_extended_s(p,xi),xi)
+convert_to_Z_ext_param_pol(finalize_extended_s(p,xi),xi)
 
 set finalize_extended_t(ParamPol P, mat xi)=ExtParamPol:
 let rv=null_ext_module(P.real_form) in
  for c@p in P do rv+:=c*finalize_extended_t(p,xi) od;
 rv
 
-set finalize_extended_t(ExtParamPol E, mat xi)=ExtParamPol:
-let (P,Q,R)=E in
+set finalize_extended_t(ExtParamPol E)=ExtParamPol:
+let (P,Q,R,xi)=E in
 finalize_extended_t(P,xi) +
 swap(finalize_extended_t(Q,xi)) +
 finalize_extended_t(R,xi)
+
 
 
 set change_nu (Param p, rat factor, int type) = ExtParamPol:
@@ -244,17 +306,17 @@ set change_nu (Param p, rat factor, int type) = ExtParamPol:
  {although p is not delta-fixed, it may be when nu is varied, this
   is always the case if factor=0
   then replace (N,N,q) with (q,q,N)}
-  in if is_fixed(delta,q) then rv:=(q,q,N) else rv:=(N,N,q) fi
+  in if is_fixed(delta,q) then rv:=(q,q,N,delta) else rv:=(N,N,q,delta) fi
   else
      let P=finalize_extended(p*factor,delta)
   in for c@q in P
      do let (a,b)=%c in
-        if type=1 then  rv+:=(a*q,b*q,N)  else rv+:=(b*q,a*q,N) fi
+        if type=1 then  rv+:=(a*q,b*q,N,delta)  else rv+:=(b*q,a*q,N,delta) fi
      od
   fi; rv
 
 {replace ExtParamPol (P_plus,P_minus,P_ind) with [(s_i,c_i,type_i)]}
-set % (ExtParamPol(P_plus,P_minus,P_ind)) = [(Split,Param,int)]:
+set % (ExtParamPol(P_plus,P_minus,P_ind,)) = [(Split,Param,int)]:
 ( for c@p in P_plus do (c,p,1) od
 ##for c@p in P_minus do (c,p,minus_1) od
 ##for c@p in P_ind do (c,p,0) od
@@ -337,6 +399,7 @@ for (j,type)@i in complete_indices do
 od;
 rv
 
+
 set extended_character_formula_old (Param p,mat delta) = ParamPol:
 if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg_old(p,delta)
 else
@@ -390,7 +453,7 @@ set print_extended_character_formula_old (Param p,mat delta) = void:print_extend
 set extended_character_formula_reg (Param p,mat delta) =ExtParamPol:
 {assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");}
 let G=p.real_form then
-(plus,minus,ind)=null_ext_module(p.real_form) then
+(plus,minus,ind,)=null_ext_module(p.real_form) then
 B=block_of(p) then
 (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
 P=big_KL_P_signed_polynomials(B,delta) then
@@ -405,7 +468,7 @@ for (j,type)@i in complete_indices do
   fi
  fi
 od;
-(plus,minus,ind)
+(plus,minus,ind,delta)
 
 set extended_character_formula (Param p,mat delta) = ExtParamPol:
 extended_character_formula_reg(p,delta)
@@ -416,7 +479,7 @@ else
  let preg=make_regular_param(p) then
  gamma=p.infinitesimal_character then
  ecfreg=extended_character_formula_reg(preg,delta) then
- (plus,minus,ind)=ecfreg then
+ (plus,minus,ind,)=ecfreg then
  {need to apply T_param term by term because putting in a ParamPol
   finalizes each term which is not OK}
  rv=null_ext_module(p.real_form) in
@@ -489,10 +552,10 @@ set print_extended_indices([Param] B,mat delta) = void:
 {.c-form of std module for the extended group is just full_def.}
 set c_form_std_big = full_deform@(Param,mat,int)
 
-set c_form_irreducible_big (Param p,mat delta, int type,ExtParamPol cf) =
+set c_form_irreducible_big (Param p, int type,ExtParamPol cf) =
       ExtParamPol:
 (  let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p))
-   , (plus,minus,induced)=cf
+   , (plus,minus,induced,delta)=cf
 in for coeff@q in plus
    do {prints(new_line,coeff,"*",q, new_line,"#done=", #done);}
       P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1)
@@ -508,9 +571,9 @@ in for coeff@q in plus
       P +:= coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0)
    od
 ;  {multiply induced terms by (1+s) and replace with plus/minus pair}
-   let (P_plus,P_minus,P_ind)=P
+   let (P_plus,P_minus,P_ind,)=P
 in for c@q in P_ind do (P_plus+:=c*q, P_minus+:=c*q) od
-;  (P_plus,P_minus,null_module(real_form(p)))
+;  (P_plus,P_minus,null_module(real_form(p)),delta)
 )
 
 
@@ -638,10 +701,10 @@ let rv=null_module(P.real_form) in
  od;
 rv.s_to_1
 
-{given extended formul in terms of Z[t], set t=1,
+{given extended formula in terms of Z[t], set t=1,
  and also replace each nonfixed term q with q + delta(q)}
-set extended_t_to_1(ExtParamPol E,mat xi)=
-let (P,Q,R)=E then
+set extended_t_to_1(ExtParamPol E)=
+let (P,Q,R,xi)=E then
 rv=null_module(P.real_form) in
  for c@p in P do rv+:=c*p od;
  for c@p in Q do rv+:=-c*p od;
