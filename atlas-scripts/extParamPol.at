@@ -206,13 +206,15 @@ set deform (ExtParam E) = ExtParamPol:
 
 {P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
 set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
-assert(is_fixed(delta,P),"P is not delta-fixed");
+{assert(is_fixed(delta,P),"P is not delta-fixed");}
 let monomials=[Param]:[] in
 for c@p in P do
  let f=find(monomials,twist(p,delta)) in
-  if f=-1 then prints("p=",p);monomials#:=p fi
+  if f=-1 then prints("p=",p);monomials##:=[p, twist(p,delta)] fi
 od;
-null_module(P.real_form) + for p in monomials do P[p]*p od
+let rv=
+null_module(P.real_form) + for p in monomials do P[p]*p od 
+in prints("RV=",rv, is_fixed(delta,rv)); rv
 
 set fixed_terms(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in 
@@ -239,7 +241,8 @@ let (P,Q,R,delta)=EP in P + s*Q + one_plus_delta(R,delta)
 }
 
 set convert_to_Z_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
-assert(is_fixed(delta,P), "ParamPol is not delta-fixed");
+let ()=prints("CONVERTING: ", P, new_line, twist(delta,P)) in
+{assert(is_fixed(delta,P), "ParamPol is not delta-fixed");}
 let Q=twisted_orbit_reps(P,delta) in 
 let plus=null_module(P.real_form) then
 minus=null_module(P.real_form) then
@@ -461,9 +464,9 @@ index=find(complete_indices,(find(B,p),1)) in
 for (j,type)@i in complete_indices do
  let c=eval(P[i][index],s) in
  if !=c then
-  if type=1 then plus+:=c*B[j]
-    elif type=-1 then minus+:= c*B[j]
-    elif type=0 then {prints("ind=", ind,"c=",c," j=",j);} ind+:=c*B[j]
+  if type=1 then plus+:=int_part(c)*B[j]; minus+:=s_part(c)*B[j]
+    elif type=-1 then minus+:= int_part(c)*B[j];plus+:=s_part(c)*B[j]
+    elif type=0 then  prints("ind=", ind,"c=",c," j=",j); ind+:=(int_part(c)+s_part(c))*B[j]
     else error("c\ne 0,\pm 1")
   fi
  fi
@@ -480,20 +483,35 @@ else
  gamma=p.infinitesimal_character then
  ecfreg=extended_character_formula_reg(preg,delta) then
  (plus,minus,ind,)=ecfreg then
+ ()=prints("MINUS=", minus) then
  {need to apply T_param term by term because putting in a ParamPol
   finalizes each term which is not OK}
  rv=null_ext_module(p.real_form) in
    for c@p in plus do
-{     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+     let ()=prints(new_line,"PLUS,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in 
       rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
    for c@p in minus do
-{     let ()=prints(new_line,"MINUS,p=",p,c*swap(finalize_extended_t(T_param(p,gamma),delta))) in}
-      rv+:=c*swap(finalize_extended_t(T_param(p,gamma),delta)) od;
+     let ()=prints(new_line,"MINUS,p=",p,new_line,
+     "c*swap: ", c*swap(finalize_extended_t(T_param(p,gamma),delta))) in
+     let ()=prints("OK") in
+     let ()=prints("going to finalize_extended: ", p, " ", gamma) in
+     let z=finalize_extended_t(T_param(p,gamma),delta) then
+    ()=prints("DONE finalizing") then
+     ()=prints("z=",z) in 
+{      rv+:=swap(c*swap(finalize_extended_t(T_param(p,gamma),delta))) od;}
+      rv+:=swap(z) od;
    for c@p in ind do
-     {let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in }
+     let ()=prints("doing ind") in
+     let ()=prints(new_line,"IND,p=",p,c*finalize_extended_t(T_param(p,gamma),delta)) in 
       rv+:=c*finalize_extended_t(T_param(p,gamma),delta) od;
  rv
  fi
+
+set test_ecf(Param p, mat delta)=bool:
+let ecf=extended_character_formula_new(p,delta) then
+cf=character_formula(p) in
+prints("ecf=", ecf, new_line, "cf=", cf, new_line);
+convert_to_param_pol(ecf).s_to_1=cf
 
 set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)

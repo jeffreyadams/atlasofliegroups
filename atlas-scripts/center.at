@@ -223,7 +223,7 @@ set center_torsion_quotient(RootDatum rd) = [ratvec]:
      od
 
 set center(RootDatum rd)=[ratvec]:
-  assert(rd.is_semisimple,"Groups is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
+  assert(rd.is_semisimple,"Group is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
   center_torsion_quotient(rd)
 
 set type_center(RootDatum rd) =[int]:
