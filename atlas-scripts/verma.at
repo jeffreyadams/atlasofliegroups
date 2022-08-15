@@ -1,0 +1,86 @@
+< sub_cells.at {for left_cell_of}
+< groups.at {for complexification}
+< complex.at {for parameter_g}
+< cells.at {for cell_character}
+< character_tables.at {for generic_degree, is_special_representation}
+< springer_tables_reductive.at {for Springer_table}
+
+{. Meant to compute information about the irreducible highest weight
+module for a RootDatum G of highest weight lambda-rho, with lambda in
+X^* \otimes_Z Q a ratvec .}
+
+{ produces a parameter for complexification having same LAnn as
+Ann(L(lambda - rho), and infinitesimal character (lambda, -lambda+2*rho)
+}
+set C_parameter(RootDatum R, ratvec lambda) = Param:
+    let Rint = integrality_datum(R,lambda)
+    then (w, lambdadom) = from_dominant(Rint,lambda),
+    	R_C = R.complexification
+    in parameter_g(R_C, lambda, -lambdadom - R.rho)
+    
+{A representation of the complex INTEGRAL group having LAnn equal to
+the annihilator of L_int(lambda) (irreducible Verma for the
+integrality datum}
+set C_parameter_int(RootDatum R, ratvec lambda) = Param:
+    let Rint = integrality_datum(R,lambda)
+    then (w, lambdadom) = from_dominant(Rint,lambda),
+    	Rint_C = Rint.complexification
+    in parameter_g(Rint_C, lambda, -lambdadom - Rint.rho)
+
+{the entire left cell (for the integral Weyl group) corresponding to
+the irreducible Verma L(lambda)}
+set left_cell_Verma(RootDatum R, ratvec lambda) = WCell:
+    let Rint = integrality_datum(R,lambda)
+    then p = C_parameter_int(R,lambda)
+    in left_cell_of(p)
+
+set left_cell_rep_Verma(RootDatum R, ratvec lambda) = vec:
+    let Rint = integrality_datum(R,lambda)
+    then CTint = Rint.character_table
+    in decompose(CTint)(cell_character(CTint, left_cell_Verma(R,lambda)))
+
+{returns the special rep of the integral Weyl group for lambda defined
+by L(lambda) (irr of highest wt lambda - rho)}
+set special_rep_Verma(RootDatum R, ratvec lambda) =
+    (CharacterTable,int):
+    let Rint = integrality_datum(R,lambda)
+    then CTint = Rint.character_table
+    then mults = decompose(CTint)(cell_character(CTint,
+    	 left_cell_Verma(R,lambda)))
+    then m = first (for v@j in mults do
+    v != 0 and is_special_representation(CTint,j) od)
+    in (CTint, m)
+
+set special_orbit_Verma(RootDatum R, ratvec lambda) =
+    (RootDatum,ComplexNilpotent):
+    let Rint = integrality_datum(R,lambda)
+    then STint = Rint.Springer_table
+    then (CTint,m) = special_rep_Verma(R,lambda)
+    then (,Oint) = springer_inverse(STint)(m)
+    in (Rint, Oint)
+
+set GK_dim_Verma(RootDatum R, ratvec lambda) = int:
+    let (CT,m) = special_rep_Verma(R,lambda)
+    in #R.posroots - generic_degree(CT)(m)
+
+{This version is much slower}
+{set GK_dim_Verma(RootDatum R, ratvec lambda) = int:
+    let Rint = integrality_datum(R,lambda)
+    in GK_dim(C_parameter(R,lambda))\2 + #R.posroots - #Rint.posroots}
+
+{WOULD LIKE: additional function (Jeff, could you write this?)
+
+set Springer_rep_Verma(RootDatum R, ratvec lambda) =
+    (SpringerTable, int)
+
+returning the Springer table of R, and the Weyl group rep obtained by
+truncated induction from W(Rint) to W(R) of special_rep_Verma}
+
+{WOULD LIKE: additional function
+
+set Springer_orbit_Verma(RootDatum R, ratvec lambda) =
+    ComplexNilpotent
+    let (,OSpringer) = springer_inverse(Springer_rep_Verma(R,lambda))
+    in OSpringer
+
+}
