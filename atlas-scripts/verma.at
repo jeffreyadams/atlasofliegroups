@@ -10,13 +10,13 @@ module for a RootDatum G of highest weight lambda-rho, with lambda in
 X^* \otimes_Z Q a ratvec .}
 
 { produces a parameter for complexification having same LAnn as
-Ann(L(lambda - rho), and infinitesimal character (lambda, -lambda+rho)
-}
+Ann(L(lambda - rho), and infinitesimal character (lambda, -lambdadom -
+2*rho) }
 set C_parameter(RootDatum R, ratvec lambda) = Param:
     let Rint = integrality_datum(R,lambda)
     then (w, lambdadom) = from_dominant(Rint,lambda),
     	R_C = R.complexification
-    in parameter_g(R_C, lambda, -lambdadom - R.rho)
+    in parameter_g(R_C, lambda, -lambdadom - 2*R.rho)
 
 {A representation of the complex INTEGRAL group having LAnn equal to
 the annihilator of L_int(lambda) (irreducible Verma for the
@@ -25,7 +25,7 @@ set C_parameter_int(RootDatum R, ratvec lambda) = Param:
     let Rint = integrality_datum(R,lambda)
     then (w, lambdadom) = from_dominant(Rint,lambda),
     	Rint_C = Rint.complexification
-    in parameter_g(Rint_C, lambda, -lambdadom - Rint.rho)
+    in parameter_g(Rint_C, lambda, -lambdadom - 2* Rint.rho)
 
 {the entire left cell (for the integral Weyl group) corresponding to
 the irreducible Verma L(lambda)}
