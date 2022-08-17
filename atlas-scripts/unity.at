@@ -22,9 +22,14 @@ set next_height(KType mu)  = int:
 set next_height(Param p) = int:
     height(next_to_lowest(LKTs(p)[0]))
 
+{. tests unitarity first on LKTs, then everywhere .}
+set is_unitary_test(Param p) = bool:
+    is_pos_on_LKTs(p) and
+    is_unitary(p)
+
 {. tests unitarity first on LKTs, then on next-to-lowest, then
 everywhere .}
-set is_unitary_test(Param p) = bool:
+set is_unitary_test_next(Param p) = bool:
     is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, next_height(p)) and
     is_unitary(p)
