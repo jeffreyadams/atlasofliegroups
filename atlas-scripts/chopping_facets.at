@@ -7,6 +7,13 @@ Wi is the *vertex set* of Si), then the sets Wi are well-defined. The main funct
 <subgroups.at { for (paradoxically) |Levi_subgroups| }
 
 
+set to_rat(ratvec v) = [rat]:
+  for q in v do rat: q od
+
+set to_ratvec([rat] v) = ratvec:
+   for q in v do q od
+
+
 set almost_LI([ratvec] V) = bool:
 let M=mat:for v in V do numer(v) od in
 rank(M)+1=#V
@@ -20,14 +27,22 @@ subsets=choices_from(V,r+1) in
 set bad_index([ratvec] V) = int:
 min(##(for j:#V do if rank(mat:for i:j+1 do numer(V[i]) od)=j then [j] else [] fi od))
 
-set find_basis([ratvec] V) = (mat,ratvec):
+set find_basis([ratvec] V) = ([[rat]],[rat]):
 let k=bad_index(V) in
-(mat:##(for i:k do numer(V[i]) od, for i:#V-k-1 from k+1 do numer(V[i]) od), V[k])
+(##(for i:k do to_rat(V[i]) od, for i:#V-k-1 from k+1 do to_rat(V[i]) od), to_rat(V[k]))
+
+set find_basis_ratvec([ratvec] V) = (mat,ratvec):
+let k=bad_index(V) in
+(##(for i:k do numer(V[i]) od, for i:#V-k-1 from k+1 do numer(V[i]) od), V[k])
+
 
 set in_hull_0_almost_LI([ratvec] V) = bool:
 if #V=0 then false else
-let S=required_solution(find_basis(V)) in
-sum(for s in S do #(s>0) od)=0 fi
+let S=solve(find_basis_ratvec(V)) in
+if any(S) then sum(for s in S.requisition do #(s>0) od)=0 
+else let S_exact=a_solution(find_basis(V)) in
+sum(for s in S_exact do #(s>0) od)=0 fi fi
+
 
 set in_hull_0([ratvec] V) = bool:
 let subsets=almost_LI_subsets(V) in
@@ -117,10 +132,14 @@ set chop_coroots(RootDatum G, [ratvec] vertices) = [[ratvec]]:
 let C=poscoroots(G), output = [[ratvec]]:[vertices] in
 for c in C do output:=##(for region in output do chop(region,c) od) od; output
 
+
+
 set chop_coroots_verbose(RootDatum G, [ratvec] vertices) = void:
 let C=poscoroots(G), output=[[ratvec]]:[vertices] in
 for c@i in C do output:=##(for region in output do chop(region,c) od); prints("coroot ", i, ": ", #output, " convex regions") od;
 prints("Final output: "); for R@i in output do prints("Region ", i, ": ", #R, " vertices, barycenter = ", bary(R))od
+
+
 
 set chop_coroots_bary(RootDatum G, [ratvec] vertices) = [ratvec]:
 let C=poscoroots(G), output=[[ratvec]]:[vertices] in
@@ -134,5 +153,7 @@ set max_levis(RootDatum G) = [RootDatum]:
 let levis=Levi_subgroups(G), output=[RootDatum]:[] in
 for L in levis do if ss_rank(L) = ss_rank(G)-1 then output:=#(output,L) else output:=output fi od; output
 
-
-
+set fundamental_vertices(RootDatum L) = [ratvec]:
+let sf=simple_factors(L) then
+indices=all_words(for x in sf do #fundamental_vertices(x) od) in
+for I in indices do sum(rank(L),for p@i in I do fundamental_vertices(sf[i])[p] od) od
