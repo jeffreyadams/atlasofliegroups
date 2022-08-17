@@ -351,6 +351,18 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(0); // ensure positive sign
 }
 
+big_int& big_int::operator*= (digit x)
+{ if (is_negative())
+  {
+    negate(); // now |*this| has been made non-negative
+    mult_add(x,0);
+    negate();
+  }
+  else
+    mult_add(x,0);
+  return *this;
+}
+
 big_int& big_int::operator*= (int x0)
 { const bool neg = (x0<0)xor(is_negative()); // whether result is negative
   digit x = x0<0 ? -static_cast<digit>(x0) : x0; // convert type to |digit|

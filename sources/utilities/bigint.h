@@ -73,6 +73,8 @@ public:
   big_int& operator*= (digit x);
   big_int& operator*= (int x);
   big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
+  big_int& operator*= (unsigned long long n)
+  { return (*this)*=from_unsigned(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
@@ -322,6 +324,9 @@ public:
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|
 
   big_rat power (int e) const;
+
+  double as_double() const { return num.as_double()/den.as_double(); }
+
 private:
   big_rat& normalise()
   { if (den.is_negative())
