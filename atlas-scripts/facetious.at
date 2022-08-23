@@ -1299,7 +1299,7 @@ set thetaAct (KGBElt x, ratvec lambda, VertexData vd) = [int]:
 {makes the FPP facets into facets of actual unitary parameters} {as
 for thetaAct, need to in the unequal rank case to apply this to
 cofolded vertices to get nice answers}
-set actualize{OLD} \
+set actualizeOLD \
     ( KGBElt x, ratvec lambda
     , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetData:
 (   let vertex_data = vlist.to_vertex_data
@@ -1343,7 +1343,7 @@ set actualize{OLD} \
 	   	     if is_subset(v,vtheta)
 		     	then for i in v
 			     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
-                    od.## {this list may not be sorted?}
+                    od.##.sort {this list may not have been sorted}
 		    else []
 		    fi
                 in if #vAct > 0
@@ -1359,7 +1359,7 @@ set actualize{OLD} \
 {makes the FPP facets into facets of actual unitary parameters} {as
 for thetaAct, need in the unequal rank case to apply this to
 cofolded vertices to get nice answers}
-set actualizeNEW \
+set actualize \
   ( KGBElt x, ratvec lambda
   , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetData:
 (   let vertex_data = vlist.to_vertex_data
@@ -1394,7 +1394,7 @@ set actualizeNEW \
 	       	    if is_subset(v,vtheta)
 		        then for i in v
 		    	     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
-		    	     od.## {this list may not be sorted?}
+		    	     od.##.sort {this list may not have been sorted}
 	            else []
 		    fi
 	       	in if #vAct > 0
