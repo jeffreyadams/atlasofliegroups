@@ -2067,16 +2067,49 @@ set purity (KTypePol P) = (int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+{ moved these earlier to use in no_reps }
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
 
 {		Rapid look-up in certain fixed structures		}
+
+{ remove repetitions from a list of vecs, assumed all same size }
+{ DOESN'T WORK because of invocation of highest_weight }
+set no_reps([vec] L) = [vec]: 
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+       then x0 = KGB(G,0)
+       then P = sum(G, for v in L do K_type(x0,v) od)
+       in for p in monomials(P) do lambda_rho(p) od
+    fi
+
+{ remove repetitions from a list of ratvecs, assumed all same size }
+set no_reps([ratvec] L) = [ratvec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+       then x0 = KGB(G,0), zero = null(n)
+       then P = sum(G, for v in L do param(x0,zero,v) od)
+       in for p in monomials(P) do p.nu od
+    fi
 
 set index_in ([vec] L) { equal size vectors } = (vec->int):
   if =#L then (vec .)int: minus_1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
-     then x0 = KGB(G,0)
-     then P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+     then x0 = KGB(G,0), zero = null(n)
+     then P = null_K_module(G) +  for v@i in L do (i+1,K_type(x0,v)) od
   in (vec v) int: P[K_type(x0,v)].int_part-1
   fi
 

@@ -1299,27 +1299,80 @@ set thetaAct (KGBElt x, ratvec lambda, VertexData vd) = [int]:
 {makes the FPP facets into facets of actual unitary parameters} {as
 for thetaAct, need to in the unequal rank case to apply this to
 cofolded vertices to get nice answers}
-set actualize \
+set actualize{OLD} \
+    ( KGBElt x, ratvec lambda
+    , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetData:
+(   let vertex_data = vlist.to_vertex_data
+    then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
+    then R = null(n,0)
+    {make a list just of the midpoint new verts; these, and old vertices,
+     are the only possible repetitions in vlistAct}
+     then Gmids = inner_class(root_datum(R,R), -id_mat(n)).quasisplit_form
+     then xmids = KGB(Gmids,0), zero = null(n), Pmids = null_module(Gmids)
+     then vlistAct = [ratvec]: {LIST CAN HAVE REPS IN U(3,3) which ruins it}
+     	  for v@i in vlist
+	  do let j = Perm[i] in
+	     if j = i then [v]
+	     elif j > i and vertex_data.lookup((v + vlist[j])/2) < 0
+	     	      	and Pmids[param(xmids, zero, (v + vlist[j])/2)] = 0
+	     then Pmids +:= param(xmids, zero, (v + vlist[j])/2);
+	     [ (v + vlist[j])/2] {make sure this isn't an old vertex,
+	       	    		       or an already-found new vertex}
+	     else []
+	     fi
+	  od.##
+     then lookup = index_in(vlistAct)
+     then mapAct = [int]: {maps old vertex indices to actualized indices}
+     	  for v@i in vlist
+	  do let j = Perm[i] in
+	     if j = i then lookup(v)
+	     elif j > i then lookup((v+vlist[j])/2)
+    	     else minus_1
+	     fi
+	  od
+     then FSVIAct = [[FacetStatusVertsIndex]]:
+     	  for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
+     then () = for FSVId@d in FPPstInd
+     do for stFind in FSVId
+     	do let v = stFind.verts
+    	   then vtheta = for i in v do if Perm[i] < 0 then break
+	   	       	       	       else Perm[i]
+    				       fi od
+
+           then vAct = vec:
+	   	     if is_subset(v,vtheta)
+		     	then for i in v
+			     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
+                    od.## {this list may not be sorted?}
+		    else []
+		    fi
+                in if #vAct > 0
+		      then let FSVId0 = FSVIAct[#vAct -1]
+		      	   then () = FSVId0 ##:= [(stFind.status, vAct)]
+                    	   in FSVIAct[#vAct - 1]:=FSVId0
+		    fi
+	  od
+      od
+      then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
+      in (vlistAct.to_vertex_data, FSVIAct[:dAct+1]) )
+
+{makes the FPP facets into facets of actual unitary parameters} {as
+for thetaAct, need in the unequal rank case to apply this to
+cofolded vertices to get nice answers}
+set actualizeNEW \
   ( KGBElt x, ratvec lambda
   , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetData:
 (   let vertex_data = vlist.to_vertex_data
     then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
-    then R = null(n,0) {make a list just of the midpoint new verts;
-    	 these, and old vertices, are the only possible repetitions in vlistAct}
-    then Gmids = inner_class(root_datum(R,R), -id_mat(n)).quasisplit_form
-    then xmids = KGB(Gmids,0), zero = null(n), Pmids = null_module(Gmids)
-    then vlistAct = [ratvec]: {LIST CAN HAVE REPETITIONS IN U(3,3) which ruins it}
+    then vlistActRep = [ratvec]: { LIST CAN HAVE REPETITIONS IN U(3,3) }
 	for v@i in vlist
 	do  let j = Perm[i] in
 	    if   j = i then [v]
-	    elif j > i and vertex_data.lookup((v + vlist[j])/2) < 0
-	    	       and Pmids[param(xmids, zero, (v + vlist[j])/2)] = 0
-	    then Pmids +:= param(xmids, zero, (v + vlist[j])/2); [ (v +
-	    vlist[j])/2] {make sure this isn't an old vertex, or an
-	    		       already-found new vertex}
+	    elif j > i then [ (v + vlist[j])/2]
 	    else []
 	    fi
 	od.##
+    then vlistAct = no_reps(vlistActRep)
     then lookup = index_in(vlistAct)
     then mapAct = [int]: {maps old vertex indices to actualized indices}
         for v@i in vlist
