@@ -29,11 +29,11 @@ min(##(for j:#V do if rank(mat:for i:j+1 do numer(V[i]) od)=j then [j] else [] f
 
 set find_basis([ratvec] V) = ([[rat]],[rat]):
 let k=bad_index(V) in
-(##(for i:k do to_rat(V[i]) od, for i:#V-k-1 from k+1 do to_rat(V[i]) od), to_rat(V[k]))
+(for i:k do to_rat(V[i]) od, to_rat(V[k]))
 
 set find_basis_ratvec([ratvec] V) = (mat,ratvec):
 let k=bad_index(V) in
-(##(for i:k do numer(V[i]) od, for i:#V-k-1 from k+1 do numer(V[i]) od), V[k])
+(for i:k do numer(V[i]) od, V[k])
 
 
 set in_hull_0_almost_LI([ratvec] V) = bool:
@@ -46,7 +46,8 @@ sum(for s in S_exact do #(s>0) od)=0 fi fi
 
 set in_hull_0([ratvec] V) = bool:
 let subsets=almost_LI_subsets(V) in
-sum(for S in subsets do #(in_hull_0_almost_LI(S)) od)>0
+any(#subsets,(int i):in_hull_0_almost_LI(subsets[i]))
+
 
 set in_hull([ratvec] V, ratvec p) = bool:
 let W=for v in V do v-p od in
@@ -55,8 +56,10 @@ in_hull_0(W)
 {given list of distinct ratvecs, extracts vertices of convex hull}
 
 set vertices_of_hull([ratvec] V) = [ratvec]:
-##(for k:#V do if not(in_hull(##(for i:k do V[i] od, for i:#V-k-1 from k+1 do V[i] od),V[k])) then [V[k]] else [] fi od)
-
+let n=0 in
+while n<=#V-1 do
+if in_hull(delete(V,n),V[n]) then V:=delete(V,n) else
+n:=n+1 fi od; V
 
 {given the vertex set P of a convex region and a pair of indices i,j, determines whether P[i],P[j] are joined by an edge}
 
@@ -157,3 +160,8 @@ set fundamental_vertices(RootDatum L) = [ratvec]:
 let sf=simple_factors(L) then
 indices=all_words(for x in sf do #fundamental_vertices(x) od) in
 for I in indices do sum(rank(L),for p@i in I do fundamental_vertices(sf[i])[p] od) od
+
+set folded_alcove(RootDatum L) = [ratvec]:
+let (R,M,n)=cofolded(L.split_form) then
+VR=fundamental_vertices(R) in
+for v in VR do M*v od
