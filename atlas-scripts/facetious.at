@@ -12,6 +12,7 @@
 <K_highest_weights.at {for all_parameters_x_gamma}
 <lattice.at {for vec_solve}
 {<twisted_root_datum.at {to produce cofolded root datum}}
+<chopping_facets.at {for chop_coroots(G, vertices)}
 
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
@@ -100,22 +101,6 @@ set new_to_ht = true
 { useful to assign this to 'true" to get information about the progress
 of long calculations }
 set facet_verbose=false
-
-{.remove repetitions from list of ratvecs.}
-set NoReps([ratvec] list) =
-    for elt@j in list
-    do if all(j, (int i): list[i] != elt) then [elt]
-       else []
-       fi
-    od.##
-
-{.remove repetitions from a list of vecs.}
-set NoReps([vec] list) =
-    for elt@j in list
-    do if all(j, (int i): list[i] != elt) then [elt]
-       else []
-       fi
-    od.##
 
 {If the distinguished involution delta of G is nontrivial, then all
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
@@ -465,7 +450,9 @@ set barycenter ([ratvec] verts) = ratvec: { |verts| should be nonempty }
 {. barycenter of facet of fundamental alcove that contains |gamma0|.}
 set facet_bary0(SimpleAffine affd, ratvec gamma0) = FacetBary:
     barycenter(facet_verts0(affd,gamma0))
-
+{. produces all k-element subsets of verts. The term "# #verts" is
+[0,1,...,#verts - 1]
+ .}
 set choices_from( [ratvec]verts, int k) = [[ratvec]]:
     for S in choices_from(# #verts,k) do for s in S do verts[s] od od
 
@@ -1038,11 +1025,7 @@ set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
 )
 
 set facet_data_fold(RealForm G) = FacetData:
-{ let (rd,M,j0) = cofolded(G)}
     facet_data_fold(cofolded(G))
-{ then (vd,FVFold) = facet_data_fold(rd,M,j0)
-    then verts = for v in vd.list do M*v od
-    in (verts.to_vertex_data, FVFold) }
 
 {.facet vertex indices for all d-diml facets in FPP.}
 set FPP_indices (SimpleAffine Affd, VertexData vd, int d) = [FacetVertsIndex]:
@@ -1843,6 +1826,23 @@ set JustTheFacts_C_simple(RealForm G) = [(bool,ratvec)]:
 	    od
 	 od)
 
+{. records vertices of unitary regions for spherical dual real simple
+G; complex is OK .}
+set JustTheRegions_simpleFold(RealForm G) = [(bool,[ratvec])]:
+    let ((vlist,),FVstInd) = sphericalFold(G)
+    in
+    ##(for d:#FVstInd
+	 do for FVI@j in FVstInd[d]
+	    do (
+	       if FVI.status[0]="T" then true
+	       elif FVI.status[0] = "F" then false
+	       else prints("ERROR at d = ",d,", j = ",j); false
+	       fi,
+		 for v in FVI.verts do vlist[v] od
+		)
+	    od
+	 od)
+
 {.doesn't account for COMPLEX simple factors.}
 set real_simple_factors(RealForm G) = [RealForm]:
     let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor
@@ -1871,6 +1871,29 @@ set real_and_complex_simple_factors(RealForm G) = ([RealForm],[RealForm]):
 	      fi
 	fi
     od; (RealFactors,ComplexFactors)
+
+{ lists real and/or complex simple factors }
+set simple_factors(RealForm G) = [RealForm]:
+    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
+	simpleFactors = simple_factors(RootDatum: G),
+	Factors = [RealForm]:[]
+    in
+    for rd@i in simpleFactors
+    do
+    let root = simple_roots(rd)[0]
+    then newRoot = delta*root
+    then simpleRootIndex = simple_root_index(G,root),
+	 newSimpleRootIndex = simple_root_index(G,newRoot)
+    then diagram = diagram_component(G,simpleRootIndex),
+	 newDiagram = diagram_component(G,newSimpleRootIndex)
+    in  if diagram=newDiagram then Factors##:=
+	 [real_form(inner_class(rd,delta), delta, tf)]
+	 else if diagram[0] < newDiagram[0] then Factors##:=
+	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
+		delta), delta, tf)]
+	      fi
+	fi
+    od; Factors
 
 set max_real_Levis(RealForm G) = [RealForm]:
     let xopen=x_open(G), Grho = G.rho
@@ -1933,6 +1956,42 @@ set JustTheFactsFold(RealForm L) = [(bool,ratvec)]:
 		od.##
 	     od.##
      esac
+
+{. takes two nonempty lists of ratvecs all of the same size, and
+produces a list of all sums of pairs. Intended for getting vertices of
+a product region .}
+set product_vertices([ratvec] list1, [ratvec] list2) = [ratvec]:
+    let n1 = #list1, n2 = #list2
+    in for j:n1*n2 do
+    list1[j\n2] + list2[j%n2]
+    od
+
+{. record vertices of unitarity regions. Works only for up to three
+simple factors of L .}
+set JustTheRegionsFold(RealForm L) = [(bool,[ratvec])]:
+    let Ls = simple_factors(L)
+    then JTFs = for Lj in Ls do JustTheRegions_simpleFold(Lj) od
+
+    in
+    case #Ls
+	 in [(true,[null(L.rank)/1])],
+	 JTFs[0],
+	 for (stat0,nu0s) in JTFs[0]
+	     do for (stat1,nu1s) in JTFs[1]
+		do (stat0 and stat1,
+		   product_vertices(nu0s, nu1s))
+		od
+	     od.##,
+	 for (stat0,nu0s) in JTFs[0]
+	     do for (stat1,nu1s) in JTFs[1]
+		do for (stat2,nu2s) in JTFs[2]
+		   do (stat0 and stat1 and stat2,
+		   product_vertices(product_vertices(nu0s,nu1s),nu2s))
+		   od
+		od.##
+	     od.##
+     esac
+
 
 {.like facet_statusu, adding info from real induction.}
 {Marks unipotent parameters as "T[number of dual nilpotent]", induced
@@ -2005,6 +2064,82 @@ set facet_statusu_ind(RealForm G) = FacetData:
     then data_indncH = down_to_business(G,data_ind)
     in facet_statusu_ind(G,data_indncH)
 
+{.like facet_statusu, adding info from real induction, recorded as
+unitary regions; each such region chopped by chopping_facets}
+{Marks unipotent parameters as "T[number of dual nilpotent]", induced
+as "Ti..." or "Fi..." FPPQuo should first be pruned by down_to_business}
+set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
+    let old_facet_verbose = facet_verbose next
+	if facet_verbose then prints("starting FPPB in facet_statusu_reg") fi
+    then FPPB = for d:#FPPQuo do for Find in FPPQuo[d] do
+	facet_bary(vd.list,Find.verts) od od next facet_verbose := false
+    then allFPPB = [ratvec]: ##FPPB, FPPnew = FPPQuo,
+	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
+	 maxLevis = [RealForm]: max_real_Levis(G)
+{indices to convert from FPPQuo to allFPPQuo}
+    then bary_lookup = index_in(allFPPB)
+    , lookups = [(vec->int)]: { lookup functions for equidiemnsional facets }
+        for L in FPPQuo do index_in_facet_list(L) od
+    then JTRs = [ [(bool,[ratvec])] ]:
+	 for L in maxLevis
+	 do
+	 if old_facet_verbose then prints("starting JTR for Levi ",L,
+	 " in facet_statusu_reg") fi;
+	 JustTheRegionsFold(L)
+	 od
+    then (rd,M,j) = cofolded(G)
+{ update FPPQuo working through Levis }
+    then temp = for L@j in maxLevis
+    do{LOOP OVER LEVIS}
+    if old_facet_verbose then prints(new_line,"updating status using Levi ",L);
+	 prints("in facet_statusu_reg, using ",#JTRs[j]," representations on L.") fi;
+    let xL = x_open(L), rhoL = L.rho
+    then countUp = int: 0, countDown = int: 0
+    in
+    for (uboolL,gammaLs) in JTRs[j] {Need first to chop}
+	do{LOOP OVER L UNITARY REGIONS}
+	let gammaGs = [[ratvec]]: chop_coroots(G,gammaLs)
+	in
+		for gammaG {[ratvec], verts of one reg} in gammaGs
+	     	     do{LOOP OVER CHOPPED PIECES}
+		     let gammaLb = sum(G.rank, gammaG)/#gammaG
+		     then gammaGn = real_induce_standard(parameter(xL,rhoL,gammaLb),G).infinitesimal_character
+		     then gammaGb = dominant(G,gammaGn)
+		     then nG = bary_lookup(facet_bary(G,gammaGb))
+		     then bigTrouble = if nG=-1 then prints("TROUBLE at MaxLevi #",j,
+	     		"  which is ",L, ",  and gammaGb = ",gammaGb); break fi
+		     then (d,j) = allLABELS[nG]
+		     then FPPnewd = FPPnew[d], Find = FPPnew[d][j]
+		     in
+		     let result =
+	    		if FPPnew[d][j].status!="?"
+	    		then FPPnew[d][j].status
+			     {if inducing rep is unitary, so is induced, and facets
+		    	     	 in closure}
+	    		elif uboolL then countDown := countDown+1;
+			     updateSing(G, (vd,FPPnew), ("Tiopen",Find.verts)); "Ti"
+			     {if inducing is hermitian nonunitary,
+		    	     	 and induction is irreducible, then induced is hermitian
+		    		 nonunitary, along with facets in opening}
+	    		elif #real_induce_irreducible(parameter(x_open(L),L.rho, gammaGb),G) = 1
+	    		     	    then countUp := countUp+1
+	    		;    FPPnew:= update(lookups, FPPnew, ("Fiopen",Find.verts)); "Fi"
+	    		else "?" { FPPnew[d][j].status }
+	    		fi
+	    		then temp = (); FPPnewd[j]:= (result,FPPnewd[j].verts)
+	    		in FPPnew[d] := FPPnewd
+		     od{LOOP OVER CHOPPED PIECES}
+       od{LOOP OVER L UNITARY REGIONS}; if old_facet_verbose then prints("completed Levi ",j," using ",
+	    countUp, " updates and ", countDown, " downdates") fi
+    od{LOOP OVER LEVIS}; facet_verbose := old_facet_verbose
+    in
+    (vd, FPPnew)
+
+set facet_statusu_reg(RealForm G) = FacetData:
+    let data_ind = facet_data_fold(G)
+    then data_indncH = down_to_business(G,data_ind)
+    in facet_statusu_reg(G,data_indncH)
+
 {.spherical unitarity data one simple factor at a time.}
 set genSpherical(RealForm G) = [ FacetData ]:
 for G0 in real_simple_factors(G) do spherical(G0) od
@@ -2014,6 +2149,12 @@ for G0 in real_simple_factors(G) do spherical(G0) od
 set spherical_ind(RealForm G) = FacetData:
     let dataIndInd = facet_statusu_ind(G)
     in spherical(G, dataIndInd)
+
+{.same as sphericalFold using induced info.}
+set spherical_regFold(RealForm G) = FacetData:
+    let dataReg = facet_statusu_reg(G)
+    then dataActReg = actualize(x_open(G), G.rho, dataReg)
+    in spherical(G, dataActReg)
 
 { still need simple derived group }
 {need vlist to match FPP_vertex_sets_indices}

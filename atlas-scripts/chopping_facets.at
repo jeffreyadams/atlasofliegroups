@@ -6,6 +6,11 @@ Wi is the *vertex set* of Si), then the sets Wi are well-defined. The main funct
 <basic.at
 <subgroups.at { for (paradoxically) |Levi_subgroups| }
 
+{. produces all k-element subsets of verts. The term "# #verts" is
+[0,1,...,#verts - 1]
+ .}
+set choices_from( [ratvec]verts, int k) = [[ratvec]]:
+    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
 
 set to_rat(ratvec v) = [rat]:
   for q in v do rat: q od
@@ -156,12 +161,16 @@ set max_levis(RootDatum G) = [RootDatum]:
 let levis=Levi_subgroups(G), output=[RootDatum]:[] in
 for L in levis do if ss_rank(L) = ss_rank(G)-1 then output:=#(output,L) else output:=output fi od; output
 
-set fundamental_vertices(RootDatum L) = [ratvec]:
+{Next command doesn't work without facetious, and I don't want to load
+facetious here, because I need chopping facets in facetious}
+{ set fundamental_vertices(RootDatum L) = [ratvec]:
 let sf=simple_factors(L) then
 indices=all_words(for x in sf do #fundamental_vertices(x) od) in
-for I in indices do sum(rank(L),for p@i in I do fundamental_vertices(sf[i])[p] od) od
+for I in indices do sum(rank(L),for p@i in I do
+fundamental_vertices(sf[i])[p] od) od }
 
-set folded_alcove(RootDatum L) = [ratvec]:
+{ same objection }
+{ set folded_alcove(RootDatum L) = [ratvec]:
 let (R,M,n)=cofolded(L.split_form) then
 VR=fundamental_vertices(R) in
-for v in VR do M*v od
+for v in VR do M*v od }
