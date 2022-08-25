@@ -450,6 +450,7 @@ set barycenter ([ratvec] verts) = ratvec: { |verts| should be nonempty }
 {. barycenter of facet of fundamental alcove that contains |gamma0|.}
 set facet_bary0(SimpleAffine affd, ratvec gamma0) = FacetBary:
     barycenter(facet_verts0(affd,gamma0))
+
 {. produces all k-element subsets of verts. The term "# #verts" is
 [0,1,...,#verts - 1]
  .}
@@ -2076,9 +2077,9 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
     then allFPPB = [ratvec]: ##FPPB, FPPnew = FPPQuo,
 	 allLABELS =  ##(for d:#FPPB do for j:#FPPB[d] do (d,j) od od),
 	 maxLevis = [RealForm]: max_real_Levis(G)
-{indices to convert from FPPQuo to allFPPQuo}
+    {indices to convert from FPPQuo to allFPPQuo}
     then bary_lookup = index_in(allFPPB)
-    , lookups = [(vec->int)]: { lookup functions for equidiemnsional facets }
+    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
         for L in FPPQuo do index_in_facet_list(L) od
     then JTRs = [ [(bool,[ratvec])] ]:
 	 for L in maxLevis
@@ -2088,6 +2089,7 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 	 JustTheRegionsFold(L)
 	 od
     then (rd,M,j) = cofolded(G)
+    then leftM = M.left_inverse
 { update FPPQuo working through Levis }
     then temp = for L@j in maxLevis
     do{LOOP OVER LEVIS}
@@ -2103,9 +2105,12 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 		for gammaG {[ratvec], verts of one reg} in gammaGs
 	     	     do{LOOP OVER CHOPPED PIECES}
 		     let gammaLb = sum(G.rank, gammaG)/#gammaG
-		     then gammaGn = real_induce_standard(parameter(xL,rhoL,gammaLb),G).infinitesimal_character
-		     then gammaGb = dominant(G,gammaGn)
-		     then nG = bary_lookup(facet_bary(G,gammaGb))
+		     { next line converts to a barycenter of the folded datum }
+		     then gammaGb = (1*real_induce_standard(
+		     	  parameter(xL,rhoL,gammaLb),G)
+			  ).infinitesimal_character
+		     then gammaGlisted = M*facet_bary(rd, leftM*gammaGb)
+		     then nG = bary_lookup(gammaGlisted)
 		     then bigTrouble = if nG=-1 then prints("TROUBLE at MaxLevi #",j,
 	     		"  which is ",L, ",  and gammaGb = ",gammaGb); break fi
 		     then (d,j) = allLABELS[nG]
@@ -2121,7 +2126,7 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 			     {if inducing is hermitian nonunitary,
 		    	     	 and induction is irreducible, then induced is hermitian
 		    		 nonunitary, along with facets in opening}
-	    		elif #real_induce_irreducible(parameter(x_open(L),L.rho, gammaGb),G) = 1
+	    		elif #real_induce_irreducible(parameter(x_open(L),L.rho, gammaLb),G) = 1
 	    		     	    then countUp := countUp+1
 	    		;    FPPnew:= update(lookups, FPPnew, ("Fiopen",Find.verts)); "Fi"
 	    		else "?" { FPPnew[d][j].status }
