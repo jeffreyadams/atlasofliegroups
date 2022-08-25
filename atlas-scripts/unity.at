@@ -1,6 +1,10 @@
 <to_ht.at
 <goodroots.at
 
+set height(RootDatum R, ratvec nu) = int:
+    let q = dominant(R,nu)*R.two_rho_check
+    in q.numer\q.denom
+
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N =
 next_to_lowest((x,lambda)); then on each parameter p run
@@ -9,18 +13,32 @@ next_to_lowest(mu), and then run unitary_test(p, height (tau),
 next_height(tau) }
 
 {. gives (one of) the K-types of lowest height above mu in the
-standard of LKT mu .}
+standard of LKT mu .} {NEED USEFUL BOUND in K_type_formula.}
 set next_to_lowest(KType mu) = KType:
-    let (,tau) = first_term(K_type_formula(mu) - mu)
+    let (,tau) = first_term(K_type_formula(mu, height(mu) + 30) - mu)
     in tau
 
 {. height of a smallest non-lowest K_type of standard with LKT mu .}
 set next_height(KType mu)  = int:
     height(next_to_lowest(mu))
 
+set next_height(KType mu) = int:
+    let m = height(mu)
+    in m+first( for j in #30 do @:!= K_type_formula(mu,m+2*j+2) - mu od)
+
 {. height of a smallest non-lowest K_type of p .}
 set next_height(Param p) = int:
     height(next_to_lowest(LKTs(p)[0]))
+
+{if this produces -1, then the (hermitian) p is automatically unitary}
+set next_heightB(Param p) = int:
+    let mu = LKTs(p)[0]
+    then M = K_type_formula(mu, height(p) + height(p.root_datum, p.nu)) - mu
+    in
+    if =M then -1
+    else
+    let (,tau) = first_term(M) in height(tau)
+    fi
 
 {. tests unitarity first on LKTs, then everywhere .}
 set is_unitary_test(Param p) = bool:
@@ -34,6 +52,22 @@ set is_unitary_test_next(Param p) = bool:
     is_unitary_to_ht(p, next_height(p)) and
     is_unitary(p)
 
+{. tests unitarity first on LKTs, then on next-to-lowest up to
+height(nu), then everywhere. If no K-types to height(nu), then true .}
+set is_unitary_test_nextB(Param p) = bool:
+    is_pos_on_LKTs(p) and
+    (
+    let n = next_heightB(p)
+    in
+    if n = -1 then true
+    else
+    is_unitary_to_ht(p,n) and
+    is_unitary(p)
+    fi
+    )
+
+{way to get N for LKT mu: compute K_type_formula(mu), take next to
+lowest term}
 {. same as previous if next_height N is known .}
 set is_unitary_test(Param p, int N) = bool:
     is_pos_on_LKTs(p) and
