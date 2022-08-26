@@ -1,0 +1,107 @@
+<misc.at
+{<Weylgroup.at {for invariant_form}}
+<ratmat.at
+<torus.at
+<combinatorics.at
+<group_operations.at
+
+{ The simple factors of a root datum are the sub-rootdata each generated
+  by the simple roots for a single connected component of the diagram }
+
+
+{ For a permutation of the semisimple rank, given as list of integers, make new
+  root datum whose new simple (co)root |i| is what used to be number |sigma[i]|.
+  This is not a permutation of simple roots and coroots by |sigma| in the usual
+  convention (and that of |permute@([int],vec)|, but rather by |inverse(sigma)|,
+  which is why the argument |sigma| is written to the right of the root datum.
+}
+set permute(RootDatum rd,[int] sigma) = RootDatum:
+   let sr=simple_roots(rd), scr=simple_coroots(rd), r=rank(rd)
+in root_datum( r # for i in sigma do sr[i] od  { permute columns by |sigma| }
+	     , r # for i in sigma do scr[i] od { permute columns by |sigma| }
+	     , rd.prefers_coroots )
+
+{ Make a root datum with simple roots permuted, such that simple factors are
+  grouped together and have their roots in Bourbaki order; this is achieved by
+  a call to |permute| above, whose permutation argument is also returned. }
+set reorder_diagram_Bourbaki(RootDatum rd) = (RootDatum,[int]):
+   let (,pi)=Cartan_matrix_type(Cartan_matrix(rd)) in (permute(rd,pi),pi)
+
+set stratify(RootDatum rd) = RootDatum: { iron out any unusual diagram order }
+   let (prd,)=reorder_diagram_Bourbaki(rd) in prd
+
+{ partition of |#simisimple_rank(rd)| into Dynkin diagram components }
+set diagram_components(RootDatum rd) = [[int]]:
+   let (type,pi)=Cartan_matrix_type(Cartan_matrix(rd)), pos=0
+in for (,rank) in simple_factors(type) do pi[pos:pos+rank] next pos+:=rank od
+
+{list of simple roots in same simple factor as simple root #i}
+set diagram_component(RootDatum rd, int i) = [int]:
+   let components = diagram_components(rd), test = contains(i)
+   in for comp in components do if test(comp) then return comp fi od; []
+
+{ RootDatum of simple factor containing simple root number |root_number| }
+set simple_factor(RootDatum rd, int root_number) = RootDatum:
+   sub_datum(rd,diagram_component(rd,root_number))
+
+set simple_factor(RootDatum rd,vec alpha) = RootDatum:
+   simple_factor(rd,first(rd.semisimple_rank,(int i): !=coroot(rd,i)*alpha))
+
+{ complete list of simple factors, each stratified, as [RootDatum] }
+set simple_factors(RootDatum rd) = [RootDatum]:
+   for S in diagram_components(rd) do sub_datum(rd,S) od
+
+{ best shot at finding factors whose root datum product equals |derived(rd)| }
+set very_simple_factors(RootDatum rd) = [RootDatum]:
+   let (type,)=Cartan_matrix_type(Cartan_matrix(rd)) in
+   for (letter,rank) in simple_factors(type) do simply_connected(letter+rank) od
+
+set number_simple_factors(RootDatum rd) = int: #diagram_components(rd)
+
+{ combine simple factor root data with lists of their simple root numbers }
+set simple_factors_info(RootDatum rd) = ([RootDatum],[[int]]):
+   (simple_factors(rd),diagram_components(rd))
+
+set highest_roots(RootDatum rd)=[vec]:
+   for factor in simple_factors(rd) do highest_root(factor) od
+
+{ in case it is needed to project weights to the $\Q$-span of roots for one
+  simple factor of the root datum the rational projection matrix is computed by
+  |project_on_simple_factor|. On the root-coradical basis, this projection is a
+  diagonal projection matrix with entries 1 at the simple root positions of the
+  simple factor; therefore we do a base change from that basis to the standard
+  basis (left multiply by |root_coradical(rd)|, right multiply by its inverse).
+  Having the diagonal matrix in the middle can be implemented by selecting only
+  the relevant columns on the left, and the corresponding rows on the right,
+  before performing a single (integer*rational) matrix multiplication.
+}
+set project_on_simple_factor(RootDatum rd, int i) = ratmat:
+   let comp=diagram_component(rd,i), M=root_coradical(rd)
+   then (C,,d) = ratmat: inverse(M/1), r=rank(rd)
+   in (r#for i in comp do M[i] od * r^for i in comp do row(C,i) od)/d
+
+set project_on_simple_factor(RootDatum rd, int i,ratvec wt) = ratvec:
+   project_on_simple_factor(rd,i)*wt
+
+{ when only comparison of projections is needed, the above functions are not
+  needed: all you need is vanishing of simple coroots for the simple factor }
+set same_weight_projection_simple_factor((RootDatum,int)(rd,):rdi) =
+      (ratvec,ratvec->bool):
+   let P = rank(rd)^for j in diagram_component(rdi) do rd.simple_coroots[j] od
+   in (ratvec v0,ratvec w0) bool: =P*(v0-w0)
+
+{ the same for coweights: use |coroot_radical| and (so as to use multiplication
+  on the right for coweights as per convention), transpose everything }
+set project_on_simple_factor(int i,RootDatum rd) = ratmat:
+   let comp=diagram_component(rd,i), M=^coroot_radical(rd)
+   then (C,,d) = ratmat: inverse(M/1), r=rank(rd)
+   in (r#for i in comp do C[i] od * r^for i in comp do row(M,i) od)/d
+
+set project_on_simple_factor(ratvec cwt, int i,RootDatum rd)=
+   cwt*project_on_simple_factor(i,rd)
+
+set same_coweight_projection_simple_factor((RootDatum,int)(rd,):rdi) =
+      (ratvec,ratvec->bool):
+   let P = rank(rd)#for j in diagram_component(rdi) do rd.simple_roots[j] od
+   in (ratvec v0,ratvec w0) bool: =(v0-w0)*P
+
