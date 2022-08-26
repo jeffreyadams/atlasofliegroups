@@ -83,21 +83,14 @@ set fd_report (RealForm G, int k) = void:
     ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
     ,"(if Hermitian)",new_line
     ,"computing directly from the Hermitian form")
-  fi; let rd=G.root_datum in
-  for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
-  do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
+  fi; let rd=G.root_datum  in
+  tabulate(["mu","lambda", "dim", "FS/RQ", "sig", "index", "aniso"]#(##for mu in box(k+1,rd.semisimple_rank) do {all [a_1,...,a_s] with 0\le a_i\le k}
+     let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
      if is_integer(l_rat)
-     then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
-     ("fund wt: ", mu
-     , "  lambda:", lambda
-     , "  dim:", dimension(p)
-     , "  FS/RQ: ", fs(p), "/", rq(p)
-     , "  signature: ", signature_string(p)
-     , "  index: ", index_string(p)
-     , "  aniso: ", anisotropic_part_string(p)
-     ).prints
-     fi
-  od
+      then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
+      [[mu.to_string,lambda.to_string,p.dimension.to_string, fs(p).to_string +"/" + rq(p).to_string,
+       signature_string(p), index_string(p), anisotropic_part_string(p)]]
+      else [] fi od))
 
 { Now all that same stuff using an alternative (faster) computation of
   signature and index, in equal rank case, using Weyl character formula,
@@ -129,38 +122,6 @@ set anisotropic_part_trace_string({equal rank finite dimensional}Param p) =
      string:
   if is_hermitian(p) else "*" then anisotropic_part_trace(p).to_string fi
 
-{report using computation of Hermitian form via the Weyl character formula}
-set fd_report_trace (RealForm G, int k) = void:
-  assert(is_equal_rank(G),"G is not equal rank");
-  if verbose_fdsig
-  then prints
-    (new_line
-    ,"fund wt: highest weight in fundamental weight coordinates",new_line
-    ,"lambda: highest weight in X^* coordinates",new_line
-    ,"dim: dimension",new_line
-    ,"FS: Frobenius-Schur indicator: "
-    ,"1:orthogonal, -1: symplectic, 0: not self-dual",new_line
-    ,"RQ: Real-Quaternionic indicator: "
-    ,"1:real, -1: quaternionic, 0: not self-conjugate",new_line
-    ,"signature:  signature (p,q) of Hermitian form (if Hermitian)",new_line
-    ,"index: index min(p,q) of Hermitian form (if Hermitian)",new_line
-    ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
-    ,"(if Hermitian)")
-  fi; let rd=G.root_datum in
-  for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
-  do let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
-     if is_integer(l_rat)
-     then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
-     ("fund wt: ", mu
-     ,"  lambda:", lambda
-     ,"  dim:", dimension(p)
-     ,"  FS/RQ: ", fs(p), "/", rq(p)
-     ,"  signature: ", signature_trace_string(p)
-     ,"  index: ", index_trace_string(p)
-     ,"  aniso: ", anisotropic_part_trace_string(p)
-     ).prints
-     fi
-  od
 
 set trace_report (RootDatum rd, ratvec v, int k) = void:
   let M=ratvecs_as_ratmat(fundamental_weights(rd)) in
@@ -175,6 +136,31 @@ set trace_report (RootDatum rd, ratvec v, int k) = void:
      ,"  trace(x): ",trace_strong_real(rd,lambda,v)).prints
      fi
   od
+
+set fd_report_trace (RealForm G, int k) = void:
+  if verbose_fdsig
+  then prints
+    (new_line
+    ,"fund wt: highest weight in fundamental weight coordinates",new_line
+    ,"lambda: highest weight in X^* coordinates",new_line
+    ,"dim: dimension",new_line
+    ,"FS: Frobenius-Schur indicator: "
+    ,"1:orthogonal, -1: symplectic, 0: not self-dual",new_line
+    ,"RQ: Real-Quaternionic indicator: "
+    ,"1:real, -1: quaternionic, 0: not self-conjugate",new_line
+    ,"signature:  signature (p,q) of Hermitian form (if Hermitian)",new_line
+    ,"index: index min(p,q) of Hermitian form (if Hermitian)",new_line
+    ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
+    ,"(if Hermitian)",new_line
+    ,"computing using the trace")
+  fi; let rd=G.root_datum  in
+  tabulate(["mu","lambda", "dim", "FS/RQ", "sig", "index", "aniso"]#(##for mu in box(k+1,rd.semisimple_rank) do
+     let l_rat=sum(rd.rank, for c@i in mu do fundamental_weight(rd,i)*c od) in
+     if is_integer(l_rat)
+      then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
+      [[mu.to_string,lambda.to_string,p.dimension.to_string, fs(p).to_string +"/" + rq(p).to_string,
+       signature_trace_string(p), index_trace_string(p), anisotropic_part_trace_string(p)]]
+      else [] fi od))
 
 { detailed information about K-signature of finite dimensional
   also see print_K_types:print_K_signature_irr (defined for any p) }
