@@ -1116,50 +1116,7 @@ in
       od
    fi
 ;  FPPstIndQuo[0] := FPPstInd0
- { ODD TYPE A NILPOTENTS GIVE FACETS OF DIM 1 }
- { OOPS! ERROR! also type E6 has four dual nilpotents (#2,7,8,15) giving
- facets of dim 1. This needs to run in E6 also.}
-;  { if X = "A" and r > 1 or X="E" and r=6
-   then
-      let FPPstInd1 = FPPstIndQuo[1]
-      then lookup1 = (ratvec->int):
-         index_in
-	 (for (,ind) in FPPstIndQuo[1]
-	  do (vd.list[ind[0]] + vd.list[ind[1]])/2
-	  od)
-   in if not(is_split(G))
-      then
-	 for O@j in st.orbits
-	 do let gamma = O.H/2
-	    then m1 = lookup1(gamma)
-	 in if m1 >= 0 and
-	       GK_dim(parameter(x_open(G),G.rho,gamma)) =
-	       dim(st.dual_map(O))/2
-	    then FPPstInd1[m1] := ("T"##to_string(j),FPPstInd1[m1].verts)
-	    ;    FPPstIndQuo := updateTrue
-	      (G, FPPstIndQuo, FBs
-	      ,("Tdef"##to_string(j),FPPstInd1[m1].verts)
-	      ,FBs[1][m1]
-	      )
-	    fi
-	 od
-      else
-	 for O@j in st.orbits
-	 do let gamma = O.H/2
-	    then m1 = lookup1(gamma)
-	 in if m1 >= 0
-	    then FPPstInd1[m1] := ("T"##to_string(j),FPPstInd1[m1].verts)
-	    ;    FPPstIndQuo := updateTrue
-	      (G, FPPstIndQuo, FBs
-	      ,("Tdef"##to_string(j),FPPstInd1[m1].verts)
-	      ,FBs[1][m1]
-	      )
-	    fi
-	 od
-      fi
-   ; FPPstIndQuo[1] := FPPstInd1
-   fi 
-;} (vd, FPPstIndQuo)
+;   (vd, FPPstIndQuo)
 )
 
 set facet_status([[vec]] FPPind) = [[string]]:
@@ -1328,7 +1285,7 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 	prints("Facet dimension ",d,": ", countTu, " unipotent, ",countTi,
 	" unitarily induced, ",countTdef, " deformed from unitary, ",
 	countT, " other unitary,  ", countTto,
-	" unitary_to_ht", new_line, "       ",countFi,
+	" unitary_test", new_line, "       ",countFi,
 	" induced nonunitarily, ",countFdef,
 	" deformed from nonunitary, ",countF, " other nonunitary, ",
 	countQ, " undecided.",new_line)
@@ -1420,27 +1377,6 @@ set down_to_business(RealForm G, FacetData D) = FacetData:
     then prints("completing down_to_business"); show(FPPstIndFinalH)
     fi; facet_statusu(G, (D.v_data,FPPstIndFinalH))
 
-
-set down_to_businessC(RealForm G, FacetData DL) = FacetData:
-   let GL=simple_factors(G)[0]
-   , one_minus_theta = (1-x_open(G).involution)
-   , vlistL = DL.v_data.list
-   then vlistC = for gammaL in vlistL do one_minus_theta*gammaL od
-   , w0L = matrix(GL.w0)
-   then FPPstIndnch = [[FacetStatusVertsIndex]]:
-      for FPPstIndLd in DL.facet_status_inds
-      do
-	 for Find in FPPstIndLd
-	 do
-	   let FBL = facet_bary(vlistL,Find.verts)
-	   in if =(w0L+1)*FBL then [Find] else [] fi
-	 od.##
-      od
-   then FPPstIndu = facet_statusu(GL.split_form, (DL.v_data,FPPstIndnch))
-in if facet_verbose
-   then prints("completing down_to_businessC"); show(FPPstIndu)
-   fi; (vlistC.to_vertex_data, FPPstIndu.facet_status_inds)
-
 {.Meant to be applied to output of down_to_business (with nonhermitian
   eliminated). Need simple derived group.}
 set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
@@ -1488,55 +1424,6 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
     od{DIMd};
     if(facet_verbose) then show(FPPstInd) fi
     in (vd,FPPstInd)
-
-set sphericalC(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
-(   let xopen = x_open(G)
-    ,   Grho = rho(G)
-    ,	FBs = [[FacetBary]]:
-	for FPPstIndd in FPPstInd
-	do for Find in FPPstIndd
-	   do facet_bary(vd.list, Find.verts) od
-	od
-    , lookups = [(vec->int)]: { lookup functions for equidiemnsional facets }
-        for L in FPPstInd do index_in_facet_list(L) od
-    ,   GL = simple_factors(G)[0]
-    then vlistL = FPP_vertices(GL) {should pass from down_to_businessC}
-in  for d:#FPPstInd
-    do{DIMd}
-	let FPPstIndd = FPPstInd[d]
-	then TODOd = to_do(FPPstIndd)
-	then GOALd = #TODOd;
-	   if facet_verbose
-	   then prints(); show(FPPstInd); prints("start dim ",d,
-		" in sphericalC(G,status,(vd.list,FPPstInd)); testing ",
-		  #TODOd," parameters.")
-	   fi
-    in
-	for j@k in TODOd
-	do{FACd}
-	    let Find = FPPstIndd[j]
-	    then result =
-		if facet_verbose
-		 then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
-		      then prints("started test #",k," of ",{GOALd}#TODOd)
-		      fi
-		 fi
-	     ;   if{NEWU} (is_unitary(first_param(standardize(
-		     parameter(xopen, Grho, FBs[d][j])))))
-		 then FPPstInd:=updateSing(G, (vd,FPPstInd), ("Tdef",
-		      Find.verts));
-		      FPPstIndd[j]:=("T",FPPstIndd[j].verts)
-		 else{NEWU} {alcoves containing Find.verts may have gone}
-		      FPPstInd:=update(lookups, FPPstInd, ("F",Find.verts));
-		      FPPstIndd[j]:=("F",FPPstIndd[j].verts)
-		 fi{NEWU}
-	    in result
-	od{FACd}
-    ;   FPPstInd[d]:=FPPstIndd
-    od{DIMd}
-;   if(facet_verbose) then show(FPPstInd) fi
-;   (vd,FPPstInd)
-)
 
 set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) = FacetData:
     let xopen = x_open(G)
@@ -1589,98 +1476,26 @@ set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) =
     if(facet_verbose) then show(FPPstInd) fi
     in (vd,FPPstInd)
 
-set spherical_testFold(RealForm G, FacetData FD, (Param -> bool) tester) =
-    FacetData:
-    spherical_test(G, FD, tester)
-
-set spherical_testC(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) = FacetData:
-    let xopen = x_open(G), Grho = rho(G),
-	FBs = [[FacetBary]]:
-	    for FPPstIndd in FPPstInd
-	    do for Find in FPPstIndd
-	       do facet_bary(vd.list, Find.verts) od
-	    od
-    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
-        for L in FPPstInd do index_in_facet_list(L) od
-    , GL = simple_factors(G)[0]
-    then vlistL = FPP_vertices(GL) {should pass from down_to_businessC}
-    then temp =
-    for d:#FPPstInd
-	do{DIMd}
-	let FPPstIndd = FPPstInd[d]
-	then TODOd = to_do(FPPstIndd)
-	then GOALd = #TODOd;
-	if facet_verbose
-	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical_testC(G,status,(vd.list,FPPstInd)); testing ",
-	       #TODOd," parameters.")
-	fi
-	in
-		for j@k in TODOd
-		do{FACd}
-		let Find = FPPstIndd[j]
-		then result =
-		    if facet_verbose
-		     then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
-			  then prints("started test #",k," of ",{GOALd}#TODOd)
-			  fi
-		     fi;
-		if{NEWU} ( tester(first_param(standardize(
-			      	   parameter(xopen, Grho, FBs[d][j])))))
-		then FPPstInd:=updateSing(G, (vd,FPPstInd), (
-		     "Ttotester", Find.verts));
-		FPPstIndd[j]:=("Ttotester",FPPstIndd[j].verts)
-		else{NEWU}
-		FPPstInd:= update(lookups, FPPstInd, ("F",Find.verts)); Find;
-		FPPstIndd[j]:=("F",Find.verts)		fi{NEWU}
-	in result
-	od{FACd};
-    FPPstInd[d]:=FPPstIndd
-    od{DIMd};
-    if(facet_verbose) then show(FPPstInd) fi
-    in (vd,FPPstInd)
-
-set spherical(RealForm G) = FacetData:
-    let data = facet_data(G)
-    then dataIndncH = down_to_business(G,data)
-    in spherical(G,dataIndncH)
+set default_tester(Param p) = is_unitary(p)
 
 {this seems OK}
-set sphericalFold(RealForm G) = FacetData:
+set spherical(RealForm G) = FacetData:
     let data = facet_data_fold(G)
     then dataAct = actualize(x_open(G), G.rho, data)
-    then dataIndncH = down_to_business(G,dataAct) {??? folded case ???}
-    in spherical(G,dataIndncH)
-
-set sphericalC(RealForm G) =
-    FacetData:
-    let GL = simple_factors(G)[0]
-    then dataL = facet_data(GL)
-    then dataC = down_to_businessC(G,dataL)
-    in sphericalC(G,dataC)
-
-set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
-    let data = facet_data(G)
-    then dataIndncH = down_to_business(G,data)
-    in spherical_test(G,dataIndncH,tester)
+    then dataIndncH = down_to_business(G,dataAct)
+    in spherical_test(G, dataIndncH, default_tester@Param)
 
 {. apply actualize to the FacetData before computing unitarity; should mean that output is already actualized .}
-set spherical_testFold(RealForm G, (Param -> bool) tester) = FacetData:
+set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(G) { (rd,M,j0) }
     then dataAct = actualize(x_open(G), G.rho, dataFold)
     then dataIndncH = down_to_business(G,dataAct)
     in spherical_test(G,dataIndncH,tester)
 
-set spherical_testC(RealForm G, (Param -> bool) tester) = FacetData:
-    let GL = simple_factors(G)[0]
-    then dataL = facet_data(GL)
-    then dataC = down_to_businessC(G,dataL)
-    in spherical_testC(G,dataC,tester)
-
 {.forget dimension info; just (for each spherical hermitian barycenter)
-whether or not unitary, inducing nu. G must have simple derived group.}
-set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
+whether or not unitary, inducing nu. G(R) must have simple derived group.}
+set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
     let (vd,FVstInd) = spherical(G)
     in
     ##(for d:#FVstInd
@@ -1695,44 +1510,10 @@ set JustTheFacts_R_simple(RealForm G) = [(bool,ratvec)]:
 	    od
 	 od)
 
-{.forget dimension info; just (for each spherical hermitian barycenter)
-whether or not unitary, inducing nu. G must have simple derived group.}
-set JustTheFacts_R_simpleFold(RealForm G) = [(bool,ratvec)]:
-    let (vd,FVstInd) = sphericalFold(G)
-    in
-    ##(for d:#FVstInd
-	 do for FVI@j in FVstInd[d]
-	    do (
-	       if FVI.status[0]="T" then true
-	       elif FVI.status[0] = "F" then false
-	       else prints("ERROR at d = ",d,", j = ",j); false
-	       fi,
-		 facet_bary(vd.list,FVI.verts)
-		)
-	    od
-	 od)
-
-{.forget dimension info; just (for each spherical hermitian barycenter)
-whether or not unitary, inducing nu. G must be simple derived group.}
-set JustTheFacts_C_simple(RealForm G) = [(bool,ratvec)]:
-    let (vd,FVstInd) = sphericalC(G)
-    in
-    ##(for d:#FVstInd
-	 do for FVI@j in FVstInd[d]
-	    do (
-	       if FVI.status[0]="T" then true
-	       elif FVI.status[0] = "F" then false
-	       else prints("ERROR at d = ",d,", j = ",j); false
-	       fi,
-		facet_bary(vd.list,FVI.verts)
-		)
-	    od
-	 od)
-
 {. records vertices of unitary regions for spherical dual real simple
 G; complex is OK .}
-set JustTheRegions_simpleFold(RealForm G) = [(bool,[ratvec])]:
-    let ((vlist,),FVstInd) = sphericalFold(G)
+set JustTheRegions_simple(RealForm G) = [(bool,[ratvec])]:
+    let ((vlist,),FVstInd) = spherical(G)
     in
     ##(for d:#FVstInd
 	 do for FVI@j in FVstInd[d]
@@ -1745,35 +1526,6 @@ set JustTheRegions_simpleFold(RealForm G) = [(bool,[ratvec])]:
 		)
 	    od
 	 od)
-
-{.doesn't account for COMPLEX simple factors.}
-set real_simple_factors(RealForm G) = [RealForm]:
-    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor
-    in
-    for rd in simple_factors(G) do real_form(inner_class(rd,delta),delta,tf) od
-
-{.lists(absolutely simple factors,locally complex simple factors.}
-set real_and_complex_simple_factors(RealForm G) = ([RealForm],[RealForm]):
-    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
-	simpleFactors = simple_factors(RootDatum: G),
-	RealFactors = [RealForm]:[], ComplexFactors = [RealForm]:[]
-    in
-    for rd@i in simpleFactors
-    do
-    let root = simple_roots(rd)[0]
-    then newRoot = delta*root
-    then simpleRootIndex = simple_root_index(G,root),
-	 newSimpleRootIndex = simple_root_index(G,newRoot)
-    then diagram = diagram_component(G,simpleRootIndex),
-	 newDiagram = diagram_component(G,newSimpleRootIndex)
-    in  if diagram=newDiagram then RealFactors##:=
-	 [real_form(inner_class(rd,delta), delta, tf)]
-	 else if diagram[0] < newDiagram[0] then ComplexFactors##:=
-	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
-		delta), delta, tf)]
-	      fi
-	fi
-    od; (RealFactors,ComplexFactors)
 
 { lists real and/or complex simple factors }
 set simple_factors(RealForm G) = [RealForm]:
@@ -1815,35 +1567,11 @@ set max_real_Levis(RealForm G) = [RealForm]:
 maximal Levi in a simple G. [ratvec] is infinitesimal chars for spherical reps of L;
 [bool] whether unitary}
 set JustTheFacts(RealForm L) = [(bool,ratvec)]:
-    let (LRs,LCs) = real_and_complex_simple_factors(L)
-    then JTFs = for LRj in LRs do JustTheFacts_R_simple(LRj) od ##
-	 for LCk in LCs do JustTheFacts_C_simple(LCk) od
+    let (Ms) = simple_factors(L)
+    then JTFs = for M in Ms do JustTheFacts_simple(M) od
 
     in
-    case #LRs + #LCs
-	 in [(true,null(L.rank)/1)],
-	 JTFs[0],
-	 for (stat0,nu0) in JTFs[0]
-	     do for (stat1,nu1) in JTFs[1]
-		do (stat0 and stat1, nu0+nu1)
-		od
-	     od.##,
-	 for (stat0,nu0) in JTFs[0]
-	     do for (stat1,nu1) in JTFs[1]
-		do for (stat2,nu2) in JTFs[2]
-		   do (stat0 and stat1 and stat2, nu0+nu1+nu2)
-		   od
-		od.##
-	     od.##
-     esac
-
-set JustTheFactsFold(RealForm L) = [(bool,ratvec)]:
-    let (LRs,LCs) = real_and_complex_simple_factors(L)
-    then JTFs = for LRj in LRs do JustTheFacts_R_simpleFold(LRj) od ##
-	 for LCk in LCs do JustTheFacts_C_simple(LCk) od
-
-    in
-    case #LRs + #LCs
+    case #Ms
 	 in [(true,null(L.rank)/1)],
 	 JTFs[0],
 	 for (stat0,nu0) in JTFs[0]
@@ -1871,9 +1599,9 @@ set product_vertices([ratvec] list1, [ratvec] list2) = [ratvec]:
 
 {. record vertices of unitarity regions. Works only for up to three
 simple factors of L .}
-set JustTheRegionsFold(RealForm L) = [(bool,[ratvec])]:
+set JustTheRegions(RealForm L) = [(bool,[ratvec])]:
     let Ls = simple_factors(L)
-    then JTFs = for Lj in Ls do JustTheRegions_simpleFold(Lj) od
+    then JTFs = for Lj in Ls do JustTheRegions_simple(Lj) od
 
     in
     case #Ls
@@ -1918,6 +1646,8 @@ set facet_statusu_ind(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 	 " in facet_statusu_ind") fi;
 	 JustTheFacts(L)
 	 od
+    then (rd,M,j) = cofolded(G)
+    then leftM = M.left_inverse
 { update FPPQuo working through Levis }
     then temp = for L@j in maxLevis
     do
@@ -1930,9 +1660,8 @@ set facet_statusu_ind(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 	do
 	let IgammaLstd = real_induce_standard(parameter(xL, rhoL, gammaL), G)
 	then gammaG=first_param(IgammaLstd).infinitesimal_character
-	then nG = bary_lookup(gammaG)
-	then trouble = void: if nG = -1
-	     then nG := bary_lookup(facet_bary(G,gammaG)) fi
+	then gammaGlisted = M*facet_bary(rd,leftM*gammaG)
+	then nG = bary_lookup(gammaGlisted)
 	then bigTrouble = if nG=-1 then prints("TROUBLE at MaxLevi #",j,
 	     "  which is ",L, ",  and gammaL = ",gammaL, ", gammaG = ",
 		gammaG); break fi
@@ -1963,9 +1692,10 @@ set facet_statusu_ind(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
     (vd, FPPnew)
 
 set facet_statusu_ind(RealForm G) = FacetData:
-    let data_ind = facet_data(G)
-    then data_indncH = down_to_business(G,data_ind)
-    in facet_statusu_ind(G,data_indncH)
+    let data = facet_data_fold(G)
+    then dataAct = actualize(x_open(G), G.rho, data)
+    then dataIndncH = down_to_business(G,dataAct)
+    in facet_statusu_ind(G,dataIndncH)
 
 {.like facet_statusu, adding info from real induction, recorded as
 unitary regions; each such region chopped by chopping_facets}
@@ -1988,7 +1718,7 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
 	 do
 	 if old_facet_verbose then prints("starting JTR for Levi ",L,
 	 " in facet_statusu_reg") fi;
-	 JustTheRegionsFold(L)
+	 JustTheRegions(L)
 	 od
     then (rd,M,j) = cofolded(G)
     then leftM = M.left_inverse
@@ -2047,13 +1777,14 @@ set facet_statusu_reg(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
     (vd, FPPnew)
 
 set facet_statusu_reg(RealForm G) = FacetData:
-    let data_ind = facet_data_fold(G)
-    then data_indncH = down_to_business(G,data_ind)
-    in facet_statusu_reg(G,data_indncH)
+    let data = facet_data_fold(G)
+    then dataAct = actualize(x_open(G), G.rho, data)
+    then dataIndncH = down_to_business(G,dataAct)
+    in facet_statusu_reg(G,dataIndncH)
 
 {.spherical unitarity data one simple factor at a time.}
 set genSpherical(RealForm G) = [ FacetData ]:
-for G0 in real_simple_factors(G) do spherical(G0) od
+for G0 in simple_factors(G) do spherical(G0) od
 
 
 {.same as spherical using induced info.}
@@ -2061,38 +1792,21 @@ set spherical_ind(RealForm G) = FacetData:
     let dataIndInd = facet_statusu_ind(G)
     in spherical(G, dataIndInd)
 
-{.same as sphericalFold using induced info.}
-set spherical_regFold(RealForm G) = FacetData:
+{.same as spherical using induced info.}
+set spherical_reg(RealForm G) = FacetData:
     let dataReg = facet_statusu_reg(G)
-    then dataActReg = actualize(x_open(G), G.rho, dataReg)
-    in spherical(G, dataActReg)
+    in spherical(G, dataReg)
 
-set spherical_reg_testFold(RealForm G, (Param->bool) tester) = FacetData:
+set spherical_reg_test(RealForm G, (Param->bool) tester) = FacetData:
     let dataReg = facet_statusu_reg(G)
-    then dataActReg = actualize(x_open(G), G.rho, dataReg)
-    in spherical_test(G, dataActReg, tester)
+    in spherical_test(G, dataReg, tester)
 
 { still need simple derived group }
 {need vlist to match FPP_vertex_sets_indices}
 
 set spherical_ind_test(RealForm G, (Param -> bool) tester) = FacetData:
-    let dataIndInd = facet_statusu_ind(G)
-    in spherical_test(G, dataIndInd, tester)
-
-{.version for complex simple G.}
-set spherical_indC(RealForm G) = FacetData:
-    let GL = simple_factors(G)[0]
-    then dataGL = facet_data(GL)
-    then dataC = down_to_businessC(G,dataGL)
-    then dataCuind = facet_statusu_ind(G,dataC)
-    in sphericalC(G,dataCuind)
-
-set spherical_ind_testC(RealForm G, (Param -> bool) tester) = FacetData:
-    let GL = simple_factors(G)[0]
-    then dataGL = facet_data(GL)
-    then dataC = down_to_businessC(G,dataGL)
-    then dataCuind = facet_statusu_ind(G,dataC)
-    in spherical_testC(G, dataCuind, tester)
+    let dataInd = facet_statusu_ind(G)
+    in spherical_test(G, dataInd, tester)
 
 {
 idea is in a session to say
