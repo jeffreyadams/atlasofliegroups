@@ -100,7 +100,11 @@ set new_to_ht = true
 
 { useful to assign this to 'true" to get information about the progress
 of long calculations }
-set facet_verbose=false
+set facet_verbose = false
+
+{. if assigned to 'true' then induction only records unitary reps of
+Levis .}
+set only_unitary = false
 
 {If the distinguished involution delta of G is nontrivial, then all
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
@@ -1499,16 +1503,26 @@ set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
     let (vd,FVstInd) = spherical(G)
     in
     ##(for d:#FVstInd
-	 do for FVI@j in FVstInd[d]
-	    do (
+	    do if only_unitary then
+	       for FVI@j in FVstInd[d]
+	       do if FVI.status[0]="T"
+	          then [(true,facet_bary(vd.list,FVI.verts))]
+	 	  else []
+	          fi
+	       od.##
+	       else
+	       for FVI@j in FVstInd[d]
+	       do
+		(
 	       if FVI.status[0]="T" then true
 	       elif FVI.status[0] = "F" then false
 	       else prints("ERROR at d = ",d,", j = ",j); false
 	       fi,
 		  facet_bary(vd.list,FVI.verts)
 		)
-	    od
-	 od)
+	       od
+	       fi
+	    od)
 
 {. records vertices of unitary regions for spherical dual real simple
 G; complex is OK .}
@@ -1516,7 +1530,16 @@ set JustTheRegions_simple(RealForm G) = [(bool,[ratvec])]:
     let ((vlist,),FVstInd) = spherical(G)
     in
     ##(for d:#FVstInd
-	 do for FVI@j in FVstInd[d]
+	 do if only_unitary then
+	    for FVI@j in FVstInd[d]
+	    do if FVI.status[0]="T"
+	       then [(true,
+	       	    for v in FVI.verts do vlist[v] od)]
+	       else []
+	       fi
+	    od.##
+	    else
+	    for FVI@j in FVstInd[d]
 	    do (
 	       if FVI.status[0]="T" then true
 	       elif FVI.status[0] = "F" then false
@@ -1525,6 +1548,7 @@ set JustTheRegions_simple(RealForm G) = [(bool,[ratvec])]:
 		 for v in FVI.verts do vlist[v] od
 		)
 	    od
+	    fi
 	 od)
 
 { lists real and/or complex simple factors }
