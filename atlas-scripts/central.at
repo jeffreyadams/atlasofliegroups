@@ -1,9 +1,83 @@
 {central character of a parameter}
 <center.at
 <tabulate.at
+{move to basic.at}
+set lambda_plus_rho (Param p) = vec: ratvec_as_vec(p.lambda + p.root_datum.rho)
+set mod(int a,int N)=int:  {N>0; return 0<= a <N}
 
-set_type [CentralCharacter=([(int,int)],vec,ratvec)]
+assert(N>0, "N is not positive");
+ let ans=a%N in
+if ans>=0 then ans else ans+N fi
 
+{move to lattice.at}
+{move to lattice.at}
+set in_span(mat A,vec v)=bool:solve(A,v).any
+{A is an (m,n) matrix, v an m-vector, contained in the span of the columns c_i of A
+write v=\sum a_i c_i (not unique unless A has rank n)
+}
+set change_basis_to_subspace(mat A,vec v)=vec:
+ let sol=solve(A,v) in
+ assert(sol.any,"no solution");sol.requisition
+
+set in_span_Q(mat A,ratvec v)=bool:solve(A,v).any
+{A is an (m,n) matrix, v an m-vector, contained in the span of the columns c_i of A
+write v=\sum a_i c_i (not unique unless A has rank n)
+}
+set change_basis_to_subspace_Q(mat A,ratvec v)=ratvec:
+ let sol=solve(A,v) in
+ assert(sol.any,"no solution");sol.requisition
+
+
+ 
+set_type [CentralCharacter=(InnerClass ic,vec lambda,ratvec nu)]
+set central_character(InnerClass ic,vec lambda, ratvec nu)=CentralCharacter:(ic,lambda,(1-ic.distinguished_involution)*nu/2)
+set cc=central_character@(InnerClass,vec,ratvec)
+
+set M(InnerClass ic)=mat:(1-distinguished_involution(ic))##ic.simple_roots
+set adapted_basis(InnerClass ic)=(mat,vec):adapted_basis(M(ic))
+set A(InnerClass ic)=mat:let (A,)=adapted_basis(ic) in A
+set v(InnerClass ic)=vec:let (,v)=adapted_basis(ic) in v
+
+set =(CentralCharacter chi,CentralCharacter tau)=bool:
+ic(chi)=ic(tau) and
+in_lattice(M(ic(chi)), lambda(chi)-lambda(tau)) and
+=(1-ic(chi).distinguished_involution)*(nu(chi)-nu(tau))
+
+set central_character(Param p)=CentralCharacter:central_character(p.inner_class,lambda_plus_rho(p),p.nu)
+set cc(Param p)=CentralCharacter: central_character(p)
+set show(CentralCharacter cc)=void:
+prints(cc.lambda, ",", cc.nu)
+
+set torsion(CentralCharacter cc)=
+let sol=change_basis_to_subspace(A(ic(cc)),lambda(cc)) in
+{solve(A(ic(cc)), lambda(cc)) in}
+{assert(sol.any,"no solution");}
+{let sol=sol.requisition then}
+let v=v(ic(cc)) in
+##for i:#v do
+ if v[i]>1 then [mod(sol[i],v[i])] else [] fi od
+
+set split_radical(CentralCharacter cc)=
+let sol=change_basis_to_subspace_Q(lie_split_radical_hat(cc.ic),nu(cc)) in
+sol
+
+set compact_radical(CentralCharacter cc)=
+let target=ratvec_as_vec((1+cc.ic.distinguished_involution)*lambda(cc)/2)in
+let sol=change_basis_to_subspace(lie_compact_radical_hat(cc.ic),target) in 
+sol
+
+
+
+set G=Spin(4,4)*GL(4,R)*U(2,2)
+set delta=G.distinguished_involution
+set p=G.trivial
+set q=finite_dimensional(G,[1,2,3,4,5,6,7,8,2,2,2,2])
+
+
+
+
+
+{
 {semisimple (finite) case}
 set central_character_semisimple(ratvec v, RootDatum rd)=
 let ((B,w),X)=Z_hat(rd) then
@@ -16,7 +90,7 @@ ans=^zz*v then
 (proj*v,w,z,zz,[rat]:ans)
 
 {for testing}
-set finite_part_central_character_long(ratvec v, RealForm G)=([(int,int)],(ratvec,mat,vec,mat,mat,ratvec),[rat]):
+set finite_part_central_character_long(ratvec v, RealForm G)=([(int,int)],(ratvec,mat,vec,mat,mat,ratvec)):
 let ((M_f,w),(M_ell,M_R))=((mat,vec),(mat,mat)):Z_hat(G) then
 proj_f=mat:projector_to_image(M_f) then   {square of size rank(G)}
 proj_f_nonzero=##for col in proj_f do  if !=col then [col]  else [] fi od then  {only the non-zero columns}
@@ -26,22 +100,26 @@ proj_f_nonzero= mat:if !=#proj_f_nonzero then mat:proj_f_nonzero else null(0,0) 
 {()=prints("v=",v,new_line,"w=",w, new_line, "proj_f_nonzero: ",proj_f_nonzero) then}
 {finite_part_unnormalized=ratvec:^proj_f_nonzero * v? then}
 finite_part_unnormalized=
-  if #proj_f_nonzero !=0 then ratvec:^proj_f_nonzero * v else ratvec:[] fi then
+{  if #proj_f_nonzero !=0 then ratvec:^proj_f_nonzero * v else ratvec:[] fi then}
+solve(M_f,proj_f*v).requisition then
 {finite_part=for a@i in  finite_part_unnormalized do a/w[i] od in}
 finite_part=[(int,int)]:for a@i in  finite_part_unnormalized do  (rat_as_int(a%w[i]),w[i]) od in
-(finite_part,(v,M_f,w,proj_f,proj_f_nonzero,finite_part_unnormalized),for z in center(G) do z*v od)
+(finite_part,(v,M_f,w,proj_f,proj_f_nonzero,finite_part_unnormalized))
 
 {for testing}
-set finite_part_central_character(ratvec v, RealForm G)=
+{set finite_part_central_character(ratvec v, RealForm G)=
 let ((M_f,w),(M_ell,M_R))=((mat,vec),(mat,mat)):Z_hat(G) in
-for z@i in center(G) do (z*v,w[i]) od
+for z@i in center(G) do (z*v,w[i]) od}
+
+{just the finite part}
+set finite_part_central_character(ratvec v, RealForm G)=let (a,)=finite_part_central_character_long(v,G) in a
 
 set finite_part_central_character(Param p)=
 finite_part_central_character(p.lambda+p.root_datum.rho,p.real_form)
 
-{
-{just the finite part}
-set finite_part_central_character(ratvec v, RealForm G)=let (a,,)=finite_part_central_character_long(v,G) in a
+
+
+
 
 
 
@@ -77,12 +155,19 @@ finite_part_string="" then
 " split radical: "+ compact_string(radical_R)
 
 set show_one_line(CentralCharacter cc)=void:prints(one_line_string(cc))
-
+{
 set finite_part_central_character_long(Param p)=([(int,int)],(ratvec,mat,vec,mat,mat,ratvec),[rat]):
 finite_part_central_character_long(p.lambda+rho(p.root_datum), p.real_form)
+}
 
 set central_character(Param p)=([(int,int)],vec,ratvec):
 central_character(ratvec_as_vec(p.lambda+rho(p.root_datum)), p.nu,p.real_form)
 
 set show_central_characters([Param] params)=
 for p in params do prints(p, " ", one_line_string(central_character(p))) od
+
+set show_central_characters(RealForm G,ratvec gamma)=
+show_central_characters(all_parameters_gamma(G,gamma))
+
+set show_central_characters(RealForm G)=
+show_central_characters(G,G.rho)
