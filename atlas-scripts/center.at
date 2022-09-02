@@ -14,17 +14,17 @@
    1 -> X^*(Z/S) -> X^*(Z) -> X^*(S) -> 1 (splits, not canonically)
    X^*(Z/S) = canonical torsion subgruop
 
-3) center Z(G) of RealForm G:
-   Z^=(Z_c)^ x (Z_s)^
-   Z_c=compact part of Z
-      =Z^\delta
-   Z_s=vector component of Z  (Q-vector space)
-   (Z_s)^ is a Q-vector space
+3) center Z(R) of RealForm G:
+   Z(R)=Z(R)_c x Z(R)_s
+   Z(R)_c = maximal compact subgroup = Z(R)^delta
+   Z(R)_s is isomorphic, via the exponential map, to a vector space (complex/real/rational)
 
 4) dual Z_hat of center of RootDatum:
-   Z^*(Z_c) x Z^*(Z_s)
-   X^*(Z_s) = (X^*)^{-delta}_Q
-   X^*(Z_c) = X^*/[ (1-delta)X^* + R ] (R = root lattice)
+   Hom_cts(Z(R),C^*) = Hom_cts(Z(R)_c,S^1) x Hom_cts(Z(R)_s,C^*)
+   		     = X^*(Z^delta) x Hom_cts(Z(R)_s,C^*)
+   X^*(Z^delta): finitely generated abelian group, realized as quotient of lattices
+   X^*(Z^delta) = X^*/[ (1-delta)X^* + R ] (R = root lattice)
+   rational characters of Z(R)_s: Q-vector space
 }
 
 { Q-basis of Lie algebra of radical of complex group; columns are coweights }
@@ -39,7 +39,7 @@ set semisimple_part (RootDatum rd, ratvec v) = ratvec:
   sum(rank(rd), for coord@i in v*simple_coroots(rd) do fw[i]*coord od)
 
 { lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto Lie coradical }
-set lie_coradical_part (RootDatum rd, ratvec v) = ratvec:
+set lie_radical_part (RootDatum rd, ratvec v) = ratvec:
   v-semisimple_part(rd,v)
 
 { Q-basis of Lie algebra of split part of radical; columns are coweights }
