@@ -1,0 +1,136 @@
+<basic.at
+<partitions.at
+<conjugate.at
+
+{Let G be a connected reductive algebraic group. To each x \in h^*, one can associate an integrality subgroup Lv(x) \subset Gv (integrality_datum(G,x).dual)
+and a singularity datum Mv(x) \subset Lv(x) (singular_root_datum(G,x).dual).  The former is a pseudo-levi subgroup of Gv and the latter is a Levi subgroup
+of Lv(x) (and of Gv). A `Sommers datum' for Gv is a pair (Lv, OLv) consisting of a pseudo-levi subgroup Lv \subset Gv and a distinguished nilpotent Lv-orbit
+OLv. Consider the set
+
+R(Lv,OLv) = {x \in (h/Z(l))^*: (Lv(x), Ind^{Lv(x)}_{Mv(x)} {0}) is Gv-conjugate to (Lv,OLv)}
+
+Conjecture: each R(Lv,OLv) contains a unique W-conjugacy class of minimal-length elements.
+
+A `Lusztig datum' for Gv is a pair (Ov,C) consisting of a nilpotent Gv-orbit Ov and a conjugacy class C in Abar(Ov). To each such pair, one can associate
+a finite set of Sommers data (Lv1,OLv1),...,(Lvn,OLvn). One can also associate a nilpotent cover \tilde{O} for G (see Mason-Brown-Matvieievskyi). 
+
+Conjecture: the union \cup_i R(Lvi,OLvi) contains a unique W-conjugay class of minimal-length elements. This conjugacy class coincides
+with the infl char of the unipotent ideal attached to \tilde{O}.
+
+The main function in this file is find_min, is designed to check these conjectures in exceptional types. It takes a Sommers datum (Lv,OLv) and an integer parameter n and returns representatives
+of all minimal-length W-conjugacy classes in R(Lv,OLv) if R(Lv,OLv) is nonempty (and returns an error if empty). The integer parameter n
+has no effect on the output, only on the runtime}
+
+{returns a list of pseudo-levis Lv \subset Gv of maximal semisimple rank}
+
+set max_pseudos(RootDatum Gv) = [RootDatum]:
+let list=pseudo_Levi_subgroups(Gv) in
+##(for Lv in list do if ss_rank(Lv)=ss_rank(Gv) and Lv != Gv then [Lv] else [] fi od)
+
+{A sommers datum for G is a distinguished nilpotent in a pseudo-levi of G}
+
+set_type SommersDatum = (RootDatum G, ComplexNilpotent distinguished_orbit)
+
+{A conjugacy class in a nilpotent G-orbit is given by a pseudo-levi L, a distinguished nilpotent in L, and a coset t \in Z(L)/Z(L)^o}
+
+set_type ConjugacyClass = (RootDatum G, ComplexNilpotent distinguished_orbit, ratvec coset) 
+
+{suppose (L,OL) is a Sommers datum which maps to O. Then OL is uniquely determined from L (??). This function computes OL from (O,L)}
+
+set extract_distinguished(ComplexNilpotent O, RootDatum L) = ComplexNilpotent:
+let distinguished_H_L=distinguished_Hs(L)
+then j=first(for H_L in distinguished_H_L do dominant(H_L,O.root_datum)=O.H od)
+in complex_nilpotent(L,distinguished_H_L[j])
+  
+set conjugacy_classes(ComplexNilpotent O) = [ConjugacyClass]:
+let D=component_datum(O).pairs, G=O.root_datum in
+##(for (L,list) in D do for x in list do (G,extract_distinguished(O,L),x) od od)
+
+set order(ConjugacyClass C) = int: 
+order_in_A(C.coset,C.distinguished_orbit.root_datum,C.distinguished_orbit.H)
+
+set Sommers_datum(ConjugacyClass C) = SommersDatum:
+(C.G, C.distinguished_orbit)
+
+{lists all distinguished Sommers data for G.dual (i.e. Sommers data with maximal pseudo-levis)}
+
+set distinguished_Sommers(RootDatum G) = [SommersDatum]:
+let S=max_pseudos(G.dual) in
+##(for Lv in S do for OLv in distinguished_orbits(Lv) do (G.dual,OLv) od od)  
+
+{given a Sommers datum (Lv,OLv) for Gv and a ratvec x in h^*, checks whether 
+1) integrality_datum(G,x).dual = Lv (up to Gv conjugation)
+2) codim of {0} in nilpotent cone for singular root Levi coincides with codim of OLv in nilpotent cone for Lv}
+
+set check_Richardson_weak(SommersDatum (Gv,OLv), ratvec x) = bool:
+let G=Gv.dual, Lv=OLv.root_datum
+then Mv=integrality_datum(G,x).dual, sing=singular_root_datum(G,x).dual
+then c1=#roots(sing), c2=#roots(Mv)-OLv.dim in
+is_conjugate(Lv.rho_check,Mv.rho_check,Gv) and c1=c2
+
+{given a Sommers datum (Lv,OLv) for Gv and a ratvec x in h^*, checks whether
+1) integrality_datum(G,x).dual = Lv (up to Gv conjugation)
+2') OLv coincides with Richardson orbit in Lv corresponding to singular root Levi singular_root_datum(G,x).dual (up to Gv conjugacy)}
+
+set check_Richardson(SommersDatum (Gv,OLv), ratvec x) = bool:
+let G=Gv.dual, Lv=OLv.root_datum, Mv=integrality_datum(G,x).dual, sing=singular_root_datum(G,x).dual then
+OMv=induce_orbit(Mv,zero_orbit(sing)) in
+if not is_conjugate(Lv.rho_check,Mv.rho_check,G.dual) then false else
+dominant(Lv,OMv.H)=OLv.H fi
+
+{given a RootDatum G, a Sommers datum (Lv,OLv), and a rational number t, 0 < t <=1, lists all weights x \in h^* such that
+
+1) check_Richardson_weak((Gv,OLv),x) = true
+2) x dominant for Lv
+3) Lv.rho*x \leq t*Lv.rho*dominant(Lv,G.rho)
+}
+
+set cands_weak(SommersDatum (Gv,OLv), rat t) = [ratvec]:
+let G=Gv.dual, Lv=OLv.root_datum
+then F=fundamental_coweights(Lv)     
+then z=min(for f in F do f*Lv.rho od), H=t*dominant(Lv,G.rho)*Lv.rho    
+then N=ceil(H/z)    
+then indices=compositions_le(N,#F) in
+##(for I in indices do let p=sum(#F[0],for f@i in F do I[i]*f od) in
+if check_Richardson_weak((Gv,OLv),p) then [p] else [] fi od)
+
+
+
+{given a RootDatum G, a Sommers datum (Lv,OLv), and a rational number t, 0 < t <=1, lists all weights x \in h^* such that
+
+1) check_Richardson((Gv,OLv),x) = true
+3) x dominant for Lv
+4) Lv.rho*x \leq t*Lv.rho*dominant(Lv,G.rho)
+}
+
+set cands(SommersDatum (Gv,OLv), rat t) = [ratvec]:
+let G=Gv.dual, Lv=OLv.root_datum
+then F=fundamental_coweights(Lv)
+then z=min(for f in F do f*Lv.rho od), H=t*dominant(Lv,G.rho)*Lv.rho
+then N=ceil(H/z)
+then indices=compositions_le(N,#F) in
+##(for I in indices do let p=sum(#F[0],for f@i in F do I[i]*f od) in
+if check_Richardson((Gv,OLv),p) then [p] else [] fi od)
+
+
+set cands_verbose(SommersDatum (Gv,OLv), rat t) = void:
+let G=Gv.dual, Lv=OLv.root_datum
+then F=fundamental_coweights(Lv)
+then z=min(for f in F do f*Lv.rho od), H=t*dominant(Lv,G.rho)*Lv.rho
+then N=ceil(H/z)
+then indices=compositions_le(N,#F) in
+for I in indices do let p=sum(#F[0],for f@i in F do I[i]*f od) then
+Mv=integrality_datum(G,p).dual, sing=singular_root_datum(G,p).dual in
+prints(p, " ", Mv, " ", sing, " ", #roots(Mv)-#roots(sing)) od
+
+{given a Sommers datum (Lv,OLv) and an integer n, lists representatives of all W-conjugacy classes
+of minimal-length elements in R(Lv,OLv) = {x \in h^*: check_Richardson((Gv,OLv),x)=true}. Algorithm 
+looks for elements in regions {x \in h^*: x dominant for Lv and dominant(Lv,G.rho)*x \leq t} as t increments from 1/n to 1 by 1/n}
+
+set find_min(SommersDatum (Gv,OLv), int n) = [ratvec]:
+let G=Gv.dual, list=[ratvec]:[], t=1/n then
+I=invariant_form(G) in
+while #list=0 and t<1 do list:=cands_weak((Gv,OLv),t); t:=t+1/n od;
+let lengths=for x in list do I(x,x) od then
+d=min(lengths) in
+##(for x in list do if I(x,x)=d then [dominant(G,x)] else [] fi od)
