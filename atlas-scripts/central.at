@@ -118,18 +118,31 @@ let t=torsion(cc) in
 
 {human readable description of central character}
 set show(CentralCharacter cc)=void:
-let ()=prints("torsion part: ", torsion_string(cc)) then
-(M,v) = compact_radical(cc) then
-()=if !=M then prints("character of compact-radical: ", sum(for i:#v do v[i]*M[i] od)) fi then
-(M,v) = split_radical(cc) in
- if !=M then prints("character of split-radical: ", sum(#M[0],for i:#v do v[i]*M[i] od)) fi
+prints(
+ if #torsion(cc)>0 then "torsion part: "+ torsion_string(cc) else "no torsion" fi);
+prints(
+ let (M,v) = compact_radical(cc) in
+ if !=M then "character of compact-radical: "+  v.to_string + "=" +sum(for i:#v do v[i]*M[i] od).to_string else "no compact-radical"  fi);
+prints(
+ let (M,v) = split_radical(cc) in
+ if !=M then "character of split-radical: " + v.to_string + "=" +sum(#M[0],for i:#v do v[i]*M[i] od).to_string  else "no split-radical" fi)
 
 set show_long(CentralCharacter cc)=void:
-let ()=prints("torsion part: ", torsion_string(cc),new_line) then
-(M,v) = compact_radical(cc) then
- ()=prints("basis of X^*(compact-radical)",^compact_radical_basis(ic(cc)),"character of compact-radical: ", sum(for i:#v do v[i]*M[i] od)) then
-(M,v) = split_radical(cc) in
-  prints("basis of X^*(split-radical)_Q:",^split_radical_basis(ic(cc)),"character of split-radical: ", sum(#M[0],for i:#v do v[i]*M[i] od)) 
+prints("torsion part: ", torsion_string(cc),new_line);
+prints(
+let (M,v) = compact_radical(cc) in
+ if !=M then 
+  "basis of X^*(compact-radical)" + (^compact_radical_basis(ic(cc))).to_string+
+  "character of compact-radical: " + new_line + v.to_string + "=" + sum(for i:#v do v[i]*M[i] od).to_string 
+ else 
+  "compact-radical: empty" fi);
+prints(
+ let (M,v) = split_radical(cc) in
+ if !=M then
+  new_line + "basis of X^*(split-radical)_Q:"+(^split_radical_basis(ic(cc))).to_string +
+  "character of split-radical: "+ new_line + v.to_string + "=" +    sum(#M[0],for i:#v do v[i]*M[i] od).to_string
+else
+ "split-radical: empty" fi )
 
 set sort_by_central_character([Param] list)=([CentralCharacter],[[Param]]):
 let central_characters=[CentralCharacter]:[] then
