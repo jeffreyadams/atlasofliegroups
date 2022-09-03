@@ -48,7 +48,7 @@ if is_integer(x) then if is_integer(y) then for i:floor(y)-ceil(x) from ceil(x) 
 
 set chop_small([ratvec] V, vec f) = [[ratvec]]:
 let e=for v in V do f*v od then
-I=intseq(e) in
+I=int_between(e) in
 for n in I do extract(V,f,n,n) od
 
 {given a list V of ratvecs, a functional f, and a (sufficiently large) denominator bound N, lists all regions (convex hulls of
