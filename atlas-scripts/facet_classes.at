@@ -1,0 +1,83 @@
+<facetious.at {for FacetDataKchar}
+< poset.at {for Poset commands}
+
+{ facets are indexed by pairs (d,j) of nonnegative integers; want
+to label by single int...}
+
+{levels[i] is number of terms at level 0,...,i-1}
+set levels(FacetDataKchar FDK) = [int]:
+    let FDinds = FDK.facet_status_inds
+    in for k:#FDinds do sum(for i:k do #FDinds[i] od) od
+
+set size(FacetDataKchar FDK) = int:
+    let FDinds = FDK.facet_status_inds
+    in sum(for d:#FDinds do #FDinds[d] od)
+
+{makes single list of facets}
+set index(FacetDataKchar FDK, int d, int j) = int:
+    levels(FDK)[d] + j
+
+{inverse of index}
+set coords(FacetDataKchar FDK, int n) = (int,int):
+    let FDind = FDK.facet_status_inds 
+    then d = last(for ell in levels(FDK) do ell<=n od)
+    then j = n- levels(FDK)[d]
+    in (d,j)
+
+{functions for looking up facets of given dimension as vertex index lists}
+set lookups(FacetDataKchar FDK) = [(vec->int)]:
+    let FDinds =  FDK.facet_status_inds
+    in for L in FDinds do index_in_facet_list(L) od
+
+{generating relations for facet poset}
+{NEED TO INCLUDE REVERSED RELATIONS}
+set down_poset_gens(FacetDataKchar FDK) = Poset:
+    let FDinds = FDK.facet_status_inds, Pols = FDK.Kchars
+    then lookups = lookups(FDK)
+    in
+    for j:#FDinds[0] do [int]: [] od ##
+    for n:size(FDK)-#FDinds[0] from #FDinds[0]
+       do
+       let (d,j) = coords(FDK, n)
+       then Find = FDinds[d][j]
+       	    in for e:d+1
+       	       do
+		let v = delete(Find.verts,e)
+       	  	then j0 = lookups[d-1](v)
+       	  	in if j0 >= 0 and Pols[d][j] = Pols[d-1][j0]
+	    	   then [index(FDK,d-1,j0)]
+       	     	   else []
+	     	   fi
+       	       od.##
+       od
+ 
+{includes the reversed relations}
+set all_poset_gens(FacetDataKchar FDK) = Poset:
+    let Pdown = down_poset_gens(FDK), FDinds = FDK.facet_status_inds,
+    	L = levels(FDK)
+    then
+    () = for n:size(FDK)-#FDinds~[0]
+       	 do
+		let (d,j) = coords(FDK,n)
+    		in Pdown[n]:= Pdown[n]##(for j:#FDinds[d+1]
+	   		 	 do if find(Pdown[L[d+1]+j],n) >= 0
+			    	    then [L[d+1]+j] else []
+			    	    fi
+			 	 od).##
+    od##Pdown[L~[0]:]
+    in Pdown
+
+{jth entry is the equivalence class of j}
+set poset_full(FacetDataKchar FDK) = Poset:
+    closure(all_poset_gens(FDK))
+
+{the distinct equivalence classes of facets}
+set classes(FacetDataKchar FDK) = [[int]]:
+    let PF = poset_full(FDK)
+    in (for n:size(FDK)
+       	do if PF[n][0] = n then [PF[n]] else []
+	   fi
+    	od).##
+
+{F4_s: 9789 facets in 1457 classes}
+{Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
