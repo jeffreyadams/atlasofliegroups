@@ -54,12 +54,16 @@ for n in I do extract(V,f,n,n) od
 {given a list V of ratvecs, a functional f, and a (sufficiently large) denominator bound N, lists all regions (convex hulls of
 [ratvec]s) obtained by chopping V with integer translates of f}
 
+
+set clean([[ratvec]] regions) = [[ratvec]]:
+##(for R in regions do if #R>0 then [R] else [] fi od) 
+
 set chop([ratvec] V, vec f, int N) = [[ratvec]]:
 let e=for v in V do f*v od then
 (x,y)=(min(e),max(e)) in
 if floor(x)>=ceil(y)-1 then [V]
 else let V=##(V,new_verts(V,f,N)) in
-##(chop_small(V,f),chop_big(V,f)) fi
+clean(##(chop_small(V,f),chop_big(V,f))) fi
 
 {applies chop iteratively as f runs over positive coroots of a RootDatum G}
 
