@@ -1,7 +1,7 @@
 * Work on the Atlas library
 
 - Make |Split| type use |big_int| fields, at least in the axis language.
-- Fix lack of edge flipping in first (classical) extended block contructor
+- Fix lack of edge flipping in first (classical) extended block constructor
 - Rework |Block_Base| which should not contain "extended" field |orbits|
 - Rewrite block construction using methods inspired by synthetic operations
 - Rewrite K type computations to use data type more compatible with Param
@@ -17,10 +17,10 @@
 
 - Prevent abuse of type system possible by capturing (in functions) variables
   whose type is unsettled (like |[*]|), which by well timed assignments can
-  lead to illegal occurences of |*| (e.g. as type of a concrete value). This
+  lead to illegal occurrences of |*| (e.g. as type of a concrete value). This
   is quite subtle; maybe forbid binding to names with such type altogether.
 
-- Check whether using |braek| or |return| could leave the runtime stack in a
+- Check whether using |break| or |return| could leave the runtime stack in a
   bad state in certain cases, and if so provide chatch blocks to clean up
 
 - give better type error message about "needed type" when a let expression
@@ -40,7 +40,7 @@
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
   is easy to write (and common in loop bodies), it is converted to 'v := v#x'
   which is not efficient: with the operation '#' separated in the syntax tree
-  from the assignement ':=', it has no chance of knowing that the same object
+  from the assignment ':=', it has no chance of knowing that the same object
   can be used to store the result, even if the pointer accessing it has the
   lowest possible refcount (which is 2, since the name 'v' must be sharing the
   pointer). This could however be made possible if built-in compound
@@ -66,7 +66,7 @@
 
 * Work on documentation
 
-- Write a tutorial on the axis languge, in bottom-up style
+- Write a tutorial on the axis language, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
 - change build process so 'atlas' is ensured to get most recent version string

@@ -22,7 +22,7 @@ namespace atlas {
 
 typedef tally::TallyVec<unsigned char> tally_vec;
 
-/* A function that computes the vector saying for any strongly primitve
+/* A function that computes the vector saying for any strongly primitive
    element $x$ for $y$ how many $x_0$'s primitivise to $x$ for $y$.
 */
 std::vector<unsigned int>

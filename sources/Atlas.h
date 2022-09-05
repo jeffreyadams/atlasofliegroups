@@ -23,7 +23,7 @@
  BEFORE any of the utility forward files (the ones whose inclusion is excleded
  below) are invoked; this can be accomplished by including it before any other
  Atlas files in each non-utility header file. (Header or other files in the
- utility sub-directory itself should not include ot otherwise refer to this
+ utility sub-directory itself should not include or otherwise refer to this
  file, so as to retain their independence of the rest of the Atlas project.) In
  this manner those object files avoid including both such a forward file and its
  information duplicated here. Since the utility object files necessarily do use
@@ -76,7 +76,7 @@ namespace atlas {
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
    the Atlas library. In fact this file should always be included in any Atlas
-   header file other than from the utilitites subdirectory, and alway before
+   header file other than from the utilitites subdirectory, and always before
    any header files from that subdirectory, so the definitions here will be
    the only ones seen when compiling the Atlas library.
  */
