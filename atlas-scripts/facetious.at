@@ -698,7 +698,7 @@ set updateSingK(RealForm G, FacetDataKchar (vd, StInd, Kpols),
 	Kpols[e][j] = smallPol
 	{K_type_pol(character_formula(finalize(parameter(x_open(G), G.rho,
 	{FBs[e][j]} facet_bary(vd.list, StInde[j].verts))))) = CFK0}
-	then StInde[j] := (small.status, StInde[j].verts) fi
+	then StInde[j] := (small.status##"def", StInde[j].verts) fi
 	od;
     StInd[e]:=StInde
     od
@@ -1071,8 +1071,8 @@ set FPPopenureFacets \
     then Alcoves = [FacetVertsIndex]: for j in Alcs do FPPInd[d][j].verts od
     in FPPopenureFacets(Alcoves, lookups, Base)
 
-{.given a single nonunitary facet F, updates the status of all E with F contained in
-	E-bar to nonunitary. Uses Indices into the FacetVerts sets}
+{.given a single nonunitary facet F, updates the status of all E with F
+ contained in E-bar to nonunitary. Uses Indices into the FacetVerts sets}
 set update \
     ( [vec] OpenureFacets
     , [[FacetStatusVertsIndex]] StInd
@@ -1105,6 +1105,42 @@ set update \
     update( FPPopenureFacets(StInd, lookups, nonUnitary.verts)
           , StInd, nonUnitary)
 
+{.given a single nonunitary facet F, updates the status of all E with F
+ contained in E-bar to nonunitary; then goes to _smaller_ facets where
+ allowed by perturbation. Uses Indices into the FacetVerts sets}
+set updateClosureK \
+    ( [vec] OpenureFacets
+    , [(vec->int)] lookups
+    , FacetDataKchar (vdata, StInd, Pols)
+    , FacetStatusVertsIndex nonUnitary
+    ) = [[FacetStatusVertsIndex]]:
+(   assert(nonUnitary.status[0] = "F"
+    	  ,"updateK only applies to NONunitary facets")
+;   let NUverts = nonUnitary.verts
+in  for e:#OpenureFacets from #NUverts
+    do  let opene = OpenureFacets[e-#NUverts], StInde= StInd[e]
+	in for j in opene
+	do let stej = StInde[j].status
+	in
+	    if stej = "?"
+	    then StInde[j] := ("Fdef", StInde[j].verts)
+	    fi;
+	    StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
+	    	    			   Pols[e][j])
+	od
+    	; StInd[e]:=StInde {already happens in downdate?}
+    od
+;   StInd
+)
+
+set updateClosureK \
+    ( [(vec->int)] lookups
+    , FacetDataKchar(vdata, StInd,Pols)
+    , FacetStatusVertsIndex nonUnitary
+    ) = [[FacetStatusVertsIndex]]:
+    updateClosureK( FPPopenureFacets(StInd, lookups, nonUnitary.verts)
+    ,lookups, (vdata, StInd, Pols), nonUnitary)
+
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
 set downdate \
    ( [(vec->int)] lookups
@@ -1132,7 +1168,28 @@ set downdate \
     od
     in StInd
 
-
+{ adds nonunitary status in dimension d+1 when deformed from a nonunitary
+in dimension d}
+set one_up(FacetDataKchar (vd, FPPstInd, Pols), int d) =
+    [[FacetStatusVertsIndex]]:
+    assert(0 <= d and d < #FPPstInd-1,"requesting one_up in invalid degree");
+    let FPPstIndUp = FPPstInd[d+1]
+    then () = for FindUp@j in FPPstIndUp
+    do
+     if FindUp.status="?" then
+       let Pup = Pols[d+1][j]
+       in   for FindDown@k in FPPstInd[d]
+       	    do
+		if FindDown.status[0]="F" and
+		   is_subset_of(FindUp.verts)(FindDown.verts) and
+		   Pols[d][k] = Pup
+	    	then FPPstIndUp[j] := ("Fdef", FindUp.verts)
+	    	fi
+	    od
+      fi
+     od
+     ; FPPstInd[d+1]:= FPPstIndUp
+     in FPPstInd
 { meant to record information about unitarity for all facets }
 set facet_status([[ratvec]] FPPB) = [[string]]:
     for FPPBd in FPPB do for FB in FPPBd do "?" od od
@@ -1144,6 +1201,8 @@ set facet_status([[vec]] FPPind) = [[string]]:
 {now marks unipotent parameters as "T[number of dual nilpotent]"}
 {Now that we are emphasizing cofolded G, I THINK that for a simple G(R), all unipotent parameters must be
 barycenters of (cofolded) facets of dimension 0.}
+{to use Closure in this command, need to add a few lines as in
+facetiousEQUIV.at}
 set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
 (  let FBs = [[FacetBary]]:
       for Findd in FPPstInd
@@ -1167,7 +1226,8 @@ in
 	    GK_dim(parameter(x_open(G),G.rho,gamma)) = dim(st.dual_map(O))/2
 	 then FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
 	 ;    FPPstIndQuo := updateSing{Closure}
-	       (G, (vd,FPPstIndQuo), ("Tdef"##to_string(j),FPPstInd0[m0].verts))
+	       (G, (vd,FPPstIndQuo), ("T"##"def"##to_string(j),
+	       	   FPPstInd0[m0].verts))
 	 fi
       od
    else
@@ -1177,7 +1237,8 @@ in
       in if m0 >= 0
 	 then FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
 	 ;    FPPstIndQuo := updateSing{Closure}
-	       (G, (vd, FPPstIndQuo), ("Tdef"##to_string(j),FPPstInd0[m0].verts))
+	       (G, (vd, FPPstIndQuo), ("T"##"def"##to_string(j),
+	       	   FPPstInd0[m0].verts))
 	 fi
       od
    fi
@@ -1413,7 +1474,7 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 	do
 	if stFind.status="T"
 	then countT+:=1
-	elif stFind.status[0]="F"
+	elif stFind.status="F"
 	then countF+:=1
 	elif stFind.status="?"
 	then countQ+:=1
@@ -1593,37 +1654,41 @@ set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
     then temp =
     for d:#FPPstInd
 	do{DIMd}
-	let FPPstIndd = FPPstInd[d]
-	then TODOd = to_do(FPPstIndd)
-	then temp = (); test_count := test_count+#TODOd; if facet_verbose
+	let {FPPstIndd = FPPstInd[d],} countd = int: 0
+	{then TODOd = to_do(FPPstIndd)}
+	then temp = (); {test_count := test_count+#TODOd;} if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical(G,status,(vd,FPPind)); testing ",
-	       #TODOd," parameters.")
+	     " in sphericalK(G,status,(vd,FPPind))")
 	fi
 	in
-		for j@k in TODOd
-		do{FACd}
-		let Find = FPPstIndd[j]
-		then result =
-		    if facet_verbose
-		     then if k <=5 or k% (1+#FPPstIndd\10) = 0
-			  then prints("started test #",k," of ",#TODOd)
-			  fi
-		     fi;
-		if{NEWU} (is_unitary(first_param(standardize(
-			 parameter(xopen, Grho, facet_bary(vd.list,Find.verts))))))
-		then FPPstInd:=updateSingK(G, (vd, FPPstInd,Pols), ("Tdef",
-		     Find.verts), Pols[d][j]);
-		     FPPstIndd[j]:=("T",Find.verts)
-		else{NEWU}
-		FPPstInd:=update(lookups, FPPstInd, ("Fdef",Find.verts));
-		FPPstIndd[j]:=("F",Find.verts)
-		fi
-	in result
-	od{FACd};
-    FPPstInd[d]:=FPPstIndd
-    od{DIMd};
-    if(facet_verbose) then show(FPPstInd) fi
+	for j: #FPPstInd[d]
+	    do{FACd}
+		let Find = FPPstInd[d][j]
+		in   if Find.status[0]="?"
+		     then countd := countd+1
+		     ; if{NEWU} (is_unitary(first_param(standardize(
+			 parameter(xopen, Grho, facet_bary(vd.list,
+			 		  Find.verts))))))
+		       then FPPstInd:=updateSingK(G, (vd, FPPstInd,Pols),
+			  ("Tdef", Find.verts), Pols[d][j])
+		 	  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("T",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       else{NEWU} FPPstInd:=updateClosureK(lookups,
+		     		(vd, FPPstInd, Pols), ("Fdef",Find.verts))
+			  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("F",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       fi
+		     fi
+	     od{FACd}
+    	     ; if d < #FPPstInd-1 then FPPstInd:=
+	       one_up((vd,FPPstInd,Pols),d) fi
+	     ; if(facet_verbose) then prints("did ",countd,
+			  " tests in dimension ",d) fi
+	     ; test_count:= test_count+countd
+    	  od{DIMd}
+    ; if(facet_verbose) then show(FPPstInd) fi
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
@@ -1680,54 +1745,56 @@ set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) =
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
-set spherical_testK(RealForm G, FacetDataKchar(vd,FPPstInd,Pols), (Param -> bool) tester) = FacetData:
+set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
+    (Param->bool) tester) = FacetData:
     let xopen = x_open(G)
     , Grho = G.rho
-    , FBs = [[FacetBary]]:
-	 for FPPstIndd in FPPstInd
-	 do for Find in FPPstIndd do facet_bary(vd.list, Find.verts) od
-	 od
+    {, FBs = [[FacetBary]]:
+	for FPPstIndd in [[FacetStatusVertsIndex]]: FPPstInd
+	do for facet in FPPstIndd
+	   do facet_bary(vd.list, facet.verts) od
+	od}
     , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
         for L in FPPstInd do index_in_facet_list(L) od
-    , test_count = int: 0
+    , test_count = int:0
     then temp =
     for d:#FPPstInd
 	do{DIMd}
-	let FPPstIndd = FPPstInd[d]
-	then TODOd = to_do(FPPstIndd)
-	then TODOBd = for j in TODOd
-		      do facet_bary(vd.list, FPPstIndd[j].verts) od,
-		      GOALd = #TODOd; test_count:= test_count+#TODOd;
-	if facet_verbose
+	let {FPPstIndd = FPPstInd[d],} countd = int: 0
+	{then TODOd = to_do(FPPstIndd)}
+	then temp = (); {test_count := test_count+#TODOd;} if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical_test(G,vd.list,FPPstInd); testing ",
-	       #TODOd," parameters.")
+	     " in sphericalK(G,status,(vd,FPPind))")
 	fi
 	in
-		for j@k in TODOd
-		do{FACd}
-		let Find = FPPstIndd[j]
-		then result =
-		    if facet_verbose
-		     then if k <=5 or k% (1+{GOALd}#TODOd\10) = 0
-			  then prints("started test #",k," of ",{GOALd}#TODOd)
-			  fi
-		     fi;
-		if{NEWU} tester(first_param(standardize(
-			     	  parameter(xopen, Grho,
-    				  TODOBd[k]))))
- 		then FPPstInd:=updateSingK(G, (vd, FPPstInd, Pols), ("Tdef",
-		     Find.verts), Pols[d][j]);
-		FPPstIndd[j]:=("Ttotester", FPPstIndd[j].verts)
-		else{NEWU}
-		FPPstInd:=update(lookups, FPPstInd, ("F",Find.verts));
-		FPPstIndd[j]:=("F",Find.verts)
-		fi
-	in result
-	od{FACd};
-    FPPstInd[d]:=FPPstIndd
-    od{DIMd};
-    if(facet_verbose) then show(FPPstInd) fi
+	for j: #FPPstInd[d]
+	    do{FACd}
+		let Find = FPPstInd[d][j]
+		in   if Find.status[0]="?"
+		     then countd := countd+1
+		     ; if{NEWU} tester(first_param(standardize(
+			 parameter(xopen, Grho, facet_bary(vd.list,
+			 		  Find.verts)))))
+		       then FPPstInd:=updateSingK(G, (vd, FPPstInd,Pols),
+			  ("Tdef", Find.verts), Pols[d][j])
+		 	  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("T",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       else{NEWU} FPPstInd:=updateClosureK(lookups,
+		     		(vd, FPPstInd, Pols), ("Fdef",Find.verts))
+			  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("F",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       fi
+		     fi
+	     od{FACd}
+    	     ; if d < #FPPstInd-1 then FPPstInd:=
+	       one_up((vd,FPPstInd,Pols),d) fi
+	     ; if(facet_verbose) then prints("did ",countd,
+			  " tests in dimension ",d) fi
+	     ; test_count:= test_count+countd
+    	  od{DIMd}
+    ; if(facet_verbose) then show(FPPstInd) fi
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
@@ -1747,7 +1814,8 @@ set sphericalK(RealForm G) = FacetData:
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
 
 
-{. apply actualize to the FacetData before computing unitarity; should mean that output is already actualized .}
+{. apply actualize to the FacetData before computing unitarity; should mean
+   that output is already actualized .}
 set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(G) { (rd,M,j0) }
