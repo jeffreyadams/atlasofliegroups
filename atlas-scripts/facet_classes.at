@@ -31,7 +31,7 @@ set lookups(FacetDataKchar FDK) = [(vec->int)]:
 
 {generating relations for facet poset}
 {NEED TO INCLUDE REVERSED RELATIONS}
-set down_poset_gens(FacetDataKchar FDK) = Poset:
+set down_equiv_poset_gens(FacetDataKchar FDK) = Poset:
     let FDinds = FDK.facet_status_inds, Pols = FDK.Kchars
     then lookups = lookups(FDK)
     in
@@ -50,10 +50,10 @@ set down_poset_gens(FacetDataKchar FDK) = Poset:
 	     	   fi
        	       od.##
        od
- 
+
 {includes the reversed relations}
-set all_poset_gens(FacetDataKchar FDK) = Poset:
-    let Pdown = down_poset_gens(FDK), FDinds = FDK.facet_status_inds,
+set all_equiv_poset_gens(FacetDataKchar FDK) = Poset:
+    let Pdown = down_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds,
     	L = levels(FDK)
     then
     () = for n:size(FDK)-#FDinds~[0]
@@ -68,12 +68,12 @@ set all_poset_gens(FacetDataKchar FDK) = Poset:
     in Pdown
 
 {jth entry is the equivalence class of j}
-set poset_full(FacetDataKchar FDK) = Poset:
-    closure(all_poset_gens(FDK))
+set equiv_poset(FacetDataKchar FDK) = Poset:
+    closure(all_equiv_poset_gens(FDK))
 
 {the distinct equivalence classes of facets}
-set classes(FacetDataKchar FDK) = [[int]]:
-    let PF = poset_full(FDK)
+set equiv_classes(FacetDataKchar FDK) = [[int]]:
+    let PF = equiv_poset(FDK)
     in (for n:size(FDK)
        	do if PF[n][0] = n then [PF[n]] else []
 	   fi
@@ -81,3 +81,56 @@ set classes(FacetDataKchar FDK) = [[int]]:
 
 {F4_s: 9789 facets in 1457 classes}
 {Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
+{Sp(6,C): 165 facets in 91 classes; 10 unitary}
+
+{Now do unitary poset: equivalence classes above, PLUS containment of
+vertex sets}
+
+set down_unitary_poset_gens(FacetDataKchar FDK) = Poset:
+    let downGen = all_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds
+    then lookups = lookups(FDK)
+    then () = for d:#FDinds-1 from 1
+    	 do
+    	     for Find@j in FDinds[d]
+	     do
+	     downGen[index(FDK,d,j)]:=
+		downGen[index(FDK,d,j)] ## for e:d+1
+		do
+		    let v = delete(Find.verts,e)
+		    then j0 = lookups[d-1](v)
+		    in if j0 >= 0
+		       then [index(FDK,d-1,j0)]
+		       else []
+		       fi
+		od.## {.no_reps.sort}
+	     od
+	  od
+     in downGen
+
+set unitary_down_poset(FacetDataKchar FDK) = Poset:
+    closure(down_unitary_poset_gens(FDK))
+
+
+set up_nonunitary_poset_gens(FacetDataKchar FDK) = Poset:
+    let upGen = all_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds
+    then lookups = lookups(FDK)
+    then () = for d:#FDinds-1 from 1
+    	 do
+    	     for Find@j in FDinds[d]
+	     do
+		for e:d+1
+		do
+		    let v = delete(Find.verts,e)
+		    then j0 = lookups[d-1](v)
+		    in if j0 >= 0
+		       then upGen[index(FDK,d-1,j0)]##:=[index(FDK,d,j)]
+		       	    {.no_reps.sort}
+		       else []
+		       fi
+		od.##{.no_reps.sort}
+	     od
+	 od
+    in upGen
+
+set nonunitary_up_poset(FacetDataKchar FDK) = Poset:
+    closure(up_nonunitary_poset_gens(FDK))
