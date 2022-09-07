@@ -197,8 +197,8 @@ for j@i in p do if is_even(i) then j+1 else j-1 fi od
 
 set h(Partition p) = Partition:
 for j@i in p do if is_integer(i/4) then j+2
-                elif is_integer(i-1/4) then j+1
-		elif is_integer(i-2/4) then j-1
+                elif is_integer((i-1)/4) then j+1
+		elif is_integer((i-2)/4) then j-1
 		else j-2 fi od
 
 
@@ -979,4 +979,17 @@ for x in rig do prints("Dimension = ", dim(O(x)), " H = ", H(O(x)), " Infl char 
 
 set print_semirigid_data(RootDatum rd) = void:
 let rig=semirigid_data(rd) in
-for x in rig do prints("Dimension = ", dim(O(x)), " H = ", H(O(x)), " Infl char attached to birigid cover = ", infl_char(x)) od
+for x in rig do prints("Dimension = ", dim(O(x)), " Diagram = ", O(x).diagram, " Infl char attached to birigid cover = ", infl_char(x)) od
+
+
+
+
+{Tests unitarity}
+
+set test_spherical_unipotent(RealForm G) = void:
+let rig=semirigid_data(G) in
+for x in rig do 
+prints("orbit = ", O(x), " infl char = ", infl_char(x));
+let list=##(for p in all_parameters_gamma(G,infl_char(x)) do if 2*GK_dim(p)=dim(O(x)) then [p] else [] fi od) in
+prints("number of unipotents = ", #list);
+for p in list do prints(p, "  unitary = ", is_unitary(p)) od od
