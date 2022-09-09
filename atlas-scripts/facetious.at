@@ -456,6 +456,41 @@ FacetStatusVertsIndex big, KTypePol bigPol) =
     od
     in StInd
 
+{.given a single nonunitary facet F, updates the status of all E
+_MATCHING KCHAR_ in F-bar to nonunitary. Confine deletions to subset
+Base of big.verts, and leave at least #Base.}
+set downdateSingK([(vec->int)] lookups, FacetDataKchar (vd, StInd, Kpols),
+FacetStatusVertsIndex big, KTypePol bigPol, vec Base) =
+    [[FacetStatusVertsIndex]]:
+    let verts0 = big.verts
+    	, memberTest = is_member(Base)
+    then comp = for j in verts0 do if memberTest(j) then [] else [j]
+    	      	      	 	   fi od.##
+    then () =assert((#comp + #Base = #verts0),"oops, comp is wrong")
+    then most_out = min(#Base, #comp)
+    then () = for f:most_out from 1
+    	 {f is number removed from Base}
+    do
+    let e = #verts0-f-1  {size of new vertex set is #verts0 - f}
+    then StInde = StInd[e]
+    in
+    for S in choices_from(Base, #Base - f)
+    	do
+	let j = lookups[e]((S##comp).sort)
+	in
+	if j >= 0 then
+	   let stej = StInde[j].status
+	   in
+	   if (stej = "?" or (#stej > 1 and stej[1]="t"))
+	      and Kpols[e][j] = bigPol
+	   then StInde[j]:=(big.status, StInde[j].verts)
+	   fi
+	fi
+	od;
+    StInd[e]:=StInde
+    od
+    in StInd
+
 set index_in_facet_list ([FacetStatusVertsIndex] L) = (vec->int):
     index_in(for (,v) in L do v od) { calls |index_in@[vec]| }
 
@@ -680,12 +715,10 @@ set updateSing(RealForm G, FacetData (vd, StInd),
     od
     in StInd
 
-set updateSingK(RealForm G, FacetDataKchar (vd, StInd, Kpols),
-{[[FacetBary]] FBs,} FacetStatusVertsIndex small, KTypePol smallPol) =
+set updateSingKdumb(RealForm G, FacetDataKchar (vd, StInd, Kpols),
+    FacetStatusVertsIndex small, KTypePol smallPol) =
     [[FacetStatusVertsIndex]]:
     let verts0 = small.verts
-    { then P0 = finalize(parameter(x_open(G),G.rho,facet_bary(vd.list,verts0)))
-    then CFK0 = K_type_pol(character_formula(P0)) }
     then () = for e:#StInd - #verts0 from #verts0
     do
     let StInde = StInd[e]
@@ -696,8 +729,6 @@ set updateSingK(RealForm G, FacetDataKchar (vd, StInd, Kpols),
 	if StInde[j].status = "?" and
 	is_subset_of(StInde[j].verts)(verts0) and
 	Kpols[e][j] = smallPol
-	{K_type_pol(character_formula(finalize(parameter(x_open(G), G.rho,
-	{FBs[e][j]} facet_bary(vd.list, StInde[j].verts))))) = CFK0}
 	then StInde[j] := (small.status##"def", StInde[j].verts) fi
 	od;
     StInd[e]:=StInde
@@ -730,7 +761,6 @@ set updateSingClosure(RealForm G, FacetData (vd, StInd),
     StInd[e]:=StInde
     od
     in StInd
-
 
 {.computes the collection of vertex sets of alcoves containing gamma in their closures.}
 set openure(SimpleAffine Affd, ratvec gamma) = [FacetVerts]:
@@ -1039,6 +1069,8 @@ facets.
 
 If Base has dimension d (d+1 vertices) then output[m] indexes
 facets of dimension d+1+m with Base in closure .}
+{IMPROVEMENT?: make output[m]  [vec], with each vec of size m+1 listing
+vertices not in base}
 set FPPopenureFacets \
     ( [FacetVertsIndex] Alcoves
     , [(vec->int)] lookups
@@ -1070,6 +1102,43 @@ set FPPopenureFacets \
     let (d,Alcs) = FPPopenureAlcoves(FPPInd, Base)
     then Alcoves = [FacetVertsIndex]: for j in Alcs do FPPInd[d][j].verts od
     in FPPopenureFacets(Alcoves, lookups, Base)
+
+{only remove vertices in Base \subset Unitary.verts}
+set downdate \
+   ( [(vec->int)] lookups
+   , [[FacetStatusVertsIndex]] StInd,FacetStatusVertsIndex Unitary
+   , vec Base
+   ) = [[FacetStatusVertsIndex]]:
+    assert(Unitary.status[0] = "T","downdate only applies to unitary facets");
+    let Uverts = Unitary.verts
+    	, memberTest = is_member(Base)
+	, newlabel = (Unitary.status)##"closure"
+    then comp = for j in Uverts do if memberTest(j) then [] else [j]
+    	      	      	 	   fi
+				od.##
+    then () =assert((#comp + #Base = #Uverts),"oops, comp is wrong")
+    then most_out = min(#Base, #comp)
+    then () = for f:most_out from 1
+    	 { f is number removed from Base}
+    do
+    let e = #Uverts-f-1  {size of new vertex set is #Uverts - f}
+    then StInde = StInd[e]
+    in
+    for S in choices_from(Base,#Base - f)
+	do
+	let j = lookups[e]((S##comp).sort)
+	in
+	if j >= 0 then
+	   let stej = StInde[j].status
+	   in
+	   if stej = "?"
+	   then StInde[j]:=(newlabel, StInde[j].verts)
+	   fi
+	fi
+	od;
+    StInd[e]:=StInde
+    od
+    in StInd
 
 {.given a single nonunitary facet F, updates the status of all E with F
  contained in E-bar to nonunitary. Uses Indices into the FacetVerts sets}
@@ -1124,9 +1193,34 @@ in  for e:#OpenureFacets from #NUverts
 	in
 	    if stej = "?"
 	    then StInde[j] := ("Fdef", StInde[j].verts)
-	    fi;
-	    StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
-	    	    			   Pols[e][j])
+	    ; StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
+	    	    			   Pols[e][j],NUverts)
+	    fi
+	od
+    	; StInd[e]:=StInde {already happens in downdate?}
+    od
+;   StInd
+)
+
+{want to make a version just running through bigger facets}
+set updateClosureKdumb \
+    ( [(vec->int)] lookups
+    , FacetDataKchar (vdata, StInd, Pols)
+    , FacetStatusVertsIndex nonUnitary
+    ) = [[FacetStatusVertsIndex]]:
+(   assert(nonUnitary.status[0] = "F"
+    	  ,"updateClosureKdumb only applies to NONunitary facets")
+;   let NUverts = nonUnitary.verts
+in  for e:#StInd-#NUverts from #NUverts
+    do  let StInde = StInd[e]
+	in for Find@j in StInde
+	   do let stej = Find.status
+	      in
+	    if stej = "?" and is_subset_of_sorted(Find.verts)(NUverts)
+	    then StInde[j] := ("Fdef", Find.verts)
+	    ; StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
+	    	    			   Pols[e][j],NUverts)
+	    fi
 	od
     	; StInd[e]:=StInde {already happens in downdate?}
     od
@@ -1138,8 +1232,42 @@ set updateClosureK \
     , FacetDataKchar(vdata, StInd,Pols)
     , FacetStatusVertsIndex nonUnitary
     ) = [[FacetStatusVertsIndex]]:
-    updateClosureK( FPPopenureFacets(StInd, lookups, nonUnitary.verts)
+    updateClosureK(FPPopenureFacets(StInd, lookups, nonUnitary.verts)
     ,lookups, (vdata, StInd, Pols), nonUnitary)
+
+{should be applied just when small facet is unitary}
+set updateSingK \
+    ( [vec] OpenureFacets
+    , [(vec->int)] lookups
+    , FacetDataKchar (vd, StInd, Kpols)
+    , FacetStatusVertsIndex small
+    , KTypePol smallPol
+    ) = [[FacetStatusVertsIndex]]:
+    let verts0 = small.verts
+    then () = for e:#OpenureFacets from #verts0
+       do let opene = OpenureFacets[e-#verts0], StInde = StInd[e]
+       	  then TODOe = to_do(StInde)
+       	  in for j in opene
+	     do
+		if StInde[j].status = "?" and {{should be automatic}
+		   is_subset_of(StInde[j].verts)(verts0) and}
+		   Kpols[e][j] = smallPol
+		then StInde[j] := (small.status##"def", StInde[j].verts)
+		; StInd := downdate(lookups, StInd, StInde[j], small.verts)
+		fi
+	     od;
+    	    StInd[e]:=StInde
+       od
+    in StInd
+
+set updateSingK \
+    ( [(vec->int)] lookups
+    , FacetDataKchar(vdata, StInd,Pols)
+    , FacetStatusVertsIndex nonUnitary
+    , KTypePol nonUnitaryPol
+    ) = [[FacetStatusVertsIndex]]:
+    updateSingK( FPPopenureFacets(StInd, lookups, nonUnitary.verts)
+    , lookups, (vdata, StInd, Pols), nonUnitary, nonUnitaryPol)
 
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
 set downdate \
@@ -1159,7 +1287,7 @@ set downdate \
 	if j >= 0 then
 	   let stej = StInde[j].status
 	   in
-	   if stej = "?" or (#stej > 1 and stej[1]="t")
+	   if stej = "?" { or (#stej > 1 and stej[1]="t") }
 	   then StInde[j]:=(Unitary.status, StInde[j].verts)
 	   fi
 	fi
@@ -1239,6 +1367,57 @@ in
 	 ;    FPPstIndQuo := updateSing{Closure}
 	       (G, (vd, FPPstIndQuo), ("T"##"def"##to_string(j),
 	       	   FPPstInd0[m0].verts))
+	 fi
+      od
+   fi
+;  FPPstIndQuo[0] := FPPstInd0
+;   (vd, FPPstIndQuo)
+)
+
+{ meant to record information about unitarity for all facets }
+{now marks unipotent parameters as "T[number of dual nilpotent]"}
+{Now that we are emphasizing cofolded G, I THINK that for a simple G(R), all unipotent parameters must be
+barycenters of (cofolded) facets of dimension 0.}
+{to use Closure in this command, need to add a few lines as in
+facetiousEQUIV.at}
+set facet_statusuK(RealForm G, FacetDataKchar (vd,FPPstInd, Pols)) = FacetData:
+(  let FBs = [[FacetBary]]:
+      for Findd in FPPstInd
+      do for Find in Findd do facet_bary(vd.list, Find.verts) od
+      od
+   then lookups = for L in FPPstInd do index_in_facet_list(L) od
+   , lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
+     index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
+   then FPPstIndQuo = FPPstInd
+   , st = G.dual.Springer_table
+   then FPPstInd0 = FPPstInd[0]
+{   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi}
+in
+   if not(is_split(G))
+   then
+      for O@j in st.orbits
+      do let gamma = O.H/2
+	 then m0 = lookup0(gamma)
+      in if m0 >= 0 and
+	    GK_dim(parameter(x_open(G),G.rho,gamma)) = dim(st.dual_map(O))/2
+	 then FPPstIndQuo := updateSingK(lookups, (vd,FPPstIndQuo,Pols)
+	 , ("T"##"def"##to_string(j), FPPstInd0[m0].verts), Pols[0][m0])
+	 ; FPPstInd0 := FPPstIndQuo[0]
+	 ; FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
+	 ; FPPstIndQuo[0] := FPPstInd0
+	 fi
+      od
+   else
+      for O@j in st.orbits
+      do let gamma = O.H/2
+	 then m0 = lookup0(gamma)
+      in if m0 >= 0
+	 then FPPstIndQuo := updateSingK
+	       (lookups, (vd, FPPstIndQuo, Pols), ("T"##"def"##to_string(j)
+	       	, FPPstInd0[m0].verts), Pols[0][m0])
+	 ; FPPstInd0 := FPPstIndQuo[0]
+	 ; FPPstInd0[m0] := ("T"##to_string(j),FPPstInd0[m0].verts)
+	 ; FPPstIndQuo[0] := FPPstInd0
 	 fi
       od
    fi
@@ -1466,9 +1645,9 @@ set facet_data_Kchar(RealForm G) = FacetDataKchar:
 set show([[FacetStatusVertsIndex]] FPPstInd) = void:
     for FPPstIndd@d in FPPstInd
     do
-    let (countTu, countTto, countTi, countTdef, countT,
-    countFi, countFdef, countF, countQ) =
-	(0, 0, 0,0,0,0,0, 0, 0)
+    let (countTu, countTtest, countTi, countTdef, countT,
+    countFi, countFdef, countFtest, countF, countQ) =
+	(0, 0, 0,0,0,0,0, 0, 0,0)
     in
 	for stFind in FPPstIndd
 	do
@@ -1478,26 +1657,29 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 	then countF+:=1
 	elif stFind.status="?"
 	then countQ+:=1
-	elif stFind.status[1]="t"
-	then countTto+:=1
-	elif stFind.status[0]="T" and stFind.status[1]="i"
+	elif stFind.status[:2]="Tt"
+	then countTtest+:=1
+	elif stFind.status[:2]="Ti"
 	then countTi+:=1
-	elif stFind.status[1]="i"
-	then countFi+:=1
-	elif stFind.status[0] = "T" and stFind.status[1]="d"
+	elif stFind.status[:2]="Td"
 	then countTdef+:=1
-	elif stFind.status[0] = "F" and stFind.status[1]="d"
+	elif stFind.status[:2]="Fi"
+	then countFi+:=1
+	elif stFind.status[:2]="Fd"
 	then countFdef+:=1
+	elif stFind.status[:2]="Ft"
+	then countFtest+:=1
 	else countTu+:=1
 	fi
 	od;
-	prints("Facet dimension ",d,": ", countTu, " unipotent, ",countTi,
-	" unitarily induced, ",countTdef, " deformed from unitary, ",
-	countT, " other unitary,  ", countTto,
-	" unitary_test", new_line, "       ",countFi,
-	" induced nonunitarily, ",countFdef,
-	" deformed from nonunitary, ",countF, " other nonunitary, ",
-	countQ, " undecided.",new_line)
+	prints("Facet dimension ",d,": ", countTu, " unipotent, ",countTi
+	," unitarily induced, ",countTdef, " deformed from unitary, "
+	,countTtest, " tested unitary,  ", countT
+	," other unitary", new_line, "       ",countFi
+	," induced nonunitarily, ",countFdef
+	," deformed from nonunitary, ",countFtest, " tested nonunitary, "
+	, countF, " other nonunitary, "
+	, countQ, " undecided.",new_line)
     od
 
 set show(FacetData FD) = show(FD.facet_status_inds)
@@ -1668,7 +1850,7 @@ set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
 		     ; if{NEWU} (is_unitary(first_param(standardize(
 			 parameter(xopen, Grho, facet_bary(vd.list,
 			 		  Find.verts))))))
-		       then FPPstInd:=updateSingK(G, (vd, FPPstInd,Pols),
+		       then FPPstInd:=updateSingK(lookups, (vd, FPPstInd,Pols),
 			  ("T", Find.verts), Pols[d][j])
 		 	  ; let FPPstIndd = FPPstInd[d]
 	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
@@ -1763,14 +1945,15 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
 		let Find = FPPstInd[d][j]
 		then () = if facet_verbose and d<= 1 and j%(#FPPstInd[d]\5) = 0
 		     	  then prints("examining facet #",j," of ",
-		     	       #FPPstInd[d])
+		     	       #FPPstInd[d],"; ", #to_do(FPPstInd[d][j:]),
+			       " still undecided.")
 		     	  fi
 		in   if Find.status[0]="?"
 		     then countd := countd+1
 		     ; if{NEWU} tester(first_param(standardize(
 			 parameter(xopen, Grho, facet_bary(vd.list,
 			 		  Find.verts)))))
-		       then FPPstInd:=updateSingK(G, (vd, FPPstInd,Pols),
+		       then FPPstInd:=updateSingK(lookups, (vd, FPPstInd,Pols),
 			  ("T", Find.verts), Pols[d][j])
 		 	  ; let FPPstIndd = FPPstInd[d]
 	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
@@ -1804,8 +1987,8 @@ set spherical(RealForm G) = FacetData:
 
 set sphericalK(RealForm G) = FacetData:
     let data = facet_data_fold(G)
-    then (vdata, dataInd, Pols) = actualizeK(x_open(G), G.rho, data)
-    then (vdata, datau) = facet_statusu(G, (vdata, dataInd))
+    then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
+    then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
 
 
@@ -1822,13 +2005,13 @@ set spherical_testK(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(G) { (rd,M,j0) }
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, dataFold)
-    then (vdata, datau) = facet_statusu(G, (vdata, dataAct))
+    then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G,(vdata,datau, Pols), tester)
 
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G(R) must have simple derived group.}
 set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
-    let (vd,FVstInd) = spherical(G)
+    let (vd,FVstInd) = sphericalK(G)
     in
     ##(for d:#FVstInd
 	    do if only_unitary then
@@ -1855,7 +2038,7 @@ set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
 {. records vertices of unitary regions for spherical dual real simple
 G; complex is OK .}
 set JustTheRegions_simple(RealForm G) = [(bool,[ratvec])]:
-    let ((vlist,),FVstInd) = spherical(G)
+    let ((vlist,),FVstInd) = sphericalK(G)
     in
     ##(for d:#FVstInd
 	 do if only_unitary then
@@ -2119,8 +2302,9 @@ set facet_statusu_reg(RealForm G, FacetDataOldKchar(vd,FPPQuo, OldBarys,
 	    		elif uboolL then countDown := countDown+1;
 			     FPPnew := downdate(lookups, FPPnew,
 			         ("Ticlosure",FPPnew[d][j].verts));
-			     FPPnew := updateSingK{Closure}(G, (vd,FPPnew,Pols),
-			         ("Tiopen",Find.verts),Pols[d][j])
+			     FPPnew := updateSingK{Closure}(lookups
+			     	       , (vd,FPPnew,Pols)
+				       , ("Tiopen",Find.verts),Pols[d][j])
 			; "Ti"
 			     {if inducing is hermitian nonunitary,
 		    	     	 and induction is irreducible, then
@@ -2158,7 +2342,7 @@ set facet_statusu_reg(RealForm G) = FacetDataKchar:
 
 {.spherical unitarity data one simple factor at a time.}
 set genSpherical(RealForm G) = [ FacetData ]:
-for G0 in simple_factors(G) do spherical(G0) od
+for G0 in simple_factors(G) do sphericalK(G0) od
 
 
 {.same as spherical using induced info.}
