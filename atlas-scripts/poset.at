@@ -10,23 +10,45 @@
 }
 set_type Poset=[[int]]
 
-{add relations implied by transitivity}
-set transitive_fill_one(Poset P)=Poset:
-{add i to row i to guaranteed reflexive}
-for i:#P do  sort_u(i#P[i]##(##for j in P[i] do P[j] od)) od
+{add relations implied by reflexivity and transitivity}
+set transitive_fill_one(Poset P) = Poset:
+{add i to row i to guaranteed reflexive; loop reversal ensures |P[j]| is final }
+  for Pi@i in P
+ ~do P[i] := sort_u
+    (i#Pi ##
+     for j in Pi do P[j] od.## { all entries up from |i| by one transitivity }
+    )
+ ~od
 
-{add all relations implied by transitivity}
-set rec_fun transitive_fill(Poset P)=Poset:
-let Q=transitive_fill_one(P) in
- if #P=#Q and all(for i:#P do P[i]=Q[i] od) then 
- P else transitive_fill(Q) fi
+set equal ([[int]]A,[[int]]B) = bool: { cannot overload this onto '=' }
+  #A=#B and for ai@i in A do B[i]=ai od.all
 
-set closure(Poset P)=Poset:transitive_fill(P)
+{ repeatedly add all relations implied by transitivity; not needed anymore }
+set transitive_fill(Poset P) = Poset:
+  while let Q=transitive_fill_one(P) in not equal(P,Q) do P:=Q od; P
+
+{ the fastest way to compute this is using bitsets; avoids needing |sort_u| }
+set trans_close (Poset P) = Poset:
+  let above = [int]: for Pi in P do Pi.to_bitset od in
+  for above_i@i in above
+ ~do let abi = int: { all values above |i| will be computed as here bitset }
+     	 OR([i].to_bitset,above_i) { start with reflexive closure of |P[i]| }
+     , work=above_i { we need a working copy for traversing the set bits }
+  in
+     while >work
+     do let pow=AND_NOT(work,work-1) { smallest power |2^j| not dividing |work| }
+     in abi:=OR(abi,above[bit_length(pow)-1]) { add bits transitively above |j| }
+     ;  work:=AND_NOT(work,pow) { clear bit at position |j| in |work| }
+     od
+  ;  set_bit_positions(above[i]:=abi) { store in ||abi| in |above| and convert }
+ ~od
+
+set closure = (Poset->Poset): trans_close@Poset {cut out the middle}
 
 set posets_equal(Poset P,Poset Q)=bool:
 #P=#Q and
 (let Pf=closure(P) then
- Qf=closure(Q) in 
+ Qf=closure(Q) in
  all(for i:#P do Pf[i]=Qf[i] od))
 
 set poset_inverse(Poset P)=Poset:
@@ -144,4 +166,3 @@ graph(P,(int->string):(int i):labels[i])
 set show(Poset P)=void:
 let values=
 for row@i in P do [i.to_string,row.to_string] od in tabulate(values)
-
