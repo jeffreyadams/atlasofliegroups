@@ -1193,8 +1193,9 @@ in  for e:#OpenureFacets from #NUverts
 	in
 	    if stej = "?"
 	    then StInde[j] := ("Fdef", StInde[j].verts)
-	    ; StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
-	    	    			   Pols[e][j],NUverts)
+	    ; StInd:= downdateSingK(lookups
+			, (vdata, StInd, Pols), ("Fdef", StInde[j].verts)
+			, Pols[e][j], NUverts)
 	    fi
 	od
     	; StInd[e]:=StInde {already happens in downdate?}
@@ -1203,6 +1204,7 @@ in  for e:#OpenureFacets from #NUverts
 )
 
 {want to make a version just running through bigger facets}
+{But this tests 10% slower in Sp(10,R)}
 set updateClosureKdumb \
     ( [(vec->int)] lookups
     , FacetDataKchar (vdata, StInd, Pols)
@@ -1218,6 +1220,7 @@ in  for e:#StInd-#NUverts from #NUverts
 	      in
 	    if stej = "?" and is_subset_of_sorted(Find.verts)(NUverts)
 	    then StInde[j] := ("Fdef", Find.verts)
+	    {prefer to do next only down exactly to #NUverts}
 	    ; StInd:= downdateSingK(lookups, (vdata, StInd, Pols), StInde[j],
 	    	    			   Pols[e][j],NUverts)
 	    fi
@@ -1233,7 +1236,7 @@ set updateClosureK \
     , FacetStatusVertsIndex nonUnitary
     ) = [[FacetStatusVertsIndex]]:
     updateClosureK(FPPopenureFacets(StInd, lookups, nonUnitary.verts)
-    ,lookups, (vdata, StInd, Pols), nonUnitary)
+    , lookups, (vdata, StInd, Pols), nonUnitary)
 
 {should be applied just when small facet is unitary}
 set updateSingK \
@@ -1297,27 +1300,31 @@ set downdate \
     in StInd
 
 { adds nonunitary status in dimension d+1 when deformed from a nonunitary
-in dimension d}
-set one_up(FacetDataKchar (vd, FPPstInd, Pols), int d) =
+in dimension d. lookup is for [d].}
+set one_up((vec->int) lookup, FacetDataKchar (vd, FPPstInd, Pols), int d) =
     [[FacetStatusVertsIndex]]:
     assert(0 <= d and d < #FPPstInd-1,"requesting one_up in invalid degree");
     let FPPstIndUp = FPPstInd[d+1]
     then () = for FindUp@j in FPPstIndUp
     do
      if FindUp.status="?" then
-       let Pup = Pols[d+1][j]
-       in   for FindDown@k in FPPstInd[d]
-       	    do
-		if FindDown.status[0]="F" and
-		   is_subset_of(FindUp.verts)(FindDown.verts) and
-		   Pols[d][k] = Pup
-	    	then FPPstIndUp[j] := ("Fdef", FindUp.verts)
-	    	fi
-	    od
+       let PUp = Pols[d+1][j], vertsUp = FindUp.verts
+       in {prefer to construct subsets of VertsUp}
+       	  for i:#vertsUp
+	  do
+	  let k = lookup(delete(vertsUp,i))
+	  in  if k>= 0
+		       and FPPstInd[d][k].status[0] = "F"
+		       and Pols[d][k] = PUp
+	    	    then FPPstIndUp[j] := ("Fdef", vertsUp)
+		    ; break
+	      fi
+	  od
       fi
      od
      ; FPPstInd[d+1]:= FPPstIndUp
      in FPPstInd
+ 
 { meant to record information about unitarity for all facets }
 set facet_status([[ratvec]] FPPB) = [[string]]:
     for FPPBd in FPPB do for FB in FPPBd do "?" od od
@@ -1864,7 +1871,7 @@ set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
 		     fi
 	     od{FACd}
     	     ; if d < #FPPstInd-1 then FPPstInd:=
-	       one_up((vd,FPPstInd,Pols),d) fi
+	       one_up(lookups[d], (vd,FPPstInd,Pols),d) fi
 	     ; if(facet_verbose) then prints("did ",countd,
 			  " tests in dimension ",d) fi
 	     ; test_count:= test_count+countd
@@ -1935,12 +1942,13 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
     for d:#FPPstInd
 	do{DIMd}
 	let countd = int: 0
+	{then TODOd = to_do(FPPstInd[d])}
 	then temp = (); if facet_verbose
 	then prints(); show(FPPstInd); prints("start dim ",d,
 	     " in spherical_testK(G,status,(vd,FPPind,Pols),tester)")
 	fi
 	in
-	for j: #FPPstInd[d]
+	for j {in TODOd}:#FPPstInd[d]
 	    do{FACd}
 		let Find = FPPstInd[d][j]
 		then () = if facet_verbose and d<= 1 and j%(#FPPstInd[d]\5) = 0
@@ -1966,8 +1974,9 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
 		       fi
 		     fi
 	     od{FACd}
+	     {; if(facet_verbose) then show(FPPstInd) fi}
     	     ; if d < #FPPstInd-1 then FPPstInd:=
-	       one_up((vd,FPPstInd,Pols),d) fi
+	       one_up(lookups[d], (vd,FPPstInd,Pols),d) fi
 	     ; if(facet_verbose) then prints("did ",countd,
 			  " tests in dimension ",d) fi
 	     ; test_count:= test_count+countd
