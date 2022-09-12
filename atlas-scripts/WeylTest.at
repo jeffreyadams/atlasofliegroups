@@ -47,6 +47,11 @@ set Params(RootDatum Affd, ratvec gamma) = [Param]:
     in all_parameters_gamma(rdI.complexification
 			, gamma##(gamma+rdI.rho))
 
+{ Cartan involution for a GoodParam is
+
+  	 begin{pmatrix}( 0 &  w\\ w^{-1} & 0 end{pmatrix}
+
+for a w in directedWeylA.}
 set GoodParams(RootDatum Affd, ratvec gamma) = [Param]:
     let params = Params(Affd, gamma), down = Down(Affd, gamma)
     	, up = Up(Affd, gamma)
@@ -59,6 +64,7 @@ set GoodParams(RootDatum Affd, ratvec gamma) = [Param]:
 		   fi
        od.##
 
+{supposed to be the same as shiftA, reordered}
 set shiftsB(RootDatum Affd, ratvec gamma) = [ratvec]:
     let GP = GoodParams(Affd, gamma), rdi = RDI(Affd,gamma)
     in for p in GP do (((p.x).involution)*(null(rdi.rank)##rdi.rho))[:rdi.rank]
