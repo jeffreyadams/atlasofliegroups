@@ -1,5 +1,4 @@
 <facetious.at {for FacetDataKchar}
-< poset.at {for Poset commands}
 
 { facets are indexed by pairs (d,j) of nonnegative integers; want
 to label by single int...}
@@ -29,108 +28,113 @@ set lookups(FacetDataKchar FDK) = [(vec->int)]:
     let FDinds =  FDK.facet_status_inds
     in for L in FDinds do index_in_facet_list(L) od
 
-{generating relations for facet poset}
-{NEED TO INCLUDE REVERSED RELATIONS}
-set down_equiv_poset_gens(FacetDataKchar FDK) = Poset:
-    let FDinds = FDK.facet_status_inds, Pols = FDK.Kchars
-    then lookups = lookups(FDK)
-    in
-    for j:#FDinds[0] do [int]: [] od ##
-    for n:size(FDK)-#FDinds[0] from #FDinds[0]
-       do
-       let (d,j) = coords(FDK, n)
-       then Find = FDinds[d][j]
-       	    in for e:d+1
-       	       do
-		let v = delete(Find.verts,e)
-       	  	then j0 = lookups[d-1](v)
-       	  	in if j0 >= 0 and Pols[d][j] = Pols[d-1][j0]
-	    	   then [index(FDK,d-1,j0)]
-       	     	   else []
-	     	   fi
-       	       od.##
-       od
+{generating relations for up graph: an arrow j0 --> j1 means
+nonunitarity at j0 implies nonunitarity at j1}
+set up_graph_gens(FacetDataKchar FDK) = [[int]]:
+    let (,FDinds,Pols) = FDK, lookups = lookups(FDK)
+    	 , Levels = levels(FDK)
+    then edge_gens = for n:size(FDK) do [int]:[] od
+    then () = for d:#FDinds-1 from 1
+    	 do for Find@j1 in FDinds[d]
+	    do for e:d+1
+	       do let v = delete(Find.verts,e)
+	       	  then j0 = lookups[d-1](v)
+		  in if j0>= 0
+		     then edge_gens[Levels[d-1]+j0]##:=[Levels[d]+j1]
+		     { ; prints(index(FDK, d-1,j0),"  ",d," ",j1," ",j0, " "
+		       	,edge_gens[Levels[d-1]+j0]) }
+		     ; if Pols[d][j1]= Pols[d-1][j0]
+		       then edge_gens[Levels[d]+j1]##:=[Levels[d-1]+j0]
+		       fi
+		     fi
+		od
+             od
+	  od
+     in edge_gens
 
-{includes the reversed relations}
-set all_equiv_poset_gens(FacetDataKchar FDK) = Poset:
-    let Pdown = down_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds,
-    	L = levels(FDK)
-    then
-    () = for n:size(FDK)-#FDinds~[0]
-       	 do
-		let (d,j) = coords(FDK,n)
-    		in Pdown[n]:= Pdown[n]##(for j:#FDinds[d+1]
-	   		 	 do if find(Pdown[L[d+1]+j],n) >= 0
-			    	    then [L[d+1]+j] else []
-			    	    fi
-			 	 od).##
-    od##Pdown[L~[0]:]
-    in Pdown
+set_type UpData = ([[int]] classes, [[int]] covers)
 
-{jth entry is the equivalence class of j}
-set equiv_poset(FacetDataKchar FDK) = Poset:
-    closure(all_equiv_poset_gens(FDK))
-
-{the distinct equivalence classes of facets}
-set equiv_classes(FacetDataKchar FDK) = [[int]]:
-    let PF = equiv_poset(FDK)
-    in (for n:size(FDK)
-       	do if PF[n][0] = n then [PF[n]] else []
+{ returns the class number to which n belongs, and its index in that class }
+set find_class(UpData up_data, int n) = (int,int):
+    let () = for C@m in up_data.classes
+    do
+	let j = find(C,n)
+	in if j >= 0 then return (m,j)
 	   fi
-    	od).##
+    od
+    in (-1,-1)
+
+{finds only the class number}
+set find_class_fast(UpData up_data, int n) = int:
+    for C@m in up_data.classes
+    do if is_member_sorted(C)(n)
+       then return m
+       fi
+    od; minus_1
+
+set up_data(FacetDataKchar FDK) = UpData:
+    strong_components(up_graph_gens(FDK))
+
+{ for each equivalence class, sorted list all elements of all classes above
+it in the preorder }
+set full_up(UpData (classes, covers)) =[[int]]:
+    let fullUp = [[int]]: for C in classes do C od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do fullUp[j] := merge(fullUp[m],fullUp[j])
+		od
+    	      od
+    in fullUp
+
+{sorted list of all elements in all classes above #m}
+set full_up(UpData (classes, covers), int m) = [int]:
+    let fullUpm = [int]: classes[m], to_do = [int]: covers[m]
+    then () = while #to_do> 0
+    	      	    do for j in to_do
+		       do to_do:= ##for j in to_do
+		       	  	    do covers[j]
+				    od;
+		       	   fullUpm := merge(fullUpm,classes[j])
+		       od
+		    od
+    in fullUpm
+
+{ for each equivalence class, sorted list all elements of all classes BELOW
+it in the preorder. Direction of UNITARITY inheritance. }
+set full_down(UpData (classes, covers)) =[[int]]:
+    let fullDown = [[int]]: for C in classes do C od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do fullDown[m] := merge(fullDown[j],fullDown[m])
+		od
+    	      od
+    in fullDown
+
+{sorted list of all elements in all classes below #m}
+set full_down(UpData (classes, covers), int m) = [int]:
+    let fullDownm = [int]: classes[m], to_do = [int]:
+    for U@k in covers
+    do if is_member(U)(m)
+       then [k]
+       else []
+       fi
+    od.##
+    then () = while #to_do> 0
+    	      	    do for j in to_do
+		       do to_do:= for U@k in covers
+		       	  	      do if is_disjoint(U,to_do)
+				      	 then []
+				     	 else [k]
+				     	 fi
+				      od.##
+		       	   	      ; fullDownm := merge(fullDownm,classes[j])
+		       od
+		    od
+    in fullDownm
 
 {F4_s: 9789 facets in 1457 classes}
 {Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
 {Sp(6,C): 165 facets in 91 classes; 10 unitary}
 
-{Now do unitary poset: equivalence classes above, PLUS containment of
-vertex sets}
-
-set down_unitary_poset_gens(FacetDataKchar FDK) = Poset:
-    let downGen = all_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds
-    then lookups = lookups(FDK)
-    then () = for d:#FDinds-1 from 1
-    	 do
-    	     for Find@j in FDinds[d]
-	     do
-	     downGen[index(FDK,d,j)]:=
-		downGen[index(FDK,d,j)] ## for e:d+1
-		do
-		    let v = delete(Find.verts,e)
-		    then j0 = lookups[d-1](v)
-		    in if j0 >= 0
-		       then [index(FDK,d-1,j0)]
-		       else []
-		       fi
-		od.## {.no_reps.sort}
-	     od
-	  od
-     in downGen
-
-set unitary_down_poset(FacetDataKchar FDK) = Poset:
-    closure(down_unitary_poset_gens(FDK))
-
-
-set up_nonunitary_poset_gens(FacetDataKchar FDK) = Poset:
-    let upGen = all_equiv_poset_gens(FDK), FDinds = FDK.facet_status_inds
-    then lookups = lookups(FDK)
-    then () = for d:#FDinds-1 from 1
-    	 do
-    	     for Find@j in FDinds[d]
-	     do
-		for e:d+1
-		do
-		    let v = delete(Find.verts,e)
-		    then j0 = lookups[d-1](v)
-		    in if j0 >= 0
-		       then upGen[index(FDK,d-1,j0)]##:=[index(FDK,d,j)]
-		       	    {.no_reps.sort}
-		       else []
-		       fi
-		od.##{.no_reps.sort}
-	     od
-	 od
-    in upGen
-
-set nonunitary_up_poset(FacetDataKchar FDK) = Poset:
-    closure(up_nonunitary_poset_gens(FDK))
