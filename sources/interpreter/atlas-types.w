@@ -8236,7 +8236,13 @@ void print_blockstabilizer_wrapper(expression_base::level l)
 }
 
 @ The functions |print_KGB|, |print_KGB_order| and |print_KGB_graph| take only
-a real form as argument.
+a real form as argument. Since full KGB listings can be very long, we provide a
+version of |print_KGB| that in addition takes a list of KGB elements, and limits
+the output to those elements; the internal function |kgb_io::print| that is
+(also) used to implement the full listing, already provides for such a limitation
+through a final argument. Since that argument requires a |KGBEltList| (a vector
+of |KGBElt|), we do the conversion here, which also ensures there are no
+out-of-range values in the list.
 
 @h "kgb.h"
 @h "kgb_io.h"
@@ -8249,6 +8255,24 @@ void print_KGB_wrapper(expression_base::level l)
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+void print_KGB_selection_wrapper(expression_base::level l)
+{ shared_row selection = get<row_value>();
+  shared_real_form rf= get<real_form_value>();
+@)
+  KGBEltList sel; sel.reserve(selection->val.size());
+  for (auto p : selection->val)
+  { const auto* x = force<KGB_elt_value>(p.get());
+    if (x->rf!=rf)
+      throw runtime_error("Real form mismatch when printing KGB element");
+    sel.push_back(x->val);
+  }
+@)
+  const KGB& kgb=rf->kgb();
+  kgb_io::print(*output_stream,kgb,false,&rf->val.innerClass(),&sel);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -8400,6 +8424,8 @@ install_function(print_blockd_wrapper,@|"print_blockd","(Block->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(Block,CartanClass->)");
 install_function(print_KGB_wrapper,@|"print_KGB","(RealForm->)");
+install_function(print_KGB_selection_wrapper,@|"print_KGB"
+		,"(RealForm,[KGBElt]->)");
 install_function(print_KGB_order_wrapper,@|"print_KGB_order","(RealForm->)");
 install_function(print_KGB_graph_wrapper,@|"print_KGB_graph","(RealForm->)");
 install_function(print_X_wrapper,@|"print_X","(InnerClass->)");

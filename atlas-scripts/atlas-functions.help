@@ -1251,6 +1251,7 @@ print_blocku: (Block->):
 print_blockd: (Block->):
 print_blockstabilizer: (Block,CartanClass->):
 print_KGB: (RealForm->):
+print_KGB: (RealForm,[KGBElt]->): print only for the listed KGB elements
 print_KGB_order: (RealForm->):
 print_KGB_graph: (RealForm->):
 print_X: (InnerClass->):
@@ -1259,4 +1260,5 @@ print_prim_KL: (Block->):
 print_KL_list: (Block->):
 print_W_cells: (Block->):
 print_W_graph: (Block->):
-  These commands give the output of the corresponding commands of Fokko.
+  These commands give the output of the corresponding commands, present under
+  that name in Fokko, for printing the information the name suggests
