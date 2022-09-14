@@ -12,7 +12,7 @@
 <K_highest_weights.at {for all_parameters_x_gamma}
 <lattice.at {for vec_solve}
 <chopping_facets_fast.at {for chop_coroots(G, vertices)}
-
+<facet_classes.at {for ordering on facets}
 { Goal is to write representatives of all affine facets in the
 fundamental parallelepiped
   gamma in X*_Q,  0 \le betav[i]*gamma \le 1 (all simple coroots betav[i])}
@@ -1036,7 +1036,43 @@ set FPP_indices (SimpleAffine Affd, VertexData vd, int d) = [FacetVertsIndex]:
        od
     od.## { now type is [vec] again }
 )
+{ last two ints index a facet in FD now known to be nonunitary. }
+set updateNUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullUpClasses
+    , [vec] classLists, int d,int j) = [[FacetStatusVertsIndex]]:
+    let class = classLists[d][j]
+    then () = for m in fullUpClasses[class]
+    	      do
+		let (d1,j1) = coords(FD, equiv[m][0])
+		    then () = if FD[d1][j1].status = "?"
+	     	    	      then for n in equiv[m]
+	   	    	      	   do let (dx,jx) = coords(FD,n)
+		     	    	      then FDdx = FD[dx]
+		     	    	      in FDdx[jx] := ("Fdef",FD[dx][jx].verts)
+		     	    	      ; FD[dx] :=FDdx
+		  	 	   od
+			      fi
+         	in FD {this is terrifyingly wrong!}
+    	    od
+    in FD
 
+set downdateUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullDownClasses
+    , [vec] classLists, int d,int j) = [[FacetStatusVertsIndex]]:
+    let class = classLists[d][j]
+    then () = for m in fullDownClasses[class]
+    	      do
+		let (d1,j1) = coords(FD, equiv[m][0])
+		    then () = if FD[d1][j1].status = "?"
+	     	    	      then for n in equiv[m]
+	   	    	      	   do let (dx,jx) = coords(FD,n)
+		     	    	      then FDdx = FD[dx]
+		     	    	      in FDdx[jx] := ("Tdef",FD[dx][jx].verts)
+		     	    	      ; FD[dx] :=FDdx
+		  	 	   od
+			      fi
+         	in FD {this is terrifyingly wrong!}
+    	    od
+    in FD
+ 
 {.output is |dim| and indices into |FPPInd[dim]| to alcoves containing Base in
   their closure, for the largest |dim| for which this is non empty.}
 set FPPopenureAlcoves \
@@ -1985,6 +2021,67 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
+{ try to compute and systematically use partial order on facets}
+set spherical_testKPO(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
+    (Param->bool) tester) = FacetData:
+    let xopen = x_open(G)
+    , Grho = G.rho, FDK = (vd, FPPstInd,Pols)
+    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
+        for L in FPPstInd do index_in_facet_list(L) od
+    , test_count = int:0
+    then  (eq, gr) = GraphData: up_data(FDK)
+    then classLists = class_lists(FDK,(eq,gr))
+    , FUCL = full_up_classes(eq,gr), FDCL = full_down_classes(eq,gr)
+    then temp =
+    for d:#FPPstInd
+	do{DIMd}
+	let countd = int: 0
+	then temp = (); if facet_verbose
+	then prints(); show(FPPstInd); prints("start dim ",d,
+	     " in spherical_testK(G,status,(vd,FPPind,Pols),tester)")
+	fi
+	in
+	for j:#FPPstInd[d]
+	    do{FACd}
+		let Find = FPPstInd[d][j]
+		then () = if facet_verbose and d<= 1 and j%(#FPPstInd[d]\5) = 0
+		     	  then prints("examining facet #",j," of ",
+		     	       #FPPstInd[d],"; ", #to_do(FPPstInd[d][j:]),
+			       " still undecided.")
+		     	  fi
+		in   if Find.status[0]="?"
+		     then countd := countd+1
+		     ; if{NEWU} tester(first_param(standardize(
+			 parameter(xopen, Grho, facet_bary(vd.list,
+			 		  Find.verts)))))
+		       then FPPstInd:= downdateUPO(FPPstInd, eq
+		       	    ,FDCL, classLists, d,j)
+		       {updateSingK(lookups, (vd, FPPstInd,Pols),
+			  ("T", Find.verts), Pols[d][j])}
+		 	  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       else{NEWU} FPPstInd:= updateNUPO(FPPstInd, eq
+		       	    ,FUCL, classLists, d,j)
+		       { updateClosureK(lookups,
+		     		(vd, FPPstInd, Pols), ("F",Find.verts))}
+			  ; let FPPstIndd = FPPstInd[d]
+	 	 	  then () = FPPstIndd[j] := ("Ftested",Find.verts)
+	 	 	  in FPPstInd[d] := FPPstIndd
+		       fi
+		     fi
+	     od{FACd}
+	     {; if(facet_verbose) then show(FPPstInd) fi}
+    	     ; if d < #FPPstInd-1 then FPPstInd:=
+	       one_up(lookups[d], (vd,FPPstInd,Pols),d) fi
+	     ; if(facet_verbose) then prints("did ",countd,
+			  " tests in dimension ",d) fi
+	     ; test_count:= test_count+countd
+    	  od{DIMd}
+    ; if(facet_verbose) then show(FPPstInd) fi
+    in if(test_verbose) then prints("total tests = ",test_count) fi;
+    (vd,FPPstInd)
+
 set default_tester(Param p) = is_unitary(p)
 
 {this seems OK}
@@ -2000,6 +2097,11 @@ set sphericalK(RealForm G) = FacetData:
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
 
+set sphericalKPO(RealForm G) = FacetData:
+    let data = facet_data_fold(G)
+    then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
+    then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
+    in spherical_testKPO(G, (vdata, datau, Pols), default_tester@Param)
 
 {. apply actualize to the FacetData before computing unitarity; should mean
    that output is already actualized .}

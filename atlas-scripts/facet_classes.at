@@ -1,25 +1,58 @@
-<facetious.at {for FacetDataKchar}
+{<facetious.at {for FacetDataKchar}}
+< basic.at {for no_reps}
+
+set_type FacetVerts = [ratvec]
+set_type FacetVertsIndex = vec { length k+1 for k-dimensional facet }
+
+set_type
+[ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
+, VertexData = ([ratvec] list, (ratvec->int) lookup)
+, FacetData = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds)
+, FacetDataKchar = (VertexData v_data, [[FacetStatusVertsIndex]]
+facet_status_inds, [[KTypePol]] Kchars)
+]
 
 { facets are indexed by pairs (d,j) of nonnegative integers; want
 to label by single int...}
 
 {levels[i] is number of terms at level 0,...,i-1}
+
+{this is repeated from facetious.at to avoid dependency}
+set index_in_facet_list ([FacetStatusVertsIndex] L) = (vec->int):
+    index_in(for (,v) in L do v od) { calls |index_in@[vec]| }
+
+{removes repetitions and sorts a list of ints}
+set no_reps([int] v) = [int]:
+    let V = [vec]: (for m in v do [m] od).no_reps
+    in for v in V do v[0] od
+
+set levels([[FacetStatusVertsIndex]] FD) = [int]:
+    for k:#FD do sum(for i:k do #FD[i] od) od
+
 set levels(FacetDataKchar FDK) = [int]:
-    let FDinds = FDK.facet_status_inds
-    in for k:#FDinds do sum(for i:k do #FDinds[i] od) od
+    levels(FDK.facet_status_inds)
 
 set size(FacetDataKchar FDK) = int:
     let FDinds = FDK.facet_status_inds
     in sum(for d:#FDinds do #FDinds[d] od)
 
 {makes single list of facets}
+set index([[FacetStatusVertsIndex]] FD, int d, int j) = int:
+    levels(FD)[d] + j
+
+{makes single list of facets}
 set index(FacetDataKchar FDK, int d, int j) = int:
     levels(FDK)[d] + j
 
 {inverse of index}
+set coords([[FacetStatusVertsIndex]] FD, int n) = (int,int):
+    let d = last(for ell in levels(FD) do ell<=n od)
+    then j = n- levels(FD)[d]
+    in (d,j)
+
+{inverse of index}
 set coords(FacetDataKchar FDK, int n) = (int,int):
-    let FDind = FDK.facet_status_inds 
-    then d = last(for ell in levels(FDK) do ell<=n od)
+    let d = last(for ell in levels(FDK) do ell<=n od)
     then j = n- levels(FDK)[d]
     in (d,j)
 
@@ -52,11 +85,15 @@ set up_graph_gens(FacetDataKchar FDK) = [[int]]:
 	  od
      in edge_gens
 
-set_type UpData = ([[int]] classes, [[int]] covers)
+{ this is the type returned by the built-in strong_components,
+describing a directed graph on #n. "classes" are for the equivalence
+relation of having a direct path in each direction. "covers" are the
+sets of covers in the partial order defined by the graph on classes.}
+set_type GraphData = ([[int]] classes, [[int]] covers)
 
 { returns the class number to which n belongs, and its index in that class }
-set find_class(UpData up_data, int n) = (int,int):
-    let () = for C@m in up_data.classes
+set find_class(GraphData gr_data, int n) = (int,int):
+    let () = for C@m in gr_data.classes
     do
 	let j = find(C,n)
 	in if j >= 0 then return (m,j)
@@ -65,76 +102,68 @@ set find_class(UpData up_data, int n) = (int,int):
     in (-1,-1)
 
 {finds only the class number}
-set find_class_fast(UpData up_data, int n) = int:
-    for C@m in up_data.classes
+set find_class_fast(GraphData gr_data, int n) = int:
+    for C@m in gr_data.classes
     do if is_member_sorted(C)(n)
        then return m
        fi
     od; minus_1
 
-set up_data(FacetDataKchar FDK) = UpData:
+set up_data(FacetDataKchar FDK) = GraphData:
     strong_components(up_graph_gens(FDK))
 
-{ for each equivalence class, sorted list all elements of all classes above
-it in the preorder }
-set full_up(UpData (classes, covers)) =[[int]]:
-    let fullUp = [[int]]: for C in classes do C od
+{ for each equivalence class, sorted list of all classes above
+it in the preorder. Is this really ALL classes above?
+The no_reps also guarantees that the answers are sorted.}
+set full_up_classes(GraphData (classes, covers)) = [vec]:
+    let fullUpClassesBr = [[vec]]: for m:#classes do [[m]] od
     then () = for U@j in covers
     	      do
 		for m in U
-    	      	do fullUp[j] := merge(fullUp[m],fullUp[j])
+    	      	do fullUpClassesBr[j] :=
+		   (fullUpClassesBr[m]##fullUpClassesBr[j]).no_reps
 		od
     	      od
-    in fullUp
+    in for B in fullUpClassesBr do for v in B do v[0] od od
 
-{sorted list of all elements in all classes above #m}
-set full_up(UpData (classes, covers), int m) = [int]:
-    let fullUpm = [int]: classes[m], to_do = [int]: covers[m]
-    then () = while #to_do> 0
-    	      	    do for j in to_do
-		       do to_do:= ##for j in to_do
-		       	  	    do covers[j]
-				    od;
-		       	   fullUpm := merge(fullUpm,classes[j])
-		       od
-		    od
-    in fullUpm
+{ for each equivalence class, sorted list all elements of all classes above
+it in the preorder ; these are the elements where NU in the original
+class implies NU here.}
+set full_up(GraphData (classes, covers)) =[[int]]:
+    for upClasses in full_up_classes((classes,covers))
+    do (##for j in upClasses do classes[j] od).no_reps
+    od
+
+{ for each equivalence class, sorted list of all classes below
+it in the preorder; these are the classes where U in the original
+class implies U below. Is this really ALL classes below?
+The no_reps also guarantees that the answers are sorted.}
+set full_down_classes(GraphData (classes, covers)) = [vec]:
+    let fullDownClassesBr = [[vec]]: for m:#classes do [[m]] od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do fullDownClassesBr[m] :=
+		   (fullDownClassesBr[m]##fullDownClassesBr[j]).no_reps
+		od
+    	      od
+    in for B in fullDownClassesBr do for v in B do v[0] od od
 
 { for each equivalence class, sorted list all elements of all classes BELOW
 it in the preorder. Direction of UNITARITY inheritance. }
-set full_down(UpData (classes, covers)) =[[int]]:
-    let fullDown = [[int]]: for C in classes do C od
-    then () = for U@j in covers
-    	      do
-		for m in U
-    	      	do fullDown[m] := merge(fullDown[j],fullDown[m])
-		od
-    	      od
-    in fullDown
+set full_down(GraphData (classes, covers)) =[[int]]:
+    for downClasses in full_down_classes((classes,covers))
+    do (##for j in downClasses do classes[j] od).no_reps
+    od
 
-{sorted list of all elements in all classes below #m}
-set full_down(UpData (classes, covers), int m) = [int]:
-    let fullDownm = [int]: classes[m], to_do = [int]:
-    for U@k in covers
-    do if is_member(U)(m)
-       then [k]
-       else []
-       fi
-    od.##
-    then () = while #to_do> 0
-    	      	    do for j in to_do
-		       do to_do:= for U@k in covers
-		       	  	      do if is_disjoint(U,to_do)
-				      	 then []
-				     	 else [k]
-				     	 fi
-				      od.##
-		       	   	      ; fullDownm := merge(fullDownm,classes[j])
-		       od
-		    od
-    in fullDownm
+set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
+[vec]:
+     for d:#FDK.facet_status_inds
+     do for j:#FDK.facet_status_inds[d]
+     	do find_class_fast((classes,covers), index(FDK,d,j))
+	od
+     od
 
 {F4_s: 9789 facets in 1457 classes}
 {Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
 {Sp(6,C): 165 facets in 91 classes; 10 unitary}
-
