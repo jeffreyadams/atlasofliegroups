@@ -156,6 +156,7 @@ set full_down(GraphData (classes, covers)) =[[int]]:
     do (##for j in downClasses do classes[j] od).no_reps
     od
 
+{tells which class each facet belongs to}
 set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
 [vec]:
      for d:#FDK.facet_status_inds
