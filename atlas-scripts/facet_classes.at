@@ -27,7 +27,7 @@ set no_reps([int] v) = [int]:
     in for v in V do v[0] od
 
 set levels([[FacetStatusVertsIndex]] FD) = [int]:
-    for k:#FD do sum(for i:k do #FD[i] od) od
+    for k:#FD+1 do sum(for i:k do #FD[i] od) od
 
 set levels(FacetDataKchar FDK) = [int]:
     levels(FDK.facet_status_inds)
@@ -101,7 +101,7 @@ set find_class(GraphData gr_data, int n) = (int,int):
     od
     in (-1,-1)
 
-{finds only the class number}
+{finds only the class number. NOT FAST!}
 set find_class_fast(GraphData gr_data, int n) = int:
     for C@m in gr_data.classes
     do if is_member_sorted(C)(n)
@@ -156,14 +156,23 @@ set full_down(GraphData (classes, covers)) =[[int]]:
     do (##for j in downClasses do classes[j] od).no_reps
     od
 
+{entry j is class to which j belongs}
+set class_list_linear(FacetDataKchar FDK, GraphData (classes,covers)) = vec:
+  let v=null(size(FDK))
+  then () = for C@m in classes
+       do for j in C
+       	  do v[j] := m od
+       od
+  in v
+
 {tells which class each facet belongs to}
 set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
 [vec]:
-     for d:#FDK.facet_status_inds
-     do for j:#FDK.facet_status_inds[d]
-     	do find_class_fast((classes,covers), index(FDK,d,j))
-	od
-     od
+	let CLL = class_list_linear(FDK, (classes,covers)),
+	    Levels = levels(FDK)
+	in  for d:#FDK.facet_status_inds
+     	    do CLL[Levels[d]:Levels[d+1]]
+     	    od
 
 {F4_s: 9789 facets in 1457 classes}
 {Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
