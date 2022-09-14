@@ -296,9 +296,14 @@ set_type
 [ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
 , VertexData = ([ratvec] list, (ratvec->int) lookup)
 , FacetData = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds)
-, FacetDataKchar = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds, [[KTypePol]] Kchars)
+, FacetDataKchar = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds
+  , [[KTypePol]] Kchars)
 , FacetDataOldKchar = (VertexData v_data, [[FacetStatusVertsIndex]]
   facet_status_inds, [[ratvec]] old_barys, [[KTypePol]] Kchars)
+, FacetDataKcharPO = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds
+  , [[KTypePol]] Kchars, [vec] equiv_classes, [vec] inherited_nonunitary_classes
+  , [vec] inherited_unitary_classes, [vec] class_by_facet
+  , [string] class_status, [Param] class_params)
 ]
 
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
@@ -1055,6 +1060,14 @@ set updateNUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullUpClasses
     	    od
     in FD
 
+
+set updateNUPOclasses([string] statuses, vec INUCLchange, int m) = [string]:
+    let () = for k in INUCLchange do if statuses[k] = "?"
+    	     		   then statuses[k] := "Ffrom"##to_string(m)
+			   fi
+			od
+    in statuses
+
 set downdateUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullDownClasses
     , [vec] classLists, int d,int j) = [[FacetStatusVertsIndex]]:
     let class = classLists[d][j]
@@ -1072,7 +1085,14 @@ set downdateUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullDownClasses
          	in FD {this is terrifyingly wrong!}
     	    od
     in FD
- 
+
+set downdateUPOclasses([string] statuses, vec IUCLchange, int m) = [string]:
+    let () = for k in IUCLchange do if statuses[k] = "?"
+    	     		   then statuses[k] := "Tfrom"##to_string(m)
+			   fi
+			od
+    in statuses
+
 {.output is |dim| and indices into |FPPInd[dim]| to alcoves containing Base in
   their closure, for the largest |dim| for which this is non empty.}
 set FPPopenureAlcoves \
@@ -1468,6 +1488,42 @@ in
 ;   (vd, FPPstIndQuo)
 )
 
+{ meant to record information about unitarity for all facets }
+{now marks unipotent parameters as "T[number of dual nilpotent]"}
+{Now that we are emphasizing cofolded G, I THINK that for a simple G(R), all unipotent parameters must be
+barycenters of (cofolded) facets of dimension 0.}
+{to use Closure in this command, need to add a few lines as in
+facetiousEQUIV.at}
+set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, INUC,
+    IUC, CLBF, statuses, params)) = [string]:
+(  let lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
+     index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
+     , newStatuses = statuses
+   then st = G.dual.Springer_table
+   in if not(is_split(G))
+      then for O@j in st.orbits
+      	   do let gamma = O.H/2
+	      then m0 = lookup0(gamma)
+      	      in if m0 >= 0 and
+	      	 GK_dim(parameter(x_open(G),G.rho,gamma)) = dim(st.dual_map(O))/2
+	 	 then newStatuses :=
+		      downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]], m0)
+	 	 ; newStatuses[CLBF[0][m0]] := "Tunip"##to_string(j)
+	 	 fi
+      	   od
+      else for O@j in st.orbits
+      	   do let gamma = O.H/2
+	      then m0 = lookup0(gamma)
+     	       in if m0 >= 0
+	       	  then newStatuses :=
+		       downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]], m0)
+	 	  ; newStatuses[CLBF[0][m0]] := "Tunip"##to_string(j)
+	 	  fi
+            od
+      fi
+      ; newStatuses
+)
+
 set facet_status([[vec]] FPPind) = [[string]]:
     for d:#FPPind do for j:#FPPind[d] do "?" od od
 
@@ -1601,6 +1657,78 @@ set actualizeK \
     	 do K_type_pol(character_formula( finalize(parameter(
 	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1], polsAct)
+)
+
+set actualizeKPO \
+  ( KGBElt x, ratvec lambda
+  , FacetData (vertex_data, FPPstInd)) = FacetDataKcharPO:
+(   let vlist = vertex_data.list
+    then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
+    then vlistActRep = [ratvec]: { LIST CAN HAVE REPETITIONS IN U(3,3) }
+	for v@i in vlist
+	do  let j = Perm[i] in
+	    if   j = i then [v]
+	    elif j > i then [ (v + vlist[j])/2]
+	    else []
+	    fi
+	od.##
+    then vlistAct = no_reps(vlistActRep)
+    then lookup = index_in(vlistAct)
+    then mapAct = [int]: {maps old vertex indices to actualized indices}
+        for v@i in vlist
+	 do  let j = Perm[i] in
+	     if   j = i then lookup(v)
+	     elif j > i then lookup((v+vlist[j])/2)
+	     else            minus_1
+	     fi
+	 od
+    then FSVIAct = [[FacetStatusVertsIndex]]:
+        for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
+    then () = for FSVId@d in FPPstInd
+    do  for stFind in FSVId
+	do  let v = stFind.verts
+	    then vtheta = for i in v do if Perm[i] < 0 then break
+	    	 	      	     	else Perm[i]
+					fi od
+	    then vAct = vec:
+	       	    if is_subset(v,vtheta)
+		        then for i in v
+		    	     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
+		    	     od.##.sort {this list may not have been sorted}
+	            else []
+		    fi
+	     then () =  if #vAct > 0
+	     	     	   {add functionality of "pick" here}
+	     	  	then let FB = facet_bary(vlistAct, vAct)
+			     then p = parameter(x,lambda, FB)
+	       		     in  if {is_final(p) and} is_hermitian(p)
+			      	    and p.infinitesimal_character = FB
+	       	      		 then let FSVId0 = FSVIAct[#vAct -1]
+	    	             	 then () = FSVId0 ##:= [(stFind.status, vAct)]
+			     	 in FSVIAct[#vAct - 1]:=FSVId0
+	    	      	     fi
+		  	fi
+	      in ()
+	od
+    od
+    then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
+    then polsAct = for j:dAct+1 do for stFind in FSVIAct[j]
+    	 do K_type_pol(character_formula( finalize(parameter(
+	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
+    then vdAct = vlistAct.to_vertex_data, FDAct = FSVIAct[:dAct+1]
+    then FDK = (vdAct, FDAct, polsAct)
+    then (eq,gr) = GraphData: up_data(FDK)
+    then classListByFacet = [vec]: class_lists(FDK,(eq,gr))
+    	 , INUCL = full_up_classes(eq,gr)
+    	 , IUCL = full_down_classes(eq,gr)
+    then statuses = for C in eq do "?" od
+    then Ps = for C in eq
+    	      do let (d,j) = coords(FDAct,C[0])
+	      	 then verts = FDAct[d][j].verts
+	      	 in first_param(finalize(parameter(x, lambda
+		    			, facet_bary(vlistAct, verts))))
+	      od
+    in (vdAct, FDAct, polsAct, eq, INUCL, IUCL, classListByFacet, statuses, Ps)
 )
 
 {. include barycenters of actualized facets computed using old vertices;
@@ -2021,66 +2149,25 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
+{ Output is a revision of the class status list statuses. }
 { try to compute and systematically use partial order on facets}
-set spherical_testKPO(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
-    (Param->bool) tester) = FacetData:
-    let xopen = x_open(G)
-    , Grho = G.rho, FDK = (vd, FPPstInd,Pols)
-    , lookups = [(vec->int)]: { lookup functions for equidimensional facets }
-        for L in FPPstInd do index_in_facet_list(L) od
-    , test_count = int:0
-    then  (eq, gr) = GraphData: up_data(FDK)
-    then classLists = class_lists(FDK,(eq,gr))
-    , FUCL = full_up_classes(eq,gr), FDCL = full_down_classes(eq,gr)
-    then temp =
-    for d:#FPPstInd
-	do{DIMd}
-	let countd = int: 0
-	then temp = (); if facet_verbose
-	then prints(); show(FPPstInd); prints("start dim ",d,
-	     " in spherical_testK(G,status,(vd,FPPind,Pols),tester)")
-	fi
-	in
-	for j:#FPPstInd[d]
-	    do{FACd}
-		let Find = FPPstInd[d][j]
-		then () = if facet_verbose and d<= 1 and j%(#FPPstInd[d]\5) = 0
-		     	  then prints("examining facet #",j," of ",
-		     	       #FPPstInd[d],"; ", #to_do(FPPstInd[d][j:]),
-			       " still undecided.")
-		     	  fi
-		in   if Find.status[0]="?"
-		     then countd := countd+1
-		     ; if{NEWU} tester(first_param(standardize(
-			 parameter(xopen, Grho, facet_bary(vd.list,
-			 		  Find.verts)))))
-		       then FPPstInd:= downdateUPO(FPPstInd, eq
-		       	    ,FDCL, classLists, d,j)
-		       {updateSingK(lookups, (vd, FPPstInd,Pols),
-			  ("T", Find.verts), Pols[d][j])}
-		 	  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
-	 	 	  in FPPstInd[d] := FPPstIndd
-		       else{NEWU} FPPstInd:= updateNUPO(FPPstInd, eq
-		       	    ,FUCL, classLists, d,j)
-		       { updateClosureK(lookups,
-		     		(vd, FPPstInd, Pols), ("F",Find.verts))}
-			  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ftested",Find.verts)
-	 	 	  in FPPstInd[d] := FPPstIndd
-		       fi
-		     fi
-	     od{FACd}
-	     {; if(facet_verbose) then show(FPPstInd) fi}
-    	     ; if d < #FPPstInd-1 then FPPstInd:=
-	       one_up(lookups[d], (vd,FPPstInd,Pols),d) fi
-	     ; if(facet_verbose) then prints("did ",countd,
-			  " tests in dimension ",d) fi
-	     ; test_count:= test_count+countd
-    	  od{DIMd}
-    ; if(facet_verbose) then show(FPPstInd) fi
+set spherical_testKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd,Pols
+    	, eq, INUCL, IUCL, classListByFacet, statuses, Ps)
+    	, (Param->bool) tester) = [string]:
+    let test_count = int:0, newStatuses = statuses
+    then () = for m:#eq
+    	      ~do
+	      if newStatuses[m] = "?"
+	      then test_count+:=1;
+	      	   let p = Ps[m]
+	      	   in if{NEWU} tester(p)
+	      	      then newStatuses:= downdateUPOclasses(newStatuses,IUCL[m],m)
+		      else newStatuses:= updateNUPOclasses(newStatuses, INUCL[m],m)
+		      fi
+	      fi
+	      od
     in if(test_verbose) then prints("total tests = ",test_count) fi;
-    (vd,FPPstInd)
+    newStatuses
 
 set default_tester(Param p) = is_unitary(p)
 
@@ -2096,12 +2183,12 @@ set sphericalK(RealForm G) = FacetData:
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
-
-set sphericalKPO(RealForm G) = FacetData:
+{for now just return the class statuses}
+set sphericalKPO(RealForm G) = [string]:
     let data = facet_data_fold(G)
-    then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
-    then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
-    in spherical_testKPO(G, (vdata, datau, Pols), default_tester@Param)
+    then FDKPO = actualizeKPO(x_open(G), G.rho, data)
+    then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
+    in spherical_testKPO(G, FDKPO, default_tester@Param)
 
 {. apply actualize to the FacetData before computing unitarity; should mean
    that output is already actualized .}
@@ -2118,6 +2205,14 @@ set spherical_testK(RealForm G, (Param -> bool) tester) = FacetData:
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, dataFold)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G,(vdata,datau, Pols), tester)
+
+ {for now just return the class statuses}
+set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
+    { let (rd,M,j0) = cofolded(G) }
+    let dataFold = facet_data_fold(G) { (rd,M,j0) }
+    then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
+    then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
+    in spherical_testKPO(G,FDKPO, tester)
 
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G(R) must have simple derived group.}
