@@ -115,7 +115,7 @@ set up_data(FacetDataKchar FDK) = GraphData:
 { for each equivalence class, sorted list of all classes above
 it in the preorder. Is this really ALL classes above?
 The no_reps also guarantees that the answers are sorted.}
-set full_up_classes(GraphData (classes, covers)) = [vec]:
+set full_up_classes_old(GraphData (classes, covers)) = [vec]:
     let fullUpClassesBr = [[vec]]: for m:#classes do [[m]] od
     then () = for U@j in covers
     	      do
@@ -125,6 +125,59 @@ set full_up_classes(GraphData (classes, covers)) = [vec]:
 		od
     	      od
     in for B in fullUpClassesBr do for v in B do v[0] od od
+
+set full_up_classes(GraphData (classes, covers)) = [vec]:
+    let G1 = inner_class(root_datum(null(1,0),null(1,0))
+		,id_mat(1)).quasicompact_form
+    then x0 = KGB(G1,0)
+    then upPols = [KTypePol]: for m:#classes
+    			      do 1*K_type(x0,[m]) od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do upPols[j] := upPols[m]+upPols[j]
+		od
+    	      od
+    in for P in upPols
+       do for p in monomials(P)
+       	  do lambda_rho(p)[0]
+	  od
+       od
+
+{ for each equivalence class, sorted list of all classes above
+it in the preorder. Is this really ALL classes above?
+The no_reps also guarantees that the answers are sorted.}
+set full_up_classes2(GraphData (classes, covers)) = [vec]:
+    let fullUpClasses = [vec]: for m:#classes do [m] od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do fullUpClasses[j] :=
+		   (fullUpClasses[m]##fullUpClasses[j]).no_reps
+		od
+    	      od
+    in fullUpClasses
+
+{ for each equivalence class, sorted list of all classes above it in
+the preorder. Is this really ALL classes above?  The no_reps also
+guarantees that the answers are sorted.}
+{Moving no_reps to the end means that it's MUCH longer lists to apply
+no_reps to; seems to be MUCH slower.}
+set full_up_classes3(GraphData (classes, covers)) = [vec]:
+    let fullUpClasses = [vec]: for m:#classes do [m] od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do fullUpClasses[j] :=
+		   (fullUpClasses[m]##fullUpClasses[j])
+		od
+    	      od
+    then () = prints(sum(for C in fullUpClasses do #C od))
+    then () = for m:#fullUpClasses
+    do
+    fullUpClasses[m]:=fullUpClasses[m].no_reps
+    od
+    in fullUpClasses
 
 { for each equivalence class, sorted list all elements of all classes above
 it in the preorder ; these are the elements where NU in the original
@@ -138,7 +191,7 @@ set full_up(GraphData (classes, covers)) =[[int]]:
 it in the preorder; these are the classes where U in the original
 class implies U below. Is this really ALL classes below?
 The no_reps also guarantees that the answers are sorted.}
-set full_down_classes(GraphData (classes, covers)) = [vec]:
+set full_down_classes_old(GraphData (classes, covers)) = [vec]:
     let fullDownClassesBr = [[vec]]: for m:#classes do [[m]] od
     then () = for U@j in covers
     	      do
@@ -148,6 +201,24 @@ set full_down_classes(GraphData (classes, covers)) = [vec]:
 		od
     	      od
     in for B in fullDownClassesBr do for v in B do v[0] od od
+
+set full_down_classes(GraphData (classes, covers)) = [vec]:
+    let G1 = inner_class(root_datum(null(1,0),null(1,0))
+		,id_mat(1)).quasicompact_form
+    then x0 = KGB(G1,0)
+    then upPols = [KTypePol]: for m:#classes
+    			      do 1*K_type(x0,[m]) od
+    then () = for U@j in covers
+    	      do
+		for m in U
+    	      	do upPols[m] := upPols[m]+upPols[j]
+		od
+    	      od
+    in for P in upPols
+       do for p in monomials(P)
+       	  do lambda_rho(p)[0]
+	  od
+       od
 
 { for each equivalence class, sorted list all elements of all classes BELOW
 it in the preorder. Direction of UNITARITY inheritance. }
