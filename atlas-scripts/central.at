@@ -144,6 +144,8 @@ prints(
 else
  "split-radical: empty" fi )
 
+set show_torsion(CentralCharacter cc)=void:prints(torsion_string(cc))
+
 set sort_by_central_character([Param] list)=([CentralCharacter],[[Param]]):
 let central_characters=[CentralCharacter]:[] then
 params=[[Param]]:[] in
