@@ -1,4 +1,6 @@
 < nilpotent_orbits.at {for ComplexNilpotent}
+< K_highest_weights.at {for all_parameters_gamma@(RealForm,ratvec}
+< associated_variety_annihilator.at {for GK_dim}
 
 {Let G be a complex reductive algebraic group and let tilde{O} be a (finite, connected, G-equivariant) cover of a nilpotent co-adjoint G-orbit. In "Unipotent Ideals and
 Harish-Chandra Bimodules" (LMBM), the authors define a maximal primitive ideal I(tilde{O}) in U(g) called the `unipotent ideal' attached to tilde{O}. Denote by gamma(tilde{O})
