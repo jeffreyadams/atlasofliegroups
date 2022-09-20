@@ -237,6 +237,22 @@ set class_list_linear(FacetDataKchar FDK, GraphData (classes,covers)) = vec:
        od
   in v
 
+{
+idea is in a session to say
+  > FILENAME writeSC(GraphData)
+
+(or >> to append to FILENAME).
+Then in another session you can write
+<< FILENAME
+which will give you GraphData GD_saved = (eq_saved, covers_saved)
+}
+set writeSC(GraphData (eq,cov)) = void:
+    prints("set eq_saved = [[int]]:");
+    prints(eq); prints("set covers_saved =[[int]]:");
+    prints(cov);
+    prints("set GD_saved = GraphData: (eq_saved,covers_saved)")
+
+
 {tells which class each facet belongs to}
 set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
 [vec]:
@@ -249,3 +265,4 @@ set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
 {F4_s: 9789 facets in 1457 classes}
 {Sp(6,R): 165 facets in 42 classes; 9 unitary, 33 not.}
 {Sp(6,C): 165 facets in 91 classes; 10 unitary}
+
