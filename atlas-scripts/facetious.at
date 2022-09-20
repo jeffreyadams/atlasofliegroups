@@ -1874,6 +1874,26 @@ set show_short([string] statuses) = void:
 	" are unitary, ",countF," are nonunitary")
 	fi
 
+set show_very_short([string] statuses) = void:
+    let countT = int:0, countF = int:0, countQ = int:0
+    then () = for st in statuses do
+    	if st[0]="T"
+	then countT+:=1
+	elif st[0]="F"
+	then countF+:=1
+	elif st[0]="?"
+	then countQ+:=1
+    	fi
+	od
+    in if countQ > 0
+       then prints(countT,
+	" are unitary, ",countF," are nonunitary, and ",countQ,
+	" are still undetermined.")
+	else prints(countT,
+	" are unitary, ",countF," are nonunitary")
+	fi
+
+
 set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
    for n in facet do vertices[n] od
 
@@ -2174,33 +2194,30 @@ set spherical_testKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd,Pols
     	, eq, INUCL, IUCL, classListByFacet, statuses, Ps)
     	, (Param->bool) tester) = [string]:
     let test_count = int:0, newStatuses = statuses, NumClasses = #eq
-    	, printInterval = int: #eq\10
-    then () = if facet_verbose
+    	, printInterval = int: 1
+    then () = if{FV} facet_verbose
     	      then prints(); prints("starting spherical_testKPO with ",NumClasses
 	      ," equivalence classes of facets")
 	      ; show_short(newStatuses)
 	      ; prints()
-	      fi
-	      ; for m:#eq
+	      fi{FV}
+	      ; for m:NumClasses
     	      ~do
-	      if facet_verbose and ({NumClasses-m-1 <5 or} (m+1)%printInterval = 0)
+	      if{FV} facet_verbose and ((NumClasses-m-1)%printInterval = 0)
 	      then prints("examining equivalence class #",NumClasses-m -1,
-	      	   "; so far ",test_count, " 'is_unitary' tests.") {;
-	      	   show_short(newStatuses) }
-	      fi
-	      ; if newStatuses[m] = "?"
-	      then test_count+:=1;
+	      	   "; so far ",test_count, " 'is_unitary' tests.")
+	      ; show_very_short(newStatuses)
+	      ; printInterval := 2*printInterval
+	      fi{FV}
+	      ; if{UNKNOWN} newStatuses[m] = "?"
+	      	then test_count+:=1;
 	      	   let p = Ps[m]
 	      	   in if{NEWU} tester(p)
 	      	      then newStatuses:= downdateUPOclasses(newStatuses,IUCL[m],m)
 		      else newStatuses:= updateNUPOclasses(newStatuses, INUCL[m],m)
 		      fi
-	      fi
+	         fi{UNKNOWN}
 	      od
-     then() = if facet_verbose
-     	      then prints()
-	      ; show_short(newStatuses)
-       	      fi
      then() = if(test_verbose)
      	      then prints(new_line,"total tests = ",test_count)
        	      fi
