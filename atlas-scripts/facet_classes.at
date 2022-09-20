@@ -194,7 +194,7 @@ The no_reps also guarantees that the answers are sorted.}
 set full_down_classes_old(GraphData (classes, covers)) = [vec]:
     let fullDownClassesBr = [[vec]]: for m:#classes do [[m]] od
     then () = for U@j in covers
-    	      do
+    	      ~do
 		for m in U
     	      	do fullDownClassesBr[m] :=
 		   (fullDownClassesBr[m]##fullDownClassesBr[j]).no_reps
@@ -202,6 +202,7 @@ set full_down_classes_old(GraphData (classes, covers)) = [vec]:
     	      od
     in for B in fullDownClassesBr do for v in B do v[0] od od
 
+{MUST do loop in reverse!}
 set full_down_classes(GraphData (classes, covers)) = [vec]:
     let G1 = inner_class(root_datum(null(1,0),null(1,0))
 		,id_mat(1)).quasicompact_form
@@ -209,7 +210,7 @@ set full_down_classes(GraphData (classes, covers)) = [vec]:
     then upPols = [KTypePol]: for m:#classes
     			      do 1*K_type(x0,[m]) od
     then () = for U@j in covers
-    	      do
+    	      ~do
 		for m in U
     	      	do upPols[m] := upPols[m]+upPols[j]
 		od
