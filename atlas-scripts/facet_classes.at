@@ -1,5 +1,7 @@
 {<facetious.at {for FacetDataKchar}}
-< basic.at {for no_reps}
+<basic.at {for no_reps}
+<sort.at
+<combinatorics.at
 
 set_type FacetVerts = [ratvec]
 set_type FacetVertsIndex = vec { length k+1 for k-dimensional facet }
@@ -8,8 +10,11 @@ set_type
 [ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
 , VertexData = ([ratvec] list, (ratvec->int) lookup)
 , FacetData = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds)
-, FacetDataKchar = (VertexData v_data, [[FacetStatusVertsIndex]]
-facet_status_inds, [[KTypePol]] Kchars)
+, FacetDataKchar =
+  ( VertexData v_data
+  , [[FacetStatusVertsIndex]] facet_status_inds
+  , [[KTypePol]] Kchars
+  )
 ]
 
 { facets are indexed by pairs (d,j) of nonnegative integers; want
@@ -22,21 +27,24 @@ set index_in_facet_list ([FacetStatusVertsIndex] L) = (vec->int):
     index_in(for (,v) in L do v od) { calls |index_in@[vec]| }
 
 {removes repetitions and sorts a list of ints}
-set no_reps([int] v) = [int]:
-    let V = [vec]: (for m in v do [m] od).no_reps
-    in for v in V do v[0] od
+set no_reps = sort_u@([int])
 
 set levels([[FacetStatusVertsIndex]] FD) = [int]:
-    for k:#FD+1 do sum(for i:k do #FD[i] od) od
+    0 # for L in FD do #L od.cumulate_forward
 
 set levels(FacetDataKchar FDK) = [int]:
     levels(FDK.facet_status_inds)
 
 set size(FacetDataKchar FDK) = int:
-    let FDinds = FDK.facet_status_inds
-    in sum(for d:#FDinds do #FDinds[d] od)
+    for x in FDK.facet_status_inds do #x od.sum
 
 {makes single list of facets}
+set index_f ([[FacetStatusVertsIndex]] FD) = (int,int->int):
+    let lvls = levels(FD) in (int d,int j) int: lvls[d]+j
+
+set index_f (FacetDataKchar FDK) = (int,int->int):
+    index_f(FDK.facet_status_inds)
+
 set index([[FacetStatusVertsIndex]] FD, int d, int j) = int:
     levels(FD)[d] + j
 
@@ -45,6 +53,15 @@ set index(FacetDataKchar FDK, int d, int j) = int:
     levels(FDK)[d] + j
 
 {inverse of index}
+set coords_f ([[FacetStatusVertsIndex]] FD) = (int->int,int):
+    let lvls = levels(FD) in
+    (int n) (int,int):
+    let d = binary_search_first((int i)bool:lvls[i]>n,0,#lvls)-1
+    in (d,n-lvls[d])
+
+set coords_f (FacetDataKchar FDK) = (int->int,int):
+    coords_f(FDK.facet_status_inds)
+
 set coords([[FacetStatusVertsIndex]] FD, int n) = (int,int):
     let d = last(for ell in levels(FD) do ell<=n od)
     then j = n- levels(FD)[d]
@@ -57,33 +74,34 @@ set coords(FacetDataKchar FDK, int n) = (int,int):
     in (d,j)
 
 {functions for looking up facets of given dimension as vertex index lists}
-set lookups(FacetDataKchar FDK) = [(vec->int)]:
+set lookups (FacetDataKchar FDK) = [(vec->int)]:
     let FDinds =  FDK.facet_status_inds
     in for L in FDinds do index_in_facet_list(L) od
 
 {generating relations for up graph: an arrow j0 --> j1 means
 nonunitarity at j0 implies nonunitarity at j1}
 set up_graph_gens(FacetDataKchar FDK) = [[int]]:
-    let (,FDinds,Pols) = FDK, lookups = lookups(FDK)
-    	 , Levels = levels(FDK)
-    then edge_gens = for n:size(FDK) do [int]:[] od
-    then () = for d:#FDinds-1 from 1
-    	 do for Find@j1 in FDinds[d]
-	    do for e:d+1
-	       do let v = delete(Find.verts,e)
-	       	  then j0 = lookups[d-1](v)
-		  in if j0>= 0
-		     then edge_gens[Levels[d-1]+j0]##:=[Levels[d]+j1]
-		     { ; prints(index(FDK, d-1,j0),"  ",d," ",j1," ",j0, " "
-		       	,edge_gens[Levels[d-1]+j0]) }
-		     ; if Pols[d][j1]= Pols[d-1][j0]
-		       then edge_gens[Levels[d]+j1]##:=[Levels[d-1]+j0]
-		       fi
-		     fi
-		od
-             od
-	  od
-     in edge_gens
+    let (,FDinds,Pols) = FDK
+    then index   = (int,int->int): index_f(FDinds)
+    , edge_gens = [[int]]: for :size(FDK) do [] od
+    , lookups = [(vec->int)]:   lookups(FDK)
+ in
+    for d:#FDinds-1 from 1 { traverse facets having a vertex to spare }
+    do let lookup = lookups[d-1] { looking up will be at previous level }
+    in for Find@j1 in FDinds[d]
+       do for e:d+1
+	  do let j0 = lookup(delete(Find.verts,e))
+	  in if j0.>=
+	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
+	     { ; prints(index(FDK, d-1,j0),"  ",d," ",j1," ",j0, " "
+		,edge_gens[Levels[d-1]+j0]) }
+	     ; if Pols[d][j1] = Pols[d-1][j0]
+	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
+	       fi
+	     fi
+	   od
+	od
+     od;  edge_gens
 
 { this is the type returned by the built-in strong_components,
 describing a directed graph on #n. "classes" are for the equivalence
