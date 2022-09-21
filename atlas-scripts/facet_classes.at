@@ -103,6 +103,46 @@ set up_graph_gens(FacetDataKchar FDK) = [[int]]:
 	od
      od;  edge_gens
 
+{ rather than using |strong_components| directly, we first try to determine the
+  equivalence class of the undirected graph determined b bidirectional edges }
+
+{ compute connected components of undirected graph, return class mapping }
+set component_map (int size, [int,int] edges) = (int,(int->int)):
+(  let equiv = #size { pointers to integers no larger than index itself }
+   then path (int a) = [int]: a # while equiv[a]<a do a:=equiv[a] od
+in for (a,b) in edges
+   do let pa = path(a), pb=path(b) then sink=min(pa~[0],pb~[0])
+   in for i in pa##pb do equiv[i]:=sink od
+   od
+;  let class_of=null(size), n_classes=0
+in for v@i in equiv
+   do if v=i then class_of[i]:=n_classes; n_classes+:=1
+      else assert(v<i); class_of[i]:=class_of[v]
+      fi
+   od
+;  (n_classes,(int i) int: class_of[i])
+)
+
+{ extract bidirectional edges from output of |up_graph_gens| }
+set bi_edges ([[int]] graph_gens) = [int,int]:
+   { since closure edges "go up", just collect the edges pointing down: }
+   for targets@i in graph_gens
+   do for t in targets do if t<i then [(t,i)] else [] fi od.##
+   od.##
+
+set to_quotient = ([[int]]->[[int]]): { transform graph data to quotient }
+(  let !G = quasicompact_form
+     (inner_class(root_datum(null(1,0),null(1,0)),id_mat(1)))
+   then !x0=KGB(G,0), !zero=null(1), !null_type = null_K_module(G)
+in ([[int]] graph_gens) [[int]]:
+   let (quot_size,map) = component_map(#graph_gens,bi_edges(graph_gens))
+   then new_edges = [KTypePol]: for :quot_size do null_type od
+in for L@i in graph_gens
+   do new_edges[map(i)] +:= for j in L do (1,K_type(x0,[map(j)])) od
+   od
+;  for pol in new_edges do for @t in pol do t.lambda_rho[0] od od
+)
+
 { this is the type returned by the built-in strong_components,
 describing a directed graph on #n. "classes" are for the equivalence
 relation of having a direct path in each direction. "covers" are the
