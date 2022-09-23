@@ -1496,7 +1496,8 @@ barycenters of (cofolded) facets of dimension 0.}
 facetiousEQUIV.at}
 set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, INUC,
     IUC, CLBF, statuses, params)) = [string]:
-(  let lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
+(  let () = if facet_verbose then prints("start facet_statusuKPO") fi
+   then lookup0 = (ratvec->int): { lookup in list of facets of dimension 0 }
      index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
      , newStatuses = statuses
    then st = G.dual.Springer_table
@@ -1662,7 +1663,10 @@ set actualizeK \
 set actualizeKPO \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataKcharPO:
-(   let vlist = vertex_data.list
+(   if facet_verbose
+    then prints("start actualizeKPO")
+    fi
+; let vlist = vertex_data.list
     then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
     then vlistActRep = [ratvec]: { LIST CAN HAVE REPETITIONS IN U(3,3) }
 	for v@i in vlist
@@ -1682,6 +1686,8 @@ set actualizeKPO \
 	     else            minus_1
 	     fi
 	 od
+    then () = if facet_verbose then prints(
+    "start construction of actualized facet list") fi
     then FSVIAct = [[FacetStatusVertsIndex]]:
         for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
     then () = for FSVId@d in FPPstInd
@@ -1712,15 +1718,28 @@ set actualizeKPO \
 	od
     od
     then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
-    then polsAct = for j:dAct+1 do for stFind in FSVIAct[j]
-    	 do K_type_pol(character_formula( finalize(parameter(
-	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
+    then polsAct = for j:dAct+1
+    	 	   do
+    if facet_verbose then prints("start computing ",#FSVIAct[j]," dim ",
+       j, " facet K-chars") fi
+    ; for stFind in FSVIAct[j]
+      do K_type_pol(character_formula( finalize(parameter(
+	    		x, lambda, facet_bary(vlistAct, stFind.verts)))))
+      od
+		   od
     then vdAct = vlistAct.to_vertex_data, FDAct = FSVIAct[:dAct+1]
     then FDK = (vdAct, FDAct, polsAct)
+    then () = if facet_verbose then prints(
+    "start computing facet graph generators") fi
     then UGG = up_graph_gens(FDK)
+    then () = if facet_verbose then prints(
+    "start computing quotient graph") fi
     then TQ = to_quotient(UGG)
+    then () = if facet_verbose then prints(
+    "start Tarjan algorithm on ",#TQ," equiv classes of facets") fi
     then (eq,gr) = GraphData: strong_components(TQ)
-     {next line is wrong, used in facet_statusuKPO}
+    then () = if facet_verbose then prints(
+    "completed Tarjan, start bookkeeping lists") fi
     then classListByFacet = [vec]: class_lists(FDK, UGG, (eq,gr))
     	 , INUCL = full_up_classes(eq,gr)
     	 , IUCL = full_down_classes(eq,gr)
@@ -2200,7 +2219,7 @@ set spherical_testKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd,Pols
     let test_count = int:0, newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then () = if{FV} facet_verbose
-    	      then prints(); prints("starting spherical_testKPO with ",NumClasses
+    	      then prints(); prints("start spherical_testKPO with ",NumClasses
 	      ," equivalence classes of facets")
 	      ; show_short(newStatuses)
 	      ; prints()
