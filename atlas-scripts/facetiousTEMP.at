@@ -304,6 +304,10 @@ set_type
   , [[KTypePol]] Kchars, [vec] equiv_classes, [vec] inherited_nonunitary_classes
   , [vec] inherited_unitary_classes, [vec] class_by_facet
   , [string] class_status, [Param] class_params)
+, FacetDataOldKcharPO = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds
+  , [[ratvec]] old_barys , [[KTypePol]] Kchars, [vec] equiv_classes
+  , [vec] inherited_nonunitary_classes, [vec] inherited_unitary_classes
+  , [vec] class_by_facet, [string] class_status, [Param] class_params)
 ]
 
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
@@ -1686,24 +1690,28 @@ set actualizeKPO \
 	     else            minus_1
 	     fi
 	 od
-    then () = if facet_verbose then prints(
-    "start construction of actualized facet list") fi
+    { then () = if facet_verbose then prints(
+    "start construction of actualized facet list") fi }
     then FSVIAct = [[FacetStatusVertsIndex]]:
         for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
     then () = for FSVId@d in FPPstInd
-    do  for stFind in FSVId
-	do  let v = stFind.verts
-	    then vtheta = for i in v do if Perm[i] < 0 then break
+    do    if facet_verbose
+	  then prints("start dim ",d,
+	       " in construction of actualized facet list")
+	  fi
+	  ; for stFind in FSVId
+	    do let v = stFind.verts
+	       then vtheta = for i in v do if Perm[i] < 0 then break
 	    	 	      	     	else Perm[i]
 					fi od
-	    then vAct = vec:
+	       then vAct = vec:
 	       	    if is_subset(v,vtheta)
 		        then for i in v
 		    	     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
 		    	     od.##.sort {this list may not have been sorted}
 	            else []
 		    fi
-	     then () =  if #vAct > 0
+	       then () =  if #vAct > 0
 	     	     	   {add functionality of "pick" here}
 	     	  	then let FB = facet_bary(vlistAct, vAct)
 			     then p = parameter(x,lambda, FB)
@@ -2615,6 +2623,100 @@ set facet_statusu_reg(RealForm G, FacetDataOldKchar(vd,FPPQuo, OldBarys,
     ; if test_verbose then prints("total chopped regions ",totalChop) fi
     in
     (vd, FPPnew, Pols)
+{
+{ want to usse PO data and downdate/update accordingly }
+set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
+    Pols, eq, INUCL, IUCL,  classListByFacet, statuses, Ps)) = [string]:
+    let old_facet_verbose = facet_verbose, old_test_verbose = test_verbose next
+	if facet_verbose then prints("starting FPPB in facet_statusu_regPO") fi
+    then allFPPB = [ratvec]: ##OldBarys, FPPnew = FPPQuo,
+	 allLABELS =  ##(for d:#OldBarys do for j:#OldBarys[d] do (d,j) od od),
+	 maxLevis = [RealForm]: max_real_Levis(G) next facet_verbose:= false
+	 ; test_verbose:=false
+    {indices to convert from FPPQuo to allFPPQuo}
+    then bary_lookup = index_in(allFPPB)
+    	 , lookups = [(vec->int)]: { lookup functions for equidiml facets }
+        for L in FPPQuo do index_in_facet_list(L) od
+    then JTRs = [ [(bool,[ratvec])] ]:
+	 for L in maxLevis
+	 do
+	 if old_facet_verbose then prints("starting JTR for Levi ",L,
+	 " in facet_statusu_reg") fi;
+	 JustTheRegions(L) od
+    then (rd,M,j) = cofolded(G)
+    then leftM = M.left_inverse
+{ update FPPQuo working through Levis }
+    then totalChop = int: 0
+    then temp = for L@j in maxLevis
+    do{LOOP OVER LEVIS}
+    if old_facet_verbose then prints(new_line,"updating status using Levi ",L);
+	 prints("in facet_statusu_reg, using ",#JTRs[j]," representations on L.") fi;
+    let xL = x_open(L), rhoL = L.rho
+    then countUp = int: 0, countDown = int: 0, countChopped = int: 0
+    in
+    for (uboolL,gammaLs) in JTRs[j] {Need first to chop}
+	do{LOOP OVER L UNITARY REGIONS}
+	{ bad next line: don't know how to chop using just folded root
+	  datum; trouble is that L is not folded consistently with G }
+	{ let gammaGs = [[ratvec]]: for w in chop_coroots(rd,
+	    for v in gammaLs do leftM*v od, rd.semisimple_rank) do M*w od }
+	let gammaGs = [[ratvec]]: chop_coroots(G,gammaLs,chop_bound)
+	in
+		countChopped := countChopped+#gammaGs;
+		for gammaG {[ratvec], verts of one reg} in gammaGs
+	     	     do{LOOP OVER CHOPPED PIECES}
+		     let gammaLb = sum(G.rank, gammaG)/#gammaG
+		     { next line converts to a barycenter of the folded datum }
+		     then gammaGb = (1*real_induce_standard(
+		     	  parameter(xL,rhoL,gammaLb),G)
+			  ).infinitesimal_character
+		     then gammaGlisted = M*facet_bary(rd, leftM*gammaGb)
+		     then nG = bary_lookup(gammaGlisted)
+		     then bigTrouble = if nG=-1 then prints(
+		        "TROUBLE at MaxLevi #",j,
+	     		"  which is ",L, ",  and gammaGb = ",gammaGb); break fi
+		     then (d,j) = allLABELS[nG]
+		     then FPPnewd = FPPnew[d], Find = FPPnew[d][j]
+		     in
+		     let result =
+	    		if FPPnew[d][j].status!="?"
+	    		then FPPnew[d][j].status
+			     {if inducing rep is unitary, so is induced,
+			      and facets in closure}
+	    		elif uboolL then countDown := countDown+1;
+			     FPPnew := downdate(lookups, FPPnew,
+			         ("Ticlosure",FPPnew[d][j].verts));
+			     FPPnew := updateSingK{Closure}(lookups
+			     	       , (vd,FPPnew,Pols)
+				       , ("Tiopen",Find.verts),Pols[d][j])
+			; "Ti"
+			     {if inducing is hermitian nonunitary,
+		    	     	 and induction is irreducible, then
+				 induced is hermitian nonunitary,
+				 along with facets in opening}
+	    		elif #real_induce_irreducible(parameter(
+			     x_open(L),L.rho, gammaLb),G) = 1
+	    		     	    then countUp := countUp+1
+	    		;    FPPnew:= update(lookups, FPPnew,("Fi",Find.verts))
+			;    FPPnew:= downdateSingK(lookups,(vd, FPPnew,Pols),
+			     ("Fi",Find.verts), Pols[d][j])
+			; "Fi"
+	    		else "?" { FPPnew[d][j].status }
+	    		fi
+	    		then temp = (); FPPnewd[j]:= (result,FPPnewd[j].verts)
+	    		in FPPnew[d] := FPPnewd
+		     od{LOOP OVER CHOPPED PIECES}
+       od{LOOP OVER L UNITARY REGIONS}; if old_facet_verbose then prints(
+       	       "completed Levi ",j," using ",
+	    countUp, " updates and ", countDown, " downdates and ",
+	    countChopped, " chopped regions.") fi
+	    ; totalChop := totalChop+countChopped
+    od{LOOP OVER LEVIS}; facet_verbose := old_facet_verbose
+    ; test_verbose := old_test_verbose
+    ; if test_verbose then prints("total chopped regions ",totalChop) fi
+    in
+    (vd, FPPnew, Pols)
+}
 
 set facet_statusu_reg(RealForm G) = FacetDataKchar:
     let data = facet_data_fold(G)
