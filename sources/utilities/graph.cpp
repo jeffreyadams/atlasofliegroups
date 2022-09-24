@@ -11,9 +11,8 @@
 #include "graph.h"
 
 #include <cassert>
+#include <set>
 
-
-#include "bitmap.h"
 #include "tags.h"
 #include "sl_list.h"
 
@@ -83,16 +82,15 @@ namespace graph {
   continue the traversal when the vertex matures, and the index |next_edge| up
   to which its edges have already been considered (for immature vertices).
   Finally and most importantly, we record for |v| the minimal sequence number
-  |min| of any active vertex that is either |v| itself or can be reached in one
-  step from a mature descendant |d| of |v| (to be exact, this information is
-  incorporated into the |min| value of |v| once the branch of the depth-first
-  search tree from |v| containing |d| matures). When a vertex |v| matures, its
-  unsettled descendants are precisely the active vertices not older than |v|,
-  and |v| is the head of a strong component if and only if its |min| value
-  equals its own sequence number |rank[v]|; this means that none of its
-  descendants (including |v| itself) can reach an active vertex older than |v|.
-  When this happens, the unsettled descendants of |v| form the final segment of
-  |active| starting at |v|.
+  |min| of any active vertex that is either |v| itself or can be reached from a
+  mature descendant |d| of |v| (this information is incorporated into the |min|
+  value of |v| once the branch of the depth-first search tree from |v|
+  containing |d| matures). When a vertex |v| matures, its unsettled descendants
+  are precisely the active vertices not older than |v|, and |v| is the head of a
+  strong component if and only if its |min| value equals its own sequence number
+  |rank[v]|; this means that none of its descendants (including |v| itself) can
+  reach an active vertex older than |v|. When this happens, the unsettled
+  descendants of |v| form the final segment of |active| starting at |v|.
 
   During the depth-first traversal, there are (apart from the settled vertices
   that are ignored) two kind of vertex encounters: the initial ones for which
@@ -235,7 +233,7 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
   which must also be a descendant of |x.v|. Iterating, we finally reach |x.v|.
 
   We must also show that removing the strong component does not change any of
-  the remaining |min| values (of course they stay the same, but their
+  the remaining |min| values (of course they actually stay the same, but their
   interpretation as minimal sequence number bla bla should also remain valid).
   But this is simply true because none of the removed vertices gives access to
   any vertices that remain active, and any removed vertex is newer than any
@@ -275,13 +273,13 @@ void OrientedGraph::reverseNumbering()
   The auxiliary method |add_links| is called above to extend the induced graph
   on the quotient structure (note how in the public accessor |cells| we made use
   of our right to call private methods to call the manipulator |add_links| on a
-  _different_ OrientedGraph!). The argument |out| gives a list of |EdgeList|
-  pointers, whose destination vertices must be translated through the partition
-  classification function |pi| to obtain a set of existing vertices of the
-  induced graph, to which a freshly created vertex should be linked. There will
-  almost certainly be internal links in the component added, which means the new
-  vertex created will also appear among the images by |pi|, but it will be
-  ignored (no loop in the induced graph is created).
+  _different_ |OrientedGraph| instance!). The argument |out| gives a list of
+  |EdgeList| pointers, whose destination vertices must be translated through the
+  partition classification function |pi| to obtain a set of existing vertices of
+  the induced graph, to which a freshly created vertex should be linked. There
+  will almost certainly be internal links in the component added, which means
+  the new vertex created will also appear among the images by |pi|, but it will
+  be ignored (no loop in the induced graph is created).
 
   Precondition: all |Vertex| values accessed from |out| (which are vertices of
   some _other_ graph) have their value |pi(y)| already defined, and |pi(y)<=c|
@@ -293,11 +291,11 @@ void OrientedGraph::add_links
    const partition::Partition& pi)
 {
   Vertex c=newVertex(); // extend graph by vertex; it now has |c+1| vertices
-  bitmap::BitMap seen(c+1);
+  std::set<Vertex> seen;
   for (auto list_p : out)
     for (const Vertex e : *list_p)
       seen.insert(pi.class_of(e));
-  seen.remove(c); // exclude any edge from class |c| to itself
+  seen.erase(c); // exclude any edge from class |c| to itself
   EdgeList& e = edgeList(c); // the new edge list to define
   e.reserve(seen.size());
   e.assign(seen.begin(),seen.end()); // convert |BitMap| to |EdgeList|
