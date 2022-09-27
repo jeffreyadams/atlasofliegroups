@@ -1926,6 +1926,7 @@ struct int_value : public value_base
   int_value (const int_value& ) = default; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
+  unsigned int uint_val () const @+{@; return val.uint_val(); }
   arithmetic::Numer_t long_val () const @+{@; return val.long_val(); }
 };
 @)

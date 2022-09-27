@@ -50,7 +50,7 @@ class OrientedGraph
 
   Vertex edge(Vertex x, size_t j) const { return d_edges[x][j]; } // edge #j
 
-  const EdgeList& edgeList(const Vertex& x) const { return d_edges[x]; }
+  const EdgeList& edgeList(Vertex x) const { return d_edges[x]; }
 
   size_t size() const { return d_edges.size(); } // number of vertices
 

@@ -49,6 +49,7 @@ public:
   explicit big_int (const bitmap::BitMap& b, bool negative=false);
 
   int int_val() const; // extract 32-bits signed value, or throw an error
+  unsigned int uint_val() const; // same, but for unsigned int value
   arithmetic::Numer_t long_val() const; // extract 64 bits signed value
   arithmetic::Denom_t ulong_val() const; // extract 64 bits unsigned value
   template<typename C> C convert() const; // extract some integer type value
