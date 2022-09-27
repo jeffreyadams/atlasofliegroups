@@ -1660,9 +1660,14 @@ set actualizeK \
 	od
     od
     then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
-    then polsAct = for j:dAct+1 do for stFind in FSVIAct[j] 
+    then polsAct = for j:dAct+1 do
+        if facet_verbose then prints("start computing Kchars in dim ",j)
+    	fi
+    ; for stFind in FSVIAct[j] 
     	 do K_type_pol(character_formula( finalize(parameter(
-	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
+	    		x, lambda, facet_bary(vlistAct, stFind.verts)))))
+  	 od
+      od
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1], polsAct)
 )
 
@@ -1715,13 +1720,13 @@ set actualizeKPO \
 	     	     	   {add functionality of "pick" here}
 	     	  	then let FB = facet_bary(vlistAct, vAct)
 			     then p = parameter(x,lambda, FB)
-	       		     in  if {is_final(p) and} is_hermitian(p)
-			      	    and p.infinitesimal_character = FB
-	       	      		 then let FSVId0 = FSVIAct[#vAct -1]
-	    	             	 then () = FSVId0 ##:= [(stFind.status, vAct)]
-			     	 in FSVIAct[#vAct - 1]:=FSVId0
-	    	      	     fi
-		  	fi
+		    	     in if {is_final(p) and} is_hermitian(p)
+			   and p.infinitesimal_character = FB
+		    	   then FSVIAct[#vAct - 1] :=
+			   (FSVIAct[#vAct -1] next FSVIAct[#vAct -1]:=[])
+			   # (stFind.status, vAct)
+		    	fi
+		  fi
 	      in ()
 	od
     od
