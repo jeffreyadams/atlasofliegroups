@@ -1578,7 +1578,11 @@ set actualize \
     then FSVIAct = [[FacetStatusVertsIndex]]:
         for @j in FPPstInd do [FacetStatusVertsIndex]: [] od
     then () = for FSVId@d in FPPstInd
-    do  for stFind in FSVId
+    do if facet_verbose
+        then prints("start dim ",d,
+	       " in construction of actualized facet list")
+	fi
+	; for stFind in FSVId
 	do  let v = stFind.verts
 	    then vtheta = for i in v do if Perm[i] < 0 then break
 	    	 	      	     	else Perm[i]
@@ -1590,11 +1594,12 @@ set actualize \
 		    	     od.##.sort {this list may not have been sorted}
 	            else []
 		    fi
-	       	in if #vAct > 0
-	       	      then let FSVId0 = FSVIAct[#vAct -1]
-	    	            then () = FSVId0 ##:= [(stFind.status, vAct)]
-	    		    in FSVIAct[#vAct - 1]:=FSVId0
-	    	    fi
+	     then () =  if #vAct > 0
+	       	     	then  FSVIAct[#vAct - 1]:=
+		      	(FSVIAct[#vAct -1] next FSVIAct[#vAct -1]:=[])
+			 # (stFind.status, vAct)
+	    	   	fi
+	     in ()
 	od
     od
     then dAct = last(for j:#FSVIAct do #FSVIAct[j] > 0 od)
@@ -1651,11 +1656,11 @@ set actualizeK \
 			     then p = parameter(x,lambda, FB)
 	       		     in  if {is_final(p) and} is_hermitian(p)
 			      	    and p.infinitesimal_character = FB
-	       	      		 then let FSVId0 = FSVIAct[#vAct -1]
-	    	             	 then () = FSVId0 ##:= [(stFind.status, vAct)]
-			     	 in FSVIAct[#vAct - 1]:=FSVId0
-	    	      	     fi
-		  	fi
+				    then FSVIAct[#vAct - 1] :=
+			   	     (FSVIAct[#vAct -1] next FSVIAct[#vAct -1]:=[])
+			   	     		    # (stFind.status, vAct)
+	    	      	     	 fi
+		  	 fi
 	      in ()
 	od
     od
