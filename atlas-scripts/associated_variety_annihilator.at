@@ -314,9 +314,8 @@ in gamma :=
 		  , "ct: ", ct.root_datum
 		  )
       fi
-  {then index=truncate_induce_character(rd_int,rd,ct_int,ct,char_int_sign)}
    then index =
-     truncate_by_degree_induce_character(ct.class_table,ct_int,char_int_sign)
+     truncate_by_degree_induce_character(ct_int.class_table,ct,char_int_sign)
    then (valid,orbit)=st.springer_inverse(index)
    then ()=assert(valid,"Can't compute springer_inverse")
       ; if av_verbose
