@@ -69,6 +69,8 @@ class OrientedGraph
   void reverseEdges ();      // make opposite oriented graph
   void reverseNumbering ();  // same graph, but reverse numbering of vertices
 
+  // find connected components of bidirectional edges, and reduce ourselves
+  partition::Partition to_unoriented_components();
 
   // auxiliary methods
 private:

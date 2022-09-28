@@ -98,7 +98,7 @@ set multiply_by ([int] pol) = (inf_list->inf_list):
 (  let d = last(#pol,(int i)bool: !=pol[i])
 in case d { three way branch on sign of |d| }
    then (inf_list .) inf_list: extend_0(#0) { |d<0|: multiplication by 0 }
-   in scale_list_by(pol[0]) { mulitplication by a nonzero constant polynomial }
+   in scale_list_by(pol[0]) { multiplication by a nonzero constant polynomial }
    else { |d>0| }
       let buf = { buffer for not yet yielded contributions from previous terms }
          for :d+1 { for first |d| degrees above current, plus a sentinel 0 }

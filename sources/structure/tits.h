@@ -256,7 +256,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   { t += y_values::exp_2pi(rw); }
 
   void add(const RatWeight& rw,GlobalTitsElement& a) const
-  // the following would be necessary to get a true right-mulitplication
+  // the following would be necessary to get a true right-multiplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
   { add(rw,a.t); }
 

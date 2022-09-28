@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <set>
+#include <algorithm>
 
 #include "tags.h"
 #include "sl_list.h"
@@ -31,6 +32,66 @@ namespace atlas {
 
 
 namespace graph {
+
+// preprocessing for cells: quotient by connected componets of bidirectionals
+partition::Partition OrientedGraph::to_unoriented_components()
+{
+  std::vector<Vertex> min_rep(size());
+  for (Vertex i=0; i<size(); ++i)
+    min_rep[i]=i;
+
+  for (Vertex i=0; i<size(); ++i)
+    for (Vertex target : edgeList(i))
+      if (target<i and
+	  std::binary_search(edgeList(target).begin(),edgeList(target).end(),i)
+	  )
+      { // we have a bidirectional edge between |target| and |i|
+	containers::sl_list<Vertex> component;
+	Vertex v,w;
+	for (v=i; min_rep[v]<v; v=min_rep[v])
+	  component.push_back(v);
+	for (w=target; min_rep[w]<w; w=min_rep[w])
+	  component.push_back(w);
+	assert(min_rep[v]==v and min_rep[w]==w);
+	if (v>w)
+	  component.push_back(v), v=w;
+	else if (v<w)
+	  component.push_back(w);
+
+	for (Vertex c : component)
+	  min_rep[c]=v;
+      }
+
+  partition::Partition pi(size());
+  for (Vertex i=0; i<size(); ++i)
+    if (min_rep[i]==i)
+      pi.new_class(i);
+    else
+    {
+      assert(min_rep[i]<i);
+      min_rep[i]=min_rep[min_rep[i]];
+      pi.addToClass(pi.class_of(min_rep[i]),i);
+    }
+
+  // now convert our graph to a graph on the equivalence classes
+  std::vector<std::set<Vertex>> new_links(pi.classCount());
+
+  for (Vertex i=0; i<size(); ++i)
+  { const auto ci = pi.class_of(i);
+    for (Vertex target : edgeList(i))
+    { const auto ct = pi.class_of(target);
+      if (ci!=ct)
+	new_links[ci].insert(ct);
+    }
+  }
+
+  // replace ourselves with the induced graph on the quotient set
+  resize(new_links.size());
+  for (Vertex i=0; i<size(); ++i)
+    edgeList(i).assign(new_links[i].begin(),new_links[i].end());
+
+  return pi;
+}
 
 /******** accessors **********************************************************/
 

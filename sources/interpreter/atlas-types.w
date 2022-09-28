@@ -6779,10 +6779,7 @@ void strong_components_wrapper(expression_base::level l)
   const auto pi = G.cells(induced.get()); // invoke Tarjan's algorithm
 @)
   { std::vector<std::shared_ptr<row_value> > part(pi.classCount());
-    std::vector<unsigned> sizes(part.size(),0);
-    for (unsigned long n=0; n<size; ++n)
-      ++sizes[pi.class_of(n)];
-      // compute all |sizes| efficiently; don't use |pi.classSize|
+    auto sizes = pi.class_sizes();
     for (unsigned i=0; i<part.size(); ++i)
     @/{@;
       part[i]=std::make_shared<row_value>(0);
