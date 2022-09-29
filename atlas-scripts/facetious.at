@@ -1413,7 +1413,7 @@ set facet_statusu(RealForm G, FacetData(vd,FPPstInd)) = FacetData:
    then FPPstInd0 = FPPstInd[0]
 {   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi}
 in
-   if not(is_quasisplit(G))
+   if not(is_split(G))
    then
       for O@j in st.orbits
       do let gamma = O.H/2
@@ -1461,7 +1461,7 @@ set facet_statusuK(RealForm G, FacetDataKchar (vd,FPPstInd, Pols)) = FacetData:
    then FPPstInd0 = FPPstInd[0]
 {   , FPPstInd1 = if #FPPstInd>0 then FPPstInd[1] else FPPstInd[0] fi}
 in
-   if not(is_quasisplit(G))
+   if not(is_split(G))
    then
       for O@j in st.orbits
       do let gamma = O.H/2
@@ -1506,7 +1506,7 @@ set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, INUC,
      index_in(for (,facet) in FPPstInd[0] do vd.list[facet[0]] od)
      , newStatuses = statuses
    then st = G.dual.Springer_table
-   in if not(is_quasisplit(G))
+   in if not(is_split(G))
       then for O@j in st.orbits
       	   do let gamma = O.H/2
 	      then m0 = lookup0(gamma)
