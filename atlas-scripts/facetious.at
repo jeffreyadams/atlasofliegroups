@@ -1513,7 +1513,8 @@ set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, INUC,
       	      in if m0 >= 0 and
 	      	 GK_dim(parameter(x_open(G),G.rho,gamma)) = dim(st.dual_map(O))/2
 	 	 then newStatuses :=
-		      downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]], m0)
+		      downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]]
+		      , CLBF[0][m0])
 	 	 ; newStatuses[CLBF[0][m0]] := "Tunip"##to_string(j)
 	 	 fi
       	   od
@@ -1522,7 +1523,8 @@ set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, INUC,
 	      then m0 = lookup0(gamma)
      	       in if m0 >= 0
 	       	  then newStatuses :=
-		       downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]], m0)
+		       downdateUPOclasses(newStatuses, IUC[CLBF[0][m0]]
+		       , CLBF[0][m0])
 	 	  ; newStatuses[CLBF[0][m0]] := "Tunip"##to_string(j)
 	 	  fi
             od
