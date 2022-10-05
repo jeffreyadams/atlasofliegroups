@@ -1902,7 +1902,7 @@ set actualizeKPO \
     then (eq,gr) = GraphData: up_data(FDK)
     then classListByFacet = [vec]: class_lists(FDK,(eq,gr))
     	 , INUCL = {full_up_classes(eq,gr)} [vec]:[[]]
-    	 , IUCL = {full_down_classes(eq,gr)} [vec]:[[]]
+    	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
     then statuses = for C in eq do "?" od
     then Ps = for C in eq
     	      do let (d,j) = coords(FDAct,C[0])
@@ -1990,9 +1990,9 @@ set actualize_oldKPO \
     then vdAct = vlistAct.to_vertex_data, FDAct = FSVIAct[:dAct+1]
     then FDK = (vdAct, FDAct, polsAct)
     then (eq,gr) = GraphData: up_data(FDK)
-    then classListByFacet = [vec]: class_lists(FDK,(eq,gr))
+    then classListByFacet = [vec]: {[[]]} class_lists(FDK,(eq,gr))
     	 , INUCL = {full_up_classes(eq,gr)} [vec]: [[]]
-    	 , IUCL = {full_down_classes(eq,gr)} [vec]:[[]]
+    	 , IUCL = full_down_classes(eq,gr) { [vec]:[[]]}
     then statuses = for C in eq do "?" od
     then Ps = for C in eq
     	      do let (d,j) = coords(FDAct,C[0])
@@ -2884,9 +2884,12 @@ set facet_statusu_reg(RealForm G, FacetDataOldKchar(vd,FPPQuo, OldBarys,
 
 
 { want to use PO data and downdate/update accordingly }
+{Note that this does NOT insert unipotent reps; that's done by facet_statusu_reg(G) which is meant to come first.}
 set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
     Pols, eq, gr, INUCL, IUCL,  classListByFacet, statuses, Ps)) = [string]:
-    let old_facet_verbose = facet_verbose, old_test_verbose = test_verbose next
+    let () =  statuses:= facet_statusuKPO(G, (vd, FPPQuo, Pols, eq, gr
+    	, INUCL, IUCL, classListByFacet, statuses, Ps))
+    then old_facet_verbose = facet_verbose, old_test_verbose = test_verbose next
 	if facet_verbose then prints("starting FPPB in facet_statusu_regPO") fi
     then allFPPB = [ratvec]: ##OldBarys,
 	 allLABELS =  ##(for d:#OldBarys do for j:#OldBarys[d] do (d,j) od od),
@@ -2900,7 +2903,7 @@ set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
 	 for L in maxLevis
 	 do
 	 if old_facet_verbose then prints("starting JTR for Levi ",L,
-	 " in facet_statusu_reg") fi;
+	 " in facet_statusu_regPO") fi;
 	 JustTheRegions(L) od
     then (rd,M,j) = cofolded(G)
     then leftM = M.left_inverse
@@ -2909,7 +2912,7 @@ set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
     then temp = for L@j in maxLevis
     do{LOOP OVER LEVIS}
     if old_facet_verbose then prints(new_line,"updating status using Levi ",L);
-	 prints("in facet_statusu_reg, using ",#JTRs[j]," representations on L.") fi;
+	 prints("in facet_statusu_regPO, using ",#JTRs[j]," representations on L.") fi;
     let xL = x_open(L), rhoL = L.rho
     then countUp = int: 0, countDown = int: 0, countChopped = int: 0
     in
@@ -2980,7 +2983,7 @@ set facet_statusu_reg(RealForm G) = FacetDataKchar:
     then (vdata, dataAct, OldBarys, Pols) =
     	 actualize_oldK(x_open(G), G.rho, data)
     then (vdata, dataActu) = facet_statusu(G, (vdata, dataAct))
-    in facet_statusu_reg(G,(vdata, dataActu, OldBarys, Pols))
+    in facet_statusu_reg(G,(vdata, dataAct, OldBarys, Pols))
 
 {collects unipotent data, then induced data, in prep for unitarity testing}
 set facet_statusu_regPO(RealForm G) = FacetDataKcharPO:
@@ -2989,7 +2992,8 @@ set facet_statusu_regPO(RealForm G) = FacetDataKcharPO:
     	 actualize_oldKPO(x_open(G), G.rho, data)
     then FDKoldPO = FacetDataOldKcharPO: (vdata, dataAct, OldBarys, Pols, eq, gr, INUCL, IUCL, CLBF, statuses, Ps)
     , FDKPO = FacetDataKcharPO: (vdata, dataAct, Pols, eq, gr, INUCL, IUCL, CLBF, statuses, Ps)
-    then () = FDKoldPO.class_status := facet_statusuKPO(G, FDKPO)
+    { next line moved to facet_statusu_regPO}
+    {then () = FDKoldPO.class_status := facet_statusuKPO(G, FDKPO)}
     then () = FDKPO.class_status := facet_statusu_regPO(G,FDKoldPO)
     in FDKPO
 
