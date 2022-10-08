@@ -993,6 +993,20 @@ set facet_data(SimpleAffine Affd) = FacetData:
    then facets_indexed = FPP_facets(Affd,vd)
 in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
 
+{transfers the status-by-class information in statuses to FDind}
+set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
+    			INUCL, IUCL, CLBF, statuses, Ps)) = FacetData:
+    let () = for cl@m in eq
+    do for n in cl
+       do let (d,j) = coords(FDind, n)
+       	  then FDindd = FDind[d]
+	  then () = FDindd[j] := (statuses[m],FDindd[j].verts)
+	  then () = FDind[d] :=FDindd
+	  in ()
+        od
+     od
+     in (vd, FDind)
+
 {extra argument is a possible simple coroot allowed to be 2 on FPP}
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
     FacetData:
@@ -2121,6 +2135,8 @@ set show([[FacetStatusVertsIndex]] FPPstInd) = void:
 	then countFi+:=1
 	elif stFind.status[:2]="Fd"
 	then countFdef+:=1
+	elif stFind.status[:2]="Ff"
+	then countFdef+:=1
 	elif stFind.status[:2]="Ft"
 	then countFtest+:=1
 	else countTu+:=1
@@ -2533,6 +2549,15 @@ set sphericalKPO(RealForm G) = [string]:
     then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
     in spherical_testKPO(G, FDKPO, default_tester@Param)
 
+{return like sphericalK}
+set sphericalKPO_long(RealForm G) = FacetData:
+    let data = facet_data_fold(G)
+    then FDKPO = actualizeKPO(x_open(G), G.rho, data)
+    then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
+    then () = FDKPO.class_status :=
+    	 spherical_testKPO(G, FDKPO, default_tester@Param)
+    in statuses_to_facets(G, FDKPO)
+
 {. apply actualize to the FacetData before computing unitarity; should mean
    that output is already actualized .}
 set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
@@ -2560,7 +2585,7 @@ set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G(R) must have simple derived group.}
 set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
-    let (vd,FVstInd) = sphericalK(G)
+    let (vd,FVstInd) = sphericalKPO_long(G)
     in
     ##(for d:#FVstInd
 	    do if only_unitary then
@@ -2587,7 +2612,7 @@ set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
 {. records vertices of unitary regions for spherical dual real simple
 G; complex is OK .}
 set JustTheRegions_simple(RealForm G) = [(bool,[ratvec])]:
-    let ((vlist,),FVstInd) = sphericalK(G)
+    let ((vlist,),FVstInd) = sphericalKPO_long(G)
     in
     ##(for d:#FVstInd
 	 do if only_unitary then
