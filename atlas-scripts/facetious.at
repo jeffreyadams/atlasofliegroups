@@ -2591,6 +2591,20 @@ set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     	 spherical_testKPO(G, FDKPO, tester)
     in statuses_to_facets(G, FDKPO)
 
+{ lists item d of answer is a list of facets of unitary spherical
+reps, given as lists of their vertices: d+1 ratvecs }
+set sphericalJustTheVertexLists(RealForm G) = [[[ratvec]]]:
+    let FD = FacetData: sphericalKPO_long(G)
+    then vlist = FD.v_data.list, FDind = FD.facet_status_inds
+    in for FDindd in FDind
+       do for find in FDindd
+       	  do if find.status[0]="T"
+	     then [for j in find.verts do vlist[j] od]
+	     else []
+	     fi
+	  od.##
+       od
+
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G(R) must have simple derived group.}
 set JustTheFacts_simple(RealForm G) = [(bool,ratvec)]:
