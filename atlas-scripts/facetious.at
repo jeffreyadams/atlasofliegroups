@@ -2542,6 +2542,7 @@ set sphericalK(RealForm G) = FacetData:
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
+
 {for now just return the class statuses}
 set sphericalKPO(RealForm G) = [string]:
     let data = facet_data_fold(G)
@@ -2581,6 +2582,14 @@ set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
     then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
     then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
     in spherical_testKPO(G,FDKPO, tester)
+
+set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
+    let dataFold = facet_data_fold(G) { (rd,M,j0) }
+    then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
+    then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
+    then () = FDKPO.class_status :=
+    	 spherical_testKPO(G, FDKPO, tester)
+    in statuses_to_facets(G, FDKPO)
 
 {.forget dimension info; just (for each spherical hermitian barycenter)
 whether or not unitary, inducing nu. G(R) must have simple derived group.}
