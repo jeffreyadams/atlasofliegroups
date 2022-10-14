@@ -246,6 +246,9 @@ Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   positions of the (co)roots corresponding to then in matrix rows and columns.
+is_Cartan_matrix: (mat->bool): whether calling Cartan_matrix_type is safe
+  This function can be used to protect code that fails for non-Cartan matrices,
+  calling Cartan_matrix_type directly, or indirectly by constructing root data
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
