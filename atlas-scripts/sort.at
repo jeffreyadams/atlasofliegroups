@@ -151,6 +151,10 @@ set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
 
 set sort_by (([int]->int) f) = ([[int]] v) [[int]]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ((vec->int) f) = ([vec] v) [vec]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ((ratvec->int) f) = ([vec] v) [ratvec]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 { also need sorting by rationals; take easily written but roundabout approach }
 set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
