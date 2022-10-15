@@ -209,7 +209,7 @@ let n=rank(rd) in
 [(complex_nilpotent(rd,null(n)),rd.rho)]
 
 set birigid_data_A(RootDatum rd) = [unipotent_datum]:
-let n=semisimple_rank(rd) in
+let n=rank(rd) in
 [(complex_nilpotent(rd,null(n)),rd.rho)]
 
 set semirigid_data_A_std(int n) = [unipotent_datum]:
@@ -993,3 +993,26 @@ prints("orbit = ", O(x), " infl char = ", infl_char(x));
 let list=##(for p in all_parameters_gamma(G,infl_char(x)) do if 2*GK_dim(p)=dim(O(x)) then [p] else [] fi od) in
 prints("number of unipotents = ", #list);
 for p in list do prints(p, "  unitary = ", is_unitary(p)) od od
+
+
+
+
+{counts unipotents}
+
+set unipotents(unipotent_datum (O,gamma)) = [Param]:
+let G=O.root_datum, d=O.dim then
+GC=G.complexification then
+list=all_parameters_gamma(GC,gamma##gamma) in
+if is_regular(G,gamma) then ##(for p in list do if #tau(p)=ss_rank(GC) then [p] else [] fi od)
+else ##(for p in list do if GK_dim(p)=d then [p] else [] fi od) fi
+
+set count_unipotents(unipotent_datum UD) = int:
+#unipotents(UD)
+
+
+set count_unipotents_verbose(RootDatum G) = void:
+let all=semirigid_data(G) in
+for UD in all do prints("Dimension: ", UD.O.dim, "  Dynkin diagram: ", UD.O.diagram, "  infl char: ", dominant(G,UD.infl_char), "  # of unipotents: ", 
+count_unipotents(UD))od
+
+
