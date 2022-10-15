@@ -104,7 +104,7 @@ set up_graph_gens(FacetDataKchar FDK) = [[int]]:
      od;  edge_gens
 
 { rather than using |strong_components| directly, we first try to determine the
-  equivalence class of the undirected graph determined b bidirectional edges }
+  equivalence class of the undirected graph determined by bidirectional edges }
 
 { compute connected components of undirected graph, return class mapping }
 set component_map (int size, [int,int] edges) = (int,(int->int)):
@@ -145,7 +145,7 @@ in for L@i in graph_gens
 
 { this is the type returned by the built-in strong_components,
 describing a directed graph on #n. "classes" are for the equivalence
-relation of having a direct path in each direction. "covers" are the
+relation of having a directed path in each direction. "covers" are the
 sets of covers in the partial order defined by the graph on classes.}
 set_type GraphData = ([[int]] classes, [[int]] covers)
 
@@ -167,8 +167,24 @@ set find_class_fast(GraphData gr_data, int n) = int:
        fi
     od; minus_1
 
-set up_data(FacetDataKchar FDK) = GraphData:
+set up_data_old(FacetDataKchar FDK) = GraphData:
     strong_components(up_graph_gens(FDK))
+
+{ first doing to_quotient means that the graph passed to
+strong_components has only one node for each EQUIVALENCE CLASS of
+facets. In the case of E7_s , this reduces execution time from 4000
+minutes to 170 minutes. Maybe get more saving from mak
+reorganizing...? }
+set up_data(FacetDataKchar FDK) = GraphData:
+    strong_components(to_quotient(up_graph_gens(FDK)))
+
+{assuming that GraphData comes from a graph without loops, so that its
+first component is a permutation of the number of nodes, get the
+inverse permutation}
+set un_class(GraphData (eq,)) = [int]:
+    let UNC = null(#eq)
+    then () = for class@j in eq do UNC[class[0]]:= j od
+    in UNC
 
 { for each equivalence class, sorted list of all classes above
 it in the preorder. Is this really ALL classes above?
@@ -214,27 +230,6 @@ set full_up_classes2(GraphData (classes, covers)) = [vec]:
 		   (fullUpClasses[m]##fullUpClasses[j]).no_reps
 		od
     	      od
-    in fullUpClasses
-
-{ for each equivalence class, sorted list of all classes above it in
-the preorder. Is this really ALL classes above?  The no_reps also
-guarantees that the answers are sorted.}
-{Moving no_reps to the end means that it's MUCH longer lists to apply
-no_reps to; seems to be MUCH slower.}
-set full_up_classes3(GraphData (classes, covers)) = [vec]:
-    let fullUpClasses = [vec]: for m:#classes do [m] od
-    then () = for U@j in covers
-    	      do
-		for m in U
-    	      	do fullUpClasses[j] :=
-		   (fullUpClasses[m]##fullUpClasses[j])
-		od
-    	      od
-    then () = prints(sum(for C in fullUpClasses do #C od))
-    then () = for m:#fullUpClasses
-    do
-    fullUpClasses[m]:=fullUpClasses[m].no_reps
-    od
     in fullUpClasses
 
 { for each equivalence class, sorted list all elements of all classes above
@@ -287,13 +282,38 @@ set full_down(GraphData (classes, covers)) =[[int]]:
     od
 
 {entry j is class to which j belongs}
-set class_list_linear(FacetDataKchar FDK, GraphData (classes,covers)) = vec:
+set class_list_linear_old(FacetDataKchar FDK, GraphData (classes,covers)) = vec:
   let v=null(size(FDK))
   then () = for C@m in classes
        do for j in C
        	  do v[j] := m od
        od
   in v
+
+{entry j is class to which j belongs}
+set class_list_linear(FacetDataKchar FDK, [int,int] edges) = vec:
+    let N = size(FDK)
+    then (,CM) = component_map(N,edges)
+    in vec: for j:N do CM(j) od
+
+{entry j is class to which j belongs}
+set class_list_linear(FacetDataKchar FDK, [[int]] UGG, GraphData GD) = vec:
+    let N = size(FDK), edges = bi_edges(UGG), UNC = un_class(GD)
+    then (,CM) = component_map(N,edges)
+    in vec: for j:N do UNC[CM(j)] od
+
+{ linear location of a node representing each class as numbered in GD }
+set class_reps(FacetDataKchar FDK, [[int]] UGG, GraphData GD) = [int]:
+    let N = size(FDK), edges = bi_edges(UGG), UNC = un_class(GD)
+    then (n,CM) = component_map(N,edges)
+    then reps = [int]: for i:n do minus_1 od
+    then () = for j:N
+    	      do let cl = UNC[CM(j)]
+	      	 in if reps[cl] = minus_1
+		    then reps[cl]:= j
+		    fi
+	      od
+    in reps
 
 {
 idea is in a session to say
@@ -310,11 +330,19 @@ set writeSC(GraphData (eq,cov)) = void:
     prints(cov);
     prints("set GD_saved = GraphData: (eq_saved,covers_saved)")
 
+{tells which class each facet belongs to}
+set class_lists(FacetDataKchar FDK, [[int]] UGG, GraphData (classes,covers)) =
+[vec]:
+	let CLL = class_list_linear(FDK, UGG, (classes,covers)),
+	    Levels = levels(FDK)
+	in  for d:#FDK.facet_status_inds
+     	    do CLL[Levels[d]:Levels[d+1]]
+     	    od
 
 {tells which class each facet belongs to}
-set class_lists(FacetDataKchar FDK, GraphData (classes,covers)) =
+set class_lists_old(FacetDataKchar FDK, GraphData (classes,covers)) =
 [vec]:
-	let CLL = class_list_linear(FDK, (classes,covers)),
+	let CLL = class_list_linear_old(FDK, (classes,covers)),
 	    Levels = levels(FDK)
 	in  for d:#FDK.facet_status_inds
      	    do CLL[Levels[d]:Levels[d+1]]

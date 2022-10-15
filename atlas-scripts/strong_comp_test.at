@@ -1,0 +1,41 @@
+< basic.at {for choices_from, power set}
+
+{ make graph on all subsets of n element set, with an edge from S to S
+minus one vertex always, and an edge from S minus one vertex to S if
+the vertex number is divisible by m.}
+{ Equivalence classes are subsets of integers from 0 to n-1 not
+divisible by m; so number of classes is 2^(n-(n\m) - 1) }
+set UGG(int n, int m) = [[int]]:
+    let N = int: 2^n {PS = power_set(n)}
+    then edges = [[int]]: for S:N  do [] od
+    then () = for S:N
+    	 do for s in set_bit_positions(S)
+	    do let Sdown = S - 2^s
+	       in edges[Sdown] ##:= [S]
+	       ; if s%m = 0
+	       	 then edges[S]##:=[Sdown]
+		 fi
+	    od
+	 od
+    then out = int: if n%m > 0 then n\m + 1 else n\m fi
+    then () = prints("created graph of ",N," vertices, ",sum(for j:N do
+    #edges[j] od)," edges, ", 2^(n - out)," equiv classes.")
+    in edges
+
+set graph_size([[int]] edges) = (int,int):
+    let N = #edges
+    then E = sum(for j:N do #edges[j] od)
+    { then () = prints("Graph of ",N," vertices, ",E
+    ," edges, size ",N+E) }
+    in (N,E)
+
+set num_classes([[int]] eq,[[int]] gr) = int: #eq
+
+set line(int N) = [[int]]:
+    for j:N do if j<N-1 then [j+1] else [] fi od
+
+{Running time of strong_components on line(N) appears like N^2, even
+though size of line(N) is 2*N}
+
+{for fixed n, running time of strong_components on U(n,m) INCREASES
+rapidly with m up to m=n, even though size of graph is decreasing slightly}

@@ -338,6 +338,13 @@ Cartan matrix for that situation (if not a runtime error will be thrown).
 Without this test invalid Lie types could have been formed, for which root datum
 construction would most likely crash.
 
+A user might want to find out whether a call to |Cartan_matrix_type| (maybe
+implicit in the construction of a root datum) will succeed, so that an error
+stop can be avoided in case it will not. The function |is_Cartan_matrix| serves
+this purpose, and is implemented by just calling |dynkin::lieType| as above, but
+ignoring the result but catching any |error::Cartan_error| thrown and returning
+|false| in that case.
+
 @h "dynkin.h"
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
@@ -356,6 +363,21 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
+
+void is_Cartan_matrix_wrapper (expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  Permutation pi;
+  try
+  {
+    dynkin::Lie_type(m->val,false,true,pi);
+    push_value(whether(true));
+  }
+  catch (error::Cartan_error&)
+  {
+    push_value(whether(false));
+  }
+}
+
 
 @ For programming it is important to be able to analyse a Lie type. To this end
 we allow transforming it into a list of $(code,rank)$ pairs, where |code| is a
@@ -407,6 +429,7 @@ install_function(Lie_type_neq_wrapper,@|"!=","(LieType,LieType->bool)");
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"Cartan_matrix_type","(mat->LieType,[int])");
+install_function(is_Cartan_matrix_wrapper,@|"is_Cartan_matrix","(mat->bool)");
 install_function(simple_factors_wrapper
                 ,@|"simple_factors","(LieType->[string,int])");
 install_function(rank_of_Lie_type_wrapper,"rank","(LieType->int)");
@@ -6786,18 +6809,15 @@ for the argument graph.
 void strong_components_wrapper(expression_base::level l)
 {
   shared_row graph = get<row_value>();
-  if (l==expression_base::no_value)
-    return;
   const auto size = graph->val.size();
   OrientedGraph G (size);
   for (unsigned i=0; i<size; ++i)
   {
     const row_value* p = force<row_value>(graph->val[i].get());
-    auto& edges = G.edgeList(i);
+  @/ auto& edges = G.edgeList(i);
     edges.reserve(p->val.size());
     for (size_t i=0; i<p->val.size(); ++i)
-      edges.push_back(force<int_value>(p->val[i].get())->int_val());
-      // convert to unsigned
+      edges.push_back(force<int_value>(p->val[i].get())->uint_val());
     for (unsigned v : edges)
       if (v>=size)
       { std::ostringstream o;
@@ -6806,21 +6826,27 @@ void strong_components_wrapper(expression_base::level l)
         throw runtime_error(o.str());
       }
   }
+  if (l==expression_base::no_value)
+    return;
 @)
   std::unique_ptr<OrientedGraph> induced(new OrientedGraph);
   const auto pi = G.cells(induced.get()); // invoke Tarjan's algorithm
 @)
   { std::vector<std::shared_ptr<row_value> > part(pi.classCount());
+    std::vector<unsigned> sizes(part.size(),0);
+    for (unsigned long n=0; n<size; ++n)
+      ++sizes[pi.class_of(n)];
+      // compute all |sizes| efficiently; don't use |pi.classSize|
     for (unsigned i=0; i<part.size(); ++i)
     @/{@;
       part[i]=std::make_shared<row_value>(0);
-      part[i]->val.reserve(pi.classSize(i));
+      part[i]->val.reserve(sizes[i]);
     }
     for (unsigned long n=0; n<size; ++n)
       part[pi.class_of(n)]->val.push_back(std::make_shared<int_value>(n));
     own_row partition_list = std::make_shared<row_value>(pi.classCount());
     for (unsigned i=0; i<part.size(); ++i)
-      partition_list->val[i] = part[i]; // widen shared pointer
+      partition_list->val[i] = std::move(part[i]); // widen shared pointer
     push_value(std::move(partition_list));
   }
 @)

@@ -1,0 +1,78 @@
+{takes an answer to sphericalKPO and tests how many non-unitary
+classes are unitary on p K-type}
+
+set test([string] answer) = [string]:
+    for j:#answer do "?" od
+
+{MUST run through classes backwards, record NONunitary on p, sift those out.}
+
+{picks out the classes that are nonunitary but unitary to HT}
+set counterDOWNHT([string] answer, int HT, [vec] INUCL, [Param] Params) = [string]:
+    let printInterval=int:1, numClasses = #answer, test_count = int:0
+    then TEST = test(answer)
+    then () = for m:numClasses
+       ~do
+	  if (numClasses-1-m)%printInterval = 0
+	  then prints("examining equivalence class #",numClasses-1-m,
+	       "; so far ",test_count," tests.")
+	  ; printInterval := 2*printInterval
+	  fi
+	  ; if TEST[m] = "?" and answer[m][0] = "F"
+	    then test_count+:=1;
+	       if not is_unitary_to_ht(Params[m],HT)
+	       then TEST:=updateNUPOclasses(TEST,INUCL[m],m)
+	       fi
+	    fi
+    	od
+	; prints("total unitary_to_height tests = ",test_count)
+	; prints("# nonunitary classes that are unitary to height ", HT,
+	" is ", count(for j:#answer do (answer[j][0]="F") and (TEST[j][0] = "?") od))
+    in TEST
+
+{takes result of previous, sees how many of the nonunitary not caught first time are not
+unitary to HT2}
+set counterDOWNHT2([string] answer, [string] TEST, int HT2, [vec] INUCL, [Param] Params) = [string]:
+    let printInterval=int:1, numClasses = #answer, test_count = int:0
+    then TEST2 = TEST {marked "F" at already detected nonunitary}
+    then () = for m:numClasses
+       ~do
+	  if (numClasses-1-m)%printInterval = 0
+	  then prints("examining equivalence class #",numClasses-1-m,
+	       "; so far ",test_count," tests.")
+	  ; printInterval := 2*printInterval
+	  fi
+	  ; if TEST2[m] = "?" and answer[m][0] = "F"
+	    then test_count+:=1;
+	       if not is_unitary_to_ht(Params[m],HT2)
+	       then TEST2:=updateNUPOclasses(TEST2,INUCL[m],m)
+	       fi
+	    fi
+    	od
+	; prints("total unitary_to_height2 tests = ",test_count)
+	; prints("# nonunitary classes that are unitary to height ", HT2,
+	" is ", count(for j:#answer do (answer[j][0]="F") and (TEST2[j][0] = "?") od))
+    in TEST2
+
+set counterDOWN([string] answer, [vec] INUCL, [Param] Params) = [string]:
+    let mu0 = LKT(Params[0])
+    then testPol = branch_std(mu0,height(mu0) + 30) - mu0
+    then HT = height(first_K_type(testPol))
+    in counterDOWNHT(answer, HT, INUCL, Params)
+
+set counterDOWNHT(RealForm G, int HT) = [string]:
+    let FDK = facet_data_Kchar(G)
+    then FDKPO = actualizeKPO(x_open(G),G.rho,(FDK.v_data,
+    	 FDK.facet_status_inds))
+    then INUCL = FDKPO.inherited_nonunitary_classes,
+    	 Params = FDKPO.class_params
+    then answer = sphericalKPO(G)
+    in counterDOWNHT(answer, HT, INUCL, Params)
+
+set counterDOWN(RealForm G) = [string]:
+    let FDK = facet_data_Kchar(G)
+    then FDKPO = actualizeKPO(x_open(G),G.rho,(FDK.v_data,
+    	 FDK.facet_status_inds))
+    then INUCL = FDKPO.inherited_nonunitary_classes,
+    	 Params = FDKPO.class_params
+    then answer = sphericalKPO(G)
+    in counterDOWN(answer, INUCL, Params)
