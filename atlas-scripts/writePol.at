@@ -29,18 +29,29 @@ then in a later session
 
 will give you Pols_saved = [KTypePol]: Pols .}
 set writeKPols(RealForm G, [KTypePol] Pols) = void:
-    let Polsdata = [[PolTermDatum]]:
+    begin
+	 let Polsdata = [[PolTermDatum]]:
     	 for P in Pols do data(P) od
-    then () = prints("set rd_saved = RootDatum: root_datum(mat: ")
+    	 in prints("set rd_saved = RootDatum: root_datum(mat: ")
     	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
 	 ; prints( for betavee in G.simple_coroots do betavee od)
 	 ; prints(",",G.prefers_coroots,")")
-    then () = prints("set DI_saved = mat: ")
+         ; prints("set DI_saved = mat: ")
     	 ; prints(for col in G.distinguished_involution do col od)
-    then () = prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
-    then () = prints("set G_saved = real_form(IC_saved, DI_saved,", KGB(G,0).torus_factor,")")
-    then () = prints("set Polsdata_saved = [[PolTermDatum]]:", Polsdata)
-    then () = prints("set Pols_saved = [KTypePol]:")
+         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
+    	 ; prints("set G_saved = real_form(IC_saved, DI_saved,", KGB(G,0).torus_factor,")")
+     	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
+	 ; for dlist@j in Polsdata
+	   do prints("[")
+	 ;     for d@k in dlist do prints("(",d.IntCoeff,",",
+	       	   d.KGBNum,"," , d.Lambda_Rho,")")
+         ; if k < #dlist -1 then prints(",") fi
+	   od
+	 ; if j < #Polsdata - 1 then prints("],")
+	   else prints("]]")
+	   fi
+	   od
+    	 ; prints("set Pols_saved = [KTypePol]:") 
     	 ; prints("for datum in Polsdata_saved do ")
     	 ; prints("sum(G_saved, for (c,n,ell) in datum do c*K_type(KGB(G_saved,n),ell) od) od")
-    in ()
+   end
