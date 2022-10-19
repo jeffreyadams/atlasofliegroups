@@ -994,7 +994,7 @@ set facet_data(SimpleAffine Affd) = FacetData:
 in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
 
 {transfers the status-by-class information in statuses to FDind}
-set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
+set statuses_to_facetsOLD(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
     			INUCL, IUCL, CLBF, statuses, Ps)) = FacetData:
     let () = for cl@m in eq
     do for n in cl
@@ -1006,6 +1006,19 @@ set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
         od
      od
      in (vd, FDind)
+
+{same, with much less creation of new variables}
+set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
+    			INUCL, IUCL, CLBF, statuses, Ps)) = FacetData:
+    let FDindOne = FDind.##
+    then () = for cl@m in eq
+    	 do for n in cl
+       	    do FDindOne[n] := (statuses[m],FDindOne[n].verts)
+       	    od
+    	 od
+    then N = int: 0
+    in (vd, for d:#FDind do FDindOne[N:N+#FDind[d]] next N+:= #FDind[d]
+    			od)
 
 {extra argument is a possible simple coroot allowed to be 2 on FPP}
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
@@ -2549,6 +2562,15 @@ set sphericalKPO(RealForm G) = [string]:
     then FDKPO = actualizeKPO(x_open(G), G.rho, data)
     then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
     in spherical_testKPO(G, FDKPO, default_tester@Param)
+
+{return like sphericalK}
+set sphericalKPO_longOLD(RealForm G) = FacetData:
+    let data = facet_data_fold(G)
+    then FDKPO = actualizeKPO(x_open(G), G.rho, data)
+    then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
+    then () = FDKPO.class_status :=
+    	 spherical_testKPO(G, FDKPO, default_tester@Param)
+    in statuses_to_facetsOLD(G, FDKPO)
 
 {return like sphericalK}
 set sphericalKPO_long(RealForm G) = FacetData:
