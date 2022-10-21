@@ -1124,13 +1124,15 @@ set updateNUPOclasses([string] statuses, vec INUCLchange, int m) = [string]:
 			   fi
 			od
     in statuses
-{ m is a class known to be nonunitary; update classes above using graph }
+
+{ m is a class known to be nonunitary; update classes above using
+graph; label as "Ffrom"##tail}
 { first list in toDo all n covering m; then what coverz those...
 These get larger and larger.}
-set updateNUPOclassesB([string] statuses, [[int]] covers, int m) = [string]:
+set updateNUPOclassesB([string] statuses, [[int]] covers, int m,
+string tail) = [string]:
     let G1 = inner_class(root_datum(null(1,0),null(1,0))
     	,id_mat(1)).quasicompact_form {CALLER SHOULD HANDLE NEXT LINE}
-{    then () = if statuses[m] = "?" then statuses[m]:="Ftest" fi }
     then x0 = KGB(G1,0)
     then toDo = sum(G1, for n in covers[m] do 1*K_type(x0,[n]) od) {+
     	 (if statuses[m] = "?" then 1 else 0 fi)*K_type(x0,[m])}
@@ -1147,11 +1149,16 @@ set updateNUPOclassesB([string] statuses, [[int]] covers, int m) = [string]:
 				  od)
 	      in for k in list
 	      	 do  if statuses[k] = "?"
-    	     	     then statuses[k] := "Ffrom"##to_string(m)
+    	     	     then statuses[k] := "Ffrom"##tail
 		     fi
 		 od
 	      od
     in statuses
+
+{ m is a class known to be nonunitary; update classes above using
+graph; label as "Ffrom"m}
+set updateNUPOclassesB([string] statuses, [[int]] covers, int m) = [string]:
+    updateNUPOclassesB(statuses, covers, m, to_string(m))
 
 set downdateUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullDownClasses
     , [vec] classLists, int d,int j) = [[FacetStatusVertsIndex]]:
@@ -1171,9 +1178,10 @@ set downdateUPO([[FacetStatusVertsIndex]] FD, [vec] equiv, [vec] fullDownClasses
     	    od
     in FD
 {m is a class known to be unitary; update classes below using IUCL}
-set downdateUPOclasses([string] statuses, vec IUCLchange, int m) = [string]:
+set downdateUPOclasses([string] statuses, vec IUCLchange, int m,
+    string tail) = [string]:
     let () = for k in IUCLchange do if statuses[k] = "?"
-    	     		   then statuses[k] := "Tfrom"##to_string(m)
+    	     		   then statuses[k] := "Tfrom"##tail
 			   fi
 			od
     in statuses
@@ -1182,7 +1190,8 @@ set downdateUPOclasses([string] statuses, vec IUCLchange, int m) = [string]:
 {m is a class known to be unitary; update classes below using graph}
 {first list in toDo everything covered by m: the n so m appears in covers[n].
 Then what those cover... These n get SMALLER.}
-set downdateUPOclassesB([string] statuses, [[int]] covers, int m) = [string]:
+set downdateUPOclassesB([string] statuses, [[int]] covers, int m,
+string tail) = [string]:
     let G1 = inner_class(root_datum(null(1,0),null(1,0))
     	,id_mat(1)).quasicompact_form
     then x0 = KGB(G1,0)
@@ -1207,11 +1216,15 @@ set downdateUPOclassesB([string] statuses, [[int]] covers, int m) = [string]:
 			   od)
 	      in for k in list
 	      	 do  if statuses[k] = "?"
-    	     	     then statuses[k] := "Ffrom"##to_string(m)
+    	     	     then statuses[k] := "Ffrom"##tail{to_string(m)}
 		     fi
 		 od
 	      od
     in statuses
+
+set downdateUPOclasses([string] statuses, vec IUCLchange, int m) =
+[string]:
+	downdateUPOclasses(statuses, IUCLchange, m, to_string(m))
 
 {.output is |dim| and indices into |FPPInd[dim]| to alcoves containing Base in
   their closure, for the largest |dim| for which this is non empty.}
@@ -1631,7 +1644,7 @@ set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, Pols, eq, gr,
 	 	 then newStatuses :=
 		 { downdateUPOclassesB(newStatuses, gr }
 		      downdateUPOclasses(newStatuses , IUC[CLBF[0][m0]]
-		      , CLBF[0][m0])
+		      , CLBF[0][m0], "unip"##to_string(j))
 	 	 ; newStatuses[CLBF[0][m0]] := "Tunip"##to_string(j)
 	 	 fi
       	   od
@@ -2819,8 +2832,8 @@ set JustTheRegions(RealForm L) = [(bool,[ratvec])]:
 
 
 {.like facet_statusu, adding info from real induction.}
-{Marks unipotent parameters as "T[number of dual nilpotent]", induced
-as "Ti..." or "Fi..." FPPQuo should first be pruned by down_to_business}
+{Marks unipotent parameters as "Tunip[number of dual nilpotent]", induced
+as "TindLevi#" or "FindLevi#" FPPQuo should first be pruned by down_to_business}
 set facet_statusu_ind(RealForm G, FacetData(vd,FPPQuo)) = FacetData:
     let old_facet_verbose = facet_verbose, old_test_verbose = test_verbose next
 	if facet_verbose then prints("starting FPPB in facet_statusu_ind") fi
@@ -3055,9 +3068,8 @@ set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
 			      and facets in closure}
 	    		elif uboolL then countDown := countDown+1;
 			     	    statuses:= downdateUPOclasses(statuses,
-				    	       IUCL[m],
-					       {downdateUPOclassesB(statuses
-					       , gr,} m)
+				    	       IUCL[m], m
+					       , "indLevi"##to_string(j))
 			; "TindLevi"##to_string(j)
 			     {if inducing is hermitian nonunitary,
 		    	     	 and induction is irreducible, then
@@ -3069,7 +3081,7 @@ set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
 				    statuses := {updateNUPOclasses(statuses,
 				    	       INUCL[m],m)}
 					       updateNUPOclassesB(statuses,
-					       gr, m)
+					       gr, m, "indLevi"##to_string(j))
 			; "FindLevi"##to_string(j)
 	    		else "?" { FPPnew[d][j].status }
 	    		fi
@@ -3130,7 +3142,17 @@ set spherical_reg_testPO(RealForm G, (Param->bool) tester) = [string]:
     let dataRegPO = facet_statusu_regPO(G)
     in spherical_testKPO(G, dataRegPO, tester)
 
+set spherical_reg_testPO_long(RealForm G, (Param->bool) tester) = FacetData:
+    let dataRegPO = facet_statusu_regPO(G)
+    then () = dataRegPO.class_status := spherical_testKPO(G, dataRegPO
+    	      			     	, tester)
+        in statuses_to_facets(G, dataRegPO)
 
+set spherical_reg_PO_long(RealForm G) = FacetData:
+    let dataRegPO = facet_statusu_regPO(G)
+    then () = dataRegPO.class_status := spherical_testKPO(G, dataRegPO
+    	      			     	, default_tester@Param)
+        in statuses_to_facets(G, dataRegPO)
 
 { still need simple derived group }
 {need vlist to match FPP_vertex_sets_indices}
