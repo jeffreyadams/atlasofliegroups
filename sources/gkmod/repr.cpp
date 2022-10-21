@@ -1955,7 +1955,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(is_final(sr));
 
   BlockElt z;
-  auto& block = lookup(sr,z);
+  auto& block = lookup_full_block(sr,z); // lookup(sr,z);
   RatWeight diff = offset(sr,block.representative(z));
   assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
 	 .is_zero());
