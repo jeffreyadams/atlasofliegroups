@@ -7,7 +7,6 @@
 <arthur_parameters.at
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
-<L_packet.at {for stable_sums_irr_mat}
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
@@ -254,7 +253,7 @@ set show( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=v
 let (bc,packet)=blocks_and_cells_and_packet then
 blocks=blocks(packet) then
 cells=cells(packet) then
-{G=let (params,)=bc[0] in params[0].real_form then}
+G=let (params,)=bc[0] in params[0].real_form then
 m=mult(packet) in
 prints("*: dual(cell) contains an Aq(lambda)");
 tabulate(
@@ -318,9 +317,7 @@ tabulate(
   od
  od
      #["Total","",(#parameters(packet)).to_string,""]
-  );
-   let (params,M)=stable_sums_irr_mat(parameters(packet)) in show(params,M);
-prints()
+  );prints()
 
 set show_long([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
 prints("*: dual(cell) contains an Aq(lambda)");
@@ -345,10 +342,7 @@ tabulate(
  od
 od
      #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
-  );
-  for(,packet) in blocks_and_cells_and_packets do 
-     let (params,M)=stable_sums_irr_mat(parameters(packet)) in show(params,M) od;
-prints()
+  );prints()
 
 set export([Param] parameters)=void:
 prints("set parameters=[");
@@ -421,9 +415,7 @@ tabulate(
  od
 od
      #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]#["Induced","","",(#induced_unipotents).to_string,""]
-  );
-  for(,packet) in blocks_and_cells_and_packets do 
-     let (params,M)=stable_sums_irr_mat(parameters(packet)) in show(params,M) od
+  );prints()
 
 {(induced unipotents, unipotents of G, complement of first in second)}
 set induced_unipotents_long(RealForm G)=([Param],[Param],[Param]):
@@ -614,7 +606,7 @@ set weak_packets_all_forms(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]
 set show_weak_packets_all_forms(RealForm G)=void:
 let rf=real_forms(G) then
 m=weak_packets_all_forms(G) in
-for wp@i in m do {prints(rf[i]);} show(wp)
+for wp@i in m do prints(rf[i]); show(wp)
 od
 
 set show_weak_packets_all_forms_long([RealForm] groups)=void:
@@ -622,7 +614,7 @@ let rf=[RealForm]:[] then
 ()= for G in groups do rf##:=real_forms(G) od then
 m=weak_packets(groups) in
 prints(new_line,"Summary of weak packets:");for wp@i in m do
-prints("------------------------------------------",new_line{,rf[i]}); show(wp) od
+prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
 
 {-----------------moved from theta_induced_unipotents.at------}

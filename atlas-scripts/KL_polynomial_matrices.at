@@ -19,33 +19,23 @@ set permutation ([Param] B1, [Param] B2) = ([int],bool):
 , true
 )
 
-{default: polynomials for the partial block, use _full the whole block}
 set KL_P_polynomials (Param p) = i_poly_mat:
-  let (,P,polys)=partial_KL_block(p) in
+  let (,,P,polys)=KL_block(p) in
   for row in rows(P) do for entry in row do polys[entry] od od
 
 set KL_P_polynomials_at_minus_one (Param p) = mat:
   eval(KL_P_polynomials(p),minus_1)
 
 set KL_P_signed_polynomials (Param p) = i_poly_mat:
-  let (block,P,polys)=partial_KL_block(p) in
+  let (block,,P,polys)=KL_block(p) in
   for row@i in rows(P) do for entry@j in row
   do minus_1^(block[j].length-block[i].length)*polys[entry] od od
 
-{full versions}
-set KL_P_polynomials_full (Param p) = i_poly_mat:
-  let (,,P,polys)=KL_block(p) in
-  for row in rows(P) do for entry in row do polys[entry] od od
+set KL_P_signed_polynomials_at_minus_one (Param p) = mat:
+  eval(KL_P_signed_polynomials(p),minus_1)
 
-set KL_P_polynomials_at_minus_one_full (Param p) = mat:
-  eval(KL_P_polynomials_full(p),minus_1)
-
-set KL_P_signed_polynomials_at_minus_one_full (Param p) = mat:
-  eval(KL_P_polynomials_full(p),minus_1)
-
-{given [Param] b argument, essentially the same as _full}
 set KL_P_polynomials([Param] B)=i_poly_mat:
-  let (block,,P,polys)=KL_block(B[0])  {this gives KL_block for full block}
+  let (block,,P,polys)=KL_block(B[0])
   then (perm,valid)=permutation(B,block), n=#block
   in assert(valid,"given [Param] B does not agree with block_of B[0]");
     for i:n do for j:n do polys[P[perm[i],perm[j]]] od od
@@ -64,9 +54,8 @@ set KL_P_signed_polynomials ([Param] B) = i_poly_mat:
 set KL_P_signed_polynomials_at_minus_one ([Param] B) = mat:
   eval(KL_P_signed_polynomials(B),minus_1)
 
-{Q versions: only the full block currently implemented}
 set KL_Q_polynomials (Param p) = i_poly_mat:
-  let (block,,M,polys) = dual_KL_block(p) {this is the full dual block, non partial} then n=#block in
+  let (block,,M,polys) = dual_KL_block(p) then n=#block in
   for i:n do let col = M[i] in for j:n do polys[col[j]] od od { transpose }
 
 set KL_Q_polynomials ([Param] B) = i_poly_mat:
@@ -90,7 +79,6 @@ set final_subset ([Param] B) = [Param]:
   negated poly }
 set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
   let (block,P,polys) = partial_extended_KL_block(p,delta) in
-{  let (block,P,polys) = KL_block(p,delta) in}
 ( block
 , for col@j in P
   do let len_j=length(block[j]) in
@@ -101,8 +89,7 @@ set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
 
 set KL_P_polynomials (Param p, mat delta) = i_poly_mat:
 {   let (,P,polys) = KL_block(p,delta)}
-{   let (,P,polys) = partial_extended_KL_block(p,delta)}
-    let (,P,polys) = KL_block(p,delta) 
+   let (,P,polys) = partial_extended_KL_block(p,delta)
 in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od
@@ -114,30 +101,10 @@ in for col in P do for index in col do
       if index.< then -pev[-index] else pev[index] fi
    od od
 
-{probably shouldn't use this, just KL_P_polynomials(p,delta) which uses the partial block}
-{this sometimes fails since B_fixed~[0] might not be maximal}
-{set KL_P_polynomials ([Param] B_fixed, mat delta) = i_poly_mat:
+set KL_P_polynomials ([Param] B_fixed, mat delta) = i_poly_mat:
   let (block,P,polys)=KL_block(B_fixed~[0],delta)  {use ~ to give a maximal element in the block}
   then (perm,valid)=permutation(B_fixed,block), n=#block
 in assert(valid,"given [Param] B does not agree with block_of B~[0]");
-  for i:n do for j:n do let index=P[perm[i],perm[j]] in
-     if index.< then -polys[-index] else polys[index] fi
-  od od}
-
-{here is a clumsy fix:}
-set maximal_element([Param] B)=int:
-let reverse_index=first(for i:#B do #KL_P_polynomials(B~[i])=#B od) in
-#B-1-reverse_index
-
-set maximal_element([Param] B_fixed,mat delta)=int:
-let reverse_index=first(for i: #B_fixed do let (a,,)=KL_block(B_fixed~[i],delta) in #a=#B_fixed od)
- in #B_fixed-1-reverse_index
-
-set KL_P_polynomials ([Param] B_fixed, mat delta) = i_poly_mat:
-  let i_max=maximal_element(B_fixed,delta) in
-  let (block,P,polys)=KL_block(B_fixed[i_max],delta)  {use i_max instead of ~[0]}
-  then (perm,valid)=permutation(B_fixed,block), n=#block
-  in assert(valid,"given [Param] B does not agree with block_of B~[0]");
   for i:n do for j:n do let index=P[perm[i],perm[j]] in
      if index.< then -polys[-index] else polys[index] fi
   od od

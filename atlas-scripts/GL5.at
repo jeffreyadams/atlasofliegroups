@@ -1,192 +1,42 @@
 <all.at
 <twisted_endoscopy.at
+
 set G=GL(5,R)
 set delta=G.distinguished_involution
 set (H,M)=endoscopic(G,delta)
 set H=H.split_form
 set all_G=unipotent_representations(G)
-set all_H_u=unipotent_representations(H)
+set all_H=unipotent_representations(H)
+set all_G_rho=fixed_block_of(delta,G.trivial)
+set all=all_G_rho
 
-set all=all_H_u
+set p=all_H[5]
+set E_G=lift_std(p,M,G,delta)
+set p_G=E_G.parameter
+set ecf=extended_character_formula(p_G,delta)
+set m=monomials(ecf)
+set unipotents_H=unipotent_representations(H)
+set all=unipotents_H
+set p=all[2]
+set x=p.x
+set unipH=unipotents_H[6]
+{set p=first_param(lift(unipH,M,G,delta))}
+{
+set lifts=for p in block_of(H.trivial) do (p,first_param(lift(p,M,G,delta))) od
 
-{set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
-set abv=for p in all do abv(p,M,G,delta) od
-
-{output:
-atlas> for (p,(,,,d))@i in abv_good do prints(new_line,"i=",i,new_line,"p=",p,new_line,"ABV(p)=", d) od
-
-i=0
-p=final parameter(x=10,lambda=[-2,-1]/1,nu=[0,0]/1)
-ABV(p)=
-1*parameter(x=10,lambda=[-2,-1]/1,nu=[0,0]/1) [0]
-
-i=1
-p=final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
-ABV(p)=
--1*parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1) [0]
--1*parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1) [0]
-
-i=2
-p=final parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1)
-ABV(p)=
--1*parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1) [0]
--1*parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1) [0]
-
-i=3
-p=final parameter(x=5,lambda=[0,-1]/1,nu=[0,0]/1)
-ABV(p)=
-1*parameter(x=6,lambda=[0,-1]/1,nu=[0,0]/1) [0]
-1*parameter(x=5,lambda=[0,-1]/1,nu=[0,0]/1) [0]
-
-i=4
-p=final parameter(x=6,lambda=[0,-1]/1,nu=[0,0]/1)
-ABV(p)=
-1*parameter(x=6,lambda=[0,-1]/1,nu=[0,0]/1) [0]
-1*parameter(x=5,lambda=[0,-1]/1,nu=[0,0]/1) [0]
-
-i=5
-p=final parameter(x=10,lambda=[-1,0]/1,nu=[-1,-1]/2)
-ABV(p)=
-(1+0s)*parameter(x=10,lambda=[-1,0]/1,nu=[-1,-1]/2) [0]
-(1-1s)*parameter(x=4,lambda=[-1,0]/1,nu=[0,0]/1) [2]
-
-i=6
-p=final parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1)
-ABV(p)=
--1*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=1,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=0,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=7
-p=final parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1)
-ABV(p)=
-(-1+0s)*parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
-(-1+0s)*parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
-(-1+1s)*parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2) [2]
-(0-1s)*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-(0-1s)*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=8
-p=final parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1)
-ABV(p)=
--1*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=1,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=0,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=9
-p=final parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1)
-ABV(p)=
-(-1+0s)*parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
-(-1+0s)*parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
-(-1+1s)*parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2) [2]
-(0-1s)*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-(0-1s)*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=10
-p=final parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2)
-ABV(p)=
--1*parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2) [2]
-1*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-1*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=11
-p=final parameter(x=10,lambda=[-2,-1]/1,nu=[-1,0]/1)
-ABV(p)=
-1*parameter(x=10,lambda=[-1,-1]/1,nu=[-1,0]/1) [0]
--1*parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=1,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=0,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=12
-p=final parameter(x=7,lambda=[-2,0]/1,nu=[-1,0]/1)
-ABV(p)=
--1*parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
--1*parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
--2*parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2) [2]
-1*parameter(x=6,lambda=[-1,-1]/1,nu=[0,0]/1) [3]
-1*parameter(x=5,lambda=[-1,-1]/1,nu=[0,0]/1) [3]
--1*parameter(x=1,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=0,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=13
-p=final parameter(x=8,lambda=[-2,0]/1,nu=[-1,0]/1)
-ABV(p)=
--1*parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
--1*parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1) [0]
--2*parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2) [2]
-1*parameter(x=6,lambda=[-1,-1]/1,nu=[0,0]/1) [3]
-1*parameter(x=5,lambda=[-1,-1]/1,nu=[0,0]/1) [3]
--1*parameter(x=1,lambda=[-1,0]/1,nu=[0,0]/1) [3]
--1*parameter(x=0,lambda=[-1,0]/1,nu=[0,0]/1) [3]
-
-i=14
-p=final parameter(x=10,lambda=[-2,-1]/1,nu=[-2,-1]/1)
-ABV(p)=
-1*parameter(x=10,lambda=[-2,0]/1,nu=[-2,-1]/1) [0]
--1*parameter(x=9,lambda=[-2,-1]/1,nu=[-3,-3]/2) [2]
--1*parameter(x=8,lambda=[-2,-1]/1,nu=[-2,0]/1) [3]
--1*parameter(x=7,lambda=[-2,-1]/1,nu=[-2,0]/1) [3]
--2*parameter(x=6,lambda=[-2,-1]/1,nu=[0,-1]/1) [6]
-1*parameter(x=6,lambda=[-2,0]/1,nu=[0,-1]/1) [6]
--2*parameter(x=5,lambda=[-2,-1]/1,nu=[0,-1]/1) [6]
-1*parameter(x=5,lambda=[-2,0]/1,nu=[0,-1]/1) [6]
--2*parameter(x=4,lambda=[-2,-1]/1,nu=[-1,1]/2) [6]
--1*parameter(x=3,lambda=[-2,-1]/1,nu=[0,0]/1) [7]
--1*parameter(x=2,lambda=[-2,-1]/1,nu=[0,0]/1) [7]
--2*parameter(x=1,lambda=[-2,-1]/1,nu=[0,0]/1) [7]
--2*parameter(x=0,lambda=[-2,-1]/1,nu=[0,0]/1) [7]
+set lifts_u=remove_duplicates(for (,p) in lifts do p od)
 }
 
+{set pFB=partial_extended_block(p,delta)
+set FB=fixed_block_of(delta,p) 
+set (I_delta_F,g_F,complete_indices_F,delta_action_F)=tabulate_indices(pFB,delta)
+set Bs=singular_block_of(p)
+set (I_delta_s,g_s,complete_indices_s,delta_action_s)=tabulate_indices(Bs,delta)
+set PF=big_KL_P_signed_polynomials(p,delta)
+set Ps=big_KL_P_signed_polynomials(Bs,delta)
+
+set index_F=find(complete_indices_F,(find(pFB,p),1))
+set index_s=find(complete_indices_s,(find(Bs,p),1))
 
 
-
-
-set all_H=all_parameters_gamma(H,H.rho)
-
-set p_H=all_H_u[5]
-set E_H=E(H.distinguished_involution,p_H)
-set p_G=lift_std(p_H,M,G,delta)
-set ecf=extended_character_formula(p_G,delta)
-set m=monomials(convert_to_param_pol(ecf))
-
-set bad=m[0]
-
-set p=bad
-set list=all_parameters_gamma(H,left_inverse(M)*bad.infinitesimal_character)
-set ph=list[1]
-set p_G=lift_std(ph,M,G,delta)
-set y_G=y_gen(p)
-set action_H=restrict_action(y_G.involution,M)
-set tf_u_G=y_G.unnormalized_torus_factor
-set tf_u_H=left_inverse(M)*tf_u_G
-set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2
-set y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H)
-
-set y_H_good=y_gen(ph)
-
-set F_G=E(delta,p)
-
-set pg=parameter(KGB(G,0),[1,1,0,0,0]/1,[0,0,0,0,0])
-
-set p=parameter(KGB(G,16),[3,0,0,0,-1]/1,[1,0,0,0,-1]/1)
-set gamma=p.infinitesimal_character
-set preg=parameter(p.x, p.lambda+two_rho(G), p.nu+two_rho(G))
-set ecfreg=extended_character_formula(preg,delta)
-set ecf=extended_character_formula(p,delta)
-set (Preg,Qreg,Sreg)=ecfreg
-set (P,Q,S)=ecf
-set mreg=monomials(convert_to_param_pol(ecfreg))
-
-
-
-
-
-
-
-
-
-
-
+}

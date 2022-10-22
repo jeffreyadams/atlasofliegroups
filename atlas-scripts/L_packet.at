@@ -1,23 +1,5 @@
 <Vogan-dual.at
 
-{this is a convenient function, should be moved elsewhere
-group list of parameters by block;
- returns an array of pairs (B,S) where B is a full block of parameters, and S is the subset
- of B occuring in the input}
-set block_decompose([Param] list)=[([Param],[Param])]:
-let blocks=[[Param]]:[] then
-subsets=[[Param]]:[] in
-for p in list do
- let index=first(for i:#blocks do find(blocks[i],p)!=-1 od) in
-  if index=-1 then
-     blocks#:=block_of(p);subsets #:=[p]
-  else
-     subsets[index]#:=p
-  fi
- od;
- for i:#blocks do (blocks[i], subsets[i]) od
-
-
 set is_valid(KGBElt_gen y,ratvec gamma)=bool:is_integer(square(y)-gamma)
 
 set parameter(KGBElt x,KGBElt_gen y,ratvec gamma)=Param:parameter(x,gamma-y.torus_factor,gamma)
@@ -34,70 +16,26 @@ for alpha in simple_imaginary_roots(x) do root_reflection(x.root_datum,alpha) od
 set fiber(KGBElt x)=[KGBElt]:
 for (y,) in cross_sub_orbit(simple_imaginary_reflections(x),x) do y od
 
-{if G is quasisplit this is guaranteed to work
- if not, it will fail with an error if there is no x with x.involution=theta}
 set fiber(RealForm G,mat theta)=[KGBElt]:
-fiber(KGB_elt(G,theta,G.base_grading_vector))
+##for x in KGB(G) do if involution(x)=theta then [x] else [] fi od
 
 {given G, gamma,y -> defines an L-homomorphism phi: W_R -> LG}
 
-{We think of an L-packet as a set of *parameters*
- these should always be sorted according to the order given by monomials@Param
- If we want to specify a set of irreducibles or standards we make this explicit}
-set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=[Param]:
-assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");
+set L_packet(RealForm G,ratvec gamma, KGBElt_gen y_gen)=
+assert(is_valid(y_gen,gamma), "(y_gen,gamma) is not valid");  
 let fiber=fiber(G,-^y_gen.involution) in
 ##for x in fiber do
  let p=parameter(x,y_gen,gamma)  then
  P=finalize(p) in
  monomials(P) od
 
-{L-packet of parameters, containing p}
-set L_packet(Param p)=[Param]:
-monomials(
- null_module(p.real_form) +
- for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od)
+set L_packet(Param p)=
+for x in fiber(p.x) do parameter(x,p.lambda,p.nu) od
 
-{each L-packet has a preferred member: the first one, when sorted by monomials@Param}
-set L_packet_representative(Param p)=Param:
+set L_packet_representative(Param p)=
 first_param(param_pol(L_packet(p)))
 
-set L_packet_representatives([Param] params)=[Param]:
-remove_duplicates(for p in params do L_packet_representative(p) od)
-
-set L_packet_representatives(ParamPol P)=[Param]: L_packet_representatives(monomials(P))
-
-{\sum I(p) where p runs over an L-packet of parameters}
-set L_packet_stable_sum(Param p)=ParamPol:
-param_pol(L_packet(p))
-
-{union of L-packets, with multiplicity one, for each parameter occuring
- these L-packets can contain parameters NOT in the given [Param]}
-set L_packets([Param] params)=[[Param]]:
-let representatives=[Param]:[] in
-for p in params do
- let rep=L_packet_representative(p) in
- if find(representatives,rep)=-1 then representatives#:=rep fi
- od;
-for p in representatives do L_packet(p) od
-
-{P is a sum of standards:}
-set is_stable_std(ParamPol P)=bool:
-all(##for p in L_packet_representatives(monomials(P)) do
- for q in L_packet(p) do
-  P[q]=P[p]
-  od
- od)
-
-{P is a sum of irreducibles:}
-set is_stable_irr(ParamPol P)=bool:
-is_stable_std(character_formula(P))
-
-{default: sum of irreducibles}
-set is_stable(ParamPol P)=bool:is_stable_irr(P)
-
-{misguided:}
-{set L_packet_representative(ParamPol P)=ParamPol:
+set L_packet_representative(ParamPol P)=
 let rv=null_module(P.real_form) in
 while #P>0 do
  let (c,p)=first_term(P) in
@@ -105,179 +43,79 @@ while #P>0 do
   if rv[L_packet_representative(p)] = 0 then
    rv+:=c*p
   fi
- od;rv}
+ od;rv
 
 
-{[Param] list_of_params is viewed as a set of standard modules,
- return a basis of the space of stable virtual characters they span
- algorithm: first extract list consisting of one member of each L-packet of parameters
-  occuring in list_of_params
- Then for each such p, L_packet_stable_sum(p) is included if and only if all members
-  of the L-packet of p occur in list_of_params}
-set stable_sums_std([Param] list_of_params)=[ParamPol]:
-let pol=param_pol(list_of_params) then
-packet_representatives=L_packet_representatives(list_of_params) then
-rv=[ParamPol]:[] in
-for p in packet_representatives do
-    let packet=L_packet(p) in
-    if all(for q in packet do pol[q] !=0 od) then rv#:=param_pol(packet) fi
-od;
-rv
-
-{first break given [Param]:list up into blocks
- for each block B the parameters in list_B=list\cap B is a subset of B
- return a matrix where each column gives a stable sum of standards in list_B
- one such matrix for each block
-}
-set stable_sums_std_matrices([Param] list)={[([Param],mat)]:}
-let blocks_and_subsets =block_decompose(list) in
-for (B,S)@i in blocks_and_subsets do
-{ let stable_sums=stable_sums_std(S) then}
-{No: need to allow all stable sums in B, then we'll take the intersection of this space
- with the span of the irreducibles (written in basis of standards)}
- let stable_sums=stable_sums_std(B) then
-{ M=null(#stable_sums,#S) in}
- M=null(#stable_sums,#B) in
- for sum@col in stable_sums do
-  for p in monomials(sum) do
-{  let ()=prints("col: ", col, "p: ", p) in}
-{  let row_index=find(list,p) in}
-  let row_index=find(B,p) in
-  M[col,row_index]:=1
- od
-od;(B,^M)
-od
-
-
-{given list \subset new_list (lists of parameters)
- and a matrix, whose columns give sums of parameters in the list
- return new matrix, same number of columns, but more rows, corresponding
- to new_list (which should be a superset of list)}
-{not needed
-set change_basis([Param] list,[Param] new_list, mat M)=mat:
-let rv=null(#new_list,n_columns(M)) in
-for col@col_number in M do
- for i:#col do
-  if col[i]!=0 then
-   let new_row=find(new_list,list[i]) in
-   rv[new_row,col_number]:=col[i] fi
- od
-od;rv
-}
-
-{write each irreducible in [Param]:list as a sum of standards
- on a given block, these are a subset of the columns of the KL_P_signed_polynomials of the block, evaluated at 1
- the given parameters can be a proper subset of the block
- if several blocks, break into blocks and do each one for efficiency purposes
- returns [(B_i,M_i)] where B_i is a block and M_i is a matrix:
-   #rows of M_i = #B_i
-   #columns of M_i = number of parameters in list in block B_i
-}
-set irreducibles_as_sums_of_standards([Param] list)={[([Param],mat)]:}
-let blocks_and_subsets=block_decompose(list) in
-for (block_of_params,S)@i  in blocks_and_subsets do
- let (block_of_params,)=blocks_and_subsets[i] then
- (B,,,)=KL_block(block_of_params[0]) then
- P=KL_P_signed_polynomials(B) then
- Pt=transpose(P) in
- let Y=mat:eval((##for p@i in B do if find(list,p)!=-1 then [Pt[i]] else [] fi od),1) in
-{ let ()=prints("Y: ", shape(Y)) in
- let ()=prints("^Y: ", shape(^Y)) in }
- (B,^Y)
-od
-
-{given set of irreducibles, find the stable subspace of their span, expressed in the basis of standards
-do this by block
-}
-set stable_sums_irr_in_basis_of_standards_as_matrices([Param] list)={([Param],mat):}
-let matrices_of_irreducibles=irreducibles_as_sums_of_standards(list)  then
-stable_sums_std=stable_sums_std_matrices(list) in
-{let ()=prints("stable_sums_std: ", #stable_sums_std, new_line,"#matrices_if_irreducibles: ", #matrices_of_irreducibles) in }
-assert(#matrices_of_irreducibles=#stable_sums_std,"numbers don't match");
-for (B,M)@i in matrices_of_irreducibles do
- let (Bprime,S)=stable_sums_std[i] in
- (B,intersection (M,S))
-od
-
-set stable_sums_irr_in_basis_of_standards([Param] list)={([Param],mat):}
-let ss=stable_sums_irr_in_basis_of_standards_as_matrices(list) in
-for (B,M) in ss do
-  (B,for col in M do
-      null_module(list[0].real_form) +
-       for j:#col do
-        col[j]*B[j]
-        od
-      od
-      )
-od
-
-set stable_sums_irr([Param] list)={([Param],mat):}
-let ss=stable_sums_irr_in_basis_of_standards(list) in
-##for (B,M) in ss do
- for P in M do composition_series(P) od
-od
-
-set stable_sums_irr_mat([Param] list)=([Param],mat):
-let ssi=stable_sums_irr(list) then
-M=null(#list,#ssi) in
- for i:#ssi do 
-  for c@p in ssi[i] do
-   M[find(list,p),i]:=c.int_part
-  od
- od;
- (monomials(ssi),M)
-
-set show([Param] list,mat M)=void:
-prints("Stable sums:");
-prints("#parameters: ",#list);
-for p in list do prints(p) od;
-prints("# stable sums: ", n_columns(M));
-prints("each column gives a stable sum in the above basis");
-prints(M)
-
-set show_stable_sums_irr([Param] list)=void:
-show(stable_sums_irr_mat(list))
-
-
-set q(RealForm G)=int:rat_as_int((dimension(G) - dimension(K_0(G)))/2)
-
-set kottwitz_invariant(RealForm G)=int:rat_as_int(q(quasisplit_form(G))-q(G))
-
-set kottwitz_sign(RealForm G)=int:(-1)^kottwitz_invariant(G)
-
-{lifting from quasisplit group to inner form}
-{on parameter level: formal, take (x,lambda,nu)
-to \sum (x_i,lambda,nu) for G where {x_i} is the fiber
-for G over p.x.involution
-Note that this ParamPol is stable (a stable sum of standards)}
-set inner_lift_std(Param p,RealForm G)=ParamPol:
-kottwitz_sign(G)*(param_pol(for x in fiber(G,p.x.involution) do parameter(x,p.lambda,p.nu) od,G))
-
-{David: maybe we should assume that p is the generic one in the packet?}
-
-{assume P is stable for quasisplit form of G
- for each standard stable sum \sum p_i (over an L-packet) occuring,
- extract a single p_i, and include inner_lift_std(p,G) (which is stable) in the result}
-set inner_lift_std(ParamPol P,RealForm G)=ParamPol:
-assert(is_stable_std(P), "P is not stable");
-null_module(G) + for p in L_packet_representatives(P) do P[p]*inner_lift_std(p,G) od
-
-{P is a sum of irreducibles; it  should be stable, although we don't test for this
-inner_lift(P,G):
-  P -> cf=character_formula(P)
-    -> inner_lift_std(cf)
-    -> composition_series($)
-}
-set inner_lift(ParamPol P,RealForm G)=ParamPol:
-composition_series(inner_lift_std(character_formula(P),G))
-
-set inner_lift_std(Param p,int i)=ParamPol: inner_lift_std(p,p.real_form.real_forms[i])
-set inner_lift_std(ParamPol P,int i)=ParamPol: inner_lift_std(P,P.real_form.real_forms[i])
-set inner_lift(Param p,int i)=ParamPol: inner_lift(p,p.real_form.real_forms[i])
-set inner_lift(ParamPol P,int i)=ParamPol: inner_lift(P,P.real_form.real_forms[i])
 
 
 {p=parameter(p.x,p.y_gen,p.infinitesimal_character) should true}
 
 
 
+
+{
+
+
+set dual_inner_class (ratvec gamma, InnerClass ic) = InnerClass:
+dual_integral(ic,gamma)
+set dual_real_forms(ratvec gamma,InnerClass ic)=[RealForm]:
+real_forms(dual_inner_class(gamma,ic))
+
+set dual_inner_class (ratvec gamma, KGBElt x) = InnerClass:
+dual_inner_class(gamma,x.inner_class)
+
+set dual_real_forms (ratvec gamma, KGBElt x) = [RealForm]:
+dual_real_forms(gamma,x.inner_class)
+
+
+
+
+
+
+{y is a KGB element on the dual side, possibly for a subgroup H^v of G^v
+ return all KGB elements for G compatible with y, i.e.
+ transpose(theta_x)=-theta_y, so that
+ parameter(x,y) is allowed, i.e.
+ parameter(x,y,gamma) is allowed for appropriate gamma
+usually: H^v is the subgroup on the dual side corresponding to integral
+ root system; precisely given gamma\in X^*_Q,
+ H=integrality_datum(G,gamma) is on the group side (endoscopic group)
+ dual(H) is a subgroup on G^v}
+
+set dual_KGB(RealForm G,KGBElt y)=[KGBElt]:fiber(G,-^involution(y))
+set dual_real_form(Param p)=dual(p).real_form
+
+set L_packet(RealForm G,ratvec gamma, KGBElt y)=
+assert(is_valid(y,gamma), "(y,gamma) is not valid");
+let fiber=fiber(G,-^y.involution) in
+for x in fiber do parameter(x,y,gamma) od
+
+
+
+{these two should agree:
+L_packet(p) and L_packet(p.real_form,p.infinitesimal_character, dual(p).x)}
+
+
+
+
+
+
+{
+set dual_KGB (KGBElt x,ratvec gamma, InnerClass dual_int_ic) = KGBElt:
+{  let  dual_tf=infinitesimal_character(p) - lambda(p)}
+  let  dual_tf=gamma-x.root_datum.rho
+  then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
+  then (simple_ims,) =
+quit
+    simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta))
+  then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
+    = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
+  then integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR)
+  then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
+  then ()=prints("integral_shift:", integral_shift, "phi=", phi)
+   then ()=prints("rho_corr:", rho_corr) 
+  in KGB_elt(dual_int_ic,
+             dual_theta,
+             phi+integral_shift)
+	     }
+}	     

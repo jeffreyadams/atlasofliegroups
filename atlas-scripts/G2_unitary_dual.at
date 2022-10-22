@@ -1,143 +1,42 @@
-<coordinates.at
-set G=G2_s
-set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
+set Cartan_classes(RealForm G)=[CartanClass]:
+##for H in Cartan_classes(G) do
+ if #KGB(H,G)>0 then [H] else [] fi od
 
-set short_format(Param p)=string:
-"(x="+ p.x.number.to_string+","+shorten(p.lambda)+ "," + shorten(p.nu)+")"
+set my_G2_simple_roots=[vec]:[[1,-1,0],[-2,1,1]]
 
-{need to modify all_parameters_x_gamma so it doesn't make gamma dominant}
-{ all parameters with given infinitesimal character and attached to given x }
-set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
-   let G=real_form(x)
-{   then gamma_d=dominant(root_datum(G),gamma)}
-   then rho=rho(G), th1=1+involution(x)
-   in
-   case vec_solve(th1,th1*(gamma-rho))
-   | else [Param]: [] { without solution no parameters }
-   | solution(lr):
-      let lambda  =rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      for v in all_lambda_differential_0(x) do
-      parameter(x,lambda+v,nu) {not necessarily final}  od
-   esac.reduce  { keep only 1 from each equivalence class; NOTE: this finalizes each parameter}
+{change_matrix: (3 rows, 2 cols) integer matrix: Z^2 -> Z^3
+ i_change_matrix: (2 rows, 3 cols) rational matrix: Q^3 -> Q^2
+ i_change_matrix * change_matrix = Id_2
+ [change_matrix * i_change_matrix is 3x3, rational, NOT Identity]
+}
 
-set M=mat:ratmat_as_mat(change_basis(G,my_simple_roots))
-set i_M=ratmat: inverse_change_basis(G,my_simple_roots)
+set change_matrix=ratmat: change_basis(G,ratvecs_as_ratmat(my_G2_simple_roots))
+
+
+set i_change_matrix=ratmat: inverse_change_basis(G,ratvecs_as_ratmat(my_G2_simple_roots))
+
+{change: roots of G2: [x,y] coordinate to [a,b,c] coordinates
+ i_change: roots of G2: [a,b,c] coordinates to [x,y] coordinates}
 
 {
-M: 3x2 integral matrix, takes Z^2 -> Z^3, atlas roots -> my_simple_roots
-i_M: 2x3 rational matrix, Q^2 -> Q^3, my_simple_roots -> atlas roots
-
-i_M*M= 2x2 identity  (M*i_M \ne 3x3 identity
-
-atlas> for a in G.posroots do prints(a, " ", M*a) od
-atlas      Vogan
-[  2, -1 ] [  1, -1,  0 ]    short simple
-[ -3,  2 ] [ -1,  2, -1 ]    long simple
-[  3, -1 ] [  2, -1, -1 ]    l
-[ 0, 1 ] [  1,  1, -2 ]      l
-[ -1,  1 ] [  0,  1, -1 ]    s
-[ 1, 0 ] [  1,  0, -1 ]      s
+i_change(my_G2_simple_roots [0])=G.simple_roots[0]
+Value: true
+atlas> i_change(my_G2_simple_roots [1])=G.simple_roots[1]
+Value: true
 }
 
+set change(ratvec v)=ratvec: change_matrix*v   {Z^2 -> Z^3}
+set i_change(ratvec v)=ratvec: i_change_matrix*v
 
-set g2_parameter(KGBElt x, ratvec lambda, ratvec nu)=parameter(x, i_M*lambda,i_M*nu)
-set cartans=Cartan_classes(G)
+set G2_parameter(KGBElt x, ratvec lambda,ratvec nu)=Param:
+parameter(x,i_change(lambda), i_change(nu))
 
-{use numbering from [voganG2]}
-set H1=cartans[1]  {has short real roots}
-set H2=cartans[2]  {has long real roots}
-set H_s=H1
-set H_l=H2
 
-{principal series}
-set ps(int epsilon,ratvec v)=parameter(x_open(G), G.rho+epsilon*[1,0],v)
-
-{short root Cartan}
-{infinitesimal character, not necessarily dominant:}
-set gamma_s(rat m,rat v)=ratvec:(m/2)*[0,1] + (v/2)*[2,-1]
-{gamma_s=[v,(m-v)/2] (atlas)
-        =[m+v,m-v,-m]/2 (Vogan 9.2a)
-}
-set x_s=KGB(G,4)
-
-{short simple root    [2,-1]=[1,-1,0] is real
- orthogonal long root [0,1] =[1,1,-2] is nci
- the coroot of the nci root is [1,2]: this must be integral on gamma
- [1,2]*gamma_s(m,v)=m so this is a valid gamma for x_s
+{Cartan# long roots   name in paper
+ 0	 imaginary    H_c
+ 1	 real	      H_2
+ 2       imaginary    H_1
+ 3       real         H_3
 }
 
-set p_s(rat m, rat v)=[Param]:  {allow [Param] for limits of DS  p_s(even,0)}
-let gamma=gamma_s(m,v) then   {gamma not necessarily dominant}
-all=all_parameters_x_gamma(x_s,gamma) then {final, can be 2 limits of DS}
-()=assert(#all>0,"not found") in all
-
-{long root Cartan}
-{infinitesimal character, not necessarily dominant:}
-set gamma_l(rat m,rat v)=ratvec:(m/2)*[1,0] + (v/2)*[3,-2]
-{note: [3,-2] = -[-3,2] is a negative root = [1,-2,1]}
-{gamma_l=[(m+3v)/2,-v] (atlas)
-        =[(m+v)/2,-v,(-m+v)/2] (10.2a)
-}
-set x_l=KGB(G,3)
-
-{root [-3,2] is long, simple, real
- short root [1,0] = [1,0,-1] is nci (not simple)
- the coroot of the nci root is [2,3]: this must be integral on gamma
- [2,3]*gamma_l(m,v)=m so this is a valid gamma for x_l
-}
-
-set coords(RootDatum G,ratvec v)=[rat]:for a in G.simple_coroots do a*v od
-
-set in_fpp(ratvec v)=bool:all(for x in v do x>=0 and x<=1 od)
-set in_fpp(RootDatum G,ratvec v)=bool:in_fpp(coords(G,v))
-set in_fpp(Param p)=bool:in_fpp(p.real_form,p.infinitesimal_character)
-
-set p_l(rat m, rat v)=[Param]:  {allow [Param] for limits of DS  p_s(even,0)}
-let gamma=gamma_l(m,v) then   {gamma not necessarily dominant}
-all=all_parameters_x_gamma(x_l,gamma) then {final, can be 2 limits of DS}
-()=assert(#all>0,"not found") in all
-
-set test_s(int m, rat v0, rat v1, rat step_size)=
-let number_steps=(v1-v0)\step_size in
-tabulate(
- ["v","coordinates","p","unitary", "in FPP", "conj","L"]#
- for i:number_steps do let v=v0+i*step_size in
-  let p=p_s(m,v)[0] then
-  unitary=is_unitary(p) then
-  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
-  in_fpp=in_fpp(coords) then
-  (check,L)=(string,string):if in_fpp then ("","")
-        elif not unitary then ("","")
-        else
-         let ind=is_good_range_induced_from(p) in
- 	 if =#ind then ("false","")
-	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
-	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
-        fi
-  fi
-  in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
- od
-)
-
-set test_l(int m, rat v0, rat v1, rat step_size)=
-let number_steps=(v1-v0)\step_size in
-tabulate(
- ["v","coordinates","p","unitary", "in FPP", "conj","L"]#
- for i:number_steps do let v=v0+i*step_size in
-  let p=p_l(m,v)[0] then
-  unitary=is_unitary(p) then
-  coords=coords(G,p.infinitesimal_character) {not gamma_s(m,v)}  then
-  in_fpp=in_fpp(coords) then
-  (check,L)=(string,string):if in_fpp then ("","")
-        elif not unitary then ("","")
-        else
-         let ind=is_good_range_induced_from(p) in
- 	 if =#ind then ("false","")
-	 elif ind[0].real_form=G then ("false",ind[0].real_form.nice_format.to_string)
-	 else (is_unitary(ind[0]).to_string, ind[0].real_form.nice_format.to_string)
-        fi
-  fi
-  in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
- od
-)
-
+{set G2_param_H2(int m,}

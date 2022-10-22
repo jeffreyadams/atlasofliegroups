@@ -65,13 +65,8 @@ set twist (mat delta,Param p)=
   let (x,lambda_rho,gamma) = %p
   in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*gamma)
 
-set twist(mat delta,ParamPol P)=ParamPol:
-null_module(P.real_form) + for c@p in P do c*twist(delta,p) od
-
 set is_fixed (mat delta, Param p) = bool:
 { let ()=prints("is_fixed p:", p) in } p=twist(delta,p)
-
-set is_fixed (mat delta, ParamPol P) = bool:P=twist(delta,P) 
 
 set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
   is_fixed(delta,parameter(x,y,gamma))
