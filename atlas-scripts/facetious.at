@@ -2368,10 +2368,10 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
 			 parameter(xopen, Grho, facet_bary(vd.list,Find.verts))))))
 		then FPPstInd:=updateSing(G, (vd, FPPstInd), ("T",
 		     Find.verts));
-		     FPPstIndd[j]:=("Ttested",Find.verts)
+		     FPPstIndd[j]:=("Ttest",Find.verts)
 		else{NEWU}
 		FPPstInd:=update(lookups, FPPstInd, ("F",Find.verts));
-		FPPstIndd[j]:=("Ftested",Find.verts)
+		FPPstIndd[j]:=("Ftest",Find.verts)
 		fi
 	in result
 	od{FACd};
@@ -2414,12 +2414,12 @@ set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
 		       then FPPstInd:=updateSingK(lookups, (vd, FPPstInd,Pols),
 			  ("T", Find.verts), Pols[d][j])
 		 	  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
+	 	 	  then () = FPPstIndd[j] := ("Ttest",Find.verts)
 	 	 	  in FPPstInd[d] := FPPstIndd
 		       else{NEWU} FPPstInd:=updateClosureK(lookups,
 		     		(vd, FPPstInd, Pols), ("F",Find.verts))
 			  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ftested",Find.verts)
+	 	 	  then () = FPPstIndd[j] := ("Ftest",Find.verts)
 	 	 	  in FPPstInd[d] := FPPstIndd
 		       fi
 		     fi
@@ -2472,10 +2472,10 @@ set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) =
     				  TODOBd[k]))))
  		then FPPstInd:=updateSing(G, (vd, FPPstInd), ("T",
 		     Find.verts));
-		FPPstIndd[j]:=("Ttested", FPPstIndd[j].verts)
+		FPPstIndd[j]:=("Ttest", FPPstIndd[j].verts)
 		else{NEWU}
 		FPPstInd:=update(lookups, FPPstInd, ("F",Find.verts));
-		FPPstIndd[j]:=("Ftested",Find.verts)
+		FPPstIndd[j]:=("Ftest",Find.verts)
 		fi
 	in result
 	od{FACd};
@@ -2518,12 +2518,12 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
 		       then FPPstInd:=updateSingK(lookups, (vd, FPPstInd,Pols),
 			  ("T", Find.verts), Pols[d][j])
 		 	  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ttested",Find.verts)
+	 	 	  then () = FPPstIndd[j] := ("Ttest",Find.verts)
 	 	 	  in FPPstInd[d] := FPPstIndd
 		       else{NEWU} FPPstInd:=updateClosureK(lookups,
 		     		(vd, FPPstInd, Pols), ("F",Find.verts))
 			  ; let FPPstIndd = FPPstInd[d]
-	 	 	  then () = FPPstIndd[j] := ("Ftested",Find.verts)
+	 	 	  then () = FPPstIndd[j] := ("Ftest",Find.verts)
 	 	 	  in FPPstInd[d] := FPPstIndd
 		       fi
 		     fi
@@ -2569,12 +2569,12 @@ set spherical_testKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd,Pols
 		    			, facet_bary(vd.list, verts))))
 		   {shortest_param(x_open(G), G.rho, m, vd.list, FPPstInd, eq)}
 	      	in if{NEWU} tester(p)
-	      	      then newStatuses[m]:= "Ttest" {next line hits nothing}
+	      	      then newStatuses[m]:= "Ttest"##to_string(m) {next line hits nothing}
 		      {newStatuses:= downdateUPOclasses(newStatuses,IUCL[m],m)}
 		      else newStatuses:=
 		      	   { updateNUPOclasses(newStatuses, INUCL[m],m) }
 			   updateNUPOclassesB(newStatuses, gr, m)
-			   ; newStatuses[m] := "Ftest"
+			   ; newStatuses[m] := "Ftest"##to_string(m)
 		   fi
 	         fi{UNKNOWN}
 	      od

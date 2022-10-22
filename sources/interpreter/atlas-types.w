@@ -7799,7 +7799,7 @@ void KL_column_wrapper(expression_base::level l)
 @)
   auto col = p->rt().KL_column(p->val);
   BlockElt z;
-  const blocks::common_block& block = p->rt().lookup(p->val,z);
+  const blocks::common_block& block = p->rt().lookup_full_block(p->val,z);
   RatWeight diff = p->rc().offset(p->val, block.representative(z));
   own_row column = std::make_shared<row_value>(0);
   column->val.reserve(length(col));
