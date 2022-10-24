@@ -32,16 +32,16 @@ set rounded_log_2 (rat r) = int:
 in ((r^2).floor.max_power_2+1)\2
 
 { separate terms of |P| coarsely by height }
-set sort_K_types_by_log_2_height (K_Type_Pol P, int exp) = [ParamPol]:
-   let result = let N=null_module(P.real_form) in
+set sort_K_types_by_log_2_height (KTypePol P, int exp) = [KTypePol]:
+   let result = let N=null_K_module(P.real_form) in
        for :max(exp,rounded_log_2(height(P)))+1 do N od
 in for a@p in P do result[rounded_log_2(height(p))] +:= a*p od; result
 
 {estimate GK dimension
- list[k]: K_Type_Pol all terms with rounded_log_2(height)=k
+ list[k]: KTypePol all terms with rounded_log_2(height)=k
  estimate: log_2(dim(list[k+1])/dim(list[k])
 }
-set growth ([K_Type_Pol] list)= [int]:
+set growth ([KTypePol] list)= [int]:
 (   let n=#list-1, v=for P in list do dimension(P) od
 in prints("v=",v)
 ;  prints("k=0,...,",n,":")

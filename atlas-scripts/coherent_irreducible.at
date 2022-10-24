@@ -117,8 +117,9 @@ set coherent_irr([Param] block,WGraph graph,Param p,int s) = ParamPol:
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
   0*P + for coeff@p in P do coeff*coherent_irr(block,graph,p,s) od
 set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
-  let P=virtual(p) in for s in w {note NO ~ here, see coherent.at}
-  do P:=coherent_irr(block,graph,P,s) od; P
+   let P=ParamPol:p
+in for s in w {note NO ~ here, see coherent.at}
+   do P:=coherent_irr(block,graph,P,s) od; P
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
   for s in ~w do P:=coherent_irr(block,graph,P,s) od; P
 set coherent_irr ([Param] block,WGraph graph,Param p,WeylElt w) = ParamPol:
@@ -477,7 +478,7 @@ prints("graph: ", graph);}
 S_inv(params,graph,graded_standard(cross(w.inverse,p)),w)
 
 set millers_crossing([Param] params,WGraph graph, Param p,[int] w)=hodgeParamLaurentPol:
-if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\ 
+if (not( p.real_form.is_split and p.x=p.real_form.x_open)) then prints("Not a minimal principal series\
 of a split group, so probably not what you want") fi;
 let w=W_elt(p.root_datum,w) in
 { let ()=prints("w=",w) in}

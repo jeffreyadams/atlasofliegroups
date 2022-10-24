@@ -2,11 +2,9 @@
 <polynomial.at
 <bigMatrices.at
 <hermitian.at
-
+<ext_deform.at { for |ed_verbose| }
 
 { implement ParamPol for extended parameters }
-
-ed_verbose:=false
 
 set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind) ]
 { (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
@@ -251,21 +249,13 @@ set full_deform = recursive_deform@(Param,mat,int)
 
 set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   , P=big_KL_P_signed_polynomials(B,delta) then
-   index=find(complete_indices,(find(B,p),1)) then
-   ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
-   
-   ()=prints("number of complete indices: ", #complete_indices) then
-   ()=prints("index of parameter in complete indices: ", index) then
-   ()=prints("complete index: ", complete_indices[index]) then
-   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in matrix",new_line) then
-   data=[["(i,c)","m","c*m","c*m*p"]] in
+   , P=big_KL_P_signed_polynomials(B,delta)
+   then index=find(complete_indices,(find(B,p),1))
+   in
    for i:#complete_indices
-   do let f=eval(P[i][index],s) then
-   (j,c)=complete_indices[i] in
-      if c*f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(c*f),  prettyPrint(c*f) + "*" + B[j].to_string]  fi 
-   od;
-   tabulate(data)
+   do let f=eval(P[i][index],s) in
+      if f!=0 then prints(complete_indices[i], ": ", prettyPrint(f)) fi
+   od
 
 set print_extended_character_formula (Param p,mat delta) = void:
    print_extended_character_formula(p,singular_block_of(p),delta)
@@ -421,16 +411,16 @@ set print_c_form_irreducible_big_long ((Param,mat,int)triple) = void:
 
 {  "big" versions }
 
+set reduce (ExtParamPol(plus,minus,)) = ParamPol: plus+s*minus
 
-set hermitian_form_irreducible_big (Param p) = ParamPol:
+set hermitian_form_irreducible_big (Param p) = KTypePol:
    let delta = real_form(p).distinguished_involution
-   then (plus,minus,) = c_form_irreducible_big(p,delta,1)
-in convert_cform_hermitian(plus+s*minus)
+in c_form_irreducible_big(p,delta,1).reduce.K_type_pol.convert_cform_hermitian
 
 set is_unitary_big (Param p) = bool: is_pure(hermitian_form_irreducible_big(p))
 
 set print_is_unitary_big (Param p) = void:
-   let P=hermitian_form_irreducible_big(p) in
+   let P=KTypePol: hermitian_form_irreducible_big(p) in
    if is_pure(P) then prints("Unitary")
    else let (real,nonreal,mixed)=purity(P) in
       prints("Non-Unitary",new_line, real, " real terms", new_line
@@ -441,4 +431,3 @@ set print_is_unitary_big (Param p) = void:
 set is_weakly_unitary_big (Param p) = bool:
   is_weakly_unitary(hermitian_form_irreducible_big(p))
 
-set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus
