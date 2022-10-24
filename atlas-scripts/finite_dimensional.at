@@ -1,6 +1,13 @@
 <Weylgroup.at { dominant }
 
 { finite dimensional representations of G(C)}
+
+{.constructs parameter for the algebraic finite-dimensional of
+extremal weight lambda.}
+set finite_dimensional(RealForm G, vec lambda) = Param:
+let lambdadomrho = dominant(G,lambda)+G.rho  in
+parameter(x_open(G),lambdadomrho,lambdadomrho)
+
 {.whether p is finite dimensional.}
 set is_finite_dimensional (Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
@@ -53,7 +60,7 @@ set dimension(Param p) = int:
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:
-  let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
+  let dom = dominant(root_datum(p), ((1+p.x.involution)*p.lambda).ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
 {
@@ -84,4 +91,3 @@ in for c@p in tensor_product(rd,gamma1,gamma2)
    do let lambda_rho = p.lambda_minus_rho
    in (split_as_int(c), lower(r,lambda_rho)+upper(r,lambda_rho)+rho2 )
    od
-
