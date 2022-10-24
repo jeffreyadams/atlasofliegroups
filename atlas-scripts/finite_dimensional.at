@@ -61,3 +61,27 @@ set complex_LKT (Param p) = vec:
   and sign of Hermitian form on finite dimensional representation are
   MOVED TO finite_dimensional_signature.at
 }
+
+set ht(RealForm G, vec lambda) = int:
+rat_as_int(dominant(G,lambda)*G.rho_check*2)
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as KTypePol of corresponding GC K-types }
+set tensor_product(RootDatum rd, vec gamma1, vec gamma2) = KTypePol:
+   let GC = rd.complexification
+   then repn = finite_dimensional(GC,gamma1##gamma2)
+   then gamma_rho = ratvec_as_vec(repn.infinitesimal_character - rho(GC))
+   then module = minus_1^length(x_open(GC))*
+     (GC.null_K_module +
+      for x in KGB(GC) do (minus_1^length(x),K_type(x,gamma_rho)) od)
+in branch(module, ht(GC,gamma1##gamma2))
+
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as list of (multiplicity,highest weight)}
+set tensor_product_weights(RootDatum rd, vec gamma1, vec gamma2) = [(int,vec)]:
+   let r=rd.rank, rho2=two_rho(rd)
+in for c@p in tensor_product(rd,gamma1,gamma2)
+   do let lambda_rho = p.lambda_minus_rho
+   in (split_as_int(c), lower(r,lambda_rho)+upper(r,lambda_rho)+rho2 )
+   od
+

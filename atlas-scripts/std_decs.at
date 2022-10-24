@@ -3,7 +3,6 @@ M:mat
 A:mat
 B:mat
 
-P:mat { change of basis }
 roots:mat
 coroots:mat
 rd:RootDatum
@@ -28,6 +27,8 @@ rho_check:ratvec
 theta:mat
 p:Param
 q:Param
+Kt:KType
+KP:KTypePol
 block:[Param]
 P:ParamPol
 

@@ -18,8 +18,8 @@ in [(gamma[0] + gamma[4]), (gamma[1] + gamma[5]),(gamma[2] +
 gamma[6]), (gamma[3]+gamma[7])].numer
 
 { Need to add terms to height ht(mu) }
-set ladder0(int a, int b, int c, int d) = G.null_module + for
-m:7 do K_type_formula(mu(a,b+m,c,d)) od
+set ladder0(int a, int b, int c, int d) = KTypePol:
+G.null_K_module + for m:7 do K_type_formula(mu(a,b+m,c,d)) od
 
 set ladder1(int a, int b, int c, int d) =
 cut(ladder0(a,b,c,d),Kheight(a,b,c,d) + 56)
@@ -34,11 +34,11 @@ Inf(p)[2] >= 2 and Inf(p)[3] >= 2
 set LastTwoInf(ParamPol P) = twoInf(last_param(P))
 
 set ladder2(int a, int b, int c, int d)= let rv = ladder1(a,b,c,d) in
-while (is_very_reg(last_param(rv))) do let (c,p) = last_term(rv) in
-rv-:=c*KF(Inf(p)-[2,2,2,2]) od;
+while (is_very_reg(last_K_type(rv).param)) do let (c,p) = last_term(rv) in
+rv-:=c*KF(Inf(p.param)-[2,2,2,2]) od;
 rv
 
-set top(int a,int b,int c,int d) = Inf(last_param(ladder2(a,b,c,d)))
+set top(int a,int b,int c,int d) = Inf(last_K_type(ladder2(a,b,c,d)).param)
 
 {converts fundamental weight coordinates [a,b,c,d] to "product of four
 SL(2)" coordinates [x,y,z,w]=[a, a+2b+c+d, c, d]. These are subject to

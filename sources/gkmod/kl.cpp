@@ -179,6 +179,11 @@ Poly_hash_export KL_table::polynomial_hash_table ()
   return pol_hash!=nullptr ? Poly_hash_export(pol_hash) : Poly_hash_export(*own);
 }
 
+void KL_table::plug_hole(BlockElt y)
+{ assert(y<d_holes.capacity());
+  d_holes.remove(y);
+}
+
 // Fill (or extend) the KL- and mu-lists up to |limit|
 void KL_table::fill(BlockElt limit, bool verbose)
 {
@@ -213,7 +218,7 @@ void KL_table::fill(BlockElt limit, bool verbose)
     throw error::MemoryOverflow();
   }
 
-}
+} // |KL_table::fill|
 
 BitMap KL_table::prim_map (BlockElt y) const
 {
@@ -580,7 +585,7 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
   mu_pairs.merge(std::move(downs)); // need not call |unique|: sets are disjoint
 
   // commit
-  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend()); // convert to vector
+  d_mu[y] = mu_pairs.to_vector();
 } // |KL_table::complete_primitives|
 
 /*
@@ -781,7 +786,7 @@ void KL_table::new_recursion_column
     mu_pairs.reverse(); // remainder was decreasing, so make it increasing
     mu_pairs.merge(std::move(downs)); // fusion with initial increasing part
   }
-  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
+  d_mu[y] = mu_pairs.to_vector();
 
 } // |KL_table::new_recursion_column|
 

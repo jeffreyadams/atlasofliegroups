@@ -748,7 +748,7 @@ InnerClass::canonicalize
   $s_\alpha$ when the sum of positive roots in $S$ is strictly anti-dominant
   for $\alpha$, where $S$ is first the system of real roots, and later the
   system of imaginary roots; in both cases $\alpha$ will always be a complex
-  root, and in particular $\alpha$ does never lies in $S$.
+  root, and in particular $\alpha$ does never lie in $S$.
 */
 
   WeylWord ww; // initialized empty; this will be the result

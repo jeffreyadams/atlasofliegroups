@@ -6,9 +6,12 @@ primes : inf_list:
    let odd_primes () = inf_node:die
    then composite = {predicate to be used when (re)defining |odd_primes|}
      let p=0 {scratch variable to use in multiple assignment:} in
-     (int n) bool: { actual |compoite| predicate }
+     (int n) bool: { actual |composite| predicate }
        let rem=odd_primes { think of rem as pointer into |odd_primes|} in
-       while set(p,rem):=rem(); p*p<=n do if =n%p then return true fi od; false
+       while set(p,rem):=rem(); let (q,r)=n\%p
+       in >r { any zero remainder suffices for being composite }
+       do if q<=p then { no further divisibility possible } return false fi
+       od; true
 in odd_primes :=
    ( let m=3 {we always start adding 2, so effectively from 5} in
      @: (3,rec_fun gen() inf_node: while composite(m+:=2) do () od; (m,gen))
