@@ -7596,7 +7596,8 @@ void deform_wrapper(expression_base::level l)
   {
     auto& q = it->first;
     BlockElt q_index; // will hold index of |q| in the block
-    auto& block = rt.lookup(q,q_index); // generate partial common block
+    auto& block = rt.lookup_full_block(q,q_index); // generate NOW
+    // FULL partial common block
     RatWeight diff = rc.offset(q,block.representative(q_index));
     for (auto&& term : rt.deformation_terms(block,q_index,diff,q.gamma()))
     result.add_term(std::move(term.first),
@@ -7631,7 +7632,7 @@ void twisted_deform_wrapper(expression_base::level l)
     return;
 @)
   BlockElt entry_elem;
-  auto& block = rt.lookup(p->val,entry_elem);
+  auto& block = rt.lookup_full_block(p->val,entry_elem);
     // though by reference, does not change |p->val|
   RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
   block.shift(diff);
