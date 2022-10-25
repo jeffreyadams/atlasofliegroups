@@ -142,7 +142,7 @@ set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
         do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
            if a=b
-           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  rv:=update_matrix_entry(rv,a,b,[1]) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
@@ -186,7 +186,7 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
         do let (j,epsilon_j)=complete_indices[b] in
 { prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
            if a=b
-           then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  rv:=update_matrix_entry(rv,a,b,[1]) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
 { prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
@@ -491,6 +491,43 @@ else
  return(inverse_lift_std_by_search(P,H,M,delta,gamma_H))
 fi
 
+
+{REST OF FILE COMMENTED OUT: requires updating extParamPol.at
+
+set extended_character_formula_reg_old (Param p,mat delta) = ParamPol:
+assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
+let G=p.real_form then
+rv=null_module(G) then
+B=block_of(p) then
+(I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+P=big_KL_P_signed_polynomials(B,delta) then
+index=find(complete_indices,(find(B,p),1)) in
+for (j,type)@i in complete_indices do
+ let c=eval(P[i][index],s) in
+ rv +:=
+ if type=1 then c*B[j]
+   elif type=-1 then c*s*B[j] 
+   elif type=0 then c*B[j] 
+   else error("c\ne 0,\pm 1")
+ fi
+od;
+rv
+
+
+set extended_character_formula_old (Param p,mat delta) = ParamPol:
+if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg_old(p,delta)
+else
+ let preg=make_regular_param(p) then
+ gamma=p.infinitesimal_character then
+ ecfreg=extended_character_formula_reg_old(preg,delta) then
+ {need to apply T_param term by term because putting in a ParamPol
+  finalizes each term which is not OK}
+ rv=null_module(p.real_form) in
+   for c@p in ecfreg do rv+:=c*finalize_extended(T_param(p,gamma),delta) od;
+ rv
+ fi
+
+
 {
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
 let P=inverse_lift_std(p_G,H,M,delta) in
@@ -500,7 +537,7 @@ else P fi
 {returns a sum of standards}
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
 {let ecf=extended_character_formula(p_G,delta) then}
-let ecf=extended_character_formula(p_G,delta) then
+let ecf=extended_character_formula_old(p_G,delta) then
 P_G=convert_to_param_pol(ecf).s_to_1 then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
@@ -510,7 +547,7 @@ P_G=convert_to_param_pol(ecf).s_to_1 then
 
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let ecf=extended_character_formula(p_G,delta).s_to_1 then}
-let ecf=extended_character_formula(p_G,delta).s_to_1 then
+let ecf=extended_character_formula_old(p_G,delta).s_to_1 then
 P_G=convert_to_param_pol(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
@@ -666,3 +703,4 @@ prints("=============================================================");
 show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
+}
