@@ -2434,10 +2434,9 @@ lies in another component of the diagram we have a Complex inner class.
 
 @< Compute the Lie type |type|, the inner class... @>=
 { DynkinDiagram diagram(rd.cartanMatrix());
-  sl_list<RankFlags> comps =
-    diagram.components(); // connected components
-  type = diagram.classify_semisimple(pi,true);
-    // |pi| normalises to Bourbaki order
+  auto comps = diagram.components(); // connected components
+  type = diagram.type();
+  pi = diagram.perm(); // |pi| normalises to Bourbaki order
   assert(type.size()==comps.size());
 @)
   inner_class.reserve(comps.size()+r-s); // certainly enough
@@ -2446,14 +2445,14 @@ lies in another component of the diagram we have a Complex inner class.
   unsigned int i=0; // index into |type|
   for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
-    unsigned int comp_rank = cit->count();
+    unsigned int comp_rank = cit->rank();
     assert (comp_rank==type[i].rank());
        // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
       if (p[*it]!=*it) {@; equal_rank=false; break; }
 @)  if (equal_rank) inner_class.push_back('c');
       // identity on this component: compact component
-    else if (cit->test(p[pi[offset]]))
+    else if (cit->support.test(p[pi[offset]]))
        // (any) one root stays in component |*cit|: unequal rank
       inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
     else
@@ -2507,7 +2506,7 @@ moved-down place.
 @< Find the component~|k| after |i| that contains |beta|...@>=
 { auto k=i; auto cit1=cit; // both are to be immediately incremented
   while (++k, not comps.at_end(++cit1))
-    if (cit1->test(beta))
+    if (cit1->support.test(beta))
       break;
   if (comps.at_end(cit1))
     throw logic_error("Non matching Complex factor");
@@ -2516,7 +2515,7 @@ moved-down place.
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
   for (unsigned int l=1; l<comp_rank; ++l)
-    assert(cit1->test(p[pi[offset+l]]));
+    assert(cit1->support.test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
 #endif
 
@@ -3855,7 +3854,7 @@ functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
 { cm=cc->ic_ptr->val.rootDatum().cartanMatrix(si);
-  dynkin::DynkinDiagram d(cm); sigma = dynkin::bourbaki(d);
+  dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 
 @ The imaginary root system might well be empty, so we make special provisions

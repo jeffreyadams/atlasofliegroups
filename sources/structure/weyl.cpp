@@ -65,7 +65,7 @@ namespace {
 
   void fillCoxMatrix(int_Matrix&,
 		     const int_Matrix&,
-		     const Permutation&);
+		     const WeylInterface&);
 
   WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
 				      WeylElt::EltPiece,
@@ -142,22 +142,28 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 {
   /* analyse the Cartan matrix */
 
-  DynkinDiagram d(c); // make diagram from Cartan matrix
-  // find renumbering |a| putting labels in canonical order
-  Permutation a= dynkin::normalize(d);
+  DynkinDiagram d(c); // make diagram from Cartan matrix and classify
 
 /*
   now put appropriate permutations into |d_in| and |d_out|, so that internal
-  number |j| gives external number |d_out[j]|, and of course
-  |d_in[d_out[j]]==j|. By convention of |normalize|, this means |d_out==a|
+  number |i| gives external number |d_out[i]|, and |d_in[d_out[i]]==i|.
 */
-  for (Generator j = 0; j < d_rank; ++j) {
-    d_out[j] = a[j];
-    d_in[d_out[j]] = j;
-  }
+  for (const auto& comp : d.components())
+    if (std::strchr("BCD",comp.type)==nullptr)
+      for (unsigned i=0; i<comp.position.size(); ++i)
+	d_out[comp.offset+i]=comp.position[i];
+    else // reverse in types BCD
+    {
+      unsigned last=comp.offset+comp.position.size()-1;
+      for (unsigned i=0; i<comp.position.size(); ++i)
+	d_out[last-i]=comp.position[i];
+    }
+
+  for (Generator i=0; i<d_rank; ++i)
+    d_in[d_out[i]] = i;
 
   // deduce the Coxeter matrix from Cartan matrix |c| and renumbering |a|
-  fillCoxMatrix(d_coxeterMatrix,c,a);
+  fillCoxMatrix(d_coxeterMatrix,c,d_out);
 
   // now construct the transducer
   for (Generator j = 0; j < d_rank; ++j)
@@ -1287,7 +1293,7 @@ WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 */
 void fillCoxMatrix(int_Matrix& cox,
 		   const int_Matrix& cart,
-		   const Permutation& a)
+		   const WeylInterface& a)
 {
   assert (cart.numRows()==cart.numColumns());
   int_Matrix(cart.numRows(),cart.numRows()) //create matrix
@@ -1298,13 +1304,11 @@ void fillCoxMatrix(int_Matrix& cox,
   for (Generator i=0; i<cart.numRows(); ++i)
   {
     cox(i,i) = 1;
+    unsigned ai=a[i]; // index corresponding to (inner) |i| in (outer) |cart|
     for (Generator j=i+1; j<cart.numRows(); ++j)
-      cox(i,j) = cox(j,i) = translate[cart(i,j)*cart(j,i)];
+      cox(i,j) = cox(j,i) = translate[cart(ai,a[j])*cart(a[j],ai)];
   }
 
-  // permute
-
-  a.inv_conjugate(cox);
 }
 
 } // anonymous |namespace|

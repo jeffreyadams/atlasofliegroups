@@ -1,7 +1,7 @@
 /*
   This is dynkin.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2014,2017 Marc van Leeuwen
+  Copyright (C) 2014,2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -30,9 +30,6 @@ namespace dynkin{
 
 namespace {
 
-  Permutation order_by_components
-    (const containers::sl_list<RankFlags>& components, unsigned int rank);
-
   Permutation typeANormalize(const DynkinDiagram& d);
   Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki);
   Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki);
@@ -57,22 +54,42 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
     for (unsigned int j = 0; j < c.numColumns(); ++j)
       if (i!=j)
       {
-	if (c(i,j)<-3 or c(i,j)>0)
-	  throw error::Cartan_error();
+	if (c(i,j)<-3)
+	  throw error::Cartan_error("Entry less than -3 present");
+	else if (c(i,j)>0)
+	  throw error::Cartan_error("Off-diagonal positive entry present");
 	Multiplicity m = -c(i,j);
 	if (m!=0)
 	{
-	  if (c(j,i)==0) // this test ensures a symmetric adjacency matrix
-	    throw error::Cartan_error();
+	  if (c(j,i)==0)
+	    throw error::Cartan_error("Asymmetric adjacenty relation");
 	  d_star[j].set(i); // set |i| as neighbour of |j|
 	  if (m>1) // only label multiple edges
 	    d_downedge.push_back (std::make_pair(Edge(i,j),m));
 	}
       }
       else if (c(i,j)!=2)
-	throw error::Cartan_error();
+	throw error::Cartan_error("Diagonal entry unequal to 2");
+  classify(c);
 }
 
+LieType DynkinDiagram::type() const
+{
+  LieType result;
+  result.reserve(comps.size());
+  for (const auto& comp: comps)
+    result.emplace_back(comp.type,comp.rank());
+  return result;
+}
+
+Permutation DynkinDiagram::perm() const
+{
+  Permutation result;
+  result.reserve(rank());
+  for (const auto& comp: comps)
+    result.insert(result.end(),comp.position.begin(),comp.position.end());
+  return result;
+}
 
 DynkinDiagram DynkinDiagram::subdiagram(RankFlags selection) const
 {
@@ -214,98 +231,50 @@ unsigned int DynkinDiagram::fork_node() const
 }
 
 
-/*
-  Return the connected component containing vertex number|i| in the diagram.
-
-  We use the class invariant that the adjacency matrix is symmetric, so that
-  connected components are equivalence classes for reachability
-
-  The algorithm is to start with |i|, and to construct "shells" from there, by
-  taking each new shell to be the elements of the union of the stars of the
-  old shell, that were not already considered. Since bitset iterators copy
-  their bitset at construction, adding to |newElts| in the inner loop will not
-  affect that iteration itself (but the logic would not be broken if it did).
- */
-RankFlags DynkinDiagram::component(unsigned int i) const
-{
-  RankFlags result, new_elts;
-  new_elts.set(i);
-
-  while (new_elts.any())
-  {
-    result |= new_elts; // transfer
-    for (RankFlags::iterator it = new_elts.begin(); it(); ++it)
-      new_elts |= d_star[*it];
-    new_elts.andnot(result); // remove any bits that were already previously set
-  }
-
-  return result;
-}
-
-// Return our decomposition into connected components, a list of subsets
-containers::sl_list<RankFlags> DynkinDiagram::components() const
-{
-  containers::sl_list<RankFlags> result;
-  RankFlags remainder; remainder.fill(rank());
-  while(remainder.any())
-  {
-    RankFlags c = component(remainder.firstBit());
-    remainder.andnot(c); // remove current component from remainder
-    result.push_back(c);
-  }
-
-  return result;
-}
-
 // Return the (semisimple) Lie type of the Cartan matrix |cm|
 LieType Lie_type(const int_Matrix& cm)
 {
-  DynkinDiagram diagram(cm);
-  const auto component_list = diagram.components();
-
-  LieType result;
-  result.reserve(component_list.size());
-  for (auto& component : component_list)
-  {
-    auto cd = diagram.subdiagram(component);
-    result.emplace_back(cd.component_kind(),cd.rank());
-  }
-
-  return result;
+  return DynkinDiagram(cm).type();
 }
 
-
-/*
-  Precondition: any constructed Dynkin diagram is acceptable
-
-  Postcondition: |a| is modified so that the new permutation gives a
-  normalized ordering on each component: it gives Bourbaki ordering unless
-  |Bourbaki| is false and the type is BCD: then the order is reversed.
-
-  The detected semisimple Lie type is returned.
-*/
-LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
+DynkinDiagram& DynkinDiagram::classify(const int_Matrix& Cartan)
 {
-  const auto component_list = components();
-  a = order_by_components(component_list,rank());
+  for (unsigned i=0; i<rank(); ++i)
+    if ((d_star[i].to_ulong() & constants::lMask[i])==0)
+      comps.emplace_back(i);
+    else
+    {
+      assert(not comps.empty()); // since support intersection is non-empty
+      auto it=comps.begin();
+      while ((it->support & d_star[i]).none()) // search first match
+	assert(not comps.at_end(it)),++it;
+      auto& sup = it->support;
+      sup.set(i);
+      ++it;
+      while(not comps.at_end(it))
+	if ((it->support & d_star[i]).any()) // search further matches
+	{
+	  sup |= it->support;
+	  comps.erase(it);
+	}
+        else
+	  ++it;
+    }
 
-  unsigned int offset = 0;
-  LieType result; result.reserve(component_list.size());
-  for (const auto& component : component_list)
-  {
-
-    // normalize Dynkin diagram for the connected component
-    Permutation b;
-    result.push_back(subdiagram(component).classify_simple(b,Bourbaki));
-
-    // piece together the permutation
-    permutations::compose(a,b,offset);
-
-    // update offset
-    offset += component.count();
+  { // Now compute the offset and root positions for each of the components
+    unsigned int i=0;
+    for (auto& comp : comps)
+    {
+      comp.offset=i;
+      unsigned size = comp.support.count();
+      i += size;
+      comp.position.reserve(size);
+      classify(Cartan,comp);
+    }
   }
-  return result;
-} // |classify_semisimple|
+
+  return *this;
+}
 
 
 /*
@@ -318,7 +287,7 @@ LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
   It is just a dispatching function for the various possible simple types.
 */
 SimpleLieType
-  DynkinDiagram::classify_simple(Permutation& pi, bool Bourbaki) const
+  DynkinDiagram::classify_simple(Permutation& pi) const
 {
   lietype::TypeLetter x = component_kind();
 
@@ -326,11 +295,11 @@ SimpleLieType
   {
   case 'A': pi = typeANormalize(*this);
     break;
-  case 'B': pi = typeBNormalize(*this,Bourbaki);
+  case 'B': pi = typeBNormalize(*this,true);
     break;
-  case 'C': pi = typeCNormalize(*this,Bourbaki);
+  case 'C': pi = typeCNormalize(*this,true);
     break;
-  case 'D': pi = typeDNormalize(*this,Bourbaki);
+  case 'D': pi = typeDNormalize(*this,true);
     break;
   case 'E': pi = typeENormalize(*this);
     break;
@@ -347,6 +316,115 @@ SimpleLieType
   return SimpleLieType(x,rank());
 } // |classify_simple|
 
+/* Once a component is isolated in |ci| with |support| (and |offset|) defined,
+   complete it by setting |type| and |position| */
+void DynkinDiagram::classify(const int_Matrix& Cartan,comp_info& ci) const
+{
+  unsigned comp_rank = ci.support.count();
+  if (comp_rank<=2)
+  {
+    if (comp_rank==1)
+      ci.type='A',ci.position.push_back(ci.support.firstBit());
+    else
+    { // |comp_rank>2|
+      auto it = ci.support.begin();
+      unsigned i=*it, j=*++it;
+      ci.position.push_back(i);
+      ci.position.push_back(j);
+      bool increase = Cartan(i,j)==-1;
+      switch (Cartan(i,j)*Cartan(j,i))
+      {
+      case 1: ci.type='A'; break;
+      case 2: // exceptionally in this case given order in diagram decides type
+	ci.type= increase ? 'C' : 'B'; break;
+      case 3: ci.type='G';
+	if (not increase) std::swap(ci.position[0],ci.position[1]);
+	break;
+      default:
+	throw error::Cartan_error("Off-diagonal pair both less than -1");
+      }
+    } // |if (comp_rank==1)|
+  } // |if (comp_rank<=2)|
+  else
+  {
+    unsigned fork=rank(), lower=rank(), upper=rank(); // out of bound values
+    RankFlags extremeties;
+    for (unsigned i : ci.support)
+      if (d_star[i].count()>2)
+      {
+	if (d_star[i].count()>3)
+	  throw error::Cartan_error("Diagram node with degree more than 3");
+	else if (fork<rank())
+	  throw error::Cartan_error("Multiple fork nodes in component");
+	fork=i;
+      }
+      else
+      { if (d_star[i].count()<2)
+	  extremeties.set(i);
+	for (unsigned j: d_star[i])
+	  if (Cartan(i,j)<-1)
+	  { if (lower<rank())
+	      throw error::Cartan_error("Multiple labelled edges in component");
+	    upper=i; lower=j; // this edge goes down from |i| to |j|
+	  }
+      }
+    if (extremeties.count() < 2)
+      throw error::Cartan_error("Diagram has a loop");
+    else if (fork<rank() and lower<rank())
+      throw error::Cartan_error("Component with both fork and labelled edge");
+
+    if (lower==rank()) // whether simply laced
+      ci.type= fork==rank() ? 'A' :
+	(d_star[fork]&extremeties).count()==1 ? 'E' : 'D';
+    else
+      ci.type= extremeties.test(lower) ? 'B' :
+	extremeties.test(upper) ? 'C' : 'F';
+
+    unsigned start; RankFlags remain = ci.support;
+    switch (ci.type)
+    {
+    default: assert(false); // only types ABCDEF just assigned
+    case 'A': start=extremeties.firstBit(); break; // choose any end
+    case 'B': start=extremeties.reset(lower).firstBit(); break;
+    case 'C': start=extremeties.reset(upper).firstBit(); break;
+    case 'D':
+      if (comp_rank==4)
+	start=extremeties.firstBit(); // choose any end
+      else if (extremeties.andnot(d_star[fork]).count()>1)
+	throw error::Cartan_error("Fork node without adjacent extremeties");
+      else
+      { assert(extremeties.count()==1); // nothing left would be D4; excluded
+	start=extremeties.firstBit();
+      }
+      break;
+    case 'E':
+      { auto short_arm= extremeties & d_star[fork];
+	assert(short_arm.count()==1); // tested before setting |ci.type='E'|
+	start = extremeties.andnot(short_arm).firstBit(); // try a longer arm
+	if ((d_star[start]&d_star[fork]).none()) // if this is longest arm
+	  start = extremeties.reset(start).firstBit(); // swap for orth arm
+	if ((d_star[start]&d_star[fork]).none()) // if this still a long arm
+	  throw error::Cartan_error("Fork node with two too long arms");
+	ci.position.push_back(start); remain.reset(start);
+	ci.position.push_back(short_arm.firstBit()); remain.andnot(short_arm);
+	start=((d_star[start]&d_star[fork]).firstBit());
+      }
+      break;
+    case 'F': start=(extremeties.andnot(d_star[lower])).firstBit(); break;
+    }
+
+    // now traverse remainder of diagram starting from |start|
+    while (ci.position.push_back(start),remain.reset(start).any())
+      if (RankFlags cand=d_star[start] & remain)
+	start = cand.firstBit();
+      else if (ci.type=='D')
+      { assert((remain-d_star[fork]).none()); // only a short arm remains
+	start = remain.firstBit();
+      }
+      else
+	assert(false); // must have fork, but type 'E' already used short arm
+  }
+}
 
 /*
   Determines candidate for the (simple) type of a connected Dynkin diagram
@@ -382,7 +460,7 @@ lietype::TypeLetter DynkinDiagram::component_kind() const
 	  Edge e = labelled_edge();
 	  return extr.test(e.first) ? 'C' : extr.test(e.second) ? 'B' : 'F';
 	}
-      default: {} // since G2 was already detected, this canot be right
+      default: {} // since G2 was already detected, this cannot be right
       }
     else // not a linear diagram
     {
@@ -394,19 +472,6 @@ lietype::TypeLetter DynkinDiagram::component_kind() const
   throw error::Cartan_error();
 } // |DynkinDiagram::component_kind|
 
-
-/*
-  Return a permutation such that successive intervals of simple roots form
-  connected components, numbered as needed for our Weyl group implementation.
-
-  NOTE: the permutation |result| maps new index |i| to old index |result[i]|.
-*/
-Permutation normalize(const DynkinDiagram& d)
-{
-  Permutation result;
-  d.classify_semisimple(result,false);
-  return result;
-}
 
 
 
@@ -435,7 +500,7 @@ LieType Lie_type(const int_Matrix& cm,
 
   DynkinDiagram d(cm);
 
-  LieType result = d.classify_semisimple(pi,Bourbaki);
+  LieType result = d.classify_semisimple(pi);
 
   if (check)
   {
@@ -455,21 +520,6 @@ LieType Lie_type(const int_Matrix& cm,
   return result;
 
 }
-/*
-  Return some permutation that will take |d| to Bourbaki form
-
-  This means that nodes of the diagram |d| taken in the order |a[0],...,a[r-1]|
-  traverse each of its connected components consecutively, and in the order
-  prescribed by the the Bourbaki conventions for the type of that component
-*/
-Permutation bourbaki(const DynkinDiagram& d)
-{
-  // do the normalization as in normalize, but with Bourbaki ordering
-  Permutation result;
-  d.classify_semisimple(result,true);
-
-  return result;
-}
 
 
 
@@ -478,29 +528,6 @@ Permutation bourbaki(const DynkinDiagram& d)
         Chapter III -- Auxiliary functions for this module
 
 ******************************************************************************/
-
-namespace {
-
-/*
-  Returns a permutation such that the various components, listed in cl,
-  are numbered by successive indices. The result maps these indices back
-  to their original positions.
-*/
-Permutation order_by_components
-  (const containers::sl_list<RankFlags>& cl, unsigned int r)
-{
-  Permutation result; result.reserve(r);
-
-  // traverse each component, write down its elements in sequence
-  for (auto it=cl.begin(); it!=cl.end(); ++it)
-    std::copy(it->begin(),it->end(),std::back_inserter(result));
-
-  assert (result.size()==r); // check that correct rank was passed
-  return result;
-} // |order_by_components|
-
-} // |namespace|
-
 
 namespace {
 
@@ -515,7 +542,7 @@ RankFlags linearise(const DynkinDiagram& d, Permutation& a)
 }
 
 /*
-  Find a permutation that will enumerates |d| along its diagram
+  Find a permutation that will enumerate  |d| along its diagram
 
   Precondition : |d.edge_label()==1| and |d.fork_node()==d.rank()|. This
   actually ensures this is a valid type An diagram.
@@ -548,7 +575,7 @@ Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki)
   Permutation a;
   a.reserve(d.rank());
   unsigned int short_node = d.labelled_edge().second; // one of 2 end nodes
-  a.push_back // Bourbaki starts with the extramal node that is not short
+  a.push_back // Bourbaki starts with the extremal node that is not short
     (Bourbaki ? d.extremities().reset(short_node).firstBit() : short_node);
   linearise(d,a);
   return a;
@@ -568,7 +595,7 @@ Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki)
   Permutation a;
   a.reserve(d.rank());
   unsigned int long_node = d.labelled_edge().first; // also an end point
-  a.push_back // Bourbaki starts with the extramal node that is not long
+  a.push_back // Bourbaki starts with the extremal node that is not long
     (Bourbaki ? d.extremities().reset(long_node).firstBit() : long_node);
   linearise(d,a);
   return a;
