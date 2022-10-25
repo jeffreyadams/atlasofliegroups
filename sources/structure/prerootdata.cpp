@@ -120,7 +120,7 @@ int_Matrix PreRootDatum::Cartan_matrix() const
 
 void PreRootDatum::test_Cartan_matrix () const
 { Permutation dummy;
-  dynkin::Lie_type(Cartan_matrix(),true,true,dummy);
+  dynkin::Lie_type(Cartan_matrix(),true,dummy);
 }
 
 // replace by root datum for a finite central quotient with weight |sublattice|

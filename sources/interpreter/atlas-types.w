@@ -350,7 +350,7 @@ ignoring the result but catching any |error::Cartan_error| thrown and returning
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   Permutation pi;
-  LieType lt=dynkin::Lie_type(m->val,true,true,pi);
+  LieType lt=dynkin::Lie_type(m->val,true,pi);
   if (l==expression_base::no_value)
     return;
 @)
@@ -369,7 +369,7 @@ void is_Cartan_matrix_wrapper (expression_base::level l)
   Permutation pi;
   try
   {
-    dynkin::Lie_type(m->val,false,true,pi);
+    dynkin::Lie_type(m->val,true,pi);
     push_value(whether(true));
   }
   catch (error::Cartan_error&)
