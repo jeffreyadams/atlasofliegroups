@@ -12,7 +12,6 @@ gamma:=[5,3,5,4,5,5]/3
 p:=parameter_gamma(x,[2,-1,2,2,2,2],gamma)
 q:=parameter_gamma(x,[3,-2,1,3,1,4],gamma)
 
-{ set P=oriented_KL_sum(p) }
 {
 G:=SO(6,3) { also SO(4,4) needs study }
 set target=parameter(KGB(G,7),[5,3,3,1]/2,[0,0,0,0]/1)
@@ -44,8 +43,8 @@ set select(ratvec gamma) = (ParamPol P):
   do if q.infinitesimal_character=gamma then [(c,q)] else [] fi
   od
 
-set fd (ParamPol P) = ParamPol: map(full_deform@Param,P)
-set tfd (ParamPol P) = ParamPol: map(twisted_full_deform@Param,P)
+set fd (ParamPol P) = KTypePol: map(full_deform@Param,P)
+set tfd (ParamPol P) = KTypePol: map(twisted_full_deform@Param,P)
 
 set dpts (Param p) = [Param,bool]:
   for f in reducibility_points(p) do scale_extended(p,delta,f) od
@@ -59,8 +58,8 @@ set dts (Param p) = ParamPol:
   do if flip then sum-:=q.twisted_deform else sum+:=q.twisted_deform fi
   od; sum
 
-set deformations (Param p) = [ParamPol]:
-  let s=(ParamPol:p*0) in s #
+set deformations (Param p) = [KTypePol]:
+  let s=K_type_pol(p) in s #
   for f in reducibility_points(p)
   do  s +:= for c@q in deform(normal(p*f)) do c*full_deform(q) od
   od

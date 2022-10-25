@@ -1,7 +1,7 @@
 <K_highest_weights.at
 <K_types.at
 
-set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
+set find ([KType] ktypes,KType mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
 
 {Enhanced version of K_types@KHighestWeight (in K_highest_weights.at)
  Also the algorithm \tau->tau_q in KHatHowe Theorem 11.9}
@@ -20,7 +20,7 @@ set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=m
 The algorithm here is crazily roundabout, using
 stuff from K_highest_weights.at
 Algorithm:
-given a K_Type mu
+given a KType mu
 compute a single highest weight lambda of mu
 then K_types(lambda) returns a set of K-types of G
 with this highest weight, among them mu itself
@@ -35,7 +35,7 @@ actually gives mu_i=mu
 }
 
 {. Auxiliary function (see inds in K_highest_weights.at for some details). .}
-set inds_plus (KHighestWeight mu_in)=[(K_Type,[Param])]:
+set inds_plus (KHighestWeight mu_in)=[(KType,[Param])]:
    let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
    result=[] then (,x,tau)=mu_in, L=Levi(Q) then
    mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
@@ -45,7 +45,7 @@ set inds_plus (KHighestWeight mu_in)=[(K_Type,[Param])]:
         ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
       result#:=(qL,ind) od; result
 
-set choose_irred_inds_plus ([[(K_Type,[Param])]] list)=[[(K_Type,[Param])]]:
+set choose_irred_inds_plus ([[(KType,[Param])]] list)=[[(KType,[Param])]]:
   ##for item in list do if
     all(for (,params) in item do #params=1 od) and #item>0
      then [item] else [] fi od
@@ -54,7 +54,7 @@ set choose_irred_inds_plus ([[(K_Type,[Param])]] list)=[[(K_Type,[Param])]]:
 {. The same as K_types@KHighestWeight, but return more information:
 the associated theta-stable parabolic, and for each K_type, also the
 L-spherical parameter on L .}
-set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
+set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,KType)]):
   let G=real_form(x) then
   Q=parabolic_LKT(mu_in)
   in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
@@ -72,7 +72,7 @@ set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
    else [] fi
    od in (Q,pairs)
 
-set K_types_plus (K_Type mu)= (Parabolic,[(Param,K_Type)]):
+set K_types_plus (KType mu)= (Parabolic,[(Param,KType)]):
 K_types_plus(highest_weights(mu)[0])
 
 set test_K_types_plus(KHighestWeight lambda)=bool:
@@ -93,7 +93,7 @@ all(for lambda in lambdas do test_K_types_plus(lambda) od)
  and J(p_L) is one-dimensional
 See KHatHowe Theorems 11.9 and 16.6
 }
-set tau_q(K_Type mu)=(Parabolic,Param):
+set tau_q(KType mu)=(Parabolic,Param):
 let (Q,pairs)=K_types_plus(mu) then
 j=first(for (,tau) in pairs do tau=mu od) in
 let (mu_L,)=pairs[j] in
@@ -139,4 +139,3 @@ set test_parabolics (RealForm G)=bool: let bl=block_of(trivial(G))
    then Ps1=for mu in kt do make_strongly_compatible_parabolic(parameter(mu)) od
    then Ps2=for mu in kt do let (P,)=tau_q(mu) in P od in
      all(for P@i in Ps1 do P=Ps2[i] od)
-

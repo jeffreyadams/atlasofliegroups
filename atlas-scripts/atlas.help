@@ -329,8 +329,10 @@ RealForm	real form within an inner class
 CartanClass     class of Cartan subgroups within an inner class
 KGBElt		element of the set K\G/B associated to some RealForm value
 Block		block for a pair of RealForm values (at dual inner classes)
-Param		value representing a standard module or its irreducible quotient
 Split		"split integer" a + b.s where s is "split unit" with s^2=1
+KType		value for standard K-representation or its irreducible quotient
+KTypePol	Split-linear combination of final K-types
+Param		value representing a standard module or its irreducible quotient
 ParamPol	virtual module with signature (Param values with Split coefs)
 
 Constant values of type bool, int and string can be entered as usual (use
@@ -701,9 +703,12 @@ Here is a list of all implicit type conversions
   InnerClass -> RootDatum (inheritance)
   RealForm   -> InnerClass (inheritance)
   RealForm   -> RootDatum (inheritance)
+  KType	     -> KTypePol (K-type is converted to final K-type(s) first)
+  Param	     -> KType    (the component 'nu' is forgotten)
   Param	     -> ParamPol (parameter is converted to final parameter(s) first)
+  Param      -> KTypePol (composition of conversions Param->KType->KTypePol)
 
-The one-directional conversions int->rat and string->LieType are mainly a
+The unidirectional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:
 
   atlas> 3+1/7       { same as 3/1+1/7 }
@@ -937,8 +942,13 @@ As a convenience one can write 'x +:= y' instead of 'x := x + y', and
 similarly for any operator in the place of '+', so in the above examples one
 could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
-It should be noted that this requires a simple variable as left operand: the
-parser will reject for instance v[i]+:=1; this should be written v[i]:=v[i]+1.
+The left hand side must be an expression that is accepted for assignment, which
+(currently) means eaither a variable or a simply subscritped variable (if v is a
+vector and i an integer then both v[i]:=5 and v[i]*:=5 are valid, and even
+v[i*:=2]+:=1 is accepted (the parser tranforms it into 'let $=(i*:=2) in
+v[$]:=v[$]*2' where $ designates a fresh identifier); although this also works
+for matrix entries, as in A[i,j] *:= -1, one cannot for a list of lists L
+(having a type [[T]] for some type T) directly assign to L[i][j].
 
 The rules for assignment are quite different from the introduction of a
 variable (by 'set' or 'let'): the variable must have been introduced
@@ -1974,6 +1984,62 @@ value; so to create a list of functions that add respectively 1,3,6, doing
 has the desired effect (functions[1] adds 3, not the "final value" 6 of 'x').
 
 
+* Forced exit from loops and functions: 'break' and 'return'
+
+It is occasionally useful to force, inside a branch of some possibly nested
+choice expression, an exit from a larger expression evaluation; this kind of
+jump is supported by the axis language when that evaluation is that of a loop or
+of a function.
+
+In the case of a loop, this is achieved by executing a "break", and the value
+returned from the loop is as if the final (interrupted) iteration had never
+started; when this happens in a 'for' loop, the size of the list of values
+returned will strictly smaller than the number of iterations that was computed
+when the loop evaluation started. As no value is contributed, the expression
+whose evaluation leads to this interruption is usually just the keyword 'break',
+which for the purpose of type checking has undetermined type (just like for the
+keyword 'die'). The 'break' expression is syntactically bound to the loop
+expression that its execution will terminate; this is normally the innermost
+loop in whose body the 'break' occurs. It can however be specified to be a more
+outward loop by writing a positive integer number after 'break' (separated by
+whitespace to avoid being combined into an identifier), which number counts the
+number of extra levels to move outward (so 'break 1' breaks from the
+innermost-but-one loop). If there are insufficient nested levels of loops that
+contain a 'break' expression, it will be rejected upon parsing. The outwards
+search for an enclosing loop body stops (with an error) in case the body of a
+function is found instead (which makes a difference only in the unlikely case of
+a local function definition contained in a loop). As a consequence executing a
+'break' never interrupts an active function call (although of course it can
+cause a function to terminate immediately after a loop in contains finishes).
+
+The evaluation of the body of a user defined function can be terminated without
+completing that of the whole body by executing a 'return' expression nested
+within. It is composed of the keyword 'return' followed by an expression that
+will be evaluated to produce the value returned from the function in case the
+'return' expression it executed. Similarly to 'break', the 'return' expression
+is syntactically bound to the function body that its execution will terminate,
+which is the innermost function that contains the 'return' expression (and in
+this case there is no way to specify any other function body). When the 'return'
+expression is executed, this interrupts the evaluations of any subexpressions of
+the function body that are in progress, which may include loop expressions.
+Since a function should always return a value of the same type, the type of any
+and all expressions following a 'return' (directly) contained in a function body
+and the function body itself should have the same type, in the same way as all
+branches in a choice expression should have the same type. In the syntactic
+context where the 'return' expression occurs, it has undetermined type (like a
+'break' expression), since it never provides a value for that context.
+
+For completeness we mention two other expressions whose evaluation will
+interrupt the containing evaluation, this time leading to a runtime error rather
+than resuming execution at a different point: the already mentioned expression
+consisting of the keyword 'die', and a call of the built-in function 'error'.
+The latter allows providing a message to be printed after the runtime error is
+signalled, by way of the argument expression for 'error'; this is usually a
+string but could be any value, which will be formatted as the 'prints' built-in
+function would. (Also, as for any function, the argument is evaluated before the
+function is called, so it the argument expression manages to produce an error
+itself, it is that error that will be reported instead of calling 'error'.)
+
 9 Recursion
 
 As mentioned above, axis strict scoping rules makes defining recursive
@@ -2347,24 +2413,30 @@ often the case, then the final expression produces the value of the clause).
 
 (d) Tertiary expressions: assignments.
 
-The three kinds of assignments are tertiary level expressions: simple
-assignments, component assignments and compound assignments (compound
-component assignments are not currently possible). Each of them end with ":="
-followed by a tertiary level expression. To the left of ":=" they have
+The various kinds of assignments are tertiary level expressions: simple
+assignments, component assignments like v[i]:=3, and compound assignments like
+n+:=1, or even compound component assignments like v[i]-:=1. Each of them end
+with ":=" followed by a tertiary level expression. To the left of ":=" they have
 respectively an identifier, a subscripted identifier (the subscript being an
-expression enclosed in '[' and ']'), and an expression followed by an operator
-symbol. For a component assignment to be valid it is necessary that the type
-of identifier and index are such that the subscription would be a valid
-expression, but component assignments are not allowed for identifiers of type
-'string', 'ratvec', or 'ParamPol'. When valid, a component assignment is
-handled as a primitive operation in the evaluator. The meaning of a compound
-assignment of the form 'ident # := expr' on the other hand (where # represents
-any infix operator) is by definition that of 'indent := ident # (expr)'; in
-other words it is determined by the overload of the operator for operand types
-of the identifier and the expression, whether built-in or user-defined.
-Currently compound statements are transformed into that form by the parser
-(compound assignments might be handled by the evaluator instead in the future,
-but only so as to achieve the same effect possibly more efficiently.)
+expression enclosed in '[' and ']'), or a possibly subscritped identifier
+followed by an operator symbol. For a component assignment to be valid it is
+necessary that the type of identifier and index are such that the subscription
+would be a valid expression, but component assignments are not allowed for
+identifiers of type 'string', or 'ratvec'. When valid, a component assignment is
+handled as a primitive operation in the evaluator: an assignment v[i]:=c in fact
+assigns to the variable v a new value that differs from the old value only at
+index i, where the new entry is c. In a component assignment involving an
+identifier whose value is of type KTypePol or ParamPol, the "index" has to be a
+value of type KType respectively Param, and it has to satisfy is_final (since
+only sich terms can arise in these polynomials); the value assigned is the
+coefficient of the term for that KType or Param, which term is created if
+needed, and may disappear if the coefficient assigned is zero. On the other hand
+compound assignments are just rewritten as a non-compund assignement in a more
+complicated context; notably, a compound assignement 'ident # := expr' is
+rewritten as 'indent := ident # (expr)'; the same goes for any infix operator in
+the place of '#'. As a consequence, the meaning of a compound assignement it is
+determined an instance of the operator used, overloaded for operand types of the
+'ident' and 'expr', and that overload can be either built-in or user-defined.
 
 (e) Secondary expressions: formulas.
 

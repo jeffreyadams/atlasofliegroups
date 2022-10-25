@@ -1,7 +1,7 @@
 <misc.at { for |finalize@Param| }
 <hermitian.at { for |hermitian_form_irreducible@Param| }
 
-{p-> p_0=first_param(finalize(t.at_nu_0))=parameter(x,lambda,0)->
+{p-> p_0=first_param(finalize(t*0))=parameter(x,lambda,0)->
 complementary series (parameter(x,lambda,t*rho) ->
 q=parameter(x,lambda,t_0*rho) where
 t_0=reducibility_point(x,lambda,rho)[0]
@@ -11,11 +11,11 @@ if p_0 is a fundamental series then there is no complementary series
 q is a unitary representation
 usually (but not always?) the standard module is reducible
 }
-set end_of_complementary_series(Param p_in)=(bool,Param):
-let p=first_param(finalize(p_in.at_nu_0)) then
-q=parameter(x(p), lambda(p), rho(real_form(p))) then
-rp=reducibility_points(q) in
-if #rp=0 then (false,p) else (true, q*rp[0]) fi
+set end_of_complementary_series (Param p_in) = (bool,Param):
+let p=first_param(ParamPol: p_in*0) { get a final parameter at nu=0; may fail }
+then q=parameter(x(p), lambda(p), rho(real_form(p)))
+then rp=reducibility_points(q)
+in if #rp=0 then (false,p) else (true, q*rp[0]) fi
 
 {given a list of parameters params, return
 list [(q,purity(hf))] where hf is the Hermitian form on q,

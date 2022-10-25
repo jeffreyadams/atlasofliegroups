@@ -94,7 +94,7 @@ size_t StandardRepK::hashCode(size_t modulus) const
 {
   size_t hash=13*d_fiberElt.data().to_ulong()+d_cartan;
   for (size_t i=0; i<d_lambda.first.size(); ++i)
-    hash+=(hash<<2)+d_lambda.first[i];
+    hash+=(hash<<3)+(hash<<12)+d_lambda.first[i];
   return (hash+(hash<<5)+d_lambda.second.to_ulong())&(modulus-1);
 }
 
@@ -245,6 +245,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
   return result;
 } // |std_rep|
 
+
 #if 0
 // the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
 // it should only transform the parameters for the Levi factor given by |gens|
@@ -263,8 +264,7 @@ RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
     {
       assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
       basedTitsGroup().basedTwistedConjugate(a,ww[i]);
-      rd.simple_reflect(ww[i],lambda);
-      lambda-=rd.simpleRoot(ww[i]); // make affine reflection fixing $-\rho$
+      rd.simple_reflect(ww[i],lambda,1); // affine reflection fixing $-\rho$
     }
   }
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
@@ -275,6 +275,7 @@ RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
 StandardRepK SRK_context::KGB_elt_rep(KGBElt z) const
 { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
 #endif
+
 
 level SRK_context::height(const StandardRepK& sr) const
 {
@@ -321,7 +322,7 @@ level SRK_context::height_bound(const Weight& lambda)
   while (new_negatives.any());
 
   level sp=mu.dot(rd.dual_twoRho());
-  level d=4*get_projection(negatives).denom; // quadruple to match |height|
+  level d=2*get_projection(negatives).denom; // double to match |height|
   return (sp+d-1)/d; // round upwards, since height is always integer
 } // |SRK_context::height_bound|
 
@@ -347,7 +348,7 @@ bool SRK_context::isNormal(Weight lambda, CartanNbr cn) const
   for (unsigned int i=0; i<sc.size(); ++i)
     if (lambda.dot(sc[i])<0)
     {
-      offender=i; return false; // |witness| indicates a complex simple root
+      offender=i; return false; // |offender| indicates a complex simple root
     }
 
   return true;
@@ -542,20 +543,20 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 {
   BitMap flagged(kgb().size());
 
-  KGBElt root=UndefKGB;
+  KGBElt origin=UndefKGB;
   {
     KGBEltPair packet=kgb().tauPacket(q.involution());
     KGBElt x;
     for (x=packet.first; x<packet.second; ++x)
       if (kgb().titsElt(x)==q.strong_involution())
       {
-	root=x; break;
+	origin=x; break;
       }
     assert(x<packet.second); // search should succeed
   }
 
-  flagged.insert(root);
-  containers::queue<KGBElt> queue { root };
+  flagged.insert(origin);
+  containers::queue<KGBElt> queue { origin };
   do
   {
     KGBElt x=queue.front(); queue.pop();
@@ -582,17 +583,19 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
 {
   const RootDatum& rd=root_datum();
   KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
+  // now |sub[0]| is the largest |x| value in |sub|
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
 
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
-  std::vector<Weight> mu; // list of $\rho$-centered weights,
+  std::vector<Weight> mu; // list of $-\rho$-centered weights,
   mu.reserve(sub.size()); // associated to the elements of |sub|
 
-  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
+  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // |mu| is $-\rho$-centered
 
+  // for remaining |sub| elements, deduce its |mu| from that of some ascent
   for (size_t i=1; i<sub.size(); ++i)
   {
     KGBElt x=sub[i];
@@ -603,7 +606,8 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
       {
 	size_t k=sub_inv[kgb().cross(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	mu.push_back(rd.simple_reflection(*it,mu[k])); // $\rho$-centered
+	// apply implicitly $-\rho$-centered refection (sign flip done later)
+	mu.push_back(rd.simple_reflection(*it,mu[k]));
 	break;
       }
     }
@@ -617,15 +621,15 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	Weight nu=mu[k]; // $\rho-\lambda$ upstairs
-	assert(nu.dot(rd.simpleCoroot(*it))%2 == 0); // finality
+	assert(nu.dot(rd.simpleCoroot(*it))%2 == 0); // finality (non-parity)
 	Weight alpha=rd.simpleRoot(*it);
 	nu -= (alpha *= nu.dot(rd.simpleCoroot(*it))/2); // project
 	mu.push_back(nu); // use projected weight downstairs
 	break;
       }
-    }
-    assert(it()); // if no cross action worked, some Cayley transform must have
-  }
+    } // |for(it)|
+    assert(it()); // if no cross ascent worked, some Cayley ascent must have
+  } // |for i|
   assert(mu.size()==sub.size());
 
   size_t max_l=kgb().length(sub[0]);
@@ -647,44 +651,50 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 {
   const RootDatum& rd=root_datum();
 
-  // Get theta stable parabolic subalgebra
+  // Get from |sr| to some $\theta$-stable parabolic subalgebra
 
   WeylWord conjugator;
   PSalgebra p = theta_stable_parabolic(sr,conjugator);
 
-  Weight lambda= rd.image_by_inverse(lift(sr),conjugator); // towords |p|
+  Weight lambda= rd.image_by_inverse(lift(sr),conjugator); // towards |p|
 
   RawChar KGB_sum_p= KGB_sum(p,lambda);
+
+  typedef free_abelian::Monoid_Ring<Weight> polynomial;
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   // type of formal linear combination of weights, associated to Tits element
 
   Char result;
-  for (RawChar::const_iterator it=KGB_sum_p.begin(); it!=KGB_sum_p.end(); ++it)
+  for (const auto& term : KGB_sum_p)
   {
-    Char::coef_t c=it->second; // coefficient from |KGB_sum_p|
-    const Weight& mu=it->first.first; // weight from |KGB_sum_p|
-    const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_p|
-    InvolutionData id = innerClass().involution_data(strong.tw());
+    Char::coef_t c=term.second; // coefficient from |KGB_sum_p|
+    const Weight& mu=term.first.first; // weight from |KGB_sum_p|
+    const TitsElt& strong=term.first.second; // Tits elt from |KGB_sum_p|
+    const InvolutionNbr i_theta = i_tab.nr(strong.tw());
+    const WeightInvolution& theta = i_tab.matrix(i_theta);
+
+    if (height_bound(mu+theta*mu+i_tab.theta_plus_1_rho(i_theta)) > bound)
+      continue;
 
     RootNbrSet A(rd.numRoots()); // oversized: negative roots unused
+    // collect in |A| all positive roots that are nci or first of a C+ pair
     for (BitMap::iterator rt=p.radical().begin(); rt(); ++rt)
     {
       RootNbr alpha=*rt;
-      assert(not id.real_roots().isMember(alpha));
-      if (id.imaginary_roots().isMember(alpha))
+      assert(not i_tab.real_roots(i_theta).isMember(alpha));
+      if (i_tab.imaginary_roots(i_theta).isMember(alpha))
 	A.set_to(alpha,basedTitsGroup().grading(strong,alpha)); // add if nc
       else // complex root
       {
-	RootNbr beta=id.root_involution(alpha);
+	RootNbr beta=i_tab.root_involution(i_theta,alpha);
 	assert(rd.is_posroot(beta));
-	A.set_to(alpha,beta>alpha); // add first of two complex roots
+	A.set_to(alpha,beta>alpha); // add first of two paired complex posroots
       }
     }
 
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
-    typedef free_abelian::Monoid_Ring<Weight> polynomial;
-    const WeightInvolution theta = innerClass().matrix(strong.tw());
 
     // compute in |pol| the product $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$
     polynomial pol(mu);
@@ -696,10 +706,8 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	Weight lambda=term->first;
-	(lambda*=2) += rd.twoRho();
-	lambda += theta*lambda;
-	if (height_bound(lambda)>bound)
+	const Weight& nu=term->first; // $-\rho$-centered
+	if (height_bound(nu+theta*nu+i_tab.theta_plus_1_rho(i_theta)) > bound)
 	  pol.erase(term++);
 	else
 	  term++;
@@ -709,12 +717,12 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 
     // iterate over terms in formal sum, taking coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
-    {
-      Weight lambda=term->first;
+    { // contribute |c*term| at |strong| involution to |result|
+      Weight lambda_rho=term->first;
       polynomial::coef_t coef=term->second;
-      result += Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
+      result += Char(std_rep_rho_plus(lambda_rho,strong),c*coef);
     }
-  } // for sum over KGB for L
+  } // |for (term : KGB_sum_p)
   return std::make_pair(sr, result);
 } // |K_type_formula|
 
@@ -788,6 +796,7 @@ q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
   const RootDatum& rd=root_datum();
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
   // Get theta stable parabolic subalgebra
 
@@ -829,7 +838,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
     typedef free_abelian::Monoid_Ring<Weight,q_CharCoeff>
       polynomial; // with weight exponents and $q$-polynomials as coefficients
-    const WeightInvolution theta = innerClass().matrix(strong.tw());
+    const InvolutionNbr i_theta = i_tab.nr(strong.tw());
+    const WeightInvolution& theta = i_tab.matrix(i_theta);
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -841,10 +851,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	Weight lambda=term->first;
-	(lambda*=2) += rd.twoRho();
-	lambda += theta*lambda;
-	if (height_bound(lambda)>bound)
+	const Weight& mu=term->first;
+	if (height_bound(mu+theta*mu+i_tab.theta_plus_1_rho(i_theta)) > bound)
 	  pol.erase(term++);
 	else
 	  term++;
@@ -870,7 +878,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
   const RootDatum& rd=root_datum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr); // is non-dominant for |alpha|, so |sr| is not normal
-  assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
+  assert(rd.is_posroot(alpha)); // indeed |alpha| simply-imaginary for |a.tw()|
 
   HechtSchmid id(sr); // start with |sr| on the left hand side
   size_t i=0; // simple root index (value will be set in following loop)
@@ -920,7 +928,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 
 /*
   The method |HS_id| is only called when |lambda| is non-dominant for |alpha|
-  and therefore gives a second term with a strictly more dominant weight.
+  and therefore gives a second LHS term with a strictly more dominant weight.
 
   For those simple-imaginary $\alpha$ with $\<\lambda,\alpha^\vee>=0$ the
   corresponding Hecht-Schmid identity has equal weights in the left hand

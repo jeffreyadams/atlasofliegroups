@@ -72,20 +72,22 @@ set complex_LKT (Param p) = vec:
 set ht(RealForm G, vec lambda) = int:
 rat_as_int(dominant(G,lambda)*G.rho_check*2)
 
-{.tensor product of algebraic reps of complex group of extremal wts gamma1 and gamma2, returned as ParamPol of corresponding GC parameters (nu=0)}
-set tensor_product(RootDatum rd, vec gamma1, vec gamma2) = ParamPol:
-let GC = rd.complexification then gamma=finite_dimensional(GC,gamma1##gamma2)
-then infchar = gamma.infinitesimal_character
-then Gamma = (-1)^length(x_open(GC))*sum(GC,for x in KGB(GC) do
-(-1)^length(x)*parameter(x,infchar,infchar) od)
-in branch(Gamma, ht(GC,gamma1##gamma2))
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as KTypePol of corresponding GC K-types }
+set tensor_product(RootDatum rd, vec gamma1, vec gamma2) = KTypePol:
+   let GC = rd.complexification
+   then repn = finite_dimensional(GC,gamma1##gamma2)
+   then gamma_rho = ratvec_as_vec(repn.infinitesimal_character - rho(GC))
+   then module = minus_1^length(x_open(GC))*
+     (GC.null_K_module +
+      for x in KGB(GC) do (minus_1^length(x),K_type(x,gamma_rho)) od)
+in branch(module, ht(GC,gamma1##gamma2))
 
-{.tensor product of algebraic reps of complex group of extremal wts gamma1 and gamma2, returned as list of (multiplicity,highest weight)}
+{.tensor product of algebraic reps of complex group of extremal wts gamma1
+  and gamma2, returned as list of (multiplicity,highest weight)}
 set tensor_product_weights(RootDatum rd, vec gamma1, vec gamma2) = [(int,vec)]:
-let GC=rd.complexification, r= rd.rank
-then gamma=finite_dimensional(GC,gamma1##gamma2)
-then infchar = gamma.infinitesimal_character
-then Gamma = (-1)^length(x_open(GC))*sum(GC,for x in KGB(GC) do
-(-1)^length(x)*parameter(x,infchar,infchar) od)
-in for c@p in branch(Gamma, ht(GC,gamma1##gamma2)) do
-(split_as_int(c),ratvec_as_vec(lower(r,p.lambda) + upper(r,p.lambda))) od
+   let r=rd.rank, rho2=two_rho(rd)
+in for c@p in tensor_product(rd,gamma1,gamma2)
+   do let lambda_rho = p.lambda_minus_rho
+   in (split_as_int(c), lower(r,lambda_rho)+upper(r,lambda_rho)+rho2 )
+   od

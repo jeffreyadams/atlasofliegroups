@@ -1,8 +1,10 @@
+<basic.at
+<K_types.at { for |int_part@KTypePol|, |s_part@KTypePol| }
 <hermitian.at
 
-set negative_terms(Param p)=[(Param,int)]:
+set negative_terms(Param p)=[(KType,int)]:
 (  let P=hermitian_form_irreducible(p), ht_p=height(p)
-   then c=first_param(P)
+   then c=first_K_type(P)
    then a= #(!=int_part(c)), b=#(!=s_part(c)) { each one 0 or 1 }
    , ht_lim=ht_p { to ensure monotonicity }
 in if a*b=1 then prints("The LKT is indefinite.") fi
@@ -19,7 +21,7 @@ in if a*b=1 then prints("The LKT is indefinite.") fi
    od.##
 )
 
-set certificate (Param p) =[(Param,int)]:
+set certificate (Param p) =[(KType,int)]:
    if not is_hermitian(p) then prints("not hermitian"); []
    elif is_unitary(p) then prints("unitary"); []
    else prints("hermitian indefinite"); negative_terms(p)

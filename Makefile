@@ -100,7 +100,10 @@ Fokko_flags = $(Fokko_includes)
 # environment variable (only the first flavor set in above list takes effect)
 # alternatively, you can do "make CXXFLAVOR='explicit options'" to specify
 
-ifeq ($(optimize),true)
+ifeq ($(profile),true)
+      CXXFLAVOR := $(pflags)
+else
+ifneq ($(optimize),false)
 ifeq ($(debug),true)
       CXXFLAVOR := $(goflags)
 else
@@ -109,9 +112,6 @@ endif
 else
 ifeq ($(debug),true)
       CXXFLAVOR := $(gflags)
-else
-ifeq ($(profile),true)
-      CXXFLAVOR := $(pflags)
 else # use value from environment or command line, or default to normal
 CXXFLAVOR ?= $(nflags)
 endif

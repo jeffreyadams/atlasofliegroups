@@ -206,12 +206,19 @@ InvolutionNbr InvolutionTable::add_involution
   matreduc::column_echelon(A,col,flip);  // now |A| holds basis for image
   int_Matrix M_real = col.inverse().block(0,0,A.numColumns(),A.numRows());
 
+  // compute these before moving from |theta|:
+  Weight theta_plus_1_rho = (rd.twoRho()+theta*rd.twoRho())/2;
+  auto id = InvolutionData(rd,theta);
+  auto mods = tits::fiber_denom(theta); // |mod_space| for |x|
+
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),
-			M_real, A, // |lift_mat|
+  data.push_back(record(std::move(theta),
+			std::move(id),
+			std::move(M_real), std::move(A), // |lift_mat|
+			std::move(theta_plus_1_rho),
 			length,W_length,
-			tits::fiber_denom(theta))); // |mod_space| for |x|
+			std::move(mods)));
   assert(data.size()==hash.size());
 
   return result;
@@ -228,11 +235,19 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
   data.push_back(data[n]); // start out with a copy of the data
   record& me=data.back();
 
+  me.id.cross_act(rd.simple_root_permutation(s));
+
   rd.simple_reflect(s,me.theta);
   rd.simple_reflect(me.theta,s); // not |twisted(s)|: |delta| is incorporated
   rd.simple_reflect(me.M_real,s); // apply $s$ before |M_real|
   rd.simple_reflect(s,me.lift_mat); // and apply it after |lift_mat|
-  me.id.cross_act(rd.simple_root_permutation(s));
+
+  rd.simple_reflect(s,me.th1_rho); // this makes it |(1+theta)*s(rho)|
+  const RootNbr alpha = rd.simpleRootNbr(s); // so that |s(rho)=rho-alpha|
+  const RootNbr beta = me.id.root_involution(alpha); // |theta(alpha)|
+  me.th1_rho+=rd.root(alpha); // correct by adding root $\alpha_s$
+  me.th1_rho+=rd.root(beta);  // and $\theta(\alpha_s)$
+
   me.length   += d/2;
   me.W_length += d;
   me.mod_space.apply(torus_simple_reflection[s]);
@@ -303,6 +318,17 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
+// turn |lam_rho| into chosen unique representative modulo $(1-\theta)X^*$
+void InvolutionTable::lambda_unique(InvolutionNbr inv, Weight& lam_rho) const
+{
+  const record& rec=data[inv];
+  Weight v = rec.M_real * lam_rho;
+  // do Euclidean division by 2 of all coordinates to get correcting value
+  for (unsigned i=0; i<v.size(); ++i)
+    v[i]= arithmetic::divide(v[i],2);
+
+  lam_rho -= rec.lift_mat * v; // correction in original coordinates and scaled
+}
 
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const

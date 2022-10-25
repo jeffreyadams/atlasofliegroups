@@ -120,35 +120,35 @@ set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
 { requirement: x makes 2rho_c G-dominant }
 set W_K (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
 
-set move_weight ((KGBElt x,vec mu),KGBElt y) = (KGBElt,vec):
-  assert(real_form(x)=real_form(y),"Real form mismatch");
-  let w=cross_divide(y,x) in (y,w*mu)
-
-set move_weight (KHighestWeight (,x,mu),KGBElt y)=
-   k_highest_weight(move_weight((x,mu),y))
-
-set move_coweight((KGBElt x,vec mu),KGBElt y)=(KGBElt,vec):
-  assert(real_form(x)=real_form(y),"Real form mismatch");
-  let w=cross_divide(y,x) in (y,mu*inverse(w))
+set move_weight (KHighestWeight hw,KGBElt y) = KHighestWeight:
+  assert(real_form(hw)=real_form(y),"Real form mismatch");
+  k_highest_weight(y,cross_divide(y,hw.x)*hw.mu)
 
 { first replace (x,mu) with an equivalent ("nice") one such that x makes
   2rho_c G-dominant }
-set R_K_dom_mu_orbit (KHighestWeight(,x,mu)) = [KHighestWeight]:
-  if not is_dominant(real_form(x),tworho_c(x))
-  then set (x,mu) := move_weight((x,mu), nice_choice_x(real_form(x)))
-  fi;
-  let (K_0,R_K_dom)=W_K(x)
-  , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
-  then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu
-  then result=[KHighestWeight]:[] { we use the partial result during the loop }
-  in
-     for w in R_K_dom
-     do let mu_2=w*mu_1 in
-       if none(#result, (int i)bool: let (,,phi)=result[i] in mu_2=phi)
-       then result#:=k_highest_weight(x,mu_2)
-       fi
-   od;
+set R_K_dom_mu_orbit (KHighestWeight hw) = [KHighestWeight]:
+(  let G=real_form(hw)
+in
+   if not is_dominant(G,tworho_c(hw.x))
+   then hw := move_weight(hw,nice_choice_x(G))
+   fi
+;
+   let !x = hw.x, !mu = hw.mu { these are now fixed }
+   then (K_0,R_K_dom)=W_K(x)
+   , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+   then mu1 = lift_action(chamber(K_0,proj*mu),x)*mu
+   then result = { we use the partial result during the loop }
+      [KHighestWeight]:[]
+in
+   for w in R_K_dom
+   do let mu2 = w*mu1
+   in if none(#result, (int i)bool: let (,,phi)=result[i] in mu2 = phi)
+      then result#:=k_highest_weight(x,mu2)
+      fi
+   od
+;
    result
+)
 
 { test if mu\in X^*(T_K) is P-positive (khatHowe page 19)
   for each w=w_A in R_K_dom(x),  <mu,\sum_{i\in A}\beta^\vee_i> \ge 0
@@ -223,16 +223,11 @@ set make_strongly_dominant (KGBElt x,vec mu) =
  make it K_0-dominant, and compute stabilizer in R_K_dom
  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom_mu (KGBElt x,vec mu) = [WeylElt]:
-  let (K_0,R_K_dom)=W_K(x)
-  then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
-  then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu
-  in
+set R_K_dom_mu (KHighestWeight hw) = [WeylElt]:
+   let !x = hw.x, !mu = hw.mu { these are now fixed }
+   then (K_0,R_K_dom)=W_K(x)
+   , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+   then mu1 = lift_action(chamber(K_0,proj*mu),x)*mu
+   in
 {    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;}
-##for w in R_K_dom do if w*mu_1=mu_1 then [w] else [] fi od
-
-set R_K_dom_mu (KHighestWeight(,x,mu)) =  [WeylElt]: R_K_dom_mu(x,mu)
-
-
-
-
+##for w in R_K_dom do if w*mu1=mu1 then [w] else [] fi od

@@ -123,7 +123,7 @@ set hodge_recursive_deform (Param p) = hodgeParamPol:
 {      prints("hodge_full_def with: sc=", sc, ", p=", p);}
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p*0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~do
 	let p_def=p*factor { next deformation of |p| } then
@@ -142,7 +142,7 @@ set hodge_recursive_deform (Param p) = hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p*0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do
@@ -168,7 +168,7 @@ set hodge_recursive_deform_reverse (Param p) = hodgeParamPol:
 {      prints("hodge_full_def with: sc=", sc, ", p=", p);}
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p*0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       do  {ONLY change from hodge_recursive_deform is missing ~ here}
 	let p_def=p*factor { next deformation of |p| } then
@@ -187,7 +187,7 @@ set hodge_recursive_deform_reverse (Param p) = hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p*0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       do  {ONLY change from hodge_recursive_deform is missing ~ here}
       let hodge_d=hodge_deformation_terms(p*factor) in
@@ -203,9 +203,11 @@ let rv=nullHodgeParamPol(P.real_form) in
 for c@p in P do rv+:=c*hodge_recursive_deform(p) od;rv
 
 set hodge_recursive_deform(hodgeParamPol Q)=
-let rQ=rearrange(Q) { =[(f1,p1),...,(fn,pn)] }in
- dearrange(##for (c,p) in rQ do let hodge_rd_p=rearrange(hodge_recursive_deform(p)) in
-  for (d,q) in hodge_rd_p do (poly_product(c,d),q) od od)
+  dearrange(for (c,p) in rearrange(Q)
+	    do let hodge_rd_p=rearrange(hodge_recursive_deform(p)) in
+	       for (d,q) in hodge_rd_p do (poly_product(c,d),q) od
+	    od.##
+	   ,Q.real_form)
 
 set hodge_grading_std(Param p)=hodgeParamPol:hodge_recursive_deform(p)
 set hodge_grading_std(ParamPol P)=hodgeParamPol:hodge_recursive_deform(P)
