@@ -2254,8 +2254,8 @@ set unitary_facets ([FacetStatusVertsIndex] FSVI)=[vec]:
 
 set remove_closure ([vec] short,[vec] long) =[vec]:
   ##for v in short
-    do if none (for w in long do sorted_is_disjoint(v,w) od)
-       then [v] else []
+    do if any(for w in long do sorted_is_subset(v,w) od)
+       then [] else [v]
        fi
     od
 
@@ -2616,22 +2616,6 @@ set sphericalK(RealForm G) = FacetData:
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
 
-{for now just return the class statuses}
-set sphericalKPO(RealForm G) = [string]:
-    let data = facet_data_fold(G)
-    then FDKPO = actualizeKPO(x_open(G), G.rho, data)
-    then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
-    in spherical_testKPO(G, FDKPO, default_tester@Param)
-
-{return like sphericalK}
-set sphericalKPO_long(RealForm G) = FacetData:
-    let data = facet_data_fold(G)
-    then FDKPO = actualizeKPO(x_open(G), G.rho, data)
-    then () = FDKPO.class_status := facet_statusuKPO(G, FDKPO)
-    then () = FDKPO.class_status :=
-    	 spherical_testKPO(G, FDKPO, default_tester@Param)
-    in statuses_to_facets(G, FDKPO)
-
 {. apply actualize to the FacetData before computing unitarity; should mean
    that output is already actualized .}
 set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
@@ -2656,6 +2640,17 @@ set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
     then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
     in spherical_testKPO(G,FDKPO, tester)
 
+set spherical_testKPO_LONG(RealForm G, (Param -> bool) tester) =
+    FacetDataKcharPO:
+    let dataFold = facet_data_fold(G) { (rd,M,j0) }
+    then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
+    then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
+    then () = FDKPO.class_status :=
+    	 spherical_testKPO(G, FDKPO, tester)
+    then (,FDI) = statuses_to_facets(G,FDKPO)
+    then () = FDKPO.facet_status_inds:=FDI
+    in FDKPO
+
 set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     let dataFold = facet_data_fold(G) { (rd,M,j0) }
     then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
@@ -2663,6 +2658,18 @@ set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     then () = FDKPO.class_status :=
     	 spherical_testKPO(G, FDKPO, tester)
     in statuses_to_facets(G, FDKPO)
+
+{for now just return the class statuses}
+set sphericalKPO(RealForm G) = [string]:
+    spherical_testKPO(G,default_tester@Param)
+
+{return like sphericalK}
+set sphericalKPO_long(RealForm G) = FacetData:
+    spherical_testKPO_long(G,default_tester@Param)
+
+set sphericalKPO_LONG(RealForm G) =
+    FacetDataKcharPO:
+    spherical_testKPO_LONG(G, default_tester@Param)
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
