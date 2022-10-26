@@ -1,3 +1,7 @@
+<parameters.at
+<hermitian.at
+<aql.at
+<L_packet.at
 set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =(KGPElt, Param,ParamPol):
   let G=real_form(x)
 {find w making lambda_q weakly dominant}

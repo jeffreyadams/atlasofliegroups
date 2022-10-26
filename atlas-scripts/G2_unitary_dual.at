@@ -1,3 +1,6 @@
+<coordinates.at
+<lietypes.at
+
 set Cartan_classes(RealForm G)=[CartanClass]:
 ##for H in Cartan_classes(G) do
  if #KGB(H,G)>0 then [H] else [] fi od
@@ -10,10 +13,10 @@ set my_G2_simple_roots=[vec]:[[1,-1,0],[-2,1,1]]
  [change_matrix * i_change_matrix is 3x3, rational, NOT Identity]
 }
 
-set change_matrix=ratmat: change_basis(G,ratvecs_as_ratmat(my_G2_simple_roots))
+set change_matrix=ratmat: change_basis(simply_connected(G2),ratvecs_as_ratmat(my_G2_simple_roots))
 
 
-set i_change_matrix=ratmat: inverse_change_basis(G,ratvecs_as_ratmat(my_G2_simple_roots))
+set i_change_matrix=ratmat: inverse_change_basis(simply_connected(G2),ratvecs_as_ratmat(my_G2_simple_roots))
 
 {change: roots of G2: [x,y] coordinate to [a,b,c] coordinates
  i_change: roots of G2: [a,b,c] coordinates to [x,y] coordinates}
