@@ -34,9 +34,6 @@ namespace dynkin {
  */
 typedef std::pair<unsigned char, unsigned char> Edge;
 
-// The Multiplicity of an Edge should be 1, 2, or 3.
-typedef unsigned char Multiplicity;
-
 class DynkinDiagram;
 
 /******** function declarations *********************************************/
@@ -46,9 +43,7 @@ class DynkinDiagram;
   LieType Lie_type(const int_Matrix& cm);
 
   // same, also set |pi| to permutation "straightening" each diagram component
-  LieType Lie_type(const int_Matrix& cm,
-		   bool check, // if true, be prepared for arbitrary |cm|
-		   Permutation& pi);
+  LieType Lie_type(const int_Matrix& cm, Permutation& pi);
 
 
 /******** type definitions **************************************************/
@@ -82,7 +77,7 @@ class DynkinDiagram
   std::vector<RankFlags> d_star;
 
   // List of edges from longer to shorter node, with edge label (2 or 3)
-  sl_list<std::pair<Edge,Multiplicity> > down_edges;
+  sl_list<std::pair<Edge,short int> > down_edges;
 
   sl_list<comp_info> comps;
 
@@ -104,7 +99,7 @@ class DynkinDiagram
   bool is_simply_laced() const;
 
   int Cartan_entry(unsigned int i,unsigned int j) const;
-  Multiplicity edge_multiplicity(unsigned int i,unsigned int j) const
+  int edge_multiplicity(unsigned int i,unsigned int j) const
     { return Cartan_entry(i,j)*Cartan_entry(j,i); }
   bool are_adjacent(unsigned int i, unsigned int j) const
     { return star(i).test(j); }
@@ -121,7 +116,7 @@ class DynkinDiagram
 
 private: // functions that are only meaningful for connected diagrams
 
-  DynkinDiagram& classify(const int_Matrix& Cartan);
+  void classify(const int_Matrix& Cartan);
   void classify(const int_Matrix& Cartan,comp_info& ci) const;
 }; // |class DynkinDiagram|
 
