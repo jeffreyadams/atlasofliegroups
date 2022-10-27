@@ -1,0 +1,27 @@
+<all.at
+set speh(int n, int k_0)=
+assert(is_even(n), "n must be even");
+let G=GL(n,R) then
+k=k_0-2 {why?} then
+L=theta_stable_parabolics(G)~[1].Levi then
+p_L=parameter(L.trivial.x,rho(L)+k*(ones(n\2)##-ones(n\2)),rho(L)) in
+{let ()=prints(p_L) in}
+first_param(theta_induce_irreducible(p_L,G))
+{
+set speh(int n, int a, int b)=
+assert(is_even(n), "n must be even");
+let G=GL(n,R) then
+L=theta_stable_parabolics(G)~[1].Levi then
+p_L=parameter(L.trivial.x,rho(L)+a*(ones(n\2)##(b*ones(n\2))),rho(L)) in
+let ()=prints(p_L) in
+first_param(theta_induce_irreducible(p_L,G))
+}
+{
+set speh_x(int n,rat k)=
+assert(is_even(n), "n must be even");
+let G=GL(n,R) then
+x=G.trivial.x then
+lambda=G.rho+k*ones(n) then
+nu=rho(GL(n\2))##rho(GL(n\2)) in
+first_param(finalize(parameter(x,lambda,nu)))
+}
