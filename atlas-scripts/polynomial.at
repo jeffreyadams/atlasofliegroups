@@ -333,7 +333,7 @@ set scalar_multiply([i_poly] v,i_poly f) = [i_poly]:
 { polynomial scalar times polynomial matrix }
 set *(i_poly f,i_poly_mat M) = i_poly_mat:
   for row in M do scalar_multiply(row,f) od
-{ integer scalar case can be doen a bit more efficiently }
+{ integer scalar case can be done a bit more efficiently }
 set *(int c, i_poly_mat M) = i_poly_mat:
   for row in M do for p in row do p*c { use the *@(vec,int) built-in } od od
 
