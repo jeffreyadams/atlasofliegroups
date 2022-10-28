@@ -27,12 +27,12 @@ See the help file for the cmatrix command
 
 2) root basis
 
-The columnns give the simple roots in the given basis, as in the
+The columns give the simple roots in the given basis, as in the
 output of the roots and posroots commands.
 
 3) coroot basis
 
-The columnns give the simple coroots in the given basis, as in the
+The columns give the simple coroots in the given basis, as in the
 output of the coroots and poscoroots commands.
 
 4) radical basis
@@ -111,7 +111,7 @@ positive coroots :
 Example: root datum of GL(3)
 
 Since G is neither simply connected nor adjoint the bases of X^*(T)
-and X_*(T) are not partcularly nice. Both the root and coroot basis
+and X_*(T) are not particularly nice. Both the root and coroot basis
 matrices have 3 rows (rank 3) and 2 columns (semisimple rank 2).
 
 main: type
