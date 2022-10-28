@@ -9,7 +9,7 @@ subgroups is working. I killed a few serious bugs : one in smithNormal, one
 which was a flawed interpretation of the Cartan matrix (see the bugfile.)
 
 I want to stop for a while and take some time to reflect further on design
-issues. A major overhaul is in order to accomodate the fact that in the new
+issues. A major overhaul is in order to accommodate the fact that in the new
 L-group vision of representation theory, the central role is to be played
 by the _complex_ group, together with a given inner class of real forms.
 Such inner classes correspond bijectively to involutions in the outer 
@@ -22,7 +22,7 @@ of one partidular real form; the issue would then be to determine the inner
 class of that form. Also, mostly we want to start out from simple groups, where
 inputting the class would be much easier (Out(G) is small for simple groups.)
 
-So far, the order of inputting tha data has been (1) the Lie type (i.e. the
+So far, the order of inputting the data has been (1) the Lie type (i.e. the
 complex Lie algebra) (2) the real form (3) the lattice; and we needed to
 check that the given lattice was compatible with the real form. Here now
 it should be (1) the Lie type (2) the lattice --- then already much can be
