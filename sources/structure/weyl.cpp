@@ -2,7 +2,7 @@
 /*
   This is weyl.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2017 Marc van Leeuwen
+  Copyright (C) 2007--2017, 2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -166,6 +166,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
   fillCoxMatrix(d_coxeterMatrix,c,d_out);
 
   // now construct the transducer
+  // each one gets to know the Coxeter matrix and its place in the table
   for (Generator j = 0; j < d_rank; ++j)
     d_transducer[j] = Transducer(d_coxeterMatrix,j);
 
@@ -1099,8 +1100,8 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
     firstShift[j] = 0; // shift to (current) state 0, i.e., no transition
     firstOut[j] = j;   // but transduction of the same generator
   }
-  // note that firstShift[r]==UndefValue==UndefEltPiece and
-  // firstOut[r]==UndefValue==UndefGenerator remain from default construction
+  firstShift[r]=UndefEltPiece;
+  firstOut[r]=UndefGenerator;
 
   // in this loop, the table grows! the loop stops when x overtakes the
   // table size because no more new elements are created.
@@ -1108,7 +1109,7 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
   for (WeylElt::EltPiece x = 0; x < d_shift.size(); ++x)
     for (Generator s = 0; s <= r; ++s)
       /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
-         its presencein a slot in |d_shift| assures that this slot is
+         its presence in a slot in |d_shift| assures that this slot is
          unchanged from its intialisation value
       */
       if (d_shift[x][s] == UndefEltPiece)
@@ -1117,8 +1118,10 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
 	WeylElt::EltPiece xs =
 	  d_shift.size(); // index of state that will be added
 
-	d_shift.push_back(ShiftRow()); // push a row of UndefValue both onto
-	d_out.push_back(OutRow());     // |d_shift| and onto |d_out|
+	d_shift.push_back(ShiftRow());      // push onto |d_shift|
+	d_shift.back().fill(UndefEltPiece); // a row of |UndefEltPiece| values
+	d_out.push_back(OutRow());         // and onto push onto |d_out|
+	d_out.back().fill(UndefGenerator); // a row of |UndefGenerator| values
 
 	d_shift[x][s] = xs;
 	d_shift[xs][s] = x;

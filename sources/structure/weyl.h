@@ -2,7 +2,7 @@
   This is weyl.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2017 Marc van Leeuwen
+  Copyright (C) 2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -17,6 +17,7 @@
 #include <cstring>
 #include <cassert>
 #include <initializer_list>
+#include <array>
 
 #include "constants.h"
 #include "tags.h"
@@ -197,33 +198,14 @@ class Transducer
   // but $r$ is not explicitly stored in the |Tranducer| object
 
   // One row of a transducer table for a Weyl group.
-  class RowBase
-  {
-    unsigned char d_data[constants::RANK_MAX];
-
-   public:
-
-  // constructors and destructors
-    RowBase() { std::memset(d_data,UndefValue,sizeof(d_data)); }
-    ~RowBase() {}
-
-  // copy and assignment
-    RowBase(const RowBase& r) { std::memcpy(d_data,r.d_data,sizeof(d_data)); }
-
-    RowBase& operator=(const RowBase& r)
-      { std::memcpy(d_data,r.d_data,sizeof(d_data)); return *this; }
-
-  // accessors
-    Generator operator[] (Generator j) const { return d_data[j]; }
-
-  // manipulators
-    Generator& operator[] (Generator j)      { return d_data[j]; }
-  }; // |class RowBase|
+  using RowBase = std::array<unsigned char,constants::RANK_MAX>;
+  // this used to be a defined class contained in |Transducer|
+  // that allowed default initialisation to Undef values; now done explicitly
 
  public:
-  typedef RowBase ShiftRow; // the case of a transition entry
-  typedef RowBase OutRow;   // the case of a transduction entry
-  typedef unsigned short PieceIndex; // used to index letters inside a piece
+  using ShiftRow = RowBase; // the case of a transition entry
+  using OutRow   = RowBase; // the case of a transduction entry
+  using PieceIndex = unsigned short; // used to index letters inside a piece
   // as piece length cannot exceed number of states, |unsigned char| would do
  private:
 
@@ -355,14 +337,16 @@ class Transducer
   x_i. On a 32 bit machine, this representation works for W(E8), but not for
   W(A12) (which has order 13!, which is about 1.5 x 2^{32}).]
 
-   Any variable-size structure like the STL vector uses already three
-   unsigned longs for its control structure (the address of the data,
-   the size and the capacity), and then it still has to allocate. This
-   could perhaps be simplified to just a pointer (after all the size of
-   the allocation is known to the group) but you still have the big
-   overhead of allocating and deallocating memory from the heap, and
-   remembering to delete the pointers when they go out of scope, or
-   else use autopointers ...
+   The variable-size structure of an STL vector uses already three pointer
+   values for its control structure (the addresses of the start, fill level
+   and end of the dynamically allocated storage), and then it requires that
+   allocated storage itself. With a special purpose data type this could
+   perhaps be simplified to just a pointer (if the size matches capacity
+   and is known from the context, as here the semisimple rank of the group)
+   but you still have the big time overhead of allocating and deallocating
+   memory from the heap, and the obligation to implement your own memory
+   management... A lot of work for not "wasting" some byte in a fixed array
+   [Paragraph edited for clarity, see revision history for the original; MvL]
 
    And if worst comes to worst and one really is worried about a factor
    2 waste for type E8 (which might be significant if one deals with
