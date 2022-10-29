@@ -43,7 +43,7 @@ set greedy ([CyclotomicFieldElement] choices) = int: first(#choices,(int i)bool 
 set step = cyclotomic_pivot_step(greedy@[CyclotomicFieldElement])
 
 set get_data ([[CyclotomicFieldElement]] M) = [Cyclotomic_Pivot_info]:
-    let i=0 { number of previus pivots, increased for each pivot } in
+    let i=0 { number of previous pivots, increased for each pivot } in
     while >#M { traverse and remove successive columns of |M|, stop on empty }
     do let (pi,M0)=step(M,i) in case pi | pivot: i+:=1 | else () esac
     ; pi next M:=M0

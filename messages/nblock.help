@@ -28,7 +28,7 @@ nodes for such a factor in the usual Bourbaki ordering. When this happens,
 it is important to note that the subsystem generators nonetheless remain
 internally ordered by increasing number rather than by Lie type factor.
 This is important in interpreting cross action and Cayley links in the
-block output. So when, in a F4 situtation, Fokko would print
+block output. So when, in a F4 situation, Fokko would print
 
 "Subsystem on dual side is of type A2.A2, with roots 28,39,29,38."
 

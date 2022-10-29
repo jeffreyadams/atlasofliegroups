@@ -49,7 +49,7 @@
 	distinguish between ComponentList and BitMatrix. And finally, the
 	data in BitMatrix should probably be a single bitset.
 10-22-04 : done. Enormously simplified and clarified. Didn't put the data
-	in a simgle bitset, though.
+	in a single bitset, though.
 
 10-22-04 : I think I discovered a bug in gcc! When it complains about undefined
 	variables, it sometimes mixes them up in the message. This happened
@@ -120,7 +120,7 @@
 	be done anyway. Essentially it means that the search for the
 	FiberDatum would almost always succeed.
 
-07-31-05: made some progress allready streamlining the kgb computation. Now 
+07-31-05: made some progress already streamlining the kgb computation. Now 
 	mostly what remains to be done is get rid of the RootStatus list.
 	The status can in fact be computed directly. Indeed, the torus part
 	of the Tits group element, if pushed over to the right, gives exactly
@@ -285,7 +285,7 @@
 		       sources/utilities/graph.cpp
 
 11-24-05: very interesting results from profiling the block construction for
-	E7: allmost all the time goes to orbitPairs(), which I already knew,
+	E7: almost all the time goes to orbitPairs(), which I already knew,
 	and within orbitPairs, almost all the time goes to tauPacket(), which
 	came as a surprise. It should be possibl to speed up by a factor of
 	five, I believe.

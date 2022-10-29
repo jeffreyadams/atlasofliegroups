@@ -23,7 +23,7 @@
  BEFORE any of the utility forward files (the ones whose inclusion is excleded
  below) are invoked; this can be accomplished by including it before any other
  Atlas files in each non-utility header file. (Header or other files in the
- utility sub-directory itself should not include ot otherwise refer to this
+ utility sub-directory itself should not include or otherwise refer to this
  file, so as to retain their independence of the rest of the Atlas project.) In
  this manner those object files avoid including both such a forward file and its
  information duplicated here. Since the utility object files necessarily do use

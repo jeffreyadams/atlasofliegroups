@@ -67,7 +67,7 @@ gKmod
   kgb		classes for one-sided parameters (elements of K\G/B)
   descents	header-only module defining the |DescentStatus| class
   blocks	classes for two-sided parameters
-  klsupport	a base class for KL computations, streamlining block acces
+  klsupport	a base class for KL computations, streamlining block access
   wgraph	a class storing a W graph, and decomposition of it
   kl		the main KL computation (class KLContext)
   standardrepk  standard representations restricted to K: multiple classes
@@ -129,7 +129,7 @@ Standalone
   matstat	gathering statistics on the KL matrix
   polstat	gathering statistics on the KL polynomials
 
-Interpeter	The realex program
+Interpreter	The realex program
 
   buffer	input buffer class
   lexer		lexical analyser

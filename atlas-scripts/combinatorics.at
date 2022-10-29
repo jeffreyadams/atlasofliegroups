@@ -741,7 +741,7 @@ set normalize (Symbol S) = Symbol:
 set symbol (BiPartition(lambda,mu)) = Symbol: { normalized }
 (  let d =
      #(lambda:=strip_to_partition(lambda)) - (#(mu:=strip_to_partition(mu))+1)
-in case d { make |d=0| by zero-extending one of the paritions if necessary }
+in case d { make |d=0| by zero-extending one of the partitions if necessary }
    then { #lambda<#mu+1 } lambda ##:= for : -d do 0 od
    in { #lambda=#mu+1 }     ()
    else { #lambda>#mu+1 } mu     ##:= for : d do 0 od
