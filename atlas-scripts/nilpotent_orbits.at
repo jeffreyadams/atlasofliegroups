@@ -142,9 +142,6 @@ set Levi_of_H (vec H,RootDatum rd)=([int],vec):
       if i.>= then return(M,Hs[i]) fi
    od; error("No Levi found")
 
-set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
-   sort_by((ratvec .,[vec] v) int:#v)
-
 { find H which work for given q=q(x,H)=(L,u) }
 set find_H (Parabolic P) = [vec,mat]:
 begin

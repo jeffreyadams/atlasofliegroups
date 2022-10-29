@@ -145,7 +145,7 @@ set inverse_by_norm (CyclotomicFieldElement(v,F):z) = CyclotomicFieldElement:
 
 { better solutions based on linear system solving from Gaussian-elim.at }
 
-{.inverse of z = inverse of (matrix of multipliciation by z) applied to F.one.}
+{.inverse of z = inverse of (matrix of multiplication by z) applied to F.one.}
 set inverse_by_matrix (CyclotomicFieldElement(,F):z) = CyclotomicFieldElement:
    (times(inverse(matrix_of_multiplication(z)),F.one.v),F)
 

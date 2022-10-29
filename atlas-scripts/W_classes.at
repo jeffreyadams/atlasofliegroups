@@ -165,7 +165,7 @@ set is_conjugate_to ( WeylElt x
    then rho2 = dominant(rd,two_rho(Levi_info(x)))
    , (w_x,sLevi) = from_standard_Levi(rd,Levi_of(x))
    then x_ell = elliptic_reduction(x := /w_x * x * w_x)
-      next { check that assigment successfully moved |s| to our standard Levi }
+      next { check that assignment successfully moved |s| to our standard Levi }
       assert(Levi_of(x)=sLevi.sort,"failed to move x to standard Levi")
    then orbit = [int,WeylElt]: rho_stabiliser_orbit(rd,sLevi)
    , elliptic_test = elliptic_conjugacy_test(x_ell) { class membership in sLevi }
@@ -314,7 +314,7 @@ in while current<#orbit
   the size of the intersection, which multiplied by that of $W_L$ gives the size
   of $N_L$, and dividing the size of $W$ by that gives our Levi orbit size.
 
-  The orbit generation here is taylored to the specific situation, whence we do
+  The orbit generation here is tailored to the specific situation, whence we do
   it using local code (the |begin|-|end| block below) rather than writing or
   using a more general orbit generation. The special circumstance is that we
   know that all elements of the acting subgroup fix $\rho_L$, so the only way

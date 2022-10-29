@@ -662,7 +662,7 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
 {
   const size_t coef_size=4; // dictated (for now) by |basic_io::put_int|
 
-  basic_io::put_int(store.size(),out); // write number of KL poynomials
+  basic_io::put_int(store.size(),out); // write number of KL polynomials
 
   // write sequence of 5-byte indices, computed on the fly
   size_t offset=0; // position of first coefficient written

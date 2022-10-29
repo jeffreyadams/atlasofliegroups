@@ -6,7 +6,7 @@
 <W_reps.at { for types |W_rep|, |WCell| }
 
 { types C and B }
-{ in ths file we handle three kinds of objects
+{ in this file we handle three kinds of objects
   Orbit P: partition for nilpotent orbit of type C_n
          (odd parts have even multiplicity)
   [[int] f,[int] g]: symbol as defined by Lusztig
@@ -158,7 +158,7 @@ set all_reps_BC (int n) = [Hn_rep]:
    od.##
 
 { a (normalized) symbol is special if f_0<=g_0<= f_1...;
-  this is the "raison d'etre" of |Symbol|
+  this is the "raison d'être" of |Symbol|
 }
 set is_special (Symbol S) = bool:
    let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)

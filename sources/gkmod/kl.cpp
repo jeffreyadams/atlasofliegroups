@@ -323,7 +323,7 @@ weyl::Generator KL_table::first_nice_and_real(BlockElt x,BlockElt y) const
   1) (s,t) is (rn,r2) for y;
   2) (s,t) is (i1,ic) for x;
   3) (s,t) is (i1,i1/2) for s.x.
-  Since the statuses of t for x and s.x differ, s must be ajdacent to t in the
+  Since the statuses of t for x and s.x differ, s must be adjacent to t in the
   Dynkin diagram (but this is not tested or used explicitly here)
 
   Such a pair can be used to compute P_{x,y}+P_{s.x,y} using s,
@@ -1084,7 +1084,7 @@ void KL_table::swallow
   $(i,j)$ the edge label for the edge between $i$ and $j$ only if $s$ is in the
   $\tau$-invariant of $i$ but not in the of $j$, so the inclusion condition says
   that the removed edges will never have an effect on these action matrices.
-  It is this orentied graph that will be used in the definition of $W$-cells.
+  It is this oriented graph that will be used in the definition of $W$-cells.
 
   For block elements $x<y$, and nonzero $\mu(x,y)$ is stored in |d_mu[y]|.
   Recall from |complete_primitives| that nonzero $\mu(x,y)$ arise in two ways:

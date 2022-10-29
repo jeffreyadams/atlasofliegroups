@@ -315,7 +315,7 @@ These basic types are:
 type		represents
 -----------------------------------
 bool		truth values
-int		unbouded size integers
+int		unbounded size integers
 rat		rational numbers (reduced quotients of two unbounded integers)
 string		string of characters
 vec		vector of machine integers (32 bits, going from -2^31 to 2^31-1)
@@ -677,7 +677,7 @@ reasons the conversions themselves are defined conservatively: in doubtful
 cases they prefer to signal a runtime error rather than make a guess about the
 desired result. This applies in particular to conversion from a list of
 (column) vectors to a matrix, where their might be ambiguity about the number of
-rows of the result; a more explict alternative is provided as discussed below.
+rows of the result; a more explicit alternative is provided as discussed below.
 
 Here is a list of all implicit type conversions
 
@@ -945,7 +945,7 @@ so '+:=' is not really an operator (and is composed of separate '+' and ':=').
 The left hand side must be an expression that is accepted for assignment, which
 (currently) means eaither a variable or a simply subscritped variable (if v is a
 vector and i an integer then both v[i]:=5 and v[i]*:=5 are valid, and even
-v[i*:=2]+:=1 is accepted (the parser tranforms it into 'let $=(i*:=2) in
+v[i*:=2]+:=1 is accepted (the parser transforms it into 'let $=(i*:=2) in
 v[$]:=v[$]*2' where $ designates a fresh identifier); although this also works
 for matrix entries, as in A[i,j] *:= -1, one cannot for a list of lists L
 (having a type [[T]] for some type T) directly assign to L[i][j].
@@ -1572,7 +1572,7 @@ does not affect the meaning in any way): they may be mentioned before, after, or
 (as above) on both sides of that list. The only restriction is that when both
 are present, the 'then' branch should occur before the 'else' branch.
 
-The number n of 'in' branches is only requred to be nonzero. As a consequence,
+The number n of 'in' branches is only required to be nonzero. As a consequence,
 one can test whether an integer I is negative, zero, or positive using an
 integer case expression of the form 'case I then F in E else G esac'.
 
@@ -1734,7 +1734,7 @@ allows for more flexible uses, in which the condition and loop body are
 considered together rather than as two completely separate expressions. A first
 manifestation of this is that local variables introduced by 'let' in the
 condition (for which a separate instance is created each time the condition is
-eavluated) remain in scope in the loop body. For instance, in Euclids algorithm
+evaluated) remain in scope in the loop body. For instance, in Euclids algorithm
 for the greatest common divisor of two integers a,b, one needs to repeatedly
 compute the remainder r=a%b, stopping when r=0, but when r>0 also using r to
 replace a. Rather than recomputing r, or keeping it in a variable not local to
@@ -2431,10 +2431,10 @@ value of type KType respectively Param, and it has to satisfy is_final (since
 only sich terms can arise in these polynomials); the value assigned is the
 coefficient of the term for that KType or Param, which term is created if
 needed, and may disappear if the coefficient assigned is zero. On the other hand
-compound assignments are just rewritten as a non-compund assignement in a more
-complicated context; notably, a compound assignement 'ident # := expr' is
+compound assignments are just rewritten as a non-compund assignment in a more
+complicated context; notably, a compound assignment 'ident # := expr' is
 rewritten as 'indent := ident # (expr)'; the same goes for any infix operator in
-the place of '#'. As a consequence, the meaning of a compound assignement it is
+the place of '#'. As a consequence, the meaning of a compound assignment it is
 determined an instance of the operator used, overloaded for operand types of the
 'ident' and 'expr', and that overload can be either built-in or user-defined.
 

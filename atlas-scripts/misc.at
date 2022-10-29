@@ -30,7 +30,7 @@ set finalize ([Param] P) = ParamPol: { will fail on an empty list }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
-set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
+set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
 {properties of groups}

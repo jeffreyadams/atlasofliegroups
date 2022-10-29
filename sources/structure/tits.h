@@ -365,7 +365,7 @@ class TitsElt
   // Canonical Weyl part of the Tits group element.
   const WeylElt& w() const { return d_w; }
 
-/* the same componenent under another name (to make it smell sweeter); note
+/* the same component under another name (to make it smell sweeter); note
    however that this returns a value, not a reference (to avoid making the
    assumption here that |TwistedInvolution| is identical to |WeylElt|)
    */

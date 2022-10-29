@@ -326,7 +326,7 @@ set part_restricted_partitions ((int->bool)pred) =
 
 set odd_part_partitions = part_restricted_partitions(is_odd@int)
 
-{ partitions with distinct parts: all multiplicties are 0 or 1 }
+{ partitions with distinct parts: all multiplicities are 0 or 1 }
 set strict_partitions = (int n) [Partition]:
   if n.< then []
   else

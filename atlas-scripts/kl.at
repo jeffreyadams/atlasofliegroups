@@ -7,7 +7,7 @@
 <basic.at
 
 {
-  Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
+  Basic object: column of KL matrix (P-matrix), of polynomials evaluated as s,
   which by setting s=1 gives formula for irreducible as sum of standards
 
   main functions:

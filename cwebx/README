@@ -7,7 +7,7 @@ They are built by running "make" in the current directory. This should
 normally be done automatically while building Atlas, and the programs will
 then be called automatically under control of the Atlas makefiles.
 
-This directory contains just the derived compilable sources; no orignal source
+This directory contains just the derived compilable sources; no original source
 files, documentation or examples are provided, for which the official cwebx
 distribution should be used.
 

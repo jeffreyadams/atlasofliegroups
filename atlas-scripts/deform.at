@@ -5,7 +5,7 @@
 { this file defines commands that are equivalent to the |full_deform| command
   that is now built-in; it therefore serves mainly documentation (and
   historic) purposes, and should not be required for any other scripts. In
-  fact we added some initial commands that mimick the methods |KL_sum_at_s|
+  fact we added some initial commands that mimic the methods |KL_sum_at_s|
   and |deformation_terms| that were already originally implemented directly in
   the library, and used through the |deform| atlas command, in order to show
   after the fact how this could have been done as an atlas script
@@ -280,7 +280,7 @@ set twisted_c_form_irreducible_contributions (Param p) =
      fi
   od; (fixed_terms,unfixed_terms)
 
-{ for now we do not have any scirpt for the twisted deformation; use built-in }
+{ for now we do not have any script for the twisted deformation; use built-in }
 set twisted_c_form_irreducible (Param p) = KTypePol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }

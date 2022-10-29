@@ -18,7 +18,7 @@ set pad (string s,string alignment,int padding,string pad_char) = string:
   else c_adjust(padding,s,pad_char)
   esac
 
-{ print string matrix (by rows) |data|, aligining each column to largest width
+{ print string matrix (by rows) |data|, aligning each column to largest width
   plus |cell_padding|, while padding uniformly with |pad_char| (of size 1)
 }
 set tabulate ([[string]] data,

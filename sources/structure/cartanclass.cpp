@@ -62,7 +62,7 @@ namespace atlas {
   $\alpha_s$ associated to |x| is odd (noncompact). To facilitate the
   determination of that grading, the grading shift information is stored as
   bitsets |d_alpha[s]| for each simple-imaginary root. Since in |Fiber|, the
-  grading shifts are organised by generator of the fiber group, the neceesary
+  grading shifts are organised by generator of the fiber group, the necessary
   "transposition" of the information is done by the constructor below.
 */
 

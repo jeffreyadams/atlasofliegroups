@@ -65,7 +65,7 @@ class Mod2_System
   bitmap::BitMap a_solution() const; // sample solution, set of nonzero unknowns
 
   // the following calls |reduce| for efficiency, hence is a manipulator
-  std::vector<bitmap::BitMap> solution_basis(); // kernel of homogenous system
+  std::vector<bitmap::BitMap> solution_basis(); // kernel of homogeneous system
 
  private:
   // eliminate set pivot variable of |eqn[inx]| from |dst|, return its |rhs|
