@@ -886,7 +886,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   be because \emph{all} upstairs real roots becoming negative by the necessary
   conjugation will be downstairs complex roots (so contribute to the shift).
 
-  Sum of positve real roots becoming negative at $\theta'=^{to\_simple}\theta$
+  Sum of positive real roots becoming negative at $\theta'=^{to\_simple}\theta$
 */
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
@@ -2069,7 +2069,7 @@ SR_poly twisted_KL_sum
   const RatWeight& diff,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
-  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+  // compute cumulated KL polynomials $P_{x,y}$ with $x\leq y$ survivors
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;

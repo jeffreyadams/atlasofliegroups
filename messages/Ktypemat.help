@@ -41,7 +41,7 @@ The inverse of this matrix gives the matrix of K-multiplicities in the
 given normal standard representations. Now each column of the matrix
 correpsponds to a standard module, and each row a K-type. The entries
 in the column (positive integers) corresponding to standard module I_K
-gives the multiplicities of K-types in this stanard module, up to the
+gives the multiplicities of K-types in this standard module, up to the
 given height.
 
 *** Input and output ***
@@ -77,7 +77,7 @@ mu(j) = sum_i a(i,j)I_K(i)
 The software then prints the "Matrix of K-type multiplicities". An
 entry m in row i and column j means
 
-mu(i) has multipicity m in I_K(j)
+mu(i) has multiplicity m in I_K(j)
 
 i.e. if the matrix is b(i,j):
 

@@ -494,7 +494,7 @@ set sum ((int,int) shape, [mat] L) = mat:
   if =len then null(shape)
   else let s=L~[0] in assert(shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
   fi
-{ square matrices are frequent, so there is a spacial case of |sum| for them }
+{ square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
 { product of list of square matrices, with given size for when list is empty }

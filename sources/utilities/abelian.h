@@ -184,7 +184,7 @@ Cardinality of the group.
   |d_source[j]|. After forming $y_j=\sum_j a_{i,j} q_j x_j$ for each $i$, the
   component $y_i$ must be in the subgroup of index $t_i$ in $Z/M$, where $t_i$
   is |d_dest[i]|, in other words it must be divisible by $M/t_i$, and the
-  compoentn $i$ of the final result will be $y_i/(M/t_i)$. This definition is
+  component $i$ of the final result will be $y_i/(M/t_i)$. This definition is
   independent of the choice of $M$; we will take the lcm of the annihilators.
 
   In fact this definition might work for some group elements of the source but

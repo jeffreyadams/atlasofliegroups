@@ -26,7 +26,7 @@
 #include "kgb.h"	// associate information with |KGBElt| values
 #include "graph.h"	// |OrientedGraph| used in |triangularize|
 #include "ioutils.h"	// |foldLine| in |KhatContext::go|
-#include "basic_io.h"   // |opeator<<| in |SRK_context::print|
+#include "basic_io.h"   // |operator<<| in |SRK_context::print|
 #include "prettyprint.h"// |printVector| in |SRK_context::print|
 
 namespace atlas {

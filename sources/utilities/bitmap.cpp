@@ -139,7 +139,7 @@ BitMap::iterator BitMap::begin() const
 /*
   Return the past-the-end iterator for the bitmap.
 
-  This is only needed to allow using these iterators in genereric algorithms
+  This is only needed to allow using these iterators in generic algorithms
   which typically do |for (iterator it=x.begin(), it!=x.end(); ++it)|. In code
   that knows which kind of iterator this is, using |it()| as second clause is
   to be preferred.

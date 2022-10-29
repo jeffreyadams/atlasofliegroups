@@ -176,7 +176,7 @@ set inverse (inf_list f) = inf_list: divide([1].extend_0,f)
   and use |memoize| to avoid re-evaluating previous terms while computing new
   ones. The standard example is to compute the Fibonocci sequence F as 0, 1,
   followed by |sum(f,shift(1)(F))| (where the first argument to |sum| gives the
-  coefficient two steps before, the secnd argument the preceding coefficient).
+  coefficient two steps before, the second argument the preceding coefficient).
 
   Using |memoize| remains delicate here, since the |rec_fun| syntax does not
   allow anything being done before introducing arguments, as might be thought:

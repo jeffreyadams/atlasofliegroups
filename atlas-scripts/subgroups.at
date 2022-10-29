@@ -121,7 +121,7 @@ set stabilizer_elementary (RootDatum rd, ratvec gamma) = [WeylElt]:
 
 
 
-{ subgroup orthgonal to a set of roots}
+{ subgroup orthogonal to a set of roots}
 set orthogonal_subgroup (RootDatum rd, [vec] S) = (bool,RootDatum):
    let S_mat = mat: rank(rd)#S
    then roots = [vec]:

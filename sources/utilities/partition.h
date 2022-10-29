@@ -219,7 +219,7 @@ class PartitionIterator
     return tmp;
   }
 
-  void rewind () // set itereator to point to the first class
+  void rewind () // set iterator to point to the first class
   { d_range.first = d_stop[0];
     d_range.second = d_stop[1];
     d_currentEnd = d_stop.begin()+1;

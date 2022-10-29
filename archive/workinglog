@@ -287,7 +287,7 @@
 11-24-05: very interesting results from profiling the block construction for
 	E7: almost all the time goes to orbitPairs(), which I already knew,
 	and within orbitPairs, almost all the time goes to tauPacket(), which
-	came as a surprise. It should be possibl to speed up by a factor of
+	came as a surprise. It should be possible to speed up by a factor of
 	five, I believe.
 
 11-25-05: started work on reorganizing the k-l computation. Took d_extrPairs

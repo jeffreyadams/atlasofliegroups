@@ -18,7 +18,7 @@ set all_inner_classes(string type_and_rank) = [string]:
   then ["e","u"] else ["e"]
   fi
 
-{ generalte list of all simple groups of given rank
+{ generate list of all simple groups of given rank
   either simply connected "sc" or adjoint "ad"
 }
 set all_simple_given_isogeny_and_rank(string isogeny,int rank) = [RealForm]:

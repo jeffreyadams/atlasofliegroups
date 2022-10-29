@@ -16,7 +16,7 @@
 
 set ti_verbose=false
 
-{ truncate (already indeuced) character: keep the irreps of minimal degree,
+{ truncate (already induced) character: keep the irreps of minimal degree,
   according to |degree_function| (to be either |degree| or |generic_degree|),
   though negative values of degree function mean ignore the irrep altogether.
   the function returns (degree, list of indices of characters of this degree)

@@ -315,7 +315,7 @@ These basic types are:
 type		represents
 -----------------------------------
 bool		truth values
-int		unbouded size integers
+int		unbounded size integers
 rat		rational numbers (reduced quotients of two unbounded integers)
 string		string of characters
 vec		vector of machine integers (32 bits, going from -2^31 to 2^31-1)
