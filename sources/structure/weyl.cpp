@@ -69,9 +69,16 @@ namespace {
 
 } // anonymous |namespace|
 
-/*
-  Right multiplication action of simple reflections on a Weyl group modulo (to
-  the left) a maximal parabolic subgroup.
+/*****************************************************************************
+
+        Chapter 1 -- The WeylGroup::Transducer class
+
+  The |Transducer| is used to implement right multiplication action of simple
+  reflections on a Weyl group modulo (to the left) a parabolic subgroup. In the
+  cases where right multiplication by |s| stabilises the parabolic coset, a new
+  generator |t| is produced (to the left) to represent the commutation with the
+  chosen (minimal length coset representative |w|, so $w*s=t*w|. Here |t| is
+  always a generator of the parabolic subgroup to the left.
 
   In the notation from the description of the class WeylGroup, there will be
   one Transducer object for each parabolic subquotient W_{r-1}\\W_r. List the
@@ -110,6 +117,15 @@ class WeylGroup::Transducer
   // this used to be a defined class contained in |Transducer|
   // that allowed default initialisation to Undef values; now done explicitly
 
+  struct elem_info
+  { RowBase shift; // Right multiplication by $s_j$ transitions to |shift[j]|
+    RowBase out; // Right multiplication by $s_j$ may transduce |out[j]|
+    unsigned short length; // length of |piece| in quotient Bruhat order
+    WeylWord piece;
+
+    elem_info(unsigned short l) : shift(), out(), length(l), piece() {}
+  };
+
  public:
   using ShiftRow = RowBase; // the case of a transition entry
   using OutRow   = RowBase; // the case of a transduction entry
@@ -117,22 +133,7 @@ class WeylGroup::Transducer
   // as piece length cannot exceed number of states, |unsigned char| would do
  private:
 
-  // Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
-  std::vector<ShiftRow> d_shift;
-
-/*
-  If |d_shift[i][j]==i| then $s_j$ transduces in state $i$ to $s_k$
-  with $k=d_out[i][j]$ (otherwise |d_out[i][j]==UndefGenerator|).
-
-  In this case $x_i.s_j = s_k.x_i$, so the state $i$ remains unchanged.
-*/
-  std::vector<OutRow> d_out;
-
-  // Lengths of the minimal coset representatives $x_i$.
-  std::vector<unsigned short> d_length;
-
-  // Reduced expressions of the minimal coset representatives.
-  std::vector<WeylWord> d_piece; // individual elements indexed by |PieceIndex|
+  std::vector<elem_info> elt;
 
  public:
 
@@ -147,7 +148,7 @@ class WeylGroup::Transducer
 
 
   // Length of minimal coset representative x.
-  PieceIndex length(WeylElt::EltPiece x) const { return d_length[x]; }
+  unsigned int length(WeylElt::EltPiece x) const { return elt[x].length; }
 
 
 /*
@@ -156,15 +157,15 @@ class WeylGroup::Transducer
   This is the number of positive roots for the Levi subgroup L_r, minus
   the number of positive roots for L_{r-1}.
 */
-  PieceIndex maxlength() const { return d_length.back(); }
-
+  unsigned int max_length() const { return elt.back().length; }
 
 /*
   Simple reflection t (strictly preceding s) so that xs = tx, if any
 
-  In case of a transition, this returns |UndefGenerator|.
+  In case of a transition within the quotient, this returns |UndefGenerator|.
 */
-  Generator out(WeylElt::EltPiece x, Generator s) const { return d_out[x][s]; }
+  Generator out(WeylElt::EltPiece x, Generator s) const
+  { return elt[x].out[s]; }
 
 /*
   Right coset x' defined by x' = xs.
@@ -174,14 +175,14 @@ class WeylGroup::Transducer
   is out(x,s).x = x.s.
 */
   WeylElt::EltPiece shift(WeylElt::EltPiece x, Generator s) const
-   { return d_shift[x][s]; }
+   { return elt[x].shift[s]; }
 
   // Number of cosets W_{r-1}\\W_r.
-  unsigned int size() const { return d_shift.size(); } // must be at most 256
+  unsigned int size() const { return elt.size(); } // must be at most 256
 
 
   // Reduced decomposition in W (or W_r) of minimal coset representative x.
-  const WeylWord& wordPiece(WeylElt::EltPiece x) const { return d_piece[x]; }
+  const WeylWord& wordPiece(WeylElt::EltPiece x) const { return elt[x].piece; }
 
 private:
   WeylElt::EltPiece
@@ -192,6 +193,155 @@ private:
 
   // this class should have no manipulators!
 }; // |class WeylGroup::Transducer|
+
+
+/*****************************************************************************
+
+  We implement here the construction of the Transducer tables (all accessors
+  are defined in the class definition, and there are are no manipulators).
+  This is described in section 4 of Fokko's 1999 paper "Transducer approach.."
+  Actually, that paper does almost everything by induction, in particular it
+  makes a (somewhat vague) reference to using previously constructed
+  transducer tables while bootstrapping the current one; this is not what is
+  done here, which proceeds strictly independently of other Transducer tables.
+  The mention of dihedral groups below replaces the inductive part. [MvL]
+
+******************************************************************************/
+
+/*
+  Construct subquotient \#r for the Coxeter matrix c.
+
+  This uses the Coxeter matrix only up to index r. In fact we can behave as
+  if generator |r| is the final one, since we ignore any higher ones for now.
+
+  Precondition : c is a _normalized_ Coxeter matrix (meaning that all
+  the parabolic subquotients W_{r-1}\\W_r are small enough to fit in
+  an unsigned char); and r is < rank(c);
+
+  Algorithm :
+
+  The algorithm is a version of my [Fokko] favorite bootstrapping procedure
+  for the construction of Weyl groups and parabolic quotients. We start with a
+  partially defined automaton containing only one element, and for which all
+  shifts by the final generator $r$ are not yet defined (generators $i<r$ give
+  transduction of $i$). At each point in time, all shifts for all elements in
+  the automaton that do _not_ take the length up are defined; and we maintain
+  a queue of elements that may have as yet undefined shifts.
+
+  We start up with one element in the automaton, with just one undefined
+  shift, the one by r. Then run through the elements $x$ of the automaton in
+  order of generation (which will also be in ShortLex order), and for each as
+  yet undefined shift of $x$ by $s$ :
+
+    - add a new element $xs$ (this increases the size of the automaton, during
+      the loop!). At this point it is sure that this element is really new,
+      and that its normal form is obtained by adding $s$ to that of $x$
+
+    - then find all other elements $x'$ already in the automaton and $t$ such
+      that $xs==x't$ (so $x't$ gives a non-canonical but reduced expression
+      for $xs$). Do this by trying generators $t\neq s$: if $xst$ goes down
+      (has the same length as $x$) then $x'==xst$ gives such a case. The trick
+      for this is to look at the orbit of x under the dihedral group $\<s,t>$.
+      In the full group, this has necessarily cardinality 2m, with m = m(s,t)
+      the coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff $xs$ is
+      the unique elt. of maximal length in the orbit, hence to have this $x$
+      must goes down $m-1$ times when applying successively $t$, $s$, $t$, ...
+      In the parabolic quotient, the orbit of the dihedral group (which is not
+      reduced to a point) can either have cardinality $2m$ or cardinality $m$,
+      and in the latter case it is a string with $m-1$ steps between the
+      bottom and the top, with a stationary step at either extreme (to see
+      this, note that on one hand each step up in the full group gives a step
+      in the quotient that is either up or stationary, while on the other hand
+      a stationary step in the quotient causes then next step to be the
+      reverse of the previous one). So we have one of the following three
+      cases: (1) $x$ goes down $m-1$ times; then the image of the orbit has
+      $2m$ elements and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down
+      $m-2$ times to some element $a$ and is then stationary (if
+      $s'\in\{s,t\}$ is the next to apply, then $a.s'=g.a$ for some generator
+      $g\in W_{r-1}$). In case (2) the orbit has $m$ elements, and if $v$ is
+      the alternating word in $\{s,t\}$ of length $m-2$ not starting with
+      $s'$, so that $a.v=x$, one has $v.st=s'vs$ whence
+      $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a transduction for $t$
+      that outputs the generator $g$. (3) either $x$ goes down less than $m-2$
+      times, or $m-2$ times followed by an upward step; then $xst$ goes up.
+*/
+
+WeylGroup::Transducer::Transducer(const int_Matrix& c, Generator r)
+  : elt() // with empty word, length 0.
+
+{
+  // first row of transition and of transduction table
+  elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
+
+  // all shifts lower than |r| are transductions of unchanged generator
+  for (Generator j = 0; j < r; ++j)
+  {
+    elt[0].shift[j]=0; // shift to self, no transition
+    elt[0].out[j]=j;   // transduction of unchanged generator
+  }
+  elt[0].shift[r]=UndefEltPiece;
+  elt[0].out[r]  =UndefGenerator;
+
+  // in this loop, the |elt| table grows! the loop stops when x overtakes the
+  // table size because no more new elements are created.
+
+  for (WeylElt::EltPiece x = 0; x < elt.size(); ++x)
+  {
+    for (Generator s = 0; s <= r; ++s)
+      /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
+         its presence in a slot in |d_shift| assures that this slot is
+         unchanged from its intialisation value
+      */
+      if (elt[x].shift[s] == UndefEltPiece)
+      {
+
+	const WeylElt::EltPiece xs = elt.size(); // piece that will be added
+
+	elt.emplace_back(elt[x].length+1);
+	elt[xs].shift.fill(UndefEltPiece);
+	elt[xs].out.fill(UndefGenerator);
+
+	elt[x].shift[s] = xs;
+	elt[xs].shift[s] = x;
+
+	elt[xs].piece = elt[x].piece;
+	elt[xs].piece.push_back(s); // append a letter |s| w.r.t. our |piece|
+
+	// now define the shifts or transductions that do not take |xs| upward
+
+	for (Generator t = 0; t <= r; ++t)
+	{
+	  if (t == s)
+	    continue;
+
+	  WeylElt::EltPiece y  = dihedralMin(xs,s,t);
+	  unsigned int d = elt[xs].length - elt[y].length;
+	  unsigned int m = c(s,t); // non negative coef from Coxeter matrix
+	  Generator st[] = {s,t};
+
+	  if (d == m)
+	  { // case (1): there is no transduction
+	    // xs.t is computed by shifting up from y the other way around
+	    y = dihedralShift(y,st[m%2],st[(m+1)%2],m-1);
+	    elt[xs].shift[t] = y;
+	    elt[y ].shift[t] = xs;
+	  }
+	  else if (d == m-1)
+	  {
+	    Generator u = st[(m+1)%2];
+
+	    if (elt[y].shift[u] == y)
+	    { // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
+	      elt[xs].shift[t] = xs;
+	      elt[xs].out[t]   = elt[y].out[u];
+	    }
+	  }
+	  else assert(d<m-1); // case (3):  $t$ takes $xs$ up, do nothing
+	} // |for(t)|
+      } // |if (..==UndefEltPiece)|
+    // |for(s)|
+  } // |for(x)|
+} // |Transducer::Transducer|
 
 /*****************************************************************************
 
@@ -290,7 +440,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 
   // its length is obtained by summing the (maximal) lengths of its pieces
   for (Generator j = 0; j < d_rank; ++j)
-    d_maxlength += d_transducer[j].maxlength();
+    d_maxlength += d_transducer[j].max_length();
 
   // and the Weyl group size is the product of the numbers of transducer states
   for (Generator j = 0; j < d_rank; ++j)
@@ -322,6 +472,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 
 } // |WeylGroup::WeylGroup|
 
+// these methods use the default, but that requires |Transducer| type complete
 WeylGroup::WeylGroup(WeylGroup&& W) = default;
 WeylGroup::~WeylGroup() = default;
 
@@ -1132,163 +1283,6 @@ WeightInvolution TwistedWeylGroup::involution_matrix
 
   return WeightInvolution(b,b.size());
 }
-
-
-/*****************************************************************************
-
-        Chapter II -- The Transducer class
-
-  We implement here the construction of the Transducer tables (all accessors
-  are defined in the class definition, and there are are no manipulators).
-  This is described in section 4 of Fokko's 1999 paper "Transducer approach.."
-  Actually, that paper does almost everything by induction, in particular it
-  makes a (somewhat vague) reference to using previously constructed
-  transducer tables while bootstrapping the current one; this is not what is
-  done here, which proceeds strictly independently of other Transducer tables.
-  The mention of dihedral groups below replaces the inductive part. [MvL]
-
-******************************************************************************/
-
-/*
-  Construct subquotient \#r for the Coxeter matrix c.
-
-  This uses the Coxeter matrix only up to index r. In fact we can behave as
-  if generator |r| is the final one, since we ignore any higher ones for now.
-
-  Precondition : c is a _normalized_ Coxeter matrix (meaning that all
-  the parabolic subquotients W_{r-1}\\W_r are small enough to fit in
-  an unsigned char); and r is < rank(c);
-
-  Algorithm :
-
-  The algorithm is a version of my [Fokko] favorite bootstrapping procedure
-  for the construction of Weyl groups and parabolic quotients. We start with a
-  partially defined automaton containing only one element, and for which all
-  shifts by the final generator $r$ are not yet defined (generators $i<r$ give
-  transduction of $i$). At each point in time, all shifts for all elements in
-  the automaton that do _not_ take the length up are defined; and we maintain
-  a queue of elements that may have as yet undefined shifts.
-
-  We start up with one element in the automaton, with just one undefined
-  shift, the one by r. Then run through the elements $x$ of the automaton in
-  order of generation (which will also be in ShortLex order), and for each as
-  yet undefined shift of $x$ by $s$ :
-
-    - add a new element $xs$ (this increases the size of the automaton, during
-      the loop!). At this point it is sure that this element is really new,
-      and that its normal form is obtained by adding $s$ to that of $x$
-
-    - then find all other elements $x'$ already in the automaton and $t$ such
-      that $xs==x't$ (so $x't$ gives a non-canonical but reduced expression
-      for $xs$). Do this by trying generators $t\neq s$: if $xst$ goes down
-      (has the same length as $x$) then $x'==xst$ gives such a case. The trick
-      for this is to look at the orbit of x under the dihedral group $\<s,t>$.
-      In the full group, this has necessarily cardinality 2m, with m = m(s,t)
-      the coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff $xs$ is
-      the unique elt. of maximal length in the orbit, hence to have this $x$
-      must goes down $m-1$ times when applying successively $t$, $s$, $t$, ...
-      In the parabolic quotient, the orbit of the dihedral group (which is not
-      reduced to a point) can either have cardinality $2m$ or cardinality $m$,
-      and in the latter case it is a string with $m-1$ steps between the
-      bottom and the top, with a stationary step at either extreme (to see
-      this, note that on one hand each step up in the full group gives a step
-      in the quotient that is either up or stationary, while on the other hand
-      a stationary step in the quotient causes then next step to be the
-      reverse of the previous one). So we have one of the following three
-      cases: (1) $x$ goes down $m-1$ times; then the image of the orbit has
-      $2m$ elements and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down
-      $m-2$ times to some element $a$ and is then stationary (if
-      $s'\in\{s,t\}$ is the next to apply, then $a.s'=g.a$ for some generator
-      $g\in W_{r-1}$). In case (2) the orbit has $m$ elements, and if $v$ is
-      the alternating word in $\{s,t\}$ of length $m-2$ not starting with
-      $s'$, so that $a.v=x$, one has $v.st=s'vs$ whence
-      $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a transduction for $t$
-      that outputs the generator $g$. (3) either $x$ goes down less than $m-2$
-      times, or $m-2$ times followed by an upward step; then $xst$ goes up.
-*/
-
-WeylGroup::Transducer::Transducer(const int_Matrix& c, Generator r)
-  : d_shift(1), d_out(1) // start with tables of size 1
-  , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
-
-{
-  // first row of transition and of transduction table
-
-  ShiftRow& firstShift=d_shift[0];
-  OutRow& firstOut=d_out[0];
-
-  // all shifts lower than r should be defined
-  for (Generator j = 0; j < r; ++j)
-  {
-    firstShift[j] = 0; // shift to (current) state 0, i.e., no transition
-    firstOut[j] = j;   // but transduction of the same generator
-  }
-  firstShift[r]=UndefEltPiece;
-  firstOut[r]=UndefGenerator;
-
-  // in this loop, the table grows! the loop stops when x overtakes the
-  // table size because no more new elements are created.
-
-  for (WeylElt::EltPiece x = 0; x < d_shift.size(); ++x)
-    for (Generator s = 0; s <= r; ++s)
-      /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
-         its presence in a slot in |d_shift| assures that this slot is
-         unchanged from its intialisation value
-      */
-      if (d_shift[x][s] == UndefEltPiece)
-      {
-
-	WeylElt::EltPiece xs =
-	  d_shift.size(); // index of state that will be added
-
-	d_shift.push_back(ShiftRow());      // push onto |d_shift|
-	d_shift.back().fill(UndefEltPiece); // a row of |UndefEltPiece| values
-	d_out.push_back(OutRow());         // and onto push onto |d_out|
-	d_out.back().fill(UndefGenerator); // a row of |UndefGenerator| values
-
-	d_shift[x][s] = xs;
-	d_shift[xs][s] = x;
-	// new element has length length(x)+1
-	d_length.push_back(d_length[x]+1);
-
-	WeylWord xs_ww = d_piece[x]; // get normal form for |x|
-	xs_ww.push_back(s);          // and append a letter |s|
-	d_piece.push_back(xs_ww);    // which gives normal form for |xs|
-
-
-	// now define the shifts or transductions that do not take xs up
-
-	for (Generator t = 0; t <= r; ++t)
-	{
-	  if (t == s)
-	    continue;
-
-	  WeylElt::EltPiece y  = dihedralMin(xs,s,t);
-	  unsigned int d = d_length[xs] - d_length[y];
-	  unsigned int m = c(s,t); // non negative coef from Coxeter matrix
-	  Generator st[] = {s,t};
-
-	  if (d == m)
-	  { // case (1): there is no transduction
-	    // xs.t is computed by shifting up from y the other way around
-	    y = dihedralShift(y,st[m%2],st[(m+1)%2],m-1);
-	    d_shift[xs][t] = y;
-	    d_shift[y][t] = xs;
-	  }
-	  else if (d == m-1)
-	  {
-	    Generator u = st[(m+1)%2];
-
-	    if (d_shift[y][u] == y)
-	    { // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
-	      d_shift[xs][t] = xs;
-	      d_out[xs][t] = d_out[y][u];
-	    }
-	  }
-	  else assert(d<m-1); // case (3):  $t$ takes $xs$ up, do nothing
-	} // |for(t)|
-      } // |if (..==UndefEltPiece)|, |for|, |for|
-} // |Transducer::Transducer|
 
 
 
