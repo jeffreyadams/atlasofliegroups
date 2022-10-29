@@ -67,16 +67,6 @@ namespace {
 		     const int_Matrix&,
 		     const WeylInterface&);
 
-  WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
-				      WeylElt::EltPiece,
-				      weyl::Generator,
-				      weyl::Generator);
-
-  WeylElt::EltPiece dihedralShift(const weyl::Transducer&,
-					WeylElt::EltPiece,
-					weyl::Generator,
-					weyl::Generator,
-					unsigned int);
 } // anonymous |namespace|
 
 /*****************************************************************************
@@ -1084,7 +1074,7 @@ WeightInvolution TwistedWeylGroup::involution_matrix
       times, or $m-2$ times followed by an upward step; then $xst$ goes up.
 */
 
-Transducer::Transducer(const int_Matrix& c, Generator r)
+WeylGroup::Transducer::Transducer(const int_Matrix& c, Generator r)
   : d_shift(1), d_out(1) // start with tables of size 1
   , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
 
@@ -1140,7 +1130,7 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
 	  if (t == s)
 	    continue;
 
-	  WeylElt::EltPiece y  = dihedralMin(*this,xs,s,t);
+	  WeylElt::EltPiece y  = dihedralMin(xs,s,t);
 	  unsigned int d = d_length[xs] - d_length[y];
 	  unsigned int m = c(s,t); // non negative coef from Coxeter matrix
 	  Generator st[] = {s,t};
@@ -1148,7 +1138,7 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
 	  if (d == m)
 	  { // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
-	    y = dihedralShift(*this,y,st[m%2],st[(m+1)%2],m-1);
+	    y = dihedralShift(y,st[m%2],st[(m+1)%2],m-1);
 	    d_shift[xs][t] = y;
 	    d_shift[y][t] = xs;
 	  }
@@ -1224,6 +1214,55 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
   return result;
 }
 
+/*
+  Return the minimal element in the orbit of |x| under |s| and |t|.
+
+  Precondition : |s| is in the descent set of |x|;
+*/
+WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralMin
+  (WeylElt::EltPiece x,
+   weyl::Generator s,
+   weyl::Generator t) const
+{
+  weyl::Generator u = s;
+  weyl::Generator v = t;
+
+  WeylElt::EltPiece y = x;
+
+  for (;;)
+  { // this is ok even if the shift is still undefined:
+    if (shift(y,u) >= y)
+      return y;
+    else
+      y = shift(y,u);
+    std::swap(u,v);
+  }
+}
+
+/*
+  Return the result of applying |s| and |t| alternately to |x|, for a
+  total of |d| times.
+*/
+WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralShift
+(WeylElt::EltPiece x,
+ weyl::Generator s,
+ weyl::Generator t,
+ unsigned int d) const
+{
+  weyl::Generator u = s;
+  weyl::Generator v = t;
+
+  WeylElt::EltPiece y = x;
+
+  for (unsigned int j = 0; j < d; ++j)
+  {
+    y = shift(y,u);
+    std::swap(u,v);
+  }
+
+  return y;
+}
+
 
 /*****************************************************************************
 
@@ -1233,55 +1272,7 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 
 namespace {
 
-/*
-  Return the minimal element in the orbit of |x| under |s| and |t|.
 
-  Precondition : |s| is in the descent set of |x|;
-*/
-WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
-				    WeylElt::EltPiece x,
-				    weyl::Generator s,
-				    weyl::Generator t)
-{
-  weyl::Generator u = s;
-  weyl::Generator v = t;
-
-  WeylElt::EltPiece y = x;
-
-  for (;;)
-  { // this is ok even if the shift is still undefined:
-    if (qa.shift(y,u) >= y)
-      return y;
-    else
-      y = qa.shift(y,u);
-    std::swap(u,v);
-  }
-}
-
-
-/*
-  Return the result of applying |s| and |t| alternately to |x|, for a
-  total of |d| times.
-*/
-WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
-				      WeylElt::EltPiece x,
-				      weyl::Generator s,
-				      weyl::Generator t,
-				      unsigned int d)
-{
-  weyl::Generator u = s;
-  weyl::Generator v = t;
-
-  WeylElt::EltPiece y = x;
-
-  for (unsigned int j = 0; j < d; ++j)
-  {
-    y = qa.shift(y,u);
-    std::swap(u,v);
-  }
-
-  return y;
-}
 
 
 /*
