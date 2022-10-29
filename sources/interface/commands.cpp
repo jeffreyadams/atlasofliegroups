@@ -211,7 +211,7 @@ void CommandNode::addCommands(const CommandNode& source)
 
 /* the following function exists to remedy the fact that |look_up| does not
    record the path to the match it has found (supposing it did); its calling
-   interface is already compicated as it is. So we ask our children which one
+   interface is already complicated as it is. So we ask our children which one
    knows the mode that was returned. The interrogation is repeated recursively
    down, but in practice very few modes exist at all, and this is very quick.
  */

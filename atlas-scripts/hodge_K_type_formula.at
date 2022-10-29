@@ -439,7 +439,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
       P  {return value from hodge_table}
      else {k=-1: need to do calculation}
       let A=
-      if hodge_K_type_formula_verbose then prints("not found: ", p_L_j, " ", p_L_j.real_form, " ",P, "result not in table, doing calclulation") fi;
+      if hodge_K_type_formula_verbose then prints("not found: ", p_L_j, " ", p_L_j.real_form, " ",P, "result not in table, doing calculation") fi;
       hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
       if #nilrad_roots(P)=0 then
        if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots=0, no recursion needed") fi;

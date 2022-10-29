@@ -89,7 +89,7 @@ class HashTable
 
   // constructor
   HashTable(typename Entry::Pooltype& pool, // caller supplies ref to pool
-	    unsigned int n=8); // intially make $2^n$ slots
+	    unsigned int n=8); // initially make $2^n$ slots
 
   // manipulators
   Number match(const Entry& x);   // lookup |x| and return its sequence number

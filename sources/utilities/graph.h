@@ -43,7 +43,7 @@ class OrientedGraph
 
   explicit OrientedGraph(size_t n):d_edges(n) {}
 
-// copy, construction and swap: nothing needed beyond defualts
+// copy, construction and swap: nothing needed beyond defaults
 
 // accessors
   partition::Partition cells(OrientedGraph* p = nullptr) const;

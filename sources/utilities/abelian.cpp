@@ -317,7 +317,7 @@ namespace abelian {
 
   Precondition: the elements of |al| are of size source.rank(), and their
   number is dest.rank(). Note that the matrix is therefore given by rows
-  (linear forms on |source|), not by columns (images in |dest|); unusal!
+  (linear forms on |source|), not by columns (images in |dest|); unusual!
 */
 Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 			   const FiniteAbelianGroup& source,
@@ -611,7 +611,7 @@ void to_array(GrpArr& a, const matrix::Vector<int>& v, const GroupType& t)
 /*
   Transform |q| into the corresponding |Endomorphism|.
 
-  This just involves rewriting the coeficients as unsigned longs modulo
+  This just involves rewriting the coefficients as unsigned longs modulo
   the type factors.
 */
 void toEndomorphism(Endomorphism& e, const matrix::PID_Matrix<int>& q,

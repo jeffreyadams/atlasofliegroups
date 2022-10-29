@@ -465,7 +465,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
   complex root in the simple basis by its opposite. In reality the positive
   system is fixed, and the moves conjugate $\theta$ and reflect |dom|. In fact
   we shall need a fiber part as well as an involution once we have obtained
-  our goal, so conjugetion is in fact |basedTwistedConjugate| on |strong|.
+  our goal, so conjugation is in fact |basedTwistedConjugate| on |strong|.
  */
 PSalgebra
 SRK_context::theta_stable_parabolic

@@ -140,7 +140,7 @@ public:
       return big_int(x) ^= *this;
   }
   big_int bitwise_subtract (const big_int& x) const
-  { // copy the shorter positive contrinution; if none the longer (negative) one
+  { // copy the shorter positive contribution; if none the longer (negative) one
     if (is_negative()
 	? not x.is_negative() and d.size()>=x.d.size()
 	: not x.is_negative() or  d.size()<=x.d.size())

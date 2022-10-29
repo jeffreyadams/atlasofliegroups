@@ -4,7 +4,7 @@
 
 {This file was largely copied from Gaussian_elim.at, which does
 the same thing over the rationals. See that file for details
-on the algorithms implmented here.
+on the algorithms implemented here.
 }
 
 set_type

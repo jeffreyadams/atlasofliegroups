@@ -143,7 +143,7 @@ void twisted_act
   meant that real forms, which are identified as orbits in the adjoint fiber
   group, were generated without access to the |CartanClass| information. In
   fact, although that information is now available right away, the real forms
-  are still genrated without using that information. Instead an "adjoint"
+  are still generated without using that information. Instead an "adjoint"
   instance of the Tits group (of which another instance will serve similalrly
   for generation of KGB elements) is used to find elements representing the
   real form at each of its Cartan classes. The other fields of |C_info| store

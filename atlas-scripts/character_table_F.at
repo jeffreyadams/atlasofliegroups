@@ -6,7 +6,7 @@
   class representatives for any $F_4T_k$ type root datum in a fixed order, which
   order is used below to write down characters below. The numbering of the
   $W(F_4)$ irreducibles is determined by the |character_table_F4_data| table.
-  The following funtions efunction |character_table_F| will then construct
+  The following functions efunction |character_table_F| will then construct
   a valid character table, which those numberings, for any such root datum. }
 
 set !character_table_F4_data = [[int],int,int]: { character, degree, n_primes }

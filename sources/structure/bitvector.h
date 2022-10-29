@@ -225,7 +225,7 @@ template<unsigned int dim> class BitVector
   { BitVector<dim> result(*this); result+=v; return result; }
 
   // the same operation as the previous method, under different name
-  // the destinction may sometimes be useful for documentation purposes
+  // the distinction may sometimes be useful for documentation purposes
   BitVector operator- (const BitVector& v) const
   { BitVector<dim> result(*this); result-=v; return result; }
 

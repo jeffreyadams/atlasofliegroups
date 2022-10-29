@@ -792,7 +792,7 @@ common_block::common_block // full block constructor
     containers::sl_list<StandardReprMod> queue { z };
 
     elements.emplace(); // create empty involution packet at front
-    auto& list = // when popping |queue|, move elts here, soreted by |y|
+    auto& list = // when popping |queue|, move elts here, sorted by |y|
       elements.front().emplace_back(); // create sublist for the unique |x| value
     do
     {

@@ -100,7 +100,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
 		(null(81),0)
   , covered     = [bool]: { whether already enforced, per constraint }
 		for :4*81 do false od
-  , available = [bool]: { whether still allowed, tabluated per choice }
+  , available = [bool]: { whether still allowed, tabulated per choice }
 		for :729 do true od
   , nr_options  = [vec]: { count remaining options per constraint, by group }
 		let nines=9*ones(81) in for :4 do nines od

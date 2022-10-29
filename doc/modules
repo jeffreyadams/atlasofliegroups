@@ -33,7 +33,7 @@ Utilities.
   Level 2: constructions that relate to or use basic data types
 
   permutations	permutations, and their actions on (bit)vectors and matrices
-  partition	parition of an interval, orbits (uses bitmap, comparison)
+  partition	partition of an interval, orbits (uses bitmap, comparison)
   poset		posets, hasse diagrams (uses graph)
   matreduc	matrix echelon algorithms, Smith form
 

@@ -189,7 +189,7 @@ Cardinality of the group.
 
   In fact this definition might work for some group elements of the source but
   not for all. In that case we don't really have a homomorphism, but we allow
-  applying to those group elements for which it works nontheless. The
+  applying to those group elements for which it works nonetheless. The
   predicates |defined| serve to find out whether a source element is OK.
 */
 class Homomorphism {

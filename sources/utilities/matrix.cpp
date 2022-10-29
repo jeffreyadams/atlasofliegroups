@@ -596,7 +596,7 @@ namespace matrix {
 
   */
 
- // type abreviations used in these instantiations
+ // type abbreviations used in these instantiations
 using Num = long long; // maybe |arithmetic::Numer_t Num|
 typedef polynomials::Polynomial<int> Pol;
 typedef arithmetic::big_int bigint;

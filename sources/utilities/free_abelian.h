@@ -160,7 +160,7 @@ explicit
   { if (m==C(0)) L.clear(); } // ensure absence of terms with zero coefficient
   Free_Abelian_light(T&& p,C m, Compare c=Compare()); // mononomial
 
-  // sanitise, buid singleton |L|; |do_sort| says whether sorting is needed
+  // sanitise, build singleton |L|; |do_sort| says whether sorting is needed
   Free_Abelian_light(poly&& vec,bool do_sort, Compare c=Compare());
 
   // construct from another aggregate of (monomial,coefficient) pairs

@@ -109,7 +109,7 @@ nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
 bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
   If n<0 returns the well defined negative value -1-bit_length(-1-n)
 to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
-  Negative vector entries are refjected, and result is always non-negative
+  Negative vector entries are rejected, and result is always non-negative
 
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
@@ -140,7 +140,8 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 gcd: (vec->int): the greatest common divisor of all entries of the vector
 Bezout: (vec->int,mat): gcd of entries, and linear map sending v to (d,0,0,...)
-  In adition to finding the gcd d like the previous function, this also produces
+  In addition to finding the gcd d like the previous function, this also
+  produces
   an invertible matrix (change of coordinates) that sends the argument vector v
   to d times the first canonical basis vector. That means the first row has a
   sequence of Bezout coefficients (for the gcd) and the other rows are sequences
@@ -853,7 +854,7 @@ equivalent: (Param,Param->bool): test equivalence of parameters
   (representative), and among such parameters equivalence amounts to
   reachability using singular complex cross actions. Test for this equivalence,
   reverting to a strict equality test if either parameter fails to be standard.
-  The consdition equivalent(p,q) should be the same as normal(p)=normal(q).
+  The condition equivalent(p,q) should be the same as normal(p)=normal(q).
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_dominant: (Param->bool): whether parameter is dominant for full system
@@ -1077,7 +1078,7 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   polynomials. The actual value depends on sign choices for Hecke module
   generators (extended parameters) for each of the terms; these choices, which
   cannot be made explicit in terms of ordinary parameters only, affect the signs
-  of the coeficients of these terms. However a consistent choice of a default
+  of the coefficients of these terms. However a consistent choice of a default
   extension is made internally for each parameter value, which make those signs
   well-defined. When modifications are made to parameters, like changing to an
   equivalent one with different infinitesimal character representative, or
@@ -1100,7 +1101,7 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   the continuous component nu by a rational factor. With arguments (p,delta,f)
   it is assumed that the parameter p is_final, and the factor f is positive.
   A new parameter is formed by scaling the component nu(p) by f, and it is made
-  final, as in ParamPol:p*f; under the given assuptions this involves applying
+  final, as in ParamPol:p*f; under the given assumptions this involves applying
   only complex reflections, so the result is a single parameter which is the
   first component of the result. The second component records wheher this
   transformation at the level of extended parameter involves a flip with respect
