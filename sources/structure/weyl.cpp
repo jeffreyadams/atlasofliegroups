@@ -69,9 +69,133 @@ namespace {
 
 } // anonymous |namespace|
 
+/*
+  Right multiplication action of simple reflections on a Weyl group modulo (to
+  the left) a maximal parabolic subgroup.
+
+  In the notation from the description of the class WeylGroup, there will be
+  one Transducer object for each parabolic subquotient W_{r-1}\\W_r. List the
+  shortest length coset representatives for this subquotient as
+  x_0,...,x_{N_r-1}. Recall that the simple roots were ordered to guarantee
+  that N_r-1 fits in an unsigned char, so each coset representative can be
+  indexed by an unsigned char. We wish to compute the product x_i.s_j for j
+  between 1 and r. The key theoretical fact about multiplication is that there
+  are two mutually exclusive possibilities:
+
+      x_i.s_j = x_{i'}  (some i' ne i)
+
+  OR
+
+      x_i.s_j = s_k.x_i  (some k < r).
+
+  The first possibility is called _transition_ and the second _transduction_.
+  (Confusingly Fokko's 1999 paper interchanges these terms at their definition,
+  but their usual meaning and the sequel makes clear that this was an error).
+
+  The Transducer has tables to describe the two cases. the first table
+  |d_shift| describes the transistions, namely |d_shift[i][j]==i'| in the
+  first case; the cases that are transductions can be distinguished from these
+  by the fact that |d_shift[i][j]==i|. In these cases, the value |k| emitted
+  by the transduction is stored in |d_out[i][j]|, which otherwise contains the
+  value |UndefGenerator|
+*/
+
+class WeylGroup::Transducer
+{
+  // there will be one such object for each $r\in\{1,2,\ldots,n\}$
+  // but $r$ is not explicitly stored in the |Tranducer| object
+
+  // One row of a transducer table for a Weyl group.
+  using RowBase = std::array<unsigned char,constants::RANK_MAX>;
+  // this used to be a defined class contained in |Transducer|
+  // that allowed default initialisation to Undef values; now done explicitly
+
+ public:
+  using ShiftRow = RowBase; // the case of a transition entry
+  using OutRow   = RowBase; // the case of a transduction entry
+  using PieceIndex = unsigned short; // used to index letters inside a piece
+  // as piece length cannot exceed number of states, |unsigned char| would do
+ private:
+
+  // Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
+  std::vector<ShiftRow> d_shift;
+
+/*
+  If |d_shift[i][j]==i| then $s_j$ transduces in state $i$ to $s_k$
+  with $k=d_out[i][j]$ (otherwise |d_out[i][j]==UndefGenerator|).
+
+  In this case $x_i.s_j = s_k.x_i$, so the state $i$ remains unchanged.
+*/
+  std::vector<OutRow> d_out;
+
+  // Lengths of the minimal coset representatives $x_i$.
+  std::vector<unsigned short> d_length;
+
+  // Reduced expressions of the minimal coset representatives.
+  std::vector<WeylWord> d_piece; // individual elements indexed by |PieceIndex|
+
+ public:
+
+// constructors and destructors
+  Transducer() {}
+
+  Transducer(const int_Matrix& Coxeter, Generator s);
+
+  ~Transducer() {}
+
+// accessors
+
+
+  // Length of minimal coset representative x.
+  PieceIndex length(WeylElt::EltPiece x) const { return d_length[x]; }
+
+
+/*
+  Maximal length of minimal coset representatives.
+
+  This is the number of positive roots for the Levi subgroup L_r, minus
+  the number of positive roots for L_{r-1}.
+*/
+  PieceIndex maxlength() const { return d_length.back(); }
+
+
+/*
+  Simple reflection t (strictly preceding s) so that xs = tx, if any
+
+  In case of a transition, this returns |UndefGenerator|.
+*/
+  Generator out(WeylElt::EltPiece x, Generator s) const { return d_out[x][s]; }
+
+/*
+  Right coset x' defined by x' = xs.
+
+  When x' is not equal to s, this is an equality of minimal coset
+  representatives. When x'=x, the equation for minimal coset representatives
+  is out(x,s).x = x.s.
+*/
+  WeylElt::EltPiece shift(WeylElt::EltPiece x, Generator s) const
+   { return d_shift[x][s]; }
+
+  // Number of cosets W_{r-1}\\W_r.
+  unsigned int size() const { return d_shift.size(); } // must be at most 256
+
+
+  // Reduced decomposition in W (or W_r) of minimal coset representative x.
+  const WeylWord& wordPiece(WeylElt::EltPiece x) const { return d_piece[x]; }
+
+private:
+  WeylElt::EltPiece
+  dihedralMin(WeylElt::EltPiece,weyl::Generator,weyl::Generator) const;
+  WeylElt::EltPiece
+  dihedralShift(WeylElt::EltPiece,weyl::Generator,weyl::Generator,unsigned int)
+    const;
+
+  // this class should have no manipulators!
+}; // |class WeylGroup::Transducer|
+
 /*****************************************************************************
 
-        Chapter I -- The WeylGroup and WeylElt classes
+        Chapter 2 -- The WeylGroup and WeylElt classes
 
   The Weyl group class is a variation on my favourite implementation in terms
   of transducers.
@@ -198,6 +322,8 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 
 } // |WeylGroup::WeylGroup|
 
+WeylGroup::WeylGroup(WeylGroup&& W) = default;
+WeylGroup::~WeylGroup() = default;
 
 /******** accessors **********************************************************/
 
@@ -320,6 +446,10 @@ int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
   return l;
 }
 
+
+const WeylWord& WeylGroup::wordPiece(const WeylElt& w, Generator j) const
+{ return d_transducer[j].wordPiece(w[j]); }
+
 /*
   Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
 
@@ -333,6 +463,9 @@ void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
 }
 
 /*
+inline const WeylWord& WeylGroup::wordPiece(const WeylElt& w, Generator j) const
+{ return d_transducer[j].wordPiece(w[j]); }
+
   Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
 
   Algorithm: do the elementary multiplication by the generators, running
