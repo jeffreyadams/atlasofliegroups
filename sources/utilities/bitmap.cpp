@@ -23,7 +23,7 @@
   values bounded by the capacity of the bitmap, and which will be produced as
   |unsigned long| values (though these can then be narrowed to a smaller type
   that can fit all possible values). The fact that bits are used to signal the
-  presence or absence of numbers is an inplementation details that this class
+  presence or absence of numbers is an implementation details that this class
   somewhat hides (though the class name is an obvious giveaway). It obeys the
   semantics of a Forward Container (from the C++ standard library).
 
@@ -48,7 +48,7 @@ namespace bitmap {
 
   /*
   Constant used to pick a bit-address apart: serves as a bitmask for
-  obtaining the bit-address within a word fom a BitMap index. It is assumed
+  obtaining the bit-address within a word from a BitMap index. It is assumed
   that the number of bits in an unsigned long is a power of two.
   */
   unsigned long BitMap::posBits = constants::posBits;

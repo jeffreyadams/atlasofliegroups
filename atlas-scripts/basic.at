@@ -1105,7 +1105,7 @@ set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 { and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
 
-{ reversing order, simplilar questions about coweight v }
+{ reversing order, similar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
   >=(numer(v)*simple_roots(rd))
 set is_strictly_dominant (ratvec v,RootDatum rd) = bool:
@@ -1117,7 +1117,7 @@ set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
 set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
   is_integrally_dominant(dual(rd),v)
 
-{ the following should replace the needlessly complicacted built-ins they use }
+{ the following should replace the needlessly complicated built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
   coroot_radical(rd)[:,semisimple_rank(rd):] { drop coroots part }
 set coradical_basis (RootDatum rd) = mat: { columns are weights }

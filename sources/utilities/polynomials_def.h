@@ -44,7 +44,7 @@ namespace atlas {
 
 namespace polynomials {
 
-// this contructor assures mostly that |Polynomial<C>(C(0))| is null polynomial
+// this constructor assures mostly that |Polynomial<C>(C(0))| is null polynomial
 template<typename C>
   Polynomial<C>::Polynomial(C c): d_data()
 {
@@ -350,7 +350,7 @@ template<typename C> void safe_add(C& a, C b)
   a += b;
 }
 
-// substraction throws no runtime error; success should be statically ensured
+// subtraction throws no runtime error; success should be statically ensured
 template<typename C> void safe_subtract(C& a, C b)
 {
   assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
@@ -386,7 +386,7 @@ template<typename C> void safe_divide(C& a, C b)
 /*
   Add $x^d.c.q$, to |*this|, watching for overflow, assuming |c>0|.
 
-  We need to be careful in the case where |q| aliasses |*this|, but we can
+  We need to be careful in the case where |q| aliases |*this|, but we can
   avoid making a copy, by doing the addition top-to-bottom.
 */
 template<typename C>
@@ -432,7 +432,7 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
 /*
   Subtract $x^d.c.q$ from |*this|, asserting no underflow, assuming |c>0|
 
-  We need to be careful in the case where |q| aliasses |*this|, but we can
+  We need to be careful in the case where |q| aliases |*this|, but we can
   avoid making a copy, by doing the addition top-to-bottom.
 */
 template<typename C>
@@ -497,7 +497,7 @@ void Safe_Poly<C>::safeDivide(C c)
   any term of degree $d+1$ suppressed, is divisible by $q+1$; on the other
   hand in the latter case the original polynomial must have had degree $d$, as
   its the coefficient in degree $d$ is the sum of the positive leading
-  coefficient and the non-negative preceeding coefficient of the quotient.
+  coefficient and the non-negative preceding coefficient of the quotient.
 
   So after doing the upward division up to |this->degree()|, we test the value
   in what used to be the leading coefficient. If it is zero, the division was

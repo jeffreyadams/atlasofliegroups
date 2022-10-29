@@ -173,7 +173,7 @@ RootNbrSet noncompact_roots(const Grading& g, const RootSystem& rs)
   |RANK_MAX| does not exceed the number of bits in an |unsigned long|. It
   would have been more natural to to give argument and result as |Grading|.
   The restriction however is already built into |partition::makeOrbit|, which
-  can only make orbits on sets whose points are represeted by |unsigned long|.
+  can only make orbits on sets whose points are represented by |unsigned long|.
 */
 namespace {
 

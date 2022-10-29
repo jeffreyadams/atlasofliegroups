@@ -109,7 +109,7 @@ nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
 bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
   If n<0 returns the well defined negative value -1-bit_length(-1-n)
 to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
-  Negative vector entries are refjected, and result is always non-negative
+  Negative vector entries are rejected, and result is always non-negative
 
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
@@ -857,7 +857,7 @@ equivalent: (Param,Param->bool): test equivalence of parameters
   (representative), and among such parameters equivalence amounts to
   reachability using singular complex cross actions. Test for this equivalence,
   reverting to a strict equality test if either parameter fails to be standard.
-  The consdition equivalent(p,q) should be the same as normal(p)=normal(q).
+  The condition equivalent(p,q) should be the same as normal(p)=normal(q).
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_dominant: (Param->bool): whether parameter is dominant for full system

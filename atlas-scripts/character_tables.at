@@ -67,7 +67,7 @@ set !trivial_character_table = CharacterTable:
    let Wct = trivial_class_table, id(int i)=int: i
 in ( Wct, (int i):"e", (int i):"triv", [[1]], [(0,0)] )
 
-{ attributes inhereited from the |class_table| component }
+{ attributes inherited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
 set rank (CharacterTable ct) = ct.root_datum.rank
 set order_W (CharacterTable ct) = ct.root_datum.order_W

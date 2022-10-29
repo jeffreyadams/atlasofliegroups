@@ -173,7 +173,7 @@ std::vector<bitmap::BitMap> Mod2_System::solution_basis()
   return result;
 } // |Mod2_System::solution_basis|
 
-// instantations
+// instantiations
 typedef std::vector<unsigned long>::iterator vec_it;
   template bool Mod2_System::add(vec_it, vec_it,unsigned int);
 

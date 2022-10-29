@@ -852,7 +852,7 @@ bool same_standard_reps (const ext_param& E, const ext_param& F)
 } // |same_standard_reps|
 
 // this implements (comparison using) the formula from Proposition 16 in
-// "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
+// "Parameters for twisted representations" (with $\delta-1 = -(1-\delta)$
 // the relation is symmetric in |E|, |F|, although not obviously so
 bool same_sign (const ext_param& E, const ext_param& F)
 {

@@ -1734,7 +1734,7 @@ allows for more flexible uses, in which the condition and loop body are
 considered together rather than as two completely separate expressions. A first
 manifestation of this is that local variables introduced by 'let' in the
 condition (for which a separate instance is created each time the condition is
-eavluated) remain in scope in the loop body. For instance, in Euclids algorithm
+evaluated) remain in scope in the loop body. For instance, in Euclids algorithm
 for the greatest common divisor of two integers a,b, one needs to repeatedly
 compute the remainder r=a%b, stopping when r=0, but when r>0 also using r to
 replace a. Rather than recomputing r, or keeping it in a variable not local to
