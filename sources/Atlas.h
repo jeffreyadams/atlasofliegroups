@@ -72,7 +72,7 @@ namespace atlas {
 /* We begin with copying the contents of the *_fwd.h files in the utilities
    subdirectory. We justify this abject duplication of information by the fact
    that it avoids opening many very short files many times during
-   compilation. Any *_fwd.h files in the structure and gkmod subirectories
+   compilation. Any *_fwd.h files in the structure and gkmod subdirectories
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
    the Atlas library. In fact this file should always be included in any Atlas

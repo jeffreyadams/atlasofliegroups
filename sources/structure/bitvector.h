@@ -50,7 +50,7 @@ template<unsigned int dim>
 
 /*
   Either find a solution of the system of equations |eqn|, putting it
-  into |sol| and returning |true|, or return |false| if no solition exists.
+  into |sol| and returning |true|, or return |false| if no solution exists.
 
   Here |eqns| holds a system of equations, the last bit of each being
   interpreted as the right hand side.

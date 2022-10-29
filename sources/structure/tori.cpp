@@ -75,7 +75,7 @@ namespace {
   $V_-$, respectively, while a factor $r_c$ contributes the \emph{same}
   one-dimensional subspace both to $V_+$ and to $V_-$ (since after reduction
   modulo $2$ the is no distinction between the diagonal and anti-diagonal
-  subpaces). Therefore one has $r_c = \dim(V_+ \cap V_-)$, and it follows that
+  subspaces). Therefore one has $r_c = \dim(V_+ \cap V_-)$, and it follows that
   $r_s = rk(X_-) - r_c=\dim(V_-/(V_+ \cap V_-))$. It can be seen that $V_+ \cap
   V_-$ is the image of the endomorphism of $V$ induced by $\tau-1$ (or by
   $\tau+1$), while $V_+ + V_-$ is the kernel of that endomorphism.

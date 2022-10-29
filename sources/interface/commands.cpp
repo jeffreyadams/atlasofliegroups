@@ -521,7 +521,7 @@ void use_tag() // lacking a help file, we might just print the tag as help
   module :
 
     - ambiguous(ext,name) : handles multiple completions;
-    - getIntreractive(strm, name, prompt) : get a command from the user;
+    - getInteractive(strm, name, prompt) : get a command from the user;
 
 ******************************************************************************/
 

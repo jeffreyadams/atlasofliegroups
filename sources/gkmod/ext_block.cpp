@@ -900,7 +900,7 @@ void z_align (const ext_param& E, ext_param& F, bool extra_flip)
   not necessarily satisfy |t.dot(mu)==0|. In such cases the previous version
   of |z_align| is insufficient, and we should include a contribution from the
   second term of the formula for |z|. But retrieving |mu| from the parameters
-  |E| and |F| themselves is complicated by the posssible contribution from
+  |E| and |F| themselves is complicated by the possible contribution from
   |Cayley_shift|, which contribution should be ignored; however at the place
   of call the value of |mu| is explicitly available, so we ask here to pass
   |t.dot(mu)| as third argument |t_mu|.
@@ -2328,7 +2328,7 @@ K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
   To find the required sign, we need to keep track of all extended parameter
   components inherited from the default extension at |sr|, transforming them from
   the default choices for |sr|, and at the end comparing the transformed values
-  to the default choices at the final parametera.
+  to the default choices at the final parameter.
  */
 K_repr::K_type_pol extended_restrict_to_K
   (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta)

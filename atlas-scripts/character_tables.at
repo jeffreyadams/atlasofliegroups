@@ -125,7 +125,7 @@ set degree (CharacterTable ct) = (int i)int: let (d,) = ct.deg_spec[i] in d
 set special (CharacterTable ct) = (int i)int: let (,s) = ct.deg_spec[i] in s
 set generic_degree (CharacterTable ct) = (int i)int: ct.degree(ct.special(i))
 
-{ tensor_sign: defined on any charater: [int] -> [int] }
+{ tensor_sign: defined on any character: [int] -> [int] }
 set tensor_sign (CharacterTable ct) = ([int]->[int]):
    let sign=ct.sign in ([int] char): tensor(sign,char) { "free" |tensor| above }
 

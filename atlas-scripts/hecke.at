@@ -31,7 +31,7 @@ set y_gen (Param p) = KGBElt_gen:
   in (dual(ic),-^theta,gamma-(lambda_rho+rho(ic)))
 
 
-{ Some purely adminstrative support functions }
+{ Some purely administrative support functions }
 
 { index((x,y,list_of_pairs) :
   index of (x,y) in [(x_i,y_i)], return -1 if not found

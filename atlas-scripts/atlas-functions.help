@@ -423,24 +423,24 @@ W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
-root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
+root_datum: (WeylElt->rootDatum): Root datum underlying a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element
 operators =, != : (WeylElt->bool): test Weyl group element against identity
 operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
   The elements must be from equal or dual root data; if not, reports an error
 operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
 operator / : (WeylElt->WeylElt): Inverse of Weyl group element
-operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
+operator # : (WeylElt,int->WeylElt): multiply Weyl group element and generator
 operator # : (int,WeylElt->WeylElt): multiply generator and Weyl group element
 operator ## : (WeylElt,[int]->WeylElt): Compose Weyl group element and Weyl word
 operator ## : ([int],WeylElt->WeylElt): Compose Weyl word and Weyl group element
 operator * : (WeylElt,vec->WeylElt): left-act by Weyl group element on weight
 operator * : (vec,WeylElt->WeylElt): right-act on coweight by Weyl group element
 from_dominant: (RootDatum,vec->WeylElt,vec): write as W image of dominant weight
-  Called for (rd,lambda), find in the oribit of lambda under the Weyl group W
+  Called for (rd,lambda), find in the orbit of lambda under the Weyl group W
   of rd the dominant weight v, and minimal w in W with lambda=w*v; return (w,v)
 from_dominant: (vec,RootDatum->vec,WeylElt): write as dominant coweight * W-elt
-  Called for (cowt,rd), find in the oribit of cowt under the Weyl group W of rd
+  Called for (cowt,rd), find in the orbit of cowt under the Weyl group W of rd
   the dominant coweight v, and minimal w in W with cowt=v*w; return (v,w), Note
   that using form_dominant(dual(rd),cowt) instead would rather return (w^{-1},v)
 root_permutation : (WeylElt w->vec): defined permutation of full root system
@@ -768,7 +768,7 @@ is_final: (KType->bool): whether K-type has no singular descents at all
 dominant: (KType->KType): ensure K-type has dominant (1+theta_x)lambda
   This gives an equivalent form of the K-type in which infinitesimal character
   has been made dominant (it may not be unique for this property within its
-  equivalence class); calling this function reauires is_standard to hold for the
+  equivalence class); calling this function requires is_standard to hold for the
   K-type, and an error will be reported if it is not.
 to_canonical_fiber: (KType->KType): move to elected fiber for its Cartan class
   In every Cartan class of involutions one is singled out, and every K-type for
@@ -922,7 +922,7 @@ block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
   exactly the two elements, namely x et z. The matrix is indexed by the numbers
   of the block elements as displayed in print_block(p).
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
-  This combines block with the computation of the its Kazhdan-Lustzig table.
+  This combines block with the computation of the its Kazhdan-Lusztig table.
   The two values of block are followed by two values in the format of raw_KL
   below: a matrix of indices into the following list of polynomials, coded as a
   list of coefficient vectors. (Contrary to raw_KL below no data about the
@@ -944,8 +944,8 @@ dual_KL_block: (Param->[Param],int,mat,[vec]): KL_block values for dual block
   KL polynomials at final block elements are selected unmodified (no linear
   combination) since that is appropriate for the dual block; thus the transpose
   of the matrix gives the matrix of Q-polynomials, which after conjugation with
-  the diagonal matrix of length-partity signs gives the inverse of the matrix of
-  ordinary Kazhdan-Lustzig polynomials, the ones returned by KL_block
+  the diagonal matrix of length-parity signs gives the inverse of the matrix of
+  ordinary Kazhdan-Lusztig polynomials, the ones returned by KL_block
 partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
   This function relates to KL_block as partial_block relates to block. The first
   component of the result is the Bruhat interval as in partial_block, and the

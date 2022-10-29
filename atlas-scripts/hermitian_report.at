@@ -308,7 +308,7 @@ set analyse_hermitian_form_irreducible (Param p) = void:
   if not p.is_hermitian
   then prints("Parameter ",p," is not delta-fixed; no hermitian form exists")
   else prints("Parameter ",p," is delta-fixed",new_line,
-    "twisted c_form on irreducble in terms of standard representations:")
+    "twisted c_form on irreducible in terms of standard representations:")
   ; let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
     , c_form=p.real_form.null_K_module
     in

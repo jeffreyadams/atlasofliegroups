@@ -48,7 +48,7 @@ namespace commands {
   inline void relax_f() {}
 
   void nohelp_h(); // this is used when no help command at all is defined
-  void std_help(); // searches help file for the curent command name
+  void std_help(); // searches help file for the current command name
   void use_tag(); // fallback when no help file exists
 
 }
