@@ -80,6 +80,9 @@ class WeylWord : public std::vector<Generator>
   WeylWord (std::initializer_list<Generator> l) : Base(l.begin(), l.end()) {}
 };
 
+// Numbering of minimal length coset representative in some $W_{i-1}\\W_i$.
+  using EltPiece = unsigned char;
+
 /*
   Representation of an individual element of a Weyl group.
 
@@ -93,10 +96,6 @@ class WeylWord : public std::vector<Generator>
 class WeylElt
 {
   friend class WeylGroup; // so we can shield implementation from all others
-
-public:
-  // Numbering of minimal length coset representative in some $W_{i-1}\\W_i$.
-  typedef unsigned char EltPiece;
 
  private:
 
@@ -139,10 +138,10 @@ public:
 protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
 
   // Get an individual |EltPiece|
-  EltPiece operator[] (Generator j) const { return d_data[j]; }
+  EltPiece piece (Generator j) const { return d_data[j]; }
 
 // manipulators
-  EltPiece& operator[] (Generator j)      { return d_data[j]; }
+  EltPiece& piece (Generator j)      { return d_data[j]; }
 
 public:
 // dummy methods that mark transition of interpretation
@@ -256,7 +255,7 @@ public:
 */
 class WeylGroup
 {
-  class Transducer;
+  struct Transducer;
 
   Generator d_rank; // (Coxeter) rank of the Weyl group
   size::Size d_order; // order of the Weyl group
@@ -274,19 +273,19 @@ class WeylGroup
 // these interpret Generators and WeylWords internally, so not for public use!
 
   // set |w=ws|, return value is $l(ws)-l(w)\in\{+1,-1}$
-  int multIn(WeylElt& w, Generator s) const;
+  int inner_mult(WeylElt& w, Generator s) const;
 
-  // set |w=wv|, return value is $l(wv)-l(w)-l(v)\in -2\N$
-  int multIn(WeylElt& w, const WeylWord& v) const;
+  // set |w=wv| where |v| is peice |x| of transducer |i|
+  // return value is $l(wv)-l(w)-l(v)\in -2\N$
+  int mult_by_piece(WeylElt& w, const WeylElt& v, Generator i) const;
 
   // set |w=sw|, return value is $l(sw)-l(w)\in\{+1,-1}$
   int leftMultIn(WeylElt& w, Generator s) const;
 
-  // get WeylWord for piece |j| of |w|
-  const WeylWord& wordPiece(const WeylElt& w, Generator j) const;
-  // { return d_transducer[j].wordPiece(w[j]); }
+  // get WeylWord for piece |j| of |w|, in inner encoding
+  WeylWord word_of_piece(const WeylElt& w, Generator j) const;
 
-  // First generator $<s$ not commuting with |s|, or |s| if none exist
+  // First generator $<s$ not commuting with |s|, or |s| if none exist; inner
   Generator min_neighbor (Generator s) const { return d_min_star[s]; }
 
   WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
@@ -308,7 +307,7 @@ public:
     { return genIn(d_in[i]); }
 
   // set |w=ws|, return length change
-  int mult(WeylElt& w, Generator s) const { return multIn(w,d_in[s]); }
+  int mult(WeylElt& w, Generator s) const { return inner_mult(w,d_in[s]); }
 
   // set |w=wv|
   void mult(WeylElt& w, const WeylElt& v) const;
@@ -357,7 +356,7 @@ public:
   // return (only) $l(w*s)-l(w)\in\{ -1, 1 \}$
   int length_change(WeylElt w, Generator s) const
   {
-    return multIn(w,d_in[s]); // discard copied then modified |w|
+    return inner_mult(w,d_in[s]); // discard copied then modified |w|
   }
 
   // return $l(s*w)-l(w)$
@@ -365,9 +364,6 @@ public:
   {
     return hasDescent(s,w) ? -1 : 1;
   }
-
-  // letter |i| of Weyl word for |w|
-  Generator letter(const WeylElt& w, unsigned int i) const;
 
   void conjugacyClass(WeylEltList&, const WeylElt&) const;
 
@@ -422,6 +418,8 @@ public:
 
   // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
   WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
+  // same as |translation| but for $w^{-1}$ instead of $w$; this is faster!
+  WeylElt reverse_translation(const WeylElt& w, const WeylInterface& f) const;
 
   void translate(WeylElt& w, const WeylInterface& i) const
     { w=translation(w,i); }

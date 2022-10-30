@@ -56,7 +56,7 @@ namespace atlas {
 
   namespace weyl { // constants needed only in this file
 
-const WeylElt::EltPiece UndefEltPiece = UndefValue;
+const EltPiece UndefEltPiece = UndefValue;
 const Generator UndefGenerator = UndefValue;
 
 //			     auxiliary functions
@@ -107,7 +107,7 @@ namespace {
   value |UndefGenerator|
 */
 
-class WeylGroup::Transducer
+struct WeylGroup::Transducer
 {
   // there will be one such object for each $r\in\{1,2,\ldots,n\}$
   // but $r$ is not explicitly stored in the |Tranducer| object
@@ -120,22 +120,18 @@ class WeylGroup::Transducer
   struct elem_info
   { RowBase shift; // Right multiplication by $s_j$ transitions to |shift[j]|
     RowBase out; // Right multiplication by $s_j$ may transduce |out[j]|
-    unsigned short length; // length of |piece| in quotient Bruhat order
-    WeylWord piece;
+    unsigned char length; // length of |piece| in quotient Bruhat order
+    Generator right; // rightmost factor of chosen word for this piece
 
-    elem_info(unsigned short l) : shift(), out(), length(l), piece() {}
+    elem_info(unsigned short l)
+      : shift(), out(), length(l), right(UndefGenerator)
+    { shift.fill(UndefEltPiece); out.fill(UndefGenerator); }
   };
 
- public:
-  using ShiftRow = RowBase; // the case of a transition entry
-  using OutRow   = RowBase; // the case of a transduction entry
   using PieceIndex = unsigned short; // used to index letters inside a piece
   // as piece length cannot exceed number of states, |unsigned char| would do
- private:
 
   std::vector<elem_info> elt;
-
- public:
 
 // constructors and destructors
   Transducer() {}
@@ -146,9 +142,11 @@ class WeylGroup::Transducer
 
 // accessors
 
+  static constexpr int max_piece_length = // for piece word reversal
+    std::max(57ul,2*constants::RANK_MAX-1); // E8 needs 57, BCn needs 2n-1
 
   // Length of minimal coset representative x.
-  unsigned int length(WeylElt::EltPiece x) const { return elt[x].length; }
+  unsigned int length(EltPiece x) const { return elt[x].length; }
 
 
 /*
@@ -164,8 +162,7 @@ class WeylGroup::Transducer
 
   In case of a transition within the quotient, this returns |UndefGenerator|.
 */
-  Generator out(WeylElt::EltPiece x, Generator s) const
-  { return elt[x].out[s]; }
+  Generator out(EltPiece x, Generator s) const { return elt[x].out[s]; }
 
 /*
   Right coset x' defined by x' = xs.
@@ -174,21 +171,22 @@ class WeylGroup::Transducer
   representatives. When x'=x, the equation for minimal coset representatives
   is out(x,s).x = x.s.
 */
-  WeylElt::EltPiece shift(WeylElt::EltPiece x, Generator s) const
-   { return elt[x].shift[s]; }
+  EltPiece shift(EltPiece x, Generator s) const { return elt[x].shift[s]; }
+
+  Generator unshift(EltPiece& x) const; // assuming |x>0| to lowering shift
 
   // Number of cosets W_{r-1}\\W_r.
   unsigned int size() const { return elt.size(); } // must be at most 256
 
 
   // Reduced decomposition in W (or W_r) of minimal coset representative x.
-  const WeylWord& wordPiece(WeylElt::EltPiece x) const { return elt[x].piece; }
+  WeylWord word_of_piece(EltPiece x) const;
 
 private:
-  WeylElt::EltPiece
-  dihedralMin(WeylElt::EltPiece,weyl::Generator,weyl::Generator) const;
-  WeylElt::EltPiece
-  dihedralShift(WeylElt::EltPiece,weyl::Generator,weyl::Generator,unsigned int)
+  EltPiece
+  dihedralMin(EltPiece,weyl::Generator,weyl::Generator) const;
+  EltPiece
+  dihedralShift(EltPiece,weyl::Generator,weyl::Generator,unsigned int)
     const;
 
   // this class should have no manipulators!
@@ -279,14 +277,13 @@ WeylGroup::Transducer::Transducer(const int_Matrix& c, Generator r)
     elt[0].shift[j]=0; // shift to self, no transition
     elt[0].out[j]=j;   // transduction of unchanged generator
   }
-  elt[0].shift[r]=UndefEltPiece;
-  elt[0].out[r]  =UndefGenerator;
+  // |elt[0].shift[r]=UndefEltPiece;| was set by |elem_info| constructor
+  // |elt[0].out[r]  =UndefGenerator;| idem
 
   // in this loop, the |elt| table grows! the loop stops when x overtakes the
   // table size because no more new elements are created.
 
-  for (WeylElt::EltPiece x = 0; x < elt.size(); ++x)
-  {
+  for (EltPiece x = 0; x < elt.size(); ++x)
     for (Generator s = 0; s <= r; ++s)
       /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
          its presence in a slot in |d_shift| assures that this slot is
@@ -295,53 +292,74 @@ WeylGroup::Transducer::Transducer(const int_Matrix& c, Generator r)
       if (elt[x].shift[s] == UndefEltPiece)
       {
 
-	const WeylElt::EltPiece xs = elt.size(); // piece that will be added
-
+	const EltPiece xs = elt.size(); // piece that will be added
 	elt.emplace_back(elt[x].length+1);
-	elt[xs].shift.fill(UndefEltPiece);
-	elt[xs].out.fill(UndefGenerator);
 
-	elt[x].shift[s] = xs;
-	elt[xs].shift[s] = x;
+	// only now can we fix (non transient) references
+	auto& base = elt[x];
+	auto& top  = elt.back();
 
-	elt[xs].piece = elt[x].piece;
-	elt[xs].piece.push_back(s); // append a letter |s| w.r.t. our |piece|
+	top.right=s; // last letter in word that leads to this |top|
 
-	// now define the shifts or transductions that do not take |xs| upward
+	// |shift| and |out| fields of |top| are currently set to Undef values
+	base.shift[s] = xs;
+	top.shift[s] = x;
+
+	// now define the shifts or transductions that do not take |xs| upwards
 
 	for (Generator t = 0; t <= r; ++t)
 	{
 	  if (t == s)
 	    continue;
 
-	  WeylElt::EltPiece y  = dihedralMin(xs,s,t);
-	  unsigned int d = elt[xs].length - elt[y].length;
-	  unsigned int m = c(s,t); // non negative coef from Coxeter matrix
-	  Generator st[] = {s,t};
+	  const EltPiece b  = dihedralMin(xs,s,t);
+	  const auto& bot = elt[b];
+	  const unsigned int d = top.length - bot.length;
+	  const unsigned int m = c(s,t); // positive coef from Coxeter matrix
+	  const Generator st[] = {s,t}; // convenience
 
 	  if (d == m)
 	  { // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
-	    y = dihedralShift(y,st[m%2],st[(m+1)%2],m-1);
-	    elt[xs].shift[t] = y;
-	    elt[y ].shift[t] = xs;
+	    const EltPiece y = dihedralShift(b,st[m%2],st[1-m%2],m-1);
+	    top.shift[t] = y;
+	    elt[y].shift[t] = xs;
 	  }
 	  else if (d == m-1)
 	  {
-	    Generator u = st[(m+1)%2];
+	    Generator u = st[1-m%2];
 
-	    if (elt[y].shift[u] == y)
+	    if (bot.shift[u] == b)
 	    { // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
-	      elt[xs].shift[t] = xs;
-	      elt[xs].out[t]   = elt[y].out[u];
+	      top.shift[t] = xs;
+	      top.out[t]   = bot.out[u];
 	    }
 	  }
 	  else assert(d<m-1); // case (3):  $t$ takes $xs$ up, do nothing
 	} // |for(t)|
       } // |if (..==UndefEltPiece)|
     // |for(s)|
-  } // |for(x)|
+  // |for(x)|
 } // |Transducer::Transducer|
+
+// temporary implementation; see is |piece| can be replaced with final letter
+Generator WeylGroup::Transducer::unshift(EltPiece& x) const
+{
+  auto s = elt[x].right;
+  assert(s!=UndefGenerator); // or simpler |x>0|
+  x = shift(x,s);
+  return s;
+}
+
+
+WeylWord WeylGroup::Transducer::word_of_piece(EltPiece x) const
+{
+  unsigned int k=length(x);
+  std::vector<Generator> result(k);
+  while (x>0)
+    result[--k] = unshift(x);
+  return WeylWord{std::move(result)};
+}
 
 /*****************************************************************************
 
@@ -436,7 +454,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 
   // the longest element has the maximal valid value in each of its pieces
   for (Generator j = 0; j < d_rank; ++j)
-    d_longest[j] = d_transducer[j].size()-1;
+    d_longest.piece(j) = d_transducer[j].size()-1;
 
   // its length is obtained by summing the (maximal) lengths of its pieces
   for (Generator j = 0; j < d_rank; ++j)
@@ -480,8 +498,8 @@ WeylGroup::~WeylGroup() = default;
 
 WeylElt WeylGroup::genIn (Generator i) const
 {
-  WeylElt s; // initialise to identity
-  s[i]=1;    // then shift to piece #1 in $W_{i-1}\\W_i$, which is $s_i$
+  WeylElt s;    // initialise all pieces to 0 (identity)
+  s.piece(i)=1; // then shift to piece #1 in $W_{i-1}\\W_i$, which is $s_i$
   return s;
 }
 
@@ -531,26 +549,26 @@ WeylElt WeylGroup::genIn (Generator i) const
 
   MvL
 */
-int WeylGroup::multIn(WeylElt& w, Generator s) const
+int WeylGroup::inner_mult(WeylElt& w, Generator s) const
 {
   Generator j = d_rank-1; // current transducer
 
-  // in the next loop |j| cannot pass |0| since transducer 0 only has shifts
-  for (Generator t; (t=d_transducer[j].out(w[j],s))!=UndefGenerator; s=t)
+  // in next loop |j| cannot pass |0| since |d_transducer[0]| only has shifts
+  for (Generator t; (t=d_transducer[j].out(w.piece(j),s))!=UndefGenerator; s=t)
   {
     assert(j!=0);
     --j;
   }
 
   // now transductions are exhausted and one nontrivial shift remains
-  WeylElt::EltPiece wj=w[j];
-  w[j]=d_transducer[j].shift(wj,s); // assert: |w[j]!=wj|
+  EltPiece wj=w.piece(j);
+  w.piece(j)=d_transducer[j].shift(wj,s); // assert: |w[j]!=wj|
 
-  return w[j]>wj ? 1 : -1; // no need to use d_length, numeric '>' suffices
+  return w.piece(j)>wj ? 1 : -1; // no need to use length, numeric '>' is OK
 }
 
 /*
-  Multiply |w| on the right by |v| (in internal numbering): |w *= v|.
+  Multiply |w| on the right by piece |i| of |v| (in internal numbering)
 
   Returns nonpositive even value $l(wv)-l(w)-l(v)$
 
@@ -559,27 +577,51 @@ int WeylGroup::multIn(WeylElt& w, Generator s) const
   Algorithm: do the elementary multiplication by the generators, running
   through |v| left-to-right.
 */
-int WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
+int WeylGroup::mult_by_piece(WeylElt& w, const WeylElt& v, Generator i) const
 
 {
-  int result=0;
-  for (unsigned int j = 0; j < v.size(); ++j)
-    if (multIn(w,v[j])<0) result-=2;
+  Generator stack[Transducer::max_piece_length]; // working memory for reversal
+  EltPiece x = v.piece(i);
+  const auto& tr = d_transducer[i];
+  int result = -static_cast<int>(tr.elt[x].length);
+  // final result takes -2 for each shortening |inner_mult|, 0 otherwise
+
+  unsigned int k=0;
+  while (x>0)
+    stack[k++]=tr.unshift(x);
+  while (k-->0)
+    result+=inner_mult(w,stack[k]);
 
   return result;
 }
 
 /*
   Transform |w| into |s*w|, with |s| in internal numbering;
-  returns $l(sw)-l(w)\in\{+1,-1}$
+  returns legth change $l(sw)-l(w)\in\{+1,-1}$
 
-  Algorithm: note that our transducers are geared towards _right_
-  multiplication by a generator. But we note that passing from $w$ to $sw$
-  only affects the pieces $x_j$ in $w$ for $t <= j <= s$, where
-  |t=min_neighbor(s)| is the first generator that does not commute with |s|
-  (remarkably, if $v$ is the product of those pieces, $sv$ does have non-zero
-  components only for that set of indices; hard to believe at first but easy
-  to prove).
+  Note that our transducers are geared towards _right_ multiplication by
+  a generator, so this left multiplication is less straightforward.
+  Nonetheless there is considerably better than the obvious algorithm of
+  starting with a |WeylElt| for the generator |s|, and right-multiplying it
+  successively by all letters of a word for |w|. In fact it turns out that
+  comparing $w$ with $sw$, only pieces $x_j$ can change for $t <= j <= s$,
+  where |t=min_neighbor(s)| is the first generator that does not commute
+  with |s|; due to the numbering of diagrams used there are at most 3 such
+  $j$, and when there are 3 (for non linear Dynkin diagrams) they occur
+  only for small |s|, where the pieces are relatively short. What we are
+  claiming is not just that right-multiplying the letters from the words
+  for pieces of |w| before |t| all transduce without change across piece |s|
+  and doing so reconstruct the same pieces again (this is easy to see), but
+  also that when inserting the letters from the pieces $x_j$ that do need to
+  be taken into account, only the pieces for the same range of |j| values
+  are affected (meaning that none of the |inner_mult| calls invoked by the
+  code below will transduce leftwards of piece |t|). Formulated like this it
+  is hard to believe at first, but it is easy to prove; for instance, if one
+  decomposes the expression for $w$ given by its pieces as $w_1w_2$ where
+  $w_1$ is the part in the parabolic factor that commutes with $s$, then
+  $sw=sw_1w_2=w_1sw_2$ can only have reductions inside the part $sw_2$,
+  leaving the left part $w_1$ unchanged. These observations justify that
+  the two loops below only run over the mentioned interval of values |j|.
 */
 int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
 {
@@ -588,18 +630,17 @@ int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
 
   // now compute $sv$ as above, keeping track of any length drop (at most 1)
   for (Generator j = min_neighbor(s); j <= s; ++j)
-    l+=multIn(sw,wordPiece(w,j));
+    l+=mult_by_piece(sw,w,j);
 
   // and copy its relevant pieces into $w$
   for (Generator j = min_neighbor(s); j <= s; ++j)
-    w[j] = sw[j];
+    w.piece(j) = sw.piece(j);
 
   return l;
 }
 
-
-const WeylWord& WeylGroup::wordPiece(const WeylElt& w, Generator j) const
-{ return d_transducer[j].wordPiece(w[j]); }
+WeylWord WeylGroup::word_of_piece(const WeylElt& w, Generator j) const
+{ return d_transducer[j].word_of_piece(w.piece(j)); }
 
 /*
   Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
@@ -610,13 +651,10 @@ const WeylWord& WeylGroup::wordPiece(const WeylElt& w, Generator j) const
 void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
 {
   for (Generator j = 0; j < d_rank; ++j)
-    multIn(w,wordPiece(v,j));
+    mult_by_piece(w,v,j);
 }
 
 /*
-inline const WeylWord& WeylGroup::wordPiece(const WeylElt& w, Generator j) const
-{ return d_transducer[j].wordPiece(w[j]); }
-
   Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
 
   Algorithm: do the elementary multiplication by the generators, running
@@ -645,9 +683,10 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
   WeylElt wi;
 
   for (Generator j = d_rank; j-->0 ;)
-  { const WeylWord& x_ww = wordPiece(w,j);
-    for (Transducer::PieceIndex i = x_ww.size(); i-->0;)
-      multIn(wi,x_ww[i]);
+  { EltPiece x = w.piece(j);
+    const auto& tr = d_transducer[j];
+    while (x>0)
+      inner_mult(wi,tr.unshift(x));
   }
 
   return wi;
@@ -694,15 +733,21 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 */
 bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 {
-  s=d_in[s]; // inner numbering is used below
+  Generator stack[Transducer::max_piece_length]; // working memory for reversal
 
-  WeylElt x = genIn(s); // element operated upon, starts out as |s|
+  s=d_in[s]; // inner numbering is used below
+  WeylElt sw = genIn(s); // element operated upon, starts out as |s|
 
   for (Generator j = min_neighbor(s); j <= s; ++j)
   {
-    const WeylWord& piece=wordPiece(w,j);
-    for (Transducer::PieceIndex i=0; i<piece.size(); ++i)
-      if (multIn(x,piece[i])<0) // multiply and see if a descent occurs
+    EltPiece x = w.piece(j);
+    const auto& tr = d_transducer[j];
+
+    unsigned int k=0;
+    while (x>0)
+      stack[k++]=tr.unshift(x);
+    while (k-->0)
+      if (inner_mult(sw,stack[k])<0) // multiply and see if a descent occurs
 	return true;
   }
 
@@ -716,10 +761,10 @@ bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
   unsigned int j = d_rank-1; // current transducer
 
   // in the next loop |j| cannot pass |0| since transducer 0 only has shifts
-  for (Generator t; (t=d_transducer[j].out(w[j],s))!=UndefGenerator; s=t)
+  for (Generator t; (t=d_transducer[j].out(w.piece(j),s))!=UndefGenerator; s=t)
     --j;
 
-  WeylElt::EltPiece wj=w[j];
+  EltPiece wj=w.piece(j);
   return d_transducer[j].shift(wj,s)<wj;
 }
 
@@ -735,7 +780,7 @@ bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
 Generator WeylGroup::leftDescent(const WeylElt& w) const
 {
   for (Generator i=0; i<d_rank; ++i)
-    if (w[i]>0) return d_out[i];
+    if (w.piece(i)>0) return d_out[i];
 
   // if we come here, |w==e|
   return UndefGenerator;
@@ -752,33 +797,25 @@ unsigned int WeylGroup::length(const WeylElt& w) const
   unsigned int l = 0;
 
   for (Generator i = 0; i < d_rank; ++i)
-    l += d_transducer[i].length(w[i]);
+    l += d_transducer[i].length(w.piece(i));
 
   return l;
 }
 
-Generator WeylGroup::letter(const WeylElt& w, unsigned int k) const
-{
-  for (Generator i = 0; i<d_rank; ++i)
-    if (k>=d_transducer[i].length(w[i]))
-      k -= d_transducer[i].length(w[i]);
-    else
-      return d_out[wordPiece(w,i)[k]];
-  assert(false);
-  return Generator(~0);
-}
-
 WeylWord WeylGroup::word(const WeylElt& w) const
 {
-  WeylWord result; result.reserve(length(w));
-  for (Generator j = 0; j < d_rank; ++j)
+  unsigned int k=length(w);
+  std::vector<Generator> result(k);
+  for (Generator i = d_rank; i-->0; )
   {
-    const WeylWord& xw = wordPiece(w,j);
-    for (Transducer::PieceIndex i = 0; i < xw.size(); ++i)
-      result.push_back(d_out[xw[i]]);
+    EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+    while (x>0)
+      result[--k] = d_out[tr.unshift(x)];
   }
+  assert(k==0);
 
-  return result;
+  return WeylWord{std::move(result)};
 }
 
 /*
@@ -794,7 +831,7 @@ arithmetic::big_int WeylGroup::to_big_int(const WeylElt& w) const
   arithmetic::big_int u(0);
 
   for (Generator j=d_rank; j-->0; )
-    (u*=static_cast<int>(d_transducer[j].size()))+=static_cast<int>(w[j]);
+    (u*=static_cast<int>(d_transducer[j].size()))+=static_cast<int>(w.piece(j));
 
   return u;
 }
@@ -810,28 +847,61 @@ WeylElt WeylGroup::toWeylElt(arithmetic::big_int u) const
   WeylElt w;
 
   for (Generator j = 0; j < d_rank; ++j)
-    w[j] = u.shift_modulo(static_cast<int>(d_transducer[j].size()));
+    w.piece(j) = u.shift_modulo(static_cast<int>(d_transducer[j].size()));
 
   return w;
 }
 
 /*
-  Apply to |w| the generator permutation in |f|, which should be an
+  Apply to |w| the generator permutation in |outer_f|, which should be an
   automorphism of the Dynkin diagram, expressed in terms of outer numbering.
 
-  Algorithm: we use the standard reduced decomposition of |w|, and rebuild the
-  return value by repeated right-multiplication. We can do the multiplication
-  in the same Weyl group as the decomposition because |f| is supposed to be an
-  automorphism; if it weren't we would need a reference to a second Weyl group.
+  Algorithm: after transforming |outer| we use the standard reduced
+  decomposition of |w|, and rebuild the return value by repeated
+  right-multiplication. We can do the multiplication in the same Weyl group as
+  the decomposition because |f| is supposed to be an automorphism; if it weren't
+  we would need a reference to a second Weyl group.
 */
-WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
+WeylElt WeylGroup::translation
+  (const WeylElt& w, const WeylInterface& outer_f) const
 {
-  WeylElt result;
+  Generator stack[Transducer::max_piece_length]; // working memory for reversal
 
-  for (Generator j = 0; j < rank(); ++j)
-  { const WeylWord& xw = wordPiece(w,j);
-    for (Transducer::PieceIndex i = 0; i < xw.size(); ++i)
-      mult(result,f[d_out[xw[i]]]);
+  WeylInterface inner_f;
+  for (Generator i = 0; i<rank(); ++i)
+    inner_f[i] = d_in[outer_f[d_out[i]]];
+
+  WeylElt result; // start out with identity
+  for (Generator i=0; i<rank(); ++i)
+  {
+    EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    unsigned int k=0;
+    while (x>0)
+      stack[k++]=tr.unshift(x);
+    while (k-->0)
+      inner_mult(result,inner_f[stack[k]]);
+  }
+
+  return result;
+}
+
+WeylElt WeylGroup::reverse_translation
+  (const WeylElt& w, const WeylInterface& outer_f) const
+{
+  WeylInterface inner_f;
+  for (Generator i = 0; i<rank(); ++i)
+    inner_f[i] = d_in[outer_f[d_out[i]]];
+
+  WeylElt result; // start out with identity
+  for (Generator i=rank(); i-->0; )
+  {
+    EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    while (x>0)
+      inner_mult(result,inner_f[tr.unshift(x)]);
   }
 
   return result;
@@ -845,9 +915,10 @@ void
   WeylGroup::act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const
 {
   for (Generator i = d_rank; i-->0; )
-  { const auto& wp = wordPiece(w,i); // this is in internal coding
-    for (Transducer::PieceIndex j=wp.size(); j-->0; ) // loop to apply |d_out|
-      rd.simple_reflect_root(d_out[wp[j]],alpha);     // to individual letters
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+    while (x>0)
+      rd.simple_reflect_root(d_out[tr.unshift(x)],alpha);
   }
 }
 
@@ -857,10 +928,10 @@ template<typename C>
     (const RootDatum& rd, const WeylElt& w,  matrix::Vector<C>& v) const
 {
   for (Generator i = d_rank; i-->0; )
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j = xw.size(); j-->0; )
-      rd.simple_reflect(d_out[xw[j]],v);
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+    while (x>0)
+      rd.simple_reflect(d_out[tr.unshift(x)],v);
   }
 }
 
@@ -869,11 +940,17 @@ template<typename C>
   void WeylGroup::co_act
     (const RootDatum& rd,  matrix::Vector<C>& v, const WeylElt& w) const
 {
+  Generator stack[Transducer::max_piece_length]; // working memory for reversal
+
   for (Generator i = 0; i<d_rank; ++i)
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j = 0; j<xw.size(); ++j)
-      rd.simple_coreflect(v,d_out[xw[j]]);
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    unsigned int k=0;
+    while (x>0)
+      stack[k++]=tr.unshift(x);
+    while (k-->0)
+      rd.simple_coreflect(v,d_out[stack[k]]);
   }
 }
 
@@ -884,10 +961,11 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
   const
 {
   for (Generator i = d_rank; i-->0; )
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j = xw.size(); j-->0; )
-      rd.simple_reflect(d_out[xw[j]],M); // left-multiply |M| by letters of |w|
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    while (x>0)
+      rd.simple_reflect(d_out[tr.unshift(x)],M);
   }
 }
 
@@ -897,10 +975,11 @@ template<typename C>
     (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v) const
 {
   for (Generator i = d_rank; i-->0; )
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j = xw.size(); j-->0; )
-      prd.simple_reflect(d_out[xw[j]],v);
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    while (x>0)
+      prd.simple_reflect(d_out[tr.unshift(x)],v);
   }
 }
 
@@ -912,10 +991,11 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   const
 {
   for (Generator i = d_rank; i-->0; )
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j = xw.size(); j-->0; )
-      prd.simple_reflect(d_out[xw[j]],M);
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    while (x>0)
+      prd.simple_reflect(d_out[tr.unshift(x)],M);
   }
 }
 
@@ -926,11 +1006,16 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
 void
   WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 {
+  Generator stack[Transducer::max_piece_length]; // working memory for reversal
   for (Generator i=0; i<d_rank; ++i )
-  {
-    const WeylWord& xw = wordPiece(w,i);
-    for (Transducer::PieceIndex j=0; j<xw.size(); ++j )
-      rd.simple_reflect(d_out[xw[j]],v);
+  { EltPiece x = w.piece(i);
+    const auto& tr = d_transducer[i];
+
+    unsigned int k=0;
+    while (x>0)
+      stack[k++]=tr.unshift(x);
+    while (k-->0)
+      rd.simple_reflect(d_out[stack[k]],v);
   }
 }
 
@@ -1003,11 +1088,7 @@ TwistedWeylGroup::TwistedWeylGroup(const TwistedWeylGroup& tW, tags::DualTag)
 void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
   (TwistedInvolution& tw, const WeylElt& w) const
 {
-  WeylElt x=w; W.mult(x,tw.w());
-
-  // now multiply $x$ by $\delta(w^{-1})$
-  for (unsigned int i = W.length(w); i-->0 ;)
-    mult(x,twisted(W.letter(w,i)));
+  WeylElt x=w; W.mult(x,tw.w()); W.mult(x,W.reverse_translation(w,d_twist));
 
   tw.contents()=x;
 }
@@ -1306,7 +1387,7 @@ size_t TI_Entry::hashCode(size_t modulus) const
 {
   unsigned int hash=0;
   for (size_t i=constants::RANK_MAX; i-->0; )
-    hash = 13*(hash+(*this)[i]);
+    hash = 13*(hash+piece(i));
   return hash & (modulus-1);
 }
 
@@ -1346,15 +1427,12 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 
   Precondition : |s| is in the descent set of |x|;
 */
-WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralMin
-  (WeylElt::EltPiece x,
-   weyl::Generator s,
-   weyl::Generator t) const
+EltPiece weyl::WeylGroup::Transducer::dihedralMin
+  (EltPiece x, weyl::Generator s, weyl::Generator t) const
 {
-  weyl::Generator u = s;
-  weyl::Generator v = t;
+  weyl::Generator u = s; weyl::Generator v = t; // to be swapped below
 
-  WeylElt::EltPiece y = x;
+  EltPiece y = x;
 
   for (;;)
   { // this is ok even if the shift is still undefined:
@@ -1370,8 +1448,8 @@ WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralMin
   Return the result of applying |s| and |t| alternately to |x|, for a
   total of |d| times.
 */
-WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralShift
-(WeylElt::EltPiece x,
+EltPiece weyl::WeylGroup::Transducer::dihedralShift
+(EltPiece x,
  weyl::Generator s,
  weyl::Generator t,
  unsigned int d) const
@@ -1379,7 +1457,7 @@ WeylElt::EltPiece weyl::WeylGroup::Transducer::dihedralShift
   weyl::Generator u = s;
   weyl::Generator v = t;
 
-  WeylElt::EltPiece y = x;
+  EltPiece y = x;
 
   for (unsigned int j = 0; j < d; ++j)
   {
