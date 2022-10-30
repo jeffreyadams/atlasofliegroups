@@ -22,7 +22,7 @@
   then construct a RootDatum: root_datum(simple_roots,simple_coroots)
 
   Function take [vec] argument |roots|, which may be empty; always convert them
-  explictly to a mstrix |rd.rank#roots|, as implicit fails when |roots| empty.
+  explicitly to a matrix |rd.rank#roots|, as implicit fails when |roots| empty.
 }
 set subgroup (RootDatum rd, [vec] roots) = (bool,RootDatum):
   let rk = rank(rd)

@@ -60,7 +60,7 @@ set mu (Param p) = rat:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
 }
 
-{given a list of params, return list of unique params occuring}
+{given a list of params, return list of unique params occurring}
 set unique([Param] list)=[Param]:
 if #list=0 then [] else
 let rv=null_module(list[0].real_form) in
@@ -71,7 +71,7 @@ set union([[Param]] lists)=[Param]:
 let params=[Param]:[] in
 for list in lists do params##:=list od;unique(params)
 
-{given a list of K_types, return list of unique params occuring}
+{given a list of K_types, return list of unique params occurring}
 set unique([KType] list)=[KType]:
 if #list=0 then [] else
 let rv=null_module(list[0].real_form) in

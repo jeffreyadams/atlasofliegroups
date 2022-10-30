@@ -72,7 +72,7 @@ set final_subset ([Param] B) = [Param]:
 
 
 { this is the twisted analogue of |KL_block@Param|. Originally called
-  |ext_KL_block| the 'ext_' prefix is superflous since it is implied by the
+  |ext_KL_block| the 'ext_' prefix is superfluous since it is implied by the
   presence of |delta|, and is therefore dropped
 }
 
