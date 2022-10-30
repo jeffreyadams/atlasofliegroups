@@ -63,7 +63,7 @@ class InvolutionData
   void swap(InvolutionData&);
   // manipulators
 private:
-  void classify_roots(const RootSystem& rs); // workhorse for contructors
+  void classify_roots(const RootSystem& rs); // workhorse for constructors
 public:
   void cross_act(const Permutation& r_perm); // change (cheaply) to conjugate
 

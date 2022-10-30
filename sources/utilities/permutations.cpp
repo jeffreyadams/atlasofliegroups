@@ -202,7 +202,7 @@ void Permutation::conjugate(matrix::Matrix_base<T>& M) const
   resulting in the matrix of the same operator but expressed in
   the inverse-permuted basis e_{a[0]}, ... , e_{a[n-1]}. This amounts to
   conjugating by the inverse permutation matrix (delta_{i,a[i]})_{i,j} that
-  transforms from coordinates on the standard basis to those on tha basis.
+  transforms from coordinates on the standard basis to those on that basis.
 
   Precondition: |M| is an |n| by |n| matrix, and |*this| a permutation of |n|
 

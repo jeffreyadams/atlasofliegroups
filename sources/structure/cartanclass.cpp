@@ -62,7 +62,7 @@ namespace atlas {
   $\alpha_s$ associated to |x| is odd (noncompact). To facilitate the
   determination of that grading, the grading shift information is stored as
   bitsets |d_alpha[s]| for each simple-imaginary root. Since in |Fiber|, the
-  grading shifts are organised by generator of the fiber group, the neceesary
+  grading shifts are organised by generator of the fiber group, the necessary
   "transposition" of the information is done by the constructor below.
 */
 
@@ -1033,7 +1033,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
       // include roots corresponding to vertices in this component |c|
       result.push_back(rb[*it]);
 
-      /* exclude matching componont by removing vertices of simple roots
+      /* exclude matching component by removing vertices of simple roots
          non-orthogonal to the (non-simple) |theta|-image of |rb[*it]| */
       RootNbr rTau = involution_image_of_root(rb[*it]);
       for (RankFlags::iterator jt = b.begin(); jt(); ++jt)

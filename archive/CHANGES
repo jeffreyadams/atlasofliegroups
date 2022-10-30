@@ -78,7 +78,7 @@ Building atlas and realex:
 
 Version 0.4.6 (Nov 17, 2011)
 * New atlas commands:
-** kgp, kgporder (like kgb, kgborder, but for parabolic P instaead of B)
+** kgp, kgporder (like kgb, kgborder, but for parabolic P instead of B)
 ** partial_block (undocumented; compute only lower interval of block)
 
 Version 0.4.5 (Jul 20, 2011)
@@ -123,7 +123,7 @@ Version 0.3
   one causing wrong 'blocku' output in some unequal rank inner classes
 * Several changes to output format, including:
   - inclusion of canonical representative in Cartan output
-  - addition of Cartan class infomation to K\G/B and block output
+  - addition of Cartan class information to K\G/B and block output
   - double-valued Cayley transforms are always ordered increasingly
   - addition of inverse Cayley transforms to block output
   - distinction between cross and Cayley in involution-reduced expressions

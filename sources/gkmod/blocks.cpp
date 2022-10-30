@@ -52,7 +52,7 @@
   involution: a generator that is complex for one is so as well for the other,
   while the remaining generators are imaginary for one are real for the other.
 
-  It turns out that possibilites are even more restricted then implied by the
+  It turns out that possibilities are even more restricted then implied by the
   above relation, and every block element $z=(x,y)$ occurs, for each generator
   |s|, in one of the following five configurations. At the left we depict the
   coordinate |x| in the kgb set, to the right of it the coordinte |y| in the
@@ -792,7 +792,7 @@ common_block::common_block // full block constructor
     containers::sl_list<StandardReprMod> queue { z };
 
     elements.emplace(); // create empty involution packet at front
-    auto& list = // when popping |queue|, move elts here, soreted by |y|
+    auto& list = // when popping |queue|, move elts here, sorted by |y|
       elements.front().emplace_back(); // create sublist for the unique |x| value
     do
     {

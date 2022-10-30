@@ -4,11 +4,11 @@
 
 set_type
 [ inf_list = (->inf_node) { defers creating of |inf_node| until called with () }
-, inf_node=(int,inf_list) { intiial term, and "thunk" for remaining terms }
+, inf_node=(int head, inf_list thunk) { initial term, for remaining terms }
 , maybe_a_node =(void no_node | inf_node stored) { needed to |memoize| below }
 ]
 
-{ One may for innstance define, to get an infinite list of entries 1:
+{ One may for instance define, to get an infinite list of entries 1:
 
   set rec_fun ones () = inf_node: (1,ones)
 
@@ -17,36 +17,49 @@ set_type
 }
 ones : rec_fun me () inf_node: (1,me)
 
+set series ((int->int) coef) = inf_list:
+  0.(rec_fun up_from(int n) inf_list: @:(coef(n),up_from(n+1)))
 
 { get initial |n| terms of the list, and return them as ordinary list }
 set initial (int n) = (inf_list->[int]):
   (inf_list f) [int]: for :n do let (head,tail)=f() in head next f:=tail od
 
 
-set rec_fun extend_0 ([int] pol) = inf_list:
-  @: (if =#pol then 0 else pol[0] fi,extend_0(pol[1:]))
+set extend_0 ([int] pol) = inf_list:
+(  let result = rec_fun me () inf_node: (0,me)
+in for c in pol ~do result:= (let r=result { force fetch! } in @:(c,r)) od
+;  result
+)
 
-one : inf_list: [1].extend_0
+one : inf_list: [1].extend_0 { the algebraic unit for power series }
 
-{ drop |n| initial terms, and return remaining infinite list }
-set shift (int n) = (inf_list->inf_list):
-  (inf_list L) inf_list: for :n do set(,L):=L() od; L
-
-{ more general then |ones|, we can define aritmetic and geometric progressions }
+{ more general then |ones|, we can define arithmetic and geometric progressions }
 set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:
   @: (start,f(start+stride))
 
 set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
   @: (start,f(start*lambda))
 
-{ it can be important, especially in recursive definitions, to avoid evaluating
-  the thunk defining an infinite list mora than once, but instead store the
-  values that have already been computed. The function |memoize| adds the
-  necessary storage on top of an infinite list: before actually calling the
-  thunk, it defines a variable that can store the node produced, but initially
-  stores nothing. The first time the memoized function is called, the thunk is
-  called and the result stored, from which further calls will retrieve it. The
-  magic comes from applying |memoize| recursively to the tail, before storage.
+{
+  It can be important to avoid evaluating the thunk defining an infinite list
+  more than once, but instead store the values that have already been computed.
+  Indeed this will make it possible to define a non-pure function as thunk that
+  simply assumes that each successive call is done to produce the coefficient
+  following the one of the previous call; this assumes the no access to the
+  function is exported other than the one given to the |memoize| function below.
+
+  Another application is when we want to solve a recursion like that of
+  Fibonacci by directly referring, via a |shift|, to previous values of the list
+  under construction. This remains delicate, since a simple application of
+  |memoize| will not suffice, and probably will not often prove to be the best
+  choice of strategy to solve a recurrence relation.
+
+  The function |memoize| adds the necessary storage on top of an infinite list:
+  before actually calling the thunk, it defines a variable that can store the
+  node produced, but initially stores nothing. The first time the memoized
+  function is called, the thunk is called and the result stored, from which
+  further calls will retrieve it. The magic comes from applying |memoize|
+  recursively to the tail, before storage.
 }
 set rec_fun memoize (inf_list L) = inf_list:
   let store = no_node() in
@@ -56,6 +69,13 @@ set rec_fun memoize (inf_list L) = inf_list:
      | stored(node): node
      esac
 
+
+{			    Formal power series				}
+
+{ drop |n| initial terms, remainder of division by $X^n$ }
+set shift (int n) = (inf_list->inf_list):
+  (inf_list L) inf_list: for :n do set(,L):=L() od; L
+
 { lazy sum of two infinite lists }
 set rec_fun sum (inf_list f, inf_list g) = inf_list:
   @: let (x,ff)=f(), (y,gg)=g() in (x+y,sum(ff,gg))
@@ -63,40 +83,116 @@ set rec_fun sum (inf_list f, inf_list g) = inf_list:
 set scale_list_by (int a) = (inf_list->inf_list):
   rec_fun a_times (inf_list f) inf_list: @: let (x,ff)=f() in (a*x,a_times(ff))
 
-set multiply (inf_list f) = (inf_list->inf_list):
-  let (x,tail)=f() then ff=memoize(tail) in
-  rec_fun f_times (inf_list g) inf_list:
-  @: let (y,gg)=g() in (x*y, sum(scale_list_by(y)(ff),f_times(gg)))
+{ arithmetic of $\Z[[X]]$, using |inf_list| to represent the elements }
 
-set divide_by ([int] pol) = (inf_list->inf_list): assert(#pol>1 and pol[0]=1);
-  pol:=pol[1:]; { forget leading coefficient 1 }
-  let !d=#pol { degree } in
-  (inf_list g) inf_list:
-  (for :d+1 do 0 od,g).
-  (rec_fun f ([int] carry,inf_list g) inf_list:
-   @: let (y,gg)=g() then lc= y+carry[0] in
-      (lc,f(for c@i in pol do carry[i+1]-lc*c od # 0,gg))
-  )
+set multiply (inf_list f, inf_list g) = inf_list:
+{ an example of how |memoize| allows using an identical function to produce
+  successive changing values each time it is called, without explicit control }
+  (let coefs = [int,int]:[] { pairs of corresponding coefficients of |f,g| }
+   in rec_fun m () inf_node: let (a,new_f)=f(), (b,new_g)=g() { get new values }
+        in f:=new_f; g:=new_g; coefs := (coefs next coefs:=[]) # (a,b)
+        ; ( sum(for (a,)@i in coefs do let (,b)=coefs~[i] in a*b od) , m )
+  ).memoize
+
+set multiply_by ([int] pol) = (inf_list->inf_list):
+(  let d = last(#pol,(int i)bool: !=pol[i])
+in case d { three way branch on sign of |d| }
+   then (inf_list .) inf_list: extend_0(#0) { |d<0|: multiplication by 0 }
+   in scale_list_by(pol[0]) { multiplication by a nonzero constant polynomial }
+   else { |d>0| }
+      let buf = { buffer for not yet yielded contributions from previous terms }
+         for :d+1 { for first |d| degrees above current, plus a sentinel 0 }
+	 do 0 od { so the final entry will remain 0 forever }
+   in (inf_list g) inf_list:
+      ( rec_fun f () inf_node:
+	   let (a,new_g)=g()
+	in (a*pol[0]+buf[0], f) { contribute in = degree, |buf[0]| was waiting }
+	next g:=new_g { now also update buffer, while adding terms from |a|: }
+	; for p@i in pol[1:] do buf[i]:=a*p+buf[i+1]  od { add and shift left }
+      )
+     .memoize { vital transform; ensures each coefficient calls |f| just once }
+   esac
+)
+
+set divide_by ([int] pol) = (inf_list->inf_list):
+(  assert(#pol>1 and pol[0]=1)
+;  (inf_list g) inf_list:
+   let rem =  { get initial terms: henceforth considered the remainder }
+     for in pol do let (c,new_g)=g() in g:=new_g; c od
+in pol:=pol[1:] { drop leading coefficient 1 }
+;  ( rec_fun f () inf_node:
+     let lc = rem[0], (c,new_g)=g()
+     in for r@i in rem[1:] do rem[i]:=r-lc*pol[i] od { subtract and shift left }
+     ; rem~[0]:=c; g:=new_g { final term comes from the most recent call of |g| }
+     ; (lc, f)
+   )
+  .memoize { vital transform; ensures each coefficient calls |f| just once }
+)
+
+{ We provide two ways to divide power series $N$ by $D$, with constant term $1$.
+  The first is done similarly to |multiply|, but instead of retaining an
+  increasing number of coefficients from both arguments, we retain them from $D$
+  and from the quotient $Q$; those from $N$ can be forgotten once used. As in
+  |multiply|, this imperative style together with |memoize| allow the thunk
+  being used to actually be the same non-pure function at all levels.
+
+  The second is more slick and pure, producing the thunk by calls of a recursive
+  function with different arguments (representing the remainder at each step),
+  each next one being produced from the previous by a transformation involving
+  |sum| and |scale_list_by|. We need to ensure $D$ can be traversed multiple
+  times without needlessly repeating its computation, which is done by applying
+  |memoize| to the tail of $D$ (this can be unnecessary depending on how $D$
+  was constructed, but whether that is the case cannot be found out here). The
+  ever more complicated thunk represents another, hidden, form of storage use
+  that goes on here. All in all, while slick, this might be less efficient.
+}
+set divide (inf_list N, inf_list denom) = inf_list:
+(  let (c,D)=denom() in assert(c=1,"Division requires unit constant term")
+;  let coefs = [int,int]:[] { pairs of corresponding coefficients of |D,result| }
+in (rec_fun m () inf_node:
+      let (c,new_N)=N() { get new value }
+      then q = { solve: convolve(1#D_coefs,result_coefs#q) = c }
+         c - sum(for (d,)@i in coefs do let (,r)=coefs~[i] in d*r od)
+      , (d,new_D)=D() { advance in denominator as well, but don't use |d| yet }
+      in N:=new_N; D:=new_D; coefs := (coefs next coefs:=[]) # (d,q)
+      ; ( q , m )
+   )
+   .memoize
+)
 
 set divide_by (inf_list f) = (inf_list->inf_list):
   let (head,tail)=f() then ff=memoize(tail) in
   assert(head=1,"Can only invert series with constant term 1");
   rec_fun divide (inf_list remainder) inf_list:
   @: let (y,gg)=remainder() in (y, divide(sum(scale_list_by(-y)(ff),gg)))
+  { here the final result is not passed through |memoize|; if that is desired
+    the caller should take care to do so }
 
-set inverse (inf_list f) = inf_list: divide_by(f)([1].extend_0)
+set inverse (inf_list f) = inf_list: divide([1].extend_0,f)
 
-{ Using |memoize| remains delicate, since it is most useful in recursion, but
-  the |rec_fun| syntax does not allow anything coming before the arguments, as
-  |rec_fun signs = inf_list: memoize(@:(1,@:(-1,signs)))| (NOT SYNTACTIC)
-  while calling |memoize| inside the function body creates separate memo tables
-  each time a call is done (even if it has the same arguments). The solution is
+{
+  As a proof of concept we show how an infinite list can be recursively
+  defined using itself (taking care to not make any coefficient require itself)
+  and use |memoize| to avoid re-evaluating previous terms while computing new
+  ones. The standard example is to compute the Fibonocci sequence F as 0, 1,
+  followed by |sum(f,shift(1)(F))| (where the first argument to |sum| gives the
+  coefficient two steps before, the second argument the preceding coefficient).
+
+  Using |memoize| remains delicate here, since the |rec_fun| syntax does not
+  allow anything being done before introducing arguments, as might be thought:
+  |rec_fun signs = inf_list: memoize(@:(1,@:(-1,signs)))| (NOT SYNTACTIC).
+  And calling |memoize| inside the function body, necessarily multiple times
+  if there are multiple recursive uses as is the case for Fibinacci, creates
+  separate memo tables for each call (even with identical arguments) which
+  solves nothing (as a general rule, the argument to |memoize| should not be
+  allowed to be named and accessed elsewhere, lest the efficiency be lost when
+  those other accessed recompute anyway what |memoize| stores). A solution is
   to tie the recursive knot by hand, rather than have |rec_fun| do it for us.
 }
 
 { the Fibonacci sequence can be defined |divide_by([1,-1,-1],extend_0([0,1]))|,
   however we now show how it can be defined in a directly recursive fashion }
-set fibonacci = inf_list:
+set Fibonacci = inf_list:
   let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
   in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1)(fibo)))))
 { Note that leaving out |memoize| would be possible here, but makes the runtime
@@ -105,20 +201,40 @@ set fibonacci = inf_list:
   | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |
 }
 
+{ and note Fibonacci is also |inverse([1,-1,-1].extend_0)|, easy and efficient }
 
-{			    Formal power series				}
+{
+  The pentagonal numbers are those obtained by adding to a perfect square $k^2$
+  either the "lower" |binom(k,2)| or "upper" |binom(n+1,2)| triangular number;
+  call these the lower and uppoer pentagonal numbers for $k$.
+  Euler's pentagonal series has entries $(-1)^k$ at indices the lower and upper
+  pentagonal numbers for $k$, for every $k\in\N$, and $0$ at all other indices.
+  The relavance of Euler's pentagonal  series is that its inverse is the
+  generating series for the number of partitions of a natural number.
+
+  A practical way to generate it is to start at index 0, the upper pentagonal
+  number for 0, with variables k=0, lower=false and a timer i=1. Then to
+  generate a term, decrement the timer; if still positive return a term 0.
+  Otherwise return (-1)^k, and if lower holds set the timer i:=k else (not lower)
+  increment k and set i to the sum of the old and new values of k; also invert
+  lower in all productive cases. The code below is a bit slicker and clearer.
+}
 
 pentagonal_series : inf_list:
-@:(1
-  , (1,false,1).
-    (rec_fun f (int k, bool upper, int i) inf_list:
-     @: if i+i= if upper else k*(3*k-1) then k*(3*k+1) fi
-        then (minus_1^k, f(k+#upper,not upper,i+1))
-        else (0,f(k,upper,i+1))
-        fi
-    )
-  )
+(  let i=1, k=0, lower=false
+in ( rec_fun E () inf_node:
+     ( if =(i-:=1) { run down timer and test }
+       else 0 { in ordinary case, produce a 0 }
+       then i:=k  { timer has run out, rewind it }
+       ; minus_1^k { produce a nonzero term }
+       next if lower:=not lower then i+:=(k+:=1) fi
+       fi
+     , E { provide ourselves as the function to call next time around }
+     )
+   )
+  .memoize
+)
 
-set n_parts = memoize(inverse(pentagonal_series))
-set n_partitions (int n) = int:
-  let (x,ff)=n_parts() in for :n do set(x,ff):=ff() od; x
+set n_partitions = (int->int):
+  let !S=inverse(pentagonal_series) { this is already meomoized } in
+  (int n) int: let (x,ff)=S() in for :n do set(x,ff):=ff() od; x

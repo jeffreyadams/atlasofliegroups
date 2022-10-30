@@ -191,7 +191,7 @@ template<typename C>
       assert(m==b[i]/E(i,j)); // since |b[i]| now is what was |b[i]*E(i,j)/d|
       result[j] = m;
       for (size_t k=0; k<=i; ++k)
-	b[k] -= E(k,j)*m; // subtract off contribution from htis column
+	b[k] -= E(k,j)*m; // subtract off contribution from this column
       assert(b[i]==C(0)); // that was the point of the subtraction
     }
     else if (b[i]!=C(0))

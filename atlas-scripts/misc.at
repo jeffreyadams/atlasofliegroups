@@ -33,7 +33,7 @@ set finalize ([Param] P) = ParamPol: { will fail on an empty list }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
-set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
+set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
 {properties of groups}
@@ -76,13 +76,9 @@ set generate_all_subsets([vec] S) = [[vec]]:
 set generate_all_subsets([ratvec] S) = [[ratvec]]:
     for A in power_set(# #S) do for i in A do S[i] od od
 
-{A is a subset of B}
-set is_subset([int] A,[int] B)=bool:
-all(for a in A do find (B,a).>= od)
-
 {A is a proper subset of B}
-set is_proper_subset([int] A,[int] B)=bool:
-is_subset(A,B) and #A<#B
+set is_proper_subset(vec A,vec B)=bool:
+   let a=A.to_bitset, b=B.to_bitset in bitwise_subset(a,b) and a!=b
 
 {complement of A in B}
 set complement([Param] A,[Param] B)=[Param]:

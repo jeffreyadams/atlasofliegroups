@@ -65,7 +65,7 @@ set projectors (CharacterTable ct, WCell cell, [vec] some_char_values) = [mat]:
   projectors(ct,cell_representation(ct.class_table,cell),some_char_values)
 
 
-{ given a cell, compute the cell represetation pi, find the smallest k so that
+{ given a cell, compute the cell representation pi, find the smallest k so that
   <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
   irreducible in common is special; use the character of sym^k(reflection)
   to compute the projection operator onto the special

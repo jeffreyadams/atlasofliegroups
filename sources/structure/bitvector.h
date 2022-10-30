@@ -50,7 +50,7 @@ template<unsigned int dim>
 
 /*
   Either find a solution of the system of equations |eqn|, putting it
-  into |sol| and returning |true|, or return |false| if no solition exists.
+  into |sol| and returning |true|, or return |false| if no solution exists.
 
   Here |eqns| holds a system of equations, the last bit of each being
   interpreted as the right hand side.
@@ -225,7 +225,7 @@ template<unsigned int dim> class BitVector
   { BitVector<dim> result(*this); result+=v; return result; }
 
   // the same operation as the previous method, under different name
-  // the destinction may sometimes be useful for documentation purposes
+  // the distinction may sometimes be useful for documentation purposes
   BitVector operator- (const BitVector& v) const
   { BitVector<dim> result(*this); result-=v; return result; }
 

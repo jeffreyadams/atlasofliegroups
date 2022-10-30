@@ -49,7 +49,7 @@ set add_weights (ParamPol P,(KGBElt ->[ratvec]) weights) = KTypePol:
        for coef@p in P do for H in weights(p.x) do coef*add_weight(p,H) od od.##
       )
 
-{ this is what probaby should be preferred to the above functions }
+{ this is what probably should be preferred to the above functions }
 set add_weight (KTypePol P,(KGBElt->vec) f) = KTypePol:
    P.null_K_module +
    for coef@t in P do let (x,lr)=%t in (coef,K_type(x,lr+f(x))) od

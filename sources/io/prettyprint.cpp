@@ -214,7 +214,7 @@ std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
   Symbols are to be interpreted from right to left as operations performed on
   an initially empty twisted involution; if the number |s| is followed by a
   '^' it means left multiplication by a (twisted-commuting) generator |s|, if
-  followed by an 'x' (for cross action) it means twiseted conjugation by |s|.
+  followed by an 'x' (for cross action) it means twisted conjugation by |s|.
 */
 std::ostream& printInvolution(std::ostream& strm,
 			      const TwistedInvolution& tw,

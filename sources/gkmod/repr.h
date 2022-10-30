@@ -25,7 +25,7 @@
 
 #include "hashtable.h"
 #include "free_abelian.h"
-#include "arithmetic.h" // |SplitInteger|
+#include "arithmetic.h" // |Split_integer|
 #include "gradings.h"
 #include "kgb.h"
 #include "subsystem.h"
@@ -67,7 +67,7 @@ class common_context;
   We add a field |height| that is determined by the other ones (in the context
   of a given real reductive group), indeed just by $\lambda_0$. It is useful
   because this is the first statistic used for sorting parameters when they
-  are combinined into "parameter polynomials", and this will be faster if we
+  are combined into "parameter polynomials", and this will be faster if we
   don't need the somewhat lengthy computation of the height (twice) for each
   comparison made. On the other hand we now need to compute the height once
   for each parameter constructed, even if it never enters a polynomial.
@@ -468,8 +468,8 @@ public:
     performed, and if found the index is then used via |place| to find the block
   * a table |K_type_hash| of |K_type| values having been found to occur in
     deformation formulas, which allows compact representation of the latter
-  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coeffient)
-    respectively |ext_kl::Pol| (integer coeffient) polynomials, which can be
+  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coefficient)
+    respectively |ext_kl::Pol| (integer coefficient) polynomials, which can be
     shared among blocks to reduce the size of their tables of such polynomials
     (they may also choose to maintain their local polynomials themselves).
 */
@@ -528,6 +528,17 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
      const RatWeight& diff, const RatWeight& gamma);
+
+/*
+   compute the signed multiset of final parameters "post deformation"
+   (subsequently they will be deformed towards zero without reduction here)
+   obtained from the elements of the block of |p|, with their "pre deformation"
+   coefficients taken (and removed) from |queue|, where all block elements of
+   high strictly above |height_bound| are ignored
+*/
+  sl_list<SR_poly::value_type> block_deformation_to_height
+    (StandardRepr p, SR_poly& queue, level height_bound); // |p| by value
+
 
   // full deformation to $\nu=0$ of |z|
   const K_type_poly& deformation(StandardRepr z); // by value

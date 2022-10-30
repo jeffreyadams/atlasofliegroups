@@ -112,7 +112,8 @@ set gamma_R (Param p) = ratvec: (mu_C(p)-nu_C(p))/2
 }
 set parameter_g (RealForm G,ratvec gamma_L, ratvec gamma_R) = Param:
   let n=#gamma_L
-  then lambda = ratvec_as_vec(gamma_L+gamma_R)##null(n)
+  then lambda = ratvec_as_vec(gamma_L+gamma_R)##null(n) +
+  (G.rho)[:n] ## -G.rho[n:]
   then nu = concatenate((gamma_L-gamma_R)/2, (gamma_R-gamma_L)/2) in
   {parameter(KGB(G,0),lambda,nu)}
   dominant(parameter(KGB(G,0),lambda,nu))

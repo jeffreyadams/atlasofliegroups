@@ -211,7 +211,7 @@ set Z_2 (RealForm G) = [vec]:
 
   The value returned are the set of rational weights $M*(A[i])$, where the
   multiplication by $M$ transfers us back to the original $X_*$ coordinates.
-  The numbers $c[i]$ are forgotten, but in fact will appear as demoninators
+  The numbers $c[i]$ are forgotten, but in fact will appear as denominators
   of the rational vectors returned, due to the way they were obtained.
 }
 set center(RootDatum rd) = [ratvec]:

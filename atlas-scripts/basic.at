@@ -187,15 +187,28 @@ set is_member_sorted ([int] v) = (int->bool):
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
 
-set contains (int val) = ([int]->bool): ([int] v)bool:
-  any(#v,(int i)bool:v[i]=val)
 
-set is_subset_of_sorted ([int] sorted) = ([int]->bool):
-   let test = is_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
-set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
-   let test = isnt_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_member_fast  (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+set isnt_member_fast  (vec L) = (int->bool):
+   let B = ~L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+
+set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
+set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
+
+set contains (vec S) = (vec->bool):
+   let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool):
+   let b = 2^s in (vec L)bool: bitwise_subset(b,L.to_bitset)
+
+set is_subset_of (vec L) = (vec->bool):
+   let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+set is_disjoint_from (vec L) = (vec->bool):
+   let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+
+set set_bit_positions (int n) = vec:
+   assert(n.>=,"Infinite number of set bits for negative number");
+   while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
@@ -481,7 +494,7 @@ set sum ((int,int) shape, [mat] L) = mat:
   if =len then null(shape)
   else let s=L~[0] in assert(shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
   fi
-{ square matrices are frequent, so there is a spacial case of |sum| for them }
+{ square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
 { product of list of square matrices, with given size for when list is empty }
@@ -618,7 +631,7 @@ set solve (mat A,vec b) = maybe_a_vec:
 ;  (C[:k]*sol).solution
 )
 
-set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satifying |A*X=B|, if any }
+set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
       assert(n_rows(B)=n,"equation mismatch");
@@ -1092,7 +1105,7 @@ set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 { and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
 
-{ reversing order, simplilar questions about coweight v }
+{ reversing order, similar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
   >=(numer(v)*simple_roots(rd))
 set is_strictly_dominant (ratvec v,RootDatum rd) = bool:
@@ -1104,7 +1117,7 @@ set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
 set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
   is_integrally_dominant(dual(rd),v)
 
-{ the following should replace the needlessly complicacted built-ins they use }
+{ the following should replace the needlessly complicated built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
   coroot_radical(rd)[:,semisimple_rank(rd):] { drop coroots part }
 set coradical_basis (RootDatum rd) = mat: { columns are weights }
@@ -1679,7 +1692,7 @@ set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
 set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
 
-set as_pol (KType p) = KTypePol: p { for making implicit conversion explcit }
+set as_pol (KType p) = KTypePol: p { for making implicit conversion explicit }
 set as_pol (RealForm G, [KType] ps) = KTypePol:
   let one=Split:(1,0) in null_K_module(G)+for p in ps do (one,p) od
 { DON'T define as_pol ([KType] pp): cannot be correctly defined when #pp=0 }
@@ -1764,7 +1777,7 @@ set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
 set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
   param(x,ratvec_as_vec(lambda-x.real_form.rho),nu)
 
-{ set parameter ensuring (upon sucess) that the infinitesimal char. is |gamma|;
+{ set parameter ensuring (upon success) that the infinitesimal char. is |gamma|;
   achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
 set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
@@ -1961,7 +1974,7 @@ set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
 set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
 
-set as_pol (Param p) = ParamPol: p { for making implicit conversion explcit }
+set as_pol (Param p) = ParamPol: p { for making implicit conversion explicit }
 set as_pol (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
 { DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
@@ -1970,13 +1983,36 @@ set as_pol (RealForm G, [Param] ps) = ParamPol:
 set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
 set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 
+set full_deform (ParamPol P) = KTypePol:
+  sum(P.real_form, for c@q in P do c*full_deform(q) od )
+
+set deform_to_height (ParamPol P, int height) = KTypePol:
+( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
+  then output = empty_K, def = empty
+  in
+  P := empty +
+  { snap every term down to a reducibility point, or tempered parameter }
+    for c@p in P
+    do let rp = reducibility_points(p) in
+       if =#rp then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+    od.##
+; while >#P
+  do set (def,P) :=
+        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  ;  let kt = for c@q in def do if =nu(q) then [(c,q.K_type)] else [] fi od.##
+     ,   pp = for c@q in def do if =nu(q) then [] else [(c,q)] fi od.##
+  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  od
+; output
+)
+
 { nice output of KTypePol and ParamPol: split_format the coefficients }
 set pol_format (KTypePol P)= string:
   ## for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od
 set pol_format (ParamPol P)= string:
   ## for w@p in P do to_string("(",w.split_format,")*",p,new_line) od
 
-{ find what should be unique infintesimal character shared by all terms }
+{ find what should be unique infinitesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:
   assert(!=P,"empty polynomial has no infinitesimal character");
   let (,,gamma)=%first_param(P) in
@@ -2002,13 +2038,13 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{ whether all coefficients are integer repectively integer multiples of |s| }
+{ whether all coefficients are integer respectively integer multiples of |s| }
 set is_pure_1 ([Split] L) = bool: all(#L,(int i) bool: =L[i].s_part)
 set is_pure_s ([Split] L) = bool: all(#L,(int i) bool: =L[i].int_part)
 set is_pure   ([Split] L) = bool: L.is_pure_1 or L.is_pure_s
 
 { a module is considered pure if either all coefficients are integer of if all
-  coefficients are integer multiples of s; stronger than all coefficents pure }
+  coefficients are integer multiples of s; stronger than all coefficients pure }
 set is_pure_1 (KTypePol P) = bool:
    for c in P do if !=c.s_part then return false fi od; true
 set is_pure (KTypePol P) = bool: for c in P do c od.is_pure
@@ -2025,16 +2061,43 @@ set purity (KTypePol P) = (int,int,int):
   od; (x,y,z)
 
 
+{		Rapid look-up in certain fixed structures		}
+
+set index_in ([vec] L) { equal size vectors } = (vec->int):
+  if =#L then (vec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+     then x0 = KGB(G,0)
+     then P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+  in (vec v) int: P[K_type(x0,v)].int_part-1
+  fi
+
+set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
+  if =#L then (ratvec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+     then x0 = KGB(G,0), zero = null(n)
+     then P = null_module(G) + for v@i in L do (i+1,param(x0,zero,v)) od
+  in (ratvec v) int: P[param(x0,zero,v)].int_part-1
+  fi
+
+set index_in ([Param] L) = (Param->int): { an efficiency hack: }
+  if =#L then (Param .)int: minus_1 { search in empty list always fails }
+  else
+     let G=L[0].real_form
+     then P = G.null_module + for q@i in L do (i+1,q) od
+  in (Param p) int: P[p].int_part-1
+  fi
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
 
-{ find index of item in list, or -1 if not found; first does this }
+{ find index of item in list, or -1 if not found; |first| does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }
-   let P = G.null_module + for q@i in L do (i+1{nonzero!},q) od
-   in (Param p) int: P[p].int_part-1
 set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
@@ -2095,7 +2158,7 @@ set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
 set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
-{. Convert a list of KTypePol into the list of distinct parameters occuring;
+{. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}
 set monomials([KTypePol] list) = [KType]:
    if =#list then []

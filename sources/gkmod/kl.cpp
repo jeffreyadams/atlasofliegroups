@@ -179,6 +179,11 @@ Poly_hash_export KL_table::polynomial_hash_table ()
   return pol_hash!=nullptr ? Poly_hash_export(pol_hash) : Poly_hash_export(*own);
 }
 
+void KL_table::plug_hole(BlockElt y)
+{ assert(y<d_holes.capacity());
+  d_holes.remove(y);
+}
+
 // Fill (or extend) the KL- and mu-lists up to |limit|
 void KL_table::fill(BlockElt limit, bool verbose)
 {
@@ -213,7 +218,7 @@ void KL_table::fill(BlockElt limit, bool verbose)
     throw error::MemoryOverflow();
   }
 
-}
+} // |KL_table::fill|
 
 BitMap KL_table::prim_map (BlockElt y) const
 {
@@ -291,7 +296,7 @@ weyl::Generator KL_table::first_nice_and_real(BlockElt x,BlockElt y) const
   1) (s,t) is (rn,r2) for y;
   2) (s,t) is (i1,ic) for x;
   3) (s,t) is (i1,i1/2) for s.x.
-  Since the statuses of t for x and s.x differ, s must be ajdacent to t in the
+  Since the statuses of t for x and s.x differ, s must be adjacent to t in the
   Dynkin diagram (but this is not tested or used explicitly here)
 
   Such a pair can be used to compute P_{x,y}+P_{s.x,y} using s,
@@ -580,7 +585,7 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
   mu_pairs.merge(std::move(downs)); // need not call |unique|: sets are disjoint
 
   // commit
-  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend()); // convert to vector
+  d_mu[y] = mu_pairs.to_vector();
 } // |KL_table::complete_primitives|
 
 /*
@@ -781,7 +786,7 @@ void KL_table::new_recursion_column
     mu_pairs.reverse(); // remainder was decreasing, so make it increasing
     mu_pairs.merge(std::move(downs)); // fusion with initial increasing part
   }
-  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
+  d_mu[y] = mu_pairs.to_vector();
 
 } // |KL_table::new_recursion_column|
 
@@ -1016,7 +1021,7 @@ void KL_table::swallow
   $(i,j)$ the edge label for the edge between $i$ and $j$ only if $s$ is in the
   $\tau$-invariant of $i$ but not in the of $j$, so the inclusion condition says
   that the removed edges will never have an effect on these action matrices.
-  It is this orentied graph that will be used in the definition of $W$-cells.
+  It is this oriented graph that will be used in the definition of $W$-cells.
 
   For block elements $x<y$, and nonzero $\mu(x,y)$ is stored in |d_mu[y]|.
   Recall from |complete_primitives| that nonzero $\mu(x,y)$ arise in two ways:

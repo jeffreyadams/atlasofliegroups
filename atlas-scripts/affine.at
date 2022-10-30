@@ -71,7 +71,7 @@ simple factor of ad
      folding_order =2 or 3
 3) delta permutes r simple factors rd_f
    delta^r is an automorphism of the first one, of order 1,2,3
-   aply 1 or 2 to (rd_i,delta^r)
+   apply 1 or 2 to (rd_i,delta^r)
    folding_order = 1,2 or 3 accordingly
 }
 {basic affine datum uses highest root, folding_order=1

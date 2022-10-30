@@ -257,7 +257,7 @@ in for (M,Hs) in all_H_with_L(rd)
       od
    od; error("No Levi found")
 
-{ parbolics.at defines type |Parabolic| and |KGPElt| as ([int] S, KGBElt x) }
+{ parabolics.at defines type |Parabolic| and |KGPElt| as ([int] S, KGBElt x) }
 
 { find H which work for given q=q(x,H)=(L,u) }
 set find_H (Parabolic P) = [vec,mat]:

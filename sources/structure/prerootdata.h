@@ -9,8 +9,8 @@
 */
 
 /*
-  A class |PreRootDatum| to store simple rooots and coroots, and perform some
-  tests and operations prior to generating the full root systen and root datum
+  A class |PreRootDatum| to store simple roots and coroots, and perform some
+  tests and operations prior to generating the full root system and root datum
 */
 
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */

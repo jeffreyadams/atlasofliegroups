@@ -791,7 +791,7 @@ InnerClass::canonicalize
   Now ensure that the involution |theta| associated to the twisted involution
   |sigma| fixes the dominant chamber for the root subsystem now flagged in
   |gens|, which we shall call the complex root subsystem. Since |theta|
-  stablises this subsytem globally, this means it must be made to permute its
+  stabilises this subsytem globally, this means it must be made to permute its
   positive and negative roots separately. We repeatedly inspect the simple
   roots of this subsystem, searching for some $\alpha_i$ that maps to a
   negative root; each time one is found, we twisted-conjugate |sigma| by $i$,

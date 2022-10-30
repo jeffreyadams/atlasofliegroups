@@ -886,7 +886,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   be because \emph{all} upstairs real roots becoming negative by the necessary
   conjugation will be downstairs complex roots (so contribute to the shift).
 
-  Sum of positve real roots becoming negative at $\theta'=^{to\_simple}\theta$
+  Sum of positive real roots becoming negative at $\theta'=^{to\_simple}\theta$
 */
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
@@ -1849,6 +1849,105 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   return result;
 } // |deformation_terms|, common block version
 
+sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
+  (StandardRepr p, SR_poly& queue, level height_bound)
+{
+  BlockElt start;
+  auto& block = lookup_full_block(p,start);
+  const auto& gamma = p.gamma();
+  RatWeight diff = offset(p,block.representative(start));
+  auto dual_block = blocks::Bare_block::dual(block);
+  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
+  // create KL table only minimally filled
+
+  // now fill remainder up to height; prepare for restriction to this subset
+  BitMap retained(block.size());
+  sl_list<std::pair<const StandardRepr,Split_integer> > result;
+  for (BlockElt z=0; z<block.size(); ++z)
+  { StandardRepr q = sr(block.representative(z),diff,gamma);
+    if (retained.set_to(z,q.height()<=height_bound))
+    {
+      auto it = queue.find(q);
+      if (it==queue.end())
+	result.emplace_back(std::move(q),Split_integer(0));
+      else
+      {
+	result.emplace_back(std::move(q),it->second); // push |(q,queue[q])|
+	queue.erase(it); // and remove that term it from the |queue|
+      }
+    }
+    else
+      kl_tab.plug_hole(block.size()-1-z); // not interested in this parameter
+  }
+  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
+
+  int_Vector value_at_minus_1;
+  value_at_minus_1.reserve(kl_tab.pol_store().size());
+  for (auto& entry : kl_tab.pol_store())
+  { int val = 0;
+    for (unsigned d=entry.size(); d-->0;)
+      val = static_cast<int>(entry[d])-val; // Horner evaluate polynomial at -1
+    value_at_minus_1.push_back(val);
+  }
+
+  const RankFlags singular = block.singular(gamma); // singular simple coroots
+  auto it = result.begin();
+  for (auto elt: retained) // don't increment |it| here
+    if (block.survives(elt,singular))
+      ++it;
+    else
+    { retained.remove(elt);
+      assert(it->second.is_zero()); // |queue| cannot have non final parameter
+      result.erase(it); // drop term; |it| now points to next term
+    }
+  result.reverse(); // we shall need to travers elements downwards in |block|
+
+  // viewed from |block|, the |kl_tab| is lower triangular
+  // build its transpose, restricted to |retained|, and evaluated at $q=-1$
+  int_Matrix Q_mat (result.size()); // initialise to identity matrix
+  unsigned int i=0,j;
+  unsigned int const top=block.size()-1;
+  for (auto it=retained.begin(); it(); ++it,++i)
+    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+      Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
+
+  int_Matrix signed_P = Q_mat.inverse();
+  BitMap odd_length(signed_P.numRows());
+  { unsigned int i=0;
+    for (const BlockElt z : retained)
+      odd_length.set_to(i++,block.length(z)%2!=0);
+  }
+
+  matrix::Vector<Split_integer> coef(signed_P.numRows());
+  auto pos = result.size()-1;
+  for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
+    if (not it->second.is_zero())
+    { coef.assign(pos,Split_integer(0));
+      // compute into |coef the product of columns of |signed_P| with parity
+      // opposite to |pos| with corresponding entries of column |pos| of |Q_mat|
+      for (auto j : (odd_length.isMember(pos) ? ~odd_length : odd_length))
+      { if (j>=pos)
+	  break;
+	for (unsigned i=0; i<=j; ++i)
+	  coef[i] += signed_P(i,j)*Q_mat(j,pos);
+      }
+      { auto our_orient = orientation_number(it->first);
+	auto j = pos-1;
+	for (auto jt = std::next(it); not result.at_end(jt); ++jt,--j)
+	{ coef[j] *= it->second;
+	  auto diff = our_orient - orientation_number(jt->first);
+	  assert(diff%2==0);
+	  coef[j].times_1_s();
+	  if (diff%4!=0)
+	    coef[j].times_s(); // equivalently |coef[j].negate|
+	  jt->second += coef[j]; // contribute coefficient to result
+	}
+      }
+  }
+
+  return result;
+}
+
 // compute and return sum of KL polynomials at $s$ for final parameter |sr|
 SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 {
@@ -1970,7 +2069,7 @@ SR_poly twisted_KL_sum
   const RatWeight& diff,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
-  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+  // compute cumulated KL polynomials $P_{x,y}$ with $x\leq y$ survivors
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;

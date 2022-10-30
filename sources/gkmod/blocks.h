@@ -74,7 +74,7 @@ public: // this |struct| must be public, though mainly used in derived classes
 
   }; // |struct EltInfo|
 
-protected: // all fields may be set in a derived class contructor
+protected: // all fields may be set in a derived class constructor
   struct block_fields // per block element and simple reflection data
   {
     BlockElt cross_image;
@@ -406,7 +406,7 @@ class common_block : public Block_base
   // it is assumed that |shift| is orthogonal to the integral system
   void shift (const RatWeight& shift);
 
-  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using arugment
+  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using argument
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
     (common_block&& sub, const BlockEltList& embed,

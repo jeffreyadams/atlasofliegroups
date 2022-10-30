@@ -149,7 +149,7 @@
 \def\defin#1{\global\advance\ind by 2
      \1\&{#1}\quad} % begin `#define' or `format' of `#include'
 \def\lapstar{\rlap{*}}
-\def\stsec % start up setion
+\def\stsec % start up section
  {\endcodemode\noindent{\let\*=\lapstar\bf\secstar.\quad}}
 \let\startsection=\stsec % this one is used; provides hook for extra actions
 \newcount\gdepth % depth of last starred section
@@ -315,7 +315,7 @@
 \def\readcontents{\input\contentsfile}
 
 \newwrite\cont
-\output= % temporary for first page, which is emtpy so as to define \topmark
+\output= % temporary for first page, which is empty so as to define \topmark
 {\setbox0=\box255 % throw away empty page
  \openout\cont=\contentsfile % gets written when first real page is shipped
  \write\cont{\catcode `\noexpand\@=11 }   % first line makes `@' letter

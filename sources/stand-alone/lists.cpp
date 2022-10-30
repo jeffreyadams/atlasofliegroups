@@ -155,7 +155,7 @@ void gg()
   fb.insert_after(std::next(fb.before_begin(),length(fb)),fb.begin(),fb.end());
   vb.insert(vb.end(),vb.begin(),vb.end());
 
-  // test if forward list splice to adjecent position works:
+  // test if forward list splice to adjacent position works:
   fb.splice_after(fb.before_begin(),fb,fb.before_begin(),fb.end());
 
   // now write all those containers to |std::cout|

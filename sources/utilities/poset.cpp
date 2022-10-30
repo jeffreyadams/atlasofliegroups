@@ -153,7 +153,7 @@ graph::OrientedGraph Poset::hasseDiagram() const
 graph::OrientedGraph Poset::hasseDiagram(unsigned int max) const
 {
   bitmap::BitMap cl(max+1);
-  cl |= d_below[max]; cl.insert(max); // we must not forget |max| iself.
+  cl |= d_below[max]; cl.insert(max); // we must not forget |max| itself.
 
   graph::OrientedGraph h(max+1); // empty graph of size of |max+1|
 
