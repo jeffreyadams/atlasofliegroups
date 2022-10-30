@@ -21,11 +21,16 @@ understood by looking at the branching to K algorithm. I haven't done
 that with enough care, but I think that they are close to what is
 impleented below.  }
 
+set convert_to_K (ParamPol P)=KTypePol:
+   let result=null_K_module(real_form(P))
+   in for c@p in P do result+:=c*LKT(p) od;
+   result
+
 set standardize(KType mu) = KTypePol:
    K_type_pol(standardize(parameter(mu)*0))
 
 set standardize(KTypePol P) = KTypePol:
-0*P + for c@p in P do standardize(p) od
+0*P + for c@p in P do c*standardize(p) od
 
 {all K_types that occur with mu as LKTs in some standard module}
 set R_packet(KType t)=KTypePol:
@@ -43,9 +48,6 @@ set R_packet(KType t)=KTypePol:
            od
        od; result
 
-set R_packet(Param p)=R_packet(LKTs(p)[0])
-
-set R_packet(ParamPol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) od)
 
 set R_packet(KTypePol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) od)
 
@@ -60,110 +62,97 @@ set pre_up(KType mu)=KTypePol:
                         do if int_part(c)<0 then result+:=p fi
                         od; result
 
-set pre_up(Param p)=pre_up(first_K_type(standardize(p*0)))
+{set pre_up(Param p)=pre_up(first_K_type(standardize(p*0)))}
 
-set pre_up(K_Type mu, int N)=ParamPol:
-   let result=null_module(real_form(mu))
-   in for c@p in K_type_formula(parameter(mu),N)
+set pre_up(KType mu, int N)=KTypePol:
+   let result=null_K_module(real_form(mu))
+   in for c@p in K_type_formula(mu,N)
                         do if int_part(c)<0 then result+:=p fi
                         od; result
-
-set pre_up(Param p,int N)=pre_up(first_K_type(standardize(p*0)),N)
 
 
 {As previous function, but remove some terms that are further
 up in the partial order}
-set up_tr(K_Type mu)=K_Type_Pol:
-   let NM=null_module(real_form(mu)),start=pre_up(mu)
+set up_tr(KType mu)=KTypePol:
+   let NM=null_K_module(real_form(mu)),start=pre_up(mu)
    then result=NM
    in while start!=NM
-       do let p=last_param(start)
+       do let p=last_K_type(start)
            in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
 	      then result+:=p fi; start-:=start[p]*p
        od; result
 
-set up_tr(Param p)=up_tr(first_K_type(standardize(p*0)))
 
 {All K-types above mu up to height bound}
-{set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
-    let seen=ParamPol:null_module(mu.real_form)
+set up_tr_cone(KType mu, int bound) = KTypePol:
+    let seen=KTypePol:null_K_module(mu.real_form)
     then result=seen
-     in parameter(mu).(rec_fun F (Param tau) void:
+     in mu.(rec_fun F (KType tau) void:
         if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(bound)(up_tr(tau)) do F(p);
-           result +:=p od fi); result}
-
-set up_tr_cone(K_Type mu, int bound) = K_Type_Pol:
-    let seen=ParamPol:null_module(mu.real_form)
-    then result=seen
-     in parameter(mu).(rec_fun F (Param tau) void:
-        if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(bound)(pre_up(tau,bound)) do F(p);
+        else seen +:=tau; for @p in to_ht(pre_up(tau,bound),bound) do F(p);
            result +:=p od fi); result
 
-{set pre_up_R(K_Type mu)=ParamPol:
-   let result=null_module(real_form(mu))
+set pre_up_R_alt(KType mu)=KTypePol:
+   let result=null_K_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=p fi
                         od
-      od; result}
+      od; result
 
-set pre_up_R(K_Type mu)=ParamPol:
-   let result=null_module(real_form(mu))
+set pre_up_R(KType mu)=KTypePol:
+   let result=null_K_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
                         do if int_part(c)<0 then result+:=R_packet(p) fi
                         od
       od; result
 
-set up_R(K_Type mu)=K_Type_Pol:
-    let NM=null_module(real_form(mu)),start=pre_up_R(mu)
+set up_R(KType mu)=KTypePol:
+    let NM=null_K_module(real_form(mu)),start=pre_up_R(mu)
    then result=NM
-   in while start!=NM do let p=last_param(start)
+   in while start!=NM do let p=last_K_type(start)
               in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
 	         then result+:=p fi; start-:=start[p]*p
 		      od; result
 
-set up_R(Param p)=up_R(first_K_type(standardize(p*0)))
 
-set up_R_cone(K_Type mu, int bound) = K_Type_Pol:
-    let seen=ParamPol:null_module(mu.real_form)
+set up_R_cone(KType mu, int bound) = KTypePol:
+    let seen=KTypePol:null_K_module(mu.real_form)
     then result=seen
-     in parameter(mu).(rec_fun F (Param tau) void:
+     in mu.(rec_fun F (KType tau) void:
         if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(bound)(up_R(tau)) do F(p);
+        else seen +:=tau; for @p in to_ht(pre_up_R(tau),bound) do F(p);
            result +:=p od fi); result
 
-set is_ge_tr(K_Type tau,K_Type mu)=bool:
+set is_ge_tr(KType tau,KType mu)=bool:
     if tau=mu then true
     elif height(tau)<=height(mu) then false
-    else up_tr_cone(mu,height(tau))[parameter(tau)]!=0 fi
+    else up_tr_cone(mu,height(tau))[tau]!=0 fi
 
 {Move one step down from mu in the partial order; may result in extra terms}
-set pre_down(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
-   then HT=height(q), lambda =Q.lambda
+set pre_down(KType mu) = KTypePol:
+   let G=real_form(mu), Q=first_K_type(standardize(mu))
+   then HT=height(Q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
-   then result=zeroPol
+        x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then result=null_K_module(G)
      in for avee@j in poscoroots(rd)
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
               then let R=to_ht(HT-1)(standardize(standardize
 	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in result+:=R
+                   in result+:=convert_to_K(R)
 	   fi
 	od; result
 
-set pre_down(Param p)=pre_down(first_K_type(standardize(p*0)))
 
 {Move one step down from mu in the partial order <_tr; remove terms
 for which mu does not occur in the K-type formula}
-set down_tr_one_root(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+set down_tr_one_root(KType mu) = KTypePol:
+   let q=parameter(mu) then Q=first_K_type(standardize(mu))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x
+        zeroPol = null_K_module(q.real_form), x=Q.x
    then rhoL=rho(Levi_by_wt(Lambda,x)), pr=posroots(rd)
    then result=zeroPol
      in for avee@j in poscoroots(rd)
@@ -172,20 +161,19 @@ set down_tr_one_root(K_Type mu) = ParamPol:
 	                  (parameter(x,lambda-pr[j], rhoL-pr[j]))))
                    in for @ m in R
 	              do for lkt in LKTs(m)
-		         do if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
-			    then result+:=parameter(lkt)
+		         do if (result[lkt]=0 and is_ge_tr(Q,lkt))
+			    then result+:=lkt
                             fi
 	              od od
 	 fi od;
    result
 
-set down_tr_one_root(Param p)=down_tr_one_root(first_K_type(standardize(p*0)))
 
-set down_tr_two_roots(K_Type mu)=ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+set down_tr_two_roots(KType mu)=KTypePol:
+   let q=parameter(mu) then Q=first_K_type(standardize(mu))
    then HT=height(q), lambda =Q.lambda, x=Q.x
    then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form)
+        zeroPol = null_K_module(q.real_form)
    then pr=posroots(rd),
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
@@ -194,16 +182,16 @@ set down_tr_two_roots(K_Type mu)=ParamPol:
                  (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
             in for @m in R do
 	       for lkt in LKTs(m) do
-	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
-	       then result+:=parameter(lkt);prints(pr[j]," ",pr[usedpcr[k]])
+	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
+	       then result+:=lkt;prints(pr[j]," ",pr[usedpcr[k]])
                fi od od od od;
     result
 
-set down_tr(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+set down_tr(KType mu) = KTypePol:
+   let q=parameter(mu) then Q=first_K_type(standardize(mu))
    then HT=height(q), lambda =Q.lambda, x=Q.x
    then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form)
+        zeroPol = null_K_module(q.real_form)
    then pr=posroots(rd),
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
@@ -212,23 +200,23 @@ set down_tr(K_Type mu) = ParamPol:
                  (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
                    in for @ m in R
              do for lkt in LKTs(m) do
-	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
-	       then result+:=parameter(lkt)
+	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
+	       then result+:=lkt
                 fi od od od;
    for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
                  (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
             in for @m in R do
 	       for lkt in LKTs(m) do
-	       if (result[parameter(lkt)]=0 and is_ge_tr(Q,lkt))
-	       then result+:=parameter(lkt)
+	       if (result[lkt]=0 and is_ge_tr(Q,lkt))
+	       then result+:=lkt
                fi od od od od;
     result
 
-set down_tr_old(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
+{set down_tr_old(KType mu) = KTypePol:
+   let q=parameter(mu) then Q=first_K_type(standardize(mu))
    then HT=height(q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+        zeroPol = null_K_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
    then result=zeroPol
      in for avee@j in poscoroots(rd)
         do if (Lambda*avee > 0 and not( is_compact(j,x)))
@@ -239,7 +227,7 @@ set down_tr_old(K_Type mu) = ParamPol:
                          fi
 	              od
 	 fi od;
-   result
+   result}
 
 
 {set down_tr_old(K_Type mu) = ParamPol:
@@ -260,53 +248,50 @@ set down_tr_old(K_Type mu) = ParamPol:
    result}
 
 
-set down_tr(Param p)=down_tr(first_K_type(standardize(p*0)))
-
 {Move down one step in the partial order for a list of K-types, assumed to
 be in one R-packet; remove any K-types whose K_type_formula does not
 contain any negative term from the list}
-set down(ParamPol P)=ParamPol:
-   let result=null_module(P.real_form) in
+set down(KTypePol P)=KTypePol:
+   let result=null_K_module(P.real_form) in
   for @p in P
        do for @m in pre_down(p)
-          do if any(for @r in P do is_ge_tr(K_type(r),K_type(m)) od)
+          do if any(for @r in P do is_ge_tr(r,m) od)
 	     then result+:=m
 	     fi
 	  od
 	od; result
 
 
-set down_R(K_Type mu)= {prints("Height of mu= ",height(parameter(mu)));}
+set down_R(KType mu)= {prints("Height of mu= ",height(mu));}
    down(R_packet(mu)).R_packet
 
-set down_R(Param p)=down_R(first_K_type(standardize(p*0)))
 
 {test whether the K-type is at the bottom of the preorder; not used?}
-set bottom(K_Type mu) = bool:
+set bottom(KType mu) = bool:
     pre_down(mu) = 0*mu
 
 {This function does not give the correct answer - use down_R_cone_true instead.}
 {Example: Sp(4,R) K-type (KGB(G,4),[2,1]}
-set down_R_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
+set down_R_cone(KType mu) = KTypePol:
+   let seen=KTypePol:null_K_module(mu.real_form)
    then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
+    in mu.( rec_fun F (KType tau) void:
         if seen[tau].!= then ()
         else seen +:= tau; for @p in down_R(tau) do F(p); result +:= p od
         fi); result
 
-set down_tr_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
+set down_tr_cone(KType mu) = KTypePol:
+   let seen=KTypePol:null_K_module(mu.real_form)
    then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
+    in mu.( rec_fun F (KType tau) void:
         if seen[tau].!= then ()
         else seen +:= tau; for @p in down_tr(tau) do F(p); result +:= p od
         fi); result
 
-set down_tr_one_cone(K_Type mu) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
+set down_tr_one_cone(KType mu) = KTypePol:
+   let seen=KTypePol:null_K_module(mu.real_form)
    then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
+    in mu.( rec_fun F (KType tau) void:
         if seen[tau].!= then ()
         else seen +:= tau; for @p in down_tr_one_root(tau) do F(p); result +:= p od
         fi); result
@@ -320,19 +305,19 @@ parameter (KGB(G,6),[1,2],[0,0]), which standardizes to sum of TWO
 limits of discrete series: (G, 3 or 1, [1,0], [0,0]). The "1" is
 right, the "3" is wrong; don't understand why.}
 
-set down_alt(ParamPol P)=ParamPol:
-let result=null_module(P.real_form) in
+set down_alt(KTypePol P)=KTypePol:
+let result=null_K_module(P.real_form) in
 for @p in P do result+:=pre_down(p) od; result
 
-set down_alt(K_Type mu)= { prints("Height of mu=
+set down_alt(KType mu)= { prints("Height of mu=
    ",height(parameter(mu))); }
    down_alt(R_packet(mu))
 
-set down_alt(Param p)=down_alt(R_packet(p))
+{set down_alt(Param p)=down_alt(R_packet(p))}
 
-set down_alt_cone(K_Type mu) = K_Type_Pol:
-    let seen=ParamPol:null_module(mu.real_form) then result=seen in
-    parameter(mu).( rec_fun F (Param tau) void:
+set down_alt_cone(KType mu) = KTypePol:
+    let seen=KTypePol:null_K_module(mu.real_form) then result=seen in
+    mu.( rec_fun F (KType tau) void:
       if seen[tau].!= then ()
       else seen +:= tau; for @p in down_alt(tau) do F(p); result +:= p od
       fi); result
@@ -340,13 +325,13 @@ set down_alt_cone(K_Type mu) = K_Type_Pol:
 
 {Testing whether down_tr_cone yields all K-types that are below mu. The entry list
 should be all K-types of K-norm less than the K-norm of mu.}
-set test_down(K_Type mu, [K_Type] list)=bool:
+set test_down(KType mu, [KType] list)=bool:
    let downlist=down_tr_cone(mu)
-   then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
+   then candidates=##for kt in list do if downlist[kt]=0 then [kt]
    			       	       else [] fi
 				    od
    in {for kt in candidates do prints(kt," ",height(kt)) od;}
-      all (for kt in candidates do up_tr_cone(kt,height(mu))[parameter(mu)]=0 od)
+      all (for kt in candidates do up_tr_cone(kt,height(mu))[mu]=0 od)
 
 set test_down(RealForm G,int bound)=void:
    let kts=##for kt in K_parameters_height_upto(G,bound)
@@ -355,13 +340,13 @@ set test_down(RealForm G,int bound)=void:
    then list=K_parameters_height_upto(G,bound-1)
    in for kt in kts do prints(kt," ",test_down(kt,list)) od
 
-set test_down_one(K_Type mu, [K_Type] list)=(bool,[K_Type]):
+set test_down_one(KType mu, [KType] list)=(bool,[KType]):
    let downlist=down_tr_one_cone(mu)
-   then candidates=##for kt in list do if downlist[parameter(kt)]=0 then [kt]
+   then candidates=##for kt in list do if downlist[kt]=0 then [kt]
    			       	       else [] fi
 				    od
    then result=##for kt in candidates
-                 do if up_tr_cone(kt,height(mu))[parameter(mu)]=0 then [] else [kt] fi od
+                 do if up_tr_cone(kt,height(mu))[mu]=0 then [] else [kt] fi od
    in (#result=0,result)
 
 set test_down_one(RealForm G,int bound)=void:
@@ -369,7 +354,7 @@ set test_down_one(RealForm G,int bound)=void:
               do if height(kt)=bound then [kt] else [] fi
 	      od
    then list=K_parameters_height_upto(G,bound-1)
-   in for kt in kts do prints(LKT(parameter(kt))," ",test_down_one(kt,list)) od
+   in for kt in kts do prints(kt," ",test_down_one(kt,list)) od
 
 {.constructs parameter for the algebraic finite-dimensional of
 extremal weight lambda.}
@@ -385,73 +370,71 @@ returned as ParamPol of corresponding G parameters}
 set tensor_product(RealForm G, vec gamma1, vec gamma2) = ParamPol:
 let GC=G.complexification then gamma=finite_dimensional(GC,gamma1##gamma2)
 then B=branch_irr(gamma, ht(GC,gamma1##gamma2)) in
-sum(G, for c@p in B do c*finite_dimensional(G,complex_LKT(p)) od )
+sum(G, for c@p in B do c*finite_dimensional(G,complex_LKT(parameter(p))) od )
 
 {tensor product of two K0-parameters}
 set tensor_product(Param p,Param q)=ParamPol:
    let K=real_form(p),(,,mu)=highest_weight(p),(,,tau)=highest_weight(q)
    in tensor_product(K,mu,tau)
 
-set K_param_from_K0_param (KGBElt x, Param p)=Param:
+set K_param_from_K0_param (KGBElt x, Param p)=KType:
    let (,,v)=highest_weight(p)
    then hwt= K_highest_weight_from_K0_weight (x,v)
-   in hwt.K_type.parameter
+   in hwt.K_type
 
 {. Tensor product of two K-types; this assumes K is connected. The first entry is
 given as KType, the second as KHighestWeight .}
-set tensor_product(K_Type tau,KHighestWeight mu)=ParamPol:
+set tensor_product(KType tau,KHighestWeight mu)=KTypePol:
    let G=real_form(tau)
    in assert(components_rank(G)=0, "K is disconnected");
    let p=K0_param(tau),q=K0_param(K_type(mu))
    then tp=tensor_product(p,q)
-   then result=null_module(G)
+   then result=null_K_module(G)
    in for c@r in tp do result+:=c*K_param_from_K0_param(KGB(G,0),r) od;
    result
 
-set down_P (K_Type mu,[KHighestWeight] pktype)=ParamPol:
+set down_P (KType mu,[KHighestWeight] pktype)=KTypePol:
    let n=height(mu)
-   then list=null_module(real_form(mu))
+   then list=null_K_module(real_form(mu))
    in for tau in pktype
        do for c@r in tensor_product(mu,tau)
          do if height(r)<=n then list+:=r fi od od;
    list
 
-set down_P(Param p,[KHighestWeight] pkt)=down_P(first_K_type(standardize(p*0)),pkt)
 
-set down_P_cone(K_Type mu,[KHighestWeight] pktype) = K_Type_Pol:
-   let seen=ParamPol:null_module(mu.real_form)
+set down_P_cone(KType mu,[KHighestWeight] pktype) = KTypePol:
+   let seen=null_K_module(mu.real_form)
    then result=seen
-    in parameter(mu).( rec_fun F (Param tau) void:
+    in mu.( rec_fun F (KType tau) void:
         if seen[tau].!= then ()
         else seen +:= tau; for @p in down_P(tau,pktype) do F(p); result +:= p od
         fi); result
 
-set down_P_cone_alt(K_Type mu,[KHighestWeight] pktype)= K_Type_Pol:
-   let result=null_module(real_form(mu))
+set down_P_cone_alt(KType mu,[KHighestWeight] pktype)= KTypePol:
+   let result=null_K_module(real_form(mu))
    in for c@p in down_P_cone(mu,pktype) do result+:=p od; result
 
-set down_R_cone_true (K_Type mu)=ParamPol:
+set down_R_cone_true (KType mu)=KTypePol:
    let h=height(mu),G=real_form(mu)
-   then result=null_module(G)
+   then result=null_K_module(G)
    in if h>0
       then let list=K_parameters_height_upto(G,h-1)
       	   in for kt in list
-	      do let p=parameter(kt)
-                 in if up_R_cone(kt,h)[parameter(mu)]!=0
-		    then result+:=p
-		    fi
+	      do if up_R_cone(kt,h)[mu]!=0
+		 then result+:=kt
+		  fi
 	      od
       fi; result
 
-set print_K_types_nice (ParamPol P,KGBElt x) = void:
+set print_K_types_nice (KTypePol P,KGBElt x) = void:
    let header=["m","x","lambda","hw","dim","height"]
    then values=for c@q in P
-               do let hw=highest_weight(LKT(q),x)
+               do let hw=highest_weight(q,x)
                   in [c.split_as_int.to_string,
 		      let (,n)=%q.x in n.to_string,
 		      q.lambda.to_string,
-		      let (,v)=highest_weight_plain(hw)in v.to_string,
-		      dimension(LKT(q)).to_string,height(q).to_string]
+		      let (,,v)=hw in v.to_string,
+		      dimension(q).to_string,height(q).to_string]
 	       od in tabulate(header#values)
 
 {This works only when \theta_x permutes the non-real positive roots;
@@ -490,41 +473,41 @@ for x in KGB(G) do pwtsIRC(x) od
 
 {The terms in the ParamPol at the end are all standard with nu=0, but
 not necessarily normal or final. This seems to be harmless.}
-set add_T_x_weights(Param p) = ParamPol:
+set add_T_x_weights(KType p) = KTypePol:
    let x=p.x, lambda=p.lambda {, nu=p.nu}
    then result=dim_A_x(x)*p
    in for v in pwtsIRC(x)
-      do result+:= standardize(parameter(x,lambda+v,0*lambda))*0
+      do result+:= convert_to_K(standardize(parameter(x,lambda+v,0*lambda))*0)
       od; result
 
 {The terms in the ParamPol at the end are all standard with nu=0, but
 not necessarily normal or final. This seems to be harmless.}
-set add_T_x_weights(Param p, [[vec]] Pwts) = ParamPol:
+set add_T_x_weights(KType p, [[vec]] Pwts) = KTypePol:
     let (G,j)= %p.x, lambda=p.lambda, x=p.x
     in dim_A_x(p.x)*p + sum(G,for v in Pwts[j] do
-    standardize(parameter(x,lambda+v,0*lambda))*0 od)
+    convert_to_K( standardize(parameter(x,lambda+v,0*lambda))*0) od)
 
-set tensor_with_p (K_Type mu)=ParamPol:
+set tensor_with_p (KType mu)=KTypePol:
     let P=K_type_formula(mu)
     in sum(mu.real_form, for c@p in P do c*add_T_x_weights(p) od)
 
 {should be same as above}
-set tensor_with_pJDA (K_Type mu) = ParamPol:
-    add_weights(mu,ratpwtsIRC@KGBElt)
+{set tensor_with_pJDA (KType mu) = KTypePol:
+    add_weights(mu,ratpwtsIRC@KGBElt)}
     {tensor_product(mulong,ratpwtsIRC@KGBElt)}
 
 {This cures the non-standard/ non-final terms in tensor_with_p, but I
 think it isn't needed.}
-set tensor_with_p0 (K_Type mu) = standardize(tensor_with_p(mu))
+set tensor_with_p0 (KType mu) = standardize(tensor_with_p(mu))
 
 {same as tensor_with_p, trying to avoid recomputation of pwtsIRC}
-set tensor_with_p1 (K_Type mu)=ParamPol:
+set tensor_with_p1 (KType mu)=KTypePol:
    let P=K_type_formula(mu), Pwts=pwts(mu.real_form) in
    sum(P.real_form,for c@p in P do c*add_T_x_weights(p,Pwts) od)
 
-set down_B(K_Type mu,[Param] B)=ParamPol:
+set down_B(KType mu,[Param] B)=KTypePol:
    let n=height(mu)
-   then result=null_module(real_form(mu))
+   then result=null_K_module(real_form(mu))
     in for p in B
         do for tau in highest_weights(p)
 	   do for c@r in tensor_product(mu,tau)
@@ -535,7 +518,7 @@ set down_B(K_Type mu,[Param] B)=ParamPol:
 	   od
 	od; result
 
-set down_B_alt(K_Type mu,[Param] B)=ParamPol:
+set down_B_alt(KType mu,[Param] B)=KTypePol:
    let n=height(mu)
     in sum(real_form(mu),##for p in B
         		   do ##for tau in highest_weights(p)
@@ -548,9 +531,9 @@ set down_B_alt(K_Type mu,[Param] B)=ParamPol:
 	   		        od
 			   od)
 
-set up_B(K_Type mu,[Param] B)=ParamPol:
+set up_B(KType mu,[Param] B)=KTypePol:
    let n=height(mu)
-    then result=null_module(real_form(mu))
+    then result=null_K_module(real_form(mu))
     in for p in B
         do for tau in highest_weights(p)
 	   do for c@r in tensor_product(mu,tau)
@@ -561,14 +544,15 @@ set up_B(K_Type mu,[Param] B)=ParamPol:
 	   od
 	od; result
 
-set test_down_R_cone (K_Type mu) = bool:
+set test_down_R_cone (KType mu) = bool:
    let P1=monomials(down_R_cone(mu)), P2=monomials(down_R_cone_true(mu))
    in #P1=#P2 and all(for i:#P1 do P1[i]=P2[i] od)
 
-set down_PP(K_Type mu,int N) = ParamPol:
-   let list=monomials(branch_std(trivial(real_form(mu)),N))
+set down_PP(KType mu,int N) = KTypePol:
+   let list=for p in monomials(branch_std(trivial(real_form(mu)),N)) do parameter(p) od
    in down_B(mu,list)
 
-set up_PP(K_Type mu,int N) = ParamPol:
-   let list=monomials(branch_std(trivial(real_form(mu)),N))
+set up_PP(KType mu,int N) = KTypePol:
+   let list=for p in monomials(branch_std(trivial(real_form(mu)),N)) do parameter(p) od
    in up_B(mu,list)
+
