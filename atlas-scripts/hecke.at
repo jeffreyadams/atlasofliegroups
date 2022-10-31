@@ -360,7 +360,7 @@ end
     signs_1i1(j,F,E)
 }
 
-{ temporarily install polynomial arithemetic }
+{ temporarily install polynomial arithmetic }
 forget +@(vec,vec)
 forget -@(vec,vec)
 forget *@(vec,vec)

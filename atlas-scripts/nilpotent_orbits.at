@@ -178,7 +178,7 @@ in for v in cwts
    do let count = r { start with dimension of torus mod central torus }
    in
    { get |dim_eigenspace(rd,v,0)-central_torus_rank(rd)-dim_eigenspace(rd,v,1)|,
-     computed by addding to torus contribution those from the root spaces }
+     computed by adding to torus contribution those from the root spaces }
      for x in v*pr\1 do case x in count+:=2{pos+neg}, count-:=1 else () esac od
    ; if =count then [ratvec_as_vec(v*2)] else [] fi
    od.##

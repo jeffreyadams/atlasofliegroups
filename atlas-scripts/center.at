@@ -193,7 +193,7 @@ set Z_2 (RealForm G) = [vec]:
   We assume that |rd| is a semisimple root datum. The value returned more
   generally for reductive groups appears to describe the center of the group
   modulo its central torus, NOT that of the derived group (for instance for
-  GL(n) it returnes a trivial center). The generators are in G itself.
+  GL(n) it returns a trivial center). The generators are in G itself.
 
   Method: one can present the center as $Z(G)=P^v/X_*$, where $P^v$ is the
   (full rank) lattice of $X_*\tensor\Q$ spanned by the fundamental coweights.

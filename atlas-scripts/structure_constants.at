@@ -75,7 +75,7 @@ let table=T.table in
 table[T.root_datum.all_root_index(alpha),T.root_datum.all_root_index(beta)]:=n;
 (T.root_datum,T.orientation_function,table)
 
-{inititalize table for rd, fill in all N(alpha,beta) with ht(alpha)=1,
+{initialize table for rd, fill in all N(alpha,beta) with ht(alpha)=1,
  using given orientation function
 }
 set initialize_structure_constant_table(RootDatum rd,(int->int) orientation_function)=StructureConstantTable:

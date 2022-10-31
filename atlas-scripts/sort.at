@@ -191,7 +191,7 @@ set sort_by ( (int,bool->int) f) =
   defined in basic.at could also be used). If however you need to sort on a
   custom attribute defined elsewhere, DON'T do so here (and don't include
   modules to make that possible); rather call sort_by in the script where that
-  custom attribut is defined. (You might need to extend the above list of
+  custom attribute is defined. (You might need to extend the above list of
   models if a new value type is involved; that is OK and in fact recommended.)
 
   For instance LKT.at defines the attribute LKT_dimensions, and then defines

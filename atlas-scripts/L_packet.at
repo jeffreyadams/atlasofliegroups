@@ -4,7 +4,7 @@
 {this is a convenient function, should be moved elsewhere
 group list of parameters by block;
  returns an array of pairs (B,S) where B is a full block of parameters, and S is the subset
- of B occuring in the input}
+ of B occurring in the input}
 set block_decompose([Param] list)=[([Param],[Param])]:
 let blocks=[[Param]]:[] then
 subsets=[[Param]]:[] in
@@ -72,7 +72,7 @@ set L_packet_representatives(ParamPol P)=[Param]: L_packet_representatives(monom
 set L_packet_stable_sum(Param p)=ParamPol:
 param_pol(L_packet(p))
 
-{union of L-packets, with multiplicity one, for each parameter occuring
+{union of L-packets, with multiplicity one, for each parameter occurring
  these L-packets can contain parameters NOT in the given [Param]}
 set L_packets([Param] params)=[[Param]]:
 let representatives=[Param]:[] in
@@ -112,7 +112,7 @@ while #P>0 do
 {[Param] list_of_params is viewed as a set of standard modules,
  return a basis of the space of stable virtual characters they span
  algorithm: first extract list consisting of one member of each L-packet of parameters
-  occuring in list_of_params
+  occurring in list_of_params
  Then for each such p, L_packet_stable_sum(p) is included if and only if all members
   of the L-packet of p occur in list_of_params}
 set stable_sums_std([Param] list_of_params)=[ParamPol]:
@@ -257,7 +257,7 @@ kottwitz_sign(G)*(param_pol(for x in fiber(G,p.x.involution) do parameter(x,p.la
 {David: maybe we should assume that p is the generic one in the packet?}
 
 {assume P is stable for quasisplit form of G
- for each standard stable sum \sum p_i (over an L-packet) occuring,
+ for each standard stable sum \sum p_i (over an L-packet) occurring,
  extract a single p_i, and include inner_lift_std(p,G) (which is stable) in the result}
 set inner_lift_std(ParamPol P,RealForm G)=ParamPol:
 assert(is_stable_std(P), "P is not stable");

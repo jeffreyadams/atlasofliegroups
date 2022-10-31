@@ -114,7 +114,7 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
   for E8), so we do an effort to generate them not too inefficiently. A standard
   technique to do that is to stratify the orbit by distance (in the Cayley
   graph) from the starting point: neighbours of the latest stratum need only be
-  searched in that and the preceeding stratum, and if not found contrubute to
+  searched in that and the preceding stratum, and if not found contribute to
   the next stratum.
 }
 set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:

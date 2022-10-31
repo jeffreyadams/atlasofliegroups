@@ -184,7 +184,7 @@ set decompose(CharacterTable ct) = (vec v)[int]: { list of irrep multiplicities 
 
 { |mults| is a vector of multiplicities of the irreducible characters;
   return a list (without multiplicities) of the irreducible characters
-  of smallest degree occuring }
+  of smallest degree occurring }
 set smallest_degree_summands (CharacterTable ct,[int] mults) = [int]:
    let degrees = for m@j in mults do if m.> then [ct.degree(j)] else [] fi od.##
 in if =#degrees then [] { no multiplicities, empty result }

@@ -41,7 +41,7 @@ in for c@i in dec { an irrep index }
       if degree>=0 and !=c
       then
          if degree<min_degree then rv:=[i]; min_degree:=degree { new minimum }
-         elif degree=min_degree then rv#:=i { extend list for current minimun }
+         elif degree=min_degree then rv#:=i { extend list for current minimum }
 	 fi
       fi
    od;

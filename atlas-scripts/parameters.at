@@ -38,7 +38,7 @@ set square = square_normalized@(InnerClass,mat,ratvec)
 set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
   (tf*(1+theta)+2*rho_check(ic))%2 { this should always be twice |square| }
 
-{ the following is ths same as central_cocharacter@RealForm in Vogan-dual.at }
+{ the following is the same as central_cocharacter@RealForm in Vogan-dual.at }
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 set square (KGBElt x) = ratvec: square(real_form(x))
 
@@ -76,7 +76,7 @@ set dual_inner_class (Param p) = InnerClass:
   value of square(y) need not be what it should be, and the construction of a
   KGB_elt may consequently fail with "Not a valid strong involution" error.
 
-  A probably more sucessful attempt is in Vogan-dual.at:  dual_KGB and y_alt.
+  A probably more successful attempt is in Vogan-dual.at:  dual_KGB and y_alt.
 }
 {
 set y (Param p, InnerClass G_vee) = KGBElt:
