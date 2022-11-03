@@ -13,7 +13,7 @@
 
 /*****************************************************************************
 
-  Provide a one-time precomputation of the necessary seqence of small primes,
+  Provide a one-time precomputation of the necessary sequence of small primes,
   which are then accessible as |primes(i)|
 
 ******************************************************************************/

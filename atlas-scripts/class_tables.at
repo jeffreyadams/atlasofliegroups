@@ -171,7 +171,7 @@ in assert(size=n,"Partition sizes sum to "+size+" rather than "+n)
 ;  W_elt(rd,for s in class_word_BC(pair) do map[s] od)
 )
 
-{ in class table construction we perfer |BiPartition| over |Signed_cycles| }
+{ in class table construction we prefer |BiPartition| over |Signed_cycles| }
 set class_table_C (int n) = WeylClassTable:
    let rd=Sp(n+n), classes = [BiPartition]: partition_pairs(n)
    then lookup = (BiPartition->int): index_bipartition(classes)
@@ -429,7 +429,7 @@ set class_table_E6 () = WeylClassTable: class_table_E6(standard_datum_E6)
 
 { Unlike other exceptional simple types, the class invariant of the cycle type
   of the permutation of the roots defined by a Weyl group element does not
-  entirely separate conjugucy classes: three pairs of classes are ambiguous.
+  entirely separate conjugacy classes: three pairs of classes are ambiguous.
   In each case the type of |Levi_datum(w)| will distinguish the pairs, and
   indeed just the number of simple factors of this type will do: one member of
   the pair gives a single factor, while the other one has 2,3, or 4 factors.
@@ -449,7 +449,7 @@ in ( for c in root_orbits(w) do #c od.sort_to_partition
 set leq_E7_signatures ((Partition P,int m),(Partition Q,int n)) = bool:
    case cmp_equal_sum_partitions(P,Q) then true in m<=n else false esac
 
-{ Compared ot other types, fast construction of a class table for E7 takes quite
+{ Compared to other types, fast construction of a class table for E7 takes quite
   a bit of preparation effort. Having a sorted list of class signatures will
   speed up searching for elements, as in other types, but computing class powers
   is harder. In most cases using just the root permutation cycle type suffices:
@@ -457,14 +457,14 @@ set leq_E7_signatures ((Partition P,int m),(Partition Q,int n)) = bool:
   that even powers of ambiguous classes are unambiguous as well (the ambiguous
   classes have even element orders 2,4,6). Odd powers of ambiguous classes are
   still ambiguous; in most cases they are the ambiguous class itself, but the
-  thrid powers of the ambiguous classes with element order 6 give the ambiguous
+  third powers of the ambiguous classes with element order 6 give the ambiguous
   classes with order 2, with the "one simple factor" condition unchanged. We can
   therefore avoid actually computing powers of signatures of class
   representatives. This however requires the sorted list of class signatures to
   be transformed into a sorted |list| of just permutation cycle types (for
   searching without needing to know the Levi datum), with associated to each a
   list of 1 or 2 class numbers. In most cases the number of factors is not used
-  at all, but in the ambiguous cases we use whther or not that nuber equals 1.
+  at all, but in the ambiguous cases we use whether or not that number equals 1.
 }
 set class_table_E7 (RootDatum rd) = WeylClassTable:
    let classes = [WeylElt]: assert(#test_simple_type("E",rd)=7,"Not E7")

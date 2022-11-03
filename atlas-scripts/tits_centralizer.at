@@ -176,7 +176,7 @@ let (,(H,X,Y))=JM_triple_signs(O) in tits_centralizer_weak(H,X)
 {given a matrix M, whose columns span a Q-vector space,
 choose a subset of the columns with the same span
 return new matrix with these columns, list of indices
-giving colums, and list of indices in complement
+giving columns, and list of indices in complement
 }
 set spanning_subset(mat M)=(mat,[int],[int]):
 let r=M.rank then

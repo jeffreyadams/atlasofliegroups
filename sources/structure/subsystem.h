@@ -2,7 +2,7 @@
   Class definition for the Subsystem class.
 */
 /*
-  This is subystem.h
+  This is subsystem.h
 
   Copyright (C) 2010,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations

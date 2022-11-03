@@ -177,7 +177,7 @@ else  {L proper in G, need induction; compute L, sigma_L on L}
      for i:#ind_decomposed_sgn
 {     do if (ind_decomposed_sgn[i]>0 and st_G.ct.degree(i)=desired_degree_sgn)}
      do if (ind_decomposed_sgn[i]>0 and ct_G.special(i) = desired_special )
-        else [] { skip unless condition satisifed }
+        else [] { skip unless condition satisfied }
 	then
 	  {the following probably never happens: one has correct degree and mult >1.
 	   If so print loud WARNING}

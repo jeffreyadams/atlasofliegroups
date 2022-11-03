@@ -98,9 +98,9 @@ set multiply_by ([int] pol) = (inf_list->inf_list):
 (  let d = last(#pol,(int i)bool: !=pol[i])
 in case d { three way branch on sign of |d| }
    then (inf_list .) inf_list: extend_0(#0) { |d<0|: multiplication by 0 }
-   in scale_list_by(pol[0]) { mulitplication by a nonzero constant polynomial }
+   in scale_list_by(pol[0]) { multiplication by a nonzero constant polynomial }
    else { |d>0| }
-      let buf = { buffer for not yet yeilded contrbutions from previous terms }
+      let buf = { buffer for not yet yielded contributions from previous terms }
          for :d+1 { for first |d| degrees above current, plus a sentinel 0 }
 	 do 0 od { so the final entry will remain 0 forever }
    in (inf_list g) inf_list:
@@ -176,7 +176,7 @@ set inverse (inf_list f) = inf_list: divide([1].extend_0,f)
   and use |memoize| to avoid re-evaluating previous terms while computing new
   ones. The standard example is to compute the Fibonocci sequence F as 0, 1,
   followed by |sum(f,shift(1)(F))| (where the first argument to |sum| gives the
-  coefficient two steps before, the secnd argument the preceding coefficient).
+  coefficient two steps before, the second argument the preceding coefficient).
 
   Using |memoize| remains delicate here, since the |rec_fun| syntax does not
   allow anything being done before introducing arguments, as might be thought:

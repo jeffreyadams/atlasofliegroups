@@ -706,7 +706,7 @@ RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
 
 
 /*
-  Make the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
+  Make the orthogonal system |rset| into an equivalent (for |refl_prod|) one
   that is additively closed inside the full root system.
 
   This can be achieved by repeatedly replacing a pair of short roots spanning
@@ -808,7 +808,7 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   Since we do not use distinct types for weights and coweights, we can proceed
   by interchanging roots and coroots. The ordering of the roots corresponds to
   that of the original root datum (root |i| of the dual datum is coroot |i| of
-  the orginal datum; this is not the ordering that would have been used in a
+  the original datum; this is not the ordering that would have been used in a
   freshly constructed root datum), but users should \emph{not} depend on this.
 */
 RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)

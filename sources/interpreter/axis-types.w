@@ -495,7 +495,7 @@ struct func_type
 @/: arg_type(std::move(a)), result_type(std::move(r)) @+{}
 @/func_type(func_type&& f) = default; // move constructor
   func_type& operator=(func_type&& f) = default; // move assignment
-  func_type copy() const // in lieu of a copy contructor
+  func_type copy() const // in lieu of a copy constructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
 

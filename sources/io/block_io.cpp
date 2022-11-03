@@ -276,7 +276,7 @@ namespace block_io {
   are exactly those for which the support of the involution consists entirely
   of descents.
 
-  NOTE: checking that condtion is awkward here, because currently blocks
+  NOTE: checking that condition is awkward here, because currently blocks
   do not have direct access to the descents as a bitset!
 */
 std::ostream& printBlockU(std::ostream& strm, const Block& block)

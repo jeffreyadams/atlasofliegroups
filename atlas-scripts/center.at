@@ -193,7 +193,7 @@ set Z_2 (RealForm G) = [vec]:
   We assume that |rd| is a semisimple root datum. The value returned more
   generally for reductive groups appears to describe the center of the group
   modulo its central torus, NOT that of the derived group (for instance for
-  GL(n) it returnes a trivial center). The generators are in G itself.
+  GL(n) it returns a trivial center). The generators are in G itself.
 
   Method: one can present the center as $Z(G)=P^v/X_*$, where $P^v$ is the
   (full rank) lattice of $X_*\tensor\Q$ spanned by the fundamental coweights.
@@ -211,7 +211,7 @@ set Z_2 (RealForm G) = [vec]:
 
   The value returned are the set of rational weights $M*(A[i])$, where the
   multiplication by $M$ transfers us back to the original $X_*$ coordinates.
-  The numbers $c[i]$ are forgotten, but in fact will appear as demoninators
+  The numbers $c[i]$ are forgotten, but in fact will appear as denominators
   of the rational vectors returned, due to the way they were obtained.
 }
 set center(RootDatum rd) = [ratvec]:

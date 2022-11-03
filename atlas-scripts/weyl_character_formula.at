@@ -92,7 +92,7 @@ set trace_semisimple_simply_connected(
    assert(is_integer(result.v),"Character value is not an algebraic integer");
    result
 
-{ Weyl charater formula in general case is obtained by reduction to
+{ Weyl character formula in general case is obtained by reduction to
   the semisimple simply connected case }
 {.Weyl character formula for finite dimensional with extremal weight
  lambda exp_1(v).}

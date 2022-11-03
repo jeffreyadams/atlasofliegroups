@@ -261,7 +261,7 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
    kernel, there is one such generator $v$ for each position $j$ not flagged
    by |t|, and apart from $v[j]=1$ it can only have nonzero bits on positions
    flagged by |t|; the bits at those positions are given by coordinates $j$
-   taken from the succesive elements of the normalised basis |eqn|.
+   taken from the successive elements of the normalised basis |eqn|.
 
    Note that this is already a normal basis for the complement of |t| as
    explained below under |normalSpanAdd|, but that complement not lex-minimal.

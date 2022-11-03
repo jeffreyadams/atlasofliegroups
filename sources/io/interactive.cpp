@@ -243,7 +243,7 @@ size_t get_Cartan_class(const BitMap& cs)
   the calls to other instances of |getInteractive| below.
 
   Replace |pI| by a  pointer to a new |Interface| gotten interactively from
-  the user, and |pG| by a poitner the the corresponding inner class
+  the user, and |pG| by a pointer the the corresponding inner class
 
   Throw an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
@@ -962,7 +962,7 @@ struct inner_class_factor
 	     ? simple_ict::equal_rank : simple_ict::unequal_rank;
     }
     else assert(false);
-    kind=simple_ict::equal_rank; // avoid later "uninitialzed" warning
+    kind=simple_ict::equal_rank; // avoid later "uninitialized" warning
   }
 };
 

@@ -176,7 +176,7 @@ template<typename C> class Matrix_base
 {
   unsigned int d_rows;
   unsigned int d_columns;
- protected: // derived classes may sometimes need to acces this
+ protected: // derived classes may sometimes need to access this
   Vector<C> d_data;   // vector of elements, concatenated by rows
 
  public:

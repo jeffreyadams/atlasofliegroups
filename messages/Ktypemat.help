@@ -19,7 +19,7 @@ as in the Ktypeform command. The software tests if this is both
 final); if not it prints a message and quits. If so, the user is told
 the height of this representation, and asked for a height bound.
 
-The software first converts the paramter into normal final standard
+The software first converts the parameter into normal final standard
 form. It then computes all K-types of this representation up to the
 given height. Each of these K-types is parametrized by a normal final
 standard module, and each of the K-types of these are also computed,
@@ -41,7 +41,7 @@ The inverse of this matrix gives the matrix of K-multiplicities in the
 given normal standard representations. Now each column of the matrix
 correpsponds to a standard module, and each row a K-type. The entries
 in the column (positive integers) corresponding to standard module I_K
-gives the multiplicities of K-types in this stanard module, up to the
+gives the multiplicities of K-types in this standard module, up to the
 given height.
 
 *** Input and output ***
@@ -77,7 +77,7 @@ mu(j) = sum_i a(i,j)I_K(i)
 The software then prints the "Matrix of K-type multiplicities". An
 entry m in row i and column j means
 
-mu(i) has multipicity m in I_K(j)
+mu(i) has multiplicity m in I_K(j)
 
 i.e. if the matrix is b(i,j):
 
@@ -110,7 +110,7 @@ Triangular system:
   0 -1  1  0  0
   0  0 -1  1  0
   0  0  0 -1  1
-Matrix of K-type multiplicites:
+Matrix of K-type multiplicities:
   1  0  0  0  0
   1  1  0  0  0
   1  1  1  0  0
@@ -156,7 +156,7 @@ Triangular system:
   0  0 -1  0  1  0  0
   0  0  0 -1  0  1  0
   0  0  0  0 -1  0  1
-Matrix of K-type multiplicites:
+Matrix of K-type multiplicities:
   1  0  0  0  0  0  0
   1  1  0  0  0  0  0
   1  0  1  0  0  0  0
@@ -196,7 +196,7 @@ Triangular system:
  -1  0  0  1  0  0
  -1 -1  0  0  1  0
  -1  0  0  0  0  1
-Matrix of K-type multiplicites:
+Matrix of K-type multiplicities:
   1  0  0  0  0  0
   1  1  0  0  0  0
   2  1  1  0  0  0

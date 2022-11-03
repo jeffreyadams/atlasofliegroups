@@ -27,7 +27,7 @@ const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
 {
   auto i = hash.find(t);
   if (i!=hash.empty)
-    throw std::runtime_error("Looking up polynimal not stored in table");
+    throw std::runtime_error("Looking up polynomial not stored in table");
   return poly[i];
 }
 
@@ -510,7 +510,7 @@ K_repr::K_type_pol Rep_context::monomial_product
     { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
-// compute height of "orthongonal projection to dominant cone" (closest point)
+// compute height of "orthogonal projection to dominant cone" (closest point)
 level Rep_context::height_bound (RatWeight lambda) const
 /* this projection is dominant, and obtained by otrhogonal projection onto the
    intersection of kernels of some set of simple coroots, say indexed by $S$,

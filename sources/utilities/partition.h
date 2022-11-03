@@ -155,7 +155,7 @@ class Partition
   only need to return two consecutive elements in |d_stop| to bound a class.
 
   For convenience a (second-level) iterator |d_currentEnd| into |d_stop| is
-  provided, which always satifies |*d_currentEnd==d_range.second|. In fact
+  provided, which always satisfies |*d_currentEnd==d_range.second|. In fact
   instead of |d_range| and |d_currentEnd| one could have maintained a single
   index |i| such that |d_range| would be given implicitly as
   |make_pair(stop[i],stop[i+1])|, and |d_currentEnd| as |d_stop.begin()+i+1|.
@@ -219,7 +219,7 @@ class PartitionIterator
     return tmp;
   }
 
-  void rewind () // set itereator to point to the first class
+  void rewind () // set iterator to point to the first class
   { d_range.first = d_stop[0];
     d_range.second = d_stop[1];
     d_currentEnd = d_stop.begin()+1;

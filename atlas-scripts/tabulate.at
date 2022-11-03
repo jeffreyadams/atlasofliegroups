@@ -22,7 +22,7 @@ set strip_trailing_spaces (string str) = string:
    let l=#str then index=last(l,(int i)bool: str[i]!=" ")+1 in
    if index=l then str else str[:index] fi
 
-{ print string matrix (by rows) |data|, aligining each column to largest width
+{ print string matrix (by rows) |data|, aligning each column to largest width
   plus |cell_padding|, while padding uniformly with |pad_char| (of size 1)
 }
 set tabulate ([[string]] data,

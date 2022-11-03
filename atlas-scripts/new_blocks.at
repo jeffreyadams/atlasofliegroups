@@ -12,7 +12,7 @@ forget Cayley@(int,Param)
 set old_block = block@Param
 forget block@Param
 
-{ some defintions from basic.at are needed here, but it will not yet be loaded }
+{ some definitions from basic.at are needed here, but it will not yet be loaded }
 set assert (bool b,string message) = void: if not b then error(message) fi
 set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
 set none ([bool] p) = bool:
