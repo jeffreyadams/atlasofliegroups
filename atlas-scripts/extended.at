@@ -5,8 +5,6 @@
 <extended_misc.at   { basics: defines |ExtParam|, |canonical_g| }
 <extended_types.at  { for ext_type@(int,ExtParam) }
 
-set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
-
 {       references:
   Parameters for Twisted Representations (Adams/Vogan)
   Extended Parameters in Atlas (Adams)
