@@ -132,6 +132,14 @@ int big_int::int_val() const
   return static_cast<int>(d[0]);
 }
 
+unsigned int big_int::uint_val() const
+{ if (is_negative())
+    throw std::runtime_error("Negative integer where unsigned is required");
+  if (not (size()<2 or (size()==2 and d[1]==0)))
+    throw std::runtime_error("Integer value to big for conversion");
+  return d[0];
+}
+
 arithmetic::Numer_t big_int::long_val() const
 { if (size()>2)
     throw std::runtime_error("Integer value to big for conversion");
@@ -349,6 +357,18 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(acc);
   else if(is_negative())
     d.push_back(0); // ensure positive sign
+}
+
+big_int& big_int::operator*= (digit x)
+{ if (is_negative())
+  {
+    negate(); // now |*this| has been made non-negative
+    mult_add(x,0);
+    negate();
+  }
+  else
+    mult_add(x,0);
+  return *this;
 }
 
 big_int& big_int::operator*= (int x0)

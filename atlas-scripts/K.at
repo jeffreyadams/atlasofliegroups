@@ -224,8 +224,6 @@ set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
   Param:
   convert_K_type(G,two_lambda,torus_bits,cartan)
 
-set real_form (KType p)  = RealForm: p.x.real_form
-set root_datum (KType p) = RootDatum: p.x.root_datum
 set real_form (KHighestWeight hw) = RealForm: hw.x.real_form
 set root_datum (KHighestWeight hw) = RootDatum: hw.x.root_datum
 set K_0 (KHighestWeight hw) = RealForm: hw.x.K_0

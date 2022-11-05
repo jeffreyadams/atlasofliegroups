@@ -1465,6 +1465,13 @@ set Cartan_class (InnerClass ic, mat theta) = CartanClass:
 set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
   let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
 
+set cross (WeylElt w,KGBElt x) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word ~do x:=cross(s,x) od; x
+set cross (KGBElt x,WeylElt w) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word do x:=cross(s,x) od; x
+
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 
 set cross (vec alpha,KGBElt x) = KGBElt:
@@ -1764,7 +1771,11 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
 set cross (WeylElt w,Param p) = Param:
-  for s in w.word ~ do p:=cross(s,p) od; p
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word ~do p:=cross(s,p) od; p
+set cross (Param p,WeylElt w) = Param:
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word do p:=cross(s,p) od; p
 
 set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
 set param_pol (KType t) = ParamPol: param(t)

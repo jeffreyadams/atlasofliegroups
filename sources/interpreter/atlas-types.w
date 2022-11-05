@@ -6177,10 +6177,10 @@ void test_final(const K_type_value& p, const char* descr)
     reason = "not dominant";
   else if (not p.rc().is_nonzero(p.val))
     reason = "zero";
-  else if (not p.rc().is_normal(p.val))
-    reason = "not normal";
-  else if (p.rc().is_semifinal(p.val))
+  else if (not p.rc().is_semifinal(p.val))
     reason = "not semifinal";
+  else if (not p.rc().is_normal(p.val)) // this predicate must come last
+    reason = "not normal";
   else throw logic_error("Unknown obstruction to K-type finality");
   std::ostringstream os; p.print(os << descr << ":\n  ");
 @/os << "\n  K-type is " << reason;
@@ -6778,18 +6778,15 @@ for the argument graph.
 void strong_components_wrapper(expression_base::level l)
 {
   shared_row graph = get<row_value>();
-  if (l==expression_base::no_value)
-    return;
   const auto size = graph->val.size();
   OrientedGraph G (size);
   for (unsigned i=0; i<size; ++i)
   {
     const row_value* p = force<row_value>(graph->val[i].get());
-    auto& edges = G.edgeList(i);
+  @/ auto& edges = G.edgeList(i);
     edges.reserve(p->val.size());
     for (size_t i=0; i<p->val.size(); ++i)
-      edges.push_back(force<int_value>(p->val[i].get())->int_val());
-      // convert to unsigned
+      edges.push_back(force<int_value>(p->val[i].get())->uint_val());
     for (unsigned v : edges)
       if (v>=size)
       { std::ostringstream o;
@@ -6798,21 +6795,24 @@ void strong_components_wrapper(expression_base::level l)
         throw runtime_error(o.str());
       }
   }
+  if (l==expression_base::no_value)
+    return;
 @)
   std::unique_ptr<OrientedGraph> induced(new OrientedGraph);
   const auto pi = G.cells(induced.get()); // invoke Tarjan's algorithm
 @)
   { std::vector<std::shared_ptr<row_value> > part(pi.classCount());
+    auto sizes = pi.class_sizes();
     for (unsigned i=0; i<part.size(); ++i)
     @/{@;
       part[i]=std::make_shared<row_value>(0);
-      part[i]->val.reserve(pi.classSize(i));
+      part[i]->val.reserve(sizes[i]);
     }
     for (unsigned long n=0; n<size; ++n)
       part[pi.class_of(n)]->val.push_back(std::make_shared<int_value>(n));
     own_row partition_list = std::make_shared<row_value>(pi.classCount());
     for (unsigned i=0; i<part.size(); ++i)
-      partition_list->val[i] = part[i]; // widen shared pointer
+      partition_list->val[i] = std::move(part[i]); // widen shared pointer
     push_value(std::move(partition_list));
   }
 @)
@@ -8259,7 +8259,13 @@ void print_blockstabilizer_wrapper(expression_base::level l)
 }
 
 @ The functions |print_KGB|, |print_KGB_order| and |print_KGB_graph| take only
-a real form as argument.
+a real form as argument. Since full KGB listings can be very long, we provide a
+version of |print_KGB| that in addition takes a list of KGB elements, and limits
+the output to those elements; the internal function |kgb_io::print| that is
+(also) used to implement the full listing, already provides for such a limitation
+through a final argument. Since that argument requires a |KGBEltList| (a vector
+of |KGBElt|), we do the conversion here, which also ensures there are no
+out-of-range values in the list.
 
 @h "kgb.h"
 @h "kgb_io.h"
@@ -8272,6 +8278,24 @@ void print_KGB_wrapper(expression_base::level l)
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+void print_KGB_selection_wrapper(expression_base::level l)
+{ shared_row selection = get<row_value>();
+  shared_real_form rf= get<real_form_value>();
+@)
+  KGBEltList sel; sel.reserve(selection->val.size());
+  for (auto p : selection->val)
+  { const auto* x = force<KGB_elt_value>(p.get());
+    if (x->rf!=rf)
+      throw runtime_error("Real form mismatch when printing KGB element");
+    sel.push_back(x->val);
+  }
+@)
+  const KGB& kgb=rf->kgb();
+  kgb_io::print(*output_stream,kgb,false,&rf->val.innerClass(),&sel);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -8423,6 +8447,8 @@ install_function(print_blockd_wrapper,@|"print_blockd","(Block->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(Block,CartanClass->)");
 install_function(print_KGB_wrapper,@|"print_KGB","(RealForm->)");
+install_function(print_KGB_selection_wrapper,@|"print_KGB"
+		,"(RealForm,[KGBElt]->)");
 install_function(print_KGB_order_wrapper,@|"print_KGB_order","(RealForm->)");
 install_function(print_KGB_graph_wrapper,@|"print_KGB_graph","(RealForm->)");
 install_function(print_X_wrapper,@|"print_X","(InnerClass->)");

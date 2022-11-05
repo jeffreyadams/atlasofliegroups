@@ -69,8 +69,8 @@ namespace bitset {
 
 ******************************************************************************/
 
-typedef uint_least32_t bitset_chunk; // unit of grouping of bits
-typedef uint_least64_t wide_uint; // exchange format for all |BitSet| instances
+using bitset_chunk = uint_least32_t; // unit of grouping of bits
+using wide_uint = uint_least64_t; // exchange format for all |BitSet| instances
 
 /*
   First a template class |BitSetBase| is defined, which provides the basic
@@ -290,7 +290,7 @@ template<unsigned int n> class BitSet
 
 // constructors and destructors
   BitSet() : Base() {}
-  explicit BitSet(wide_uint b) : Base(b) {} // set at most |longBits| bits
+  explicit BitSet(wide_uint b) : Base(b) {} // set |min(dim,64)| bits, from |b|
 
   template<typename I> // integer type
     explicit BitSet(const std::vector<I>& v); // takes parity bit of each entry

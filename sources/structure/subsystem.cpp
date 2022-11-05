@@ -146,7 +146,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
 
-  WeylWord wrt = // rightmost letter |wrt| applies first to disinguished |Delta|
+  WeylWord wrt = // its rightmost letter applies first to distinguished |Delta|
     rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
 
   // |Delta| now describes a twist of the subsystem Dynkin diagram
