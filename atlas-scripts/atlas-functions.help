@@ -1102,7 +1102,7 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   A new parameter is formed by scaling the component nu(p) by f, and it is made
   final, as in ParamPol:p*f; under the given assuptions this involves applying
   only complex reflections, so the result is a single parameter which is the
-  first component of the result. The second component records wheher this
+  first component of the result. The second component records whether this
   transformation at the level of extended parameter involves a flip with respect
   to the default extension, as described above under "twisted_KL_sum_at_s"
 K_type_pol_extended: (Param,mat->K_type_pol): extended restrict to K
