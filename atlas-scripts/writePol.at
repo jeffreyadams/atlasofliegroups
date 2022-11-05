@@ -13,11 +13,20 @@ set data(KType mu) = (int, vec):
 
 set_type PolTermDatum = (int IntCoeff, int KGBNum, vec Lambda_Rho)
 
+{same as previous, mushed together to save memory}
+set_type PolTermDatumSmall = vec
+
 set data(KTypePol P) = [PolTermDatum]:
     for c@mu in P do (int_part(c), mu.x.#, mu.lambda_rho) od
 
+set dataSmall(KTypePol P) = [PolTermDatumSmall]:
+    for c@mu in P do [int_part(c)]##[mu.x.#]##mu.lambda_rho od
+
 set Kpol(RealForm G, [PolTermDatum] data) = KTypePol:
     sum(G, for (c,n,ell) in data do c*K_type(KGB(G,n),ell) od)
+
+set Kpol(RealForm G, [PolTermDatumSmall] dataSmall) = KTypePol:
+    sum(G, for d in dataSmall do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
 
 {. If you say
 
@@ -39,7 +48,8 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
          ; prints("set DI_saved = mat: ")
     	 ; prints(for col in G.distinguished_involution do col od)
          ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
-    	 ; prints("set G_saved = real_form(IC_saved, DI_saved,", KGB(G,0).torus_factor,")")
+    	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
+	   	       KGB(G,0).torus_factor,")")
      	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
 	 ; for dlist@j in Polsdata
 	   do prints("[")
@@ -53,5 +63,73 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
 	   od
     	 ; prints("set Pols_saved = [KTypePol]:") 
     	 ; prints("for datum in Polsdata_saved do ")
-    	 ; prints("sum(G_saved, for (c,n,ell) in datum do c*K_type(KGB(G_saved,n),ell) od) od")
+    	 ; prints("Kpol(G_saved, datum) od")
+   end
+
+{. If you say
+
+> FILE.at writeKPols(G, Polsdata)
+
+then in a later session
+
+<< FILE.at
+
+will give you Pols_saved = [KTypePol]: Pols .}
+set writeKPolsMedium(RealForm G, [[PolTermDatum]] Polsdata) = void:
+    begin
+	prints("set rd_saved = RootDatum: root_datum(mat: ")
+    	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
+	 ; prints( for betavee in G.simple_coroots do betavee od)
+	 ; prints(",",G.prefers_coroots,")")
+         ; prints("set DI_saved = mat: ")
+    	 ; prints(for col in G.distinguished_involution do col od)
+         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
+    	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
+	   	       KGB(G,0).torus_factor,")")
+     	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
+	 ; for dlist@j in Polsdata
+	   do prints("[")
+	 ;     for d@k in dlist do prints("(",d.IntCoeff,",",
+	       	   d.KGBNum,"," , d.Lambda_Rho,")")
+         ; if k < #dlist -1 then prints(",") fi
+	   od
+	 ; if j < #Polsdata - 1 then prints("],")
+	   else prints("]]")
+	   fi
+	   od
+    	 ; prints("set Pols_saved = [KTypePol]:") 
+    	 ; prints("for datum in Polsdata_saved do ")
+    	 ; prints("Kpol(G_saved, datum) od")
+   end
+   
+{. If you say
+
+> FILE.at writeKPols(G, Pols)
+
+then in a later session
+
+<< FILE.at
+
+will give you Pols_saved = [KTypePol]: Pols .}
+set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
+    begin
+    	 prints("set rd_saved = RootDatum: root_datum(mat: ")
+    	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
+	 ; prints( for betavee in G.simple_coroots do betavee od)
+	 ; prints(",",G.prefers_coroots,")")
+         ; prints("set DI_saved = mat: ")
+    	 ; prints(for col in G.distinguished_involution do col od)
+         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
+    	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
+	   	       KGB(G,0).torus_factor,")")
+     	 ; prints("set PolsdataSmall_saved = [[PolTermDatumSmall]]: [")
+	 ; for d@j in PolsdataSmall
+	   do prints(d)
+	 ; if j < #PolsdataSmall - 1 then prints(",")
+	   else prints("]")
+	   fi
+	   od
+    	 ; prints("set Pols_saved = [KTypePol]:") 
+    	 ; prints("for dataSmall in PolsdataSmall_saved do ")
+    	 ; prints("Kpol(G,dataSmall) od")
    end
