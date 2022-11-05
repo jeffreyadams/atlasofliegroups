@@ -825,9 +825,6 @@ set centralizer_order (D_class c) = int:
 set class_size (D_class c) = int:
   let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
 
-set class_size (D_class c) = int:
-  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
-
 { compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power (D_class c, int k) = D_class:
    case c
