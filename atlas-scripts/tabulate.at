@@ -18,6 +18,10 @@ set pad (string s,string alignment,int padding,string pad_char) = string:
   else c_adjust(padding,s,pad_char)
   esac
 
+set strip_trailing_spaces (string str) = string:
+   let l=#str then index=last(l,(int i)bool: str[i]!=" ")+1 in
+   if index=l then str else str[:index] fi
+
 { print string matrix (by rows) |data|, aligning each column to largest width
   plus |cell_padding|, while padding uniformly with |pad_char| (of size 1)
 }
@@ -31,5 +35,12 @@ set tabulate ([[string]] data,
     do let c = pad_char[j % #pad_char] { use padding chars cyclically } in
       (c*if =j then 0 else cell_padding fi) ##
       pad(x,alignments[j],max_per_column[j],c)
-    od.##.prints
+    od.##.strip_trailing_spaces.prints
   od
+
+{useful defaults:
+ string alignments: "lll...l" (number=#data[0])
+ cell_padding: 2
+ pad_char: " "
+ }
+set tabulate ([[string]] data)=void: tabulate(data, "l"*#data[0], 2, " ")
