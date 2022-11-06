@@ -268,10 +268,19 @@ class WeylGroup
   WeylInterface d_in;  // conversion from external numbering to internal
   WeylInterface d_out; // conversion from internal numbering to external
   std::vector<Generator> d_min_star; // diagram dependent field for efficiency
+  std::vector<Generator> upper; // of diagram component
 
 // private member functions
 // these interpret Generators and WeylWords internally, so not for public use!
 
+  // first transducer to use when shifting in |s|
+  Generator start_gen(Generator s) const { return upper[s]; }
+
+  // transform local generator |g| from transducer |i| to outer numbering
+  Generator output_local_gen(Generator i, Generator g) const;
+
+  // auxiliary doing the main work for |inner_mult|
+  int transduce(WeylElt& w, Generator start, Generator local_s) const;
   // set |w=ws|, return value is $l(ws)-l(w)\in\{+1,-1}$
   int inner_mult(WeylElt& w, Generator s) const;
 
@@ -281,9 +290,6 @@ class WeylGroup
 
   // set |w=sw|, return value is $l(sw)-l(w)\in\{+1,-1}$
   int leftMultIn(WeylElt& w, Generator s) const;
-
-  // get WeylWord for piece |j| of |w|, in inner encoding
-  WeylWord word_of_piece(const WeylElt& w, Generator j) const;
 
   // First generator $<s$ not commuting with |s|, or |s| if none exist; inner
   Generator min_neighbor (Generator s) const { return d_min_star[s]; }
