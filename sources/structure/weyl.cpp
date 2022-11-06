@@ -112,20 +112,11 @@ struct WeylGroup::Transducer
   // there will be one such object for each $r\in\{1,2,\ldots,n\}$
   // but $r$ is not explicitly stored in the |Tranducer| object
 
-  // One row of a transducer table for a Weyl group.
-  using RowBase = std::array<unsigned char,constants::RANK_MAX>;
-  // this used to be a defined class contained in |Transducer|
-  // that allowed default initialisation to Undef values; now done explicitly
-
   struct elem_info
-  { RowBase shift; // Right multiplication by $s_j$ transitions to |shift[j]|
-    RowBase out; // Right multiplication by $s_j$ may transduce |out[j]|
-    unsigned char length; // length of |piece| in quotient Bruhat order
+  { unsigned char length; // length of |piece| in quotient Bruhat order
     Generator right; // rightmost factor of chosen word for this piece
 
-    elem_info(unsigned short l)
-      : shift(), out(), length(l), right(UndefGenerator)
-    { shift.fill(UndefEltPiece); out.fill(UndefGenerator); }
+    elem_info(unsigned short l): length(l), right(UndefGenerator) {}
   };
 
   using PieceIndex = unsigned short; // used to index letters inside a piece
@@ -196,13 +187,6 @@ struct WeylGroup::Transducer
 
   // Reduced decomposition in W (or W_r) of minimal coset representative x.
   WeylWord word_of_piece(EltPiece x) const;
-
-private:
-  EltPiece
-  dihedral_minimum(EltPiece,weyl::Generator,weyl::Generator) const;
-  EltPiece
-  dihedral_shift_up(EltPiece,weyl::Generator,weyl::Generator,unsigned int)
-    const;
 
   // this class should have no manipulators!
 }; // |class WeylGroup::Transducer|
@@ -284,20 +268,31 @@ WeylGroup::Transducer::Transducer
     // here |r| is relative to |offset|
     : offset(offset), limit(r+1), elt(), table()
 {
+  // One row of a transducer table for a Weyl group.
+  using RowBase = std::array<unsigned char,constants::RANK_MAX>;
+  struct entry
+  { RowBase shift; // Right multiplication by $s_j$ transitions to |shift[j]|
+    RowBase out; // Right multiplication by $s_j$ may transduce |out[j]|
+
+    entry() { shift.fill(UndefEltPiece); out.fill(UndefGenerator); }
+  };
+  std::vector<entry> tab; // local that will determine |table| at the end
+
   // first row of transition and of transduction table
   elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
+  tab.emplace_back();
 
   // all shifts lower than |r| are transductions of unchanged generator
-  for (Generator j = 0; j < r; ++j)
+  for (Generator i = 0; i < r; ++i)
   {
-    elt[0].shift[j]=0; // shift to self, no transition
-    elt[0].out[j]=j;   // transduction of unchanged generator
+    tab[0].shift[i]=0; // shift to self, no transition
+    tab[0].out[i]=i;   // transduction of unchanged generator
   }
-  // |elt[0].shift[r]=UndefEltPiece;| was set by |elem_info| constructor
-  // |elt[0].out[r]  =UndefGenerator;| idem
+  // |tab[0].shift[r]=UndefEltPiece;| was set by |entry| constructor
+  // |tab[0].out[r]  =UndefGenerator;| idem
 
-  // in this loop, the |elt| table grows! the loop stops when x overtakes the
-  // table size because no more new elements are created.
+  // In this loop, the |elt| and |tab| tables grow! The loop stops when |x|
+  // overtakes the table size because no more new elements are created.
 
   for (EltPiece x = 0; x < elt.size(); ++x)
     for (Generator s = 0; s <= r; ++s)
@@ -305,20 +300,19 @@ WeylGroup::Transducer::Transducer
          its presence in a slot in |d_shift| assures that this slot is
          unchanged from its intialisation value
       */
-      if (elt[x].shift[s] == UndefEltPiece)
+      if (tab[x].shift[s] == UndefEltPiece)
       {
 
 	const EltPiece xs = elt.size(); // piece that will be added
 	elt.emplace_back(elt[x].length+1);
+	tab.emplace_back();
 
-	// only now can we fix (non transient) references
-	auto& base = elt[x];
-	auto& top  = elt.back();
+	auto& top  = tab.back(); // or |tab[xs]|
 
-	top.right=s; // last letter in word that leads to this |top|
+	elt.back().right=s; // last letter in word that leads to the |top|
 
 	// |shift| and |out| fields of |top| are currently set to Undef values
-	base.shift[s] = xs;
+	tab[x].shift[s] = xs;
 	top.shift[s] = x;
 
 	// now define the shifts or transductions that do not take |xs| upwards
@@ -328,9 +322,22 @@ WeylGroup::Transducer::Transducer
 	  if (t == s)
 	    continue;
 
-	  const EltPiece b  = dihedral_minimum(x,t,s);
-	  const auto& bot = elt[b];
-	  const unsigned int d = top.length - bot.length;
+	  EltPiece b = x;
+	  { // set |b| to minimun of dihedral orbit for |s| and |t|
+	    EltPiece next;
+	    while (true)
+	    { // following test is OK even if |next==UndefEltPiece|
+	      if ((next=tab[b].shift[t]) < b)
+		b = next;
+	      else break;
+	      // now do the same for the other generator
+	      if ((next=tab[b].shift[s]) < b)
+		b = next;
+	      else break;
+	    } // repeat until |break|
+	  }
+	  const auto& bot = tab[b];
+	  const unsigned int d = elt[xs].length - elt[b].length;
 	  const unsigned int m = // positive coef from Coxeter matrix
 	    c(offset+s,offset+t); // Coxeter matrix is not compoent local
 	  const Generator st[] = {s,t}; // convenience
@@ -338,9 +345,25 @@ WeylGroup::Transducer::Transducer
 	  if (d == m)
 	  { // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
-	    const EltPiece y = dihedral_shift_up(b,st[m%2],st[1-m%2],m-1);
+	    EltPiece y = b;
+	    { // perform |m-1| upward steps, starting with |st[m%2]|
+	      const Generator u=st[m%2], v=st[1-m%2];
+	      unsigned int d = m-1; // number of steps left; nonzero
+	      while(true)
+	      {
+		assert(tab[y].shift[u]>y and tab[y].shift[u]!=UndefEltPiece);
+		y = tab[y].shift[u];
+		if (--d==0)
+		  break;
+		// now do the same for the other generator
+		assert(tab[y].shift[v]>y and tab[y].shift[v]!=UndefEltPiece);
+		y = tab[y].shift[v];
+		if (--d==0)
+		  break;
+	      }
+	    }
 	    top.shift[t] = y;
-	    elt[y].shift[t] = xs;
+	    tab[y].shift[t] = xs;
 	  }
 	  else if (d == m-1)
 	  {
@@ -359,15 +382,15 @@ WeylGroup::Transducer::Transducer
       } // |if (..==UndefEltPiece)|
     // |for(s)|
   // |for(x)|
-  assert(elt.size() + r < std::numeric_limits<Generator>::max());
+  assert(tab.size() + r < std::numeric_limits<Generator>::max());
 
-  table=matrix::Matrix<Generator>(elt.size(),r+1);
-  for (EltPiece i=0; i<elt.size(); ++i)
+  table=matrix::Matrix<Generator>(tab.size(),r+1);
+  for (EltPiece i=0; i<tab.size(); ++i)
     for (Generator j=0; j<=r; ++j)
-      if (elt[i].out[j] == UndefGenerator)
-	assert(elt[i].shift[j]!=i),table(i,j)=elt[i].shift[j];
+      if (tab[i].out[j] == UndefGenerator)
+	assert(tab[i].shift[j]!=i),table(i,j)=tab[i].shift[j];
       else
-	assert(elt[i].out[j]<r),table(i,j) = elt.size() + elt[i].out[j];
+	assert(tab[i].out[j]<r),table(i,j) = tab.size() + tab[i].out[j];
 } // |Transducer::Transducer|
 
 Generator WeylGroup::Transducer::unshift(EltPiece& x) const
@@ -1490,50 +1513,6 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
   return result;
 }
 
-/*
-  Return the minimal element in the orbit of |x| under |s| and |t|.
-
-  Precondition : |s| is in the descent set of |x|;
-*/
-EltPiece weyl::WeylGroup::Transducer::dihedral_minimum
-  (EltPiece x, weyl::Generator s, weyl::Generator t) const
-{
-  EltPiece next;
-
-  while (true)
-  {
-    if ((next=elt[x].shift[s]) < x) // test is OK even if |next==UndefEltPiece|
-      x = next;
-    else
-      return x;
-    // now do the same for the other generator
-    if ((next=elt[x].shift[t]) < x) // test is OK even if |next==UndefEltPiece|
-      x = next;
-    else
-      return x;
-  } // repeat until |return|
-}
-
-/*
-  Return the result of applying |s| and |t| alternately to |x|, for a
-  total of |d>0| times.
-*/
-EltPiece weyl::WeylGroup::Transducer::dihedral_shift_up
-  (EltPiece x, weyl::Generator s, weyl::Generator t, unsigned int d) const
-{
-  while(true)
-  {
-    assert(elt[x].shift[s]>x and elt[x].shift[s]!=UndefEltPiece);
-    x = elt[x].shift[s];
-    if (--d==0)
-      return x;
-    // now do the same for the other generator
-    assert(elt[x].shift[t]>x and elt[x].shift[t]!=UndefEltPiece);
-    x = elt[x].shift[t];
-    if (--d==0)
-      return x;
-  }
-}
 
 
 /*****************************************************************************
