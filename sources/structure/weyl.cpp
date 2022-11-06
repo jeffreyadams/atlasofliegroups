@@ -133,8 +133,9 @@ struct WeylGroup::Transducer
 
   // data fields
   Generator offset; // first generator in this Dynkin diagram component
-  Generator limit;
+  Generator limit; // |shift| and |out| only valid for |Generator| below |limit|
   std::vector<elem_info> elt;
+  matrix::Matrix<Generator> table;
 
 // constructors and destructors
   Transducer() {}
@@ -165,13 +166,17 @@ struct WeylGroup::Transducer
 */
   unsigned int max_length() const { return elt.back().length; }
 
+  bool has_shift(EltPiece x, Generator s) const
+  { assert(x<elt.size()); assert(s<limit);
+    return table(x,s)<elt.size();
+  }
 /*
   Simple reflection t (strictly preceding s) so that xs = tx, if any
 
   In case of a transition within the quotient, this returns |UndefGenerator|.
 */
   Generator out(EltPiece x, Generator s) const
-  { assert(s<limit); return elt[x].out[s]; }
+  { assert(not has_shift(x,s)); return table(x,s)-elt.size(); }
 
 /*
   Right coset x' defined by x' = xs.
@@ -181,7 +186,7 @@ struct WeylGroup::Transducer
   is out(x,s).x = x.s.
 */
   EltPiece shift(EltPiece x, Generator s) const
-  { assert(s<limit); return elt[x].shift[s]; }
+  { assert(has_shift(x,s)); return table(x,s); }
 
   Generator unshift(EltPiece& x) const; // assuming |x>0| to lowering shift
 
@@ -194,9 +199,9 @@ struct WeylGroup::Transducer
 
 private:
   EltPiece
-  dihedralMin(EltPiece,weyl::Generator,weyl::Generator) const;
+  dihedral_minimum(EltPiece,weyl::Generator,weyl::Generator) const;
   EltPiece
-  dihedralShift(EltPiece,weyl::Generator,weyl::Generator,unsigned int)
+  dihedral_shift_up(EltPiece,weyl::Generator,weyl::Generator,unsigned int)
     const;
 
   // this class should have no manipulators!
@@ -277,9 +282,8 @@ private:
 WeylGroup::Transducer::Transducer
   (const int_Matrix& c, Generator offset, Generator limit, Generator r)
     // here |r| is relative to |offset|
-    : offset(offset), limit(limit), elt()
+    : offset(offset), limit(r+1), elt(), table()
 {
-  assert(r<limit);
   // first row of transition and of transduction table
   elt.emplace_back(0); // length 0, empty |piece|, all fields Undef values
 
@@ -324,7 +328,7 @@ WeylGroup::Transducer::Transducer
 	  if (t == s)
 	    continue;
 
-	  const EltPiece b  = dihedralMin(xs,s,t);
+	  const EltPiece b  = dihedral_minimum(x,t,s);
 	  const auto& bot = elt[b];
 	  const unsigned int d = top.length - bot.length;
 	  const unsigned int m = // positive coef from Coxeter matrix
@@ -334,7 +338,7 @@ WeylGroup::Transducer::Transducer
 	  if (d == m)
 	  { // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
-	    const EltPiece y = dihedralShift(b,st[m%2],st[1-m%2],m-1);
+	    const EltPiece y = dihedral_shift_up(b,st[m%2],st[1-m%2],m-1);
 	    top.shift[t] = y;
 	    elt[y].shift[t] = xs;
 	  }
@@ -343,16 +347,27 @@ WeylGroup::Transducer::Transducer
 	    Generator u = st[1-m%2];
 
 	    if (bot.shift[u] == b)
-	    { // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
+	    { // case (2): $xs$ is fixed by $t$
+	      // and upon receiving |t| outputs the same $g$ as |b| for |u|
 	      top.shift[t] = xs;
 	      top.out[t]   = bot.out[u];
 	    }
+	    // else case (3) with orbit of size $2m$, do nothing
 	  }
 	  else assert(d<m-1); // case (3):  $t$ takes $xs$ up, do nothing
 	} // |for(t)|
       } // |if (..==UndefEltPiece)|
     // |for(s)|
   // |for(x)|
+  assert(elt.size() + r < std::numeric_limits<Generator>::max());
+
+  table=matrix::Matrix<Generator>(elt.size(),r+1);
+  for (EltPiece i=0; i<elt.size(); ++i)
+    for (Generator j=0; j<=r; ++j)
+      if (elt[i].out[j] == UndefGenerator)
+	assert(elt[i].shift[j]!=i),table(i,j)=elt[i].shift[j];
+      else
+	assert(elt[i].out[j]<r),table(i,j) = elt.size() + elt[i].out[j];
 } // |Transducer::Transducer|
 
 Generator WeylGroup::Transducer::unshift(EltPiece& x) const
@@ -412,6 +427,16 @@ WeylWord WeylGroup::Transducer::word_of_piece(EltPiece x) const
   relegated to the dynkin namespace. Because of this reordering, the group
   carries a little interface that will translate back and forth from the
   external ordering and the internal one.
+
+  Actually our code now folds the shift and transduce values, which are
+  mututally exclusive, into a single table entry of type |unsigned char|. That
+  means that the coset size _plus_ the number of distinct values that can be
+  output should not exceed 256 for any transducer. The latter number equals the
+  number r of the transducer within its Dynkin diagram component (as it can
+  output at most r-1); for the final transducer of E8 we get 240+7=247 which
+  fits; in classical types the rank limit gets lowered to 86 (the final
+  transducer for C86 has 2*86-1=171 states and can output vales 0..84 for
+  171+85=256 possible entries. In practice this still is largely sufficent.
 
 ******************************************************************************/
 
@@ -560,6 +585,13 @@ Generator WeylGroup::output_local_gen(Generator i, Generator g) const
   succession, and to avoid calling |d_transducer[j].length| at all (since
   comparison of the |EltPiece| values suffices to decide sense of change).
 
+  This simplification led to the following main loop:
+  for (Generator t; (t=d_transducer[i].out(w.piece(i),s))!=UndefGenerator; s=t)
+  {
+    assert(i!=0); // since |d_transducer[0]| only has shifts
+    --i;
+  }
+
   I left the test for |UndefGenerator| coming first, as transduce is more
   frequent than shift; hence the following even simpler code could be less
   efficient:
@@ -571,24 +603,25 @@ Generator WeylGroup::output_local_gen(Generator i, Generator g) const
     if (wj!=w[j]) return w[j]>wj ? 1 : -1;
   }
 
+  Finally the tables for |out| and |shift| were folded into a single table, with
+  an added predicate |has_shift| to distinguish whic case applies, and the
+  |transduce| code was forced to test this first, leading to the code below.
+
   MvL
 */
 
 // auxiliary; return value tells whether a descent occurred (in final shift)
 inline int WeylGroup::transduce(WeylElt& w, Generator i, Generator s) const
 {
-  for (Generator t; (t=d_transducer[i].out(w.piece(i),s))!=UndefGenerator; s=t)
+  while(true) // loop breaks once we hit a possible shift
   {
-    assert(i!=0); // since |d_transducer[0]| only has shifts
-    --i;
+    const auto wi = w.piece(i);
+    if (d_transducer[i].has_shift(wi,s))
+      // no need to use length for return value, numeric '<' is OK:
+      return (w.piece(i)=d_transducer[i].shift(wi,s))<wi ? -1 : 1;
+    assert(i>0); // since |d_transducer[0]| only has shifts
+    s=d_transducer[i--].out(wi,s);
   }
-
-  // now transductions are exhausted and one nontrivial shift remains
-  EltPiece wi=w.piece(i);
-  w.piece(i)=d_transducer[i].shift(wi,s); // finally modify |w|
-  assert(w.piece(i)!=wi);
-
-  return w.piece(i)<wi ? -1 : 1; // no need to use length, numeric '<' is OK
 }
 
 int WeylGroup::inner_mult(WeylElt& w, Generator s) const
@@ -784,12 +817,13 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
 {
   s=d_in[s]; // inner numbering is used below
-  Generator j = start_gen(s); // rightmost relevant transducer
+  Generator i = start_gen(s); // rightmost relevant transducer
   s = d_transducer[s].local(s); // convert |s| to index within diagram component
 
-  for (Generator t; (t=d_transducer[i].out(w.piece(i),s))!=UndefGenerator; s=t)
+  while (not d_transducer[i].has_shift(w.piece(i),s))
   {
-    assert(i!=0); // since transducer 0 only has shifts
+    s = d_transducer[i].out(w.piece(i),s);
+    assert(i!=0); // since |d_transducer[0]| only has shifts
     --i;
   }
 
@@ -1461,45 +1495,44 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 
   Precondition : |s| is in the descent set of |x|;
 */
-EltPiece weyl::WeylGroup::Transducer::dihedralMin
+EltPiece weyl::WeylGroup::Transducer::dihedral_minimum
   (EltPiece x, weyl::Generator s, weyl::Generator t) const
 {
-  weyl::Generator u = s; weyl::Generator v = t; // to be swapped below
+  EltPiece next;
 
-  EltPiece y = x;
-
-  for (;;)
-  { // this is ok even if the shift is still undefined:
-    if (shift(y,u) >= y)
-      return y;
+  while (true)
+  {
+    if ((next=elt[x].shift[s]) < x) // test is OK even if |next==UndefEltPiece|
+      x = next;
     else
-      y = shift(y,u);
-    std::swap(u,v);
-  }
+      return x;
+    // now do the same for the other generator
+    if ((next=elt[x].shift[t]) < x) // test is OK even if |next==UndefEltPiece|
+      x = next;
+    else
+      return x;
+  } // repeat until |return|
 }
 
 /*
   Return the result of applying |s| and |t| alternately to |x|, for a
-  total of |d| times.
+  total of |d>0| times.
 */
-EltPiece weyl::WeylGroup::Transducer::dihedralShift
-(EltPiece x,
- weyl::Generator s,
- weyl::Generator t,
- unsigned int d) const
+EltPiece weyl::WeylGroup::Transducer::dihedral_shift_up
+  (EltPiece x, weyl::Generator s, weyl::Generator t, unsigned int d) const
 {
-  weyl::Generator u = s;
-  weyl::Generator v = t;
-
-  EltPiece y = x;
-
-  for (unsigned int j = 0; j < d; ++j)
+  while(true)
   {
-    y = shift(y,u);
-    std::swap(u,v);
+    assert(elt[x].shift[s]>x and elt[x].shift[s]!=UndefEltPiece);
+    x = elt[x].shift[s];
+    if (--d==0)
+      return x;
+    // now do the same for the other generator
+    assert(elt[x].shift[t]>x and elt[x].shift[t]!=UndefEltPiece);
+    x = elt[x].shift[t];
+    if (--d==0)
+      return x;
   }
-
-  return y;
 }
 
 
