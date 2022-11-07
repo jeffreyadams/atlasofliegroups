@@ -59,16 +59,6 @@ namespace atlas {
 const EltPiece UndefEltPiece = UndefValue;
 const Generator UndefGenerator = UndefValue;
 
-//			     auxiliary functions
-namespace {
-
-
-  void fillCoxMatrix(int_Matrix&,
-		     const int_Matrix&,
-		     const WeylInterface&);
-
-} // anonymous |namespace|
-
 /*****************************************************************************
 
         Chapter 1 -- The WeylGroup::Transducer class
@@ -131,8 +121,7 @@ struct WeylGroup::Transducer
 // constructors and destructors
   Transducer() {}
 
-  Transducer(const int_Matrix& Coxeter, Generator offset, Generator limit,
-	     Generator s);
+  Transducer(lietype::TypeLetter type, Generator offset, Generator s);
 
   ~Transducer() {}
 
@@ -191,6 +180,40 @@ struct WeylGroup::Transducer
   // this class should have no manipulators!
 }; // |class WeylGroup::Transducer|
 
+/* Since the |Transducer| construction assumes effectively a connected Dynkin
+   diagram (the |Generator| values used in its table are made relative to the
+   current component) and a standard ordering for each type is used, we no
+   longer pass a Coxeter matrix to the constructor, but just a (simple) type.
+   The following function computes Coxeter matrix entries for any type, in the
+   order we use, namely Bourbaki except for reversal in types B,C,D
+*/
+
+unsigned int Coxeter_entry(lietype::TypeLetter type, Generator i, Generator j)
+{
+  if (i>j)
+    std::swap(i,j); // ensure |i<=j|, the matrix is symmetric
+  if (std::strchr("DE",type)==nullptr) // whether diagram is linear
+    switch(j-i) // absolute distance
+    {
+    default: return 2; // commutation if at least 2 apart
+    case 0: return 1; // this case is not really used
+    case 1: return
+	type=='A' or
+	(std::strchr("BC",type)!=nullptr and i>0) or
+	(type=='F' and i!=1)
+	? 3
+	: type=='G' ? 6
+	: 4; // cases BC and $(i,j)=(0,1)$ or F and $(i,j)=(1,2)$
+    }
+
+  // types DE
+  if (i==0)
+    return j==2 ? 3 : 2;
+  else if (type=='E' and i==1)
+    return j==3 ? 3 : 2;
+  else
+    return j-i==1 ? 3 : 2;
+}
 
 /*****************************************************************************
 
@@ -264,7 +287,7 @@ struct WeylGroup::Transducer
 */
 
 WeylGroup::Transducer::Transducer
-  (const int_Matrix& c, Generator offset, Generator limit, Generator r)
+  (lietype::TypeLetter type, Generator offset, Generator r)
     // here |r| is relative to |offset|
     : offset(offset), limit(r+1), elt(), table()
 {
@@ -338,8 +361,7 @@ WeylGroup::Transducer::Transducer
 	  }
 	  const auto& bot = tab[b];
 	  const unsigned int d = elt[xs].length - elt[b].length;
-	  const unsigned int m = // positive coef from Coxeter matrix
-	    c(offset+s,offset+t); // Coxeter matrix is not compoent local
+	  const unsigned int m = Coxeter_entry(type,s,t);
 	  const Generator st[] = {s,t}; // convenience
 
 	  if (d == m)
@@ -471,8 +493,7 @@ WeylWord WeylGroup::Transducer::word_of_piece(EltPiece x) const
   but we will determine an internal renumbering making the subquotients small
 */
 WeylGroup::WeylGroup(const int_Matrix& c)
-  : d_coxeterMatrix()
-  , d_transducer(c.numColumns())
+  : d_transducer(c.numColumns())
   , d_in()
   , d_out()
   , d_min_star(d_transducer.size())
@@ -505,23 +526,21 @@ WeylGroup::WeylGroup(const int_Matrix& c)
   for (Generator i = 0; i < rank; ++i)
     d_in[d_out[i]] = i;
 
-  // deduce the Coxeter matrix from Cartan matrix |c| and renumbering |a|
-  fillCoxMatrix(d_coxeterMatrix,c,d_out);
-
   // now construct the transducers
   // each one gets to know its local Coxeter matrix and its place in component
   for (const auto& comp : d.components())
-    for (unsigned i=0; i<comp.position.size(); ++i)
-      d_transducer[comp.offset+i] =
-	Transducer(d_coxeterMatrix,comp.offset,comp.position.size(),i);
+    for (unsigned i=0; i<comp.rank(); ++i)
+      d_transducer[comp.offset+i] = Transducer(comp.type,comp.offset,i);
 
   // precompute for each |j| the first non-commuting or equal generator |i<=j|
   for (Generator j = 0; j < rank; ++j)
-    for (Generator i=0; i<=j; ++i)
-      if (d_coxeterMatrix(i,j)!=2)
+  { d_min_star[j]=j; // value if loop below does not |break|
+    for (Generator i=0; i<j; ++i)
+      if (not inner_commutes(i,j))
       {
 	d_min_star[j]=i; break;
       }
+  }
 
   // now our Weyl group is operational for computations
 
@@ -533,7 +552,7 @@ WeylGroup::~WeylGroup() = default;
 
 /******** accessors **********************************************************/
 
-WeylElt WeylGroup::genIn (Generator i) const
+WeylElt WeylGroup::inner_gen (Generator i) const
 {
   WeylElt s;    // initialise all pieces to 0 (identity)
   s.piece(i)=1; // then shift to piece #1 in $W_{i-1}\\W_i$, which is $s_i$
@@ -680,7 +699,7 @@ int WeylGroup::mult_by_piece(WeylElt& w, const WeylElt& v, Generator i) const
 */
 int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
 {
-  WeylElt sw=genIn(s);
+  WeylElt sw=inner_gen(s);
   int l=1; //
 
   // now compute $sv$ as above, keeping track of any length drop (at most 1)
@@ -771,6 +790,18 @@ size::Size WeylGroup::order() const
   return result;
 }
 
+// whether |s| and |t| are distinct and commute
+bool WeylGroup::inner_commutes (Generator s, Generator t) const
+{
+  if (upper[s]!=upper[t]) // whether distinct diagram components
+    return true;
+  if (s>t)
+    std::swap(s,t); // ensure |s<t|
+  const Transducer& tr = d_transducer[t]; // piece 1 of |tr| represents |t|
+  s = tr.local(s);
+  return not tr.has_shift(1,s); // in which case always |tr.out(1,s)==s|
+}
+
 Generator WeylGroup::Chevalley_dual(Generator s) const
 {
   const WeylElt w0 = longest();
@@ -838,7 +869,7 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
   Generator stack[Transducer::max_piece_length]; // working memory for reversal
 
   s=d_in[s]; // inner numbering is used below
-  WeylElt sw = genIn(s); // element operated upon, starts out as |s|
+  WeylElt sw = inner_gen(s); // element operated upon, starts out as |s|
   const Generator start=start_gen(s);
 
   for (Generator i = min_neighbor(s); i <= s; ++i)
@@ -1527,51 +1558,7 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 }
 
 
-
-/*****************************************************************************
-
-        Chapter IV -- Auxiliary functions for this module
-
-******************************************************************************/
-
-namespace {
-
-
-
-
-/*
-  Fill in the Coxeter matrix |cox|.
-
-  Precondition: cart is a Cartan matrix; a holds a normalizing permutation
-  for cart, such as constructed by normalize(a,d) where d is the Dynkin diagram
-  of cart (declared in dynkin.h);
-
-  Postcondition : cox holds the normalized Coxeter matrix corresponding to
-  cox and a;
-*/
-void fillCoxMatrix(int_Matrix& cox,
-		   const int_Matrix& cart,
-		   const WeylInterface& a)
-{
-  assert (cart.numRows()==cart.numColumns());
-  int_Matrix(cart.numRows(),cart.numRows()) //create matrix
-    .swap(cox); // and make |cox| refer to it
-
-  static const int translate[] // from product of cart entries -> cox entry
-    = { 2, 3, 4, 6 }; // N.B.  |0<=cart(i,j)*cart(j,i)<=3| always for |i!=j|
-  for (Generator i=0; i<cart.numRows(); ++i)
-  {
-    cox(i,i) = 1;
-    unsigned ai=a[i]; // index corresponding to (inner) |i| in (outer) |cart|
-    for (Generator j=i+1; j<cart.numRows(); ++j)
-      cox(i,j) = cox(j,i) = translate[cart(ai,a[j])*cart(a[j],ai)];
-  }
-
-}
-
-} // anonymous |namespace|
-
-//				Template instantiation
+//			     Template instantiation
 
 template
 void WeylGroup::act

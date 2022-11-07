@@ -257,8 +257,6 @@ class WeylGroup
 {
   struct Transducer;
 
-  int_Matrix d_coxeterMatrix; // the Coxeter matrix (used during construction)
-
   std::vector<Transducer> d_transducer; // list of parabolic quotients
   WeylInterface d_in;  // conversion from external numbering to internal
   WeylInterface d_out; // conversion from internal numbering to external
@@ -286,10 +284,11 @@ class WeylGroup
   // set |w=sw|, return value is $l(sw)-l(w)\in\{+1,-1}$
   int leftMultIn(WeylElt& w, Generator s) const;
 
+  WeylElt inner_gen (Generator i) const; // $s_i$ as Weyl group element
+  bool inner_commutes (Generator s, Generator t) const;
+
   // First generator $<s$ not commuting with |s|, or |s| if none exist; inner
   Generator min_neighbor (Generator s) const { return d_min_star[s]; }
-
-  WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
 
 // From this point on each Generator or WeylWord uses external numbering
 public:
@@ -305,7 +304,7 @@ public:
 // accessors
 
   WeylElt generator (Generator i) const // $s_i$ as Weyl group element
-    { return genIn(d_in[i]); }
+    { return inner_gen(d_in[i]); }
 
   // set |w=ws|, return length change
   int mult(WeylElt& w, Generator s) const { return inner_mult(w,d_in[s]); }
@@ -318,7 +317,7 @@ public:
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
   int leftMult(WeylElt& w, Generator s) const { return leftMultIn(w,d_in[s]); }
-  void leftMult(WeylElt& w, const WeylWord& ww) const
+  void left_multiply(WeylElt& w, const WeylWord& ww) const
   {
     for (unsigned int i=ww.size(); i-->0; ) // use letters from right to left
       leftMult(w,ww[i]);
@@ -329,7 +328,8 @@ public:
   WeylElt prod(Generator s, WeylElt w) const { leftMult(w,s); return w; }
   WeylElt prod(WeylElt w, const WeylElt& v) const { mult(w,v); return w; }
   WeylElt prod(WeylElt w, const WeylWord& ww) const { mult(w,ww); return w; }
-  WeylElt prod(const WeylWord& ww, WeylElt w) const { leftMult(w,ww); return w; }
+  WeylElt prod(const WeylWord& ww, WeylElt w) const
+    { left_multiply(w,ww); return w; }
 
   /* These additional definitions would be needed if TwistedInvolutions were a
      type distinct from WeylElt (but they are not allowed as it is):
@@ -375,13 +375,6 @@ public:
  */
   Generator leftDescent(const WeylElt& w) const;
 
-  bool commutes (Generator s, Generator t) const
-  {
-    WeylElt w = generator(s);
-    conjugate(w,t);
-    return w==generator(s);
-  }
-
   WeylElt longest() const;
 
   unsigned int max_length() const;
@@ -391,6 +384,9 @@ public:
 
   Generator rank() const // |d_transducer.size()| makes compiler unhappy here
   { return d_min_star.size(); } // and also |upper.size()|
+
+  bool commutes (Generator s, Generator t) const
+  { return s==t or inner_commutes(d_in[s],d_in[t]); }
 
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
@@ -498,7 +494,8 @@ public:
   void mult(WeylElt& w, const WeylWord& ww) const { W.mult(w,ww); }
 
   int leftMult(WeylElt& w, Generator s) const { return W.leftMult(w,s); }
-  void leftMult(WeylElt& w, const WeylWord& ww) const { W.leftMult(w,ww); }
+  void left_multiply(WeylElt& w, const WeylWord& ww) const
+   { W.left_multiply(w,ww); }
   WeylWord word(const WeylElt& w) const { return W.word(w); }
 
   WeylElt prod(const WeylElt& w, Generator s) const { return W.prod(w,s); }

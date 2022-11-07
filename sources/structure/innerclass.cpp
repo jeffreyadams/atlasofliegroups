@@ -1468,7 +1468,7 @@ bool checkDecomposition(const TwistedInvolution& ti,
   {
     InvolutionData id(rs,W.simple_images(rs,tw));
     assert(id.imaginary_roots().isMember(*it));
-    W.leftMult(tw,rs.reflectionWord(*it));
+    W.left_multiply(tw,rs.reflectionWord(*it));
   }
 
   return tw == ti;

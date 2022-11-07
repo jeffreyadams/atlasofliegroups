@@ -2071,7 +2071,7 @@ void W_word_elt_prod_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  w->W.leftMult(w->val,ww);
+  w->W.left_multiply(w->val,ww);
   push_value(std::move(w));
 }
 
