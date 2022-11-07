@@ -63,10 +63,13 @@ namespace weyl {
   };
 
 
-/******** function declaration *********************************************/
+/******** function declarations *********************************************/
 
 Twist make_twist(const RootDatum& rd,
 		 const WeightInvolution& d);
+
+
+WeylEltList conjugacy_class(const WeylGroup& W, const WeylElt& w);
 
 /******** main class definitions *******************************************/
 
@@ -115,9 +118,6 @@ class WeylElt
 
   // Default constructor; set element to the identity element of W.
   WeylElt() { std::memset(d_data,0,sizeof(d_data)); }
-
-  // Construct element from a word |w| in simple generators of |W|
-  WeylElt(const WeylWord& w, const WeylGroup& W);
 
 // copy and assignment
 // use standard definitions (raw copy of array)
@@ -257,12 +257,7 @@ class WeylGroup
 {
   struct Transducer;
 
-  Generator d_rank; // (Coxeter) rank of the Weyl group
-  size::Size d_order; // order of the Weyl group
-  unsigned int d_maxlength; // maximal length of any reduced expression
-  WeylElt d_longest; // longest element of Weyl group as |WeylElt|
   int_Matrix d_coxeterMatrix; // the Coxeter matrix (used during construction)
-  Twist Chevalley; // diagram automorphism: conjugation by longest element
 
   std::vector<Transducer> d_transducer; // list of parabolic quotients
   WeylInterface d_in;  // conversion from external numbering to internal
@@ -330,17 +325,11 @@ public:
   }
   void leftMult(WeylElt& w, const WeylElt& x) const; // |w=xw|
 
-  WeylElt prod(const WeylElt& w, Generator s) const
-    { WeylElt result=w; mult(result,s); return result; }
-  WeylElt prod(Generator s, const WeylElt& w) const
-    { WeylElt result=w; leftMult(result,s); return result; }
-  WeylElt prod(const WeylElt& w, const WeylElt& v) const
-    { WeylElt result=w; mult(result,v); return result; }
-  WeylElt prod(const WeylElt& w, const WeylWord& ww) const
-    { WeylElt result=w; mult(result,ww); return result; }
-  WeylElt prod(const WeylWord& ww,const WeylElt& w) const
-    { WeylElt result=w; leftMult(result,ww); return result; }
-
+  WeylElt prod(WeylElt w, Generator s) const { mult(w,s); return w; }
+  WeylElt prod(Generator s, WeylElt w) const { leftMult(w,s); return w; }
+  WeylElt prod(WeylElt w, const WeylElt& v) const { mult(w,v); return w; }
+  WeylElt prod(WeylElt w, const WeylWord& ww) const { mult(w,ww); return w; }
+  WeylElt prod(const WeylWord& ww, WeylElt w) const { leftMult(w,ww); return w; }
 
   /* These additional definitions would be needed if TwistedInvolutions were a
      type distinct from WeylElt (but they are not allowed as it is):
@@ -371,8 +360,6 @@ public:
     return hasDescent(s,w) ? -1 : 1;
   }
 
-  void conjugacyClass(WeylEltList&, const WeylElt&) const;
-
   // Conjugate |w| by the generator |s|: |w=sws|.
   void conjugate(WeylElt& w, Generator s) const
     { leftMult(w,s); mult(w,s); }
@@ -395,23 +382,21 @@ public:
     return w==generator(s);
   }
 
-  const WeylElt& longest() const { return d_longest; }
+  WeylElt longest() const;
 
-  Generator Chevalley_dual(Generator s) const // conjugation by |longest()|
-  { assert(s<rank()); return Chevalley[s]; }
-
-  // correspondence with dual Weyl group; is coherent with \delta on the right!
-  WeylElt opposite (const WeylElt& w) const { return prod(w,d_longest); }
-
-  unsigned long maxlength() const { return d_maxlength; }
+  unsigned int max_length() const;
 
   // the order of the Weyl group
-  const size::Size& order() const { return d_order; }
+  size::Size order() const;
 
-  Generator rank() const { return d_rank; }
+  Generator rank() const // |d_transducer.size()| makes compiler unhappy here
+  { return d_min_star.size(); } // and also |upper.size()|
 
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
+
+  Generator Chevalley_dual(Generator s) const; // conjugation by |longest()|
+  Twist Chevalley_twist () const; // combine values for all |s|
 
   // give representation of |w| as integral number.
   arithmetic::big_int to_big_int(const WeylElt& w) const;
