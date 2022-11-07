@@ -1,4 +1,9 @@
+<basic.at
+<groups.at { for |G2_s| }
+<K_norm.at { for |shorten| }
+<hermitian.at { for |is_unitary| }
 <coordinates.at
+
 set G=G2_s
 set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
 
@@ -140,4 +145,3 @@ tabulate(
   in  [v.to_string,coords.to_string,p.short_format,unitary.to_string,in_fpp(coords).to_string,check,L ]
  od
 )
-

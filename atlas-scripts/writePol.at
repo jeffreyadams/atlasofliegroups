@@ -39,9 +39,7 @@ then in a later session
 will give you Pols_saved = [KTypePol]: Pols .}
 set writeKPols(RealForm G, [KTypePol] Pols) = void:
     begin
-	 let Polsdata = [[PolTermDatum]]:
-    	 for P in Pols do data(P) od
-    	 in prints("set rd_saved = RootDatum: root_datum(mat: ")
+	   prints("set rd_saved = RootDatum: root_datum(mat: ")
     	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
 	 ; prints( for betavee in G.simple_coroots do betavee od)
 	 ; prints(",",G.prefers_coroots,")")
@@ -51,17 +49,16 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
     	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
 	   	       KGB(G,0).torus_factor,")")
      	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
-	 ; for dlist@j in Polsdata
-	   do prints("[")
-	 ;     for d@k in dlist do prints("(",d.IntCoeff,",",
-	       	   d.KGBNum,"," , d.Lambda_Rho,")")
-         ; if k < #dlist -1 then prints(",") fi
+	 ; for P@j in Pols
+	   do let dlist=data(P)
+	   in prints("[")
+	   ;   for d@k in dlist
+	       do prints("(",d.IntCoeff,",", d.KGBNum,"," , d.Lambda_Rho,")")
+               ; if k < #dlist -1 then prints(",") fi
+	       od
+	   ; if j < #Pols - 1 then prints("],") else prints("]]") fi
 	   od
-	 ; if j < #Polsdata - 1 then prints("],")
-	   else prints("]]")
-	   fi
-	   od
-    	 ; prints("set Pols_saved = [KTypePol]:") 
+	 ; prints("set Pols_saved = [KTypePol]:")
     	 ; prints("for datum in Polsdata_saved do ")
     	 ; prints("Kpol(G_saved, datum) od")
    end
@@ -97,11 +94,11 @@ set writeKPolsMedium(RealForm G, [[PolTermDatum]] Polsdata) = void:
 	   else prints("]]")
 	   fi
 	   od
-    	 ; prints("set Pols_saved = [KTypePol]:") 
+	 ; prints("set Pols_saved = [KTypePol]:")
     	 ; prints("for datum in Polsdata_saved do ")
     	 ; prints("Kpol(G_saved, datum) od")
    end
-   
+
 {. If you say
 
 > FILE.at writeKPols(G, PolsdataSmall)
@@ -129,7 +126,7 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
 	   else prints("]")
 	   fi
 	   od
-    	 ; prints("set Pols_saved = [KTypePol]:") 
+	 ; prints("set Pols_saved = [KTypePol]:")
     	 ; prints("for dataSmall in PolsdataSmall_saved do ")
     	 ; prints("Kpol(G_saved,dataSmall) od")
    end
