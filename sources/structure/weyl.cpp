@@ -697,7 +697,7 @@ int WeylGroup::mult_by_piece(WeylElt& w, const WeylElt& v, Generator i) const
   leaving the left part $w_1$ unchanged. These observations justify that
   the two loops below only run over the mentioned interval of values |j|.
 */
-int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
+int WeylGroup::inner_left_mult(WeylElt& w, Generator s) const
 {
   WeylElt sw=inner_gen(s);
   int l=1; //
@@ -737,7 +737,7 @@ void WeylGroup::mult(WeylElt& w, const WeylWord& v) const
 }
 
 // Set |w=xw|
-void WeylGroup::leftMult(WeylElt& w, const WeylElt& x) const
+void WeylGroup::left_multiply(WeylElt& w, const WeylElt& x) const
 {
   WeylElt xx=x; mult(xx,w); w=xx;
 }
@@ -864,7 +864,7 @@ WeylEltList conjugacy_class(const WeylGroup& W,const WeylElt& w)
   descent occurs we return |true|, otherwise |false|. Despite the double loop
   below, this question is resolved in relatively few operations on the average.
 */
-bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
+bool WeylGroup::has_descent(Generator s, const WeylElt& w) const
 {
   Generator stack[Transducer::max_piece_length]; // working memory for reversal
 
@@ -890,7 +890,7 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
 // same question, but on the right; this happens to be never used in Atlas
 #if 0 // remove this line (and matchinig #endif) if ever an instance is needed
-bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
+bool WeylGroup::has_descent(const WeylElt& w,Generator s) const
 {
   s=d_in[s]; // inner numbering is used below
   Generator i = start_gen(s); // rightmost relevant transducer
@@ -914,7 +914,7 @@ bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
   first piece of |w| that is not 0 (identity), converted to external
   numbering, since the canonical (minimal for ShortLex) expression for |w|
   starts with this letter. Returning the first generator in external numbering
-  would take a bit more time, as we would have to repeatedly use |hasDescent|.
+  would take a bit more time, as we would have to repeatedly use |has_descent|.
 */
 Generator WeylGroup::leftDescent(const WeylElt& w) const
 {
@@ -981,7 +981,7 @@ arithmetic::big_int WeylGroup::to_big_int(const WeylElt& w) const
   Its pieces for the mixed-radix representation of |u|, which as usual can be
   found starting at the least significant end by repeated Euclidean divisions
 */
-WeylElt WeylGroup::toWeylElt(arithmetic::big_int u) const
+WeylElt WeylGroup::to_WeylElt(arithmetic::big_int u) const
 {
   WeylElt w;
 
@@ -1288,7 +1288,7 @@ bool TwistedWeylGroup::hasTwistedCommutation
   WeylElt x = tw.w();
   int m = mult(x,d_twist[s]); // now |x| is $w.\delta(s)$
 
-  return (m>0)==W.hasDescent(s,x); // lengths match iff members are equivalent
+  return (m>0)==W.has_descent(s,x); // lengths match iff members are equivalent
 }
 
 
@@ -1323,7 +1323,7 @@ InvolutionWord TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
     if (hasTwistedCommutation(s,tw))
     {
       result.push_back(s);
-      leftMult(tw,s);
+      left_multiply(tw,s);
     }
     else
     {
@@ -1344,14 +1344,14 @@ InvolutionWord TwistedWeylGroup::canonical_involution_expr(TwistedInvolution tw)
   while (tw!=delta)
   {
     Generator s=0;
-    while (not hasDescent(s,tw))
+    while (not has_descent(s,tw))
       ++s;
     // now |s| is the first twisted right equivalently left descent
 
     if (hasTwistedCommutation(s,tw))
     {
       result.push_back(s);
-      leftMult(tw,s);
+      left_multiply(tw,s);
     }
     else
     {
@@ -1377,7 +1377,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
   while (tw!=delta)
   {
     Generator s=0;
-    while (not hasDescent(orbit[s].s0,tw))
+    while (not has_descent(orbit[s].s0,tw))
     {
       ++s;
       assert(s<orbit.size());
@@ -1389,7 +1389,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
     case ext_gen::one:
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
-	leftMult(tw,orbit[s].s0); // real
+	left_multiply(tw,orbit[s].s0); // real
 	result.push_back(s);
       }
       else
@@ -1402,13 +1402,13 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
 	result.push_back(s); // a double real descent
-	leftMult(tw,orbit[s].s0);
-	leftMult(tw,orbit[s].s1);
+	left_multiply(tw,orbit[s].s0);
+	left_multiply(tw,orbit[s].s1);
       }
       else
       {
 	twistedConjugate(tw,orbit[s].s0);
-	if (hasDescent(orbit[s].s1,tw)) // is |s1| a left descent?
+	if (has_descent(orbit[s].s1,tw)) // is |s1| a left descent?
 	{
 	  twistedConjugate(tw,orbit[s].s1);
 	  result.push_back(~s); // two-complex descent
@@ -1421,7 +1421,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
       if (hasTwistedCommutation(orbit[s].s0,tw))
       {
 	result.push_back(s); // a real-complex descent
-	leftMult(tw,orbit[s].s0);
+	left_multiply(tw,orbit[s].s0);
 	twistedConjugate(tw,orbit[s].s1);
       }
       else
@@ -1429,7 +1429,7 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
 	twistedConjugate(tw,orbit[s].s0);
 	if (hasTwistedCommutation(orbit[s].s1,tw))
 	{
-	  leftMult(tw,orbit[s].s1);
+	  left_multiply(tw,orbit[s].s1);
 	  result.push_back(s); // complex-real descent
 	}
 	else
@@ -1466,7 +1466,7 @@ unsigned int TwistedWeylGroup::involutionLength
   for (Generator s = W.leftDescent(x.w()); s != UndefGenerator;
                  s = W.leftDescent(x.w()),++length)
     if (hasTwistedCommutation(s,x))
-      leftMult(x,s);
+      left_multiply(x,s);
     else
       twistedConjugate(x,s);
 

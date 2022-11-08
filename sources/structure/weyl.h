@@ -110,38 +110,33 @@ class WeylElt
   representative $w_i$ for an element of $W_{i-1}\\W_i$.
   Then $w = w_1.w_2...w_n$.
   */
-  EltPiece d_data[constants::RANK_MAX];
+  std::array<EltPiece,constants::RANK_MAX> pieces;
 
  public:
 
 // constructors and destructors
 
   // Default constructor; set element to the identity element of W.
-  WeylElt() { std::memset(d_data,0,sizeof(d_data)); }
+  WeylElt() { pieces.fill(0); }
 
 // copy and assignment
 // use standard definitions (raw copy of array)
 
 // accessors
 
-  bool operator== (const WeylElt& w) const
-  { return std::memcmp(d_data,w.d_data,sizeof(d_data))==0; }
-
-  bool operator!= (const WeylElt& w) const {
-    return std::memcmp(d_data,w.d_data,sizeof(d_data))!=0;
-  }
+  bool operator== (const WeylElt& w) const { return pieces==w.pieces; }
+  bool operator!= (const WeylElt& w) const { return pieces!=w.pieces; }
 
   // lexicograpic ordering by internal parabolic quotient list
-  bool operator< (const WeylElt& w) const
-  { return std::memcmp(d_data,w.d_data,sizeof(d_data)) < 0; }
+  bool operator< (const WeylElt& w) const { return pieces<w.pieces; }
 
 protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
 
   // Get an individual |EltPiece|
-  EltPiece piece (Generator j) const { return d_data[j]; }
+  EltPiece piece (Generator j) const { return pieces[j]; }
 
 // manipulators
-  EltPiece& piece (Generator j)      { return d_data[j]; }
+  EltPiece& piece (Generator j)      { return pieces[j]; }
 
 public:
 // dummy methods that mark transition of interpretation
@@ -282,7 +277,7 @@ class WeylGroup
   int mult_by_piece(WeylElt& w, const WeylElt& v, Generator i) const;
 
   // set |w=sw|, return value is $l(sw)-l(w)\in\{+1,-1}$
-  int leftMultIn(WeylElt& w, Generator s) const;
+  int inner_left_mult(WeylElt& w, Generator s) const;
 
   WeylElt inner_gen (Generator i) const; // $s_i$ as Weyl group element
   bool inner_commutes (Generator s, Generator t) const;
@@ -316,16 +311,17 @@ public:
   void mult(WeylElt&, const WeylWord&) const;
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
-  int leftMult(WeylElt& w, Generator s) const { return leftMultIn(w,d_in[s]); }
+  int left_multiply(WeylElt& w, Generator s) const
+  { return inner_left_mult(w,d_in[s]); }
   void left_multiply(WeylElt& w, const WeylWord& ww) const
   {
     for (unsigned int i=ww.size(); i-->0; ) // use letters from right to left
-      leftMult(w,ww[i]);
+      left_multiply(w,ww[i]);
   }
-  void leftMult(WeylElt& w, const WeylElt& x) const; // |w=xw|
+  void left_multiply(WeylElt& w, const WeylElt& x) const; // |w=xw|
 
   WeylElt prod(WeylElt w, Generator s) const { mult(w,s); return w; }
-  WeylElt prod(Generator s, WeylElt w) const { leftMult(w,s); return w; }
+  WeylElt prod(Generator s, WeylElt w) const { left_multiply(w,s); return w; }
   WeylElt prod(WeylElt w, const WeylElt& v) const { mult(w,v); return w; }
   WeylElt prod(WeylElt w, const WeylWord& ww) const { mult(w,ww); return w; }
   WeylElt prod(const WeylWord& ww, WeylElt w) const
@@ -334,14 +330,14 @@ public:
   /* These additional definitions would be needed if TwistedInvolutions were a
      type distinct from WeylElt (but they are not allowed as it is):
 
-  void leftMult(TwistedInvolution& w, Generator s) const {
-    leftMultIn(w.contents(),d_in[s]);
+  void left_multiply(TwistedInvolution& w, Generator s) const {
+    left_multiplyIn(w.contents(),d_in[s]);
   }
-  void leftMult(TwistedInvolution& w, const WeylWord& ww) const {
-    leftMult(w.contents(),ww);
+  void left_multiply(TwistedInvolution& w, const WeylWord& ww) const {
+    left_multiply(w.contents(),ww);
   }
-  void leftMult(TwistedInvolution& w, const WeylElt& x) const {
-    leftMult(w.contents(),x);
+  void left_multiply(TwistedInvolution& w, const WeylElt& x) const {
+    left_multiply(w.contents(),x);
   }
   */
 
@@ -357,12 +353,12 @@ public:
   // return $l(s*w)-l(w)$
   int length_change(Generator s,const WeylElt& w) const
   {
-    return hasDescent(s,w) ? -1 : 1;
+    return has_descent(s,w) ? -1 : 1;
   }
 
   // Conjugate |w| by the generator |s|: |w=sws|.
   void conjugate(WeylElt& w, Generator s) const
-    { leftMult(w,s); mult(w,s); }
+    { left_multiply(w,s); mult(w,s); }
 
   WeylElt inverse(const WeylElt& w) const;
   void invert(WeylElt& w) const { w=inverse(w); }
@@ -398,10 +394,10 @@ public:
   arithmetic::big_int to_big_int(const WeylElt& w) const;
 
   // inverse operation of |to_big_int|
-  WeylElt toWeylElt(arithmetic::big_int) const;
+  WeylElt to_WeylElt(arithmetic::big_int) const;
 
-  bool hasDescent(Generator, const WeylElt&) const; // on the left
-  bool hasDescent(const WeylElt&, Generator) const; // on the right
+  bool has_descent(Generator, const WeylElt&) const; // on the left
+  bool has_descent(const WeylElt&, Generator) const; // on the right
 
   // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
   WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
@@ -478,7 +474,7 @@ class TwistedWeylGroup
 
   void operator=(const TwistedWeylGroup&); // forbid assignment
  protected:
- TwistedWeylGroup(const TwistedWeylGroup& g) // only derived classes may copy
+  TwistedWeylGroup(const TwistedWeylGroup& g) // only derived classes may copy
    : W(g.W), d_twist(g.d_twist) {} // share |W|, copy |d_twist|
 public:
   TwistedWeylGroup(const WeylGroup&, const Twist&);
@@ -493,23 +489,24 @@ public:
   void mult(WeylElt& w, const WeylElt& v) const { W.mult(w,v); }
   void mult(WeylElt& w, const WeylWord& ww) const { W.mult(w,ww); }
 
-  int leftMult(WeylElt& w, Generator s) const { return W.leftMult(w,s); }
+  int left_multiply(WeylElt& w, Generator s) const
+    { return W.left_multiply(w,s); }
   void left_multiply(WeylElt& w, const WeylWord& ww) const
-   { W.left_multiply(w,ww); }
+    { W.left_multiply(w,ww); }
   WeylWord word(const WeylElt& w) const { return W.word(w); }
 
   WeylElt prod(const WeylElt& w, Generator s) const { return W.prod(w,s); }
   WeylElt prod(Generator s, const WeylElt& w) const { return W.prod(s,w); }
   WeylElt prod(const WeylElt& w, const WeylElt& v) const { return W.prod(w,v); }
   WeylElt prod(const WeylElt& w, const WeylWord& ww) const
-   { return W.prod(w,ww); }
+    { return W.prod(w,ww); }
   WeylElt prod(const WeylWord& ww,const WeylElt& w) const
-   { return W.prod(ww,w); }
+    { return W.prod(ww,w); }
 
-  bool hasDescent(Generator s, const WeylElt& w) const
-    { return W.hasDescent(s,w); }
-  bool hasDescent(const WeylElt& w, Generator s) const
-    { return W.hasDescent(w,s); }
+  bool has_descent(Generator s, const WeylElt& w) const
+    { return W.has_descent(s,w); }
+  bool has_descent(const WeylElt& w, Generator s) const
+    { return W.has_descent(w,s); }
 
   Generator twisted(Generator s) const { return d_twist[s]; }
   WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
@@ -532,7 +529,7 @@ public:
   int twistedConjugate(TwistedInvolution& tw, Generator s) const
   {
     WeylElt& w=tw.contents();
-    int d = W.leftMult(w,s);
+    int d = W.left_multiply(w,s);
     return d+W.mult(w,d_twist[s]);
   }
   int twistedConjugate(const WeylWord& ww,TwistedInvolution& tw) const

@@ -2049,7 +2049,7 @@ void W_gen_elt_prod_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  w->W.leftMult(w->val,s);
+  w->W.left_multiply(w->val,s);
   push_value(std::move(w));
 }
 

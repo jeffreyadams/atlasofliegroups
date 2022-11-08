@@ -344,7 +344,7 @@ void InnerClass::construct() // common part of two constructors
 
 	assert(tw==W.prod(a.tw(),W.longest())); // coherence with dual group
 
-	W.leftMult(tw,j); // "Cayley transform"
+	W.left_multiply(tw,j); // "Cayley transform"
 	WeylWord ww=canonicalize(tw); // in non-dual setting
 
 	CartanNbr ii;
@@ -1166,7 +1166,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
     {
       weyl::Generator s=dec[j];
       so.push_back(rs.simpleRootNbr(s));
-      W.leftMult(tw,s);
+      W.left_multiply(tw,s);
     }
     else // cross action by simple root
     {
