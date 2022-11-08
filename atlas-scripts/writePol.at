@@ -48,19 +48,13 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
          ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
     	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
 	   	       KGB(G,0).torus_factor,")")
-     	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
+     	 ; prints("set Pols_saved = [KTypePol]: [")
 	 ; for P@j in Pols
-	   do let dlist=data(P)
-	   in prints("[")
-	   ;   for d@k in dlist
-	       do prints("(",d.IntCoeff,",", d.KGBNum,"," , d.Lambda_Rho,")")
-               ; if k < #dlist -1 then prints(",") fi
-	       od
-	   ; if j < #Pols - 1 then prints("],") else prints("]]") fi
+	   do let d=data(P)
+	   in prints("Kpol(G_saved,",d,")")
+	   ; if j < #Pols -1 then prints(",") else prints("]")
+	     fi
 	   od
-	 ; prints("set Pols_saved = [KTypePol]:")
-    	 ; prints("for datum in Polsdata_saved do ")
-    	 ; prints("Kpol(G_saved, datum) od")
    end
 
 {. If you say
@@ -83,20 +77,12 @@ set writeKPolsMedium(RealForm G, [[PolTermDatum]] Polsdata) = void:
          ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
     	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
 	   	       KGB(G,0).torus_factor,")")
-     	 ; prints("set Polsdata_saved = [[PolTermDatum]]: [")
-	 ; for dlist@j in Polsdata
-	   do prints("[")
-	 ;     for d@k in dlist do prints("(",d.IntCoeff,",",
-	       	   d.KGBNum,"," , d.Lambda_Rho,")")
-         ; if k < #dlist -1 then prints(",") fi
+     	 ; prints("set Pols_saved = [KTypePol]: [")
+	 ; for d@j in Polsdata
+	   do prints("Kpol(G_saved,",d,")")
+	   ; if j < #Polsdata - 1 then prints(",") else prints("]")
+	     fi
 	   od
-	 ; if j < #Polsdata - 1 then prints("],")
-	   else prints("]]")
-	   fi
-	   od
-	 ; prints("set Pols_saved = [KTypePol]:")
-    	 ; prints("for datum in Polsdata_saved do ")
-    	 ; prints("Kpol(G_saved, datum) od")
    end
 
 {. If you say
@@ -119,14 +105,10 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
          ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
     	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
 	   	       KGB(G,0).torus_factor,")")
-     	 ; prints("set PolsdataSmall_saved = [[PolTermDatumSmall]]: [")
+	 ; prints("set Pols_saved = [KTypePol]: [")
 	 ; for d@j in PolsdataSmall
-	   do prints(d)
-	 ; if j < #PolsdataSmall - 1 then prints(",")
-	   else prints("]")
-	   fi
+	   do prints("Kpol(G_saved,",d,")")
+	   ; if j < #PolsdataSmall - 1 then prints(",") else prints("]")
+	     fi
 	   od
-	 ; prints("set Pols_saved = [KTypePol]:")
-    	 ; prints("for dataSmall in PolsdataSmall_saved do ")
-    	 ; prints("Kpol(G_saved,dataSmall) od")
    end
