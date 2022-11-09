@@ -28,10 +28,11 @@ set Kpol(RealForm G, [PolTermDatum] data) = KTypePol:
 set Kpol(RealForm G, [PolTermDatumSmall] dataSmall) = KTypePol:
     sum(G, for d in dataSmall do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
 
-{This is the number of KTypePols loaded at once}
-set chunkSize = int:  10000
+{This is the number of KTypePols loaded at once. Can be changed
+interactively by "chunkSize:=..."}
+set chunkSize = int:  1000
 
-{. If you say
+{ If you say
 
 > FILE.at writeKPols(G, Pols)
 
@@ -40,48 +41,8 @@ then in a later session
 << FILE.at
 
 will give you Pols_saved = [KTypePol]: Pols .}
+
 set writeKPols(RealForm G, [KTypePol] Pols) = void:
-    begin
-	 let Nchunks = #Pols\chunkSize
-	 then m = #Pols%chunkSize
-	 in prints("set rd_saved = RootDatum: root_datum(mat: ")
-    	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
-	 ; prints( for betavee in G.simple_coroots do betavee od)
-	 ; prints(",",G.prefers_coroots,")")
-         ; prints("set DI_saved = mat: ")
-    	 ; prints(for col in G.distinguished_involution do col od)
-         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
-    	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
-	   	       KGB(G,0).torus_factor,")")
-     	 ; prints("set Pols_saved = [KTypePol]: [")
-	 ; for P@j in Pols
-	   do let d=data(P)
-	   in prints("Kpol(G_saved,",d,")")
-	   ; if j < #Pols -1 then prints(",") else prints("]")
-	     fi
-	   od
-   end
-
-{Following code attempts to divide the loading into lists [KTypePol]
-each of size chunkSize, in order to avoid core dumps during reading of
-the file produced. I think the code is more or less "correct," but
-it's a miserable failure: when used with a list of 150,000 KTypePols
-in Sp(12,R), so about 15 chunks of size 10,000 each, attempting to
-load the file created ran for more than 15 minutes using more than 20g of
-memory. Forget that!}
-
-{. If you say
-
-> FILE.at writeKPols(G, Pols)
-
-then in a later session
-
-<< FILE.at
-
-will give you Pols_saved = [KTypePol]: Pols .}
-
-{FAILED VERSION 
-set writeKPolsFAILED(RealForm G, [KTypePol] Pols) = void:
     begin
 	 let Nchunks = #Pols\chunkSize
 	 then m = #Pols%chunkSize
@@ -97,49 +58,20 @@ set writeKPolsFAILED(RealForm G, [KTypePol] Pols) = void:
      	 ; prints("set Pols_saved = [KTypePol]: [")
 	 ; if m=0 then prints("]") fi
 	   	; for j:m
-	   	  do let d=data(Pols[j])
+	   	  do let d=dataSmall(Pols[j])
 	   	  in prints("Kpol(G_saved,",d,")")
 	   	  ; if j < m -1 then prints(",") else prints("]")
 	     	    fi
 	   	  od
 	 ; for n:Nchunks
-	   do prints("Pols_saved:= Pols_saved## [")
+	   do prints("void: Pols_saved:= Pols_saved## [")
 	    ; for j:chunkSize
-	      do let d = data(Pols[m+n*chunkSize+j])
+	      do let d = dataSmall(Pols[m+n*chunkSize+j])
 		 in prints("Kpol(G_saved,",d,")")
 	       ; if j < chunkSize-1 then  prints(",")
 		 else prints("]")
 	     	 fi
 	      od
-	   od
-   end
-END FAILED VERSION}
-
-{. If you say
-
-> FILE.at writeKPols(G, Polsdata)
-
-then in a later session
-
-<< FILE.at
-
-will give you Pols_saved = [KTypePol]: Pols .}
-set writeKPolsMedium(RealForm G, [[PolTermDatum]] Polsdata) = void:
-    begin
-	prints("set rd_saved = RootDatum: root_datum(mat: ")
-    	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
-	 ; prints( for betavee in G.simple_coroots do betavee od)
-	 ; prints(",",G.prefers_coroots,")")
-         ; prints("set DI_saved = mat: ")
-    	 ; prints(for col in G.distinguished_involution do col od)
-         ; prints( "set IC_saved = inner_class(rd_saved, DI_saved)")
-    	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
-	   	       KGB(G,0).torus_factor,")")
-     	 ; prints("set Pols_saved = [KTypePol]: [")
-	 ; for d@j in Polsdata
-	   do prints("Kpol(G_saved,",d,")")
-	   ; if j < #Polsdata - 1 then prints(",") else prints("]")
-	     fi
 	   od
    end
 
@@ -154,7 +86,9 @@ then in a later session
 will give you Pols_saved = [KTypePol]: Pols .}
 set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
     begin
-    	 prints("set rd_saved = RootDatum: root_datum(mat: ")
+	 let Nchunks = #PolsdataSmall\chunkSize
+	 then m = #PolsdataSmall%chunkSize
+    	 in prints("set rd_saved = RootDatum: root_datum(mat: ")
     	 ; prints( for alpha in G.simple_roots do alpha od, ", mat:")
 	 ; prints( for betavee in G.simple_coroots do betavee od)
 	 ; prints(",",G.prefers_coroots,")")
@@ -164,9 +98,21 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
     	 ; prints("set G_saved = real_form(IC_saved, DI_saved, ",
 	   	       KGB(G,0).torus_factor,")")
 	 ; prints("set Pols_saved = [KTypePol]: [")
-	 ; for d@j in PolsdataSmall
-	   do prints("Kpol(G_saved,",d,")")
-	   ; if j < #PolsdataSmall - 1 then prints(",") else prints("]")
-	     fi
+	 ; if m=0 then prints("]") fi
+	   	; for j:m
+	   	  do let d = PolsdataSmall[j]
+	   	  in prints("Kpol(G_saved,",d,")")
+	   	  ; if j < m -1 then prints(",") else prints("]")
+	     	    fi
+	   	  od
+	 ; for n:Nchunks
+	   do prints("void: Pols_saved:= Pols_saved## [")
+	    ; for j:chunkSize
+	      do let d = PolsdataSmall[m+n*chunkSize+j]
+		 in prints("Kpol(G_saved,",d,")")
+	       ; if j < chunkSize-1 then  prints(",")
+		 else prints("]")
+	     	 fi
+	      od
 	   od
    end
