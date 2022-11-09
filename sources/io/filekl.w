@@ -392,7 +392,7 @@ write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
 
   basic_io::put_int(1,out); // write unrecorded final polynomial 1
 
-  // and signal if there was unsufficient space to write the row
+  // and signal if there was insufficient space to write the row
   if (not out.good()) throw error::OutputError();
 
   return start_row;

@@ -22,7 +22,7 @@ namespace atlas {
 
 namespace error {
 
-// Calling |FatalError("why")| will actually terminate te program!
+// Calling |FatalError("why")| will actually terminate the program!
 void FatalError::operator() (const char* mess)
 {
   std::cerr << mess << std::endl;

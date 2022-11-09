@@ -124,7 +124,7 @@ class RootSystem
     : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
 
-  struct root_compare; // auxilary type defined here for access reasons
+  struct root_compare; // auxiliary type defined here for access reasons
 
   const unsigned char rk; // rank of root system
   const bool prefer_co;
@@ -404,7 +404,7 @@ class RootDatum
   RootDatum(const RootDatum&) = delete;
   RootDatum(RootDatum&&) = default;
 
-#if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
+#if 0 // (co)derived constructors no longer used, done at |PreRootData| level now
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
 #endif
@@ -633,7 +633,7 @@ class RootDatum
   { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
-  // here the word |ww| is travered as in |act_inverse|, but coreflection used
+  // here the word |ww| is traversed as in |act_inverse|, but coreflection used
   void dual_act(Coweight& ell,const WeylWord& ww) const
     {
       for (auto i=0u; i<ww.size(); ++i)

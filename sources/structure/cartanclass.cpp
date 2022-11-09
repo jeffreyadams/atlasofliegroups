@@ -1026,7 +1026,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
       result.push_back(rb[i]); // translate via |rb| to root number in |rd|
     RootNbr img = involution_image_of_root(rb[it->support.firstBit()]);
 
-    // search and destroy a following component with a root not orth. to |tTau|
+    // search and destroy a following component with a root not orth. to |img|
     for (auto jt = std::next(it); not comps.at_end(jt); )
     {
       for (unsigned j : jt->support)

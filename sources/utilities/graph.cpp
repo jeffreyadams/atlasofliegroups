@@ -33,7 +33,7 @@ namespace atlas {
 
 namespace graph {
 
-// preprocessing for cells: quotient by connected componets of bidirectionals
+// preprocessing for cells: quotient by connected components of bidirectionals
 partition::Partition OrientedGraph::to_unoriented_components()
 {
   std::vector<Vertex> min_rep(size());

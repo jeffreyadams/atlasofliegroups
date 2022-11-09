@@ -399,7 +399,7 @@ void kllist_f()
   Print out the list of all K-L polynomials for primitive pairs.
 
   Explanation: x is primitive w.r.t. y, if any descent for y is also a
-  descent for x, or a type II imaginary ascent. Ths means that none of
+  descent for x, or a type II imaginary ascent. This means that none of
   the easy recursion formulas applies to P_{x,y}.
 */
 

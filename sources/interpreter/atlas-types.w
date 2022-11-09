@@ -3585,7 +3585,7 @@ To make a dual real form, one provides an |inner_class_value| and a valid
 index into its list of dual real forms, which will be converted to an inner
 index. We also provide the dual quasisplit form. In both cases, the dual
 |inner_calss_value| of~|G| is computed on the fly as |G->dual()|, after which a
-|real_form_value| is obtained trough |real_form_value|, as in
+|real_form_value| is obtained through |real_form_value|, as in
 |real_form_wrapper| above.
 
 @< Local function def...@>=

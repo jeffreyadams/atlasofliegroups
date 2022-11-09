@@ -90,7 +90,7 @@ const Generator UndefGenerator = UndefValue;
   but their usual meaning and the sequel makes clear that this was an error).
 
   The Transducer has tables to describe the two cases. the first table
-  |d_shift| describes the transistions, namely |d_shift[i][j]==i'| in the
+  |d_shift| describes the transitions, namely |d_shift[i][j]==i'| in the
   first case; the cases that are transductions can be distinguished from these
   by the fact that |d_shift[i][j]==i|. In these cases, the value |k| emitted
   by the transduction is stored in |d_out[i][j]|, which otherwise contains the
@@ -321,7 +321,7 @@ WeylGroup::Transducer::Transducer
     for (Generator s = 0; s <= r; ++s)
       /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
          its presence in a slot in |d_shift| assures that this slot is
-         unchanged from its intialisation value
+         unchanged from its initialisation value
       */
       if (tab[x].shift[s] == UndefEltPiece)
       {

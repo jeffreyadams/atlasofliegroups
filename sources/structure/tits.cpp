@@ -217,7 +217,7 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
   simple root |alpha| become a noncompact root means the value should in fact
   be integer). We may modify by a rational multiple of $\alpha^\vee$, since
   being $-\theta$-fixed after the Cayley transform such a coweight has zero
-  evalution on $\theta$-fixed weights (so the evaluation on imaginary roots
+  evaluation on $\theta$-fixed weights (so the evaluation on imaginary roots
   stays half-integral), and modulo coweights that are $-\theta$-fixed before
   the Cayley transform (which do not affect $\alpha$, and which we continue to
   not care about) multiples of $\alpha^\vee$ are the only freedom we have to
@@ -697,7 +697,7 @@ bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
    |alpha| as a sum of simple roots, reducing the coefficients modulo 2, and
    taking the scalar product with the complement of the base grading. For the
    evaluation of |alpha| at |t|, we can again use the bits of the mentioned
-   reduction modulo 2, but now we must multiply by te dual $m_\alpha$'s
+   reduction modulo 2, but now we must multiply by the dual $m_\alpha$'s
    (simple roots modulo 2) before taking the scalar product with |t|.
 */
 
@@ -824,7 +824,7 @@ found:
 
   assert(result.tw()==tw);
 
-  return result;  // result should be reduced immediatly by caller
+  return result;  // result should be reduced immediately by caller
 } // |EnrichedTitsGroup::backtrack_seed|
 
 

@@ -299,7 +299,7 @@ template<unsigned int dim> class BitVector
 }; // |class BitVector|
 
 /* the following template inherits everything from |std::vector| but after
-   some constructors that mimick those of |BitVector|, we also provide a
+   some constructors that mimic those of |BitVector|, we also provide a
    constructor that converts from |WeightList|, reducing coefficients mod 2
  */
 template<unsigned int dim> class BitVectorList

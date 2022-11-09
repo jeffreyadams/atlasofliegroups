@@ -227,7 +227,7 @@ int getLattice(const CoeffList& root_invf, LatticeMatrix& root_lattice_basis)
 namespace {
 
 /*
-  Synposis: checks if buf contains data compatible with denominator list |u|.
+  Synopsis: checks if buf contains data compatible with denominator list |u|.
 
   Precondition: buf should contain a comma-separated list, with one entry for
   each member of u (extra entries are ignored). The entries should be of the

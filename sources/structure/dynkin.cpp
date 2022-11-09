@@ -230,7 +230,7 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
     if (orbits[i].length()>1)
       neighbours |= star(orbits[i].s1); // add neighbours of second elt
     for (unsigned j=orbits.size(); --j > i; )
-      if (neighbours[orbits[j].s0])  // run over neigbours |j| with $i<j<n$
+      if (neighbours[orbits[j].s0])  // run over neighbours |j| with $i<j<n$
       {
 	const unsigned jj = orbits[j].s0;
 	unsigned ii = orbits[i].s0;

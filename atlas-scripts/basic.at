@@ -1784,7 +1784,7 @@ set singular_block (Param p) = ([Param],int):
   then block = ## for q in B do if q.survives then [q] else [] fi od
   in (block, { new index of |p|:} first(for q in block do p=q od))
 
-{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
+{ get just the parameters from a block, just a shortcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 set singular_block_of (Param p) = [Param]:
   let (params,)=singular_block(p) in params

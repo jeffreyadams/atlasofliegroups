@@ -58,7 +58,7 @@ level_list::const_iterator get_minima(level_list& L)
   {
     if (tail->second > min) // node not to be considered
       ++tail; // so skip it
-    else if (tail->second ==  min) // new occurence of current minimum
+    else if (tail->second ==  min) // new occurrence of current minimum
     {
       if (tail==rest) // now |splice| would be no-op, but we must advance
 	rest = ++tail; // move both across this new minimum
@@ -153,7 +153,7 @@ sl_list<RootNbr> sorted_by_label
     int_Matrix k = lattice::kernel(A);
     assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
     if (k(0,0)<0)
-      k.negate(); // ensure coefficents are positive
+      k.negate(); // ensure coefficients are positive
 
     // now copy values from |k.column(0)| to |labels| at appropriate positions
     unsigned int i=0; // position within |comp|
@@ -198,7 +198,7 @@ RatNumList barycentre_eq
     assert(k.numColumns()==1);
     assert(k(0,0)!=0); // in fact all coefficients should be nonzero
     if (k(0,0)<0)
-      k.negate(); // ensure coefficents are positive
+      k.negate(); // ensure coefficients are positive
 
     BitMap offs = comp; // will hold indices for walls in |comp| we are not on
     unsigned n_off = offs.andnot(integral_walls).size(); // compute and count
@@ -352,7 +352,7 @@ bool make_multiple_integral
       negate_direction.insert(*it);
       rate = -rate;
     }
-    auto delay = N_gamma.dot_Q(alpha_v).mod1()/rate; // time to decend to int
+    auto delay = N_gamma.dot_Q(alpha_v).mod1()/rate; // time to descend to int
     if (delay < min_delay)
     {
       mindex = *it;

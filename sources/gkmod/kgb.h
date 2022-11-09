@@ -104,7 +104,7 @@ class KGB_base
 
 
  public:
-  KGB_base (const KGB_base& org) // copy contructor
+  KGB_base (const KGB_base& org) // copy constructor
   : ic(org.ic) // share
   , data(org.data)
   , info(org.info)
@@ -314,7 +314,7 @@ class KGB : public KGB_base
   ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 
 // copy, assignment and swap
-// these are currently reserved; if defined, they shoud take care of |d_bruhat|
+// these are currently reserved; if defined, they should take care of |d_bruhat|
  private:
   KGB(const KGB&);
   KGB& operator=(const KGB&);

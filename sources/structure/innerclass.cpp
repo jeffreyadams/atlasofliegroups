@@ -109,7 +109,7 @@ InnerClass::C_info::C_info
   , below(i)
   , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
 		   compute_matrix(G,tw))) // generate fiber and dual fiber
-  , real_labels(), dual_real_labels() // these start out emtpy
+  , real_labels(), dual_real_labels() // these start out empty
   {}
 
 
@@ -743,7 +743,7 @@ InnerClass::canonicalize
   and $\alpha$ a simple root that does not lie in $S$, then the sum of
   positive roots of $s_\alpha(S)$ is the image by $s_\alpha$ of the sum of
   positive roots of $S$. The reason is that the action of $s_\alpha$ almost
-  preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
+  preserves the notion of positivity; it only fails for the roots $\pm\alpha$,
   which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
   $s_\alpha$ when the sum of positive roots in $S$ is strictly anti-dominant
   for $\alpha$, where $S$ is first the system of real roots, and later the
@@ -791,7 +791,7 @@ InnerClass::canonicalize
   Now ensure that the involution |theta| associated to the twisted involution
   |sigma| fixes the dominant chamber for the root subsystem now flagged in
   |gens|, which we shall call the complex root subsystem. Since |theta|
-  stabilises this subsytem globally, this means it must be made to permute its
+  stabilises this subsystem globally, this means it must be made to permute its
   positive and negative roots separately. We repeatedly inspect the simple
   roots of this subsystem, searching for some $\alpha_i$ that maps to a
   negative root; each time one is found, we twisted-conjugate |sigma| by $i$,
@@ -818,7 +818,7 @@ InnerClass::canonicalize
     while (it()); // i.e., while |for| loop was interrupted
   }
 
-  return ww; // but the main result is the modfied value left in |sigma|
+  return ww; // but the main result is the modified value left in |sigma|
 } // |canonicalize|
 
 // find the number of the Cartan class containing twisted involution |sigma|
@@ -1050,7 +1050,7 @@ InnerClass::central_fiber(RealFormNbr rf) const
   We need |central_fiber| in |x0_torus_part| only to standardise the choice;
   this is achieved by taking the minimum over that fiber, after adding |bits|.
 
-  What preceeds that is straightforward: start with the reference compacts for
+  What precedes that is straightforward: start with the reference compacts for
   the square class; compare with the desired compacts at |x0| obtained from
   |simple_roots_x0_compact(rf)| to find the grading shift needed, and using
   |grading_shift_repr| find a |TorusPart| that will do this.
