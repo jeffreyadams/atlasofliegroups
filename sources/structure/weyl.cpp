@@ -1103,7 +1103,7 @@ Transducer::Transducer(const int_Matrix& c, Generator r)
     for (Generator s = 0; s <= r; ++s)
       /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
          its presencein a slot in |d_shift| assures that this slot is
-         unchanged from its intialisation value
+         unchanged from its initialisation value
       */
       if (d_shift[x][s] == UndefEltPiece)
       {

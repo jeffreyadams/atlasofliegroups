@@ -125,7 +125,7 @@ bool Rep_context::is_semifinal(const K_repr::K_type& z) const
 // absence of complex singular descents; assumes properties asserted below
 bool Rep_context::is_normal(const K_repr::K_type& z) const
 {
-  assert (is_standard(z)); // othewise the notion is not defined
+  assert (is_standard(z)); // otherwise the notion is not defined
   assert (is_dominant(z)); // this is necessary fot the normal form
 
   // although we could define the predicate without the next two assumptions,
@@ -168,7 +168,7 @@ bool Rep_context::is_final(const K_repr::K_type& z) const
       break;
     case gradings::Status::Complex:
       if (kgb().isDescent(s,x))
-	return false; // faile |is_normal|
+	return false; // failed |is_normal|
       break;
     default:
       break; // ImaginaryNoncompact is fine
@@ -627,7 +627,7 @@ K_repr::K_type_pol
     auto it = remainder.begin();
     if (it->first.height()>cutoff)
     {
-      remainder.erase(it); // drop any input terms that are already too heigh
+      remainder.erase(it); // drop any input terms that are already too high
       continue;
     }
     auto lead = it->first.copy(); // need a modifiable lvalue of K-type

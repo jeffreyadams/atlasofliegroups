@@ -1508,12 +1508,12 @@ status would make the field name unusable.
 
 @ The method |Id_table::present| will report any presence in the table of an
 identifier, whether as a variable or as a type name. Usually only one of the two
-is possible because the scanner brands the two kinds of identifier as in
-distinct syntactic classes, but during a type definition it consideres
+is possible because the scanner brands the two kinds of identifiers as in
+distinct syntactic classes, but during a type definition it considers
 everything as a type identifier, so we do have both possibilities here. We do in
 fact want to allow redefining a previous type identifier again as a type
 identifier, since this makes it generally possible to reload a script a second
-ime (with modification) without provoking an error for code that was previously
+time (with modification) without provoking an error for code that was previously
 accepted.
 
 @< Protest if |id| is currently used as ordinary identifier @>=
@@ -3170,7 +3170,7 @@ void rat_greatereq_wrapper(expression_base::level l)
     push_value(whether(i->val>=j->val));
 }
 
-@ For booleans we also have equality and ineqality.
+@ For booleans we also have equality and inequality.
 @< Local function definitions @>=
 
 void equiv_wrapper(expression_base::level l)

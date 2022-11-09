@@ -16,7 +16,7 @@
 #include "matrix.h"  // vectors, matrices
 #include "ratvec.h" // rational vectors
 
-#include "partition.h" // instantations
+#include "partition.h" // instantiations
 
 #include "bitvector.h"
 #include "lietype.h" // Lie types
