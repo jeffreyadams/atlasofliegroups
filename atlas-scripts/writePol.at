@@ -59,7 +59,7 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
 	 ; if m=0 then prints("]") fi
 	   	; for j:m
 	   	  do let d=dataSmall(Pols[j])
-	   	  in prints("Kpol(G_saved,",d,")")
+	   	  in prints("Kpol(G_saved,[vec]:",d,")")
 	   	  ; if j < m -1 then prints(",") else prints("]")
 	     	    fi
 	   	  od
@@ -67,7 +67,7 @@ set writeKPols(RealForm G, [KTypePol] Pols) = void:
 	   do prints("void: Pols_saved:= Pols_saved## [")
 	    ; for j:chunkSize
 	      do let d = dataSmall(Pols[m+n*chunkSize+j])
-		 in prints("Kpol(G_saved,",d,")")
+		 in prints("Kpol(G_saved,[vec]:",d,")")
 	       ; if j < chunkSize-1 then  prints(",")
 		 else prints("]")
 	     	 fi
@@ -101,7 +101,7 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
 	 ; if m=0 then prints("]") fi
 	   	; for j:m
 	   	  do let d = PolsdataSmall[j]
-	   	  in prints("Kpol(G_saved,",d,")")
+	   	  in prints("Kpol(G_saved,[vec]:",d,")")
 	   	  ; if j < m -1 then prints(",") else prints("]")
 	     	    fi
 	   	  od
@@ -109,7 +109,7 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
 	   do prints("void: Pols_saved:= Pols_saved## [")
 	    ; for j:chunkSize
 	      do let d = PolsdataSmall[m+n*chunkSize+j]
-		 in prints("Kpol(G_saved,",d,")")
+		 in prints("Kpol(G_saved,[vec]:",d,")")
 	       ; if j < chunkSize-1 then  prints(",")
 		 else prints("]")
 	     	 fi
