@@ -209,7 +209,7 @@ that in case the function should instead terminate by throwing an exception, no
 permanent traces of the call will be left (so any permanent use of |type| should
 be made after return from |convert_expr|).
 
-In some cases |type| will remain partly undefined, like for an emtpy list
+In some cases |type| will remain partly undefined, like for an empty list
 display with an unknown type, which gets specialised only to~`\.{[*]}'. However
 if |type| remains completely undefined `\.*' (as will happen for an expression
 that selects a value from an empty list, or that calls |error|), then this means
@@ -2938,7 +2938,7 @@ is processed, so this optimisation should make evaluation of globally defined
 functions a bit faster. For local functions, the closure is formed during the
 execution of the outer function, so the optimisation only helps if the closure
 formed will be called more than once; this is still probable, though there are
-usage patters (for instance simulating a case statement by selecting a closure
+usage patterns (for instance simulating a case statement by selecting a closure
 from an array of closures, and then calling it) for which local closures are
 actually executed less than once on average; in such cases we are actually
 wasting effort here.
@@ -3227,7 +3227,7 @@ void closure_value<false>::apply(expression_base::level l) const
 just binding the arguments popped from the stack, we build a pair consisting of
 our current (recursive) |closure_value| itself and the argument, and bind that
 to the pattern of the |lambda_struct| access from the closure. Since the
-recursive name is alwys present, we do not have to worry about the possibility
+recursive name is always present, we do not have to worry about the possibility
 of a |lambda_frame| without any identifiers.
 
 @< Function def... @>=

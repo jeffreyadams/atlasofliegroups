@@ -393,7 +393,7 @@ class InnerClass
   arithmetic::big_int block_size(RealFormNbr rf, RealFormNbr drf,
 				 const BitMap& Cartan_classes) const;
 
-  // more functions that interrogate the fundametal fiber
+  // more functions that interrogate the fundamental fiber
   cartanclass::StrongRealFormRep sample_strong_form (RealFormNbr rf) const
   { return d_fundamental.strongRealForm(rf); }
   unsigned long fundamental_fiber_size() const

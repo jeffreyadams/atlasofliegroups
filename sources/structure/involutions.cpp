@@ -53,7 +53,7 @@ void InvolutionData::classify_roots(const RootSystem& rs)
   d_simpleReal=rs.simpleBasis(real_roots());
 }
 
-// the follwing constructor intersects all root sets with those of |sub|, but
+// the following constructor intersects all root sets with those of |sub|, but
 // uses the full parent datum for numbering roots, and in |root_involution()|
 InvolutionData::InvolutionData(const RootDatum& rd,
 			       const WeightInvolution& theta,

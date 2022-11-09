@@ -1693,7 +1693,7 @@ There are while loops, whose simplest form is
   while ... do ... od
 
 with as usual a continuation condition after 'while'. This condition is
-evaluated before each iteration, and if it eveluates to false, there is no
+evaluated before each iteration, and if it evaluates to false, there is no
 further iteration and the evaluation of the loop is completed. The loop body is
 the expression between 'do' and 'od', and it is evaluated once after each time
 the condition evaluates to 'true'. The value of the loop is the list of the

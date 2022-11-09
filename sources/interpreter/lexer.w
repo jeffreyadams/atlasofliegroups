@@ -393,7 +393,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   else if (std::isdigit(c))
     @< Scan a number @>
   else
-    @< Scan a token starting with a non alpha-numeric character @>
+    @< Scan a token starting with a non alphanumeric character @>
   input.locate(input.point(),locp->last_line,locp->last_column);
 @/if (state==initial)
     state=normal;

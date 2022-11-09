@@ -43,7 +43,7 @@
   remain somewhat of a grey area here.
 
   The basic class is the |CommandNode| class, of which a few instances will be
-  explitly constructed at initialisation in separate modules, such as
+  explicitly constructed at initialisation in separate modules, such as
   mainmode.cpp. Each instance defines a set of recognized names, with
   associated action functions. These instances serve as base class for
   |CommandTree|, which includes additional links that allow defining a
@@ -78,7 +78,7 @@
   invalid; such commands therefore should pop any such descendant modes. Since
   a function that was propagated by inheritance does not know from which mode
   it was called, this operation currently requires such functions to be
-  explicitly redefined in all decendants of the mode it affects, each
+  explicitly redefined in all descendants of the mode it affects, each
   redefinition executing the proper number of pop operations. This might be
   improved.
 
@@ -99,7 +99,7 @@ namespace commands {
   // called for their construction also populate |help_mode|
   CommandTree help_mode(helpNode());
 
-// static mode variables, declared here to control order of intialisation
+// static mode variables, declared here to control order of initialisation
 
   CommandTree empty_mode(emptyNode());
   CommandTree& main_mode = empty_mode.add_descendant(mainNode());

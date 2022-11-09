@@ -2211,7 +2211,7 @@ ext_param::ext_param
 }
 
 
-// contructor used for default extension once |x| and |gamma_lamba| are chosen
+// constructor used for default extension once |x| and |gamma_lamba| are chosen
 ext_param::ext_param
   (const repr::Ext_rep_context& ec,
    KGBElt x, const RatWeight& gamma_lambda, bool flipped)
@@ -2307,7 +2307,7 @@ repr::StandardRepr ext_param::restrict(RatWeight gamma) const
   return rc().sr_gamma(x(),lambda_rho,std::move(gamma));
 } // |restrict|
 
-// restrict from extended group to |K|, using vaue of $(1+\theta)*\lambda$
+// restrict from extended group to |K|, using value of $(1+\theta)*\lambda$
 K_repr::K_type ext_param::restrict_K(Weight&& theta_plus_1_lambda) const
 {
   theta_plus_1_lambda -= rc().root_datum().twoRho(); // now: $2*(\gamma-\rho)$
@@ -2426,7 +2426,7 @@ K_repr::K_type_pol extended_restrict_to_K
         const bool flip = has_october_surprise(type);
 	E = std::move(links.front());
 	i_theta = i_tab.nr(E.tw); // update involution
-	E.flip(flip); // for October suprises |star| did an extra flip; undo it
+	E.flip(flip); // for October surprises |star| did an extra flip; undo it
 	if (has_double_image(type)) // then queue up second image value
 	{ const auto it = std::next(links.begin());
 	  it->flip(flip); // like above undo etra flip
@@ -2598,7 +2598,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 	  const bool flip = has_october_surprise(type);
 	  E = std::move(links.front());
 	  i_theta = i_tab.nr(E.tw); // update involution
-	  E.flip(flip); // for October suprises |star| did an extra flip; undo it
+	  E.flip(flip); // for October surprises |star| did an extra flip; undo it
 	  if (has_double_image(type)) // then queue up second image value
 	  { const auto it = std::next(links.begin());
 	    it->flip(flip); // like above undo etra flip
