@@ -1,0 +1,56 @@
+< facetious
+
+set FPP_indices_list(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
+    let vlist = [ratvec]: FPP_vertices(Affd),
+    fundVertsDim = facets_fundamental(Affd,dim)
+    then FBs = [ratvec]:
+    	 for FV in fundVertsDim do sum(Affd.rank,FV)/(dim+1) od
+    then vertexIndex=index_in(vlist)
+    in  [FacetVertsIndex]:
+       for FV@j in fundVertsDim
+       do{A}
+	   let WBsID= [FacetBary]:
+    	       for wFBn in Weyl_orbit(Affd,FBs[j].numer)
+               do{B}
+		  if is_integrally_dominant(Affd,wFBn/FBs[j].denom)
+        	  then [wFBn/FBs[j].denom]
+		  else []
+        	  fi
+               od.##{B}
+	   in  for wFB in WBsID
+       	       do{C}
+       	       let (w,) = from_dominant(Affd,wFB)
+       	       in [FacetVertsIndex]:
+		  for tau in FPPtauRoots(Affd,wFB)
+       		  do{D} vec: for v in (tau,w)*FV do{E} vertexIndex(v) od{E}
+       	       	  od{D}{ now type [FacetVertsIndex] }
+	       od{C}.##
+    	od.##{A}
+
+{This is the number of facets loaded at once. Can be changed
+interactively by "facetChunkSize:=..."}
+set facetChunkSize = int:  50000
+
+set writeInds([FacetVertsIndex] LIST) = void:
+    begin
+	 let Nchunks = #LIST\facetChunkSize
+	 , name = string: "FPP_indices_list_saved"##to_string(#LIST[0]-1)
+	 then m = #LIST%facetChunkSize
+	 in prints("set ",name," = [FacetVertsIndex]: [")
+	 ; if m=0 then prints("]") fi
+	 ; for j:m
+	   do prints(LIST[j])
+	   ; if j < m -1
+	     then prints(",") else prints("]")
+	     fi
+	   od
+	 ; for n:Nchunks
+	    do prints("void:",name,":= ",name,"##([FacetVertsIndex]:[")
+	    ; for j:facetChunkSize
+	      do prints(LIST[m+n*facetChunkSize+j])
+	      ; if j < facetChunkSize-1 then  prints(",")
+		else prints("])")
+	     	fi
+	      od
+	   od
+    end
