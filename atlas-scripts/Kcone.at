@@ -62,7 +62,6 @@ set pre_up(KType mu)=KTypePol:
                         do if int_part(c)<0 then result+:=p fi
                         od; result
 
-{set pre_up(Param p)=pre_up(first_K_type(standardize(p*0)))}
 
 set pre_up(KType mu, int N)=KTypePol:
    let result=null_K_module(real_form(mu))
@@ -131,7 +130,7 @@ set is_ge_tr(KType tau,KType mu)=bool:
     else up_tr_cone(mu,height(tau))[tau]!=0 fi
 
 {Move one step down from mu in the partial order; may result in extra terms}
-set pre_down(KType mu) = KTypePol:
+{set pre_down(KType mu) = KTypePol:
    let G=real_form(mu), Q=first_K_type(standardize(mu))
    then HT=height(Q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
@@ -143,7 +142,7 @@ set pre_down(KType mu) = KTypePol:
 	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
                    in result+:=convert_to_K(R)
 	   fi
-	od; result
+	od; result}
 
 
 {Move one step down from mu in the partial order <_tr; remove terms
@@ -212,40 +211,32 @@ set down_tr(KType mu) = KTypePol:
                fi od od od od;
     result
 
-{set down_tr_old(KType mu) = KTypePol:
+{Previous function without testing whether K-type appears in the K-type formula of any
+K-type in the list}
+set down_tr_alt(KType mu) = KTypePol:
    let q=parameter(mu) then Q=first_K_type(standardize(mu))
-   then HT=height(q), lambda =Q.lambda
-   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_K_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
+   then HT=height(q), lambda =Q.lambda, x=Q.x
+   then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
+        zeroPol = null_K_module(q.real_form)
+   then pr=posroots(rd),
+        usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
+   not( is_compact(j,x))) then [j] else [] fi od
    then result=zeroPol
-     in for avee@j in poscoroots(rd)
-        do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
+     in for j in usedpcr do let R=to_ht(HT-1)(composition_series(standardize
+                 (parameter(x,lambda-pr[j], rho_r(x)-pr[j]))))
                    in for @ m in R
-	              do if is_ge_tr(Q,K_type(m)) then result+:=m
-                         fi
-	              od
-	 fi od;
-   result}
-
-
-{set down_tr_old(K_Type mu) = ParamPol:
-   let q=parameter(mu) then Q=first_K_type(standardize(q*0))
-   then HT=height(q), lambda =Q.lambda
-   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_module(q.real_form), x=Q.x, zero = 0*mu, zeronu=0*lambda
-   then result=zeroPol
-     in for avee@j in poscoroots(rd)
-        do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in for @ m in R
-	              do if split_as_int(K_type_formula(m)[q]) < 0 then result+:=m
-                         fi
-	              od
-	 fi od;
-   result}
+             do for lkt in LKTs(m) do
+	       if result[lkt]=0
+	       then result+:=lkt
+                fi od od od;
+   for j@i in usedpcr do for k:i do let R=to_ht(HT-1)(composition_series(standardize
+                 (parameter(x,lambda-pr[j]-pr[usedpcr[k]], rho_r(x)-pr[j]-pr[usedpcr[k]]))))
+            in for @m in R do
+	       for lkt in LKTs(m) do
+	       if result[lkt]=0
+	       then result+:=lkt
+               fi od od od od;
+    result
 
 
 {Move down one step in the partial order for a list of K-types, assumed to
@@ -254,12 +245,10 @@ contain any negative term from the list}
 set down(KTypePol P)=KTypePol:
    let result=null_K_module(P.real_form) in
   for @p in P
-       do for @m in pre_down(p)
-          do if any(for @r in P do is_ge_tr(r,m) od)
-	     then result+:=m
-	     fi
-	  od
-	od; result
+  do  for @m in down_tr(p)
+      do  result+:=m
+      od
+  od; result
 
 
 set down_R(KType mu)= {prints("Height of mu= ",height(mu));}
@@ -268,10 +257,8 @@ set down_R(KType mu)= {prints("Height of mu= ",height(mu));}
 
 {test whether the K-type is at the bottom of the preorder; not used?}
 set bottom(KType mu) = bool:
-    pre_down(mu) = 0*mu
+    down_tr(mu) = 0*mu
 
-{This function does not give the correct answer - use down_R_cone_true instead.}
-{Example: Sp(4,R) K-type (KGB(G,4),[2,1]}
 set down_R_cone(KType mu) = KTypePol:
    let seen=KTypePol:null_K_module(mu.real_form)
    then result=seen
@@ -307,13 +294,12 @@ right, the "3" is wrong; don't understand why.}
 
 set down_alt(KTypePol P)=KTypePol:
 let result=null_K_module(P.real_form) in
-for @p in P do result+:=pre_down(p) od; result
+for @p in P do result+:=down_tr_alt(p) od; result
 
 set down_alt(KType mu)= { prints("Height of mu=
    ",height(parameter(mu))); }
    down_alt(R_packet(mu))
 
-{set down_alt(Param p)=down_alt(R_packet(p))}
 
 set down_alt_cone(KType mu) = KTypePol:
     let seen=KTypePol:null_K_module(mu.real_form) then result=seen in
