@@ -51,7 +51,7 @@
 #endif
 
 /*
-  [Fokko's original description, which referred to a slighly older
+  [Fokko's original description, which referred to a slightly older
   version of the computation. Fokko implemented the change from using
   extremal pairs to the slightly large set of primitive pairs, but did
   not change all of the code comments. I am trying to do that now. DV
@@ -209,7 +209,7 @@ void KL_table::fill(BlockElt limit, bool verbose)
   }
   catch (std::bad_alloc&)
   { // roll back, and transform failed allocation into |error::MemoryOverflow|
-    std::cerr << "\n memory full, KL computation abondoned.\n";
+    std::cerr << "\n memory full, KL computation abandoned.\n";
     for (auto it = d_holes.begin(); it() and *it<limit; ++it)
     { // remove any partially written columns
       d_KL[*it].clear();
@@ -463,12 +463,12 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     lhs = c_s.c_{y'} - \sum_{z} mu(z,y')c_z
   $$
   where $y'$ is the |s|-descent of |y| passed as argument |sy|, with the sum
-  over |z| runing over the elements $< y'$ such that |s| is a descent for |z|.
+  over |z| running over the elements $< y'$ such that |s| is a descent for |z|.
   (Here $lhs$ stands for $c_y$ when |s| is a complex descent or real type I for
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
   part in this function that only subtracts $\mu$-terms.)
 
-  We construct a loopfirst over those |z| for which $\mu(z,y')$ is nonzero
+  We construct a loop first over those |z| for which $\mu(z,y')$ is nonzero
   (which implies $z<y'$) and for which |s| is a descent, before traversing |e|
   for the values of |x| for which |klv[x]| needs correction. This allows
   fetching $\mu(z,sy)$ only once, and terminating each inner loop once |x|
@@ -721,12 +721,12 @@ void KL_table::new_recursion_column
     else // there is no Weyl group generator "nice for |x| and real for |y|"
     {
       /*
-	The need for the new recusion and the absence of "nice and real"
+	The need for the new recursion and the absence of "nice and real"
 	generators almost implies $P_{x,y}=0$, but not quite; already in the
 	case of C2 there are exceptions. To find them we need to use the idea
 	described on p. 8 of recursion.pdf: find $s$ and $t$, both real for $y$
-	and imaginary for $x$, moreover being repectively nonparity and parity
-	(r2) for $y$ while being repectively i1 and compact for x, while
+	and imaginary for $x$, moreover being respectively nonparity and parity
+	(r2) for $y$ while being respectively i1 and compact for x, while
 	moreover $t$ is noncompact for $s.x$ (the imaginary cross image of $x$),
 	which can only happen when |t| is adjacent in the Dynkin diagram to $s$.
 	If such $(s,t)$ exist, then we can compute $P_{s.x,y}$ using $t$ (since
@@ -1032,9 +1032,9 @@ void KL_table::swallow
   For the former case only the upward edge from $x$ to $y$ can remain in the
   oriented graph (and only if the $\tau$-invariants differ, while in the latter
   case the downward edge from $y$ to $x$ definitely remains (with label $1$),
-  wheras the upward edge may or may not remain (depending on neighbours of $s$).
+  whereas the upward edge may or may not remain (depending on neighbours of $s$).
 
-  The code here is straighforward: we run over all $y$ and then over all entries
+  The code here is straightforward: we run over all $y$ and then over all entries
   of |mcol=kl_tab.mu_column(y)|, storing both an edge in the edge list for $x$
   (the block element |mcol[j].x| and for |y|, both labelled with |mcol[j].coef|.
   For a given block element, we first see the edges for which it is in the role

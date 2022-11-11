@@ -140,8 +140,7 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 gcd: (vec->int): the greatest common divisor of all entries of the vector
 Bezout: (vec->int,mat): gcd of entries, and linear map sending v to (d,0,0,...)
-  In addition to finding the gcd d like the previous function, this also
-  produces
+  In addition to finding the gcd d like the previous function this also produces
   an invertible matrix (change of coordinates) that sends the argument vector v
   to d times the first canonical basis vector. That means the first row has a
   sequence of Bezout coefficients (for the gcd) and the other rows are sequences
@@ -1106,7 +1105,7 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   A new parameter is formed by scaling the component nu(p) by f, and it is made
   final, as in ParamPol:p*f; under the given assumptions this involves applying
   only complex reflections, so the result is a single parameter which is the
-  first component of the result. The second component records wheher this
+  first component of the result. The second component records whether this
   transformation at the level of extended parameter involves a flip with respect
   to the default extension, as described above under "twisted_KL_sum_at_s"
 K_type_pol_extended: (Param,mat->K_type_pol): extended restrict to K
@@ -1255,6 +1254,7 @@ print_blocku: (Block->):
 print_blockd: (Block->):
 print_blockstabilizer: (Block,CartanClass->):
 print_KGB: (RealForm->):
+print_KGB: (RealForm,[KGBElt]->): print only for the listed KGB elements
 print_KGB_order: (RealForm->):
 print_KGB_graph: (RealForm->):
 print_X: (InnerClass->):
@@ -1263,4 +1263,5 @@ print_prim_KL: (Block->):
 print_KL_list: (Block->):
 print_W_cells: (Block->):
 print_W_graph: (Block->):
-  These commands give the output of the corresponding commands of Fokko.
+  These commands give the output of the corresponding commands, present under
+  that name in Fokko, for printing the information the name suggests

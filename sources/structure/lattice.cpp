@@ -86,7 +86,7 @@ template<typename I, typename O>
 }
 
 /*
-  This (unsused) template function is like |baseChange|, but goes from weights
+  This (unused) template function is like |baseChange|, but goes from weights
   expressed in terms of |[firstb, lastb[| to ones expressed in terms of the
   original basis. This is easier, as we don't have to invert the matrix!
 */

@@ -95,7 +95,7 @@ set is_unitary (Param p) = bool:
 
 { same as |c_form_irreducible|, but also return a second component that
   exposes the linear combination of contributions from standard representations
-  that produced the result (parameter, coefficient, c_form on ths standard)
+  that produced the result (parameter, coefficient, c_form on this standard)
 
   formulas: write
     J(y)  =sum_x               (-1)^{ell(x)-ell(y)}P(x,y)(q=1)I(x)
@@ -136,7 +136,7 @@ set twisted_c_form_irreducible_long (Param p) =
       for c@q in fixed do (q,c,c*twisted_full_deform(q)) od
   , unfixed_contribs = [(Param,Split,KType)]:
       for c@q in unfixed
-      do { now |1+s| devides |c|, which justifies not using |scale_extended|: }
+      do { now |1+s| divides |c|, which justifies not using |scale_extended|: }
          (q,c,K_type(q))
       od
   then fixed_terms = KTypePol: sum(G,for (,,c) in fixed_contribs do c od)

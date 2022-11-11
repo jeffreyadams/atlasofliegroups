@@ -32,7 +32,7 @@ set posroot_cross (int i, Param p) = Param:
   to |gamma|, performed for the somewhat doubtful reasons indicated below.
 }
 set cross (mat w, Param p) = Param:
-  let (x0,,gamma) = %p { gamma is (assumend to be?) dominant }
+  let (x0,,gamma) = %p { gamma is (assumed to be?) dominant }
   then rd = root_datum(real_form(x0))
   , x1=cross(w,x0) { apply matrix cross action on KGBElt, from synthetic.at }
   { the provided w will be such that gamma(x1)=w*gamma is integrally-dominant }
@@ -78,7 +78,7 @@ set cross (mat w, Param p) = Param:
   term rho_r_shift in lambda1 (but is it obviously a vec value?)
 
   The value for l is easy to deduce from x(E) (the more explicit expression
-  gien in a comment can be found be expanding the computation of x(E)) and the
+  given in a comment can be found be expanding the computation of x(E)) and the
   necessary correction to t is similar (but dual) to that of tau
 
   Contrary to ext_cross_special below, this does not call ext_cross@

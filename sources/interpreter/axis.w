@@ -209,7 +209,7 @@ that in case the function should instead terminate by throwing an exception, no
 permanent traces of the call will be left (so any permanent use of |type| should
 be made after return from |convert_expr|).
 
-In some cases |type| will remain partly undefined, like for an emtpy list
+In some cases |type| will remain partly undefined, like for an empty list
 display with an unknown type, which gets specialised only to~`\.{[*]}'. However
 if |type| remains completely undefined `\.*' (as will happen for an expression
 that selects a value from an empty list, or that calls |error|), then this means
@@ -2938,7 +2938,7 @@ is processed, so this optimisation should make evaluation of globally defined
 functions a bit faster. For local functions, the closure is formed during the
 execution of the outer function, so the optimisation only helps if the closure
 formed will be called more than once; this is still probable, though there are
-usage patters (for instance simulating a case statement by selecting a closure
+usage patterns (for instance simulating a case statement by selecting a closure
 from an array of closures, and then calling it) for which local closures are
 actually executed less than once on average; in such cases we are actually
 wasting effort here.
@@ -3227,7 +3227,7 @@ void closure_value<false>::apply(expression_base::level l) const
 just binding the arguments popped from the stack, we build a pair consisting of
 our current (recursive) |closure_value| itself and the argument, and bind that
 to the pattern of the |lambda_struct| access from the closure. Since the
-recursive name is alwys present, we do not have to worry about the possibility
+recursive name is always present, we do not have to worry about the possibility
 of a |lambda_frame| without any identifiers.
 
 @< Function def... @>=
@@ -3872,7 +3872,7 @@ quantity is transmitted however.
 
 @< Function definitions @>=
 inline std::string range_mess
-  (int i,size_t n,const expression_base* e,const char* where)
+  (arithmetic::Numer_t i,size_t n,const expression_base* e,const char* where)
 { std::ostringstream o;
   e->print(o << "index " << i << " out of range (0<= . <" << n
              << ") in " << where << ' ');
@@ -3881,24 +3881,24 @@ inline std::string range_mess
 @)
 template <bool reversed>
 void row_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->int_val());
+{ auto i=(index->eval(),get<int_value>()->long_val());
   shared_row r=(array->eval(),get<row_value>());
   size_t n = r->val.size();
   if (reversed)
     i=n-1-i;
-  if (static_cast<unsigned int>(i)>=n)
+  if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   push_expanded(l,r->val[i]);
 }
 @)
 template <bool reversed>
 void vector_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->int_val());
+{ auto i=(index->eval(),get<int_value>()->long_val());
   shared_vector v=(array->eval(),get<vector_value>());
   size_t n = v->val.size();
   if (reversed)
     i=n-1-i;
-  if (static_cast<unsigned int>(i)>=n)
+  if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<int_value>(v->val[i]));
@@ -3906,12 +3906,12 @@ void vector_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void ratvec_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->int_val());
+{ auto i=(index->eval(),get<int_value>()->long_val());
   shared_rational_vector v=(array->eval(),get<rational_vector_value>());
   size_t n = v->val.size();
   if (reversed)
     i=n-1-i;
-  if (static_cast<unsigned int>(i)>=n)
+  if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<rat_value>(RatNum @|
@@ -3920,12 +3920,12 @@ void ratvec_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void string_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->int_val());
+{ auto i=(index->eval(),get<int_value>()->long_val());
   shared_string s=(array->eval(),get<string_value>());
   size_t n = s->val.size();
   if (reversed)
     i=n-1-i;
-  if (static_cast<unsigned int>(i)>=n)
+  if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<string_value>(s->val.substr(i,1)));
@@ -3940,17 +3940,17 @@ defined in \.{atlas-types.w}.
 template <bool reversed>
 void matrix_subscription<reversed>::evaluate(level l) const
 { index->multi_eval(); @+
-  int j=get<int_value>()->int_val();
-  int i=get<int_value>()->int_val();
+  auto j=(get<int_value>()->long_val());
+  auto i=(get<int_value>()->long_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t r = m->val.numRows();
   size_t c = m->val.numColumns();
   if (reversed)
   {@;  i=r-1-i; j=c-1-j; }
-  if (static_cast<unsigned int>(i)>=r)
+  if (static_cast<size_t>(i)>=r)
     throw runtime_error
      ("initial "+range_mess(i,r,this,"matrix subscription"));
-  if (static_cast<unsigned int>(j)>=c)
+  if (static_cast<size_t>(j)>=c)
     throw runtime_error
      ("final "+range_mess(j,c,this,"matrix subscription"));
   if (l!=no_value)
@@ -3959,12 +3959,12 @@ void matrix_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void matrix_get_column<reversed>::evaluate(level l) const
-{ int j=(index->eval(),get<int_value>()->int_val());
+{ auto j=(index->eval(),get<int_value>()->long_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t c = m->val.numColumns();
   if (reversed)
     j=c-1-j;
-  if (static_cast<unsigned int>(j)>=c)
+  if (static_cast<size_t>(j)>=c)
     throw runtime_error(range_mess(j,c,this,"matrix column selection"));
   if (l!=no_value)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
@@ -3974,9 +3974,12 @@ void matrix_get_column<reversed>::evaluate(level l) const
 happen.
 @< Function definitions @>=
 void slice_range_error
-  (int lwb, int upb,int n,unsigned flags,const expression_base* e)
-{ std::ostringstream o;
-  if (upb>n)
+  (arithmetic::Numer_t lwb
+  ,arithmetic::Numer_t upb
+  ,size_t n
+  ,unsigned flags,const expression_base* e)
+{ std::ostringstream o; bool u = upb>=0 and static_cast<size_t>(upb)>n;
+  if (u)
     if (lwb<0)
       o << "both bounds " << lwb << ':' << upb;
     else
@@ -3985,8 +3988,8 @@ void slice_range_error
     o << "lower bound " << lwb;
   o << " out of range (should be ";
   if (lwb<0)
-    o << ">=0" << (upb>n ? " respectively " : ")");
-  if (upb>n)
+    o << ">=0" << (u ? " respectively " : ")");
+  if (u)
     o << "<=" << n << ')';
   e->print(o << " in slice ");
   throw runtime_error(o.str());
@@ -3994,16 +3997,16 @@ void slice_range_error
 @)
 template <unsigned flags>
 void row_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->int_val());
-  int lwb=(lower->eval(),get<int_value>()->int_val());
+{ auto upb=(upper->eval(),get<int_value>()->long_val());
+  auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_row arr=(array->eval(),get<row_value>());
   const auto& r = arr->val;
-  int n = r.size();
+  size_t n = r.size();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
     upb = n - upb;
-  if (lwb<0 or upb>n)
+  if (lwb<0 or upb>=0 and static_cast<size_t>(upb)>n)
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<row_value>(0)); return; }
@@ -4018,16 +4021,16 @@ void row_slice<flags>::evaluate(level l) const
 
 template <unsigned flags>
 void vector_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->int_val());
-  int lwb=(lower->eval(),get<int_value>()->int_val());
+{ auto upb=(upper->eval(),get<int_value>()->long_val());
+  auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_vector arr=(array->eval(),get<vector_value>());
   const auto& r = arr->val;
-  int n = r.size();
+  size_t n = r.size();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
     upb = n - upb;
-  if (lwb<0 or upb>n)
+  if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<vector_value>(int_Vector(0))); return; }
@@ -4045,16 +4048,16 @@ constructor takes care of normalising the result.
 
 template <unsigned flags>
 void ratvec_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->int_val());
-  int lwb=(lower->eval(),get<int_value>()->int_val());
+{ auto upb=(upper->eval(),get<int_value>()->long_val());
+  auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_rational_vector arr=(array->eval(),get<rational_vector_value>());
   const auto& r = arr->val.numerator();
-  int n = r.size();
+  size_t n = r.size();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
     upb = n - upb;
-  if (lwb<0 or upb>n)
+  if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<rational_vector_value>(RatWeight(0)));
@@ -4072,16 +4075,16 @@ void ratvec_slice<flags>::evaluate(level l) const
 
 template <unsigned flags>
 void string_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->int_val());
-  int lwb=(lower->eval(),get<int_value>()->int_val());
+{ auto upb=(upper->eval(),get<int_value>()->long_val());
+  auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_string arr=(array->eval(),get<string_value>());
   const auto& r = arr->val;
-  int n = r.size();
+  size_t n = r.size();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
     upb = n - upb;
-  if (lwb<0 or upb>n)
+  if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
   {@; push_value(std::make_shared<string_value>(std::string())); return; }
@@ -4100,16 +4103,16 @@ but it is not hard to do the right thing using the integer indices |lwb|,
 
 template <unsigned flags>
 void matrix_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->int_val());
-  int lwb=(lower->eval(),get<int_value>()->int_val());
+{ auto upb=(upper->eval(),get<int_value>()->long_val());
+  auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_matrix mat=(array->eval(),get<matrix_value>());
   const auto& m = mat->val;
-  int n = m.numColumns();
+  size_t n = m.numColumns();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
     upb = n - upb;
-  if (lwb<0 or upb>n)
+  if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
 @/{@; push_value(std::make_shared<matrix_value>(int_Matrix(m.numRows(),0)));

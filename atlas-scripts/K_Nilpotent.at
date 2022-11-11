@@ -111,10 +111,10 @@ dim_O=dimension(O) in
 
 {these sets of K-types serve as basis of matrix operations}
 
-{K-types occuring in given KTypePol}
+{K-types occurring in given KTypePol}
 set K_basis = monomials@KTypePol
 
-{K-types occuring in given KTypePols}
+{K-types occurring in given KTypePols}
 set K_basis = monomials@[KTypePol]
 
 {all K-types coming from given KNilpotentData}

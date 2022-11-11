@@ -108,7 +108,7 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
     if (orbits[i].length()>1)
       neighbours |= star(orbits[i].s1); // add neighbours of second elt
     for (unsigned j=orbits.size(); --j > i; )
-      if (neighbours[orbits[j].s0])  // run over neigbours |j| with $i<j<n$
+      if (neighbours[orbits[j].s0])  // run over neighbours |j| with $i<j<n$
       {
 	const unsigned jj = orbits[j].s0;
 	unsigned ii = orbits[i].s0;
@@ -382,7 +382,7 @@ lietype::TypeLetter DynkinDiagram::component_kind() const
 	  Edge e = labelled_edge();
 	  return extr.test(e.first) ? 'C' : extr.test(e.second) ? 'B' : 'F';
 	}
-      default: {} // since G2 was already detected, this canot be right
+      default: {} // since G2 was already detected, this cannot be right
       }
     else // not a linear diagram
     {
@@ -548,7 +548,7 @@ Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki)
   Permutation a;
   a.reserve(d.rank());
   unsigned int short_node = d.labelled_edge().second; // one of 2 end nodes
-  a.push_back // Bourbaki starts with the extramal node that is not short
+  a.push_back // Bourbaki starts with the extremal node that is not short
     (Bourbaki ? d.extremities().reset(short_node).firstBit() : short_node);
   linearise(d,a);
   return a;
@@ -568,7 +568,7 @@ Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki)
   Permutation a;
   a.reserve(d.rank());
   unsigned int long_node = d.labelled_edge().first; // also an end point
-  a.push_back // Bourbaki starts with the extramal node that is not long
+  a.push_back // Bourbaki starts with the extremal node that is not long
     (Bourbaki ? d.extremities().reset(long_node).firstBit() : long_node);
   linearise(d,a);
   return a;
@@ -576,7 +576,7 @@ Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki)
 
 
 /*
-  Puts in |a| a permutation that will enumerate |d| in alomst linear order
+  Puts in |a| a permutation that will enumerate |d| in almost linear order
   (only the fork node has one neighbour at index distance 2 from it, which
   index is extremal); the fork node is at index |Bourbaki ? rank-3 : 2|.
 

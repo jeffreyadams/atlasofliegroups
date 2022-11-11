@@ -1,4 +1,9 @@
+<basic.at
+<groups.at { for |G2_s| }
+<K_norm.at { for |shorten| }
+<hermitian.at { for |is_unitary| }
 <coordinates.at
+
 set G=G2_s
 set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
 

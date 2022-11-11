@@ -401,7 +401,7 @@ bool Rep_context::is_normal(const StandardRepr& z) const
 }
 
 // |z| semifinal means that no singular real roots satisfy the parity condition
-// no assumptions about the real subsytem, so all real roots must be tested
+// no assumptions about the real subsystem, so all real roots must be tested
 bool Rep_context::is_semifinal(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -601,7 +601,7 @@ void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 
 // auxiliary: move to canonical involution for (singular) |gens| subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
-{ // simply-singular coroots are simple, so no need to constuct a subsystem
+{ // simply-singular coroots are simple, so no need to construct a subsystem
   TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
   complex_crosses(z,inner_class().canonicalize(tw,gens));
   assert(tw == kgb().involution(z.x_part));
@@ -644,7 +644,7 @@ void Rep_context::deform_readjust(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |deform_readjust|
 
-// this also ensures a chosen singular-complex minumum when there are multiple
+// this also ensures a chosen singular-complex minimum when there are multiple
 // but that only arises when singular-real descents exist (not so in deformation)
 void Rep_context::normalise(StandardRepr& z) const
 {

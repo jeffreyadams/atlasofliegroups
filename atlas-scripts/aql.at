@@ -54,7 +54,7 @@ set wf_aqs_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
      od od; result
 
 {. Auxiliary function: As previous function, except a list of all
-   parameters occurring as constitutents of such modules. .}
+   parameters occurring as constituents of such modules. .}
 set wf_aqs_param (Param p, Parabolic P)=[(Param,Param)]:
    let result=[] in
    for pair in wf_aqs_param_pol (p,P) do let (pL,Q)=pair in
@@ -136,7 +136,7 @@ set one_dim_real_induced_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
      od od; result
 
 {. Auxiliary function: As previous function, except a list of all
-   parameters occurring as constitutents of such modules. .}
+   parameters occurring as constituents of such modules. .}
 set one_dim_real_induced_param (Param p, Parabolic P)=[(Param,Param)]:
    let result=[] in
    for pair in one_dim_real_induced_param_pol (p,P) do let (pL,Q)=pair in
@@ -186,7 +186,7 @@ set wf_aqs_param_pol (ratvec gamma, Parabolic P)=[(Param,ParamPol)]:
      od od; result
 
 {. As previous function, except a list of all
-   parameters occurring as constitutents of such modules. .}
+   parameters occurring as constituents of such modules. .}
 set wf_aqs_param (ratvec gamma, Parabolic P)=[(Param,Param)]:
    let result=[] in
    for pair in wf_aqs_param_pol (gamma,P) do let (pL,Q)=pair in

@@ -1693,7 +1693,7 @@ There are while loops, whose simplest form is
   while ... do ... od
 
 with as usual a continuation condition after 'while'. This condition is
-evaluated before each iteration, and if it eveluates to false, there is no
+evaluated before each iteration, and if it evaluates to false, there is no
 further iteration and the evaluation of the loop is completed. The loop body is
 the expression between 'do' and 'od', and it is evaluated once after each time
 the condition evaluates to 'true'. The value of the loop is the list of the
@@ -2431,10 +2431,10 @@ value of type KType respectively Param, and it has to satisfy is_final (since
 only sich terms can arise in these polynomials); the value assigned is the
 coefficient of the term for that KType or Param, which term is created if
 needed, and may disappear if the coefficient assigned is zero. On the other hand
-compound assignments are just rewritten as a non-compund assignement in a more
-complicated context; notably, a compound assignement 'ident # := expr' is
+compound assignments are just rewritten as a non-compund assignment in a more
+complicated context; notably, a compound assignment 'ident # := expr' is
 rewritten as 'indent := ident # (expr)'; the same goes for any infix operator in
-the place of '#'. As a consequence, the meaning of a compound assignement it is
+the place of '#'. As a consequence, the meaning of a compound assignment it is
 determined an instance of the operator used, overloaded for operand types of the
 'ident' and 'expr', and that overload can be either built-in or user-defined.
 

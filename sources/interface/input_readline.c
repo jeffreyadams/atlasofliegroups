@@ -139,7 +139,7 @@ HistoryBuffer::~HistoryBuffer()
 
 {
   HISTORY_STATE* global_history=history_get_history_state();
-  history_set_history_state(&state); // substitue our history record
+  history_set_history_state(&state); // substitute our history record
 
   clear_history(); // free all memory occupied by our history entries
   std::free(history_list()); // also free the array of history entries
@@ -152,7 +152,7 @@ HistoryBuffer::~HistoryBuffer()
 void HistoryBuffer::getline(const char* prompt, bool toHistory)
 {
   HISTORY_STATE* global_history=history_get_history_state();
-  history_set_history_state(&state); // substitue our history record
+  history_set_history_state(&state); // substitute our history record
 
   InputBuffer::getline(prompt,toHistory); // now call the base method
 

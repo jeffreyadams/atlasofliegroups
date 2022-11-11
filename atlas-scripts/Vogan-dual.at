@@ -4,12 +4,12 @@
 { A first main objective of this script is to define a function |dual_KGB| that
   associates to a |Param| value a KGB element for a computed dual real form.
   Even just determining the proper dual real form is a surprisingly delicate
-  problem, especially for parameters with non integeral infinitesimal character.
+  problem, especially for parameters with non integral infinitesimal character.
 }
 
 {
   We start with with some technical functions that are no longer used, so they
-  are commented out. The code are still useful as a contruction of an element
+  are commented out. The code are still useful as a construction of an element
   proving why the function |fixed_lift| below is guaranteed to succeed.
 
   It will be important to apply a shift to dual torus_factor values that are
@@ -93,7 +93,7 @@ set integral_shift (ratvec v, mat simples,(vec d,mat L,mat R)) = vec:
   in assert ((sol*L1s)%2 = vals,"no solution mod 2"); sol * L1
 
 { Find for |p| the KGB element (|y|) in an appropriate dual real form.
-  The |dual_int_ic| argumnet should be |dual_integral(p.inner_class,gamma)| for
+  The |dual_int_ic| argument should be |dual_integral(p.inner_class,gamma)| for
   |gamma=p.infinitesimal_character|; the reason it is not computed here is that
   historically doing so would not identify it with the an inner class computed
   elsewhere identically (for instance for another parameter in the same block).
@@ -190,8 +190,8 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 
 {  --------- some indicator functions -------------}
 
-{support(x): those simple reflections occuring in x.w, see parabolics.at
- dual_support(x): simple reflections occuring in x.w*w_0
+{support(x): those simple reflections occurring in x.w, see parabolics.at
+ dual_support(x): simple reflections occurring in x.w*w_0
  this is the support of any y for which (x,y) is a valid parameter
  integral case first}
 set support_dual(KGBElt x)=[int]:

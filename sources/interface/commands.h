@@ -76,7 +76,7 @@ explicit Command(action_pointer a) : action(a) {}; // store |a| as |action|
   |CommandNode| instances are ephemerous objects that contain the attributes
   specific to a command mode; they will be passed to the constructor of the
   more long-lived |CommandTree| derived class, of which it (the copy) becomes
-  a base object. The contruction of the ephemerous object is done by a
+  a base object. The construction of the ephemerous object is done by a
   non-member function, which repeatedly uses the public |add| method to
   populate the node with commands. We have chosen for the |CommandTree|
   objects for the modes to be stored in static rather than automatic
@@ -172,7 +172,7 @@ class CommandTree : public CommandNode
 
   const CommandTree& nextMode(unsigned int i) const { return *(d_nextList[i]); }
 
-  bool has_descendant (const CommandTree* mode) const; // search decendants tree
+  bool has_descendant (const CommandTree* mode) const; // search descendants tree
 
   // look up |name|, return result in |status|, which is an in-out argument.
   // |status| should be anything except |Found| initially, and the result
