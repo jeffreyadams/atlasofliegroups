@@ -192,7 +192,7 @@ public:
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
   BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
-  kl::KL_table& kl_tab // create, fiil, and return KL table
+  kl::KL_table& kl_tab // create, fill, and return KL table
     (KL_hash_Table* pol_hash, // extend hash table of KL polynomials if provided
      BlockElt limit=0, bool verbose=false) // default to silently fill entirely
   { fill_kl_tab(limit,pol_hash,verbose); return *kl_tab_ptr; }

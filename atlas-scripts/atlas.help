@@ -943,7 +943,7 @@ similarly for any operator in the place of '+', so in the above examples one
 could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
 The left hand side must be an expression that is accepted for assignment, which
-(currently) means eaither a variable or a simply subscritped variable (if v is a
+(currently) means either a variable or a simply subscripted variable (if v is a
 vector and i an integer then both v[i]:=5 and v[i]*:=5 are valid, and even
 v[i*:=2]+:=1 is accepted (the parser transforms it into 'let $=(i*:=2) in
 v[$]:=v[$]*2' where $ designates a fresh identifier); although this also works
@@ -2418,7 +2418,7 @@ assignments, component assignments like v[i]:=3, and compound assignments like
 n+:=1, or even compound component assignments like v[i]-:=1. Each of them end
 with ":=" followed by a tertiary level expression. To the left of ":=" they have
 respectively an identifier, a subscripted identifier (the subscript being an
-expression enclosed in '[' and ']'), or a possibly subscritped identifier
+expression enclosed in '[' and ']'), or a possibly subscripted identifier
 followed by an operator symbol. For a component assignment to be valid it is
 necessary that the type of identifier and index are such that the subscription
 would be a valid expression, but component assignments are not allowed for

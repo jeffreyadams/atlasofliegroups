@@ -1664,7 +1664,7 @@ BlockElt_pol combine (BlockElt_pol a, BlockElt_pol b) // by value
 { a.merge(std::move(b),
 	  [](const BlockElt_term& x, const BlockElt_term& y)
 	    { return x.first<y.first; });
-  // now any like terms are neigbours, combine them whenever this occurs
+  // now any like terms are neighbours, combine them whenever this occurs
   for (auto it=a.begin(); not a.at_end(it); ++it)
   {
     auto it1=std::next(it);

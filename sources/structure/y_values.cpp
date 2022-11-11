@@ -165,6 +165,6 @@ RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
   return B.block(0,0,n,d)*( B_inv.block(0,0,d,n)*t.log_2pi() %=1);
 }
 
-} // |namsepace y_values|
+} // |namespace y_values|
 
 } // |namespace atlas|

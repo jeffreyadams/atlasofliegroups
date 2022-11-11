@@ -122,7 +122,7 @@ set scalar_mat(CyclotomicFieldElement z,int n)=CyclotomicMat:
 diagonal_mat(for i:n do z od)
 
 set +(CyclotomicMat M,CyclotomicFieldElement z)=CyclotomicMat:
-assert(n_rows(M)=n_columns(M),"Cycltomic matrix is not square");
+assert(n_rows(M)=n_columns(M),"Cyclotomic matrix is not square");
 M+scalar_mat(z,n_rows(M))
 
 set -(CyclotomicMat M,CyclotomicFieldElement z)=CyclotomicMat:

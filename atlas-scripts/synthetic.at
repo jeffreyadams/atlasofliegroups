@@ -135,7 +135,7 @@ end
   exp(2i\pi v)\xi is conjugate to exp(2i\pi w)\xi where \xi acts on H by theta
   condition:             v-w\in (1-theta)X_Q+X,
   which equivalent to:   (1+theta)(v-w)\in (1+theta)X
-  For normalized tourus factors, use (1+theta)*(v-w)/2 instead
+  For normalized torus factors, use (1+theta)*(v-w)/2 instead
 }
 set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
   let t1=1+theta in in_lattice(t1,t1*(v-w))

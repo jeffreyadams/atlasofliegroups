@@ -22,7 +22,7 @@
 }
 
 
-{ the "class" type, used later to represent manipulalable board positions }
+{ the "class" type, used later to represent manipulable board positions }
 
 set_type
   game_interface =

@@ -4,7 +4,7 @@ set projectors_verbose=true
 
 { If |chi| is the character of an irreducible W-representation, and |(dim,ops)|
   describes a W_representation, compute a scalar multiple of projection of the
-  representation space of |ops| on isotoypic subspace defined by |chi|.
+  representation space of |ops| on isotypic subspace defined by |chi|.
 
   If such |chi| is not a constituent of the
   representation defined by |ops|, this gives the null matrix; then since

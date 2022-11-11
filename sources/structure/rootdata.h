@@ -81,7 +81,7 @@ weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta);
 
-// indices of simple corotos that vanish on (infinitesimal character) |gamma|
+// indices of simple coroots that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);
 
 bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma);
@@ -136,7 +136,7 @@ class RootSystem
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
   { return Cmat(i,j); }
 
-  // in the following 4 methods |i| indexes a positive root or corrot
+  // in the following 4 methods |i| indexes a positive root or coroot
   Byte_vector& root(RootNbr i) { return ri[i].root;}
   Byte_vector& coroot(RootNbr i) { return ri[i].coroot;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}

@@ -133,7 +133,7 @@ public:
     return std::memcmp(d_data,w.d_data,sizeof(d_data))!=0;
   }
 
-  // lexicograpic ordering by internal parabolic quotient list
+  // lexicographic ordering by internal parabolic quotient list
   bool operator< (const WeylElt& w) const
   { return std::memcmp(d_data,w.d_data,sizeof(d_data)) < 0; }
 

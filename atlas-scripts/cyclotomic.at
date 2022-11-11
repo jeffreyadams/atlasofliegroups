@@ -69,7 +69,7 @@ set zero (CyclotomicField F) = CyclotomicFieldElement: embed(0,F)
 
 set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
    assert(F=G,"cyclotomic fieds differ in comparison");
-   assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
+   assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotomic field element(s)");
    all(for c@i in v do c=w[i] od) { compare without converting to |ratvec| }
 set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
 set = (CyclotomicFieldElement(v,F)) = bool:(v,F)=F.zero

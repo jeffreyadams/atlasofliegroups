@@ -359,7 +359,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
      rv_ht  {/hodge_tensor}
      then
   {*}hodge_tensor_std_local(Param p, (KGBElt -> [vec]) weights,KType mu)=i_poly:  {local: calls hodge_tensor}
-       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weightss,mu)  ",p.real_form, " ",p, " ", mu) fi;
+       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights,mu)  ",p.real_form, " ",p, " ", mu) fi;
        let f=hodge_function_std_local(p) then
        ()=if hodge_K_type_formula_verbose then prints(sp,"in hodge_tensor_std_local, computed hodge_function_std_local(p) ", p.real_form,"  ",p) fi in
        let rv=hodge_tensor_local(f,weights,mu) in
@@ -368,7 +368,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
   {*}hodge_tensor_std_local(Param p, (KGBElt -> [vec]) weights)=hodge_function:((KType mu): {local: calls hodge-tensor_std}
       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights)", " ",p.real_form," ",p) fi;
       let h=hodge_tensor_std_local(p,weights,mu) in
-       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weightts)", p.real_form," ",p) fi;
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weights)", p.real_form," ",p) fi;
       h,p.real_form)
      then
   {*}hodge_tensor_wedge_k_u_cap_s_std_local(Param p,Parabolic P_1,int k)=hodge_function:  {local: hodge_tensor_std_local}
@@ -600,7 +600,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
      rv_ht  {/hodge_tensor}
      then
   {*}hodge_tensor_std_local(Param p, (KGBElt -> [vec]) weights,KType mu)=i_poly:  {local: calls hodge_tensor}
-       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weightss,mu)  ",p.real_form, " ",p, " ", mu) fi;
+       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights,mu)  ",p.real_form, " ",p, " ", mu) fi;
        let f=hodge_function_std_local(p) then
        ()=if hodge_K_type_formula_verbose then prints(sp,"in hodge_tensor_std_local, computed hodge_function_std_local(p) ", p.real_form,"  ",p) fi in
        let rv=hodge_tensor_local(f,weights,mu) in
@@ -609,7 +609,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
   {*}hodge_tensor_std_local(Param p, (KGBElt -> [vec]) weights)=hodge_function:((KType mu): {local: calls hodge-tensor_std}
       if hodge_K_type_formula_verbose then add();prints(sp,"sub: hodge_tensor_std_local(p,weights)", " ",p.real_form," ",p) fi;
       let h=hodge_tensor_std_local(p,weights,mu) in
-       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weightts)", p.real_form," ",p) fi;
+       if hodge_K_type_formula_verbose then cut();prints(sp,"end sub: hodge_tensor_std_local(p,weights)", p.real_form," ",p) fi;
       h,p.real_form)
      then
   {*}hodge_tensor_wedge_k_u_cap_s_std_local(Param p,Parabolic P_1,int k)=hodge_function:  {local: hodge_tensor_std_local}

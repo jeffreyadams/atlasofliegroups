@@ -386,7 +386,7 @@ set keep_by_first_entry_and_truncate ([int,Partition] v,int k) =
    let w=keep_by_first_entry(v,k) in
    ##for (c,u) in w do if c>0 and #u>1 then [(c,u[1:])] else [] fi od
 
-{ find maxmimal part, maximal label, and filter to only maximal part owners }
+{ find maximal part, maximal label, and filter to only maximal part owners }
 set filter_max ([Partition,int] sig) = (int,int,[Partition,int]):
 (  assert(>#sig,"empty signature")
 ;  let max_part=0, max_label=0

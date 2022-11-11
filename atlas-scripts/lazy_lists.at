@@ -209,7 +209,7 @@ set Fibonacci = inf_list:
   call these the lower and uppoer pentagonal numbers for $k$.
   Euler's pentagonal series has entries $(-1)^k$ at indices the lower and upper
   pentagonal numbers for $k$, for every $k\in\N$, and $0$ at all other indices.
-  The relavance of Euler's pentagonal  series is that its inverse is the
+  The relevance of Euler's pentagonal  series is that its inverse is the
   generating series for the number of partitions of a natural number.
 
   A practical way to generate it is to start at index 0, the upper pentagonal

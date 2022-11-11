@@ -622,7 +622,7 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
   As explained in |cartanclass::specialGrading|, we can find for any real form a
   corresponding grading of the simple roots that marks at most one root for each
   simple factor of the Lie type, and from that information one can deduce an
-  identfying name for the real form (among other ones in its inner class).
+  identifying name for the real form (among other ones in its inner class).
 
   This function assumes it is called with such a grading, and that the simple
   roots of |lt| are in the standard order. We cannot however rely in all cases

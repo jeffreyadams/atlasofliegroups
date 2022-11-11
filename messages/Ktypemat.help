@@ -39,7 +39,7 @@ as the Ktypeform command for this K-type (truncated by height).
 
 The inverse of this matrix gives the matrix of K-multiplicities in the
 given normal standard representations. Now each column of the matrix
-correpsponds to a standard module, and each row a K-type. The entries
+corresponds to a standard module, and each row a K-type. The entries
 in the column (positive integers) corresponding to standard module I_K
 gives the multiplicities of K-types in this standard module, up to the
 given height.

@@ -93,7 +93,7 @@ Note: Cent_G(O) is finite <=> O is distinguished
 Suppose C=Cent_G(O)^0 has a central torus. If C has a non-trivial semisimple part,
 then the rank of C is determined (by the length of the vectors in question),
 i.e. the dimension of the radical is determined.
-However if Cent_G(O)^0 is a torus (closely related to be not equivlanet to quasi-distinguished),
+However if Cent_G(O)^0 is a torus (closely related to be not equivalent to quasi-distinguished),
 then there are non roots to use to determine the rank of the torus.
 In this case (only): the rank of the torus is the dimension of the radical (maximal central torus)
 of the Bala-Carter Levi of the orbit

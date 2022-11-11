@@ -96,7 +96,7 @@ group SU(2,1) and the block of the trivial representation:
 
 Note that cells #1 and #2 are isomorphic, but the numbering must be reversed
 in order to match the tau invariants. So the cell on block elements {1,4} is
-isomorhpic to the one on block elements {2,5} under the bijection that maps
+isomorphic to the one on block elements {2,5} under the bijection that maps
 1 -> 5 and 4 -> 2.
 
 If we look at cell #1, we may conclude that the Weyl group representation

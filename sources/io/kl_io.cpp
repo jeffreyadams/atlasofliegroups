@@ -194,4 +194,4 @@ std::ostream& printMu(std::ostream& strm, const kl::KL_table& kl_tab)
 
 } // |namespace kl_io|
 
-} // |namsespace atlas|
+} // |namespace atlas|

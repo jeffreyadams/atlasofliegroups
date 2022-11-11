@@ -361,7 +361,7 @@ set strict_partitions = (int n) [Partition]:
 
 {		Jordan types of nilpotent elements (or orbits)		}
 
-{ test if partition is valid (nilpotent orbit) JOrdan type in type ABCD }
+{ test if partition is valid (nilpotent orbit) Jordan type in type ABCD }
 set is_valid (string type,Partition P) = bool:
 { avoid constructing |Lie_type(type[0]+n|, to avoid choking on "B1" and such }
   P:=P.strip_to_partition; { avoid frequencies of 0 }
@@ -510,7 +510,7 @@ set index_bipartition ([BiPartition] sorted_list) = (BiPartition->int):
    (BiPartition PQ) int:
       binary_search_first( (int i)bool: PQ<=sorted_list[i], 0, #sorted_list )
 
-{ counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
+{ counterpart of the Murnaghan-Nakayama rule for hyperoctahedral groups }
 
 { Characters of the hyperoctahedral group $H_n$ are parametrised as follows by
   bi-partitions |(lambda,mu)| of $n$. Call "axis-sign" the 1-dimensional

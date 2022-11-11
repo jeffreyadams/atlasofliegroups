@@ -885,7 +885,7 @@ Grading InnerClass::simple_roots_x0_compact(RealFormNbr rf) const
   // group generators are the fixed points of this (involutive) permutation,
   // which are the fundamental coweights for the imaginary simple coroots. So
   // each bit in a (weak) real form representative directly gives compactness
-  // of a imaginary simple coroots; it sufices to move the bits to their place
+  // of a imaginary simple coroots; it suffices to move the bits to their place
   RankFlags tmp = d_fundamental.wrf_rep(rf).data(); // |unslice| is non-const
   return tmp.unslice(simple_roots_imaginary());
 #else // |unslice| does the following change of basis below more efficiently

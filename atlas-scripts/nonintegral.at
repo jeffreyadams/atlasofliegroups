@@ -41,7 +41,7 @@ set cross (mat w, Param p) = Param:
   { w*gamma and new_gamma differ by a sum of roots, and are in the same
     integral Weyl chamber
     new_gamma is dominant
-    this step is necessary because the software will apply equivalances to x1
+    this step is necessary because the software will apply equivalences to x1
     to make gamma(x1) dominant, which we don't want
     see Weyl_group.at:make_dominant
   }

@@ -227,7 +227,7 @@ set is_unitary_sr (Param p)=bool:
 {. Test whether a representation is unitary, checking first whether
    it is strongly regular; if not, reducing it in the (weakly) good range,
    and inducing the hermitian form of the smaller group. This function
-   the hermitian form and a boolian. .}
+   returns the hermitian form and a boolean. .}
 set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
    let G=real_form(p) in
    if is_strongly_regular(p)

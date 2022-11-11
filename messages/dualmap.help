@@ -22,7 +22,7 @@ then dual map takes 10 to 334.
 Example: principal block for Sp(4,R) and its dual
 
 The principal block for Sp(4,R) and its dual are (see the help file
-for the dualbock command):
+for the dualblock command):
 
 block: block
 Name an output file (return for stdout, ? to abandon):

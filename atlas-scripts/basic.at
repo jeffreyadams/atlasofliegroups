@@ -1,5 +1,5 @@
 { Union types for built-in |linear_solve| and versions of |solve| below
-  Such types cannot share |void| tag, so we choose distince ones }
+  Such types cannot share |void| tag, so we choose distinct ones }
 set_type
 [ linear_solution = ( void empty_set | (vec,int,mat) affine_subspace )
 , maybe_a_vec =     ( void no_vec | vec solution)

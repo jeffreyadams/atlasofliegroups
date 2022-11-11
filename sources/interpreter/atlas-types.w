@@ -887,7 +887,7 @@ involution specified. Therefore we now provide a function that in addition to
 the Lie type takes a matrix specifying a sub-lattice as argument, and finally
 a string specifying the inner class.
 
-The fist two ingredients are also those used to construct a root datum, and one
+The first two ingredients are also those used to construct a root datum, and one
 might imagine replacing them by a root datum. The function |set_inner_class|
 defined later will do that, but it has to accept some ambiguity in recovering
 Lie type and sub-lattice from a root datum. Also it may find a permutation of
