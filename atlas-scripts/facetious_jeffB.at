@@ -27,70 +27,14 @@ set FPP_indices_list(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
 	       od{C}.##
     	od.##{A}
 
-{This is the number of facets loaded at once. Can be changed
-interactively by "facetChunkSize:=..."}
-set facetChunkSize = int:  1000000
-
 set writeInds([FacetVertsIndex] LIST) = void:
     begin
-	 let Nchunks = #LIST\facetChunkSize
-	 , name = string: "FPP_indices_list_saved"##to_string(#LIST[0]-1)
-	 then m = #LIST%facetChunkSize
-	 in prints("set ",name," = [FacetVertsIndex]: [")
-	 ; if m=0 then prints("]") fi
-	 ; for j:m
-	   do prints(LIST[j])
-	   ; if j < m -1
-	     then prints(",") else prints("]")
-	     fi
-	   od
-	 ; for n:Nchunks
-	    do prints("void:",name,":= ",name,"##([FacetVertsIndex]:[")
-	    ; for j:facetChunkSize
-	      do prints(LIST[m+n*facetChunkSize+j])
-	      ; if j < facetChunkSize-1 then  prints(",")
-		else prints("])")
-	     	fi
-	      od
+	 let { Nchunks = #LIST\facetChunkSize }
+	 {,} name = string: "facets_saved"##to_string(#LIST[0]-1)
+	 {then m = #LIST%facetChunkSize}
+	 in prints("set ",name," = [vec]: for i:",#LIST," do [] od")
+	 ; for i:#LIST 
+	   do prints("void:",name,"[",i,"]:=",LIST[i])
 	   od
     end
 
-{
-laptop read 15 million facets of dim 5 with various facetChunkSize:
-
-500: 87 minutes
-5000: 642 minutes
-50000: 127 seconds
-100000: 91 seconds, max size 800mb
-***********************************************
-atlas at utah, 26 million 2-dim facets:
-Old facetious, peak memory use to load 
-
-3747134 dav       20   0  321.9g 321.9g   5992 S   0.0   5.3  39:43.30 atlasLTO
-
- grep ^VmHWM /proc/3747134/status
-VmHWM: 337487508 kB = 321.85 g
-top: 321.9g
-
-********
-../atlasLTO all E8facet1.50000.at
-
-3753836 dav       20   0 2879248   2.7g   5420 S   0.0   0.0   6:05.72 atlasLTO
-
-grep ^VmHWM /proc/3753836/status
-VmHWM:	 3272008 kB = 3.12g
-*********
-../atlasLTO all E8facet1.500000.at
-
-3753063 dav       20   0 3156928   3.0g   5676 S   0.0   0.0   1:34.85 atlasLTO
-
-grep ^VmHWM /proc/3753063/status
-VmHWM:	 3543008 kB = 3.38g
-*********
-../atlasLTO all E8facet1.5000000
-
-3755268 dav       20   0 5856216   5.6g   5420 S   0.0   0.1   1:10.41 atlasLTO
-
-grep ^VmHWM /proc/3755268/status
-VmHWM:	 6249800 kB = 5.96g
-}
