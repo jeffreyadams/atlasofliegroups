@@ -1,12 +1,6 @@
 < basic.at {for x}
 
-{
-set RealFormdata(RealForm G) = (mat, mat, bool):
-    (G.simple_roots, G.simple_coroots, G.prefers_coroots)
-}
-
 {#KGBElt extracts its number}
-
 
 set data(KType mu) = (int, vec):
     (mu.x.#, mu.lambda_rho)
@@ -66,7 +60,13 @@ then in a later session
 
 << FILE.at
 
-will give you Pols_saved = [KTypePol]: Pols .}
+will give you Pols_saved = [KTypePol]: Pols .
+
+This function can be made slightly faster by instead creating
+Pols_saved_data = [[PolTermDatumSmall]]; reading just the data line by
+line; then after the reading is done, converting the data file to
+[KTypePol]. But this version uses more than twice as much memory, for
+a small (5-10%?) speed gain.}
 set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
     begin
 	 prints("set rd_saved = RootDatum: root_datum(mat: ")
@@ -88,9 +88,9 @@ set writeKPols(RealForm G, [[PolTermDatumSmall]] PolsdataSmall) = void:
      end
 
 {
-what follows is an older version, which may be up to twice as fast but
-is certainly more complicated and seems consistently to need more
-memory to read files.
+what follows is an older version, which may be up to twice as fast (if
+chunkSize is chosen VERY cleverly) but is certainly more complicated
+and seems consistently to need more memory to read files.
 
 {This is the number of KTypePols loaded at once. Can be changed
 interactively by "chunkSize:=..."}

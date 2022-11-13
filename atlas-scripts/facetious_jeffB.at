@@ -1,8 +1,8 @@
 < facetious
 
-set FPP_indices_list(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
-    let vlist = [ratvec]: FPP_vertices(Affd),
-    fundVertsDim = facets_fundamental(Affd,dim)
+set FPP_indices_list(SimpleAffine Affd, int dim, [ratvec] vlist) =
+    [FacetVertsIndex]:
+    let fundVertsDim = facets_fundamental(Affd,dim)
     then FBs = [ratvec]:
     	 for FV in fundVertsDim do sum(Affd.rank,FV)/(dim+1) od
     then vertexIndex=index_in(vlist)
@@ -27,13 +27,14 @@ set FPP_indices_list(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
 	       od{C}.##
     	od.##{A}
 
+set FPP_indices_list(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
+    FPP_indices_list(Affd, dim, FPP_vertices(Affd))
+
 set writeInds([FacetVertsIndex] LIST) = void:
     begin
-	 let { Nchunks = #LIST\facetChunkSize }
-	 {,} name = string: "facets_saved"##to_string(#LIST[0]-1)
-	 {then m = #LIST%facetChunkSize}
+	 let name = string: "facets_saved"##to_string(#LIST[0]-1)
 	 in prints("set ",name," = [vec]: for i:",#LIST," do [] od")
-	 ; for i:#LIST 
+	 ; for i:#LIST
 	   do prints("void:",name,"[",i,"]:=",LIST[i])
 	   od
     end
