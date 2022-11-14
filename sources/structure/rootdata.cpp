@@ -1601,7 +1601,26 @@ bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
   return false;
 }
 
-// auxiliary code for Weyl group orbit (for reflection action) generation
+// comments and code for Weyl group orbit (for reflection action) generation
+
+/*
+  Orbit generation for any action of a group will obviously have a cost at least
+  linear in the size of the orbit, which may be a lot. But doing it in the most
+  straightforward manner, generating new elements from old ones and adding them
+  if not yet seen before, can easily lead to quadratic running time due to the
+  number of comparisons necessary. This can be improved by using for instance a
+  hash table to detect previously seen orbit elements, but a simpler and
+  probably more effective way is used here, which depends on the existence of an
+  increasing chain of subgroups from the stabliser of the initial orbit element
+  to the full group such that the successive subquotients are easy to generate,
+  as the full orbit can then be obtained from the Cartesian product of those
+  subquotients. Here the chain of subgroups are Levi subgroups, which are
+  stabilisers of certain vectors in the reflection action and this makes the
+  subquotients easy to generate, namely as the orbit under the larger subgroup
+  of a vector stabilised (only) by the smaller subgroup. In addition the
+  subquotients have a layered structure where action of simple generators can
+  either be trivial, or move to an element in a layer one level up or down.
+ */
 struct orbit_elem // auxiliary data while generating orbit
 {
   Weight v; // current orbit element
@@ -1632,33 +1651,30 @@ sl_list<orbit_elem> basic_orbit
   else rd.simple_reflect(i,e);
   result.emplace_back(e,i,0); // new level consists of a single new vector
   auto finish = result.cend();
-  auto previous = result.cbegin(); // previous level has only initial vector
   unsigned int count=1; // number of element currently generated from
   while (true) // generate from |start|; possible |return| near end of loop
   {
     for (auto it=start; it!=finish; ++it,++count)
       for (auto s : stab)
       {
-	auto new_wt = dual
-	  ? rd.simple_coreflection(it->v,s)
-	  : rd.simple_reflection(s,it->v);
-	if (new_wt==it->v)
-	  continue; // |s| might fix the current (co)weight; if so skip it
-	// otherwise
-	auto jt = previous;
-	do // test if |new_wt| is present from |previous| to current end
-	{ if (jt->v==new_wt)
+	auto wt = it->v; // make a copy; actually a coweight if |dual| holds
+	auto level = wt.dot(dual ? rd.simpleRoot(s) : rd.simpleCoroot(s));
+	if (level<=0)
+	  continue; // skip if |wt| fixed or moves to lower layer
+	wt.subtract((dual ? rd.simpleCoroot(s) : rd.simpleRoot(s)).begin(),
+		    level);
+
+	auto jt = finish;
+	for ( ; not result.at_end(jt); ++jt)
+	  if (jt->v==wt)
 	    break; // and this will lead to breaking from loop on |s| as well
-	  if (++jt==start) // advance, but skip over layer that |it| loops over
-	    jt=finish;
-	}
-	while (not result.at_end(jt));
+
 	if (result.at_end(jt)) // whether not yet present
-	  result.emplace_back(std::move(new_wt),s,count);
+	  result.emplace_back(std::move(wt),s,count);
       } // for |it| and |s|
     if (result.at_end(finish)) // whether nothing new was contributed
       return result; // if so, we are done and return directly
-    previous = start; start = finish; finish = result.end(); // advance, repeat
+    start = finish; finish = result.end(); // advance, repeat
   } // |while(true)|
 } // |basic_orbit|
 
