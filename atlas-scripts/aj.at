@@ -1,0 +1,97 @@
+set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =(KGPElt, Param,ParamPol):
+  let G=real_form(x)
+{find w making lambda_q weakly dominant}
+  then (w,lambda_q_new)=from_dominant(G,lambda_q)
+  then w1=/w
+  then P_new=parabolic_by_wt(lambda_q_new,cross(w1,x))
+  then t_L_new=trivial(Levi(P_new))
+  , shift = w1*lambda-rho_u(P_new)
+  in
+  assert(is_parabolic_theta_stable(P_new),"q is not theta-stable");
+  let pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift )
+  in
+  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+  (P_new,pi_L,theta_induce_irreducible(pi_L,G))
+
+set Aq_long (KGBElt x_in,ratvec lambda, ratvec lambda_q) =(KGPElt, Param, ParamPol):
+  let (P,p_L,Aq)=Aq_reducible_long(x_in,lambda,lambda_q) then
+  reps=%Aq then
+{  in assert(#reps<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");}
+  (c,p)=reps[0] in
+{  in assert(c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");}
+  (P,p_L,p) 
+
+
+set Aq_long (KGBElt x, ratvec lambda) = (KGPElt, Param, ParamPol):
+Aq_long(x,lambda,lambda)
+
+set Aq_reducible_long(RealForm G, ratvec lambda, ratvec lambda_q)=Aq_reducible_long(KGB(G,0),lambda,lambda_q)
+set Aq_reducible_long(RealForm G, ratvec lambda)=Aq_reducible_long(KGB(G,0),lambda,lambda)
+set Aq_long(RealForm G, ratvec lambda, ratvec lambda_q)=Aq_long(KGB(G,0),lambda,lambda_q)
+set Aq_long(RealForm G, ratvec lambda)=Aq_long(KGB(G,0),lambda,lambda)
+
+set same_complex_parabolics(KGPElt P)=
+theta_stable_parabolics(P.real_form,complex_parabolic(P))
+
+set Aq_stable(RealForm G,ratvec lambda,ratvec lambda_q)=[Param]:
+let (P,p_L,p)=Aq_long(G,lambda,lambda_q) then
+parabolics=same_complex_parabolics(P) then
+list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
+in ##for p_L in list do monomials(theta_induce_irreducible(p_L,G)) od
+
+set Aq_stable(RealForm G,ratvec lambda)=[Param]:
+let (P,p_L,p)=Aq_long(G,lambda) then
+parabolics=same_complex_parabolics(P) then
+list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
+in ##for p_L in list do monomials(theta_induce_irreducible(p_L,G)) od
+
+set Aq_stable_long(RealForm G,ratvec lambda,ratvec lambda_q)=[(Param,Param)]:
+let (P,p_L,p)=Aq_long(G,lambda,lambda_q) then
+parabolics=same_complex_parabolics(P) then
+list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
+in ##for p_L in list do
+ for p in monomials(theta_induce_irreducible(p_L,G)) do (p_L,p) od od
+
+set Aq_stable_long(RealForm G,ratvec lambda)=[(Param,Param)]:
+let (P,p_L,p)=Aq_long(G,lambda) then
+parabolics=same_complex_parabolics(P) then
+list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
+in for p_L in list do (p_L,first_param(theta_induce_irreducible(p_L,G))) od
+
+set Aq_stable_test(RealForm G,ratvec lambda)=
+let rv=Aq_stable_long(G,lambda) then
+params_G=for (,p) in rv  do p od then
+()=for p in params_G do prints(p, " ", is_unitary(p)) od then
+st=stable_sums_irr(params_G) in
+prints("dimension space of stable sums: ", #st);
+prints("stable sums: ", st);
+assert(#st>0,"no stable sums");
+st
+
+{set G=Sp(8,R)
+set parabolics=theta_stable_parabolics(G)
+set lambda=[1,1,0,0]/2}
+
+set Aq_rho(RealForm G,ratvec lambda_q)=
+let P=parabolic_by_wt(lambda_q,KGB(G,0)) in 
+Aq(G,rho_u(P),lambda_q)
+
+set Aq_rho_stable(RealForm G,ratvec lambda_q)=
+let P=parabolic_by_wt(lambda_q,KGB(G,0)) in 
+Aq_stable(G,rho_u(P),lambda_q)
+
+set Aq_rho_stable_test(RealForm G,ratvec lambda_q)=
+let P=parabolic_by_wt(lambda_q,KGB(G,0)) then
+rv=Aq_stable_long(G,rho_u(P),lambda_q) then
+params_G=for (,p) in rv  do p od then
+()=for p in params_G do prints(p, " ", is_unitary(p)) od then
+st=stable_sums_irr(params_G) in
+prints("dimension space of stable sums: ", #st);
+prints("stable sums: ", st);
+assert(#st>0,"no stable sums");
+st
+
+set Aq_rho(Parabolic P)=
+assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+Aq(P.real_form,rho_u(P))
+
