@@ -14,12 +14,11 @@ turn out to be difficult to read when #[vec] is large; for example,
 reading such a file of size 100 million takes more than 5 gigabytes of
 memory. The write_vecs functions avoid this difficulty.
 
-Other atlas data types, like RealForm and KTypePol, are not displayed
-in a fashion that atlas can read; so it is not so easy to write them
-to a file. These difficulties are addressed by write_real_form and
-write_K_type_pols.
+Other atlas data types, like RealForm KTypePol and ParamPol, are not
+displayed in a fashion that atlas can read; so it is not so easy to
+write them to a file. These difficulties are addressed by
+write_real_form, write_K_type_pols, and write_p_pols.}
 
-}
 set default_vecs_name = string:"vecs_saved"
 
 set write_vecs([vec] list, string VecsName) = void:
@@ -51,27 +50,18 @@ set write_real_form(RealForm G, string GroupName) = void:
 set write_real_form(RealForm G) = void:
     write_real_form(G,default_group_name)
 
-
 {#KGBElt extracts its number}
 set data(KType mu) = (int, vec):
     (mu.x.#, mu.lambda_rho)
 
-set_type KPolTermDatum = (int IntCoeff, int KGBNum, vec Lambda_Rho)
+{first coord is coefficient, second is KGBElt, rest are lambda-rho}
+set_type KPolTermDatum = vec
 
-{same as previous, mushed together to save memory}
-set_type KPolTermDatumSmall = vec
-
-set Kdata(KTypePol P) = [KPolTermDatum]:
-    for c@mu in P do (int_part(c), mu.x.#, mu.lambda_rho) od
-
-set KdataSmall(KTypePol P) = [KPolTermDatumSmall]:
+set K_data(KTypePol P) = [KPolTermDatum]:
     for c@mu in P do [int_part(c)]##[mu.x.#]##mu.lambda_rho od
 
-set Kpol(RealForm G, [KPolTermDatum] data) = KTypePol:
-    sum(G, for (c,n,ell) in data do c*K_type(KGB(G,n),ell) od)
-
-set Kpol(RealForm G, [KPolTermDatumSmall] dataSmall) = KTypePol:
-    sum(G, for d in dataSmall do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
+set K_pol(RealForm G, [KPolTermDatum] KData) = KTypePol:
+    sum(G, for d in KData do d[0]*K_type(KGB(G,d[1]),d[2:]) od)
 
 set default_K_type_pols_name = string:"KPols_saved"
 { If you say
@@ -91,8 +81,8 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols, string KPolsName) = void:
      	 ; prints("set ",KPolsName,"= [KTypePol]: for i:",#KPols,
 	   	       " do Null od")
 	 ; for i:#KPols
-	   do let d = KdataSmall(KPols[i])
-	      in prints("void:",KPolsName,"[",i,"]:=Kpol(G_temp,[vec]:",d,")")
+	   do let d = K_data(KPols[i])
+	      in prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
 	   od
    end
 
@@ -102,7 +92,7 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols) = void:
 
 { same thing, reading in Pols already converted to Kdata }
 
-set write_K_type_pols(RealForm G, [[KPolTermDatumSmall]] KPolsData,
+set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData,
     			       string KPolsName) = void:
     begin
 	 write_real_form(G,"G_temp")
@@ -110,14 +100,15 @@ set write_K_type_pols(RealForm G, [[KPolTermDatumSmall]] KPolsData,
      	 ; prints("set ",KPolsName,"= [KTypePol]: for i:",#KPolsData,
 	   	       " do Null od")
 	 ; for d@i in KPolsData
-	   do prints("void:",KPolsName,"[",i,"]:=Kpol(G_temp,[vec]:",d,")")
+	   do prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
 	   od
    end
-set write_K_type_pols(RealForm G, [[KPolTermDatumSmall]] KPolsData) = void:
+
+set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData) = void:
     write_K_type_pols(G,KPolsData,default_K_type_pols_name)
 
 
-set write_K_type_pols(RealForm G, [[KPolTermDatumSmall]] KPolsData) = void:
+set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData) = void:
      write_K_type_pols(G, KPolsData, default_K_type_pols_name)
 
 set default_K_type_pols_data_name = "KPols_saved_data"
@@ -131,7 +122,7 @@ set write_K_type_pols_data(RealForm G, [KTypePol] KPols,
      	 ; prints("set ",KPolsDataName,"= [[vec]]: for i:",#KPols,
 	   	       " do [] od")
 	 ; for P@i in KPols
-	   do prints("void:",KPolsDataName,"[",i,"]:=",KdataSmall(KPols[i]))
+	   do prints("void:",KPolsDataName,"[",i,"]:=",K_data(KPols[i]))
 	   od
      end
 
@@ -141,7 +132,7 @@ set write_K_type_pols_data(RealForm G, [KTypePol] KPols) = void:
 
 {. Same thing, reading and writing only data and not KTypePol's.}
 
-set write_K_type_pols_data(RealForm G, [[KPolTermDatumSmall]] KPolsData,
+set write_K_type_pols_data(RealForm G, [[KPolTermDatum]] KPolsData,
     			string KPolsDataName) = void:
     begin
          write_real_form(G)
@@ -152,5 +143,43 @@ set write_K_type_pols_data(RealForm G, [[KPolTermDatumSmall]] KPolsData,
 	   od
      end
 
-set write_K_type_pols_data(RealForm G, [[KPolTermDatumSmall]] KPolsData) = void:
+set write_K_type_pols_data(RealForm G, [[KPolTermDatum]] KPolsData) = void:
      write_K_type_pols_data(G, KPolsData, default_K_type_pols_data_name)
+
+set_type ParamPolTermDatum = (vec,ratvec)
+
+set p_data(Param p) = (int, vec, ratvec):
+    (p.x.#, ratvec_as_vec(p.lambda - p.real_form.rho), p.nu)
+
+set p_data(ParamPol P) = [ParamPolTermDatum]:
+    for c@p in P do let (x,lr,nu) = %p in ([int_part(c)]##[x.#]##lr,nu) od
+
+set p_pol(RealForm G, [ParamPolTermDatum] data) = ParamPol:
+    sum(G, for (d,nu) in data do d[0]*param(KGB(G,d[1]),d[2:],nu) od)
+
+set default_p_pols_name = string:"ParamPols_saved"
+{ If you say
+
+> FILE.at write_p_pols(G, pPols, FileName )
+
+then in a later session
+
+<< FILE.at
+
+will give you FileName = [ParamPol]: pPols .}
+
+set write_p_pols(RealForm G, [ParamPol] pPols, string pPolsName) = void:
+    begin
+         write_real_form(G,"G_temp")
+         ; prints("set Null = null_module(G_temp)")
+     	 ; prints("set ",pPolsName,"= [ParamPol]: for i:",#pPols,
+	   	       " do Null od")
+	 ; for i:#pPols
+	   do let d = p_data(pPols[i])
+	      in
+    prints("void:",pPolsName,"[",i,"]:=p_pol(G_temp,[(vec,ratvec)]:",d,")")
+	   od
+   end
+
+set write_p_pols(RealForm G, [ParamPol] pPols) = void:
+    write_p_pols(G,pPols,default_p_pols_name)
