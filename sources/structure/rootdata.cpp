@@ -51,7 +51,7 @@
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
 
 #include "dynkin.h"
-#include "weyl.h" // for classes |Twist|, |WeylWord|
+#include "weyl.h" // for classes |Twist|, |WeylWord|, |WeylElt|
 #include "prerootdata.h"
 
 // extra defs for windows compilation -spc
@@ -1679,6 +1679,32 @@ sl_list<orbit_elem> basic_orbit
 } // |basic_orbit|
 
 template<bool dual>
+void extend_orbit_words
+(const RootDatum& rd, const WeylGroup& W,
+   sl_list<WeylElt>& orbit, RankFlags& stab, weyl::Generator i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert
+	(it, dual ? W.prod(*ref[jt->prev],jt->s) : W.prod(jt->s,*ref[jt->prev]));
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit|
+
+template<bool dual>
 void extend_orbit
   (const RootDatum& rd,
    sl_list<Weight>& orbit, RankFlags& stab, weyl::Generator i)
@@ -1705,6 +1731,42 @@ void extend_orbit
     ref.clear(); // for next element of original |orbit|, clean the slate
   } // |while (not orbit.at_end(it))|
 } // |extend_orbit|
+
+sl_list<WeylElt> Weyl_orbit_words
+  (const RootDatum& rd, const WeylGroup& W, Weight v)
+{
+  WeylWord w = rd.factor_dominant(v);
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,rd.simpleCoroot(s).dot(v) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
+  for (auto s : non_stab)
+    extend_orbit_words<false>(rd,W,orbit,stab,s);
+  return orbit;
+}
+
+sl_list<WeylElt> Weyl_orbit_words
+  (Weight v, const RootDatum& rd, const WeylGroup& W)
+{
+  WeylWord w = rd.factor_codominant(v);
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,v.dot(rd.simpleRoot(s)) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
+  for (auto s : non_stab)
+    extend_orbit_words<true>(rd,W,orbit,stab,s);
+  return orbit;
+}
 
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v)
 {

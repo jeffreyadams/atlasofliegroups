@@ -1785,11 +1785,15 @@ void integrality_points_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
-@ Here are two functions for (hopefully) rapid Weyl group orbit generation,
+@ Here are four functions for (hopefully) rapid Weyl group orbit generation,
 which can be done using only a root datum. They are implemented by free
-functions |Weyl_orbit| defined in the \.{rootdata} compilation unit, that differ
-by the order of their arguments, as is also the case for the exported built-in
-functions.
+functions |Weyl_orbit| and |Weyl_orbit_words| defined in the \.{rootdata}
+compilation unit, both in two forms (for weights and coweights) that differ
+by the order of their arguments. The first of these pairs return an orbits as a
+(usually very wide) |int_Matrix|, the second as a |sl_list<WeylElt>|, the action
+of whose elements on the original vector will produce the orbit. In the exported
+built-in functions the distinction between the two variants will in each case
+again be determined by the order of the arguments.
 
 @< Local function definitions @>=
 void Weyl_orbit_wrapper(expression_base::level l)
@@ -1810,6 +1814,36 @@ void Weyl_coorbit_wrapper(expression_base::level l)
     return;
 @)
   push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val,rd->val)));
+}
+
+void Weyl_orbit_ws_wrapper(expression_base::level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  const auto& ws = Weyl_orbit_words(rd->val, rd->W(), v->val);
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
+}
+@)
+void Weyl_coorbit_ws_wrapper(expression_base::level l)
+{
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  const auto& ws = Weyl_orbit_words(v->val, rd->val, rd->W());
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
 }
 
 @ Let us install the above wrapper functions.
@@ -1885,6 +1919,10 @@ install_function(integrality_points_wrapper,@|
 
 install_function(Weyl_orbit_wrapper@|,"Weyl_orbit","(RootDatum,vec->mat)");
 install_function(Weyl_coorbit_wrapper@|,"Weyl_orbit","(vec,RootDatum->mat)");
+install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(RootDatum,vec->[WeylElt])");
+install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(vec,RootDatum->[WeylElt])");
 
 
 @*1 Weyl group elements.
