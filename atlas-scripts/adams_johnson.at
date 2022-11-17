@@ -40,23 +40,26 @@ in ##for p_L in list do
  for p in monomials(theta_induce_irreducible(p_L,G)) do (p_L,p) od od
 
 set Aq_stable_long(RealForm G,ratvec lambda,ratvec lambda_q)=[(Param,Param)]:
-let (P,p_L,p)=Aq_long(G,lambda,lambda_q) then
+Aq_stable_long(KGB(G,0),lambda,lambda_q)
+{let (P,p_L,p)=Aq_long(G,lambda,lambda_q) then
 parabolics=same_complex_parabolics(P) then
 list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
 in ##for p_L in list do
- for p in monomials(theta_induce_irreducible(p_L,G)) do (p_L,p) od od
+ for p in monomials(theta_induce_irreducible(p_L,G)) do (p_L,p) od od}
 
 set Aq_stable_long(KGBElt x,ratvec lambda)=[(Param,Param)]:
-let (P,p_L,p)=Aq_long(x,lambda) then
+Aq_stable_long(x,lambda,lambda)
+{let (P,p_L,p)=Aq_long(x,lambda) then
 parabolics=same_complex_parabolics(P) then
 list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
-in for p_L in list do (p_L,first_param(theta_induce_irreducible(p_L,G))) od
+in for p_L in list do (p_L,first_param(theta_induce_irreducible(p_L,G))) od}
 
 set Aq_stable_long(RealForm G,ratvec lambda)=[(Param,Param)]:
-let (P,p_L,p)=Aq_long(G,lambda) then
+Aq_stable_long(G,lambda)
+{let (P,p_L,p)=Aq_long(G,lambda) then
 parabolics=same_complex_parabolics(P) then
 list=for Q in parabolics do parameter(x_open(Q.Levi),p_L.lambda,p_L.nu) od
-in for p_L in list do (p_L,first_param(theta_induce_irreducible(p_L,G))) od
+in for p_L in list do (p_L,first_param(theta_induce_irreducible(p_L,G))) od}
 
 set Aq_stable(KGBElt x,ratvec lambda,ratvec lambda_q)=ParamPol:
 let pairs=Aq_stable_long(x,lambda,lambda_q) in
