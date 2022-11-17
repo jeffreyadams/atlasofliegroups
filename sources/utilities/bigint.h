@@ -49,6 +49,7 @@ public:
   explicit big_int (const bitmap::BitMap& b, bool negative=false);
 
   int int_val() const; // extract 32-bits signed value, or throw an error
+  unsigned int uint_val() const; // same, but for unsigned int value
   arithmetic::Numer_t long_val() const; // extract 64 bits signed value
   arithmetic::Denom_t ulong_val() const; // extract 64 bits unsigned value
   template<typename C> C convert() const; // extract some integer type value
@@ -73,6 +74,8 @@ public:
   big_int& operator*= (digit x);
   big_int& operator*= (int x);
   big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
+  big_int& operator*= (unsigned long long n)
+  { return (*this)*=from_unsigned(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
@@ -140,7 +143,7 @@ public:
       return big_int(x) ^= *this;
   }
   big_int bitwise_subtract (const big_int& x) const
-  { // copy the shorter positive contrinution; if none the longer (negative) one
+  { // copy the shorter positive contribution; if none the longer (negative) one
     if (is_negative()
 	? not x.is_negative() and d.size()>=x.d.size()
 	: not x.is_negative() or  d.size()<=x.d.size())
@@ -322,6 +325,9 @@ public:
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|
 
   big_rat power (int e) const;
+
+  double as_double() const { return num.as_double()/den.as_double(); }
+
 private:
   big_rat& normalise()
   { if (den.is_negative())

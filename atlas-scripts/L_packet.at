@@ -112,7 +112,6 @@ while #P>0 do
 {[Param] list_of_params is viewed as a set of standard modules,
  return a basis of the space of stable virtual characters they span
  algorithm: first extract list consisting of one member of each L-packet of parameters
-  occuring in list_of_params
  Then for each such p, L_packet_stable_sum(p) is included if and only if all members
   of the L-packet of p occur in list_of_params}
 set stable_sums_std([Param] list_of_params)=[ParamPol]:

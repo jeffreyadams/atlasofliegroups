@@ -113,7 +113,7 @@
 
   Here is part of the original comment by Fokko. Apparently the unexplained
   "kernel we are after" he talks about is the inverse image mentioned above.
-  That is probabaly just getting ahead of himself, since the final answer is a
+  That is probably just getting ahead of himself, since the final answer is a
   kernel. However, the subgroup whose inverse image is taken (corresponding to
   $\hat\pi_0(\tilde G(\R))$), can be described as the kernel of the restriction
   map from characters of the maximally split torus $\tilde T$ of $\tilde G(\R)$

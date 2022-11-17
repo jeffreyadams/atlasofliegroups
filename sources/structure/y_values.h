@@ -24,7 +24,7 @@ inline TorusElement exp_2pi(const RatWeight& r);
 
 
 /* The following classes are newer than |TitsElement|, |TitsGroup| and
-   |TitsCoset|, and less efficient, but provide a framework in which te sets
+   |TitsCoset|, and less efficient, but provide a framework in which the sets
    modelled by the latter classes can be fitted. They are actually used mostly
    for handling |y| values (whence the name of this module), in which case one
    has elements of the torus of the dual group. The terminology is adapted to
@@ -93,7 +93,7 @@ class TorusElement
   // manipulators
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
-  TorusElement& reduce(); // reduce entires mod $2\Z$
+  TorusElement& reduce(); // reduce entries mod $2\Z$
 
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
   void reflect(const RootDatum& rd, RootNbr alpha);

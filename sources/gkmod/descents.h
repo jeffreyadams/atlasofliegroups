@@ -51,7 +51,7 @@ class DescentStatus
   static bool isDescent(Value v) { return (v & DescentMask)!=0; }
   static bool isDirectRecursion(Value v)
     { return (v & DirectRecursionMask) == DirectRecursionMask; }
-  static Value dual(Value v) // cooresponding status in dual block
+  static Value dual(Value v) // corresponding status in dual block
     { static const Value d[] =
 	{ ComplexDescent, ImaginaryCompact, RealTypeII, RealTypeI,
 	  RealNonparity, ComplexAscent, ImaginaryTypeI, ImaginaryTypeII };

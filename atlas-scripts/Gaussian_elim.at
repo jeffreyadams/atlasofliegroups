@@ -11,7 +11,7 @@
   solve a linear system, or to a full identity matrix to find |A^-1|. It can
   also be used to quickly find the determinant of |A|.
 
-  More generally we allow for the possibility of colums for which no pivot can
+  More generally we allow for the possibility of columns for which no pivot can
   be found (all candidate rows have zeros), in which case we put a different
   kind of information in the pivot data, which can later be used to determine
   the kernel of the (original) matrix. Of course this should not happen when a
@@ -27,9 +27,9 @@ set_type
   is done (row number equal to the number of previous pivots). The latter row
   operation is left multiplication by a matrix differing by only one column
   from the identity, and that columns is recorded (it has the inverse of the
-  pivot vlaue on the main diagonal). In case no pivot is found (the part of
+  pivot value on the main diagonal). In case no pivot is found (the part of
   the column where a pivot is searched is zero) we instead record the nonzero
-  initial part ot the column. The union type |Pivot_info| describes these.
+  initial part of the column. The union type |Pivot_info| describes these.
 }
 
 , lin_solution = ( void no_rowrat_solution | ([rat],[[rat]]) affine_space )
@@ -81,7 +81,7 @@ set greedy ([rat] choices) = int: first(#choices,(int i)bool :choices[i].!=)
 set step = pivot_step(greedy@[rat])
 
 set get_data ([[rat]] M) = [Pivot_info]:
-    let i=0 { number of previus pivots, increased for each pivot } in
+    let i=0 { number of previous pivots, increased for each pivot } in
     while >#M { traverse and remove successive columns of |M|, stop on empty }
     do let (pi,M0)=step(M,i) in case pi | pivot: i+:=1 | else () esac
     ; pi next M:=M0

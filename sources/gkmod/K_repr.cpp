@@ -27,7 +27,7 @@ const K_type_pol& K_type_to_pol_table::lookup (const K_type& t) const
 {
   auto i = hash.find(t);
   if (i!=hash.empty)
-    throw std::runtime_error("Looking up polynimal not stored in table");
+    throw std::runtime_error("Looking up polynomial not stored in table");
   return poly[i];
 }
 
@@ -125,7 +125,7 @@ bool Rep_context::is_semifinal(const K_repr::K_type& z) const
 // absence of complex singular descents; assumes properties asserted below
 bool Rep_context::is_normal(const K_repr::K_type& z) const
 {
-  assert (is_standard(z)); // othewise the notion is not defined
+  assert (is_standard(z)); // otherwise the notion is not defined
   assert (is_dominant(z)); // this is necessary fot the normal form
 
   // although we could define the predicate without the next two assumptions,
@@ -168,7 +168,7 @@ bool Rep_context::is_final(const K_repr::K_type& z) const
       break;
     case gradings::Status::Complex:
       if (kgb().isDescent(s,x))
-	return false; // faile |is_normal|
+	return false; // failed |is_normal|
       break;
     default:
       break; // ImaginaryNoncompact is fine
@@ -510,7 +510,7 @@ K_repr::K_type_pol Rep_context::monomial_product
     { std::move(result), true, P.cmp() };
 } // |Rep_context::monomial_product|
 
-// compute height of "orthongonal projection to dominant cone" (closest point)
+// compute height of "orthogonal projection to dominant cone" (closest point)
 level Rep_context::height_bound (RatWeight lambda) const
 /* this projection is dominant, and obtained by otrhogonal projection onto the
    intersection of kernels of some set of simple coroots, say indexed by $S$,
@@ -627,7 +627,7 @@ K_repr::K_type_pol
     auto it = remainder.begin();
     if (it->first.height()>cutoff)
     {
-      remainder.erase(it); // drop any input terms that are already too heigh
+      remainder.erase(it); // drop any input terms that are already too high
       continue;
     }
     auto lead = it->first.copy(); // need a modifiable lvalue of K-type

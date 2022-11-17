@@ -86,7 +86,7 @@ class KGB_base
 
   // tables defining local (generation) ordering of involutions
   std::vector<InvolutionNbr> inv_nrs; // |inv_index| means index into |inv_nrs|
-  std::vector<inv_index> inv_loc; // parital inverse, indexed by |InvolutionNbr|
+  std::vector<inv_index> inv_loc; // partial inverse, indexed by |InvolutionNbr|
 
   // to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
@@ -104,7 +104,7 @@ class KGB_base
 
 
  public:
-  KGB_base (const KGB_base& org) // copy contructor
+  KGB_base (const KGB_base& org) // copy constructor
   : ic(org.ic) // share
   , data(org.data)
   , info(org.info)
@@ -314,7 +314,7 @@ class KGB : public KGB_base
   ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 
 // copy, assignment and swap
-// these are currently reserved; if defined, they shoud take care of |d_bruhat|
+// these are currently reserved; if defined, they should take care of |d_bruhat|
  private:
   KGB(const KGB&);
   KGB& operator=(const KGB&);

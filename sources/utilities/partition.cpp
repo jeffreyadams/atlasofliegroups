@@ -66,12 +66,6 @@ Partition::Partition(std::vector<unsigned long>& f)
   }
 }
 
-/*
-  Count the number of elements in class \#c.
-
-  NOTE: Straightforward implementation. Successively computing |classSize| for
-  all classes would cost more time then necessary.
-*/
 Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
   : d_class(f) // just use (a copy of) |f| as class vector
   , d_classRep()
@@ -120,13 +114,20 @@ unsigned long Partition::classSize(unsigned long c) const
 {
   unsigned long n = 0;
 
-  for (size_t j = 0; j < d_class.size(); ++j)
-    if (d_class[j] == c)
+  for (auto elt : d_class)
+    if (elt == c)
       ++n;
 
   return n;
 }
 
+std::vector<unsigned long> Partition::class_sizes() const
+{
+  std::vector<unsigned long> result(classCount(),0);
+  for (auto elt : d_class)
+    ++result[elt];
+
+  return result;
 }
 
 /*****************************************************************************
@@ -144,8 +145,6 @@ unsigned long Partition::classSize(unsigned long c) const
   only need to return two consecutive elements in d_stop to bound a class.
 
 ******************************************************************************/
-
-namespace partition {
 
 /*!
   Initializes a PartitionIterator ready to run through the classes of pi.

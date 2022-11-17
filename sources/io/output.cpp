@@ -737,8 +737,8 @@ std::ostream& print_real_form_name(std::ostream& strm, const Grading& gr,
 
   Precondition: |d_gr| contains a grading of the simple roots (effectively only
   grading those that are imaginary), which represents the given real form, and
-  which is special in that it contains a mimimal number of roots marked
-  noncompact; this implies there is percisely one such simple root for each
+  which is special in that it contains a minimal number of roots marked
+  noncompact; this implies there is precisely one such simple root for each
   non-quasicompact non-complex non-torus simple factor of the Lie type.
 
   Torus factors $T_1$ may occur in |lo.d_type|, which have no corresponding bits

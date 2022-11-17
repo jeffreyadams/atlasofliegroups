@@ -39,7 +39,7 @@ in ( ct
    )
 
 { The main challenge for this file is to do the same when |rd| is any root datum
-  with Cartan matrix of type $G_2$. The fact that we do not know the coordiantes
+  with Cartan matrix of type $G_2$. The fact that we do not know the coordinates
   used by |rd| makes us express the explicit weight/coweight above as linear
   combinations of simple ones for |rd|
 }
@@ -48,7 +48,7 @@ set springer_table_G (RootDatum rd) = SpringerTable:
    let ct=character_table_G(rd), drd = dual(rd), swap = bool: is_long_root(rd,0)
    then (wt,cowt,form) = (vec,vec,vec): { "magic" constants used below }
       if swap
-      then { reverse coefficents with respect to |else| branch }
+      then { reverse coefficients with respect to |else| branch }
          ( simple_roots(rd)*[2,4], simple_coroots(rd)*[4,2], [1,3] )
       else
          ( simple_roots(rd)*[4,2]   { 2* fund. weight for long coroot of |rd| }

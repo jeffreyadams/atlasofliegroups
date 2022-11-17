@@ -91,7 +91,7 @@ class RationalVector
   RationalVector& operator*=(C n);
   RationalVector& operator/=(C n);
   RationalVector& operator%=(C n);
-  // functional versions are free functions taking first agument by value
+  // functional versions are free functions taking first argument by value
 
   RationalVector operator+(const RationalVector& v) const &
   { RationalVector result(*this); return result+=v; }

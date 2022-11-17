@@ -328,7 +328,7 @@ void block_f()
 void smallblock_f()
 {
   ioutils::OutputFile file;
-  // must unfortunatly regenerate the block here
+  // must unfortunately regenerate the block here
   Block::build(current_inner_class(),
 	       currentRealForm(),
 	       currentDualRealForm()).print_to(file,false);
@@ -417,7 +417,7 @@ void blockstabilizer_f()
   RealReductiveGroup& G_R = currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
 
-  // get Cartan class; abort if unvalid
+  // get Cartan class; abort if invalid
   size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
 
   ioutils::OutputFile file;
@@ -479,7 +479,7 @@ void kllist_f()
   Print out the list of all K-L polynomials for primitive pairs.
 
   Explanation: x is primitive w.r.t. y, if any descent for y is also a
-  descent for x, or a type II imaginary ascent. Ths means that none of
+  descent for x, or a type II imaginary ascent. This means that none of
   the easy recursion formulas applies to P_{x,y}.
 */
 

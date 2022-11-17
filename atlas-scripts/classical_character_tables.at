@@ -178,9 +178,9 @@ set D_irreps (int n) = [D_irrep]:
    for (lambda,):pair
      in pairs_of_total_sum(n,(int k):partitions(k)~[:]) { list [k],..,ones(k) }
    do case cmp_partitions(pair)
-      then { first is stricly less } []
+      then { first is strictly less } []
       in { an equal pair } [(lambda,false).split_irr,(lambda,true).split_irr]
-      else { first is stricly greater } [pair.unsplit_irr]
+      else { first is strictly greater } [pair.unsplit_irr]
       esac
    od.##
 

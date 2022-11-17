@@ -74,11 +74,11 @@
   order to generate a root datum, so the user interaction needed to choose a
   root datum really goes into fixing a |PreRootDatum|. It contains matrices
   describing the simple roots and coroots relative to some basis of $X^*$
-  (repectively its dual basis of $X_*$); changing that basis will lead to an
+  (respectively its dual basis of $X_*$); changing that basis will lead to an
   isomorphic root datum, but which is different for Atlas purposes since weights
   and coweights will be expressed in coordinates relative to the same basis.
 
-  Apart from simple (co)roots, a |PreRootDatum| contains one more it of
+  Apart from simple (co)roots, a |PreRootDatum| contains one more bit of
   information, telling whether roots or coroots should be preferred when
   generating a full root system from the simple (co)roots; for instance we can
   (for simple Lie types) either have the last root be the highest root, or the
@@ -609,7 +609,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 	else
 	{ // reflection in alpha makes some other root (beta) negative, so
 	  candidates.remove(alpha); // alpha is not simple; remove it
-	  break; // and move on to the next candadate
+	  break; // and move on to the next candidate
 	}
       }
     } // |for (beta)|
@@ -706,7 +706,7 @@ RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
 
 
 /*
-  Make the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
+  Make the orthogonal system |rset| into an equivalent (for |refl_prod|) one
   that is additively closed inside the full root system.
 
   This can be achieved by repeatedly replacing a pair of short roots spanning
@@ -729,7 +729,7 @@ RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 	  ( is_posroot(*it) ?  root(posroot_index(*jt))
 	                    : -root(negroot_index(*jt)) );
 	RootNbr gamma = lookup_root(sum);
-	assert(gamma != numRoots()); // |sum| wass supposed to be a root
+	assert(gamma != numRoots()); // |sum| was supposed to be a root
 	result.insert(gamma);
 	result.insert(root_permutation(*jt)[gamma]); // invert sign second root
 	result.remove(*it); result.remove(*jt);
@@ -808,7 +808,7 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   Since we do not use distinct types for weights and coweights, we can proceed
   by interchanging roots and coroots. The ordering of the roots corresponds to
   that of the original root datum (root |i| of the dual datum is coroot |i| of
-  the orginal datum; this is not the ordering that would have been used in a
+  the original datum; this is not the ordering that would have been used in a
   freshly constructed root datum), but users should \emph{not} depend on this.
 */
 RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
@@ -833,7 +833,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   assert(d_status[IsSimplyConnected] == rd.d_status[IsAdjoint]);
 }
 
-#if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
+#if 0 // (co)derived constructors no longer used, done at |PreRootData| level now
 
 /* Construct the derived root datum, and put weight mapping into |projector| */
 RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,

@@ -132,6 +132,14 @@ int big_int::int_val() const
   return static_cast<int>(d[0]);
 }
 
+unsigned int big_int::uint_val() const
+{ if (is_negative())
+    throw std::runtime_error("Negative integer where unsigned is required");
+  if (not (size()<2 or (size()==2 and d[1]==0)))
+    throw std::runtime_error("Integer value to big for conversion");
+  return d[0];
+}
+
 arithmetic::Numer_t big_int::long_val() const
 { if (size()>2)
     throw std::runtime_error("Integer value to big for conversion");
@@ -351,6 +359,18 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(0); // ensure positive sign
 }
 
+big_int& big_int::operator*= (digit x)
+{ if (is_negative())
+  {
+    negate(); // now |*this| has been made non-negative
+    mult_add(x,0);
+    negate();
+  }
+  else
+    mult_add(x,0);
+  return *this;
+}
+
 big_int& big_int::operator*= (int x0)
 { const bool neg = (x0<0)xor(is_negative()); // whether result is negative
   digit x = x0<0 ? -static_cast<digit>(x0) : x0; // convert type to |digit|
@@ -498,7 +518,7 @@ void print (std::ostream& out, big_int&& number, bool print_minus)
     auto last = number.shift_modulo(1000000000u); // that is $10^9<2^{32}$
     auto old_w = out.width(); // see whether a width was specified
     if (old_w>9) // consider only these widths, as 9 digits are certainly used
-      out.width(old_w-9); // remove 9 from witdth specification in recursion
+      out.width(old_w-9); // remove 9 from width specification in recursion
     print(out,std::move(number),print_minus);
     char prev=out.fill('0'); // in these trailing words, we show leading '0's
     out << std::setw(9) << last; // use exactly 9 digits for final part
@@ -628,7 +648,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
       it[-1]=0; // store the 0 digit in quotient, independently of |below_0|
       continue; // don't change remainder, don't change the |below_0| status
     }
-    acc = 0; // now use as accumlator for subtracting or adding to the remainder
+    acc = 0; // now use as accumulator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
     if (not below_0)
     { // do subtraction complemented: sandwiched between |~|, \emph{add} product
@@ -664,7 +684,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
 	static_cast<digit>(acc)!=0; // namely whether |acc=0xFFFFFFFF|
     }
   }
-  while (it+div.size()!=d.rend()); // stop after last |div.size()| words ajusted
+  while (it+div.size()!=d.rend()); // stop after last |div.size()| words adjusted
 
   if (below_0) // then we must add $1$ to quotient and add |div| the remainder
   {
@@ -918,7 +938,7 @@ int big_int::bit_length() const
     return 32*(d.size()-1)+ bits::lastBit(d.back());
 }
 
-// shift left bits in fixed length array |d|; caller assumes responsability
+// shift left bits in fixed length array |d|; caller assumes responsibility
 void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
 {
   assert(n!=0); // caller will avoid this, and shift by 32 would be undefined
@@ -931,7 +951,7 @@ void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
   *it <<= n; // this shifts zeros into the lowest |n| bits
 }
 
-// shift right bits in fixed length array |d|; caller assumes responsability
+// shift right bits in fixed length array |d|; caller assumes responsibility
 void big_int::LSR (unsigned char n) // unsigned down-shift (divide by $2^n$)
 {
   assert(n!=0); // caller should avoid this, shift by 32 would be undefined

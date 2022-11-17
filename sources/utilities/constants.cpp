@@ -36,9 +36,9 @@ namespace atlas {
 
 
 /*
-  Since we cannot initialize the above static member arrays by initialzer
+  Since we cannot initialize the above static member arrays by initializer
   lists (we do not even know how long they should be), we provide a static
-  member initialisation function, and ensure that it is called (exaclty) once
+  member initialisation function, and ensure that it is called (exactly) once
 
   This function initializes the following constants :
 

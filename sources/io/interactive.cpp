@@ -22,7 +22,7 @@
 #include "repr.h"
 
 #include "input.h"
-#include "commands.h" // to acces input buffer from issuing command
+#include "commands.h" // to access input buffer from issuing command
 #include "interactive_lattice.h" // auxiliary functions
 #include "interactive_lietype.h" // auxiliary functions
 #include "prettyprint.h"	// |printVector|
@@ -144,7 +144,7 @@ namespace interactive {
 bool get_yes_or_no(const char* prompt)
 { std::string full_prompt(prompt);
   full_prompt.append("? (y/n) ");
-  input::InputBuffer buf; // readline/noreadline inteface forces using this
+  input::InputBuffer buf; // readline/noreadline interface forces using this
 
   while(true) // exit is by |return| or by |throw|
   {
@@ -243,7 +243,7 @@ size_t get_Cartan_class(const BitMap& cs)
   the calls to other instances of |getInteractive| below.
 
   Replace |pI| by a  pointer to a new |Interface| gotten interactively from
-  the user, and |pG| by a poitner the the corresponding inner class
+  the user, and |pG| by a pointer the the corresponding inner class
 
   Throw an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
@@ -497,7 +497,7 @@ RealFormNbr get_real_form(output::Interface& CI)
 /*
   This is called by the entry function to "block mode".
 
-  Synposis: return an internal dual real form number, selected by the user
+  Synopsis: return an internal dual real form number, selected by the user
   from a list presented by external numbers for the dual real forms compatible
   with real form |rf|. If |rf| too large to be a real form number, present the
   list of all dual real forms in the inner class, and select from it.
@@ -962,7 +962,7 @@ struct inner_class_factor
 	     ? simple_ict::equal_rank : simple_ict::unequal_rank;
     }
     else assert(false);
-    kind=simple_ict::equal_rank; // avoid later "uninitialzed" warning
+    kind=simple_ict::equal_rank; // avoid later "uninitialized" warning
   }
 };
 
@@ -1024,7 +1024,7 @@ WeightInvolution get_commuting_involution
     auto it = type.begin();
     for ( ; not type.at_end(it); ++it)
       if (it->first==cur)
-      { it->second.set(k); // record that this index has thes same type
+      { it->second.set(k); // record that this index has the same type
 	icf.push_back(&it->first); // for location
 	break;
       }
@@ -1084,7 +1084,7 @@ WeightInvolution get_commuting_involution
   std::vector<unsigned> offset(lo.d_inner.size());
   for (unsigned i=0; i<offset.size(); ++i)
     offset[i]=r, r+=rank(*icf[i]);
-  WeightInvolution delta (r); // strart with identity matrix
+  WeightInvolution delta (r); // start with identity matrix
 
   for (auto it=swaps.begin(); it!=swaps.end(); ++it)
   {

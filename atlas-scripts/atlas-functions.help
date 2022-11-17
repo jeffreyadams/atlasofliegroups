@@ -109,7 +109,7 @@ nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
 bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
   If n<0 returns the well defined negative value -1-bit_length(-1-n)
 to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
-  Negative vector entries are refjected, and result is always non-negative
+  Negative vector entries are rejected, and result is always non-negative
 
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
@@ -140,7 +140,7 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 gcd: (vec->int): the greatest common divisor of all entries of the vector
 Bezout: (vec->int,mat): gcd of entries, and linear map sending v to (d,0,0,...)
-  In adition to finding the gcd d like the previous function, this also produces
+  In addition to finding the gcd d like the previous function this also produces
   an invertible matrix (change of coordinates) that sends the argument vector v
   to d times the first canonical basis vector. That means the first row has a
   sequence of Bezout coefficients (for the gcd) and the other rows are sequences
@@ -348,7 +348,7 @@ adjoint: (LieType,bool->RootDatum): "adjoint" root datum for given type.
   The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
 root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
-  Indexing is from -nr_of_posroots(rd) upto nr_of_posroots(rd)-1, with
+  Indexing is from -nr_of_posroots(rd) up to nr_of_posroots(rd)-1, with
   negative indices giving negative (co)roots, and non-negative indices giving
   positive (co)roots; simple (co)roots are consecutive from index 0 upwards.
 root_index: (RootDatum,vec->int): Index of root with respect to posroots
@@ -422,24 +422,24 @@ W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
-root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
+root_datum: (WeylElt->rootDatum): Root datum underlying a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element
 operators =, != : (WeylElt->bool): test Weyl group element against identity
 operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
   The elements must be from equal or dual root data; if not, reports an error
 operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
 operator / : (WeylElt->WeylElt): Inverse of Weyl group element
-operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
+operator # : (WeylElt,int->WeylElt): multiply Weyl group element and generator
 operator # : (int,WeylElt->WeylElt): multiply generator and Weyl group element
 operator ## : (WeylElt,[int]->WeylElt): Compose Weyl group element and Weyl word
 operator ## : ([int],WeylElt->WeylElt): Compose Weyl word and Weyl group element
 operator * : (WeylElt,vec->WeylElt): left-act by Weyl group element on weight
 operator * : (vec,WeylElt->WeylElt): right-act on coweight by Weyl group element
 from_dominant: (RootDatum,vec->WeylElt,vec): write as W image of dominant weight
-  Called for (rd,lambda), find in the oribit of lambda under the Weyl group W
+  Called for (rd,lambda), find in the orbit of lambda under the Weyl group W
   of rd the dominant weight v, and minimal w in W with lambda=w*v; return (w,v)
 from_dominant: (vec,RootDatum->vec,WeylElt): write as dominant coweight * W-elt
-  Called for (cowt,rd), find in the oribit of cowt under the Weyl group W of rd
+  Called for (cowt,rd), find in the orbit of cowt under the Weyl group W of rd
   the dominant coweight v, and minimal w in W with cowt=v*w; return (v,w), Note
   that using form_dominant(dual(rd),cowt) instead would rather return (w^{-1},v)
 root_permutation : (WeylElt w->vec): defined permutation of full root system
@@ -533,7 +533,7 @@ nr_of_Cartan_classes: (RealForm->int): number of Cartan classes for real form
 
 operators =, !=: (RealForm,RealForm->bool): (in)equality of real forms
   It means they belong to an identical inner class (not two inner classes
-  created separately from identical argumnets), and have same form number
+  created separately from identical arguments), and have same form number
 
 KGB_size: (RealForm->int): size of the set K\G/B for this real form
 base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
@@ -565,9 +565,9 @@ KGB_Hasse: (RealForm->mat): Hasse diagram of Bruhat order on K\G/B
   The Bruhat order x<=y among K-orbits in G/B describes when x is contained in
   the (topological) closure of y. KGB_Hasse(G) is a matrix describing the Hasse
   diagram of this finite partial order: the set of pairs (x,z) for which the
-  interval { y | x<=y<=z } contains exaclty the two elements, namely x et z.
+  interval { y | x<=y<=z } contains exactly the two elements, namely x et z.
   The matrix is indexed by the numbers #x of the K\G/B elements x, and the
-  entry at (#x,#z) is 1 when (x,z) is in the Hasse diagram, and 0 othewise.
+  entry at (#x,#z) is 1 when (x,z) is in the Hasse diagram, and 0 otherwise.
 
 dual_real_form: (InnerClass,int->RealForm): select a dual real form
   This is like real_form, but selects a dual real form for the inner class
@@ -767,7 +767,7 @@ is_final: (KType->bool): whether K-type has no singular descents at all
 dominant: (KType->KType): ensure K-type has dominant (1+theta_x)lambda
   This gives an equivalent form of the K-type in which infinitesimal character
   has been made dominant (it may not be unique for this property within its
-  equivalence class); calling this function reauires is_standard to hold for the
+  equivalence class); calling this function requires is_standard to hold for the
   K-type, and an error will be reported if it is not.
 to_canonical_fiber: (KType->KType): move to elected fiber for its Cartan class
   In every Cartan class of involutions one is singled out, and every K-type for
@@ -783,7 +783,7 @@ theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
   factor has the real roots and whose nilpotent radical has the remaining
   positive roots is theta-stable, maning that theta permutes those remaining
   positive roots among each other. In terms of the K-type it means there are no
-  complex descents, which is obtained by greedily perfoming any complex
+  complex descents, which is obtained by greedily performing any complex
   descents; multiple candidate results may exist, among which one is chosen.
 
 null_K_module: (RealForm->KTypePol): empty sum of $K$-types for the real form
@@ -826,7 +826,7 @@ branch: (KTypePol,int->KTypePol): convert standard to irreducible, up to height
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
   From nu only the projection (1-involution(x))nu/2 is used, the complementary
-  part of the infinitesimal caharacter is taken from (1+involution(x))lambda/2
+  part of the infinitesimal character is taken from (1+involution(x))lambda/2
 operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,gamma) from param
   Here x and lambda-rho are as for K-types, and gamma is the infinitesimal
   character. The function param applied to the the result of % will reconstruct
@@ -856,7 +856,7 @@ equivalent: (Param,Param->bool): test equivalence of parameters
   (representative), and among such parameters equivalence amounts to
   reachability using singular complex cross actions. Test for this equivalence,
   reverting to a strict equality test if either parameter fails to be standard.
-  The consdition equivalent(p,q) should be the same as normal(p)=normal(q).
+  The condition equivalent(p,q) should be the same as normal(p)=normal(q).
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_dominant: (Param->bool): whether parameter is dominant for full system
@@ -868,7 +868,7 @@ is_semifinal: (Param->bool): whether parameter has no singular real descents
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
   true provided no real coroots for which gamma is singular satisfy the parity
   condition. Note: one could still have is_zero(p); this needs a separate test.
-is_final: (Param->bool): whether p parameterizes an irreducible representation
+is_final: (Param->bool): whether p parametrizes an irreducible representation
   This means that is_standard(p) and not is_zero(p) and is_semifinal(p) holds,
   as well as p=dominant(p)=normal(p). Parameters that satisfy |is_final(p)|
   are the ones that can occur as monomials in a |ParamPol| value.
@@ -918,10 +918,10 @@ block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
   Calling KGB_Hasse(p) ensure the full block containing the parameter p is
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
-  exaclty the two elements, namely x et z. The matrix is indexed by the numbers
+  exactly the two elements, namely x et z. The matrix is indexed by the numbers
   of the block elements as displayed in print_block(p).
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
-  This combines block with the computation of the its Kazhdan-Lustzig table.
+  This combines block with the computation of the its Kazhdan-Lusztig table.
   The two values of block are followed by two values in the format of raw_KL
   below: a matrix of indices into the following list of polynomials, coded as a
   list of coefficient vectors. (Contrary to raw_KL below no data about the
@@ -943,8 +943,8 @@ dual_KL_block: (Param->[Param],int,mat,[vec]): KL_block values for dual block
   KL polynomials at final block elements are selected unmodified (no linear
   combination) since that is appropriate for the dual block; thus the transpose
   of the matrix gives the matrix of Q-polynomials, which after conjugation with
-  the diagonal matrix of length-partity signs gives the inverse of the matrix of
-  ordinary Kazhdan-Lustzig polynomials, the ones returned by KL_block
+  the diagonal matrix of length-parity signs gives the inverse of the matrix of
+  ordinary Kazhdan-Lusztig polynomials, the ones returned by KL_block
 partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
   This function relates to KL_block as partial_block relates to block. The first
   component of the result is the Bruhat interval as in partial_block, and the
@@ -1017,7 +1017,7 @@ branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
 q_branch: (Param,int->[vec,Param]) q-analgue of branch@(Param,int)
   The result ought to be a |ParamPol| with integer polynomials as coefficients,
   but since that type does not exist, it is represented as a list of pairs,
-  each giving a (polynomial) coefficient and a (paramter) term. The same
+  each giving a (polynomial) coefficient and a (parameter) term. The same
   interpretation of arguments as for branch@(Param,int) applies; the statistic
   used replace integer coefficients in the result by polynomials is the one
   used in the Fokko command qbranch (and qKtypeform and qKtypemat as well)
@@ -1039,7 +1039,7 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
 block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
   Here the Param argument just serves to define its block, the ParamPol argument
   associates (Split) coefficients to the final elements of this block (and to
-  other final parmaters as well, but these terms will remain passive), and the
+  other final parameters as well, but these terms will remain passive), and the
   int argument gives a height bound above which contributions will be ignored
   (which may speed up computation; a negative bound means nothing is ignored).
   The terms in the block are extracted, and |deform| is applied to each of them,
@@ -1069,7 +1069,7 @@ twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
 KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
   Returns a list of nonzero Kazhdan-Lusztig polynomials P(x,y) with the given
   parameter as y, each as a triple (n,x,P(x,y)) where x is the parameter for
-  the first index of the polynomial, P(x,y) the polynomial itsef as a vector of
+  the first index of the polynomial, P(x,y) the polynomial itself as a vector of
   coefficients (by increasing degree), and n is the number in its block of x.
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
@@ -1080,7 +1080,7 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   polynomials. The actual value depends on sign choices for Hecke module
   generators (extended parameters) for each of the terms; these choices, which
   cannot be made explicit in terms of ordinary parameters only, affect the signs
-  of the coeficients of these terms. However a consistent choice of a default
+  of the coefficients of these terms. However a consistent choice of a default
   extension is made internally for each parameter value, which make those signs
   well-defined. When modifications are made to parameters, like changing to an
   equivalent one with different infinitesimal character representative, or
@@ -1103,9 +1103,9 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   the continuous component nu by a rational factor. With arguments (p,delta,f)
   it is assumed that the parameter p is_final, and the factor f is positive.
   A new parameter is formed by scaling the component nu(p) by f, and it is made
-  final, as in ParamPol:p*f; under the given assuptions this involves applying
+  final, as in ParamPol:p*f; under the given assumptions this involves applying
   only complex reflections, so the result is a single parameter which is the
-  first component of the result. The second component records wheher this
+  first component of the result. The second component records whether this
   transformation at the level of extended parameter involves a flip with respect
   to the default extension, as described above under "twisted_KL_sum_at_s"
 K_type_pol_extended: (Param,mat->K_type_pol): extended restrict to K
@@ -1190,7 +1190,7 @@ walls: (RootDatum,ratvec->[int]) Find set of coroots defining walls of alcove
   This makes the alcove unique, and means that among coroots with integral
   evaluation at gamma, only positive coroots are candidate to define a wall.
   The value returned is the minimal set of indices into |coroots(rd)| of coroots
-  that define the alcove (by requring a specific integral part of their
+  that define the alcove (by requiring a specific integral part of their
   evaluation). For these coroots the exact integral evaluation is attained on
   some wall bounding the alcove, increasing towards the interior of the alcove.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
@@ -1254,6 +1254,7 @@ print_blocku: (Block->):
 print_blockd: (Block->):
 print_blockstabilizer: (Block,CartanClass->):
 print_KGB: (RealForm->):
+print_KGB: (RealForm,[KGBElt]->): print only for the listed KGB elements
 print_KGB_order: (RealForm->):
 print_KGB_graph: (RealForm->):
 print_X: (InnerClass->):
@@ -1262,4 +1263,5 @@ print_prim_KL: (Block->):
 print_KL_list: (Block->):
 print_W_cells: (Block->):
 print_W_graph: (Block->):
-  These commands give the output of the corresponding commands of Fokko.
+  These commands give the output of the corresponding commands, present under
+  that name in Fokko, for printing the information the name suggests
