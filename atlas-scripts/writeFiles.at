@@ -25,7 +25,7 @@ set write_vecs([vec] list, string VecsName) = void:
     begin
 	 prints("set ",VecsName," = [vec]: for i:",#list," do [] od")
 	 ; for i:#list
-	   do prints("void:",VecsName,"[",i,"]:=",list[i])
+	   do prints("void:",VecsName,"[",i,"]:=",[int]: list[i])
 	   od
     end
 
@@ -82,7 +82,8 @@ set write_K_type_pols(RealForm G, [KTypePol] KPols, string KPolsName) = void:
 	   	       " do Null od")
 	 ; for i:#KPols
 	   do let d = K_data(KPols[i])
-	      in prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
+	      in prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",
+			[[int]]: d,")")
 	   od
    end
 
@@ -100,7 +101,8 @@ set write_K_type_pols(RealForm G, [[KPolTermDatum]] KPolsData,
      	 ; prints("set ",KPolsName,"= [KTypePol]: for i:",#KPolsData,
 	   	       " do Null od")
 	 ; for d@i in KPolsData
-	   do prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",d,")")
+	   do prints("void:",KPolsName,"[",i,"]:=K_pol(G_temp,[vec]:",
+			[[int]]: d,")")
 	   od
    end
 
@@ -122,7 +124,8 @@ set write_K_type_pols_data(RealForm G, [KTypePol] KPols,
      	 ; prints("set ",KPolsDataName,"= [[vec]]: for i:",#KPols,
 	   	       " do [] od")
 	 ; for P@i in KPols
-	   do prints("void:",KPolsDataName,"[",i,"]:=",K_data(KPols[i]))
+	   do prints("void:",KPolsDataName,"[",i,"]:=",
+			[[int]]: K_data(KPols[i]))
 	   od
      end
 
@@ -139,7 +142,8 @@ set write_K_type_pols_data(RealForm G, [[KPolTermDatum]] KPolsData,
      	 ; prints("set ",KPolsDataName,"= [[vec]]: for i:",#KPolsData,
 	   	       " do [] od")
 	 ; for d@i in KPolsData
-	   do prints("void:",KPolsDataName,"[",i,"]:=",d)
+	   do prints("void:",KPolsDataName,"[",i,"]:=",
+	   [[int]]: d)
 	   od
      end
 
