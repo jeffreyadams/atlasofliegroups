@@ -131,7 +131,8 @@ struct RootSystem::root_compare
 RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.numRows())
   , prefer_co(prefer_co)
-  , Cmat(rk,rk) // filled below
+  , C_denom(), Cmat(Cartan_matrix.entry_type_convert<byte>())
+  , invCmat() // filled below
   , ri()
   , root_ladder_bot(), coroot_ladder_bot()
 {
@@ -140,19 +141,23 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 
 
   typedef std::set<Byte_vector,root_compare> RootVecSet;
-  std::vector<RootVecSet> roots_of_length
-    (4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
+  std::vector<RootVecSet> roots_at_level
+    (4*rk); // more than enough if |rk>0|; $E_8$ needs 30 levels; 0..29
 
   for (unsigned int i=0; i<rk; ++i)
   {
     Byte_vector e_i(rk,0); e_i[i]=1; // set to standard basis for simple roots
-    roots_of_length[1].insert(e_i);
-    for (unsigned int j=0; j<rk; ++j)
-      Cmat(i,j) = static_cast<byte>(Cartan_matrix(i,j));
+    roots_at_level[1].insert(e_i);
   }
 
+  { arithmetic::big_int denom;
+    invCmat = matrix::inverse(Cmat.entry_type_convert<short int>(),denom);
+    C_denom = denom.convert<short int>();
+  }
+
+  // We now start the root system generation proper
   if (prefer_co) // then we generate for the dual system
-    swap_roots_and_coroots(); // here this just transposes |Cmat|
+    swap_roots_and_coroots(); // here this just (temporarily) transposes |Cmat|
 
   // the Cartan matrix sliced into rows respectively into columns
   std::vector<Byte_vector> simple_root, simple_coroot;
@@ -167,11 +172,11 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // now construct positive root list, simple reflection links, and descent sets
   std::vector<RootNbrList> link; // size |numPosRoots*rank|
   RootNbrList first_l(1,0); // where level |l| starts; level 0 is empty
-  for (unsigned int l=1; not roots_of_length[l].empty();// empty level means end
+  for (unsigned int l=1; not roots_at_level[l].empty();// empty level means end
        ++l)
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
-    for (const Byte_vector& alpha : roots_of_length[l])
+    for (const Byte_vector& alpha : roots_at_level[l])
     {
       const RootNbr cur = ri.size();
       assert(link.size()==cur);
@@ -207,11 +212,11 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
 	    ri[cur].ascents.set(i);
-	    roots_of_length[l-c].insert(std::move(beta)); // will create root
+	    roots_at_level[l-c].insert(std::move(beta)); // will create root
 	  }
 	}
     } // |for(alpha)|
-    roots_of_length[l].clear(); // no longer needed
+    roots_at_level[l].clear(); // no longer needed
   } // |for(l)|
 
   const RootNbr npos = numPosRoots(); // number of positive roots, |ri| is filled
@@ -233,6 +238,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // now switch roots and coroots if coroots generation was actually requested
   if (prefer_co)
     swap_roots_and_coroots(); // this also restores |Cmat|
+  // and this ends the root system generation proper
 
   root_ladder_bot.resize(2*npos);
   coroot_ladder_bot.resize(2*npos);
@@ -317,12 +323,13 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 } // end of basic constructor
 
 // a method designed for the 3 places where is called; not for general use
+// ladder bottom fields are unaffected: either not set yet or already swapped
 void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 { bool simply_laced = true;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=i+1; j<rk; ++j) // do only case $i<j$, upper triangle
-      if (Cartan_entry(i,j)!=Cartan_entry(j,i))
-	simply_laced = false , std::swap(Cartan_entry(i,j),Cartan_entry(j,i));
+      if (Cmat(i,j)!=Cmat(j,i))
+	simply_laced = false , std::swap(Cmat(i,j),Cmat(j,i));
 
   if (not simply_laced)
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
@@ -332,7 +339,9 @@ void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , prefer_co(not rs.prefer_co) // switch this
+  , C_denom(rs.C_denom)
   , Cmat(rs.Cmat) // transposed below
+  , invCmat(rs.invCmat.transposed())
   , ri(rs.ri)     // entries modified internally in non simply laced case
   , root_ladder_bot(rs.coroot_ladder_bot)
   , coroot_ladder_bot(rs.root_ladder_bot)
@@ -471,20 +480,31 @@ RootNbrSet RootSystem::posRootSet() const
 }
 
 
-int_Matrix RootSystem::cartanMatrix() const
+int_Matrix RootSystem::Cartan_matrix() const
 {
   int_Matrix result(rk,rk);
 
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=0; j<rk; ++j)
-      result(i,j) = Cartan_entry(i,j);
+      result(i,j) = Cmat(i,j);
+
+  return result;
+}
+
+int_Matrix RootSystem::inverse_Cartan_matrix() const
+{
+  int_Matrix result(rk,rk);
+
+  for (RootNbr i=0; i<rk; ++i)
+    for (RootNbr j=0; j<rk; ++j)
+      result(i,j) = invCmat(i,j);
 
   return result;
 }
 
 
 // The Cartan matrix of the root subsystem with basis |rb|.
-int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
+int_Matrix RootSystem::Cartan_matrix(const RootNbrList& rb) const
 {
   unsigned int r = rb.size();
 
@@ -500,7 +520,7 @@ int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
 // type of root subsystem (semisimple)
 LieType RootSystem::subsystem_type(const RootNbrList& rb) const
 {
-  return dynkin::Lie_type(cartanMatrix(rb));
+  return dynkin::Lie_type(Cartan_matrix(rb));
 }
 
 // pairing $\<\alpha,\beta^\vee>$; note that coroot is on the right
@@ -510,8 +530,8 @@ int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
     return 0;
 
 /*
-  Since |cartan_entry(i,j)| pairs simple root |i| and simple coroot |j| (our
-  conventions would prefer the tranpose) we compute root(i)*Cartan*coroot(j)
+  Since |Cmat(i,j)| pairs simple root |i| and simple coroot |j| (our conventions
+  would prefer the tranpose) we compute root(i)*Cmat*coroot(j)
  */
   const Byte_vector& row = root(rt_abs(alpha));
   const Byte_vector& col = coroot(rt_abs(beta));
@@ -519,7 +539,7 @@ int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
   int c=0;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=0; j<rk; ++j)
-      c += row[i]*Cartan_entry(i,j)*col[j];
+      c += row[i]*Cmat(i,j)*col[j];
 
   return is_posroot(alpha)!=is_posroot(beta) ? -c : c;
 }
@@ -764,7 +784,6 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   , d_radicalBasis(), d_coradicalBasis()
   , d_2rho(d_rank,0)
   , d_dual_2rho(d_rank,0)
-  , Cartan_denom()
   , d_status()
 {
   const int_Matrix& root_mat = prd.simple_roots_mat();
@@ -779,11 +798,9 @@ RootDatum::RootDatum(const PreRootDatum& prd)
     d_coroots[rootMinus(alpha)] = -d_coroots[alpha];
   }
 
-  arithmetic::big_int denom;
   // the fundamental weights are given by the matrix Q.tC^{-1}, where Q is
   // the matrix of the simple roots, tC the transpose Cartan matrix
-  int_Matrix iC = cartanMatrix().inverse(denom);
-  Cartan_denom = denom.int_val();
+  int_Matrix iC = inverse_Cartan_matrix();
   weight_numer = (root_mat*iC.transposed()).columns();
 
   // for the fundamental coweights, use coroots and (untransposed) Cartan matrix
@@ -822,7 +839,6 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   , d_coradicalBasis(rd.d_radicalBasis)
   , d_2rho(rd.d_dual_2rho)
   , d_dual_2rho(rd.d_2rho)
-  , Cartan_denom(rd.Cartan_denom)
   , d_status()
 {
   // fill in the status
@@ -946,16 +962,16 @@ PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
 
 
 RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
-{ return RatWeight(weight_numer[i],Cartan_denom); }
+{ return RatWeight(weight_numer[i],Cartan_denominator()); }
 
 RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
-{ return RatWeight(coweight_numer[i],Cartan_denom); }
+{ return RatWeight(coweight_numer[i],Cartan_denominator()); }
 
 /******** accessors **********************************************************/
 
 LieType RootDatum::type() const
 {
-  LieType result = dynkin::Lie_type(cartanMatrix());
+  LieType result = dynkin::Lie_type(Cartan_matrix());
   result.reserve(result.size()+radical_rank());
   for (RootNbr i=0; i<radical_rank(); ++i)
     result.emplace_back('T',1);
@@ -1128,21 +1144,6 @@ LatticeMatrix RootDatum::action_matrix(const WeylWord& ww) const
 
 
 /******** manipulators *******************************************************/
-
-void RootDatum::swap(RootDatum& other)
-{
-  std::swap(d_rank,other.d_rank);
-  d_roots.swap(other.d_roots);
-  d_coroots.swap(other.d_coroots);
-  weight_numer.swap(other.weight_numer);
-  coweight_numer.swap(other.coweight_numer);
-  d_radicalBasis.swap(other.d_radicalBasis);
-  d_coradicalBasis.swap(other.d_coradicalBasis);
-  d_2rho.swap(other.d_2rho);
-  d_dual_2rho.swap(other.d_dual_2rho);
-  std::swap(Cartan_denom,other.Cartan_denom);
-  d_status.swap(other.d_status);
-}
 
 // implicit conversion
   RootDatum::operator PreRootDatum() const

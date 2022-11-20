@@ -225,7 +225,7 @@ namespace {
 void cmatrix_f()
 {
   prettyprint::printMatrix
-    (std::cout,current_inner_class().rootDatum().cartanMatrix());
+    (std::cout,current_inner_class().rootDatum().Cartan_matrix());
 
 }
 

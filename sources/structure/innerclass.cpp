@@ -126,7 +126,7 @@ InnerClass::InnerClass
   , d_rootDatum(*own_datum)
   , d_dualRootDatum(*own_dual_datum)
 
-  , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
+  , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
@@ -162,7 +162,7 @@ InnerClass::InnerClass
   : own_datum(nullptr), own_dual_datum(nullptr) // don't own for this case
   , d_rootDatum(rd), d_dualRootDatum(drd) // but capture the references instead
 
-  , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
+  , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)

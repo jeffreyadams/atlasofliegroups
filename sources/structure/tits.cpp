@@ -563,7 +563,7 @@ TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
 
 // Based Tits group for the adjoint group
 TitsCoset::TitsCoset(const InnerClass& G)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
   , Tg(*my_Tits_group)
@@ -576,7 +576,7 @@ TitsCoset::TitsCoset(const InnerClass& G)
 
 // Based Tits group for the adjoint dual group
 TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix().transposed(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
   , Tg(*my_Tits_group)

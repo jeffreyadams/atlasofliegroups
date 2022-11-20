@@ -50,7 +50,7 @@ namespace prerootdata {
   , prefer_co(prefer_co)
 {
   weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
-  unsigned int r=0; // |r| indexes rows of |Cartan|, goes up to rank
+  unsigned int r=0; // |r| indexes rows of |lt.Cartan_matrix()|, goes up to rank
   for (unsigned int k=0; k<lt.size(); ++k) // run over "simple" factors
     if (lt[k].type()=='T') // only do non-torus factors;
       r+=lt[k].rank();  // skip empty row(s) of Cartan matrix, keep |s|

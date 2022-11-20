@@ -1108,7 +1108,7 @@ formed.
 
 const WeylGroup& root_datum_value::W () const
 { if (W_ptr.get()==nullptr)
-    W_ptr = std::make_shared<WeylGroup>(val.cartanMatrix());
+    W_ptr = std::make_shared<WeylGroup>(val.Cartan_matrix());
   return *W_ptr;
 }
 @)
@@ -1353,7 +1353,7 @@ void datum_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<matrix_value>(rd->val.cartanMatrix()));
+  push_value(std::make_shared<matrix_value>(rd->val.Cartan_matrix()));
 }
 @)
 void rd_rank_wrapper(expression_base::level l)
@@ -2502,7 +2502,7 @@ lies in another component of the diagram we have a Complex inner class.
 @h "dynkin.h"
 
 @< Compute the Lie type |type|, the inner class... @>=
-{ DynkinDiagram diagram(rd.cartanMatrix());
+{ DynkinDiagram diagram(rd.Cartan_matrix());
   auto comps = diagram.components(); // connected components
   type = diagram.type();
   pi = diagram.perm(); // |pi| normalises to Bourbaki order
@@ -3922,7 +3922,7 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->ic_ptr->val.rootDatum().cartanMatrix(si);
+{ cm=cc->ic_ptr->val.rootDatum().Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 

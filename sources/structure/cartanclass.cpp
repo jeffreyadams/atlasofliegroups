@@ -1014,7 +1014,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
   // get a (positive) basis for that root system, and its Cartan matrix
   RootNbrList rb=rd.simpleBasis(rs);
 
-  int_Matrix cm =rd.cartanMatrix(rb);
+  int_Matrix cm =rd.Cartan_matrix(rb);
 
   dynkin::DynkinDiagram dd(cm);
   auto comps = dd.components(); // make a modifiable copy
@@ -1045,7 +1045,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
 // The size of the twisted involution orbit for this class.
 size_t CartanClass::orbit_size(const RootSystem& rs) const
 {
-  LieType lt=dynkin::Lie_type(rs.cartanMatrix());
+  LieType lt=dynkin::Lie_type(rs.Cartan_matrix());
 
   // initialise |result| to size of full Weyl group
   size::Size result = weylsize::weylSize(lt);

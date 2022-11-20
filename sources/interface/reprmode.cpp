@@ -195,7 +195,7 @@ void repr_mode_entry()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),pi)
+		<< dynkin::Lie_type(sub->Cartan_matrix().transposed(),pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])
@@ -237,7 +237,7 @@ void repr_f()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),pi)
+		<< dynkin::Lie_type(sub->Cartan_matrix().transposed(),pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])

@@ -314,7 +314,7 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
   const auto afr = f.adjointFiberRank();
 
   const RootNbrList& si = f.simpleImaginary();
-  int_Matrix cm = rs.cartanMatrix(si);
+  int_Matrix cm = rs.Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm);
   Permutation a = d.perm();
   a.inv_conjugate(cm);

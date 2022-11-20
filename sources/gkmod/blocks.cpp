@@ -163,7 +163,7 @@ BlockElt& first_free_slot(BlockEltPair& p)
 
 Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
-  , dd(kgb.innerClass().rootDatum().cartanMatrix())
+  , dd(kgb.innerClass().rootDatum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , kl_tab_ptr(nullptr)
@@ -736,7 +736,7 @@ common_block::common_block // full block constructor
   const KGB& kgb = rc.kgb();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
 
   const unsigned our_rank = integral_sys.rank();
 
@@ -1085,7 +1085,7 @@ common_block::common_block // partial block constructor
   const auto& i_tab = involution_table();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
 
   using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
   struct inv_y_data
