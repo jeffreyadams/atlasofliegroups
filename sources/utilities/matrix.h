@@ -170,6 +170,8 @@ template<typename C>
 // a by-value operand |v| will be copy-constructed only if given by an lvalue
 template<typename C>
   Vector<C> operator/ (Vector<C> v,C c) { return v /= c; }
+template<typename C>
+  Vector<C> operator% (Vector<C> v,C c) { return v %= c; }
 
 
 template<typename C> class Matrix_base
@@ -353,6 +355,7 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& transpose() { base::transpose(); return *this; }
 
 // accessors
+  template<typename D> PID_Matrix<D> entry_type_convert() const;
   PID_Matrix transposed() const  & { return PID_Matrix(base::transposed()); }
   PID_Matrix transposed() &&
     { return PID_Matrix(std::move(*this)).transpose(); }
@@ -495,6 +498,16 @@ template<typename C>
       A(i,j+l)=tmp[l];
   }
 } // |column_apply|
+
+template<typename C> template<typename D>
+  PID_Matrix<D> PID_Matrix<C>::entry_type_convert() const
+{
+  PID_Matrix<D> result(this->numRows(),this->numColumns());
+  // we cannot access |result.d_data| directly, but |&result(0,0)| points there
+  // though we access underlying vector, no assumption of layout is made here
+  std::copy(this->d_data.begin(),this->d_data.end(),&result(0,0));
+  return result;
+}
 
 template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy

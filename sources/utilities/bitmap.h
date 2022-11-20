@@ -128,6 +128,8 @@ class BitMap
 
   bool empty() const; // whether |size()==0|
   bool full() const; // whether |size()==capacity()|
+  bool none() const { return empty(); } // naming compatibility with |BitSet|
+  bool any() const { return not empty(); }
 
   /*
     Tests whether bit n in the bitmap is set; that is, whether element n
