@@ -612,6 +612,7 @@ template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
+template class Matrix<short int>;     // for inverse Cartan matrix
 template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|

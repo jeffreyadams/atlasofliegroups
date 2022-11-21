@@ -1846,6 +1846,117 @@ void Weyl_coorbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ Some testing functions for orbit generation.
+
+@< Local function definitions @>=
+void basic_orbit_ws_wrapper(expression_base::level l)
+{
+  unsigned int stab_rank = get<int_value>()->uint_val();
+  shared_row v = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (v->val.size()<=stab_rank)
+    throw runtime_error("Index too large for given list of root numbers");
+  RootNbrSet stab; RootNbr final;
+  @< Check validity of root indices in |v->val| and the absence acute angles
+     among them; store internal number for its entry |stab_rank| in |final|,
+     and the set of its earlier entries in |stab| @>
+  if (l==expression_base::no_value)
+    return;
+@)
+  bool to_affine_orbit=false;
+  @< Set |to_affine_orbit| to whether coroot |final| is linearly dependent
+     on the coroots in |stab|; also intersect |stab| with the set of roots in
+     the Dynkin diagram component of |final| @>
+  const auto ws = to_affine_orbit
+    ? weyl::complete_affine_component(rd->val,rd->W(),stab,final)
+    : weyl::finite_subquotient(rd->val,rd->W(),stab,final);
+  own_row result = std::make_shared<row_value>(ws.size());
+  { size_t i=0;
+    for (auto&& w : ws)
+      result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  }
+  push_value(std::move(result));
+}
+@)
+void affine_orbit_ws_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto ws = weyl::affine_orbit_ws(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(ws.size());
+  { size_t i=0;
+    for (auto&& w : ws)
+      result->val[i++]=std::make_shared<W_elt_value>(rd,std::move(w));
+  }
+  push_value(std::move(result));
+}
+
+@ We temporarily make a list |walls| of root numbers after conversion to
+internal root numbering, but in the end only retain in |stab| the set of the
+first |stab_rank| entries, and in |final| the one following it.
+@< Check validity of root indices in |v->val| and... @>=
+{
+  RootNbrList walls; walls.reserve(v->val.size());
+  const unsigned int npr = rd->val.numPosRoots();
+  for (const auto& entry : v->val)
+  { int r = force<int_value>(entry.get())->int_val();
+      // could be positive or negative
+    if (r+npr < rd->val.numRoots()) // unsigned comparison
+      walls.push_back(r+npr); // convert to internal index
+    else
+    { std::ostringstream o;
+      o << "Invalid root number " << r;
+      throw runtime_error(o.str());
+    }
+  }
+
+  for (const RootNbr& alpha : walls)
+    for (const RootNbr& beta : walls)
+      if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
+      { std::ostringstream o;
+        o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
+          << " have acute angle.";
+        throw runtime_error(o.str());
+      }
+  stab = RootNbrSet(rd->val.numRoots(),&walls[0],&walls[stab_rank]);
+  final = walls[stab_rank];
+}
+
+@ When calling |affine_orbit_ws|, we need to decide whether the internal
+function to call is going to be |finite_subquotient| or
+|complete_affine_components|; the first one does not use modular vector
+arithmetic because the root |final| extends the finite Coxeter group |stab| to a
+higher rank finite Coxeter group, but for the second one this extension would be
+to an affine (therefore infinite) Coxeter group and this needs to be reduced to
+a finite computation by working modulo the root lattice.
+
+@< Set |to_affine_orbit| to whether coroot |final| is linearly dependent
+     on the coroots in |stab|; also intersect |stab| with the set of roots in
+     the Dynkin diagram component of |final| @>=
+{
+  RootNbrSet S = stab; S.insert(final);
+  for (const auto& comp : rootdata::components(rd->val,S))
+    if (comp.isMember(final))
+    {
+      stab &= comp;
+      RootNbrList roots(comp.begin(),comp.end());
+      auto dependency = // the number of dependencies among coroots in |comp|
+        lattice::kernel(rd->val.Cartan_matrix(roots)).numColumns();
+      assert(dependency <= 1);
+      to_affine_orbit = dependency>0;
+      break;
+    }
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
@@ -1923,6 +2034,10 @@ install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(RootDatum,vec->[WeylElt])");
 install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
+install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
+		"(RootDatum,[int],int->[WeylElt])");
+install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
+		"(RootDatum,ratvec->[WeylElt])");
 
 
 @*1 Weyl group elements.
@@ -6815,12 +6930,26 @@ void walls_wrapper(expression_base::level l)
   }
   if (l==expression_base::no_value)
     return;
-  RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
-  own_row result = std::make_shared<row_value>(0);
-  result->val.reserve(walls.size());
-  for (auto it=walls.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>(*it));
-  push_value(std::move(result));
+@)
+  int npr = rd->val.numPosRoots();
+  RootNbrSet integrals,walls = repr::wall_set(rd->val,gamma->val,integrals);
+  own_row roots = std::make_shared<row_value>(0);
+  roots->val.reserve(walls.size());
+  for (auto it=integrals.begin(); it(); ++it)
+  {
+    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
+    roots->val.push_back(std::make_shared<int_value>(*it-npr));
+  }
+
+  auto non_integrals = repr::sorted_by_label(rd->val,walls,integrals);
+  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
+    roots->val.push_back(std::make_shared<int_value>
+    // convert to signed root index
+       (static_cast<int>(*it)-npr));
+  push_value(std::move(roots));
+  push_value(std::make_shared<int_value>(integrals.size()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 @)
 void alcove_center_wrapper(expression_base::level l)
@@ -7060,7 +7189,7 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
-install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");

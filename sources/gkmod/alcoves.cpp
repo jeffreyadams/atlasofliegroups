@@ -15,6 +15,7 @@
 #include "matreduc.h"
 #include "lattice.h"
 #include "rootdata.h"
+#include "dynkin.h"
 #include "basic_io.h"
 #include "repr.h"
 
@@ -134,6 +135,46 @@ RootNbrSet wall_set
   return result;
 } // |wall_set|
 
+// list of |walls| excluding |integrals| sorted by decreasing labels for |walls|
+sl_list<RootNbr> sorted_by_label
+  (const RootSystem& rs, RootNbrSet walls, const RootNbrSet& integrals)
+{
+  RootNbrList roots(walls.begin(),walls.end());
+  int_Vector labels(rs.numRoots(),0);
+
+  auto comps = rootdata::components(rs,walls); // a list of subsets of |walls|
+  for (auto& comp : comps)
+  {
+    int_Matrix A(rs.rank(),comp.size());
+    { unsigned int j=0;
+      for (auto alpha : comp)
+	A.set_column(j++,rs.coroot_expr(alpha));
+    }
+    int_Matrix k = lattice::kernel(A);
+    assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
+
+    // now copy values from |k.column(0)| to |labels| at appropriate positions
+    unsigned int i=0; // position within |comp|
+    for (auto alpha : comp)
+      labels[alpha] = k(i++,0);
+  } // |for(comp : comps)|
+
+  sl_list<std::pair<int,RootNbr> > non_ints;
+  for (auto alpha : walls)
+  {
+    assert(labels[alpha]!=0);
+    if (not integrals.isMember(alpha))
+      non_ints.emplace_back(-labels[alpha],alpha);
+  }
+
+  non_ints.sort();
+  sl_list<RootNbr> result;
+  for (const auto& e : non_ints)
+    result.push_back(e.second);
+
+  return result;
+}
+
 /*
   Get fractional parts of wall evaluations, for special point in alcove.
   This special point retains the evaluation at coroots for which it was integer
@@ -143,7 +184,7 @@ RatNumList barycentre_eq
   (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
 {
   RatNumList result(walls.size(),RatNum(0,1));
-  auto comps = rootdata::components(rd,walls); // list of subsets of all roots
+  auto comps = rootdata::components(rd,walls); // a list of subsets of |walls|
   for (const auto& comp : comps)
   {
     int_Matrix A(rd.rank(),comp.size());
@@ -384,5 +425,367 @@ arithmetic::Numer_t simplify(const Rep_context& rc, StandardRepr& sr)
 }
 
 } // |namespace repr|
+
+namespace weyl {
+
+int label(const RootDatum& rd, Generator i)
+{
+  assert(rd.semisimple_rank()>0); // otherwise we cannot have generator |i|
+  BitMap high_roots = rd.posRootSet();
+  for (RootNbr alpha = rd.negRootNbr(rd.semisimple_rank()-1);
+       rd.is_negroot(alpha); ++alpha)
+    high_roots &= rd.min_coroots_for(alpha);
+  assert(high_roots.any());
+  for (auto gamma : high_roots)
+    if (int result=rd.coroot_expr_coef(gamma,i))
+      return result;
+  assert(false); // exactly one high root should have nonzero coefficient at |i|
+  return 0; // keep compiler happy
+}
+
+// use similar structure as in rootdata.cpp for |basic_orbit|
+struct orbit_elem // auxiliary data while generating orbit
+{
+  Weight v; // current orbit element
+  weyl::Generator s; // generator used to reach it
+  RankFlags seen; // generators that link to elements already seen (mostly down)
+  unsigned int prev; // index of orbit element it was reached from
+  orbit_elem(Weight&& v) : v(std::move(v)), s(-1), seen(), prev(-1) {}
+  orbit_elem(Weight v, weyl::Generator s, unsigned int prev)
+    : v(std::move(v)), s(s), seen(), prev(prev)
+  { seen.set(s); }
+};
+
+/*
+  Starting with nonzero vertex of fundamental alcove in direction of the
+  fundamental weight |i|, find list of acting Weyl group elements for the orbit
+  of its coset by the root lattice $R$ (a point in $X^* / R$). This is also a
+  set of coset representatives for the quotient of $W$ by the integral Weyl
+  group for that rational weight.
+*/
+sl_list<orbit_elem> vertex_orbit
+  (const int_Matrix& Cartan, weyl::Generator i, unsigned label)
+{
+  std::vector<int_Vector> adj_coroot;
+  adj_coroot.reserve(Cartan.numColumns());
+  for (unsigned j=0; j<Cartan.numColumns(); ++j)
+    adj_coroot.push_back(Cartan.column(j));
+
+  arithmetic::big_int denom;
+  int_Matrix inv_Cartan =  matrix::inverse(Cartan,denom);
+  int modulus = denom.convert<int>()*label;
+  // |modulus| is denominator of fundamental weight |i| in adjoint coordinates
+  Weight vertex = inv_Cartan.row(i)%modulus;
+  sl_list<orbit_elem> result;
+  auto start = result.end(); // first level starts at initial vector
+  result.emplace_back(std::move(vertex));
+  auto finish = result.end();
+
+  unsigned int count=0; // number of element currently generated from
+  while (true) // generate from |start|; possible |return| near end of loop
+  {
+    for (auto it=start; it!=finish; ++it,++count)
+      for (Generator s=0; s<Cartan.numRows(); ++s)
+      {
+	if (it->seen[s])
+	  continue; // skip if move towards element already seen
+	auto level = adj_coroot[s].dot(it->v);
+	if (level%modulus==0)
+	  continue; // skip if |wt| fixed
+	auto wt = it->v; // make a copy
+	wt[s] = arithmetic::remainder(wt[s] - level,modulus);
+
+	auto jt = finish; // list is kept decreasing after |finish|
+	while (not result.at_end(jt) and wt < jt->v)
+	  ++jt;
+
+	if (not result.at_end(jt) and wt == jt->v)
+	  jt->seen.set(s);
+	else
+	  result.emplace(jt,std::move(wt),s,count);
+      } // for |it| and |s|
+    if (result.at_end(finish)) // whether nothing new was contributed
+      return result; // if so, we are done and return directly
+    result.reverse(finish,result.end()); // make new part increasing
+    start = finish; finish = result.end(); // advance, repeat
+  } // |while(true)|
+
+  return result;
+} // |vertex_orbit|
+
+// wrap up results of |vertex_orbit| into a list of Weyl group elements
+sl_list<WeylElt> vertex_orbit_words
+  (const RootDatum& rd, const WeylGroup& W, Generator i)
+{
+  sl_list<WeylElt> orbit(1,WeylElt()); // start with identity
+  const auto cosets = vertex_orbit(rd.Cartan_matrix(),i,label(rd,i));
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in |orbit|
+    ++it; // then advance over it
+    for (auto jt = std::next(cosets.begin()); not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert(it, W.prod(jt->s,*ref[jt->prev]));
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+
+  return orbit;
+} // |vertex_orbit_words|
+
+/*
+  A simpler variant of |vertex_orbit|, for quotient by a maximal proper Levi
+
+  Given a Cartan matrix and a generator, generate Levi subquotient number |i|,
+  an orbit under the Weyl group of the first |i+1| generators of a vector whose
+  stabiliser is the Weyl group of the first |i| generators. We use an action
+  in adjoint coordinates, so the each reflection affects but a single entry.
+*/
+sl_list<orbit_elem> basic_orbit (const int_Matrix& Cartan, Generator i)
+{
+  assert(Cartan.numRows()>i); // we only use first |i+1| rows and columns
+  std::vector<int_Vector> adj_coroot;
+  {
+    adj_coroot.reserve(Cartan.numColumns());
+    for (unsigned j=0; j<Cartan.numColumns(); ++j)
+      adj_coroot.push_back(Cartan.partial_column(j,0,i+1));
+  }
+  big_int denom; // denominator needed for inverse, but unused here
+  auto inv_Cartan = inverse(Cartan.block(0,0,i+1,i+1),denom);
+
+  Weight vertex = inv_Cartan.row(i); // on insertection of the first |i| walls
+  sl_list<orbit_elem> result;
+  auto start = result.end(); // first level starts at initial vector
+  result.emplace_back(std::move(vertex));
+  auto finish = result.end();
+
+  unsigned int count=0; // number of element currently generated from
+  while (true) // generate from |start|; possible |return| near end of loop
+  {
+    for (auto it=start; it!=finish; ++it,++count)
+      for (Generator s=0; s<=i; ++s)
+      {
+	if (it->seen[s])
+	  continue; // skip if move towards element already seen
+	auto level = adj_coroot[s].dot(it->v);
+	if (level==0)
+	  continue; // skip if |wt| fixed
+	auto wt = it->v; // make a copy; actually a coweight if |dual| holds
+	wt[s] -= level;
+
+	auto jt = finish; // list is kept decreasing after |finish|
+	while (not result.at_end(jt) and wt < jt->v)
+	  ++jt;
+
+	if (not result.at_end(jt) and wt == jt->v)
+	  jt->seen.set(s);
+	else
+	  result.emplace(jt,std::move(wt),s,count);
+      } // for |it| and |s|
+    if (result.at_end(finish)) // whether nothing new was contributed
+      return result; // if so, we are done and return directly
+    result.reverse(finish,result.end()); // make new part increasing
+    start = finish; finish = result.end(); // advance, repeat
+  } // |while(true)|
+
+  return result;
+} // |basic_orbit|
+
+void extend_orbit_words
+  (sl_list<WeylElt>& orbit, // list of W elements that gets expanded
+   const WeylGroup& W,
+   const sl_list<orbit_elem>& cosets, // a basic orbit controlling the expansion
+   std::vector<WeylElt> gens // reflections used as generators in |cosets|
+   )
+{
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert(it, W.prod(gens[jt->s],*ref[jt->prev]));
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit_words| (simple)
+
+void extend_orbit_words
+  (sl_list<WeylElt>& orbit,
+   const RootSystem& rs,
+   const WeylGroup& W,
+   const RootNbrList& roots,
+   unsigned int stabiliser_rank)
+{
+  int_Matrix Cartan = rs.Cartan_matrix(roots);
+  dynkin::Lie_type(Cartan); // will throw if it is not valid
+  std::vector<WeylElt> reflections;
+  for (Generator i=0; i<roots.size(); ++i)
+    reflections.push_back(W.element(rs.reflection_word(roots[i])));
+  for (auto s = stabiliser_rank; s<roots.size(); ++s)
+  {
+    auto cosets = basic_orbit(Cartan,s);
+    extend_orbit_words(orbit,W,cosets,reflections);
+  }
+} // |extend_orbit_words| (iterated)
+
+/*
+   Assuming |comp| is an affine component of roots (no positive brackets, and
+   exactly one linear relation), and |stab| a strict subset, extend |orbit|
+   by cosets in the group generated by |comp| for the one generated by |stab|.
+*/
+void extend_affine_component
+  (sl_list<WeylElt>& orbit,
+   const RootDatum& rd, const WeylGroup& W,
+   RootNbrSet comp, const RootNbrSet& stab)
+{
+  const auto comp_size = comp.size(); // fize this before |comp| is modified
+  const unsigned stab_size = stab.size();
+  comp.andnot(stab); // and |comp| hencforth is rest of component
+
+  RootNbrList roots; roots.reserve(comp_size);
+  int_Vector labels;
+  {
+    int_Matrix A(rd.rank(),comp_size);
+    unsigned i=0;
+    for (auto alpha : stab)
+      roots.push_back(alpha),A.set_column(i++,rd.coroot(alpha));
+    for (auto alpha : comp)
+      roots.push_back(alpha),A.set_column(i++,rd.coroot(alpha));
+    int_Matrix k = lattice::kernel(A);
+    assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
+    labels = k(0,0)>0 ? k.column(0) : -k.column(0);
+  }
+
+  if (comp_size > stab_size+1)
+  { // sort non-stabilised part of |roots| by decreasing labels
+    sl_list<std::pair<int,RootNbr> > list;
+    for (unsigned int i=stab_size; i<comp_size; ++i)
+      list.emplace_back(-labels[i],roots[i]);
+    list.sort();
+    unsigned int i=stab_size;
+    for (const auto& p : list)
+    {
+      labels[i] = -p.first; roots[i]=p.second;
+      ++i;
+    }
+  }
+
+  assert(roots.size()==comp_size);
+  const RootNbr last = roots.back();
+  roots.pop_back();
+
+  if (roots.size()>stab_size) // equivalently |comp_size > stab_size+1|
+    extend_orbit_words(orbit,rd,W,roots,stab_size);
+
+  if (labels.back()>1) // then we need final extension using |vertex_orbit|
+  {
+    unsigned int i=stab_size; // there are no labels 1 from |stab_size| on
+    while (i-->0)
+      if (labels[i]==1)
+	break;
+    assert(i<stab_size); // we must have found some label 1
+    roots[i] = last; // that root will be "affine"; |last| replaces it
+    auto cosets = vertex_orbit(rd.Cartan_matrix(roots),i,labels.back());
+
+    std::vector<WeylElt> reflections;
+    for (Generator i=0; i<roots.size(); ++i)
+      reflections.push_back(W.element(rd.reflection_word(roots[i])));
+    extend_orbit_words(orbit,W,cosets,reflections);
+  }
+} // |extend_affine_component|
+
+sl_list<WeylElt> finite_subquotient
+  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
+{
+  assert(not stab.isMember(alpha));
+  RootNbrList walls(stab.begin(),stab.end());
+  walls.push_back(alpha);
+  int_Matrix Cartan = rd.Cartan_matrix(walls);
+  std::vector<WeylElt> reflections; reflections.reserve(walls.size());
+  for (auto alpha : walls)
+    reflections.push_back(W.element(rd.reflection_word(alpha)));
+
+  return basic_orbit_ws(Cartan,walls.size()-1,W,reflections);
+}
+
+sl_list<WeylElt> complete_affine_component
+  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
+{
+  assert(not stab.isMember(alpha));
+  sl_list<WeylElt> result { WeylElt() };
+  auto comp=stab;
+  comp.insert(alpha);
+  extend_affine_component(result,rd,W,comp,stab);
+  return result;
+}
+
+// orbit under affine Weyl group modulo translations by roots
+sl_list<WeylElt> affine_orbit_ws
+  (const RootDatum& rd, const WeylGroup& W, RatWeight gamma)
+{
+  RootNbrSet stabiliser;
+  RootNbrSet walls = repr::wall_set(rd,gamma,stabiliser);
+  sl_list<WeylElt> result { WeylElt() };
+
+  auto comps = rootdata::components(rd,walls); // a list of subsets of |walls|
+  for (auto& comp : comps)
+    if (not stabiliser.contains(comp))
+      extend_affine_component(result,rd,W,comp,stabiliser);
+
+  return result;
+} // |affine_orbit_ws|
+
+// wrap up results of |basic_orbit| into a list of Weyl group elements
+sl_list<WeylElt> convert_to_words
+  (const sl_list<orbit_elem>& cosets,
+   const WeylGroup& W,
+   std::vector<WeylElt> gens)
+{
+  sl_list<WeylElt> orbit(1,WeylElt()); // start with identity
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in |orbit|
+    ++it; // then advance over it
+    for (auto jt = std::next(cosets.begin()); not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert(it, W.prod(gens[jt->s],*ref[jt->prev]));
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+
+  return orbit;
+} // |convert_to_words|
+
+sl_list<WeylElt> basic_orbit_ws
+(const int_Matrix& Cartan, Generator i,
+ const WeylGroup& W,
+ std::vector<WeylElt> gens)
+{
+  return convert_to_words(basic_orbit(Cartan,i),W,gens);
+}
+
+} // |namespace weyl|
 
 } // |namespace atlas|

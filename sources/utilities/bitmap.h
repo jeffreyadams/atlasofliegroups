@@ -96,7 +96,7 @@ class BitMap
   template <typename I>
     BitMap(unsigned long n, const I& first, const I& last);
 
-  // an easier version for a full vector
+  //g an easier version for a full vector
   template <typename U> // unsigned integral type
   BitMap(unsigned long n,const std::vector<U>& v)
     : d_capacity(n), d_map((d_capacity+posBits)>>baseShift)
