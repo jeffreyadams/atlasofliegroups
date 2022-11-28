@@ -21,7 +21,7 @@
 
 namespace atlas {
 
-namespace repr {
+namespace weyl {
 
 using integer = arithmetic::Numer_t; // use a long signed integer type here
 
@@ -152,6 +152,8 @@ sl_list<RootNbr> sorted_by_label
     }
     int_Matrix k = lattice::kernel(A);
     assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
+    if (k(0,0)<0)
+      k.negate(); // ensure coefficents are positive
 
     // now copy values from |k.column(0)| to |labels| at appropriate positions
     unsigned int i=0; // position within |comp|
@@ -424,9 +426,6 @@ arithmetic::Numer_t simplify(const Rep_context& rc, StandardRepr& sr)
   return N;
 }
 
-} // |namespace repr|
-
-namespace weyl {
 
 int label(const RootDatum& rd, Generator i)
 {
@@ -739,7 +738,7 @@ sl_list<WeylElt> affine_orbit_ws
   (const RootDatum& rd, const WeylGroup& W, RatWeight gamma)
 {
   RootNbrSet stabiliser;
-  RootNbrSet walls = repr::wall_set(rd,gamma,stabiliser);
+  RootNbrSet walls = wall_set(rd,gamma,stabiliser);
   sl_list<WeylElt> result { WeylElt() };
 
   auto comps = rootdata::components(rd,walls); // a list of subsets of |walls|

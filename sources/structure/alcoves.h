@@ -16,7 +16,7 @@
 
 namespace atlas {
 
-namespace repr {
+namespace weyl {
 
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma);
 
@@ -37,9 +37,6 @@ bool make_multiple_integral
 arithmetic::Numer_t  // returns |N|
   simplify(const Rep_context& rc, StandardRepr& sr);
 
-} // |namespace repr|
-
-namespace weyl {
 
 sl_list<WeylElt> finite_subquotient
   (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);

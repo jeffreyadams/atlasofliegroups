@@ -1846,7 +1846,60 @@ void Weyl_coorbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
-@ Some testing functions for orbit generation.
+@ Here are two functions making available to the user the |wall_set| and
+|alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
+efficiency and safety against rational number overflow of the deformation
+algorithm.
+
+@h "alcoves.h"
+
+@< Local function def...@>=
+void walls_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (gamma->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Rational weight size mismatch: "
+      << gamma->val.size() << ':' << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  int npr = rd->val.numPosRoots();
+  RootNbrSet integrals,walls = weyl::wall_set(rd->val,gamma->val,integrals);
+  own_row roots = std::make_shared<row_value>(0);
+  roots->val.reserve(walls.size());
+  for (auto it=integrals.begin(); it(); ++it)
+  {
+    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
+    roots->val.push_back(std::make_shared<int_value>(*it-npr));
+  }
+
+  auto non_integrals = weyl::sorted_by_label(rd->val,walls,integrals);
+  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
+    roots->val.push_back(std::make_shared<int_value>
+    // convert to signed root index
+       (static_cast<int>(*it)-npr));
+  push_value(std::move(roots));
+  push_value(std::make_shared<int_value>(integrals.size()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void alcove_center_wrapper(expression_base::level l)
+{
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  push_value(std::make_shared<module_parameter_value> @|
+    (p->rf,weyl::alcove_center(p->rc(),p->val)));
+}
+
+@ Here are more general and more efficient functions for orbit generation, in
+fact enumerating quotients of pseudo-Levi subgroups.
 
 @< Local function definitions @>=
 void basic_orbit_ws_wrapper(expression_base::level l)
@@ -2034,6 +2087,8 @@ install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(RootDatum,vec->[WeylElt])");
 install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
+install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 		"(RootDatum,[int],int->[WeylElt])");
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
@@ -6910,58 +6965,6 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
-@ Here are two functions making available to the user the |wall_set| and
-|alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
-efficiency and safety against rational number overflow of the deformation
-algorithm.
-
-@h "alcoves.h"
-
-@< Local function def...@>=
-void walls_wrapper(expression_base::level l)
-{
-  shared_rational_vector gamma = get<rational_vector_value>();
-  shared_root_datum rd = get<root_datum_value>();
-  if (gamma->val.size()!=rd->val.rank())
-  { std::ostringstream o;
-    o << "Rational weight size mismatch: "
-      << gamma->val.size() << ':' << rd->val.rank();
-    throw runtime_error(o.str());
-  }
-  if (l==expression_base::no_value)
-    return;
-@)
-  int npr = rd->val.numPosRoots();
-  RootNbrSet integrals,walls = repr::wall_set(rd->val,gamma->val,integrals);
-  own_row roots = std::make_shared<row_value>(0);
-  roots->val.reserve(walls.size());
-  for (auto it=integrals.begin(); it(); ++it)
-  {
-    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
-    roots->val.push_back(std::make_shared<int_value>(*it-npr));
-  }
-
-  auto non_integrals = repr::sorted_by_label(rd->val,walls,integrals);
-  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
-    roots->val.push_back(std::make_shared<int_value>
-    // convert to signed root index
-       (static_cast<int>(*it)-npr));
-  push_value(std::move(roots));
-  push_value(std::make_shared<int_value>(integrals.size()));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
-}
-@)
-void alcove_center_wrapper(expression_base::level l)
-{
-  shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
-
-  push_value(std::make_shared<module_parameter_value> @|
-    (p->rf,alcove_center(p->rc(),p->val)));
-}
-
 @ The following wrapper function makes available the Atlas implementation of
 Tarjan's strong component algorithm, the one that is used to isolate cells in a
 $W$-graph. It actually involves no atlas-specific types at all, as it encodes
@@ -7189,8 +7192,6 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
-install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
-install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
