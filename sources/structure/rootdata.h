@@ -120,24 +120,22 @@ class RootSystem
     : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
 
-  struct root_compare; // auxilary type defined here for access reasons
+  struct root_compare; // auxiliary type defined here for access reasons
 
   const unsigned char rk; // rank of root system
   const bool prefer_co;
+  short int C_denom; // denominator implied in |invCmat| below
 
-  matrix::Matrix_base<byte> Cmat; // Cartan matrix in compressed format
+  matrix::PID_Matrix<byte> Cmat; // Cartan matrix in compressed format
+  matrix::PID_Matrix<short int> invCmat; // inverse may require larger entries
 
   std::vector<root_info> ri; // information about individual positive roots
 
   // the following two are relations on the full root set
+  // bitmap at |i| flags (co)roots for which (co)root |i| cannot be subtracted
   std::vector<RootNbrSet> root_ladder_bot; // minima for root ladders for |alpha|
   std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
 
-
-  // internal access methods
-  byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
-  const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
-  { return Cmat(i,j); }
 
   // in the following 4 methods |i| indexes a positive root or corrot
   Byte_vector& root(RootNbr i) { return ri[i].root;}
@@ -166,13 +164,14 @@ public:
   bool prefer_coroots() const { return prefer_co; }
 
   // Cartan matrix by entry and as a whole
-  int cartan(weyl::Generator i, weyl::Generator j) const
-  { return Cartan_entry(i,j); };
+  int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };
   bool diagram_linked(weyl::Generator i, weyl::Generator j) const
-  { return Cartan_entry(i,j)<0; };
-  int_Matrix cartanMatrix() const;
+  { return Cmat(i,j)<0; };
+  int_Matrix Cartan_matrix() const;
+  int_Matrix inverse_Cartan_matrix() const;
+  int Cartan_denominator() const { return C_denom; }
 
-  int_Matrix cartanMatrix(const RootNbrList& sub) const; // for subsystem
+  int_Matrix Cartan_matrix(const RootNbrList& sub) const; // for subsystem
   LieType subsystem_type(const RootNbrList& sub) const;
 
 
@@ -180,6 +179,10 @@ public:
 // root list access; unless noted, |alpha| indexes the full root system
 
   // express any root in simple root basis; any coroot in simple coroot basis
+  int root_expr_coef(RootNbr alpha, weyl::Generator i) const
+  { int v=root(rt_abs(alpha))[i]; return is_negroot(alpha) ? -v : v; }
+  int coroot_expr_coef(RootNbr alpha, weyl::Generator i) const
+  { int v=coroot(rt_abs(alpha))[i]; return is_negroot(alpha) ? -v : v; }
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
@@ -375,7 +378,6 @@ class RootDatum
 
   Coweight d_dual_2rho;
 
-  int Cartan_denom; // Denominator for (co)|weight_numer|
 
 /* BitSet recording whether the root datum is adjoint/simply connected.
 
@@ -398,7 +400,7 @@ class RootDatum
   RootDatum(const RootDatum&) = delete;
   RootDatum(RootDatum&&) = default;
 
-#if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
+#if 0 // (co)derived constructors no longer used, done at |PreRootData| level now
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
 #endif
@@ -627,7 +629,7 @@ class RootDatum
   { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
-  // here the word |ww| is travered as in |act_inverse|, but coreflection used
+  // here the word |ww| is traversed as in |act_inverse|, but coreflection used
   void dual_act(Coweight& ell,const WeylWord& ww) const
     {
       for (auto i=0u; i<ww.size(); ++i)
@@ -683,10 +685,6 @@ class RootDatum
   { return coroot_sum(*this,posRootSet()&rs); }
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
-
-// manipulators
-
-  void swap(RootDatum&);
 
 // implicit conversion
   operator PreRootDatum() const;

@@ -6,13 +6,21 @@
  p=R_q(pi_L):  infinitesimal character(p)=infinitesimal character(p_L) + rho(u)
  rho(u)=[3,3,...3,-3,...-3]/2
  }
-set speh(int n, int k_0)=
+set speh_0(int n, int k_0)=
 assert(is_even(n), "n must be even");
 let G=GL(n,R) then
 k=k_0{-2} then
 L=theta_stable_parabolics(G)~[1].Levi then
 p_L=parameter(L.trivial.x,rho(L)+k*(ones(n\2)##-ones(n\2)),rho(L)) in
-first_param(theta_induce_irreducible(p_L,G))
+{first_param(theta_induce_irreducible(p_L,G))}
+theta_induce_irreducible(p_L,G)
+
+set Speh_0(int n, int k)=speh_0(2*n,k-n)
+set Speh(int n, int k)=
+let z=Speh_0(n,k) in
+assert(#z=1,"module is not irreducible");first_param(z)
+
+
 
 set speh_long(int n, int k_0)=
 assert(is_even(n), "n must be even");
@@ -20,7 +28,7 @@ let G=GL(n,R) then
 k=k_0{-2} then
 L=theta_stable_parabolics(G)~[1].Levi then
 p_L=parameter(L.trivial.x,rho(L)+k*(ones(n\2)##-ones(n\2)),rho(L)) in
-(L,p_L,first_param(theta_induce_irreducible(p_L,G)))
+(L,p_L,theta_induce_irreducible(p_L,G))
 
 {
 set speh(int n, int a, int b)=

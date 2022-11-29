@@ -7,12 +7,14 @@
   For license information see the LICENSE file
 */
 
-#include "bigint.h"
+#include <limits>
+#include <cmath>
 #include <cassert>
 #include <iomanip>
 #include <stdexcept>
 #include <cstring>
-#include <cmath>
+
+#include "bigint.h"
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -124,6 +126,17 @@ bool big_int::operator== (const big_int& x) const
     if (*it != *x_it)
       return false;
   return true;
+}
+
+template<typename C> // a signed integer type, no more than 32 bits long
+C big_int::convert () const
+{
+  constexpr auto bit_length = std::numeric_limits<C>::digits;
+  assert(bit_length<32);
+  constexpr digit bound = 1UL<<bit_length;
+  if (size()>1 or (bound <= d[0] and d[0] < -bound))
+    throw std::runtime_error("Integer value to big for conversion");
+  return static_cast<C>(d[0]);
 }
 
 int big_int::int_val() const
@@ -357,6 +370,18 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(acc);
   else if(is_negative())
     d.push_back(0); // ensure positive sign
+}
+
+big_int& big_int::operator*= (digit x)
+{ if (is_negative())
+  {
+    negate(); // now |*this| has been made non-negative
+    mult_add(x,0);
+    negate();
+  }
+  else
+    mult_add(x,0);
+  return *this;
 }
 
 big_int& big_int::operator*= (int x0)
@@ -1027,6 +1052,9 @@ big_rat big_rat::power (int e) const
     result.invert();
   return result;
 }
+
+// template member instances
+template short int big_int::convert<short int> () const;
 
 } // |namespace arithmetic|
 } // |namespace atlas|

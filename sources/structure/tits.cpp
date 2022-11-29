@@ -159,7 +159,7 @@ RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
   RankFlags result;
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    result.set(s,hasDescent(s,a.tw())); // this covers all cases precisely!
+    result.set(s,has_descent(s,a.tw())); // this covers all cases precisely!
   return result;
 }
 
@@ -187,7 +187,7 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
     return d/2; // report half of length change in Weyl group
   }
 
-  if (not hasDescent(s,x.w)) // imaginary cross action
+  if (not has_descent(s,x.w)) // imaginary cross action
     imaginary_cross_act(s,x.t);
   return 0; // no length change this case
 }
@@ -217,7 +217,7 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
   simple root |alpha| become a noncompact root means the value should in fact
   be integer). We may modify by a rational multiple of $\alpha^\vee$, since
   being $-\theta$-fixed after the Cayley transform such a coweight has zero
-  evalution on $\theta$-fixed weights (so the evaluation on imaginary roots
+  evaluation on $\theta$-fixed weights (so the evaluation on imaginary roots
   stays half-integral), and modulo coweights that are $-\theta$-fixed before
   the Cayley transform (which do not affect $\alpha$, and which we continue to
   not care about) multiples of $\alpha^\vee$ are the only freedom we have to
@@ -250,7 +250,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
   do_inverse_Cayley(s,a.t);
-  leftMult(a.w,s);
+  left_multiply(a.w,s);
 }
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
@@ -469,14 +469,14 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
 void TitsGroup::sigma_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().leftMult(a.d_w,s)<0) // on length decrease
+  if (weylGroup().left_multiply(a.d_w,s)<0) // on length decrease
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
 void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().leftMult(a.d_w,s)>0) // on length increase
+  if (weylGroup().left_multiply(a.d_w,s)>0) // on length increase
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
@@ -485,7 +485,7 @@ void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
   Right multiply |a| by the canonical generator $sigma_s$.
 
   Algorithm: similar to above, but omitting the |reflect| (since the torus
-  part is at the left), and using |weyl::mult| instead of |weyl::leftMult|,
+  part is at the left), and using |weyl::mult| instead of |weyl::left_multiply|,
   and |right_add| to add the possible contribution $m_s$ instead of
   |left_add|; the latter implicitly involves a call to |pull_across|.
 */
@@ -563,7 +563,7 @@ TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
 
 // Based Tits group for the adjoint group
 TitsCoset::TitsCoset(const InnerClass& G)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
   , Tg(*my_Tits_group)
@@ -576,7 +576,7 @@ TitsCoset::TitsCoset(const InnerClass& G)
 
 // Based Tits group for the adjoint dual group
 TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix().transposed(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
   , Tg(*my_Tits_group)
@@ -697,7 +697,7 @@ bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
    |alpha| as a sum of simple roots, reducing the coefficients modulo 2, and
    taking the scalar product with the complement of the base grading. For the
    evaluation of |alpha| at |t|, we can again use the bits of the mentioned
-   reduction modulo 2, but now we must multiply by te dual $m_\alpha$'s
+   reduction modulo 2, but now we must multiply by the dual $m_\alpha$'s
    (simple roots modulo 2) before taking the scalar product with |t|.
 */
 
@@ -824,7 +824,7 @@ found:
 
   assert(result.tw()==tw);
 
-  return result;  // result should be reduced immediatly by caller
+  return result;  // result should be reduced immediately by caller
 } // |EnrichedTitsGroup::backtrack_seed|
 
 

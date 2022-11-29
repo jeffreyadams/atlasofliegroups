@@ -314,9 +314,9 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
   const auto afr = f.adjointFiberRank();
 
   const RootNbrList& si = f.simpleImaginary();
-  int_Matrix cm = rs.cartanMatrix(si);
+  int_Matrix cm = rs.Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm);
-  Permutation a = dynkin::bourbaki(d);
+  Permutation a = d.perm();
   a.inv_conjugate(cm);
 
   strm << "cartan matrix of imaginary root system is:" << std::endl;
@@ -737,7 +737,7 @@ std::ostream& print_real_form_name(std::ostream& strm, const Grading& gr,
 
   Precondition: |d_gr| contains a grading of the simple roots (effectively only
   grading those that are imaginary), which represents the given real form, and
-  which is special in that it contains a mimimal number of roots marked
+  which is special in that it contains a minimal number of roots marked
   noncompact; this implies there is precisely one such simple root for each
   non-quasicompact non-complex non-torus simple factor of the Lie type.
 

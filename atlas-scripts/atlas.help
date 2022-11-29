@@ -490,7 +490,7 @@ the '[' by '~', which means the array is conceptually reversed before the slice
 is taken, so v~[0:0~] is the reversal of v, and v~[1:0~] leaves out the initial
 element of the reversal of v, so it is the reverse of v without its final
 element v[#v-1]=v~[0]. Within v~[ : ] and index like i~ undergoes reversal twice
-in its interpretation, and refers to the separation the in v come before v[i].
+in its interpretation, and refers to the separation that in v comes before v[i].
 Finally, one can omit an index entirely (but keep the ':' to indicate a slice),
 which for the first index position defaults to 0 (start at the beginning) and
 for the second index position defaults to 0~ (continue up to the end).
@@ -1693,7 +1693,7 @@ There are while loops, whose simplest form is
   while ... do ... od
 
 with as usual a continuation condition after 'while'. This condition is
-evaluated before each iteration, and if it eveluates to false, there is no
+evaluated before each iteration, and if it evaluates to false, there is no
 further iteration and the evaluation of the loop is completed. The loop body is
 the expression between 'do' and 'od', and it is evaluated once after each time
 the condition evaluates to 'true'. The value of the loop is the list of the

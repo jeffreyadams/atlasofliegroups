@@ -18,6 +18,7 @@
 #include "../Atlas.h"
 
 #include "bitset.h"
+#include "lietype.h"
 #include "permutations.h"
 #include "sl_list.h"
 
@@ -33,9 +34,6 @@ namespace dynkin {
  */
 typedef std::pair<unsigned char, unsigned char> Edge;
 
-// The Multiplicity of an Edge should be 1, 2, or 3.
-typedef unsigned char Multiplicity;
-
 class DynkinDiagram;
 
 /******** function declarations *********************************************/
@@ -45,14 +43,7 @@ class DynkinDiagram;
   LieType Lie_type(const int_Matrix& cm);
 
   // same, also set |pi| to permutation "straightening" each diagram component
-  LieType Lie_type(const int_Matrix& cm,
-		   bool Bourbaki, // whether Bourbaki order is requested
-		   bool check, // if true, be prepared for arbitrary |cm|
-		   Permutation& pi);
-
-  Permutation normalize(const DynkinDiagram& d);
-
-  Permutation bourbaki(const DynkinDiagram& d);
+  LieType Lie_type(const int_Matrix& cm, Permutation& pi);
 
 
 /******** type definitions **************************************************/
@@ -68,11 +59,27 @@ class DynkinDiagram;
 */
 class DynkinDiagram
 {
+ public:
+
+  struct comp_info
+  {
+    lietype::TypeLetter type; unsigned char offset;
+    RankFlags support;
+    std::vector<unsigned char> position;
+
+    // only initialise |support| to singleton; |DinkinDiagram| ctor does rest
+  comp_info(unsigned i) : type('T'), offset(-1), support(1u<<i), position() {}
+    unsigned rank() const { return position.size(); }
+  };
+
+ private:
   // Adjacency relations: |d_star[i].test(j)|: whether |i| and |j| are neighbors
   std::vector<RankFlags> d_star;
 
   // List of edges from longer to shorter node, with edge label (2 or 3)
-  std::vector<std::pair<Edge,Multiplicity> > d_downedge;
+  sl_list<std::pair<Edge,short int> > down_edges;
+
+  sl_list<comp_info> comps;
 
  public:
 
@@ -85,38 +92,32 @@ class DynkinDiagram
 
   unsigned int rank() const { return d_star.size(); }
 
-  bool isConnected() const;
-  bool isSimplyLaced() const { return edge_label()==1; }
+  // the next two attributes are only valid after calling |classisfy()|
+  LieType type() const;
+  Permutation perm() const;
+
+  bool is_simply_laced() const;
 
   int Cartan_entry(unsigned int i,unsigned int j) const;
-  Multiplicity edge_multiplicity(unsigned int i,unsigned int j) const
+  int edge_multiplicity(unsigned int i,unsigned int j) const
     { return Cartan_entry(i,j)*Cartan_entry(j,i); }
   bool are_adjacent(unsigned int i, unsigned int j) const
     { return star(i).test(j); }
 
-  RankFlags component(unsigned int i) const; // component containing vertex $i$
-  containers::sl_list<RankFlags> components() const;
-
-  LieType classify_semisimple(Permutation& a, bool Bourbaki)  const;
+  const containers::sl_list<comp_info>& components() const { return comps; }
 
   // these are mostly internal methods, but cannot be private in current setup
-  RankFlags extremities() const; // find nodes of degree 1 or 0
-  Edge labelled_edge() const; // find edge with label (not 1), assumed present
-  unsigned int fork_node() const; // find node of degree>2, or rank() if none
   RankFlags star(unsigned int j) const { return d_star[j]; } // copies it
 
-  // transformers (return related Dynkin diagrams)
-  DynkinDiagram subdiagram(RankFlags selection) const;
+  // transformer (returns related Dynkin diagram)
   DynkinDiagram folded(const ext_gens& orbits) const;
 
-// manipulators: none (Dynkin diagrams are static objects)
+// manipulators:
 
-  friend LieType Lie_type(const int_Matrix&); // uses |component_kind()|
 private: // functions that are only meaningful for connected diagrams
 
-  Multiplicity edge_label() const; // (maximal) label of edge, or 1 if none
-  lietype::TypeLetter component_kind() const;
-  SimpleLieType classify_simple(Permutation& pi, bool Bourbaki) const;
+  void classify(const int_Matrix& Cartan);
+  void classify(const int_Matrix& Cartan,comp_info& ci) const;
 }; // |class DynkinDiagram|
 
 } // |namespace dynkin|

@@ -55,7 +55,7 @@
   It turns out that possibilities are even more restricted then implied by the
   above relation, and every block element $z=(x,y)$ occurs, for each generator
   |s|, in one of the following five configurations. At the left we depict the
-  coordinate |x| in the kgb set, to the right of it the coordinte |y| in the
+  coordinate |x| in the kgb set, to the right of it the coordinate |y| in the
   dual kgb set; in the former case going down increases the length, in the
   latter it decreases the length. At the right we describe the local block
   structure; the terminology used there refers mostly to what happened for |x|,
@@ -100,7 +100,7 @@
 
   If |s| is imaginary compact for the involution, it will be real and not in
   the image of the Cayley transform for the dual involution. No Cayley
-  transorm will be defined for the |x| coordinate, and no inverse Cayley
+  transform will be defined for the |x| coordinate, and no inverse Cayley
   transform for the |y| coordinate, and both are fixed by the cross action;
   the situation is called ImaginaryCompact.
 
@@ -163,7 +163,7 @@ BlockElt& first_free_slot(BlockEltPair& p)
 
 Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
-  , dd(kgb.innerClass().rootDatum().cartanMatrix())
+  , dd(kgb.innerClass().rootDatum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , kl_tab_ptr(nullptr)
@@ -406,7 +406,7 @@ void Block_base::fill_kl_tab(BlockElt limit,
   List of any descents of |y| by $\alpha$ for which $\beta$ becomes a descent
   and ascents of |y| by |beta$ for which $\alpha$ becomes an ascent
 
-  Here $\alpha$  and $\beta$ shoudl be adjacent roots, of which $\alpha$ is
+  Here $\alpha$  and $\beta$ should be adjacent roots, of which $\alpha$ is
   a (weak) descent for |y|, while $\beta$ is an ascent for |y|.
 
   If this is not the case, a pair of |UndefBlock| elements is returned
@@ -512,7 +512,7 @@ Bare_block Bare_block::dual(const Block_base& block)
 /*****				Block					****/
 
 
-Block::Block(const Block& b) // obligatory but in practice unused contruction
+Block::Block(const Block& b) // obligatory but in practice unused construction
   : Block_base(b) // copy
   , tW(b.tW) // share
   , d_Cartan(b.d_Cartan)
@@ -606,7 +606,7 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
 } // |Block::Block(kgb,dual_kgb)|
 
 // Construction function for the |Block| class.
-// It is a pseudo constructor method that ends calling main contructor
+// It is a pseudo constructor method that ends calling main constructor
 Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
@@ -618,7 +618,7 @@ Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
   return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
 }
 
-// Given both real group and dual real group, we can just call main contructor
+// Given both real group and dual real group, we can just call main constructor
 Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
 {
   auto& kgb = G_R.kgb(); auto& dual_kgb = dG_R.kgb(); // temporaries
@@ -736,7 +736,7 @@ common_block::common_block // full block constructor
   const KGB& kgb = rc.kgb();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
 
   const unsigned our_rank = integral_sys.rank();
 
@@ -1085,7 +1085,7 @@ common_block::common_block // partial block constructor
   const auto& i_tab = involution_table();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
 
   using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
   struct inv_y_data

@@ -109,7 +109,7 @@ InnerClass::C_info::C_info
   , below(i)
   , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
 		   compute_matrix(G,tw))) // generate fiber and dual fiber
-  , real_labels(), dual_real_labels() // these start out emtpy
+  , real_labels(), dual_real_labels() // these start out empty
   {}
 
 
@@ -126,7 +126,7 @@ InnerClass::InnerClass
   , d_rootDatum(*own_datum)
   , d_dualRootDatum(*own_dual_datum)
 
-  , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
+  , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
@@ -162,7 +162,7 @@ InnerClass::InnerClass
   : own_datum(nullptr), own_dual_datum(nullptr) // don't own for this case
   , d_rootDatum(rd), d_dualRootDatum(drd) // but capture the references instead
 
-  , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
+  , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
@@ -324,7 +324,7 @@ void InnerClass::construct() // common part of two constructors
 	SmallBitVector alpha_bin(d_rootDatum.inSimpleCoroots(alpha));
 
 	TwistedInvolution tw = Cartan[i].tw; // non-dual
-	TwistedInvolution tw_dual = W.opposite(tw);
+	TwistedInvolution tw_dual = W.prod(tw,W.longest());
 
 	// create a test element with null torus part
 	TitsElt a(dual_Tg,tw_dual);
@@ -342,9 +342,9 @@ void InnerClass::construct() // common part of two constructors
 
 	bool zero_grading = dual_adj_Tg.simple_grading(a,j);
 
-	assert(tw==W.opposite(a.tw())); // coherence with dual group
+	assert(tw==W.prod(a.tw(),W.longest())); // coherence with dual group
 
-	W.leftMult(tw,j); // "Cayley transform"
+	W.left_multiply(tw,j); // "Cayley transform"
 	WeylWord ww=canonicalize(tw); // in non-dual setting
 
 	CartanNbr ii;
@@ -371,7 +371,7 @@ void InnerClass::construct() // common part of two constructors
 	      dual_adj_Tg.basedTwistedConjugate(x,conjugator);
 	      dual_adj_Tg.Cayley_transform(x,j);
 	      dual_adj_Tg.basedTwistedConjugate(x,ww);
-	      assert(x.tw()==W.opposite(tw));
+	      assert(x.tw()==W.prod(tw,W.longest()));
 
 	      out_rep=dual_Tg.left_torus_part(x).data();
 	    }
@@ -425,7 +425,7 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   {
     const C_info& src = G.Cartan[i];
 
-    const TwistedInvolution tw_org = W.opposite(src.tw);
+    const TwistedInvolution tw_org = W.prod(src.tw,W.longest());
     TwistedInvolution canon_tw = tw_org;
     WeylWord conjugator = canonicalize(canon_tw);
 
@@ -454,7 +454,7 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
     {
       TitsElt y(dual_Tg,TorusPart(dst.dual_rep[*it],semisimple_rank()),src.tw);
       dual_adj_Tg.basedTwistedConjugate(y,conjugator);
-      assert(y.tw()==W.opposite(dst.tw));
+      assert(y.tw()==W.prod(dst.tw,W.longest()));
       dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
     }
 
@@ -560,7 +560,7 @@ void InnerClass::map_dual_real_forms(CartanNbr cn)
   TitsCoset dual_adj_Tg(*this,tags::DualTag());
   const Fiber& dual_f = Cartan[cn].Cc.dualFiber();
   const Partition& dual_weak_real = dual_f.weakReal();
-  const TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);
+  const TwistedInvolution dual_tw = W.prod(Cartan[cn].tw,W.longest());
   const RootNbrList& sre = dual_f.simpleImaginary(); // simple real
 
   Cartan[cn].dual_real_labels.resize(dual_weak_real.classCount());
@@ -743,7 +743,7 @@ InnerClass::canonicalize
   and $\alpha$ a simple root that does not lie in $S$, then the sum of
   positive roots of $s_\alpha(S)$ is the image by $s_\alpha$ of the sum of
   positive roots of $S$. The reason is that the action of $s_\alpha$ almost
-  preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
+  preserves the notion of positivity; it only fails for the roots $\pm\alpha$,
   which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
   $s_\alpha$ when the sum of positive roots in $S$ is strictly anti-dominant
   for $\alpha$, where $S$ is first the system of real roots, and later the
@@ -791,7 +791,7 @@ InnerClass::canonicalize
   Now ensure that the involution |theta| associated to the twisted involution
   |sigma| fixes the dominant chamber for the root subsystem now flagged in
   |gens|, which we shall call the complex root subsystem. Since |theta|
-  stabilises this subsytem globally, this means it must be made to permute its
+  stabilises this subsystem globally, this means it must be made to permute its
   positive and negative roots separately. We repeatedly inspect the simple
   roots of this subsystem, searching for some $\alpha_i$ that maps to a
   negative root; each time one is found, we twisted-conjugate |sigma| by $i$,
@@ -818,7 +818,7 @@ InnerClass::canonicalize
     while (it()); // i.e., while |for| loop was interrupted
   }
 
-  return ww; // but the main result is the modfied value left in |sigma|
+  return ww; // but the main result is the modified value left in |sigma|
 } // |canonicalize|
 
 // find the number of the Cartan class containing twisted involution |sigma|
@@ -1050,7 +1050,7 @@ InnerClass::central_fiber(RealFormNbr rf) const
   We need |central_fiber| in |x0_torus_part| only to standardise the choice;
   this is achieved by taking the minimum over that fiber, after adding |bits|.
 
-  What preceeds that is straightforward: start with the reference compacts for
+  What precedes that is straightforward: start with the reference compacts for
   the square class; compare with the desired compacts at |x0| obtained from
   |simple_roots_x0_compact(rf)| to find the grading shift needed, and using
   |grading_shift_repr| find a |TorusPart| that will do this.
@@ -1166,7 +1166,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
     {
       weyl::Generator s=dec[j];
       so.push_back(rs.simpleRootNbr(s));
-      W.leftMult(tw,s);
+      W.left_multiply(tw,s);
     }
     else // cross action by simple root
     {
@@ -1468,7 +1468,7 @@ bool checkDecomposition(const TwistedInvolution& ti,
   {
     InvolutionData id(rs,W.simple_images(rs,tw));
     assert(id.imaginary_roots().isMember(*it));
-    W.leftMult(tw,rs.reflectionWord(*it));
+    W.left_multiply(tw,rs.reflectionWord(*it));
   }
 
   return tw == ti;

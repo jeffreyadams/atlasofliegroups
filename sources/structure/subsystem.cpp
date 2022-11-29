@@ -9,7 +9,7 @@
 
 #include "subsystem.h"
 
-#include "ratvec.h"	// acces to infinitesimal character |gamma|
+#include "ratvec.h"	// access to infinitesimal character |gamma|
 #include "bitmap.h"	// root sets
 #include "matreduc.h"   // |diagonalise| used in |codec| constructor
 
@@ -27,7 +27,7 @@ namespace atlas {
 namespace subsystem {
 
 SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
-  : RootSystem(parent.cartanMatrix(sub_sys.to_vector()), // build new system
+  : RootSystem(parent.Cartan_matrix(sub_sys.to_vector()), // build new system
 	       parent.prefer_coroots()) // no flip, roots will be roots
   , rd(parent) // share
   , which(parent.numPosRoots())
@@ -86,7 +86,7 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   } // |for(i<numPosRoots())|
 }
 
-SubSystem SubSystem::integral // pseudo contructor for integral system
+SubSystem SubSystem::integral // pseudo constructor for integral system
   (const RootDatum& parent, const RatWeight& gamma)
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed!
@@ -146,7 +146,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
 
-  WeylWord wrt = // rightmost letter |wrt| applies first to disinguished |Delta|
+  WeylWord wrt = // its rightmost letter applies first to distinguished |Delta|
     rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
 
   // |Delta| now describes a twist of the subsystem Dynkin diagram
@@ -196,10 +196,10 @@ InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
 SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
 				       const sl_list<RootNbr>& sub_sys)
   : SubSystem(parent,sub_sys) // build
-  , sub_W(RootSystem::cartanMatrix()) // use sub-side Cartan matrix built above
+  , sub_W(RootSystem::Cartan_matrix()) // use sub-side Cartan matrix built above
 {}
 
-SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
+SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
   (const RootDatum& parent, const RatWeight& gamma)
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed!

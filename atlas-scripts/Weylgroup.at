@@ -29,21 +29,8 @@ set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
 set root_reflection (RootDatum rd, vec alpha) = WeylElt:
   let (w,beta) = from_simple(rd,alpha) in w*W_gen(rd,root_index(rd,beta))*/w
 
-{			--- cross action ---				}
+{ cross action for |KGBElt| and |Param| by |WeylElt|: now defined in basic.at }
 
-
-set cross (WeylElt w,KGBElt x) = KGBElt:
-  assert(w.root_datum=x.root_datum);
-  for s in w.word ~do x:=cross(s,x) od; x
-set cross (KGBElt x,WeylElt w) = KGBElt:
-  assert(w.root_datum=x.root_datum);
-  for s in w.word do x:=cross(s,x) od; x
-set cross (WeylElt w,Param p) = Param:
-  assert(w.root_datum=p.integrality_datum);
-  for s in w.word ~do p:=cross(s,p) od; p
-set cross (Param p,WeylElt w) = Param:
-  assert(w.root_datum=p.integrality_datum);
-  for s in w.word do p:=cross(s,p) od; p
 
 {		--- translating to dominant gamma ---			}
 

@@ -195,8 +195,7 @@ void repr_mode_entry()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),
-				    true,false,pi)
+		<< dynkin::Lie_type(sub->Cartan_matrix().transposed(),pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])
@@ -238,8 +237,7 @@ void repr_f()
     else
     {
       std::cout << "of type "
-		<< dynkin::Lie_type(sub->cartanMatrix().transposed(),
-				    true,false,pi)
+		<< dynkin::Lie_type(sub->Cartan_matrix().transposed(),pi)
 		<< ", with roots ";
       for (weyl::Generator s=0; s<sub->rank(); ++s)
 	std::cout << sub->parent_nr_simple(pi[s])
@@ -401,7 +399,7 @@ void kllist_f()
   Print out the list of all K-L polynomials for primitive pairs.
 
   Explanation: x is primitive w.r.t. y, if any descent for y is also a
-  descent for x, or a type II imaginary ascent. Ths means that none of
+  descent for x, or a type II imaginary ascent. This means that none of
   the easy recursion formulas applies to P_{x,y}.
 */
 

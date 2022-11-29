@@ -84,8 +84,9 @@ class Partition
   // An element belonging to class |c| (in fact the first such element)
   unsigned long classRep(unsigned long c) const { return d_classRep[c]; }
 
-  // The number of elements belonging to class |c|
+  // The number of elements belonging to class |c| (inefficient)
   unsigned long classSize(unsigned long) const;
+  std::vector<unsigned long> class_sizes() const;
 
   // Number of elements of the underlying set of the partition
   unsigned long size() const { return d_class.size(); }

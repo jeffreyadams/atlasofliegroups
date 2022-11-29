@@ -69,7 +69,7 @@ std::ostream& do_print(const Block_base& block,std::ostream& strm,
   {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << z;
-    if (traditional) // prining "local" x,y is confusing in other cases
+    if (traditional) // printing "local" x,y is confusing in other cases
       strm << '(' << std::setw(xwidth) << block.x(z)
 	   << ',' << std::setw(ywidth) << block.y(z) << "):";
     else

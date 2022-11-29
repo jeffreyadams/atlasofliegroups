@@ -237,7 +237,7 @@ struct bitset_entry : public RankFlags
    but it does not store extensive tables concerning them, which is relegated
    to the derived class |KhatContext| defined below.
 
-   Just one dynamic table is held, for projection matrices correponding to
+   Just one dynamic table is held, for projection matrices corresponding to
    different subsets of simple roots; they serve to speed up the height
    computation. That computation is not a necessary part for the other
    functionality of this class, but it allows height-truncation to be built

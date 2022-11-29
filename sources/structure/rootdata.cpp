@@ -51,7 +51,7 @@
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
 
 #include "dynkin.h"
-#include "weyl.h" // for classes |Twist|, |WeylWord|
+#include "weyl.h" // for classes |Twist|, |WeylWord|, |WeylElt|
 #include "prerootdata.h"
 
 // extra defs for windows compilation -spc
@@ -74,11 +74,11 @@
   order to generate a root datum, so the user interaction needed to choose a
   root datum really goes into fixing a |PreRootDatum|. It contains matrices
   describing the simple roots and coroots relative to some basis of $X^*$
-  (repectively its dual basis of $X_*$); changing that basis will lead to an
+  (respectively its dual basis of $X_*$); changing that basis will lead to an
   isomorphic root datum, but which is different for Atlas purposes since weights
   and coweights will be expressed in coordinates relative to the same basis.
 
-  Apart from simple (co)roots, a |PreRootDatum| contains one more it of
+  Apart from simple (co)roots, a |PreRootDatum| contains one more bit of
   information, telling whether roots or coroots should be preferred when
   generating a full root system from the simple (co)roots; for instance we can
   (for simple Lie types) either have the last root be the highest root, or the
@@ -131,7 +131,8 @@ struct RootSystem::root_compare
 RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.numRows())
   , prefer_co(prefer_co)
-  , Cmat(rk,rk) // filled below
+  , C_denom(), Cmat(Cartan_matrix.entry_type_convert<byte>())
+  , invCmat() // filled below
   , ri()
   , root_ladder_bot(), coroot_ladder_bot()
 {
@@ -140,19 +141,23 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 
 
   typedef std::set<Byte_vector,root_compare> RootVecSet;
-  std::vector<RootVecSet> roots_of_length
-    (4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
+  std::vector<RootVecSet> roots_at_level
+    (4*rk); // more than enough if |rk>0|; $E_8$ needs 30 levels; 0..29
 
   for (unsigned int i=0; i<rk; ++i)
   {
     Byte_vector e_i(rk,0); e_i[i]=1; // set to standard basis for simple roots
-    roots_of_length[1].insert(e_i);
-    for (unsigned int j=0; j<rk; ++j)
-      Cmat(i,j) = static_cast<byte>(Cartan_matrix(i,j));
+    roots_at_level[1].insert(e_i);
   }
 
+  { arithmetic::big_int denom;
+    invCmat = matrix::inverse(Cmat.entry_type_convert<short int>(),denom);
+    C_denom = denom.convert<short int>();
+  }
+
+  // We now start the root system generation proper
   if (prefer_co) // then we generate for the dual system
-    swap_roots_and_coroots(); // here this just transposes |Cmat|
+    swap_roots_and_coroots(); // here this just (temporarily) transposes |Cmat|
 
   // the Cartan matrix sliced into rows respectively into columns
   std::vector<Byte_vector> simple_root, simple_coroot;
@@ -167,11 +172,11 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // now construct positive root list, simple reflection links, and descent sets
   std::vector<RootNbrList> link; // size |numPosRoots*rank|
   RootNbrList first_l(1,0); // where level |l| starts; level 0 is empty
-  for (unsigned int l=1; not roots_of_length[l].empty();// empty level means end
+  for (unsigned int l=1; not roots_at_level[l].empty();// empty level means end
        ++l)
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
-    for (const Byte_vector& alpha : roots_of_length[l])
+    for (const Byte_vector& alpha : roots_at_level[l])
     {
       const RootNbr cur = ri.size();
       assert(link.size()==cur);
@@ -207,11 +212,11 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
 	    ri[cur].ascents.set(i);
-	    roots_of_length[l-c].insert(std::move(beta)); // will create root
+	    roots_at_level[l-c].insert(std::move(beta)); // will create root
 	  }
 	}
     } // |for(alpha)|
-    roots_of_length[l].clear(); // no longer needed
+    roots_at_level[l].clear(); // no longer needed
   } // |for(l)|
 
   const RootNbr npos = numPosRoots(); // number of positive roots, |ri| is filled
@@ -233,6 +238,7 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   // now switch roots and coroots if coroots generation was actually requested
   if (prefer_co)
     swap_roots_and_coroots(); // this also restores |Cmat|
+  // and this ends the root system generation proper
 
   root_ladder_bot.resize(2*npos);
   coroot_ladder_bot.resize(2*npos);
@@ -317,12 +323,13 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
 } // end of basic constructor
 
 // a method designed for the 3 places where is called; not for general use
+// ladder bottom fields are unaffected: either not set yet or already swapped
 void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 { bool simply_laced = true;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=i+1; j<rk; ++j) // do only case $i<j$, upper triangle
-      if (Cartan_entry(i,j)!=Cartan_entry(j,i))
-	simply_laced = false , std::swap(Cartan_entry(i,j),Cartan_entry(j,i));
+      if (Cmat(i,j)!=Cmat(j,i))
+	simply_laced = false , std::swap(Cmat(i,j),Cmat(j,i));
 
   if (not simply_laced)
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
@@ -332,7 +339,9 @@ void RootSystem::swap_roots_and_coroots() // private method to pass to dual
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , prefer_co(not rs.prefer_co) // switch this
+  , C_denom(rs.C_denom)
   , Cmat(rs.Cmat) // transposed below
+  , invCmat(rs.invCmat.transposed())
   , ri(rs.ri)     // entries modified internally in non simply laced case
   , root_ladder_bot(rs.coroot_ladder_bot)
   , coroot_ladder_bot(rs.root_ladder_bot)
@@ -471,20 +480,31 @@ RootNbrSet RootSystem::posRootSet() const
 }
 
 
-int_Matrix RootSystem::cartanMatrix() const
+int_Matrix RootSystem::Cartan_matrix() const
 {
   int_Matrix result(rk,rk);
 
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=0; j<rk; ++j)
-      result(i,j) = Cartan_entry(i,j);
+      result(i,j) = Cmat(i,j);
+
+  return result;
+}
+
+int_Matrix RootSystem::inverse_Cartan_matrix() const
+{
+  int_Matrix result(rk,rk);
+
+  for (RootNbr i=0; i<rk; ++i)
+    for (RootNbr j=0; j<rk; ++j)
+      result(i,j) = invCmat(i,j);
 
   return result;
 }
 
 
 // The Cartan matrix of the root subsystem with basis |rb|.
-int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
+int_Matrix RootSystem::Cartan_matrix(const RootNbrList& rb) const
 {
   unsigned int r = rb.size();
 
@@ -500,7 +520,7 @@ int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
 // type of root subsystem (semisimple)
 LieType RootSystem::subsystem_type(const RootNbrList& rb) const
 {
-  return dynkin::Lie_type(cartanMatrix(rb));
+  return dynkin::Lie_type(Cartan_matrix(rb));
 }
 
 // pairing $\<\alpha,\beta^\vee>$; note that coroot is on the right
@@ -510,8 +530,8 @@ int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
     return 0;
 
 /*
-  Since |cartan_entry(i,j)| pairs simple root |i| and simple coroot |j| (our
-  conventions would prefer the tranpose) we compute root(i)*Cartan*coroot(j)
+  Since |Cmat(i,j)| pairs simple root |i| and simple coroot |j| (our conventions
+  would prefer the tranpose) we compute root(i)*Cmat*coroot(j)
  */
   const Byte_vector& row = root(rt_abs(alpha));
   const Byte_vector& col = coroot(rt_abs(beta));
@@ -519,7 +539,7 @@ int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
   int c=0;
   for (RootNbr i=0; i<rk; ++i)
     for (RootNbr j=0; j<rk; ++j)
-      c += row[i]*Cartan_entry(i,j)*col[j];
+      c += row[i]*Cmat(i,j)*col[j];
 
   return is_posroot(alpha)!=is_posroot(beta) ? -c : c;
 }
@@ -609,7 +629,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 	else
 	{ // reflection in alpha makes some other root (beta) negative, so
 	  candidates.remove(alpha); // alpha is not simple; remove it
-	  break; // and move on to the next candadate
+	  break; // and move on to the next candidate
 	}
       }
     } // |for (beta)|
@@ -729,7 +749,7 @@ RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 	  ( is_posroot(*it) ?  root(posroot_index(*jt))
 	                    : -root(negroot_index(*jt)) );
 	RootNbr gamma = lookup_root(sum);
-	assert(gamma != numRoots()); // |sum| wass supposed to be a root
+	assert(gamma != numRoots()); // |sum| was supposed to be a root
 	result.insert(gamma);
 	result.insert(root_permutation(*jt)[gamma]); // invert sign second root
 	result.remove(*it); result.remove(*jt);
@@ -764,7 +784,6 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   , d_radicalBasis(), d_coradicalBasis()
   , d_2rho(d_rank,0)
   , d_dual_2rho(d_rank,0)
-  , Cartan_denom()
   , d_status()
 {
   const int_Matrix& root_mat = prd.simple_roots_mat();
@@ -779,11 +798,9 @@ RootDatum::RootDatum(const PreRootDatum& prd)
     d_coroots[rootMinus(alpha)] = -d_coroots[alpha];
   }
 
-  arithmetic::big_int denom;
   // the fundamental weights are given by the matrix Q.tC^{-1}, where Q is
   // the matrix of the simple roots, tC the transpose Cartan matrix
-  int_Matrix iC = cartanMatrix().inverse(denom);
-  Cartan_denom = denom.int_val();
+  int_Matrix iC = inverse_Cartan_matrix();
   weight_numer = (root_mat*iC.transposed()).columns();
 
   // for the fundamental coweights, use coroots and (untransposed) Cartan matrix
@@ -822,7 +839,6 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   , d_coradicalBasis(rd.d_radicalBasis)
   , d_2rho(rd.d_dual_2rho)
   , d_dual_2rho(rd.d_2rho)
-  , Cartan_denom(rd.Cartan_denom)
   , d_status()
 {
   // fill in the status
@@ -833,7 +849,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   assert(d_status[IsSimplyConnected] == rd.d_status[IsAdjoint]);
 }
 
-#if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
+#if 0 // (co)derived constructors no longer used, done at |PreRootData| level now
 
 /* Construct the derived root datum, and put weight mapping into |projector| */
 RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
@@ -946,16 +962,16 @@ PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
 
 
 RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
-{ return RatWeight(weight_numer[i],Cartan_denom); }
+{ return RatWeight(weight_numer[i],Cartan_denominator()); }
 
 RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
-{ return RatWeight(coweight_numer[i],Cartan_denom); }
+{ return RatWeight(coweight_numer[i],Cartan_denominator()); }
 
 /******** accessors **********************************************************/
 
 LieType RootDatum::type() const
 {
-  LieType result = dynkin::Lie_type(cartanMatrix());
+  LieType result = dynkin::Lie_type(Cartan_matrix());
   result.reserve(result.size()+radical_rank());
   for (RootNbr i=0; i<radical_rank(); ++i)
     result.emplace_back('T',1);
@@ -1128,21 +1144,6 @@ LatticeMatrix RootDatum::action_matrix(const WeylWord& ww) const
 
 
 /******** manipulators *******************************************************/
-
-void RootDatum::swap(RootDatum& other)
-{
-  std::swap(d_rank,other.d_rank);
-  d_roots.swap(other.d_roots);
-  d_coroots.swap(other.d_coroots);
-  weight_numer.swap(other.weight_numer);
-  coweight_numer.swap(other.coweight_numer);
-  d_radicalBasis.swap(other.d_radicalBasis);
-  d_coradicalBasis.swap(other.d_coradicalBasis);
-  d_2rho.swap(other.d_2rho);
-  d_dual_2rho.swap(other.d_dual_2rho);
-  std::swap(Cartan_denom,other.Cartan_denom);
-  d_status.swap(other.d_status);
-}
 
 // implicit conversion
   RootDatum::operator PreRootDatum() const
@@ -1601,6 +1602,27 @@ bool is_long_coroot(const RootSystem& rs, RootNbr alpha)
   return false;
 }
 
+// comments and code for Weyl group orbit (for reflection action) generation
+
+/*
+  Orbit generation for any action of a group will obviously have a cost at least
+  linear in the size of the orbit, which may be a lot. But doing it in the most
+  straightforward manner, generating new elements from old ones and adding them
+  if not yet seen before, can easily lead to quadratic running time due to the
+  number of comparisons necessary. This can be improved by using for instance a
+  hash table to detect previously seen orbit elements, but a simpler and
+  probably more effective way is used here, which depends on the existence of an
+  increasing chain of subgroups from the stabliser of the initial orbit element
+  to the full group such that the successive subquotients are easy to generate,
+  as the full orbit can then be obtained from the Cartesian product of those
+  subquotients. Here the chain of subgroups are Levi subgroups, which are
+  stabilisers of certain vectors in the reflection action and this makes the
+  subquotients easy to generate, namely as the orbit under the larger subgroup
+  of a vector stabilised (only) by the smaller subgroup. In addition the
+  subquotients have a layered structure where action of simple generators can
+  either be trivial, or move to an element in a layer one level up or down.
+ */
+
 struct orbit_elem // auxiliary data while generating orbit
 {
   Weight v; // current orbit element
@@ -1611,6 +1633,27 @@ struct orbit_elem // auxiliary data while generating orbit
 };
 
 template<bool dual>
+void extend_orbit
+  (const RootDatum& rd,
+   sl_list<Weight>& orbit, RankFlags& stab, weyl::Generator i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<Weight*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.emplace(it, dual
+
+// generate parabolic quotient by Levi subgroup generated by |stab| of larger
+// Levi subgroup with |i| added to generators (and add |i| to |stab|).
+template<bool dual>
 sl_list<orbit_elem> basic_orbit
   (const RootDatum& rd, RankFlags& stab, weyl::Generator i)
 {
@@ -1620,40 +1663,67 @@ sl_list<orbit_elem> basic_orbit
     : rd.fundamental_weight(i).numerator();
   Weight e (fw.begin(),fw.end()); // certainly |int| should not overflow
 
-  stab.set(i); // hencefort add |i| to |stab|: full set of generators considered
   sl_list<orbit_elem> result;
-  result.emplace_back(e,-1,-1);
-  auto start = result.end();
+  result.emplace_back(e,-1,-1); // start with a |stab|-fixed vector
+  stab.set(i); // hencefort add |i| to |stab|: full set of generators considered
+  auto start = result.cend(); // new level starts after initial vector
   if (dual)
     rd.simple_coreflect(e,i);
   else rd.simple_reflect(i,e);
-  result.emplace_back(e,i,0);
-  auto finish = result.end();
-  auto previous = result.begin();
+  result.emplace_back(e,i,0); // new level consists of a single new vector
+  auto finish = result.cend();
   unsigned int count=1; // number of element currently generated from
   while (true) // generate from |start|; possible |return| near end of loop
   {
     for (auto it=start; it!=finish; ++it,++count)
       for (auto s : stab)
       {
-	auto new_wt = dual
-	  ? rd.simple_coreflection(it->v,s)
-	  : rd.simple_reflection(s,it->v);
-	auto jt = previous;
-	do // test if |new_wt| is present from |previous| to current end
-	{ if (jt->v==new_wt)
-	    break;
-	  ++jt;
-	}
-	while (not result.at_end(jt));
+	auto wt = it->v; // make a copy; actually a coweight if |dual| holds
+	auto level = wt.dot(dual ? rd.simpleRoot(s) : rd.simpleCoroot(s));
+	if (level<=0)
+	  continue; // skip if |wt| fixed or moves to lower layer
+	wt.subtract((dual ? rd.simpleCoroot(s) : rd.simpleRoot(s)).begin(),
+		    level);
+
+	auto jt = finish;
+	for ( ; not result.at_end(jt); ++jt)
+	  if (jt->v==wt)
+	    break; // and this will lead to breaking from loop on |s| as well
+
 	if (result.at_end(jt)) // whether not yet present
-	  result.emplace_back(std::move(new_wt),s,count);
+	  result.emplace_back(std::move(wt),s,count);
       } // for |it| and |s|
-    if (finish==result.end()) // whether nothing new was contributed
+    if (result.at_end(finish)) // whether nothing new was contributed
       return result; // if so, we are done and return directly
-    previous = start; start = finish; finish = result.end(); // advance, repeat
+    start = finish; finish = result.end(); // advance, repeat
   } // |while(true)|
 } // |basic_orbit|
+
+template<bool dual>
+void extend_orbit_words
+(const RootDatum& rd, const WeylGroup& W,
+   sl_list<WeylElt>& orbit, RankFlags& stab, weyl::Generator i)
+{
+  const auto cosets = basic_orbit<dual>(rd,stab,i); // this also extends |stab|
+  const auto start = std::next(cosets.begin()); // always skip first element
+  std::vector<WeylElt*> ref; // for rapid indexed access
+  ref.reserve(cosets.size());
+  auto it = orbit.begin();
+  // next loop body will both generate after |it| and advance it
+  while (not orbit.at_end(it))
+  {
+    ref.push_back(&*it); // save pointer to element in original |orbit|
+    ++it; // then advance over it
+    for (auto jt = start; not cosets.at_end(jt); ++jt)
+    {
+      auto next = orbit.insert
+	(it, dual ? W.prod(*ref[jt->prev],jt->s) : W.prod(jt->s,*ref[jt->prev]));
+      ref.push_back(&*it); // push pointer to just created |WeylElt|
+      it = next; // finally move |it| across the new element
+    } // |for(jt)|
+    ref.clear(); // for next element of original |orbit|, clean the slate
+  } // |while (not orbit.at_end(it))|
+} // |extend_orbit|
 
 template<bool dual>
 void extend_orbit
@@ -1682,6 +1752,43 @@ void extend_orbit
     ref.clear(); // for next element of original |orbit|, clean the slate
   } // |while (not orbit.at_end(it))|
 } // |extend_orbit|
+
+sl_list<WeylElt> Weyl_orbit_words
+  (const RootDatum& rd, const WeylGroup& W, Weight v)
+{
+  WeylWord w = rd.factor_dominant(v);
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,rd.simpleCoroot(s).dot(v) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
+  for (auto s : non_stab)
+    extend_orbit_words<false>(rd,W,orbit,stab,s);
+  return orbit;
+}
+
+sl_list<WeylElt> Weyl_orbit_words
+  (Weight v, const RootDatum& rd, const WeylGroup& W)
+{
+  WeylWord w = rd.factor_codominant(v);
+  std::reverse(w.begin(),w.end()); // need word moving to, not from, (co)dominant
+
+  RankFlags stab;
+  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+    stab.set(s,v.dot(rd.simpleRoot(s)) == 0);
+  RankFlags non_stab = stab;
+  non_stab.complement(rd.semisimple_rank());
+
+  sl_list<WeylElt> orbit(1,W.element(w)); // start with mover to current |v|
+  for (auto s : non_stab)
+    extend_orbit_words<true>(rd,W,orbit,stab,s);
+  return orbit;
+}
+>>>>>>> master
 
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v)
 {

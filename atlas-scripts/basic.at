@@ -1259,11 +1259,9 @@ set * (mat theta,WeylElt w) = mat:
 { morphism W(rd)->W(dual(rd)), involves transpose inverse on matrices }
 set for_dual_datum(WeylElt w) = WeylElt: W_elt(dual(w.root_datum), word(w))
 
+{ product of Weyl group elements respects Left (index 0) and Right; compute LtR }
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
-  let len = #L in
-  if =len then id_W(rd)
-  else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
-  fi
+  let p = id_W(rd) in for w in L do p *:= w od; p
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
@@ -1471,6 +1469,13 @@ set Cartan_class (InnerClass ic, mat theta) = CartanClass:
 { use the following as follows: |set <= = Bruhat_order(G)| }
 set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
   let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
+
+set cross (WeylElt w,KGBElt x) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word ~do x:=cross(s,x) od; x
+set cross (KGBElt x,WeylElt w) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word do x:=cross(s,x) od; x
 
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 
@@ -1771,7 +1776,11 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
 set cross (WeylElt w,Param p) = Param:
-  for s in w.word ~ do p:=cross(s,p) od; p
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word ~do p:=cross(s,p) od; p
+set cross (Param p,WeylElt w) = Param:
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word do p:=cross(s,p) od; p
 
 set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
 set param_pol (KType t) = ParamPol: param(t)
@@ -1797,7 +1806,7 @@ set singular_block (Param p) = ([Param],int):
   then block = ## for q in B do if q.survives then [q] else [] fi od
   in (block, { new index of |p|:} first(for q in block do p=q od))
 
-{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
+{ get just the parameters from a block, just a shortcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 set singular_block_of (Param p) = [Param]:
   let (params,)=singular_block(p) in params
