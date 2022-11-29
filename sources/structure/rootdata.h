@@ -95,6 +95,10 @@ Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
 bool is_long_root(const RootSystem& rs, RootNbr i);
 bool is_long_coroot(const RootSystem& rs, RootNbr i);
 
+sl_list<WeylElt>
+  Weyl_orbit_words(const RootDatum& rd, const WeylGroup& W, Weight v);
+sl_list<WeylElt>
+  Weyl_orbit_words(Weight v, const RootDatum& rd, const WeylGroup& W);
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
 int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
 
