@@ -39,9 +39,9 @@ arithmetic::Numer_t  // returns |N|
 
 
 sl_list<WeylElt> finite_subquotient
-  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
 sl_list<WeylElt> complete_affine_component
-  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
 
 sl_list<WeylElt> basic_orbit_ws
 (const int_Matrix& Cartan, Generator i,

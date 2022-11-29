@@ -76,9 +76,9 @@ level_list::const_iterator get_minima(level_list& L)
 
 // Splice from |L| elements whose coroot is sum of coroot |i| and another coroot
 // Return list of the elements removed
-level_list filter_up(const RootDatum& rd,RootNbr alpha,level_list& L)
+level_list filter_up(const RootSystem& rs,RootNbr alpha,level_list& L)
 {
-  const RootNbrSet& bottoms = rd.min_coroots_for(alpha);
+  const RootNbrSet& bottoms = rs.min_coroots_for(alpha);
   level_list out;
   for (auto it=L.cbegin(); not L.at_end(it); ) // no increment here
     if (bottoms.isMember(it->first))
@@ -183,16 +183,17 @@ sl_list<RootNbr> sorted_by_label
   and balances fractional parts among coroots for which it was not integer
 */
 RatNumList barycentre_eq
-  (const RootDatum& rd, const RootNbrSet& walls, const RootNbrSet& integral_walls)
+  (const RootSystem& rs,
+   const RootNbrSet& walls, const RootNbrSet& integral_walls)
 {
   RatNumList result(walls.size(),RatNum(0,1));
-  auto comps = rootdata::components(rd,walls); // a list of subsets of |walls|
+  auto comps = rootdata::components(rs,walls); // a list of subsets of |walls|
   for (const auto& comp : comps)
   {
-    int_Matrix A(rd.rank(),comp.size());
+    int_Matrix A(rs.rank(),comp.size());
     unsigned i=0;
     for (auto it=comp.begin(); it(); ++it,++i)
-      A.set_column(i,rd.coroot(*it));
+      A.set_column(i,rs.coroot_expr(*it));
     int_Matrix k = lattice::kernel(A);
     assert(k.numColumns()==1);
     assert(k(0,0)!=0); // in fact all coefficients should be nonzero
@@ -427,16 +428,15 @@ arithmetic::Numer_t simplify(const Rep_context& rc, StandardRepr& sr)
 }
 
 
-int label(const RootDatum& rd, Generator i)
+int label(const RootSystem& rs, Generator i)
 {
-  assert(rd.semisimple_rank()>0); // otherwise we cannot have generator |i|
-  BitMap high_roots = rd.posRootSet();
-  for (RootNbr alpha = rd.negRootNbr(rd.semisimple_rank()-1);
-       rd.is_negroot(alpha); ++alpha)
-    high_roots &= rd.min_coroots_for(alpha);
+  assert(rs.rank()>0); // otherwise we cannot have generator |i|
+  BitMap high_roots = rs.posRootSet();
+  for (RootNbr alpha = rs.negRootNbr(rs.rank()-1); rs.is_negroot(alpha); ++alpha)
+    high_roots &= rs.min_coroots_for(alpha);
   assert(high_roots.any());
   for (auto gamma : high_roots)
-    if (int result=rd.coroot_expr_coef(gamma,i))
+    if (int result=rs.coroot_expr_coef(gamma,i))
       return result;
   assert(false); // exactly one high root should have nonzero coefficient at |i|
   return 0; // keep compiler happy
@@ -514,10 +514,10 @@ sl_list<orbit_elem> vertex_orbit
 
 // wrap up results of |vertex_orbit| into a list of Weyl group elements
 sl_list<WeylElt> vertex_orbit_words
-  (const RootDatum& rd, const WeylGroup& W, Generator i)
+  (const RootSystem& rs, const WeylGroup& W, Generator i)
 {
   sl_list<WeylElt> orbit(1,WeylElt()); // start with identity
-  const auto cosets = vertex_orbit(rd.Cartan_matrix(),i,label(rd,i));
+  const auto cosets = vertex_orbit(rs.Cartan_matrix(),i,label(rs,i));
   std::vector<WeylElt*> ref; // for rapid indexed access
   ref.reserve(cosets.size());
 
@@ -649,7 +649,7 @@ void extend_orbit_words
 */
 void extend_affine_component
   (sl_list<WeylElt>& orbit,
-   const RootDatum& rd, const WeylGroup& W,
+   const RootSystem& rs, const WeylGroup& W,
    RootNbrSet comp, const RootNbrSet& stab)
 {
   const auto comp_size = comp.size(); // fize this before |comp| is modified
@@ -659,12 +659,12 @@ void extend_affine_component
   RootNbrList roots; roots.reserve(comp_size);
   int_Vector labels;
   {
-    int_Matrix A(rd.rank(),comp_size);
+    int_Matrix A(rs.rank(),comp_size);
     unsigned i=0;
     for (auto alpha : stab)
-      roots.push_back(alpha),A.set_column(i++,rd.coroot(alpha));
+      roots.push_back(alpha),A.set_column(i++,rs.coroot_expr(alpha));
     for (auto alpha : comp)
-      roots.push_back(alpha),A.set_column(i++,rd.coroot(alpha));
+      roots.push_back(alpha),A.set_column(i++,rs.coroot_expr(alpha));
     int_Matrix k = lattice::kernel(A);
     assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
     labels = k(0,0)>0 ? k.column(0) : -k.column(0);
@@ -689,7 +689,7 @@ void extend_affine_component
   roots.pop_back();
 
   if (roots.size()>stab_size) // equivalently |comp_size > stab_size+1|
-    extend_orbit_words(orbit,rd,W,roots,stab_size);
+    extend_orbit_words(orbit,rs,W,roots,stab_size);
 
   if (labels.back()>1) // then we need final extension using |vertex_orbit|
   {
@@ -699,37 +699,37 @@ void extend_affine_component
 	break;
     assert(i<stab_size); // we must have found some label 1
     roots[i] = last; // that root will be "affine"; |last| replaces it
-    auto cosets = vertex_orbit(rd.Cartan_matrix(roots),i,labels.back());
+    auto cosets = vertex_orbit(rs.Cartan_matrix(roots),i,labels.back());
 
     std::vector<WeylElt> reflections;
     for (Generator i=0; i<roots.size(); ++i)
-      reflections.push_back(W.element(rd.reflection_word(roots[i])));
+      reflections.push_back(W.element(rs.reflection_word(roots[i])));
     extend_orbit_words(orbit,W,cosets,reflections);
   }
 } // |extend_affine_component|
 
 sl_list<WeylElt> finite_subquotient
-  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
 {
   assert(not stab.isMember(alpha));
   RootNbrList walls(stab.begin(),stab.end());
   walls.push_back(alpha);
-  int_Matrix Cartan = rd.Cartan_matrix(walls);
+  int_Matrix Cartan = rs.Cartan_matrix(walls);
   std::vector<WeylElt> reflections; reflections.reserve(walls.size());
   for (auto alpha : walls)
-    reflections.push_back(W.element(rd.reflection_word(alpha)));
+    reflections.push_back(W.element(rs.reflection_word(alpha)));
 
   return basic_orbit_ws(Cartan,walls.size()-1,W,reflections);
 }
 
 sl_list<WeylElt> complete_affine_component
-  (const RootDatum& rd, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
 {
   assert(not stab.isMember(alpha));
   sl_list<WeylElt> result { WeylElt() };
   auto comp=stab;
   comp.insert(alpha);
-  extend_affine_component(result,rd,W,comp,stab);
+  extend_affine_component(result,rs,W,comp,stab);
   return result;
 }
 

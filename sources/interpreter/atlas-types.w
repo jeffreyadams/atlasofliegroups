@@ -5079,7 +5079,7 @@ void real_form_of_K_type_wrapper(expression_base::level l)
 
 @ Here is one more useful function: computing the height of a $K$-type. This is
 the same height when comparing to the |bound| argument in functions like
-|K_type_formla| and |branch|. This height is precomputed and stored inside
+|K_type_formula| and |branch|. This height is precomputed and stored inside
 |K_repr::K_type| values themselves, so we simply get it from there.
 
 @< Local function def...@>=
