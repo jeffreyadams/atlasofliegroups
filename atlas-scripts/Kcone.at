@@ -55,25 +55,26 @@ set R_packet(KTypePol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) o
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
 
-{Move one step up in the partial order of K-types}
-set pre_up(KType mu)=KTypePol:
+{Move one step up in the partial order of K-types: all K-types with negative coefficients
+in the K-type formula}
+set up_tr(KType mu)=KTypePol:
    let result=null_K_module(real_form(mu))
    in for c@p in K_type_formula(mu)
                         do if int_part(c)<0 then result+:=p fi
                         od; result
 
-
-set pre_up(KType mu, int N)=KTypePol:
+{As previous function, but including only K-types up to a given height}
+set up_tr(KType mu, int N)=KTypePol:
    let result=null_K_module(real_form(mu))
    in for c@p in K_type_formula(mu,N)
                         do if int_part(c)<0 then result+:=p fi
                         od; result
 
 
-{As previous function, but remove some terms that are further
+{As up_tr, but remove some terms that are further
 up in the partial order}
-set up_tr(KType mu)=KTypePol:
-   let NM=null_K_module(real_form(mu)),start=pre_up(mu)
+set up_tr_fewer_terms(KType mu)=KTypePol:
+   let NM=null_K_module(real_form(mu)),start=up_tr(mu)
    then result=NM
    in while start!=NM
        do let p=last_K_type(start)
@@ -88,18 +89,13 @@ set up_tr_cone(KType mu, int bound) = KTypePol:
     then result=seen
      in mu.(rec_fun F (KType tau) void:
         if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(pre_up(tau,bound),bound) do F(p);
+        else seen +:=tau; for @p in to_ht(up_tr(tau,bound),bound) do F(p);
            result +:=p od fi); result
 
-set pre_up_R_alt(KType mu)=KTypePol:
-   let result=null_K_module(real_form(mu))
-   in for @m in R_packet(mu)
-       do for c@p in K_type_formula(m)
-                        do if int_part(c)<0 then result+:=p fi
-                        od
-      od; result
 
-set pre_up_R(KType mu)=KTypePol:
+{Move one step up in the partial preorder <=_R; for each K-type mu in the R-packet,
+add the R-packet of each K-type in up_tr(mu)}
+set up_R(KType mu)=KTypePol:
    let result=null_K_module(real_form(mu))
    in for @m in R_packet(mu)
        do for c@p in K_type_formula(m)
@@ -107,51 +103,56 @@ set pre_up_R(KType mu)=KTypePol:
                         od
       od; result
 
-set up_R(KType mu)=KTypePol:
-    let NM=null_K_module(real_form(mu)),start=pre_up_R(mu)
+{As previous function, but adding only K-types, not R-packets}
+set up_R_alt(KType mu)=KTypePol:
+   let result=null_K_module(real_form(mu))
+   in for @m in R_packet(mu)
+       do for c@p in K_type_formula(m)
+                        do if int_part(c)<0 then result+:=p fi
+                        od
+      od; result
+
+{As up_R, but remove some terms higher up in the order}
+set up_R_fewer_terms(KType mu)=KTypePol:
+    let NM=null_K_module(real_form(mu)),start=up_R(mu)
    then result=NM
    in while start!=NM do let p=last_K_type(start)
               in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
-	         then result+:=p fi; start-:=start[p]*p
+	         then result+:=R_packet(p) fi; start-:=start[p]*p
 		      od; result
 
-
+{All K-types above mu in the R-order, up to given height}
 set up_R_cone(KType mu, int bound) = KTypePol:
     let seen=KTypePol:null_K_module(mu.real_form)
     then result=seen
      in mu.(rec_fun F (KType tau) void:
         if seen[tau].!= then ()
-        else seen +:=tau; for @p in to_ht(pre_up_R(tau),bound) do F(p);
+        else seen +:=tau; for @p in to_ht(up_R(tau),bound) do F(p);
            result +:=p od fi); result
+
+{This does not give the right answer; ex. Sp(4,R), K-type (x=0,lambda=[2,1])}
+set up_R_alt_cone(KType mu, int bound) = KTypePol:
+    let seen=KTypePol:null_K_module(mu.real_form)
+    then result=seen
+     in mu.(rec_fun F (KType tau) void:
+        if seen[tau].!= then ()
+        else seen +:=tau; for @p in to_ht(up_R_alt(tau),bound) do F(p);
+           result +:=p od fi); result
+
 
 set is_ge_tr(KType tau,KType mu)=bool:
     if tau=mu then true
     elif height(tau)<=height(mu) then false
     else up_tr_cone(mu,height(tau))[tau]!=0 fi
 
-{Move one step down from mu in the partial order; may result in extra terms}
-{set pre_down(KType mu) = KTypePol:
-   let G=real_form(mu), Q=first_K_type(standardize(mu))
-   then HT=height(Q), lambda =Q.lambda
-   then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        x=Q.x, zero = 0*mu, zeronu=0*lambda
-   then result=null_K_module(G)
-     in for avee@j in poscoroots(rd)
-        do if (Lambda*avee > 0 and not( is_compact(j,x)))
-              then let R=to_ht(HT-1)(standardize(standardize
-	                  (parameter(x,lambda-posroots(rd)[j], zeronu))*0))
-                   in result+:=convert_to_K(R)
-	   fi
-	od; result}
-
 
 {Move one step down from mu in the partial order <_tr; remove terms
 for which mu does not occur in the K-type formula}
 set down_tr_one_root(KType mu) = KTypePol:
-   let q=parameter(mu) then Q=first_K_type(standardize(mu))
-   then HT=height(q), lambda =Q.lambda
+   let  Q=first_K_type(standardize(mu))
+   then HT=height(Q), lambda =Q.lambda
    then Lambda = lambda + (Q.x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_K_module(q.real_form), x=Q.x
+        zeroPol = null_K_module(mu.real_form), x=Q.x
    then rhoL=rho(Levi_by_wt(Lambda,x)), pr=posroots(rd)
    then result=zeroPol
      in for avee@j in poscoroots(rd)
@@ -167,12 +168,11 @@ set down_tr_one_root(KType mu) = KTypePol:
 	 fi od;
    result
 
-
 set down_tr_two_roots(KType mu)=KTypePol:
-   let q=parameter(mu) then Q=first_K_type(standardize(mu))
-   then HT=height(q), lambda =Q.lambda, x=Q.x
+   let Q=first_K_type(standardize(mu))
+   then HT=height(Q), lambda =Q.lambda, x=Q.x
    then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_K_module(q.real_form)
+        zeroPol = null_K_module(mu.real_form)
    then pr=posroots(rd),
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
@@ -186,11 +186,13 @@ set down_tr_two_roots(KType mu)=KTypePol:
                fi od od od od;
     result
 
+{Combine the results of the previous two functions: K-types obtained by moving one or
+two steps down in the partial order}
 set down_tr(KType mu) = KTypePol:
-   let q=parameter(mu) then Q=first_K_type(standardize(mu))
-   then HT=height(q), lambda =Q.lambda, x=Q.x
+   let Q=first_K_type(standardize(mu))
+   then HT=height(Q), lambda =Q.lambda, x=Q.x
    then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_K_module(q.real_form)
+        zeroPol = null_K_module(mu.real_form)
    then pr=posroots(rd),
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
@@ -214,10 +216,10 @@ set down_tr(KType mu) = KTypePol:
 {Previous function without testing whether K-type appears in the K-type formula of any
 K-type in the list}
 set down_tr_alt(KType mu) = KTypePol:
-   let q=parameter(mu) then Q=first_K_type(standardize(mu))
-   then HT=height(q), lambda =Q.lambda, x=Q.x
+   let Q=first_K_type(standardize(mu))
+   then HT=height(Q), lambda =Q.lambda, x=Q.x
    then Lambda = lambda + (x.involution)*lambda, rd=mu.root_datum,
-        zeroPol = null_K_module(q.real_form)
+        zeroPol = null_K_module(mu.real_form)
    then pr=posroots(rd),
         usedpcr = ##for avee@j in poscoroots(rd) do if (Lambda*avee > 0 and
    not( is_compact(j,x))) then [j] else [] fi od
@@ -239,7 +241,7 @@ set down_tr_alt(KType mu) = KTypePol:
     result
 
 
-{Move down one step in the partial order for a list of K-types, assumed to
+{Move down one or two steps in the partial order for a list of K-types, assumed to
 be in one R-packet; remove any K-types whose K_type_formula does not
 contain any negative term from the list}
 set down(KTypePol P)=KTypePol:

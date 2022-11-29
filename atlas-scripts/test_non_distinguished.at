@@ -1,0 +1,14 @@
+<all.at
+
+set one_dims (Parabolic P)=[Param]:
+   let ic=rho(Levi(P)),x=maximal(P)
+   in for p in one_dim_params_gamma(ic,P)
+      do parameter(x,lambda(p),nu(p)) od
+
+set induced_params ([int] L, Parabolic P) = ParamPol:
+   let list=one_dims(P)
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(L,p) od)
+
+set non_distinguished_params ([int] L, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,L)
+   in sum(G, for P in paras do induced_params(L,P) od)

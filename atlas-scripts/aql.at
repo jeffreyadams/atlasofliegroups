@@ -27,10 +27,11 @@ set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
 {. List all one-dimensional unitary characters with given
   infinitesimal character. .}
 set one_dim_params_gamma (ratvec ic, Parabolic P)=[Param]:
-   let L=Levi(P) in let n=#KGB(L) in let x=KGB(L,n-1) in
-   let G=real_form(P) in
-   let list=all_parameters_x_gamma(x,ic) in
-   let result=[] in for p in list do
+   let L=Levi(P)
+   then n=#KGB(L)
+   then x=KGB(L,n-1)
+   then list=all_parameters_x_gamma(x,ic)
+   then result=[] in for p in list do
    if is_unitary_character(p) then
    result#:=p fi od; result
 
