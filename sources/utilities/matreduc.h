@@ -143,7 +143,7 @@ template<typename C>
     matrix::column_apply(M,ops,0);
     matrix::column_apply(col,ops,0);
     result.insert(i);
-    --l; // now we have a pivot in column |l-1|
+    --l; // now we have our new pivot in column |l|
     assert(M(i,l)==d); // |column_apply| should have achieved this
   } // |for(i)
 

@@ -159,7 +159,7 @@ RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
   RankFlags result;
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    result.set(s,hasDescent(s,a.tw())); // this covers all cases precisely!
+    result.set(s,has_descent(s,a.tw())); // this covers all cases precisely!
   return result;
 }
 
@@ -187,7 +187,7 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
     return d/2; // report half of length change in Weyl group
   }
 
-  if (not hasDescent(s,x.w)) // imaginary cross action
+  if (not has_descent(s,x.w)) // imaginary cross action
     imaginary_cross_act(s,x.t);
   return 0; // no length change this case
 }
@@ -250,7 +250,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
   do_inverse_Cayley(s,a.t);
-  leftMult(a.w,s);
+  left_multiply(a.w,s);
 }
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
@@ -469,14 +469,14 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
 void TitsGroup::sigma_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().leftMult(a.d_w,s)<0) // on length decrease
+  if (weylGroup().left_multiply(a.d_w,s)<0) // on length decrease
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
 void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().leftMult(a.d_w,s)>0) // on length increase
+  if (weylGroup().left_multiply(a.d_w,s)>0) // on length increase
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
@@ -485,7 +485,7 @@ void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
   Right multiply |a| by the canonical generator $sigma_s$.
 
   Algorithm: similar to above, but omitting the |reflect| (since the torus
-  part is at the left), and using |weyl::mult| instead of |weyl::leftMult|,
+  part is at the left), and using |weyl::mult| instead of |weyl::left_multiply|,
   and |right_add| to add the possible contribution $m_s$ instead of
   |left_add|; the latter implicitly involves a call to |pull_across|.
 */
@@ -563,7 +563,7 @@ TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
 
 // Based Tits group for the adjoint group
 TitsCoset::TitsCoset(const InnerClass& G)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
   , Tg(*my_Tits_group)
@@ -576,7 +576,7 @@ TitsCoset::TitsCoset(const InnerClass& G)
 
 // Based Tits group for the adjoint dual group
 TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
-  : my_Tits_group(new TitsGroup(G.rootDatum().cartanMatrix().transposed(),
+  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
   , Tg(*my_Tits_group)

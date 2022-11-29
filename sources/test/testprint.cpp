@@ -115,7 +115,7 @@ std::ostream& printCartanMatrix(std::ostream& strm,
 				const RootNbrList& rb,
 				const RootSystem& rs)
 {
-  return prettyprint::printMatrix(strm,rs.cartanMatrix(rb));
+  return prettyprint::printMatrix(strm,rs.Cartan_matrix(rb));
 }
 
 

@@ -691,13 +691,16 @@ void BitMap::iterator::change_owner(const BitMap& b)
 
 // Instantiations
 
-template void BitMap::insert
- (std::vector<unsigned short>::iterator,
-  std::vector<unsigned short>::iterator); // root sets from RootNbrList
+using US = unsigned short int;
+using USP = US*; // that is pointer to unsigned integer
+
+template void BitMap::insert // root sets from RootNbrList
+  (std::vector<US>::iterator, std::vector<US>::iterator);
 
 using ULVI = std::vector<unsigned long>::iterator;
 using VCI = std::vector<int>::const_iterator;
 
+template BitMap::BitMap(unsigned long n, const USP& first, const USP& last);
 template BitMap::BitMap(unsigned long n, const ULVI& first, const ULVI& last);
 template BitMap::BitMap(unsigned long n, const VCI& first, const VCI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);

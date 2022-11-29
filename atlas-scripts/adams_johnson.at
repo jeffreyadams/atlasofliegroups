@@ -1,4 +1,12 @@
-set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =(KGPElt, Param,ParamPol):
+<basic.at
+<parabolics.at { type |KGPElt| }
+<finite_dimensional.at { |dimension@Param| }
+<induction.at { |theta_induce_irreducible@(ParamPol,RealForm)| }
+<L_packet.at { |q@RealForm| }
+<hermitian.at { |is_unitary@Param| }
+
+set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =
+     (KGPElt, Param,ParamPol):
   let G=real_form(x)
 {find w making lambda_q weakly dominant}
   then (w,lambda_q_new)=from_dominant(G,lambda_q)
@@ -13,13 +21,14 @@ set Aq_reducible_long (KGBElt x,ratvec lambda, ratvec lambda_q) =(KGPElt, Param,
   assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
   (P_new,pi_L,theta_induce_irreducible(pi_L,G))
 
-set Aq_long (KGBElt x_in,ratvec lambda, ratvec lambda_q) =(KGPElt, Param, ParamPol):
+set Aq_long (KGBElt x_in,ratvec lambda, ratvec lambda_q) =
+     (KGPElt, Param, ParamPol):
   let (P,p_L,Aq)=Aq_reducible_long(x_in,lambda,lambda_q) then
   reps=%Aq
   in assert(#reps<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
   let (c,p)=reps[0]
   in assert(c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
-  (P,p_L,p) 
+  (P,p_L,p)
 
 
 set Aq_long (KGBElt x, ratvec lambda) = (KGPElt, Param, ParamPol):
@@ -63,7 +72,7 @@ set parabolics=theta_stable_parabolics(G)
 set lambda=[1,1,0,0]/2}
 
 set Aq_rho(KGBElt x,ratvec lambda_q)=
-let P=parabolic_by_wt(lambda_q,x) in 
+let P=parabolic_by_wt(lambda_q,x) in
 Aq(x.real_form,rho_u(P),lambda_q)
 set Aq_rho(RealForm G,ratvec lambda_q)=Aq_rho(KGB(G,0),lambda_q)
 

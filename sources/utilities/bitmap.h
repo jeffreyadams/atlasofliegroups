@@ -96,7 +96,7 @@ class BitMap
   template <typename I>
     BitMap(unsigned long n, const I& first, const I& last);
 
-  // an easier version for a full vector
+  //g an easier version for a full vector
   template <typename U> // unsigned integral type
   BitMap(unsigned long n,const std::vector<U>& v)
     : d_capacity(n), d_map((d_capacity+posBits)>>baseShift)
@@ -128,6 +128,8 @@ class BitMap
 
   bool empty() const; // whether |size()==0|
   bool full() const; // whether |size()==capacity()|
+  bool none() const { return empty(); } // naming compatibility with |BitSet|
+  bool any() const { return not empty(); }
 
   /*
     Tests whether bit n in the bitmap is set; that is, whether element n

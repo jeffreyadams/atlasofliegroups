@@ -36,23 +36,13 @@ namespace prerootdata {
 
 
 /*
-  Construct the PreRootDatum whose lattice has basis |b|, expressed in terms
-  of the simply connected weight lattice basis for |lt|.
+  Construct the |PreRootDatum| for the simply connected root datum of type |lt|
 
   More precisely, we build the unique rootdatum whose Cartan matrix is the
   standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
   (i.e., the Cartan matrix of |lt| with any null rows and columns for torus
-  factors removed), and such that the the vectors |b| express the basis of the
-  weight lattice $X$ in terms of the fundamental weight basis (dual basis to the
-  simple coroots mixed with standard basis for the torus factors) of |lt|.
-
-  This somewhat convoluted description comes from the way the lattice $X$ may be
-  chosen (via user interaction) as a sublattice of the lattice for a simply
-  connected group.
-
-  The constructor puts in |d_roots| the list of simple roots expressed in the
-  basis |b|, and in |d_coroots| the list of simple coroots expressed in the
-  dual basis.
+  factors removed), and whose |simple_roots| matrix is the identity matrix of
+  size |lt.rank()| with columns at positions of torus factors of |lt| removed
 */
   PreRootDatum::PreRootDatum(const LieType& lt, bool prefer_co)
   : simple_roots(lt.rank(),lt.semisimple_rank())
@@ -60,7 +50,7 @@ namespace prerootdata {
   , prefer_co(prefer_co)
 {
   weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
-  unsigned int r=0; // |r| indexes rows of |Cartan|, goes up to rank
+  unsigned int r=0; // |r| indexes rows of |lt.Cartan_matrix()|, goes up to rank
   for (unsigned int k=0; k<lt.size(); ++k) // run over "simple" factors
     if (lt[k].type()=='T') // only do non-torus factors;
       r+=lt[k].rank();  // skip empty row(s) of Cartan matrix, keep |s|
@@ -119,8 +109,8 @@ int_Matrix PreRootDatum::Cartan_matrix() const
 }
 
 void PreRootDatum::test_Cartan_matrix () const
-{ Permutation dummy;
-  dynkin::Lie_type(Cartan_matrix(),true,true,dummy);
+{ // we don't need the result of the following call, just its checks
+  dynkin::Lie_type(Cartan_matrix()); // squareness and size known to be OK
 }
 
 // replace by root datum for a finite central quotient with weight |sublattice|
