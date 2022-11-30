@@ -177,8 +177,8 @@ int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
 */
 int getLattice(const CoeffList& root_invf, LatticeMatrix& root_lattice_basis)
 {
-  size_t r = root_lattice_basis.numRows(); // full rank of root datum
-  assert(root_lattice_basis.numColumns()==r);
+  size_t r = root_lattice_basis.n_rows(); // full rank of root datum
+  assert(root_lattice_basis.n_columns()==r);
   assert(root_invf.size()==r);
 
   RankFlags non_units;
@@ -188,7 +188,7 @@ int getLattice(const CoeffList& root_invf, LatticeMatrix& root_lattice_basis)
 
   CoeffList u; // non-unit invariant factors
   LatticeMatrix lb(r,non_units.count()); // "local basis", only for non-units
-  u.reserve(lb.numColumns());
+  u.reserve(lb.n_columns());
   { unsigned int j=0;
     for (auto it=non_units.begin(); it(); ++it,++j)
     {
@@ -334,7 +334,7 @@ LatticeMatrix makeOrthogonal (const RatWeightList& rwl, size_t r)
 
   LatticeMatrix m(r,rwl.size()); // matrix of numerators
 
-  for (size_t j=0; j<m.numColumns(); ++j)
+  for (size_t j=0; j<m.n_columns(); ++j)
   {
     Weight num(rwl[j].numerator().begin(),rwl[j].numerator().end()); // convert
     m.set_column(j,num*LatticeCoeff(d/rwl[j].denominator()));

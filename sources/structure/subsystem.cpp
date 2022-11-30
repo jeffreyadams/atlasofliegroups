@@ -219,7 +219,7 @@ integral_datum_item::integral_datum_item
 		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
   , simple_coroots(integral->rank(),ic.rank())
 {
-  for (unsigned i=0; i<simple_coroots.numRows(); ++i)
+  for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
     simple_coroots.set_row(i,integral->simple_coroot(i));
 }
 
@@ -242,7 +242,7 @@ integral_datum_item::codec::codec
 
   auto rank = diagonal.size();
   in  = std::move(row); // keep full coordinate transform
-  out = col.block(0,0,col.numRows(),rank); // chop part for final zero entries
+  out = col.block(0,0,col.n_rows(),rank); // chop part for final zero entries
 }
 
 } // |namespace subdatum|

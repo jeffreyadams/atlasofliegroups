@@ -149,7 +149,7 @@ template<typename C>
 {
   Matrix<C> result(1,base::size());
   auto p=base::begin();
-  for (unsigned int j=0; j<base::size(); ++j,++p)
+  for (index_t j=0; j<base::size(); ++j,++p)
     result(0,j) = *p;
 
   return result;
@@ -160,7 +160,7 @@ template<typename C>
 {
   Matrix<C> result(base::size(),1);
   auto p=base::begin();
-  for (unsigned int i=0; i<base::size(); ++i,++p)
+  for (index_t i=0; i<base::size(); ++i,++p)
     result(i,0) = *p;
 
   return result;
@@ -178,9 +178,9 @@ template<typename C>
 /******** constructors *******************************************************/
 
 // Construct the identity matrix of size n.
-template<typename C> Matrix<C>::Matrix(unsigned int n) : base(n,n,C(0))
+template<typename C> Matrix<C>::Matrix(index_t n) : base(n,n,C(0))
 {
-  for (unsigned int i=0; i<n; ++i)
+  for (index_t i=0; i<n; ++i)
     base::operator()(i,i) = C(1);
 }
 
@@ -190,11 +190,11 @@ template<typename C> Matrix<C>::Matrix(unsigned int n) : base(n,n,C(0))
 */
 template<typename C>
   Matrix_base<C>::Matrix_base
-    (const std::vector<Vector<C> >& b, unsigned int n_rows)
+    (const std::vector<Vector<C> >& b, index_t n_rows)
   : d_rows(n_rows), d_columns(b.size())
   , d_data(d_rows*b.size()) // computed as |std::size_t| value
 {
-  for (unsigned int j = 0; j<d_columns; ++j)
+  for (index_t j = 0; j<d_columns; ++j)
     set_column(j,b[j]);
 }
 
@@ -210,7 +210,7 @@ void Matrix_base<C>::swap(Matrix_base<C>& m)
 
 // Assign row |i| of the matrix to |v|.
 template<typename C>
-void Matrix_base<C>::get_row(Vector<C>& v, unsigned int i) const
+void Matrix_base<C>::get_row(Vector<C>& v, index_t i) const
 {
   assert(i<d_rows);
   v.resize(d_columns);
@@ -219,12 +219,12 @@ void Matrix_base<C>::get_row(Vector<C>& v, unsigned int i) const
 
 // Assign column |j| of the matrix to |v|.
 template<typename C>
-void Matrix_base<C>::get_column(Vector<C>& v, unsigned int j) const
+void Matrix_base<C>::get_column(Vector<C>& v, index_t j) const
 {
   assert(j<d_columns);
   v.resize(d_rows);
 
-  for (unsigned int i = 0; i<d_rows; ++i)
+  for (index_t i = 0; i<d_rows; ++i)
     v[i] = (*this)(i,j);
 }
 
@@ -233,7 +233,7 @@ template<typename C>
   std::vector<Vector<C> > Matrix_base<C>::rows() const
 {
   std::vector<Vector<C> > result(d_rows);
-  for (unsigned int i=0; i<d_rows; ++i)
+  for (index_t i=0; i<d_rows; ++i)
     get_row(result[i],i);
   return result;
 }
@@ -244,7 +244,7 @@ template<typename C>
 {
   std::vector<Vector<C> > result(d_columns);
 
-  for (unsigned int j = 0; j<d_columns; ++j)
+  for (index_t j = 0; j<d_columns; ++j)
     get_column(result[j],j);
 
   return result;
@@ -269,14 +269,14 @@ bool Matrix_base<C>::is_zero () const
 template<typename C>
 Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
 {
-  assert(base::numColumns()==m.numRows());
-  Matrix<C> result(base::numRows(),m.numColumns());
+  assert(base::n_columns()==m.n_rows());
+  Matrix<C> result(base::n_rows(),m.n_columns());
 
-  for (unsigned int i=0; i<base::numRows(); ++i)
-    for (unsigned int k=0; k<m.base::numColumns(); ++k)
+  for (index_t i=0; i<base::n_rows(); ++i)
+    for (index_t k=0; k<m.base::n_columns(); ++k)
     {
       C c(0);
-      for (unsigned int j=0; j<base::numColumns(); ++j)
+      for (index_t j=0; j<base::n_columns(); ++j)
 	c += (*this)(i,j) * m(j,k);
 
       result(i,k)=c;
@@ -299,7 +299,7 @@ template<typename C>
 
 // Puts |v| in the |i|-th row of the matrix
 template<typename C>
-  void Matrix_base<C>::set_row(unsigned int i, const Vector<C>& v)
+  void Matrix_base<C>::set_row(index_t i, const Vector<C>& v)
 {
   assert(v.size()==d_columns);
   std::copy(&v[0],&v[d_columns],at(i,0));
@@ -307,11 +307,11 @@ template<typename C>
 
 // Put |v| in the |j|-th column of the matrix
 template<typename C>
-  void Matrix_base<C>::set_column(unsigned int j, const Vector<C>& v)
+  void Matrix_base<C>::set_column(index_t j, const Vector<C>& v)
 {
   assert(v.size()==d_rows);
 
-  for (unsigned int i=0; i<d_rows; ++i)
+  for (index_t i=0; i<d_rows; ++i)
     (*this)(i,j)=v[i];
 }
 
@@ -333,15 +333,15 @@ template<typename C>
 {
   assert(v.size()==d_rows);
 
-  unsigned int old_col=d_columns;
+  index_t old_col=d_columns;
   ++d_columns;
   d_data.resize(d_rows*d_columns,C(0));
 
   typename Vector<C>::iterator dst=d_data.end(),src=dst-d_rows;
-  for (unsigned int i=d_rows; i-->0;)
+  for (index_t i=d_rows; i-->0;)
   {
     *--dst = v[i];
-    for (unsigned int j=old_col; j-->0;)
+    for (index_t j=old_col; j-->0;)
       *--dst = *--src;
   }
 }
@@ -349,23 +349,23 @@ template<typename C>
 // fill |dst| with submatrix starting at offsets |k,l|
 template<typename C>
   void Matrix_base<C>::get_block
-       (Matrix_base<C>& dst, unsigned k, unsigned l) const
+       (Matrix_base<C>& dst, index_t k, index_t l) const
 {
-  const unsigned int k_end=k+dst.numRows(), l_end=l+dst.numColumns();
-  assert(k_end<=numRows() and l_end<=numColumns());
+  const index_t k_end=k+dst.n_rows(), l_end=l+dst.n_columns();
+  assert(k_end<=n_rows() and l_end<=n_columns());
   auto p=dst.at(0,0);
-  for (unsigned int i=k; i<k_end; ++i)
+  for (index_t i=k; i<k_end; ++i)
     p=std::copy(this->at(i,l),this->at(i,l_end),p);
 }
 
 // fill submatrix starting at offsets |k,l| from |src|
 template<typename C>
   void Matrix_base<C>::set_block
-       (unsigned k, unsigned l, const Matrix_base<C>& src)
+       (index_t k, index_t l, const Matrix_base<C>& src)
 {
-  const unsigned int r=src.numRows();
-  assert(k+r<=numRows() and l+src.numColumns()<=numColumns());
-  for (unsigned int i=0; i<r; ++i)
+  const index_t r=src.n_rows();
+  assert(k+r<=n_rows() and l+src.n_columns()<=n_columns());
+  for (index_t i=0; i<r; ++i)
     std::copy(src.at(i,0),src.at(i+1,0),this->at(k+i,l));
 }
 
@@ -374,8 +374,8 @@ template<typename C>
 template<typename C>
 Matrix<C>& Matrix<C>::operator+= (const Matrix<C>& m)
 {
-  assert(base::numRows()==m.numRows());
-  assert(base::numColumns()==m.numColumns());
+  assert(base::n_rows()==m.n_rows());
+  assert(base::n_columns()==m.n_columns());
   base::d_data += m.d_data;
   return *this;
 }
@@ -384,8 +384,8 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>& m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 {
-  assert(base::numRows()==m.numRows());
-  assert(base::numColumns()==m.numColumns());
+  assert(base::n_rows()==m.n_rows());
+  assert(base::n_columns()==m.n_columns());
   base::d_data -= m.d_data;
   return *this;
 }
@@ -393,10 +393,10 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 
 template<typename C> Matrix<C> Matrix<C>::transposed() const &
 {
-  Matrix<C> result(base::numColumns(),base::numRows());
+  Matrix<C> result(base::n_columns(),base::n_rows());
   auto p = base::d_data.begin();
-  for (unsigned int i=0; i<base::numRows(); ++i)
-    for (unsigned int j=0; j<base::numColumns(); ++j)
+  for (index_t i=0; i<base::n_rows(); ++i)
+    for (index_t j=0; j<base::n_columns(); ++j)
       result(j,i) = *p++; // fill by column, read by row
   return result;
 }
@@ -408,9 +408,9 @@ template<typename C> Matrix<C> Matrix<C>::transposed() const &
 */
 template<typename C> Matrix<C>& Matrix<C>::transpose()
 {
-  if (base::numRows() == base::numColumns()) // matrix is square
-    for (unsigned int j=0; j<base::numColumns(); ++j)
-      for (unsigned int i = j+1; i<base::numRows(); ++i)
+  if (base::n_rows() == base::n_columns()) // matrix is square
+    for (index_t j=0; j<base::n_columns(); ++j)
+      for (index_t i = j+1; i<base::n_rows(); ++i)
 	std::swap((*this)(i,j),(*this)(j,i));
   else // now matrix is not square; create a transposed copy
     *this = transposed(); // move-assign from transposed copy
@@ -422,8 +422,8 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
 template<typename C>
 PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
 {
-  assert(A.numRows()==A.numColumns());
-  unsigned int n=A.numRows();
+  assert(A.n_rows()==A.n_columns());
+  index_t n=A.n_rows();
   PID_Matrix<C> result(n,n);
   if (n==0) // do nothing to matrix, but set |d=1|
   { d=arithmetic::big_int(1); return result; }
@@ -438,15 +438,15 @@ PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
 
   std::vector<arithmetic::big_int> denoms(n); // next loop initialises entries
   auto basis = matrix::standard_basis<C>(n);
-  for (unsigned int j=0; j<n; ++j) // from easy to harder, but order isn't vital
+  for (index_t j=0; j<n; ++j) // from easy to harder, but order isn't vital
     basis[j] = matreduc::echelon_solve(A,pivots,std::move(basis[j]),denoms[j]);
 
   d=denoms[0];
-  for (unsigned int j=1; j<n; ++j)
+  for (index_t j=1; j<n; ++j)
     d=arithmetic::lcm(d,denoms[j]);
 
   // finally for |D| "inverse" diagonal matrix w.r.t. |d|, compute |col*D*row|
-  for (unsigned int j=0; j<n; ++j)
+  for (index_t j=0; j<n; ++j)
     result.set_column(j,col*basis[j]*(d/denoms[j]).int_val());
 
   return result;
@@ -456,7 +456,7 @@ PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
 template<typename C>
 bool PID_Matrix<C>::divisible(C c) const
 {
-  for (unsigned int j=0; j<base::d_data.size(); ++j)
+  for (index_t j=0; j<base::d_data.size(); ++j)
     if (base::d_data[j]%c!=0)
       return false;
 
@@ -464,19 +464,18 @@ bool PID_Matrix<C>::divisible(C c) const
 }
 
 
-// Extract the block at indices [i0,i1[ x [j0,j1[ as a |Matrix|
+// Extract the block at indices [i0,i1[ x [j0,j1[ as a |PID_Matrix|
 template<typename C>
   PID_Matrix<C>
-    PID_Matrix<C>::block(unsigned int i0, unsigned int j0,
-			 unsigned int i1, unsigned int j1) const
+    PID_Matrix<C>::block(index_t i0, index_t j0, index_t i1, index_t j1) const
 {
-  assert(i0<=i1 and i1<=base::numRows());
-  assert(j0<=j1 and j1<=base::numColumns());
+  assert(i0<=i1 and i1<=base::n_rows());
+  assert(j0<=j1 and j1<=base::n_columns());
 
 // The implementation uses that storage is by rows.
   PID_Matrix<C> result(i1-i0,j1-j0);
   C* p = result.at(0,0); // writing pointer
-  for (unsigned int i=i0; i<i1; ++i)
+  for (index_t i=i0; i<i1; ++i)
     p = std::copy(this->at(i,j0),this->at(i,j1),p); // copy row, advance
   return result;
 }
@@ -485,78 +484,78 @@ template<typename C>
 template<typename C>
   PID_Matrix<C>
     PID_Matrix<C>::transposed_block
-     (unsigned int i0, unsigned int j0, unsigned int i1, unsigned int j1) const
+     (index_t i0, index_t j0, index_t i1, index_t j1) const
 {
-  assert(i0<=i1 and i1<=base::numColumns());
-  assert(j0<=j1 and j1<=base::numRows());
+  assert(i0<=i1 and i1<=base::n_columns());
+  assert(j0<=j1 and j1<=base::n_rows());
 
   PID_Matrix<C> result(i1-i0,j1-j0);
-  for (unsigned int i=0; i<result.numRows(); ++i)
-    for (unsigned int j=0; j<result.numColumns(); ++j)
+  for (index_t i=0; i<result.n_rows(); ++i)
+    for (index_t j=0; j<result.n_columns(); ++j)
       result(i,j)=(*this)(j0+j,i0+i);
   return result;
 }
 
 // The row operation consisting of adding |c| times row |k| to row |i|.
 template<typename C>
-void Matrix<C>::rowOperation(unsigned int i, unsigned int k, const C& c)
+void Matrix<C>::rowOperation(index_t i, index_t k, const C& c)
 {
-  assert(i<base::numRows() and k<base::numRows());
+  assert(i<base::n_rows() and k<base::n_rows());
   if (c!=C(0))
-    for (unsigned int j=0; j<base::numColumns(); ++j)
+    for (index_t j=0; j<base::n_columns(); ++j)
       (*this)(i,j) += c*(*this)(k,j);
 }
 
 
 // The column operation consisting of adding |c| times column |k| to column |j|.
 template<typename C>
-void Matrix<C>::columnOperation(unsigned int j, unsigned int k, const C& c)
+void Matrix<C>::columnOperation(index_t j, index_t k, const C& c)
 {
-  assert(j<base::numColumns() and k<base::numColumns());
+  assert(j<base::n_columns() and k<base::n_columns());
   if (c!=C(0))
-    for (unsigned int i=0; i<base::numRows(); ++i)
+    for (index_t i=0; i<base::n_rows(); ++i)
       (*this)(i,j) += c*(*this)(i,k);
 }
 
 
 
 template<typename C>
-void Matrix<C>::rowMultiply(unsigned int i, C f)
+void Matrix<C>::rowMultiply(index_t i, C f)
 {
-  assert(i<base::numRows());
+  assert(i<base::n_rows());
   if (f!=C(1))
-    for (unsigned int j=0; j<base::numColumns(); ++j)
+    for (index_t j=0; j<base::n_columns(); ++j)
       (*this)(i,j) *= f;
 }
 
 template<typename C>
-void Matrix<C>::columnMultiply(unsigned int j, C f)
+void Matrix<C>::columnMultiply(index_t j, C f)
 {
-  assert(j<base::numColumns());
+  assert(j<base::n_columns());
   if (f!=C(1))
-    for (unsigned int i=0; i<base::numRows(); ++i)
+    for (index_t i=0; i<base::n_rows(); ++i)
       (*this)(i,j) *= f;
 }
 
 
 template<typename C>
-void Matrix<C>::swapRows(unsigned int i0, unsigned int i1)
+void Matrix<C>::swapRows(index_t i0, index_t i1)
 {
-  assert(i0<base::numRows() and i1<base::numRows());
-  for (unsigned int k=0; k<base::numColumns(); ++k)
+  assert(i0<base::n_rows() and i1<base::n_rows());
+  for (index_t k=0; k<base::n_columns(); ++k)
     std::swap((*this)(i0,k),(*this)(i1,k));
 }
 
 template<typename C>
-void Matrix<C>::swapColumns(unsigned int j0, unsigned int j1)
+void Matrix<C>::swapColumns(index_t j0, index_t j1)
 {
-  assert(j0<base::numColumns() and j1<base::numColumns());
-  for (unsigned int k=0; k<base::numRows(); ++k)
+  assert(j0<base::n_columns() and j1<base::n_columns());
+  for (index_t k=0; k<base::n_rows(); ++k)
     std::swap((*this)(k,j0),(*this)(k,j1));
 }
 
 template<typename C>
-void Matrix_base<C>::eraseRow(unsigned int i)
+void Matrix_base<C>::eraseRow(index_t i)
 {
   assert(i<d_rows);
   typename Vector<C>::iterator first = d_data.begin() + i*d_columns;
@@ -565,7 +564,7 @@ void Matrix_base<C>::eraseRow(unsigned int i)
 }
 
 template<typename C>
-void Matrix_base<C>::eraseColumn(unsigned int j)
+void Matrix_base<C>::eraseColumn(index_t j)
 {
   assert(j<d_columns);
   typename Vector<C>::iterator
@@ -574,7 +573,7 @@ void Matrix_base<C>::eraseColumn(unsigned int j)
 
   // kill individual entries from left to right, with shifts of new |d_colums|
   // (this is easily seen to be correct but not particularly efficient)
-  for (unsigned int k=0; k<d_rows; ++k, pos += d_columns)
+  for (index_t k=0; k<d_rows; ++k, pos += d_columns)
     d_data.erase(pos);
 }
 

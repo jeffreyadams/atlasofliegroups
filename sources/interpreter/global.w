@@ -2147,7 +2147,7 @@ However if there are no entries, we print the dimensions of the matrix.
 
 @< Global function def... @>=
 void matrix_value::print(std::ostream& out) const
-{ auto k=val.numRows(),l=val.numColumns();
+{ auto k=val.n_rows(),l=val.n_columns();
   if (k==0 or l==0)
   {@;  out << "The " << k << 'x' << l << " matrix"; return; }
   std::vector<std::size_t> w(l,0);
@@ -2441,8 +2441,8 @@ void rows_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  own_row result = std::make_shared<row_value>(m->val.numRows());
-  for(unsigned int i=0; i<m->val.numRows(); ++i)
+  own_row result = std::make_shared<row_value>(m->val.n_rows());
+  for(unsigned int i=0; i<m->val.n_rows(); ++i)
     result->val[i]=std::make_shared<vector_value>(m->val.row(i));
   push_value(result);
 }
@@ -2450,8 +2450,8 @@ void columns_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(unsigned int j=0; j<m->val.numColumns(); ++j)
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]=std::make_shared<vector_value>(m->val.column(j));
   push_value(result);
 }
@@ -2460,8 +2460,8 @@ void matrix_veclist_convert()
 @)
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
-  own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(unsigned int j=0; j<m->val.numColumns(); ++j)
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]= vector_to_row(m->val.column(j));
   push_value(result);
 }
@@ -2482,8 +2482,8 @@ such conversions.
 
 void matrix_ratveclist_convert()
 { shared_matrix m=get<matrix_value>();
-  own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(unsigned int j=0; j<m->val.numColumns(); ++j)
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]=std::make_shared<rational_vector_value> @|
       (rat_Vector(m->val.column(j),1));
   push_value(result);
@@ -2491,8 +2491,8 @@ void matrix_ratveclist_convert()
 
 void matrix_ratlistlist_convert()
 { shared_matrix m=get<matrix_value>();
-  own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(unsigned int j=0; j<m->val.numColumns(); ++j)
+  own_row result = std::make_shared<row_value>(m->val.n_columns());
+  for(unsigned int j=0; j<m->val.n_columns(); ++j)
   result->val[j]= vector_to_ratrow(m->val.column(j));
   push_value(result);
 }
@@ -3352,7 +3352,7 @@ void matrix_ncols_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<int_value>(m->val.numColumns()));
+  push_value(std::make_shared<int_value>(m->val.n_columns()));
 }
 
 @ Giving both matrix bounds is what used to be bound in the overload table to
@@ -3366,8 +3366,8 @@ void matrix_shape_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<int_value>(m->val.numRows()));
-  push_value(std::make_shared<int_value>(m->val.numColumns()));
+  push_value(std::make_shared<int_value>(m->val.n_rows()));
+  push_value(std::make_shared<int_value>(m->val.n_columns()));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -3387,8 +3387,8 @@ inline std::string range_mess (int i,size_t n,const char* what)
 void matrix_row_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   shared_matrix m=get<matrix_value>();
-  if (static_cast<unsigned int>(i) >= m->val.numRows())
-    throw runtime_error(range_mess(i,m->val.numRows(),"row"));
+  if (static_cast<unsigned int>(i) >= m->val.n_rows())
+    throw runtime_error(range_mess(i,m->val.n_rows(),"row"));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val.row(i)));
 }
@@ -3396,8 +3396,8 @@ void matrix_row_wrapper(expression_base::level l)
 void matrix_column_wrapper(expression_base::level l)
 { int j=get<int_value>()->int_val();
   shared_matrix m=get<matrix_value>();
-  if (static_cast<unsigned int>(j) >= m->val.numColumns())
-    throw runtime_error(range_mess(j,m->val.numColumns(),"column"));
+  if (static_cast<unsigned int>(j) >= m->val.n_columns())
+    throw runtime_error(range_mess(j,m->val.n_columns(),"column"));
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
@@ -4000,8 +4000,8 @@ built into the interpreter.
 void mat_plus_mat_wrapper(expression_base::level l)
 { own_matrix b= get_own<matrix_value>();
   shared_matrix a= get<matrix_value>();
-  check_size(a->val.numRows(),b->val.numRows());
-  check_size(a->val.numColumns(),b->val.numColumns());
+  check_size(a->val.n_rows(),b->val.n_rows());
+  check_size(a->val.n_columns(),b->val.n_columns());
   if (l==expression_base::no_value)
     return;
   b->val += a->val;
@@ -4012,8 +4012,8 @@ void mat_minus_mat_wrapper(expression_base::level l)
 {
   shared_matrix b= get<matrix_value>();
   own_matrix a= get_own<matrix_value>();
-  check_size(a->val.numRows(),b->val.numRows());
-  check_size(a->val.numColumns(),b->val.numColumns());
+  check_size(a->val.n_rows(),b->val.n_rows());
+  check_size(a->val.n_columns(),b->val.n_columns());
   if (l==expression_base::no_value)
     return;
   a->val -= b->val;
@@ -4034,7 +4034,7 @@ they are to be popped from the stack in reverse order.
 void mm_prod_wrapper(expression_base::level l)
 { shared_matrix rf=get<matrix_value>(); // right factor
   shared_matrix lf=get<matrix_value>(); // left factor
-  check_size(lf->val.numColumns(),rf->val.numRows());
+  check_size(lf->val.n_columns(),rf->val.n_rows());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<matrix_value>(lf->val*rf->val));
 }
@@ -4048,9 +4048,9 @@ the parser at that time).
 void mv_prod_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   shared_matrix m=get<matrix_value>();
-  if (m->val.numColumns()!=v->val.size())
+  if (m->val.n_columns()!=v->val.size())
   { std::ostringstream o;
-    o << "Size mismatch " @| << m->val.numColumns() << ':' << v->val.size();
+    o << "Size mismatch " @| << m->val.n_columns() << ':' << v->val.size();
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
@@ -4060,9 +4060,9 @@ void mv_prod_wrapper(expression_base::level l)
 void mrv_prod_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   shared_matrix m=get<matrix_value>();
-  if (m->val.numColumns()!=v->val.size())
+  if (m->val.n_columns()!=v->val.size())
   { std::ostringstream o;
-    o << "Size mismatch " @| << m->val.numColumns() << ':' << v->val.size();
+    o << "Size mismatch " @| << m->val.n_columns() << ':' << v->val.size();
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
@@ -4072,9 +4072,9 @@ void mrv_prod_wrapper(expression_base::level l)
 void vm_prod_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>(); // right factor
   shared_vector v=get<vector_value>(); // left factor
-  if (v->val.size()!=m->val.numRows())
+  if (v->val.size()!=m->val.n_rows())
   { std::ostringstream o;
-    o << "Size mismatch " << v->val.size() << ":" << m->val.numRows();
+    o << "Size mismatch " << v->val.size() << ":" << m->val.n_rows();
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
@@ -4084,10 +4084,10 @@ void vm_prod_wrapper(expression_base::level l)
 void rvm_prod_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   shared_rational_vector v=get<rational_vector_value>();
-  if (v->val.size()!=m->val.numRows())
+  if (v->val.size()!=m->val.n_rows())
   { std::ostringstream o;
     o << "Size mismatch " @|
-      << v->val.size() << ':' << m->val.numRows();
+      << v->val.size() << ':' << m->val.n_rows();
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
@@ -4471,7 +4471,7 @@ void swiss_matrix_knife_wrapper(expression_base::level lev)
   const int_Matrix& M = src->val;
   BitSet<8> flags (get<int_value>()->int_val());
 @)
-  int m = M.numRows(); int n= M.numColumns();
+  int m = M.n_rows(); int n= M.n_columns();
   int lwb_r = flags[1] ? m-i : i;
   int upb_r = flags[2] ? m-k : k;
   int lwb_c = flags[4] ? n-j : j;
@@ -4635,21 +4635,21 @@ injector functions of these names.
 void linear_solve_wrapper(expression_base::level l)
 { own_vector b=get_own<vector_value>();
   own_matrix M=get_own<matrix_value>();
-  if (M->val.numRows()!=b->val.size())
+  if (M->val.n_rows()!=b->val.size())
   { std::ostringstream o;
     o << "Linear system size mismatch "
-      << M->val.numRows() << ':' << b->val.size();
+      << M->val.n_rows() << ':' << b->val.size();
     throw runtime_error(o.str());
   }
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
   bool flip; // unused
-  const auto m = M->val.numColumns();
+  const auto m = M->val.n_columns();
   BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
   try
   { static id_type affine_name=main_hash_table->match_literal("affine_subspace");
-    const auto k = M->val.numColumns(); // number of pivots
+    const auto k = M->val.n_columns(); // number of pivots
     arithmetic::big_int factor;
     int_Vector ini_sol = matreduc::echelon_solve(M->val,pivots,b->val,factor);
     push_value(std::make_shared<vector_value> @|
@@ -4760,10 +4760,10 @@ denominator to be applied to all coefficients.
 @< Local function definitions @>=
 void invert_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
-  if (m->val.numRows()!=m->val.numColumns())
+  if (m->val.n_rows()!=m->val.n_columns())
   { std::ostringstream o;
     o << "Cannot invert a " @|
-      << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
+      << m->val.n_rows() << "x" << m->val.n_columns() << " matrix";
     throw runtime_error(o.str());
   }
   if (l==expression_base::no_value)
@@ -4789,8 +4789,8 @@ void section_wrapper(expression_base::level l)
   shared_matrix m=get<matrix_value>();
   BinaryMap B = BinaryMap(m->val).section();
   own_matrix res = std::make_shared<matrix_value>(
-    int_Matrix(B.numRows(),B.numColumns()));
-  for (unsigned int j=B.numColumns(); j-->0;)
+    int_Matrix(B.n_rows(),B.n_columns()));
+  for (unsigned int j=B.n_columns(); j-->0;)
     res->val.set_column(j,int_Vector(B.column(j)));
   if (l!=expression_base::no_value)
     push_value(std::move(res));
@@ -4807,8 +4807,8 @@ void subspace_normal_wrapper(expression_base::level l)
 {
   typedef BitVector<64> bitvec;
   shared_matrix generators=get<matrix_value>();
-  unsigned int n_gens = generators->val.numColumns();
-  unsigned int dim = generators->val.numRows();
+  unsigned int n_gens = generators->val.n_columns();
+  unsigned int dim = generators->val.n_rows();
   if (dim>64)
   { std::ostringstream o;
     o << "Dimension too large: " << dim << ">64";

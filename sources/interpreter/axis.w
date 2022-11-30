@@ -3943,8 +3943,8 @@ void matrix_subscription<reversed>::evaluate(level l) const
   auto j=(get<int_value>()->long_val());
   auto i=(get<int_value>()->long_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
-  size_t r = m->val.numRows();
-  size_t c = m->val.numColumns();
+  size_t r = m->val.n_rows();
+  size_t c = m->val.n_columns();
   if (reversed)
   {@;  i=r-1-i; j=c-1-j; }
   if (static_cast<size_t>(i)>=r)
@@ -3961,7 +3961,7 @@ template <bool reversed>
 void matrix_get_column<reversed>::evaluate(level l) const
 { auto j=(index->eval(),get<int_value>()->long_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
-  size_t c = m->val.numColumns();
+  size_t c = m->val.n_columns();
   if (reversed)
     j=c-1-j;
   if (static_cast<size_t>(j)>=c)
@@ -4107,7 +4107,7 @@ void matrix_slice<flags>::evaluate(level l) const
   auto lwb=(lower->eval(),get<int_value>()->long_val());
   shared_matrix mat=(array->eval(),get<matrix_value>());
   const auto& m = mat->val;
-  size_t n = m.numColumns();
+  size_t n = m.n_columns();
   if ((flags&0x2)!=0)
     lwb = n - lwb;
   if ((flags&0x4)!=0)
@@ -4115,10 +4115,10 @@ void matrix_slice<flags>::evaluate(level l) const
   if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
-@/{@; push_value(std::make_shared<matrix_value>(int_Matrix(m.numRows(),0)));
+@/{@; push_value(std::make_shared<matrix_value>(int_Matrix(m.n_rows(),0)));
       return; }
   own_matrix result =
-    std::make_shared<matrix_value>(int_Matrix(m.numRows(),upb-lwb));
+    std::make_shared<matrix_value>(int_Matrix(m.n_rows(),upb-lwb));
   auto& r = result->val;
   for (unsigned int j=0; lwb<upb; ++j)
     r.set_column(j,m.column((flags&0x1)==0 ? lwb++ : n - ++lwb));
@@ -5774,7 +5774,7 @@ two cases should never arise.
 @< Cases for evaluating a loop over components of a value... @>=
 case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
-    size_t n=in_val->val.numColumns();
+    size_t n=in_val->val.n_columns();
     @< Define loop index |i|, allocate |result| and initialise iterator |dst| @>
     try {
       while (i!=(in_forward(flags) ? n : 0))
@@ -7254,13 +7254,13 @@ indices, and there are two bound checks.
   unsigned int i=get<int_value>()->int_val();
 @/
   auto& m = uniquify<matrix_value>(aggregate)->val;
-  size_t k=m.numRows(),l=m.numColumns();
+  size_t k=m.n_rows(),l=m.n_columns();
   if (i>=k)
     throw runtime_error
-      (range_mess(i,m.numRows(),this,"matrix entry assignment"));
+      (range_mess(i,m.n_rows(),this,"matrix entry assignment"));
   if (j>=l)
     throw runtime_error(
-      range_mess(j,m.numColumns(),this,"matrix entry assignment"));
+      range_mess(j,m.n_columns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
     // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
@@ -7276,13 +7276,13 @@ for matching column length.
   auto& m = uniquify<matrix_value>(aggregate)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
-  size_t l=m.numColumns();
+  size_t l=m.n_columns();
   if (j>=l)
     throw runtime_error(
-      range_mess(j,m.numColumns(),this,"matrix column assignment"));
-  if (v.size()!=m.numRows())
+      range_mess(j,m.n_columns(),this,"matrix column assignment"));
+  if (v.size()!=m.n_rows())
     throw runtime_error
-      (std::string("Cannot replace column of size ")+str(m.numRows())+
+      (std::string("Cannot replace column of size ")+str(m.n_rows())+
        " by one of size "+str(v.size()));
   m.set_column(reversed ? l-j-1 : j,v);
     // copy value of |int_Vector| into the matrix

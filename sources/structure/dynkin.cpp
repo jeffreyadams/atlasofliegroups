@@ -26,12 +26,12 @@ namespace dynkin{
 
 // Construct a presumptive Dynkin diagram from a Cartan matrix
 DynkinDiagram::DynkinDiagram(const int_Matrix& c)
-  : d_star(c.numColumns())
+  : d_star(c.n_columns())
   , down_edges()
 {
-  assert(c.numRows()==c.numColumns());
-  for (unsigned int i = 0; i < c.numRows(); ++i)
-    for (unsigned int j = 0; j < c.numColumns(); ++j)
+  assert(c.n_rows()==c.n_columns());
+  for (unsigned int i = 0; i < c.n_rows(); ++i)
+    for (unsigned int j = 0; j < c.n_columns(); ++j)
       if (i!=j)
       {
 	if (c(i,j)<-3)
@@ -315,7 +315,7 @@ LieType Lie_type(const int_Matrix& cm)
 */
 LieType Lie_type(const int_Matrix& cm, Permutation& pi)
 {
-  if (cm.numRows()!=cm.numColumns())
+  if (cm.n_rows()!=cm.n_columns())
     throw error::Cartan_error("Not a square matrix");
 
   DynkinDiagram d(cm); // construct and classify Dynkin diagram

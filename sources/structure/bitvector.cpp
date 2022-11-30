@@ -145,11 +145,11 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 
 template<unsigned int dim>
 BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
-  : d_data(m.numColumns(),BitSet<dim>())
-  , d_rows(m.numRows())
-  , d_columns(m.numColumns())
+  : d_data(m.n_columns(),BitSet<dim>())
+  , d_rows(m.n_rows())
+  , d_columns(m.n_columns())
 {
-  assert(m.numRows()<=dim);
+  assert(m.n_rows()<=dim);
   for (size_t i=0; i<d_rows; ++i)
     for (size_t j=0; j<d_columns; ++j)
       d_data[j].set(i, (m(i,j)&1)!=0 );
@@ -177,7 +177,7 @@ BitVector<dim> BitMatrix<dim>::right_act(const BitVector<dim>& source) const
 {
   assert(d_rows==source.size());
   BitVector<dim> result(d_columns);
-  for (unsigned j=0; j<numColumns(); ++j)
+  for (unsigned j=0; j<n_columns(); ++j)
     result.set(j,source.dot(column(j)));
   return result;
 }
@@ -237,10 +237,10 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 {
   BitVectorList<dim> result;
 
-  if (numColumns()==0)
+  if (n_columns()==0)
     return result; // no unknowns, so there are no nontrivial solutions
 
-  assert(numColumns()<=dim);
+  assert(n_columns()<=dim);
   std::vector<BitVector<dim> > eqn;
   eqn.reserve(d_rows);
 
@@ -251,7 +251,7 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 
   // normalize |eqn|
 
-  BitSet<dim> t; // will flag a subset of [0,numColumns()[
+  BitSet<dim> t; // will flag a subset of [0,n_columns()[
 
   Gauss_Jordan(t,eqn);
 
@@ -267,11 +267,11 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
    explained below under |normalSpanAdd|, but that complement not lex-minimal.
 */
 
-  result.reserve(numColumns()-t.count());
-  for (size_t j = 0; j < numColumns(); ++j)
+  result.reserve(n_columns()-t.count());
+  for (size_t j = 0; j < n_columns(); ++j)
     if (not t[j])
     {
-      BitVector<dim> v(numColumns(),j); // start with unit vector $e_j$
+      BitVector<dim> v(n_columns(),j); // start with unit vector $e_j$
       size_t c = 0;
       for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it, ++c)
 	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
@@ -294,7 +294,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 {
   assert(d_rows==m.d_rows);
   assert(d_columns==m.d_columns);
-  for (size_t j = 0; j < numColumns(); ++j)
+  for (size_t j = 0; j < n_columns(); ++j)
     d_data[j] ^= m.d_data[j]; // not |+|, since these are |BitSet|s
 
   return *this;
@@ -307,7 +307,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
   As in apply, this can be done rather efficiently by computing a whole column
   at a time.
 
-  NOTE : of course |m.numRows()| must be equal to |numColumns()|.
+  NOTE : of course |m.n_rows()| must be equal to |n_columns()|.
 */
 template<unsigned int dim>
 BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)

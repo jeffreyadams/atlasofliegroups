@@ -53,8 +53,8 @@ namespace output {
     block(G.numRealForms(),G.numDualRealForms());
   arithmetic::big_int maxEntry(0);
 
-  for (size_t i = 0; i < block.numRows(); ++i)
-    for (size_t j = 0; j < block.numColumns(); ++j)
+  for (size_t i = 0; i < block.n_rows(); ++i)
+    for (size_t j = 0; j < block.n_columns(); ++j)
     {
       block(i,j) = G.block_size(rfi.in(i),drfi.in(j));
       if (block(i,j) > maxEntry)
