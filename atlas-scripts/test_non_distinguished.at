@@ -1,0 +1,64 @@
+<basic.at {for sum([ParamPol])}
+<parabolics.at {for KGPElt, etc.}
+<induction.at {for induction functors}
+
+<all.at
+
+{This is meant to compute (at least the induced parameters in) a weak
+Arthur packet attached to a nilpotent O^vee for G^vee which is
+PRINCIPAL in a Levi L^vee.}
+
+{. List all finite-dimensional characters of Levi with given
+  infinitesimal character .}
+set all_one_dim_params_gamma (ratvec infchar, Parabolic P)=[Param]:
+   let L=Levi(P)
+   then n=#KGB(L), rL = L.semisimple_rank
+   then x=KGB(L,n-1)
+   then list=all_parameters_x_gamma(x,infchar)
+   in for p in list
+      do if #tau(p) = rL
+      	 then [p]
+	 else []
+	 fi od.##
+
+{Here's how these parameters for L are recorded on G}
+set one_dims (Parabolic P)=[Param]:
+   let x=maximal(P)
+   then infchar = x.real_form.rho {this is rho(Levi) + rho(u)}
+   then shift = P.rho_u
+   in for p in all_one_dim_params_gamma(infchar,P)
+      do parameter(x,lambda(p) -  shift, nu(p) - shift) od
+
+set induced_params ([int] L, Parabolic P) = ParamPol:
+   let list=one_dims(P), G=P.real_form
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(L,p) od)
+
+set non_distinguished_params ([int] L, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,L)
+   in sum(G, for P in paras do induced_params(L,P) od)
+
+set levis_mod_conj (RootDatum rd) = [[[int]]]:
+    let D = rd.semisimple_rank + 1
+    then result = [[[int]]]: for d:D do [[int]]:[] od,
+    	 rhos = [[ratvec]]: for d:D do [ratvec]: [] od
+    then () = for d:semisimple_rank(rd)+1
+    	do for A in choices_from(#rd.semisimple_rank,d)
+	   do if none(for rhoL in rhos[d]
+		      do rhoL = dominant(rd,(rd,A).Levi.rho)
+		      od)
+	      then result[d]#:=A;
+		   rhos[d]#:=dominant(rd,(rd,A).Levi.rho)
+	      fi
+	   od
+         od
+    in result
+
+set test_non_distinguished(RealForm G) = void:
+    let LeviClasses = levis_mod_conj(G)
+    in for Ls@d in LeviClasses
+       do prints(); prints("Levis of rank ",d);
+       	  for A in Ls
+	  do prints("Levi ",A," with ",#non_distinguished_params(A,G),
+    	     	    " unipotent parameters.")
+          od
+       od
