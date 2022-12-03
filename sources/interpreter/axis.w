@@ -3884,11 +3884,9 @@ void row_subscription<reversed>::evaluate(level l) const
 { auto i=(index->eval(),get<int_value>()->long_val());
   shared_row r=(array->eval(),get<row_value>());
   size_t n = r->val.size();
-  if (reversed)
-    i=n-1-i;
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
-  push_expanded(l,r->val[i]);
+  push_expanded(l,r->val[reversed ? n-1-i : i]);
 }
 @)
 template <bool reversed>
@@ -3896,12 +3894,10 @@ void vector_subscription<reversed>::evaluate(level l) const
 { auto i=(index->eval(),get<int_value>()->long_val());
   shared_vector v=(array->eval(),get<vector_value>());
   size_t n = v->val.size();
-  if (reversed)
-    i=n-1-i;
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
-    push_value(std::make_shared<int_value>(v->val[i]));
+    push_value(std::make_shared<int_value>(v->val[reversed ? n-1-i : i]));
 }
 @)
 template <bool reversed>
@@ -3909,13 +3905,11 @@ void ratvec_subscription<reversed>::evaluate(level l) const
 { auto i=(index->eval(),get<int_value>()->long_val());
   shared_rational_vector v=(array->eval(),get<rational_vector_value>());
   size_t n = v->val.size();
-  if (reversed)
-    i=n-1-i;
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
     push_value(std::make_shared<rat_value>(RatNum @|
-       (v->val.numerator()[i],v->val.denominator())));
+       (v->val.numerator()[reversed ? n-1-i : i],v->val.denominator())));
 }
 @)
 template <bool reversed>
@@ -3923,12 +3917,11 @@ void string_subscription<reversed>::evaluate(level l) const
 { auto i=(index->eval(),get<int_value>()->long_val());
   shared_string s=(array->eval(),get<string_value>());
   size_t n = s->val.size();
-  if (reversed)
-    i=n-1-i;
   if (static_cast<size_t>(i)>=n)
     throw runtime_error(range_mess(i,n,this,"subscription"));
   if (l!=no_value)
-    push_value(std::make_shared<string_value>(s->val.substr(i,1)));
+    push_value(std::make_shared<string_value>
+      (s->val.substr(reversed ? n-1-i : i,1)));
 }
 
 @ And here are the cases for matrix indexing and column selection, which are
@@ -3945,8 +3938,6 @@ void matrix_subscription<reversed>::evaluate(level l) const
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t r = m->val.n_rows();
   size_t c = m->val.n_columns();
-  if (reversed)
-  {@;  i=r-1-i; j=c-1-j; }
   if (static_cast<size_t>(i)>=r)
     throw runtime_error
      ("initial "+range_mess(i,r,this,"matrix subscription"));
@@ -3954,7 +3945,8 @@ void matrix_subscription<reversed>::evaluate(level l) const
     throw runtime_error
      ("final "+range_mess(j,c,this,"matrix subscription"));
   if (l!=no_value)
-    push_value(std::make_shared<int_value>(m->val(i,j)));
+    push_value(std::make_shared<int_value>
+      (reversed ? m->val(r-1-i,c-1-j): m->val(i,j)));
 }
 @)
 template <bool reversed>
@@ -3962,12 +3954,11 @@ void matrix_get_column<reversed>::evaluate(level l) const
 { auto j=(index->eval(),get<int_value>()->long_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t c = m->val.n_columns();
-  if (reversed)
-    j=c-1-j;
   if (static_cast<size_t>(j)>=c)
     throw runtime_error(range_mess(j,c,this,"matrix column selection"));
   if (l!=no_value)
-    push_value(std::make_shared<vector_value>(m->val.column(j)));
+    push_value(std::make_shared<vector_value>
+      (m->val.column(reversed ? c-1-j : j)));
 }
 
 @ For slices these are template functions. This is where the actual reversals
@@ -3978,8 +3969,8 @@ void slice_range_error
   ,arithmetic::Numer_t upb
   ,size_t n
   ,unsigned flags,const expression_base* e)
-{ std::ostringstream o; bool u = upb>=0 and static_cast<size_t>(upb)>n;
-  if (u)
+{ std::ostringstream o; bool u_high = upb>=0 and static_cast<size_t>(upb)>n;
+  if (u_high)
     if (lwb<0)
       o << "both bounds " << lwb << ':' << upb;
     else
@@ -3988,8 +3979,8 @@ void slice_range_error
     o << "lower bound " << lwb;
   o << " out of range (should be ";
   if (lwb<0)
-    o << ">=0" << (u ? " respectively " : ")");
-  if (u)
+    o << ">=0" << (u_high ? " respectively " : ")");
+  if (u_high)
     o << "<=" << n << ')';
   e->print(o << " in slice ");
   throw runtime_error(o.str());
@@ -4060,8 +4051,9 @@ void ratvec_slice<flags>::evaluate(level l) const
   if (lwb<0 or (upb>=0 and static_cast<size_t>(upb)>n))
     slice_range_error(lwb,upb,n,flags,this);
   if (lwb>=upb)
-  {@; push_value(std::make_shared<rational_vector_value>(RatWeight(0)));
-      return; }
+  @/{@; push_value(std::make_shared<rational_vector_value>(RatWeight(0)));
+      return;
+  }
   const int d=arr->val.denominator();
   push_value( (flags&0x1)==0
 @|  ? std::make_shared<rational_vector_value>(r.begin()+lwb,r.begin()+upb,d)
@@ -4576,8 +4568,8 @@ void int_case_expression::evaluate(level l) const
 { condition->eval();
   auto i = get<int_value>();
   if (i->val.size()==1) // in normal cases avoid using |shift_modulo|
-  { auto ii = static_cast<unsigned>(i->int_val());
-    if (ii < branches.size())
+  { auto ii = i->int_val();
+    if (ii >= 0 and static_cast<unsigned>(ii) < branches.size())
       branches[ii]->evaluate(l);
     else
       branches
@@ -4591,8 +4583,8 @@ void int_case_else_expression::evaluate(level l) const
 { condition->eval();
   auto i = get<int_value>();
   if (i->val.size()==1) // necessary condition for selecting an \&{in} branch
-  { auto ii = static_cast<unsigned>(i->int_val());
-    if (ii < branches.size()) // exclude negative and too large values
+  { auto ii = i->int_val();
+    if (ii >= 0 and static_cast<unsigned>(ii) < branches.size())
       return branches[ii]->evaluate(l);
   }
   out_branch->evaluate(l);
@@ -4603,8 +4595,8 @@ void int_case_then_else_expression::evaluate(level l) const
   if (i->val.is_negative())
     return pre_branch->evaluate(l);
   if (i->val.size()==1) // necessary condition for selecting an \&{in} branch
-  { auto ii = static_cast<unsigned>(i->int_val());
-    if (ii < branches.size())
+  { auto ii = i->int_val();
+    if (ii >= 0 and static_cast<unsigned>(ii) < branches.size())
       return branches[ii]->evaluate(l);
   }
   post_branch->evaluate(l);
@@ -6182,24 +6174,32 @@ case cfor_expr:
 }
 
 @ Executing a loop is a simple variation of what we have seen before for
-|while| and |for| loops over value components. We distinguish a number of
-cases, some by template argument and others dynamically, but always before
-entering the loop, in order to allow an optimal adaptation to the task. We shall
-end up always using a \Cpp\ |while| loop to implement the |for| loop.
+|while| and |for| loops over value components. Just like for the index while
+looping over a row or vector object, there is a \Cpp\ counter controlling the
+loop directly, and which the user loop variable shadows. However here the
+counter is initialised and bounded by user program values which are |big_int|,
+so the principled way to implement this would be to use a |big_int| counter;
+however this probably would make all loops a bit slower, just in order to be
+able to handle some very exotic cases, do we prefer to refuse values that will
+not fit in a signed $64$-bit value, and use |long long int| (which is what
+|long_val| returns) for the loop counter and bounds.
 
-A special case that is optimised for is when the user gave no name to loop
-index: we can then omit introducing a |frame| for the loop altogether. Also,
-since the syntax ensures that absence of a name for the loop index implies
-absence of a lower bound expression (which would be unused anyway) we can omit
-trying to evaluate |bound| here.
+We distinguish a number of cases, some by template argument and others
+dynamically, but always before entering the loop, in order to allow an optimal
+adaptation to the task. We shall end up always using a \Cpp\ |while| loop to
+implement the |for| loop. A special case that is optimised for is when the user
+gave no name to the loop index: we can then omit introducing a |frame| for the
+loop altogether. Also, since the syntax ensures that absence of a name for the
+loop index implies absence of a lower bound expression (which would be unused
+anyway) we can omit trying to evaluate |bound| here.
 
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
-{ const int n=(count->eval(),get<int_value>()->int_val());
-  const int lwb=(bound.get()==nullptr
-          ? 0 : (bound->eval(),get<int_value>()->int_val()));
-  int c = n<0 ? 0 : n; // no negative size result
+{ const auto n=(count->eval(),get<int_value>()->long_val());
+  const auto lwb=(bound.get()==nullptr
+          ? 0 : (bound->eval(),get<int_value>()->long_val()));
+  auto c = n<0 ? 0 : n; // no negative size result
 
   if (has_frame(flags)) // then loop uses index
   { int b=lwb;
@@ -6277,10 +6277,11 @@ catch (error_base& e)
 }
 
 @ For a counted loop using its index, we remain at the \Cpp\ level close to
-the \.{axis} loop being implemented, but we transform the given bound |b| or |c|
-into our loop index. For decreasing loops we distinguish the case where the lower
-bound is~$0$, the default value, since a test against a constant~$0$ is a bit
-more efficient.
+the \.{axis} loop being implemented, but we transform the count |c| into an
+upper bound, and then use |b| (for increasing loops) or |c| (for decreasing
+loops) as our loop index. For decreasing loops we distinguish treat separately
+the case where the lower bound is~$0$, the default value, since a test against a
+constant~$0$ is probably a bit more efficient.
 
 @< Perform counted loop that uses an index, without storing result,
    doing |c| iterations with lower bound |b| @>=
@@ -7018,26 +7019,27 @@ prevent us to share storage between $b$ and $a$ initially, it just means the
 sharing should be broken if $b$ or $a$ are modified; we practice
 copy-on-write.) This simplifies the semantic model considerably; notably we
 avoid the distinction necessary for instance in Python between a (compound)
-value and the object that holds it, because in \.{axis} values sharing the
-same memory behave exactly like identical values in separate memory.
+value and the object that holds it, because in \.{axis} values that share the
+same memory behave exactly like values in separate memory that happen to be
+equal.
 
 However, if we want to allow creating composite values by sequentially setting
-their components, we need to allow assignments of the form $a[i]:=c$ to
-achieve the modifications, and we cannot view this as an operation on the
-``subobject'' $a[i]$ of~$a$ (not having such a notion). The meaning of this is
-assignment will be taken to be that of assigning a new value to all of $a$,
-which differs from the original value only at index~$i$ (it will however be
-implemented more efficiently if the storage of $a$ is not currently shared, as
-would usually be the case at least from the second such assignment to~$a$ on).
-The interpreter will treat such component assignments as a whole, using an
-expression type with three components $a,i,c$, in which $a$ must be an
-identifier. The latter requirement means that it will not be able to handle
-something like $a[i][j]:=c$ even when that would seem to make sense (because
-$a[i]$ is not a name); however $m[i,j]:=c$ for matrix values $m$ will be
-supported. The design decision made here is made in the assumption that the
-type of assignments that $a[i][j]:=c$ would represent are rare; when really
-needed they can be achieved by temporarily naming the value $a[i]$ and
-assigning to that name before assigning the value of name back to $a[i]$.
+their components, we need to allow assignments of the form $a[i]:=c$ to achieve
+the modifications, and we cannot view this as an operation on the ``subobject''
+$a[i]$ of~$a$ (not having such a notion). The meaning of this is assignment will
+be taken to be that of assigning a new value to all of $a$, which differs from
+the original value only at index~$i$ (it will however be implemented more
+efficiently if the storage of $a$ is not currently shared, as would usually be
+the case at least from the second such assignment to~$a$ on). The interpreter
+will treat such component assignments as a whole, using an expression type with
+three components $a,i,c$, in which $a$ must be an identifier. The latter
+requirement means that it will not be able to handle something like $a[i][j]:=c$
+even when that would seem to make sense (because $a[i]$ is not a name); however
+$m[i,j]:=c$ for matrix values $m$ will be supported. The design decision made
+here is made in the assumption that the type of assignments that $a[i][j]:=c$
+would represent are rare; when really needed they can be achieved by temporarily
+naming the value $a[i]$ and assigning to that name, and then assigning the value
+bound to the name back to~$a[i]$.
 
 In fact we need to implement a whole range of component assignments: there are
 assignments to general row-value components, to vector and matrix components
@@ -7218,10 +7220,10 @@ Afterwards, depending on |l|, we may put back the stack-top value as result of
 the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
-{ unsigned int i=(index->eval(),get<int_value>()->int_val());
+{ auto i = (index->eval(),get<int_value>()->long_val());
   auto& a = uniquify<row_value>(aggregate)->val;
   size_t n=a.size();
-  if (i>=n)
+  if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
   auto& ai = a[reversed ? n-1-i : i];
   ai = pop_value(); // assign non-expanded value
@@ -7234,10 +7236,10 @@ no expansion, so we either leave it on the stack, or remove it if the value of
 the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
-{ unsigned int i=(index->eval(),get<int_value>()->int_val());
+{ auto i=(index->eval(),get<int_value>()->long_val());
   auto& v = uniquify<vector_value>(aggregate)->val;
   size_t n=v.size();
-  if (i>=n)
+  if (static_cast<size_t>(i) >= n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
   v[reversed ? n-1-i : i]= // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
@@ -7250,15 +7252,15 @@ indices, and there are two bound checks.
 
 @< Replace entry at |index| in matrix |loc|... @>=
 { index->multi_eval();
-  unsigned int j=get<int_value>()->int_val();
-  unsigned int i=get<int_value>()->int_val();
+  auto j=get<int_value>()->long_val();
+  auto i=get<int_value>()->long_val();
 @/
   auto& m = uniquify<matrix_value>(aggregate)->val;
   size_t k=m.n_rows(),l=m.n_columns();
-  if (i>=k)
+  if (static_cast<size_t>(i) >= k)
     throw runtime_error
       (range_mess(i,m.n_rows(),this,"matrix entry assignment"));
-  if (j>=l)
+  if (static_cast<size_t>(j) >= l)
     throw runtime_error(
       range_mess(j,m.n_columns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
@@ -7268,16 +7270,16 @@ indices, and there are two bound checks.
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
 
-@ A matrix column assignment is like that of a vector entry, but with a test
-for matching column length.
+@ A matrix column assignment is like that of a vector entry, but with in
+addition a necessary test for matching column length of the vector assigned.
 
 @< Replace column at |index| in matrix |loc|... @>=
-{ unsigned int j=(index->eval(),get<int_value>()->int_val());
+{ auto j=(index->eval(),get<int_value>()->long_val());
   auto& m = uniquify<matrix_value>(aggregate)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
   size_t l=m.n_columns();
-  if (j>=l)
+  if (static_cast<size_t>(j) >= l)
     throw runtime_error(
       range_mess(j,m.n_columns(),this,"matrix column assignment"));
   if (v.size()!=m.n_rows())
@@ -7313,9 +7315,9 @@ one are hidden in the respective |assign_coef| methods.
 @< Replace coefficient at |index| in virtual module |loc|... @>=
 { index->eval();
   auto t = get<module_parameter_value>();
-  auto* poly = uniquify<virtual_module_value>(aggregate);
+  auto* pol = uniquify<virtual_module_value>(aggregate);
   const auto& top = force<split_int_value>(execution_stack.back().get());
-  poly->assign_coef(*t,top->val);
+  pol->assign_coef(*t,top->val);
   if (lev==no_value)
     execution_stack.pop_back(); // pop the vector if result not needed
 }
