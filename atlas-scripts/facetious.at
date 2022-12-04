@@ -582,7 +582,7 @@ set FPtau(SimpleAffine affd, ratvec gamma) = [ratvec]:
     od
 
 { enumerate sums of roots to be added to gamma to land in FPP }
-set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
+set FPPtauRoots_old(SimpleAffine Affd, ratvec gamma) = [vec]:
     let g=for av in Affd.simple_coroots do av*gamma od
     then INT = ##for j:#Affd.simple_coroots
 	 do
@@ -604,7 +604,7 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     fi
     od.##
 
-set FPPtauRoots2(SimpleAffine Affd, ratvec gamma) = [vec]:
+set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     let g=for av in Affd.simple_coroots do av*gamma od,
     	FW = Affd.fundamental_weights,
 	FCW = Affd.fundamental_coweights
@@ -625,7 +625,7 @@ set FPPtauRoots2(SimpleAffine Affd, ratvec gamma) = [vec]:
     	in if d=1 then [w] else [] fi
      od.##
 
-{this version only works if G is adjoint and simply connected; but it's
+{this version gives too many unless G is adjoint and simply connected; but it's
 three times faster}
 set FPPtauRoots3(SimpleAffine Affd, ratvec gamma) = [vec]:
     let g=for av in Affd.simple_coroots do av*gamma od,
@@ -637,12 +637,47 @@ set FPPtauRoots3(SimpleAffine Affd, ratvec gamma) = [vec]:
 	 od.##
     in
     for S in power_set(INT)
-    do ratvec_as_vec( sum(Affd.rank,
+    do let (tau,d) = %( sum(Affd.rank,
 			for xi@j in FW
 	      		do -floor(g[j])*xi
 			od) +
 	   	sum(Affd.rank,for k in S do FW[k] od))
-    od
+	in if d=1 then [tau] else [] fi
+    od.##
+
+{ same thing, with (perhaps) one simple root j0 for which FPP takes values in
+[0,2] on coroot j0. So need to use values -floor(g[j0]),
+-floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
+g[j0] is an integer. }
+set FPPtauRoots_old(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
+    let g=for betav in Affd.simple_coroots do betav*gamma od
+    then INT = ##for j:#Affd.simple_coroots
+	 do
+	 if is_integer(g[j]) and j!=j0 then [j] else []
+	 fi
+	 od {) ##(if j0 >= 0 then [j0] else [] fi)}
+    in
+    let tau0 = sum(Affd.rank, for xi@j in Affd.fundamental_weights
+	      do -floor(g[j])*xi od)
+    then taus = for S in power_set(#INT)
+	 do tau0+ sum(
+	    Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od
+		     )
+	 od
+    then () = if j0 >=0 and not is_integer(g[j0]) then
+	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+	      elif j0 >=0 and is_integer(g[j0]) then
+	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
+		   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
+	      fi
+    in
+    for tau in taus do
+	if(all(
+	for xiv in Affd.fundamental_coweights do is_integer(xiv*tau) od))
+	then [ratvec_as_vec(tau)]
+	else []
+    fi
+    od.##
 
 { same thing, with (perhaps) one simple root j0 for which FPP takes values in
 [0,2] on coroot j0. So need to use values -floor(g[j0]),
@@ -678,12 +713,15 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
     fi
     od.##
 
-
-{ same thing, with (perhaps) one simple root j0 for which FPP takes values in
-[0,2] on coroot j0. So need to use values -floor(g[j0]),
+{ same thing, with (perhaps) one simple root j0 for which FPP takes
+values in [0,2] on coroot j0. So need to use values -floor(g[j0]),
 -floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
-g[j0] is an integer. }
-set FPPtauRoots2(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
+g[j0] is an integer. This Fast version gives too many tau (finds
+integral weights, not just root sums) unless G is adjoint and simply
+connected, but it's up to 40% faster; when possible, just take the
+extra tau and do a no_reps}
+
+set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
     let g=for betav in Affd.simple_coroots do betav*gamma od
     then INT = ##for j:#Affd.simple_coroots
 	 do
@@ -704,15 +742,10 @@ set FPPtauRoots2(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
 		   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
 	      fi
-    in
-    for tau in taus do
-	if(all(
-	for xiv in Affd.fundamental_coweights do is_integer(xiv*tau) od))
-	then [ratvec_as_vec(tau)]
-	else []
-    fi
-    od.##
-
+     in for tau in taus
+     	do let (tau0,d) = %tau
+       	   in if d=1 then [tau0] else [] fi
+	od.##
 
 {.Computes translation part of affine Weyl group element moving gamma
 to the fundamental alcove.}
@@ -982,35 +1015,24 @@ set W_fund_barycenters_mod_R(SimpleAffine Affd, int d) = [FacetBary]:
 	   od
 	od.##
 
-
 {.this includes all vertex sets of facets in the fundamental
-parallelepiped, each exactly once.}
-set FPP_vertices_old(SimpleAffine Affd) = [ratvec]:
-    if facet_verbose then prints("start FPP_vertices.")
-    fi;
-    for gamma in W_fund_verticesID(Affd)
-    do
-    for tau in FPPtauRoots(Affd,gamma)
-	do gamma+tau od
-    od.##
-
-set FPP_vertices(SimpleAffine Affd) = [ratvec]:
-    if facet_verbose then prints("start FPP_vertices.")
-    fi;
-    for gamma in W_fund_vertices_mod_R(Affd)
-    do
-    for tau in FPPtauRoots(Affd,gamma)
-	do gamma+tau od
-    od.##
-
-{.this includes all vertex sets of facets in the fundamental
-parallelepiped, each exactly once. j0 is possible label of a simple coroot that can be up to 2 on FPP}
+parallelepiped, each exactly once. j0 is possible label of a simple
+coroot that can be up to 2 on FPP}
 set FPP_vertices_old(SimpleAffine Affd, int j0) = [ratvec]:
     if facet_verbose then prints("start FPP_vertices.")
     fi;
     for gamma in W_fund_verticesID(Affd)
     do
-    for tau in FPPtauRoots(Affd,gamma,j0)
+    for tau in FPPtauRoots_old(Affd,gamma,j0)
+	do gamma+tau od
+    od.##
+
+set FPP_vertices_new(SimpleAffine Affd, int j) = [ratvec]:
+    if facet_verbose then prints("start FPP_vertices.")
+    fi;
+    for gamma in W_fund_vertices_mod_R(Affd)
+    do
+    for tau in FPPtauRoots(Affd,gamma,j)
 	do gamma+tau od
     od.##
 
@@ -1019,28 +1041,11 @@ set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
     fi;
     for gamma in W_fund_vertices_mod_R(Affd)
     do
-    for tau in FPPtauRoots(Affd,gamma,j0)
+    for tau in FPPtauRootsFast(Affd,gamma,j0)
 	do gamma+tau od
-    od.##
+    od.##.no_reps
 
-set FPP_barycenters_old(SimpleAffine Affd) = [[FacetBary]]:
-    if facet_verbose then prints("start FPP_barycenters.")
-    fi;
-    let WBs = W_fund_barycentersID(Affd)
-    in
-    for d:Affd.aff_rank
-    do
-    if facet_verbose
-    then prints("start dim ",d," in FPP_barycenters.")
-    fi;
-    for gamma in WBs[d]
-	do
-	for tau in FPPtauRoots(Affd,gamma)
-	    do gamma+tau od
-	od.##
-     od
-
-set FPP_barycenters(SimpleAffine Affd) = [[FacetBary]]:
+set FPP_barycenters_new(SimpleAffine Affd, int j) = [[FacetBary]]:
     if facet_verbose then prints("start FPP_barycenters.")
     fi;
     let WBs = W_fund_barycenters_mod_R(Affd)
@@ -1052,40 +1057,75 @@ set FPP_barycenters(SimpleAffine Affd) = [[FacetBary]]:
     fi;
     for gamma in WBs[d]
 	do
-	for tau in FPPtauRoots(Affd,gamma)
+	for tau in FPPtauRoots(Affd,gamma,j)
 	    do gamma+tau od
 	od.##
      od
- 
-set FPP_barycenters_old(SimpleAffine Affd, int d) = [FacetBary]:
+
+set FPP_barycenters(SimpleAffine Affd, int j) = [[FacetBary]]:
+    if facet_verbose then prints("start FPP_barycenters.")
+    fi;
+    let WBs = W_fund_barycenters_mod_R(Affd)
+    in
+    for d:Affd.aff_rank
+    do
+    if facet_verbose
+    then prints("start dim ",d," in FPP_barycenters.")
+    fi;
+    for gamma in WBs[d]
+	do
+	for tau in FPPtauRootsFast(Affd,gamma,j)
+	    do gamma+tau od
+	od.##.no_reps
+     od
+
+set FPP_barycenters_old(SimpleAffine Affd, int d, int j) = [FacetBary]:
     if facet_verbose then prints("start dim ",d, " in FPP_barycenters(Affd,d).")
     fi;
     let WBsd = W_fund_barycentersID(Affd, d)
     in
     for gamma in WBsd
 	do
-	for tau in FPPtauRoots(Affd,gamma)
+	for tau in FPPtauRoots(Affd,gamma,j)
 	    do gamma+tau od
 	od.##
 
-set FPP_barycenters(SimpleAffine Affd, int d) = [FacetBary]:
+set FPP_barycenters_new(SimpleAffine Affd, int d, int j) = [FacetBary]:
     if facet_verbose then prints("start dim ",d, " in FPP_barycenters(Affd,d).")
     fi;
     let WBsd = W_fund_barycenters_mod_R(Affd, d)
     in
     for gamma in WBsd
 	do
-	for tau in FPPtauRoots(Affd,gamma)
+	for tau in FPPtauRoots(Affd,gamma, j)
 	    do gamma+tau od
 	od.##
 
-set FPP_vertex_data (SimpleAffine Affd) = VertexData:
-   Affd.FPP_vertices.to_vertex_data
+set FPP_barycenters(SimpleAffine Affd, int d, int j) = [FacetBary]:
+    if facet_verbose then prints("start dim ",d,
+       		     " in FPP_barycenters(Affd,d,j).")
+    fi;
+    let WBsd = W_fund_barycenters_mod_R(Affd, d)
+    in
+    for gamma in WBsd
+	do
+	for tau in FPPtauRootsFast(Affd,gamma,j)
+	    do gamma+tau od
+	od.##.no_reps
+
+set FPP_vertex_data_old (SimpleAffine Affd, int j) = VertexData:
+   (Affd,j).FPP_vertices_old.to_vertex_data
+
+set FPP_vertex_data_new (SimpleAffine Affd, int j) = VertexData:
+   FPP_vertices_new(Affd,j).to_vertex_data
 
 set FPP_vertex_data (SimpleAffine Affd, int j) = VertexData:
    FPP_vertices(Affd,j).to_vertex_data
 
-set FPP_facets_old (SimpleAffine Affd, VertexData vd, int dim) = [FacetVertsIndex]:
+{NEED TO ALLOW INTEGER j FOR ROOT GOING TO 2???}
+
+set FPP_facets_old (SimpleAffine Affd, VertexData vd, int dim, int j) =
+    [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
     then ()= if facet_verbose
     	       then prints("start dim ",dim, " in FPP_facets_old") fi
@@ -1099,16 +1139,40 @@ set FPP_facets_old (SimpleAffine Affd, VertexData vd, int dim) = [FacetVertsInde
 	  in [FacetVertsIndex]:
 	     for wFB in bary_orbit_int_dom
        	     do let (w,) = from_dominant(Affd,wFB)
-	     	in for tau in FPPtauRoots(Affd,wFB)
+	     	in for tau in FPPtauRoots_old(Affd,wFB,j)
 	     	   do FacetVertsIndex:
 	      	      for v in (AffineCoWeylElt:(tau,w))*FV
 		      do vd.lookup(v)
-		      od
+		      od.sort
 	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
 	     od.##
      	 od.##
 
-set FPP_facets(SimpleAffine Affd, VertexData vd, int dim) = [FacetVertsIndex]:
+set FPP_facets_new(SimpleAffine Affd, VertexData vd, int dim, int j) =
+    [FacetVertsIndex]:
+    let facets = [FacetVerts]: facets_fundamental(Affd,dim)
+    then ()= if facet_verbose
+    	       then prints("start dim ",dim, " in FPP_facets_new") fi
+    in for FV in facets
+       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+       	  then bary_orbit_mod_R = [FacetBary]:
+	     for w in affine_orbit_ws(Affd,bary_F)
+	     do w*bary_F
+	     od
+	  in [FacetVertsIndex]:
+	     for wFB in bary_orbit_mod_R
+       	     do let (w,) = from_dominant(Affd,wFB)
+	     	in for tau in FPPtauRoots(Affd,wFB,j)
+	     	   do FacetVertsIndex:
+	      	      for v in (AffineCoWeylElt:(tau,w))*FV
+		      do vd.lookup(v)
+		      od.sort
+	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
+	     od.##
+     	 od.##
+
+set FPP_facets_new2(SimpleAffine Affd, VertexData vd, int dim, int j) =
+    [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
     then ()= if facet_verbose
     	       then prints("start dim ",dim, " in FPP_facets") fi
@@ -1121,49 +1185,90 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim) = [FacetVertsIndex]:
 	  in [FacetVertsIndex]:
 	     for wFB in bary_orbit_mod_R
        	     do let (w,) = from_dominant(Affd,wFB)
-	     	in for tau in FPPtauRoots(Affd,wFB)
+	     	in for tau in FPPtauRootsFast(Affd,wFB,j)
 	     	   do FacetVertsIndex:
-	      	      for v in (AffineCoWeylElt:(tau,w))*FV
+		      for v in (AffineCoWeylElt:(tau,w))*FV
 		      do vd.lookup(v)
-		      od
+		      od.sort
 	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
 	     od.##
-     	 od.##
+     	 od.##.no_reps
 
-set FPP_facets_old(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
-    FPP_facets_old(Affd, FPP_vertex_data(Affd), dim)
+set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
+    [FacetVertsIndex]:
+    let facets = [FacetVerts]: facets_fundamental(Affd,dim)
+    then ()= if facet_verbose
+    	       then prints("start dim ",dim, " in FPP_facets") fi
+    in for FV in facets
+       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+	  in [FacetVertsIndex]:
+	     for w in affine_orbit_ws(Affd,bary_F)
+	     do for tau in FPPtauRootsFast(Affd,w*bary_F, j)
+	     	do FacetVertsIndex:
+		      for v in (AffineCoWeylElt:(tau,w))*FV
+		      do vd.lookup(v)
+		      od.sort
+	      	od { type is [FacetVertsIndex], remains for next 2 lines}
+	     od.##
+     	 od.##.no_reps
 
-set FPP_facets(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
-    FPP_facets(Affd, FPP_vertex_data(Affd), dim)
+set FPP_facets_old(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
+    FPP_facets_old(Affd, FPP_vertex_data_old(Affd,j), dim, j)
 
-set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim) = [FacetVertsIndex]:
-    FPP_facets(Affd, to_vertex_data(vlist), dim)
+set FPP_facets_new(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
+    FPP_facets_new(Affd, FPP_vertex_data_new(Affd,j), dim, j)
 
-set FPP_facets_old (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
+set FPP_facets(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
+    FPP_facets(Affd, FPP_vertex_data(Affd,j), dim, j)
+
+set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
+    [FacetVertsIndex]:
+    FPP_facets(Affd, to_vertex_data(vlist), dim, j)
+
+set FPP_facets_old (SimpleAffine Affd, VertexData vd, int j) =
+    [[FacetVertsIndex]]:
+   let facets = [[FacetVerts]]: facets_fundamental(Affd)
+   in ([FacetVertsIndex]:
+      for @k in vd.list
+      do [k]
+      od) { singleton indices } #
+      for dim: Affd.semisimple_rank from 1
+      do if facet_verbose then prints("start dim ",dim, " in FPP_facets_old") fi
+      ; FPP_facets_old(Affd, vd, dim, j)
+      od
+
+set FPP_facets_new (SimpleAffine Affd, VertexData vd, int j) =
+    [[FacetVertsIndex]]:
    let facets = [[FacetVerts]]: facets_fundamental(Affd)
    in ([FacetVertsIndex]:
       for @j in vd.list
       do [j]
       od) { singleton indices } #
       for dim: Affd.semisimple_rank from 1
-      do if facet_verbose then prints("start dim ",dim, " in FPP_facets_old") fi
-      ; FPP_facets_old(Affd, vd, dim)
+      do if facet_verbose then prints("start dim ",dim, " in FPP_facets") fi
+      ; FPP_facets(Affd, vd, dim, j)
       od
 
-set FPP_facets (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
+{tests OK, 30% faster than old or new}
+set FPP_facets (SimpleAffine Affd, VertexData vd, int j) = [[FacetVertsIndex]]:
    let facets = [[FacetVerts]]: facets_fundamental(Affd)
    in ([FacetVertsIndex]:
       for @j in vd.list
       do [j]
       od) { singleton indices } #
       for dim: Affd.semisimple_rank from 1
-      do if facet_verbose then prints("start dim ",dim, " in FPP_facets_old") fi
-      ; FPP_facets(Affd, vd, dim)
+      do if facet_verbose then prints("start dim ",dim, " in FPP_facets") fi
+      ; FPP_facets(Affd, vd, dim, j)
       od
 
-set facet_data(SimpleAffine Affd) = FacetData:
-   let vd = FPP_vertex_data(Affd)
-   then facets_indexed = FPP_facets(Affd,vd)
+set facet_data_new(SimpleAffine Affd, int j) = FacetData:
+   let vd = FPP_vertex_data(Affd,j)
+   then facets_indexed = FPP_facets_new(Affd,vd,j)
+in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
+
+set facet_data(SimpleAffine Affd, int j) = FacetData:
+   let vd = FPP_vertex_data(Affd,j)
+   then facets_indexed = FPP_facets(Affd,vd,j)
 in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
 
 {transfers the status-by-class information in statuses to FDind}
@@ -1179,7 +1284,8 @@ set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
     in (vd, for d:#FDind do FDindOne[N:N+#FDind[d]] next N+:= #FDind[d]
     			od)
 
-{extra argument is a possible simple coroot allowed to be 2 on FPP}
+{extra argument is a possible simple coroot allowed to be 2 on FPP;
+use -1 if there's none}
 set facet_data_fold_old(SimpleAffine Affd, mat M, int j0) =
     FacetData:
 (   let vertex_dataFold = FPP_vertex_data(Affd,j0)
@@ -1216,11 +1322,12 @@ set facet_data_fold_old(SimpleAffine Affd, mat M, int j0) =
     )
 )
 
-{extra argument is a possible simple coroot allowed to be 2 on FPP}
+{extra argument j0 is a possible simple coroot allowed to be 2 on FPP;
+use -1 if there's none}
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
     FacetData:
 (   let vertex_dataFold = FPP_vertex_data(Affd,j0)
-    , fundVerts = facets_fundamental(Affd)
+    { , fundVerts = facets_fundamental(Affd) }
     then vertex_listG = for v in vertex_dataFold.list do M*v od
     then vertex_dataG = vertex_listG.to_vertex_data
     then N= [(string,vec)]: for @j in vertex_dataFold.list do ("?",[j]) od
@@ -1233,22 +1340,10 @@ set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
 	  then prints("start dim ",d," in facet_data_fold")
 	  fi
       ;
-	  for FV in fundVerts[d]
-	  do  let FB = FacetBary: barycenter(FV)
-	      then WBsID= [FacetBary]:
-		  for w in affine_orbit_ws(Affd,FB)
-		  do w*FB
-		  od
-	      in  [FacetStatusVertsIndex]:
-	      	  for wFB in WBsID
-	      	  do  let (w,) = from_dominant(Affd,wFB)
-	      	      in  [(string, vec)]:
-		      for tau in FPPtauRoots(Affd,wFB,j0)
- 		      do ("?",
-			vec: facet_indices(vertex_dataFold.lookup, (tau,w)*FV))
-		  od
-	      od.##{ now type [string,vec] }
-	  od.##
+      {now need d-diml facets}
+      	   for v in FPP_facets(Affd,vertex_dataFold,d,j0)
+      	   do ("?",v)
+      	   od
       od
     )
 )
@@ -3536,9 +3631,10 @@ set non_cohom_unitary(KGBFacetsTwists (x, FB, twists, CLTs)) =
     od
     )
 
+{NEED to figure out correct j in FPP_barycenters}
 set non_cohom_unitary(KGBElt x) = (KGBElt,[vec],[[CandLambdaTwistsStatus]]):
     non_cohom_unitary(non_cohom_herm(goodFPP(x,
-    FPP_barycenters(x.real_form))))
+    FPP_barycenters(x.real_form,-1))))
 
 {.goodFPP for all hard_KGB elements.}
 set goodFPP(RealForm G, [[FacetBary]] FB) = [(KGBElt, [[CandLambda]])]:
@@ -3560,9 +3656,11 @@ set non_cohom_unitary(RealForm G, [[FacetBary]] FB, [(KGBElt, [vec],
     for (x, twists, CLs) in candTw do non_cohom_unitary(x,FB,twists,
     CLs)  od
 
+{NEED to work out correct FPP_barycenters}
+
 set non_cohom_unitary(RealForm G) = [(KGBElt,[vec],
     [[CandLambdaTwistsStatus]])]:
-    let FB =  FPP_barycenters(G) in non_cohom_unitary(G, FB,
+    let FB =  FPP_barycenters(G,-1) in non_cohom_unitary(G, FB,
     non_cohom_herm(G, FB, goodFPP(G,FB)))
 
 set non_cohom_unitaryFold(RealForm G) = [(KGBElt,[vec],
@@ -3594,8 +3692,8 @@ set show(RealForm G, [[FacetBary]] FB,
 	    od
 	od
      od
-
+{NEED correct j in FPP_barycenters}
 set show_non_cohom_unitary(RealForm G) = void:
-    let FB=FPP_barycenters(G), NCU = non_cohom_unitary(G)
+    let FB=FPP_barycenters(G,-1), NCU = non_cohom_unitary(G)
     in
     show(G, FB, NCU)
