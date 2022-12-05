@@ -418,6 +418,7 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
 }
 
 
+
 template<typename C>
 PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
 {
@@ -611,10 +612,12 @@ template class Matrix_base<Num>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 template class Matrix<int>;           // the main instance used
+template class Matrix<short int>;     // for inverse Cartan matrix
 template class Matrix<Num>;
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
+template class PID_Matrix<short>; // for inverting Cartan matrix
 template class PID_Matrix<Num>; // for precision system solving (alcoves)
 
 // template member instances
@@ -625,7 +628,7 @@ template Vector<int>& operator%=(Vector<int>&,int);
 template Vector<Num>& operator/=(Vector<Num>&,Num);
 
 template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
-
+template PID_Matrix<short> inverse (PID_Matrix<short> A, arithmetic::big_int& d);
 
 template class Vector<Pol>;
 template class Matrix_base<Pol>;

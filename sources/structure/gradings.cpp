@@ -213,7 +213,7 @@ public:
 GradingList grading_classes(const RootSystem& rs)
 {
   Partition pi = partition::orbits
-    (GradingAction(rs.cartanMatrix().columns()),rs.rank(),1ul<<rs.rank());
+    (GradingAction(rs.Cartan_matrix().columns()),rs.rank(),1ul<<rs.rank());
 
   // sort orbits
   GradingList result; result.reserve(pi.classCount());

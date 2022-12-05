@@ -350,7 +350,7 @@ ignoring the result but catching any |error::Cartan_error| thrown and returning
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   Permutation pi;
-  LieType lt=dynkin::Lie_type(m->val,true,true,pi);
+  LieType lt=dynkin::Lie_type(m->val,pi);
   if (l==expression_base::no_value)
     return;
 @)
@@ -369,7 +369,7 @@ void is_Cartan_matrix_wrapper (expression_base::level l)
   Permutation pi;
   try
   {
-    dynkin::Lie_type(m->val,false,true,pi);
+    dynkin::Lie_type(m->val,pi);
     push_value(whether(true));
   }
   catch (error::Cartan_error&)
@@ -1108,7 +1108,7 @@ formed.
 
 const WeylGroup& root_datum_value::W () const
 { if (W_ptr.get()==nullptr)
-    W_ptr = std::make_shared<WeylGroup>(val.cartanMatrix());
+    W_ptr = std::make_shared<WeylGroup>(val.Cartan_matrix());
   return *W_ptr;
 }
 @)
@@ -1353,7 +1353,7 @@ void datum_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<matrix_value>(rd->val.cartanMatrix()));
+  push_value(std::make_shared<matrix_value>(rd->val.Cartan_matrix()));
 }
 @)
 void rd_rank_wrapper(expression_base::level l)
@@ -1785,6 +1785,231 @@ void integrality_points_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ Here are four functions for (hopefully) rapid Weyl group orbit generation,
+which can be done using only a root datum. They are implemented by free
+functions |Weyl_orbit| and |Weyl_orbit_words| defined in the \.{rootdata}
+compilation unit, both in two forms (for weights and coweights) that differ
+by the order of their arguments. The first of these pairs return an orbits as a
+(usually very wide) |int_Matrix|, the second as a |sl_list<WeylElt>|, the action
+of whose elements on the original vector will produce the orbit. In the exported
+built-in functions the distinction between the two variants will in each case
+again be determined by the order of the arguments.
+
+@< Local function definitions @>=
+void Weyl_orbit_wrapper(expression_base::level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(rd->val,v->val)));
+}
+@)
+void Weyl_coorbit_wrapper(expression_base::level l)
+{
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value>(Weyl_orbit(v->val,rd->val)));
+}
+
+void Weyl_orbit_ws_wrapper(expression_base::level l)
+{
+  shared_vector v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  const auto& ws = Weyl_orbit_words(rd->val, rd->W(), v->val);
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
+}
+@)
+void Weyl_coorbit_ws_wrapper(expression_base::level l)
+{
+  shared_root_datum rd = get<root_datum_value>();
+  shared_vector v = get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  const auto& ws = Weyl_orbit_words(v->val, rd->val, rd->W());
+  own_row result = std::make_shared<row_value>(ws.size());
+  size_t i=0;
+  for (auto&& w : ws)
+    result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  push_value(std::move(result));
+}
+
+@ Here are two functions making available to the user the |wall_set| and
+|alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
+efficiency and safety against rational number overflow of the deformation
+algorithm.
+
+@h "alcoves.h"
+
+@< Local function def...@>=
+void walls_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (gamma->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Rational weight size mismatch: "
+      << gamma->val.size() << ':' << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  int npr = rd->val.numPosRoots();
+  RootNbrSet integrals,walls = weyl::wall_set(rd->val,gamma->val,integrals);
+  own_row roots = std::make_shared<row_value>(0);
+  roots->val.reserve(walls.size());
+  for (auto it=integrals.begin(); it(); ++it)
+  {
+    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
+    roots->val.push_back(std::make_shared<int_value>(*it-npr));
+  }
+
+  auto non_integrals = weyl::sorted_by_label(rd->val,walls,integrals);
+  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
+    roots->val.push_back(std::make_shared<int_value>
+    // convert to signed root index
+       (static_cast<int>(*it)-npr));
+  push_value(std::move(roots));
+  push_value(std::make_shared<int_value>(integrals.size()));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void alcove_center_wrapper(expression_base::level l)
+{
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  push_value(std::make_shared<module_parameter_value> @|
+    (p->rf,weyl::alcove_center(p->rc(),p->val)));
+}
+
+@ Here are more general and more efficient functions for orbit generation, in
+fact enumerating quotients of pseudo-Levi subgroups.
+
+@< Local function definitions @>=
+void basic_orbit_ws_wrapper(expression_base::level l)
+{
+  unsigned int stab_rank = get<int_value>()->uint_val();
+  shared_row v = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (v->val.size()<=stab_rank)
+    throw runtime_error("Index too large for given list of root numbers");
+  RootNbrSet stab; RootNbr final;
+  @< Check validity of root indices in |v->val| and the absence acute angles
+     among them; store internal number for its entry |stab_rank| in |final|,
+     and the set of its earlier entries in |stab| @>
+  if (l==expression_base::no_value)
+    return;
+@)
+  bool to_affine_orbit=false;
+  @< Set |to_affine_orbit| to whether coroot |final| is linearly dependent
+     on the coroots in |stab|; also intersect |stab| with the set of roots in
+     the Dynkin diagram component of |final| @>
+  const auto ws = to_affine_orbit
+    ? weyl::complete_affine_component(rd->val,rd->W(),stab,final)
+    : weyl::finite_subquotient(rd->val,rd->W(),stab,final);
+  own_row result = std::make_shared<row_value>(ws.size());
+  { size_t i=0;
+    for (auto&& w : ws)
+      result->val[i++]=std::make_shared<W_elt_value>(rd,w);
+  }
+  push_value(std::move(result));
+}
+@)
+void affine_orbit_ws_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto ws = weyl::affine_orbit_ws(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(ws.size());
+  { size_t i=0;
+    for (auto&& w : ws)
+      result->val[i++]=std::make_shared<W_elt_value>(rd,std::move(w));
+  }
+  push_value(std::move(result));
+}
+
+@ We temporarily make a list |walls| of root numbers after conversion to
+internal root numbering, but in the end only retain in |stab| the set of the
+first |stab_rank| entries, and in |final| the one following it.
+@< Check validity of root indices in |v->val| and... @>=
+{
+  RootNbrList walls; walls.reserve(v->val.size());
+  const unsigned int npr = rd->val.numPosRoots();
+  for (const auto& entry : v->val)
+  { int r = force<int_value>(entry.get())->int_val();
+      // could be positive or negative
+    if (r+npr < rd->val.numRoots()) // unsigned comparison
+      walls.push_back(r+npr); // convert to internal index
+    else
+    { std::ostringstream o;
+      o << "Invalid root number " << r;
+      throw runtime_error(o.str());
+    }
+  }
+
+  for (const RootNbr& alpha : walls)
+    for (const RootNbr& beta : walls)
+      if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
+      { std::ostringstream o;
+        o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
+          << " have acute angle.";
+        throw runtime_error(o.str());
+      }
+  stab = RootNbrSet(rd->val.numRoots(),&walls[0],&walls[stab_rank]);
+  final = walls[stab_rank];
+}
+
+@ When calling |affine_orbit_ws|, we need to decide whether the internal
+function to call is going to be |finite_subquotient| or
+|complete_affine_components|; the first one does not use modular vector
+arithmetic because the root |final| extends the finite Coxeter group |stab| to a
+higher rank finite Coxeter group, but for the second one this extension would be
+to an affine (therefore infinite) Coxeter group and this needs to be reduced to
+a finite computation by working modulo the root lattice.
+
+@< Set |to_affine_orbit| to whether coroot |final| is linearly dependent
+     on the coroots in |stab|; also intersect |stab| with the set of roots in
+     the Dynkin diagram component of |final| @>=
+{
+  RootNbrSet S = stab; S.insert(final);
+  for (const auto& comp : rootdata::components(rd->val,S))
+    if (comp.isMember(final))
+    {
+      stab &= comp;
+      RootNbrList roots(comp.begin(),comp.end());
+      auto dependency = // the number of dependencies among coroots in |comp|
+        lattice::kernel(rd->val.Cartan_matrix(roots)).numColumns();
+      assert(dependency <= 1);
+      to_affine_orbit = dependency>0;
+      break;
+    }
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
@@ -1855,6 +2080,20 @@ install_function(is_integrally_dominant_wrapper,@|
                  "is_integrally_dominant","(RootDatum,ratvec->bool)");
 install_function(integrality_points_wrapper,@|
                  "integrality_points","(RootDatum,ratvec->[rat])");
+
+install_function(Weyl_orbit_wrapper@|,"Weyl_orbit","(RootDatum,vec->mat)");
+install_function(Weyl_coorbit_wrapper@|,"Weyl_orbit","(vec,RootDatum->mat)");
+install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(RootDatum,vec->[WeylElt])");
+install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
+		"(vec,RootDatum->[WeylElt])");
+install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
+install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
+install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
+		"(RootDatum,[int],int->[WeylElt])");
+install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
+		"(RootDatum,ratvec->[WeylElt])");
+
 
 @*1 Weyl group elements.
 %
@@ -2049,7 +2288,7 @@ void W_gen_elt_prod_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  w->W.leftMult(w->val,s);
+  w->W.left_multiply(w->val,s);
   push_value(std::move(w));
 }
 
@@ -2071,7 +2310,7 @@ void W_word_elt_prod_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  w->W.leftMult(w->val,ww);
+  w->W.left_multiply(w->val,ww);
   push_value(std::move(w));
 }
 
@@ -2433,11 +2672,10 @@ lies in another component of the diagram we have a Complex inner class.
 @h "dynkin.h"
 
 @< Compute the Lie type |type|, the inner class... @>=
-{ DynkinDiagram diagram(rd.cartanMatrix());
-  sl_list<RankFlags> comps =
-    diagram.components(); // connected components
-  type = diagram.classify_semisimple(pi,true);
-    // |pi| normalises to Bourbaki order
+{ DynkinDiagram diagram(rd.Cartan_matrix());
+  auto comps = diagram.components(); // connected components
+  type = diagram.type();
+  pi = diagram.perm(); // |pi| normalises to Bourbaki order
   assert(type.size()==comps.size());
 @)
   inner_class.reserve(comps.size()+r-s); // certainly enough
@@ -2446,14 +2684,14 @@ lies in another component of the diagram we have a Complex inner class.
   unsigned int i=0; // index into |type|
   for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
-    unsigned int comp_rank = cit->count();
+    unsigned int comp_rank = cit->rank();
     assert (comp_rank==type[i].rank());
        // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
       if (p[*it]!=*it) {@; equal_rank=false; break; }
 @)  if (equal_rank) inner_class.push_back('c');
       // identity on this component: compact component
-    else if (cit->test(p[pi[offset]]))
+    else if (cit->support.test(p[pi[offset]]))
        // (any) one root stays in component |*cit|: unequal rank
       inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
     else
@@ -2507,7 +2745,7 @@ moved-down place.
 @< Find the component~|k| after |i| that contains |beta|...@>=
 { auto k=i; auto cit1=cit; // both are to be immediately incremented
   while (++k, not comps.at_end(++cit1))
-    if (cit1->test(beta))
+    if (cit1->support.test(beta))
       break;
   if (comps.at_end(cit1))
     throw logic_error("Non matching Complex factor");
@@ -2516,7 +2754,7 @@ moved-down place.
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
   for (unsigned int l=1; l<comp_rank; ++l)
-    assert(cit1->test(p[pi[offset+l]]));
+    assert(cit1->support.test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
 #endif
 
@@ -3854,8 +4092,8 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->ic_ptr->val.rootDatum().cartanMatrix(si);
-  dynkin::DynkinDiagram d(cm); sigma = dynkin::bourbaki(d);
+{ cm=cc->ic_ptr->val.rootDatum().Cartan_matrix(si);
+  dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 
 @ The imaginary root system might well be empty, so we make special provisions
@@ -4841,7 +5079,7 @@ void real_form_of_K_type_wrapper(expression_base::level l)
 
 @ Here is one more useful function: computing the height of a $K$-type. This is
 the same height when comparing to the |bound| argument in functions like
-|K_type_formla| and |branch|. This height is precomputed and stored inside
+|K_type_formula| and |branch|. This height is precomputed and stored inside
 |K_repr::K_type| values themselves, so we simply get it from there.
 
 @< Local function def...@>=
@@ -6727,44 +6965,6 @@ for (unsigned int i = 0; i < wg.size(); ++i)
   vertices->val.push_back(std::move(tup));
 }
 
-@ Here are two functions making available to the user the |wall_set| and
-|alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
-efficiency and safety against rational number overflow of the deformation
-algorithm.
-
-@h "alcoves.h"
-
-@< Local function def...@>=
-void walls_wrapper(expression_base::level l)
-{
-  shared_rational_vector gamma = get<rational_vector_value>();
-  shared_root_datum rd = get<root_datum_value>();
-  if (gamma->val.size()!=rd->val.rank())
-  { std::ostringstream o;
-    o << "Rational weight size mismatch: "
-      << gamma->val.size() << ':' << rd->val.rank();
-    throw runtime_error(o.str());
-  }
-  if (l==expression_base::no_value)
-    return;
-  RootNbrSet dummy,walls = repr::wall_set(rd->val,gamma->val,dummy);
-  own_row result = std::make_shared<row_value>(0);
-  result->val.reserve(walls.size());
-  for (auto it=walls.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>(*it));
-  push_value(std::move(result));
-}
-@)
-void alcove_center_wrapper(expression_base::level l)
-{
-  shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
-
-  push_value(std::make_shared<module_parameter_value> @|
-    (p->rf,alcove_center(p->rc(),p->val)));
-}
-
 @ The following wrapper function makes available the Atlas implementation of
 Tarjan's strong component algorithm, the one that is used to isolate cells in a
 $W$-graph. It actually involves no atlas-specific types at all, as it encodes
@@ -6992,8 +7192,6 @@ install_function(param_W_graph_wrapper,@|"W_graph"
 		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
-install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int])");
-install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(strong_components_wrapper,@|"strong_components"
                 ,"([[int]]->[[int]],[[int]])");
 install_function(extended_block_wrapper,@|"extended_block"
