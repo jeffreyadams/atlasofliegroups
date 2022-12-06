@@ -1955,7 +1955,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(is_final(sr));
 
   BlockElt z;
-  auto& block = lookup_full_block(sr,z); // lookup(sr,z);
+  auto& block = lookup(sr,z);
   RatWeight diff = offset(sr,block.representative(z));
   assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
 	 .is_zero());
@@ -1996,7 +1996,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
   assert(is_final(sr));
 
   BlockElt z;
-  auto& block = lookup_full_block(sr,z);//lookup(sr,z);
+  auto& block = lookup(sr,z);
 
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
@@ -2045,7 +2045,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     deform_readjust(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
-    auto& block = lookup_full_block(zi,new_z);//lookup(zi,new_z);
+    auto& block = lookup(zi,new_z);
     RatWeight diff = offset(zi, block.representative(new_z));
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
 	   .is_zero());
@@ -2144,7 +2144,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   normalise(sr);
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0;
-  auto& block = lookup_full_block(sr,y0);//lookup(sr,y0);
+  auto& block = lookup(sr,y0);
   const RatWeight diff = offset(sr,block.representative(y0));
   block.shift(diff);
   auto& eblock = block.extended_block(&poly_hash);
@@ -2360,7 +2360,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     StandardRepr zi = std::move(p.first);
     const bool flip_p = p.second;
     BlockElt index;
-    auto& block = lookup_full_block(zi,index);//
+    auto& block = lookup(zi,index);
     RatWeight diff = offset(zi,block.representative(index));
     block.shift(diff); // adapt representatives for extended block construction
     assert(block.representative(index)==
