@@ -151,7 +151,7 @@ sl_list<RootNbr> sorted_by_label
 	A.set_column(j++,rs.coroot_expr(alpha));
     }
     int_Matrix k = lattice::kernel(A);
-    assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
+    assert(k.n_columns()==1 and k(0,0)!=0); // one relation between coroots
     if (k(0,0)<0)
       k.negate(); // ensure coefficients are positive
 
@@ -195,7 +195,7 @@ RatNumList barycentre_eq
     for (auto it=comp.begin(); it(); ++it,++i)
       A.set_column(i,rs.coroot_expr(*it));
     int_Matrix k = lattice::kernel(A);
-    assert(k.numColumns()==1);
+    assert(k.n_columns()==1);
     assert(k(0,0)!=0); // in fact all coefficients should be nonzero
     if (k(0,0)<0)
       k.negate(); // ensure coefficients are positive
@@ -241,7 +241,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
   }
 
   Vec b; // will be right hand side of equation
-  b.reserve(A.numRows());
+  b.reserve(A.n_rows());
   // for each of the |walls|, the RHS takes its "fractional part" from |fracs|
   // but multiplying by |fracs[i].denominator()| makes equation |i| integer
   unsigned i=0;
@@ -256,7 +256,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
     bool flip; // unused argument
     Mat column; // records column operations used in |column_echelon|
     BitMap pivots = matreduc::column_echelon(A,column,flip);
-    unsigned k = A.numColumns(); // rank of matrix |A|
+    unsigned k = A.n_columns(); // rank of matrix |A|
     arithmetic::big_int factor;
     Vec x0 = matreduc::echelon_solve(A,pivots,b,factor);
     RatWeight new_gamma(column.block(0,0,rank,k)*x0,factor.long_val());
@@ -305,12 +305,12 @@ bool make_multiple_integral
   }
   {
     int_Matrix theta_plus_1 = rc.inner_class().matrix(kgb.involution(sr.x()))+1;
-    for (unsigned int i=0; i<theta_plus_1.numRows(); ++i)
+    for (unsigned int i=0; i<theta_plus_1.n_rows(); ++i)
       A.set_row(integrally_simples.size()+i,theta_plus_1.row(i));
   }
   int_Matrix ker = // col span is intersection of perp-int and ($X^*)^{-\theta}$
     lattice::kernel(A);
-  if (ker.numColumns()==0) // easy though not necessary test (next one suffices)
+  if (ker.n_columns()==0) // easy though not necessary test (next one suffices)
     return false; // no change necessary, or done
 
   RootNbrSet outside_poscoroots(npr); // record positions within positive set
@@ -466,8 +466,8 @@ sl_list<orbit_elem> vertex_orbit
   (const int_Matrix& Cartan, weyl::Generator i, unsigned label)
 {
   std::vector<int_Vector> adj_coroot;
-  adj_coroot.reserve(Cartan.numColumns());
-  for (unsigned j=0; j<Cartan.numColumns(); ++j)
+  adj_coroot.reserve(Cartan.n_columns());
+  for (unsigned j=0; j<Cartan.n_columns(); ++j)
     adj_coroot.push_back(Cartan.column(j));
 
   arithmetic::big_int denom;
@@ -484,7 +484,7 @@ sl_list<orbit_elem> vertex_orbit
   while (true) // generate from |start|; possible |return| near end of loop
   {
     for (auto it=start; it!=finish; ++it,++count)
-      for (Generator s=0; s<Cartan.numRows(); ++s)
+      for (Generator s=0; s<Cartan.n_rows(); ++s)
       {
 	if (it->seen[s])
 	  continue; // skip if move towards element already seen
@@ -549,11 +549,11 @@ sl_list<WeylElt> vertex_orbit_words
 */
 sl_list<orbit_elem> basic_orbit (const int_Matrix& Cartan, Generator i)
 {
-  assert(Cartan.numRows()>i); // we only use first |i+1| rows and columns
+  assert(Cartan.n_rows()>i); // we only use first |i+1| rows and columns
   std::vector<int_Vector> adj_coroot;
   {
-    adj_coroot.reserve(Cartan.numColumns());
-    for (unsigned j=0; j<Cartan.numColumns(); ++j)
+    adj_coroot.reserve(Cartan.n_columns());
+    for (unsigned j=0; j<Cartan.n_columns(); ++j)
       adj_coroot.push_back(Cartan.partial_column(j,0,i+1));
   }
   big_int denom; // denominator needed for inverse, but unused here
@@ -666,7 +666,7 @@ void extend_affine_component
     for (auto alpha : comp)
       roots.push_back(alpha),A.set_column(i++,rs.coroot_expr(alpha));
     int_Matrix k = lattice::kernel(A);
-    assert(k.numColumns()==1 and k(0,0)!=0); // one relation between coroots
+    assert(k.n_columns()==1 and k(0,0)!=0); // one relation between coroots
     labels = k(0,0)>0 ? k.column(0) : -k.column(0);
   }
 

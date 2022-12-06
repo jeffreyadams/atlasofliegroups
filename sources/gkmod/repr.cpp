@@ -1912,13 +1912,13 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
 
   int_Matrix signed_P = Q_mat.inverse();
-  BitMap odd_length(signed_P.numRows());
+  BitMap odd_length(signed_P.n_rows());
   { unsigned int i=0;
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
 
-  matrix::Vector<Split_integer> coef(signed_P.numRows());
+  matrix::Vector<Split_integer> coef(signed_P.n_rows());
   auto pos = result.size()-1;
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())

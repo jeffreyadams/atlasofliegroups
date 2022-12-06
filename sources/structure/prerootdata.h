@@ -73,8 +73,8 @@ class PreRootDatum
     and prefer_co == prd.prefer_co;
   }
 
-  size_t rank() const { return simple_roots.numRows(); }
-  size_t semisimple_rank() const { return simple_roots.numColumns(); }
+  size_t rank() const { return simple_roots.n_rows(); }
+  size_t semisimple_rank() const { return simple_roots.n_columns(); }
 
   const int_Matrix& simple_roots_mat() const { return simple_roots; }
   const int_Matrix& simple_coroots_mat() const { return simple_coroots; }

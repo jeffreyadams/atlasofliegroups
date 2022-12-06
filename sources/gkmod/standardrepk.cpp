@@ -1775,8 +1775,8 @@ template <typename C>
   matrix::Matrix_base<C> inverse_lower_triangular
     (const matrix::Matrix_base<C>& L)
 {
-  size_t n=L.numColumns();
-  if (L.numRows()!=n)
+  size_t n=L.n_columns();
+  if (L.n_rows()!=n)
     throw std::runtime_error ("invert triangular: matrix is not square");
 
   matrix::Matrix_base<C> result(n,n,C(0));

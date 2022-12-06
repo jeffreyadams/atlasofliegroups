@@ -323,8 +323,8 @@ std::vector<Grading> compute_square_classes
   const weyl::Twist& twist = G.twistedWeylGroup().twist();
 
   size_t r= rd.rank();
-  assert(delta.numRows()==r);
-  assert(delta.numColumns()==r);
+  assert(delta.n_rows()==r);
+  assert(delta.n_columns()==r);
 
   int_Matrix roots(0,r); // rows: coordinates of $\delta$-fixed simple roots
   RankFlags fixed; // the set of $\delta$-fixed simple roots
@@ -341,7 +341,7 @@ std::vector<Grading> compute_square_classes
   Vplus.apply(to_grading); // converts |Vplus| to grading coordinates
 
   RankFlags supp = Vplus.support(); // pivot positions
-  supp.complement(roots.numRows()); // non-pivot positions among fixed ones
+  supp.complement(roots.n_rows()); // non-pivot positions among fixed ones
   supp.unslice(fixed);  // bring bits back to the simple-root positions
 
   std::vector<Grading> result; result.reserve(supp.count());
@@ -404,7 +404,7 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
 		     const WeylGroup& W,
 		     const weyl::Twist& twist)
   : TwistedWeylGroup(W,twist)
-  , d_rank(Cartan_matrix.numRows())
+  , d_rank(Cartan_matrix.n_rows())
   , d_simpleRoot()
   , d_simpleCoroot()
   , d_involution(d_rank)   // square matrix, initially zero

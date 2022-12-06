@@ -129,7 +129,7 @@ struct RootSystem::root_compare
 };
 
 RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
-  : rk(Cartan_matrix.numRows())
+  : rk(Cartan_matrix.n_rows())
   , prefer_co(prefer_co)
   , C_denom(), Cmat(Cartan_matrix.entry_type_convert<byte>())
   , invCmat() // filled below
@@ -870,7 +870,7 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
   int_Matrix kernel // of restriction map from weights to derived weights
     (rd.beginCoradical(),rd.endCoradical(),r,tags::IteratorTag());
 
-  assert(kernel.numColumns()==d);
+  assert(kernel.n_columns()==d);
 
   int_Matrix row,col;
   matreduc::diagonalise(kernel,row,col); // only |row| will be used
@@ -921,7 +921,7 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
   int_Matrix kernel // of restriction map from coweights to adjoint coweights
     (rd.beginRadical(),rd.endRadical(),r,tags::IteratorTag());
 
-  assert(kernel.numColumns()==d);
+  assert(kernel.n_columns()==d);
 
   int_Matrix row,col;
   matreduc::diagonalise(kernel,row,col); // only |row| will be used
@@ -981,8 +981,8 @@ LieType RootDatum::type() const
 
 void RootDatum::reflect(RootNbr alpha, LatticeMatrix& M) const
 {
-  assert(M.numRows()==rank());
-  for (unsigned int j=0; j<M.numColumns(); ++j)
+  assert(M.n_rows()==rank());
+  for (unsigned int j=0; j<M.n_columns(); ++j)
   {
     int s=0;
     for (unsigned int i=0; i<rank(); ++i)
@@ -994,8 +994,8 @@ void RootDatum::reflect(RootNbr alpha, LatticeMatrix& M) const
 
 void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 {
-  assert(M.numColumns()==rank());
-  for (unsigned int i=0; i<M.numRows(); ++i)
+  assert(M.n_columns()==rank());
+  for (unsigned int i=0; i<M.n_rows(); ++i)
   {
     int s=0;
     for (unsigned int j=0; j<rank(); ++j)

@@ -99,7 +99,7 @@ namespace {
   from the size of the matrix.)
 */
 RealTorus::RealTorus(const WeightInvolution& theta)
-  : d_rank(theta.numColumns())
+  : d_rank(theta.n_columns())
   , d_complexRank(d_rank) // this value is too large; it is modified below
   , d_involution(theta)
   , d_toPlus()
@@ -161,8 +161,8 @@ BinaryMap RealTorus::componentMap
 */
 SmallSubquotient dualPi0(const WeightInvolution& q)
 {
-  assert(q.numRows()==q.numColumns());
-  auto rank = q.numRows();
+  assert(q.n_rows()==q.n_columns());
+  auto rank = q.n_rows();
 
   BinaryMap i2(q);  // reduce modulo 2
   i2 += BinaryMap::identity(rank);
@@ -190,7 +190,7 @@ std::tuple<unsigned,unsigned,unsigned> classify(const WeightInvolution& tau)
 {
   int_Matrix tau1=tau+1,dummy; bool flip;
   matreduc::column_echelon(tau1,dummy,flip);
-  const auto r=tau1.numRows(),plus_rank = tau1.numColumns();
+  const auto r=tau1.n_rows(),plus_rank = tau1.n_columns();
   const auto complex_rank = BinaryMap(tau1).image().size();
   const auto compact_rank = plus_rank-complex_rank;
   return std::make_tuple(compact_rank,complex_rank,r-plus_rank-complex_rank);
@@ -231,7 +231,7 @@ WeightList fullSignBasis(const WeightInvolution& tau,int sign,int_Matrix& M)
     result.push_back(b.column(j));
 
   // make projection matrix; rows are the first rows of the inverse of |b|
-  M = b.inverse().block(0,0,r,b.numRows());
+  M = b.inverse().block(0,0,r,b.n_rows());
   return result;
 }
 
