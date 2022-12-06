@@ -684,7 +684,7 @@ set FPPtauRoots_old(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 -floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
 g[j0] is an integer. }
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
-    let g=Affd.simple_coroots*gamma, flr = null(Affd.semisimple_rank)
+    let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
     then INT = ##for j:#Affd.simple_coroots
 	 do
 	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
@@ -721,7 +721,7 @@ connected, but it's up to 40% faster; when possible, just take the
 extra tau and do a no_reps}
 
 set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
-    let g=Affd.simple_coroots*gamma, flr = null(Affd.semisimple_rank)
+    let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
     then INT = ##for j:#Affd.simple_coroots
 	 do
 	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
@@ -766,7 +766,7 @@ set FPPtauRootsE8_old(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
 
 {FW is fundamental weights}
 set FPPtauRootsE8(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
-    let g=Affd.simple_coroots*gamma, flr = null(Affd.semisimple_rank)
+    let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
     then INT = ##for j:#Affd.simple_coroots
 	 do
 	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
@@ -2486,7 +2486,7 @@ set actualize_oldKPO \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataOldKcharPO:
 (   if facet_verbose
-    then prints("start actualizeKPO")
+    then prints("start actualize_oldKPO")
     fi;
     let vlist = vertex_data.list
     then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
