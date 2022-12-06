@@ -478,7 +478,7 @@ corresponding columns.
 void filter_units_wrapper (expression_base::level l)
 { own_vector inv_f=get_own<vector_value>();
   own_matrix basis=get_own<matrix_value>();
-  unsigned int n=basis->val.numColumns();
+  unsigned int n=basis->val.n_columns();
   if (inv_f->val.size()>n)
   { std::ostringstream o;
     o << "Too many factors: " @|
@@ -586,7 +586,7 @@ void replace_gen_wrapper (expression_base::level l)
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
   own_matrix generators=get_own<matrix_value>();
-  unsigned int n=generators->val.numColumns();
+  unsigned int n=generators->val.n_columns();
   if (inv_f->val.size()>n)
   { std::ostringstream o;
     o << "Too many factors: " @|
@@ -595,7 +595,7 @@ void replace_gen_wrapper (expression_base::level l)
   }
 @.Too many factors@>
 @)
-  if (new_generators->val.numRows()!=generators->val.numRows())
+  if (new_generators->val.n_rows()!=generators->val.n_rows())
     throw runtime_error("Column lengths do not match");
 @.Column lengths do not match@>
 @)
@@ -603,13 +603,13 @@ void replace_gen_wrapper (expression_base::level l)
   for (unsigned int j=0; j<n; ++j)
     if (j>=inv_f->val.size() or inv_f->val[j]!=1)
        // replace column |j| by |k| from |new_generators|
-    { if (k>=new_generators->val.numColumns())
+    { if (k>=new_generators->val.n_columns())
         throw runtime_error ("Not enough replacement columns");
 @.Not enough replacement columns@>
       generators->val.set_column(j,new_generators->val.column(k));
       ++k;
     }
-  if (k<new_generators->val.numColumns())
+  if (k<new_generators->val.n_columns())
         throw runtime_error ("Too many replacement columns");
 @.Too many replacement columns@>
   if (l!=expression_base::no_value)
@@ -904,7 +904,7 @@ void based_involution_wrapper(expression_base::level l)
 @/shared_Lie_type type = get<Lie_type_value>();
 @)
   unsigned int r=type->val.rank();
-  if (basis->val.numRows()!=r or basis->val.numRows()!=r)
+  if (basis->val.n_rows()!=r or basis->val.n_rows()!=r)
   { std::ostringstream o;
     o << "Basis should be given by " << r << 'x' << r << " matrix";
     throw runtime_error(o.str());
@@ -1200,15 +1200,15 @@ void root_datum_wrapper(expression_base::level l)
 @/shared_matrix simple_coroots=get<matrix_value>();
   shared_matrix simple_roots=get<matrix_value>();
 
-  unsigned int nr = simple_roots->val.numRows(),
-         nc = simple_roots->val.numColumns();
+  unsigned int nr = simple_roots->val.n_rows(),
+         nc = simple_roots->val.n_columns();
 
-  if (simple_coroots->val.numRows()!=nr @| or
-      simple_coroots->val.numColumns()!=nc)
+  if (simple_coroots->val.n_rows()!=nr @| or
+      simple_coroots->val.n_columns()!=nc)
   { std::ostringstream o;
     o << "Sizes (" << nr << ',' << nc << "),(" @|
-      << simple_coroots->val.numRows() << ','
-      << simple_coroots->val.numColumns() @|
+      << simple_coroots->val.n_rows() << ','
+      << simple_coroots->val.n_columns() @|
       << ") of simple (co)root systems differ";
     throw runtime_error(o.str());
   }
@@ -1239,8 +1239,8 @@ void root_datum_from_type_wrapper(expression_base::level l)
 { bool prefer_coroots = get<bool_value>()->val;
 @/shared_matrix lattice=get<matrix_value>();
   shared_Lie_type type=get<Lie_type_value>();
-  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
-      lattice->val.numRows()!=type->val.rank())
+  if (lattice->val.n_rows()!=lattice->val.n_columns() @| or
+      lattice->val.n_rows()!=type->val.rank())
   { std::ostringstream o;
     o << "Sub-lattice matrix should have size " @|
       << type->val.rank() << 'x' << type->val.rank();
@@ -1268,7 +1268,7 @@ void sublattice_root_datum_wrapper(expression_base::level l)
 { shared_matrix lattice=get<matrix_value>();
   shared_root_datum rd=get<root_datum_value>();
   const auto r = rd->val.rank();
-  if (lattice->val.numRows()!=r or lattice->val.numColumns()!=r)
+  if (lattice->val.n_rows()!=r or lattice->val.n_columns()!=r)
   { std::ostringstream o;
     o << "Sub-lattice matrix should have size " @|
       << r << 'x' << r;
@@ -1322,7 +1322,7 @@ void adjoint_datum_wrapper(expression_base::level l)
   Cartan_matrix_wrapper(expression_base::single_value);
   transpose_mat_wrapper(expression_base::single_value);
   own_matrix M=get_own<matrix_value>();
-  for (unsigned int i=0; i<M->val.numRows(); ++i)
+  for (unsigned int i=0; i<M->val.n_rows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(std::move(M));
   push_value(whether(prefer_coroots));
@@ -2004,7 +2004,7 @@ a finite computation by working modulo the root lattice.
       stab &= comp;
       RootNbrList roots(comp.begin(),comp.end());
       auto dependency = // the number of dependencies among coroots in |comp|
-        lattice::kernel(rd->val.Cartan_matrix(roots)).numColumns();
+        lattice::kernel(rd->val.Cartan_matrix(roots)).n_columns();
       assert(dependency <= 1);
       to_affine_orbit = dependency>0;
       break;
@@ -2495,7 +2495,7 @@ by |tori::classify|.
 void classify_wrapper(expression_base::level l)
 { shared_matrix M(get<matrix_value>());
   const auto& delta=M->val;
-  const auto r = delta.numRows();
+  const auto r = delta.n_rows();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
   if (l==expression_base::no_value)
     return;
@@ -2517,11 +2517,11 @@ involutive permutation of the roots. However even there it is not redundant in
 the presence of a central torus part.
 
 @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>=
-{ if (delta.numRows()!=r or delta.numColumns()!=r)
+{ if (delta.n_rows()!=r or delta.n_columns()!=r)
   { std::ostringstream o;
      o << "Involution should be a " @|
        << r << 'x' << r << " matrix;"
-     @| " received a "  << delta.numRows() << 'x' << delta.numColumns()
+     @| " received a "  << delta.n_rows() << 'x' << delta.n_columns()
       << " matrix";
     throw runtime_error(o.str());
   }
@@ -3125,8 +3125,8 @@ void block_sizes_wrapper(expression_base::level l)
 @)
   own_matrix M = std::make_shared<matrix_value> @|
     (int_Matrix(G->val.numRealForms(),G->val.numDualRealForms()));
-  for (unsigned int i = 0; i < M->val.numRows(); ++i)
-    for (unsigned int j = 0; j < M->val.numColumns(); ++j)
+  for (unsigned int i = 0; i < M->val.n_rows(); ++i)
+    for (unsigned int j = 0; j < M->val.n_columns(); ++j)
       M->val(i,j) =
       G->val.block_size(G->interface.in(i),G->dual_interface.in(j)).int_val();
   push_value(std::move(M));

@@ -1937,7 +1937,7 @@ containers::simple_list<BlockElt> // returns list of elements selected
 {
   containers::simple_list<BlockElt> result;
 
-  for (BlockElt y=M.numRows(); y-->0; ) // reverse loop is essential here
+  for (BlockElt y=M.n_rows(); y-->0; ) // reverse loop is essential here
   { auto s = first_descent_among(sing_orbs,y);
     if (s==rank())
       result.push_front(y); // no singular descents, so a survivor
@@ -2031,9 +2031,9 @@ void set(matrix::Matrix<Pol>& dst, unsigned i, unsigned j, Pol P)
 void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
 {
   strm << "T_" << inx+1 << " [";
-  for (unsigned i=0; i<M.numRows(); ++i)
+  for (unsigned i=0; i<M.n_rows(); ++i)
     {        strm << " " << std::endl;
-    for (unsigned j=0; j<M.numColumns(); ++j)
+    for (unsigned j=0; j<M.n_columns(); ++j)
       //      if (not M(i,j).isZero())
       //	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
       M(i,j).print(strm  << ' ',"q");

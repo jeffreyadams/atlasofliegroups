@@ -424,8 +424,8 @@ template<unsigned int dim> class BitMatrix
   BitVectorList<dim> image() const; // free generators of image of matrix
   BitVectorList<dim> kernel() const; // free generators of kernel of matrix
 
-  size_t numColumns() const { return d_columns; } // the number of columns
-  size_t numRows() const { return d_rows; } // the number of rows
+  size_t n_columns() const { return d_columns; } // the number of columns
+  size_t n_rows() const { return d_rows; } // the number of rows
 
   BitVector<dim> row(size_t i) const;
 

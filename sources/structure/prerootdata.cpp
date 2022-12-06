@@ -46,7 +46,7 @@ namespace prerootdata {
 */
   PreRootDatum::PreRootDatum(const LieType& lt, bool prefer_co)
   : simple_roots(lt.rank(),lt.semisimple_rank())
-  , simple_coroots(simple_roots.numRows(),simple_roots.numColumns(),0)
+  , simple_coroots(simple_roots.n_rows(),simple_roots.n_columns(),0)
   , prefer_co(prefer_co)
 {
   weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
@@ -117,7 +117,7 @@ void PreRootDatum::test_Cartan_matrix () const
 PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 {
   const auto r=rank();
-  if (sublattice.numRows()!=r or sublattice.numColumns()!=r)
+  if (sublattice.n_rows()!=r or sublattice.n_columns()!=r)
     throw std::runtime_error("Sub-lattice matrix not square of the right size");
 
   arithmetic::big_int d;
@@ -152,8 +152,8 @@ void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {
-  assert(M.numRows()==rank());
-  for (unsigned int j=0; j<M.numColumns(); ++j)
+  assert(M.n_rows()==rank());
+  for (unsigned int j=0; j<M.n_columns(); ++j)
   {
     int c=0;
     for (unsigned int i=0; i<rank(); ++i)
@@ -165,8 +165,8 @@ void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 
 void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
 {
-  assert(M.numColumns()==rank());
-  for (unsigned int i=0; i<M.numRows(); ++i)
+  assert(M.n_columns()==rank());
+  for (unsigned int i=0; i<M.n_rows(); ++i)
   {
     int c=0;
     for (unsigned int j=0; j<rank(); ++j)

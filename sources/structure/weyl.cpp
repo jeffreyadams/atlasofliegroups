@@ -493,7 +493,7 @@ WeylWord WeylGroup::Transducer::word_of_piece(EltPiece x) const
   but we will determine an internal renumbering making the subquotients small
 */
 WeylGroup::WeylGroup(const int_Matrix& c)
-  : d_transducer(c.numColumns())
+  : d_transducer(c.n_columns())
   , d_in()
   , d_out()
   , d_min_star(d_transducer.size())
