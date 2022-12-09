@@ -658,10 +658,10 @@ template<unsigned int dim> struct FirstBit
   Replace |b| by the ordered canonical basis of the vector space $V$
   it spans. Flags in |t| the set of coordinate positions associated to |b|.
 
-  What is flagged in |t| is the set $J$ in described in the comment for
+  What is flagged in |t| is the set $J$ described in the comment for
   |normalSpanAdd| below. For any $j$, only |b[j]| has a nonzero bit at the
-  position $j'$ where number |j| among the raised bits of |t| is found;
-  consequently, for any $v\in V$, the coordinate of |b[j]| in $v$ is $v[j']$.
+  position $j'$ where number |j'=t.n_th_bit(j)||; consequently, for any
+  $v\in V$, the coordinate of |b[j]| in $v$ is $v[j']$.
 
   This function works essentially by repeatedly calling |normalSpanAdd| for
   the vectors of |b|, replacing |b| by the resulting canonical basis at the

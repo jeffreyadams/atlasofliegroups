@@ -124,7 +124,7 @@ class RootSystem
     : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
 
-  struct root_compare; // auxiliary type defined here for access reasons
+  struct root_compare; // auxiliary type declared here for access reasons
 
   const unsigned char rk; // rank of root system
   const bool prefer_co;

@@ -550,12 +550,6 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
   assert(simple_image.size()==rk);
   Permutation result(numRoots());
 
-  RootNbrList image_reflection(rk);
-
-  // prepare indexes of reflections for roots in |simple_image|
-  for (RootNbr i=0; i<rk; ++i)
-    image_reflection[i] = rt_abs(simple_image[i]);
-
   // copy images of simple roots
   for (RootNbr i=0; i<rk; ++i)
     result[simpleRootNbr(i)]=simple_image[i];
@@ -567,7 +561,7 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
     assert(i<rk);
     RootNbr beta = simple_reflected_root(i,alpha);
     assert(is_posroot(beta) and beta<alpha);
-    result[alpha] = simple_reflected_root(image_reflection[i],result[beta]);
+    result[alpha] = reflected_root(simple_image[i],result[beta]);
   }
 
   // finally extend to negative roots, using symmetry of root permutation
