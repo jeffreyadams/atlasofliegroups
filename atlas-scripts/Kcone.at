@@ -55,8 +55,8 @@ set R_packet(KTypePol P)=sum(real_form(P),for m in monomials(P) do R_packet(m) o
 nonzero. Moves one (possibly non-simple) step up in the partial
 order.}
 
-{Move one step up in the partial order of K-types: all K-types with negative coefficients
-in the K-type formula}
+{Move one step up in the partial order of K-types: all K-types with negative
+coefficients in the K-type formula}
 set up_tr(KType mu)=KTypePol:
    let result=null_K_module(real_form(mu))
    in for c@p in K_type_formula(mu)
@@ -117,8 +117,8 @@ set up_R_fewer_terms(KType mu)=KTypePol:
     let NM=null_K_module(real_form(mu)),start=up_R(mu)
    then result=NM
    in while start!=NM do let p=last_K_type(start)
-              in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
-	         then result+:=R_packet(p) fi; start-:=start[p]*p
+             in if all(for c@q in start do p=q or K_type_formula(q,height(p))[p]=0 od)
+	        then result+:=R_packet(p) fi; start-:=start[p]*p
 		      od; result
 
 {All K-types above mu in the R-order, up to given height}
@@ -544,3 +544,55 @@ set up_PP(KType mu,int N) = KTypePol:
    let list=for p in monomials(branch_std(trivial(real_form(mu)),N)) do parameter(p) od
    in up_B(mu,list)
 
+set next1 (KType mu)=[KTypePol]:
+   let G=real_form(mu),lam=mu.lambda_minus_rho
+   then sr=simple_roots(G)
+   in ##for alpha@i in sr
+       do if is_real(alpha,mu.x)
+          then let x=Cayley(i,mu.x)
+	       in [1*K_type(x,lam)+K_type(cross(i,x),lam)]
+	  else []
+	  fi
+       od
+
+set next_im (KType mu)=[KTypePol]:
+   let G=real_form(mu),lam=mu.lambda_minus_rho
+   then pr=posroots(G)
+   in ##for alpha in pr
+        do if is_imaginary(alpha,mu.x)
+	   then [1*K_type(mu.x,lam+alpha)] else []
+	   fi od
+
+set nexts (KType mu)=[[KTypePol]]:
+   let G=real_form(mu)
+   then result=[next1(mu)]
+   in for pol in next1(mu)
+        do for c@tau in pol
+	    do result#:=next_im(tau) od od;
+   result#:=next_im(mu)
+
+set nexts_one_step (KType mu)=[KTypePol]:
+   let G=real_form(mu),lam=mu.lambda_minus_rho
+   then pr=posroots(G)
+   in ##for alpha@i in pr
+       do if is_simple_root(G,alpha) and is_real(alpha,mu.x)
+              then let x=Cayley(i,mu.x)
+	            in [1*K_type(x,lam)+K_type(cross(i,x),lam)]
+	  elif is_imaginary(alpha,mu.x) or is_complex(alpha,mu.x)
+	      then [1*K_type(mu.x,lam+alpha)]
+	  else []
+	  fi
+       od
+
+{set af_done (Param p)=bool:
+   all( }
+
+set anti_finalize (Param p)=Param:
+   let G=real_form(p)
+   then pr=posroots(G), pcr=poscoroots(G)
+     in while any(for alpha@i in pr do is_noncompact_imaginary(alpha,x(p))
+                                        and pcr[i]*lambda(p)=0 od)
+	do let n=first(for i:#pr do is_noncompact_imaginary(pr[i],x(p))
+	                             and pcr[i]*lambda(p)=0 od)
+	   in p:=Cayley(pr[n],p)
+	od; p
