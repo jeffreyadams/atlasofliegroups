@@ -8,6 +8,21 @@
 Arthur packet attached to a nilpotent O^vee for G^vee which is
 PRINCIPAL in a Levi L^vee.}
 
+{computes half the GK-dimension of a minimal primitive ideal of
+infinitesimal character gamma}
+set min_GK_dim(RootDatum rd, ratvec gamma) = int:
+    let gamma_dom = dominant(rd,gamma)
+    then rdI = integrality_datum(rd,gamma_dom)
+    then rdIdual = rdI.dual
+    then CTIdual = character_table(rdIdual)
+    then singrootsdual = [int]:
+    	 for alpha@j in rdIdual.simple_roots
+	 do if gamma_dom*alpha = 0 then [j] else [] fi
+	 od.##
+    then sigmadual = truncate_induce_sign(CTIdual,singrootsdual)
+    in #rd.posroots -
+       	generic_degree(CTIdual)(tensor_sign_index(CTIdual)(sigmadual))
+
 {. List all finite-dimensional characters of Levi with given
   infinitesimal character .}
 set all_one_dim_params_gamma (ratvec infchar, Parabolic P)=[Param]:
@@ -21,25 +36,56 @@ set all_one_dim_params_gamma (ratvec infchar, Parabolic P)=[Param]:
 	 else []
 	 fi od.##
 
+{. List all representations of Levi with given
+  infinitesimal character and minimal GK dimension.}
+set all_min_params_gamma (ratvec infchar, RealForm L)=[Param]:
+   let rd = L.root_datum
+   then d = min_GK_dim(L,infchar),
+   nonsingroots = for alphav@j in integrality_datum(rd,infchar).simple_coroots
+   	       do if infchar*alphav != 0 then [j] else [] fi
+	       od.##
+   then list=all_parameters_gamma(L,infchar)
+   in for p in list
+      do if tau(p) = nonsingroots and GK_dim(p) = d
+      	 then [p]
+	 else []
+	 fi od.##
+
 {Here's how these parameters for L are recorded on G}
 set one_dims (Parabolic P)=[Param]:
    let x=maximal(P)
    then infchar = x.real_form.rho {this is rho(Levi) + rho(u)}
    then shift = P.rho_u
    in for p in all_one_dim_params_gamma(infchar,P)
-      do parameter(x,lambda(p) -  shift, nu(p) - shift) od
+      do  parameter(x,lambda(p) -  shift, nu(p) - shift) od
 
-set induced_params ([int] L, Parabolic P) = ParamPol:
-   let list=one_dims(P), G=P.real_form
-   in sum(G,for p in list do induce_from_gen_parabolic_irr(L,p) od)
+{Here's how the minimal parameters for L are recorded on G}
+set all_min_params_gamma(ratvec gamma, Parabolic P) = [Param]:
+    let shift = P.rho_u, G=P.real_form
+    in for pL in all_min_params_gamma(gamma,P.Levi)
+       do let xG = KGB_elt(G,pL.x.involution,pL.x.torus_factor)
+       	  in parameter(xG, lambda(pL) - shift, nu(pL) - shift)
+       od
 
-set induced_params_alt ([int] L, Parabolic P) = [ParamPol]:
-   let list=one_dims(P), G=P.real_form
-   in for p in list do induce_from_gen_parabolic_irr(L,p) od
+{this is the induced-from-one-dimensional on the Levi
+ having infl char rho(L)}
+set induced_from_triv_params (Parabolic P) = ParamPol:
+   let list=one_dims(P), G=P.real_form, (A,) = P
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
 
-set non_distinguished_params ([int] L, RealForm G)=ParamPol:
-   let paras=parabolics_with_theta_stable_Levi(G,L)
-   in sum(G, for P in paras do induced_params(L,P) od)
+set unip_params_from_princ_in_Levi([int] A, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in sum(G, for P in paras do induced_from_triv_params(P) od)
+
+{this is the induced-from-minimal on the Levi}
+set induced_from_min_params (ratvec gamma, Parabolic P) = ParamPol:
+   let list=all_min_params_gamma(gamma,P), G=P.real_form, (A,) = P
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
+
+{now add over all real forms of P}
+set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
 
 set levis_mod_conj (RootDatum rd) = [[[int]]]:
     let D = rd.semisimple_rank + 1
@@ -57,12 +103,40 @@ set levis_mod_conj (RootDatum rd) = [[[int]]]:
          od
     in result
 
+{Counts unipotent parameters found by induction for each dual
+nilpotent principal in some Levi}
 set test_non_distinguished(RealForm G) = void:
     let LeviClasses = levis_mod_conj(G)
-    in for Ls@d in LeviClasses
+    in for As@d in LeviClasses
        do prints(); prints("Levis of rank ",d);
-       	  for A in Ls
-	  do prints("Levi ",A," with ",#non_distinguished_params(A,G),
+       	  for A in As
+	  do prints("Levi ",A," with ",#unip_params_from_princ_in_Levi(A,G),
     	     	    " unipotent parameters.")
           od
        od
+
+{tests for each unipotent O^vee in the dual group, with Bala-Carter
+Levi L^vee, what unipotent reps arise by induction from L.  Output of
+this command should be compared to show_short(weak_packets(G). The
+numbers here are guaranteed to be less than or equal, and
+conjecturally equal.}
+set test_all(RealForm G) = void:
+    let LeviClasses = levis_mod_conj(G), N= int:0
+    in for As@d in LeviClasses
+       do prints(); prints("Levis of rank ",d);
+       	  for A in As
+	  do let PA=ComplexParabolic: (G,A)
+	     then LA = PA.Levi, shiftA = PA.rho_u
+	     then OAvs = distinguished_nilpotent_orbits(LA.dual)
+	     then gammaAs = for OAv in OAvs do OAv.H/2 od
+	     in for OAv@j in OAvs
+	     	do let NA =  #unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
+		   in prints("Levi ",A," dual unip ", OAv.H, " with ",
+		      	 NA, " unipotent parameters.");
+		   N:=N+NA
+	 	od
+          od
+       od;
+       prints();
+       prints("Found total of ",N, " unipotent parameters.")
+
