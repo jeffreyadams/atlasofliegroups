@@ -833,6 +833,19 @@ set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
     {assert (gamma=w*gamma0 + tau,"Bad affine!");}
     ((tau,w),gamma0TIMESDEN/gamma.denom)
 
+{this translates a parameter by an integrally dominant weight to one
+with integrality datum like that of a point in the fundamental alcove}
+set fundamental_move(Param p) = Param:
+    let gamma = p.infinitesimal_character, G=p.real_form
+    then () = assert(is_dominant(G,gamma),
+    	 "oops, non-dominant infinitesimal character")
+    then ((tau,w),gamma0) = from_fundamental_alcove(G,gamma)
+    { then () = prints("target infl char gamma0 = ",gamma0) }
+    then twowrho =  w*two_rho(G)
+    { then () = prints("final infl char",dominant(G,gamma + twowrho-tau)) }
+    in first_param(finalize(parameter(p.x, p.lambda + twowrho - tau, p.nu +
+       				 twowrho -tau)))
+
 {.restored from 3/30/22 version for use in computing bigger facets with
 same unitarity status.}
 set facet (SimpleAffine Affd, ratvec gamma) = Facet:
@@ -1313,7 +1326,7 @@ set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
     FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
     then ()= if facet_verbose
     then prints("start dim ",dim, " in FPP_facetsE8") fi
-    in for FV in facets
+    in [FacetVertsIndex]: for FV in facets
        do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	  in [FacetVertsIndex]:
 	     for w in affine_orbit_ws(Affd,bary_F)
@@ -1400,12 +1413,12 @@ set FPP_facetsE8_old(SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
 
 set FPP_facetsE8 (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
    let facets = [[FacetVerts]]: facets_fundamental(Affd)
-   in ([FacetVertsIndex]:
+   in [[FacetVertsIndex]]: ([FacetVertsIndex]:
       for @j in vd.list
       do [j]
       od) { singleton indices } #
       for dim: Affd.semisimple_rank from 1
-      do FPP_facetsE8(Affd, vd, dim)
+      do [FacetVertsIndex]: FPP_facetsE8(Affd, vd, dim)
       od
 
 set facet_data_new(SimpleAffine Affd, int j) = FacetData:
