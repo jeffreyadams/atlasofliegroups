@@ -6199,10 +6199,10 @@ void counted_for_expression<flags>::evaluate(level l) const
 { const auto n=(count->eval(),get<int_value>()->long_val());
   const auto lwb=(bound.get()==nullptr
           ? 0 : (bound->eval(),get<int_value>()->long_val()));
-  auto c = n<0 ? 0 : n; // no negative size result
+  long long int c = n<0 ? 0 : n; // no negative size result
 
   if (has_frame(flags)) // then loop uses index
-  { int b=lwb;
+  { long long int b=lwb;
     id_pat pattern(id);
     if (l==no_value)
       @< Perform counted loop that uses an index, without storing result,
@@ -6286,6 +6286,8 @@ constant~$0$ is probably a bit more efficient.
 @< Perform counted loop that uses an index, without storing result,
    doing |c| iterations with lower bound |b| @>=
 { c+=b; // set to upper bound, exclusive
+  if (c<b) // then additive overflow occurred
+    throw runtime_error("Loop range would overflow signed long integer counter");
   try
   { if (in_forward(flags)) // increasing loop
       while (b<c)
@@ -6320,6 +6322,8 @@ bits of stuff.
    doing |c| iterations with lower bound |b| @>=
 { own_row result = std::make_shared<row_value>(c);
   c+=b; // set to upper bound, exclusive
+  if (c<b) // then additive overflow occurred
+    throw runtime_error("Loop range would overflow signed long integer counter");
   auto dst = out_forward(flags) ? result->val.begin() : result->val.end();
   try
   { if (in_forward(flags)) // increasing loop
