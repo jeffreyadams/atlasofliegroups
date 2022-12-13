@@ -1912,12 +1912,12 @@ struct int_value : public value_base
 { arithmetic::big_int val;
 @)
   explicit int_value(int v) : val(v) @+ {}
-  explicit int_value(long long v)
-  : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned int v)
     : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(unsigned long v)
     : val(big_int::from_unsigned(v)) @+ {}
+  explicit int_value(long long v)
+  : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned long long v)
     : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
@@ -1927,8 +1927,8 @@ struct int_value : public value_base
 @)
   int int_val () const @+{@; return val.int_val(); }
   unsigned int uint_val () const @+{@; return val.uint_val(); }
-  arithmetic::Numer_t long_val () const @+{@; return val.long_val(); }
-  arithmetic::Denom_t ulong_val () const @+{@; return val.ulong_val(); }
+  std::int64_t long_val () const @+{@; return val.long_val(); }
+  std::uint64_t ulong_val () const @+{@; return val.ulong_val(); }
 };
 @)
 typedef std::shared_ptr<const int_value> shared_int;
