@@ -840,11 +840,20 @@ set fundamental_move(Param p) = Param:
     then () = assert(is_dominant(G,gamma),
     	 "oops, non-dominant infinitesimal character")
     then ((tau,w),gamma0) = from_fundamental_alcove(G,gamma)
-    { then () = prints("target infl char gamma0 = ",gamma0) }
-    then twowrho =  w*two_rho(G)
-    { then () = prints("final infl char",dominant(G,gamma + twowrho-tau)) }
-    in first_param(finalize(parameter(p.x, p.lambda + twowrho - tau, p.nu +
-       				 twowrho -tau)))
+        then twowrho =  w*two_rho(G)
+        in first_param(finalize(parameter(p.x, p.lambda + twowrho - tau, p.nu +
+       				 twowrho -tau))) 
+
+{given dominant infinitesimal character gamma, finds new
+infinitesimal character gamma0+two_rho (with gamma0 in fundamental
+alcove) which is W-conj to the integrally dom regular weight gamma+tau}
+
+set small_translate(RootDatum rd, ratvec gamma) = vec:
+    let ((tau0,w0),gamma0) = from_fundamental_alcove(rd,gamma)
+    then ird = integrality_datum(rd,gamma)
+    then (,gamma1) = from_dominant(ird,gamma - tau0 + w0*two_rho(rd))
+    {maybe gamma1 = gamma - tau0 + w0*two_rho automatically??}
+    in ratvec_as_vec(gamma1 - gamma)
 
 {.restored from 3/30/22 version for use in computing bigger facets with
 same unitarity status.}
