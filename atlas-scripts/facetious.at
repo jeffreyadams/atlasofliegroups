@@ -1360,8 +1360,8 @@ set FPP_facets(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
 set FPP_facetsE8_old(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
     FPP_facetsE8_old(Affd, FPP_vertex_data(Affd,j), dim)
 
-set FPP_facetsE8(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
-    FPP_facetsE8(Affd, FPP_vertex_data(Affd,j), dim)
+set FPP_facetsE8(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
+    FPP_facetsE8(Affd, FPP_vertex_data(Affd,-1), dim)
 
 set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
     [FacetVertsIndex]:
@@ -1371,7 +1371,7 @@ set FPP_facetsE8_old(SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
     [FacetVertsIndex]:
     FPP_facetsE8_old(Affd, to_vertex_data(vlist), dim)
 
-set FPP_facetsE8(SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
+set FPP_facetsE8(SimpleAffine Affd, [ratvec] vlist, int dim) =
     [FacetVertsIndex]:
     FPP_facetsE8(Affd, to_vertex_data(vlist), dim)
 

@@ -1,0 +1,109 @@
+<facetious.at
+
+{Functions small_translate and beta1 are supposed to be the same;
+first relies mostly on stuff from facetious, second uses MVL ideas and
+his |walls|. Functions beta1/niceCF1 test slightly smaller and faster on F4_s.}
+
+{Write small_translate(rd,gamma) = (bup,bdown). 1st component bup
+translates a parameter of (dominant?) infinitesimal character gamma to
+one with integrally dominant regular infinitesimal character
+gamma+bup in x^{-1}w0(fund alcove + 2rho); dominant version is
+w0^{-1}x(gamma+bup), which belongs to fundamental alcove + 2rho.
+
+2nd component bdown translates from dom reg xw^{-1}(gamma+bup) to
+integrally dominant xw^{-1}(gamma+bup) + bdown = xw^{-1}gamma.
+with integrality datum like that of a point in the fundamental alcove}
+
+set small_translate(RootDatum rd, ratvec gamma) = (vec,vec):
+    let ((tau0,w0),gamma0) = from_fundamental_alcove(rd,gamma)
+    {now gamma = wgamma0 + tau0}
+    then ird = integrality_datum(rd,gamma)
+    then (x,gamma1) = from_dominant(ird,gamma - tau0 + w0*two_rho(rd))
+    {maybe gamma1 = gamma - tau0 + w0*two_rho automatically??}
+    then bup = ratvec_as_vec(gamma1 - gamma)
+    in (bup, -(inverse(w0)*(x*bup)))
+
+{compute character_formula by computing at gamma+beta1, then translating back}
+set niceCFsmall(Param p) = ParamPol:
+    let gamma = p.infinitesimal_character, rd = p.root_datum
+    then (bup,bdown) = small_translate(rd,gamma)
+    in standardize(translate_param_by(character_formula(
+       standardize(translate_param_by(p,bup))), bdown))
+
+{Translates int output of wall to coroot}
+set cor(RootDatum rd, int j) = vec:
+    if j<0 then -poscoroots(rd)[-1-j] else poscoroots(rd)[j] fi
+
+set simple_coroots(RootDatum rd,ratvec gamma) = mat:
+    let (simps,) = walls(rd,gamma)
+    in for m in simps do cor(rd,m) od
+
+set labels(RootDatum rd, ratvec gamma) = vec:
+    let SCR = simple_coroots(rd, gamma), zero = null(rd.rank)
+    then LS = linear_solution: linear_solve(SCR,zero)
+    then lpm = vec: case LS | affine_subspace(v,d,M):M[0] |
+       	    	 else error("bad coroots") esac
+    in if lpm[0]>0 then lpm else -lpm fi
+
+{possible values of 2rho for the positive systems of the alcove}
+{Not certain this handles central torus correctly??}
+set tworhos(RootDatum rd, ratvec gamma) = [vec]:
+    let SCR = simple_coroots(rd, gamma), zero = null(rd.semisimple_rank),
+    	two = vec: for j:rd.semisimple_rank+1 do 2 od
+    then labs = vec: labels(rd, gamma)
+    then corr = -2*sum(labs)
+    in for m@j in labs
+       do if m=1 then let goal=two + corr*e(rd.semisimple_rank+1,j)
+	  in [requisition(solve(^SCR, goal))]
+	  else []
+	  fi
+       od.##
+
+set ws(RootDatum rd, ratvec gamma) = [WeylElt]:
+    for v in tworhos(rd,gamma) do let (w,) = from_dominant(rd,v) in w od
+
+{these are root lattice translates of the fundamental alcove:
+if (gamma0,w) is in result, then gamma0 is in FA + root lattice, and
+gamma0 = w*gamma}
+set gamma0s(RootDatum rd, ratvec gamma) = [(ratvec,WeylElt)]:
+    for w in ws(rd,gamma) do (inverse(w)*gamma,w) od
+
+{integral weights to add to gamma0s to lands in fund alcove: if
+(tau,gamma0,w) is in result, then gamma0+tau is in fundamental alcove}
+set tau0s(RootDatum rd, ratvec gamma) = [(ratvec,ratvec,WeylElt)]:
+    for (gamma0,w) in gamma0s(rd,gamma)
+    do (-sum(rd.rank, for av@j in rd.simple_coroots
+	   	      do floor(av*gamma0)*rd.fundamental_weights[j]
+		      od), gamma0,w)
+    od
+
+{ if result is (tau,w), then tau is a weight, and gamma+w*tau
+is in w(fund alc)}
+set tau0(RootDatum rd, ratvec gamma) = (vec,WeylElt):
+    (for (t,gamma0,w) in tau0s(rd,gamma)
+    do if is_integer(t) then [(ratvec_as_vec(t),w)] else []  fi
+    od.##)[0]
+
+{ if result is (beta,w), then beta is a weight, and gamma+w*beta
+is in w[(fund alc) + 2rho]}
+set beta0(RootDatum rd, ratvec gamma) = (vec,WeylElt):
+    (for (t,gamma0,w) in tau0s(rd,gamma)
+    do if is_integer(t) then [(ratvec_as_vec(t) + two_rho(rd),w)] else []  fi
+    od.##)[0]
+
+{translate that preserves integral dominance, lands in WFA; and corresponding translation back down}
+set beta1(RootDatum rd, ratvec gamma) = (vec,vec):
+    let (b,w) = beta0(rd,gamma), ird = integrality_datum(rd,gamma)
+    then gamma2 = gamma + w*b
+{this gamma2 is in w*(fundamental alcove + 2rho)}
+    then (x,) = from_dominant(ird,gamma2)
+    then bup = w*b + ratvec_as_vec(inverse(x)*gamma2-gamma2)
+{so gamma + bup is x^{-1}(gamma+w*b), in x^{-1}w(fund alcove + 2rho)}
+    in (bup, -inverse(w)*(x*bup))
+
+{compute character_formula by computing at gamma+beta1, then translating back}
+set niceCF1(Param p) = ParamPol:
+    let gamma = p.infinitesimal_character, rd = p.root_datum
+    then (bup,bdown) = beta1(rd,gamma)
+    in standardize(translate_param_by(character_formula(
+       standardize(translate_param_by(p,bup))), bdown))

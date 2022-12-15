@@ -587,7 +587,7 @@ set find_N (Param p_L,RealForm G) = int:
   in let pcg=poscoroots(G) then
    list=##for alpha in pcg do {if alpha*two_rhou > 0 then}
    [-(alpha*v)/(alpha*two_rho(G))] {else [] fi} od
-   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   in {prints(list);} if #list=0 then 1
    else floor(max(list)+1) fi
 
 {First version using coherent continuation of irreducibles:
@@ -969,7 +969,7 @@ set find_N ([int] Levi, Param p)=int:
    gamma=((1+theta)*lam+(1-theta)*nu)/2 then
    list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
    [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
-   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   in if #list=0 then 1
    else floor(max(list)+1) fi
 
 set is_standard ([int] Levi, Param p) =
