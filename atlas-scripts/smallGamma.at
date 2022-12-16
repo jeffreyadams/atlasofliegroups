@@ -1,5 +1,5 @@
-<facetious.at
-
+< facetious.at {for from_fundamental_alcove and lots more}
+< translate.at {for translate_param_by}
 {Functions small_translate and beta1 are supposed to be the same;
 first relies mostly on stuff from facetious, second uses MVL ideas and
 his |walls|. Functions beta1/niceCF1 test slightly smaller and faster on F4_s.}
@@ -27,16 +27,29 @@ set small_translate(RootDatum rd, ratvec gamma) = (vec,vec):
 set niceCFsmall(Param p) = ParamPol:
     let gamma = p.infinitesimal_character, rd = p.root_datum
     then (bup,bdown) = small_translate(rd,gamma)
-    in standardize(translate_param_by(character_formula(
-       standardize(translate_param_by(p,bup))), bdown))
+    in translate_param_by(character_formula(
+       1*translate_param_by(p,bup)), bdown)
 
 {Translates int output of wall to coroot}
-set cor(RootDatum rd, int j) = vec:
+set wall_coroot(RootDatum rd, int j) = vec:
     if j<0 then -poscoroots(rd)[-1-j] else poscoroots(rd)[j] fi
 
+{Translates int output of wall to root}
+set wall_root(RootDatum rd, int j) = vec:
+    if j<0 then -posroots(rd)[-1-j] else posroots(rd)[j] fi
+
+{simple coroots defining the walls of an alcove}
 set simple_coroots(RootDatum rd,ratvec gamma) = mat:
-    let (simps,) = walls(rd,gamma)
-    in for m in simps do cor(rd,m) od
+    let (numbers,) = walls(rd,gamma)
+    in for m in numbers do wall_coroot(rd,m) od
+
+set simple_roots(RootDatum rd,ratvec gamma) = mat:
+    let (numbers,) = walls(rd,gamma)
+    in for m in numbers do wall_coroot(rd,m) od
+
+set std_labels(RootDatum rd) = vec:
+    let bv = highest_root(rd.dual)
+    in ratvec_as_vec(^(rd.fundamental_weights)*bv)
 
 set labels(RootDatum rd, ratvec gamma) = vec:
     let SCR = simple_coroots(rd, gamma), zero = null(rd.rank)
@@ -46,7 +59,7 @@ set labels(RootDatum rd, ratvec gamma) = vec:
     in if lpm[0]>0 then lpm else -lpm fi
 
 {possible values of 2rho for the positive systems of the alcove}
-{Not certain this handles central torus correctly??}
+{Number of values is the order of the center of the simply connected group}
 set tworhos(RootDatum rd, ratvec gamma) = [vec]:
     let SCR = simple_coroots(rd, gamma), zero = null(rd.semisimple_rank),
     	two = vec: for j:rd.semisimple_rank+1 do 2 od
@@ -91,19 +104,47 @@ set beta0(RootDatum rd, ratvec gamma) = (vec,WeylElt):
     do if is_integer(t) then [(ratvec_as_vec(t) + two_rho(rd),w)] else []  fi
     od.##)[0]
 
-{translate that preserves integral dominance, lands in WFA; and corresponding translation back down}
-set beta1(RootDatum rd, ratvec gamma) = (vec,vec):
+{translate that preserves integral dominance, lands in WFA; and
+corresponding translation back down}
+set beta1(RootDatum rd, ratvec gamma) = ([int],[int]):
     let (b,w) = beta0(rd,gamma), ird = integrality_datum(rd,gamma)
     then gamma2 = gamma + w*b
+    { then () = prints("ird simple = ",ird.simple_roots) }
 {this gamma2 is in w*(fundamental alcove + 2rho)}
-    then (x,) = from_dominant(ird,gamma2)
+    {then (x,) = from_dominant(ird,gamma2)}
+    then (x,) = from_dominant(ird,w*rd.two_rho)
+{means xw * rho is dominant for ird}
     then bup = w*b + ratvec_as_vec(inverse(x)*gamma2-gamma2)
 {so gamma + bup is x^{-1}(gamma+w*b), in x^{-1}w(fund alcove + 2rho)}
     in (bup, -inverse(w)*(x*bup))
+
+{translate that preserves integral dominance, lands in WFA; and
+corresponding translation back down. This version avoids constructing the
+integrality datum for gamma, which is one of the many in "random position."}
+set beta2(RootDatum rd, ratvec gamma) = ([int],[int]):
+    let (b,w) = beta0(rd,gamma)
+    then iw = inverse(w)
+    then irdw = integrality_datum(rd,iw*gamma)
+    {this integrality datum is the nice restricted type!}
+    then gamma2 = gamma + w*b
+{this gamma2 is in w*(fundamental alcove + 2rho)}
+    then (x3,) = from_dominant(irdw, iw*rd.two_rho)
+{means x3 w^{-1} * rho is dominant for irdw.}
+{x3 is w^-1 x^{-1} w}
+    then bup = w*b + ratvec_as_vec(w*(x3*(iw*gamma2))-gamma2)
+{so gamma + bup is x^{-1}(gamma+w*b), in x^{-1}w(fund alcove + 2rho)}
+    in (bup, -inverse(x3)*(iw*bup) )
 
 {compute character_formula by computing at gamma+beta1, then translating back}
 set niceCF1(Param p) = ParamPol:
     let gamma = p.infinitesimal_character, rd = p.root_datum
     then (bup,bdown) = beta1(rd,gamma)
-    in standardize(translate_param_by(character_formula(
-       standardize(translate_param_by(p,bup))), bdown))
+    in translate_param_by(character_formula(
+       1*translate_param_by(p,bup)), bdown)
+
+{same thing using beta2}
+set niceCF2(Param p) = ParamPol:
+    let gamma = p.infinitesimal_character, rd = p.root_datum
+    then (bup,bdown) = beta2(rd,gamma)
+    in translate_param_by(character_formula(
+       1*translate_param_by(p,bup)), bdown)
