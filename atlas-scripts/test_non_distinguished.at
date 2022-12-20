@@ -59,6 +59,13 @@ set one_dims (Parabolic P)=[Param]:
    in for p in all_one_dim_params_gamma(infchar,P)
       do  parameter(x,lambda(p) -  shift, nu(p) - shift) od
 
+{set one_dims (Parabolic P)=[Param]:
+   let x=maximal(P)
+   then infchar = x.real_form.rho-2*rho_u(P)  {this is rho(Levi) - rho(u)}
+   then shift = P.rho_u
+   in for p in all_one_dim_params_gamma(infchar,P)
+      do  parameter(x,lambda(p) +  shift, nu(p) + shift) od}
+
 {Here's how the minimal parameters for L are recorded on G}
 set all_min_params_gamma(ratvec gamma, Parabolic P) = [Param]:
     let shift = P.rho_u, G=P.real_form
@@ -66,6 +73,13 @@ set all_min_params_gamma(ratvec gamma, Parabolic P) = [Param]:
        do let xG = KGB_elt(G,pL.x.involution,pL.x.torus_factor)
        	  in parameter(xG, lambda(pL) - shift, nu(pL) - shift)
        od
+
+{set all_min_params_gamma(ratvec gamma, Parabolic P) = [Param]:
+    let shift = P.rho_u, G=P.real_form
+    in for pL in all_min_params_gamma(gamma-2*shift,P.Levi)
+       do let xG = KGB_elt(G,pL.x.involution,pL.x.torus_factor)
+       	  in parameter(xG, lambda(pL) + shift, nu(pL) + shift)
+       od}
 
 {this is the induced-from-one-dimensional on the Levi
  having infl char rho(L)}
@@ -82,10 +96,20 @@ set induced_from_min_params (ratvec gamma, Parabolic P) = ParamPol:
    let list=all_min_params_gamma(gamma,P), G=P.real_form, (A,) = P
    in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
 
+set induced_from_min_params_alt (ratvec gamma, Parabolic P) = [ParamPol]:
+   let list=all_min_params_gamma(gamma,P), G=P.real_form, (A,) = P
+   in for p in list do induce_from_gen_parabolic_irr(A,p) od
+
 {now add over all real forms of P}
 set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=ParamPol:
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
+
+set show_unip_params_from_Levi([int] A, RealForm G)=void:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in for P@i in paras
+      do prints(i," Parabolic:",P,new_line,"Levi: ",Levi(P),new_line,
+                 induced_from_min_params_alt(rho(G), P),new_line) od
 
 set levis_mod_conj (RootDatum rd) = [[[int]]]:
     let D = rd.semisimple_rank + 1
@@ -140,3 +164,16 @@ set test_all(RealForm G) = void:
        prints();
        prints("Found total of ",N, " unipotent parameters.")
 
+set tsl(Parabolic P)=has_theta_stable_Levi(P)
+
+set tsp(Parabolic P)=is_parabolic_theta_stable (P)
+
+set rp(Parabolic P)=is_parabolic_real (P)
+
+set induce_one_dimensionals_from_all_parabolics (RealForm G, [int] L)=void:
+   let paras=KGP(G,L)
+   then v=rho(G)-rho_u(paras[0])
+   in for P@i in paras
+      do let p=parameter(maximal(P),v,v) in
+         prints(i,"  tsl= ",tsl(P)," tsp= ",tsp(P)," rp=",rp(P),new_line,
+	         induce_from_gen_parabolic_irr (L,p),new_line) od
