@@ -94,6 +94,13 @@ set intseq(ratvec list) = vec:
 for i:ceil(max(list))-floor(min(list))-1 from floor(min(list))+1 do i od
 
 
+{given a list of rats, produces a list of all integers greater than or equal to smallest and less than or equal to largest}
+
+set intseq_inclusive(ratvec list) = vec:
+for i:floor(max(list))-ceil(min(list))+1 from ceil(min(list)) do i od
+
+
+
 {given a pair of ratvecs (x,y) and a functional f produce a list of all ratvecs z on line xy such that f(z) is in
 intseq([f(x),f(y)])}
 
@@ -103,10 +110,26 @@ list=intseq([a,b]) in
 for i in list do ((b-i)/(b-a))*x+((i-a)/(b-a))*y od
 
 
+{given a pair of ratvecs (x,y) and a functional f produce a list of all ratvecs z on line xy such that f(z) is in
+intseq_inclusive([f(x),f(y)])}
+
+set new_verts_inclusive(ratvec x, ratvec y, vec functional) = [ratvec]:
+let (a,b)=(functional*x,functional*y) then
+list=intseq_inclusive([a,b]) in
+for i in list do ((b-i)/(b-a))*x+((i-a)/(b-a))*y od
+
+
 set new_verts([ratvec] list, vec functional) = [ratvec]:
 let n=#list in
 ##(for i:n do ##(##(for j:n-i-1 from i+1 do if is_edge(list,i,j) then [new_verts(list[i],list[j],functional)] else []
 fi od)) od)
+
+
+set new_verts_inclusive([ratvec] list, vec functional) = [ratvec]:
+let n=#list in
+##(for i:n do ##(##(for j:n-i-1 from i+1 do if is_edge(list,i,j) then [new_verts_inclusive(list[i],list[j],functional)] else []
+fi od)) od)
+
 
 
 set chop_big([ratvec] V, vec f) = [[ratvec]]:
@@ -122,6 +145,11 @@ let e=for v in V do f*v od then
 I=intseq(e) in
 for n in I do extract(V,f,n,n) od
 
+set chop_small_inclusive([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+I=intseq_inclusive(e) in
+for n in I do extract(V,f,n,n) od
+
 
 set chop([ratvec] V, vec f) = [[ratvec]]:
 let e=for v in V do f*v od then
@@ -129,6 +157,13 @@ let e=for v in V do f*v od then
 if floor(x)>=ceil(y)-1 then [V]
 else let V=##(V,new_verts(V,f)) in
 for R in ##(chop_small(V,f),chop_big(V,f)) do vertices_of_hull(R) od fi
+
+
+
+
+
+
+
 
 set bary([ratvec] vertices) = ratvec:
 let n=#vertices, l=#vertices[0] in
@@ -149,10 +184,8 @@ prints("Final output: "); for R@i in output do prints("Region ", i, ": ", #R, " 
 
 
 
-set chop_coroots_bary(RootDatum G, [ratvec] vertices) = [ratvec]:
-let C=poscoroots(G), output=[[ratvec]]:[vertices] in
-for c in C do output:=##(for region in output do chop(region,c) od) od; 
-for R in output do bary(R) od
+
+
 
 
 {list maximal levis}
@@ -174,3 +207,7 @@ fundamental_vertices(sf[i])[p] od) od }
 let (R,M,n)=cofolded(L.split_form) then
 VR=fundamental_vertices(R) in
 for v in VR do M*v od }
+
+
+
+
