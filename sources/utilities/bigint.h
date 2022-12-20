@@ -1,7 +1,7 @@
 /*
   This is bigint.h
 
-  Copyright (C) 2017 Marc van Leeuwen
+  Copyright (C) 2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -11,7 +11,7 @@
 #define BIGINT_H
 
 #include <memory> // for |std::unique_ptr|
-#include <cstdint> // for |uint_32_t| and |uint_64_t|
+#include <cstdint> // for |uint32_t| and |uint64_t|
 #include <vector>
 #include <iostream>
 #include <stdexcept>
@@ -24,8 +24,8 @@ namespace arithmetic {
 
 class big_int
 {
-  typedef std::uint32_t digit;
-  typedef std::uint64_t two_digits;
+  using digit = std::uint32_t;
+  using two_digits = std::uint64_t;
 
   std::vector<digit> d; // has at least one entry; highest one determines sign
 
@@ -74,6 +74,8 @@ public:
   big_int& operator*= (digit x);
   big_int& operator*= (int x);
   big_int& operator*= (long long n) { return (*this)*=from_signed(n); }
+  big_int& operator*= (unsigned long long n)
+  { return (*this)*=from_unsigned(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
@@ -103,7 +105,7 @@ public:
   big_int& operator%= (const big_int& divisor)
     { reduce_mod(divisor); return *this; }
   big_int& operator/= (const big_int& divisor)
-    { if (divisor.is_one())
+    { if (divisor==1)
 	return *this; // simplifying by $\gcd=1$ is common with rationals
       return *this = reduce_mod(divisor); // else replace remainder by quotient
     }
@@ -141,7 +143,7 @@ public:
       return big_int(x) ^= *this;
   }
   big_int bitwise_subtract (const big_int& x) const
-  { // copy the shorter positive contrinution; if none the longer (negative) one
+  { // copy the shorter positive contribution; if none the longer (negative) one
     if (is_negative()
 	? not x.is_negative() and d.size()>=x.d.size()
 	: not x.is_negative() or  d.size()<=x.d.size())
@@ -152,16 +154,17 @@ public:
 
   // when using |bitwise_subtract| only to see whether |is_zero| holds, prefer:
   bool bitwise_subset (const big_int& x) const;
-  int index_of_set_bit(unsigned n) const; // index of n-th set bit; |-1| if none
+  int index_of_set_bit(size_t n) const; // index of n-th set bit; |-1| if none
   int bit_length() const; // position of leftmost bit differing from sign bit
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
   bool is_positive() const { return not(is_negative() or is_zero()); }
-  bool is_one() const { return d.size()==1 and d[0]==1; }
   bool is_odd() const { return (d[0]&1) != 0; }
-  bool operator== (digit v) const { return d[0]==v and d.size()==1; }
-  bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
+  bool operator== (int v) const
+    { return d.size()==1 and static_cast<int>(d[0])==v; }
+  bool operator!= (int v) const
+    { return d.size()>1 or static_cast<int>(d[0])!=v; }
   bool operator<  (const big_int& x) const;
   bool operator>  (const big_int& x) const { return x < *this; }
   bool operator>= (const big_int& x) const { return not (*this < x); }
@@ -236,6 +239,8 @@ public:
   bool is_positive() const { return num.is_positive(); }
   bool is_negative() const { return num.is_negative(); }
   bool is_zero() const { return num.is_zero(); }
+  bool operator== (int v) const { return den==1 and num==v; }
+  bool operator!= (int v) const { return den!=1 or num!=v; }
   bool operator<  (const big_rat& x) const { return num*x.den<x.num*den; }
   bool operator>  (const big_rat& x) const { return x < *this; }
   bool operator>= (const big_rat& x) const { return not (*this < x); }
@@ -251,11 +256,11 @@ public:
     { return big_rat(x*r.den - r.num, r.den); } // already reduced
   big_rat operator* (const big_int& x) const
     { big_int d = gcd(den,x);
-      return d.is_one() ? big_rat(num*x, den) : big_rat(num*(x/d), den/d);
+      return d==1 ? big_rat(num*x, den) : big_rat(num*(x/d), den/d);
     }
   friend big_rat operator* (const big_int& x, const big_rat& r)
     { big_int d = gcd(r.den,x);
-      return d.is_one() ? big_rat(r.num*x,r.den) : big_rat(r.num*(x/d),r.den/d);
+      return d==1 ? big_rat(r.num*x,r.den) : big_rat(r.num*(x/d),r.den/d);
     }
   big_rat operator/ (const big_int& x) const
     { if (x.is_zero())
@@ -263,7 +268,7 @@ public:
       big_int d = gcd(num,x);
       if (x.is_negative())
 	d.negate(); // so that |x/d| will be positive
-      return d.is_one() ? big_rat(num,den*x) : big_rat(num/d, den*(x/d));
+      return d==1 ? big_rat(num,den*x) : big_rat(num/d, den*(x/d));
     };
   friend big_rat operator/ (const big_int& x, const big_rat& r)
     { if (r.is_zero())
@@ -271,7 +276,7 @@ public:
       big_int d = gcd(r.num,x);
       if (r.num.is_negative())
 	d.negate(); // so that |r.num/d| will be positive
-      return d.is_one() ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
+      return d==1 ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
     };
 
   big_rat& operator+= (const big_int& x) { num+=x*den; return *this; }
@@ -323,6 +328,9 @@ public:
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|
 
   big_rat power (int e) const;
+
+  double as_double() const { return num.as_double()/den.as_double(); }
+
 private:
   big_rat& normalise()
   { if (den.is_negative())

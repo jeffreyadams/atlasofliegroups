@@ -213,7 +213,7 @@ public:
 }; // |class weak_sl_list_const_iterator| template
 
 
-// weak iterators allow acces to list elements but not to the list structure
+// weak iterators allow access to list elements but not to the list structure
 // so no insert/delete are possible using weak iterators
 
 template<typename T,typename Alloc = std::allocator<T> >
@@ -597,7 +597,8 @@ template<typename T, typename Alloc>
   { return std::allocator_traits<Alloc>::max_size(get_allocator()); }
 
  /*
-   Somewhat unusally the method |insert| returns an iterator pointing not to the
+   Somewhat unusually the method |insert| returns an iterator pointing
+   not to the
    added item(s), but _after_ them (same for |emplace|, |prepend|, |splice|).
    Thus the idiom |it=list.insert(it,...)| can be used to insert and step over
    added item(s) at the same time. To obtain an iterator to the first added item
@@ -845,7 +846,7 @@ template<typename T, typename Alloc>
       }
   }
 
-  // remove after each item |x| successive items |y| satifying |relation(x,y)|
+  // remove after each item |x| successive items |y| satisfying |relation(x,y)|
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {
@@ -969,7 +970,7 @@ private:
       *b1.link_loc = std::move(*e1.link_loc);
       *e1.link_loc = std::move(*b0.link_loc);
     }
-    *b0.link_loc = std::move(q); // attach remainer at |q| after |b0|
+    *b0.link_loc = std::move(q); // attach remainder at |q| after |b0|
     return iterator(*e1.link_loc);
   }
 
@@ -1215,7 +1216,7 @@ template<typename T, typename Alloc>
       // construct new node with default constructed value
       node_ptr p = allocate_node();
       tail->reset(p); // splice in new node
-      tail = &p->next; // then move |tail| to point to null smart ptr agin
+      tail = &p->next; // then move |tail| to point to null smart ptr again
     }
   }
 
@@ -1446,7 +1447,7 @@ template<typename T, typename Alloc>
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(val));
-    tail = &last->next; // then move |tail| to point to null smart ptr agin
+    tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
     return last->contents;
   }
@@ -1455,7 +1456,7 @@ template<typename T, typename Alloc>
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocate_node(std::move(val)));
-    tail = &last->next; // then move |tail| to point to null smart ptr agin
+    tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
     return last->contents;
   }
@@ -1466,7 +1467,7 @@ template<typename T, typename Alloc>
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
     last.reset(allocate_node(std::forward<Args>(args)...));
-    tail = &last->next; // then move |tail| to point to null smart ptr agin
+    tail = &last->next; // then move |tail| to point to null smart ptr again
     ++node_count;
     return last->contents;
   }
@@ -1802,7 +1803,7 @@ template<typename T, typename Alloc>
     }
   }
 
-  // remove after each item |x| successive items |y| satifying |relation(x,y)|
+  // remove after each item |x| successive items |y| satisfying |relation(x,y)|
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {

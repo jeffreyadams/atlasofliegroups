@@ -1,7 +1,7 @@
 /*
   This is dynkin.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2014,2017 Marc van Leeuwen
+  Copyright (C) 2014,2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -22,80 +22,202 @@
 namespace atlas {
 namespace dynkin{
 
-/*****************************************************************************
-
-  Class and functions related to analysis of Dynkin diagrams
-
-******************************************************************************/
-
-namespace {
-
-  Permutation order_by_components
-    (const containers::sl_list<RankFlags>& components, unsigned int rank);
-
-  Permutation typeANormalize(const DynkinDiagram& d);
-  Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki);
-  Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki);
-  Permutation typeDNormalize(const DynkinDiagram& d, bool Bourbaki);
-  Permutation typeENormalize(const DynkinDiagram& d);
-  Permutation typeFNormalize(const DynkinDiagram& d);
-  Permutation typeGNormalize(const DynkinDiagram& d);
-
-} // |namespace|
-
-
-
 //        |DynkinDiagram|, constructors
 
 // Construct a presumptive Dynkin diagram from a Cartan matrix
 DynkinDiagram::DynkinDiagram(const int_Matrix& c)
-  : d_star(c.numColumns())
-  , d_downedge()
+  : d_star(c.n_columns())
+  , down_edges()
 {
-  assert(c.numRows()==c.numColumns());
-  for (unsigned int i = 0; i < c.numRows(); ++i)
-    for (unsigned int j = 0; j < c.numColumns(); ++j)
+  assert(c.n_rows()==c.n_columns());
+  for (unsigned int i = 0; i < c.n_rows(); ++i)
+    for (unsigned int j = 0; j < c.n_columns(); ++j)
       if (i!=j)
       {
-	if (c(i,j)<-3 or c(i,j)>0)
-	  throw error::Cartan_error();
-	Multiplicity m = -c(i,j);
-	if (m!=0)
+	if (c(i,j)<-3)
+	  throw error::Cartan_error("Entry less than -3 present");
+	else if (c(i,j)>0)
+	  throw error::Cartan_error("Off-diagonal positive entry present");
+	if (c(i,j)!=0)
 	{
-	  if (c(j,i)==0) // this test ensures a symmetric adjacency matrix
-	    throw error::Cartan_error();
+	  if (c(j,i)==0)
+	    throw error::Cartan_error("Asymmetric adjacency relation");
 	  d_star[j].set(i); // set |i| as neighbour of |j|
-	  if (m>1) // only label multiple edges
-	    d_downedge.push_back (std::make_pair(Edge(i,j),m));
+	  if (c(i,j)<-1) // only label multiple edges
+	    down_edges.push_back (std::make_pair(Edge(i,j),-c(i,j)));
 	}
       }
       else if (c(i,j)!=2)
-	throw error::Cartan_error();
+	throw error::Cartan_error("Diagonal entry unequal to 2");
+  classify(c);
 }
 
-
-DynkinDiagram DynkinDiagram::subdiagram(RankFlags selection) const
+void DynkinDiagram::classify(const int_Matrix& Cartan)
 {
-  DynkinDiagram result; auto& r_star = result.d_star;
-  r_star.reserve(selection.count());
-  for (auto it = selection.begin(); it(); ++it)
-  {
-    r_star.push_back(star(*it));
-    r_star.back().slice(selection); // extract bits set in |selection|, repack
-  }
-  for (auto it=d_downedge.begin(); it!=d_downedge.end(); ++it)
-  {
-    auto l = it->first.first, s = it->first.second;
-    if (selection[l] and selection[s]) // is the edge retained in |selection|
+  for (unsigned i=0; i<rank(); ++i)
+    if ((d_star[i].to_ulong() & constants::lMask[i])==0) // fresh component?
+      comps.emplace_back(i); // creat a new singleton component
+    else
     {
-      Edge e(selection.position(l),selection.position(s)); // re-index
-      result.d_downedge.emplace_back(e,it->second); // attach multiplicity
+      assert(not comps.empty()); // since support intersection is non-empty
+      auto it=comps.begin();
+      while ((it->support & d_star[i]).none()) // search first match
+	assert(not comps.at_end(it)),++it;
+      auto& sup = it->support;
+      sup.set(i); // add current node to first matching component
+      ++it; // prepare to continue searching
+      while(not comps.at_end(it)) // we will increase |it| only if no match
+	if ((it->support & d_star[i]).any()) // do  further matches
+	{
+	  sup |= it->support; // merge matching component into first match
+	  comps.erase(it); // and erase it from the list
+	}
+        else
+	  ++it;
     }
 
+  { // Now compute the offset and root positions for each of the components
+    unsigned int i=0;
+    for (auto& comp : comps)
+    {
+      comp.offset=i;
+      unsigned size = comp.support.count();
+      i += size;
+      comp.position.reserve(size);
+      classify(Cartan,comp); // set remaining fields in |comp|
+    }
   }
-  return result;
-}
+} // |classify| a Cartan matrix
 
+/* Once a component is isolated in |comp| with |support| (and |offset|) defined,
+   complete it by setting |type| and |position| */
+void DynkinDiagram::classify(const int_Matrix& Cartan,comp_info& comp) const
+{
+  unsigned comp_rank = comp.support.count();
+  if (comp_rank<=2)
+  {
+    if (comp_rank==1)
+      comp.type='A',comp.position.push_back(comp.support.firstBit());
+    else
+    { // |comp_rank>2|
+      auto it = comp.support.begin();
+      unsigned i=*it, j=*++it;
+      comp.position.push_back(i);
+      comp.position.push_back(j);
+      bool increase = Cartan(i,j)==-1;
+      switch (Cartan(i,j)*Cartan(j,i))
+      {
+      case 1: comp.type='A'; break;
+      case 2: // exceptionally in this case given order in diagram decides type
+	comp.type= increase ? 'C' : 'B'; break;
+      case 3: comp.type='G';
+	if (not increase) std::swap(comp.position[0],comp.position[1]);
+	break;
+      default:
+	throw error::Cartan_error("Off-diagonal pair both less than -1");
+      }
+    } // |if (comp_rank==1)|
+  }
+  else // |comp_rank>2)|
+  {
+    unsigned fork=rank(), lower=rank(), upper=rank(); // out of bound values
+    RankFlags extremities;
+    for (unsigned i : comp.support)
+    {
+      auto degree = d_star[i].count();
+      if (degree!=2)
+      {
+	if (degree<2)
+	  extremities.set(i);
+	else if (degree==3)
+	{
+	  if (fork==rank())
+	    fork=i;
+	  else
+	    throw error::Cartan_error("Multiple fork nodes in component");
+	}
+	else // |degree>3|
+	  throw error::Cartan_error("Diagram node with degree more than 3");
+      } // |if(degree!=2)|
+    } // |for(i)|
+
+    if (extremities.count() < 2)
+      throw error::Cartan_error("Diagram has a loop");
+
+    // now check multiple edge(s) in component
+    for (const auto& edge : down_edges)
+      if (comp.support.test(edge.first.first))
+      {
+	if (edge.second==3)
+	  throw error::Cartan_error("Too large type G diagram");
+	if (lower==rank())
+	  upper=edge.first.first, lower=edge.first.second;
+	else
+	  throw error::Cartan_error("Multiple labelled edges in component");
+      }
+
+    if (upper==rank()) // whether simply laced
+      comp.type= fork==rank() ? 'A' :
+	(d_star[fork]&extremities).count()==1 ? 'E' : 'D';
+    else if (fork==rank())
+      comp.type= extremities.test(lower) ? 'B' :
+	extremities.test(upper) ? 'C' : 'F';
+    else
+      throw error::Cartan_error("Component with both fork and labelled edge");
+
+    unsigned start; RankFlags remain = comp.support;
+    switch (comp.type)
+    {
+    default: assert(false); // only types ABCDEF just assigned
+    case 'A': start=extremities.firstBit(); break; // choose any end
+    case 'B': start=extremities.reset(lower).firstBit(); break;
+    case 'C': start=extremities.reset(upper).firstBit(); break;
+    case 'D':
+      if (comp_rank==4)
+	start=extremities.firstBit(); // choose any end
+      else if (extremities.andnot(d_star[fork]).count()>1)
+	throw error::Cartan_error("Fork node without adjacent extremities");
+      else
+      { assert(extremities.count()==1); // nothing left would be D4; excluded
+	start=extremities.firstBit();
+      }
+      break;
+    case 'E':
+      {
+	if (comp_rank>8)
+	  throw error::Cartan_error("Too large type E diagram");
+	auto short_arm= extremities & d_star[fork];
+	assert(short_arm.count()==1); // tested before setting |comp.type='E'|
+	start = extremities.andnot(short_arm).firstBit(); // try a longer arm
+	if ((d_star[start]&d_star[fork]).none()) // if this is longest arm
+	  start = extremities.reset(start).firstBit(); // swap for orth arm
+	if ((d_star[start]&d_star[fork]).none()) // if this still a long arm
+	  throw error::Cartan_error("Fork node with two too long arms");
+	comp.position.push_back(start);
+	remain.reset(start);
+	comp.position.push_back(short_arm.firstBit());
+	remain.andnot(short_arm);
+	start=((d_star[start]&d_star[fork]).firstBit());
+      }
+      break;
+    case 'F':
+      if (comp_rank>4)
+	  throw error::Cartan_error("Too large type F diagram");
+      start=(extremities.andnot(d_star[lower])).firstBit(); break;
+    }
+
+    // now traverse remainder of diagram starting from |start|
+    while (comp.position.push_back(start),remain.reset(start).any())
+      if (RankFlags cand=d_star[start] & remain)
+	start = cand.firstBit();
+      else if (comp.type=='D')
+      { assert((remain-d_star[fork]).none()); // only a short arm remains
+	start = remain.firstBit();
+      }
+      else
+	assert(false); // must have fork, but type 'E' already used short arm
+  }
+} // |classify| a single component
 
 DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 {
@@ -108,7 +230,7 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
     if (orbits[i].length()>1)
       neighbours |= star(orbits[i].s1); // add neighbours of second elt
     for (unsigned j=orbits.size(); --j > i; )
-      if (neighbours[orbits[j].s0])  // run over neigbours |j| with $i<j<n$
+      if (neighbours[orbits[j].s0])  // run over neighbours |j| with $i<j<n$
       {
 	const unsigned jj = orbits[j].s0;
 	unsigned ii = orbits[i].s0;
@@ -121,21 +243,21 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 	int diff=orbits[i].length()-orbits[j].length();
 	if (diff==0) // equal length
 	{ // then copy Cartan entries
-	  const Multiplicity m = edge_multiplicity(ii,jj);
+	  const int m = edge_multiplicity(ii,jj);
 	  if (m>1)
 	  {
 	    if (Cartan_entry(ii,jj)<-1)
-	      result.d_downedge.emplace_back(Edge(i,j),m);
+	      result.down_edges.emplace_back(Edge(i,j),m);
 	    else
-	      result.d_downedge.emplace_back(Edge(j,i),m);
+	      result.down_edges.emplace_back(Edge(j,i),m);
 	  }
 	}
 	else // unequal orbit lengths
 	{ // then mark multiplicity 2 edge from longer to shorter orbit
 	  if (diff<0)
-	    result.d_downedge.emplace_back(Edge(i,j),2);
+	    result.down_edges.emplace_back(Edge(i,j),2);
 	  else
-	    result.d_downedge.emplace_back(Edge(j,i),2);
+	    result.down_edges.emplace_back(Edge(j,i),2);
 	}
       }
   }
@@ -146,566 +268,79 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 /******** accessors **********************************************************/
 
 
+LieType DynkinDiagram::type() const
+{
+  if (rank()>constants::RANK_MAX) // we must avoid creating too large |LieType|
+    throw std::runtime_error("Rank exceeds implementation limit");
+  LieType result;
+  result.reserve(comps.size());
+  for (const auto& comp: comps)
+    result.emplace_back(comp.type,comp.rank());
+  return result;
+}
+
+Permutation DynkinDiagram::perm() const
+{
+  Permutation result;
+  result.reserve(rank());
+  for (const auto& comp: comps)
+    result.insert(result.end(),comp.position.begin(),comp.position.end());
+  return result;
+}
+
 // recover Cartan matrix entry from Dynkin diagram
 int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
 {
   if (not are_adjacent(i,j))
     return i==j ? 2 : 0;
-  for (unsigned int k=0; k<d_downedge.size(); ++k)
-    if (d_downedge[k].first.first==i and d_downedge[k].first.second==j)
-      return -static_cast<int>(d_downedge[k].second); // -2 or -3
+  for (const auto& edge : down_edges)
+    if (edge.first.first==i and edge.first.second==j)
+      return -edge.second; // -2 or -3
 
   return -1; // simple edge, or labelled edge in short->long direction
 }
 
-// Find the set of terminal nodes (degree one or zero) of the graph.
-RankFlags DynkinDiagram::extremities() const
-{
-  RankFlags e;
-
-  for (unsigned int i = 0; i < d_star.size(); ++i)
-    e.set(i,d_star[i].count() <= 1);
-
-  return e;
-}
 
 
-/*
-  Find the labelled (multiple) edge in connected diagram; assumed present
 
-  The edge |e| is downwards: |e.first| is longer than |e.second|
-*/
-Edge DynkinDiagram::labelled_edge() const
-{
-  assert(d_downedge.size()>0);
-  return d_downedge[0].first;
-}
-
-
-/*
-  Find the largest multiplicity in the graph.
-
-  Returns 1 in absence of labelled edges, even when there are no edges at all!
-*/
-Multiplicity DynkinDiagram::edge_label() const
-{
-  Multiplicity m = 1;
-
-  for (unsigned int i =0; i<d_downedge.size(); ++i)
-    if (d_downedge[i].second>m)
-      m = d_downedge[i].second;
-
-  return m;
-}
-
-
-/*
-  Find a fork node (|degree >= 3|) in a connected non-linear graph.
-
-  Returns exception value |rank()| if the graph does not have a fork node.
-*/
-unsigned int DynkinDiagram::fork_node() const
-{
-  for (unsigned int i = 0; i < rank(); ++i)
-    if (d_star[i].count() >= 3)
-      return i;
-
-  return rank();
-}
-
-
-/*
-  Return the connected component containing vertex number|i| in the diagram.
-
-  We use the class invariant that the adjacency matrix is symmetric, so that
-  connected components are equivalence classes for reachability
-
-  The algorithm is to start with |i|, and to construct "shells" from there, by
-  taking each new shell to be the elements of the union of the stars of the
-  old shell, that were not already considered. Since bitset iterators copy
-  their bitset at construction, adding to |newElts| in the inner loop will not
-  affect that iteration itself (but the logic would not be broken if it did).
- */
-RankFlags DynkinDiagram::component(unsigned int i) const
-{
-  RankFlags result, new_elts;
-  new_elts.set(i);
-
-  while (new_elts.any())
-  {
-    result |= new_elts; // transfer
-    for (RankFlags::iterator it = new_elts.begin(); it(); ++it)
-      new_elts |= d_star[*it];
-    new_elts.andnot(result); // remove any bits that were already previously set
-  }
-
-  return result;
-}
-
-// Return our decomposition into connected components, a list of subsets
-containers::sl_list<RankFlags> DynkinDiagram::components() const
-{
-  containers::sl_list<RankFlags> result;
-  RankFlags remainder; remainder.fill(rank());
-  while(remainder.any())
-  {
-    RankFlags c = component(remainder.firstBit());
-    remainder.andnot(c); // remove current component from remainder
-    result.push_back(c);
-  }
-
-  return result;
-}
-
-// Return the (semisimple) Lie type of the Cartan matrix |cm|
+// Return the (semisimple) Lie type of the (certified) Cartan matrix |cm|
 LieType Lie_type(const int_Matrix& cm)
 {
-  DynkinDiagram diagram(cm);
-  const auto component_list = diagram.components();
-
-  LieType result;
-  result.reserve(component_list.size());
-  for (auto& component : component_list)
-  {
-    auto cd = diagram.subdiagram(component);
-    result.emplace_back(cd.component_kind(),cd.rank());
-  }
-
-  return result;
+  return DynkinDiagram(cm).type();
 }
 
-
 /*
-  Precondition: any constructed Dynkin diagram is acceptable
-
-  Postcondition: |a| is modified so that the new permutation gives a
-  normalized ordering on each component: it gives Bourbaki ordering unless
-  |Bourbaki| is false and the type is BCD: then the order is reversed.
-
-  The detected semisimple Lie type is returned.
+  Return the (semisimple) Lie type of the Cartan matrix |cm|, also sets |pi|
+  to the permutation from a Bourbaki ordering of simple roots for that type.
 */
-LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
+LieType Lie_type(const int_Matrix& cm, Permutation& pi)
 {
-  const auto component_list = components();
-  a = order_by_components(component_list,rank());
+  if (cm.n_rows()!=cm.n_columns())
+    throw error::Cartan_error("Not a square matrix");
 
-  unsigned int offset = 0;
-  LieType result; result.reserve(component_list.size());
-  for (const auto& component : component_list)
+  DynkinDiagram d(cm); // construct and classify Dynkin diagram
+
+  pi=d.perm();
+  LieType result = d.type();
+
+#ifndef NDEBUG // this extra test should succeed: analysis tested everything
+  for (unsigned int i=0; i<result.size(); ++i)
   {
-
-    // normalize Dynkin diagram for the connected component
-    Permutation b;
-    result.push_back(subdiagram(component).classify_simple(b,Bourbaki));
-
-    // piece together the permutation
-    permutations::compose(a,b,offset);
-
-    // update offset
-    offset += component.count();
+    SimpleLieType slt=result[i];
+    if ((slt.type()=='E' and slt.rank()>8) or
+	(slt.type()=='F' and slt.rank()>4) or
+	(slt.type()=='G' and slt.rank()>2))
+      throw error::Cartan_error("Excessive rank for exceptional type");
   }
-  return result;
-} // |classify_semisimple|
+  for (unsigned int i=0; i<d.rank(); ++i)
+    for (unsigned int j=0; j<d.rank(); ++j)
+      if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
+	throw error::Cartan_error("Type does not reconstruct Cartan matrix");
+#endif
 
-
-/*
-  Precondition : the current object is a connected Dynkin diagram;
-
-  Postcondition : |pi| holds a permutation which enumerates the vertices of
-  |d| in an order that will induce a normal form of |*this|; a Cartan_error
-  will be thrown (either here or in helper) in case it is not a valid diagram
-
-  It is just a dispatching function for the various possible simple types.
-*/
-SimpleLieType
-  DynkinDiagram::classify_simple(Permutation& pi, bool Bourbaki) const
-{
-  lietype::TypeLetter x = component_kind();
-
-  switch (x)
-  {
-  case 'A': pi = typeANormalize(*this);
-    break;
-  case 'B': pi = typeBNormalize(*this,Bourbaki);
-    break;
-  case 'C': pi = typeCNormalize(*this,Bourbaki);
-    break;
-  case 'D': pi = typeDNormalize(*this,Bourbaki);
-    break;
-  case 'E': pi = typeENormalize(*this);
-    break;
-  case 'F': pi = typeFNormalize(*this);
-    break;
-  case 'G': pi = typeGNormalize(*this);
-    break;
-  default:
-    pi = Permutation(); // will provoke the error below
-  }
-  if (pi.size()!=rank())
-    throw error::Cartan_error();
-
-  return SimpleLieType(x,rank());
-} // |classify_simple|
-
-
-/*
-  Determines candidate for the (simple) type of a connected Dynkin diagram
-  Throws an error if no candidate is found, but if it returns this does not
-  guarantee that the Dynkin diagram is correct.
-
-  Precondition : |d| is connected (and therefore not empty)
-*/
-lietype::TypeLetter DynkinDiagram::component_kind() const
-{
-  if (rank()<=2) // types A1,A2,B2,C2,G2 are validly possible
-    switch (edge_label())
-    {
-    case 1: return 'A';
-    case 3: return 'G';
-    case 2: // exceptionally in this case given order in diagram decides type
-      return labelled_edge().first==0 ? 'B' : 'C'; // Bourbaki, B starts long
-    default: assert(false); // too high label, should have been caught before
-   }
-
-  else // |rank>2|
-  {
-    RankFlags extr = extremities();
-    if (extr.count()<2)
-      throw error::Cartan_error();
-    unsigned int fork = fork_node();
-    if (fork==rank()) // diagram is linear
-      switch (edge_label())
-      {
-      case 1: return 'A';
-      case 2: // type is B,C or F
-	{
-	  Edge e = labelled_edge();
-	  return extr.test(e.first) ? 'C' : extr.test(e.second) ? 'B' : 'F';
-	}
-      default: {} // since G2 was already detected, this canot be right
-      }
-    else // not a linear diagram
-    {
-      RankFlags short_arms = star(fork) & extremities();
-      if (short_arms.any()) // now |arms| counts short arms
-	return short_arms.count() == 1 ? 'E' : 'D';
-    }
-  }
-  throw error::Cartan_error();
-} // |DynkinDiagram::component_kind|
-
-
-/*
-  Return a permutation such that successive intervals of simple roots form
-  connected components, numbered as needed for our Weyl group implementation.
-
-  NOTE: the permutation |result| maps new index |i| to old index |result[i]|.
-*/
-Permutation normalize(const DynkinDiagram& d)
-{
-  Permutation result;
-  d.classify_semisimple(result,false);
-  return result;
-}
-
-
-
-/*
-  Return the (semisimple) Lie type of the Cartan matrix cm, also sets |pi|
-  to the permutation from the standard ordering of simple roots for that type.
-
-  Standard ordering is taken as Bourbaki ordering if |Bourbaki| holds,
-  internal Weyl group implementation ordering otherwise. If |check| holds, a
-  complete test is made of all entries in |cm|, throwing a |runtime_error| if
-  it fails to be a valid Cartan matrix (throwing an error can also happen when
-  |check==false|, but in that case no effort is done to ensure it; therefore
-  one should set |check| whenever the validty of |cm| is in doubt).
-*/
-LieType Lie_type(const int_Matrix& cm,
-		 bool Bourbaki, bool check,
-		 Permutation& pi)
-{
-  if (check)
-  {
-    if (cm.numRows()!=cm.numColumns())
-      throw error::Cartan_error();
-    if (cm.numRows()>constants::RANK_MAX) // throw a different error type here
-      throw std::runtime_error("Rank of matrix exceeds implementation limit");
-  }
-
-  DynkinDiagram d(cm);
-
-  LieType result = d.classify_semisimple(pi,Bourbaki);
-
-  if (check)
-  {
-   for (unsigned int i=0; i<result.size(); ++i)
-    {
-      SimpleLieType slt=result[i];
-      if ((slt.type()=='E' and slt.rank()>8) or
-	  (slt.type()=='F' and slt.rank()>4) or
-	  (slt.type()=='G' and slt.rank()>2))
-	throw error::Cartan_error();
-    }
-    for (unsigned int i=0; i<d.rank(); ++i)
-      for (unsigned int j=0; j<d.rank(); ++j)
-	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
-	  throw error::Cartan_error();
-   }
   return result;
 
 }
-/*
-  Return some permutation that will take |d| to Bourbaki form
 
-  This means that nodes of the diagram |d| taken in the order |a[0],...,a[r-1]|
-  traverse each of its connected components consecutively, and in the order
-  prescribed by the the Bourbaki conventions for the type of that component
-*/
-Permutation bourbaki(const DynkinDiagram& d)
-{
-  // do the normalization as in normalize, but with Bourbaki ordering
-  Permutation result;
-  d.classify_semisimple(result,true);
-
-  return result;
-}
-
-
-
-/*****************************************************************************
-
-        Chapter III -- Auxiliary functions for this module
-
-******************************************************************************/
-
-namespace {
-
-/*
-  Returns a permutation such that the various components, listed in cl,
-  are numbered by successive indices. The result maps these indices back
-  to their original positions.
-*/
-Permutation order_by_components
-  (const containers::sl_list<RankFlags>& cl, unsigned int r)
-{
-  Permutation result; result.reserve(r);
-
-  // traverse each component, write down its elements in sequence
-  for (auto it=cl.begin(); it!=cl.end(); ++it)
-    std::copy(it->begin(),it->end(),std::back_inserter(result));
-
-  assert (result.size()==r); // check that correct rank was passed
-  return result;
-} // |order_by_components|
-
-} // |namespace|
-
-
-namespace {
-
-// an auxiliary function; a first element is already pushed onto |a|
-RankFlags linearise(const DynkinDiagram& d, Permutation& a)
-{
-  RankFlags done,next=d.star(a.back());
-  while(done.set(a.back()),(next=d.star(a.back()).andnot(done)).any())
-    a.push_back(next.firstBit());
-
-  return done;
-}
-
-/*
-  Find a permutation that will enumerates |d| along its diagram
-
-  Precondition : |d.edge_label()==1| and |d.fork_node()==d.rank()|. This
-  actually ensures this is a valid type An diagram.
-
-  Postcondition : |pi| linearly enumerates the diagram in one of the two
-  (except for A1) possible orders
-*/
-Permutation typeANormalize(const DynkinDiagram& d)
-{
-  Permutation a;
-  a.reserve(d.rank());
-  a.push_back(d.extremities().firstBit());
-
-  linearise(d,a);
-  return a;
-}
-
-
-/*
-  Puts in |a| a permutation that will enumerate |d| in linear order,
-  ending with a labelled edge if |Bourbaki| holds, or starting if not.
-
-  Precondition |d.fork_node()==d.rank()| (linear diagram) and
-  |d.edge_label()==2|, also this was not classified as type C or F
-
-  There is a unique such ordering
-*/
-Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki)
-{
-  Permutation a;
-  a.reserve(d.rank());
-  unsigned int short_node = d.labelled_edge().second; // one of 2 end nodes
-  a.push_back // Bourbaki starts with the extramal node that is not short
-    (Bourbaki ? d.extremities().reset(short_node).firstBit() : short_node);
-  linearise(d,a);
-  return a;
-}
-
-
-/*
-  Puts in |a| a permutation that will enumerate |d| in linear order,
-  ending with a labelled edge if |Bourbaki| holds, or starting if not.
-
-  Precondition : as for type B, but one extremal node was long end of edge
-
-  There is a unique such ordering
-*/
-Permutation typeCNormalize(const DynkinDiagram& d, bool Bourbaki)
-{
-  Permutation a;
-  a.reserve(d.rank());
-  unsigned int long_node = d.labelled_edge().first; // also an end point
-  a.push_back // Bourbaki starts with the extramal node that is not long
-    (Bourbaki ? d.extremities().reset(long_node).firstBit() : long_node);
-  linearise(d,a);
-  return a;
-}
-
-
-/*
-  Puts in |a| a permutation that will enumerate |d| in alomst linear order
-  (only the fork node has one neighbour at index distance 2 from it, which
-  index is extremal); the fork node is at index |Bourbaki ? rank-3 : 2|.
-
-  Precondition : there is a fork node (|degree >= 3|) with at least two short
-  arms (neighbours that are extremities). Necessarily |d.rank()>=4|.
-
-*/
-Permutation typeDNormalize(const DynkinDiagram& d, bool Bourbaki)
-{
-  unsigned int r = d.rank();
-  Permutation a;
-  a.reserve(r);
-
-  unsigned int fork = d.fork_node();
-  RankFlags short_arms = d.star(fork) & d.extremities();
-  RankFlags long_ends = d.extremities().andnot(short_arms);
-  RankFlags::iterator it = short_arms.begin();
-
-  if (long_ends.none()) // we either have a D4 diagram or rubbish
-  {
-    assert(short_arms.count()>=3); // the code below will not run out of |it|
-    a.push_back(*it);
-    if (Bourbaki)
-      a.push_back(fork),a.push_back(*++it);
-    else
-      a.push_back(*++it),a.push_back(fork);
-    a.push_back(*++it);
-    // if |r>4| (diagram is rubbish) then |a| incomplete, will throw an error
-  }
-  else // an extremity not adjacent to the fork node was found
-  {
-    a.push_back(long_ends.firstBit());
-    RankFlags done=linearise(d,a); // will pass through |fork| in valid cases
-    if (done[*it])
-      ++it; // skip first short arm if already done
-    a.push_back(*it); // add an unused short arm vertex (at most one is used)
-    if (not Bourbaki)
-      std::reverse(a.begin(),a.end());
-  }
-  return a; // might be incomplete, and completeness does not ensure validity
-}
-
-
-/*
-  Put in |a| the permutation enumerating |d| in Bourbaki order.
-
-  Precondition : |d| has a fork node with one short arm
-
-  Postcondition : a holds a permutation for which the node is in position 3
-  (counting from 0), position 1 is the extremity of the branch of length 1,
-  position 0 is the extremity of a branch of length 2, position 2 is the other
-  element of that branch, and the elements of the last branch are enumerated
-  from the node. There are two solutions in type E6, one otherwise.
-*/
-Permutation typeENormalize(const DynkinDiagram& d)
-{
-  unsigned int r = d.rank();
-  unsigned int fork = d.fork_node();
-  RankFlags fork_star = d.star(fork);
-  RankFlags extr = d.extremities();
-
-  Permutation a;
-  if (r<6 or r>8 or fork_star.count()!=3 or extr.count()!=3)
-    throw error::Cartan_error();
-
-  RankFlags short_arms = fork_star & extr;
-  assert(short_arms.count()==1); // this was what caused type E classification
-
-  extr.andnot(short_arms);
-  RankFlags::iterator it = extr.begin();
-  RankFlags inter = d.star(*it) & fork_star;
-  if (inter.none()) // skip end point long arm
-    inter = d.star(*++it) & fork_star;
-  if (inter.none()) // still long arm? then something is wrong
-    throw error::Cartan_error();
-
-  a.push_back(*it);                   // end middle arm
-  a.push_back(short_arms.firstBit()); // short arm
-  a.push_back(inter.firstBit());      // halfway middle are
-  a.push_back(fork);
-
-  inter |= short_arms;     // henceforth |inter| marks done nodes
-  fork_star.andnot(inter); // and |fork_star| successors of last node
-
-  while (fork_star.any())
-  {
-    inter.set(a.back());
-    a.push_back(fork_star.firstBit());
-    fork_star=d.star(a.back()).andnot(inter);
-  }
-  return a;
-}
-
-
-/*
-  Put in |a| the permutation enumerating |d| in Bourbaki order.
-
-  Precondition : diagram is linear, has multiple edge without extremities
-
-  Postcondition : |a| holds a permutation which enumerates the graph in linear
-  order, for which the middle edge is oriented from 1 to 2; (the arrow in F4
-  is like in the Bn diagrams); such a permutation is unique.
-*/
-Permutation typeFNormalize(const DynkinDiagram& d)
-{
-  Permutation a;
-  Edge e = d.labelled_edge(); // there is such an edge
-  RankFlags st = d.star(e.first);
-  assert(st.count()>1); // this was tested
-  st.reset(e.second);
-
-  a.push_back(st.firstBit());
-  linearise(d,a);
-  return a;
-}
-
-
-// Precondition : |d| has rank 2 and an edge with label 3
-Permutation typeGNormalize(const DynkinDiagram& d)
-{
-  Permutation a(2);
-
-  Edge e = d.labelled_edge();
-
-  a[1] = e.first;
-  a[0] = e.second;
-  return a;
-}
-
-} // |namespace|
 } // |namespace dynkin|
 } // |namespace atlas|

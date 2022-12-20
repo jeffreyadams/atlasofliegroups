@@ -501,7 +501,7 @@ set sum ((int,int) shape, [mat] L) = mat:
   if =len then null(shape)
   else let s=L~[0] in assert(shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
   fi
-{ square matrices are frequent, so there is a spacial case of |sum| for them }
+{ square matrices are frequent, so there is a special case of |sum| for them }
 set sum (int n,[mat] L) = mat: sum((n,n),L)
 
 { product of list of square matrices, with given size for when list is empty }
@@ -638,7 +638,7 @@ set solve (mat A,vec b) = maybe_a_vec:
 ;  (C[:k]*sol).solution
 )
 
-set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satifying |A*X=B|, if any }
+set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satisfying |A*X=B|, if any }
 (  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then sols = mat: { column |j| is solutions of |M*y=B[j]| }
       assert(n_rows(B)=n,"equation mismatch");
@@ -1112,7 +1112,7 @@ set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
 { and |is_integrally_dominant@(RootDatum,ratvec)| is built-in }
 
-{ reversing order, simplilar questions about coweight v }
+{ reversing order, similar questions about coweight v }
 set is_dominant (ratvec v, RootDatum rd) = bool:
   >=(numer(v)*simple_roots(rd))
 set is_strictly_dominant (ratvec v,RootDatum rd) = bool:
@@ -1124,7 +1124,7 @@ set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
 set is_integrally_dominant (ratvec v,RootDatum rd) = bool:
   is_integrally_dominant(dual(rd),v)
 
-{ the following should replace the needlessly complicacted built-ins they use }
+{ the following should replace the needlessly complicated built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
   coroot_radical(rd)[:,semisimple_rank(rd):] { drop coroots part }
 set coradical_basis (RootDatum rd) = mat: { columns are weights }
@@ -1259,11 +1259,9 @@ set * (mat theta,WeylElt w) = mat:
 { morphism W(rd)->W(dual(rd)), involves transpose inverse on matrices }
 set for_dual_datum(WeylElt w) = WeylElt: W_elt(dual(w.root_datum), word(w))
 
+{ product of Weyl group elements respects Left (index 0) and Right; compute LtR }
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
-  let len = #L in
-  if =len then id_W(rd)
-  else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
-  fi
+  let p = id_W(rd) in for w in L do p *:= w od; p
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
@@ -1471,6 +1469,13 @@ set Cartan_class (InnerClass ic, mat theta) = CartanClass:
 { use the following as follows: |set <= = Bruhat_order(G)| }
 set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
   let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
+
+set cross (WeylElt w,KGBElt x) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word ~do x:=cross(s,x) od; x
+set cross (KGBElt x,WeylElt w) = KGBElt:
+  assert(w.root_datum=x.root_datum);
+  for s in w.word do x:=cross(s,x) od; x
 
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 
@@ -1699,7 +1704,7 @@ set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
 set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
 
-set as_pol (KType p) = KTypePol: p { for making implicit conversion explcit }
+set as_pol (KType p) = KTypePol: p { for making implicit conversion explicit }
 set as_pol (RealForm G, [KType] ps) = KTypePol:
   let one=Split:(1,0) in null_K_module(G)+for p in ps do (one,p) od
 { DON'T define as_pol ([KType] pp): cannot be correctly defined when #pp=0 }
@@ -1771,7 +1776,11 @@ set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
 set cross (WeylElt w,Param p) = Param:
-  for s in w.word ~ do p:=cross(s,p) od; p
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word ~do p:=cross(s,p) od; p
+set cross (Param p,WeylElt w) = Param:
+  assert(w.root_datum=p.integrality_datum);
+  for s in w.word do p:=cross(s,p) od; p
 
 set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
 set param_pol (KType t) = ParamPol: param(t)
@@ -1784,7 +1793,7 @@ set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
 set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
   param(x,ratvec_as_vec(lambda-x.real_form.rho),nu)
 
-{ set parameter ensuring (upon sucess) that the infinitesimal char. is |gamma|;
+{ set parameter ensuring (upon success) that the infinitesimal char. is |gamma|;
   achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
 set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
@@ -1797,7 +1806,7 @@ set singular_block (Param p) = ([Param],int):
   then block = ## for q in B do if q.survives then [q] else [] fi od
   in (block, { new index of |p|:} first(for q in block do p=q od))
 
-{ get just the parameters from a block, just a shorcut to: (params,)=block(p) }
+{ get just the parameters from a block, just a shortcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 set singular_block_of (Param p) = [Param]:
   let (params,)=singular_block(p) in params
@@ -1981,7 +1990,7 @@ set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
 set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
 
-set as_pol (Param p) = ParamPol: p { for making implicit conversion explcit }
+set as_pol (Param p) = ParamPol: p { for making implicit conversion explicit }
 set as_pol (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
 { DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
@@ -2019,7 +2028,7 @@ set pol_format (KTypePol P)= string:
 set pol_format (ParamPol P)= string:
   ## for w@p in P do to_string("(",w.split_format,")*",p,new_line) od
 
-{ find what should be unique infintesimal character shared by all terms }
+{ find what should be unique infinitesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:
   assert(!=P,"empty polynomial has no infinitesimal character");
   let (,,gamma)=%first_param(P) in
@@ -2045,13 +2054,13 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{ whether all coefficients are integer repectively integer multiples of |s| }
+{ whether all coefficients are integer respectively integer multiples of |s| }
 set is_pure_1 ([Split] L) = bool: all(#L,(int i) bool: =L[i].s_part)
 set is_pure_s ([Split] L) = bool: all(#L,(int i) bool: =L[i].int_part)
 set is_pure   ([Split] L) = bool: L.is_pure_1 or L.is_pure_s
 
 { a module is considered pure if either all coefficients are integer of if all
-  coefficients are integer multiples of s; stronger than all coefficents pure }
+  coefficients are integer multiples of s; stronger than all coefficients pure }
 set is_pure_1 (KTypePol P) = bool:
    for c in P do if !=c.s_part then return false fi od; true
 set is_pure (KTypePol P) = bool: for c in P do c od.is_pure
@@ -2198,7 +2207,7 @@ set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
 set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
-{. Convert a list of KTypePol into the list of distinct parameters occuring;
+{. Convert a list of KTypePol into the list of distinct parameters occurring;
    careful: don't let terms cancel! .}
 set monomials([KTypePol] list) = [KType]:
    if =#list then []

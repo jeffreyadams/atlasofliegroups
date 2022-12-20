@@ -58,7 +58,7 @@ set choice (int v, int i, int j) = int:
 set name_choice (int vij) = string: let (v,ij)=vij\%81 then (i,j)=ij\%9 in
   to_string("Square ",(i+1,j+1)," gets value ", v+1)
 
-{ functions representing the implicit choice-constraint indicence matrix }
+{ functions representing the implicit choice-constraint incidence matrix }
 
 set constraint0_of_choice (int vij) = int: vij\9 { drop final nonal digit j }
 set choice_of_constraint0 (int vi,int j) = int: vi*9+j { insert final digit j }
@@ -100,7 +100,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
 		(null(81),0)
   , covered     = [bool]: { whether already enforced, per constraint }
 		for :4*81 do false od
-  , available = [bool]: { whether still allowed, tabluated per choice }
+  , available = [bool]: { whether still allowed, tabulated per choice }
 		for :729 do true od
   , nr_options  = [vec]: { count remaining options per constraint, by group }
 		let nines=9*ones(81) in for :4 do nines od

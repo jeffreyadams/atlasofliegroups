@@ -549,7 +549,7 @@ void Ktypemat_f()
   prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
-  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicities:\n",ktypemat,3);
 
 } // |Ktypemat_f|
 
@@ -658,7 +658,7 @@ void qKtypemat_f()
   prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
-  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicities:\n",ktypemat,3);
 } // |qKtypemat_f|
 
 void mod_lattice_f()
@@ -863,7 +863,7 @@ void exam_f()
 {
   RealReductiveGroup& G = commands::currentRealGroup();
   if (examine(G))
-    std::cout << "x0 torus bits constistent with traditional ones";
+    std::cout << "x0 torus bits consistent with traditional ones";
   else
     std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
 	      << " to " << G.x0_torus_part();

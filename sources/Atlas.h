@@ -23,7 +23,7 @@
  BEFORE any of the utility forward files (the ones whose inclusion is excleded
  below) are invoked; this can be accomplished by including it before any other
  Atlas files in each non-utility header file. (Header or other files in the
- utility sub-directory itself should not include ot otherwise refer to this
+ utility sub-directory itself should not include or otherwise refer to this
  file, so as to retain their independence of the rest of the Atlas project.) In
  this manner those object files avoid including both such a forward file and its
  information duplicated here. Since the utility object files necessarily do use
@@ -72,11 +72,11 @@ namespace atlas {
 /* We begin with copying the contents of the *_fwd.h files in the utilities
    subdirectory. We justify this abject duplication of information by the fact
    that it avoids opening many very short files many times during
-   compitlation. Any *_fwd.h files in the structure and gkmod subirectories
+   compilation. Any *_fwd.h files in the structure and gkmod subdirectories
    were simply replaced by this file, avoiding duplication, but the utilities
    modules have the ambition of being reusable independently of the rest of
    the Atlas library. In fact this file should always be included in any Atlas
-   header file other than from the utilitites subdirectory, and alway before
+   header file other than from the utilities subdirectory, and always before
    any header files from that subdirectory, so the definitions here will be
    the only ones seen when compiling the Atlas library.
  */
@@ -246,7 +246,7 @@ namespace atlas {
   typedef std::vector<Weight> CoweightList;
   typedef std::vector<RatWeight> RatWeightList;
 
-  // more generic lattice-ralated terms
+  // more generic lattice-related terms
   typedef int LatticeCoeff; // the instance type of |Vector| and |Matrix|
   typedef std::vector<LatticeCoeff> CoeffList; // no vector arithmetic here
   typedef matrix::Vector<LatticeCoeff> LatticeElt;
@@ -511,7 +511,7 @@ namespace atlas {
     class Repr_mod_entry;
     class common_context;
     class Rep_context;	// support class for interpreting |StandardRepr|
-    class Rep_table;	// storage class for |StandardRepr| compuations
+    class Rep_table;	// storage class for |StandardRepr| computations
   }
   using repr::StandardRepr;
   using repr::SR_poly;

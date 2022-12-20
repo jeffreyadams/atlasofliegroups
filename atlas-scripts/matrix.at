@@ -64,31 +64,26 @@ set leading_principal_minor(mat M,int size)=mat:top_left_square_block(M,size)
 {row echelon form, just the mat itself, see builtin |echelon|}
 set row_echelon(mat M)=mat:let (E,,,)=echelon(^M) in ^E
 
-set cokernel(mat M)=^kernel(^M)
-set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
-
 {concatenate matrices with same number of rows}
-set merge_matrices([mat] matrices)=mat:
-if #matrices=0 then id_mat(0) else
-let rv=null(n_columns(matrices[0]),0) in
-for M in matrices do rv##:=M od;rv  fi
+set merge_matrices ([mat] matrices) = mat:
+if #matrices=0 then id_mat(0) else ##(n_rows(matrices[0]),matrices) fi
 
-set string_compact(mat M)=
-let A=^M then
-size=max(##for col in M do for x:#col do #(col[x].to_string) od od) in 
-##for row in A do 
- let row_string=new_line 
-  in  for x in row do row_string+:=pad(x.to_string,size+1) od;row_string od
+set string_compact (mat M) = string:
+   let size = 0.max { of all entry widths } (for e in  ##M do #(e.to_string) od)
+in for row in ^M
+   do new_line + for x in row do pad(x.to_string,size+1) od.##
+   od.##
 
 set print_matrix_compact(mat M)=prints(string_compact(M))
 
-{update one entry of a matrix}
+{update one entry of a matrix; language already provides this}
 set update_matrix_entry(mat M, int i, int j, int value)= mat:
-  let row=M[i] in row[j]:=value; M[i]:=row; M
+  M[i,j]:=value; M
 
-{add an integer to one entry of a matrix}
+{add an integer to one entry of a matrix; language already provides this}
 set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
-update_matrix_entry(M,i,j,M[i][j]+value)
+  M[i,j]+:=value; M
+
 
 {A: (m,n) matrix, m rows, n columns
  B: (p,q) matrix  p rows, q columns
@@ -147,8 +142,3 @@ set kronecker_g(int m, int n, int p, int q)=((int,int, int, int)->(int,int)):
 (int r, int s, int v, int w):
 assert(0 <= r and r<= p-1 and 0<= s and s<= q-1,"index out of range");
 (p*r+v,q*s+w)
-
-
-
-
-

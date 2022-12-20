@@ -111,10 +111,10 @@ dim_O=dimension(O) in
 
 {these sets of K-types serve as basis of matrix operations}
 
-{K-types occuring in given KTypePol}
+{K-types occurring in given KTypePol}
 set K_basis = monomials@KTypePol
 
-{K-types occuring in given KTypePols}
+{K-types occurring in given KTypePols}
 set K_basis = monomials@[KTypePol]
 
 {all K-types coming from given KNilpotentData}
@@ -568,7 +568,7 @@ set search(KNilpotentData d,int real_orbit,[int] real_orbits,KType mu_L)=([KType
 let O=d.real_orbits[real_orbit] in
 search(d,real_orbits,Phi(O,parameter(mu_L)))
 
-{associated variety of annihlator of P, this is a single complex orbit}
+{associated variety of annihilator of P, this is a single complex orbit}
 {computed using all smaller orbits, not
  algorithm:
  run over complex orbits OC, write P in K-type basis from OC (if possible)
@@ -629,7 +629,7 @@ for OC@i in d.complex_orbits do
 od;
 failed_av_ann
 
-{associated variety of annihlator of Param p
+{associated variety of annihilator of Param p
 apply the previous to K-types of p, i.e. character_formula(p)*0}
 set av_ann(KNilpotentData d,Param p)=([KType],[KType],int,mat,vec,vec,bool):
 av_ann(d,character_formula(p).K_type_pol)

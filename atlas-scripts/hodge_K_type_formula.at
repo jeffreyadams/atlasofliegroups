@@ -60,7 +60,7 @@ set mu (Param p) = rat:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
 }
 
-{given a list of params, return list of unique params occuring}
+{given a list of params, return list of unique params occurring}
 set unique([Param] list)=[Param]:
 if #list=0 then [] else
 let rv=null_module(list[0].real_form) in
@@ -71,7 +71,7 @@ set union([[Param]] lists)=[Param]:
 let params=[Param]:[] in
 for list in lists do params##:=list od;unique(params)
 
-{given a list of K_types, return list of unique params occuring}
+{given a list of K_types, return list of unique params occurring}
 set unique([KType] list)=[KType]:
 if #list=0 then [] else
 let rv=null_module(list[0].real_form) in
@@ -439,7 +439,7 @@ rec_fun hodge_K_type_formula_recursive(KType mu)=hodgeParamPol:
       P  {return value from hodge_table}
      else {k=-1: need to do calculation}
       let A=
-      if hodge_K_type_formula_verbose then prints("not found: ", p_L_j, " ", p_L_j.real_form, " ",P, "result not in table, doing calclulation") fi;
+      if hodge_K_type_formula_verbose then prints("not found: ", p_L_j, " ", p_L_j.real_form, " ",P, "result not in table, doing calculation") fi;
       hodge_tensor_exterior_u_cap_s_std_local(p_L_j,P) in   {hodge_function on L_j}
       if #nilrad_roots(P)=0 then
        if hodge_K_type_formula_verbose then prints(sp,"#nilrad_roots=0, no recursion needed") fi;

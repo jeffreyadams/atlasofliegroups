@@ -392,7 +392,7 @@ write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
 
   basic_io::put_int(1,out); // write unrecorded final polynomial 1
 
-  // and signal if there was unsufficient space to write the row
+  // and signal if there was insufficient space to write the row
   if (not out.good()) throw error::OutputError();
 
   return start_row;
@@ -662,7 +662,7 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
 {
   const size_t coef_size=4; // dictated (for now) by |basic_io::put_int|
 
-  basic_io::put_int(store.size(),out); // write number of KL poynomials
+  basic_io::put_int(store.size(),out); // write number of KL polynomials
 
   // write sequence of 5-byte indices, computed on the fly
   size_t offset=0; // position of first coefficient written

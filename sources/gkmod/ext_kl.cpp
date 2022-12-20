@@ -748,7 +748,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	      BlockElt x_prime=aux.block.Cayley(s,x);
 	      if (x_prime<floor_y)
 		Q -= aux.block.T_coef(s,x,x_prime)*P(x_prime,y); // $\pm(q^k-1)$
-	      // implict division of $Q$ here is by |T_coef(s,x,x)==1|
+	      // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
 
 	      // now subtract off $P_{s\times x,y}$, easily computed on the fly
 	      BlockElt s_cross_x = aux.block.cross(s,x);
@@ -793,7 +793,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  case ext_block::two_imaginary_compact:
 	  case ext_block::two_real_single_double_switched:
 	  case ext_block::three_imaginary_compact:
-	    // these cases require no additional terms to be substracted
+	    // these cases require no additional terms to be subtracted
 	    Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1)/2+k); // degree
 	    assert(Q.degree_less_than((aux.block.l(y,x)+1)/2));
 	    // that was the condition $\deg(Q) \leq l(y,x)-1/2|, computed safely
@@ -974,7 +974,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   { // flip signs for odd length distance, since that is what deformation wants
     auto jt = survivors.wcbegin();
-    for (BlockElt j=0; j<P_mat.numRows(); ++j,++jt)
+    for (BlockElt j=0; j<P_mat.n_rows(); ++j,++jt)
     { auto parity = eblock.length(*jt)%2;
       auto it = survivors.wcbegin();
       for (BlockElt i=0; i<j; ++i,++it)

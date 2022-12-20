@@ -43,7 +43,7 @@ class OrientedGraph
 
   explicit OrientedGraph(size_t n):d_edges(n) {}
 
-// copy, construction and swap: nothing needed beyond defualts
+// copy, construction and swap: nothing needed beyond defaults
 
 // accessors
   partition::Partition cells(OrientedGraph* p = nullptr) const;
@@ -69,6 +69,8 @@ class OrientedGraph
   void reverseEdges ();      // make opposite oriented graph
   void reverseNumbering ();  // same graph, but reverse numbering of vertices
 
+  // find connected components of bidirectional edges, and reduce ourselves
+  partition::Partition to_unoriented_components();
 
   // auxiliary methods
 private:

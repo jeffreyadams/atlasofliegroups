@@ -145,7 +145,7 @@ bitmap::BitMap fixed_points(const Permutation& pi)
 template<typename T>
 void pull_back_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
 {
-  assert(M.numColumns()>=pi.size());
+  assert(M.n_columns()>=pi.size());
   bitmap::BitMap seen(pi.size()); // initialized empty
 
   for (size_t j = 0; j < pi.size(); ++j)
@@ -158,7 +158,7 @@ void pull_back_columns(matrix::Matrix_base<T>& M, const Permutation& pi)
 	size_t l=j;
 	do
 	{ // effectively set |M.column(l)=M.column(pi[l])|
-	  for (size_t i=0; i<M.numRows(); ++i) // but an inline loop is faster
+	  for (size_t i=0; i<M.n_rows(); ++i) // but an inline loop is faster
 	    M(i,l)=M(i,pi[l]);
 	  l=pi[l];
 	  assert(not seen.isMember(l));
@@ -186,8 +186,8 @@ template<typename T>
 void Permutation::conjugate(matrix::Matrix_base<T>& M) const
 {
   size_t n=size();
-  assert (M.numRows()==n);
-  assert (M.numColumns()==n);
+  assert (M.n_rows()==n);
+  assert (M.n_columns()==n);
   matrix::Matrix<T> result(n,n);
   const Base& pi=*this;
   for (size_t i=0; i<n; ++i)
@@ -202,7 +202,7 @@ void Permutation::conjugate(matrix::Matrix_base<T>& M) const
   resulting in the matrix of the same operator but expressed in
   the inverse-permuted basis e_{a[0]}, ... , e_{a[n-1]}. This amounts to
   conjugating by the inverse permutation matrix (delta_{i,a[i]})_{i,j} that
-  transforms from coordinates on the standard basis to those on tha basis.
+  transforms from coordinates on the standard basis to those on that basis.
 
   Precondition: |M| is an |n| by |n| matrix, and |*this| a permutation of |n|
 
@@ -213,8 +213,8 @@ template<typename T>
 void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
 {
   size_t n=size();
-  assert (M.numRows()==n);
-  assert (M.numColumns()==n);
+  assert (M.n_rows()==n);
+  assert (M.n_columns()==n);
   matrix::Matrix<T> result(n,n);
   const Base& pi=*this;
   for (size_t i=0; i<n; ++i)

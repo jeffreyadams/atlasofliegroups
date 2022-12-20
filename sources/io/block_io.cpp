@@ -69,7 +69,7 @@ std::ostream& do_print(const Block_base& block,std::ostream& strm,
   {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << z;
-    if (traditional) // prining "local" x,y is confusing in other cases
+    if (traditional) // printing "local" x,y is confusing in other cases
       strm << '(' << std::setw(xwidth) << block.x(z)
 	   << ',' << std::setw(ywidth) << block.y(z) << "):";
     else
@@ -276,7 +276,7 @@ namespace block_io {
   are exactly those for which the support of the involution consists entirely
   of descents.
 
-  NOTE: checking that condtion is awkward here, because currently blocks
+  NOTE: checking that condition is awkward here, because currently blocks
   do not have direct access to the descents as a bitset!
 */
 std::ostream& printBlockU(std::ostream& strm, const Block& block)

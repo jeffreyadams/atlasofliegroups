@@ -2,7 +2,7 @@
   Class definition for the Subsystem class.
 */
 /*
-  This is subystem.h
+  This is subsystem.h
 
   Copyright (C) 2010,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
@@ -65,10 +65,10 @@ class SubSystem : public RootSystem // new system, subsystem of parent
 	    // those simple roots must be positive roots of |parent|
            );
 
-  static SubSystem // pseudo contructor for integral system
+  static SubSystem // pseudo constructor for integral system
     integral(const RootDatum& parent, const RatWeight& gamma);
 
-  SubSystem(const SubSystem& s) // copy contructor, used in |common_block|
+  SubSystem(const SubSystem& s) // copy constructor, used in |common_block|
     : RootSystem(s) // copy base object
     , rd(s.rd) // share this one
     , which(s.which) // copy other fields
@@ -140,13 +140,13 @@ class SubSystem : public RootSystem // new system, subsystem of parent
 // The following class is for cases where a Weyl group does need to exist
 class SubSystemWithGroup : public SubSystem
 {
-  WeylGroup sub_W; // Weyl is no group no reference, but built by contructor
+  WeylGroup sub_W; // Weyl is no group no reference, but built by constructor
  public:
   SubSystemWithGroup(const RootDatum& parent,
 		     const sl_list<RootNbr>& sub_sys // simple roots in subsys
 		     );
 
-  static SubSystemWithGroup integral // pseudo contructor for integral system
+  static SubSystemWithGroup integral // pseudo constructor for integral system
   (const RootDatum& parent, const RatWeight& gamma);
 
   // move ctor (for pseudo ctor)

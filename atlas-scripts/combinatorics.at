@@ -337,7 +337,7 @@ set part_restricted_partitions ((int->bool)pred) =
 
 set odd_part_partitions = part_restricted_partitions(is_odd@int)
 
-{ partitions with distinct parts: all multiplicties are 0 or 1 }
+{ partitions with distinct parts: all multiplicities are 0 or 1 }
 set strict_partitions = (int n) [Partition]:
   if n.< then []
   else
@@ -741,7 +741,7 @@ set normalize (Symbol S) = Symbol:
 set symbol (BiPartition(lambda,mu)) = Symbol: { normalized }
 (  let d =
      #(lambda:=strip_to_partition(lambda)) - (#(mu:=strip_to_partition(mu))+1)
-in case d { make |d=0| by zero-extending one of the paritions if necessary }
+in case d { make |d=0| by zero-extending one of the partitions if necessary }
    then { #lambda<#mu+1 } lambda ##:= for : -d do 0 od
    in { #lambda=#mu+1 }     ()
    else { #lambda>#mu+1 } mu     ##:= for : d do 0 od
@@ -822,9 +822,6 @@ set centralizer_order (D_class c) = int:
        { simulate |cycle_centralizer_order@Signed_cycles|, using ..@Partition }
        alpha.cycle_centralizer_order*2^#alpha { add a factor 2 for each cycle }
    esac
-set class_size (D_class c) = int:
-  let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
-
 set class_size (D_class c) = int:
   let n=rank(c) in n.fac * 2^(n-1) \ centralizer_order(c)
 

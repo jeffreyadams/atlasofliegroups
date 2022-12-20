@@ -29,7 +29,7 @@ the stabilizer of a parameter.
 Moreover, fitting all real forms in a given inner class together works
 perfectly : they all share a fundamental Cartan. For this Cartan, all
 gradings are acceptable, their classes correspond precisely to the
-classifiacation of the inner forms in this inner class. Each grading
+classification of the inner forms in this inner class. Each grading
 class "propagates" partially downwards, picking out disjoint grading
 classes on the various M-groups (which are the same for all the groups
 in the inner class, but with varying real forms; actually no two M-groups

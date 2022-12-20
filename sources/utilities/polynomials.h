@@ -193,7 +193,7 @@ template <typename C>
    use as |Pooltype| a |std::vector| of a base type rather than a vector of
    themselves. Since the base type has no |hashCode| member, we define hash
    functions for them as free functions |hash_code|, that will override the more
-   generally templated one provided in hastable.h
+   generally templated one provided in hashtable.h
 */
 
 template <typename U>

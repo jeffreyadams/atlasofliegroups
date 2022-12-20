@@ -78,7 +78,7 @@ set dirac_index_irr(Param p)=ParamPol:dirac_index_irr(p,KGB(p.real_form,0))
 set show_dirac_index_param_pol(ParamPol P)=void:
 if =#P then prints("Dirac index is 0") else
 tabulate(
-["coeff","lambda","higest weight", "fund.wt.coords.", "dim"]#
+["coeff","lambda","highest weight", "fund.wt.coords.", "dim"]#
 for c@p in P do
  [c.split_as_int.to_string, p.lambda.to_string, p.highest_weight.mu.to_string,p.fundamental_weight_coordinates.to_string,p.dimension.to_string] od)
  fi

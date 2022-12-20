@@ -196,13 +196,17 @@ $(atlas_dir)/atlas-types.o $(atlas_dir)/atlas-types.tex: \
  $(sources_dir)/structure/topology.h \
  $(sources_dir)/structure/tori.h \
  $(sources_dir)/structure/weyl.h \
+ $(sources_dir)/structure/alcoves.h \
  $(sources_dir)/structure/y_values.h \
  $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/bruhat.h \
  $(sources_dir)/gkmod/descents.h \
  $(sources_dir)/gkmod/ext_block.h \
  $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/ext_kl.h \
  $(sources_dir)/gkmod/kl.h \
  $(sources_dir)/gkmod/klsupport.h \
+ $(sources_dir)/gkmod/K_repr.h \
  $(sources_dir)/gkmod/repr.h \
  $(sources_dir)/gkmod/wgraph.h \
  $(sources_dir)/error/error.h \

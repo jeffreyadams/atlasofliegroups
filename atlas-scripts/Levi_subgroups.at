@@ -98,7 +98,7 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
   |two_rho(L)=dominant(two_rho(standard_Levi)) and |L=w*standard_Levi| (but with
   |L| encoded as an integer, so these are not actually valid expressions).
 
-  The orbit generation here is taylored to the specific situation that we know
+  The orbit generation here is tailored to the specific situation that we know
   that all elements of the acting subgroup live in |W(rd)|, so they permute the
   (co)roots of the full system, and they fix the dominant weight |rho2_dom|. The
   level of coroots with respect to |rho2_dom| is invariant under such action,
@@ -114,7 +114,7 @@ set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| as a number }
   for E8), so we do an effort to generate them not too inefficiently. A standard
   technique to do that is to stratify the orbit by distance (in the Cayley
   graph) from the starting point: neighbours of the latest stratum need only be
-  searched in that and the preceeding stratum, and if not found contrubute to
+  searched in that and the preceding stratum, and if not found contribute to
   the next stratum.
 }
 set rho_stabiliser_orbit (RootDatum rd, [int] standard_Levi) = orbit_data:

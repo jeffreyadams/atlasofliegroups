@@ -26,7 +26,7 @@
 #include "kgb.h"	// associate information with |KGBElt| values
 #include "graph.h"	// |OrientedGraph| used in |triangularize|
 #include "ioutils.h"	// |foldLine| in |KhatContext::go|
-#include "basic_io.h"   // |opeator<<| in |SRK_context::print|
+#include "basic_io.h"   // |operator<<| in |SRK_context::print|
 #include "prettyprint.h"// |printVector| in |SRK_context::print|
 
 namespace atlas {
@@ -465,7 +465,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
   complex root in the simple basis by its opposite. In reality the positive
   system is fixed, and the moves conjugate $\theta$ and reflect |dom|. In fact
   we shall need a fiber part as well as an involution once we have obtained
-  our goal, so conjugetion is in fact |basedTwistedConjugate| on |strong|.
+  our goal, so conjugation is in fact |basedTwistedConjugate| on |strong|.
  */
 PSalgebra
 SRK_context::theta_stable_parabolic
@@ -1724,9 +1724,9 @@ template <typename C>
                > >& eq,
 	       std::vector<seq_no>& new_order)
 {
- size_t n=eq.size();
+  size_t n=eq.size();
 
- matrix::Matrix_base<C> M(n,n,C(0));
+  matrix::Matrix_base<C> M(n,n,C(0));
   graph::OrientedGraph incidence(n);
 
   for (size_t j=0; j<n; ++j) // loop over equations
@@ -1739,37 +1739,34 @@ template <typename C>
 	++n_terms;
       }
 
-    if (eq[j].second.size()!=n_terms)
+    if (eq[j].second.size()!=n_terms) // then there are RHS terms outside the system
       throw std::runtime_error ("triangularize: system not saturated");
   }
 
-  Partition order = incidence.cells(nullptr);
+  Partition order = incidence.cells(nullptr); // run Tarjan for equivalences only
+
+  if (order.classCount()<n) // then there are non-singleton classes: error
+  {
+    auto sizes = order.class_sizes();
+    for (size_t i=0; i<order.classCount(); ++i) // |i| indexes a class
+      if (sizes[i]>1)
+      {
+	std::ostringstream os;bool first=true;
+	for (size_t j=0; j<n; ++j)
+	  if (order.class_of(j)==i)
+	    os << (first?first=false,"triangularize: system has cycle: ":", ") << j;
+	throw std::runtime_error (os.str());
+      }
+  }
 
   new_order.resize(n);
-  for (size_t i=0; i<n; ++i) // we abuse |i| as either a class or element
-  {
-    if (order.classSize(i)>1) // all that matters is that all |i| pass here
-    {
-      incidence.reverseEdges(); // this facilitates reporting structure
-      for (size_t j=0; j<n; ++j)
-	if (order.class_of(j)==i)
-	{
-	  std::cerr << eq[j].first;
-	  for (size_t k=0; k<incidence.edgeList(j).size(); ++k)
-	    std::cerr << (k==0?"->":", ") << eq[incidence.edge(j,k)].first;
-	  std::cerr << std::endl;
-	}
-      throw std::runtime_error ("triangularize: system has cycles");
-    }
-    new_order[order.class_of(i)]=eq[i].first; // put equation |i| in its place
-  }
+  for (size_t i=0; i<n; ++i) // |i| indexes class member
+    new_order[order.class_of(i)]=eq[i].first; // put LHS equation |i| in its place
 
   matrix::Matrix_base<C> result(n,n,C(0));
   for (size_t i=0; i<n; ++i)
-    for (graph::EdgeList::const_iterator p=incidence.edgeList(i).begin();
-	 p!=incidence.edgeList(i).end(); ++p) // there is an edge |i| to |*p|
-                                // so |order.class_of(i)>=order.class_of(*p)|
-      result(order.class_of(i),order.class_of(*p))=M(i,*p);
+    for (graph::Vertex v : incidence.edgeList(i))
+      result(order.class_of(i),order.class_of(v))=M(i,v);
 
   return result;
 } // |triangularize|
@@ -1778,8 +1775,8 @@ template <typename C>
   matrix::Matrix_base<C> inverse_lower_triangular
     (const matrix::Matrix_base<C>& L)
 {
-  size_t n=L.numColumns();
-  if (L.numRows()!=n)
+  size_t n=L.n_columns();
+  if (L.n_rows()!=n)
     throw std::runtime_error ("invert triangular: matrix is not square");
 
   matrix::Matrix_base<C> result(n,n,C(0));

@@ -30,7 +30,7 @@ let dual_forms=strong_real_forms_central_invariant_e(ic.dual) in
 od
 
 {arthur parameters, listed by dual unipotent orbit;
-the return valule is [[ComplexNilpotent_d]]
+the return value is [[ComplexNilpotent_d]]
 the i^th array [ComplexNilpotent_d] is an array
  of orbits, for various K^\vee_j, whose G^\vee-saturation
  is the i^th unipotent G^\vee-orbit
@@ -43,7 +43,7 @@ for O_check in ic.dual_orbits do arthur_parameters(ic,O_check) od
 set arthur_parameters(InnerClass ic)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(ic)
 
 {arthur parameters, listed by dual strong real forms y
-the return valule is [[ComplexNilpotent_d]]
+the return value is [[ComplexNilpotent_d]]
 the i^th [ComplexNipotent_d] is the list of unipotent orbits
  for K^\vee_i
 }

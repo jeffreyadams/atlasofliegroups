@@ -1,7 +1,7 @@
 
 The "extract-graph" command provides the same information as the "wgraph"
 command, however without explicitly computing the block and Kazhdan-Lusztig
-information. It is therefore necessary to have this infomation available in
+information. It is therefore necessary to have this information available in
 the form of three binary files; the command will prompt for their names. Such
 files can be produced by the commands "blockwrite" (the block information
 file) and "klwrite" (the matrix information and polynomial information files).

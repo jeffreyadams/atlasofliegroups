@@ -24,7 +24,7 @@ set makeS(KGBElt x_G,Parabolic P) = mat:
    let rho_u=rho_u(P), nilrad_roots = mat: nilrad_roots(P)
 in columns_with((vec alpha)bool: find(nilrad_roots,alpha).>= , makeS(x_G))
 
-{Given a theta-stable parbolic P and x_G\in KGB(G)
+{Given a theta-stable parabolic P and x_G\in KGB(G)
  return a set of nci roots of H, whose restrictions to H^{theta_x} are
  the weights of H^theta on u\cap s
  each nci root contributes itself

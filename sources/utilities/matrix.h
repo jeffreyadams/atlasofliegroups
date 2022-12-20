@@ -12,8 +12,10 @@
 #define MATRIX_H
 
 #include <cstddef> // for |std::size_t|
+#include <cstdint> // for |uint32_t|
 #include <vector>
 #include <functional> // for |std::reference_wrapper|
+#include <limits>
 #include <stdexcept>
 #include <cassert>
 
@@ -30,23 +32,32 @@
 namespace atlas {
 namespace matrix {
 
+/*				Type definition
+   A deliberate chioce (for now) is to use only 32-bit row/column indices in
+   matrices; this saves some space but makes extremely deep or wide matrices
+   (for storing huge collections of weights) impossible.
+*/
+using index_t = std::uint32_t;
+constexpr auto index_max = std::numeric_limits<matrix::index_t>::max();
+
+
 /******** function definitions ***********************************************/
 
 
 template<typename C>
-  std::vector<Vector<C> > standard_basis(unsigned int n);
+  std::vector<Vector<C> > standard_basis(index_t n);
 
 template<typename C>
-  void initBasis(std::vector<Vector<C> >& v, unsigned int n)
+  void initBasis(std::vector<Vector<C> >& v, index_t n)
   { v=standard_basis<C>(n); }
 
 template<typename C>
   void row_apply(Matrix<C>& A, const Matrix<C>& ops, // an $r\times r$ matrix
-		 unsigned int i); // apply |ops| to rows |i| up to |i+r| of |A|
+		 index_t i); // apply |ops| to rows |i| up to |i+r| of |A|
 
 template<typename C>
   void column_apply(Matrix<C>& A, const Matrix<C>& ops, // an $r\times r$ matrix
-		    unsigned int j); // apply |ops| to columns |j| up to |j+r|
+		    index_t j); // apply |ops| to columns |j| up to |j+r|
 
 template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
@@ -70,7 +81,7 @@ template<typename C>
 
 template<typename C> PID_Matrix<C> inverse (PID_Matrix<C> A)
  { arithmetic::big_int d; PID_Matrix<C> result=inverse(std::move(A),d);
-    if (not d.is_one())
+    if (d!=1)
       throw std::runtime_error("Matrix not invertible over the integers");
     return result;
   }
@@ -170,36 +181,37 @@ template<typename C>
 // a by-value operand |v| will be copy-constructed only if given by an lvalue
 template<typename C>
   Vector<C> operator/ (Vector<C> v,C c) { return v /= c; }
-
+template<typename C>
+  Vector<C> operator% (Vector<C> v,C c) { return v %= c; }
 
 template<typename C> class Matrix_base
 {
-  unsigned int d_rows;
-  unsigned int d_columns;
- protected: // derived classes may sometimes need to acces this
+  index_t d_rows;
+  index_t d_columns;
+protected: // derived classes may sometimes need to access this
   Vector<C> d_data;   // vector of elements, concatenated by rows
 
- public:
+public:
 
 // constructors
   Matrix_base(): d_rows(0),d_columns(0),d_data() {}
 
-  Matrix_base(unsigned int m, unsigned int n)
+  Matrix_base(index_t m, index_t n)
     : d_rows(m),d_columns(n),d_data(static_cast<std::size_t>(m)*n) {}
-  Matrix_base(unsigned int m, unsigned int n, const C& c)
+  Matrix_base(index_t m, index_t n, const C& c)
     : d_rows(m), d_columns(n), d_data(static_cast<std::size_t>(m)*n,c) {}
 
   Matrix_base (const std::vector<Vector<C> >& b,
-	       unsigned int n_rows); // with explicit #rows in case |b| empty
+	       index_t n_rows); // with explicit #rows in case |b| empty
 
   template<typename I> // from sequence of columns obtained via iterator
-    Matrix_base(I begin, I end, unsigned int n_rows, tags::IteratorTag)
+    Matrix_base(I begin, I end, index_t n_rows, tags::IteratorTag)
       : d_rows(n_rows), d_columns(std::distance(begin,end))
     , d_data(static_cast<std::size_t>(d_rows)*d_columns)
   {
     I p=begin;
-    for (unsigned int j=0; j<d_columns; ++j,++p)
-      for (unsigned int i=0; i<d_rows; ++i)
+    for (index_t j=0; j<d_columns; ++j,++p)
+      for (index_t i=0; i<d_rows; ++i)
 	(*this)(i,j) = (*p)[i];
   }
 
@@ -207,26 +219,24 @@ template<typename C> class Matrix_base
   void swap(Matrix_base&);
 
   // accessors
-  unsigned int numRows() const { return d_rows; }
-  unsigned int numColumns() const { return d_columns; }
-  unsigned int rowSize() const { return d_columns;  }
-  unsigned int columnSize() const { return d_rows; }
+  index_t n_rows() const { return d_rows; }
+  index_t n_columns() const { return d_columns; }
 
-  const C& operator() (unsigned int i,unsigned int j)
-    const { return d_data[static_cast<std::size_t>(i)*d_columns+j]; }
+  const C& operator() (index_t i,index_t j) const
+   { return d_data[static_cast<std::size_t>(i)*d_columns+j]; }
 
-  void get_row(Vector<C>&, unsigned int) const;
-  void get_column(Vector<C>&, unsigned int) const;
+  void get_row(Vector<C>&, index_t) const;
+  void get_column(Vector<C>&, index_t) const;
 
-  Vector<C> row(unsigned int i) const { return Vector<C>(at(i,0),at(i+1,0)); }
+  Vector<C> row(index_t i) const { return Vector<C>(at(i,0),at(i+1,0)); }
   std::vector<Vector<C> > rows() const;
-  Vector<C> column(unsigned int j) const
+  Vector<C> column(index_t j) const
     { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
 
-  Vector<C> partial_row(unsigned int i, unsigned int j, unsigned int l) const
+  Vector<C> partial_row(index_t i, index_t j, index_t l) const
     { return Vector<C>(at(i,j),at(i,l)); }
-  Vector<C> partial_column(unsigned int j, unsigned int i, unsigned int k) const
+  Vector<C> partial_column(index_t j, index_t i, index_t k) const
   { Vector<C> result(k-i);
     for (auto it=result.begin(); it!=result.end(); ++it)
       *it = (*this)(i++,j);
@@ -239,42 +249,42 @@ template<typename C> class Matrix_base
   bool is_zero() const; // whether all entries are zero
   bool isEmpty() const { return d_data.size() == 0; }
 // manipulators
-  C& operator() (unsigned int i, unsigned int j)
+  C& operator() (index_t i, index_t j)
    { return d_data[static_cast<std::size_t>(i)*d_columns+j]; }
 
-  void set_row(unsigned int,const Vector<C>&);
-  void set_column(unsigned int,const Vector<C>&);
+  void set_row(index_t,const Vector<C>&);
+  void set_column(index_t,const Vector<C>&);
   void add_row(const Vector<C>&);
   void add_column(const Vector<C>&);
 
   // in the following two methods |k,l| are top-left indices of submatrix
-  void get_block(Matrix_base<C>& dst, unsigned k, unsigned l) const;
-  void set_block(unsigned k, unsigned l, const Matrix_base<C>& src);
+  void get_block(Matrix_base<C>& dst, index_t k, index_t l) const;
+  void set_block(index_t k, index_t l, const Matrix_base<C>& src);
 
 // resize undefined; use |Matrix<C>(m,n).swap(M)| instead of |M.resize(m,n)|
 
-  void eraseColumn(unsigned int);
-  void eraseRow(unsigned int);
+  void eraseColumn(index_t);
+  void eraseRow(index_t);
   void clear() { d_rows=d_columns=0; d_data.clear(); }
 
  protected: // not |private| because |PID_Matrix<C>::block| uses them
-  const C* at (unsigned int i,unsigned int j) const { return &operator()(i,j); }
-  C* at (unsigned int i,unsigned int j)             { return &operator()(i,j); }
+  const C* at (size_t i,size_t j) const { return &operator()(i,j); }
+  C* at (size_t i,size_t j)             { return &operator()(i,j); }
 }; // |template<typename C> class Matrix_base|
 
 template<typename C> class Matrix : public Matrix_base<C>
 {
- protected:
-   typedef Matrix_base<C> base;
+protected:
+  using base = Matrix_base<C>;
 
- public:
+public:
 // constructors
   Matrix() : base() {}
   Matrix(const base& M) : base(M) {}
   Matrix(base&& M) : base(std::move(M)) {}
 
   using base::base; // inherit all constructors
-  explicit Matrix(unsigned int n); // square identity matrix
+  explicit Matrix(index_t n); // square identity matrix
 
 // accessors
   // no non-destructive additive matrix operations; no need for them (yet?)
@@ -311,24 +321,24 @@ template<typename C> class Matrix : public Matrix_base<C>
   // secondary manipulators
 
   // |row(i) += c+row(k)|:
-  void rowOperation(unsigned int i, unsigned int k, const C& c);
+  void rowOperation(index_t i, index_t k, const C& c);
   // |col(j) += c*col(k)|:
-  void columnOperation(unsigned int j, unsigned int k, const C& c);
+  void columnOperation(index_t j, index_t k, const C& c);
 
-  void rowMultiply(unsigned int i, C f);
-  void columnMultiply(unsigned int j,C f);
+  void rowMultiply(index_t i, C f);
+  void columnMultiply(index_t j,C f);
 
-  void swapColumns(unsigned int, unsigned int);
-  void swapRows(unsigned int, unsigned int);
+  void swapColumns(index_t, index_t);
+  void swapRows(index_t, index_t);
 
 }; // |template<typename C> class Matrix|
 
 // The following derived class is for integer types only
 template<typename C> class PID_Matrix : public Matrix<C>
 {
-  typedef Matrix<C> base;
+  using base = Matrix<C>;
 
- public:
+public:
   PID_Matrix() : base() {}
   PID_Matrix(const base& M) : base(M) {}
   PID_Matrix(base&& M) : base(std::move(M)) {}
@@ -353,6 +363,7 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& transpose() { base::transpose(); return *this; }
 
 // accessors
+  template<typename D> PID_Matrix<D> entry_type_convert() const;
   PID_Matrix transposed() const  & { return PID_Matrix(base::transposed()); }
   PID_Matrix transposed() &&
     { return PID_Matrix(std::move(*this)).transpose(); }
@@ -377,13 +388,13 @@ template<typename C> class PID_Matrix : public Matrix<C>
 
   // secondary accessors (for inversion algorithms)
   bool divisible(C) const;
-  PID_Matrix block(unsigned int i0, unsigned int j0, // upper left
-		   unsigned int i1, unsigned int j1  // lower right
+  PID_Matrix block(index_t i0, index_t j0, // upper left
+		   index_t i1, index_t j1  // lower right
 		   ) const;
   // return a block of the transposed matrix, without calling |transposed|
   PID_Matrix transposed_block // same as |transposed().block(i0,j0,i1,j1)|
-    (unsigned int i0, unsigned int j0, // upper left
-     unsigned int i1, unsigned int j1  // lower right
+    (index_t i0, index_t j0, // upper left
+     index_t i1, index_t j1  // lower right
      ) const;
 
 }; // |class PID_Matrix|
@@ -404,11 +415,11 @@ public:
 
 // Set |b| to the canonical basis (as in identity matrix) in dimension |r|
 template<typename C>
-  std::vector<Vector<C> > standard_basis(unsigned int r)
+  std::vector<Vector<C> > standard_basis(index_t r)
 {
   std::vector<Vector<C> > result(r,Vector<C>(r,C(0)));
 
-  for (unsigned int i=0; i<r; ++i)
+  for (index_t i=0; i<r; ++i)
     result[i][i] = C(1);
 
   return result;
@@ -425,13 +436,13 @@ template<typename C>
 template<typename C1>
 Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
 {
-  assert(base::numColumns()==w.size());
-  Vector<C1> result(base::numRows());
+  assert(base::n_columns()==w.size());
+  Vector<C1> result(base::n_rows());
 
-  for (unsigned int i=0; i<base::numRows(); ++i)
+  for (index_t i=0; i<base::n_rows(); ++i)
   {
     C1 c(0);
-    for (unsigned int j=0; j<base::numColumns(); ++j)
+    for (index_t j=0; j<base::n_columns(); ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
   }
@@ -447,13 +458,13 @@ Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
 template<typename C> template<typename C1>
 Vector<C1> Matrix<C>::right_prod(const Vector<C1>& w) const
 {
-  assert(base::numRows()==w.size());
-  Vector<C1> result(base::numColumns());
+  assert(base::n_rows()==w.size());
+  Vector<C1> result(base::n_columns());
 
-  for (unsigned int j=0; j<base::numColumns(); ++j)
+  for (index_t j=0; j<base::n_columns(); ++j)
   {
     C1 c(0);
-    for (unsigned int i=0; i<base::numRows(); ++i)
+    for (index_t i=0; i<base::n_rows(); ++i)
       c += w[i] * (*this)(i,j);
     result[j] = c;
   }
@@ -462,18 +473,17 @@ Vector<C1> Matrix<C>::right_prod(const Vector<C1>& w) const
 }
 
 template<typename C>
-  void row_apply(Matrix<C>& A, const Matrix<C>& ops,
-		 unsigned int i) // initial row
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(i+r <= A.numRows());
+  void row_apply(Matrix<C>& A, const Matrix<C>& ops, index_t i) // initial row
+{ const auto r=ops.n_rows();
+  assert(r==ops.n_columns());
+  assert(i+r <= A.n_rows());
   Vector<C> tmp(r);
-  for (unsigned int j=0; j<A.numColumns(); ++j)
+  for (index_t j=0; j<A.n_columns(); ++j)
   { // |tmp = partial_column(j,i,i+r)|; save values before overwriting
-    for (unsigned int k=0; k<r; ++k)
+    for (index_t k=0; k<r; ++k)
       tmp[k]=A(i+k,j);
     ops.apply_to(tmp); // do row operations on column vector |tmp|
-    for (unsigned int k=0; k<r; ++k)
+    for (index_t k=0; k<r; ++k)
       A(i+k,j)=tmp[k];
   }
 }
@@ -481,25 +491,35 @@ template<typename C>
 
 template<typename C>
   void column_apply(Matrix<C>& A, const Matrix<C>& ops,
-		    unsigned int j) // initial column of |A| to act on
-{ const auto r=ops.numRows();
-  assert(r==ops.numColumns());
-  assert(j+r <= A.numColumns());
+		    index_t j) // initial column of |A| to act on
+{ const auto r=ops.n_rows();
+  assert(r==ops.n_columns());
+  assert(j+r <= A.n_columns());
   Vector<C> tmp(r);
-  for (unsigned int i=0; i<A.numRows(); ++i)
+  for (index_t i=0; i<A.n_rows(); ++i)
   { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
-    for (unsigned int l=0; l<r; ++l)
+    for (index_t l=0; l<r; ++l)
       tmp[l]=A(i,j+l);
     ops.right_mult(tmp); // do column operations on row vector |tmp|
-    for (unsigned int l=0; l<r; ++l)
+    for (index_t l=0; l<r; ++l)
       A(i,j+l)=tmp[l];
   }
 } // |column_apply|
 
+template<typename C> template<typename D>
+  PID_Matrix<D> PID_Matrix<C>::entry_type_convert() const
+{
+  PID_Matrix<D> result(this->n_rows(),this->n_columns());
+  // we cannot access |result.d_data| directly, but |&result(0,0)| points there
+  // though we access underlying vector, no assumption of layout is made here
+  std::copy(this->d_data.begin(),this->d_data.end(),&result(0,0));
+  return result;
+}
+
 template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c) // |A=A+c|, avoiding copy
 {
-  unsigned int i=std::min(A.numRows(),A.numColumns());
+  index_t i=std::min(A.n_rows(),A.n_columns());
   while (i-->0)
     A(i,i) += c;
   return A;

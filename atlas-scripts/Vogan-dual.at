@@ -4,12 +4,12 @@
 { A first main objective of this script is to define a function |dual_KGB| that
   associates to a |Param| value a KGB element for a computed dual real form.
   Even just determining the proper dual real form is a surprisingly delicate
-  problem, especially for parameters with non integeral infinitesimal character.
+  problem, especially for parameters with non integral infinitesimal character.
 }
 
 {
   We start with with some technical functions that are no longer used, so they
-  are commented out. The code are still useful as a contruction of an element
+  are commented out. The code are still useful as a construction of an element
   proving why the function |fixed_lift| below is guaranteed to succeed.
 
   It will be important to apply a shift to dual torus_factor values that are
@@ -93,27 +93,44 @@ set integral_shift (ratvec v, mat simples,(vec d,mat L,mat R)) = vec:
   in assert ((sol*L1s)%2 = vals,"no solution mod 2"); sol * L1
 
 { Find for |p| the KGB element (|y|) in an appropriate dual real form.
-  The |dual_int_ic| argumnet should be |dual_integral(p.inner_class,gamma)| for
+  The |dual_int_ic| argument should be |dual_integral(p.inner_class,gamma)| for
   |gamma=p.infinitesimal_character|; the reason it is not computed here is that
   historically doing so would not identify it with the an inner class computed
   elsewhere identically (for instance for another parameter in the same block).
   The atlas program currently would make such an identification; however
   precomputing and passing it around is still more efficient, so we leave this.
 }
+{NOTE: the comment about |dual_int_ic| is wrong, it should be
+dual_inner_class(p), which is (defined in parameters.at):
+ dual(inner_class(integrality_datum(p.root_datum,p.infinitesimal_character),x.involution)
+Rather than
+ dual_integral(p.inner_class,p.infinitesimal_character), which is (defined in basic.at):
+ inner_class(dual(integrality_datum(ic,p.infinitesimal_character)),-^distinguished_involution(ic))
+  where ic=p.inner_class
+}
+
 set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
-  let x=x(p), dual_tf=infinitesimal_character(p) - lambda(p)
-  then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
-  then (simple_ims,) =
-    simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta))
-  then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
-    = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
-  then integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR)
-  then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
-{  then ()=prints("integral_shift:", integral_shift)
-   then ()=prints("rho_corr:", rho_corr) }
-  in KGB_elt(dual_int_ic,
-             dual_theta,
-             phi+integral_shift)
+  let x=x(p),
+  dual_tf=infinitesimal_character(p) - lambda(p) then
+  dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable } then
+  (simple_ims,) =  simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta)) then
+  (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
+    = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p))) then
+  integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR) then
+  phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square } then
+  ()=prints("gamma: ", p.infinitesimal_character,
+  new_line,  "lambda: ", p.lambda,
+  new_line, "starting tf: ", dual_tf,
+  new_line, "rho=", rho(p.root_datum),
+  new_line, "rho_int=", rho(p.integrality_datum),
+  new_line, "rho-rho_int: ", rho(p.root_datum)-rho(p.integrality_datum),
+  new_line,"rho_corr: ", rho_corr,
+  new_line,  "phi=dual_tf+rho_corr: ", phi,
+  new_line,"integral_shift:", integral_shift,
+  new_line, "new tf=phi+integral_shift: ", phi+integral_shift) in
+  KGB_elt(dual_int_ic,
+          dual_theta,
+          phi+integral_shift)
 
 {
 set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
@@ -190,8 +207,8 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 
 {  --------- some indicator functions -------------}
 
-{support(x): those simple reflections occuring in x.w, see parabolics.at
- dual_support(x): simple reflections occuring in x.w*w_0
+{support(x): those simple reflections occurring in x.w, see parabolics.at
+ dual_support(x): simple reflections occurring in x.w*w_0
  this is the support of any y for which (x,y) is a valid parameter
  integral case first}
 set support_dual(KGBElt x)=[int]:

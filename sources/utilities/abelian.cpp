@@ -172,10 +172,10 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 {
   GrpArr tmp = a; // need a copy, because reading/writing are not in step
 
-  for (size_t i=0; i<q.numRows(); ++i)
+  for (size_t i=0; i<q.n_rows(); ++i)
   {
     unsigned long r = 0;
-    for (size_t j=0; j<q.numColumns(); ++j)
+    for (size_t j=0; j<q.n_columns(); ++j)
       r = arithmetic::modAdd(r,arithmetic::modProd(tmp[j],q(i,j),d_type[i]),
 			     d_type[i]);
     a[i] = r; // $\sum_j q_{i,j}a_j$
@@ -317,7 +317,7 @@ namespace abelian {
 
   Precondition: the elements of |al| are of size source.rank(), and their
   number is dest.rank(). Note that the matrix is therefore given by rows
-  (linear forms on |source|), not by columns (images in |dest|); unusal!
+  (linear forms on |source|), not by columns (images in |dest|); unusual!
 */
 Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 			   const FiniteAbelianGroup& source,
@@ -611,16 +611,16 @@ void to_array(GrpArr& a, const matrix::Vector<int>& v, const GroupType& t)
 /*
   Transform |q| into the corresponding |Endomorphism|.
 
-  This just involves rewriting the coeficients as unsigned longs modulo
+  This just involves rewriting the coefficients as unsigned longs modulo
   the type factors.
 */
 void toEndomorphism(Endomorphism& e, const matrix::PID_Matrix<int>& q,
 		    const FiniteAbelianGroup& A)
 {
-  Endomorphism(q.numRows(),q.numColumns()).swap(e);
+  Endomorphism(q.n_rows(),q.n_columns()).swap(e);
 
-  for (size_t j=0; j<q.numColumns(); ++j)
-    for (size_t i=0; i<q.numRows(); ++i)
+  for (size_t j=0; j<q.n_columns(); ++j)
+    for (size_t i=0; i<q.n_rows(); ++i)
       e(i,j) = arithmetic::remainder<long int>(q(i,j),A.type()[i]);
 }
 
@@ -657,10 +657,10 @@ GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 {
   const GroupType& type = A.type(); // vector of |unsigned long|
-  Endomorphism tr(e.numColumns(),e.numRows());
+  Endomorphism tr(e.n_columns(),e.n_rows());
 
-  for (size_t i=0; i<e.numRows(); ++i)
-    for (size_t j=0; j<e.numColumns(); ++j)
+  for (size_t i=0; i<e.n_rows(); ++i)
+    for (size_t j=0; j<e.n_columns(); ++j)
     {
       unsigned long d = arithmetic::unsigned_gcd(type[i],type[j]);
       // e(i,j) has to be divisible by type[i]/d

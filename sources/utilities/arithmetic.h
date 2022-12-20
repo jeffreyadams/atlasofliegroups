@@ -22,7 +22,8 @@ namespace atlas {
 namespace arithmetic {
 
 // operations without conversion for signed integral types
-// second argument is signed (to simplify inteface), but it must be non-negative
+// second argument is signed (to simplify interface),
+// but it must be non-negative
   template<typename I> I divide(I, I);
   template<typename I> I remainder(I, I);
   //  template<typename I> I factorial(I); // moved to the size module

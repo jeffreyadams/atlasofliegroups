@@ -346,7 +346,7 @@ template<typename T, typename C, typename Compare>
 /* for reverse iteration, the |triple| contained in a |reverse_iterator| are
    ordinary (non reverse) vector iterators, but |cur| traverses backwards, and
    |end| is actually the iterator from |begin()|. The convention will be that
-   |cur| and |min| are dereferencable (no need to apply |std::prev| to them
+   |cur| and |min| are dereferenceable (no need to apply |std::prev| to them
    first when dereferencing), which means that for instance when |cur==end|, it
    is not yet out-of-range; when further incrementing would make |cur|
    out-of-range, the containing |triple| gets popped of |stack|, so no problem
@@ -395,7 +395,7 @@ template<typename T, typename C, typename Compare>
 
 // The |pop| method moves |min| to the next position, possibly increasing |cur|
 // It an argument |it| originally equal to |stack.begin()|
-// This allows it to call itself recusively for a tail portion of |stack|
+// This allows it to call itself recursively for a tail portion of |stack|
 // The return value signal whether nothing was left to point |min| to.
 template<typename T, typename C, typename Compare>
   bool Free_Abelian_light<T,C,Compare>::const_iterator::pop
@@ -418,7 +418,7 @@ template<typename T, typename C, typename Compare>
       return false; // return whether the rest is absent too, which it isn't
     }
   }
-  else // the minumum came from further down the list, recurse
+  else // the minimum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
       return it->min=it->cur,false; // one unfinished iteration remains here
 
@@ -450,7 +450,7 @@ template<typename T, typename C, typename Compare>
     }
     --it->cur; // otherwise back up |cur|; |min| will be set below
   }
-  else // the minumum came from further down the list, recurse
+  else // the minimum came from further down the list, recurse
     if (pop(nit)) // if so, |*it| is now the last valid node
       return (it->min= --it->cur),false; // an unfinished iteration remains here
 

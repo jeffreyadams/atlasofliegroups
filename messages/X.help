@@ -6,7 +6,7 @@ For this reason it does not require selecting a real form, it just requires
 (and asks for if not already known) a complex group and an inner class.
 
 The output format, apart from the very first line, is similar to that of KGB,
-to which we refer for more details; the succesive columns give a sequence
+to which we refer for more details; the successive columns give a sequence
 number, a length, the statuses of all simple roots at this element, the cross
 action links, the Cayley transform links, a rational vector that distinguishes
 elements lying over the same involution, the Cartan class, and the involution.
@@ -90,9 +90,9 @@ Base grading: [111].
 
 
 We see that the X structure has 19 elements, and the KGB structures have 3 and
-13 elements respectively. In fact the KGB struture for the real form sl(2,H)
-is present in the X structre twice: once as lines 2,6,12 and once as lines
-3,7,13. The remaining lines corresponde to the KGB for the real form sl(4,R).
+13 elements respectively. In fact the KGB structure for the real form sl(2,H)
+is present in the X structure twice: once as lines 2,6,12 and once as lines
+3,7,13. The remaining lines correspond to the KGB for the real form sl(4,R).
 
 We can check using 'strongreal' that on Cartan class #0 the real form #0 is
 present with two distinct strong real forms

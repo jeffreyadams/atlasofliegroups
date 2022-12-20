@@ -35,7 +35,7 @@ namespace arithmetic {
 
 
 /*
-  The classical Euclidian algorithm for positive (indeed unsigned) numbers.
+  The classical Euclidean algorithm for positive (indeed unsigned) numbers.
   It is assumed that |b != 0|, but |a| might be zero.
 */
 Denom_t unsigned_gcd(Denom_t a, Denom_t b)
@@ -81,7 +81,7 @@ Denom_t lcm (Denom_t a, Denom_t b, Denom_t& gcd, Denom_t& mult_a)
   Precondition: a < n; b < n.
 
   NOTE: preliminary implementation. It assumes that |n <= 2^^(longBits/2)|,
-  i.e., mudular numbers fit in a half-long
+  i.e., modular numbers fit in a half-long
   Exit brutally if this is not fulfilled.
 */
 Denom_t modProd(Denom_t a, Denom_t b, Denom_t n)

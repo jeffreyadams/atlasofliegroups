@@ -32,7 +32,7 @@ set swap_rows([[rat]] M, int i, int k) = [[rat]]:
   upper triangular form. By using the type [[rat]] (thought of as by columns)
   we avoid size restriction on rational entries (as using |ratvec| would give)
   Over $Q$, this is easier than over $Z$ see |echelon|
-  Whe |M\ is of type |[[rat]]|, we have that |M[j]| is a column of |M|, and
+  When |M\ is of type |[[rat]]|, we have that |M[j]| is a column of |M|, and
   so M[j][i] is the entry in the column |j| and row |i|
 }
 set gauss ([[rat]] M) = [[rat]]:
