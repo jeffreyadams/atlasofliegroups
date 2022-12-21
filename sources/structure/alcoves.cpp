@@ -175,7 +175,7 @@ sl_list<RootNbr> sorted_by_label
     result.push_back(e.second);
 
   return result;
-}
+} // |sorted_by_label|
 
 /*
   Get fractional parts of wall evaluations, for special point in alcove.
@@ -279,6 +279,93 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
     std::cerr << "]\n";
     throw;
   }
+}
+
+/* Given a component |comp| of an alcove wall set, and integer parts |ev_floors|
+   of their evaluations on interior points of the alcove, return the unique
+   vertex of the simplex projection of the alcove for |comp| that is a sum of
+   its roots.
+*/
+Weight root_vertex_simple
+  (const RootDatum& rd, RootNbrSet comp, int_Vector ev_floors)
+{
+  int_Matrix A(rd.semisimple_rank(),comp.size());
+  { unsigned j=0;
+    for (auto it=comp.begin(); it(); ++it,++j)
+      A.set_column(j,rd.coroot_expr(*it));
+  }
+  int_Matrix k = lattice::kernel(A);
+  assert(k.n_columns()==1);
+  assert(k(0,0)!=0); // in fact all coefficients should be nonzero
+  if (k(0,0)<0)
+    k.negate(); // ensure coefficients are positive
+
+  // find a wall with "label" 1 that will serve as "lowest coroot" wall
+  RootNbrList generators; generators.reserve(A.n_columns()-1);
+  sl_list<RootNbr> labels_1;
+  { bool found=false; auto it=comp.begin(); auto eit = ev_floors.begin();
+    for (unsigned int i=0; i<k.n_rows(); ++i,++it,++eit)
+      if (not found and k(i,0)==1) // first label 1 found will do
+      {
+	found=true;
+	ev_floors.erase(eit);
+      }
+      else
+      {
+	generators.push_back(*it);
+	if (k(i,0)==1)
+	  labels_1.push_back(i-1); // record another instance of label 1
+      }
+
+    assert(found);
+  }
+
+  big_int denom;
+  int_Matrix i_Cartan = inverse(rd.Cartan_matrix(generators).transposed(),denom);
+  auto d = denom.long_val();
+  assert(d>0);
+
+  RatWeight vertex_adjoint (i_Cartan*ev_floors,d);
+
+  Weight result(rd.rank(),0);
+  // see if our choice of "label 1" wall was opposite to a root lattice vertex
+  if (vertex_adjoint.normalize().denominator()==1)
+  {
+    unsigned int i=0;
+    for (auto c : vertex_adjoint.numerator())
+      result += rd.root(generators[i++])*c;
+    return result;
+  }
+
+  for (unsigned j : labels_1)
+  { RatWeight new_vertex = vertex_adjoint+RatWeight(i_Cartan.column(j),d);
+    if (new_vertex.normalize().denominator()==1)
+    {
+      unsigned int i=0;
+      for (auto c : new_vertex.numerator())
+	result += rd.root(generators[i++])*c;
+      return result;
+    }
+  }
+
+  assert(false); // we should have found a vertex in the root lattice
+
+} // |root_vertex_simple|
+
+Weight root_vertex_of_alcove (const RootDatum& rd, const RatWeight& gamma)
+{
+  RootNbrSet integrals;
+  RootNbrSet walls = wall_set(rd,gamma,integrals);
+  auto comps = rootdata::components(rd,walls); // a list of subsets of |walls|
+  Weight result(rd.rank(),0);
+  for (const auto& comp : comps)
+  { int_Vector ev_floors(comp.size());
+    unsigned int i=0;
+    for (RootNbr alpha : comp)
+      ev_floors[i++] = gamma.dot_Q(rd.coroot(alpha)).floor();
+    result += root_vertex_simple(rd,comp,ev_floors);
+  }
+  return result;
 }
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed

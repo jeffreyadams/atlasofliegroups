@@ -1191,6 +1191,11 @@ alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   and for the remaining walls spread out the fractional parts of the coroot
   evaluations evenly, in the fashion of an isobarycenter. This adaptation
   should ensure the change is fixed under -p.x.involution in all cases.
+alcove_root_vertex: (RootDatum,ratvec->vec) Nearby root lattice element
+  For given rational weight gamma there is a unique vector v in the root lattice
+  such that no coroot evaluation at v-gamma is more than 1 in absolute value, and
+  if exactly 1 then +1 iff the coroot is positive. This v is the unique vertex
+  in the root lattice of the alcove of 'walls'. This function returns that v.
 
 basic_orbit_ws: (RootDatum,[int],int->[WeylElt]): subquotient of (pseudo-)Levis
 affine_orbit_ws: (RootDatum,ratvec->[WeylElt]): W image of affine quotient
