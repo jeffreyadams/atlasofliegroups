@@ -87,6 +87,10 @@ set induced_from_triv_params (Parabolic P) = ParamPol:
    let list=one_dims(P), G=P.real_form, (A,) = P
    in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
 
+set induced_from_triv_params_alt (Parabolic P) = [ParamPol]:
+   let list=one_dims(P), G=P.real_form, (A,) = P
+   in for p in list do induce_from_gen_parabolic_irr(A,p) od
+
 set unip_params_from_princ_in_Levi([int] A, RealForm G)=ParamPol:
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in sum(G, for P in paras do induced_from_triv_params(P) od)
@@ -170,10 +174,24 @@ set tsp(Parabolic P)=is_parabolic_theta_stable (P)
 
 set rp(Parabolic P)=is_parabolic_real (P)
 
-set induce_one_dimensionals_from_all_parabolics (RealForm G, [int] L)=void:
+set induce_trivial_from_all_parabolics (RealForm G, [int] L)=void:
    let paras=KGP(G,L)
    then v=rho(G)-rho_u(paras[0])
    in for P@i in paras
       do let p=parameter(maximal(P),v,v) in
          prints(i,new_line,"maximal KGB element:",maximal(P), "  tsl=",tsl(P)," tsp=",tsp(P),
 	   " rp=",rp(P),new_line, induce_from_gen_parabolic_irr (L,p),new_line) od
+
+set induce_one_dimensionals_from_all_parabolics (RealForm G, [int] L)=void:
+   let paras=KGP(G,L)
+   then v=rho(G)-rho_u(paras[0])
+   in for P@i in paras
+      do if tsl(P)
+         then prints(i,new_line,"maximal KGB element:",maximal(P),
+	     "  tsl=",tsl(P)," tsp=",tsp(P)," rp=",rp(P),new_line,
+	     induced_from_triv_params_alt(P),new_line)
+     else let p=parameter(maximal(P),v,v)
+          in  prints(i,new_line,"maximal KGB element:",maximal(P), "  tsl=",tsl(P),
+	  " tsp=",tsp(P),
+	   " rp=",rp(P),new_line, induce_from_gen_parabolic_irr (L,p),new_line)
+      fi od
