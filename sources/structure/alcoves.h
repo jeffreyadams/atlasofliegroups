@@ -29,6 +29,8 @@ sl_list<RootNbr> sorted_by_label
 
 StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr);
 
+Weight root_vertex_of_alcove (const RootDatum& rd, const RatWeight& gamma);
+
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
   (const Rep_context& rc, StandardRepr& sr, long long N);
