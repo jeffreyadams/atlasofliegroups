@@ -573,24 +573,6 @@ set fund_barycenters(SimpleAffine affd) = [[FacetBary]]:
     do for facet in L do barycenter(facet) od
     od
 
-{ integral weights to be added to gamma to land in fundamental
-parallelepiped where all simple coroots take values in [0,1]
-Since we are asking about the closed parallelepiped, there will be multiple
-such weights if (and only if) we land on the boundary. For every simple coroot
-with integral evaluation g at gamma, include shifts by both -g and by -g+1}
-
-set FPtau(SimpleAffine affd, ratvec gamma) = [ratvec]:
-    let g = { evaluations at gamma of the simple coroots }
-       for av in affd.simple_coroots do av*gamma od
-    then INT = for e@j in g do if is_integer(e) then [j] else [] fi od.##
-    in
-    for S in power_set(#INT)
-    do
-    sum(affd.rank, for xi@j in affd.fundamental_weights
-		   do -floor(g[j])*xi od) +
-    sum(affd.rank,for j in S do affd.fundamental_weights[INT[j]] od)
-    od
-
 { enumerate sums of roots to be added to gamma to land in FPP }
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     let g=for av in Affd.simple_coroots do av*gamma od,
@@ -691,53 +673,12 @@ set FPPtauRootsE8(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
 	 	  fi
 	 od
 
-
-{.Computes translation part of affine Weyl group element moving gamma
-to the fundamental alcove.}
-{Goal is to subtract roots until gamma lands in
-
-W*A0 = set where gamma1 is at most one on every coroot.
-
-Precisely,
-
-gamma - TAU(gamma) is in W*(fundamental alcove).
-
-Uses mostly integer arithmetic.
-
-First loop, over all fundamental coweights, makes all the simple root
-coordinates of gamma smaller than 1.
-
-Second loop, over all coroots, reduces the largest pairing of gamma
-with a coroot betavee (number d-m0-1) by subtracting an appropriate
-integer multiple of beta (which puts the pairing with betavee in
-[-1,1], but may leave other coroots bigger) until the maximum is at
-most 1.}
-set tauRoots(RootDatum rd,ratvec gamma) = vec:
-    let COROOTS = rd.coroots, ROOTS = rd.roots, gamma0NUM=gamma.numer,
-	DENOM = gamma.denom, m0= 0, q0=0 then d=#COROOTS
-    in
-    if d!=0
-    then for xiv@j in rd.fundamental_coweights
-    do
-    let (num,den) = (xiv.numer, xiv.denom)
-    in
-    gamma0NUM := (gamma0NUM -
-    ( ( ( num*gamma0NUM )\(DENOM*den))*DENOM*den)*rd.simple_roots[j])
-    od;
-    while (m0:=max_loc(for j:d do COROOTS[d-j-1]*gamma0NUM od);
-	  (q0:= COROOTS[d-m0-1]*gamma0NUM; q0 > DENOM))
-    do
-    gamma0NUM:= gamma0NUM - ceil(q0/(2*DENOM))*DENOM*ROOTS[d-m0-1]
-    od
-    fi;
-    (gamma-gamma0NUM/DENOM).ratvec_as_vec
-
 { Computes INVERSE OF a (nonunique) aff Weyl gp elt wtilde moving
 gamma to the fundamental alcove, and the (unique) image of gamma in that
 fundamental alcove, trying to do integer arithmetic. }
 set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
     (AffineCoWeylElt,ratvec):
-    let tau = tauRoots(rd,gamma)
+    let tau = alcove_root_vertex(rd,gamma)
     then (w,gamma0TIMESDEN) = from_dominant(rd,gamma.numer - gamma.denom*tau)
     in
     {assert (gamma=w*gamma0 + tau,"Bad affine!");}
@@ -1067,7 +1008,7 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
 	     od.##
      	 od.##.no_reps
 
-{quite slow, but now not used}
+{quite slow}
 set no_reps([BigFacetVerts] BFVs) = [BigFacetVerts]:
     if #BFVs = 0 then []
     else let n = #(BFVs[0].vertIndex)
