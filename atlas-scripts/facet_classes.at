@@ -93,8 +93,8 @@ set up_graph_gens(FacetDataKchar FDK) = [[int]]:
 	  do let j0 = lookup(delete(Find.verts,e))
 	  in if j0.>=
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     { ; prints(index(FDK, d-1,j0),"  ",d," ",j1," ",j0, " "
-		,edge_gens[Levels[d-1]+j0]) }
+	     { ; prints(index(d-1,j0),"  ",d," ",j1," ",j0, " "
+		,edge_gens[index(d-1,j0)])}
 	     ; if Pols[d][j1] = Pols[d-1][j0]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi

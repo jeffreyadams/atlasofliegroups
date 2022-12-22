@@ -101,6 +101,10 @@ set new_to_ht = true
 of long calculations }
 set facet_verbose = false
 
+{ for facets of codim > facet_codim, use shifted char formula to
+improve memory use }
+set facet_codim = int: -1
+
 {. if assigned to 'true' then induction only records unitary reps of
 Levis .}
 set only_unitary = false
@@ -292,13 +296,19 @@ set_type FacetBary = ratvec
 (held elsewhere)}
 set_type FacetVertsIndex = vec { of length k+1 for k-dimensional facet }
 
+set_type BigFacetVerts = (vec vertIndex, ratvec bary, vec bup, vec bdown)
+
 {DON'T need INUC and Ps in FDKPO}
 set_type
 [ FacetStatusVertsIndex = (string status, FacetVertsIndex verts)
+, BigFacetStatusVertsIndex = (string status, BigFacetVerts bfverts)
 , VertexData = ([ratvec] list, (ratvec->int) lookup)
 , FacetData = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds)
-, FacetDataKchar = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds
-  , [[KTypePol]] Kchars)
+, BigFacetData = (VertexData v_data
+,   [[BigFacetStatusVertsIndex]] big_facet_status_inds)
+, FacetDataKchar = (VertexData v_data
+,   [[FacetStatusVertsIndex]] facet_status_inds
+,   [[KTypePol]] Kchars)
 , FacetDataOldKchar = (VertexData v_data, [[FacetStatusVertsIndex]]
   facet_status_inds, [[ratvec]] old_barys, [[KTypePol]] Kchars)
 , FacetDataKcharPO = (VertexData v_data, [[FacetStatusVertsIndex]] facet_status_inds
@@ -582,28 +592,6 @@ set FPtau(SimpleAffine affd, ratvec gamma) = [ratvec]:
     od
 
 { enumerate sums of roots to be added to gamma to land in FPP }
-set FPPtauRoots_old(SimpleAffine Affd, ratvec gamma) = [vec]:
-    let g=for av in Affd.simple_coroots do av*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od
-    in
-    for S in power_set(#INT)
-    do
-    let tau = sum(Affd.rank, for xi@j in Affd.fundamental_weights
-	      do -floor(g[j])*xi od) +
-	   sum(Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od)
-    in
-    if(all(
-	for xiv in Affd.fundamental_coweights
-	do is_integer(xiv*tau) od))
-    then [ratvec_as_vec(tau)]
-    else []
-    fi
-    od.##
-
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     let g=for av in Affd.simple_coroots do av*gamma od,
     	FW = Affd.fundamental_weights,
@@ -625,60 +613,6 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
     	in if d=1 then [w] else [] fi
      od.##
 
-{this version gives too many unless G is adjoint and simply connected; but it's
-three times faster}
-set FPPtauRoots3(SimpleAffine Affd, ratvec gamma) = [vec]:
-    let g=for av in Affd.simple_coroots do av*gamma od,
-    	FW = Affd.fundamental_weights
-    then INT = [int]: for j:#Affd.simple_coroots
-	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od.##
-    in
-    for S in power_set(INT)
-    do let (tau,d) = %( sum(Affd.rank,
-			for xi@j in FW
-	      		do -floor(g[j])*xi
-			od) +
-	   	sum(Affd.rank,for k in S do FW[k] od))
-	in if d=1 then [tau] else [] fi
-    od.##
-
-{ same thing, with (perhaps) one simple root j0 for which FPP takes values in
-[0,2] on coroot j0. So need to use values -floor(g[j0]),
--floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
-g[j0] is an integer. }
-set FPPtauRoots_old(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
-    let g=for betav in Affd.simple_coroots do betav*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-	 do
-	 if is_integer(g[j]) and j!=j0 then [j] else []
-	 fi
-	 od {) ##(if j0 >= 0 then [j0] else [] fi)}
-    in
-    let tau0 = sum(Affd.rank, for xi@j in Affd.fundamental_weights
-	      do -floor(g[j])*xi od)
-    then taus = for S in power_set(#INT)
-	 do tau0+ sum(
-	    Affd.rank,for j in S do Affd.fundamental_weights[INT[j]] od
-		     )
-	 od
-    then () = if j0 >=0 and not is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-	      elif j0 >=0 and is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-		   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
-	      fi
-    in
-    for tau in taus do
-	if(all(
-	for xiv in Affd.fundamental_coweights do is_integer(xiv*tau) od))
-	then [ratvec_as_vec(tau)]
-	else []
-    fi
-    od.##
-
 { same thing, with (perhaps) one simple root j0 for which FPP takes values in
 [0,2] on coroot j0. So need to use values -floor(g[j0]),
 -floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
@@ -697,11 +631,8 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 	    Affd.rank,for j in S do Affd.fundamental_weights[j] od
 		     )
 	 od
-    then () = if j0 >=0 and not is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-	      elif j0 >=0 and is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-		   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
+    then () = if j0 >=0
+    	      then taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
 	      fi
     in
     for tau in taus do
@@ -734,11 +665,8 @@ set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 	    Affd.rank,for j in S do Affd.fundamental_weights[j] od
 		     )
 	 od
-    then () = if j0 >=0 and not is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-	      elif j0 >=0 and is_integer(g[j0]) then
-	 taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
-		   ## for tau in taus do tau+2*Affd.fundamental_weights[j0] od
+    then () = if j0 >=0
+    	      then taus:=taus## for tau in taus do tau+Affd.fundamental_weights[j0] od
 	      fi
      in for tau in taus
      	do let (tau0,d) = %tau
@@ -747,24 +675,6 @@ set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 
 { same thing, with NO j0 and root lattice equal weight lattice: G2,
 F4, and E8. FW is fundamental weights.}
-
-set FPPtauRootsE8_old(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
-    let g=for betav in Affd.simple_coroots do betav*gamma od
-    then INT = ##for j:#Affd.simple_coroots
-	 do
-	 if is_integer(g[j]) then [j] else []
-	 fi
-	 od
-    in
-    let tau0 = sum(for v@j in FW do -floor(g[j])*v od)
-    in for S in power_set(INT)
-	 do tau0+ if #S = 0
-	    	  then null(Affd.rank)
-	 	  else sum(for j in S do FW[j] od)
-	 	  fi
-	 od
-
-{FW is fundamental weights}
 set FPPtauRootsE8(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
     let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
     then INT = ##for j:#Affd.simple_coroots
@@ -773,7 +683,7 @@ set FPPtauRootsE8(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
 	 fi
 	 od
     in
-    let tau0 = -FW*flr 
+    let tau0 = -FW*flr
     in for S in power_set(INT)
 	 do tau0+ if #S = 0
 	    	  then null(Affd.rank)
@@ -800,7 +710,7 @@ coordinates of gamma smaller than 1.
 Second loop, over all coroots, reduces the largest pairing of gamma
 with a coroot betavee (number d-m0-1) by subtracting an appropriate
 integer multiple of beta (which puts the pairing with betavee in
-[-1,1], but may leave other coroots bigger) unti the maximum is at
+[-1,1], but may leave other coroots bigger) until the maximum is at
 most 1.}
 set tauRoots(RootDatum rd,ratvec gamma) = vec:
     let COROOTS = rd.coroots, ROOTS = rd.roots, gamma0NUM=gamma.numer,
@@ -833,28 +743,6 @@ set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
     {assert (gamma=w*gamma0 + tau,"Bad affine!");}
     ((tau,w),gamma0TIMESDEN/gamma.denom)
 
-{this translates a parameter by an integrally dominant weight to one
-with integrality datum like that of a point in the fundamental alcove}
-set fundamental_move(Param p) = Param:
-    let gamma = p.infinitesimal_character, G=p.real_form
-    then () = assert(is_dominant(G,gamma),
-    	 "oops, non-dominant infinitesimal character")
-    then ((tau,w),gamma0) = from_fundamental_alcove(G,gamma)
-        then twowrho =  w*two_rho(G)
-        in first_param(finalize(parameter(p.x, p.lambda + twowrho - tau, p.nu +
-       				 twowrho -tau))) 
-
-{given dominant infinitesimal character gamma, finds new
-infinitesimal character gamma0+two_rho (with gamma0 in fundamental
-alcove) which is W-conj to the integrally dom regular weight gamma+tau}
-
-set small_translate(RootDatum rd, ratvec gamma) = vec:
-    let ((tau0,w0),gamma0) = from_fundamental_alcove(rd,gamma)
-    then ird = integrality_datum(rd,gamma)
-    then (,gamma1) = from_dominant(ird,gamma - tau0 + w0*two_rho(rd))
-    {maybe gamma1 = gamma - tau0 + w0*two_rho automatically??}
-    in ratvec_as_vec(gamma1 - gamma)
-
 {.restored from 3/30/22 version for use in computing bigger facets with
 same unitarity status.}
 set facet (SimpleAffine Affd, ratvec gamma) = Facet:
@@ -867,7 +755,8 @@ set facet (SimpleAffine Affd, ratvec gamma) = Facet:
 set facet_bary([ratvec] vert_list, FacetVertsIndex facet) = FacetBary:
     sum(#vert_list[0], for v in facet do vert_list[v] od)/(#facet)
 
-{ this uses is_perturbed to test for certain whether the signature at the big facet deforms correctly to the small one }
+{ this uses is_perturbed to test for certain whether the signature at
+the big facet deforms correctly to the small one }
 set updateSing(RealForm G, FacetData (vd, StInd),
 {[[FacetBary]] FBs,} FacetStatusVertsIndex small) =
     [[FacetStatusVertsIndex]]:
@@ -939,7 +828,8 @@ set updateSingClosure(RealForm G, FacetData (vd, StInd),
     od
     in StInd
 
-{.computes the collection of vertex sets of alcoves containing gamma in their closures.}
+{.computes the collection of vertex sets of alcoves containing gamma
+in their closures.}
 set openure(SimpleAffine Affd, ratvec gamma) = [FacetVerts]:
     let rdI = integrality_datum(Affd, gamma), FVS = facets_fundamental(Affd, Affd.ss_rank)[0]
     then (fromFund,) = (AffineCoWeylElt,ratvec): from_fundamental_alcove(Affd,gamma)
@@ -1075,24 +965,6 @@ set W_fund_barycenters_mod_R(SimpleAffine Affd, int d) = [FacetBary]:
 {.this includes all vertex sets of facets in the fundamental
 parallelepiped, each exactly once. j0 is possible label of a simple
 coroot that can be up to 2 on FPP}
-set FPP_vertices_old(SimpleAffine Affd, int j0) = [ratvec]:
-    if facet_verbose then prints("start FPP_vertices.")
-    fi;
-    for gamma in W_fund_verticesID(Affd)
-    do
-    for tau in FPPtauRoots_old(Affd,gamma,j0)
-	do gamma+tau od
-    od.##
-
-set FPP_vertices_new(SimpleAffine Affd, int j) = [ratvec]:
-    if facet_verbose then prints("start FPP_vertices.")
-    fi;
-    for gamma in W_fund_vertices_mod_R(Affd)
-    do
-    for tau in FPPtauRoots(Affd,gamma,j)
-	do gamma+tau od
-    od.##
-
 set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
     if facet_verbose then prints("start FPP_vertices.")
     fi;
@@ -1103,7 +975,7 @@ set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
     od.##.no_reps
 
 set FPP_verticesE8(SimpleAffine Affd) = [ratvec]:
-    if facet_verbose then prints("start FPP_vertices.")
+    if facet_verbose then prints("start FPP_verticesE8.")
     fi;
     let FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
     in 
@@ -1112,23 +984,6 @@ set FPP_verticesE8(SimpleAffine Affd) = [ratvec]:
     for tau in FPPtauRootsE8(Affd,FW,gamma)
 	do gamma+tau od.##
     od
-
-set FPP_barycenters_new(SimpleAffine Affd, int j) = [[FacetBary]]:
-    if facet_verbose then prints("start FPP_barycenters.")
-    fi;
-    let WBs = W_fund_barycenters_mod_R(Affd)
-    in
-    for d:Affd.aff_rank
-    do
-    if facet_verbose
-    then prints("start dim ",d," in FPP_barycenters.")
-    fi;
-    for gamma in WBs[d]
-	do
-	for tau in FPPtauRoots(Affd,gamma,j)
-	    do gamma+tau od
-	od.##
-     od
 
 set FPP_barycenters(SimpleAffine Affd, int j) = [[FacetBary]]:
     if facet_verbose then prints("start FPP_barycenters.")
@@ -1148,7 +1003,7 @@ set FPP_barycenters(SimpleAffine Affd, int j) = [[FacetBary]]:
      od
 
 set FPP_barycentersE8(SimpleAffine Affd) = [[FacetBary]]:
-    if facet_verbose then prints("start FPP_barycenters.")
+    if facet_verbose then prints("start FPP_barycentersE8.")
     fi;
     let WBs = W_fund_barycenters_mod_R(Affd),
     FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
@@ -1164,28 +1019,6 @@ set FPP_barycentersE8(SimpleAffine Affd) = [[FacetBary]]:
 	    do gamma+tau od
 	od.##
      od
-
-set FPP_barycenters_old(SimpleAffine Affd, int d, int j) = [FacetBary]:
-    if facet_verbose then prints("start dim ",d, " in FPP_barycenters(Affd,d).")
-    fi;
-    let WBsd = W_fund_barycentersID(Affd, d)
-    in
-    for gamma in WBsd
-	do
-	for tau in FPPtauRoots(Affd,gamma,j)
-	    do gamma+tau od
-	od.##
-
-set FPP_barycenters_new(SimpleAffine Affd, int d, int j) = [FacetBary]:
-    if facet_verbose then prints("start dim ",d, " in FPP_barycenters(Affd,d).")
-    fi;
-    let WBsd = W_fund_barycenters_mod_R(Affd, d)
-    in
-    for gamma in WBsd
-	do
-	for tau in FPPtauRoots(Affd,gamma, j)
-	    do gamma+tau od
-	od.##
 
 set FPP_barycenters(SimpleAffine Affd, int d, int j) = [FacetBary]:
     if facet_verbose then prints("start dim ",d,
@@ -1212,90 +1045,15 @@ set FPP_barycentersE8(SimpleAffine Affd, int d) = [FacetBary]:
 	    do gamma+tau od
 	od.##
 
-set FPP_vertex_data_old (SimpleAffine Affd, int j) = VertexData:
-   (Affd,j).FPP_vertices_old.to_vertex_data
-
-set FPP_vertex_data_new (SimpleAffine Affd, int j) = VertexData:
-   FPP_vertices_new(Affd,j).to_vertex_data
-
 set FPP_vertex_data (SimpleAffine Affd, int j) = VertexData:
    FPP_vertices(Affd,j).to_vertex_data
-
-set FPP_facets_old (SimpleAffine Affd, VertexData vd, int dim, int j) =
-    [FacetVertsIndex]:
-    let facets = [FacetVerts]: facets_fundamental(Affd,dim)
-    then ()= if facet_verbose
-    	       then prints("start dim ",dim, " in FPP_facets_old") fi
-    in for FV in facets
-       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
-       	  then bary_orbit_int_dom = [FacetBary]:
-	     for wFBn in Weyl_orbit(Affd,bary_F.numer)
-	     do let wFB = wFBn/bary_F.denom
-	       	in if is_integrally_dominant(Affd,wFB) then [wFB] else [] fi
-	     od.##
-	  in [FacetVertsIndex]:
-	     for wFB in bary_orbit_int_dom
-       	     do let (w,) = from_dominant(Affd,wFB)
-	     	in for tau in FPPtauRoots_old(Affd,wFB,j)
-	     	   do FacetVertsIndex:
-	      	      for v in (AffineCoWeylElt:(tau,w))*FV
-		      do vd.lookup(v)
-		      od.sort
-	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
-	     od.##
-     	 od.##
-
-set FPP_facets_new(SimpleAffine Affd, VertexData vd, int dim, int j) =
-    [FacetVertsIndex]:
-    let facets = [FacetVerts]: facets_fundamental(Affd,dim)
-    then ()= if facet_verbose
-    	       then prints("start dim ",dim, " in FPP_facets_new") fi
-    in for FV in facets
-       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
-       	  then bary_orbit_mod_R = [FacetBary]:
-	     for w in affine_orbit_ws(Affd,bary_F)
-	     do w*bary_F
-	     od
-	  in [FacetVertsIndex]:
-	     for wFB in bary_orbit_mod_R
-       	     do let (w,) = from_dominant(Affd,wFB)
-	     	in for tau in FPPtauRoots(Affd,wFB,j)
-	     	   do FacetVertsIndex:
-	      	      for v in (AffineCoWeylElt:(tau,w))*FV
-		      do vd.lookup(v)
-		      od.sort
-	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
-	     od.##
-     	 od.##
-
-set FPP_facets_new2(SimpleAffine Affd, VertexData vd, int dim, int j) =
-    [FacetVertsIndex]:
-    let facets = [FacetVerts]: facets_fundamental(Affd,dim)
-    then ()= if facet_verbose
-    	       then prints("start dim ",dim, " in FPP_facets_new2") fi
-    in for FV in facets
-       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
-       	  then bary_orbit_mod_R = [FacetBary]:
-	     for w in affine_orbit_ws(Affd,bary_F)
-	     do w*bary_F
-	     od
-	  in [FacetVertsIndex]:
-	     for wFB in bary_orbit_mod_R
-       	     do let (w,) = from_dominant(Affd,wFB)
-	     	in for tau in FPPtauRootsFast(Affd,wFB,j)
-	     	   do FacetVertsIndex:
-		      for v in (AffineCoWeylElt:(tau,w))*FV
-		      do vd.lookup(v)
-		      od.sort
-	      	   od { type is [FacetVertsIndex], remains for next 2 lines }
-	     od.##
-     	 od.##.no_reps
 
 set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
     [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
     then ()= if facet_verbose
-    then prints("start dim ",dim, " in FPP_facets") fi
+    	     then prints("start dim ",dim, " in FPP_facets")
+	     fi
     in for FV in facets
        do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	  in [FacetVertsIndex]:
@@ -1309,26 +1067,78 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
 	     od.##
      	 od.##.no_reps
 
-{works only for simply connected adjoint}
-set FPP_facetsE8_old(SimpleAffine Affd, VertexData vd, int dim) =
-    [FacetVertsIndex]:
-    let facets = [FacetVerts]: facets_fundamental(Affd,dim),
-    FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
-    then ()= if facet_verbose
-    then prints("start dim ",dim, " in FPP_facetsE8") fi
-    in for FV in facets
-       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
-	  in [FacetVertsIndex]:
-	     for w in affine_orbit_ws(Affd,bary_F)
-	     do for tau in FPPtauRootsE8_old(Affd,FW,w*bary_F)
-	     	do FacetVertsIndex:
-		      for v in (AffineCoWeylElt:(tau,w))*FV
-		      do vd.lookup(v)
-		      od.sort
-	      	od { type is [FacetVertsIndex], remains for next 2 lines}
-	     od.##
-     	 od.##
+{quite slow, but now not used}
+set no_reps([BigFacetVerts] BFVs) = [BigFacetVerts]:
+    if #BFVs = 0 then []
+    else let n = #(BFVs[0].vertIndex)
+    	 then R = null(n,0)
+	 then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+       	 then x0 = KGB(G,0)
+	 then P = K_type_pol(null_module(G))
+       	 then () = for BFV@j in BFVs
+	      do let mu = K_type(x0,BFV.vertIndex)
+	      	 in if(P[mu]=0) then P+:=(1+j)*mu fi
+	      od
+	 in for c@p in P do BFVs[int_part(c)-1] od
+    fi
 
+{Avoid FPPtauRootsFast to avoid need for no_reps??}
+set FPP_facets_big(SimpleAffine Affd, VertexData vd, int dim, int j) =
+    [BigFacetVerts]:
+    let () = if facet_verbose
+    	     then prints("start dim ",dim, " in FPP_facets_big")
+	     fi
+    then facets = [FacetVerts]: facets_fundamental(Affd,dim)
+    in [BigFacetVerts]:
+       for FV in facets
+       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+       	  then irdw = integrality_datum(Affd,bary_F)
+	  in [BigFacetVerts]:
+	     for w in affine_orbit_ws(Affd,bary_F)
+	     do let wbF = w*bary_F, iw = inverse(w)
+	     	then (x3,) = from_dominant(irdw, iw*Affd.two_rho)
+	     	in for tau in FPPtauRootsFast(Affd,wbF, j)
+	     	   do let wbeta0 = -tau + w*Affd.two_rho
+		      then gamma2 = wbF + w*Affd.two_rho
+		      then bup =  wbeta0 + ratvec_as_vec(w*(x3*(iw*gamma2)) -
+		      	       	  	   			gamma2)
+		      in BigFacetVerts:
+		      (for v in (AffineCoWeylElt:(tau,w))*FV
+		      do vd.lookup(v)
+		      od.sort, w*bary_F + tau, bup,
+		      	       -inverse(x3)*(iw*bup))
+	      	   od { type is [BigFacetVerts], remains for next two lines}
+	     od.##
+     	od.##.no_reps
+
+{calculates characters of all barycenters of FPP facets of dimension
+dim, using nice shift}
+set testShift(RealForm G, int dim) = [ParamPol]:
+    let vd = FPP_vertex_data(G,-1)
+    in [ParamPol]:
+    if G.semisimple_rank - dim > facet_codim
+    then
+       for (,v,bup,bdown) in FPP_facets_big(G,vd,dim,-1)
+       do let p = parameter(x_open(G),G.rho+bup,v+bup)
+       	  in translate_param_by(character_formula(1*p),bdown)
+       od
+    else
+       for (,v,,) in FPP_facets_big(G,vd,dim,-1)
+       do let p = parameter(x_open(G),G.rho,v)
+       	  in character_formula(1*p)
+       od
+    fi
+
+{calculates characters of all barycenters of FPP facets of dimension
+dim, using character_formula}
+set testOld(RealForm G, int dim) = [ParamPol]:
+    let vd = FPP_vertex_data(G,-1)
+    in [ParamPol]:
+       for v in FPP_barycenters(G,dim,-1)
+       do character_formula(1*parameter(x_open(G),G.rho,v))
+       od
+
+{works only for simply connected adjoint}
 set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
     [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim),
@@ -1337,7 +1147,7 @@ set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
     then prints("start dim ",dim, " in FPP_facetsE8") fi
     in [FacetVertsIndex]: for FV in facets
        do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
-	  in [FacetVertsIndex]:
+ 	  in [FacetVertsIndex]:
 	     for w in affine_orbit_ws(Affd,bary_F)
 	     do for tau in FPPtauRootsE8(Affd,FW,w*bary_F)
 	     	do FacetVertsIndex:
@@ -1348,17 +1158,35 @@ set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
 	     od.##
      	 od.##
 
-set FPP_facets_old(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
-    FPP_facets_old(Affd, FPP_vertex_data_old(Affd,j), dim, j)
-
-set FPP_facets_new(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
-    FPP_facets_new(Affd, FPP_vertex_data_new(Affd,j), dim, j)
-
-set FPP_facets(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
-    FPP_facets(Affd, FPP_vertex_data(Affd,j), dim, j)
-
-set FPP_facetsE8_old(SimpleAffine Affd, int dim, int j) = [FacetVertsIndex]:
-    FPP_facetsE8_old(Affd, FPP_vertex_data(Affd,j), dim)
+{works only for simply connected adjoint}
+set FPP_facets_bigE8(SimpleAffine Affd, VertexData vd, int dim) =
+    [BigFacetVerts]:
+    let () = if facet_verbose
+    	     then prints("start dim ",dim, " in FPP_facets_bigE8")
+	     fi
+    then facets = [FacetVerts]: facets_fundamental(Affd,dim),
+    FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
+    in [BigFacetVerts]:
+       for FV in facets
+       do let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+       	  then irdw = integrality_datum(Affd,bary_F)
+	  in [BigFacetVerts]:
+	     for w in affine_orbit_ws(Affd,bary_F)
+	     do let wbF = w*bary_F, iw = inverse(w)
+	     	then (x3,) = from_dominant(irdw, iw*Affd.two_rho)
+	     	in for tau in FPPtauRootsE8(Affd,FW,wbF)
+	     	   do let wbeta0 = -tau + w*Affd.two_rho
+		      then gamma2 = wbF + w*Affd.two_rho
+		      then bup =  wbeta0 + ratvec_as_vec(w*(x3*(iw*gamma2)) -
+		      	       	  	   			gamma2)
+		      in BigFacetVerts:
+		      (for v in (AffineCoWeylElt:(tau,w))*FV
+		      do vd.lookup(v)
+		      od.sort, w*bary_F + tau, bup,
+		      	       -inverse(x3)*(iw*bup))
+	      	   od { type is [BigFacetVerts], and remains for next two lines}
+	     od.##
+     	od.##
 
 set FPP_facetsE8(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
     FPP_facetsE8(Affd, FPP_vertex_data(Affd,-1), dim)
@@ -1367,39 +1195,10 @@ set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
     [FacetVertsIndex]:
     FPP_facets(Affd, to_vertex_data(vlist), dim, j)
 
-set FPP_facetsE8_old(SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
-    [FacetVertsIndex]:
-    FPP_facetsE8_old(Affd, to_vertex_data(vlist), dim)
-
 set FPP_facetsE8(SimpleAffine Affd, [ratvec] vlist, int dim) =
     [FacetVertsIndex]:
     FPP_facetsE8(Affd, to_vertex_data(vlist), dim)
 
-set FPP_facets_old (SimpleAffine Affd, VertexData vd, int j) =
-    [[FacetVertsIndex]]:
-   let facets = [[FacetVerts]]: facets_fundamental(Affd)
-   in ([FacetVertsIndex]:
-      for @k in vd.list
-      do [k]
-      od) { singleton indices } #
-      for dim: Affd.semisimple_rank from 1
-      do {if facet_verbose then prints("start dim ",dim, " in FPP_facets_old") fi
-      ;} FPP_facets_old(Affd, vd, dim, j)
-      od
-
-set FPP_facets_new (SimpleAffine Affd, VertexData vd, int j) =
-    [[FacetVertsIndex]]:
-   let facets = [[FacetVerts]]: facets_fundamental(Affd)
-   in ([FacetVertsIndex]:
-      for @j in vd.list
-      do [j]
-      od) { singleton indices } #
-      for dim: Affd.semisimple_rank from 1
-      do {if facet_verbose then prints("start dim ",dim, " in FPP_facets_new") fi
-      ;} FPP_facets(Affd, vd, dim, j)
-      od
-
-{tests OK, 30% faster than old or new}
 set FPP_facets (SimpleAffine Affd, VertexData vd, int j) = [[FacetVertsIndex]]:
    let facets = [[FacetVerts]]: facets_fundamental(Affd)
    in ([FacetVertsIndex]:
@@ -1408,16 +1207,6 @@ set FPP_facets (SimpleAffine Affd, VertexData vd, int j) = [[FacetVertsIndex]]:
       od) { singleton indices } #
       for dim: Affd.semisimple_rank from 1
       do FPP_facets(Affd, vd, dim, j)
-      od
-
-set FPP_facetsE8_old(SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
-   let facets = [[FacetVerts]]: facets_fundamental(Affd)
-   in ([FacetVertsIndex]:
-      for @j in vd.list
-      do [j]
-      od) { singleton indices } #
-      for dim: Affd.semisimple_rank from 1
-      do FPP_facetsE8_old(Affd, vd, dim)
       od
 
 set FPP_facetsE8 (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
@@ -1430,10 +1219,12 @@ set FPP_facetsE8 (SimpleAffine Affd, VertexData vd) = [[FacetVertsIndex]]:
       do [FacetVertsIndex]: FPP_facetsE8(Affd, vd, dim)
       od
 
-set facet_data_new(SimpleAffine Affd, int j) = FacetData:
-   let vd = FPP_vertex_data(Affd,j)
-   then facets_indexed = FPP_facets_new(Affd,vd,j)
-in (vd,for L in facets_indexed do for v in L do ("?",v) od od)
+set FPP_facets_bigE8 (SimpleAffine Affd, VertexData vd) = [[BigFacetVerts]]:
+   let facets = [[FacetVerts]]: facets_fundamental(Affd)
+   in [[BigFacetVerts]]: 
+      for dim: Affd.semisimple_rank + 1
+      do [BigFacetVerts]: FPP_facets_bigE8(Affd, vd, dim)
+      od
 
 set facet_data(SimpleAffine Affd, int j) = FacetData:
    let vd = FPP_vertex_data(Affd,j)
@@ -1458,40 +1249,6 @@ set statuses_to_facets(RealForm G, FacetDataKcharPO(vd, FDind, Pols, eq, gr,
     in (vd, for d:#FDind do FDindOne[N:N+#FDind[d]] next N+:= #FDind[d]
     			od)
 
-{extra argument is a possible simple coroot allowed to be 2 on FPP;
-use -1 if there's none}
-set facet_data_fold_old(SimpleAffine Affd, mat M, int j0) =
-    FacetData:
-(   let vertex_dataFold = FPP_vertex_data(Affd,j0)
-    , fundVerts = facets_fundamental(Affd)
-    then vertex_listG = for v in vertex_dataFold.list do M*v od
-    then vertex_dataG = vertex_listG.to_vertex_data
-    then N= [(string,vec)]: for @j in vertex_dataFold.list do ("?",[j]) od
-    in
-    ( vertex_dataG
-    , [[(string,vec)]]:
-      N #
-      for d: Affd.semisimple_rank from 1
-      do  for FV in fundVerts[d]
-	  do  let FB = FacetBary: barycenter(FV)
-	      then WBsID= [FacetBary]:
-		  for wFBn in Weyl_orbit(Affd,FB.numer)
-		  do  let wFB = wFBn/FB.denom
-		  in  if is_integrally_dominant(Affd,wFB) then [wFB] else [] fi
-		  od.##
-	  in  [FacetStatusVertsIndex]:
-	      for wFB in WBsID
-	      do  let (w,) = from_dominant(Affd,wFB)
-	      in  [(string, vec)]:
-		  for tau in FPPtauRoots(Affd,wFB,j0)
- 		  do ("?", vec: facet_indices(vertex_dataFold.lookup, (tau,w)*FV))
-		  od
-	      od.##{ now type [string,vec] }
-	  od.##
-      od
-    )
-)
-
 {extra argument j0 is a possible simple coroot allowed to be 2 on FPP;
 use -1 if there's none}
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
@@ -1513,6 +1270,26 @@ set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
     )
 )
 
+{extra argument j0 is a possible simple coroot allowed to be 2 on FPP;
+use -1 if there's none}
+set facet_data_fold_big(SimpleAffine Affd, mat M, int j0) =
+    BigFacetData:
+(   let vertex_dataFold = FPP_vertex_data(Affd,j0)
+    then vertex_listG = for v in vertex_dataFold.list do M*v od
+    then vertex_dataG = vertex_listG.to_vertex_data
+{    then N= [(string,vec)]: for @j in vertex_dataFold.list do ("?",[j]) od }
+    in
+    ( vertex_dataG
+    , [[BigFacetStatusVertsIndex]]:
+      for d: Affd.semisimple_rank+1
+      do  {now need d-diml facets}
+      	   for (v,bary,bup,bdown) in FPP_facets_big(Affd,vertex_dataFold,d,j0)
+      	   do ("?",(v,M*bary,M*bup,M*bdown))
+      	   od
+      od
+    )
+)
+
 set facet_data_foldE8(RealForm G) = FacetData:
 (   let vertex_dataG = FPP_vertex_data(G,-1)
     then N= [(string,vec)]: for @j in vertex_dataG.list do ("?",[j]) od
@@ -1529,8 +1306,16 @@ set facet_data_foldE8(RealForm G) = FacetData:
     )
 )
 
-set facet_data_fold_old(RealForm G) = FacetData:
-    facet_data_fold_old(cofolded(G))
+set facet_data_fold_bigE8(RealForm G) = BigFacetData:
+(   let vertex_dataG = FPP_vertex_data(G,-1)
+    in (vertex_dataG,
+       for d: G.semisimple_rank+1
+       do  for v in FPP_facets_bigE8(G,vertex_dataG,d)
+      	   do ("?",v)
+      	   od
+       od
+    )
+)
 
 set facet_data_fold(RealForm G) = FacetData:
     if is_adjoint(G) and is_simply_connected(G) and is_equal_rank(G)
@@ -1538,40 +1323,11 @@ set facet_data_fold(RealForm G) = FacetData:
     else facet_data_fold(cofolded(G))
     fi
 
-{This computes only OPEN facets. Extra argument is a possible simple
-coroot allowed to be 2 on FPP}
-set facet_data_fold_open_old(SimpleAffine Affd, mat M, int j0) =
-(VertexData, [FacetStatusVertsIndex]):
-(   let vertex_dataFold = FPP_vertex_data(Affd,j0)
-    , fundVerts = facets_fundamental(Affd)
-    then vertex_listG = for v in vertex_dataFold.list do M*v od
-    then vertex_dataG = vertex_listG.to_vertex_data
-    then d = Affd.semisimple_rank
-    in
-    ( vertex_dataG
-    , [(string,vec)]:
-      if facet_verbose
-	  then prints("start facet_data_fold_open_old")
-	  fi
-      ;
-	  for FV in fundVerts[d]
-	  do  let FB = FacetBary: barycenter(FV)
-	      then WBsID= [FacetBary]:
-		  for wFBn in Weyl_orbit(Affd,FB.numer)
-		  do  let wFB = wFBn/FB.denom
-		  in  if is_integrally_dominant(Affd,wFB) then [wFB] else [] fi
-		  od.##
-	  in  [FacetStatusVertsIndex]:
-	      for wFB in WBsID
-	      do  let (w,) = from_dominant(Affd,wFB)
-	      in  [(string, vec)]:
-		  for tau in FPPtauRoots(Affd,wFB,j0)
- 		  do ("?", vec: facet_indices(vertex_dataFold.lookup, (tau,w)*FV))
-		  od
-	      od.##{ now type [string,vec] }
-	  od.##
-    )
-)
+set facet_data_fold_big(RealForm G) = BigFacetData:
+    if is_adjoint(G) and is_simply_connected(G) and is_equal_rank(G)
+    then facet_data_fold_bigE8(G) 
+    else  facet_data_fold_big(cofolded(G))
+    fi
 
 {This computes only OPEN facets. Extra argument is a possible simple
 coroot allowed to be 2 on FPP}
@@ -1606,10 +1362,6 @@ set facet_data_fold_open(SimpleAffine Affd, mat M, int j0) =
 	  od.##
     )
 )
-
-set facet_data_fold_open_old(RealForm G) = (VertexData, [FacetStatusVertsIndex]):
-    facet_data_fold_open_old(cofolded(G))
-
 
 set facet_data_fold_open(RealForm G) = (VertexData, [FacetStatusVertsIndex]):
     facet_data_fold_open(cofolded(G))
@@ -2488,6 +2240,109 @@ set actualizeKPO \
     in (vdAct, FDAct, polsAct, eq, gr, IUCL, classListByFacet, statuses)
 )
 
+set actualizeKPO_big \
+  ( KGBElt x, ratvec lambda
+  , BigFacetData (vertex_data, BigFPPstInd)) = FacetDataKcharPO:
+(   if facet_verbose
+    then prints("start actualizeKPO_big")
+    fi;
+    let vlist = vertex_data.list
+    then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
+    then vlistActRep = [ratvec]: { LIST CAN HAVE REPETITIONS IN U(3,3) }
+	for v@i in vlist
+	do  let j = Perm[i] in
+	    if   j = i then [v]
+	    elif j > i then [ (v + vlist[j])/2]
+	    else []
+	    fi
+	od.##
+    then vlistAct = no_reps(vlistActRep)
+    then lookup = index_in(vlistAct)
+    then mapAct = [int]: {maps old vertex indices to actualized indices}
+        for v@i in vlist
+	 do  let j = Perm[i] in
+	     if   j = i then lookup(v)
+	     elif j > i then lookup((v+vlist[j])/2)
+	     else            minus_1
+	     fi
+	 od
+    then BFSVIAct = [[BigFacetStatusVertsIndex]]:
+        for @j in BigFPPstInd do [BigFacetStatusVertsIndex]: [] od
+    then () = for BFSVId@d in BigFPPstInd
+    do  if facet_verbose
+        then prints("examining ", #BFSVId, " facets of dim ",d,
+	       " in construction of actualized facet list")
+	fi
+        ; for (status,(v,FB,bup,bdown))@i in BFSVId
+	  do  let vtheta = for i in v do if Perm[i] < 0 then break
+	    	 	      	     	else Perm[i]
+					fi od
+	      then vAct = vec:
+	       	    if is_subset(v,vtheta)
+		        then for i in v
+		    	     do if mapAct[i] >= 0 then [mapAct[i]] else [] fi
+		    	     od.##.sort {this list may not have been sorted}
+	            else []
+		    fi
+	      then () = if #vAct > 0
+	      	      	then let p = parameter(x,lambda, FB)
+			     {add functionality of "pick" here}
+	     	  	     { then let FB = facet_bary(vlistAct, vAct)
+			     then p = parameter(x,lambda, FB) }
+		    	     in if {is_final(p) and} is_hermitian(p)
+			     	   and p.infinitesimal_character = FB
+		    	   	then let BFSV = BigFacetStatusVertsIndex:
+				(status, (vAct, FB,(#(is_final(p)))*bup,
+				 (#(is_final(p)))*bdown ))
+				     in BFSVIAct[#vAct - 1] :=
+			   (BFSVIAct[#vAct -1] next BFSVIAct[#vAct -1]:=[])
+			   # BFSV
+			   { translation doesn't work on non-final params }
+				fi
+		  	fi
+	      in ()
+	od
+    od
+    then dAct = last(for j:#BFSVIAct do #BFSVIAct[j] > 0 od)
+    then polsAct = for j:dAct+1
+    	 	   do if facet_verbose then prints("start to compute ",
+		      #BFSVIAct[j], " Kchars in dim ",j)
+    		      fi
+    		      ; if x.root_datum.semisimple_rank - j > facet_codim
+    	 	      	then for (,(,FB,bup,bdown)) in BFSVIAct[j]
+    	 		     do let P0 = character_formula(
+			     	    1*parameter(x, lambda,FB)),
+				    P1 = translate_param_by(character_formula(
+	    			       1*parameter(x,lambda+bup,FB+bup)),bdown)
+				 in if P0 !=P1 then prints("bad bary ",FB,
+				    " bup =  ",bup, " bdown = ",bdown) fi;
+				    K_type_pol(P1)
+				{ K_type_pol(
+			     	translate_param_by(character_formula(
+	    			1*parameter(x,lambda+bup,FB+bup)),bdown)) }
+			     od
+			else for (,(,FB,,)) in BFSVIAct[j]
+    	 		     do K_type_pol(character_formula(
+	    			1*parameter(x,lambda,FB)))
+			     od
+			fi
+		    od
+    then vdAct = vlistAct.to_vertex_data,
+    	 FDAct = [[FacetStatusVertsIndex]]:
+	       	 for j:dAct+1
+	       	 do for (status, bfv) in BFSVIAct[j]
+		    do (status,bfv.vertIndex)
+		    od
+		 od
+    then FDK = (vdAct, FDAct, polsAct)
+    next if facet_verbose then prints("start to compute facet graph") fi
+    then (eq,gr) = GraphData: up_data(FDK)
+    then classListByFacet = [vec]: class_lists(FDK,(eq,gr))
+    	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
+    then statuses = for C in eq do "?" od
+    in (vdAct, FDAct, polsAct, eq, gr, IUCL, classListByFacet, statuses)
+)
+
 {Find the parameter with "smallest nu" in equivalence class m.}
 {turns out to be nearly useless; better just to use first elt in each equiv class}
 set shortest_param(KGBElt x, ratvec lambda, int m, [ratvec] vlistAct,
@@ -2660,7 +2515,7 @@ set actualize_oldK \
         if facet_verbose then prints("start to compute ", #FSVIAct[j],
        " Kchars in dim ",j)
     fi
-    ; for stFind in FSVIAct[j] 
+    ; for stFind in FSVIAct[j]
     	 do K_type_pol(character_formula( finalize(parameter(
 	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1], OldBary[:dAct+1], polsAct)
@@ -3156,10 +3011,18 @@ set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
     then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
     in spherical_testKPO(G,FDKPO, tester)
 
+ {for now just return the class statuses}
+set spherical_testKPO_big(RealForm G, (Param -> bool) tester) = [string]:
+    { let (rd,M,j0) = cofolded(G) }
+    let dataFoldBig = facet_data_fold_big(G) { (rd,M,j0) }
+    then FDKPO = actualizeKPO_big(x_open(G), G.rho, dataFoldBig)
+    then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
+    in spherical_testKPO(G,FDKPO, tester)
+
 set spherical_testKPO_LONG(RealForm G, (Param -> bool) tester) =
     FacetDataKcharPO:
-    let dataFold = facet_data_fold(G) { (rd,M,j0) }
-    then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
+    let dataFold = facet_data_fold_big(G) { (rd,M,j0) }
+    then FDKPO = actualizeKPO_big(x_open(G), G.rho, dataFold)
     then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
     then () = FDKPO.class_status :=
     	 spherical_testKPO(G, FDKPO, tester)
@@ -3178,6 +3041,10 @@ set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
 {for now just return the class statuses}
 set sphericalKPO(RealForm G) = [string]:
     spherical_testKPO(G,default_tester@Param)
+
+{for now just return the class statuses}
+set sphericalKPO_big(RealForm G) = [string]:
+    spherical_testKPO_big(G,default_tester@Param)
 
 {return like sphericalK}
 set sphericalKPO_long(RealForm G) = FacetData:
@@ -3621,19 +3488,19 @@ set facet_statusu_regPO(RealForm G, FacetDataOldKcharPO(vd,FPPQuo, OldBarys,
     in statuses
     {(vd,FPPQuo, Pols, eq, INUCL, IUCL,  classListByFacet, statuses, Ps)}
 
-set facet_statusu_reg(RealForm G) = FacetDataKchar:
+{ set facet_statusu_reg(RealForm G) = FacetDataKchar:
     let data = facet_data_fold(G)
     then (vdata, dataAct, OldBarys, Pols) =
     	 actualize_oldK(x_open(G), G.rho, data)
     then (vdata, dataActu) = facet_statusu(G, (vdata, dataAct))
-    in facet_statusu_reg(G,(vdata, dataAct, OldBarys, Pols))
+    in facet_statusu_reg(G,(vdata, dataAct, OldBarys, Pols))}
 
 {collects unipotent data, then induced data, in prep for unitarity testing}
 set facet_statusu_regPO(RealForm G) = FacetDataKcharPO:
     let data = facet_data_fold(G)
-    then (vdata, dataAct, OldBarys, Pols, eq, gr, IUCL, CLBF, statuses) =
-    	 actualize_oldKPO(x_open(G), G.rho, data)
-    then FDKoldPO = FacetDataOldKcharPO: (vdata, dataAct, OldBarys, Pols, eq, gr, IUCL, CLBF, statuses)
+    then (vdata, dataAct, Pols, eq, gr, IUCL, CLBF, statuses) =
+    	 actualizeKPO(x_open(G), G.rho, data)
+    then FDKoldPO = FacetDataOldKcharPO: (vdata, dataAct, [[ratvec]]: [[]], Pols, eq, gr, IUCL, CLBF, statuses)
     , FDKPO = FacetDataKcharPO: (vdata, dataAct, Pols, eq, gr, IUCL, CLBF, statuses)
     then () = FDKPO.class_status := facet_statusu_regPO(G,FDKoldPO)
     in FDKPO
@@ -3649,17 +3516,17 @@ set spherical_ind(RealForm G) = FacetData:
     in spherical(G, dataIndInd)
 
 {.same as spherical using induced info.}
-set spherical_reg(RealForm G) = FacetData:
+{ set spherical_reg(RealForm G) = FacetData:
     let dataReg = facet_statusu_reg(G)
-    in sphericalK(G, dataReg)
+    in sphericalK(G, dataReg)}
 
 set spherical_regPO(RealForm G) = [string]:
     let dataRegPO = facet_statusu_regPO(G)
     in spherical_testKPO(G, dataRegPO, default_tester@Param)
 
-set spherical_reg_test(RealForm G, (Param->bool) tester) = FacetData:
+{set spherical_reg_test(RealForm G, (Param->bool) tester) = FacetData:
     let dataReg = facet_statusu_reg(G)
-    in spherical_testK(G, dataReg, tester)
+    in spherical_testK(G, dataReg, tester)}
 
 set spherical_reg_testPO(RealForm G, (Param->bool) tester) = [string]:
     let dataRegPO = facet_statusu_regPO(G)
