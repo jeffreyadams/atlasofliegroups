@@ -1,5 +1,6 @@
 <basic.at
 
+
 {extracts (sub)ratvec of elements between two fixed integers, x and y}
 
 set extract([ratvec] vertices, vec functional, int x, int y) = [ratvec]:
@@ -70,6 +71,5 @@ clean(##(chop_small(V,f),chop_big(V,f))) fi
 set chop_coroots(RootDatum G, [ratvec] vertices, int N) = [[ratvec]]:
 let C=poscoroots(G), output = [[ratvec]]:[vertices] in
 for c in C do output:=##(for region in output do chop(region,c,N) od) od; output
-
 
 
