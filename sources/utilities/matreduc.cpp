@@ -424,7 +424,7 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
   return b;
 }
 
- // instantiations
+// instantiations
 
 using Num = arithmetic::Numer_t;
 

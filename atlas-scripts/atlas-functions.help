@@ -1181,8 +1181,8 @@ walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
   their evaluation is integral on some face of the alcove, and increases towards
   the interior of the alcove). The coroots non integral at gamma (a final part
   of the list) are sorted by decreasing "label" with respect to alcove (which is
-  an integer k such that the maximal factional part of the evaluation within the
-  alcove is 1/k) which is a useful property for generating, modulo translations,
+  an integer k such that within the alcove, the maximal fractional part of the
+  evaluation is 1/k); a useful property for generating, modulo translations,
   the affine Weyl group orbit of the facet containing gamma ('affine_orbit_ws').
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
@@ -1191,6 +1191,11 @@ alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   and for the remaining walls spread out the fractional parts of the coroot
   evaluations evenly, in the fashion of an isobarycenter. This adaptation
   should ensure the change is fixed under -p.x.involution in all cases.
+alcove_root_vertex: (RootDatum,ratvec->vec) Nearby root lattice element
+  For given rational weight gamma there is a unique vector v in the root lattice
+  such that no coroot evaluation at v-gamma is more than 1 in absolute value, and
+  if exactly 1 then +1 iff the coroot is positive. This v is the unique vertex
+  in the root lattice of the alcove of 'walls'. This function returns that v.
 
 basic_orbit_ws: (RootDatum,[int],int->[WeylElt]): subquotient of (pseudo-)Levis
 affine_orbit_ws: (RootDatum,ratvec->[WeylElt]): W image of affine quotient

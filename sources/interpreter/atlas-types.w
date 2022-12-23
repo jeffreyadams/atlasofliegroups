@@ -1021,7 +1021,7 @@ generated for clients that need it.
 class root_datum_value : public value_base
 { struct token@+{}; // type passed to prove caller has private access;
   static root_datum_entry::Pooltype pool;
-  static HashTable<root_datum_entry,unsigned short> hash;
+  static HashTable<root_datum_entry,unsigned int> hash;
   static std::vector<root_datum_weak_ptr> store;
   mutable simple_list<std::pair<const WeightInvolution,inner_class_weak_ptr> >
     classes;
@@ -1048,7 +1048,7 @@ directly; |store| starts out empty.
 
 @< Global variable definitions @>=
 root_datum_entry::Pooltype root_datum_value::pool;
-HashTable<root_datum_entry,unsigned short> @| root_datum_value::hash
+HashTable<root_datum_entry,unsigned int> @| root_datum_value::hash
   (root_datum_value::pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
@@ -1898,6 +1898,25 @@ void alcove_center_wrapper(expression_base::level l)
     (p->rf,weyl::alcove_center(p->rc(),p->val)));
 }
 
+@ One interesting property of alcoves is that (projected to the rational span of
+the root system) they have exactly one vertex that is in the root lattice.
+@< Local function definitions @>=
+void alcove_root_vertex_wrapper (expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (gamma->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "Rational weight size mismatch: "
+      << gamma->val.size() << ':' << rd->val.rank();
+    throw runtime_error(o.str());
+  }
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<vector_value> @|
+    (weyl::root_vertex_of_alcove(rd->val,gamma->val)));
+}
+
 @ Here are more general and more efficient functions for orbit generation, in
 fact enumerating quotients of pseudo-Levi subgroups.
 
@@ -2089,6 +2108,8 @@ install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
+install_function(alcove_root_vertex_wrapper@|,"alcove_root_vertex",
+		"(RootDatum,ratvec->vec)");
 install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 		"(RootDatum,[int],int->[WeylElt])");
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
