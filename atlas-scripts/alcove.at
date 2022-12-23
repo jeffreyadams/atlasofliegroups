@@ -226,3 +226,15 @@ set is_in_root_lattice(RootDatum rd, ratvec gamma) = bool:
    for i: rd.semisimple_rank
    do if !=(fundamental_coweight(rd,i)*gamma)%1 then return false fi
    od; return true
+
+{ root-lattice translation of |w(f. alcove)| into f. parallelepipedum, if any }
+set for_FPP (WeylElt w) = maybe_a_vec:
+   let rd = w.root_datum
+   then vertices = [ratvec]: alcove_vertices(rd,null(rd.rank))
+   then bary = sum(rd.rank,vertices)/(#vertices)
+   then wb = w*bary
+   then sc_coords = for i:rd.semisimple_rank do coroot(rd,i)*wb od
+   then sc_shift = vec: sc_coords\1 { fundamental weight sum shift }
+   , (inv_Cartan,d) = invert(^Cartan_matrix(rd))
+   then adj_shift = inv_Cartan*sc_shift
+in if = adj_shift%d then solution(adj_shift\d) else no_vec() fi
