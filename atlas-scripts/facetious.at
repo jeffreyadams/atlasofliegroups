@@ -643,7 +643,7 @@ set FPPtauRootsFast(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
     in
     let tau0 = -Affd.fundamental_weights*flr
     then taus = for S in power_set(INT)
-	 do tau0+ sum(
+	 do tau0 + sum(
 	    Affd.rank,for j in S do Affd.fundamental_weights[j] od
 		     )
 	 od
@@ -664,14 +664,12 @@ set FPPtauRootsE8(SimpleAffine Affd, [vec] FW, ratvec gamma) = [vec]:
 	 if (flr[j]:= floor(g[j]))=g[j] then [j] else []
 	 fi
 	 od
-    in
-    let tau0 = -FW*flr
+    then tau0 = -FW*flr
     in for S in power_set(INT)
-	 do tau0+ if #S = 0
-	    	  then null(Affd.rank)
-	 	  else sum(for j in S do FW[j] od)
-	 	  fi
-	 od
+       do if #S=0 then tau0
+       	  else tau0+ sum(for j in S do FW[j] od)
+	  fi
+       od
 
 { Computes INVERSE OF a (nonunique) aff Weyl gp elt wtilde moving
 gamma to the fundamental alcove, and the (unique) image of gamma in that
@@ -919,12 +917,12 @@ set FPP_verticesE8(SimpleAffine Affd) = [ratvec]:
     if facet_verbose then prints("start FPP_verticesE8.")
     fi;
     let FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
-    in 
+    in
     for gamma in W_fund_vertices_mod_R(Affd)
     do
     for tau in FPPtauRootsE8(Affd,FW,gamma)
-	do gamma+tau od.##
-    od
+	do gamma+tau od
+    od.##
 
 set FPP_barycenters(SimpleAffine Affd, int j) = [[FacetBary]]:
     if facet_verbose then prints("start FPP_barycenters.")
@@ -1136,7 +1134,7 @@ set FPP_facets_bigE8(SimpleAffine Affd, VertexData vd, int dim) =
      	od.##
 
 set FPP_facetsE8(SimpleAffine Affd, int dim) = [FacetVertsIndex]:
-    FPP_facetsE8(Affd, FPP_vertex_data(Affd,-1), dim)
+    FPP_facetsE8(Affd, FPP_verticesE8(Affd).to_vertex_data, dim)
 
 set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim, int j) =
     [FacetVertsIndex]:
