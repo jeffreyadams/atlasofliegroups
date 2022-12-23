@@ -1013,14 +1013,20 @@ set no_reps([BigFacetVerts] BFVs) = [BigFacetVerts]:
     if #BFVs = 0 then []
     else let n = #(BFVs[0].vertIndex)
     	 then R = null(n,0)
+    	 { then R = null(n+1,0), zero = ratvec: null(1)/1,
+	      theta = -diagonal(ones(n)##[-1])}
 	 then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
        	 then x0 = KGB(G,0)
-	 then P = K_type_pol(null_module(G))
-       	 then () = for BFV@j in BFVs
-	      do let mu = K_type(x0,BFV.vertIndex)
-	      	 in if(P[mu]=0) then P+:=(1+j)*mu fi
-	      od
-	 in for c@p in P do BFVs[int_part(c)-1] od
+	 then P = KTypePol: sum (G, for BFV@j in BFVs
+	      	  	    	 do 1*K_type(x0,BFV.vertIndex) od)
+	 then M = [KType]: monomials(P)
+	 then Q = KTypePol: sum (G, for mu@j in M do (j+1)*mu od)
+	 then value = BFVs[:#M]
+	 then () = for BFV in BFVs
+	      	   do value[int_part(Q[K_type(x0,BFV.vertIndex)]) -1] := BFV
+	      	   od
+	 in {prints("orig size = ",#BFVs,", no_reps size = ",#value);}
+	 value
     fi
 
 {Avoid FPPtauRootsFast to avoid need for no_reps??}
