@@ -63,7 +63,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
 
 
 set recursive_deform (Param p, mat delta) = ParamPol:
-  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
+  assert(is_final(p) and is_fixed(p,delta),"improper parameter");
   let G=p.real_form then !empty=G.null_module in
   ( rec_fun full_def (Split sc,Param p) ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }

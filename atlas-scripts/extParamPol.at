@@ -18,7 +18,7 @@ set *(Split s,ExtParamPol(P_plus,P_minus,P_ind))= ExtParamPol:
 
 set extParamPol (ExtParam E) = ExtParamPol:
   let p=parameter(E) then N=null_module(real_form(p)) then F=N+p in
-  if not is_fixed(E.ic.distinguished_involution,p) then (N,N,F)
+  if not is_fixed(p,E.ic.distinguished_involution) then (N,N,F)
   elif sign(E)=1 then (F,N,N)
   else (N,F,N)
   fi
@@ -166,17 +166,17 @@ set deform (ExtParam E, mat delta) = ExtParamPol:
 
 {P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
 set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
-assert(is_fixed(delta,P),"P is not delta-fixed");
+assert(is_fixed(P,delta),"P is not delta-fixed");
 let monomials=[Param]:[] in
 for c@p in P do
- let f=find(monomials,twist(delta,p)) in
+ let f=find(monomials,twist(p,delta)) in
   if f=-1 then prints("p=",p);monomials#:=p fi
 od;
 null_module(P.real_form) + for p in monomials do P[p]*p od
 
 set fixed_terms(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in 
- for c@p in P do if is_fixed(delta,p) then rv+:=c*p fi od;
+ for c@p in P do if is_fixed(p,delta) then rv+:=c*p fi od;
 rv
 
 set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
@@ -186,7 +186,7 @@ let plus=null_module(P.real_form) then
 minus=null_module(P.real_form) then
 ind=null_module(P.real_form) then
 ()=for c@p in P do
- if is_fixed(delta,p) then
+ if is_fixed(p,delta) then
   plus+:=int_part(c)*p;
   minus+:=s_part(c)*p
  else
@@ -206,7 +206,7 @@ set convert_to_param_pol(ExtParamPol E)=ParamPol:
 let (P,Q,R)=E in P-Q
 
 set finalize_extended_s(Param p, mat delta)=ParamPol:
-if is_fixed(delta,p) then
+if is_fixed(p,delta) then
  finalize_extended(p,delta) + non_fixed_terms(finalize(p),delta)
 else
  (1+s)*fixed_terms(finalize(p),delta) + non_fixed_terms(finalize(p),delta)
@@ -244,7 +244,7 @@ set change_nu (Param p, rat factor, int type) = ExtParamPol:
  {although p is not delta-fixed, it may be when nu is varied, this
   is always the case if factor=0
   then replace (N,N,q) with (q,q,N)}
-  in if is_fixed(delta,q) then rv:=(q,q,N) else rv:=(N,N,q) fi
+  in if is_fixed(q,delta) then rv:=(q,q,N) else rv:=(N,N,q) fi
   else
      let P=finalize_extended(p*factor,delta)
   in for c@q in P
@@ -261,7 +261,7 @@ set % (ExtParamPol(P_plus,P_minus,P_ind)) = [(Split,Param,int)]:
 )
 
 set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
-{  assert(is_fixed(delta,p), "Parameter is not fixed");}
+{  assert(is_fixed(p,delta), "Parameter is not fixed");}
    let G=real_form(p)
    then empty=null_ext_module(G), N=null_module(G)
 in if ed_verbose { choose verbose or non-verbose version of the function }
@@ -276,7 +276,7 @@ in if ed_verbose { choose verbose or non-verbose version of the function }
       ;  let at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
 	 for factor in reducibility_points(p)
 	~do let (pf,flipped) = { next deformation }
-	       if is_fixed(delta,p)
+	       if is_fixed(p,delta)
 	       then scale_extended(p,delta,factor)
 	       else (p*factor,false)
 	       fi
@@ -298,7 +298,7 @@ in if ed_verbose { choose verbose or non-verbose version of the function }
          let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
          for factor in reducibility_points(p)
         ~do let (pf,flipped) =  { next deformation }
-               if is_fixed(delta,p)
+               if is_fixed(p,delta)
                then scale_extended(p,delta,factor)
                else (p*factor,false)
                fi
@@ -627,10 +627,10 @@ set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus
 set extended_s_to_1(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in 
  for c@p in P do 
-  if is_fixed(delta,p) 
+  if is_fixed(p,delta) 
    then rv+:=c*p 
   else 
-   rv+:=c*(p + twist(delta,p))
+   rv+:=c*(p + twist(p,delta))
   fi
  od;
 rv.s_to_1
@@ -642,5 +642,5 @@ let (P,Q,R)=E then
 rv=null_module(P.real_form) in
  for c@p in P do rv+:=c*p od;
  for c@p in Q do rv+:=-c*p od;
- for c@p in R do rv+:=-c*(p+twist(xi,p)) od;
+ for c@p in R do rv+:=-c*(p+twist(p,xi)) od;
 rv
