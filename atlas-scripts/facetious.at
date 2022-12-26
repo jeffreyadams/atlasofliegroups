@@ -2255,16 +2255,9 @@ set actualizeKPO_big \
     		      fi
     		      ; if x.root_datum.semisimple_rank - j > facet_codim
     	 	      	then for (,(,FB,bup,bdown)) in BFSVIAct[j]
-    	 		     do let P0 = character_formula(
-			     	    1*parameter(x, lambda,FB)),
-				    P1 = translate_param_by(character_formula(
-	    			       1*parameter(x,lambda+bup,FB+bup)),bdown)
-				 in if P0 !=P1 then prints("bad bary ",FB,
-				    " bup =  ",bup, " bdown = ",bdown) fi;
-				    K_type_pol(P1)
-				{ K_type_pol(
-			     	translate_param_by(character_formula(
-	    			1*parameter(x,lambda+bup,FB+bup)),bdown)) }
+    	 		     do K_type_pol(translate_param_by(
+			     	character_formula(1*parameter(x,
+				lambda+bup,FB+bup)),bdown))
 			     od
 			else for (,(,FB,,)) in BFSVIAct[j]
     	 		     do K_type_pol(character_formula(
