@@ -1,4 +1,7 @@
 <coordinates.at
+<K_norm.at
+<hermitian.at
+
 set G=G2_s
 set my_simple_roots=mat:[[1,-1,0],[-1,2,-1]]
 

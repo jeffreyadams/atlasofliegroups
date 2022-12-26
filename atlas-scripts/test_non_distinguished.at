@@ -1,0 +1,303 @@
+<basic.at {for sum([ParamPol])}
+<parabolics.at {for KGPElt, etc.}
+<induction.at {for induction functors}
+<Levi_subgroups.at {for standard_Levi_conjugacy_representatives}
+<all.at
+
+{find standard Levi in G dual to Bala Cart Levi of dual orbit}
+set G_Levi(ComplexNilpotent O_v)=
+let G_v=O_v.root_datum then
+G=dual(G_v) then 
+L_v=Bala_Carter_Levi(O_v) then
+(L_v_std,)=standard_Levi_and_witness(G_v,L_v) in
+for alpha in L_v_std.simple_roots do find(G_v.simple_roots,alpha) od
+
+{return ([int]: simple roots of Levi L, ComplexNilpotent O_L)}
+set Bala_Carter_pair(ComplexNilpotent O)=([int],ComplexNilpotent):
+let (S,H)=Bala_Carter_Levi_plus(O) {S=simple roots of Levi} then
+ L=Levi_datum(O.root_datum,S) then
+ O_L=complex_nilpotent(L,H) in
+ (S,O_L)
+
+
+
+
+{This is meant to compute (at least the induced parameters in) a weak
+Arthur packet attached to a nilpotent O^vee for G^vee which is
+PRINCIPAL in a Levi L^vee.}
+
+{computes half the GK-dimension of a minimal primitive ideal of
+infinitesimal character gamma}
+set min_GK_dim(RootDatum rd, ratvec gamma) = int:
+    let gamma_dom = dominant(rd,gamma)
+    then rdI = integrality_datum(rd,gamma_dom)
+    then rdIdual = rdI.dual
+    then CTIdual = character_table(rdIdual)
+    then singrootsdual = [int]:
+    	 for alpha@j in rdIdual.simple_roots
+	 do if gamma_dom*alpha = 0 then [j] else [] fi
+	 od.##
+    then sigmadual = truncate_induce_sign(CTIdual,singrootsdual)
+    in #rd.posroots -
+       	generic_degree(CTIdual)(tensor_sign_index(CTIdual)(sigmadual))
+
+{. List all finite-dimensional characters of Levi with given
+  infinitesimal character .}
+set all_fin_dim_params_gamma (ratvec infchar, Parabolic P)=[Param]:
+   let L=Levi(P)
+   then n=#KGB(L), rL = L.semisimple_rank
+   then x=KGB(L,n-1)
+   then list=all_parameters_x_gamma(x,infchar)
+   in for p in list
+      do if #tau(p) = rL
+      	 then [p]
+	 else []
+	 fi od.##
+
+{. List all representations of Levi with given
+  infinitesimal character and minimal GK dimension.}
+set all_min_params_gamma (ratvec infchar, RealForm L)=[Param]:
+   let rd = L.root_datum
+   then d = min_GK_dim(L,infchar),
+   nonsingroots = for alphav@j in integrality_datum(rd,infchar).simple_coroots
+   	       do if infchar*alphav != 0 then [j] else [] fi
+	       od.##
+   then list=all_parameters_gamma(L,infchar)
+   in for p in list
+      do if tau(p) = nonsingroots and GK_dim(p) = d
+      	 then [p]
+	 else []
+	 fi od.##
+
+{Here's how these parameters for L are recorded on G}
+set one_dims (Parabolic P)=[Param]:
+   let x=maximal(P)
+   then infchar = x.real_form.rho {this is rho(Levi) + rho(u)}
+   then shift = P.rho_u
+   in for p in all_fin_dim_params_gamma(infchar,P)
+      do  parameter(x,lambda(p) -  shift, nu(p) - shift) od
+
+{Here's how the minimal parameters for L are recorded on G}
+set all_min_params_gamma(ratvec gamma, Parabolic P) = [Param]:
+    let shift = P.rho_u, G=P.real_form
+    in for pL in all_min_params_gamma(gamma,P.Levi)
+       do let xG = KGB_elt(G,pL.x.involution,pL.x.torus_factor)
+       	  in parameter(xG, lambda(pL) - shift, nu(pL) - shift)
+       od
+
+{this is the induced-from-one-dimensional on the Levi
+ having infl char rho(L)}
+set induced_from_triv_params (Parabolic P) = ParamPol:
+   let list=one_dims(P), G=P.real_form, (A,) = P
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
+
+set unip_params_from_princ_in_Levi([int] A, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in sum(G, for P in paras do induced_from_triv_params(P) od)
+
+{this is the induced-from-minimal on the Levi}
+set induced_from_min_params (ratvec gamma, Parabolic P) = ParamPol:
+   let list=all_min_params_gamma(gamma,P), G=P.real_form, (A,) = P
+   in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
+
+{now add over all real forms of P}
+set unip_params_from_Levi_old(ratvec gamma, [int] A, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
+
+set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=ParamPol:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
+
+set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in for P_real in paras do (P_real,induced_from_min_params(gamma, P_real)) od
+
+{returns: [ (P_real,orbit for L_v, induced ParamPol) ]}
+set unip_params_from_Levi([int] A, RealForm G)=
+let PA=ComplexParabolic:(G,A) then
+LA = PA.Levi, shiftA = PA.rho_u then
+OAvs = distinguished_nilpotent_orbits(LA.dual) then
+gammaAs = for OAv in OAvs do OAv.H/2 od in
+##for OAv@j in OAvs do
+ for (P_real,ind) in unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
+ do  (P_real,OAv,ind)
+od
+od
+
+{returns: [ (P_real,orbit for L_v, induced ParamPol) ]}
+set unip_params_from_dual_orbit(ComplexNilpotent O_v,RealForm G)=[(KGPElt,ComplexNilpotent,ParamPol)]:
+let L_roots=G_Levi(O_v) then
+all=unip_params_from_Levi(L_roots,G) then
+gamma=O_v.H/2 in
+##for (P,O_v,pol) in  all do
+ if #pol>0 and infinitesimal_character(pol)=gamma then [(P,O_v,pol)] else [] fi od
+
+{extract params from unip_params_from_dual_orbit}
+set params([(KGPElt,ComplexNilpotent,ParamPol)] data)=[Param]:
+let list=
+ for (,,P) in data do P od
+in if #list=0 then [] else
+monomials(list[0] + for i:#list-1 from 1 do list[i] od)
+fi
+
+{returns: [(dual orbit, [ (P_real,orbit for L_v, induced ParamPol) ] ) ] }
+set unip_params_from_all_dual_orbits(RealForm G)=[(ComplexNilpotent,[(KGPElt,ComplexNilpotent,ParamPol)])]:
+for orbit in dual_orbits(G) do (orbit,unip_params_from_dual_orbit(orbit,G)) od
+
+
+{extract params from unip_params_from_all_dual_orbits}
+set params([(ComplexNilpotent,[(KGPElt,ComplexNilpotent,ParamPol)])] data)=[Param]:
+let list=##
+ for (O_v,d) in data do
+  for (,,P) in d do
+   P od
+  od
+in if #list=0 then [] else
+monomials(list[0] + for i:#list-1 from 1 do list[i] od)
+fi
+
+set show([(KGPElt,ComplexNilpotent,ParamPol)] data)=void:
+tabulate(
+["L_v-orbit","#params#","L(R)"]#
+for (Q,O_L_v,P) in data do
+[O_L_v.diagram.to_string,(#P).to_string,(Q.Levi).to_string] od)
+
+set show([(ComplexNilpotent,[(KGPElt,ComplexNilpotent,ParamPol)])] data)=void:
+tabulate(
+["L_v-orbit","#params#","L(R)"]#
+##for (O_v,d) in data do
+for (Q,O_L_v,P) in d do
+[O_L_v.diagram.to_string,(#P).to_string,(Q.Levi).to_string] od od);
+tabulate(
+["O_v","#params"]#
+for (O_v,d) in data do
+[O_v.diagram.to_string,(#params(d)).to_string] od)
+
+set show([(ComplexNilpotent,[(KGPElt,ComplexNilpotent,ParamPol)])] data,[([([Param],[WCell])],[(int,int,Param)])] wp)=void:
+tabulate(
+["L_v-orbit","#params#","L(R)"]#
+##for (O_v,d) in data do
+for (Q,O_L_v,P) in d do
+[O_L_v.diagram.to_string,(#P).to_string,(Q.Levi).to_string] od od);
+tabulate(
+["O_v","BC","ind","unip"]#
+for (O_v,d)@i in data do
+[O_v.diagram.to_string,
+Bala_Carter_Levi(O_v).nice_format,
+(#params(d)).to_string,
+let (,c)=wp[i] in (#c).to_string]
+ od)
+
+set test_ind(RealForm G)=
+prints("computing induction of unipotents");
+let data=unip_params_from_all_dual_orbits(G) then
+()= prints("computing weak packets") then
+wp=weak_packets(G) in
+show(data,wp);
+(data,wp)
+
+{
+set induced_unip_params(ComplexNilpotent O_v,RealForm G)=
+let all=unip_params_from_Levi(G_Levi(O_v),G) then
+gamma=O_v.H/2 in
+##for (LA,p in all do if p.infinitesimal_character=gamma then [p] else [] fi od
+
+set induced_unip_params(RealForm G)=
+for orbit in dual_orbits(G) do (orbit,induced_unip_params(orbit,G)) od
+}
+{Counts unipotent parameters found by induction for each dual
+nilpotent principal in some Levi}
+{set test_non_distinguished(RealForm G) = void:
+    let LeviClasses = standard_Levi_conjugacy_representatives(G)
+    in for A in LeviClasses
+       do prints("Levi ",A," with ",#unip_params_from_princ_in_Levi(A,G),
+    	     	    " unipotent parameters.")
+       od
+}
+{
+
+{tests for each unipotent O^vee in the dual group, with Bala-Carter
+Levi L^vee, what unipotent reps arise by induction from L.  Output of
+this command should be compared to show_short(weak_packets(G). The
+numbers here are guaranteed to be less than or equal, and
+conjecturally equal.}
+set test_all(RealForm G) =
+    let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
+    then Gd=dual(G) 
+    then rv=[([int],[Param])]:[] 
+    in for A in LeviClasses
+       do let PA=ComplexParabolic: (G,A)
+	  then LA = PA.Levi, shiftA = PA.rho_u
+	  then OAvs = distinguished_nilpotent_orbits(LA.dual)
+	  then gammaAs = for OAv in OAvs do OAv.H/2 od
+	  in for OAv@j in OAvs
+	     do let params=unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
+	        then NA=#params
+		then G_dual_orbit=saturate(OAv,Gd)
+		in prints("Levi ",A," dual unip ", OAv.H,"dual orbit: ", G_dual_orbit.diagram,\
+		           ",infinitesimal character: ",params.infinitesimal_character,	 " with ",\
+			   NA, " unipotent parameters");
+		   N:=N+NA;
+		   rv#:=(A,monomials(params))
+	     od
+       od;
+       prints();
+       prints("Found total of ",N, " unipotent parameters.");rv
+
+set non_distinguished(RealForm G,ComplexNilpotent O_v)=
+    let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
+    then Gd=dual(G)
+    then rv=[([int],ComplexNilpotent,[Param])]:[]
+    in for A in LeviClasses
+       do let PA=ComplexParabolic: (G,A)
+	  then LA = PA.Levi, shiftA = PA.rho_u
+	  then OAvs = distinguished_nilpotent_orbits(LA.dual)
+	  then gammaAs = for OAv in OAvs do OAv.H/2 od
+	  in for OAv@j in OAvs
+	     do let G_dual_orbit=saturate(OAv,Gd) in
+	     if G_dual_orbit=O_v then
+	        let ()=prints("found O_v with L=", LA, " O_L_v: ", OAv.diagram) then
+		params=unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
+	        then NA=#params
+		in prints("Levi ",A," dual unip",\
+		           OAv.H,"dual orbit: ", G_dual_orbit.diagram,",\
+			   infinitesimal character: ",params.infinitesimal_character,\
+			   " with ",NA, " unipotent parameters");
+		   N:=N+NA;
+		   rv#:=(A,OAv,monomials(params))
+	     fi
+	     od
+       od;
+       prints();
+       prints("Found total of ",N, " unipotent parameters.");rv
+
+set non_distinguished(RealForm G)= [(ComplexNilpotent,[([int],ComplexNilpotent,[Param])])]:
+for orbit in dual_orbits(G) do (orbit, non_distinguished(G,orbit)) od
+
+set params( [(ComplexNilpotent,[([int],ComplexNilpotent,[Param])])] data)=[Param]:
+remove_duplicates(##for (,x) in data do
+ let (,,list)=x[0] in list
+od)
+
+set show([(ComplexNilpotent,[([int],ComplexNilpotent,[Param])])] data)=void:
+tabulate(
+["dual orbit","Levi","O_L_v,","number"]#
+##for (orbit_G_v,triples) in data do
+ for (levi,O_L_v,params) in triples do
+  [orbit_G_v.diagram.to_string,levi.to_string,O_L_v.diagram.to_string,(#params).to_string]
+ od
+od)
+
+set show([(ComplexNilpotent,[([int],ComplexNilpotent,[Param])])] data,[([([Param],[WCell])],[(int,int,Param)])] wp)=void:
+let G=parameters(wp)[0].real_form in 
+tabulate(
+["i","O^v","Levi", "Levi","O_L^v,","number","#wp","bc"]#
+##for (orbit_G_v,triples)@i in data do
+ for (levi,O_L_v,params) in triples do
+  [i.to_string,orbit_G_v.diagram.to_string,levi.to_string,complex_Levi(dual(G),levi).nice_format,
+O_L_v.diagram.to_string,(#params).to_string,let (,c)=wp[i] in (#c).to_string,Bala_Carter_Levi(orbit_G_v).nice_format]
+ od
+od)
+
+}
