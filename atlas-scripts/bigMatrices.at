@@ -8,7 +8,7 @@
 }
 
 set fixed_subset ([Param] B,mat delta) = [Param]:
-  ## for p in B do if is_fixed(delta,p) then [p] else [] fi od
+  ## for p in B do if is_fixed(p,delta) then [p] else [] fi od
 
 set indices_subset ([Param] subset,  [Param] whole) = [int]:
 { if both sets were ordered, we could do:
@@ -20,7 +20,7 @@ set indices_subset ([Param] subset,  [Param] whole) = [int]:
 { extract one index from each delta-orbit }
 set delta_orbit_reps ([Param] B,mat delta) = [int]:
 ## for p@i in B
-   do let q=twist(delta,p) in
+   do let q=twist(p,delta) in
       if p=q then [i]
       else let j=find(B,q)  in
 {     assert(j>=0, "Block not fixed by delta"); }
@@ -34,7 +34,7 @@ set delta_orbit_reps ([Param] B,mat delta) = [int]:
 }
 set complete_indices ([Param] B,mat delta) = [(int,int)]:
 ## for p@i in B
-   do let q=twist(delta,p) in
+   do let q=twist(p,delta) in
       if p=q then [(i,1),(i,-1)]
       elif i<find(B,q) then [(i,0)]
       else []
@@ -80,7 +80,7 @@ set tabulate_indices ([Param] B,mat delta) = ([int],[int],[(int,int)], [int]):
   ;  (I_delta
      ,g
      ,complete_indices(B,delta)
-     ,for p in B do find(B,twist(delta,p)) od
+     ,for p in B do find(B,twist(p,delta)) od
      )
   fi
 

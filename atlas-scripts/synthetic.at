@@ -183,7 +183,7 @@ set != ((KGBElt_gen,KGBElt_gen)p) = bool: not =p
 set *(mat delta,KGBElt_gen(ic,theta,t)) = KGBElt_gen:
   (ic,delta*theta*delta,t*delta)
 
-set is_fixed (mat delta,KGBElt_gen y) = bool: y = delta*y
+set is_fixed (KGBElt_gen y,mat delta) = bool: y = delta*y
 
 {
 set square_is_central(KGBElt_gen x)=bool:

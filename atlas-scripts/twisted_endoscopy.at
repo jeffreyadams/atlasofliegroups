@@ -79,7 +79,7 @@ until we figure out the right way
 
 {from mezo.at:}
 set delta_l_int_long(Param p,mat delta)=(int,int,int,rat):
-if not is_fixed(delta,p) then (-1,-1,-1,-1) else
+if not is_fixed(p,delta) then (-1,-1,-1,-1) else
 let rd=p.root_datum then
 G=p.real_form then
 ic=inner_class(rd,delta) then
@@ -121,7 +121,7 @@ in for row in rows(P) { mat to i_pol_mat convention flip }
    }
 {
 set partial_fixed_block_of(mat delta,Param p)=
-##for a in partial_block(p) do if is_fixed(delta,a) then [a] else [] fi od
+##for a in partial_block(p) do if is_fixed(a,delta) then [a] else [] fi od
 }
 
 set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
@@ -610,6 +610,16 @@ else
  (p_H,lift_std,null_module(p_H.real_form),null_module(p_H.real_form))
 fi
 }
+
+{to use: set G=GL(n,R), delta=G.distinguished_involution,
+(H,M)=endoscopic(G,delta) to define H,M,G,delta}
+set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
+let lift_std_ext=lift_std(p_H,M,G,delta) then
+lift_std=parameter(lift_std_ext) then
+inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
+()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
+(p_H,lift_std,inverse_lift,composition_series(inverse_lift))
+
 
 set print([(Param,Param,ParamPol)] data)=void:
 let (p_H,p_G,)=data[0] then

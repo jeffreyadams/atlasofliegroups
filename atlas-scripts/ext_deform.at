@@ -61,9 +61,8 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     od
   fi
 
-
 set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
-  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
+  assert(is_final(p) and is_fixed(p,delta),"improper parameter");
   let G=p.real_form in
    (1,p). { apply following recursive function to this initial argument }
    ( rec_fun full_def (Split sc,Param p) KTypePol:
