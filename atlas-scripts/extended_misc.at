@@ -13,6 +13,8 @@ set_type
   )
 ]
 
+set distinguished_involution(ExtParam E)=mat:E.ic.distinguished_involution
+
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class
   the implementation depends on base_grading_vector(G) being dominant.
