@@ -548,6 +548,7 @@ if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(
 else P fi
 }
 {returns a sum of standards}
+{
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
 let ecf=extended_character_formula(p_G,delta) then
 P_G=convert_to_param_pol(ecf).s_to_1 then
@@ -724,3 +725,4 @@ prints("=============================================================");
 show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
+}

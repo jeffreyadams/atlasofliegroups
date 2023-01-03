@@ -76,6 +76,10 @@ null_module(P.real_form) + for c@p in P do c*twist(p,delta) od
 set *(Param p,mat delta)=Param:twist(p,delta)
 set *(ParamPol P,mat delta)=ParamPol:twist(P,delta)
 
+{more typical to write mat*Param}
+set *(mat delta,Param p)=Param:twist(p,delta)
+set *(mat delta,ParamPol P)=ParamPol:twist(P,delta)
+
 set is_fixed (Param p,mat delta) = bool:p=twist(p,delta)
 
 set is_fixed (ParamPol P,mat delta) = bool:P=twist(P,delta) 
@@ -88,6 +92,12 @@ set is_fixed (KGBElt x,mat delta) = bool: x=twist(x,delta)
 set is_fixed (KGBElt x, KGBElt y,mat delta) = bool:
   is_fixed(x,delta) and is_fixed(y,^delta)
 
+{p->p if fixed, (1+delta)p otherwise}
+set one_plus_twist(Param p,mat delta)=ParamPol:
+if delta*p=p then p else p+delta*p fi
+
+set one_plus_twist(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for (c,p) in %P do c*one_plus_twist(p,delta) od
 
 { Stuff related to KGB }
 { |x_rep = (ratvec v, mat theta)| is used to represent a KGB element $x$ by
