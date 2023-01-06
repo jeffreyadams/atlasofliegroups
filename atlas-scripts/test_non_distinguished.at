@@ -113,7 +113,14 @@ set show_unip_params_from_Levi([int] A, RealForm G)=void:
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in for P@i in paras
       do prints(i," Parabolic:",P,new_line,"Levi: ",Levi(P),new_line,
-                 induced_from_min_params_alt(rho(G), P),new_line) od
+                 induced_from_min_params(rho(G), P),new_line) od
+
+set show_unip_params_from_princ_in_Levi([int] A, RealForm G)=void:
+   let paras=parabolics_with_theta_stable_Levi(G,A)
+   in for P@i in paras
+      do prints(i," Parabolic:",P,new_line,"Levi: ",Levi(P),new_line,
+                 induced_from_triv_params_alt(P),new_line) od
+
 
 set levis_mod_conj (RootDatum rd) = [[[int]]]:
     let D = rd.semisimple_rank + 1
@@ -195,3 +202,46 @@ set induce_one_dimensionals_from_all_parabolics (RealForm G, [int] L)=void:
 	  " tsp=",tsp(P),
 	   " rp=",rp(P),new_line, induce_from_gen_parabolic_irr (L,p),new_line)
       fi od
+
+set remove_parabolics ([Parabolic] long, [Parabolic] short)=[Parabolic]:
+   ##for P in long do if any(for Q in short do P=Q od) then [] else [P] fi od
+
+set inner_classes_of_parabolics ([int] A,RealForm G)=[[Parabolic]]:
+   let paras=parabolics_with_theta_stable_Levi(G,A),result=[[Parabolic]]:[]
+   in while #paras>0
+      do let list=##for P in paras
+                     do if inner_class(Levi(P))=inner_class(Levi(paras[0])) then [P]
+		        else [] fi
+		     od
+         in paras:=remove_parabolics(paras,list);result#:=list
+      od;
+   result
+
+set lambdas ([Parabolic] list) = [ratvec]:
+   let result=[ratvec]:[]
+   in for P in list
+        do for p in one_dims(P)
+           do if find(result,lambda(p))<0 then result#:=lambda(p)  fi
+	   od od;
+   result
+
+set packet ([Parabolic] list,ratvec lam, [int] A, RealForm G)=ParamPol:
+   sum(G,##for P in list
+       do ##for p in one_dims(P)
+           do if lambda(p)=lam then [induce_from_gen_parabolic_irr (A,p)] else []
+	      fi od od)
+
+set packets_from_princ_orbit ([Parabolic] list,[int] A,RealForm G)=[ParamPol]:
+   let lams=lambdas(list)
+   in for lam in lams do packet(list,lam,A,G) od
+
+set packets_from_princ_orbit ([int] A, RealForm G)=[ParamPol]:
+   let list=inner_classes_of_parabolics(A,G)
+   in ##for class in list do packets_from_princ_orbit(class,A,G) od
+
+set packets_from_princ_orbit_no_dupes ([int] A,RealForm G)=[ParamPol]:
+   let list=packets_from_princ_orbit(A,G), result=[ParamPol]:[]
+   in for P in list
+      do if none(for Q in result do P=Q od) then result#:=P fi od;
+   result
+
