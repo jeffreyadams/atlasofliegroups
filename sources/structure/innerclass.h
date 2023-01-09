@@ -222,7 +222,7 @@ class InnerClass
   // a general repository for involutions, organised by conjugacy class
   Cartan_orbits C_orb;
 
-  using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned>;
+  using integral_hash = HashTable<subsystem::integral_datum_entry,unsigned long int>;
   subsystem::integral_datum_entry::Pooltype integral_pool;
   integral_hash int_hash;
   std::vector<subsystem::integral_datum_item> int_table;
