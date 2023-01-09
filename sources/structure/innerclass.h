@@ -473,15 +473,15 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr);
+    (const RatWeight& gamma, unsigned long int& int_sys_nr);
   subsystem::integral_datum_item& int_item
-    (const RootNbrSet& int_posroots, unsigned int& int_sys_nr);
+    (const RootNbrSet& int_posroots, unsigned long int& int_sys_nr);
   // same when |int_sys_nr| has already been computed:
-  const subsystem::integral_datum_item& int_item(unsigned int int_sys_nr) const
+  const subsystem::integral_datum_item& int_item(unsigned long int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
   const subsystem::integral_datum_item::codec integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
+    (const RatWeight& gamma, InvolutionNbr inv, unsigned long int& int_sys_nr)
   { auto& item = int_item(gamma,int_sys_nr); // this ensures |int_sys_nr| is set
     return item.data(*this,int_sys_nr,inv);
   }
@@ -490,7 +490,7 @@ class InnerClass
   const int_Matrix& integral_eval(unsigned int int_sys_nr) const
   { return int_table[int_sys_nr].coroots_matrix(); }
   const int_Matrix& integral_eval
-    (const RatWeight& gamma, unsigned int& int_sys_nr)
+    (const RatWeight& gamma, unsigned long int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).coroots_matrix(); }
 
 // pseudo manipulator

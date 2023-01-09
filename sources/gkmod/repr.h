@@ -156,7 +156,7 @@ class StandardReprMod
 class Reduced_param
 {
   KGBElt x;
-  unsigned int int_sys_nr;
+  unsigned long int int_sys_nr;
   int_Vector evs_reduced; // coroots evaluation (|gamlam| mod $(1-theta)X^*$)
 
 public:
@@ -396,7 +396,7 @@ class Rep_context
    has no per-node memory overhead.
 */
 
-using K_type_nr = unsigned int; // hashed in |Rep_table| below
+using K_type_nr = unsigned long int; // hashed in |Rep_table| below
 using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*
@@ -571,7 +571,7 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  unsigned int int_sys_nr;
+  unsigned long int int_sys_nr;
   const SubSystem& sub; // embeds |integr_datum| into parent root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);

@@ -330,7 +330,7 @@ RatWeight Rep_context::offset
   RatWeight result = gamlam - srm1.gamma_lambda();
   auto& ic = inner_class();
   InvolutionNbr inv = kgb().inv_nr(srm0.x());
-  unsigned int int_sys_nr;
+  unsigned long int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
   result -= theta_1_preimage(result,codec);
   assert((codec.coroots_matrix*result).is_zero());
