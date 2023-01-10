@@ -487,7 +487,7 @@ class InnerClass
   }
 
   // evaluation matrix on integral coroots
-  const int_Matrix& integral_eval(unsigned int int_sys_nr) const
+  const int_Matrix& integral_eval(unsigned long int int_sys_nr) const
   { return int_table[int_sys_nr].coroots_matrix(); }
   const int_Matrix& integral_eval
     (const RatWeight& gamma, unsigned long int& int_sys_nr)

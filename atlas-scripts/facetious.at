@@ -601,6 +601,7 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma) = [vec]:
 [0,2] on coroot j0. So need to use values -floor(g[j0]),
 -floor(g([j0]) + 1 for that root always, and also -floor(g[j0]) + 2 if
 g[j0] is an integer. }
+{If j0 is in INT, then this counts 1*fundamental_weights[j0] WITH MULT 2}
 set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
     let g=^(Affd.simple_coroots)*gamma, flr = null(Affd.semisimple_rank)
     then INT = ##for j:#Affd.simple_coroots
@@ -625,7 +626,7 @@ set FPPtauRoots(SimpleAffine Affd, ratvec gamma, int j0) = [vec]:
 	then [ratvec_as_vec(tau)]
 	else []
     fi
-    od.##
+    od.##.no_reps
 
 { same thing, with (perhaps) one simple root j0 for which FPP takes
 values in [0,2] on coroot j0. So need to use values -floor(g[j0]),
@@ -906,6 +907,8 @@ set W_fund_barycenters_mod_R(SimpleAffine Affd, int d) = [FacetBary]:
 {.this includes all vertex sets of facets in the fundamental
 parallelepiped, each exactly once. j0 is possible label of a simple
 coroot that can be up to 2 on FPP}
+{Using FPPtauRootsFast introduces repetitions in result, necessitating
+the final no_reps}
 set FPP_vertices(SimpleAffine Affd, int j0) = [ratvec]:
     if facet_verbose then prints("start FPP_vertices.")
     fi;
@@ -961,6 +964,8 @@ set FPP_barycentersE8(SimpleAffine Affd) = [[FacetBary]]:
 	od.##
      od
 
+{Using FPPtauRootsFast introduces repetitions in result, necessitating
+the final no_reps}
 set FPP_barycenters(SimpleAffine Affd, int d, int j) = [FacetBary]:
     if facet_verbose then prints("start dim ",d,
        		     " in FPP_barycenters(Affd,",d,",",j,").")
@@ -989,6 +994,8 @@ set FPP_barycentersE8(SimpleAffine Affd, int d) = [FacetBary]:
 set FPP_vertex_data (SimpleAffine Affd, int j) = VertexData:
    FPP_vertices(Affd,j).to_vertex_data
 
+{Using FPPtauRootsFast introduces repetitions in result, necessitating
+the final no_reps}
 set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
     [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
@@ -1002,7 +1009,7 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
        	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	  in [FacetVertsIndex]:
 	     for w in affine_orbit_ws(Affd,bary_F)
-	     do for tau in FPPtauRootsFast(Affd,w*bary_F, j)
+	     do for tau in FPPtauRoots{Fast}(Affd,w*bary_F, j)
 	     	do FacetVertsIndex:
 		      for v in (AffineCoWeylElt:(tau,w))*FV
 		      do vd.lookup(v)
@@ -1051,7 +1058,7 @@ set FPP_facets_big(SimpleAffine Affd, VertexData vd, int dim, int j) =
 	     do let wbF = w*bary_F, iw = inverse(w)
 	     	then (x3,) = from_dominant(irdw, iw*Affd.two_rho)
 		{ this x3 can easily and often be nontrivial }
-		in for tau in FPPtauRootsFast(Affd,wbF, j)
+		in for tau in FPPtauRoots{Fast}(Affd,wbF, j)
 	     	   do let wbeta0 = -tau + w*Affd.two_rho
 		      then gamma2 = wbF + w*Affd.two_rho
 		      then bup =  wbeta0 + ratvec_as_vec(w*(x3*(iw*gamma2)) -
@@ -1063,7 +1070,7 @@ set FPP_facets_big(SimpleAffine Affd, VertexData vd, int dim, int j) =
 		      	       -inverse(x3)*(iw*bup))
 	      	   od { type is [BigFacetVerts], remains for next two lines}
 	     od.##
-     	od.##.no_reps
+     	od.##{.no_reps}
 
 {calculates characters of all barycenters of FPP facets of dimension
 dim, using nice shift}
