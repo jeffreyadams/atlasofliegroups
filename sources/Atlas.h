@@ -172,7 +172,7 @@ namespace atlas {
   using poset::Poset;
 
   namespace graph {
-    typedef unsigned int Vertex; // assume at most some 4 billion vertices
+    typedef unsigned long int Vertex; // DON'T assume at most some 4 billion vertices
     typedef std::vector<Vertex> EdgeList; // list of targets of outgoing edges
     class OrientedGraph;
   }
@@ -487,7 +487,7 @@ namespace atlas {
     typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
     typedef std::pair<StandardRepK,q_Char> q_CharForm;// $q$-$K$-type formula
     typedef Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
-    typedef unsigned int seq_no; // sequence number of stored standard rep|K
+    typedef unsigned long int seq_no; // sequence number of stored standard rep|K
     typedef unsigned int level; // unsigned LatticeCoeff
     struct Cartan_info;
     struct bitset_entry;
