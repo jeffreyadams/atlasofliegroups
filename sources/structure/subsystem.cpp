@@ -225,7 +225,7 @@ integral_datum_item::integral_datum_item
 
 integral_datum_item::codec::codec
   (const InnerClass& ic,
-   unsigned int int_sys_nr, InvolutionNbr inv, const int_Matrix& coroots_mat)
+   unsigned long int int_sys_nr, InvolutionNbr inv, const int_Matrix& coroots_mat)
     : coroots_matrix(ic.int_item(int_sys_nr).coroots_matrix())
     , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
     , diagonal(), in(), out()

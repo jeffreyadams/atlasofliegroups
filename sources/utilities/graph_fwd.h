@@ -18,7 +18,7 @@ namespace atlas {
 
 namespace graph {
 
-  typedef unsigned int Vertex; // assume at most some 4 billion vertices
+  typedef unsigned long int Vertex; // DON'T assume at most some 4 billion vertices
   typedef std::vector<Vertex> EdgeList; // list of targets of outgoing edges
 
   class OrientedGraph;
