@@ -39,9 +39,6 @@ ExtParamPol:  virtual characterof <xi,G,delta>
 set is_ZParamPol(ParamPol P)=bool:
 all(for (c,) in %P do is_int(c) od)
 
-set is_ZExtParamPol(ZExtParamPol (P,Q,R,delta))=bool:
-is_ZParamPol(P) and is_ZParamPol(Q) and is_ZParamPol(R)
-
 set extParamPol (ExtParam E) = ExtParamPol:
   let p=parameter(E)
   then xi=E.ic.distinguished_involution then
@@ -60,7 +57,9 @@ set extParamPol (Param p,int type,mat delta) = ExtParamPol:
   elif type=minus_1 then (xi,N,N+p,N,delta)
   else (xi,N,N,N+p,delta)
   fi
-
+set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
+  (xi,s*P_plus,s*P_minus,s*P_ind,delta)
+  
 set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
 
 set + (ExtParamPol(xi,P_plus_1,P_minus_1,P_ind_1,delta)
@@ -83,49 +82,10 @@ set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
   P+S*extParamPol(p,type,P.delta)
 
 set swap(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,Q,P,R,delta)
-
-set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ZExtParamPol: (P.s_to_1,Q.s_to_1,R.s_to_1,delta)
+set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_to_1,delta)
 
 set display (ExtParamPol(,A,B,C,)) = void:
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
-
-set show(ExtParamPol(xi,A,B,C,delta)) = void:
-  if =A then
-     prints("plus: [empty]")
-  else prints("plus:");
-       show(A)
-  fi;
-  if =B then
-     prints("minus: [empty]")
-  else prints("minus:");
-       show(B)
-  fi;
-
-  if =C then
-     prints("ind: [empty]")
-  else prints("ind:");
-       show(C)
-  fi
-
-set show(ZExtParamPol(A,B,C,delta)) = void:
-  if =A then
-     prints("plus: [empty]")
-  else prints("plus:");
-       show(A)
-  fi;
-  if =B then
-     prints("minus: [empty]")
-  else prints("minus:");
-       show(B)
-  fi;
-
-  if =C then
-     prints("ind: [empty]")
-  else prints("ind:");
-       show(C)
-  fi
-
-
 set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (G.distinguished_involution,N,N,N,G.distinguished_involution)
 
 set find ([(int,int)] complete_indices,(int,int)pair) =int:
@@ -134,66 +94,6 @@ set find ([(int,int)] complete_indices,(int,int)pair) =int:
 { scale continuous part (|nu|) of extended parameter by rational factor |r| }
 set * (ExtParam(ic,,,lambda,theta,,,,,):E,rat r) = ExtParam:
   E.gamma := ((1+theta)*(lambda+rho(ic))+(1-theta)*(E.nu*r))/2 ; E
-
-{assuming delta(P)=P, P=sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
-set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
-assert(is_fixed(P,delta),"P is not delta-fixed");
-let monomials=[Param]:[] in
-for c@p in P do
- if is_fixed(p,delta) then
-  monomials##:=[p]
- else {if not fixed, look to see if it is already found as delta*something}
-  let f=find(monomials,twist(p,delta)) in
-    if f=-1
-      then monomials##:=[p, twist(p,delta)]
-    fi
- fi
-od;
-null_module(P.real_form) + for p in monomials do P[p]*p od
-
-{ParamPol <-> ZExtParamPol (see above), conversion in both directions}
-{ZExtParamPol: (P,Q,R) have no s-terms: represents an ordinary ParamPol,
-convert to ordinary ParamPol}
-set convert_to_param_pol(ZExtParamPol EP)=ParamPol:
-assert(is_ZExtParamPol(EP),"not a ZExtParamPol");
-{no let (P,Q,R,delta)=EP in P + s*Q + one_plus_twist(R,delta)}
-let (P,Q,R,delta)=EP in P + s*Q + R
-
-{convert ParamPol P_in (with s-terms) to ZExtParamPol (P,Q,R,delta) (no s-terms)}
-{assumption: P_in is delta-fixed, i.e. if delta(p)\ne p then
- coefficient(p) = coefficient(delta(p))
- P_in= (a+bs)*p + (a+bs)*delta(p) -> (0,0,(a+b)*p) = (0,0,(a+b)*delta(p))
- suppose P_in=(a+bs)q + (a+bs)delta(q), this <-> ind((a+b)q)=ind((a+b)delta(q))
- on the other hand this corresponds to the ExtParamPol (P,Q,(a+b)q) or (P,Q,(a+b)delta(q))
-}
-set convert_to_Z_ext_param_pol(ParamPol P,mat delta)=ZExtParamPol:
-{let ()=prints("CONVERTING: ", P, new_line, delta*P) in}
-{assert(is_fixed(delta,P), "ParamPol is not delta-fixed");}
-let Q=twisted_orbit_reps(P,delta) in
-let plus=null_module(P.real_form) then
-minus=null_module(P.real_form) then
-ind=null_module(P.real_form) then
-()=for c@p in Q do
- if is_fixed(p,delta) then
-  plus+:=int_part(c)*p;
-  minus+:=s_part(c)*p
- else
-  ind +:=(int_part(c)+s_part(c))*p
- fi
-od in
-assert(is_ZExtParamPol((plus,minus,ind,delta)), "not a ZExtParamPol");
-(plus,minus,ind,delta)
-
-{E=(P,Q,R)
-  corresponding to xi (not delta)
-  P,Q,R can have Z[s] coefficients
-  converting to ParamPol means: the *twisted* character, i.e. the value of the character off the identity component
-  take P-Q:
-    that is, a term (p,q,0) has twisted character p-q
-}
-{set convert_to_param_pol(ExtParamPol E)=ParamPol:
-let (P,Q,R,delta)=E in P-Q}
-
 {
 set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
 (  let !N=null_module(p) in
@@ -298,7 +198,17 @@ set deform_old (Param p, mat delta, int type) = ExtParamPol:
 set deform (ExtParam E) = ExtParamPol:
    deform(parameter(E), E.delta, sign(E))
 
-
+{P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
+set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
+{assert(is_fixed(delta,P),"P is not delta-fixed");}
+let monomials=[Param]:[] in
+for c@p in P do
+ let f=find(monomials,twist(p,delta)) in
+  if f=-1 then prints("p=",p);monomials##:=[p, twist(p,delta)] fi
+od;
+let rv=
+null_module(P.real_form) + for p in monomials do P[p]*p od 
+in prints("RV=",rv, is_fixed(rv,delta)); rv
 
 set fixed_terms(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in 
@@ -309,6 +219,48 @@ set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
 
 
 
+{ParamPol <-> ZExtParamPol (see above), conversion in both directions}
+{ZExtParamPol: (P,Q,R) have no s-terms: represents an ordinary ParamPol,
+convert to ordinary ParamPol}
+set convert_to_param_pol(ZExtParamPol EP)=ParamPol:
+assert(is_ZExtParamPol(EP),"not a ZExtParamPol");
+let (P,Q,R,delta)=EP in P + s*Q + one_plus_delta(R,delta)
+
+{convert ParamPol P_in (with s-terms) to ZExtParamPol (P,Q,R) (no s-terms)}
+{assumption: P_in is delta-fixed, i.e. if delta(p)\ne p then
+ coefficient(p) = coefficient(delta(p))
+ P_in= (a+bs)*p + (a+bs)*delta(p) -> (0,0,(a+b)*p) = (0,0,(a+b)*delta(p))
+ suppose P_in=(a+bs)q + (a+bs)delta(q), this <-> ind((a+b)q)=ind((a+b)delta(q))
+ on the other hand this corresponds to the ExtParamPol (P,Q,(a+b)q) or (P,Q,(a+b)delta(q))
+}
+
+set convert_to_Z_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
+let ()=prints("CONVERTING: ", P, new_line, twist(delta,P)) in
+{assert(is_fixed(delta,P), "ParamPol is not delta-fixed");}
+let Q=twisted_orbit_reps(P,delta) in 
+let plus=null_module(P.real_form) then
+minus=null_module(P.real_form) then
+ind=null_module(P.real_form) then
+()=for c@p in Q do
+ if is_fixed(delta,p) then
+  plus+:=int_part(c)*p;
+  minus+:=s_part(c)*p
+ else
+  ind +:=(int_part(c)+s_part(c))*p
+ fi
+od in
+assert(is_ZExtParamPol((plus,minus,ind,delta)), "not a ZExtParamPol");
+(plus,minus,ind,delta) 
+
+{E=(P,Q,R)
+  corresponding to xi (not delta)
+  P,Q,R can have Z[s] coefficients
+  converting to ParamPol means: the *twisted* character, i.e. the value of the character off the identity component
+  take P-Q:
+    that is, a term (p,q,0) has twisted character p-q
+}
+{set convert_to_param_pol(ExtParamPol E)=ParamPol:
+let (P,Q,R,delta)=E in P-Q}
 
 set finalize_extended_s(Param p, mat delta)=ParamPol:
 if is_fixed(delta,p) then
