@@ -1,6 +1,7 @@
 <basic.at
 <K_types.at { for |int_part@KTypePol|, |s_part@KTypePol| }
 <hermitian.at
+<to_ht.at
 
 set nonunitarity_certificate(Param p)=(bool,[KType]):
 (  let P=hermitian_form_irreducible(p), ht_p=height(p)
@@ -28,7 +29,7 @@ in if #list=0 then (true,[])
       in (false,short_list) fi
 )
 
-set nonunitarity_certificate_alt(Param p)=(bool,[(KType,int)]):
+set nonunitarity_certificate_with_ht(Param p)=(bool,[(KType,int)]):
 (  let P=hermitian_form_irreducible(p), ht_p=height(p)
    then c=first_K_type(P)
    then a= #(!=int_part(c)), b=#(!=s_part(c)) { each one 0 or 1 }
@@ -54,5 +55,30 @@ in if #list=0 then (true,[])
       in (false,short_list) fi
 )
 
+set nonunitarity_certificate_to_ht(Param p,int N)=(bool,[KType]):
+(  let P=hermitian_form_irreducible_to_ht(p,N), ht_p=height(p)
+   then c=first_K_type(P)
+   then a= #(!=int_part(c)), b=#(!=s_part(c)) { each one 0 or 1 }
+   , ht_lim=ht_p { to ensure monotonicity }
+in if a*b=1 then prints("The LKT is indefinite.") fi
+;  let list=
+   for k@q in P
+   do let npart = int: b*int_part(k)+a*s_part(k) { |s_part(k*(a+b*s))| }
+   ,  ht_q = height(q)
+   in if npart!=0 and
+        (ht_q=ht_p or
+	 ht_q>ht_p and ht_q>=ht_lim and (ht_lim:=ht_q; true)
+	)
+      then [q]
+      else []
+      fi
+   od.##
+in if #list=0 then (true,[])
+   else let kt=list[0] then n=height(kt)
+       then short_list=##for mu in list
+                         do if height(mu)=n then [mu] else [] fi
+			 od
+      in (false,short_list) fi
+)
 
 
