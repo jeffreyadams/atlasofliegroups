@@ -695,9 +695,11 @@ template void BitMap::insert
  (std::vector<unsigned short>::iterator,
   std::vector<unsigned short>::iterator); // root sets from RootNbrList
 
-typedef std::vector<unsigned long>::iterator VI;
+using ULVI = std::vector<unsigned long>::iterator;
+using VCI = std::vector<int>::const_iterator;
 
-template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
+template BitMap::BitMap(unsigned long n, const ULVI& first, const ULVI& last);
+template BitMap::BitMap(unsigned long n, const VCI& first, const VCI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|

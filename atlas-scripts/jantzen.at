@@ -52,7 +52,7 @@ multiplicity of J' in F^{2+2k} is a_{0}  [note: 2+2k=l(I)-l(J')]
 }
 set graded_multiplicity ([Param] B,i_poly_mat Q,Param irr, Param std) = i_poly:
    if irr=std then [1]
-   elif length(std)-length(irr)<0 then i_poly:[] 
+   elif length(std)-length(irr)<0 then i_poly:[]
    else
       let f=KL_Q_polynomial(B,Q,irr,std), d=length(std)-length(irr)
       then v=null(d+1)
@@ -78,12 +78,13 @@ for irr in b do
 
 {B should be singular_block_of(std), and Q should be KL_Q_polynomials(std)}
 {similar to graded_standard but include shift by difference in lengths}
-set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = {[Param,vec]:} hodgeParamPol:
-dearrange( ##for irr in B
-   do {let f=KL_Q_polynomial(B,Q,irr,std) in}
-      let f=graded_multiplicity(B,Q,irr,std) in
-      if sum(f).> then [(f,irr)] else [] fi
-   od)
+set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = hodgeParamPol:
+dearrange(for irr in B
+	  do {let f=KL_Q_polynomial(B,Q,irr,std) in}
+	     let f=graded_multiplicity(B,Q,irr,std) in
+	     if sum(f).> then [(f,irr)] else [] fi
+	  od.##
+	 ,std.real_form)
 
 {B should be singular_block_of(std)}
 set graded_composition_series ([Param] B,Param std) = hodgeParamPol:
@@ -103,7 +104,7 @@ prints("G=", real_form(std));
 {   let gcs=graded_composition_series(singular_block_of(std),std)}
    let gcs=rearrange(graded_composition_series(singular_block_of(std),Q,std))  {[(param,i_poly)]} in
    tabulate(["x","lambda","nu","l","ld","Q","filtration"]#
-   for (m,p) in gcs 
+   for (m,p) in gcs
    do let m=delete_trailing_zeros(m) then
    string_m="" in
       for i:max_length_vector
@@ -196,7 +197,7 @@ set print_graded_composition_series ([Param] B,i_poly_mat Q,(Param->i_laurent_po
    poly_format(KL_Q_polynomial(B,Q,p,std),"q"),
    poly_format(f_as_poly, "q"),
    "[" +  string_m + "]"]
-   
+
    od)
 {
 set print_graded_composition_series([Param] B,i_poly_mat Q, (Param->i_laurent_poly) shifts, Param std)=void:

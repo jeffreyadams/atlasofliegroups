@@ -41,7 +41,10 @@ let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a bas
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict
 }
 roots_nonreduced=sort_u(for alpha in rd.posroots do T.restrict(alpha) od) then
-roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then
+{roots=mat:##(for alpha in roots_nonreduced do if find(roots_nonreduced,2*alpha)=-1 then [alpha] else [] fi od) then}
+{if alpha,2*alpha is a root, keep alpha: this matters for G=GL(2n+1)
+ fixed points of delta: type B_n (short roots) not C_n }
+roots=mat:##(for alpha in roots_nonreduced do if find(2*roots_nonreduced,alpha)=-1 then [alpha] else [] fi od) then
 coroots=[vec]:[] in
 for alpha in roots do
  let pullback_alpha=let j=first(for beta in rd.roots do T.restrict(beta)=alpha od) in rd.roots[j] then

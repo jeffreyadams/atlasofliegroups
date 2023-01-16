@@ -45,7 +45,7 @@ set in_distinguished_fiber (KGBElt x) = bool:
 
 set distinguished_fiber (RealForm G) = [KGBElt]:
   for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
-
+  
 set ss_rank (RootDatum rd) = semisimple_rank(rd)
 
 set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
@@ -66,28 +66,19 @@ set to_binary (int length, int n) = vec:
 set generate_all_binary = (int->[vec]): all_0_1_vecs@int
 
 {generate all subsets of a set of integers}
-set generate_all_subsets ([int] S) = [[int]]:
-  let rec_fun g (int k) = [[int]]: { subsets of first k elements of S }
-    if =k then [[]] { one empty subset of the empty set }
-    else let subs = g(k-1), last=S[k-1] in subs ## for s in subs do s#last od
-    fi
-  in g(#S)
+set generate_all_subsets = ([int]->[[int]]): power_set@[int]
 
 {generate all subsets of a set of vectors}
 set generate_all_subsets([vec] S) = [[vec]]:
-    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
+    for A in power_set(# #S) do for i in A do S[i] od od
 
 {all 2^n subsets of a set of rational vectors}
 set generate_all_subsets([ratvec] S) = [[ratvec]]:
-    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
-
-{A is a subset of B}
-set is_subset([int] A,[int] B)=bool:
-all(for a in A do find (B,a)!=-1 od)
+    for A in power_set(# #S) do for i in A do S[i] od od
 
 {A is a proper subset of B}
-set is_proper_subset([int] A,[int] B)=bool:
-is_subset(A,B) and #A<#B
+set is_proper_subset(vec A,vec B)=bool:
+   let a=A.to_bitset, b=B.to_bitset in bitwise_subset(a,b) and a!=b
 
 {complement of A in B}
 set complement([Param] A,[Param] B)=[Param]:

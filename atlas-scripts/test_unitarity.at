@@ -32,7 +32,7 @@ set passedflag (bool flag) = string: if flag then "passed" else "failed" fi
   parameter is predicted to be unitary / no prediction / predicted non-unitary
 }
 set test ([(Param,int)] parameters,bool verbose) =
-    (bool,[(Param,ParamPol,int,bool)]):
+    (bool,[(Param,KTypePol,int,bool)]):
   let G=real_form(let (p,)=parameters[0] in p) in
   if verbose then
     prints("G=",G,new_line
@@ -66,28 +66,28 @@ set test ([(Param,int)] parameters) = test(parameters,false) { default quiet }
 set print_test ([(Param,int)] parameters) = void:
   let (passed,terms)=test(parameters,true) in prints(passedflag(passed))
 
-set test([Param] parameters) = (bool,[(Param,ParamPol,int,bool)]):
+set test([Param] parameters) = (bool,[(Param,KTypePol,int,bool)]):
   test(for p in parameters do (p,1) od)
 set print_test([Param] parameters) = void:
   print_test(for p in parameters do (p,1) od)
-set test_one (Param param,int unitary) =  (bool,[(Param,ParamPol,int,bool)]):
+set test_one (Param param,int unitary) =  (bool,[(Param,KTypePol,int,bool)]):
   test([(param,unitary)])
 set print_test_one (Param param,int unitary) = void:
   print_test([(param,unitary)])
-set test_one_unitary (Param param) = (bool,[(Param,ParamPol,int,bool)]):
+set test_one_unitary (Param param) = (bool,[(Param,KTypePol,int,bool)]):
   test([(param,1)])
 
 
 { G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n) or
   simple complex, see spherical_unipotent_representations in representations.at
 }
-set test_spherical_unipotent (RealForm G) = (bool,[(Param,ParamPol,int,bool)]):
+set test_spherical_unipotent (RealForm G) = (bool,[(Param,KTypePol,int,bool)]):
   test(spherical_unipotent_representations(G))
 set print_test_spherical_unipotent(RealForm G)= void:
   prints("Testing spherical unipotent representations of ",G);
   print_test(spherical_unipotent_representations(G))
 
-set test_Aq ([Param] B) = (bool,[(Param,ParamPol,int,bool)]):
+set test_Aq ([Param] B) = (bool,[(Param,KTypePol,int,bool)]):
   test(
     for p in B
     do (p
@@ -128,7 +128,7 @@ set print_test_Upq_Aq (int p, int q, ratvec gamma) = void:
   let B=all_parameters_gamma(U(p,q),gamma) in print_test(B)
 
 
-set test_Aq (RealForm G) =  (bool,[(Param,ParamPol,int,bool)]):
+set test_Aq (RealForm G) =  (bool,[(Param,KTypePol,int,bool)]):
   let B=block_of(trivial(G)) in
   test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
 
@@ -138,7 +138,7 @@ set print_test_Aq (RealForm G) = void:
   print_test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
 
 set test_all_real_induced_one_dimensional(RealForm G) =
-    (bool,[(Param,ParamPol,int,bool)]):
+    (bool,[(Param,KTypePol,int,bool)]):
   test(all_real_induced_one_dimensional(G))
 set print_test_all_real_induced_one_dimensional(RealForm G) = void:
   print_test(all_real_induced_one_dimensional(G))
@@ -148,7 +148,7 @@ set print_test_all_real_induced_one_dimensional(RealForm G) = void:
 { a series of tests if increasing length }
 { very fast tests }
 set unitary_if (bool b) = int: if b then 1 else -1 fi
-set success ((bool,[Param,ParamPol,int,bool]) (b,)) = bool: b
+set success ((bool,[Param,KTypePol,int,bool]) (b,)) = bool: b
 
 set test1()=test(spherical_unipotent_representations(Sp(4,R))).success
 set test2()=test(spherical_unipotent_representations(split_form(G2))).success

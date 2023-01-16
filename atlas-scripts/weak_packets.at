@@ -254,7 +254,7 @@ set show( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=v
 let (bc,packet)=blocks_and_cells_and_packet then
 blocks=blocks(packet) then
 cells=cells(packet) then
-G=let (params,)=bc[0] in params[0].real_form then
+{G=let (params,)=bc[0] in params[0].real_form then}
 m=mult(packet) in
 prints("*: dual(cell) contains an Aq(lambda)");
 tabulate(
@@ -614,7 +614,7 @@ set weak_packets_all_forms(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]
 set show_weak_packets_all_forms(RealForm G)=void:
 let rf=real_forms(G) then
 m=weak_packets_all_forms(G) in
-for wp@i in m do prints(rf[i]); show(wp)
+for wp@i in m do {prints(rf[i]);} show(wp)
 od
 
 set show_weak_packets_all_forms_long([RealForm] groups)=void:
@@ -622,7 +622,7 @@ let rf=[RealForm]:[] then
 ()= for G in groups do rf##:=real_forms(G) od then
 m=weak_packets(groups) in
 prints(new_line,"Summary of weak packets:");for wp@i in m do
-prints("------------------------------------------",new_line,rf[i]); show(wp) od
+prints("------------------------------------------",new_line{,rf[i]}); show(wp) od
 
 
 {-----------------moved from theta_induced_unipotents.at------}

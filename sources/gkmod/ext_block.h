@@ -283,8 +283,7 @@ class context // holds values that remain fixed across extended block
 }; // |context|
 
 
-// A variant of |ext_block::param| that avoids fixing |gamma|
-// Identical (supplementary) data fields, method absent: |restrict|
+// A variant of (now removed) |ext_block::param| that avoids fixing |gamma|
 struct ext_param // allow public member access; methods ensure no invariants
 {
   const repr::Ext_rep_context& ctxt;
@@ -297,14 +296,14 @@ struct ext_param // allow public member access; methods ensure no invariants
   bool flipped; // whether tensored with the flipping representation
 
   ext_param (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
-	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
-	   bool flipped=false);
+	     RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
+	     bool flipped=false);
 
   // default extension choice:
   ext_param (const repr::Ext_rep_context& ec,
 	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
-  static ext_param default_extend
-  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+  ext_param (const repr::Ext_rep_context& ec,
+	     KGBElt x, RatWeight&& gamma_lambda, bool flipped=false);
 
   ext_param (const ext_param& p) = default;
   ext_param (ext_param&& p)
@@ -323,27 +322,36 @@ struct ext_param // allow public member access; methods ensure no invariants
 
   void flip (bool whether=true) { flipped=(whether!=flipped); }
 
-  const repr::Rep_context& rc() const { return ctxt; } // reference base object
+  const repr::Rep_context& rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const;
 
   KGBElt x() const; // reconstruct |x| component
-  // underlying unextended representation
-  repr::StandardRepr restrict(const RatWeight& gamma) const;
+  // underlying unextended (common) representation or K-type
+  repr::StandardReprMod restrict_mod() const;
+  repr::StandardRepr restrict(RatWeight gamma) const; // by value
+  K_repr::K_type restrict_K(Weight&& theta_plus_1_lambda) const;
 }; // |ext_param|
 
+ext_param default_extend
+    (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
+ext_param default_extend
+    (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm);
 
-// a variation of |Rep_context::make_dominant|, used during extended deformation
-StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
-(const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
- RatNum factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // output only, records whether and extended flip was recorded
- );
 
-// expand parameter into a signed sum of extended nonzero final parameters
+// restrict to K expanding to final K types, taking into account extended flips
+K_repr::K_type_pol extended_restrict_to_K
+  (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta);
+
+// similar operation for scaling of $\nu$ by strictly positive |factor|
+std::pair<StandardRepr,bool> scaled_extended_finalise
+  (const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
+   RatNum factor);
+
+// combined making dominant and expansion into finals, accounting for flips
+// the only assumption on |sr| is that it is standard and |delta|-fixed
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
-  (const repr::Rep_context& rc,
-   const StandardRepr& sr, const WeightInvolution& delta);
+  (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta);
 
 // check quadratic relation for |s| at |x|
 bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x);

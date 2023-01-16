@@ -1,3 +1,4 @@
+<all.at
 <twisted_endoscopy.at
 set G=GL(5,R)
 set delta=G.distinguished_involution
@@ -7,31 +8,9 @@ set all_G=unipotent_representations(G)
 set all_H_u=unipotent_representations(H)
 
 set all=all_H_u
-set good=## for p@i in all do if i!=6 then [p] else [] fi od
-
-
-
-{list of unipotents for H not include i=6 term which is bad
-atlas> for p@i in good do prints(i, " ", p) od
-0 final parameter(x=10,lambda=[-2,-1]/1,nu=[0,0]/1)
-1 final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
-2 final parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1)
-3 final parameter(x=5,lambda=[0,-1]/1,nu=[0,0]/1)
-4 final parameter(x=6,lambda=[0,-1]/1,nu=[0,0]/1)
-5 final parameter(x=10,lambda=[-1,0]/1,nu=[-1,-1]/2)
-6 final parameter(x=2,lambda=[-1,0]/1,nu=[0,0]/1)
-7 final parameter(x=7,lambda=[-1,0]/1,nu=[-1,0]/1)
-8 final parameter(x=3,lambda=[-1,0]/1,nu=[0,0]/1)
-9 final parameter(x=8,lambda=[-1,0]/1,nu=[-1,0]/1)
-10 final parameter(x=4,lambda=[-1,0]/1,nu=[-1,1]/2)
-11 final parameter(x=10,lambda=[-2,-1]/1,nu=[-1,0]/1)
-12 final parameter(x=7,lambda=[-2,0]/1,nu=[-1,0]/1)
-13 final parameter(x=8,lambda=[-2,0]/1,nu=[-1,0]/1)
-14 final parameter(x=10,lambda=[-2,-1]/1,nu=[-2,-1]/1)
-}
 
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
-set abv=for p in all_H_u do abv_mixed(p,M,G,delta) od
+set abv=for p in all do abv(p,M,G,delta) od
 
 {output:
 atlas> for (p,(,,,d))@i in abv_good do prints(new_line,"i=",i,new_line,"p=",p,new_line,"ABV(p)=", d) od
@@ -169,8 +148,7 @@ set all_H=all_parameters_gamma(H,H.rho)
 
 set p_H=all_H_u[5]
 set E_H=E(H.distinguished_involution,p_H)
-set E_G=lift_std(p_H,M,G,delta)
-set p_G=parameter(E_G)
+set p_G=lift_std(p_H,M,G,delta)
 set ecf=extended_character_formula(p_G,delta)
 set m=monomials(convert_to_param_pol(ecf))
 
@@ -179,16 +157,12 @@ set bad=m[0]
 set p=bad
 set list=all_parameters_gamma(H,left_inverse(M)*bad.infinitesimal_character)
 set ph=list[1]
-set E_G=lift_std(ph,M,G,delta)
-set p_G=E_G.parameter
-{lift_std(ph,M,G,delta).parameter=p  is true}
+set p_G=lift_std(ph,M,G,delta)
 set y_G=y_gen(p)
-set action_H=restrict_action(y_G.involution,M) 
-{set tf_u_G=y_G.torus_factor+bad.real_form.rho }
-set tf_u_G=y_G.unnormalized_torus_factor 
-set tf_u_H=left_inverse(M)*tf_u_G 
-set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 
-{set ()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) }
+set action_H=restrict_action(y_G.involution,M)
+set tf_u_G=y_G.unnormalized_torus_factor
+set tf_u_H=left_inverse(M)*tf_u_G
+set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2
 set y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H)
 
 set y_H_good=y_gen(ph)

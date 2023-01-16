@@ -67,6 +67,7 @@ namespace atlas
     @< Inline function definitions @>@;
     @< Declarations of static variables @>@;
     @< Declarations functions used but defined elsewhere @>@;
+    @< Declarations of functions @>
   }
 }
 #endif
@@ -81,6 +82,7 @@ namespace atlas
   {
 @< Definitions of class members @>@;
 @< Definitions of static variables @>@;
+@< Definitions of functions @>@;
   }
 }
 
@@ -478,7 +480,7 @@ main program will make it point to the main input buffer once it is allocated.
 @< Definitions of static variables @>=
 BufferedInput* main_input_buffer=nullptr;
 
-@ In our implementation we use the classes |std::string| and |atlas::BitMap|.
+@ Our implementation uses the standard class |std::string|, and Atlas classes |BitMap| and |stack|.
 
 @< Includes needed in the header file @>=
 #include <string>
@@ -846,18 +848,18 @@ ends with a backslash (in \.{axis} this is the case for the integer division
 operator) the user should simply refrain from using them at the very end of a
 line (one may add a comment after it to avoid the problem).
 
-Since it is easy and efficient to do so, we also skip trailing spaces here;
-this should make little difference since the lexical analyser will probably
-ignore spaces anyway, except to separate tokens, and a non-escaped line end
-will do so perfectly well without trailing spaces. However, we think it is
-reassuring for users to know that invisible characters are eliminated at a low
-level of input processing, so that they should really never make a difference.
+Since it is easy and efficient to do so, we also skip trailing spaces here; this
+should make little difference since the lexical analyser will probably ignore
+spaces anyway, except to separate tokens, and a non-escaped line end will do so
+perfectly well without trailing spaces. Also, it is reassuring for users to know
+that invisible characters are eliminated at a low level of input processing, so
+that they can really never make a difference.
 
 @h <cctype>
 
 @< Definitions of class members @>=
 bool BufferedInput::getline()
-{ line_buffer="";
+{ line_buffer.clear();
   line_no+=cur_lines; cur_lines=0;
   std::string pr=@< Prompt for the next line@>@;@;;
   bool go_on, popped=false; unsigned int size=0;
@@ -872,7 +874,8 @@ bool BufferedInput::getline()
     auto l=line.length();
     while (l>0 and std::isspace(line[l-1]))
       --l; // back up over trailing space
-    go_on=(l>0 and line[l-1]=='\\'); // keep going only if final backslash present
+    go_on=(l>0 and line[l-1]=='\\');
+      // keep going only if final backslash present
     if (go_on)
     {@; pr= "\\ ";
       --l;
@@ -936,7 +939,7 @@ to |InputBuffer::getline| will fail, probably leading to program termination.
 }
 
 @ Actually getting a line is taken care of by the |readline| function if
-present, or by |std::getline|. Both chop the newline from the line. A
+present, or else by |std::getline|. Both chop the newline from the line. A
 particularity of the GNU |readline| function is that upon typing \.{\^D} at
 the start of a line it will signal a file-ended condition by returning a null
 pointer, but it will not actually set the end-of-file condition on the
@@ -962,7 +965,7 @@ if (input_stack.empty() and prompt!=nullptr)
   if (readline!=nullptr) // skip calling 'readline' if no function is supplied
   { char* l=readline(pr.c_str());
     if (l==nullptr) // then |readline| failed, flag end of file
-    {@; line=""; stream->setstate(std::ios_base::eofbit);
+    {@; line.clear(); stream->setstate(std::ios_base::eofbit);
       std::cout << "^D\n";
     }
     else
@@ -1135,6 +1138,47 @@ void BufferedInput::pop_prompt()
 void BufferedInput::reset() @+
 {@; temp_prompt=""; }
 
+@* Listing completions of a string.
+While this is not directly related to the |BufferedInput| class itself, the
+production of a list of possible completions for a given input string is a
+functionality that is used by the |readline| function, helping the user to
+easily input complicated strings when they are either keywords or identifiers
+that were introduced earlier in the session (for instance while loading
+scripts).
+
+@< Declarations of functions @>=
+sl_list<const char*> completions(const char* text);
+
+@ The completion function will find identifiers matching the given prefix that
+are currently either known in the overload or global identifier tables, or have
+such a low code that they are keywords or predefined types. All such identifiers
+are known in the |main_hash_table|, so that is what our primary loop is over;
+upon finding a partial match we test that the identifier actually satisfied one
+of the given $3$ conditions. Without such filtering (so including all
+identifiers from |main_hash_table|) we would also propose names that have been
+used somewhere as local identifiers or were accidentally typed by the user; such
+``pollution of the completion space'' would be highly annoying, especially
+because it we cannot remove identifiers from |main_hash_table|.
+
+@h "lexer.h" // for |main_hash_table| end |lex|
+@h "global.h" // for |global_overload_table| and |global_id_table|
+@< Definitions of functions @>=
+sl_list<const char*> completions(const char* text)
+{
+  sl_list<const char*> result;
+  auto l=std::strlen(text); // fix length for during search
+  for (id_type i=0; i<main_hash_table->nr_entries(); ++i)
+  { const char* s = main_hash_table->name_of(i);
+    if (std::strncmp(text,s,l) == 0 // is |text| a prefix of |s|?
+        and (i<lex->first_identifier() @|
+             or not global_overload_table->variants(i).empty() @|
+             or global_id_table->present(i)
+            )
+       )
+      @/result.push_back(s);
+  }
+  return result;
+}
 
 @* Index.
 

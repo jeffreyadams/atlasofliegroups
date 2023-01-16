@@ -1,21 +1,19 @@
 <basic.at
 <polynomial.at { for |poly_plus@(vec,vec)| and friends, |i_poly_mat| type }
-<ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
+<extended_misc.at { for |is_fixed@(mat,Param)| }
 
 set eval (i_poly_mat M, int k) = mat:
   matrix (shape(M), (int i,int j)int: eval(M[i][j], k))
 
 { map from index in B1 to matching index in B2, and whether it's well defined }
 set permutation ([Param] B1, [Param] B2) = ([int],bool):
-( if =#B2 then []
-  else let find = find_in(B2[0].real_form,B2)
-  in for p in B1
-     do let c=find(p) in
-        if c.< then return ([],false) {signal failure to locate some element}
-	else c
-	fi
-     od
-  fi
+(  let index = index_in(B2)
+in for p in B1
+   do let c=index(p) in
+      if c.< then return ([],false) {signal failure to locate some element}
+      else c
+      fi
+   od
 , true
 )
 
@@ -157,7 +155,6 @@ set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
 set KL_P_signed_polynomials([Param] B, mat delta) = i_poly_mat:
   assert(all(for p in B do is_fixed(p,delta) od)
         ,"not all parameters in B_fixed are fixed");
-{  let (block,P,polys)=extended_KL_block(B~[0],delta)}
   let (block,P,polys)=partial_extended_KL_block(B[0],delta)
   then (perm,valid)=permutation(B,block), n=#block
 in assert(valid,"given list of parameters does not for a block");

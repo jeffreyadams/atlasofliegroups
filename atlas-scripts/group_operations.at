@@ -44,12 +44,14 @@ set *(InnerClass ic1,InnerClass ic2) = InnerClass:
     block_matrix(distinguished_involution(ic1),distinguished_involution(ic2))
   in inner_class(root_datum(ic1)*root_datum(ic2),di)
 
+set initial_torus_factor(RealForm G) = ratvec:
+   base_grading_vector(G)-initial_torus_bits(G)
+
 set * (RealForm G,RealForm H) = RealForm:
-( let xG=KGB(G,0), xH=KGB(H,0) in
-  real_form { synthetic }
+( real_form { synthetic }
   ( inner_class(G)*inner_class(H)
-  , block_matrix(involution(xG),involution(xH))
-  , torus_factor(xG)##torus_factor(xH)
+  , block_matrix(distinguished_involution(G),distinguished_involution(H))
+  , initial_torus_factor(G)##initial_torus_factor(H)
   )
 )
 
@@ -95,7 +97,7 @@ set adjoint (InnerClass ic) = InnerClass:
 set derived (RealForm G) = RealForm:
 ( let (der_rd,proj)=derived_info(root_datum(G))
   then xi0 = corestrict_action(proj,distinguished_involution(InnerClass:G))
-  then tf=torus_factor(KGB(G,0)), der_fc = der_rd.fundamental_coweights
+  then tf=initial_torus_factor(G), der_fc = der_rd.fundamental_coweights
   in
   real_form { synthetic }
     ( inner_class(der_rd,xi0)
@@ -109,7 +111,7 @@ set adjoint (RealForm G) = RealForm:
   real_form { synthetic }
     ( adj_ic
     , distinguished_involution(adj_ic)
-    , torus_factor(KGB(G,0))*simple_roots(root_datum(G)) { to adjoint }
+    , initial_torus_factor(G)*simple_roots(root_datum(G)) { to adjoint }
     )
 )
 

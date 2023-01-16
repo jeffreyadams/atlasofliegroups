@@ -10,6 +10,14 @@
 <finite_dimensional.at
 <W_reps.at
 
+{convenient output of distinguished fiber
+ this should be in misc.at, but it calls tabulate}
+set show_distinguished_fiber(RealForm G)=void:
+tabulate(["#","simple roots","rho(x)"]#for x in distinguished_fiber(G) do
+  ##[[x.number.to_string],
+   ["" + ##for i:ss_rank(G) do status_text(i,x) + "," od +status_text(ss_rank(G),x)],
+    [rho(K_0(x)).to_string]] od)
+
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
 
@@ -222,6 +230,21 @@ set theta_stable_data (Param p) = (Parabolic,Param):
    )
   )
 
+{. Theta-stable data associated to a parameter q: a theta-stable parabolic Q=LU
+   with L quasisplit, and parameter q_L for a fine principal series
+   representation 
+   so that is obtained by cohomological parabolic induction
+   from q_L.}
+set theta_stable_quasi_data (Param q) = (Parabolic,Param):
+  {assert(is_final(q),"parameter is not final")}
+  let (,q1)=q.from_dlambda_dom
+  then dlambda1 = d_lambda(q1), x1=q1.x, lambda1=q1.lambda
+  then Q1 = parabolic_by_wt(dlambda1,x1)
+  then L1 = Q1.Levi
+  then x1_L1=inverse_embed_KGB(x1,L1)  
+  in
+  (Q1, parameter(x1_L1, lambda1-rho(real_form(q1))+rho(L1), q1.nu))
+  
 {---------------------standardize-----------------------------------------}
 
 {on the compact Cartan, coherent continuation is well defined even
@@ -384,9 +407,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
    assert(is_parabolic_theta_stable(make_parabolic(real_form(P),G)),
           "L is not Levi of theta_stable parabolic");
-   let result = null_module(G) in
-   for coeff@p in P do result+:=coeff*theta_induce_standard(p,G) od;
-   result
+   sum(G,for coeff@p in P do coeff*theta_induce_standard(p,G) od)
 
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
    sum of standards for G; uses the character formula to write J(p_L)

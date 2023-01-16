@@ -86,14 +86,14 @@ set show(KGBElt x,ratvec lambda) = void:
   prints("J_K(x=", #x, ",", [rat]:lambda,")")
 
 
-set virtual (tag_Param(p,type)) = tag_ParamPol:
+set as_pol (tag_Param(p,type)) = tag_ParamPol:
   assert(type=irr or type=std or type=K_types,"Incorrect type");
-  (virtual(p),type)
+  (as_pol(p),type)
 
 
 set = (tag_Param(p,type_p),tag_Param(q,type_q)) = bool:
   assert (type_p=type_q,"cannot compare standards and irreducibles;" + new_line
-   +"  to compare in the Grothendieck group do virtual(I(p))=virtual(J(q))");
+   +"  to compare in the Grothendieck group do as_pol(I(p))=as_pol(J(q))");
   p=q
 
 set character (tag_ParamPol (P,type)) = ParamPol:
@@ -112,10 +112,10 @@ set + (tag_ParamPol(P,type_P):tP,tag_ParamPol(Q,type_Q):tQ) = tag_ParamPol:
   else error("incorrect type(s)") fi
 
 set + (tag_Param(p,type_p),tag_Param(q,type_q)) = tag_ParamPol:
-  virtual(p,type_p)+virtual(q,type_q)
+  as_pol(p,type_p)+as_pol(q,type_q)
 
 set + (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = tag_ParamPol:
-  (P,type_P)+(virtual(q),typeq)
+  (P,type_P)+(as_pol(q),typeq)
 
 { cannot also have +@(tag_Param,tag_ParamPol): would create coercion ambiguity }
 
@@ -135,7 +135,7 @@ set * (Split w,tag_ParamPol(P,type)) = tag_ParamPol: (w*P,type)
 set * (Split w,tag_Param(p,type)) = tag_ParamPol: (w*p,type)
 
 set = (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = bool:
-  (P,type_P)=(virtual(q,typeq))
+  (P,type_P)=(as_pol(q,typeq))
 
 set infinitesimal_character (tag_Param(p,)) = ratvec:
   infinitesimal_character(p)
@@ -157,9 +157,7 @@ set tau_complement (tag_Param(p,)) = [int]: tau_complement(p)
 
 set status (int s,tag_Param (p,)) = int: status(s,p)
 
-set branch (tag_Param(p,type), int bound) = tag_ParamPol:
-( if type=std then branch_std(p,bound) elif type=irr then branch_irr(p,bound)
+set branch (tag_Param(p,type), int bound) = KTypePol:
+  if type=std then branch_std(p,bound) elif type=irr then branch_irr(p,bound)
   else error("wrong type")
   fi
-, K_types
-)

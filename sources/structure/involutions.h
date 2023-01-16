@@ -103,19 +103,21 @@ class InvolutionTable
     WeightInvolution theta;
     int_Matrix M_real; // $1-\theta$; then expression in a basis of its image
     int_Matrix lift_mat; // image basis $1-\theta$: |lift_mat*M_real==1-theta|
+    Weight th1_rho;
+    SmallSubspace mod_space; // for |x|
     unsigned int length;
     unsigned int W_length;
-    SmallSubspace mod_space; // for |x|
 
-  record(const WeightInvolution& inv,
-	 const InvolutionData& inv_d,
-	 const int_Matrix& Mre, const int_Matrix& lm,
+  record(WeightInvolution&& inv,
+	 InvolutionData&& inv_d,
+	 int_Matrix&& Mre, int_Matrix&& lm,
+	 Weight&& t1r,
 	 unsigned int l,
 	 unsigned int Wl,
-	 const SmallSubspace& ms)
-  : id(inv_d), theta(inv)
-  , M_real(Mre), lift_mat(lm)
-  , length(l), W_length(Wl), mod_space(ms) {}
+	 SmallSubspace&& ms)
+  : id(std::move(inv_d)), theta(std::move(inv))
+  , M_real(std::move(Mre)), lift_mat(std::move(lm)), th1_rho(std::move(t1r))
+  , mod_space(std::move(ms)), length(l), W_length(Wl) {}
   }; // |struct record|
 
   std::vector<record> data;
@@ -182,6 +184,8 @@ class InvolutionTable
 
   bool complex_is_descent(InvolutionNbr n,RootNbr alpha) const;
 
+  Weight theta_plus_1_rho(InvolutionNbr n) const { return data[n].th1_rho; }
+
   void reduce(TitsElt& a) const;
 
   const SmallSubspace& mod_space(InvolutionNbr n) const
@@ -191,6 +195,9 @@ class InvolutionTable
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
 
   // functionality for |y| values, represented as |TorusPart| (a small bitset)
+
+  // turn |lam_rho| into chosen unique representative modulo $(1-\theta)X^*$
+  void lambda_unique(InvolutionNbr inv, Weight& lam_rho) const;
 
   // uniquely chosen representative modulo $(1-\theta)X^*$ of $(1-\theta)/2*y$
   void real_unique(InvolutionNbr inv, RatWeight& y) const;

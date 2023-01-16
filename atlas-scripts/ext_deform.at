@@ -25,7 +25,7 @@ set KL_block_raw (Param p, mat delta) = { emulate built-in |KL_block| }
 set ed_verbose=false
 
 set deformation_terms (Param p, mat delta) = ParamPol:
-  assert(twist(p,delta)=p,"parameter is not delta-fixed");
+  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
   let (B,P_ind_mat,polys) = partial_extended_KL_block(p,delta)
   then nB=#B, pev=for Q in polys do eval(Q,minus_1) od
   then P_mat= for col in P_ind_mat do for entry in col do pev[entry] od od
@@ -61,29 +61,24 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     od
   fi
 
-
-set recursive_deform (Param p, mat delta) = ParamPol:
+set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
   assert(is_final(p) and is_fixed(p,delta),"improper parameter");
-  let G=p.real_form then !empty=G.null_module in
-  ( rec_fun full_def (Split sc,Param p) ParamPol:
+  let G=p.real_form in
+   (1,p). { apply following recursive function to this initial argument }
+   ( rec_fun full_def (Split sc,Param p) KTypePol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       if ed_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0 =
-        let (p0,flipped) = scale_extended(p,delta,0)
-        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
+      let acc = G.null_module, at_nu0 = K_type_pol_extended(p,delta)
       in
       if ed_verbose then prints("deformation at nu=0 contributes ",at_nu0) fi;
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do
 	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
-	then def= sum(G,
-          for c@q in finalize_extended(pf,delta)
-          do if flipped then s*c else c fi * deformation_terms(q,delta)
-          od )
+	then def= s^#flipped * terms(pf)
 	in
         if ed_verbose then prints("adding deformation term for p=",pf, new_line,
 	                          "adding:", def)
@@ -96,43 +91,12 @@ set recursive_deform (Param p, mat delta) = ParamPol:
       od
     ; at_nu0
     end
-  ) { apply that recursive function to the initial argument: } (1,p)
+  )
 
-set twisted_recursive_deform (Param p) = ParamPol:
-  assert(is_final(p) and twist(p)=p,"improper parameter");
-  let G=p.real_form
-  then !empty=G.null_module, !delta=G.distinguished_involution in
-  ( rec_fun full_def (Split sc,Param p) ParamPol:
-       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
-    begin
-      if ed_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
-      assert(is_standard(p)
-	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0 =
-        let (p0,flipped) = scale_extended(p,delta,0)
-        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
-      in
-      if ed_verbose then prints("deformation at nu=0 contributes ",at_nu0) fi;
-      for factor in reducibility_points(p)
-      ~ { direction of deformation is down, towards 0; this is not essential }
-      do
-	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
-	then def= sum(G,
-          for c@q in finalize_extended(pf,delta)
-          do if flipped then s*c else c fi * twisted_deform(q)
-          od )
-	in
-        if ed_verbose then prints("adding deformation term for p=",pf, new_line,
-	                          "adding:", def)
-        fi;
-        acc+:=def
-      od
-    ; for k@q in acc { traverse the sum of the deformation terms spun off }
-      do { apply |full_def| recursively to all those terms }
-        at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
-      od
-    ; at_nu0
-    end
-  ) { apply that recursive function to the initial argument: } (1,p)
+set recursive_deform (Param p, mat delta) = KTypePol:
+   recursive_deform(p,delta,(Param q)ParamPol:deformation_terms(q,delta))
+
+set twisted_recursive_deform (Param p) = KTypePol:
+   recursive_deform(p,p.real_form.distinguished_involution,twisted_deform@Param)
 
 set twisted_full_deform = recursive_deform@(Param,mat)

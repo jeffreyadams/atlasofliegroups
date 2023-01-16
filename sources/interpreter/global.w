@@ -2724,24 +2724,118 @@ void unary_minus_wrapper(expression_base::level l)
 }
 @)
 void power_wrapper(expression_base::level l)
-{ static shared_int one = std::make_shared<int_value>(1);
+{ static shared_int zero = std::make_shared<int_value>(0);
+  static shared_int one = std::make_shared<int_value>(1);
   // constants shared between calls
   static shared_int minus_one  = std::make_shared<int_value>(-1);
 @)
-  int n=get<int_value>()->int_val(); // exponent is small
-  shared_int b=get<int_value>(); // base can be large
+  shared_int exponent = get<int_value>();
+  shared_int b=get<int_value>();
   bool unit_base = b->val.size()==1 and std::abs(b->int_val())==1;
-  if (n<0 and not unit_base)
-    throw runtime_error("Negative power of integer");
+  if (not unit_base)
+  { if (exponent->val.is_negative())
+      throw runtime_error("Negative power of integer");
+    else if (not b->val.is_zero() and exponent->val.size()>1)
+      throw runtime_error("Exponent too large in power of integer");
+  }
   if (l==expression_base::no_value)
     return;
 @)
   if (unit_base)
-  {@; push_value(n%2!=0 and b->val.is_negative() ? minus_one : one);
+  @/{@; push_value(b->val.is_negative() and exponent->val.is_odd() ? minus_one : one);
       return;
   }
 @)
-  push_value(std::make_shared<int_value>(b->val.power(n)));
+  if (b->val.is_zero())
+    {@; push_value(exponent->val.is_zero() ? one : zero); return; }
+
+  push_value(std::make_shared<int_value>(b->val.power(exponent->int_val())));
+}
+
+@ Here is the first of the bitwise operations on integers.
+@< Local function definitions @>=
+void and_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val &= i->val;
+  push_value(j);
+}
+void or_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val |= i->val;
+  push_value(j);
+}
+void xor_wrapper(expression_base::level l)
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
+  if (l==expression_base::no_value)
+    return;
+  j->val ^= i->val;
+  push_value(j);
+}
+void and_not_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bitwise_subtract(j->val)));
+}
+
+@ And here are some more bitwise operations on integers.
+@< Local function definitions @>=
+void bitwise_subset_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(whether(i->val.bitwise_subset(j->val)));
+}
+void nth_set_bit_wrapper(expression_base::level l)
+{ int n=get<int_value>()->int_val();
+  shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  if (n>=0)
+    push_value(std::make_shared<int_value>(i->val.index_of_set_bit(n)));
+  else // complement |n| and look for |n|-th cleared bit
+  {
+    big_int v=i->val; v.complement();
+    push_value(std::make_shared<int_value>(v.index_of_set_bit(-1-n)));
+  }
+}
+void bit_length_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(std::make_shared<int_value>(i->val.bit_length()));
+}
+
+@ Although a set of natural numbers represented as a list could be converted
+to an integer representing it as a bitset using repeated use of exponentiation
+of the base~$2$ and the bitwise |OR| operations, it is more efficient to have a
+built-in function for this. Since numbers exceeding $2^{31}$ in the list would
+certainly cause trouble, the function below takes a |vector_value| as argument.
+
+@h "bitmap.h"
+@< Local function definitions @>=
+void vec_to_bitset_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  unsigned cap=0;
+  for (const auto n : v->val)
+    if (n<0)
+      throw runtime_error("Negative entry in conversion to bitset");
+    else if (static_cast<unsigned>(n)>=cap)
+      cap = n+1; // ensure sufficient capacity to store |n| in bitset
+  if (l==expression_base::no_value)
+    return;
+@)
+  BitMap b(cap,v->val.begin(),v->val.end());
+  push_value(std::make_shared<int_value>(big_int(b)));
 }
 
 @*1 Rationals.
@@ -3191,6 +3285,30 @@ void ascii_char_wrapper(expression_base::level l)
     push_value(std::make_shared<string_value>(std::string(1,c)));
 }
 
+@ A rather strange function is |readline_completions|, which maps a (prefix)
+string to the list of its possible completions. One of its strange features is
+that it is built-in, but its operation is variable among sessions and even
+within a single session. Its main purpose is to allow non-human users of the
+\.{atlas} executable (i.e., programs that run \.{atlas} behind the scenes) to
+interrogate what the |readline| interface would propose as completions to human
+users; with this information such programs can propose a similar interface to
+their own users. The functionality itself is provided by the |completions|
+function defined in \.{buffer.w}.
+
+@h "buffer.h"
+@< Local function definitions @>=
+void readline_completions_wrapper(expression_base::level l)
+{ shared_string c=get<string_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  sl_list<const char*> comps = completions(c->val.c_str());
+@/own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(comps.size());
+  for (const auto* s : comps)
+    result->val.push_back(std::make_shared<string_value>(s));
+  push_value(std::move(result));
+}
 
 @*1 Special instances of size-of and other generic operators.
 %
@@ -3205,6 +3323,7 @@ void sizeof_vector_wrapper(expression_base::level l);
 void sizeof_ratvec_wrapper(expression_base::level l);
 void sizeof_string_wrapper(expression_base::level l);
 void matrix_ncols_wrapper(expression_base::level l);
+void K_type_pol_size_wrapper(expression_base::level l);
 void virtual_module_size_wrapper(expression_base::level l);
 
 @ The definitions are straightforward.
@@ -3421,13 +3540,13 @@ void ratvec_unary_eq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(v->val.isZero()));
+  push_value(whether(v->val.is_zero()));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
 { shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(whether(not v->val.isZero()));
+  push_value(whether(not v->val.is_zero()));
 }
 void ratvec_eq_wrapper(expression_base::level l)
 { shared_rational_vector w=get<rational_vector_value>();
@@ -3986,6 +4105,14 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-","(int->int)");
 install_function(power_wrapper,"^","(int,int->int)");
+install_function(and_wrapper,"AND","(int,int->int)");
+install_function(or_wrapper,"OR","(int,int->int)");
+install_function(xor_wrapper,"XOR","(int,int->int)");
+install_function(and_not_wrapper,"AND_NOT","(int,int->int)");
+install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
+install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
+install_function(bit_length_wrapper,"bit_length","(int->int)");
+install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''
@@ -4044,6 +4171,8 @@ install_function(string_concatenate_wrapper,"##","(string,string->string)");
 install_function(concatenate_strings_wrapper,"##","([string]->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
+install_function(readline_completions_wrapper,@|"readline_completions",
+   "(string->[string])");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
@@ -4806,9 +4935,9 @@ install_function(diagonal_wrapper,"diagonal","(vec->mat)");
 install_function(stack_rows_wrapper,"stack_rows","([vec]->mat)");
 install_function(combine_columns_wrapper,"#","(int,[vec]->mat)");
 install_function(combine_rows_wrapper,"^","(int,[vec]->mat)");
-install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
+install_function(swiss_matrix_knife_wrapper,@|"swiss_matrix_knife"
     ,"(int,mat,int,int,int,int->mat)");
-install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
+install_function(swiss_matrix_knife_wrapper,@|"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
 install_function(gcd_wrapper,"gcd","(vec->int)");

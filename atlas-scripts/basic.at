@@ -187,15 +187,28 @@ set is_member_sorted ([int] v) = (int->bool):
 set isnt_member_sorted ([int] v) = (int->bool):
   let member = is_member_sorted(v) in (int n): not member(n)
 
-set contains (int val) = ([int]->bool): ([int] v)bool:
-  any(#v,(int i)bool:v[i]=val)
 
-set is_subset_of_sorted ([int] sorted) = ([int]->bool):
-   let test = is_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
-set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
-   let test = isnt_member_sorted(sorted) in
-   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_member_fast  (vec L) = (int->bool):
+   let B=L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+set isnt_member_fast  (vec L) = (int->bool):
+   let B = ~L.to_bitset in (int n) bool: bitwise_subset(2^n,B)
+
+set is_subset (vec S,vec L) = bool: bitwise_subset(S.to_bitset,L.to_bitset)
+set is_disjoint (vec S,vec L) = bool: bitwise_subset(S.to_bitset,~L.to_bitset)
+
+set contains (vec S) = (vec->bool):
+   let b = S.to_bitset in (vec L)bool: bitwise_subset(b,L.to_bitset)
+set contains (int s) = (vec->bool):
+   let b = 2^s in (vec L)bool: bitwise_subset(b,L.to_bitset)
+
+set is_subset_of (vec L) = (vec->bool):
+   let b = L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+set is_disjoint_from (vec L) = (vec->bool):
+   let b = ~L.to_bitset in (vec S)bool: bitwise_subset(S.to_bitset,b)
+
+set set_bit_positions (int n) = vec:
+   assert(n.>=,"Infinite number of set bits for negative number");
+   while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
@@ -359,7 +372,7 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
-{ all words of length |#limits|, with letter |i| running over |#limits[i]| }
+{ all words with letter |i| running over elements of |alphabets[i]| }
 set all_words ([[int]] alphabets) = mat:
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
@@ -393,6 +406,12 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
       fi
     in from_first(#S,k)
   fi
+
+set all_0_1_vecs_with_sum (int n,int k) = [vec]:
+   let !zero = null(n) in
+   for S in choices_from(#n,k)
+   do let v=zero in for i in S do v[i]:=1 od; v
+   od
 
 { index of |word| in |all_words(radix)| }
 set mixed_radix_nr([int] radix) = (vec->int):
@@ -485,7 +504,11 @@ set product (int n, [mat] L) = mat:
   else let p=L~[0] in assert(shape(p)=(n,n)); for i:len-1 ~do p *:= L[i] od; p
   fi
 
-set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
+set gcd(mat M) = int:
+   let d=0 in
+   for col in M
+   do d := case d in gcd(col), return 1 else gcd(d,gcd(col%d)) esac
+   od; d
 
 { integer division }
 set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
@@ -1036,7 +1059,7 @@ set root_span_projector (RootDatum rd ,[int] S) = (mat,int):
 set wall_projector ((RootDatum,[int]) arg) = (mat,int):
    let (A,d)=root_span_projector(arg) in (d-A,d)
 
-
+{ for (anti)dominant |v|, find simple generators of its singular subsystem }
 set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
   ## for a@j in simple_coroots(rd) do if =a*v then [j] else [] fi od
 
@@ -1449,9 +1472,8 @@ set cross (vec alpha,KGBElt x) = KGBElt:
 set Cayley (vec alpha,KGBElt x) = KGBElt:
   Cayley(root_index(real_form(x),alpha),x)
 
-{ cross action of Weyl group element; avoid name conflict cross@(vec,KGBElt) }
-set W_cross ([int] w,KGBElt x) = KGBElt:
-  for s in w ~ do x:=cross(s,x) od; x
+set W_cross (WeylElt w,KGBElt x) = KGBElt:
+  for s in w.word ~ do x:=cross(s,x) od; x
 
 set KGB_status_text (int i) = string:
   case i in "C-","ic","r ","nc","C+" else error("Illegal KGB status") esac
@@ -1587,6 +1609,93 @@ set print_KL_list  ((RealForm,RealForm) p) = void: print_KL_list(block(p))
 set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
+{				K types					}
+
+set root_datum (KType t) = RootDatum: real_form(t)
+set inner_class (KType t) = InnerClass: real_form(t)
+
+set x (KType t) = KGBElt: let (x,)=%t in x
+set lambda_minus_rho (KType t) = vec: let (,lr)=%t in lr
+set lambda_rho = lambda_minus_rho@KType { shorter name allowed }
+set lambda (KType t) = ratvec: let (x,lr)=%t in rho(x.real_form)+lr
+set theta_plus_1_lambda (KType t) = vec:
+    let (x,lr) =%t in (1+involution(x))*(x.real_form.rho+lr) \ 1
+
+{ this constructor could be called |K_type|, but that would be confusing }
+set K_type_lambda (KGBElt x, ratvec lambda) = KType:
+  K_type(x,ratvec_as_vec(lambda-rho(x.root_datum)))
+
+set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
+
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (KType t) = [int]:
+  let lambda=lambda(t) in
+  for alpha_v@i in t.root_datum.simple_coroots
+  do if (alpha_v*lambda).< then [i] else [] fi
+  od.##
+
+{ questions about status of x component with respect to full datum simple root }
+set is_noncompact_imaginary (int i,KType t) = bool:
+  is_noncompact_imaginary(t.root_datum.simple_roots[i],t.x)
+set is_compact_imaginary (int i,KType t) = bool:
+  is_compact_imaginary(t.root_datum.simple_roots[i],t.x)
+
+set involution (KType t) = mat: involution(t.x)
+
+{			  Polynomials in K-types			}
+
+set root_datum (KTypePol P) = RootDatum: real_form(P)
+
+set K_type_formula (KType t) = KTypePol: K_type_formula(t,minus_1) { no cutoff }
+
+set null_module (KType t) = KTypePol:
+  null_K_module(real_form(t)) { avoid useless conversion to KTypePol }
+set null_module (KTypePol P) = KTypePol: 0*P { built-in does this efficiently }
+set null_K_module = null_module@KType    { allow more explicit name }
+set null_K_module = null_module@KTypePol { allow more explicit name }
+set -(KTypePol P) = KTypePol: minus_1*P
+
+set first_K_type (KTypePol P) = KType: let (,p)=first_term(P) in p
+set last_K_type (KTypePol P)  = KType: let (,p)=last_term(P) in p
+
+set s_to_1       (KTypePol P) = KTypePol: 0*P + for x@q in P do (+%x,q) od
+set s_to_minus_1 (KTypePol P) = KTypePol: 0*P + for x@q in P do (-%x,q) od
+
+{ counterpart to built-in +@(KTypePol,(Split,KType)) }
+set - (KTypePol a, (Split,KType) (c,p)) = KTypePol: a+(-c,p)
+
+set + (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_1,p) od
+set - (KTypePol P, [KType] ps) = KTypePol: P+for p in ps do (split_minus_1,p) od
+
+{ |KTypePol| summation by divide and conquer to privilege balanced additions }
+set sum = (RealForm,[KTypePol]->KTypePol):
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([KTypePol] Ps) = KTypePol: { |Ps| has at least one term }
+        let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
+  in (RealForm G,[KTypePol] Ps) KTypePol:
+  if =#Ps then G.null_K_module else s(Ps) fi
+
+set + (KTypePol P,[KTypePol] Ps) = KTypePol: P+sum(P.real_form,Ps)
+set - (KTypePol P,[KTypePol] Ps) = KTypePol: P-sum(P.real_form,Ps)
+
+set map ((KType->KType)f, KTypePol P) = KTypePol:
+  0*P + for c@p in P ~do (c,f(p)) od
+set map ((Param->KType)f, ParamPol P) = KTypePol:
+  P.real_form.null_K_module + for c@p in P ~do (c,f(p)) od
+
+set map ((KType->KTypePol)f, KTypePol P) = KTypePol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+set map ((Param->KTypePol)f, ParamPol P) = KTypePol:
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
+
+set half (KTypePol P) = KTypePol: 0*P+ for c@t in P do (half(c),t) od
+{ inverse of multiplication *@(int,KTypePol); don't confuse with scaling }
+set divide_by (int n, KTypePol P) = KTypePol: 0*P+ for c@t in P do (c/n,t) od
+
+set as_pol (KType p) = KTypePol: p { for making implicit conversion explcit }
+set as_pol (RealForm G, [KType] ps) = KTypePol:
+  let one=Split:(1,0) in null_K_module(G)+for p in ps do (one,p) od
+{ DON'T define as_pol ([KType] pp): cannot be correctly defined when #pp=0 }
 
 {                           Module parameters                           }
 
@@ -1594,12 +1703,14 @@ set root_datum (Param p) = RootDatum: real_form(p)
 set inner_class (Param p) = InnerClass: real_form(p)
 
 set null_module (Param p) = ParamPol:
-  null_module(real_form(p)) { avoid using ParamPol version below, could throw }
+  null_module(real_form(p)) { avoid useless conversion to ParamPol }
 
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
+set theta_plus_1_lambda (Param p) = vec:
+    let (x,,gamma) =%p in ratvec_as_vec((1+involution(x))*gamma)
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
@@ -1611,19 +1722,22 @@ set integrality_datum (Param p)= RootDatum:
 set integrality_rank (Param p) = int:
   integrality_rank(p.real_form, p.infinitesimal_character)
 
-{ whether gamma dominant, and if not witnessing simple coroot for this }
-set is_dominant (Param p) = (bool,int):
+{ list or poscoroot indices that exhibit non-dominance of the parameter }
+set non_dominant_simples (Param p) = [int]:
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in p.root_datum.simple_coroots
-  do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,-1)
+  do if (alpha_v*gamma).< then [i] else [] fi
+  od.##
 
-{ whether gamma dominant, and if not witnessing integrally simple coroot }
-set is_integrally_dominant (Param p) = (bool,int):
+{ list of integrally simple poscoroots that exhibit integral-non-dominance }
+set non_integrally_dominant_simples (Param p) = [vec]:
   let gamma=infinitesimal_character(p) in
-  for alpha_v@i in integrality_datum(p).simple_coroots
-  do if alpha_v*gamma<0 then return(false,i) fi
-  od; (true,minus_1)
+  for alpha_v in integrality_datum(p.real_form,gamma).simple_coroots
+  do if (alpha_v*gamma).< then [alpha_v] else [] fi
+  od.##
+
+{ whether gamma integrally dominant }
+set is_integrally_dominant (Param p) = bool: =#p.non_integrally_dominant_simples
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,Param p) = bool:
@@ -1649,9 +1763,11 @@ set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
-{ cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
-set W_cross ([int] w,Param p) = Param:
-  for s in w ~ do p:=cross(s,p) od; p
+set cross (WeylElt w,Param p) = Param:
+  for s in w.word ~ do p:=cross(s,p) od; p
+
+set K_type_pol (Param p) = KTypePol: K_type(p) { restrict, implicitly convert }
+set param_pol (KType t) = ParamPol: param(t)
 
 { parameter(G,x,lambda,nu)=param(KGB(G,x),lambda-rho(G),nu), so you can enter
   lambda without the rho shift; lambda may have denominator 2 or be a vec
@@ -1663,7 +1779,7 @@ set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
 
 { set parameter ensuring (upon sucess) that the infinitesimal char. is |gamma|;
   achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
-set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
+set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
   { ((1-theta)*lambda+(1+theta)*gamma)/2 = lambda+(1+theta)*(gamma-lambda)/2 }
   parameter(G,nx,lambda+(1+theta)*(gamma-lambda)/2,gamma)
@@ -1816,13 +1932,18 @@ set print_extended_block = (Param,mat->):
 
 {                   Polynomials in module parameters                    }
 
+set root_datum (ParamPol P) = RootDatum: real_form(P)
+
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
+
+set param_pol (KTypePol P) = ParamPol:
+   null_module(P.real_form) + for c@t in P do (c,param(t)) od
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
-set s_to_1 (ParamPol P)       = ParamPol: 0*P + for x@q in P do (+%x,q) od
+set s_to_1       (ParamPol P) = ParamPol: 0*P + for x@q in P do (+%x,q) od
 set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
@@ -1853,22 +1974,41 @@ set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
 set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
 
-{ simulate coercion (KGBElt->RealForm) in some cases }
-set root_datum (ParamPol P) = RootDatum: real_form(P)
-
-set virtual (Param p) = ParamPol: p { for making implicit conversion explcit }
-set virtual (RealForm G, [Param] ps) = ParamPol:
+set as_pol (Param p) = ParamPol: p { for making implicit conversion explcit }
+set as_pol (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
-{ DON'T define virtual ([Param] pp): cannot be correctly defined when #pp=0 }
+{ DON'T define as_pol ([Param] pp): cannot be correctly defined when #pp=0 }
 
 { branch to get only the coefficient of a specific K-type }
-set branch (Param std, Param K_type) = int:
-  branch(std,height(K_type))[K_type].int_part
+set branch (KTypePol P, KType t) = Split: branch(P,height(t))[t]
+set branch (ParamPol P, KType t) = Split: branch(K_type_pol(P),t)
 
-set branch (ParamPol P, Param K_type) = Split: { Split coefficients possible }
-  branch(P,height(K_type))[K_type]
+set full_deform (ParamPol P) = KTypePol:
+  sum(P.real_form, for c@q in P do c*full_deform(q) od )
 
-{ nice output of ParamPol: split_format the coefficients }
+set deform_to_height (ParamPol P, int height) = KTypePol:
+( let !empty_K=null_K_module(P.real_form), !empty=null_module(P)
+  then output = empty_K, def = empty
+  in
+  P := empty +
+  { snap every term down to a reducibility point, or tempered parameter }
+    for c@p in P
+    do let rp = reducibility_points(p) in
+       if =#rp then output +:= (c,p.K_type); [] else [(c,p*rp~[0])] fi
+    od.##
+; while >#P
+  do set (def,P) :=
+        (let p=first_param(P) in block_deform(p,P next P:=empty,height))
+  ;  let kt = for c@q in def do if =nu(q) then [(c,q.K_type)] else [] fi od.##
+     ,   pp = for c@q in def do if =nu(q) then [] else [(c,q)] fi od.##
+  in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
+  od
+; output
+)
+
+{ nice output of KTypePol and ParamPol: split_format the coefficients }
+set pol_format (KTypePol P)= string:
+  ## for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od
 set pol_format (ParamPol P)= string:
   ## for w@p in P do to_string("(",w.split_format,")*",p,new_line) od
 
@@ -1881,12 +2021,11 @@ set infinitesimal_character(ParamPol P) = ratvec:
            ,"infinitesimal character not unique")
   od; gamma
 
-{ split up a ParamPol into terms below a given height and the rest }
-set height_split (ParamPol P, int h) = (ParamPol,ParamPol):
-  let below=0*P, above=0*P in
-  for c@q in P
-  do if q.height<h then below+:=(c,q) else above+:=(c,q) fi
-  od; (below,above)
+{ split up a KTypePol or ParamPol into terms below a given height and others }
+set height_split ((KTypePol,int)(P,):pair) = (KTypePol,KTypePol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
+set height_split ((ParamPol,int)(P,):pair) = (ParamPol,ParamPol):
+  let lower = truncate_above_height(pair) in (lower,P-lower)
 
 { more generally, groups terms into different ParamPol, by value of gamma }
 set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
@@ -1900,15 +2039,21 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   in for c@p in P do insert(c,p) od; M
 
 { whether all coefficients are integer repectively integer multiples of |s| }
-set is_pure_1 (ParamPol P)=bool: all(for c in P do c.s_part.= od)
-set is_pure_s (ParamPol P)=bool: all(for c in P do c.int_part.= od)
+set is_pure_1 ([Split] L) = bool: all(#L,(int i) bool: =L[i].s_part)
+set is_pure_s ([Split] L) = bool: all(#L,(int i) bool: =L[i].int_part)
+set is_pure   ([Split] L) = bool: L.is_pure_1 or L.is_pure_s
 
 { a module is considered pure if either all coefficients are integer of if all
   coefficients are integer multiples of s; stronger than all coefficents pure }
-set is_pure (ParamPol P)=bool: P.is_pure_1 or P.is_pure_s
+set is_pure_1 (KTypePol P) = bool:
+   for c in P do if !=c.s_part then return false fi od; true
+set is_pure (KTypePol P) = bool: for c in P do c od.is_pure
+set is_pure_1 (ParamPol P) = bool:
+   for c in P do if !=c.s_part then return false fi od; true
+set is_pure (ParamPol P) = bool: for c in P do c od.is_pure
 
 { report number of integer, purely s, and mixed terms }
-set purity (ParamPol P)=(int,int,int):
+set purity (KTypePol P) = (int,int,int):
   let (x,y,z)=(0,0,0) in
   for coef in P
   do let (a,b)=%coef in { we know (a,b)/=(0,0), so 3 cases arise }
@@ -1916,16 +2061,43 @@ set purity (ParamPol P)=(int,int,int):
   od; (x,y,z)
 
 
+{		Rapid look-up in certain fixed structures		}
+
+set index_in ([vec] L) { equal size vectors } = (vec->int):
+  if =#L then (vec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+     then x0 = KGB(G,0)
+     then P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+  in (vec v) int: P[K_type(x0,v)].int_part-1
+  fi
+
+set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
+  if =#L then (ratvec .)int: minus_1 { search in empty list always fails }
+  else
+     let n=#L[0] then R=null(n,0)
+     then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+     then x0 = KGB(G,0), zero = null(n)
+     then P = null_module(G) + for v@i in L do (i+1,param(x0,zero,v)) od
+  in (ratvec v) int: P[param(x0,zero,v)].int_part-1
+  fi
+
+set index_in ([Param] L) = (Param->int): { an efficiency hack: }
+  if =#L then (Param .)int: minus_1 { search in empty list always fails }
+  else
+     let G=L[0].real_form
+     then P = G.null_module + for q@i in L do (i+1,q) od
+  in (Param p) int: P[p].int_part-1
+  fi
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
 
-{ find index of item in list, or -1 if not found; first does this }
+{ find index of item in list, or -1 if not found; |first| does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find_in (RealForm G,[Param] L) = (Param->int): { an efficiency hack: }
-   let P = G.null_module + for q@i in L do (i+1{nonzero!},q) od
-   in (Param p) int: P[p].int_part-1
 set find ([Param] L,Param p) = int:   first(#L,(int i)bool:L[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
@@ -1977,18 +2149,29 @@ set pad (string s,int width) = string: l_adjust(width,s)
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
 }
-set monomials (ParamPol P) = [Param]: for c@p in P do p od
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
+set height (KTypePol P) = int: max(0)(for @t in P do height(t) od)
 set height (ParamPol P) = int: max(0)(for @p in P do height(p) od)
 
-{. Convert a list of ParamPols into the list of distinct parameters occuring;
+{. Convert a list of KTypePol into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}
+set monomials([KTypePol] list) = [KType]:
+   if =#list then []
+   else
+      let sum = list[0].null_K_module +
+	  for P in list do for @p in P do (split_1,p) od od.##
+   in monomials(sum)
+   fi
+
 set monomials([ParamPol] list) = [Param]:
    if =#list then []
    else
-      let G=real_form(list[0]) then O=null_module(G)
-      then sum = sum(G,for P in list do O+for @p in P do (1,p) od od)
+      let sum = list[0].null_module +
+	  for P in list do for @p in P do (split_1,p) od od.##
    in monomials(sum)
    fi

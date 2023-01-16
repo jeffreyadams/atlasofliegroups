@@ -23,6 +23,7 @@ set distinguished_involution(ExtParam E)=mat:E.ic.distinguished_involution
 }
 set canonical_g (RealForm G) = ratvec: base_grading_vector(G)+rho_check(G)
 set canonical_g (KGBElt x) = ratvec: canonical_g(real_form(x))
+set canonical_g (KType t)  = ratvec: canonical_g(real_form(t))
 set canonical_g (Param p)  = ratvec: canonical_g(real_form(p))
 
 { some variants of Cayley transforms }

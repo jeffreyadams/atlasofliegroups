@@ -134,7 +134,7 @@ KL_table::KL_table(const ext_block::ext_block& b, ext_KL_hash_Table* pol_hash)
   assert(storage_pool[one] ==Pol(1));
 }
 
-std::pair<kl::KLIndex,bool>
+std::pair<ext_kl::KLIndex,bool>
   KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 { const KLColumn& col_y = column[y];
   unsigned inx=aux.x_index(x,y);
@@ -514,7 +514,7 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
   void KL_table::fill_column(BlockElt y,PolHash& hash)
 {
   // initialise column with dummy zero values; necessary for backwards filling
-  column[y].assign(aux.col_size(y),kl::KLIndex(0));
+  column[y].assign(aux.col_size(y),ext_kl::KLIndex(0));
 
   weyl::Generator s;
   BlockElt sy; // gets set to unique descent for |s| of |y|, if one can be found
@@ -850,7 +850,7 @@ void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
     return;
   }
   // distict polynomial hash tables requires setting up polynomial translation
-  std::vector<kl::KLIndex> poly_trans(sub.storage_pool.size(),KLIndex(-1));
+  std::vector<ext_kl::KLIndex> poly_trans(sub.storage_pool.size(),KLIndex(-1));
   {
     auto hash_object = polynomial_hash_table ();
     auto& hash = hash_object.ref;

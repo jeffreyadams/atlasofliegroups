@@ -2,30 +2,29 @@
 <lattice.at { for image_subspace@mat }
 <ratmat.at
 
-{ center Z and dual Z_hat of complex group or real form }
-{
-  dual of center of complex group (i.e. RootDatum) is
-  P/X^*  (weight lattice modulo character lattice)
+{ center Z and dual Z_hat of complex group or real form
 
-  dual of center of RealForm is
-  Z^=(Z_c)^ x (Z_s)^
-   Z_c=compact part of Z
-   Z_s=vector component of Z
-  (Z_s)^ is a Q-vector space
-  (Z_c)^ further decomposes Z^n x (finite part)
-   Z^n = dual of identity component Z_{c,0} of Z_c
-   finite part = dual of (Z_c/Z_{c,0}) = two-group
-  caution: (Z_{c,0},Z_s) is the identity component of the
-  radical(G(C)), which is a complex torus. If there is a split factor,
-  then this gives a Z/2Z in Z_f
-  parametrize Z_hat as [dual of finite_part,(dual of Z_{c,0}, dual of Z_s)]
-  dual of finite part: [(int d, vec v)]: v has order d
-  dual of Z_{c,0}: Z-basis of X^*(Z_{c,0})
-  dual of Z_s: Q-basis of dual of Z_s (Q-vector space)
+1) center Z=Z(G) of RootDatum:
+   S=radical(G) = maximal central torus = Z(G)_0
+   G_1 = G/S (mod_central_torus(G))
+   1 -> S -> Z -> Z/S -> 1  (splits, not canonically)
+   Z/S = Z(G_1) is finite
 
-  it isn't as easy to give explicit generators for the center
-  the functions print_Z(RootDatum rd) and print_Z(RealForm G) give
-  human-understandable descriptions
+2) dual Z_hat of RootDatum:
+   1 -> X^*(Z/S) -> X^*(Z) -> X^*(S) -> 1 (splits, not canonically)
+   X^*(Z/S) = canonical torsion subgruop
+
+3) center Z(R) of RealForm G:
+   Z(R)=Z(R)_c x Z(R)_s
+   Z(R)_c = maximal compact subgroup = Z(R)^delta
+   Z(R)_s is isomorphic, via the exponential map, to a vector space (complex/real/rational)
+
+4) dual Z_hat of center of RootDatum:
+   Hom_cts(Z(R),C^*) = Hom_cts(Z(R)_c,S^1) x Hom_cts(Z(R)_s,C^*)
+   		     = X^*(Z^delta) x Hom_cts(Z(R)_s,C^*)
+   X^*(Z^delta): finitely generated abelian group, realized as quotient of lattices
+   X^*(Z^delta) = X^*/[ (1-delta)X^* + R ] (R = root lattice)
+   rational characters of Z(R)_s: Q-vector space
 }
 
 { Q-basis of Lie algebra of radical of complex group; columns are coweights }
@@ -40,7 +39,7 @@ set semisimple_part (RootDatum rd, ratvec v) = ratvec:
   sum(rank(rd), for coord@i in v*simple_coroots(rd) do fw[i]*coord od)
 
 { lie_radical_part(rd,v)=projection of v\in X^*\otimes Q onto Lie coradical }
-set lie_coradical_part (RootDatum rd, ratvec v) = ratvec:
+set lie_radical_part (RootDatum rd, ratvec v) = ratvec:
   v-semisimple_part(rd,v)
 
 { Q-basis of Lie algebra of split part of radical; columns are coweights }
@@ -76,27 +75,57 @@ set lie_compact_radical_hat (InnerClass G) = mat:
   image_subspace((1+distinguished_involution(G))*lie_radical_hat(G))
 
 
-{
+{ dual of center of *semisimple* complex group G:
+  Z_hat=X^*/R  (R=root lattice)
+       =Z^n/R
+  
   dual of center of complex group G
-  return value: (semisimple_part,radical)
-  semisimple_part is the center of G/radical(G)
-  semisimple_part=(mat,vec)
-  every entry d@j in the vec part means column j is a generator of order d
-  radical=mat
-    whose columns form a Q-basis of the dual of the Lie algebra of the radical
-  [v1,...,vk]: basis of (R^\vee)^\perp
-  where R^\vee is the coroots, and perp is taken in X^*\otimes Q
+  1 -> X^*(Z/S) -> X^*(Z) -> X^*(S) -> 1 (splits, not canonically)
+  X^*(S): radical_hat
+  X^*(Z/S): semisimple_part_hat
+  return value: ((mat,vec) semisimple_part_hat,mat radical_hat)
+  Z_hat(G)=((M,v),N)
+  1 -> S -> T -> T/S -> 1
+  1 -> X^*(T/S) -> X^*(T) -> X^*(S) -> 1
+  (M,v) gives the finite group X^*(Z/S) = X^*(T/S)/
+   M = [g_1,...,g_k]
+   g_i = vector of size rank(G)
+   vec = [d_1,...,d_k]
+   {g_1,...,g_k} are generators of finite group X^*(Z/S)
+   d_i*g_i 
+   
+
+Z=Z(G)=center(G)
+  S = radical(G) = Z(G)_0
+  1 -> X^*(Z/S) -> X^*(Z) -> X^*(S) -> 1
+    X^*(Z/S) = torsion subgroup of X^*(Z)
+    X^*(S) = radical_hat(G)
+           = {\gamma\in X^* | <gamma,alpha^\vee>=0 all \alpha\in R}
+           = (R^\vee)^\perp
+    X^*(Z(G/S)) = semisimple_part_hat
+                = dual of center of semisimple group
+		= X^*(T/S)/R  (R = root lattice, T = Cartan of G, T/S = Cartan of G/S
+   semisimple_part_hat= (mat M,vec d):
+
+   order(g_i)=d_i: i.e. d_i*g_i \in X^*(S)
+   Z(G/S) \simeq \Prod \Z/d_i\Z
 }
 set Z_hat (RootDatum rd) = ((mat,vec),mat):
    let (B,v) = filter_units(adapted_basis(simple_roots(rd)))
-in ( { semisimple part determined by invariant factors other than 1: }
+   in ( { semisimple part determined by invariant factors other than 1: }
      (B[:#v],v)
    , lie_radical(rd)
    )
 
 {
-  dual of center of real form G
-  return value: (finite_part,(compact_radical,split_radical))
+  dual of center of real form G, only depends on the inner class
+  return value: (mat compact_hat, mat split_radical_hat)
+  Z=Z(G) 
+  Z = Z_c \times Z_R
+   Z_R = vector group 
+   Z_c = Z^\delta
+  X^*(G) = X^*(Z_c) \times X^*(Z_R)
+   X^*(Z_R) = lattice of rank split-rank of radical 
 
   finite_part=(mat,vec)
   every entry d@j in the vec part means column j is a generator of order d
@@ -191,7 +220,7 @@ set Z_2 (RealForm G) = [vec]:
   order(t_i)=denominator of the ratvec v_i
 
   In center@RootDatum the RootDatum must be semisimple or an error is
-  returned. The value returned by center_torsion_quotien for a
+  returned. The value returned by center_torsion_quotient for a
   reductive group appears to describe the center of the group modulo
   its central torus, NOT that of the derived group (for instance for
   GL(n) it returnes a trivial center). The generators are in G itself.
@@ -223,7 +252,7 @@ set center_torsion_quotient(RootDatum rd) = [ratvec]:
      od
 
 set center(RootDatum rd)=[ratvec]:
-  assert(rd.is_semisimple,"Groups is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
+  assert(rd.is_semisimple,"Group is not semisimple. For non-semisimple groups use center_torsion_quotient@RootDatum");
   center_torsion_quotient(rd)
 
 set type_center(RootDatum rd) =[int]:

@@ -87,6 +87,30 @@ prints: (*,...->): print values raw (no quotes or commas) followed by newline
 ascii: (string->int): ASCII code of initial character, or -1 if string empty
 ascii: (int->string): string of length 1 with given ASCII code (if safe value)
 
+readline_completions: (string->[string]): list of completions of a prefix
+  The result of this function depends on the atlas session and evolves during
+  each session. Interpreting the argument as a prefix of an identifier, the
+  result is the list of all identifiers currently in use, as well as keywords,
+  whose name starts with that prefix. Being currently in use means either being
+  defined as a (global) variable, or being defined at least once as a function.
+
+{ in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
+  if (n<0) set of natural numbers, the positions (from 0 on the right) of their
+  set bits (for n<0, these are the complement of those for -1-n, which is >=0 }
+
+AND,OR,XOR: (int,int->int): bitwise AND|OR|XOR of the integers
+AND_NOT: (int,int->int): bitwise AND NOT: AND_NOT(n,m) = AND(n,-1-m)
+bitwise_subset: (int,int->bool): fast test whether AND_NOT(arguments)=0
+nth_set_bit: (int,int->int): position of n-th bit 1 of k (from 0 at the right)
+  Here n is the first argument, and k the second argument of nth_set_bit.
+  If k>=0 then number N(k) of bits 1 of k is finite; for n>=N(k) returns -1.
+  If k<0 and n>=0 this always returns a nonegative number (indeed at least n)
+  If n<0 returns nth_set_bit(-1-k,-1-n), so searches among the bits 0 of k
+bit_length: (int->int): for n>=0 return least k>=0 such that n<2^k
+  If n<0 returns the well defined negative value -1-bit_length(-1-n)
+to_bitset: (vec->int): bitset with bit i set iff i occurs in v as entry
+  Negative vector entries are refjected, and result is always non-negative
+
 floor: (rat->int): closest integer <= rational (round down, same as r\1)
 ceil: (rat->int): closest integer >= rational (round up, same as -floor(-r))
 frac: (rat->int): fractional part of rational (same as r%1 or as r-floor(r))
@@ -222,6 +246,9 @@ Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   positions of the (co)roots corresponding to then in matrix rows and columns.
+is_Cartan_matrix: (mat->bool): whether calling Cartan_matrix_type is safe
+  This function can be used to protect code that fails for non-Cartan matrices,
+  calling Cartan_matrix_type directly, or indirectly by constructing root data
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -331,8 +358,8 @@ coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
   The indexing is as in the root/coroot functions above, so if found, the
   index i returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 root_expression: (RootDatum,int->vec): Express root additively in simple roots
-  So v= root_expression(rd,i) means that root(rd,i) is sum_j=0^rv[j]root(rd,j)
-  where r=semisimple_rank(rd)
+  So for v=root_expression(rd,i) one has root(rd,i)=sum_j=0^{r-1}v[j]root(rd,j)
+  where r=semisimple_rank(rd). The root (index) can be negative or positive.
 coroot_expression: (RootDatum,int->vec): Express coroot as sum of simple coroots
   So coroot_expression(rd,i) is the same as root_expression(dual(rd),i)
 is_long_root: (RootDatum,int->bool): Whether a root is considered to be long
@@ -523,7 +550,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   the parity of the (integer) pairing of c with the simple root. Here "odd"
   corresponds to grading 0, due to the mentioned rho_check: so c differs by
   rho_check from some "infinitesimal cocharacter" g chosen for the real form.
-  A standard choice for c is determined by the base grading for the  weak real
+  A standard choice for c is determined by the base grading for the weak real
   form, whence the name of this function. However for real forms synthesized
   by the function real_form@(InnerClass,mat,ratvec), the arguments of that
   call may determine a different value of z, in which case a different choice
@@ -627,11 +654,10 @@ central_fiber: (RealForm->[vec]): Set of torus bits not affecting any gradings
   (including compactness of imaginary roots) to every simple root; adding any
   of these values to torus bits defines an automorphism of the KGB structure
 initial_torus_bits: (RealForm->vec) Torus bits for initial KGB element
-  This is a test function, computing what should be the torus bits of KGB(G,0)
-  independently of what is currently set in the implementation. They could
-  differ from reality by an element of |central_fiber(G)|. This function can
-  be removed once the same computation will actually replace the implemented
-  choice for the torus bits with which the KGB construction starts off.
+  This test computes the torus bits of KGB(G,0) as used in the implementation to
+  initialise the construction of the KGB structure for G. Contrary to computing
+  torus_bits(KGB(G,0)), calling this function does not require the KGB set for
+  G to be actually generated, so it should be fast even when that set is large.
 
 KGB: (RealForm,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
@@ -640,12 +666,9 @@ KGB: (RealForm,int->KGBElt): select a KGB element x among those of a real form
 Cartan_class: (KGBElt->CartanClass): the Cartan class for the KGB element
 involution: (KGBElt->mat): the involution of X^* associated to the KGB element
 length: (KGBElt->int): length of the element within its KGB set
-status: (int,KGBElt->int): status of generator on KGB element, scale 0..4
+status: (int,KGBElt->int): status of root (by index) on KGB element, scale 0..4
   Encoding 0: Complex descent, 1: imaginary compact, 2: real,
   3: imaginary non-compact, 4: Complex ascent
-status: (vec,KGBElt->int): status of any root on KGB element, scale 0..4
-  The value status(alpha,x) gives the status of the root alpha at x; the
-  encoding of statuses is the same as for the function status@(int,KGBElt)
 cross: (int,KGBElt->KGBElt): cross action for (posrootnr,KGB element)
   Returns result of cross action by root reflection of the given KGB element
 Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
@@ -702,23 +725,144 @@ status: (int,Block,int->int): status at a block element of a simple reflection
   status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
   5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
 
+operators =, != : (Split->bool): test split integer against Split:(0,0)
+operators =, != : (Split,Split->bool): equality/inequality of split integers
+operator + : (Split,Split->Split): addition of split integers
+operator - : (Split,Split->Split): subtraction of split integers
+operator - : (Split->Split): negation of a split integer
+operator * : (Split,Split->Split): multiplication of split integers
+operator % : (Split,int,int): decomposition of split integer into components
+
+K_type: (KGBElt,vec->KType): form a K-type from the pair (x,lambda-rho)
+operator % : (KType->KGBElt,vec): recover (x,lambda-rho) from a KType
+  The component lambda-rho represents a coset for the image of the lattice X^*
+  by 1-involution(x), for which a preferred representative is chosen whenever
+  a KType is constructed; so this is no perfect inverse of the K_type function
+real_form: (KType->RealForm): recover the real form from a KType value
+height: (KType->int): height of a K-type
+operators =, != : (KType,KType): strict equality of KTypes
+  Equality of KTypes implies equality of their real forms
+equivalent: (KType,KType->bool): test equivalence of K-types
+  Equivalence of $K$-types is generated by _complex_ simple reflections acting
+  on x and lambda, and this allows to move any $K$-type to the fiber over any
+  chosen involution for its Cartan class; within one fiber equivalence is the
+  same as equality (bearing in mind that for the lambda component that means
+  congruence modulo the image lattice of 1-involution(x)). The K-types tested
+  need not be standard, but they must be K-types for same real form.
+is_standard: (KType->bool): whether K-type defines a standard K-representation
+  This is true whenever lambda is dominant relative to the imaginary roots
+is_dominant: (KType->bool): whether K-type is dominant for full positive system
+  This is true whenever (1+theta_x)lambda is dominant (for all simple roots)
+is_zero: (KType->bool): whether K-type defines a zero K-representation
+  True whenever lambda is singular on a compact (for x) simply-imaginary root
+is_semifinal: (KType->bool): whether K-type has no real descents
+  When false, the standard $K$ representation is combination of others
+  on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
+  true provided no real coroots satisfy the parity condition.
+is_final: (KType->bool): whether K-type has no singular descents at all
+  This means that is_standard(p), not is_zero(p) and is_semifinal(p) hold,
+  and the K-type has no singular (for (1+theta_x)lambda) complex descents.
+  KTypes that satisfy |is_final(p)| are precisely the ones that can occur as
+  monomials in a |KTypePol| value.
+dominant: (KType->KType): ensure K-type has dominant (1+theta_x)lambda
+  This gives an equivalent form of the K-type in which infinitesimal character
+  has been made dominant (it may not be unique for this property within its
+  equivalence class); calling this function reauires is_standard to hold for the
+  K-type, and an error will be reported if it is not.
+to_canonical_fiber: (KType->KType): move to elected fiber for its Cartan class
+  In every Cartan class of involutions one is singled out, and every K-type for
+  this Cartan class can be moved into the fiber over this involution in a unique
+  way; this function returns the K-type in that fiber obtained in this way.
+normal: (KType->KType): bring K-type to a unique form under equivalence
+  This form can be computed for all K-types, and only depends on its
+  equivalence class; moreover if the class contains a K-type that satisfies
+  is_final, then it is unique and it will be produced by this function.
+theta_stable: (KType->KType): ensure K-type is moved to a theta-stable situation
+  The name theta-stable refers to the parabolic subalgebra associated to the
+  involution theta of the x component of the K-type: the subalgebra whose Levi
+  factor has the real roots and whose nilpotent radical has the remaining
+  positive roots is theta-stable, maning that theta permutes those remaining
+  positive roots among each other. In terms of the K-type it means there are no
+  complex descents, which is obtained by greedily perfoming any complex
+  descents; multiple candidate results may exist, among which one is chosen.
+
+null_K_module: (RealForm->KTypePol): empty sum of $K$-types for the real form
+real_form: (KTypePol->RealForm): recover the real form from a KTypePol value
+operators =, != : (KTypePol->bool): efficient test for formal sum being zero
+operators =, != : (KTypePol,KTypePol->bool): test difference for being zero
+operator # : (KTypePol->int): number of nonzero terms of the formal sum
+operator +, - : (KTypePol,KType->KTypePol): add/subtract parameter to formal sum
+operator + : (KTypePol,(Split,KType)->KTypePol): add parameter with coefficient
+operator + : (KTypePol,[(Split,KType)]->KTypePol): add terms to formal sum
+operators +, - : (KTypePol,KTypePol->KTypePol): addition/subtraction formal sums
+operator * : (int,KTypePol->KTypePol): integer multiple of a formal sum
+operator * : (Split,KTypePol->KTypePol): split integer multiple of a formal sum
+first_term: (KTypePol->Split,KType): lowest term (by height) of nonzero K-module
+last_term: (KTypePol->Split,KType): highest term (by height) of nonzero K-module
+truncate_above_height: (KTypePol,int->KTypePol): drop terms with height>limit
+
+KGP_sum: (KType->[int,KType]) signed subset of KGB associated to theta_stable(t)
+  It is required that the argument KType t be semifinal, and it will be moved to
+  an equivalent theta-stable position before doing the main work. The terms in
+  the sum are K-types obtained from theta_stable(t) by operating by (real root)
+  generators of the Levi factor of the corresponding theta-stable parabolic
+  subalgebra (the x component moves to more compact Cartans, the lambda
+  component gets projected or reflected), while a sign for the length change of
+  the x component is prefixed to the K-type. These K-types may be non standard
+  (even if the argument was standard) which is why the result is not transformed
+  into a KTypePol value, as their terms are always standard, and even final.
+K_type_formula: (KType,int->KTypePol): formula for K-types as irreducibles
+  Express irreducible K representation as linear combination of standard
+  representations, limiting (for efficiency) the height of resulting terms to be
+  at most the second argument, unless that argument is negative. This is like
+  the function of the same name, and should give the result of the latter
+  restricted to K, but the implementations are entirely separate.
+branch: (KTypePol,int->KTypePol): convert standard to irreducible, up to height
+  In the first argument K-types are interpreted as standard K-representations,
+  each of which is decomposed into irreducible factors; those factors (with
+  their multiplicities) form a multi-set, from which terms whose height
+  exceeds the limit (given as second argument) are truncated, so as to give a
+  finite result. A KType argument can be converted to KTypePol implicitly.
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
-operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
+  From nu only the projection (1-involution(x))nu/2 is used, the complementary
+  part of the infinitesimal caharacter is taken from (1+involution(x))lambda/2
+operator % : (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,gamma) from param
+  Here x and lambda-rho are as for K-types, and gamma is the infinitesimal
+  character. The function param applied to the the result of % will reconstruct
+  an identical parameter (so this is a left inverse of that function), but %
+  will not always reconstruct the arguments used to construct a Param value,
+  both because lambda-rho can be another representative of the same coset, and
+  because gamma as returned includes the projection (1+involution(x))lambda/2
+  These components are not invariant under equivalence of parameters, and are
+  transformed in specific ways when a function like 'dominant' is applied to
+  the parameter (the latter indeed serves to ensure that gamma is dominant).
 real_form: (Param->RealForm): recover the real form from a Param value
-infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
-  This is actually a representative of the infinitesimal character, given by
-  gamma = ((1+theta)lambda+(1-theta)nu)/2. The meaning of the x component of
-  the parameter is determined by its position relative to this representative
-  gamma, so to find the x value uniquely associated to the representation for
-  the parameter, one should apply the function 'dominant' to the parameter
-  first, after which the value of infinitesimal_character is indeed dominant
+height: (Param->int) W-invariant height measure standardrepn restricted to K
+  This is the sum of absolute values of the scalar products of (1+theta)lambda
+  and the positive coroots; it ignores the nu component of the parameter.
+  This is the same function as used in branch to compare with the given limit.
+K_type: (Param->KType): restriction to K (ignoring the nu-component)
+param: (KType->Param): parameter for this K-type and with nu=0
 operators =, != : (Param,Param): strict equality of parameters in the same block
   Equality of parameters implies equality of their real forms
+equivalent: (Param,Param->bool): test equivalence of parameters
+  Equivalence of parameters is generated by _complex or real_ simple reflections
+  acting on the x, lambda and nu components, where the real simple reflections
+  are by affine hyperplanes passing through rho, and are not applicable if the
+  the infinitesimal character is singular for the real root (so that nu would be
+  unchanged by the action). Every parameter satisfying is_standard has at least
+  one equivalent parameter with dominant infinitesimal character
+  (representative), and among such parameters equivalence amounts to
+  reachability using singular complex cross actions. Test for this equivalence,
+  reverting to a strict equality test if either parameter fails to be standard.
+  The consdition equivalent(p,q) should be the same as normal(p)=normal(q).
 is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
+is_dominant: (Param->bool): whether parameter is dominant for full system
+  This is true whenever (1+theta_x)gamma is dominant (for all simple roots)
 is_zero: (Param->bool): whether parameter defines a zero standard module
-  True whenever gamma is singular on a compact (for x) simple-imaginary root
+  True whenever gamma is singular on a compact (for x) simply-imaginary root
 is_semifinal: (Param->bool): whether parameter has no singular real descents
   False whenever associated standard representation is combination of others
   on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
@@ -728,12 +872,6 @@ is_final: (Param->bool): whether p parameterizes an irreducible representation
   This means that is_standard(p) and not is_zero(p) and is_semifinal(p) holds,
   as well as p=dominant(p)=normal(p). Parameters that satisfy |is_final(p)|
   are the ones that can occur as monomials in a |ParamPol| value.
-equivalent : (Param,Param->bool): test equivalence of parameters
-  Equivalence allows the infinitesimal character (representative) of any
-  standard parameter to be made dominant, and among such parameters is defined
-  as reachability of one from the other using singular complex cross actions.
-  If either parameter fails to be standard, this reverts to strict equality,
-  otherwise the equivalent(p,q) amounts to the same as normal(p)=normal(q).
 dominant: (Param->Param): ensure parameter has dominant infinitesimal character
   This gives an equivalent form of the parameter in which the infinitesimal
   character has been made dominant (it may not be unique for this property)
@@ -763,14 +901,6 @@ twist: (Param,mat->Param): twist the parameter by the given external involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 operator * : (Param,rat->Param): scale component nu by given rational factor
-at_nu_0 : (Param->Param): reduce component nu to 0 (scale it be a factor 0)
-
-block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
-  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
-  generated, and returns a matrix describing the Hasse diagram of its Bruhat
-  order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
-  exaclty the two elements, namely x et z. The matrix is indexed by the numbers
-  of the block elements as displayed in print_block(p).
 
 print_block: (Param->): print translation family block for the given parameter
   The full common block is printed with "gamma-lambda" rather than "lambda-rho"
@@ -784,6 +914,12 @@ partial_block: (Param->[Param]): return partial block as list of parameters
   length. Non-final parameters are omitted. If the original parameter is final,
   then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
+block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
+  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+  generated, and returns a matrix describing the Hasse diagram of its Bruhat
+  order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
+  exaclty the two elements, namely x et z. The matrix is indexed by the numbers
+  of the block elements as displayed in print_block(p).
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   This combines block with the computation of the its Kazhdan-Lustzig table.
   The two values of block are followed by two values in the format of raw_KL
@@ -829,24 +965,16 @@ extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   into the list of parameters and an index in the delta-folded Dynkin diagram
   (an extended generator), and containing for the first matrix a code for the
   type of the parameter for the generator, and for the other two matrices the
-  indices of the neighbors for this generator (two for double-valued Cayley
-  transforms or for single-valued ones with in addition a cross action, one for
-  a complex cross action, none for cases like a compact imaginary generator).
-  Every parameter in the extended block has an implicit choice of extended
-  parameter attached, with respect to which choices certain neighbor relations
-  may involve a sign flip, which is indicated in the corresponding matrix entry
-  (link value): if the extended block has size n, then link values from 0 to n-1
-  indicate a neighbor with no flip, negative values from -1 to -n indicate a
-  sign flip (for the index corresponding by subtraction from -1), and the value
-  n indicates absence of a link.
-
-operators =, != : (Split->bool): test split integer against Split:(0,0)
-operators =, != : (Split,Split->bool): equality/inequality of split integers
-operator + : (Split,Split->Split): addition of split integers
-operator - : (Split,Split->Split): subtraction of split integers
-operator - : (Split->Split): negation of a split integer
-operator * : (Split,Split->Split): multiplication of split integers
-operator % : (Split,int,int): decomposition of split integer into components
+  indices of the neighbors for this generator: two for Cayley transforms (either
+  the double-valued transform, or the single-valued transform with in addition
+  the cross action); one for a complex cross action; none for cases like a
+  compact imaginary generator. Every parameter in the extended block has an
+  implicit choice of extended parameter attached, with respect to which choices
+  certain neighbor relations may involve a sign flip, which is indicated in the
+  corresponding matrix entry (link value): if the extended block has size n,
+  then link values from 0 to n-1 indicate a neighbor with no flip, negative
+  values from -1 to -n indicate a sign flip (for the index corresponding by
+  subtraction from -1), and the value n indicates absence of a link.
 
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
 real_form: (ParamPol->RealForm): recover the real form from a ParamPol value
@@ -859,30 +987,30 @@ operator + : (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operators +, - : (ParamPol,ParamPol->ParamPol): addition/subtraction formal sums
 operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
-last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-empty module
-first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-empty module
+first_term: (ParamPol->Split,Param): lowest term (by height) of nonzero module
+last_term: (ParamPol->Split,Param): highest term (by height) of nonzero module
+truncate_above_height: (ParamPol,int->ParamPol): drop terms with height>limit
 operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
   After scaling the continuous part of the parameter in each term, some may no
   longer be dominant or final, and need to be rewritten in the same way as
   parameters are when incorporated into a ParamPol; this is the renormalization
-at_nu_0 : (ParamPol->ParamPol): scale nu in each term by 0
 
 K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   The argument parameter is interpreted as giving an irreducible module; its
   restriction to K is expressed as linear combination of restrictions to K of
   standard representations, and a polynomial giving their parameters returned.
 K_type_formula: (Param,int->ParamPol) Height-truncated version of K_type_formula
-  This returns the reuslt of the previous version of K_type_formula, after
+  This returns the result of the previous version of K_type_formula, after
   removal of all terms of greater height than indicated in the second argument,
   which must be a non negative number. This truncation is incorporated in the
   computation itself, which avoids any work that can only affect terms that
   exceed the given height bound; in some cases this may be considerably faster.
 branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
-  The first argument is taken as standard representation, and is interpreted
-  as restricted to K (the nu component is replaced by a zero vector), while
-  the second argument is a bound on the height; the result should be
-  interpreted as linear combination of K-types, each standard final parameter
-  term (which will have nu=0) standing for its lowest K-type.
+  The first argument is taken as standard representation, and is interpreted as
+  restricted to K (the nu component is replaced by a zero vector), while the
+  second argument is a bound on the height; the result should be interpreted as
+  linear combination of K-types (the coefficients are integer), each standard
+  final parameter term (which will have nu=0) standing for its lowest K-type.
 branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
   This is just forming the Split-linear combination for all terms of the
   results of branch on the standard representations for those terms
@@ -894,10 +1022,6 @@ q_branch: (Param,int->[vec,Param]) q-analgue of branch@(Param,int)
   used replace integer coefficients in the result by polynomials is the one
   used in the Fokko command qbranch (and qKtypeform and qKtypemat as well)
 to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
-height: (Param->int) W-invariant height measure standardrepn restricted to K
-  This is the sum of absolute values of the scalar products of (1+theta)lambda
-  and the positive coroots; it ignores the nu component of the parameter.
-  This is the same function as used in branch to compare with the given limit.
 
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
@@ -912,13 +1036,30 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   result depends (by a sign) on the chosen default extension for the parameter,
   and preparations may cause a flip in that choice. If needed use scale_extended
   and finalize_extended to do these preparations while keeping track of flips.
+block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
+  Here the Param argument just serves to define its block, the ParamPol argument
+  associates (Split) coefficients to the final elements of this block (and to
+  other final parmaters as well, but these terms will remain passive), and the
+  int argument gives a height bound above which contributions will be ignored
+  (which may speed up computation; a negative bound means nothing is ignored).
+  The terms in the block are extracted, and |deform| is applied to each of them,
+  from the top of the block downwards; once done the deformed parameter is
+  marked as such and its coefficient will not change any more. The deformation
+  terms from this parameter (which are of course multiplied by the coefficient
+  of the term it came from) are added to the ones remaining to be processed
+  (they are lower in the block). Once all terms are deformed, the
+  post-deformation terms are added to form the first ParamPol of the output
+  (these should be moved down to the next reducibility point towards nu=0 when
+  full deformation is to be done), while the terms of the ParamPol argument that
+  were not extracted for deformation are returned as the second argument.
 
-full_deform: (Param->ParamPol): perform deformation all the way to nu=0
+full_deform: (Param->KTypePol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
-  as they do not have nu=0; all terms in the result therefore have nu=0.
-twisted_full_deform: (Param->ParamPol): inner class twisted deformation to nu=0
+  as they do not have nu=0. Having nu=0, the terms of the result can be and are
+  represented as |KType|; they are made final, and gathered into a |KTypePol|.
+twisted_full_deform: (Param->KTypePol): inner class twisted deformation to nu=0
   This is like full_deform, but uses the twisted KL polynomials (for the inner
-  class involution) instead. The parameter must be fixed under that twist.
+  class involution) instead. The argument must be fixed under that twist.
   It must also be fully prepared for deformation, that is, have dominant
   infinitesimal character and be final; this is because interpretation of the
   result depends (by a sign) on the chosen default extension for the parameter,
@@ -937,13 +1078,22 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
   (the twist is for the distinguished involution) instead of ordinary KLV
   polynomials. The actual value depends on sign choices for Hecke module
-  generators associated to the terms, so individual terms in the result are
-  mathematically well defined only up to a possible factor -1; however
-  consistent internal choices (default extensions) make the signs well-defined
+  generators (extended parameters) for each of the terms; these choices, which
+  cannot be made explicit in terms of ordinary parameters only, affect the signs
+  of the coeficients of these terms. However a consistent choice of a default
+  extension is made internally for each parameter value, which make those signs
+  well-defined. When modifications are made to parameters, like changing to an
+  equivalent one with different infinitesimal character representative, or
+  scaling their nu component, the change may "flip" the default extension in the
+  sense that the corresponding change at the level of an extended parameter
+  applied to an initial default extension may result in an extended parameter
+  with opposite sign choice with respect to the default for the modified
+  (ordinary) parameter; special functions are provided below to track such flips
 twisted_KL_sum_at_s: (Param,mat->ParamPol): sum of delta-twisted KLV polynomials
   This version takes an explicit external involution matrix delta as second
   argument. The parameter should be delta-fixed. Unlike the previous two, this
   function does not tabulate results or look up previously computed ones.
+
 scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   When interpreting parameters as representing a representation of the
   delta-extended group (where delta is the second argument, a distinguished
@@ -951,23 +1101,34 @@ scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   changes to parameters may flip the default choice of extended representation;
   this function takes care to record such a flip for the operation of scaling
   the continuous component nu by a rational factor. With arguments (p,delta,f)
-  it is supposed that gamma(p) is dominant (if not, the function dominant is
-  applied without recording any flips); then a new parameter q is formed by
-  scaling the component nu(p) by f. In case gamma(q) is non-dominant (due to
-  some complex roots), it is then made dominant; in this phase any flip to the
-  default choice of delta-extended representation is recorded. Finally the
-  modified q and a Boolean telling whether a flip occurred are returned.
+  it is assumed that the parameter p is_final, and the factor f is positive.
+  A new parameter is formed by scaling the component nu(p) by f, and it is made
+  final, as in ParamPol:p*f; under the given assuptions this involves applying
+  only complex reflections, so the result is a single parameter which is the
+  first component of the result. The second component records wheher this
+  transformation at the level of extended parameter involves a flip with respect
+  to the default extension, as described above under "twisted_KL_sum_at_s"
+K_type_pol_extended: (Param,mat->K_type_pol): extended restrict to K
+  The argument parameter must satisfy is_standard and be fixed under delta,
+  the second argument (a distinguished involution commuting with the one
+  defining the inner class). Like in scale_extended it is scaled and the
+  result is then made final, taking into account flips with respect to the
+  default extension; here the factor by which the nu component is scaled is
+  zero, so that a K-type is obtained; this being the case the finalization
+  process does not necessarily result in a single $K$-type, whence the result is
+  represented as a KTypePol. Any flip associated to a $K$-type produced is
+  recorded as a factor of (split integer unit) s in its coefficient.
 finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
   Like scale_extended, this function is about tracking flips in the default
   choice of extended representation, this time for the operation of expanding a
-  parameter in terms of parameters that have no singular descents that occurs
-  implicitly when they enter into a ParamPol. When interpreting the parameter as
-  specifying a delta-extended representation, the process is somewhat modified
-  and flips may be encountered. This function applied to (p,delta) requires p to
-  be delta-fixed; if it finds a singular descent, it replaces p by the sum of
-  the parameters descended from it in the extended block, and when there is a
-  "sign flip" along the edge used, the resulting parameter is multiplied by s.
-  And this is repeated recursively as long as singular descents are present.
+  parameter in terms of "final" parameters as happens when they enter into a
+  ParamPol (their infinitesimal character is dominant and they have no singular
+  descent simple reflections). When interpreting parameters as specifying a
+  delta-extended representation using a per-parameter specific default choice of
+  extension, the finalization process on extended parameters may involve flips
+  with respect to the default choices for the terms of the finalization as an
+  ordinary parameter; such flips are recorded as a factor of (split integer
+  unit) s in the coefficient if the parameter in question.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a
@@ -1022,16 +1183,16 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   (in the restriction vertices are renumbered form 0, so that it can be
   considered as a W-graph in its own right, without reference to the original).
 
-simplify: (Param->Param,int): Find simpler parameter in its alcove
-  This tries to make N*p.infinitesimal_character integral for a minimal power N
-  of 2; returns new parameter and N. Actually just maximizes integral rank.
 walls: (RootDatum,ratvec->[int]) Find set of coroots defining walls of alcove
-  The alcove is the one defined by the given rational weight, the alcove being
-  characterized by the integral parts of evaluations on all positive coroots.
+  The alcove is the one containing the given rational weight gamma, and such
+  that the half-line from gamma in any strictly dominant direction enters into
+  the interior of the alcove (where all coroot evaluations are non integral).
+  This makes the alcove unique, and means that among coroots with integral
+  evaluation at gamma, only positive coroots are candidate to define a wall.
   The value returned is the minimal set of indices into |coroots(rd)| of coroots
-  that define the alcove. For these coroots the evaluation is integral on a some
-  wall of the alcove, and increases when going from that wall to the interior.
-  In case of a negative coroot, the wall itself is not part of the alcove.
+  that define the alcove (by requring a specific integral part of their
+  evaluation). For these coroots the exact integral evaluation is attained on
+  some wall bounding the alcove, increasing towards the interior of the alcove.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
   all the positive coroots, as in the walls function. The "central" point is
