@@ -93,11 +93,18 @@ set is_fixed (KGBElt x, KGBElt y,mat delta) = bool:
   is_fixed(x,delta) and is_fixed(y,^delta)
 
 {p->p if fixed, (1+delta)p otherwise}
-set one_plus_twist(Param p,mat delta)=ParamPol:
+set symmetrize(Param p,mat delta)=ParamPol:
 if delta*p=p then p else p+delta*p fi
 
-set one_plus_twist(ParamPol P, mat delta)=ParamPol:
-null_module(P.real_form) + for (c,p) in %P do c*one_plus_twist(p,delta) od
+{p -> p+delta*p, so
+ symmetrize(p,delta)=one_plus_twist(p,delta)/2 if delta*p=p
+                    =one_plus_twist(p,delta)   if delta*p\ne p}                    
+set one_plus_twist(Param p,mat delta)=ParamPol:p+delta*p
+
+set one_plus_twist(ParamPol P, mat delta)=ParamPol:P+delta*P
+
+set symmetrize(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for (c,p) in %P do c*symmetrize(p,delta) od
 
 { Stuff related to KGB }
 { |x_rep = (ratvec v, mat theta)| is used to represent a KGB element $x$ by
@@ -201,6 +208,15 @@ end
 { select delta-fixed elements from B }
 set fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
   ## for p in B do if is_fixed(p,delta) then [p] else [] fi od
+set non_fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
+  ## for p in B do if not is_fixed(p,delta) then [p] else [] fi od
+
+{P=sum a_i p_i, keep just the delta-fixed p_i
+ note: if P = a(1+delta)p do not keep p or delta(p)}
+set fixed_terms (mat delta, ParamPol P)=ParamPol:
+null_module(P.real_form) + for c@p in P do if is_fixed(p,delta) then c*p else 0*p fi od
+
+set non_fixed_terms (mat delta, ParamPol P)=ParamPol:P-fixed_terms(delta,P)
 
 {P=sum a_i p_i, keep just the delta-fixed p_i
  note: if P = a(1+delta)p do not keep p or delta(p)}

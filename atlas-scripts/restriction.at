@@ -1,0 +1,4 @@
+set restrict(mat delta,ParamPol P)=ZParamPol:
+s_to_1(fixed_terms(delta,P)) + one_plus_twist(P,delta)
+
+set restrict(ZExtParamPol (P,Q,R,delta))=ZParamPol:P+Q+one_plus_twist(R,delta)

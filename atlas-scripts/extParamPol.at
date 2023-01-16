@@ -2,105 +2,19 @@
 <polynomial.at
 <bigMatrices.at
 <hermitian.at
-
-set is_int(Split z)=bool: =s_part(z)
+<extParamPolPlus.at
 
 { implement ParamPol for extended parameters }
 
 ed_verbose:=false
 
-{ExtParamPol: virtual character for doubly extended group
- two commuting distinguished involutions: (xi,delta)
- xi is usually (must be?) the distinguished involution in the inner class
- delta is the outer twist
+set_type [ ExtParamPol = (mat xi,ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta) ]
+{ (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
+  \sum_i s_iE(p_i,+) + \sum_j t_j E(q_j,-) + \sum_k u_k E(r_k,ind)
 }
-
-set_type [ ZParamPol = ParamPol]   {Z-coefficients}
-set_type [ ZExtParamPol = (ZParamPol P_plus, ZParamPol P_minus, ZParamPol P_ind,mat delta)]       {each term has Z coeffs}
-set_type [ ExtParamPol = (mat xi, ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta)]  {each term has Z[s] coeffs}
-
-
-{
-Two singly extended groups:
-<xi,G>       (left)
-<G,delta>    (right)
-doubly extended group:
-<xi,G,delta> (double)
-
-
-ZParamPol:    ParamPol with Z coefficients
-ZExtParamPol: (ZParamPol,ZParamPol,ZParamPol)
-ExtParamPol:  (ParamPol,ParamPol,ParamPol)
-
-
-ZParamPol:    virtual character of G
-ParamPol:     virtual character of <xi,G>
-ZExtParamPol: virtual character of <G,delta>
-ExtParamPol:  virtual characterof <xi,G,delta>
-}
-
-set is_ZParamPol(ParamPol P)=bool:
-all(for (c,) in %P do is_int(c) od)
-
-set extParamPol (ExtParam E) = ExtParamPol:
-  let p=parameter(E)
-  then xi=E.ic.distinguished_involution then
-  delta=E.delta 
-  then N=null_module(real_form(p)) then F=N+p in
-  if not is_fixed(p,xi) then (xi,N,N,F,delta)
-  elif sign(E)=1 then (xi,F,N,N,delta)
-  else (xi,N,F,N,delta)
-  fi
-
-{ presumably type is in range {-1,0,1} here }
-set extParamPol (Param p,int type,mat delta) = ExtParamPol:
-  let N=null_module(real_form(p)) then
-  xi=p.real_form.distinguished_involution in
-  if type=1 then (xi,N+p,N,N,delta)
-  elif type=minus_1 then (xi,N,N+p,N,delta)
-  else (xi,N,N,N+p,delta)
-  fi
-
-{ scale continuous part (|nu|) of extended parameter by rational factor |r| }
-set * (ExtParam(ic,,,lambda,theta,,,,,):E,rat r) = ExtParam:
-  E.gamma := ((1+theta)*(lambda+rho(ic))+(1-theta)*(E.nu*r))/2 ; E
 
 set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)
-
-set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
-
-
-
-set + (ExtParamPol(xi,P_plus_1,P_minus_1,P_ind_1,delta)
-      ,ExtParamPol (Xi,P_plus_2,P_minus_2,P_ind_2,Delta)
-      ) = ExtParamPol:
-      assert(xi=Xi and delta=Delta,"involutions don't match");
-     (xi,P_plus_1+P_plus_2,P_minus_1+P_minus_2,P_ind_1+P_ind_2,delta)
-
-set - (ExtParamPol(xi,P_plus_1,P_minus_1,P_ind_1,delta)
-      ,ExtParamPol (Xi,P_plus_2,P_minus_2,P_ind_2,Delta)
-      ) = ExtParamPol:
-      assert(xi=Xi and delta=Delta,"involutions don't match");
-      (xi,P_plus_1-P_plus_2,P_minus_1-P_minus_2,P_ind_1-P_ind_2,delta)
-
-
-set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
-  let rv=P in for R in Q do rv+:=R od;rv
-
-set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
-  P+S*extParamPol(p,type,P.delta)
-
-set swap(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,Q,P,R,delta)
-set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_to_1,delta)
-
-set display (ExtParamPol(,A,B,C,)) = void:
-  prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
-set null_ext_module (RealForm G) = ExtParamPol: let N=null_module(G) in (G.distinguished_involution,N,N,N,G.distinguished_involution)
-
-set find ([(int,int)] complete_indices,(int,int)pair) =int:
-  first(#complete_indices,(int i)bool:complete_indices[i]=pair)
-
 
 set twisted_coefficient_sum(mat xi,ParamPol P)=(Param->Split):(Param p):
 if is_fixed(p,xi) then P[p] else s_to_1(P[p]+P[xi*p]) fi
@@ -116,22 +30,9 @@ fi
 
 {support of a ParamPol P is the Params occuring: same as monomials(P)}
 
-set support(ParamPol P)=[Param]:
-if =P
- then []
-else monomials(P)
-fi
-
+set support(ParamPol P)=[Param]: monomials(P)
 set same_support(ParamPol P, ParamPol Q)=bool:
-if =P then
- if =Q then
-  true
- else
-  false
- fi
-else
 param_pol(support(P))=param_pol(support(Q))
-fi
 
 set twisted_coefficient_sums_equal(mat xi, ParamPol P, ParamPol Q)=bool:
 same_support(P,Q)=true and
@@ -158,12 +59,6 @@ xi=Xi and delta=Delta and
 twisted_coefficient_sums_equal(xi,P,S) and
 twisted_coefficient_sums_equal(xi,Q,T) and 
 twisted_coefficient_sums_equal(xi,delta,R,U)
-
-set =(ZExtParamPol (P,Q,R,delta),ZExtParamPol (S,T,U,Delta))=bool:
-delta=Delta and
-twisted_coefficient_sums_equal(delta,P,S) and
-twisted_coefficient_sums_equal(delta,Q,T) and
-twisted_coefficient_sums_equal(delta,R,U)
 
 set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)
@@ -216,14 +111,13 @@ set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_
 set display (ExtParamPol(xi,A,B,C,delta)) = void:
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
 
-set null_ext_module (mat xi,RealForm G,mat delta) = ExtParamPol:
-let N=null_module(G) in (xi,N,N,N,delta)
-
 set null_ext_module (RealForm G,mat delta) = ExtParamPol:
-null_ext_module(G.distinguished_involution,G,delta)
+let N=null_module(G) then
+xi=G.distinguished_involution in
+(xi,N,N,N,delta)
 
 set null_ext_module (RealForm G) = ExtParamPol:
-null_ext_module(G.distinguished_involution,G,G.distinguished_involution)
+null_ext_module(G,G.distinguished_involution)
 
 set find ([(int,int)] complete_indices,(int,int)pair) =int:
   first(#complete_indices,(int i)bool:complete_indices[i]=pair)
@@ -238,23 +132,9 @@ let (xi,P,Q,R,delta)=E in
 s_to_1(one_plus_twist(Q,xi)),
 s_to_1(one_plus_twist(R,xi)),delta)
 
-{right_restrict: ExtParamPol EP -> ParamPol <-> virtual character of <G,delta>}
 set right_restrict(ExtParamPol E)=ParamPol:
-let (xi,P,Q,R,delta)=E in one_plus_twist(P+{s*}Q+R,delta)
+let (xi,P,Q,R,delta)=E in one_plus_twist(P+Q+R,delta)
 
-{if an ExtParamPol EP is actually a ZExtParamPol, then
-right_restrict(EP) is a ParamPol, which is actually a ZParamPol
-we can call it right_restrict, or just restrict}
-set right_restrict(ZExtParamPol E)=ZParamPol:
-let (P,Q,R,delta)=E in one_plus_twist(P+{s*}Q+R,delta)
-
-{right is redundant, so:}
-set restrict(ZExtParamPol E)=ParamPol:
-right_restrict(E)
-
-{E=ZExtParamPol <-> virtual character of <G,delta>
- so only kind of restriction (right restriction), taking ZExtParamPol -> ZParamPol
-set restrict(ZExtParamPol E)=ParamPol:
 {
 set restrict_left(ExtParam E)=ExtParam:
 let (xi,P,Q,R,delta)=E in
