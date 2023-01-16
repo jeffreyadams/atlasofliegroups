@@ -16,6 +16,8 @@ set_type [ ZParamPol = ParamPol]   {Z-coefficients}
 set_type [ ZExtParamPol = (ZParamPol P_plus, ZParamPol P_minus, ZParamPol P_ind,mat delta)]       {each term has Z coeffs}
 set_type [ ExtParamPol = (mat xi, ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta)]  {each term has Z[s] coeffs}
 
+set param_pol(ZParamPol P)=ParamPol:P
+set ext_param_pol(ZExtParamPol (P,Q,R,delta))=ExtParamPol:(P.real_form.distinguished_involution,P,Q,R,delta)
 
 {
 Two singly extended groups:
@@ -26,8 +28,8 @@ doubly extended group:
 
 
 ZParamPol:    ParamPol with Z coefficients
-ZExtParamPol: (ZParamPol,ZParamPol,ZParamPol)
-ExtParamPol:  (ParamPol,ParamPol,ParamPol)
+ZExtParamPol: (ZParamPol,ZParamPol,ZParamPol,delta)
+ExtParamPol:  (xi,ParamPol,ParamPol,ParamPol,delta)
 
 
 ZParamPol:    virtual character of G
@@ -39,15 +41,50 @@ ExtParamPol:  virtual characterof <xi,G,delta>
 set is_ZParamPol(ParamPol P)=bool:
 all(for (c,) in %P do is_int(c) od)
 
-set extParamPol (ExtParam E) = ExtParamPol:
+{ExtParam E: has both xi=E.distinguished_involution and delta=E.delta
+ Z_ext_param_pol(E) =  (P,Q,R,delta)   having to do with delta
+                    =  (p,0,0,delta)   delta(p)=p, sign is +
+                    or (0,p,0,delta)   delta(p)=p, sign is -
+		    or (0,0,p,delta)   delta(p)\ne p
+}
+set Z_ext_param_pol (ExtParam E) = ZExtParamPol:
+let delta=E.delta, p=parameter(E) then
+N=null_module(real_form(p)) in
+if not is_fixed(p,delta) then (N,N,N+p,delta)
+ elif sign(E)=1 then (N+p,N,N,delta)
+ else (N,N+p,N,delta)
+fi
+
+
+{p -> (p,N,N,delta)   delta(p)=p, plus_minus_0=1
+      (N,p,N,delta)   delta(p)=p, plus_minus_0=-1
+      (N,N,p,delta)   delta(p)\n p, plus_minus_0=0
+}
+set Z_ext_param_pol (Param p,int plus_minus_0)=ZExtParamPol:
+let delta=p.real_form.distinguished_involution then
+N=null_module(p) in
+if is_fixed(p,delta) then
+ if plus_minus_0=1 then (N+p,N,N,delta)
+  elif plus_minus_0=-1 then (N,N+p,N,delta)
+  else error("plus_minus_0=0, should be \pm 1")
+ fi
+else
+ assert(not is_fixed(p,delta), "plus_minus_0=\pm 1, should be 0");
+ (N,N,N+p,delta)
+fi
+
+
+{see Z_ext_param_pol in extParamPol.at}
+{set extParamPol (ExtParam E) = ExtParamPol:
   let p=parameter(E)
   then xi=E.ic.distinguished_involution then
-  delta=E.delta 
+  delta=E.delta
   then N=null_module(real_form(p)) then F=N+p in
   if not is_fixed(p,xi) then (xi,N,N,F,delta)
   elif sign(E)=1 then (xi,F,N,N,delta)
   else (xi,N,F,N,delta)
   fi
+}
 
 { presumably type is in range {-1,0,1} here }
 set extParamPol (Param p,int type,mat delta) = ExtParamPol:
@@ -57,10 +94,22 @@ set extParamPol (Param p,int type,mat delta) = ExtParamPol:
   elif type=minus_1 then (xi,N,N+p,N,delta)
   else (xi,N,N,N+p,delta)
   fi
-set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
-  (xi,s*P_plus,s*P_minus,s*P_ind,delta)
+
+
+
+
+
   
-set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
+set *(Split z,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
+  (xi,z*P_plus,s*P_minus,s*P_ind,delta)
+  
+set *(Split S,ZExtParamPol(P_plus,P_minus,P_ind,delta))=
+  (P_plus.real_form.distinguished_involution,S*P_plus,S*P_minus,S*P_ind,delta)
+
+set * (Split z,ExtParam E) =
+z*Z_ext_param_pol(E)
+
+
 
 set + (ExtParamPol(xi,P_plus_1,P_minus_1,P_ind_1,delta)
       ,ExtParamPol (Xi,P_plus_2,P_minus_2,P_ind_2,Delta)

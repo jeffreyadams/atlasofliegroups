@@ -8,10 +8,6 @@
 
 ed_verbose:=false
 
-set_type [ ExtParamPol = (mat xi,ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta) ]
-
-set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
-  (xi,s*P_plus,s*P_minus,s*P_ind,delta)
 
 set twisted_coefficient_sum(mat xi,ParamPol P)=(Param->Split):(Param p):
 if is_fixed(p,xi) then P[p] else s_to_1(P[p]+P[xi*p]) fi
@@ -61,28 +57,26 @@ set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)
 
 
-set extParamPol (ExtParam E) = ExtParamPol:
-let xi=E.distinguished_involution then
-delta=E.delta then
-p=parameter(E) then
-N=null_module(real_form(p)) then
-F=N+p in
-if not is_fixed(p,xi) then (xi,N,N,F,delta)
- elif sign(E)=1 then (xi,F,N,N,delta)
- else (xi,N,F,N,delta)
+set Z_ext_param_pol (Param p)=ZExtParamPol:
+ if is_fixed(p,p.real_form.distinguished_involution)
+  then Z_ext_param_pol(p,1)
+ else
+  Z_ext_param_pol(p,0)
+ fi
+
+{ param_pol(E) =  z*p having to do with xi
+                 = p       xi(p)=p, sign is +
+                 = sp      xi(p)=p, sign is -
+                 = (1+s)p  xi(p)\ne p
+}
+set param_pol (ExtParam E) = ParamPol:
+let xi=E.distinguished_involution,p=parameter(E) in
+if not is_fixed(p,xi) then one_plus_twist(p,xi)
+ elif sign(E)=1 then p
+ else s*p
 fi
 
-{ presumably type is in range {-1,0,1} here }
-set extParamPol (Param p,int type) = ExtParamPol:
-  let N=null_module(real_form(p)) then
-  xi=p.inner_class.distinguished_involution then
-  delta=xi in
-  if type=1 then (xi,N+p,N,N,delta)
-  elif type=minus_1 then (xi,N,N+p,N,delta)
-  else (xi,N,N,N+p,delta)
-  fi
-
-set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
+{set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)}
 
 set + (ExtParamPol(xi_1,P_plus_1,P_minus_1,P_ind_1,delta_1)
       ,ExtParamPol (xi_2,P_plus_2,P_minus_2,P_ind_2,delta_2)
@@ -100,7 +94,7 @@ set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
   let rv=P in for R in Q do rv+:=R od;rv
 
 set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
-  P+S*extParamPol(p,type)
+  P+S*Z_ext_param_pol(p,type)
 
 set swap(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,Q,P,R,delta)
 set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_to_1,delta)
@@ -131,13 +125,6 @@ s_to_1(one_plus_twist(R,xi)),delta)
 
 set right_restrict(ExtParamPol E)=ParamPol:
 let (xi,P,Q,R,delta)=E in one_plus_twist(P+Q+R,delta)
-
-{
-set restrict_left(ExtParam E)=ExtParam:
-let (xi,P,Q,R,delta)=E in
-}
-
-{
 
 {xi=distinguished involution of inner class, delta=twist}
 set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
@@ -182,66 +169,8 @@ in for q_ind : nB
 )
 
 set deform = deform_unreduced@(Param,mat,int)
-{
-set deform_old (Param p, mat delta, int type) = ExtParamPol:
-(
-  if ed_verbose
-  then prints("Computing deform(p,delta,type): p=", p, " type=", type)
-  fi
-; let G=real_form(p) then
-  xi=G.distinguished_involution in
-  if type=-2 then null_ext_module(G)
-  else
-     let N=null_module(G)
-     then (B,index_p)=block(p)
-     then complete_indices=complete_indices(B,delta)
-     then sign_p=type
-     then index_p=find(complete_indices,(index_p,sign_p))
-     then l_p=length(p)
-{ then P=big_KL_P_polynomials(B,delta) }
-     then P_signed=big_KL_P_signed_polynomials(B,delta)
-     then Q=big_KL_Q_polynomials(B,delta)
-       { (P_signed,Q)=calculate_big_matrices(B,delta,index_p) in }
-{ prints("calculatad P ",#P ," Q ",#Q); =prints("index_p=", index_p); }
-     then outer_sum = null_ext_module(G,delta)
-  {for loops: I=1,...,index_p  (i,epsilon_I)=complete_indices[I]
-              J=I...index_p  (j,epsilon_J)=complete_indices[J]}
-      + for I:index_p
-        do if ed_verbose then prints("I=",I) fi;
-           let (i,epsilon_I)=complete_indices[I] in
-           if ed_verbose then prints("i=",i, "  epsilon_I=", epsilon_I) fi
-        ;  let p_i=B[i]
-           then l_i=length(p_i), P_signed_I=P_signed[I]
-           , onr=minus_1^half(orientation_nr(p)-orientation_nr(p_i))
-           , inner_sum=0
-        in if ed_verbose then prints("onr=", onr)  fi
-        ;  for J:index_p-I from I
-           do if ed_verbose then prints("J=",J) fi;
-              let (j,sign_j)=complete_indices[J]
-              then l_j=length(B[j])
-           in if is_odd(l_p-l_j)
-              then
-                 let P_IJ= i_poly: P_signed_I[J]
-                 , Q_J_index_p= i_poly: Q[J][index_p]
-                 then term = eval(P_IJ,minus_1) * eval(Q_J_index_p,minus_1)
-              in if ed_verbose then prints("   inner term: ", term) fi;
-                 inner_sum +:= term
-              ;  if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
-              fi
-           od
-        ;  let contrib = ExtParamPol:
-              let term=onr*inner_sum*B[i] in
-              if epsilon_I=1 then (term,N,N)
-              elif epsilon_I=minus_1 then (xi,N,term,N,delta)
-              else (xi,N,N,term,delta)
-              fi
-        in contrib
-        od
-     in (1-s)*outer_sum
-  fi
-)
-}
 
+{
 set deform (ExtParam E, mat delta) = ExtParamPol:
    deform(parameter(E), delta, sign(E))
 
