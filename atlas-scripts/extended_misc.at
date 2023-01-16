@@ -82,8 +82,10 @@ set *(mat delta,Param p)=Param:twist(p,delta)
 set *(mat delta,ParamPol P)=ParamPol:twist(P,delta)
 
 set is_fixed (Param p,mat delta) = bool:p=twist(p,delta)
-
-set is_fixed (ParamPol P,mat delta) = bool:P=twist(P,delta) 
+set is_fixed (ParamPol P,mat delta) = bool:P=twist(P,delta)
+{for dyslexics:}
+set is_fixed(mat delta,Param p)=is_fixed(p,delta)
+set is_fixed (mat delta,ParamPol P) = bool:is_fixed(P,delta)
 
 set is_fixed (ratvec gamma, KGBElt x,KGBElt y,mat delta) = bool:
   is_fixed(parameter(x,y,gamma),delta)

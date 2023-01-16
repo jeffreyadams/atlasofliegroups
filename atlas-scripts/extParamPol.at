@@ -2,7 +2,6 @@
 <polynomial.at
 <bigMatrices.at
 <hermitian.at
-<<<<<<< HEAD
 <extParamPolPlus.at
 
 { implement ParamPol for extended parameters }
@@ -10,16 +9,6 @@
 ed_verbose:=false
 
 set_type [ ExtParamPol = (mat xi,ParamPol P_plus, ParamPol P_minus, ParamPol P_ind,mat delta) ]
-=======
-<ext_deform.at { for |ed_verbose| }
-
-{ implement ParamPol for extended parameters }
-
-set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind) ]
->>>>>>> jeff
-{ (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
-  \sum_i s_iE(p_i,+) + \sum_j t_j E(q_j,-) + \sum_k u_k E(r_k,ind)
-}
 
 set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)
@@ -113,14 +102,10 @@ set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
 set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
   P+S*extParamPol(p,type)
 
-<<<<<<< HEAD
 set swap(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,Q,P,R,delta)
 set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_to_1,delta)
 
 set display (ExtParamPol(xi,A,B,C,delta)) = void:
-=======
-set display (ExtParamPol(A,B,C)) = void:
->>>>>>> jeff
   prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
 
 set null_ext_module (RealForm G,mat delta) = ExtParamPol:
@@ -747,6 +732,3 @@ rv
 <<<<<<< HEAD
 
 }}
-=======
->>>>>>> jeff_endoscopy
->>>>>>> jeff
