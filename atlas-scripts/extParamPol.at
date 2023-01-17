@@ -6,8 +6,14 @@
 
 { implement ParamPol for extended parameters }
 
-ed_verbose:=false
+ed_verbose:=true
 
+{useful shorthand}
+set xi(Param p)=mat:distinguished_involution(p.inner_class)
+
+set choose_type(Param p,mat delta)=int: if is_fixed(p,delta) then 1 else 0 fi
+set is_valid_type(Param p, mat delta, int type)=bool:
+ (is_fixed(p,delta) and abs(type)=1) or (not is_fixed(p,delta) and type=0) 
 
 set twisted_coefficient_sum(mat xi,ParamPol P)=(Param->Split):(Param p):
 if is_fixed(p,xi) then P[p] else s_to_1(P[p]+P[xi*p]) fi
@@ -76,8 +82,6 @@ if not is_fixed(p,xi) then one_plus_twist(p,xi)
  else s*p
 fi
 
-{set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)}
-
 set + (ExtParamPol(xi_1,P_plus_1,P_minus_1,P_ind_1,delta_1)
       ,ExtParamPol (xi_2,P_plus_2,P_minus_2,P_ind_2,delta_2)
       ) = ExtParamPol:
@@ -96,11 +100,32 @@ set + (ExtParamPol P,[ExtParamPol] Q) = ExtParamPol:
 set + (ExtParamPol P,(Split S,Param p,int type)) = ExtParamPol:
   P+S*Z_ext_param_pol(p,type)
 
+{replace ExtParamPol (P_plus,P_minus,P_ind) with [(s_i,c_i,type_i)]}
+set % (ExtParamPol(,P_plus,P_minus,P_ind,)) = [(Split,Param,int)]:
+( for c@p in P_plus do (c,p,1) od
+##for c@p in P_minus do (c,p,minus_1) od
+##for c@p in P_ind do (c,p,0) od
+)
+
 set swap(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,Q,P,R,delta)
 set s_to_1(ExtParamPol (xi,P,Q,R,delta))=ExtParamPol: (xi,P.s_to_1,Q.s_to_1,R.s_to_1,delta)
 
+set pretty_print_with_spaces (ParamPol P, int spaces)= void:
+if =#%P then prints(spaces*" " + "[empty]")
+else
+for w@p in P
+ do prints(spaces*" " +"(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
+od
+fi
+
 set display (ExtParamPol(xi,A,B,C,delta)) = void:
-  prints("plus:",A,new_line,"minus:",B,new_line,"induced:",C)
+  prints("plus:");
+  pretty_print_with_spaces(A,2);
+  prints("minus:");
+  pretty_print_with_spaces(B,2);
+  prints("induced:");
+  pretty_print_with_spaces(C,2)
+
 
 set null_ext_module (RealForm G,mat delta) = ExtParamPol:
 let N=null_module(G) then
@@ -117,58 +142,159 @@ set find ([(int,int)] complete_indices,(int,int)pair) =int:
 set * (ExtParam(ic,,,lambda,theta,,,,,):E,rat r) = ExtParam:
   E.gamma := ((1+theta)*(lambda+rho(ic))+(1-theta)*(E.nu*r))/2 ; E
 
+{restrict doubly extended ParamPol to <G,delta>}
 set left_restrict(ExtParamPol E)=ZExtParamPol:
 let (xi,P,Q,R,delta)=E in
 (s_to_1(one_plus_twist(P,xi)),
 s_to_1(one_plus_twist(Q,xi)),
 s_to_1(one_plus_twist(R,xi)),delta)
 
+{restrict doubly extended ParamPol to <xi,G>}
 set right_restrict(ExtParamPol E)=ParamPol:
-let (xi,P,Q,R,delta)=E in one_plus_twist(P+Q+R,delta)
+{let (xi,P,Q,R,delta)=E in one_plus_twist(P+Q+R,delta)}
+let (xi,P,Q,R,delta)=E in symmetrize(P+s*Q+R,delta)
+
+set change_nu (Param p, rat factor, int type) = ExtParamPol:
+  let G=real_form(p)
+  then delta=G.distinguished_involution
+  , N=null_module(G), rv=null_ext_module(G)
+  in
+  if type=0
+  then
+     let q=normal(p*factor)
+ {although p is not delta-fixed, it may be when nu is varied, this
+  is always the case if factor=0
+  then replace (N,N,q) with (q,q,N)}
+  in if is_fixed(q,delta) then rv:=(delta,q,q,N,delta) else rv:=(delta,N,N,q,delta) fi
+  else
+     let P=finalize_extended(p*factor,delta)
+  in for c@q in P
+     do let (a,b)=%c in
+        if type=1 then  rv+:=(delta,a*q,b*q,N,delta)  else rv+:=(delta,b*q,a*q,N,delta) fi
+     od
+  fi; rv
+
+set convert_to_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
+let xi=P.real_form.distinguished_involution then
+plus=null_module(P.real_form) then
+minus=null_module(P.real_form) then
+ind=null_module(P.real_form) then
+()=for c@p in P do
+ if is_fixed(p,delta) then
+  plus+:=int_part(c)*p;
+  minus+:=s_part(c)*p
+ else
+  ind +:=c*p
+ fi
+od in
+(xi,plus,minus,ind,delta)
 
 {xi=distinguished involution of inner class, delta=twist}
-set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
-(  let !N=null_module(p) then
-   xi=p.inner_class.distinguished_involution in
+set deform(Param p, mat delta, int type) = ExtParamPol:
+(  let !N=assert(is_valid_type(p,delta,type),"type is not valid");null_module(p) in
 { if type=0 then we're getting sums of terms of the form
   (1-s)*(I(p,+)+I(p,-)); when passing to the Hermitian form this
   becomes (1-s)(1+s)I(p)_h=0, so can ignore these
   but for completeness sake leave them in. So we don't do:
   if type=0 then return null_ext_module(real_form(p));
+  instead: return deform(p) [CHECK IF THIS IS CORRECT]
 }
-   let (B,index)=singular_block(p)
-   then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   then complete_indices=complete_indices(B,delta)
-   then complete_index=find(complete_indices,(index,type))
-   then nB=complete_index+1, length=length(p)
+if =type then convert_to_ext_param_pol(deform(p),delta)
+else
+  let (B,index)=singular_block(p)
+  then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+  then complete_indices=complete_indices(B,delta)
+  then complete_index=find(complete_indices,(index,type))
+  then nB=complete_index+1, length=length(p)
 {  then P_mat=
      top_left_square_block
       (calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) }
-   then P_mat =
-     top_left_square_block(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB)
-   then remainder=null(complete_index)#1, solution=null(nB)
-   , !opposite_parity=1-length%2 { opposite to that of |length(p)| }
-   , !on_p = orientation_nr(p)
-in for q_ind : nB
-  ~do let (ordinary_index_q,)=complete_indices[q_ind]
-      then q=B[ordinary_index_q], contrib=remainder[q_ind]*P_mat[q_ind]
-   in remainder -:= contrib
-   ;  if length(q)%2=opposite_parity then solution +:=contrib fi
-   od
+  then P_mat =
+    top_left_square_block(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB)
+  then remainder=null(complete_index)#1 then
+  solution=null(nB)
+  , !opposite_parity=1-length%2 { opposite to that of |length(p)| }
+  , !on_p =  orientation_nr(p)
+  in for q_ind : nB
+    ~do let (ordinary_index_q,)=complete_indices[q_ind]
+        then q=B[ordinary_index_q], contrib=remainder[q_ind]*P_mat[q_ind]
+     in remainder -:= contrib
+     ;  if length(q)%2=opposite_parity then solution +:=contrib fi
+     od
 ;  null_ext_module(real_form(p),delta)+
-   for f@i in solution
-   do let (ordinary_index_q,epsilon_q)=complete_indices[i]
-      then onr=minus_1^half(on_p-orientation_nr(B[ordinary_index_q]))
-      then term=(1-s)*onr*f*B[ordinary_index_q]
-      in
-      if epsilon_q=1 then (xi,term,N,N,delta)
-      elif epsilon_q=minus_1 then (xi,N,term,N,delta)
-      else (xi,N,N,term,delta)
-      fi
-    od
+ for f@i in solution
+ do let (ordinary_index_q,epsilon_q)=complete_indices[i]
+    then onr=minus_1^half(on_p-orientation_nr(B[ordinary_index_q]))
+    then term=(1-s)*onr*f*B[ordinary_index_q]
+    in
+    if epsilon_q=1 then (p.xi,term,N,N,delta)
+    elif epsilon_q=minus_1 then (p.xi,N,term,N,delta)
+    else (p.xi,N,N,term,delta)
+    fi
+  od
+fi
 )
+set deform(Param p, mat delta) = ExtParamPol:deform(p,delta,choose_type(p,delta))
 
-set deform = deform_unreduced@(Param,mat,int)
+set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
+assert(is_valid_type(p,delta,type_p),"(p,delta,type_p) is not valid");
+let G=assert(is_valid_type(p,delta,type_p),"(p,delta,type_p) is not valid");real_form(p)
+then empty=null_ext_module(G,delta), N=null_module(G)
+in if ed_verbose { choose verbose or non-verbose version of the function }
+then
+   rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
+      begin
+	 prints("executing rec_fun with p=",p, " type=", type);
+	 assert(is_standard(p)
+	       ,"non standard parameter encountered in deformation");
+	 let acc=empty in
+	 prints("acc defined", "  sc=", sc, " p=", p, " type=", type)
+      ;  let at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
+	 for factor in reducibility_points(p)
+	~do let (pf,flipped) = { next deformation }
+	       if is_fixed(p,delta)
+	       then scale_extended(p,delta,factor)
+	       else (p*factor,false)
+	       fi
+	    then def=deform(pf,delta,type)
+	 in if flipped { flip signatures in this rare case }
+	    then prints("flipped p=", p); def := s*def
+	    fi
+{        ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
+	 ;  acc +:= def
+	 od
+      ;  for (k,q,type) in %acc do at_nu0 +:= full_def(sc*k,q,type) od
+      ; prints("at_nu0 is now: ");display(at_nu0); at_nu0
+      end
+   else
+      rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
+      begin
+         assert(is_standard(p)
+               ,"non standard parameter encountered in deformation");
+         let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
+         for factor in reducibility_points(p)
+        ~do let (pf,flipped) =  { next deformation }
+               if is_fixed(p,delta)
+               then scale_extended(p,delta,factor)
+               else (p*factor,false)
+               fi
+            then def = deform(pf,delta,type)
+         in if flipped { flip signatures in this rare case }
+            then prints("flipped p=",p); def := s*def
+            fi
+{        ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
+         ; acc +:= def
+         od
+      ;  for (k,q,type_q) in %acc
+         do { prints("full_def:",q); } at_nu0 +:= full_def(sc*k,q,type_q)
+         od
+      ;  at_nu0
+      end
+   fi  (Split:1,p,type_p)
+
+set full_deform(Param p, mat delta, int type_p) =ExtParamPol: recursive_deform(p,delta,type_p)
+set full_deform(Param p, mat delta) =ExtParamPol: recursive_deform(p,delta,choose_type(p,delta))
+
 
 {
 set deform (ExtParam E, mat delta) = ExtParamPol:
@@ -196,20 +322,7 @@ rv
 
 set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
 
-set convert_to_ext_param_pol(ParamPol P,mat delta)=ExtParamPol:
-let xi=P.real_form.distinguished_involution then
-plus=null_module(P.real_form) then
-minus=null_module(P.real_form) then
-ind=null_module(P.real_form) then
-()=for c@p in P do
- if is_fixed(p,delta) then
-  plus+:=int_part(c)*p;
-  minus+:=s_part(c)*p
- else
-  ind +:=c*p
- fi
-od in
-(xi,plus,minus,ind,delta)
+
 
 {E=(P,Q,R)
   corresponding to xi (not delta)
@@ -247,93 +360,13 @@ let (,P,Q,R,)=E in
 finalize_extended_t(P,xi) +
 swap(finalize_extended_t(Q,xi)) +
 finalize_extended_t(R,xi)
+}
 
 
->>>>>>> jeff_endoscopy
-set change_nu (Param p, rat factor, int type) = ExtParamPol:
-  let G=real_form(p)
-  then delta=G.distinguished_involution
-  , N=null_module(G), rv=null_ext_module(G)
-  in
-  if type=0
-  then
-     let q=normal(p*factor)
- {although p is not delta-fixed, it may be when nu is varied, this
-  is always the case if factor=0
-  then replace (N,N,q) with (q,q,N)}
-  in if is_fixed(q,delta) then rv:=(delta,q,q,N,delta) else rv:=(delta,N,N,q,delta) fi
-  else
-     let P=finalize_extended(p*factor,delta)
-  in for c@q in P
-     do let (a,b)=%c in
-        if type=1 then  rv+:=(delta,a*q,b*q,N,delta)  else rv+:=(delta,b*q,a*q,N,delta) fi
-     od
-  fi; rv
+{
 
-{replace ExtParamPol (P_plus,P_minus,P_ind) with [(s_i,c_i,type_i)]}
-set % (ExtParamPol(,P_plus,P_minus,P_ind,)) = [(Split,Param,int)]:
-( for c@p in P_plus do (c,p,1) od
-##for c@p in P_minus do (c,p,minus_1) od
-##for c@p in P_ind do (c,p,0) od
-)
 
-set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
-{  assert(is_fixed(p,delta), "Parameter is not fixed");}
-   let G=real_form(p)
-   then empty=null_ext_module(G,delta), N=null_module(G)
-in if ed_verbose { choose verbose or non-verbose version of the function }
-   then
-      rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
-      begin
-	 prints("executing rec_fun with p=",p, " type=", type);
-	 assert(is_standard(p)
-	       ,"non standard parameter encountered in deformation");
-	 let acc=empty in
-	 prints("acc defined", "  sc=", sc, " p=", p, " type=", type)
-      ;  let at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
-	 for factor in reducibility_points(p)
-	~do let (pf,flipped) = { next deformation }
-	       if is_fixed(p,delta)
-	       then scale_extended(p,delta,factor)
-	       else (p*factor,false)
-	       fi
-	    then def=deform(pf,delta,type)
-	 in if flipped { flip signatures in this rare case }
-	    then prints("flipped p=", p); def := s*def
-	    fi
-{        ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
-	 ;  acc +:= def
-	 od
-      ;  for (k,q,type) in %acc do at_nu0 +:= full_def(sc*k,q,type) od
-      ; {prints("at_nu0 is now: ");display(at_nu0);} at_nu0
-      end
-   else
-      rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
-      begin
-         assert(is_standard(p)
-               ,"non standard parameter encountered in deformation");
-         let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
-         for factor in reducibility_points(p)
-        ~do let (pf,flipped) =  { next deformation }
-               if is_fixed(p,delta)
-               then scale_extended(p,delta,factor)
-               else (p*factor,false)
-               fi
-            then def = deform(pf,delta,type)
-         in if flipped { flip signatures in this rare case }
-            then prints("flipped p=",p); def := s*def
-            fi
-{        ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
-         ; acc +:= def
-         od
-      ;  for (k,q,type_q) in %acc
-         do { prints("full_def:",q); } at_nu0 +:= full_def(sc*k,q,type_q)
-         od
-      ;  at_nu0
-      end
-   fi  (Split:1,p,type_p)
 
-set full_deform = recursive_deform@(Param,mat,int)
 
 <<<<<<< HEAD
 set extended_character_formula_reg_old (Param p,mat delta) = ParamPol:
