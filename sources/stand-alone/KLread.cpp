@@ -35,7 +35,7 @@ public:
   std::vector<ullong> coefficients(KLIndex i) const;
 };
 
-typedef unsigned int BlockElt;
+typedef unsigned long int BlockElt;
 typedef std::bitset<32> RankFlags; // we can go up to rank 32
 typedef std::vector<RankFlags> descent_set_vector; // indexed by block element
 

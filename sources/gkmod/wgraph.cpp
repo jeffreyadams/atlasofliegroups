@@ -80,11 +80,11 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   d_cell.reserve(pi.classCount()); // there will be this many cells
   d_id.reserve(pi.classCount());    // and vectors of identification numbers
 
-  std::vector<unsigned int> relno(wg.size()); // number of element in its cell
+  std::vector<unsigned long int> relno(wg.size()); // number of element in its cell
   for (Partition::iterator it(pi); it(); ++it) // loop over cells
   {
     d_id.emplace_back(); // create new empty vector
-    std::vector<unsigned int>& idn=d_id.back(); // call it |idn|
+    std::vector<unsigned long int>& idn=d_id.back(); // call it |idn|
     idn.reserve(it->second-it->first);  // then dimension it to the cell size
 
     containers::sl_list<RankFlags> tau;
@@ -130,7 +130,7 @@ std::vector<WGraph> cells(const WGraph& wg)
   Partition pi = oriented.cells(); // no information about induced graph here
 
   std::vector<WGraph> result; result.reserve(pi.classCount());
-  std::vector<unsigned int> relno(wg.size()); // number of element in its cell
+  std::vector<unsigned long int> relno(wg.size()); // number of element in its cell
 
   for (Partition::iterator it(pi); it(); ++it) // loop over cells
   {

@@ -64,7 +64,7 @@ public:
 // copy, assignment and swap: nothing needed beyond defaults
 
 // accessors
-  Coeff coefficient(graph::Vertex x,unsigned int index) const
+  Coeff coefficient(graph::Vertex x,unsigned long int index) const
     { return coefficients[x][index]; }
 
   const RankFlags& descent_set(graph::Vertex x) const
@@ -75,7 +75,7 @@ public:
 
   const graph::EdgeList& edge_list (graph::Vertex x) const
     { return symmetric_graph.edgeList(x); }
-  graph::Vertex edge_target (graph::Vertex x,unsigned int index) const
+  graph::Vertex edge_target (graph::Vertex x,unsigned long int index) const
     { return symmetric_graph.edgeList(x)[index]; }
 
   const graph::OrientedGraph& graph() const { return symmetric_graph; }

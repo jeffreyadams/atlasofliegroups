@@ -150,7 +150,7 @@ graph::OrientedGraph Poset::hasseDiagram() const
   hard to detect; in practice 0 will be a least element, so that for other
   elements the absence of outgoing edges witnesses incomparability with |max|
  */
-graph::OrientedGraph Poset::hasseDiagram(unsigned int max) const
+graph::OrientedGraph Poset::hasseDiagram(unsigned long int max) const
 {
   bitmap::BitMap cl(max+1);
   cl |= d_below[max]; cl.insert(max); // we must not forget |max| itself.

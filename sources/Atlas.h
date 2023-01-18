@@ -443,7 +443,7 @@ namespace atlas {
   using blocks::Block_base;
   using blocks::Block;
   using blocks::common_block;
-  typedef unsigned int BlockElt;
+  typedef unsigned long int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;
   typedef std::vector<BlockEltPair> BlockEltPairList;

@@ -35,7 +35,8 @@ namespace poset {
 class Poset {
 
  public:
-  typedef unsigned int Elt; // should suffice for any realistic Poset
+  typedef unsigned long int Elt; // should suffice for any realistic Poset
+  // poset of FPP alcoves in E8 is 20 billion
   typedef std::vector<Elt> EltList;
 
   // a type used to represent a poset relation in arguments of certain methods
