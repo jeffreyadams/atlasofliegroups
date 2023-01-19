@@ -642,7 +642,7 @@ int main(int argc,char** argv)
           }
         }
         if ((mi.get()!=NULL and std::cin.peek()==':') or row_info.get()!=NULL)
-        { static const BlockElt UndefBlock = ~0u;
+        { static const BlockElt UndefBlock = ~0ul;
           BlockElt x=UndefBlock,y;
   	if (std::cin.peek()==':' or std::cin.peek()=='>')
           { bool once=std::cin.peek()==':';

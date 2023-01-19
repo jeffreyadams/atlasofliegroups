@@ -265,7 +265,7 @@ public:
 private:
   vec variable;
   BitMap constness;
-  const unsigned loop_depth; // number of nested loops we are in
+  const size_t loop_depth; // number of nested loops we are in
   const type_p return_type;
     // return type of current function, if any (non owned)
 public:
@@ -292,7 +292,7 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break(unsigned depth);
+  static bool may_break(size_t depth);
     // whether \&{break}~|depth| is legal here
   static bool may_return(); // whether \&{return} is legal here
   static type_expr& current_return_type() @+
@@ -330,7 +330,7 @@ function body, and the above constructors ensure that |return_type!=nullptr| in
 the current layer gives this condition.
 
 @< Function def... @>=
-bool layer::may_break(unsigned depth)
+bool layer::may_break(size_t depth)
 {@; return not lexical_context.empty()
       and lexical_context.front()->loop_depth > depth; }
 bool layer::may_return()
@@ -593,8 +593,8 @@ The expression \&{break} allows a premature exit from any kind of loop.
 
 @< Type definitions @>=
 struct breaker: public expression_base
-{ unsigned depth;
-  breaker(unsigned depth) : depth(depth) @+{}
+{ size_t depth;
+  breaker(size_t depth) : depth(depth) @+{}
 virtual void evaluate (level l) const;
 virtual void print(std::ostream& out) const
 {@; out << " break ";
