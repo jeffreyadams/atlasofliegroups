@@ -142,7 +142,7 @@ bool is_central(const LatticeMatrix& alpha, const TorusElement& t)
 {
   const RatWeight& rw = t.as_Qmod2Z(); // using $\exp(i\pi.)$ is faster, but
   arithmetic::Numer_t d = 2*rw.denominator(); // it requires even pairings
-  for (weyl::Generator s=0; s<alpha.numColumns(); ++s)
+  for (weyl::Generator s=0; s<alpha.n_columns(); ++s)
     if (rw.numerator().dot(alpha.column(s))%d != 0) // see if division is exact
       return false;
 
@@ -158,7 +158,7 @@ RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
   CoeffList diagonal;
   const int_Matrix B = matreduc::adapted_basis(xi,diagonal);
   const int_Matrix B_inv = B.inverse();
-  const unsigned int d=diagonal.size(), n=B.numRows();
+  const unsigned int d=diagonal.size(), n=B.n_rows();
 
   // Get coordinates on $\xi$-stable part of $B$, and convert back to original
   // By doing reduction modulo 1 half-way, ensure elected result is produced

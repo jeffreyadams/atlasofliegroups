@@ -55,7 +55,7 @@ template<unsigned int dim> Subspace<dim>::
 Subspace(const BitMatrix<dim>& M)
   : d_basis(M.image())
   , d_support()
-  , d_rank(M.numRows())
+  , d_rank(M.n_rows())
 {
  // change |d_basis| to a normalised form, and set |d_support|:
   bitvector::Gauss_Jordan(d_support,d_basis);
@@ -150,17 +150,17 @@ BitVector<dim> Subspace<dim>::representative
 template<unsigned int dim>
 void Subspace<dim>::apply(const BitMatrix<dim>& r)
 {
-  assert(r.numColumns()==d_rank);
+  assert(r.n_columns()==d_rank);
 
   BitVectorList<dim> b; b.reserve(dimension());
 
   for (size_t j = 0; j<dimension(); ++j)
   {
     b.push_back(r*d_basis[j]);
-    assert(b.back().size()==r.numRows());
+    assert(b.back().size()==r.n_rows());
   }
 
-  Subspace<dim> ns(b,r.numRows()); // construct (and normalize) new subspace
+  Subspace<dim> ns(b,r.n_rows()); // construct (and normalize) new subspace
   swap(ns); // and install it in our place
 }
 
@@ -266,8 +266,8 @@ template<unsigned int dim>
      const Subquotient<dim>& dest,
      const BitMatrix<dim>& m)
 {
-  assert(m.numColumns()==source.rank());
-  assert(m.numRows()==dest.rank());
+  assert(m.n_columns()==source.rank());
+  assert(m.n_rows()==dest.rank());
 
   BitMatrix<dim> result(dest.dimension(),0);
 

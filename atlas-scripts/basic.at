@@ -27,20 +27,13 @@ set assert (bool b,string message) = void: if not b then error(message) fi
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
-set bitset ([int] L) = (int,(int->bool)):
-  let map=[bool]:[], len=0 { invariant len=#map } in
-  for x in L ~ { reversing loop minimises expansions for many lists }
-  do if x<len then map[x]:=true
-     else map := for i:x+1 do if i<len then map[i] else i=x fi od ; len := x+1
-     fi
-  od; (len,(int i)bool: map[i])
-
 set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
 set complement (int n, [int] list) = [int]:
-  let (len,f)=bitset(list) in complement(n,(int i)bool: i<len and f(i))
+  let N = to_bitset(list)
+  in complement(n,(int i)bool: bitwise_subset([i].to_bitset,N))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -1252,11 +1245,9 @@ set * (mat theta,WeylElt w) = mat:
 { morphism W(rd)->W(dual(rd)), involves transpose inverse on matrices }
 set for_dual_datum(WeylElt w) = WeylElt: W_elt(dual(w.root_datum), word(w))
 
+{ product of Weyl group elements respects Left (index 0) and Right; compute LtR }
 set product (RootDatum rd, [WeylElt] L) = WeylElt:
-  let len = #L in
-  if =len then id_W(rd)
-  else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
-  fi
+  let p = id_W(rd) in for w in L do p *:= w od; p
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2

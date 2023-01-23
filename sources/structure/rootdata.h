@@ -3,7 +3,7 @@
    Class definitions and function declarations for the RootDatum class.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006--2020 Marc van Leeuwen
+  Copyright (C) 2006--2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -95,6 +95,13 @@ Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
 bool is_long_root(const RootSystem& rs, RootNbr i);
 bool is_long_coroot(const RootSystem& rs, RootNbr i);
 
+sl_list<WeylElt>
+  Weyl_orbit_words(const RootDatum& rd, const WeylGroup& W, Weight v);
+sl_list<WeylElt>
+  Weyl_orbit_words(Weight v, const RootDatum& rd, const WeylGroup& W);
+int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
+int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
@@ -117,24 +124,22 @@ class RootSystem
     : root(v), coroot(), root_perm(), descents(), ascents() {}
   };
 
-  struct root_compare; // auxiliary type defined here for access reasons
+  struct root_compare; // auxiliary type declared here for access reasons
 
   const unsigned char rk; // rank of root system
   const bool prefer_co;
+  short int C_denom; // denominator implied in |invCmat| below
 
-  matrix::Matrix_base<byte> Cmat; // Cartan matrix in compressed format
+  matrix::PID_Matrix<byte> Cmat; // Cartan matrix in compressed format
+  matrix::PID_Matrix<short int> invCmat; // inverse may require larger entries
 
   std::vector<root_info> ri; // information about individual positive roots
 
   // the following two are relations on the full root set
+  // bitmap at |i| flags (co)roots for which (co)root |i| cannot be subtracted
   std::vector<RootNbrSet> root_ladder_bot; // minima for root ladders for |alpha|
   std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
 
-
-  // internal access methods
-  byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
-  const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
-  { return Cmat(i,j); }
 
   // in the following 4 methods |i| indexes a positive root or corrot
   Byte_vector& root(RootNbr i) { return ri[i].root;}
@@ -163,13 +168,14 @@ public:
   bool prefer_coroots() const { return prefer_co; }
 
   // Cartan matrix by entry and as a whole
-  int cartan(weyl::Generator i, weyl::Generator j) const
-  { return Cartan_entry(i,j); };
+  int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };
   bool diagram_linked(weyl::Generator i, weyl::Generator j) const
-  { return Cartan_entry(i,j)<0; };
-  int_Matrix cartanMatrix() const;
+  { return Cmat(i,j)<0; };
+  int_Matrix Cartan_matrix() const;
+  int_Matrix inverse_Cartan_matrix() const;
+  int Cartan_denominator() const { return C_denom; }
 
-  int_Matrix cartanMatrix(const RootNbrList& sub) const; // for subsystem
+  int_Matrix Cartan_matrix(const RootNbrList& sub) const; // for subsystem
   LieType subsystem_type(const RootNbrList& sub) const;
 
 
@@ -177,6 +183,10 @@ public:
 // root list access; unless noted, |alpha| indexes the full root system
 
   // express any root in simple root basis; any coroot in simple coroot basis
+  int root_expr_coef(RootNbr alpha, weyl::Generator i) const
+  { int v=root(rt_abs(alpha))[i]; return is_negroot(alpha) ? -v : v; }
+  int coroot_expr_coef(RootNbr alpha, weyl::Generator i) const
+  { int v=coroot(rt_abs(alpha))[i]; return is_negroot(alpha) ? -v : v; }
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
@@ -372,7 +382,6 @@ class RootDatum
 
   Coweight d_dual_2rho;
 
-  int Cartan_denom; // Denominator for (co)|weight_numer|
 
 /* BitSet recording whether the root datum is adjoint/simply connected.
 
@@ -578,7 +587,7 @@ class RootDatum
   WeylWord factor_codominant (Coweight& lambda) const;
   WeylWord to_codominant(Weight lambda) const; // by value; reversed result
   Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
-  { factor_dominant(lambda); return lambda; }
+  { factor_codominant(lambda); return lambda; }
 
   template<typename C>
     void act(const WeylWord& ww, matrix::Vector<C>& lambda) const
@@ -680,10 +689,6 @@ class RootDatum
   { return coroot_sum(*this,posRootSet()&rs); }
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
-
-// manipulators
-
-  void swap(RootDatum&);
 
 // implicit conversion
   operator PreRootDatum() const;

@@ -36,31 +36,21 @@ namespace prerootdata {
 
 
 /*
-  Construct the PreRootDatum whose lattice has basis |b|, expressed in terms
-  of the simply connected weight lattice basis for |lt|.
+  Construct the |PreRootDatum| for the simply connected root datum of type |lt|
 
   More precisely, we build the unique rootdatum whose Cartan matrix is the
   standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
   (i.e., the Cartan matrix of |lt| with any null rows and columns for torus
-  factors removed), and such that the the vectors |b| express the basis of the
-  weight lattice $X$ in terms of the fundamental weight basis (dual basis to the
-  simple coroots mixed with standard basis for the torus factors) of |lt|.
-
-  This somewhat convoluted description comes from the way the lattice $X$ may be
-  chosen (via user interaction) as a sublattice of the lattice for a simply
-  connected group.
-
-  The constructor puts in |d_roots| the list of simple roots expressed in the
-  basis |b|, and in |d_coroots| the list of simple coroots expressed in the
-  dual basis.
+  factors removed), and whose |simple_roots| matrix is the identity matrix of
+  size |lt.rank()| with columns at positions of torus factors of |lt| removed
 */
   PreRootDatum::PreRootDatum(const LieType& lt, bool prefer_co)
   : simple_roots(lt.rank(),lt.semisimple_rank())
-  , simple_coroots(simple_roots.numRows(),simple_roots.numColumns(),0)
+  , simple_coroots(simple_roots.n_rows(),simple_roots.n_columns(),0)
   , prefer_co(prefer_co)
 {
   weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
-  unsigned int r=0; // |r| indexes rows of |Cartan|, goes up to rank
+  unsigned int r=0; // |r| indexes rows of |lt.Cartan_matrix()|, goes up to rank
   for (unsigned int k=0; k<lt.size(); ++k) // run over "simple" factors
     if (lt[k].type()=='T') // only do non-torus factors;
       r+=lt[k].rank();  // skip empty row(s) of Cartan matrix, keep |s|
@@ -119,15 +109,15 @@ int_Matrix PreRootDatum::Cartan_matrix() const
 }
 
 void PreRootDatum::test_Cartan_matrix () const
-{ Permutation dummy;
-  dynkin::Lie_type(Cartan_matrix(),true,true,dummy);
+{ // we don't need the result of the following call, just its checks
+  dynkin::Lie_type(Cartan_matrix()); // squareness and size known to be OK
 }
 
 // replace by root datum for a finite central quotient with weight |sublattice|
 PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 {
   const auto r=rank();
-  if (sublattice.numRows()!=r or sublattice.numColumns()!=r)
+  if (sublattice.n_rows()!=r or sublattice.n_columns()!=r)
     throw std::runtime_error("Sub-lattice matrix not square of the right size");
 
   arithmetic::big_int d;
@@ -162,8 +152,8 @@ void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {
-  assert(M.numRows()==rank());
-  for (unsigned int j=0; j<M.numColumns(); ++j)
+  assert(M.n_rows()==rank());
+  for (unsigned int j=0; j<M.n_columns(); ++j)
   {
     int c=0;
     for (unsigned int i=0; i<rank(); ++i)
@@ -175,8 +165,8 @@ void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 
 void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
 {
-  assert(M.numColumns()==rank());
-  for (unsigned int i=0; i<M.numRows(); ++i)
+  assert(M.n_columns()==rank());
+  for (unsigned int i=0; i<M.n_rows(); ++i)
   {
     int c=0;
     for (unsigned int j=0; j<rank(); ++j)

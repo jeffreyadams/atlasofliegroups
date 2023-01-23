@@ -48,5 +48,8 @@
 <four.at {four_inner_products BXYI}
 <special_rep.at
 <families.at
+<L_packet.at
+<G2_unitary_dual.at
+<adams_johnson.at
 <speh.at
 

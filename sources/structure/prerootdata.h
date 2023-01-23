@@ -55,7 +55,8 @@ class PreRootDatum
     , prefer_co(prefer_co)
     {}
 
-  PreRootDatum(const LieType& lt, bool prefer_co);
+  // the next constructor is used when forming a "quotient of simply connected"
+  PreRootDatum(const LieType& lt, bool prefer_co); // simply connected
   PreRootDatum(int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag);
   PreRootDatum(int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag);
 
@@ -72,8 +73,8 @@ class PreRootDatum
     and prefer_co == prd.prefer_co;
   }
 
-  size_t rank() const { return simple_roots.numRows(); }
-  size_t semisimple_rank() const { return simple_roots.numColumns(); }
+  size_t rank() const { return simple_roots.n_rows(); }
+  size_t semisimple_rank() const { return simple_roots.n_columns(); }
 
   const int_Matrix& simple_roots_mat() const { return simple_roots; }
   const int_Matrix& simple_coroots_mat() const { return simple_coroots; }
@@ -92,7 +93,7 @@ class PreRootDatum
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const;
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
 
-  void test_Cartan_matrix () const; // my throw |error::Cartan_error|
+  void test_Cartan_matrix () const; // throw |error::Cartan_error| if illegal
 
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|

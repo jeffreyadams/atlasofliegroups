@@ -122,28 +122,28 @@ C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
 }
 
 /* transform |M| to column echelon form using only PID operations
-   postcondition: |M| has unchanged column span, |result.size==M.numColumns|,
+   postcondition: |M| has unchanged column span, |result.size==M.n_columns|,
    and for |j| and |i=result.n_th(j)|: |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
 */
 template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M,
 				matrix::PID_Matrix<C>& col,
 				bool& flip)
-{ const size_t n=M.numColumns();
+{ const size_t n=M.n_columns();
   col=matrix::PID_Matrix<C>(n); // start with identity matrix
   matrix::PID_Matrix<C> ops; // working matrix, accumulates column operations
   flip=false;
-  bitmap::BitMap result(M.numRows()); // set of pivot rows found so far
+  bitmap::BitMap result(M.n_rows()); // set of pivot rows found so far
   size_t l=n; // limit of columns yet to consider
-  for (size_t i=M.numRows(); i-->0; )
+  for (size_t i=M.n_rows(); i-->0; )
   { int d=gcd(M.partial_row(i,0,l),&ops,flip,l-1);
-    assert(ops.numRows()==l and ops.numColumns()==l);
+    assert(ops.n_rows()==l and ops.n_columns()==l);
     if (d==0)
       continue; // if partial row was already zero, just skip over current row
     matrix::column_apply(M,ops,0);
     matrix::column_apply(col,ops,0);
     result.insert(i);
-    --l; // now we have a pivot in column |l-1|
+    --l; // now we have our new pivot in column |l|
     assert(M(i,l)==d); // |column_apply| should have achieved this
   } // |for(i)
 
@@ -151,10 +151,10 @@ template<typename C>
   { // then erase column |l| from |M|, rotate it in |col| towards the right
     M.eraseColumn(l);
     matrix::Vector<C> cc=col.column(l); // this one too
-    for (size_t j=l; j<M.numColumns(); ++j)
+    for (size_t j=l; j<M.n_columns(); ++j)
       col.set_column(j,col.column(j+1));
-    col.set_column(M.numColumns(),cc);
-    flip ^= (M.numColumns()-l)%2;
+    col.set_column(M.n_columns(),cc);
+    flip ^= (M.n_columns()-l)%2;
   }
 
   return result;
@@ -166,12 +166,12 @@ template<typename C>
 				  const bitmap::BitMap& pivots,
 				  matrix::Vector<C> b,
 				  arithmetic::big_int& f) // needed scale factor
-{ assert(b.size()==E.numRows());
+{ assert(b.size()==E.n_rows());
   using arithmetic::gcd;
   f=arithmetic::big_int(1);
-  matrix::Vector<C> result(E.numColumns());
+  matrix::Vector<C> result(E.n_columns());
   size_t j=pivots.size();
-  for (size_t i=E.numRows(); i-->0; )
+  for (size_t i=E.n_rows(); i-->0; )
     if (pivots.isMember(i))
     {
       --j;

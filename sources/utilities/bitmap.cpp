@@ -2,7 +2,7 @@
   This is bitmap.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006,2017 Marc van Leeuwen
+  Copyright (C) 2006,2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -342,7 +342,7 @@ unsigned long BitMap::position(unsigned long n) const
   It is required that |n<capacity()|, but not that |n+r<=capacity()|; if the
   latter fails, the return value is padded out with (leading) zero bits.
 */
-unsigned long BitMap::range(unsigned long n, unsigned long r) const
+unsigned long BitMap::range(size_t n, unsigned r) const
 {
   unsigned long m = n >> constants::baseShift; // index where data is stored
 
@@ -574,9 +574,9 @@ void BitMap::extend_capacity(bool b)
   This condition is always satisfied if |r| divides |longBits| and |n| is a
   multiple of |r|. It ensures that only a single word in |d_map| is affected.
 */
-void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
+void BitMap::setRange(size_t n, unsigned r, unsigned long a)
 {
-  unsigned long m = n >> baseShift;
+  size_t m = n >> baseShift;
   unsigned shift = n & posBits;
 
   d_map[m] &= ~(constants::lMask[r] << shift);     // set bits to zero
@@ -691,13 +691,16 @@ void BitMap::iterator::change_owner(const BitMap& b)
 
 // Instantiations
 
-template void BitMap::insert
- (std::vector<unsigned short>::iterator,
-  std::vector<unsigned short>::iterator); // root sets from RootNbrList
+using US = unsigned short int;
+using USP = US*; // that is pointer to unsigned integer
+
+template void BitMap::insert // root sets from RootNbrList
+  (std::vector<US>::iterator, std::vector<US>::iterator);
 
 using ULVI = std::vector<unsigned long>::iterator;
 using VCI = std::vector<int>::const_iterator;
 
+template BitMap::BitMap(unsigned long n, const USP& first, const USP& last);
 template BitMap::BitMap(unsigned long n, const ULVI& first, const ULVI& last);
 template BitMap::BitMap(unsigned long n, const VCI& first, const VCI& last);
 // template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);

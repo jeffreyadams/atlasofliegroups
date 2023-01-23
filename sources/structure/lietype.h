@@ -90,6 +90,7 @@ struct LieType : public std::vector<SimpleLieType>
   typedef std::vector<SimpleLieType> base;
   LieType() : base() {}
   LieType(const base& b) : base(b) {}
+  LieType(base&& b) : base(std::move(b)) {}
 
   unsigned int rank() const;
   unsigned int semisimple_rank() const;

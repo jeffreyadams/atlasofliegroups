@@ -974,7 +974,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   { // flip signs for odd length distance, since that is what deformation wants
     auto jt = survivors.wcbegin();
-    for (BlockElt j=0; j<P_mat.numRows(); ++j,++jt)
+    for (BlockElt j=0; j<P_mat.n_rows(); ++j,++jt)
     { auto parity = eblock.length(*jt)%2;
       auto it = survivors.wcbegin();
       for (BlockElt i=0; i<j; ++i,++it)

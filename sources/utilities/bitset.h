@@ -357,6 +357,8 @@ template<unsigned int n> class BitSet
   // accessors (non inherited)
 
   bool operator[] (unsigned int j) const { return Base::test(j); }
+  // the following allows |if (bitset<n> temp = expression) {temp}| statements
+  explicit operator bool () const { return Base::any(); }
 
   // non-assignment logical operators added by MvL
   BitSet operator~ () const // logical NOT over full length |dim|

@@ -1,0 +1,165 @@
+{Central characters (characters of the center Z(R))}
+<center.at
+
+{--------these functions belong elsewhere----------}
+{move this to basic.at}
+set mod(int a,int N)=int:  {N>0; return 0<= a <N}
+assert(N>0, "N is not positive");
+ let ans=a%N in
+if ans>=0 then ans else ans+N fi
+
+{move these to lattice.at}
+{A is an (m,n) matrix, v an m-vector, contained in the span of the columns c_i of A
+write v=\sum a_i c_i (not unique unless A has rank n)
+}
+set in_span(mat A,vec v)=bool:solve(A,v).any
+set change_basis_to_subspace(mat A,vec v)=vec:
+ let sol=solve(A,v) in
+ assert(sol.any,"no solution");sol.requisition
+set in_span_Q(mat A,ratvec v)=bool:solve(A,v).any
+{A is an (m,n) matrix, v an m-ratvec, contained in the span of the columns c_i of A
+write v=\sum a_i c_i (not unique unless A has rank n)
+}
+set change_basis_to_subspace_Q(mat A,ratvec v)=ratvec:
+ let sol=solve(A,v) in
+ assert(sol.any,"no solution");sol.requisition
+{-----------------------------------------------------}
+
+{central character data type: (InnerClass ic, vec lambda, ratvec nu)
+ parametrizes characters of Z(R), more precisely  (Lie(Z),Z^delta)-characters
+ set delta=distinguished_involution(ic)
+ (delta,lambda,nu) defines a character of the fundamental torus
+   in precisely the same way as (x,lambda,nu) defines a character of rho-cover of the Cartan defined by x
+ this restricts to a character of Z(R)
+ in particular lambda defines a character of Z^\delta
+ equality: lambda=lambda' + [(1-delta)X^*+R]  and (1-delta)nu=(1-delta)nu'
+   (just like for Cartan, the addtion of R in the denominator accounts for the restriction to the center)
+}
+set_type [CentralCharacter=(InnerClass ic,vec lambda,ratvec nu)]
+set central_character(InnerClass ic,vec lambda, ratvec nu)=CentralCharacter:(ic,lambda,(1-ic.distinguished_involution)*nu/2)
+set cc=central_character@(InnerClass,vec,ratvec)
+set delta(CentralCharacter cc)=mat:cc.ic.distinguished_involution
+
+{the character group of Z^delta is X^*/M_Z}
+set M_Z(InnerClass ic)=mat:(1-distinguished_involution(ic))##ic.simple_roots
+set M_Z_reduced(InnerClass ic)=(mat,vec):adapted_basis(M_Z(ic))
+
+{equality of central characters (see above)}
+set =(CentralCharacter chi,CentralCharacter tau)=bool:
+ic(chi)=ic(tau) and
+in_lattice(M_Z(ic(chi)), lambda(chi)-lambda(tau)) and
+=(1-ic(chi).distinguished_involution)*(nu(chi)-nu(tau))
+
+{central character of a parameter}
+set central_character(Param p)=CentralCharacter:central_character(p.inner_class,lambda_minus_rho(p),p.nu)
+set cc(Param p)=CentralCharacter: central_character(p)
+
+{from center.at:
+
+3) center Z(R) of RealForm G:
+   Z(R)=Z(R)_c x Z(R)_s
+   Z(R)_c = maximal compact subgroup = Z(R)^delta
+   Z(R)_s is isomorphic, via the exponential map, to a vector space (complex/real/rational)
+
+4) dual Z_hat of center of RootDatum:
+   Hom_cts(Z(R),C^*) = Hom_cts(Z(R)_c,S^1) x Hom_cts(Z(R)_s,C^*)
+   		     = X^*(Z^delta) x Hom_cts(Z(R)_s,C^*)
+   X^*(Z^delta): finitely generated abelian group, realized as quotient of lattices
+               = X^*/[ (1-delta)X^* + R ] (R = root lattice)
+   X^*(Z^delta) has a canonical torsion subgroup (characters of Z^delta/(Z_delta)^0)
+   rational characters of Z(R)_s: Q-vector space
+}
+
+{canonical torsion subgroup of X*Z(Z^delta):
+ [(a_0,d_0),...(a_n,d_n)]
+ means the element [a_0,...,a_n] of the torsion subgroup of X^*(Z^delta)
+ is \simeq  Z/d_1 x ... Z/d_n
+}
+set torsion(CentralCharacter cc)=[(int,int)]:
+let (A,v)=M_Z_reduced(ic(cc)) then
+sol=change_basis_to_subspace(A,lambda(cc)) in
+##for i:#v do
+ if v[i]>1 then [(mod(sol[i],v[i]),v[i])] else [] fi od
+
+{element of split part of the character of the radical
+ (mat A,ratvec v) <->
+   columnns of A are basis of [X^*_Q]^{-delta}, and ratvec v
+   gives a linear combination of these
+}
+set split_radical(CentralCharacter cc)=
+let sol=change_basis_to_subspace_Q(lie_split_radical_hat(cc.ic),nu(cc)) in
+(lie_split_radical_hat(cc.ic),sol)
+
+{element of compact part of the character of the radical:
+ (mat A,vec v) <->
+   columns of A give Z-basis of X^*(radical^delta),
+   v gives a linear combination of these
+}
+set compact_radical(CentralCharacter cc)=
+let lambda=cc.lambda then
+lambda_T=(1+cc.delta)*lambda then
+lambda_T_radical_part=lie_radical_part(cc.ic,lambda_T) then
+lie_compact_radical_hat=lie_compact_radical_hat(cc.ic) then
+sol=change_basis_to_subspace_Q(lie_compact_radical_hat,lambda_T_radical_part) in
+(lie_compact_radical_hat,ratvec_as_vec(sol))
+
+{for output}
+set torsion_string(CentralCharacter cc)=
+let t=torsion(cc) in
+ if #t>0 then
+  let rv="[" in
+  for i:#t-1 do
+  let (a,b)=t[i] in  rv+:= a.to_string + "/" + b.to_string + ","  od;
+  let (a,b)=t~[0] in rv+:=a.to_string + "/" + b.to_string;
+  rv+:="]";rv
+ else
+  "empty"
+ fi
+
+{human readable description of central character}
+set show(CentralCharacter cc)=void:
+prints(
+ if #torsion(cc)>0 then "torsion part: "+ torsion_string(cc) else "no torsion" fi);
+prints(
+ let (M,v) = compact_radical(cc) in
+ if !=M then "character of compact-radical: "+  v.to_string + "=" +sum(for i:#v do v[i]*M[i] od).to_string else "no compact-radical"  fi);
+prints(
+ let (M,v) = split_radical(cc) in
+ if !=M then "character of split-radical: " + v.to_string + "=" +sum(#M[0],for i:#v do v[i]*M[i] od).to_string  else "no split-radical" fi)
+
+set show_long(CentralCharacter cc)=void:
+prints("torsion part: ", torsion_string(cc),new_line);
+prints(
+let (M,v) = compact_radical(cc) in
+ if !=M then 
+  "basis of X^*(compact-radical)" + (^compact_radical_basis(ic(cc))).to_string+
+  "character of compact-radical: " + new_line + v.to_string + "=" + sum(for i:#v do v[i]*M[i] od).to_string 
+ else 
+  "compact-radical: empty" fi);
+prints(
+ let (M,v) = split_radical(cc) in
+ if !=M then
+  new_line + "basis of X^*(split-radical)_Q:"+(^split_radical_basis(ic(cc))).to_string +
+  "character of split-radical: "+ new_line + v.to_string + "=" +    sum(#M[0],for i:#v do v[i]*M[i] od).to_string
+else
+ "split-radical: empty" fi )
+
+set show_torsion(CentralCharacter cc)=void:prints(torsion_string(cc))
+
+set sort_by_central_character([Param] list)=([CentralCharacter],[[Param]]):
+let central_characters=[CentralCharacter]:[] then
+params=[[Param]]:[] in
+for p in list do
+ let cc_p=cc(p) then
+  i=first(for cc in central_characters do cc_p=cc od) in
+  if i=-1 then
+   central_characters#:=cc_p;
+   params#:=[p]
+  else
+   params[i]#:=p
+  fi
+od;
+(central_characters,params)
+
+
+

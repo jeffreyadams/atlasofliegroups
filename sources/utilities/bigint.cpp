@@ -7,12 +7,14 @@
   For license information see the LICENSE file
 */
 
-#include "bigint.h"
+#include <limits>
+#include <cmath>
 #include <cassert>
 #include <iomanip>
 #include <stdexcept>
 #include <cstring>
-#include <cmath>
+
+#include "bigint.h"
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -124,6 +126,17 @@ bool big_int::operator== (const big_int& x) const
     if (*it != *x_it)
       return false;
   return true;
+}
+
+template<typename C> // a signed integer type, no more than 32 bits long
+C big_int::convert () const
+{
+  constexpr auto bit_length = std::numeric_limits<C>::digits;
+  assert(bit_length<32);
+  constexpr digit bound = 1UL<<bit_length;
+  if (size()>1 or (bound <= d[0] and d[0] < -bound))
+    throw std::runtime_error("Integer value to big for conversion");
+  return static_cast<C>(d[0]);
 }
 
 int big_int::int_val() const
@@ -400,7 +413,7 @@ big_int::big_int (const bitmap::BitMap& b, bool negative)
 {
   const auto cap=b.capacity();
   d.reserve(cap/32+1);
-  unsigned int i; // this needs to survive following loop
+  size_t i; // this needs to survive following loop
   for (i=0; i+32<=cap; i+=32)
     d.push_back(b.range(i,32));
   // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
@@ -907,9 +920,9 @@ bool big_int::bitwise_subset (const big_int& x) const
   return true; // if we came here, there are no bits witnessing falsity
 } // |big_int::bitwise_subset|
 
-int big_int::index_of_set_bit(unsigned n) const
+int big_int::index_of_set_bit(size_t n) const
 {
-  unsigned i=0;
+  size_t i=0;
   for ( ; i<d.size(); ++i)
   {
     digit dig = d[i];
@@ -990,22 +1003,22 @@ big_int lcm(const big_int& a,const big_int& b)
 
 big_rat big_rat::operator+ (const big_rat& x) const
 { big_int d = gcd(den,x.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat(num*x.den+x.num*den, den*x.den);
   big_int q = x.den/d;
   big_int numer = num*q+x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
+  return dd==1 ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_rat big_rat::operator- (const big_rat& x) const
 { big_int d = gcd(den,x.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat(num*x.den-x.num*den, den*x.den);
   big_int q = x.den/d;
   big_int numer = num*q-x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
+  return dd==1 ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_int big_rat::floor () const { return num/den; }
@@ -1017,7 +1030,7 @@ big_int big_rat::quotient (const big_rat& r) const
   { return (num*r.den)/(den*r.num); }
 big_rat big_rat::operator% (const big_rat& r) const
 { big_int d = gcd(den,r.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat::from_fraction((num*r.den)%(den*r.num),den*r.den);
   const big_int q = den/d;
   return big_rat::from_fraction((num*(r.den/d))%(q*r.num),q*r.den);
@@ -1039,6 +1052,9 @@ big_rat big_rat::power (int e) const
     result.invert();
   return result;
 }
+
+// template member instances
+template short int big_int::convert<short int> () const;
 
 } // |namespace arithmetic|
 } // |namespace atlas|

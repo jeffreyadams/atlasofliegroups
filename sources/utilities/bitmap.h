@@ -1,5 +1,6 @@
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006,2017,2022 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -25,27 +26,26 @@ namespace bitmap {
 /*
   Container of a large (more than twice the machine word size) set of bits.
 
-  From the point of view of a user of the class, a BitMap should be
-  seen as a container of _unsigned long_, not bits: these unsigned
-  longs are the addresses of the set bits.  When the class is used for
-  example to flag the noncompact roots in a set of roots, it is most
-  convenient to think of it as containing the numbers of the
-  noncompact roots (on a fixed list of all roots).  The class obeys
-  the semantics of a Forward Container (from the C++ standard
-  library).  Its "size" as a container is the number of unsigned long
-  that it "contains"; that is, the number of set bits in the bitmap.
+  From the point of view of a user of the class, a BitMap should be seen as a
+  container of |size_t| values, not bits: these unsigned values are the
+  addresses of the set bits. When the class is used for example to flag the
+  noncompact roots in a set of roots, it is most convenient to think of it as
+  containing the numbers of the noncompact roots (on a fixed list of all roots).
+  The class obeys the semantics of a Forward Container (from the C++ standard
+  library). Its "size" as a container is the number of |size_t| values that it
+  "contains"; that is, the number of bits set to 1 in the bitmap.
 
-  The basic data is in d_map, a vector of unsigned long integers.  Each
-  of these integers is a "chunk" (of size longBits, presumably the machine
-  word length) of the bit map.  The capacity (in bits) of the BitMap is
-  d_capacity; the size of the vector d_map is d_capacity/longBits
-  (plus one if there is a remainder in the division).
+  The basic data is in |d_map|, a vector of |unsigned long| integers. Each of
+  these integers is a "chunk" (of size |longBits|, presumably the machine word
+  length) of the bit map. The capacity (in bits) of the |BitMap| is
+  |d_capacity|; the size of the vector |d_map| is |d_capacity/longBits| (plus
+  one if there is a remainder in the division).
 
-  We wish to provide bit-address access to this map; for this purpose
-  we use the reference trick from vector<bool>. Also we wish to define
-  an iterator class, which traverses the _set_ bits of the bitmap; so
-  that for instance, b.begin() would be a reference to the first set
-  bit. Dereferencing the iterator yields its bit-address.
+  We provide bit-addressed access to this map, in other words given a value it
+  is fast to test or change its membership staturs. Also we wish to define an
+  iterator class, which traverses the _set_ bits of the bitmap; so that for
+  instance, b.begin() would access the first set bit. Dereferencing the iterator
+  yields its bit-address, a |size_t| value.
 */
 class BitMap
 {
@@ -59,16 +59,13 @@ class BitMap
 
 // type definitions
 
-  /*
-  type for a component of the vector d_map holding the BitMap
-  */
-  typedef unsigned long value_type;
+  using value_type = size_t; // type of values virtually present in a |BitMap|
   typedef value_type& reference;
   typedef const value_type& const_reference;
   typedef value_type* pointer;
   typedef const value_type* const_pointer;
   typedef ptrdiff_t difference_type;
-  typedef unsigned long size_type;
+  using size_type = size_t; // container capacity same type as |value_type|
 
 // iterators
   class iterator;
@@ -85,21 +82,18 @@ class BitMap
     Note that the size of the vector |d_map| exceeds |n >> baseShift| by
     one, unless |longBits| exactly divides |n|.
   */
-  explicit BitMap(unsigned long n)
-    : d_capacity(n), d_map((d_capacity+posBits)>>baseShift,0)
+  explicit BitMap(size_t n)
+    : d_capacity(n), d_map((n+posBits)>>baseShift,0)
   {}
-
-  // Copy constructor
-  BitMap(const BitMap& b) : d_capacity(b.d_capacity), d_map(b.d_map) {}
 
   // convert range defined by iterators into a BitMap
   template <typename I>
-    BitMap(unsigned long n, const I& first, const I& last);
+    BitMap(size_t n, const I& first, const I& last);
 
-  // an easier version for a full vector
+  //g an easier version for a full vector
   template <typename U> // unsigned integral type
-  BitMap(unsigned long n,const std::vector<U>& v)
-    : d_capacity(n), d_map((d_capacity+posBits)>>baseShift)
+  BitMap(size_t n,const std::vector<U>& v)
+    : d_capacity(n), d_map((n+posBits)>>baseShift)
   {
     for (size_t i=0; i<v.size(); ++i)
       insert(v[i]);
@@ -119,7 +113,7 @@ class BitMap
    of the BitMap as a standard library container, not d_map.size(), which is
    approximately longBits times smaller.
   */
-  unsigned long capacity() const { return d_capacity; }
+  size_t capacity() const { return d_capacity; }
   size_type size() const; // the number of bits that are set in the bitmap
 
   bool operator< (const BitMap& b) const { return d_map < b.d_map; }
@@ -128,12 +122,14 @@ class BitMap
 
   bool empty() const; // whether |size()==0|
   bool full() const; // whether |size()==capacity()|
+  bool none() const { return empty(); } // naming compatibility with |BitSet|
+  bool any() const { return not empty(); }
 
   /*
     Tests whether bit n in the bitmap is set; that is, whether element n
     is a member of the set.
   */
-  bool isMember(unsigned long n) const
+  bool isMember(size_t n) const
   {
     if (n >= d_capacity)
       return false;
@@ -146,21 +142,21 @@ class BitMap
   // Whether none of the elements of |b| satisfy |isMember|
   bool disjoint(const BitMap& b) const;
 
-  // Value at index |n| if viewed as list of |unsigned long| values
-  unsigned long n_th(unsigned long n) const;
+  // Value at index |n| if viewed as list of |size_t| values
+  size_t n_th(size_t n) const;
 
   // Number of values |<n| present (set) in the bitmap
-  unsigned long position(unsigned long n) const;
+  size_t position(size_t n) const;
 
   // First value for which |isMember| holds, or |capacity()| if none exist
-  unsigned long front() const;
+  size_t front() const;
 
   // decrement |n| (at least once) until it points to a member
   // return value indicates whether this succeeded
-  bool back_up(unsigned long& n) const;
+  bool back_up(size_t& n) const;
 
   // get a range of bits as unsigned long value; see bitmap.ccp for details
-  unsigned long range(unsigned long first, unsigned long number) const;
+  unsigned long range(size_t first, unsigned number) const;
 
   BitMap operator~ () const { return BitMap(*this).take_complement(); }
 
@@ -195,14 +191,14 @@ class BitMap
 
   BitMap& andnot(const BitMap& b); // remove bits of |b|
 
-  BitMap& operator>>= (unsigned long delta); // shift right (decrease)
-  BitMap& operator<<= (unsigned long delta); // shift left (increase)
+  BitMap& operator>>= (size_t delta); // shift right (decrease)
+  BitMap& operator<<= (size_t delta); // shift left (increase)
 
   /*
     Set the bit at position |n| (that is, inserts the value |n| into the set);
     this makes |isMember(n)| hold.
   */
-  void insert(unsigned long n)
+  void insert(size_t n)
   {
     assert(n<d_capacity);
     d_map[n >> baseShift] |= constants::bitMask[n & posBits];
@@ -212,18 +208,18 @@ class BitMap
     Clear the bit at position |n| (that is, removes that element of the set);
     this makes |isMember(n)| false.
   */
-  void remove(unsigned long n)
+  void remove(size_t n)
   {
     assert(n<d_capacity);
     d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
   }
 
-  bool set_to(unsigned long n,bool b)
+  bool set_to(size_t n,bool b)
   { if (b) insert(n); else remove(n); return b; }
 
-  bool set_mod2(unsigned long n, unsigned long v) { return set_to(n,(v&1)!=0); }
+  bool set_mod2(size_t n, unsigned v) { return set_to(n,(v&1)!=0); }
 
-  void flip(unsigned long n)
+  void flip(size_t n)
   {
     assert(n<d_capacity);
     d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
@@ -239,17 +235,17 @@ class BitMap
    void insert(I, I);
 
  // this was called |resize|, but sets |capacity()|, whence the new name
- void set_capacity(unsigned long n); // any new bits will start out cleared
+ void set_capacity(size_t n); // any new bits will start out cleared
  void extend_capacity(bool b); // extend capacity by |1|, adding member if |b|
 
  // set an interval of bits from those (least significant ones) of source
- void setRange(unsigned long start, unsigned long amount, unsigned long source);
+ void setRange(size_t start, unsigned amount, unsigned long source);
 
  void swap(BitMap&);
 
 }; // |class BitMap|
 
-unsigned long last (const BitMap& set); // final element of non-empty |set|
+size_t last (const BitMap& set); // final element of non-empty |set|
 
   /* Iterator to traverse the \emph{set} bits (members present) of a BitMap.
 
@@ -273,14 +269,14 @@ unsigned long last (const BitMap& set); // final element of non-empty |set|
 class BitMap::iterator // is really a const_iterator
 {
   std::vector<unsigned long>::const_iterator d_chunk; // point to current chunk
-  unsigned long d_bitAddress; // value returned if dereferenced
-  unsigned long d_capacity; // beyond-the-end bit-address, normally constant
+  size_t d_bitAddress; // value returned if dereferenced
+  size_t d_capacity; // beyond-the-end bit-address, normally constant
 
  public:
 
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef unsigned long value_type;
+  typedef size_t value_type;
   typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
@@ -292,7 +288,7 @@ class BitMap::iterator // is really a const_iterator
     d_capacity(j.d_capacity) {}
 
   iterator(const std::vector<unsigned long>::const_iterator& p,
-	   unsigned long n, unsigned long c)
+	   size_t n, size_t c)
     :d_chunk(p), d_bitAddress(n), d_capacity(c) {}
 
 // assignment

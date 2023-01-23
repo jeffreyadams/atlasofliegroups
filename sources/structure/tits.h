@@ -212,7 +212,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   // compute Cayley transform
   GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const
-  { leftMult(a.w,s); return a; }
+  { left_multiply(a.w,s); return a; }
   // flag length-decreasing complex cross actions and inverse Cayley transforms
   RankFlags descents(const GlobalTitsElement& a) const;
 
