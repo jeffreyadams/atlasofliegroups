@@ -559,10 +559,10 @@ set next_im (KType mu)=[KTypePol]:
    then pr=posroots(G)
    in ##for alpha in pr
         do if is_imaginary(alpha,mu.x)
-	   then [1*K_type(mu.x,lam+alpha)] else []
+	   then [1*K_type(mu.x,lam+alpha)+K_type(cross(alpha,mu.x),lam)] else []
 	   fi od
 
-set nexts (KType mu)=[[KTypePol]]:
+set next_K_types1 (KType mu)=[[KTypePol]]:
    let G=real_form(mu)
    then result=[next1(mu)]
    in for pol in next1(mu)
@@ -570,7 +570,16 @@ set nexts (KType mu)=[[KTypePol]]:
 	    do result#:=next_im(tau) od od;
    result#:=next_im(mu)
 
-set nexts_one_step (KType mu)=[KTypePol]:
+set next_real (KType mu)=[KTypePol]:
+   let G=real_form(mu),lam=mu.lambda_minus_rho
+   then sr=simple_roots(G)
+   in ##for alpha in sr
+        do if is_real(alpha,mu.x)
+            then let x=Cayley(alpha,mu.x)
+	          in [1*K_type(x,lam)+K_type(cross(alpha,x),lam)]
+	    else [] fi od
+
+set next_K_types (KType mu)=[KTypePol]:
    let G=real_form(mu),lam=mu.lambda_minus_rho
    then pr=posroots(G)
    in ##for alpha@i in pr
@@ -583,8 +592,9 @@ set nexts_one_step (KType mu)=[KTypePol]:
 	  fi
        od
 
-{set af_done (Param p)=bool:
-   all( }
+set next_K_types (KTypePol P)=KTypePol:
+   let list=##for c@p in P do c*next_K_types(p) od
+   in sum(real_form(P),list)
 
 set anti_finalize (Param p)=Param:
    let G=real_form(p)
