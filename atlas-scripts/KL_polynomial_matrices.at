@@ -17,7 +17,7 @@ in for p in B1
 , true
 )
 
-{default: polynomials for the partial block, use _full the whole block}
+{default: polynomials for the partial block, use _full for the whole block}
 set KL_P_polynomials (Param p) = i_poly_mat:
   let (,P,polys)=partial_KL_block(p) in
   for row in rows(P) do for entry in row do polys[entry] od od

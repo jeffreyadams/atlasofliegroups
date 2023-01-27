@@ -4,17 +4,16 @@ set delta=G.distinguished_involution
 set (H,M)=endoscopic(G,delta)
 set H=H.split_form
 set all_G=unipotent_representations(G)
-set all_H_u=unipotent_representations(H)
-
-set all=all_H_u
+set all=unipotent_representations(H)
 
 
-set ph=all_H_u~[0]
+
+set ph=all~[0]
 set gamma=ph.infinitesimal_character 
-set pg=lift_std(ph,M,G,delta).parameter
+set pg=lift_std(ph,M,G,delta)
 set ecf=extended_character_formula(pg,delta)
 prints("ecf: ");
-display(ecf)
+show(ecf)
 
 set abv=abv(ph,M,G,delta)
 set (a,b,c,d)=abv

@@ -114,17 +114,20 @@ set pretty_print_with_spaces (ParamPol P, int spaces)= void:
 if =#%P then prints(spaces*" " + "[empty]")
 else
 for w@p in P
- do prints(spaces*" " +"(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
+ do prints(spaces*" " +"(",prettyPrint(w),")*",p)
 od
 fi
 
-set display (ExtParamPol(xi,A,B,C,delta)) = void:
+set show (ExtParamPol(xi,A,B,C,delta)) = void:
   prints("plus:");
   pretty_print_with_spaces(A,2);
   prints("minus:");
   pretty_print_with_spaces(B,2);
   prints("induced:");
   pretty_print_with_spaces(C,2)
+set show (ZExtParamPol P)=void:show(ext_param_pol(P))
+
+
 
 
 set null_ext_module (RealForm G,mat delta) = ExtParamPol:
@@ -153,6 +156,18 @@ s_to_1(one_plus_twist(R,xi)),delta)
 set right_restrict(ExtParamPol E)=ParamPol:
 {let (xi,P,Q,R,delta)=E in one_plus_twist(P+Q+R,delta)}
 let (xi,P,Q,R,delta)=E in symmetrize(P+s*Q+R,delta)
+
+set right_restrict(ZExtParamPol E)=ParamPol:
+right_restrict(ext_param_pol(E))
+
+{E = ZExtParamPol <-> virtual character of G^delta
+     restrict to the non-identity component
+     E=(P,Q,R,delta)=(\sum a_i p_i, \sum b_i p_i, \sum c_j q_j,delta)
+      <-> \sum a_i p_i_+ + \sum  b_i p_i_- + \sum c_j ind(q_k)
+      maps to P-Q:
+        p_i_\pm have opposite value on delta, and ind(q_k) vanishes on Gdelta
+}
+set twisted_character(ZExtParamPol (P,Q,R,))=ParamPol:P-Q
 
 set change_nu (Param p, rat factor, int type) = ExtParamPol:
   let G=real_form(p)
@@ -199,7 +214,8 @@ set deform(Param p, mat delta, int type) = ExtParamPol:
   if type=0 then return null_ext_module(real_form(p));
   instead: return deform(p) [CHECK IF THIS IS CORRECT]
 }
-if =type then convert_to_ext_param_pol(deform(p),delta)
+{if =type then convert_to_ext_param_pol(deform(p),delta)}
+if false then convert_to_ext_param_pol(deform(p),delta)
 else
   let (B,index)=singular_block(p)
   then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
@@ -294,6 +310,7 @@ then
 
 set full_deform(Param p, mat delta, int type_p) =ExtParamPol: recursive_deform(p,delta,type_p)
 set full_deform(Param p, mat delta) =ExtParamPol: recursive_deform(p,delta,choose_type(p,delta))
+
 
 
 {
@@ -483,15 +500,7 @@ else
 
 =======
 >>>>>>> jeff
-set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
-   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
-   , P=big_KL_P_signed_polynomials(B,delta)
-   then index=find(complete_indices,(find(B,p),1))
-   in
-   for i:#complete_indices
-   do let f=eval(P[i][index],s) in
-      if f!=0 then prints(complete_indices[i], ": ", prettyPrint(f)) fi
-   od
+
 
 set print_extended_character_formula (Param p,mat delta) = void:
    print_extended_character_formula(p,singular_block_of(p),delta)

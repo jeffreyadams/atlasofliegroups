@@ -9,6 +9,10 @@ set all_H_u=unipotent_representations(H)
 
 set all=all_H_u
 
+set ph=all[8]
+set p=lift_std(all[8],M,G,delta)
+set preg=make_regular_param(p)
+
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
 set abv=for p in all do abv(p,M,G,delta) od
 

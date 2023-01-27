@@ -22,7 +22,7 @@ set KL_block_raw (Param p, mat delta) = { emulate built-in |KL_block| }
      )
 { one can process the output by |cook_KL_block| from KL_polynomial_matrices.at }
 
-set ed_verbose=false
+set ed_verbose=true
 
 set deformation_terms (Param p, mat delta) = ParamPol:
   assert(is_final(p) and is_fixed(delta,p),"improper parameter");
@@ -62,16 +62,16 @@ set deformation_terms (Param p, mat delta) = ParamPol:
   fi
 
 set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
-  assert(is_final(p) and is_fixed(p,delta),"improper parameter");
-  let G=p.real_form in
-   (1,p). { apply following recursive function to this initial argument }
-   ( rec_fun full_def (Split sc,Param p) KTypePol:
-       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
+ assert(is_final(p) and is_fixed(p,delta),"improper parameter");
+ let G=p.real_form in
+ (1,p). { apply following recursive function to this initial argument }
+ ( rec_fun full_def (Split sc,Param p) KTypePol:
+     { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
-      if ed_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
-      assert(is_standard(p)
-	    ,"non standard parameter encountered in deformation");
-      let acc = G.null_module, at_nu0 = K_type_pol_extended(p,delta)
+      if ed_verbose then prints("in recursive function full_def with: sc=", sc, ", p=", p) fi;
+      assert(is_standard(p),"non standard parameter encountered in deformation");
+{      let acc = G.null_module, at_nu0 = K_type_pol_extended(p,delta)}
+      let acc = G.null_module, at_nu0 = sc*K_type_pol_extended(p,delta) {MISSING sc?}
       in
       if ed_verbose then prints("deformation at nu=0 contributes ",at_nu0) fi;
       for factor in reducibility_points(p)
@@ -80,16 +80,18 @@ set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
 	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
 	then def= s^#flipped * terms(pf)
 	in
+	let ()=prints("sc=",sc) in
         if ed_verbose then prints("adding deformation term for p=",pf, new_line,
 	                          "adding:", def)
         fi;
         acc+:=def
-      od
-    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      od{for factor}
+     ;prints("acc is NOW: ", acc);
+     for k@q in acc { traverse the sum of the deformation terms spun off }
       do { apply |full_def| recursively to all those terms }
         at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
       od
-    ; at_nu0
+     ;at_nu0
     end
   )
 
