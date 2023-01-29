@@ -128,7 +128,8 @@ for a:n do
 }
 
 set big_KL_P_polynomials ([Param] B_in,mat delta) = i_poly_mat:
-  let B=make_delta_invariant(B_in,delta) then
+{  let B=make_delta_invariant(B_in,delta) then}
+  let B=B_in then
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do prints(i);B[i] od then
   P=KL_P_polynomials(B)
@@ -141,12 +142,12 @@ set big_KL_P_polynomials ([Param] B_in,mat delta) = i_poly_mat:
      do let (i,epsilon_i)=complete_indices[a] in
         for b:n-a from a
         do let (j,epsilon_j)=complete_indices[b] in
- prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);
+{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
            then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
- prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);
+{ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
 	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
