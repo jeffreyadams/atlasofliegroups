@@ -10,11 +10,13 @@ set all_H_u=unipotent_representations(H)
 set all=all_H_u
 
 set ph=all[8]
+set lift_std(Param p)=lift_std(p,M,G,delta)
+
 set p=lift_std(all[8],M,G,delta)
 set preg=make_regular_param(p)
 
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
-set abv=for p in all do abv(p,M,G,delta) od
+set abv=for p@i in all do prints("---------------------------------------------",new_line,"i=",i, "  p=", p);abv(p,M,G,delta) od
 
 {output:
 atlas> for (p,(,,,d))@i in abv_good do prints(new_line,"i=",i,new_line,"p=",p,new_line,"ABV(p)=", d) od
@@ -154,7 +156,7 @@ set p_H=all_H_u[5]
 set E_H=E(H.distinguished_involution,p_H)
 set p_G=lift_std(p_H,M,G,delta)
 set ecf=extended_character_formula(p_G,delta)
-set m=monomials(convert_to_param_pol(ecf))
+set m=monomials(right_restrict(ecf))
 
 set bad=m[0]
 
@@ -180,9 +182,9 @@ set gamma=p.infinitesimal_character
 set preg=parameter(p.x, p.lambda+two_rho(G), p.nu+two_rho(G))
 set ecfreg=extended_character_formula(preg,delta)
 set ecf=extended_character_formula(p,delta)
-set (Preg,Qreg,Sreg)=ecfreg
-set (P,Q,S)=ecf
-set mreg=monomials(convert_to_param_pol(ecfreg))
+{set (Preg,Qreg,Sreg)=ecfreg
+set (P,Q,S)=ecf}
+set mreg=monomials(right_restrict(ecfreg))
 
 
 

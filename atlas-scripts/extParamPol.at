@@ -222,11 +222,18 @@ else
   then complete_indices=complete_indices(B,delta)
   then complete_index=find(complete_indices,(index,type))
   then nB=complete_index+1, length=length(p)
-{  then P_mat=
+  {  then P_mat=
      top_left_square_block
       (calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) }
-  then P_mat =
-    top_left_square_block(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB)
+   then (,polys)=big_KL_P_signed_polynomials_at_minus_one(p,delta)
+   then P_mat =
+     top_left_square_block(polys,nB)
+{garbled?:  then P_mat=
+     top_left_square_block
+      (calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB)
+  then polys=big_KL_P_signed_polynomials_at_minus_one(p,delta) then
+  P_mat =
+    top_left_square_block(P_mat(B,delta),nB)}
   then remainder=null(complete_index)#1 then
   solution=null(nB)
   , !opposite_parity=1-length%2 { opposite to that of |length(p)| }

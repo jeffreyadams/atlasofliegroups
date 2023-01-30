@@ -18,17 +18,18 @@ in for p in B1
 )
 
 {default: polynomials for the partial block, use _full for the whole block}
-set KL_P_polynomials (Param p) = i_poly_mat:
-  let (,P,polys)=partial_KL_block(p) in
-  for row in rows(P) do for entry in row do polys[entry] od od
+set KL_P_polynomials (Param p) = ([Param],i_poly_mat):
+  let (params,P,polys)=partial_KL_block(p) in
+  (params,for row in rows(P) do for entry in row do polys[entry] od od)
 
-set KL_P_polynomials_at_minus_one (Param p) = mat:
-  eval(KL_P_polynomials(p),minus_1)
+set KL_P_polynomials_at_minus_one (Param p) = ([Param],mat):
+  let (params,polys)=KL_P_polynomials(p) in
+  (params,eval(polys,-1))
 
-set KL_P_signed_polynomials (Param p) = i_poly_mat:
+set KL_P_signed_polynomials (Param p) = ([Param],i_poly_mat):
   let (block,P,polys)=partial_KL_block(p) in
-  for row@i in rows(P) do for entry@j in row
-  do minus_1^(block[j].length-block[i].length)*polys[entry] od od
+  (block,for row@i in rows(P) do for entry@j in row
+  do minus_1^(block[j].length-block[i].length)*polys[entry] od od)
 
 {full versions}
 set KL_P_polynomials_full (Param p) = i_poly_mat:
@@ -85,10 +86,11 @@ set final_subset ([Param] B) = [Param]:
 }
 
 { undo signedness of |partial_extended_KL_block|, using a negative index for any
-  negated poly }
+  negated poly 
+probably should NOT use this
+}
 set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
   let (block,P,polys) = partial_extended_KL_block(p,delta) in
-{  let (block,P,polys) = KL_block(p,delta) in}
 ( block
 , for col@j in P
   do let len_j=length(block[j]) in
@@ -97,20 +99,22 @@ set KL_block (Param p, mat delta) = ([Param],mat,[vec]):
 , polys
 )
 
-set KL_P_polynomials (Param p, mat delta) = i_poly_mat:
+{this uses partial_extended_KL_block(p,delta), which currently gives SIGNED polynomials}
+set KL_P_signed_polynomials (Param p, mat delta) = ([Param],i_poly_mat):
 {   let (,P,polys) = KL_block(p,delta)}
 {   let (,P,polys) = partial_extended_KL_block(p,delta)}
-    let (,P,polys) = KL_block(p,delta) 
-in for row in rows(P) { mat to i_pol_mat convention flip }
+    let (params,P,polys) = partial_extended_KL_block(p,delta)
+   in (params,for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
-   od
+   od)
 
-set KL_P_polynomials_at_minus_one (Param p, mat delta) = mat:
-   let (,P,polys) = KL_block(p,delta)
+{these are signed}
+set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = ([Param],mat):
+   let (B_delta,P,polys) = partial_extended_KL_block(p,delta)
    then pev=for Q in polys do eval(Q,minus_1) od
-in for col in P do for index in col do
+  in (B_delta,for col in P do for index in col do
       if index.< then -pev[-index] else pev[index] fi
-   od od
+   od od)
 
 {probably shouldn't use this, just KL_P_polynomials(p,delta) which uses the partial block}
 {this sometimes fails since B_fixed~[0] might not be maximal}
@@ -123,7 +127,7 @@ in assert(valid,"given [Param] B does not agree with block_of B~[0]");
   od od}
 
 {here is a clumsy fix:}
-set maximal_element([Param] B)=int:
+{set maximal_element([Param] B)=int:
 let reverse_index=first(for i:#B do #KL_P_polynomials(B~[i])=#B od) in
 #B-1-reverse_index
 
@@ -139,18 +143,18 @@ set KL_P_polynomials ([Param] B_fixed, mat delta) = i_poly_mat:
   for i:n do for j:n do let index=P[perm[i],perm[j]] in
      if index.< then -polys[-index] else polys[index] fi
   od od
+}
+{set KL_P_polynomials_at_minus_one ([Param] B_fixed, mat delta) = mat:
+  eval(KL_P_polynomials(B_fixed,delta),minus_1)}
 
-set KL_P_polynomials_at_minus_one ([Param] B_fixed, mat delta) = mat:
-  eval(KL_P_polynomials(B_fixed,delta),minus_1)
-
-set KL_P_signed_polynomials (Param p, mat delta) = i_poly_mat:
-   let (,P,polys) = partial_extended_KL_block(p,delta) in
-   for row in rows(P) { mat to i_pol_mat convention flip }
+set KL_P_signed_polynomials (Param p, mat delta) = ([Param],i_poly_mat):
+   let (B_delta,P,polys) = partial_extended_KL_block(p,delta) in
+   (B_delta,  for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do polys[index] od
-   od
+   od)
 
-set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
-  eval(KL_P_signed_polynomials(p,delta),minus_1)
+set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = ([Param],mat):
+  let (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) in (B_delta,eval(P_delta,-1))
 
 set KL_P_signed_polynomials([Param] B, mat delta) = i_poly_mat:
   assert(all(for p in B do is_fixed(p,delta) od)
@@ -166,7 +170,9 @@ set KL_P_signed_polynomials_at_minus_one([Param] B, mat delta) = mat:
 { since there is no "dual_partial_extended_KL_block", define the Q-polynomials
   as inverse of the signed P-matrix
 }
-set KL_Q_polynomials (Param p, mat delta) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(p,delta))
-set KL_Q_polynomials ([Param] B, mat delta) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(B,delta))
+set KL_Q_polynomials (Param p, mat delta) = ([Param],i_poly_mat):
+  let (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) in
+  (B_delta,upper_unitriangular_inverse(P_delta))
+  
+{set KL_Q_polynomials ([Param] B, mat delta) = i_poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(B,delta))}

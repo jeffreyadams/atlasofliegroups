@@ -125,8 +125,8 @@ set big_KL_P_polynomials(Param p,mat delta) ={ i_poly_mat:}
   let (B,,)=partial_extended_KL_block(p,delta) in
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do B[i] od
-  then P=KL_P_polynomials(p)   {based on partial_KL_block(p)}
-  then P_delta=KL_P_polynomials(p,delta)  {based on partial_extended_KL_block(p,delta)}
+  then (,P)=KL_P_polynomials(p)   {based on partial_KL_block(p)}
+  then (,P_delta)=KL_P_signed_polynomials(p,delta)  {based on partial_extended_KL_block(p,delta)} {shouldn't  be signed?}
   then n=assert(!=#P_delta,"no fixed polynomials?");#complete_indices
   then rv=zero_poly_matrix(n)
   then ()=
