@@ -173,22 +173,20 @@ set big_KL_P_signed_polynomials (Param p,mat delta) =
   {KL_P_signed_polynomials is based on partial_extended_KL_block(p,delta)
    all of these parameters are delta-fixed
    some of them are *missing* from partial_block(p)}
-  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B_delta,delta) then
-  (B,P)=KL_P_polynomials(p) in  {
-  if =#P_delta
-  then prints("Note: block not delta-fixed")
-  ; KL_P_polynomials(B) {block is not fixed by delta}
-  else let n=#complete_indices then rv=zero_poly_matrix(n) in
+{  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B_delta,delta) then}
+  (B,P)=KL_P_polynomials(p) then
+  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+   n=#complete_indices then rv=zero_poly_matrix(n) in
      for a:n
      do let (i,epsilon_i)=complete_indices[a] in
         for b:n-a from a
         do let (j,epsilon_j)=complete_indices[b] in
-{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
+ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);
            if a=b
            then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
-{ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
+ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);
 	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
@@ -203,9 +201,9 @@ set big_KL_P_signed_polynomials (Param p,mat delta) =
 		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
            fi
         od
-     od
-  ; rv
-  fi
+     od;rv
+
+
 
 set big_KL_P_signed_polynomials_at_minus_one (Param p,mat delta) = ([Param],mat):
    let (B_delta,P_delta)=KL_P_signed_polynomials_at_minus_one(p,delta) then

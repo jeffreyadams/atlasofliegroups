@@ -22,6 +22,7 @@ else
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
   P=big_KL_P_signed_polynomials(p,delta) then
   index=find(complete_indices,(find(B,p),1)) in
+  let ()=prints("OK") in
   for (j,type)@i in complete_indices do
    let c=eval(P[i][index],1) in {key point here: evaluate at q=1}
     if !=c then

@@ -15,6 +15,9 @@ set lift_std(Param p)=lift_std(p,M,G,delta)
 set p=lift_std(all[8],M,G,delta)
 set preg=make_regular_param(p)
 
+set abv(Param p)=abv(p,M,G,delta)
+set lift_std(Param p)=lift_std(p,M,G,delta)
+
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
 set abv=for p@i in all do prints("---------------------------------------------",new_line,"i=",i, "  p=", p);abv(p,M,G,delta) od
 
