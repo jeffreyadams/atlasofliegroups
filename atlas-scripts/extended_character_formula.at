@@ -1,3 +1,5 @@
+set pr([Param] B)=void:for p in B do prints(p) od
+
 {the extended character formula for (p,delta), as a ZExtParamPol,
  i.e. (P,Q,R,delta), where P/Q/R are ZParamPols (no s terms), giving
  the plus/minus/induced terms of the character formula for the extended group G^delta}
@@ -18,12 +20,16 @@ if not is_fixed(p,delta) then
 else
   {calculated using big_KL_P_signed_polynomials}
   let (,plus,minus,ind,)=null_ext_module(G) then
-  B=block_of(p) then
+{  B=block_of(p) then}
+  B=partial_block(p) then
+  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
   P=big_KL_P_signed_polynomials(p,delta) then
+  ()=prints("computed P") then
   index=find(complete_indices,(find(B,p),1)) in
-  let ()=prints("OK") in
+  let ()=prints("index=",index) in
   for (j,type)@i in complete_indices do
+   let ()=prints("j,type,i=", j ," ", type, " ", i) in
    let c=eval(P[i][index],1) in {key point here: evaluate at q=1}
     if !=c then
      if type=1 then prints("plus", "j=",j, "c=",c);plus+:=c*B[j]

@@ -18,6 +18,15 @@ set preg=make_regular_param(p)
 set abv(Param p)=abv(p,M,G,delta)
 set lift_std(Param p)=lift_std(p,M,G,delta)
 
+set ph=all[5]
+set p=lift_std(ph)
+
+set  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) 
+set  (B,P)=KL_P_polynomials(p) 
+set  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) 
+set   n=#complete_indices 
+{
+
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
 set abv=for p@i in all do prints("---------------------------------------------",new_line,"i=",i, "  p=", p);abv(p,M,G,delta) od
 

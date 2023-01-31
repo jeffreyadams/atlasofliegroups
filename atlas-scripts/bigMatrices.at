@@ -167,16 +167,21 @@ for a:n do
   fi
   }
 
+
 {better version using partial extended block}
 set big_KL_P_signed_polynomials (Param p,mat delta) =
-  let (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
   {KL_P_signed_polynomials is based on partial_extended_KL_block(p,delta)
    all of these parameters are delta-fixed
-   some of them are *missing* from partial_block(p)}
-{  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B_delta,delta) then}
+   some of them are *missing* from partial_block(p)
+   make matrix just using parameters below p, from KL_P_polynomials(p)
+   however this set must be delta-invariant (should be automatic if p is delta-fixed)
+}
+  let
+  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
   (B,P)=KL_P_polynomials(p) then
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
    n=#complete_indices then rv=zero_poly_matrix(n) in
+   let ()=prints("doing up to n: ", n) in
      for a:n
      do let (i,epsilon_i)=complete_indices[a] in
         for b:n-a from a
