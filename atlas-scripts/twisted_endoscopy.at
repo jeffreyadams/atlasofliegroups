@@ -206,7 +206,8 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
 }
 
 {start with big_KL_P_polynomials and change some signs}
-set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
+{see version in bigMatrices.at}
+{set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
   let (B,,)=partial_extended_KL_block(p,delta) in
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
@@ -222,7 +223,7 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
      od od
   ; P
   fi
-
+}
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then

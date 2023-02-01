@@ -20,7 +20,7 @@ set lift_std(Param p)=lift_std(p,M,G,delta)
 
 set ph=all[5]
 set p=lift_std(ph)
-
+set ecf=extended_character_formula(p,delta)
 set  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) 
 set  (B,P)=KL_P_polynomials(p) 
 set  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) 
