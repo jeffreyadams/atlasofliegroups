@@ -1,4 +1,4 @@
-set pr([Param] B)=void:for p in B do prints(p) od
+set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
 
 {the extended character formula for (p,delta), as a ZExtParamPol,
  i.e. (P,Q,R,delta), where P/Q/R are ZParamPols (no s terms), giving

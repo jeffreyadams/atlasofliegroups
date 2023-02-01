@@ -18,16 +18,29 @@ set p=lift_std(all[8],M,G,delta)
 set abv(Param p)=abv(p,M,G,delta)
 set lift_std(Param p)=lift_std(p,M,G,delta)
 
+
+  
 set ph=all[5]
 set lift=lift_std(ph)
 set p=make_regular_param(lift)
-set  (B,P)=KL_P_signed_polynomials(p,delta)
+set (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) 
+set  (B,P)=KL_P_polynomials(p) {based on partial_KL_block(p)}
+{
+set  (B,P)=KL_P_signed_polynomials(p,delta)}
 set Pbig=big_KL_P_signed_polynomials(p,delta)
-
+set (Bbig,,)=partial_KL_block(p)
 {set  (B,P)=KL_P_polynomials(p)}
-set  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+set  (I_delta,g,complete_indices,delta_action)=tabulate_indices(Bbig,delta)
 set   n=#complete_indices
-set   index=find(complete_indices,(find(B,p),1))
+set   index=find(complete_indices,(find(Bbig,p),1))
+
+
+set check([(int,int)] complete_indices,[[vec]] P, [Param] B,Param p)=void:
+let   index=find(complete_indices,(find(B,p),1)) in
+for  (j,type)@i in complete_indices do
+  if !=#P[i][index] then prints("i: ", i, " j:", j, " type: ", type, " ", "ci:", complete_indices[i], " ", P[i][index]) fi od
+
+
 {
 
 {set abv_good=for p in good do (p, abv_mixed(p,M,G,delta)) od}
@@ -211,3 +224,4 @@ set mreg=monomials(right_restrict(ecfreg))
 
 
 
+}
