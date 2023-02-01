@@ -178,8 +178,8 @@ set big_KL_P_signed_polynomials (Param p,mat delta) =
 }
   let
   (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
-  (B,P)=KL_P_polynomials(p) then
-  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+  (B,P)=KL_P_polynomials(p) then  {based on partial_KL_block(p)}
+  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then  {based on partial_KL_block(p)}
    n=#complete_indices then rv=zero_poly_matrix(n) in
    let ()=prints("doing up to n: ", n) in
      for a:n
