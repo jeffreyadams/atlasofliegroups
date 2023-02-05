@@ -180,47 +180,54 @@ set big_KL_P_signed_polynomials (Param p,mat delta) =
    however this set must be delta-invariant (should be automatic if p is delta-fixed)
 }
   let
-  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then
+  (B_delta,P_delta)=KL_P_signed_polynomials(p,delta) then  {NO SIGNS in spite of the name}
   (B,P)=KL_P_polynomials(p) then  {based on partial_KL_block(p)}
   (I_delta,,complete_indices,delta_action)=tabulate_indices(B,delta) then  {based on partial_KL_block(p)}
    g=map(B,B_delta) then
+   lengths=for i:#B do length(B[i]) od then
+{   ()=prints("lengths: ", lengths) then}
    n=#complete_indices then rv=zero_poly_matrix(n) in
-   let ()=prints("doing up to n: ", n) in
+{   let ()=prints("doing up to n: ", n) in}
      for a:n
      do let (i,epsilon_i)=complete_indices[a] in
         for b:n-a from a
         do let (j,epsilon_j)=complete_indices[b] in
- prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);
+{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
-           then  prints("diag ",a," ",b);rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
+           then  {prints("diag ",a," ",b);}rv:=update_matrix_entry(rv,a,b,one) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
- prints("same sign P[i][j]=",P[i][j],"a=",a," b=",b," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);
-  prints("update loc: ",a, " ", b, "to: ", poly_add(P[i][j],P_delta[x][y])\2);
+{ prints("same sign P[i][j]=",P[i][j],"a=",a," b=",b," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
+{  prints("update loc: ",a, " ", b, "to: ", poly_add(P[i][j],P_delta[x][y])\2);}
 	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
- prints("opp sign P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);
- prints("update loc: ",a, " ", b, "to: ", poly_sub(P[i][j],P_delta[x][y])\2);
+{ prints("opp sign P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
+{ prints("update loc: ",a, " ", b, "to: ", poly_sub(P[i][j],P_delta[x][y])\2);}
 	   rv:=update_matrix_entry(rv,a,b,poly_sub(P[i][j],P_delta[x][y])\2)
 	   elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
 	   then
- prints("1/0 sign P[i][j]=");
-  prints("update loc: ",a, " ", b, "to: ", P[i][j]);
+{ prints("1/0 sign P[i][j]=");}
+{  prints("update loc: ",a, " ", b, "to: ", P[i][j]);}
 rv:=update_matrix_entry(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
 	   then
-             prints("0/1 sign P[i][j]=");
+{             prints("0/1 sign P[i][j]=");}
 rv:=update_matrix_entry(rv,a,b,P[i][j])
 	   elif epsilon_i=0 and epsilon_j=0
 	   then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-                     prints("/00 sign P[i][j]=");
+{                     prints("/00 sign P[i][j]=");}
 
 	     rv:=update_matrix_entry
 		 (rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
            fi
         od
-     od;rv
+     od;
+     for a:n do for b:n
+     do let (i,)=complete_indices[a], (j,)=complete_indices[b] in
+        rv:=update_matrix_entry(rv,a,b,rv[a][b]*minus_1^(lengths[i]+lengths[j]))
+     od od;
+rv
 
 
 
