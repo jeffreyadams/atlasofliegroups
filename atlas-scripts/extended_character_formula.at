@@ -1,5 +1,10 @@
 set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
 
+set T_std(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
+(T_std(P,gamma),T_std(Q,gamma),T_std(R,gamma),delta)
+
+
+
 {the extended character formula for (p,delta), as a ZExtParamPol,
  i.e. (P,Q,R,delta), where P/Q/R are ZParamPols (no s terms), giving
  the plus/minus/induced terms of the character formula for the extended group G^delta}

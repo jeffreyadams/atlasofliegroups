@@ -19,6 +19,15 @@ set_type [ ExtParamPol = (mat xi, ParamPol P_plus, ParamPol P_minus, ParamPol P_
 set param_pol(ZParamPol P)=ParamPol:P
 set ext_param_pol(ZExtParamPol (P,Q,R,delta))=ExtParamPol:(P.real_form.distinguished_involution,P,Q,R,delta)
 
+{list of params occuring in three terms}
+{param_pol(monmials(P)) = terms from P with all +1 coefficients, add these, and take monomials of the result}
+set monomials(ZExtParamPol (P,Q,R,))=[Param]:
+monomials(param_pol(monomials(P))+param_pol(monomials(Q))+param_pol(monomials(R)))
+
+set monomials(ExtParamPol (,P,Q,R,))=[Param]:
+monomials(param_pol(monomials(P))+param_pol(monomials(Q))+param_pol(monomials(R)))
+
+
 {
 Two singly extended groups:
 <xi,G>       (left)
