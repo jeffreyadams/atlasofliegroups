@@ -1,5 +1,15 @@
 set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
 
+set T_std_delta(ParamPol P,ratvec gamma, mat delta)=ParamPol:
+0*P + {null_module(P.real_form)}
+for c@p in P do
+ let Tp=T_std(p,gamma) in
+ if is_fixed(delta,Tp) then 2*c*Tp else c*Tp fi od
+
+
+set T_std_new(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
+(T_std(P,gamma),T_std(Q,gamma),T_std_delta(R,gamma,delta),delta)
+
 set T_std(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
 (T_std(P,gamma),T_std(Q,gamma),T_std(R,gamma),delta)
 
