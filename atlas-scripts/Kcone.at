@@ -605,3 +605,7 @@ set anti_finalize (Param p)=Param:
 	                             and pcr[i]*lambda(p)=0 od)
 	   in p:=Cayley(pr[n],p)
 	od; p
+
+set fold (vec v)=vec:
+   let n=#v then k=floor(n/2)
+   in for i:k do v[i]+v[k] od
