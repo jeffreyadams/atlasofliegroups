@@ -158,8 +158,6 @@ set survives_in_bottom_layer (KType mu_L,KGPElt P)=(bool,KHighestWeight):
    in (is_K_dominant(wt,x),((),x,wt))
 
 
-{p=parameter(Sp(6,R),37,[3,3,2],[3,4,3]/2)}
-
 set K_sign (Param p,int ht)=KTypePol:
    let hf=hermitian_form_irreducible(p)
    in branch_std(hf,ht)
