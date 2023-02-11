@@ -15,6 +15,7 @@ set choose_type(Param p,mat delta)=int: if is_fixed(p,delta) then 1 else 0 fi
 set is_valid_type(Param p, mat delta, int type)=bool:
  (is_fixed(p,delta) and abs(type)=1) or (not is_fixed(p,delta) and type=0) 
 
+
 set twisted_coefficient_sum(mat xi,ParamPol P)=(Param->Split):(Param p):
 if is_fixed(p,xi) then P[p] else s_to_1(P[p]+P[xi*p]) fi
 
@@ -45,7 +46,6 @@ all(for p in support(P) do
     twisted_coefficient_sum(xi,delta,P)(p)= twisted_coefficient_sum(xi,delta,Q)(p)
     od)
 
-
 {
 Equality of ExtParamPols: (xi,P,Q,R,delta) = (Xi,P',Q',R',Delta) if P=P', Q=Q'
 also R=R' modulo:
@@ -56,8 +56,14 @@ i.e. s_to_1(one_plus_delta(R,delta))=s_to_1(one_plus_delta(R',delta))
 set =(ExtParamPol (xi,P,Q,R,delta),ExtParamPol (Xi,S,T,U,Delta))=bool:
 xi=Xi and delta=Delta and
 twisted_coefficient_sums_equal(xi,P,S) and
-twisted_coefficient_sums_equal(xi,Q,T) and 
+twisted_coefficient_sums_equal(xi,Q,T) and
 twisted_coefficient_sums_equal(xi,delta,R,U)
+
+set =(ZExtParamPol (P,Q,R,delta),ZExtParamPol (S,T,U,Delta))=bool:
+delta=Delta and
+P=S and Q=T and symmetrize(R,delta)=symmetrize(U,Delta)
+
+
 
 set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)

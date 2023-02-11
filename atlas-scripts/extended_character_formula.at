@@ -1,18 +1,28 @@
-set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
+{when translating an extended module:
+suppose
+1) p has regular infinitesimal character
+2) delta*p\ne p
+3) gamma is singular
+4) T_std(p,gamma) is (nonzero and) delta-fixed
+Then p represents the extended module ind(p) = ind(delta(p))
+translation of p to gamma must be 2*T_std(p,gamma)
+}
 
-set T_std_delta(ParamPol P,ratvec gamma, mat delta)=ParamPol:
-0*P + {null_module(P.real_form)}
-for c@p in P do
- let Tp=T_std(p,gamma) in
- if is_fixed(delta,Tp) then 2*c*Tp else c*Tp fi od
+set T_std(Param p, ratvec gamma, mat delta)=ParamPol:
+let Tp=T_std(p,gamma) in
+if is_fixed(delta,Tp) and not(is_fixed(delta,p))
+ then  2*Tp
+ else  1*Tp
+fi
 
-
-set T_std_new(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
-(T_std(P,gamma),T_std(Q,gamma),T_std_delta(R,gamma,delta),delta)
+set T_std(ParamPol P,ratvec gamma, mat delta)=ParamPol:
+0*P  {null_module(P.real_form)} + for c@p in P do T_std(p,gamma,delta) od
 
 set T_std(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
-(T_std(P,gamma),T_std(Q,gamma),T_std(R,gamma),delta)
-
+(T_std(P,gamma),
+ T_std(Q,gamma),
+ T_std(R,gamma,delta),
+ delta)
 
 
 {the extended character formula for (p,delta), as a ZExtParamPol,
@@ -22,8 +32,8 @@ set T_std(ZExtParamPol (P,Q,R,delta),ratvec gamma)=
 {TEST: is_fixed(delta,p): right_restrict(extended_character_formula(p,delta)).s_to_1=character_formula(p)
          otherwise      : right_restrict(extended_character_formula(p,delta)).s_to_1=one_plus_twist(character_formula(p),delta)}
 
-set extended_character_formula_reg (Param p,mat delta) =ZExtParamPol:
-{assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");}
+set extended_character_formula_reg (Param p,mat delta, bool strictly_regular) =ZExtParamPol:
+assert(not strictly_regular or is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
 let G=p.real_form in
 if not is_fixed(p,delta) then
 { extended rep = ind(\pi) = ind(\delta(pi))
@@ -44,7 +54,7 @@ else
 {      ()=prints("third, p=",p) then}
   P=big_KL_P_signed_polynomials(p,delta) then
 {  ()=prints("computed P");printPolyMatrix(P) then}
-  index=find(complete_indices,(find(B,p),1)) in
+index=find(complete_indices,(find(B,p),1)) in
 {  let ()=prints("index=",index) in}
   for (j,type)@i in complete_indices do
 {   let ()=prints("j,type,i=", j ," ", type, " ", i) in}
@@ -60,43 +70,21 @@ else
 (plus,minus,ind,delta)
 fi
 
-{
-set extended_character_formula_reg_old (Param p,mat delta) =ZExtParamPol:
-{assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");}
-let G=p.real_form in
-if not is_fixed(p,delta) then
-{ extended rep = ind(\pi) = ind(\delta(pi))
-  so if cf(p) = \sum a_i p_i + \sum b_j q_j (p_i/q_j fixed/non-fixed, resp.) then
-  cf(extended rep) = \sum a_i (p_{i,+} + p_{i,-}) + \sum b_j ind(b_j)}
-  let cf=character_formula(p) then
-  fixed=fixed_terms(delta,cf) in
-  ZExtParamPol:(fixed, fixed, cf-fixed,delta)
-else
-  {calculated using big_KL_P_signed_polynomials}
-  let (,plus,minus,ind,)=null_ext_module(G) then
-  B=block_of(p) then
-  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-  P=big_KL_P_signed_polynomials(B,delta) then   {this should the partial extended block?}
-  index=find(complete_indices,(find(B,p),1)) in
-  for (j,type)@i in complete_indices do
-   let c=eval(P[i][index],s) in
-    if !=c then
-     if type=1 then plus+:=int_part(c)*B[j]; minus+:=s_part(c)*B[j]
-       elif type=-1 then minus+:= int_part(c)*B[j];plus+:=s_part(c)*B[j]
-       elif type=0 then  {prints("ind=", ind,"c=",c," j=",j);} ind+:=(int_part(c)+s_part(c))*B[j]
-       else error("c\ne 0,\pm 1")
-     fi
-    fi
-  od;
-(plus,minus,ind,delta)
-fi
-}
-{try this for now}
-set extended_character_formula (Param p,mat delta) =ZExtParamPol:extended_character_formula_reg(p,delta)
+set extended_character_formula_reg (Param p,mat delta) =ZExtParamPol:
+extended_character_formula_reg (p,delta,true)
 
+set extended_character_formula_naive (Param p,mat delta) =ZExtParamPol:
+extended_character_formula_reg (p,delta,false)
+
+set extended_character_formula (Param p,mat delta) =
+if is_regular(p) then extended_character_formula_reg(p,delta) else
+let preg=make_regular_param(p) then
+ecfreg=extended_character_formula_reg(preg,delta) in
+T_std(ecfreg,p.infinitesimal_character)
+fi
 {TEST: is_fixed(delta,p): right_restrict(extended_character_formula(p,delta)).s_to_1=character_formula(p)
          otherwise      : right_restrict(extended_character_formula(p,delta)).s_to_1=one_plus_twist(character_formula(p),delta)}
-         
+
 set test_extended_character_formula_reg (Param p,mat delta) =(bool,ZExtParamPol,ParamPol):
 let ecf=extended_character_formula_reg(p,delta) then
 cf=character_formula(p) in

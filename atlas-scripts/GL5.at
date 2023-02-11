@@ -6,27 +6,42 @@ set (H,M)=endoscopic(G,delta)
 set H=H.split_form
 set all_G=unipotent_representations(G)
 set all_H_u=unipotent_representations(H)
-
 set all=all_H_u
-
-
 set lift_std(Param p)=lift_std(p,M,G,delta)
-
-set p=lift_std(all[8],M,G,delta)
-
-
 set abv(Param p)=abv(p,M,G,delta)
-set lift_std(Param p)=lift_std(p,M,G,delta)
-
-
-  
-set ph=all[8]
-set p=lift_std(ph)
-
+set lifts=for p in all do lift_std(p) od
+set p=lifts[5]
+set preg=make_regular_param(p)
 set P=big_KL_P_signed_polynomials(p,delta)
 set B=partial_block(p)
 set (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
 set  index=find(complete_indices,(find(B,p),1)) 
+set Preg=big_KL_P_signed_polynomials(preg,delta)
+set Breg=partial_block(preg)
+set (I_delta_reg,g_reg,complete_indices_reg,delta_action_reg)=tabulate_indices(Breg,delta)
+set  indexreg=find(complete_indices,(find(Breg,preg),1)) 
+set ecf=extended_character_formula(p,delta)
+set ecf_naive=extended_character_formula_naive(p,delta)
+set ecfreg=extended_character_formula(preg,delta)
+set cf=character_formula(p)
+set m=monomials(cf)
+
+
+{extended_character_formula(p,delta)  \ne extended_character_formula(p,delta) 
+{
+set p=lift_std(all[8],M,G,delta)
+set lift_std(Param p)=lift_std(p,M,G,delta)
+
+set ph=all[8]
+set p=lift_std(ph)
+set ecf=extended_character_formula(p,delta)
+set mecf=monomials(ecf)
+set bad=mecf[1]
+set gamma=ph.infinitesimal_character
+
+{
+
+
 
 set preg=make_regular_param(p)
 set Preg=big_KL_P_signed_polynomials(preg,delta)
@@ -37,6 +52,7 @@ set cf=character_formula(p)
 set ecf=extended_character_formula(p,delta)
 set cfreg=character_formula(preg)
 set ecfreg=extended_character_formula(preg,delta)
+}
 {
 {
 set  (B,P)=KL_P_signed_polynomials(p,delta)}

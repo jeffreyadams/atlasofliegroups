@@ -503,7 +503,8 @@ else P fi
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
 {let ecf=extended_character_formula(p_G,delta) then}
 let ecf=extended_character_formula(p_G,delta) then
-P_G=right_restrict(ecf).s_to_1 then
+{P_G=right_restrict(ecf).s_to_1 then}
+P_G=twisted_character(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
 (valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
@@ -513,7 +514,8 @@ P_G=right_restrict(ecf).s_to_1 then
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let ecf=extended_character_formula(p_G,delta).s_to_1 then}
 let ecf=extended_character_formula(p_G,delta) then
-P_G=right_restrict(ecf).s_to_1 then
+{P_G=right_restrict(ecf).s_to_1 then}
+P_G=twisted_character(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
 (valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then

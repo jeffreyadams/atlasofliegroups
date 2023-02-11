@@ -198,3 +198,6 @@ if is_posroot(rd,alpha) then
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else 
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]<0 od) in -simple_roots(rd)[i] fi
 
+{convenient shorthand}
+set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
+
