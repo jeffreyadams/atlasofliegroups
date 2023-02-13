@@ -1,0 +1,106 @@
+{testing partial_extended_KL_block}
+
+{G,delta=distinguished involution
+p=delta-fixed parameter
+partial_KL_block(p):                P matrix
+partial_extended_KL_block(p,delta): P_delta matrix
+suppose q < p is delta-fixed
+P(q,p) is a KL polynomial \sum a_n q^n
+P_delta(q,p) is a delta-twisted KL polynomial  \sum b_n q^n
+These must satisfy:
+1) |b_j| <= |a_j|
+2) b_j = a_j mod 2
+See Hermitian paper Theorem 19.4
+}
+
+{recall a polynomial is given by a vec
+ v=[a,b,c,..] -> a+bx+cx^2+\dots}
+
+{ polynomial P(q,p)}
+set P(Param q, Param p)=vec:
+let (B,P,v)=partial_KL_block(p) then
+index_p=find(B,p) then
+index_q=find(B,q) in
+if index_q=-1 then [] else
+v[P[index_p][index_q]]
+fi
+
+{twisted polynomials P_delta(q,p)}
+set P(Param q, Param p,mat delta)=vec:
+let (B,P,v)=partial_extended_KL_block(p,delta) then
+index_p=find(B,p) then
+index_q=find(B,q) in
+if index_q=-1 then [] else
+v[P[index_p][index_q]]
+fi
+
+{test:
+poly: a KL polynomial
+poly_delta: the corresponding twisted polynomial
+P(q,p) is a KL polynomial \sum a_n q^n
+P_delta(q,p) is a delta-twisted KL polynomial  \sum b_n q^n
+These must satisfy:
+1) |b_j| <= |a_j|
+2) b_j = a_j mod 2
+}
+set comparison_test(vec poly,vec poly_delta)=bool:
+let ()=
+ if #poly<#poly_delta then poly:=pad(poly,#poly_delta)
+ elif #poly_delta<#poly then poly_delta:=pad(poly_delta,#poly)
+fi
+in
+all(for i:#poly do
+        abs(poly_delta[i])<=abs(poly[i])
+	and
+	is_even(poly_delta[i]-poly[i])
+	od
+   )
+
+set P(Param p)=(Param->vec):(Param q):P(q,p)
+set P(Param p,mat delta)=(Param->vec):(Param q):P(q,p,delta)
+
+set test_KL(Param p, mat delta)=([(vec,vec,bool)],bool):
+if not is_fixed(delta,p) then prints("parameter not fixed (so true by default)");([(vec:[],vec:[],true)],true) else
+let (B,P,v)=partial_KL_block(p) then
+(Bdelta,Pdelta,vdelta)=partial_extended_KL_block(p,delta) then
+results =for q in Bdelta do
+ let poly=P(q,p) then
+ poly_delta=P(q,p,delta) then
+ test=comparison_test(poly,poly_delta)
+ in (poly,poly_delta,test)
+od
+in tabulate(for (c,cd,t) in results do
+ [poly_format(c,"q"),poly_format(cd,"q"), t.to_string]
+ od);
+ let all=all(for (,,t) in results do t od) in
+ prints("result: ", all);
+(results,all)
+fi
+
+{typical usage:
+set (result,data,test,failed)=test_KL(B,delta)
+result: bool
+data: details
+test: [bool]: one bool for each parameter in B
+failed: [int]: indices j where B[j] failed
+}
+set test_KL([Param] params,mat delta)=(bool,[([(vec,vec,bool)],bool)],[bool],[int]):
+let failed=[int]:[] then
+rv=
+ for p@i in params do
+   let ()=prints(new_line,"-------------------_",new_line,i, " ", p) then
+   (results,t)=test_KL(p,delta) then
+   ()=prints("result for parameter ",p,": ",t) then
+   ()=if not t then failed#:=i fi
+   in (results,t)
+ od then
+tests=for (,t) in rv do t od then
+all=all(tests) then 
+()=prints(new_line,"Final result: ", all,new_line) then
+()=if !=#failed then prints("failed: ", failed) fi in 
+(all,rv,tests,failed)
+
+
+
+
+

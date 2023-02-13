@@ -25,7 +25,7 @@ set ecf_naive=extended_character_formula_naive(p,delta)
 set ecfreg=extended_character_formula(preg,delta)
 set cf=character_formula(p)
 set m=monomials(cf)
-
+set abv=for p in all do abv(p) od
 
 {extended_character_formula(p,delta)  \ne extended_character_formula(p,delta) 
 {
