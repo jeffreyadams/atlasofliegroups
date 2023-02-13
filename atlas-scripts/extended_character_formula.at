@@ -1,3 +1,5 @@
+<extParamPol.at
+
 {when translating an extended module:
 suppose
 1) p has regular infinitesimal character
@@ -58,7 +60,8 @@ index=find(complete_indices,(find(B,p),1)) in
 {  let ()=prints("index=",index) in}
   for (j,type)@i in complete_indices do
 {   let ()=prints("j,type,i=", j ," ", type, " ", i) in}
-   let c=eval(P[i][index],s) in {key point here: evaluate at q=1}
+{   let c=eval(P[i][index],s) in {key point here: evaluate at q=1}}
+   let c=eval(P[i][index],1) in 
     if !=c then
      if type=1 then {prints("plus", "j=",j, "c=",c);}plus+:=c*B[j]
        elif type=-1 then {prints("minus", "j=",j, "c=",c);}minus+:= c*B[j]
@@ -67,7 +70,8 @@ index=find(complete_indices,(find(B,p),1)) in
      fi
     fi
   od;
-(plus,minus,ind,delta)
+  let rv=(plus,minus,ind,delta) in
+  assert(is_ZExtParamPol(rv),"Not a ZExtParamPol");rv
 fi
 
 set extended_character_formula_reg (Param p,mat delta) =ZExtParamPol:
@@ -76,17 +80,27 @@ extended_character_formula_reg (p,delta,true)
 set extended_character_formula_naive (Param p,mat delta) =ZExtParamPol:
 extended_character_formula_reg (p,delta,false)
 
-set extended_character_formula (Param p,mat delta) =
+set extended_character_formula (Param p,mat delta) =ZExtParamPol:
 if is_regular(p) then extended_character_formula_reg(p,delta) else
 let preg=make_regular_param(p) then
-ecfreg=extended_character_formula_reg(preg,delta) in
-T_std(ecfreg,p.infinitesimal_character)
+ecfreg=extended_character_formula_reg(preg,delta) then
+rv=T_std(ecfreg,p.infinitesimal_character) in
+  assert(is_ZExtParamPol(rv),"Not an ZExtParamPol");rv
 fi
 {TEST: is_fixed(delta,p): right_restrict(extended_character_formula(p,delta)).s_to_1=character_formula(p)
          otherwise      : right_restrict(extended_character_formula(p,delta)).s_to_1=one_plus_twist(character_formula(p),delta)}
 
-set test_extended_character_formula_reg (Param p,mat delta) =(bool,ZExtParamPol,ParamPol):
-let ecf=extended_character_formula_reg(p,delta) then
+set test_extended_character_formula (Param p,mat delta) =(bool,ZExtParamPol,ParamPol):
+let ecf=extended_character_formula(p,delta) then
+cf=character_formula(p) in
+if is_fixed(delta,p) then
+ (right_restrict(ecf).s_to_1=cf,ecf,cf)
+else
+ (right_restrict(ecf).s_to_1=one_plus_twist(cf,delta),ecf,cf)
+fi
+
+set test_extended_character_formula_naive (Param p,mat delta) =(bool,ZExtParamPol,ParamPol):
+let ecf=extended_character_formula_naive(p,delta) then
 cf=character_formula(p) in
 if is_fixed(delta,p) then
  (right_restrict(ecf).s_to_1=cf,ecf,cf)

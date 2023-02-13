@@ -14,6 +14,7 @@ set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 { int_part and s_part of a ParamPol, s.t. P=int_part(P)+s*s_part(P) }
 set int_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.int_part,p) od
 set s_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.s_part,p) od
+set is_int(Split z)=bool: =s_part(z)
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:

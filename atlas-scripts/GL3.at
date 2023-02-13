@@ -14,7 +14,3 @@ set pg=lift_std(ph,M,G,delta)
 set ecf=extended_character_formula(pg,delta)
 prints("ecf: ");
 show(ecf)
-
-set abv=abv(ph,M,G,delta)
-set (a,b,c,d)=abv
-prints("abv of ph: ", d)
