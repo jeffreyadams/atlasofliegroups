@@ -2,6 +2,8 @@
 <K_types.at { for |int_part@KTypePol|, |s_part@KTypePol| }
 <hermitian.at
 <to_ht.at
+<facetious.at
+
 
 set nonunitarity_certificate(Param p)=(bool,[KType]):
 (  let P=hermitian_form_irreducible(p), ht_p=height(p)
@@ -80,3 +82,40 @@ in if #list=0 then (true,[])
 			 od
       in (false,short_list) fi
 )
+
+set show_certificates_ps (RealForm G,vec lam)=void:
+   let ics=FPP_vertices(G,-1),x=x_open(G)
+   in for v in ics
+      do let p=parameter(x,rho(G)+lam,v)
+      in {if not is_hermitian(p) then prints("p is not hermitian")}
+         if not is_final(p) then prints("p is not final")
+         elif is_hermitian(p) then let (b,c)=nonunitarity_certificate_with_ht(p)
+	 in if not b then prints(new_line,v);
+	               for (kt,ht) in c
+	               do prints(kt,"    ",ht) od
+            {else prints("p is unitary")}
+	    fi
+	 fi
+      od
+
+set show_certificates_spherical (RealForm G)=void:
+    show_certificates_ps(G,ratvec_as_vec(rho(G)*0))
+
+set certificate_list_ps (RealForm G,vec lam)=[KType]:
+   let ics=FPP_vertices(G,-1),x=x_open(G)
+   then result=[KType]:[]
+   in for v in ics
+       do let p=parameter(x,rho(G)+lam,v)
+          in if is_hermitian(p) and is_final(p)
+	     then let (b,kts)=nonunitarity_certificate(p)
+	          in if not b then for kt in kts
+	                           do if find(result,kt)=-1 then result#:=kt
+			              fi
+				   od
+                     fi
+	     fi
+	od;
+    result
+
+set certificate_list_spherical(RealForm G)=[KType]:
+       certificate_list_ps(G,ratvec_as_vec(rho(G)*0))
