@@ -24,8 +24,8 @@ then xo = G.x_open
 then vd = FPP_vertex_data (G,-1)
 then () = facet_verbose:=false
 then varName = "GPairs"##to_string(dim)
-then E8sizes = [ 881761,35390400, 392066400, 1958826240, 5259098880,
-    8128512000, 7257600000, 3483648000, 696729600]
+then E8sizes = [ 610995,   25762046, 298908428, 1566837152,4413546720,
+    7147951104, 6675056640,  3344302080, 696729600]
 then size = if G = E8_s then E8sizes[dim] else
     W_fund_d_facets_card(G,dim) fi
     {Might CORRECT TO #FACETS; this is an overestimate.}
