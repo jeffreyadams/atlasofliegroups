@@ -24,7 +24,7 @@ then xo = G.x_open
 then vd = FPP_vertex_data (G,-1)
 then () = facet_verbose:=false
 then varName = "GPairs"##to_string(dim)
-then size = W_fund_facets_card(G)[dim] {Might CORRECT TO #FACETS; this is an
+then size = W_fund_d_facets_card(G,dim) {Might CORRECT TO #FACETS; this is an
     overestimate.}
 then FVind = null(dim+1)
 then pol = null_K_module(G)
