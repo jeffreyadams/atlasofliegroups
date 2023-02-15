@@ -1,8 +1,8 @@
 <writeFiles.at
 
-{This version should be run as
-atlas> < polsSMALLEST.at {or load with atlas}
-atlas> >targetE8DIM.at TEST
+{This version should be loaded with atlas, and then executed by
+
+atlas> >targetE8DIM.at TEST(G,DIM)
 
 Resulting target file, when loaded into  atlas, produces a [[vec]]
 GPairsSmallestDIM of size the number of DIM-dimensional
@@ -17,22 +17,20 @@ void: GPairsSmallestDIM[X]:=[[...
 
 means that you have completed facet #X.}
 
-set TEST() = void:
+set TEST(RealForm G, int dim) = void:
     begin
-let G=E8_s {PICK YOUR GROUP}
-then rh=G.rho
+let rh=G.rho
 then xo = G.x_open
-then dim =  4{PICK YOUR DIMENSION}
 then vd = FPP_vertex_data (G,-1)
 then () = facet_verbose:=false
-then varName = "GPairsSmallest"##to_string(dim)
-then size = W_fund_facets_card(G)[dim] {CORRECT TO #FACETS}
-
+then varName = "GPairs"##to_string(dim)
+then size = W_fund_facets_card(G)[dim] {Might CORRECT TO #FACETS; this is an
+    overestimate.}
 then FVind = null(dim+1)
 then pol = null_K_module(G)
 then i = int:0
 then () = write_real_form(G);
-     prints("set ",varName," = [[vec]]: for i:size do [] od")
+     prints("set ",varName," = [[vec]]: for i:",size," do [] od")
 then facets = [FacetVerts]: facets_fundamental(G,dim)
 in   for FV@k in facets
      do let bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
