@@ -24,6 +24,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>

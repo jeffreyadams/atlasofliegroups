@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cctype>
 #include <cstring>
+#include <string>
 #include <cstdlib> // for |exit|
 #include <memory> // for |std::unique_ptr|
 #include <list> // for comparison

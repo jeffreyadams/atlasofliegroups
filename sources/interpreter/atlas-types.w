@@ -158,6 +158,7 @@ rank~$r>1$, but they are equivalent to $r$ torus factors of rank~$1$, and it
 simplifies the software if we rewrite the former form to the latter on input, so
 that is what we do here.
 
+@h <string>
 @h "constants.h"
 
 @< Function definitions @>=

@@ -3260,6 +3260,8 @@ void string_geq_wrapper(expression_base::level l)
 
 @ Here are the functions for concatenating two or more strings.
 
+@h <string>
+
 @< Local function definitions @>=
 void string_concatenate_wrapper(expression_base::level l)
 { shared_string b=get<string_value>(); shared_string a=get<string_value>();
