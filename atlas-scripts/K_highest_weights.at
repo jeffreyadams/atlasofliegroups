@@ -320,7 +320,7 @@ set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
   then y=chamber(rd,mu_2)
   then mu_3=mu_2-y*rho(rd)
 { then ()=prints("mu_3=", mu_3) }
-in (cross(x_1,y),mu_3,mu_3*y). { initial data; apply recursive function to it: }
+in (cross(x_1,y),mu_3, inverse(y)*mu_3). { initial data; apply recursive function to it: }
   ( rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau) (KGBElt,ratvec,ratvec):
       let rd_x=root_datum(x) in { may differ from |rd| in the recursion }
 {     prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau);
@@ -330,7 +330,7 @@ in (cross(x_1,y),mu_3,mu_3*y). { initial data; apply recursive function to it: }
 }
       if is_dominant(rd,tau)
       then {return this triple:}
-        ( cross(x_1,y), mu_3*y, tau)
+        ( cross(x_1,y), inverse(y)*mu_3, tau)
       else
          let j=find_nci_root(x,tau)
 {        then ()=prints("got root: ", j, ", ", posroots(rd_x)[j]) }
