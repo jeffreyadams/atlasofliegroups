@@ -12,8 +12,7 @@ set counts(RootDatum Ggiven, int d) = void:
     {now simple roots are basis}
     then r = G.rank, twoRho = G.two_rho, twodRho = d*G.two_rho
     then size = twodRho + for j:r do 1 od
-    then box = box(size)
-    then domBox = for b in box do if is_dominant(G,b) then [b] else []
+    then domBox = for b in box(size) do if is_dominant(G,b) then [b] else []
     fi od.##
     then hullCount= #domBox
     then FPPCount = count(for b in domBox do is_dominant(G,twodRho - b) od)
