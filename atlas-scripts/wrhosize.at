@@ -17,5 +17,5 @@ set counts(RootDatum Ggiven, int d) = void:
     then hullCount= #domBox
     then FPPCount = count(for b in domBox do is_dominant(G,twodRho - b) od)
     in prints("hullCount = ",hullCount,", FPPCount = ",FPPCount,
-    ", target = ", (2*d)^r)
+    ", target = ", (2*d+1)^r)
 
