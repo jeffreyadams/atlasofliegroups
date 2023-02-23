@@ -380,7 +380,7 @@ set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = mat:
+set all_words ([[int]] alphabets) = [vec]: {mat:}
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
@@ -392,7 +392,7 @@ set all_words ([[int]] alphabets) = mat:
   in size # generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([int] limits) = [vec]: {mat:}
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
