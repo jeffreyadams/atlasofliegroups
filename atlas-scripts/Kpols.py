@@ -1,87 +1,77 @@
-#!/usr/bin/python3
+#!/bin/python3
+#python script to compute K_characters in parallel
+#usage:  Kpols.py group input_file output_file
+#example: Kpols.py simply_connected(G2)  G2_facets.txt G2_K_characters.txt
 
-#do facet computation, broken up by dimension and by facet in the FPP
-#compute(G,d,[n_0,...,n_m]):
-#n_i is the number of facets of dimension i (computed by number_fundamental_facets(G))
-#this runs n_d atlas jobs: each one computes the KTypePols, for the facets
-#of dimension d, one for each fundamental facet of dimension d
-#the output of job k is to a file (for example:)
-#E8_s/Kpols_E8_s_dim_1_ff_3
-#the directory
+import sys
+import concurrent.futures
+import subprocess, queue
+from subprocess import Popen, PIPE, STDOUT
+import multiprocessing   #only for cpu count
 
-import sys, getopt,os, multiprocessing, time
-from multiprocessing import Process
 cpu_count=multiprocessing.cpu_count()
 print("Number of cores: ", cpu_count)
-print("Using at most half the cores")
-#argv:  F4_s 2 10,5,5,10   (just dimension 2)  OR
-#       F4_s 10,5,5,10     (all dimensions)
-#       group dimension #fundamental facets of all dimensions
+max_cores=128   #set this to the number of cores to use
+print("Using at most ", max_cores, " cores")
 
-def atlas(arg):
-    group=arg[0]
-    dim=arg[1]
-    i=arg[2]
-    print("doing atlas, dim=", dim , "  ff_number=",i)
-    if not os.path.exists(group):
-          os.makedirs(group)
-    atlas_output_file="\"" + group + "/Kpols_" + "group_" + group + "_dim_" + str(dim) + "_ff_" + str(i) + "\""
-    run_file_name="run_"+str(i)+".at"
-    print("input file: ", run_file_name)
-    print("output file: ", atlas_output_file)
-    run_file = open(run_file_name,"w")
-    run_file.write(">" + atlas_output_file + " TEST(" + group +","+ str(dim) + "," + str(i)  + ")\n")
-    run_file.close()
-#    print("Here is run_file_name for i=:",i)
-#    with open(run_file_name, 'r') as f:
-#          print(f.read())
-    print(os.popen("../atlas polsSMALLEST.at < "+ run_file_name).read())
-    print("done")
+
+#call the atlas process running on proc, with argument group, output_file (strings) and q (a queue)
+#q is an array of strings, each string is of the form [ratvec,vec,vec]=[facet, bup, bdown]
+#for example (in F4):
+#[[ 2, 2, 1, 2 ]/3,[ 12, -7,  8, -7 ],[  1, -1, -5, -1 ]]
+#facet is a point in a facet, bup and bdown are shifts
+def atlas_compute(group,output_file,q,proc,i):
+   count=0
+   while not q.empty():
+      print("i: ", i, " q: ", q.qsize())
+      count+=1
+      facet=q.get()
+      atlas_arg='{}'.format("\n>> " + output_file +" prints(\"(\"," + facet+ "[0],\",\",K_data(K_char(" + group + "," + facet + "))," "\")\")" ).encode('utf-8')
+      #sends this input line to running atlas process (for example):
+      # >>       G2_Kchar.at prints("(",[[ 15, 16 ]/18,[ -3, -3 ],[ -3, -3 ]][0],",",K_data(K_char(G2_s,[[ 15, 16 ]/18,[ -3, -3 ],[ -3, -3 ]])),")" )
+      #print("atlas_arg: ", atlas_arg)
+      z=proc.stdin.write(atlas_arg)
+#   proc.kill()
+#   return(i,count)
 
 def main(argv):
    args=sys.argv
    print("args: ",args)
-   if len(args)==4:
-       group=args[1]
-       dim=args[2]
-       print("Only dimension: ", dim)
-       ff_numbers_string=args[3]
-       ff_numbers=list(map(int, ff_numbers_string.split(',')))  #this is an array of integers
-       ff_number=ff_numbers[int(dim)]
-       print("group: ", group)
-       print("dim=",dim)
-       print("ff_numbers: ", ff_numbers)
-       print("ff_number: ", ff_number)
-       max_cores= max(ff_number, cpu_count//2)
-       print("max number of cores: ",max_cores)
-       pool = multiprocessing.Pool()
-       pool = multiprocessing.Pool(processes=max_cores)
-       mylist=[]
-       for i in range(ff_number):
-             mylist.append((group,dim,i))
-             print("mylist: ", mylist)
-             outputs=pool.map(atlas,mylist)
-   else:
-       group=args[1]
-       ff_numbers_string=args[2]
-       ff_numbers=list(map(int, ff_numbers_string.split(',')))  #this is an array of integers
-       print("all dimension: 0 to",len(ff_numbers))
-       for dim in range(len(ff_numbers)):
-             ff_number=ff_numbers[int(dim)]
-             print("doing dimension ",dim)
-             print("group: ", group)
-             print("dim=",dim)
-             print("ff_numbers: ", ff_numbers)
-             print("ff_number: ", ff_number)
-             pool = multiprocessing.Pool()
-             pool = multiprocessing.Pool(processes=ff_number)
-             mylist=[]
-             for i in range(ff_number):
-                   mylist.append((group,dim,i))
-                   print("mylist: ", mylist)
-                   outputs=pool.map(atlas,mylist)
-             
-
+   group=args[1]
+   facet_file=args[2]
+   output_file=args[3]
+   print("group: ", group)
+   print("facet_file: ", facet_file)
+   print("output_file: ", output_file)
+   q=queue.Queue()
+   file=open(facet_file,"r")
+   #read facet_file and put each entry on q
+   data=file.read().splitlines()
+#   print("data: ", data)
+   for d in data:
+      q.put(d)
+   print("length of q: ", q.qsize())
+   #initialize array of max_cores atlas processes
+   procs=[]
+   for i in range(max_cores):
+      proc=subprocess.Popen(["../atlas","polsSMALLEST.at"], stdin=PIPE)
+      procs.append(proc)
+   print("number of procs: ", len(procs))
+   #This is the object which manages the threads
+   P=concurrent.futures.ThreadPoolExecutor()
+   T=[]   #array of results from the atlas processes
+   for i in range(max_cores):
+         print("submitting job i=",i)
+         T.append(P.submit(atlas_compute,group,output_file,q,procs[i],i))
+   print("T: ", len(T))
+#   for t in T:
+#      print(t)
+#      try:
+#         data = t.result()
+#      except Exception as exc:
+#         print('%r generated an exception: %s' % ("x",exc))
+#      else:
+#         print("number facets: ", data)
 
 if __name__ == "__main__":
    main(sys.argv[1:])
