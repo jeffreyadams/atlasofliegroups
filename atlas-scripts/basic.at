@@ -389,7 +389,7 @@ set all_words ([[int]] alphabets) = [vec]: {mat:}
 	  od.##
      fi
   , size=#alphabets
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  in generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
 set all_words ([int] limits) = [vec]: {mat:}
