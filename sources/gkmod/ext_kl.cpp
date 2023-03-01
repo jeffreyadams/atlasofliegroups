@@ -962,10 +962,10 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
   { size=survivors.size(); // henceforth this is our size
-    matrix::Matrix<Pol> M (size,size);
+    matrix::Matrix<Pol> M (size,size,Pol(0));
     BlockElt i=0;
     for (auto it=survivors.wbegin(); not survivors.at_end(it); ++it,++i)
-    { BlockElt j=0;
+    { BlockElt j=i; // only upper triangular part can be nonzero
       for (auto jt=it; not survivors.at_end(jt); ++jt,++j)
 	M(i,j) = std::move(P_mat(*it,*jt));
     }

@@ -82,6 +82,7 @@ has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
+@h <string>
 @h "buffer.h"
 @h "parse_types.h"
 @h "parser.tab.h"
