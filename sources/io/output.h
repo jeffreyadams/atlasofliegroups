@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <iosfwd>
+#include <string>
 
 #include "../Atlas.h"
 #include "tags.h"

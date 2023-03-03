@@ -11,6 +11,7 @@
 #define ERROR_H
 
 #include <stdexcept>
+#include <string>
 
 namespace atlas {
 namespace error {

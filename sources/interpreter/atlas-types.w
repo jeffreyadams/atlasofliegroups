@@ -158,6 +158,7 @@ rank~$r>1$, but they are equivalent to $r$ torus factors of rank~$1$, and it
 simplifies the software if we rewrite the former form to the latter on input, so
 that is what we do here.
 
+@h <string>
 @h "constants.h"
 
 @< Function definitions @>=
@@ -8020,7 +8021,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 }
 
 @ The function |scale_extended| is intended for use with in the deformation
-algorithm when interpreting parameters as specifying a representation of he
+algorithm when interpreting parameters as specifying a representation of the
 extended group. One can arrange that deformation starts with a final parameter,
 for which $\gamma$ is dominant and which has no singular descent (simple)
 reflections, but when deforming this condition may be lost. In the ordinary

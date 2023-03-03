@@ -12,6 +12,7 @@
 
 #include <cstdio>   // not obviously used, but appears helpful for Windows
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <sstream>
 #include <cassert>

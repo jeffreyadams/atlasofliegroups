@@ -1181,8 +1181,8 @@ walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
   their evaluation is integral on some face of the alcove, and increases towards
   the interior of the alcove). The coroots non integral at gamma (a final part
   of the list) are sorted by decreasing "label" with respect to alcove (which is
-  an integer k such that the maximal factional part of the evaluation within the
-  alcove is 1/k) which is a useful property for generating, modulo translations,
+  an integer k such that within the alcove, the maximal fractional part of the
+  evaluation is 1/k); a useful property for generating, modulo translations,
   the affine Weyl group orbit of the facet containing gamma ('affine_orbit_ws').
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
