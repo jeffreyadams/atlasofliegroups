@@ -11,6 +11,10 @@
 #process #j write output to: group/output_file_root_j
 #example above: G2_s/out_1,..., G2_s/out_10
 
+#to create a facet file (example):
+#in atlas:
+#>facetsE6dim4 facets(E6_s,4)   {4 dim facets}
+#>facetsE6dim4 facets(E6_s)     {all facets}
 import sys, time, os, getopt, subprocess, queue
 import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
@@ -33,12 +37,12 @@ def atlas_compute(group,output_file_root,q,procs,i):
    while not q.empty():
       if q.qsize()%1000==0:
          print("size of q: "+ str(q.qsize()),end="\r")
-      count+=1
       report(q,i,proc)
       try:
          facet = q.get(False)
       except queue.Empty:
          quit_arg='{}'.format("\n quit").encode('utf-8')
+#         print("quitarg: ", quitarg)
          proc.stdin.write(quit_arg)
 #         print("quit job ", i)
          report(q,i,proc)
@@ -46,13 +50,15 @@ def atlas_compute(group,output_file_root,q,procs,i):
 #         atlas_arg='{}'.format("\n  prints(\"(\",(" + str(i) + ")," + facet +  "[0]" + ",K_data(K_char(" + group + "," + facet + ")))").encode('utf-8')
          atlas_arg='{}'.format("\n  prints(\"(\"," + facet +  "[0]" + ",\",\",K_data(K_char(" + group + "," + facet + "))" + ",\")\")").encode('utf-8')
 
-         print(atlas_arg)
+#         print(atlas_arg)
 #         atlas_arg='{}'.format("\n  prints(\"( + facet +  "[0]," + ",K_data(K_char(" + group + "," + facet + ")))").encode('utf-8')
          proc.stdin.write(atlas_arg)
+         count+=1
    return(i,count)
 
 def main(argv):
    cpu_count=multiprocessing.cpu_count()
+   print("----------------------------")
    print("Number of cores: ", cpu_count)
    opts, args = getopt.getopt(argv, "g:c:f:o:")
    if len(opts)==0:
@@ -83,7 +89,7 @@ def main(argv):
    facets_input=q.qsize()
    print("number of facets in input file: ", facets_input)
    #initialize array of max_cores atlas processes
-   Q=concurrent.futures.ThreadPoolExecutor()
+#   Q=concurrent.futures.ThreadPoolExecutor()
    procs=[]
    T=[]   #array of results from the atlas processes
    #start max_cores atlas processes, taking input from stdin
@@ -103,7 +109,6 @@ def main(argv):
          T.append(P.submit(atlas_compute,group,output_file_root,q,procs,i))
    total_facets=0
    print("list of process numbers/number of facets computed")
-
    for t in T:
       try:
          data = t.result()
