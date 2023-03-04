@@ -5,6 +5,8 @@
 <K_highest_weights.at
 <Kcone.at
 
+{Decide whether a parameter is unitary; if hermitian nonunitary, find K-types
+of minimal height with negative signature}
 set nonunitarity_certificate(Param p)=(bool,[KType]):
 (  let P=hermitian_form_irreducible(p), ht_p=height(p)
    then c=first_K_type(P)
@@ -83,6 +85,8 @@ in if #list=0 then (true,[])
       in (false,short_list) fi
 )
 
+{Like K_types (in K_highest_weights.at), but return empty list in case of
+error}
 set K_types_no_error (KHighestWeight(,x,v):mu_in)= [KType]:
    let G=real_form(x)
    then Q=parabolic_LKT(mu_in)
@@ -90,17 +94,20 @@ in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
    let x_Q=x_min(Q)
    then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
    then test=for weight in list do inds(weight) od
-   then good_mu_list=choose_irred_inds(test) then k=#good_mu_list
-in if k!=1 then []
-   else
- ##for p in good_mu_list[0]
-   do if any(for wt in highest_weights(K_type(p[0]))
-             do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
-      then [K_type(p[0])]
-      else []
+   then good_mu_list=choose_irred_inds(test)
+   then k=#good_mu_list
+   in if k=0 then prints("No suitable weight in R-group orbit");[]
+      else  ##for p in good_mu_list[0]
+              do if any(for wt in highest_weights(K_type(p[0]))
+                      do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
+                 then [K_type(p[0])]
+                 else []
+                 fi
+              od
       fi
-   od fi
 
+{Calculate bottom layer map by adding rho(u) to lambda; this is to
+test whether this function gives the right answer}
 set bottom_layer_map_by_param (KType mu_L,KGPElt P)=[KType]:
    let G=real_form(P)
    then x=embed_KGB(mu_L.x,G),v=lambda(mu_L)+rho_u(P)-rho(G)
@@ -124,39 +131,44 @@ set test_bottom_layer (Param p,int N)=void:
 	         (false,all(for mu in monomials(standardize(kt)) do Q[mu]!=0 od))) fi
       od
 
-set bottom_layer_to_N (Param p,int N)=[(bool,KType)]:
-   let (P,q)=theta_stable_quasi_data(p),h=height(p)
-   then hq=height(q)
-   then Q=branch_irr(p,h+N), QL=branch_irr(q,hq+N)
-   in for m in monomials(QL)
-      do let kt=bottom_layer_map_alt(m,P)
-          in (is_dominant(kt),kt)
-      od
+set test_bl_function ([[KType]] kts)=bool:
+   let n=#kts
+   in if n<=1 then true
+   else let b=all(for kt in kts[0] do all(for list in kts do find(list,kt)>-1 od) od)
+        in b
+   fi
 
+{Bottom layer map by adding 2rho(u\capp) to the highest weight; in the
+disconnected case this may yield multiple K-types with the same highest weight}
 set bottom_layer_map_by_hwt (KType mu_L,KGPElt P)=[KType]:
    let G=real_form(P)
-   then (,x_L,v)=highest_weight(mu_L)
-   then x=embed_KGB(x_L,G)
-   then shift=two_rho_u_cap_s(P,x)
-   then wt=v+shift
-   in K_types_no_error(KHighestWeight:((),x,wt))
+   then wts=for (,x_L,v) in highest_weights(mu_L)
+            do let x=embed_KGB(x_L,G)
+               then shift=two_rho_u_cap_s(P,x)
+               then wt=v+shift
+	       in KHighestWeight:((),x,wt)
+	    od
+   then result= for wt in wts do  K_types_no_error(wt)
+                              od
+    in if test_bl_function (result) then result[0]
+       else prints("The K-types attached to the highest weights don't match"); []
+       fi
 
-set is_K_dominant (vec v,KGBElt x)=bool:
-   let rd=root_datum(x)
-   then ccr=##for alpha@i in posroots(rd)
-              do if is_compact_imaginary(alpha,x)
-	      then [poscoroots(rd)[i]] else [] fi
-	      od
-   in all(for cr in ccr do cr*v>=0 od)
+set test_bl_function (Param p,int m)=void:
+   let (P,q)=theta_stable_quasi_data(p)
+   then ht=height(q)
+   then Q=monomials(branch_irr(q,ht+m))
+   in for kt in Q
+      do prints(bottom_layer_map_by_hwt(kt,P),new_line,
+                bottom_layer_map_by_param(kt,P),new_line)
+      od
 
-set survives_in_bottom_layer (KType mu_L,KGPElt P)=(bool,KHighestWeight):
-   let G=real_form(P)
-   then (,x_L,v)=highest_weight(mu_L)
-   then x=embed_KGB(x_L,G)
-   then shift=two_rho_u_cap_s(P,x)
-   then wt=v+shift
-   in (is_K_dominant(wt,x),((),x,wt))
-
+set survives_in_bottom_layer(KType kt,KGPElt P,Param p)=bool:
+   let result=bottom_layer_map_by_hwt (kt,P)
+   in prints(result);
+       if #result=0 then false
+       else let ht=height(result[0]) then Q=branch_irr(p,ht) in Q[result[0]]!=0
+       fi
 
 set K_sign (Param p,int ht)=KTypePol:
    let hf=hermitian_form_irreducible(p)
@@ -171,20 +183,6 @@ set test_bl_conj (Param p)=void:
    else for kt in nul
         do prints(new_line,kt,new_line,bottom_layer_map_by_hwt(kt,P),new_line,
 	    bottom_layer_map_by_param(kt,P))
-	od fi
-
-  fi
-
-set test_bl_conj_alt (Param p)=void:
-   if not is_hermitian(p) then prints("p in not hermitian")
-   else
-   let (P,q)=theta_stable_quasi_data(p)
-   then (u,nul)=nonunitarity_certificate(q)
-   in if u then prints(new_line,"The rep on L is unitary.")
-   else for kt in nul
-        do prints(new_line,kt,new_line,survives_in_bottom_layer(kt,P));
-	   let op=bottom_layer_map_by_param(kt,P)
-	   in if #op=0 then prints([]) else prints(highest_weight(op[0])) fi
 	od fi
 
   fi
