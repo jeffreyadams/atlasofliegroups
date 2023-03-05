@@ -435,6 +435,8 @@ until other initialisations have been done), but we defer the details.
 @ We can now define the functions that are used in \.{buffer.w} to access the
 input path.
 
+@h <string>
+
 @< Definitions of other functions @>=
 
 unsigned int input_path_size()

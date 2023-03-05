@@ -360,14 +360,20 @@ scanner, and the parser will build an appropriate node for them, which just
 stores a value from which an internal \.{axis} value will be constructed after
 type checking. To keep the size of the |union| in |expr| small, we only use
 variants that are no bigger than a pointer, and store a pointer when more than
-that would otherwise be needed. For Boolean denotations, the value itself will
-fit comfortably inside the |struct expr@;|. For integers and strings we store a
-|std::string| value (sharing a single variant) which turns out to have the size
-of a pointer, leaving in the case of integers the conversion from decimal to
-|big_int| to be done later. Storing |std::string| will provide an example of how
-the special member functions of |expr| should handle non-POD variants (they can
-neither be assigned to non-initialised memory without calling a constructor, nor
-be left in memory that will be reclaimed without calling a destructor).
+that would otherwise be needed. It turns out that |std::string| has the size
+of a pointer,
+
+@< Includes needed... @>=
+#include <string>
+
+@~For Boolean denotations, the value itself will fit comfortably inside the
+|struct expr@;|. For integers and strings we store a |std::string| value
+(sharing a single variant), leaving in the case of integers the conversion from
+decimal to |big_int| to be done later. Storing |std::string| will provide an
+example of how the special member functions of |expr| should handle non-POD
+variants (they can neither be assigned to non-initialised memory without calling
+a constructor, nor be left in memory that will be reclaimed without calling a
+destructor).
 
 @< Variants of ... @>=
 

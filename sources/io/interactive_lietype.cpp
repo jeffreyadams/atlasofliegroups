@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #include "input.h"	// input buffers
 
