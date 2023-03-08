@@ -55,8 +55,9 @@ def atlas_compute(group,output_file_root,q,procs,i):
          z=proc.stdin.write(atlas_arg)
 #         print("z=",z)
          proc.stdin.flush()
-         line = proc.stdout.readline()
-#         print("output line:", line)
+         line = proc.stdout.readline().decode('ascii')
+         if not line == "HA\n":
+            print("output line:", line)
 #         f=open(outputfile,"a")
 #         f.write(line.decode('ascii'))
 #      print("DONE")
