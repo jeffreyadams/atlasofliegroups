@@ -31,9 +31,12 @@ def report(q,i,proc):
 #procs: array of processes
 #i: number of process
 def atlas_compute(group,output_file_root,q,procs,i):
-   count=0
+   facets_computed_local=0  #facets computed by this process
+   global facets_computed #facets computed by all processes
    proc=procs[i]
-   file_name=  group + "/" + output_file_root + "_" + str(i)
+#   outputfile="\"" + group + "/" + output_file_root + "_" + str(i)  + "\""   #atlas requires quotes around the filename if it includes a directory
+   outputfile=group + "/" + output_file_root + "_" + str(i)
+   f=open(outputfile,"w")
    while not q.empty():
       if q.qsize()%1000==0:
          print("size of q: "+ str(q.qsize()),end="\r")
@@ -42,21 +45,27 @@ def atlas_compute(group,output_file_root,q,procs,i):
          facet = q.get(False)
       except queue.Empty:
          quit_arg='{}'.format("\n quit").encode('utf-8')
-#         print("quitarg: ", quitarg)
          proc.stdin.write(quit_arg)
-#         print("quit job ", i)
+         print("quitting", i)
          report(q,i,proc)
       else:
-#         atlas_arg='{}'.format("\n  prints(\"(\",(" + str(i) + ")," + facet +  "[0]" + ",K_data(K_char(" + group + "," + facet + ")))").encode('utf-8')
-         atlas_arg='{}'.format("\n  prints(\"(\"," + facet +  "[0]" + ",\",\",K_data(K_char(" + group + "," + facet + "))" + ",\")\")").encode('utf-8')
-
+         atlas_arg='{}'.format("\n prints(\"(\"," + facet +  "[0]" + ",\",\",K_data(K_char(" + group + "," + facet + "))" + ",\"),\")\n" ).encode('utf-8')
 #         print(atlas_arg)
-#         atlas_arg='{}'.format("\n  prints(\"( + facet +  "[0]," + ",K_data(K_char(" + group + "," + facet + ")))").encode('utf-8')
-         proc.stdin.write(atlas_arg)
-         count+=1
-   return(i,count)
+         z=proc.stdin.write(atlas_arg)
+#         print("z=",z)
+         proc.stdin.flush()
+         line = proc.stdout.readline()
+#         print("output line:", line)
+         f.write(line.decode('ascii'))
+#      print("DONE")
+
+      facets_computed+=1  #total facets computed by all processed
+      facets_computed_local+=1
+   return(i,facets_computed_local)
 
 def main(argv):
+   global facets_computed
+   facets_computed=0
    cpu_count=multiprocessing.cpu_count()
    print("----------------------------")
    print("Number of cores: ", cpu_count)
@@ -86,25 +95,21 @@ def main(argv):
    data=file.read().splitlines()
    for d in data:
       q.put(d)
+   global facets_input
    facets_input=q.qsize()
    print("number of facets in input file: ", facets_input)
-   #initialize array of max_cores atlas processes
-#   Q=concurrent.futures.ThreadPoolExecutor()
    procs=[]
    T=[]   #array of results from the atlas processes
-   #start max_cores atlas processes, taking input from stdin
-   #output -> stdout, which writes to group/output_file_roots_i
    print("starting ", max_cores, "atlas processes")
    for i in range(max_cores):
       filename=  group + "/" + output_file_root + "_" + str(i)
       with open(filename, "w") as outfile:
-        proc=subprocess.Popen(["../atlas","polsParallel.at"], stdin=PIPE, stdout=outfile)
-        procs.append(proc)
+         proc=subprocess.Popen(["../atlas","polsParallel.at"], stdin=PIPE,stdout=PIPE)
+         procs.append(proc)
    print("number of processes started: ", len(procs))
    P=concurrent.futures.ThreadPoolExecutor()
-   #use P.submit 
    for i in range(max_cores):
-#         print("submitting job i=",i)
+
          proc=procs[i]
          T.append(P.submit(atlas_compute,group,output_file_root,q,procs,i))
    total_facets=0
@@ -119,9 +124,9 @@ def main(argv):
          total_facets+=n
          print(data)
    print("number of facets in input file: ", facets_input)
-   print("number of K_polynomials computed: ", total_facets)
+   print("number of K_polynomials computed: ", total_facets, "(", facets_computed,")")
 
-   #   print("status of processes: ")
+#   print("status of processes: ")
 #   for i in range(len(procs)):
 #      print("i: ", i, procs[i].poll())
 #   for p in procs:
