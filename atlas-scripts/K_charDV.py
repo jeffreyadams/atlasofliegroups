@@ -56,8 +56,9 @@ def atlas_compute(group,output_file_root,q,procs,i):
 #         print("z=",z)
          proc.stdin.flush()
          line = proc.stdout.readline().decode('ascii')
-         if not line == "HA\n":
-            print("output line:", line)
+         while not line == "HA\n":
+            line = proc.stdout.readline().decode('ascii')
+            # print("output line:", line)
 #         f=open(outputfile,"a")
 #         f.write(line.decode('ascii'))
 #      print("DONE")
@@ -131,7 +132,7 @@ def main(argv):
       else:
          (p,n)=data
          total_facets+=n
-         if p is 0:
+         if p == 0:
             print()
          print(data)
    print("number of facets in input file: ", facets_input)
