@@ -1,0 +1,101 @@
+< induction.at {for theta_induce_irreducible}
+< parabolics.at {for theta_stable_parabolics}
+
+{This script is designed to investigate reducibility of
+cohomologically induced reps in the weakly fair range. Key function
+onesList takes a theta-stable q = l + u with rho(u) integral, and
+creates the family of one-dimensional reps of L
+
+	trivial of L translated by -r*rho(u), r rational, 0 \le r \le 1, and
+	r*rho(u) integral.
+
+Then cohomologically induces to G, to see how reducible this is.
+}
+{List of the maximal theta-stable parabolics with rho(u) integral}
+set TSPmaxInts(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if semisimple_rank(P.Levi) = semisimple_rank (G) -1
+       	  and P.rho_u.denom = 1
+       then [P]
+       else []
+       fi
+    od.##
+
+{List of all proper theta-stable parabolics with rho(u) integral}
+set TSPInts(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if 0 < semisimple_rank(P.Levi) and P.Levi != G
+       	  and P.rho_u.denom = 1
+       then [P]
+       else []
+       fi
+    od.##
+
+{assuming rho(u) is integral, lists the one-diml parameters on L from
+trivial to the end of the weakly fair range.}
+{this should be generalized: start with any weakly unipotent on L in
+good range, translate down by all q*rho(u) that are integral vectors
+(0 \le q rational) to end of weakly fair}
+set onesList(KGPElt P) = [Param]:
+    let d = gcd(ratvec_as_vec(P.rho_u)), L = P.Levi
+    in for j:d+1
+       do parameter(x_open(L),rho(L) - ratvec_as_vec(P.rho_u/d)*j,
+       	  rho(L))
+       od
+
+set onesListsMax(RealForm G) = [[Param]]:
+    for P in TSPmaxInts(G)
+    do onesList(P)
+    od
+
+set onesLists(RealForm G) = [[Param]]:
+    for P in TSPInts(G)
+    do onesList(P)
+    od
+
+{a theta-stable q is "interesting" if cohomological induction from
+onesList(q) doesn't end with an irreducible at the end of the weakly
+fair range, and doesn't just consist of an irreducible and zero. This
+command creates a file of what happens for all the interesting maximal
+q.}
+set outputMax(RealForm G) = [(int,RealForm,[int])]:
+    for list@j in onesListsMax(G)
+    do let result =
+       	   for p in list
+       	   do #theta_induce_irreducible(p,G)
+       	   od
+       in if max(result)!=1
+       	  then [(j,list[0].real_form,result)]
+	  else [] fi od.##
+
+{same including non-maximal q}
+set output(RealForm G) = [(int,RealForm,[int])]:
+    for list@j in onesLists(G)
+    do let result =
+       	   for p in list
+       	   do #theta_induce_irreducible(p,G)
+       	   od
+       in if max(result)!=1
+       	  then [(j,list[0].real_form,result)]
+	  else [] fi od.##
+{just print the results, as they are computed, for maximal q}
+set outputMaxPrint(RealForm G) = void:
+    for list@j in onesListsMax(G)
+    do let result =
+       	   for p in list
+	   do #theta_induce_irreducible(p,G)
+	   od
+       in if max(result)!=1
+       	  then prints(j,"  ",list[0].real_form,"  ",result)
+	  fi od
+
+{just print the results, as they are computed, for all q}
+set outputPrint(RealForm G) = void:
+    for list@j in onesLists(G)
+    do let result =
+       	   for p in list
+	   do #theta_induce_irreducible(p,G)
+	   od
+       in if max(result) !=1
+       	  then prints(j,"  ",list[0].real_form,"  ",result)
+	  fi od
