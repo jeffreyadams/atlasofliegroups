@@ -319,10 +319,10 @@ int main(int argc, char** argv)
 @/overload_table main_overload_table;
  @+ global_overload_table=&main_overload_table;
 @)
-  bool use_readline=true;
+  bool use_readline=true, do_prompting=isatty(STDIN_FILENO);
   @< Other local variables of |main| @>
   @< Handle command line arguments @>
-@/BufferedInput input_buffer(isatty(STDIN_FILENO) ? "atlas> " : nullptr
+@/BufferedInput input_buffer(do_prompting ? "atlas> " : nullptr
                             ,use_readline ? readline : nullptr
 			    ,use_readline ? add_history : nullptr);
   main_input_buffer= &input_buffer;
@@ -332,7 +332,8 @@ int main(int argc, char** argv)
   @< Enter system variables into |global_id_table| @>
 @)
   @< Silently read in the files from |prelude_filenames| @>
-  std::cout << "This is 'atlas' (version " @|
+  if (do_prompting)
+    std::cout << "This is 'atlas' (version " @|
        << atlas::version::VERSION @| << ", axis language version " @|
        axis_version "),\n" @| << atlas::version::NAME << @|
        " interpreter,\ncompiled on " @|  << atlas::version::COMPILEDATE
