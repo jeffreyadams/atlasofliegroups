@@ -592,9 +592,11 @@ set next_K_types (KType mu)=[KTypePol]:
    let G=real_form(mu),lam=mu.lambda_minus_rho
    then pr=posroots(G)
    in ##for alpha@i in pr
-       do if is_simple_root(G,alpha) and is_real(alpha,mu.x)
-              then let x=Cayley(i,mu.x)
-	            in [1*K_type(x,lam)+K_type(cross(i,x),lam)]
+       do let d = lam*poscoroots(G)[i]
+       	  in if is_simple_root(G,alpha) and is_real(alpha,mu.x) and is_even(d)
+             then let y=Cayley(i,mu.x)
+	     	  then lamy = lam-floor(d/2)*alpha
+	          in [1*K_type(y,lamy)+K_type(cross(i,y),lamy)]
 	  elif is_noncompact_imaginary(alpha,mu.x) or is_complex(alpha,mu.x)
 	      then [1*K_type(mu.x,lam+alpha)]
 	  else []
