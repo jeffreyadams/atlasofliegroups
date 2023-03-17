@@ -674,9 +674,17 @@ set up_next_R_cone(KType mu, int bound) = KTypePol:
 set test_next (KType mu,int a)=(bool,bool):
    let upR=up_R_cone(mu,height(mu)+a).monomials
    then upN=up_next_R_cone(mu,height(mu)+a).monomials
-   in (#upR=#upN,upR[0]=upN[0])
+   in (#upR=#upN,
+      if #upR=0 and #upN=0 then true
+      else  upR[0]=upN[0]
+      fi)
 
-set test_next2 (KType mu,int a)=(bool,bool):
+set test_next2 (KType mu,int a)=(bool,bool,int):
    let upR=up_R_cone(mu,height(mu)+a).monomials
    then upN=up_next_R_cone(mu,height(mu)+a).monomials
-   in (#upR=#upN,all(for m@i in upR do m=upN[i] od))
+   in (#upR=#upN,
+      if #upR=0 and #upN=0 then true
+      else all(for m@i in upR do m=upN[i] od)
+      fi,
+      #upR)
+
