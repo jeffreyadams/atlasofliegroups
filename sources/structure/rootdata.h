@@ -166,6 +166,7 @@ public:
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
+  LieType type() const; // no central torus factors possible here
 
   // Cartan matrix by entry and as a whole
   int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };

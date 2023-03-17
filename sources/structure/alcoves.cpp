@@ -547,12 +547,12 @@ struct orbit_elem // auxiliary data while generating orbit
   fundamental weight |i|, find list of acting Weyl group elements for the orbit
   of its coset by the root lattice $R$ (a point in $X^* / R$). This is also a
   set of coset representatives for the quotient of $W$ by the integral Weyl
-  group for that rational weight.
+  group for that rational weight. The |label| of |i| is passed for convenience.
 */
 sl_list<orbit_elem> vertex_orbit
   (const int_Matrix& Cartan, weyl::Generator i, unsigned label)
 {
-  std::vector<int_Vector> adj_coroot;
+  std::vector<int_Vector> adj_coroot; // adjoint coordinates
   adj_coroot.reserve(Cartan.n_columns());
   for (unsigned j=0; j<Cartan.n_columns(); ++j)
     adj_coroot.push_back(Cartan.column(j));
@@ -739,7 +739,7 @@ void extend_affine_component
    const RootSystem& rs, const WeylGroup& W,
    RootNbrSet comp, const RootNbrSet& stab)
 {
-  const auto comp_size = comp.size(); // fize this before |comp| is modified
+  const auto comp_size = comp.size(); // fix this before |comp| is modified
   const unsigned stab_size = stab.size();
   comp.andnot(stab); // and |comp| hencforth is rest of component
 
@@ -791,7 +791,7 @@ void extend_affine_component
     std::vector<WeylElt> reflections;
     for (Generator i=0; i<roots.size(); ++i)
       reflections.push_back(W.element(rs.reflection_word(roots[i])));
-    extend_orbit_words(orbit,W,cosets,reflections);
+    extend_orbit_words(orbit,W,cosets,reflections); // single version
   }
 } // |extend_affine_component|
 
@@ -807,7 +807,7 @@ sl_list<WeylElt> finite_subquotient
     reflections.push_back(W.element(rs.reflection_word(alpha)));
 
   return basic_orbit_ws(Cartan,walls.size()-1,W,reflections);
-}
+} // |finite_subquotient|
 
 sl_list<WeylElt> complete_affine_component
   (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha)
@@ -874,7 +874,7 @@ sl_list<WeylElt> basic_orbit_ws
 
 // auxiliary to facilitate generating alcoves/facets in the fu. parallelepipedum
 class center_classifier // center is that of simply connected group for type
-{ // flag sets of fundamentak weights whose sum is in the root lattice
+{ // flag sets of fundamental weights whose sum is in the root lattice
   const RootSystem& rs;
   BitMap flags;
 public:

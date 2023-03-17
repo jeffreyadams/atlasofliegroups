@@ -2004,7 +2004,7 @@ first |stab_rank| entries, and in |final| the one following it.
   final = walls[stab_rank];
 }
 
-@ When calling |affine_orbit_ws|, we need to decide whether the internal
+@ When calling |basic_orbit_ws|, we need to decide whether the internal
 function to call is going to be |finite_subquotient| or
 |complete_affine_components|; the first one does not use modular vector
 arithmetic because the root |final| extends the finite Coxeter group |stab| to a

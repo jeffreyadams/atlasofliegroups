@@ -178,6 +178,19 @@ int_Matrix SimpleLieType::Cartan_matrix() const
   return result;
 }
 
+unsigned int SimpleLieType::Cartan_determinant() const
+{
+  switch (type())
+  {
+  case 'A': return rank()+1;
+  case 'B':
+  case 'C': return 2u;
+  case 'D': return 4u;
+  case 'E': return 9u-rank();
+  }
+  return 1u;
+}
+
 int_Matrix SimpleLieType::transpose_Cartan_matrix() const
 { const auto r=rank();
   int_Matrix result(r,r);
@@ -195,6 +208,14 @@ int_Matrix LieType::Cartan_matrix() const
     for (unsigned int j=0; j<r; ++j)
       result(i,j)=Cartan_entry(i,j);
 
+  return result;
+}
+
+unsigned int LieType::Cartan_determinant() const
+{
+  unsigned int result = 1u;
+  for (const auto& slt : *this)
+    result *= slt.Cartan_determinant();
   return result;
 }
 
