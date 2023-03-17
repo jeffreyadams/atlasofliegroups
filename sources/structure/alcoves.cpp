@@ -518,7 +518,7 @@ arithmetic::Numer_t simplify(const Rep_context& rc, StandardRepr& sr)
 int label(const RootSystem& rs, Generator i)
 {
   assert(rs.rank()>0); // otherwise we cannot have generator |i|
-  BitMap high_roots = rs.posRootSet();
+  BitMap high_roots = rs.posroot_set();
   for (RootNbr alpha = rs.negRootNbr(rs.rank()-1); rs.is_negroot(alpha); ++alpha)
     high_roots &= rs.min_coroots_for(alpha);
   assert(high_roots.any());

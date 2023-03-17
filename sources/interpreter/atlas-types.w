@@ -1931,7 +1931,7 @@ void basic_orbit_ws_wrapper(expression_base::level l)
     throw runtime_error("Index too large for given list of root numbers");
   RootNbrSet stab; RootNbr final;
   @< Check validity of root indices in |v->val| and the absence acute angles
-     among them; store internal number for its entry |stab_rank| in |final|,
+     among them; store internal number for its entry at |stab_rank| in |final|,
      and the set of its earlier entries in |stab| @>
   if (l==expression_base::no_value)
     return;

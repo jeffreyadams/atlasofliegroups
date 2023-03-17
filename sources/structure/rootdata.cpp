@@ -457,14 +457,14 @@ template <typename I, typename O>
   }
 }
 
-RootNbrSet RootSystem::simpleRootSet() const
+RootNbrSet RootSystem::simple_root_set() const
 {
   RootNbrSet simple_roots(numRoots());
   simple_roots.fill(numPosRoots(),numPosRoots()+rk);
   return simple_roots;
 }
 
-RootNbrList RootSystem::simpleRootList() const
+RootNbrList RootSystem::simple_root_list() const
 {
   RootNbrList simple_roots(rk);
   for (weyl::Generator i=0; i<rk; ++i)
@@ -472,7 +472,7 @@ RootNbrList RootSystem::simpleRootList() const
   return simple_roots;
 }
 
-RootNbrSet RootSystem::posRootSet() const
+RootNbrSet RootSystem::posroot_set() const
 {
   RootNbrSet pos_roots(numRoots());
   pos_roots.fill(numPosRoots(),numRoots());

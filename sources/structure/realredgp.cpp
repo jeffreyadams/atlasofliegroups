@@ -175,7 +175,7 @@ size_t RealReductiveGroup::mostSplit() const
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
-  return cartanclass::restrictGrading(rset,root_datum().simpleRootList());
+  return cartanclass::restrictGrading(rset,root_datum().simple_root_list());
 }
 
 
