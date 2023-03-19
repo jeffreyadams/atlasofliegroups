@@ -11,6 +11,7 @@
 #define INPUT_H
 
 #include <iosfwd>
+#include <string>
 #include <sstream>
 
 #ifndef NREADLINE

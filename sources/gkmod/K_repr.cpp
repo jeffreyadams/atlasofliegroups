@@ -512,7 +512,7 @@ K_repr::K_type_pol Rep_context::monomial_product
 
 // compute height of "orthogonal projection to dominant cone" (closest point)
 level Rep_context::height_bound (RatWeight lambda) const
-/* this projection is dominant, and obtained by otrhogonal projection onto the
+/* this projection is dominant, and obtained by orthogonal projection onto the
    intersection of kernels of some set of simple coroots, say indexed by $S$,
    which is moreover such that the projection equals |lambda| plus a positive
    linear combination of the simple roots for $S$

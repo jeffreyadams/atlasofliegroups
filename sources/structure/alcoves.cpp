@@ -872,6 +872,49 @@ sl_list<WeylElt> basic_orbit_ws
   return convert_to_words(basic_orbit(Cartan,i),W,gens);
 }
 
+// auxiliary to facilitate generating alcoves/facets in the fu. parallelepipedum
+class center_classifier // center is that of simply connected group for type
+{ // flag sets of fundamentak weights whose sum is in the root lattice
+  const RootSystem& rs;
+  BitMap flags;
+public:
+  center_classifier(const RootSystem& rs);
+  bool is_for_FPP(RankFlags descents) const
+  { return flags.isMember(descents.to_ulong()); }
+  // when |is_for_FPP| holds for a descent set, this is the corrsponding shift:
+  int_Vector shift(RankFlags descents) const; // in root coordinates
+}; // |center_classifier|
+
+center_classifier::center_classifier(const RootSystem& rs)
+: rs(rs), flags(1u<<rs.rank())
+{
+  auto i_Cartan = rs.inverse_Cartan_matrix();
+  for (unsigned i=0; i<flags.capacity(); ++i)
+  {
+    RankFlags descents(i);
+    int_Vector sum(rs.rank(),0);
+    for (weyl::Generator s : descents)
+      sum += i_Cartan.row(s);
+    bool OK=true;
+    for (auto e : sum)
+      if (e%rs.Cartan_denominator()!=0)
+      { OK=false;
+	break;
+      }
+    flags.set_to(i,OK);
+  }
+}
+
+int_Vector center_classifier::shift(RankFlags descents) const
+{
+  assert(is_for_FPP(descents));
+  auto i_Cartan = rs.inverse_Cartan_matrix();
+  int_Vector sum(rs.rank(),0);
+  for (weyl::Generator s : descents)
+    sum += i_Cartan.row(s);
+  return sum /= rs.Cartan_denominator();
+}
+
 } // |namespace weyl|
 
 } // |namespace atlas|

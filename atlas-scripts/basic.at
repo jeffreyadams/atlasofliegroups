@@ -27,20 +27,13 @@ set assert (bool b,string message) = void: if not b then error(message) fi
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
-set bitset ([int] L) = (int,(int->bool)):
-  let map=[bool]:[], len=0 { invariant len=#map } in
-  for x in L ~ { reversing loop minimises expansions for many lists }
-  do if x<len then map[x]:=true
-     else map := for i:x+1 do if i<len then map[i] else i=x fi od ; len := x+1
-     fi
-  od; (len,(int i)bool: map[i])
-
 set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
 set complement (int n, [int] list) = [int]:
-  let (len,f)=bitset(list) in complement(n,(int i)bool: i<len and f(i))
+  let N = to_bitset(list)
+  in complement(n,(int i)bool: bitwise_subset([i].to_bitset,N))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c

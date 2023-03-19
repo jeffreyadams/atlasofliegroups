@@ -1912,6 +1912,8 @@ terminating character at the read position right from the start; when the
 happens the loop is no entered at all, an the empty list of components will
 give an empty tuple.
 
+@h <string>
+
 @< Function definitions @>=
 type_expr scan_in_parens(const char*& s)
 { type_expr a=scan_union_list(s);

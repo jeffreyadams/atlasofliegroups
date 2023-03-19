@@ -158,6 +158,7 @@ rank~$r>1$, but they are equivalent to $r$ torus factors of rank~$1$, and it
 simplifies the software if we rewrite the former form to the latter on input, so
 that is what we do here.
 
+@h <string>
 @h "constants.h"
 
 @< Function definitions @>=
@@ -1021,7 +1022,7 @@ generated for clients that need it.
 class root_datum_value : public value_base
 { struct token@+{}; // type passed to prove caller has private access;
   static root_datum_entry::Pooltype pool;
-  static HashTable<root_datum_entry,unsigned long int> hash;
+  static HashTable<root_datum_entry,unsigned int> hash;
   static std::vector<root_datum_weak_ptr> store;
   mutable simple_list<std::pair<const WeightInvolution,inner_class_weak_ptr> >
     classes;
@@ -1048,7 +1049,11 @@ directly; |store| starts out empty.
 
 @< Global variable definitions @>=
 root_datum_entry::Pooltype root_datum_value::pool;
+<<<<<<< HEAD
 HashTable<root_datum_entry,unsigned long int> @| root_datum_value::hash
+=======
+HashTable<root_datum_entry,unsigned int> @| root_datum_value::hash
+>>>>>>> latest
   (root_datum_value::pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
@@ -8020,7 +8025,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 }
 
 @ The function |scale_extended| is intended for use with in the deformation
-algorithm when interpreting parameters as specifying a representation of he
+algorithm when interpreting parameters as specifying a representation of the
 extended group. One can arrange that deformation starts with a final parameter,
 for which $\gamma$ is dominant and which has no singular descent (simple)
 reflections, but when deforming this condition may be lost. In the ordinary

@@ -3260,6 +3260,8 @@ void string_geq_wrapper(expression_base::level l)
 
 @ Here are the functions for concatenating two or more strings.
 
+@h <string>
+
 @< Local function definitions @>=
 void string_concatenate_wrapper(expression_base::level l)
 { shared_string b=get<string_value>(); shared_string a=get<string_value>();
@@ -4295,7 +4297,7 @@ void null_vec_wrapper(expression_base::level l)
   }
   if (n>matrix::index_max)
   { std::ostringstream o;
-    o << "Number of columns " << m << " exceeds implementation limit";
+    o << "Number of columns " << n << " exceeds implementation limit";
     throw runtime_error(o.str());
   }
   if (l!=expression_base::no_value)
@@ -4420,7 +4422,7 @@ void combine_columns_wrapper(expression_base::level l)
   }
   if (r->val.size()>matrix::index_max)
   { std::ostringstream o;
-    o << "Number " << n <<" of columns exceeds implementation limit";
+    o << "Number " << r->val.size() <<" of columns exceeds implementation limit";
     throw runtime_error(o.str());
   }
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
@@ -4449,7 +4451,7 @@ void combine_rows_wrapper(expression_base::level l)
   }
   if (r->val.size()>matrix::index_max)
   { std::ostringstream o;
-    o << "Number " << n <<" of rows exceeds implementation limit";
+    o << "Number " << r->val.size() <<" of rows exceeds implementation limit";
     throw runtime_error(o.str());
   }
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
