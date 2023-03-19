@@ -1049,11 +1049,7 @@ directly; |store| starts out empty.
 
 @< Global variable definitions @>=
 root_datum_entry::Pooltype root_datum_value::pool;
-<<<<<<< HEAD
-HashTable<root_datum_entry,unsigned long int> @| root_datum_value::hash
-=======
 HashTable<root_datum_entry,unsigned int> @| root_datum_value::hash
->>>>>>> latest
   (root_datum_value::pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
