@@ -113,7 +113,7 @@ set gammaSS(KGPElt P, ratvec gammaL) = ratvec:
     	 	  	       do (gammaL*L.simple_coroots[j])*xi
 		  	       od)
 
-{simple root numbers NOT in P.Levi}
+{simple imaginary root numbers NOT in P.Levi}
 set outsideRoots(KGPElt P) = [int]:
     let (list,x) = P
     in for j:x.real_form.semisimple_rank
@@ -123,22 +123,52 @@ set outsideRoots(KGPElt P) = [int]:
 	  fi
        od.##
 
+{simple imaginary root numbers NOT in P.Levi}
+set outsideImagRoots(KGPElt P) = [int]:
+    let (list,x) = P
+    then G=x.real_form
+    then delta = G.distinguished_involution, simples = G.simple_roots
+    in for j:G.semisimple_rank
+       do if not is_member(list)(j) and delta*simples[j] = simples[j]
+	  then [j]
+	  else []
+	  fi
+       od.##
+
+{complex simple root numbers pairs NOT in P.Levi}
+set outsideCplxRoots(KGPElt P) = [(int,int)]:
+    let (list,x) = P
+    then G=x.real_form
+    then delta = G.distinguished_involution, simples = G.simple_roots
+    in for j:G.semisimple_rank
+       do let k = find(simples,delta*simples[j])
+       	  in if not is_member(list)(j) and k>j
+	  then [(j,k)]
+	  else []
+	  fi
+       od.##
+
+{one member of each alpha, delta*alpha NOT in P.Levi}
+set outsidePairRepRoots(KGPElt P) = [int]:
+    outsideImagRoots(P)##for (j,) in outsideCplxRoots(P) do j od
+
 {this function assumes pL is a unipotent rep of L, and that all the
 fundamental weights for simple roots not in L are integral. The idea is that the weakly fair range is
 gammaL - (elements of box)*(fundamental weights outside L)
 }
-
 set weaklyFairBox(KGPElt P, Param pL) = ([int],[int]):
     let (list,x) = P, gammaL = pL.infinitesimal_character, L=pL.real_form
-    then out = outsideRoots(P)
+    then outI = outsideImagRoots(P), outC = outsideCplxRoots(P),
+    	 out = outsideRoots(P)
+    then outReps = outsidePairRepRoots(P)
     then gammau = gammaSS(P, gammaL)
     then gammaG = gammaL + P.rho_u {this is G infl char}
     then gammaz = gammaG - gammau {this is cent(L) part of G inf char}
-    then small = for j in out
+    then small = for j in outReps
        	       	 do let alphavee = P.real_form.simple_coroots[j]
 		    in floor(gammaG*alphavee)-1
 		 od
-    then big = for j in out
+    then big = for j in outReps
     	       do floor(gammaz*P.real_form.simple_coroots[j]) + 1
 	       od
     in (small,big)
@@ -146,8 +176,13 @@ set weaklyFairBox(KGPElt P, Param pL) = ([int],[int]):
 {these are the weights to subtract from pL to stay in weakly fair range}
 set weaklyFairTranslators(KGPElt P, Param pL) = ([vec]):
     let out = outsideRoots(P)
-    then fundwts = mat: for j in out
-    	 	   	do ratvec_as_vec(P.real_form.fundamental_weights[j])
+    then fundwts = mat: for i in outsideImagRoots(P)
+    	 	   	do ratvec_as_vec(P.real_form.fundamental_weights[i])
+			od
+			##
+			for (j,k) in outsideCplxRoots(P)
+			do ratvec_as_vec(P.real_form.fundamental_weights[j] +
+			   P.real_form.fundamental_weights[k])
 			od
     then (small,big) = weaklyFairBox(P,pL)
     then baseBox = box(big-small)
