@@ -10,6 +10,7 @@
 #include "atlas-types.h"
 #include "global.h"
 #include <cstring>
+#include <string>
 #include <stdexcept>
 #include "axis.h"
 #include "parsetree.h"
@@ -49,7 +50,7 @@ const char*keywords[]=
 ,"set_type"
 ,"whattype","showall","forget"
 ,nullptr};/*:7*//*12:*/
-#line 373 "main.w"
+#line 374 "main.w"
 static atlas::interpreter::shared_share
 input_path_pointer,prelude_log_pointer;
 #ifndef NOT_UNIX
@@ -58,7 +59,7 @@ char cwd_buffer[cwd_size];
 const char*working_directory_name=nullptr;
 const char*first_path=nullptr;
 #endif/*:12*//*23:*/
-#line 722 "main.w"
+#line 725 "main.w"
 char lexical_break_chars[]=" \t\n=<>+-*/\\%,;:.()[]{}#!?$@\"|~";/*:23*/
 #line 148 "main.w"
 }/*4:*/
@@ -79,7 +80,7 @@ atlas::interpreter::clean=false;
 #line 210 "main.w"
 extern "C" void sigint_handler(int)
 {atlas::interpreter::interrupt_flag=1;}/*:5*//*22:*/
-#line 684 "main.w"
+#line 687 "main.w"
 extern "C"
 char*id_completion_func(const char*text,int state)
 {using namespace atlas;
@@ -96,7 +97,7 @@ std::strcpy(result,comps.front());
 comps.pop_front();
 return result;
 }/*:22*//*24:*/
-#line 747 "main.w"
+#line 750 "main.w"
 #ifndef NREADLINE
 extern "C" char* *do_completion(const char*text,int start,int end)
 {
@@ -135,7 +136,7 @@ return rl_completion_matches(text,id_completion_func);
 namespace atlas
 {namespace interpreter
 {/*15:*/
-#line 440 "main.w"
+#line 443 "main.w"
 unsigned int input_path_size()
 {const row_value*path=force<row_value>(input_path_pointer->get());
 return path->val.size();
@@ -158,11 +159,11 @@ Id_table main_table;global_id_table= &main_table;
 overload_table main_overload_table;
 global_overload_table= &main_overload_table;
 
-bool use_readline=true;/*11:*/
-#line 356 "main.w"
+bool use_readline=true,do_prompting=isatty(STDIN_FILENO);/*11:*/
+#line 357 "main.w"
 std::vector<const char* >paths,prelude_filenames;
 paths.reserve(argc-1);prelude_filenames.reserve(argc-1);/*:11*//*13:*/
-#line 392 "main.w"
+#line 393 "main.w"
 while(* ++argv!=nullptr)
 {static const char*const path_opt="--path=";
 static const size_t pol=std::strlen(path_opt);
@@ -174,7 +175,7 @@ paths.push_back(&(*argv)[pol]);
 else prelude_filenames.push_back(*argv);
 }/*:13*/
 #line 325 "main.w"
-BufferedInput input_buffer(isatty(STDIN_FILENO)?"atlas> ":nullptr
+BufferedInput input_buffer(do_prompting?"atlas> ":nullptr
 ,use_readline?readline:nullptr
 ,use_readline?add_history:nullptr);
 main_input_buffer= &input_buffer;
@@ -184,11 +185,11 @@ main_hash_table->match_literal("quiet");
 main_hash_table->match_literal("verbose");
 
 ana.set_comment_delims('{','}');/*:8*//*9:*//*25:*/
-#line 793 "main.w"
+#line 796 "main.w"
 #ifndef NOT_UNIX
 working_directory_name=getcwd(cwd_buffer,cwd_size);
 #endif/*:25*//*27:*/
-#line 818 "main.w"
+#line 821 "main.w"
 #ifndef NREADLINE
 rl_readline_name="axis";
 using_history();
@@ -200,9 +201,9 @@ rl_attempted_completion_function=do_completion;
 signal(SIGINT,sigint_handler);
 initialise_evaluator();
 initialise_builtin_types();/*:9*//*14:*/
-#line 410 "main.w"
+#line 411 "main.w"
 {/*16:*/
-#line 457 "main.w"
+#line 460 "main.w"
 #ifndef NOT_UNIX
 if(paths.size()>0)
 {if(working_directory_name!=nullptr and chdir(paths[0])==0)
@@ -216,7 +217,7 @@ std::cerr<<"Warning: specified path '"<<paths[0]
 <<"' is not a directory."<<std::endl;
 }
 #endif/*:16*/
-#line 411 "main.w"
+#line 412 "main.w"
 own_value input_path=std::make_shared<row_value>(paths.size());
 id_type ip_id=main_hash_table->match_literal("input_path");
 auto oit=force<row_value>(input_path.get())->val.begin();
@@ -240,7 +241,7 @@ global_id_table->add(bt_id
 ,back_trace,mk_type_expr("[string]"),false);
 back_trace_pointer=global_id_table->address_of(bt_id);
 }/*:14*//*19:*/
-#line 564 "main.w"
+#line 567 "main.w"
 for(auto it=prelude_filenames.begin();it!=prelude_filenames.end();++it)
 {std::ostringstream log_stream;output_stream= &log_stream;
 main_input_buffer->push_file(*it,true);
@@ -289,14 +290,22 @@ logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
 output_stream= &std::cout;
 }/*:19*/
 #line 335 "main.w"
-/*deleted lines producing the startup banner*/
-#line 482 "main.w"
+if(do_prompting)
+std::cout<<"This is 'atlas' (version "
+<<atlas::version::VERSION<<", axis language version "
+axis_version "),\n"<<atlas::version::NAME<<
+" interpreter,\ncompiled on "<<atlas::version::COMPILEDATE
+<<(atlas::version::debugging?", with debugging":"")
+<<", readline "
+<<(atlas::version::with_readline?"enabled":"disabled")
+<<".\nhttp://www.liegroups.org/\n";/*17:*/
+#line 485 "main.w"
 last_value=shared_value(new tuple_value(0));
 last_type=void_type.copy();
 
 while(ana.reset())
 {/*26:*/
-#line 803 "main.w"
+#line 806 "main.w"
 #ifndef NOT_UNIX
 if(working_directory_name!=nullptr)
 #pragma GCC diagnostic push
@@ -304,7 +313,7 @@ if(working_directory_name!=nullptr)
 chdir(working_directory_name);
 #pragma GCC diagnostic pop
 #endif/*:26*/
-#line 487 "main.w"
+#line 490 "main.w"
 expr_p parse_tree;
 int old_verbosity=verbosity;
 std::ofstream redirect;
@@ -320,7 +329,7 @@ if(verbosity==2 or verbosity==3)
 {auto write_mode=
 verbosity==2?std::ios_base::trunc:std::ios_base::app;
 verbosity=old_verbosity;/*20:*/
-#line 618 "main.w"
+#line 621 "main.w"
 {redirect.open(ana.scanned_file_name(),std::ios_base::out|write_mode);
 if(redirect.is_open())
 output_stream= &redirect;
@@ -329,13 +338,13 @@ else
 continue;
 }
 }/*:20*/
-#line 505 "main.w"
+#line 508 "main.w"
 }
 if(verbosity==1)
 std::cout<<"Expression before type analysis: "<< *parse_tree
 <<std::endl;
 }/*18:*/
-#line 525 "main.w"
+#line 528 "main.w"
 {expression_ptr e;
 type_expr found_type=analyse_types(*parse_tree,e);
 if(verbosity>0)
@@ -351,9 +360,9 @@ last_value=pop_value();
 }
 destroy_expr(parse_tree);
 }/*:18*/
-#line 511 "main.w"
+#line 514 "main.w"
 }/*21:*/
-#line 634 "main.w"
+#line 637 "main.w"
 catch(error_base&err)
 {if(dynamic_cast<runtime_error* >(&err)!=nullptr)
 std::cerr<<"Runtime error:\n  ";
@@ -372,18 +381,17 @@ catch(std::exception&err)
 clean=false;
 reset_evaluator();main_input_buffer->close_includes();
 }/*:21*/
-#line 513 "main.w"
+#line 516 "main.w"
 output_stream= &std::cout;
 }/*:17*/
-#line 345 "main.w"
+#line 346 "main.w"
 signal(SIGINT,SIG_DFL);/*28:*/
-#line 830 "main.w"
+#line 833 "main.w"
 #ifndef NREADLINE
 clear_history();
 
 #endif/*:28*/
-#line 347 "main.w"
-/*suppress Bye*/
-/*std::cout<<"Bye.\n";*/
+#line 348 "main.w"
+std::cout<<"Bye.\n";
 return clean?EXIT_SUCCESS:EXIT_FAILURE;
 }/*:10*//*:2*/
