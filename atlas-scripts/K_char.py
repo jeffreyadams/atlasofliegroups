@@ -22,7 +22,7 @@ import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
 import multiprocessing   #only for cpu count
 
-progress_step_size=100 #how often to report progress
+progress_step_size=1000 #how often to report progress
 
 #simple reporting function
 def report(q,i,proc):
@@ -32,17 +32,19 @@ def report(q,i,proc):
 #q: queue of facet data, obtained from facet_file
 #procs: array of processes
 #i: number of process
-def atlas_compute(group,output_file_stem,q,procs,i):
+def atlas_compute(group,output_file_stem,queues,procs,i):
    facets_computed_local=0  #facets computed by this process
    global facets_computed #facets computed by all processes
    proc=procs[i]
+   q=queues[i]
    outputfile=group + "/" + output_file_stem + "_" + str(i) + ".at"  #atlas requires quotes if filename includes a directory
    f=open(outputfile,"w")
    firstline=True
    while not q.empty():
-      if q.qsize()%1000==0:
-         print("size of q: "+ str(q.qsize()),end="\r")
-      report(q,i,proc)
+      if q.qsize()%progress_step_size==0:
+#         print("size of q: "+ str(q.qsize()),end="\r")
+         print(str(q.qsize()) + "          " ,end="\r")
+#      report(q,i,proc)
       try:
          facet = q.get(False)
       except queue.Empty:
@@ -110,6 +112,18 @@ def main(argv):
       q.put(d)
    global facets_input
    facets_input=q.qsize()
+   small_queue_size=int(facets_input/max_cores)+1   #(n-1) queues of this size, plus one remainder
+   queues=[]
+   for i in range(max_cores):
+      new_q=queue.Queue()
+      for j in range(min(q.qsize(),small_queue_size)):
+         new_q.put(q.get(j))
+      queues.append(new_q)
+   print("number queues: ", len(queues))
+   qsizes=[]
+   for q in queues:
+      qsizes.append(q.qsize())
+   print("sizes: ", qsizes)
    print("number of facets in input file: ", facets_input)
    procs=[]
    T=[]   #array of results from the atlas processes
@@ -121,7 +135,7 @@ def main(argv):
    P=concurrent.futures.ThreadPoolExecutor()
    for i in range(max_cores):
          proc=procs[i]
-         T.append(P.submit(atlas_compute,group,output_file_stem,q,procs,i))
+         T.append(P.submit(atlas_compute,group,output_file_stem,queues,procs,i))
    total_facets=0
    print("list of process numbers/number of facets computed")
    for t in T:

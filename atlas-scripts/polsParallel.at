@@ -21,8 +21,8 @@ means that you have completed facet #X.}
 set number_fundamental_facets(RealForm G)=[int]:
  for i:ss_rank(G)+1 do #facets_fundamental(G,i) od
 
-{version of TEST with just the facets}
-set facets(RealForm G, int dim) = 
+
+set facets(RealForm G, int dim) =
     begin
 let rh=G.rho
 then xo = G.x_open
@@ -70,6 +70,47 @@ in   for FV@k in facets
 	 od
 	 end
 
+{just the facets of given dimension, and fundamental facet # i}
+set facets(RealForm G, int dim,int i) =
+begin
+let rh=G.rho
+then xo = G.x_open
+then vd = FPP_vertex_data (G,-1)
+then () = facet_verbose:=false
+then varName = "Facets"
+then E8sizes = [ 610995,   25762046, 298908428, 1566837152,4413546720,
+    7147951104, 6675056640,  3344302080, 696729600]
+then size = if G = E8_s then E8sizes[dim] else
+    W_fund_d_facets_card(G,dim) fi
+then FVind = null(dim+1), zero = null(G.rank)
+then bary = ratvec: zero/1, wbF = ratvec: zero/1, gamma2 = ratvec:
+    zero/1, wbeta0 = zero, bup = zero, bdown = zero
+then pol = null_K_module(G)
+then facets = [FacetVerts]: facets_fundamental(G,dim)
+{in   for FV@k in facets}
+then FV=facets[i]
+{then ()=prints("#facets: ", #facets, "FV: ", FV) }
+then bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
+then irdw = integrality_datum(G,bary_F)
+in for w in affine_orbit_ws(G,bary_F)
+    do let () = wbF := w*bary_F, iw = inverse(w)
+    then (x3,) = from_dominant(irdw, iw*G.two_rho)
+    in for tau in FPPtauRoots(G,wbF, -1)
+     do let () = wbeta0 := -tau + w*G.two_rho
+     then gamma2 = wbF + w*G.two_rho
+     then () = bup :=  wbeta0 + ratvec_as_vec(w*(x3*(iw*gamma2)) - gamma2)
+     then () = FVind:=
+      for v in (AffineCoWeylElt:(tau,w))*FV do vd.lookup(v) od.sort
+       then () = bary := w*bary_F + tau
+       then () = bdown := -inverse(x3)*(iw*bup)
+       in prints("[" + bary.to_string + "," + bup.to_string + "," + bdown.to_string +"]")
+    od{for tau}
+   od{for w}
+end
+
+set get_facets(RealForm G)=
+    ##for dim: ss_rank(G)+1 do facets(G,dim) od
+    
 set facets(RealForm G)=void:
 for dim: ss_rank(G)+1 do facets(G,dim) od
 
