@@ -2050,14 +2050,23 @@ set purity (KTypePol P) = (int,int,int):
 
 {		Rapid look-up in certain fixed structures		}
 
-set index_in ([vec] L) { equal size vectors } = (vec->int):
+set index_in = ([vec]->(vec->int)):
+   let limit = [30].to_bitset { $2^{30}$ } in
+   ([vec] L) { equal size vectors } (vec->int):
   if =#L then (vec .)int: minus_1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
      then x0 = KGB(G,0)
-     then P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
-  in (vec v) int: P[K_type(x0,v)].int_part-1
+  in if #L<limit
+     then let P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+          in (vec v) int: P[K_type(x0,v)].int_part-1
+     else let P = null_K_module(G) +
+             for v@i in L
+	     do let (q,r)= (i+1)\%limit in (Split:(r,q),K_type(x0,v))
+	     od
+	  in (vec v) int: let (r,q) = %P[K_type(x0,v)] in q*limit+r-1
+     fi
   fi
 
 set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):

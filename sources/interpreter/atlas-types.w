@@ -2030,6 +2030,39 @@ a finite computation by working modulo the root lattice.
     }
 }
 
+@ The following function should produce the set of all facet barycentres from a
+given one in the fundamental alcove, without invoking |affine_orbit_ws|.
+
+@< Local function definitions @>=
+void FPP_numers_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  for (RootNbr alpha : rd->val.fundamental_alcove_walls())
+  { auto ev = gamma->val.dot_Q(rd->val.coroot(alpha));
+    if (not rd->val.is_simple_root(alpha))
+      ev += 1;
+    if (ev.is_negative())
+    { std::ostringstream o;
+      o << "Rational weight is not in fundamental alcove (coroot " @|
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev;
+      throw runtime_error(o.str());
+    }
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<matrix_value> @|
+    (weyl::FPP_facet_numers(rd->val,rd->W(),gamma->val)));
+
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
@@ -2115,6 +2148,8 @@ install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 		"(RootDatum,[int],int->[WeylElt])");
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
 		"(RootDatum,ratvec->[WeylElt])");
+install_function(FPP_numers_wrapper@|,"FPP_numers",
+		"(RootDatum,ratvec->mat)");
 
 
 @*1 Weyl group elements.
