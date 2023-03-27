@@ -924,8 +924,8 @@ partial_block: (Param->[Param]): return partial block as list of parameters
   length. Non-final parameters are omitted. If the original parameter is final,
   then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
-block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
-  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+block_Hasse: (Param->mat): Hasse diagram of Bruhat order of block of parameter
+  Calling KGB_Hasse(p) ensures the full block containing the parameter p is
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
   exactly the two elements, namely x et z. The matrix is indexed by the numbers

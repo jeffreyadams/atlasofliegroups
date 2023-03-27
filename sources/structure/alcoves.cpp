@@ -349,6 +349,7 @@ Weight root_vertex_simple
   }
 
   assert(false); // we should have found a vertex in the root lattice
+  return result; // keep compiler happy
 
 } // |root_vertex_simple|
 
