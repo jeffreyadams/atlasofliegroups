@@ -17,12 +17,12 @@
 #in atlas:
 #>facetsE6dim4 facets(E6_s,4)   {4 dim facets}
 #>facetsE6dim4 facets(E6_s)     {all facets}
-import sys, time, os, getopt, subprocess, queue
+import sys, time, os, getopt, subprocess, queue,gc
 import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
 import multiprocessing   #only for cpu count
 
-progress_step_size=1000 #how often to report progress
+progress_step_size=10 #how often to report progress
 
 #simple reporting function
 def report(q,i,proc):
@@ -38,18 +38,17 @@ def atlas_compute(group,output_file_stem,queues,procs,i):
    proc=procs[i]
    q=queues[i]
    outputfile=group + "/" + output_file_stem + "_" + str(i) + ".at"  #atlas requires quotes if filename includes a directory
-   f=open(outputfile,"w")
+   f=open(outputfile,"wb", buffering=1000000)
    firstline=True
    while not q.empty():
       if q.qsize()%progress_step_size==0:
-#         print("size of q: "+ str(q.qsize()),end="\r")
-         print(str(q.qsize()) + "          " ,end="\r")
+         print(str(q.qsize()) + "(" + str(i) + ")          " ,end="\r")
+         print("get_count: ", str(gc.get_count()))
 #      report(q,i,proc)
       try:
          facet = q.get(False)
       except queue.Empty:
          quit_arg='{}'.format("\n quit").encode('utf-8')
-         proc.stdin.write(quit_arg)
          print("quitting", i)
          report(q,i,proc)
       else:
@@ -64,12 +63,13 @@ def atlas_compute(group,output_file_stem,queues,procs,i):
             firstline=False
          else:
             line=","+line
-         f.write(line)
+         word="hello"
+         f.write(line.encode())
 
       facets_computed+=1  #total facets computed by all processed
       facets_computed_local+=1
    #end of while loop, last line write "]"
-   f.write("]")
+   f.write("]".encode())
    return(i,facets_computed_local)
 
 def main(argv):
