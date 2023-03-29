@@ -91,11 +91,11 @@ set nice_format (RootDatum rd) = string: rd.Lie_type.nice_format
  such as C1, B1, D1,D2,D3,...
  so have to deal with B2=C2 as a special case
 }
-set normalize_Lie_type_matrix(mat M)=
-assert(shape(M)= (16,8),"Matrix is wrong shape");
-M:=update_matrix_entry(M,1,1,M[1][1]+M[2][1]);
-M:=update_matrix_entry(M,2,1,0);
-M
+set normalize_Lie_type_matrix (mat M) = mat:
+( assert(shape(M)= (16,8),"Matrix is wrong shape")
+; M[1,1] +:= M[1,2]; M[1,2]:=0 { move C2 contribution to B2, clearing former }
+; M
+)
 
 {two complex groups are locally isomorphic iff they have the same
 (normalized) Lie_type_matrix}
