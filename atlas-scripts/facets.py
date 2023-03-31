@@ -1,9 +1,10 @@
 #!/bin/python3
 
 #python script to compute the fpp
-#command line arguments:
-#usage: facets.py group rank
-#example: facets.py E8_s 8
+#usage: facets.py -g group -d dimension -o output_directory
+#example: facets.py -g E8_s -d 4 -c 20 -o facets_E8
+#compute number #ff of fundamental facets of dimension d
+#write files facets_E8/E8_s_dim_3_i (0\le i\le #ff-1)
 
 import sys, time, os, getopt, subprocess, queue
 import concurrent.futures
@@ -12,14 +13,9 @@ import multiprocessing   #only for cpu count
 
 progress_step_size=100 #how often to report progress
 
-#simple reporting function
-#call the atlas process proc, with arguments:
-#q: queue of facet data, obtained from facet_file
-#procs: array of processes
-#i: number of process
 def atlas_compute(group,output_dir,procs,dim,i):
    atlas_arg='{}'.format("\n  facets(" + group + "," + str(dim) + "," + str(i) + ")\n").encode('utf-8')
-   outputfile=  output_dir + "/facets_" + group + "_dim" + str(dim) + "_" + str(i)
+   outputfile=  output_dir + "/facets_" + group + "_dim_" + str(dim) + "_" + str(i)
 #   print("atlas_arg; ", atlas_arg)
    f=open(outputfile,"w")
    proc=procs[i]
@@ -35,22 +31,19 @@ def atlas_compute(group,output_dir,procs,dim,i):
 def main(argv):
    opts, args = getopt.getopt(argv, "g:c:d:o:")
    if len(opts)==0:
-      print("Usage: \n-g: group\n-c: number of cores\n-d: dimension\n-o: output directory")
+      print("Usage: \n-g: group\n-d: dimension\n-o: output directory")
       exit()
    for opt, arg in opts:
        if opt in ('-g'):
           group=arg
        elif opt in ('-d'):
           dim=int(arg)
-       elif opt in ('-c'):
-          max_cores=int(arg)
        elif opt in ('-o'):
           output_dir=arg
    if not os.path.exists(output_dir):
       os.makedirs(output_dir)
    print("group: ", group)
    print("dimension: ", dim)
-   print("number of cores: ", max_cores)
    print("output directory: ", output_dir)
    #run atlas once to determine number of fundamental facets
    proc=subprocess.Popen(["../atlas","polsParallel.at"], stdin=PIPE,stdout=PIPE)
