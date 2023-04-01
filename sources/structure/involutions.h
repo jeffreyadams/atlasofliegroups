@@ -63,7 +63,7 @@ class InvolutionData
   void swap(InvolutionData&);
   // manipulators
 private:
-  void classify_roots(const RootSystem& rs); // workhorse for contructors
+  void classify_roots(const RootSystem& rs); // workhorse for constructors
 public:
   void cross_act(const Permutation& r_perm); // change (cheaply) to conjugate
 
@@ -245,7 +245,7 @@ class InvolutionTable
   // like |y_pack|, but direct |lift| left-inverse: |y_unlift(i,y_lift(i,y))==y|
   // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates
   TorusPart y_unlift(InvolutionNbr inv, const Weight& lifted) const
-  { return TorusPart // contructor reduces coordinates modulo 2
+  { return TorusPart // constructor reduces coordinates modulo 2
       ((data[inv].M_real*lifted) / 2); // division precedes that reduction
   }
 

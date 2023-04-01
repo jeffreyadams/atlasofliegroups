@@ -33,7 +33,7 @@ set finalize ([Param] P) = ParamPol: { will fail on an empty list }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
-set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
+set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
 {properties of groups}
@@ -45,7 +45,7 @@ set in_distinguished_fiber (KGBElt x) = bool:
 
 set distinguished_fiber (RealForm G) = [KGBElt]:
   for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
-  
+
 set ss_rank (RootDatum rd) = semisimple_rank(rd)
 
 set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)

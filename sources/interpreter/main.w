@@ -336,7 +336,10 @@ int main(int argc, char** argv)
        << atlas::version::VERSION @| << ", axis language version " @|
        axis_version "),\n" @| << atlas::version::NAME << @|
        " interpreter,\ncompiled on " @|  << atlas::version::COMPILEDATE
-       << ".   http://www.liegroups.org/\n";
+       << (atlas::version::debugging ? ", with debugging" : "")
+       << ", readline "
+       << (atlas::version::with_readline ? "enabled" : "disabled")
+       << ".\nhttp://www.liegroups.org/\n";
 @)
   @< Enter the main command loop @>
   signal(SIGINT,SIG_DFL); // reinstall default signal handler
@@ -431,6 +434,8 @@ until other initialisations have been done), but we defer the details.
 
 @ We can now define the functions that are used in \.{buffer.w} to access the
 input path.
+
+@h <string>
 
 @< Definitions of other functions @>=
 

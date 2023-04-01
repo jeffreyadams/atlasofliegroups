@@ -12,6 +12,7 @@
 
 #include <cstdio>   // not obviously used, but appears helpful for Windows
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <sstream>
 #include <cassert>
@@ -43,7 +44,7 @@
   remain somewhat of a grey area here.
 
   The basic class is the |CommandNode| class, of which a few instances will be
-  explitly constructed at initialisation in separate modules, such as
+  explicitly constructed at initialisation in separate modules, such as
   mainmode.cpp. Each instance defines a set of recognized names, with
   associated action functions. These instances serve as base class for
   |CommandTree|, which includes additional links that allow defining a
@@ -78,7 +79,7 @@
   invalid; such commands therefore should pop any such descendant modes. Since
   a function that was propagated by inheritance does not know from which mode
   it was called, this operation currently requires such functions to be
-  explicitly redefined in all decendants of the mode it affects, each
+  explicitly redefined in all descendants of the mode it affects, each
   redefinition executing the proper number of pop operations. This might be
   improved.
 
@@ -99,7 +100,7 @@ namespace commands {
   // called for their construction also populate |help_mode|
   CommandTree help_mode(helpNode());
 
-// static mode variables, declared here to control order of intialisation
+// static mode variables, declared here to control order of initialisation
 
   CommandTree empty_mode(emptyNode());
   CommandTree& main_mode = empty_mode.add_descendant(mainNode());
@@ -211,7 +212,7 @@ void CommandNode::addCommands(const CommandNode& source)
 
 /* the following function exists to remedy the fact that |look_up| does not
    record the path to the match it has found (supposing it did); its calling
-   interface is already compicated as it is. So we ask our children which one
+   interface is already complicated as it is. So we ask our children which one
    knows the mode that was returned. The interrogation is repeated recursively
    down, but in practice very few modes exist at all, and this is very quick.
  */
@@ -521,7 +522,7 @@ void use_tag() // lacking a help file, we might just print the tag as help
   module :
 
     - ambiguous(ext,name) : handles multiple completions;
-    - getIntreractive(strm, name, prompt) : get a command from the user;
+    - getInteractive(strm, name, prompt) : get a command from the user;
 
 ******************************************************************************/
 

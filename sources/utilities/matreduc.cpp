@@ -147,8 +147,8 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& row,
 			   matrix::PID_Matrix<C>& col)
 {
-  const size_t m=M.numRows();
-  const size_t n=M.numColumns();
+  const size_t m=M.n_rows();
+  const size_t n=M.n_columns();
 
   row=matrix::PID_Matrix<C>(m); // initialise |row| to identity matrix
   col=matrix::PID_Matrix<C>(n);
@@ -262,8 +262,8 @@ template<typename C>
 matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
 				    std::vector<C>& diagonal)
 {
-  size_t m=M.numRows();
-  size_t n=M.numColumns(); // in fact start of known null columns
+  size_t m=M.n_rows();
+  size_t n=M.n_columns(); // in fact start of known null columns
 
   matrix::PID_Matrix<C> result (m); // initialise |result| to identity matrix
   matrix::PID_Matrix<C> ops; bool flip=false;
@@ -419,12 +419,12 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
     if (b[i] != C(0))
       throw std::runtime_error("unsolvable system");
 
-  b.resize(col.numRows(),0); // adapt size in opposite sense to $A$
+  b.resize(col.n_rows(),0); // adapt size in opposite sense to $A$
   col.apply_to(b); // finally reconstruct value of |x|
   return b;
 }
 
- // instantiations
+// instantiations
 
 using Num = arithmetic::Numer_t;
 

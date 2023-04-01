@@ -203,7 +203,7 @@ BitSet<dim> d_rel_support;
     representatives for the quotient among the basis for |d_space| */
   const BitSet<dim>& support() const { return d_rel_support; }
 
-  const BitVectorList<dim> basis() const // reprentatives for generators
+  const BitVectorList<dim> basis() const // representatives for generators
   { BitVectorList<dim> result; result.reserve(d_rel_support.count());
     for (auto it=d_rel_support.begin(); it(); ++it)
       result.push_back(d_space.basis(*it));

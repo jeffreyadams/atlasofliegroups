@@ -7,12 +7,14 @@
   For license information see the LICENSE file
 */
 
-#include "bigint.h"
+#include <limits>
+#include <cmath>
 #include <cassert>
 #include <iomanip>
 #include <stdexcept>
 #include <cstring>
-#include <cmath>
+
+#include "bigint.h"
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -126,10 +128,29 @@ bool big_int::operator== (const big_int& x) const
   return true;
 }
 
+template<typename C> // a signed integer type, no more than 32 bits long
+C big_int::convert () const
+{
+  constexpr auto bit_length = std::numeric_limits<C>::digits;
+  assert(bit_length<32);
+  constexpr digit bound = 1UL<<bit_length;
+  if (size()>1 or (bound <= d[0] and d[0] < -bound))
+    throw std::runtime_error("Integer value to big for conversion");
+  return static_cast<C>(d[0]);
+}
+
 int big_int::int_val() const
 { if (size()>1)
     throw std::runtime_error("Integer value to big for conversion");
   return static_cast<int>(d[0]);
+}
+
+unsigned int big_int::uint_val() const
+{ if (is_negative())
+    throw std::runtime_error("Negative integer where unsigned is required");
+  if (not (size()<2 or (size()==2 and d[1]==0)))
+    throw std::runtime_error("Integer value to big for conversion");
+  return d[0];
 }
 
 arithmetic::Numer_t big_int::long_val() const
@@ -351,6 +372,18 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(0); // ensure positive sign
 }
 
+big_int& big_int::operator*= (digit x)
+{ if (is_negative())
+  {
+    negate(); // now |*this| has been made non-negative
+    mult_add(x,0);
+    negate();
+  }
+  else
+    mult_add(x,0);
+  return *this;
+}
+
 big_int& big_int::operator*= (int x0)
 { const bool neg = (x0<0)xor(is_negative()); // whether result is negative
   digit x = x0<0 ? -static_cast<digit>(x0) : x0; // convert type to |digit|
@@ -380,7 +413,7 @@ big_int::big_int (const bitmap::BitMap& b, bool negative)
 {
   const auto cap=b.capacity();
   d.reserve(cap/32+1);
-  unsigned int i; // this needs to survive following loop
+  size_t i; // this needs to survive following loop
   for (i=0; i+32<=cap; i+=32)
     d.push_back(b.range(i,32));
   // now |i<=cap<i+32|, add |cap-i+1| bits, including |negative|
@@ -498,7 +531,7 @@ void print (std::ostream& out, big_int&& number, bool print_minus)
     auto last = number.shift_modulo(1000000000u); // that is $10^9<2^{32}$
     auto old_w = out.width(); // see whether a width was specified
     if (old_w>9) // consider only these widths, as 9 digits are certainly used
-      out.width(old_w-9); // remove 9 from witdth specification in recursion
+      out.width(old_w-9); // remove 9 from width specification in recursion
     print(out,std::move(number),print_minus);
     char prev=out.fill('0'); // in these trailing words, we show leading '0's
     out << std::setw(9) << last; // use exactly 9 digits for final part
@@ -628,7 +661,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
       it[-1]=0; // store the 0 digit in quotient, independently of |below_0|
       continue; // don't change remainder, don't change the |below_0| status
     }
-    acc = 0; // now use as accumlator for subtracting or adding to the remainder
+    acc = 0; // now use as accumulator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
     if (not below_0)
     { // do subtraction complemented: sandwiched between |~|, \emph{add} product
@@ -664,7 +697,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
 	static_cast<digit>(acc)!=0; // namely whether |acc=0xFFFFFFFF|
     }
   }
-  while (it+div.size()!=d.rend()); // stop after last |div.size()| words ajusted
+  while (it+div.size()!=d.rend()); // stop after last |div.size()| words adjusted
 
   if (below_0) // then we must add $1$ to quotient and add |div| the remainder
   {
@@ -887,9 +920,9 @@ bool big_int::bitwise_subset (const big_int& x) const
   return true; // if we came here, there are no bits witnessing falsity
 } // |big_int::bitwise_subset|
 
-int big_int::index_of_set_bit(unsigned n) const
+int big_int::index_of_set_bit(size_t n) const
 {
-  unsigned i=0;
+  size_t i=0;
   for ( ; i<d.size(); ++i)
   {
     digit dig = d[i];
@@ -918,7 +951,7 @@ int big_int::bit_length() const
     return 32*(d.size()-1)+ bits::lastBit(d.back());
 }
 
-// shift left bits in fixed length array |d|; caller assumes responsability
+// shift left bits in fixed length array |d|; caller assumes responsibility
 void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
 {
   assert(n!=0); // caller will avoid this, and shift by 32 would be undefined
@@ -931,7 +964,7 @@ void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
   *it <<= n; // this shifts zeros into the lowest |n| bits
 }
 
-// shift right bits in fixed length array |d|; caller assumes responsability
+// shift right bits in fixed length array |d|; caller assumes responsibility
 void big_int::LSR (unsigned char n) // unsigned down-shift (divide by $2^n$)
 {
   assert(n!=0); // caller should avoid this, shift by 32 would be undefined
@@ -970,22 +1003,22 @@ big_int lcm(const big_int& a,const big_int& b)
 
 big_rat big_rat::operator+ (const big_rat& x) const
 { big_int d = gcd(den,x.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat(num*x.den+x.num*den, den*x.den);
   big_int q = x.den/d;
   big_int numer = num*q+x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
+  return dd==1 ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_rat big_rat::operator- (const big_rat& x) const
 { big_int d = gcd(den,x.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat(num*x.den-x.num*den, den*x.den);
   big_int q = x.den/d;
   big_int numer = num*q-x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
+  return dd==1 ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_int big_rat::floor () const { return num/den; }
@@ -997,7 +1030,7 @@ big_int big_rat::quotient (const big_rat& r) const
   { return (num*r.den)/(den*r.num); }
 big_rat big_rat::operator% (const big_rat& r) const
 { big_int d = gcd(den,r.den);
-  if (d.is_one())
+  if (d==1)
     return big_rat::from_fraction((num*r.den)%(den*r.num),den*r.den);
   const big_int q = den/d;
   return big_rat::from_fraction((num*(r.den/d))%(q*r.num),q*r.den);
@@ -1019,6 +1052,9 @@ big_rat big_rat::power (int e) const
     result.invert();
   return result;
 }
+
+// template member instances
+template short int big_int::convert<short int> () const;
 
 } // |namespace arithmetic|
 } // |namespace atlas|

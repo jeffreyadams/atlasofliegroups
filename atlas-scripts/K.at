@@ -35,7 +35,7 @@ set k_highest_weight (KGBElt x, vec mu) = KHighestWeight: ((),x,mu)
 1. KType: built-in with components |KGBElt x| and |vec lambda_rho| (difference)
    These may or may not be any of standard, dominant, zero and semi-final,
    but thye are always equivalent to a $\Z$-linear combination of final K types
-   which means dominant (therefore stanndard) nonzero and semi-final; when
+   which means dominant (therefore standard) nonzero and semi-final; when
    contributed to a KTypePol this expansion is automatically performed.
    The set of final K-types is in bijection with K-hat
    With |lambda=lambda_rho+rho(G)| the mentioned attributes are:
@@ -224,8 +224,6 @@ set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
   Param:
   convert_K_type(G,two_lambda,torus_bits,cartan)
 
-set real_form (KType p)  = RealForm: p.x.real_form
-set root_datum (KType p) = RootDatum: p.x.root_datum
 set real_form (KHighestWeight hw) = RealForm: hw.x.real_form
 set root_datum (KHighestWeight hw) = RootDatum: hw.x.root_datum
 set K_0 (KHighestWeight hw) = RealForm: hw.x.K_0

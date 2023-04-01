@@ -16,7 +16,7 @@
 
 namespace atlas {
 
-namespace repr {
+namespace weyl {
 
 RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma);
 
@@ -24,7 +24,12 @@ RatNum frac_eval(const RootDatum& rd, RootNbr i, const RatWeight& gamma);
 RootNbrSet wall_set
   (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& integrals);
 
+sl_list<RootNbr> sorted_by_label
+  (const RootSystem& rs, RootNbrSet walls, const RootNbrSet& integrals);
+
 StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr);
+
+Weight root_vertex_of_alcove (const RootDatum& rd, const RatWeight& gamma);
 
 // try to change |sr| making |N*gamma| integral weight; report whether changed
 bool make_multiple_integral
@@ -34,7 +39,19 @@ bool make_multiple_integral
 arithmetic::Numer_t  // returns |N|
   simplify(const Rep_context& rc, StandardRepr& sr);
 
-} // |namespace repr|
+
+sl_list<WeylElt> finite_subquotient
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
+sl_list<WeylElt> complete_affine_component
+  (const RootSystem& rs, const WeylGroup& W, RootNbrSet stab, RootNbr alpha);
+
+sl_list<WeylElt> basic_orbit_ws
+(const int_Matrix& Cartan, Generator i,
+ const WeylGroup& W, std::vector<WeylElt> gens);
+sl_list<WeylElt> affine_orbit_ws
+  (const RootDatum& rd, const WeylGroup& W, RatWeight gamma);
+
+} // |namespace weyl|
 
 } // |namespace atlas|
 

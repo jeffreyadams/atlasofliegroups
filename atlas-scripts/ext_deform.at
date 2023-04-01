@@ -71,7 +71,7 @@ set recursive_deform (Param p, mat delta, (Param->ParamPol)terms) = KTypePol:
       if ed_verbose then prints("full_def with: sc=", sc, ", p=", p) fi;
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc = G.null_module, at_nu0 = K_type_pol_extended(p,delta)
+      let acc = G.null_module, at_nu0 = sc*K_type_pol_extended(p,delta)
       in
       if ed_verbose then prints("deformation at nu=0 contributes ",at_nu0) fi;
       for factor in reducibility_points(p)

@@ -212,7 +212,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   // compute Cayley transform
   GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const
-  { leftMult(a.w,s); return a; }
+  { left_multiply(a.w,s); return a; }
   // flag length-decreasing complex cross actions and inverse Cayley transforms
   RankFlags descents(const GlobalTitsElement& a) const;
 
@@ -256,7 +256,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   { t += y_values::exp_2pi(rw); }
 
   void add(const RatWeight& rw,GlobalTitsElement& a) const
-  // the following would be necessary to get a true right-mulitplication
+  // the following would be necessary to get a true right-multiplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
   { add(rw,a.t); }
 
@@ -365,7 +365,7 @@ class TitsElt
   // Canonical Weyl part of the Tits group element.
   const WeylElt& w() const { return d_w; }
 
-/* the same componenent under another name (to make it smell sweeter); note
+/* the same component under another name (to make it smell sweeter); note
    however that this returns a value, not a reference (to avoid making the
    assumption here that |TwistedInvolution| is identical to |WeylElt|)
    */

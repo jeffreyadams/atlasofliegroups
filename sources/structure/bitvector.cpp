@@ -145,11 +145,11 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 
 template<unsigned int dim>
 BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
-  : d_data(m.numColumns(),BitSet<dim>())
-  , d_rows(m.numRows())
-  , d_columns(m.numColumns())
+  : d_data(m.n_columns(),BitSet<dim>())
+  , d_rows(m.n_rows())
+  , d_columns(m.n_columns())
 {
-  assert(m.numRows()<=dim);
+  assert(m.n_rows()<=dim);
   for (size_t i=0; i<d_rows; ++i)
     for (size_t j=0; j<d_columns; ++j)
       d_data[j].set(i, (m(i,j)&1)!=0 );
@@ -177,7 +177,7 @@ BitVector<dim> BitMatrix<dim>::right_act(const BitVector<dim>& source) const
 {
   assert(d_rows==source.size());
   BitVector<dim> result(d_columns);
-  for (unsigned j=0; j<numColumns(); ++j)
+  for (unsigned j=0; j<n_columns(); ++j)
     result.set(j,source.dot(column(j)));
   return result;
 }
@@ -237,10 +237,10 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 {
   BitVectorList<dim> result;
 
-  if (numColumns()==0)
+  if (n_columns()==0)
     return result; // no unknowns, so there are no nontrivial solutions
 
-  assert(numColumns()<=dim);
+  assert(n_columns()<=dim);
   std::vector<BitVector<dim> > eqn;
   eqn.reserve(d_rows);
 
@@ -251,7 +251,7 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 
   // normalize |eqn|
 
-  BitSet<dim> t; // will flag a subset of [0,numColumns()[
+  BitSet<dim> t; // will flag a subset of [0,n_columns()[
 
   Gauss_Jordan(t,eqn);
 
@@ -261,17 +261,17 @@ template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
    kernel, there is one such generator $v$ for each position $j$ not flagged
    by |t|, and apart from $v[j]=1$ it can only have nonzero bits on positions
    flagged by |t|; the bits at those positions are given by coordinates $j$
-   taken from the succesive elements of the normalised basis |eqn|.
+   taken from the successive elements of the normalised basis |eqn|.
 
    Note that this is already a normal basis for the complement of |t| as
    explained below under |normalSpanAdd|, but that complement not lex-minimal.
 */
 
-  result.reserve(numColumns()-t.count());
-  for (size_t j = 0; j < numColumns(); ++j)
+  result.reserve(n_columns()-t.count());
+  for (size_t j = 0; j < n_columns(); ++j)
     if (not t[j])
     {
-      BitVector<dim> v(numColumns(),j); // start with unit vector $e_j$
+      BitVector<dim> v(n_columns(),j); // start with unit vector $e_j$
       size_t c = 0;
       for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it, ++c)
 	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
@@ -294,7 +294,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 {
   assert(d_rows==m.d_rows);
   assert(d_columns==m.d_columns);
-  for (size_t j = 0; j < numColumns(); ++j)
+  for (size_t j = 0; j < n_columns(); ++j)
     d_data[j] ^= m.d_data[j]; // not |+|, since these are |BitSet|s
 
   return *this;
@@ -304,10 +304,10 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 /*
   Right multiply our BitMatrix by |m|.
 
-  As in apply, this can be done rather efficently by computing a whole column
+  As in apply, this can be done rather efficiently by computing a whole column
   at a time.
 
-  NOTE : of course |m.numRows()| must be equal to |numColumns()|.
+  NOTE : of course |m.n_rows()| must be equal to |n_columns()|.
 */
 template<unsigned int dim>
 BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
@@ -395,7 +395,7 @@ template<unsigned int dim> BitMatrix<dim> BitMatrix<dim>::section() const
 /* at this point, the number of pivots equals the rank $r$ of $A$, and if $P$
    is the row-selection matrix for |pivots|, ten $A'=P.A$ is surjective. We
    shall take a right-inverse $B'$ of $A'$, and put $B=B'.P$. From the fact
-   that $A'.B'=I_r$ it follws that $B.A.B=B$, and from $\ker(A)=\ker(A')$ it
+   that $A'.B'=I_r$ it follows that $B.A.B=B$, and from $\ker(A)=\ker(A')$ it
    can be deduced that $A.B.A=A$. By construction, column $j$ of $B$ is
    nonzero only if |pivots.test(j)| holds, and |basis[pivot_col[j]]| will do.
  */
@@ -558,7 +558,7 @@ template<unsigned int dim>
     }
     else // trivial equation
       if (x)
-	return false;  // if right hand side non-null system is contradictary
+	return false;  // if right hand side non-null system is contradictory
       else {}          // otherwise just drop the null equation
   }
 
@@ -591,7 +591,7 @@ bool solvable(const std::vector<BitVector<dimeq> >& eqns,
   BitSet<dimeq> pivots;
   /*
     We solve by imagining an extra unknown for the final position,
-    solve the homogenous system (find the kernel of transpose matrix), and
+    solve the homogeneous system (find the kernel of transpose matrix), and
     look for a kernel element with final coordinate equal to $-1$
     (which working over $Z/2Z$ is of course the same as $1$).
   */
@@ -658,14 +658,14 @@ template<unsigned int dim> struct FirstBit
   Replace |b| by the ordered canonical basis of the vector space $V$
   it spans. Flags in |t| the set of coordinate positions associated to |b|.
 
-  What is flagged in |t| is the set $J$ in described in the comment for
+  What is flagged in |t| is the set $J$ described in the comment for
   |normalSpanAdd| below. For any $j$, only |b[j]| has a nonzero bit at the
-  position $j'$ where number |j| among the raised bits of |t| is found;
-  consequently, for any $v\in V$, the coordinate of |b[j]| in $v$ is $v[j']$.
+  position $j'$ where number |j'=t.n_th_bit(j)||; consequently, for any
+  $v\in V$, the coordinate of |b[j]| in $v$ is $v[j']$.
 
   This function works essentially by repeatedly calling |normalSpanAdd| for
   the vectors of |b|, replacing |b| by the resulting canonical basis at the
-  end. However, the selected coordiante positions |f| do not come out
+  end. However, the selected coordinate positions |f| do not come out
   increasingly this way, so we have to sort the canonical basis by leading bit
   position. This amounts to setting $a'[k]=a[p(k)]$ where
   $p(0)\ldots,p(l-1)$ is the result of sorting $f[0]\ldots,f[l-1]$
@@ -707,7 +707,7 @@ template<unsigned int dim>
   repeatedly throwing in $e_i$s linearly independent to $V$ and previously
   chosen ones). The normal basis of $V$ corresponding to $I$ is obtained by
   projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto $V$ along
-  $e_I$ (i.e., according to the direct sum decompostion $k^d=V\oplus e_I$).
+  $e_I$ (i.e., according to the direct sum decomposition $k^d=V\oplus e_I$).
   This can be visualised by viewing $V$ as the function-graph of a linear map
   from $k^J$ to $k^I$ (with the coordinates of domain and codomain interwoven
   at the positions $J$ and $I$, respectively); then the normal basis is the
@@ -744,7 +744,7 @@ template<unsigned int dim>
 
   BitVector<dim> w = v;
 
-  // substract canonical projection of |v| onto span of |a|
+  // subtract canonical projection of |v| onto span of |a|
   for (size_t j = 0; j < a.size(); ++j)
     if (w[f[j]]) // if coordinate $v[f[j]]$ is $1$, subtract |a[j]|
       w -= a[j];

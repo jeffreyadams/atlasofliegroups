@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <set>
 
 #include "innerclass.h"
@@ -256,7 +257,7 @@ void makeDotFile
     const Poset::EltList& clist = bruhat.hasse(i);
     size_t clsize = clist.size();
 
-    // add edges for the ones that arent already there
+    // add edges for the ones that are not already there
     for (size_t j=0; j<clsize; j++) {
       Poset::Elt e = clist[j];
       if (edges[i].count(e) == 0) {

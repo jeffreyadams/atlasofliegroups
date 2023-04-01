@@ -25,7 +25,7 @@
 #include "descents.h"	// inline methods
 #include "lietype.h"    // |ext_gen|;
 #include "dynkin.h"     // |DynkinDiagram|
-#include "subsystem.h"  // data memeber in |common_block|
+#include "subsystem.h"  // data member in |common_block|
 #include "repr.h"       // hash table in |common_block|, |StandardReprMod|
 
 namespace atlas {
@@ -74,7 +74,7 @@ public: // this |struct| must be public, though mainly used in derived classes
 
   }; // |struct EltInfo|
 
-protected: // all fields may be set in a derived class contructor
+protected: // all fields may be set in a derived class constructor
   struct block_fields // per block element and simple reflection data
   {
     BlockElt cross_image;
@@ -280,17 +280,17 @@ class Block : public Block_base
   Block(const KGB& kgb,const KGB& dual_kgb);
 
  public:
-  // use one of the following two pseudo contructors to build |Block| values
-  static Block build // pseudo contructor with small (and forgotten) KGB sets
+  // use one of the following two pseudo constructors to build |Block| values
+  static Block build // pseudo constructor with small (and forgotten) KGB sets
     (InnerClass&, RealFormNbr rf, RealFormNbr drf);
 
-  static Block build // pseudo contructor with stored KGB sets
+  static Block build // pseudo constructor with stored KGB sets
     (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
 
   ~Block() {}
 
 // copy, assignment and swap
-  Block(const Block& b); // copy contructor, must be accessible, but is unused
+  Block(const Block& b); // copy constructor, must be accessible, but is unused
  private:
   Block& operator=(const Block& b); // we don't however need to assign
  public:
@@ -406,7 +406,7 @@ class common_block : public Block_base
   // it is assumed that |shift| is orthogonal to the integral system
   void shift (const RatWeight& shift);
 
-  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using arugment
+  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using argument
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
     (common_block&& sub, const BlockEltList& embed,
@@ -425,7 +425,7 @@ class common_block : public Block_base
 
 
  private:
-// sort by increaing length, then |x|, then |y|; permute tables correspondingly
+// sort by increasing length, then |x|, then |y|; permute tables correspondingly
   void sort();
 
 }; // |class common_block|

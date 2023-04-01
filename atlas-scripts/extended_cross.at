@@ -3,7 +3,7 @@
 <extended_types.at { for ext_type_1@(int,ExtParam) }
 
 { this script defines the cross action by roots from the integrality datum
-  associated to the (infinitsimal character of the) extended parameter in
+  associated to the (infinitesimal character of the) extended parameter in
   question, selected by (positive) root index in that integrality_datum
 }
 

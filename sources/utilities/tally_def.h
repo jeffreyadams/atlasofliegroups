@@ -57,7 +57,7 @@ template <typename Count>
       if (count[i]!=maxCount)
 	if (count[i]+multiplicity<maxCount) // then |count[i]| not saturated
 	{
-	  bool result= count[i]==0; // this might just be the first occurence
+	  bool result= count[i]==0; // this might just be the first occurrence
 	  count[i]+=multiplicity;
 	  return result;
 	}

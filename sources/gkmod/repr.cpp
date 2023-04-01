@@ -401,7 +401,7 @@ bool Rep_context::is_normal(const StandardRepr& z) const
 }
 
 // |z| semifinal means that no singular real roots satisfy the parity condition
-// no assumptions about the real subsytem, so all real roots must be tested
+// no assumptions about the real subsystem, so all real roots must be tested
 bool Rep_context::is_semifinal(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -601,7 +601,7 @@ void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 
 // auxiliary: move to canonical involution for (singular) |gens| subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
-{ // simply-singular coroots are simple, so no need to constuct a subsystem
+{ // simply-singular coroots are simple, so no need to construct a subsystem
   TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
   complex_crosses(z,inner_class().canonicalize(tw,gens));
   assert(tw == kgb().involution(z.x_part));
@@ -644,7 +644,7 @@ void Rep_context::deform_readjust(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |deform_readjust|
 
-// this also ensures a chosen singular-complex minumum when there are multiple
+// this also ensures a chosen singular-complex minimum when there are multiple
 // but that only arises when singular-real descents exist (not so in deformation)
 void Rep_context::normalise(StandardRepr& z) const
 {
@@ -886,7 +886,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   be because \emph{all} upstairs real roots becoming negative by the necessary
   conjugation will be downstairs complex roots (so contribute to the shift).
 
-  Sum of positve real roots becoming negative at $\theta'=^{to\_simple}\theta$
+  Sum of positive real roots becoming negative at $\theta'=^{to\_simple}\theta$
 */
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
@@ -1912,13 +1912,13 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
 
   int_Matrix signed_P = Q_mat.inverse();
-  BitMap odd_length(signed_P.numRows());
+  BitMap odd_length(signed_P.n_rows());
   { unsigned int i=0;
     for (const BlockElt z : retained)
       odd_length.set_to(i++,block.length(z)%2!=0);
   }
 
-  matrix::Vector<Split_integer> coef(signed_P.numRows());
+  matrix::Vector<Split_integer> coef(signed_P.n_rows());
   auto pos = result.size()-1;
   for (auto it=result.begin(); not result.at_end(it); ++it,--pos)
     if (not it->second.is_zero())
@@ -2019,7 +2019,7 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
 {
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
-    z = alcove_center(*this,z);
+    z = weyl::alcove_center(*this,z);
   RatNumList rp=reducibility_points(z);
 
   deformation_unit zn(*this,z);
@@ -2069,7 +2069,7 @@ SR_poly twisted_KL_sum
   const RatWeight& diff,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
-  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+  // compute cumulated KL polynomials $P_{x,y}$ with $x\leq y$ survivors
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
@@ -2320,7 +2320,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
-    z=alcove_center(*this,z);
+    z = weyl::alcove_center(*this,z);
   const auto& delta = inner_class().distinguished();
 
   RatNumList rp=reducibility_points(z);

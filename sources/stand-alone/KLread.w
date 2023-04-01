@@ -184,7 +184,7 @@ public:
   std::vector<ullong> coefficients(KLIndex i) const;
 };
 
-@ In the constructor we can set certain informations in the initialisation
+@ In the constructor we can set some information in the initialisation
 part, but not all because we are limited to setting them in the order
 declared, and not perform any statements in between. So we just get |n_pols|
 by reading the very first bytes of the file, and then storing the file offset

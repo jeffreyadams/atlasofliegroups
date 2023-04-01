@@ -28,7 +28,7 @@ set passedflag (bool flag) = string: if flag then "passed" else "failed" fi
 
 { test list of parameters for same group for unitarity/non-unitarity
   parameters=[(param p, int predicted)]
-  predicted takes values 1,0, or -1 which respecively mean
+  predicted takes values 1,0, or -1 which respectively mean
   parameter is predicted to be unitary / no prediction / predicted non-unitary
 }
 set test ([(Param,int)] parameters,bool verbose) =

@@ -67,7 +67,7 @@ class common_context;
   We add a field |height| that is determined by the other ones (in the context
   of a given real reductive group), indeed just by $\lambda_0$. It is useful
   because this is the first statistic used for sorting parameters when they
-  are combinined into "parameter polynomials", and this will be faster if we
+  are combined into "parameter polynomials", and this will be faster if we
   don't need the somewhat lengthy computation of the height (twice) for each
   comparison made. On the other hand we now need to compute the height once
   for each parameter constructed, even if it never enters a polynomial.
@@ -152,7 +152,7 @@ class StandardReprMod
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class StandardReprMod|
 
-// hashable type for |StandardReprMod| upto shift orthogonal to integral system
+// hashable type for |StandardReprMod| up to shift orthogonal to integral system
 class Reduced_param
 {
   KGBElt x;
@@ -304,7 +304,7 @@ class Rep_context
     const;
   StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
-  { return shift(diff,srm); } // preform |shift| on a copy and return it
+  { return shift(diff,srm); } // perform |shift| on a copy and return it
 
   RatWeight gamma_lambda(const StandardReprMod& z) const
   { return z.gamma_lambda(); }
@@ -468,8 +468,8 @@ public:
     performed, and if found the index is then used via |place| to find the block
   * a table |K_type_hash| of |K_type| values having been found to occur in
     deformation formulas, which allows compact representation of the latter
-  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coeffient)
-    respectively |ext_kl::Pol| (integer coeffient) polynomials, which can be
+  * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coefficient)
+    respectively |ext_kl::Pol| (integer coefficient) polynomials, which can be
     shared among blocks to reduce the size of their tables of such polynomials
     (they may also choose to maintain their local polynomials themselves).
 */
@@ -507,7 +507,7 @@ class Rep_table : public Rep_context
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
-  blocks::common_block& lookup // constuct only partial block if necessary
+  blocks::common_block& lookup // construct only partial block if necessary
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
@@ -598,7 +598,7 @@ public:
 
 /*
   This class holds relevant values that remain fixed across an extended block,
-  and are unchaged under integral changes to |gamma|. Data fields that are
+  and are unchanged under integral changes to |gamma|. Data fields that are
   removed with respect to |ext_block::context| are |d_gamma|, |lambda_shifts|.
   Methods that are absent: |gamma|, |lambda_shift|
 */

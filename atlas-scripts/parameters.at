@@ -1,34 +1,53 @@
 <basic.at
 <tits.at
 { various ways of defining parameters }
-{ KGB elements in this file, but not KGBElt_gen}
-{ tf=torus_factor, aka "normalized torus factor", is \theta-fixed
-  \xi=\exp_1(torus_factor/2)\exp_1(\rho^\vee/2)\sigma_w\xi_0
-     =\exp(2\pi i(torus_factor+\rho^\vee/2))sigma_w\xi_0
-  \exp_1(t)=\exp(2\pi i t) is the "base 1 exponential function"
 
+{ torus_factor, aka "normalized torus factor", is $\theta$-fixed,
+  $\xi=\exp_1(torus_factor/2)\exp_1(\rho^\vee/2)\sigma_w\xi_0$ where
+  $\exp_1(t)=\exp(2\pi i t)$ is the "base 1 exponential function"; note
+  "over 2" in those $\exp_1$ terms, Marc writes $\exp_{-1}(x)=\exp(\pi ix)$
+  instead, for which $\xi=\exp_{-1}(torus_factor+\rho^\vee)\sigma_w\xi_0$.
+  Jeff prefers $\xi=exp_1(unnormalized_torus_factor)\sigma_w\xi_0$
+  Therefore:
    |unnormalized_torus_factor=(torus_factor+rho^\vee)/2|
-   |torus_factor=(2*unnormalized_torus_factor-rho^\vee)*(1+theta)/2|  (theta acts on right)
+   |torus_factor=2*unnormalized_torus_factor-rho^\vee|
+  NOTE: result of |unnormalized_torus_factor| is not $\theta-fixed$
+  probably better not to use |unnormalized_torus_factor|
 }
 set unnormalized_torus_factor (KGBElt x) = ratvec:
-  (torus_factor(x)+rho_check(root_datum(x)))/2
+  (torus_factor(x)+rho_check(real_form(x)))/2
 
 { compute xi^2 and test if it is central
   this is formula when v= unnormalized_torus_factor
   xi=exp(2\pi iv)\sigma_w\xi_0
-  xi^2=exp(2\pi i[(1+^theta)*v+(1-^theta)*rho^v/2])
-      =exp(2\pi i[v*(1+theta)+rho^v*(1-theta)/2])
-      =exp((2*v-rho^v)*(1+theta)/2 + rho^v)
-      =exp(torus_factor(xi) + rho^v)
-      =exp(base_grading_vector(real_form(xi)) + rho^v)
+  xi^2=exp(2\pi i[(1+^theta)*v+(1-^theta)*rho^v/2]
+      =v*(1+theta)+rho^v*(1-theta)/2
+      =rho^v + (2*v-rho^v)*(1+theta)/2
 }
+set square_unnormalized (
+  InnerClass ic,mat theta,ratvec unnormalized_torus_factor) = ratvec:
+  (unnormalized_torus_factor*(1+theta)+rho_check(ic)*(1-theta)/2)%1
 
-{this is the square of exp(2\pi iv)sigma_w\xi_0,
-i.e. v is the unnormalized torus factor of a generalized KGB element}
+set square_normalized (InnerClass ic,mat theta,ratvec torus_factor) = ratvec:
+  square_unnormalized(ic,theta,(torus_factor+rho_check(ic))/2)
 
-{ the following is ths same as central_cocharacter@RealForm in Vogan-dual.at }
+{ for valid arguments one should have
+  square(ic,theta,tf)=square(real_form(ic,theta,tf))
+}
+set square = square_normalized@(InnerClass,mat,ratvec)
+set square2 (InnerClass ic,mat theta,ratvec tf) = ratvec:
+  (tf*(1+theta)+2*rho_check(ic))%2 { this should always be twice |square| }
+
+{ the following is the same as central_cocharacter@RealForm in Vogan-dual.at }
 set square (RealForm G) = ratvec: (base_grading_vector(G)+rho_check(G))%1
 set square (KGBElt x) = ratvec: square(real_form(x))
+
+{ tf=normalized torus_factor: xi=exp(\pi i(tf\rho^v))\sigma_w\xi_0
+  so square_is_central(ic,theta(x),torus_factor(x)) should always be true
+}
+set square_is_central (InnerClass ic,mat theta,ratvec tf) = bool:
+  let sq = square(ic,theta,tf), alpha = simple_roots(ic) in
+  all(n_columns(alpha), (int i): is_integer(sq*alpha[i]) )
 
 set parity (Param p,vec alpha_hat) = bool: { parity condition }
 ( let x = x(p), gamma=infinitesimal_character(p) in
@@ -57,7 +76,7 @@ set dual_inner_class (Param p) = InnerClass:
   value of square(y) need not be what it should be, and the construction of a
   KGB_elt may consequently fail with "Not a valid strong involution" error.
 
-  A probably more sucessful attempt is in Vogan-dual.at:  dual_KGB and y_alt.
+  A probably more successful attempt is in Vogan-dual.at:  dual_KGB and y_alt.
 }
 {
 set y (Param p, InnerClass G_vee) = KGBElt:
@@ -125,7 +144,6 @@ let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
 
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
-  let ()=prints("lambda=", lambda(gamma,x,y)) in 
   parameter(x,lambda(gamma,x,y),nu(gamma,x)) { final argument gamma would work }
 
 { the next function used to be wrong, with choose_g(x,y) instead }

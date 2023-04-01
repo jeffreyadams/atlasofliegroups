@@ -495,7 +495,7 @@ struct func_type
 @/: arg_type(std::move(a)), result_type(std::move(r)) @+{}
 @/func_type(func_type&& f) = default; // move constructor
   func_type& operator=(func_type&& f) = default; // move assignment
-  func_type copy() const // in lieu of a copy contructor
+  func_type copy() const // in lieu of a copy constructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
 
@@ -1911,6 +1911,8 @@ allow the number of components to be zero, which can be recognised by having a
 terminating character at the read position right from the start; when the
 happens the loop is no entered at all, an the empty list of components will
 give an empty tuple.
+
+@h <string>
 
 @< Function definitions @>=
 type_expr scan_in_parens(const char*& s)

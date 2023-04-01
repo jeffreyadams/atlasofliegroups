@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #include "input.h"	// input buffers
 
@@ -276,7 +277,7 @@ void readInnerClass(InnerClassType& ict, input::InputBuffer& buf,
   Precondition: it has been checked that the read operation will succeed:
   successive read operations will yield a valid simple Lie type, optionally
   followed by a dot and a valid Lie type. Reading ends on EOF or when a
-  simple Lie type is not imediately followed by a dot.
+  simple Lie type is not immediately followed by a dot.
 
   To normalize the occurrence of torus factors, this function expands Tn with
   n>1 to n copies of T1

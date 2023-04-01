@@ -66,9 +66,9 @@ namespace cartanclass {
 
   We fix an involutive automorphism $\tau$ of the complex torus $H$, and
   consider the collection of all strong involution $x$ of $G$ (which are
-  elements of "G semidirect delta") that induce $\tau$ on $H$; conjuguation
+  elements of "G semidirect delta") that induce $\tau$ on $H$; conjugation
   defines an action of $H$ on the collection, and strong real forms are
-  oribits for this action. A strong real form has square equal to some
+  orbits for this action. A strong real form has square equal to some
   element $z$ in $Z(G)^\delta$. (Changing the element $z$ by $(1+\delta)Z$ is
   relatively innocuous, and the quotient $Z^delta/[(1+delta)Z]$ is finite.)
 
@@ -89,7 +89,7 @@ namespace cartanclass {
 
   For a given $z$, orbits of strong real forms for that $z$ under the action
   of the imaginary Weyl group form a partition of the fiber group (which
-  parition depends on $z$); this is the basis for the classification of weak
+  partition depends on $z$); this is the basis for the classification of weak
   real forms. These partitions (for various $z$) are stored in |d_strongReal|,
   and accessed by the function |fiber_partition|. A strong real form may be
   labelled by a pair of integers: the second labelling the element $z$ (or

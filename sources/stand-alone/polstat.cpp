@@ -45,7 +45,7 @@ void scan_polynomials
   tally_vec leading_t(65536);   // distribution of leading coefficients
   tally_vec coeff_t(11808808);  // distribution of all coefficients
 
-  unsigned int deg_max=0,val_max=0; // maxmial degree, valuation found;
+  unsigned int deg_max=0,val_max=0; // maximal degree, valuation found;
 
   for (size_t l=0; l<=bi.max_length; ++l)
   {
@@ -219,7 +219,7 @@ void scan_polynomials
   tally_vec coeff(11808808);  // distribution of all coefficients
   tally_vec cont(256);        // distribution of contents (=gcd(coefficients))
 
-  unsigned int deg_max=0,val_max=0; // maxmial degree, valuation found;
+  unsigned int deg_max=0,val_max=0; // maximal degree, valuation found;
 
   for (size_t l=0; l<=bi.max_length; ++l)
   {

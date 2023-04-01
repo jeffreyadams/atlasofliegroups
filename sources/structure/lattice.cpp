@@ -86,7 +86,7 @@ template<typename I, typename O>
 }
 
 /*
-  This (unsused) template function is like |baseChange|, but goes from weights
+  This (unused) template function is like |baseChange|, but goes from weights
   expressed in terms of |[firstb, lastb[| to ones expressed in terms of the
   original basis. This is easier, as we don't have to invert the matrix!
 */
@@ -115,7 +115,7 @@ template<typename I, typename O>
 */
 CoweightList perp(const LatticeMatrix& b)
 {
-  const auto r = b.numRows();
+  const auto r = b.n_rows();
   LatticeMatrix R,C;
   CoeffList factor = matreduc::diagonalise(b,R,C);
 
@@ -132,11 +132,11 @@ CoweightList perp(const LatticeMatrix& b)
 
 LatticeMatrix kernel (LatticeMatrix M)
 {
-  size_t m= M.numColumns(); // dimension of space to which |M| can be applied
+  size_t m= M.n_columns(); // dimension of space to which |M| can be applied
   LatticeMatrix C; bool flip; // flip is dummy
   matreduc::column_echelon(M,C,flip);
 
-  return C.block(0,M.numColumns(),m,m); // final columns span $\ker(M)$
+  return C.block(0,M.n_columns(),m,m); // final columns span $\ker(M)$
 }
 
 LatticeMatrix eigen_lattice (LatticeMatrix M, LatticeCoeff lambda)
@@ -146,7 +146,7 @@ LatticeMatrix eigen_lattice (LatticeMatrix M, LatticeCoeff lambda)
 
 LatticeMatrix row_saturate(const LatticeMatrix& M)
 {
-  size_t n= M.numColumns(); // dimension of space to which |M| can be applied
+  size_t n= M.n_columns(); // dimension of space to which |M| can be applied
   CoeffList factor;
   LatticeMatrix b = matreduc::adapted_basis(M.transposed(),factor);
 
