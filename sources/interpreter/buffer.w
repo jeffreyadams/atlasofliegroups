@@ -454,7 +454,7 @@ class BufferedInput
 @)
     char shift (); // inspect a new character
     void unshift (); // back up so last character will be reconsidered
-    bool eol () const; // end of line: |true| if |shift| would return a newline
+    bool eol () const; // end of line: |true| if |shift| would call |getline|
     bool getline ();
          // fetch a new line to replace current one; |true| if successful
     bool push_file (const char* file_name,bool skip_seen);
@@ -819,23 +819,26 @@ to a good start.
 @*1 Getting a line from the buffer.
 %
 The member function |getline| is usually called at times when |eol()| would
-return |true| (otherwise some input will be discarded). This should only
-happen when a new request for input arrives \emph{after} the end-of-line
-condition has been transmitted at an earlier request (otherwise we would wait
-for new input before executing a command), which is why we always return a
-newline character from |shift()| before making |eol()| true. Thus our caller
-does not have to distinguish between a fresh end-of-line condition and one
-that has already been acted upon. For us it means that we should actually
-store a newline character at the end of line buffer, in spite of the fact that
-|std::getline| and |readline| strip that character. This also means that there
-is no objection to calling our |getline| automatically in case |shift| is
-called when |eol()| is true (any end-of-line action has been done at such a
-point); we shall do so, and in fact this removes the burden of monitoring
-|eol()| from our callers (one could even consider making that function
-private, but its publicity does no real harm). We return success if either no
-error flags were set on our |istream| parent, or else if at least some
-characters were read (probably followed by an end-of-file condition in absence
-of a final newline); in the latter case the next call will return false.
+return |true| (otherwise some input will be discarded). This should only happen
+when a new request for input arrives \emph{after} the end-of-line condition has
+been transmitted in the form of a newline character at an earlier request
+(otherwise we would wait for new input before executing a command), which is why
+we store a newline character at the end of line buffer, in spite of the fact
+that |std::getline| and |readline| strip that character. This also means that
+there is no objection to calling our |getline| automatically in case |shift| is
+called when |eol()| is true (our caller has already seen the newline character,
+and presumably acted accordingly); we shall do so, and in fact this removes the
+burden of monitoring |eol()| from our callers. We still provide |eol| as a
+public method, as it allows the caller to know after acting upon a newline
+character if maybe there is already further input present (in which case |eol|
+returns |false|). This is rare (since we don't expect the string returned by
+|getline| to have any embedded newline characters), but possible with newer
+versions of GNU |readline| in the case of a multi-line paste action by the user.
+
+We return success if either no error flags were set on our |istream| parent, or
+else if at least some characters were read (probably followed by an end-of-file
+condition in absence of a final newline); in the latter case the next call will
+return false.
 
 As we said in the introduction, we shall treat escaped newlines here, so that
 the lexical analyser does not need to worry about them (and this will allow
