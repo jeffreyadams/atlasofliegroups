@@ -62,7 +62,7 @@ namespace atlas {
   $\alpha_s$ associated to |x| is odd (noncompact). To facilitate the
   determination of that grading, the grading shift information is stored as
   bitsets |d_alpha[s]| for each simple-imaginary root. Since in |Fiber|, the
-  grading shifts are organised by generator of the fiber group, the neceesary
+  grading shifts are organised by generator of the fiber group, the necessary
   "transposition" of the information is done by the constructor below.
 */
 
@@ -977,27 +977,27 @@ toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
 
   Explanation: $W^\theta$ is the semidirect product of $W^R x W^{iR}$ (Weyl
   groups of the real and imaginary root systems), with the diagonal subgroup
-  of $W^C$, where $W^C$ is the Weyl group of the root system $Phi^C$
+  of $W^C$, where $W^C$ is the Weyl group of the root system $\Phi^C$
   orthogonal to both the sums of positive imaginary and real roots. That root
   system is complex for the involution induced by |theta|, i.e., it
   decomposes as orthogonal sum of two subsystems interchanged by |theta|;
   we return a basis of one "half" of it.
 
   NOTE: there was a bad bug here in an earlier version, which amounted to the
-  implicit assumption that the standard positive root system for the $Phi^C$
+  implicit assumption that the standard positive root system for the $\Phi^C$
   is |theta|-stable; this is very false. It would be true for an involution
   of the based root datum (the distinguished involution of the inner class),
   which would stabilise everything mentioned here, and in fact it is also true
   for any involution that is canonical in its (twisted conjugation) class; in
-  general however although $Phi^C$ is |theta|-stable (the sum of positive
+  general however although $\Phi^C$ is |theta|-stable (the sum of positive
   imaginary roots is |theta|-fixed, and the sum of positive real roots is
   |-theta|-fixed), its subsets of positive and simple roots are not. As a
-  consequence the root |rTau| below need not correspond to any vertex of the
+  consequence the root |img| below need not correspond to any vertex of the
   Dynkin diagram |dd|. The component of |dd| to whose root system the various
-  |rTau| found for the component |c| belong (the "other half" that we want to
+  |img| found for the component |c| belong (the "other half" that we want to
   exclude) can be characterised as the vertices |i| whose simple roots |rb[i]|
-  are non-orthogonal to some of those roots |rTau|. Hence we exclude for each
-  |rTau| any nodes that are non-orthogonal to it.
+  are non-orthogonal to some of those roots |img|. Hence we exclude for each
+  |img| any nodes that are non-orthogonal to it.
 */
 RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
 {
@@ -1014,31 +1014,29 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
   // get a (positive) basis for that root system, and its Cartan matrix
   RootNbrList rb=rd.simpleBasis(rs);
 
-  int_Matrix cm =rd.cartanMatrix(rb);
+  int_Matrix cm =rd.Cartan_matrix(rb);
 
   dynkin::DynkinDiagram dd(cm);
-
-  RankFlags b(constants::lMask[dd.rank()]); // all bits set
+  auto comps = dd.components(); // make a modifiable copy
 
   RootNbrList result;
-  while (b.any())
+  for (auto it = comps.begin(); not comps.at_end(it); ++it)
   {
-    size_t s = b.firstBit();
+    for (unsigned i : it->support)
+      result.push_back(rb[i]); // translate via |rb| to root number in |rd|
+    RootNbr img = involution_image_of_root(rb[it->support.firstBit()]);
 
-    // get component of chosen vertex, and flag them as done (i.e., reset)
-    RankFlags c = dd.component(s); b.andnot(c);
-
-    for (RankFlags::iterator it = c.begin(); it(); ++it)
+    // search and destroy a following component with a root not orth. to |img|
+    for (auto jt = std::next(it); not comps.at_end(jt); )
     {
-      // include roots corresponding to vertices in this component |c|
-      result.push_back(rb[*it]);
-
-      /* exclude matching componont by removing vertices of simple roots
-         non-orthogonal to the (non-simple) |theta|-image of |rb[*it]| */
-      RootNbr rTau = involution_image_of_root(rb[*it]);
-      for (RankFlags::iterator jt = b.begin(); jt(); ++jt)
-	if (not rd.is_orthogonal(rb[*jt],rTau))
-	  b.reset(*jt);
+      for (unsigned j : jt->support)
+	if (not rd.is_orthogonal(rb[j],img))
+	  goto found;
+      ++jt;
+      continue;
+    found:
+      comps.erase(jt);
+      break;
     }
   }
   return result;
@@ -1047,7 +1045,7 @@ RootNbrList CartanClass::makeSimpleComplex(const RootDatum& rd) const
 // The size of the twisted involution orbit for this class.
 size_t CartanClass::orbit_size(const RootSystem& rs) const
 {
-  LieType lt=dynkin::Lie_type(rs.cartanMatrix());
+  LieType lt=dynkin::Lie_type(rs.Cartan_matrix());
 
   // initialise |result| to size of full Weyl group
   size::Size result = weylsize::weylSize(lt);

@@ -21,7 +21,7 @@ So \sum_i a_i(v)p_i (finite sum) can be viewed two ways:
 2) \sum_i a_i(v)LKT(I(p_i))  [a finite sum of K_reps with Z[v] coefficients]
 
 We could use the same data structure for both. This is similar to
-using parameters for both stanard or irreducible modules: you need to
+using parameters for both standard or irreducible modules: you need to
 know which is appropriate, by the context.
 
 Instead we'll use an extra void to specify when something is a

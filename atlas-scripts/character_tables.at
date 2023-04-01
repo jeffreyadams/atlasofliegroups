@@ -67,7 +67,7 @@ set !trivial_character_table = CharacterTable:
    let Wct = trivial_class_table, id(int i)=int: i
 in ( Wct, (int i):"e", (int i):"triv", [[1]], [(0,0)] )
 
-{ attributes inhereited from the |class_table| component }
+{ attributes inherited from the |class_table| component }
 set root_datum (CharacterTable ct) = RootDatum: ct.class_table.root_datum
 set rank (CharacterTable ct) = ct.root_datum.rank
 set order_W (CharacterTable ct) = ct.root_datum.order_W
@@ -125,7 +125,7 @@ set degree (CharacterTable ct) = (int i)int: let (d,) = ct.deg_spec[i] in d
 set special (CharacterTable ct) = (int i)int: let (,s) = ct.deg_spec[i] in s
 set generic_degree (CharacterTable ct) = (int i)int: ct.degree(ct.special(i))
 
-{ tensor_sign: defined on any charater: [int] -> [int] }
+{ tensor_sign: defined on any character: [int] -> [int] }
 set tensor_sign (CharacterTable ct) = ([int]->[int]):
    let sign=ct.sign in ([int] char): tensor(sign,char) { "free" |tensor| above }
 
@@ -184,7 +184,7 @@ set decompose(CharacterTable ct) = (vec v)[int]: { list of irrep multiplicities 
 
 { |mults| is a vector of multiplicities of the irreducible characters;
   return a list (without multiplicities) of the irreducible characters
-  of smallest degree occuring }
+  of smallest degree occurring }
 set smallest_degree_summands (CharacterTable ct,[int] mults) = [int]:
    let degrees = for m@j in mults do if m.> then [ct.degree(j)] else [] fi od.##
 in if =#degrees then [] { no multiplicities, empty result }

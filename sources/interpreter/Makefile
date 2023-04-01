@@ -93,7 +93,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/utilities/matreduc.o \
  $(sources_dir)/gkmod/K_repr.o \
  $(sources_dir)/gkmod/repr.o \
- $(sources_dir)/gkmod/alcoves.o \
+ $(sources_dir)/structure/alcoves.o \
  $(sources_dir)/structure/subsystem.o \
  $(sources_dir)/structure/involutions.o \
  $(sources_dir)/structure/y_values.o \
@@ -172,9 +172,9 @@ $(c++objects) $(Atlas_objects): %.o: %.cpp
 # For a long time we added manipulations here to preserve the date of existing
 # and unchanged targets, to prevent remaking nearly everything whenever any .w
 # file was modified, because the remakes the .h file(s). The mechanism is
-# commented out now however, as while it works reasonably for a seqential
+# commented out now however, as while it works reasonably for a sequential
 # make, it cases trouble when make is run with --jobs set to more than 1
-# The basic problem is that targets are temporily removed, so other makes fail
+# The basic problem is that targets are temporarily removed, so other makes fail
 %.cpp %.h: %.w $(CTANGLE)
 #	@if [ -f $*.cpp ]; then mv $*.cpp old_targets;\
 #                           else touch old_targets/$*.ccp; fi

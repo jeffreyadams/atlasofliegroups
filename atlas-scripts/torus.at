@@ -48,4 +48,3 @@ set project(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
 
 set inject(SubTorus T,vec lambda)=T*lambda
 set inject(SubTorus T)=(vec->vec):(vec lambda):T*lambda
-

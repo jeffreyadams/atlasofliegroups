@@ -82,6 +82,7 @@ has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
+@h <string>
 @h "buffer.h"
 @h "parse_types.h"
 @h "parser.tab.h"
@@ -393,7 +394,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   else if (std::isdigit(c))
     @< Scan a number @>
   else
-    @< Scan a token starting with a non alpha-numeric character @>
+    @< Scan a token starting with a non alphanumeric character @>
   input.locate(input.point(),locp->last_line,locp->last_column);
 @/if (state==initial)
     state=normal;

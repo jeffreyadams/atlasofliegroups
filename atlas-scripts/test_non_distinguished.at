@@ -4,6 +4,7 @@
 <Levi_subgroups.at {for standard_Levi_conjugacy_representatives}
 <all.at
 
+<<<<<<< HEAD
 {find standard Levi in G dual to Bala Cart Levi of dual orbit}
 set G_Levi(ComplexNilpotent O_v)=
 let G_v=O_v.root_datum then
@@ -22,6 +23,8 @@ let (S,H)=Bala_Carter_Levi_plus(O) {S=simple roots of Levi} then
 
 
 
+=======
+>>>>>>> master
 {This is meant to compute (at least the induced parameters in) a weak
 Arthur packet attached to a nilpotent O^vee for G^vee which is
 PRINCIPAL in a Levi L^vee.}
@@ -101,14 +104,18 @@ set induced_from_min_params (ratvec gamma, Parabolic P) = ParamPol:
    in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
 
 {now add over all real forms of P}
+<<<<<<< HEAD
 set unip_params_from_Levi_old(ratvec gamma, [int] A, RealForm G)=ParamPol:
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
 
+=======
+>>>>>>> master
 set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=ParamPol:
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
 
+<<<<<<< HEAD
 set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in for P_real in paras do (P_real,induced_from_min_params(gamma, P_real)) od
@@ -209,19 +216,28 @@ for orbit in dual_orbits(G) do (orbit,induced_unip_params(orbit,G)) od
 {Counts unipotent parameters found by induction for each dual
 nilpotent principal in some Levi}
 {set test_non_distinguished(RealForm G) = void:
+=======
+{Counts unipotent parameters found by induction for each dual
+nilpotent principal in some Levi}
+set test_non_distinguished(RealForm G) = void:
+>>>>>>> master
     let LeviClasses = standard_Levi_conjugacy_representatives(G)
     in for A in LeviClasses
        do prints("Levi ",A," with ",#unip_params_from_princ_in_Levi(A,G),
     	     	    " unipotent parameters.")
        od
+<<<<<<< HEAD
 }
 {
+=======
+>>>>>>> master
 
 {tests for each unipotent O^vee in the dual group, with Bala-Carter
 Levi L^vee, what unipotent reps arise by induction from L.  Output of
 this command should be compared to show_short(weak_packets(G). The
 numbers here are guaranteed to be less than or equal, and
 conjecturally equal.}
+<<<<<<< HEAD
 set test_all(RealForm G) =
     let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
     then Gd=dual(G) 
@@ -249,12 +265,17 @@ set non_distinguished(RealForm G,ComplexNilpotent O_v)=
     let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
     then Gd=dual(G)
     then rv=[([int],ComplexNilpotent,[Param])]:[]
+=======
+set test_all(RealForm G) = void:
+    let LeviClasses = standard_Levi_conjugacy_representatives(G), N= int:0
+>>>>>>> master
     in for A in LeviClasses
        do let PA=ComplexParabolic: (G,A)
 	  then LA = PA.Levi, shiftA = PA.rho_u
 	  then OAvs = distinguished_nilpotent_orbits(LA.dual)
 	  then gammaAs = for OAv in OAvs do OAv.H/2 od
 	  in for OAv@j in OAvs
+<<<<<<< HEAD
 	     do let G_dual_orbit=saturate(OAv,Gd) in
 	     if G_dual_orbit=O_v then
 	        let ()=prints("found O_v with L=", LA, " O_L_v: ", OAv.diagram) then
@@ -301,3 +322,14 @@ O_L_v.diagram.to_string,(#params).to_string,let (,c)=wp[i] in (#c).to_string,Bal
 od)
 
 }
+=======
+	     do let NA =  #unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
+		in prints("Levi ",A," dual unip ", OAv.H, " with ",
+		      	 NA, " unipotent parameters.");
+		   N:=N+NA
+	     od
+       od;
+       prints();
+       prints("Found total of ",N, " unipotent parameters.")
+
+>>>>>>> master

@@ -9,7 +9,7 @@ theta is an involution. G/G^theta is an elementary 2-group}
 
 set_type [DisconnectedGroup = (RootDatum rd,[vec] characters,[mat] automorphisms)]
 {characters: representatives of the 2-group ker(1+delta)/im(1-delta)=X^*(H^delta/(H^delta)_0)
-automorphisms: a set A of square matrices of size rank(rd)a, satisying:
+automorphisms: a set A of square matrices of size rank(rd)a, satisfying:
 1) M^2=1  (M\in A)
 2) MN=NM  (M,N in A)
 3) M is a distinguished automorphism:

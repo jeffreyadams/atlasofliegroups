@@ -242,7 +242,7 @@ in for i:n
 {
 a few issues here: come back and fix them, commented out for now
 
-{hodge_grading_irreducible(p) evaluted at v=s should equal c_form_irreducible(p)}
+{hodge_grading_irreducible(p) evaluated at v=s should equal c_form_irreducible(p)}
 set hodgeTestIrreducible(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
 set hodgeTestIrreducible([Param] params)=(bool,[bool]):
 let results=for p in params do hodgeTestIrreducible(p) od in (all(results),results)

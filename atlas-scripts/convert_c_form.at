@@ -46,7 +46,7 @@ set mu (KType t) = rat:
       -1 from pair is cancelled by -1 from action on
       [X_alpha,X_delta(alpha)=X_{alpha+delta(alpha)}
     if delta(alpha)=alpha, contributes 1 by reduction to simple case,
-  note: every really-simple root (simple among real roots) is actualy simple
+  note: every really-simple root (simple among real roots) is actually simple
 }
 set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
   let rd=x.root_datum, theta=x.involution in
@@ -62,7 +62,7 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
-{ function |mu| below was intially described in Vogan in email of Oct 25, 2016
+{ function |mu| below was initially described in Vogan in email of Oct 25, 2016
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
   be integer) will serve as exponents of |s|, therefore interpreted modulo 2

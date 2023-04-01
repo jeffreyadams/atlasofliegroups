@@ -493,7 +493,7 @@ void CoveringIterator::makeBasis(WeightList& b) const
   WeightList cb; // be adapted generators of the free subgroup modded out
   abelian::basis(cb,group(),*d_dcenter); // now cb has size c_rank
 
-  // resize the vectors in cb to accomodate zero "torus" coordinates
+  // resize the vectors in cb to accommodate zero "torus" coordinates
 
   for (size_t j = 0; j < cb.size(); ++j)
     cb[j].resize(c_rank+t_rank,0);
@@ -538,7 +538,7 @@ RatWeightList CoveringIterator::kernel_generators() const
   WeightList cb; // be adapted generators of the free subgroup modded out
   abelian::basis(cb,group(),*d_dcenter); // now cb has size c_rank
 
-  // resize the vectors in cb to accomodate zero "torus" coordinates
+  // resize the vectors in cb to accommodate zero "torus" coordinates
 
   for (size_t j = 0; j < cb.size(); ++j)
     cb[j].resize(c_rank+t_rank,0);

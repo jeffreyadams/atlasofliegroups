@@ -214,7 +214,7 @@ std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
   Symbols are to be interpreted from right to left as operations performed on
   an initially empty twisted involution; if the number |s| is followed by a
   '^' it means left multiplication by a (twisted-commuting) generator |s|, if
-  followed by an 'x' (for cross action) it means twiseted conjugation by |s|.
+  followed by an 'x' (for cross action) it means twisted conjugation by |s|.
 */
 std::ostream& printInvolution(std::ostream& strm,
 			      const TwistedInvolution& tw,
@@ -247,11 +247,11 @@ template<typename C>
 std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
 			  unsigned long width)
 {
-  std::vector<unsigned int> widths(m.numColumns(),width);
+  std::vector<unsigned int> widths(m.n_columns(),width);
 
   { std::ostringstream o;
-    for (size_t j=0; j<m.numColumns(); ++j)
-      for (size_t i=0; i<m.numRows(); ++i)
+    for (size_t j=0; j<m.n_columns(); ++j)
+      for (size_t i=0; i<m.n_rows(); ++i)
       {
         o.str(""); o << m(i,j);
 	size_t w=o.str().length()+1;
@@ -260,9 +260,9 @@ std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
       }
   }
 
-  for (size_t i = 0; i < m.numRows(); ++i)
+  for (size_t i = 0; i < m.n_rows(); ++i)
   {
-    for (size_t j = 0; j < m.numColumns(); ++j)
+    for (size_t j = 0; j < m.n_columns(); ++j)
       strm << std::setw(widths[j]) << m(i,j);
 
     strm << std::endl;

@@ -57,7 +57,7 @@ set character_formula_one_dimensional(Param p)=
 assert(dimension(p)=1,"p is not one-dimensional");
 let G=p.real_form then
 v=ratvec_as_vec(lambda(p)-rho(G)) then
-w=(1+involution(x(p)))*lie_radical_part(G,v)/2 then   {need to keep term on compact central torus}
+w=(1+involution(x(p)))*lie_coradical_part(G,v)/2 then   {need to keep term on compact central torus}
 cf=character_formula_trivial(G) in
 sum(G,for c@p in cf do c*parameter(x(p),lambda(p)+w+(1-involution(x(p)))*v/2,nu(p)) od)
 

@@ -70,7 +70,7 @@ in if node.tau_has_s
    fi
 
 { same as previous, except in the basis of irreducibles. Since length difference
-  is odd across all graph edges, just multipl off-diagonal part by -1 }
+  is odd across all graph edges, just multiply off-diagonal part by -1 }
 
 set graph_Hecke_irr_action_column (WGraph graph,int col_number,int s) =
      sparse_column:

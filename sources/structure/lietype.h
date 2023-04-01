@@ -90,11 +90,12 @@ struct LieType : public std::vector<SimpleLieType>
   typedef std::vector<SimpleLieType> base;
   LieType() : base() {}
   LieType(const base& b) : base(b) {}
+  LieType(base&& b) : base(std::move(b)) {}
 
   unsigned int rank() const;
   unsigned int semisimple_rank() const;
   int Cartan_entry(unsigned int i,unsigned int j) const;
-  int_Matrix Cartan_matrix() const; // square of sise |rank()| (maybe zero rows)
+  int_Matrix Cartan_matrix() const; // square of size |rank()| (maybe zero rows)
   int_Matrix transpose_Cartan_matrix() const;
   int_Matrix Smith_basis(CoeffList& invf) const;
 
@@ -102,7 +103,7 @@ struct LieType : public std::vector<SimpleLieType>
   { insert(end(),tail.begin(),tail.end()); return *this; }
 };
 
-// the follwing rather empty definition serves mainly to make |InnerClassType|
+// the following rather empty definition serves mainly to make |InnerClassType|
 // a genuine member of |namespace lietype| for argument-dependent lookup
 struct InnerClassType : public std::vector<TypeLetter>
 { // there are no additional data members

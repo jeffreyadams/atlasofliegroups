@@ -24,6 +24,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
@@ -386,7 +387,7 @@ void global_KGB::generate(size_t predicted_size)
 
 	// record whether |s| is imaginary for current involution
 	bool imaginary = new_nr==index // that is: twisted conjugation stable
-	  and not W.hasDescent(s,tw); // and |s| is a ascent (otherwise: real)
+	  and not W.has_descent(s,tw); // and |s| is a ascent (otherwise: real)
 
 	// generate cross links
 	for (KGBElt x=first_of_tau[index]; x<first_of_tau[index+1]; ++x)
@@ -566,7 +567,7 @@ KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
 	my_info.status.set(s,gradings::Status::Complex);
 	my_info.desc.set(s,lc<0);
       }
-      else if (weylGroup().hasDescent(s,current.w())) // real
+      else if (weylGroup().has_descent(s,current.w())) // real
       {
 	assert(child==x);
 	my_info.status.set(s,gradings::Status::Real);

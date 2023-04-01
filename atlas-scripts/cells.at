@@ -296,7 +296,7 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
  od
 od
 {
-MOVED ALL THE REST TO associated_variety_annihlator.at:
+MOVED ALL THE REST TO associated_variety_annihilator.at:
 
 {assuming integral infinitesimal character}
 set associated_variety_int(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse_special(st.ct.special_character(cell))

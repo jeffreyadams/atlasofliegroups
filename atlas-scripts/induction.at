@@ -10,14 +10,6 @@
 <finite_dimensional.at
 <W_reps.at
 
-{convenient output of distinguished fiber
- this should be in misc.at, but it calls tabulate}
-set show_distinguished_fiber(RealForm G)=void:
-tabulate(["#","simple roots","rho(x)"]#for x in distinguished_fiber(G) do
-  ##[[x.number.to_string],
-   ["" + ##for i:ss_rank(G) do status_text(i,x) + "," od +status_text(ss_rank(G),x)],
-    [rho(K_0(x)).to_string]] od)
-
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
 
@@ -259,7 +251,7 @@ then p_reg_cont=coherent_std(w,p_reg) in
 T_std(p_reg_cont,p.infinitesimal_character)
 
 {coherent continuation using only imaginary roots
- to avoid technical issues involving the fact that atlas automically
+ to avoid technical issues involving the fact that atlas automatically
  finalizes terms in a ParamPol, pass to the cuspidal Levi,
  on which all the roots are imaginary, apply coherent continuation
  there, and induce back

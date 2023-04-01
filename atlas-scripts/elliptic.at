@@ -11,7 +11,7 @@
   elements, which have no eigenvalue 1 for the restriction to the span of the
   roots (so any nontrivial central torus, which prevents any elements from being
   elliptic, is ignored). Every Weyl group element is relatively elliptic for a
-  Levi subgroup (not necessesarily standard) and hence conjugate to an element
+  Levi subgroup (not necessarily standard) and hence conjugate to an element
   relatively elliptic for a standard Levi subgroup; this serves in
   conjugacy_classes.at as basis for the generation of representatives of all
   conjugacy classes of Weyl group elements.
@@ -223,7 +223,7 @@ set elliptic_conjugacy_class_reps (RootDatum rd) = [WeylElt]:
    fi
 
 { Our main application is enumerating elliptic elements for standard Levi
-  subssystems. We make an adapted version of the previous function which on the
+  subsystems. We make an adapted version of the previous function which on the
   fly also ensures embedding into the full (non Levi) Weyl group
 }
 set elliptics_for_standard_Levi (RootDatum rd, [int] subset) = [WeylElt]:

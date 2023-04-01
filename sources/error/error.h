@@ -11,6 +11,7 @@
 #define ERROR_H
 
 #include <stdexcept>
+#include <string>
 
 namespace atlas {
 namespace error {
@@ -66,6 +67,8 @@ struct NumericOverflow {
 struct Cartan_error : public std::runtime_error
 {
   Cartan_error() : std::runtime_error("Illegal Cartan matrix") {}
+  Cartan_error(const char* msg)
+    : std::runtime_error(std::string("Illegal Cartan matrix: ")+msg) {}
 };
 
 

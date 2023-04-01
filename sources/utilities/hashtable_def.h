@@ -65,7 +65,7 @@ template <class Entry, typename Number>
 
 /*
   the manipulator |match| is like |find|, but with extension of the hash table,
-  which in some cases invloves rehahshing, if a new element is encountered
+  which in some cases involves rehahshing, if a new element is encountered
 */
 
 template <class Entry, typename Number>

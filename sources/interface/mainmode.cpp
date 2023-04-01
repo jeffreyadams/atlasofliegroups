@@ -225,7 +225,7 @@ namespace {
 void cmatrix_f()
 {
   prettyprint::printMatrix
-    (std::cout,current_inner_class().rootDatum().cartanMatrix());
+    (std::cout,current_inner_class().rootDatum().Cartan_matrix());
 
 }
 
@@ -346,7 +346,7 @@ void gradings_f()
 {
   InnerClass& ic = current_inner_class();
 
-  // get Cartan class; abort if unvalid
+  // get Cartan class; abort if invalid
   size_t cn=interactive::get_Cartan_class(ic.Cartan_set(ic.quasisplit()));
 
   ioutils::OutputFile file;
@@ -362,7 +362,7 @@ void strongreal_f()
 {
   InnerClass& ic = current_inner_class();
 
-  // get Cartan class; abort if unvalid
+  // get Cartan class; abort if invalid
   size_t cn=interactive::get_Cartan_class(ic.Cartan_set(ic.quasisplit()));
 
   ioutils::OutputFile file;

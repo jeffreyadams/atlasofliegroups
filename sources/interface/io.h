@@ -18,7 +18,7 @@ namespace atlas {
 
 namespace io {
 
-  extern const char* MESSAGE_DIR; // a modifyable pointer to const char
+  extern const char* MESSAGE_DIR; // a modifiable pointer to const char
 
 }
 

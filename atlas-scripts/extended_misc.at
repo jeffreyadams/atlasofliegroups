@@ -66,13 +66,8 @@ set twist (mat delta,Param p)=
   let (x,lambda_rho,gamma) = %p
   in parameter(twist(delta,x),delta*(lambda_rho+rho(real_form(x))),delta*gamma)
 
-set twist(mat delta,ParamPol P)=ParamPol:
-null_module(P.real_form) + for c@p in P do c*twist(delta,p) od
-
 set is_fixed (mat delta, Param p) = bool:
 { let ()=prints("is_fixed p:", p) in } p=twist(delta,p)
-
-set is_fixed (mat delta, ParamPol P) = bool:P=twist(delta,P) 
 
 set is_fixed (ratvec gamma, mat delta, KGBElt x,KGBElt y) = bool:
   is_fixed(delta,parameter(x,y,gamma))
@@ -104,6 +99,10 @@ set in_A (x_rep(v,theta)) = bool: let M=1+theta in in_lattice(M,M*v)
 }
 set is_equivalent (x_rep r1, x_rep r2) = bool:
   r1.theta=r2.theta and in_A(r1.v-r2.v,r1.theta)
+
+set square_is_central (InnerClass ic,x_rep(v,theta)) = bool:
+  square_is_central(ic,theta,v) { use the function defined in parameters.at }
+
 
 set root_datum (ExtParam E) = RootDatum: root_datum(E.ic)
 set rho        (ExtParam E) = ratvec: rho(E.root_datum)
@@ -158,9 +157,9 @@ set translate_to_dominant (ExtParam
   in
    ((ic,delta, gamma+shift,lambda_rho+shift,theta, g,l,omega, tau,t) , shift)
 
-set square_is_central(InnerClass ic,mat theta, ratvec v)=bool:true
-{is_integer((v*(1+theta) + ic.rho_check*(1-theta)/2)*ic.simple_roots)}
-
+{ for debugging:
+  test that an extended parameter satisfies the defining conditions
+}
 set valid (
     ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
 begin let OK=false { pessimist: avoids having to set this in many branches } in
@@ -172,7 +171,7 @@ begin let OK=false { pessimist: avoids having to set this in many branches } in
   elif omega!=-^theta then prints("Cartan involutions are not compatible")
   elif !=(g-l-rho_check(ic))*(1-theta)
   then prints("(1-^theta)g\ne (1-^theta)(l+rho^v)")
-  elif  !=(gamma-lambda_rho-rho(ic))*(1-omega)
+  elif !=(gamma-lambda_rho-rho(ic))*(1-omega)
   then prints("(1-^omega)gamma\ne (1-^omega)(lambda_rho+rho)")
   elif -l*(1-delta)!=t*(1+theta) then prints("(^delta-1)l\ne (1+^theta)t")
   elif -(1-delta)*lambda_rho!=(1-theta)*tau { recall that -theta=^omega }

@@ -53,7 +53,7 @@ void InvolutionData::classify_roots(const RootSystem& rs)
   d_simpleReal=rs.simpleBasis(real_roots());
 }
 
-// the follwing constructor intersects all root sets with those of |sub|, but
+// the following constructor intersects all root sets with those of |sub|, but
 // uses the full parent datum for numbering roots, and in |root_involution()|
 InvolutionData::InvolutionData(const RootDatum& rd,
 			       const WeightInvolution& theta,
@@ -204,7 +204,7 @@ InvolutionNbr InvolutionTable::add_involution
 
   int_Matrix col; bool flip;
   matreduc::column_echelon(A,col,flip);  // now |A| holds basis for image
-  int_Matrix M_real = col.inverse().block(0,0,A.numColumns(),A.numRows());
+  int_Matrix M_real = col.inverse().block(0,0,A.n_columns(),A.n_rows());
 
   // compute these before moving from |theta|:
   Weight theta_plus_1_rho = (rd.twoRho()+theta*rd.twoRho())/2;
@@ -346,7 +346,7 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
-  Weight result(rec.lift_mat.numRows(),0);
+  Weight result(rec.lift_mat.n_rows(),0);
   // set |result=lift_mat*lift| where |lift| is the integer lift of |y_part|
   for (unsigned j=0; j<y_part.size(); ++j)
     if (y_part[j])
