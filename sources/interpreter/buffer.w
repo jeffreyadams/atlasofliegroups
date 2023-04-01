@@ -459,7 +459,9 @@ class BufferedInput
          // fetch a new line to replace current one; |true| if successful
     bool push_file (const char* file_name,bool skip_seen);
       // |true| if successful
+    void reset(); // discard any input and temporary prompts
     void close_includes();
+
     @< Other methods of |BufferedInput| @>@;
 private:
     void pop_file();
@@ -644,7 +646,12 @@ struct file_stack : public file_stack_t
   const_iterator cbottom() const @+{@; return c.wcend(); }
 };
 
-@ When an input file is exhausted, the stored line number is restored, the
+@ Calling |reset| (which typically happens after syntax errors) clears any
+temporary prompt, and by nullifying |pos| ensures no more input from the current
+line will be obtained (the actual input line lingers in memory until |getline|
+is called).
+
+When an input file is exhausted, the stored line number is restored, the
 |input_record| for the file popped from the stack (which also closes the file);
 then the |stream| is set to point to the previous input stream. We also report
 successful completion to the user, and record the file name on
@@ -655,6 +662,9 @@ When |close_includes| is called all auxiliary input files are closed.
 @h "global.h" // for |output_stream|
 
 @< Definitions of class members @>=
+void BufferedInput::reset() {@; pos=nullptr; temp_prompt=""; }
+
+@)
 void BufferedInput::pop_file()
 { line_no = input_stack.top().line_no;
   *output_stream << "Completely read file '" << cur_fname() << "'."
@@ -1118,7 +1128,6 @@ and pop them off.
 void push_prompt(char c);
 char top_prompt() const; // inspect most recently added prompt character
 void pop_prompt();
-void reset();
 
 @ There functions deal only with the temporary prompt. In particular, the |reset|
 method just clears it.
@@ -1137,9 +1146,6 @@ void BufferedInput::pop_prompt()
   if (l>0)
     temp_prompt.erase(l-1);
 }
-@)
-void BufferedInput::reset() @+
-{@; temp_prompt=""; }
 
 @* Listing completions of a string.
 While this is not directly related to the |BufferedInput| class itself, the

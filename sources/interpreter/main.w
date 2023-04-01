@@ -485,8 +485,8 @@ new line of input, or abandons the program in case none can be obtained.
 last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
  // |last_type| is a |type_ptr| defined in \.{axis.w}
-while (not input_buffer.eol() or ana.reset())
-  // get a fresh line for lexical analyser, or quit
+while (ana.prime())
+  // get a fresh line for lexical analyser, or quit loop
 { @< Undo temporary trickery aimed at |readline| filename completion @>
   expr_p parse_tree;
   int old_verbosity=verbosity;
@@ -494,7 +494,7 @@ while (not input_buffer.eol() or ana.reset())
  try
   { if (yyparse(&parse_tree,&verbosity)!=0)
       // syntax error (inputs are closed) or non-expression
-      continue;
+    {@; ana.reset();  continue; }
     if (verbosity!=0) // then some special action was requested
     { if (verbosity<0)
         break; // \.{quit} command
@@ -570,14 +570,15 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
   main_input_buffer->push_file(*it,true);
     // set up to read |fname|, unless already done
   while (main_input_buffer->include_depth()>0) // go on until file ends
-  { if (not ana.reset())
+  { if (not ana.prime())
     { std::cerr << "Internal error, getline fails reading " << *it
                   << std::endl;
       return EXIT_FAILURE;
     }
     expr_p parse_tree;
     if (yyparse(&parse_tree,&verbosity)!=0)
-      continue; // if a syntax error was signalled input has been closed
+      // if a syntax error was signalled input has been closed
+    {@; ana.reset();  continue; }
     if (verbosity!=0)
     { std::cerr << "Cannot "
                 << (verbosity<0 ? "quit" :
