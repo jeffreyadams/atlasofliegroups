@@ -35,7 +35,7 @@ set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
 {do we need distinguished? (yes)}
 {assert(is_distinguished(rd,delta),"delta is not distinguished");}
 let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
-()=prints("T=",T) then
+{()=prints("T=",T) then}
 {T is nxr where n=rd.rank and r=dimension(T)}
 { T: matrix of map X_*(T)->X_*(H) \simeq Z^r -> Z^n: this is T.inject
  ^T: matrix of map X^*(H)->X^*(T) \simeq Z^n->Z^r:   this is T.project=T.restrict

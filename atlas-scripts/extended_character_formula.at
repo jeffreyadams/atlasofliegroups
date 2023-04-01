@@ -61,7 +61,7 @@ index=find(complete_indices,(find(B,p),1)) in
   for (j,type)@i in complete_indices do
 {   let ()=prints("j,type,i=", j ," ", type, " ", i) in}
 {   let c=eval(P[i][index],s) in {key point here: evaluate at q=1}}
-   let c=eval(P[i][index],1) in 
+   let c=eval(P[i][index],1) in
     if !=c then
      if type=1 then {prints("plus", "j=",j, "c=",c);}plus+:=c*B[j]
        elif type=-1 then {prints("minus", "j=",j, "c=",c);}minus+:= c*B[j]
