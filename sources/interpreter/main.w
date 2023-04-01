@@ -87,11 +87,11 @@ header file \.{lexer.h} includes \.{buffer.h}, \.{parse\_types.h}
 and \.{parser.tab.h}.
 
 \point The file \.{axis-types.w} defines the main base classes for the \axis.
-evaluator, |type_expr| for representing \axis. types, |value_base| for dynamic
-values, |shared_context| for dynamic evaluation contexts, |expression_base|
-for ``compiled'' expressions, |program_error| for exceptions, and numerous
-types related to these. Its header file includes \.{buffer.h} (since it needs
-|id_type| to represent type names).
+evaluator: |type_expr| for representing \axis. types, |value_base| for dynamic
+values, |shared_context| for dynamic evaluation contexts, |expression_base| for
+``compiled'' expressions, |program_error| for exceptions. It also defines
+numerous types related to these. Its header file includes \.{buffer.h} (since it
+needs |id_type| to represent type names).
 
 \point The file \.{global.w} defines primitive \axis. types like integers,
 rationals, matrices. Also some global aspects of the interpreter like
@@ -102,7 +102,7 @@ operating the global identifier tables. Its header file includes
 encapsulate types of the Atlas library, and their interface functions. Its
 header file includes \.{axis-types.h} and many headers from the Atlas library.
 
-\point The file \.{axis.w} Defines the \axis. type-checker and evaluator. It
+\point The file \.{axis.w} defines the \axis. type-checker and evaluator. It
 defines many classes derived from |expression_base|. Its header file
 includes \.{axis-types.h} and \.{global.h}.
 
@@ -242,7 +242,7 @@ not being defined.
 #define isatty(x) true // if we cannot find out, guess it is ``yes''
 #define chdir(x) (-1) // just fail for every argument
 #else
-#include <unistd.h> // for |isatty| and |STDIN_FILENO|
+#include <unistd.h> // for |isatty|, |chdir|, and |STDIN_FILENO|
 #endif
 
 
@@ -484,7 +484,8 @@ new line of input, or abandons the program in case none can be obtained.
 last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
  // |last_type| is a |type_ptr| defined in \.{axis.w}
-while (ana.reset()) // get a fresh line for lexical analyser, or quit
+while (ana.prime())
+  // get a fresh line for lexical analyser, or quit loop
 { @< Undo temporary trickery aimed at |readline| filename completion @>
   expr_p parse_tree;
   int old_verbosity=verbosity;
@@ -492,7 +493,7 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
  try
   { if (yyparse(&parse_tree,&verbosity)!=0)
       // syntax error (inputs are closed) or non-expression
-      continue;
+    {@; ana.reset();  continue; }
     if (verbosity!=0) // then some special action was requested
     { if (verbosity<0)
         break; // \.{quit} command
@@ -568,14 +569,15 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
   main_input_buffer->push_file(*it,true);
     // set up to read |fname|, unless already done
   while (main_input_buffer->include_depth()>0) // go on until file ends
-  { if (not ana.reset())
+  { if (not ana.prime())
     { std::cerr << "Internal error, getline fails reading " << *it
                   << std::endl;
       return EXIT_FAILURE;
     }
     expr_p parse_tree;
     if (yyparse(&parse_tree,&verbosity)!=0)
-      continue; // if a syntax error was signalled input has been closed
+      // if a syntax error was signalled input has been closed
+    {@; ana.reset();  continue; }
     if (verbosity!=0)
     { std::cerr << "Cannot "
                 << (verbosity<0 ? "quit" :
