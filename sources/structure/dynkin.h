@@ -92,11 +92,10 @@ class DynkinDiagram
 
   unsigned int rank() const { return d_star.size(); }
 
-  // the next two attributes are only valid after calling |classisfy()|
   LieType type() const;
   Permutation perm() const;
 
-  bool is_simply_laced() const;
+  bool is_simply_laced() const { return down_edges.empty(); }
 
   int Cartan_entry(unsigned int i,unsigned int j) const;
   int edge_multiplicity(unsigned int i,unsigned int j) const
