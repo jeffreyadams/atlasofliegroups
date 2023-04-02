@@ -914,7 +914,7 @@ Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
   { AdjointFiberElt x(RankFlags(i),f.adjointFiberRank());
     if (f.adjoint_orbit(x) == rf) // only consider the orbit for |rf|
     { // and only consider the grading of those imaginary roots that are simple
-      Grading gr = restrictGrading(f.noncompactRoots(x),rs.simpleRootList());
+      Grading gr = restrictGrading(f.noncompactRoots(x),rs.simple_root_list());
       if (gr.count()<minimum_so_far) // only minimize the number of noncompacts
       {
 	result = gr; // best candidate seen yet

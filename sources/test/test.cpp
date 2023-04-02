@@ -313,7 +313,7 @@ void posroots_rootbasis_f()
   const RootSystem& rs = commands::current_inner_class().rootSystem();
 
   ioutils::OutputFile file;
-  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
+  prettyprint::printInRootBasis(file,rs.posroot_set(),rs);
 }
 
 // Print the coroots in the simple coroot coordinates.
@@ -333,7 +333,7 @@ void poscoroots_rootbasis_f()
   const RootSystem rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
-  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
+  prettyprint::printInRootBasis(file,rs.posroot_set(),rs);
 }
 
 

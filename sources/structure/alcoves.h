@@ -49,7 +49,10 @@ sl_list<WeylElt> basic_orbit_ws
 (const int_Matrix& Cartan, Generator i,
  const WeylGroup& W, std::vector<WeylElt> gens);
 sl_list<WeylElt> affine_orbit_ws
-  (const RootDatum& rd, const WeylGroup& W, RatWeight gamma);
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
+
+int_Matrix FPP_facet_numers
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
 } // |namespace weyl|
 

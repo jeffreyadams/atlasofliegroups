@@ -166,6 +166,7 @@ public:
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
+  LieType type() const; // no central torus factors possible here
 
   // Cartan matrix by entry and as a whole
   int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };
@@ -241,9 +242,10 @@ public:
   const RootNbrSet& min_coroots_for(RootNbr alpha) const
   { return coroot_ladder_bot[alpha]; }
 
-  RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
-  RootNbrList simpleRootList() const; // NOT for iteration over it
-  RootNbrSet posRootSet() const; // NOT for iteration, may serve as mask
+  RootNbrSet simple_root_set() const; // NOT for iteration over it; never used
+  RootNbrList simple_root_list() const; // NOT for iteration over it
+  RootNbrSet posroot_set() const; // NOT for iteration, may serve as mask
+  RootNbrSet fundamental_alcove_walls() const;
 
 // other accessors
 
@@ -684,9 +686,9 @@ class RootDatum
 
   // The sum of the positive roots in |rs|
   Weight twoRho(const RootNbrSet& rs) const
-  { return root_sum(*this,posRootSet()&rs); }
+  { return root_sum(*this,posroot_set()&rs); }
   Coweight dual_twoRho(const RootNbrSet& rs) const
-  { return coroot_sum(*this,posRootSet()&rs); }
+  { return coroot_sum(*this,posroot_set()&rs); }
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
 

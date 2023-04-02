@@ -407,7 +407,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z) const
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = involution_table();
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
   const Weight test_wt = i_tab.y_lift(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
 	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
@@ -711,7 +711,7 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
   const arithmetic::Numer_t d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
   const Weight two_rho_real = rd.twoRho(pos_real);
 
   // we shall associate to certain numbers $num>0$ a strict lower bound $lwb$
@@ -733,7 +733,7 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
     }
   }
 
-  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posRootSet();
+  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posroot_set();
   for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
   {
     RootNbr alpha=*it, beta=theta[alpha];
@@ -1217,7 +1217,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   const auto& num1 = g1.numerator();
   const auto d0 = g0.denominator(), d1 = g1.denominator(); // convert to signed
 
-  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+  { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
 	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
@@ -1225,9 +1225,9 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 	  return true; // distinct integer part of evaluation poscoroot found
   }
   {
-    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1263,15 +1263,15 @@ size_t deformation_unit::hashCode(size_t modulus) const
     hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
-  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+  { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
 	hash = 5*hash + arithmetic::divide(rd.coroot(*it).dot(num),denom);
   }
   {
-    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
