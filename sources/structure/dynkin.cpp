@@ -241,32 +241,34 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 	r_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
 
 	int diff=orbits[i].length()-orbits[j].length();
-	if (diff==0) // equal length
-	{ // then copy Cartan entries
-	  const int m = edge_multiplicity(ii,jj);
-	  if (m>1)
-	  {
-	    if (Cartan_entry(ii,jj)<-1)
-	      result.down_edges.emplace_back(Edge(i,j),m);
-	    else
-	      result.down_edges.emplace_back(Edge(j,i),m);
-	  }
+	if (diff==0) // equal length: copy Cartan entries
+	{ for (const auto& edge : down_edges)
+	    if (edge.first.first==ii and edge.first.second==jj)
+	      result.down_edges.emplace_back(Edge(i,j),edge.second);
+	    else if (edge.first.first==jj and edge.first.second==ii)
+	      result.down_edges.emplace_back(Edge(j,i),edge.second);
 	}
-	else // unequal orbit lengths
-	{ // then mark multiplicity 2 edge from longer to shorter orbit
-	  if (diff<0)
-	    result.down_edges.emplace_back(Edge(i,j),2);
-	  else
-	    result.down_edges.emplace_back(Edge(j,i),2);
-	}
+	else // unequal orbit lengths: double edge from shorter to longer orbit
+	  result.down_edges.emplace_back(diff<0 ? Edge(i,j) : Edge(j,i), 2);
       }
   }
   return result;
-}
+} // |DynkinDiagram::folded|
 
 
 /******** accessors **********************************************************/
 
+// recover Cartan matrix entry from Dynkin diagram
+int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
+{
+  if (not are_adjacent(i,j))
+    return i==j ? 2 : 0;
+  for (const auto& edge : down_edges)
+    if (edge.first.first==i and edge.first.second==j)
+      return -edge.second; // -2 or -3
+
+  return -1; // simple edge, or labelled edge in short->long direction
+}
 
 LieType DynkinDiagram::type() const
 {
@@ -287,19 +289,6 @@ Permutation DynkinDiagram::perm() const
     result.insert(result.end(),comp.position.begin(),comp.position.end());
   return result;
 }
-
-// recover Cartan matrix entry from Dynkin diagram
-int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
-{
-  if (not are_adjacent(i,j))
-    return i==j ? 2 : 0;
-  for (const auto& edge : down_edges)
-    if (edge.first.first==i and edge.first.second==j)
-      return -edge.second; // -2 or -3
-
-  return -1; // simple edge, or labelled edge in short->long direction
-}
-
 
 
 

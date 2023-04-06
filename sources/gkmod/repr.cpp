@@ -1063,7 +1063,7 @@ using sr_term = std::pair<StandardRepr,int>;
 using sr_term_list = simple_list<sr_term>;
 
 // insert (add) a new term into list |L|, assumed sorted decreasingly
-void insert(StandardRepr&& z, int coef, sr_term_list& L)
+void insert_into(sr_term_list& L, StandardRepr&& z, int coef)
 { auto it = L.begin();
   while (not L.at_end(it))
     if (z < it->first)
@@ -1101,77 +1101,68 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
       // as |break| from loop is not available within |switch|, use |goto| below
     { auto eval = // morally evaluation coroot at |gamma|, but only sign matters
 	rd.simpleCoroot(s).dot(gamma.numerator());
-      if (eval<=0)
-	switch (kgb().status(s,x))
-	{
-	case gradings::Status::ImaginaryCompact:
-	  if (eval<0) // then reflect |lambda| and negate sign
+      if (eval>0)
+	continue; // when strictly dominant, nothing to do for |s|
+      switch (kgb().status(s,x))
+      {
+      case gradings::Status::ImaginaryCompact:
+	if (eval==0)
+	  goto drop; // singular imaginary compact |s|, parameter is zero
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	coef = -coef;
+	goto restart;
+      case gradings::Status::ImaginaryNoncompact:
+	if (eval==0)
+	  continue; // nothing to do for singular nci generator |s|
+	{ // |eval<0|: reflect, and also add Cayley transform terms
+	  KGBElt sx = kgb().cross(s,x);
+	  KGBElt Cx = kgb().cayley(s,x);
+	  StandardRepr t1 = sr_gamma(Cx,lr,gamma);
+	  assert( t1.height() < height );
+	  insert_into(to_do,std::move(t1),coef);
+	  if (sx==x) // then type 2 Cayley
 	  {
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    coef = -coef;
-	    goto restart;
+	    StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
+	    assert( t2.height() < height );
+	    insert_into(to_do,std::move(t2),coef);
 	  }
-	  else goto drop; // parameter is zero
-	case gradings::Status::ImaginaryNoncompact:
-	  if (eval<0) // then also add Cayley transform terms
-	  {
-	    KGBElt sx = kgb().cross(s,x);
-	    KGBElt Cx = kgb().cayley(s,x);
-	    StandardRepr t1 = sr_gamma(Cx,lr,gamma);
-	    assert( t1.height() < height );
-	    insert(std::move(t1),coef,to_do);
-	    if (sx==x) // then type 2 Cayley
-	    {
-	      StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
-	      assert( t2.height() < height );
-	      insert(std::move(t2),coef,to_do);
-	    }
-	    x = sx; // after testing we can update |x| for nci cross action
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    coef = -coef; // reflect, negate, and continue with modified values
-	    goto restart;
-	  }
-	  else // nothing to do for singular nci generator
-	    continue; // continue loop on |s|
-	case gradings::Status::Complex:
-	  if (eval<0 or kgb().isDescent(s,x))
-	  {
-	    x = kgb().cross(s,x);
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    // keep |coef| unchanged
-	    goto restart;
-	  }
-	  else // nothing to do for singular complex ascent
-	    continue; // continue loop on |s|
-	break;
-	case gradings::Status::Real:
-	  if (eval<0)
-	  {
-	    // |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
-	    rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
-	    rd.simple_reflect(s,gamma.numerator());
-	    // keep |coef| unchanged
-	    goto restart;
-	  }
-	  else
-	  { // singular real root; only do something if parity condition holds
-	    auto eval_lr = rd.simpleCoroot(s).dot(lr);
-	    if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
-	    { // found parity root; |kgb()| can distinguish type 1 and type 2
-	      lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
-	      assert( rd.simpleCoroot(s).dot(lr) == -1 );
-	      const KGBEltPair Cxs = kgb().inverseCayley(s,x);
-	      if (Cxs.second!=UndefKGB)
-		insert(sr_gamma(Cxs.second,lr,gamma),coef,to_do);
-	      insert(sr_gamma(Cxs.first,lr,std::move(gamma)),coef,to_do);
-	      goto drop; // we have rewritten |current|, don't contribute it
-	    }
-	    else continue; // nothing to do for a (singular) real nonparity root
-	  } // |else| (singular real root)
-	} // |switch| and |if(eval<=0)|
+	  x = sx; // after testing we can update |x| for nci cross action
+	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,gamma.numerator());
+	  coef = -coef; // reflect, negate, and continue with modified values
+	  goto restart;
+	}
+      case gradings::Status::Complex:
+	if (eval==0 and not kgb().isDescent(s,x))
+	  continue; // nothing to do for singular complex ascent
+	// now we are either not dominant for |s|, or a complex ascent
+	x = kgb().cross(s,x);
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      case gradings::Status::Real:
+	if (eval==0) // singular real root
+	{ auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	  if (eval_lr%2 == 0) // whether non-parity
+	    continue; // nothing to do for a (singular) real nonparity root
+	  // now $\alpha_s$ is parity real root: replace by inverse Cayley(s)
+	  // |kgb()| can distinguish type 1 and type 2
+	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
+	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	  if (Cxs.second!=UndefKGB)
+	    insert_into(to_do,sr_gamma(Cxs.second,lr,gamma),coef);
+	  insert_into(to_do,sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
+	  goto drop; // we have rewritten |current|, don't contribute it
+	} // (singular real root)
+	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
+	rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      } // |switch|
     } // |for(s)|
     // if loop terminates, then contribute modified, now final, parameter
     result.emplace_front(sr_gamma(x,lr,gamma),coef);
