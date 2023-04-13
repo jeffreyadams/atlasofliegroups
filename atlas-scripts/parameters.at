@@ -125,7 +125,7 @@ let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
 
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
-  let ()=prints("lambda=", lambda(gamma,x,y)) in 
+{  let ()=prints("lambda=", lambda(gamma,x,y)) in }
   parameter(x,lambda(gamma,x,y),nu(gamma,x)) { final argument gamma would work }
 
 { the next function used to be wrong, with choose_g(x,y) instead }
