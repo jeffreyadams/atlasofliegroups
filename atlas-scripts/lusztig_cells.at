@@ -104,7 +104,9 @@ is_special=is_special(st_M,O_M) then
 O_M_vee = st_M.dual_map(O_M) then
 sigma_M_vee=st_M_vee.springer(O_M_vee) then
 embed(WeylElt w) = WeylElt: convert_to(ct_G.root_datum,w) then
+()=prints("sigma_M=", sigma_M) then
 ind=induce_character(ct_M_vee.class_table,ct_G_vee.class_table,embed,sigma_M)  then
+()=prints("induced: ", ind) then
 (,t_ind)=truncate(ct_G,ind,ct_G.degree) then
 sigma_G_vee_index=t_ind[0] then
 (valid,O_G_vee)=st_G_vee.springer_inverse(sigma_G_vee_index) then

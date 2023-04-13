@@ -66,6 +66,7 @@ then () = assert(is_special(st_M,O_M),
 then st_M = M.Springer_table, M_vee = dual(M)
 then st_M_vee = M_vee.Springer_table, O_M_vee =
 	     st_M.dual_map(O_M)
+then ()=prints("O_M_vee: ", O_M_vee)
 then O_G_vee = induce_orbit(st_M_vee, st_G_vee,O_M_vee)
 then sigma_G_vee_num = st_G_vee.springer(O_G_vee)
 in (M,H_M,ct_G.tensor_sign_index(sigma_G_vee_num), O_G_vee)
