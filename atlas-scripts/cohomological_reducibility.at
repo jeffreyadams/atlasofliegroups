@@ -22,6 +22,14 @@ set TSPmaxInts(RealForm G) = [KGPElt]:
        fi
     od.##
 
+set TSPmax(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if semisimple_rank(P.Levi) = semisimple_rank (G) -1
+       then [P]
+       else []
+       fi
+    od.##
+
 {List of all proper theta-stable parabolics with rho(u) integral}
 set TSPInts(RealForm G) = [KGPElt]:
     for P in theta_stable_parabolics(G)
@@ -32,15 +40,30 @@ set TSPInts(RealForm G) = [KGPElt]:
        fi
     od.##
 
+set TSP(RealForm G) = [KGPElt]:
+    for P in theta_stable_parabolics(G)
+    do if 0 < semisimple_rank(P.Levi) and P.Levi != G
+       then [P]
+       else []
+       fi
+    od.##
+
 {assuming rho(u) is integral, lists the one-diml parameters on L from
 trivial to the end of the weakly fair range.}
 {this should be generalized: start with any weakly unipotent on L in
 good range, translate down by all q*rho(u) that are integral vectors
 (0 \le q rational) to end of weakly fair}
-set onesList(KGPElt P) = [Param]:
+{set onesList(KGPElt P) = [Param]:
     let d = gcd(ratvec_as_vec(P.rho_u)), L = P.Levi
     in for j:d+1
        do parameter(x_open(L),rho(L) - ratvec_as_vec(P.rho_u/d)*j,
+       	  rho(L))
+       od}
+
+set onesList(KGPElt P) = [Param]:
+    let d = gcd(two_rho_u(P)), L = P.Levi
+    in for j:floor(d/2)+1
+       do parameter(x_open(L),rho(L) - ratvec_as_vec(two_rho_u(P)/d)*j,
        	  rho(L))
        od
 
