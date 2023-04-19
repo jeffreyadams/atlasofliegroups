@@ -95,7 +95,12 @@ set sigma_lusztig(RootDatum G, ComplexNilpotent O_M, ratvec y)=
 let G_vee = G.dual then
 st_G_vee = G_vee.Springer_table then
 ct_G_vee = st_G_vee.ct then
-L=centralizer(G,y) then
+L= if=#y
+     then
+    O_M.root_datum
+      else
+    centralizer(G,y)
+fi then
 O_L=complex_nilpotent(L,O_M.H) then
 st_L = L.Springer_table then
 is_special=is_special(st_L,O_L) then
@@ -123,7 +128,7 @@ if sigma_lusztig_verbose then
  prints("sigma_lusztig: ",new_line,
    "M: ", O_M.root_datum,new_line,
    "O_M: ", O_M.diagram, new_line,
-
+   "L: ", dual(O_L.root_datum),new_line,
    "O_L_vee: ", O_L_vee.diagram, new_line,
    "sigma_L_vee: ", sigma_L_vee,new_line,
    "sigma_L_vee_index: ", sigma_L_vee_index,new_line,
@@ -147,12 +152,12 @@ if sigma_lusztig_verbose then
  is_special)
 
 {sigma_lusztig: takes Springer table for G and a ComplexNilpotent for M}
-set sigma_lusztig_short(RootDatum G,ComplexNilpotent O_M,ComplexNilpotent O_L) =
+{set sigma_lusztig_short(RootDatum G,ComplexNilpotent O_M,ComplexNilpotent O_L) =
 let (,,,,j_values,,,,,)=sigma_lusztig(G,O_M,O_L) in j_values
-
+}
 {returns array of (O_M,ind,sigma_G_index,O_G_vee,is_special)}
 set lusztig_cell (ComplexNilpotent O_G) =
-  for (M,H_M,y) in component_representatives_plus(O_G)
+  ##for (M,H_M,y) in component_representatives_plus(O_G)
   do let ()=
      if sigma_lusztig_verbose
      then prints
@@ -164,7 +169,7 @@ set lusztig_cell (ComplexNilpotent O_G) =
        )
      fi
      then O_M=complex_nilpotent(M,H_M) in
-  sigma_lusztig(O_G.root_datum,O_M,y)
+  [sigma_lusztig(O_G.root_datum,O_M,y),sigma_lusztig(O_G.root_datum,O_M,ratvec:[])]
 od
 
 {include terms coming from deformation}
@@ -222,7 +227,8 @@ let table =
         ct_L_vee_degree_data,
         ct_G_vee_degree_data,
         is_special) in data do
-	let L=centralizer(O_G.root_datum,y) then
+	let L=
+          if =#y then O_M.root_datum else centralizer(O_G.root_datum,y) fi then
 	O_L=complex_nilpotent(L,O_M.H) in
   if =#ind_vee
    then { even if there are no |ind|, build one [string] }
@@ -260,13 +266,14 @@ let table =
        ,O_L.diagram.to_string
        ,y.compact_string
        ,is_special.to_string
+       ,ind_vee.to_string
        ,O_L_vee.diagram.to_string
        ,i.to_string
        ,ct_L_vee_degree_data[1].to_string
        ,ct_L_vee_degree_data[2].to_string + star
        ,ct_L_vee_degree_data[3].to_string + plus
-       ,i.to_string + " " + d[1].to_string + " " + d[2].to_string + " " + d[3].to_string
-       ,j.to_string + " " + d[5].to_string + " " + d[6].to_string + " " + d[7].to_string + " " + star + plus
+       ,i.to_string + " " + d[1].to_string + " " + d[2].to_string + star +  "  " + d[3].to_string
+       ,j.to_string + " " + d[5].to_string + " " + d[6].to_string + " " + d[7].to_string + " " + star + plus 
       ]]] else [[[string]]]:[]
      fi{/if not strict)}
     od{/for ind_vee_data}
@@ -278,7 +285,7 @@ table_header=
 [["O_G","a","b"
     ,"c"
     ,"d","e","f"
-    ,"diag",""
+    ,"diag","",""
     ,"","diag"
     ,"L_v"
     ,"L_v"
@@ -297,6 +304,7 @@ table_header=
     ,"O_L"
     ,"y"
     ,"special"
+    ,"ind"
     ,"O_L_v"
     ,"rep"
     ,"dim"
