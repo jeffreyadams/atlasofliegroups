@@ -44,6 +44,7 @@ Non-trivial \xi not yet considered
 }
 
 set sigma_lusztig_test_verbose=false
+set require_special = false
 set top_degree(CharacterTable ct) = (int i)int:
     let is = ct.tensor_sign_index(i) in #ct.root_datum.posroots - ct.degree(is)
 
@@ -57,15 +58,16 @@ REQUIRE O_M SPECIAL IN M!}
 
 {E endoscopic, M pseudoLevi, EM = E\cap M pseudoLevi in E, endoscopic in M/pseudoLevi
 in E}
-{OEM <--> HEM special for EM; require saturates to special OE for E.}
-{dual OEMvee <--> HEMvee; require saturates to special OMvee for Mvee}
+{OEM <--> HEM special for EM; require saturates to (maybe) special OE for E.}
+{dual OEMvee <--> HEMvee; require saturates to (maybe) special OMvee for Mvee}
 
 set sigma_lusztig_test(SpringerTable stG, RootDatum E, RootDatum M, vec HME) =
 (RootDatum,RootDatum, vec,[int],ComplexNilpotent,[int],ComplexNilpotent):
     {returns (E,M,HEM,G reps via E, O, G reps via M, Ovee)}
 let G = stG.root_datum, ctG = stG.ct
 then WctG = ctG.class_table, Gvee = G.dual
-then MEpos = [int]: for alpha@j in M.posroots do if is_posroot(E,alpha) then [j] else [] fi od.##
+{M posroots may not be pos for E}
+then MEpos = [int]: for alpha@j in M.posroots do if is_root(E,alpha) then [j] else [] fi od.##
 then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
      	  else let MEtworho = sum(G.rank,for j in MEpos do M.posroots[j] od)
      	       then MEsimpleroot_nums = [int]: for j in MEpos 
@@ -88,9 +90,9 @@ then O = induce_orbit(G,OE)
 then stM = M.Springer_table, stE = E.Springer_table, WctM = ctM.class_table, WctE = ctE.class_table
 then () = assert(is_special(stME,OME),
 "in sigma_lusztig_test, "+OME.diagram.to_string+" is not special for "+ME.nice_format)
-then () = assert(is_special(stE,OE),
-"in sigma_lusztig_test, "+OE.diagram.to_string+" is not special for "+E.nice_format)
-then targetEspecial = stE.springer(OE)
+then () = if(require_special) then assert(is_special(stE,OE),
+"in sigma_lusztig_test, "+OE.diagram.to_string+" is not special for "+E.nice_format) fi
+then targetEspecial = ctE.special(stE.springer(OE))
 then sigmaME_num = stME.springer(OME)
 then sigmaME = ctME.characters[sigmaME_num]
 then indE = induce_character(WctME,WctE,sigmaME)
@@ -102,15 +104,12 @@ then resultE = for j:#indE_decomposed
 		     else []
 		     fi
 		  od.##
-{then () = prints("E = ",E,"  reps = ",resultE)}
 then HMvee = dominant(OMEvee.H,Mvee)
 then OMvee = ComplexNilpotent: (Mvee,(),HMvee)
 then Ovee = induce_orbit(Gvee, OMvee)
 then OM = stMvee.dual_map(OMvee)
-then skip = not(is_special(stMvee,OMvee))
-{then () = assert(is_special(stMvee,OMvee),
-"in sigma_lusztig_test, "+OMvee.diagram.to_string+" is not special for "+Mvee.nice_format)}
-then targetMspecial = stM.springer(OM)
+then skip = not(is_special(stMvee,OMvee)) and require_special
+then targetMspecial = ctM.special(stM.springer(OM))
 then indM = induce_character(WctME,WctM,sigmaME)
 then indM_decomposed = ctM.decompose(indM)
 then resultM = for k:#indM_decomposed
@@ -120,7 +119,6 @@ then resultM = for k:#indM_decomposed
 		     else []
 		     fi
 		  od.##
-{then () = prints("M = ",M,"  reps = ",resultM)}
 then resultEG = for j in resultE
      	      	do let indj = induce_character(WctE,WctG,ctE.characters[j]), targetj = ctE.degree(j)
 		   then indj_decomposed = ctG.decompose(indj)
@@ -149,7 +147,6 @@ in (E,M,HME,resultEG, O, resultMG,Ovee)
 
 {compute lusztig cell for one nilpotent; array has one entry for each
 component class in A(G_orbit)}
-{for now do only G_orbit special}
 set lusztig_cell_test (SpringerTable st_G,ComplexNilpotent G_orbit) =
       [(RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent)]:
       for (M,H_M,) in component_representatives_plus(G_orbit)
@@ -219,47 +216,31 @@ set lusztig_cells_plus_test\
 
 set lusztig_cells_test (SpringerTable st_G) =
       [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
-   lusztig_cells_test(st_G,st_G.special_orbits)
+   if require_special then lusztig_cells_test(st_G,st_G.special_orbits)
+      		      else lusztig_cells_test(st_G,st_G.orbits)
+   fi
 
 set lusztig_cells_test(RootDatum G) =
       [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
    let st_G=G.Springer_table in
-   lusztig_cells_test(st_G,st_G.special_orbits)
+   if require_special then lusztig_cells_test(st_G,st_G.special_orbits)
+      		      else lusztig_cells_test(st_G,st_G.orbits)
+   fi
 
 set lusztig_cells_plus_test(SpringerTable st_G) =
       [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
-   lusztig_cells_plus_test(st_G,st_G.special_orbits)
-   
+   if require_special then lusztig_cells_plus_test(st_G,st_G.special_orbits)
+      		      else lusztig_cells_plus_test(st_G,st_G.orbits)
+   fi
+
 set lusztig_cells_plus_test(RootDatum G) =
       [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
-   let st_G=G.Springer_table in
-   lusztig_cells_plus_test(st_G,st_G.special_orbits)
+   let st_G=G.Springer_table
+   in
+      if require_special then lusztig_cells_plus_test(st_G,st_G.special_orbits)
+      		      	 else lusztig_cells_plus_test(st_G,st_G.orbits)
+      fi
 
-
-{show lusztig cell for one orbit special}
-set show_lusztig_cell_test\
-   (SpringerTable st_G,ComplexNilpotent G_orbit) = void:
-   let G=st_G.root_datum, ct_G = st_G.ct
-   in prints("***************************",new_line,"orbit = "
-      ,G_orbit.diagram.to_string + st_G.special_star(G_orbit)
-      ," dim = ",G_orbit.dim_nilpotent);
-    let table_header = ["E", "M","HME" { indep. of sigma }
-        ,"sigmaEG","G orbit", "sigmaMG","Gv orbit","dim","deg"], table = [ [string] ]:
-      for (E,M,HME, iEGs, O, iMGs,Ovee) in lusztig_cell_test(st_G,G_orbit)
-      do let st_M = M.Springer_table, ct_M = M.character_table
-       	 in [E.nice_format
-	    ,M.nice_format
-	    ,HME.compact_string
-	    ,iEGs.to_string
-	    ,O.diagram.to_string
-	    ,iMGs.to_string
-	    ,Ovee.diagram.to_string
- 	    ,dimension(st_G.ct,iEGs[0]).to_string
-	    ,st_G.ct.degree(iEGs[0]).to_string	]
-      od  {for data}
-in  (table_header#table).tabulate
-
-{
 {show lusztig cell for one orbit}
 set show_lusztig_cell_test\
    (SpringerTable st_G,ComplexNilpotent G_orbit) = void:
@@ -267,7 +248,6 @@ set show_lusztig_cell_test\
    in prints("***************************",new_line,"orbit = "
       ,G_orbit.diagram.to_string + st_G.special_star(G_orbit)
       ," dim = ",G_orbit.dim_nilpotent);
-   
     let table_header = ["E", "M","HME" { indep. of sigma }
         ,"sigmaEG","G orbit", "sigmaMG","Gv orbit","dim","deg"], table = [ [string] ]:
       for (E,M,HME, iEGs, O, iMGs,Ovee) in lusztig_cell_test(st_G,G_orbit)
@@ -283,7 +263,6 @@ set show_lusztig_cell_test\
 	    ,st_G.ct.degree(iEGs[0]).to_string	]
       od  {for data}
 in  (table_header#table).tabulate
-}
 
 {show lusztig cells, running over given list of nilpotents}
 set show_lusztig_cells_test\
@@ -295,7 +274,7 @@ set show_lusztig_cells_test\
    do show_lusztig_cell_test(st_G,orbit)
    od
  
-{show lusztig cells, one nilpotent}
+{show lusztig cells, one nilpotent with variants on components}
 set show_lusztig_cell_plus_test\
    (SpringerTable st_G,ComplexNilpotent G_orbit) = void:
    let G=st_G.root_datum, ct_G = st_G.ct
@@ -338,10 +317,10 @@ set show_lusztig_cells_plus_test\
     lusztig_cell_test(G.Springer_table,O)}
 
 set show_lusztig_cells_test (SpringerTable st_G) = void:
-   show_lusztig_cells_test(st_G,st_G.special_orbits)
-
-set show_lusztig_cells_plus_test (SpringerTable st_G) = void:
-   show_lusztig_cells_plus_test(st_G,st_G.special_orbits)
+    if(require_special)
+    then show_lusztig_cells_test(st_G,st_G.special_orbits)
+    else show_lusztig_cells_test(st_G,st_G.orbits)
+    fi
 
 set show_lusztig_cells_test(RootDatum G) = void:
    let st_G=Springer_table(G) in show_lusztig_cells_test(st_G)
