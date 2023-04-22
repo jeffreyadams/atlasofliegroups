@@ -92,54 +92,49 @@ then stM = M.Springer_table, stE = E.Springer_table, WctMvee = ctMvee.class_tabl
      WctE = ctE.class_table, WctMEvee = ctMEvee.class_table
 then () = assert(is_special(stME,OME),
 "in sigma_lusztig_test, "+OME.diagram.to_string+" is not special for "+ME.nice_format)
-then skipE = not(is_special(stE,OE)) and require_special
-{ then () = if(require_special) then assert(is_special(stE,OE),
-"in sigma_lusztig_test, "+OE.diagram.to_string+" is not special for "+E.nice_format) fi}
-then targetE = stE.springer(OE)
-then targetEspecial = ctE.special(targetE)
+then () = assert(is_special(stE,OE),
+"in sigma_lusztig_test, "+OE.diagram.to_string+" is not special for "+E.nice_format)
+then targetE = stE.springer(OE) {automatically special}
 then sigmaME_num = stME.springer(OME), sigmaMEvee_num = stMEvee.springer(OMEvee)
 then sigmaME = ctME.characters[sigmaME_num], sigmaMEvee = ctMEvee.characters[sigmaMEvee_num]
 then indE = induce_character(WctME,WctE,sigmaME)
 then indE_decomposed = ctE.decompose(indE)
 then resultE = for j:#indE_decomposed
-     		  do if indE_decomposed[j] > 0 and
-		     	ctE.special(j) = targetEspecial { and
-			ctE.degree(j) >= targetEd}
-		     then [j]
-		     else []
-		     fi
-		  od.##
+     	       do if indE_decomposed[j] > 0 and
+		     ctE.special(j) = targetE
+		  then [j]
+		  else []
+		  fi
+	       od.##
 then () = if is_member_sorted(resultE)(targetE) then resultE := [targetE] fi
 then HMvee = dominant(OMEvee.H,Mvee)
 then OMvee = ComplexNilpotent: (Mvee,(),HMvee)
+then () = assert(is_special(stMvee,OMvee),
+"in sigma_lusztig_test, "+OMvee.diagram.to_string+" is not special for "+Mvee.nice_format)
 then Ovee = induce_orbit(Gvee, OMvee)
-{then OM = stMvee.dual_map(OMvee)}
-then skipMvee = not(is_special(stMvee,OMvee)) and require_special
-then targetMvee = stMvee.springer(OMvee)
-then targetMveespecial = ctMvee.special(targetMvee)
+then targetMvee = stMvee.springer(OMvee) {automatically special}
 then indMvee = induce_character(WctMEvee,WctMvee,sigmaMEvee)
 then indMvee_decomposed = ctMvee.decompose(indMvee)
 then resultMvee = for k:#indMvee_decomposed
      		  do if indMvee_decomposed[k] > 0 and
-		     	ctMvee.special(k) = targetMveespecial
+		     	ctMvee.special(k) = targetMvee
 		     then [k]
 		     else []
 		     fi
-		  od.##
+		     od.##
 then () = if is_member_sorted(resultMvee)(targetMvee) then resultMvee := [targetMvee] fi
-then resultEG = for j in resultE
-     	      	do let indj = induce_character(WctE,WctG,ctE.characters[j]),
-		       targetj = ctE.degree(j)
-		   then indj_decomposed = ctG.decompose(indj)
-		   in for ell:#indj_decomposed
-		      do if indj_decomposed[ell] > 0 and
-		      	 ctG.degree(ell) = targetj
-			 then [ell]
-			 else []
-			 fi
-		      od.##
-		 od.##.sort_u
-then ()= if skipE then resultEG := [-1]##resultEG fi
+then resultEG = [int]: for j in resultE
+     	      	       do let indj = induce_character(WctE,WctG,ctE.characters[j]),
+		       	      	     targetj = ctE.degree(j)
+		          then indj_decomposed = ctG.decompose(indj)
+		   	  in for ell:#indj_decomposed
+		      	     do if indj_decomposed[ell] > 0 and
+		      	      	   ctG.degree(ell) = targetj
+			      	then [ell]
+			      	else []
+			      	fi
+		      	     od.##
+		 	 od.##.sort_u
 then resultMveeGvee = for k in resultMvee
      	      	do let indk = induce_character(WctMvee,WctGvee,ctMvee.characters[k]),
 		       targetk = ctMvee.degree(k)
@@ -152,7 +147,6 @@ then resultMveeGvee = for k in resultMvee
 			 fi
 		      od.##
 		 od.##.sort_u
-then () = if skipMvee then resultMveeGvee := [-1]##resultMveeGvee fi
 in (E,M,HME,resultEG, O, resultMveeGvee,Ovee)
 
 {compute lusztig cell for one nilpotent; array has one entry for each
@@ -224,32 +218,41 @@ set lusztig_cells_plus_test\
   do lusztig_cell_plus_test(st_G,orbit)
   od
 
+set lusztig_cells_special_test (SpringerTable st_G) =
+      [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
+      lusztig_cells_test(st_G,st_G.special_orbits)
+
 set lusztig_cells_test (SpringerTable st_G) =
       [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
-   if require_special then lusztig_cells_test(st_G,st_G.special_orbits)
-      		      else lusztig_cells_test(st_G,st_G.orbits)
-   fi
+      lusztig_cells_test(st_G,st_G.orbits)
+
+set lusztig_cells_special_test(RootDatum G) =
+      [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
+   let st_G=G.Springer_table
+   in lusztig_cells_test(st_G,st_G.special_orbits)
 
 set lusztig_cells_test(RootDatum G) =
       [[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]:
-   let st_G=G.Springer_table in
-   if require_special then lusztig_cells_test(st_G,st_G.special_orbits)
-      		      else lusztig_cells_test(st_G,st_G.orbits)
-   fi
+   let st_G=G.Springer_table
+   in lusztig_cells_test(st_G,st_G.orbits)
+
+set lusztig_cells_special_plus_test(SpringerTable st_G) =
+      [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
+      lusztig_cells_plus_test(st_G,st_G.special_orbits)
 
 set lusztig_cells_plus_test(SpringerTable st_G) =
       [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
-   if require_special then lusztig_cells_plus_test(st_G,st_G.special_orbits)
-      		      else lusztig_cells_plus_test(st_G,st_G.orbits)
-   fi
+      lusztig_cells_plus_test(st_G,st_G.orbits)
+
+set lusztig_cells_special_plus_test(RootDatum G) =
+      [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
+   let st_G=G.Springer_table
+   in lusztig_cells_plus_test(st_G,st_G.special_orbits)
 
 set lusztig_cells_plus_test(RootDatum G) =
       [[[ (RootDatum,RootDatum,vec,[int],ComplexNilpotent,[int],ComplexNilpotent) ]]]:
    let st_G=G.Springer_table
-   in
-      if require_special then lusztig_cells_plus_test(st_G,st_G.special_orbits)
-      		      	 else lusztig_cells_plus_test(st_G,st_G.orbits)
-      fi
+   in lusztig_cells_plus_test(st_G,st_G.orbits)
 
 {show lusztig cell for one orbit}
 set show_lusztig_cell_test\
@@ -271,12 +274,12 @@ set show_lusztig_cell_test\
 	    ,HME.compact_string
 	    ,iEGs.to_string
 	    ,O.diagram.to_string
-	    ,dimension(ct_G,iEGs~[0]).to_string
-	    ,ct_G.degree(iEGs~[0]).to_string
+	    ,for i in iEGs do dimension(ct_G,i) od.to_string
+	    ,for i in iEGs do ct_G.degree(i) od.to_string
 	    ,iMGs.to_string
 	    ,Ovee.diagram.to_string
- 	    ,dimension(ct_Gvee,iMGs~[0]).to_string
-	    ,ct_Gvee.degree(iMGs~[0]).to_string	]
+ 	    ,for j in iMGs do dimension(ct_Gvee,j) od.to_string
+	    ,for j in iMGs do ct_Gvee.degree(j) od.to_string	]
       od  {for data}
 in  (table_header#table).tabulate
 
@@ -313,12 +316,12 @@ set show_lusztig_cell_plus_test\
 	    	 ,HME.compact_string
 	    	 ,iEGs.to_string
 		 ,O.diagram.to_string
-		 ,dimension(ct_G,iEGs~[0]).to_string
-		 ,ct_G.degree(iEGs~[0]).to_string
+		 ,for i in iEGs do dimension(ct_G,i) od.to_string
+		 ,for i in iEGs do ct_G.degree(i) od.to_string
 	    	 ,iMGs.to_string
 		 ,Ovee.diagram.to_string
-	    	 ,dimension(ct_Gvee,iMGs~[0]).to_string
-	    	 ,ct_Gvee.degree(iMGs~[0]).to_string
+	    	 ,for j in iMGs do dimension(ct_Gvee,j) od.to_string
+	    	 ,for j in iMGs do ct_Gvee.degree(j) od.to_string
 	    	  ]
              od {finish running over variants of one component}
       	  in tabulate(table_header#table)
@@ -337,20 +340,28 @@ set show_lusztig_cells_plus_test\
 {set lusztig_cell_test (RootDatum G,ComplexNilpotent O) = [[int]]:
     lusztig_cell_test(G.Springer_table,O)}
 
+set show_lusztig_cells_special_test (SpringerTable st_G) = void:
+    show_lusztig_cells_test(st_G,st_G.special_orbits)
+
 set show_lusztig_cells_test (SpringerTable st_G) = void:
-    if(require_special)
-    then show_lusztig_cells_test(st_G,st_G.special_orbits)
-    else show_lusztig_cells_test(st_G,st_G.orbits)
-    fi
+    show_lusztig_cells_test(st_G,st_G.orbits)
+
+set show_lusztig_cells_special_plus_test (SpringerTable st_G) = void:
+    show_lusztig_cells_plus_test(st_G,st_G.special_orbits)
 
 set show_lusztig_cells_plus_test (SpringerTable st_G) = void:
-    if(require_special)
-    then show_lusztig_cells_plus_test(st_G,st_G.special_orbits)
-    else show_lusztig_cells_plus_test(st_G,st_G.orbits)
-    fi
- 
+    show_lusztig_cells_plus_test(st_G,st_G.orbits)
+
+set show_lusztig_cells_special_test(RootDatum G) = void:
+   let st_G=Springer_table(G)
+   in show_lusztig_cells_special_test(st_G)
+
 set show_lusztig_cells_test(RootDatum G) = void:
-   let st_G=Springer_table(G) in show_lusztig_cells_test(st_G)
+   let st_G=Springer_table(G)
+   in show_lusztig_cells_test(st_G)
+
+set show_lusztig_cells_special_plus_test (RootDatum G) = void:
+   let st_G=Springer_table(G) in show_lusztig_cells_special_plus_test(st_G)
 
 set show_lusztig_cells_plus_test (RootDatum G) = void:
    let st_G=Springer_table(G) in show_lusztig_cells_plus_test(st_G)
