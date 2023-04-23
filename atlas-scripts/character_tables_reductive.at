@@ -80,20 +80,25 @@ in combine(rd,simple_tables)
  set exceptions_mult_one_verbose=true for more output}
 set exceptions_mult_one_verbose=false
 set exceptions_mult_one(CharacterTable ct)=[int]:
-for sigma@j in ct.characters 
- do let
-  degree=ct.degree(j) then
-  mults = ct.decompose(ct.class_table.sym_power_refl(degree)) then
-  mult=mults[j] then
-  ()=if exceptions_mult_one_verbose then
-    prints("j:", j, " degree:", degree, " mult: ", mult, " multiplicities: ", mults) fi in
-  if mults[j]>1
-   then [j]
-  else []
-   fi
- od.##
+    for sigma@j in ct.characters 
+    do if special(ct)(j) = j
+       then []
+       else let degree=ct.degree(j)
+       	    then mults = ct.decompose(ct.class_table.sym_power_refl(degree))
+	    then mult=mults[j]
+	    then () = if exceptions_mult_one_verbose
+	    	      then prints("j:", j, " degree:", degree, " mult: ",
+		      	   mult, " multiplicities: ", mults)
+		      fi
+            in if mults[j]>1
+   	       then [j]
+  	       else []
+   	       fi
+	    fi
+     od.##
 
-set exceptions_mult_one(RootDatum G)=[int]:exceptions_mult_one(G.character_table)
+set exceptions_mult_one(RootDatum G)=[int]:
+    exceptions_mult_one(G.character_table)
 
 {too much typing}
 set exceptions(CharacterTable ct)=[int]:exceptions_mult_one(ct)
