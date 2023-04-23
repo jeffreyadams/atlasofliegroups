@@ -82,11 +82,8 @@ set exceptions_mult_one_verbose=false
 set exceptions_mult_one(CharacterTable ct)=[int]:
 for sigma@j in ct.characters 
  do let
- ()=prints("doing j=", j) then
   degree=ct.degree(j) then
-  ()=prints("degree=", degree) then
   mults = ct.decompose(ct.class_table.sym_power_refl(degree)) then
-  ()=prints(mults) then
   mult=mults[j] then
   ()=if exceptions_mult_one_verbose then
     prints("j:", j, " degree:", degree, " mult: ", mult, " multiplicities: ", mults) fi in
