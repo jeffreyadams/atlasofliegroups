@@ -74,3 +74,31 @@ set character_table (RootDatum rd) = CharacterTable:
       do let (letter,n)=simples[i] in character_table_simple(rdi,letter,n)
       od
 in combine(rd,simple_tables)
+
+{sigma in W^, usually has multiplicity one in the lowest degree occurence in harmonic polynomials
+ this function looks for exceptions
+ set exceptions_mult_one_verbose=true for more output}
+set exceptions_mult_one_verbose=false
+set exceptions_mult_one(CharacterTable ct)=[int]:
+for sigma@j in ct.characters 
+ do let
+ ()=prints("doing j=", j) then
+  degree=ct.degree(j) then
+  ()=prints("degree=", degree) then
+  mults = ct.decompose(ct.class_table.sym_power_refl(degree)) then
+  ()=prints(mults) then
+  mult=mults[j] then
+  ()=if exceptions_mult_one_verbose then
+    prints("j:", j, " degree:", degree, " mult: ", mult, " multiplicities: ", mults) fi in
+  if mults[j]>1
+   then [j]
+  else []
+   fi
+ od.##
+
+set exceptions_mult_one(RootDatum G)=[int]:exceptions_mult_one(G.character_table)
+
+{too much typing}
+set exceptions(CharacterTable ct)=[int]:exceptions_mult_one(ct)
+set exceptions(RootDatum G)=[int]:exceptions_mult_one(G)
+
