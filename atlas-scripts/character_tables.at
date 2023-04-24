@@ -178,7 +178,7 @@ in if i_long.< then { single root length } [char[ct.id_class],char[i_short]]
 
 set signature(CharacterTable ct) = ([int] char)[int]: signature(ct,char)
 
-set decompose(CharacterTable ct) = (vec v)[int]: { list of irrep multiplicities }
+set decompose(CharacterTable ct) = ([int] v)[int]: { list of irrep multiplicities }
    for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 
 
