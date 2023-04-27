@@ -45,6 +45,9 @@ Non-trivial \xi not yet considered
 
 set sigma_lusztig_test_verbose=false
 
+set top_degree(CharacterTable ct) = (int i)int:
+    let is = ct.tensor_sign_index(i) in #ct.root_datum.posroots - ct.degree(is)
+
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user.
 arguments:
  G given group with its coordinate, need this to compute roots of L in G
@@ -61,12 +64,18 @@ now testing this.}
 
 set sigma_lusztig_test(SpringerTable stG, RootDatum E, RootDatum M, vec HME) =
 (RootDatum,RootDatum, vec,[int],ComplexNilpotent{,[int],ComplexNilpotent}):
-    {returns (E,M,HEM,G reps via E, O{, G reps via M, Ovee})}
+    {returns (E,M,HME,G reps via E, O)}
 let G = stG.root_datum, ctG = stG.ct
 then WctG = ctG.class_table {, Gvee = G.dual}
 {M posroots may not be pos for E}
-then MEpos = [int]: for alpha@j in M.posroots do if is_root(E,alpha) then [j] else [] fi od.##
-then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
+then MEpos = [int]:
+     for alpha@j in M.posroots
+     do if is_root(E,alpha)
+     	then [j]
+	else []
+	fi od.##
+then ME = if #MEpos = 0
+     	  then root_datum(null(G.rank,0),null(G.rank,0),true)
      	  else let MEtworho = sum(G.rank,for j in MEpos do M.posroots[j] od)
      	       then MEsimpleroot_nums = [int]: for j in MEpos 
      		       	      	do if M.poscoroots[j]*MEtworho = 2
@@ -79,17 +88,18 @@ then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
 	       in  root_datum(MEsimpleroots, MEsimplecoroots,true)
      	  fi
 then stM = M.Springer_table
-then OME = ComplexNilpotent: (ME,(),HME), ctM = stM.ct
-then HE = dominant(HME,E), stE = E.Springer_table, stME = ME.Springer_table
+then OME = complex_nilpotent(ME,HME), ctM = stM.ct
+then stE = E.Springer_table, stME = ME.Springer_table
 then ctME = stME.ct, ctE = stE.ct
-then OE=ComplexNilpotent: (E,(),HE)
+then OE=complex_nilpotent(E,HME)
 then O = induce_orbit(G,OE), WctME = ctME.class_table
-then stM = M.Springer_table, stE = E.Springer_table, WctE = ctE.class_table
+then stM = M.Springer_table, stE = E.Springer_table, WctE = ctE.class_table,
+     targetG = stG.springer(O)
 then () = assert(is_special(stME,OME),
 "in sigma_lusztig_test, "+OME.diagram.to_string+" is not special for "+ME.nice_format)
 then () = assert(is_special(stE,OE),
 "in sigma_lusztig_test, "+OE.diagram.to_string+" is not special for "+E.nice_format)
-then targetE = stE.springer(OE) {automatically special}
+then targetE = stE.springer(OE) {automatically special}, targetspG = ctG.special(targetG)
 then sigmaME_num = stME.springer(OME)
 then sigmaME = ctME.characters[sigmaME_num]
 then indE = induce_character(WctME,WctE,sigmaME)
@@ -103,17 +113,32 @@ then resultE = for j:#indE_decomposed
 	       od.##
 then () = if is_member_sorted(resultE)(targetE) then resultE := [targetE] fi
 then resultEG = [int]: for j in resultE
-     	      	       do let indj = induce_character(WctE,WctG,ctE.characters[j]),
-		       	      	     targetj = ctE.degree(j)
+     	      	       do let indj = induce_character(WctE,WctG,ctE.characters[j]){,
+		       	      	     targetj = ctE.degree(j)}
 		          then indj_decomposed = ctG.decompose(indj)
-		   	  in for ell:#indj_decomposed
-		      	     do if indj_decomposed[ell] > 0 and
-		      	      	   ctG.degree(ell) = targetj
-			      	then [ell]
+		   	  in for k:#indj_decomposed
+		      	     do if indj_decomposed[k] > 0 and
+		      	      	   {ctG.degree(k) = targetj and}
+				   ctG.special(k) = targetspG
+			      	then [k]
 			      	else []
 			      	fi
 		      	     od.##
 		 	 od.##.sort_u
+then () = if is_member_sorted(resultEG)(targetG)
+     	  then resultEG:= [targetG]
+	  fi
+{then mindegE = if #resultEG = 0
+     	       then 0
+	       else min(for (j,) in resultEG do ctE.degree(j) od)
+	       fi}
+{then resultEGtrunc = [int]: for k in resultEG
+     	     	     	    do if ctE.degree(j) = mindegE
+		       	       then [ell]
+		       	       else []
+		       	       fi
+		    	    od.##.sort_u}
+
 in (E,M,HME,resultEG, O)
 
 set sigma_lusztig_double_test(SpringerTable stG, SpringerTable stGvee, RootDatum E,
@@ -138,11 +163,11 @@ then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
      	  fi
 then Mvee = M.dual {endoscopic in Gvee}, stM = M.Springer_table, stGvee = Gvee.Springer_table
 then stMvee = Mvee.Springer_table, ctGvee = stGvee.ct
-then OME = ComplexNilpotent: (ME,(),HME), Evee = dual(E) {pseudoLevi in Gvee}, ctM = stM.ct,
+then OME = complex_nilpotent(ME,HME), Evee = dual(E) {pseudoLevi in Gvee}, ctM = stM.ct,
      ctMvee = stMvee.ct, WctGvee = ctGvee.class_table
-then HE = dominant(HME,E), stE = E.Springer_table, stME = ME.Springer_table
+then stE = E.Springer_table, stME = ME.Springer_table
 then MEvee = ME.dual, OMEvee = stME.dual_map(OME), ctME = stME.ct, ctE = stE.ct
-then OE=ComplexNilpotent: (E,(),HE), stMEvee = MEvee.Springer_table, ctME = stME.ct
+then OE=complex_nilpotent(E,HME), stMEvee = MEvee.Springer_table, ctME = stME.ct
 then O = induce_orbit(G,OE), ctMEvee = stMEvee.ct, WctME = ctME.class_table
 then stM = M.Springer_table, stE = E.Springer_table, WctMvee = ctMvee.class_table,
      WctE = ctE.class_table, WctMEvee = ctMEvee.class_table
@@ -163,8 +188,7 @@ then resultE = for j:#indE_decomposed
 		  fi
 	       od.##
 then () = if is_member_sorted(resultE)(targetE) then resultE := [targetE] fi
-then HMvee = dominant(OMEvee.H,Mvee)
-then OMvee = ComplexNilpotent: (Mvee,(),HMvee)
+then OMvee = complex_nilpotent(Mvee,OMEvee.H)
 then () = assert(is_special(stMvee,OMvee),
 "in sigma_lusztig_test, "+OMvee.diagram.to_string+" is not special for "+Mvee.nice_format)
 then Ovee = induce_orbit(Gvee, OMvee)
@@ -212,7 +236,7 @@ set special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNi
     then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
     then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
     in [(RootDatum, ComplexNilpotent)]:
-    	 for E in Es do if #E.posroots >= d 
+    	 for E in Es do if #E.posroots >= d
 	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
 			     in for OE in stE.special_orbits
 			     	do if OE.dim = Edim and
@@ -225,10 +249,60 @@ set special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNi
 			 fi
 		     od.##
 
+{Given a nilpotent OG for G, and (M,OM,x-tilde) pseudoLevi meeting OG
+in (distinguished?) OM, so (M,OM) represents class in A(OG) mod
+center, find all endoscopic E, special nilpotent OE so OE meets ME in
+OEM, so OG = induce_orbit(G,OE), OM = induce_orbit(M,OEM). HOPE such
+exist by hints in Lusztig orange book, 13.3. Idea: set Mbig =
+centralizer(G,xtilde), OMbig = induce_orbit(Mbig, OM), (M,OM) =
+Bala-Carter(Mbig,OM). Returns [(E,OE,ME,OME)]}
+{
+set special_ind(SpringerTable stG, RootDatum M, ComplexNilpotent OM,
+ratvec xM) = [(RootDatum, ComplexNilpotent, RootDatum, ComplexNilpotent)]:
+let G = stG.root_datum, stM = M.Springer_table
+then OG = complex_nilpotent(G,OM.H)
+then i = stG.springer(OG) {number of Springer(OG) in character table},
+     ctG = stG.ct
+in for (ME,OME) in special_ind(stM,OM)
+{if OMEvee special in proper Levi ME1 of ME, then OME is indudced from OME1}
+{So take ME MINIMAL, get OME dual to distinguished}
+{run over E endoscopic containing ME, E-saturation OE of OME SPECIAL}
+   do let crs = component_representatives_plus(OE)
+      in for (ME,HME,xME) in crs
+	 do let Mbig = centralizer(G,xME), OME = complex_nilpotent(ME,HME)
+	    then OMbig = induce_orbit(Mbig,OME)
+	    then Mtest = Bala_Carter_Levi(OMbig), (,HMtest) = Bala_Carter_Levi_plus(OMbig)
+	    then OMtest = complex_nilpotent(Mtest,HMtest)
+	    in if is_conjugate(G,M,Mtest) then [(E,OE,ME,OME)]
+	       else []
+	       fi
+	 od.##
+   od.##
+}
+
+set special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNilpotent)]:
+    let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
+    then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
+    then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
+    in [(RootDatum, ComplexNilpotent)]:
+    	 for E in Es do if #E.posroots >= d
+	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
+			     in for OE in stE.special_orbits
+			     	do if OE.dim = Edim and
+				      induce_orbit(G,OE) = OG
+				   then [(E,OE)]
+				   else[]
+				   fi
+				od.##
+			 else[]
+			 fi
+		     od.##
+
+
 set best_special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNilpotent)]:
-    let comp_reps = #component_representatives_plus(OG)
+    let comp_reps = #pseudo_Levis(OG) {this is number of classes in A(OG)/(image of Z(G))}
     then special_inds = special_ind(stG,OG)
-    then comp_rep_sizes = for (,OE) in special_inds do #component_representatives_plus(OE) od
+    then comp_rep_sizes = for (,OE) in special_inds do #pseudo_Levis(OE) od
     then maxcr = max(comp_rep_sizes)
     then comp_best = for (E,OE)@j in special_inds
     	 	     do if comp_rep_sizes[j] = maxcr
@@ -238,9 +312,9 @@ set best_special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, Comp
 	             od.##
 
     then E_sizes = for(E,) in comp_best do #E.posroots od
-    then maxsize = max(E_sizes)
+    then minsize = min(E_sizes)
     then sizes_best = for (E,OE)@k in comp_best
-    	 	      do if E_sizes[k] = maxsize
+    	 	      do if E_sizes[k] = minsize
 		      	 then [(E,OE)]
 		      	 else []
 		      	 fi
@@ -259,20 +333,132 @@ set show_best_special_ind(RootDatum G) = void:
 		, (#bests[j]).to_string
 		, E.nice_format
 		, OE.diagram.to_string
-		, (#component_representatives_plus(orbit)).to_string
-		, (#component_representatives_plus(OE)).to_string
+		, (#pseudo_Levis(orbit)).to_string
+		, (#pseudo_Levis(OE)).to_string
 	      ]
 	od
      in (header#table).tabulate
 
-{compute lusztig cell for one nilpotent; array has one entry for each
-component class in A(E_orbit)}
-set lusztig_cell_test (SpringerTable stG,ComplexNilpotent OG) =
-      [(RootDatum,RootDatum,vec,[int],ComplexNilpotent)]:
-      let (E,OE) = best_special_ind(stG,OG)[0]
-      in for (M,H_M,) in component_representatives_plus(OE)
-      do sigma_lusztig_test(stG,E,M,H_M) od
+{list all pairs (Levi, orbit in Levi) from which OG is induced}
+set max_Levi_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum,ComplexNilpotent)]:
+    let G=OG.root_datum
+    in if #G.roots = 0
+       then []
+       else let G = stG.root_datum
+    	    then dG = (#G.roots - OG.dim)\2
+    	    then max_Levis = max_Levi_subgroups(G)
+    	    in for L in max_Levis
+       	       do if #L.posroots < dG then []
+       	       	  else let Lshift = #G.roots - #L.roots
+	       	       in for OL in L.nilpotent_orbits
+	       	       	  do if OL.dim + Lshift = OG.dim and
+	       	     	     induce_orbit(G,OL) = OG
+	       	     	     then [(L,OL)]
+		     	     else []
+		     	     fi
+	       	       	  od.##
+    	          fi
+       	       od.##
+        fi
 
+set rigid_orbits(RootDatum G) = [ComplexNilpotent]:
+    let stG = G.Springer_table
+    in for OG in stG.orbits
+       do if #max_Levi_ind(stG,OG) = 0
+       	  then [OG]
+	  else []
+	  fi
+       od.##
+
+set rigid_special_orbits_naive(RootDatum G) = [ComplexNilpotent]:
+    let stG = G.Springer_table
+    in for OG in stG.special_orbits
+       do if #max_Levi_ind(stG,OG) = 0
+       	  then [OG]
+	  else []
+	  fi
+       od.##
+
+set rigid_special_orbits(RootDatum G) = [ComplexNilpotent]:
+    let Gv = G.dual, stG = G.Springer_table
+    then dist_orbits_dual = Gv.distinguished_orbits, stGv = Gv.Springer_table
+    in for OG in for Ov in dist_orbits_dual
+       	      	 do stGv.dual_map(Ov)
+		 od
+       do if #max_Levi_ind(stG,OG) = 0
+       	  then [OG]
+	  else []
+	  fi
+       od.##
+
+set weakly_rigid_special_orbits(RootDatum G) = [ComplexNilpotent]:
+    let Gv = G.dual, stG = G.Springer_table
+    then dist_orbits_dual = Gv.distinguished_orbits, stGv = Gv.Springer_table
+    in for Ov in dist_orbits_dual
+       do stGv.dual_map(Ov)
+       od
+
+set rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
+    [(RootDatum, ComplexNilpotent)]:
+    let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
+    then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
+    then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
+    in [(RootDatum, ComplexNilpotent)]:
+    	 for E in Es do if #E.posroots >= d
+	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
+			     in for OE in rigid_special_orbits(E)
+			     	do if OE.dim = Edim and
+				      induce_orbit(G,OE) = OG
+				   then [(E,OE)]
+				   else[]
+				   fi
+				od.##
+			 else[]
+			 fi
+		     od.##
+
+set weakly_rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
+    [(RootDatum, ComplexNilpotent)]:
+    let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
+    then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
+    then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
+    in [(RootDatum, ComplexNilpotent)]:
+    	 for E in Es do if #E.posroots >= d
+	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
+			     in for OE in weakly_rigid_special_orbits(E)
+			     	do if OE.dim = Edim and
+				      induce_orbit(G,OE) = OG
+				   then [(E,OE)]
+				   else[]
+				   fi
+				od.##
+			 else []
+			 fi
+		      od.##
+
+{compute lusztig cell for one nilpotent; array has one entry for each
+component class in A(E_orbit)/(image of Z(E))}
+set lusztig_cell_test_wr (SpringerTable stG,ComplexNilpotent OG) =
+      [(RootDatum,RootDatum,vec,[int],ComplexNilpotent)]:
+      let EOEs = weakly_rigid_special_ind(stG,OG)
+      in for(E,OE) in EOEs
+      	 do for (ME,H_ME) in pseudo_Levis(OE)
+      	    do sigma_lusztig_test(stG,E,ME,H_ME)
+	    od
+	 od.##
+
+set lusztig_cell_test_best (SpringerTable stG,ComplexNilpotent OG) =
+      [(RootDatum,RootDatum,vec,[int],ComplexNilpotent)]:
+      let EOEs = best_special_ind(stG,OG)
+      in for(E,OE) in EOEs
+      	 do for (ME,H_ME) in pseudo_Levis(OE)
+      	    do sigma_lusztig_test(stG,E,ME,H_ME)
+	    od
+	 od.##
+
+set lusztig_cell_test (SpringerTable stG,ComplexNilpotent OG) =
+    lusztig_cell_test_best(stG,OG)
+    
 {compute lusztig cells, running over given list of nilpotents}
 {returns: array, one entry for each orbit
  orbit -> array of [M,H_M,j_values]}
