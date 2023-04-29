@@ -475,6 +475,7 @@ set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
 set printPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
 set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
 set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3)
+set show(i_poly_mat M) = void: printPolyMatrix(M,3)
 
 { this provides maybe more meaningful names for |flex_add| and friends }
 set poly_plus    = +@(i_poly,i_poly) { this binding will remain exported }

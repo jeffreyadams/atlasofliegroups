@@ -68,7 +68,14 @@ set character_formula (tag_ParamPol(P,type)) = tag_ParamPol:
   assert(type = irr,"Character formula only defined for irreducible modules");
   (character_formula(P),std)
 
-set show (ParamPol P) = void: array_prints(to_str(P))
+{set show (ParamPol P) = void: array_prints(to_str(P))}
+set show(ParamPol P)=
+tabulate(for (c,p) in %P do
+[split_format(c) , "*", "p=(", p.x.number.to_string + ",", "lambda=" + p.lambda.compact_string + ",", "nu=" + p.nu.compact_string + ")"] od,
+"rrrrrl",0," ")
+{[split_format(c), p.x.number.to_string, p.lambda.to_string,p.nu.to_string] od)}
+
+
 set show (tag_ParamPol(,type):tP) = void:
   assert(type=irr or type=std or type=K_types,"Incorrect type");
   array_prints(to_str(tP))

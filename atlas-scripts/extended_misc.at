@@ -13,6 +13,8 @@ set_type
   )
 ]
 
+set distinguished_involution(ExtParam E)=mat:E.ic.distinguished_involution
+
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class
   the implementation depends on base_grading_vector(G) being dominant.
@@ -75,9 +77,16 @@ null_module(P.real_form) + for c@p in P do c*twist(p,delta) od
 set *(Param p,mat delta)=Param:twist(p,delta)
 set *(ParamPol P,mat delta)=ParamPol:twist(P,delta)
 
-set is_fixed (Param p,mat delta) = bool:p=twist(p,delta)
+{more typical to write mat*Param}
+set *(mat delta,Param p)=Param:twist(p,delta)
+set *(mat delta,ParamPol P)=ParamPol:twist(P,delta)
 
+set is_fixed (Param p,mat delta) = bool:p=twist(p,delta)
 set is_fixed (ParamPol P,mat delta) = bool:P=twist(P,delta)
+{for dyslexics:}
+set is_fixed(mat delta,Param p)=is_fixed(p,delta)
+set is_fixed (mat delta,ParamPol P) = bool:is_fixed(P,delta)
+
 
 set is_fixed (ratvec gamma, KGBElt x,KGBElt y,mat delta) = bool:
   is_fixed(parameter(x,y,gamma),delta)
@@ -86,6 +95,19 @@ set is_fixed (KGBElt x,mat delta) = bool: x=twist(x,delta)
 set is_fixed (KGBElt x, KGBElt y,mat delta) = bool:
   is_fixed(x,delta) and is_fixed(y,^delta)
 
+{p->p if fixed, (1+delta)p otherwise}
+set symmetrize(Param p,mat delta)=ParamPol:
+if delta*p=p then p else p+delta*p fi
+
+set one_plus_twist(Param p,mat delta)=ParamPol:p+delta*p
+
+{Note:
+ symmetrize(p,delta)=one_plus_twist(p,delta)/2 if delta*p=p
+                    =one_plus_twist(p,delta)   if delta*p\ne p}
+
+set one_plus_twist(ParamPol P, mat delta)=ParamPol:P+delta*P
+set symmetrize(ParamPol P, mat delta)=ParamPol:
+null_module(P.real_form) + for (c,p) in %P do c*symmetrize(p,delta) od
 
 { Stuff related to KGB }
 { |x_rep = (ratvec v, mat theta)| is used to represent a KGB element $x$ by
@@ -193,6 +215,22 @@ end
 { select delta-fixed elements from B }
 set fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
   ## for p in B do if is_fixed(p,delta) then [p] else [] fi od
+set non_fixed (mat delta, [Param] B) = [Param]: { filter delta-fixed elements }
+  ## for p in B do if not is_fixed(p,delta) then [p] else [] fi od
+
+{P=sum a_i p_i, keep just the delta-fixed p_i
+ note: if P = a(1+delta)p do not keep p or delta(p)}
+set fixed_terms (mat delta, ParamPol P)=ParamPol:
+null_module(P.real_form) + for c@p in P do if is_fixed(p,delta) then c*p else 0*p fi od
+
+set non_fixed_terms (mat delta, ParamPol P)=ParamPol:P-fixed_terms(delta,P)
+
+{P=sum a_i p_i, keep just the delta-fixed p_i
+ note: if P = a(1+delta)p do not keep p or delta(p)}
+set fixed_terms (mat delta, ParamPol P)=ParamPol:
+null_module(P.real_form) + for c@p in P do if is_fixed(p,delta) then c*p else 0*p fi od
+
+set non_fixed_terms (mat delta, ParamPol P)=ParamPol:P-fixed_terms(delta,P)
 
 { select delta-fixed elements from block_of(p) }
 set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))

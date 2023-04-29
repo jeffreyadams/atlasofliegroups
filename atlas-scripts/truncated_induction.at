@@ -187,7 +187,9 @@ set induce_orbit \
    then degree_function = (int->int): st_G.ct.degree
    , Wct_L = st_L.ct.class_table
    then (,char_G) = let char_L = [int]: st_L.ct.character(char_L_inx) in
+   let ()=           if ti_verbose then prints("char_L: ", char_L) fi in
            truncate_induce_character(Wct_L,st_G.ct,char_L,degree_function)
+   then ()=if ti_verbose then prints("truncate induce character: ", char_G) fi 
    then ()=assert(#char_G=1,"not a unique term with given degree")
    then (valid,orbit)=st_G.springer_inverse(char_G[0])
 in assert(valid,"induced orbit doesn't have Springer_inverse")

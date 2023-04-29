@@ -2,6 +2,7 @@
 <hodgeParamLaurentPol.at
 <stable.at
 <extParamPol.at
+<extended_character_formula.at
 
 set te_verbose=true
 {move nice_format elsewhere}
@@ -119,33 +120,26 @@ in for row in rows(P) { mat to i_pol_mat convention flip }
    do for index in row do if index.< then -polys[-index] else polys[index] fi od
    od
    }
-{
-set partial_fixed_block_of(mat delta,Param p)=
-##for a in partial_block(p) do if is_fixed(a,delta) then [a] else [] fi od
-}
 
-set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
-{  let B=partial_fixed_block_of(delta,p) in}
+set big_KL_P_polynomials(Param p,mat delta) ={ i_poly_mat:}
   let (B,,)=partial_extended_KL_block(p,delta) in
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
   then B_delta = for i in I_delta do B[i] od
-  , P=KL_P_polynomials(p)
-  then P_delta=KL_P_polynomials(p,delta)
-  in
-  if =#P_delta
-  then prints("Note: block not delta-fixed")
-  ; KL_P_polynomials(B) {block is not fixed by delta}
-  else let n=#complete_indices then rv=zero_poly_matrix(n) in
+  then (,P)=KL_P_polynomials(p)   {based on partial_KL_block(p)}
+  then (,P_delta)=KL_P_signed_polynomials(p,delta)  {based on partial_extended_KL_block(p,delta)} {shouldn't  be signed?}
+  then n=assert(!=#P_delta,"no fixed polynomials?");#complete_indices
+  then rv=zero_poly_matrix(n)
+  then ()=
      for a:n
      do let (i,epsilon_i)=complete_indices[a] in
         for b:n-a from a
         do let (j,epsilon_j)=complete_indices[b] in
-{ prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j); }
+           {prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j);}
            if a=b
            then  rv:=update_matrix_entry(rv,a,b,[1]) {diagonal entries}
            elif (epsilon_i*epsilon_j=1) { entries have same sign: P+P^delta}
            then let x=g[i], y=g[j] in
-{ prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]); }
+           {prints("P[i][j]=",P[i][j]," x=",x," y=",y," , Pdelta[x][y]=",P_delta[x][y]);}
 	     rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P_delta[x][y])\2)
 	   elif epsilon_i*epsilon_j=minus_1
 	   then {(+,-) or (-,+): P-P^delta} let x=g[i], y=g[j] in
@@ -161,13 +155,15 @@ set big_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
            fi
         od
      od
-  ; rv
-  fi
+  in rv
 
-set partial_KL_P_polynomials (Param p) =
+
+{don't need these: KL_P_polynomials(p) is the partial ones}
+{set partial_KL_P_polynomials (Param p) =
   let (,P,polys)=partial_KL_block(p) in
   for row in rows(P) do for entry in row do polys[entry] od od
-
+}
+{
 set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
   let (B,,)=partial_extended_KL_block(p,delta) in
@@ -207,15 +203,17 @@ set big_partial_KL_P_polynomials(Param p,mat delta) = i_poly_mat:
      od
   ; rv
   fi
+}
 
-
-set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
+{start with big_KL_P_polynomials and change some signs}
+{see version in bigMatrices.at}
+{set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
 {  let B=partial_fixed_block_of(delta,p) in}
   let (B,,)=partial_extended_KL_block(p,delta) in
   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
   if =#I_delta then KL_P_signed_polynomials(B)
   else
-     let P=big_KL_P_signed_polynomials(B,delta)
+     let P=big_KL_P_polynomials(p,delta)
      , lengths = for i:#g do length(B[i]) od
      , n=#complete_indices
      in
@@ -225,7 +223,7 @@ set big_KL_P_signed_polynomials (Param p,mat delta) = i_poly_mat:
      od od
   ; P
   fi
-
+}
 set endoscopic(RootDatum G,mat delta)=(RootDatum,mat):
 let Gd=G.dual then
 trd=twisted_root_datum(Gd,^delta) then
@@ -296,7 +294,7 @@ lift(KGB_elt_gen(x_H),M,G)
 
 {list standard module: (x,lambda,nu)
  easiest to say this in terms of extended parameters
- (gamma,lambda_rho,g,l,tau,t) for H -> 
+ (gamma,lambda_rho,g,l,tau,t) for H ->
  (gamma=M*gamma,
   lambda_rho=M*lambda_H - rho_G,
   g=rho_check(G),
@@ -382,7 +380,7 @@ recall square (KGBElt_gen x)=ratvec:torus_factor(x)+inner_class(x).rho_check
 set inverse_lift_std(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=(bool,ParamPol):
 let y_G=y_gen(p_G) then
 action_H=restrict_action(y_G.involution,M) then
-tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then  
+tf_u_G=y_G.unnormalized_torus_factor {unnormalized torus factor for G} then
 theta=p_G.x.involution then
 N=(1+theta)##id_mat(n_rows(theta)) then
 ()=if te_verbose then prints(M##N) fi then
@@ -405,7 +403,7 @@ if is_valid(y_H_gen,gamma_H) then
   let ()=prints("valid, but wrong answer") in
    (false,null_module(H)) fi
 else
- let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in 
+ let ()=prints("not valid, consider using inverse_lift_std_by_search instead") in
  (false,null_module(H))
 fi
 
@@ -442,7 +440,7 @@ null_module(H)
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(p_G,H,M,delta,gamma_H) in
 if valid then
- if lift_std(first_param(P_H),M,p_G.real_form,delta)=p_G then 
+ if lift_std(first_param(P_H),M,p_G.real_form,delta)=p_G then
   P_H
  else
   let ()=prints("inverse_lift_std_mixed is valid, but gives wrong answer") in
@@ -481,7 +479,7 @@ od;
 (true,rv)
 
 set inverse_lift_std_by_search(ParamPol P,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
-null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od 
+null_module(H) + for (c,p) in %P do c*inverse_lift_std_by_search(p,H,M,delta,gamma_H) od
 
 set inverse_lift_std_mixed(ParamPol P,RealForm H,mat M, mat delta,ratvec gamma_H)=ParamPol:
 let (valid,P_H)=inverse_lift_std(P,H,M,delta,gamma_H) in
@@ -492,53 +490,21 @@ else
 fi
 
 
-{REST OF FILE COMMENTED OUT: requires updating extParamPol.at
-
-set extended_character_formula_reg_old (Param p,mat delta) = ParamPol:
-assert(is_regular(p.root_datum,p.infinitesimal_character),"infinitesimal character is not regular");
-let G=p.real_form then
-rv=null_module(G) then
-B=block_of(p) then
-(I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-P=big_KL_P_signed_polynomials(B,delta) then
-index=find(complete_indices,(find(B,p),1)) in
-for (j,type)@i in complete_indices do
- let c=eval(P[i][index],s) in
- rv +:=
- if type=1 then c*B[j]
-   elif type=-1 then c*s*B[j] 
-   elif type=0 then c*B[j] 
-   else error("c\ne 0,\pm 1")
- fi
-od;
-rv
-
-
-set extended_character_formula_old (Param p,mat delta) = ParamPol:
-if is_regular(p.root_datum,p.infinitesimal_character) then extended_character_formula_reg_old(p,delta)
-else
- let preg=make_regular_param(p) then
- gamma=p.infinitesimal_character then
- ecfreg=extended_character_formula_reg_old(preg,delta) then
- {need to apply T_param term by term because putting in a ParamPol
-  finalizes each term which is not OK}
- rv=null_module(p.real_form) in
-   for c@p in ecfreg do rv+:=c*finalize_extended(T_param(p,gamma),delta) od;
- rv
- fi
-
-
+{REST OF FILE COMMENTED OUT: requires updating extParamPol.at}
 {
 set inverse_lift_std_mixed(Param p_G,RealForm H,mat M, mat delta)=ParamPol:
 let P=inverse_lift_std(p_G,H,M,delta) in
 if =P then prints("inverse lift failed, use search");inverse_lift_std_by_search(p_G,H,M,delta)
 else P fi
 }
+
 {returns a sum of standards}
+
 set inverse_lift_irr(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=(bool,ParamPol):
 {let ecf=extended_character_formula(p_G,delta) then}
-let ecf=extended_character_formula_old(p_G,delta) then
-P_G=convert_to_param_pol(ecf).s_to_1 then
+let ecf=extended_character_formula(p_G,delta) then
+{P_G=right_restrict(ecf).s_to_1 then}
+P_G=twisted_character(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
 (valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
@@ -547,8 +513,9 @@ P_G=convert_to_param_pol(ecf).s_to_1 then
 
 set inverse_lift_irr_mixed(Param p_G,RealForm H,mat M,mat delta,ratvec gamma_H)=ParamPol:
 {let ecf=extended_character_formula(p_G,delta).s_to_1 then}
-let ecf=extended_character_formula_old(p_G,delta).s_to_1 then
-P_G=convert_to_param_pol(ecf) then
+let ecf=extended_character_formula(p_G,delta) then
+{P_G=right_restrict(ecf).s_to_1 then}
+P_G=twisted_character(ecf) then
 ()=if te_verbose then prints("ecf=",ecf) fi then
 ()=if te_verbose then prints("P_G=",P_G) fi then
 (valid,P_H)=inverse_lift_std(P_G,H,M,delta,gamma_H) then
@@ -615,9 +582,9 @@ fi
 (H,M)=endoscopic(G,delta) to define H,M,G,delta}
 set abv_mixed(Param p_H,mat M,RealForm G,mat delta)=
 let lift_std_ext=lift_std(p_H,M,G,delta) then
-lift_std=parameter(lift_std_ext) then
+lift_std=lift_std_ext then
 inverse_lift=inverse_lift_irr_mixed(lift_std,p_H.real_form,M,delta,p_H.infinitesimal_character) {sum of standards} then
-()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in 
+()=if te_verbose then prints("inverse_lift: (sum of stds): ", inverse_lift) fi in
 (p_H,lift_std,inverse_lift,composition_series(inverse_lift))
 
 
@@ -642,17 +609,17 @@ set matches(int i,[ParamPol] packets)=[int]:
 set orbit(Param p,[ComplexNilpotent] orbits)=int: first(for O in orbits do p.infinitesimal_character=O.H/2 od)
 
 set report([Param] all_H_u,[ParamPol] abv, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
-let (unique,indices)=remove_duplicates(abv) in 
+let (unique,indices)=remove_duplicates(abv) in
 let ()=prints("Number of parameters: ", #all_H_u,new_line,
 "#distinct packets: ", #unique,new_line,
 "map from parameters to packets: ", indices)  in
 let ()=prints("parameters/packets:") in
 let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
-  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique).to_string] od) in 
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique).to_string] od) in
 let ()=prints(new_line,"packets/parameters:") in
 let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique do
                  let lp=for p in monomials(packet) do find(all_H_u,p) od
-                  in [i.to_string,lp.to_string] od) in 
+                  in [i.to_string,lp.to_string] od) in
 for p@i in all_H_u do
  let ()=prints(new_line,"---------------------------------------------------------",
  new_line,
@@ -679,18 +646,18 @@ show_long(wp)
 
 set report_valid_only([Param] all_H_u,[ParamPol] abv, [([([Param],[WCell])],[(int,int,Param)])] wp,[ComplexNilpotent] dual_orbits)=void:
 let (unique_valid,indices_valid)=remove_duplicates_and_invalids(abv,all_H_u) in
-let (unique,indices)=remove_duplicates(abv) in 
+let (unique,indices)=remove_duplicates(abv) in
 let ()=prints("Number of parameters:", #all_H_u,new_line,
 "#distinct packets: ", #unique,new_line,
 "#distinct valid packets: ", #unique_valid,new_line,
 "map from parameters to valid packets: ", indices_valid)  in
 let ()=prints("parameters/packets:") in
 let ()=tabulate(["param#","param","inf char","orbit","packets"]#for p@i in all_H_u do
-  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique_valid).to_string] od) in 
+  [i.to_string, p.nice_format,p.infinitesimal_character.compact_string,orbit(p,dual_orbits).to_string, packets(p,unique_valid).to_string] od) in
 let ()=prints("packets/parameters: ") in
 let ()=tabulate(["packet#", "packet parameters"]#for packet@i in unique_valid do
                  let lp=for p in monomials(packet) do find(all_H_u,p) od
-                  in [i.to_string,lp.to_string] od) in 
+                  in [i.to_string,lp.to_string] od) in
 for p@i in all_H_u do
  let ()=prints(new_line,"---------------------------------------------------------",
  new_line,
@@ -713,4 +680,3 @@ prints("=============================================================");
 show_nilpotent_orbits_long(all_H_u[0].real_form.dual_quasisplit_form);
 prints("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
 show_long(wp)
-}

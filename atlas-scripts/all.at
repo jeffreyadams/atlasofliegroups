@@ -1,5 +1,4 @@
 {Load this file to load all recommended .at files}
-<extParamPol.at
 <complex.at
 <test_unitarity.at
 <modules.at
@@ -49,8 +48,17 @@
 <special_rep.at
 <families.at
 <L_packet.at
-<twisted_endoscopy.at
+
+
+
 <central.at
 <adams_johnson.at
 <test_non_distinguished.at
+<<<<<<< HEAD
 <speh.at
+=======
+{<twisted_endoscopy.at}
+{<extended_character_formula.at}
+{<restriction.at}
+
+>>>>>>> jeff_endoscopy

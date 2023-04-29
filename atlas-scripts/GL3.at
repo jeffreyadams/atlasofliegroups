@@ -1,0 +1,16 @@
+<twisted_endoscopy.at
+set G=GL(3,R)
+set delta=G.distinguished_involution
+set (H,M)=endoscopic(G,delta)
+set H=H.split_form
+set all_G=unipotent_representations(G)
+set all=unipotent_representations(H)
+
+
+
+set ph=all~[0]
+set gamma=ph.infinitesimal_character 
+set pg=lift_std(ph,M,G,delta)
+set ecf=extended_character_formula(pg,delta)
+prints("ecf: ");
+show(ecf)
