@@ -18,7 +18,7 @@
 #in atlas:
 #>facetsE6dim4 facets(E6_s,4)   {4 dim facets}
 #>facetsE6dim4 facets(E6_s)     {all facets}
-import sys, time, os, getopt, subprocess, gc
+import sys, time, os, getopt, subprocess, gc,re 
 import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
 import multiprocessing as mp   #only for cpu count
@@ -34,47 +34,39 @@ def report(q,i,proc):
 #i: number of process
 def atlas_compute(i):
    print("starting atlas_compute process #", i)
-   q=mp.Manager().Queue()
+   proc=procs[i]
    facet_file=facet_file_stem + "_" + str(i)
    print("reading data from file: ", facet_file)
    file=open(facet_file,"r")
-   data=file.read().splitlines()
-   file.close()
-   for d in data:
-      q.put(d)
-   print("new q of size ",q.qsize())
-   proc=procs[i]
    facets_computed_local=0  #facets computed by this process
    outputfile=group + "/" + output_file_stem + "_" + str(i) + ".at"  #atlas requires quotes if filename includes a directory
    f=open(outputfile,"wb", buffering=4000000)
    firstline=True
-   while not q.empty():
-      if q.qsize()%progress_step_size==0:
-         print(str(q.qsize()) + "(" + str(i) + ")          " ,end="\r")
-#         print("get_count: ", str(gc.get_count()))
-#      report(q,i,proc)
-      try:
-         facet = q.get(False)
-      except queue.Empty:
-         quit_arg='{}'.format("\n quit").encode('utf-8')
+   for facet in file:
+#      atlas_arg='{}'.format("\n prints(\"(\"," + facet +  "[0]" + ",\",\",K_data(K_char(" + group + "," + facet + "))" + ",\")\")\n" ).encode('utf-8'
+      atlas_arg=b"".join([b"\n prints(\"(\",", bytes(facet,'utf-8') ,  b"[0]",b",\",\",K_data(K_char(",bytes(group,'utf-8'),b",",bytes(facet,'utf-8'),b"))",b",\")\")\n"])
+#      print("atlas_arg: ", atlas_arg)
+      proc.stdin.write(atlas_arg)
+      proc.stdin.flush()
+      line = proc.stdout.readline().decode('ascii')
+      line=re.sub(r'\s+', '', line) + "\n"   #strip spaces, add newline back
+      if firstline:
+         print("first line of process ", i, " written at ", time.ctime())
+         line="set K_chars_dim_" + str(dim) + "_" + str(i) +"=[" + line
+         f.write(line.encode())
+         firstline=False
       else:
-         atlas_arg='{}'.format("\n prints(\"(\"," + facet +  "[0]" + ",\",\",K_data(K_char(" + group + "," + facet + "))" + ",\")\")\n" ).encode('utf-8')
-         proc.stdin.write(atlas_arg)
-         proc.stdin.flush()
-         line = proc.stdout.readline().decode('ascii')
-         if firstline:
-            line="set K_chars=[" + line
-            firstline=False
-         else:
-            line=","+line
-            f.write(line.encode())
+         line=","+line
+         f.write(line.encode())
       facets_computed_local+=1
    f.write("]".encode())
    f.close()
    return(i,facets_computed_local)
 
 def main(argv):
+   print("Starting at ", time.ctime())
    global group
+   global dim
    global facet_file_stem
    global output_file_stem
    cpu_count=mp.cpu_count()
@@ -117,22 +109,9 @@ def main(argv):
    queues=[]
    number_facets=[]
    with mp.Manager() as manager:
-      for i in range(number_fundamental_facets):
-         q=manager.Queue()
-         facet_file=facet_file_stem + "_" + str(i)
-         print("reading data from file: ", facet_file)
-         file=open(facet_file,"r")
-         data=file.read().splitlines()
-         file.close()
-         for d in data:
-            q.put(d)
-         queues.append(q)
-         number_facets.append(q.qsize())
-   print("number of queues: ", len(queues))
-   print("length of queues: ", number_facets)
-   global procs
-   procs=[]
-   T=[]   #array of results from the atlas processes
+      global procs
+      procs=[]
+      T=[]   #array of results from the atlas processes
    for i in range(number_fundamental_facets):
       proc=subprocess.Popen(["../atlas","polsParallel.at"], stdin=PIPE,stdout=PIPE)
       procs.append(proc)
@@ -140,8 +119,6 @@ def main(argv):
    with concurrent.futures.ProcessPoolExecutor(number_fundamental_facets) as P:
       for i in range(number_fundamental_facets):
          proc=procs[i]
-         q=queues[i]
-#         Q=P.submit(atlas_compute,group,output_file_stem,i)
          Q=P.submit(atlas_compute,i)
          T.append(Q)
    total_facets=0

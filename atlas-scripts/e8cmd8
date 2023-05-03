@@ -1,1 +1,1 @@
-{ time ./K_char.py  -g E8_s -f facetsE8_sdim8 -d 8 -c 20 -o new >> e8_dim8_new_log;} 2>> e8_dim8_log_new_b
+ { time ./K_char_new.py  -g E8_s -f "facets_E8/facets_E8_s_dim8" -d 8 -o new >> e8_dim8_log;} 2>> e8_dim8_log_b

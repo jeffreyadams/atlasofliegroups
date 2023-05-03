@@ -339,6 +339,7 @@ let table = [ [string] ]:
 	     , if =y then st_G.ct.special(st_G.springer(orbit)).to_string else "" fi
 	     ,dimension(st_G.ct,k).to_string
 	     ,st_G.ct.degree(k).to_string
+      	     ,st_G.ct.generic_degree(k).to_string
 	     ,st_G.ct.character(k).to_string
 	     ]
 	    od {for k in values}
@@ -358,6 +359,7 @@ in {table=[[string]]}
     ,"special"
     ,"dim"
     ,"deg"
+    ,"gdeg"
     ,"char=ct.character(sigma[0])"
     ]
    # table

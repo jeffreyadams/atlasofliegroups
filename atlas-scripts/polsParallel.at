@@ -63,7 +63,7 @@ in   for FV@k in facets
     character_formula(1*parameter(xo,rh+bup,bary+bup)),bdown))}
 {    in prints("void: ",varName,"[",i,"]:=",[int]: FVind);}
 {    in prints("(" + FV[0].to_string + "," + w.to_string + "," +  FVind.to_string + ")");}
-    in prints("[" + bary.to_string + "," + bup.to_string + "," + bdown.to_string +"]");
+    in prints("[" + FVind.to_string + "," + bup.to_string + "," + bdown.to_string + "]");
     i+:=1
 	         od
 	     od
