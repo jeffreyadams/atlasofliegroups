@@ -218,7 +218,10 @@ set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
 
 { sorting fixed size vectors lexicographically }
 set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }
-   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+   if #v!=#w then return #v < #w
+      	     else for x@i in v do if x!=w[i] then return x<w[i] fi od;
+	     true
+   fi
 
 set merge ([vec] a, [vec] b) = [vec]: { merge weakly increasing lists }
   let na=#a in
