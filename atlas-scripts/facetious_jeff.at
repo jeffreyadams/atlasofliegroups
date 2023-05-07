@@ -1,0 +1,89 @@
+<writeFiles.at
+<facetious.at
+
+
+
+
+set facet_verbose=false
+
+{hardcode facet sizes for E8}
+set E8sizes = [ 610995,   25762046, 298908428, 1566837152,4413546720,7147951104, 6675056640,  3344302080, 696729600]
+
+set number_fundamental_facets(RootDatum G,int i)=int:
+if Lie_type(G)=E8 then E8sizes[i] else #facets_fundamental(G,i) fi
+
+set number_fundamental_facets(RootDatum G)=[int]:
+ for i:ss_rank(G)+1 do number_fundamental_facets(G,i) od
+
+set vertex_data(RootDatum G)=VertexData:
+to_vertex_data(if Lie_type(G)=E8 then FPP_verticesE8(G) else FPP_vertices(G,-1) fi)
+
+{barycenter of facet given by [int]: list of vertices from VertexData}
+set barycenter(VertexData vd, [int] vertex_indices)=ratvec:
+let (vertices,index)=vd then
+v=0*vertices[0]  in
+for j in vertex_indices do v+:=vertices[j] od;v/#vertex_indices
+
+{same as FPP_facets(Affd,vd,dim,j) in facetious.at, not including j, but including k
+ k=index of fundamental facet in list of those of given dimension
+ j <-> folding, no folding <-> j=-1}
+set facets(SimpleAffine Affd, VertexData vd, int dim, int k) =[FacetVertsIndex]:
+let FV=facets_fundamental(Affd,dim)[k] then
+    bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1) in
+    [FacetVertsIndex]:
+      for w in affine_orbit_ws(Affd,bary_F) do
+        for tau in FPPtauRoots{Fast}(Affd,w*bary_F, -1) {j=-1} do
+          FacetVertsIndex:
+            for v in (AffineCoWeylElt:(tau,w))*FV do
+                  vd.lookup(v)
+            od.sort
+        od {for tau}
+      od.##  {for w}
+
+{comput vd, and return it also}
+set facets(SimpleAffine Affd, int dim, int k) =(VertexData,[FacetVertsIndex]):
+let vd=vertex_data(Affd) in (vd,facets(Affd,vd,dim,k))
+
+{run over k}
+set facets(SimpleAffine Affd, VertexData vd, int dim) =[[FacetVertsIndex]]:
+for k:number_fundamental_facets(Affd,dim) do facets(Affd,vd,dim,k) od
+
+{compute vd, run over k}
+set facets(SimpleAffine Affd, int dim) =(VertexData,[[FacetVertsIndex]]):
+let vd=vertex_data(Affd) in (vd,facets(Affd,vd,dim))
+
+set facets_big(SimpleAffine Affd, VertexData vd, int dim, int k) =[(BigFacetVerts,KTypePol)]:
+let FV=facets_fundamental(Affd,dim)[k] then
+  bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1) then
+  irdw = integrality_datum(Affd,bary_F) in
+  [(BigFacetVerts,KTypePol)]:
+  for w in affine_orbit_ws(Affd,bary_F) do
+   let wbF = w*bary_F, iw = inverse(w) then
+    (x3,) = from_dominant(irdw, iw*Affd.two_rho) in
+     for tau in FPPtauRoots{Fast}(Affd,wbF, -1)  {j=-1} do
+      let wbeta0 = -tau + w*Affd.two_rho then
+       gamma2 = wbF + w*Affd.two_rho then
+       bup =  wbeta0 + ratvec_as_vec(w*(x3*(iw*gamma2)) - gamma2) then
+       verts=for v in (AffineCoWeylElt:(tau,w))*FV do vd.lookup(v) od.sort then
+       bdown=-inverse(x3)*(iw*bup) then
+       bfv=BigFacetVerts:(verts,bup,bdown)  then
+       lambda=barycenter(vd,verts) then
+       param=parameter(x_open(split_form(Affd)),lambda+bup,lambda+bup) then
+       K_char=K_type_pol(translate_param_by(character_formula(1*param),bdown)) in
+       prints(verts,K_char);(bfv,K_char)   {for use by facetious.py to write to file}
+     od{for tau}
+  od.##
+
+{compute vd, and return it also}
+set facets_big(SimpleAffine Affd, int dim, int k) =(VertexData,[(BigFacetVerts,KTypePol)]):
+let vd=vertex_data(Affd) in (vd,facets_big(Affd,vd,dim,k))
+
+{run over k}
+set facets_big(SimpleAffine Affd, VertexData vd, int dim) =[[(BigFacetVerts,KTypePol)]]:
+for k:number_fundamental_facets(Affd,dim) do facets_big(Affd,vd,dim,k) od
+
+{compute vd, run over k}
+set facets_big(SimpleAffine Affd, int dim) =(VertexData,[[(BigFacetVerts,KTypePol)]]):
+let vd=vertex_data(Affd) in (vd,facets_big(Affd,vd,dim))
+
+
