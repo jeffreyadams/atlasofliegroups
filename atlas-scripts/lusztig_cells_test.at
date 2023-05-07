@@ -48,6 +48,12 @@ set sigma_lusztig_test_dumb_elim = true
 set top_degree(CharacterTable ct) = (int i)int:
     let is = ct.tensor_sign_index(i) in #ct.root_datum.posroots - ct.degree(is)
 
+{Use this directly instead of degree for "opposite" of truncated
+induction. Gives how many BELOW the top degree is the highest
+occurrence of sigma in harmonic polys.}
+set codegree(CharacterTable ct) = (int i)int:
+    #ct.root_datum.posroots - ct.top_degree(i)
+
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user.
 arguments:
  G given group with its coordinate, need this to compute roots of L in G
@@ -323,10 +329,10 @@ in (M,ME,HME,resultMG, O)
 
 set sigma_lusztig_double_test(SpringerTable stG, SpringerTable stGvee, RootDatum E,
     RootDatum M, vec HME) =
-(RootDatum,RootDatum, vec,[int],ComplexNilpotent,[int],ComplexNilpotent):
-    {returns (E,M,HEM,G reps via E, O, G reps via M, Ovee)}
+(RootDatum,RootDatum, RootDatum, vec,[int],ComplexNilpotent,[int],ComplexNilpotent):
+    {returns (E,M,EM,HEM,G reps via E, O, G reps via M, Oprime)}
 let G = stG.root_datum, ctG = stG.ct
-then WctG = ctG.class_table, Gvee = G.dual
+then WctG = ctG.class_table
 {M posroots may not be pos for E}
 then MEpos = [int]: for alpha@j in M.posroots do if is_root(E,alpha) then [j] else [] fi od.##
 then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
@@ -341,26 +347,22 @@ then ME = if #MEpos = 0 then root_datum(null(G.rank,0),null(G.rank,0),true)
 	       then MEsimplecoroots = mat: for j in MEsimpleroot_nums do M.poscoroots[j] od
 	       in  root_datum(MEsimpleroots, MEsimplecoroots,true)
      	  fi
-then Mvee = M.dual {endoscopic in Gvee}, stM = M.Springer_table, stGvee = Gvee.Springer_table
-then stMvee = Mvee.Springer_table, ctGvee = stGvee.ct
-then OME = complex_nilpotent(ME,HME), Evee = dual(E) {pseudoLevi in Gvee}, ctM = stM.ct,
-     ctMvee = stMvee.ct, WctGvee = ctGvee.class_table
-then stE = E.Springer_table, stME = ME.Springer_table
-then MEvee = ME.dual, OMEvee = stME.dual_map(OME), ctME = stME.ct, ctE = stE.ct
-then OE=complex_nilpotent(E,HME), stMEvee = MEvee.Springer_table, ctME = stME.ct
-then O = induce_orbit(G,OE), ctMEvee = stMEvee.ct, WctME = ctME.class_table
-then stM = M.Springer_table, stE = E.Springer_table, WctMvee = ctMvee.class_table,
-     WctE = ctE.class_table, WctMEvee = ctMEvee.class_table
+then stM = M.Springer_table, stE = E.Springer_table, stME = ME.Springer_table
+then OME = complex_nilpotent(ME,HME), ctE = stE.ct, ctM = stM.ct, ctME = stME.ct
+then OE=complex_nilpotent(E,HME), OM = induce_orbit(M,OME)
+then O = induce_orbit(G,OE), Oprime = complex_nilpotent(G,OM.H)
+then WctM = ctM.class_table, WctE = ctE.class_table, WctME = ctME.class_table
 then () = assert(is_special(stME,OME),
 "in sigma_lusztig_double_test, "+OME.diagram.to_string+" is not special for "+ME.nice_format)
 then () = assert(is_special(stE,OE),
 "in sigma_lusztig_double_test, "+OE.diagram.to_string+" is not special for "+E.nice_format)
-then targetE = stE.springer(OE) {automatically special}
-then sigmaME_num = stME.springer(OME), sigmaMEvee_num = stMEvee.springer(OMEvee)
+then () = assert(is_special(stM,OM),
+"in sigma_lusztig_double_test, "+OM.diagram.to_string+" is not special for "+M.nice_format)
+then targetE = stE.springer(OE), targetM = stM.springer(OM) {automatically special}
+then sigmaME_num = stME.springer(OME)
 then ddOME = #ME.posroots - ctME.top_degree(sigmaME_num)
-then targetMveedeg = ctMEvee.degree(sigmaMEvee_num)
-then targetE_top =  #E.posroots - ddOME
-then sigmaME = ctME.characters[sigmaME_num], sigmaMEvee = ctMEvee.characters[sigmaMEvee_num]
+then targetE_top =  #E.posroots - ddOME, targetMdeg = ctME.degree(sigmaME_num)
+then sigmaME = ctME.characters[sigmaME_num]
 then indE = induce_character(WctME,WctE,sigmaME)
 then indE_decomposed = ctE.decompose(indE)
 then resultE = for j:#indE_decomposed
@@ -374,23 +376,18 @@ then resultE = for j:#indE_decomposed
 {then () = if sigma_lusztig_test_dumb_elim and is_member_sorted(resultE)(targetE)
      	  then resultE := [targetE]
 	  fi}
-then OMvee = complex_nilpotent(Mvee,OMEvee.H)
-then () = assert(is_special(stMvee,OMvee),
-"in sigma_lusztig_test, "+OMvee.diagram.to_string+" is not special for "+Mvee.nice_format)
-then Ovee = induce_orbit(Gvee, OMvee)
-then targetMvee = stMvee.springer(OMvee) {automatically special}
-then indMvee = induce_character(WctMEvee,WctMvee,sigmaMEvee)
-then indMvee_decomposed = ctMvee.decompose(indMvee)
-then resultMvee = for k:#indMvee_decomposed
-     		  do if indMvee_decomposed[k] > 0 and
-		     	ctMvee.degree(k) = targetMveedeg and
-		     	ctMvee.special(k) = targetMvee
+then indM = induce_character(WctME,WctM,sigmaME)
+then indM_decomposed = ctM.decompose(indM)
+then resultM = for k:#indM_decomposed
+     		  do if indM_decomposed[k] > 0 and
+		     	ctM.degree(k) = targetMdeg and
+		     	ctM.special(k) = targetM
 		     then [k]
 		     else []
 		     fi
 		     od.##
-then () = if  sigma_lusztig_test_dumb_elim and is_member_sorted(resultMvee)(targetMvee)
-     	  then resultMvee := [targetMvee] fi
+{then () = if  sigma_lusztig_test_dumb_elim and is_member_sorted(resultM)(targetM)
+     	  then resultMvee := [targetMvee] fi}
 then resultEG = [int]: for j in resultE
      	      	       do let indj = induce_character(WctE,WctG,ctE.characters[j]),
 		       	      	     targetj = ctE.degree(j)
@@ -403,19 +400,19 @@ then resultEG = [int]: for j in resultE
 			      	fi
 		      	     od.##
 		 	 od.##.sort_u
-then resultMveeGvee = for k in resultMvee
-     	      	do let indk = induce_character(WctMvee,WctGvee,ctMvee.characters[k]),
-		       targetk = ctMvee.degree(k)
-		   then indk_decomposed = ctGvee.decompose(indk)
+then resultMG = for k in resultM
+     	      	do let indk = induce_character(WctM,WctG,ctM.characters[k]),
+		       targetk = ctM.top_degree(k)+#G.posroots-#M.posroots
+		   then indk_decomposed = ctG.decompose(indk)
 		   in for ell:#indk_decomposed
 		      do if indk_decomposed[ell] > 0 and
-		      	 ctG.degree(ell) = targetk
+		      	 ctG.top_degree(ell) = targetk
 			 then [ell]
 			 else []
 			 fi
 		      od.##
 		 od.##.sort_u
-in (E,M,HME,resultEG, O, resultMveeGvee,Ovee)
+in (E,M,ME,HME,resultEG, O, resultMG,Oprime)
 
 {Given a nilpotent OG for G, find all endoscopic E and special nilpotent OE
 in it so that OG=induce_orbit(G,OE). That such exist is Lusztig orange book, 13.3}
@@ -624,6 +621,23 @@ set weakly_rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
 			 fi
 		      od.##
 
+{alternate way to get the same set?}
+set weakly_rigid_special_indB(SpringerTable stG, ComplexNilpotent OG) =
+    [(RootDatum, ComplexNilpotent)]:
+    let G = stG.root_datum, Gv = stG.root_datum.dual
+    then stGv = Gv.Springer_table, OGv = stG.dual_map(OG)
+    then Ovs = special_piece(stGv,OGv) {list of nilps in Gv}
+    in for Ov in Ovs
+       do for (Ev,HEv) in pseudo_Levis(Ov)
+       	  do let stEv = Ev.Springer_table
+	     then (E,OE) =  (Ev.dual, stEv.dual_map(nilpotent(Ev,HEv)))
+	     in if induce_orbit(G,OE) = OG
+	     	then [(E,OE)]
+		else []
+		fi
+	   od.##
+        od.##
+
 {array [(orbit OGprime in special_piece(OG), [pairs (E,OE)]] with OE
 weakly rigid inducing to OGprime}
 set weakly_rigid_special_piece_ind(SpringerTable stG, ComplexNilpotent OG) =
@@ -673,6 +687,25 @@ set lusztig_cell_plus_testM (SpringerTable stG,ComplexNilpotent OG) =
 	    do sigma_lusztig_testM(stG,M,ME,OME.H)
 	    od
       	 od
+
+set special_orbit(ComplexNilpotent OG) = ComplexNilpotent:
+    let G=OG.root_datum, Gv = OG.root_datum.dual
+    then stG = G.Springer_table, stGv = Gv.Springer_table
+    in stGv.dual_map(stG.dual_map(OG))
+    
+{set lusztig_cell_double_test (SpringerTable stG,ComplexNilpotent OG) =
+[[(RootDatum,RootDatum,RootDatum,vec,[int],ComplexNilpotent, [int],ComplexNilpotent)]:
+    let G= stG.root_datum, Gv = stG.root_datum.dual
+    then Os = special_piece(stG,OG), O_special = special_orbit(OG)
+    then stGv = Gv.Springer_table,Ov_special=stG.dual_map(OG)
+    then Ovs = special_piece(stGv,Ov_special)
+    then MOMs = [[RootDatum,ComplexNilpotent]]:
+    	 for O in Os do pseudo_Levis(O) od
+    then EOEs = [[RootDatum,ComplexNilpotent]]:
+    	 for O in Os do weakly_rigid_special_ind
+
+}
+
 
 set lusztig_cell_test (SpringerTable stG,ComplexNilpotent OG) =
     lusztig_cell_test_bestE(stG,OG)
@@ -949,3 +982,64 @@ sigma(O,1,xi).}
 	  fi
        od.##
 }
+
+set sigma_lusztig_simple(SpringerTable stG, ComplexNilpotent O) =
+[([int], ComplexNilpotent)]:
+    {meant to return the list of (corr W reps, component of A(O))}
+let G = stG.root_datum, ctG = stG.ct
+then WctG = ctG.class_table
+then pLs = pseudo_Levis(O), sigmaG_special_num = ctG.special(stG.springer(O))
+in for (M,HM) in pLs
+   do let stM = M.Springer_table
+      then OM = complex_nilpotent(M,HM), ctM = stM.ct
+      then stM = M.Springer_table, WctM = ctM.class_table
+      then sigmaM_num = stM.springer(OM)
+      then targetM = ctM.codegree(sigmaM_num),
+      	   sigmaM = ctM.characters[sigmaM_num]
+      then indM = induce_character(WctM,WctG,sigmaM)
+      then indM_decomposed = ctG.decompose(indM)
+      then resultM = for j:#indM_decomposed
+     	      	     do if indM_decomposed[j] > 0 and
+		     	   ctG.codegree(j) = targetM and
+		     	   ctG.special(j) = sigmaG_special_num
+		 {not really: codegree may be BIGGER than targetM}
+		      	   then [j]
+		  	   else []
+		  	   fi
+		      od.##
+      in (resultM,OM)
+   od
+
+set sigma_lusztig_keep_trying(SpringerTable stG, ComplexNilpotent O) =
+[([int], int, ComplexNilpotent)]:
+    {meant to return the list of (corr W reps, shift in codegree,
+    	   component of A(O))}
+let G = stG.root_datum, ctG = stG.ct
+then WctG = ctG.class_table
+then pLs = pseudo_Levis(O), sigmaG_special_num = ctG.special(stG.springer(O))
+in for (M,HM) in pLs
+   do let stM = M.Springer_table
+      then OM = complex_nilpotent(M,HM), ctM = stM.ct
+      then stM = M.Springer_table, WctM = ctM.class_table
+      then sigmaM_num = stM.springer(OM)
+      then targetM = ctM.codegree(sigmaM_num),
+      	   sigmaM = ctM.characters[sigmaM_num]
+      then indM = induce_character(WctM,WctG,sigmaM)
+      then indM_decomposed = ctG.decompose(indM)
+      then resultM = [int]:[], up = int:0
+      then () = while #resultM = 0
+      	      	do let tempM = for j:#indM_decomposed
+     	      	      	      do if indM_decomposed[j] > 0 and
+		     	           ctG.codegree(j) = targetM + up and
+		     	      	   ctG.special(j) = sigmaG_special_num
+		 {not really: codegree may be BIGGER than targetM}
+		      	      	 then [j]
+		  	   	 else []
+		  	   	 fi
+	       		     od.##
+		in if #tempM=0 then up:=up+1
+		   else resultM:=tempM
+		   fi
+	        od
+      in (resultM,up,OM)
+   od
