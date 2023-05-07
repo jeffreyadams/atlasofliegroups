@@ -883,19 +883,21 @@ class center_classifier // center is that of simply connected group for type
 { // flag sets of fundamental weights whose sum is in the root lattice
 
   using byte_vec = matrix::Vector<unsigned char>; // reduced evaluation
-  using shift_assoc = std::pair<RankFlags,int_Vector>; // shifts by root set
-  using shift_class = sl_list<shift_assoc>;
+  using shift_class = sl_list<RankFlags>;
   using bucket = std::pair<byte_vec,shift_class>; // eval class
 
   const RootSystem& rs;
   std::vector<bucket> table; // shift by root set, sorted by evaluation class
-  int_Vector evaluation; // by bitwise set of simple roots -> index into |table|
-  std::vector<int_Vector> shift_tab; // adjoint-integral parts of shift
+  struct root_set_info
+  { unsigned int cls; // index into |table|
+    int_Vector shift; // adjoint-integral part of shift
+  };
+  std::vector<root_set_info> rts_tab; // adjoint-integral parts of shift
 
   static bool cmp(const bucket& b,const byte_vec& v) { return b.first<v;};
   shift_class& lookup (const byte_vec& v); // during construction, non |const|
   const int_Vector& lookup_shift(RankFlags S) const
-  { return shift_tab[S.to_ulong()]; };
+  { return rts_tab[S.to_ulong()].shift; };
 
   unsigned int order; // of center: index of root lattice in fund.weight lattice
 public:
@@ -916,24 +918,24 @@ auto center_classifier::lookup (const byte_vec& v) -> shift_class&
   auto start = std::lower_bound(table.begin(),table.end(),v,cmp);
   if (start==table.end() or v<start->first)
   {
-    start=table.insert(start,bucket{v,sl_list<shift_assoc>()});
+    start=table.insert(start,bucket{v,sl_list<RankFlags>()});
   }
   return start->second;
 }
 
 center_classifier::center_classifier(const RootSystem& rs)
   : rs(rs)
-  , table(), evaluation(1u<<rs.rank())
-  , shift_tab(1u<<rs.rank(),int_Vector(rs.rank(),0))
+  , table(), rts_tab(1u<<rs.rank(),root_set_info { 0, int_Vector(rs.rank(),0)})
   , order(rs.type().Cartan_determinant())
 {
+  table.reserve(order); // we expect this many classes of descent sets
   byte_vec v; v.reserve(rs.rank());
   auto i_Cartan = rs.inverse_Cartan_matrix();
 
-  for (unsigned i=shift_tab.size(); i-->0; )
+  for (unsigned i=rts_tab.size(); i-->0; )
   {
     RankFlags descents(i); // interpret bits of |i| as descents
-    int_Vector& sum = shift_tab[i];
+    int_Vector& sum = rts_tab[i].shift;
     for (weyl::Generator s : descents)
       sum += i_Cartan.row(s);
     v.clear(); // resize to 0
@@ -941,18 +943,18 @@ center_classifier::center_classifier(const RootSystem& rs)
       v.push_back(arithmetic::remainder(e,rs.Cartan_denominator()));
     divide(sum,rs.Cartan_denominator()); // now reduce to floor of quotient
     auto& list = lookup(v);
-    list.push_front(shift_assoc(descents,sum));
+    list.push_front(descents);
   }
   for (unsigned int i=0; i<table.size(); ++i)
     for (const auto& p : table[i].second)
-      evaluation[p.first.to_ulong()]=i;
+      rts_tab[p.to_ulong()].cls=i;
 }
 
 sl_list<int_Vector>
   center_classifier::shifts (RankFlags fix, RankFlags pos, RankFlags neg) const
 {
   const auto denom = rs.Cartan_denominator();
-  const byte_vec& fix_ev = table[evaluation[fix.to_ulong()]].first;
+  const byte_vec& fix_ev = table[rts_tab[fix.to_ulong()].cls].first;
   const auto N=1u<<neg.count();
 
   sl_list<int_Vector> result;
@@ -961,14 +963,14 @@ sl_list<int_Vector>
   {
     auto negset =  RankFlags(bits).unslice(neg);
     auto rts = base - lookup_shift(negset);
-    byte_vec diff = table[evaluation[negset.to_ulong()]].first;
+    byte_vec diff = table[rts_tab[negset.to_ulong()].cls].first;
     for (unsigned i=0; i<diff.size(); ++i)
       diff[i] -= fix_ev[i]<=diff[i] ? fix_ev[i] : (--rts[i],fix_ev[i]-denom);
     auto start = std::lower_bound(table.begin(),table.end(),diff,cmp);
     if (start!=table.end() and start->first==diff)
       for (const auto& p : start->second)
-	if (pos.contains(p.first))
-	  result.push_back(rts+p.second);
+	if (pos.contains(p))
+	  result.push_back(rts+lookup_shift(p));
   } // |for(bits)|
   return result;
 }
@@ -1023,7 +1025,7 @@ std::vector<sl_list<WeylElt> > facet_orbit_ws
   return coset_lists;
 } // |facet_orbit_ws|
 
-int_Matrix FPP_facet_numers
+sl_list<int_Vector> FPP_orbit_numers
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma)
 {
   const Weight numer (gamma.numerator().begin(),gamma.numerator().end());
@@ -1105,8 +1107,7 @@ int_Matrix FPP_facet_numers
     }
   } // |while(true)|
 
-  return
-    int_Matrix(result.begin(),result.end(),numer.size(),tags::IteratorTag());
+  return result;
 }
 
 } // |namespace weyl|

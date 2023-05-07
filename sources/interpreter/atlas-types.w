@@ -2058,9 +2058,13 @@ void FPP_numers_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<matrix_value> @|
-    (weyl::FPP_facet_numers(rd->val,rd->W(),gamma->val)));
-
+  auto L = weyl::FPP_orbit_numers(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(L.size());
+  { size_t i=0;
+    for (auto&& v : L)
+      result->val[i++]=std::make_shared<vector_value>(std::move(v));
+  }
+  push_value(std::move(result));
 }
 
 @ Let us install the above wrapper functions.
@@ -2149,7 +2153,7 @@ install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
 		"(RootDatum,ratvec->[WeylElt])");
 install_function(FPP_numers_wrapper@|,"FPP_numers",
-		"(RootDatum,ratvec->mat)");
+		"(RootDatum,ratvec->[vec])");
 
 
 @*1 Weyl group elements.

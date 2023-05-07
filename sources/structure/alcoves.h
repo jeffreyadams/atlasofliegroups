@@ -51,7 +51,7 @@ sl_list<WeylElt> basic_orbit_ws
 sl_list<WeylElt> affine_orbit_ws
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
-int_Matrix FPP_facet_numers
+sl_list<int_Vector> FPP_orbit_numers
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
 } // |namespace weyl|
