@@ -992,7 +992,7 @@ then pLs = pseudo_Levis(O), sigmaG_special_num = ctG.special(stG.springer(O))
 in for (M,HM) in pLs
    do let stM = M.Springer_table
       then OM = complex_nilpotent(M,HM), ctM = stM.ct
-      then stM = M.Springer_table, WctM = ctM.class_table
+      then WctM = ctM.class_table
       then sigmaM_num = stM.springer(OM)
       then targetM = ctM.codegree(sigmaM_num),
       	   sigmaM = ctM.characters[sigmaM_num]
@@ -1020,26 +1020,117 @@ then pLs = pseudo_Levis(O), sigmaG_special_num = ctG.special(stG.springer(O))
 in for (M,HM) in pLs
    do let stM = M.Springer_table
       then OM = complex_nilpotent(M,HM), ctM = stM.ct
-      then stM = M.Springer_table, WctM = ctM.class_table
+      then WctM = ctM.class_table
       then sigmaM_num = stM.springer(OM)
       then targetM = ctM.codegree(sigmaM_num),
       	   sigmaM = ctM.characters[sigmaM_num]
       then indM = induce_character(WctM,WctG,sigmaM)
       then indM_decomposed = ctG.decompose(indM)
-      then resultM = [int]:[], up = int:0
-      then () = while #resultM = 0
-      	      	do let tempM = for j:#indM_decomposed
-     	      	      	      do if indM_decomposed[j] > 0 and
-		     	           ctG.codegree(j) = targetM + up and
-		     	      	   ctG.special(j) = sigmaG_special_num
-		 {not really: codegree may be BIGGER than targetM}
-		      	      	 then [j]
-		  	   	 else []
-		  	   	 fi
-	       		     od.##
-		in if #tempM=0 then up:=up+1
-		   else resultM:=tempM
-		   fi
-	        od
+      then first_cutM = for j:#indM_decomposed
+      	   	      	do if indM_decomposed[j] > 0 and
+			   ctG.special(j) = sigmaG_special_num
+			   then [j]
+			   else []
+			   fi
+			od.##
+       then resultM = [int]:[], up = int:minus_1
+      then () = if #first_cutM != 0
+      	      	then while #resultM = 0
+      	      	     do let () = up := up+1
+		      	in resultM :=
+		           for j in first_cutM
+     	      	   	   do if ctG.codegree(j) = targetM + up 
+		   {not really: codegree may be BIGGER than targetM}
+		              then [j]
+		      	      else []
+		      	      fi
+	       	   	   od.##
+	              od
+	   	 fi
       in (resultM,up,OM)
    od
+
+set show_lusztig_simple(SpringerTable st, ComplexNilpotent O) = void:
+    prints("***************************",new_line,
+    "   components for orbit = ", O.diagram.to_string+st.special_star(O));
+    let table_header = [" M", "OM.diagram","sigma", "dim", "codegG"]
+    then ct = st.ct, data = sigma_lusztig_simple(st,O)
+    { [([int],ComplexNilpotent)] }
+    then table = [[string]]:
+      	 for (iM,OM) in data
+      	     	  do let M = OM.root_datum
+		  in [
+		  " "+M.nice_format,
+		  OM.diagram.to_string, iM.to_string,
+		  (for j in iM do dimension(ct,j) od).to_string,
+		  if #iM = 0 then ""
+		  else ct.codegree(iM[0]).to_string
+		  fi
+		  ]
+		  od
+    in tabulate(table_header#table)
+
+set show_lusztig_keep_trying(SpringerTable st, ComplexNilpotent O) = void:
+    prints("***************************",new_line,
+    "   components for orbit = "
+   ,O.diagram.to_string+st.special_star(O));
+    let table_header = [" M", "OM.diagram","sigma", "dim", "codeg M",
+    "codeg G", "codeg shift"]
+    then ct = st.ct, data = sigma_lusztig_keep_trying(st,O)
+    { [([int],int,ComplexNilpotent)] }
+    then table = [[string]]:
+      	 for (iM,up,OM) in data
+      	     	  do let M = OM.root_datum
+		  { then cdM = OM.dim\2 } {too messy to compute; need ctM}
+		  in [
+		  " "+M.nice_format,
+		  OM.diagram.to_string, iM.to_string,
+		  (for j in iM do dimension(ct,j) od).to_string,
+		  if #iM = 0 then ""
+		  else (ct.codegree(iM[0]) - up).to_string
+		  fi,
+		  if #iM = 0 then ""
+		  else ct.codegree(iM[0]).to_string
+		  fi,
+		  up.to_string
+		  ]
+		  od
+    in tabulate(table_header#table)
+
+set show_lusztig_simple(SpringerTable st, [ComplexNilpotent] Os) = void:
+    prints("Simple familes for ",#Os," orbits for G = ",
+    st.root_datum.nice_format);
+    for O in Os do show_lusztig_simple(st,O) od
+
+set show_lusztig_simple_special(SpringerTable st) = void:
+    prints("Special orbits for G = ",st.root_datum.nice_format);
+    show_lusztig_simple(st,st.special_orbits)
+
+set show_lusztig_simple_all(SpringerTable st) = void:
+    prints("All orbits for G = ",st.root_datum.nice_format);
+    show_lusztig_simple(st,st.orbits)
+
+set show_lusztig_keep_trying(SpringerTable st, [ComplexNilpotent] Os) = void:
+    prints("Keep_trying familes for ",#Os," orbits for G = ",
+    st.root_datum.nice_format);
+    for O in Os do show_lusztig_keep_trying(st,O) od
+
+set show_lusztig_keep_trying_special(SpringerTable st) = void:
+    prints(new_line,"Special orbits for G = ",st.root_datum.nice_format);
+    show_lusztig_keep_trying(st, st.special_orbits)
+
+set show_lusztig_keep_trying_all(SpringerTable st) = void:
+    prints(new_line,"All orbits for G = ",st.root_datum.nice_format);
+    show_lusztig_keep_trying(st, st.orbits)
+
+set show_lusztig_simple_special(RootDatum G) = void:
+    show_lusztig_simple_special(G.Springer_table)
+
+set show_lusztig_keep_trying_special(RootDatum G) = void:
+    show_lusztig_keep_trying_special(G.Springer_table)
+
+set show_lusztig_simple_all(RootDatum G) = void:
+    show_lusztig_simple_all(G.Springer_table)
+
+set show_lusztig_keep_trying_all(RootDatum G) = void:
+    show_lusztig_keep_trying_all(G.Springer_table)
