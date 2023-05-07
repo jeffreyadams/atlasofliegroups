@@ -191,3 +191,62 @@ set promote_in_alcove(Param p) = Param:
   then q= param(x, lr, gamma+corr)
   in assert(in_same_alcove(p,q),"correction leaves alcove for "+p.to_string); q
 )
+
+set wall_components(RootDatum rd, [int] walls) = [[int]]:
+(  let comps = [[int]]: []
+in for alpha in walls
+   do let adhere =
+      for comp@i in comps
+      do if is_orthogonal(rd,comp,alpha) then [] else [i] fi
+      od.##
+   in comps := for i in complement(#comps,adhere) do comps[i] od #
+      ( for i in adhere do comps[i] od.## # alpha )
+   od
+;  comps
+)
+
+{ simpler than above, find coroot relation for single compoentn |walls| }
+set coroot_relation(RootDatum rd, [int] walls) = vec:
+   let coroots = mat: rd.rank # for i in walls do coroot(rd,i) od
+   then k = kernel(coroots)
+in assert(#k=1 and !=k[0,0]); if <k[0,0] then -k[0] else k[0] fi
+
+{ for |walls| for an affine diagram component of the alcove around |gamma|,
+  find vertices of that alcove, with the one in thr root lattice first
+}
+set simple_vertices(RootDatum rd, [int]walls, ratvec gamma) = [ratvec]:
+   let int_evs = for i in walls do floor(coroot(rd,i)*gamma) od
+   , labels = coroot_relation(rd,walls)
+   , sub = walls[:1~]
+   then (inv_Cartan,d) = invert(^Cartan_matrix(rd,sub))
+   , lows = vec: int_evs[:1~]
+   , roots = mat: rd.rank # for i in sub do root(rd,i) od
+   then vertex0 = ratvec: inv_Cartan*lows / d
+   , ribs = [ratvec]: for @j in sub do inv_Cartan[j] / (labels[j]*d) od
+in for rib in ribs do roots*(vertex0+rib) od # (roots*vertex0)
+
+set alcove_vertices(RootDatum rd, ratvec gamma) = [ratvec]:
+   let (directions,codim) = walls(rd,gamma)
+   then comps = wall_components(rd,directions)
+   then factors = for comp in comps do simple_vertices(rd,comp,gamma) od
+in for word in for f in factors do #f od.all_words
+   do sum(rd.rank,for s@i in word do factors[i][s] od)
+   od
+
+{ whether (modulo weights for central torus) |gamma| is integral sum of roots }
+set is_in_root_lattice(RootDatum rd, ratvec gamma) = bool:
+   for i: rd.semisimple_rank
+   do if !=(fundamental_coweight(rd,i)*gamma)%1 then return false fi
+   od; return true
+
+{ root-lattice translation of |w(f. alcove)| into f. parallelepipedum, if any }
+set for_FPP (WeylElt w) = maybe_a_vec:
+   let rd = w.root_datum
+   then vertices = [ratvec]: alcove_vertices(rd,null(rd.rank))
+   then bary = sum(rd.rank,vertices)/(#vertices)
+   then wb = w*bary
+   then sc_coords = for i:rd.semisimple_rank do coroot(rd,i)*wb od
+   then sc_shift = vec: sc_coords\1 { fundamental weight sum shift }
+   , (inv_Cartan,d) = invert(^Cartan_matrix(rd))
+   then adj_shift = inv_Cartan*sc_shift
+in if = adj_shift%d then solution(adj_shift\d) else no_vec() fi
