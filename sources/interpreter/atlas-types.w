@@ -2051,7 +2051,7 @@ void FPP_numers_wrapper(expression_base::level l)
     if (ev.is_negative())
     { std::ostringstream o;
       o << "Rational weight is not in fundamental alcove (coroot " @|
-        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev;
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev << ')';
       throw runtime_error(o.str());
     }
   }

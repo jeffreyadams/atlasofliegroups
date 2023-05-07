@@ -1419,7 +1419,8 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
   return current <<= npos; // shift to root (rather than posroot) numbers
 } // |pos_to_neg|
 
-// partition |roots| into connected components for |is_orthogonal|
+// partition |roots| into connected components for |not is_orthogonal|
+// |roots| is any set of roots, positive or negative
 sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots)
 {
   sl_list<RootNbrSet> result;

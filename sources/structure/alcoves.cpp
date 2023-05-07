@@ -828,7 +828,7 @@ sl_list<WeylElt> affine_orbit_ws
 sl_list<WeylElt> convert_to_words
   (const sl_list<orbit_elem>& cosets,
    const WeylGroup& W,
-   std::vector<WeylElt> gens)
+   const std::vector<WeylElt>& gens)
 {
   sl_list<WeylElt> orbit(1,WeylElt()); // start with identity
   std::vector<WeylElt*> ref; // for rapid indexed access
@@ -881,46 +881,96 @@ sl_list<WeylElt> basic_orbit_ws
 // auxiliary to facilitate generating alcoves/facets in the fu. ParallelEpiped
 class center_classifier // center is that of simply connected group for type
 { // flag sets of fundamental weights whose sum is in the root lattice
+
+  using byte_vec = matrix::Vector<unsigned char>; // reduced evaluation
+  using shift_assoc = std::pair<RankFlags,int_Vector>; // shifts by root set
+  using shift_class = sl_list<shift_assoc>;
+  using bucket = std::pair<byte_vec,shift_class>; // eval class
+
   const RootSystem& rs;
-  BitMap flags;
+  std::vector<bucket> table; // shift by root set, sorted by evaluation class
+  int_Vector evaluation; // by bitwise set of simple roots -> index into |table|
+  std::vector<int_Vector> shift_tab; // adjoint-integral parts of shift
+
+  static bool cmp(const bucket& b,const byte_vec& v) { return b.first<v;};
+  shift_class& lookup (const byte_vec& v); // during construction, non |const|
+  const int_Vector& lookup_shift(RankFlags S) const
+  { return shift_tab[S.to_ulong()]; };
+
   unsigned int order; // of center: index of root lattice in fund.weight lattice
 public:
   center_classifier(const RootSystem& rs);
-  bool is_for_FPP(RankFlags descents) const // is for fundamental parallelepiped
-  { return flags.isMember(descents.to_ulong()); }
+  bool is_for_FPP(RankFlags descents) const; // is for fund. parallelepiped
   // when |is_for_FPP| holds for a descent set, this is the corrsponding shift:
-  int_Vector shift(RankFlags descents) const; // in root coordinates
-  unsigned int index() const { return order; }
+  // (floor of) shift in adjoint coordinates, from simply-connected coordinates
+  int_Vector shift(const int_Vector& v) const;
+  unsigned int index() const { return order; } // number of root lattice cosets
+
+  // shifts fw(fix+A)-fw(B) in $R$ for subsets $A$ of |pos| et $B$ of |neg|
+  // each shift is in adjoint coordinates: entry |i| is coef of simple root |i|
+  sl_list<int_Vector> shifts (RankFlags fix, RankFlags pos, RankFlags neg) const;
 }; // |center_classifier|
 
-center_classifier::center_classifier(const RootSystem& rs)
-  : rs(rs), flags(1u<<rs.rank()), order(rs.type().Cartan_determinant())
+auto center_classifier::lookup (const byte_vec& v) -> shift_class&
 {
-  auto i_Cartan = rs.inverse_Cartan_matrix();
-  for (unsigned i=0; i<flags.capacity(); ++i)
+  auto start = std::lower_bound(table.begin(),table.end(),v,cmp);
+  if (start==table.end() or v<start->first)
   {
-    RankFlags descents(i); // interpret bits of |i| as descents
-    int_Vector sum(rs.rank(),0);
-    for (weyl::Generator s : descents)
-      sum += i_Cartan.row(s);
-    bool OK=true;
-    for (auto e : sum)
-      if (e%rs.Cartan_denominator()!=0)
-      { OK=false;
-	break;
-      }
-    flags.set_to(i,OK);
+    start=table.insert(start,bucket{v,sl_list<shift_assoc>()});
   }
+  return start->second;
 }
 
-int_Vector center_classifier::shift(RankFlags descents) const
+center_classifier::center_classifier(const RootSystem& rs)
+  : rs(rs)
+  , table(), evaluation(1u<<rs.rank())
+  , shift_tab(1u<<rs.rank(),int_Vector(rs.rank(),0))
+  , order(rs.type().Cartan_determinant())
 {
-  assert(is_for_FPP(descents));
+  byte_vec v; v.reserve(rs.rank());
   auto i_Cartan = rs.inverse_Cartan_matrix();
-  int_Vector sum(rs.rank(),0);
-  for (weyl::Generator s : descents)
-    sum += i_Cartan.row(s);
-  return sum /= rs.Cartan_denominator();
+
+  for (unsigned i=shift_tab.size(); i-->0; )
+  {
+    RankFlags descents(i); // interpret bits of |i| as descents
+    int_Vector& sum = shift_tab[i];
+    for (weyl::Generator s : descents)
+      sum += i_Cartan.row(s);
+    v.clear(); // resize to 0
+    for (auto& e : sum)
+      v.push_back(arithmetic::remainder(e,rs.Cartan_denominator()));
+    divide(sum,rs.Cartan_denominator()); // now reduce to floor of quotient
+    auto& list = lookup(v);
+    list.push_front(shift_assoc(descents,sum));
+  }
+  for (unsigned int i=0; i<table.size(); ++i)
+    for (const auto& p : table[i].second)
+      evaluation[p.first.to_ulong()]=i;
+}
+
+sl_list<int_Vector>
+  center_classifier::shifts (RankFlags fix, RankFlags pos, RankFlags neg) const
+{
+  const auto denom = rs.Cartan_denominator();
+  const byte_vec& fix_ev = table[evaluation[fix.to_ulong()]].first;
+  const auto N=1u<<neg.count();
+
+  sl_list<int_Vector> result;
+  const int_Vector& base = lookup_shift(fix);
+  for (unsigned int bits=0; bits<N; ++bits)
+  {
+    auto negset =  RankFlags(bits).unslice(neg);
+    auto rts = base - lookup_shift(negset);
+    byte_vec diff = table[evaluation[negset.to_ulong()]].first;
+    for (unsigned i=0; i<diff.size(); ++i)
+      diff[i] -= fix_ev[i]<=diff[i] ? fix_ev[i] : (--rts[i],fix_ev[i]-denom);
+    auto start = std::lower_bound(table.begin(),table.end(),diff,cmp);
+    if (start!=table.end() and start->first==diff)
+      for (const auto& p : start->second)
+	if (pos.contains(p.first))
+	  result.push_back(rts+p.second);
+  } // |for(bits)|
+  return result;
 }
 
 // Weyl group elements generating orbit of fundamental alcove facet
@@ -946,7 +996,7 @@ std::vector<sl_list<WeylElt> > facet_orbit_ws
 
     const RootNbr last = roots.back();
     roots.pop_back();
-    const int_Matrix Cartan = rs.Cartan_matrix(roots);
+    int_Matrix Cartan = rs.Cartan_matrix(roots);
     dynkin::Lie_type(Cartan); // will throw if it is not valid
     std::vector<WeylElt> reflections;
     for (Generator i=0; i<roots.size(); ++i)
@@ -964,16 +1014,21 @@ std::vector<sl_list<WeylElt> > facet_orbit_ws
 	  break;
       assert(i<stab_size); // we must have found some label 1
       roots[i] = last; // that root will be "affine"; |last| replaces it
+      Cartan = rs.Cartan_matrix(roots); // adapt matrix to final step
+      reflections[i] = W.element(rs.reflection_word(roots[i]));
       coset_lists.push_back
 	(convert_to_words(vertex_orbit(Cartan,i,labels.back()),W,reflections));
     }
   } // |for |comp|
   return coset_lists;
-}
+} // |facet_orbit_ws|
 
 int_Matrix FPP_facet_numers
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma)
 {
+  const Weight numer (gamma.numerator().begin(),gamma.numerator().end());
+  const auto denom = gamma.denominator();
+
   auto walls = rd.fundamental_alcove_walls();
   RootNbrSet stabilising_walls(walls.capacity()); // |capacity==numRoots()|
   for (RootNbr alpha : walls)
@@ -983,6 +1038,7 @@ int_Matrix FPP_facet_numers
     assert(not ev.is_negative());
     stabilising_walls.set_to(alpha,ev.is_zero());
   }
+
   auto coset_lists = facet_orbit_ws(rd,W,stabilising_walls);
 
   center_classifier cc(rd);
@@ -990,34 +1046,21 @@ int_Matrix FPP_facet_numers
 
   struct w_info {
     WeylElt w;
-    RootNbrSet stab;
+    RootNbrSet integral_roots; // all roots integral on |w*gamma|
     sl_list<WeylElt>::weak_const_iterator it;
   };
 
   std::vector<w_info> states(coset_lists.size()+1); // thought right-to-left
   // |states[0]| is a sentinel without iterator; |states.back()| always exists
   { unsigned int i=0;
-    stabilising_walls &= rd.simple_root_set(); // maybe remove outer alcove wall
     const RootNbrSet init = additive_closure(rd,stabilising_walls);
     for (auto& state : states)
     {
       state.w=WeylElt();
-      state.stab=init;
+      state.integral_roots=init;
       if (i>0) // don't set the iterator in |states[0]|
 	state.it=coset_lists[i-1].wcbegin();
       ++i;
-    }
-  }
-
-  Weight numer (gamma.numerator().begin(),gamma.numerator().end());
-  std::vector<int_Vector> shifts(1ul<<rd.semisimple_rank());
-  for (unsigned long d=0; d<shifts.size(); ++d)
-  { RankFlags descents(d);
-    if (cc.is_for_FPP(descents))
-    { shifts[d]=int_Vector(rd.rank(),0);
-      auto shift_adj = cc.shift(descents);
-      for (unsigned int i=0; i<shift_adj.size(); ++i)
-	shifts[d] += rd.simpleRoot(i)*(gamma.denominator()*shift_adj[i]);
     }
   }
 
@@ -1025,19 +1068,25 @@ int_Matrix FPP_facet_numers
   { // last sublists, giving leftmost factor, will vary most rapidly
     const auto image = W.image_by(rd,states.back().w,numer);
 
-    RankFlags variables; // simple roots for which facet lands on its wall
-    RankFlags descents; // simple roots for which we land negative of its wall
+    RankFlags fix, ups, downs; // simple roots for which facet lands on its wall
     for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-      if (states.back().stab.isMember(rd.simpleRootNbr(s)))
-	variables.set(s);
+      if (states.back().integral_roots.isMember(rd.simpleRootNbr(s)))
+      {
+	int ev = rd.simpleCoroot(s).dot(image);
+	if (ev>=0)
+	  ( ev==0 ? ups : downs ).set(s);
+	else
+	{ fix.set(s); ups.set(s); } // to add fundamental weight once or twice
+      }
       else
-	descents.set(s,W.has_descent(s,states.back().w));
+	fix.set(s,W.has_descent(s,states.back().w));
 
-    for (unsigned int bits=0; bits<(1u<<variables.count()); ++bits)
+    for (const auto& shift : cc.shifts(fix,ups,downs))
     {
-      RankFlags desc = descents | RankFlags(bits).unslice(variables);
-      if (cc.is_for_FPP(desc))
-	result.push_back(image+shifts[desc.to_ulong()]);
+      auto& v = result.push_back(image);
+      for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
+	if (shift[s]!=0) // |shift[s]| is sufficiently often zero to merit test
+	  v += rd.simpleRoot(s)*(denom*shift[s]);
     }
 
     // now increment iterators to get new element in |states.back().w|
@@ -1047,11 +1096,12 @@ int_Matrix FPP_facet_numers
     if (i==0)
       break; // we reached the end of all our traversals
     states[i].w = W.prod(*states[i].it,states[i-1].w);
-    states[i].stab = rootdata::image(rd,W.word(*states[i].it),states[i-1].stab);
+    states[i].integral_roots =
+      rootdata::image(rd,W.word(*states[i].it),states[i-1].integral_roots);
     while (++i<states.size())
     {
       states[i].w=states[i-1].w;
-      states[i].stab=states[i-1].stab;
+      states[i].integral_roots=states[i-1].integral_roots;
     }
   } // |while(true)|
 

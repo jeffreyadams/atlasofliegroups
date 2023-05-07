@@ -60,7 +60,7 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 // (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
-// partition |roots| into connected components for |is_orthogonal|
+// partition set of any |roots| into connected components for |not is_orthogonal|
 sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots);
 
 // compute product of reflections in set of orthogonal roots
