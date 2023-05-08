@@ -1,10 +1,9 @@
 <basic.at
 <std_decs.at
 <groups.at
-<Weylgroup.at { for |labels| }
 
 set FPP_barys(RootDatum rd, int dim) = [ratvec]:
-   let n=rd.rank, d1=dim+1, lb = labels(rd)
+   let n=rd.rank, d1=dim+1, lb = simple_coroot_labels(rd)
    then vert = [ratvec]:
       (null(n)/1) # for i:rd.rank do fundamental_weight(rd,i)/lb[i] od
    then fund_barys = [ratvec]:
