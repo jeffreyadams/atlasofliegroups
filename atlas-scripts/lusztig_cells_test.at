@@ -621,7 +621,7 @@ set weakly_rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
 			 fi
 		      od.##
 
-{alternate way to get the same set?}
+{alternate way to get the same set? No: this one can be strictly smaller}
 set weakly_rigid_special_indB(SpringerTable stG, ComplexNilpotent OG) =
     [(RootDatum, ComplexNilpotent)]:
     let G = stG.root_datum, Gv = stG.root_datum.dual
@@ -983,6 +983,10 @@ sigma(O,1,xi).}
        od.##
 }
 
+{calculates the rep obtained from a class in A(O), recorded as a
+pseudoLevi M and corresponding distinguished nilpotent OM. Algorithm
+is induction from sigma(OM) truncated by codegree.}
+
 set sigma_lusztig_simple(SpringerTable stG, ComplexNilpotent O) =
 [([int], ComplexNilpotent)]:
     {meant to return the list of (corr W reps, component of A(O))}
@@ -1010,6 +1014,8 @@ in for (M,HM) in pLs
       in (resultM,OM)
    od
 
+{Same; but if algorithm gives nothing, then try truncation by codegree
++ 1, etc.}
 set sigma_lusztig_keep_trying(SpringerTable stG, ComplexNilpotent O) =
 [([int], int, ComplexNilpotent)]:
     {meant to return the list of (corr W reps, shift in codegree,
@@ -1134,3 +1140,33 @@ set show_lusztig_simple_all(RootDatum G) = void:
 
 set show_lusztig_keep_trying_all(RootDatum G) = void:
     show_lusztig_keep_trying_all(G.Springer_table)
+
+{calculates the rep obtained from a class in ??, recorded as an endoscopic E and wweakly rigid (= dual to distinguished) nilpotent OE. Algorithm
+is induction from sigma(OE) truncated by degree.}
+set sigmav_lusztig_simple(SpringerTable stG, ComplexNilpotent O) =
+[([int], ComplexNilpotent)]:
+    {meant to return the list of (corr W reps, component of A(O))}
+let G = stG.root_datum, ctG = stG.ct
+then WctG = ctG.class_table
+then EOEs = weakly_rigid_special_ind(stG,O), sigmaG_special_num =
+ctG.special(stG.springer(O))
+in for (E,OE) in EOEs
+   do let stE = E.Springer_table
+      then ctE = stE.ct
+      then WctE = ctE.class_table
+      then sigmaE_num = stE.springer(OE)
+      then targetE = ctE.degree(sigmaE_num),
+      	   sigmaE = ctE.characters[sigmaE_num]
+      then indE = induce_character(WctE,WctG,sigmaE)
+      then indE_decomposed = ctG.decompose(indE)
+      then resultE = for j:#indE_decomposed
+     	      	     do if indE_decomposed[j] > 0 and
+		     	   ctG.degree(j) = targetE and
+		     	   ctG.special(j) = sigmaG_special_num
+		 {not really: degree may be BIGGER than targetE}
+		      	   then [j]
+		  	   else []
+		  	   fi
+		      od.##
+      in (resultE,OE)
+   od
