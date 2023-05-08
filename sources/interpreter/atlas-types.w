@@ -1931,7 +1931,7 @@ void basic_orbit_ws_wrapper(expression_base::level l)
     throw runtime_error("Index too large for given list of root numbers");
   RootNbrSet stab; RootNbr final;
   @< Check validity of root indices in |v->val| and the absence acute angles
-     among them; store internal number for its entry |stab_rank| in |final|,
+     among them; store internal number for its entry at |stab_rank| in |final|,
      and the set of its earlier entries in |stab| @>
   if (l==expression_base::no_value)
     return;
@@ -2004,7 +2004,7 @@ first |stab_rank| entries, and in |final| the one following it.
   final = walls[stab_rank];
 }
 
-@ When calling |affine_orbit_ws|, we need to decide whether the internal
+@ When calling |basic_orbit_ws|, we need to decide whether the internal
 function to call is going to be |finite_subquotient| or
 |complete_affine_components|; the first one does not use modular vector
 arithmetic because the root |final| extends the finite Coxeter group |stab| to a
@@ -2028,6 +2028,43 @@ a finite computation by working modulo the root lattice.
       to_affine_orbit = dependency>0;
       break;
     }
+}
+
+@ The following function should produce the set of all facet barycentres from a
+given one in the fundamental alcove, without invoking |affine_orbit_ws|.
+
+@< Local function definitions @>=
+void FPP_numers_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  for (RootNbr alpha : rd->val.fundamental_alcove_walls())
+  { auto ev = gamma->val.dot_Q(rd->val.coroot(alpha));
+    if (not rd->val.is_simple_root(alpha))
+      ev += 1;
+    if (ev.is_negative())
+    { std::ostringstream o;
+      o << "Rational weight is not in fundamental alcove (coroot " @|
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev << ')';
+      throw runtime_error(o.str());
+    }
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto L = weyl::FPP_orbit_numers(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(L.size());
+  { size_t i=0;
+    for (auto&& v : L)
+      result->val[i++]=std::make_shared<vector_value>(std::move(v));
+  }
+  push_value(std::move(result));
 }
 
 @ Let us install the above wrapper functions.
@@ -2115,6 +2152,8 @@ install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 		"(RootDatum,[int],int->[WeylElt])");
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
 		"(RootDatum,ratvec->[WeylElt])");
+install_function(FPP_numers_wrapper@|,"FPP_numers",
+		"(RootDatum,ratvec->[vec])");
 
 
 @*1 Weyl group elements.

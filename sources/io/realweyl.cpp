@@ -238,7 +238,7 @@ RootNbrList orthogonalMAlpha
 
   // put positive imaginary noncompact roots in rs
   RootNbrSet rs = f.noncompactRoots(x);
-  rs &= rd.posRootSet();
+  rs &= rd.posroot_set();
 
   // keep the ones that are orthogonal to tworho_ic
   RootNbrList rl;

@@ -322,24 +322,35 @@ we include the RootDatum rd itself for induction reasons
 this does NOT include actual Levi subgroups (except rd)
 assumption: rd has one simple factor, i.e. derived(rd) is simple
 }
-set weakly_maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
-assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
-if is_abelian(rd) then [rd] else
-let sr=simple_roots(rd) then
-labels=labels(derived(rd)) then
-alpha=-highest_root(rd) in
-filter(rd,rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
+set weakly_maximal_pseudo_Levis_simple (RootDatum rd) = [RootDatum]:
+  assert(rd.is_abelian or rd.derived_is_simple
+        ,"Root Datum has more than one simple factor");
+  if is_abelian(rd) then [rd]
+  else let sr=simple_roots(rd)
+    , labels=simple_root_labels(rd), alpha=-highest_root(rd)
+  in filter(rd,rd#
+    (for i:semisimple_rank(rd)
+     do if labels[i] != 1
+        then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else []
+	fi
+     od.##
+    ))
+  fi
 
-set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
-assert(rd.is_abelian or rd.derived_is_simple,"Root Datum has more than one simple factor");
-if is_abelian(rd) then [rd] else
-let sr=simple_roots(rd) then
-labels=labels(derived(rd)) then
-alpha=-highest_root(rd) in
-filter(rd,rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 and is_prime(labels[i]) then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
-
+set maximal_pseudo_Levis_simple (RootDatum rd) = [RootDatum]:
+  assert(rd.is_abelian or rd.derived_is_simple
+        ,"Root Datum has more than one simple factor");
+  if is_abelian(rd) then [rd]
+  else let sr=simple_roots(rd)
+    , labels=simple_root_labels(rd), alpha=-highest_root(rd)
+  in filter(rd,rd#
+    (for i:semisimple_rank(rd)
+     do if labels[i].is_prime { this implies |labels[i]!=1| }
+        then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else []
+	fi
+     od.##
+    ))
+  fi
 
 {given nonsimple RootDatum rd=rd_1 * ... * rd_n
  in each rd_i we have a list of c_i subgroups

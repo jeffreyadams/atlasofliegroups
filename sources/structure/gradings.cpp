@@ -55,8 +55,8 @@ RootNbrSet max_orth(const RootNbrSet& non_compact,
   RootNbrSet ncr = non_compact; // working variables
   RootNbrSet sub = subsys;
 
-  ncr &= rs.posRootSet(); // restricting to positive roots is safe
-  sub &= rs.posRootSet(); // and improves performance
+  ncr &= rs.posroot_set(); // restricting to positive roots is safe
+  sub &= rs.posroot_set(); // and improves performance
 
   RootNbrSet result(rs.numRoots());
   while (not ncr.empty())

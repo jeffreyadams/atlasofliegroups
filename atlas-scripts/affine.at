@@ -178,11 +178,7 @@ set co_labels(AffineDatum ad)=for i:rank(ad) do rat_as_int(ad.affine_coroot_sum*
 set affine_labels(AffineDatum ad)=vec:labels(ad)##[1]
 set co_affine_labels(AffineDatum ad)=vec:co_labels(ad)##[1]
 
-{default labels for RootDatum: alpha=highest root}
-set labels(RootDatum rd)=labels(affine_datum(rd))
-set co_labels(RootDatum rd)=co_labels(affine_datum(rd))
-set affine_labels(RootDatum rd)=vec:affine_labels(affine_datum(rd))
-set co_affine_labels (RootDatum rd) = vec: co_affine_labels(affine_datum(rd))
+{ for plain RootDatum, use |simple_root_labels| (or coroot) from basic.at }
 
 { ordinary or affine reflection acting on X^*, indexed by integers
   0<= i <ss_rank(rd): ordinary reflection

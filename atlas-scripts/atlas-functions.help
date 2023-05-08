@@ -924,8 +924,8 @@ partial_block: (Param->[Param]): return partial block as list of parameters
   length. Non-final parameters are omitted. If the original parameter is final,
   then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
-block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
-  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+block_Hasse: (Param->mat): Hasse diagram of Bruhat order of block of parameter
+  Calling KGB_Hasse(p) ensures the full block containing the parameter p is
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
   exactly the two elements, namely x et z. The matrix is indexed by the numbers
@@ -1217,6 +1217,16 @@ affine_orbit_ws: (RootDatum,ratvec->[WeylElt]): W image of affine quotient
   set of representatives of W/W_I, the quotient by the integral Weyl group. The
   latter produces, when applied to the original rational weight, its orbit under
   the affine Weyl group modulo its normal subgroup acting as root translations.
+FPP_numers: (RootDatum,ratvec->[vec]): Affine Weyl orbit intersected with FPP
+  The fundamental parallelepiped (FPP) is the part of the dominant cone where
+  all simple coroots take values in the interval [0,1]. The hyperplanes where
+  coroots take integral values chop up the FPP (and the whole space) into
+  alcoves, each of which is the image by a unique affine Weyl group element of
+  the fundamental alcove (the one in the FPP that has the origin as vertex), but
+  facets can be shared between alcoves. Given a rational weight gamma in some
+  facet of the fundamental alcove, this function finds all its distinct images
+  under the affine Weyl group lying inside the FPP, and lists their numerators;
+  this is to save space as the denomiators are all equal to that of gamma.
 
 strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
   The input describes a directed graph on the set #n={0,1,...,n-1}, where n is
