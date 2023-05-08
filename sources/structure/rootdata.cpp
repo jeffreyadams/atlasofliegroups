@@ -348,6 +348,13 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
 { swap_roots_and_coroots(); }
 
 
+//				accessors
+
+LieType RootSystem::type() const
+{
+  return dynkin::Lie_type(Cartan_matrix());
+}
+
 // express root in simple root basis
 int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
@@ -457,14 +464,23 @@ template <typename I, typename O>
   }
 }
 
-RootNbrSet RootSystem::simpleRootSet() const
+RootNbrSet RootSystem::simple_root_set() const
 {
   RootNbrSet simple_roots(numRoots());
   simple_roots.fill(numPosRoots(),numPosRoots()+rk);
   return simple_roots;
 }
 
-RootNbrList RootSystem::simpleRootList() const
+RootNbrSet RootSystem::fundamental_alcove_walls() const
+{
+  BitMap lowest_roots = posroot_set();
+  lowest_roots.take_complement();
+  for (weyl::Generator i = 0; i<rank(); ++i)
+    lowest_roots &= min_coroots_for(posRootNbr(i));
+  return lowest_roots | simple_root_set();
+}
+
+RootNbrList RootSystem::simple_root_list() const
 {
   RootNbrList simple_roots(rk);
   for (weyl::Generator i=0; i<rk; ++i)
@@ -472,7 +488,7 @@ RootNbrList RootSystem::simpleRootList() const
   return simple_roots;
 }
 
-RootNbrSet RootSystem::posRootSet() const
+RootNbrSet RootSystem::posroot_set() const
 {
   RootNbrSet pos_roots(numRoots());
   pos_roots.fill(numPosRoots(),numRoots());
@@ -633,7 +649,7 @@ RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
   // now every reflection among |candidates| permutes the other members of |rs|
 
   return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
-}
+} // |RootSystem::simpleBasis|
 
 // the same, but indexing in |posroots| is from 0, and returning a |sl_list|
 sl_list<RootNbr> RootSystem::pos_simples(RootNbrSet posroots) const
@@ -661,6 +677,40 @@ sl_list<RootNbr> RootSystem::pos_simples(RootNbrSet posroots) const
   } // |for (alpha)|
   // now roots in |result| all have weakly negative dot products
 
+  return result;
+} // |RootSystem::pos_simples|
+
+// the opposite direction (from simple system to full system) is easier
+template<bool for_coroots>
+  RootNbrSet additive_closure(const RootSystem& rs, RootNbrSet generators)
+{
+  // start ensuring closure for |rootMinus|
+  for (auto gen : generators)
+    generators.insert(rs.rootMinus(gen));
+
+  unsigned last_size=generators.size();
+  do
+    for (auto it=generators.begin(); it(); ++it)
+      for (auto jt=std::next(it); jt(); ++jt)
+	if (for_coroots)
+	{
+	  if (rs.sum_is_coroot(*it,*jt))
+	    generators.insert(rs.coroot_add(*it,*jt));
+	}
+	else
+	{
+	  if (rs.sum_is_root(*it,*jt))
+	    generators.insert(rs.root_add(*it,*jt));
+	}
+  while (generators.size()>last_size and (last_size=generators.size(),true));
+  return generators;
+} // |additive_closure|
+
+RootNbrSet image(const RootSystem& rs, const WeylWord& ww, const RootNbrSet& s)
+{
+  RootNbrSet result(s.capacity());
+  for (auto alpha : s)
+    result.insert(rs.permuted_root(ww,alpha));
   return result;
 }
 
@@ -692,12 +742,9 @@ RootNbr RootSystem::lookup_root(const Byte_vector& v) const
     return numRoots(); // zero vector is not a root
 
   const bool neg = *it<0;
-  auto v_abs = neg ? -v : v;
-
-  for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
-    if (v_abs==root(i))
-      return neg ? posRootNbr(i) : negRootNbr(i);
-  return numRoots(); // vector not found
+  auto pr = lookup_posroot(neg ? -v : v);
+  return pr==numPosRoots() ? numRoots()
+    : neg ? posRootNbr(pr) : negRootNbr(pr);
 }
 
 RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
@@ -710,14 +757,19 @@ RootNbr RootSystem::lookup_coroot(const Byte_vector& v) const
     return numRoots(); // zero vector is not a root
 
   const bool neg = *it<0;
-  auto v_abs = neg ? -v : v;
-
-  for (RootNbr i=0; i<numPosRoots(); ++i) // search positive roots for |v|
-    if (v_abs==coroot(i))
-      return neg ? posRootNbr(i) : negRootNbr(i);
-  return numRoots(); // vector not found
+  auto pr = lookup_poscoroot(neg ? -v : v);
+  return pr==numPosRoots() ? numRoots()
+    : neg ? posRootNbr(pr) : negRootNbr(pr);
 }
 
+RootNbr RootSystem::root_add(RootNbr alpha, RootNbr beta) const
+{
+  return lookup_root(root_any(alpha)+root_any(beta));
+}
+RootNbr RootSystem::coroot_add(RootNbr alpha, RootNbr beta) const
+{
+  return lookup_coroot(coroot_any(alpha)+coroot_any(beta));
+}
 
 /*
   Make the orthogonal system |rset| into an equivalent (for |refl_prod|) one
@@ -961,17 +1013,16 @@ RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
 RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 { return RatWeight(coweight_numer[i],Cartan_denominator()); }
 
-/******** accessors **********************************************************/
+//				accessors
 
 LieType RootDatum::type() const
 {
-  LieType result = dynkin::Lie_type(Cartan_matrix());
+  LieType result = RootSystem::type();
   result.reserve(result.size()+radical_rank());
   for (RootNbr i=0; i<radical_rank(); ++i)
     result.emplace_back('T',1);
   return result;
 }
-
 
 void RootDatum::reflect(RootNbr alpha, LatticeMatrix& M) const
 {
@@ -1368,7 +1419,8 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w)
   return current <<= npos; // shift to root (rather than posroot) numbers
 } // |pos_to_neg|
 
-// partition |roots| into connected components for |is_orthogonal|
+// partition |roots| into connected components for |not is_orthogonal|
+// |roots| is any set of roots, positive or negative
 sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots)
 {
   sl_list<RootNbrSet> result;
@@ -1815,6 +1867,9 @@ void RootSystem::toRootBasis
    std::back_insert_iterator<int_VectorList>,
    const RootNbrList&) const;
 // this also  implicitly instantiates |RootSystem::toWeightBasis| twice
+
+template
+RootNbrSet additive_closure<true>(const RootSystem& rs, RootNbrSet generators);
 
 } // |namespace rootdata|
 

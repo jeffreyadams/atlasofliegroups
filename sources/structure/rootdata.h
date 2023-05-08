@@ -60,7 +60,7 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 // (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
-// partition |roots| into connected components for |is_orthogonal|
+// partition set of any |roots| into connected components for |not is_orthogonal|
 sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots);
 
 // compute product of reflections in set of orthogonal roots
@@ -102,6 +102,11 @@ sl_list<WeylElt>
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
 int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
 
+template<bool for_coroots=true>
+  RootNbrSet additive_closure(const RootSystem& rs, RootNbrSet generators);
+
+RootNbrSet image(const RootSystem& rs, const WeylWord& ww, const RootNbrSet& s);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
@@ -141,11 +146,20 @@ class RootSystem
   std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
 
 
-  // in the following 4 methods |i| indexes a positive root or corrot
+  // in the following 4 methods |i| indexes a positive root or coroot
   Byte_vector& root(RootNbr i) { return ri[i].root;}
   Byte_vector& coroot(RootNbr i) { return ri[i].coroot;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
   const Byte_vector& coroot(RootNbr i) const { return ri[i].coroot;}
+
+  Byte_vector   root_any(RootNbr alpha) const
+  { return is_posroot(alpha)
+      ? ri[alpha-numPosRoots()].root : -ri[numPosRoots()-1-alpha].root;
+  }
+  Byte_vector coroot_any(RootNbr alpha) const
+  { return is_posroot(alpha)
+      ? ri[alpha-numPosRoots()].coroot : -ri[numPosRoots()-1-alpha].coroot;
+  }
 
   // look up and return index in full root system, or |numRoots()| on failure
   RootNbr lookup_root(const Byte_vector& root) const;
@@ -166,6 +180,7 @@ public:
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
+  LieType type() const; // no central torus factors possible here
 
   // Cartan matrix by entry and as a whole
   int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };
@@ -241,9 +256,10 @@ public:
   const RootNbrSet& min_coroots_for(RootNbr alpha) const
   { return coroot_ladder_bot[alpha]; }
 
-  RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
-  RootNbrList simpleRootList() const; // NOT for iteration over it
-  RootNbrSet posRootSet() const; // NOT for iteration, may serve as mask
+  RootNbrSet simple_root_set() const; // NOT for iteration over it
+  RootNbrList simple_root_list() const; // NOT for iteration over it
+  RootNbrSet posroot_set() const; // NOT for iteration, may serve as mask
+  RootNbrSet fundamental_alcove_walls() const;
 
 // other accessors
 
@@ -324,6 +340,10 @@ public:
   { return not min_roots_for(rootMinus(alpha)).isMember(beta); }
   bool sum_is_coroot(RootNbr alpha, RootNbr beta) const
   { return not min_coroots_for(rootMinus(alpha)).isMember(beta); }
+
+  // the following are to be called only after corresponding predicate is tested
+  RootNbr root_add(RootNbr alpha, RootNbr beta) const;
+  RootNbr coroot_add(RootNbr alpha, RootNbr beta) const;
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
@@ -684,9 +704,9 @@ class RootDatum
 
   // The sum of the positive roots in |rs|
   Weight twoRho(const RootNbrSet& rs) const
-  { return root_sum(*this,posRootSet()&rs); }
+  { return root_sum(*this,posroot_set()&rs); }
   Coweight dual_twoRho(const RootNbrSet& rs) const
-  { return coroot_sum(*this,posRootSet()&rs); }
+  { return coroot_sum(*this,posroot_set()&rs); }
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
 
