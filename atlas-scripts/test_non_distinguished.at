@@ -4,7 +4,7 @@
 <Levi_subgroups.at {for standard_Levi_conjugacy_representatives}
 <all.at
 
-<<<<<<< HEAD
+
 {find standard Levi in G dual to Bala Cart Levi of dual orbit}
 set G_Levi(ComplexNilpotent O_v)=
 let G_v=O_v.root_datum then
@@ -23,8 +23,8 @@ let (S,H)=Bala_Carter_Levi_plus(O) {S=simple roots of Levi} then
 
 
 
-=======
->>>>>>> master
+
+
 {This is meant to compute (at least the induced parameters in) a weak
 Arthur packet attached to a nilpotent O^vee for G^vee which is
 PRINCIPAL in a Levi L^vee.}
@@ -104,18 +104,7 @@ set induced_from_min_params (ratvec gamma, Parabolic P) = ParamPol:
    in sum(G,for p in list do induce_from_gen_parabolic_irr(A,p) od)
 
 {now add over all real forms of P}
-<<<<<<< HEAD
-set unip_params_from_Levi_old(ratvec gamma, [int] A, RealForm G)=ParamPol:
-   let paras=parabolics_with_theta_stable_Levi(G,A)
-   in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
 
-=======
->>>>>>> master
-set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=ParamPol:
-   let paras=parabolics_with_theta_stable_Levi(G,A)
-   in sum(G, for P in paras do induced_from_min_params(gamma, P) od)
-
-<<<<<<< HEAD
 set unip_params_from_Levi(ratvec gamma, [int] A, RealForm G)=
    let paras=parabolics_with_theta_stable_Levi(G,A)
    in for P_real in paras do (P_real,induced_from_min_params(gamma, P_real)) od
@@ -322,14 +311,3 @@ O_L_v.diagram.to_string,(#params).to_string,let (,c)=wp[i] in (#c).to_string,Bal
 od)
 
 }
-=======
-	     do let NA =  #unip_params_from_Levi(gammaAs[j] + shiftA,A,G)
-		in prints("Levi ",A," dual unip ", OAv.H, " with ",
-		      	 NA, " unipotent parameters.");
-		   N:=N+NA
-	     od
-       od;
-       prints();
-       prints("Found total of ",N, " unipotent parameters.")
-
->>>>>>> master
