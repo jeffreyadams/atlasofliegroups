@@ -659,7 +659,7 @@ set pseudo_Levis (RootDatum rd)=[[int]]: let W=W(rd) then
 set d_L (RootDatum rd,[int] L)=int: let r=semisimple_rank(rd)
    in if #L=0 then 0 else
    if max(L)<r then 1 else
-    let list= for i in complement(r+1,sort(L)) do labels(rd)[i] od
+    let list= for i in complement(r+1,sort(L)) do simple_root_labels(rd)[i] od
     in gcd(list) fi fi
 
 set d_L(RootDatum rd,RootDatum rd_L)=order_center(rd_L.mod_central_torus)

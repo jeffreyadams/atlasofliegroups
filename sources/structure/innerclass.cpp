@@ -201,7 +201,7 @@ void InnerClass::construct() // common part of two constructors
 	Cartan[0].rep[i]=              // in |adj_Tg|, a torus part is a
 	  cartanclass::restrictGrading // |Grading| of simple roots, where
 	  (f.compactRoots(f.wrf_rep(i)), // compact ones need bit set
-	   d_rootDatum.simpleRootList()); // to flip base (noncompact) grading
+	   d_rootDatum.simple_root_list()); // to flip base (noncompact) grading
       }
     }
 
@@ -217,7 +217,7 @@ void InnerClass::construct() // common part of two constructors
 #endif
       InvolutionData id =
 	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
-      RootNbrSet pos_im = id.imaginary_roots() & d_rootDatum.posRootSet();
+      RootNbrSet pos_im = id.imaginary_roots() & d_rootDatum.posroot_set();
 
       // try to generate new Cartans above current: do Cayleys by |pos_im|
       for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
@@ -306,7 +306,7 @@ void InnerClass::construct() // common part of two constructors
 	RankFlags gr = // as above, torus part is obtained as a grading
 	  cartanclass::restrictGrading // values at simple roots give torus part
 	  (f.compactRoots(f.wrf_rep(i)), // compact ones need a set bit
-	   d_rootDatum.simpleRootList()); // reproduces grading at imag. simples
+	   d_rootDatum.simple_root_list()); // reproduces grading at imag. simples
 	TitsElt x(dual_Tg,TorusPart(gr,d_rootDatum.semisimple_rank()));
 	dual_adj_Tg.basedTwistedConjugate(x,ww); // transform to canonical
 	Cartan.back().dual_rep[i] = dual_Tg.left_torus_part(x).data();
@@ -317,7 +317,7 @@ void InnerClass::construct() // common part of two constructors
     {
       InvolutionData id =
 	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
-      RootNbrSet pos_re = id.real_roots() & d_rootDatum.posRootSet();
+      RootNbrSet pos_re = id.real_roots() & d_rootDatum.posroot_set();
       for (RootNbrSet::iterator it=pos_re.begin(); it(); ++it)
       {
 	RootNbr alpha=*it;

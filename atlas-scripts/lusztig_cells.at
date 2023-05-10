@@ -315,11 +315,10 @@ let table = [ [string] ]:
 	     ,y.compact_string
 	     ,centralizer(G,y).nice_format
 	     ,"[]"
-	     ,"x"
-	     ,"x"
-	     ,"x"
-	     ,"x"
-	     ,"x"
+	     ,"*"
+	     ,"*"
+	     ,"*"
+	     ,"*"
 	     ]]
   	  else
 	     for k in values
@@ -387,11 +386,10 @@ let table_header =
 	    ,v.compact_string
 	    ,centralizer(G,y).nice_format
 	    ,"[]"
-	    ,"x"
-	    ,"x"
-	    ,"x"
-	    ,"x"
-	    ,"x"
+	    ,"*"
+	    ,"*"
+	    ,"*"
+	    ,"*"
 	    ]]
 	 else
 	    for k in values do

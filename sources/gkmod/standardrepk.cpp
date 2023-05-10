@@ -1681,12 +1681,12 @@ PSalgebra::PSalgebra(TitsElt base, const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
-    , nilpotents(G.rootDatum().posRootSet())
+    , nilpotents(G.rootDatum().posroot_set())
 {
   const RootDatum& rd=G.rootDatum();
   InvolutionData id = G.involution_data(base.tw());
 
-  // get |rd.simpleRootSet&id.real_roots()|, shifted to fit in |RankFlags|
+  // get |rd.simple_root_set()&id.real_roots()|, shifted to fit in |RankFlags|
   for (size_t i=0; i<rd.semisimple_rank(); ++i)
     if (id.real_roots().isMember(rd.simpleRootNbr(i)))
       sub_diagram.set(i);
