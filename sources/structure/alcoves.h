@@ -51,6 +51,9 @@ sl_list<WeylElt> basic_orbit_ws
 sl_list<WeylElt> affine_orbit_ws
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
+sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
+
 sl_list<int_Vector> FPP_orbit_numers
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
