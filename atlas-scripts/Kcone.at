@@ -652,7 +652,7 @@ set anti_finalize (Param p)=Param:
 
 set fold (vec v)=vec:
    let n=#v then k=floor(n/2)
-   in for i:k do v[i]+v[k] od
+   in for i:k do v[i]+v[k+i] od
 
 
 set up_next_cone(KType mu, int bound) = KTypePol:
@@ -701,11 +701,6 @@ set block_Bruhat (Param p)=mat:
    then BR0=sum((n,n),for i:r do H^(i+1) od)
    in for v in BR0 do make_zero_one(v) od
 
-set trim_matrix (mat M,[int] list)=mat:
-   for i in list
-   do for j in list
-      do M[i][j] od od
-
 set singular_block_Bruhat (Param p)=mat:
    let G=real_form(p)
    then pp=translate_param_by(p,two_rho(G))
@@ -715,7 +710,7 @@ set singular_block_Bruhat (Param p)=mat:
 	           in if f=-1 then [] else [f]
 	              fi
                od
-   in trim_matrix (block_Bruhat(pp),list)
+   in prints(list); principal_submatrix (block_Bruhat(pp),list)
 
 set H0_col (mat BR0,int n)=vec:
    let LOOK=BR0[n]
@@ -726,6 +721,8 @@ set H0_col (mat BR0,int n)=vec:
       od; A
 
 set singular_block_Hasse(Param p)=mat:
-   let BR0=singular_block_Bruhat(p)
-   then r=#BR0
-   in for i:r do H0_col(BR0,i) od
+   if is_regular(p) then block_Hasse(p)
+   else let BR0=singular_block_Bruhat(p)
+        then r=#BR0
+        in for i:r do H0_col(BR0,i) od
+   fi

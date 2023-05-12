@@ -98,36 +98,3 @@ set complex_KT (RealForm G, vec v)=KType:
    let GC=complexification(G), n=rank(G)
    in K_type(KGB(GC,0),(v-two_rho(G))##null(n))
 
-{Multiplicity of the weight wt in the finite dimensional algebraic rep'n with
-  highest weight FD}
-set wt_mult (RealForm G, vec FD, vec wt)=int:
-   let KT=complex_KT(G,FD),GC=complexification(G)
-   then I_wt=parameter(x_open(GC),wt##null(rank(G)),null(rank(GC)))
-   in split_as_int(branch_std(I_wt,height(KT))[KT])
-
-set list_of_weights (vec hwt,[vec] roots, int n)=[vec]:
-   let result=[hwt] then list=result, c=0
-   in while c<n do
-      for wt in list do
-       for a in roots do if find(result,wt-a)=-1 then result#:=wt-a fi od od;
-       list:=result; c+:=1 od;
-       result
-
-{set wts_in_finite_dimensional (RealForm G, vec FD,int n)=[(vec,int)]:
-   let sr=simple_roots(G)
-   then list=list_of_weights(FD,sr,n)
-   in ##for wt in list
-        do let k=wt_mult (G,FD,wt)
-	   in if k>0 then [(wt,k)] else [] fi
-	od}
-
-set wts_in_finite_dimensional (RealForm G, vec FD)=[(vec,int)]:
-   let sr=simple_roots(G), GC=complexification(G), n=two_rho_check(G)*FD
-   then KT=complex_KT(G,FD)
-   then list=list_of_weights(FD,sr,n),ht=height(KT)
-   in ##for wt in list
-        do if height(complex_KT(G,wt))>ht then []
-	else let I_wt=parameter(x_open(GC),wt##null(rank(G)),null(rank(GC)))
-	then k=split_as_int(branch_std(I_wt,ht)[KT])
-	   in if k>0 then [(wt,k)] else [] fi fi
-	od
