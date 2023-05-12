@@ -1025,11 +1025,10 @@ std::vector<sl_list<WeylElt> > facet_orbit_ws
   return coset_lists;
 } // |facet_orbit_ws|
 
-sl_list<int_Vector> FPP_orbit_numers
+sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma)
 {
   const Weight numer (gamma.numerator().begin(),gamma.numerator().end());
-  const auto denom = gamma.denominator();
 
   auto walls = rd.fundamental_alcove_walls();
   RootNbrSet stabilising_walls(walls.capacity()); // |capacity==numRoots()|
@@ -1044,7 +1043,7 @@ sl_list<int_Vector> FPP_orbit_numers
   auto coset_lists = facet_orbit_ws(rd,W,stabilising_walls);
 
   center_classifier cc(rd);
-  sl_list<int_Vector> result;
+  sl_list<std::pair<WeylElt,sl_list<int_Vector> > > result;
 
   struct w_info {
     WeylElt w;
@@ -1068,7 +1067,8 @@ sl_list<int_Vector> FPP_orbit_numers
 
   while(true) // loop through all sublists of |coset_lists|
   { // last sublists, giving leftmost factor, will vary most rapidly
-    const auto image = W.image_by(rd,states.back().w,numer);
+    auto& node = result.emplace_back(states.back().w,sl_list<int_Vector>{});
+    const auto image = W.image_by(rd,node.first,numer);
 
     RankFlags fix, ups, downs; // simple roots for which facet lands on its wall
     for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -1085,10 +1085,10 @@ sl_list<int_Vector> FPP_orbit_numers
 
     for (const auto& shift : cc.shifts(fix,ups,downs))
     {
-      auto& v = result.push_back(image);
+      auto& v = node.second.push_back(int_Vector(rd.rank(),0));
       for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
 	if (shift[s]!=0) // |shift[s]| is sufficiently often zero to merit test
-	  v += rd.simpleRoot(s)*(denom*shift[s]);
+	  v += rd.simpleRoot(s)*shift[s];
     }
 
     // now increment iterators to get new element in |states.back().w|
@@ -1107,6 +1107,23 @@ sl_list<int_Vector> FPP_orbit_numers
     }
   } // |while(true)|
 
+  return result;
+}
+
+sl_list<int_Vector> FPP_orbit_numers
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma)
+{
+  auto list = FPP_w_shifts(rd,W,gamma);
+  const Weight numer (gamma.numerator().begin(),gamma.numerator().end());
+  const auto denom = gamma.denominator();
+  sl_list<int_Vector> result;
+  for (const auto& p : list)
+    if (not p.second.empty())
+    {
+      const auto image = W.image_by(rd,p.first,numer);
+      for (const auto& shift : p. second)
+	result.push_back(image+shift*denom);
+    }
   return result;
 }
 
