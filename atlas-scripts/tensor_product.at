@@ -151,6 +151,8 @@ set add_wt_to_param (Param p, vec H)=ParamPol:
    parameter(p.x,p.lambda+H,p.nu+H)
 
 
+{Compute the tensor product of an irreducible representation with a finite dimensional
+algebraic representation of highest wwight FD}
 set tensor_with_fd (Param p, vec FD)=ParamPol:
    let cf=character_formula(p), G=real_form(p)
    then Wts=wts_of_fd(G,FD)
