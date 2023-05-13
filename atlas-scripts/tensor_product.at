@@ -28,9 +28,6 @@ set add_weight (Param p,ratvec H) = KTypePol:
 set add_weights (Param p,(KGBElt->[ratvec]) weights) = KTypePol:
    sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
 
-set add_weights (Param p,(KGBElt->[ratvec]) weights)=KTypePol:
-    sum(p.real_form,for H in weights(p.x) do add_weight(p,H) od)
-
 {simply add H to each term of P, standardize the results}
 set add_weight (ParamPol P,ratvec H) = KTypePol:
    sum(P.real_form,for coef@p in P do coef*add_weight(p,H) od)
@@ -149,22 +146,19 @@ set list_of_weights (vec hwt,[vec] roots, int n)=[vec]:
        list:=result; c+:=1 od;
        result
 
-{set wts_in_finite_dimensional (RealForm G, vec FD,int n)=[(vec,int)]:
-   let sr=simple_roots(G)
-   then list=list_of_weights(FD,sr,n)
-   in ##for wt in list
-        do let k=wt_mult (G,FD,wt)
-	   in if k>0 then [(wt,k)] else [] fi
-	od}
 
-set wts_in_finite_dimensional (RealForm G, vec FD)=[(vec,int)]:
-   let sr=simple_roots(G), GC=complexification(G), n=two_rho_check(G)*FD
-   then KT=complex_KT(G,FD)
-   then list=list_of_weights(FD,sr,n),ht=height(KT)
-   in ##for wt in list
-        do if height(complex_KT(G,wt))>ht then []
-	else let I_wt=parameter(x_open(GC),wt##null(rank(G)),null(rank(GC)))
-	then k=split_as_int(branch_std(I_wt,ht)[KT])
-	   in if k>0 then [(wt,k)] else [] fi fi
-	od
+set add_wt_to_param (Param p, vec H)=ParamPol:
+   parameter(p.x,p.lambda+H,p.nu+H)
+
+
+set tensor_with_fd (Param p, vec FD)=ParamPol:
+   let cf=character_formula(p), G=real_form(p)
+   then Wts=wts_of_fd(G,FD)
+   then temp=
+             for c@m in cf
+             do for k@mu in Wts
+	        do (c,k,add_wt_to_param (m,ratvec_as_vec(lambda(mu))))
+		od
+	     od
+   in sum (G,##for A in temp do for (c,k,P) in A do c*k*P od od).composition_series
 
