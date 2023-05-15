@@ -128,6 +128,8 @@ in P +:= { calls +@(KTypePol,[(Split,KType)]) }
 ; result
 )
 
+{The weights of a finite dimensional algebraic representation with extremal
+weight hwt}
 set wts_of_fd (RootDatum rd, vec hwt)=KTypePol:
    let r=rank(rd), w=word(w0(rd))
    then T=torus(r,0,0)
