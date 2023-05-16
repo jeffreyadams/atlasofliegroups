@@ -2067,6 +2067,51 @@ void FPP_numers_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ The following function should produce the set of all facet barycentres from a
+given one in the fundamental alcove, without invoking |affine_orbit_ws|.
+
+@< Local function definitions @>=
+void FPP_w_shifts_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  for (RootNbr alpha : rd->val.fundamental_alcove_walls())
+  { auto ev = gamma->val.dot_Q(rd->val.coroot(alpha));
+    if (not rd->val.is_simple_root(alpha))
+      ev += 1;
+    if (ev.is_negative())
+    { std::ostringstream o;
+      o << "Rational weight is not in fundamental alcove (coroot " @|
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev << ')';
+      throw runtime_error(o.str());
+    }
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto L = weyl::FPP_w_shifts(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(0);
+    for (auto&& pr : L)
+      if (not pr.second.empty())
+      {
+        auto tup = std::make_shared<tuple_value>(2);
+        result->val.push_back(tup);
+        tup->val[0] = std::make_shared<W_elt_value>(rd,std::move(pr.first));
+        auto dst = std::make_shared<row_value>(pr.second.size());
+        tup->val[1] = dst;
+        size_t i=0;
+        for (auto&& v : pr.second)
+          dst->val[i++] = std::make_shared<vector_value>(std::move(v));
+      }
+  push_value(std::move(result));
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
@@ -2154,6 +2199,8 @@ install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
 		"(RootDatum,ratvec->[WeylElt])");
 install_function(FPP_numers_wrapper@|,"FPP_numers",
 		"(RootDatum,ratvec->[vec])");
+install_function(FPP_w_shifts_wrapper@|,"FPP_w_shifts",
+		"(RootDatum,ratvec->[WeylElt,[vec]])");
 
 
 @*1 Weyl group elements.
