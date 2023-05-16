@@ -962,10 +962,10 @@ sl_list<int_Vector>
   for (unsigned int bits=0; bits<N; ++bits)
   {
     auto negset =  RankFlags(bits).unslice(neg);
-    auto rts = base - lookup_shift(negset);
+    auto rts = base - lookup_shift(negset); // difference of integral parts
     byte_vec diff = table[rts_tab[negset.to_ulong()].cls].first;
     for (unsigned i=0; i<diff.size(); ++i)
-      diff[i] -= fix_ev[i]<=diff[i] ? fix_ev[i] : (--rts[i],fix_ev[i]-denom);
+      diff[i] -= fix_ev[i]<=diff[i] ? fix_ev[i] : (++rts[i],fix_ev[i]-denom);
     auto start = std::lower_bound(table.begin(),table.end(),diff,cmp);
     if (start!=table.end() and start->first==diff)
       for (const auto& p : start->second)
