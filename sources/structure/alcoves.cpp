@@ -881,18 +881,20 @@ sl_list<WeylElt> basic_orbit_ws
 // auxiliary to facilitate generating alcoves/facets in the fu. ParallelEpiped
 class center_classifier // center is that of simply connected group for type
 { // flag sets of fundamental weights whose sum is in the root lattice
+  // "shift" is sum of set of fund. weights; we group them by root lattice coset
+  // numerator of fractional part (adjoint coordinates) of sum represents coset
 
-  using byte_vec = matrix::Vector<unsigned char>; // reduced evaluation
-  using shift_class = sl_list<RankFlags>;
-  using bucket = std::pair<byte_vec,shift_class>; // eval class
+  using byte_vec = matrix::Vector<unsigned char>; // adjoint crd fractional part
+  using shift_class = sl_list<RankFlags>; // list of shifts in same root coset
+  using bucket = std::pair<byte_vec,shift_class>; // frac. part, and its shifts
 
   const RootSystem& rs;
-  std::vector<bucket> table; // shift by root set, sorted by evaluation class
-  struct root_set_info
-  { unsigned int cls; // index into |table|
-    int_Vector shift; // adjoint-integral part of shift
+  std::vector<bucket> table; // shifts by root coset, sorted by fractional part
+  struct root_set_info // information for one particular sum of fund. weights
+  { unsigned int cls; // index into |table| (find fractional part there)
+    int_Vector shift; // adjoint-integral part of the sum (on denominator 1)
   };
-  std::vector<root_set_info> rts_tab; // adjoint-integral parts of shift
+  std::vector<root_set_info> rts_tab; // info indexed by subset of fund. weights
 
   static bool cmp(const bucket& b,const byte_vec& v) { return b.first<v;};
   shift_class& lookup (const byte_vec& v); // during construction, non |const|
@@ -902,10 +904,9 @@ class center_classifier // center is that of simply connected group for type
   unsigned int order; // of center: index of root lattice in fund.weight lattice
 public:
   center_classifier(const RootSystem& rs);
-  bool is_for_FPP(RankFlags descents) const; // is for fund. parallelepiped
-  // when |is_for_FPP| holds for a descent set, this is the corrsponding shift:
-  // (floor of) shift in adjoint coordinates, from simply-connected coordinates
-  int_Vector shift(const int_Vector& v) const;
+  bool is_for_FPP(RankFlags S) const // no longer used: whether zero coset
+  { return rts_tab[S.to_ulong()].cls==0; } // since zero coset first in |table|
+
   unsigned int index() const { return order; } // number of root lattice cosets
 
   // shifts fw(fix+A)-fw(B) in $R$ for subsets $A$ of |pos| et $B$ of |neg|
@@ -930,24 +931,25 @@ center_classifier::center_classifier(const RootSystem& rs)
 {
   table.reserve(order); // we expect this many classes of descent sets
   byte_vec v; v.reserve(rs.rank());
-  auto i_Cartan = rs.inverse_Cartan_matrix();
+  const auto i_Cartan = rs.inverse_Cartan_matrix();
+  const auto& denom = rs.Cartan_denominator();
 
   for (unsigned i=rts_tab.size(); i-->0; )
   {
-    RankFlags descents(i); // interpret bits of |i| as descents
+    RankFlags descents(i); // interpret bits of |i| as coefficient of fund wt.
     int_Vector& sum = rts_tab[i].shift;
     for (weyl::Generator s : descents)
       sum += i_Cartan.row(s);
     v.clear(); // resize to 0
     for (auto& e : sum)
-      v.push_back(arithmetic::remainder(e,rs.Cartan_denominator()));
+      v.push_back(arithmetic::remainder(e,denom));
     divide(sum,rs.Cartan_denominator()); // now reduce to floor of quotient
     auto& list = lookup(v);
     list.push_front(descents);
   }
   for (unsigned int i=0; i<table.size(); ++i)
     for (const auto& p : table[i].second)
-      rts_tab[p.to_ulong()].cls=i;
+      rts_tab[p.to_ulong()].cls = i;
 }
 
 sl_list<int_Vector>
@@ -962,10 +964,12 @@ sl_list<int_Vector>
   for (unsigned int bits=0; bits<N; ++bits)
   {
     auto negset =  RankFlags(bits).unslice(neg);
-    auto rts = base - lookup_shift(negset);
+    auto rts = base - lookup_shift(negset); // difference of integral parts
     byte_vec diff = table[rts_tab[negset.to_ulong()].cls].first;
     for (unsigned i=0; i<diff.size(); ++i)
-      diff[i] -= fix_ev[i]<=diff[i] ? fix_ev[i] : (--rts[i],fix_ev[i]-denom);
+      diff[i] -= fix_ev[i]<=diff[i] // whether we can use simple subtraction
+	? fix_ev[i] // yes, then no need to modify integral part |rts|
+	: (++rts[i],fix_ev[i]-denom); // no, add 1 to |diff[i]|, carry into |rts|
     auto start = std::lower_bound(table.begin(),table.end(),diff,cmp);
     if (start!=table.end() and start->first==diff)
       for (const auto& p : start->second)
