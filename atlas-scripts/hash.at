@@ -1,0 +1,62 @@
+< writeFiles.at {for K_data, converting K_type_pol to [[vec]]}
+
+{meant to hash a [vec] to int in [0,d_mod)}
+set hash_code(vec v, int d_mod) = int:
+    let hash = int: 1
+    then () = for x in v do hash:=13*(hash + x) od
+    in hash % d_mod-1
+
+{ list is list of distinct KTypePol's in order found; starts out empty
+  seq_nbrs is a list of size capacity; there is one non-empty entry for
+  each element of list, at a location close to hash_code(encode(P) }
+
+set_type KPolHash = ([KTypePol] list, [int] seq_nbrs, int empty, int capacity,
+	 {int size,}  (KTypePol -> vec) encode, (vec,int) -> int) hash_code)
+
+{look up P in table: find sequence # in table.list, or else add to table.list,
+and update table, return location}
+set match(KTypePol P, KPolHash table) = (int, KPolHash):
+    let code = table.hash_code(table.encode(P),table.capacity),
+    	List = table.list, Seq_nbrs = table.seq_nbrs
+    then () = while Seq_nbrs[code] != table.empty
+    	      	 and List[Seq_nbrs[code]] != P
+	      do code:= (code+1)%table.capacity
+	      od
+then () = if Seq_nbrs[code] = table.empty
+	  then Seq_nbrs[code] := #List;
+	       List:=List##[P];
+	       table.seq_nbrs:=Seq_nbrs
+	   fi {other possibility is Seq_nbrs[code] = location of P}
+    then () = table.list:=List
+    in (Seq_nbrs[code],table)
+
+set rehash(KPolHash table) = KPolHash:
+    let capacity = 2*table.capacity
+    then seq_nbrs = for j:capacity do table.empty od
+    then for P@m in table.list
+    	 do let code = table.hash_code(table.encode(P),capacity)
+	    then while seq_nbrs[code] != table.empty
+    	    	 do code:= (code+1)%capacity
+	      	 od {now seq_nbrs[code] = empty}
+	    in () = seq_nbrs[code] := m
+	 od
+    in KPolHash: (table.list, seq_nbrs, table.empty, capacity,
+       		 table.encode, table.hash_code)
+
+{
+set K_data_vec(KTypePol P) = vec: K_data(P).##
+set f(vec v) = hash_code(v,4096)
+
+set G=F4_s
+set capacity = 4096
+set K_data_vec(KTypePol P) = vec: K_data(P).##
+set f(vec v) = hash_code(v,capacity)
+set empty = int:minus_1
+set list = [KTypePol]:[]
+set seq_nbrs = for j:capacity do empty od
+
+set table = (list,seq_nbrs,empty,capacity,K_data_vec@KTypePol, f@vec)
+
+set seqNbrs = [[int]]: for F in FBs do for b in F do let (m,T) = match(K_type_pol(character_formula(parameter(x_open(G),[1,1,1,1],b))),table) then () = table:=T in m od od
+
+}
