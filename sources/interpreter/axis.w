@@ -1653,6 +1653,10 @@ id_type concatenate_name()
 {@; static id_type name=main_hash_table->match_literal("##");
   return name;
 }
+id_type protected_concatenate_name()
+{@; static id_type name=main_hash_table->match_literal("## ");
+  return name;
+}
 id_type print_name()
 {@; static id_type name=main_hash_table->match_literal("print");
   return name;
@@ -1673,6 +1677,7 @@ id_type error_name()
 inline bool is_special_operator(id_type id)
 {@; return id==size_of_name()
     @|  or id==concatenate_name()
+    @|  or id==protected_concatenate_name()
     @|  or id==print_name()
     @|  or id==to_string_name()
     @|  or id==prints_name()
@@ -2276,7 +2281,7 @@ the case of \&{die}.
   name << main_hash_table->name_of(id) << '@@' << a_priori_type;
   if (id==size_of_name())
     @< Recognise and return versions of `\#', or fall through @>
-  else if (id==concatenate_name())
+  else if (id==concatenate_name() or id==protected_concatenate_name())
     @< Recognise and return instances of `\#\#', or fall through @>
   else // remaining cases always match
   { const bool needs_voiding = a_priori_type==void_type and not is_empty(args);
