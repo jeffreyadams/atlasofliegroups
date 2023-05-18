@@ -4,19 +4,37 @@
 set hash_code(vec v, int d_mod) = int:
     let hash = int: 1
     then () = for x in v do hash:=13*(hash + x) od
-    in hash % d_mod-1
+    in hash % (d_mod-1)
+
+set hash_code(KTypePol P, int d_mod) = int:
+    hash_code(K_data(P).##, d_mod)
 
 { list is list of distinct KTypePol's in order found; starts out empty
   seq_nbrs is a list of size capacity; there is one non-empty entry for
   each element of list, at a location close to hash_code(encode(P) }
 
 set_type KPolHash = ([KTypePol] list, [int] seq_nbrs, int empty, int capacity,
-	 {int size,}  (KTypePol -> vec) encode, (vec,int) -> int) hash_code)
+	 int maxfill, ((KTypePol,int) -> int) hash_code)
+
+set rehash(KPolHash table) = KPolHash:
+    let capacity = 2*table.capacity
+    then max_fill = (2*capacity)\3
+    then seq_nbrs = for j:capacity do table.empty od
+    then () = for P@m in table.list
+    	 do let code = table.hash_code(P,capacity)
+	    then () = while seq_nbrs[code] != table.empty
+    	    	      do code:= (code+1)%capacity
+	      	      od {now seq_nbrs[code] = empty}
+	    then () = seq_nbrs[code] := m
+	    in ()
+	 od
+    in KPolHash: (table.list, seq_nbrs, table.empty, capacity,
+       		 max_fill, table.hash_code)
 
 {look up P in table: find sequence # in table.list, or else add to table.list,
 and update table, return location}
 set match(KTypePol P, KPolHash table) = (int, KPolHash):
-    let code = table.hash_code(table.encode(P),table.capacity),
+    let code = table.hash_code(P,table.capacity),
     	List = table.list, Seq_nbrs = table.seq_nbrs
     then () = while Seq_nbrs[code] != table.empty
     	      	 and List[Seq_nbrs[code]] != P
@@ -25,23 +43,13 @@ set match(KTypePol P, KPolHash table) = (int, KPolHash):
 then () = if Seq_nbrs[code] = table.empty
 	  then Seq_nbrs[code] := #List;
 	       List:=List##[P];
-	       table.seq_nbrs:=Seq_nbrs
+	       table.seq_nbrs:=Seq_nbrs;
+	       if #List > table.maxfill
+	       then table.list := List; table :=rehash(table)
+	       fi
 	   fi {other possibility is Seq_nbrs[code] = location of P}
     then () = table.list:=List
     in (Seq_nbrs[code],table)
-
-set rehash(KPolHash table) = KPolHash:
-    let capacity = 2*table.capacity
-    then seq_nbrs = for j:capacity do table.empty od
-    then for P@m in table.list
-    	 do let code = table.hash_code(table.encode(P),capacity)
-	    then while seq_nbrs[code] != table.empty
-    	    	 do code:= (code+1)%capacity
-	      	 od {now seq_nbrs[code] = empty}
-	    in () = seq_nbrs[code] := m
-	 od
-    in KPolHash: (table.list, seq_nbrs, table.empty, capacity,
-       		 table.encode, table.hash_code)
 
 {
 set K_data_vec(KTypePol P) = vec: K_data(P).##
@@ -57,6 +65,29 @@ set seq_nbrs = for j:capacity do empty od
 
 set table = (list,seq_nbrs,empty,capacity,K_data_vec@KTypePol, f@vec)
 
-set seqNbrs = [[int]]: for F in FBs do for b in F do let (m,T) = match(K_type_pol(character_formula(parameter(x_open(G),[1,1,1,1],b))),table) then () = table:=T in m od od
+set seqNbrs = [[int]]: for F in FBs do for v in F do let (m,T) =
+match(K_type_pol(character_formula(parameter(x_open(G),[1,1,1,1],v))),table)
+then () = table:=T in m od od
+
+}
+
+{ with rehash...
+
+set G=F4_s
+set FBs = FPP_barycenters(G,-1)
+set capacity= 8
+set max_fill = 5
+max_fill: int
+set empty = minus_1
+
+set seq_nbrs = for j:capacity do empty od
+set list = [KTypePol]:[]
+
+set table = KPolHash :(list, seq_nbrs, empty, capacity, max_fill,
+    hash_code@(KTypePol,int))
+
+set seqNbrs = [[int]]: for F in FBs do for v in F do let (m,T) =
+match(K_type_pol(character_formula(parameter(x_open(G),G.rho,v))),table)
+then () = table:=T in m od od
 
 }
