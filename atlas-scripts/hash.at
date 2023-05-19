@@ -1,10 +1,11 @@
+< basic.at { for |minus_1| }
 < writeFiles.at {for K_data, converting K_type_pol to [[vec]]}
 
 {meant to hash a [vec] to int in [0,d_mod)}
 set hash_code(vec v, int d_mod) = int:
     let hash = int: 1
     then () = for x in v do hash:=13*(hash + x) od
-    in hash % (d_mod-1)
+    in hash % d_mod
 
 set hash_code(KTypePol P, int d_mod) = int:
     hash_code(K_data(P).##, d_mod)
@@ -17,39 +18,89 @@ set_type KPolHash = ([KTypePol] list, [int] seq_nbrs, int empty, int capacity,
 	 int maxfill, ((KTypePol,int) -> int) hash_code)
 
 set rehash(KPolHash table) = KPolHash:
-    let capacity = 2*table.capacity
-    then max_fill = (2*capacity)\3
-    then seq_nbrs = for j:capacity do table.empty od
-    then () = for P@m in table.list
-    	 do let code = table.hash_code(P,capacity)
-	    then () = while seq_nbrs[code] != table.empty
-    	    	      do code:= (code+1)%capacity
-	      	      od {now seq_nbrs[code] = empty}
-	    then () = seq_nbrs[code] := m
-	    in ()
-	 od
-    in KPolHash: (table.list, seq_nbrs, table.empty, capacity,
-       		 max_fill, table.hash_code)
+(   let capacity = table.capacity *:=2
+    then seq_nbrs = for j:capacity do table.empty od { prepare new array }
+in  table.maxfill := 2*capacity\3
+;   for P@m in table.list
+    do let code = table.hash_code(P,capacity)
+    in while seq_nbrs[code] != table.empty
+       do if (code+:=1)=capacity then code:=0 fi
+       od {now seq_nbrs[code] = empty}
+    ;  seq_nbrs[code] := m
+    od
+;   table.seq_nbrs:= seq_nbrs { install modified array }
+;   table
+)
 
 {look up P in table: find sequence # in table.list, or else add to table.list,
 and update table, return location}
 set match(KTypePol P, KPolHash table) = (int, KPolHash):
-    let code = table.hash_code(P,table.capacity),
-    	List = table.list, Seq_nbrs = table.seq_nbrs
-    then () = while Seq_nbrs[code] != table.empty
-    	      	 and List[Seq_nbrs[code]] != P
-	      do code:= (code+1)%table.capacity
-	      od
-then () = if Seq_nbrs[code] = table.empty
-	  then Seq_nbrs[code] := #List;
-	       List:=List##[P];
-	       table.seq_nbrs:=Seq_nbrs;
-	       if #List > table.maxfill
-	       then table.list := List; table :=rehash(table)
-	       fi
-	   fi {other possibility is Seq_nbrs[code] = location of P}
-    then () = table.list:=List
-    in (Seq_nbrs[code],table)
+(   let code = table.hash_code(P,table.capacity)
+    ,   Seq_nbrs = table.seq_nbrs
+in  while Seq_nbrs[code] != table.empty and table.list[Seq_nbrs[code]] != P
+    do if (code+:=1)=table.capacity then code:=0 fi
+    od
+;   if Seq_nbrs[code] = table.empty { an empty slot was found, fill it }
+    then Seq_nbrs[code] := #table.list; table.list #:= P
+    ;   table.seq_nbrs := Seq_nbrs
+    ;   if #table.list > table.maxfill then table :=rehash(table) fi
+    fi
+;   (Seq_nbrs[code],table)
+)
+
+
+set_type
+[ KTypePol_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , (int->KTypePol) index
+  , (KTypePol->int) match
+  , (KTypePol->int) lookup
+  )
+]
+
+set make_hash ([KTypePol] list, (KTypePol,int->int) hash) = KTypePol_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(KTypePol P) = (int,bool):
+     let code = hash(P,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != P
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for P@m in list
+	 do let (code,new) = find(P) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+in for P@m in list
+   do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , (int->KTypePol): { index } (int i) KTypePol: list[i]
+   , (KTypePol->int): { match } (KTypePol P) int:
+     begin
+        let (code,new) = find(P)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list := (list next list:=[]) # P
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (KTypePol->int): { lookup } (KTypePol P) int:
+     let (code,new) = find(P) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_hash () = KTypePol_hash: make_hash([KTypePol]:[],hash_code@(KTypePol,int))
 
 {
 set K_data_vec(KTypePol P) = vec: K_data(P).##
