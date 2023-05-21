@@ -151,7 +151,7 @@ set factors (WeylElt w) = [WeylElt]:
 in for (,rank):code in codes { traverse the simple factors }
    do let range = map[offset:offset+rank].sort { index range for this factor }
       then test = is_member_sorted(range)
-      then factor_word = for s in w.word do if test(s) then [s] else [] fi od.##
+      then factor_word = for s in w.word if test(s) do s fi od
    in W_elt(rd,factor_word)
    next offset +:= rank
    od

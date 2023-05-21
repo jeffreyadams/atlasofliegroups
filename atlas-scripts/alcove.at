@@ -55,12 +55,12 @@ in for place in ranking[start:] ## ranking[:start]
 
 set check_walls(RootDatum rd, ratvec gamma,[int] walls) = bool:
   for i in walls
-  do let exception = if <i then [-1-i] else [] fi { exceptional positive root}
+  do let exception = if i.< do minus_1-i fi { exceptional positive root}
   , proj = gamma - root(rd,i)*(coroot_frac(rd,coroot(rd,i),gamma)/2)
   then crossings = { positive coroot indices for which integral part changes }
     for alpha_v@k in poscoroots(rd)
-    do if floor(alpha_v*gamma)=floor(alpha_v*proj) then [] else [k] fi
-    od.##
+      if floor(alpha_v*gamma)!=floor(alpha_v*proj) do k fi
+    od
   in crossings=exception
   od.all
 
@@ -109,7 +109,7 @@ in for ind in indices
    do let k=kernel(coroots #:= coroot(rd,ind))
    in if >#k
       then assert(#k=1,"kernel dimension jump")
-      ;  let pos = for e@i in k[0] do if =e then [] else [i] fi od.##
+      ;  let pos = for e@i in k[0] if !=e do i fi od
       in result #:=
          for i in pos
 	 do let alpha_v=coroots[i] then th_av = alpha_v*theta
@@ -185,8 +185,8 @@ set wall_components(RootDatum rd, [int] walls) = [[int]]:
 in for alpha in walls
    do let adhere =
       for comp@i in comps
-      do if is_orthogonal(rd,comp,alpha) then [] else [i] fi
-      od.##
+        if not is_orthogonal(rd,comp,alpha) do i fi
+      od
    in comps := for i in complement(#comps,adhere) do comps[i] od #
       ( for i in adhere do comps[i] od.## # alpha )
    od

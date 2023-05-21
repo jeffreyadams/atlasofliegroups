@@ -127,11 +127,10 @@ set lesseq_partition_presorted (Partition v,Partition w) = bool:
 }
 set closures([Partition] orbits) = [[int]]:
   {pre-sort}
-   let orbits=for P in orbits do reverse_sort(P) od in
-   for P@i in orbits
-   do
-   ## for j:#orbits
-      do if j!=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi
+   let orbits=for P in orbits do reverse_sort(P) od
+in for P@i in orbits
+   do for orb@j in orbits
+         if j!=i and lesseq_partition_presorted(orb,P) do j fi
       od
    od
 

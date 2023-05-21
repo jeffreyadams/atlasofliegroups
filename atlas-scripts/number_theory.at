@@ -20,10 +20,10 @@ in odd_primes :=
 set factorization (int n) = [int,int]: { (prime,exponent) }
    case n then n:=-n in error("Cannot factorize 0") else () esac;
    let (p,prs)=primes()
-   then factors =
+   then factors = [int,int]:
      while p*p<=n
-     do let (q,r)=n\%p then count = int: while =r do n:=q; set (q,r):=n\%p od
-     in if =count then [] else [(p,count)] fi next set(p,prs):=prs()
+     do let (q,r)=n\%p then count = int: while =r do set (q,r):=(n:=q)\%p od
+     in if >count do (p,count) fi next set(p,prs):=prs() { advance to next prime }
      od.##
    in if n=1 then factors else factors # (n,1) fi
 
@@ -33,8 +33,8 @@ set easy_factors (int n, int limit) = ([int,int],int): { (factors,quotient) }
    let (p,prs)=primes()
    then factors =
      while p<=limit and p*p<=n
-     do let (q,r)=n\%p then count = int: while =r do n:=q; set (q,r):=n\%p od
-     in if =count then [] else [(p,count)] fi next set(p,prs):=prs()
+     do let (q,r)=n\%p then count = int: while =r do set (q,r):=(n:=q)\%p od
+     in if >count do (p,count) fi next set(p,prs):=prs() { advance to next prime }
      od.##
    in if n=1 or p*p<=n then (factors,n) else (factors#(n,1),1) fi
 

@@ -184,9 +184,9 @@ set change_nu (Param p, rat factor, int type) = ExtParamPol:
 
 {replace ExtParamPol (P_plus,P_minus,P_ind) with [(s_i,c_i,type_i)]}
 set % (ExtParamPol(P_plus,P_minus,P_ind)) = [(Split,Param,int)]:
-( for c@p in P_plus do (c,p,1) od
-##for c@p in P_minus do (c,p,minus_1) od
-##for c@p in P_ind do (c,p,0) od
+(  for c@p in P_plus do (c,p,1) od
+## for c@p in P_minus do (c,p,minus_1) od
+## for c@p in P_ind do (c,p,0) od
 )
 
 set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:

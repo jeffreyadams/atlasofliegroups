@@ -86,9 +86,7 @@ set small_Levi_coroots_K (KGBElt x) = mat:
 
 { all choices of x in distinguished fiber making 2rho_c dominant }
 set nice_choices_x (RealForm G) = [KGBElt]:
-##for x in distinguished_fiber(G)
-  do if is_dominant(G,tworho_c(x)) then [x] else [] fi
-  od
+  for x in distinguished_fiber(G) if is_dominant(G,tworho_c(x)) do x fi od
 
 set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
 
@@ -112,8 +110,7 @@ set convert (WeylElt w,RootDatum rd_G) = WeylElt: { for |rd_G| }
 }
 set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
 { need to convert from L to G }
-##for w in W_c_perp(x)
-  do if x=cross(convert(w,x.root_datum),x) then [w] else [] fi od
+  for w in W_c_perp(x) if x=cross(convert(w,x.root_datum),x) do w fi od
 
 { W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
 
@@ -228,6 +225,6 @@ set R_K_dom_mu (KHighestWeight hw) = [WeylElt]:
    then (K_0,R_K_dom)=W_K(x)
    , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
    then mu1 = lift_action(chamber(K_0,proj*mu),x)*mu
-   in
+in for w in R_K_dom if w*mu1=mu1 do w fi od
 {    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;}
-##for w in R_K_dom do if w*mu1=mu1 then [w] else [] fi od
+

@@ -27,9 +27,7 @@ set is_positive_or_negative(ParamPol P)=bool:
 
 set test_positive (KTypePol P) = (KTypePol,bool):
   let badterms=null_module(P) +
-    for c@p in P
-    do let (a,b)=%c in if a<0 or b<0 then [(c,p)] else [] fi
-    od.##
+    for c@p in P do let (a,b)=%c in if a<0 or b<0 do (c,p) fi od.##
   in (badterms,=badterms)
 
 set test_positive_or_negative (KTypePol P) = (KTypePol,bool):

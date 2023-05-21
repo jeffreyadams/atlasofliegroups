@@ -33,8 +33,7 @@ set KGP_set (KGBElt x) = [KGBElt]:
 (  let G=x.real_form then r=G.semisimple_rank in
    while let s = last(r, (int i)bool: =status(i,x) { complex descent } ) in s.>=
    do x:=cross(s,x) od
-;  let real_gens =
-     for s:r do if status(s,x.print)=2 then [s] else [] fi od.##.print
+;  let real_gens = for s:r if status(s,x.print)=2 do s fi od.print
    , seen = for i:G.KGB_size do i=#x od, queue = [x]
 in while !=#queue
    do let x=queue[0] next queue:=queue[1:]
@@ -47,5 +46,5 @@ in while !=#queue
 	 od
       od
    od
-;  for b@i in seen ~ do if b then [KGB(G,i)] else [] fi od.##
+;  for b@i in seen ~ if b do KGB(G,i) fi od
 )

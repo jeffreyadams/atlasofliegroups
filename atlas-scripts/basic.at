@@ -28,9 +28,9 @@ set assert (bool b,string message) = void: if not b then error(message) fi
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
 set list (int limit, (int->bool) predicate) = [int]:
-  ## for i:limit do if predicate(i) then [i] else [] fi od
+  for i:limit if predicate(i) do i fi od
 set complement (int limit,(int->bool) predicate) = [int]:
-  ## for i:limit do if predicate(i) then [] else [i] fi od
+  for i:limit if not predicate(i) do i fi od
 set complement (int n, [int] list) = [int]:
   let N = to_bitset(list)
   in complement(n,(int i)bool: bitwise_subset([i].to_bitset,N))
@@ -216,7 +216,7 @@ set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
 
 set to_base (int n, (int->string) digit) = (int->string):
   let tbp=to_base_poly(n) in
-  (int k) string: assert(k.>=); ##for c in tbp(k) ~do c.digit od
+  (int k) string: assert(k.>=); for c in tbp(k) ~do c.digit od.##
 
 set binary = (int->string):
   let f=to_base(2,to_string@int) in
@@ -287,9 +287,11 @@ set max (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 set with_decimals (int n) = (rat->string): (rat r) string:
-   let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r) in
-   sign ## i.to_string ## "." ##
-   ## for :n do let x=10*f in x.floor.to_string next f:=x.frac od
+(  let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r)
+in sign
+## i.to_string ## "."
+## for :n do let x=10*f in x.floor.to_string next f:=x.frac od.##
+)
 
 
 {                               Strings                                 }
@@ -334,18 +336,14 @@ set width (int n) = int: #int_format(n)
 set split_lines (string text) = [string]:
 ( if text~[0]!=new_line then text := (text next text:="") ## new_line fi
 ; let last=0 in
-  for c@i in text
-  do if c=new_line then [text[last:i]] next last:=i+1 else [] fi
-  od.##
+  for c@i in text if c=new_line do text[last:i] next last:=i+1 fi od
 )
 
 set is_substring (string key, string text) = bool:
   let l=#key in any(#text-l,(int start)bool: text[start:start+l]=key)
 
 set fgrep (string s, string text) = [string]:
-  for line in split_lines(text)
-  do if is_substring(s,line) then [line] else [] fi
-  od.##
+  for line in split_lines(text) if is_substring(s,line) do line fi od
 
 set compact_string (ratvec v) = string:
    let (a,b)=%v in
@@ -376,9 +374,9 @@ set all_words ([[int]] alphabets) = mat:
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
-          for prefix in generate(final)
-          do for letter in alphabet do prefix#letter od
-	  od.##
+	for prefix in generate(final)
+	   for letter in alphabet do prefix#letter od
+	od
      fi
   , size=#alphabets
   in size # generate(size) { ensure column size |size|, even for empty set }
@@ -398,10 +396,10 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
   else { now we will assume $n\geq k$ }
     let rec_fun from_first(int n,int k) = [[int]]: { $k$ from first $n$ of $S$ }
       if k=0 then [[]] { unique choice of 0 }
-      else ## { generate by final element, and concatenate }
+      else { generate by final element, and concatenate }
         for i:n-k+1 from k-1
         do let Si=S[i] in for l in from_first(i,k-1) do l#Si od
-        od
+        od.##
       fi
     in from_first(#S,k)
   fi
@@ -443,12 +441,13 @@ set block_matrix (mat A,mat B) = mat:
   (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
 
 set block_matrix ([mat] list) = mat:
-  let m = sum(for A in list do n_rows(A) od), pos=0
-  in m #
-  ##for A in list
-    do let pre=null(pos) then {sequential!} post=null(m-(pos+:=n_rows(A))) in
-       for col in A do pre##col##post od
-    od
+(  let m = sum(for A in list do n_rows(A) od), pos=0
+in m
+#  for A in list
+   do let pre=null(pos) then {sequential!} post=null(m-(pos+:=n_rows(A))) in
+      for col in A do pre##col##post od
+   od.##
+)
 
 set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 
@@ -575,20 +574,20 @@ set last ([vec] L,(vec->bool) predicate) = int:
   last(#L,(int i)bool:L[i].predicate)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
-  n_rows(m)# ## for col@j in m do if p(j,col) then [col] else [] fi od
+  n_rows(m)# for col@j in m if p(j,col) do col fi od
 set columns_with ((vec->bool) p,mat m) = mat:
-  n_rows(m)# ## for col in m do if p(col) then [col] else [] fi od
+  n_rows(m)# for col in m if p(col) do col fi od
 set columns_with ((int->bool) p,mat m) = mat:
-  n_rows(m)# ## for col@j in m do if p(j) then [col] else [] fi od
+  n_rows(m)# for col@j in m if p(j) do col fi od
 set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
   for col in m do if p(col) then return solution(col) fi od; no_vec()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
-  n_columns(m) ^ for row@i in rows(m) do if p(i,row) then [row] else [] fi od.##
+  n_columns(m) ^ for row@i in rows(m) if p(i,row) do row fi od
 set rows_with ((vec->bool) p,mat m) = mat:
-  n_columns(m) ^ for row in rows(m) do if p(row) then [row] else [] fi od.##
+  n_columns(m) ^ for row in rows(m) if p(row) do row fi od
 set rows_with ((int->bool) p,mat m) = mat:
-  n_columns(m) ^ for row@i in rows(m) do if p(i) then [row] else [] fi od.##
+  n_columns(m) ^ for row@i in rows(m) if p(i) do row fi od
 set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
   for row in rows(m) do if p(row) then return solution(row) fi od; no_vec()
 
@@ -1049,7 +1048,7 @@ set wall_projector ((RootDatum,[int]) arg) = (mat,int):
 
 { for (anti)dominant |v|, find simple generators of its singular subsystem }
 set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
-  ## for a@j in simple_coroots(rd) do if =a*v then [j] else [] fi od
+   for a@j in simple_coroots(rd) if =a*v do j fi od
 
 set is_imaginary (mat theta) = (vec->bool): (vec alpha): theta*alpha=alpha
 set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha
@@ -1212,16 +1211,14 @@ set highest_root_indices (RootDatum rd) = [int]:
    let ssr = semisimple_rank(rd)
    then intersection =
       for i:ssr from -ssr
-      do for j in root_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
-         .to_bitset
+      do for j in root_ladder_bottoms(rd,i) if j.>= do j fi od.to_bitset
       od.bitwise_intersection
 in intersection.set_bit_positions
 set highest_coroot_indices (RootDatum rd) = [int]:
    let ssr = semisimple_rank(rd)
    then intersection =
       for i:ssr from -ssr
-      do for j in coroot_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
-         .to_bitset
+      do for j in coroot_ladder_bottoms(rd,i) if j.>= do j fi od.to_bitset
       od.bitwise_intersection
 in intersection.set_bit_positions
 
@@ -1364,7 +1361,7 @@ set print_Cartan_info (CartanClass cc) = void:
   ( "compact: ",cr,", complex: ",Cr,", split: ",sr, new_line
   , "canonical twisted involution: "
   ,  if =#ww then "e"
-     else to_string(ww[0]+1, ## for s in ww[1:] do to_string(",",s+1) od)
+     else to_string(ww[0]+1, for s in ww[1:] do to_string(",",s+1) od.##)
      fi
   , new_line
   , "twisted involution orbit size: ",orbit_size,
@@ -1456,7 +1453,7 @@ set KGB (RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
 
 { all KGB elements of G mapping to its Cartan class H }
 set KGB (CartanClass H,RealForm G) = [KGBElt]:
-  ## for x in KGB(G) do if Cartan_class(x)=H then [x] else [] fi od
+  for x in KGB(G) if Cartan_class(x)=H do x fi od
 
 set KGB_elt ((InnerClass, mat, ratvec) (,theta,v):all) = KGBElt:
   let rf = real_form(all)   { find real form within ic }
@@ -1602,17 +1599,18 @@ set no_Cplus_roots (KGBElt x) = bool:
 {                               Blocks                                  }
 
 set blocks (RealForm rf) = [Block]:
-   let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number) in
-## for drf in dual_real_forms(ic)
-   do if >sizes[drf.form_number] then [block(rf,drf)] else [] fi
+   let ic=InnerClass:rf then sizes=row(block_sizes(ic),rf.form_number)
+in for drf in dual_real_forms(ic)
+     if >sizes[drf.form_number] do block(rf,drf) fi
    od
 
 set blocks (InnerClass ic) = [Block]:
-   let sizes=block_sizes(ic) in
-## for rf@i in real_forms(ic)
-   do
-   ## for drf@j in dual_real_forms(ic)
-      do if >sizes[i,j] then [block(rf,drf)] else [] fi
+   let sizes=block_sizes(ic)
+in for rf@i in real_forms(ic)
+      for drf@j in dual_real_forms(ic)
+	 if >sizes[i,j]
+	 do block(rf,drf)
+	 fi
       od
    od
 
@@ -1650,8 +1648,8 @@ set Cartan_class (KType t) = CartanClass: Cartan_class(x(t))
 set non_dominant_simples (KType t) = [int]:
   let lambda=lambda(t) in
   for alpha_v@i in t.root_datum.simple_coroots
-  do if (alpha_v*lambda).< then [i] else [] fi
-  od.##
+     if (alpha_v*lambda).< do i fi
+  od
 
 { questions about status of x component with respect to full datum simple root }
 set is_noncompact_imaginary (int i,KType t) = bool:
@@ -1745,15 +1743,15 @@ set integrality_rank (Param p) = int:
 set non_dominant_simples (Param p) = [int]:
   let gamma=infinitesimal_character(p) in
   for alpha_v@i in p.root_datum.simple_coroots
-  do if (alpha_v*gamma).< then [i] else [] fi
-  od.##
+     if (alpha_v*gamma).< do i fi
+  od
 
 { list of integrally simple poscoroots that exhibit integral-non-dominance }
 set non_integrally_dominant_simples (Param p) = [vec]:
   let gamma=infinitesimal_character(p) in
   for alpha_v in integrality_datum(p.real_form,gamma).simple_coroots
-  do if (alpha_v*gamma).< then [alpha_v] else [] fi
-  od.##
+     if (alpha_v*gamma).< do alpha_v fi
+  od
 
 { whether gamma integrally dominant }
 set is_integrally_dominant (Param p) = bool: =#p.non_integrally_dominant_simples
@@ -1809,8 +1807,7 @@ set parameter_gamma (KGBElt x, ratvec lambda, ratvec gamma) = Param:
 
 { variation of built-in |block@Param| that weeds out non-starred block elts }
 set singular_block (Param p) = ([Param],int):
-  let (B,i)=block(p)
-  then block = ## for q in B do if q.survives then [q] else [] fi od
+  let (B,i)=block(p) then block = for q in B if q.survives do q fi od
   in (block, { new index of |p|:} first(for q in block do p=q od))
 
 { get just the parameters from a block, just a shortcut to: (params,)=block(p) }
@@ -1924,22 +1921,22 @@ set print_extended_block = (Param,mat->):
   do prints
   (r_adjust(wp,int_format(indices[i]))
   ,": ["
-  , ## { statuses }
+  , { statuses }
     for j:r
     do if j=0 then "" else "," fi
     ## l_adjust(5,extended_status_texts[types[i,j]])
-    od
+    od.##
   , "]"
-  , ## { cross actions }
+  , { cross actions }
     for j:r
     do r_adjust (wp+2, with_sign(
        if L0[i,j]=l or has_double_Cayley(types[i,j]) or has_defect(types[i,j])
        then i { self cross when either 0 or 2 Cayleys or there is a defect }
        elif L1[i,j]=l then L0[i,j] else L1[i,j] { complex resp single Cayley }
        fi))
-    od
+    od.##
   , "; "
-  , ## { Cayley transforms }
+  , { Cayley transforms }
     for j:r
     do c_adjust (2*wp+3,
        if has_double_Cayley(types[i,j])
@@ -1948,7 +1945,7 @@ set print_extended_block = (Param,mat->):
        then L0[i,j].with_sign { defect case or other single valued Cayley }
        else "." { compact, nonparity or complex: no Cayley }
        fi)
-    od
+    od.##
   , "  x=" , r_adjust(wx,to_string(#x(q))) , ", " , lambda_minus_rho(q)
   )
   od
@@ -2022,8 +2019,8 @@ set deform_to_height (ParamPol P, int height) = KTypePol:
 ; while >#P
   do set (def,P) :=
         (let p=first_param(P) in block_deform(p,P next P:=empty,height))
-  ;  let kt = for c@q in def do if =nu(q) then [(c,q.K_type)] else [] fi od.##
-     ,   pp = for c@q in def do if =nu(q) then [] else [(c,q)] fi od.##
+  ;  let kt = for c@q in def if  =nu(q) do (c,q.K_type) fi od
+     ,   pp = for c@q in def if !=nu(q) do (c,q) fi od
   in output := (output next output:=empty_K) + kt; P := (P next P:=empty) + pp
   od
 ; output
@@ -2031,9 +2028,9 @@ set deform_to_height (ParamPol P, int height) = KTypePol:
 
 { nice output of KTypePol and ParamPol: split_format the coefficients }
 set pol_format (KTypePol P)= string:
-  ## for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od
+  for w@tp in P do to_string("(",w.split_format,")*",tp,new_line) od.##
 set pol_format (ParamPol P)= string:
-  ## for w@p in P do to_string("(",w.split_format,")*",p,new_line) od
+  for w@p in P do to_string("(",w.split_format,")*",p,new_line) od.##
 
 { find what should be unique infinitesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:
@@ -2194,7 +2191,7 @@ set monomials([KTypePol] list) = [KType]:
    if =#list then []
    else
       let sum = list[0].null_K_module +
-	  for P in list do for @p in P do (split_1,p) od od.##
+	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi
 
@@ -2202,6 +2199,6 @@ set monomials([ParamPol] list) = [Param]:
    if =#list then []
    else
       let sum = list[0].null_module +
-	  for P in list do for @p in P do (split_1,p) od od.##
+	  for P in list for @p in P do (split_1,p) od od
    in monomials(sum)
    fi

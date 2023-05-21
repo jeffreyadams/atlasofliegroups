@@ -57,14 +57,12 @@ in
 set sign_string (bool s) = string: if s then "-" else "+" fi
 set cycles_string ([int,bool] cycles) = string:
 (  "["
-   ##
- ##for (l,s)@pos in cycles
+## for (l,s)@pos in cycles
    do if =pos then l.to_string##s.sign_string
       else "," ##  l.to_string##s.sign_string
       fi
-   od
- ##
-   "]"
+   od.##
+## "]"
 )
 set irred_string(BiPartition(mu,lambda)) = string:
    ("{", mu.parts_string,"-|+",lambda.parts_string, "}").to_string

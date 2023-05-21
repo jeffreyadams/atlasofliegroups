@@ -56,12 +56,12 @@ set graded_multiplicities (Param irr, Param std) = vec:
    graded_multiplicities(block_of(irr),irr,std)
 
 set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = [Param,vec]:
- ##for irr in B
+   for irr in B
    do {let f=KL_Q_polynomial(B,Q,irr,std) in}
       let f=graded_multiplicities(B,Q,irr,std) in
       {if f != zero_poly and #f !=0 then }
-      if sum(f).> then [(irr,f)] else [] fi
-   od
+      if sum(f).> do(irr,f) fi
+   od.##
 
 set graded_composition_series ([Param] B,Param std) = [Param,vec]:
    graded_composition_series(B,KL_Q_polynomials(B),std)

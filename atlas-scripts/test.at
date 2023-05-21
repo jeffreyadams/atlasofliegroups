@@ -10,10 +10,7 @@ set FPP_barys(RootDatum rd, int dim) = [ratvec]:
       for S in choices_from(vert.#.#,d1)
       do sum(n,for i in S do vert[i] od)/d1
       od
-in for v in fund_barys
-   do let d=v.denom
-   in for numer in FPP_numers(rd,v) do numer/d od
-   od.##
+in for v in fund_barys for numer in FPP_numers(rd,v) do numer/v.denom od od
 
 { in the next function |P| is for a pure torus sharing its $X^*$ with |rd| }
 { one can get that torus as |torus(rd.rank,0,0)| as defined in torus.at }
