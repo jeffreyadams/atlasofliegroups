@@ -113,7 +113,8 @@ set facet_verbose = false
 set fund_facet_verbose = false
 
 { for facets of codim > facet_codim, use shifted char formula to
-improve memory use. }
+improve memory use. Setting equal to folded semisimple rank means no
+use of shifted char formula.}
 set facet_codim = int: 2
 
 {. if assigned to 'true' then induction only records unitary reps of
@@ -1094,13 +1095,14 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
     if j!=minus_1 then FPP_facets_old(Affd,vd,dim,j)
     else
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
-    then ()= if facet_verbose
+    { then ()= if facet_verbose
     	     then prints("start dim ",dim, " in FPP_facets")
-	     fi
+	     fi }
     in for FV@k in facets
-       do {if fund_facet_verbose
-       	  then prints("start fund facet ",k," of ", #facets)
-	  fi;}
+       do if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fund facet ",k," of ", #facets, " in dim = ",dim,
+	       " in FPP_facets")
+	  fi;
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	  then aff_short_list = FPP_w_shifts(Affd,bary_F)
 	  then aff_list = [AffineCoWeylElt]:
@@ -1136,8 +1138,9 @@ set FPP_facets_big_old(SimpleAffine Affd, VertexData vd, int dim,
     then facets = [FacetVerts]: facets_fundamental(Affd,dim)
     in [BigFacetVerts]:
        for FV@k in facets
-       do { if fund_facet_verbose
-       	  then prints("start fund facet ",k," of ", #facets)
+       do { if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fund facet ",k," of ", #facets,
+	  " in dim ",dim)
 	  fi;}
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
        	  then irdw = integrality_datum(Affd,bary_F)
@@ -1171,8 +1174,9 @@ set FPP_facets_hash_old(SimpleAffine Affd, VertexData vd,
        let facets = [FacetVerts]: facets_fundamental(Affd,dim)
        in [FacetVertsHash]:
        	  for FV@k in facets
-       	  do { if fund_facet_verbose
-       	  then prints("start fund facet ",k," of ", #facets)
+       	  do { if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fund facet ",k," of ", #facets,
+	  " in dim ",dim)
 	  fi;}
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
        	  then irdw = integrality_datum(Affd,bary_F)
@@ -1213,8 +1217,9 @@ mat M, int j) =
        else let facets = [FacetVerts]: facets_fundamental(Affd,dim)
        	    in [BigFacetVerts]:
        	       for FV@k in facets
-       	       do {if fund_facet_verbose
-       	       then prints("start fund facet ",k," of ", #facets)
+       	       do {if fund_facet_verbose or (facet_verbose and k=0)
+       	       then prints("start fund facet ",k," of ", #facets,
+	       " in dim ",dim)
 	       fi;}
 	       let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	       then aff_short_list = FPP_w_shifts(Affd,bary_F)
@@ -1259,9 +1264,10 @@ int j) = [FacetVertsHash]:
     	    else let facets = [FacetVerts]: facets_fundamental(Affd,dim)
     	   	 in [FacetVertsHash]:
        	    	 for FV@k in facets
-       	    	 do if fund_facet_verbose
+       	    	 do if (facet_verbose and k=0) or fund_facet_verbose
        	       	       then prints("start fund facet ",k," of ", #facets,
-	       	       " hashUp.size() = ", hashUp.size())
+	       	       " in dim ", dim," in FPP_facets_hash; hashUp.size() = ",
+		       hashUp.size())
 	       	    fi;
 	       	    let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
 	       	    then aff_short_list = FPP_w_shifts(Affd,bary_F)
@@ -1296,12 +1302,11 @@ set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
     [FacetVertsIndex]:
     let facets = [FacetVerts]: facets_fundamental(Affd,dim),
     FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
-    then ()= if facet_verbose
-    then prints("start dim ",dim, " in FPP_facetsE8") fi
     in [FacetVertsIndex]: for FV@k in facets
-       do {if fund_facet_verbose
-       	  then prints("start fundamental facet ",k," of ", #facets)
-	  fi;}
+       do if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fund facet ",k," of ", #facets, " in dim = ",dim,
+	       " in FPP_facetsE8")
+	  fi;
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
  	  in [FacetVertsIndex]:
 	     for w in affine_orbit_ws(Affd,bary_F)
@@ -1317,16 +1322,14 @@ set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
 {works only for simply connected adjoint}
 set FPP_facets_bigE8(SimpleAffine Affd, VertexData vd, int dim) =
     [BigFacetVerts]:
-    let () = if facet_verbose
-    	     then prints("start dim ",dim, " in FPP_facets_bigE8")
-	     fi
-    then facets = [FacetVerts]: facets_fundamental(Affd,dim),
+    let facets = [FacetVerts]: facets_fundamental(Affd,dim),
     FW = for xi in Affd.fundamental_weights do ratvec_as_vec(xi) od
     in [BigFacetVerts]:
        for FV@k in facets
-       do { if fund_facet_verbose
-       	  then prints("start fundamental facet ",k," of ", #facets)
-	  fi;}
+       do if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fundamental facet ",k," of ", #facets,
+	  " in dimension ",dim)
+	  fi;
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
        	  then irdw = integrality_datum(Affd,bary_F)
 	  in [BigFacetVerts]:
@@ -2256,15 +2259,27 @@ set local_facet_statusU(KGBElt x, ratvec lambda,
       ; newStatuses
 )
 
-
-
+{REARRAGEMENT of vd.lookup to find entry of FPPstInd[0] with vertex j is done by facet_statusuKPO}
 set facet_statusuKPO_old(RealForm G,
     FacetDataKcharPO_old (vd,FPPstInd , , , ,IUC, CLBF, statuses) ) = [string]:
+    { let vlistZero = for FSV in FPPstInd[0]
+    		    do (vd.list)[(FSV.verts)[0]]
+		    od
+    {this is list of vertices appearing as 0-diml facets: smaller
+     and differently ordered from vd.list}
+    then vdZero = to_vertex_data(vlistZero)}
     facet_statusuKPO(G,vd,FPPstInd,IUC,CLBF,statuses)
 
+{REARRAGEMENT of vd.lookup to find entry of FPPstInd[0] with vertex j is done by facet_statusuKPO}
 set facet_statusuKPO(RealForm G, FacetDataKcharPO (vd,FPPstInd, , ,
     IUC, CLBF, statuses)) = [string]:
-    facet_statusuKPO(G,vd,FPPstInd,IUC,CLBF,statuses)
+    {let vlistZero = for FSV in FPPstInd[0]
+    		    do (vd.list)[(FSV.verts)[0]]
+		    od
+    {this is list of vertices appearing as 0-diml facets: smaller
+     and differently ordered from vd.list}
+    then vdZero = to_vertex_data(vlistZero)
+    in }facet_statusuKPO(G,vd,FPPstInd,IUC,CLBF,statuses)
 
 set facet_status([[vec]] FPPind) = [[string]]:
     for d:#FPPind do for j:#FPPind[d] do "?" od od
