@@ -115,7 +115,7 @@ set fund_facet_verbose = false
 { for facets of codim > facet_codim, use shifted char formula to
 improve memory use. Setting equal to folded semisimple rank means no
 use of shifted char formula.}
-set facet_codim = int: 2
+set facet_codim = int: 3
 
 {. if assigned to 'true' then induction only records unitary reps of
 Levis .}
@@ -3797,7 +3797,10 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
        tester)
 
 set local(KGBElt x, ratvec lambda) = [string]:
-    local_test(x,lambda,default_tester@Param)
+    let hts = next_heights(parameter(x,lambda,0*lambda),2)
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_test(p, hts[0], hts[1])
+    in local_test(x,lambda,tester)
 
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)

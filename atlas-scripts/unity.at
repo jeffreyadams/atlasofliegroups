@@ -1,5 +1,6 @@
 <to_ht.at
 <goodroots.at
+<induction.at {for theta_stable_quasi_data}
 
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
@@ -29,6 +30,21 @@ set next_height(KType mu) = int:
 {. height of a smallest non-lowest K_type of p .}
 set next_height(Param p) = int:
     height(next_to_lowest(LKTs(p)[0]))
+
+{entries are the m heights of K-types of standard of mu after mu.}
+set next_heights(KType mu, int m) = [int]:
+    let h = height(mu)
+    then N = h+10, list = [int]: []
+    then () = while #list < m
+    	 do list:=sort_u(for tau in monomials(branch(mu,N) - mu)
+	    		 do height(tau)
+			 od);
+	    N:=N+5
+	 od
+    in list[:m]
+
+set next_heights(Param p, int m) = [int]:
+    for tau in LKTs(p) do next_heights(tau,m) od.##.sort_u[:m]
 
 {if this produces -1, then the (hermitian) p is automatically unitary}
 set next_heightB(Param p) = int:
