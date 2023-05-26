@@ -2580,7 +2580,8 @@ facilitate the later repetitive task of installing wrapper functions.
 
 @< Declarations of exported functions @>=
 void install_function
- (wrapper_function f,const char*name, const char* type_string);
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger=0);
 
 @ We start by determining the specified type, and building a print-name for
 the function that appends the argument type (since there will potentially be
@@ -2592,14 +2593,15 @@ added to |global_id_table| instead.
 
 @< Global function def... @>=
 void install_function
- (wrapper_function f,const char*name, const char* type_string)
+ (wrapper_function f,const char*name, const char* type_string,
+  unsigned char hunger)
 { type_ptr type = mk_type(type_string);
   std::ostringstream print_name; print_name<<name;
   if (type->kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
   print_name << '@@' << type->func()->arg_type;
-  auto val = std::make_shared<builtin_value<false> >(f,print_name.str());
+  auto val = std::make_shared<builtin_value<false> >(f,print_name.str(),hunger);
   global_overload_table->add
     (main_hash_table->match_literal(name),std::move(val),std::move(*type));
 }
@@ -3427,7 +3429,11 @@ void matrix_column_wrapper(expression_base::level l)
     push_value(std::make_shared<vector_value>(m->val.column(j)));
 }
 
-@ Here are functions for extending vectors one or many elements at a time.
+@ Here are functions for extending vectors one or many elements at a time. Like
+their generic counterparts for row values, the suffix and prefix wrappers get
+ownership of they argument, which they modify in place. The effect of this on
+efficiency is no doubt more obvious in the suffix case, due to the way
+|std:vector| functions.
 
 @< Local function definitions @>=
 void vector_suffix_wrapper(expression_base::level l)
@@ -4205,8 +4211,8 @@ install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
 install_function(matrix_ncols_wrapper,"#","(mat->int)");
-install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
-install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");

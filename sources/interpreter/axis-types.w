@@ -2484,11 +2484,17 @@ be popped from the stack in reverse order.
 std::vector<shared_value> execution_stack;
 
 @ Sometimes we may need to expand a value into tuple components separately
-pushed onto the stack, but only if the |level l@;| so indicates and the value
-is indeed of tuple type; the function |push_expanded| will help doing this.
+pushed onto the stack, but only if the |level l@;| so indicates and the value is
+indeed of tuple type; the function |push_expanded| will help doing this. Since
+the argument might well be a shared pointer that was just created by
+|std::make_shared|, we provide an rvalue version that will avoid changing any
+reference count in such cases; it also provides the caller with an opportunity
+to explicitly let it give up its ``share'' of an existing shared pointer in
+passing it to |push_expanded|, by invoking |std::move| on the argument.
 
 @< Declarations of exported functions @>=
 void push_expanded(expression_base::level l, const shared_value& v);
+void push_expanded(expression_base::level l, shared_value&& v);
 
 @~Type information is not retained in compiled expression values, so
 |push_expanded| cannot know which type had been found for |v| (moreover,
@@ -2506,7 +2512,24 @@ void push_expanded(expression_base::level l, const shared_value& v)
       push_value(v);
     else
       for (size_t i=0; i<p->length(); ++i)
-        push_value(p->val[i]); // push components
+        push_value(p->val[i]); // push components, copying shared pointers
+  }
+} // if |l==expression_base::no_value| then do nothing
+void push_expanded(expression_base::level l, shared_value&& v)
+{ if (l==expression_base::single_value)
+    push_value(std::move(v));
+  else if (l==expression_base::multi_value)
+  { shared_tuple p = std::dynamic_pointer_cast<const tuple_value>(v);
+    if (p==nullptr)
+      push_value(std::move(v));
+    else if (v=nullptr,p.unique())
+      // if caller held unique copy of pointer, we may dismember the tuple
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(std::move(p->val[i]));
+          // push components, moving shared pointers
+    else // others than caller might hold a copy
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(p->val[i]); // push components, copying shared pointers
   }
 } // if |l==expression_base::no_value| then do nothing
 
@@ -2643,6 +2666,18 @@ and it returns a raw pointer-to-non-const, which can then be used to make the
 change to the unique copy. The argument |v| retains ownership. Not surprisingly
 the implementation of |uniquify| uses a |const_cast| operation when no
 duplication takes place.
+
+The method |std::shared_ptr::unique| used here was removed from recent versions
+of the \Cpp-standard, because it does not play well in multi-threaded
+environments where some other thread might either still be working on a method
+invoked using a since destroyed copy of the pointer, or resuscitate a copy form
+a still existing |std::weak_ptr|. Our interpreter is not (yet) capable of
+running simultaneously in multiple threads (the only multi-threading currently
+used occurs withing a single built-in function), so this is no concern to us.
+Should we for some other reason need to move to a recent version of \Cpp, then
+we must make a home grown variant of |std::shared_ptr| that provides an
+attribute that makes |unique| possible again, which is set immediately after
+|make_shared| and irreversibly cleared as soon as any copy is made.
 
 @< Template and inline function def... @>=
 template <typename D> // |D| is a type derived from |value_base|

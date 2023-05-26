@@ -692,27 +692,33 @@ Tuple values can be produced by tuple displays, which list explicitly their
 component expressions. After type-checking, they are given by a
 |tuple_expression| object (the name |tuple_display| was already taken).
 
+Sometimes we wish to indicate that the components of a tuple expression should
+be evaluated right-to-left; we make this distinction possible through a Boolean
+template parameter |r_to_l|.
 
 @< Type definitions @>=
-struct tuple_expression : public expression_base
+template<bool r_to_l> struct tuple_expression_tmpl : public expression_base
 { std::vector<expression_ptr> component;
 @)
-  explicit tuple_expression(size_t n) : component(n) @+{}
+  explicit tuple_expression_tmpl(size_t n) : component(n) @+{}
    // always start out with null pointers
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+
+using tuple_expression = tuple_expression_tmpl<false>;
 
 @ When we print a tuple display, we just print the component expressions,
 enclosed in parentheses and separated by commas, to match their input syntax.
 
 
 @< Function def... @>=
-void tuple_expression::print(std::ostream& out) const
+template<bool r_to_l>
+  void tuple_expression_tmpl<r_to_l>::print(std::ostream& out) const
 { out << '(';
   for (auto it=component.begin(); it!=component.end(); ++it)
     out << (it==component.begin() ? "" : ",") << **it;
-  out << ')';
+  out << (r_to_l ? "~)" : ")");
 }
 
 @ When converting a tuple expression, we first try to specialise |type| to a
@@ -794,7 +800,8 @@ wasted at all (assuming, as seems reasonable, that simply entering a
 |try|-block does not involve any work).
 
 @< Function def... @>=
-void tuple_expression::evaluate(level l) const
+template<>
+  void tuple_expression::evaluate(level l) const
 { switch(l)
   {
   case no_value:
@@ -827,6 +834,46 @@ void tuple_expression::evaluate(level l) const
           execution_stack.pop_back();
         throw; // propagate the \&{return}
       }
+    }
+  } // |switch(l)|
+}
+
+@ And here is the right-to-left evaluation function. For the |no_value| case we
+simply |void_eval| the components in reverse order; for the |single_value| case
+the results of |eval| are placed as |component| value of a pre-allocated tuple
+from back to front. In the |multi_value|
+case the values are needed separately on the |execution_stack|, but in reverse
+order to what would be produced by the successive |eval| calls. We therefore pop
+the values off after each evaluation, storing them temporarily in a local
+|stack<shared_value>| variable, from which they are then popped again afterwards
+to be placed on the |execution_stack| in reverse order. Since the values are now
+held in a local variable, the |execution_stack| remains unchanged in between
+these evaluations, and the is no need for a |try|--|catch| construction to
+correctly handle possible exceptions thrown during the evaluation of a component.
+
+@< Function def... @>=
+template<>
+  void tuple_expression_tmpl<true>::evaluate(level l) const
+{ switch(l)
+  {
+  case no_value:
+    for (auto it=component.crbegin(); it!=component.crend(); ++it)
+      (*it)->void_eval();
+    break;
+  case single_value:
+    { auto result = std::make_shared<tuple_value>(component.size());
+      auto dst_it = result->val.rbegin(); // fill |result| tuple from rear to front
+      for (auto it=component.crbegin(); it!=component.crend(); ++it,++dst_it)
+      @/{@; (*it)->eval(); *dst_it=pop_value(); }
+      push_value(result);
+    } break;
+  case multi_value:
+    { stack<shared_value> args;
+      for (auto it=component.crbegin(); it!=component.crend(); ++it)
+      @/{@; (*it)->eval(); args.push(pop_value()); }
+
+@)    while(not args.empty()) // push components onto stack again in reverse order
+        push_value(std::move(args.top())),args.pop();
     }
   } // |switch(l)|
 }
@@ -1178,23 +1225,38 @@ may change the type of the identifier, but the applied identifier expression
 has already been type-checked and should not be allowed to return a value of a
 different type than it did originally.
 
+We add a Boolean template parameter to this class, in order to have a variant
+where the evaluation empties the variable itself, which the compiler can employ
+for efficiency purposes.
+
 @< Type definitions @>=
-class global_identifier : public identifier
+template<bool pilfer=false>
+  class global_identifier : public identifier
 { const shared_share address;
 public:
   explicit global_identifier(id_type id);
   virtual ~global_identifier() = default;
+  virtual void print(std::ostream& out) const;
   virtual void evaluate(level l) const;
 };
 
-@ The constructor for |global_identifier::evaluate| locates the value
-associated to the identifier in the global identifier table.
+@ The constructor for |global_identifier| locates the value
+associated to the identifier in the global identifier table. Because of the
+reference to |global_id_table| we made it definition out-of-line.
 
 @< Function definitions @>=
-global_identifier::global_identifier(id_type id)
+template<bool pilfer>
+  global_identifier<pilfer>::global_identifier(id_type id)
 : identifier(id), address(global_id_table->address_of(id))
 @+{}
 
+@)
+template<>
+  void global_identifier<false>::print(std::ostream& out) const
+@+{@; out << name(); }
+template<>
+  void global_identifier<true>::print(std::ostream& out) const
+@+{@; out << '$' << name(); }
 
 @ Evaluating a global identifier returns the value currently stored in the
 location |address|, possibly expanded if |l==multi_value|, or nothing at all
@@ -1203,13 +1265,17 @@ possible in the language, we have to watch out for a (shared) null pointer at
 |*address|.
 
 @< Function definitions @>=
-void global_identifier::evaluate(level l) const
+template<bool pilfer>
+  void global_identifier<pilfer>::evaluate(level l) const
 { if (address->get()==nullptr)
   { std::ostringstream o;
     o << "Taking value of uninitialized variable '" << name() << '\'';
     throw runtime_error(o.str());
   }
-  push_expanded(l,*address);
+  if (pilfer)
+    push_expanded(l,std::move(*address));
+  else
+    push_expanded(l,*address);
 }
 
 @*1 Local identifiers.
@@ -1307,7 +1373,7 @@ case applied_identifier:
 @.Undefined identifier@>
   expression_ptr id_expr = @| is_local
   ? expression_ptr(new local_identifier(id,i,j))
-  : expression_ptr(new global_identifier(id));
+  : expression_ptr(new global_identifier<false>(id));
   if (type.specialise(*id_t)) // then required type admits known identifier type
     { if (type!=*id_t)
       // usage has made type of identifier more specialised
@@ -1735,7 +1801,7 @@ object once arguments have been evaluated to the stack, and |build_call| that is
 instead used to build a specialised call expression when a function value is
 identified at analysis time (in overloaded calls). In addition |argument_policy|
 tells how the function object wants its arguments prepared, |maybe_push| is a
-hook that does nothing except for recursive functions that it it for their
+hook that does nothing except for recursive functions that use it for their
 implementation, and |report_origin| which serves in forming an back-trace in
 case of errors during execution of the function.
 
@@ -1831,14 +1897,27 @@ of variadic functions as function values (of the correspondingly specialised
 type), so they can occur not only in overloaded calls, but in any place that
 other built-in of user-defined functions can.
 
+As another supplementary information, we store an indication of whether this
+built-in function wants to produce its result by modifying one of its arguments;
+for instance, |suffix_element_wrapper| likes to modify the row value that is its
+first element in-place by adding a suffix. That operation can be done without
+creating a copy of the argument only if it is not shared in any way, and in
+certain cases we want to be able to optimise performance by arranging for that
+argument to not be shared if it can be avoided. The |hunger| field tells whether
+this is such a function: a value $0$ means no desire to eat anything, a value
+$1$ means it wishes to modify the first of two arguments in-place, a value of
+$2$ that it wishes to do so for the second argument, and a value of $3$ means
+that there is a unique argument that it wished to modify.
+
 @< Type definitions @>=
 template <bool variadic>
   struct builtin_value : public function_base
 { wrapper_function val;
   std::string print_name;
+  unsigned char hunger; // (always |0| when |variadic| holds)
 @)
-  builtin_value(wrapper_function v,const std::string& n)
-  : function_base(), val(v), print_name(n) @+ {}
+  builtin_value(wrapper_function v,const std::string& n, unsigned char hunger)
+  : function_base(), val(v), print_name(n), hunger(hunger) @+ {}
   virtual ~builtin_value() = default;
   virtual void print(std::ostream& out) const
   @+{@; out << '{' << print_name << '}'; }
@@ -6108,7 +6187,7 @@ assemble a call to the appropriate size-computing built-in function. The needed
 |shared_builtin| values are held in variables whose definition will be given
 later. It is specifically for this purpose that some of the actual built-in
 functions needed here are declared (and in one case even defined in the first
-place) as global rather than local functions.
+place) as global rather than as local functions.
 
 @< Set |loop| to a index-less counted |for| loop... @>=
 { expression_ptr call; const source_location &loc = f.in_part.loc;
@@ -6822,6 +6901,13 @@ the voiding coercion a right hand side of any type will be accepted), we must
 take care to insert a |voiding| in such rare cases, to ensure that no actual
 (non void) value will be computed and assigned.
 
+After the call to |convert_expr|, we insert some code that tries to apply an
+optimisation for certain built-in operations, to be detailed in the following
+sections. Since identification of operations depends on types of their
+arguments, this code needs to come after types have been checked, and must operate
+on the converted expression |r| rather than on~|e|, even though this is more
+difficult.
+
 @< Cases for type-checking and converting... @>=
 case ass_stat:
 if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
@@ -6848,12 +6934,103 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
 @)
+  if (not is_local)
+    @< Check whether |r| refers to an |builtin_call| of a function with nonzero
+    |hunger|, and with the identifier |lhs| as corresponding argument;
+    if so modify that argument and possibly the application, accordingly @>
+@)
   expression_ptr assign = is_local
   ? expression_ptr(new local_assignment(lhs,i,j,std::move(r)))
 @/: expression_ptr(new global_assignment(lhs,std::move(r)));
   return conform_types(rhs_type,type,std::move(assign),e);
 }
 else @< Generate and |return| a |multiple_assignment| @>
+
+@ The optimisation that is sought here, for operations that try to get exclusive
+access to an argument value so that it can be change in-place, consists of
+detaching that argument in the right hand side from a user variable that might
+hold it (as is often the case). It only applies to certain built-in operations
+(for user defined functions it would both be difficult to determine whether it
+would benefit from such a detachment in the first place, and also to ensure that
+it has no way to access the variable in question independently, as it vital for
+the optimisation to be valid) and none of these functions is variadic, which is
+why we test for |rhs| to refer to a |builtin_call|, namely the
+|overloaded_builtin_call| template instance with temple parameter |variadic| set
+to |false|. The cases catered for are either single-argument operations or
+two-argument operations where the variable to be modified is expected to be a
+specific one of the two; the attribute |hunger| of the |builtin_value| template
+informs about this, with value $0$ meaning no argument to eat, values $1$ and
+$2$ for wanting to gobble up the left and right argument out of two,
+respectively, and $3$ indicates a wish to transform a unique argument.
+
+@< Check whether |r| refers to an |builtin_call|... @>=
+{
+  auto* rhs = dynamic_cast<const builtin_call*>(r.get());
+  if (rhs!=nullptr and rhs->f->hunger!=0)
+  {
+    const unsigned char h = rhs->f->hunger;
+    if (h==3)
+      @< See if |rhs->argument| is the variable |lhs|, and if so assign to~|r|
+         a new call in which this variable gets emptied before the call @>
+    else
+      @< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is the
+         variable |lhs|, and if so change the argument list |rhs->argument| so
+         that that argument gets evaluated last, emptying the variable while
+         doing so @>
+  }
+}
+
+@ Although we only need to change the |argument| field of the call pointed to by
+|rhs|, the type of |rhs| is pointer to |const builtin_call|, which only gives
+|const| access to that field (and the |const|ness was inherited from the
+|expression_ptr| type of |r|, which is a unique pointer to |const
+expression_base|; the |dynamic_cast| above would refuse to remove it). So
+instead of assigning to the field, we build a new call, using mostly the values
+found at |rhs|, but building the argument expression anew with the |pilfer|
+template argument to |global_identifier| set to |true|, which will empty the
+variable upon evaluation, as it our goal here. An alternative would be to
+explicitly ignore the |const|ness by assigning to
+|*const_cast<expression_ptr*>(&c)|; since such actions are frowned upon we shall
+not do so here, but in the next module where the necessary reconstruction
+efforts would be more elaborate, we shall prefer to cheat.
+
+@< See if |rhs->argument| is the variable |lhs|, and if so...@>=
+{ const expression_ptr& c = rhs->argument;
+  const identifier* a = dynamic_cast<const identifier *>(c.get());
+  if (a!=nullptr and a->code == lhs)
+    r = expression_ptr(new builtin_call @|
+       (rhs->f,rhs->name,expression_ptr(new global_identifier<true>(a->code))
+       ,rhs->loc));
+}
+@
+@< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is...@>=
+{
+  const tuple_expression* p =
+    dynamic_cast<const tuple_expression*>(rhs->argument.get());
+  if (p!=nullptr and p->component.size()==2)
+  {
+    const expression_ptr& c = p->component[h-1];
+    const identifier* a = dynamic_cast<const identifier *>(c.get());
+    if (a!=nullptr and a->code == lhs)
+    {
+      if (h==1) // hungry for first argument: evaluate arguments right-to-left
+      {
+        std::unique_ptr<tuple_expression_tmpl<true> > args @|
+          (new tuple_expression_tmpl<true>(2));
+        args->component[0] =
+          expression_ptr(new global_identifier<true>(a->code));
+        auto src = const_cast<expression_ptr*>(&p->component[1]);
+        args->component[1] = std::move(*src);
+          // move other argument into new pair
+        auto dst = const_cast<expression_ptr*>(&rhs->argument);
+        *dst = std::move(args);
+      }
+      else
+        *const_cast<expression_ptr*>(&c)=
+          expression_ptr(new global_identifier<true>(a->code));
+    }
+  }
+}
 
 @ For traversing the left hand side pattern in a multiple assignment, we need
 some semi-local variables, to be accessible from within the recursive function
@@ -7528,44 +7705,45 @@ current \.{axis.w} module.
 
 @< Static variable definitions that refer to local functions @>=
 static shared_builtin sizeof_row_builtin =
-    std::make_shared<const builtin_value<false> >(sizeof_wrapper,"#@@[T]");
+    std::make_shared<const builtin_value<false> >(sizeof_wrapper,"#@@[T]",0);
 static shared_builtin sizeof_vector_builtin =
     std::make_shared<const builtin_value<false> >
-      (sizeof_vector_wrapper,"#@@vec");
+      (sizeof_vector_wrapper,"#@@vec",0);
 static shared_builtin sizeof_ratvec_builtin =
     std::make_shared<const builtin_value<false> >
-      (sizeof_ratvec_wrapper,"#@@ratvec");
+      (sizeof_ratvec_wrapper,"#@@ratvec",0);
 static shared_builtin sizeof_string_builtin =
     std::make_shared<const builtin_value<false> >
-       (sizeof_string_wrapper,"#@@string");
+       (sizeof_string_wrapper,"#@@string",0);
 static shared_builtin matrix_columns_builtin =
     std::make_shared<const builtin_value<false> >
-     (matrix_ncols_wrapper,"#@@mat");
+     (matrix_ncols_wrapper,"#@@mat",0);
 static shared_builtin sizeof_parampol_builtin =
     std::make_shared<const builtin_value<false> >
-      (virtual_module_size_wrapper, "#@@ParamPol");
+      (virtual_module_size_wrapper, "#@@ParamPol",0);
 static shared_variadic_builtin print_builtin =
-  std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T");
+  std::make_shared<const builtin_value<true> >(print_wrapper,"print@@T",0);
 static shared_variadic_builtin to_string_builtin =
-  std::make_shared<const builtin_value<true> >(to_string_wrapper,"to_string@@T");
+  std::make_shared<const builtin_value<true> >
+  (to_string_wrapper,"to_string@@T",0);
 static shared_variadic_builtin prints_builtin =
-  std::make_shared<const builtin_value<true> >(prints_wrapper,"prints@@T");
+  std::make_shared<const builtin_value<true> >(prints_wrapper,"prints@@T",0);
 static shared_variadic_builtin error_builtin =
-  std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T");
+  std::make_shared<const builtin_value<true> >(error_wrapper,"error@@T",0);
 static shared_builtin prefix_elt_builtin =
   std::make_shared<const builtin_value<false> >
-    (prefix_element_wrapper,"#@@(T,[T])");
+    (prefix_element_wrapper,"#@@(T,[T])",2);
 static shared_builtin suffix_elt_builtin =
   std::make_shared<const builtin_value<false> >
-    (suffix_element_wrapper,"#@@([T],T)");
+    (suffix_element_wrapper,"#@@([T],T)",1);
 static shared_builtin join_rows_builtin =
   std::make_shared<const builtin_value<false> >
-    (join_rows_wrapper,"##@@([T],[T])");
+    (join_rows_wrapper,"##@@([T],[T])",0);
 static shared_builtin join_rows_row_builtin =
   std::make_shared<const builtin_value<false> >
-    (join_rows_row_wrapper,"##@@([[T]])");
+    (join_rows_row_wrapper,"##@@([[T]])",0);
 static shared_builtin boolean_negate_builtin =
-  std::make_shared<const builtin_value<false> >(bool_not_wrapper,"not@@bool");
+  std::make_shared<const builtin_value<false> >(bool_not_wrapper,"not@@bool",0);
 
 @ The function |print| outputs any value in the format used by the interpreter
 itself. This function has an argument of unknown type; we just pass the popped
@@ -7652,7 +7830,19 @@ void sizeof_wrapper(expression_base::level l)
 
 
 @ Here are functions for adding individual elements to a row value, and for
-joining two such values.
+joining two such values. The function |suffix_element_wrapper| can run in
+amortised constant time if obtaining ownership of the argument can be done
+without copying (the |push_back| method of |std::vector| only needs to
+reallocate occasionally), which allows repeated extension of a row-value
+variable using the \.{\#:=} combined operator to be relatively efficient (this is
+true only because of the optimisation that now allows the variable to be emptied
+when its old value is fetched; it used to be that sharing of the pointer with
+that variable meant that obtaining ownership required copying. By contrast,
+while |prefix_element_wrapper| also modifies its argument (in this case the
+second) in-place, it still requires time linear in the size of that argument
+since the |insert| method of |std::vector| needs to move all old entries, so the
+gain in efficiency is limited here, if positive at all. The |join_rows_wrapper|
+function does not attempt to gain any ownership and just builds a fresh value.
 
 @:hash wrappers@>
 
