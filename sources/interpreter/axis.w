@@ -1318,12 +1318,18 @@ shared_context frame::current; // points to topmost current frame
 takes care of its |print| method. The data stored are |depth| identifying a
 layer, and |offset| locating the proper values within the layer.
 
+Like for global identifiers we add a Boolean template parameter to this class,
+which indicates whether the evaluation empties the variable itself, which again
+the compiler can employ for efficiency purposes.
+
 @< Type definitions @>=
-class local_identifier : public identifier
+template<bool pilfer=false>
+  class local_identifier : public identifier
 { size_t depth, offset;
 public:
   explicit local_identifier(id_type id, size_t i, size_t j)
      : identifier(id), depth(i), offset(j) @+{}
+  virtual void print(std::ostream& out) const;
   virtual void evaluate(level l) const; // only this method is redefined
 };
 
@@ -1331,8 +1337,21 @@ public:
 context |frame::current|, by calling the method |evaluation_context::elem|.
 
 @< Function definitions @>=
-void local_identifier::evaluate(level l) const
-{@; push_expanded(l,frame::current->elem(depth,offset)); }
+template<>
+  void local_identifier<false>::print(std::ostream& out) const
+@+{@; out << name(); }
+template<>
+  void local_identifier<true>::print(std::ostream& out) const
+@+{@; out << '$' << name(); }
+
+template<bool pilfer>
+  void local_identifier<pilfer>::evaluate(level l) const
+{
+  if (pilfer)
+    push_expanded(l,std::move(frame::current->elem(depth,offset)));
+  else
+    push_expanded(l,frame::current->elem(depth,offset));
+}
 
 @ When type-checking an applied identifier, we first look in
 |layer::lexical_context| for a binding of the identifier; if found it will be
@@ -1372,7 +1391,7 @@ case applied_identifier:
   }
 @.Undefined identifier@>
   expression_ptr id_expr = @| is_local
-  ? expression_ptr(new local_identifier(id,i,j))
+  ? expression_ptr(new local_identifier<false>(id,i,j))
   : expression_ptr(new global_identifier<false>(id));
   if (type.specialise(*id_t)) // then required type admits known identifier type
     { if (type!=*id_t)
@@ -6904,17 +6923,17 @@ take care to insert a |voiding| in such rare cases, to ensure that no actual
 After the call to |convert_expr|, we insert some code that tries to apply an
 optimisation for certain built-in operations, to be detailed in the following
 sections. Since identification of operations depends on types of their
-arguments, this code needs to come after types have been checked, and must operate
-on the converted expression |r| rather than on~|e|, even though this is more
-difficult.
+arguments, this code needs to come after types have been checked, and must
+operate on the converted expression |r| rather than on~|e|, even though this is
+more difficult.
 
 @< Cases for type-checking and converting... @>=
 case ass_stat:
 if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 {
   id_type lhs=e.assign_variant->lhs.name;
-  const_type_p id_t; size_t i,j; bool is_const;
-  const bool is_local = (id_t=layer::lookup(lhs,i,j,is_const))!=nullptr;
+  const_type_p id_t; size_t depth,offset; bool is_const;
+  const bool is_local = (id_t=layer::lookup(lhs,depth,offset,is_const))!=nullptr;
   if (not is_local and (id_t=global_id_table->type_of(lhs,is_const))==nullptr)
     report_undefined(lhs,e,"assignment");
 @.Undefined identifier@>
@@ -6927,20 +6946,19 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
   if (rhs_type!=*id_t)
     // assignment will specialise identifier, record to which type it does
   {@; if (is_local)
-      layer::specialise(i,j,rhs_type);
+      layer::specialise(depth,offset,rhs_type);
       else
       global_id_table->specialise(lhs,rhs_type);
   }
   if (rhs_type==void_type and not is_empty(e.assign_variant->rhs))
     r.reset(new voiding(std::move(r)));
 @)
-  if (not is_local)
-    @< Check whether |r| refers to an |builtin_call| of a function with nonzero
-    |hunger|, and with the identifier |lhs| as corresponding argument;
-    if so modify that argument and possibly the application, accordingly @>
+  @< Check whether |r| refers to an |builtin_call| of a function with nonzero
+  |hunger|, and with the identifier |lhs| as corresponding argument;
+  if so modify that argument, and possibly the application, accordingly @>
 @)
   expression_ptr assign = is_local
-  ? expression_ptr(new local_assignment(lhs,i,j,std::move(r)))
+  ? expression_ptr(new local_assignment(lhs,depth,offset,std::move(r)))
 @/: expression_ptr(new global_assignment(lhs,std::move(r)));
   return conform_types(rhs_type,type,std::move(assign),e);
 }
@@ -6998,11 +7016,15 @@ efforts would be more elaborate, we shall prefer to cheat.
 { const expression_ptr& c = rhs->argument;
   const identifier* a = dynamic_cast<const identifier *>(c.get());
   if (a!=nullptr and a->code == lhs)
+  { auto new_arg = is_local
+      ? expression_ptr(new local_identifier<true>(a->code,depth,offset))
+      : expression_ptr(new global_identifier<true>(a->code));
     r = expression_ptr(new builtin_call @|
-       (rhs->f,rhs->name,expression_ptr(new global_identifier<true>(a->code))
-       ,rhs->loc));
+        (rhs->f,rhs->name,std::move(new_arg),rhs->loc));
+  }
 }
-@
+
+@ 
 @< See if the argument of |rhs| indicated by $h\in\{1,2\}$ is...@>=
 {
   const tuple_expression* p =
@@ -7012,13 +7034,14 @@ efforts would be more elaborate, we shall prefer to cheat.
     const expression_ptr& c = p->component[h-1];
     const identifier* a = dynamic_cast<const identifier *>(c.get());
     if (a!=nullptr and a->code == lhs)
-    {
+    { auto new_arg = is_local
+      ? expression_ptr(new local_identifier<true>(a->code,depth,offset))
+      : expression_ptr(new global_identifier<true>(a->code));
       if (h==1) // hungry for first argument: evaluate arguments right-to-left
       {
         std::unique_ptr<tuple_expression_tmpl<true> > args @|
           (new tuple_expression_tmpl<true>(2));
-        args->component[0] =
-          expression_ptr(new global_identifier<true>(a->code));
+        args->component[0] = std::move(new_arg);
         auto src = const_cast<expression_ptr*>(&p->component[1]);
         args->component[1] = std::move(*src);
           // move other argument into new pair
@@ -7026,8 +7049,7 @@ efforts would be more elaborate, we shall prefer to cheat.
         *dst = std::move(args);
       }
       else
-        *const_cast<expression_ptr*>(&c)=
-          expression_ptr(new global_identifier<true>(a->code));
+        *const_cast<expression_ptr*>(&c)= std::move(new_arg);
     }
   }
 }
