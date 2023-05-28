@@ -2301,7 +2301,7 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
   for (std::size_t i=0; i<rv->val.size(); ++i)
     result->val[i] = std::make_shared<rat_value>@|
       (RatNum(rv->val.numerator()[i],rv->val.denominator()));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 @ We now come to the rationalising conversions at the vector level. We have
@@ -2426,7 +2426,7 @@ void intlistlist_veclist_convert()
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it = std::make_shared<vector_value> @|
       (row_to_vector(*force<row_value>(it->get())));
-  push_value(r);
+  push_value(std::move(r));
 }
 
 @ There are two corresponding externalising conversions for matrices, and also a
@@ -2445,7 +2445,7 @@ void rows_wrapper(expression_base::level l)
   own_row result = std::make_shared<row_value>(m->val.n_rows());
   for(unsigned int i=0; i<m->val.n_rows(); ++i)
     result->val[i]=std::make_shared<vector_value>(m->val.row(i));
-  push_value(result);
+  push_value(std::move(result));
 }
 void columns_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
@@ -2454,7 +2454,7 @@ void columns_wrapper(expression_base::level l)
   own_row result = std::make_shared<row_value>(m->val.n_columns());
   for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]=std::make_shared<vector_value>(m->val.column(j));
-  push_value(result);
+  push_value(std::move(result));
 }
 void matrix_veclist_convert()
 { columns_wrapper(expression_base::single_value); }
@@ -2464,14 +2464,14 @@ void matrix_intlistlist_convert()
   own_row result = std::make_shared<row_value>(m->val.n_columns());
   for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]= vector_to_row(m->val.column(j));
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void veclist_intlistlist_convert()
 { own_row r=get_own<row_value>();
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it = vector_to_row(force<vector_value>(it->get())->val);
-  push_value(r);
+  push_value(std::move(r));
 }
 
 @ We now come to the rationalising conversions at the matrix level. We have
@@ -2487,7 +2487,7 @@ void matrix_ratveclist_convert()
   for(unsigned int j=0; j<m->val.n_columns(); ++j)
     result->val[j]=std::make_shared<rational_vector_value> @|
       (rat_Vector(m->val.column(j),1));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 void matrix_ratlistlist_convert()
@@ -2495,7 +2495,7 @@ void matrix_ratlistlist_convert()
   own_row result = std::make_shared<row_value>(m->val.n_columns());
   for(unsigned int j=0; j<m->val.n_columns(); ++j)
   result->val[j]= vector_to_ratrow(m->val.column(j));
-  push_value(result);
+  push_value(std::move(result));
 }
 @)
 void veclist_ratveclist_convert()
@@ -2503,14 +2503,14 @@ void veclist_ratveclist_convert()
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it=std::make_shared<rational_vector_value> @|
       (rat_Vector(force<vector_value>(it->get())->val,1));
-  push_value(r);
+  push_value(std::move(r));
 }
 
 void veclist_ratlistlist_convert()
 { own_row r=get_own<row_value>();
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it = vector_to_ratrow(force<vector_value>(it->get())->val);
-  push_value(r);
+  push_value(std::move(r));
 }
 
 @)
@@ -2519,14 +2519,14 @@ void intlistlist_ratveclist_convert()
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it=std::make_shared<rational_vector_value> @|
        (introw_to_ratvec(*force<row_value>(it->get())));
-  push_value(r);
+  push_value(std::move(r));
 }
 
 void intlistlist_ratlistlist_convert()
 { own_row r=get_own<row_value>();
   for (auto it=r->val.begin(); it!=r->val.end(); ++it)
     *it=introw_to_ratrow(force_own<row_value>(std::move(*it)));
-  push_value(r);
+  push_value(std::move(r));
 }
 
 
@@ -2616,36 +2616,38 @@ pulled from the stack in reverse order, which is important for the
 non-commutative operations like~`|-|'.
 
 We try to avoid allocation of a new object for the result if the storage of an
-argument can be used for this. Our mechanism is to call |get_own|, which
-claims the storage without duplication if it can (namely if |unique| holds).
-We could do this for either argument, but don't wish to spend time in each
-addition trying to figure out which one is best (it would be preferable, if
-both options are available, to use the one with currently the larger storage),
-so instead we just place our bets on the second argument. The rationale for
-this is that it is more likely to be unshared (when adding to or subtracting
-from a value held in an \axis. variable, the variable is usually used as the
-first operand, which is then not |unique| because of the variable itself). For
-multiplication neither of the arguments can be clobbered into, so we don't
-even try to |get_own| here.
+argument can be used for this. Our mechanism is to call |get_own|, which claims
+the storage without duplication if it can (namely if |unique| holds). We could
+do this for either argument, but don't wish to spend time in each addition
+trying to figure out which one is best (it would be preferable, if both options
+are available, to use the one with currently the larger storage), so instead we
+just place our bets on the first argument; this will cause repeated re-use of
+the same storage when repeatedly adding or subtraction of integers into the same
+variable if the most usual form $n:=n+a$, or its abbreviation $n+:=a$, is used.
+This is due to the optimisation we put in place to make such variable detach
+from its value before the operation is called (and whose second argument was
+evaluated before its first, so before the detachment). For multiplication
+neither of the arguments can be clobbered into, so we don't even try to
+|get_own| here.
 
 @< Local function definitions @>=
 
 void plus_wrapper(expression_base::level l)
-{ own_int j=get_own<int_value>();
-  shared_int i=get<int_value>(); // |j| more likely |unique|
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  j->val += i->val;
-  push_value(j);
+  i->val += j->val;
+  push_value(std::move(i));
 }
 @)
 void minus_wrapper(expression_base::level l)
-{ own_int j=get_own<int_value>();
-  shared_int i=get<int_value>(); // |j| more likely |unique|
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  j->val.subtract_from(i->val);
-  push_value(j);
+  i->val -= j->val;
+  push_value(std::move(i));
 }
 @)
 void times_wrapper(expression_base::level l)
@@ -2669,12 +2671,11 @@ handles negative dividends by stipulating $a\backslash(-b)=(-a)\backslash b$,
 which implies $a\%(-b)=-(a\%b)$: for division by $-b<0$ the remainder~$r$ is
 in the range $-b<r\leq0$.
 
-Contrary to the additive functions, we try to get unique ownership of
-the \emph{first} argument (the dividend) rather than the second (the divisor),
-because we cannot re-use the storage for latter anyway (integer division uses
-the storage of the dividend in all cases; in case of a long dividend the
-quotient gets copied to new storage in the process, but that is if no concern
-to us here).
+Like for additive functions, we try to get unique ownership of the first
+argument (the dividend); we couldn't re-use the storage for the second (the
+divisor) anyway (integer division uses the storage of the dividend in all cases;
+in case of a long dividend the quotient gets copied to new storage in the
+process, but that is if no concern to us here).
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
@@ -2685,15 +2686,14 @@ void divide_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   i->val /= j->val;
-  push_value(i);
+  push_value(std::move(i));
 }
 
 @ We also define a remainder operation |modulo|, a combined
-quotient-and-remainder operation |divmod|, unary subtraction, and an integer
-power operation (defined whenever the result is integer).
-Again we can only re-use storage of the dividend. It may be noted that
-untypically the non-|const| method |reduce_mod| does not return the modified
-object, but rather the quotient of the division operation.
+quotient-and-remainder operation |divmod|, and unary subtraction. For the first
+two we can again re-use storage of the dividend. For the second it may be noted
+that untypically the non-|const| method |reduce_mod| does not return the
+modified object, but rather the quotient of the division operation.
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
@@ -2704,7 +2704,7 @@ void modulo_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   i->val %= j->val;
-  push_value(i);
+  push_value(std::move(i));
 }
 @)
 void divmod_wrapper(expression_base::level l)
@@ -2716,7 +2716,7 @@ void divmod_wrapper(expression_base::level l)
     return;
   push_value(std::make_shared<int_value>(i->val.reduce_mod(j->val)));
   // quotient
-  push_value(i); // remainder
+  push_value(std::move(i)); // remainder
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -2724,12 +2724,13 @@ void divmod_wrapper(expression_base::level l)
 void unary_minus_wrapper(expression_base::level l)
 { own_int i=get_own<int_value>();
   if (l!=expression_base::no_value)
-    i->val.negate(), push_value(i);
+    i->val.negate(), push_value(std::move(i));
 }
 
-@ Powers of integers get a bit more attention than other arithmetic operations,
-since we want to avoid an error for exponents too large for |big_int::power| to
-handle in the cases where the base is $0$, $1$ or~$-1$.
+@ Powers of integers are defined whenever the result is integer. They get a bit
+more attention than other arithmetic operations, since we want, in the cases
+where the base is $0$, $1$ or~$-1$, to avoid any error for exponents that are
+(otherwise) too large for |big_int::power| to handle.
 
 @< Local function definitions @>=
 
@@ -2759,35 +2760,36 @@ void power_wrapper(expression_base::level l)
 @ Here is the first of the bitwise operations on integers.
 @< Local function definitions @>=
 void and_wrapper(expression_base::level l)
-{ own_int j=get_own<int_value>();
-  shared_int i=get<int_value>(); // |j| more likely |unique|
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  j->val &= i->val;
-  push_value(j);
+  i->val &= j->val;
+  push_value(std::move(i));
 }
 void or_wrapper(expression_base::level l)
-{ own_int j=get_own<int_value>();
-  shared_int i=get<int_value>(); // |j| more likely |unique|
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  j->val |= i->val;
-  push_value(j);
+  i->val |= j->val;
+  push_value(std::move(i));
 }
 void xor_wrapper(expression_base::level l)
-{ own_int j=get_own<int_value>();
-  shared_int i=get<int_value>(); // |j| more likely |unique|
+{ shared_int j=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  j->val ^= i->val;
-  push_value(j);
+  i->val ^= j->val;
+  push_value(std::move(i));
 }
 void and_not_wrapper(expression_base::level l)
 { shared_int j=get<int_value>();
-  shared_int i=get<int_value>();
+  own_int i=get_own<int_value>();
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<int_value>(i->val.bitwise_subtract(j->val)));
+  i->val.bitwise_subtract(j->val);
+  push_value(std::move(i));
 }
 
 @ And here are some more bitwise operations on integers.
@@ -2886,7 +2888,7 @@ void rat_plus_int_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {@;
     q->val+=i->val;
-    push_value(q);
+    push_value(std::move(q));
   }
 }
 void rat_minus_int_wrapper(expression_base::level l)
@@ -2895,7 +2897,7 @@ void rat_minus_int_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {@;
     q->val-=i->val;
-    push_value(q);
+    push_value(std::move(q));
   }
 }
 void rat_times_int_wrapper(expression_base::level l)
@@ -2930,7 +2932,7 @@ void rat_modulo_int_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {@;
     q->val%=i->val;
-    push_value(q);
+    push_value(std::move(q));
   }
 }
 
@@ -3441,7 +3443,7 @@ void vector_suffix_wrapper(expression_base::level l)
   own_vector r=get_own<vector_value>();
   if (l!=expression_base::no_value)
   {@; r->val.push_back(e);
-    push_value(r);
+    push_value(std::move(r));
   }
 }
 @)
@@ -3450,7 +3452,7 @@ void vector_prefix_wrapper(expression_base::level l)
   int e=get<int_value>()->int_val();
   if (l!=expression_base::no_value)
   {@; r->val.insert(r->val.begin(),e);
-    push_value(r);
+    push_value(std::move(r));
   }
 }
 @)
@@ -3939,7 +3941,7 @@ void ratvec_times_int_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   (v->val *= i).normalize();
-  push_value(v);
+  push_value(std::move(v));
 }
 void ratvec_divide_int_wrapper(expression_base::level l)
 { auto i= get<int_value>()->long_val();
@@ -3949,7 +3951,7 @@ void ratvec_divide_int_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   (v->val /= i).normalize();
-  push_value(v);
+  push_value(std::move(v));
 }
 void ratvec_modulo_int_wrapper(expression_base::level l)
 { auto i= get<int_value>()->long_val();
@@ -3959,7 +3961,7 @@ void ratvec_modulo_int_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   v->val %= i;
-  push_value(v);
+  push_value(std::move(v));
 }
 @)
 
@@ -3969,7 +3971,7 @@ void ratvec_times_rat_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   (v->val *= r->rat_val()).normalize();
-  push_value(v);
+  push_value(std::move(v));
 }
 void ratvec_divide_rat_wrapper(expression_base::level l)
 { shared_rat r= get<rat_value>();
@@ -3979,7 +3981,7 @@ void ratvec_divide_rat_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   (v->val /= r->rat_val()).normalize();
-  push_value(v);
+  push_value(std::move(v));
 }
 
 @*2 Matrix arithmetic.
@@ -3995,7 +3997,7 @@ void mat_plus_int_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   M->val += i;
-  push_value(M);
+  push_value(std::move(M));
 }
 void mat_minus_int_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
@@ -4003,7 +4005,7 @@ void mat_minus_int_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   M->val += -i;
-  push_value(M);
+  push_value(std::move(M));
 }
 @)
 void int_plus_mat_wrapper(expression_base::level l)
@@ -4012,7 +4014,7 @@ void int_plus_mat_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   M->val += i;
-  push_value(M);
+  push_value(std::move(M));
 }
 void int_minus_mat_wrapper(expression_base::level l)
 { own_matrix M = get_own<matrix_value>();
@@ -4021,7 +4023,7 @@ void int_minus_mat_wrapper(expression_base::level l)
     return;
   M->val.negate();
   M->val += i;
-  push_value(M);
+  push_value(std::move(M));
 }
 
 @ Matrix addition and subtraction were for a long time provided as a user
@@ -4038,7 +4040,7 @@ void mat_plus_mat_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   b->val += a->val;
-  push_value(b);
+  push_value(std::move(b));
 }
 
 void mat_minus_mat_wrapper(expression_base::level l)
@@ -4050,7 +4052,7 @@ void mat_minus_mat_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   a->val -= b->val;
-  push_value(a);
+  push_value(std::move(a));
 }
 
 @ Now the products between vector and/or matrices. We make the wrapper
@@ -4131,18 +4133,18 @@ void rvm_prod_wrapper(expression_base::level l)
 @ We must not forget to install what we have defined.
 
 @< Initialise... @>=
-install_function(plus_wrapper,"+","(int,int->int)");
-install_function(minus_wrapper,"-","(int,int->int)");
+install_function(plus_wrapper,"+","(int,int->int)",1);
+install_function(minus_wrapper,"-","(int,int->int)",1);
 install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"\\","(int,int->int)");
-install_function(modulo_wrapper,"%","(int,int->int)");
-install_function(divmod_wrapper,"\\%","(int,int->int,int)");
-install_function(unary_minus_wrapper,"-","(int->int)");
+install_function(divide_wrapper,"\\","(int,int->int)",1);
+install_function(modulo_wrapper,"%","(int,int->int)",1);
+install_function(divmod_wrapper,"\\%","(int,int->int,int)",1);
+install_function(unary_minus_wrapper,"-","(int->int)",3);
 install_function(power_wrapper,"^","(int,int->int)");
-install_function(and_wrapper,"AND","(int,int->int)");
-install_function(or_wrapper,"OR","(int,int->int)");
-install_function(xor_wrapper,"XOR","(int,int->int)");
-install_function(and_not_wrapper,"AND_NOT","(int,int->int)");
+install_function(and_wrapper,"AND","(int,int->int)",1);
+install_function(or_wrapper,"OR","(int,int->int)",1);
+install_function(xor_wrapper,"XOR","(int,int->int)",1);
+install_function(and_not_wrapper,"AND_NOT","(int,int->int)",1);
 install_function(bitwise_subset_wrapper,"bitwise_subset","(int,int->bool)");
 install_function(nth_set_bit_wrapper,"nth_set_bit","(int,int->int)");
 install_function(bit_length_wrapper,"bit_length","(int->int)");
@@ -4150,23 +4152,23 @@ install_function(vec_to_bitset_wrapper,"to_bitset","(vec->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(unfraction_wrapper,"%","(rat->int,int)");
    // unary \% means ``break open''
-install_function(rat_plus_int_wrapper,"+","(rat,int->rat)");
-install_function(rat_minus_int_wrapper,"-","(rat,int->rat)");
-install_function(rat_times_int_wrapper,"*","(rat,int->rat)");
+install_function(rat_plus_int_wrapper,"+","(rat,int->rat)",1);
+install_function(rat_minus_int_wrapper,"-","(rat,int->rat)",1);
+install_function(rat_times_int_wrapper,"*","(rat,int->rat)",1);
 install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
-install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)");
 install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
-install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
-install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
-install_function(rat_times_wrapper,"*","(rat,rat->rat)");
-install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
-install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
-install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
-install_function(rat_inverse_wrapper,"/","(rat->rat)");
+install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)",1);
+install_function(rat_plus_wrapper,"+","(rat,rat->rat)",1);
+install_function(rat_minus_wrapper,"-","(rat,rat->rat)",1);
+install_function(rat_times_wrapper,"*","(rat,rat->rat)",1);
+install_function(rat_divide_wrapper,"/","(rat,rat->rat)",1);
+install_function(rat_modulo_wrapper,"%","(rat,rat->rat)",1);
+install_function(rat_unary_minus_wrapper,"-","(rat->rat)",3);
+install_function(rat_inverse_wrapper,"/","(rat->rat)",3);
 install_function(rat_floor_wrapper,"floor","(rat->int)");
 install_function(rat_ceil_wrapper,"ceil","(rat->int)");
-install_function(rat_frac_wrapper,"frac","(rat->rat)");
-install_function(rat_power_wrapper,"^","(rat,int->rat)");
+install_function(rat_frac_wrapper,"frac","(rat->rat)",3);
+install_function(rat_power_wrapper,"^","(rat,int->rat)",1);
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
 install_function(int_non_negative_wrapper,">=","(int->bool)");
@@ -4201,7 +4203,7 @@ install_function(string_less_wrapper,"<","(string,string->bool)");
 install_function(string_leq_wrapper,"<=","(string,string->bool)");
 install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
-install_function(string_concatenate_wrapper,"##","(string,string->string)");
+install_function(string_concatenate_wrapper,"##","(string,string->string)",1);
 install_function(concatenate_strings_wrapper,"##","([string]->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
@@ -4213,7 +4215,7 @@ install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
 install_function(matrix_ncols_wrapper,"#","(mat->int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)",1);
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)",2);
-install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
+install_function(join_vectors_wrapper,"##","(vec,vec->vec)",1);
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
 install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 install_function(matrix_row_wrapper,"row","(mat,int->vec)");
@@ -4236,37 +4238,37 @@ install_function(mat_unary_eq_wrapper,"=","(mat->bool)");
 install_function(mat_unary_neq_wrapper,"!=","(mat->bool)");
 install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
 install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
-install_function(vec_plus_wrapper,"+","(vec,vec->vec)");
-install_function(vec_minus_wrapper,"-","(vec,vec->vec)");
-install_function(vec_unary_minus_wrapper,"-","(vec->vec)");
-install_function(vec_times_int_wrapper,"*","(vec,int->vec)");
-install_function(vec_divide_int_wrapper,"\\","(vec,int->vec)");
-install_function(vec_modulo_int_wrapper,"%","(vec,int->vec)");
+install_function(vec_plus_wrapper,"+","(vec,vec->vec)",1);
+install_function(vec_minus_wrapper,"-","(vec,vec->vec)",1);
+install_function(vec_unary_minus_wrapper,"-","(vec->vec)",3);
+install_function(vec_times_int_wrapper,"*","(vec,int->vec)",1);
+install_function(vec_divide_int_wrapper,"\\","(vec,int->vec)",1);
+install_function(vec_modulo_int_wrapper,"%","(vec,int->vec)",1);
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
-install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
-install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
-install_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)");
-install_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)");
-install_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)");
-install_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)");
-install_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)");
-install_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)");
-install_function(mat_plus_int_wrapper,"+","(mat,int->mat)");
-install_function(mat_minus_int_wrapper,"-","(mat,int->mat)");
-install_function(int_plus_mat_wrapper,"+","(int,mat->mat)");
-install_function(int_minus_mat_wrapper,"-","(int,mat->mat)");
+install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)",1);
+install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)",1);
+install_function(ratvec_unary_minus_wrapper,"-","(ratvec->ratvec)",3);
+install_function(ratvec_times_int_wrapper,"*","(ratvec,int->ratvec)",1);
+install_function(ratvec_divide_int_wrapper,"/","(ratvec,int->ratvec)",1);
+install_function(ratvec_modulo_int_wrapper,"%","(ratvec,int->ratvec)",1);
+install_function(ratvec_times_rat_wrapper,"*","(ratvec,rat->ratvec)",1);
+install_function(ratvec_divide_rat_wrapper,"/","(ratvec,rat->ratvec)",1);
+install_function(mat_plus_int_wrapper,"+","(mat,int->mat)",1);
+install_function(mat_minus_int_wrapper,"-","(mat,int->mat)",1);
+install_function(int_plus_mat_wrapper,"+","(int,mat->mat)",2);
+install_function(int_minus_mat_wrapper,"-","(int,mat->mat)",2);
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
-install_function(flex_add_wrapper,"flex_add","(vec,vec->vec)");
-install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)");
-install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)");
-install_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)");
-install_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)");
-install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)");
-install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
-install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
-install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
-install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)");
+install_function(flex_add_wrapper,"flex_add","(vec,vec->vec)",1);
+install_function(flex_sub_wrapper,"flex_sub","(vec,vec->vec)",1);
+install_function(vector_convolve_wrapper,"convolve","(vec,vec->vec)",1);
+install_function(mat_plus_mat_wrapper,"+","(mat,mat->mat)",1);
+install_function(mat_minus_mat_wrapper,"-","(mat,mat->mat)",1);
+install_function(mrv_prod_wrapper,"*","(mat,ratvec->ratvec)",2);
+install_function(mv_prod_wrapper,"*","(mat,vec->vec)",2);
+install_function(mm_prod_wrapper,"*","(mat,mat->mat)",1);
+install_function(vm_prod_wrapper,"*","(vec,mat->vec)",1);
+install_function(rvm_prod_wrapper,"*","(ratvec,mat->ratvec)",1);
 
 @*1 Other wrapper functions for vectors and matrices.
 %
@@ -5001,7 +5003,7 @@ and therefore cannot redefine or forget.
 install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
-install_function(transpose_mat_wrapper,"^","(mat->mat)");
+install_function(transpose_mat_wrapper,"^","(mat->mat)",3);
   // install as operator
 install_function(transpose_mat_wrapper,@|"transpose ","(mat->mat)");
   // use of space in the name makes this copy untouchable
@@ -5023,7 +5025,7 @@ install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");
 install_function(eigen_lattice_wrapper,"eigen_lattice","(mat,int->mat)");
-install_function(row_saturate_wrapper,"row_saturate","(mat->mat)");
+install_function(row_saturate_wrapper,"row_saturate","(mat->mat)",3);
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
 install_function(invert_wrapper,"invert","(mat->mat,int)");
 install_function(section_wrapper,"mod2_section","(mat->mat)");
