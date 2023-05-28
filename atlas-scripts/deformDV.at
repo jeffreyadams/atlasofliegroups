@@ -37,6 +37,171 @@ set shift_data(RealForm G) = ShiftData:
 		       od
     in (G, vd, FPPh, FBs, rat_lookups, vec_lookups, hashUp, hashDown)
 
+{
+gamma = ratvec is a ratvec for Sp(2n), often assumed dominant.
+
+Here's the algorithm:
+
+take each coord gamma[i] of gamma not divisible by 1/2, and replace it
+by -gamma[i] if necessary so that it's in (0,1/2) mod 1.
+
+take all integer coords gamma[i] and move their absolute values to the
+the right end, in decreasing order.
+
+take all half integer coords gamma[i] and move their absolute values
+to the left end in decreasing order.
+
+Rearrange the remaining coords (all congruent to some epsilon[j] in
+(0,1/2) mod 1) and arrange them first in decreasing order by
+epsilon[j], then (within each class) in decreasing order. Call the
+result gammaSTD; it is usually NOT dominant.
+
+The integrality datum for gammaSTD is the STANDARD pseudoLevi
+
+SO(2a) x GL(r_last) x ... x GL(r_0) x Sp(2b),
+
+of which there are only 2^{n+1} possibillities, and and gamma is dominant for it.
+
+The weight bdown is constant on first a coords, next r_last coords...,
+next r_0 coords, and zero on last b coords. The constant values are
+chosen to ensure that gamma+bdown is DOMINANT.
+
+The weight bup is a W-conjugate of bdown: essentially it's constant on
+each collection of coordinates congruent to \pm epsilon[j], except you
+change the sign if it's congruent to -epsilon.
+
+More detailed notes follow, but they were written before the script
+was, and they are maybe less correct.
+
+---------------
+sgns = n signs: ith is minus iff gamma[i] % 1 is in (1/2,1).
+mods[i] = epsilon in [0,1/2];  gamma[i]%1, or 1-\epsilon if in (1/2,1).
+	actually next two are sorted into three pieces, for the int coords,
+	for the coords not 0 or 1/2 mod 1, and for the half-int coords
+epsilonsSort = [ratvec] is a sorted list of the distinct values of mod in
+	     (0,1/2).
+ranges = [[vec]]; ranges[j] is the subset of [0,n) where the coordinates
+     of gamma take the values \pm epsilon[j]  mod 1.
+gammaSgn[i] = gamma[i]*sgns[i]
+gammaRanges[j] = coords of gammaSgn in ranges[j], sorted to be decreasing
+bupCoords: bupCoords[j] is a nonneg integer, to be added to all the
+     coords in ranges[j] (with minus in case of -epsilon), so that
+     last coord of gammaRanges[j] + bup[j] > first coord of gammaRanges[j+1]
+}
+set sgns(ratvec gamma) = [bool]:
+    for r in gamma do r%1 > 1/2 od
+
+set mods(ratvec gamma) = [rat]:
+    for r@j in gamma
+    do let res = r%1
+       in if res=0 then 0
+       	  elif res=1/2 then res
+       	  elif res < 1/2 then res
+       	  else 1-res
+       	  fi
+    od
+
+{ increasing list of the rats in (0,1/2) for the GL factors of
+  integrality datum }
+set epsilonsSort(ratvec gamma) = [rat]:
+    let epsilons = for r in mods(gamma)
+    		   do if (r = 0) or (r=1/2) then []
+		      else [r]
+		      fi
+		   od.##
+    in if #epsilons = 0 then []
+       else ((epsilons.numer).sort_u)/epsilons.denom
+       fi
+
+set rangeInt(ratvec gamma) = [int]:
+    for r@i in gamma do if r%1 = 0 then [i] else [] fi od.##
+
+set rangeHalfInt(ratvec gamma) = [int]:
+    for r@i in gamma do if r%1 = 1/2 then [i] else [] fi od.##
+
+{ one list of ints for each epsilon in the sorted list epsilonSort }
+set rangesEpsilon(ratvec gamma) = [[int]]:
+    let mods = mods(gamma)
+    in for epsilon@j in epsilonsSort(gamma)
+    do for i:#mods
+    do if mods[i] = epsilon then [i] else [] fi od.##
+    od
+
+set gammaSgn(ratvec gamma) = ratvec:
+    for j: #gamma do if sgns(gamma)[j] then -gamma[j]
+    	   	     else gamma[j]
+		     fi
+		  od
+
+{returns C-dominant integer coords, various dominant GL coords, B-dominant
+ half-integer coords}
+set gammaRanges(ratvec gamma) = (ratvec, [ratvec], ratvec):
+    let gamma_sgn = gammaSgn(gamma)
+    in ( for i in rangeInt(gamma) do abs(gamma[i]) od.sort,
+    for R in rangesEpsilon(gamma) do for i in R do gamma_sgn[i] od.sort od,
+    for i in rangeHalfInt(gamma) do abs(gamma[i]) od.sort)
+
+{ always add 0 to C string. vec is constants to add to A strings. Last int
+  is constant to add to D string }
+set bUpCoords(ratvec gamma) = (int, vec, int):
+    let c = int: 0, C=int: 0, d=int: 0
+    then (gamma_int, gamma_ranges, gamma_half_int) = gammaRanges(gamma),
+    	epsilons = epsilonsSort(gamma)
+    then try = null(#gamma_ranges)
+    then () = if #gamma_int > 0 then C:=c+rat_as_int(gamma_int~[0]) fi
+    then () = if #gamma_ranges>0
+    	      then try[0]:= C - floor(gamma_ranges[0][0])
+	      fi
+    then () = for j:#gamma_ranges -1 from 1
+    	      do try[j]:= try[j-1] +  floor(gamma_ranges[j-1]~[0] -
+	      	 	  gamma_ranges[j][0]) + 1
+	      od
+    then () = if #gamma_half_int >0
+    	      then if #gamma_ranges > 0 and gamma_ranges~[0]~[0] > 0
+	      {if gamma_ranges~[0]~[0] NEGATIVE, then need to use
+	      	  -try~[0]}
+    	      	   then d:= try~[0] + floor(gamma_ranges~[0]~[0] -
+		   	    gamma_half_int[0]) + 1
+		   elif #gamma_ranges > 0 {now last is negative}
+    	      	   then d:= try~[0] + floor(-gamma_ranges~[0]~[0] -
+		   	    gamma_half_int[0]) + 1
+		   elif (#gamma_ranges = 0 and #gamma_int>0)
+		   then d:=c + 1+floor(gamma_int~[0] -
+		   	   gamma_half_int[0])
+		   fi
+	      fi
+    in (c, try, d)
+
+{computes the translation weights bup and bdown for an Sp(2n)
+ infinitesimal character gamma}
+{and probably also SO(2n+1)?}
+set shifterC(ratvec gamma) = (vec, vec):
+    let sgns = sgns(gamma)
+    then range_int = rangeInt(gamma), range_half_int= rangeHalfInt(gamma),
+    	 ranges = rangesEpsilon(gamma)
+    then (c,try,d) = bUpCoords(gamma)
+    then bup = vec: null(#gamma)
+    then () = for R@j in ranges
+    	      do for i in R
+	      	 do bup[i]:= try[j]*(if sgns[i] then -1 else 1 fi)
+	    	 od
+	      od
+    then () = for i in range_int
+    	      do bup[i] := c {should mult by sgn(gamma[i], but will be pos}
+	      od
+    then () = for i in range_half_int
+    	      do bup[i] := d
+	      od
+    in (bup, (for i:#range_half_int do -d od) ##
+       	      (for R@j in ranges~
+       	       do for i in R do -try[j] od
+   	       od.##) ##
+    	       (for i:#range_int do -c od)
+	       )
+
+set KL_sum_at_s(ParamPol P) = ParamPol:
+    sum(P.real_form,for c@q in P do c*KL_sum_at_s(q) od)
+
 set barycenter(SimpleAffine Affd, ratvec gamma) = ratvec:
     let FV = facet_verts(Affd,gamma)
     in (1/#FV)*sum(Affd.rank,FV)
@@ -64,6 +229,9 @@ set shifts(ShiftData shift_data, ratvec gamma) = (vec, vec):
 	       , shift_data.hash_down.index(v~[0]))
        fi
 
+set shifts(ShiftData shift_data, Param p) = (vec, vec):
+    shifts(shift_data, p.infinitesimal_character)
+
 {
 What's true: if p = (x,lambda,nu) has infinitesimal character gamma,
 and (bup,bdown) = shifts(gamma), then
@@ -74,9 +242,21 @@ character_formula(p) = translate_param_by(character_formula(
 
 {RHS does KL calculations at just 2^{rank + 1} integrality data.}
 
-set deformation_terms (Param p) = ParamPol:
+{first list is params {p[i]} in bruhat interval above p.
+ mat M
+ last list is pols in q f[j].
+ KL pol for p[i] and p[i'] is f(M[i',i])}
+
+
+set partial_KL_block(Param p, (ratvec->(vec,vec)) shifter) = ([Param],mat,[vec]):
+    let (bup,bdown) = shifter(p.infinitesimal_character)
+    then pUp = normal(translate_param_by(p,bup))
+    then (blockUp, M, pols) = partial_KL_block(pUp)
+    in (for q in blockUp do normal(translate_param_by(q,bdown)) od, M,pols)
+
+set deformation_terms (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
-    let (block,M,polys) = partial_KL_block(p:=normal(p))
+    let (block,M,polys) = partial_KL_block(p:=normal(p), shifter)
     then l = vec: for q in block do q.length od, n=#block
     , p_1= for Q in polys do eval(Q,minus_1) od
     in
@@ -244,39 +424,49 @@ set lower (Param p) = Param:
   then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
   in  param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
 
-set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
-  { (lower(p),deform(p)) }{ here |deform| may be replaced by |deformation_terms| }
- {preceding line _was_ built-in deform; want to test the change!}
-  (lower(p), deformation_terms(p))
-set recursive_deform (Param p) = KTypePol:
+set deformation (Param p, (ratvec->(vec,vec)) shifter) = (Param,ParamPol):
+    { deformed Param and new terms }
+    { (lower(p),deform(p)) }
+    { here |deform| may be replaced by |deformation_terms| }
+    {preceding line _was_ built-in deform; want to test the change!}
+  (lower(p), deformation_terms(p,shifter))
+
+{this I think is the replacement for the built-in full_deform}
+set recursive_deform (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
   if d_verbose then prints("recursive_deform with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
   let empty=null_module(real_form(p)) in
   if d_verbose { choose verbose or non-verbose version of the function }
-  then rec_fun full_def (Split sc,Param p) KTypePol:
+  then rec_fun full_def (Split sc,Param p, (ratvec->(vec,vec)) shifter)
+       KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
-      p := alcove_center(p);
-      prints("full_def with: sc=", sc, ", p=", p, p.infinitesimal_character);
+      {p := alcove_center(p);}
+      if d_verbose
+      then prints("full_def with: sc=", sc, ", p=", p,
+      	   p.infinitesimal_character)
+      fi;
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~do
 	let p_def=p*factor { next deformation of |p| }
-	then def=deform(p_def) { bypass built-in |deform| here }
+	then def=deformation_terms(p_def,shifter)
+	     { bypass built-in |deform| here }
         in
 	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
       ; acc+:=def
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do { apply |full_def| recursively to all those terms }
-        at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+        at_nu0 +:= full_def(sc*k,q,shifter)
+	       { gather harvest from those deformations }
       od
     ; prints("full_def complete, result:",at_nu0)
     ; at_nu0
     end
-  else rec_fun full_def (Split sc,Param p) KTypePol:
+  else rec_fun full_def (Split sc,Param p, (ratvec->(vec,vec)) shifter) KTypePol:
 	 { |sc| will simply scale the coefficients of resulting KTypePol }
     begin
       p := alcove_center(p);
@@ -286,27 +476,32 @@ set recursive_deform (Param p) = KTypePol:
       ~ { direction of deformation is down, towards 0; this is not essential }
       do acc+:=deform(p*factor) od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
-      do at_nu0 +:= full_def(sc*k,q) od
+      do at_nu0 +:= full_def(sc*k,q,shifter) od
     ; at_nu0
     end
-  fi { apply that recursive function to the initial argument: } (1,p)
+  fi { apply that recursive function to the initial argument: } (1,p,shifter)
 
 { code that follows is adapted from hermitian.at to do unitarity computation
   in terms of the above functions rather than built-ins
 }
 
-set oriented_KL_sum (Param p) = ParamPol:
-   let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
-   for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+set oriented_KL_sum (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
+   let ori_nr_p = orientation_nr(p)
+   then (bup,bdown) = shifter(p.infinitesimal_character)
+   in  null_module(real_form(p)) +
+   for c@q in translate_param_by(KL_sum_at_s(1*translate_param_by(p,bup)),bdown)
+   do (c*orientation_nr_term(ori_nr_p,q),q) od
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
-set c_form_irreducible (Param p) = KTypePol:
-  let P=oriented_KL_sum(p), count=0 then nP=#P
+set c_form_irreducible (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
+  let P=oriented_KL_sum(p, shifter), count=0 then nP=#P
   then
-    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+    f(Param p) = if (d_verbose and (count<11 or count%10=0 or nP-count<=10))
                  then prints("Term ",count,": ",p)
-		 fi; count+:=1; recursive_deform(p)
-  in prints("Fully deforming ",nP," terms"); map(f, P)
+		 fi; count+:=1; recursive_deform(p, shifter)
+  in if d_verbose
+     then prints("Fully deforming ",nP," terms")
+     fi; map(f, P)
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
   no deformation is done, but orientation numbers are included;
@@ -345,12 +540,79 @@ set check_hermitian (Param p) = void:
   assert(p.is_hermitian
         ,"Irreducible module does not admit any invariant Hermitian form"
 	)
-set hermitian_form_irreducible (Param p) = KTypePol:
+set hermitian_form_irreducible (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
   if is_equal_rank(real_form(p))
-  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
+  then c_form_irreducible(p, shifter)
+       { not twisted, in equal rank case this is faster }
   else check_hermitian(p); twisted_c_form_irreducible(p)
   fi.convert_cform_hermitian
 
 { compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool:
-  p.is_hermitian and hermitian_form_irreducible(p).is_pure
+set is_unitary (Param p, (ratvec->(vec,vec)) shifter) = bool:
+  p.is_hermitian and hermitian_form_irreducible(p, shifter).is_pure
+
+{Only works for Sp or maybe SO(odd)}
+set smallTest(RealForm G) = bool:
+    let verts = FPP_vertices(G,-1)
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    in all(for p in Ps
+       	   do is_unitary(p) = is_unitary(p,shifterC@ratvec)
+	   od
+	   )
+
+set bigTest(RealForm G) = bool:
+    let verts = FPP_barycenters(G,-1).##
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    in all(for p in Ps
+       	   do is_unitary(p) = is_unitary(p,shifterC@ratvec)
+	   od
+	   )
+
+set smallTimeTest(RealForm G) = void:
+    let verts = FPP_vertices(G,-1)
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p in Ps
+       	   do is_unitary(p,shifterC@ratvec)
+	   od
+    in ()
+
+set middleTimeTest(RealForm G, int d) = void:
+    let verts = FPP_barycenters(G,d,-1)
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p@j in Ps
+       	       	 do is_unitary(p,shifterC@ratvec)
+	   	 od
+    in ()
+
+
+set bigTimeTest(RealForm G) = void:
+    let verts = FPP_barycenters(G,-1).##
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p in Ps
+       	   do is_unitary(p,shifterC@ratvec)
+	   od
+    in ()
+
+set smallTimeTestOld(RealForm G) = void:
+    let verts = FPP_vertices(G,-1)
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p@j in Ps
+       	       	 do is_unitary(p)
+	   	 od
+    in ()
+
+set middleTimeTestOld(RealForm G, int d) = void:
+    let verts = FPP_barycenters(G,d,-1)
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p@j in Ps
+       	       	 do is_unitary(p)
+	   	 od
+    in ()
+
+set bigTimeTestOld(RealForm G) = void:
+    let verts = FPP_barycenters(G,-1).##
+    then Ps = for v in verts do parameter(x_open(G),G.rho,v) od
+    then bools = for p in Ps
+       	   do is_unitary(p)
+	   od
+    in ()
