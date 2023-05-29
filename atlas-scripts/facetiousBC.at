@@ -3042,6 +3042,25 @@ set localKcharsBC(LocalFacetData(Lvd, x, lambda,LFverts),
     in pol_nums
 {SHOULD NOT RETURN Kpol_hash!}
 
+set localKchars_old(LocalFacetData(Lvd, x, lambda,LFverts)) = [vec]:
+    let Kpol_hash = make_KTypePol_hash()
+    then pol_nums = [vec]:
+    for LF@j in LFverts
+    do if facet_verbose then prints("start to compute ",
+       #LF," type BC K-chars in dim ",j)
+       fi;
+       for v in LF
+       do let FB = facet_bary(Lvd.list,v)
+	  in Kpol_hash.match(K_type_pol(character_formula(parameter(x,
+			    lambda,FB))))
+       od
+    od
+    then () = if facet_verbose then prints("# facets = ",
+    sum(for v in pol_nums do #v od), "; # distinct K_chars = ",
+    Kpol_hash.size())
+	      fi
+    in pol_nums
+
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFacet}
@@ -3943,11 +3962,39 @@ set local_testBC(KGBElt x, ratvec lambda, (Param -> bool) tester,
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester)
 
+set local_test_old(KGBElt x, ratvec lambda, (Param -> bool) tester) =
+    [string]:
+    let G = x.real_form
+    then SFPPD = short_facet_data(G)
+    then (vd,sFPP) = SFPPD
+    then LFD = localFDBC(x,lambda,SFPPD)
+    then (Lvd,,,LFverts) = LFD
+    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    {this is list of vertices appearing as 0-diml facets: smaller
+     and differently ordered from Lvd.list}
+    then LvdZero = to_vertex_data(vlistZero)
+    then pol_nums = localKchars_old(LFD)
+    then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
+    { then () = prints("IUCL = ",IUCL) }
+    { then () = prints("CLBF = ",CLBF) }
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
+    	      IUCL, CLBF, statuses)
+    { then () = prints("statuses = ",statuses) }
+    in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
+       tester)
+
 set local(KGBElt x, ratvec lambda) = [string]:
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test(p, hts[0], hts[1])
     in local_test(x,lambda,tester)
+
+set local_old(KGBElt x, ratvec lambda) = [string]:
+    let hts = next_heights(parameter(x,lambda,0*lambda),2)
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_test(p, hts[0], hts[1])
+    in local_test_old(x,lambda,tester)
 
 set localBC(KGBElt x, ratvec lambda, (ratvec->(vec,vec)) shifter) =
     [string]:
@@ -3961,6 +4008,9 @@ set localBC(KGBElt x, ratvec lambda, (ratvec->(vec,vec)) shifter) =
 
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
+
+set spherical_local_old(RealForm G) = [string]:
+    local_old(x_open(G),G.rho)
 
 set spherical_localBC(RealForm G, (ratvec->(vec,vec)) shifter) = [string]:
     localBC(x_open(G),G.rho,shifter)

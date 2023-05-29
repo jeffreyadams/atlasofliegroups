@@ -254,6 +254,12 @@ set partial_KL_block(Param p, (ratvec->(vec,vec)) shifter) = ([Param],mat,[vec])
     then (blockUp, M, pols) = partial_KL_block(pUp)
     in (for q in blockUp do normal(translate_param_by(q,bdown)) od, M,pols)
 
+set dual_KL_block(Param p, (ratvec->(vec,vec)) shifter) = ([Param],int,mat,[vec]):
+    let (bup,bdown) = shifter(p.infinitesimal_character)
+    then pUp = normal(translate_param_by(p,bup))
+    then (blockUp,j,M,pols) = dual_KL_block(pUp)
+    in (for q in blockUp do normal(translate_param_by(q,bdown)) od,j,M,pols)
+
 set deformation_terms (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
     let (block,M,polys) = partial_KL_block(p:=normal(p), shifter)
@@ -294,10 +300,10 @@ set deformation_terms (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
     od
   fi
 
-set deformation_terms_by_dual (Param p) = ParamPol:
+set deformation_terms_by_dual (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
   assert(p.is_final,"deformation requires a final parameter");
-  let (block,KL_mat,P_polys) = partial_KL_block(p)
-  , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p)
+  let (block,KL_mat,P_polys) = partial_KL_block(p,shifter)
+  , (full_block,start,dual_KL_mat,dual_polys) = dual_KL_block(p,shifter)
   then pol_eval =  for P in P_polys do eval(P,minus_1) od
   , dual_pol_eval = for P in dual_polys do eval(P,minus_1) od
   , l_sg = for q in block do minus_1^length(q) od
@@ -325,10 +331,11 @@ in null_module(p) +
      ( orientation_nr_term(on_p,q)*solution[i]*one_minus_s , q )
    od
 
-set deformation_terms_by_dual (Param p,int max_height) = ParamPol:
+set deformation_terms_by_dual (Param p,int max_height,
+    (ratvec->(vec,vec)) shifter) = ParamPol:
 (  assert(p.is_final,"deformation requires a final parameter")
 ;  assert(p.height<=max_height,"height bound kills term to deform")
-;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p)
+;  let (full_block,start,dual_KL_mat,polys) = dual_KL_block(p,shifter)
    then subset = [int]:
      for q@i in full_block do if q.height<=max_height then [i] else [] fi od.##
    , ev = for P in polys do eval(P,minus_1) od
@@ -374,7 +381,8 @@ in assert(rp~[0]=1,"Not a reducibility: "+p.to_string); p*rp~[1]
 
 { use |deformation_terms_by dual| for a full deformation, in which we try to
   group all successive deformations involving a same block together }
-set deform_to_height (Param p,int max_height) = KTypePol:
+set deform_to_height (Param p,int max_height, (ratvec->(vec,vec)) shifter) =
+    KTypePol:
 (  assert(p.height<=max_height,"height bound kills term to deform")
 ;  let G=real_form(p)
    then !K_empty=null_K_module(G), !empty=null_module(G)
@@ -395,7 +403,7 @@ in while >#queue or
    ;  if =nu(q) then result := (result next result:=K_empty) + (c0,q.K_type)
       else lower:= (lower next lower:=empty) + (c0,next_down(q))
       fi
-   ;  let terms = deformation_terms_by_dual(q,max_height)
+   ;  let terms = deformation_terms_by_dual(q,max_height,shifter)
    in for c@r in terms
       do case reduction_at(r)
          | reducible():
