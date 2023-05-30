@@ -45,8 +45,16 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
-// make |Delta| simple (a twist) by Weyl group action; return Weyl word
-// whose left-multiplication transforms returned |Delta| into original one
+/* Transform each element ow |Delta| under $W$ until all are posroot numbers
+   Return for each step: index at which negroot was found, and reflection index.
+   List is in order so that simple reflections transform original |Delta| into
+   the final one (which is opposite to the order in which the pairs were found).
+*/
+sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
+  (const RootSystem& rs, RootNbrList& Delta);
+
+// make full rank list |Delta| simple (a twist) by Weyl group action; return
+// Weyl word whose left-multiplication transforms final |Delta| into original
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta);
 
 // force root positive; unlike |rs.rt_abs(alpha)| does not shift positive roots
@@ -68,12 +76,13 @@ WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
 // set of posroot indices of coroots integral on |gamma|
 RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
+// the (posiive) simple generators of the above, but as full root set indices
+RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma);
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
-// semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 
 // involution of the Dynkin diagram for |rd| define by distinguished |delta|
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
@@ -107,11 +116,8 @@ template<bool for_coroots=true>
 
 RootNbrSet image(const RootSystem& rs, const WeylWord& ww, const RootNbrSet& s);
 
-} // |namespace rootdata|
-
 /******** type definitions **************************************************/
 
-namespace rootdata {
 
 // RootSystem: an abstract set of roots, with relations, but no coordinates
 
@@ -721,6 +727,10 @@ class RootDatum
 
 }; // |class RootDatum|
 
+// semisimple rank of |integrality_datum(rd,gamma)|
+inline
+unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
+{ return integrality_simples(rd,gamma).size(); }
 
 } // |namespace rootdata|
 
