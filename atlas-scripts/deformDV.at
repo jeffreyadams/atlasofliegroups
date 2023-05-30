@@ -2,6 +2,7 @@
 <polynomial.at { for type |i_poly| and function |eval| }
 <convert_c_form.at { final part of unitarity computation }
 <facetious.at { for facet structures }
+<to_ht.at {for to_ht}
 
 {need to build in shifted versions of partial_KL_block and KL_sum}
 { this file defines commands that are equivalent to the |full_deform| command
@@ -12,6 +13,9 @@
   the library, and used through the |deform| atlas command, in order to show
   after the fact how this could have been done as an atlas script
 }
+
+set to_htK(int N) = (KTypePol->KTypePol): (KTypePol P):
+    let(below,) = height_split(P,N) in below
 
 set_type ShiftData = (RealForm real_form, VertexData v_data
 	 , [[FacetVertsHash]] hash_facet_inds, [[ratvec]] facet_barys
@@ -260,6 +264,7 @@ set dual_KL_block(Param p, (ratvec->(vec,vec)) shifter) = ([Param],int,mat,[vec]
     then (blockUp,j,M,pols) = dual_KL_block(pUp)
     in (for q in blockUp do normal(translate_param_by(q,bdown)) od,j,M,pols)
 
+{ replaces built-in deform}
 set deformation_terms (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
   let (B,KL_mat,length) = ([Param],mat,vec):
     let (block,M,polys) = partial_KL_block(p:=normal(p), shifter)
@@ -298,6 +303,48 @@ set deformation_terms (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
       (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
       { for the same reason we replaced |s| by |-1| in computations giving |c| }
     od
+  fi
+
+{height cutoff done crudely at end; better to do it along the way}
+set deformation_terms (Param p, int max_height, (ratvec->(vec,vec)) shifter) =
+    ParamPol:
+  let (B,KL_mat,length) = ([Param],mat,vec):
+    let (block,M,polys) = partial_KL_block(p:=normal(p), shifter)
+    then l = vec: for q in block do q.length od, n=#block
+    , p_1= for Q in polys do eval(Q,minus_1) od
+    in
+    ( block
+    , for col@j in M
+      do let lj=l[j] in
+	 for entry@i in col do minus_1^(lj-l[i])*p_1[entry] od
+      od
+    , l
+    )
+  then nB=#B in
+  if =nB or B~[0]!=p
+  then null_module(p) { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in to_ht(max_height)(
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od
+  ; null_module(p)+
+    for c@i in solution
+    do { twist (1-s)*solution according to orientation numbers of its terms }
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(=r,"odd orientation");
+      (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
+      { for the same reason we replaced |s| by |-1| in computations giving |c| }
+    od)
   fi
 
 set deformation_terms_by_dual (Param p, (ratvec->(vec,vec)) shifter) = ParamPol:
@@ -482,12 +529,65 @@ set recursive_deform (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
       let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
-      do acc+:=deform(p*factor) od
+      do acc+:=deformation_terms(p*factor,shifter) od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do at_nu0 +:= full_def(sc*k,q,shifter) od
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p,shifter)
+
+
+{this I think is the replacement for the built-in full_deform}
+set recursive_deform (Param p, int max_height, (ratvec->(vec,vec)) shifter) =
+    KTypePol:
+  if d_verbose then prints("recursive_deform to height with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=null_module(real_form(p)) in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (Split sc,Param p, int max_height,
+       	       (ratvec->(vec,vec)) shifter) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      {p := alcove_center(p);}
+      if d_verbose
+      then prints("full_def to height with: sc=", sc, ", p=", p,
+      	   p.infinitesimal_character)
+      fi;
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=deformation_terms(p_def, max_height, shifter)
+	     { bypass built-in |deform| here }
+        in
+	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+        at_nu0 +:= full_def(sc*k,q,max_height,shifter)
+	       { gather harvest from those deformations }
+      od
+    ; prints("full_def complete, result:",at_nu0)
+    ; at_nu0
+    end
+  else rec_fun full_def (Split sc,Param p, int max_height,
+       	       (ratvec->(vec,vec)) shifter) KTypePol:
+	 { |sc| will simply scale the coefficients of resulting KTypePol }
+    begin
+      p := alcove_center(p);
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=KTypePol: sc*(p.K_type) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:=deformation_terms(p*factor,shifter) od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def(sc*k,q,max_height,shifter) od
+    ; at_nu0
+    end
+  fi { apply recursive function to initial argument: } (1,p,max_height,shifter).(to_htK(max_height))
 
 { code that follows is adapted from hermitian.at to do unitarity computation
   in terms of the above functions rather than built-ins
@@ -507,6 +607,17 @@ set c_form_irreducible (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
     f(Param p) = if (d_verbose and (count<11 or count%10=0 or nP-count<=10))
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; recursive_deform(p, shifter)
+  in if d_verbose
+     then prints("Fully deforming ",nP," terms")
+     fi; map(f, P)
+
+set c_form_irreducible (Param p, int max_height, (ratvec->(vec,vec)) shifter) =
+    KTypePol:
+  let P=oriented_KL_sum(p, shifter), count=0 then nP=#P
+  then
+    f(Param p) = if (d_verbose and (count<11 or count%10=0 or nP-count<=10))
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; recursive_deform(p,max_height,shifter)
   in if d_verbose
      then prints("Fully deforming ",nP," terms")
      fi; map(f, P)
@@ -555,9 +666,21 @@ set hermitian_form_irreducible (Param p, (ratvec->(vec,vec)) shifter) = KTypePol
   else check_hermitian(p); twisted_c_form_irreducible(p)
   fi.convert_cform_hermitian
 
+set hermitian_form_irreducible (Param p, int max_height,
+    (ratvec->(vec,vec)) shifter) = KTypePol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible(p, max_height, shifter)
+       { not twisted, in equal rank case this is faster }
+  else check_hermitian(p); twisted_c_form_irreducible(p)
+  fi.convert_cform_hermitian
+
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p, (ratvec->(vec,vec)) shifter) = bool:
-  p.is_hermitian and hermitian_form_irreducible(p, shifter).is_pure
+  p.is_hermitian and hermitian_form_irreducible(p,shifter).is_pure
+
+set is_unitary_to_height (Param p, int max_height, (ratvec->(vec,vec)) shifter) =
+    bool:
+    p.is_hermitian and hermitian_form_irreducible(p,max_height,shifter).is_pure
 
 {Only works for Sp or maybe SO(odd)}
 set smallTest(RealForm G) = bool:
