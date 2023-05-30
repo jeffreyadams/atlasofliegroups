@@ -1051,9 +1051,15 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
 
   struct w_info {
     WeylElt w;
+    RootNbrList image; // image by $w$ of simply-integral coroots at |gamma|
     RootNbrSet integral_roots; // all roots integral on |w*gamma|
     sl_list<WeylElt>::weak_const_iterator it;
   };
+
+  const RootNbrList Delta = integrality_simples(rd,gamma);
+  std::vector<WeylElt> int_gens; int_gens.reserve(Delta.size());
+  for (RootNbr alpha : Delta)
+    int_gens.push_back(W.element(rd.reflection_word(alpha)));
 
   std::vector<w_info> states(coset_lists.size()+1); // thought right-to-left
   // |states[0]| is a sentinel without iterator; |states.back()| always exists
@@ -1061,8 +1067,9 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     const RootNbrSet init = additive_closure(rd,stabilising_walls);
     for (auto& state : states)
     {
-      state.w=WeylElt();
-      state.integral_roots=init;
+      state.w = WeylElt();
+      state.image = Delta;
+      state.integral_roots = init;
       if (i>0) // don't set the iterator in |states[0]|
 	state.it=coset_lists[i-1].wcbegin();
       ++i;
@@ -1071,8 +1078,27 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
 
   while(true) // loop through all sublists of |coset_lists|
   { // last sublists, giving leftmost factor, will vary most rapidly
-    auto& node = result.emplace_back(states.back().w,sl_list<int_Vector>{});
-    const auto image = W.image_by(rd,node.first,numer);
+    auto w = states.back().w;
+    auto steps = to_positive_system(rd,states.back().image);
+    for (const auto& step : steps)
+    {
+      assert(W.prod(w,int_gens[step.first])==
+	     W.prod(rd.reflection_word(step.second),w));
+      W.mult(w,int_gens[step.first]);
+    }
+
+#ifndef NDEBUG
+    {
+      RootNbrList new_image;
+      const auto ww = W.word(w);
+      for (RootNbr alpha : Delta)
+	new_image.push_back(rd.permuted_root(ww,alpha));
+      assert(to_positive_system(rd,new_image).empty());
+    }
+#endif
+
+    auto& node = result.emplace_back(w,sl_list<int_Vector>{});
+    const auto image = W.image_by(rd,w,numer);
 
     RankFlags fix, ups, downs; // simple roots for which facet lands on its wall
     for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
@@ -1085,7 +1111,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
 	{ fix.set(s); ups.set(s); } // to add fundamental weight once or twice
       }
       else
-	fix.set(s,W.has_descent(s,states.back().w));
+	fix.set(s,W.has_descent(s,w));
 
     for (const auto& shift : cc.shifts(fix,ups,downs))
     {
@@ -1102,17 +1128,21 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     if (i==0)
       break; // we reached the end of all our traversals
     states[i].w = W.prod(*states[i].it,states[i-1].w);
+    const auto ww = W.word(*states[i].it);
+    for (unsigned j=0; j<states[i-1].image.size(); ++j)
+      states[i].image[j] = rd.permuted_root(ww,states[i-1].image[j]);
     states[i].integral_roots =
-      rootdata::image(rd,W.word(*states[i].it),states[i-1].integral_roots);
+      rootdata::image(rd,ww,states[i-1].integral_roots);
     while (++i<states.size())
     {
       states[i].w=states[i-1].w;
+      states[i].image = states[i-1].image;
       states[i].integral_roots=states[i-1].integral_roots;
     }
   } // |while(true)|
 
   return result;
-}
+} // |FPP_w_shifts|
 
 sl_list<int_Vector> FPP_orbit_numers
   (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma)
@@ -1129,7 +1159,7 @@ sl_list<int_Vector> FPP_orbit_numers
 	result.push_back(image+shift*denom);
     }
   return result;
-}
+} // |FPP_orbit_numers|
 
 } // |namespace weyl|
 
