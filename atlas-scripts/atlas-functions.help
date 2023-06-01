@@ -1226,12 +1226,13 @@ FPP_numers: (RootDatum,ratvec->[vec]): Affine Weyl orbit intersected with FPP
   facets can be shared between alcoves. Given a rational weight gamma in some
   facet of the fundamental alcove, this function finds all its distinct images
   under the affine Weyl group lying inside the FPP, and lists their numerators;
-  this is to save space as the denomiators are all equal to that of gamma.
+  this is to save space as the denominators are all equal to that of gamma.
 FPP_w_shifts: (RootDatum,ratvec->[WeylElt,[vec]]): Affine Weyl elements for FPP
   This function has the same funcionality as FPP_numers, but presents the
   results differently, namely as a list of affine Weyl group elements (an
-  ordinary Weyl group elements followed by a shift in the root lattice), grouped
+  ordinary Weyl group element followed by a shift in the root lattice), grouped
   by common Weyl group elements, each followed by a list of associated shifts.
+  The Weyl group elements w are such that w*gamma is integrality dominant.
 
 strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
   The input describes a directed graph on the set #n={0,1,...,n-1}, where n is
