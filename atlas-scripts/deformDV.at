@@ -30,6 +30,11 @@ set_type ShiftData = (RealForm real_form, VertexData v_data
 	 , [(ratvec->int)] ratLookups, [(vec->int)] intLookups
 	 , vec_hash hash_up, vec_hash hash_down)
 
+{IL_hash lists all integrality labels in the order found; up_inds[j] is the
+	 location of bup for label #j in hash_up}
+set_type ShiftDataFast = (RootDatum root_datum, {VertexData v_data,} vec up_inds,
+	 vec down_inds, vec_hash IL_hash, vec_hash hash_up, vec_hash hash_down)
+
 set shift_data(RealForm G) = ShiftData:
     let old_codim = facet_codim
     then () = facet_codim:=-1
@@ -50,6 +55,15 @@ set shift_data(RealForm G) = ShiftData:
 		       od
     in (G, vd, FPPh, FBs, rat_lookups, vec_lookups, hashUp, hashDown)
 
+set integrality_label(RootDatum G, ratvec gamma) = vec:
+    let PCR = G.poscoroots
+    then vals = gamma*PCR
+    in vec: for v in vals
+       	    do if v%1 = 0
+	       then floor(v)
+	       else -floor(v) -1
+	       fi
+	    od
 {
 gamma = ratvec is a ratvec for Sp(2n), often assumed dominant.
 
@@ -252,6 +266,20 @@ set shift_dataBC(RealForm G) = ShiftData:
 		       od
     in (G, vd, sFPP, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
 
+set shift_data_fastBC(RootDatum rd) = ShiftDataFast:
+    let hash_up = make_vec_hash(), hash_down = make_vec_hash(),
+    	IL_hash = make_vec_hash(), up_inds = vec:[], down_inds = vec:[]
+    {then v_data = FPP_vertex_data(rd,-1)}
+    then FPPbs = FPP_barycenters(rd,-1).##
+    then () = for v in FPPbs
+    	 do let (bup,bdown) = shifterC(v)
+	    then () = IL_hash.match(integrality_label(rd,v))
+	    then () = up_inds:=up_inds# hash_up.match(bup)
+	    then () = down_inds:=down_inds# hash_down.match(bdown)
+	    in ()
+	 od
+    in (rd, {vd,} up_inds, down_inds, IL_hash, hash_up, hash_down)
+
 set shift_dataG(RealForm G) = ShiftData:
     let () = facet_codim:=-1
     then FPPDH = facet_data_fold_hash(cofolded(G))
@@ -269,31 +297,6 @@ set shift_dataG(RealForm G) = ShiftData:
 				    od )
 		       od
     in (G, vd, FPPH, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
-
-{only works for type BC}
-set shift_dataBC(RealForm G) = ShiftData:
-    let () = facet_codim:=-1
-    then FPPDs = short_facet_data(G)
-    then (vd,FPPD) = FPPDs
-    then FBss = [[ratvec]]:
-    	 for Fs@dim in FPPD
-    	     do for F in Fs
-	       	do facet_bary(vd.list,F[:dim+1])
-		od
-	     od
-    then rat_lookups = for FBs in FBss do index_in(FBs) od
-    then vec_lookups = for Finds in FPPD
-    	 	       do index_in( Finds )
-		       od
-    then FPPH = for Finds@d in FPPD
-    	      	do for Find@m in Finds
-		   do let (bup, bdown) = shifterC(FBss[d][m])
-		      then mup = hashUp.match(bup), mdown = hashDown.match(bdown)
-		      in Find##[mup,mdown]
-		   od
-		od
-    in (G, vd, FPPH, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
-
 
 set KL_sum_at_s(ParamPol P) = ParamPol:
     sum(P.real_form,for c@q in P do c*KL_sum_at_s(q) od)
@@ -340,6 +343,17 @@ set shifts(ShiftData shift_data, ratvec gamma) = (vec, vec):
 
 set shifts(ShiftData shift_data, Param p) = (vec, vec):
     shifts(shift_data, p.infinitesimal_character)
+
+set shiftsFast(ShiftDataFast shift_data_fast, ratvec gamma) = (vec, vec):
+    let () = shift_count.use()
+      {next vec indexes the facet of gamma}
+    then (rd,up_inds,down_inds,IL_hash,hash_up,hash_down) = shift_data_fast
+    then ell =integrality_label(rd,gamma)
+    then j=IL_hash.lookup(ell)
+    in if j>=0 then (hash_up.index(up_inds[j]),
+		    hash_down.index(down_inds[j]))
+       else (null(#gamma),null(#gamma))
+       fi
 
 {
 What's true: if p = (x,lambda,nu) has infinitesimal character gamma,
@@ -814,6 +828,8 @@ set localDV(KGBElt x, ratvec lambda, ShiftData SD)  = [string]:
     in local_test(x, lambda, Lvd, LFverts, eq, gr, CLBF, statuses,
        tester)
 
+{problem with next three and general ShiftData is that the shifts go outside
+  the FPP, so don't get the nice KL memory saving.}
 set localDV_test(KGBElt x, ratvec lambda, ShiftData SD)  = [string]:
     let shifter = (ratvec->(vec,vec)): (ratvec v) (vec,vec): shifts(SD,v)
     then hts = next_heights(parameter(x,lambda,0*lambda),2)
@@ -831,6 +847,25 @@ set localDV_test(KGBElt x, ratvec lambda, ShiftData SD)  = [string]:
     in local_test(x, lambda, Lvd, LFverts, eq, gr, CLBF, statuses,
        tester)
 
+set localBC_test_fast(KGBElt x, ratvec lambda, ShiftDataFast SDF)  = [string]:
+    let rd = x.root_datum
+    then vd = FPP_vertex_data(rd,-1)
+    then shifter = (ratvec->(vec,vec)): (ratvec v) (vec,vec): shiftsFast(SDF,v)
+    then hts = next_heights(parameter(x,lambda,0*lambda),2)
+    then tester = (Param->bool): (Param p) bool: is_unitary_test(p,
+    	 hts[0], hts[1], shifter)
+    then LFD = localFDBC(x,lambda, (vd,FPP_facets(rd,vd,-1)))
+    then (Lvd,,,LFverts) = LFD
+    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    then LvdZero = to_vertex_data(vlistZero)
+    then pol_nums = localKcharsBC(LFD,shifter)
+    then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
+    	      IUCL, CLBF, statuses)
+    in local_test(x, lambda, Lvd, LFverts, eq, gr, CLBF, statuses,
+       tester)
+
 set sphericalDV(RealForm G) = [string]:
     let SD = shift_data(G)
     in localDV(x_open(G),G.rho,SD)
@@ -839,9 +874,9 @@ set sphericalDV_test(RealForm G) = [string]:
     let SD = shift_data(G)
     in localDV_test(x_open(G),G.rho,SD)
 
-set sphericalBC_test(RealForm G) = [string]:
-    let SD = shift_dataBC(G)
-    in localDV_test(x_open(G),G.rho,SD)
+set sphericalBC_test_fast(RealForm G) = [string]:
+    let SDF = shift_data_fastBC(G)
+    in localBC_test_fast(x_open(G),G.rho,SDF)
 
 {Only works for Sp or maybe SO(odd)}
 set smallTest(RealForm G) = bool:
