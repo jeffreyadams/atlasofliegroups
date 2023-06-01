@@ -117,7 +117,7 @@ set fund_facet_verbose = false
 { for facets of codim > facet_codim, use shifted char formula to
 improve memory use. Setting equal to folded semisimple rank means no
 use of shifted char formula.}
-set facet_codim = int: 3
+set facet_codim = int: -1 { changed from 3 to compute more shifts }
 
 {. if assigned to 'true' then induction only records unitary reps of
 Levis .}

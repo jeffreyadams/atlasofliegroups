@@ -101,7 +101,7 @@ bupCoords: bupCoords[j] is a nonneg integer, to be added to all the
      coords in ranges[j] (with minus in case of -epsilon), so that
      last coord of gammaRanges[j] + bup[j] > first coord of gammaRanges[j+1]
 }
-set shift_count = make_counter()
+set shift_countBC = make_counter()
 set sgns(ratvec gamma) = [bool]:
     for r in gamma do r%1 > 1/2 od
 
@@ -191,7 +191,7 @@ set bUpCoords(ratvec gamma) = (int, vec, int):
 {and probably also SO(2n+1)?}
 set shifterC(ratvec gamma) = (vec, vec):
     let sgns = sgns(gamma)
-    then () = shift_count.use()
+    then () = shift_countBC.use()
     then range_int = rangeInt(gamma), range_half_int= rangeHalfInt(gamma),
     	 ranges = rangesEpsilon(gamma)
     then (c,try,d) = bUpCoords(gamma)
@@ -270,6 +270,30 @@ set shift_dataG(RealForm G) = ShiftData:
 		       od
     in (G, vd, FPPH, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
 
+{only works for type BC}
+set shift_dataBC(RealForm G) = ShiftData:
+    let () = facet_codim:=-1
+    then FPPDs = short_facet_data(G)
+    then (vd,FPPD) = FPPDs
+    then FBss = [[ratvec]]:
+    	 for Fs@dim in FPPD
+    	     do for F in Fs
+	       	do facet_bary(vd.list,F[:dim+1])
+		od
+	     od
+    then rat_lookups = for FBs in FBss do index_in(FBs) od
+    then vec_lookups = for Finds in FPPD
+    	 	       do index_in( Finds )
+		       od
+    then FPPH = for Finds@d in FPPD
+    	      	do for Find@m in Finds
+		   do let (bup, bdown) = shifterC(FBss[d][m])
+		      then mup = hashUp.match(bup), mdown = hashDown.match(bdown)
+		      in Find##[mup,mdown]
+		   od
+		od
+    in (G, vd, FPPH, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
+
 
 set KL_sum_at_s(ParamPol P) = ParamPol:
     sum(P.real_form,for c@q in P do c*KL_sum_at_s(q) od)
@@ -293,8 +317,21 @@ set coordsB(ShiftData shift_data, ratvec gamma) = (int,int):
     then ind = for v in FV do shift_data.v_data.lookup(v) od
     in (#ind-1, shift_data.intLookups[#ind-1](ind))
 
+set coordsC(ShiftData shift_data, ratvec gamma) = (int,int):
+    let G = shift_data.real_form
+    then FB = facet_bary(G,gamma)
+    then locs = for lookup@d in shift_data.ratLookups do lookup(FB) od
+    then d = first(for m in locs do m>= 0 od)
+    then m = if d = minus_1 then minus_1 else locs[d] fi
+    in (d,m)
+
+set shift_count = make_counter()
+
+
 set shifts(ShiftData shift_data, ratvec gamma) = (vec, vec):
-    let (d,m) = coordsB(shift_data,gamma)
+    let () = shift_count.use()
+    then (d,m) = coordsB(shift_data,gamma)
+    {then (d,m) = coordsC(shift_data,gamma) twice as slow for C4?}
     in if m = minus_1 then (null(#gamma), null(#gamma))
        else let v = shift_data.hash_facet_inds[d][m]
        	    in (shift_data.hash_up.index(v~[1])
@@ -800,6 +837,10 @@ set sphericalDV(RealForm G) = [string]:
 
 set sphericalDV_test(RealForm G) = [string]:
     let SD = shift_data(G)
+    in localDV_test(x_open(G),G.rho,SD)
+
+set sphericalBC_test(RealForm G) = [string]:
+    let SD = shift_dataBC(G)
     in localDV_test(x_open(G),G.rho,SD)
 
 {Only works for Sp or maybe SO(odd)}
