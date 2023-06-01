@@ -14,7 +14,7 @@
 <chopping_facets_fast.at {for chop_coroots(G, vertices)}
 <facet_classes.at {for ordering on facets}
 <hash.at {for KPolHash}
-<deformDV.at {for shifterC}
+{ <deformDV.at }{ SHOULD NOT load first, because deform uses facetious}
 {this version works only for Sp(2n) and SO(2n+1). Use is_unitary from
 deform.DV, which is much slower but might use less memory.}
 {current version incorporates storage of KTypePol's in a hash table
@@ -3939,6 +3939,7 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester)
 
+{
 set local_testBC(KGBElt x, ratvec lambda, (Param -> bool) tester,
     (ratvec->(vec,vec)) shifter) = [string]:
     let G = x.real_form
@@ -3961,6 +3962,7 @@ set local_testBC(KGBElt x, ratvec lambda, (Param -> bool) tester,
     { then () = prints("statuses = ",statuses) }
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester)
+}
 
 set local_test_old(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     [string]:
@@ -3996,24 +3998,11 @@ set local_old(KGBElt x, ratvec lambda) = [string]:
     	 is_unitary_test(p, hts[0], hts[1])
     in local_test_old(x,lambda,tester)
 
-set localBC(KGBElt x, ratvec lambda, (ratvec->(vec,vec)) shifter) =
-    [string]:
-    { let hts = next_heights(parameter(x,lambda,0*lambda),2) }
-    { then testerBC = (Param->bool): (Param p) bool:
-    	 is_unitary_test(p, hts[0], hts[1])}
-    { for now no to_ht test in deformDV, so just omit}
-    let testerBC = (Param->bool): (Param p) bool:
-    	is_unitary(p,shifter)
-    in local_testBC(x,lambda,testerBC,shifter)
-
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
 
 set spherical_local_old(RealForm G) = [string]:
     local_old(x_open(G),G.rho)
-
-set spherical_localBC(RealForm G, (ratvec->(vec,vec)) shifter) = [string]:
-    localBC(x_open(G),G.rho,shifter)
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }

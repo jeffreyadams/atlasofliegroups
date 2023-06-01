@@ -1,7 +1,7 @@
 <basic.at
 <polynomial.at { for type |i_poly| and function |eval| }
 <convert_c_form.at { final part of unitarity computation }
-<facetious.at { for facet structures }
+<facetiousBC.at { for facet structures }
 <to_ht.at {for to_ht}
 
 {need to build in shifted versions of partial_KL_block and KL_sum}
@@ -13,6 +13,14 @@
   the library, and used through the |deform| atlas command, in order to show
   after the fact how this could have been done as an atlas script
 }
+
+{meant to count invocations of a function. Do use() in the function.}
+set_type [Counter = ( (void -> int) use_count, (void -> void) use)  ]
+
+set make_counter () = Counter:
+    let ticker = int:0
+    in (( -> int): {use_count}@int: ticker
+       ,( -> ): {use} @: let () = ticker+:=1 in ())
 
 set to_htK(int N) = (KTypePol->KTypePol): (KTypePol P):
     let(below,) = height_split(P,N) in below
@@ -28,6 +36,7 @@ set shift_data(RealForm G) = ShiftData:
     then FPPDH = facet_data_fold_hash(cofolded(G))
     then () = facet_codim:=old_codim
     then (vd,FPPh) = FPPDH
+    {last two coords of F are index in hashUp and hashDown of bup, bdown}
     then FBs = for Fs@dim in FPPh
     	       do for F in Fs
 	       	  do facet_bary(vd.list,F[:dim+1])
@@ -51,7 +60,7 @@ by -gamma[i] if necessary so that it's in (0,1/2) mod 1.
 
 take all integer coords gamma[i] and move their absolute values to the
 the right end, in decreasing order.
-
+]
 take all half integer coords gamma[i] and move their absolute values
 to the left end in decreasing order.
 
@@ -92,6 +101,7 @@ bupCoords: bupCoords[j] is a nonneg integer, to be added to all the
      coords in ranges[j] (with minus in case of -epsilon), so that
      last coord of gammaRanges[j] + bup[j] > first coord of gammaRanges[j+1]
 }
+set shift_count = make_counter()
 set sgns(ratvec gamma) = [bool]:
     for r in gamma do r%1 > 1/2 od
 
@@ -181,6 +191,7 @@ set bUpCoords(ratvec gamma) = (int, vec, int):
 {and probably also SO(2n+1)?}
 set shifterC(ratvec gamma) = (vec, vec):
     let sgns = sgns(gamma)
+    then () = shift_count.use()
     then range_int = rangeInt(gamma), range_half_int= rangeHalfInt(gamma),
     	 ranges = rangesEpsilon(gamma)
     then (c,try,d) = bUpCoords(gamma)
@@ -202,6 +213,63 @@ set shifterC(ratvec gamma) = (vec, vec):
    	       od.##) ##
     	       (for i:#range_int do -c od)
 	       )
+{
+set bup_hash = vec_hash: make_vec_hash()
+set bdown_hash = vec_hash: make_vec_hash()
+set gamma_hash = vec_hash: make_vec_hash()
+
+set shifterBC(ratvec gamma) = (vec, vec):
+    let m = gamma_hash.match( gamma.numer#gamma.denom)
+    in if m = minus_1
+    	 then let (bup,bdown) = shifterC(gamma)
+	      in (bup,bdown);
+	      bup_hash
+}
+
+set shift_dataBC(RealForm G) = ShiftData:
+    let () = facet_codim:=-1
+    then SFPPD = short_facet_data(G)
+    then (vd,sFPP) = SFPPD
+    then FBss = [[ratvec]]:
+    	 for Fs@dim in sFPP
+    	 do let FsNew = Fs
+	    then FBs = [ratvec]:
+		 for v@j in Fs
+	       	 do let FB = facet_bary(vd.list,v)
+		    then (bup,bdown) = shifterC(FB)
+		    then MupDown=vec: [hashUp.match(bup), hashDown.match(bdown)]
+		     {these need to become last two coords of F}
+		    then () =  FsNew[j] := v##MupDown
+		    in FB
+		  od; sFPP[dim] := FsNew
+	     in FBs
+	 od
+    then rat_lookups = for FBs in FBss do index_in(FBs) od
+    then vec_lookups = for Fs@d in sFPP
+    	 	       do index_in( for v in Fs
+		       	  	    do v[:d+1]
+				    od )
+		       od
+    in (G, vd, sFPP, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
+
+set shift_dataG(RealForm G) = ShiftData:
+    let () = facet_codim:=-1
+    then FPPDH = facet_data_fold_hash(cofolded(G))
+    then (vd,FPPH) = FPPDH
+    then FBss = [[ratvec]]:
+    	 for Fs@dim in FPPH
+    	     do for F in Fs
+	       	do facet_bary(vd.list,F[:dim+1])
+		od
+	     od
+    then rat_lookups = for FBs in FBss do index_in(FBs) od
+    then vec_lookups = for Finds@d in FPPH
+    	 	       do index_in( for v in Finds
+		       	  	    do v[:d+1]
+				    od )
+		       od
+    in (G, vd, FPPH, FBss, rat_lookups, vec_lookups, hashUp, hashDown)
+
 
 set KL_sum_at_s(ParamPol P) = ParamPol:
     sum(P.real_form,for c@q in P do c*KL_sum_at_s(q) od)
@@ -481,10 +549,12 @@ set lower (Param p) = Param:
 
 set deformation (Param p, (ratvec->(vec,vec)) shifter) = (Param,ParamPol):
     { deformed Param and new terms }
-    { (lower(p),deform(p)) }
+    {(lower(p),deform(p))} {close to KL_sum...}
     { here |deform| may be replaced by |deformation_terms| }
     {preceding line _was_ built-in deform; want to test the change!}
-  (lower(p), deformation_terms(p,shifter))
+    let (bup,bdown) = shifter(p.infinitesimal_character)
+    in (lower(p), translate_param_by( deform( first_param(
+       translate_param_by(p,bup))),bdown))
 
 {this I think is the replacement for the built-in full_deform}
 set recursive_deform (Param p, (ratvec->(vec,vec)) shifter) = KTypePol:
@@ -645,10 +715,12 @@ set twisted_c_form_irreducible (Param p) = KTypePol:
   , count=0
   then nf=#fixed
   then
-    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+    f(Param p) = if d_verbose and (count<11 or count%10=0 or nf-count<=10)
                  then prints("Term ",count,": ",p)
 		 fi; count+:=1; twisted_full_deform(p)
-  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+  in if d_verbose then
+     prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+     fi
 ; map(f,fixed)+half(unfixed.K_type_pol)
 )
 
@@ -681,6 +753,54 @@ set is_unitary (Param p, (ratvec->(vec,vec)) shifter) = bool:
 set is_unitary_to_height (Param p, int max_height, (ratvec->(vec,vec)) shifter) =
     bool:
     p.is_hermitian and hermitian_form_irreducible(p,max_height,shifter).is_pure
+
+set is_unitary_test (Param p, int med_height, int max_height,
+    (ratvec->(vec,vec)) shifter) = bool:
+   is_unitary_to_height(p,med_height,shifter) and
+   is_unitary_to_height(p,max_height,shifter) and
+   is_unitary(p,shifter)
+
+{ NOW can come versions of facetious commands using shifter! }
+
+set localDV(KGBElt x, ratvec lambda, ShiftData SD)  = [string]:
+    let shifter = (ratvec->(vec,vec)): (ratvec v) (vec,vec): shifts(SD,v)
+    then tester = (Param->bool): (Param p) bool: is_unitary(p,shifter)
+    then LFD = localFD_hash(x,lambda,(SD.v_data, SD.hash_facet_inds))
+    then (Lvd,,,LFverts) = LFD
+    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    then LvdZero = to_vertex_data(vlistZero)
+    then pol_nums = localKchars(LFD)
+    then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
+    	      IUCL, CLBF, statuses)
+    in local_test(x, lambda, Lvd, LFverts, eq, gr, CLBF, statuses,
+       tester)
+
+set localDV_test(KGBElt x, ratvec lambda, ShiftData SD)  = [string]:
+    let shifter = (ratvec->(vec,vec)): (ratvec v) (vec,vec): shifts(SD,v)
+    then hts = next_heights(parameter(x,lambda,0*lambda),2)
+    then tester = (Param->bool): (Param p) bool: is_unitary_test(p,
+    	 hts[0], hts[1], shifter)
+    then LFD = localFD_hash(x,lambda,(SD.v_data, SD.hash_facet_inds))
+    then (Lvd,,,LFverts) = LFD
+    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    then LvdZero = to_vertex_data(vlistZero)
+    then pol_nums = localKchars(LFD)
+    then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
+    	      IUCL, CLBF, statuses)
+    in local_test(x, lambda, Lvd, LFverts, eq, gr, CLBF, statuses,
+       tester)
+
+set sphericalDV(RealForm G) = [string]:
+    let SD = shift_data(G)
+    in localDV(x_open(G),G.rho,SD)
+
+set sphericalDV_test(RealForm G) = [string]:
+    let SD = shift_data(G)
+    in localDV_test(x_open(G),G.rho,SD)
 
 {Only works for Sp or maybe SO(odd)}
 set smallTest(RealForm G) = bool:
