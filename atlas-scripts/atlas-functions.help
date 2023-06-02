@@ -1191,10 +1191,14 @@ walls_attitude: (RootDatum,[int]->WeylElt) classify alcove up to translation
   are equal to it up to a translation; this function determines a Weyl group
   element that witnesses this from the set of walls of the alcove, represented
   by a list of root indices as retuned by the 'walls' for an interior point of
-  the alcove. The list will contain both positive and negative roots, and the
-  distinction between a root and its opposite is vital here. In general the Weyl
-  group element is not unique; it would be unique is we were to limit
-  translations by weights in the root lattice, but information for that
+  the alcove. The set of root indices must be that of the walls of some alcove,
+  so in the W-orbit of the set of walls of the fundamental alcove (necessary
+  conditions for this is the absence of acute angles, and a number of walls
+  equal to the sum of the semisimple rank and the number of connected components
+  of the Dynkin diagram). The list will contain both positive and negative
+  roots, and the distinction between a root and its opposite is vital here. In
+  general the Weyl group element is not unique; it would be unique if we were to
+  limit translations by weights in the root lattice, but information for that
   classification of alcoves requires more information than just its wall set.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on

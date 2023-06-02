@@ -1327,8 +1327,8 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
 	result.emplace_back(s,Delta[s]);
 	const auto& pi=rs.root_permutation(Delta[s]);
-	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
-	  Delta[t]=pi[Delta[t]];
+	for (auto& entry : Delta) // apply |pi| to |Delta[t]|
+	  entry=pi[entry];
 	break;
       }
   while (s<rank);

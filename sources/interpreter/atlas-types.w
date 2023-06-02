@@ -1921,6 +1921,23 @@ void walls_attitude_wrapper (expression_base::level l)
   { int wall = force<int_value>(wall_obj.get())->int_val();
     walls.insert(internal_root_index(rd->val,wall,false));
   }
+
+  for (auto it=walls.begin(); it(); ++it)
+    for (auto jt=std::next(it); jt(); ++jt)
+      if (rd->val.bracket(*it,*jt)>0)
+      { std::ostringstream o;
+        o << "Roots set involves roots with acute angle: "
+          << convert_to_signed_root_index(rd->val,*it)->int_val() << " and "
+          << convert_to_signed_root_index(rd->val,*jt)->int_val();
+        throw runtime_error(o.str());
+      }
+
+  if (walls.size()<rd->val.fundamental_alcove_walls().size())
+  { std::ostringstream o;
+    o << "Too few walls: " << walls.size() << " < "
+      << rd->val.fundamental_alcove_walls().size();
+    throw runtime_error(o.str());
+  }
   if (l!=expression_base::no_value)
     push_value(std::make_shared<W_elt_value> @|
      (rd,rd->W().element(weyl::from_fundamental_alcove(rd->val,walls))));
