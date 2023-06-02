@@ -33,7 +33,7 @@ set_type ShiftData = (RealForm real_form, VertexData v_data
 {IL_hash lists all integrality labels in the order found; up_inds[j] is the
 	 location of bup for label #j in hash_up}
 set_type ShiftDataFast = (RootDatum root_datum, {VertexData v_data,} vec up_inds,
-	 vec down_inds, vec_hash IL_hash, vec_hash hash_up, vec_hash hash_down)
+	 vec down_inds, vec_hash IL_hash, vec_hash hash_up, vec_hash hash_down, mat PCR, mat coder)
 
 set shift_data(RealForm G) = ShiftData:
     let old_codim = facet_codim
@@ -55,21 +55,39 @@ set shift_data(RealForm G) = ShiftData:
 		       od
     in (G, vd, FPPh, FBs, rat_lookups, vec_lookups, hashUp, hashDown)
 
-{identifies the facet of a dominant gamma}
-set integrality_label(RootDatum G, ratvec gamma) = vec:
-    let PCR = G.poscoroots
-    then vals = gamma*PCR
+{adds zero coroots so total number is divisible by 3}
+set PCR3(RootDatum rd) = mat:
+    let PCR = rd.poscoroots, zero = null(rd.rank)
+    then () = if #PCR % 3 > 0 then PCR:=PCR#zero fi
+    then () = if #PCR % 3 = 2 then PCR:=PCR#zero fi
+    in PCR
+
+{p by 3p matrix used in integrality_label}
+set coder(int p) = mat:
+    let zero = null(3*p)
+    {construct the 3p by p transpose matrix}
+    then CT = mat: for j:p do let row = zero
+    	      	       	      then () = for i:3 do row[3*j +i]:= 64^i od
+			      in row
+			   od
+    in ^CT
+
+{identifies the facet of a dominant gamma; assume #PCR divisible by 3}
+set integrality_label(mat PCR, mat coder, ratvec gamma) = vec:
+    let vals = gamma*PCR
     then x = vec: for v in vals
        	    do let r = v%1
-	       in if r=0 then v.numer
-		  else (r-v).numer - 1
+	       in if r=0 then v.numer + 32
+		  else (r-v).numer + 31
 		  fi
 	    od
-    in vec: for j:((#x)\3)
+    in coder*x
+{    in vec: for j:((#x)\3)
        	    do x[3*j] + 32 + 64*(x[3*j+1] + 32) + 4096*(x[3*j+2] + 32)
-	    od # sum( for i:(#x)%3 from 3*(#x\3)
-	       	      do 64^(i%3)*(x[i] + 32)
-	    	      od )
+	    od }
+
+set integrality_label(RootDatum rd, ratvec gamma) = vec:
+    integrality_label(PCR3(rd), coder((#rd.poscoroots+2)\3), gamma)
 
 {dom ratweight in the FPP for E8 or smaller gives label value between -32 and 31
  on pos coroot. So record values in threes as x_{3j} + 32, 64*(x_{3j+1}+32),
@@ -290,7 +308,7 @@ set shift_data_fastBC(RootDatum rd) = ShiftDataFast:
 	    then () = down_inds:=down_inds# hash_down.match(bdown)
 	    in ()
 	 od
-    in (rd, {vd,} up_inds, down_inds, IL_hash, hash_up, hash_down)
+    in (rd, {vd,} up_inds, down_inds, IL_hash, hash_up, hash_down, PCR3(rd), coder((#rd.poscoroots+2)\3))
 
 set shift_dataG(RealForm G) = ShiftData:
     let () = facet_codim:=-1
@@ -359,8 +377,8 @@ set shifts(ShiftData shift_data, Param p) = (vec, vec):
 set shiftsFast(ShiftDataFast shift_data_fast, ratvec gamma) = (vec, vec):
     let () = shift_count.use()
       {next vec indexes the facet of gamma}
-    then (rd,up_inds,down_inds,IL_hash,hash_up,hash_down) = shift_data_fast
-    then ell =integrality_label(rd,gamma)
+    then (rd,up_inds,down_inds,IL_hash,hash_up,hash_down,PCR,coder) = shift_data_fast
+    then ell =integrality_label(PCR,coder,gamma)
     then j=IL_hash.lookup(ell)
     in if j>=0 then (hash_up.index(up_inds[j]),
 		    hash_down.index(down_inds[j]))
