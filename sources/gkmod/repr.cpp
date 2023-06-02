@@ -299,7 +299,7 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
-
+// find element in |(1-theta)X^*| with same evaluation on all integral coroots
 Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
@@ -323,6 +323,7 @@ Weight Rep_context::theta_1_preimage
   return codec.theta_1_image_basis * (codec.out * eval_v);
 }
 
+// offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
 RatWeight Rep_context::offset
   (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {

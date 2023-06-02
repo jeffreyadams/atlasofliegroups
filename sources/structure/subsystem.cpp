@@ -242,7 +242,7 @@ integral_datum_item::codec::codec
 
   auto rank = diagonal.size();
   in  = std::move(row); // keep full coordinate transform
-  out = col.block(0,0,col.n_rows(),rank); // chop part for final zero entries
+  out = col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
 }
 
 } // |namespace subdatum|

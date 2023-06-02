@@ -1394,16 +1394,17 @@ negative (co)roots) to the unsigned internal root numbering, while checking that
 the index is in the valid range.
 
 @< Local function definitions @>=
-RootNbr internal_root_index(const RootDatum& rd, int index, bool is_coroot)
+RootNbr internal_root_index
+  (const RootSystem& rs, int index, bool is_coroot)
 {
-  RootNbr npr = rd.numPosRoots();
-  RootNbr alpha = npr+index;
-  if (alpha>=2*npr)
+  const int alpha_signed = index+rs.numPosRoots();
+  // cast not necessary here; unsigned arithmetic
+  if (static_cast<RootNbr>(alpha_signed) >= rs.numRoots())
   { std::ostringstream o;
     o << "Illegal "<< (is_coroot ? "co" : "") << "root index " << index;
     throw runtime_error(o.str());
   }
-  return alpha;
+  return alpha_signed; // reinterpret as unsigned
 }
 
 @ The following functions allow us to look at individual simple roots and simple
@@ -1431,29 +1432,41 @@ void coroot_wrapper(expression_base::level l)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
 
-@ Also important are look-up functions for roots and coroots.
+@ Also important are look-up functions for roots and coroots. Conversion from
+unsigned internal numbering of roots to external signed numbering, or vice
+versa, is painful due to \Cpp\ semantics. The signed-ness conversion between
+same size integers is given precise a specification in all cases only in the
+direction from signed to unsigned; in the opposite direction this is so only if
+the value can be represented in the signed type. But at the same time arithmetic
+with mixed signed-ness of operands will be performed unsigned, and this should
+be avoided when a potentially negative result is to be computed. We define a
+helper function |convert_to_signed_root_index| to do this conversions safely.
 
 @< Local function definitions @>=
+
+shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
+{
+  assert(alpha < rs.numRoots());
+  int sa = alpha;
+  sa -= static_cast<int>(rs.numPosRoots());
+  // cast is necessary, blame the \Cpp\ standard
+  return std::make_shared<int_value>(sa); // uses signed interpretation
+}
+@)
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.root_index(alpha->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value(convert_to_signed_root_index
+      (rd->val,rd->val.root_index(alpha->val)));
 }
 @)
 void coroot_index_wrapper(expression_base::level l)
 { shared_vector alpha_v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value
+    (convert_to_signed_root_index(rd->val,rd->val.coroot_index(alpha_v->val)));
 }
 
 @ The library knows additive decompositions of roots and coroots into simple
@@ -1529,13 +1542,11 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 @)
@@ -1546,13 +1557,11 @@ void coroot_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 
@@ -1979,27 +1988,23 @@ first |stab_rank| entries, and in |final| the one following it.
 @< Check validity of root indices in |v->val| and... @>=
 {
   RootNbrList walls; walls.reserve(v->val.size());
-  const unsigned int npr = rd->val.numPosRoots();
   for (const auto& entry : v->val)
   { int r = force<int_value>(entry.get())->int_val();
       // could be positive or negative
-    if (r+npr < rd->val.numRoots()) // unsigned comparison
-      walls.push_back(r+npr); // convert to internal index
-    else
-    { std::ostringstream o;
-      o << "Invalid root number " << r;
-      throw runtime_error(o.str());
-    }
+    walls.push_back(internal_root_index(rd->val,r,false)); // convert to internal
   }
 
-  for (const RootNbr& alpha : walls)
-    for (const RootNbr& beta : walls)
-      if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
-      { std::ostringstream o;
-        o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
-          << " have acute angle.";
-        throw runtime_error(o.str());
-      }
+  { const int npr = rd->val.numPosRoots();
+    // for convenience; converted to signed
+    for (const RootNbr& alpha : walls)
+      for (const RootNbr& beta : walls)
+        if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
+        { std::ostringstream o;
+          o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
+            << " have acute angle.";
+          throw runtime_error(o.str());
+        }
+  }
   stab = RootNbrSet(rd->val.numRoots(),&walls[0],&walls[stab_rank]);
   final = walls[stab_rank];
 }
@@ -4396,23 +4401,25 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
   if (alpha<kgb.rank()) // do simple cross action
     x->val= kgb.cross(alpha,x->val);
   else // do non-simple cross action
-    x->val = cross(kgb,x->val,npr+alpha);
+    x->val = cross(kgb,x->val,rd.posRootNbr(alpha));
   push_value(std::move(x));
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4424,7 +4431,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
   }
   else // do (inverse) Cayley transform through arbitrary root
   { try
-    {@; x->val= any_Cayley(kgb,x->val,npr+alpha); }
+    {@; x->val= any_Cayley(kgb,x->val,rd.posRootNbr(alpha)); }
     catch (std::runtime_error&) {}
       // ignore undefined Cayley error, leave |x| unchanged
   }
@@ -4443,8 +4450,9 @@ defined if |v==3|.
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4456,7 +4464,7 @@ void KGB_status_wrapper(expression_base::level l)
   }
   else
   {
-    alpha += npr; // convert to general root number
+    alpha = rd.posRootNbr(alpha); // convert to general root number
     unsigned stat=kgb::status(kgb,x->val,alpha);
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {
