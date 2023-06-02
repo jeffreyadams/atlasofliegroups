@@ -7,6 +7,8 @@
   For license information see the LICENSE file
 */
 
+#include <algorithm>
+
 #include "tags.h"
 #include "alcoves.h"
 #include "arithmetic.h"
@@ -135,47 +137,84 @@ RootNbrSet wall_set
   return result;
 } // |wall_set|
 
-// list of |walls| excluding |integrals| sorted by decreasing labels for |walls|
-sl_list<RootNbr> sorted_by_label
-  (const RootSystem& rs, RootNbrSet walls, const RootNbrSet& integrals)
+// labels for one connected component |comp| of a wall set (nonzero, at least one 1)
+int_Vector labels_for_component (const RootSystem& rs, const RootNbrSet& comp)
 {
-  RootNbrList roots(walls.begin(),walls.end());
+  int_Matrix A(rs.rank(),comp.size());
+  { unsigned int j=0;
+    for (auto alpha : comp)
+      A.set_column(j++,rs.coroot_expr(alpha));
+  }
+  A = lattice::kernel(A);
+  assert(A.n_columns()==1 and A(0,0)!=0); // one relation between coroots
+  auto result = A.column(0);
+  if (result[0]<0)
+    result.negate(); // ensure coefficients are positive
+  return result;
+} // |labels_for_component|
+
+// list of |walls| excluding |integrals| sorted by decreasing labels for |walls|
+sl_list<RootNbr> sorted_by_label (const RootSystem& rs, const RootNbrSet& walls)
+{
   int_Vector labels(rs.numRoots(),0);
 
-  auto comps = rootdata::components(rs,walls); // a list of subsets of |walls|
-  for (auto& comp : comps)
+  for (const auto& comp : rootdata::components(rs,walls))
   {
-    int_Matrix A(rs.rank(),comp.size());
-    { unsigned int j=0;
-      for (auto alpha : comp)
-	A.set_column(j++,rs.coroot_expr(alpha));
-    }
-    int_Matrix k = lattice::kernel(A);
-    assert(k.n_columns()==1 and k(0,0)!=0); // one relation between coroots
-    if (k(0,0)<0)
-      k.negate(); // ensure coefficients are positive
+    auto lab = labels_for_component(rs,comp);
 
     // now copy values from |k.column(0)| to |labels| at appropriate positions
     unsigned int i=0; // position within |comp|
     for (auto alpha : comp)
-      labels[alpha] = k(i++,0);
+      labels[alpha] = lab[i++];
   } // |for(comp : comps)|
 
-  sl_list<std::pair<int,RootNbr> > non_ints;
+  sl_list<std::pair<int,RootNbr> > pairs;
   for (auto alpha : walls)
   {
     assert(labels[alpha]!=0);
-    if (not integrals.isMember(alpha))
-      non_ints.emplace_back(-labels[alpha],alpha);
+    pairs.emplace_back(-labels[alpha],alpha);
   }
 
-  non_ints.sort();
+  pairs.sort();
   sl_list<RootNbr> result;
-  for (const auto& e : non_ints)
+  for (const auto& e : pairs)
     result.push_back(e.second);
 
   return result;
 } // |sorted_by_label|
+
+WeylWord from_fundamental_alcove (const RootSystem& rs, RootNbrSet& walls)
+{
+  RootNbrSet aside (rs.numRoots());
+  for (const auto& comp : rootdata::components(rs,walls))
+  {
+    auto lab = labels_for_component(rs,comp);
+    auto it = std::find(lab.begin(),lab.end(),1); // find one label equal to 1
+    assert(it!=lab.end());
+    RootNbr special = *std::next(comp.begin(),it-lab.begin());
+    aside.insert(special); walls.remove(special);
+  }
+  RootNbrList wall_vec (walls.begin(),walls.end());
+  auto list = to_positive_system(rs,wall_vec);
+#ifndef NDEBUG
+  walls.reset();
+  for (RootNbr alpha : wall_vec)
+    assert(rs.is_simple_root(alpha)),walls.insert(alpha);
+  for (RootNbr beta : aside)
+  {
+    for (const auto& p : list)
+      beta = rs.reflected_root(p.second,beta);
+    walls.insert(beta);
+  }
+  assert(walls == rs.fundamental_alcove_walls());
+#else // just make it so without check
+  walls = rs.fundamental_alcove_walls();
+#endif
+  WeylWord result; result.reserve(list.size());
+  for (const auto& p : list)
+    result.push_back(rs.simpleRootIndex(wall_vec[p.first]));
+  return result;
+}
 
 /*
   Get fractional parts of wall evaluations, for special point in alcove.
