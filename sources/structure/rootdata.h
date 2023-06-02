@@ -47,8 +47,8 @@ void toDistinguished(WeightInvolution&, const RootDatum&);
 
 /* Transform each element ow |Delta| under $W$ until all are posroot numbers
    Return for each step: index at which negroot was found, and reflection index.
-   List is in order so that simple reflections transform original |Delta| into
-   the final one (which is opposite to the order in which the pairs were found).
+   List is in order so that the reflections transform original |Delta| into the
+   final one (which is the order in which the pairs were found).
 */
 sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
   (const RootSystem& rs, RootNbrList& Delta);

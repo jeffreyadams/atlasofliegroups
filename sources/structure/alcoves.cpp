@@ -1079,7 +1079,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
   while(true) // loop through all sublists of |coset_lists|
   { // last sublists, giving leftmost factor, will vary most rapidly
     auto w = states.back().w;
-    auto steps = to_positive_system(rd,states.back().image);
+    const auto steps = to_positive_system(rd,states.back().image);
     for (const auto& step : steps)
     {
       assert(W.prod(w,int_gens[step.first])==
