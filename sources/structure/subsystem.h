@@ -42,7 +42,6 @@ namespace subsystem {
   in effect and roots of the subsystem are also roots of the parent system.
 */
 
-// A subsystem on the dual side of a given root datum
 class SubSystem : public RootSystem // new system, subsystem of parent
 {
   const RootDatum& rd; // parent root datum
@@ -129,8 +128,7 @@ class SubSystem : public RootSystem // new system, subsystem of parent
     void simple_coreflect(matrix::Vector<C>& v,weyl::Generator s,int d=0) const
   { parent_datum().coreflect(v,parent_nr_simple(s),d); }
 
-  ext_gens fold_orbits (const WeightInvolution& delta) const; // as for |srd|
-  RankFlags singular_generators(const RatWeight& gamma) const; // as for |srd|
+  RankFlags singular_generators(const RatWeight& gamma) const;
 
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
@@ -157,7 +155,7 @@ class SubSystemWithGroup : public SubSystem
 
 struct integral_datum_entry // hashable (integral) subset of positive roots
 {
-  RootNbrSet posroots; // as set of posroot indices, so starting at 0
+  RootNbrSet posroots; // all integrals, as set of posroot indices starting at 0
 
   integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
 
@@ -175,9 +173,9 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 
 class integral_datum_item
 {
+  const WeylGroup& W;
   std::unique_ptr<SubSystem> // pointer level avoids |SubSystem| being moved
-    integral; // references full root datum, presents integral datum
-  int_Matrix simple_coroots; // convenience, for creating |codec| values
+    int_sys_p; // references full root datum, presents integral datum
 
  public:
 /* below, |in| will coordinate transform from simple coroot evaluations to
@@ -187,7 +185,7 @@ class integral_datum_item
 */
   struct codec
   {
-    const int_Matrix& coroots_matrix;
+    const int_Matrix coroots_matrix;
     const int_Matrix& theta_1_image_basis; // basis of $N=\Im(\theta-1)$
     std::vector<int> diagonal; // inv.factors for $N$ inside $-1$ eigenlattice
     int_Matrix in, out;
@@ -198,12 +196,19 @@ class integral_datum_item
   }; // |struct integral_datum_item::codec|
 
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
-  integral_datum_item(integral_datum_item&&)=default; // move, never copy
+  integral_datum_item(integral_datum_item&& other) // move, never copy
+    : W(other.W)
+    , int_sys_p(std::move(other.int_sys_p))
+  {}
 
-  const SubSystem& int_system() const { return *integral; }
-  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
-  { return { ic,isys,inv,simple_coroots }; }
-  const int_Matrix& coroots_matrix() const { return simple_coroots; }
+  const SubSystem& sub_sys () const { return *int_sys_p; }
+  // root indices of images by |w| of integrally-simple coroots; must be positive
+  sl_list<RootNbr> image_simples(const WeylElt& w) const;
+  int_Matrix coroots_matrix(const WeylElt& w) const;
+  SubSystem int_system(const WeylElt& w) const;
+  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv,
+	     const WeylElt& w) const
+  { return { ic,isys,inv, coroots_matrix(w) }; }
 
 }; // |class integral_datum_item|
 

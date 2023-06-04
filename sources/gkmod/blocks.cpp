@@ -697,12 +697,17 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
+RootNbrList common_block::int_simples() const // simply integral roots
+{ const auto& int_datum_item = inner_class().int_item(int_sys_nr);
+  return int_datum_item.image_simples(w).to_vector();
+}
+
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
+  RootNbrList simples = int_simples();
   RankFlags result;
   for (weyl::Generator s=0; s<rank(); ++s)
-    result.set(s,root_datum().coroot(integral_sys.parent_nr_simple(s))
-				    .dot(gamma.numerator())==0);
+    result.set(s,root_datum().coroot(simples[s]).dot(gamma.numerator())==0);
   return result;
 }
 
@@ -722,7 +727,8 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , integral_sys(ctxt.subsys()) // copy reference, which is into |ic.int_table|
+  , int_sys_nr(ctxt.base_integral_nr())
+  , w(ctxt.integral_attitude())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -734,11 +740,12 @@ common_block::common_block // full block constructor
 
   const InvolutionTable& i_tab = ic.involution_table();
   const KGB& kgb = rc.kgb();
+  const SubSystem& int_sys = ctxt.subsys();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
+    DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
-  const unsigned our_rank = integral_sys.rank();
+  const unsigned our_rank = int_sys.rank();
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy
@@ -763,7 +770,7 @@ common_block::common_block // full block constructor
 	}
 	// otherwise try next |s|
       } // |for(s)|
-    while(s<our_rank); // loop until no ascents found in |integral_sys|
+    while(s<our_rank); // loop until no ascents found in |int_sys|
   }
   highest_x=z.x();
   // end of step 2
@@ -778,15 +785,15 @@ common_block::common_block // full block constructor
     const InvolutionNbr theta = kgb.inv_nr(highest_x);
     // generating reflections are by subsystem real roots for |theta0|
     RootNbrSet pos_real = // as subset of full root datum posroots
-      integral_sys.positive_roots() & i_tab.real_roots(theta);
+      int_sys.positive_roots() & i_tab.real_roots(theta);
     const RootNbrList generator_roots = rd.simpleBasis(pos_real);
     std::vector<WeylWord> reflect(generator_roots.size());
     for (unsigned i=0; i<generator_roots.size(); ++i)
     {
-      auto alpha = // generating root expressed as root for |integral_sys|
-	integral_sys.from_parent(generator_roots[i]);
+      auto alpha = // generating root expressed as root for |int_sys|
+	int_sys.from_parent(generator_roots[i]);
       assert(alpha!=RootNbr(-1)); // renaming to subsystem should work
-      reflect[i] = integral_sys.reflection_word(alpha); // word in integral gen's
+      reflect[i] = int_sys.reflection_word(alpha); // word in integral gen's
     }
 
     containers::sl_list<StandardReprMod> queue { z };
@@ -978,7 +985,7 @@ common_block::common_block // full block constructor
 	  LL packet;
 
 	  RootNbrSet pos_imag = // subsystem positive imaginary roots
-	    integral_sys.positive_roots() &
+	    int_sys.positive_roots() &
 	    i_tab.imaginary_roots(kgb.inv_nr(sample_x));
 	  RootNbrList imaginary_generators = rd.simpleBasis(pos_imag);
 
@@ -1073,7 +1080,8 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , integral_sys(ctxt.subsys()) // copy reference, which is into |ic.int_table|
+  , int_sys_nr(ctxt.base_integral_nr())
+  , w(ctxt.integral_attitude())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
@@ -1083,9 +1091,10 @@ common_block::common_block // partial block constructor
   info.reserve(elements.size());
   const auto& kgb = rc.kgb();
   const auto& i_tab = involution_table();
+  const auto& int_sys = ctxt.subsys();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_sys.Cartan_matrix().transposed());
+    DynkinDiagram(int_sys.Cartan_matrix().transposed());
 
   using y_list = containers::sl_list<RatWeight>; // |rgl| values, increasing
   struct inv_y_data
@@ -1131,7 +1140,7 @@ common_block::common_block // partial block constructor
   }
 
   // allocate link fields with |UndefBlock| entries
-  data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
+  data.assign(int_sys.rank(),std::vector<block_fields>(elements.size()));
 
   assert(info.size()==elements.size());
   auto it = elements.cbegin();
@@ -1139,7 +1148,7 @@ common_block::common_block // partial block constructor
   {
     EltInfo& z = info[i];
     const auto srm_z = *it;
-    for (weyl::Generator s=0; s<integral_sys.rank(); ++s)
+    for (weyl::Generator s=0; s<int_sys.rank(); ++s)
     {
       auto& tab_s = data[s];
       const auto stat = ctxt.status(s,z.x);
@@ -1257,9 +1266,7 @@ repr::StandardRepr common_block::sr
 }
 
 ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
-{
-  return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
-}
+{ return rootdata::fold_orbits(root_datum(),int_simples(),delta); }
 
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
@@ -1287,8 +1294,9 @@ void common_block::shift (const RatWeight& diff)
 #ifndef NDEBUG
   auto& ic = rc.inner_class();
   unsigned int int_sys_nr; // unused dummy
+  WeylElt w;
   const int_Matrix& int_ev =
-    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr);
+    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr,w);
   assert((int_ev*diff.numerator()).isZero());
 #endif
   for (auto& srm : z_pool)

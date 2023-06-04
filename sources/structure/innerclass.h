@@ -27,7 +27,7 @@
 #include "subsystem.h"  // containment of |integral_datum_item|
 #include "poset.h"	// containment of Cartan poset
 #include "rootdata.h"	// containment of root datum and its dual
-#include "tits.h"	// containment of Tits group and its dual
+#include "tits.h"	// containment of TitsGroup (and so TwistedWeylGroup)
 
 namespace atlas {
 
@@ -473,25 +473,27 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr);
-  subsystem::integral_datum_item& int_item
-    (const RootNbrSet& int_posroots, unsigned int& int_sys_nr);
-  // same when |int_sys_nr| has already been computed:
-  const subsystem::integral_datum_item& int_item(unsigned int int_sys_nr) const
+    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w);
+  // same when |int_sys_nr| and |w| have already been computed:
+  const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
   const subsystem::integral_datum_item::codec integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
-  { auto& item = int_item(gamma,int_sys_nr); // this ensures |int_sys_nr| is set
-    return item.data(*this,int_sys_nr,inv);
+  { WeylElt w;
+    auto& item = int_item(gamma,int_sys_nr,w); // sets |int_sys_nr| and |w|
+    return item.data(*this,int_sys_nr,inv,w);
   }
 
   // evaluation matrix on integral coroots
-  const int_Matrix& integral_eval(unsigned int int_sys_nr) const
-  { return int_table[int_sys_nr].coroots_matrix(); }
-  const int_Matrix& integral_eval
-    (const RatWeight& gamma, unsigned int& int_sys_nr)
-  { return int_item(gamma,int_sys_nr).coroots_matrix(); }
+  const int_Matrix integral_eval
+    (unsigned int int_sys_nr, const WeylElt& w) const
+  { return int_table[int_sys_nr].coroots_matrix(w); }
+  const int_Matrix integral_eval
+    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
+  { const subsystem::integral_datum_item& item=int_item(gamma,int_sys_nr,w);
+    return item.coroots_matrix(w);
+  }
 
 // pseudo manipulator
 
