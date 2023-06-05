@@ -1,11 +1,36 @@
-<geck_generic { for |Springer_table_generic_degrees| }
-<nci_nilrad_roots.at {for all_sums@([ratvec])}
-<restricted_roots.at {for remove_zeros@[vec]}
-<truncated_induction.at {for induce_orbit}
+< geck_generic { for max_Levi_subgroups@RootDatum }
+{<nci_nilrad_roots.at {for all_sums@([ratvec])}}
+{ <restricted_roots.at {for remove_zeros@[vec]}}
+< truncated_induction.at {for induce_orbit}
+< nilpotent_centralizer.at {for centralizer@ComplexNilpotent}
+{
 
-{The Lusztig map goes from triples (O,x,xi) to W^; here O is special,
-x is in Lusztig's quotient of the component group A-bar(O), and xi is
-a representation of A-bar(O)^x.
+What comes below is an introduction to an unfinished idea for starting
+with (endoscopic E, pseudoLevi M, (assumed special?) nilpotent OEM in
+EM = "E\cap M"; EM is a pseudoLevi in E and endoscopic in M. Want to
+assume perhaps
+
+OE = saturation from EM to E of OEM, assumed special?
+OM = induce from EM to M of OEM, assumed special?
+
+O = saturation from M to G of OM
+  assumed = induce from E to G of OE
+  NOT assumed special.
+
+The nice thing about the data is that it's pretty symmetric in G and
+G-dual.  First few functions aim to compute a W-rep from the data; I
+never understood fully or completely what was supposed to happen here,
+so they are a little foggy THROUGH A_bar_test.
+
+}
+
+{
+
+The functions after sigma_lusztig_simple are a bit clearer. The
+Lusztig map goes from triples (O,x,xi) to W^; here O is special, x is
+(a conjugacy class in) Lusztig's quotient of the component group
+A-bar(O), and xi is a representation of A-bar(O)^x. It's known that
+the classes in A(O) (also for non-special O) are indexed 
 
  This file implements an algorithm (conjectural) to implement and
  generalize Lusztig's map when xi=1. For us O is any nilpotent orbit, x~ in the
@@ -17,18 +42,11 @@ a representation of A-bar(O)^x.
 Each element x in A(O) has representatives x~ satisfying this
 specialness requirement. One of them is the Sommers-McNinch M, in
 which O_M is distinguished. This is what we use in the base functions
-(like show_lusztig_cells). The "plus" versions try also som larger M
+(like show_lusztig_cells). The "plus" versions try also some larger M
 (subject to **).
 
 The set obtained for fixed special O, running over x, is (almost always) a Lusztig
 (left) cell.
-
-The anomaly at present is that if O is the funny special in E7
-(dim(sigma(O)) = 512) then algorithm gives for x in nonidentity component
-
-sigma(O,x) = Springer for maximal O' in O-bar.
-
-Lusztig's def is sigma(O,x) = zero rep.
 
 G, O = nilpotent orbit for G, x\in A-bar(O), representative x~ in G
 for x MAKING O SPECIAL IN G^x`
@@ -54,6 +72,23 @@ occurrence of sigma in harmonic polys.}
 set codegree(CharacterTable ct) = (int i)int:
     #ct.root_datum.posroots - ct.top_degree(i)
 
+{condition is that O is not contained in any proper Levi. This implies
+even and special}
+set is_distinguished(ComplexNilpotent O) = bool:
+    let S = centralizer(O), rd = O.root_datum
+    in S.semisimple_rank = 0 and S.rank = rd.rank-rd.semisimple_rank
+
+{condition is special, plus dual orbit is distinguished. A rigid
+special orbit is dual_distinguished, but not conversely}
+
+set is_dual_distinguished(SpringerTable stG, ComplexNilpotent O) = bool:
+    is_special(stG,O) and
+    is_distinguished(stG.dual_map(O))
+
+set is_dual_distinguished(ComplexNilpotent O) = bool:
+    let stG = (O.root_datum).Springer_table
+    in is_dual_distinguished(stG,O)
+
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user.
 arguments:
  G given group with its coordinate, need this to compute roots of L in G
@@ -74,11 +109,11 @@ right answer?}
 {Don't know how (given OG, M, OM) to construct "corresponding" E and OE. Probably want
 
 1a) OM distinguished in M (OR AT LEAST SPECIAL)
-1b) saturation from M to G of OM = something in special piece of OG
+1b) saturation from M to G of OM = OG, or something in special piece of OG
 
-2a) OE "weakly rigid" (OR AT LEAST SPECIAL) in E (means dual OEv is
-    distinguished in Ev)
-2b) induce_orbit(OE,G) = something in special piece of OG
+2a) OE "weakly rigid" (OR AT LEAST SPECIAL) in E (means special, and
+    dual OEv  is distinguished in Ev) 
+2b) induce_orbit(OE,G) = OG, or something in special piece of OG
 
 3a) OME distinguished in ME (OR AT LEAST SPECIAL)
 3b) saturation from ME to E of OME = OE
@@ -434,58 +469,10 @@ set special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNi
 			 fi
 		     od.##
 
-{Given a nilpotent OG for G, and (M,OM,x-tilde) pseudoLevi meeting OG
-in (distinguished?) OM, so (M,OM) represents class in A(OG) mod
-center, find all endoscopic E, special nilpotent OE so OE meets ME in
-OEM, so OG = induce_orbit(G,OE), OM = induce_orbit(M,OEM). HOPE such
-exist by hints in Lusztig orange book, 13.3. Idea: set Mbig =
-centralizer(G,xtilde), OMbig = induce_orbit(Mbig, OM), (M,OM) =
-Bala-Carter(Mbig,OM). Returns [(E,OE,ME,OME)]}
-{
-set special_ind(SpringerTable stG, RootDatum M, ComplexNilpotent OM,
-ratvec xM) = [(RootDatum, ComplexNilpotent, RootDatum, ComplexNilpotent)]:
-let G = stG.root_datum, stM = M.Springer_table
-then OG = complex_nilpotent(G,OM.H)
-then i = stG.springer(OG) {number of Springer(OG) in character table},
-     ctG = stG.ct
-in for (ME,OME) in special_ind(stM,OM)
-{if OMEvee special in proper Levi ME1 of ME, then OME is indudced from OME1}
-{So take ME MINIMAL, get OME dual to distinguished}
-{run over E endoscopic containing ME, E-saturation OE of OME SPECIAL}
-   do let crs = component_representatives_plus(OE)
-      in for (ME,HME,xME) in crs
-	 do let Mbig = centralizer(G,xME), OME = complex_nilpotent(ME,HME)
-	    then OMbig = induce_orbit(Mbig,OME)
-	    then Mtest = Bala_Carter_Levi(OMbig), (,HMtest) = Bala_Carter_Levi_plus(OMbig)
-	    then OMtest = complex_nilpotent(Mtest,HMtest)
-	    in if is_conjugate(G,M,Mtest) then [(E,OE,ME,OME)]
-	       else []
-	       fi
-	 od.##
-   od.##
-}
-
-set special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNilpotent)]:
-    let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
-    then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
-    then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
-    in [(RootDatum, ComplexNilpotent)]:
-    	 for E in Es do if #E.posroots >= d
-	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
-			     in for OE in stE.special_orbits
-			     	do if OE.dim = Edim and
-				      induce_orbit(G,OE) = OG
-				   then [(E,OE)]
-				   else[]
-				   fi
-				od.##
-			 else[]
-			 fi
-		     od.##
-
-
-set best_special_ind(SpringerTable stG, ComplexNilpotent OG) = [(RootDatum, ComplexNilpotent)]:
-    let comp_reps = #pseudo_Levis(OG) {this is number of classes in A(OG)/(image of Z(G))}
+set best_special_ind(SpringerTable stG, ComplexNilpotent OG) =
+    [(RootDatum, ComplexNilpotent)]:
+    let comp_reps = #pseudo_Levis(OG)
+    	{this is number of classes in A(OG)/(image of Z(G))}
     then special_inds = special_ind(stG,OG)
     then comp_rep_sizes = for (,OE) in special_inds do #pseudo_Levis(OE) od
     then maxcr = max(comp_rep_sizes)
@@ -576,14 +563,16 @@ set rigid_special_orbits(RootDatum G) = [ComplexNilpotent]:
 	  fi
        od.##
 
-set weakly_rigid_special_orbits(RootDatum G) = [ComplexNilpotent]:
+{all special orbits that are dual to distinguished}
+set dual_distinguished_special_orbits(RootDatum G) = [ComplexNilpotent]:
     let Gv = G.dual, stG = G.Springer_table
     then dist_orbits_dual = Gv.distinguished_orbits, stGv = Gv.Springer_table
     in for Ov in dist_orbits_dual
        do stGv.dual_map(Ov)
        od
 
-set rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
+{all ways OG is induced from endoscopic E, dual to distinguished special OE}
+set dual_distinguished_special_ind(SpringerTable stG, ComplexNilpotent OG) =
     [(RootDatum, ComplexNilpotent)]:
     let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
     then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
@@ -602,27 +591,9 @@ set rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
 			 fi
 		     od.##
 
-set weakly_rigid_special_ind(SpringerTable stG, ComplexNilpotent OG) =
-    [(RootDatum, ComplexNilpotent)]:
-    let i = stG.springer(OG) {number of Springer(OG) in character table}, ctG = stG.ct
-    then d = ctG.degree(i), {sigmaG = ctG.characters[i],} G = stG.root_datum
-    then Es = for Ev in pseudo_Levi_subgroups(G.dual) do Ev.dual od {endoscopic groups for G}
-    in [(RootDatum, ComplexNilpotent)]:
-    	 for E in Es do if #E.posroots >= d
-	       	     	then let stE = E.Springer_table, Edim = OG.dim - #G.roots + #E.roots
-			     in for OE in weakly_rigid_special_orbits(E)
-			     	do if OE.dim = Edim and
-				      induce_orbit(G,OE) = OG
-				   then [(E,OE)]
-				   else[]
-				   fi
-				od.##
-			 else []
-			 fi
-		      od.##
-
 {alternate way to get the same set? No: this one can be strictly smaller}
-set weakly_rigid_special_indB(SpringerTable stG, ComplexNilpotent OG) =
+set dual_distinguished_special_indB(SpringerTable stG,
+    ComplexNilpotent OG) =
     [(RootDatum, ComplexNilpotent)]:
     let G = stG.root_datum, Gv = stG.root_datum.dual
     then stGv = Gv.Springer_table, OGv = stG.dual_map(OG)
@@ -638,19 +609,95 @@ set weakly_rigid_special_indB(SpringerTable stG, ComplexNilpotent OG) =
 	   od.##
         od.##
 
+{Each component of A(OG) is represented by a pseudoLevi M and a
+distinguished OM in M, with saturation(OM) = OG. Defines a Sommers dual
+nilpotent OGvee = Ind_Mvee^Gvee (OMvee).}
+set Sommers_dual(ComplexNilpotent OG, ComplexNilpotent OM) =
+    ComplexNilpotent:
+{should test OM distinguished, saturation = OG}
+    let G=OG.root_datum, M = OM.root_datum
+    then () = assert(is_pseudo_Levi(G,M),
+"in Sommers_dual, "+M.nice_format+" is not a pseudoLevi in "+G.nice_format)
+    then () = assert(is_distinguished(OM),
+"in Sommers_dual, "+OM.H.to_string+" is not a distinguished component rep")
+    then () = assert(complex_nilpotent(G,OM.H) = OG,
+"in Sommers_dual, "+OM.H.to_string+" does not saturate to "+OG.H.to_string)
+    then stG = G.Springer_table, Gvee = G.dual, Mvee = M.dual,
+    	 stM = M.Springer_table
+    then OMvee = stM.dual_map(OM)
+    in induce_orbit(Gvee,OMvee)
+
+{output list indexed by components OM of A(OG)}
+set Sommers_duals(ComplexNilpotent OG) =
+    [ComplexNilpotent,ComplexNilpotent]:
+for (M,HM) in pseudo_Levis(OG)
+    do let OM = complex_nilpotent(M,HM)
+       in (OM, Sommers_dual(OG,OM))
+    od
+
+{Prop 2.6 of Achar tells how to calculate image of Achar duality. The
+result is the list of nilpotents OEvee in pseudoLevis Evee of Gvee
+defining components in the image of Achar duality.}
+set Achar_dual_image(ComplexNilpotent OGvee) = [ComplexNilpotent]:
+    let Gvee = OGvee.root_datum
+    then OEvees = pseudo_Levis(OGvee) {component OEvee for OGvee}
+    in for (Evee,Hvee) in OEvees
+       do let stEvee = Evee.Springer_table, E = Evee.dual,
+       	  OEvee = complex_nilpotent(Evee,Hvee)
+	  then OEG = Sommers_dual(OGvee,OEvee)
+       	  { then OE = stEvee.dual_map(OEvee)
+	  then OEG = induce_orbit(G,OE) {Sommers dual (OGvee,OEvee)}}
+	  in {check whether OEvee is in image of Achar duality}
+	  let good_OEMs = [(ComplexNilpotent,ComplexNilpotent)]:
+	      		  for (EM,HEM) in pseudo_Levis(OEG)
+	      		  do let OEM = complex_nilpotent(EM,HEM)
+			     in if Sommers_dual(OEG,OEM) = OGvee
+			     	then [(OEG,OEM)]
+			     	else []
+				fi
+			  od.##
+	   in if #good_OEMs > 0
+	      then [OEvee]
+	      else []
+	      fi
+        od.##
+{Each component of OG is represented by a pseudoLevi M and a
+distinguished OM in M, with saturation(OM) = OG. Defines a Sommers dual
+nilpotent OGvee = Ind_Mvee^Gvee (OMvee). The Achar dual of the pair is
+some component (OGvee, OEvee). This function returns OGvee and the
+candidates for OEvee: those which are Achar-dual to _some_ (OG',OM'). Output
+is (OGvee, [OEvee]). I haven't read Achar enough to tell how to pick
+the answer (OGvee, OEvee_correct).}
+set Achar_dual_cands(ComplexNilpotent OG, ComplexNilpotent OM) =
+    (ComplexNilpotent, [ComplexNilpotent]):
+    let G=OG.root_datum, M = OM.root_datum
+    then () = assert(is_pseudo_Levi(G,M),
+"in Achar_dual, "+M.nice_format+" is not a pseudoLevi in "+G.nice_format)
+    then () = assert(is_distinguished(OM),
+"in Achar_dual, "+OM.H.to_string+" is not a distinguished component rep")
+    then () = assert(complex_nilpotent(G,OM.H) = OG,
+"in Sommers_dual, "+OM.H.to_string+" does not saturate to "+OG.H.to_string)
+    {then stG = G.Springer_table, Gvee = G.dual, Mvee = M.dual,
+    	 stM = M.Springer_table
+    then OMvee = stM.dual_map(OM)
+    then OGvee = induce_orbit(Gvee,OMvee) {Sommers dual of (OG,OM)}}
+    then OGvee = Sommers_dual(OG,OM)
+    in (OGvee, Achar_dual_image(OGvee))
+
 {array [(orbit OGprime in special_piece(OG), [pairs (E,OE)]] with OE
 weakly rigid inducing to OGprime}
-set weakly_rigid_special_piece_ind(SpringerTable stG, ComplexNilpotent OG) =
+set dual_distinguished_special_piece_ind(SpringerTable stG,
+    ComplexNilpotent OG) =
     [(ComplexNilpotent,[(RootDatum, ComplexNilpotent)])]:
 for OGprime in special_piece(stG,OG)
-do (OGprime,weakly_rigid_special_ind(stG,OGprime))
+do (OGprime,dual_distinguished_special_ind(stG,OGprime))
 od
 
 {compute lusztig cell for one nilpotent; array has one entry for each
 component class in A(E_orbit)/(image of Z(E))}
-set lusztig_cell_test_wr (SpringerTable stG,ComplexNilpotent OG) =
+set lusztig_cell_test_dd (SpringerTable stG,ComplexNilpotent OG) =
       [(RootDatum,RootDatum,vec,[int],ComplexNilpotent)]:
-      let EOEs = weakly_rigid_special_ind(stG,OG)
+      let EOEs = dual_distinguished_special_ind(stG,OG)
       in for(E,OE) in EOEs
       	 do for (ME,H_ME) in pseudo_Levis(OE)
       	    do sigma_lusztig_testE(stG,E,ME,H_ME)
@@ -668,7 +715,7 @@ set lusztig_cell_test_bestE (SpringerTable stG,ComplexNilpotent OG) =
 
 set lusztig_cell_plus_testE (SpringerTable stG,ComplexNilpotent OG) =
       [[[(RootDatum,RootDatum,vec,[int],ComplexNilpotent)]]]:
-      let pieces = weakly_rigid_special_piece_ind(stG,OG)
+      let pieces = dual_distinguished_special_piece_ind(stG,OG)
       in for(,EOEs) in pieces
       	 do for (E,OE) in EOEs
       	    do for (ME,H_ME) in pseudo_Levis(OE)
@@ -682,7 +729,8 @@ set lusztig_cell_plus_testM (SpringerTable stG,ComplexNilpotent OG) =
       let pLs = pseudo_Levis(OG)
       in for (M,HM) in pLs
       	 do let stM = M.Springer_table
-	    then MEs = weakly_rigid_special_ind(stM,complex_nilpotent(M,HM))
+	    then MEs = dual_distinguished_special_ind(stM,
+	    	 complex_nilpotent(M,HM))
 	    in for (ME,OME) in MEs
 	    do sigma_lusztig_testM(stG,M,ME,OME.H)
 	    od
@@ -930,59 +978,6 @@ set A_bar_test(SpringerTable st)=(ComplexNilpotent
     ->([int],[[RootDatum]])):(ComplexNilpotent O):
 	A_bar_test(st,O)
 
-{test whether algorithm gives unique and same sigma over all variants
-of each component of a nilpotent orbit}
-{
-set test_test(SpringerTable st_G, ComplexNilpotent G_orbit) = bool:
-let data = lusztig_cell_plus_test(st_G,G_orbit)
-in all( for dataI in data
-   	do let (,,,j0,{,,}) = dataI[0]
-	   in all ( for (,,,j,{,,}) in dataI
-       	      	    do j=j0
-	 	    od)
-        od)
-}
-
-{ set test_test(SpringerTable st_G, [ComplexNilpotent] orbits) = bool:
-all(for G_orbit in orbits do test_test(st_G,G_orbit) od) }
-
-{ set test_test(SpringerTable st_G) = bool:
-test_test(st_G,st_G.orbits) }
-
-{ set test_test(RootDatum G) = bool:
-test_test(G.Springer_table) }
-
-{given special orbit O, list all W reps of degree \ge #pos_roots -
-(dim O)/2 that DO NOT appear in sigmas(O') for O' of dimension at most
-that of O. SO O SHOULD BE SPECIAL! These are candidates to appear be
-sigma(O,1,xi).}
-
-{set sigma_duals_missing0(SpringerTable st, ComplexNilpotent O) = [int]:
-    let G=st.root_datum, ct = st.ct
-    then () = assert(is_special(st,O),
-    	 "in sigma_duals_missing, "+O.diagram.to_string+" is not special for "+G.nice_format)
-    then specials = st.special_orbits
-    then position = first(for orbit@i in specials do O=orbit od)
-    then posSize = position {this will be the number of the last
-    special of same dimension as O}
-    then () = while posSize+1 < #specials and dim(specials[posSize+1]) = dim(O)
-    	 do posSize:=posSize+1
-	 od
-    then d = #G.posroots - O.dim\2
-    then above = [int]: for j:#ct.characters
-    	       	 	do if ct.degree(j) >= d
-    			   then [j]
-			   else []
-			   fi
-			od.##
-    in for j in above
-       do if none(for k:posSize+1 do is_member( sigmas_dual0(st,specials[k]) ) (j) od)
-       	  then [j]
-	  else []
-	  fi
-       od.##
-}
-
 {calculates the rep[s] obtained from a class in A(O), recorded as a
 pseudoLevi M and corresponding distinguished nilpotent OM. Algorithm
 is induction from sigma(OM) truncated by codegree.}
@@ -1018,8 +1013,7 @@ in for (M,HM) in pLs
 (not necessarily codegree on M}
 set sigma_lusztig_keep_trying(SpringerTable stG, ComplexNilpotent O) =
 [( ComplexNilpotent,[int], int)]:
-    {meant to return the list of (corr W reps, shift in codegree,
-    	   component of A(O))}
+    {meant to return the list of (component of A(O), corr W reps, shift in codegree)}
 let G = stG.root_datum, ctG = stG.ct
 then WctG = ctG.class_table
 then pLs = pseudo_Levis(O), sigmaG_special_num = ctG.special(stG.springer(O))
@@ -1053,6 +1047,12 @@ in for (M,HM) in pLs
 	   	 fi
       in (OM,resultM,up)
    od
+
+{just list the W reps}
+
+set sigma_lusztig(SpringerTable stG, ComplexNilpotent O) =
+    [(ComplexNilpotent,[int])]:
+   for (OM,listM,) in sigma_lusztig_keep_trying(stG, O) do (OM,listM) od
 
 set show_lusztig_simple(SpringerTable st, ComplexNilpotent O) = void:
     prints("***************************",new_line,
@@ -1140,140 +1140,154 @@ set show_lusztig_keep_trying_all(RootDatum G) = void:
     show_lusztig_keep_trying_all(G.Springer_table)
 
 {calculates the reps obtained from a class in A(OE), recorded as an endoscopic E, weakly rigid (= dual to distinguished) nilpotent OE, and . Algorithm
-is induction from sigma(OE,x) truncated by degree.}
-{meant to return the list of (component of A(OE),corr W reps)}
-{VERY WRONG for non-special O.}
+is induction from sigma(OE,xEM) truncated by degree.}
+{meant to return the list of (OE,(component of A(OE),corr W reps))
+}
+
 
 set sigmav_lusztig_simple(SpringerTable stG, ComplexNilpotent O) =
-{(RootDatum, ComplexNilpotent,}[(ComplexNilpotent,[int])]{)}:
-let G = stG.root_datum, ctG = stG.ct, Gv = G.dual
-then WctG = ctG.class_table, stGv = Gv.Springer_table
-then Ov = stG.dual_map(O)
-then pLvs = pseudo_Levis(Ov), sigmaG_special_num =
-     ctG.special(stG.springer(O)), E=G, OE = O
+    [(ComplexNilpotent,[(ComplexNilpotent,[int])])]:
+let G = stG.root_datum, ctG = stG.ct
+then WctG = ctG.class_table, sigmaG_special_num =
+     ctG.special(stG.springer(O))
 then EOEs = [(RootDatum,ComplexNilpotent)]:
-     for (Ev,HEv) in pLvs
-     do let stEv = Ev.Springer_table
-     in (Ev.dual, stEv.dual_map(complex_nilpotent(Ev,HEv)))
-     od
-then list = for (Eprime,OEprime) in EOEs
-     	    do let stEprime = Eprime.Springer_table
-      	       then ()=if is_Levi(OEprime.root_datum, G)
-	       	       then E:=Eprime
-		       fi
-      	       then ctEprime = stEprime.ct
-      	       then WctEprime = ctEprime.class_table
-      	       then sigmaEprime_num = stEprime.springer(OEprime)
-      	       then targetEprime = ctEprime.degree(sigmaEprime_num),
-      	       	    sigmaEprime = ctEprime.characters[sigmaEprime_num]
-      	       then indEprime = induce_character(WctEprime,WctG,sigmaEprime)
-      	       then indEprime_decomposed = ctG.decompose(indEprime)
-      	       then resultEprime = for j:#indEprime_decomposed
-     	      	     		   do if indEprime_decomposed[j] > 0 and
-		     	   	      	 ctG.degree(j) = targetEprime and
-		     	   		 ctG.special(j) = sigmaG_special_num
-		 	{can degree be BIGGER than targetM  ???}
-		      	     	       then [j]
-		  	   	       else []
-		  	   	       fi
-		      		   od.##
-      	       in (OEprime, resultEprime)
-   	    od
-in {(E,OE, } list{)}
+     dual_distinguished_special_ind(stG,O)
+in for (E,OE) in EOEs
+   do (OE,
+      let stE = E.Springer_table
+      then ctE = stE.ct
+      then WctE = ctE.class_table
+      then dataE = sigma_lusztig(stE,OE) { [(OME,WE-reps)] }
+      in for (OME,listME) in dataE {induce WE reps to WG reps}
+      	 do (OME,
+	    let targetEs = for k in listME do ctE.degree(k) od,
+      	    	sigmaEs = for k in listME do ctE.characters[k] od
+      	    then indMEs = for sigmaE in sigmaEs
+      	   	       	 do induce_character(WctE,WctG,sigmaE)
+		   	 od
+     	    then indME_decomposeds =
+	    	 for indME in indMEs
+		 do ctG.decompose(indME)
+		 od
+            in [int]:
+	    	 for indME_decomposed@k in indME_decomposeds
+      	   	 do for j:#indME_decomposed
+     	      	    do if indME_decomposed[j] > 0 and
+		     	  ctG.degree(j) = targetEs[k] and
+		     	  ctG.special(j) = sigmaG_special_num
+		 	{can degree be BIGGER than targetE ???}
+		        then [j]
+		        else []
+		        fi
+		     od.##
+		  od.##)
+          od)
+   od
+
 
 {same, but if truncation by degree gives nothing, then take lowest degree}
+{We compute the necessary degree shifts "ups" but don't record them in the output}
 set sigmav_lusztig_keep_trying(SpringerTable stG, ComplexNilpotent O) =
-{(RootDatum, ComplexNilpotent,}[(ComplexNilpotent,[int],int)]{)}:
-let G = stG.root_datum, ctG = stG.ct, Gv = G.dual
-then WctG = ctG.class_table, stGv = Gv.Springer_table
-then Ov = stG.dual_map(O)
-then pLvs = pseudo_Levis(Ov), sigmaG_special_num =
+    [(ComplexNilpotent,[(ComplexNilpotent,[int])])]:
+let G = stG.root_datum, ctG = stG.ct
+then WctG = ctG.class_table, sigmaG_special_num =
      ctG.special(stG.springer(O)), E=G, OE = O
 then EOEs = [(RootDatum,ComplexNilpotent)]:
-     for (Ev,HEv) in pLvs
-     do let stEv = Ev.Springer_table
-     in (Ev.dual, stEv.dual_map(complex_nilpotent(Ev,HEv)))
-     od
-then list = for (Eprime,OEprime) in EOEs
-     	    do let stEprime = Eprime.Springer_table
-      	       then ()=if is_Levi(OEprime.root_datum, G)
-	       	       then E:=Eprime
-		       fi
-      	       then ctEprime = stEprime.ct
-      	       then WctEprime = ctEprime.class_table
-      	       then sigmaEprime_num = stEprime.springer(OEprime)
-      	       then targetEprime = ctEprime.degree(sigmaEprime_num),
-      	       	    sigmaEprime = ctEprime.characters[sigmaEprime_num]
-      	       then indEprime = induce_character(WctEprime,WctG,sigmaEprime)
-      	       then indEprime_decomposed = ctG.decompose(indEprime)
-	       then first_cutEprime = for j:#indEprime_decomposed
-     	      	     		   do if indEprime_decomposed[j] > 0 and
-		     	   		 ctG.special(j) = sigmaG_special_num
-		      	     	       then [j]
-		  	   	       else []
-		  	   	       fi
-		      		   od.##
-	       then resultEprime = [int]:[], up = int:minus_1
-      then () = if #first_cutEprime != 0
-      	      	then let () = up := min(for j in first_cutEprime
-		     	      	    	do ctG.degree(j) - targetEprime
-					od)
-      	       	in resultEprime := for j in first_cutEprime
-     	      	     		   do if ctG.degree(j) = targetEprime +up
-		      	     	      then [j]
-		  	   	      else []
-		  	   	      fi
-		      		   od.##
-	       fi
-      	       in (OEprime, resultEprime,up)
-   	    od
-in {(E,OE, } list{)}
+     dual_distinguished_special_ind(stG,O)
+in for (E,OE) in EOEs
+   do (OE,
+      let stE = E.Springer_table
+      then ctE = stE.ct
+      then WctE = ctE.class_table,
+           dataE = sigma_lusztig(stE,OE) { [(OME,WE-reps)] }
+      in for (OME,listME) in dataE {induce WE reps to WG reps}
+      	 do (OME,
+	    let targetEs = for k in listME do ctE.degree(k) od,
+      	    	sigmaEs = for k in listME do ctE.characters[k] od,
+		N = #listME
+      	    then indMEs = for sigmaE in sigmaEs
+      	   	       	 do induce_character(WctE,WctG,sigmaE)
+		   	 od
+     	    then indME_decomposeds =
+	    	 for indME in indMEs
+		 do ctG.decompose(indME)
+		 od
+
+            then first_cutEs = for indME_decomposed@k in indME_decomposeds
+	    	 	       do for j:#indME_decomposed
+			       	  do if indME_decomposed[j] > 0 and
+				     	ctG.special(j) = sigmaG_special_num
+				     then [j]
+				     else []
+				     fi
+				   od.##
+				od
+             then resultEs = [[int]]: for n:N do [] od,
+	     	  ups = [int]: for n:N do minus_1 od
+	     then () = for first_cutE@k in first_cutEs
+      	   	       do if #first_cutE != 0
+		       	  then let() = ups[k] := min(for j in first_cutE
+		     	      	    do ctG.degree(j) - targetEs[k]
+				    od)
+			       in resultEs[k] := for j in first_cutE
+			    		   do if
+					   ctG.degree(j) = targetEs[k] + ups[k]
+					      then [j]
+					      else []
+					      fi
+					   od.##
+			   fi
+		       od
+	       in resultEs.##)
+	    od)
+   od
 
 set show_lusztig_simplev(SpringerTable st, ComplexNilpotent O) = void:
     prints("***************************",new_line,
     "   E-components for orbit = ", O.diagram.to_string+st.special_star(O));
-    let table_header = [" E", "OE.diagram","sigma", "dim", "degG"]
-    then ct = st.ct, data = sigma_lusztig_simple(st,O)
-    { [(ComplexNilpotent,[int])] }
+    let table_header = [" E", "OE.diagram","ME","OME.diagram","sigma",
+    "dim", "degG"]
+    then ct = st.ct, data = sigmav_lusztig_simple(st,O)
+    { [(ComplexNilpotent OE,[ComplexNilpotent OEM,[int]))] }
     then table = [[string]]:
-      	 for (OE,iE) in data
-      	     	  do let E = OE.root_datum
+      	 for (OE,EMs) in data
+	 do for (OEM,iEM) in EMs
+      	    do let E = OE.root_datum, EM = OEM.root_datum
 		  in [
 		  " "+E.nice_format,
-		  OE.diagram.to_string, iE.to_string,
-		  (for j in iE do dimension(ct,j) od).to_string,
-		  if #iE = 0 then ""
-		  else ct.degree(iE[0]).to_string
+		  OE.diagram.to_string, EM.nice_format,
+		  OEM.diagram.to_string,iEM.to_string,
+		  (for j in iEM do dimension(ct,j) od).to_string,
+		  if #iEM = 0 then ""
+		  else ct.degree(iEM[0]).to_string
 		  fi
 		  ]
-		  od
+	    od
+	  od.##
     in tabulate(table_header#table)
 
 set show_lusztig_keep_tryingv(SpringerTable st, ComplexNilpotent O) = void:
     prints("***************************",new_line,
     "   E-components for orbit = "
    ,O.diagram.to_string+st.special_star(O));
-    let table_header = [" E", "OE.diagram","sigma", "dim", "deg M",
-    "deg G", "deg shift"]
+    let table_header = [" E", "OE.diagram","ME","OME.diagram","sigma", "dim","deg G"]
     then ct = st.ct, data = sigmav_lusztig_keep_trying(st,O)
-    { [(ComplexNilpotent,[int],int)] }
+    { [(ComplexNilpotent OE,[(ComplexNilpotent OEM,[int])])] }
     then table = [[string]]:
-      	 for (OE,iE,up) in data
-      	     	  do let E = OE.root_datum
-		  { then cdM = OM.dim\2 } {too messy to compute; need ctM}
-		  in [
-		  " "+E.nice_format,
-		  OE.diagram.to_string, iE.to_string,
-		  (for j in iE do dimension(ct,j) od).to_string,
-		  if #iE = 0 then ""
-		  else (ct.degree(iE[0]) - up).to_string
-		  fi,
-		  if #iE = 0 then ""
-		  else ct.degree(iE[0]).to_string
-		  fi,
-		  up.to_string
-		  ]
-		  od
+      	 for (OE,EMs) in data
+	     do for (OEM,iEM) in EMs
+      	     	do let E = OE.root_datum, EM = OEM.root_datum
+		   in [
+		      " "+E.nice_format, OE.diagram.to_string,
+		      EM.nice_format, OEM.diagram.to_string,
+		      iEM.to_string,
+		      (for j in iEM do dimension(ct,j) od).to_string,
+		      if #iEM = 0 then ""
+		      else (ct.degree(iEM[0])).to_string
+		      fi
+		      ]
+		od
+	     od.##
     in tabulate(table_header#table)
 
 set show_lusztig_simplev(SpringerTable st, [ComplexNilpotent] Os) = void:
@@ -1339,3 +1353,37 @@ in for (E,OE) in EOEs
    od
 
 }
+
+
+{Given a nilpotent OG for G, and (M,OM,x-tilde) pseudoLevi meeting OG
+in (distinguished?) OM, so (M,OM) represents class in A(OG) mod
+center, find all endoscopic E, special nilpotent OE so OE meets ME in
+OEM, so OG = induce_orbit(G,OE), OM = induce_orbit(M,OEM). HOPE such
+exist by hints in Lusztig orange book, 13.3. Idea: set Mbig =
+centralizer(G,xtilde), OMbig = induce_orbit(Mbig, OM), (M,OM) =
+Bala-Carter(Mbig,OM). Returns [(E,OE,ME,OME)]}
+{
+set special_ind(SpringerTable stG, RootDatum M, ComplexNilpotent OM,
+ratvec xM) = [(RootDatum, ComplexNilpotent, RootDatum, ComplexNilpotent)]:
+let G = stG.root_datum, stM = M.Springer_table
+then OG = complex_nilpotent(G,OM.H)
+then i = stG.springer(OG) {number of Springer(OG) in character table},
+     ctG = stG.ct
+in for (ME,OME) in special_ind(stM,OM)
+{if OMEvee special in proper Levi ME1 of ME, then OME is indudced from OME1}
+{So take ME MINIMAL, get OME dual to distinguished}
+{run over E endoscopic containing ME, E-saturation OE of OME SPECIAL}
+   do let crs = component_representatives_plus(OE)
+      in for (ME,HME,xME) in crs
+	 do let Mbig = centralizer(G,xME), OME = complex_nilpotent(ME,HME)
+	    then OMbig = induce_orbit(Mbig,OME)
+	    then Mtest = Bala_Carter_Levi(OMbig), (,HMtest) =
+	    Bala_Carter_Levi_plus(OMbig) 
+	    then OMtest = complex_nilpotent(Mtest,HMtest)
+	    in if is_conjugate(G,M,Mtest) then [(E,OE,ME,OME)]
+	       else []
+	       fi
+	 od.##
+   od.##
+}
+
