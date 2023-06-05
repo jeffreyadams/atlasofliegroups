@@ -193,7 +193,8 @@ class integral_datum_item
     int_Matrix in, out;
       // see above; |in*coroots_matrix*theta_1_image_basis*out == diagonal|
     codec (const InnerClass& ic,
-	   unsigned int isys, InvolutionNbr inv, const int_Matrix& cmat);
+	   unsigned int isys, InvolutionNbr inv,
+	   const int_Matrix& int_simp_coroots);
   }; // |struct integral_datum_item::codec|
 
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);

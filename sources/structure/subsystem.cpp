@@ -224,14 +224,14 @@ integral_datum_item::integral_datum_item
 }
 
 integral_datum_item::codec::codec
-  (const InnerClass& ic,
-   unsigned int int_sys_nr, InvolutionNbr inv, const int_Matrix& coroots_mat)
-    : coroots_matrix(ic.int_item(int_sys_nr).coroots_matrix())
+  (const InnerClass& ic, unsigned int int_sys_nr, InvolutionNbr inv,
+   const int_Matrix& int_simp_coroots)
+    : coroots_matrix(int_simp_coroots)
     , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
     , diagonal(), in(), out()
 {
   // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
-  int_Matrix A = coroots_mat * theta_1_image_basis, row,col;
+  int_Matrix A = coroots_matrix * theta_1_image_basis, row,col;
   diagonal=matreduc::diagonalise(A,row,col);
   // ensure |diagonal| entries positive, since we shall be reducing modulo them
   if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
