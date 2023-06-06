@@ -1325,7 +1325,7 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
     for (s=0; s<rank; ++s)
       if (rs.is_negroot(Delta[s]))
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
-	result.emplace_front(s,Delta[s]);
+	result.emplace_back(s,Delta[s]);
 	const auto& pi=rs.root_permutation(Delta[s]);
 	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
 	  Delta[t]=pi[Delta[t]];
@@ -1352,8 +1352,8 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
    element $w'$ is not our result; rather it satisfies $\delta=\theta*w'$ while
    we want $w$ with $\theta=w*\delta$. Solving this we see that $w'$ needs
    reversal and $\delta$-twist: $w$ has Weyl word $\delta(i_l),...,\delta(i_1)$
-   where $\delta(\alpha_i)=\alpha_{\delta(i)}$. In the code the reversal is
-   made inside |from_positive_system|; we index (the modified) |Delta| by the
+   where $\delta(\alpha_i)=\alpha_{\delta(i)}$. Below, after reversing the list
+   produced by |from_positive_system|, we index (the modified) |Delta| by the
    successive position components to give the letters of our |WeylWord|, L-to-R.
 
    (This reversal would have been avoided if we had recorded the images not of
@@ -1366,6 +1366,7 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
   auto steps = to_positive_system(rs,Delta);
+  steps.reverse();
 
   // now copy out to |result| the Weyl word twisted by (the final value) |Delta|
   WeylWord result; result.reserve(steps.size());
