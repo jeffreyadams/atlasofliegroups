@@ -73,12 +73,13 @@ set coder(int p) = mat:
     in ^CT
 
 {identifies the facet of a dominant gamma; assume #PCR divisible by 3}
+{coords of vals on FPP are in [-31,31] for E8 and smaller}
 set integrality_label(mat PCR, mat coder, ratvec gamma) = vec:
     let vals = gamma*PCR
     then x = vec: for v in vals
        	    do let r = v%1
-	       in if r=0 then v.numer + 32
-		  else (r-v).numer + 31
+	       in if r=0 then v.numer + 32 {int in [32,63)}
+		  else (r-v).numer + 31 {int in [0,32)}
 		  fi
 	    od
     in coder*x

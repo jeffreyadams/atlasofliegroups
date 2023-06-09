@@ -211,8 +211,6 @@ set up_graph_gens(FacetDataKNum FDK) = [[int]]:
 	  do let j0 = lookup(delete(Find.verts,e)[:d])
 	  in if j0.>=
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     { ; prints(index(d-1,j0),"  ",d," ",j1," ",j0, " "
-		,edge_gens[index(d-1,j0)])}
 	     ; if Pols[d][j1] = Pols[d-1][j0]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi
@@ -236,8 +234,6 @@ set up_graph_gens(FacetDataKHash FDK) = [[int]]:
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>=
 	     then edge_gens[index(d-1,j0)] #:= index(d,j1)
-	     { ; prints(index(d-1,j0),"  ",d," ",j1," ",j0, " "
-		,edge_gens[index(d-1,j0)])}
 	     ; if Pols[d][j1] = Pols[d-1][j0]
 	       then edge_gens[index(d,j1)] #:= index(d-1,j0)
 	       fi
@@ -288,7 +284,7 @@ in for L@i in graph_gens
 
 { this is the type returned by the built-in strong_components,
 describing a directed graph on #n. "classes" are for the equivalence
-relation of having a direct path in each direction. "covers" are the
+relation of having a directed path in each direction. "covers" are the
 sets of covers in the partial order defined by the graph on classes.}
 set_type GraphData = ([[int]] classes, [[int]] covers)
 
