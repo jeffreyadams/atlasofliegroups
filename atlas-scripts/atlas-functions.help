@@ -1171,19 +1171,35 @@ walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
   direction enters into the interior of the alcove (where all coroot evaluations
   are non integral). This latter condition makes the alcove unique, and means
   that among coroots with integral evaluation at gamma, only positive coroots
-  are candidate to define a wall; indeed the simple basis for the integral
-  system of gamma will be an initial part of the list of root numbers returned
-  as first component, and the size of this initial part (the integrality rank)
-  is the second component returned. The full list of root numbers index coroots
-  whose evaluations non redundantly define the alcove, the integral part of
-  these evaluations being the same as for gamma (using the integral part means
-  the "sign" of the coroots is chosen such that they point into the alcove:
-  their evaluation is integral on some face of the alcove, and increases towards
-  the interior of the alcove). The coroots non integral at gamma (a final part
-  of the list) are sorted by decreasing "label" with respect to alcove (which is
-  an integer k such that within the alcove, the maximal fractional part of the
-  evaluation is 1/k); a useful property for generating, modulo translations,
-  the affine Weyl group orbit of the facet containing gamma ('affine_orbit_ws').
+  are candidate to define a wall; indeed, an initial part of the list of coroot
+  numbers returned as first component, of size given by the second component
+  (the integrality rank), gives a simple basis for the integral system of gamma.
+  The full list of root numbers index coroots whose evaluations non redundantly
+  define the alcove, the integral part of these evaluations being the same as
+  for gamma (using the integral part means the "sign" of the coroots is chosen
+  such that they point into the alcove: their evaluation is integral on some
+  face of the alcove, and increases towards the interior of the alcove). Within
+  the initial set of integral coroot numbers, and within the remaining numbers,
+  coroots are sorted by decreasing "label" with respect to alcove (which is an
+  integer k such that within the alcove, the maximal fractional part of the
+  evaluation is 1/k). This is a useful property for generating, modulo
+  translations, the affine Weyl group orbit of the facet containing gamma
+  ('affine_orbit_ws'), and ensures that in at leat one of the two sorted
+  sublists the final element determines a coroot with label equal to 1.
+walls_attitude: (RootDatum,[int]->WeylElt) classify alcove up to translation
+  For any alcove there are alcoves in the W-orbit of the fundamental alcove that
+  are equal to it up to a translation; this function determines a Weyl group
+  element that witnesses this from the set of walls of the alcove, represented
+  by a list of root indices as retuned by the 'walls' for an interior point of
+  the alcove. The set of root indices must be that of the walls of some alcove,
+  so in the W-orbit of the set of walls of the fundamental alcove (necessary
+  conditions for this is the absence of acute angles, and a number of walls
+  equal to the sum of the semisimple rank and the number of connected components
+  of the Dynkin diagram). The list will contain both positive and negative
+  roots, and the distinction between a root and its opposite is vital here. In
+  general the Weyl group element is not unique; it would be unique if we were to
+  limit translations by weights in the root lattice, but information for that
+  classification of alcoves requires more information than just its wall set.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
   all the positive coroots, as in the walls function. The "central" point is

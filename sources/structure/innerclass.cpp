@@ -31,7 +31,7 @@
 #include "lattice.h"
 #include "weyl.h"
 #include "kgb.h"
-
+#include "alcoves.h"
 
 /*****************************************************************************
 
@@ -1102,20 +1102,49 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 }
 
 subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, unsigned long int& int_sys_nr)
+  (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
 {
-  return int_item(integrality_poscoroots(rootDatum(),gamma),int_sys_nr);
-}
+  const auto& rd = rootDatum();
+  const auto& W=weylGroup();
+  RootNbrSet int_posroots;
+  RootNbrSet walls = weyl::wall_set(rd,gamma,int_posroots);
+  auto ww = weyl::from_fundamental_alcove(rd,walls);
+  w = W.element(ww);
 
-subsystem::integral_datum_item& InnerClass::int_item
-  (const RootNbrSet& int_posroots, unsigned long int& int_sys_nr)
-{
-  subsystem::integral_datum_entry e(int_posroots);
+  // we need to map |int_posroots| to integral system at fundamental alcove
+  std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
+  int_posroots = // change |posroots| to full fundamental system
+    additive_closure(rd,image(rd,ww,int_posroots)) & rd.posroot_set();
+  RootNbrSet fundamental_integral_coroots(rd.numPosRoots());
+  for (auto alpha : int_posroots)
+    fundamental_integral_coroots.insert(rd.posroot_index(alpha));
+  subsystem::integral_datum_entry e(fundamental_integral_coroots);
   assert(integral_pool.size()==int_table.size());
   int_sys_nr = int_hash.match(e);
   if (int_sys_nr==int_table.size())
-    int_table.emplace_back(*this,int_posroots);
-  return int_table[int_sys_nr];
+    int_table.emplace_back(*this,e.posroots);
+
+  subsystem::integral_datum_item& result =  int_table[int_sys_nr];
+
+  std::reverse(ww.begin(),ww.end()); // now from fundamental alcove again
+  RootNbrList image; image.reserve(result.sub_sys().rank());
+  for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
+    image.push_back(rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
+
+  const auto steps = to_positive_system(rd,image);
+  for (const auto& step : steps)
+    W.mult(w,result.sub_sys().reflection(step.first));
+
+#ifndef NDEBUG
+  ww = W.word(w);
+  for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
+    assert(image[s] ==
+	   rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
+  for (RootNbr alpha : image)
+    rd.is_posroot(alpha);
+#endif
+
+  return result;
 }
 
 

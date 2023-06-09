@@ -88,7 +88,8 @@ RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 // orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
-ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta);
+ext_gens fold_orbits
+  (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);

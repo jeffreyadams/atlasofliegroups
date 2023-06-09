@@ -156,8 +156,9 @@ class StandardReprMod
 class Reduced_param
 {
   KGBElt x;
-  unsigned long int int_sys_nr;
-  int_Vector evs_reduced; // coroots evaluation (|gamlam| mod $(1-theta)X^*$)
+  unsigned int int_sys_nr;
+  WeylElt w;
+  int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
 
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
@@ -166,7 +167,8 @@ public:
 
   using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
-  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or w!=p.w
+      or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
@@ -188,6 +190,8 @@ class Rep_context
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
   { return G.twistedWeylGroup(); }
+  const WeylGroup& Weyl_group() const
+  { return twisted_Weyl_group().weylGroup(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -294,7 +298,7 @@ class Rep_context
 
   // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
   RatWeight offset
-    (const StandardReprMod& sr0, const StandardReprMod& srm1) const;
+    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
   RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const
   { return offset(StandardReprMod::mod_reduce(*this,sr),srm); }
   // auxiliary for |offset|
@@ -571,11 +575,12 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  unsigned long int int_sys_nr;
-  const SubSystem& sub; // embeds |integr_datum| into parent root datum
+  unsigned int int_sys_nr;
+  WeylElt w; // element applied to bare (fundamental alcove) integral system
+  const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
+  const SubSystem sub; // embeds its |w| image into parent root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }
@@ -583,6 +588,8 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
+  unsigned int base_integral_nr() const { return int_sys_nr; }
+  WeylElt integral_attitude() const { return w; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|
