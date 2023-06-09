@@ -177,9 +177,6 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
 
-ext_gens SubSystem::fold_orbits (const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(pre_root_datum(),delta); }
-
 RankFlags SubSystem::singular_generators(const RatWeight& gamma) const
 {
   const Ratvec_Numer_t& v=gamma.numerator();
@@ -214,24 +211,50 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 }
 
 integral_datum_item::integral_datum_item
-    (InnerClass& ic,const RootNbrSet& int_poscoroots)
-      : integral(new SubSystem
+  (InnerClass& ic,const RootNbrSet& int_poscoroots)
+    : W(ic.weylGroup())
+    , int_sys_p(new SubSystem
 		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
-  , simple_coroots(integral->rank(),ic.rank())
+{}
+
+SubSystem integral_datum_item::int_system(const WeylElt& w) const
+{ return SubSystem { int_sys_p->parent_datum(), image_simples(w) }; }
+
+sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
-    simple_coroots.set_row(i,integral->simple_coroot(i));
+  const auto& rd = int_sys_p->parent_datum();
+  WeylWord ww = W.word(w);
+  sl_list<RootNbr> result;
+  for (weyl::Generator s=0; s<int_sys_p->rank(); ++s)
+  {
+    RootNbr image = rd.permuted_root(ww,int_sys_p->parent_nr_simple(s));
+    assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
+    result.push_back(image);
+  }
+  return result;
+}
+
+
+int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
+{
+  const auto& rd = int_sys_p->parent_datum();
+  auto integral_simples = image_simples(w);
+  int_Matrix result(integral_simples.size(), rd.rank());
+  unsigned i=0;
+  for (const auto& alpha : integral_simples)
+    result.set_row(i++,rd.coroot(alpha));
+  return result;
 }
 
 integral_datum_item::codec::codec
-  (const InnerClass& ic,
-   unsigned int int_sys_nr, InvolutionNbr inv, const int_Matrix& coroots_mat)
-    : coroots_matrix(ic.int_item(int_sys_nr).coroots_matrix())
+  (const InnerClass& ic, unsigned int int_sys_nr, InvolutionNbr inv,
+   const int_Matrix& int_simp_coroots)
+    : coroots_matrix(int_simp_coroots)
     , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
     , diagonal(), in(), out()
 {
   // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
-  int_Matrix A = coroots_mat * theta_1_image_basis, row,col;
+  int_Matrix A = coroots_matrix * theta_1_image_basis, row,col;
   diagonal=matreduc::diagonalise(A,row,col);
   // ensure |diagonal| entries positive, since we shall be reducing modulo them
   if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
@@ -242,7 +265,7 @@ integral_datum_item::codec::codec
 
   auto rank = diagonal.size();
   in  = std::move(row); // keep full coordinate transform
-  out = col.block(0,0,col.n_rows(),rank); // chop part for final zero entries
+  out = col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
 }
 
 } // |namespace subdatum|

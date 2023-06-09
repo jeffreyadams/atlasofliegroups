@@ -47,8 +47,8 @@ void toDistinguished(WeightInvolution&, const RootDatum&);
 
 /* Transform each element ow |Delta| under $W$ until all are posroot numbers
    Return for each step: index at which negroot was found, and reflection index.
-   List is in order so that simple reflections transform original |Delta| into
-   the final one (which is opposite to the order in which the pairs were found).
+   List is in order so that the reflections transform original |Delta| into the
+   final one (which is the order in which the pairs were found).
 */
 sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
   (const RootSystem& rs, RootNbrList& Delta);
@@ -88,7 +88,8 @@ RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 // orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
-ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta);
+ext_gens fold_orbits
+  (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);

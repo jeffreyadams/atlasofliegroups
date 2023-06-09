@@ -1325,10 +1325,10 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
     for (s=0; s<rank; ++s)
       if (rs.is_negroot(Delta[s]))
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
-	result.emplace_front(s,Delta[s]);
+	result.emplace_back(s,Delta[s]);
 	const auto& pi=rs.root_permutation(Delta[s]);
-	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
-	  Delta[t]=pi[Delta[t]];
+	for (auto& entry : Delta) // apply |pi| to |Delta[t]|
+	  entry=pi[entry];
 	break;
       }
   while (s<rank);
@@ -1352,8 +1352,8 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
    element $w'$ is not our result; rather it satisfies $\delta=\theta*w'$ while
    we want $w$ with $\theta=w*\delta$. Solving this we see that $w'$ needs
    reversal and $\delta$-twist: $w$ has Weyl word $\delta(i_l),...,\delta(i_1)$
-   where $\delta(\alpha_i)=\alpha_{\delta(i)}$. In the code the reversal is
-   made inside |from_positive_system|; we index (the modified) |Delta| by the
+   where $\delta(\alpha_i)=\alpha_{\delta(i)}$. Below, after reversing the list
+   produced by |from_positive_system|, we index (the modified) |Delta| by the
    successive position components to give the letters of our |WeylWord|, L-to-R.
 
    (This reversal would have been avoided if we had recorded the images not of
@@ -1366,6 +1366,7 @@ sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
   auto steps = to_positive_system(rs,Delta);
+  steps.reverse();
 
   // now copy out to |result| the Weyl word twisted by (the final value) |Delta|
   WeylWord result; result.reserve(steps.size());
@@ -1537,6 +1538,32 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
   return result;
 }
 
+ext_gens fold_orbits
+  (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta)
+{
+  Permutation pi(roots.size());
+  {
+    WeightList alphas; alphas.reserve(roots.size());
+    for (auto i : roots)
+      alphas.push_back(rd.root(i));
+    for (weyl::Generator s=0; s<pi.size(); ++s)
+    {
+      auto it = std::find(alphas.begin(),alphas.end(),delta * alphas[s]);
+      if (it==alphas.end()) // that is: root was not found
+	throw std::runtime_error("Not a distinguished involution");
+      pi[s] = it-alphas.begin();
+    }
+  }
+  ext_gens result; // we don't nyet know how big it will be
+  for (weyl::Generator s=0; s<pi.size(); ++s)
+    if (pi[s]==s)
+      result.push_back(ext_gen(s));
+    else if (pi[s]>s)
+      result.push_back(ext_gen(rd.is_orthogonal(roots[s],roots[pi[s]]),s,pi[s]));
+  return result;
+}
+
+// the next version computes the same without using any |RootDatum| methods
 ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta)
 {
   ext_gens result;
@@ -1546,21 +1573,19 @@ ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta)
     simple[j] = prd.simple_root(j);
   RankFlags seen;
 
-  for (unsigned i=0; i<sr; ++i)
-    if (not seen[i])
-    { Weight image = delta*simple[i];
-      unsigned j;
-      for (j=i; j<sr; ++j)
-	if (image==simple[j])
-	  break;
-      if (j==sr)
+  for (weyl::Generator s=0; s<sr; ++s)
+    if (not seen[s])
+    { Weight image = delta*simple[s];
+      auto it = std::find(&simple[s],&simple[sr],image);
+      weyl::Generator t = it - &simple[0];
+      if (t==sr)
 	throw std::runtime_error("Not a distinguished involution");
 
-      seen.set(j);
-      if (i==j)
-	result.push_back(ext_gen(weyl::Generator(i)));
-      else // case |i<j<sr|
-	result.push_back(ext_gen(prd.simple_coroot(j).dot(simple[i])==0,i,j));
+      seen.set(t);
+      if (s==t)
+	result.push_back(ext_gen(weyl::Generator(s)));
+      else // case |s<t<sr|
+	result.push_back(ext_gen(prd.simple_coroot(t).dot(simple[s])==0,s,t));
     }
 
   return result;

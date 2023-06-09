@@ -74,18 +74,22 @@ size_t StandardReprMod::hashCode(size_t modulus) const
 
 Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm)
-    : x(srm.x()), evs_reduced() // |int_sys_nr| is set by |integral_eval| below
+    : x(srm.x())
+    , int_sys_nr()
+    , w()
+    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
 {
   InnerClass& ic = rc.inner_class();
   const KGB& kgb = rc.kgb();
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  auto eval = ic.integral_eval(gl,int_sys_nr) * gl.numerator();
+  auto eval = ic.integral_eval(gl,int_sys_nr,w) * gl.numerator(); // mat * vec
   for (auto& entry : eval)
   {
     assert(entry%gl.denominator()==0);
     entry /= gl.denominator();
   }
-  const auto codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
+  const auto codec =
+    ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x),w);
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
     int_Vector(eval.begin(),eval.end());
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -299,7 +303,8 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
-
+// fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
+// uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
 Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
@@ -321,8 +326,10 @@ Weight Rep_context::theta_1_preimage
   }
 
   return codec.theta_1_image_basis * (codec.out * eval_v);
-}
+} // |theta_1_preimage|
 
+// difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
+// for representatives of |srm0| and |srm1| with identical integral evaluations
 RatWeight Rep_context::offset
   (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {
@@ -332,8 +339,8 @@ RatWeight Rep_context::offset
   InvolutionNbr inv = kgb().inv_nr(srm0.x());
   unsigned int int_sys_nr;
   const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
-  result -= theta_1_preimage(result,codec);
-  assert((codec.coroots_matrix*result).is_zero());
+  result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
+  assert((codec.coroots_matrix*result).is_zero()); // check that it was done
   return result;
 }
 
@@ -2082,10 +2089,12 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
+  const RootDatum& rd = parent.root_datum();
+  const RootNbrList int_simples = parent.int_simples();
   RankFlags singular_orbits; // flag singulars among orbits
-  const auto& ipd = parent.integral_subsystem().pre_root_datum();
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
+    singular_orbits.set(s,
+	     gamma.dot(rd.coroot(int_simples[eblock.orbit(s).s0]))==0);
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
@@ -2398,15 +2407,11 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
-, sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
+, w()
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr,w)) // sets |w|
+, sub(id_it.int_system(w)) // transform by |w|, and store image subsystem
 {} // |common_context::common_context|
 
-
-common_context::common_context (const Rep_context& rc, const SubSystem& sub)
-: rep_con(rc)
-, int_sys_nr()
-, sub(rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr).int_system())
-{} // |common_context::common_context|
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
