@@ -210,6 +210,25 @@ WeylWord from_fundamental_alcove (const RootSystem& rs, RootNbrSet& walls)
 #else // just make it so without check
   walls = rs.fundamental_alcove_walls();
 #endif
+/* While |list| gives (in its |second| components) the non-simple reflections
+   that were applied by |to_positive_system| to the elements of |wall_vec| in
+   their original order, we need to go from the fundamental alcove to our
+   original alcove by _simple_ reflections. Despite of the opposite direction,
+   those simple reflections are to be applied in the _same_ order: it we started
+   by a reflection for a root $r$ and the remainder gave a Weyl group element
+   |v|, then $w(r)$ is a simple root $\alpha$ and reflecting the fundamental
+   alcove first by reflection $s_alpha$ and then applying $v^{-1}$ gets us back
+   to our original alcove (via a different sequence of intermediate alcoves). So
+   if $w=v\after\sigma_r=s_\alpha\after{v}$ moves us toward the fundamental
+   alcove, we want to return a Weyl word for $w^{-1}=v^{-1}\after s_\alpha$. To
+   get the index of the simple root $w(r)$, we use the |first| component in
+   |list| (which tells the position in |wall_vec| that held a negative root),
+   and index the final value of |wall_vec| (which holds the simple root where
+   $r$ ultimately ended up) with it. And in a final twist, while we would like
+   to fill |result| from right to left, the use of |push_back| forces is to use
+   the opposite order, and THAT is why we apply |reverse| below.
+ */
+  list.reverse();
   WeylWord result; result.reserve(list.size());
   for (const auto& p : list)
     result.push_back(rs.simpleRootIndex(wall_vec[p.first]));
