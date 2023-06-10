@@ -335,12 +335,15 @@ RatWeight Rep_context::offset
 {
   const auto& gamlam = srm0.gamma_lambda(); // will also define integral system
   RatWeight result = gamlam - srm1.gamma_lambda();
-  auto& ic = inner_class();
-  InvolutionNbr inv = kgb().inv_nr(srm0.x());
-  unsigned int int_sys_nr;
-  const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
-  result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
-  assert((codec.coroots_matrix*result).is_zero()); // check that it was done
+  if (not result.is_zero()) // optimize out a fairly frequent case
+  {
+    auto& ic = inner_class();
+    InvolutionNbr inv = kgb().inv_nr(srm0.x());
+    unsigned int int_sys_nr;
+    const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
+    result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
+    assert((codec.coroots_matrix*result).is_zero()); // check that it was done
+  }
   return result;
 }
 
