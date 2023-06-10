@@ -312,6 +312,9 @@ set_type
 [  BigFacetVerts = (vec vertIndex, vec bup, vec bdown)
 , FacetVertsHash = vec {last two entries are indices in
 	 hashUp and hashDown}
+, LocalFacetVertsIndex = vec
+{ Size is (dimension d0 of local facet) + 1; entries refer to local
+  vertex data }
 , LocalFacetVertsHash = vec
 { Size is 4 + (dimension d0 of local facet) + 1. First d0+1 are
   vertices in local vertex data; next two entries are dim of FPP
@@ -326,6 +329,8 @@ set_type
 , FacetStatusVertsIndexHash = (string status, FacetVertsHash verts)
 , FacetData = (VertexData v_data, [[FacetStatusVertsIndex]]
   facet_status_inds)
+, FacetDataSmall = (VertexData v_data, [[FacetVertsIndex]]
+  facet_inds)
 , BigFacetStatusVertsIndex = (string status, BigFacetVerts bfverts)
 , BigFacetData = (VertexData v_data
 ,   [[BigFacetStatusVertsIndex]] big_facet_status_inds)
@@ -334,6 +339,8 @@ set_type
 , LocalFacetDataHash = (VertexData v_data_local, KGBElt x,
   ratvec lambda, {[[string]] Lstatuses,}
   [[LocalFacetVertsHash]] LFverts)
+, LocalFacetDataSmall = (VertexData v_data_local, KGBElt x,
+  ratvec lambda, [[LocalFacetVertsIndex]] LFverts)
 , FacetDataK_old = (VertexData v_data
 ,   [[FacetStatusVertsIndex]] facet_status_inds
 ,   [[KTypePol]] Kchars)
@@ -350,9 +357,9 @@ set_type
   , [[FacetStatusVertsIndex]] facet_status_inds, [vec] equiv_classes
   , [vec] graph, [vec] inherited_unitary_classes, [vec] class_by_facet
   , [string] class_status )
-, FacetDataOldKcharPO = (VertexData v_data, [[FacetStatusVertsIndex]]
-  facet_status_inds, [[ratvec]] old_barys, [[KTypePol]] Kchars
-  , [vec] equiv_classes, [vec] graph
+, FacetDataOldKcharPO = (VertexData v_data
+  , [[FacetStatusVertsIndex]] facet_status_inds, [[ratvec]] old_barys
+  , [[KTypePol]] Kchars, [vec] equiv_classes, [vec] graph
   , [vec] inherited_unitary_classes, [vec] class_by_facet
   , [string] class_status)
 ]
@@ -1095,9 +1102,9 @@ set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, int j) =
     if j!=minus_1 then FPP_facets_old(Affd,vd,dim,j)
     else
     let facets = [FacetVerts]: facets_fundamental(Affd,dim)
-    { then ()= if facet_verbose
+    then ()= if facet_verbose
     	     then prints("start dim ",dim, " in FPP_facets")
-	     fi }
+	     fi
     in for FV@k in facets
        do if fund_facet_verbose or (facet_verbose and k=0)
        	  then prints("start fund facet ",k," of ", #facets, " in dim = ",dim,
@@ -1202,6 +1209,35 @@ set FPP_facets_hash_old(SimpleAffine Affd, VertexData vd,
 	     od.##
      	od.##{.no_reps}
 
+{If don't use FPPtauRootsFast, don't need no_reps}
+set FPP_facets_old(SimpleAffine Affd, VertexData vd,
+    int dim, mat M, int j) =
+    [FacetVertsIndex]:
+    let () = if facet_verbose
+    	     then prints("start dim ",dim, " in FPP_facets_old")
+	     fi
+    in [FacetVertsIndex]:
+       let facets = [FacetVerts]: facets_fundamental(Affd,dim)
+       in [FacetVertsIndex]:
+       	  for FV@k in facets
+       	  do { if fund_facet_verbose or (facet_verbose and k=0)
+       	  then prints("start fund facet ",k," of ", #facets,
+	  " in dim ",dim)
+	  fi;}
+	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+       	  in [FacetVertsIndex]:
+	     for w in affine_orbit_ws(Affd,bary_F)
+	     do let wbF = w*bary_F, iw = inverse(w)
+	     	in for tau in FPPtauRoots{Fast}(Affd,wbF, j)
+	     	   do let wtilde = AffineCoWeylElt: (tau,w)
+		      in FacetVertsIndex: for v in wtilde*FV
+		      	 		  do vd.lookup(v)
+		      			  od.sort
+	      	   od
+	{ type is [FacetVertsIndex], remains for next two lines}
+	     od.##
+     	od.##{.no_reps}
+
 set FPP_facets_big(SimpleAffine Affd, VertexData vd, int dim,
 mat M, int j) =
     [BigFacetVerts]:
@@ -1296,6 +1332,37 @@ int j) = [FacetVertsHash]:
      	     fi
    fi
 
+set FPP_facets(SimpleAffine Affd, VertexData vd, int dim, mat M,
+int j) = [FacetVertsIndex]:
+    if j!=minus_1
+    then FPP_facets_old(Affd, vd, dim, M, j)
+    else let () = if facet_verbose
+    	     	  then prints("start dim ",dim, " in FPP_facets_hash")
+	     	  fi
+	 in let facets = [FacetVerts]: facets_fundamental(Affd,dim)
+    	   	 in [FacetVertsIndex]:
+       	    	 for FV@k in facets
+       	    	 do if (facet_verbose and k=0) or fund_facet_verbose
+       	       	       then prints("start fund facet ",k," of ", #facets,
+	       	       " in dim ", dim," in FPP_facets")
+	       	    fi;
+	       	    let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
+	       	    then aff_short_list = FPP_w_shifts(Affd,bary_F)
+	       	    then aff_list = [AffineCoWeylElt]:
+	       	    	 for (w,taus) in aff_short_list
+	       	    	 do for tau in taus do (tau,w) od
+	       	       	 od.##
+	       	    then irdw = integrality_datum(Affd,bary_F)
+	       	    	 in for wtilde in aff_list
+	       	  	    do let (tau,w) = wtilde
+	     	     	       then wbF = w*bary_F, iw = inverse(w)
+	     	     	       in FacetVertsIndex:
+		     	       	  for v in wtilde*FV
+		  	       	  do vd.lookup(v)
+		  		  od.sort
+     		   	    od
+	     	   od.##
+   fi
 
 {works only for simply connected adjoint}
 set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
@@ -1420,6 +1487,12 @@ set FPP_facets_hash(SimpleAffine Affd, VertexData vd, mat M, int j) =
     do FPP_facets_hash(Affd, vd, dim, M, j)
     od
 
+set FPP_facets(SimpleAffine Affd, VertexData vd, mat M, int j) =
+    [[FacetVertsIndex]]:
+    for dim: Affd.semisimple_rank + 1
+    do FPP_facets(Affd, vd, dim, M, j)
+    od
+
 set facet_data_old(SimpleAffine Affd, int j) = FacetData:
    let vd = FPP_vertex_data_old(Affd,j)
    then facets_indexed = FPP_facets_old(Affd,vd, j)
@@ -1484,6 +1557,23 @@ set facet_data_fold_old(SimpleAffine Affd, mat M, int j0) =
     )
 )
 
+set facet_data_fold_old_small(SimpleAffine Affd, mat M, int j0) =
+    FacetDataSmall:
+(   let vertex_dataFold = FPP_vertex_data_old(Affd,j0)
+    then vertex_listG = for v in vertex_dataFold.list do M*v od
+    then vertex_dataG = vertex_listG.to_vertex_data
+    then N= [vec]: for @j in vertex_dataFold.list do [j] od
+    in
+    ( vertex_dataG
+    , [[vec]]:
+      N #
+      for d: Affd.semisimple_rank from 1
+      do  {now need d-diml facets}
+      	   FPP_facets_old(Affd,vertex_dataFold,d,j0)
+      od
+    )
+)
+
 set facet_data_fold(SimpleAffine Affd, mat M, int j0) =
     FacetData:
 (   if j0!=minus_1 then facet_data_fold_old(Affd,M,j0)
@@ -1501,6 +1591,27 @@ let vertex_dataFold = FPP_vertex_data(Affd,j0)
       	   for v in FPP_facets(Affd,vertex_dataFold,d,j0)
       	   do ("?",v)
       	   od
+      od
+    )
+    fi
+)
+
+
+set facet_data_fold_new(SimpleAffine Affd, mat M, int j0) =
+    FacetDataSmall:
+(   if j0!=minus_1 then facet_data_fold_old_small(Affd,M,j0)
+    else
+let vertex_dataFold = FPP_vertex_data(Affd,j0)
+    then vertex_listG = for v in vertex_dataFold.list do M*v od
+    then vertex_dataG = vertex_listG.to_vertex_data
+    then N= [vec]: for @j in vertex_dataFold.list do [j] od
+    in
+    ( vertex_dataG
+    , [[FacetVertsIndex]]:
+      N #
+      for d: Affd.semisimple_rank from 1
+      do  {now need d-diml facets}
+      	   FPP_facets(Affd,vertex_dataFold,d,j0)
       od
     )
     fi
@@ -2893,6 +3004,83 @@ set localFD_hash \
     in(Lvd, x, lambda, {statuses,} LFVI[:dAct+1])
 )
 
+{takes the general facet data FacetData and builds one suited
+ for (x,lambda)}
+set localFD \
+  ( KGBElt x, ratvec lambda
+  , FacetDataSmall (vertex_data, FPPInds)) = LocalFacetDataSmall:
+(   if facet_verbose
+    then prints("start localFD")
+    fi;
+    let vlist = vertex_data.list
+    then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
+    then vlistActRep = [ratvec]:
+    { LIST CAN HAVE REPETITIONS IN U(3,3) }
+	for v@i in vlist
+	do  let j = Perm[i] in
+	    if   j = i then [v]
+	    elif j > i then [ (v + vlist[j])/2]
+	    else []
+	    fi
+	od.##
+    then vlistAct = no_reps(vlistActRep) {SOURCE OF TROUBLE?}
+    then Lvd = vlistAct.to_vertex_data
+    then lookup = Lvd.lookup
+    then mapAct = [int]:
+    {maps FPP vertex indices to local indices}
+        for v@i in vlist
+	 do  let j = Perm[i] in
+	     if   j = i then lookup(v)
+	     elif j > i then lookup((v+vlist[j])/2)
+	     else            minus_1
+	     fi
+	 od
+    then LFVI = [[LocalFacetVertsIndex]]:
+        for @j in FPPInds do [LocalFacetVertsIndex]: [] od
+    then () = for FVInd@d in FPPInds
+    do  if facet_verbose
+        then prints("examining ", #FVInd, " facets of dim ",d,
+	       " in construction of local facet list")
+	fi
+        ; for v@k in FVInd
+	  do  let vtheta = for ell in v
+	      	  	   do if Perm[ell] < 0
+			      then break
+	    	 	      else Perm[ell]
+			      fi
+			   od
+	      then vAct = vec:
+	       	    if is_subset(v[:d+1],vtheta)
+		        then for i in v
+		    	     do if mapAct[i] >= 0 then [mapAct[i]]
+			     	else []
+				fi
+		    	     od.##.sort
+			     {this list may not have been sorted}
+	            else []
+		    fi
+	      then () =
+	      	   if #vAct > 0
+	      	   then {let p = parameter(x,lambda, FB)}
+			{add functionality of "pick" here}
+	     	   	let FB = facet_bary(vlistAct, vAct)
+		   	then p = parameter(x,lambda, FB)
+		    	in if is_final(p) and is_hermitian(p)
+			      and p.infinitesimal_character = FB
+		    	   then let LF = LocalFacetVertsIndex:
+				vAct
+				in LFVI[#vAct - 1] :=
+			   (LFVI[#vAct -1] next LFVI[#vAct -1]:=[])
+			   # vAct
+			   fi
+		     fi
+	      in ()
+	od
+    od
+    then dAct = last(for j:#LFVI do #LFVI[j] > 0 od)
+    in(Lvd, x, lambda, LFVI[:dAct+1])
+)
+
 {this takes the local facet data and computes K-chars. Used to be
 done inside actualize}
 set localKchars(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
@@ -2909,6 +3097,27 @@ set localKchars(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
 			    character_formula(1*parameter(x,
 			    lambda+bup,facet_bary(Lvd.list, v[:j+1])+bup)),
   			    bdown)))
+       od
+    od
+    then () = if facet_verbose then prints("# facets = ",
+    sum(for v in pol_nums do #v od), "; # distinct K_chars = ",
+    Kpol_hash.size())
+	      fi
+    in pol_nums
+{SHOULD NOT RETURN Kpol_hash!}
+
+{this takes the local facet data and computes K-chars. Used to be
+done inside actualize}
+set localKchars_new(LocalFacetDataSmall(Lvd, x, lambda,LFverts)) = [vec]:
+    let Kpol_hash = make_KTypePol_hash()
+    then pol_nums = [vec]:
+    for LF@j in LFverts
+    do if facet_verbose then prints("start to compute ",
+       #LF," K-chars in dim ",j)
+       fi;
+       for v in LF
+       do Kpol_hash.match(K_type_pol(character_formula(parameter(x,
+			    lambda,facet_bary(Lvd.list, v)))))
        od
     od
     then () = if facet_verbose then prints("# facets = ",
@@ -3796,14 +4005,47 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester)
 
+{outputs string with one status per equiv class}
+set local_test_new(KGBElt x, ratvec lambda, (Param -> bool) tester) =
+    [string]:
+    let G = x.real_form
+    then FPPD = facet_data_fold_new(cofolded(G))
+    then (vd,FPPinds) = FPPD
+    then LFD = localFD(x,lambda,FPPD)
+    then (Lvd,,,LFverts) = LFD
+    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    {this is list of vertices appearing as 0-diml facets: smaller
+     and differently ordered from Lvd.list}
+    then LvdZero = to_vertex_data(vlistZero)
+    { then () = prints("list = ",Lvd.list) }
+    then pol_nums = localKchars_new(LFD)
+    then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
+    { then () = prints("IUCL = ",IUCL) }
+    { then () = prints("CLBF = ",CLBF) }
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
+    	      IUCL, CLBF, statuses)
+    { then () = prints("statuses = ",statuses) }
+    in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
+       tester)
+
 set local(KGBElt x, ratvec lambda) = [string]:
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test(p, hts[0], hts[1])
     in local_test(x,lambda,tester)
 
+set local_new(KGBElt x, ratvec lambda) = [string]:
+    let hts = next_heights(parameter(x,lambda,0*lambda),2)
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_test(p, hts[0], hts[1])
+    in local_test_new(x,lambda,tester)
+
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
+
+set spherical_local_new(RealForm G) = [string]:
+    local_new(x_open(G),G.rho)
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
