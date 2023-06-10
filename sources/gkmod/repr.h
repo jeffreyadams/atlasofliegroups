@@ -400,7 +400,7 @@ class Rep_context
    has no per-node memory overhead.
 */
 
-using K_type_nr = unsigned long int; // hashed in |Rep_table| below
+using K_type_nr = unsigned int; // hashed in |Rep_table| below
 using K_type_poly = Free_Abelian_light<K_type_nr,Split_integer>;
 
 /*
