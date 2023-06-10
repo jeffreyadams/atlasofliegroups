@@ -1106,17 +1106,18 @@ subsystem::integral_datum_item& InnerClass::int_item
 {
   const auto& rd = rootDatum();
   const auto& W=weylGroup();
-  RootNbrSet int_posroots;
-  RootNbrSet walls = weyl::wall_set(rd,gamma,int_posroots);
+  RootNbrSet on_wall_subset;
+  RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
   auto ww = weyl::from_fundamental_alcove(rd,walls);
   w = W.element(ww);
 
-  // we need to map |int_posroots| to integral system at fundamental alcove
+  // we need to map |on_wall_subset| to integral system at fundamental alcove
   std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
-  int_posroots = // change |posroots| to full fundamental system
-    additive_closure(rd,image(rd,ww,int_posroots)) & rd.posroot_set();
+  on_wall_subset = image(rd,ww,on_wall_subset);
+  assert(rd.fundamental_alcove_walls().contains(on_wall_subset));
+
   RootNbrSet fundamental_integral_coroots(rd.numPosRoots());
-  for (auto alpha : int_posroots)
+  for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
     fundamental_integral_coroots.insert(rd.posroot_index(alpha));
   subsystem::integral_datum_entry e(fundamental_integral_coroots);
 
