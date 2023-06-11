@@ -218,7 +218,10 @@ integral_datum_item::integral_datum_item
 {}
 
 SubSystem integral_datum_item::int_system(const WeylElt& w) const
-{ return SubSystem { int_sys_p->parent_datum(), image_simples(w) }; }
+{ auto simp_list = image_simples(w);
+  simp_list.sort(); // force |integrality_datum| numbering
+  return SubSystem { int_sys_p->parent_datum(), simp_list };
+}
 
 sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
