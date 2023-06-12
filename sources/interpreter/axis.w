@@ -202,7 +202,7 @@ automatically gain ownership of any new nodes added in the process, and
 accessible from |type|. The latter, if it happens, will be caused by calls of
 the |specialise| method for |type|, or for its descendants, within
 |convert_expr|. It is a modifiable lvalue reference argument in which normally
-the result of the type analysis is returned. It should not be an reference to a
+the result of the type analysis is returned. It should not be a reference to a
 table entry or other permanent value: any changes to the |type| argument made by
 |convert_expr| should remain locally confined until successful completion, so
 that in case the function should instead terminate by throwing an exception, no

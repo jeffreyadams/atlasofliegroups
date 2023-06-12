@@ -2599,12 +2599,17 @@ internal tables that will \emph{benefit} other shareholders), and
 
 template <typename D> // |D| is a type derived from |value_base|
  inline std::shared_ptr<const D> get()
-{ std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
+{
+#ifdef NDEBUG
+  return std::static_pointer_cast<const D>(pop_value());
+#else
+  std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
   if (p.get()==nullptr)
   { std::ostringstream o; o << "Argument is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 @.Argument is no ...@>
 
@@ -2613,16 +2618,20 @@ template <typename D> // |D| is a type derived from |value_base|
   inline std::shared_ptr<D> non_const_get()
 {@; return std::const_pointer_cast<D>(get<D>()); }
 
-@ Here is a function template similar to |get|, that applies in situations
-where the value whose type is known does not reside on the stack. As for |get|
-we convert using a |dynamic_cast|, and to throw a |logic_error| in case our
-type prediction was wrong. This function is defined at the level of ordinary
+@ Here is a function template similar to |get|, that applies in situations where
+the value whose type is known does not reside on the stack. As for |get| we
+convert using a dynamic case, and to throw a |logic_error| in case our type
+prediction was wrong. This function is defined at the level of ordinary
 pointers, and it is not intended for use where the caller assumes ownership of
 the result; the original pointer is assumed to retain ownership as long as the
-result of this call survives, and in particular that pointer should probably
-not be obtained by calling the |get| method for a smart pointer temporary, nor
-should the result of |force| converted to a smart pointer, lest double
-deletion would ensue.
+result of this call survives, and in particular that pointer should probably not
+be obtained by calling the |get| method for a smart pointer temporary, nor
+should the result of |force| converted to a smart pointer, lest double deletion
+would ensue. As a consequence, we here use the basic |dynamic_cast| of a raw
+pointer rather than a |dynamic_pointer_cast| of a |std::shared_ptr|. Like in the
+case of |get| we provide a version using a static cast (omitting any check) when
+no debugging is enabled, since the validity of the downcast should be ensured by
+haveing passed the type check.
 
 We provide two versions, where overloading will choose one or the other
 depending on the const-ness of the argument. Since calling |get| for a
@@ -2632,22 +2641,32 @@ will often be the second one that is selected.
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
   D* force (value_base* v)
-{ D* p=dynamic_cast<D*>(v);
+{
+#ifdef NDEBUG
+  return static_cast<D*>(v);
+#else
+  D* p=dynamic_cast<D*>(v);
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
   const D* force (value v)
-{ const D* p=dynamic_cast<const D*>(v);
+{
+#ifdef NDEBUG
+  return static_cast<const D*>(v);
+#else
+  const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
   return p;
+#endif
 }
 
 @ The \.{axis} language allows assignment operations to components of aggregates
@@ -2711,10 +2730,10 @@ the original copy of the pointer must be cleared at the time |unique| is called,
 so that this call has some chance of returning |true|. To the end we take the
 argument as rvalue reference, and make sure a temporary is move-constructed from
 it inside the body of |force_own|; the temporary is constructed in the argument
-to |std::dynamic_pointer_cast| (which has no overloads that directly bind to,
-and upon success move from, and rvalue argument; our work-around moves from the
-rvalue even if the dynamic cast fails, but then we throw a |logic_error|
-anyway).
+to |std::dynamic_pointer_cast| (which, until \Cpp20, has no overloads that
+directly bind to, and upon success move from, and rvalue argument; our
+work-around moves from the rvalue even if the dynamic cast fails, but then we
+throw a |logic_error| anyway).
 
 Since these functions return pointers that are guaranteed to be unique, one
 might wonder why no use of |std::unique_ptr| is made. The answer is this is
@@ -2734,12 +2753,17 @@ template <typename D> // |D| is a type derived from |value_base|
 @)
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> force_own(shared_value&& q)
-{ std::shared_ptr<const D> p=
+{
+  std::shared_ptr<const D> p=
+#ifdef NDEBUG
+     std::static_pointer_cast<const D>(shared_value(std::move(q)));
+#else
      std::dynamic_pointer_cast<const D>(shared_value(std::move(q)));
   if (p==nullptr)
   { std::ostringstream o; o << "forced value is no " << D::name();
     throw logic_error(o.str());
   }
+#endif
   if (p.unique())
     return std::const_pointer_cast<D>(p);
   return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
