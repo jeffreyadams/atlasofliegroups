@@ -4,6 +4,7 @@
 <poset.at
 <number_theory.at {for is_prime}
 <W_classes.at
+<isomorphism.at
 
 {
   The functions deal with constructing Levi systems cut out by various linear
@@ -454,7 +455,8 @@ if n_columns(M)=0 then false else
 let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L) fi fi
 
 set is_pseudo_Levi_in_simple_adjoint(RootDatum rd_L,RootDatum rd) = bool:
-  rd_L.mod_central_torus.has_cyclic_center
+  rd_L.mod_central_torus.has_cyclic_center and
+ is_isomorphic(centralizer(rd,center(rd_L)),rd_L)
 
 set adjoint_image(RootDatum rd_L,RootDatum rd)=RootDatum:
 let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
