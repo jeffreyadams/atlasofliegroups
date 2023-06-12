@@ -234,6 +234,7 @@ sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
     assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
     result.push_back(image);
   }
+  result.sort(); // force |integrality_datum| numbering
   return result;
 }
 
