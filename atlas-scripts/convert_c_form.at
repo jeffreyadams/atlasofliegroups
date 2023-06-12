@@ -101,6 +101,6 @@ set convert_cform_hermitian (KTypePol P,KType p0)= KTypePol:
 
 { apply both defaults simultaneously; this one is used from hermitian.at }
 set convert_cform_hermitian (KTypePol P)= KTypePol:
-  if=#P then P
+  if =#P then P
   else convert_cform_hermitian(P,P.real_form.distinguished_involution,first_K_type(P))
   fi
