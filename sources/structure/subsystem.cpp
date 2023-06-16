@@ -248,8 +248,7 @@ int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 }
 
 integral_datum_item::codec::codec
-  (const InnerClass& ic, unsigned int int_sys_nr, InvolutionNbr inv,
-   const int_Matrix& int_simp_coroots)
+  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& int_simp_coroots)
     : coroots_matrix(int_simp_coroots)
     , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
     , diagonal(), in(), out()
