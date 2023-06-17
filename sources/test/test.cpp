@@ -897,7 +897,7 @@ void test_f() // trial of twisted KLV computation
   ioutils::OutputFile f;
   for (BlockElt y=0; y<last; ++y)
     for (BlockElt x=y+1; x-->0; )
-      if (not twisted_KLV.P(x,y).isZero())
+      if (not twisted_KLV.P(x,y).is_zero())
       {
 	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
 	f << twisted_KLV.P(x,y) << std::endl;
@@ -982,7 +982,7 @@ void repr_braid_f()
     (commands::current_layout(), commands::current_lattice_basis());
 
   auto gamma = commands::currentStandardRepr().gamma();
-  if (not ((delta-1)*gamma.numerator()).isZero())
+  if (not ((delta-1)*gamma.numerator()).is_zero())
   {
     std::cout << "Chosen delta does not fix gamma=" << gamma
 	      << " for the current block." << std::endl;

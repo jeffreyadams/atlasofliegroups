@@ -136,7 +136,7 @@ Vector<C>& Vector<C>::negate ()
 }
 
 template<typename C>
-  bool Vector<C>::isZero() const
+  bool Vector<C>::is_zero() const
 {
   for (auto it=base::begin(); it!=base::end(); ++it)
     if (*it!=C(0))

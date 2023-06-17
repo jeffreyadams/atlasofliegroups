@@ -108,7 +108,7 @@ template <typename U>
   Degree size() const { return d_data.size(); }
 
   // because of reduction (automatic removal leading zeros), this is easy:
-  bool isZero() const { return size() == 0; }
+  bool is_zero() const { return size() == 0; }
 
   // |degree()| being unsigned but possibly -1, compare using this safe method:
   bool degree_less_than (Degree d) const { return size()<=d; }
@@ -198,7 +198,7 @@ template <typename C>
 
 template <typename U>
   size_t hash_code(const Safe_Poly<U>& P, size_t modulus)
-{ if (P.isZero()) return 0;
+{ if (P.is_zero()) return 0;
   Degree i = P.degree();
   size_t h = P[i];
   while (i-->0)
@@ -208,7 +208,7 @@ template <typename U>
 
 template <typename C>
   size_t hash_code(const Polynomial<C>& P, size_t modulus)
-{ if (P.isZero()) return 0;
+{ if (P.is_zero()) return 0;
   Degree i = P.degree();
   size_t h = P[i]; // start with leading coefficient, converted to unsigned
   while (i-->0)
@@ -233,7 +233,7 @@ public:
   bool operator!=(typename Pooltype::const_reference e) const
   { const Pol& P=*this;
     if (P.degree()!=e.degree()) return true;
-    if (P.isZero()) return false; // since degrees match
+    if (P.is_zero()) return false; // since degrees match
     for (Degree i=0; i<=P.degree(); ++i)
       if (P[i]!=e[i]) return true;
     return false; // no difference found
@@ -260,7 +260,7 @@ public:
   bool operator!=(typename Pooltype::const_reference e) const
   { const SafePol& P=*this;
     if (P.degree()!=e.degree()) return true;
-    if (P.isZero()) return false; // since degrees match
+    if (P.is_zero()) return false; // since degrees match
     for (Degree i=0; i<=P.degree(); ++i)
       if (P[i]!=e[i]) return true;
     return false; // no difference found

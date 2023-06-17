@@ -754,8 +754,8 @@ void validate(const ext_param& E)
   const Weight diff = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
   assert(diff == (1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
-  assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
-  assert(((theta+1)*E.gamma_lambda).numerator().isZero());
+  assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().is_zero());
+  assert(((theta+1)*E.gamma_lambda).numerator().is_zero());
 #endif
 }
 /*
@@ -2035,7 +2035,7 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
   for (unsigned i=0; i<M.n_rows(); ++i)
     {        strm << " " << std::endl;
     for (unsigned j=0; j<M.n_columns(); ++j)
-      //      if (not M(i,j).isZero())
+      //      if (not M(i,j).is_zero())
       //	M(i,j).print(strm << i << ',' << j << ':',"q")  << ';';
       M(i,j).print(strm  << ' ',"q");
     //  strm << " " << std::endl;
@@ -2259,7 +2259,7 @@ ext_param::ext_param
 ext_param default_extend
   (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
 {
-  assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
+  assert(((1-ec.delta())*sr.gamma().numerator()).is_zero());
   return default_extend(ec,repr::StandardReprMod::mod_reduce(ec.rc(),sr));
 }
 
@@ -2349,7 +2349,7 @@ K_repr::K_type_pol extended_restrict_to_K
 
   repr::Ext_rep_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta); // orbits of simples
-  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+  assert(((delta-1)*sr.gamma().numerator()).is_zero()); // $\delta$-fixed
 
   K_repr::K_type restricted_sr = rc.sr_K(sr.x(),rc.lambda_rho(sr));
 
@@ -2507,7 +2507,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc, StandardRepr sr, const WeightInvolution& delta)
 {
   assert(rc.is_standard(sr));
-  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+  assert(((delta-1)*sr.gamma().numerator()).is_zero()); // $\delta$-fixed
 
   const RootDatum& rd=rc.root_datum();
   const InvolutionTable& i_tab = rc.involution_table();
@@ -2647,7 +2647,7 @@ std::pair<StandardRepr,bool> scaled_extended_finalise
 {
   assert(rc.is_final(sr));
   assert(factor.is_positive()); // so no regular real root becomes singular
-  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+  assert(((delta-1)*sr.gamma().numerator()).is_zero()); // $\delta$-fixed
 
   const RootDatum& rd=rc.root_datum();
   const InvolutionTable& i_tab = rc.involution_table();

@@ -6824,14 +6824,14 @@ by constructing a new polynomial |Pol(P)|.
 	for (auto it=start; not survivors.at_end(it); ++it)
 	{ BlockElt y = *it;
           const auto& P = kl_tab.KL_pol(x,y);
-          if (not P.isZero())
+          if (not P.is_zero())
             M(i,loc[y]) += Pol(P);
         }
       else
 	for (auto it=start; not survivors.at_end(it); ++it)
 	{ BlockElt y = *it;
           const auto& P = kl_tab.KL_pol(x,y);
-          if (not P.isZero())
+          if (not P.is_zero())
             M(i,loc[y]) -= Pol(P);
         }
     }
@@ -7196,7 +7196,7 @@ void extended_block_wrapper(expression_base::level l)
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().inner_class(),delta);
-  if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
+  if (not ((delta->val-1)*p->val.gamma().numerator()).is_zero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
     return;
@@ -8402,7 +8402,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   BlockElt start;
   common_context ctxt(rc,srm.gamma_lambda());
   blocks::common_block block(ctxt,srm,start); // build full block
-  if (not((delta->val-1)*gamma.numerator()).isZero())
+  if (not((delta->val-1)*gamma.numerator()).is_zero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
     push_value(std::make_shared<row_value>(0));
