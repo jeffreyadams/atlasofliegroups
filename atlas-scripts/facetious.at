@@ -1188,10 +1188,9 @@ int j) = [FacetVertsHash]:
 	       	       	 od.##
 	       	    	 in for wtilde in aff_list
 	       	  	    do let (tau,w) = wtilde
-	     	     	       then wbF = w*bary_F, iw = inverse(w)
+	     	     	       then iw = inverse(w)
 	     	     	       then bup = -tau + w*Affd.two_rho
-	     	     	       then gamma2 = wbF + w*Affd.two_rho
-	       	     	       then mup = hashUp.match(M*bup)
+	     	     	       then mup = hashUp.match(M*bup)
 	     	     	       then mdown = hashDown.match(
 		     	  	    M*(-iw*bup))
 	     	     	       in FacetVertsIndex:
