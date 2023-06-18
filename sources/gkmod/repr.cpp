@@ -1316,7 +1316,8 @@ unsigned short Rep_table::length(StandardRepr sr)
 {
   make_dominant(sr); // length should not change in equivalence class
   BlockElt z;
-  auto & block = lookup(sr,z); // construct partial block
+  block_modifier bm; // unused, but obligatory as argument
+  auto & block = lookup(sr,z,bm); // construct partial block
   return block.length(z);
 }
 
@@ -1629,7 +1630,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   return find_reduced_hash(srm);
 }// |Rep_table::add_block|
 
-blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
+blocks::common_block& Rep_table::lookup_full_block
+  (StandardRepr& sr,BlockElt& z, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
@@ -1638,12 +1640,14 @@ blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z
     h=add_block(srm); // generate a new full block (possibly swallow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
-  z = place[h].second;
-  return *place[h].first;
+  auto& block = *place[h].first;
+  bm.shift = offset(srm,block.representative(z = place[h].second));
+  return block;
 
 } // |Rep_table::lookup_full_block|
 
-blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
+blocks::common_block& Rep_table::lookup
+  (StandardRepr& sr,BlockElt& which, block_modifier& bm)
 {
   normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
@@ -1652,9 +1656,10 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   if (h!=reduced_hash.empty) // then we have found our family of blocks
   {
     assert(h<place.size());
-    which = place[h].second;
     auto& block = *place[h].first;
+    which = place[h].second;
     assert(block.representative(which).x()==srm.x()); // check minimum of sanity
+    bm.shift = offset(srm,block.representative(which));
     return block; // use block of related |StandardReprMod| as ours
   }
   common_context ctxt(*this,sr.gamma());
@@ -1663,6 +1668,7 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
   which = last(subset);
   assert(Reduced_param(*this,block.representative(which))==
 	 Reduced_param(*this,srm));
+  bm.shift = RatWeight(rank());
   return block;
 } // |Rep_table::lookup|
 
@@ -1867,10 +1873,10 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
 sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   (StandardRepr p, SR_poly& queue, level height_bound)
 {
-  BlockElt start;
-  auto& block = lookup_full_block(p,start);
+  BlockElt start; block_modifier bm;
+  auto& block = lookup_full_block(p,start,bm);
+  const RatWeight& diff = bm.shift;
   const auto& gamma = p.gamma();
-  RatWeight diff = offset(p,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
   // create KL table only minimally filled
@@ -1969,9 +1975,9 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   normalise(sr); // implies that |sr| it will appear at the top of its own block
   assert(is_final(sr));
 
-  BlockElt z;
-  auto& block = lookup(sr,z);
-  RatWeight diff = offset(sr,block.representative(z));
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
+  const RatWeight& diff = bm.shift;
   assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
 	 .is_zero());
 
@@ -2010,8 +2016,8 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
 {
   assert(is_final(sr));
 
-  BlockElt z;
-  auto& block = lookup(sr,z);
+  BlockElt z; block_modifier bm;
+  auto& block = lookup(sr,z,bm);
 
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
@@ -2059,9 +2065,9 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     auto zi = scale(z,rp[i]);
     deform_readjust(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    BlockElt new_z;
-    auto& block = lookup(zi,new_z);
-    RatWeight diff = offset(zi, block.representative(new_z));
+    BlockElt new_z; block_modifier bm;
+    auto& block = lookup(zi,new_z,bm);
+    const RatWeight& diff = bm.shift;
     assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
 	   .is_zero());
     auto dt = deformation_terms(block,new_z,diff,zi.gamma());
@@ -2143,13 +2149,8 @@ SR_poly twisted_KL_column_at_s
   BlockElt entry;
   common_context ctxt(rc,zm.gamma_lambda());
   blocks::common_block block(ctxt,zm,entry); // build full block
-  RatWeight diff = rc.offset(z, block.representative(entry));
-  assert(diff.is_zero()); // because we custom-built our |block| above
-  // the code below handles still |diff| as it should if it were nonzero
-
-  block.shift(diff);
+  const RatWeight diff(rc.rank()); // zero: we custom-built our |block| above
   auto eblock = block.extended_block(delta);
-  block.shift(-diff);
   return twisted_KL_sum(eblock,eblock.element(entry),block,diff,z.gamma());
 } // |twisted_KL_column_at_s|
 
@@ -2160,9 +2161,9 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 {
   normalise(sr);
   assert(is_final(sr) and sr==inner_twisted(sr));
-  BlockElt y0;
-  auto& block = lookup(sr,y0);
-  const RatWeight diff = offset(sr,block.representative(y0));
+  BlockElt y0; block_modifier bm;
+  auto& block = lookup(sr,y0,bm);
+  const RatWeight& diff = bm.shift;
   block.shift(diff);
   auto& eblock = block.extended_block(&poly_hash);
   block.shift(-diff);
@@ -2376,9 +2377,9 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
       ext_block::scaled_extended_finalise(*this,z,delta,rp[i]);
     StandardRepr zi = std::move(p.first);
     const bool flip_p = p.second;
-    BlockElt index;
-    auto& block = lookup(zi,index);
-    RatWeight diff = offset(zi,block.representative(index));
+    BlockElt index; block_modifier bm;
+    auto& block = lookup(zi,index, bm);
+    const RatWeight& diff = bm.shift;
     block.shift(diff); // adapt representatives for extended block construction
     assert(block.representative(index)==
 	   StandardReprMod::mod_reduce(*this,zi));

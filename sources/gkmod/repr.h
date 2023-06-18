@@ -296,16 +296,6 @@ class Rep_context
 
   StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
-  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
-  RatWeight offset
-    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
-  RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const
-  { return offset(StandardReprMod::mod_reduce(*this,sr),srm); }
-  // auxiliary for |offset|
-  // find element in |(1-theta)X^*| with same evaluation on all integral coroots
-  Weight theta_1_preimage
-    (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
-    const;
   StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
   { return shift(diff,srm); } // perform |shift| on a copy and return it
@@ -373,9 +363,19 @@ class Rep_context
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
 
+
+  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
+  RatWeight offset
+    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
+
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
   int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
+  // auxiliary for |offset|
+  // find element in |(1-theta)X^*| with same evaluation on all integral coroots
+  Weight theta_1_preimage
+    (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+    const;
   RankFlags singular_simples (const StandardRepr& z) const;
   WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
   // make integrally dominant, with precomputed integral subsystem; return path
@@ -455,6 +455,13 @@ public:
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
 
+struct block_modifier // data to transform stored block to user attitude
+{
+  WeylElt w; // apply this to the integral system at the fundamental alcove
+  Permutation simple_pi; // transform intsys simple generators through this
+  RatWeight shift;
+};
+
 /*
   In addition to providing methods inherited from |Rep_context|, the class
   |Rep_table| provides storage for data that was previously computed for
@@ -509,10 +516,12 @@ class Rep_table : public Rep_context
   unsigned short length(StandardRepr z); // by value
 
   blocks::common_block& lookup_full_block
-    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
+    (StandardRepr& sr,BlockElt& z, block_modifier& bm
+      ); // |sr| is by reference; will be normalised
 
   blocks::common_block& lookup // construct only partial block if necessary
-    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
+    (StandardRepr& sr,BlockElt& z, block_modifier& bm
+      ); // |sr| is by reference; will be normalised`
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   simple_list<std::pair<BlockElt,kl::KLPol> >
