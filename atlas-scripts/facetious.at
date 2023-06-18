@@ -313,9 +313,9 @@ set_type
    FacetVertsHash = vec {last two entries are indices in
 	 hashUp and hashDown}
 , LocalFacetVertsHash = vec
-{ Size is 4 + (dimension d0 of local facet) + 1. First d0+1 are
-  vertices in local vertex data; next two entries are dim of FPP
-  facet, index in that list; last two are indices in hashUp and
+{ Size is 2 + (dimension d0 of local facet) + 1. First d0+1 are
+  vertices in local vertex data; {NO next two entries are dim of FPP
+  facet, index in that list; NO} last two are indices in hashUp and
   hashDown }
 , LocalFacetStatusVertsHash = (string status, vec verts_hash)
 ]
@@ -2417,7 +2417,7 @@ set localFD_hash \
     then prints("start localFD_hash")
     fi;
     let vlist = vertex_data.list
-    then Perm = thetaAct(x, lambda, vertex_data), n=#lambda
+    then Perm = thetaAct(x, lambda, vertex_data){, n=#lambda}
     then vlistActRep = [ratvec]:
     { LIST CAN HAVE REPETITIONS IN U(3,3) }
 	for v@i in vlist
@@ -2472,7 +2472,7 @@ set localFD_hash \
 		    	in if is_final(p) and is_hermitian(p)
 			      and p.infinitesimal_character = FB
 		    	   then let LF = LocalFacetVertsHash:
-				vAct##[d,k,v[d+1],v[d+2]]
+				vAct##[{d,k,}v[d+1],v[d+2]]
 				in LFVI[#vAct - 1] :=
 			   (LFVI[#vAct -1] next LFVI[#vAct -1]:=[])
 			   # LF
@@ -2482,13 +2482,7 @@ set localFD_hash \
 	od
     od
     then dAct = last(for j:#LFVI do #LFVI[j] > 0 od)
-    {then statuses = [[string]]:
-    	 for d:dAct+1
-	 do for j:#LFVI[d]
-	    do ""
-	    od
-	 od}
-    in(Lvd, x, lambda, {statuses,} LFVI[:dAct+1])
+    in(Lvd, x, lambda, LFVI[:dAct+1])
 )
 
 {this takes the local facet data and computes K-chars. Used to be
@@ -3323,7 +3317,7 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     [string]:
     let G = x.real_form
     then FPPDH = facet_data_fold_hash(cofolded(G))
-    then (vd,FPPh) = FPPDH
+    {then (vd,FPPh) = FPPDH}
     then LFD = localFD_hash(x,lambda,FPPDH)
     then (Lvd,,,LFverts) = LFD
     then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
