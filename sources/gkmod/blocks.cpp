@@ -1295,8 +1295,8 @@ void common_block::shift (const RatWeight& diff)
   auto& ic = rc.inner_class();
   unsigned int int_sys_nr; // unused dummy
   WeylElt w;
-  const int_Matrix& int_ev =
-    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr,w);
+  const auto& item=ic.int_item(z_pool[0].gamma_lambda(),int_sys_nr,w);
+  const int_Matrix& int_ev = item.coroots_matrix(w);
   assert((int_ev*diff.numerator()).is_zero());
 #endif
   for (auto& srm : z_pool)

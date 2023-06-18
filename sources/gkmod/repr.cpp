@@ -76,21 +76,14 @@ Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm)
     : x(srm.x())
     , int_sys_nr()
-    , w()
-    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
-{
-  InnerClass& ic = rc.inner_class();
-  const KGB& kgb = rc.kgb();
+    , w() // |int_sys_nr| qnd |w| are set by |int_item| below
+    , evs_reduced()
+{ // ensure |int_item| sets |w| before same argument to |data| is evaluated
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  auto eval = ic.integral_eval(gl,int_sys_nr,w) * gl.numerator(); // mat * vec
-  for (auto& entry : eval)
-  {
-    assert(entry%gl.denominator()==0);
-    entry /= gl.denominator();
-  }
-  const auto codec = ic.int_item(int_sys_nr).data(ic,kgb.inv_nr(x),w);
-  evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
-    int_Vector(eval.begin(),eval.end());
+  InnerClass& ic = rc.inner_class();
+  const auto& integral = ic.int_item(gl,int_sys_nr,w); // sets |int_sys_nr|, |w|
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w);
+  evs_reduced = codec.internalise(gl);
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
     evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
 }
@@ -321,13 +314,7 @@ Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
 {
-  RatWeight eval = (codec.coroots_matrix*offset).normalize();
-  if (eval.is_zero())
-    return Weight(codec.theta_1_image_basis.n_rows(),0);
-  assert(eval.denominator()==1);
-  auto eval_v = int_Vector(eval.numerator().begin(),eval.numerator().end());
-  eval_v = codec.in * eval_v;
-
+  auto eval_v = codec.internalise(offset);
   { unsigned int i;
     for (i=0; i<codec.diagonal.size(); ++i)
     {
@@ -339,7 +326,7 @@ Weight Rep_context::theta_1_preimage
     eval_v.resize(codec.diagonal.size());
   }
 
-  return codec.theta_1_image_basis * (codec.out * eval_v);
+  return codec.out * eval_v;
 } // |theta_1_preimage|
 
 // difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
