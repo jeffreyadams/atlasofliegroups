@@ -212,9 +212,9 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 
 integral_datum_item::integral_datum_item
   (InnerClass& ic,const RootNbrSet& int_poscoroots)
-    : W(ic.weylGroup())
+    : W(ic.Weyl_group())
     , int_sys_p(new SubSystem
-		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
+		 {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)})
 {}
 
 SubSystem integral_datum_item::int_system(const WeylElt& w) const

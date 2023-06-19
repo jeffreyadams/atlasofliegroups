@@ -163,7 +163,7 @@ BlockElt& first_free_slot(BlockEltPair& p)
 
 Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
-  , dd(kgb.innerClass().rootDatum().Cartan_matrix())
+  , dd(kgb.innerClass().root_datum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , kl_tab_ptr(nullptr)
@@ -653,7 +653,7 @@ void Block::compute_supports()
     if (z==0 or involution(z)!=involution(z-1))
     { // compute involution support directly from definition
       RankFlags support;
-      WeylWord ww=tW.weylGroup().word(involution(z));
+      WeylWord ww=tW.Weyl_group().word(involution(z));
       for (size_t j=0; j<ww.size(); ++j)
 	support.set(ww[j]);
       d_involutionSupport.push_back(support);
@@ -1589,11 +1589,11 @@ std::vector<Poset::EltList> complete_Hasse_diagram
   currently the case for an inner class and its dual) then one could
   alternatively say simply
 
-    |return tW.prod(tW.weylGroup().longest(),dual_tW.twisted(W.inverse(w)))|
+    |return tW.prod(tW.Weyl_group().longest(),dual_tW.twisted(W.inverse(w)))|
 
   or
 
-    |return tW.prod(tW.inverse(tW.twisted(w)),tW.weylGroup().longest())|.
+    |return tW.prod(tW.inverse(tW.twisted(w)),tW.Weyl_group().longest())|.
 
   Note that this would involve implicit conversion of an element of |W| as one
   of |dual_W|.
@@ -1604,7 +1604,7 @@ dual_involution(const TwistedInvolution& w,
 		const TwistedWeylGroup& dual_tW)
 {
   WeylWord ww= tW.word(w);
-  TwistedInvolution result = dual_tW.weylGroup().longest();
+  TwistedInvolution result = dual_tW.Weyl_group().longest();
   for (size_t i=ww.size(); i-->0; )
     dual_tW.mult(result,dual_tW.twisted(ww[i]));
   return result;

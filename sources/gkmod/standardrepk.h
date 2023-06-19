@@ -265,10 +265,10 @@ class SRK_context
   // accessors
   const InnerClass& innerClass() const { return G.innerClass(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
-  const WeylGroup& weylGroup() const { return G.weylGroup(); }
+  const WeylGroup& Weyl_group() const { return G.Weyl_group(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
-  const TitsGroup& titsGroup() const { return G.titsGroup(); }
+  const TitsGroup& Tits_group() const { return G.Tits_group(); }
   const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
 
   const TwistedInvolution involution_of_Cartan(CartanNbr cn) const
@@ -353,7 +353,7 @@ class SRK_context
 
   TitsElt titsElt(const StandardRepK& s) const
   {
-    return TitsElt(titsGroup(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
+    return TitsElt(Tits_group(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
   }
 
   // list of elements below element representing |q|, by Levi (real) generators

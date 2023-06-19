@@ -239,7 +239,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
   CartanNbr cn = innerClass().class_number(sigma);
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
-		        (titsGroup().left_torus_part(a)),
+		        (Tits_group().left_torus_part(a)),
 		      project(cn,mu));
 
   return result;
@@ -1681,9 +1681,9 @@ PSalgebra::PSalgebra(TitsElt base, const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
-    , nilpotents(G.rootDatum().posroot_set())
+    , nilpotents(G.root_datum().posroot_set())
 {
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   InvolutionData id = G.involution_data(base.tw());
 
   // get |rd.simple_root_set()&id.real_roots()|, shifted to fit in |RankFlags|

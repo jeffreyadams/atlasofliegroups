@@ -37,6 +37,7 @@ namespace atlas {
 namespace repr {
 
 class common_context;
+struct block_modifier;
 
 /*
   A parameter of a standard representation is determined by a triplet
@@ -191,7 +192,7 @@ class Rep_context
   const TwistedWeylGroup& twisted_Weyl_group() const
   { return G.twistedWeylGroup(); }
   const WeylGroup& Weyl_group() const
-  { return twisted_Weyl_group().weylGroup(); }
+  { return twisted_Weyl_group().Weyl_group(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }

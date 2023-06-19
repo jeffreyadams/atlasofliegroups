@@ -482,7 +482,7 @@ public:
   // construct the "dual" twisted Weyl group: differs by a dual twist
   TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
 
-  const WeylGroup& weylGroup() const { return W; }
+  const WeylGroup& Weyl_group() const { return W; }
   Generator rank() const { return W.rank(); }
 
   int mult(WeylElt& w, Generator s) const { return W.mult(w,s); }

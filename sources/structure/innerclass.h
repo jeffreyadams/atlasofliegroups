@@ -107,13 +107,13 @@ void twisted_act
   datum recorded in the RootDatum class d_rootDatum, and its involutive
   distinguished automorphism. Many computations take place inside the Tits
   group, which is an extension of the (complex) Weyl group by the elements of
-  order 2 in the torus. (In fact the structure we store in |d_titsGroup|
+  order 2 in the torus. (In fact the structure we store in |d_Tits_group|
   allows computing in an even larger group, the semidirect product of the Tits
   group just described by a factor Z/2Z whose action on the other factor is
   determined by the given automorphism of the based root datum, the "twist".)
 
   The field |d_rootDatum| stores the root datum, which must have been
-  constructed before. The field |d_titsGroup| holds the mentioned (enlarged)
+  constructed before. The field |d_Tits_group| holds the mentioned (enlarged)
   Tits group, which is constructed upon entry from the root datum and the
   involution; it also gives access to just the (complex) Weyl group when that
   is necessary. Finally the other fields store the information relative to
@@ -176,7 +176,7 @@ class InnerClass
   /*
     Fiber class for the fundamental Cartan subgroup
     The distinguished involution (permuting the simple roots) is stored here
-    so for construction it is convient to precede the |d_titsGroup| member
+    so for construction it is convient to precede the |d_Tits_group| member
   */
   Fiber d_fundamental;
 
@@ -189,7 +189,7 @@ class InnerClass
 
   // Tits group of the based root datum, extended by an involutive automorphism
   // this member also stores the |TwistedWeylGroup| (which refers to |W|)
-  const TitsGroup d_titsGroup;
+  const TitsGroup d_Tits_group;
   // Tits group of the dual based root datum
   const TitsGroup d_dualTitsGroup;
   // the permutation of the roots given by the based automorphism
@@ -250,21 +250,21 @@ class InnerClass
 
 // Attributes "inherited" from component objects
 
-  const RootDatum& rootDatum() const { return d_rootDatum; }
-  const RootDatum& dualRootDatum() const { return d_dualRootDatum; }
+  const RootDatum& root_datum() const { return d_rootDatum; }
+  const RootDatum& dual_root_datum() const { return d_dualRootDatum; }
   const RootSystem& rootSystem() const {return d_rootDatum; } // base object
   const RootSystem& dualRootSystem() const {return d_dualRootDatum; } // base
-  size_t rank() const { return rootDatum().rank(); }
+  size_t rank() const { return root_datum().rank(); }
   size_t semisimple_rank() const { return rootSystem().rank(); }
 
 // Access to certain component objects themselves
 
-  const WeylGroup& weylGroup() const { return W; }
+  const WeylGroup& Weyl_group() const { return W; }
   const TwistedWeylGroup& twistedWeylGroup() const
-    { return d_titsGroup; } // in fact its base object
+    { return d_Tits_group; } // in fact its base object
   const TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
-  const TitsGroup& titsGroup() const { return d_titsGroup; }
+  const TitsGroup& Tits_group() const { return d_Tits_group; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
 
   const Fiber& fundamental_fiber () const { return d_fundamental; }

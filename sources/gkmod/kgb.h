@@ -120,8 +120,8 @@ class KGB_base
   inv_index nr_involutions() const { return inv_nrs.size(); }
 
   const InnerClass& innerClass() const { return ic; }
-  const RootDatum& rootDatum() const;
-  const WeylGroup& weylGroup() const;
+  const RootDatum& root_datum() const;
+  const WeylGroup& Weyl_group() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
 
   KGBElt cross(weyl::Generator s, KGBElt x) const
@@ -174,7 +174,7 @@ class KGB_base
   CartanNbr Cartan_class(KGBElt x) const;
 
   size_t weylLength(KGBElt x) const // needed in sorting, in case |length| ties
-    { return weylGroup().length(involution(x).w()); }
+    { return Weyl_group().length(involution(x).w()); }
 
   KGBEltPair packet (KGBElt x) const
   { InvolutionNbr i = involution_index(x);
@@ -325,7 +325,7 @@ class KGB : public KGB_base
 // The based Tits group.
   const TitsCoset& basedTitsGroup() const { return *d_base; }
 // The Tits group.
-  const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
+  const TitsGroup& Tits_group() const { return d_base->Tits_group(); }
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   // reconstruct from |torus_part| a |TorusElement| as in |global_KGB|

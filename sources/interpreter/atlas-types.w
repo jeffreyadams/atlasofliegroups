@@ -3788,12 +3788,12 @@ element for this (strong) real form.
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
   (const InnerClass& G, WeightInvolution theta)
-{ const RootDatum& rd = G.rootDatum();
+{ const RootDatum& rd = G.root_datum();
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
       theta!=G.distinguished())
     throw runtime_error("Involution not in this inner class");
-  return G.weylGroup().element(ww);
+  return G.Weyl_group().element(ww);
 }
 @)
 void synthetic_real_form_wrapper(expression_base::level l)
@@ -3831,7 +3831,7 @@ the evaluations are even, before halving to obtain the actual projection.
     // make torus factor $\theta$-fixed, temporarily doubled
   TorusElement t(torus_factor->val,false);
     // take a copy as |TorusElement|, using $\exp_{-1}$
-  const RootDatum& rd = G->val.rootDatum();
+  const RootDatum& rd = G->val.root_datum();
   LatticeMatrix alpha
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
   if (not is_central(alpha,t)) // every root should now have even evaluation
@@ -4061,7 +4061,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
   const weyl::TwistedInvolution& tw =
     cc->ic_ptr->val.involution_of_Cartan(cc->number);
-  WeylWord ww = cc->ic_ptr->val.weylGroup().word(tw);
+  WeylWord ww = cc->ic_ptr->val.Weyl_group().word(tw);
 
   push_value(std::make_shared<vector_value>
     (std::vector<int>(ww.begin(),ww.end())));
@@ -4070,7 +4070,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
   wrap_tuple<2>();
 
-  const RootSystem& rs=cc->ic_ptr->val.rootDatum();
+  const RootSystem& rs=cc->ic_ptr->val.root_datum();
 
 @)// print types of imaginary and real root systems and of Complex factor
   push_value(std::make_shared<Lie_type_value> @|
@@ -4242,7 +4242,7 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->ic_ptr->val.rootDatum().Cartan_matrix(si);
+{ cm=cc->ic_ptr->val.root_datum().Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 
@@ -4438,7 +4438,7 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4454,7 +4454,7 @@ void KGB_cross_wrapper(expression_base::level l)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4487,7 +4487,7 @@ defined if |v==3|.
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4507,7 +4507,7 @@ void KGB_status_wrapper(expression_base::level l)
     {
       RootNbr theta_alpha = kgb.innerClass().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
-      if (kgb.rootDatum().is_posroot(theta_alpha))
+      if (kgb.root_datum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
     }
     push_value(std::make_shared<int_value> (stat));
@@ -4544,7 +4544,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   const InnerClass& G = rf->val.innerClass();
   TitsElt a
-   (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
+   (G.Tits_group(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
   if (x==UndefKGB)
@@ -4573,7 +4573,7 @@ void KGB_twist_wrapper(expression_base::level l)
 }
 @)
 void test_compatible (const InnerClass& ic, shared_matrix& delta)
-{ check_based_root_datum_involution(ic.rootDatum(),delta->val);
+{ check_based_root_datum_involution(ic.root_datum(),delta->val);
   const auto& xi = ic.distinguished();
   if (delta->val*xi!=xi*delta->val)
     throw runtime_error("Non commuting distinguished involution");

@@ -315,7 +315,7 @@ std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,
 			   const TitsGroup& Tg)
 {
   prettyPrint(strm,Tg.left_torus_part(a));
-  printWeylElt(strm,a.w(),Tg.weylGroup());
+  printWeylElt(strm,a.w(),Tg.Weyl_group());
 
   return strm;
 }

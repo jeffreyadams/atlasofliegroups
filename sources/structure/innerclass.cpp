@@ -97,7 +97,7 @@ namespace innerclass {
 inline WeightInvolution compute_matrix
   (const InnerClass& ic,const TwistedInvolution& tw)
 {
-  return ic.rootDatum().action_matrix(ic.weylGroup().word(tw.w()))
+  return ic.root_datum().action_matrix(ic.Weyl_group().word(tw.w()))
     * ic.distinguished();
 }
 
@@ -107,7 +107,7 @@ InnerClass::C_info::C_info
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
-  , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
+  , Cc(CartanClass(G.root_datum(),G.dual_root_datum(),
 		   compute_matrix(G,tw))) // generate fiber and dual fiber
   , real_labels(), dual_real_labels() // these start out empty
   {}
@@ -133,7 +133,7 @@ InnerClass::InnerClass
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
     // dual fundamental fiber is dual fiber of most split Cartan
 
-  , d_titsGroup(d_rootDatum,W,distinguished())
+  , d_Tits_group(d_rootDatum,W,distinguished())
   , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
 
@@ -142,7 +142,7 @@ InnerClass::InnerClass
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
   // DON'T use |tmp_d| as involution below: would store a dangling reference!
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
+  , C_orb(d_rootDatum,distinguished(),d_Tits_group) // set up bare table
 
   , integral_pool()
   , int_hash(integral_pool)
@@ -169,7 +169,7 @@ InnerClass::InnerClass
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
     // dual fundamental fiber is dual fiber of most split Cartan
 
-  , d_titsGroup(d_rootDatum,W,distinguished())
+  , d_Tits_group(d_rootDatum,W,distinguished())
   , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
 
@@ -178,7 +178,7 @@ InnerClass::InnerClass
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
   // DON'T use |tmp_d| as involution below: would store a dangling reference!
-  , C_orb(d_rootDatum,distinguished(),d_titsGroup) // set up bare table
+  , C_orb(d_rootDatum,distinguished(),d_Tits_group) // set up bare table
 
   , integral_pool()
   , int_hash(integral_pool)
@@ -206,7 +206,7 @@ void InnerClass::construct() // common part of two constructors
     }
 
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group
-    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting "based" stuff
+    const TitsGroup& Tg=adj_Tg.Tits_group(); // same, forgetting "based" stuff
 
     for (CartanNbr i=0; i<Cartan.size(); ++i) // |Cartan| grows as loop advances
     {
@@ -216,7 +216,7 @@ void InnerClass::construct() // common part of two constructors
       CartanNbr entry_level=Cartan.size(); // is only used in |assert|
 #endif
       InvolutionData id =
-	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
+	InvolutionData::build(d_rootDatum,d_Tits_group,Cartan[i].tw);
       RootNbrSet pos_im = id.imaginary_roots() & d_rootDatum.posroot_set();
 
       // try to generate new Cartans above current: do Cayleys by |pos_im|
@@ -288,7 +288,7 @@ void InnerClass::construct() // common part of two constructors
 
   { // task 2: fill remainder of all |Cartan[i]|: |dual_real_forms|, |dual_rep|
     const TitsCoset dual_adj_Tg (*this,tags::DualTag());
-    const TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
+    const TitsGroup& dual_Tg = dual_adj_Tg.Tits_group();
 
     { // first initialise |Cartan.back().dual_rep|
       TwistedInvolution w0(W.longest()); // this is always a twisted inv.
@@ -316,7 +316,7 @@ void InnerClass::construct() // common part of two constructors
     for (CartanNbr i=Cartan.size(); i-->0; )
     {
       InvolutionData id =
-	InvolutionData::build(d_rootDatum,d_titsGroup,Cartan[i].tw);
+	InvolutionData::build(d_rootDatum,d_Tits_group,Cartan[i].tw);
       RootNbrSet pos_re = id.real_roots() & d_rootDatum.posroot_set();
       for (RootNbrSet::iterator it=pos_re.begin(); it(); ++it)
       {
@@ -404,15 +404,15 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   , d_fundamental(G.d_dualFundamental)
   , d_dualFundamental(G.d_fundamental)
 
-  , d_titsGroup(G.d_dualTitsGroup,W)
-  , d_dualTitsGroup(G.d_titsGroup,W)
+  , d_Tits_group(G.d_dualTitsGroup,W)
+  , d_dualTitsGroup(G.d_Tits_group,W)
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
 
   , Cartan() // filled below
   , Cartan_poset(G.Cartan_poset,tags::DualTag())
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
-  , C_orb(d_rootDatum,d_fundamental.involution(),d_titsGroup)
+  , C_orb(d_rootDatum,d_fundamental.involution(),d_Tits_group)
 
   , integral_pool()
   , int_hash(integral_pool)
@@ -438,9 +438,9 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
     dst.dual_rep = src.rep; // assignment is mainly to set their size in |dst|
 
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group
-    const TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
+    const TitsGroup& Tg=adj_Tg.Tits_group(); // same, forgetting base
     const TitsCoset dual_adj_Tg (*this,tags::DualTag());
-    const TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
+    const TitsGroup& dual_Tg = dual_adj_Tg.Tits_group();
 
     for (BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
     {
@@ -535,7 +535,7 @@ void InnerClass::map_real_forms(CartanNbr cn)
   Cartan[cn].real_labels.resize(weak_real.classCount());
 
   TorusPart base = sample_torus_part(cn,quasisplit());
-  TitsElt a(adj_Tg.titsGroup(),base,tw);
+  TitsElt a(adj_Tg.Tits_group(),base,tw);
   Grading ref_gr; // reference simple-imaginary grading for quasisplit form
   for (size_t i=0; i<sim.size(); ++i)
     ref_gr.set(i,adj_Tg.grading(a,sim[i]));
@@ -567,7 +567,7 @@ void InnerClass::map_dual_real_forms(CartanNbr cn)
   assert(dual_weak_real.classCount()==Cartan[cn].dual_real_forms.size());
 
   TorusPart dual_base = dual_sample_torus_part(cn,0);
-  TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
+  TitsElt dual_a(dual_adj_Tg.Tits_group(),dual_base,dual_tw);
   Grading dual_ref_gr; // reference for dual quasisplit form
   for (size_t i=0; i<sre.size(); ++i)
     dual_ref_gr.set(i,dual_adj_Tg.grading(dual_a,sre[i]));
@@ -708,14 +708,14 @@ InvolutionNbr InnerClass::numInvolutions
 Weight
 InnerClass::posRealRootSum(const TwistedInvolution& tw) const
 {
-  return rootDatum().twoRho(involution_data(tw).real_roots());
+  return root_datum().twoRho(involution_data(tw).real_roots());
 }
 
 // Sum of the imaginary roots.
 Weight
 InnerClass::posImaginaryRootSum(const TwistedInvolution& tw) const
 {
-  return rootDatum().twoRho(involution_data(tw).imaginary_roots());
+  return root_datum().twoRho(involution_data(tw).imaginary_roots());
 }
 
 /* Make |sigma| canonical and return Weyl group |w| element that left
@@ -730,9 +730,9 @@ InnerClass::canonicalize
    RankFlags gens) // subset of generators, "defaults" to all simple generators
   const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   const TwistedWeylGroup& tW=twistedWeylGroup();
-  const WeylGroup& W=weylGroup();
+  const WeylGroup& W=Weyl_group();
   InvolutionData id(rd,tW.simple_images(rd,sigma));
 
   Weight rrs=rd.twoRho(id.real_roots()); // real (pos)root sum
@@ -937,7 +937,7 @@ RatCoweight square_class_choice
 // find compact ones among imaginary simple roots for |G|, as defined by |coch|
 Grading compacts_for(const InnerClass& G, TorusElement coch)
 {
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   Grading result;
   for (auto it=G.simple_roots_imaginary().begin(); it(); ++it)
     result.set(*it,coch.negative_at(rd.simpleRoot(*it)));
@@ -953,7 +953,7 @@ Grading compacts_for(const InnerClass& G, TorusElement coch)
 */
 RatCoweight some_coch (const InnerClass& G,cartanclass::square_class csc)
 {
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   auto compacts = G.simple_roots_x0_compact(G.square_class_repr(csc));
   // got some grading associated to |csc|; get representative cocharacter for it
   RatCoweight coch_rep (rd.rank());
@@ -983,7 +983,7 @@ TorusPart InnerClass::grading_shift_repr (Grading diff) const
   BinaryMap fg2grading(c_rank,f_rank);
   auto it=simple_roots_imaginary().begin();
   for (unsigned int i=0; i<c_rank; ++i)
-  { SmallBitVector alpha_i(rootDatum().simpleRoot(*it++));
+  { SmallBitVector alpha_i(root_datum().simpleRoot(*it++));
     for (unsigned int j=0; j<f_rank; ++j)
       fg2grading.set(i,j,basis[j].dot(alpha_i));
   }
@@ -1077,7 +1077,7 @@ TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
   bits += min;
   t += bits;
 
-  assert(tits::compact_simples(rootDatum(),t,simple_roots_imaginary())==rf_cpt);
+  assert(tits::compact_simples(root_datum(),t,simple_roots_imaginary())==rf_cpt);
 
   return bits;
 } // |x0_torus_part|
@@ -1104,8 +1104,8 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 subsystem::integral_datum_item& InnerClass::int_item
   (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
 {
-  const auto& rd = rootDatum();
-  const auto& W=weylGroup();
+  const auto& rd = root_datum();
+  const auto& W=Weyl_group();
   RootNbrSet on_wall_subset;
   RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
   auto ww = weyl::from_fundamental_alcove(rd,walls);
@@ -1223,7 +1223,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 Grading grading_of_simples
   (const InnerClass& G, const RatCoweight& coch)
 {
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   Grading result;
   for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
     result.set(s,coch.dot(rd.simpleRoot(s))%2==0);
@@ -1237,7 +1237,7 @@ RealFormNbr real_form_of // who claims this KGB element?
   )
 {
   const TwistedWeylGroup& W = G.twistedWeylGroup();
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   const GlobalTitsGroup gTg(G);
   const WeightInvolution& xi = G.distinguished();
 
@@ -1386,7 +1386,7 @@ void twisted_act
 */
 void InnerClass::correlateForms(CartanNbr cn)
 {
-  const RootSystem& rs = rootDatum();
+  const RootSystem& rs = root_datum();
   const TwistedWeylGroup& tW = twistedWeylGroup();
   const Fiber& fundf = d_fundamental;
   const Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
@@ -1432,7 +1432,7 @@ void InnerClass::correlateForms(CartanNbr cn)
 
 void InnerClass::correlateDualForms(CartanNbr cn)
 {
-  const RootSystem& rs = dualRootDatum();
+  const RootSystem& rs = dual_root_datum();
   const TwistedWeylGroup& tW = dualTwistedWeylGroup();
   const Fiber& fundf = d_dualFundamental;
   const Fiber& f = cartan(cn).dualFiber();

@@ -298,7 +298,7 @@ class Block : public Block_base
 // accessors
 
   const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
-  const WeylGroup& weylGroup() const { return tW.weylGroup(); }
+  const WeylGroup& Weyl_group() const { return tW.Weyl_group(); }
 
   virtual KGBElt max_x() const { return xrange-1; }
   virtual KGBElt max_y() const { return yrange-1; }

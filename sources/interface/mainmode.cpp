@@ -225,7 +225,7 @@ namespace {
 void cmatrix_f()
 {
   prettyprint::printMatrix
-    (std::cout,current_inner_class().rootDatum().Cartan_matrix());
+    (std::cout,current_inner_class().root_datum().Cartan_matrix());
 
 }
 
@@ -234,7 +234,7 @@ void cmatrix_f()
 void rootdatum_f()
 {
   ioutils::OutputFile file;
-  testprint::print(file,current_inner_class().rootDatum());
+  testprint::print(file,current_inner_class().root_datum());
 }
 
 
@@ -243,7 +243,7 @@ void roots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   WeightList::const_iterator first = rd.beginRoot();
   WeightList::const_iterator last = rd.endRoot();
@@ -255,7 +255,7 @@ void coroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   CoweightList::const_iterator first = rd.beginCoroot();
   CoweightList::const_iterator last = rd.endCoroot();
@@ -266,7 +266,7 @@ void coroots_f()
 // Print the simple roots in the lattice coordinates.
 void simpleroots_f()
 {
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   auto first = rd.beginSimpleRoot(), last = rd.endSimpleRoot();
   basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
@@ -275,7 +275,7 @@ void simpleroots_f()
 // Print the simple coroots in the lattice coordinates.
 void simplecoroots_f()
 {
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   auto first = rd.beginSimpleCoroot(), last = rd.endSimpleCoroot();
   basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
@@ -286,7 +286,7 @@ void posroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   auto first = rd.beginPosRoot(), last = rd.endPosRoot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;
@@ -297,7 +297,7 @@ void poscoroots_f()
 {
   ioutils::OutputFile file;
 
-  const RootDatum& rd = current_inner_class().rootDatum();
+  const RootDatum& rd = current_inner_class().root_datum();
 
   auto first = rd.beginPosCoroot(), last = rd.endPosCoroot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;

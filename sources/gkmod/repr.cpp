@@ -902,7 +902,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     const WeylWord& to_simple)
-{ const RootDatum& rd=G.rootDatum();
+{ const RootDatum& rd=G.root_datum();
   const InvolutionTable& i_tab = G.involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
   return root_sum(rd,S);
