@@ -6595,10 +6595,24 @@ void test_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-of the \.{full\_block} command in the \.{Fokko} program, and a variation for
-partial blocks.
+of the \.{full\_block} command in the \.{Fokko} program.
 
 @< Local function def...@>=
+void print_param_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
+  common_context ctxt(p->rc(),srm.gamma_lambda());
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block block (ctxt,srm,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following block:" << std::endl;
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+@)
 void print_c_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
@@ -6606,8 +6620,13 @@ void print_c_block_wrapper(expression_base::level l)
   repr::block_modifier bm;
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
   const RatWeight& diff = bm.shift;
+  auto ww = p->rc().Weyl_group().word(bm.w);
+
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following common block:" << std::endl;
+               @|<< " of the following common block transformed by <";
+  for (unsigned int i=0; i<ww.size(); ++i)
+     *output_stream << (i==0 ? "" : ".") << static_cast<unsigned int>(ww[i]);
+  *output_stream << ">:" << std::endl;
   block.shift(diff);
   block.print_to(*output_stream,block.singular(p->val.gamma()));
     // print block using involution expressions
@@ -6615,6 +6634,9 @@ void print_c_block_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
+
+@ Here is a variation generating and printing only a partial block.
+@< Local function def...@>=
 
 void print_pc_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
@@ -7338,7 +7360,8 @@ install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 @)
-install_function(print_c_block_wrapper,@|"print_block","(Param->)");
+install_function(print_param_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
 install_function(print_pc_block_wrapper,@|"print_partial_block","(Param->)");
 install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_common_block_wrapper,@|"partial_block"

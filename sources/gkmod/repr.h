@@ -220,6 +220,9 @@ class Rep_context
   StandardRepr sr
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
+  StandardRepr sr
+    (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
+    const;
 
   StandardRepr sr (const K_repr::K_type& t) const
   { return sr(t.x(),t.lambda_rho(),RatWeight(t.lambda_rho().size())); }
@@ -335,6 +338,10 @@ class Rep_context
   void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
+
+  // transformation of |srm|k, by appropriate Weyl element |ww|, or its inverse
+  template<bool left_to_right> StandardReprMod transform
+    (const WeylWord& ww, StandardReprMod srm) const;
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
@@ -544,11 +551,12 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
 /*
-   compute the signed multiset of final parameters "post deformation"
+   Compute the signed multiset of final parameters "post deformation"
    (subsequently they will be deformed towards zero without reduction here)
    obtained from the elements of the block of |p|, with their "pre deformation"
    coefficients taken (and removed) from |queue|, where all block elements of
-   high strictly above |height_bound| are ignored
+   high strictly above |height_bound| are ignored. The result is a list of pairs
+   of a |StandardRepr| with its |Split_integer| mulitplicity.
 */
   sl_list<SR_poly::value_type> block_deformation_to_height
     (StandardRepr p, SR_poly& queue, level height_bound); // |p| by value
