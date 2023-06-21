@@ -1294,8 +1294,8 @@ void common_block::shift (const RatWeight& diff)
 #ifndef NDEBUG
   auto& ic = rc.inner_class();
   unsigned int int_sys_nr; // unused dummy
-  WeylElt w;
-  const auto& item=ic.int_item(z_pool[0].gamma_lambda(),int_sys_nr,w);
+  repr::block_modifier bm;
+  const auto& item=ic.int_item(z_pool[0].gamma_lambda(),int_sys_nr,bm);
   const int_Matrix& int_ev = item.coroots_matrix(w);
   assert((int_ev*diff.numerator()).is_zero());
 #endif

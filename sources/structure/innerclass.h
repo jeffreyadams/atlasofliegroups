@@ -473,17 +473,13 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w);
+    (const RatWeight& gamma, unsigned int& int_sys_nr, repr::block_modifier& bm);
   // same when |int_sys_nr| and |w| have already been computed:
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
-  const subsystem::integral_datum_item::codec integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
-  { WeylElt w;
-    auto& item = int_item(gamma,int_sys_nr,w); // sets |int_sys_nr| and |w|
-    return item.data(*this,inv,w);
-  }
+  subsystem::integral_datum_item::codec integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr);
 
 // pseudo manipulator
 

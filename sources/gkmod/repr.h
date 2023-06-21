@@ -466,6 +466,7 @@ public:
 struct block_modifier // data to transform stored block to user attitude
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
+  RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
   RatWeight shift;
 };
@@ -594,7 +595,7 @@ class common_context
 {
   const Rep_context& rep_con;
   unsigned int int_sys_nr;
-  WeylElt w; // element applied to bare (fundamental alcove) integral system
+  block_modifier bm; // applied to bare (fundamental alcove) integral system
   const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
   const SubSystem sub; // embeds its |w| image into parent root datum
 public:
@@ -607,7 +608,7 @@ public:
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   unsigned int base_integral_nr() const { return int_sys_nr; }
-  WeylElt integral_attitude() const { return w; }
+  WeylElt integral_attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|

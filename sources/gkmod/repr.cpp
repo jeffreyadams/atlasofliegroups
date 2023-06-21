@@ -81,8 +81,9 @@ Reduced_param::Reduced_param
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gl,int_sys_nr,w); // sets |int_sys_nr|, |w|
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w);
+  repr::block_modifier bm;
+  const auto& integral = ic.int_item(gl,int_sys_nr,bm); // sets last two args
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w = bm.w);
   evs_reduced = codec.internalise(gl);
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
     evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
@@ -1677,7 +1678,7 @@ blocks::common_block& Rep_table::lookup_full_block
   const RootDatum& rd = root_datum();
   const WeylGroup& W = Weyl_group();
   unsigned int int_sys_nr;
-  const auto& integral = inner_class().int_item(sr.gamma(),int_sys_nr,bm.w);
+  const auto& integral = inner_class().int_item(sr.gamma(),int_sys_nr,bm);
   auto ww = W.word(bm.w);
 
   // clumsily find permutation of simply-integrals
@@ -2479,9 +2480,9 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
-, w()
-, id_it(rc.inner_class().int_item(gamma,int_sys_nr,w)) // sets |w|
-, sub(id_it.int_system(w)) // transform by |w|, and store image subsystem
+, bm()
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr,bm)) // sets last 2 arguments
+, sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
 {} // |common_context::common_context|
 
 

@@ -32,6 +32,7 @@
 #include "weyl.h"
 #include "kgb.h"
 #include "alcoves.h"
+#include "repr.h" // to make |repr::block_modifier| a complete type
 
 /*****************************************************************************
 
@@ -1102,43 +1103,44 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 }
 
 subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
+  (const RatWeight& gamma, unsigned int& int_sys_nr, repr::block_modifier& bm)
 {
   const auto& rd = root_datum();
   const auto& W=Weyl_group();
   RootNbrSet on_wall_subset;
   RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
   auto ww = weyl::from_fundamental_alcove(rd,walls);
-  w = W.element(ww);
+  bm.w = W.element(ww); // an initial integral subsystem coset representative
 
   // we need to map |on_wall_subset| to integral system at fundamental alcove
   std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
   on_wall_subset = image(rd,ww,on_wall_subset);
   assert(rd.fundamental_alcove_walls().contains(on_wall_subset));
 
-  RootNbrSet fundamental_integral_coroots(rd.numPosRoots());
+  RootNbrSet fundamental_integral_poscoroots(rd.numPosRoots());
   for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
-    fundamental_integral_coroots.insert(rd.posroot_index(alpha));
-  subsystem::integral_datum_entry e(fundamental_integral_coroots);
+    fundamental_integral_poscoroots.insert(rd.posroot_index(alpha));
+  subsystem::integral_datum_entry e(fundamental_integral_poscoroots);
 
   assert(integral_pool.size()==int_table.size());
   int_sys_nr = int_hash.match(e);
   if (int_sys_nr==int_table.size())
     int_table.emplace_back(*this,e.posroots);
 
-  subsystem::integral_datum_item& result =  int_table[int_sys_nr];
+  subsystem::integral_datum_item& result = int_table[int_sys_nr];
 
   std::reverse(ww.begin(),ww.end()); // now from fundamental alcove again
   RootNbrList image; image.reserve(result.sub_sys().rank());
   for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
     image.push_back(rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
 
+  // now correct coset representative |bm.w| to a positivity-preserving one
   const auto steps = to_positive_system(rd,image);
   for (const auto& step : steps)
-    W.mult(w,result.sub_sys().reflection(step.first));
+    W.mult(bm.w,result.sub_sys().reflection(step.first));
 
 #ifndef NDEBUG
-  ww = W.word(w);
+  ww = W.word(bm.w);
   for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
     assert(image[s] ==
 	   rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
@@ -1146,9 +1148,23 @@ subsystem::integral_datum_item& InnerClass::int_item
     rd.is_posroot(alpha);
 #endif
 
+  bm.integrally_simples = RootNbrSet(rd.numRoots());
+  for (RootNbr alpha : image)
+    bm.integrally_simples.insert(alpha);
+
+  bm.simple_pi = Permutation();
+  bm.simple_pi.reserve(image.size());
+  for (RootNbr alpha : image)
+    bm.simple_pi.push_back(bm.integrally_simples.position(alpha));
   return result;
 }
 
+subsystem::integral_datum_item::codec InnerClass::integrality_codec
+  (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
+{ repr::block_modifier bm;
+  auto& item = int_item(gamma,int_sys_nr,bm); // sets |int_sys_nr| and |w|
+  return item.data(*this,inv,bm.w);
+}
 
 /*****************************************************************************
 
