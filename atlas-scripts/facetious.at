@@ -780,34 +780,6 @@ set updateSingKdumb(RealForm G, FacetDataKchar (vd, StInd, Kpols),
     od
     in StInd
 
-{. To be used on unipotent: again uses is_perturbed to test for
-certain whether the signature at the big facet deforms correctly to
-the small one, and also includes closures of new unitary facets .}
-
-{ set updateSingClosure(RealForm G, FacetData (vd, StInd),
-{[[FacetBary]] FBs,} FacetStatusVertsIndex small) =
-    [[FacetStatusVertsIndex]]:
-    let verts0 = small.verts
-    then P0 = finalize(parameter(x_open(G),G.rho,facet_bary(vd.list,verts0)))
-    then CFK0 = K_type_pol(character_formula(P0))
-    then () = for e:#StInd - #verts0 from #verts0
-    do
-    let StInde = StInd[e]
-    then TODOe = to_do(StInde)
-    in
-    for j in TODOe
-	do
-	if StInde[j].status = "?" and
-	is_subset_of(StInde[j].verts)(verts0) and
-	K_type_pol(character_formula(finalize(parameter(x_open(G), G.rho,
-	{FBs[e][j]} facet_bary(vd.list, StInde[j].verts))))) = CFK0
-	then StInd := downdate(StInd, (small.status, StInde[j].verts));
-	     StInde[j] := (small.status, StInde[j].verts) fi
-	od;
-    StInd[e]:=StInde
-    od
-    in StInd
-}
 {.computes the collection of vertex sets of alcoves containing gamma
 in their closures.}
 set openure(SimpleAffine Affd, ratvec gamma) = [FacetVerts]:
@@ -3308,30 +3280,25 @@ set sphericalKPO(RealForm G) = [string]:
 set sphericalKPO_long(RealForm G) = FacetData:
     spherical_testKPO_long(G,default_tester@Param)
 
-{ set sphericalKPO_long(RealForm G) = FacetData:
-    spherical_testKPO_long(G,default_tester@Param) }
-
 {outputs string with one status per equiv class}
 set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     [string]:
     let G = x.real_form
     then FPPDH = facet_data_fold_hash(cofolded(G))
-    {then (vd,FPPh) = FPPDH}
-    then LFD = localFD_hash(x,lambda,FPPDH)
+    then LFD = if is_split(G) and x=x_open(G) and lambda=G.rho
+    	       then (FPPDH.v_data, x, lambda, FPPDH.hash_facet_inds)
+	       else localFD_hash(x,lambda,FPPDH)
+	       fi
     then (Lvd,,,LFverts) = LFD
     then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
     {this is list of vertices appearing as 0-diml facets: smaller
      and differently ordered from Lvd.list}
     then LvdZero = to_vertex_data(vlistZero)
-    { then () = prints("list = ",Lvd.list) }
     then pol_nums = localKchars(LFD)
     then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
-    { then () = prints("IUCL = ",IUCL) }
-    { then () = prints("CLBF = ",CLBF) }
     then statuses = [string]: for j:#eq do "?" od
     then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
     	      IUCL, CLBF, statuses)
-    { then () = prints("statuses = ",statuses) }
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester)
 
