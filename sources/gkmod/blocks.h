@@ -342,7 +342,9 @@ class common_block : public Block_base
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   const unsigned int int_sys_nr;
-  const WeylElt w; // apply |w| to |rc.inner_class().int_table[int_sys_nr]|
+
+  // for |int_simples|, REMOVE ME when actual integral sys matches |int_sys_nr|
+  const WeylElt w; // apply |w| to |inner_class().int_table[int_sys_nr]|
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -380,6 +382,8 @@ class common_block : public Block_base
 
   // simple coroots of |sub| singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
+  RankFlags singular
+    (const repr::block_modifier& bm, const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const { return z_pool[z].gamma_lambda(); }
@@ -395,7 +399,7 @@ class common_block : public Block_base
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
-  RootNbrList int_simples() const; // simply integral roots
+  RootNbrList int_simples() const; // REMOVE ME simply integral roots
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // unshifted, unshared extended block, but with "arbitrary" involution

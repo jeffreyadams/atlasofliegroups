@@ -711,6 +711,18 @@ RankFlags common_block::singular (const RatWeight& gamma) const
   return result;
 }
 
+// Here the |block_modifier| records actual singular coroots, and the mapping
+RankFlags common_block::singular
+  (const repr::block_modifier& bm, const RatWeight& gamma) const
+{
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+  { auto alpha = bm.integrally_simples.n_th(bm.simple_pi[s]);
+    result.set(s,root_datum().coroot(alpha).dot(gamma.numerator())==0);
+  }
+  return result;
+}
+
 common_block::~common_block() = default;
 
 

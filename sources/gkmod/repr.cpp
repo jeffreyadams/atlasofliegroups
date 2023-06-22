@@ -1481,6 +1481,16 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   predecessors.push_back(pred.undress()); // store |pred| at |h|
 } // |Rep_table::Bruhat_generator::block_below|
 
+sl_list<StandardReprMod> Rep_table::Bruhat_below
+  (const common_context& ctxt, const StandardReprMod& init) const
+{
+  StandardReprMod::Pooltype pool;
+  Mod_hash_tp hash(pool);
+  Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
+  gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
+  return sl_list<StandardReprMod>(pool.begin(),pool.end());
+}
+
 // a structure used in |Rep_table::add_block_below| and |Rep_table::add_block|
 // for each sub_block, record block pointer, entry element, shift
 // DO NOT record iterator into |block_list| which might get invalidated,
@@ -1675,19 +1685,10 @@ blocks::common_block& Rep_table::lookup_full_block
   (StandardRepr& sr,BlockElt& z, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
-  const RootDatum& rd = root_datum();
   const WeylGroup& W = Weyl_group();
   unsigned int int_sys_nr;
-  const auto& integral = inner_class().int_item(sr.gamma(),int_sys_nr,bm);
+  inner_class().int_item(sr.gamma(),int_sys_nr,bm);
   auto ww = W.word(bm.w);
-
-  // clumsily find permutation of simply-integrals
-  bm.simple_pi.clear();
-  RootNbrList simples = integral.image_simples(WeylElt()).to_vector();
-  RootNbrList image_sorted = integral.image_simples(bm.w).to_vector();
-  for (RootNbr alpha : simples)
-    bm.simple_pi.push_back
-      (permutations::find_index(image_sorted,rd.permuted_root(ww,alpha)));
 
   auto srm = transform<true>(ww,StandardReprMod::mod_reduce(*this,sr));
 

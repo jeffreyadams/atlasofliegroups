@@ -115,6 +115,14 @@ void Permutation::renumber(std::vector<U,A>& v, U except) const
       x = pi[x];
 }
 
+bool Permutation::is_identity() const
+{
+  const Base& pi=*this;
+  for (size_t i=0; i<size(); ++i)
+    if (pi[i]!=i)
+      return false;
+  return true;
+}
 
 bool Permutation::is_negative() const
 {

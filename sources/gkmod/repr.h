@@ -217,7 +217,7 @@ class Rep_context
 
   // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
   StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
-  StandardRepr sr
+  StandardRepr sr // REMOVE ME
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
     const;
   StandardRepr sr
@@ -575,6 +575,9 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
 #endif
+
+  sl_list<StandardReprMod> Bruhat_below
+  (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
