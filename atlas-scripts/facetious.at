@@ -2026,6 +2026,34 @@ set local_facet_statusU(KGBElt x, ratvec lambda,
       ; newStatuses
 )
 
+{returns the collection of unipotent points in list, as coords in list}
+set local_unipotent_classes(KGBElt x, ratvec lambda, VertexData (list,lookup)) = vec:
+(   let () = if facet_verbose
+    	     then prints("start local_unipotent_classes")
+	     fi
+    then G = x.real_form
+    then st = G.dual.Springer_table
+    in if not(is_split(G) and (x=x_open(G)) and (lambda = G.rho))
+       then for O@j in st.orbits
+      	   do let gamma = O.H/2
+	      then m0 = lookup(gamma)
+      	      in if m0 >= 0 and
+	      	 GK_dim(parameter(x,lambda,gamma)) = dim(st.dual_map(O))/2
+		 then [m0]
+		 else []
+		 fi
+	   od.##
+	else for O@j in st.orbits
+      	   do let gamma = O.H/2
+	      then m0 = lookup(gamma)
+     	       in if m0 >= 0
+	       	  then [m0]
+		  else []
+		  fi
+	   od.##
+	fi
+)
+
 {REARRAGEMENT of vd.lookup to find entry of FPPstInd[0] with vertex j is done by facet_statusuKPO}
 set facet_statusuKPO_old(RealForm G,
     FacetDataKcharPO_old (vd,FPPstInd , , , ,IUC, CLBF, statuses) ) = [string]:
@@ -3147,8 +3175,8 @@ set spherical_testKPO(RealForm G, VertexData vd,
 set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, [string] statuses,
-    (Param->bool) tester) = [string]:
-    let test_count = int:0, newStatuses = statuses, NumClasses = #eq
+    (Param->bool) tester, int test_count) = [string]:
+    let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then () = if facet_verbose
     	      then prints(); prints("start local_test with "
@@ -3190,9 +3218,9 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
  list of candidate facets, and the numbers of the corresponding KChars in }
 set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] pol_nums, [[int]] eq, [[int]] gr,
-    [vec] classListByFacet, [string] statuses, int level) =
-    ([[LocalFacetVertsHash]],[[int]]):
-    let test_count = int:0, newStatuses = statuses, NumClasses = #eq
+    [vec] classListByFacet, [string] statuses, int level, int test_count) =
+    ([[LocalFacetVertsHash]],[[int]], int):
+    let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_to_ht(p, level)
@@ -3239,7 +3267,7 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
      {don't need hash numbers for shifts (last two coords)}
      then LFVHnew = for @m in LFVH do [LocalFacetVertsHash]: [] od
      then pol_numsnew = for @m in pol_nums do [int]: [] od
-     then () = for C@m in eq do if newStatuses[m] = "T"
+     then () = for C@m in eq do if newStatuses[m][0] = "T"
      	     	     	      	then for k in C
 			      	   do let (d,j) = coords(LFVH,k)
 				      in LFVHnew[d] :=
@@ -3257,7 +3285,7 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 			         fi
 			      od
      {then () = prints(newStatuses)}
-     in  (LFVHnew,pol_numsnew)
+     in  (LFVHnew,pol_numsnew,test_count)
 
 set spherical_testKPO(RealForm G, FacetDataKcharPO_old (vd,FPPstInd,
     	, eq, gr, , CLBF, statuses)
@@ -3406,7 +3434,7 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     then () = statuses:=local_facet_statusU(x, lambda, LvdZero,
     	      IUCL, CLBF, statuses)
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
-       tester)
+       tester, 0)
 
 set local_test_levels(KGBElt x, ratvec lambda) = [string]:
     let G = x.real_form
@@ -3419,9 +3447,11 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
     { then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
     {this is list of vertices appearing as 0-diml facets: smaller
      and differently ordered from Lvd.list}
-    then LvdZero = to_vertex_data(vlistZero) }
+    then LvdZero = to_vertex_data(vlistZero)}
+    then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then pol_nums = localKcharsKeep(LFD)
     then hts = next_heights(parameter(x,lambda,0*lambda),3)
+    then test_count = int:0
     then () = for level in hts[:#hts -1]
     	      do let ((eq,gr),IUCL,CLBF) = localGraph(LFD,Kpol_hash,pol_nums,level)
 	      	 {then ()=prints(let Verts = LFD.LFverts in for V in Verts do #V od)
@@ -3431,19 +3461,38 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
 		 then ()=prints("eq = ",eq)
 		 then ()=prints("gr = ",gr)}
     	      	 then statuses = [string]: for j:#eq do "?" od
+		 then newStatuses = statuses
+		 then find0 = index_in(for v in LFD.LFverts[0] do v[:1] od)
+		 then () = for m in unipotents
+		      	   do let k = find0([m])
+		      	      in if k>=0
+			      	 then newStatuses:=downdateUclasses(newStatuses,
+			    	 IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
+			    	 fi
+			   od
 	    	 then tester = (Param->bool): (Param p) bool:
     	    	      is_unitary_to_ht(p, level)
-    	    	 then (LFvertsnew, pol_numsnew) =
+    	    	 then (LFvertsnew, pol_numsnew, test_countnew) =
 		      local_test_level(x,lambda,Lvd,LFD.LFverts,
-	    	      pol_nums, eq, gr, CLBF, statuses, level)
+	    	      pol_nums, eq, gr, CLBF, newStatuses, level,test_count)
      	    	 then ()= LFD:=(Lvd,x,lambda,LFvertsnew)
 	    	 then ()= pol_nums:=pol_numsnew
+		 then ()= test_count:=test_countnew
 	    	 in ()
               od
      then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
      then statuses = [string]: for j:#eq do "?" od
+     then newStatuses = statuses
+     then find0 = index_in(for v in LFD.LFverts[0] do v[:1] od)
+     then () = for m in unipotents
+	       do let k = find0([m])
+		  in if k>=0
+		     then newStatuses:=downdateUclasses(newStatuses,
+			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
+		     fi
+	       od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0])
-     in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,statuses,tester)
+     in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,newStatuses,tester,test_count)
 
 set local(KGBElt x, ratvec lambda) = [string]:
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
@@ -3453,6 +3502,9 @@ set local(KGBElt x, ratvec lambda) = [string]:
 
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
+
+set spherical_levels(RealForm G) = [string]:
+    local_test_levels(x_open(G),G.rho)
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
