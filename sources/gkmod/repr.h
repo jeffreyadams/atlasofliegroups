@@ -549,7 +549,7 @@ class Rep_table : public Rep_context
   // deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
-     const RatWeight& diff, const RatWeight& gamma);
+     const block_modifier& bm, const RatWeight& gamma);
 
 /*
    Compute the signed multiset of final parameters "post deformation"
@@ -570,7 +570,7 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
+     RankFlags singular, const block_modifier& bm, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block

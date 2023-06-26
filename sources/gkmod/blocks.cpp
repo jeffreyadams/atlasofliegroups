@@ -1270,11 +1270,9 @@ repr::StandardRepr common_block::sr(BlockElt z, const RatWeight& gamma) const
 }
 
 repr::StandardRepr common_block::sr
-  (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
+  (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const
 {
-  const Weight lambda_rho =
-    gamma.integer_diff<int>(rc.gamma_lambda_rho(z_pool[z])+diff);
-  return rc.sr_gamma(x(z),lambda_rho,gamma);
+  return rc.sr(representative(z),bm,gamma);
 }
 
 ext_gens common_block::fold_orbits(const WeightInvolution& delta) const

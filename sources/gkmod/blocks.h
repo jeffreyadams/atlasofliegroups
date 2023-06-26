@@ -394,10 +394,11 @@ class common_block : public Block_base
 
   const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 
+  // these functions essentially delegate to similar methods from |Rep_context|
   StandardRepr sr // reconstruct |StandardRepr| at |gamma| from |z_pool[z]|
     (BlockElt z, const RatWeight& gamma) const;
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
-    (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
+    (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const;
 
   RootNbrList int_simples() const; // REMOVE ME simply integral roots
   ext_gens fold_orbits(const WeightInvolution& delta) const;
