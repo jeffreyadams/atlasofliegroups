@@ -1102,10 +1102,10 @@ set FPP_facets_hash_old(SimpleAffine Affd, VertexData vd,
        let facets = [FacetVerts]: facets_fundamental(Affd,dim)
        in [FacetVertsHash]:
        	  for FV@k in facets
-       	  do { if fund_facet_verbose or (facet_verbose and k=0)
+       	  do if fund_facet_verbose or (facet_verbose and k=0)
        	  then prints("start fund facet ",k," of ", #facets,
 	  " in dim ",dim)
-	  fi;}
+	  fi;
 	  let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
        	  then irdw = integrality_datum(Affd,bary_F)
 	  in [FacetVertsHash]:
@@ -2459,7 +2459,7 @@ set localFD_hash \
 {this takes the local facet data and computes K-chars. Used to be
 done inside actualize}
 set localKchars(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
-    let Kpol_hash = make_KTypePol_hash()
+    let Kpol_hash_temp = make_KTypePol_hash()
     then pol_nums = [vec]:
     for LF@j in LFverts
     do if facet_verbose then prints("start to compute ",
@@ -2468,7 +2468,7 @@ set localKchars(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
        for v in LF
        do let mup = v~[1], mdown = v~[0]
        	  then bup = hashUp.index(mup), bdown = hashDown.index(mdown)
-	  in Kpol_hash.match(K_type_pol(translate_param_by(
+	  in Kpol_hash_temp.match(K_type_pol(translate_param_by(
 			    character_formula(1*parameter(x,
 			    lambda+bup,facet_bary(Lvd.list, v[:j+1])+bup)),
   			    bdown)))
@@ -2476,10 +2476,10 @@ set localKchars(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
     od
     then () = if facet_verbose then prints("# facets = ",
     sum(for v in pol_nums do #v od), "; # distinct K_chars = ",
-    Kpol_hash.size())
+    Kpol_hash_temp.size())
 	      fi
     in pol_nums
-{SHOULD NOT RETURN Kpol_hash!}
+{SHOULD NOT RETURN Kpol_hash_temp!}
 
 {this takes the local facet data and computes K-chars. Use the STORED Kpol_hash}
 set localKcharsKeep(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
@@ -3216,16 +3216,18 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 	      ; if newStatuses[m] = "?"
 	      	then test_count+:=1
 		; let C=eq[m]
+		  {then ()=prints("C = ",C)}
 	      	  then (d,j) = coords(LFVH,C[0])
 	      	  then verts = vec: LFVH[d][j][:d+1]
+		  {then () = prints("(d,j) = (",d,",",j,"), verts = ",verts,
+		       	  " FB = ",facet_bary(Lvd.list,verts))}
 	      	  then p = first_param(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
 	      	in if{NEWU} tester(p)
 		   then newStatuses[m]:= "T"
-		   	{toHt"##to_string(level)##"."##to_string(m)}
 		   else newStatuses:=
 			   updateNUclassesB(newStatuses, gr, m)
-		   ; newStatuses[m] := "F"{test"##to_string(m)}
+		   ; newStatuses[m] := "F"
 		   fi{NEWU}
 	         fi
 	      od
@@ -3245,15 +3247,16 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 				      #LFVH[d][j][:d+1];
 				      pol_numsnew[d] :=
 				      (pol_numsnew[d] next pol_numsnew[d]:=[])
-				      #pol_nums[d][j];
+				      #pol_nums[d][j]{ ;
 				      prints("(d,j) = (",d,",",j,"), test = ",
 				      tester(first_param(finalize(parameter(x,
-				      lambda,facet_bary(Lvd.list,LFVH[d][j]))))))
-				   od;
-				 prints(new_line)
+				      lambda,facet_bary(Lvd.list,
+				      LFVH[d][j][:d+1]))))))}
+				   od{ ;
+				 prints(new_line)}
 			         fi
 			      od
-     then () = prints(newStatuses)
+     {then () = prints(newStatuses)}
      in  (LFVHnew,pol_numsnew)
 
 set spherical_testKPO(RealForm G, FacetDataKcharPO_old (vd,FPPstInd,
@@ -3421,15 +3424,17 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
     then hts = next_heights(parameter(x,lambda,0*lambda),3)
     then () = for level in hts[:#hts -1]
     	      do let ((eq,gr),IUCL,CLBF) = localGraph(LFD,Kpol_hash,pol_nums,level)
-	      	 then ()=prints(let Verts = LFD.LFverts in for V in Verts do #V od)
+	      	 {then ()=prints(let Verts = LFD.LFverts in for V in Verts do #V od)
+		 then ()=for Vertsd@d in LFD.LFverts do prints("LFverts[",d,"] = ",
+		      Vertsd) od
 	      	 then ()=prints("pol_nums = ",pol_nums)
 		 then ()=prints("eq = ",eq)
-		 then ()=prints("gr = ",gr)
+		 then ()=prints("gr = ",gr)}
     	      	 then statuses = [string]: for j:#eq do "?" od
 	    	 then tester = (Param->bool): (Param p) bool:
     	    	      is_unitary_to_ht(p, level)
     	    	 then (LFvertsnew, pol_numsnew) =
-		      local_test_level(x,lambda,Lvd,LFverts,
+		      local_test_level(x,lambda,Lvd,LFD.LFverts,
 	    	      pol_nums, eq, gr, CLBF, statuses, level)
      	    	 then ()= LFD:=(Lvd,x,lambda,LFvertsnew)
 	    	 then ()= pol_nums:=pol_numsnew
@@ -3438,7 +3443,7 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
      then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
      then statuses = [string]: for j:#eq do "?" od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0])
-     in local_test(x,lambda,Lvd, LFverts,eq,gr,CLBF,statuses,tester)
+     in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,statuses,tester)
 
 set local(KGBElt x, ratvec lambda) = [string]:
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
