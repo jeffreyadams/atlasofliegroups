@@ -1554,40 +1554,12 @@ ext_gens fold_orbits
       pi[s] = it-alphas.begin();
     }
   }
-  ext_gens result; // we don't nyet know how big it will be
+  ext_gens result; // we don't yet know how big it will be
   for (weyl::Generator s=0; s<pi.size(); ++s)
     if (pi[s]==s)
       result.push_back(ext_gen(s));
     else if (pi[s]>s)
       result.push_back(ext_gen(rd.is_orthogonal(roots[s],roots[pi[s]]),s,pi[s]));
-  return result;
-}
-
-// the next version computes the same without using any |RootDatum| methods
-ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta)
-{
-  ext_gens result;
-  const auto sr = prd.semisimple_rank();
-  WeightList simple(sr);
-  for (unsigned j=0; j<sr; ++j)
-    simple[j] = prd.simple_root(j);
-  RankFlags seen;
-
-  for (weyl::Generator s=0; s<sr; ++s)
-    if (not seen[s])
-    { Weight image = delta*simple[s];
-      auto it = std::find(&simple[s],&simple[sr],image);
-      weyl::Generator t = it - &simple[0];
-      if (t==sr)
-	throw std::runtime_error("Not a distinguished involution");
-
-      seen.set(t);
-      if (s==t)
-	result.push_back(ext_gen(weyl::Generator(s)));
-      else // case |s<t<sr|
-	result.push_back(ext_gen(prd.simple_coroot(t).dot(simple[s])==0,s,t));
-    }
-
   return result;
 }
 

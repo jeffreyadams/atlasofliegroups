@@ -217,9 +217,6 @@ class Rep_context
 
   // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
   StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
-  StandardRepr sr // REMOVE ME
-    (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
-    const;
   StandardRepr sr
     (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
     const;

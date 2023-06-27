@@ -2212,7 +2212,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   BlockElt y0; block_modifier bm;
   auto& block = lookup(sr,y0,bm);
   block.shift(bm.shift);
-  auto& eblock = block.extended_block(&poly_hash);
+  auto& eblock = block.extended_block(bm,&poly_hash);
   block.shift(-bm.shift);
 
   RankFlags singular=block.singular(bm,sr.gamma());
@@ -2428,8 +2428,9 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     const RatWeight& diff = bm.shift;
     block.shift(diff); // adapt representatives for extended block construction
     assert(block.representative(index)==
-	   StandardReprMod::mod_reduce(*this,zi));
-    auto& eblock = block.extended_block(&poly_hash);
+	   transform<true>(Weyl_group().word(bm.w),
+			   StandardReprMod::mod_reduce(*this,zi)));
+    auto& eblock = block.extended_block(bm,&poly_hash);
     block.shift(-diff);
 
     RankFlags singular = block.singular(bm,zi.gamma());

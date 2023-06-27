@@ -8018,7 +8018,7 @@ void twisted_deform_wrapper(expression_base::level l)
   auto& block = rt.lookup(p->val,entry_elem,bm);
     // though by reference, does not change |p->val|
   block.shift(bm.shift);
-  auto& eblock = block.extended_block(rt.shared_poly_table());
+  auto& eblock = block.extended_block(bm,rt.shared_poly_table());
   block.shift(-bm.shift);
 @)
   RankFlags singular = block.singular(bm,p->val.gamma());

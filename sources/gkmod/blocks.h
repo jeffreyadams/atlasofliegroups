@@ -351,9 +351,9 @@ class common_block : public Block_base
   StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
-  // pair of an extended block and integral-orthogonal shift to |gamma_lambda|
-  struct ext_block_pair;
-  sl_list<ext_block_pair> extended;
+  // an extended block plus additional data necessary to interpret the twist
+  struct ext_block_data;
+  sl_list<ext_block_data> extended;
 
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
@@ -400,10 +400,12 @@ class common_block : public Block_base
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
     (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const;
 
+  WeightInvolution pull_back // of action by |delta| on block modified by |bm|
+    ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
   RootNbrList int_simples() const; // REMOVE ME simply integral roots
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
-  // unshifted, unshared extended block, but with "arbitrary" involution
+  // extension for custom built |common_block|, with "arbitrary" involution
   ext_block::ext_block extended_block(const WeightInvolution& delta) const;
 
   // manipulators
@@ -417,8 +419,12 @@ class common_block : public Block_base
   void swallow // integrate an older partial block, with mapping of elements
     (common_block&& sub, const BlockEltList& embed,
      KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
-  ext_block::ext_block& extended_block(ext_KL_hash_Table* pol_hash);
-  // get/build extended block for inner class involution; if built, store it
+
+  // get/build extended block for |delta|; if built, store it
+  ext_block::ext_block& extended_block
+    (const WeightInvolution& delta, ext_KL_hash_Table* pol_hash);
+  ext_block::ext_block& extended_block
+    (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash);
 
   void set_Bruhat (sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 

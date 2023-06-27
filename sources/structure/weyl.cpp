@@ -1161,7 +1161,30 @@ template<typename C>
   }
 }
 
+int_Matrix WeylGroup::matrix (const RootDatum& rd, const WeylElt& w) const
+{
+  int_Matrix result(rd.rank(),rd.rank());
+  auto e = matrix::standard_basis<int>(rd.rank());
+  for (unsigned j=0; j<rd.rank(); ++j)
+  {
+    act(rd,w,e[j]);
+    result.set_column(j,e[j]);
+  }
+  return result;
+}
 
+int_Matrix WeylGroup::inverse_matrix
+  (const RootDatum& rd, const WeylElt& w) const
+{
+  int_Matrix result(rd.rank(),rd.rank());
+  auto e = matrix::standard_basis<int>(rd.rank());
+  for (unsigned j=0; j<rd.rank(); ++j)
+  {
+    inverse_act(rd,w,e[j]);
+    result.set_column(j,e[j]);
+  }
+  return result;
+}
 
 
 /*
