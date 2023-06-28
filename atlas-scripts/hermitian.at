@@ -1,5 +1,62 @@
 <basic.at
 <convert_c_form.at
+<hash.at {for KTypePol_hash}
+{like is_pure, but in case of false, second value is the lowest K-type where the KTypePol
+ changes sign. Better to put the guilty K-type in a hash table.}
+set is_pure_cert(KTypePol P) = [KType]:
+    if is_pure(P) then [KType]: []
+    else let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0
+	 then () = if a0*b0 != 0
+	           then let ()= j:=0
+		   	in ()
+	           elif b0 = 0
+	      	   then let ()= j:= first(for (,b,)@j in terms
+	      	      	     	      	   do b!=0
+				      	   od)
+			in ()
+	      	   else {now b0!=0 and a0=0}
+		   	let () = j:= first(for (a,,)@j in terms
+	      	      	     	      do a!=0
+				      od)
+			in ()
+		   fi
+	  then (,,pj) = terms[j]
+	  in [pj]
+    fi
+
+{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
+    if not is_pure(P)
+    then let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0
+	 then () = if a0*b0 != 0
+	           then let ()= j:=0
+		   	in ()
+	           elif b0 = 0
+	      	   then let ()= j:= first(for (,b,)@j in terms
+	      	      	     	      	   do b!=0
+				      	   od)
+			in ()
+	      	   else {now b0!=0 and a0=0}
+		   	let () = j:= first(for (a,,)@j in terms
+	      	      	     	      do a!=0
+				      od)
+			in ()
+		   fi
+	  then (,,pj) = terms[j]
+	  then x = cert_hash.match(1*pj)
+	  in false
+    else true
+    fi
 
 {.write c-invariant form on standard module as a KTypePol }
 set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
@@ -84,6 +141,10 @@ set hermitian_form_irreducible (Param p) = KTypePol:
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
+
+{ compute Hermitian form on p, report if it is unitary, and otherwise record certificate }
+set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
+  p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible(p),cert_hash)
 
 { end of core unitarity functionality, remaining variations for user comfort }
 

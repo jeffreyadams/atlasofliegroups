@@ -3213,17 +3213,20 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
      	      then prints(new_line,"total tests = ",test_count)
        	      fi
      in  newStatuses
+
 {meant to test candidate classes to (new) height |level|; delete from LFVH
  the facets established to be nonunitary in this way. Output is new shorter
  list of candidate facets, and the numbers of the corresponding KChars in }
+
 set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] pol_nums, [[int]] eq, [[int]] gr,
-    [vec] classListByFacet, [string] statuses, int level, int test_count) =
+    [vec] classListByFacet, [string] statuses, int level,
+    KTypePol_hash cert_hash, int test_count) =
     ([[LocalFacetVertsHash]],[[int]], int):
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_to_ht(p, level)
+    	 is_unitary_to_ht(p, level, cert_hash)
     then () = if facet_verbose
     	      then prints(); prints("start local_test_level with "
 	      	   ,NumClasses,
@@ -3261,7 +3264,9 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 	      od
      then() = if(test_verbose)
      	      then prints(new_line,"total tests = ",test_count,
-	      "; now creating new facet list")
+	      " to level ",level,"; about to create new facet list")
+	      ;prints("so far ",cert_hash.size()," non-unitarity K-types")
+	      ; show_very_short(newStatuses)
        	      fi
      {make new local facet list using only facets not already proven nonunitary}
      {don't need hash numbers for shifts (last two coords)}
@@ -3436,7 +3441,8 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester, 0)
 
-set local_test_levels(KGBElt x, ratvec lambda) = [string]:
+set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
+    [string]:
     let G = x.real_form
     then FPPDH = facet_data_fold_hash(cofolded(G))
     then LFD = if is_split(G) and x=x_open(G) and lambda=G.rho
@@ -3450,9 +3456,9 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
     then LvdZero = to_vertex_data(vlistZero)}
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then pol_nums = localKcharsKeep(LFD)
-    then hts = next_heights(parameter(x,lambda,0*lambda),3)
+    then hts = next_heights(parameter(x,lambda,0*lambda),depth)
     then test_count = int:0
-    then () = for level in hts[:#hts -1]
+    then () = for level in hts[:depth -1]
     	      do let ((eq,gr),IUCL,CLBF) = localGraph(LFD,Kpol_hash,pol_nums,level)
 	      	 {then ()=prints(let Verts = LFD.LFverts in for V in Verts do #V od)
 		 then ()=for Vertsd@d in LFD.LFverts do prints("LFverts[",d,"] = ",
@@ -3470,11 +3476,10 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
 			    	 IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 			    	 fi
 			   od
-	    	 then tester = (Param->bool): (Param p) bool:
-    	    	      is_unitary_to_ht(p, level)
     	    	 then (LFvertsnew, pol_numsnew, test_countnew) =
 		      local_test_level(x,lambda,Lvd,LFD.LFverts,
-	    	      pol_nums, eq, gr, CLBF, newStatuses, level,test_count)
+	    	      pol_nums, eq, gr, CLBF, newStatuses, level,
+		      cert_hash, test_count)
      	    	 then ()= LFD:=(Lvd,x,lambda,LFvertsnew)
 	    	 then ()= pol_nums:=pol_numsnew
 		 then ()= test_count:=test_countnew
@@ -3491,7 +3496,7 @@ set local_test_levels(KGBElt x, ratvec lambda) = [string]:
 			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 		     fi
 	       od
-     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0])
+     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,newStatuses,tester,test_count)
 
 set local(KGBElt x, ratvec lambda) = [string]:
@@ -3502,9 +3507,9 @@ set local(KGBElt x, ratvec lambda) = [string]:
 
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
-
+set spherical_cert_hash = make_KTypePol_hash()
 set spherical_levels(RealForm G) = [string]:
-    local_test_levels(x_open(G),G.rho)
+    local_test_levels(x_open(G),G.rho,spherical_cert_hash,4)
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
