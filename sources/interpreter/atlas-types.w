@@ -1394,16 +1394,17 @@ negative (co)roots) to the unsigned internal root numbering, while checking that
 the index is in the valid range.
 
 @< Local function definitions @>=
-RootNbr internal_root_index(const RootDatum& rd, int index, bool is_coroot)
+RootNbr internal_root_index
+  (const RootSystem& rs, int index, bool is_coroot)
 {
-  RootNbr npr = rd.numPosRoots();
-  RootNbr alpha = npr+index;
-  if (alpha>=2*npr)
+  const int alpha_signed = index+rs.numPosRoots();
+  // cast not necessary here; unsigned arithmetic
+  if (static_cast<RootNbr>(alpha_signed) >= rs.numRoots())
   { std::ostringstream o;
     o << "Illegal "<< (is_coroot ? "co" : "") << "root index " << index;
     throw runtime_error(o.str());
   }
-  return alpha;
+  return alpha_signed; // reinterpret as unsigned
 }
 
 @ The following functions allow us to look at individual simple roots and simple
@@ -1431,29 +1432,41 @@ void coroot_wrapper(expression_base::level l)
      push_value(std::make_shared<vector_value>(rd->val.coroot(alpha)));
 }
 
-@ Also important are look-up functions for roots and coroots.
+@ Also important are look-up functions for roots and coroots. Conversion from
+unsigned internal numbering of roots to external signed numbering, or vice
+versa, is painful due to \Cpp\ semantics. The signed-ness conversion between
+same size integers is given precise a specification in all cases only in the
+direction from signed to unsigned; in the opposite direction this is so only if
+the value can be represented in the signed type. But at the same time arithmetic
+with mixed signed-ness of operands will be performed unsigned, and this should
+be avoided when a potentially negative result is to be computed. We define a
+helper function |convert_to_signed_root_index| to do this conversions safely.
 
 @< Local function definitions @>=
+
+shared_int convert_to_signed_root_index(const RootSystem& rs, RootNbr alpha)
+{
+  assert(alpha < rs.numRoots());
+  int sa = alpha;
+  sa -= static_cast<int>(rs.numPosRoots());
+  // cast is necessary, blame the \Cpp\ standard
+  return std::make_shared<int_value>(sa); // uses signed interpretation
+}
+@)
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.root_index(alpha->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value(convert_to_signed_root_index
+      (rd->val,rd->val.root_index(alpha->val)));
 }
 @)
 void coroot_index_wrapper(expression_base::level l)
 { shared_vector alpha_v = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
-  if (l==expression_base::no_value)
-    return;
-@)
-  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
-  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
-  push_value(std::make_shared<int_value>(index));
+  if (l!=expression_base::no_value)
+    push_value
+    (convert_to_signed_root_index(rd->val,rd->val.coroot_index(alpha_v->val)));
 }
 
 @ The library knows additive decompositions of roots and coroots into simple
@@ -1529,13 +1542,11 @@ void root_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_roots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 @)
@@ -1546,13 +1557,11 @@ void coroot_ladder_bottoms_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  RootNbr npr = rd->val.numPosRoots();
   const RootNbrSet& bots = rd->val.min_coroots_for(alpha);
   own_row result = std::make_shared<row_value>(0);
   result->val.reserve(bots.size());
-  for (auto it=bots.begin(); it(); ++it)
-    result->val.push_back(std::make_shared<int_value>
-      (static_cast<int>(*it-npr)));
+  for (RootNbr alpha : bots)
+    result->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(result));
 }
 
@@ -1868,21 +1877,20 @@ void walls_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  int npr = rd->val.numPosRoots();
   RootNbrSet integrals,walls = weyl::wall_set(rd->val,gamma->val,integrals);
   own_row roots = std::make_shared<row_value>(0);
-  roots->val.reserve(walls.size());
-  for (auto it=integrals.begin(); it(); ++it)
-  {
-    assert(*it-npr < static_cast<unsigned>(npr)); // must be positive root
-    roots->val.push_back(std::make_shared<int_value>(*it-npr));
-  }
 
-  auto non_integrals = weyl::sorted_by_label(rd->val,walls,integrals);
-  for (auto it=non_integrals.begin(); not non_integrals.at_end(it); ++it)
-    roots->val.push_back(std::make_shared<int_value>
-    // convert to signed root index
-       (static_cast<int>(*it)-npr));
+  auto sorted = weyl::sorted_by_label(rd->val,walls);
+  roots->val.reserve(walls.size());
+  for (RootNbr alpha : sorted)
+    if (integrals.isMember(alpha))
+    {
+      assert(rd->val.is_posroot(alpha)); // must be positive root
+      roots->val.push_back(convert_to_signed_root_index(rd->val,alpha));
+    }
+  for (RootNbr alpha : sorted)
+    if (not integrals.isMember(alpha))
+      roots->val.push_back(convert_to_signed_root_index(rd->val,alpha));
   push_value(std::move(roots));
   push_value(std::make_shared<int_value>(integrals.size()));
   if (l==expression_base::single_value)
@@ -1892,11 +1900,47 @@ void walls_wrapper(expression_base::level l)
 void alcove_center_wrapper(expression_base::level l)
 {
   shared_module_parameter p = get<module_parameter_value>();
-  if (l==expression_base::no_value)
-    return;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<module_parameter_value> @|
+      (p->rf,weyl::alcove_center(p->rc(),p->val)));
+}
 
-  push_value(std::make_shared<module_parameter_value> @|
-    (p->rf,weyl::alcove_center(p->rc(),p->val)));
+@ Another useful function is |walls_attitude|, which from a set of walls deduces
+a Weyl group element~$w$ (which is not unique) that sends the fundamental
+alcove~$FA$ to an alcove with that walls set. If the set of walls is obtained
+from an alcove, then the alcove can be obtained from $w(FA)$ by a translation
+(not necessarily by an element of the root lattice).
+
+@< Local function definitions @>=
+void walls_attitude_wrapper (expression_base::level l)
+{
+  shared_row walls_list = get<row_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  RootNbrSet walls(rd->val.numRoots());
+  for (const auto& wall_obj : walls_list->val)
+  { int wall = force<int_value>(wall_obj.get())->int_val();
+    walls.insert(internal_root_index(rd->val,wall,false));
+  }
+
+  for (auto it=walls.begin(); it(); ++it)
+    for (auto jt=std::next(it); jt(); ++jt)
+      if (rd->val.bracket(*it,*jt)>0)
+      { std::ostringstream o;
+        o << "Roots set involves roots with acute angle: "
+          << convert_to_signed_root_index(rd->val,*it)->int_val() << " and "
+          << convert_to_signed_root_index(rd->val,*jt)->int_val();
+        throw runtime_error(o.str());
+      }
+
+  if (walls.size()<rd->val.fundamental_alcove_walls().size())
+  { std::ostringstream o;
+    o << "Too few walls: " << walls.size() << " < "
+      << rd->val.fundamental_alcove_walls().size();
+    throw runtime_error(o.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<W_elt_value> @|
+     (rd,rd->W().element(weyl::from_fundamental_alcove(rd->val,walls))));
 }
 
 @ One interesting property of alcoves is that (projected to the rational span of
@@ -1931,7 +1975,7 @@ void basic_orbit_ws_wrapper(expression_base::level l)
     throw runtime_error("Index too large for given list of root numbers");
   RootNbrSet stab; RootNbr final;
   @< Check validity of root indices in |v->val| and the absence acute angles
-     among them; store internal number for its entry |stab_rank| in |final|,
+     among them; store internal number for its entry at |stab_rank| in |final|,
      and the set of its earlier entries in |stab| @>
   if (l==expression_base::no_value)
     return;
@@ -1979,32 +2023,28 @@ first |stab_rank| entries, and in |final| the one following it.
 @< Check validity of root indices in |v->val| and... @>=
 {
   RootNbrList walls; walls.reserve(v->val.size());
-  const unsigned int npr = rd->val.numPosRoots();
   for (const auto& entry : v->val)
   { int r = force<int_value>(entry.get())->int_val();
       // could be positive or negative
-    if (r+npr < rd->val.numRoots()) // unsigned comparison
-      walls.push_back(r+npr); // convert to internal index
-    else
-    { std::ostringstream o;
-      o << "Invalid root number " << r;
-      throw runtime_error(o.str());
-    }
+    walls.push_back(internal_root_index(rd->val,r,false)); // convert to internal
   }
 
-  for (const RootNbr& alpha : walls)
-    for (const RootNbr& beta : walls)
-      if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
-      { std::ostringstream o;
-        o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
-          << " have acute angle.";
-        throw runtime_error(o.str());
-      }
+  { const int npr = rd->val.numPosRoots();
+    // for convenience; converted to signed
+    for (const RootNbr& alpha : walls)
+      for (const RootNbr& beta : walls)
+        if (&alpha!=&beta and rd->val.bracket(alpha,beta)>0)
+        { std::ostringstream o;
+          o << "Roots " << int(alpha-npr) << " and " << int(beta-npr)
+            << " have acute angle.";
+          throw runtime_error(o.str());
+        }
+  }
   stab = RootNbrSet(rd->val.numRoots(),&walls[0],&walls[stab_rank]);
   final = walls[stab_rank];
 }
 
-@ When calling |affine_orbit_ws|, we need to decide whether the internal
+@ When calling |basic_orbit_ws|, we need to decide whether the internal
 function to call is going to be |finite_subquotient| or
 |complete_affine_components|; the first one does not use modular vector
 arithmetic because the root |final| extends the finite Coxeter group |stab| to a
@@ -2028,6 +2068,88 @@ a finite computation by working modulo the root lattice.
       to_affine_orbit = dependency>0;
       break;
     }
+}
+
+@ The following function should produce the set of all facet barycentres from a
+given one in the fundamental alcove, without invoking |affine_orbit_ws|.
+
+@< Local function definitions @>=
+void FPP_numers_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  for (RootNbr alpha : rd->val.fundamental_alcove_walls())
+  { auto ev = gamma->val.dot_Q(rd->val.coroot(alpha));
+    if (not rd->val.is_simple_root(alpha))
+      ev += 1;
+    if (ev.is_negative())
+    { std::ostringstream o;
+      o << "Rational weight is not in fundamental alcove (coroot " @|
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev << ')';
+      throw runtime_error(o.str());
+    }
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto L = weyl::FPP_orbit_numers(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(L.size());
+  { size_t i=0;
+    for (auto&& v : L)
+      result->val[i++]=std::make_shared<vector_value>(std::move(v));
+  }
+  push_value(std::move(result));
+}
+
+@ The following function should produce the set of all facet barycentres from a
+given one in the fundamental alcove, without invoking |affine_orbit_ws|.
+
+@< Local function definitions @>=
+void FPP_w_shifts_wrapper(expression_base::level l)
+{
+  shared_rational_vector gamma = get<rational_vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (rd->val.rank()!=gamma->val.size())
+  { std::ostringstream o;
+    o << "Rank and rational weight size mismatch " @|
+      << rd->val.rank() << ':' << gamma->val.size();
+    throw runtime_error(o.str());
+  }
+  for (RootNbr alpha : rd->val.fundamental_alcove_walls())
+  { auto ev = gamma->val.dot_Q(rd->val.coroot(alpha));
+    if (not rd->val.is_simple_root(alpha))
+      ev += 1;
+    if (ev.is_negative())
+    { std::ostringstream o;
+      o << "Rational weight is not in fundamental alcove (coroot " @|
+        << (int)(alpha-rd->val.numPosRoots()) << ", value " << ev << ')';
+      throw runtime_error(o.str());
+    }
+  }
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto L = weyl::FPP_w_shifts(rd->val,rd->W(),gamma->val);
+  own_row result = std::make_shared<row_value>(0);
+    for (auto&& pr : L)
+      if (not pr.second.empty())
+      {
+        auto tup = std::make_shared<tuple_value>(2);
+        result->val.push_back(tup);
+        tup->val[0] = std::make_shared<W_elt_value>(rd,std::move(pr.first));
+        auto dst = std::make_shared<row_value>(pr.second.size());
+        tup->val[1] = dst;
+        size_t i=0;
+        for (auto&& v : pr.second)
+          dst->val[i++] = std::make_shared<vector_value>(std::move(v));
+      }
+  push_value(std::move(result));
 }
 
 @ Let us install the above wrapper functions.
@@ -2109,12 +2231,18 @@ install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
+install_function(walls_attitude_wrapper@|,"walls_attitude",
+		"(RootDatum,[int]->WeylElt)");
 install_function(alcove_root_vertex_wrapper@|,"alcove_root_vertex",
 		"(RootDatum,ratvec->vec)");
 install_function(basic_orbit_ws_wrapper@|,"basic_orbit_ws",
 		"(RootDatum,[int],int->[WeylElt])");
 install_function(affine_orbit_ws_wrapper@|,"affine_orbit_ws",
 		"(RootDatum,ratvec->[WeylElt])");
+install_function(FPP_numers_wrapper@|,"FPP_numers",
+		"(RootDatum,ratvec->[vec])");
+install_function(FPP_w_shifts_wrapper@|,"FPP_w_shifts",
+		"(RootDatum,ratvec->[WeylElt,[vec]])");
 
 
 @*1 Weyl group elements.
@@ -4310,23 +4438,25 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
   if (alpha<kgb.rank()) // do simple cross action
     x->val= kgb.cross(alpha,x->val);
   else // do non-simple cross action
-    x->val = cross(kgb,x->val,npr+alpha);
+    x->val = cross(kgb,x->val,rd.posRootNbr(alpha));
   push_value(std::move(x));
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4338,7 +4468,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
   }
   else // do (inverse) Cayley transform through arbitrary root
   { try
-    {@; x->val= any_Cayley(kgb,x->val,npr+alpha); }
+    {@; x->val= any_Cayley(kgb,x->val,rd.posRootNbr(alpha)); }
     catch (std::runtime_error&) {}
       // ignore undefined Cayley error, leave |x| unchanged
   }
@@ -4357,8 +4487,9 @@ defined if |v==3|.
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
+  const RootDatum& rd = kgb.rootDatum();
+  RootNbr alpha =
+    get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
     return;
 @)
@@ -4370,7 +4501,7 @@ void KGB_status_wrapper(expression_base::level l)
   }
   else
   {
-    alpha += npr; // convert to general root number
+    alpha = rd.posRootNbr(alpha); // convert to general root number
     unsigned stat=kgb::status(kgb,x->val,alpha);
     if (stat==0) // $\alpha$ is a complex root, check if it is an ascent
     {

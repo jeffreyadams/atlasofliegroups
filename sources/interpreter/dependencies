@@ -266,5 +266,6 @@ $(atlas_dir)/main.o $(atlas_dir)/main.tex: \
  $(sources_dir)/structure/weyl.h \
  $(sources_dir)/structure/y_values.h \
  $(sources_dir)/gkmod/kgb.h \
+ $(sources_dir)/gkmod/K_repr.h \
  $(sources_dir)/gkmod/repr.h \
  $(sources_dir)/version.h

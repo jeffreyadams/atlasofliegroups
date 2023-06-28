@@ -295,87 +295,57 @@ set lusztig_cells_no_dual(RootDatum G)=lusztig_cells_no_dual(G,G.orbits)
 
 
 {show lusztig cells, running over given list of nilpotents}
-set show_lusztig_cells(RootDatum G,[ComplexNilpotent] orbits, bool strict) = 
-let table =
-##for (O_G,data)@k in lusztig_cells(G,orbits) do
-   for (O_M,
-        y,
-	O_L_vee,
-	O_G_vee,
-        ind_vee_char,
-        ind_vee,
-        ind_vee_data,
-        ct_L_vee_degree_data,
-        ct_G_vee_degree_data,
-        is_special) in data do
-	let L=
-          if =#y then O_M.root_datum else centralizer(O_G.root_datum,y) fi then
-	O_L=complex_nilpotent(L,O_M.H) in
-  if =#ind_vee
-   then { even if there are no |ind|, build one [string] }
-    [[[[O_G.diagram.to_string
-    ,O_G.dim_nilpotent.to_string
-    ,k.to_string
-    ,integrality_datum(O_G).nice_format
-    ,O_M.root_datum.nice_format
-    ,O_M.diagram.to_string
-    ,O_L.root_datum.nice_format
-    ,O_L.diagram.to_string
-    ,"[]"
-    ,"x"
-    ,"x"
-    ,"x"
-    ,"x"
-    ,"x"
-    ,"x"
-    ,"x"
-    ]]]]
-   else
-    for d in ind_vee_data do
-    {[i, dim_i, deg_i, gdeg_i, j, dim_j, deg_j, gdeg_j]  i=index of G^v rep, j=index of i\otimes sign}
-     let i=d[0], j=d[4] in
-     let star= if d[2]=ct_L_vee_degree_data[2] then "*" else " " fi in
-     let plus= if d[3]=ct_L_vee_degree_data[3] then "+" else " " fi in
-     if  (not strict ) then
-       [[[O_G.diagram.to_string
-       ,O_G.dim_nilpotent.to_string
-       ,k.to_string
-       ,integrality_datum(O_G).nice_format
-       ,O_M.root_datum.nice_format
-       ,O_M.diagram.to_string
-       ,O_L.root_datum.nice_format
-       ,O_L.diagram.to_string
-       ,y.compact_string
-       ,is_special.to_string
-       ,ind_vee.to_string
-       ,O_L_vee.diagram.to_string
-       ,i.to_string
-       ,ct_L_vee_degree_data[1].to_string
-       ,ct_L_vee_degree_data[2].to_string + star
-       ,ct_L_vee_degree_data[3].to_string + plus
-       ,i.to_string + " " + d[1].to_string + " " + d[2].to_string + star +  "  " + d[3].to_string
-       ,j.to_string + " " + d[5].to_string + " " + d[6].to_string + " " + d[7].to_string + " " + star + plus 
-      ]]] else [[[string]]]:[]
-     fi{/if not strict)}
-    od{/for ind_vee_data}
-  fi{=#ind}
- od.##.##{/for (O_M,...)}
-od.##{/for i:#data}
-then
-table_header=
-[["O_G","a","b"
-    ,"c"
-    ,"d","e","f"
-    ,"diag","",""
-    ,"","diag"
-    ,"L_v"
-    ,"L_v"
-    ,"L_v"
-    ,"L_v"
-    ,"G_v"
-    ,"xsgn"
-    ],
-    ["diag"
+
+set show_lusztig_cells\
+   ({RootDatum G,}SpringerTable st_G,[ComplexNilpotent] orbits) = void:
+   let G=st_G.root_datum in 
+   prints("G=", G.nice_format, new_line, "#orbits: ", #orbits);
+let table = [ [string] ]:
+    for data@i in lusztig_cells({G,}st_G,orbits) {[[(M,H_M,y,values)]]}
+    do for (orbit,M,H_M,y,values) in data
+       do if =#values
+	  then { even if there are no |values|, build one [string] }
+	     [[orbit.diagram.to_string
+	     ,orbit.dim_nilpotent.to_string
+	     ,i.to_string
+	     ,integrality_datum(orbit).nice_format
+	     ,M.nice_format
+	     ,H_M.compact_string
+	     ,y.compact_string
+	     ,centralizer(G,y).nice_format
+	     ,"[]"
+	     ,"*"
+	     ,"*"
+	     ,"*"
+	     ,"*"
+	     ]]
+  	  else
+	     for k in values
+	     do
+	     [orbit.diagram.to_string
+	     ,orbit.dim_nilpotent.to_string
+	     ,i.to_string
+	     ,integrality_datum(orbit).nice_format
+	     ,M.nice_format
+	     ,H_M.compact_string
+	     ,y.compact_string
+	     ,centralizer(G,y).nice_format
+	     , "" +
+	       if #values=1 then k.to_string
+	       else values.to_string + ":" + k.to_string
+	       fi
+	     , if =y then st_G.ct.special(st_G.springer(orbit)).to_string else "" fi
+	     ,dimension(st_G.ct,k).to_string
+	     ,st_G.ct.degree(k).to_string
+	     ,st_G.ct.character(k).to_string
+	     ]
+	    od {for k in values}
+	  fi
+	od.##  {/for i:#data}
+     od.## {for all_data}
+in {table=[[string]]}
+   (["O"
+>>>>>>> master
     ,"dim"
     ,"i"
     ,"int"
@@ -605,11 +575,10 @@ let table_header =
 	    ,v.compact_string
 	    ,centralizer(G,y).nice_format
 	    ,"[]"
-	    ,"x"
-	    ,"x"
-	    ,"x"
-	    ,"x"
-	    ,"x"
+	    ,"*"
+	    ,"*"
+	    ,"*"
+	    ,"*"
 	    ]]
 	 else
             let L=centralizer(G,(y+v)/(coxeter_number(G)+1)) then

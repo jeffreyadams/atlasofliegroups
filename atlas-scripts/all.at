@@ -1,4 +1,11 @@
 {Load this file to load all recommended .at files}
+{
+<basic.at
+<combinatorics.at
+<number_theory.at
+<hermitian.at
+<extParamPol.at}
+
 <complex.at
 <test_unitarity.at
 <modules.at

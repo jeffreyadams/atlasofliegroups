@@ -22,18 +22,31 @@ set factorization (int n) = [int,int]: { (prime,exponent) }
    let (p,prs)=primes()
    then factors =
      while p*p<=n
-     do let (q,r)=n\%p,count=0 in
-       while =r do n:=q; count+:=1; set (q,r):=n\%p od
-     ; (p,count) next set(p,prs):=prs()
-     od
-   in if n>1 then factors#:=(n,1) fi;
-   ## for (,c):pair in factors do if =c then [] else [pair] fi od
+     do let (q,r)=n\%p then count = int: while =r do n:=q; set (q,r):=n\%p od
+     in if =count then [] else [(p,count)] fi next set(p,prs):=prs()
+     od.##
+   in if n=1 then factors else factors # (n,1) fi
 
- { all divisors, unsorted but in order compatible with divisibility relation }
+{ find prime factors up to |limit| and quotient that might be 1 or composite }
+set easy_factors (int n, int limit) = ([int,int],int): { (factors,quotient) }
+   case n then n:=-n in error("Cannot factorize 0") else () esac;
+   let (p,prs)=primes()
+   then factors =
+     while p<=limit and p*p<=n
+     do let (q,r)=n\%p then count = int: while =r do n:=q; set (q,r):=n\%p od
+     in if =count then [] else [(p,count)] fi next set(p,prs):=prs()
+     od.##
+   in if n=1 or p*p<=n then (factors,n) else (factors#(n,1),1) fi
+
+set prime_divisors (int n) = [int]:
+   for (p,) in factorization(n) do p od
+
+{ all divisors, unsorted but in order compatible with divisibility relation }
 set divisors (int n) = [int]:
    let result=[int]:[1] in
    for (p,c) in factorization(n)
-   do result := ## for i:c+1 do let pow=p^i in for f in result do pow*f od od
+   do result ##:=
+      (let pow=1 in for i:c do pow *:= p; for f in result do pow*f od od.##)
    od; result
 
 set invertibles_modulo (int n) = [int]:
@@ -42,6 +55,65 @@ set invertibles_modulo (int n) = [int]:
 { Euler totient function }
 set phi (int n) = int:
    assert(n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product
+
+set gcd_Bezout_coef (int !a, int !b) = (int,int): { (d,s) such that d=s*a mod b }
+   let (s0,s1) = (1,0) { coefficients of |a| modulo |b| in current remainders }
+   , (r0,r1) = (a,b)
+in while >r0
+   do let (q,r)= r1 \% r0 then s=s1-q*s0 in set (r0,r1,s0,s1) := (r,r0,s,s0)
+   od; if <s1 then s1+:=b fi; (r1,s1)
+
+set Bezout ((int,int) (a,b):pair) = (int,int,int): { (d,s,t) with d=s*a+t*b) }
+   let (d,s)= gcd_Bezout_coef(pair) then (q,r)=(s*a)\%b
+   in assert(d=r); (d,s,-q)
+
+set inverse_mod  ((int,int) pair) = int:
+(  let (d,s)= gcd_Bezout_coef(pair)
+   in assert(d=1,
+     @: let (a,n)=pair in a+" is not invertible modulo "+n+", gcd="+d)
+;  s
+)
+
+set power_mod (int x, int k, int n) = int:
+(  if k.< then x:=inverse_mod(x,n); k:=-k fi
+;  let acc=1
+   , diffs = let pos=0 in for p in set_bit_positions(k) do p-pos next pos:=p od
+in for d in diffs ~do acc:=acc*x%n; for : d do acc:=acc*acc%n od od
+;  acc
+)
+
+set is_Fermat_prime (int x, int p) = bool: power_mod(x,p,p)=x%p
+
+set prime_candidats_after (int n, [int] sieve_primes) = [int]:
+(  let sieve_size { interval length to apply sieve to }
+     = bit_length(n) { prime number theorem says prime density is $1/ln(n)$ }
+   then sieve=[sieve_size].to_bitset-1 { all bits set initially }
+in for p in sieve_primes
+   do let start=(-n)%p then count = (start-sieve_size)\-p { round up }
+   in sieve:=AND_NOT(sieve, for i:count do start+p*i od.to_bitset)
+   od
+;  while let pow = AND_NOT(sieve,sieve-1) in !=pow
+   do n+bit_length(pow)-1 { candidate prime number } next sieve-:=pow
+   od
+)
+
+set search_probable_prime ([int] sieve_primes, [int] Fermat_bases) = (int->int):
+   let test (int n) = bool:
+      for b in Fermat_bases do @bool: is_Fermat_prime(b,n) od.all
+in (int n) int:
+   while { terminate only at explicit |return| }
+   do for cand in prime_candidats_after(n,sieve_primes)
+      do if test(cand) then return cand fi od
+   ;  n+:=bit_length(n) { skip forward by range used for candidates }
+   od
+
+set search_probable_generator (int p, [int] divisors_phi_p) = int:
+   let phi_p=p-1 { assume |p| is probable prime, group exponent divides |p-1| }
+in for i:p-2 from 2
+   do if for d in divisors_phi_p do @: power_mod(i,phi_p\d,p)!=1 od.all
+      then return i
+      fi
+   od; 1
 
 set expand (int_poly(X,a,), int k) = int_poly: { substitute X^k for X }
    ((## for i:#a-1 do a[i] # for :k-1 do int:0 od od) # a~[0],X).to_int_poly

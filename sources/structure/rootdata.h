@@ -45,8 +45,16 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
-// make |Delta| simple (a twist) by Weyl group action; return Weyl word
-// whose left-multiplication transforms returned |Delta| into original one
+/* Transform each element ow |Delta| under $W$ until all are posroot numbers
+   Return for each step: index at which negroot was found, and reflection index.
+   List is in order so that the reflections transform original |Delta| into the
+   final one (which is the order in which the pairs were found).
+*/
+sl_list<std::pair<weyl::Generator,RootNbr> > to_positive_system
+  (const RootSystem& rs, RootNbrList& Delta);
+
+// make full rank list |Delta| simple (a twist) by Weyl group action; return
+// Weyl word whose left-multiplication transforms final |Delta| into original
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta);
 
 // force root positive; unlike |rs.rt_abs(alpha)| does not shift positive roots
@@ -60,7 +68,7 @@ WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 // (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
-// partition |roots| into connected components for |is_orthogonal|
+// partition set of any |roots| into connected components for |not is_orthogonal|
 sl_list<RootNbrSet> components(const RootSystem& rs,const RootNbrSet& roots);
 
 // compute product of reflections in set of orthogonal roots
@@ -68,18 +76,20 @@ WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
 // set of posroot indices of coroots integral on |gamma|
 RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
+// the (posiive) simple generators of the above, but as full root set indices
+RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma);
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
-// semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
+RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 
 // involution of the Dynkin diagram for |rd| define by distinguished |delta|
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 // orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
-ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta);
+ext_gens fold_orbits
+  (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);
@@ -102,11 +112,13 @@ sl_list<WeylElt>
 int_Matrix Weyl_orbit(const RootDatum& rd, Weight v);
 int_Matrix Weyl_orbit(Coweight w, const RootDatum& rd);
 
-} // |namespace rootdata|
+template<bool for_coroots=true>
+  RootNbrSet additive_closure(const RootSystem& rs, RootNbrSet generators);
+
+RootNbrSet image(const RootSystem& rs, const WeylWord& ww, const RootNbrSet& s);
 
 /******** type definitions **************************************************/
 
-namespace rootdata {
 
 // RootSystem: an abstract set of roots, with relations, but no coordinates
 
@@ -141,11 +153,20 @@ class RootSystem
   std::vector<RootNbrSet> coroot_ladder_bot; // minima for coroot ladders
 
 
-  // in the following 4 methods |i| indexes a positive root or corrot
+  // in the following 4 methods |i| indexes a positive root or coroot
   Byte_vector& root(RootNbr i) { return ri[i].root;}
   Byte_vector& coroot(RootNbr i) { return ri[i].coroot;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
   const Byte_vector& coroot(RootNbr i) const { return ri[i].coroot;}
+
+  Byte_vector   root_any(RootNbr alpha) const
+  { return is_posroot(alpha)
+      ? ri[alpha-numPosRoots()].root : -ri[numPosRoots()-1-alpha].root;
+  }
+  Byte_vector coroot_any(RootNbr alpha) const
+  { return is_posroot(alpha)
+      ? ri[alpha-numPosRoots()].coroot : -ri[numPosRoots()-1-alpha].coroot;
+  }
 
   // look up and return index in full root system, or |numRoots()| on failure
   RootNbr lookup_root(const Byte_vector& root) const;
@@ -166,6 +187,7 @@ public:
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
+  LieType type() const; // no central torus factors possible here
 
   // Cartan matrix by entry and as a whole
   int Cartan(weyl::Generator i, weyl::Generator j) const { return Cmat(i,j); };
@@ -241,9 +263,10 @@ public:
   const RootNbrSet& min_coroots_for(RootNbr alpha) const
   { return coroot_ladder_bot[alpha]; }
 
-  RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
-  RootNbrList simpleRootList() const; // NOT for iteration over it
-  RootNbrSet posRootSet() const; // NOT for iteration, may serve as mask
+  RootNbrSet simple_root_set() const; // NOT for iteration over it
+  RootNbrList simple_root_list() const; // NOT for iteration over it
+  RootNbrSet posroot_set() const; // NOT for iteration, may serve as mask
+  RootNbrSet fundamental_alcove_walls() const;
 
 // other accessors
 
@@ -324,6 +347,10 @@ public:
   { return not min_roots_for(rootMinus(alpha)).isMember(beta); }
   bool sum_is_coroot(RootNbr alpha, RootNbr beta) const
   { return not min_coroots_for(rootMinus(alpha)).isMember(beta); }
+
+  // the following are to be called only after corresponding predicate is tested
+  RootNbr root_add(RootNbr alpha, RootNbr beta) const;
+  RootNbr coroot_add(RootNbr alpha, RootNbr beta) const;
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
@@ -684,9 +711,9 @@ class RootDatum
 
   // The sum of the positive roots in |rs|
   Weight twoRho(const RootNbrSet& rs) const
-  { return root_sum(*this,posRootSet()&rs); }
+  { return root_sum(*this,posroot_set()&rs); }
   Coweight dual_twoRho(const RootNbrSet& rs) const
-  { return coroot_sum(*this,posRootSet()&rs); }
+  { return coroot_sum(*this,posroot_set()&rs); }
 
   WeylWord word_of_inverse_matrix(const WeightInvolution&) const;
 
@@ -701,6 +728,10 @@ class RootDatum
 
 }; // |class RootDatum|
 
+// semisimple rank of |integrality_datum(rd,gamma)|
+inline
+unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
+{ return integrality_simples(rd,gamma).size(); }
 
 } // |namespace rootdata|
 
