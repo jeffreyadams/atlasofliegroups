@@ -2829,6 +2829,21 @@ set show_very_short([string] statuses) = void:
 	" unitary, ",countF," nonunitary.")
 	fi
 
+{meant to display the collection of nonunitarity certificate K-types}
+{KGBElt should be chosen to make K-highest weights look good; for example,
+ KGB(G,(2^n) - 1) in Sp(2n,R).}
+set show(KTypePol_hash cert_hash, KGBElt x) = void:
+    let size = cert_hash.size()
+    then mus = for j:size do first_K_type(cert_hash.index(j)) od
+    then hwts = for j:size do highest_weight(mus[j],x) od
+    in prints("Number of certificate K-types = ",size);
+       for j:size
+       do prints(j," dim = ",dimension(mus[j]), ", ht = ", height(mus[j]),
+       ", hwt = ",hwts[j])
+       od
+
+set show(KTypePol_hash cert_hash) = void:
+    show(cert_hash,KGB(cert_hash.index(0).real_form,0))
 
 set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
    for n in facet do vertices[n] od
