@@ -1,0 +1,84 @@
+<parameters.at
+
+set_type [CoveringGroup=(RootDatum G,ratvec tau),
+          CoveringRealForm=(RealForm G,ratvec tau),
+          CoveringParam=(CoveringRealForm CG,Param p),
+          CoveringParamPol=(CoveringRealForm CG,ParamPol P)]
+
+set tau(CoveringParam (CG,))=ratvec:CG.tau
+set parameter(CoveringParam (,p))=Param:p
+set infinitesimal_character(CoveringParam cp)=ratvec:infinitesimal_character(parameter(cp)) + tau(cp)
+
+{tau\in X^*_Q, satisfying <tau,\alpha^v>=0 for all coroots alpha^v
+ covering_index: minimal n so that n\tau\in X^*
+ often covering_index=2
+ tau defines an n-fold covering group G~(C) of G(C), and a character tau of G~(C)
+ such that tau^n is a character of G(C) (given by the element n*tau\in X^*)
+ let A\simeq Z/nZ be the inverse image of 1 in G~(C), A(R)=A\cap G(R)
+ tensoring with tau gives a bijection
+ {irreducible representations of G(R)} <-> 
+ {irreducible representations pi of G~(R) satisfying:
+  \chi_pi(z)=\tau(z) for all z\in A(R)}   [chi_pi is the central character of pi]
+
+  Note: check if something goes wrong if A(R) is strictly smaller than A
+}
+
+{CoveringParam: (CG,p) = ((G,tau),p):
+ p=(x,lambda,nu) is a parameter for G
+ (CG,p) corresponds to the parameter p\otimes\tau for G~
+ all operations on CoveringParams are obtained by the same operation on parameters;
+  tau just comes along for the ride
+
+ We'd like to think of a parameter for CG to be (x,lambda,nu) where these satisfy the usual conditiions,
+  except that \lambda\in (rho+tau) + X^*
+ Note: tau =0 <-> trivial cover
+ The main thing we do is enable input/output of such parameters
+ We can input (CG,x,lambda,nu) with lambda\in rho+tau, and represent it as (CG,p=(x,lambda-tau,nu-tau))
+ 
+}
+
+set covering_group(RootDatum G,ratvec tau)=CoveringGroup:
+assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+set covering_real_form(RealForm G,ratvec tau)=CoveringRealForm:
+assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+set covering_group(RealForm G,ratvec tau)=CoveringRealForm: {same as previous, avoids defaulting to making a CoveringGroup rather than a CoveringRealForm}
+assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+
+set covering_parameter(CoveringRealForm CG,Param p)=CoveringParam:(CG,p)
+set to_string(CoveringParam((G,tau),p))=string:"covering parameter(x="+p.x.number+",lambda="+compact_string(p.lambda+tau)+",nu="+compact_string(p.nu+tau)+")_"+compact_string(tau)
+set prints(CoveringParam((G,tau),p))=void:prints(to_string((G,tau),p))
+
+{fake parameter: (CG,x,lambda,nu) satisfying lambda\in (rho+tau)+X^*: precisely, this is
+ the CoveringParamter (CG,p) where p=(x,lambda-tau,nu-tau), which is a valid parameter for G}
+
+set covering_parameter(CoveringRealForm CG,KGBElt x,ratvec lambda, ratvec nu)=CoveringParam:(CG,parameter(x,lambda-CG.tau,nu-CG.tau))
+
+set prints(CoveringParamPol(CG,P))=void:
+for c@p in P do prints(to_string(c) + "*" + to_string(covering_parameter(CG,p))) od
+
+set composition_series(CoveringParam cp)=CoveringParamPol:(CG(cp),composition_series(p(cp)))
+
+set theta_induce_standard_cover(CoveringParam cp,RealForm G)=
+let (CL,pL)=cp in theta_induce_standard(pL,G
+
+{theta induce one dimensional: 
+ lambda_shifted\in (rho_L+rho_u)+X^*=rho+X^*, this defines a
+ one-dimensional representation of the rho_u cover of L
+ with infinitesimal character rho_L+lambda+shifted
+ this is in rho_L+(
+ 
+ is a parameter for the rho_u cover of L,
+ then Aq has infinitesimal character 
+set Aq_reducible_cover (KGBElt x,ratvec lambda_shifted, ratvec lambda_q) = ParamPol:
+  let G=real_form(x)
+  then (w,lambda_q_new)=from_dominant(G,lambda_q)
+  then w1=/w
+  then P_new=parabolic_by_wt(lambda_q_new,cross(w1,x))
+  then t_L_new=trivial(Levi(P_new))
+  , shift = w1*lambda-rho_u(P_new)
+  in
+  assert(is_parabolic_theta_stable(P_new),"q is not theta-stable");
+  let pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift )
+  in
+  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+  theta_induce_irreducible(pi_L,G))
