@@ -1631,13 +1631,14 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
+  const RootNbrList int_simples = block.int_simples();
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
     const ext_param E(ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      RootNbr n_alpha = block.integral_subsystem().parent_nr_simple(p.s0);
+      RootNbr n_alpha = int_simples[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type

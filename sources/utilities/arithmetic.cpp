@@ -241,7 +241,7 @@ template<typename I>
 
 template class Rational<Numer_t>; // the main instance used
 
-
+template std::ostream& operator<< (std::ostream& out, const RatNum& frac);
 
 } // |namespace arithmetic|
 

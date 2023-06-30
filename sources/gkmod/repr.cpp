@@ -74,18 +74,22 @@ size_t StandardReprMod::hashCode(size_t modulus) const
 
 Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm)
-    : x(srm.x()), evs_reduced() // |int_sys_nr| is set by |integral_eval| below
+    : x(srm.x())
+    , int_sys_nr()
+    , w()
+    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
 {
   InnerClass& ic = rc.inner_class();
   const KGB& kgb = rc.kgb();
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  auto eval = ic.integral_eval(gl,int_sys_nr) * gl.numerator();
+  auto eval = ic.integral_eval(gl,int_sys_nr,w) * gl.numerator(); // mat * vec
   for (auto& entry : eval)
   {
     assert(entry%gl.denominator()==0);
     entry /= gl.denominator();
   }
-  const auto codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
+  const auto codec =
+    ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x),w);
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
     int_Vector(eval.begin(),eval.end());
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -299,7 +303,8 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
-
+// fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
+// uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
 Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const
@@ -321,19 +326,24 @@ Weight Rep_context::theta_1_preimage
   }
 
   return codec.theta_1_image_basis * (codec.out * eval_v);
-}
+} // |theta_1_preimage|
 
+// difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
+// for representatives of |srm0| and |srm1| with identical integral evaluations
 RatWeight Rep_context::offset
   (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {
   const auto& gamlam = srm0.gamma_lambda(); // will also define integral system
   RatWeight result = gamlam - srm1.gamma_lambda();
-  auto& ic = inner_class();
-  InvolutionNbr inv = kgb().inv_nr(srm0.x());
-  unsigned int int_sys_nr;
-  const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
-  result -= theta_1_preimage(result,codec);
-  assert((codec.coroots_matrix*result).is_zero());
+  if (not result.is_zero()) // optimize out a fairly frequent case
+  {
+    auto& ic = inner_class();
+    InvolutionNbr inv = kgb().inv_nr(srm0.x());
+    unsigned int int_sys_nr;
+    const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
+    result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
+    assert((codec.coroots_matrix*result).is_zero()); // check that it was done
+  }
   return result;
 }
 
@@ -407,7 +417,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z) const
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = involution_table();
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
   const Weight test_wt = i_tab.y_lift(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
 	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
@@ -711,7 +721,7 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
   const arithmetic::Numer_t d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
   const Weight two_rho_real = rd.twoRho(pos_real);
 
   // we shall associate to certain numbers $num>0$ a strict lower bound $lwb$
@@ -733,7 +743,7 @@ RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
     }
   }
 
-  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posRootSet();
+  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posroot_set();
   for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
   {
     RootNbr alpha=*it, beta=theta[alpha];
@@ -1063,7 +1073,7 @@ using sr_term = std::pair<StandardRepr,int>;
 using sr_term_list = simple_list<sr_term>;
 
 // insert (add) a new term into list |L|, assumed sorted decreasingly
-void insert(StandardRepr&& z, int coef, sr_term_list& L)
+void insert_into(sr_term_list& L, StandardRepr&& z, int coef)
 { auto it = L.begin();
   while (not L.at_end(it))
     if (z < it->first)
@@ -1101,77 +1111,68 @@ sr_term_list Rep_context::finals_for(StandardRepr z) const
       // as |break| from loop is not available within |switch|, use |goto| below
     { auto eval = // morally evaluation coroot at |gamma|, but only sign matters
 	rd.simpleCoroot(s).dot(gamma.numerator());
-      if (eval<=0)
-	switch (kgb().status(s,x))
-	{
-	case gradings::Status::ImaginaryCompact:
-	  if (eval<0) // then reflect |lambda| and negate sign
+      if (eval>0)
+	continue; // when strictly dominant, nothing to do for |s|
+      switch (kgb().status(s,x))
+      {
+      case gradings::Status::ImaginaryCompact:
+	if (eval==0)
+	  goto drop; // singular imaginary compact |s|, parameter is zero
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	coef = -coef;
+	goto restart;
+      case gradings::Status::ImaginaryNoncompact:
+	if (eval==0)
+	  continue; // nothing to do for singular nci generator |s|
+	{ // |eval<0|: reflect, and also add Cayley transform terms
+	  KGBElt sx = kgb().cross(s,x);
+	  KGBElt Cx = kgb().cayley(s,x);
+	  StandardRepr t1 = sr_gamma(Cx,lr,gamma);
+	  assert( t1.height() < height );
+	  insert_into(to_do,std::move(t1),coef);
+	  if (sx==x) // then type 2 Cayley
 	  {
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    coef = -coef;
-	    goto restart;
+	    StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
+	    assert( t2.height() < height );
+	    insert_into(to_do,std::move(t2),coef);
 	  }
-	  else goto drop; // parameter is zero
-	case gradings::Status::ImaginaryNoncompact:
-	  if (eval<0) // then also add Cayley transform terms
-	  {
-	    KGBElt sx = kgb().cross(s,x);
-	    KGBElt Cx = kgb().cayley(s,x);
-	    StandardRepr t1 = sr_gamma(Cx,lr,gamma);
-	    assert( t1.height() < height );
-	    insert(std::move(t1),coef,to_do);
-	    if (sx==x) // then type 2 Cayley
-	    {
-	      StandardRepr t2 = sr_gamma(Cx,lr+rd.simpleRoot(s),gamma);
-	      assert( t2.height() < height );
-	      insert(std::move(t2),coef,to_do);
-	    }
-	    x = sx; // after testing we can update |x| for nci cross action
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    coef = -coef; // reflect, negate, and continue with modified values
-	    goto restart;
-	  }
-	  else // nothing to do for singular nci generator
-	    continue; // continue loop on |s|
-	case gradings::Status::Complex:
-	  if (eval<0 or kgb().isDescent(s,x))
-	  {
-	    x = kgb().cross(s,x);
-	    rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
-	    rd.simple_reflect(s,gamma.numerator());
-	    // keep |coef| unchanged
-	    goto restart;
-	  }
-	  else // nothing to do for singular complex ascent
-	    continue; // continue loop on |s|
-	break;
-	case gradings::Status::Real:
-	  if (eval<0)
-	  {
-	    // |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
-	    rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
-	    rd.simple_reflect(s,gamma.numerator());
-	    // keep |coef| unchanged
-	    goto restart;
-	  }
-	  else
-	  { // singular real root; only do something if parity condition holds
-	    auto eval_lr = rd.simpleCoroot(s).dot(lr);
-	    if (eval_lr%2 != 0) // then $\alpha_s$ is a parity real root
-	    { // found parity root; |kgb()| can distinguish type 1 and type 2
-	      lr -= rd.simpleRoot(s)*((eval_lr+1)/2);
-	      assert( rd.simpleCoroot(s).dot(lr) == -1 );
-	      const KGBEltPair Cxs = kgb().inverseCayley(s,x);
-	      if (Cxs.second!=UndefKGB)
-		insert(sr_gamma(Cxs.second,lr,gamma),coef,to_do);
-	      insert(sr_gamma(Cxs.first,lr,std::move(gamma)),coef,to_do);
-	      goto drop; // we have rewritten |current|, don't contribute it
-	    }
-	    else continue; // nothing to do for a (singular) real nonparity root
-	  } // |else| (singular real root)
-	} // |switch| and |if(eval<=0)|
+	  x = sx; // after testing we can update |x| for nci cross action
+	  rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	  rd.simple_reflect(s,gamma.numerator());
+	  coef = -coef; // reflect, negate, and continue with modified values
+	  goto restart;
+	}
+      case gradings::Status::Complex:
+	if (eval==0 and not kgb().isDescent(s,x))
+	  continue; // nothing to do for singular complex ascent
+	// now we are either not dominant for |s|, or a complex ascent
+	x = kgb().cross(s,x);
+	rd.simple_reflect(s,lr,1); // $-\rho$-based reflection
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      case gradings::Status::Real:
+	if (eval==0) // singular real root
+	{ auto eval_lr = rd.simpleCoroot(s).dot(lr);
+	  if (eval_lr%2 == 0) // whether non-parity
+	    continue; // nothing to do for a (singular) real nonparity root
+	  // now $\alpha_s$ is parity real root: replace by inverse Cayley(s)
+	  // |kgb()| can distinguish type 1 and type 2
+	  lr -= rd.simpleRoot(s)*((eval_lr+1)/2); // project to wall for |s|
+	  assert( rd.simpleCoroot(s).dot(lr) == -1 );
+	  const KGBEltPair Cxs = kgb().inverseCayley(s,x);
+	  if (Cxs.second!=UndefKGB)
+	    insert_into(to_do,sr_gamma(Cxs.second,lr,gamma),coef);
+	  insert_into(to_do,sr_gamma(Cxs.first,lr,std::move(gamma)),coef);
+	  goto drop; // we have rewritten |current|, don't contribute it
+	} // (singular real root)
+	// |x = kgb().cross(s,x)|; real roots act trivially on KGB elements
+	rd.simple_reflect(s,lr); // $0$-based reflection of $\lambda-\rho$
+	rd.simple_reflect(s,gamma.numerator());
+	// keep |coef| unchanged here
+	goto restart;
+      } // |switch|
     } // |for(s)|
     // if loop terminates, then contribute modified, now final, parameter
     result.emplace_front(sr_gamma(x,lr,gamma),coef);
@@ -1217,7 +1218,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
   const auto& num1 = g1.numerator();
   const auto d0 = g0.denominator(), d1 = g1.denominator(); // convert to signed
 
-  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+  { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
 	if (arithmetic::divide(rd.coroot(*it).dot(num0),d0) !=
@@ -1225,9 +1226,9 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
 	  return true; // distinct integer part of evaluation poscoroot found
   }
   {
-    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -1263,15 +1264,15 @@ size_t deformation_unit::hashCode(size_t modulus) const
     hash = 21*hash + c;
 
   const auto& rd = rc.root_datum();
-  { RootNbrSet complex_posroots = rd.posRootSet() & i_tab.complex_roots(inv_nr);
+  { RootNbrSet complex_posroots = rd.posroot_set() & i_tab.complex_roots(inv_nr);
     for (auto it=complex_posroots.begin(); it(); ++it)
       if (i_tab.complex_is_descent(inv_nr,*it))
 	hash = 5*hash + arithmetic::divide(rd.coroot(*it).dot(num),denom);
   }
   {
-    const RootNbrSet real_posroots = rd.posRootSet() & i_tab.real_roots(inv_nr);
+    const RootNbrSet real_posroots = rd.posroot_set() & i_tab.real_roots(inv_nr);
     auto lambda_rho_real2 =
-      rc.lambda_rho(sample)*2-rd.twoRho(rd.posRootSet()^real_posroots);
+      rc.lambda_rho(sample)*2-rd.twoRho(rd.posroot_set()^real_posroots);
     for (auto it=real_posroots.begin(); it(); ++it)
     {
       const auto& alpha_v= rd.coroot(*it);
@@ -2091,10 +2092,12 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
+  const RootDatum& rd = parent.root_datum();
+  const RootNbrList int_simples = parent.int_simples();
   RankFlags singular_orbits; // flag singulars among orbits
-  const auto& ipd = parent.integral_subsystem().pre_root_datum();
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
+    singular_orbits.set(s,
+	     gamma.dot(rd.coroot(int_simples[eblock.orbit(s).s0]))==0);
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
@@ -2407,15 +2410,11 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
-, sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
+, w()
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr,w)) // sets |w|
+, sub(id_it.int_system(w)) // transform by |w|, and store image subsystem
 {} // |common_context::common_context|
 
-
-common_context::common_context (const Rep_context& rc, const SubSystem& sub)
-: rep_con(rc)
-, int_sys_nr()
-, sub(rc.inner_class().int_item(sub.posroot_subset(),int_sys_nr).int_system())
-{} // |common_context::common_context|
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const

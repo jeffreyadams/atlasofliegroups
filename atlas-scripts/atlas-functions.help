@@ -924,8 +924,8 @@ partial_block: (Param->[Param]): return partial block as list of parameters
   length. Non-final parameters are omitted. If the original parameter is final,
   then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
-block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
-  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+block_Hasse: (Param->mat): Hasse diagram of Bruhat order of block of parameter
+  Calling KGB_Hasse(p) ensures the full block containing the parameter p is
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
   exactly the two elements, namely x et z. The matrix is indexed by the numbers
@@ -1171,19 +1171,35 @@ walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
   direction enters into the interior of the alcove (where all coroot evaluations
   are non integral). This latter condition makes the alcove unique, and means
   that among coroots with integral evaluation at gamma, only positive coroots
-  are candidate to define a wall; indeed the simple basis for the integral
-  system of gamma will be an initial part of the list of root numbers returned
-  as first component, and the size of this initial part (the integrality rank)
-  is the second component returned. The full list of root numbers index coroots
-  whose evaluations non redundantly define the alcove, the integral part of
-  these evaluations being the same as for gamma (using the integral part means
-  the "sign" of the coroots is chosen such that they point into the alcove:
-  their evaluation is integral on some face of the alcove, and increases towards
-  the interior of the alcove). The coroots non integral at gamma (a final part
-  of the list) are sorted by decreasing "label" with respect to alcove (which is
-  an integer k such that within the alcove, the maximal fractional part of the
-  evaluation is 1/k); a useful property for generating, modulo translations,
-  the affine Weyl group orbit of the facet containing gamma ('affine_orbit_ws').
+  are candidate to define a wall; indeed, an initial part of the list of coroot
+  numbers returned as first component, of size given by the second component
+  (the integrality rank), gives a simple basis for the integral system of gamma.
+  The full list of root numbers index coroots whose evaluations non redundantly
+  define the alcove, the integral part of these evaluations being the same as
+  for gamma (using the integral part means the "sign" of the coroots is chosen
+  such that they point into the alcove: their evaluation is integral on some
+  face of the alcove, and increases towards the interior of the alcove). Within
+  the initial set of integral coroot numbers, and within the remaining numbers,
+  coroots are sorted by decreasing "label" with respect to alcove (which is an
+  integer k such that within the alcove, the maximal fractional part of the
+  evaluation is 1/k). This is a useful property for generating, modulo
+  translations, the affine Weyl group orbit of the facet containing gamma
+  ('affine_orbit_ws'), and ensures that in at leat one of the two sorted
+  sublists the final element determines a coroot with label equal to 1.
+walls_attitude: (RootDatum,[int]->WeylElt) classify alcove up to translation
+  For any alcove there are alcoves in the W-orbit of the fundamental alcove that
+  are equal to it up to a translation; this function determines a Weyl group
+  element that witnesses this from the set of walls of the alcove, represented
+  by a list of root indices as retuned by the 'walls' for an interior point of
+  the alcove. The set of root indices must be that of the walls of some alcove,
+  so in the W-orbit of the set of walls of the fundamental alcove (necessary
+  conditions for this is the absence of acute angles, and a number of walls
+  equal to the sum of the semisimple rank and the number of connected components
+  of the Dynkin diagram). The list will contain both positive and negative
+  roots, and the distinction between a root and its opposite is vital here. In
+  general the Weyl group element is not unique; it would be unique if we were to
+  limit translations by weights in the root lattice, but information for that
+  classification of alcoves requires more information than just its wall set.
 alcove_center: (Param->Param): Change gamma to a "central" point of its alcove
   The alcove is defined by the integral parts of the evaluations of gamma on
   all the positive coroots, as in the walls function. The "central" point is
@@ -1217,6 +1233,22 @@ affine_orbit_ws: (RootDatum,ratvec->[WeylElt]): W image of affine quotient
   set of representatives of W/W_I, the quotient by the integral Weyl group. The
   latter produces, when applied to the original rational weight, its orbit under
   the affine Weyl group modulo its normal subgroup acting as root translations.
+FPP_numers: (RootDatum,ratvec->[vec]): Affine Weyl orbit intersected with FPP
+  The fundamental parallelepiped (FPP) is the part of the dominant cone where
+  all simple coroots take values in the interval [0,1]. The hyperplanes where
+  coroots take integral values chop up the FPP (and the whole space) into
+  alcoves, each of which is the image by a unique affine Weyl group element of
+  the fundamental alcove (the one in the FPP that has the origin as vertex), but
+  facets can be shared between alcoves. Given a rational weight gamma in some
+  facet of the fundamental alcove, this function finds all its distinct images
+  under the affine Weyl group lying inside the FPP, and lists their numerators;
+  this is to save space as the denominators are all equal to that of gamma.
+FPP_w_shifts: (RootDatum,ratvec->[WeylElt,[vec]]): Affine Weyl elements for FPP
+  This function has the same funcionality as FPP_numers, but presents the
+  results differently, namely as a list of affine Weyl group elements (an
+  ordinary Weyl group element followed by a shift in the root lattice), grouped
+  by common Weyl group elements, each followed by a list of associated shifts.
+  The Weyl group elements w are such that w*gamma is integrality dominant.
 
 strong_components: ([[int]]->[[int]],[[int]]): Tarjan's graph algorithm
   The input describes a directed graph on the set #n={0,1,...,n-1}, where n is

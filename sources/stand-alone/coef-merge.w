@@ -891,6 +891,8 @@ our Chinese boxes! There will be one less of them than there are moduli, and
 they are allocated via |new| to make a vector of pointers.
 
 @h <sstream>
+@h <string>
+
 @< Main function @>=
 int main(int argc, char** argv)
 { --argc; ++argv; // skip program name

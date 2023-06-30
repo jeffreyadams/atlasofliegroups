@@ -82,6 +82,7 @@ has to be loaded before it (we would like to have put an \&{\#include} of the
 file \.{parsetree.h} into \.{parser.tab.h} so that it need no be mentioned
 here, but we do not know if or how this could be arranged).
 
+@h <string>
 @h "buffer.h"
 @h "parse_types.h"
 @h "parser.tab.h"
@@ -103,7 +104,9 @@ public:
   Lexical_analyser
     (BufferedInput&, Hash_table&, const char**, const char** type_names);
   int get_token(YYSTYPE *valp, YYLTYPE* locp);
-  bool reset(); // get clean slate, return |false| if |getline()| fails
+  void reset(); // get clean slate, as after construction and initialisation
+  bool prime();
+    // prepare for scanning a line, return |false| if |getline()| fails
   void set_comment_delims (char c, char d)
           {@; assert(c!='\0' and d!='\0'); comment_start=c; comment_end=d; }
   const char* scanned_file_name() const @+{@; return file_name.c_str(); }
@@ -175,14 +178,15 @@ while recording which names was entered in the semantic value.
 
 @ The member function |reset| can be called to reset the lexical analyser,
 discarding any remaining input on the current line and clearing the |nesting|
-level. It is safe to call |reset| after a successfully executed command, which
-will fetch a new line without getting any tokens, but |reset| should not be
-called twice in succession, as this will discard the newly fetched line. The
-result returned tells whether a fresh line was successfully obtained.
+level. This is typically done after any error that makes it impossible to
+execute a command, to ensure the next attempt will be with a clean slate.
+The function |prime| serves to test whether any input can be obtained at all,
+before trying to get any tokens (so that for instance the end of an input stream
+can be handled graciously).
 
 @< Definitions of class members @>=
-bool Lexical_analyser::reset()
-{@; nesting=0; state=initial; input.reset(); return input.getline(); }
+void Lexical_analyser::reset() {@; nesting=0; state=initial; input.reset(); }
+bool Lexical_analyser::prime() {@; return not input.eol() or input.getline(); }
 
 @ Skipping spaces is a rather common activity during scanning; it is performed
 by |skip_space|, which also skips any comments that might be encountered. The

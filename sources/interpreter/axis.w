@@ -342,6 +342,8 @@ bool layer::may_return()
 into the |layer| object. This is also a good place to check for the presence
 of identical identifiers.
 
+@h <string>
+
 @< Function def... @>=
 void layer::add(id_type id,type_expr&& t,bool is_const)
 { for (auto it=variable.begin(); it!=variable.end(); ++it)
@@ -526,7 +528,11 @@ the purpose of printing (if this expression occurs inside a function body) it
 is undesirable to embark on printing the whole captured value, so we derive
 and override the |print| method.
 
-@<Type definitions @>=
+@< Includes needed in the header file @>=
+
+#include <string>
+
+@~@<Type definitions @>=
 class capture_expression : public denotation
 { std::string print_name;
 public:

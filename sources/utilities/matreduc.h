@@ -72,7 +72,7 @@ C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
 { if (col!=nullptr)
     *col = matrix::PID_Matrix<C>(row.size());
   containers::sl_list<size_t> active_entries;
-  C min(0); size_t mindex;
+  C min(0); size_t mindex=0;
   for (size_t j=0; j<row.size(); ++j)
     if (row[j]!=C(0))
     {

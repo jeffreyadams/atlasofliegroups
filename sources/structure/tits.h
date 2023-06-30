@@ -24,7 +24,7 @@
 
 #include "bitvector.h" // contained in |TitsGroup|
 #include "prerootdata.h" // contained in |GlobalTitsGroup|
-#include "weyl.h"      // contained in |TitsElt|
+#include "weyl.h"      // has base class |TwistedWeylGroup| of |TitsGroup|
 
 #include "y_values.h"
 

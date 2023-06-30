@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <cstdio>
+#include <string>
 #include <cassert>
 #include <cstdlib>
 

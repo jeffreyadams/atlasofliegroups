@@ -454,12 +454,14 @@ class BufferedInput
 @)
     char shift (); // inspect a new character
     void unshift (); // back up so last character will be reconsidered
-    bool eol () const; // end of line: |true| if |shift| would return a newline
+    bool eol () const; // end of line: |true| if |shift| would call |getline|
     bool getline ();
          // fetch a new line to replace current one; |true| if successful
     bool push_file (const char* file_name,bool skip_seen);
       // |true| if successful
+    void reset(); // discard any input and temporary prompts
     void close_includes();
+
     @< Other methods of |BufferedInput| @>@;
 private:
     void pop_file();
@@ -644,7 +646,12 @@ struct file_stack : public file_stack_t
   const_iterator cbottom() const @+{@; return c.wcend(); }
 };
 
-@ When an input file is exhausted, the stored line number is restored, the
+@ Calling |reset| (which typically happens after syntax errors) clears any
+temporary prompt, and by nullifying |pos| ensures no more input from the current
+line will be obtained (the actual input line lingers in memory until |getline|
+is called).
+
+When an input file is exhausted, the stored line number is restored, the
 |input_record| for the file popped from the stack (which also closes the file);
 then the |stream| is set to point to the previous input stream. We also report
 successful completion to the user, and record the file name on
@@ -655,6 +662,9 @@ When |close_includes| is called all auxiliary input files are closed.
 @h "global.h" // for |output_stream|
 
 @< Definitions of class members @>=
+void BufferedInput::reset() {@; pos=nullptr; temp_prompt=""; }
+
+@)
 void BufferedInput::pop_file()
 { line_no = input_stack.top().line_no;
   *output_stream << "Completely read file '" << cur_fname() << "'."
@@ -819,23 +829,26 @@ to a good start.
 @*1 Getting a line from the buffer.
 %
 The member function |getline| is usually called at times when |eol()| would
-return |true| (otherwise some input will be discarded). This should only
-happen when a new request for input arrives \emph{after} the end-of-line
-condition has been transmitted at an earlier request (otherwise we would wait
-for new input before executing a command), which is why we always return a
-newline character from |shift()| before making |eol()| true. Thus our caller
-does not have to distinguish between a fresh end-of-line condition and one
-that has already been acted upon. For us it means that we should actually
-store a newline character at the end of line buffer, in spite of the fact that
-|std::getline| and |readline| strip that character. This also means that there
-is no objection to calling our |getline| automatically in case |shift| is
-called when |eol()| is true (any end-of-line action has been done at such a
-point); we shall do so, and in fact this removes the burden of monitoring
-|eol()| from our callers (one could even consider making that function
-private, but its publicity does no real harm). We return success if either no
-error flags were set on our |istream| parent, or else if at least some
-characters were read (probably followed by an end-of-file condition in absence
-of a final newline); in the latter case the next call will return false.
+return |true| (otherwise some input will be discarded). This should only happen
+when a new request for input arrives \emph{after} the end-of-line condition has
+been transmitted in the form of a newline character at an earlier request
+(otherwise we would wait for new input before executing a command), which is why
+we store a newline character at the end of line buffer, in spite of the fact
+that |std::getline| and |readline| strip that character. This also means that
+there is no objection to calling our |getline| automatically in case |shift| is
+called when |eol()| is true (our caller has already seen the newline character,
+and presumably acted accordingly); we shall do so, and in fact this removes the
+burden of monitoring |eol()| from our callers. We still provide |eol| as a
+public method, as it allows the caller to know after acting upon a newline
+character if maybe there is already further input present (in which case |eol|
+returns |false|). This is rare (since we don't expect the string returned by
+|getline| to have any embedded newline characters), but possible with newer
+versions of GNU |readline| in the case of a multi-line paste action by the user.
+
+We return success if either no error flags were set on our |istream| parent, or
+else if at least some characters were read (probably followed by an end-of-file
+condition in absence of a final newline); in the latter case the next call will
+return false.
 
 As we said in the introduction, we shall treat escaped newlines here, so that
 the lexical analyser does not need to worry about them (and this will allow
@@ -1115,7 +1128,6 @@ and pop them off.
 void push_prompt(char c);
 char top_prompt() const; // inspect most recently added prompt character
 void pop_prompt();
-void reset();
 
 @ There functions deal only with the temporary prompt. In particular, the |reset|
 method just clears it.
@@ -1134,9 +1146,6 @@ void BufferedInput::pop_prompt()
   if (l>0)
     temp_prompt.erase(l-1);
 }
-@)
-void BufferedInput::reset() @+
-{@; temp_prompt=""; }
 
 @* Listing completions of a string.
 While this is not directly related to the |BufferedInput| class itself, the
