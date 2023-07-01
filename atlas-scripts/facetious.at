@@ -229,6 +229,8 @@ set_type
 [ AffineCoroot = (vec linear_coroot, int shift)
 , AffineCoWeylElt = (vec tau, WeylElt w) { apply |w|, then translate by |tau| }
 ]
+{This is meant to record K-characters of different facets}
+set Kpol_hash = make_KTypePol_hash()
 
 set aff_rank (SimpleAffine Affd) = semisimple_rank(Affd) + 1
 
@@ -312,11 +314,12 @@ set_type
 [  {BigFacetVerts = (vec vertIndex, vec bup, vec bdown)}
    FacetVertsHash = vec {last two entries are indices in
 	 hashUp and hashDown}
+, FacetVertsKHash = vec {last entry is index of KChar in some hash}
 , LocalFacetVertsHash = vec
 { Size is 2 + (dimension d0 of local facet) + 1. First d0+1 are
-  vertices in local vertex data; {NO next two entries are dim of FPP
-  facet, index in that list; NO} last two are indices in hashUp and
+  vertices in local vertex data; last two are indices in hashUp and
   hashDown }
+, LocalFacetVertsKHash = vec {last entry is index of KChar in some hash}
 , LocalFacetStatusVertsHash = (string status, vec verts_hash)
 ]
 
@@ -332,8 +335,7 @@ set_type
 , FacetDataHash = (VertexData v_data
 ,   [[FacetVertsHash]] hash_facet_inds)
 , LocalFacetDataHash = (VertexData v_data_local, KGBElt x,
-  ratvec lambda, {[[string]] Lstatuses,}
-  [[LocalFacetVertsHash]] LFverts)
+  ratvec lambda, [[LocalFacetVertsHash]] LFverts)
 , FacetDataK_old = (VertexData v_data
 ,   [[FacetStatusVertsIndex]] facet_status_inds
 ,   [[KTypePol]] Kchars)
@@ -1174,6 +1176,43 @@ int j) = [FacetVertsHash]:
      	     fi
    fi
 
+{second output is indices in ktp_hash of K-chars}
+{for now only works in unfolded case; G should be split}
+set FPP_facets_KHash(RealForm G, VertexData vd, int dim, KTypePol_hash ktp_hash) =
+    [FacetVertsKHash]:
+    let () = if facet_verbose
+    	     then prints("start dim ",dim, " in FPP_facets_Khash")
+	     fi
+    then x=x_open(G), lambda=G.rho
+    then facets = [FacetVerts]: facets_fundamental(G,dim)
+    in [FacetVertsKHash]:
+       	    	 for FV@k in facets
+       	    	 do if (facet_verbose and k=0) or fund_facet_verbose
+       	       	       then prints("start fund facet ",k," of ", #facets,
+	       	       " in dim ", dim," in FPP_facets_hash; hashUp.size() = ",
+		       hashUp.size())
+	       	    fi;
+	       	    let bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
+	       	    then aff_short_list = FPP_w_shifts(G,bary_F)
+	       	    then aff_list = [AffineCoWeylElt]:
+	       	    	 for (w,taus) in aff_short_list
+	       	    	 do for tau in taus do (tau,w) od
+	       	       	 od.##
+	       	    	 in for wtilde in aff_list
+	       	  	    do let (tau,w) = wtilde
+	     	     	       then iw = inverse(w)
+	     	     	       then bup = -tau + w*G.two_rho
+			       then bdown = -iw*bup
+			       then bary = wtilde*bary_F
+	     	     	       in FacetVertsKHash:
+		     	       (for v in wtilde*FV
+		  	       	do vd.lookup(v)
+		  		od.sort)##[ktp_hash.match(K_type_pol(translate_param_by(
+			    character_formula(1*parameter(x,
+			    lambda+bup,bary+bup)), bdown)))
+				]
+     		   	    od
+	     	   od.##
 
 {works only for simply connected adjoint}
 set FPP_facetsE8(SimpleAffine Affd, VertexData vd, int dim) =
@@ -1248,6 +1287,12 @@ set FPP_facets_hash(SimpleAffine Affd, VertexData vd, mat M, int j) =
     [[FacetVertsHash]]:
     for dim: Affd.semisimple_rank + 1
     do FPP_facets_hash(Affd, vd, dim, M, j)
+    od
+
+set FPP_facets_KHash(RealForm G, VertexData vd, KTypePol_hash ktp_hash) =
+    [[FacetVertsKHash]]:
+    for dim: G.semisimple_rank + 1
+    do FPP_facets_KHash(G, vd, dim, ktp_hash)
     od
 
 set facet_data_old(SimpleAffine Affd, int j) = FacetData:
@@ -2325,7 +2370,6 @@ set actualizeKPO_old \
  - compute graph (GRAPH)}
  
 {hash and polsNum not needed after graph computed, so don't return??}
-set Kpol_hash = make_KTypePol_hash()
 set actualizeKPO \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataKcharPO:
@@ -2556,6 +2600,22 @@ set localGraph(LocalFacetDataHash(Lvd,,,LFverts), KTypePol_hash Kpol_hash,
     	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
 	 in ((eq,gr), IUCL, classListByFacet)
 
+set localGraphK([[FacetVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
+    let () = if facet_verbose then prints("start to compute facet graph K")
+    	     fi
+    then (eq,gr) = GraphData: up_data(LFvertsK)
+    then classListByFacet = [vec]: class_lists(LFvertsK,(eq,gr))
+    	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
+	 in ((eq,gr), IUCL, classListByFacet)
+
+set localGraphK([[FacetVertsKHash]] FDKH, KTypePol_hash Kpol_hash, int level) =
+    (GraphData, [vec],[vec]):
+    let () = if facet_verbose then prints("start to compute facet graph K to level ",level)
+    	     fi
+    then (eq,gr) = GraphData: up_data(FDKH,Kpol_hash,level)
+    then classListByFacet = [vec]: class_lists(FDKH,(eq,gr))
+    	 , IUCL = full_down_classes(eq,gr)
+	 in ((eq,gr), IUCL, classListByFacet)
 
 {Find the parameter with "smallest nu" in equivalence class m.}
 {turns out to be nearly useless; better just to use first elt in each equiv class}
@@ -3307,6 +3367,76 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
      {then () = prints(newStatuses)}
      in  (LFVHnew,pol_numsnew,test_count)
 
+set local_testK_level(KGBElt x, ratvec lambda, VertexData vd,
+    [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr,
+    [vec] classListByFacet, [string] statuses, int level, 
+    KTypePol_hash cert_hash, int test_count) =
+    ([[FacetVertsKHash]], int):
+    let newStatuses = statuses, NumClasses = #eq
+    	, printInterval = int: 1
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_to_ht(p, level, cert_hash)
+    then () = if facet_verbose
+    	      then prints(); prints("start local_testK_level with "
+	      	   ,NumClasses,
+		   " equivalence classes of facets; now test to level ",level)
+	      ; show_short(newStatuses)
+	      ; prints()
+	      fi
+	      ; for m:NumClasses
+    	      ~do
+	      if facet_verbose and
+	      	 ((NumClasses-m-1)%printInterval = 0)
+	      then prints("examining equivalence class #"
+	      ,NumClasses-m -1, "; so far ",test_count
+	      ," 'is_unitary' tests.")
+	      ; show_very_short(newStatuses)
+	      ; printInterval := 2*printInterval
+	      fi
+	      ; if newStatuses[m] = "?"
+	      	then test_count+:=1
+		; let C=eq[m]
+		  {then ()=prints("C = ",C)}
+	      	  then (d,j) = coords(FVKH,C[0])
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  {then () = prints("(d,j) = (",d,",",j,"), verts = ",verts,
+		       	  " FB = ",facet_bary(Lvd.list,verts))}
+	      	  then p = first_param(finalize(parameter(x, lambda
+		    	  , facet_bary(vd.list, verts))))
+	      	in if{NEWU} tester(p)
+		   then newStatuses[m]:= "T"
+		   else newStatuses:=
+			   updateNUclassesB(newStatuses, gr, m)
+		   ; newStatuses[m] := "F"
+		   fi{NEWU}
+	         fi
+	      od
+     then() = if(test_verbose)
+     	      then prints(new_line,"total tests = ",test_count,
+	      " to level ",level,"; about to create new facet list")
+	      ;prints("so far ",cert_hash.size()," non-unitarity K-types")
+	      ; show_very_short(newStatuses)
+       	      fi
+     {make new local facet list using only facets not already proven nonunitary}
+     then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
+          then () = for C@m in eq do if newStatuses[m][0] = "T"
+     	     	     	      	then for k in C
+			      	   do let (d,j) = coords(FVKH,k)
+				      in FVKHnew[d] :=
+				      (FVKHnew[d] next FVKHnew[d]:=[])
+				      #FVKH[d][j]
+				      {prints("(d,j) = (",d,",",j,"), test = ",
+				      tester(first_param(finalize(parameter(x,
+				      lambda,facet_bary(Lvd.list,
+				      LFVH[d][j][:d+1]))))))}
+				   od{ ;
+				 prints(new_line)}
+			         fi
+			      od
+     {then () = prints(newStatuses)}
+     in  (FVKHnew,test_count)
+
+
 set spherical_testKPO(RealForm G, FacetDataKcharPO_old (vd,FPPstInd,
     	, eq, gr, , CLBF, statuses)
     	, (Param->bool) tester) = [string]:
@@ -3456,6 +3586,20 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester, 0)
 
+{outputs string with one status per equiv class}
+set local_testK(KGBElt x, ratvec lambda, (Param -> bool) tester) =
+    [string]:
+    let G = x.real_form
+    then vd = FPP_vertex_data(G,-1)
+    then  FPPKH = FPP_facets_KHash(G,vd,Kpol_hash)
+    then ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH)
+    then statuses = [string]: for j:#eq do "?" od
+    then () = statuses:=local_facet_statusU(x, lambda, vd,
+    	      IUCL, CLBF, statuses)
+    in local_test(x,lambda,vd,FPPKH, eq, gr, CLBF, statuses,
+       tester, 0)
+
+
 set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
     [string]:
     let G = x.real_form
@@ -3514,6 +3658,48 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,newStatuses,tester,test_count)
 
+set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
+    [string]:
+    let G = x.real_form
+    then vd = FPP_vertex_data(G,-1)
+    then FPPKH = FPP_facets_KHash(G,vd,Kpol_hash)
+    then unipotents = local_unipotent_classes(x,lambda,vd)
+    then hts = next_heights(parameter(x,lambda,0*lambda),depth)
+    then test_count = int:0
+    then () = for level in hts[:depth -1]
+    	      do let ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH,Kpol_hash,level)
+    	      	 then statuses = [string]: for j:#eq do "?" od
+		 then newStatuses = statuses
+		 then find0 = index_in(for v in FPPKH[0] do v[:1] od)
+		 then () = for m in unipotents
+		      	   do let k = find0([m])
+		      	      in if k>=0
+			      	 then newStatuses:=downdateUclasses(newStatuses,
+			    	 IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
+			    	 fi
+			   od
+    	    	 then (FPPKHnew, test_countnew) =
+		      local_testK_level(x,lambda,vd,FPPKH,
+	    	      eq, gr, CLBF, newStatuses, level,
+		      cert_hash, test_count)
+     	    	 then ()= FPPKH:=FPPKHnew
+		 then ()= test_count:=test_countnew
+	    	 in ()
+              od
+     then ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH)
+     then statuses = [string]: for j:#eq do "?" od
+     then newStatuses = statuses
+     then find0 = index_in(for v in FPPKH[0] do v[:1] od)
+     then () = for m in unipotents
+	       do let k = find0([m])
+		  in if k>=0
+		     then newStatuses:=downdateUclasses(newStatuses,
+			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
+		     fi
+	       od
+     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
+     in local_test(x,lambda,vd, FPPKH,eq,gr,CLBF,newStatuses,tester,test_count)
+
 set local(KGBElt x, ratvec lambda) = [string]:
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
     then tester = (Param->bool): (Param p) bool:
@@ -3523,8 +3709,24 @@ set local(KGBElt x, ratvec lambda) = [string]:
 set spherical_local(RealForm G) = [string]:
     local(x_open(G),G.rho)
 set spherical_cert_hash = make_KTypePol_hash()
+
 set spherical_levels(RealForm G) = [string]:
     local_test_levels(x_open(G),G.rho,spherical_cert_hash,4)
+
+set sphericalK_levels(RealForm G) = [string]:
+    local_testK_levels(x_open(G),G.rho,spherical_cert_hash,4)
+
+{next functions aim to compute FULL spherical dual in non-split case, when several
+ different x give spherical reps}
+
+set spherical_xs(RealForm G) = [KGBElt]:
+    let real_rank = rank(x_open(G).involution + 1)
+    in for x in KGB(G)
+       do if rank(x.involution + 1) = real_rank
+       	  then [x]
+	  else []
+	  fi
+       od.##
 
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
