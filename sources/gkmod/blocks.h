@@ -371,6 +371,9 @@ class common_block : public Block_base
     (const common_context& ctxt, sl_list<StandardReprMod>& elements);
   ~common_block(); // cleans up |extended|, so inline definition impossible
 
+  common_block(const common_block&) = delete; // no copying
+  common_block operator=(const common_block&) = delete; // no assigning
+
   // accessors that get values via |rc|
   const Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;

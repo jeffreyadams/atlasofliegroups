@@ -1367,6 +1367,7 @@ kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 void common_block::swallow
   (common_block&& sub, const BlockEltList& embed,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
+// note: our elements are links are not touched, so coordinates irrelevant here
 {
   BruhatOrder&& Bruhat = std::move(sub).Bruhat_order(); // generate for pilfering
   for (BlockElt z=0; z<sub.size(); ++z)
@@ -1386,7 +1387,6 @@ void common_block::swallow
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
 
-  RatWeight final_shift(root_datum().rank()); // correction to be made finally
   for (auto& data : sub.extended)
   {
     auto& sub_eblock = data.eblock;
@@ -1402,7 +1402,6 @@ void common_block::swallow
     shift(-diff);
     sub.shift(-diff);
   }
-  shift(final_shift);
 } // |common_block::swallow|
 
 void common_block::set_Bruhat

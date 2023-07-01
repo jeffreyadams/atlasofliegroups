@@ -1103,14 +1103,14 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 }
 
 subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, unsigned int& int_sys_nr, repr::block_modifier& bm)
+  (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc)
 {
   const auto& rd = root_datum();
   const auto& W=Weyl_group();
   RootNbrSet on_wall_subset;
   RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
   auto ww = weyl::from_fundamental_alcove(rd,walls);
-  bm.w = W.element(ww); // an initial integral subsystem coset representative
+  loc.w = W.element(ww); // an initial integral subsystem coset representative
 
   // we need to map |on_wall_subset| to integral system at fundamental alcove
   std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
@@ -1134,13 +1134,13 @@ subsystem::integral_datum_item& InnerClass::int_item
   for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
     image.push_back(rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
 
-  // now correct coset representative |bm.w| to a positivity-preserving one
+  // now correct coset representative |loc.w| to a positivity-preserving one
   const auto steps = to_positive_system(rd,image);
   for (const auto& step : steps)
-    W.mult(bm.w,result.sub_sys().reflection(step.first));
+    W.mult(loc.w,result.sub_sys().reflection(step.first));
 
 #ifndef NDEBUG
-  ww = W.word(bm.w);
+  ww = W.word(loc.w);
   for (weyl::Generator s=0; s<result.sub_sys().rank(); ++s)
     assert(image[s] ==
 	   rd.permuted_root(ww,result.sub_sys().parent_nr_simple(s)));
@@ -1148,16 +1148,16 @@ subsystem::integral_datum_item& InnerClass::int_item
     rd.is_posroot(alpha);
 #endif
 
-  bm.integrally_simples = RootNbrSet(rd.numRoots());
+  loc.integrally_simples = RootNbrSet(rd.numRoots());
   for (RootNbr alpha : image)
-    bm.integrally_simples.insert(alpha);
+    loc.integrally_simples.insert(alpha);
 
-  bm.simple_pi = Permutation();
-  bm.simple_pi.reserve(image.size());
+  loc.simple_pi = Permutation();
+  loc.simple_pi.reserve(image.size());
   for (RootNbr alpha : image)
-    bm.simple_pi.push_back(bm.integrally_simples.position(alpha));
+    loc.simple_pi.push_back(loc.integrally_simples.position(alpha));
   return result;
-}
+} // |InnerClass::int_item|
 
 subsystem::integral_datum_item::codec InnerClass::integrality_codec
   (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)

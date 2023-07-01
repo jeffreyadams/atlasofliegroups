@@ -36,9 +36,6 @@ namespace atlas {
 
 namespace repr {
 
-class common_context;
-struct block_modifier;
-
 /*
   A parameter of a standard representation is determined by a triplet
   $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
@@ -158,18 +155,27 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  WeylElt w;
   int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
 
-public:
-  Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
+  Reduced_param(KGBElt x, unsigned int i, int_Vector v)
+    : x(x), int_sys_nr(i), evs_reduced(std::move(v))
+  {}
 
+public:
   Reduced_param(Reduced_param&&) = default;
+  Reduced_param& operator=(Reduced_param&&) = default;
+
+  static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
+    (const Rep_context& rc, const StandardReprMod& srm,
+     unsigned int& int_sys_nr, locator& loc);
+  static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
+    (const Rep_context& rc, const StandardReprMod& srm,
+     unsigned int int_sys_nr, const WeylElt& w);
+
 
   using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
-  { return x!=p.x or int_sys_nr!=p.int_sys_nr or w!=p.w
-      or evs_reduced!=p.evs_reduced; }
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
@@ -369,9 +375,12 @@ class Rep_context
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
 
 
-  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
-  RatWeight offset
-    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
+  // |gamlam-srm.gamma_lambda()|, adapted by equivalence to be orth to integrals
+  RatWeight make_diff_integral_orthogonal
+    (const RatWeight& gamlam, const StandardReprMod& srm) const;
+  void make_relative_to // modify |bm| to record being relative to |loc|, |srm0|
+    (const locator& loc, const StandardReprMod& srm0,
+     block_modifier& bm, const StandardReprMod& srm1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
@@ -460,12 +469,18 @@ public:
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
 
-struct block_modifier // data to transform stored block to user attitude
+// data to transform stored block to user attitude
+struct locator
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
   RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
-  RatWeight shift;
+};
+
+struct block_modifier : public locator
+{
+  RatWeight shift; // add this one field
+  void clear (unsigned int rank);
 };
 
 /*
@@ -507,8 +522,10 @@ class Rep_table : public Rep_context
   IntPolEntry::Pooltype poly_pool;
   ext_KL_hash_Table poly_hash;
 
-  sl_list<blocks::common_block> block_list;
-  using bl_it = sl_list<blocks::common_block>::iterator;
+  using located_block = std::pair<blocks::common_block,locator>;
+  sl_list<located_block> block_list;
+
+  using bl_it = sl_list<located_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
 
  public:
@@ -535,9 +552,11 @@ class Rep_table : public Rep_context
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   size_t find_reduced_hash(const StandardReprMod& srm) const
-  { return reduced_hash.find(Reduced_param(*this,srm)); }
+  { unsigned int int_sys_nr; block_modifier bm;
+    return reduced_hash.find(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
   size_t match_reduced_hash(const StandardReprMod& srm)
-  { return reduced_hash.match(Reduced_param(*this,srm)); }
+  { unsigned int int_sys_nr; block_modifier bm;
+    return reduced_hash.match(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
 
   K_repr::K_type stored_K_type(K_type_nr i) const
   { return K_type_pool[i].copy(); }
@@ -577,7 +596,7 @@ class Rep_table : public Rep_context
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
-    (const common_context&, const StandardReprMod& srm, BitMap* subset);
+    (const StandardReprMod& srm, BitMap* subset);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value

@@ -473,7 +473,7 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr, repr::block_modifier& bm);
+    (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc);
   // same when |int_sys_nr| and |w| have already been computed:
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
