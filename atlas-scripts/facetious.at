@@ -4034,6 +4034,9 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 	      LFDKH, first_pass, Kpol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then test_count = int:0
+    then () =  prints("facets to dim ",first_pass, " counts:",
+			  for list in LFDKH do #list od)
+
     {compute graph on facets to dim first_pass}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[0])
     	      	 then statuses = [string]: for j:#eq do "?" od
@@ -4051,10 +4054,13 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 	    	      eq, gr, CLBF, newStatuses, hts[0],
 		      cert_hash, test_count)
      	    	 then ()= LFDKH:=LFDKHnew
-		 then ()= test_count:=test_countnew;
+		 then ()= test_count:=test_countnew
     {now add the rest of the facets, using only those with unitary candidate boundaries}
-    then () = LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, G.semisimple_rank+1, Kpol_hash)
+    	     	 then () = LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
+	      	      	   LFDKH, G.semisimple_rank+1, Kpol_hash)
+		 then () = prints("ready to loop: all facet counts: ",
+			  for list in LFDKH do #list od)
+
     then () = for level in hts[1:depth]
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,level)
     	      	 then statuses = [string]: for j:#eq do "?" od
@@ -4072,9 +4078,9 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 	    	      eq, gr, CLBF, newStatuses, level,
 		      cert_hash, test_count)
      	    	 then ()= LFDKH:=LFDKHnew
-		 then ()= test_count:=test_countnew;
-		      prints("facets at level ",level," counts:",
-			  	for list in LFDKH do #list od)
+		 then ()= test_count:=test_countnew
+		 then () = prints("facet counts after level ",level,": ",
+			  for list in LFDKH do #list od)
 	    	 in ()
               od
      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
