@@ -4046,7 +4046,6 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
     {compute graph on facets to dim first_pass}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[0])
     	      	 then statuses = [string]: for j:#eq do "?" od
-		 then newStatuses = statuses
 		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
@@ -4057,7 +4056,7 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 			   od
 		 then (LFDKHnew, test_countnew) =
 		      local_testK_level(x,lambda,Lvd,LFDKH,
-	    	      eq, gr, CLBF, newStatuses, hts[0],
+	    	      eq, gr, CLBF, statuses, hts[0],
 		      cert_hash, test_count)
      	    	 then ()= LFDKH:=LFDKHnew
 		 then ()= test_count:=test_countnew
@@ -4070,18 +4069,17 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
     then () = for level in hts[1:depth]
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,level)
     	      	 then statuses = [string]: for j:#eq do "?" od
-		 then newStatuses = statuses
 		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
-			      	 then newStatuses:=downdateUclasses(newStatuses,
+			      	 then statuses:=downdateUclasses(statuses,
 			    	 IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 			    	 fi
 			   od
     	    	 then (LFDKHnew, test_countnew) =
 		      local_testK_level(x,lambda,Lvd,LFDKH,
-	    	      eq, gr, CLBF, newStatuses, level,
+	    	      eq, gr, CLBF, statuses, level,
 		      cert_hash, test_count)
      	    	 then ()= LFDKH:=LFDKHnew
 		 then ()= test_count:=test_countnew
@@ -4091,17 +4089,16 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
               od
      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
      then statuses = [string]: for j:#eq do "?" od
-     then newStatuses = statuses
      then find0 = index_in(for v in LFDKH[0] do v[:1] od)
      then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
-		     then newStatuses:=downdateUclasses(newStatuses,
+		     then statuses:=downdateUclasses(statuses,
 			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 		     fi
 	       od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
-     in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,newStatuses,tester,test_count)
+     in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
     [string]:
