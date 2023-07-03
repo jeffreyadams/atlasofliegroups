@@ -2650,6 +2650,9 @@ set localFD_KHashbt \
 	       	    		   od.##
 	       	 	      in for wtilde in aff_list
 	       	    	      	 do let (tau,w) = wtilde
+				    then iw = inverse(w)
+	     	     	       	    then bup = -tau + w*G.two_rho
+				    then bdown = -iw*bup
 		       		    {global is called v earlier}
 		       		    then global = for v in wtilde*FV
 		       	    	     	 	  do (vd.lookup)(v)
@@ -2671,10 +2674,10 @@ set localFD_KHashbt \
 		       	       	      	      then let bary = wtilde*bary_F
 	     	       	    	      	   	   then () = actual :=
 						   actual##[ktp_hash.match(
-				      		   K_type_pol( character_formula(
-						   1*parameter(x,lambda,bary))))]
+				      		   K_type_pol(translate_param_by(character_formula(
+						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
 		            	      		   in LFKHnew[#actual-2] :=
-			    	 (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			    	 		   (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
 			   	 	      # actual
 			     	 	      fi
 		       		   in ()
@@ -2743,6 +2746,9 @@ set localFD_KHashbt_lookDown \
 	       	    		   od.##
 	       	 	      in for wtilde in aff_list
 	       	    	      	 do let (tau,w) = wtilde
+				    then iw = inverse(w)
+	     	     	       	    then bup = -tau + w*G.two_rho
+				    then bdown = -iw*bup
 		       		    {global is called v earlier}
 		       		    then global = for v in wtilde*FV
 		       	    	     	 	  do (vd.lookup)(v)
@@ -2766,12 +2772,12 @@ set localFD_KHashbt_lookDown \
 						     do lookups[d-1](delete(actual,e)) > 0 od)
 						 {now we know that the subfacets are cand facets}
 		       	       	      	      then let bary = wtilde*bary_F
-	     	       	    	      	   	   then () = actual :=
+					       	   then () = actual :=
 						   actual##[ktp_hash.match(
-				      		   K_type_pol( character_formula(
-						   1*parameter(x,lambda,bary))))]
+				      		   K_type_pol(translate_param_by(character_formula(
+						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
 		            	      		   in LFKHnew[#actual-2] :=
-			    	 (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			    	 		   (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
 			   	 	      # actual
 			     	 	      fi
 		       		   in ()
