@@ -1,5 +1,24 @@
 <parameters.at
 
+{parameters for linear covers
+ G=complex, reductive, connected
+ \tau \in X^*\otimes _Q, n\tau\in X^*
+ this defines an n-fold cover of G
+ primary case: <tau,\alpha^\vee>=0 for all roots, so n\tau defines a character \chi of G,
+ and G~ is the "n^th root of n\tau" cover
+ all of the commands are designed to work in this setting, which is enforced by "cover_strict:=true"
+ example: the rho(u)=rho(G)-rho(L) cover of a Levi subgroup L
+ it will be interesting to see what can be made to work more generally
+ Note: some extra conditions are necessary for a real form to be compatible with this cover
+
+basic example of the more general situation: G=PGL(2)\simeq SO(3),
+ G(R)=SO(2,1), \tau=rho/2, so \tau\not\in X^*
+ in this case G(R)~= {g \in SL(2,C) | p(g)\in PGL(2,R)=SO(2,1) } = <SL(2,R), diag(i,i)>
+ note that G(R)~ is not the real points of a connected complex group
+} 
+
+set cover_strict=true
+ 
 set_type [CoveringGroup=(RootDatum G,ratvec tau),
           CoveringRealForm=(RealForm G,ratvec tau),
           CoveringParam=(CoveringRealForm CG,Param p),
@@ -38,11 +57,11 @@ set infinitesimal_character(CoveringParam cp)=ratvec:infinitesimal_character(par
 }
 
 set covering_group(RootDatum G,ratvec tau)=CoveringGroup:
-assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+assert( not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
 set covering_real_form(RealForm G,ratvec tau)=CoveringRealForm:
-assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+assert(not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
 set covering_group(RealForm G,ratvec tau)=CoveringRealForm: {same as previous, avoids defaulting to making a CoveringGroup rather than a CoveringRealForm}
-assert(=tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
+assert(not cover_strict or =tau*simple_coroots(G), "tau not orthogonal to roots");(G,tau)
 
 set covering_parameter(CoveringRealForm CG,Param p)=CoveringParam:(CG,p)
 set to_string(CoveringParam((G,tau),p))=string:"covering parameter(x="+p.x.number+",lambda="+compact_string(p.lambda+tau)+",nu="+compact_string(p.nu+tau)+")_"+compact_string(tau)
@@ -58,8 +77,46 @@ for c@p in P do prints(to_string(c) + "*" + to_string(covering_parameter(CG,p)))
 
 set composition_series(CoveringParam cp)=CoveringParamPol:(CG(cp),composition_series(p(cp)))
 
-set theta_induce_standard_cover(CoveringParam cp,RealForm G)=
-let (CL,pL)=cp in theta_induce_standard(pL,G
+{theta_induce_standard_cover:
+ P=LU is a theta-stable parabolic
+ L~ = rho(u)=rho(G)-rho(L) cover of L
+ pi_L has infinitesimal character gamma_L
+ normalized cohomological induction takes
+ {reps of L~(R) of infinitesimal character gamma_L} to {reps of G(R) of infinitesimal character gamma_L}
+ in atlas: CL is the tau_L=rho(u) cover of L, i.e. CL=(L,tau) where tau=rho_u(L)
+ if p_L is a character of L of infinitesimal character \gamma_L
+  then (CL,p_L) represents a representation of L with infinitesimal character \gamma_L+tau
+  theta_induce_standard_cover((CL,p_L)),G) = theta_induce_standard(p_L,G)  not much to see here,
+ the only new feature: the representation (CL,p_L) of the rho(u)-cover of L has the same infinitesimal character as the 
+  cohomologically induced representation
+}
+
+{
+Example:
+set G=SO(3,2)
+set L=theta_stable_parabolics(G)[0].Levi
+set CL=covering_group(L,G.rho)
+set pL=parameter(KGB(L,0),[0,0],[0,0])
+set cpL=covering_parameter(CL,pL)
+
+atlas> theta_induce_standard(pL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> pL.infinitesimal_character
+Value: [ 0, 0 ]/1
+atlas> theta_induce_standard(pL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> cpL.infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> theta_induce_standard(cpL,G).infinitesimal_character
+Value: [ 3, 1 ]/2
+atlas> theta_induce_standard(pL,G)=theta_induce_standard(cpL,G)
+Value: true
+atlas> theta_induce_standard(cpL,G)
+Value: 1*parameter(x=0,lambda=[3,1]/2,nu=[0,0]/1) [7]
+}
+
+set theta_induce_standard(CoveringParam cp,RealForm G)=
+let (CL,pL)=cp in theta_induce_standard(pL,G)
 
 {theta induce one dimensional: 
  lambda_shifted\in (rho_L+rho_u)+X^*=rho+X^*, this defines a
@@ -82,3 +139,4 @@ set Aq_reducible_cover (KGBElt x,ratvec lambda_shifted, ratvec lambda_q) = Param
   in
   assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
   theta_induce_irreducible(pi_L,G))
+}
