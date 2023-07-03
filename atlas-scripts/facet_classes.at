@@ -305,7 +305,7 @@ set up_graph_gens([[FacetVertsKHash]] FDKH, KTypePol_hash Kpol_hash, int level) 
  in
     for d:#FDKH-1 from 1 { traverse facets having a vertex to spare }
     do let lookup = lookups[d-1] { looking up will be at previous level }
-    in for Find@j1 in FDKH[d]
+    in for Find@j1 in FDKH[d] {Find has length d+2}
        do for e:d+1
 	  do let j0 = lookup(delete(Find,e)[:d])
 	  in if j0.>=
