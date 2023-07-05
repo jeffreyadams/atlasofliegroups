@@ -174,8 +174,7 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 class integral_datum_item
 {
   const WeylGroup& W;
-  std::unique_ptr<SubSystem> // pointer level avoids |SubSystem| being moved
-    int_sys_p; // references full root datum, presents integral datum
+  SubSystem int_sys; // references full root datum, presents integral datum
 
  public:
 /* below, |in| will coordinate transform from simple coroot evaluations to
@@ -198,10 +197,10 @@ class integral_datum_item
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&& other) // move, never copy
     : W(other.W)
-    , int_sys_p(std::move(other.int_sys_p))
+    , int_sys(std::move(other.int_sys))
   {}
 
-  const SubSystem& sub_sys () const { return *int_sys_p; }
+  const SubSystem& sub_sys () const { return int_sys; }
   // root indices of images by |w| of integrally-simple coroots; must be positive
   sl_list<RootNbr> image_simples(const WeylElt& w) const;
   int_Matrix coroots_matrix(const WeylElt& w) const;

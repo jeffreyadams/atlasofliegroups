@@ -213,21 +213,20 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 integral_datum_item::integral_datum_item
   (InnerClass& ic,const RootNbrSet& int_poscoroots)
     : W(ic.Weyl_group())
-    , int_sys_p(new SubSystem
-		 {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)})
+    , int_sys {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)}
 {}
 
 SubSystem integral_datum_item::int_system(const WeylElt& w) const
-{ return SubSystem { int_sys_p->parent_datum(), image_simples(w) }; }
+{ return SubSystem { int_sys.parent_datum(), image_simples(w) }; }
 
 sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  const auto& rd = int_sys_p->parent_datum();
+  const auto& rd = int_sys.parent_datum();
   WeylWord ww = W.word(w);
   sl_list<RootNbr> result;
-  for (weyl::Generator s=0; s<int_sys_p->rank(); ++s)
+  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
   {
-    RootNbr image = rd.permuted_root(ww,int_sys_p->parent_nr_simple(s));
+    RootNbr image = rd.permuted_root(ww,int_sys.parent_nr_simple(s));
     assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
     result.push_back(image);
   }
@@ -238,7 +237,7 @@ sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 
 int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 {
-  const auto& rd = int_sys_p->parent_datum();
+  const auto& rd = int_sys.parent_datum();
   auto integral_simples = image_simples(w);
   int_Matrix result(integral_simples.size(), rd.rank());
   unsigned i=0;
