@@ -104,7 +104,9 @@ class KLSupport
   BlockElt primitivize (BlockElt x, RankFlags desc_y) const;
 
 #ifndef NDEBUG
-  void check_sub(const KLSupport& sub, const BlockEltList& embed);
+  void check_sub
+  (const KLSupport& sub,
+   const BlockEltList& embed, const Permutation& simple_pi);
 #endif
 };
 

@@ -420,7 +420,8 @@ class common_block : public Block_base
   // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using argument
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
-    (common_block&& sub, const BlockEltList& embed,
+    (common_block&& sub,
+     const BlockEltList& embed, const Permutation& simple_pi,
      KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
 
   // get/build extended block for |delta|; if built, store it

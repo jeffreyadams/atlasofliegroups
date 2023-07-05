@@ -160,7 +160,7 @@ class ext_block
     (BlockElt limit, ext_KL_hash_Table* pool=nullptr);
 
   void swallow // integrate an older partial block, with mapping of elements
-    (ext_block&& sub, const BlockEltList& embed);
+  (ext_block&& sub, const BlockEltList& embed, const Permutation& simple_pi);
 
 // accessors
 

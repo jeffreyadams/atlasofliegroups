@@ -1204,8 +1204,8 @@ walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
   such that they point into the alcove: their evaluation is integral on some
   face of the alcove, and increases towards the interior of the alcove). Within
   the initial set of integral coroot numbers, and within the remaining numbers,
-  coroots are sorted by decreasing "label" with respect to alcove (which is an
-  integer k such that within the alcove, the maximal fractional part of the
+  coroots are sorted by decreasing "label" with respect to the alcove (which is
+  an integer k such that within the alcove, the maximal fractional part of the
   evaluation is 1/k). This is a useful property for generating, modulo
   translations, the affine Weyl group orbit of the facet containing gamma
   ('affine_orbit_ws'), and ensures that in at leat one of the two sorted

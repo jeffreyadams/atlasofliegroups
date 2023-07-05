@@ -623,6 +623,14 @@ class RootDatum
 	simple_reflect(ww[i],lambda);
     }
 
+  // with inverse we invert operands to remind how letters of |ww| are used
+  template<typename C>
+    void act_inverse(matrix::Vector<C>& lambda, const WeylWord& ww) const
+    {
+      for (auto i=0u; i<ww.size(); ++i)
+	simple_reflect(ww[i],lambda);
+    }
+
   void act(const WeylWord& ww, RatWeight& gamma) const;
 
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
@@ -639,13 +647,6 @@ class RootDatum
   Weight shifted_image_by
     (const WeylWord& ww,Weight lambda, int_Vector shift) const
   { shifted_act(ww,lambda,shift); return lambda; }
-
-  // with inverse we invert operands to remind how letters of |ww| are used
-  void act_inverse(Weight& lambda,const WeylWord& ww) const
-  {
-    for (auto i=0u; i<ww.size(); ++i)
-      simple_reflect(ww[i],lambda);
-  }
 
   Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
   { act_inverse(lambda,ww); return lambda; }

@@ -137,7 +137,7 @@ class StandardReprMod
     (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
   KGBElt x() const { return x_part; }
-  RatWeight gamma_lambda() const & { return gamlam; }
+  const RatWeight& gamma_lambda() const & { return gamlam; }
   RatWeight&& gamma_lambda() && { return std::move(gamlam); }
 
   // since pseudo constructors map |rgl| to fundamental domain, equality is easy
@@ -155,7 +155,7 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
+  int_Vector evs_reduced; // |codec.in*coroots_mat*gamlan| mod |codec.diagonal|
 
   Reduced_param(KGBElt x, unsigned int i, int_Vector v)
     : x(x), int_sys_nr(i), evs_reduced(std::move(v))
@@ -166,10 +166,10 @@ public:
   Reduced_param& operator=(Reduced_param&&) = default;
 
   static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
-    (const Rep_context& rc, const StandardReprMod& srm,
+    (const Rep_context& rc, StandardReprMod srm,
      unsigned int& int_sys_nr, locator& loc);
   static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
-    (const Rep_context& rc, const StandardReprMod& srm,
+    (const Rep_context& rc, StandardReprMod srm,
      unsigned int int_sys_nr, const WeylElt& w);
 
 
@@ -307,10 +307,6 @@ class Rep_context
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
   { return shift(diff,srm); } // perform |shift| on a copy and return it
 
-  RatWeight gamma_lambda(const StandardReprMod& z) const
-  { return z.gamma_lambda(); }
-  RatWeight&& gamma_lambda(StandardReprMod&& z) const
-  { return std::move(z).gamma_lambda(); }
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
 
@@ -343,8 +339,8 @@ class Rep_context
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   // transformation of |srm|k, by appropriate Weyl element |ww|, or its inverse
-  template<bool left_to_right> StandardReprMod transform
-    (const WeylWord& ww, StandardReprMod srm) const;
+  template<bool left_to_right> void transform
+    (const WeylWord& ww, StandardReprMod& srm) const;
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
@@ -380,7 +376,7 @@ class Rep_context
     (const RatWeight& gamlam, const StandardReprMod& srm) const;
   void make_relative_to // modify |bm| to record being relative to |loc|, |srm0|
     (const locator& loc, const StandardReprMod& srm0,
-     block_modifier& bm, const StandardReprMod& srm1) const;
+     block_modifier& bm, StandardReprMod srm1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
@@ -670,8 +666,6 @@ class Ext_rep_context
   const InnerClass& inner_class() const { return rep_con.inner_class(); }
   RealReductiveGroup& real_group() const { return rep_con.real_group(); }
   const RatCoweight& g_rho_check() const { return rep_con.g_rho_check(); }
-  RatWeight gamma_lambda(const StandardReprMod& z) const
-  { return rep_con.gamma_lambda(z); }
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const // |pos_to_neg| by value

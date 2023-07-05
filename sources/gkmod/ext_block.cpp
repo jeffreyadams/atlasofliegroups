@@ -1911,7 +1911,7 @@ const ext_kl::KL_table& ext_block::kl_table
 }
 
 void ext_block::swallow // integrate older partial block, using |embed| mapping
-  (ext_block&& sub, const BlockEltList& embed)
+  (ext_block&& sub, const BlockEltList& embed, const Permutation& simple_pi)
 {
   if (sub.KL_ptr!=nullptr)
   {
@@ -1925,7 +1925,7 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
       eblock_embed.push_back(element(embed[sub.z(x)]));
       assert(eblock_embed.back()!=size()); // check that lookup succeeded
     }
-    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed);
+    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed,simple_pi);
   }
 }
 
@@ -2266,7 +2266,7 @@ ext_param default_extend
 ext_param default_extend
   (const repr::Ext_rep_context& ec, repr::StandardReprMod&& srm)
 {
-  return ext_param(ec,srm.x(),ec.gamma_lambda(std::move(srm)));
+  return ext_param(ec,srm.x(),std::move(srm).gamma_lambda());
 }
 
 ext_param& ext_param::operator= (const ext_param& p)

@@ -1365,7 +1365,7 @@ kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-  (common_block&& sub, const BlockEltList& embed,
+(common_block&& sub, const BlockEltList& embed, const Permutation& simple_pi,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
 // note: our elements are links are not touched, so coordinates irrelevant here
 {
@@ -1384,7 +1384,8 @@ void common_block::swallow
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
 
     // now swallow the poylnomial hash table of |sub| into ours
-    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
+    kl_tab_ptr->swallow
+      (std::move(*sub.kl_tab_ptr),embed,simple_pi,hash_object.ref);
   }
 
   for (auto& data : sub.extended)
@@ -1398,7 +1399,8 @@ void common_block::swallow
       extended_block(data.delta,ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
-    eblock.swallow(std::move(sub_eblock),embed); // transfer computed KL data
+    // transfer computed KL data:
+    eblock.swallow(std::move(sub_eblock),embed,simple_pi);
     shift(-diff);
     sub.shift(-diff);
   }
