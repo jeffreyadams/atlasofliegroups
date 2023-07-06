@@ -1,6 +1,10 @@
 <basic.at
 <convert_c_form.at
 <hash.at {for KTypePol_hash}
+
+set to_ht (KTypePol P,int N) = KTypePol:
+  let (below,)=height_split(P,N) in below
+
 {like is_pure, but in case of false, second value is the lowest K-type where the KTypePol
  changes sign. Better to put the guilty K-type in a hash table.}
 set is_pure_cert(KTypePol P) = [KType]:
@@ -30,7 +34,7 @@ set is_pure_cert(KTypePol P) = [KType]:
     fi
 
 {like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
-set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
+set is_pure_cert_hash_old(KTypePol P, KTypePol_hash cert_hash) = bool:
     if not is_pure(P)
     then let terms = for c@p in P
     	     	     do let (a,b) = %c
@@ -54,6 +58,32 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
 		   fi
 	  then (,,pj) = terms[j]
 	  then x = cert_hash.match(1*pj)
+	  in false
+    else true
+    fi
+
+{like is_pure_cert, but in case of false, writing the guilty K-types in a hash table.}
+{ want this version to record SUM of lowest impurity }
+set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
+    if not is_pure(P)
+    then let terms = for c@p in P
+    	     	     do let (a,b) = %c
+    	     	     	in (a,b,p)
+		     od
+    	 then (a0,b0,p0) = terms[0]
+	 then j=int:0 {next line is the lowest negative terms}
+	 then B = if a0*b0 != 0
+	          then to_ht(P,height(p0))
+	          elif b0 = 0
+	      	  then let N = sum(P.real_form, for (a,b,p) in terms
+		   	      			do if b!=0 then [1*p] else [] fi od.##)
+		   	in to_ht(N,height(first_K_type(N)))
+	      	  else  {now b0!=0 and a0=0}
+		       let N = sum(P.real_form, for (a,b,p) in terms
+		   	      			do if a!=0 then [1*p] else [] fi od.##)
+		       in to_ht(N,height(first_K_type(N)))
+		  fi
+	  then x = cert_hash.match(B)
 	  in false
     else true
     fi

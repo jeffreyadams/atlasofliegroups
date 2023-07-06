@@ -34,6 +34,12 @@ probably no need to know about that anyway
 set hash_code(vec v, int d_mod) = int: let hash =
     int: 1 then () = for x in v do hash:=13*(hash + x) od in hash % d_mod
 
+{meant to hash a [rat_vec] to int in [0,d_mod)}
+set hash_code(ratvec v, int d_mod) = int:
+    let hash = int: 1, V = numer(v)#denom(v)
+    then () = for x in V do hash:=13*(hash + x) od
+    in hash %d_mod
+
 {meant to hash a [KTypePol] to int in [0,d_mod)}
 set hash_code(KTypePol P, int d_mod) = int:
     hash_code(K_data(P).##, d_mod)
@@ -92,6 +98,60 @@ in for P@m in list
 set make_KTypePol_hash () = KTypePol_hash: make_KTypePol_hash([KTypePol]:[],hash_code@(KTypePol,int))
 
 set_type
+[ ratvec_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , (int->ratvec) index
+  , (ratvec->int) match
+  , (ratvec->int) lookup
+  )
+]
+
+set make_ratvec_hash ([ratvec] list, (ratvec,int->int) hash) = ratvec_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(ratvec P) = (int,bool):
+     let code = hash(P,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != P
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for P@m in list
+	 do let (code,new) = find(P) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+in for P@m in list
+   do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , (int->ratvec): { index } (int i) ratvec: list[i]
+   , (ratvec->int): { match } (ratvec P) int:
+     begin
+        let (code,new) = find(P)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list := (list next list:=[]) # P
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (ratvec->int): { lookup } (ratvec P) int:
+     let (code,new) = find(P) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_ratvec_hash () = ratvec_hash: make_ratvec_hash([ratvec]:[],
+    hash_code@(ratvec,int))
+
+set_type
 [ vec_hash =
   ( ( -> int) size
   , ( -> int) capacity
@@ -143,4 +203,3 @@ in for P@m in list
 )
 
 set make_vec_hash () = vec_hash: make_vec_hash([vec]:[],hash_code@(vec,int))
-
