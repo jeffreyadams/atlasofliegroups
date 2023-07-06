@@ -172,6 +172,11 @@ set hermitian_form_irreducible (Param p) = KTypePol:
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
+{ compute Hermitian form on p, and report
+certificate; unitary means empty certificate }
+set is_unitary_cert (Param p) = [KType]:
+  hermitian_form_irreducible(p).is_pure_cert
+
 { compute Hermitian form on p, report if it is unitary, and otherwise record certificate }
 set is_unitary(Param p,KTypePol_hash cert_hash) = bool:
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible(p),cert_hash)
