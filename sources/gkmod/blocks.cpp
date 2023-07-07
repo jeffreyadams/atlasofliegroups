@@ -1362,12 +1362,40 @@ kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
   return kl_tab_ptr-> polynomial_hash_table();
 } // |common_block::KL_hash|
 
+#ifndef NDEBUG
+RankFlags permute(RankFlags in, const Permutation& pi)
+{
+  RankFlags result;
+  for (weyl::Generator s : in)
+    result.set(pi[s]);
+  return result;
+}
+
+void check_sub_block
+  (const common_block& sub,
+   const BlockEltList& embed, const Permutation& simple_pi,
+   const common_block& block)
+{
+  for (BlockElt z=0; z<sub.size(); ++z)
+  {
+    assert(sub.length(z) == block.length(embed[z]));
+    assert(sub.descent(z).permuted(simple_pi)==block.descent(embed[z]));
+    for (weyl::Generator s=0; s<block.rank(); ++s)
+      if (sub.cross(s,z)!=UndefBlock)
+	assert(embed[sub.cross(s,z)]==block.cross(simple_pi[s],embed[z]));
+  }
+}
+#endif
+
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
 (common_block&& sub, const BlockEltList& embed, const Permutation& simple_pi,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
 // note: our elements are links are not touched, so coordinates irrelevant here
 {
+#ifndef NDEBUG
+  check_sub_block(sub,embed,simple_pi,*this);
+#endif
   BruhatOrder&& Bruhat = std::move(sub).Bruhat_order(); // generate for pilfering
   for (BlockElt z=0; z<sub.size(); ++z)
   {
@@ -1383,8 +1411,7 @@ void common_block::swallow
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
 
     // now swallow the poylnomial hash table of |sub| into ours
-    kl_tab_ptr->swallow
-      (std::move(*sub.kl_tab_ptr),embed,simple_pi,hash_object.ref);
+    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
 
   for (auto& data : sub.extended)

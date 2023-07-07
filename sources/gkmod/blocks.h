@@ -35,6 +35,11 @@ namespace blocks {
 
 /******** function declarations *********************************************/
 
+  void check_sub_block // to be defined unless the macro NDEBUG is
+  (const common_block& sub,
+   const BlockEltList& embed, const Permutation& simple_pi,
+   const common_block& block);
+
   // compute the involution in |dual_W| corresponding to |w| in |W|
   TwistedInvolution dual_involution
     (const TwistedInvolution& w,

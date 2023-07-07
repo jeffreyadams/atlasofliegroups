@@ -102,12 +102,6 @@ class KLSupport
 
   // primitive element for |desc_y| above and reachable from |x|, or block size
   BlockElt primitivize (BlockElt x, RankFlags desc_y) const;
-
-#ifndef NDEBUG
-  void check_sub
-  (const KLSupport& sub,
-   const BlockEltList& embed, const Permutation& simple_pi);
-#endif
 };
 
 } // |namespace klsupport|
