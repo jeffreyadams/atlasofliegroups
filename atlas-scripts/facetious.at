@@ -3942,6 +3942,92 @@ set local_testK_level(KGBElt x, ratvec lambda, VertexData vd,
      {then () = prints(newStatuses)}
      in  (FVKHnew,test_count,unitaries, unitaries_to_hts)
 
+{try to compute ahead on candidate unitary reps
+ Last vecs in return are (new) unitaries and unitaries_to_ht}
+set local_testK_level_D(KGBElt x, ratvec lambda, VertexData vd,
+    [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr,
+    [vec] classListByFacet, [string] statuses, vec next_heights, int step,
+    [[vec]] unitaries, [[vec]] unitaries_to_ht,
+    KTypePol_hash cert_hash, int test_count) =
+    ([[FacetVertsKHash]], int, [[vec]], [[vec]]):
+    let newStatuses = statuses, NumClasses = #eq
+    	, printInterval = int: 1
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_to_ht(p, next_heights[step], cert_hash)
+    then next_tester = (Param->bool): (Param p) bool:
+    	 is_unitary_to_ht(p, next_heights[step+1], cert_hash)
+    then finds = for X@d in FVKH do index_in(for v in X do v[:d+1] od) od
+    then () = if facet_verbose
+    	      then prints(); prints("start local_testK_level with "
+	      	   ,NumClasses,
+		   " equivalence classes of facets; now test to level",
+		     next_heights[step])
+	      ; show_short(newStatuses)
+	      ; prints()
+	      fi
+	      ; for m:NumClasses
+    	      ~do
+	      if facet_verbose and
+	      	 ((NumClasses-m-1)%printInterval = 0)
+	      then prints("examining equivalence class #"
+	      ,NumClasses-m -1, "; so far ",test_count
+	      ," 'is_unitary' tests.")
+	      ; show_very_short(newStatuses)
+	      ; printInterval := 2*printInterval
+	      fi
+	      ; if newStatuses[m] = "?"
+	      	then test_count+:=1
+		; let C=eq[m]
+		  {then ()=prints("C = ",C)}
+	      	  then (d,j) = coords(FVKH,C[0])
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  {then () = prints("(d,j) = (",d,",",j,"), verts = ",verts,
+		       	  " FB = ",facet_bary(Lvd.list,verts))}
+	      	  then p = first_param(finalize(parameter(x, lambda
+		    	  , facet_bary(vd.list, verts))))
+	           in if{NEWU} tester(p)
+		      then let () = newStatuses[m]:= "T"
+		      	   then () = if next_tester(p)
+			   	     then if is_unitary(p,cert_hash)
+		      	   	      	  then unitaries[d]:=unitaries[d]#verts{;
+					       prints("new unitary rep p = ",p)}
+					  else unitaries_to_ht[d]:=
+					       unitaries_to_ht[d]#verts{:
+				     	       prints("new partly unitary rep p = ",p)}
+					  fi
+				      fi
+			    in ()
+		       else newStatuses:=
+			   updateNUclassesB(newStatuses, gr, m)
+		   	   ; newStatuses[m] := "F"
+		       fi{NEWU}
+	         fi
+	      od
+     then() = if(test_verbose)
+     	      then prints(new_line,"total tests = ",test_count,
+	      " to level ",next_heights[step],"; about to create new facet list")
+	      ;prints("so far ",cert_hash.size()," non-unitarity K-types")
+	      ; show_very_short(newStatuses)
+       	      fi
+     {make new local facet list using only facets not already proven nonunitary}
+     then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
+          then () = for C@m in eq do if newStatuses[m][0] = "T"
+     	     	     	      	then for k in C
+			      	   do let (d,j) = coords(FVKH,k)
+				      in FVKHnew[d] :=
+				      (FVKHnew[d] next FVKHnew[d]:=[])
+				      #FVKH[d][j]
+				      {prints("(d,j) = (",d,",",j,"), test = ",
+				      tester(first_param(finalize(parameter(x,
+				      lambda,facet_bary(Lvd.list,
+				      LFVH[d][j][:d+1]))))))}
+				   od{ ;
+				 prints(new_line)}
+			         fi
+			      od
+     {then () = prints(newStatuses)}
+     in  (FVKHnew,test_count,unitaries, unitaries_to_ht)
+
 set spherical_testKPO(RealForm G, FacetDataKcharPO_old (vd,FPPstInd,
     	, eq, gr, , CLBF, statuses)
     	, (Param->bool) tester) = [string]:
@@ -4336,7 +4422,7 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 
 set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     [string]:
-    let G = x.real_form, first_pass = 2, look_ahead=2
+    let G = x.real_form, first_pass = 2
     then vd = FPP_vertex_data(G,-1), depth=G.semisimple_rank - first_pass+1
     then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
@@ -4402,6 +4488,76 @@ set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then tester = (Param->bool): (Param p) bool: is_unitary(p, cert_hash)
     in local_test(x,lambda,Lvd,
     	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
+
+set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
+    [string]:
+    let G = x.real_form, first_pass = 2
+    then vd = FPP_vertex_data(G,-1), depth=G.semisimple_rank - first_pass+1
+    then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
+    then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
+    {next add dim from 1 to first_pass}
+    then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
+	      LFDKH, first_pass, Kpol_hash)
+    then empty = [[vec]]: for d:G.semisimple_rank + 1 do [] od
+    then unipotents = [vec]: for m in local_unipotent_classes(x,lambda,Lvd) do vec: [m] od
+    then unitaries_to_ht = [[vec]]: empty
+    then unitaries = [[vec]]: empty
+    then () = unitaries[0]:=unipotents
+    then test_count = int:0, D=int:1
+    then () =  prints("facets counts to dim ",first_pass-1, " :",
+			  for list in LFDKH do #list od)
+    then () = while first_pass + D <= G.semisimple_rank + 1
+    {while loop does is_unitary_to_ht on facets to dim first_pass; then adds
+     facets of one dim higher and does is_unitary_to_ht on those...}
+    	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[D-1])
+       	      	 {compute graph on facets to dim first_pass}
+       		 then statuses = [string]: for j:#eq do "?" od
+       		 then finds = for d:#LFDKH
+		      	      do index_in(for v in LFDKH[d] do v[:d+1] od)
+			      od
+       		 then () = for d:#LFDKH
+		      	   do for M in unitaries_to_ht[d]##unitaries[d]
+		      	      do let k = finds[d](M)
+		    	      	 in if k>=0
+		       	      	    then statuses:=downdateUclasses(statuses,
+			    	    IUCL[CLBF[d][k]], CLBF[d][k],"T"##to_string(M))
+		       		    fi
+			      od
+		 	   od
+		 then (LFDKHnew, test_countnew, unitaries_new,unitaries_to_ht) =
+		      local_testK_level_D(x,lambda,Lvd,
+		      LFDKH, eq, gr, CLBF, statuses, hts, D-1,
+		      unitaries, empty, cert_hash, test_count)
+ 		then ()= test_count:=test_countnew
+		then ()= unitaries:=unitaries_new
+        	then ()= LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
+	      	      	   LFDKHnew, first_pass + D, Kpol_hash)
+	        then () = prints("facet counts to dim ",first_pass+D-1,": ",
+	     	     	  		for list in LFDKH do #list od)
+		{ then () = prints("unitary counts: ",for list in unitaries do #list od)}
+		then () = prints("unitary_to_ht: ",for list in unitaries_to_ht do #list od)
+   		then ()= D:=D+1
+   		in ()
+     	     od
+    {now have facets of all dims, to height hts[D-2]}
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then statuses = [string]: for j:#eq do "?" od
+    then finds = for d:#LFDKH
+		 do index_in(for v in LFDKH[d] do v[:d+1] od)
+	  	 od
+    then () = for d:#LFDKH
+	      do for M in unitaries[d]
+		 do let k = finds[d](M)
+		    in if k>=0
+		       then statuses:=downdateUclasses(statuses,
+			    	    IUCL[CLBF[d][k]], CLBF[d][k],"T"##to_string(M))
+		       fi
+		 od
+	      od
+    then tester = (Param->bool): (Param p) bool: is_unitary(p, cert_hash)
+    in local_test(x,lambda,Lvd,
+    	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
+
 
 set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
     [string]:
@@ -4469,6 +4625,9 @@ set sphericalK_levels_B(RealForm G) = [string]:
 
 set sphericalK_levels_C(RealForm G) = [string]:
     local_testK_levels_C(x_open(G),G.rho,spherical_cert_hash)
+
+set sphericalK_levels_D(RealForm G) = [string]:
+    local_testK_levels_D(x_open(G),G.rho,spherical_cert_hash)
 
 {next functions aim to compute FULL spherical dual in non-split case, when several
  different x give spherical reps}
