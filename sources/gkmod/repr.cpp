@@ -82,10 +82,13 @@ Reduced_param Reduced_param::reduce
   auto ww = rc.Weyl_group().word(loc.w);
   rc.transform<true>(ww,srm);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
-  auto evs_reduced = codec.internalise(gl);
+  auto evs = codec.internalise(gl);
+  unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
-  return Reduced_param{ srm.x(), int_sys_nr, std::move(evs_reduced) };
+  { auto d = codec.diagonal[i];
+    reduction = d*reduction + arithmetic::remainder(evs[i],d);
+  }
+  return Reduced_param{ srm.x(), int_sys_nr, reduction };
 }
 
 Reduced_param Reduced_param::co_reduce
@@ -96,16 +99,17 @@ Reduced_param Reduced_param::co_reduce
   rc.transform<true>(rc.Weyl_group().word(w),srm);
   const auto& integral = ic.int_item(int_sys_nr);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
-  auto evs_reduced = codec.internalise(srm.gamma_lambda());
+  auto evs = codec.internalise(srm.gamma_lambda());
+  unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
-  return Reduced_param{ srm.x(), int_sys_nr, std::move(evs_reduced) };
+  { auto d = codec.diagonal[i];
+    reduction = d*reduction + arithmetic::remainder(evs[i],d);
+  }
+  return Reduced_param{ srm.x(), int_sys_nr, reduction };
 }
 
 size_t Reduced_param::hashCode(size_t modulus) const
-{ size_t hash = 7*x + 83*int_sys_nr;
-  for (auto val : evs_reduced)
-    hash= 25*hash+val;
+{ size_t hash = (2049ull * x + int_sys_nr)*17 + evs_reduced;
   return hash &(modulus-1);
 }
 
@@ -240,26 +244,28 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*z.gamma_lambda());
 }
 
-/* the |evs_reduced| field of a |Reduced_param| encode the evaluations of the
+/*
+   The |evs_reduced| field of a |Reduced_param| encodes the evaluations of the
    value $\gamma-\lambda$ of a parameter on (simply-) integral coroots for
-   $\gamma$. However, since $\lambda$ is defined only up to sifts in the image
-   lattice of $1-\theta$, the |ev_reduced| values are effectively reduced modulo
-   the image of that lattice under the integral coroot evaluation map. It may
-   therefore happen that when subtracting the values of $\gamma-\lambda$ for two
-   |StandardReprMod| values producing the same |Reduced_param|, these coroot
-   evaluations of the difference are not zero; they must however define a point
-   in the latter lattice image. The function |theta_1_preimage| makes this
-   explicit: given such a difference |offset| it produces a weight in the image
-   of $1-\theta$ that has identical intergral coroot evaluations as |offset|.
+   $\gamma$. However, since $\lambda$ is defined only modulo image lattice of
+   $1-\theta$, the |evs_reduced| values are effectively reduced modulo the image
+   of that lattice under the integral coroot evaluation map |codec.internalise|.
+   It may therefore happen for two |StandardReprMod| values with the same
+   integral system attitude and producing the same |Reduced_param|, that their
+   coroot evaluations at some integral roots differ; however the integral coroot
+   evaluation of the difference of their $\gamma-\lambda$ must must lie in the
+   latter lattice image. The function |theta_1_preimage| makes this explicit:
+   given such a difference |diff|, it produces a weight in the image of
+   $1-\theta$ that has identical integral coroot evaluations as |diff|.
  */
 
 // fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
-// uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
+// uses idempotence for |codec| of: (out*.) o (. mod(diagonal)) o internalise
 Weight Rep_context::theta_1_preimage
-  (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+  (const RatWeight& diff, const subsystem::integral_datum_item::codec& codec)
   const
 {
-  auto eval_v = codec.internalise(offset);
+  auto eval_v = codec.internalise(diff);
   { unsigned int i;
     for (i=0; i<codec.diagonal.size(); ++i)
     {
@@ -2565,6 +2571,14 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 , sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
 {} // |common_context::common_context|
 
+
+RootNbrList common_context::integrally_simples () const
+{
+  const auto& ic = rc().inner_class();
+  const auto& int_item = ic.int_item(base_integral_nr());
+  auto integral_list = int_item.image_simples(integral_attitude());
+  return integral_list.to_vector();
+}
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const

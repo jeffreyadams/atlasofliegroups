@@ -155,10 +155,10 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  int_Vector evs_reduced; // |codec.in*coroots_mat*gamlan| mod |codec.diagonal|
+  unsigned int evs_reduced; // encodes |internalise(gamlam) mod diagonal|
 
-  Reduced_param(KGBElt x, unsigned int i, int_Vector v)
-    : x(x), int_sys_nr(i), evs_reduced(std::move(v))
+  Reduced_param(KGBElt x, unsigned int i, unsigned int v)
+    : x(x), int_sys_nr(i), evs_reduced(v)
   {}
 
 public:
@@ -625,6 +625,7 @@ public:
   unsigned int base_integral_nr() const { return int_sys_nr; }
   WeylElt integral_attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
+  RootNbrList integrally_simples () const;
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|

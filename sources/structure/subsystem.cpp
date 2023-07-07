@@ -278,8 +278,7 @@ int_Vector integral_datum_item::codec::internalise (const RatWeight& gamma) cons
     assert(entry%gamma.denominator()==0);
     entry /= gamma.denominator();
   }
-  int_Vector evs_reduced = in * int_Vector(eval.begin(),eval.end());
-  return evs_reduced;
+  return in * int_Vector(eval.begin(),eval.end());
 }
 
 } // |namespace subdatum|

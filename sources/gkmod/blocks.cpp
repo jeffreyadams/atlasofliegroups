@@ -705,11 +705,6 @@ WeightInvolution common_block::pull_back
   return W.inverse_matrix(rd,bm.w)*delta*W.matrix(rd,bm.w);
 }
 
-RootNbrList common_block::int_simples() const // simply integral roots
-{ const auto& int_datum_item = inner_class().int_item(int_sys_nr);
-  return int_datum_item.image_simples(w).to_vector();
-}
-
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
   RootNbrList simples = int_simples();
@@ -747,8 +742,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , integrally_simples(ctxt.integrally_simples())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1100,8 +1094,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , integrally_simples(ctxt.integrally_simples())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
@@ -1283,8 +1276,8 @@ repr::StandardRepr common_block::sr
   return rc.sr(representative(z),bm,gamma);
 }
 
-ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(root_datum(),int_simples(),delta); }
+ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
+{ return rootdata::fold_orbits(root_datum(),integrally_simples,delta); }
 
 // build extended block for custom built |common_block|, given an involution
 ext_block::ext_block common_block::extended_block
@@ -1314,12 +1307,8 @@ void common_block::shift (const RatWeight& diff)
     return;
   const auto& rc = context();
 #ifndef NDEBUG
-  auto& ic = rc.inner_class();
-  unsigned int int_sys_nr; // unused dummy
-  repr::block_modifier bm;
-  const auto& item=ic.int_item(z_pool[0].gamma_lambda(),int_sys_nr,bm);
-  const int_Matrix& int_ev = item.coroots_matrix(w);
-  assert((int_ev*diff.numerator()).is_zero());
+  for (auto i : integrally_simples)
+    assert(root_datum().coroot(i).dot(diff.numerator()) == 0);
 #endif
   for (auto& srm : z_pool)
     rc.shift(diff,srm);
