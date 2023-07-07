@@ -87,8 +87,13 @@ class BitMap
   {}
 
   // convert range defined by iterators into a BitMap
-  template <typename I>
-    BitMap(size_t n, const I& first, const I& last);
+  template <typename I> BitMap(unsigned long n, const I& first, const I& last)
+  : d_capacity(n)
+  , d_map((d_capacity+posBits)>>baseShift,0)
+  {
+    for (I it = first; it!=last; ++it)
+      insert(*it);
+  }
 
   //g an easier version for a full vector
   template <typename U> // unsigned integral type
