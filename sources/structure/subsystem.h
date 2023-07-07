@@ -201,7 +201,7 @@ class integral_datum_item
   {}
 
   const SubSystem& sub_sys () const { return int_sys; }
-  // root indices of images by |w| of integrally-simple coroots; must be positive
+  // root indices of images by |w| of simply integral coroots; must be positive
   sl_list<RootNbr> image_simples(const WeylElt& w) const;
   int_Matrix coroots_matrix(const WeylElt& w) const;
   SubSystem int_system(const WeylElt& w) const;

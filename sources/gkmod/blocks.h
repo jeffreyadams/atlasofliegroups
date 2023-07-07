@@ -341,7 +341,7 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const RootNbrList integrally_simples;
+  const RootNbrList simply_integrals;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -402,7 +402,8 @@ class common_block : public Block_base
 
   WeightInvolution pull_back // of action by |delta| on block modified by |bm|
     ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
-  RootNbrList int_simples() const { return integrally_simples; }
+  RootNbrList simply_ints() const { return simply_integrals; }
+  RootNbrList simply_ints(const repr::block_modifier& bm) const;
   ext_gens fold_orbits (const WeightInvolution& delta) const;
 
   // extension for custom built |common_block|, with "arbitrary" involution

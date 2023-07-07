@@ -469,7 +469,6 @@ public:
 struct locator
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
-  RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
 };
 
@@ -625,7 +624,7 @@ public:
   unsigned int base_integral_nr() const { return int_sys_nr; }
   WeylElt integral_attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList integrally_simples () const;
+  RootNbrList simply_integrals () const;
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|

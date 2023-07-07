@@ -443,16 +443,16 @@ bool make_multiple_integral
   for (RootNbr i=0; i<npr; ++i)
     if (rd.posCoroot(i).dot(v)%d == 0)
       int_poscoroots.insert(i);
-  sl_list<RootNbr> integrally_simples=rd.pos_simples(int_poscoroots);
-  int_Matrix A(integrally_simples.size()+rd.rank(),rd.rank());
+  sl_list<RootNbr> simply_integrals=rd.pos_simples(int_poscoroots);
+  int_Matrix A(simply_integrals.size()+rd.rank(),rd.rank());
   { unsigned i=0;
-    for (auto alpha : integrally_simples)
+    for (auto alpha : simply_integrals)
       A.set_row(i++,rd.coroot(alpha));
   }
   {
     int_Matrix theta_plus_1 = rc.inner_class().matrix(kgb.involution(sr.x()))+1;
     for (unsigned int i=0; i<theta_plus_1.n_rows(); ++i)
-      A.set_row(integrally_simples.size()+i,theta_plus_1.row(i));
+      A.set_row(simply_integrals.size()+i,theta_plus_1.row(i));
   }
   int_Matrix ker = // col span is intersection of perp-int and ($X^*)^{-\theta}$
     lattice::kernel(A);

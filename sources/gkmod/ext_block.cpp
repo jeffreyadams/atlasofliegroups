@@ -312,7 +312,7 @@ Weight context::to_simple_shift
 /*
   For the conjugation to simple scenario, we compute a set |pos_neg| of
   positive roots that become negative under an element of $W^\delta$ that
-  makes the integrally-simple root(s) in question simple. The function
+  makes the simply integral root(s) in question simple. The function
   |shift_flip| computes from this set, and the involutions at both ends of the
   link in the block, whether an additional flip is to be added to the link.
 
@@ -963,7 +963,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	{ // type 1, so extended type is 1i1
 	  result = one_imaginary_single;
 
-	  /* if imaginary integrally simple |alpha| were sum of two simple
+	  /* if imaginary simply integral |alpha| were sum of two simple
 	     roots these cannot be imaginary (hence integral), so they must be
 	     interchanged by $\theta$, but then we are in type 2
 	   */
@@ -1631,14 +1631,14 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  const RootNbrList int_simples = block.int_simples();
+  const RootNbrList simply_ints = block.simply_ints();
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
     const ext_param E(ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      RootNbr n_alpha = int_simples[p.s0];
+      RootNbr n_alpha = simply_ints[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type

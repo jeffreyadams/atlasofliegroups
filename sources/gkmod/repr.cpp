@@ -308,12 +308,10 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 (const locator& loc, const StandardReprMod& srm0,
  block_modifier& bm, StandardReprMod srm1) const
 {
-  const auto& rd = root_datum();
   const auto& W = Weyl_group();
   W.mult(bm.w, W.inverse(loc.w));
   auto ww = W.word(bm.w);
 
-  assert(bm.integrally_simples == image(rd,ww,loc.integrally_simples));
   compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
 
   transform<true>(ww,srm1); // move back to base
@@ -1375,7 +1373,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
 void block_modifier::clear (unsigned int rank)
 {
   w = WeylElt();
-  // |integrally_simples| is not relative; it remains
+  // |simply_integrals| is not relative; it remains
   simple_pi = Permutation(simple_pi.size(),1); // reset to identity
   shift = RatWeight(rank);
 }
@@ -1653,7 +1651,7 @@ blocks::common_block& Rep_table::add_block_below
   { // by using reverse iteration, least elt with same |h| defines |place[h]|
 #ifndef NDEBUG
     { const auto& gamlam = block.representative(z).gamma_lambda();
-      for (RootNbr alpha : bm.integrally_simples)
+      for (RootNbr alpha : block.simply_ints())
 	gamlam.dot(root_datum().coroot(alpha)); // asserts it is integral
     }
 #endif
@@ -2254,11 +2252,11 @@ SR_poly twisted_KL_sum
     }
 
   const RootDatum& rd = parent.root_datum();
-  const RootNbrList int_simples = parent.int_simples();
+  const RootNbrList simply_ints = parent.simply_ints();
   RankFlags singular_orbits; // flag singulars among orbits
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,
-	     gamma.dot(rd.coroot(int_simples[eblock.orbit(s).s0]))==0);
+	     gamma.dot(rd.coroot(simply_ints[eblock.orbit(s).s0]))==0);
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
@@ -2572,7 +2570,7 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 {} // |common_context::common_context|
 
 
-RootNbrList common_context::integrally_simples () const
+RootNbrList common_context::simply_integrals () const
 {
   const auto& ic = rc().inner_class();
   const auto& int_item = ic.int_item(base_integral_nr());

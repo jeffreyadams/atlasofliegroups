@@ -707,7 +707,7 @@ WeightInvolution common_block::pull_back
 
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
-  RootNbrList simples = int_simples();
+  RootNbrList simples = simply_ints();
   RankFlags result;
   for (weyl::Generator s=0; s<rank(); ++s)
     result.set(s,root_datum().coroot(simples[s]).dot(gamma.numerator())==0);
@@ -719,8 +719,9 @@ RankFlags common_block::singular
   (const repr::block_modifier& bm, const RatWeight& gamma) const
 {
   RankFlags result;
+  auto is = simply_ints(bm);
   for (weyl::Generator s=0; s<rank(); ++s)
-  { auto alpha = bm.integrally_simples.n_th(bm.simple_pi[s]);
+  { auto alpha = is[s];
     result.set(s,root_datum().coroot(alpha).dot(gamma.numerator())==0);
   }
   return result;
@@ -742,7 +743,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , integrally_simples(ctxt.integrally_simples())
+  , simply_integrals(ctxt.simply_integrals())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1094,7 +1095,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , integrally_simples(ctxt.integrally_simples())
+  , simply_integrals(ctxt.simply_integrals())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
@@ -1276,8 +1277,17 @@ repr::StandardRepr common_block::sr
   return rc.sr(representative(z),bm,gamma);
 }
 
+RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
+{
+  auto ww = rc.Weyl_group().word(bm.w);
+  RootNbrList result; result.reserve(simply_integrals.size());
+  for (auto alpha : simply_integrals)
+    result.push_back(root_datum().permuted_root(ww,alpha));
+  return result;
+}
+
 ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(root_datum(),integrally_simples,delta); }
+{ return rootdata::fold_orbits(root_datum(),simply_integrals,delta); }
 
 // build extended block for custom built |common_block|, given an involution
 ext_block::ext_block common_block::extended_block
@@ -1307,7 +1317,7 @@ void common_block::shift (const RatWeight& diff)
     return;
   const auto& rc = context();
 #ifndef NDEBUG
-  for (auto i : integrally_simples)
+  for (auto i : simply_integrals)
     assert(root_datum().coroot(i).dot(diff.numerator()) == 0);
 #endif
   for (auto& srm : z_pool)
