@@ -3447,7 +3447,10 @@ set show(KTypePol_hash cert_hash, KGBElt x) = void:
        od
 
 set show(KTypePol_hash cert_hash) = void:
-    show(cert_hash,KGB(cert_hash.index(0).real_form,0))
+    if cert_hash.size() = 0
+    then prints("Number of certificate K-types = 0")
+    else show(cert_hash,KGB(cert_hash.index(0).real_form,0))
+    fi
 
 set look_up_vertices ([ratvec] vertices, [int] facet)=[ratvec]:
    for n in facet do vertices[n] od
