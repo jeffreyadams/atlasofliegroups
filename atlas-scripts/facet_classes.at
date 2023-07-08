@@ -165,7 +165,7 @@ set lookups ([[vec]] inds) = [(vec->int)]:
     for L@d in inds do index_in(for v in L do v[:d+1] od) od
 
 set lookups ([[FacetStatusVertsIndex]] FDinds) = [(vec->int)]:
-    for L in FDinds do index_in(for (,v) in L do v od) od
+    for L@d in FDinds do index_in(for (,v) in L do v[:d+1] od) od
 
 set lookups (FacetDataKchar FDK) = [(vec->int)]:
     lookups(FDK.facet_status_inds)

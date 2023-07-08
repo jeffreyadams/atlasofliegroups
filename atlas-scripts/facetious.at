@@ -192,8 +192,7 @@ set cofoldedBOTH(RootDatum rd, mat delta) = (RootDatum, RootDatum, mat):
 		 fi od)) {sum of ALL roots for ALL coroots restr to alphavee}
 	  then w = 2*v/(v*pullback_alphavee)
 	  then corestrict_w = solve(Tstar,w).requisition
-	  in
-	  rootsB#:=ratvec_as_vec(corestrict_w)
+	  in rootsB#:=ratvec_as_vec(corestrict_w)
 	  od;
 	  (root_datum_from_positive((rootsB,corootsB),rd.prefers_coroots),
 	  root_datum_from_positive((rootsC,corootsC),rd.prefers_coroots),Tstar)
@@ -2501,16 +2500,20 @@ set localFD_hash \
 	     else            minus_1
 	     fi
 	 od
+    {SERIOUS PROBLEM HERE... or perhaps not??}
+    {this could produce lists with repetitions, which screws up the graph code}
+    {example is G=U(4,2), x = x_open(G), lambda = G.rho... no it isn't!}
     then LFVI = [[LocalFacetVertsHash]]:
         for @j in FPPIndHash do [LocalFacetVertsHash]: [] od
+    {then lists = for d:#FPPIndHash}
     then () = for FVInd@d in FPPIndHash
-    do  if facet_verbose
-        then prints("examining ", #FVInd, " facets of dim ",d,
+    	      do if facet_verbose
+              	 then prints("examining ", #FVInd, " facets of dim ",d,
 	       " in construction of local facet list")
-	fi
-        ; for v@k in FVInd
-	  do  let vtheta = for ell in v[:d+1] do Perm[ell] od
-	      then vAct = vec:
+	       	 fi
+	  ; for v@k in FVInd
+	    do  let vtheta = for ell in v[:d+1] do Perm[ell] od
+	      	then vAct = vec:
 	       	    if vtheta.>= and
 		       is_subset(vtheta,v[:d+1]) and
 		       none(for i in v[:d+1] do mapAct[i] < 0 od)
@@ -2519,7 +2522,7 @@ set localFD_hash \
 			 od.no_reps{sort}
 	            else []
 		    fi
-	      then () =
+	      	 then () =
 	      	   if #vAct > 0
 	      	   then {let p = parameter(x,lambda, FB)}
 			{add functionality of "pick" here}
@@ -2642,7 +2645,8 @@ set localFD_KHash00 \
 
 
 {creates the LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
- verts, and 0-facets for (x,lambda)}
+ verts, and 0-facets for (x,lambda)
+ Seek to use shift in KChar computation.}
 { set localFD_KHash00shift \
   ( KGBElt x, ratvec lambda, KTypePol_hash ktp_hash) =
   (VertexData, VertexData, vec, vec, [[FacetVertsKHash]]):
@@ -2705,19 +2709,19 @@ set localFD_KHash00 \
     in (vd, Lvd, Perm, mapAct, [FVK0])
 )
 }
-
-
 {takes local data to height level, dimension \le b-1, and adds facets from
-b to (t-1)-dimensional FPP-facets}
+b to (t-1)-dimensional FPP-facets. Need to be sure that input is based only
+on FPP facets up to dim b-1, or repetitions can appear in output. Safety is
+provided by the slower function without the argument b}
 set localFD_KHashbt \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
-    [[FacetVertsKHash]] LFKH, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+    [[FacetVertsKHash]] LFKH, int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
 (   if facet_verbose
     then prints("start localFD_Khashbt")
     fi;
     {let Llookup = Lvd.lookup}
     let G = x.real_form, b = #LFKH
-    then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-b from b do
+    then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-#LFKH from #LFKH do
     	 [FacetVertsHash]: [] od)
     then () = for dim:t-b from b
     	      do let facets = [FacetVerts]: facets_fundamental(G,dim)
@@ -2749,22 +2753,99 @@ set localFD_KHashbt \
 		       		    {actual is called vAct earlier}
 		       		    then actual = vec:
 				    	 if local.>= and is_subset(local,global) and 
-			       		    none(for i in global do mapAct[i] < 0
-					    		             od)
+			       		    none(for i in global do mapAct[i] < 0 od)
 			    		 then for i in global
 			    	 	      do mapAct[i]
 				 	      od.no_reps{sort}
 			    		 else []
 			    		 fi
 		       		    then () = if #actual > 1 {already got vertices}
-		       	       	      	      then let bary = wtilde*bary_F
-	     	       	    	      	   	   then () = actual :=
-						   actual##[ktp_hash.match(
+		       	       	      	      { then prints("facet candidate of dim ",#actual-1,
+						       	      " is ",actual,"; s = ",s,", i = ",i); }
+					      then let bary = wtilde*bary_F
+	     	       	    	      	   	   then () = actual := actual##[ktp_hash.match(
 				      		   K_type_pol(translate_param_by(character_formula(
 						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
-		            	      		   in LFKHnew[#actual-2] :=
-			    	 		   (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
-			   	 	      # actual
+						   in LFKHnew[#actual-2] :=
+			    	 		   	(LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			   	 	      		# actual
+					      fi
+				     in ()
+	     	     		   od
+	      	            od
+			    in ()
+		od
+    then dAct = last(for j:#LFKHnew do #LFKHnew[j] > 0 od)
+    in LFKHnew[:dAct+1]
+)
+
+{takes local data to height level, dimension \le b-1, and adds facets from
+b to (t-1)-dimensional FPP-facets. If input is _missing_ some facet dims up to b,
+this can lead to running over the same FPP facets several times, and so to repetitions
+in the output. hashes avoid that.}
+set localFD_KHashbt \
+  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
+    [[FacetVertsKHash]] LFKH, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+(   if facet_verbose
+    then prints("start localFD_Khashbt")
+    fi;
+    {let Llookup = Lvd.lookup}
+    let G = x.real_form, b = #LFKH
+    then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-b from b do
+    	 [FacetVertsHash]: [] od)
+    then hashes = for d:#LFKHnew do make_vec_hash(for v in LFKHnew[d] do v[:d+1] od, hash_code@(vec,int)) od
+    {use the hashes to avoid repetitions in the facet lists}
+    then () = for dim:t-b from b
+    	      do let facets = [FacetVerts]: facets_fundamental(G,dim)
+    	      	 then () = for FV@k in facets
+       	      	      	   do if (facet_verbose and k=0) or fund_facet_verbose
+       	       	       	      then prints("start fund facet ",k," of ", #facets,
+	       	       	      	   " in dim ", dim,
+		       		   " in localFD_Khashbt; ktp_hash.size() = ",
+		       		   ktp_hash.size())
+	       	 	      fi;
+	       	 	      let bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
+	       	 	      then aff_short_list = FPP_w_shifts(G,bary_F)
+	       	 	      then aff_list = [AffineCoWeylElt]:
+	       	    	      	   for (w,taus) in aff_short_list
+	       	    		   do for tau in taus do (tau,w) od
+	       	    		   od.##
+	       	 	      in for wtilde in aff_list
+	       	    	      	 do let (tau,w) = wtilde
+				    then iw = inverse(w)
+	     	     	       	    then bup = -tau + w*G.two_rho
+				    then bdown = -iw*bup
+		       		    {global is called v earlier}
+		       		    then global = for v in wtilde*FV
+		       	    	     	 	  do (vd.lookup)(v)
+				     		  od.sort
+		       		    {local is called vtheta earlier}
+		       		    then local = for ell in global do Perm[ell] od
+				    {if -1 appears in local, subset fails}
+		       		    {actual is called vAct earlier}
+		       		    then actual = vec:
+				    	 if local.>= and is_subset(local,global) and 
+			       		    none(for i in global do mapAct[i] < 0 od)
+			    		 then for i in global
+			    	 	      do mapAct[i]
+				 	      od.no_reps{sort}
+			    		 else []
+			    		 fi
+		       		    then () = if #actual > 1 {already got vertices}
+		       	       	      	      then let s = hashes[#actual-1].size()
+					      	   then i = hashes[#actual -1].match(actual)
+						   { then () = prints("facet candidate of dim ",#actual-1,
+						       	      " is ",actual,"; s = ",s,", i = ",i) }
+						   then () = if i=s
+						   	     then let bary = wtilde*bary_F
+	     	       	    	      	   	   	     then () = actual := actual##[ktp_hash.match(
+				      		   K_type_pol(translate_param_by(character_formula(
+						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
+							in LFKHnew[#actual-2] :=
+			    	 		   	(LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			   	 	      		# actual
+							      fi
+						    in ()
 			     	 	      fi
 		       		   in ()
 	     	     		od
@@ -2775,33 +2856,77 @@ set localFD_KHashbt \
     in LFKHnew[:dAct+1]
 )
 
-{takes local data to height level, dimension < d, and adds facets from d-dimensional
- FPP-facets}
-{ set localFD_KHash0 \
+{takes local data to height level, dimension \le b-1, and adds facets from
+b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).}
+set localFD_KHashbt_lookDown \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
-    [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+    [[FacetVertsKHash]] LFKH, int b, int t, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
 (   if facet_verbose
-    then prints("start localFD_Khash0 in dim ",#LFKH)
+    then prints("start localFD_Khashbt_lookDown")
     fi;
-    {let Llookup = Lvd.lookup}
-    let dim = #LFKH, G = x.real_form
-    then facets = [FacetVerts]: facets_fundamental(G,dim)
-    then LFKHnew = [[FacetVertsKHash]]: LFKH#[]
-    then () = for FV@k in facets
-       	      do if (facet_verbose and k=0) or fund_facet_verbose
-       	       	       then prints("start fund facet ",k," of ", #facets,
-	       	       " in dim ", dim,
-		       " in localFD_Khash; ktp_hash.size() = ",
-		       ktp_hash.size())
-	       	 fi;
-	       	 let bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
-	       	 then aff_short_list = FPP_w_shifts(G,bary_F)
-	       	 then aff_list = [AffineCoWeylElt]:
-	       	    for (w,taus) in aff_short_list
-	       	    do for tau in taus do (tau,w) od
-	       	    od.##
-	       	 in for wtilde in aff_list
-	       	    do let (tau,w) = wtilde}
+    let G = x.real_form
+    then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-#LFKH from #LFKH do
+    	 [FacetVertsKHash]: [] od)
+    then () = for dim:t-b from b
+    	      do let facets = [FacetVerts]: facets_fundamental(G,dim)
+	      	 then lookups = lookups(LFKHnew)
+    	      	 then () = for FV@k in facets
+       	      	      	   do if (facet_verbose and k=0) or fund_facet_verbose
+       	       	       	      then prints("start fund facet ",k," of ", #facets,
+	       	       	      	   " in dim ", dim,
+		       		   " in localFD_Khashbt; ktp_hash.size() = ",
+		       		   ktp_hash.size())
+	       	 	      fi;
+	       	 	      let bary_F=FacetBary: sum(G.rank,FV)/(dim+1)
+	       	 	      then aff_short_list = FPP_w_shifts(G,bary_F)
+	       	 	      then aff_list = [AffineCoWeylElt]:
+	       	    	      	   for (w,taus) in aff_short_list
+	       	    		   do for tau in taus do (tau,w) od
+	       	    		   od.##
+	       	 	      in for wtilde in aff_list
+	       	    	      	 do let (tau,w) = wtilde
+				    then iw = inverse(w)
+	     	     	       	    then bup = -tau + w*G.two_rho
+				    then bdown = -iw*bup
+		       		    {global is called v earlier}
+		       		    then global = for v in wtilde*FV
+		       	    	     	 	  do (vd.lookup)(v)
+				     		  od.sort
+		       		    {local is called vtheta earlier}
+		       		    then local = for ell in global do Perm[ell] od
+				    {if -1 appears in local, subset fails}
+		       		    {actual is called vAct earlier}
+		       		    then actual = vec:
+		       	    	    	 if local.>= and
+					    is_subset(local,global) and
+			       		    none(for i in global do mapAct[i] < 0 od)
+			    		 then for i in global
+			    	 	      do mapAct[i]
+				 	      od.no_reps{sort}
+			    		 else []
+			    		 fi
+				    then d=#actual-1
+		       		    then () = if d>0 {already got vertices}
+				    	         and all(for e:d
+						     do lookups[d-1](delete(actual,e)) > 0 od)
+						 {now we know that the subfacets are cand facets}
+					      then let bary = wtilde*bary_F
+	     	       	    	      	   	   then () = actual := actual##[ktp_hash.match(
+				      		   K_type_pol(translate_param_by(character_formula(
+						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
+						   in LFKHnew[#actual-2] :=
+			    	 		     (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			   	 	      	     # actual
+						fi
+				     in ()
+	     	     		od
+	      	            od
+			    in ()
+		od
+    then dAct = last(for j:#LFKHnew do #LFKHnew[j] > 0 od)
+    in LFKHnew[:dAct+1]
+)
 
 {takes local data to height level, dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list}
@@ -2814,6 +2939,8 @@ set localFD_KHashbt_lookDown \
     let G = x.real_form, b = #LFKH
     then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-b from b do
     	 [FacetVertsKHash]: [] od)
+    then hashes = for d:#LFKHnew do make_vec_hash(for v in LFKHnew[d] do v[:d+1] od, hash_code@(vec,int)) od
+    {use the hashes to avoid repetitions in the facet lists}
     then () = for dim:t-b from b
     	      do let facets = [FacetVerts]: facets_fundamental(G,dim)
 	      	 then lookups = lookups(LFKHnew)
@@ -2857,16 +2984,22 @@ set localFD_KHashbt_lookDown \
 				    	         and all(for e:d
 						     do lookups[d-1](delete(actual,e)) > 0 od)
 						 {now we know that the subfacets are cand facets}
-		       	       	      	      then let bary = wtilde*bary_F
-					       	   then () = actual :=
-						   actual##[ktp_hash.match(
+					      then let s = hashes[#actual-1].size()
+					      	   then i = hashes[#actual -1].match(actual)
+						   { then () = prints("facet candidate of dim ",#actual-1,
+						       	      " is ",actual,"; s = ",s,", i = ",i) }
+						   then () = if i=s
+						   	     then let bary = wtilde*bary_F
+	     	       	    	      	   	   	     then () = actual := actual##[ktp_hash.match(
 				      		   K_type_pol(translate_param_by(character_formula(
 						   1*parameter(x,lambda+bup,bary+bup)),bdown)))]
-		            	      		   in LFKHnew[#actual-2] :=
-			    	 		   (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
-			   	 	      # actual
+							in LFKHnew[#actual-2] :=
+			    	 		   	(LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+			   	 	      		# actual
+							      fi
+						    in ()
 			     	 	      fi
-		       		   in ()
+		       		    in ()
 	     	     		od
 	      	            od
 			    in ()
@@ -2875,8 +3008,8 @@ set localFD_KHashbt_lookDown \
     in LFKHnew[:dAct+1]
 )
 
-{takes local data to height level, dimension < d, and adds facets from d-dimensional
- FPP-facets}
+{takes local data to height level, local dimension < d, and adds facets from d-dimensional
+ FPP-facets. (In non-split/spherical cases, this might add nothing!)}
 set localFD_KHash0 \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
@@ -4026,7 +4159,7 @@ set local_testK_level_D(KGBElt x, ratvec lambda, VertexData vd,
 			         fi
 			      od
      {then () = prints(newStatuses)}
-     in  (FVKHnew,test_count,unitaries, unitaries_to_ht)
+     in  (FVKHnew,test_count, unitaries, unitaries_to_ht)
 
 set spherical_testKPO(RealForm G, FacetDataKcharPO_old (vd,FPPstInd,
     	, eq, gr, , CLBF, statuses)
@@ -4218,7 +4351,9 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
 		 then ()=prints("gr = ",gr)}
     	      	 then statuses = [string]: for j:#eq do "?" od
 		 then newStatuses = statuses
-		 then find0 = index_in(for v in LFD.LFverts[0] do v[:1] od)
+		 then find0 = index_in(if #LFverts = 0 then []
+		      	      	       else for v in LFD.LFverts[0] do v[:1] od
+				       fi)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
@@ -4238,7 +4373,9 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
      then ((eq,gr),IUCL,CLBF) = localGraph(LFD,pol_nums)
      then statuses = [string]: for j:#eq do "?" od
      then newStatuses = statuses
-     then find0 = index_in(for v in LFD.LFverts[0] do v[:1] od)
+     then find0 = index_in(if #LFverts = 0 then []
+		      	      	       else for v in LFD.LFverts[0] do v[:1] od
+				       fi)
      then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
@@ -4257,16 +4394,16 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     { make this use shifts!}
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
     {next add dims from 1 to semisimple rank}
-    then () = for d:G.semisimple_rank from 1
-    	      do LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, semisimple_rank(G)+1, Kpol_hash)
-	      od
+    then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
+	      LFDKH,1,G.semisimple_rank+1, Kpol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
         then test_count = int:0
     then () = for level in hts[:depth -1]
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,level)
     	      	 then statuses = [string]: for j:#eq do "?" od
-		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+		 then find0 = index_in(if #LFDKH = 0 then []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
@@ -4285,7 +4422,9 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
      then statuses = [string]: for j:#eq do "?" od
      then newStatuses = statuses
-     then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+     then find0 = index_in(if #LFDKH = 0 then []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
      then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
@@ -4296,7 +4435,7 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,newStatuses,tester,test_count)
 
-set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
+set local_testK_levels_A(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
     [string]:
     let G = x.real_form, first_pass = 2
     then vd = FPP_vertex_data(G,-1)
@@ -4304,7 +4443,7 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
     {next add dim from 1 to first_pass}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, first_pass, Kpol_hash)
+	      LFDKH, 1, first_pass, Kpol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then test_count = int:0
     then () =  prints("facets to dim ",first_pass, " counts:",
@@ -4313,7 +4452,9 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
     {compute graph on facets to dim first_pass}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[0])
     	      	 then statuses = [string]: for j:#eq do "?" od
-		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+		 then find0 = index_in(if #LFDKH = 0 then [vec]: []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
@@ -4329,14 +4470,16 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 		 then ()= test_count:=test_countnew
     {now add the rest of the facets, using only those with unitary candidate boundaries}
     	     	 then () = LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
-	      	      	   LFDKH, G.semisimple_rank+1, Kpol_hash)
+	      	      	   LFDKH, first_pass, G.semisimple_rank+1, Kpol_hash)
 		 then () = prints("ready to loop: all facet counts: ",
 			  for list in LFDKH do #list od)
 
     then () = for level in hts[1:depth]
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,level)
     	      	 then statuses = [string]: for j:#eq do "?" od
-		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+		 then find0 = index_in(if #LFDKH = 0 then [vec]: []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
@@ -4356,7 +4499,9 @@ set local_testK_levels_new(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
               od
      then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
      then statuses = [string]: for j:#eq do "?" od
-     then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+     then find0 = index_in(if #LFDKH = 0 then [vec]: []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
      then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
@@ -4375,7 +4520,7 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
     {next add dim from 1 to first_pass}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, first_pass, Kpol_hash)
+	      LFDKH, 1, first_pass, Kpol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then test_count = int:0, d=int:1
     then () =  prints("facets counts to dim ",first_pass-1, " :",
@@ -4386,7 +4531,9 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[d-1])
        	      	 {compute graph on facets to dim first_pass}
        		 then statuses = [string]: for j:#eq do "?" od
-       		 then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+		 then find0 = index_in(if #LFDKH = 0 then [vec]: []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
        		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		    	      in if k>=0
@@ -4399,7 +4546,7 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 		      		       cert_hash, test_count)
  		then ()= test_count:=test_countnew
         	then () = LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
-	      	      	   LFDKHnew, first_pass + d, Kpol_hash)
+	      	      	   LFDKHnew, first_pass + d-1, first_pass + d, Kpol_hash)
 	        then () = prints("facet counts to dim ",first_pass+d-1,": ",
 	     	     	  		for list in LFDKH do #list od)
    		then ()= d:=d+1
@@ -4408,7 +4555,9 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then statuses = [string]: for j:#eq do "?" od
-    then find0 = index_in(for v in LFDKH[0] do v[:1] od)
+    then find0 = index_in(if #LFDKH = 0 then [vec]: []
+		      	      	       else for v in LFDKH[0] do v[:1] od
+				       fi)
     then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
@@ -4428,7 +4577,7 @@ set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
     {next add dim from 1 to first_pass}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, first_pass, Kpol_hash)
+	      LFDKH, 1, first_pass, Kpol_hash)
     then unitaries = [[vec]]: for d:G.semisimple_rank + 1 do [] od
     then unipotents = [vec]: for m in local_unipotent_classes(x,lambda,Lvd) do vec: [m] od
     then unitaries_to_hts = [[[vec]]]: for k:depth+2 do unitaries od
@@ -4462,7 +4611,7 @@ set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 		then ()= unitaries:=unitaries_new
 		then ()= unitaries_to_hts:=unitaries_to_hts_new
         	then ()= LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
-	      	      	   LFDKHnew, first_pass + D, Kpol_hash)
+	      	      	   LFDKHnew, first_pass + D -1,first_pass + D, Kpol_hash)
 	        then () = prints("facet counts to dim ",first_pass+D-1,": ",
 	     	     	  		for list in LFDKH do #list od)
 		then () = prints("unitary counts: ",for list in unitaries do #list od)
@@ -4497,7 +4646,9 @@ set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then (Lvd, Perm, mapAct, LFDKH) = localFD_KHash00(x,lambda, vd, Kpol_hash)
     {next add dim from 1 to first_pass}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, first_pass, Kpol_hash)
+	      LFDKH, 1, first_pass, Kpol_hash)
+    {next three lines define lists of possibly unitary facets as vecs whose entries refer
+     to the list in Lvd, which doesn't change}
     then empty = [[vec]]: for d:G.semisimple_rank + 1 do [] od
     then unipotents = [vec]: for m in local_unipotent_classes(x,lambda,Lvd) do vec: [m] od
     then unitaries_to_ht = [[vec]]: empty
@@ -4507,7 +4658,7 @@ set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then () =  prints("facets counts to dim ",first_pass-1, " :",
 			  for list in LFDKH do #list od)
     then () = while first_pass + D <= G.semisimple_rank + 1
-    {while loop does is_unitary_to_ht on facets to dim first_pass; then adds
+    {while loop does is_unitary_to_ht on facets to dim first_pass then adds
      facets of one dim higher and does is_unitary_to_ht on those...}
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[D-1])
        	      	 {compute graph on facets to dim first_pass}
@@ -4531,10 +4682,10 @@ set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
  		then ()= test_count:=test_countnew
 		then ()= unitaries:=unitaries_new
         	then ()= LFDKH := localFD_KHashbt_lookDown(x,lambda,vd, Lvd, Perm, mapAct,
-	      	      	   LFDKHnew, first_pass + D, Kpol_hash)
+	      	      	   LFDKHnew, first_pass + D -1, first_pass + D, Kpol_hash)
 	        then () = prints("facet counts to dim ",first_pass+D-1,": ",
 	     	     	  		for list in LFDKH do #list od)
-		{ then () = prints("unitary counts: ",for list in unitaries do #list od)}
+		then () = prints("unitary counts: ",for list in unitaries do #list od)
 		then () = prints("unitary_to_ht: ",for list in unitaries_to_ht do #list od)
    		then ()= D:=D+1
    		in ()
@@ -4571,7 +4722,9 @@ set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH,Kpol_hash,level)
     	      	 then statuses = [string]: for j:#eq do "?" od
 		 then newStatuses = statuses
-		 then find0 = index_in(for v in FPPKH[0] do v[:1] od)
+		 then find0 = index_in(if #FPPKH = 0 then [vec]:[]
+		      	      	       else for v in FPPKH[0] do v[:1] od
+				       fi)
 		 then () = for m in unipotents
 		      	   do let k = find0([m])
 		      	      in if k>=0
@@ -4590,7 +4743,9 @@ set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
      then ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH)
      then statuses = [string]: for j:#eq do "?" od
      then newStatuses = statuses
-     then find0 = index_in(for v in FPPKH[0] do v[:1] od)
+     then find0 = index_in(if #FPPKH = 0 then [vec]:[]
+     	  	  	   else for v in FPPKH[0] do v[:1] od
+			   fi)
      then () = for m in unipotents
 	       do let k = find0([m])
 		  in if k>=0
@@ -4617,8 +4772,8 @@ set spherical_levels(RealForm G) = [string]:
 set sphericalK_levels(RealForm G) = [string]:
     local_testK_levels(x_open(G),G.rho,spherical_cert_hash,4)
 
-set sphericalK_levels_new(RealForm G) = [string]:
-    local_testK_levels_new(x_open(G),G.rho,spherical_cert_hash,4)
+set sphericalK_levels_A(RealForm G) = [string]:
+    local_testK_levels_A(x_open(G),G.rho,spherical_cert_hash,4)
 
 set sphericalK_levels_B(RealForm G) = [string]:
     local_testK_levels_B(x_open(G),G.rho,spherical_cert_hash)
