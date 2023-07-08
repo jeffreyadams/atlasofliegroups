@@ -1387,9 +1387,31 @@ void check_sub_block
 }
 #endif
 
+Permutation induced
+  (const Permutation& pi, const ext_gens& ins, const ext_gens& outs)
+{
+  assert(ins.size()==outs.size());
+  std::vector<weyl::Generator> orig(pi.size());
+  for (unsigned int i=0; i<outs.size(); ++i)
+  { const auto& orbit = outs[i];
+    orig[orbit.s0] = i;
+    if (orbit.type!=ext_gen::one)
+      orig[orbit.s1] = i;
+  }
+  Permutation result; result.reserve(ins.size());
+  for (const auto& orbit : ins)
+  {
+    result.push_back(orig[pi[orbit.s0]]);
+    if (orbit.type!=ext_gen::one)
+      assert(orig[pi[orbit.s1]]==result.back());
+  }
+  return result;
+}
+
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-(common_block&& sub, const BlockEltList& embed, const Permutation& simple_pi,
+  (common_block&& sub,
+   const BlockEltList& embed, const WeylWord& ww, const Permutation& simple_pi,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
 // note: our elements are links are not touched, so coordinates irrelevant here
 {
@@ -1418,16 +1440,21 @@ void common_block::swallow
   {
     auto& sub_eblock = data.eblock;
     const RatWeight diff = data.shift; // take a copy: |sub.shift| modifies it
+    RatWeight block_shift = diff;
+    root_datum().act(ww,block_shift); // required shift in "our" attitude
     sub.shift(diff); // align the |sub| block to this extended block
-    shift(diff); // and adapt our block to match, so |embed| remains valid
+    shift(block_shift); // and adapt our block to match, so |embed| remains valid
     assert(data.shift.is_zero());
     auto& eblock =
       extended_block(data.delta,ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
     // transfer computed KL data:
-    eblock.swallow(std::move(sub_eblock),embed,simple_pi);
-    shift(-diff);
+    eblock.swallow(std::move(sub_eblock), embed,
+		   induced(simple_pi,
+			   sub_eblock.folded_generators(),
+			   eblock.folded_generators()));
+    shift(-block_shift);
     sub.shift(-diff);
   }
 } // |common_block::swallow|

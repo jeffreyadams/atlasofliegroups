@@ -612,7 +612,7 @@ class RootDatum
 
   // make |lambda| codominant, and return Weyl word that will convert it back
   WeylWord factor_codominant (Coweight& lambda) const;
-  WeylWord to_codominant(Weight lambda) const; // by value; reversed result
+  WeylWord to_codominant (Weight lambda) const; // by value; reversed result
   Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
   { factor_codominant(lambda); return lambda; }
 
@@ -631,10 +631,11 @@ class RootDatum
 	simple_reflect(ww[i],lambda);
     }
 
-  void act(const WeylWord& ww, RatWeight& gamma) const;
+  void act (const WeylWord& ww, RatWeight& gamma) const;
+  void act_inverse (RatWeight& gamma, const WeylWord& ww) const;
 
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
-  void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
+  void shifted_act (const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {
       for (auto i=ww.size(); i-->0; )
       { auto s=ww[i];
@@ -642,27 +643,27 @@ class RootDatum
       }
     }
 
-  Weight image_by(const WeylWord& ww,Weight lambda) const
+  Weight image_by (const WeylWord& ww,Weight lambda) const
   { act(ww,lambda); return lambda; }
   Weight shifted_image_by
     (const WeylWord& ww,Weight lambda, int_Vector shift) const
   { shifted_act(ww,lambda,shift); return lambda; }
 
-  Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
+  Weight image_by_inverse (Weight lambda,const WeylWord& ww) const
   { act_inverse(lambda,ww); return lambda; }
 
 #if 0
-  void dual_act_inverse(const WeylWord& ww,Coweight& ell) const
+  void dual_act_inverse (const WeylWord& ww,Coweight& ell) const
   {
     for (auto i=ww.size(); i-->0; )
       simple_coreflect(ell,ww[i]);
   }
-  Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
+  Weight dual_image_by_inverse (const WeylWord& ww,Weight lambda) const
   { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
   // here the word |ww| is traversed as in |act_inverse|, but coreflection used
-  void dual_act(Coweight& ell,const WeylWord& ww) const
+  void dual_act (Coweight& ell,const WeylWord& ww) const
     {
       for (auto i=0u; i<ww.size(); ++i)
 	simple_coreflect(ell,ww[i]);

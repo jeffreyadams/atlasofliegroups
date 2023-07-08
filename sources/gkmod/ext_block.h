@@ -171,6 +171,7 @@ class ext_block
     { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
+  const ext_gens& folded_generators() const { return orbits; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 

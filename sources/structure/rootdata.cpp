@@ -1167,8 +1167,10 @@ WeylWord RootDatum::to_dominant(Weight lambda) const
   return result; // and forget modified |lambda|
 }
 
-void RootDatum::act(const WeylWord& ww, RatWeight& gamma) const
+void RootDatum::act (const WeylWord& ww, RatWeight& gamma) const
 { act(ww,gamma.numerator()); }
+void RootDatum::act_inverse (RatWeight& gamma, const WeylWord& ww) const
+{ act_inverse(gamma.numerator(),ww); }
 
 /*
   The matrix represented by ww.
