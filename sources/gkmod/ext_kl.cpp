@@ -953,7 +953,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
-  ext_block::ext_block eblock(B,delta,nullptr);
+  ext_block::ext_block eblock(B,RatWeight(gamma.size()),delta,nullptr);
 
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);

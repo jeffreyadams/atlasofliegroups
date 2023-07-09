@@ -333,9 +333,11 @@ bool context::shift_flip
   return count%4!=0; // whether number of 2-element orbits (themselves) is odd
 }
 
-// auxiliary function to recognise local situation in |ext_block| construction
-// assumes precomputed |fixed_points|; block may be partial or complete
-// for partial blocks, some boundary elements may return an uncertain type
+/* Auxiliary function to recognise local situation in |ext_block| construction.
+   It assumes precomputed |fixed_points|; block may be partial or complete
+   for partial blocks, some boundary elements may return an uncertain type.
+   Note that being defined for |Block_base|, no linear algebra is used at all.
+*/
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link, const BitMap& fixed_points)
 {
@@ -587,8 +589,20 @@ ext_block::ext_block // for external twist; old style blocks
 
 } // |ext_block::ext_block|
 
+BlockElt shift_twisted
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta,
+   BlockElt z)
+{
+  const auto& kgb = block.context().kgb();
+  KGBElt x1 = kgb.twisted(block.x(z),delta);
+  RatWeight new_gl = delta*(block.gamma_lambda(z)+shift)-shift;
+  return block.lookup(x1,new_gl);
+}
+
 ext_block::ext_block
-  (const blocks::common_block& block, const WeightInvolution& delta,
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta,
    ext_KL_hash_Table* pol_hash)
   : parent(block)
   , orbits(block.fold_orbits(delta))
@@ -604,7 +618,7 @@ ext_block::ext_block
 
   // compute the delta-fixed points of the block
   for (BlockElt z=0; z<block.size(); ++z)
-    if (twisted(block,z,delta)==z)
+    if (shift_twisted(block,shift,delta,z)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);

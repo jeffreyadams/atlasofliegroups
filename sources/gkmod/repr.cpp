@@ -1597,7 +1597,7 @@ blocks::common_block& Rep_table::add_block_below
   auto& block = temp.emplace_back // construct block and get a reference
     (std::piecewise_construct,
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
-     (ctxt,elements), // arguments of full |common_block| constructor
+     (ctxt,elements), // arguments of partial |common_block| constructor
      std::tuple<const block_modifier&>(bm)
     ) .first;
 
@@ -2300,9 +2300,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0; block_modifier bm;
   auto& block = lookup(sr,y0,bm);
-  block.shift(bm.shift);
   auto& eblock = block.extended_block(bm,&poly_hash);
-  block.shift(-bm.shift);
 
   RankFlags singular=block.singular(bm,sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -2514,16 +2512,16 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     const bool flip_p = p.second;
     BlockElt index; block_modifier bm;
     auto& block = lookup(zi,index, bm);
-    const RatWeight& diff = bm.shift;
-    block.shift(diff); // adapt representatives for extended block construction
+
 #ifndef NDEBUG
     { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
       transform<true>(Weyl_group().word(bm.w),m);
-      assert(block.representative(index)==m);
+      auto rep = block.representative(index);
+      shift(bm.shift,rep);
+      assert(rep==m);
     }
 #endif
     auto& eblock = block.extended_block(bm,&poly_hash);
-    block.shift(-diff);
 
     RankFlags singular = block.singular(bm,zi.gamma());
     RankFlags singular_orbits; // flag singulars among orbits

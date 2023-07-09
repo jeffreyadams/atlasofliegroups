@@ -1293,21 +1293,23 @@ ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
-  return { *this, delta, nullptr };
+  RatWeight zero(delta.n_rows());
+  return { *this, zero, delta, nullptr };
 }
 
 struct common_block::ext_block_data
 {
+  RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
   WeightInvolution delta; // effective action of distinguished involution
   ext_block::ext_block eblock;
-  RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
   ext_block_data
     (const blocks::common_block& block,
+     const RatWeight& shift,
      const WeightInvolution& delta,
      ext_KL_hash_Table* pol_hash)
-  : delta(delta)
-  , eblock(block,delta,pol_hash)
-  , shift(block.root_datum().rank()) // at construction time, |shift| is zero
+  : shift(shift) // at construction time, |shift| is zero
+  , delta(delta)
+  , eblock(block,shift,delta,pol_hash)
   {}
 };
 
@@ -1315,7 +1317,6 @@ void common_block::shift (const RatWeight& diff)
 {
   if (diff.numerator().is_zero())
     return;
-  const auto& rc = context();
 #ifndef NDEBUG
   for (auto i : simply_integrals)
     assert(root_datum().coroot(i).dot(diff.numerator()) == 0);
@@ -1329,11 +1330,13 @@ void common_block::shift (const RatWeight& diff)
 }
 
 ext_block::ext_block& common_block::extended_block
-   (const WeightInvolution& delta, ext_KL_hash_Table* pol_hash)
+   (const RatWeight& shift, const WeightInvolution& delta,
+    ext_KL_hash_Table* pol_hash)
 {
   auto preceeds = [] (const ext_block_data& item, const RatWeight& value)
     { return item.shift<value; };
 
+  assert(delta==inner_class().distinguished());
   const RatWeight zero(root_datum().rank());
 
   auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
@@ -1342,15 +1345,15 @@ ext_block::ext_block& common_block::extended_block
       return it->eblock; // then identical extended block found, so use it
 
   // otherwise construct |ext_block| within an |ext_block_data|
-  extended.emplace(it,*this,delta,pol_hash);
+  extended.emplace(it,*this,shift,delta,pol_hash);
   return it->eblock; // return |ext_block| without |gamlam|
 } // |common_block::extended_block|
 
-// when this method is called, |shift| has been called, so twist works as-is
 ext_block::ext_block& common_block::extended_block
    (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash)
 {
-  return extended_block(pull_back(bm,inner_class().distinguished()),pol_hash);
+  return extended_block
+    (bm.shift,pull_back(bm,inner_class().distinguished()),pol_hash);
 }
 
 // provide access to our polynomial hash table, creating it if necessary
@@ -1445,8 +1448,8 @@ void common_block::swallow
     sub.shift(diff); // align the |sub| block to this extended block
     shift(block_shift); // and adapt our block to match, so |embed| remains valid
     assert(data.shift.is_zero());
-    auto& eblock =
-      extended_block(data.delta,ext_KL_pol_hash); // find/create |ext_block|
+    auto& eblock = // find/create |ext_block|
+      extended_block(data.shift,data.delta,ext_KL_pol_hash);
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
     // transfer computed KL data:
