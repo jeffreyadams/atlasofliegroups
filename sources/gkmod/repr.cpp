@@ -1636,7 +1636,7 @@ blocks::common_block& Rep_table::add_block_below
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block), embed,ww,sub.bm.simple_pi,
+    block.swallow(std::move(sub_block), sub.bm,embed,
 		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first); // iterator argument might be corrected
   }
@@ -1743,7 +1743,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block), embed,ww,sub.bm.simple_pi,
+    block.swallow(std::move(sub_block), sub.bm,embed,
 		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first);
   }

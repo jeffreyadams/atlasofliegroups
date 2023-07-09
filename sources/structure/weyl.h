@@ -445,6 +445,9 @@ public:
   // action as a matrix
   int_Matrix matrix (const RootDatum& rd, const WeylElt& w) const;
   int_Matrix inverse_matrix (const RootDatum& rd, const WeylElt& w) const;
+  int_Matrix conjugate
+    (const RootDatum& rd, const WeylElt& w, const int_Matrix& A) const
+  { return matrix(rd,w)*A*inverse_matrix(rd,w); }
 
   // Nondestructive version of |inverse_act| method
   Weight
