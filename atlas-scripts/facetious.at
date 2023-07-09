@@ -3739,7 +3739,10 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
     (Param->bool) tester, int test_count) = [string]:
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
-    then listZero = for w in LFVH[0] do Lvd.list[w[0]] od
+    then listZero = [ratvec]: if #LFVH = 0
+    	 	    	      then []
+    			      else for w in LFVH[0] do Lvd.list[w[0]] od
+			      fi
     then vdZero = to_vertex_data(listZero)
     then () = if facet_verbose
     	      then prints(); prints("start local_test with "
@@ -4307,7 +4310,10 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     then (Lvd,,,LFverts) = LFD
     then () = if test_verbose then prints("LFverts in local_test facet counts: ",
     	    for list in LFverts do #list od) fi
-    then vlistZero = for v0 in LFverts[0] do Lvd.list[v0[0]] od
+    then vlistZero = [ratvec]: if #LFverts > 0
+    	 	     	       then for v0 in LFverts[0] do Lvd.list[v0[0]] od
+		     	       else []
+			       fi
     {this is list of vertices appearing as 0-diml facets: smaller
      and differently ordered from Lvd.list}
     then LvdZero = to_vertex_data(vlistZero)
