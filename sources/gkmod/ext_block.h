@@ -136,10 +136,9 @@ class ext_block
   ext_KL_hash_Table* pol_hash; // hash table pointer for |KL_table| construction
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
  public:
-// two passive |const| fields, unused by any method but publically visible
+// a passive |const| field, unused by any method but publically visible
 
   const DynkinDiagram folded_diagram; // diagram defined on |orbits|
-  const WeightInvolution delta; // involution in coordinates
 
 // constructors and destructors
   ext_block(const InnerClass& G,
@@ -228,7 +227,9 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
-  bool tune_signs(const blocks::common_block& block);
+  bool tune_signs
+    (const blocks::common_block& block,
+     const RatWeight& shift, const WeightInvolution& delta);
 
 }; // |class ext_block|
 

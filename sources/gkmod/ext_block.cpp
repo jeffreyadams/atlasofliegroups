@@ -569,7 +569,6 @@ ext_block::ext_block // for external twist; old style blocks
   , pol_hash(nullptr)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
-  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -612,7 +611,6 @@ ext_block::ext_block
   , pol_hash(pol_hash)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
-  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -622,7 +620,7 @@ ext_block::ext_block
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
-  if (not tune_signs(block))
+  if (not tune_signs(block,shift,delta))
     throw std::runtime_error("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |common_block|
@@ -1642,14 +1640,16 @@ DescValue star (const repr::Ext_rep_context& ctxt,
   return result;
 } // |star|
 
-bool ext_block::tune_signs(const blocks::common_block& block)
+bool ext_block::tune_signs
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
   const RootNbrList simply_ints = block.simply_ints();
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z));
+    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z)+shift);
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       RootNbr n_alpha = simply_ints[p.s0];
@@ -1683,7 +1683,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default
+	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)+shift); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1699,7 +1699,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m!=UndefBlock) // don't fall off the edge of a partial block
 	  {
 	    BlockElt Cz = this->z(m); // corresponding element of block
-	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	    assert(same_standard_reps(q0,F));
 	    if (not same_sign(q0,F))
 	      flip_edge(s,n,m);
@@ -1707,7 +1707,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
 	  {
 	    BlockElt cz = this->z(m);
-	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
+	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz)+shift);
 	    assert(same_standard_reps(q1,Fc));
 	    if (not same_sign(q1,Fc))
 	      flip_edge(s,n,m);
@@ -1722,7 +1722,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1740,7 +1740,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1751,7 +1751,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz = this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1769,7 +1769,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1780,7 +1780,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz= this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1805,7 +1805,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
     }
 #endif
   return true; // report success if we get here
-} // |tune_signs|
+} // |ext_block::tune_signs|
 
 
 // find |n| such that |z(n)>=zz| (for |zz==parent.size()| returns |n==size()|)
