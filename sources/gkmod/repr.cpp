@@ -319,12 +319,11 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
     make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
 }
 
-StandardReprMod& Rep_context::shift
+void Rep_context::shift
   (const RatWeight& shift, StandardReprMod& srm) const
 {
   srm.gamlam += shift;
   involution_table().real_unique(kgb().inv_nr(srm.x()),srm.gamlam);
-  return srm;
 }
 
 // |z| standard means (weakly) dominant on the (simply-)imaginary roots
@@ -1573,6 +1572,7 @@ blocks::common_block& Rep_table::add_block_below
 	const locator& loc = place[h].first->second; // attitude of |sub|
 	make_relative_to(loc,sub->representative(place[h].second),
 			 sub_to_new,elt);
+	assert(sub->is_integral_orthogonal(sub_to_new.shift));
 	sub_blocks.emplace_back(sub,h,sub_to_new);
       }
     }
@@ -1582,10 +1582,10 @@ blocks::common_block& Rep_table::add_block_below
   size_t limit = pool.size(); // limit of generated Bruhat interval
   for (auto sub : sub_blocks)
   {
-    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
     auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
+      shift(sub.bm.shift,rep);
       transform<false>(ww,rep); // transform towards our new block
       hash.match(rep); // if new, add it to |pool|, beyond the |limit| marker
     }
@@ -1624,12 +1624,13 @@ blocks::common_block& Rep_table::add_block_below
 
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    auto& sub_block = *sub.bp; // already shifted, so ignore |sub.shift|
+    auto& sub_block = *sub.bp; // already shifted, so ignore |sub.bm.shift|
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       auto elt = sub_block.representative(z);
+      shift(sub.bm.shift,elt);
       transform<false>(ww,elt);
       const BlockElt z_rel = block.lookup(elt);
       assert(z_rel!=UndefBlock);
@@ -1730,13 +1731,13 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   // swallow |embeddings|, and remove them from |block_list|
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
     auto ww = Weyl_group().word(sub.bm.w);
     auto& sub_block = *sub.bp;
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       StandardReprMod rep = sub.bp->representative(z);
+      shift(sub.bm.shift,rep);
       transform<false>(ww,rep); // transform towards our new block
       const BlockElt z_rel = block.lookup(rep);
       assert(z_rel!=UndefBlock); // our block is full, lookup should work

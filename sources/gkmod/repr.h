@@ -303,9 +303,9 @@ class Rep_context
 
   StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
-  StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
+  void shift(const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
-  { return shift(diff,srm); } // perform |shift| on a copy and return it
+  { shift(diff,srm); return srm; } // perform |shift| on a copy and return it
 
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }

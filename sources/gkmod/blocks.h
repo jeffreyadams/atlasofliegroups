@@ -411,6 +411,9 @@ class common_block : public Block_base
   RootNbrList simply_ints(const repr::block_modifier& bm) const;
   ext_gens fold_orbits (const WeightInvolution& delta) const;
 
+#ifndef NDEBUG
+  bool is_integral_orthogonal(const RatWeight& shift) const;
+#endif
   // extension for custom built |common_block|, with "arbitrary" involution
   ext_block::ext_block extended_block(const WeightInvolution& delta) const;
 

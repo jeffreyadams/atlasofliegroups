@@ -697,25 +697,6 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
-// conjugate |delta| from modified block (from ours by |bm|) to our block
-WeightInvolution common_block::pull_back
-    ( const repr::block_modifier& bm, const WeightInvolution& delta) const
-{
-  const auto& W = context().Weyl_group();
-  const auto& rd = context().root_datum();
-  return W.inverse_matrix(rd,bm.w)*delta*W.matrix(rd,bm.w);
-}
-
-// our from our block forward through |bm|
-#if 0
-WeightInvolution common_block::push_forward
-    ( const repr::block_modifier& bm, const WeightInvolution& delta) const
-{
-  const auto& W = context().Weyl_group();
-  const auto& rd = context().root_datum();
-  return W.matrix(rd,bm.w)*delta*W.inverse_matrix(rd,bm.w);
-}
-#endif
 
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
@@ -1301,6 +1282,17 @@ RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
 { return rootdata::fold_orbits(root_datum(),simply_integrals,delta); }
 
+#ifndef NDEBUG
+bool common_block::is_integral_orthogonal(const RatWeight& shift) const
+{
+  const auto& rd = root_datum();
+  for (RootNbr alpha : simply_integrals)
+    if (rd.coroot(alpha).dot(shift.numerator())!=0)
+      return false;
+  return true;
+}
+#endif
+
 // build extended block for custom built |common_block|, given an involution
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
@@ -1325,6 +1317,7 @@ struct common_block::ext_block_data
   {}
 };
 
+// the following method is only used from built-ins to modify printed output
 void common_block::shift (const RatWeight& diff)
 {
   if (diff.numerator().is_zero())
@@ -1353,10 +1346,11 @@ ext_block::ext_block& common_block::extended_block
    (const RatWeight& shift, const WeightInvolution& delta,
     ext_KL_hash_Table* pol_hash)
 {
+  assert(is_integral_orthogonal(shift));
   auto preceeds = [] (const ext_block_data& item, const RatWeight& value)
     { return item.shift<value; };
 
-  assert(delta==inner_class().distinguished());
+  // assert(delta==inner_class().distinguished());
   const RatWeight zero(root_datum().rank());
 
   auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
@@ -1372,8 +1366,7 @@ ext_block::ext_block& common_block::extended_block
 ext_block::ext_block& common_block::extended_block
    (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash)
 {
-  return extended_block
-    (bm.shift,pull_back(bm,inner_class().distinguished()),pol_hash);
+  return extended_block(bm.shift,inner_class().distinguished(),pol_hash);
 }
 
 // provide access to our polynomial hash table, creating it if necessary
@@ -1408,9 +1401,6 @@ void check_sub_block
 	assert(embed[sub.cross(s,z)]==block.cross(simple_pi[s],embed[z]));
   }
 }
-
-bool is_fixed(const RatWeight gamma, const WeightInvolution& delta)
-{ return delta*gamma.numerator()==gamma.numerator(); }
 #endif
 
 Permutation induced
@@ -1443,9 +1433,6 @@ void common_block::swallow
 #ifndef NDEBUG
   check_sub_block(sub,embed,bm.simple_pi,*this);
 #endif
-  const auto& rd = rc.root_datum();
-  const auto& W = rc.Weyl_group();
-  
   BruhatOrder&& Bruhat = std::move(sub).Bruhat_order(); // generate for pilfering
   for (BlockElt z=0; z<sub.size(); ++z)
   {
@@ -1464,16 +1451,20 @@ void common_block::swallow
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
 
+#if 0
+  const auto& rd = root_datum();
+  const auto& W = rc.Weyl_group();
+
   for (auto& data : sub.extended)
   {
     auto& sub_eblock = data.eblock;
     RatWeight block_shift = data.shift; // take a copy to be modified
-    assert(is_fixed(block_shift,data.delta));
-    auto delta_prime = W.conjugate(rd,bm.w,data.delta);
-    root_datum().act(W.word(bm.w),block_shift); // make shift in "our" attitude
-    assert(is_fixed(block_shift,delta_prime));
-    assert(is_fixed(bm.shift,delta_prime));
+    assert(sub.is_integral_orthogonal(block_shift));
+    assert(sub.is_integral_orthogonal(bm.shift));
     block_shift += bm.shift;
+    auto delta_prime = W.conjugate(rd,bm.w,data.delta);
+    rd.act(W.word(bm.w),block_shift); // make shift in "our" attitude
+    assert(is_integral_orthogonal(block_shift));
     auto& eblock = // find/create |ext_block|
       extended_block(block_shift,delta_prime,ext_KL_pol_hash);
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
@@ -1484,6 +1475,7 @@ void common_block::swallow
 			   sub_eblock.folded_generators(),
 			   eblock.folded_generators()));
   }
+#endif
 } // |common_block::swallow|
 
 void common_block::set_Bruhat
