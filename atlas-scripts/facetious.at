@@ -3739,11 +3739,11 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
     (Param->bool) tester, int test_count) = [string]:
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
-    then listZero = [ratvec]: if #LFVH = 0
+    { then listZero = [ratvec]: if #LFVH = 0
     	 	    	      then []
     			      else for w in LFVH[0] do Lvd.list[w[0]] od
 			      fi
-    then vdZero = to_vertex_data(listZero)
+    then vdZero = to_vertex_data(listZero) }
     then () = if facet_verbose
     	      then prints(); prints("start local_test with "
 	      	   ,NumClasses," equivalence classes of facets")
