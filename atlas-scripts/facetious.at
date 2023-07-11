@@ -2601,7 +2601,7 @@ set localFD_KHashbt \
     let G = x.real_form
     then (Affd, M, j0) = cofolded(G)
     then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-#LFKH from #LFKH do
-    	 [FacetVertsHash]: [] od)
+    	 [FacetVertsKHash]: [] od)
     then () = for dim:t-b from b
     	      do let facets = [FacetVerts]: facets_fundamental(Affd,dim)
     	      	 then () = for FV@k in facets
@@ -2684,7 +2684,7 @@ set localFD_KHashbt \
     let G = x.real_form, b = #LFKH
     then (Affd,M,j0) = cofolded(G)
     then LFKHnew = [[FacetVertsKHash]]: LFKH##(for dim:t-b from b do
-    	 [FacetVertsHash]: [] od)
+    	 [FacetVertsKHash]: [] od)
     then hashes = for d:#LFKHnew do make_vec_hash(for v in LFKHnew[d] do v[:d+1] od, hash_code@(vec,int)) od
     {use the hashes to avoid repetitions in the facet lists}
     then () = for dim:t-b from b
@@ -4402,6 +4402,7 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,newStatuses,tester,test_count)
 
+{depth needs to be at least 1}
 set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     int depth) = [string]:
     let G = x.real_form
