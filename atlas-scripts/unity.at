@@ -90,11 +90,6 @@ set is_unitary_test(Param p, int N) = bool:
     is_unitary_to_ht(p, N) and
     is_unitary(p)
 
-set is_unitary_test(Param p, int N) = bool:
-    is_pos_on_LKTs(p) and
-    is_unitary_to_ht(p, N) and
-    is_unitary(p)
-
 set is_unitary_test(Param p, int N, KTypePol_hash cert_hash) = bool:
     is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, N, cert_hash) and

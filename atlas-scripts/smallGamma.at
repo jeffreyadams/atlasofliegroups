@@ -81,14 +81,21 @@ gamma0 = w*gamma}
 set gamma0s(RootDatum rd, ratvec gamma) = [(ratvec,WeylElt)]:
     for w in ws(rd,gamma) do (inverse(w)*gamma,w) od
 
-{integral weights to add to gamma0s to lands in fund alcove: if
+{integral weights to add to gamma0s to land in fund alcove: if
 (tau,gamma0,w) is in result, then gamma0+tau is in fundamental alcove}
 set tau0s(RootDatum rd, ratvec gamma) = [(ratvec,ratvec,WeylElt)]:
     for (gamma0,w) in gamma0s(rd,gamma)
-    do (-sum(rd.rank, for av@j in rd.simple_coroots
+    do let INT = [int]: for av@j in rd.simple_coroots
+	       	 do if is_integer(av*gamma0) then [j] else []
+	 	    fi
+	 	 od.##
+       then tau0 = -sum(rd.rank, for av@j in rd.simple_coroots
 	   	      do floor(av*gamma0)*rd.fundamental_weights[j]
-		      od), gamma0,w)
-    od
+		      od)
+       in for S in power_set(INT)
+       	  do (tau0 + sum(rd.rank,for k in S do rd.fundamental_weights[k] od), gamma0, w)
+	  od
+    od.##
 
 { if result is (tau,w), then tau is a weight, and gamma+w*tau
 is in w(fund alc)}

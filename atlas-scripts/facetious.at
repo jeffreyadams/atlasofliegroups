@@ -718,9 +718,13 @@ set from_fundamental_alcove(RootDatum rd, ratvec gamma) =
     (AffineCoWeylElt,ratvec):
     let tau = alcove_root_vertex(rd,gamma)
     then (w,gamma0TIMESDEN) = from_dominant(rd,gamma.numer - gamma.denom*tau)
+    then gamma0 = gamma0TIMESDEN/gamma.denom
+    then irdw = integrality_datum(rd,gamma0)
+    then (x3,) = from_dominant(irdw, inverse(w)*rd.two_rho)
+    then (w3,) = from_dominant(rd, w*(x3*(rd.two_rho))) {this is w*x3}
     in
     {assert (gamma=w*gamma0 + tau,"Bad affine!");}
-    ((tau,w),gamma0TIMESDEN/gamma.denom)
+    ((tau + w*ratvec_as_vec(gamma0 - x3*gamma0), w3), gamma0)
 
 {.restored from 3/30/22 version for use in computing bigger facets with
 same unitarity status.}
@@ -926,19 +930,27 @@ set beta2(RootDatum rd, ratvec gamma) = (vec,vec):
     then iw = inverse(w)
     then irdw = integrality_datum(rd,gamma2)
     {this integrality datum is the nice restricted type!}
-    then (x3,) = from_dominant(irdw, iw*rd.two_rho)
-{means x3 w^{-1} * rho is dominant for irdw.}
-{x3 is w^-1 x^{-1} w}
-    then bup = w*b + ratvec_as_vec(w*(x3*(iw*gamma2))-gamma2)
-{so gamma + bup is x^{-1}(gamma+w*b), in x^{-1}w(fund alcove + 2rho)}
-    in (bup, -inverse(x3)*(iw*bup) )
+    then bup = -b + w*rd.two_rho
+{so gamma + bup is w*(gamma2 + 2rho), in w(fund alcove + 2rho)}
+    in (bup, -(iw*bup) )
 
-{imitates library FPP_w_shifts, allowing a single root #j0 that can be up to 2 on FPP}
+set niceCF2(Param p) = ParamPol:
+    let gamma = p.infinitesimal_character, rd = p.root_datum, (x,lr,nu) = %p
+    then (bup,bdown) = beta2(rd,gamma)
+    in translate_param_by(character_formula( 1*parameter(x, lr+rd.rho
+    + bup, nu+bup)), bdown)
+    
+{imitates library FPP_w_shifts, allowing a single root #j0 that can be
+up to 2 on FPP}
+{need to ensure that w*gamma is integrally dominant!}
 set FPP_w_shifts(RootDatum Affd, ratvec gamma, int j0) = [(WeylElt,[vec])]:
     if j0=-1
     then FPP_w_shifts(Affd,gamma)
-    else for w in affine_orbit_ws(Affd,gamma)
-    	 do (w, FPPtauRoots{Fast}(Affd,w*gamma,j0))
+    else let irdw = integrality_datum(Affd,gamma)
+    	 in for w in affine_orbit_ws(Affd,gamma)
+    	 do let (x3,) = from_dominant(irdw,inverse(w)*(Affd.two_rho))
+	    then (wprime,) = from_dominant(Affd, w*(inverse(x3)*Affd.two_rho))
+	 in (wprime, FPPtauRoots{Fast}(Affd,wprime*gamma,j0))
 	 od{.no_reps}
     fi
 
