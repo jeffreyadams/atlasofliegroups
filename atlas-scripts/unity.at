@@ -114,6 +114,25 @@ set is_unitary_test(Param p, int N1, int N2, int N3) = bool:
     is_unitary_to_ht(p, N3) and
     is_unitary(p)
 
+set is_unitary_test(Param p, [int] Ns) = bool:
+    { is_pos_on_LKTs(p) and }
+    for N in Ns
+    do if not is_unitary_to_ht(p,N)
+       then return false
+       fi
+    od;
+    is_unitary(p)
+
+set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
+    { is_pos_on_LKTs(p) and }
+    for N in Ns
+    do if not is_unitary_to_ht(p,N)
+       then return false
+       fi
+    od;
+    {all(for N in Ns do is_unitary_to_ht(p,N,cert_hash) od) and}
+    is_unitary(p,cert_hash)
+
 { these commands are useful for speed tests over bunches of parameters
 
 set G4 =F4_s
