@@ -2470,6 +2470,12 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 
 const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
+  static unsigned level=0;
+  for (unsigned i=0; i<level; ++i)
+    std::cout << ' ';
+  print_stdrep(std::cout,z,*this) << '\n';
+  ++ level;
+
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
@@ -2493,7 +2499,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-      return pool[h].twisted_def_formula();
+      return --level, pool[h].twisted_def_formula();
   }
 
   K_type_poly result { std::less<K_type_nr>() };
@@ -2545,6 +2551,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
   const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
 
+  --level;
   return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|

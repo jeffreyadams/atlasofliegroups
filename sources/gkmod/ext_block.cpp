@@ -1939,7 +1939,9 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
       eblock_embed.push_back(element(embed[sub.z(x)]));
       assert(eblock_embed.back()!=size()); // check that lookup succeeded
     }
+#ifndef NDEBUG
     check_descents(sub.KL_ptr->aux,eblock_embed,simple_pi,KL_ptr->aux);
+#endif
     KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed);
   }
 }

@@ -2,6 +2,12 @@
 <std_decs.at
 <groups.at
 
+G:=GL(6,R)
+
+set L=[0,1,2,3,6,7,12,19,20,24]
+
+set go () = for i in L do param(KGB(G,i),null(6),rho(G)).twisted_full_deform od
+
 set fund_barys (RootDatum rd, int dim) = [ratvec]:
    let n=rd.semisimple_rank, d1=dim+1, lb = simple_coroot_labels(rd)
    then vert = [ratvec]:

@@ -1351,10 +1351,9 @@ ext_block::ext_block& common_block::extended_block
     { return item.shift<value; };
 
   // assert(delta==inner_class().distinguished());
-  const RatWeight zero(root_datum().rank());
 
-  auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
-  for ( ; it!=extended.end() and it->shift.is_zero(); ++it)
+  auto it = std::lower_bound(extended.begin(),extended.end(),shift,preceeds);
+  for ( ; it!=extended.end() and it->shift==shift; ++it)
     if (it->delta==delta)
       return it->eblock; // then identical extended block found, so use it
 
