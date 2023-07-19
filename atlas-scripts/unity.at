@@ -126,7 +126,7 @@ set is_unitary_test(Param p, [int] Ns) = bool:
 set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
     { is_pos_on_LKTs(p) and }
     for N in Ns
-    do if not is_unitary_to_ht(p,N)
+    do if not is_unitary_to_ht(p,N, cert_hash)
        then return false
        fi
     od;
