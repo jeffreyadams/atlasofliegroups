@@ -1543,7 +1543,10 @@ blocks::common_block& Rep_table::add_block_below
   (const StandardReprMod& srm, BitMap* subset)
 {
   unsigned int int_sys_nr; block_modifier bm;
-  auto rp = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
+#ifndef NDEBUG
+  auto rp =
+#endif
+    Reduced_param::reduce(*this,srm,int_sys_nr,bm); // set |int_sys| and |bm|
   assert // we are called to add a block for nothing like what is known before
     (reduced_hash.find(rp)==reduced_hash.empty);
 
@@ -1689,8 +1692,6 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   unsigned int int_sys_nr; block_modifier bm;
   auto rp_srm = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
-  assert // call us only to add a block for nothing like what is known before
-    (reduced_hash.find(rp_srm)==reduced_hash.empty);
 
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<located_block> temp; // must use temporary singleton
@@ -2054,7 +2055,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     value_at_minus_1.push_back(val);
   }
 
-  const RankFlags singular = block.singular(gamma); // singular simple coroots
+  const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
   for (auto elt: retained) // don't increment |it| here
     if (block.survives(elt,singular))
