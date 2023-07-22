@@ -322,20 +322,24 @@ Weight Rep_context::theta_1_preimage
   }
 
   return codec.theta_1_image_basis * (codec.out * eval_v);
-}
+} // |theta_1_preimage|
 
-// offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
+// difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
+// for representatives of |srm0| and |srm1| with identical integral evaluations
 RatWeight Rep_context::offset
   (const StandardReprMod& srm0, const StandardReprMod& srm1) const
 {
   const auto& gamlam = srm0.gamma_lambda(); // will also define integral system
   RatWeight result = gamlam - srm1.gamma_lambda();
-  auto& ic = inner_class();
-  InvolutionNbr inv = kgb().inv_nr(srm0.x());
-  unsigned int int_sys_nr;
-  const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
-  result -= theta_1_preimage(result,codec);
-  assert((codec.coroots_matrix*result).is_zero());
+  if (not result.is_zero()) // optimize out a fairly frequent case
+  {
+    auto& ic = inner_class();
+    InvolutionNbr inv = kgb().inv_nr(srm0.x());
+    unsigned int int_sys_nr;
+    const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
+    result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
+    assert((codec.coroots_matrix*result).is_zero()); // check that it was done
+  }
   return result;
 }
 
