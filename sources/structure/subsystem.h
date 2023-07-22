@@ -42,7 +42,6 @@ namespace subsystem {
   in effect and roots of the subsystem are also roots of the parent system.
 */
 
-// A subsystem on the dual side of a given root datum
 class SubSystem : public RootSystem // new system, subsystem of parent
 {
   const RootDatum& rd; // parent root datum
@@ -157,7 +156,7 @@ class SubSystemWithGroup : public SubSystem
 
 struct integral_datum_entry // hashable (integral) subset of positive roots
 {
-  RootNbrSet posroots; // as set of posroot indices, so starting at 0
+  RootNbrSet posroots; // all integrals, as set of posroot indices starting at 0
 
   integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
 

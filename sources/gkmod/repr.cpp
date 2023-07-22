@@ -299,7 +299,8 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
-// find element in |(1-theta)X^*| with same evaluation on all integral coroots
+// fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
+// uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
 Weight Rep_context::theta_1_preimage
   (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
   const

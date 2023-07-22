@@ -27,7 +27,7 @@
 #include "subsystem.h"  // containment of |integral_datum_item|
 #include "poset.h"	// containment of Cartan poset
 #include "rootdata.h"	// containment of root datum and its dual
-#include "tits.h"	// containment of Tits group and its dual
+#include "tits.h"	// containment of TitsGroup (and so TwistedWeylGroup)
 
 namespace atlas {
 

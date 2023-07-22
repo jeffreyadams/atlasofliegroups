@@ -31,7 +31,7 @@
 #include "lattice.h"
 #include "weyl.h"
 #include "kgb.h"
-
+#include "alcoves.h"
 
 /*****************************************************************************
 

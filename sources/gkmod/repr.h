@@ -294,7 +294,7 @@ class Rep_context
 
   // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
   RatWeight offset
-    (const StandardReprMod& sr0, const StandardReprMod& srm1) const;
+    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
   RatWeight offset (const StandardRepr& sr, const StandardReprMod& srm) const
   { return offset(StandardReprMod::mod_reduce(*this,sr),srm); }
   // auxiliary for |offset|

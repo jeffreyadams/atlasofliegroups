@@ -918,11 +918,11 @@ sl_list<WeylElt> basic_orbit_ws
    also computes, per descent set, that (shift) element of the root lattice.
  */
 
-// auxiliary, facilitates generating alcoves/facets in the Fund.parallelepiped (FPP)
+// auxiliary, helps generating alcoves/facets in the Fund.parallelepiped (FPP)
 class center_classifier // center is that of simply connected group for type
 { // flag sets of fundamental weights whose sum is in the root lattice
   // "shift" is sum of set of fund. weights; we group them by root lattice coset
-  // numerator of fractional part (in adjoint coordinates) of sum represents coset
+  // numerator of fractional part (adjoint coordinates) of sum represents coset
 
   using byte_vec = matrix::Vector<unsigned char>; // adjoint crd fractional part
   using shift_class = sl_list<RankFlags>; // list of shifts in same root coset
