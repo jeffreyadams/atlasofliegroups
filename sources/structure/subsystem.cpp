@@ -177,9 +177,6 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }
 
-ext_gens SubSystem::fold_orbits (const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(pre_root_datum(),delta); }
-
 RankFlags SubSystem::singular_generators(const RatWeight& gamma) const
 {
   const Ratvec_Numer_t& v=gamma.numerator();

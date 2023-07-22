@@ -128,8 +128,7 @@ class SubSystem : public RootSystem // new system, subsystem of parent
     void simple_coreflect(matrix::Vector<C>& v,weyl::Generator s,int d=0) const
   { parent_datum().coreflect(v,parent_nr_simple(s),d); }
 
-  ext_gens fold_orbits (const WeightInvolution& delta) const; // as for |srd|
-  RankFlags singular_generators(const RatWeight& gamma) const; // as for |srd|
+  RankFlags singular_generators(const RatWeight& gamma) const;
 
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
