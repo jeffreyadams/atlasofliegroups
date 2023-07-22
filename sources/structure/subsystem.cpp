@@ -212,12 +212,12 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 
 integral_datum_item::integral_datum_item
     (InnerClass& ic,const RootNbrSet& int_poscoroots)
-      : integral(new SubSystem
+      : int_sys_p(new SubSystem
 		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
-  , simple_coroots(integral->rank(),ic.rank())
+  , simple_coroots(int_sys_p->rank(),ic.rank())
 {
   for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
-    simple_coroots.set_row(i,integral->simple_coroot(i));
+    simple_coroots.set_row(i,int_sys_p->simple_coroot(i));
 }
 
 integral_datum_item::codec::codec

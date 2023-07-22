@@ -174,7 +174,7 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 class integral_datum_item
 {
   std::unique_ptr<SubSystem> // pointer level avoids |SubSystem| being moved
-    integral; // references full root datum, presents integral datum
+    int_sys_p; // references full root datum, presents integral datum
   int_Matrix simple_coroots; // convenience, for creating |codec| values
 
  public:
@@ -198,7 +198,7 @@ class integral_datum_item
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&&)=default; // move, never copy
 
-  const SubSystem& int_system() const { return *integral; }
+  const SubSystem& int_system() const { return *int_sys_p; }
   codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
   { return { ic,isys,inv,simple_coroots }; }
   const int_Matrix& coroots_matrix() const { return simple_coroots; }
