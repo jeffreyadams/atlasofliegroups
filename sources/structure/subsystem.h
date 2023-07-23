@@ -173,6 +173,7 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 
 class integral_datum_item
 {
+  const WeylGroup& W;
   std::unique_ptr<SubSystem> // pointer level avoids |SubSystem| being moved
     int_sys_p; // references full root datum, presents integral datum
   int_Matrix simple_coroots; // convenience, for creating |codec| values
@@ -196,12 +197,26 @@ class integral_datum_item
   }; // |struct integral_datum_item::codec|
 
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
-  integral_datum_item(integral_datum_item&&)=default; // move, never copy
+  integral_datum_item(integral_datum_item&& other) // move, never copy
+    : W(other.W)
+    , int_sys_p(std::move(other.int_sys_p))
+    , simple_coroots(std::move(other.simple_coroots))
+  {}
 
   const SubSystem& int_system() const { return *int_sys_p; }
+  SubSystem int_system(const WeylElt& w) const;
+
+  // root indices of images by |w| of integrally-simple coroots; must be positive
+  sl_list<RootNbr> image_simples(const WeylElt& w) const;
+
+  const int_Matrix& coroots_matrix() const {  return simple_coroots; }
+  int_Matrix coroots_matrix(const WeylElt& w) const;
+
   codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
   { return { ic,isys,inv,simple_coroots }; }
-  const int_Matrix& coroots_matrix() const { return simple_coroots; }
+  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv,
+	     const WeylElt& w) const
+  { return { ic,isys,inv, coroots_matrix(w) }; }
 
 }; // |class integral_datum_item|
 

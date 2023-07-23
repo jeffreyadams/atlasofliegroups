@@ -188,6 +188,8 @@ class Rep_context
   const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
   { return G.twistedWeylGroup(); }
+  const WeylGroup& Weyl_group() const
+  { return twisted_Weyl_group().weylGroup(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -572,6 +574,8 @@ class common_context
 {
   const Rep_context& rep_con;
   unsigned int int_sys_nr;
+  WeylElt w; // element applied to bare (fundamental alcove) integral system
+  const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
   const SubSystem& sub; // embeds |integr_datum| into parent root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
@@ -583,6 +587,8 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
+  unsigned int base_integral_nr() const { return int_sys_nr; }
+  WeylElt integral_attitude() const { return w; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|

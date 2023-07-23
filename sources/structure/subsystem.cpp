@@ -211,13 +211,45 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 }
 
 integral_datum_item::integral_datum_item
-    (InnerClass& ic,const RootNbrSet& int_poscoroots)
-      : int_sys_p(new SubSystem
+  (InnerClass& ic,const RootNbrSet& int_poscoroots)
+    : W(ic.weylGroup())
+    , int_sys_p(new SubSystem
 		 {ic.rootDatum(),ic.rootDatum().pos_simples(int_poscoroots)})
-  , simple_coroots(int_sys_p->rank(),ic.rank())
+    , simple_coroots(int_sys_p->rank(),ic.rank())
 {
   for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
     simple_coroots.set_row(i,int_sys_p->simple_coroot(i));
+}
+
+
+SubSystem integral_datum_item::int_system(const WeylElt& w) const
+{ return SubSystem { int_sys_p->parent_datum(), image_simples(w) }; }
+
+sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
+{
+  const auto& rd = int_sys_p->parent_datum();
+  WeylWord ww = W.word(w);
+  sl_list<RootNbr> result;
+  for (weyl::Generator s=0; s<int_sys_p->rank(); ++s)
+  {
+    RootNbr image = rd.permuted_root(ww,int_sys_p->parent_nr_simple(s));
+    assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
+    result.push_back(image);
+  }
+  result.sort(); // force |integrality_datum| numbering
+  return result;
+}
+
+
+int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
+{
+  const auto& rd = int_sys_p->parent_datum();
+  auto integral_simples = image_simples(w);
+  int_Matrix result(integral_simples.size(), rd.rank());
+  unsigned i=0;
+  for (const auto& alpha : integral_simples)
+    result.set_row(i++,rd.coroot(alpha));
+  return result;
 }
 
 integral_datum_item::codec::codec

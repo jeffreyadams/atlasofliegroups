@@ -2404,6 +2404,8 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
+, w()
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr))
 , sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
 {} // |common_context::common_context|
 
