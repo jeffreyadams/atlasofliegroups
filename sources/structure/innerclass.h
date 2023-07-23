@@ -484,8 +484,9 @@ class InnerClass
 
   const subsystem::integral_datum_item::codec integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
-  { auto& item = int_item(gamma,int_sys_nr); // this ensures |int_sys_nr| is set
-    return item.data(*this,int_sys_nr,inv);
+  { WeylElt w;
+    auto& item = int_item(gamma,int_sys_nr,w); // sets |int_sys_nr| and |w|
+    return item.data(*this,int_sys_nr,inv,w);
   }
 
   // evaluation matrix on integral coroots
