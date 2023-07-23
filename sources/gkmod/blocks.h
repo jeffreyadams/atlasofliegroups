@@ -395,6 +395,7 @@ class common_block : public Block_base
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
     (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
 
+  RootNbrList int_simples() const; // simply integral roots
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // unshifted, unshared extended block, but with "arbitrary" involution

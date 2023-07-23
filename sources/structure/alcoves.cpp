@@ -210,9 +210,7 @@ WeylWord from_fundamental_alcove (const RootSystem& rs, RootNbrSet& walls)
 #else // just make it so without check
   walls = rs.fundamental_alcove_walls();
 #endif
-/*
-
-   While |list| gives (in its |second| components) the non-simple reflections
+/* While |list| gives (in its |second| components) the non-simple reflections
    that were applied by |to_positive_system| to the elements of |wall_vec| in
    their original order, we need to go from the fundamental alcove to our
    original alcove by _simple_ reflections. Despite of the opposite direction,

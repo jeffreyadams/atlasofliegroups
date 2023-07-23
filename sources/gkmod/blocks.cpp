@@ -697,6 +697,13 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
+RootNbrList common_block::int_simples() const // simply integral roots
+{ RootNbrList result(integral_sys.rank());
+  for (unsigned s=0; s<result.size(); ++s)
+    result[s] = integral_sys.parent_nr_simple(s);
+  return result;
+}
+
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
   RankFlags result;
@@ -1257,9 +1264,7 @@ repr::StandardRepr common_block::sr
 }
 
 ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
-{
-  return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
-}
+{ return rootdata::fold_orbits(root_datum(),int_simples(),delta); }
 
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
