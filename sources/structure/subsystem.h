@@ -186,7 +186,7 @@ class integral_datum_item
 */
   struct codec
   {
-    const int_Matrix& coroots_matrix;
+    const int_Matrix coroots_matrix;
     const int_Matrix& theta_1_image_basis; // basis of $N=\Im(\theta-1)$
     std::vector<int> diagonal; // inv.factors for $N$ inside $-1$ eigenlattice
     int_Matrix in, out;
