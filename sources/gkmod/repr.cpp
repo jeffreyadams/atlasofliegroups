@@ -85,7 +85,7 @@ Reduced_param::Reduced_param
     assert(entry%gl.denominator()==0);
     entry /= gl.denominator();
   }
-  const auto codec = ic.int_item(int_sys_nr).data(ic,int_sys_nr,kgb.inv_nr(x));
+  const auto codec = ic.int_item(int_sys_nr).data(ic,kgb.inv_nr(x));
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
     int_Vector(eval.begin(),eval.end());
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -2406,7 +2406,7 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 , int_sys_nr()
 , w()
 , id_it(rc.inner_class().int_item(gamma,int_sys_nr))
-, sub(rc.inner_class().int_item(gamma,int_sys_nr).int_system())
+, sub(id_it.int_system())
 {} // |common_context::common_context|
 
 

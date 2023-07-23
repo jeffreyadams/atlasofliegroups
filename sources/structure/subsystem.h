@@ -192,8 +192,7 @@ class integral_datum_item
     int_Matrix in, out;
       // see above; |in*coroots_matrix*theta_1_image_basis*out == diagonal|
     codec (const InnerClass& ic,
-	   unsigned int isys, InvolutionNbr inv,
-	   const int_Matrix& int_simp_coroots);
+	   InvolutionNbr inv, const int_Matrix& int_simp_coroots);
   }; // |struct integral_datum_item::codec|
 
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
@@ -212,11 +211,10 @@ class integral_datum_item
   const int_Matrix& coroots_matrix() const {  return simple_coroots; }
   int_Matrix coroots_matrix(const WeylElt& w) const;
 
-  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv) const
-  { return { ic,isys,inv,simple_coroots }; }
-  codec data(const InnerClass& ic, unsigned int isys, InvolutionNbr inv,
-	     const WeylElt& w) const
-  { return { ic,isys,inv, coroots_matrix(w) }; }
+  codec data(const InnerClass& ic, InvolutionNbr inv) const
+  { return { ic,inv,simple_coroots }; }
+  codec data(const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const
+  { return { ic,inv, coroots_matrix(w) }; }
 
 }; // |class integral_datum_item|
 

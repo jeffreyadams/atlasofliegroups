@@ -486,7 +486,7 @@ class InnerClass
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
   { WeylElt w;
     auto& item = int_item(gamma,int_sys_nr,w); // sets |int_sys_nr| and |w|
-    return item.data(*this,int_sys_nr,inv,w);
+    return item.data(*this,inv,w);
   }
 
   // evaluation matrix on integral coroots
