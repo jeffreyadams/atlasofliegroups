@@ -475,9 +475,11 @@ class InnerClass
   subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr);
   subsystem::integral_datum_item& int_item
+    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w);
+  subsystem::integral_datum_item& int_item
     (const RootNbrSet& int_posroots, unsigned int& int_sys_nr);
   // same when |int_sys_nr| has already been computed:
-  const subsystem::integral_datum_item& int_item(unsigned int int_sys_nr) const
+  const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
   const subsystem::integral_datum_item::codec integrality_codec
@@ -492,6 +494,14 @@ class InnerClass
   const int_Matrix& integral_eval
     (const RatWeight& gamma, unsigned int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).coroots_matrix(); }
+  const int_Matrix integral_eval
+    (unsigned int int_sys_nr, const WeylElt& w) const
+  { return int_table[int_sys_nr].coroots_matrix(w); }
+  const int_Matrix integral_eval
+    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
+  { const subsystem::integral_datum_item& item=int_item(gamma,int_sys_nr,w);
+    return item.coroots_matrix(w);
+  }
 
 // pseudo manipulator
 

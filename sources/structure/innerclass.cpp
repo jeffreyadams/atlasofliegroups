@@ -1118,6 +1118,55 @@ subsystem::integral_datum_item& InnerClass::int_item
   return int_table[int_sys_nr];
 }
 
+subsystem::integral_datum_item& InnerClass::int_item
+  (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
+{
+  const auto& rd = rootDatum();
+  const auto& W=weylGroup();
+  RootNbrSet on_wall_subset;
+  RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
+  auto ww = weyl::from_fundamental_alcove(rd,walls);
+  w = W.element(ww);
+
+  // we need to map |on_wall_subset| to integral system at fundamental alcove
+  std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
+  on_wall_subset = image(rd,ww,on_wall_subset);
+  assert(rd.fundamental_alcove_walls().contains(on_wall_subset));
+
+  RootNbrSet fundamental_integral_coroots(rd.numPosRoots());
+  for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
+    fundamental_integral_coroots.insert(rd.posroot_index(alpha));
+  subsystem::integral_datum_entry e(fundamental_integral_coroots);
+
+  assert(integral_pool.size()==int_table.size());
+  int_sys_nr = int_hash.match(e);
+  if (int_sys_nr==int_table.size())
+    int_table.emplace_back(*this,e.posroots);
+
+  subsystem::integral_datum_item& result =  int_table[int_sys_nr];
+
+  std::reverse(ww.begin(),ww.end()); // now from fundamental alcove again
+  const auto& int_sys = result.int_system();
+  RootNbrList image; image.reserve(int_sys.rank());
+  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
+    image.push_back(rd.permuted_root(ww,int_sys.parent_nr_simple(s)));
+
+  const auto steps = to_positive_system(rd,image);
+  for (const auto& step : steps)
+    W.mult(w,int_sys.reflection(step.first));
+
+#ifndef NDEBUG
+  ww = W.word(w);
+  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
+    assert(image[s] ==
+	   rd.permuted_root(ww,int_sys.parent_nr_simple(s)));
+  for (RootNbr alpha : image)
+    rd.is_posroot(alpha);
+#endif
+
+  return result;
+}
+
 
 /*****************************************************************************
 
