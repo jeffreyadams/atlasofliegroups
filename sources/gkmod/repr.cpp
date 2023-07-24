@@ -74,18 +74,47 @@ size_t StandardReprMod::hashCode(size_t modulus) const
 
 Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm)
-    : x(srm.x()), evs_reduced() // |int_sys_nr| is set by |integral_eval| below
+    : x(srm.x())
+    , int_sys_nr()
+    , w()
+    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
 {
   InnerClass& ic = rc.inner_class();
   const KGB& kgb = rc.kgb();
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  auto eval = ic.integral_eval(gl,int_sys_nr) * gl.numerator();
+  auto eval = ic.integral_eval(gl,int_sys_nr,w) * gl.numerator(); // mat * vec
   for (auto& entry : eval)
   {
     assert(entry%gl.denominator()==0);
     entry /= gl.denominator();
   }
-  const auto codec = ic.int_item(int_sys_nr).data(ic,kgb.inv_nr(x));
+  const auto codec =
+    ic.int_item(int_sys_nr).data(ic,kgb.inv_nr(x),w);
+  evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
+    int_Vector(eval.begin(),eval.end());
+  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
+    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
+}
+
+Reduced_param::Reduced_param
+  (const Rep_context& rc, const StandardReprMod& srm,
+   unsigned int_sys_nr, const WeylElt& w)
+    : x(srm.x())
+    , int_sys_nr(int_sys_nr)
+    , w(w)
+    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
+{
+  InnerClass& ic = rc.inner_class();
+  const KGB& kgb = rc.kgb();
+  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
+  int_Matrix M = ic.integral_eval(int_sys_nr,w);
+  auto eval = M * gl.numerator(); // mat * vec
+  for (auto& entry : eval)
+  {
+    assert(entry%gl.denominator()==0);
+    entry /= gl.denominator();
+  }
+  const subsystem::integral_datum_item::codec codec { ic, kgb.inv_nr(x), M };
   evs_reduced = codec.in * // transform coordinates to $1-\theta$-adapted basis
     int_Vector(eval.begin(),eval.end());
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -1716,7 +1745,7 @@ std::vector<BlockElt_pol> contributions
     // the fact that |result[z].front()==z| also identifies |z| as "final"
   }
   return result;
-} // |Rep_table::contributions|
+} // |contributions|
 
 
 // Expand block elements up to |y| into final ones for |singular| system.
@@ -1752,6 +1781,30 @@ std::vector<BlockElt_pol> contributions
   }
   return result;
 } // |contributions|, extended block
+
+size_t Rep_table::find_reduced_hash(const common_block& block, BlockElt z) const
+{ return reduced_hash.find(Reduced_param
+			   {*this, block.representative(z),
+			    block.base_integral_nr(),
+			    block.integral_attitude()} );
+}
+size_t Rep_table::find_reduced_hash
+  (const StandardReprMod& srm, const common_context& c) const
+{ return reduced_hash.find(Reduced_param
+			   {*this,srm,
+			    c.base_integral_nr(), c.integral_attitude()} ); }
+
+size_t Rep_table::match_reduced_hash(const common_block& block, BlockElt z)
+{ return reduced_hash.match(Reduced_param
+			   {*this, block.representative(z),
+			    block.base_integral_nr(),
+			    block.integral_attitude()} );
+}
+size_t Rep_table::match_reduced_hash
+  (const StandardReprMod& srm, const common_context& c)
+{ return reduced_hash.match(Reduced_param
+			    {*this,srm,
+			     c.base_integral_nr(), c.integral_attitude()} ); }
 
 sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,

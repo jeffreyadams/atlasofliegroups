@@ -157,16 +157,20 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  int_Vector evs_reduced; // coroots evaluation (|gamlam| mod $(1-theta)X^*$)
+  WeylElt w;
+  int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
 
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
+  Reduced_param(const Rep_context& rc, const StandardReprMod& srm,
+		unsigned int_sys_nr, const WeylElt& w);
 
   Reduced_param(Reduced_param&&) = default;
 
   using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
-  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or w!=p.w
+      or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
@@ -519,8 +523,14 @@ class Rep_table : public Rep_context
 
   size_t find_reduced_hash(const StandardReprMod& srm) const
   { return reduced_hash.find(Reduced_param(*this,srm)); }
+  size_t find_reduced_hash(const common_block& block, BlockElt z) const;
+  size_t find_reduced_hash
+    (const StandardReprMod& srm, const common_context& c) const;
   size_t match_reduced_hash(const StandardReprMod& srm)
   { return reduced_hash.match(Reduced_param(*this,srm)); }
+  size_t match_reduced_hash(const common_block& block, BlockElt z);
+  size_t match_reduced_hash
+    (const StandardReprMod& srm, const common_context& c);
 
   K_repr::K_type stored_K_type(K_type_nr i) const
   { return K_type_pool[i].copy(); }
