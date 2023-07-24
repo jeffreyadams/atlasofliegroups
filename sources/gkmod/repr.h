@@ -576,10 +576,9 @@ class common_context
   unsigned int int_sys_nr;
   WeylElt w; // element applied to bare (fundamental alcove) integral system
   const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
-  const SubSystem& sub; // embeds |integr_datum| into parent root datum
+  const SubSystem sub; // embeds its |w| image into parent root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc, const SubSystem& integral);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }
