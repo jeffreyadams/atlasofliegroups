@@ -2086,10 +2086,12 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
+  const RootDatum& rd = parent.root_datum();
+  const RootNbrList int_simples = parent.int_simples();
   RankFlags singular_orbits; // flag singulars among orbits
-  const auto& ipd = parent.integral_subsystem().pre_root_datum();
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
+    singular_orbits.set(s,
+	     gamma.dot(rd.coroot(int_simples[eblock.orbit(s).s0]))==0);
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 

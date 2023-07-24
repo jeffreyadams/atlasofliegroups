@@ -341,7 +341,8 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const SubSystem& integral_sys;
+  const unsigned int int_sys_nr;
+  const WeylElt w; // apply |w| to |rc.inner_class().int_table[int_sys_nr]|
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -371,7 +372,6 @@ class common_block : public Block_base
   // accessors that get values via |rc|
   const Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
-  const SubSystem& integral_subsystem() const { return integral_sys; }
   InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
