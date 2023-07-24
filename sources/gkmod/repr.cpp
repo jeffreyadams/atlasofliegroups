@@ -2405,8 +2405,8 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
 , w()
-, id_it(rc.inner_class().int_item(gamma,int_sys_nr))
-, sub(id_it.int_system())
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr,w)) // sets |w|
+, sub(id_it.int_system(w)) // transform by |w|, and store image subsystem
 {} // |common_context::common_context|
 
 
