@@ -1291,9 +1291,7 @@ void common_block::shift (const RatWeight& diff)
   const auto& rc = context();
 #ifndef NDEBUG
   auto& ic = rc.inner_class();
-  unsigned int int_sys_nr; // unused dummy
-  const int_Matrix& int_ev =
-    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr);
+  const int_Matrix& int_ev = ic.integral_eval(z_pool[0].gamma_lambda());
   assert((int_ev*diff.numerator()).isZero());
 #endif
   for (auto& srm : z_pool)

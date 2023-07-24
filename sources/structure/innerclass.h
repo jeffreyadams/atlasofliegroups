@@ -483,6 +483,10 @@ class InnerClass
   { return int_table[int_sys_nr]; }
 
   const subsystem::integral_datum_item::codec integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv) const
+  { return  { *this, inv, integral_eval(gamma) }; }
+
+  const subsystem::integral_datum_item::codec integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
   { WeylElt w;
     auto& item = int_item(gamma,int_sys_nr,w); // sets |int_sys_nr| and |w|
@@ -492,6 +496,7 @@ class InnerClass
   // evaluation matrix on integral coroots
   const int_Matrix& integral_eval(unsigned int int_sys_nr) const
   { return int_table[int_sys_nr].coroots_matrix(); }
+  int_Matrix integral_eval (const RatWeight& gamma) const;
   const int_Matrix& integral_eval
     (const RatWeight& gamma, unsigned int& int_sys_nr)
   { return int_item(gamma,int_sys_nr).coroots_matrix(); }

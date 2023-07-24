@@ -334,9 +334,7 @@ RatWeight Rep_context::offset
   if (not result.is_zero()) // optimize out a fairly frequent case
   {
     auto& ic = inner_class();
-    InvolutionNbr inv = kgb().inv_nr(srm0.x());
-    unsigned int int_sys_nr;
-    const auto codec = ic.integrality_codec(gamlam,inv,int_sys_nr);
+    const auto codec = ic.integrality_codec(gamlam,kgb().inv_nr(srm0.x()));
     result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
     assert((codec.coroots_matrix*result).is_zero()); // check that it was done
   }
