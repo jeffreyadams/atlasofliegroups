@@ -54,7 +54,7 @@ set c_form_irreducible_to_ht_old (Param p,int N) = KTypePol:
   then
     f(Param p) = if count<11 or count%10=0 or nP-count<=10
                  then prints("Term ",count,": ",p)
-                 fi; count+:=1; full_deform_to_ht(p)
+                 fi; count+:=1; full_deform_to_ht(p,N)
   in prints("Fully deforming ",nP," terms"); map(f, P)
   fi
 
