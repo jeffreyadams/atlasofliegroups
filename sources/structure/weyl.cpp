@@ -1098,9 +1098,6 @@ template<typename C>
   }
 }
 
-void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const
-{ act(rd,w,v.numerator()); }
-
 void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
   const
 {
@@ -1147,8 +1144,9 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void
-  WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const
+template<typename C>
+  void WeylGroup::inverse_act
+    (const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v) const
 {
   Generator stack[Transducer::max_piece_length]; // working memory for reversal
   for (Generator i = 0; i < rank(); ++i )
@@ -1568,6 +1566,9 @@ template
 void WeylGroup::co_act
   (const RootDatum& rd, matrix::Vector<int>& v, const WeylElt& w) const;
 
+template
+void WeylGroup::inverse_act
+  (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
 
 } // |namespace weyl|
 

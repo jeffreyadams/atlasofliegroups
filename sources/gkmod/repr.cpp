@@ -76,13 +76,14 @@ Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm)
     : x(srm.x())
     , int_sys_nr()
-    , w() // |int_sys_nr| qnd |w| are set by |int_item| below
+    , w() // |int_sys_nr| and |w| are set by |int_item| below
     , evs_reduced()
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gl,int_sys_nr,w); // sets |int_sys_nr|, |w|
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w);
+  repr::block_modifier bm;
+  const auto& integral = ic.int_item(gl,int_sys_nr,bm); // sets last two args
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w = bm.w);
   evs_reduced = codec.internalise(gl);
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
     evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
@@ -94,7 +95,7 @@ Reduced_param::Reduced_param
     : x(srm.x())
     , int_sys_nr(int_sys_nr)
     , w(w)
-    , evs_reduced() // |int_sys_nr| is set by |integral_eval| below
+    , evs_reduced()
 {
   const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
   InnerClass& ic = rc.inner_class();
@@ -121,75 +122,6 @@ size_t Rep_context::rank() const { return root_datum().rank(); }
 
 const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 { return inner_class().involution_of_Cartan(cn); }
-
-StandardRepr Rep_context::sr_gamma
-  (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
-{ // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
-  // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
-
-  const InvolutionTable& i_tab = involution_table();
-  auto i_x = kgb().inv_nr(x);
-  const auto& theta = i_tab.matrix(i_x);
-  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
-    gamma.numerator()+theta*gamma.numerator();
-
-  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
-  Weight th1_gamma(th1_gamma_num.size());
-  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
-  {
-    assert(th1_gamma_num[i]%gamma.denominator()==0);
-    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
-  }
-#ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
-  {
-    Weight image = // $(\theta+1)(\gamma-\rho)$
-      th1_gamma-i_tab.theta_plus_1_rho(i_x);
-    matreduc::find_solution(theta+1,image); // assert that a solution exists
-  }
-#endif
-
-  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho), gamma,
-		      height(th1_gamma));
-} // |sr_gamma|
-
-// the same, but moving from |gamma|
-StandardRepr Rep_context::sr_gamma
-  (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const
-{
-  const InvolutionTable& i_tab = involution_table();
-  auto i_x = kgb().inv_nr(x);
-  const auto& theta = i_tab.matrix(i_x);
-  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
-    gamma.numerator()+theta*gamma.numerator();
-
-  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
-  Weight th1_gamma(th1_gamma_num.size());
-  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
-  {
-    assert(th1_gamma_num[i]%gamma.denominator()==0);
-    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
-  }
-
-  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho),std::move(gamma),
-		      height(th1_gamma));
-} // |sr_gamma|
-
-StandardRepr Rep_context::sr
-  (const StandardReprMod& srm, const RatWeight& gamma) const
-{
-  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum());
-  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
-  return sr_gamma(srm.x(),lambda_rho,gamma);
-}
-
-StandardRepr Rep_context::sr
-  (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
-  const
-{
-  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum())+diff;
-  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
-  return sr_gamma(srm.x(),lambda_rho,gamma);
-}
 
 // Height is $\max_{w\in W} \< \rho^v*w , (\theta+1)\gamma >$
 unsigned int Rep_context::height(Weight theta_plus_1_gamma) const
@@ -602,6 +534,49 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
+template <bool left_to_right> StandardReprMod Rep_context::transform
+  (const WeylWord& ww, StandardReprMod srm) const
+{
+  const auto& rd = root_datum();
+  const auto& kgb = this->kgb();
+  KGBElt& x = srm.x_part;
+  auto& gln = srm.gamlam.numerator();
+  const auto den = srm.gamlam.denominator();
+  if (left_to_right)
+    for (weyl::Generator s : ww)
+      switch (kgb.status(s,x))
+      {
+      case gradings::Status::Complex:
+	x = kgb.cross(s,x);
+	rd.simple_reflect(s,gln);
+	break;
+      case gradings::Status::Real:
+	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	break;
+      default: // |s| is an imaginary root; we will not cope with that here
+	throw std::runtime_error("Bad Weyl group element SRM transform");
+      }
+  else
+    for (unsigned i=ww.size(); i-->0; )
+    { weyl::Generator s=ww[i];
+
+      switch (kgb.status(s,x))
+      {
+      case gradings::Status::Complex:
+	x = kgb.cross(s,x);
+	rd.simple_reflect(s,gln);
+	break;
+      case gradings::Status::Real:
+	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	break;
+      default: // |s| is an imaginary root; we will not cope with that here
+	throw std::runtime_error("Bad Weyl group element SRM transform");
+      }
+    }
+  involution_table().real_unique(kgb.inv_nr(x),srm.gamlam); // normalise
+  return srm;
+}
+
 // apply sequence of cross actions by singular complex simple generators
 void Rep_context::complex_crosses (StandardRepr& z, const WeylWord& ww) const
 {
@@ -723,6 +698,85 @@ StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
   z.infinitesimal_char += diff*f; // now we have |(gamma_0(z)+nu(z)*f)*2|
   (z.infinitesimal_char/=2).normalize();
   return z;
+}
+
+StandardRepr Rep_context::sr_gamma
+  (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
+{ // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
+  // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
+
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
+  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
+    gamma.numerator()+theta*gamma.numerator();
+
+  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
+  Weight th1_gamma(th1_gamma_num.size());
+  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
+  {
+    assert(th1_gamma_num[i]%gamma.denominator()==0);
+    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
+  }
+#ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
+  {
+    Weight image = // $(\theta+1)(\gamma-\rho)$
+      th1_gamma-i_tab.theta_plus_1_rho(i_x);
+    matreduc::find_solution(theta+1,image); // assert that a solution exists
+  }
+#endif
+
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho), gamma,
+		      height(th1_gamma));
+} // |sr_gamma|
+
+// the same, but moving from |gamma|
+StandardRepr Rep_context::sr_gamma
+  (KGBElt x, const Weight& lambda_rho, RatWeight&& gamma) const
+{
+  const InvolutionTable& i_tab = involution_table();
+  auto i_x = kgb().inv_nr(x);
+  const auto& theta = i_tab.matrix(i_x);
+  auto th1_gamma_num = // numerator of $(1+\theta)*\gamma$ as 64-bits vector
+    gamma.numerator()+theta*gamma.numerator();
+
+  // since $(1+\theta)*\gamma = (1+\theta)*\lambda$ it actually lies in $X^*$
+  Weight th1_gamma(th1_gamma_num.size());
+  for (unsigned i=0; i<th1_gamma_num.size(); ++i)
+  {
+    assert(th1_gamma_num[i]%gamma.denominator()==0);
+    th1_gamma[i] = th1_gamma_num[i]/gamma.denominator();
+  }
+
+  return StandardRepr(x, i_tab.y_pack(i_x,lambda_rho),std::move(gamma),
+		      height(th1_gamma));
+} // |sr_gamma|
+
+StandardRepr Rep_context::sr
+  (const StandardReprMod& srm, const RatWeight& gamma) const
+{
+  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum());
+  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
+  return sr_gamma(srm.x(),lambda_rho,gamma);
+}
+
+StandardRepr Rep_context::sr
+  (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
+  const
+{
+  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum())+diff;
+  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
+  return sr_gamma(srm.x(),lambda_rho,gamma);
+}
+
+StandardRepr Rep_context::sr
+  (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
+  const
+{
+  srm = transform<false>(Weyl_group().word(bm.w),srm);
+  const RatWeight gamma_lambda_rho = srm.gamlam+rho(root_datum())+bm.shift;
+  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
+  return sr_gamma(srm.x_part,lambda_rho,gamma);
 }
 
 RatNumList Rep_context::reducibility_points(const StandardRepr& z) const
@@ -917,7 +971,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     const WeylWord& to_simple)
-{ const RootDatum& rd=G.rootDatum();
+{ const RootDatum& rd=G.root_datum();
   const InvolutionTable& i_tab = G.involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
   return root_sum(rd,S);
@@ -1442,6 +1496,16 @@ void Rep_table::Bruhat_generator::block_below (const StandardReprMod& srm)
   predecessors.push_back(pred.undress()); // store |pred| at |h|
 } // |Rep_table::Bruhat_generator::block_below|
 
+sl_list<StandardReprMod> Rep_table::Bruhat_below
+  (const common_context& ctxt, const StandardReprMod& init) const
+{
+  StandardReprMod::Pooltype pool;
+  Mod_hash_tp hash(pool);
+  Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
+  gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
+  return sl_list<StandardReprMod>(pool.begin(),pool.end());
+}
+
 // a structure used in |Rep_table::add_block_below| and |Rep_table::add_block|
 // for each sub_block, record block pointer, entry element, shift
 // DO NOT record iterator into |block_list| which might get invalidated,
@@ -1637,7 +1701,9 @@ blocks::common_block& Rep_table::lookup_full_block
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   common_context ctxt(*this,srm.gamma_lambda());
-  Reduced_param rp(*this,srm,ctxt.integral_nr(),ctxt.attitude());
+  auto ww = Weyl_group().word(ctxt.attitude());
+  srm = transform<true>(ww,srm);
+  Reduced_param rp(*this,srm,ctxt.integral_nr(),WeylElt()); // |ww| acounted for
 
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
@@ -1902,7 +1968,6 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
 {
   BlockElt start; block_modifier bm;
   auto& block = lookup_full_block(p,start,bm);
-  const RatWeight& diff = bm.shift;
   const auto& gamma = p.gamma();
   auto dual_block = blocks::Bare_block::dual(block);
   kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
@@ -1912,7 +1977,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   BitMap retained(block.size());
   sl_list<std::pair<const StandardRepr,Split_integer> > result;
   for (BlockElt z=0; z<block.size(); ++z)
-  { StandardRepr q = sr(block.representative(z),diff,gamma);
+  { StandardRepr q = sr(block.representative(z),bm,gamma);
     if (retained.set_to(z,q.height()<=height_bound))
     {
       auto it = queue.find(q);
@@ -2452,9 +2517,9 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
 , int_sys_nr()
-, w()
-, id_it(rc.inner_class().int_item(gamma,int_sys_nr,w)) // sets |w|
-, sub(id_it.int_system(w)) // transform by |w|, and store image subsystem
+, bm()
+, id_it(rc.inner_class().int_item(gamma,int_sys_nr,bm)) // sets last 2 arguments
+, sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
 {} // |common_context::common_context|
 
 

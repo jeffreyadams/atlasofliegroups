@@ -69,6 +69,7 @@ struct Permutation
   // inverse conjugate by basis pemutation (to coordinates on (e_pi[i])_i)
     template<typename T> void inv_conjugate(matrix::Matrix_base<T>& M) const;
 
+    bool is_identity() const; // whether equal to the identity of its size
     bool is_negative() const; // whether negative sign
   };
 

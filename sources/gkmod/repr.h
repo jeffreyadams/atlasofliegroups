@@ -37,6 +37,7 @@ namespace atlas {
 namespace repr {
 
 class common_context;
+struct block_modifier;
 
 /*
   A parameter of a standard representation is determined by a triplet
@@ -193,7 +194,7 @@ class Rep_context
   const TwistedWeylGroup& twisted_Weyl_group() const
   { return G.twistedWeylGroup(); }
   const WeylGroup& Weyl_group() const
-  { return twisted_Weyl_group().weylGroup(); }
+  { return twisted_Weyl_group().Weyl_group(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -218,8 +219,11 @@ class Rep_context
 
   // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
   StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
-  StandardRepr sr
+  StandardRepr sr // REMOVE ME
     (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
+    const;
+  StandardRepr sr
+    (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
     const;
 
   StandardRepr sr (const K_repr::K_type& t) const
@@ -336,6 +340,10 @@ class Rep_context
   void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
+
+  // transformation of |srm|k, by appropriate Weyl element |ww|, or its inverse
+  template<bool left_to_right> StandardReprMod transform
+    (const WeylWord& ww, StandardReprMod srm) const;
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
@@ -460,6 +468,7 @@ public:
 struct block_modifier // data to transform stored block to user attitude
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
+  RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
   RatWeight shift;
 };
@@ -551,11 +560,12 @@ class Rep_table : public Rep_context
      const RatWeight& diff, const RatWeight& gamma);
 
 /*
-   compute the signed multiset of final parameters "post deformation"
+   Compute the signed multiset of final parameters "post deformation"
    (subsequently they will be deformed towards zero without reduction here)
    obtained from the elements of the block of |p|, with their "pre deformation"
    coefficients taken (and removed) from |queue|, where all block elements of
-   high strictly above |height_bound| are ignored
+   high strictly above |height_bound| are ignored. The result is a list of pairs
+   of a |StandardRepr| with its |Split_integer| mulitplicity.
 */
   sl_list<SR_poly::value_type> block_deformation_to_height
     (StandardRepr p, SR_poly& queue, level height_bound); // |p| by value
@@ -573,6 +583,9 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
 #endif
+
+  sl_list<StandardReprMod> Bruhat_below
+  (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
@@ -594,7 +607,7 @@ class common_context
 {
   const Rep_context& rep_con;
   unsigned int int_sys_nr;
-  WeylElt w; // element applied to bare (fundamental alcove) integral system
+  block_modifier bm; // applied to bare (fundamental alcove) integral system
   const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
   const SubSystem sub; // embeds its |w| image into parent root datum
 public:
@@ -607,7 +620,8 @@ public:
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
   unsigned int integral_nr() const { return int_sys_nr; }
-  WeylElt attitude() const { return w; }
+  const block_modifier& modifier () const { return bm; }
+  WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|

@@ -510,6 +510,7 @@ namespace atlas {
     class Reduced_param; // even coarser representation, mod integral orthogonal
     class Repr_mod_entry;
     class common_context;
+    struct block_modifier;
     class Rep_context;	// support class for interpreting |StandardRepr|
     class Rep_table;	// storage class for |StandardRepr| computations
   }

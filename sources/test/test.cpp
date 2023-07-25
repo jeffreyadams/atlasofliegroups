@@ -845,7 +845,7 @@ void srtest_f()
     G.innerClass().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
-			      canonical, G.weylGroup());
+			      canonical, G.Weyl_group());
   std::cout << "\nHeight is " << khc.height(sr) << std::endl;
 
   khc.go(sr);

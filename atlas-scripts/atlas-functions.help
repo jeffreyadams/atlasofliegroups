@@ -912,24 +912,45 @@ orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 operator * : (Param,rat->Param): scale component nu by given rational factor
 
-print_block: (Param->): print translation family block for the given parameter
-  The full common block is printed with "gamma-lambda" rather than "lambda-rho"
-print_partial_block: (Param->): print partial translation family block
+print_block: (Param->): print block for the given parameter
+  The block is specially generated, with no attempts to use any tabled block,
+  formatted like print_block@Block, but showing x and gamma-lambda components.
+  Also, the block elements that correspond to irreducible representations at the
+  (possibly singular) infinitesimal character of the given parameter are marked
+  by an asterisk before those components; for these elements the corresponding
+  paraemters are returned as a list by the built-in function 'block@Param'.
+print_partial_block: (Param->): print Bruhat interval below the given parameter
+  The output is a subset of the lines printed by print_block@Param, same format
+print_common_block: (Param->): print archetypal block for parameter
+  This block is similar to the one for the given parameter, but of the kind
+  that is stored for the real form, namely with an integral subsystem generated
+  by affinely simple generators. This block is to be transformed by some Weyl
+  group element (shown in the first line of output), which affects the
+  components x, gamma-lambda for block elements and may reorder simply-integral
+  generators (and thus the numbering of block links). Taking this into account
+  however, the block should be isomorphic to the one of print_block@Param.
+print_partial_common_block: (Param->): print Bruhat interval in archetypal block
+  This function is like print_common_block, but limits the generation and the
+  output to the Bruhat interval below the given parameter if convenient. In case
+  a larger part (or all) of the block is already stored, those elements will be
+  present in the output, but the subset forming the interval is specified.
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
-  Non-final parameters are omitted from the list, and if this includes the
-  original parameter the second component will be negative.
+  This data is reconstructed from a stored block, as in print_common_block.
+  Non-final parameters are omitted from the list, and if this leads to the
+  original parameter being absent, the second component will be negative.
 partial_block: (Param->[Param]): return partial block as list of parameters
   This is the Bruhat interval of the block below the given parameter, sorted by
   length. Non-final parameters are omitted. If the original parameter is final,
   then it will be the last element of the list returned.
 length: (Param->int): the length of a parameter within its block
-block_Hasse: (Param->mat): Hasse diagram of Bruhat order of block of parameter
-  Calling KGB_Hasse(p) ensures the full block containing the parameter p is
-  generated, and returns a matrix describing the Hasse diagram of its Bruhat
-  order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
-  exactly the two elements, namely x et z. The matrix is indexed by the numbers
-  of the block elements as displayed in print_block(p).
+block_Hasse: (Param->[Param],mat): block and Hasse diagram of its Bruhat order
+  Calling block_Hasse(p) ensures the full block containing the parameter p is
+  generated, and returns a list of corresponding parameters, and a matrix
+  describing the Hasse diagram of its Bruhat order: the set of pairs (x,z) for
+  which the interval { y | x<=y<=z } contains exactly the two elements, namely
+  x et z. The matrix positions correspond to positions of block elements in the
+  list, which is ordered as the block elements in print_common_block(p).
 KL_block: (Param->[Param],int,mat,[vec]): block for parameter, with its KL table
   This combines block with the computation of the its Kazhdan-Lusztig table.
   The two values of block are followed by two values in the format of raw_KL
@@ -963,9 +984,12 @@ partial_KL_block: (Param->[Param],mat,[vec]): partial KL_block
 W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the W graph in the format used for W_graph@Block below
+  The full block is assumed, with no pruning for a possibly singular
+  infinitesimal character; actual parameters can be obtained using block_Hasse.
 W_cells: (Param->int,[[int],[[int],[int,int]]]): W-cells for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the cell data in the format used for W_cells@Block below
+  The block itself is the same as in W_graph@Param.
 extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   The arguments are a parameter p and an external distinguished involution delta
   (which should commute with the inner class distinguished involution). The

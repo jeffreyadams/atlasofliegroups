@@ -3788,12 +3788,12 @@ element for this (strong) real form.
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
   (const InnerClass& G, WeightInvolution theta)
-{ const RootDatum& rd = G.rootDatum();
+{ const RootDatum& rd = G.root_datum();
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
       theta!=G.distinguished())
     throw runtime_error("Involution not in this inner class");
-  return G.weylGroup().element(ww);
+  return G.Weyl_group().element(ww);
 }
 @)
 void synthetic_real_form_wrapper(expression_base::level l)
@@ -3831,7 +3831,7 @@ the evaluations are even, before halving to obtain the actual projection.
     // make torus factor $\theta$-fixed, temporarily doubled
   TorusElement t(torus_factor->val,false);
     // take a copy as |TorusElement|, using $\exp_{-1}$
-  const RootDatum& rd = G->val.rootDatum();
+  const RootDatum& rd = G->val.root_datum();
   LatticeMatrix alpha
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
   if (not is_central(alpha,t)) // every root should now have even evaluation
@@ -4061,7 +4061,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
   const weyl::TwistedInvolution& tw =
     cc->ic_ptr->val.involution_of_Cartan(cc->number);
-  WeylWord ww = cc->ic_ptr->val.weylGroup().word(tw);
+  WeylWord ww = cc->ic_ptr->val.Weyl_group().word(tw);
 
   push_value(std::make_shared<vector_value>
     (std::vector<int>(ww.begin(),ww.end())));
@@ -4070,7 +4070,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
   wrap_tuple<2>();
 
-  const RootSystem& rs=cc->ic_ptr->val.rootDatum();
+  const RootSystem& rs=cc->ic_ptr->val.root_datum();
 
 @)// print types of imaginary and real root systems and of Complex factor
   push_value(std::make_shared<Lie_type_value> @|
@@ -4242,7 +4242,7 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->ic_ptr->val.rootDatum().Cartan_matrix(si);
+{ cm=cc->ic_ptr->val.root_datum().Cartan_matrix(si);
   dynkin::DynkinDiagram d(cm); sigma = d.perm();
 }
 
@@ -4438,7 +4438,7 @@ inline RootNbr get_reflection_index(int root_index, RootNbr n_posroots)
 void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4454,7 +4454,7 @@ void KGB_cross_wrapper(expression_base::level l)
 void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4487,7 +4487,7 @@ defined if |v==3|.
 void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
-  const RootDatum& rd = kgb.rootDatum();
+  const RootDatum& rd = kgb.root_datum();
   RootNbr alpha =
     get_reflection_index(get<int_value>()->int_val(),rd.numPosRoots());
   if (l==expression_base::no_value)
@@ -4507,7 +4507,7 @@ void KGB_status_wrapper(expression_base::level l)
     {
       RootNbr theta_alpha = kgb.innerClass().involution_table().
         root_involution(kgb.inv_nr(x->val),alpha);
-      if (kgb.rootDatum().is_posroot(theta_alpha))
+      if (kgb.root_datum().is_posroot(theta_alpha))
        stat = 4; // set status to complex ascent
     }
     push_value(std::make_shared<int_value> (stat));
@@ -4544,7 +4544,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 
   const InnerClass& G = rf->val.innerClass();
   TitsElt a
-   (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
+   (G.Tits_group(),TorusPart(num),twisted_from_involution(G,theta->val));
 
   KGBElt x = rf->kgb().lookup(a);
   if (x==UndefKGB)
@@ -4573,7 +4573,7 @@ void KGB_twist_wrapper(expression_base::level l)
 }
 @)
 void test_compatible (const InnerClass& ic, shared_matrix& delta)
-{ check_based_root_datum_involution(ic.rootDatum(),delta->val);
+{ check_based_root_datum_involution(ic.root_datum(),delta->val);
   const auto& xi = ic.distinguished();
   if (delta->val*xi!=xi*delta->val)
     throw runtime_error("Non commuting distinguished involution");
@@ -6595,27 +6595,69 @@ void test_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-of the \.{full\_block} command in the \.{Fokko} program, and a variation for
-partial blocks.
+of the \.{full\_block} command in the \.{Fokko} program.
 
 @< Local function def...@>=
+void print_param_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
+  common_context ctxt(p->rc(),srm.gamma_lambda());
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block block (ctxt,srm,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following block:" << std::endl;
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+@)
 void print_c_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   repr::block_modifier bm;
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
-  const RatWeight& diff = bm.shift;
+  auto ww = p->rc().Weyl_group().word(bm.w);
+
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following common block:" << std::endl;
-  block.shift(diff);
-  block.print_to(*output_stream,block.singular(p->val.gamma()));
+               @|<< " of the following common block,\nas transformed by <";
+  for (unsigned int i=0; i<ww.size(); ++i)
+     *output_stream << (i==0 ? "" : ".") << static_cast<unsigned int>(ww[i]);
+  *output_stream << '>';
+  if (not bm.simple_pi.is_identity())
+  {
+    *output_stream << ", simple reflections permuted (";
+    for (unsigned int i=0; i<bm.simple_pi.size(); ++i)
+       *output_stream << i << "->" << bm.simple_pi[i] <<
+          (i<bm.simple_pi.size()-1 ? ',' : ')');
+  }
+  *output_stream << ':' << std::endl;
+  block.shift(bm.shift);
+  block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print block using involution expressions
-  block.shift(-diff);
+  block.shift(-bm.shift);
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
+@ Here is a variation generating and printing only a partial block.
+@< Local function def...@>=
+
+void print_part_param_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  auto srm = StandardReprMod::mod_reduce(p->rc(),p->val);
+  common_context ctxt(p->rc(),srm.gamma_lambda());
+  auto interval = p->rt().Bruhat_below(ctxt,srm);
+  blocks::common_block block(ctxt,interval);
+  block.print_to(*output_stream,block.singular(p->val.gamma()));
+    // print using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+@)
 void print_pc_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
@@ -6637,7 +6679,7 @@ void print_pc_block_wrapper(expression_base::level l)
     *output_stream << init_index << "} in the following common block:\n";
   }
   block.shift(diff);
-  block.print_to(*output_stream,block.singular(p->val.gamma()));
+  block.print_to(*output_stream,block.singular(bm,p->val.gamma()));
     // print using involution expressions
   block.shift(-diff);
   if (l==expression_base::single_value)
@@ -6657,12 +6699,12 @@ void common_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
+  const auto& rc = p->rc();
   BlockElt start; // will hold index in the block of the initial element
   repr::block_modifier bm;
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
-  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
-  { const RankFlags singular = block.singular(gamma);
+  { const RankFlags singular = block.singular(bm,gamma);
     int start_pos = -1;
     own_row param_list = std::make_shared<row_value>(0);
     for (BlockElt z=0; z<block.size(); ++z)
@@ -6672,7 +6714,7 @@ void common_block_wrapper(expression_base::level l)
           start_pos=param_list->val.size();
         param_list->val.push_back @|
           (std::make_shared<module_parameter_value> @|
-               (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
+               (p->rf,rc.sr(block.representative(z),bm,gamma)));
       }
     push_value(std::move(param_list));
     push_value(std::make_shared<int_value>(start_pos));
@@ -6681,7 +6723,7 @@ void common_block_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ There are also a functions that compute just a partial block. We generate
+@ There are also functions that compute just a partial block. We generate
 the Bruhat interval inside the block (which might have more elements than just
 the requested partial bock because of earlier computations) by completing the
 downward closure of the Hasse relation (which is filled anyway by the partial
@@ -6709,7 +6751,7 @@ void partial_common_block_wrapper(expression_base::level l)
     for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
 @)
-  { const RankFlags singular = block.singular(gamma);
+  { const RankFlags singular = block.singular(bm,gamma);
     own_row param_list = std::make_shared<row_value>(0);
     for (auto z : subset)
       if (block.survives(z,singular))
@@ -6742,13 +6784,25 @@ void block_Hasse_wrapper(expression_base::level l)
   BlockElt init_index; // will hold index in the block of the initial element
   repr::block_modifier bm;
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
+
+  const auto& gamma = p->val.gamma();
+  own_row param_list = std::make_shared<row_value>(0);
+  param_list->val.reserve(block.size());
+  for (BlockElt z=0; z<block.size(); ++z)
+     param_list->val.push_back @|
+       (std::make_shared<module_parameter_value> @|
+          (p->rf,p->rc().sr(block.representative(z),bm,gamma)));
+
   const BruhatOrder& Bruhat = block.bruhatOrder();
   auto n= block.size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   for (unsigned j=0; j<n; ++j)
     for (unsigned int i : Bruhat.hasse(j))
       M->val(i,j)=1;
+  push_value(std::move(param_list));
   push_value(std::move(M));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 
 @ Here is a version of the |block| command that also exports the table of
@@ -6769,9 +6823,8 @@ void KL_block_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   repr::block_modifier bm;
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
-  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
 @)
   sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
@@ -6789,8 +6842,7 @@ void KL_block_wrapper(expression_base::level l)
 @/@< Condense the polynomials from |kl_tab| into the matrix |M| @>
 @)
   @< Push list of parameters corresponding to |survivors| in |block|,
-     with difference |diff| of $\gamma-\lambda$ values, and
-     at infinitesimal character |gamma| @>
+     adapted thorough |bm| and at infinitesimal character |gamma| @>
   if (loc[start]==UndefBlock)
     push_value(std::make_shared<int_value>(-1));
   else
@@ -6846,13 +6898,12 @@ by constructing a new polynomial |Pol(P)|.
 
 @ Here is another module that will be shared.
 @< Push list of parameters corresponding to |survivors| in |block|,
-   with difference |diff| of $\gamma-\lambda$ values, and
-   at infinitesimal character |gamma| @>=
+   adapted thorough |bm| and at infinitesimal character |gamma| @>=
 { own_row param_list = std::make_shared<row_value>(0);
   param_list->val.reserve(survivors.size());
   for (BlockElt z : survivors)
     param_list->val.push_back (std::make_shared<module_parameter_value> @|
-           (p->rf,p->rc().sr(block.representative(z),diff,gamma)));
+           (p->rf,p->rc().sr(block.representative(z),bm,gamma)));
   push_value(std::move(param_list));
 }
 
@@ -6902,7 +6953,6 @@ void partial_KL_block_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   repr::block_modifier bm;
   auto& block = p->rt().lookup(p->val,start,bm);
-  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -6913,7 +6963,7 @@ void partial_KL_block_wrapper(expression_base::level l)
     for (BlockElt y : block.bruhatOrder().hasse(n))
       subset.insert(y);
   @)
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
   sl_list<BlockElt> survivors;
   BlockEltList loc(block.size(),UndefBlock);
   for (BlockElt z : subset)
@@ -6958,7 +7008,6 @@ void dual_KL_block_wrapper(expression_base::level l)
   BlockElt start; // will hold index into |block| of the initial element
   repr::block_modifier bm;
   auto& block = p->rt().lookup_full_block(p->val,start,bm);
-  const RatWeight& diff = bm.shift;
 @/const auto& gamma = p->val.gamma();
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
@@ -6996,7 +7045,7 @@ and |survives| from |blocks::common_block|.
      and for each, put into its slot in |loc| the index at which |survivors|
      contains it @>=
 {
-  const RankFlags singular = block.singular(gamma);
+  const RankFlags singular = block.singular(bm,gamma);
   for (BlockElt z=0; z<block.size(); ++z)
     if (block.survives(z,singular))
     @/{@;
@@ -7057,7 +7106,8 @@ void param_W_graph_wrapper(expression_base::level l)
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
-     consisting of a descent set and a list of outgoing labelled edges @>
+     consisting of a descent set transformed by the permutation |bm.simple_pi|,
+     and a list of outgoing labelled edges @>
   push_value(std::move(vertices));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -7092,7 +7142,8 @@ void param_W_cells_wrapper(expression_base::level l)
     }
     own_row vertices=std::make_shared<row_value>(0);
     @< Push to |vertices| a list of pairs for each element of |wg|, each
-       consisting of a descent set and a list of outgoing labelled edges @>
+       consisting of a descent set transformed by the permutation
+       |bm.simple_pi|, and a list of outgoing labelled edges @>
     auto tup = std::make_shared<tuple_value>(2);
     tup->val[0] = members;
     tup->val[1] = vertices;
@@ -7106,10 +7157,12 @@ void param_W_cells_wrapper(expression_base::level l)
 @ The following code was isolated so that it can be reused below.
 
 @< Push to |vertices| a list of pairs for each element of |wg|, each
-   consisting of a descent set and a list of outgoing labelled edges @>=
+   consisting of a descent set transformed by the permutation... @>=
 vertices->val.reserve(wg.size());
 for (unsigned int i = 0; i < wg.size(); ++i)
-{ auto ds = wg.descent_set(i);
+{ RankFlags ds;
+  for (unsigned b=0; b<wg.rank(); ++b)
+    ds.set(bm.simple_pi[b],wg.descent_set(i)[b]);
   own_row descents=std::make_shared<row_value>(0);
   descents->val.reserve(ds.count());
   for (auto it=ds.begin(); it(); ++it)
@@ -7338,13 +7391,17 @@ install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 @)
-install_function(print_c_block_wrapper,@|"print_block","(Param->)");
-install_function(print_pc_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(print_param_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
+install_function(print_part_param_block_wrapper,@|
+		"print_partial_block","(Param->)");
+install_function(print_pc_block_wrapper,@|
+		"print_partial_common_block","(Param->)");
 install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
-install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");
+install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->[Param],mat)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec])");
 install_function(dual_KL_block_wrapper,@|"dual_KL_block"
@@ -7967,7 +8024,7 @@ void twisted_deform_wrapper(expression_base::level l)
   auto& eblock = block.extended_block(rt.shared_poly_table());
   block.shift(-diff);
 @)
-  RankFlags singular = block.singular(p->val.gamma());
+  RankFlags singular = block.singular(bm,p->val.gamma());
   RankFlags singular_orbits;
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
@@ -8466,9 +8523,36 @@ void W_graph_wrapper(expression_base::level l)
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
-     consisting of a descent set and a list of outgoing labelled edges @>
+   consisting of a descent set and a list of outgoing labelled edges @>
   push_value(std::move(vertices));
 }
+
+@ This is simplified with respect to an earlier module in that no permutation of
+the descent set is performed.
+
+@< Push to |vertices| a list of pairs for each element of |wg|, each
+   consisting of a descent set and a list of outgoing labelled edges @>=
+vertices->val.reserve(wg.size());
+for (unsigned int i = 0; i < wg.size(); ++i)
+{ RankFlags ds = wg.descent_set(i);
+  own_row descents=std::make_shared<row_value>(0);
+  descents->val.reserve(ds.count());
+  for (auto it=ds.begin(); it(); ++it)
+    descents->val.push_back(std::make_shared<int_value>(*it));
+  own_row out_edges = std::make_shared<row_value>(0);
+  out_edges->val.reserve(wg.degree(i));
+  for (unsigned j=0; j<wg.degree(i); ++j)
+  { auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
+    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
+  @/out_edges->val.push_back(tup);
+  }
+  auto tup = std::make_shared<tuple_value>(2);
+  tup->val[0] = descents;
+  tup->val[1] = out_edges;
+  vertices->val.push_back(std::move(tup));
+}
+
 
 @ This function computes |W_cells| for a block, as list of nested integer
 structures.

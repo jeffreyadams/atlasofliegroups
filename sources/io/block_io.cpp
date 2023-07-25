@@ -120,7 +120,7 @@ std::ostream& Block::print
   if (as_invol_expr)
     prettyprint::printInvolution(strm,involution(z),twistedWeylGroup());
   else
-    prettyprint::printWeylElt(strm,involution(z),weylGroup());
+    prettyprint::printWeylElt(strm,involution(z),Weyl_group());
 
   return strm ;
 }
@@ -141,7 +141,7 @@ std::ostream& common_block::print
   const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
   // print root datum involution
   if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
-  else prettyprint::printWeylElt(strm,ti,tW.weylGroup());
+  else prettyprint::printWeylElt(strm,ti,tW.Weyl_group());
 
   return strm ;
 }

@@ -560,7 +560,7 @@ ext_block::ext_block // for external twist; old style blocks
    const KGB& kgb, const KGB& dual_kgb, // all are needed
    const WeightInvolution& delta)
   : parent(block)
-  , orbits(fold_orbits(G.rootDatum(),delta))
+  , orbits(fold_orbits(G.root_datum(),delta))
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
@@ -2287,7 +2287,7 @@ ext_param& ext_param::operator= (ext_param&& p)
 
 
 KGBElt ext_param::x() const
-{ TitsElt a(ctxt.inner_class().titsGroup(),TorusPart(l),tw);
+{ TitsElt a(ctxt.inner_class().Tits_group(),TorusPart(l),tw);
   return rc().kgb().lookup(a);
 }
 
