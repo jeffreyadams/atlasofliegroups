@@ -255,11 +255,11 @@ int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 integral_datum_item::codec::codec
   (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& int_simp_coroots)
     : coroots_matrix(int_simp_coroots)
-    , theta_1_image_basis(ic.involution_table().theta_1_image_basis(inv))
     , diagonal(), in(), out()
 {
+  const auto image_basis = ic.involution_table().theta_1_image_basis(inv);
   // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
-  int_Matrix A = coroots_matrix * theta_1_image_basis, row,col;
+  int_Matrix A = coroots_matrix * image_basis, row,col;
   diagonal=matreduc::diagonalise(A,row,col);
   // ensure |diagonal| entries positive, since we shall be reducing modulo them
   if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
@@ -270,7 +270,22 @@ integral_datum_item::codec::codec
 
   auto rank = diagonal.size();
   in  = std::move(row); // keep full coordinate transform
-  out = col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
+  out = image_basis * // |col| matrix always followed by |image_basis|
+      col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
+}
+
+int_Vector integral_datum_item::codec::internalise (const RatWeight& gamma) const
+{
+  auto eval = coroots_matrix * gamma.numerator(); // mat * vec
+  if (eval.is_zero())
+    return int_Vector(in.n_rows(),0); // maybe save some work here
+  for (auto& entry : eval)
+  {
+    assert(entry%gamma.denominator()==0);
+    entry /= gamma.denominator();
+  }
+  int_Vector evs_reduced = in * int_Vector(eval.begin(),eval.end());
+  return evs_reduced;
 }
 
 } // |namespace subdatum|

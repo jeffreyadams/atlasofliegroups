@@ -181,18 +181,19 @@ class integral_datum_item
  public:
 /* below, |in| will coordinate transform from simple coroot evaluations to
  coordinates on basis adapted to $N=\Im(\theta-1)$; this can be followed by
- reduction modulo |diagonal| then left-multiplication by |out| goes into $X^*$
- in usual coordinates, with the image being a $-1$ eigenvector of $\theta$
+ reduction modulo |diagonal| then left-multiplication by |out| to the lattice
+ $N=\Im(\theta-1)$, the result being expressed in usual coordinates
 */
   struct codec
   {
     const int_Matrix coroots_matrix;
-    const int_Matrix& theta_1_image_basis; // basis of $N=\Im(\theta-1)$
     std::vector<int> diagonal; // inv.factors for $N$ inside $-1$ eigenlattice
-    int_Matrix in, out;
-      // see above; |in*coroots_matrix*theta_1_image_basis*out == diagonal|
-    codec (const InnerClass& ic,
-	   InvolutionNbr inv, const int_Matrix& int_simp_coroots);
+    int_Matrix in, out;     // see above; |in*coroots_matrix*out == diagonal|
+    codec
+      (const InnerClass& ic,
+       InvolutionNbr inv,
+       const int_Matrix& int_simp_coroots);
+    int_Vector internalise (const RatWeight& gamma) const;
   }; // |struct integral_datum_item::codec|
 
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
