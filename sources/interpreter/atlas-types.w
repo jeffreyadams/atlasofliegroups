@@ -6603,8 +6603,9 @@ void print_c_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
-  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
+  const RatWeight& diff = bm.shift;
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
   block.shift(diff);
@@ -6619,8 +6620,9 @@ void print_pc_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup(p->val,init_index);
-  RatWeight diff = p->rc().offset(p->val, block.representative(init_index));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup(p->val,init_index,bm);
+  const RatWeight& diff = bm.shift;
   BitMap less = block.bruhatOrder().poset().below(init_index);
   if (less.full())
   {
@@ -6656,8 +6658,9 @@ void common_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
   { const RankFlags singular = block.singular(gamma);
     int start_pos = -1;
@@ -6693,8 +6696,9 @@ void partial_common_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start;
-  blocks::common_block& block = p->rt().lookup(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup(p->val,start,bm);
+  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -6736,7 +6740,8 @@ void block_Hasse_wrapper(expression_base::level l)
     return;
 @)
   BlockElt init_index; // will hold index in the block of the initial element
-  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  repr::block_modifier bm;
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index,bm);
   const BruhatOrder& Bruhat = block.bruhatOrder();
   auto n= block.size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
@@ -6762,8 +6767,9 @@ void KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
   const RankFlags singular = block.singular(gamma);
 @)
@@ -6894,8 +6900,9 @@ void partial_KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup(p->val,start);
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup(p->val,start,bm);
+  const RatWeight& diff = bm.shift;
   const auto& gamma = p->val.gamma();
 @)
   unsigned long n=block.size();
@@ -6949,9 +6956,10 @@ void dual_KL_block_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index into |block| of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
+  const RatWeight& diff = bm.shift;
 @/const auto& gamma = p->val.gamma();
-  RatWeight diff = p->rc().offset(p->val,block.representative(start));
   auto dual_block = blocks::Bare_block::dual(block);
   const kl::KL_table& kl_tab = dual_block.kl_tab(nullptr);
   // fill entire KL table, don't share polys
@@ -7039,7 +7047,8 @@ void param_W_graph_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
@@ -7061,7 +7070,8 @@ void param_W_cells_wrapper(expression_base::level l)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  auto& block = p->rt().lookup_full_block(p->val,start);
+  repr::block_modifier bm;
+  auto& block = p->rt().lookup_full_block(p->val,start,bm);
   push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(nullptr);
@@ -7913,8 +7923,9 @@ void deform_wrapper(expression_base::level l)
   {
     auto& q = it->first;
     BlockElt q_index; // will hold index of |q| in the block
-    auto& block = rt.lookup(q,q_index); // generate partial common block
-    RatWeight diff = rc.offset(q,block.representative(q_index));
+    repr::block_modifier bm;
+    auto& block = rt.lookup(q,q_index,bm); // generate partial common block
+    const RatWeight& diff = bm.shift;
     for (auto&& term : rt.deformation_terms(block,q_index,diff,q.gamma()))
     result.add_term(std::move(term.first),
                     Split_integer(term.second,-term.second)*it->second);
@@ -7948,9 +7959,10 @@ void twisted_deform_wrapper(expression_base::level l)
     return;
 @)
   BlockElt entry_elem;
-  auto& block = rt.lookup(p->val,entry_elem);
+  repr::block_modifier bm;
+  auto& block = rt.lookup(p->val,entry_elem,bm);
     // though by reference, does not change |p->val|
-  RatWeight diff = rt.offset(p->val, block.representative(entry_elem));
+  const RatWeight& diff = bm.shift;
   block.shift(diff);
   auto& eblock = block.extended_block(rt.shared_poly_table());
   block.shift(-diff);
@@ -8116,8 +8128,9 @@ void KL_column_wrapper(expression_base::level l)
 @)
   auto col = p->rt().KL_column(p->val);
   BlockElt z;
-  const blocks::common_block& block = p->rt().lookup(p->val,z);
-  RatWeight diff = p->rc().offset(p->val, block.representative(z));
+  repr::block_modifier bm;
+  const blocks::common_block& block = p->rt().lookup(p->val,z,bm);
+  const RatWeight& diff = bm.shift;
   own_row column = std::make_shared<row_value>(0);
   column->val.reserve(length(col));
   for (auto it=col.wcbegin(); not col.at_end(it); ++it)
