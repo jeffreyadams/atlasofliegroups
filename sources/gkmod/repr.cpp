@@ -1782,26 +1782,22 @@ std::vector<BlockElt_pol> contributions
 size_t Rep_table::find_reduced_hash(const common_block& block, BlockElt z) const
 { return reduced_hash.find(Reduced_param
 			   {*this, block.representative(z),
-			    block.base_integral_nr(),
-			    block.integral_attitude()} );
+			    block.integral_nr(),block.attitude()} );
 }
 size_t Rep_table::find_reduced_hash
   (const StandardReprMod& srm, const common_context& c) const
 { return reduced_hash.find(Reduced_param
-			   {*this,srm,
-			    c.base_integral_nr(), c.integral_attitude()} ); }
+			   {*this,srm, c.integral_nr(),c.attitude()} ); }
 
 size_t Rep_table::match_reduced_hash(const common_block& block, BlockElt z)
 { return reduced_hash.match(Reduced_param
 			   {*this, block.representative(z),
-			    block.base_integral_nr(),
-			    block.integral_attitude()} );
+			    block.integral_nr(),block.attitude()} );
 }
 size_t Rep_table::match_reduced_hash
   (const StandardReprMod& srm, const common_context& c)
 { return reduced_hash.match(Reduced_param
-			    {*this,srm,
-			     c.base_integral_nr(), c.integral_attitude()} ); }
+			    {*this,srm, c.integral_nr(),c.attitude()} ); }
 
 sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,

@@ -596,8 +596,8 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
-  unsigned int base_integral_nr() const { return int_sys_nr; }
-  WeylElt integral_attitude() const { return w; }
+  unsigned int integral_nr() const { return int_sys_nr; }
+  WeylElt attitude() const { return w; }
   const SubSystem& subsys() const { return sub; }
 
   // methods for local common block construction, as in |Rep_context|

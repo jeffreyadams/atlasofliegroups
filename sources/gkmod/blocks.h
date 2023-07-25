@@ -376,8 +376,8 @@ class common_block : public Block_base
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
 
-  unsigned int base_integral_nr() const { return int_sys_nr; }
-  WeylElt integral_attitude() const { return w; }
+  unsigned int integral_nr() const { return int_sys_nr; }
+  WeylElt attitude() const { return w; }
 
   bool is_full () const { return generated_as_full_block; }
 

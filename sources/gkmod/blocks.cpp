@@ -727,8 +727,8 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , int_sys_nr(ctxt.integral_nr())
+  , w(ctxt.attitude())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1080,8 +1080,8 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , int_sys_nr(ctxt.integral_nr())
+  , w(ctxt.attitude())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
