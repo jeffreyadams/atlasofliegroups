@@ -1473,7 +1473,7 @@ blocks::common_block& Rep_table::add_block_below
   sl_list<sub_triple> sub_blocks;
   for (const auto& elt : pool)
   {
-    auto h = match_reduced_hash(elt); // fingerprint of parameter family
+    auto h = match_reduced_hash(elt,ctxt); // fingerprint of parameter family
     if (h==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),-1); // create slot; both fields filled later
     else if (h<place_limit) // then a similar parameter was known
@@ -1549,8 +1549,7 @@ blocks::common_block& Rep_table::add_block_below
 
   for (BlockElt z=block.size(); z-->0; ) // decreasing: least |z| wins below
   { // by using reverse iteration, least elt with same |h| defines |place[h]|
-    const StandardReprMod srm =block.representative(z);
-    auto h = find_reduced_hash(srm);
+    auto h = find_reduced_hash(block,z);
     assert(h!=reduced_hash.empty);
     place[h] = std::make_pair(new_block_it,z); // extend or replace
   }
@@ -1567,8 +1566,7 @@ void Rep_table::block_erase (bl_it pos)
     const auto& block = *next_pos;
     for (BlockElt z=0; z<block.size(); ++z)
     {
-      auto zm = block.representative(z);
-      auto seq = find_reduced_hash(zm);
+      auto seq = find_reduced_hash(block,z);
       assert(seq<place.size()); // all elements in |block_list| must have |place|
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
 	place[seq].first=pos; // replace iterator that is about to be invalidated
@@ -1590,8 +1588,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   sl_list<sub_triple> sub_blocks;
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto elt = block.representative(z);
-    auto seq = match_reduced_hash(elt);
+    auto seq = match_reduced_hash(block,z);
     if (seq==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),z); // create slot; iterator filled later
     else if (seq<place_limit)
@@ -1601,7 +1598,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
       if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
       {
 	StandardReprMod base = sub->representative(place[seq].second);
-	sub_blocks.emplace_back(sub,seq,offset(elt,base));
+	sub_blocks.emplace_back(sub,seq,offset(block.representative(z),base));
       }
     }
   }
@@ -1631,11 +1628,11 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   // now make sure for all |elements| that |place| fields are set for new block
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto h = find_reduced_hash(block.representative(z));
+    auto h = find_reduced_hash(block,z);
     place[h].first = new_block_it;
     place[h].second = z;
   }
-  return find_reduced_hash(srm);
+  return find_reduced_hash(srm,ctxt);
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
