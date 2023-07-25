@@ -1261,7 +1261,7 @@ repr::StandardRepr common_block::sr
   (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
 {
   const Weight lambda_rho =
-    gamma.integer_diff<int>(context().gamma_lambda_rho(z_pool[z])+diff);
+    gamma.integer_diff<int>(rc.gamma_lambda_rho(z_pool[z])+diff);
   return rc.sr_gamma(x(z),lambda_rho,gamma);
 }
 
@@ -1288,13 +1288,13 @@ struct common_block::ext_block_pair
 
 void common_block::shift (const RatWeight& diff)
 {
-  if (diff.numerator().isZero())
+  if (diff.numerator().is_zero())
     return;
   const auto& rc = context();
 #ifndef NDEBUG
   auto& ic = rc.inner_class();
   const int_Matrix& int_ev = ic.integral_eval(z_pool[0].gamma_lambda());
-  assert((int_ev*diff.numerator()).isZero());
+  assert((int_ev*diff.numerator()).is_zero());
 #endif
   for (auto& srm : z_pool)
     rc.shift(diff,srm);

@@ -328,6 +328,19 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
+/* the |evs_reduced| field of a |Reduced_param| encoode the evaluations of the
+   value $\gamma-\lambda$ of a parameter on (simply-) integral coroots for
+   $\gamma$. However, since $\lambda$ is defined only up to sifts in the image
+   lattice of $1-\theta$, the |ev_reduced| values are effectively reduced modulo
+   the image of that lattice under the integral coroot evaluation map. It may
+   therefore happen that when subtracting the values of $\gamma-\lambda$ for two
+   |StandardReprMod| values producing the same |Reduced_param|, these coroot
+   evaluations of the difference are not zero; they must however define a point
+   in the latter lattice image. The function |theta_1_preimage| makes this
+   explicit: given such a difference |offset| it produces a weight in the image
+   of $1-\theta$ that has identical intergral coroot evaluations as |offset|.
+ */
+
 // fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
 // uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
 Weight Rep_context::theta_1_preimage
@@ -335,6 +348,8 @@ Weight Rep_context::theta_1_preimage
   const
 {
   RatWeight eval = (codec.coroots_matrix*offset).normalize();
+  if (eval.is_zero())
+    return Weight(codec.theta_1_image_basis.n_rows(),0);
   assert(eval.denominator()==1);
   auto eval_v = int_Vector(eval.numerator().begin(),eval.numerator().end());
   eval_v = codec.in * eval_v;
@@ -1230,7 +1245,7 @@ bool deformation_unit::operator!=(const deformation_unit& another) const
     const int_Matrix& theta = i_tab.matrix(inv_nr);
     const auto gamma_diff_num =
       (sample.gamma()-another.sample.gamma()).numerator();
-    if (not (theta*gamma_diff_num+gamma_diff_num).isZero())
+    if (not (theta*gamma_diff_num+gamma_diff_num).is_zero())
       return true; // difference in the free part of $\lambda$ spotted
   }
 
@@ -2022,7 +2037,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   for (BlockElt x=z+1; x-->0; )
   {
     const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
-    if (pol.isZero())
+    if (pol.is_zero())
       continue;
     Split_integer eval(0);
     for (polynomials::Degree d=pol.size(); d-->0; )
@@ -2054,7 +2069,7 @@ simple_list<std::pair<BlockElt,kl::KLPol> >
   for (BlockElt x=z+1; x-->0; )
   {
     const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
-    if (not pol.isZero())
+    if (not pol.is_zero())
       result.emplace_front(x,pol);
   }
 
@@ -2129,7 +2144,7 @@ SR_poly twisted_KL_sum
   // make a copy of |pool| in which polynomials have been evaluated as |s|
   std::vector<Split_integer> pool_at_s; pool_at_s.reserve(pool.size());
   for (unsigned i=0; i<pool.size(); ++i)
-    if (pool[i].isZero())
+    if (pool[i].is_zero())
       pool_at_s.push_back(Split_integer(0,0));
     else
     { const auto& P = pool[i];
@@ -2224,7 +2239,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   for (BlockElt x=y+1; x-->0; )
   {
     const auto& pol = kl_tab.P(x,y); // twisted KL polynomial
-    if (pol.isZero())
+    if (pol.is_zero())
       continue;
     Split_integer eval(0);
     for (polynomials::Degree d=pol.size(); d-->0; )

@@ -674,7 +674,7 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
     basic_io::put_int(offset&0xFFFFFFFF,out);
     out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
 
-    if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
+    if (not p.is_zero()) // superfluous since polynomials::MinusOne+1==0
       // add number of coefficient bytes to be written
       offset += (p.degree()+1)*coef_size;
   }
@@ -685,7 +685,7 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
   for (size_t i=0; i<store.size(); ++i)
   {
     kl::KLPolRef p=store[i]; // get reference to polynomial
-    if (not p.isZero())
+    if (not p.is_zero())
       for (size_t j=0; j<=p.degree(); ++j)
 	basic_io::put_int(p[j],out);
   }

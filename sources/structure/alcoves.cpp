@@ -465,7 +465,7 @@ bool make_multiple_integral
   for (RootNbr i=0; i<npr; ++i)
   {
     auto eval = ker.right_prod(rd.posCoroot(i));
-    if (not eval.isZero())
+    if (not eval.is_zero())
     {
       outside_poscoroots.insert(i);
       coroot_generators.push_back(BitMap(eval.size()));

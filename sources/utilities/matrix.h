@@ -131,7 +131,7 @@ public:
     return result;
   }
 
-  bool isZero() const;
+  bool is_zero() const;
 
   Vector operator+ (const Vector& v) const &
     { Vector result(*this); return result +=v; }

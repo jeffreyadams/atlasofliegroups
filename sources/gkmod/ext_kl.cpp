@@ -272,7 +272,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       }
       for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
 	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	  if (aux.is_descent(s,u) and not M[u].isZero())
+	  if (aux.is_descent(s,u) and not M[u].is_zero())
 	    acc -= mu(1,x,u)*M[u][0];
       return Pol(acc);
     }
@@ -280,7 +280,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
     int acc= product_comp(x,s,y).up_remainder(1,(l(z,x)+1)/2);
     for (unsigned lu=bl.length(x)+2; lu<bl.length(z); lu+=2)
       for (BlockElt u=bl.length_first(lu); u<bl.length_first(lu+1); ++u)
-	if (aux.is_descent(s,u) and not M[u].isZero())
+	if (aux.is_descent(s,u) and not M[u].is_zero())
 	  acc -= P(x,u).up_remainder(1,l(u,x)/2)*M[u][0];
     return Pol(acc);
   }
@@ -323,7 +323,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
        we restrict to those $u$ of the same length parity as $x$ */
     for (unsigned lu=bl.length(x)+2; lu<bl.length(z); lu+=2)
       for (BlockElt u=bl.length_first(lu); u<bl.length_first(lu+1); ++u)
-	if (aux.is_descent(s,u) and not M[u].isZero())
+	if (aux.is_descent(s,u) and not M[u].is_zero())
 	{ // extract $b-2a$ from |M[u]| representing $ar^{-2}+br^0+ar^2$
 	  assert(M[u].degree()%2==0);
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
@@ -336,7 +336,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
   Pol Q= product_comp(x,s,y);
 
   for (BlockElt u=bl.length_first(bl.length(x)+1); u<aux.length_floor(z); u++)
-    if (aux.is_descent(s,u) and not M[u].isZero())
+    if (aux.is_descent(s,u) and not M[u].is_zero())
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
       unsigned d=l(z,u)+defect; // doubled implicit degree shift
       assert(M[u].degree()<=d);
@@ -375,7 +375,7 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
     int acc = mu(2,x,y);
     for (unsigned l=bl.length(x)+1; l<bl.length(y); l+=2)
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	if (aux.is_descent(s,u) and not M[u].isZero())
+	if (aux.is_descent(s,u) and not M[u].is_zero())
 	{
 	  assert(M[u].degree()==1 and M[u][0]==M[u][1]);
 	  acc -= mu(1,x,u)*M[u][1];
@@ -501,7 +501,7 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
     return M;
 
   // otherwise add constant $c$ to $m$, as $cr^d$ had to be subtracted from $Q$
-  if (M.isZero())
+  if (M.is_zero())
     M=Pol(c); // if there were no terms, create one of degree $0$
   else
   {
@@ -538,14 +538,14 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
       {
 	unsigned d=aux.block.l(y,u)+defect; // doubled degree shift of |cy[u]|
 	assert(u<cy.size());
-	if (cy[u].isZero())
+	if (cy[u].is_zero())
 	  continue;
 
 	assert(u<Ms.size());
 	Ms[u]=extract_M(cy[u],d,defect);
 	assert(Ms[u]==get_M(s,u,sy,Ms));
 
-	if (Ms[u].isZero())
+	if (Ms[u].is_zero())
 	  continue;
 
 	d -= Ms[u].degree();
@@ -692,7 +692,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 
 	  // initialise $Q=\sum_{x<u<y}[s\in\tau(u)]r^{l(y/u)+k}P_{x,u}m_s(u,y)$
 	  for (BlockElt u=floor_y; u-->last_u; )
-	    if (is_descent(type(s,u)) and not M[u].isZero())
+	    if (is_descent(type(s,u)) and not M[u].is_zero())
 	      Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2, P(x,u)*M[u]);
 
 	  // subtract terms for ascent(s) of |x|; divide by its own coefficient
@@ -876,8 +876,8 @@ void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 
 bool check(const Pol& P_sigma, const KLPol& P)
 {
-  if (P_sigma.isZero())
-  { if (P.isZero())
+  if (P_sigma.is_zero())
+  { if (P.is_zero())
       return true;
     for (unsigned i=0; i<=P.degree(); ++i)
       if (P[i]%2!=0)
@@ -923,7 +923,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    int_Matrix& P_index_mat,
 		    IntPolEntry::Pooltype& polys)
 { BlockElt entry_element;
-  if (not ((delta-1)*p.gamma().numerator()).isZero())
+  if (not ((delta-1)*p.gamma().numerator()).is_zero())
   {
     std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
     throw std::runtime_error("No valid extended bock");

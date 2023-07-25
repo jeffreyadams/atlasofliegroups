@@ -432,7 +432,7 @@ std::ostream& print_KL(std::ostream& f, blocks::common_block& block,
   for (size_t x = 0; x <= z; ++x)
   {
     const kl::KLPol& pol = kl_tab.KL_pol(x,z);
-    if (not pol.isZero())
+    if (not pol.is_zero())
     {
       Poly p(pol); // convert
       if (block.length(x)%2!=parity)
@@ -456,7 +456,7 @@ std::ostream& print_KL(std::ostream& f, blocks::common_block& block,
   {
     BlockElt x = it->first;
     const Poly& pol = it->second;
-    if (not pol.isZero())
+    if (not pol.is_zero())
       pol.print(f << std::setw(width) << x << ": ","q") << std::endl;
   }
   return f;
