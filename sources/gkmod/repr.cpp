@@ -1462,7 +1462,9 @@ blocks::common_block& Rep_table::add_block_below
   (const common_context& ctxt, const StandardReprMod& init, BitMap* subset)
 {
   assert // we are called to add a block for nothing like what is known before
-    (find_reduced_hash(init)==reduced_hash.empty);
+    (reduced_hash.find(Reduced_param
+		       (*this,init,ctxt.integral_nr(),ctxt.attitude()))
+     ==reduced_hash.empty);
 
   StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
@@ -1575,11 +1577,11 @@ void Rep_table::block_erase (bl_it pos)
   block_list.erase(pos);
 } // |Rep_table::block_erase|
 
-unsigned long Rep_table::add_block(const StandardReprMod& srm)
+unsigned long Rep_table::add_block
+  (const StandardReprMod& srm, const common_context& ctxt)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<blocks::common_block> temp; // must use temporary singleton
-  common_context ctxt(*this,srm.gamma_lambda());
   auto& block = temp.emplace_back(ctxt,srm,srm_in_block); // build full block
 
   const auto rho = rootdata::rho(root_datum());
@@ -1639,9 +1641,12 @@ blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z
 {
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
+  common_context ctxt(*this,srm.gamma_lambda());
+  Reduced_param rp(*this,srm,ctxt.integral_nr(),ctxt.attitude());
+
+  auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
-    h=add_block(srm); // generate a new full block (possibly swallow older ones)
+    h=add_block(srm,ctxt); // generate new full block (maybe swallow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
   z = place[h].second;
@@ -1653,8 +1658,11 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
 {
   normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
+  common_context ctxt(*this,srm.gamma_lambda());
+  Reduced_param rp(*this,srm,ctxt.integral_nr(),ctxt.attitude());
+
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
-  auto h = find_reduced_hash(srm); // look up modulo $X^*+integral^\perp$
+  auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
   if (h!=reduced_hash.empty) // then we have found our family of blocks
   {
     assert(h<place.size());
@@ -1663,12 +1671,12 @@ blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
     assert(block.representative(which).x()==srm.x()); // check minimum of sanity
     return block; // use block of related |StandardReprMod| as ours
   }
-  common_context ctxt(*this,sr.gamma());
   BitMap subset;
-  auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
+  auto& block = add_block_below(ctxt,srm,&subset);
   which = last(subset);
-  assert(Reduced_param(*this,block.representative(which))==
-	 Reduced_param(*this,srm));
+  assert(Reduced_param
+	 (*this,block.representative(which),ctxt.integral_nr(),ctxt.attitude())
+	 ==rp);
   return block;
 } // |Rep_table::lookup|
 

@@ -573,7 +573,8 @@ class Rep_table : public Rep_context
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
-  unsigned long add_block(const StandardReprMod&); // full block
+  unsigned long add_block
+    (const StandardReprMod&, const common_context& ctxt); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|
