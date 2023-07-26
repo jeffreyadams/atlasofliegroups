@@ -155,7 +155,8 @@ class KL_table
   // manipulators
   void fill_columns(BlockElt limit=0); // do all |y<limit|; if |limit==0| do all
   Poly_hash_export polynomial_hash_table ();
-  void swallow (KL_table&& sub, const BlockEltList& embed);
+  void swallow (KL_table&& sub,
+		const BlockEltList& embed, const Permutation& simple_pi);
  private:
   using PolHash = HashTable<IntPolEntry,ext_kl::KLIndex>;
   void fill_column(BlockElt y,PolHash& hash);

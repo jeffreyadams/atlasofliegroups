@@ -36,9 +36,6 @@ namespace atlas {
 
 namespace repr {
 
-class common_context;
-struct block_modifier;
-
 /*
   A parameter of a standard representation is determined by a triplet
   $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
@@ -140,7 +137,7 @@ class StandardReprMod
     (const Rep_context& rc, KGBElt x, RatWeight gam_lam);
 
   KGBElt x() const { return x_part; }
-  RatWeight gamma_lambda() const & { return gamlam; }
+  const RatWeight& gamma_lambda() const & { return gamlam; }
   RatWeight&& gamma_lambda() && { return std::move(gamlam); }
 
   // since pseudo constructors map |rgl| to fundamental domain, equality is easy
@@ -158,32 +155,27 @@ class Reduced_param
 {
   KGBElt x;
   unsigned int int_sys_nr;
-  WeylElt w;
-  int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
+  unsigned int evs_reduced; // encodes |internalise(gamlam) mod diagonal|
 
-  Reduced_param(KGBElt x, unsigned int i, const WeylElt& w, const int_Vector& v)
-    : x(x), int_sys_nr(i), w(w), evs_reduced(v)
+  Reduced_param(KGBElt x, unsigned int i, unsigned int v)
+    : x(x), int_sys_nr(i), evs_reduced(v)
   {}
 
 public:
-  Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
-  Reduced_param(const Rep_context& rc, const StandardReprMod& srm,
-		unsigned int_sys_nr, const WeylElt& w);
-
   Reduced_param(Reduced_param&&) = default;
   Reduced_param& operator=(Reduced_param&&) = default;
 
   static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
     (const Rep_context& rc, StandardReprMod srm,
-     unsigned int& int_sys_nr, block_modifier& bm);
+     unsigned int& int_sys_nr, locator& loc);
   static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
     (const Rep_context& rc, StandardReprMod srm,
      unsigned int int_sys_nr, const WeylElt& w);
 
+
   using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
-  { return x!=p.x or int_sys_nr!=p.int_sys_nr or w!=p.w
-      or evs_reduced!=p.evs_reduced; }
+  { return x!=p.x or int_sys_nr!=p.int_sys_nr or evs_reduced!=p.evs_reduced; }
   bool operator==(const Reduced_param& p) const { return not operator!=(p); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
@@ -231,9 +223,6 @@ class Rep_context
 
   // reconstruct |StandardRep| from |srm| and difference of |gamma_lambda|s
   StandardRepr sr (const StandardReprMod& srm,const RatWeight& gamma)  const;
-  StandardRepr sr // REMOVE ME
-    (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
-    const;
   StandardRepr sr
     (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
     const;
@@ -318,10 +307,6 @@ class Rep_context
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
   { return shift(diff,srm); } // perform |shift| on a copy and return it
 
-  RatWeight gamma_lambda(const StandardReprMod& z) const
-  { return z.gamma_lambda(); }
-  RatWeight&& gamma_lambda(StandardReprMod&& z) const
-  { return std::move(z).gamma_lambda(); }
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
 
@@ -386,9 +371,12 @@ class Rep_context
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
 
 
-  // offset in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|
-  RatWeight offset
-    (const StandardReprMod& srm0, const StandardReprMod& srm1) const;
+  // |gamlam-srm.gamma_lambda()|, adapted by equivalence to be orth to integrals
+  RatWeight make_diff_integral_orthogonal
+    (const RatWeight& gamlam, const StandardReprMod& srm) const;
+  void make_relative_to // modify |bm| to record being relative to |loc|, |srm0|
+    (const locator& loc, const StandardReprMod& srm0,
+     block_modifier& bm, StandardReprMod srm1) const;
 
  private:
   // compute $\check\alpha\dot(1+\theta_x)\lambda$, with $(x,\lambda)$ from $t$
@@ -477,12 +465,18 @@ public:
   size_t hashCode(size_t modulus) const; // value depending on alcove only
 }; // |class deformation_unit|
 
-struct block_modifier // data to transform stored block to user attitude
+// data to transform stored block to user attitude
+struct locator
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
   RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
-  RatWeight shift;
+};
+
+struct block_modifier : public locator
+{
+  RatWeight shift; // add this one field
+  void clear (unsigned int rank);
 };
 
 /*
@@ -524,8 +518,10 @@ class Rep_table : public Rep_context
   IntPolEntry::Pooltype poly_pool;
   ext_KL_hash_Table poly_hash;
 
-  sl_list<blocks::common_block> block_list;
-  using bl_it = sl_list<blocks::common_block>::iterator;
+  using located_block = std::pair<blocks::common_block,locator>;
+  sl_list<located_block> block_list;
+
+  using bl_it = sl_list<located_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place; // parallel to |reduced_pool|
 
  public:
@@ -552,12 +548,14 @@ class Rep_table : public Rep_context
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   size_t find_reduced_hash(const StandardReprMod& srm) const
-  { return reduced_hash.find(Reduced_param(*this,srm)); }
+  { unsigned int int_sys_nr; block_modifier bm;
+    return reduced_hash.find(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
   size_t find_reduced_hash(const common_block& block, BlockElt z) const;
   size_t find_reduced_hash
     (const StandardReprMod& srm, const common_context& c) const;
   size_t match_reduced_hash(const StandardReprMod& srm)
-  { return reduced_hash.match(Reduced_param(*this,srm)); }
+  { unsigned int int_sys_nr; block_modifier bm;
+    return reduced_hash.match(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
   size_t match_reduced_hash(const common_block& block, BlockElt z);
   size_t match_reduced_hash
     (const StandardReprMod& srm, const common_context& c);
@@ -569,7 +567,7 @@ class Rep_table : public Rep_context
   // deformations to $\nu=0$ included) when deforming |y| a bit towards $\nu=0$
   sl_list<std::pair<StandardRepr,int> > deformation_terms
     (blocks::common_block& block, BlockElt y,
-     const RatWeight& diff, const RatWeight& gamma);
+     const block_modifier& bm, const RatWeight& gamma);
 
 /*
    Compute the signed multiset of final parameters "post deformation"
@@ -590,7 +588,7 @@ class Rep_table : public Rep_context
   sl_list<std::pair<StandardRepr,int> > twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular, const RatWeight& diff, const RatWeight& gamma);
+     RankFlags singular, const block_modifier& bm, const RatWeight& gamma);
 #if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
@@ -600,7 +598,8 @@ class Rep_table : public Rep_context
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
-    (const common_context&, const StandardReprMod& srm, BitMap* subset);
+    (const StandardReprMod& srm, BitMap* subset,
+     unsigned int int_sys_nr, const block_modifier& bm);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
@@ -608,7 +607,8 @@ class Rep_table : public Rep_context
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   // add a full block, assuming has trivial attitude
-  unsigned long add_block (const StandardReprMod& srm);
+  void add_block (const StandardReprMod& srm,
+		  unsigned int int_sys_nr, const block_modifier& bm);
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|
@@ -624,6 +624,8 @@ class common_context
   const SubSystem sub; // embeds its |w| image into parent root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
+  common_context (const Rep_context& rc, const RatWeight& gamma,
+		  unsigned int int_sys_nr, const block_modifier& bm);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }
@@ -635,6 +637,7 @@ public:
   const block_modifier& modifier () const { return bm; }
   WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
+  RootNbrList integrally_simples () const;
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|
@@ -676,8 +679,6 @@ class Ext_rep_context
   const InnerClass& inner_class() const { return rep_con.inner_class(); }
   RealReductiveGroup& real_group() const { return rep_con.real_group(); }
   const RatCoweight& g_rho_check() const { return rep_con.g_rho_check(); }
-  RatWeight gamma_lambda(const StandardReprMod& z) const
-  { return rep_con.gamma_lambda(z); }
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const // |pos_to_neg| by value

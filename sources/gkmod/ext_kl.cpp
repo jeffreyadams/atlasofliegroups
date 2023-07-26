@@ -830,8 +830,18 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
   assert(out_it==column[y].rend()); // check that we've traversed the column
 } // |KL_table::do_new_recursion|
 
+#ifndef NDEBUG
+RankFlags permute(RankFlags in, const Permutation& pi)
+{
+  RankFlags result;
+  for (weyl::Generator s : in)
+    result.set(pi[s]);
+  return result;
+}
+#endif
 
-void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
+void KL_table::swallow(KL_table&& sub,
+		       const BlockEltList& embed, const Permutation& simple_pi)
 {
   if (pol_hash!=nullptr and sub.pol_hash!=nullptr and
       &pol_hash->pool()==&sub.pol_hash->pool()) // case of shared hash tables
@@ -843,7 +853,7 @@ void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 	cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
 	BlockElt x=sub.aux.length_floor(y);
 	const auto desc = sub.descent_set(y);
-	assert(desc==descent_set(embed[y]));
+	assert(permute(desc,simple_pi)==descent_set(embed[y]));
 	for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
 	  cur_col.at(aux.x_index(embed[x],embed[y])) = *it;
       }
@@ -930,9 +940,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   }
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
   common_context ctxt(rc,srm.gamma_lambda());
-  blocks::common_block B(ctxt,srm,entry_element); // build full block
+  blocks::common_block B(ctxt,srm,entry_element); // build custom full block
   const auto& gamma = p.gamma();
-  RatWeight diff(gamma.size()); // a custom made |StandardReprMod| gives zero offset
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
   ext_block::ext_block eblock(B,delta,nullptr);
@@ -985,7 +994,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   block_list.clear(); block_list.reserve(size);
   for (auto ez : survivors)
-    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),diff,gamma));
+    block_list.push_back(rc.sr(B.representative(eblock.z(ez)),gamma));
 
   polys.assign({Pol(),Pol(1)}); // set up initial values of table
   P_index_mat = int_Matrix(size);

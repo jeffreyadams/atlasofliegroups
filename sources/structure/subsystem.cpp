@@ -213,26 +213,25 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 integral_datum_item::integral_datum_item
   (InnerClass& ic,const RootNbrSet& int_poscoroots)
     : W(ic.Weyl_group())
-    , int_sys_p(new SubSystem
-		 {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)})
-    , simple_coroots(int_sys_p->rank(),ic.rank())
+    , int_sys {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)}
+    , simple_coroots(int_sys.rank(),ic.rank())
 {
   for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
-    simple_coroots.set_row(i,int_sys_p->simple_coroot(i));
+    simple_coroots.set_row(i,int_sys.simple_coroot(i));
 }
 
 
 SubSystem integral_datum_item::int_system(const WeylElt& w) const
-{ return SubSystem { int_sys_p->parent_datum(), image_simples(w) }; }
+{ return SubSystem { int_sys.parent_datum(), image_simples(w) }; }
 
 sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  const auto& rd = int_sys_p->parent_datum();
+  const auto& rd = int_sys.parent_datum();
   WeylWord ww = W.word(w);
   sl_list<RootNbr> result;
-  for (weyl::Generator s=0; s<int_sys_p->rank(); ++s)
+  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
   {
-    RootNbr image = rd.permuted_root(ww,int_sys_p->parent_nr_simple(s));
+    RootNbr image = rd.permuted_root(ww,int_sys.parent_nr_simple(s));
     assert(rd.is_posroot(image)); // |ww| must map to integrally dominant
     result.push_back(image);
   }
@@ -243,7 +242,7 @@ sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 
 int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 {
-  const auto& rd = int_sys_p->parent_datum();
+  const auto& rd = int_sys.parent_datum();
   auto integral_simples = image_simples(w);
   int_Matrix result(integral_simples.size(), rd.rank());
   unsigned i=0;
@@ -284,8 +283,7 @@ int_Vector integral_datum_item::codec::internalise (const RatWeight& gamma) cons
     assert(entry%gamma.denominator()==0);
     entry /= gamma.denominator();
   }
-  int_Vector evs_reduced = in * int_Vector(eval.begin(),eval.end());
-  return evs_reduced;
+  return in * int_Vector(eval.begin(),eval.end());
 }
 
 } // |namespace subdatum|

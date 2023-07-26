@@ -423,7 +423,7 @@ public:
   void act (const RootDatum& rd, const WeylElt& w, RatWeight& v) const
     { act(rd,w,v.numerator()); }
 
-  // standard reflection left action of Weyl group using a root datum
+  // standard reflection left multiplication action on matrices
   void act (const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
@@ -441,6 +441,10 @@ public:
 
   void inverse_act (const RootDatum& rd, const WeylElt& w, RatWeight& v) const
     { inverse_act(rd,w,v.numerator()); }
+
+  // action as a matrix
+  int_Matrix matrix (const RootDatum& rd, const WeylElt& w) const;
+  int_Matrix inverse_matrix (const RootDatum& rd, const WeylElt& w) const;
 
   // Nondestructive version of |inverse_act| method
   Weight

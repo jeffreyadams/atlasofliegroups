@@ -72,75 +72,44 @@ size_t StandardReprMod::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-Reduced_param::Reduced_param
-  (const Rep_context& rc, const StandardReprMod& srm)
-    : x(srm.x())
-    , int_sys_nr()
-    , w() // |int_sys_nr| and |w| are set by |int_item| below
-    , evs_reduced()
-{ // ensure |int_item| sets |w| before same argument to |data| is evaluated
-  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  InnerClass& ic = rc.inner_class();
-  repr::block_modifier bm;
-  const auto& integral = ic.int_item(gl,int_sys_nr,bm); // sets last two args
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w = bm.w);
-  evs_reduced = codec.internalise(gl);
-  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
-}
-
 Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm,
-   unsigned int& int_sys_nr, block_modifier& bm)
+   unsigned int& int_sys_nr, locator& loc)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
   const auto& gl = srm.gamma_lambda(); // constant ref to changing value!
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gl,int_sys_nr,bm); // sets last two args
-  auto ww = rc.Weyl_group().word(bm.w);
+  const auto& integral = ic.int_item(gl,int_sys_nr,loc); // sets last two args
+  auto ww = rc.Weyl_group().word(loc.w);
   rc.transform<true>(ww,srm);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
-  auto evs_reduced = codec.internalise(gl);
+  auto evs = codec.internalise(gl);
+  unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
-  return Reduced_param{ srm.x(), int_sys_nr, bm.w, evs_reduced };
-}
-
-Reduced_param::Reduced_param
-  (const Rep_context& rc, const StandardReprMod& srm,
-   unsigned int_sys_nr, const WeylElt& w)
-    : x(srm.x())
-    , int_sys_nr(int_sys_nr)
-    , w(w)
-    , evs_reduced()
-{
-  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
-  InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(int_sys_nr);
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(x),w);
-  evs_reduced = codec.internalise(gl);
-  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
+  { auto d = codec.diagonal[i];
+    reduction = d*reduction + arithmetic::remainder(evs[i],d);
+  }
+  return Reduced_param{ srm.x(), int_sys_nr, reduction };
 }
 
 Reduced_param Reduced_param::co_reduce
   (const Rep_context& rc, StandardReprMod srm,
    unsigned int int_sys_nr, const WeylElt& w)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
-  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
   InnerClass& ic = rc.inner_class();
   rc.transform<true>(rc.Weyl_group().word(w),srm);
   const auto& integral = ic.int_item(int_sys_nr);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
-  auto evs_reduced = codec.internalise(gl);
+  auto evs = codec.internalise(srm.gamma_lambda());
+  unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
-    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
-  return Reduced_param{ srm.x(), int_sys_nr, w, evs_reduced };
+  { auto d = codec.diagonal[i];
+    reduction = d*reduction + arithmetic::remainder(evs[i],d);
+  }
+  return Reduced_param{ srm.x(), int_sys_nr, reduction };
 }
 
 size_t Reduced_param::hashCode(size_t modulus) const
-{ size_t hash = 7*x + 83*int_sys_nr;
-  for (auto val : evs_reduced)
-    hash= 25*hash+val;
+{ size_t hash = (2049ull * x + int_sys_nr)*17 + evs_reduced;
   return hash &(modulus-1);
 }
 
@@ -272,30 +241,31 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 {
   const auto& delta = inner_class().distinguished();
   return StandardReprMod::build(*this,kgb().twisted(z.x(),delta),
-				delta*gamma_lambda(z));
+				delta*z.gamma_lambda());
 }
 
 /*
    The |evs_reduced| field of a |Reduced_param| encodes the evaluations of the
    value $\gamma-\lambda$ of a parameter on (simply-) integral coroots for
-   $\gamma$. However, since $\lambda$ is defined only up to sifts in the image
-   lattice of $1-\theta$, the |ev_reduced| values are effectively reduced modulo
-   the image of that lattice under the integral coroot evaluation map. It may
-   therefore happen that when subtracting the values of $\gamma-\lambda$ for two
-   |StandardReprMod| values producing the same |Reduced_param|, these coroot
-   evaluations of the difference are not zero; they must however define a point
-   in the latter lattice image. The function |theta_1_preimage| makes this
-   explicit: given such a difference |offset| it produces a weight in the image
-   of $1-\theta$ that has identical intergral coroot evaluations as |offset|.
+   $\gamma$. However, since $\lambda$ is defined only modulo image lattice of
+   $1-\theta$, the |evs_reduced| values are effectively reduced modulo the image
+   of that lattice under the integral coroot evaluation map |codec.internalise|.
+   It may therefore happen for two |StandardReprMod| values with the same
+   integral system attitude and producing the same |Reduced_param|, that their
+   coroot evaluations at some integral roots differ; however the integral coroot
+   evaluation of the difference of their $\gamma-\lambda$ must must lie in the
+   latter lattice image. The function |theta_1_preimage| makes this explicit:
+   given such a difference |diff|, it produces a weight in the image of
+   $1-\theta$ that has identical integral coroot evaluations as |diff|.
  */
 
 // fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
-// uses idempotence of: (th_1_image*out*.))o(mod(diagonal))o(in*coroots_mat*.)
+// uses idempotence for |codec| of: (out*.) o (. mod(diagonal)) o internalise
 Weight Rep_context::theta_1_preimage
-  (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
+  (const RatWeight& diff, const subsystem::integral_datum_item::codec& codec)
   const
 {
-  auto eval_v = codec.internalise(offset);
+  auto eval_v = codec.internalise(diff);
   { unsigned int i;
     for (i=0; i<codec.diagonal.size(); ++i)
     {
@@ -304,7 +274,7 @@ Weight Rep_context::theta_1_preimage
     }
     for (; i<eval_v.size(); ++i)
       assert(eval_v[i]==0);
-    eval_v.resize(codec.diagonal.size());
+    eval_v.resize(codec.diagonal.size()); // truncate
   }
 
   return codec.out * eval_v;
@@ -312,19 +282,43 @@ Weight Rep_context::theta_1_preimage
 
 // difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
 // for representatives of |srm0| and |srm1| with identical integral evaluations
-RatWeight Rep_context::offset
-  (const StandardReprMod& srm0, const StandardReprMod& srm1) const
+RatWeight Rep_context::make_diff_integral_orthogonal
+  (const RatWeight& gamlam, const StandardReprMod& srm) const
 {
-  const auto& gamlam = srm0.gamma_lambda(); // will also define integral system
-  RatWeight result = gamlam - srm1.gamma_lambda();
+  RatWeight result = gamlam - srm.gamma_lambda();
   if (not result.is_zero()) // optimize out a fairly frequent case
   {
     auto& ic = inner_class();
-    const auto codec = ic.integrality_codec(gamlam,kgb().inv_nr(srm0.x()));
+    InvolutionNbr inv = kgb().inv_nr(srm.x());
+    unsigned int int_sys_nr;
+    const auto codec = ic.integrality_codec(srm.gamma_lambda(),inv,int_sys_nr);
     result -= theta_1_preimage(result,codec); // ensure orthogonal to integ. sys
     assert((codec.coroots_matrix*result).is_zero()); // check that it was done
   }
   return result;
+}
+
+/* The purpose of |Rep_context::make_relative_to| is to adapt |bm.w| so that
+   applying that to the facet of |srm0| returns (up to root translation) the
+   facet of |srm1|, and to set |bm.shift| so that in addition if we shift
+   |srm0.gamlam| first by |bm.shift| and then mulitply by |w| we end up in
+   |srm1.gamlam|; see |Rep_context::sr| where this procedure is applied.
+ */
+void Rep_context::make_relative_to // adapt information in |bm| relative to rest
+(const locator& loc, const StandardReprMod& srm0,
+ block_modifier& bm, StandardReprMod srm1) const
+{
+  const auto& rd = root_datum();
+  const auto& W = Weyl_group();
+  W.mult(bm.w, W.inverse(loc.w));
+  auto ww = W.word(bm.w);
+
+  assert(bm.integrally_simples == image(rd,ww,loc.integrally_simples));
+  compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
+
+  transform<true>(ww,srm1); // move back to base
+  bm.shift = // amount to shift |srm0| by before transforming by |ww| to |srm1|
+    make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
 }
 
 StandardReprMod& Rep_context::shift
@@ -786,17 +780,7 @@ StandardRepr Rep_context::sr_gamma
 StandardRepr Rep_context::sr
   (const StandardReprMod& srm, const RatWeight& gamma) const
 {
-  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum());
-  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
-  return sr_gamma(srm.x(),lambda_rho,gamma);
-}
-
-StandardRepr Rep_context::sr
-  (const StandardReprMod& srm, const RatWeight& diff, const RatWeight& gamma)
-  const
-{
-  const RatWeight gamma_lambda_rho = srm.gamma_lambda()+rho(root_datum())+diff;
-  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
+  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(srm));
   return sr_gamma(srm.x(),lambda_rho,gamma);
 }
 
@@ -804,9 +788,9 @@ StandardRepr Rep_context::sr
   (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
   const
 {
-  transform<false>(Weyl_group().word(bm.w),srm);
-  const RatWeight gamma_lambda_rho = srm.gamlam+rho(root_datum())+bm.shift;
-  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
+  srm.gamlam += bm.shift; // apply shift first
+  transform<false>(Weyl_group().word(bm.w),srm); // then apply |w|
+  const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(srm));
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 }
 
@@ -1385,6 +1369,17 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 }
 
+//				|block_modifier| method
+
+// when a block is relative to itself, we remove all modifiations
+void block_modifier::clear (unsigned int rank)
+{
+  w = WeylElt();
+  // |integrally_simples| is not relative; it remains
+  simple_pi = Permutation(simple_pi.size(),1); // reset to identity
+  shift = RatWeight(rank);
+}
+
 //				|Rep_table| methods
 
 
@@ -1538,62 +1533,71 @@ sl_list<StandardReprMod> Rep_table::Bruhat_below
 }
 
 // a structure used in |Rep_table::add_block_below| and |Rep_table::add_block|
-// for each sub_block, record block pointer, entry element, shift
+// for each sub_block, record block pointer, entry element, locator
 // DO NOT record iterator into |block_list| which might get invalidated,
 // access of iterator to |bp| through |place[h]| will be checked and corrected
 struct sub_triple {
-  common_block* bp; unsigned long h; RatWeight shift;
-  sub_triple(common_block* bp, unsigned long h, RatWeight shift)
-    : bp(bp),h(h),shift(shift) {}
+  common_block* bp; unsigned long h; block_modifier bm;
+  sub_triple(common_block* bp, unsigned long h, block_modifier bm)
+    : bp(bp),h(h),bm(std::move(bm)) {}
 };
 
 blocks::common_block& Rep_table::add_block_below
-  (const common_context& ctxt, const StandardReprMod& init, BitMap* subset)
+  (const StandardReprMod& srm, BitMap* subset,
+   unsigned int int_sys_nr, const block_modifier& bm)
 {
-  assert // we are called to add a block for nothing like what is known before
-    (reduced_hash.find(Reduced_param
-		       (*this,init,ctxt.integral_nr(),ctxt.attitude()))
-     ==reduced_hash.empty);
-
+  common_context ctxt(*this,srm.gamma_lambda(),int_sys_nr,bm);
   StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
-  gen.block_below(init); // generate Bruhat interval below |srm| into |pool|
+  gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
 
   const size_t place_limit = place.size();
   sl_list<sub_triple> sub_blocks;
-  for (const auto& elt : pool)
+  for (const StandardReprMod& elt : pool) // run over interval just generated
   {
-    auto h = match_reduced_hash(elt,ctxt); // fingerprint of parameter family
+    auto h =
+      reduced_hash.match(Reduced_param::co_reduce(*this,elt,int_sys_nr,bm.w));
     if (h==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),-1); // create slot; both fields filled later
     else if (h<place_limit) // then a similar parameter was known
     { // record block pointer and offset of |elt| from its buddy in |sub_blocks|
-      common_block* sub = &*place[h].first;
+      common_block* sub = &place[h].first->first;
       auto hit = [sub] (const sub_triple& tri)->bool { return tri.bp==sub; };
       if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
       {
-	StandardReprMod base = sub->representative(place[h].second);
-	sub_blocks.emplace_back(sub,h,offset(elt,base));
+	block_modifier sub_to_new;
+	static_cast<locator&>(sub_to_new) = bm; // copy locator
+	const locator& loc = place[h].first->second; // attitude of |sub|
+	make_relative_to(loc,sub->representative(place[h].second),
+			 sub_to_new,elt);
+	sub_blocks.emplace_back(sub,h,sub_to_new);
       }
     }
   }
 
   // adapt elements for all |sub_blocks|
   size_t limit = pool.size(); // limit of generated Bruhat interval
-  const auto rho = rootdata::rho(root_datum());
   for (auto sub : sub_blocks)
   {
-    sub.bp->shift(sub.shift); // make representatives match swallowing block
+    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
+    auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub.bp->size(); ++z)
-      hash.match(sub.bp->representative(z)); // if new, to |pool| beyond |limit|
+    { StandardReprMod rep = sub.bp->representative(z);
+      transform<false>(ww,rep); // transform towards our new block
+      hash.match(rep); // if new, add it to |pool|, beyond the |limit| marker
+    }
   }
 
   sl_list<StandardReprMod> elements(pool.begin(),pool.end()); // working copy
 
-  sl_list<blocks::common_block> temp; // must use temporary singleton
-  auto& block =
-     temp.emplace_back(ctxt,elements); // construct block and get a reference
+  sl_list<located_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back // construct block and get a reference
+    (std::piecewise_construct,
+     std::tuple<const common_context&,sl_list<StandardReprMod>&>
+     (ctxt,elements), // arguments of full |common_block| constructor
+     std::tuple<const block_modifier&>(bm)
+    ) .first;
 
   *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
@@ -1620,15 +1624,18 @@ blocks::common_block& Rep_table::add_block_below
   {
     auto& sub_block = *sub.bp; // already shifted, so ignore |sub.shift|
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
+    auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
-      const auto& elt = sub_block.representative(z);
+      auto elt = sub_block.representative(z);
+      transform<false>(ww,elt);
       const BlockElt z_rel = block.lookup(elt);
       assert(z_rel!=UndefBlock);
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
+    block.swallow(std::move(sub_block), embed,sub.bm.simple_pi,
+		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first); // iterator argument might be corrected
   }
 
@@ -1640,9 +1647,17 @@ blocks::common_block& Rep_table::add_block_below
 
   for (BlockElt z=block.size(); z-->0; ) // decreasing: least |z| wins below
   { // by using reverse iteration, least elt with same |h| defines |place[h]|
-    auto h = find_reduced_hash(block,z);
+#ifndef NDEBUG
+    { const auto& gamlam = block.representative(z).gamma_lambda();
+      for (RootNbr alpha : bm.integrally_simples)
+	gamlam.dot(root_datum().coroot(alpha)); // asserts it is integral
+    }
+#endif
+    auto rp =
+      Reduced_param::co_reduce(*this,block.representative(z),int_sys_nr,bm.w);
+    auto h = reduced_hash.find(rp);
     assert(h!=reduced_hash.empty);
-    place[h] = std::make_pair(new_block_it,z); // extend or replace
+    place[h] = std::make_pair(new_block_it,z);
   }
   return block;
 } // |Rep_table::add_block_below|
@@ -1654,10 +1669,10 @@ void Rep_table::block_erase (bl_it pos)
   const auto next_pos = std::next(pos);
   if (not block_list.at_end(next_pos))
   { // then make sure in |place| instances of |next_pos| are replaced by |pos|
-    const auto& block = *next_pos;
+    const auto& block = next_pos->first;
     for (BlockElt z=0; z<block.size(); ++z)
     {
-      auto seq = find_reduced_hash(block,z);
+      auto seq = find_reduced_hash(block.representative(z));
       assert(seq<place.size()); // all elements in |block_list| must have |place|
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
 	place[seq].first=pos; // replace iterator that is about to be invalidated
@@ -1666,30 +1681,41 @@ void Rep_table::block_erase (bl_it pos)
   block_list.erase(pos);
 } // |Rep_table::block_erase|
 
-unsigned long Rep_table::add_block (const StandardReprMod& srm)
+void Rep_table::add_block (const StandardReprMod& srm,
+			   unsigned int int_sys_nr, const block_modifier& bm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  sl_list<blocks::common_block> temp; // must use temporary singleton
-  common_context ctxt(*this,srm.gamma_lambda());
-  auto& block = temp.emplace_back(ctxt,srm,srm_in_block); // build full block
+  sl_list<located_block> temp; // must use temporary singleton
+  common_context ctxt(*this,srm.gamma_lambda(),int_sys_nr,bm);
+  auto& block = temp.emplace_back // build full block in place and take reference
+    (std::piecewise_construct,
+     std::tuple<const common_context&,const StandardReprMod&,BlockElt&>
+     (ctxt,srm,srm_in_block), // arguments of partial |common_block| constructor
+     std::tuple<const block_modifier&>(bm)
+    ) .first;
 
-  const auto rho = rootdata::rho(root_datum());
   const size_t place_limit = place.size();
 
   sl_list<sub_triple> sub_blocks;
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto seq = match_reduced_hash(block,z);
+    const auto& elt = block.representative(z);
+    auto seq =
+      reduced_hash.match(Reduced_param::co_reduce(*this,elt,int_sys_nr,bm.w));
     if (seq==place.size()) // block element has new reduced hash value
       place.emplace_back(bl_it(),z); // create slot; iterator filled later
     else if (seq<place_limit)
     {
-      common_block* sub = &*place[seq].first;
+      common_block* sub = &place[seq].first->first;
       auto hit = [sub] (const sub_triple& tri)->bool { return tri.bp==sub; };
       if (std::none_of(sub_blocks.begin(),sub_blocks.end(),hit))
       {
-	StandardReprMod base = sub->representative(place[seq].second);
-	sub_blocks.emplace_back(sub,seq,offset(block.representative(z),base));
+	block_modifier sub_to_new = bm;
+	static_cast<locator&>(sub_to_new) = bm; // copy base part from |srm|
+	const locator& loc = place[seq].first->second; // attitude of |sub|
+	make_relative_to(loc,sub->representative(place[seq].second),
+			 sub_to_new,elt);
+	sub_blocks.emplace_back(sub,seq,sub_to_new);
       }
     }
   }
@@ -1697,17 +1723,21 @@ unsigned long Rep_table::add_block (const StandardReprMod& srm)
   // swallow |embeddings|, and remove them from |block_list|
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    sub.bp->shift(sub.shift); // make representatives match swallowing block
+    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
+    auto ww = Weyl_group().word(sub.bm.w);
     auto& sub_block = *sub.bp;
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
-      const BlockElt z_rel = block.lookup(sub_block.representative(z));
+      StandardReprMod rep = sub.bp->representative(z);
+      transform<false>(ww,rep); // transform towards our new block
+      const BlockElt z_rel = block.lookup(rep);
       assert(z_rel!=UndefBlock); // our block is full, lookup should work
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
+    block.swallow(std::move(sub_block), embed,sub.bm.simple_pi,
+		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first);
   }
 
@@ -1719,60 +1749,64 @@ unsigned long Rep_table::add_block (const StandardReprMod& srm)
   // now make sure for all |elements| that |place| fields are set for new block
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    auto h = find_reduced_hash(block,z);
-    place[h].first = new_block_it;
-    place[h].second = z;
+    auto rp =
+      Reduced_param::co_reduce(*this,block.representative(z),int_sys_nr,bm.w);
+    auto h = reduced_hash.find(rp);
+    assert(h!=reduced_hash.empty);
+    place[h] = std::make_pair(new_block_it,z);
   }
-  return find_reduced_hash(srm,ctxt);
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block
   (StandardRepr& sr,BlockElt& z, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
-  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  common_context ctxt(*this,srm.gamma_lambda());
-  auto ww = Weyl_group().word(ctxt.attitude());
-  transform<true>(ww,srm);
-  Reduced_param rp(*this,srm,ctxt.integral_nr(),WeylElt()); // |ww| acounted for
+  auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
+  unsigned int int_sys_nr;
+  auto rp = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
 
-  auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
-  if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
-    h=add_block(srm); // generate a new full block (possibly swallow older ones)
-  assert(h<place.size() and place[h].first->is_full());
+  auto h = reduced_hash.find(rp);
+  if (h==reduced_hash.empty or not place[h].first->first.is_full()) // then
+  { // generate a new full block (possibly swallowing older ones)
+    add_block(srm,int_sys_nr,bm);
+    h = reduced_hash.find(rp);
+  }
+  assert(h<place.size());
 
-  auto& block = *place[h].first;
-  bm.shift = offset(srm,block.representative(z = place[h].second));
+  auto& block_loc = *place[h].first;
+  auto& block = block_loc.first;
+  assert(block.is_full());
+  auto stored_srm = block.representative(z = place[h].second);
+  make_relative_to(block_loc.second,stored_srm, bm,srm);
   return block;
-
 } // |Rep_table::lookup_full_block|
 
 blocks::common_block& Rep_table::lookup
   (StandardRepr& sr,BlockElt& which, block_modifier& bm)
 {
   normalise(sr); // gives a valid block, and smallest partial block
-  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
-  common_context ctxt(*this,srm.gamma_lambda());
-  Reduced_param rp(*this,srm,ctxt.integral_nr(),ctxt.attitude());
+
+  auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
+  unsigned int int_sys_nr;
+  auto rp = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
 
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
   if (h!=reduced_hash.empty) // then we have found our family of blocks
   {
     assert(h<place.size());
-    auto& block = *place[h].first;
-    which = place[h].second;
-    assert(block.representative(which).x()==srm.x()); // check minimum of sanity
-    bm.shift = offset(srm,block.representative(which));
+    auto& block_loc = *place[h].first;
+    auto& block = block_loc.first;
+    auto stored_srm = block.representative(which = place[h].second);
+    make_relative_to(block_loc.second,stored_srm, bm,srm);
     return block; // use block of related |StandardReprMod| as ours
   }
+
   BitMap subset;
-  auto& block = add_block_below(ctxt,srm,&subset);
+  auto& block= add_block_below(srm,&subset,int_sys_nr,bm);
   which = last(subset);
-  assert(Reduced_param
-	 (*this,block.representative(which),ctxt.integral_nr(),ctxt.attitude())
-	 ==rp);
-  bm.shift = RatWeight(rank());
+  assert(block.representative(which)==srm); // we should find |srm| here
+  bm.clear(root_datum().rank()); // we are relative to ourselves
   return block;
 } // |Rep_table::lookup|
 
@@ -1883,29 +1917,9 @@ std::vector<BlockElt_pol> contributions
   return result;
 } // |contributions|, extended block
 
-size_t Rep_table::find_reduced_hash(const common_block& block, BlockElt z) const
-{ return reduced_hash.find(Reduced_param
-			   {*this, block.representative(z),
-			    block.integral_nr(),block.attitude()} );
-}
-size_t Rep_table::find_reduced_hash
-  (const StandardReprMod& srm, const common_context& c) const
-{ return reduced_hash.find(Reduced_param
-			   {*this,srm, c.integral_nr(),c.attitude()} ); }
-
-size_t Rep_table::match_reduced_hash(const common_block& block, BlockElt z)
-{ return reduced_hash.match(Reduced_param
-			   {*this, block.representative(z),
-			    block.integral_nr(),block.attitude()} );
-}
-size_t Rep_table::match_reduced_hash
-  (const StandardReprMod& srm, const common_context& c)
-{ return reduced_hash.match(Reduced_param
-			    {*this,srm, c.integral_nr(),c.attitude()} ); }
-
 sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,
-    const RatWeight& diff, const RatWeight& gamma)
+    const block_modifier& bm, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
   sl_list<std::pair<StandardRepr,int> > result;
@@ -1913,13 +1927,13 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
     return result; // easy case, null result
 
   std::vector<BlockElt_pol> contrib =
-    contributions(block,block.singular(gamma),y);
+    contributions(block,block.singular(bm,gamma),y);
   sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  assert(not finals.empty() and finals.front()==y); // do not call for non-final
+  assert(not finals.empty() and finals.front()==y); // unless |y| final don't call us
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |y|
 
@@ -1975,7 +1989,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
    the differences of |orientation_number| values between |y| and (current) |x|.
 */
   {
-    const unsigned int orient_y = orientation_number(block.sr(y,diff,gamma));
+    const unsigned int orient_y = orientation_number(block.sr(y,bm,gamma));
 
     auto it=finals.begin();
     for (const int c : acc) // accumulator |acc| runs parallel to |finals|
@@ -1983,7 +1997,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
       const auto z = *it; ++it;
       if (c!=0) // test must follow |++it| !
       {
-	const auto sr_z = block.sr(z,diff,gamma);
+	const auto sr_z = block.sr(z,bm,gamma);
 	auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
 	result.emplace_back(sr_z,coef);
       }
@@ -2100,13 +2114,12 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
   BlockElt z; block_modifier bm;
   auto& block = lookup(sr,z,bm);
-  const RatWeight& diff = bm.shift;
-  assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*diff+diff)
+  assert((involution_table().matrix(kgb().inv_nr(block.x(z)))*bm.shift+bm.shift)
 	 .is_zero());
 
   const auto& gamma=sr.gamma();
   std::vector<BlockElt_pol> contrib =
-    contributions(block,block.singular(gamma),z);
+    contributions(block,block.singular(bm,gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KL_table& kl_tab =
@@ -2127,7 +2140,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
     if ((z_length-block.length(x))%2!=0) // when |l(z)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (const auto& pair : contrib[x])
-      result.add_term(block.sr(pair.first,diff,gamma),eval*pair.second);
+      result.add_term(block.sr(pair.first,bm,gamma),eval*pair.second);
   }
 
   return result;
@@ -2190,10 +2203,9 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z; block_modifier bm;
     auto& block = lookup(zi,new_z,bm);
-    const RatWeight& diff = bm.shift;
-    assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*diff+diff)
-	   .is_zero());
-    auto dt = deformation_terms(block,new_z,diff,zi.gamma());
+    assert((involution_table().matrix(kgb().inv_nr(block.x(new_z)))*bm.shift
+	    +bm.shift).is_zero());
+    auto dt = deformation_terms(block,new_z,bm,zi.gamma());
     for (auto& term : dt)
     {
       const auto& def = deformation(term.first); // recursion
@@ -2210,7 +2222,6 @@ const K_type_poly& Rep_table::deformation(StandardRepr z)
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
 ( ext_block::ext_block& eblock, BlockElt y, const blocks::common_block& parent,
-  const RatWeight& diff,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
   // compute cumulated KL polynomials $P_{x,y}$ with $x\leq y$ survivors
@@ -2252,8 +2263,7 @@ SR_poly twisted_KL_sum
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       eval = -eval;
     for (const auto& pair : contrib[x])
-      result.add_term(parent.sr(eblock.z(pair.first),diff,gamma),
-		      eval*pair.second);
+      result.add_term(parent.sr(eblock.z(pair.first),gamma), eval*pair.second);
   }
 
   return result;
@@ -2272,9 +2282,8 @@ SR_poly twisted_KL_column_at_s
   BlockElt entry;
   common_context ctxt(rc,zm.gamma_lambda());
   blocks::common_block block(ctxt,zm,entry); // build full block
-  const RatWeight diff(rc.rank()); // zero: we custom-built our |block| above
   auto eblock = block.extended_block(delta);
-  return twisted_KL_sum(eblock,eblock.element(entry),block,diff,z.gamma());
+  return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
 } // |twisted_KL_column_at_s|
 
 // look up or compute and return the alternating sum of twisted KL polynomials
@@ -2286,12 +2295,11 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0; block_modifier bm;
   auto& block = lookup(sr,y0,bm);
-  const RatWeight& diff = bm.shift;
-  block.shift(diff);
-  auto& eblock = block.extended_block(&poly_hash);
-  block.shift(-diff);
+  block.shift(bm.shift);
+  auto& eblock = block.extended_block(bm,&poly_hash);
+  block.shift(-bm.shift);
 
-  RankFlags singular=block.singular(sr.gamma());
+  RankFlags singular=block.singular(bm,sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
@@ -2323,8 +2331,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if ((y_length-block.length(eblock.z(x)))%2!=0) // when |l(y)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (const auto& pair : contrib[x])
-      result.add_term(block.sr(eblock.z(pair.first),diff,gamma),
-		      eval*pair.second);
+      result.add_term(block.sr(eblock.z(pair.first),bm,gamma),eval*pair.second);
   }
 
   return result;
@@ -2334,7 +2341,7 @@ sl_list<std::pair<StandardRepr,int> >
 Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular_orbits, const RatWeight& diff, const RatWeight& gamma)
+     RankFlags singular_orbits, const block_modifier& bm, const RatWeight& gamma)
 {
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
@@ -2407,7 +2414,7 @@ Rep_table::twisted_deformation_terms
     assert(remainder[pos]==0); // check relation of being inverse
   }
   {
-    const unsigned int orient_y = orientation_number(block.sr(y,diff,gamma));
+    const unsigned int orient_y = orientation_number(block.sr(y,bm,gamma));
 
     auto it=acc.begin();
     for (const int f : finals) // accumulator |acc| runs parallel to |finals|
@@ -2416,7 +2423,7 @@ Rep_table::twisted_deformation_terms
       if (c==0)
 	continue;
       const auto sr_z =
-	block.sr(eblock.z(f),diff,gamma); // renumber |f| to |block|
+	block.sr(eblock.z(f),bm,gamma); // renumber |f| to |block|
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
       result.emplace_back(sr_z,coef);
@@ -2504,18 +2511,22 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto& block = lookup(zi,index, bm);
     const RatWeight& diff = bm.shift;
     block.shift(diff); // adapt representatives for extended block construction
-    assert(block.representative(index)==
-	   StandardReprMod::mod_reduce(*this,zi));
-    auto& eblock = block.extended_block(&poly_hash);
+#ifndef NDEBUG
+    { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
+      transform<true>(Weyl_group().word(bm.w),m);
+      assert(block.representative(index)==m);
+    }
+#endif
+    auto& eblock = block.extended_block(bm,&poly_hash);
     block.shift(-diff);
 
-    RankFlags singular = block.singular(zi.gamma());
+    RankFlags singular = block.singular(bm,zi.gamma());
     RankFlags singular_orbits; // flag singulars among orbits
     for (weyl::Generator s=0; s<eblock.rank(); ++s)
       singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
     auto terms = twisted_deformation_terms(block,eblock,index,
-					   singular_orbits,diff,zi.gamma());
+					   singular_orbits,bm,zi.gamma());
     for (auto&& term : terms)
     { bool flip_def;
       const auto& def =
@@ -2553,6 +2564,24 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 , sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
 {} // |common_context::common_context|
 
+common_context::common_context
+  (const Rep_context& rc, const RatWeight& gamma,
+   unsigned int int_sys_nr, const block_modifier& bm)
+: rep_con(rc)
+, int_sys_nr(int_sys_nr)
+, bm(bm)
+, id_it(rc.inner_class().int_item(int_sys_nr))
+, sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
+{} // |common_context::common_context|
+
+
+RootNbrList common_context::integrally_simples () const
+{
+  const auto& ic = rc().inner_class();
+  const auto& int_item = ic.int_item(integral_nr());
+  auto integral_list = int_item.image_simples(attitude());
+  return integral_list.to_vector();
+}
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const
@@ -2575,7 +2604,7 @@ StandardReprMod common_context::cross
   const auto& full_datum = full_root_datum();
   const auto& refl = sub.reflection(s); // reflection word in full system
   const KGBElt new_x = kgb().cross(refl,z.x());
-  RatWeight gamma_lambda = rc().gamma_lambda(z);
+  RatWeight gamma_lambda = z.gamma_lambda(); // take modifiable copy
 
   const auto& i_tab = involution_table();
   RootNbrSet pos_neg = pos_to_neg(full_datum,refl);
@@ -2594,7 +2623,7 @@ bool common_context::is_parity
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
   assert(real_roots.isMember(sub.parent_nr_simple(s)));
   const Coweight& alpha_hat = subsys().simple_coroot(s);
-  const int eval = rc().gamma_lambda(z).dot(alpha_hat);
+  const int eval = z.gamma_lambda().dot(alpha_hat);
   const int rho_r_corr = alpha_hat.dot(full_datum.twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
 }
@@ -2608,7 +2637,7 @@ StandardReprMod common_context::down_Cayley
   const KGBElt conj_x = kgb().cross(conj,z.x());
   const KGBElt new_x =
     kgb().cross(kgb().inverseCayley(sub.simple(s),conj_x).first,conj);
-  RatWeight gamma_lambda = rc().gamma_lambda(z); // will be shifted below
+  RatWeight gamma_lambda = z.gamma_lambda(); // will be shifted below
 
   const auto& i_tab = involution_table();
   RootNbrSet pos_neg = pos_to_neg(full_datum,conj);
@@ -2628,7 +2657,7 @@ StandardReprMod common_context::up_Cayley
   assert(kgb().status(sub.simple(s),conj_x)==
 	 gradings::Status::ImaginaryNoncompact);
   const auto new_x = kgb().cross(kgb().cayley(sub.simple(s),conj_x),conj);
-  RatWeight gamma_lambda = rc().gamma_lambda(z); // will be shifted below
+  RatWeight gamma_lambda = z.gamma_lambda(); // will be shifted below
 
   const auto& i_tab = involution_table();
   const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));

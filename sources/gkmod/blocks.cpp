@@ -697,9 +697,12 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
-RootNbrList common_block::int_simples() const // simply integral roots
-{ const auto& int_datum_item = inner_class().int_item(int_sys_nr);
-  return int_datum_item.image_simples(w).to_vector();
+WeightInvolution common_block::pull_back
+    ( const repr::block_modifier& bm, const WeightInvolution& delta) const
+{
+  const auto& W = context().Weyl_group();
+  const auto& rd = context().root_datum();
+  return W.inverse_matrix(rd,bm.w)*delta*W.matrix(rd,bm.w);
 }
 
 RankFlags common_block::singular (const RatWeight& gamma) const
@@ -739,8 +742,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , int_sys_nr(ctxt.integral_nr())
-  , w(ctxt.attitude())
+  , integrally_simples(ctxt.integrally_simples())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1092,8 +1094,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , int_sys_nr(ctxt.integral_nr())
-  , w(ctxt.attitude())
+  , integrally_simples(ctxt.integrally_simples())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
@@ -1270,31 +1271,33 @@ repr::StandardRepr common_block::sr(BlockElt z, const RatWeight& gamma) const
 }
 
 repr::StandardRepr common_block::sr
-  (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
+  (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const
 {
-  const Weight lambda_rho =
-    gamma.integer_diff<int>(rc.gamma_lambda_rho(z_pool[z])+diff);
-  return rc.sr_gamma(x(z),lambda_rho,gamma);
+  return rc.sr(representative(z),bm,gamma);
 }
 
-ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(root_datum(),int_simples(),delta); }
+ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
+{ return rootdata::fold_orbits(root_datum(),integrally_simples,delta); }
 
+// build extended block for custom built |common_block|, given an involution
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
   return { *this, delta, nullptr };
 }
 
-struct common_block::ext_block_pair
+struct common_block::ext_block_data
 {
+  WeightInvolution delta; // effective action of distinguished involution
   ext_block::ext_block eblock;
   RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
-  ext_block_pair
-    (const blocks::common_block& block, const WeightInvolution& delta,
+  ext_block_data
+    (const blocks::common_block& block,
+     const WeightInvolution& delta,
      ext_KL_hash_Table* pol_hash)
-    : eblock(block,delta,pol_hash)
-    , shift(block.root_datum().rank()) // at construction time, |shift| is zero
+  : delta(delta)
+  , eblock(block,delta,pol_hash)
+  , shift(block.root_datum().rank()) // at construction time, |shift| is zero
   {}
 };
 
@@ -1304,9 +1307,8 @@ void common_block::shift (const RatWeight& diff)
     return;
   const auto& rc = context();
 #ifndef NDEBUG
-  auto& ic = rc.inner_class();
-  const int_Matrix& int_ev = ic.integral_eval(z_pool[0].gamma_lambda());
-  assert((int_ev*diff.numerator()).is_zero());
+  for (auto i : integrally_simples)
+    assert(root_datum().coroot(i).dot(diff.numerator()) == 0);
 #endif
   for (auto& srm : z_pool)
     rc.shift(diff,srm);
@@ -1316,66 +1318,81 @@ void common_block::shift (const RatWeight& diff)
     (pair.shift -= diff).normalize(); // compensate in |extended| for base shift
 }
 
-// when this method is called, |shift| has been called, so twist works as-is
-ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
+ext_block::ext_block& common_block::extended_block
+   (const WeightInvolution& delta, ext_KL_hash_Table* pol_hash)
 {
-  auto preceeds =
-    [] (const ext_block_pair& item, const RatWeight& value)
+  auto preceeds = [] (const ext_block_data& item, const RatWeight& value)
     { return item.shift<value; };
 
   const RatWeight zero(root_datum().rank());
-  auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
-  if (it!=extended.end() and it->shift==zero)
-    return it->eblock; // then identical extended block found, so use it
 
-  // otherwise construct |ext_block| within a pair
-  extended.emplace(it,*this,inner_class().distinguished(),pol_hash);
+  auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
+  for ( ; it!=extended.end() and it->shift.is_zero(); ++it)
+    if (it->delta==delta)
+      return it->eblock; // then identical extended block found, so use it
+
+  // otherwise construct |ext_block| within an |ext_block_data|
+  extended.emplace(it,*this,delta,pol_hash);
   return it->eblock; // return |ext_block| without |gamlam|
 } // |common_block::extended_block|
 
+// when this method is called, |shift| has been called, so twist works as-is
+ext_block::ext_block& common_block::extended_block
+   (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash)
+{
+  return extended_block(pull_back(bm,inner_class().distinguished()),pol_hash);
+}
+
+// provide access to our polynomial hash table, creating it if necessary
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
     kl_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
 
   return kl_tab_ptr-> polynomial_hash_table();
-}
+} // |common_block::KL_hash|
 
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-  (common_block&& sub, const BlockEltList& embed,
+(common_block&& sub, const BlockEltList& embed, const Permutation& simple_pi,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
+// note: our elements are links are not touched, so coordinates irrelevant here
 {
+  BruhatOrder&& Bruhat = std::move(sub).Bruhat_order(); // generate for pilfering
   for (BlockElt z=0; z<sub.size(); ++z)
   {
-    auto& covered = std::move(sub).Bruhat_order().Hasse(z);
+    auto&& covered = std::move(Bruhat).Hasse(z);
     for (auto& c : covered)
       c=embed[c]; // translate in place
     set_Bruhat_covered(embed[z],std::move(covered));
   }
   if (sub.kl_tab_ptr!=nullptr)
   {
-    auto hash_object = KL_hash(KL_pol_hash); // need this for polynomial look-up
+    // ensure existence of polynomial hash table; wrap up reference to it
+    kl::Poly_hash_export hash_object = KL_hash(KL_pol_hash);
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
-    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
+
+    // now swallow the poylnomial hash table of |sub| into ours
+    kl_tab_ptr->swallow
+      (std::move(*sub.kl_tab_ptr),embed,simple_pi,hash_object.ref);
   }
 
-  RatWeight final_shift(root_datum().rank()); // correction to be made finally
-  for (auto& pair : sub.extended)
+  for (auto& data : sub.extended)
   {
-    auto& sub_eblock = pair.eblock;
-    const RatWeight diff = pair.shift; // take a copy: |sub.shift| modifies it
+    auto& sub_eblock = data.eblock;
+    const RatWeight diff = data.shift; // take a copy: |sub.shift| modifies it
     sub.shift(diff); // align the |sub| block to this extended block
     shift(diff); // and adapt our block to match, so |embed| remains valid
-    assert(pair.shift.is_zero());
-    auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
+    assert(data.shift.is_zero());
+    auto& eblock =
+      extended_block(data.delta,ext_KL_pol_hash); // find/create |ext_block|
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
-    eblock.swallow(std::move(sub_eblock),embed); // transfer computed KL data
+    // transfer computed KL data:
+    eblock.swallow(std::move(sub_eblock),embed,simple_pi);
     shift(-diff);
     sub.shift(-diff);
   }
-  shift(final_shift);
 } // |common_block::swallow|
 
 void common_block::set_Bruhat
