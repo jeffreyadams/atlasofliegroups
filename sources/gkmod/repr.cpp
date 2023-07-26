@@ -89,6 +89,22 @@ Reduced_param::Reduced_param
     evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
 }
 
+Reduced_param Reduced_param::reduce
+  (const Rep_context& rc, StandardReprMod srm,
+   unsigned int& int_sys_nr, block_modifier& bm)
+{ // ensure |int_item| sets |w| before same argument to |data| is evaluated
+  const auto& gl = srm.gamma_lambda(); // constant ref to changing value!
+  InnerClass& ic = rc.inner_class();
+  const auto& integral = ic.int_item(gl,int_sys_nr,bm); // sets last two args
+  auto ww = rc.Weyl_group().word(bm.w);
+  rc.transform<true>(ww,srm);
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
+  auto evs_reduced = codec.internalise(gl);
+  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
+    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
+  return Reduced_param{ srm.x(), int_sys_nr, bm.w, evs_reduced };
+}
+
 Reduced_param::Reduced_param
   (const Rep_context& rc, const StandardReprMod& srm,
    unsigned int_sys_nr, const WeylElt& w)
@@ -104,6 +120,21 @@ Reduced_param::Reduced_param
   evs_reduced = codec.internalise(gl);
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
     evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
+}
+
+Reduced_param Reduced_param::co_reduce
+  (const Rep_context& rc, StandardReprMod srm,
+   unsigned int int_sys_nr, const WeylElt& w)
+{ // ensure |int_item| sets |w| before same argument to |data| is evaluated
+  const auto& gl = srm.gamma_lambda(); // $\gamma-\lambda$
+  InnerClass& ic = rc.inner_class();
+  rc.transform<true>(rc.Weyl_group().word(w),srm);
+  const auto& integral = ic.int_item(int_sys_nr);
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
+  auto evs_reduced = codec.internalise(gl);
+  for (unsigned int i=0; i<codec.diagonal.size(); ++i)
+    evs_reduced[i] = arithmetic::remainder(evs_reduced[i],codec.diagonal[i]);
+  return Reduced_param{ srm.x(), int_sys_nr, w, evs_reduced };
 }
 
 size_t Reduced_param::hashCode(size_t modulus) const
@@ -244,7 +275,8 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
 				delta*gamma_lambda(z));
 }
 
-/* the |evs_reduced| field of a |Reduced_param| encoode the evaluations of the
+/*
+   The |evs_reduced| field of a |Reduced_param| encodes the evaluations of the
    value $\gamma-\lambda$ of a parameter on (simply-) integral coroots for
    $\gamma$. However, since $\lambda$ is defined only up to sifts in the image
    lattice of $1-\theta$, the |ev_reduced| values are effectively reduced modulo
@@ -289,7 +321,7 @@ RatWeight Rep_context::offset
   {
     auto& ic = inner_class();
     const auto codec = ic.integrality_codec(gamlam,kgb().inv_nr(srm0.x()));
-    result -= theta_1_preimage(result,codec); // ensure orthogonal to integral sys
+    result -= theta_1_preimage(result,codec); // ensure orthogonal to integ. sys
     assert((codec.coroots_matrix*result).is_zero()); // check that it was done
   }
   return result;
@@ -534,8 +566,8 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits = involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
-template <bool left_to_right> StandardReprMod Rep_context::transform
-  (const WeylWord& ww, StandardReprMod srm) const
+template <bool left_to_right> void Rep_context::transform
+  (const WeylWord& ww, StandardReprMod& srm) const
 {
   const auto& rd = root_datum();
   const auto& kgb = this->kgb();
@@ -574,7 +606,6 @@ template <bool left_to_right> StandardReprMod Rep_context::transform
       }
     }
   involution_table().real_unique(kgb.inv_nr(x),srm.gamlam); // normalise
-  return srm;
 }
 
 // apply sequence of cross actions by singular complex simple generators
@@ -773,7 +804,7 @@ StandardRepr Rep_context::sr
   (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
   const
 {
-  srm = transform<false>(Weyl_group().word(bm.w),srm);
+  transform<false>(Weyl_group().word(bm.w),srm);
   const RatWeight gamma_lambda_rho = srm.gamlam+rho(root_datum())+bm.shift;
   const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho);
   return sr_gamma(srm.x_part,lambda_rho,gamma);
@@ -1635,11 +1666,11 @@ void Rep_table::block_erase (bl_it pos)
   block_list.erase(pos);
 } // |Rep_table::block_erase|
 
-unsigned long Rep_table::add_block
-  (const StandardReprMod& srm, const common_context& ctxt)
+unsigned long Rep_table::add_block (const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<blocks::common_block> temp; // must use temporary singleton
+  common_context ctxt(*this,srm.gamma_lambda());
   auto& block = temp.emplace_back(ctxt,srm,srm_in_block); // build full block
 
   const auto rho = rootdata::rho(root_datum());
@@ -1702,12 +1733,12 @@ blocks::common_block& Rep_table::lookup_full_block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   common_context ctxt(*this,srm.gamma_lambda());
   auto ww = Weyl_group().word(ctxt.attitude());
-  srm = transform<true>(ww,srm);
+  transform<true>(ww,srm);
   Reduced_param rp(*this,srm,ctxt.integral_nr(),WeylElt()); // |ww| acounted for
 
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
   if (h==reduced_hash.empty or not place[h].first->is_full()) // then we must
-    h=add_block(srm,ctxt); // generate new full block (maybe swallow older ones)
+    h=add_block(srm); // generate a new full block (possibly swallow older ones)
   assert(h<place.size() and place[h].first->is_full());
 
   auto& block = *place[h].first;

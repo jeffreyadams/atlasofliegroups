@@ -161,12 +161,24 @@ class Reduced_param
   WeylElt w;
   int_Vector evs_reduced; // integ.coroots eval of (|gamlam| mod $(1-theta)X^*$)
 
+  Reduced_param(KGBElt x, unsigned int i, const WeylElt& w, const int_Vector& v)
+    : x(x), int_sys_nr(i), w(w), evs_reduced(v)
+  {}
+
 public:
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm);
   Reduced_param(const Rep_context& rc, const StandardReprMod& srm,
 		unsigned int_sys_nr, const WeylElt& w);
 
   Reduced_param(Reduced_param&&) = default;
+  Reduced_param& operator=(Reduced_param&&) = default;
+
+  static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
+    (const Rep_context& rc, StandardReprMod srm,
+     unsigned int& int_sys_nr, block_modifier& bm);
+  static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
+    (const Rep_context& rc, StandardReprMod srm,
+     unsigned int int_sys_nr, const WeylElt& w);
 
   using Pooltype = std::vector<Reduced_param>;
   bool operator!=(const Reduced_param& p) const
@@ -342,8 +354,8 @@ class Rep_context
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   // transformation of |srm|k, by appropriate Weyl element |ww|, or its inverse
-  template<bool left_to_right> StandardReprMod transform
-    (const WeylWord& ww, StandardReprMod srm) const;
+  template<bool left_to_right> void transform
+    (const WeylWord& ww, StandardReprMod& srm) const;
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
@@ -595,8 +607,8 @@ class Rep_table : public Rep_context
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
-  unsigned long add_block
-    (const StandardReprMod&, const common_context& ctxt); // full block
+  // add a full block, assuming has trivial attitude
+  unsigned long add_block (const StandardReprMod& srm);
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|
