@@ -303,9 +303,9 @@ class Rep_context
 
   StandardReprMod inner_twisted(const StandardReprMod& z) const;
 
-  StandardReprMod& shift(const RatWeight& diff, StandardReprMod& srm) const;
+  void shift(const RatWeight& diff, StandardReprMod& srm) const;
   StandardReprMod shifted(const RatWeight& diff, StandardReprMod srm) const
-  { return shift(diff,srm); } // perform |shift| on a copy and return it
+  { shift(diff,srm); return srm; } // perform |shift| on a copy and return it
 
   RatWeight gamma_lambda_rho(const StandardReprMod& z) const
   { return z.gamma_lambda()+rho(root_datum()); }
@@ -469,7 +469,6 @@ public:
 struct locator
 {
   WeylElt w; // apply this to the integral system at the fundamental alcove
-  RootNbrSet integrally_simples; // set of integrally simple (co)roots
   Permutation simple_pi; // transform intsys simple generators through this
 };
 
@@ -564,12 +563,12 @@ class Rep_table : public Rep_context
      const block_modifier& bm, const RatWeight& gamma);
 
 /*
-   Compute the signed multiset of final parameters "post deformation"
+   Compute the signed multi-set of final parameters "post deformation"
    (subsequently they will be deformed towards zero without reduction here)
    obtained from the elements of the block of |p|, with their "pre deformation"
    coefficients taken (and removed) from |queue|, where all block elements of
-   high strictly above |height_bound| are ignored. The result is a list of pairs
-   of a |StandardRepr| with its |Split_integer| mulitplicity.
+   height strictly above |height_bound| are ignored. The result is a list of
+   pairs of a |StandardRepr| with its |Split_integer| multiplicity.
 */
   sl_list<SR_poly::value_type> block_deformation_to_height
     (StandardRepr p, SR_poly& queue, level height_bound); // |p| by value
@@ -631,7 +630,7 @@ public:
   const block_modifier& modifier () const { return bm; }
   WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList integrally_simples () const;
+  RootNbrList simply_integrals () const;
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|

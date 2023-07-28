@@ -312,7 +312,7 @@ Weight context::to_simple_shift
 /*
   For the conjugation to simple scenario, we compute a set |pos_neg| of
   positive roots that become negative under an element of $W^\delta$ that
-  makes the integrally-simple root(s) in question simple. The function
+  makes the simply integral root(s) in question simple. The function
   |shift_flip| computes from this set, and the involutions at both ends of the
   link in the block, whether an additional flip is to be added to the link.
 
@@ -333,9 +333,11 @@ bool context::shift_flip
   return count%4!=0; // whether number of 2-element orbits (themselves) is odd
 }
 
-// auxiliary function to recognise local situation in |ext_block| construction
-// assumes precomputed |fixed_points|; block may be partial or complete
-// for partial blocks, some boundary elements may return an uncertain type
+/* Auxiliary function to recognise local situation in |ext_block| construction.
+   It assumes precomputed |fixed_points|; block may be partial or complete
+   for partial blocks, some boundary elements may return an uncertain type.
+   Note that being defined for |Block_base|, no linear algebra is used at all.
+*/
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link, const BitMap& fixed_points)
 {
@@ -567,7 +569,6 @@ ext_block::ext_block // for external twist; old style blocks
   , pol_hash(nullptr)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
-  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -587,8 +588,20 @@ ext_block::ext_block // for external twist; old style blocks
 
 } // |ext_block::ext_block|
 
+BlockElt shift_twisted
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta,
+   BlockElt z)
+{
+  const auto& kgb = block.context().kgb();
+  KGBElt x1 = kgb.twisted(block.x(z),delta);
+  RatWeight new_gl = delta*(block.gamma_lambda(z)+shift)-shift;
+  return block.lookup(x1,new_gl);
+}
+
 ext_block::ext_block
-  (const blocks::common_block& block, const WeightInvolution& delta,
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta,
    ext_KL_hash_Table* pol_hash)
   : parent(block)
   , orbits(block.fold_orbits(delta))
@@ -598,17 +611,16 @@ ext_block::ext_block
   , pol_hash(pol_hash)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
-  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
   // compute the delta-fixed points of the block
   for (BlockElt z=0; z<block.size(); ++z)
-    if (twisted(block,z,delta)==z)
+    if (shift_twisted(block,shift,delta,z)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
-  if (not tune_signs(block))
+  if (not tune_signs(block,shift,delta))
     throw std::runtime_error("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |common_block|
@@ -963,7 +975,7 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 	{ // type 1, so extended type is 1i1
 	  result = one_imaginary_single;
 
-	  /* if imaginary integrally simple |alpha| were sum of two simple
+	  /* if imaginary simply integral |alpha| were sum of two simple
 	     roots these cannot be imaginary (hence integral), so they must be
 	     interchanged by $\theta$, but then we are in type 2
 	   */
@@ -1628,17 +1640,19 @@ DescValue star (const repr::Ext_rep_context& ctxt,
   return result;
 } // |star|
 
-bool ext_block::tune_signs(const blocks::common_block& block)
+bool ext_block::tune_signs
+  (const blocks::common_block& block,
+   const RatWeight& shift, const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  const RootNbrList int_simples = block.int_simples();
+  const RootNbrList simply_ints = block.simply_ints();
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z));
+    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z)+shift);
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      RootNbr n_alpha = int_simples[p.s0];
+      RootNbr n_alpha = simply_ints[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type
@@ -1669,7 +1683,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default
+	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)+shift); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1685,7 +1699,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m!=UndefBlock) // don't fall off the edge of a partial block
 	  {
 	    BlockElt Cz = this->z(m); // corresponding element of block
-	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	    assert(same_standard_reps(q0,F));
 	    if (not same_sign(q0,F))
 	      flip_edge(s,n,m);
@@ -1693,7 +1707,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
 	  {
 	    BlockElt cz = this->z(m);
-	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
+	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz)+shift);
 	    assert(same_standard_reps(q1,Fc));
 	    if (not same_sign(q1,Fc))
 	      flip_edge(s,n,m);
@@ -1708,7 +1722,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1726,7 +1740,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1737,7 +1751,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz = this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1755,7 +1769,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1766,7 +1780,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	    break;
 
 	  Cz= this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1791,7 +1805,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
     }
 #endif
   return true; // report success if we get here
-} // |tune_signs|
+} // |ext_block::tune_signs|
 
 
 // find |n| such that |z(n)>=zz| (for |zz==parent.size()| returns |n==size()|)
@@ -1925,7 +1939,10 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
       eblock_embed.push_back(element(embed[sub.z(x)]));
       assert(eblock_embed.back()!=size()); // check that lookup succeeded
     }
-    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed,simple_pi);
+#ifndef NDEBUG
+    check_descents(sub.KL_ptr->aux,eblock_embed,simple_pi,KL_ptr->aux);
+#endif
+    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed);
   }
 }
 

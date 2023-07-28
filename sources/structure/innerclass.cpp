@@ -1149,14 +1149,14 @@ subsystem::integral_datum_item& InnerClass::int_item
     rd.is_posroot(alpha);
 #endif
 
-  loc.integrally_simples = RootNbrSet(rd.numRoots());
+  RootNbrSet i_simp(rd.numRoots());
   for (RootNbr alpha : image)
-    loc.integrally_simples.insert(alpha);
+    i_simp.insert(alpha);
 
   loc.simple_pi = Permutation();
   loc.simple_pi.reserve(image.size());
   for (RootNbr alpha : image)
-    loc.simple_pi.push_back(loc.integrally_simples.position(alpha));
+    loc.simple_pi.push_back(i_simp.position(alpha));
   return result;
 } // |InnerClass::int_item|
 

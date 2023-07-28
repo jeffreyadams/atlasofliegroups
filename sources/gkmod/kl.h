@@ -145,9 +145,7 @@ class KL_table
 
   Poly_hash_export polynomial_hash_table ();
 
-  void swallow (KL_table&& sub,
-		const BlockEltList& embed, const Permutation& simple_pi,
-		KL_hash_Table& hash);
+  void swallow (KL_table&& sub,	const BlockEltList& embed, KL_hash_Table& hash);
 
   // private methods used during construction
  private:

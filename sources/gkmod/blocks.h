@@ -35,6 +35,11 @@ namespace blocks {
 
 /******** function declarations *********************************************/
 
+  void check_sub_block // to be defined unless the macro NDEBUG is
+  (const common_block& sub,
+   const BlockEltList& embed, const Permutation& simple_pi,
+   const common_block& block);
+
   // compute the involution in |dual_W| corresponding to |w| in |W|
   TwistedInvolution dual_involution
     (const TwistedInvolution& w,
@@ -341,7 +346,7 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const RootNbrList integrally_simples;
+  const RootNbrList simply_integrals;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
@@ -402,9 +407,13 @@ class common_block : public Block_base
 
   WeightInvolution pull_back // of action by |delta| on block modified by |bm|
     ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
-  RootNbrList int_simples() const { return integrally_simples; }
+  RootNbrList simply_ints() const { return simply_integrals; }
+  RootNbrList simply_ints(const repr::block_modifier& bm) const;
   ext_gens fold_orbits (const WeightInvolution& delta) const;
 
+#ifndef NDEBUG
+  bool is_integral_orthogonal(const RatWeight& shift) const;
+#endif
   // extension for custom built |common_block|, with "arbitrary" involution
   ext_block::ext_block extended_block(const WeightInvolution& delta) const;
 
@@ -418,12 +427,13 @@ class common_block : public Block_base
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
     (common_block&& sub,
-     const BlockEltList& embed, const Permutation& simple_pi,
+     const repr::block_modifier& bm, const BlockEltList& embed,
      KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
 
   // get/build extended block for |delta|; if built, store it
   ext_block::ext_block& extended_block
-    (const WeightInvolution& delta, ext_KL_hash_Table* pol_hash);
+    (const RatWeight& shift, const WeightInvolution& delta,
+     ext_KL_hash_Table* pol_hash);
   ext_block::ext_block& extended_block
     (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash);
 

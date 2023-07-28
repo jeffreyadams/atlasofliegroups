@@ -122,23 +122,6 @@ BlockElt
   return d_block.size(); // indicate that a dead end was reached
 }
 
-#ifndef NDEBUG
-void KLSupport::check_sub
-  (const KLSupport& sub, const BlockEltList& embed, const Permutation& simple_pi)
-{
-  assert(sub.rank()==rank());
-  for (BlockElt z=0; z<sub.block().size(); ++z)
-  {
-    assert(sub.block().length(z)==d_block.length(embed[z]));
-    assert(sub.block().descent(z).permuted(simple_pi) ==
-	   d_block.descent(embed[z]));
-    for (weyl::Generator s=0; s<d_block.rank(); ++s)
-      if (sub.cross(s,z)!=UndefBlock)
-	assert(embed[sub.cross(s,z)]==cross(simple_pi[s],embed[z]));
-  }
-}
-#endif
-
 } // |namespace klsupport|
 
 } // |namespace atlas|

@@ -1049,11 +1049,11 @@ block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
   int argument gives a height bound above which contributions will be ignored
   (which may speed up computation; a negative bound means nothing is ignored).
   The terms in the block are extracted, and |deform| is applied to each of them,
-  from the top of the block downwards; once done the deformed parameter is
-  marked as such and its coefficient will not change any more. The deformation
-  terms from this parameter (which are of course multiplied by the coefficient
-  of the term it came from) are added to the ones remaining to be processed
-  (they are lower in the block). Once all terms are deformed, the
+  from the top (most split end) of the block downwards; once done, the deformed
+  parameter is marked as such, and its coefficient will not change any more. The
+  deformation terms from this parameter (which are of course multiplied by the
+  coefficient of the term it came from) are added to the ones remaining to be
+  processed (they are lower in the block). Once all terms are deformed, the
   post-deformation terms are added to form the first ParamPol of the output
   (these should be moved down to the next reducibility point towards nu=0 when
   full deformation is to be done), while the terms of the ParamPol argument that

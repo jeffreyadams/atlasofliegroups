@@ -838,10 +838,20 @@ RankFlags permute(RankFlags in, const Permutation& pi)
     result.set(pi[s]);
   return result;
 }
+
+void check_descents(const descent_table& sub,
+		    const BlockEltList& embed, const Permutation& simple_pi,
+		    const descent_table& main)
+{
+  for (BlockElt y=0; y<sub.block.size(); ++y)
+  {
+    const auto desc = sub.descent_set(y);
+    assert(permute(desc,simple_pi)==main.descent_set(embed[y]));
+  }
+}
 #endif
 
-void KL_table::swallow(KL_table&& sub,
-		       const BlockEltList& embed, const Permutation& simple_pi)
+void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 {
   if (pol_hash!=nullptr and sub.pol_hash!=nullptr and
       &pol_hash->pool()==&sub.pol_hash->pool()) // case of shared hash tables
@@ -853,7 +863,6 @@ void KL_table::swallow(KL_table&& sub,
 	cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
 	BlockElt x=sub.aux.length_floor(y);
 	const auto desc = sub.descent_set(y);
-	assert(permute(desc,simple_pi)==descent_set(embed[y]));
 	for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
 	  cur_col.at(aux.x_index(embed[x],embed[y])) = *it;
       }
@@ -944,7 +953,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   const auto& gamma = p.gamma();
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
-  ext_block::ext_block eblock(B,delta,nullptr);
+  ext_block::ext_block eblock(B,RatWeight(gamma.size()),delta,nullptr);
 
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);

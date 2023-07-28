@@ -312,7 +312,6 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
   W.mult(bm.w, W.inverse(loc.w));
   auto ww = W.word(bm.w);
 
-  assert(bm.integrally_simples == image(root_datum(),ww,loc.integrally_simples));
   compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
 
   transform<true>(ww,srm1); // move back to base
@@ -320,12 +319,11 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
     make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
 }
 
-StandardReprMod& Rep_context::shift
+void Rep_context::shift
   (const RatWeight& shift, StandardReprMod& srm) const
 {
   srm.gamlam += shift;
   involution_table().real_unique(kgb().inv_nr(srm.x()),srm.gamlam);
-  return srm;
 }
 
 // |z| standard means (weakly) dominant on the (simply-)imaginary roots
@@ -1374,7 +1372,7 @@ size_t deformation_unit::hashCode(size_t modulus) const
 void block_modifier::clear (unsigned int rank)
 {
   w = WeylElt();
-  // |integrally_simples| is not relative; it remains
+  // |simply_integrals| is not relative; it remains
   simple_pi = Permutation(simple_pi.size(),1); // reset to identity
   shift = RatWeight(rank);
 }
@@ -1570,6 +1568,7 @@ blocks::common_block& Rep_table::add_block_below
 	const locator& loc = place[h].first->second; // attitude of |sub|
 	make_relative_to(loc,sub->representative(place[h].second),
 			 sub_to_new,elt);
+	assert(sub->is_integral_orthogonal(sub_to_new.shift));
 	sub_blocks.emplace_back(sub,h,sub_to_new);
       }
     }
@@ -1579,10 +1578,10 @@ blocks::common_block& Rep_table::add_block_below
   size_t limit = pool.size(); // limit of generated Bruhat interval
   for (auto sub : sub_blocks)
   {
-    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
     auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
+      shift(sub.bm.shift,rep);
       transform<false>(ww,rep); // transform towards our new block
       hash.match(rep); // if new, add it to |pool|, beyond the |limit| marker
     }
@@ -1594,7 +1593,7 @@ blocks::common_block& Rep_table::add_block_below
   auto& block = temp.emplace_back // construct block and get a reference
     (std::piecewise_construct,
      std::tuple<const common_context&,sl_list<StandardReprMod>&>
-     (ctxt,elements), // arguments of full |common_block| constructor
+     (ctxt,elements), // arguments of partial |common_block| constructor
      std::tuple<const block_modifier&>(bm)
     ) .first;
 
@@ -1621,19 +1620,20 @@ blocks::common_block& Rep_table::add_block_below
 
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    auto& sub_block = *sub.bp; // already shifted, so ignore |sub.shift|
+    auto& sub_block = *sub.bp; // already shifted, so ignore |sub.bm.shift|
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     auto ww = Weyl_group().word(sub.bm.w);
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       auto elt = sub_block.representative(z);
+      shift(sub.bm.shift,elt);
       transform<false>(ww,elt);
       const BlockElt z_rel = block.lookup(elt);
       assert(z_rel!=UndefBlock);
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block), embed,sub.bm.simple_pi,
+    block.swallow(std::move(sub_block), sub.bm,embed,
 		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first); // iterator argument might be corrected
   }
@@ -1648,7 +1648,7 @@ blocks::common_block& Rep_table::add_block_below
   { // by using reverse iteration, least elt with same |h| defines |place[h]|
 #ifndef NDEBUG
     { const auto& gamlam = block.representative(z).gamma_lambda();
-      for (RootNbr alpha : bm.integrally_simples)
+      for (RootNbr alpha : block.simply_ints())
 	gamlam.dot(root_datum().coroot(alpha)); // asserts it is integral
     }
 #endif
@@ -1722,20 +1722,20 @@ void Rep_table::add_block (const StandardReprMod& srm,
   // swallow |embeddings|, and remove them from |block_list|
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    sub.bp->shift(sub.bm.shift); // make representatives match swallowing block
     auto ww = Weyl_group().word(sub.bm.w);
     auto& sub_block = *sub.bp;
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       StandardReprMod rep = sub.bp->representative(z);
+      shift(sub.bm.shift,rep);
       transform<false>(ww,rep); // transform towards our new block
       const BlockElt z_rel = block.lookup(rep);
       assert(z_rel!=UndefBlock); // our block is full, lookup should work
       embed.push_back(z_rel);
     }
 
-    block.swallow(std::move(sub_block), embed,sub.bm.simple_pi,
+    block.swallow(std::move(sub_block), sub.bm,embed,
 		  &KL_poly_hash,&poly_hash);
     block_erase(place[sub.h].first);
   }
@@ -2047,7 +2047,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     value_at_minus_1.push_back(val);
   }
 
-  const RankFlags singular = block.singular(gamma); // singular simple coroots
+  const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
   auto it = result.begin();
   for (auto elt: retained) // don't increment |it| here
     if (block.survives(elt,singular))
@@ -2246,11 +2246,11 @@ SR_poly twisted_KL_sum
     }
 
   const RootDatum& rd = parent.root_datum();
-  const RootNbrList int_simples = parent.int_simples();
+  const RootNbrList simply_ints = parent.simply_ints();
   RankFlags singular_orbits; // flag singulars among orbits
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,
-	     gamma.dot(rd.coroot(int_simples[eblock.orbit(s).s0]))==0);
+	     gamma.dot(rd.coroot(simply_ints[eblock.orbit(s).s0]))==0);
 
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
@@ -2294,9 +2294,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0; block_modifier bm;
   auto& block = lookup(sr,y0,bm);
-  block.shift(bm.shift);
   auto& eblock = block.extended_block(bm,&poly_hash);
-  block.shift(-bm.shift);
 
   RankFlags singular=block.singular(bm,sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -2465,6 +2463,12 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 
 const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
+  static unsigned level=0;
+  for (unsigned i=0; i<level; ++i)
+    std::cout << ' ';
+  print_stdrep(std::cout,z,*this) << '\n';
+  ++ level;
+
   assert(is_final(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
@@ -2488,7 +2492,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   { // if formula for |z| is stored, return it; caller multiplies by |s^flip|
     const auto h=alcove_hash.find(zu);
     if (h!=alcove_hash.empty and pool[h].has_twisted_deformation_formula())
-      return pool[h].twisted_def_formula();
+      return --level, pool[h].twisted_def_formula();
   }
 
   K_type_poly result { std::less<K_type_nr>() };
@@ -2508,16 +2512,16 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     const bool flip_p = p.second;
     BlockElt index; block_modifier bm;
     auto& block = lookup(zi,index, bm);
-    const RatWeight& diff = bm.shift;
-    block.shift(diff); // adapt representatives for extended block construction
+
 #ifndef NDEBUG
     { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
       transform<true>(Weyl_group().word(bm.w),m);
-      assert(block.representative(index)==m);
+      auto rep = block.representative(index);
+      shift(bm.shift,rep);
+      assert(rep==m);
     }
 #endif
     auto& eblock = block.extended_block(bm,&poly_hash);
-    block.shift(-diff);
 
     RankFlags singular = block.singular(bm,zi.gamma());
     RankFlags singular_orbits; // flag singulars among orbits
@@ -2540,6 +2544,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
   const auto h = alcove_hash.match(std::move(zu));  // find or allocate a slot
 
+  --level;
   return pool[h].set_twisted_deformation_formula(std::move(result).flatten());
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
@@ -2574,7 +2579,7 @@ common_context::common_context
 {} // |common_context::common_context|
 
 
-RootNbrList common_context::integrally_simples () const
+RootNbrList common_context::simply_integrals () const
 {
   const auto& ic = rc().inner_class();
   const auto& int_item = ic.int_item(integral_nr());

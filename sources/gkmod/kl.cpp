@@ -1012,12 +1012,8 @@ void KL_table::verbose_fill(BlockElt limit)
 }
 
 void KL_table::swallow
-  (KL_table&& sub, const BlockEltList& embed, const Permutation& simple_pi,
-   KL_hash_Table& hash)
+  (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
-#ifndef NDEBUG
-  check_sub(sub,embed,simple_pi);
-#endif
   // set up polynomial translation while ensuring those of |sub| are known here
   const bool shared_KL_pool =
     sub.pol_hash!=nullptr and &hash.pool()==&sub.pol_hash->pool();
