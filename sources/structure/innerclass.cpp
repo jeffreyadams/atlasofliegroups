@@ -1102,33 +1102,6 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
   return result;
 }
 
-int_Matrix InnerClass::integral_eval (const RatWeight& gamma) const
-{ const auto& rd = d_rootDatum;
-  auto simples = rd.pos_simples(integrality_poscoroots(rd,gamma));
-  int_Matrix result (simples.size(),rank());
-  unsigned int i=0;
-  for (RootNbr alpha : simples)
-    result.set_row(i++,rd.coroot(alpha));
-  return result;
-}
-
-subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, unsigned int& int_sys_nr)
-{
-  return int_item(integrality_poscoroots(root_datum(),gamma),int_sys_nr);
-}
-
-subsystem::integral_datum_item& InnerClass::int_item
-  (const RootNbrSet& int_posroots, unsigned int& int_sys_nr)
-{
-  subsystem::integral_datum_entry e(int_posroots);
-  assert(integral_pool.size()==int_table.size());
-  int_sys_nr = int_hash.match(e);
-  if (int_sys_nr==int_table.size())
-    int_table.emplace_back(*this,int_posroots);
-  return int_table[int_sys_nr];
-}
-
 subsystem::integral_datum_item& InnerClass::int_item
   (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc)
 {

@@ -81,7 +81,7 @@ Reduced_param Reduced_param::reduce
   const auto& integral = ic.int_item(gl,int_sys_nr,loc); // sets last two args
   auto ww = rc.Weyl_group().word(loc.w);
   rc.transform<true>(ww,srm);
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(gl);
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -98,7 +98,7 @@ Reduced_param Reduced_param::co_reduce
   InnerClass& ic = rc.inner_class();
   rc.transform<true>(rc.Weyl_group().word(w),srm);
   const auto& integral = ic.int_item(int_sys_nr);
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()),WeylElt());
+  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -308,12 +308,11 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 (const locator& loc, const StandardReprMod& srm0,
  block_modifier& bm, StandardReprMod srm1) const
 {
-  const auto& rd = root_datum();
   const auto& W = Weyl_group();
   W.mult(bm.w, W.inverse(loc.w));
   auto ww = W.word(bm.w);
 
-  assert(bm.integrally_simples == image(rd,ww,loc.integrally_simples));
+  assert(bm.integrally_simples == image(root_datum(),ww,loc.integrally_simples));
   compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
 
   transform<true>(ww,srm1); // move back to base

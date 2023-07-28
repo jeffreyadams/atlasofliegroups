@@ -550,15 +550,9 @@ class Rep_table : public Rep_context
   size_t find_reduced_hash(const StandardReprMod& srm) const
   { unsigned int int_sys_nr; block_modifier bm;
     return reduced_hash.find(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
-  size_t find_reduced_hash(const common_block& block, BlockElt z) const;
-  size_t find_reduced_hash
-    (const StandardReprMod& srm, const common_context& c) const;
   size_t match_reduced_hash(const StandardReprMod& srm)
   { unsigned int int_sys_nr; block_modifier bm;
     return reduced_hash.match(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
-  size_t match_reduced_hash(const common_block& block, BlockElt z);
-  size_t match_reduced_hash
-    (const StandardReprMod& srm, const common_context& c);
 
   K_repr::K_type stored_K_type(K_type_nr i) const
   { return K_type_pool[i].copy(); }

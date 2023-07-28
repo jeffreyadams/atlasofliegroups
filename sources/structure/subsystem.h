@@ -208,7 +208,6 @@ class integral_datum_item
   // root indices of images by |w| of integrally-simple coroots; must be positive
   sl_list<RootNbr> image_simples(const WeylElt& w) const;
 
-  const int_Matrix& coroots_matrix() const {  return simple_coroots; }
   int_Matrix coroots_matrix(const WeylElt& w) const;
 
   codec data(const InnerClass& ic, InvolutionNbr inv) const

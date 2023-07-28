@@ -473,39 +473,13 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
   subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr);
-  subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w);
-  subsystem::integral_datum_item& int_item
-    (const RootNbrSet& int_posroots, unsigned int& int_sys_nr);
-  subsystem::integral_datum_item& int_item
     (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc);
   // same when |int_sys_nr| and |w| have already been computed:
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
   subsystem::integral_datum_item::codec integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv) const
-  { return  { *this, inv, integral_eval(gamma) }; }
-
-  subsystem::integral_datum_item::codec integrality_codec
   (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr);
-
-  // evaluation matrix on integral coroots
-  const int_Matrix& integral_eval(unsigned int int_sys_nr) const
-  { return int_table[int_sys_nr].coroots_matrix(); }
-  int_Matrix integral_eval (const RatWeight& gamma) const;
-  int_Matrix integral_eval (unsigned int int_sys_nr, const WeylElt& w) const
-  { return int_table[int_sys_nr].coroots_matrix(w); }
-
-  const int_Matrix& integral_eval
-    (const RatWeight& gamma, unsigned int& int_sys_nr)
-  { return int_item(gamma,int_sys_nr).coroots_matrix(); }
-  int_Matrix integral_eval
-    (const RatWeight& gamma, unsigned int& int_sys_nr, WeylElt& w)
-  { const subsystem::integral_datum_item& item=int_item(gamma,int_sys_nr,w);
-    return item.coroots_matrix(w);
-  }
 
 // pseudo manipulator
 
