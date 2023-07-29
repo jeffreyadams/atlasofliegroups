@@ -130,6 +130,8 @@ InnerClass::InnerClass
   , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
+  , cofolded_pair() // construct later on demand
+
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
     // dual fundamental fiber is dual fiber of most split Cartan
@@ -165,6 +167,8 @@ InnerClass::InnerClass
 
   , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
+
+  , cofolded_pair() // construct later on demand
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
@@ -401,6 +405,8 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   , d_dualRootDatum(G.d_rootDatum)
 
   , my_W(nullptr), W(G.W) // not owned here, we depend on existence of |G|
+
+  , cofolded_pair() // construct later on demand
 
   , d_fundamental(G.d_dualFundamental)
   , d_dualFundamental(G.d_fundamental)

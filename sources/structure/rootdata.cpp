@@ -1565,6 +1565,34 @@ ext_gens fold_orbits
   return result;
 }
 
+RootDatum cofold (const RootDatum& rd, const ext_gens& orbits)
+{
+  int_Matrix simple_roots(rd.rank(),orbits.size()),
+    simple_coroots(rd.rank(),orbits.size());
+  for (unsigned int j=0; j<orbits.size(); ++j)
+  {
+    auto orbit = orbits[j];
+    switch (orbit.type)
+    {
+    case ext_gen::one:
+      simple_coroots.set_column(j,rd.simpleCoroot(orbit.s0));
+      simple_roots.set_column(j,rd.simpleRoot(orbit.s0));
+      break;
+    case ext_gen::two:
+      simple_coroots.set_column(j,rd.simpleCoroot(orbit.s0));
+      simple_roots.set_column(j,rd.simpleRoot(orbit.s0)+rd.simpleRoot(orbit.s1));
+      break;
+    case ext_gen::three:
+      simple_coroots.set_column
+	(j, rd.simpleCoroot(orbit.s0)+rd.simpleCoroot(orbit.s1));
+      simple_roots.set_column
+	(j, rd.simpleRoot(orbit.s0)+rd.simpleRoot(orbit.s1));
+    }
+  }
+  PreRootDatum prd(simple_roots,simple_coroots,rd.prefer_coroots());
+  return RootDatum(prd);
+}
+
 RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 {
   const Ratvec_Numer_t& v=gamma.numerator();

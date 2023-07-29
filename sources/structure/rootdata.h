@@ -84,12 +84,13 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 
-// involution of the Dynkin diagram for |rd| define by distinguished |delta|
+// involution of the Dynkin diagram for |rd| defined by distinguished |delta|
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 // orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 ext_gens fold_orbits // here |roots| is basis of subsystem to be |delta|-folded
   (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta);
+RootDatum cofold (const RootDatum& rd, const ext_gens& orbits);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);

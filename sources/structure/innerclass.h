@@ -173,6 +173,9 @@ class InnerClass
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
+  using datum_pair=std::pair<RootDatum,WeylGroup>;
+  mutable std::unique_ptr<datum_pair> cofolded_pair; // generated on demand
+
   /*
     Fiber class for the fundamental Cartan subgroup
     The distinguished involution (permuting the simple roots) is stored here
@@ -194,7 +197,6 @@ class InnerClass
   const TitsGroup d_dualTitsGroup;
   // the permutation of the roots given by the based automorphism
   const Permutation root_twist;
-
 
   struct C_info
   { // gradings of the set of simple (co)roots, for all real forms
@@ -266,6 +268,15 @@ class InnerClass
     { return d_dualTitsGroup; } // in fact its base object
   const TitsGroup& Tits_group() const { return d_Tits_group; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
+
+  const RootDatum& cofolded_datum() const
+  { if (cofolded_pair==nullptr) construct_cofolded();
+    return cofolded_pair->first;
+  }
+  const WeylGroup& cofolded_W() const
+  { if (cofolded_pair==nullptr) construct_cofolded();
+    return cofolded_pair->second;
+  }
 
   const Fiber& fundamental_fiber () const { return d_fundamental; }
   const Fiber& fundamental_dual_fiber () const { return d_dualFundamental; }
@@ -503,6 +514,7 @@ class InnerClass
 // Auxiliary manipulators
 
   void construct(); // does essential work, common to two constructors
+  void construct_cofolded() const; // |const|, as |cofolded_pair| is |mutable|
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
