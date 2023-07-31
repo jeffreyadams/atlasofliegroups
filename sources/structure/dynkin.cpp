@@ -236,20 +236,25 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 	unsigned ii = orbits[i].s0;
 	if (not are_adjacent(ii,jj)) // then we got wrong orbit elements
 	  ii = orbits[i].s1; // fix first one
-	assert (are_adjacent(ii,jj));
+	assert (are_adjacent(ii,jj)); // we've got an edge that maps to $(i,j)$
 	r_star[i].set(j);
 	r_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
 
-	int diff=orbits[i].length()-orbits[j].length();
-	if (diff==0) // equal length: copy Cartan entries
-	{ for (const auto& edge : down_edges)
+	bool p=orbits[i].type==ext_gen::two, q=orbits[j].type==ext_gen::two;
+	if (p==q) // both type |one| or ith type |two|
+	{ assert(orbits[i].type!=ext_gen::three and
+		 orbits[j].type!=ext_gen::three);
+	  for (const auto& edge : down_edges)
 	    if (edge.first.first==ii and edge.first.second==jj)
 	      result.down_edges.emplace_back(Edge(i,j),edge.second);
 	    else if (edge.first.first==jj and edge.first.second==ii)
 	      result.down_edges.emplace_back(Edge(j,i),edge.second);
+	  // |else| ignore this |edge| as unrelated to orbit pair $(i,j)$
 	}
-	else // unequal orbit lengths: double edge from shorter to longer orbit
-	  result.down_edges.emplace_back(diff<0 ? Edge(i,j) : Edge(j,i), 2);
+	else // make double edge from the type |two| edge to the other edge
+	{ assert(p or q); // unequal types, one of them must be type |two|
+	  result.down_edges.emplace_back(p ? Edge(i,j) : Edge(j,i), 2);
+	}
       }
   }
   return result;

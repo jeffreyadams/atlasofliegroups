@@ -180,7 +180,11 @@ public:
   explicit RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co=false);
 
   RootSystem(const RootSystem& rs, tags::DualTag);
+  RootSystem(RootSystem&&) = default;
+protected:
+  RootSystem(const RootSystem&) = default;
 
+public:
 // accessors
 
   // |rank| will be renamed |semisimple_rank| when part of |RootDatum|
@@ -429,7 +433,24 @@ class RootDatum
 
   RootDatum(const RootDatum&, tags::DualTag);
 
-  RootDatum(const RootDatum&) = delete;
+private:
+  RootDatum(const RootDatum& rd)
+    : RootSystem(rd) // slice |RootSystem|
+    , d_rank(rd.d_rank)
+    , d_roots(rd.d_roots)
+    , d_coroots(rd.d_coroots)
+    , weight_numer(rd.weight_numer)
+    , coweight_numer(rd.coweight_numer)
+    , d_radicalBasis(rd.d_radicalBasis)
+    , d_coradicalBasis(rd.d_coradicalBasis)
+    , d_2rho(rd.d_2rho)
+    , d_dual_2rho(rd.d_dual_2rho)
+    , d_status(rd.d_status)
+  {}
+
+public:
+  RootDatum copy() const // if you really need to duplicate, call this method
+  { return RootDatum(*this); }
   RootDatum(RootDatum&&) = default;
 
 #if 0 // (co)derived constructors no longer used, done at |PreRootData| level now

@@ -29,6 +29,8 @@
 #include <set>
 
 #include "lattice.h"
+#include "rootdata.h"
+#include "lietype.h" // to destroy |std::vector<ext_gen>| from |fold_orbits|
 #include "weyl.h"
 #include "kgb.h"
 #include "alcoves.h"
@@ -396,6 +398,14 @@ void InnerClass::construct() // common part of two constructors
   }
 } // |InnerClass::construct|
 
+void InnerClass::construct_cofolded() const
+{
+  const auto& rd = root_datum();
+  auto cofolded_datum = cofold(rd,fold_orbits(rd,distinguished()));
+  auto cofolded_Cartan = cofolded_datum.Cartan_matrix(); // fix before |move|
+  cofolded_pair = std::make_unique<datum_pair>
+    (std::move(cofolded_datum),WeylGroup(cofolded_Cartan));
+}
 
 // Construct the complex reductive group dual to G (used in Fokko only)
 // letting the dual be dependent on the main inner class, they can share |W|

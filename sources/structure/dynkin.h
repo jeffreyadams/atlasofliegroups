@@ -108,7 +108,8 @@ class DynkinDiagram
   // these are mostly internal methods, but cannot be private in current setup
   RankFlags star(unsigned int j) const { return d_star[j]; } // copies it
 
-  // transformer (returns related Dynkin diagram: A5->B3, A6->C3, D5->C4)
+  // transformer returns related Dynkin diagram for delta-fixed weight space
+  // (only Coxeter diagram matters for us, but this maps A5->B3, A6->B3, D5->C4)
   DynkinDiagram folded(const ext_gens& orbits) const;
 
 // manipulators:

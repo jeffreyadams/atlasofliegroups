@@ -1032,7 +1032,10 @@ public:
 @)
   root_datum_value(const PreRootDatum& v,token)
   : classes(), W_ptr(), val(v) @+ {}
+  root_datum_value(RootDatum&& v,token)
+  : classes(), W_ptr(), val(std::move(v)) @+ {}
   static shared_root_datum build(PreRootDatum&& pre);
+  static shared_root_datum copy(const RootDatum& rd);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
   root_datum_value (const root_datum_value& ) = delete;
@@ -1095,6 +1098,34 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
   } // save a weak pointer version in |store|
   return result;
 }
+
+@ Sometimes a |RootDatum| value exists in the program without necessarily being
+recorded in the |static| variable |RootDatum::hash|; when we want to make a user
+program value from it, we need to pass it through the same test as |build|
+above; the static method |copy| does this, which involves testing the
+|PreRootDatum| to which it can be implicitly converted, but then not
+constructing the root datum again if it is not found.
+
+@< Function definitions @>=
+shared_root_datum root_datum_value::copy(const RootDatum& rd)
+{ auto loc = hash.match(root_datum_entry(rd));
+    // |rd| implicitly converted of |PreRootDatum|
+  if (loc<store.size())
+  { if (auto result=store[loc].lock()) // previous root datum still exists
+      return result; // so return it
+    auto result = std::make_shared<root_datum_value>(hash[loc],token());
+      // otherwise re-construct
+    store[loc]=result; // save a weak pointer version in |store|
+    return result; // and return a strong version of the same
+  }
+  else // this is the first time we ever see a copy of this |PreRootDatum|
+  { assert (loc==store.size());
+    auto result = std::make_shared<root_datum_value>(rd.copy(),token());
+    store.push_back(result); // save a weak pointer version in |store|
+    return result;
+  }
+}
+
 @ The method |W| constructs a |WeylGroup| object if this is not already done,
 and returns a reference to it.
 %
@@ -1856,6 +1887,20 @@ void Weyl_coorbit_ws_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
+@ For a root datum with distinguished involution, one can form a ``cofolded''
+version of the root datum. (What is usually called the ``folded'' diagram has a
+dual construction and is different, but it does not interest us here.) Since we
+use this only when the distinguished involution is the one defining our inner
+class, we use an argument of type |InnerClass|.
+
+@< Local function def...@>=
+void cofolded_wrapper(expression_base::level l)
+{
+  const auto& ic = get<inner_class_value>();
+  if (l!=expression_base::no_value)
+    push_value(root_datum_value::copy(ic->val.cofolded_datum()));
+}
+
 @ Here are two functions making available to the user the |wall_set| and
 |alcove_center| functions defined in \.{alcoves.cpp}, which serve to improve the
 efficiency and safety against rational number overflow of the deformation
@@ -2229,6 +2274,7 @@ install_function(Weyl_orbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(RootDatum,vec->[WeylElt])");
 install_function(Weyl_coorbit_ws_wrapper@|,"Weyl_orbit_ws",
 		"(vec,RootDatum->[WeylElt])");
+install_function(cofolded_wrapper@|,"cofolded","(InnerClass->RootDatum)");
 install_function(walls_wrapper,"walls","(RootDatum,ratvec->[int],int)");
 install_function(alcove_center_wrapper,"alcove_center","(Param->Param)");
 install_function(walls_attitude_wrapper@|,"walls_attitude",

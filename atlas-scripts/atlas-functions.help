@@ -1189,7 +1189,21 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   (in the restriction vertices are renumbered form 0, so that it can be
   considered as a W-graph in its own right, without reference to the original).
 
-walls: (RootDatum,ratvec->[int],int) Set of coroots defining walls of alcove
+cofolded: (InnerClass->RootDatum): Reduced root datum for delta-fixed weights
+  This is a root datum whose dimple coroots are a subset of those of the root
+  datum rd of the inner class, and whose simple roots are among the positive
+  roots of rd that are delta-fixed (for the distincuished involution delta of
+  the inner class). The root datum is somewhat skewed in the sense that among
+  each delta-orbit of 2 simple coroots whose sum is not a coroot, one is
+  arbitrarily chosen to be retained; it would be more natural to retain the
+  average of these two instead. However that might introduce non-integer
+  coordinates, and the root datum constucted here does not, and is a perfectly
+  valid root datum. It is intended to be used only with delta-fixed (rational)
+  weights, and notably to decompose that space into alcoves; this is independent
+  of the choice of simple coroots, and the alcoves are the same as those into
+  which the subspace is cut by the full set of affine coroot hyperplaces for rd.
+
+walls: (RootDatum,ratvec->[int],int): Set of coroots defining walls of alcove
   The alcove is the one containing the given rational weight gamma, possibly on
   its boundary, and such that the half-line from gamma in any strictly dominant
   direction enters into the interior of the alcove (where all coroot evaluations
