@@ -3538,6 +3538,8 @@ set show_short([string] statuses) = void:
 	" unitary, ",countF," nonunitary.")
 	fi
 
+set show_short([string] statuses, [Param] P) = show_short(statuses)
+
 set show_very_short([string] statuses) = void:
     let countT = int:0, countF = int:0, countQ = int:0
     then () = for st in statuses do
@@ -3922,7 +3924,7 @@ set spherical_testKPO(RealForm G, VertexData vd,
 set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, [string] statuses,
-    (Param->bool) tester, int test_count) = [string]:
+    (Param->bool) tester, int test_count) = ([string],[Param]):
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     { then listZero = [ratvec]: if #LFVH = 0
@@ -3965,7 +3967,7 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
 	      od
      then() = if(test_verbose)
      	      then prints(new_line,"total tests = ",test_count);
-	      prints("number of unitary facets = ",sum(for m:NumClasses
+	      prints("number of tester-unitary facets = ",sum(for m:NumClasses
      	       		      	 	 	  	do if newStatuses[m][0]="T"
 							   then [#eq[m]]
 							   else []
@@ -3984,18 +3986,18 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
 		   fi
 		 od
        then () = if test_verbose then prints("unitary facets by dim = ", unitary_by_dim) fi
-       { then() = prints("cardinality of Lvd.list is ",#Lvd.list)
-       then () = for v@j in LFVH[0] do prints(j,Kpol_hash.index(v[1]) - K_type_pol(character_formula(parameter(x,lambda, (Lvd.list)[v[0]])))) od }
-     { then () = for m:NumClasses
-     	       do if newStatuses[m][0]="T"
-	       	  then prints(new_line,"class ",m," is unitary, infl chars ");
-		       for x in eq[m]
-		       do let (d,j) = coords(LFVH,x)
-		       	  in prints("   ",facet_bary(Lvd.list,LFVH[d][j][:d+1]))
-		       od
-	     	  fi
-	       od }
-      in  newStatuses
+       then UParams = [Param]:
+       	    for m:NumClasses
+	    do if statuses[m][0] = "T"
+	       then for i in eq[m]
+	       	    do let (d,j) = coords(LFVH,i)
+		       in parameter(x,lambda,
+		       	  facet_bary(Lvd.list,LFVH[d][j][:d+1]))
+		    od {list of unitary Params}
+	      else []
+	      fi
+	    od.##
+      in  (newStatuses,UParams)
 
 {meant to test candidate classes to (new) height |level|; delete from LFVH
  the facets established to be nonunitary in this way. Output is new shorter
@@ -4486,7 +4488,7 @@ set sphericalKPO_long(RealForm G) = FacetData:
 
 {outputs string with one status per equiv class}
 set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form
     then  FPPDH = facet_data_fold_hash(cofolded(G))
     then LFD = if is_split(G) and x=x_open(G) and lambda=G.rho
@@ -4511,23 +4513,8 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester, 0)
 
-{outputs string with one status per equiv class}
-{SEEMS NEVER CALLED}
-{set local_testK(KGBElt x, ratvec lambda, (Param -> bool) tester) =
-    [string]:
-    let G = x.real_form
-    then vd = FPP_vertex_data(G)
-    then  FPPKH = FPP_facets_KHash(G,vd,Kpol_hash)
-    then ((eq,gr),IUCL,CLBF) = localGraphK(FPPKH)
-    then statuses = [string]: for j:#eq do "?" od
-    then () = statuses:=local_facet_statusU(x, lambda, vd,
-    	      IUCL, CLBF, statuses)
-    in local_test(x,lambda,vd,FPPKH, eq, gr, CLBF, statuses,
-       tester, 0)}
-
-
 set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form
     then FPPDH = facet_data_fold_hash(cofolded(G))
     then LFD = if is_split(G) and x=x_open(G) and lambda=G.rho
@@ -4590,7 +4577,7 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
 
 {depth needs to be at least 1}
 set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
-    int depth) = [string]:
+    int depth) = ([string],[Param]):
     let G = x.real_form
     then (Affd,,) = cofolded(G)
     then vd = FPP_vertex_data(G)
@@ -4643,7 +4630,7 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
      in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,newStatuses,tester,test_count)
 
 set local_testK_levels_A(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
     then vd = FPP_vertex_data(G)
@@ -4721,7 +4708,7 @@ set local_testK_levels_A(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int d
      in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
     then vd = FPP_vertex_data(G), depth=Affd.semisimple_rank - first_pass+1
@@ -4779,11 +4766,11 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
     then depth=Affd.semisimple_rank - first_pass+1
-    then hts = next_heights(parameter(x,lambda,0*lambda),depth)
+    then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda, Kpol_hash)
     {next add edges}
     then () = LFDKH := localFD_KHash1(x,lambda,vd,Lvd,Perm,mapAct,LFDKH,Kpol_hash)
@@ -4794,7 +4781,9 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then test_count = int:0, D=int:1
     then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
 			  for list in LFDKH do #list od) fi
-    then () = while first_pass + D <= Affd.semisimple_rank + 1
+    then () = while first_pass + D <= Affd.semisimple_rank + 1 and
+    	      	    (#LFDKH = first_pass + D - 1) and
+		    (#(LFDKH~[0])  > 0)
     {while loop does is_unitary_to_ht on facets to dim first_pass; then adds facets of
     	  one dim higher and does is_unitary_to_ht on those...}
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[D-1])
@@ -4835,11 +4824,13 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 		     fi
 	       od
     then tester = (Param->bool): (Param p) bool: is_unitary(p, cert_hash)
-    in local_test(x,lambda,Lvd,
+    in if(facet_verbose) then prints();
+       prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
+       local_test(x,lambda,Lvd,
     	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
     then vd = FPP_vertex_data(G), depth=Affd.semisimple_rank - first_pass+1
@@ -4909,7 +4900,7 @@ set local_testK_levels_C(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
     then vd = FPP_vertex_data(G), depth=Affd.semisimple_rank - first_pass+1
@@ -4982,7 +4973,7 @@ set local_testK_levels_D(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 
 
 set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
-    [string]:
+    ([string],[Param]):
     let G = x.real_form
     then vd = FPP_vertex_data(G)
     then FPPKH = FPP_facets_KHash(G,vd,Kpol_hash)
@@ -5027,35 +5018,35 @@ set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,vd, FPPKH,eq,gr,CLBF,newStatuses,tester,test_count)
 
-set local(KGBElt x, ratvec lambda) = [string]:
+set local(KGBElt x, ratvec lambda) = ([string],[Param]):
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test(p, hts[0], hts[1])
     in local_test(x,lambda,tester)
 
-set spherical_local(RealForm G) = [string]:
+set spherical_local(RealForm G) = ([string],[Param]):
     local(x_open(G),G.rho)
 set spherical_cert_hash = make_KTypePol_hash()
 
-set spherical_levels(RealForm G) = [string]:
+set spherical_levels(RealForm G) = ([string],[Param]):
     local_test_levels(x_open(G),G.rho,spherical_cert_hash,4)
 
-set sphericalK_levels(RealForm G) = [string]:
+set sphericalK_levels(RealForm G) = ([string],[Param]):
     local_testK_levels(x_open(G),G.rho,spherical_cert_hash,4)
 
-set sphericalK_levels_A(RealForm G) = [string]:
+set sphericalK_levels_A(RealForm G) = ([string],[Param]):
     local_testK_levels_A(x_open(G),G.rho,spherical_cert_hash,4)
 
-set sphericalK_levels_B(RealForm G) = [string]:
+set sphericalK_levels_B(RealForm G) = ([string],[Param]):
     local_testK_levels_B(x_open(G),G.rho,spherical_cert_hash)
 
-set spherical_GEO(RealForm G) = [string]:
+set spherical_GEO(RealForm G) = ([string],[Param]):
     local_test_GEO(x_open(G),G.rho,spherical_cert_hash)
 
-set sphericalK_levels_C(RealForm G) = [string]:
+set sphericalK_levels_C(RealForm G) = ([string],[Param]):
     local_testK_levels_C(x_open(G),G.rho,spherical_cert_hash)
 
-set sphericalK_levels_D(RealForm G) = [string]:
+set sphericalK_levels_D(RealForm G) = ([string],[Param]):
     local_testK_levels_D(x_open(G),G.rho,spherical_cert_hash)
 
 {next functions aim to compute FULL spherical dual in non-split case, when several
