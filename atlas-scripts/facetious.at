@@ -3988,7 +3988,7 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
        then () = if test_verbose then prints("unitary facets by dim = ", unitary_by_dim) fi
        then UParams = [Param]:
        	    for m:NumClasses
-	    do if statuses[m][0] = "T"
+	    do if newStatuses[m][0] = "T"
 	       then for i in eq[m]
 	       	    do let (d,j) = coords(LFVH,i)
 		       in parameter(x,lambda,
