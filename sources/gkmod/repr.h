@@ -325,9 +325,9 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
-  bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const;
-  bool is_twist_fixed(const StandardRepr& z) const
-  { return is_twist_fixed(z,inner_class().distinguished()); }
+  bool is_fixed(StandardRepr z, const WeightInvolution& delta) const;
+  bool is_delta_fixed(const StandardRepr& z) const
+  { return is_fixed(z,inner_class().distinguished()); }
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 

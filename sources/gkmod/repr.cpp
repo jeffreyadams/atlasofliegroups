@@ -679,8 +679,7 @@ void Rep_context::normalise(StandardRepr& z) const
   complex_crosses(z,complex_descent_word(z.x(),singulars));
 } // |normalise|
 
-bool Rep_context::is_twist_fixed
-  (StandardRepr z, const WeightInvolution& delta) const
+bool Rep_context::is_fixed (StandardRepr z, const WeightInvolution& delta) const
 {
   make_dominant(z);
   to_singular_canonical(singular_simples(z),z);

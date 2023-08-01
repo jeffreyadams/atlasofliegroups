@@ -8051,9 +8051,8 @@ non-dominant terms, which should never happen.
 void twisted_deform_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
-  const auto& delta=rt.inner_class().distinguished();
   test_standard(*p,"Cannot compute twisted deformation terms");
-  if (not rt.is_twist_fixed(p->val,delta))
+  if (not rt.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   test_final(*p,"Twisted deformation requires final parameter");
   if (l==expression_base::no_value)
@@ -8156,7 +8155,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc(); auto& rt=p->rt();
   test_standard(*p,"Cannot compute full twisted deformation");
-  if (not rc.is_twist_fixed(p->val))
+  if (not rc.is_delta_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
@@ -8206,8 +8205,8 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   auto sr=p->val; // take a copy
   p->rc().make_dominant(sr);
-    // |is_twist_fixed| and |twisted_KL_column_at_s| like this
-  if (not p->rc().is_twist_fixed(sr))
+    // |is_delta_fixed| and |twisted_KL_column_at_s| like this
+  if (not p->rc().is_delta_fixed(sr))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
     push_value (std::make_shared<virtual_module_value>@|
@@ -8253,7 +8252,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_compatible(p->rc().inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l!=expression_base::no_value)
     push_value (std::make_shared<virtual_module_value>@|
@@ -8286,7 +8285,7 @@ void scale_extended_wrapper(expression_base::level l)
   if (not factor->val.is_positive())
     throw runtime_error("Factor in scale_extended must be positive");
   test_compatible(p->rc().inner_class(),delta);
-  if (not rc.is_twist_fixed(sr,delta->val))
+  if (not rc.is_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
@@ -8320,7 +8319,7 @@ void K_type_pol_extended_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   test_standard(*p,"Parameter in K_type_pol_extended| must be standard");
   test_compatible(rc.inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
     return;
@@ -8347,7 +8346,7 @@ void finalize_extended_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
   test_compatible(rc.inner_class(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
     return;
