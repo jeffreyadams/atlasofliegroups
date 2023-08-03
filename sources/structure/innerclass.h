@@ -519,9 +519,6 @@ class InnerClass
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
 
-  // get |int_table| entry for |gamma|
-  subsystem::integral_datum_item& int_item(const RatWeight& gamma);
-
 }; // |class InnerClass|
 
 } // |namespace innerclass|

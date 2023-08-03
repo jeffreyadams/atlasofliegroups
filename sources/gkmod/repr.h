@@ -166,7 +166,7 @@ public:
   Reduced_param& operator=(Reduced_param&&) = default;
 
   static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
-    (const Rep_context& rc, StandardReprMod srm,
+    (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
      unsigned int& int_sys_nr, locator& loc);
   static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
     (const Rep_context& rc, StandardReprMod srm,
@@ -564,12 +564,11 @@ class Rep_table : public Rep_context
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
+#if 0 // this would now require an actual |delta|-fixed |gamma| to be supplied
   size_t find_reduced_hash(const StandardReprMod& srm) const
   { unsigned int int_sys_nr; block_modifier bm;
     return reduced_hash.find(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
-  size_t match_reduced_hash(const StandardReprMod& srm)
-  { unsigned int int_sys_nr; block_modifier bm;
-    return reduced_hash.match(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
+#endif
 
   K_repr::K_type stored_K_type(K_type_nr i) const
   { return K_type_pool[i].copy(); }

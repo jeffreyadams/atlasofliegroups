@@ -108,16 +108,15 @@ int_Vector codec::internalise (const RatWeight& gamma) const
 }
 
 Reduced_param Reduced_param::reduce
-  (const Rep_context& rc, StandardReprMod srm,
+  (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
    unsigned int& int_sys_nr, locator& loc)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
-  const auto& gl = srm.gamma_lambda(); // constant ref to changing value!
   InnerClass& ic = rc.inner_class();
-  const auto& integral = ic.int_item(gl,int_sys_nr,loc); // sets last two args
-  auto ww = rc.Weyl_group().word(loc.w);
+  const auto& integral = ic.int_item(gamma,int_sys_nr,loc); // sets last two args
+  auto ww = ic.cofolded_W().word(loc.w);
   rc.transform<true>(ww,srm);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
-  auto evs = codec.internalise(gl);
+  auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
   { auto d = codec.diagonal[i];
@@ -1695,12 +1694,18 @@ blocks::common_block& Rep_table::add_block_below
 
 // erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
 void Rep_table::block_erase (bl_it pos)
-{
+{ /* since |sl_list<..>| iterators are attached to node in the list preceding the
+     one where dereferencing the iterator will lead, erasing at |pos| will
+     invalidate iterators accessing the next node (if any), which can be found
+     from elements in the block of that next node; their iterators must be
+     replaced by |pos|, which itself remains a valid iterator after erasure.
+   */
   assert (not block_list.at_end(pos));
-  const auto next_pos = std::next(pos);
+  const auto next_pos = std::next(pos); // this iterator will become invalid
   if (not block_list.at_end(next_pos))
   { // then make sure in |place| instances of |next_pos| are replaced by |pos|
-    const auto& block = next_pos->first;
+#if 0 // place indices could be found from |block| below, but no longer possible
+    const auto& block = next_pos->first; // its elements would link to |next_pos|
     for (BlockElt z=0; z<block.size(); ++z)
     {
       auto seq = find_reduced_hash(block.representative(z));
@@ -1708,6 +1713,11 @@ void Rep_table::block_erase (bl_it pos)
       if (place[seq].first==next_pos) // could be false if |block| was swallowed
 	place[seq].first=pos; // replace iterator that is about to be invalidated
     }
+#else // so we instead just run through all entries in |place| to check
+    for (auto& entry : place)
+      if (entry.first==next_pos)
+	entry.first=pos;
+#endif
   }
   block_list.erase(pos);
 } // |Rep_table::block_erase|
@@ -1794,7 +1804,7 @@ blocks::common_block& Rep_table::lookup_full_block
   make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
-  auto rp = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),int_sys_nr,bm);
 
   auto h = reduced_hash.find(rp);
   if (h==reduced_hash.empty or not place[h].first->first.is_full()) // then
@@ -1819,7 +1829,7 @@ blocks::common_block& Rep_table::lookup
 
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
-  auto rp = Reduced_param::reduce(*this,srm,int_sys_nr,bm);
+  auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),int_sys_nr,bm);
 
   assert(reduced_hash.size()==place.size()); // should be in sync at this point
   auto h = reduced_hash.find(rp); // look up modulo $X^*+integral^\perp$
