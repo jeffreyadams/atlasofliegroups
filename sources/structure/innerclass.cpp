@@ -1176,7 +1176,7 @@ subsystem::integral_datum_item& InnerClass::int_item
   return result;
 } // |InnerClass::int_item|
 
-subsystem::integral_datum_item::codec InnerClass::integrality_codec
+repr::codec InnerClass::integrality_codec
   (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
 { repr::block_modifier bm;
   auto& item = int_item(gamma,int_sys_nr,bm); // sets |int_sys_nr| and |w|

@@ -178,23 +178,6 @@ class integral_datum_item
   int_Matrix simple_coroots; // convenience, for creating |codec| values
 
  public:
-/* below, |in| will coordinate transform from simple coroot evaluations to
- coordinates on basis adapted to $N=\Im(\theta-1)$; this can be followed by
- reduction modulo |diagonal| then left-multiplication by |out| to the lattice
- $N=\Im(\theta-1)$, the result being expressed in usual coordinates
-*/
-  struct codec
-  {
-    const int_Matrix coroots_matrix;
-    std::vector<int> diagonal; // inv.factors for $N$ inside $-1$ eigenlattice
-    int_Matrix in, out;     // see above; |in*coroots_matrix*out == diagonal|
-    codec
-      (const InnerClass& ic,
-       InvolutionNbr inv,
-       const int_Matrix& int_simp_coroots);
-    int_Vector internalise (const RatWeight& gamma) const;
-  }; // |struct integral_datum_item::codec|
-
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&& other) // move, never copy
     : W(other.W)
@@ -202,18 +185,17 @@ class integral_datum_item
     , simple_coroots(std::move(other.simple_coroots))
   {}
 
-  const SubSystem& int_system() const { return int_sys; }
-  SubSystem int_system(const WeylElt& w) const;
+  const SubSystem& int_system () const { return int_sys; }
+  SubSystem int_system (const WeylElt& w) const;
 
   // root indices of images by |w| of integrally-simple coroots; must be positive
-  sl_list<RootNbr> image_simples(const WeylElt& w) const;
+  sl_list<RootNbr> image_simples (const WeylElt& w) const;
 
-  int_Matrix coroots_matrix(const WeylElt& w) const;
+  int_Matrix coroots_matrix (const WeylElt& w) const;
 
-  codec data(const InnerClass& ic, InvolutionNbr inv) const
-  { return { ic,inv,simple_coroots }; }
-  codec data(const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const
-  { return { ic,inv, coroots_matrix(w) }; }
+  repr::codec data (const InnerClass& ic, InvolutionNbr inv) const;
+  repr::codec data
+    (const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const;
 
 }; // |class integral_datum_item|
 

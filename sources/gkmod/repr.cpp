@@ -72,6 +72,41 @@ size_t StandardReprMod::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+codec::codec
+  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& int_simp_coroots)
+    : coroots_matrix(int_simp_coroots)
+    , diagonal(), in(), out()
+{
+  const auto image_basis = ic.involution_table().theta_1_image_basis(inv);
+  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
+  int_Matrix A = coroots_matrix * image_basis, row,col;
+  diagonal=matreduc::diagonalise(A,row,col);
+  // ensure |diagonal| entries positive, since we shall be reducing modulo them
+  if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
+  {
+    diagonal[0] = -diagonal[0];
+    row.rowMultiply(0u,-1); // restablish relation |row*A*col==diagonal|
+  }
+
+  auto rank = diagonal.size();
+  in  = std::move(row); // keep full coordinate transform
+  out = image_basis * // |col| matrix always followed by |image_basis|
+      col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
+}
+
+int_Vector codec::internalise (const RatWeight& gamma) const
+{
+  auto eval = coroots_matrix * gamma.numerator(); // mat * vec
+  if (eval.is_zero())
+    return int_Vector(in.n_rows(),0); // maybe save some work here
+  for (auto& entry : eval) // now take into account so far igenored denominator
+  {
+    assert(entry%gamma.denominator()==0);
+    entry /= gamma.denominator();
+  }
+  return in * int_Vector(eval.begin(),eval.end());
+}
+
 Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm,
    unsigned int& int_sys_nr, locator& loc)
@@ -260,24 +295,23 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
  */
 
 // fixed choice in |(1-theta)X^*| of element given integral coroots evaluations
-// uses idempotence for |codec| of: (out*.) o (. mod(diagonal)) o internalise
-Weight Rep_context::theta_1_preimage
-  (const RatWeight& diff, const subsystem::integral_datum_item::codec& codec)
+// uses idempotence for any |codec| of: (out*.) o (. / diagonal) o internalise
+Weight Rep_context::theta_1_preimage (const RatWeight& diff, const codec& cd)
   const
 {
-  auto eval_v = codec.internalise(diff);
+  auto eval_v = cd.internalise(diff);
   { unsigned int i;
-    for (i=0; i<codec.diagonal.size(); ++i)
+    for (i=0; i<cd.diagonal.size(); ++i)
     {
-      assert(eval_v[i]%codec.diagonal[i]==0);
-      eval_v[i]/=codec.diagonal[i];
+      assert(eval_v[i]%cd.diagonal[i]==0);
+      eval_v[i]/=cd.diagonal[i];
     }
     for (; i<eval_v.size(); ++i)
-      assert(eval_v[i]==0);
-    eval_v.resize(codec.diagonal.size()); // truncate
+      assert(eval_v[i]==0); // trailing entries are zero
+    eval_v.resize(cd.diagonal.size()); // truncate them
   }
 
-  return codec.out * eval_v;
+  return cd.out * eval_v;
 } // |theta_1_preimage|
 
 // difference in $\gamma-\lambda$ from |srm0| with respect to that of |srm1|,
@@ -291,9 +325,9 @@ RatWeight Rep_context::make_diff_integral_orthogonal
     auto& ic = inner_class();
     InvolutionNbr inv = kgb().inv_nr(srm.x());
     unsigned int int_sys_nr;
-    const auto codec = ic.integrality_codec(srm.gamma_lambda(),inv,int_sys_nr);
-    result -= theta_1_preimage(result,codec); // ensure orthogonal to integ. sys
-    assert((codec.coroots_matrix*result).is_zero()); // check that it was done
+    const auto cd = ic.integrality_codec(srm.gamma_lambda(),inv,int_sys_nr);
+    result -= theta_1_preimage(result,cd); // ensure orthogonal to integ. sys
+    assert((cd.coroots_matrix*result).is_zero()); // check that it was done
   }
   return result;
 }

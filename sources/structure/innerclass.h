@@ -489,8 +489,8 @@ class InnerClass
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
-  subsystem::integral_datum_item::codec integrality_codec
-  (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr);
+  repr::codec integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr);
 
 // pseudo manipulator
 

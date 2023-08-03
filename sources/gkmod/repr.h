@@ -180,6 +180,26 @@ public:
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
 }; // |class Reduced_param|
 
+// a structure to help normalising and reducing |StandardReprMod| values
+/*
+ Below, |in| will transform weights in a manner depending only on their
+ coroot evaluations (multiplying by |coroots_matrix| to coordinates on a basis
+ adapted to $N=\Im(\theta-1)$; this can be followed by reduction modulo
+ |diagonal| then left-multiplication by |out| to the lattice $N=\Im(\theta-1)$,
+ the result being expressed in usual coordinates
+*/
+struct codec
+{
+  const int_Matrix coroots_matrix;
+  std::vector<int> diagonal; // inv.factors for $N$ inside $-1$ eigenlattice
+  int_Matrix in, out;     // see above; |in*coroots_matrix*out == diagonal|
+  codec
+    (const InnerClass& ic,
+     InvolutionNbr inv,
+     const int_Matrix& int_simp_coroots);
+  int_Vector internalise (const RatWeight& gamma) const;
+}; // |codec|
+
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
@@ -383,9 +403,7 @@ class Rep_context
   int theta_plus_1_eval (const K_repr::K_type& t, RootNbr alpha) const;
   // auxiliary for |offset|
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
-  Weight theta_1_preimage
-    (const RatWeight& offset, const subsystem::integral_datum_item::codec& codec)
-    const;
+  Weight theta_1_preimage (const RatWeight& offset, const codec& cd) const;
   RankFlags singular_simples (const StandardRepr& z) const;
   WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
   // make integrally dominant, with precomputed integral subsystem; return path

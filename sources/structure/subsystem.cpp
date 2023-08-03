@@ -19,6 +19,7 @@
 #include "innerclass.h"	// |integrality_datum_item| construction
 #include "cartanclass.h"// |InvolutionData|
 #include "weyl.h"	// subobject
+#include "repr.h"       // for |repr::codec|
 
 #include <cassert>
 
@@ -239,7 +240,6 @@ sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
   return result;
 }
 
-
 int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 {
   const auto& rd = int_sys.parent_datum();
@@ -251,40 +251,13 @@ int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
   return result;
 }
 
-integral_datum_item::codec::codec
-  (const InnerClass& ic, InvolutionNbr inv, const int_Matrix& int_simp_coroots)
-    : coroots_matrix(int_simp_coroots)
-    , diagonal(), in(), out()
-{
-  const auto image_basis = ic.involution_table().theta_1_image_basis(inv);
-  // get image of $-1$ eigenlattice in int-orth quotient, in coroot coordinates
-  int_Matrix A = coroots_matrix * image_basis, row,col;
-  diagonal=matreduc::diagonalise(A,row,col);
-  // ensure |diagonal| entries positive, since we shall be reducing modulo them
-  if (diagonal.size()>0 and diagonal[0]<0) // only this entry might be negative
-  {
-    diagonal[0] = -diagonal[0];
-    row.rowMultiply(0u,-1); // restablish relation |row*A*col==diagonal|
-  }
+repr::codec integral_datum_item::data
+  (const InnerClass& ic, InvolutionNbr inv) const
+  { return { ic,inv,simple_coroots }; }
 
-  auto rank = diagonal.size();
-  in  = std::move(row); // keep full coordinate transform
-  out = image_basis * // |col| matrix always followed by |image_basis|
-      col.block(0,0,col.n_rows(),rank); // chop off part for final zero entries
-}
-
-int_Vector integral_datum_item::codec::internalise (const RatWeight& gamma) const
-{
-  auto eval = coroots_matrix * gamma.numerator(); // mat * vec
-  if (eval.is_zero())
-    return int_Vector(in.n_rows(),0); // maybe save some work here
-  for (auto& entry : eval)
-  {
-    assert(entry%gamma.denominator()==0);
-    entry /= gamma.denominator();
-  }
-  return in * int_Vector(eval.begin(),eval.end());
-}
+repr::codec integral_datum_item::data
+    (const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const
+  { return { ic,inv, coroots_matrix(w) }; }
 
 } // |namespace subdatum|
 
