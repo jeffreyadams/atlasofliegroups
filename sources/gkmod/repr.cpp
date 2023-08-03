@@ -322,10 +322,9 @@ RatWeight Rep_context::make_diff_integral_orthogonal
   RatWeight result = gamlam - srm.gamma_lambda();
   if (not result.is_zero()) // optimize out a fairly frequent case
   {
-    auto& ic = inner_class();
+    const auto& ic = inner_class();
     InvolutionNbr inv = kgb().inv_nr(srm.x());
-    unsigned int int_sys_nr;
-    const auto cd = ic.integrality_codec(srm.gamma_lambda(),inv,int_sys_nr);
+    const auto cd = ic.integrality_codec(srm.gamma_lambda(),inv);
     result -= theta_1_preimage(result,cd); // ensure orthogonal to integ. sys
     assert((cd.coroots_matrix*result).is_zero()); // check that it was done
   }

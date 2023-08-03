@@ -490,7 +490,7 @@ class InnerClass
   { return int_table[int_sys_nr]; }
 
   repr::codec integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr);
+    (const RatWeight& gamma, InvolutionNbr inv) const;
 
 // pseudo manipulator
 

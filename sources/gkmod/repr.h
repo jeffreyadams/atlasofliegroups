@@ -198,7 +198,7 @@ struct codec
      InvolutionNbr inv,
      const int_Matrix& int_simp_coroots);
   int_Vector internalise (const RatWeight& gamma) const;
-}; // |codec|
+}; // |struct codec|
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context

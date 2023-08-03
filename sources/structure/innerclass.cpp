@@ -1177,10 +1177,13 @@ subsystem::integral_datum_item& InnerClass::int_item
 } // |InnerClass::int_item|
 
 repr::codec InnerClass::integrality_codec
-  (const RatWeight& gamma, InvolutionNbr inv, unsigned int& int_sys_nr)
-{ repr::block_modifier bm;
-  auto& item = int_item(gamma,int_sys_nr,bm); // sets |int_sys_nr| and |w|
-  return item.data(*this,inv,bm.w);
+  (const RatWeight& gamma, InvolutionNbr inv) const
+{ const auto& rd = root_datum();
+  RootNbrList int_simples = integrality_simples(rd,gamma);
+  int_Matrix coroot_mat(int_simples.size(),rank());
+  for (weyl::Generator s=0; s<int_simples.size(); ++s)
+    coroot_mat.set_row(s,rd.coroot(int_simples[s]));
+  return repr::codec(*this,inv,coroot_mat);
 }
 
 /*****************************************************************************
