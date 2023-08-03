@@ -1606,8 +1606,8 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma)
 {
   auto& numer = gamma.numerator();
-  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    if (rd.simpleCoroot(s).dot(numer)<0)
+  for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
+    if (it->dot(numer)<0)
       return false;
   return true;
 }

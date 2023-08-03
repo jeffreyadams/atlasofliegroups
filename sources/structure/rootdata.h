@@ -45,7 +45,7 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
-/* Transform each element ow |Delta| under $W$ until all are posroot numbers
+/* Transform each element of |Delta| under $W$ until all are posroot numbers
    Return for each step: index at which negroot was found, and reflection index.
    List is in order so that the reflections transform original |Delta| into the
    final one (which is the order in which the pairs were found).

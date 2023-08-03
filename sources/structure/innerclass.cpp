@@ -132,7 +132,7 @@ InnerClass::InnerClass
   , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
-  , cofolded_pair() // construct later on demand
+  , cofolded() // construct later on demand
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
@@ -170,7 +170,7 @@ InnerClass::InnerClass
   , my_W(new WeylGroup(d_rootDatum.Cartan_matrix()))
   , W(*my_W) // owned when this constructor is used
 
-  , cofolded_pair() // construct later on demand
+  , cofolded() // construct later on demand
 
   , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
@@ -398,15 +398,6 @@ void InnerClass::construct() // common part of two constructors
   }
 } // |InnerClass::construct|
 
-void InnerClass::construct_cofolded() const
-{
-  const auto& rd = root_datum();
-  auto cofolded_datum = cofold(rd,fold_orbits(rd,distinguished()));
-  auto cofolded_Cartan = cofolded_datum.Cartan_matrix(); // fix before |move|
-  cofolded_pair = std::make_unique<datum_pair>
-    (std::move(cofolded_datum),WeylGroup(cofolded_Cartan));
-}
-
 // Construct the complex reductive group dual to G (used in Fokko only)
 // letting the dual be dependent on the main inner class, they can share |W|
 InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
@@ -416,7 +407,7 @@ InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
 
   , my_W(nullptr), W(G.W) // not owned here, we depend on existence of |G|
 
-  , cofolded_pair() // construct later on demand
+  , cofolded() // construct later on demand
 
   , d_fundamental(G.d_dualFundamental)
   , d_dualFundamental(G.d_fundamental)
@@ -657,6 +648,10 @@ InnerClass::dualFiberSize(RealFormNbr rf, CartanNbr cn) const
 
 
 /******** accessors **********************************************************/
+
+template <typename C>
+  bool InnerClass::is_delta_fixed(const matrix::Vector<C>& v) const
+{ return distinguished()*v==v; }
 
 RankFlags InnerClass::simple_roots_imaginary() const
 {
@@ -1121,18 +1116,18 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 subsystem::integral_datum_item& InnerClass::int_item
   (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc)
 {
-  const auto& rd = root_datum();
-  const auto& W=Weyl_group();
+  assert(is_delta_fixed(gamma));
+  const auto& rd = root_datum(); // we need full datum as well as cofolded one
+  const auto& cofd = cofolded_datum(); // used for alcoves and attitudes
+  const auto& W = cofolded_W();
   RootNbrSet on_wall_subset;
-  RootNbrSet walls = weyl::wall_set(rd,gamma,on_wall_subset);
-  auto ww = weyl::from_fundamental_alcove(rd,walls);
+  RootNbrSet walls = weyl::wall_set(cofd,gamma,on_wall_subset);
+  auto ww = weyl::from_fundamental_alcove(cofd,walls);
   loc.w = W.element(ww); // an initial integral subsystem coset representative
 
   // we need to map |on_wall_subset| to integral system at fundamental alcove
   std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
-  on_wall_subset = image(rd,ww,on_wall_subset);
-  assert(rd.fundamental_alcove_walls().contains(on_wall_subset));
-
+  on_wall_subset = unfold_FA_facet(image(cofd,ww,on_wall_subset)); // for |rd|
   RootNbrSet fundamental_integral_poscoroots(rd.numPosRoots());
   for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
     fundamental_integral_poscoroots.insert(rd.posroot_index(alpha));
@@ -1145,34 +1140,41 @@ subsystem::integral_datum_item& InnerClass::int_item
 
   subsystem::integral_datum_item& result = int_table[int_sys_nr];
 
-  std::reverse(ww.begin(),ww.end()); // now from fundamental alcove again
-  const auto& int_sys = result.int_system();
-  RootNbrList image; image.reserve(int_sys.rank());
-  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
-    image.push_back(rd.permuted_root(ww,int_sys.parent_nr_simple(s)));
+  ww = W.word(loc.w); // from fundamental alcove again, for |cofd|
+  const SubSystem& int_sys = result.int_system(); // subsystem of |rd|
+  RootNbrSet folded_simply_ints = // a subset of the roots of |cofd|
+    folded_roots(int_sys.simple_roots());
+
+  RootNbrList image; // list of root numbers for |cofd|
+  image.reserve(folded_simply_ints.size()); // maybe less than |int_sys.rank()|
+  for (RootNbr alpha : folded_simply_ints)
+    image.push_back(cofd.permuted_root(ww,alpha));
 
   // now correct coset representative |loc.w| to a positivity-preserving one
-  const auto steps = to_positive_system(rd,image);
-  for (const auto& step : steps)
-    W.mult(loc.w,int_sys.reflection(step.first));
+  for (const auto& step : to_positive_system(rd,image))
+    W.mult(loc.w,cofd.reflection_word(folded_simply_ints.n_th(step.first)));
 
 #ifndef NDEBUG
   ww = W.word(loc.w);
-  for (weyl::Generator s=0; s<int_sys.rank(); ++s)
-    assert(image[s] ==
-	   rd.permuted_root(ww,int_sys.parent_nr_simple(s)));
-  for (RootNbr alpha : image)
-    rd.is_posroot(alpha);
+  { weyl::Generator s=0;
+    for (RootNbr alpha : folded_simply_ints)
+      assert(image[s++] == cofd.permuted_root(ww,alpha));
+    for (RootNbr alpha : image)
+      rd.is_posroot(alpha);
+  }
 #endif
 
-  RootNbrSet i_simp(rd.numRoots());
-  for (RootNbr alpha : image)
-    i_simp.insert(alpha);
-
+  ww = Weyl_group().word(unfold(loc.w)); // now a word for |rd|
+  const RootNbrSet issr = int_sys.simple_roots();
+  RootNbrSet im_simp(rd.numRoots());
+  for (RootNbr alpha : issr)
+    im_simp.insert(rd.permuted_root(ww,alpha));
+  assert(im_simp.size()==int_sys.rank());
   loc.simple_pi = Permutation();
-  loc.simple_pi.reserve(image.size());
-  for (RootNbr alpha : image)
-    loc.simple_pi.push_back(i_simp.position(alpha));
+  loc.simple_pi.reserve(int_sys.rank());
+  for (RootNbr alpha : issr)
+    loc.simple_pi.push_back(im_simp.position(rd.permuted_root(ww,alpha)));
+
   return result;
 } // |InnerClass::int_item|
 
@@ -1185,6 +1187,47 @@ repr::codec InnerClass::integrality_codec
     coroot_mat.set_row(s,rd.coroot(int_simples[s]));
   return repr::codec(*this,inv,coroot_mat);
 }
+
+// map root (number) from |root_datum()| to its |cofolded_datum()| counterpart
+RootNbr InnerClass::folded_root(RootNbr alpha) const
+{
+  const auto& v = root_datum().root(alpha);
+  const auto dv = distinguished()*v;
+  return cofolded_datum().root_index(v==dv ? v : v+dv);
+}
+
+RootNbrSet InnerClass::folded_roots(RootNbrSet S) const
+{
+  RootNbrSet result(cofolded_datum().numRoots());
+  for (RootNbr alpha:S)
+    result.insert(folded_root(alpha));
+  return result;
+}
+
+WeylElt InnerClass::unfold(const WeylElt& w) const // embed into $W^\delta$
+{
+  const auto& W = Weyl_group();
+  const auto& cof_W = cofolded_W();
+  WeylElt result;
+  for (weyl::Generator g : cof_W.word(w))
+    W.mult(result,unfold(g).w_kappa);
+
+  return result;
+}
+
+// lift a facet of fund. alcove of cofolded root datum to facet of root datum
+// a facet is defined by a strict subset of extended diagram root numbers
+RootNbrSet InnerClass::unfold_FA_facet (RootNbrSet walls) const
+{
+  assert(cofolded_datum().fundamental_alcove_walls().contains(walls));
+  const RootDatum& rd = root_datum();
+  RootNbrSet result(rd.numRoots());
+  for (RootNbr alpha : rd.fundamental_alcove_walls())
+    // surprisingly the following works for simple and extended roots alike
+    result.set_to(alpha,walls.isMember(folded_root(alpha)));
+  return result;
+}
+
 
 /*****************************************************************************
 
@@ -1543,6 +1586,9 @@ bool checkDecomposition(const TwistedInvolution& ti,
 
 #endif
 
+// template instantiation
+using UL = arithmetic::Numer_t;
+template bool InnerClass::is_delta_fixed(const matrix::Vector<UL>& v) const;
 
 } // |namespace innerclass|
 

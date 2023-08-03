@@ -134,45 +134,9 @@ PreRootDatum SubSystem::pre_root_datum() const
   return PreRootDatum(simple_roots,simple_coroots,not prefer_coroots());
 }
 
-#if 0 // method is unused
-// compute (dual side) twist and subsystem twisted involution |ww| for |theta|
-weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
-{
-  RootNbrList Delta(rank()); // list of subsystem simple images by theta
-  for (weyl::Generator i=0; i<rank(); ++i)
-  {
-    RootNbr image =
-      from_parent(rd.root_index(theta*rd.root(parent_nr_simple(i))));
-    assert(image < numRoots());  // |image| is number of image in subsystem
-    Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
-  }
-
-  WeylWord wrt = // its rightmost letter applies first to distinguished |Delta|
-    rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
-
-  // |Delta| now describes a twist of the subsystem Dynkin diagram
-
-  weyl::Twist result; // the subsystem twist that |Delta| has been reduced to
-  for (weyl::Generator i=0; i<rank(); ++i)
-    result[i] = RootSystem::simpleRootIndex(Delta[i]);
-
-  // Let |theta_0| be the involution such that |Delta| describes $-theta_0^t$
-  // then (for integrality systems) |theta_0| is parent quasi-split involution
-  // and $theta=pw.theta_0$ where |pw| is |wrt| in terms of parent generators;
-  // equivalently, $-theta^t=Delta.wrt^{-1}$ in terms of the subsystem
-
-  // However, we want |ww| such that $-theta^t=ww.Delta$ (on subsystem side),
-  // therefore |ww=twist(wrt^{-1})|. Nonetheless if |theta| is an involution,
-  // it is the same to say $-theta^t=ww.Delta$ or $-theta^t=Delta.ww^{-1}$,
-  // so following reversal and twist do nothing (|ww| is twisted involution).
-  ww.resize(wrt.size()); // we must reverse and twist, to express on our side
-  for (size_t i=0; i<wrt.size(); ++i)
-    ww[wrt.size()-1-i] = result[wrt[i]];
-
-  return result; // the result returned is the subsystem twist, not |ww|
-}
-#endif
-
+// get simple roots by converting intial range of |pos_map| to a |BitMap|
+RootNbrSet SubSystem::simple_roots() const
+{ return RootNbrSet(rd.numRoots(),&pos_map[0],&pos_map[rank()]); }
 
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
@@ -213,9 +177,9 @@ SubSystemWithGroup SubSystemWithGroup::integral // pseudo constructor
 
 integral_datum_item::integral_datum_item
   (InnerClass& ic,const RootNbrSet& int_poscoroots)
-    : W(ic.Weyl_group())
-    , int_sys {ic.root_datum(),ic.root_datum().pos_simples(int_poscoroots)}
-    , simple_coroots(int_sys.rank(),ic.rank())
+    : ic(ic)
+    , int_sys( ic.root_datum(), ic.root_datum().pos_simples(int_poscoroots) )
+    , simple_coroots(int_sys.rank(),ic.rank()) // first is |RootSystem::rank|
 {
   for (unsigned i=0; i<simple_coroots.n_rows(); ++i)
     simple_coroots.set_row(i,int_sys.simple_coroot(i));
@@ -227,9 +191,10 @@ SubSystem integral_datum_item::int_system(const WeylElt& w) const
 
 sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  const auto& rd = int_sys.parent_datum();
-  WeylWord ww = W.word(w);
+  WeylWord ww = ic.Weyl_group().word(ic.unfold(w));
   sl_list<RootNbr> result;
+
+  const auto& rd = ic.root_datum();
   for (weyl::Generator s=0; s<int_sys.rank(); ++s)
   {
     RootNbr image = rd.permuted_root(ww,int_sys.parent_nr_simple(s));
@@ -242,8 +207,9 @@ sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 
 int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
 {
-  const auto& rd = int_sys.parent_datum();
   auto integral_simples = image_simples(w);
+
+  const auto& rd = ic.root_datum(); // the inner class root datum
   int_Matrix result(integral_simples.size(), rd.rank());
   unsigned i=0;
   for (const auto& alpha : integral_simples)

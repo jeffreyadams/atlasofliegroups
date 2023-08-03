@@ -130,7 +130,7 @@ Reduced_param Reduced_param::co_reduce
    unsigned int int_sys_nr, const WeylElt& w)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
   InnerClass& ic = rc.inner_class();
-  rc.transform<true>(rc.Weyl_group().word(w),srm);
+  rc.transform<true>(rc.cofolded_W().word(w),srm);
   const auto& integral = ic.int_item(int_sys_nr);
   const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
@@ -284,7 +284,7 @@ StandardReprMod Rep_context::inner_twisted(const StandardReprMod& z) const
    $\gamma$. However, since $\lambda$ is defined only modulo image lattice of
    $1-\theta$, the |evs_reduced| values are effectively reduced modulo the image
    of that lattice under the integral coroot evaluation map |codec.internalise|.
-   It may therefore happen for two |StandardReprMod| values with the same
+   It may therefore happen, for two |StandardReprMod| values with the same
    integral system attitude and producing the same |Reduced_param|, that their
    coroot evaluations at some integral roots differ; however the integral coroot
    evaluation of the difference of their $\gamma-\lambda$ must must lie in the
@@ -328,7 +328,7 @@ RatWeight Rep_context::make_diff_integral_orthogonal
     assert((cd.coroots_matrix*result).is_zero()); // check that it was done
   }
   return result;
-}
+} // |make_diff_integral_orthogonal|
 
 /* The purpose of |Rep_context::make_relative_to| is to adapt |bm.w| so that
    applying that to the facet of |srm0| returns (up to root translation) the
@@ -340,7 +340,7 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 (const locator& loc, const StandardReprMod& srm0,
  block_modifier& bm, StandardReprMod srm1) const
 {
-  const auto& W = Weyl_group();
+  const auto& W = cofolded_W();
   W.mult(bm.w, W.inverse(loc.w));
   auto ww = W.word(bm.w);
 
@@ -349,14 +349,13 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
   transform<true>(ww,srm1); // move back to base
   bm.shift = // amount to shift |srm0| by before transforming by |ww| to |srm1|
     make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
-}
+} // |make_relative_to|
 
-void Rep_context::shift
-  (const RatWeight& shift, StandardReprMod& srm) const
+void Rep_context::shift (const RatWeight& amount, StandardReprMod& srm) const
 {
-  srm.gamlam += shift;
+  srm.gamlam += amount;
   involution_table().real_unique(kgb().inv_nr(srm.x()),srm.gamlam);
-}
+} // |shift|
 
 // |z| standard means (weakly) dominant on the (simply-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z) const
@@ -373,19 +372,7 @@ bool Rep_context::is_standard(const StandardRepr& z) const
       return false;
   }
   return true;
-}
-
-// |z| dominant means precisely |gamma| is (weakly) dominant
-bool Rep_context::is_dominant(const StandardRepr& z) const
-{
-  const RootDatum& rd = root_datum();
-  const auto& numer = z.gamma().numerator();
-
-  for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
-    if (it->dot(numer)<0)
-      return false;
-  return true;
-}
+} // |is_standard|
 
 // |z| zero means that no singular simple-imaginary roots are compact; this
 // code assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
@@ -404,14 +391,14 @@ bool Rep_context::is_nonzero(const StandardRepr& z) const
       return false;
   }
   return true;
-}
+} // |is_nonzero|
 
 bool Rep_context::is_normal(const StandardRepr& z) const
 {
   auto z_normal = z;
   normalise(z_normal);
   return z_normal==z;
-}
+} // |is_normal|
 
 // |z| semifinal means that no singular real roots satisfy the parity condition
 // no assumptions about the real subsystem, so all real roots must be tested
@@ -432,7 +419,7 @@ bool Rep_context::is_semifinal(const StandardRepr& z) const
       return false;
   }
   return true;
-}
+} // |is_semifinal|
 
 bool Rep_context::is_final(const StandardRepr& z) const
 {
@@ -463,7 +450,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
       } // tests on |v|
   } // |for(s)|
   return is_nonzero(z); // check \emph{all} simply-imaginary coroots
-}
+} // |is_final|
 
 
 bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
@@ -485,7 +472,7 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
   const auto eps = av.dot(test_wt)%4==0 ? 0 : denom;
 
   return arithmetic::remainder(numer+eps,2*denom) < denom;
-}
+} // |is_oriented|
 
 unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 {
@@ -591,43 +578,43 @@ void Rep_context::make_dominant(StandardRepr& z) const
 
 template <bool left_to_right> void Rep_context::transform
   (const WeylWord& ww, StandardReprMod& srm) const
-{
-  const auto& rd = root_datum();
+{ // here |ww| is a word for |cofolded_W|
+  const auto& ic = inner_class();
+  const auto& rd = root_datum(); // actions below use unfolded letters of |ww|
   const auto& kgb = this->kgb();
   KGBElt& x = srm.x_part;
   auto& gln = srm.gamlam.numerator();
   const auto den = srm.gamlam.denominator();
   if (left_to_right)
-    for (weyl::Generator s : ww)
-      switch (kgb.status(s,x))
-      {
-      case gradings::Status::Complex:
-	x = kgb.cross(s,x);
-	rd.simple_reflect(s,gln);
-	break;
-      case gradings::Status::Real:
-	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
-	break;
-      default: // |s| is an imaginary root; we will not cope with that here
-	throw std::runtime_error("Bad Weyl group element SRM transform");
-      }
+    for (weyl::Generator g : ww)
+      for (weyl::Generator s : ic.unfold(g).w_kappa)
+	switch (kgb.status(s,x))
+	{
+	case gradings::Status::Complex:
+	  x = kgb.cross(s,x);
+	  rd.simple_reflect(s,gln);
+	  break;
+	case gradings::Status::Real:
+	  rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	  break;
+	default: // |s| is an imaginary root; we will not cope with that here
+	  throw std::runtime_error("Bad Weyl group element SRM transform");
+	}
   else
     for (unsigned i=ww.size(); i-->0; )
-    { weyl::Generator s=ww[i];
-
-      switch (kgb.status(s,x))
-      {
-      case gradings::Status::Complex:
-	x = kgb.cross(s,x);
-	rd.simple_reflect(s,gln);
-	break;
-      case gradings::Status::Real:
-	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
-	break;
-      default: // |s| is an imaginary root; we will not cope with that here
-	throw std::runtime_error("Bad Weyl group element SRM transform");
-      }
-    }
+      for (weyl::Generator s : ic.unfold(ww[i]).w_kappa)
+	switch (kgb.status(s,x))
+	{
+	case gradings::Status::Complex:
+	  x = kgb.cross(s,x);
+	  rd.simple_reflect(s,gln);
+	  break;
+	case gradings::Status::Real:
+	  rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	  break;
+	default: // |s| is an imaginary root; we will not cope with that here
+	  throw std::runtime_error("Bad Weyl group element SRM transform");
+	}
   involution_table().real_unique(kgb.inv_nr(x),srm.gamlam); // normalise
 }
 
@@ -717,7 +704,7 @@ bool Rep_context::is_fixed (StandardRepr z, const WeightInvolution& delta) const
   to_singular_canonical(singular_simples(z),z);
 
   return z==twisted(z,delta);
-} // |is_twist_fixed|
+} // |is_fixed|
 
 // equivalence is equality after |make_dominant| and |to_singular_canonical|
 bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
@@ -816,8 +803,9 @@ StandardRepr Rep_context::sr
   (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
   const
 {
+  const auto& W = inner_class().cofolded_W();
   srm.gamlam += bm.shift; // apply shift first
-  transform<false>(Weyl_group().word(bm.w),srm); // then apply |w|
+  transform<false>(W.word(bm.w),srm); // then apply |w|
   const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(srm));
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 }
@@ -1132,6 +1120,7 @@ StandardRepr Rep_context::inner_twisted(StandardRepr z) const
 StandardRepr Rep_context::twisted
   (StandardRepr z, const WeightInvolution& delta) const
 {
+  assert(is_dominant(z)); // this is necessary to interpret |z.x()| correctly
   const auto& i_tab = involution_table();
   const InvolutionNbr i_x0 = kgb().inv_nr(z.x());
   z.x_part = kgb().twisted(z.x_part,delta);
@@ -1580,6 +1569,8 @@ blocks::common_block& Rep_table::add_block_below
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
   gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
 
+  const auto& W = inner_class().cofolded_W(); // all transforms use this |W|
+
   const size_t place_limit = place.size();
   sl_list<sub_triple> sub_blocks;
   for (const StandardReprMod& elt : pool) // run over interval just generated
@@ -1609,7 +1600,7 @@ blocks::common_block& Rep_table::add_block_below
   size_t limit = pool.size(); // limit of generated Bruhat interval
   for (auto sub : sub_blocks)
   {
-    auto ww = Weyl_group().word(sub.bm.w);
+    auto ww = W.word(sub.bm.w);
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
       shift(sub.bm.shift,rep);
@@ -1653,7 +1644,7 @@ blocks::common_block& Rep_table::add_block_below
   {
     auto& sub_block = *sub.bp; // already shifted, so ignore |sub.bm.shift|
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
-    auto ww = Weyl_group().word(sub.bm.w);
+    auto ww = W.word(sub.bm.w);
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       auto elt = sub_block.representative(z);
@@ -1764,7 +1755,7 @@ void Rep_table::add_block (const StandardReprMod& srm,
   // swallow |embeddings|, and remove them from |block_list|
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    auto ww = Weyl_group().word(sub.bm.w);
+    auto ww = cofolded_W().word(sub.bm.w);
     auto& sub_block = *sub.bp;
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
@@ -1802,6 +1793,7 @@ blocks::common_block& Rep_table::lookup_full_block
   (StandardRepr& sr,BlockElt& z, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
+  assert(inner_class().is_delta_fixed(sr.gamma())); // |reduce| assumes this
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),int_sys_nr,bm);
@@ -1826,6 +1818,7 @@ blocks::common_block& Rep_table::lookup
   (StandardRepr& sr,BlockElt& which, block_modifier& bm)
 {
   normalise(sr); // gives a valid block, and smallest partial block
+  assert(inner_class().is_delta_fixed(sr.gamma())); // |reduce| assumes this
 
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
@@ -2506,9 +2499,11 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 {
   assert(is_final(z));
+  assert(is_delta_fixed(z));
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
   const auto& delta = inner_class().distinguished();
+  const auto& W = inner_class().cofolded_W();
 
   RatNumList rp=reducibility_points(z);
   flip = false; // ensure no flip is recorded when shrink wrapping is not done
@@ -2551,7 +2546,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 #ifndef NDEBUG
     { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
-      transform<true>(Weyl_group().word(bm.w),m);
+      transform<true>(W.word(bm.w),m);
       auto rep = block.representative(index);
       shift(bm.shift,rep);
       assert(rep==m);

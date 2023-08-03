@@ -34,6 +34,7 @@
 #include "cartanclass.h"// |CartanClass| methods
 #include "innerclass.h"
 #include "lattice.h"	// |row_saturate|
+#include "lietype.h"	// |ext_gen|
 #include "realredgp.h"  // |KGB| constructor
 #include "rootdata.h"
 #include "subsystem.h"
@@ -114,6 +115,17 @@ KGBElt KGB_base::cross(KGBElt x, const WeylWord& ww) const
   for (size_t i=0; i<ww.size(); ++i)
     x = cross(ww[i],x);
   return x;
+}
+
+KGBElt KGB_base::cross(const ext_gen& g, KGBElt x) const
+{
+  switch(g.type)
+  {
+  case ext_gen::one: return cross(g.s0,x);
+  case ext_gen::two: return cross(g.s0,cross(g.s1,x));
+  case ext_gen::three: return cross(g.s0,cross(g.s1,cross(g.s0,x)));
+  default: assert(false); return x; // keep compiler happy
+  }
 }
 
 KGBEltPair KGB_base::tauPacket(const TwistedInvolution& w) const
@@ -717,7 +729,7 @@ KGBElt KGB::lookup(TitsElt a) const
 KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
 {
   auto a = titsElt(x);
-  auto delta_twist = rootdata::twist(G.root_datum(),delta);
+  weyl::Twist delta_twist = rootdata::twist(G.root_datum(),delta);
   auto delta2 = BinaryMap(delta);
   RatCoweight diff = (base_grading_vector()-base_grading_vector()*delta)
     .normalize();
@@ -726,8 +738,8 @@ KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
   TorusPart corr(diff.numerator());
   TitsElt twisted_a
     (Tits_group(),
-     Tits_group().left_torus_part(a)*delta2+corr,
-     Weyl_group().translation(a.w(),delta_twist)
+     Tits_group().left_torus_part(a)*delta2+corr, // torus part, on the left
+     Weyl_group().translation(a.w(),delta_twist)  // |TwistedInvolution| part
      );
   return lookup(std::move(twisted_a));
 }

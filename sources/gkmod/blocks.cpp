@@ -711,6 +711,7 @@ RankFlags common_block::singular (const RatWeight& gamma) const
 RankFlags common_block::singular
   (const repr::block_modifier& bm, const RatWeight& gamma) const
 {
+  assert(inner_class().is_delta_fixed(gamma));
   RankFlags result;
   auto is = simply_ints(bm);
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -1280,7 +1281,8 @@ RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 }
 
 ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(root_datum(),simply_integrals,delta); }
+{ return rootdata::fold_orbits
+    (inner_class().cofolded_datum(), simply_integrals, delta); }
 
 #ifndef NDEBUG
 bool common_block::is_integral_orthogonal(const RatWeight& shift) const
@@ -1451,8 +1453,10 @@ void common_block::swallow
   }
 
 #if 0
-  const auto& rd = root_datum();
-  const auto& W = rc.Weyl_group();
+  const auto& ic = rc.inner_class();
+  const auto& rd = ic.cofolded_datum();
+  const auto& W = ic.cofolded_W();
+  const auto& delta = ic.distinguished();
 
   for (auto& data : sub.extended)
   {
@@ -1461,11 +1465,12 @@ void common_block::swallow
     assert(sub.is_integral_orthogonal(block_shift));
     assert(sub.is_integral_orthogonal(bm.shift));
     block_shift += bm.shift;
-    auto delta_prime = W.conjugate(rd,bm.w,data.delta);
+    assert(ic.is_delta_fixed(block_shift));
+    assert(W.conjugate(rd,bm.w,delta)==delta); // for every |cofolded_W| element
     rd.act(W.word(bm.w),block_shift); // make shift in "our" attitude
     assert(is_integral_orthogonal(block_shift));
     auto& eblock = // find/create |ext_block|
-      extended_block(block_shift,delta_prime,ext_KL_pol_hash);
+      extended_block(block_shift,delta,ext_KL_pol_hash);
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
     // transfer computed KL data:

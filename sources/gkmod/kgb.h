@@ -135,6 +135,7 @@ class KGB_base
 
   KGBElt cross(const WeylWord& ww, KGBElt x) const;
   KGBElt cross(KGBElt x, const WeylWord& ww) const;
+  KGBElt cross(const ext_gen& g, KGBElt x) const;
 
   unsigned int length(KGBElt x) const
   { return ic.involution_table().length(inv_nr(x));}

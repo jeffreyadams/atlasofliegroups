@@ -116,7 +116,8 @@ class SubSystem : public RootSystem // new system, subsystem of parent
   const Coweight& simple_coroot(weyl::Generator s) const
   { return parent_datum().coroot(parent_nr_simple(s)); }
 
-  // numbers in parent for the positive (co)roots of the subsystem
+  // numbers in parent for the simple or positive (co)roots of the subsystem
+  RootNbrSet simple_roots() const; // for subsystem, as |parent| roots
   RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
   const RootNbrSet& posroot_subset() const { return which; } // as posroots
 
@@ -155,7 +156,8 @@ class SubSystemWithGroup : public SubSystem
 
 struct integral_datum_entry // hashable (integral) subset of positive roots
 {
-  RootNbrSet posroots; // all integrals, as set of posroot indices starting at 0
+  // a set of poscoroots indexes posroots from 0, capacity |numPosRoots()|
+  RootNbrSet posroots; // a subset of positive system of |ic.cofolded_datum()|
 
   integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
 
@@ -173,23 +175,23 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 
 class integral_datum_item
 {
-  const WeylGroup& W;
+  const InnerClass& ic;
   SubSystem int_sys; // references full root datum, presents integral datum
   int_Matrix simple_coroots; // convenience, for creating |codec| values
 
  public:
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
   integral_datum_item(integral_datum_item&& other) // move, never copy
-    : W(other.W)
+    : ic(other.ic)
     , int_sys(std::move(other.int_sys))
     , simple_coroots(std::move(other.simple_coroots))
   {}
 
   const SubSystem& int_system () const { return int_sys; }
-  SubSystem int_system (const WeylElt& w) const;
+  SubSystem int_system (const WeylElt& w) const; // interpret |w| in cofolded |W|
 
   // root indices of images by |w| of integrally-simple coroots; must be positive
-  sl_list<RootNbr> image_simples (const WeylElt& w) const;
+  sl_list<RootNbr> image_simples (const WeylElt& w) const; // again |w| in |W|
 
   int_Matrix coroots_matrix (const WeylElt& w) const;
 

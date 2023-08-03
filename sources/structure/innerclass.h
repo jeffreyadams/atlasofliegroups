@@ -22,6 +22,7 @@
 #include "bitmap.h"	// containment of bitmaps for real forms
 #include "permutations.h"// containment of root twist
 
+#include "lietype.h"    // inlining supposes |ext_gen| is complete type
 #include "cartanclass.h"// containment of |Fiber|
 #include "involutions.h"// containment of |InvolutionTable|, |Cartan_orbits|
 #include "subsystem.h"  // containment of |integral_datum_item|
@@ -173,8 +174,15 @@ class InnerClass
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
-  using datum_pair=std::pair<RootDatum,WeylGroup>;
-  mutable std::unique_ptr<datum_pair> cofolded_pair; // generated on demand
+  struct cofold_data
+  { ext_gens orbits; RootDatum datum; WeylGroup W;
+    cofold_data(const RootDatum& rd, const int_Matrix& delta)
+      : orbits(fold_orbits(rd,delta))
+      , datum(cofold(rd,orbits))
+      , W(datum.Cartan_matrix())
+    {}
+  };
+  mutable std::unique_ptr<cofold_data> cofolded; // generated on demand
 
   /*
     Fiber class for the fundamental Cartan subgroup
@@ -269,13 +277,21 @@ class InnerClass
   const TitsGroup& Tits_group() const { return d_Tits_group; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
 
+  template <typename C> bool is_delta_fixed(const matrix::Vector<C>& v) const;
+  bool is_delta_fixed(const RatWeight& gamma) const
+  { return is_delta_fixed(gamma.numerator()); }
+
+  const ext_gens& cofolded_orbits() const
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->orbits;
+  }
   const RootDatum& cofolded_datum() const
-  { if (cofolded_pair==nullptr) construct_cofolded();
-    return cofolded_pair->first;
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->datum;
   }
   const WeylGroup& cofolded_W() const
-  { if (cofolded_pair==nullptr) construct_cofolded();
-    return cofolded_pair->second;
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->W;
   }
 
   const Fiber& fundamental_fiber () const { return d_fundamental; }
@@ -492,6 +508,13 @@ class InnerClass
   repr::codec integrality_codec
     (const RatWeight& gamma, InvolutionNbr inv) const;
 
+  // map root (number) from |root_datum()| to its |cofolded_datum()| counterpart
+  RootNbr folded_root(RootNbr alpha) const;
+  RootNbrSet folded_roots(RootNbrSet S) const; // same for set of (co)roots
+  ext_gen unfold(weyl::Generator s) const { return cofolded_orbits()[s]; }
+  WeylElt unfold(const WeylElt& w) const; // embed into $W^\delta$
+  RootNbrSet unfold_FA_facet(RootNbrSet walls) const;
+
 // pseudo manipulator
 
   void generate_Cartan_orbit (CartanNbr i) { C_orb.add(*this,i); }
@@ -514,7 +537,8 @@ class InnerClass
 // Auxiliary manipulators
 
   void construct(); // does essential work, common to two constructors
-  void construct_cofolded() const; // |const|, as |cofolded_pair| is |mutable|
+  void construct_cofolded() const // |const|, as |cofolded| field is |mutable|
+  { cofolded = std::make_unique<cofold_data>(root_datum(),distinguished()); }
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|

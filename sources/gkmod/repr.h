@@ -219,6 +219,7 @@ class Rep_context
   { return G.twistedWeylGroup(); }
   const WeylGroup& Weyl_group() const
   { return twisted_Weyl_group().Weyl_group(); }
+  const WeylGroup& cofolded_W() const { return inner_class().cofolded_W(); }
   const KGB& kgb() const { return KGB_set; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
@@ -332,8 +333,8 @@ class Rep_context
 
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
     (const StandardRepr& z) const; // simply-imaginary witness
-  bool is_dominant  // whether |gamma| is dominant
-    (const StandardRepr& z) const; // simple witness
+  bool is_dominant (const StandardRepr& z) const
+  { return is_dominant_ratweight(root_datum(),z.gamma()); }
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
     (const StandardRepr& z) const; // simply-imaginary witness
   bool is_normal // whether |z==normalise(z)|: has no singular complex descents
@@ -486,8 +487,8 @@ public:
 // data to transform stored block to user attitude
 struct locator
 {
-  WeylElt w; // apply this to the integral system at the fundamental alcove
-  Permutation simple_pi; // transform intsys simple generators through this
+  WeylElt w; // in cofolded |W|; apply to fundamental alcove integral system
+  Permutation simple_pi; // to transform integral system simple generators by
 };
 
 struct block_modifier : public locator
@@ -628,10 +629,10 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  unsigned int int_sys_nr;
+  unsigned int int_sys_nr; // of a (fundamental alcove) |root_datum()| subsystem
   block_modifier bm; // applied to bare (fundamental alcove) integral system
   const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
-  const SubSystem sub; // embeds its |w| image into parent root datum
+  const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
   common_context (const Rep_context& rc, const RatWeight& gamma,
@@ -647,7 +648,7 @@ public:
   const block_modifier& modifier () const { return bm; }
   WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList simply_integrals () const;
+  RootNbrList simply_integrals () const; // in |colfolded_datum()| numbering
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|
