@@ -1114,7 +1114,7 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 }
 
 subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, unsigned int& int_sys_nr, repr::locator& loc)
+  (const RatWeight& gamma, repr::locator& loc)
 {
   assert(is_delta_fixed(gamma));
   const auto& rd = root_datum(); // we need full datum as well as cofolded one
@@ -1134,11 +1134,11 @@ subsystem::integral_datum_item& InnerClass::int_item
   subsystem::integral_datum_entry e(fundamental_integral_poscoroots);
 
   assert(integral_pool.size()==int_table.size());
-  int_sys_nr = int_hash.match(e);
-  if (int_sys_nr==int_table.size())
+  loc.int_sys_nr= int_hash.match(e);
+  if (loc.int_sys_nr==int_table.size())
     int_table.emplace_back(*this,e.posroots);
 
-  subsystem::integral_datum_item& result = int_table[int_sys_nr];
+  subsystem::integral_datum_item& result = int_table[loc.int_sys_nr];
 
   ww = W.word(loc.w); // from fundamental alcove again, for |cofd|
   const SubSystem& int_sys = result.int_system(); // subsystem of |rd|

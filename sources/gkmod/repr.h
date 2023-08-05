@@ -167,10 +167,9 @@ public:
 
   static Reduced_param reduce // factory function that sets |int_sys_nr|, |loc|
     (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
-     unsigned int& int_sys_nr, locator& loc);
+     locator& loc);
   static Reduced_param co_reduce // factory function that uses |int_sys_nr|, |w|
-    (const Rep_context& rc, StandardReprMod srm,
-     unsigned int int_sys_nr, const WeylElt& w);
+    (const Rep_context& rc, StandardReprMod srm, const locator& loc);
 
 
   using Pooltype = std::vector<Reduced_param>;
@@ -203,27 +202,29 @@ struct codec
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
-  RealReductiveGroup& G;
+  const RootDatum& rd;
+  InnerClass& ic;
+  const TwistedWeylGroup& twisted_W;
+  const InvolutionTable& i_tab;
   const KGB& KGB_set;
+  RealReductiveGroup& G; // we could have used just this field for |Rep_context|
 
  public:
   explicit Rep_context(RealReductiveGroup &G);
 
   // accessors
-  RealReductiveGroup& real_group() const { return G; }
-  InnerClass& inner_class() const { return G.innerClass(); }
-  const InvolutionTable& involution_table() const
-  { return inner_class().involution_table(); }
-  const RootDatum& root_datum() const { return G.root_datum(); }
-  const TwistedWeylGroup& twisted_Weyl_group() const
-  { return G.twistedWeylGroup(); }
+  unsigned int rank() const { return root_datum().rank(); }
+  const RootDatum& root_datum() const { return rd; }
+  InnerClass& inner_class() const { return ic; }
+  const InvolutionTable& involution_table() const { return i_tab; }
   const WeylGroup& Weyl_group() const
-  { return twisted_Weyl_group().Weyl_group(); }
+    { return twisted_Weyl_group().Weyl_group(); }
+  const TwistedWeylGroup& twisted_Weyl_group() const { return twisted_W; }
   const WeylGroup& cofolded_W() const { return inner_class().cofolded_W(); }
   const KGB& kgb() const { return KGB_set; }
+  RealReductiveGroup& real_group() const { return G; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
   RatCoweight g() const { return G.g(); }
-  size_t rank() const;
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
 
@@ -406,10 +407,10 @@ class Rep_context
   // find element in |(1-theta)X^*| with same evaluation on all integral coroots
   Weight theta_1_preimage (const RatWeight& offset, const codec& cd) const;
   RankFlags singular_simples (const StandardRepr& z) const;
-  WeylWord complex_descent_word (KGBElt x, RankFlags singulars) const;
+  WeylElt complex_descent_w (KGBElt x, RankFlags singulars) const; // in |W|
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
-  void complex_crosses (StandardRepr& z, const WeylWord& ww) const;
+  void complex_crosses (StandardRepr& z, const WeylElt& w) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   level height(Weight theta_plus_1_gamma) const;
 
@@ -487,6 +488,7 @@ public:
 // data to transform stored block to user attitude
 struct locator
 {
+  unsigned int int_sys_nr; // sequence number for integral system in inner class
   WeylElt w; // in cofolded |W|; apply to fundamental alcove integral system
   Permutation simple_pi; // to transform integral system simple generators by
 };
@@ -497,6 +499,8 @@ struct block_modifier : public locator
   void clear (unsigned int rank);
 };
 
+struct sub_triple; // implementation specific, needed in auxiliary method type
+
 /*
   In addition to providing methods inherited from |Rep_context|, the class
   |Rep_table| provides storage for data that was previously computed for
@@ -504,14 +508,23 @@ struct block_modifier : public locator
 
   The data stored are:
   * the |blocks::common_block| values encountered for this real form, together
-    with their KL data if computed; these are accessed via |block_list| and
-   |place|
+    with their KL data if computed; these are linked together in |block_list|,
+    and accessed via |place|. To this end |StandardRepr| values are mapped to a
+    smaller set of |Reduced_param| value that are hashed into |reduced_hash|,
+    where the sequence number indexes |place| which provides both an iterator
+    into the block list and an element number within the block. The latter
+    number need not by unique, in other words the map to |Reduced_param| may
+    fail to be injective even restricted to a single block, but block elements
+    with the same image are conjugate under some block automorphism. The effect
+    is that if a |StandardRepr| value comes along whose |Reduced_param| value is
+    already tabled, then there is an isomorphism of its block to a stored block
+    for which it corresponds to the element indicated in |place|; when we use
+    this, all other block elements will lead to |StandardRepr| values deduced
+    via that isomorphism. The isomorphism may involve action of $W^\delta$, and
+    a |block_modifier| records the details for deducing |StandardRepr| values.
   * a table of (twisted) full deformation formulae, associated to alcoves;
     these are stored in |pool| and accessed through |alcove_hash|
-  * a table |reduced_hash| of |Reduced_param| values encountered; this table
-    guards the creation of blocks, as parameters sharing a |Reduced_param| value
-    can share their block: for finding a block, lookup in |reduced_hash| is
-    performed, and if found the index is then used via |place| to find the block
+  * a table |reduced_hash| of distinct |Reduced_param| values encountered.
   * a table |K_type_hash| of |K_type| values having been found to occur in
     deformation formulas, which allows compact representation of the latter
   * tables |KL_poly_hash| and |poly_hash| of |kl::KLPol| (positive coefficient)
@@ -567,8 +580,8 @@ class Rep_table : public Rep_context
 
 #if 0 // this would now require an actual |delta|-fixed |gamma| to be supplied
   size_t find_reduced_hash(const StandardReprMod& srm) const
-  { unsigned int int_sys_nr; block_modifier bm;
-    return reduced_hash.find(Reduced_param::reduce(*this,srm,int_sys_nr,bm)); }
+  { block_modifier bm;
+    return reduced_hash.find(Reduced_param::reduce(*this,srm,bm)); }
 #endif
 
   K_repr::K_type stored_K_type(K_type_nr i) const
@@ -609,19 +622,23 @@ class Rep_table : public Rep_context
   (const common_context& ctxt, const StandardReprMod& init) const;
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
-    (const StandardReprMod& srm, BitMap* subset,
-     unsigned int int_sys_nr, const block_modifier& bm);
+    (const StandardReprMod& srm, BitMap* subset, const block_modifier& bm);
 
   // full twisted deformation, with |flip| telling whether to multiply by |s|
   const K_type_poly& twisted_deformation(StandardRepr z, bool& flip); // by value
 
  private:
+  class Bruhat_generator; // helper class: internal |add_block_below| recursion
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   // add a full block, assuming has trivial attitude
-  void add_block (const StandardReprMod& srm,
-		  unsigned int int_sys_nr, const block_modifier& bm);
-  class Bruhat_generator; // helper class: internal |add_block_below| recursion
-
+  void add_block (const StandardReprMod& srm, const block_modifier& bm);
+  void append_block_containing // appending is to final argument
+    (const StandardReprMod& elt, size_t place_limit, const locator& block_loc,
+     sl_list<sub_triple>& sub_blocks);
+  void swallow_blocks_and_append
+    (const sl_list<sub_triple>& subs,
+     common_block& block, const block_modifier& bm,
+     sl_list<located_block>& temp);
 }; // |Rep_table|
 
 
@@ -629,14 +646,12 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  unsigned int int_sys_nr; // of a (fundamental alcove) |root_datum()| subsystem
   block_modifier bm; // applied to bare (fundamental alcove) integral system
   const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
   const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc,
-		  unsigned int int_sys_nr, const block_modifier& bm);
+  common_context (const Rep_context& rc, const block_modifier& bm);
 
   // accessors
   const Rep_context& rc() const { return rep_con; }
@@ -644,7 +659,7 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
-  unsigned int integral_nr() const { return int_sys_nr; }
+  unsigned int integral_nr() const { return bm.int_sys_nr; }
   const block_modifier& modifier () const { return bm; }
   WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }

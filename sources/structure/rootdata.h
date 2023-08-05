@@ -188,9 +188,10 @@ public:
 // accessors
 
   // |rank| will be renamed |semisimple_rank| when part of |RootDatum|
-  RootNbr rank() const { return rk; }
-  RootNbr numPosRoots() const { return ri.size(); }
-  RootNbr numRoots() const { return 2*numPosRoots(); }
+  // the following methods widen to |unsigned int| which is possibly faster
+  unsigned int rank() const { return rk; }
+  unsigned int numPosRoots() const { return ri.size(); }
+  unsigned int numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
   LieType type() const; // no central torus factors possible here
 
@@ -465,10 +466,9 @@ public:
 
   const RootSystem& root_system() const { return *this; } // base object ref
 
-  // |rank()| does not number roots, but keep type same as |semisimple_rank()|
-  RootNbr rank() const { return d_rank; }
-  RootNbr semisimple_rank() const { return RootSystem::rank(); }
-  RootNbr radical_rank() const { return d_radicalBasis.size(); }
+  unsigned int rank() const { return d_rank; }
+  unsigned int semisimple_rank() const { return RootSystem::rank(); }
+  unsigned int radical_rank() const { return d_radicalBasis.size(); }
 
 // root list access
   using Weight_citer = WeightList::const_iterator;
