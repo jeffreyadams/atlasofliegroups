@@ -112,10 +112,10 @@ Reduced_param Reduced_param::reduce
    unsigned int& int_sys_nr, locator& loc)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
   InnerClass& ic = rc.inner_class();
+  assert(ic.is_delta_fixed(gamma));
   const auto& integral = ic.int_item(gamma,int_sys_nr,loc); // sets last two args
-  auto ww = ic.cofolded_W().word(loc.w);
-  rc.transform<true>(ww,srm);
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
+  rc.transform<true>(loc.w,srm);
+  const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -129,10 +129,9 @@ Reduced_param Reduced_param::co_reduce
   (const Rep_context& rc, StandardReprMod srm,
    unsigned int int_sys_nr, const WeylElt& w)
 { // ensure |int_item| sets |w| before same argument to |data| is evaluated
-  InnerClass& ic = rc.inner_class();
-  rc.transform<true>(rc.cofolded_W().word(w),srm);
-  const auto& integral = ic.int_item(int_sys_nr);
-  const auto codec = integral.data(ic,rc.kgb().inv_nr(srm.x()));
+  rc.transform<true>(w,srm);
+  const auto& integral = rc.inner_class().int_item(int_sys_nr);
+  const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
   unsigned int reduction = 0; // mixed radix representation of remainders
   for (unsigned int i=0; i<codec.diagonal.size(); ++i)
@@ -342,11 +341,10 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 {
   const auto& W = cofolded_W();
   W.mult(bm.w, W.inverse(loc.w));
-  auto ww = W.word(bm.w);
 
   compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
 
-  transform<true>(ww,srm1); // move back to base
+  transform<true>(bm.w,srm1); // move back to base
   bm.shift = // amount to shift |srm0| by before transforming by |ww| to |srm1|
     make_diff_integral_orthogonal(srm1.gamma_lambda(),srm0);
 } // |make_relative_to|
@@ -577,16 +575,16 @@ void Rep_context::make_dominant(StandardRepr& z) const
 } // |make_dominant|
 
 template <bool left_to_right> void Rep_context::transform
-  (const WeylWord& ww, StandardReprMod& srm) const
-{ // here |ww| is a word for |cofolded_W|
+  (const WeylElt& w, StandardReprMod& srm) const // here |w| is for |cofolded_W|
+{
   const auto& ic = inner_class();
-  const auto& rd = root_datum(); // actions below use unfolded letters of |ww|
+  const auto& rd = root_datum(); // actions below use unfolded letters
   const auto& kgb = this->kgb();
   KGBElt& x = srm.x_part;
   auto& gln = srm.gamlam.numerator();
   const auto den = srm.gamlam.denominator();
   if (left_to_right)
-    for (weyl::Generator g : ww)
+    for (weyl::Generator g : ic.cofolded_W().word(w))
       for (weyl::Generator s : ic.unfold(g).w_kappa)
 	switch (kgb.status(s,x))
 	{
@@ -601,6 +599,7 @@ template <bool left_to_right> void Rep_context::transform
 	  throw std::runtime_error("Bad Weyl group element SRM transform");
 	}
   else
+  { auto ww = ic.cofolded_W().word(w);
     for (unsigned i=ww.size(); i-->0; )
       for (weyl::Generator s : ic.unfold(ww[i]).w_kappa)
 	switch (kgb.status(s,x))
@@ -615,6 +614,7 @@ template <bool left_to_right> void Rep_context::transform
 	default: // |s| is an imaginary root; we will not cope with that here
 	  throw std::runtime_error("Bad Weyl group element SRM transform");
 	}
+  }
   involution_table().real_unique(kgb.inv_nr(x),srm.gamlam); // normalise
 }
 
@@ -803,9 +803,8 @@ StandardRepr Rep_context::sr
   (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
   const
 {
-  const auto& W = inner_class().cofolded_W();
   srm.gamlam += bm.shift; // apply shift first
-  transform<false>(W.word(bm.w),srm); // then apply |w|
+  transform<false>(bm.w,srm); // then apply |w|
   const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(srm));
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 }
@@ -1563,13 +1562,11 @@ blocks::common_block& Rep_table::add_block_below
   (const StandardReprMod& srm, BitMap* subset,
    unsigned int int_sys_nr, const block_modifier& bm)
 {
-  common_context ctxt(*this,srm.gamma_lambda(),int_sys_nr,bm);
+  common_context ctxt(*this,int_sys_nr,bm);
   StandardReprMod::Pooltype pool;
   Mod_hash_tp hash(pool);
   Bruhat_generator gen(hash,ctxt); // object to help generating Bruhat interval
   gen.block_below(srm); // generate Bruhat interval below |srm| into |pool|
-
-  const auto& W = inner_class().cofolded_W(); // all transforms use this |W|
 
   const size_t place_limit = place.size();
   sl_list<sub_triple> sub_blocks;
@@ -1599,15 +1596,12 @@ blocks::common_block& Rep_table::add_block_below
   // adapt elements for all |sub_blocks|
   size_t limit = pool.size(); // limit of generated Bruhat interval
   for (auto sub : sub_blocks)
-  {
-    auto ww = W.word(sub.bm.w);
     for (BlockElt z=0; z<sub.bp->size(); ++z)
     { StandardReprMod rep = sub.bp->representative(z);
       shift(sub.bm.shift,rep);
-      transform<false>(ww,rep); // transform towards our new block
+      transform<false>(sub.bm.w,rep); // transform towards our new block
       hash.match(rep); // if new, add it to |pool|, beyond the |limit| marker
     }
-  }
 
   sl_list<StandardReprMod> elements(pool.begin(),pool.end()); // working copy
 
@@ -1644,12 +1638,11 @@ blocks::common_block& Rep_table::add_block_below
   {
     auto& sub_block = *sub.bp; // already shifted, so ignore |sub.bm.shift|
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
-    auto ww = W.word(sub.bm.w);
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       auto elt = sub_block.representative(z);
       shift(sub.bm.shift,elt);
-      transform<false>(ww,elt);
+      transform<false>(sub.bm.w,elt);
       const BlockElt z_rel = block.lookup(elt);
       assert(z_rel!=UndefBlock);
       embed.push_back(z_rel);
@@ -1713,16 +1706,17 @@ void Rep_table::block_erase (bl_it pos)
   block_list.erase(pos);
 } // |Rep_table::block_erase|
 
+// add a full block, still taking take to absorb any existing partial blocks
 void Rep_table::add_block (const StandardReprMod& srm,
 			   unsigned int int_sys_nr, const block_modifier& bm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
   sl_list<located_block> temp; // must use temporary singleton
-  common_context ctxt(*this,srm.gamma_lambda(),int_sys_nr,bm);
+  common_context ctxt(*this,int_sys_nr,bm);
   auto& block = temp.emplace_back // build full block in place and take reference
     (std::piecewise_construct,
      std::tuple<const common_context&,const StandardReprMod&,BlockElt&>
-     (ctxt,srm,srm_in_block), // arguments of partial |common_block| constructor
+     (ctxt,srm,srm_in_block), // arguments of full |common_block| constructor
      std::tuple<const block_modifier&>(bm)
     ) .first;
 
@@ -1755,14 +1749,13 @@ void Rep_table::add_block (const StandardReprMod& srm,
   // swallow |embeddings|, and remove them from |block_list|
   for (const auto& sub : sub_blocks) // swallow sub-blocks
   {
-    auto ww = cofolded_W().word(sub.bm.w);
     auto& sub_block = *sub.bp;
     BlockEltList embed; embed.reserve(sub_block.size()); // translation array
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
       StandardReprMod rep = sub.bp->representative(z);
       shift(sub.bm.shift,rep);
-      transform<false>(ww,rep); // transform towards our new block
+      transform<false>(sub.bm.w,rep); // transform towards our new block
       const BlockElt z_rel = block.lookup(rep);
       assert(z_rel!=UndefBlock); // our block is full, lookup should work
       embed.push_back(z_rel);
@@ -1793,7 +1786,6 @@ blocks::common_block& Rep_table::lookup_full_block
   (StandardRepr& sr,BlockElt& z, block_modifier& bm)
 {
   make_dominant(sr); // without this we would not be in any valid block
-  assert(inner_class().is_delta_fixed(sr.gamma())); // |reduce| assumes this
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
   auto rp = Reduced_param::reduce(*this,srm,sr.gamma(),int_sys_nr,bm);
@@ -1818,7 +1810,6 @@ blocks::common_block& Rep_table::lookup
   (StandardRepr& sr,BlockElt& which, block_modifier& bm)
 {
   normalise(sr); // gives a valid block, and smallest partial block
-  assert(inner_class().is_delta_fixed(sr.gamma())); // |reduce| assumes this
 
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modulo $X^*$
   unsigned int int_sys_nr;
@@ -2503,7 +2494,6 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
   if (z.gamma().denominator() > (1LL<<rank()))
     z = weyl::alcove_center(*this,z);
   const auto& delta = inner_class().distinguished();
-  const auto& W = inner_class().cofolded_W();
 
   RatNumList rp=reducibility_points(z);
   flip = false; // ensure no flip is recorded when shrink wrapping is not done
@@ -2546,7 +2536,7 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
 
 #ifndef NDEBUG
     { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
-      transform<true>(W.word(bm.w),m);
+      transform<true>(bm.w,m);
       auto rep = block.representative(index);
       shift(bm.shift,rep);
       assert(rep==m);
@@ -2599,8 +2589,7 @@ common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 {} // |common_context::common_context|
 
 common_context::common_context
-  (const Rep_context& rc, const RatWeight& gamma,
-   unsigned int int_sys_nr, const block_modifier& bm)
+  (const Rep_context& rc, unsigned int int_sys_nr, const block_modifier& bm)
 : rep_con(rc)
 , int_sys_nr(int_sys_nr)
 , bm(bm)

@@ -217,12 +217,10 @@ int_Matrix integral_datum_item::coroots_matrix(const WeylElt& w) const
   return result;
 }
 
-repr::codec integral_datum_item::data
-  (const InnerClass& ic, InvolutionNbr inv) const
+repr::codec integral_datum_item::data (InvolutionNbr inv) const
   { return { ic,inv,simple_coroots }; }
 
-repr::codec integral_datum_item::data
-    (const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const
+repr::codec integral_datum_item::data (InvolutionNbr inv, const WeylElt& w) const
   { return { ic,inv, coroots_matrix(w) }; }
 
 } // |namespace subdatum|

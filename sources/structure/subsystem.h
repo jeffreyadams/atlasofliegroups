@@ -195,9 +195,8 @@ class integral_datum_item
 
   int_Matrix coroots_matrix (const WeylElt& w) const;
 
-  repr::codec data (const InnerClass& ic, InvolutionNbr inv) const;
-  repr::codec data
-    (const InnerClass& ic, InvolutionNbr inv, const WeylElt& w) const;
+  repr::codec data (InvolutionNbr inv) const;
+  repr::codec data (InvolutionNbr inv, const WeylElt& w) const;
 
 }; // |class integral_datum_item|
 

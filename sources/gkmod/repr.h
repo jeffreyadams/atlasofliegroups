@@ -359,9 +359,9 @@ class Rep_context
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
-  // transformation of |srm|k, by appropriate Weyl element |ww|, or its inverse
+  // transform |srm| by cofolded Weyl element |w|, or its inverse
   template<bool left_to_right> void transform
-    (const WeylWord& ww, StandardReprMod& srm) const;
+    (const WeylElt& w, StandardReprMod& srm) const;
 
   // deforming the $\nu$ component
   StandardRepr scale(StandardRepr sr, const RatNum& f) const; // |sr| by value
@@ -635,7 +635,7 @@ class common_context
   const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
-  common_context (const Rep_context& rc, const RatWeight& gamma,
+  common_context (const Rep_context& rc,
 		  unsigned int int_sys_nr, const block_modifier& bm);
 
   // accessors
