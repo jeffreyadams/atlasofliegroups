@@ -1337,12 +1337,13 @@ void common_block::shift (const RatWeight& diff)
 }
 
 /*
-    Construct an extended block, storing it within our |common_block| in the
-    |extended| list. Arguments passed are |shift| to be efectively applied to
-    |representative| values for this block and an involution |delta| (that
-    commutes with |theta|) both of these effect the selection of elements of the
-    extended block, and they are passed to the method |tune_signs| that
-    fine-tunes the signs of links; they are not stored in constructed object.
+   Construct an extended block, storing it within our |common_block| in the
+   |extended| list. Arguments passed are |shift| to be efectively applied to
+   |representative| values for this block and an involution |delta| (commuting
+   with the inner class involution) both of these affect the selection of
+   elements of the extended block, and they are passed to the method
+   |tune_signs| that fine-tunes the signs of links; they are not stored in
+   constructed object.
  */
 ext_block::ext_block& common_block::extended_block
    (const RatWeight& shift, const WeightInvolution& delta,

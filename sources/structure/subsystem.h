@@ -119,7 +119,7 @@ class SubSystem : public RootSystem // new system, subsystem of parent
   // numbers in parent for the simple or positive (co)roots of the subsystem
   RootNbrSet simple_roots() const; // for subsystem, as |parent| roots
   RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
-  const RootNbrSet& posroot_subset() const { return which; } // as posroots
+  const RootNbrSet& posroot_subset() const { return which; } // same, shifted
 
   // methods that avoid building full |RootDatum srd(pre_root_datum())|
   template<typename C>
