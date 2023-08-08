@@ -321,9 +321,8 @@ RatWeight Rep_context::make_diff_integral_orthogonal
   RatWeight result = gamlam - srm.gamma_lambda();
   if (not result.is_zero()) // optimize out a fairly frequent case
   {
-    const auto& ic = inner_class();
     InvolutionNbr inv = kgb().inv_nr(srm.x());
-    const auto cd = ic.integrality_codec(srm.gamma_lambda(),inv);
+    const auto cd = inner_class().integrality_codec(srm.gamma_lambda(),inv);
     result -= theta_1_preimage(result,cd); // ensure orthogonal to integ. sys
     assert((cd.coroots_matrix*result).is_zero()); // check that it was done
   }
@@ -453,27 +452,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
 } // |is_final|
 
 
-bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
-{
-  const RootDatum& rd = root_datum();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const InvolutionTable& i_tab = involution_table();
-  const RootNbrSet real = i_tab.real_roots(i_x);
-
-  assert(real.isMember(alpha)); // only real roots should be tested
-
-  const Coweight& av = root_datum().coroot(alpha);
-  const auto numer = av.dot(z.gamma().numerator());
-  const auto denom = z.gamma().denominator();
-  assert(numer%denom!=0); // and the real root alpha should be non-integral
-
-  const Weight test_wt =
-    i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
-  const auto eps = av.dot(test_wt)%4==0 ? 0 : denom;
-
-  return arithmetic::remainder(numer+eps,2*denom) < denom;
-} // |is_oriented|
-
+#if 0
 unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 {
   const RootDatum& rd = root_datum();
@@ -490,7 +469,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
   {
-    const RootNbr alpha = rd.numPosRoots()+i;
+    const RootNbr alpha = rd.posRootNbr(i);
     const Coweight& av = root_datum().coroot(alpha);
     const arithmetic::Numer_t num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
@@ -505,7 +484,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
       {
 	assert(i_tab.complex_roots(i_x).isMember(alpha));
 	const RootNbr beta = root_inv[alpha];
-	if (i<rd.rt_abs(beta) // consider only first conjugate "pair"
+	if (i<rd.rt_abs(beta) // consider only first of 2 conjugate coroot pairs
 	    and (num>0)!=(root_datum().coroot(beta).dot(numer)>0))
 	  ++count;
       }
@@ -513,7 +492,41 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   }
   return count;
 } // |orientation_number|
+#else
+unsigned int Rep_context::orientation_number(const StandardRepr& elt) const
+{
+  StandardRepr z = elt;
+  make_dominant(z);
 
+  const RootDatum& rd = root_datum();
+  KGBElt x = z.x();
+  const InvolutionTable& i_tab = involution_table();
+  const InvolutionNbr i_x = kgb().inv_nr(x);
+  RootNbrSet non_int_pos = rd.posroot_set();
+  for (RootNbr alpha : integrality_poscoroots(rd,z.gamma()))
+    non_int_pos.remove(rd.posRootNbr(alpha));
+  const RootNbrSet& real = i_tab.real_roots(i_x);
+
+  unsigned count = 0;
+
+  for (RootNbr alpha : i_tab.complex_roots(i_x) & non_int_pos)
+    count += static_cast<unsigned int>(i_tab.complex_is_descent(i_x,alpha));
+
+  assert(count%2==0); // each complex quadruple contibutes either 0 or 2
+  count/=2; // we just want to count the contrinuting quadruples
+
+  auto gam_lam_rhoR = // $\gamma-\lambda+\rho_\R$
+    z.gamma()-rho(rd)+RatWeight(rd.twoRho(real),2)-lambda_rho(z);
+  for (RootNbr alpha : real & non_int_pos)
+  {
+    const Coweight& av = root_datum().coroot(alpha);
+    auto eval = gam_lam_rhoR.dot_Q(av).floor();
+    if (eval%2==0)
+      ++count;
+  }
+  return count;
+} // |orientation_number|
+#endif
 
 RankFlags Rep_context::singular_simples (const StandardRepr& z) const
 {
@@ -1842,7 +1855,7 @@ BlockElt_pol flip (int sign, BlockElt_pol list) // by value
   |singular| system, for |common_block| (no twist is involved in expansion)
 */
 std::vector<BlockElt_pol> contributions
-  (blocks::common_block& block, RankFlags singular, BlockElt y)
+  (Block_base& block, RankFlags singular, BlockElt y)
 {
   std::vector<BlockElt_pol> result(y+1); // initally every |result[z]| is empty
   for (BlockElt z=0; z<=y; ++z) // compute in |result[z]| the finals for |z|
@@ -1929,7 +1942,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  assert(not finals.empty() and finals.front()==y); // unless |y| final don't call us
+  assert(not finals.empty() and finals.front()==y); // otherwise don't call us
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,y+1); // fill silently up to |y|
 
@@ -1978,11 +1991,13 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
     assert(remainder[pos]==0); // check relation of being inverse
   }
 
-/* The following could be done inside the previous loop at the end of its body,
-   since |acc[pos]| has its definitive value after the iteration for |pos|.
-   However we keep loops separate to maybe increase locality of the one above.
+/*
    Transform coefficients of |acc| to polynomial |result|, taking into account
    the differences of |orientation_number| values between |y| and (current) |x|.
+
+   The following could be done inside the previous loop at the end of its body,
+   since |acc[pos]| has its definitive value after the iteration for |pos|.
+   However we keep loops separate to maybe increase locality of the one above.
 */
   {
     const unsigned int orient_y = orientation_number(block.sr(y,bm,gamma));

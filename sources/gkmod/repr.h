@@ -344,7 +344,6 @@ class Rep_context
     (const StandardRepr& z) const; // singular real witness
   bool is_final // dominant nonzero without singular descents: all of the above
     (const StandardRepr& z) const;
-  bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
   bool is_fixed(StandardRepr z, const WeightInvolution& delta) const;

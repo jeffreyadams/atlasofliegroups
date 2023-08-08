@@ -39,13 +39,13 @@ SubSystem::SubSystem(const RootDatum& parent, const sl_list<RootNbr>& sub_sys)
   pos_map.reserve(numPosRoots()); // |pos_map| is indexed by \emph{our} posroots
   for (RootNbr alpha : sub_sys)
   {
-    pos_map.push_back(alpha);
+    pos_map.push_back(alpha); // push simple roots (for subsystem) first
     which.insert(rd.posroot_index(alpha));
   }
 
   for (unsigned int i=sub_sys.size(); i<numPosRoots(); ++i)
   {
-    RootNbr sub_alpha = posRootNbr(i);
+    RootNbr sub_alpha = posRootNbr(i); // a non-simple posroot of subsystem
     weyl::Generator s = find_descent(sub_alpha); // generator for subsystem
     simple_reflect_root(s,sub_alpha); // lower |sub_alpha| in our system
     RootNbr beta = pos_map[posroot_index(sub_alpha)]; // |beta| is in parent
