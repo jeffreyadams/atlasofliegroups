@@ -1273,7 +1273,7 @@ repr::StandardRepr common_block::sr
 
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
-  auto ww = rc.Weyl_group().word(bm.w);
+  auto ww = rc.Weyl_group().word(inner_class().unfold(bm.w));
   RootNbrList result; result.reserve(simply_integrals.size());
   for (auto alpha : simply_integrals)
     result.push_back(root_datum().permuted_root(ww,alpha));
@@ -1282,7 +1282,7 @@ RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 
 ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
 { return rootdata::fold_orbits
-    (inner_class().cofolded_datum(), simply_integrals, delta); }
+    (inner_class().root_datum(), simply_integrals, delta); }
 
 #ifndef NDEBUG
 bool common_block::is_integral_orthogonal(const RatWeight& shift) const

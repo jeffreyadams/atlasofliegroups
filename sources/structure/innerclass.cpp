@@ -1151,7 +1151,7 @@ subsystem::integral_datum_item& InnerClass::int_item
     image.push_back(cofd.permuted_root(ww,alpha));
 
   // now correct coset representative |loc.w| to a positivity-preserving one
-  for (const auto& step : to_positive_system(rd,image))
+  for (const auto& step : to_positive_system(cofd,image))
     W.mult(loc.w,cofd.reflection_word(folded_simply_ints.n_th(step.first)));
 
 #ifndef NDEBUG
