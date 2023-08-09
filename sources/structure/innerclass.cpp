@@ -1125,9 +1125,14 @@ subsystem::integral_datum_item& InnerClass::int_item
   auto ww = weyl::from_fundamental_alcove(cofd,walls);
   loc.w = W.element(ww); // an initial integral subsystem coset representative
 
-  // we need to map |on_wall_subset| to integral system at fundamental alcove
-  std::reverse(ww.begin(),ww.end()); // therefore, we need the inverse word
-  on_wall_subset = unfold_FA_facet(image(cofd,ww,on_wall_subset)); // for |rd|
+  // cofolded FA walls that |gamma| maps onto don't determine those for |rd| FA
+  on_wall_subset = RootNbrSet(rd.numRoots()); // forget old, now for |rd|
+  ww = Weyl_group().word(unfold(loc.w)); // now a word for unfolded |rd|
+  for (RootNbr alpha : rd.fundamental_alcove_walls())
+  { auto ev = gamma.dot_Q(rd.coroot(rd.permuted_root(ww,alpha))).normalize();
+    on_wall_subset.set_to(alpha,ev.denominator()==1); // test actual integrality
+  }
+
   RootNbrSet fundamental_integral_poscoroots(rd.numPosRoots());
   for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
     fundamental_integral_poscoroots.insert(rd.posroot_index(alpha));
@@ -1212,19 +1217,6 @@ WeylElt InnerClass::unfold(const WeylElt& w) const // embed into $W^\delta$
   for (weyl::Generator g : cof_W.word(w))
     W.mult(result,unfold(g).w_kappa);
 
-  return result;
-}
-
-// lift a facet of fund. alcove of cofolded root datum to facet of root datum
-// a facet is defined by a strict subset of extended diagram root numbers
-RootNbrSet InnerClass::unfold_FA_facet (RootNbrSet walls) const
-{
-  assert(cofolded_datum().fundamental_alcove_walls().contains(walls));
-  const RootDatum& rd = root_datum();
-  RootNbrSet result(rd.numRoots());
-  for (RootNbr alpha : rd.fundamental_alcove_walls())
-    // surprisingly the following works for simple and extended roots alike
-    result.set_to(alpha,walls.isMember(folded_root(alpha)));
   return result;
 }
 

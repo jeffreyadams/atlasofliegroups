@@ -513,7 +513,6 @@ class InnerClass
   RootNbrSet folded_roots(RootNbrSet S) const; // same for set of (co)roots
   ext_gen unfold(weyl::Generator s) const { return cofolded_orbits()[s]; }
   WeylElt unfold(const WeylElt& w) const; // embed into $W^\delta$
-  RootNbrSet unfold_FA_facet(RootNbrSet walls) const;
 
 // pseudo manipulator
 
