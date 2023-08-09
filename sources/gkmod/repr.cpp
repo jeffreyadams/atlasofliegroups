@@ -111,9 +111,9 @@ Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
    locator& loc)
 { // below |int_item| must set |loc| before argument to |transform| is evaluated
+  // |assert(ic.is_delta_fixed(gamma));| will be asserted inside |ic.int_item|
   InnerClass& ic = rc.inner_class();
-  assert(ic.is_delta_fixed(gamma));
-  const auto& integral = ic.int_item(gamma,loc); // sets last two args
+  const auto& integral = ic.int_item(gamma,loc); // sets |loc|
   rc.transform<true>(loc.w,srm);
   const auto codec = integral.data(rc.kgb().inv_nr(srm.x()));
   auto evs = codec.internalise(srm.gamma_lambda());
@@ -453,7 +453,7 @@ bool Rep_context::is_final(const StandardRepr& z) const
 
 
 #if 0
-unsigned int Rep_context::orientation_number(const StandardRepr& z) const
+unsigned int Rep_context::orientation_number(StandardRepr z) const
 {
   const RootDatum& rd = root_datum();
   const InvolutionTable& i_tab = involution_table();
@@ -493,9 +493,8 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 } // |orientation_number|
 #else
-unsigned int Rep_context::orientation_number(const StandardRepr& elt) const
+unsigned int Rep_context::orientation_number(StandardRepr z) const
 {
-  StandardRepr z = elt;
   make_dominant(z);
 
   const RootDatum& rd = root_datum();
@@ -518,12 +517,9 @@ unsigned int Rep_context::orientation_number(const StandardRepr& elt) const
   auto gam_lam_rhoR = // $\gamma-\lambda+\rho_\R$
     z.gamma()-rho(rd)+RatWeight(rd.twoRho(real),2)-lambda_rho(z);
   for (RootNbr alpha : real & non_int_pos)
-  {
-    const Coweight& av = root_datum().coroot(alpha);
-    auto eval = gam_lam_rhoR.dot_Q(av).floor();
-    if (eval%2==0)
+    if (gam_lam_rhoR.dot_Q(root_datum().coroot(alpha)).floor()%2==0)
       ++count;
-  }
+
   return count;
 } // |orientation_number|
 #endif
@@ -1930,6 +1926,7 @@ sl_list<std::pair<StandardRepr,int> > Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y,
     const block_modifier& bm, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
+  assert(is_dominant_ratweight(root_datum(),gamma));
 
   sl_list<std::pair<StandardRepr,int> > result;
   if (block.length(y)==0)
@@ -2025,6 +2022,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
   BlockElt start; block_modifier bm;
   auto& block = lookup_full_block(p,start,bm); // also makes |p| dominant
   const auto& gamma = p.gamma();
+  assert(is_dominant_ratweight(root_datum(),gamma));
   auto dual_block = blocks::Bare_block::dual(block);
   kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
   // create KL table only minimally filled
@@ -2257,17 +2255,16 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
-  const RootDatum& rd = parent.root_datum();
-  const RootNbrList simply_ints = parent.simply_ints();
   RankFlags singular_orbits; // flag singulars among orbits
-  for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,
-	     gamma.dot(rd.coroot(simply_ints[eblock.orbit(s).s0]))==0);
+  { const RankFlags simple_is_singular = parent.singular(gamma);
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      singular_orbits.set(s,simple_is_singular[eblock.orbit(s).s0]);
+  }
 
   auto contrib = contributions(eblock,singular_orbits,y);
 
   SR_poly result;
-  unsigned int parity = eblock.length(y)%2;
+  const unsigned int parity = eblock.length(y)%2;
   for (BlockElt x=0; x<=y; ++x)
   { const auto& p = twisted_KLV.KL_pol_index(x,y);
     Split_integer eval = p.second ? -pool_at_s[p.first] : pool_at_s[p.first];
@@ -2291,7 +2288,7 @@ SR_poly twisted_KL_column_at_s
     throw std::runtime_error("Parameter is not final");
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry;
-  common_context ctxt(rc,zm.gamma_lambda());
+  common_context ctxt(rc,z.gamma());
   blocks::common_block block(ctxt,zm,entry); // build full block
   auto eblock = block.extended_block(delta);
   return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
@@ -2308,10 +2305,11 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   auto& block = lookup(sr,y0,bm);
   auto& eblock = block.extended_block(bm,&poly_hash);
 
-  RankFlags singular=block.singular(bm,sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
-  for (weyl::Generator s=0; s<eblock.rank(); ++s)
-    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+  { const RankFlags simple_is_singular =  block.singular(bm,sr.gamma());
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      singular_orbits.set(s,simple_is_singular[eblock.orbit(s).s0]);
+  }
 
   const BlockElt y = eblock.element(y0);
   auto contrib = contributions(eblock,singular_orbits,y);
@@ -2521,19 +2519,20 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto& block = lookup(zi,index, bm);
 
 #ifndef NDEBUG
-    { StandardReprMod m = StandardReprMod::mod_reduce(*this,zi);
-      transform<true>(bm.w,m);
+    {
       auto rep = block.representative(index);
       shift(bm.shift,rep);
-      assert(rep==m);
+      transform<false>(bm.w,rep);
+      assert(rep==StandardReprMod::mod_reduce(*this,zi));
     }
 #endif
     auto& eblock = block.extended_block(bm,&poly_hash);
 
-    RankFlags singular = block.singular(bm,zi.gamma());
     RankFlags singular_orbits; // flag singulars among orbits
-    for (weyl::Generator s=0; s<eblock.rank(); ++s)
-      singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+    { RankFlags simple_is_singular = block.singular(bm,zi.gamma());
+      for (weyl::Generator s=0; s<eblock.rank(); ++s)
+	singular_orbits.set(s,simple_is_singular[eblock.orbit(s).s0]);
+    }
 
     auto terms = twisted_deformation_terms(block,eblock,index,
 					   singular_orbits,bm,zi.gamma());
