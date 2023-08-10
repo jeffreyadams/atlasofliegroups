@@ -637,7 +637,9 @@ set make_dominant (KGBElt x,ratvec lambda, ratvec lambda_q) =
 
 {. A_q(lambda) module; $\mathfrak q$ is defined by the weight lambda_q; x_in
   must be attached to the fundamental Cartan. The module is defined as a ParamPol,
-  in case it is reducible. .}
+  in case it is reducible.
+  Aq_reducible(x,lambda,lambda_q) has infinitesimal character lambda+rho_L+rho_u=lambda+rho
+.}
 set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
   let G=real_form(x)
 {find w making lambda_q weakly dominant}
