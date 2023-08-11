@@ -992,15 +992,17 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 
 #endif
 
-PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
+PreRootDatum RootDatum::sub_predatum (const sl_list<RootNbr>& generators) const
 {
-  auto sr = generators.size();
-  LatticeMatrix simple_roots(rank(),sr);
-  LatticeMatrix simple_coroots(rank(),sr);
-  for (unsigned int j=0; j<sr; ++j)
+  LatticeMatrix simple_roots(rank(),generators.size());
+  LatticeMatrix simple_coroots(rank(),generators.size());
+
+  unsigned int j=0;
+  for (RootNbr alpha : generators)
   {
-    simple_roots.set_column(j,d_roots[generators[j]]);
-    simple_coroots.set_column(j,d_coroots[generators[j]]);
+    simple_roots.set_column(j,d_roots[alpha]);
+    simple_coroots.set_column(j,d_coroots[alpha]);
+    ++j;
   }
 
   return PreRootDatum(simple_roots,simple_coroots,prefer_coroots());
@@ -1482,11 +1484,12 @@ RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma)
   return result;
 }
 
-RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma)
-{ RootNbrSet pos_integrals(rd.numRoots());
-  for (unsigned i : integrality_poscoroots(rd,gamma))
-    pos_integrals.insert(rd.posRootNbr(i));
-  return rd.simpleBasis(pos_integrals);
+sl_list<RootNbr> integrality_simples(const RootDatum& rd, const RatWeight& gamma)
+{ RootNbrSet pos_integrals(rd.numRoots()); // resize to full root system subset
+  for (RootNbr alpha : integrality_poscoroots(rd,gamma))
+    pos_integrals.insert(rd.posRootNbr(alpha)); // convert to full root range
+  auto result = rd.simpleBasis(pos_integrals);
+  return sl_list<RootNbr>(result.begin(),result.end());
 }
 
 

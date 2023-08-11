@@ -1186,10 +1186,11 @@ subsystem::integral_datum_item& InnerClass::int_item
 repr::codec InnerClass::integrality_codec
   (const RatWeight& gamma, InvolutionNbr inv) const
 { const auto& rd = root_datum();
-  RootNbrList int_simples = integrality_simples(rd,gamma);
+  sl_list<RootNbr> int_simples = integrality_simples(rd,gamma);
   int_Matrix coroot_mat(int_simples.size(),rank());
-  for (weyl::Generator s=0; s<int_simples.size(); ++s)
-    coroot_mat.set_row(s,rd.coroot(int_simples[s]));
+  unsigned int i=0;
+  for (RootNbr alpha : int_simples)
+    coroot_mat.set_row(i++,rd.coroot(alpha));
   return repr::codec(*this,inv,coroot_mat);
 }
 

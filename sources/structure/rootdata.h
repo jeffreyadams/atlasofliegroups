@@ -18,6 +18,7 @@
 
 #include "tags.h"
 
+#include "sl_list.h" // for inlining |integrality_rank|
 #include "bitset.h" // for ascent and descent sets
 #include "matrix.h" // for loads of subobjects
 #include "permutations.h" // for storing root permutations
@@ -77,11 +78,13 @@ WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 // set of posroot indices of coroots integral on |gamma|
 RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
 // the (posiive) simple generators of the above, but as full root set indices
-RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma);
+sl_list<RootNbr>
+  integrality_simples(const RootDatum& rd, const RatWeight& gamma);
+inline unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
+  { return integrality_simples(rd,gamma).size(); }
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 
 // involution of the Dynkin diagram for |rd| defined by distinguished |delta|
@@ -460,7 +463,7 @@ public:
 #endif
 
   // build |PreRootDatum| with as simple roots/coroots those from |generators|
-  PreRootDatum sub_predatum(const RootNbrList& generators) const;
+  PreRootDatum sub_predatum(const sl_list<RootNbr>& generators) const;
 
 // accessors
 
@@ -752,10 +755,6 @@ public:
 
 }; // |class RootDatum|
 
-// semisimple rank of |integrality_datum(rd,gamma)|
-inline
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
-{ return integrality_simples(rd,gamma).size(); }
 
 } // |namespace rootdata|
 

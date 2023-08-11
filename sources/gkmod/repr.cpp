@@ -2567,27 +2567,16 @@ K_repr::K_type_pol export_K_type_pol(const Rep_table& rt,const K_type_poly& P)
 
 common_context::common_context (const Rep_context& rc, const RatWeight& gamma)
 : rep_con(rc)
-, bm()
-, id_it(rc.inner_class().int_item(gamma,bm)) // sets most fields of |bm|
-, sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
+, simp_int(integrality_simples(rc.root_datum(),gamma))
+, sub(rc.root_datum(),simp_int)
 {} // |common_context::common_context|
 
 common_context::common_context
   (const Rep_context& rc, const block_modifier& bm)
 : rep_con(rc)
-, bm(bm)
-, id_it(rc.inner_class().int_item(bm.int_sys_nr))
-, sub(id_it.int_system(bm.w)) // transform by |bm.w|, and store image subsystem
+, simp_int(rc.inner_class().int_item(bm.int_sys_nr).image_simples(bm.w))
+, sub(rc.root_datum(),simp_int) // construct and store image subsystem
 {} // |common_context::common_context|
-
-
-RootNbrList common_context::simply_integrals () const
-{
-  const auto& ic = rc().inner_class();
-  const auto& int_item = ic.int_item(integral_nr());
-  auto integral_list = int_item.image_simples(attitude());
-  return integral_list.to_vector();
-}
 
 std::pair<gradings::Status::Value,bool>
   common_context::status(weyl::Generator s, KGBElt x) const

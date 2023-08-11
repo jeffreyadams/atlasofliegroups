@@ -969,7 +969,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     sl_list<WeylElt>::weak_const_iterator it;
   };
 
-  const RootNbrList Delta = integrality_simples(rd,gamma);
+  const auto Delta = integrality_simples(rd,gamma);
   std::vector<WeylElt> int_gens; int_gens.reserve(Delta.size());
   for (RootNbr alpha : Delta)
     int_gens.push_back(W.element(rd.reflection_word(alpha)));
@@ -981,7 +981,7 @@ sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
     for (auto& state : states)
     {
       state.w = WeylElt();
-      state.image = Delta;
+      state.image = Delta.to_vector();
       state.integral_roots = init;
       if (i>0) // don't set the iterator in |states[0]|
 	state.it=coset_lists[i-1].wcbegin();

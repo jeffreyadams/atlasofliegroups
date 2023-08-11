@@ -645,8 +645,7 @@ class Rep_table : public Rep_context
 class common_context
 {
   const Rep_context& rep_con;
-  block_modifier bm; // applied to bare (fundamental alcove) integral system
-  const subsystem::integral_datum_item& id_it; // for bare system |int_sys_nr|
+  sl_list<RootNbr> simp_int; // simply integral roots in increasing order
   const SubSystem sub; // embeds |id_it|s |bm.w| image into full root datum
 public:
   common_context (const Rep_context& rc, const RatWeight& gamma);
@@ -658,11 +657,8 @@ public:
   const InvolutionTable& involution_table() const
     { return rep_con.involution_table(); }
   const RootDatum& full_root_datum() const { return rep_con.root_datum(); }
-  unsigned int integral_nr() const { return bm.int_sys_nr; }
-  const block_modifier& modifier () const { return bm; }
-  WeylElt attitude() const { return bm.w; }
   const SubSystem& subsys() const { return sub; }
-  RootNbrList simply_integrals () const; // in |colfolded_datum()| numbering
+  RootNbrList simply_integrals() const { return simp_int.to_vector(); }
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for |subsys()|
