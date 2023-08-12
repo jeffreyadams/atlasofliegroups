@@ -341,11 +341,11 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
 
 /* Given a component |comp| of an alcove wall set, and integer parts |ev_floors|
    of their evaluations on interior points of the alcove, return the unique
-   vertex of the projection of the alcove for |comp| (a simplex) that is a sum
-   of its roots.
+   vertex of the simplex for |comp| (the projection of the alcove on the span of
+   its roots) that is a sum of those roots with integer multiplicites.
 */
 Weight root_vertex_simple
-  (const RootDatum& rd, RootNbrSet comp, int_Vector ev_floors)
+  (const RootDatum& rd, const RootNbrSet& comp, int_Vector ev_floors)
 {
   int_Matrix A(rd.semisimple_rank(),comp.size());
   { unsigned j=0;
@@ -359,7 +359,7 @@ Weight root_vertex_simple
     k.negate(); // ensure coefficients are positive
 
   // find a wall with "label" 1 that will serve as "lowest coroot" wall
-  RootNbrList generators; generators.reserve(A.n_columns()-1);
+  RootNbrList generators; generators.reserve(k.n_rows()-1);
   sl_list<RootNbr> labels_1;
   { bool found=false; auto it=comp.begin(); auto eit = ev_floors.begin();
     for (unsigned int i=0; i<k.n_rows(); ++i,++it,++eit)

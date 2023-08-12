@@ -1113,7 +1113,8 @@ WeylWord RootDatum::word_of_inverse_matrix
 
 
 // make |lambda| dominant, and return Weyl word that will convert it back
-WeylWord RootDatum::factor_dominant (Weight& v) const
+template<typename C>
+  WeylWord RootDatum::factor_dominant (matrix::Vector<C>& v) const
 {
   containers::sl_list<weyl::Generator> w;
   weyl::Generator s;
@@ -1134,7 +1135,8 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
 }
 
 // make |lambda| codominant, and return Weyl word that will convert it back
-WeylWord RootDatum::factor_codominant (Coweight& v) const
+template<typename C>
+  WeylWord RootDatum::factor_codominant (matrix::Vector<C>& v) const
 {
   containers::sl_list<weyl::Generator> w;
   weyl::Generator s;
@@ -1154,16 +1156,21 @@ WeylWord RootDatum::factor_codominant (Coweight& v) const
   return WeylWord(std::move(w).to_vector());
 }
 
-/*
-  A reduced expression of the shortest |w| making |w.v| dominant
-
-  Algorithm: the greedy algorithm -- if v is not positive, there is a
-  simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
-  v closer to the dominant chamber.
-*/
-WeylWord RootDatum::to_dominant(Weight lambda) const
+// A reduced expression of the shortest |w| making |w*lambda| dominant
+template<typename C>
+  WeylWord RootDatum::to_dominant(matrix::Vector<C> lambda) const
 {
   WeylWord result = factor_dominant(lambda);
+  // reverse result (action is from right to left)
+  std::reverse(result.begin(),result.end());
+  return result; // and forget modified |lambda|
+}
+
+// A reduced expression of the shortest |w| making |lambda*w| dominant
+template<typename C>
+  WeylWord RootDatum::to_codominant(matrix::Vector<C> lambda) const
+{
+  WeylWord result = factor_codominant(lambda);
   // reverse result (action is from right to left)
   std::reverse(result.begin(),result.end());
   return result; // and forget modified |lambda|
@@ -1891,6 +1898,13 @@ void RootSystem::toRootBasis
 
 template
 RootNbrSet additive_closure<true>(const RootSystem& rs, RootNbrSet generators);
+
+template WeylWord RootDatum::factor_dominant(Weight&) const;
+template WeylWord RootDatum::factor_codominant(Coweight&) const;
+template WeylWord RootDatum::to_dominant(Weight) const;
+// those instantiations were just for the record; they were already used above
+
+template WeylWord RootDatum::factor_dominant(Ratvec_Numer_t&) const;
 
 } // |namespace rootdata|
 

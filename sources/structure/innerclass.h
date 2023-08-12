@@ -499,9 +499,8 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
-  subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, repr::locator& loc);
-  // same when |int_sys_nr| and |w| have already been computed:
+  subsystem::integral_datum_item& int_item (RatWeight gamma, repr::locator& loc);
+  // same when |loc| has already been computed (pass just |loc.int_sys_nr|)
   const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 

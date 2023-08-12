@@ -630,16 +630,22 @@ public:
     { simple_coreflect(ell,i); return ell; }
 
   // make |lambda| dominant, and return Weyl word that will convert it back
-  WeylWord factor_dominant (Weight& lambda) const;
-  WeylWord to_dominant(Weight lambda) const; // by value; reversed result
-  Weight& make_dominant(Weight& lambda) const // modify and return |lambda|
-  { factor_dominant(lambda); return lambda; }
+  template<typename C>
+    WeylWord factor_dominant (matrix::Vector<C>& lambda) const;
+  template<typename C>
+    WeylWord to_dominant(matrix::Vector<C> lambda) const; // reversed result
+  template<typename C>
+    matrix::Vector<C>& make_dominant(matrix::Vector<C>& lambda) const
+      { factor_dominant(lambda); return lambda; } // modify and return |lambda|
 
   // make |lambda| codominant, and return Weyl word that will convert it back
-  WeylWord factor_codominant (Coweight& lambda) const;
-  WeylWord to_codominant (Weight lambda) const; // by value; reversed result
-  Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
-  { factor_codominant(lambda); return lambda; }
+  template<typename C>
+    WeylWord factor_codominant (matrix::Vector<C>& lambda) const; // coweight
+  template<typename C>
+    WeylWord to_codominant (matrix::Vector<C> lambda) const; // reversed result
+  template<typename C>
+    matrix::Vector<C>& make_codominant(matrix::Vector<C>& lambda) const
+      { factor_codominant(lambda); return lambda; } // modify and return |lambda|
 
   template<typename C>
     void act(const WeylWord& ww, matrix::Vector<C>& lambda) const

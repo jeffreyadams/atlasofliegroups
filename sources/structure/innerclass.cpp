@@ -1114,24 +1114,37 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 }
 
 subsystem::integral_datum_item& InnerClass::int_item
-  (const RatWeight& gamma, repr::locator& loc)
+  (RatWeight gamma, repr::locator& loc)
 {
   assert(is_delta_fixed(gamma));
   const auto& rd = root_datum(); // we need full datum as well as cofolded one
   const auto& cofd = cofolded_datum(); // used for alcoves and attitudes
   const auto& W = cofolded_W();
-  RootNbrSet on_wall_subset;
-  RootNbrSet walls = weyl::wall_set(cofd,gamma,on_wall_subset);
-  auto ww = weyl::from_fundamental_alcove(cofd,walls);
-  loc.w = W.element(ww); // an initial integral subsystem coset representative
 
-  // cofolded FA walls that |gamma| maps onto don't determine those for |rd| FA
-  on_wall_subset = RootNbrSet(rd.numRoots()); // forget old, now for |rd|
-  ww = Weyl_group().word(unfold(loc.w)); // now a word for unfolded |rd|
+  // start by moving |gamma| closer to origin: into |W| orbit of fundam. alcove
+  gamma -= weyl::root_vertex_of_alcove(cofd,gamma);
+
+  const auto ww = cofd.factor_dominant(gamma.numerator());
+
+  // now |gamma| is in the fundamental alcove for |cofd|, hence also for |rd|
+  // first find the set of integral coroots (for |rd|) of our FA |gamma|
+  RootNbrSet on_wall_subset (rd.numRoots()); // we shall just test each FA wall
   for (RootNbr alpha : rd.fundamental_alcove_walls())
-  { auto ev = gamma.dot_Q(rd.coroot(rd.permuted_root(ww,alpha))).normalize();
-    on_wall_subset.set_to(alpha,ev.denominator()==1); // test actual integrality
+  { auto ev = rd.coroot(alpha).dot(gamma.numerator());
+    on_wall_subset.set_to
+      (alpha, ev == (rd.is_negroot(alpha) ? -gamma.denominator() : 0));
   }
+
+  // now filter out simple reflections in |ww| that are integral when acting
+  assert(loc.w==WeylElt()); // start out with identity
+  for (auto it=ww.crbegin(); it!=ww.crend(); ++it) // traverse rtl, as applied
+    { weyl::Generator s=*it;
+      if (gamma.dot_Q(cofd.simpleCoroot(s)).denominator()!=1) // skip integrals
+      {
+	W.left_multiply(loc.w,s); // incorporate into |loc.w|
+	cofd.simple_reflect(s,gamma.numerator()); // integrality may change
+      }
+    }
 
   RootNbrSet fundamental_integral_poscoroots(rd.numPosRoots());
   for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
@@ -1145,40 +1158,22 @@ subsystem::integral_datum_item& InnerClass::int_item
 
   subsystem::integral_datum_item& result = int_table[loc.int_sys_nr];
 
-  ww = W.word(loc.w); // from fundamental alcove again, for |cofd|
   const SubSystem& int_sys = result.int_system(); // subsystem of |rd|
-  RootNbrSet folded_simply_ints = // a subset of the roots of |cofd|
-    folded_roots(int_sys.simple_roots());
 
-  RootNbrList image; // list of root numbers for |cofd|
-  image.reserve(folded_simply_ints.size()); // maybe less than |int_sys.rank()|
-  for (RootNbr alpha : folded_simply_ints)
-    image.push_back(cofd.permuted_root(ww,alpha));
-
-  // now correct coset representative |loc.w| to a positivity-preserving one
-  for (const auto& step : to_positive_system(cofd,image))
-    W.mult(loc.w,cofd.reflection_word(folded_simply_ints.n_th(step.first)));
-
-#ifndef NDEBUG
-  ww = W.word(loc.w);
-  { weyl::Generator s=0;
-    for (RootNbr alpha : folded_simply_ints)
-      assert(image[s++] == cofd.permuted_root(ww,alpha));
-    for (RootNbr alpha : image)
-      rd.is_posroot(alpha);
-  }
-#endif
-
-  ww = Weyl_group().word(unfold(loc.w)); // now a word for |rd|
-  const RootNbrSet issr = int_sys.simple_roots();
-  RootNbrSet im_simp(rd.numRoots());
-  for (RootNbr alpha : issr)
-    im_simp.insert(rd.permuted_root(ww,alpha));
-  assert(im_simp.size()==int_sys.rank());
   loc.simple_pi = Permutation();
   loc.simple_pi.reserve(int_sys.rank());
-  for (RootNbr alpha : issr)
-    loc.simple_pi.push_back(im_simp.position(rd.permuted_root(ww,alpha)));
+  sl_list<RootNbr> images;
+  RootNbrSet im_set(rd.numRoots());
+  { auto ww = Weyl_group().word(unfold(loc.w)); // now a word for |rd|
+    for (RootNbr alpha : int_sys.simple_roots())
+      { auto beta = rd.permuted_root(ww,alpha);
+	assert(rd.is_posroot(beta)); // |loc.w| perserves integral positivity
+	im_set.insert(images.push_back(beta));
+      }
+    assert(im_set.size()==int_sys.rank());
+  }
+  for (RootNbr alpha : images)
+    loc.simple_pi.push_back(im_set.position(alpha));
 
   return result;
 } // |InnerClass::int_item|
