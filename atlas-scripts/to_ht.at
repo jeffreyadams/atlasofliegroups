@@ -2,7 +2,9 @@
 <hermitian.at
 <convert_c_form.at
 {preferred to_ht(ParamPol,int)}
-
+{Turns out the "preferred" versions are significantly slower almost
+always; don't understand why. So switch to "old" versions as standard,
+labelling others as "new"}
 set herm_report = bool: false
 
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
@@ -12,6 +14,12 @@ set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
 set full_deform_to_ht_old(Param p, int N) = to_ht(full_deform(p),N)
+{ KTypePol:
+if height(p) > N then null_K_module(p.real_form)
+elif height(p) = N then K_type_pol(p)
+else to_ht(full_deform(p),N)
+fi
+This version seems NOT faster or smaller}
 
 set full_deform_to_ht(Param p, int N) = deform_to_height(p,N)
 
@@ -139,15 +147,15 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
   fi.convert_cform_hermitian
 
 { compute Hermitian form to ht on p, and report if it is unitary }
-set is_unitary_to_ht_old (Param p,int N) = bool:
-  p.is_hermitian and hermitian_form_irreducible_to_ht_old(p,N).is_pure
-
-{ compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht (Param p,int N) = bool:
   p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+
+{ compute Hermitian form to ht on p, and report if it is unitary }
+set is_unitary_to_ht_old (Param p,int N) = bool:
+  p.is_hermitian and hermitian_form_irreducible_to_ht_old(p,N).is_pure
 
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }
 set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
-  p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(p,N),
-  cert_hash)
+  p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
+  p,N), cert_hash)

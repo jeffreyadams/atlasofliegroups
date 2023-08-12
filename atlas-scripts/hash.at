@@ -44,6 +44,12 @@ set hash_code(ratvec v, int d_mod) = int:
 set hash_code(KTypePol P, int d_mod) = int:
     hash_code(K_data(P).##, d_mod)
 
+{meant to hash Params for single group G}
+set hash_code(Param p, int d_mod) = int:
+    let (,n) = %p.x, twolambda = ratvec_as_vec(2*p.lambda), (nun,nud) =
+    %p.nu
+    in hash_code(vec: (twolambda)##nun#n#nud, d_mod)
+
 set_type
 [ KTypePol_hash =
   ( ( -> int) size
@@ -203,3 +209,57 @@ in for P@m in list
 )
 
 set make_vec_hash () = vec_hash: make_vec_hash([vec]:[],hash_code@(vec,int))
+
+set_type
+[ Param_hash =
+  ( ( -> int) size
+  , ( -> int) capacity
+  , (int->Param) index
+  , (Param->int) match
+  , (Param->int) lookup
+  )
+]
+
+set make_Param_hash ([Param] list, (Param,int->int) hash) = Param_hash:
+(  let capacity = max(2,2*#list), !empty=minus_1
+   then seq_nbrs = for :capacity do empty od, maxfill = 2*capacity\3
+   then find(Param p) = (int,bool):
+     let code = hash(p,capacity)
+     in while let v=seq_nbrs[code] in if v=empty then return (code,true) fi
+        ; list[v] != p
+        do if (code+:=1)=capacity then code:=0 fi
+        od
+     ; (code,false) { slot in |seq_nbrs|, and whether it is new }
+   then rehash(int new_capacity) = void:
+     begin capacity := new_capacity
+     ;   seq_nbrs := for j:capacity do empty od { prepare new array }
+     ;   maxfill := 2*capacity\3
+     ;   for p@m in list
+	 do let (code,new) = find(p) in assert(new,"duplicate while rehashing")
+	 ;  seq_nbrs[code] := m
+	 od
+     end
+in for p@m in list
+   do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
+   od
+;  ( ( -> int): { size } @int: #list
+   , ( -> int): { capacity } @int: capacity
+   , (int->Param): { index } (int i) Param: list[i]
+   , (Param->int): { match } (Param p) int:
+     begin
+        let (code,new) = find(p)
+     in if new { an empty slot was found, fill it }
+        then let val = seq_nbrs[code] := #list
+	in list := (list next list:=[]) # p
+        ; if #list >= maxfill then rehash(capacity+capacity) fi
+	; val { don't use |seq_nbrs[code]| as |seq_nbrs| may have changed here x}
+	else seq_nbrs[code]
+        fi
+     end
+   , (Param->int): { lookup } (Param p) int:
+     let (code,new) = find(p) in if new then minus_1 else seq_nbrs[code] fi
+   )
+)
+
+set make_Param_hash () = Param_hash:
+    make_Param_hash([Param]:[],hash_code@(Param,int))
