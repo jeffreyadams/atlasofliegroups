@@ -997,8 +997,8 @@ extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   its parameters fixed by the action of delta returned as first component. The
   remaining three components are matrices indexed by (in this order) an index
   into the list of parameters and an index in the delta-folded Dynkin diagram
-  (an extended generator), and containing for the first matrix a code for the
-  type of the parameter for the generator, and for the other two matrices the
+  (an extended generator). The components contain respectively a code for the
+  type of the parameter for the generator, and (for the other two matrices) the
   indices of the neighbors for this generator: two for Cayley transforms (either
   the double-valued transform, or the single-valued transform with in addition
   the cross action); one for a complex cross action; none for cases like a

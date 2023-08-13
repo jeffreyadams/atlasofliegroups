@@ -432,9 +432,6 @@ class common_block : public Block_base
 
   // get/build extended block for |delta|; if built, store it
   ext_block::ext_block& extended_block
-    (const RatWeight& shift, const WeightInvolution& delta,
-     ext_KL_hash_Table* pol_hash);
-  ext_block::ext_block& extended_block
     (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash);
 
   void set_Bruhat (sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);

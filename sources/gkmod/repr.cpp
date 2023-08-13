@@ -817,8 +817,8 @@ StandardRepr Rep_context::sr
   (StandardReprMod srm, const block_modifier& bm, const RatWeight& gamma)
   const
 {
-  srm.gamlam += bm.shift; // apply shift first
-  transform<false>(bm.w,srm); // then apply |w|
+  srm.gamlam += bm.shift; // apply |bm.shift| first
+  transform<false>(bm.w,srm); // then apply |bm.w|
   const auto lambda_rho = gamma.integer_diff<int>(gamma_lambda_rho(srm));
   return sr_gamma(srm.x_part,lambda_rho,gamma);
 } // |Rep_context::sr|
@@ -1402,12 +1402,13 @@ size_t deformation_unit::hashCode(size_t modulus) const
 //				|block_modifier| method
 
 // when a block is relative to itself, we remove all modifiations
-void block_modifier::clear (unsigned int rank)
+void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)
 {
+  // |int_sys_nr| not changed, maybe remains undefined
   w = WeylElt();
-  // |simply_integrals| is not relative; it remains
-  simple_pi = Permutation(simple_pi.size(),1); // reset to identity
-  shift = RatWeight(rank);
+  // |int_simp| is not relative; it remains
+  simple_pi = Permutation(block_rank,1); // reset to identity
+  shift = RatWeight(rd_rank);
 }
 
 //				|Rep_table| methods
@@ -1809,7 +1810,7 @@ blocks::common_block& Rep_table::lookup
   auto& block = add_block_below(srm,&subset,bm);
   which = last(subset);
   assert(block.representative(which)==srm); // we should find |srm| here
-  bm.clear(root_datum().rank()); // we are relative to ourselves
+  bm.clear(block.rank(),root_datum().rank()); // we are relative to ourselves
   return block;
 } // |Rep_table::lookup|
 

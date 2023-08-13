@@ -145,9 +145,8 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const blocks::common_block& block,
-	    const RatWeight& shift, const WeightInvolution& delta,
-	    ext_KL_hash_Table* pol_hash);
+  ext_block(const blocks::common_block& block, const repr::block_modifier& bm,
+	    const WeightInvolution& delta, ext_KL_hash_Table* pol_hash);
 
   ext_block(ext_block&&) = default;
 
@@ -207,6 +206,9 @@ class ext_block
   weyl::Generator first_descent_among
     (RankFlags singular_orbits, BlockElt y) const;
 
+  // permutation induced from orbits to |simple_pi|-image orbits
+  Permutation induced(const Permutation& simple_pi) const;
+
   // reduce a matrix to elements without descents among singular generators
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
@@ -228,8 +230,8 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool tune_signs
-    (const blocks::common_block& block,
-     const RatWeight& shift, const WeightInvolution& delta);
+  (const blocks::common_block& block, const repr::block_modifier& bm,
+     const WeightInvolution& delta);
 
 }; // |class ext_block|
 
@@ -307,6 +309,9 @@ struct ext_param // allow public member access; methods ensure no invariants
 	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   ext_param (const repr::Ext_rep_context& ec,
 	     KGBElt x, RatWeight&& gamma_lambda, bool flipped=false);
+  static ext_param def_ext
+    (const repr::Ext_rep_context& ec, const repr::block_modifier& bm,
+     StandardReprMod srm, bool flipped=false);
 
   ext_param (const ext_param& p) = default;
   ext_param (ext_param&& p)

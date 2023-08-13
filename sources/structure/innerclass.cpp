@@ -1172,6 +1172,10 @@ subsystem::integral_datum_item& InnerClass::int_item
       }
     assert(im_set.size()==int_sys.rank());
   }
+
+  // following is marginally faster than |(loc.simp_int=images).sort()|
+  loc.simp_int.assign(im_set.begin(),im_set.end());
+
   for (RootNbr alpha : images)
     loc.simple_pi.push_back(im_set.position(alpha));
 

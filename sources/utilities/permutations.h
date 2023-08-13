@@ -63,6 +63,8 @@ struct Permutation
   // right-compose with the inverse of the permutation (defining a left action)
     template<typename T,typename A> void permute(std::vector<T,A>& v) const;
 
+    template<unsigned int n> void permute_bits(bitset::BitSet<n>& flags) const;
+
   // conjugate by pemutation matrix (to coordinates on permute(standard basis))
     template<typename T> void conjugate(matrix::Matrix_base<T>& M) const;
 

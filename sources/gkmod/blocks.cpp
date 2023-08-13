@@ -1271,13 +1271,19 @@ repr::StandardRepr common_block::sr
   return rc.sr(representative(z),bm,gamma);
 }
 
+// unlike |bm.simp_int| get simply integrals in mapped order using |bm.w|
+// This is used by |common_block::singular| above only.
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
+#if 1 // original implementation
   auto ww = rc.Weyl_group().word(inner_class().unfold(bm.w));
   RootNbrList result; result.reserve(simply_integrals.size());
   for (auto alpha : simply_integrals)
     result.push_back(root_datum().permuted_root(ww,alpha));
   return result;
+#else
+  return bm.simple_pi.pull_back(bm.simp_int.to_vector());
+#endif
 }
 
 ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
@@ -1299,23 +1305,22 @@ bool common_block::is_integral_orthogonal(const RatWeight& shift) const
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
-  RatWeight zero(delta.n_rows());
-  return { *this, zero, delta, nullptr };
+  repr::block_modifier bm; bm.clear(rank(),delta.n_rows());
+  return { *this, bm, delta, nullptr };
 }
 
 struct common_block::ext_block_data
 {
   RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
-  WeightInvolution delta; // effective action of distinguished involution
+  WeylElt w;
   ext_block::ext_block eblock;
   ext_block_data
     (const blocks::common_block& block,
-     const RatWeight& shift,
-     const WeightInvolution& delta,
+     const repr::block_modifier& bm,
      ext_KL_hash_Table* pol_hash)
-  : shift(shift) // at construction time, |shift| is zero
-  , delta(delta)
-  , eblock(block,shift,delta,pol_hash)
+  : shift(bm.shift) // at construction time, |shift| is zero
+  , w(bm.w)
+  , eblock(block,bm,block.inner_class().distinguished(),pol_hash)
   {}
 };
 
@@ -1336,40 +1341,21 @@ void common_block::shift (const RatWeight& diff)
     (pair.shift -= diff).normalize(); // compensate in |extended| for base shift
 }
 
-/*
-   Construct an extended block, storing it within our |common_block| in the
-   |extended| list. Arguments passed are |shift| to be efectively applied to
-   |representative| values for this block and an involution |delta| (commuting
-   with the inner class involution) both of these affect the selection of
-   elements of the extended block, and they are passed to the method
-   |tune_signs| that fine-tunes the signs of links; they are not stored in
-   constructed object.
- */
-ext_block::ext_block& common_block::extended_block
-   (const RatWeight& shift, const WeightInvolution& delta,
-    ext_KL_hash_Table* pol_hash)
-{
-  assert(is_integral_orthogonal(shift));
-  auto preceeds = [] (const ext_block_data& item, const RatWeight& value)
-    { return item.shift<value; };
-
-  // assert(delta==inner_class().distinguished());
-
-  auto it = std::lower_bound(extended.begin(),extended.end(),shift,preceeds);
-  for ( ; it!=extended.end() and it->shift==shift; ++it)
-    if (it->delta==delta)
-      return it->eblock; // then identical extended block found, so use it
-
-  // otherwise construct |ext_block| within an |ext_block_data|
-  extended.emplace(it,*this,shift,delta,pol_hash);
-  return it->eblock; // return |ext_block| without |gamlam|
-} // |common_block::extended_block|
-
 ext_block::ext_block& common_block::extended_block
    (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash)
 {
-  return extended_block(bm.shift,inner_class().distinguished(),pol_hash);
-}
+  assert(is_integral_orthogonal(bm.shift));
+  auto preceeds = [] (const ext_block_data& item, const repr::block_modifier& bm)
+  { return item.w==bm.w ? item.shift<bm.shift : item.w<bm.w; };
+
+  auto it = std::lower_bound(extended.begin(),extended.end(),bm,preceeds);
+  for ( ; it!=extended.end() and it->w==bm.w and it->shift==bm.shift; ++it)
+    return it->eblock; // then identical extended block found, so use it
+
+  // otherwise construct |ext_block| within an |ext_block_data|
+  extended.emplace(it,*this,bm,pol_hash);
+  return it->eblock; // return |ext_block| without |gamlam|
+} // |common_block::extended_block|
 
 // provide access to our polynomial hash table, creating it if necessary
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)

@@ -489,13 +489,14 @@ struct locator
 {
   unsigned int int_sys_nr; // sequence number for integral system in inner class
   WeylElt w; // in cofolded |W|; apply to fundamental alcove integral system
+  sl_list<RootNbr> simp_int; // image simply integral roots in increasing order
   Permutation simple_pi; // to transform integral system simple generators by
 };
 
 struct block_modifier : public locator
 {
   RatWeight shift; // add this one field
-  void clear (unsigned int rank);
+  void clear (unsigned int block_rank, unsigned int datum_rank);
 };
 
 struct sub_triple; // implementation specific, needed in auxiliary method type

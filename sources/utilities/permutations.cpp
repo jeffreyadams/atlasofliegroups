@@ -75,6 +75,19 @@ template<unsigned int n>
   return result;
 }
 
+template<unsigned int n>
+  void Permutation::permute_bits(bitset::BitSet<n>& flags) const
+{
+  assert(size()<=n);
+
+  const Base& pi=*this;
+  bitset::BitSet<n> result;
+  for (size_t i=0; i<size(); ++i)
+    result.set(pi[i],flags[i]);
+
+  flags = result; // replace
+}
+
 // Replace each number |x| in |v| by |pi[x]|, where |pi| is our permutation
 template<typename U,typename A>
 std::vector<U,A> Permutation::renumbering(const std::vector<U,A>& v) const
@@ -277,6 +290,10 @@ Permutation standardization(const std::vector<U,A>& a, size_t bound,
 template  // output
 bitset::BitSet<constants::RANK_MAX> Permutation::pull_back
   (const bitset::BitSet<constants::RANK_MAX>& v) const;
+
+template  // ext_block
+void Permutation::permute_bits
+  (bitset::BitSet<constants::RANK_MAX>& flags) const;
 
 template // blocks
 std::vector<unsigned int> Permutation::renumbering

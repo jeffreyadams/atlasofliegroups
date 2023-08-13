@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "bitmap.h"
+#include "permutations.h"
 #include "polynomials.h"
 #include "matreduc.h"
 #include "sl_list.h"
@@ -584,7 +585,7 @@ ext_block::ext_block // for external twist; old style blocks
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
-  // FIXME cannot call |check| here, although setting sign flips depends on it
+  // FIXME cannot call |tune_signs| here, although sign flips depend on it
 
 } // |ext_block::ext_block|
 
@@ -600,11 +601,10 @@ BlockElt shift_twisted
 }
 
 ext_block::ext_block
-  (const blocks::common_block& block,
-   const RatWeight& shift, const WeightInvolution& delta,
-   ext_KL_hash_Table* pol_hash)
+(const blocks::common_block& block, const repr::block_modifier& bm,
+   const WeightInvolution& delta, ext_KL_hash_Table* pol_hash)
   : parent(block)
-  , orbits(block.fold_orbits(delta))
+  , orbits(block.fold_orbits(delta)) // permuted below by |bm.simple_pi|
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
@@ -612,18 +612,76 @@ ext_block::ext_block
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
 {
+  const auto& ic = block.inner_class();
+#ifndef NDEBUG
+  {
+    int_Matrix M = ic.cofolded_datum().action_matrix(ic.cofolded_W().word(bm.w));
+    int_Matrix Dp = delta + 1, Dm = delta-1;
+    assert ((Dm * M * Dp).is_zero()); // commutation |delta|, |M| on image |Dp|
+  }
+#endif
+
   BitMap fixed_points(block.size());
 
   // compute the delta-fixed points of the block
   for (BlockElt z=0; z<block.size(); ++z)
-    if (shift_twisted(block,shift,delta,z)==z)
+    if (shift_twisted(block,bm.shift,delta,z)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
-  if (not tune_signs(block,shift,delta))
+
+  // now prepare a |block_modifier| with cofolded |simple_pi|
+  repr::block_modifier cofolded_bm = bm;
+  cofolded_bm.simple_pi = induced(bm.simple_pi);
+
+  // permute generators as induced by |bm.simple_pi| in our |ext_block|
+  {
+    const auto& opi = cofolded_bm.simple_pi; // mapping permutation of orbits
+    for (auto& orbit : orbits)
+      if (orbit.type==ext_gen::one)
+	orbit = ext_gen(static_cast<weyl::Generator>(bm.simple_pi[orbit.s0]));
+      else
+      { orbit = ext_gen(orbit.type==ext_gen::two,
+			bm.simple_pi[orbit.s0],bm.simple_pi[orbit.s1]);
+	if (orbit.s0>orbit.s1)
+	  std::swap(orbit.s0,orbit.s1); // keep each orbit sorted
+      }
+    opi.permute(orbits);
+    opi.permute(data);
+    for (auto& item : info)
+      opi.permute_bits(item.flips[0]),
+	opi.permute_bits(item.flips[1]);
+  }
+
+  if (not tune_signs(block,cofolded_bm,delta))
     throw std::runtime_error("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |common_block|
+
+Permutation ext_block::induced(const Permutation& simple_pi) const
+{
+  std::vector<weyl::Generator> orbit_of(simple_pi.size());
+  for (weyl::Generator s=0; s<orbits.size(); ++s)
+  { orbit_of[orbit(s).s0]=s;
+    if (orbit(s).type!=ext_gen::one)
+      orbit_of[orbit(s).s1]=s;
+  }
+
+  const Permutation inv(simple_pi,-1); // inverse
+  Permutation result(orbits.size());
+  RankFlags seen;
+  unsigned count=0;
+  for (unsigned int i=0; i<simple_pi.size(); ++i)
+    if (not seen[i])
+    { weyl::Generator s=orbit_of[inv[i]];
+      result[s]=count++;
+      seen.set(simple_pi[orbit(s).s0]);
+      if (orbit(s).type!=ext_gen::one)
+	seen.set(simple_pi[orbit(s).s1]);
+      assert(seen[i]); // one of the two assignments above ensured this
+    }
+  return result;
+}
 
 // create tables defining extended block structure
 void ext_block::complete_construction(const BitMap& fixed_points)
@@ -1641,17 +1699,19 @@ DescValue star (const repr::Ext_rep_context& ctxt,
 } // |star|
 
 bool ext_block::tune_signs
-  (const blocks::common_block& block,
-   const RatWeight& shift, const WeightInvolution& delta)
+(const blocks::common_block& block, const repr::block_modifier& bm,
+   const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  const RootNbrList simply_ints = block.simply_ints();
+  const RootNbrList simply_ints = // effective simply integrals
+    bm.simp_int.to_vector();
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
-  { auto z=this->z(n);
-    const ext_param E(ctxt,block.x(z),block.gamma_lambda(z)+shift);
-    for (weyl::Generator s=0; s<rank(); ++s)
-    { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
+  { BlockElt z=this->z(n); // element number in |block|
+    const auto E = ext_param::def_ext(ctxt,bm,block.representative(z));
+    for (weyl::Generator s_org=0; s_org<rank(); ++s_org)
+    { const weyl::Generator s = bm.simple_pi[s_org]; // effective generator
+      const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       RootNbr n_alpha = simply_ints[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
@@ -1683,7 +1743,7 @@ bool ext_block::tune_signs
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  ext_param F(ctxt,block.x(cz),block.gamma_lambda(cz)+shift); // default
+	  const auto F = ext_param::def_ext(ctxt,bm,block.representative(cz));
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1699,7 +1759,7 @@ bool ext_block::tune_signs
 	  if (m!=UndefBlock) // don't fall off the edge of a partial block
 	  {
 	    BlockElt Cz = this->z(m); // corresponding element of block
-	    ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	    const auto F = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	    assert(same_standard_reps(q0,F));
 	    if (not same_sign(q0,F))
 	      flip_edge(s,n,m);
@@ -1707,7 +1767,7 @@ bool ext_block::tune_signs
 	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
 	  {
 	    BlockElt cz = this->z(m);
-	    ext_param Fc(ctxt,block.x(cz),block.gamma_lambda(cz)+shift);
+	    const auto Fc = ext_param::def_ext(ctxt,bm,block.representative(cz));
 	    assert(same_standard_reps(q1,Fc));
 	    if (not same_sign(q1,Fc))
 	      flip_edge(s,n,m);
@@ -1722,7 +1782,7 @@ bool ext_block::tune_signs
 	  if (m==UndefBlock)
 	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  ext_param F(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	  const auto F = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1740,7 +1800,7 @@ bool ext_block::tune_signs
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	  const auto F0 = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1751,7 +1811,7 @@ bool ext_block::tune_signs
 	    break;
 
 	  Cz = this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	  const auto F1 = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -1769,7 +1829,7 @@ bool ext_block::tune_signs
 	    break; // nothing to do if both are undefined
 
 	  BlockElt Cz = this->z(m.first);
-	  ext_param F0(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	  const auto F0 = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  assert(same_standard_reps(node0,F0));
@@ -1780,7 +1840,7 @@ bool ext_block::tune_signs
 	    break;
 
 	  Cz= this->z(m.second);
-	  ext_param F1(ctxt,block.x(Cz),block.gamma_lambda(Cz)+shift);
+	  const auto F1 = ext_param::def_ext(ctxt,bm,block.representative(Cz));
 	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
@@ -2260,6 +2320,17 @@ ext_param::ext_param
 {
   validate(*this);
 }
+
+// factory function for default extension at |srm| in block as modified by |bm|
+ext_param ext_param::def_ext
+  (const repr::Ext_rep_context& ec, const repr::block_modifier& bm,
+   StandardReprMod srm, bool flipped)
+{
+  ec.rc().shift(bm.shift,srm);
+  ec.rc().transform<false>(bm.w,srm);
+  return ext_param(ec,srm.x(),std::move(srm).gamma_lambda(),flipped);
+}
+
 
 // build a default extended parameter for |sr| in the context |ec|
 /*
