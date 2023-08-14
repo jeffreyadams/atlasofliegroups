@@ -2675,6 +2675,9 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 {test all vertices first, then construct edges connecting unitary-to-height vertices...}
+{This seemed reasonable for some reason, but so far it's MUCH slower than GEO
+(factor at least 3) up to rank 6.}
+{
 set local_test_GEOB(KGBElt x, ratvec lambda) =
     ([string],[Param]):
     let G = x.real_form, first_pass = 2, pol_hash=make_KTypePol_hash()
@@ -2740,7 +2743,7 @@ set local_test_GEOB(KGBElt x, ratvec lambda) =
     in if(facet_verbose) then prints();
        prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
-
+}
 
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
