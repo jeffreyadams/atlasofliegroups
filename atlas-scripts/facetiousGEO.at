@@ -1006,7 +1006,7 @@ set thetaAct (KGBElt x, ratvec lambda, VertexData vd) = vec:
     let theta = x.involution then thetaPlus = (1+theta)*lambda
     in for v in vd.list do vd.lookup(-theta*v + thetaPlus) od
 
-{compute the vertices of the local facet containing the parameter p}
+{compute the vertices of the local facet containing the HERMITIAN parameter p}
 set local_vertices(Param p) = FacetVerts:
     let list = facet_verts(p.real_form, p.infinitesimal_character)
     then vd = to_vertex_data(list), x = p.x, lambda = p.lambda
@@ -1014,9 +1014,12 @@ set local_vertices(Param p) = FacetVerts:
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + list[Perm[j]])/2 od.no_reps
 
+set herm_center(Param p) = Param:
+    let list = local_vertices(p)
+    in parameter(p.x, p.lambda, sum(#list[0], list)/#list)
+
 {Take character_formula(p), and move each term to infl char gamma0. This works (give
 honest deformed rep) if gamma0 is in the local facet of infl_char(p)}
-
 set wiggle(Param p, ratvec gamma0) = ParamPol:
 let P = character_formula(p)
 in  sum(p.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
@@ -1024,19 +1027,30 @@ in  sum(p.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 set wiggle(ParamPol P, ratvec gamma0) = ParamPol:
 sum(P.real_form, for c@q in P do c*parameter(q.x, q.lambda, gamma0) od)
 
-{compute the deformations of irrep p to walls of its facet. This is a list of
-2^{#local_vertices} - 1 ParamPol's, the character formulas on the walls.}
+{compute the deformations of irrep p to boundary facets of its facet. This is
+a list of 2^{#local_vertices} - 1 ParamPol's, the character formulas on the walls.
+If p is unitary, this is a sum with positive coeffs of characters of unitary reps}
 set local_defs(Param p) = [ParamPol]:
-{creates vd, LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
- verts, and 0-facets for (x,lambda)}
-let list = local_vertices(p), CF = character_formula(p)
-then d = #list {dim of local facet plus 1}
-in for j:d from 1
-   do for S in choices_from(list,j)
-      do let gamma0 = sum(#list[0],S)/j
-      in wiggle(CF,gamma0)
-      od
-   od.##
+ let list = local_vertices(p), CF = character_formula(p)
+ then d = #list {dim of local facet plus 1}
+ in for j:d from 1
+    do for S in choices_from(list,j)
+       do let gamma0 = sum(#list[0],S)/j
+       in wiggle(CF,gamma0)
+       od
+    od.##
+
+{compute the deformations of irrep p to boundary faces of its facet. This is
+a list of #local_vertices ParamPol's, the character formulas on the faces.
+If p is unitary, each is a sum with positive coeffs of characters of unitary reps}
+set local_face_defs(Param p) = [ParamPol]:
+    let list = local_vertices(p)
+    in if #list = 1 then [ParamPol]: []
+       else let CF = character_formula(p), sum = sum(#list[0], list), d=#list
+       	    in for v in list
+       do wiggle(CF, (sum - v)/(d-1))
+       od
+       fi
 
 {compute the deformations of parameter p to walls of its facet. This begins with a list of
 2^{#local_vertices} - 1 Param's (which may not be final), and finalizes.}
@@ -1055,12 +1069,25 @@ deformation of one know unitary irr p}
 set deformed_unitaries_pol(Param p) = ParamPol:
 sum(p.real_form, local_defs(p))
 
+set face_deformed_unitaries_pol(Param p) = ParamPol:
+sum(p.real_form, local_face_defs(p))
+
 set deformed_unitaries(Param p) = [Param]:
     monomials(composition_series(deformed_unitaries_pol(p)))
 
-set deformed_unitaries_new(Param p) = [Param]:
-    for q in deformed_unitaries(p) do if q.x != p.x then [q] else [] fi od.##
+set face_deformed_unitaries(Param p) = [Param]:
+    monomials(composition_series(face_deformed_unitaries_pol(p)))
 
+set face_deformed_unitaries_new(Param p) = [Param]:
+    for q in face_deformed_unitaries(p)
+    do if q.x != p.x
+       then [herm_center(q)]
+       else []
+       fi
+    od.##
+
+{creates vd, LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
+ verts, and 0-facets for (x,lambda)}
 set localFD_KHash000 \
   ( KGBElt x, ratvec lambda, KTypePol_hash ktp_hash) =
   (VertexData, VertexData, vec, vec, [[FacetVertsKHash]]):
@@ -2102,7 +2129,7 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
 { try to compute and systematically use partial order on facets}
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
-    [vec] classListByFacet, [string] statuses, Param_hash unitary_hash,
+    [vec] classListByFacet, [string] statuses, Param_hash Uhash,
     (Param->bool) tester, int test_count) = ([string],[Param]):
     let NumClasses = #eq, printInterval = int: 1
     { then listZero = [ratvec]: if #LFVH = 0
@@ -2176,8 +2203,9 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	    od.##
       then dump = [int]: for p in UParams
       	      	  	   do for p1 in monomials(finalize(p)) {if is_final(p) then}
-			      do for q in deformed_unitaries(p1)
-		   	      	 do unitary_hash.match(q)
+			      do Uhash.match(herm_center(p1));
+			      	 for q in face_deformed_unitaries_new(p1)
+		   	      	 do Uhash.match(q)
 		   	      	 od
 			      {else [] fi}
 			      od.##
@@ -2685,21 +2713,21 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
 {inserts special unipotent reps in unitary_hash}
-set unipotents_to_hash(RealForm G, Param_hash unitary_hash) = void:
-    let mus = for p in unipotent_representations(G) do unitary_hash.match(p) od
+set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
+    let mus = for p in unipotent_representations(G) do Uhash.match(p) od
     in ()
 
 {takes the known unitaries from unitary_hash having the given x and lambda, and returns their
  locations in LFDKH}
-set known_unitaries(Param_hash unitary_hash, KGBElt x, ratvec lambda, VertexData Lvd,
+set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, VertexData Lvd,
     [[FacetVertsKHash]] LFDKH) = [vec]:
     let lookups = for list@d in LFDKH do index_in(if #list = 0 then [vec]:[]
     	      	  	    	     	      else for v in list do v[:d+1] od
 					      fi)
 				      od
-    then NumKnown = unitary_hash.size(), out = [vec]: for j:#LFDKH do vec:[] od
+    then NumKnown = Uhash.size(), out = [vec]: for j:#LFDKH do vec:[] od
     then () = for k:NumKnown
-       	 do let p = unitary_hash.index(k)
+       	 do let p = Uhash.index(k)
        	    then list = local_vertices(p)
             in if p.x = x and p.lambda=lambda and #list-1 < #LFDKH
 	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
@@ -2711,7 +2739,7 @@ set known_unitaries(Param_hash unitary_hash, KGBElt x, ratvec lambda, VertexData
 	 od
      in out
 
-set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash unitary_hash) =
+set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
     ([string],[Param]):
     let G = x.real_form, first_pass = 2, cert_hash=make_KTypePol_hash()
     then (Affd,,) = cofolded(G)
@@ -2763,7 +2791,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash unitary_hash) =
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then statuses = [string]: for j:#eq do "?" od
-    then known = known_unitaries(unitary_hash,x,lambda,Lvd,LFDKH) {[vec]}
+    then known = known_unitaries(Uhash,x,lambda,Lvd,LFDKH) {[vec]}
     then () = for d:#LFDKH
 	      do for m in known[d]
 	         do statuses:= downdateUclasses(statuses, IUCL[CLBF[d][m]],
@@ -2775,7 +2803,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash unitary_hash) =
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:], cert_hash)
     in if(facet_verbose) then prints();
        prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
-       local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses, unitary_hash, tester,test_count)
+       local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses, Uhash, tester,test_count)
 
 
 set local_test_GEO_list(KGBElt x, ratvec lambda) = [Param]:
@@ -2970,12 +2998,17 @@ set FPP_unitary_back(RealForm G) = [Param]:
        od.##
     od.##.reduce
 
-set FPP_unitary_hash(RealForm G,Param_hash unitary_hash) = void:
-    let () = test_verbose:=false
-    then () = unipotents_to_hash(G,unitary_hash)
+set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
+    let old_facet_verbose = facet_verbose
+    then () = test_verbose:=false
+    then () = facet_verbose:=false
+    then () = unipotents_to_hash(G,Uhash)
     in for x in KGB(G)
-    ~ do for lambda in FPP_lambdas(x)
-       	 do local_test_GEO_hash(x,lambda,unitary_hash)
+    ~ do if(old_facet_verbose) then prints("starting KGBElt #",
+      	 		       let (,m) = %x in m, ", Uhash.size() = ",
+			       Uhash.size()) fi;
+	 for lambda in FPP_lambdas(x)
+       	 do local_test_GEO_hash(x,lambda,Uhash)
        	 od
       od
 
