@@ -135,10 +135,10 @@ class ext_block
 
   ext_KL_hash_Table* pol_hash; // hash table pointer for |KL_table| construction
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
+  DynkinDiagram diagram; // diagram defined on |orbits|
  public:
 // a passive |const| field, unused by any method but publically visible
 
-  const DynkinDiagram folded_diagram; // diagram defined on |orbits|
 
 // constructors and destructors
   ext_block(const InnerClass& G,
@@ -163,7 +163,7 @@ class ext_block
 
 // accessors
 
-  size_t rank() const { return orbits.size(); }
+  unsigned int rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
   const Block_base& untwisted() const // use when only the parent base is needed
@@ -171,6 +171,7 @@ class ext_block
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const ext_gens& folded_generators() const { return orbits; }
+  const DynkinDiagram& folded_diagram() const { return diagram; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 

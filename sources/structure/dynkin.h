@@ -45,6 +45,7 @@ class DynkinDiagram;
   // same, also set |pi| to permutation "straightening" each diagram component
   LieType Lie_type(const int_Matrix& cm, Permutation& pi);
 
+  void permute(const Permutation& pi, DynkinDiagram& D);
 
 /******** type definitions **************************************************/
 

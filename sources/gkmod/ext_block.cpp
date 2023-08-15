@@ -18,6 +18,7 @@
 #include "matreduc.h"
 #include "sl_list.h"
 
+#include "dynkin.h" // for |permute| of diagram
 #include "innerclass.h"
 #include "weyl.h"
 #include "kgb.h"
@@ -569,7 +570,7 @@ ext_block::ext_block // for external twist; old style blocks
   , l_start(parent.length(parent.size()-1)+2,0)
   , pol_hash(nullptr)
   , KL_ptr(nullptr)
-  , folded_diagram(block.Dynkin().folded(orbits))
+  , diagram(block.Dynkin().folded(orbits))
 {
   BitMap fixed_points(block.size());
 
@@ -610,7 +611,7 @@ ext_block::ext_block
   , l_start(parent.length(parent.size()-1)+2,0)
   , pol_hash(pol_hash)
   , KL_ptr(nullptr)
-  , folded_diagram(block.Dynkin().folded(orbits))
+  , diagram(block.Dynkin().folded(orbits))
 {
   const auto& ic = block.inner_class();
 #ifndef NDEBUG
@@ -637,7 +638,9 @@ ext_block::ext_block
   // permute generators as induced by |bm.simple_pi| in our |ext_block|
   {
     const auto& opi = cofolded_bm.simple_pi; // mapping permutation of orbits
-    for (auto& orbit : orbits)
+    permute(opi,diagram);
+    opi.permute(orbits);
+    for (auto& orbit : orbits) // we also need to adapt each individual orbit
       if (orbit.type==ext_gen::one)
 	orbit = ext_gen(static_cast<weyl::Generator>(bm.simple_pi[orbit.s0]));
       else
@@ -646,7 +649,6 @@ ext_block::ext_block
 	if (orbit.s0>orbit.s1)
 	  std::swap(orbit.s0,orbit.s1); // keep each orbit sorted
       }
-    opi.permute(orbits);
     opi.permute(data);
     for (auto& item : info)
       opi.permute_bits(item.flips[0]),
@@ -1709,9 +1711,8 @@ bool ext_block::tune_signs
   for (BlockElt n=0; n<size(); ++n)
   { BlockElt z=this->z(n); // element number in |block|
     const auto E = ext_param::def_ext(ctxt,bm,block.representative(z));
-    for (weyl::Generator s_org=0; s_org<rank(); ++s_org)
-    { const weyl::Generator s = bm.simple_pi[s_org]; // effective generator
-      const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
+    for (weyl::Generator s : bm.simple_pi)
+    { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       RootNbr n_alpha = simply_ints[p.s0];
       auto tp = star(ctxt,E,p.length(),n_alpha,links);
       if (might_be_uncertain(descent_type(s,n)) and
@@ -2168,15 +2169,15 @@ bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x0)
 }
 
 bool check_braid
-  (const ext_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
+  (const ext_block& eb, weyl::Generator s, weyl::Generator t, BlockElt x,
    BitMap& cluster)
 {
   if (s==t)
     return true;
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
-  unsigned int len = cox_entry[b.folded_diagram.edge_multiplicity(s,t)];
+  unsigned int len = cox_entry[eb.folded_diagram().edge_multiplicity(s,t)];
 
-  BitMap used(b.size());
+  BitMap used(eb.size());
   containers::queue<BlockElt> to_do { x };
   do
   {
@@ -2184,7 +2185,7 @@ bool check_braid
     to_do.pop();
     used.insert(z);
     containers::sl_list<BlockElt> l;
-    if (b.add_neighbours(l,s,z) or b.add_neighbours(l,t,z))
+    if (eb.add_neighbours(l,s,z) or eb.add_neighbours(l,t,z))
       return true;
     for (BlockElt y : l)
       if (not used.isMember(y))
@@ -2198,20 +2199,20 @@ bool check_braid
    unsigned int j=0; // track index of |y|
   for (const BlockElt y : used)
   {
-    set(Ts,j,j, b.T_coef(s,y,y)-Pol(1));
-    set(Tt,j,j, b.T_coef(t,y,y)-Pol(1));
+    set(Ts,j,j, eb.T_coef(s,y,y)-Pol(1));
+    set(Tt,j,j, eb.T_coef(t,y,y)-Pol(1));
     containers::sl_list<BlockElt> l;
-    if (b.add_neighbours(l,s,y))
+    if (eb.add_neighbours(l,s,y))
       return true;
     for (BlockElt z : l)
       if (used.isMember(z))
-	set(Ts,used.position(z),j, b.T_coef(s,z,y));
+	set(Ts,used.position(z),j, eb.T_coef(s,z,y));
     l.clear();
-    if (b.add_neighbours(l,t,y))
+    if (eb.add_neighbours(l,t,y))
       return true;
     for (BlockElt z : l)
       if (used.isMember(z))
-	set(Tt,used.position(z),j, b.T_coef(t,z,y));
+	set(Tt,used.position(z),j, eb.T_coef(t,z,y));
     ++j; // keep |j| in phase with |y|
   }
   matrix::Vector<Pol> v(n,Pol()), w;

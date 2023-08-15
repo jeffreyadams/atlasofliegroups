@@ -334,6 +334,16 @@ LieType Lie_type(const int_Matrix& cm, Permutation& pi)
 
   return result;
 
+} // |Lie_type(const int_Matrix& cm, Permutation& pi)|
+
+void permute(const Permutation& pi, DynkinDiagram& D)
+{
+  const unsigned int r=D.rank();
+  int_Matrix new_Cartan(r,r);
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
+      new_Cartan(pi[i],pi[j]) = D.Cartan_entry(i,j);
+  D = DynkinDiagram(new_Cartan);
 }
 
 } // |namespace dynkin|
