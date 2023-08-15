@@ -1529,9 +1529,9 @@ set localFD_KHash1 \
 set localFD_KHash11 \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsKHash]] LFKH, {int b, int t,} int h, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
-(   assert(#LFKH = 1,"localFD_KHash1 takes only local VERTEX list");
+(   assert(#LFKH = 1,"localFD_KHash11 takes only local VERTEX list");
     if facet_verbose
-    then prints("start localFD_Khash1")
+    then prints("start localFD_Khash11")
     fi;
     {let Llookup = Lvd.lookup}
     let G = x.real_form
@@ -1586,6 +1586,50 @@ set localFD_KHash11 \
        LFKH#LFKH1
 )
 
+{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary to h
+ ; so output is size 2. Instead of looking at all FPP facets, just uses pairs of LFKH[0]
+ elements}
+set localFD_KHash12 \
+  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
+    [[FacetVertsKHash]] LFKH, {int b, int t,} int h, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+(   assert(#LFKH = 1,"localFD_KHash12 takes only local VERTEX list");
+    if facet_verbose
+    then prints("start localFD_Khash12")
+    fi;
+    {let Llookup = Lvd.lookup}
+    let G = x.real_form
+    then (Affd, M, j0) = cofolded(G)
+    then Edges = [vec]:
+    	 if #LFKH[0] <= 1 then []
+	 else 
+    	 for v@j in LFKH[0][:#LFKH[0]-1]
+	 do for w in LFKH[0][j+1:]
+	    do let test = [Lvd.list[v[0]], Lvd.list[w[0]]]
+	    then bary = (test[0] + test[1])/2
+	       then ends = local_vertices(parameter(x,lambda,bary))
+	       in if (ends[0] = test[0] and ends[1] = test[1]) or
+	       	     (ends[0] = test[1] and ends[1] = test[0])
+	       	  then [[v[0],w[0]].sort]
+		  else []
+		  fi
+	     od.##{list of edges starting at v}
+	  od.## {list of all edges}
+	  fi
+    then LFKH1 = [FacetVertsKHash]:
+    	 for actual in Edges
+	 do let bary = facet_bary(Lvd.list,actual)
+	    then p = parameter(x,lambda,bary)
+	    then P = finalize(p)
+	    in if all(for p in monomials(P) do is_unitary_to_ht(p,h) od)
+	       then let Q = K_type_pol(character_formula(P))
+	       	    in [actual#ktp_hash.match(Q)]
+	       else []
+	       fi
+	 od.##
+    in if(facet_verbose) then prints("After localFD_KHash12, facet counts are [",#LFKH[0],
+    		      	   	  ",",#LFKH1,"]") fi;
+       LFKH#LFKH1
+)
 
 {takes local vertices LF, and adds local 1-d facets; so output is size 2.}
 set localFD_1 \
@@ -2671,13 +2715,13 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 	       od
     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:], cert_hash)
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
+       prints("setting tester = is_unitary_test(p,",hts[D],")") fi;
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
-{test all vertices first, then construct edges connecting unitary-to-height vertices...}
-{This seemed reasonable for some reason, but so far it's MUCH slower than GEO
-(factor at least 3) up to rank 6.}
-{
+{test all vertices first, then construct edges connecting unitary-to-height vertices...
+ Seems to be faster than local_test_GEO starting about rank 5. For Sp(10,R) spherical,
+ numbers were 8.5 seconds (GEO) and 7.3 seconds (GEOB)}
+
 set local_test_GEOB(KGBElt x, ratvec lambda) =
     ([string],[Param]):
     let G = x.real_form, first_pass = 2, pol_hash=make_KTypePol_hash()
@@ -2687,10 +2731,11 @@ set local_test_GEOB(KGBElt x, ratvec lambda) =
     {make sure these are unitary to height hts[0]}
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda, hts[0], pol_hash)
     {next add edges, making sure they are unitary to hts[0]}
-    then () = LFDKH := localFD_KHash11(x,lambda,vd,Lvd,Perm,mapAct,LFDKH, hts[0], pol_hash)
+    then () = LFDKH := localFD_KHash12(x,lambda,vd,Lvd,Perm,mapAct,LFDKH, hts[0], pol_hash)
     {next add dim from 2 to first_pass}
-    then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, 2, first_pass, pol_hash)
+    {next line does nothing when first_pass = 2}
+    { then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
+	      LFDKH, 2, first_pass, pol_hash) }
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then test_count = int:0, D=int:1
     then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
@@ -2741,10 +2786,9 @@ set local_test_GEOB(KGBElt x, ratvec lambda) =
 	       od
     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:] {, cert_hash})
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
+       prints("setting tester = is_unitary_test(p,",hts[D],")") fi;
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
-}
-
+       
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
     let mus = for p in unipotent_representations(G) do Uhash.match(p) od
@@ -2811,9 +2855,10 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
     then (Affd,,) = cofolded(G)
     then depth=Affd.semisimple_rank - first_pass+1
     then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
-    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda,pol_hash)
-    {next add edges}
-    then () = LFDKH := localFD_KHash1(x,lambda,vd,Lvd,Perm,mapAct,LFDKH,pol_hash)
+    {make sure verts are unitary to hts[0]}
+    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,hts[0],pol_hash)
+    {next add edges, still unitary_to_ht}
+    then () = LFDKH := localFD_KHash12(x,lambda,vd,Lvd,Perm,mapAct,LFDKH,hts[0],pol_hash)
     {next add dim from 2 to first_pass}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
 	      LFDKH, 2, first_pass, pol_hash)
@@ -2862,12 +2907,12 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
 	      od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:]{,cert_hash})
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,[",hts[D-1],"...])") fi;
+       prints("setting tester = is_unitary_test(p,[",hts[D],"...])") fi;
        local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,
 			Uhash, tester,test_count)
 
 set local_test_GEO_list(KGBElt x, ratvec lambda) = [Param]:
-    let (,list) = local_test_GEO(x,lambda,Kpol_hash) in list
+    let (,list) = local_test_GEOB(x,lambda) in list
 
 set local_facets(KGBElt x, ratvec lambda) = [[vec]]:
     let G = x.real_form
