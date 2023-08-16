@@ -1140,7 +1140,7 @@ set localFD_KHash000 \
 	     fi
     then FVK0 = [FacetVertsKHash]:
     	 for v@k in vlistAct
-	 do if k%(max(#vlistAct\10,2))=0 and fund_facet_verbose
+	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash000;",
 	    "ktp_hash.size() = ",ktp_hash.size())
 	    fi;
@@ -1213,7 +1213,7 @@ set localFD_KHash001 \
 	     fi
     then FVK0 = [FacetVertsKHash]:
     	 for v@k in vlistAct
-	 do if k%(max(#vlistAct\10,2))=0 and fund_facet_verbose
+	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash000;",
 	    "ktp_hash.size() = ",ktp_hash.size())
 	    fi;
@@ -1366,7 +1366,7 @@ set localFD_KHash007 \
 	     fi
     then FVK0 = [FacetVertsKHash]:
     	 for v@k in vlistAct
-	 do if k%(max(#vlistAct\10,2))=0 and fund_facet_verbose
+	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash000;",
 	    "ktp_hash.size() = ",ktp_hash.size())
 	    fi;
@@ -2252,7 +2252,7 @@ set local_test(KGBElt x, ratvec lambda, VertexData Lvd,
 	      ,NumClasses-m -1, "; so far ",test_count
 	      ," 'is_unitary' tests.")
 	      ; show_very_short(statuses)
-	      ; printInterval := 2*printInterval
+	      ; printInterval := (3*printInterval)\2 + 1
 	      fi
 	      ; if statuses[m] = "?"
 	      	then test_count+:=1
@@ -2330,7 +2330,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      ,NumClasses-m -1, "; so far ",test_count
 	      ," 'is_unitary' tests.")
 	      ; show_very_short(statuses)
-	      ; printInterval := 2*printInterval
+	      ; printInterval := (3*printInterval)\2 + 1
 	      fi
 	      ; if statuses[m] = "?"
 	      	then test_count+:=1
@@ -2542,8 +2542,9 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda, Kpol_hash)
     {next add dims from 1 to folded semisimple rank}
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH,1,Affd.semisimple_rank+1, Kpol_hash)
-    then ()  = if test_verbose then prints("in levels, facet counts to ",Affd.semisimple_rank," are ",
+	      LFDKH,1,rank(x.involution -1){Affd.semisimple_rank}+2, Kpol_hash)
+    then ()  = if test_verbose then prints("in levels, facet counts to ",
+    rank(x.involution -1)," are ",
     	       for list in LFDKH do #list od) fi
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
         then test_count = int:0
@@ -2589,7 +2590,7 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     ([string],[Param]):
     let G = x.real_form, first_pass = 2
     then (Affd,,) = cofolded(G)
-    then depth=Affd.semisimple_rank - first_pass+1
+    then depth={Affd.semisimple_rank} rank(x.involution -1) - first_pass+2
     then hts = next_heights(parameter(x,lambda,0*lambda),depth)
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda, Kpol_hash)
     {next add dim from 1 to first_pass}
@@ -2599,7 +2600,7 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then test_count = int:0, D=int:1
     then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
 			  for list in LFDKH do #list od) fi
-    then () = while first_pass + D <= Affd.semisimple_rank + 1
+    then () = while first_pass + D <= {Affd.semisimple_rank} rank(x.involution -1) + 2
     {while loop does is_unitary_to_ht on facets to dim first_pass; then adds facets of
     	  one dim higher and does is_unitary_to_ht on those...}
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,Kpol_hash,hts[D-1])
@@ -2649,35 +2650,35 @@ set local_facets_GEO(KGBElt x, ratvec lambda) = [[FacetVertsIndex]]:
     then (vd, Lvd, Perm, mapAct, LF) = localFD_000(x,lambda)
     then () = LF := localFD_1(x,lambda,vd,Lvd,Perm,mapAct,LF)
     in localFbt_lookDown_GEO(x,lambda, vd, Lvd, Perm, mapAct, LF, 2,
-       Affd.semisimple_rank+1)
+       {Affd.semisimple_rank} rank(x.involution -1) +2)
 
 set spherical_facets_GEO(RealForm G) = local_facets_GEO(x_open(G), G.rho)
 
 set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     ([string],[Param]):
-    let G = x.real_form, first_pass = 2
+    let G = x.real_form
     then (Affd,,) = cofolded(G), pol_hash = make_KTypePol_hash()
-    then depth=Affd.semisimple_rank - first_pass+1
+    then depth= rank(x.involution -1)
     then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
-    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda, pol_hash)
-    {next add edges}
-    then () = LFDKH := localFD_KHash1(x,lambda,vd,Lvd,Perm,mapAct,LFDKH, pol_hash)
-    {next add dim from 2 to first_pass}
-    then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, 2, first_pass, pol_hash)
+    {get verts are unitary to hts[0]}
+    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,
+    	      	   	 	 	  hts[0],pol_hash)
+    {next add edges, still unitary to hts[0]}
+    then () = LFDKH := localFD_KHash12(x,lambda,vd,Lvd,Perm,mapAct,
+    	      	       LFDKH, hts[0], pol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then test_count = int:0, D=int:1
-    then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
+    then () =  if test_verbose then prints("facets counts to dim 1:",
 			  for list in LFDKH do #list od) fi
-    then () = while (first_pass + D <= Affd.semisimple_rank + 1) and
-    	      	    (#LFDKH = first_pass + D - 1) and
-		    (#(LFDKH~[0]) > 0)
+    then () = while (D <= rank(x.involution -1) -1) and
+    	      	    (#LFDKH = D + 1) and
+		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
-    {while loop does is_unitary_to_ht on facets to dim first_pass; then adds facets of
-    	  one dim higher and does is_unitary_to_ht on those. If there are no possibly
-	  unitary facets of some dim, then can't be higher either.}
+    {while loop adds facets of dim D+1; then does is_unitary_to_ht on
+     facets to dim D+1; then adds facets of dim D+2, etc. If there are
+     less than D+2 possibly unitary facets of dim D, then none of dim D+1.}
     	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D-1])
-       	      	 {compute graph on facets to dim first_pass}
+       	      	 {compute graph on facets os dim 2}
        		 then statuses = [string]: for j:#eq do "?" od
 		 then find0 = index_in(if #LFDKH = 0 then [vec]: []
 		      	      	       else for v in LFDKH[0] do v[:1] od
@@ -2694,8 +2695,8 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 		      		       pol_hash, test_count)
  		then ()= test_count:=test_countnew
         	then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
-		    Perm, mapAct, LFDKHnew, first_pass + D-1, first_pass + D, pol_hash)
-	        then () = if test_verbose then prints("facet counts to dim ",first_pass+D-1,": ",
+		    Perm, mapAct, LFDKHnew, D+1, D+2, pol_hash)
+	        then () = if test_verbose then prints("facet counts to dim ",D+1,": ",
 	     	     	  		for list in LFDKH do #list od) fi
    		then ()= D:=D+1
    		in ()
@@ -2713,82 +2714,11 @@ set local_test_GEO(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 		     fi
 	       od
-    then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:], cert_hash)
+    then tester = (Param->bool): (Param p) bool: is_unitary(p, cert_hash)
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,",hts[D],")") fi;
+       prints("setting tester = is_unitary(p,cert_hash)") fi;
        local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
-{test all vertices first, then construct edges connecting unitary-to-height vertices...
- Seems to be faster than local_test_GEO starting about rank 5. For Sp(10,R) spherical,
- numbers were 8.5 seconds (GEO) and 7.3 seconds (GEOB)}
-
-set local_test_GEOB(KGBElt x, ratvec lambda) =
-    ([string],[Param]):
-    let G = x.real_form, first_pass = 2, pol_hash=make_KTypePol_hash()
-    then (Affd,,) = cofolded(G)
-    then depth=Affd.semisimple_rank - first_pass+1
-    then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
-    {make sure these are unitary to height hts[0]}
-    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda, hts[0], pol_hash)
-    {next add edges, making sure they are unitary to hts[0]}
-    then () = LFDKH := localFD_KHash12(x,lambda,vd,Lvd,Perm,mapAct,LFDKH, hts[0], pol_hash)
-    {next add dim from 2 to first_pass}
-    {next line does nothing when first_pass = 2}
-    { then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, 2, first_pass, pol_hash) }
-    then unipotents = local_unipotent_classes(x,lambda,Lvd)
-    then test_count = int:0, D=int:1
-    then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
-			  for list in LFDKH do #list od) fi
-    then () = while (first_pass + D <= Affd.semisimple_rank + 1) and
-    	      	    (#LFDKH = first_pass + D - 1) and
-		    (#(LFDKH~[0]) > 0)
-    {can't omit middle because LFDKH is truncated!}
-    {while loop does is_unitary_to_ht on facets to dim first_pass; then adds facets of
-    	  one dim higher and does is_unitary_to_ht on those. If there are no possibly
-	  unitary facets of some dim, then can't be higher either.}
-    	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D-1])
-       	      	 {compute graph on facets to dim first_pass}
-       		 then statuses = [string]: for j:#eq do "?" od
-		 then find0 = index_in(if #LFDKH = 0 then [vec]: []
-		      	      	       else for v in LFDKH[0] do v[:1] od
-				       fi)
-       		 then () = for m in unipotents
-		      	   do let k = find0([m])
-		    	      in if k>=0
-		       	      	 then statuses:=downdateUclasses(statuses,
-			    	 IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
-		       		 fi
-		 	   od
-		 then (LFDKHnew, test_countnew) = local_testK_level(x,lambda,Lvd,
-		      LFDKH, eq, gr, CLBF, statuses, hts[D-1],
-		      		       pol_hash, test_count)
- 		then ()= test_count:=test_countnew
-        	then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
-		    Perm, mapAct, LFDKHnew, first_pass + D-1, first_pass + D, pol_hash)
-	        then () = if test_verbose then prints("facet counts to dim ",first_pass+D-1,": ",
-	     	     	  		for list in LFDKH do #list od) fi
-   		then ()= D:=D+1
-   		in ()
-     	     od
-    {now have facets of all dims, to height hts[?]}
-    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then statuses = [string]: for j:#eq do "?" od
-    then find0 = index_in(if #LFDKH = 0 then [vec]: []
-		      	      	       else for v in LFDKH[0] do v[:1] od
-				       fi)
-    then () = for m in unipotents
-	       do let k = find0([m])
-		  in if k>=0
-		     then statuses:=downdateUclasses(statuses,
-			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
-		     fi
-	       od
-    then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:] {, cert_hash})
-    in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,",hts[D],")") fi;
-       local_test(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,tester,test_count)
-       
 {inserts special unipotent reps in unitary_hash}
 set unipotents_to_hash(RealForm G, Param_hash Uhash) = void:
     let mus = for p in unipotent_representations(G) do Uhash.match(p) od
@@ -2850,31 +2780,35 @@ set localize(Param_hash Uhash, KGBElt x, ratvec lambda) = Param_hash:
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
     ([string],[Param]):
-    let G = x.real_form, first_pass = 2, pol_hash=make_KTypePol_hash()
+    let G = x.real_form, {first_pass = 2,} pol_hash=make_KTypePol_hash()
     then Uhashxlambda = localize(Uhash,x,lambda)
     then (Affd,,) = cofolded(G)
-    then depth=Affd.semisimple_rank - first_pass+1
+    then depth= rank(x.involution -1)
     then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
     {make sure verts are unitary to hts[0]}
-    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,hts[0],pol_hash)
+    then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,
+						hts[0],pol_hash)
     {next add edges, still unitary_to_ht}
-    then () = LFDKH := localFD_KHash12(x,lambda,vd,Lvd,Perm,mapAct,LFDKH,hts[0],pol_hash)
-    {next add dim from 2 to first_pass}
-    then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH, 2, first_pass, pol_hash)
+    then () = LFDKH := if #LFDKH[0] < 2
+    	      	       then LFDKH#[]
+	      	       else localFD_KHash12(x,lambda,vd,Lvd,Perm,
+					mapAct,LFDKH,hts[0],pol_hash)
+	               fi
     {then unipotents = local_unipotent_classes(x,lambda,Lvd)}
     then test_count = int:0, D=int:1
-    then () =  if test_verbose then prints("facets counts to dim ",first_pass-1, " :",
+    then () =  if test_verbose then prints("facets counts to dim 1:",
 			  for list in LFDKH do #list od) fi
-    then () = while (first_pass + D <= Affd.semisimple_rank + 1) and
-    	      	    (#LFDKH = first_pass + D - 1) and
-		    (#(LFDKH~[0]) > 0)
+    then () = while (D <= rank(x.involution-1) - 1  ) and
+    	      	    (#LFDKH = D + 1) and
+		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
-    {while loop does is_unitary_to_ht on facets to dim first_pass; then adds facets of
-    	  one dim higher and does is_unitary_to_ht on those. If there are no possibly
-	  unitary facets of some dim, then can't be higher either.}
-    	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D-1])
-       	      	 {compute graph on facets to dim first_pass}
+    {step D in while loop adds facets of dim D+1; then does is_unitary_to_ht on
+    facets of dim D+1; then adds facets of dim D+2, etc. If there are less than
+    D+2 possibly unitary facets of dim D, then none of dim D+1.}
+    	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
+                       Perm, mapAct, LFDKH, D+1,D+2,pol_hash)
+		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D-1])
+       	      	 {compute graph on facets to dim D+1}
        		 then statuses = [string]: for j:#eq do "?" od
 		 then known = known_unitaries(Uhashxlambda,Lvd,LFDKH) {[vec]}
     		 then () = for d:#LFDKH
@@ -2886,12 +2820,10 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
                  then (LFDKHnew, test_countnew) = local_testK_level(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, statuses, hts[D-1],
                                        pol_hash, test_count)
-                 then ()= test_count:=test_countnew
-                 then () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
-                       Perm, mapAct, LFDKHnew, first_pass + D-1, first_pass + D,
-		       pol_hash)
+		 then ()= test_count:=test_countnew
+		 then ()= LFDKH:= LFDKHnew
                  then () = if test_verbose then prints("facet counts to dim ",
-		     first_pass+D-1,": ", for list in LFDKH do #list od) fi
+		     D+1,": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
                  in ()
      	     od
@@ -2905,20 +2837,20 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
 			       		  CLBF[d][m],"TprevKnown")
 		 od
 	      od
-     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts[D:]{,cert_hash})
+     then tester = (Param->bool): (Param p) bool: is_unitary(p)
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary_test(p,[",hts[D],"...])") fi;
+       prints("setting tester = is_unitary"{_test(p,[",hts[D],"...])"}) fi;
        local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,
 			Uhash, tester,test_count)
 
-set local_test_GEO_list(KGBElt x, ratvec lambda) = [Param]:
-    let (,list) = local_test_GEOB(x,lambda) in list
+set local_test_GEO_list(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) = [Param]:
+    let (,list) = local_test_GEO(x,lambda,cert_hash) in list
 
 set local_facets(KGBElt x, ratvec lambda) = [[vec]]:
     let G = x.real_form
     then (Affd,,) = cofolded(G)
     then (vd, Lvd, Perm, mapAct, LF) = localFD_000(x,lambda)
-    in localFD_bt(x,lambda,vd, Lvd, Perm, mapAct, LF,1,Affd.semisimple_rank+1)
+    in localFD_bt(x,lambda,vd, Lvd, Perm, mapAct, LF,1,rank(x.involution-1)+2)
 
 set spherical_facets(RealForm G) = local_facets(x_open(G), G.rho)
 
@@ -2928,7 +2860,7 @@ set local(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
     then (Affd,,) = cofolded(G)
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x,lambda, Kpol_hash)
     then () = LFDKH := localFD_KHashbt(x,lambda,vd, Lvd, Perm, mapAct,
-	      LFDKH,1,Affd.semisimple_rank+1, Kpol_hash)
+	      LFDKH,1,rank(x.involution - 1)+2, Kpol_hash)
     then unipotents = local_unipotent_classes(x,lambda,Lvd)
     then hts = next_heights(parameter(x,lambda,0*lambda),2)
     then test_count = int:0
@@ -3013,7 +2945,7 @@ set FPP_unitary(RealForm G) = [Param]:
     let () = test_verbose:=false
     in for x in KGB(G)
     do for lambda in FPP_lambdas(x)
-       do local_test_GEO_list(x,lambda)
+       do local_test_GEO_list(x,lambda,spherical_cert_hash)
        od.##
     od.##.reduce
 
@@ -3021,7 +2953,7 @@ set FPP_unitary_back(RealForm G) = [Param]:
     let () = test_verbose:=false
     in for x in KGB(G)
     ~ do for lambda in FPP_lambdas(x)
-       do local_test_GEO_list(x,lambda)
+       do local_test_GEO_list(x,lambda,spherical_cert_hash)
        od.##
     od.##.reduce
 
