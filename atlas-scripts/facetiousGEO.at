@@ -2817,9 +2817,8 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     			       Param_hash Uhash) =
     ([string],[Param]):
-    let G = x.real_form, {first_pass = 2,} pol_hash=make_KTypePol_hash()
+    let G = x.real_form, pol_hash=make_KTypePol_hash()
     then Uhashloc = localize(Uhash,x,lambda)
-    then (Affd,,) = cofolded(G)
     then depth= rank(x.involution -1)
     then hts = next_heights(parameter(x,lambda,0*lambda),depth+2)
     then () = if(facet_verbose) then prints("hts = ",hts) fi
@@ -2830,7 +2829,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     then (testcount1,LFDKHnew) = if #LFDKH[0] < 2
     	      	       then (0,LFDKH#[])
 	      	       else localFD_KHash12(x,lambda,vd,Lvd,Perm,
-				mapAct,LFDKH,hts[1],pol_hash,cert_hash,Uhashloc)
+				mapAct,LFDKH,hts[0],pol_hash,cert_hash,Uhashloc)
 	               fi
     then () = LFDKH:= LFDKHnew
     then () = test_count:=test_count + testcount1
@@ -2846,7 +2845,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     D+2 possibly unitary facets of dim D, then none of dim D+1.}
     	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
                        Perm, mapAct, LFDKH, D+1,D+2,pol_hash)
-		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D+1])
+		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[D])
        	      	 {compute graph on facets to dim D+1}
        		 then statuses = [string]: for j:#eq do "?" od
 		 then known = known_unitaries(Uhashloc,Lvd,LFDKH) {[vec]}
@@ -2857,7 +2856,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
 		 	      od
 	      		   od
                  then (LFDKHnew, test_countnew) = local_testK_level(x,lambda,Lvd,
-                      LFDKH, eq, gr, CLBF, statuses, hts[D+1],
+                      LFDKH, eq, gr, CLBF, statuses, hts[D],
                                        cert_hash, test_count)
 		 then ()= test_count:=test_countnew
 		 then ()= LFDKH:= LFDKHnew

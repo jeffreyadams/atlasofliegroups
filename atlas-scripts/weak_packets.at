@@ -237,7 +237,7 @@ set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     then E7_sc_s_parameters
     elif G = E8_s
     then E8_s_parameters
-    elit G = E8_s
+    elif G = E8_s
     then E8_q_parameters
     else G.weak_packets.parameters
     fi
