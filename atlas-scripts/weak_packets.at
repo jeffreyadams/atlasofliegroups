@@ -11,9 +11,12 @@
 <F4_s_unipotent_representations
 <E6_sc_s_unipotent_representations
 <E6_sc_q_unipotent_representations
-<E7_sc_s_unipotent_representations
-<E8_s_unipotent_representations
-<E8_q_unipotent_representations
+set E7_sc_s_parameters = [Param]:[]
+{<E7_sc_s_unipotent_representations} {REMOVE BRACES TO LOAD}
+set E8_s_parameters = [Param]:[]
+{<E8_s_unipotent_representations} {REMOVE BRACES TO LOAD}
+set E8_q_parameters = [Param]:[]
+{<E8_q_unipotent_representations} {REMOVE BRACES TO LOAD}
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
 
