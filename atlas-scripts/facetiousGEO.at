@@ -1017,7 +1017,10 @@ for v in vd.list
 
 {compute the vertices of the local facet containing the HERMITIAN parameter p}
 set local_vertices(Param p) = FacetVerts:
-    let list = facet_verts(p.real_form, p.infinitesimal_character)
+    let G = p.real_form, gamma = p.infinitesimal_character
+    then (Affd,M,j0) = cofolded(G)
+    then gamma0 = solve(M,gamma).requisition
+    then list = M*facet_verts(Affd, gamma0)
     then vd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,vd)
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
@@ -2242,6 +2245,7 @@ set localFD_KHashbt_lookDown \
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFacet}
+{NEED TO INCLUDE x and lambda and check #LKTs matches on reverse links}
 set localGraphK([[FacetVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     let () = if facet_verbose then prints("start to compute facet graph K")
     	     fi
@@ -2250,6 +2254,7 @@ set localGraphK([[FacetVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
 	 in ((eq,gr), IUCL, classListByFacet)
 
+{NEED TO INCLUDE x and lambda and check #LKTs matches on reverse links}
 set localGraphK([[FacetVertsKHash]] FDKH, KTypePol_hash pol_hash, int level) =
     (GraphData, [vec],[vec]):
     let () = if facet_verbose then prints(new_line,"start to compute facet graph K to level ",level)
@@ -3202,6 +3207,7 @@ set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
     let old_facet_verbose = facet_verbose
     then () = test_verbose:=false
     then () = facet_verbose:=false
+    then () = deform_flag := true
     then () = unipotents_to_hash(G,Uhash)
     in for x in KGB(G)
     ~ do let lambdas = FPP_lambdas(x)
