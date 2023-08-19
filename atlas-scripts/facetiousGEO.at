@@ -134,6 +134,10 @@ set test_verbose = true
 compute also the unitary deformations of these, with bigger LKT's}
 set deform_flag = false
 
+{. If "true," then calculations of unitary reps also compute the K-types
+ needed to certify nonunitarity.}
+set cert_flag = true
+
 {If the distinguished involution delta of G is nontrivial, then all
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
 (h*)^\delta. They are most efficiently calculated not using the affine
@@ -1018,9 +1022,12 @@ for v in vd.list
 {compute the vertices of the local facet containing the HERMITIAN parameter p}
 set local_vertices(Param p) = FacetVerts:
     let G = p.real_form, gamma = p.infinitesimal_character
-    then (Affd,M,j0) = cofolded(G)
-    then gamma0 = solve(M,gamma).requisition
-    then list = M*facet_verts(Affd, gamma0)
+    then list = [ratvec]:
+    	 if is_equal_rank(G) then facet_verts(G, gamma)
+    	 else let (Affd,M,j0) = cofolded(G)
+    	      then gamma0 = solve(M,gamma).requisition
+    	      in M*facet_verts(Affd, gamma0)
+	 fi
     then vd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,vd)
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
@@ -1304,11 +1311,15 @@ set localFD_KHash001 \
 	     else minus_1
 	     fi
 	 od
-    {then known = known_unitaries(UHashloc, Lvd, [for k:#vlistAct do [k] od])[0]}
+    then known = known_unitaries(UHashloc, Lvd, [for k:#vlistAct do [k] od])[0]
     then () = if facet_verbose
              	then prints("examining ", #vlistAct, " facets of dim ",0,
 	       " in construction of local facet list0")
 	     fi
+    then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary_to_ht(p, h, cert_hash)
+    	      else is_unitary_to_ht(p, h)
+	      fi
     then FVK0 = [FacetVertsKHash]:
     	 for v@k in vlistAct
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
@@ -1318,8 +1329,8 @@ set localFD_KHash001 \
 	    let p = parameter(x,lambda,v)
 	    then P = finalize(p)
 	    then ps = monomials(P)
-	    in if {is_member(known)(k) or}
-	       	  all(for p in ps do UHashloc.lookup(p).>= or is_unitary_to_ht(p,h,cert_hash) od)
+	    in if is_member(known)(k) or
+	       	  all(for p in ps do {UHashloc.lookup(p).>= or} tester(p) od)
 	       then let Q = K_type_pol(character_formula(P))
 		{not sure what to do if P is reducible}
 	    	    in [[k, ktp_hash.match(Q)]]
@@ -1672,14 +1683,14 @@ set localFD_KHash11 \
 			    od.## {list of edges from FV}
 			od.## {list of edges from dim FPP facets}
 		 od.## {list of edges from dims 1-4}
-    {then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]}
+    then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]
     then LFKH1 = [FacetVertsKHash]:
     	 for actual@k in Edges
 	 do let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
-	    in if {is_member(known)(k) or}
-	       	  all(for p in monomials(P) do UHashloc.lookup(p).>= or is_unitary_to_ht(p,h) od)
+	    in if is_member(known)(k) or
+	       	  all(for p in monomials(P) do {UHashloc.lookup(p).>= or} is_unitary_to_ht(p,h) od)
 	       then let Q = K_type_pol(character_formula(P))
 	       	    in [actual#ktp_hash.match(Q)]
 	       else []
@@ -1722,11 +1733,15 @@ set localFD_KHash12 \
 	     od.##{list of edges starting at v}
 	  od.## {list of all edges}
 	  fi
-    {then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]}
+    then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]
     then () = if facet_verbose
              	then prints("examining ", #Edges, " facets of dim 1",
 	       " in construction of LFKH1")
 	     fi
+    then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary_to_ht(p, h, cert_hash)
+    	      else is_unitary_to_ht(p, h)
+	      fi
     then LFKH1 = [FacetVertsKHash]:
     	 for actual@k in Edges
 	 do if k%(max(#Edges\50,2))=0 and fund_facet_verbose
@@ -1736,8 +1751,8 @@ set localFD_KHash12 \
 	    let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
-	    in if {is_member(known)(k) or} all(for p in monomials(P) do
-	       UHashloc.lookup(p).>= or is_unitary_to_ht(p,h,cert_hash) od)
+	    in if is_member(known)(k) or all(for p in monomials(P) do
+	       {UHashloc.lookup(p).>= or} tester(p) od)
 	       then let Q = K_type_pol(character_formula(P))
 	       	    in [actual#ktp_hash.match(Q)]
 	       else []
@@ -2622,7 +2637,9 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_to_ht(p, level, cert_hash)
+    	      if (cert_flag) then is_unitary_to_ht(p, level, cert_hash)
+    	      else is_unitary_to_ht(p, level)
+	      fi
     then () = if facet_verbose
     	      then prints(); prints("start local_test_level, "
 	      	   ,NumClasses,
@@ -2650,7 +2667,7 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 		       	  " FB = ",facet_bary(Lvd.list,verts))}
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
-	      	in if{NEWU} all(for p in ps do tester(p) od)
+		  in if{NEWU} all(for p in ps do tester(p) od)
 		   then newStatuses[m]:= "T"
 		   else newStatuses:=
 			   updateNUclassesB(newStatuses, gr, m)
@@ -2664,7 +2681,6 @@ set local_test_level(KGBElt x, ratvec lambda, VertexData Lvd,
 	      ;prints("so far ",cert_hash.size()," non-unitarity K-types")
 	      ; show_very_short(newStatuses)
 	      fi
-
      {make new local facet list using only facets not already proven nonunitary}
      {don't need hash numbers for shifts (last two coords)}
      then LFVKHnew = for @m in LFVKH do [LocalFacetVertsKHash]: [] od
@@ -2692,7 +2708,9 @@ set local_testK_level(KGBElt x, ratvec lambda, VertexData vd,
     let newStatuses = statuses, NumClasses = #eq
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_to_ht(p, level, cert_hash)
+    	      if (cert_flag) then is_unitary_to_ht(p, level, cert_hash)
+    	      else is_unitary_to_ht(p, level)
+	      fi
     then () = if facet_verbose
     	      then prints(); prints("start local_testK_level, "
 	      	   ,NumClasses,
@@ -2800,7 +2818,10 @@ set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
 			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 		     fi
 	       od
-     then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
+     then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary_test(p, hts~[0], cert_hash)
+    	      else is_unitary_test(p, hts~[0])
+	      fi
      in local_test(x,lambda,Lvd, LFDKH,eq,gr,CLBF,newStatuses,tester,test_count)
 
 set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
@@ -2858,7 +2879,10 @@ set local_testK_levels_B(KGBElt x, ratvec lambda, KTypePol_hash cert_hash) =
 			  IUCL[CLBF[0][k]], CLBF[0][k],"Tunip"##to_string(m))
 		     fi
 	       od
-    then tester = (Param->bool): (Param p) bool: is_unitary(p, cert_hash)
+     then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary(p, cert_hash)
+    	      else is_unitary(p)
+	      fi
     in local_test(x,lambda,Lvd,
     	      LFDKH,eq,gr,CLBF,statuses,tester,test_count)
 
@@ -3006,9 +3030,12 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
 			       		  CLBF[d][m],"TprevKnown")
 		 od
 	      od
-     then tester = (Param->bool): (Param p) bool: is_unitary(p,cert_hash)
-    in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary(p,cert_hash)") fi;
+     then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary(p, cert_hash)
+    	      else is_unitary(p)
+	      fi
+     in if(facet_verbose) then prints();
+       prints("setting tester = is_unitary(p{,cert_hash})") fi;
        local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,
 			Uhash, tester,test_count)
 
@@ -3022,7 +3049,7 @@ set local_test_GEO_hashes(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     then () = if(facet_verbose) then prints("hts = ",hts) fi
     {make sure verts are unitary to hts[0]}
     then (test_count, vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,
-    	 	      	  		hts[0],pol_hash,cert_hash,Uhashloc)
+    	 	      	       	     	     	    hts[0],pol_hash,cert_hash,Uhashloc)
     {next add edges, still unitary_to_ht}
     then (testcount1,LFDKHnew) = if #LFDKH[0] < 2
     	      	       then (0,LFDKH#[])
@@ -3073,9 +3100,12 @@ set local_test_GEO_hashes(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
 			       		  CLBF[d][m],"TprevKnown")
 		 od
 	      od
-     then tester = (Param->bool): (Param p) bool: is_unitary(p,cert_hash)
+    then tester = (Param->bool): (Param p) bool:
+    	      if (cert_flag) then is_unitary(p, cert_hash)
+    	      else is_unitary(p)
+	      fi
     in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary(p,cert_hash)") fi;
+       prints("setting tester = is_unitary(p{,cert_hash})") fi;
        local_test_hashes(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,
 			Uhashes, tester,test_count)
 
@@ -3207,7 +3237,8 @@ set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
     let old_facet_verbose = facet_verbose
     then () = test_verbose:=false
     then () = facet_verbose:=false
-    then () = deform_flag := true
+    {then () = deform_flag :=true}
+    then () = cert_flag:=false
     then () = unipotents_to_hash(G,Uhash)
     in for x in KGB(G)
     ~ do let lambdas = FPP_lambdas(x)
@@ -3225,6 +3256,7 @@ set FPP_unitary_hashes(RealForm G,[Param_hash] Uhashes) = void:
     then () = test_verbose:=false
     then () = facet_verbose:=false
     then () = deform_flag :=true
+    then () = cert_flag := false
     then () = unipotents_to_hashes(G,Uhashes)
     in for x in KGB(G)
     ~ do let lambdas = FPP_lambdas(x)
