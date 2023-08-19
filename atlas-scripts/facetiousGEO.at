@@ -1304,7 +1304,7 @@ set localFD_KHash001 \
 	     else minus_1
 	     fi
 	 od
-    then known = known_unitaries(UHashloc, Lvd, [for k:#vlistAct do [k] od])[0]
+    {then known = known_unitaries(UHashloc, Lvd, [for k:#vlistAct do [k] od])[0]}
     then () = if facet_verbose
              	then prints("examining ", #vlistAct, " facets of dim ",0,
 	       " in construction of local facet list0")
@@ -1318,8 +1318,8 @@ set localFD_KHash001 \
 	    let p = parameter(x,lambda,v)
 	    then P = finalize(p)
 	    then ps = monomials(P)
-	    in if is_member(known)(k) or
-	       	  all(for p in ps do is_unitary_to_ht(p,h,cert_hash) od)
+	    in if {is_member(known)(k) or}
+	       	  all(for p in ps do UHashloc.lookup(p).>= or is_unitary_to_ht(p,h,cert_hash) od)
 	       then let Q = K_type_pol(character_formula(P))
 		{not sure what to do if P is reducible}
 	    	    in [[k, ktp_hash.match(Q)]]
@@ -1672,14 +1672,14 @@ set localFD_KHash11 \
 			    od.## {list of edges from FV}
 			od.## {list of edges from dim FPP facets}
 		 od.## {list of edges from dims 1-4}
-    then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]
-     then LFKH1 = [FacetVertsKHash]:
+    {then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]}
+    then LFKH1 = [FacetVertsKHash]:
     	 for actual@k in Edges
 	 do let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
-	    in if is_member(known)(k) or
-	       	  all(for p in monomials(P) do is_unitary_to_ht(p,h) od)
+	    in if {is_member(known)(k) or}
+	       	  all(for p in monomials(P) do UHashloc.lookup(p).>= or is_unitary_to_ht(p,h) od)
 	       then let Q = K_type_pol(character_formula(P))
 	       	    in [actual#ktp_hash.match(Q)]
 	       else []
@@ -1722,7 +1722,7 @@ set localFD_KHash12 \
 	     od.##{list of edges starting at v}
 	  od.## {list of all edges}
 	  fi
-    then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]
+    {then known = known_unitaries(UHashloc, Lvd, LFKH#Edges)[1]}
     then () = if facet_verbose
              	then prints("examining ", #Edges, " facets of dim 1",
 	       " in construction of LFKH1")
@@ -1736,8 +1736,8 @@ set localFD_KHash12 \
 	    let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
-	    in if is_member(known)(k) or all(for p in monomials(P) do
-	       is_unitary_to_ht(p,h,cert_hash) od)
+	    in if {is_member(known)(k) or} all(for p in monomials(P) do
+	       UHashloc.lookup(p).>= or is_unitary_to_ht(p,h,cert_hash) od)
 	       then let Q = K_type_pol(character_formula(P))
 	       	    in [actual#ktp_hash.match(Q)]
 	       else []
@@ -3022,7 +3022,7 @@ set local_test_GEO_hashes(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     then () = if(facet_verbose) then prints("hts = ",hts) fi
     {make sure verts are unitary to hts[0]}
     then (test_count, vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash001(x,lambda,
-					hts[0],pol_hash,cert_hash,Uhashloc)
+    	 	      	  		hts[0],pol_hash,cert_hash,Uhashloc)
     {next add edges, still unitary_to_ht}
     then (testcount1,LFDKHnew) = if #LFDKH[0] < 2
     	      	       then (0,LFDKH#[])
