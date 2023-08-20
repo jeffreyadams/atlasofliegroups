@@ -2611,13 +2611,13 @@ set local_test_hashes(KGBElt x, ratvec lambda, VertexData Lvd,
 	      fi
 	    od.##
        then () = if deform_flag
-      	      	then for p in UParams
-      	      	     do for p1 in monomials(finalize(p))
-			do let (,j) = %p1.x in Uhashes[j].match(herm_center(p1));
-			   for q in face_deformed_unitaries_new(p1)
-		   	   do let (,j) = %q.x in Uhashes[j].match(q)
-		   	   od
-			od
+       	       	 then for p in UParams
+      	    	      do for p1 in monomials(finalize(p))
+	       	      	 do let (,j) = %p1.x in Uhashes[j].match(herm_center(p1));
+		   	    for q in face_deformed_unitaries_new(p1)
+		   	    do let (,j) = %q.x in Uhashes[j].match(q)
+		   	    od
+			 od
 		      od
 		 fi
       in  (statuses,UParams)
@@ -3233,22 +3233,13 @@ set FPP_unitary_back(RealForm G) = [Param]:
        od.##
     od.##.reduce
 
-set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
-    let old_facet_verbose = facet_verbose
-    then () = test_verbose:=false
-    then () = facet_verbose:=false
-    {then () = deform_flag :=true}
-    then () = cert_flag:=false
-    then () = unipotents_to_hash(G,Uhash)
-    in for x in KGB(G)
-    ~ do let lambdas = FPP_lambdas(x)
-      	 in if(old_facet_verbose) then prints("starting KGBElt #",
-      	 		       let (,m) = %x in m, ", #Uhash = ",
-			       #Uhash, ", #lambdas = ", #lambdas) fi;
-	 for lambda in FPP_lambdas(x)
-       	 do local_test_GEO_hash(x,lambda,Uhash)
-       	 od
-      od
+{load a bunch of Param_hash's into one}
+set transfer([Param_hash] Us, Param_hash target) = void:
+    for U in Us
+    do for j:U.size(0)
+       do target.match(U.index(j))
+       od
+    od
 
 {one unitary hash for each KGBElt}
 set FPP_unitary_hashes(RealForm G,[Param_hash] Uhashes) = void:
@@ -3268,6 +3259,10 @@ set FPP_unitary_hashes(RealForm G,[Param_hash] Uhashes) = void:
        	 od
       od
 
+set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
+    let Uhashes = for x in KGB(G) do make_Param_hash() od
+    then () = FPP_unitary_hashes(G,Uhashes)
+    in transfer(Uhashes,Uhash)
 
 {
 { lists item d of answer is a list of facets of unitary spherical
