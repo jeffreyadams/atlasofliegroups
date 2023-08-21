@@ -8,15 +8,14 @@
 <cells.at { for |parameters_given_AV_infinitesimal_character|, |cells_verbose| }
 <Vogan-dual.at { for |is_dual_Aq| }
 <L_packet.at {for stable_sums_irr_mat}
-<F4_s_unipotent_representations
-<E6_sc_s_unipotent_representations
-<E6_sc_q_unipotent_representations
-set E7_sc_s_parameters = [Param]:[]
-{<E7_sc_s_unipotent_representations} {REMOVE BRACES TO LOAD}
-set E8_s_parameters = [Param]:[]
-{<E8_s_unipotent_representations} {REMOVE BRACES TO LOAD}
-set E8_q_parameters = [Param]:[]
-{<E8_q_unipotent_representations} {REMOVE BRACES TO LOAD}
+<F4_s_unipdata
+<E6_sc_s_unipdata
+<E6_sc_q_unipdata
+<E7_sc_q_unipdata
+<E7_sc_h_unipdata
+<E7_sc_s_unipdata
+<E8_s_unipdata
+<E8_q_unipdata
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
 
@@ -231,17 +230,21 @@ set blocks([[(int,int,Param)]] packets) =[int]:sort_u(##for i:#packets do for (b
 
 set unipotent_representations(RealForm G)=[Param]: {G.weak_packets.parameters}
     if G = F4_s
-    then F4_s_parameters
+    then for (x,lambda,nu) in F4_s_data do parameter(G,x,lambda,nu) od
     elif G = E6_s
-    then E6_sc_s_parameters
+    then for (x,lambda,nu) in E6_sc_s_data do parameter(G,x,lambda,nu) od
     elif G = E6_q
-    then E6_sc_q_parameters
+    then for (x,lambda,nu) in E6_sc_q_data do parameter(G,x,lambda,nu) od
     elif G = E7_s
-    then E7_sc_s_parameters
+    then for (x,lambda,nu) in E7_sc_s_data do parameter(G,x,lambda,nu) od
+    elif G = E7_q
+    then for (x,lambda,nu) in E7_sc_q_data do parameter(G,x,lambda,nu) od
+    elif G = E7_h
+    then for (x,lambda,nu) in E7_sc_h_data do parameter(G,x,lambda,nu) od
     elif G = E8_s
-    then E8_s_parameters
-    elif G = E8_s
-    then E8_q_parameters
+    then for (x,lambda,nu) in E8_s_data do parameter(G,x,lambda,nu) od
+    elif G = E8_q
+    then for (x,lambda,nu) in E8_q_data do parameter(G,x,lambda,nu) od
     else G.weak_packets.parameters
     fi
 
