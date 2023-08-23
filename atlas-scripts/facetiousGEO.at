@@ -3298,6 +3298,11 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
     then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash(x,lambda, localize(Uhash,x,lambda))
 
+set local_test_GEO_old(KGBElt x, ratvec lambda) = ([string],[Param]):
+    let Uhash = make_Param_hash()
+    then () = unipotents_to_hash(x.real_form,Uhash)
+    in local_test_GEO_hash_old(x,lambda,localize(Uhash,x,lambda))
+
 set local_test_GEO_list(KGBElt x, ratvec lambda) = [Param]:
     let (,list) = local_test_GEO(x,lambda) in list
 
@@ -3348,6 +3353,10 @@ set sphericalK_levels_B(RealForm G) = ([string],[Param]):
 
 set spherical_GEO(RealForm G) = ([string],[Param]):
     local_test_GEO(x_open(G),G.rho)
+
+set spherical_GEO_old(RealForm G) = ([string],[Param]):
+    local_test_GEO_old(x_open(G),G.rho)
+
 
 {next functions aim to compute FULL spherical dual in non-split case, when several
  different x give spherical reps}
@@ -3465,12 +3474,14 @@ set FPP_unitary_hashes(RealForm G,[Param_hash] Uhashes) = void:
 set FPP_unitary_hash_old(RealForm G,Param_hash Uhash) = void:
     let Uhashes = for x in KGB(G) do make_Param_hash() od
     then () = FPP_unitary_hashes_old(G,Uhashes)
-    in transfer(Uhashes,Uhash)
+    in transfer(Uhashes,Uhash); prints("Number of FPP-unitary facets = ",
+    #Uhash)
 
 set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
     let Uhashes = for x in KGB(G) do make_Param_hash() od
     then () = FPP_unitary_hashes(G,Uhashes)
-    in transfer(Uhashes,Uhash)
+    in transfer(Uhashes,Uhash); prints("Number of FPP-unitary facets = ",
+    #Uhash)
 
 {
 { lists item d of answer is a list of facets of unitary spherical
