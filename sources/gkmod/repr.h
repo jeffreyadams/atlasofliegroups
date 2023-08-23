@@ -578,6 +578,8 @@ class Rep_table : public Rep_context
     KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
+  SR_poly KL_column_at_s_to_height (StandardRepr p, level height_bound);
+
 #if 0 // this would now require an actual |delta|-fixed |gamma| to be supplied
   size_t find_reduced_hash(const StandardReprMod& srm) const
   { block_modifier bm;

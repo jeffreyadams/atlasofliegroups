@@ -2068,7 +2068,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
       assert(it->second.is_zero()); // |queue| cannot have non final parameter
       result.erase(it); // drop term; |it| now points to next term
     }
-  result.reverse(); // we shall need to travers elements downwards in |block|
+  result.reverse(); // we shall need to traverse elements downwards in |block|
 
   // viewed from |block|, the |kl_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
@@ -2155,6 +2155,61 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
   return result;
 } // |Rep_table::KL_column_at_s|
+
+SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
+{
+  BlockElt z; block_modifier bm;
+  auto& block = lookup_full_block(p,z,bm); // also makes |p| dominant
+
+  const auto& gamma = p.gamma();
+  assert(is_dominant_ratweight(root_datum(),gamma));
+  auto dual_block = blocks::Bare_block::dual(block);
+  kl::KL_table& kl_tab = dual_block.kl_tab(nullptr,1);
+  // create KL table only minimally filled
+
+  // now fill remainder up to height; prepare for restriction to this subset
+  BitMap retained(block.size());
+
+  for (BlockElt x=0; x<block.size(); ++x)
+  { StandardRepr q = sr(block.representative(x),bm,gamma);
+    if (not retained.set_to(x,q.height()<=height_bound))
+      kl_tab.plug_hole(block.size()-1-x); // not interested in this parameter
+  }
+  kl_tab.fill(); // fill whole table; we might go beyond |size()-1-start|
+
+  const RankFlags singular = block.singular(bm,gamma); // singular simple coroots
+  for (auto elt: retained) // don't increment |it| here
+    if (not block.survives(elt,singular))
+      retained.remove(elt); // at the dual (Q) side we just ignore non-finals
+
+  matrix::Vector<Split_integer> value_at_s;
+  value_at_s.reserve(kl_tab.pol_store().size());
+  for (auto& entry : kl_tab.pol_store())
+  { Split_integer val (0);
+    for (unsigned d=entry.size(); d-->0;)
+      val.times_s() += static_cast<int>(entry[d]); // Horner evaluate at s
+    value_at_s.push_back(val);
+  }
+
+
+  // viewed from |block|, the |kl_tab| is lower triangular
+  // build its transpose, restricted to |retained|, and evaluated at $q=-1$
+  matrix::Matrix<Split_integer> Q_mat (retained.size()); // initialise identity
+  unsigned int i=0,j;
+  unsigned int const top=block.size()-1;
+  for (auto it=retained.begin(); it(); ++it,++i)
+    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+      Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
+
+  auto signed_P = matrix::inverse_triangular<true>(Q_mat);
+  // with signs in place, the alternating sum is obtained without any effort
+
+  SR_poly result;
+  for (const BlockElt x : retained)
+    result.add_term(block.sr(x,bm,gamma),signed_P(x,z));
+
+  return result;
+} // |Rep_table::KL_column_at_s_to_height|
 
 // compute and return column of KL table for final parameter |sr|
 simple_list<std::pair<BlockElt,kl::KLPol> >
