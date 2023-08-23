@@ -1476,39 +1476,39 @@ qKhatContext::saturate(const std::set<q_equation>& system, level bound)
 } // |qKhatContext::saturate|
 
 
-matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
+matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
  (std::set<equation>& eq_set,
   level bound,
   std::vector<seq_no>& new_order,
-  matrix::Matrix_base<CharCoeff>* direct_p
+  matrix::Matrix<CharCoeff>* direct_p
   )
 {
   std::vector<equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
+  matrix::Matrix<CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix<CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
-  return inverse_lower_triangular(m);
+  return matrix::inverse_triangular<false>(m);
 
 } // |KhatContext::K_type_matrix|
 
-matrix::Matrix_base<q_CharCoeff> qKhatContext::K_type_matrix
+matrix::Matrix<q_CharCoeff> qKhatContext::K_type_matrix
  (std::set<q_equation>& eq_set,
   level bound,
   std::vector<seq_no>& new_order,
-  matrix::Matrix_base<q_CharCoeff>* direct_p
+  matrix::Matrix<q_CharCoeff>* direct_p
   )
 {
   std::vector<q_equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<q_CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<q_CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
+  matrix::Matrix<q_CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix<q_CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
-  return inverse_lower_triangular(m);
+  return matrix::inverse_triangular<false>(m);
 
 } // |qKhatContext::K_type_matrix|
 
@@ -1771,40 +1771,9 @@ template <typename C>
   return result;
 } // |triangularize|
 
-template <typename C>
-  matrix::Matrix_base<C> inverse_lower_triangular
-    (const matrix::Matrix_base<C>& L)
-{
-  size_t n=L.n_columns();
-  if (L.n_rows()!=n)
-    throw std::runtime_error ("invert triangular: matrix is not square");
-
-  matrix::Matrix_base<C> result(n,n,C(0));
-
-  for (size_t i=0; i<n; ++i)
-  {
-    if (L(i,i)!=C(1))
-      throw std::runtime_error ("invert triangular: not unitriangular");
-    result(i,i)=C(1);
-
-    for (size_t j=i; j-->0; )
-    {
-      C sum= C(0);
-      for (size_t k=i; k>j; --k) // $j<k\leq i$
-	sum += result(i,k)*L(k,j);
-      result(i,j) = -sum;
-    }
-  }
-  return result;
-}
-
 template
   matrix::Matrix_base<Polynomial<int> > triangularize
     (const std::vector<q_equation>& eq, std::vector<seq_no>& new_order);
-
-template
-  matrix::Matrix_base<Polynomial<int> > inverse_lower_triangular
-    (const matrix::Matrix_base<Polynomial<int> >& L);
 
 } // |namespace standardrepk|
 
