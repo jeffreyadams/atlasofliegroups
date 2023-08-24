@@ -613,8 +613,8 @@ ext_block::ext_block
   , KL_ptr(nullptr)
   , diagram(block.Dynkin().folded(orbits))
 {
-  const auto& ic = block.inner_class();
 #ifndef NDEBUG
+  const auto& ic = block.inner_class();
   {
     int_Matrix M = ic.cofolded_datum().action_matrix(ic.cofolded_W().word(bm.w));
     int_Matrix Dp = delta + 1, Dm = delta-1;

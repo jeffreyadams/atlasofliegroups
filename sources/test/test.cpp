@@ -531,11 +531,11 @@ void Ktypemat_f()
   std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-  matrix::Matrix_base<standardrepk::CharCoeff> m;
-  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::CharCoeff> m;
+  matrix::Matrix<standardrepk::CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
@@ -640,11 +640,11 @@ void qKtypemat_f()
   std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-  matrix::Matrix_base<standardrepk::q_CharCoeff> m;
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::q_CharCoeff> m;
+  matrix::Matrix<standardrepk::q_CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::q_CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
