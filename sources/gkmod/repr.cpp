@@ -2158,6 +2158,9 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
 SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 {
+  normalise(p); // implies that |p| it will appear at the top of its own block
+  assert(is_final(p));
+
   BlockElt z; block_modifier bm;
   auto& block = lookup_full_block(p,z,bm); // also makes |p| dominant
 
@@ -2182,6 +2185,8 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
     if (not block.survives(elt,singular))
       retained.remove(elt); // at the dual (Q) side we just ignore non-finals
 
+  assert(retained.isMember(z)); // since |p| was final
+
   matrix::Vector<Split_integer> value_at_s;
   value_at_s.reserve(kl_tab.pol_store().size());
   for (auto& entry : kl_tab.pol_store())
@@ -2195,31 +2200,29 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
   // viewed from |block|, the |kl_tab| is lower triangular
   // build its transpose, restricted to |retained|, and evaluated at $q=-1$
   matrix::Matrix<Split_integer> Q_mat (retained.size()); // initialise identity
-  unsigned int i=0,j;
-  unsigned int const top=block.size()-1;
-  for (auto it=retained.begin(); it(); ++it,++i)
-    for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
-      Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
+  { unsigned int i=0,j; unsigned int const top=block.size()-1;
+    for (auto it=retained.begin(); it(); ++it,++i)
+      for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
+	Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
+  }
 
   auto signed_P = matrix::inverse_triangular<true>(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
   SR_poly result;
-  for (const BlockElt x : retained)
-    result.add_term(block.sr(x,bm,gamma),signed_P(x,z));
+  { const unsigned int j = retained.position(z); // final column
+    auto it = retained.begin();
+    for (unsigned int i=0; i<=j; ++i,++it)
+      result.add_term(block.sr(*it,bm,gamma),signed_P(i,j));
+  }
 
   return result;
 } // |Rep_table::KL_column_at_s_to_height|
 
-// compute and return column of KL table for final parameter |sr|
+// maybe compute and return column of KL table for block element |z|
 simple_list<std::pair<BlockElt,kl::KLPol> >
-  Rep_table::KL_column(StandardRepr sr) // |sr| must be final
+  Rep_table::KL_column(common_block& block, BlockElt z)
 {
-  assert(is_final(sr));
-
-  BlockElt z; block_modifier bm;
-  auto& block = lookup(sr,z,bm);
-
   const kl::KL_table& kl_tab =
     block.kl_tab(&KL_poly_hash,z+1); // fill silently up to |z|
 

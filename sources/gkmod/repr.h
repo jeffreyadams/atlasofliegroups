@@ -575,7 +575,7 @@ class Rep_table : public Rep_context
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   simple_list<std::pair<BlockElt,kl::KLPol> >
-    KL_column(StandardRepr z); // by value
+    KL_column(common_block& block, BlockElt z);
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly KL_column_at_s_to_height (StandardRepr p, level height_bound);

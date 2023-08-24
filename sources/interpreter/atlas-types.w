@@ -8098,6 +8098,11 @@ Returning two parts can be helpful in understanding the details of the
 deformation, but in practice the deformed terms are probably to be added back to
 the accumulator after which another block is deformed.
 
+The method |Rep_table::block_deformation_to_height| does the work inside the
+block, but leaves post-deformation parameters of the block in its result; to
+avoid that these should get deformed again, we slide them down here to the next
+deformation point in the direction of $\nu=0$.
+
 @s SR_poly vector
 
 @< Local function def...@>=
@@ -8109,11 +8114,12 @@ void block_deform_wrapper(expression_base::level l)
     return;
 @)
   SR_poly result;
+  repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
   if (not p->rc().nu(p->val).is_zero())
   {
-    auto deformed = p->rt().block_deformation_to_height @|
-      (p->val,accumulator->val
-      ,bound>=0 ? static_cast<repr::level>(bound) : repr::level(-1));
+    auto deformed =
+      p->rt().block_deformation_to_height (p->val,accumulator->val,limit);
     for (const auto& term : deformed)
     { auto rps = p->rc().reducibility_points(term.first);
       auto i =
@@ -8186,8 +8192,11 @@ computes
 $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
-There are in fact two variants, of this function an ordinary one and one using
-twisted KLV polynomials, computed for the inner class involution.
+There are in fact two kinds for this function: an ordinary one and one using
+twisted KLV polynomials, computed for the inner class involution. In addition,
+the first kind has a variant that limits its output to those parameter whose
+height does not exceed a given limit, and which can therefore in many cases be
+more efficient in producing those terms.
 
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
@@ -8197,6 +8206,17 @@ void KL_sum_at_s_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
+}
+void KL_sum_at_s_to_ht_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  repr::level limit = bound>=0 ? bound : -1;
+    // negative becomes maximal unsigned value
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<virtual_module_value>@|
+      (p->rf,p->rt().KL_column_at_s_to_height(p->val,limit)));
 }
 @)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
@@ -8213,7 +8233,10 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
 }
 
-@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial
+@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial; no
+evaluation at |s| is performed. The computation necessary, and storage of the
+result, will be performed automatically by the method |Rep_table::KL_column| if
+it was not already done before.
 
 @< Local function def...@>=
 void KL_column_wrapper(expression_base::level l)
@@ -8223,10 +8246,10 @@ void KL_column_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto col = p->rt().KL_column(p->val);
   BlockElt z;
   repr::block_modifier bm;
-  const blocks::common_block& block = p->rt().lookup(p->val,z,bm);
+  blocks::common_block& block = p->rt().lookup(p->val,z,bm);
+  auto col = p->rt().KL_column(block,z);
   own_row column = std::make_shared<row_value>(0);
   column->val.reserve(length(col));
   for (auto it=col.wcbegin(); not col.at_end(it); ++it)
@@ -8400,6 +8423,8 @@ install_function(full_deform_wrapper,@|"full_deform","(Param->KTypePol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->KTypePol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
+install_function(KL_sum_at_s_to_ht_wrapper,@|"KL_sum_at_s_to_height"
+		,"(Param,int->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
 install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");

@@ -1054,10 +1054,10 @@ block_deform: (Param,ParamPol,int->ParamPol,ParamPol): deform whole block
   deformation terms from this parameter (which are of course multiplied by the
   coefficient of the term it came from) are added to the ones remaining to be
   processed (they are lower in the block). Once all terms are deformed, the
-  post-deformation terms are added to form the first ParamPol of the output
-  (these should be moved down to the next reducibility point towards nu=0 when
-  full deformation is to be done), while the terms of the ParamPol argument that
-  were not extracted for deformation are returned as the second argument.
+  post-deformation terms are added to form the first ParamPol of the output,
+  after having been moved down to the next reducibility point towards nu=0 if
+  any, or else having set nu=0; the terms of the ParamPol argument that were not
+  extracted for deformation are returned as the second argument.
 
 full_deform: (Param->KTypePol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
@@ -1078,8 +1078,17 @@ KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
   the first index of the polynomial, P(x,y) the polynomial itself as a vector of
   coefficients (by increasing degree), and n is the number in its block of x.
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
-  Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
+  Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]*x where y is the block
   element of the parameter, and the sum is over other block elements x.
+KL_sum_at_s_to_height: (Param,int->ParamPol): truncated version of KL_sum_at_s
+  Computes the terms in \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]*x where
+  x runs over block elements of height at most limit; here y is the block
+  element of the first argument and limit the second argument. When the number
+  of terms is significantly restricted by the height limit, this may be more
+  efficient than using KL_sum_at_s and truncating the result. When limit is
+  negative no truncation is done, and this function should give the same result
+  as KL_sum_at_s; yet the implementation remains different (via a dual block).
+
 twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
   (the twist is for the distinguished involution) instead of ordinary KLV
