@@ -157,7 +157,7 @@ class SubSystemWithGroup : public SubSystem
 struct integral_datum_entry // hashable (integral) subset of positive roots
 {
   // a set of poscoroots indexes posroots from 0, capacity |numPosRoots()|
-  RootNbrSet posroots; // a subset of positive system of |ic.cofolded_datum()|
+  RootNbrSet posroots; // a subset of positive system of |ic.root_datum()|
 
   integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
 
