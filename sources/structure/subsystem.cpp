@@ -191,7 +191,7 @@ SubSystem integral_datum_item::int_system(const WeylElt& w) const
 
 sl_list<RootNbr> integral_datum_item::image_simples(const WeylElt& w) const
 {
-  WeylWord ww = ic.Weyl_group().word(ic.unfold(w));
+  WeylWord ww = ic.Weyl_group().word(w);
   sl_list<RootNbr> result;
 
   const auto& rd = ic.root_datum();

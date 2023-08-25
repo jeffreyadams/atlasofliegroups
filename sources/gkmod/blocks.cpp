@@ -711,7 +711,6 @@ RankFlags common_block::singular (const RatWeight& gamma) const
 RankFlags common_block::singular
   (const repr::block_modifier& bm, const RatWeight& gamma) const
 {
-  assert(inner_class().is_delta_fixed(gamma));
   RankFlags result;
   auto is = simply_ints(bm);
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -1276,7 +1275,7 @@ repr::StandardRepr common_block::sr
 RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 {
 #if 1 // original implementation
-  auto ww = rc.Weyl_group().word(inner_class().unfold(bm.w));
+  auto ww = rc.Weyl_group().word(bm.w);
   RootNbrList result; result.reserve(simply_integrals.size());
   for (auto alpha : simply_integrals)
     result.push_back(root_datum().permuted_root(ww,alpha));
@@ -1441,8 +1440,8 @@ void common_block::swallow
 
 #if 0
   const auto& ic = rc.inner_class();
-  const auto& rd = ic.cofolded_datum();
-  const auto& W = ic.cofolded_W();
+  const auto& rd = ic.root_datum();
+  const auto& W = ic.Weyl_group();
   const auto& delta = ic.distinguished();
 
   for (auto& data : sub.extended)
@@ -1453,7 +1452,7 @@ void common_block::swallow
     assert(sub.is_integral_orthogonal(bm.shift));
     block_shift += bm.shift;
     assert(ic.is_delta_fixed(block_shift));
-    assert(W.conjugate(rd,bm.w,delta)==delta); // for every |cofolded_W| element
+    assert(W.conjugate(rd,bm.w,delta)==delta); // we need commutation here
     rd.act(W.word(bm.w),block_shift); // make shift in "our" attitude
     assert(is_integral_orthogonal(block_shift));
     auto& eblock = // find/create |ext_block|

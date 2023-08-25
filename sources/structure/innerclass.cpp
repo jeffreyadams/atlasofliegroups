@@ -1116,17 +1116,15 @@ InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
 subsystem::integral_datum_item& InnerClass::int_item
   (RatWeight gamma, repr::locator& loc)
 {
-  assert(is_delta_fixed(gamma));
-  const auto& rd = root_datum(); // we need full datum as well as cofolded one
-  const auto& cofd = cofolded_datum(); // used for alcoves and attitudes
-  const auto& W = cofolded_W();
+  const auto& rd = root_datum();
+  const auto& W = Weyl_group();
 
   // start by moving |gamma| closer to origin: into |W| orbit of fundam. alcove
-  gamma -= weyl::root_vertex_of_alcove(cofd,gamma);
+  gamma -= weyl::root_vertex_of_alcove(rd,gamma);
 
-  const auto ww = cofd.factor_dominant(gamma.numerator());
+  const auto ww = rd.factor_dominant(gamma.numerator());
 
-  // now |gamma| is in the fundamental alcove for |cofd|, hence also for |rd|
+  // now |gamma| is in the fundamental alcove for |rd|
   // first find the set of integral coroots (for |rd|) of our FA |gamma|
   RootNbrSet on_wall_subset (rd.numRoots()); // we shall just test each FA wall
   for (RootNbr alpha : rd.fundamental_alcove_walls())
@@ -1139,10 +1137,10 @@ subsystem::integral_datum_item& InnerClass::int_item
   assert(loc.w==WeylElt()); // start out with identity
   for (auto it=ww.crbegin(); it!=ww.crend(); ++it) // traverse rtl, as applied
     { weyl::Generator s=*it;
-      if (gamma.dot_Q(cofd.simpleCoroot(s)).denominator()!=1) // skip integrals
+      if (gamma.dot_Q(rd.simpleCoroot(s)).denominator()!=1) // skip integrals
       {
 	W.left_multiply(loc.w,s); // incorporate into |loc.w|
-	cofd.simple_reflect(s,gamma.numerator()); // integrality may change
+	rd.simple_reflect(s,gamma.numerator()); // integrality may change
       }
     }
 
@@ -1164,7 +1162,7 @@ subsystem::integral_datum_item& InnerClass::int_item
   loc.simple_pi.reserve(int_sys.rank());
   sl_list<RootNbr> images;
   RootNbrSet im_set(rd.numRoots());
-  { auto ww = Weyl_group().word(unfold(loc.w)); // now a word for |rd|
+  { auto ww = Weyl_group().word(loc.w);
     for (RootNbr alpha : int_sys.simple_roots())
       { auto beta = rd.permuted_root(ww,alpha);
 	assert(rd.is_posroot(beta)); // |loc.w| perserves integral positivity
@@ -1172,6 +1170,7 @@ subsystem::integral_datum_item& InnerClass::int_item
       }
     assert(im_set.size()==int_sys.rank());
   }
+  assert(im_set.size()==int_sys.rank());
 
   // following is marginally faster than |(loc.simp_int=images).sort()|
   loc.simp_int.assign(im_set.begin(),im_set.end());
@@ -1193,6 +1192,7 @@ repr::codec InnerClass::integrality_codec
   return repr::codec(*this,inv,coroot_mat);
 }
 
+#if 0 // see if the folloing are still used; they shouldn't
 // map root (number) from |root_datum()| to its |cofolded_datum()| counterpart
 RootNbr InnerClass::folded_root(RootNbr alpha) const
 {
@@ -1219,6 +1219,7 @@ WeylElt InnerClass::unfold(const WeylElt& w) const // embed into $W^\delta$
 
   return result;
 }
+#endif
 
 
 /*****************************************************************************

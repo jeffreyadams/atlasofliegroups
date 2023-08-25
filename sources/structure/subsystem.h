@@ -188,7 +188,7 @@ class integral_datum_item
   {}
 
   const SubSystem& int_system () const { return int_sys; }
-  SubSystem int_system (const WeylElt& w) const; // interpret |w| in cofolded |W|
+  SubSystem int_system (const WeylElt& w) const; // image by |w| in |Weyl_group|
 
   // root indices of images by |w| of integrally-simple coroots; must be positive
   sl_list<RootNbr> image_simples (const WeylElt& w) const; // again |w| in |W|

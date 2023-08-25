@@ -220,7 +220,7 @@ class Rep_context
   const WeylGroup& Weyl_group() const
     { return twisted_Weyl_group().Weyl_group(); }
   const TwistedWeylGroup& twisted_Weyl_group() const { return twisted_W; }
-  const WeylGroup& cofolded_W() const { return inner_class().cofolded_W(); }
+  // const WeylGroup& cofolded_W() const { return inner_class().cofolded_W(); }
   const KGB& kgb() const { return KGB_set; }
   RealReductiveGroup& real_group() const { return G; }
   const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
@@ -488,7 +488,7 @@ public:
 struct locator
 {
   unsigned int int_sys_nr; // sequence number for integral system in inner class
-  WeylElt w; // in cofolded |W|; apply to fundamental alcove integral system
+  WeylElt w; // in |Weyl_group|; apply to fundamental alcove integral system
   sl_list<RootNbr> simp_int; // image simply integral roots in increasing order
   Permutation simple_pi; // to transform integral system simple generators by
 };

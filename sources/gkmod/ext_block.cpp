@@ -616,7 +616,7 @@ ext_block::ext_block
 #ifndef NDEBUG
   const auto& ic = block.inner_class();
   {
-    int_Matrix M = ic.cofolded_datum().action_matrix(ic.cofolded_W().word(bm.w));
+    int_Matrix M = ic.root_datum().action_matrix(ic.Weyl_group().word(bm.w));
     int_Matrix Dp = delta + 1, Dm = delta-1;
     assert ((Dm * M * Dp).is_zero()); // commutation |delta|, |M| on image |Dp|
   }

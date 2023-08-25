@@ -111,7 +111,6 @@ Reduced_param Reduced_param::reduce
   (const Rep_context& rc, StandardReprMod srm, const RatWeight& gamma,
    locator& loc)
 { // below |int_item| must set |loc| before argument to |transform| is evaluated
-  // |assert(ic.is_delta_fixed(gamma));| will be asserted inside |ic.int_item|
   InnerClass& ic = rc.inner_class();
   const auto& integral = ic.int_item(gamma,loc); // sets |loc|
   rc.transform<true>(loc.w,srm);
@@ -340,7 +339,7 @@ void Rep_context::make_relative_to // adapt information in |bm| relative to rest
 (const locator& loc, const StandardReprMod& srm0,
  block_modifier& bm, StandardReprMod srm1) const
 {
-  const auto& W = cofolded_W();
+  const auto& W = Weyl_group();
   W.mult(bm.w, W.inverse(loc.w));
 
   compose(bm.simple_pi,Permutation(loc.simple_pi,-1));
@@ -711,45 +710,45 @@ StandardRepr Rep_context::scale(StandardRepr z, const RatNum& f) const
 
 
 template <bool left_to_right> void Rep_context::transform
-  (const WeylElt& w, StandardReprMod& srm) const // here |w| is for |cofolded_W|
+  (const WeylElt& w, StandardReprMod& srm) const // here |w| is for |Weyl_group|
 {
-  const auto& ic = inner_class();
   const auto& rd = root_datum(); // actions below use unfolded letters
   const auto& kgb = this->kgb();
   KGBElt& x = srm.x_part;
   auto& gln = srm.gamlam.numerator();
   const auto den = srm.gamlam.denominator();
   if (left_to_right)
-    for (weyl::Generator g : ic.cofolded_W().word(w))
-      for (weyl::Generator s : ic.unfold(g).w_kappa)
-	switch (kgb.status(s,x))
-	{
-	case gradings::Status::Complex:
-	  x = kgb.cross(s,x);
-	  rd.simple_reflect(s,gln);
-	  break;
-	case gradings::Status::Real:
-	  rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
-	  break;
-	default: // |s| is an imaginary root; we will not cope with that here
-	  throw std::runtime_error("Bad Weyl group element SRM transform");
-	}
+    for (weyl::Generator s : Weyl_group().word(w))
+      switch (kgb.status(s,x))
+      {
+      case gradings::Status::Complex:
+	x = kgb.cross(s,x);
+	rd.simple_reflect(s,gln);
+	break;
+      case gradings::Status::Real:
+	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	break;
+      default: // |s| is an imaginary root; we will not cope with that here
+	throw std::runtime_error("Bad Weyl group element SRM transform");
+      }
   else
-  { auto ww = ic.cofolded_W().word(w);
+  { auto ww = Weyl_group().word(w);
     for (unsigned i=ww.size(); i-->0; )
-      for (weyl::Generator s : ic.unfold(ww[i]).w_kappa)
-	switch (kgb.status(s,x))
-	{
-	case gradings::Status::Complex:
-	  x = kgb.cross(s,x);
-	  rd.simple_reflect(s,gln);
-	  break;
-	case gradings::Status::Real:
-	  rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
-	  break;
-	default: // |s| is an imaginary root; we will not cope with that here
-	  throw std::runtime_error("Bad Weyl group element SRM transform");
-	}
+    {
+      weyl::Generator s = ww[i];
+      switch (kgb.status(s,x))
+      {
+      case gradings::Status::Complex:
+	x = kgb.cross(s,x);
+	rd.simple_reflect(s,gln);
+	break;
+      case gradings::Status::Real:
+	rd.simple_reflect(s,gln,den); // affine act with center in $-\rho_R$
+	break;
+      default: // |s| is an imaginary root; we will not cope with that here
+	throw std::runtime_error("Bad Weyl group element SRM transform");
+      }
+    }
   }
   involution_table().real_unique(kgb.inv_nr(x),srm.gamlam); // normalise
 } // |Rep_context::transform|
