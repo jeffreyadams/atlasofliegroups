@@ -975,3 +975,20 @@ set L_infinitesimal_character ([int] Levi, Param p)=ratvec:
    let theta=involution(p.x) then P=Parabolic:(Levi,p.x) in
    ((1+theta)*lambda(p)+(1-theta)*nu(p))/2-rho_u(P)
 
+set compatible_parabolics (KGBElt x)=[Parabolic]:
+   let G=real_form(x)
+   then tsp=theta_stable_parabolics(G)
+   in ##for P in tsp do if find(equivalence_class_of(P),x)>-1 then [P]
+                        else []
+			fi
+	             od
+
+set x_lambdas_for_levis (KGBElt x,ratvec lambda)=[(KGBElt,ratvec)]:
+   let G=real_form(x), levis=##for P in compatible_parabolics(x)
+                               do if Levi(P)=G then []
+			          else [Levi(P)]
+				  fi
+			       od
+   in for L in levis
+      do (inverse_embed_KGB(x,L),lambda-rho(G)+rho(L)) od
+
