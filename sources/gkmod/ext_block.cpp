@@ -650,9 +650,11 @@ ext_block::ext_block
 	  std::swap(orbit.s0,orbit.s1); // keep each orbit sorted
       }
     opi.permute(data);
+#if 0  // this is not needed: no flips are set yet
     for (auto& item : info)
       opi.permute_bits(item.flips[0]),
 	opi.permute_bits(item.flips[1]);
+#endif
   }
 
   if (not tune_signs(block,cofolded_bm,delta))
@@ -1705,8 +1707,8 @@ bool ext_block::tune_signs
    const WeightInvolution& delta)
 {
   repr::Ext_rep_context ctxt (block.context(),delta);
-  const RootNbrList simply_ints = // effective simply integrals
-    bm.simp_int.to_vector();
+  const RootNbrList simply_ints = // numbers of simply integral coroots,
+    bm.simp_int.to_vector(); // |simp_int| is always in increasing order
   containers::sl_list<ext_param> links;
   for (BlockElt n=0; n<size(); ++n)
   { BlockElt z=this->z(n); // element number in |block|

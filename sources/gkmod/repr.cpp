@@ -2363,10 +2363,16 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   auto& block = lookup(sr,y0,bm);
   auto& eblock = block.extended_block(bm,&poly_hash);
 
-  RankFlags singular_orbits; // flag singulars among orbits
-  { const RankFlags simple_is_singular =  block.singular(bm,sr.gamma());
-    for (weyl::Generator s=0; s<eblock.rank(); ++s)
-      singular_orbits.set(s,simple_is_singular[eblock.orbit(s).s0]);
+  RankFlags singular_orbits; // flag singulars among orbits for |eblock|
+  { // the components |s0|, |s1| in said orbits index transformed simply int set
+    RankFlags simple_is_singular; // so using |block.singular| is wrong here
+    const RootDatum& rd = root_datum();
+    const auto& num = sr.gamma().numerator();
+    unsigned int s=0; // runs over simply integral indices of transformed |block|
+    for (RootNbr alpha : bm.simp_int) // these are in increasing order
+      simple_is_singular.set(s++,rd.coroot(alpha).dot(num)==0);
+    singular_orbits = // fold singularity information to |eblock| generators
+      ext_block::reduce_to(eblock.folded_generators(),simple_is_singular);
   }
 
   const BlockElt y = eblock.element(y0);
@@ -2587,6 +2593,16 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto& eblock = block.extended_block(bm,&poly_hash);
 
     RankFlags singular_orbits; // flag singulars among orbits
+    { // those orbits' components |s0|, |s1| index transformed simply int set
+      RankFlags simple_is_singular; // so using |block.singular| is wrong here
+      const RootDatum& rd = root_datum();
+      const auto& num = zi.gamma().numerator();
+      unsigned int s=0; // runs over transformed |block| simply integral indices
+      for (RootNbr alpha : bm.simp_int) // these are in increasing order
+	simple_is_singular.set(s++,rd.coroot(alpha).dot(num)==0);
+      singular_orbits = // fold singularity information to |eblock| generators
+	ext_block::reduce_to(eblock.folded_generators(),simple_is_singular);
+    }
     { RankFlags simple_is_singular = block.singular(bm,zi.gamma());
       // which simply integrals of |block| are integral at |inv(bm.w)*zui.gamma|
       Permutation inv(bm.simple_pi,-1);
