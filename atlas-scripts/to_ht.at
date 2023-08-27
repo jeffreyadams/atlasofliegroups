@@ -1,10 +1,12 @@
 <basic.at
 <hermitian.at
 <convert_c_form.at
+<count.at {for use counter}
 {preferred to_ht(ParamPol,int)}
 {Turns out the "preferred" versions are significantly slower almost
 always; don't understand why. So switch to "old" versions as standard,
 labelling others as "new"}
+
 set herm_report = bool: false
 
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
@@ -148,14 +150,18 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht (Param p,int N) = bool:
+  unitary_test_counter.use();
   p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_old (Param p,int N) = bool:
+  unitary_test_counter.use();
   p.is_hermitian and hermitian_form_irreducible_to_ht_old(p,N).is_pure
 
 { compute Hermitian form to ht on p, report if it is unitary,
   and record certificate }
 set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
+  unitary_test_counter.use();
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
   p,N), cert_hash)
