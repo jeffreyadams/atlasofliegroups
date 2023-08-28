@@ -2890,6 +2890,74 @@ set local_testK(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]] FVKH
      	       	  for list in FVKHnew do #list od) fi}
      in  (FVKHnew,test_count)
 
+{meant to test candidate classes to (new) height |level|; delete from LFVKH
+ the facets established to be nonunitary in this way. Output is new shorter
+ list of candidate facets}
+set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]] FVKH,
+    [[int]] eq, [[int]] gr, [vec] classListByFacet, [string] statuses,
+    (Param -> bool) tester, [Param_hash] Uhashes) = [[FacetVertsKHash]]:
+    let newStatuses = statuses, NumClasses = #eq
+    	, printInterval = int: 1
+    then QclassNums = for k:#eq do if statuses[k] = "?" then [k] else [] fi od.##
+    then () = if facet_verbose
+    then prints(); prints("start local_testK_level, ",#QclassNums,
+		   " undetermined equiv classes of facets to dim ",#FVKH-1)
+	      ; show_short(newStatuses)
+	      ; prints()
+	      fi
+	      ; for k@m in QclassNums
+    	      ~do
+	      if facet_verbose and
+	      	 ((#QclassNums-m-1)%printInterval = 0)
+	      then prints("examining undet equiv class #"
+	      ,#QclassNums-m -1, "; so far ",unitary_test_counter.use_count()
+	      ," 'is_unitary' tests.")
+	      {; show_very_short(newStatuses)}
+	      ; printInterval := 2*printInterval
+	      fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+		  {then ()=prints("C = ",C)}
+	      	  then (d,j) = coords(FVKH,C[0])
+	      	  then verts = vec: FVKH[d][j][:d+1]
+		  {then () = prints("(d,j) = (",d,",",j,"), verts = ",verts,
+		       	  " FB = ",facet_bary(Lvd.list,verts))}
+	      	  then ps = monomials(finalize(parameter(x, lambda
+		    	  , facet_bary(vd.list, verts))))
+	          in if{NEWU} all(for p in ps do let (,j1) = %p.x
+					       in Uhashes[j1].lookup(p).>= or
+					       tester(p) od)
+		     then newStatuses[k]:= "T"
+		     else newStatuses:=
+			   updateNUclassesB(newStatuses, gr, k)
+		     ; newStatuses[k] := "F"
+		     fi{NEWU}
+	         fi
+	      od
+     then() = if(test_verbose)
+     	      then prints(new_line,"total tests = ",unitary_test_counter.use_count(),
+	      " to dim = ",#FVKH-1{,"; about to create new facet list"})
+	      {; show_very_short(newStatuses)}
+       	      fi
+     {make new local facet list using only facets not already proven nonunitary}
+     then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
+          then () = for C@m in eq do if newStatuses[m][0] = "T"
+     	     	     	      	then for k in C
+			      	   do let (d,j) = coords(FVKH,k)
+				      in FVKHnew[d] :=
+				      (FVKHnew[d] next FVKHnew[d]:=[])
+				      #FVKH[d][j]
+				   od
+			         fi
+			      od
+     {then () = if test_verbose then prints("facet counts to dim ",#FVKHnew - 1, " = ",
+     	       	  for list in FVKHnew do #list od) fi}
+     in  FVKHnew
+
+
+
+
+
 {depth needs to be at least 1}
 set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     int depth) = ([string],[Param]):
@@ -3144,14 +3212,14 @@ set local_test_GEO_hashes_old(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
 
 set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     [Param]:
-    let (G,j0) = %x, pol_hash=make_KTypePol_hash()
-    then Uhashloc = localize(Uhashes[j0],lambda), S = [string]:[], L = [Param]:[]
-    {then depth= rank(x.involution -1)}
-    then hts = next_heights(parameter(x,lambda,0*lambda),2)
+    let G = x.real_form, pol_hash=make_KTypePol_hash()
+    then ht = next_height(parameter(x,lambda,0*lambda))
     then tester = (Param->bool): (Param p) bool:
     	      { if (cert_flag) then is_unitary_test(p, ht, cert_hash)
-    	      else} {is_unitary(p)} is_unitary_test(p,hts[1])
+    	      else} is_unitary(p) {is_unitary_test(p,hts[1])}
 	      {fi}
+    then tester1 = (Param->bool): (Param p) bool:
+    	 is_unitary_to_ht(p,ht)
     {get all verts}
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x, lambda, pol_hash)
     then () = if test_verbose then prints("facet counts to dim 0: ",[#LFDKH[0]]) fi
@@ -3164,43 +3232,28 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     {now have all local facets of dims 0 and 1.}
     then () =  if test_verbose then prints("facet counts to dim 1:",
 			  for list in LFDKH do #list od) fi
-       	      	 {compute graph on facets to dim 1, to ht}
-		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[0])
-       		 then statuses = [string]: for j:#eq do "?" od
-		 then known = known_unitaries(Uhashloc,Lvd,LFDKH) {[vec]}
-    		 then () = for d:#LFDKH
-	      	     	   do for m in known[d]
-	         	      do statuses:= downdateUclasses(statuses,
-			     	IUCL[CLBF[d][m]], CLBF[d][m],"TprevKnown")
-		 	      od
-	      		   od
-		 {compute is_unitary on facets of dim up to 1, to_ht ht}
-                 then (LFDKHnew,) = local_testK_level(x,lambda,Lvd,
-                      LFDKH, eq, gr, CLBF, statuses,hts[0], 0)
-    		 then () =  if test_verbose then prints("unitary to ht ",hts[0],
-		      " counts to dim 1:", for list in LFDKHnew do #list od) fi
-
-		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKHnew)
-       		 then statuses = [string]: for j:#eq do "?" od
-		 then known = known_unitaries(Uhashloc,Lvd,LFDKHnew) {[vec]}
-    		 then () = for d:#LFDKHnew
-	      	     	   do for m in known[d]
-	         	      do statuses:= downdateUclasses(statuses,
-			     	IUCL[CLBF[d][m]], CLBF[d][m],"TprevKnown")
-		 	      od
-	      		   od
-                 then (LFDKH,) = local_testK(x,lambda,Lvd,
-                      LFDKHnew, eq, gr, CLBF, statuses,tester, 0)
-		  {all UNITARY through dim 1; these were already unitary to hts[0], so
-		  used to_ht(hts[1])}
-		 then () = if test_verbose then prints("unitary facet counts to dim 1: ",
+    then () = if rank(x.involution - 1) > 1 {j0 > #KGB(G)\2}
+	{compute graph on facets to dim 1, to ht}
+    	      then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht)
+    	      	   then statuses = [string]: for j:#eq do "?" od
+		 {remove from LFDKH all facets failing is_unitary_to_ht(h)}
+    		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
+		      gr, CLBF, statuses, tester1, Uhashes)
+    		   in if test_verbose then prints("unitary to ht ",ht,
+		      " counts to dim 1:", for list in LFDKH do #list od) fi
+	       fi
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then statuses = [string]: for j:#eq do "?" od
+    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, statuses,tester,Uhashes)
+	{all UNITARY through dim 1; these were already unitary to ht}
+    then () = if test_verbose then prints("unitary facet counts to dim 1: ",
 		 for list in LFDKH do #list od) fi
     then D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
     {can't omit middle because LFDKH is truncated!}
-    {step D in while loop adds facets of dim D+1; then does is_unitary_to_ht on
+    {step D in while loop adds facets of dim D+1; then does is_unitary on
     facets of dim D+1; then adds facets of dim D+2, etc. If there are less than
     D+2 possibly unitary facets of dim D, then none of dim D+1.}
     	      do let () = LFDKH := localFD_KHashbt_lookDownGEO(x,lambda,vd, Lvd,
@@ -3218,12 +3271,15 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
 		      do if #eq[j] > 1
 		      	 then [LFDKH[D+1][m]]
 		         else let verts = vec: LFDKH[D+1][m][:D+2]
-			      {then () = test_count:=test_count+1}
+			      {should insert Uhashloc.lookup(p).>=
+			      Actually this has no effect in SO(4,4)}
 			      then ps = monomials(finalize(
 					  parameter(x, lambda,
 					  facet_bary(Lvd.list, verts))))
 					  in if all(for p in ps
-					     	    do is_unitary(p){tester(p)}
+					     	    do let (,j1) = %p.x
+						       in Uhashes[j1].lookup(p).>= or
+						       is_unitary(p){tester(p)}
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -3246,7 +3302,7 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
 	    do for v@j in L
 	       do parameter(x,lambda, facet_bary(Lvd.list,v[:d+1]))
 	       od
-	    od.##
+	    od.## {could omit ## to get output lists indexed by local facet dimension}
     then () = if deform_flag
        	      then for p in UParams
       	    	   do for p1 in monomials(finalize(p))
