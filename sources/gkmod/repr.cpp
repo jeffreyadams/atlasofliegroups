@@ -1398,7 +1398,15 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 }
 
-//				|block_modifier| method
+//				|block_modifier| methods
+
+block_modifier::block_modifier (const common_block& b)
+{
+  int_sys_nr = -1; // for local use only; no |common_context|, |Reduced_param|
+  clear(b.rank(), b.root_datum().rank()); // set |w|, |simple_pi|
+  const auto simply_ints = b.simply_ints();
+  simp_int.assign(simply_ints.begin(),simply_ints.end()); // convert to list
+}
 
 // when a block is relative to itself, we remove all modifiations
 void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)

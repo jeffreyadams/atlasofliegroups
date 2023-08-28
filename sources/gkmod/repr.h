@@ -496,6 +496,8 @@ struct locator
 struct block_modifier : public locator
 {
   RatWeight shift; // add this one field
+  block_modifier () = default;
+  block_modifier (const common_block& b); // construct trivial modifier
   void clear (unsigned int block_rank, unsigned int datum_rank);
 };
 
