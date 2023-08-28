@@ -206,6 +206,11 @@ std::ostream& print_stdrep
 	     << ",nu=" << rc.nu(val) << ')';
 }
 
+std::ostream& print_stdrep_mod
+  (std::ostream& out,const StandardReprMod& val, const Rep_context& rc)
+{ return out << "SRM(x=" << val.x() << ", gamma-lambda=" << val.gamma_lambda() << ')';
+}
+
 std::ostream& print_SR_poly
   (std::ostream& out,const SR_poly& val, const Rep_context& rc)
 { if (val.empty())

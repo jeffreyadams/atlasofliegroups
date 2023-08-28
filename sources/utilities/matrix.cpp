@@ -136,7 +136,7 @@ Vector<C>& Vector<C>::negate ()
 }
 
 template<typename C>
-  bool Vector<C>::isZero() const
+  bool Vector<C>::is_zero() const
 {
   for (auto it=base::begin(); it!=base::end(); ++it)
     if (*it!=C(0))
@@ -417,7 +417,47 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
   return *this;
 }
 
+template <bool upper,typename C>
+  Matrix<C> inverse_triangular (const Matrix<C>& M)
+{
+  size_t n=M.n_columns();
+  if (M.n_rows()!=n)
+    throw std::runtime_error ("invert triangular: matrix is not square");
 
+  matrix::Matrix_base<C> result(n,n,C(0));
+
+  if (upper)
+    for (size_t j=0; j<n; ++j)
+    {
+      if (M(j,j)!=C(1))
+	throw std::runtime_error ("invert triangular: not unitriangular");
+      result(j,j)=C(1);
+
+      for (size_t i=j; i-->0; )
+      {
+	C sum= C(0);
+	for (size_t k=j; k>i; --k) // $j<k\leq i$
+	  sum += M(i,k)*result(k,j);
+	result(i,j) = -sum;
+      }
+    }
+  else // lower
+    for (size_t i=0; i<n; ++i)
+    {
+      if (M(i,i)!=C(1))
+	throw std::runtime_error ("invert triangular: not unitriangular");
+      result(i,i)=C(1);
+
+      for (size_t j=i; j-->0; )
+      {
+	C sum= C(0);
+	for (size_t k=i; k>j; --k) // $j<k\leq i$
+	  sum += result(i,k)*M(k,j);
+	result(i,j) = -sum;
+      }
+    }
+  return result;
+}
 
 template<typename C>
 PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
@@ -590,16 +630,23 @@ void Matrix_base<C>::eraseColumn(index_t j)
 
 namespace matrix {
 
-  /*
+// Instantiation of (class) templates (only these instances are generated)
 
-    Instantiation of class templates (only these class instances are generated)
-
-  */
-
- // type abbreviations used in these instantiations
+// type abbreviations used in these instantiations
 using Num = long long; // maybe |arithmetic::Numer_t Num|
-typedef polynomials::Polynomial<int> Pol;
-typedef arithmetic::big_int bigint;
+using Split = arithmetic::Split_integer;
+using bigint = arithmetic::big_int;
+
+using Pol= polynomials::Polynomial<int>;
+
+template // used in standardrepk.cpp
+matrix::Matrix<Pol> inverse_triangular<false> (const matrix::Matrix<Pol>& M);
+template
+matrix::Matrix<long> inverse_triangular<false> (const matrix::Matrix<long>& M);
+template // used in repr.cpp
+matrix::Matrix<Split> inverse_triangular<true> (const matrix::Matrix<Split>& M);
+
+
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data

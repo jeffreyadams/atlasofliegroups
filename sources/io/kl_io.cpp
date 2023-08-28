@@ -61,7 +61,7 @@ std::ostream& printAllKL
 
     for (size_t x = 0; x <= y; ++x) {
       const kl::KLPol& pol = kl_tab.KL_pol(x,y);
-      if (pol.isZero())
+      if (pol.is_zero())
 	continue;
       if (first)
       {
@@ -118,7 +118,7 @@ std::ostream& printPrimitiveKL
       if (Bruhat.lesseq(x,y))
       {
 	++count;
-	if ((kl_tab.KL_pol(x,y).isZero()))
+	if ((kl_tab.KL_pol(x,y).is_zero()))
 	  ++zero_count;
 	if (first)
 	  first = false, strm << std::setw(width) << x << ": ";
@@ -130,7 +130,7 @@ std::ostream& printPrimitiveKL
       }
       else
       {
-	assert(kl_tab.KL_pol(x,y).isZero());
+	assert(kl_tab.KL_pol(x,y).is_zero());
 	++incomp_count;
       } // |for (j)|
 
@@ -161,7 +161,7 @@ std::ostream& printKLList(std::ostream& strm, const kl::KL_table& kl_tab)
   for (kl::KLIndex i=0; i<store.size(); ++i)
   {
     const kl::KLPol& r=store[i];
-    if (not r.isZero()) polList.push_back(r);
+    if (not r.is_zero()) polList.push_back(r);
   }
 
   std::sort(polList.begin(),polList.end(),polynomials::compare<kl::KLCoeff>);
