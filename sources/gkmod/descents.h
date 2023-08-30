@@ -16,6 +16,8 @@
 
 #include <cstring>
 
+#include "permutations.h"
+
 namespace atlas {
 namespace descents {
 
@@ -48,22 +50,6 @@ class DescentStatus
   static constexpr auto DirectRecursionMask = 0x5u; // bits 0 and 2 set
 
  public:
-  static bool isDescent(Value v) { return (v & DescentMask)!=0; }
-  static bool isDirectRecursion(Value v)
-    { return (v & DirectRecursionMask) == DirectRecursionMask; }
-  static Value dual(Value v) // corresponding status in dual block
-    { static const Value d[] =
-	{ ComplexDescent, ImaginaryCompact, RealTypeII, RealTypeI,
-	  RealNonparity, ComplexAscent, ImaginaryTypeI, ImaginaryTypeII };
-      return d[v];
-    }
-  DescentStatus dual(unsigned int rank) const
-  { DescentStatus result;
-    for (unsigned int i=0; i<rank; ++i)
-      result.d_data[i]=dual(static_cast<Value>(d_data[i]));
-    return result;
-  }
-
 // constructors and destructors
   DescentStatus() { // sets statuses of all simple roots to 0 (ComplexAscent)
     std::memset(d_data,0,constants::RANK_MAX);
@@ -81,6 +67,17 @@ class DescentStatus
     return *this;
   }
 
+// static methods
+  static bool isDescent(Value v) { return (v & DescentMask)!=0; }
+  static bool isDirectRecursion(Value v)
+    { return (v & DirectRecursionMask) == DirectRecursionMask; }
+  static Value dual(Value v) // corresponding status in dual block
+    { static const Value d[] =
+	{ ComplexDescent, ImaginaryCompact, RealTypeII, RealTypeI,
+	  RealNonparity, ComplexAscent, ImaginaryTypeI, ImaginaryTypeII };
+      return d[v];
+    }
+
 // accessors
 
 // Return descent status of simple root \#s.
@@ -93,6 +90,20 @@ class DescentStatus
 
   bool operator!= (const DescentStatus& other) const
   { return not ((*this)==other); }
+
+  DescentStatus dual(unsigned int rank) const
+  { DescentStatus result;
+    for (unsigned int i=0; i<rank; ++i)
+      result.d_data[i]=dual(static_cast<Value>(d_data[i]));
+    return result;
+  }
+
+  DescentStatus permuted(const Permutation& simple_pi) const
+  { DescentStatus result;
+    for (unsigned int i=0; i<simple_pi.size(); ++i)
+      result.d_data[simple_pi[i]] = d_data[i];
+    return result;
+  }
 
 // manipulators
 

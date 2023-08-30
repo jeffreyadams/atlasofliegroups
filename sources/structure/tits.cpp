@@ -85,10 +85,10 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 
 GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
-  , prd(G.rootDatum(),tags::DualTag()) // viewed from the dual side
+  , prd(G.root_datum(),tags::DualTag()) // viewed from the dual side
   , delta_tr(G.distinguished().transposed())
   , alpha_v()
-  , half_rho_v(G.rootDatum().dual_twoRho(),4)
+  , half_rho_v(G.root_datum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
 {
   alpha_v.reserve(G.semisimple_rank());
@@ -101,7 +101,7 @@ WeightInvolution
 {
   WeightInvolution M = delta_tr;
   M.negate(); // we need the involution |-^delta| corresponding to |delta|
-  weylGroup().act(prd,tw,M); // twisted involution, so left action is OK
+  Weyl_group().act(prd,tw,M); // twisted involution, so left action is OK
   return M;
 }
 
@@ -116,7 +116,7 @@ TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 TorusElement GlobalTitsGroup::dual_twisted(const TorusElement& x) const
 {
   RatWeight rw = x.log_pi(false);
-  const WeylGroup& W = weylGroup();
+  const WeylGroup& W = Weyl_group();
   W.act(prd,W.longest(),rw);
   return y_values::exp_pi(RatWeight(delta_tr*-rw.numerator(),
 				    rw.denominator()));
@@ -126,7 +126,7 @@ TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { RatWeight rw = a.torus_part().log_pi(false);
   RatWeight delta_rw(delta_tr*rw.numerator(),rw.denominator());
-  weylGroup().act(prd,a.tw(),delta_rw);
+  Weyl_group().act(prd,a.tw(),delta_rw);
   return y_values::exp_pi(delta_rw);
 }
 
@@ -318,7 +318,7 @@ namespace {
 std::vector<Grading> compute_square_classes
   (const InnerClass& G)
 {
-  const RootDatum& rd = G.rootDatum();
+  const RootDatum& rd = G.root_datum();
   const WeightInvolution& delta = G.distinguished();
   const weyl::Twist& twist = G.twistedWeylGroup().twist();
 
@@ -433,7 +433,7 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
 */
 TorusPart TitsGroup::push_across(TorusPart x, const WeylElt& w) const
 {
-  WeylWord ww=weylGroup().word(w);
+  WeylWord ww=Weyl_group().word(w);
 
   for (size_t i = 0; i < ww.size(); ++i)
     reflect(x,ww[i]);
@@ -444,7 +444,7 @@ TorusPart TitsGroup::push_across(TorusPart x, const WeylElt& w) const
 // find torus part $x'$ so that $w.x=x'.w$; inverse to |push_across|
 TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
 {
-  WeylWord ww=weylGroup().word(w);
+  WeylWord ww=Weyl_group().word(w);
   for (size_t i=ww.size(); i-->0; )
     reflect(x,ww[i]);
   return x;
@@ -469,14 +469,14 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
 void TitsGroup::sigma_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().left_multiply(a.d_w,s)<0) // on length decrease
+  if (Weyl_group().left_multiply(a.d_w,s)<0) // on length decrease
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
 void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
 {
   reflect(a.d_t,s); // commute (left) torus part with $\sigma_s$
-  if (weylGroup().left_multiply(a.d_w,s)>0) // on length increase
+  if (Weyl_group().left_multiply(a.d_w,s)>0) // on length increase
     left_add(d_simpleCoroot[s],a);     // adjust torus part
 }
 
@@ -492,13 +492,13 @@ void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
 void TitsGroup::mult_sigma(TitsElt& a, weyl::Generator s) const
 {
 // |WeylGroup::mult| multiplies $w$ by $s$, returns sign of the length change
-  if (weylGroup().mult(a.d_w,s)<0)  // on length decrease adjust torus part
+  if (Weyl_group().mult(a.d_w,s)<0)  // on length decrease adjust torus part
     right_add(a,d_simpleCoroot[s]);
 }
 
 void TitsGroup::mult_sigma_inv(TitsElt& a, weyl::Generator s) const
 {
-  if (weylGroup().mult(a.d_w,s)>0) // on length increase adjust torus part
+  if (Weyl_group().mult(a.d_w,s)>0) // on length increase adjust torus part
     right_add(a,d_simpleCoroot[s]);
 }
 
@@ -513,7 +513,7 @@ void TitsGroup::mult_sigma_inv(TitsElt& a, weyl::Generator s) const
 */
 TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
 {
-  WeylWord ww=weylGroup().word(a.w());
+  WeylWord ww=Weyl_group().word(a.w());
 
   // first incorporate the Weyl group part
   for (size_t i = ww.size(); i-->0; )
@@ -555,20 +555,20 @@ TitsGroup::involutionMatrix(const WeylWord& ww) const
 
 TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
   : my_Tits_group(nullptr) // no ownership in this case
-  , Tg(G.titsGroup())
+  , Tg(G.Tits_group())
   , grading_offset(base_grading)
-  , rs(G.rootDatum())
+  , rs(G.root_datum())
 {
 }
 
 // Based Tits group for the adjoint group
 TitsCoset::TitsCoset(const InnerClass& G)
-  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix(),
-				      G.weylGroup(),
+  : my_Tits_group(new TitsGroup(G.root_datum().Cartan_matrix(),
+				      G.Weyl_group(),
 				      G.twistedWeylGroup().twist()))
   , Tg(*my_Tits_group)
   , grading_offset()
-  , rs(G.rootDatum())
+  , rs(G.root_datum())
 { // make all imaginary simple roots noncompact
   for (unsigned i=0; i<G.semisimple_rank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
@@ -576,12 +576,12 @@ TitsCoset::TitsCoset(const InnerClass& G)
 
 // Based Tits group for the adjoint dual group
 TitsCoset::TitsCoset(const InnerClass& G,tags::DualTag)
-  : my_Tits_group(new TitsGroup(G.rootDatum().Cartan_matrix().transposed(),
-				      G.weylGroup(),
+  : my_Tits_group(new TitsGroup(G.root_datum().Cartan_matrix().transposed(),
+				      G.Weyl_group(),
 				      G.twistedWeylGroup().dual_twist()))
   , Tg(*my_Tits_group)
   , grading_offset()
-  , rs(G.dualRootDatum())
+  , rs(G.dual_root_datum())
 { // make all imaginary simple roots noncompact
   for (unsigned i=0; i<G.semisimple_rank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
@@ -756,14 +756,14 @@ EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
 TitsElt EnrichedTitsGroup::backtrack_seed
   (const InnerClass& G, RealFormNbr rf, size_t cn) const
 {
-  const TitsGroup& Tgr= titsGroup();
+  const TitsGroup& Tgr= Tits_group();
   // a name chosen to avoid warnings about shadowing (the inaccessible) |Tg|
 
   const TwistedInvolution& tw=G.involution_of_Cartan(cn);
 
   RootNbrSet rset;
   WeylWord cross;
-  innerclass::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
+  innerclass::Cayley_and_cross_part(rset,cross,tw,G.root_datum(),Tgr);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
@@ -774,7 +774,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   RootNbrList Cayley(rset.begin(),rset.end()); // convert to |RootNbrList|
 
   for (auto it=Cayley.begin(); it!=Cayley.end(); ++it)
-    *it = G.rootDatum().permuted_root(cross,*it);
+    *it = G.root_datum().permuted_root(cross,*it);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying Cayley transforms in the strongly orthogonal set |Cayley|, and
@@ -797,7 +797,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
 	  goto again; // none of the |Cayley[i]| should be compact
 
       // if we get here, |t| is OK as torus part
-      result = TitsElt(titsGroup(),t); // pure torus part
+      result = TitsElt(Tits_group(),t); // pure torus part
       goto found;
     again: {}
     }

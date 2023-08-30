@@ -148,10 +148,6 @@ class KLSupport
   BlockElt primitivize (BlockElt x, RankFlags desc_y) const;
 
   void fill_prim_index(RankFlags A);
-
-#ifndef NDEBUG
-  void check_sub(const KLSupport& sub, const BlockEltList& embed);
-#endif
 };
 
 } // |namespace klsupport|

@@ -18,6 +18,7 @@
 
 #include "tags.h"
 
+#include "sl_list.h" // for inlining |integrality_rank|
 #include "bitset.h" // for ascent and descent sets
 #include "matrix.h" // for loads of subobjects
 #include "permutations.h" // for storing root permutations
@@ -45,7 +46,7 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 
 void toDistinguished(WeightInvolution&, const RootDatum&);
 
-/* Transform each element ow |Delta| under $W$ until all are posroot numbers
+/* Transform each element of |Delta| under $W$ until all are posroot numbers
    Return for each step: index at which negroot was found, and reflection index.
    List is in order so that the reflections transform original |Delta| into the
    final one (which is the order in which the pairs were found).
@@ -77,19 +78,22 @@ WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 // set of posroot indices of coroots integral on |gamma|
 RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma);
 // the (posiive) simple generators of the above, but as full root set indices
-RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma);
+sl_list<RootNbr>
+  integrality_simples(const RootDatum& rd, const RatWeight& gamma);
+inline unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
+  { return integrality_simples(rd,gamma).size(); }
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 RatNumList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 
-// involution of the Dynkin diagram for |rd| define by distinguished |delta|
+// involution of the Dynkin diagram for |rd| defined by distinguished |delta|
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 // orbits of that involution on the nodes (simple reflections) of the diagram
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
-ext_gens fold_orbits
+ext_gens fold_orbits // here |roots| is basis of subsystem to be |delta|-folded
   (const RootDatum& rd, const RootNbrList& roots, const WeightInvolution& delta);
+RootDatum cofold (const RootDatum& rd, const ext_gens& orbits);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);
@@ -179,13 +183,18 @@ public:
   explicit RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co=false);
 
   RootSystem(const RootSystem& rs, tags::DualTag);
+  RootSystem(RootSystem&&) = default;
+protected:
+  RootSystem(const RootSystem&) = default;
 
+public:
 // accessors
 
   // |rank| will be renamed |semisimple_rank| when part of |RootDatum|
-  RootNbr rank() const { return rk; }
-  RootNbr numPosRoots() const { return ri.size(); }
-  RootNbr numRoots() const { return 2*numPosRoots(); }
+  // the following methods widen to |unsigned int| which is possibly faster
+  unsigned int rank() const { return rk; }
+  unsigned int numPosRoots() const { return ri.size(); }
+  unsigned int numRoots() const { return 2*numPosRoots(); }
   bool prefer_coroots() const { return prefer_co; }
   LieType type() const; // no central torus factors possible here
 
@@ -428,7 +437,24 @@ class RootDatum
 
   RootDatum(const RootDatum&, tags::DualTag);
 
-  RootDatum(const RootDatum&) = delete;
+private:
+  RootDatum(const RootDatum& rd)
+    : RootSystem(rd) // slice |RootSystem|
+    , d_rank(rd.d_rank)
+    , d_roots(rd.d_roots)
+    , d_coroots(rd.d_coroots)
+    , weight_numer(rd.weight_numer)
+    , coweight_numer(rd.coweight_numer)
+    , d_radicalBasis(rd.d_radicalBasis)
+    , d_coradicalBasis(rd.d_coradicalBasis)
+    , d_2rho(rd.d_2rho)
+    , d_dual_2rho(rd.d_dual_2rho)
+    , d_status(rd.d_status)
+  {}
+
+public:
+  RootDatum copy() const // if you really need to duplicate, call this method
+  { return RootDatum(*this); }
   RootDatum(RootDatum&&) = default;
 
 #if 0 // (co)derived constructors no longer used, done at |PreRootData| level now
@@ -437,16 +463,15 @@ class RootDatum
 #endif
 
   // build |PreRootDatum| with as simple roots/coroots those from |generators|
-  PreRootDatum sub_predatum(const RootNbrList& generators) const;
+  PreRootDatum sub_predatum(const sl_list<RootNbr>& generators) const;
 
 // accessors
 
   const RootSystem& root_system() const { return *this; } // base object ref
 
-  // |rank()| does not number roots, but keep type same as |semisimple_rank()|
-  RootNbr rank() const { return d_rank; }
-  RootNbr semisimple_rank() const { return RootSystem::rank(); }
-  RootNbr radical_rank() const { return d_radicalBasis.size(); }
+  unsigned int rank() const { return d_rank; }
+  unsigned int semisimple_rank() const { return RootSystem::rank(); }
+  unsigned int radical_rank() const { return d_radicalBasis.size(); }
 
 // root list access
   using Weight_citer = WeightList::const_iterator;
@@ -605,16 +630,22 @@ class RootDatum
     { simple_coreflect(ell,i); return ell; }
 
   // make |lambda| dominant, and return Weyl word that will convert it back
-  WeylWord factor_dominant (Weight& lambda) const;
-  WeylWord to_dominant(Weight lambda) const; // by value; reversed result
-  Weight& make_dominant(Weight& lambda) const // modify and return |lambda|
-  { factor_dominant(lambda); return lambda; }
+  template<typename C>
+    WeylWord factor_dominant (matrix::Vector<C>& lambda) const;
+  template<typename C>
+    WeylWord to_dominant(matrix::Vector<C> lambda) const; // reversed result
+  template<typename C>
+    matrix::Vector<C>& make_dominant(matrix::Vector<C>& lambda) const
+      { factor_dominant(lambda); return lambda; } // modify and return |lambda|
 
   // make |lambda| codominant, and return Weyl word that will convert it back
-  WeylWord factor_codominant (Coweight& lambda) const;
-  WeylWord to_codominant(Weight lambda) const; // by value; reversed result
-  Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
-  { factor_codominant(lambda); return lambda; }
+  template<typename C>
+    WeylWord factor_codominant (matrix::Vector<C>& lambda) const; // coweight
+  template<typename C>
+    WeylWord to_codominant (matrix::Vector<C> lambda) const; // reversed result
+  template<typename C>
+    matrix::Vector<C>& make_codominant(matrix::Vector<C>& lambda) const
+      { factor_codominant(lambda); return lambda; } // modify and return |lambda|
 
   template<typename C>
     void act(const WeylWord& ww, matrix::Vector<C>& lambda) const
@@ -623,10 +654,19 @@ class RootDatum
 	simple_reflect(ww[i],lambda);
     }
 
-  void act(const WeylWord& ww, RatWeight& gamma) const;
+  // with inverse we invert operands to remind how letters of |ww| are used
+  template<typename C>
+    void act_inverse(matrix::Vector<C>& lambda, const WeylWord& ww) const
+    {
+      for (auto i=0u; i<ww.size(); ++i)
+	simple_reflect(ww[i],lambda);
+    }
+
+  void act (const WeylWord& ww, RatWeight& gamma) const;
+  void act_inverse (RatWeight& gamma, const WeylWord& ww) const;
 
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
-  void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
+  void shifted_act (const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {
       for (auto i=ww.size(); i-->0; )
       { auto s=ww[i];
@@ -634,34 +674,27 @@ class RootDatum
       }
     }
 
-  Weight image_by(const WeylWord& ww,Weight lambda) const
+  Weight image_by (const WeylWord& ww,Weight lambda) const
   { act(ww,lambda); return lambda; }
   Weight shifted_image_by
     (const WeylWord& ww,Weight lambda, int_Vector shift) const
   { shifted_act(ww,lambda,shift); return lambda; }
 
-  // with inverse we invert operands to remind how letters of |ww| are used
-  void act_inverse(Weight& lambda,const WeylWord& ww) const
-  {
-    for (auto i=0u; i<ww.size(); ++i)
-      simple_reflect(ww[i],lambda);
-  }
-
-  Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
+  Weight image_by_inverse (Weight lambda,const WeylWord& ww) const
   { act_inverse(lambda,ww); return lambda; }
 
 #if 0
-  void dual_act_inverse(const WeylWord& ww,Coweight& ell) const
+  void dual_act_inverse (const WeylWord& ww,Coweight& ell) const
   {
     for (auto i=ww.size(); i-->0; )
       simple_coreflect(ell,ww[i]);
   }
-  Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
+  Weight dual_image_by_inverse (const WeylWord& ww,Weight lambda) const
   { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
   // here the word |ww| is traversed as in |act_inverse|, but coreflection used
-  void dual_act(Coweight& ell,const WeylWord& ww) const
+  void dual_act (Coweight& ell,const WeylWord& ww) const
     {
       for (auto i=0u; i<ww.size(); ++i)
 	simple_coreflect(ell,ww[i]);
@@ -728,10 +761,6 @@ class RootDatum
 
 }; // |class RootDatum|
 
-// semisimple rank of |integrality_datum(rd,gamma)|
-inline
-unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
-{ return integrality_simples(rd,gamma).size(); }
 
 } // |namespace rootdata|
 

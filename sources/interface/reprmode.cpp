@@ -302,7 +302,7 @@ void blockorder_f()
 void extblock_f()
 {
   const auto& delta=current_inner_class().distinguished(); // implicit here
-  if (not ((delta-1)*sr->gamma().numerator()).isZero())
+  if (not ((delta-1)*sr->gamma().numerator()).is_zero())
   {
     std::cout << "Infinitesimal character " << sr->gamma()
 	      <<" not fixed by distinguished involution." << std::endl;
@@ -318,7 +318,7 @@ void gextblock_f()
 {
   WeightInvolution delta = interactive::get_commuting_involution
     (commands::current_layout(), commands::current_lattice_basis());
-  if (not ((delta-1)*sr->gamma().numerator()).isZero())
+  if (not ((delta-1)*sr->gamma().numerator()).is_zero())
   {
     std::cout << "Chosen delta does not fix gamma=" << sr->gamma()
 	      << " for the current block." << std::endl;
@@ -337,7 +337,7 @@ void extkl_f()
 {
   WeightInvolution delta = interactive::get_commuting_involution
     (commands::current_layout(), commands::current_lattice_basis());
-  if (not ((delta-1)*sr->gamma().numerator()).isZero())
+  if (not ((delta-1)*sr->gamma().numerator()).is_zero())
   {
     std::cout << "Chosen delta does not fix gamma=" << sr->gamma()
 	      << " for the current block." << std::endl;
@@ -352,7 +352,7 @@ void extkl_f()
   ioutils::OutputFile f;
   for (BlockElt y=0; y<eblock.size(); ++y)
     for (BlockElt x=y+1; x-->0; )
-      if (not twisted_KLV.P(x,y).isZero())
+      if (not twisted_KLV.P(x,y).is_zero())
       {
 	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
 	f << twisted_KLV.P(x,y) << std::endl;

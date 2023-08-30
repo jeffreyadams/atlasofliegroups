@@ -2,12 +2,18 @@
 <std_decs.at
 <groups.at
 
+G:=GL(6,R)
+
+set L=[0,1,2,3,6,7,12,19,20,24]
+
+set go () = for i in L do param(KGB(G,i),null(6),rho(G)).twisted_full_deform od
+
 set fund_barys (RootDatum rd, int dim) = [ratvec]:
-  let n=rd.rank, d1=dim+1, lb = simple_coroot_labels(rd)
+   let n=rd.semisimple_rank, d1=dim+1, lb = simple_coroot_labels(rd)
    then vert = [ratvec]:
-      (null(n)/1) # for i:rd.rank do fundamental_weight(rd,i)/lb[i] od
+      (null(rd.rank)/1) # for i:n do fundamental_weight(rd,i)/lb[i] od
 in for S in choices_from(vert.#.#,d1)
-   do sum(n,for i in S do vert[i] od)/d1
+   do sum(rd.rank,for i in S do vert[i] od)/d1
    od
 
 set FPP_barys(RootDatum rd, int dim) = [ratvec]:

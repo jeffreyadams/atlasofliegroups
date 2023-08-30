@@ -80,8 +80,8 @@ class RealReductiveGroup
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& root_datum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
-  const TitsGroup& titsGroup() const;
-  const WeylGroup& weylGroup() const;
+  const TitsGroup& Tits_group() const;
+  const WeylGroup& Weyl_group() const;
   const TwistedWeylGroup& twistedWeylGroup() const;
   BitMap Cartan_set() const;
   const CartanClass& cartan(size_t cn) const; // Cartan number of parent

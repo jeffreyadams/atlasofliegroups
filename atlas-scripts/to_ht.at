@@ -29,7 +29,7 @@ set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
   to_ht(twisted_full_deform(p),N)
 
 set KL_sum_at_s_to_ht(int N) = (Param p)ParamPol:
-  to_ht(N)(KL_sum_at_s(p))
+  KL_sum_at_s_to_height(p,N)
 
 set twisted_KL_sum_at_s_to_ht(int N) = (Param p) ParamPol:
   to_ht(N)(twisted_KL_sum_at_s(p))
@@ -52,7 +52,7 @@ set twisted_c_form_std_to_ht(int N) = (Param p)KTypePol:
 
 set oriented_KL_sum_to_ht  (int N) = (Param p)ParamPol:
    let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
-   for c@q in KL_sum_at_s_to_ht(N)(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+   for c@q in KL_sum_at_s_to_height(p,N) do (c*orientation_nr_term(ori_nr_p,q),q) od
 
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
@@ -91,7 +91,7 @@ set c_form_irreducible_to_ht (Param p,int N) = KTypePol:
 set twisted_c_form_irreducible_contributions_to_ht(Param p,int N) =
     (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
   let G=p.real_form, ori_nr_p = orientation_nr(p)
-  then formula = (1+s)*KL_sum_at_s_to_ht(N)(p) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
+  then formula = (1+s)*KL_sum_at_s_to_height(p,N) + (1-s)*twisted_KL_sum_at_s_to_ht(N)(p)
   in { two value-producing loops can be a lot more efficient than one: }
   ( G.null_module +
       for c@q in formula

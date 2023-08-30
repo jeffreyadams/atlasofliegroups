@@ -45,6 +45,7 @@ class DynkinDiagram;
   // same, also set |pi| to permutation "straightening" each diagram component
   LieType Lie_type(const int_Matrix& cm, Permutation& pi);
 
+  void permute(const Permutation& pi, DynkinDiagram& D);
 
 /******** type definitions **************************************************/
 
@@ -108,7 +109,8 @@ class DynkinDiagram
   // these are mostly internal methods, but cannot be private in current setup
   RankFlags star(unsigned int j) const { return d_star[j]; } // copies it
 
-  // transformer (returns related Dynkin diagram)
+  // transformer returns related Dynkin diagram for delta-fixed weight space
+  // (only Coxeter diagram matters for us, but this maps A5->B3, A6->B3, D5->C4)
   DynkinDiagram folded(const ext_gens& orbits) const;
 
 // manipulators:
