@@ -3436,9 +3436,10 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then r = rank(x.involution - 1)
-    then hts = next_heights(parameter(x,lambda,0*lambda),max(r,2))
-    then ht = hts~[0]
-    then ht0 = hts[max((r-1)\2,0)]
+    then hts = next_heights(parameter(x,lambda,0*lambda),(r+4)\2)
+    {need (LOW,HIGH) = (2,4) for E7_s, (0,2) or (0,3) for F4_s}
+    then ht = hts[(r+2)\2]
+    then ht0 = hts[max((r-2)\2,0)]
     then () =  if test_verbose then prints("testing level = ",ht) fi
     {plan first to do everything to this height}
     then tester = (Param->bool): (Param p) bool:
