@@ -2961,7 +2961,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]]
     	, printInterval = int: 1
     then QclassNums = for k:#eq do if statuses[k] = "?" then [k] else [] fi od.##
     then () = if facet_verbose
-    then prints(); prints("start local_testK_level, ",#QclassNums,
+    then prints(); prints("start local_testK_hash, ",#QclassNums,
 		   " undetermined equiv classes of facets to dim ",#FVKH-1)
 	      ; show_short(newStatuses)
 	      ; prints()
@@ -2989,6 +2989,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]]
 					       in Uhashes[j1].lookup(p).>= or
 					       tester(p) od)
 		     then newStatuses[k]:= "T"
+		     	  {downdateUclasses(newStatuses, gr, k)} {NEED IUCL}
 		     else newStatuses:=
 			   updateNUclassesB(newStatuses, gr, k)
 		     ; newStatuses[k] := "F"
@@ -3015,8 +3016,63 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]]
      	       	  for list in FVKHnew do #list od) fi}
      in  FVKHnew
 
-
-
+{test candidate classes with (new) tester; delete
+ from LFVKH facets established to be nonunitary in this way. Output is new
+ shorter list of candidate facets}
+set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]] FVKH,
+    [[int]] eq, [[int]] gr, [vec] IUCL, [vec] classListByFacet,
+    (Param -> bool) tester, [Param_hash] Uhashes) = [[FacetVertsKHash]]:
+    let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
+    	, printInterval = int: 1
+    then () = if facet_verbose
+    then prints(); prints("start local_testK_hash, ",NumClasses,
+		   " equiv classes of facets to dim ",#FVKH-1)
+	      ; prints()
+	      fi
+	      ; for k:NumClasses
+    	        ~do if facet_verbose and
+	      	   ((NumClasses-k-1)%printInterval = 0)
+	      	   then prints("examining undet equiv class #"
+	      	   ,NumClasses-k -1, "; so far ",unitary_test_counter.use_count()
+	      	   ," 'is_unitary' tests.")
+	      	   ; printInterval := 2*printInterval
+	      	   fi
+	      ; if newStatuses[k] = "?"
+	      	then let C=eq[k]
+	      	  then (d,j) = coords(FVKH,C[0])
+	      	  then verts = vec: FVKH[d][j][:d+1]
+	      	  then ps = monomials(finalize(parameter(x, lambda
+		    	  , facet_bary(vd.list, verts))))
+	          in if{NEWU} all(for p in ps do let (,j1) = %p.x
+					       in Uhashes[j1].lookup(p).>= or
+					       tester(p) od)
+			{ordering of classes guarantees everything below k has already
+			 been testes}
+		     then {newStatuses:= downdateUclasses(newStatuses, IUCL[k], k)
+		     	  ;} newStatuses[k]:= "T"
+		     else newStatuses:= updateNUclassesB(newStatuses, gr, k)
+		     ; newStatuses[k] := "F"
+		     fi{NEWU}
+	         fi
+	      od
+     then() = if(test_verbose)
+     	      then prints(new_line,"number of tests = ",unitary_test_counter.use_count(),
+	      " to dim = ",#FVKH-1)
+       	      fi
+     {make new local facet list using only facets not already proven nonunitary}
+     then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
+          then () = for C@m in eq do if newStatuses[m][0] = "T"
+     	     	     	      	then for k in C
+			      	   do let (d,j) = coords(FVKH,k)
+				      in FVKHnew[d] :=
+				      (FVKHnew[d] next FVKHnew[d]:=[])
+				      #FVKH[d][j]
+				   od
+			         fi
+			      od
+     {then () = if test_verbose then prints("facet counts to dim ",#FVKHnew - 1, " = ",
+     	       	  for list in FVKHnew do #list od) fi}
+     in  FVKHnew
 
 
 {depth needs to be at least 1}
@@ -3376,16 +3432,19 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
 	       fi
     in  UParams
 
-
 set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then r = rank(x.involution - 1)
-    then ht = next_heights(parameter(x,lambda,0*lambda),3+1{(r+2)\2})~[0]
-     then () =  if test_verbose then prints("testing level = ",ht) fi
+    then hts = next_heights(parameter(x,lambda,0*lambda),max(r,2))
+    then ht = hts~[0]
+    then ht0 = hts[max((r-1)\2,0)]
+    then () =  if test_verbose then prints("testing level = ",ht) fi
     {plan first to do everything to this height}
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_to_ht(p,ht)
+    then tester0 = (Param->bool): (Param p) bool:
+   	 is_unitary_to_ht(p,ht0)
     {get all verts}
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x, lambda, pol_hash)
     then () = if test_verbose then prints("facet counts to dim 0: ",[#LFDKH[0]]) fi
@@ -3399,14 +3458,19 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LFDKH do #list od) fi
     then () = if rank(x.involution - 1) > 1 {j0 > #KGB(G)\2}
-	{compute graph on facets to dim 1, to ht}
-    	      then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht)
-    	      	   then statuses = [string]: for j:#eq do "?" od
-		 {remove from LFDKH all facets failing is_unitary_to_ht(h)}
+	{compute graph on facets to dim 1, to ht0}
+	      then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht0)
+    	      	       {remove from LFDKH all facets failing is_unitary_to_ht(ht0)}
     		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, statuses, tester, Uhashes)
+		      gr, IUCL, CLBF, tester0, Uhashes)
+    		   then () = if test_verbose then prints("unitary to ht ",ht0,
+		   	" facet counts to dim 1: ",for list in LFDKH do #list od) fi
+		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht)
+		   	{remove from LFDKH all facets failing is_unitary_to_ht(ht)}
+    		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
+		      	     gr, IUCL, CLBF, tester, Uhashes)
 		   in ()
-	       fi
+	       	fi
 { Have facets to dim 1 unitary to ht. Seek to extend list to all higher dims }
     then () = if test_verbose then prints("unitary to ht ",ht," facet counts to dim 1: ",
 		 for list in LFDKH do #list od) fi
