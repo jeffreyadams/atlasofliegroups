@@ -1398,7 +1398,15 @@ size_t deformation_unit::hashCode(size_t modulus) const
   return hash&(modulus-1);
 }
 
-//				|block_modifier| method
+//				|block_modifier| methods
+
+block_modifier::block_modifier (const common_block& b)
+{
+  int_sys_nr = -1; // for local use only; no |common_context|, |Reduced_param|
+  clear(b.rank(), b.root_datum().rank()); // set |w|, |simple_pi|
+  const auto simply_ints = b.simply_ints();
+  simp_int.assign(simply_ints.begin(),simply_ints.end()); // convert to list
+}
 
 // when a block is relative to itself, we remove all modifiations
 void block_modifier::clear (unsigned int block_rank, unsigned int rd_rank)
@@ -2078,7 +2086,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
       Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
 
-  int_Matrix signed_P = Q_mat.inverse();
+  int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
   { unsigned int i=0;
     for (const BlockElt z : retained)
@@ -2205,7 +2213,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 	Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
   }
 
-  auto signed_P = matrix::inverse_triangular<true>(Q_mat);
+  auto signed_P = inverse_upper_triangular(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
   SR_poly result;
@@ -2363,10 +2371,16 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   auto& block = lookup(sr,y0,bm);
   auto& eblock = block.extended_block(bm,&poly_hash);
 
-  RankFlags singular_orbits; // flag singulars among orbits
-  { const RankFlags simple_is_singular =  block.singular(bm,sr.gamma());
-    for (weyl::Generator s=0; s<eblock.rank(); ++s)
-      singular_orbits.set(s,simple_is_singular[eblock.orbit(s).s0]);
+  RankFlags singular_orbits; // flag singulars among orbits for |eblock|
+  { // the components |s0|, |s1| in said orbits index transformed simply int set
+    RankFlags simple_is_singular; // so using |block.singular| is wrong here
+    const RootDatum& rd = root_datum();
+    const auto& num = sr.gamma().numerator();
+    unsigned int s=0; // runs over simply integral indices of transformed |block|
+    for (RootNbr alpha : bm.simp_int) // these are in increasing order
+      simple_is_singular.set(s++,rd.coroot(alpha).dot(num)==0);
+    singular_orbits = // fold singularity information to |eblock| generators
+      ext_block::reduce_to(eblock.folded_generators(),simple_is_singular);
   }
 
   const BlockElt y = eblock.element(y0);
@@ -2587,6 +2601,16 @@ const K_type_poly& Rep_table::twisted_deformation(StandardRepr z, bool& flip)
     auto& eblock = block.extended_block(bm,&poly_hash);
 
     RankFlags singular_orbits; // flag singulars among orbits
+    { // those orbits' components |s0|, |s1| index transformed simply int set
+      RankFlags simple_is_singular; // so using |block.singular| is wrong here
+      const RootDatum& rd = root_datum();
+      const auto& num = zi.gamma().numerator();
+      unsigned int s=0; // runs over transformed |block| simply integral indices
+      for (RootNbr alpha : bm.simp_int) // these are in increasing order
+	simple_is_singular.set(s++,rd.coroot(alpha).dot(num)==0);
+      singular_orbits = // fold singularity information to |eblock| generators
+	ext_block::reduce_to(eblock.folded_generators(),simple_is_singular);
+    }
     { RankFlags simple_is_singular = block.singular(bm,zi.gamma());
       // which simply integrals of |block| are integral at |inv(bm.w)*zui.gamma|
       Permutation inv(bm.simple_pi,-1);

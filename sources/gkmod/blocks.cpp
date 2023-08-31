@@ -1304,7 +1304,7 @@ bool common_block::is_integral_orthogonal(const RatWeight& shift) const
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
-  repr::block_modifier bm; bm.clear(rank(),delta.n_rows());
+  repr::block_modifier bm(*this); // we are for temporary use only
   return { *this, bm, delta, nullptr };
 }
 
