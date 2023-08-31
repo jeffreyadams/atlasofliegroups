@@ -984,7 +984,8 @@ set compatible_parabolics (KGBElt x)=[Parabolic]:
 	             od
 
 set x_lambdas_for_levis (KGBElt x,ratvec lambda)=[(KGBElt,ratvec)]:
-   let G=real_form(x), levis=##for P in compatible_parabolics(x)
+   let G=real_form(x)
+   then levis=##for P in compatible_parabolics(x)
                                do if Levi(P)=G then []
 			          else [Levi(P)]
 				  fi
