@@ -417,8 +417,7 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
   return *this;
 }
 
-template <bool upper,typename C>
-  Matrix<C> inverse_triangular (const Matrix<C>& M)
+template <typename C> Matrix<C> inverse_upper_triangular (const Matrix<C>& M)
 {
   size_t n=M.n_columns();
   if (M.n_rows()!=n)
@@ -426,36 +425,45 @@ template <bool upper,typename C>
 
   matrix::Matrix_base<C> result(n,n,C(0));
 
-  if (upper)
-    for (size_t j=0; j<n; ++j)
-    {
-      if (M(j,j)!=C(1))
-	throw std::runtime_error ("invert triangular: not unitriangular");
-      result(j,j)=C(1);
+  for (size_t j=0; j<n; ++j)
+  {
+    if (M(j,j)!=C(1))
+      throw std::runtime_error ("invert triangular: not unitriangular");
+    result(j,j)=C(1);
 
-      for (size_t i=j; i-->0; )
-      {
-	C sum= C(0);
-	for (size_t k=j; k>i; --k) // $j<k\leq i$
-	  sum += M(i,k)*result(k,j);
-	result(i,j) = -sum;
-      }
-    }
-  else // lower
-    for (size_t i=0; i<n; ++i)
+    for (size_t i=j; i-->0; )
     {
-      if (M(i,i)!=C(1))
-	throw std::runtime_error ("invert triangular: not unitriangular");
-      result(i,i)=C(1);
-
-      for (size_t j=i; j-->0; )
-      {
-	C sum= C(0);
-	for (size_t k=i; k>j; --k) // $j<k\leq i$
-	  sum += result(i,k)*M(k,j);
-	result(i,j) = -sum;
-      }
+      C sum= C(0);
+      for (size_t k=j; k>i; --k) // $j<k\leq i$
+	sum += M(i,k)*result(k,j);
+      result(i,j) = -sum;
     }
+  }
+  return result;
+}
+
+template <typename C> Matrix<C> inverse_lower_triangular (const Matrix<C>& M)
+{
+  size_t n=M.n_columns();
+  if (M.n_rows()!=n)
+    throw std::runtime_error ("invert triangular: matrix is not square");
+
+  matrix::Matrix_base<C> result(n,n,C(0));
+
+  for (size_t i=0; i<n; ++i)
+  {
+    if (M(i,i)!=C(1))
+      throw std::runtime_error ("invert triangular: not unitriangular");
+    result(i,i)=C(1);
+
+    for (size_t j=i; j-->0; )
+    {
+      C sum= C(0);
+      for (size_t k=i; k>j; --k) // $j<k\leq i$
+	sum += result(i,k)*M(k,j);
+      result(i,j) = -sum;
+    }
+  }
   return result;
 }
 
@@ -640,11 +648,13 @@ using bigint = arithmetic::big_int;
 using Pol= polynomials::Polynomial<int>;
 
 template // used in standardrepk.cpp
-matrix::Matrix<Pol> inverse_triangular<false> (const matrix::Matrix<Pol>& M);
+matrix::Matrix<Pol> inverse_lower_triangular (const matrix::Matrix<Pol>& M);
 template
-matrix::Matrix<long> inverse_triangular<false> (const matrix::Matrix<long>& M);
+matrix::Matrix<long> inverse_lower_triangular (const matrix::Matrix<long>& M);
 template // used in repr.cpp
-matrix::Matrix<Split> inverse_triangular<true> (const matrix::Matrix<Split>& M);
+matrix::Matrix<int> inverse_upper_triangular (const matrix::Matrix<int>& M);
+template // used in repr.cpp
+matrix::Matrix<Split> inverse_upper_triangular (const matrix::Matrix<Split>& M);
 
 
 

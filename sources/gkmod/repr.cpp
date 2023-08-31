@@ -2086,7 +2086,7 @@ sl_list<SR_poly::value_type> Rep_table::block_deformation_to_height
     for (auto jt=(j=i+1,std::next(it)); jt(); ++jt,++j)
       Q_mat(i,j) = value_at_minus_1[kl_tab.KL_pol_index(top-*jt,top-*it)];
 
-  int_Matrix signed_P = Q_mat.inverse();
+  int_Matrix signed_P = inverse_upper_triangular(Q_mat);
   BitMap odd_length(signed_P.n_rows());
   { unsigned int i=0;
     for (const BlockElt z : retained)
@@ -2213,7 +2213,7 @@ SR_poly Rep_table::KL_column_at_s_to_height (StandardRepr p, level height_bound)
 	Q_mat(i,j) = value_at_s[kl_tab.KL_pol_index(top-*jt,top-*it)];
   }
 
-  auto signed_P = matrix::inverse_triangular<true>(Q_mat);
+  auto signed_P = inverse_upper_triangular(Q_mat);
   // with signs in place, the alternating sum is obtained without any effort
 
   SR_poly result;

@@ -1490,7 +1490,7 @@ matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
 
   m=triangularize(system,new_order);
 
-  return matrix::inverse_triangular<false>(m);
+  return inverse_lower_triangular(m);
 
 } // |KhatContext::K_type_matrix|
 
@@ -1508,7 +1508,7 @@ matrix::Matrix<q_CharCoeff> qKhatContext::K_type_matrix
 
   m=triangularize(system,new_order);
 
-  return matrix::inverse_triangular<false>(m);
+  return inverse_lower_triangular(m);
 
 } // |qKhatContext::K_type_matrix|
 
