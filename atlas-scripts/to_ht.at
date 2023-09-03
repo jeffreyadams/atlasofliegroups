@@ -1,4 +1,4 @@
-<basic.at
+ <basic.at
 <hermitian.at
 <convert_c_form.at
 <count.at {for use counter}
@@ -151,7 +151,8 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht (Param p,int N) = bool:
   unitary_test_counter.use();
-  p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+  if N < 0 then is_unitary(p)
+  else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure fi
 
 
 { compute Hermitian form to ht on p, and report if it is unitary }
