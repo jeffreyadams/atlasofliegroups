@@ -1,4 +1,4 @@
- <basic.at
+<basic.at
 <hermitian.at
 <convert_c_form.at
 <count.at {for use counter}
@@ -6,14 +6,12 @@
 {Turns out the "preferred" versions are significantly slower almost
 always; don't understand why. So switch to "old" versions as standard,
 labelling others as "new"}
-
 set herm_report = bool: false
 
 set to_ht (int N) = (ParamPol->ParamPol): (ParamPol P):
-  let (below,)=height_split(P,N) in below
-
-set to_ht (KTypePol P,int N) = KTypePol:
-  let (below,)=height_split(P,N) in below
+  if N < 0 then P
+  else let (below,)=height_split(P,N) in below
+  fi
 
 set full_deform_to_ht_old(Param p, int N) = to_ht(full_deform(p),N)
 { KTypePol:
@@ -23,7 +21,20 @@ else to_ht(full_deform(p),N)
 fi
 This version seems NOT faster or smaller}
 
-set full_deform_to_ht(Param p, int N) = deform_to_height(p,N)
+set full_deform_to_ht(Param p, int N) = KTypePol:
+    let pc = alcove_center(p)
+    then k = deformedParams[N].match(pc)
+    in if k < #deformations[N]
+       then deformLookupCounter.use();
+       	    deformations[N][k]
+       else deformCalcCounter.use();
+       	    let P = deform_to_height(p,N)
+       	    then () = deformations[N]:=
+	    (deformations[N] next deformations[N]:=[]) # P
+	    in P
+       fi
+
+{deform_to_height(p,N)}
 
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
   to_ht(twisted_full_deform(p),N)
@@ -152,8 +163,8 @@ set hermitian_form_irreducible_to_ht (Param p,int N) = KTypePol:
 set is_unitary_to_ht (Param p,int N) = bool:
   unitary_test_counter.use();
   if N < 0 then is_unitary(p)
-  else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure fi
-
+  else p.is_hermitian and hermitian_form_irreducible_to_ht(p,N).is_pure
+  fi
 
 { compute Hermitian form to ht on p, and report if it is unitary }
 set is_unitary_to_ht_old (Param p,int N) = bool:
@@ -166,3 +177,13 @@ set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
   unitary_test_counter.use();
   p.is_hermitian and is_pure_cert_hash(hermitian_form_irreducible_to_ht(
   p,N), cert_hash)
+
+set is_unitary_to_hts(Param p, [int] Ns) = bool:
+    { is_pos_on_LKTs(p) and }
+    unitary_test_counter.use();
+    for N in Ns
+    do if not is_unitary_to_ht(p,N)
+       then return false
+       fi
+    od;
+    true

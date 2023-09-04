@@ -3,6 +3,11 @@
 <hash.at {for KTypePol_hash}
 <count.at {for unitary_test_counter}
 
+set deformedParams = for m:1500 do make_Param_hash() od
+set deformations = [[KTypePol]]: for m:1500 do [] od
+set deformLookupCounter = make_counter()
+set deformCalcCounter = make_counter()
+
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
@@ -90,8 +95,21 @@ set is_pure_cert_hash(KTypePol P, KTypePol_hash cert_hash) = bool:
     fi
 
 {.write c-invariant form on standard module as a KTypePol }
-set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
-  full_deform@Param { built-in }
+{set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }
+  full_deform@Param { built-in }}
+
+set c_form_std(Param p) = KTypePol:
+    let pc = alcove_center(p)
+    then k = deformedParams[0].match(pc)
+    in if k < #deformations[0]
+       then deformLookupCounter.use();
+       	    deformations[0][k]
+       else deformCalcCounter.use();
+       	    let P = full_deform(p)
+	    then () = deformations[0] :=
+	    (deformations[0] next deformations[0]:=[]) # P
+	    in P
+       fi
 
 set twisted_c_form_std = (Param->KTypePol): { c-form on extended group }
   twisted_full_deform@Param { built-in }

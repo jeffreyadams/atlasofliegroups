@@ -139,6 +139,12 @@ set deform_flag = false
  needed to certify nonunitarity.}
 set cert_flag = true
 
+{for is_unitary calculations on parameters of approxDiff > CUTOFF,
+it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=100
+means always is_unitary, and CUTOFF:=-1 means always
+is_unitary_to_ht.}
+set CUTOFF = int: 70
+
 {If the distinguished involution delta of G is nontrivial, then all
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
 (h*)^\delta. They are most efficiently calculated not using the affine
@@ -3318,16 +3324,11 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then r = rank(x.involution - 1)
-    then hts = next_heights(parameter(x,lambda,0*lambda),(r+4)\2)
+    {then hts = next_heights(parameter(x,lambda,0*lambda),(r+4)\2)}
     {need (LOW,HIGH) = (2,4) for E7_s, (0,2) or (0,3) for F4_s}
-    then ht = hts[(r+2)\2]
-    then ht0 = hts[max((r-2)\2,0)]
-    then () =  if test_verbose then prints("testing level = ",ht) fi
+    {then ht = -1 {hts[(r+2)\2]}}
+    {then ht0 = -1{ hts[max((r-2)\2,0)]}}
     {plan first to do everything to this height}
-    then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_to_ht(p,ht)
-    then tester0 = (Param->bool): (Param p) bool:
-   	 is_unitary_to_ht(p,ht0)
     {get all verts}
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x, lambda, pol_hash)
     then () = if test_verbose then prints("facet counts to dim 0: ",[#LFDKH[0]]) fi
@@ -3340,25 +3341,38 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
     {now have all local facets of dims 0 and 1.}
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LFDKH do #list od) fi
-
 	{see how difficult a case this is}
-    then () = if rank(x.involution - 1) > 1 {j0 > #KGB(G)\2}
+    then ps = for v in LFDKH[0] do parameter(x,lambda,Lvd.list[v[0]]) od
+    then maxDiff = if #ps = 0 then 0 else max(for p in ps do approxDiff(p) od) fi
+    then (ht0,ht) = (int,int):
+    	      if maxDiff > CUTOFF
+	      then let hts = next_heights(parameter(x,lambda,0*lambda),(r+4)\2)
+	      	   in  (hts[max((r-2)\2,0)], hts[(r+2)\2])
+    	      else (-1,-1)
+	      fi
 	{compute graph on facets to dim 1, to ht0}
-	      then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht0)
+    then () =  if test_verbose then prints("testing levels = (",ht0,",",ht,")") fi
+    then tester = (Param->bool): (Param p) bool:
+    	 is_unitary_to_ht(p,ht)
+    then tester0 = (Param->bool): (Param p) bool:
+   	 is_unitary_to_ht(p,ht0)
+    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht0)
     	      	       {remove from LFDKH all facets failing is_unitary_to_ht(ht0)}
-    		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
+    then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
 		      gr, IUCL, CLBF, ht0, Uhashes)
-    		   then () = if test_verbose then prints("unitary to ht ",ht0,
+    then () = if test_verbose then prints("unitary to ht ",ht0,
 		   	" facet counts to dim 1: ",for list in LFDKH do #list od) fi
-		   then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht)
-		   	{remove from LFDKH all facets failing is_unitary_to_ht(ht)}
+    then () = if ht!=ht0
+	      then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,ht)
+		{remove from LFDKH all facets failing is_unitary_to_ht(ht)}
     		   then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		      	     gr, IUCL, CLBF, ht, Uhashes)
+		      	     	gr, IUCL, CLBF, ht, Uhashes)
+		   then () = if test_verbose then prints("unitary to ht ",ht,
+		   	" facet counts to dim 1: ", for list in LFDKH do #list od) fi
 		   in ()
-	       	fi
+	      else ()
+	      fi
 { Have facets to dim 1 unitary to ht. Seek to extend list to all higher dims }
-    then () = if test_verbose then prints("unitary to ht ",ht," facet counts to dim 1: ",
-		 for list in LFDKH do #list od) fi
     then D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
@@ -3395,11 +3409,12 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
 					     then [LFDKH[D+1][m]]
 					     else []
 					     fi
-				      fi
-				  od.##
+			  fi
+		       od.##
 		 then () = LFDKH := LFDKH[:D+1] # newDplus1
-                 then () = if test_verbose then prints("unitary to ht ",ht, " facet counts to dim ",
-		     D+1,": ", for list in LFDKH do #list od) fi
+                 then () = if test_verbose then prints("unitary to ht ",ht,
+		      	      		   " facet counts to dim ",
+		     			   D+1,": ", for list in LFDKH do #list od) fi
                  then ()= D:=D+1
                  in ()
      	      od
@@ -3408,10 +3423,33 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
        	       	   		      		      unitary_by_dim);}
 		prints("number of tests so far = ",unitary_test_counter.use_count())
 	      fi
-    then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    then UParams = local_test_hashes(x, lambda, Lvd, LFDKH, eq, gr, CLBF, Uhashes)
-    then () = if test_verbose then prints("total number of tests = ",unitary_test_counter.use_count()) fi
-    in UParams
+    in [Param]:
+         if ht >=  0
+         then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+              then UParams = local_test_hashes(x, lambda, Lvd, LFDKH, eq, gr,
+                             CLBF, Uhashes)
+              then () = if test_verbose then prints("total number of tests = ",
+                                        unitary_test_counter.use_count()) fi
+              in UParams
+         else let UParams =
+                  for list@d in LFDKH
+                  do for v in list
+                     do parameter(x,lambda, facet_bary(Lvd.list, v[:d+1]))
+                     od
+                  od.##
+              then () = if deform_flag
+                        then for p in UParams
+                             do for p1 in monomials(finalize(p))
+                                do let (,j) = %p1.x
+                                   in Uhashes[j].match(herm_center(p1));
+                                   for q in face_deformed_unitaries_new(p1)
+                                   do let (,j) = %q.x in Uhashes[j].match(q)
+                                   od
+                                od
+                             od
+                         fi
+              in UParams
+	  fi
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
     			       Param_hash Uhash) =
@@ -3762,7 +3800,9 @@ set FPP_unitary_hashes_one_level(RealForm G,[Param_hash] Uhashes) = void:
       	 in if(old_facet_verbose) then prints("KGBElt #",
       	 		       let (,m) = %x in m, ", #Uhashes = ",
 			       size(Uhashes), ", #lambdas = ", #lambdas,
-			       " #tests = ",unitary_test_counter.use_count()) fi;
+			       ", #tests = ",unitary_test_counter.use_count(),
+			       ", #def lookups = ", deformLookupCounter.use_count(),
+			       ", #def calcs = ", deformCalcCounter.use_count()) fi;
 	 for lambda@j in lambdas
        	 do if(old_facet_verbose and j%4 = 0) then prints("    working on ",j,"th lambda") fi;
 	    local_test_GEO_hashes_one_level(x,lambda,Uhashes)
@@ -3781,9 +3821,11 @@ set FPP_unitary_hashes(RealForm G,[Param_hash] Uhashes) = void:
     then () = unipotents_to_hashes(G,Uhashes)
     then () = for x in KGB(G)
     ~ do let lambdas = FPP_lambdas(x)
-      	 in if(old_facet_verbose) then prints("starting KGBElt #",
-      	 		       let (,m) = %x in m, ", #Uhashes = ",
-			       size(Uhashes), ", #lambdas = ", #lambdas) fi;
+      	 in if(old_facet_verbose) then prints("start KGBElt #",
+      	    let (,m) = %x in m, ", #Uhashes = ", size(Uhashes), ", #lambdas = ",
+	    #lambdas,  ", #tests = ",unitary_test_counter.use_count(),
+	    ", #def lookups = ", deformLookupCounter.use_count(),", #def calcs = ",
+	    deformCalcCounter.use_count()) fi;
 	 for lambda@j in lambdas
        	 do if(old_facet_verbose and j%4 = 0) then prints("    working on ",j,"th lambda") fi;
 	    local_test_GEO_hashes(x,lambda,Uhashes)
