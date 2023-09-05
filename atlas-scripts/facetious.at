@@ -486,7 +486,8 @@ set downdate \
     in allInd { return modified argument }
 )
 
-{.given a single nonunitary facet F, updates the status of all E _MATCHING KCHAR_ in F-bar to nonunitary.} 
+{.given a single nonunitary facet F, updates the status of all E _MATCHING KCHAR_ in F-bar to nonunitary.}
+{
 set downdateSingK([(vec->int)] lookups, FacetDataKchar (vd, StInd, Kpols),
 FacetStatusVertsIndex big, KTypePol bigPol) =
     [[FacetStatusVertsIndex]]:
@@ -511,10 +512,12 @@ FacetStatusVertsIndex big, KTypePol bigPol) =
     StInd[e]:=StInde
     od
     in StInd
+}
 
 {.given a single nonunitary facet F, updates the status of all E
 _MATCHING KCHAR_ in F-bar to nonunitary. Confine deletions to subset
 Base of big.verts, and leave at least #Base.}
+{
 set downdateSingK([(vec->int)] lookups, FacetDataKchar (vd, StInd, Kpols),
 FacetStatusVertsIndex big, KTypePol bigPol, vec Base) =
     [[FacetStatusVertsIndex]]:
@@ -546,6 +549,7 @@ FacetStatusVertsIndex big, KTypePol bigPol, vec Base) =
     StInd[e]:=StInde
     od
     in StInd
+}
 
 set index_in_facet_list ([FacetStatusVertsIndex] L) = (vec->int):
     index_in(for (,v) in L do v od) { calls |index_in@[vec]| }
@@ -764,6 +768,7 @@ set updateSing(RealForm G, FacetData (vd, StInd),
     od
     in StInd
 
+{
 set updateSingKdumb(RealForm G, FacetDataKchar (vd, StInd, Kpols),
     FacetStatusVertsIndex small, KTypePol smallPol) =
     [[FacetStatusVertsIndex]]:
@@ -783,6 +788,7 @@ set updateSingKdumb(RealForm G, FacetDataKchar (vd, StInd, Kpols),
     StInd[e]:=StInde
     od
     in StInd
+}
 
 {.computes the collection of vertex sets of alcoves containing gamma
 in their closures.}
@@ -1611,6 +1617,7 @@ set update \
 {.given a single nonunitary facet F, updates the status of all E with F
  contained in E-bar to nonunitary; then goes to _smaller_ facets where
  allowed by perturbation. Uses Indices into the FacetVerts sets}
+{
 set updateClosureK \
     ( [vec] OpenureFacets
     , [(vec->int)] lookups
@@ -1636,9 +1643,11 @@ in  for e:#OpenureFacets from #NUverts
     od
 ;   StInd
 )
+}
 
 {want to make a version just running through bigger facets}
 {But this tests 10% slower in Sp(10,R)}
+{
 set updateClosureKdumb \
     ( [(vec->int)] lookups
     , FacetDataKchar (vdata, StInd, Pols)
@@ -1663,7 +1672,9 @@ in  for e:#StInd-#NUverts from #NUverts
     od
 ;   StInd
 )
+}
 
+{
 set updateClosureK \
     ( [(vec->int)] lookups
     , FacetDataKchar(vdata, StInd,Pols)
@@ -1671,7 +1682,8 @@ set updateClosureK \
     ) = [[FacetStatusVertsIndex]]:
     updateClosureK(FPPopenureFacets(StInd, lookups, nonUnitary.verts)
     , lookups, (vdata, StInd, Pols), nonUnitary)
-
+}
+{
 {should be applied just when small facet is unitary}
 set updateSingK \
     ( [vec] OpenureFacets
@@ -1696,7 +1708,8 @@ set updateSingK \
     	    StInd[e]:=StInde
        od
     in StInd
-
+}
+{
 set updateSingK \
     ( [(vec->int)] lookups
     , FacetDataKchar(vdata, StInd,Pols)
@@ -1705,6 +1718,7 @@ set updateSingK \
     ) = [[FacetStatusVertsIndex]]:
     updateSingK( FPPopenureFacets(StInd, lookups, nonUnitary.verts)
     , lookups, (vdata, StInd, Pols), nonUnitary, nonUnitaryPol)
+}
 
 {.given a single unitary (to_ht) facet F, updates the status of all E in F-bar to unitary (to_ht).}
 set downdate \
@@ -1735,6 +1749,7 @@ set downdate \
 
 { adds nonunitary status in dimension d+1 when deformed from a nonunitary
 in dimension d. lookup is for [d].}
+{
 set one_up((vec->int) lookup, FacetDataKchar (vd, FPPstInd, Pols), int d) =
     [[FacetStatusVertsIndex]]:
     assert(0 <= d and d < #FPPstInd-1,"requesting one_up in invalid degree");
@@ -1758,6 +1773,7 @@ set one_up((vec->int) lookup, FacetDataKchar (vd, FPPstInd, Pols), int d) =
      od
      ; FPPstInd[d+1]:= FPPstIndUp
      in FPPstInd
+ }
  
 { meant to record information about unitarity for all facets }
 set facet_status([[ratvec]] FPPB) = [[string]]:
@@ -1822,6 +1838,7 @@ G(R), all unipotent parameters must be
 barycenters of (cofolded) facets of dimension 0.}
 {to use Closure in this command, need to add a few lines as in
 facetiousEQUIV.at}
+{
 set facet_statusuK(RealForm G, FacetDataKchar (vd,FPPstInd, Pols)) = FacetData:
 (  let FBs = [[FacetBary]]:
       for Findd in FPPstInd
@@ -1866,6 +1883,7 @@ in
 ;  FPPstIndQuo[0] := FPPstInd0
 ;   (vd, FPPstIndQuo)
 )
+}
 
 { meant to record information about unitarity for all facets }
 {now marks unipotent parameters as "T[number of dual nilpotent]"}
@@ -2085,6 +2103,7 @@ set actualize \
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1])
 )
 
+{
 set actualizeK \
   ( KGBElt x, ratvec lambda
   , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) = FacetDataKchar:
@@ -2154,6 +2173,7 @@ set actualizeK \
       od
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1], polsAct)
 )
+}
 
 set polTestA((KGBElt x, ratvec lambda, [ratvec] vlistAct,
     [[FacetStatusVertsIndex]] FDAct, [[ratvec]] FB), int d) = [KTypePol]:
@@ -2169,7 +2189,7 @@ set polTestB((KGBElt x, ratvec lambda, [ratvec] vlistAct,
 	    		x, lambda, v))))
     od
 
-
+{
 set actualizeKPO_old \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataKcharPO_old:
@@ -2246,6 +2266,7 @@ set actualizeKPO_old \
     then statuses = for C in eq do "?" od
     in (vdAct, FDAct, polsAct, eq, gr, IUCL, classListByFacet, statuses)
 )
+}
 
 {SHOULD MAKE THREE FUNCTIONS:
  - construct the combinatorial data for relevant hermitian facets (ACTUALIZE)
@@ -2253,6 +2274,7 @@ set actualizeKPO_old \
  - compute graph (GRAPH)}
  
 {hash and polsNum not needed after graph computed, so don't return??}
+{
 set actualizeKPO \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataKcharPO:
@@ -2427,6 +2449,7 @@ set localFD_hash \
     then dAct = last(for j:#LFVI do #LFVI[j] > 0 od)
     in(Lvd, x, lambda, LFVI[:dAct+1])
 )
+}
 
 {creates the LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
  verts, and 0-facets for (x,lambda)}
@@ -3246,6 +3269,7 @@ set localKcharsKeep(LocalFacetDataHash(Lvd, x, lambda,LFverts)) = [vec]:
 {computes directed graph of local facets. Output GraphData is
 [[int]],[[int]] giving equivalence classes and the graph. Next output
 [vec]s are IUCL and classListByFacet}
+{
 set localGraph(LocalFacetDataHash(Lvd,,,LFverts), [vec] pol_nums) =
     (GraphData, [vec],[vec]):
     let FDNum = (Lvd, LFverts, pol_nums)
@@ -3255,8 +3279,8 @@ set localGraph(LocalFacetDataHash(Lvd,,,LFverts), [vec] pol_nums) =
     then classListByFacet = [vec]: class_lists(FDNum,(eq,gr))
     	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
 	 in ((eq,gr), IUCL, classListByFacet)
-
-
+}
+{
 set localGraph(LocalFacetDataHash(Lvd,,,LFverts), KTypePol_hash Kpol_hash,
     [vec] pol_nums, int level) =
     (GraphData, [vec],[vec]):
@@ -3267,6 +3291,7 @@ set localGraph(LocalFacetDataHash(Lvd,,,LFverts), KTypePol_hash Kpol_hash,
     then classListByFacet = [vec]: class_lists(FDNum,(eq,gr))
     	 , IUCL = full_down_classes(eq,gr) {[vec]:[[]]}
 	 in ((eq,gr), IUCL, classListByFacet)
+}
 
 set localGraphK([[FacetVertsKHash]] LFvertsK) = (GraphData, [vec],[vec]):
     let () = if facet_verbose then prints("start to compute facet graph K")
@@ -3300,7 +3325,7 @@ set shortest_param(KGBElt x, ratvec lambda, int m, [ratvec] vlistAct,
     then () = if facet_verbose=true then prints("Shrank HT in class ",m," from ",HT(G,best0)," to ",level)
               fi
     in first_param(finalize(parameter(x,lambda,best)))
-
+{
 set actualize_oldKPO \
   ( KGBElt x, ratvec lambda
   , FacetData (vertex_data, FPPstInd)) = FacetDataOldKcharPO:
@@ -3382,9 +3407,11 @@ set actualize_oldKPO \
     then statuses = for C in eq do "?" od
     in (vdAct, FDAct, OldBary, polsAct, eq, gr, IUCL, classListByFacet, statuses)
 )
+}
 
 {. include barycenters of actualized facets computed using old vertices;
 useful for ind and reg .}
+{
 set actualize_oldK \
   ( KGBElt x, ratvec lambda
   , [ratvec] vlist, [[FacetStatusVertsIndex]] FPPstInd) =
@@ -3462,15 +3489,19 @@ set actualize_oldK \
 	    		x, lambda, facet_bary(vlistAct, stFind.verts))))) od od
     in (vlistAct.to_vertex_data, FSVIAct[:dAct+1], OldBary[:dAct+1], polsAct)
 )
+}
 
 set actualize(KGBElt x, ratvec lambda, FacetData FD) = FacetData:
     actualize(x, lambda, FD.v_data.list, FD.facet_status_inds)
 
+{
 set actualizeK(KGBElt x, ratvec lambda, FacetData FD) = FacetDataKchar:
     actualizeK(x, lambda, FD.v_data.list, FD.facet_status_inds)
-
+}
+{
 set actualize_oldK(KGBElt x, ratvec lambda, FacetData FD) = FacetDataOldKchar:
     actualize_oldK(x, lambda, FD.v_data.list, FD.facet_status_inds)
+}
 
 {.included to provide the candidate unitary facet list and corr KTypePols.}
 { set facet_data_Kchar(RealForm G) = FacetDataKchar:
@@ -3717,6 +3748,7 @@ set spherical(RealForm G, FacetData (vd,FPPstInd)) = FacetData:
 
 {.Meant to be applied to output of down_to_business (with nonhermitian
   eliminated). Need simple derived group.}
+  {
 set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
     let xopen = x_open(G)
     , Grho = G.rho
@@ -3767,7 +3799,7 @@ set sphericalK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols)) = FacetData:
     ; if(facet_verbose) then show(FPPstInd) fi
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
-
+}
 set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) = FacetData:
     let xopen = x_open(G)
     , Grho = G.rho
@@ -3819,6 +3851,7 @@ set spherical_test(RealForm G, FacetData(vd,FPPstInd), (Param -> bool) tester) =
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
 
+{
 set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
     (Param->bool) tester) = FacetData:
     let xopen = x_open(G)
@@ -3872,6 +3905,7 @@ set spherical_testK(RealForm G, FacetDataKchar (vd,FPPstInd,Pols),
     ; if(facet_verbose) then show(FPPstInd) fi
     in if(test_verbose) then prints("total tests = ",test_count) fi;
     (vd,FPPstInd)
+}
 
 { Output is a revision of the class status list statuses. }
 { try to compute and systematically use partial order on facets}
@@ -4403,62 +4437,70 @@ set spherical_open_test(RealForm G, (Param -> bool) tester) = FacetData:
     then dataIndncH = down_to_business(G,dataAct)
     in spherical_test(G, dataIndncH, tester)
 
+{
 set sphericalK_old(RealForm G) = FacetData:
     let data = facet_data_fold(cofolded(G))
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
-
+}
+{
 set sphericalK(RealForm G) = FacetData:
     let data = facet_data_fold(cofolded(G))
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, data)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G, (vdata, datau, Pols), default_tester@Param)
+}
 
 {. apply actualize to the FacetData before computing unitarity; should mean
    that output is already actualized .}
+   {
 set spherical_test_old(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then dataAct = actualize(x_open(G), G.rho, dataFold)
     then dataIndnch = down_to_business(G,dataAct)
     in spherical_test(G, dataIndnch, tester)
-
+}
 set spherical_test(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then dataAct = actualize(x_open(G), G.rho, dataFold)
     then dataIndnch = down_to_business(G,dataAct)
     in spherical_test(G, dataIndnch, tester)
-
+{
 set spherical_testK_old(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, dataFold)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G,(vdata,datau, Pols), tester)
-
+}
+{
 set spherical_testK(RealForm G, (Param -> bool) tester) = FacetData:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then (vdata, dataAct, Pols) = actualizeK(x_open(G), G.rho, dataFold)
     then (vdata, datau) = facet_statusuK(G, (vdata, dataAct,Pols))
     in spherical_testK(G,(vdata,datau, Pols), tester)
-
+}
  {for now just return the class statuses}
+{
 set spherical_testKPO_old(RealForm G, (Param -> bool) tester) = [string]:
     { let (rd,M,j0) = cofolded(G) }
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then FDKPO = actualizeKPO_old(x_open(G), G.rho, dataFold)
     then () = FDKPO.class_status := facet_statusuKPO_old(G,FDKPO)
     in spherical_testKPO(G,FDKPO, tester)
-
+}
+{
 set spherical_testKPO(RealForm G, (Param -> bool) tester) = [string]:
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
     then () = FDKPO.class_status := facet_statusuKPO(G,FDKPO)
     in spherical_testKPO(G,FDKPO, tester)
-
+}
+{
 set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
@@ -4466,7 +4508,8 @@ set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     then () = FDKPO.class_status :=
     	 spherical_testKPO(G, FDKPO, tester)
     in statuses_to_facets(G, FDKPO)
-
+    }
+{
 set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     let dataFold = facet_data_fold(cofolded(G)) { (rd,M,j0) }
     then FDKPO = actualizeKPO(x_open(G), G.rho, dataFold)
@@ -4474,19 +4517,24 @@ set spherical_testKPO_long(RealForm G, (Param -> bool) tester) = FacetData:
     then () = FDKPO.class_status :=
     	 spherical_testKPO(G, FDKPO, tester)
     in statuses_to_facets(G, FDKPO)
-
+}
 {for now just return the class statuses}
+{
 set sphericalKPO_old(RealForm G) = [string]:
     spherical_testKPO_old(G,default_tester@Param)
-
+}
+{
 set sphericalKPO(RealForm G) = [string]:
     spherical_testKPO(G,default_tester@Param)
-
+}
 {return like sphericalK}
+{
 set sphericalKPO_long(RealForm G) = FacetData:
     spherical_testKPO_long(G,default_tester@Param)
-
+}
 {outputs string with one status per equiv class}
+
+{
 set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     ([string],[Param]):
     let G = x.real_form
@@ -4512,7 +4560,9 @@ set local_test(KGBElt x, ratvec lambda, (Param -> bool) tester) =
     	      IUCL, CLBF, statuses)
     in local_test(x,lambda,Lvd,LFverts, eq, gr, CLBF, statuses,
        tester, 0)
+}
 
+{
 set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int depth) =
     ([string],[Param]):
     let G = x.real_form
@@ -4574,6 +4624,7 @@ set local_test_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int dept
 	       od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,Lvd, LFD.LFverts,eq,gr,CLBF,newStatuses,tester,test_count)
+}
 
 {depth needs to be at least 1}
 set local_testK_levels(KGBElt x, ratvec lambda, KTypePol_hash cert_hash,
@@ -5017,7 +5068,7 @@ set local_testK_levels_old(KGBElt x, ratvec lambda, KTypePol_hash cert_hash, int
 	       od
      then tester = (Param->bool): (Param p) bool: is_unitary_test(p, hts~[0], cert_hash)
      in local_test(x,lambda,vd, FPPKH,eq,gr,CLBF,newStatuses,tester,test_count)
-
+{
 set local(KGBElt x, ratvec lambda) = ([string],[Param]):
     let hts = next_heights(parameter(x,lambda,0*lambda),2)
     then tester = (Param->bool): (Param p) bool:
@@ -5026,10 +5077,12 @@ set local(KGBElt x, ratvec lambda) = ([string],[Param]):
 
 set spherical_local(RealForm G) = ([string],[Param]):
     local(x_open(G),G.rho)
-set spherical_cert_hash = make_KTypePol_hash()
 
 set spherical_levels(RealForm G) = ([string],[Param]):
     local_test_levels(x_open(G),G.rho,spherical_cert_hash,4)
+}
+
+set spherical_cert_hash = make_KTypePol_hash()
 
 set sphericalK_levels(RealForm G) = ([string],[Param]):
     local_testK_levels(x_open(G),G.rho,spherical_cert_hash,4)
@@ -5061,6 +5114,8 @@ set spherical_xs(RealForm G) = [KGBElt]:
 	  fi
        od.##
 
+{ need to use something other than sphericalKPO }
+{
 { lists item d of answer is a list of facets of unitary spherical
 reps, given as lists of their vertices: d+1 ratvecs }
 set sphericalJustTheVertexLists(RealForm G) = [[[ratvec]]]:
@@ -5755,3 +5810,4 @@ set show_non_cohom_unitary(RealForm G) = void:
     let FB=FPP_barycenters(G,-1), NCU = non_cohom_unitary(G)
     in
     show(G, FB, NCU)
+}
