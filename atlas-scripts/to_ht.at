@@ -27,11 +27,19 @@ set full_deform_to_ht(Param p, int N) = KTypePol:
     in if k < #deformations[N]
        then deformLookupCounter.use();
        	    deformations[N][k]
-       else deformCalcCounter.use();
-       	    let P = deform_to_height(p,N)
-       	    then () = deformations[N]:=
-	    (deformations[N] next deformations[N]:=[]) # P
-	    in P
+       else let j = deformedParams[0].lookup(pc)
+       	    in if j.>=
+	       then deformLookupCounter.use();
+	            let P = to_ht(deformations[0][j],N)
+	       	    then () = deformations[N]:=
+		    (deformations[N] next deformations[N]:=[]) # P
+		    in P
+       	       else deformCalcCounter.use();
+       	       	    let P = deform_to_height(p,N)
+       	    	    then () = deformations[N]:=
+	    	    (deformations[N] next deformations[N]:=[]) # P
+	    	    in P
+	       fi
        fi
 
 {deform_to_height(p,N)}
