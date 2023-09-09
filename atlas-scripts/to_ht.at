@@ -45,7 +45,25 @@ set full_deform_to_ht(Param p, int N) = KTypePol:
 {deform_to_height(p,N)}
 
 set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
-  to_ht(twisted_full_deform(p),N)
+    let pc = alcove_center(p)
+    then k = twistedDeformedParams[N].match(pc)
+    in if k < #twistedDeformations[N]
+       then deformLookupCounter.use();
+       	    twistedDeformations[N][k]
+       else let j = twistedDeformedParams[0].lookup(pc)
+       	    in if j.>=
+	       then deformLookupCounter.use();
+	            let P = to_ht(twistedDeformations[0][j],N)
+	       	    then () = deformations[N]:=
+		    (twistedDeformations[N] next twistedDeformations[N]:=[]) # P
+		    in P
+       	       else deformCalcCounter.use();
+       	       	    let P = to_ht(twisted_full_deform(p),N)
+       	    	    then () = twistedDeformations[N]:=
+	    	    (twistedDeformations[N] next twistedDeformations[N]:=[]) # P
+	    	    in P
+	       fi
+       fi
 
 set KL_sum_at_s_to_ht(int N) = (Param p)ParamPol:
   KL_sum_at_s_to_height(p,N)

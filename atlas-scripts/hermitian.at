@@ -4,7 +4,9 @@
 <count.at {for unitary_test_counter}
 
 set deformedParams = for m:1500 do make_Param_hash() od
+set twistedDeformedParams = for m:1500 do make_Param_hash() od
 set deformations = [[KTypePol]]: for m:1500 do [] od
+set twistedDeformations = [[KTypePol]]: for m:1500 do [] od
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
@@ -111,8 +113,18 @@ set c_form_std(Param p) = KTypePol:
 	    in P
        fi
 
-set twisted_c_form_std = (Param->KTypePol): { c-form on extended group }
-  twisted_full_deform@Param { built-in }
+set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
+    let pc = alcove_center(p)
+    then k = twistedDeformedParams[0].match(pc)
+    in if k < #twistedDeformations[0]
+       then deformLookupCounter.use();
+       	    twistedDeformations[0][k]
+       else deformCalcCounter.use();
+       	    let P = twisted_full_deform(p)
+	    then () = twistedDeformations[0] :=
+	    (twistedDeformations[0] next twistedDeformations[0]:=[]) # P
+	    in P
+       fi
 
 {    c_form on irreducible representations   }
 
