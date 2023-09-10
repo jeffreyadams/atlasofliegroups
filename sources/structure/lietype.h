@@ -82,8 +82,9 @@ struct SimpleLieType : public std::pair<TypeLetter,unsigned int>
   unsigned int semisimple_rank() const { return type()=='T' ? 0 : rank(); }
   int Cartan_entry(unsigned int i,unsigned int j) const;
   int_Matrix Cartan_matrix() const; // square of size rank; null for type $T_n$
+  unsigned int Cartan_determinant() const; // determinant of |Cartan_matrix|
   int_Matrix transpose_Cartan_matrix() const;
-};
+}; // |struct SimpleLieType|
 
 struct LieType : public std::vector<SimpleLieType>
 { // there are no additional data members
@@ -96,12 +97,13 @@ struct LieType : public std::vector<SimpleLieType>
   unsigned int semisimple_rank() const;
   int Cartan_entry(unsigned int i,unsigned int j) const;
   int_Matrix Cartan_matrix() const; // square of size |rank()| (maybe zero rows)
+  unsigned int Cartan_determinant() const; // determinant of |Cartan_matrix|
   int_Matrix transpose_Cartan_matrix() const;
   int_Matrix Smith_basis(CoeffList& invf) const;
 
   LieType& append (const LieType& tail)
   { insert(end(),tail.begin(),tail.end()); return *this; }
-};
+}; // |struct LieType|
 
 // the following rather empty definition serves mainly to make |InnerClassType|
 // a genuine member of |namespace lietype| for argument-dependent lookup

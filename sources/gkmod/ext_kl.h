@@ -96,6 +96,10 @@ class descent_table
 
 }; // |descent_table|
 
+void check_descents(const descent_table& sub,
+		    const BlockEltList& embed, const Permutation& simple_pi,
+		    const descent_table& main);
+
 struct Poly_hash_export // auxiliary to export possibly temporary hash table
 {
   std::unique_ptr<ext_KL_hash_Table> own; // maybe own the temporary
@@ -109,7 +113,9 @@ struct Poly_hash_export // auxiliary to export possibly temporary hash table
 
 class KL_table
 {
+public:
   const descent_table aux;
+private:
   ext_KL_hash_Table* pol_hash; // maybe pointer to shared KL polynomial table
   std::unique_ptr<IntPolEntry::Pooltype> own; // to |storage_pool| if we own
   const IntPolEntry::Pooltype& storage_pool; // the distinct actual polynomials
@@ -155,7 +161,7 @@ class KL_table
   // manipulators
   void fill_columns(BlockElt limit=0); // do all |y<limit|; if |limit==0| do all
   Poly_hash_export polynomial_hash_table ();
-  void swallow (KL_table&& sub, const BlockEltList& embed);
+  void swallow (KL_table&& sub,	const BlockEltList& embed);
  private:
   using PolHash = HashTable<IntPolEntry,ext_kl::KLIndex>;
   void fill_column(BlockElt y,PolHash& hash);

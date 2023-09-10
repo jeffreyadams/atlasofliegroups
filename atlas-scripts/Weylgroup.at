@@ -142,36 +142,29 @@ root_datum(M*simple_roots(rd)
 
 set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
 
-{  order of the Weyl group }
-set labels_simple ((string,int)simple_type) = [int]:
-   highest_root(Lie_type(simple_type).adjoint)
-
-set labels_simple (LieType lt) = [int]:
-  assert(lt.derived_is_simple,"Derived Root Datum is not simple");
-  labels_simple(lt.simple_factors[0])
-
-set labels (RootDatum rd) = [int]:
-  let (lt,map)= rd.Cartan_matrix.Cartan_matrix_type
-  , result = for :rd.semisimple_rank do 0 od, offset=0
-  in for (,rank):pair in lt.simple_factors
-     do for l@i in labels_simple(pair) do result[map[i+offset]]:=l od
-     ;  offset +:=rank
-     od; result
+{ The magic formula below for the order of the Weyl group must handle the simple
+  factors separately: while all the ingredients are defined for arbitrary Lie
+  types and root data, the factor |fac(rank)| comes from the volume formula for
+  a simplex, and is only applicable when the fundamental alcove is a simplex.
+  Labels could also be for simple coroots, as only their product matters here.
+}
 
 set order_W_simple ((string,int)(,rank):pair) = int:
-  fac(rank)*product(labels_simple(pair))*det(Lie_type(pair).Cartan_matrix)
+  let rd=Lie_type(pair).adjoint in
+  fac(rank)*product(simple_root_labels(rd))*det(rd.Cartan_matrix)
 
 set order_W_simple (LieType lt) = int:
   assert(lt.derived_is_simple,"Derived Root Datum is not simple");
 { magic formula for the order of the Weyl group for a simple Lie type: }
-  order_W_simple(lt.simple_factors[0])
+  let rd=lt.adjoint, r=semisimple_rank(lt)
+  in fac(r)*product(simple_root_labels(rd))*det(lt.Cartan_matrix)
 
 set order_W (LieType lt) = int:
   for pair in lt.simple_factors do order_W_simple(pair) od.product
 set order_W (RootDatum rd) = int: order_W(Lie_type(rd))
 
 { factor w into elements for subgroups of W(rd) for simple factors of rd }
-set factor (WeylElt w) = [WeylElt]:
+set factors (WeylElt w) = [WeylElt]:
   let rd=w.root_datum then (type,map)=Cartan_matrix_type(rd.Cartan_matrix)
   then codes = simple_factors(type)
    , offset=0 { rank within |type| already seen in loop below }
@@ -187,17 +180,18 @@ in for (,rank):code in codes { traverse the simple factors }
  w_i is in very_simple_factor(rd)[i]
  these are distinct root data and not directly related
 }
-set factor_strong(WeylElt w)=[WeylElt]:
-if w.root_datum.is_abelian then [w] else
-let sf=simple_factors(w.root_datum) {derived group of each factor is simple} then
-factors_w=w.factor  {[w_1,...,w_n]: w_i \in W(rd) } in
-for i:#sf do
- let sub=sf[i]  {same rank as rd, derived group is simple} then
- sub_d=sub.derived {simple}  then
- x=W_elt(sub,factors_w[i].matrix)  {matrix of size rank(rd)} in
- W_elt(sub_d,x.word)   {corresponding WeylElt of actual simple factor}
-od
-fi
+set factor_strong (WeylElt w) = [WeylElt]:
+   let rd = root_datum(w)
+in if rd.is_abelian then [w]
+   else
+      let sf=simple_factors(rd)
+      , factors_w=factors(w)  {[w_1,...,w_n]: w_i \in W(rd) }
+   in for sub@i in sf { each |sub| has rank of |rd|0, but simple derived group }
+      do let sub_d=sub.derived {simple}
+         then  x=W_elt(sub,factors_w[i].matrix)  {matrix of size rank(rd)}
+      in W_elt(sub_d,x.word)   {corresponding WeylElt of actual simple factor}
+      od
+   fi
 
 set char_poly (WeylElt w) = vec: char_poly(matrix(w))
 
@@ -211,7 +205,8 @@ set coxeter_number_simple (RootDatum rd) = int:
 assert(rd.derived.is_simple,"derived RootDatum is not simple");
   rat_as_int(highest_root(rd)*rho_check(rd)+1)
 
-set coxeter_number(RootDatum rd)=int: sum(for f in rd.simple_factors do f.coxeter_number_simple od)
+set coxeter_number (RootDatum rd) = int:
+  sum(for f in rd.simple_factors do f.coxeter_number_simple od)
 
 {. torus element representing the Coxeter Weyl group element .}
 set coxeter_torus_element (RootDatum rd) = ratvec:

@@ -216,9 +216,12 @@ set sort_by_height = ([(Split,KType)] -> [(Split,KType)]):
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
   sort_by( (Split .,Param p) int: height(p) )
 
-{ sorting fixed size vectors lexicographically }
+{ sorting vectors lexicographically }
 set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }
-   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+   if #v!=#w then return #v < #w
+      	     else for x@i in v do if x!=w[i] then return x<w[i] fi od;
+	     true
+   fi
 
 set merge ([vec] a, [vec] b) = [vec]: { merge weakly increasing lists }
   let na=#a in

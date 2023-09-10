@@ -203,12 +203,18 @@ set set_bit_positions (int n) = vec:
    assert(n.>=,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
+
 set is_subset_of_sorted ([int] sorted) = ([int]->bool):
    let test = is_member_sorted(sorted) in
    ([int] S)bool: all(#S,(int i)bool: test(S[i]))
 set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
    let test = isnt_member_sorted(sorted) in
    ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+
+set bitwise_intersection ([int] ns) = int:
+   let a=minus_1 in for n in ns do a:=AND(a,n) od; a
+set bitwise_union ([int] ns) = int:
+   let a=0 in for n in ns do a:=OR(a,n) od; a
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
@@ -372,8 +378,12 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
 
+set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
+  let result = null(l) in for v in list do result+:=v od; result
+{ for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
+
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = mat:
+set all_words ([[int]] alphabets) = [vec]: {mat:}
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
@@ -382,10 +392,10 @@ set all_words ([[int]] alphabets) = mat:
 	  od.##
      fi
   , size=#alphabets
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  in generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([int] limits) = [vec]: {mat:}
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
@@ -1176,7 +1186,7 @@ set sub_datum(RootDatum rd, (int->bool) select {from posroot indices}) =
   functions that expect a specific simple type can call |test_simple_type| }
 
 { test |rd| for being of simple type T (a letter in "ABCDEFG"), and return (as
-  a list of integers) a map from standard diagam labelling to |rd| simple roots
+  a list of integers) a map from standard diagram labelling to |rd| simple roots
 }
 set test_simple_type(string T, RootDatum rd) = [int]:
 (  let  (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
@@ -1220,14 +1230,41 @@ in root_datum_from_positive((columns_with(pred,posroots(rd))
 			   ,rd.prefers_coroots
 			   )
 
+set highest_root_indices (RootDatum rd) = [int]:
+   let ssr = semisimple_rank(rd)
+   then intersection =
+      for i:ssr from -ssr
+      do for j in root_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
+         .to_bitset
+      od.bitwise_intersection
+in intersection.set_bit_positions
+set highest_coroot_indices (RootDatum rd) = [int]:
+   let ssr = semisimple_rank(rd)
+   then intersection =
+      for i:ssr from -ssr
+      do for j in coroot_ladder_bottoms(rd,i) do if <j then [] else [j] fi od.##
+         .to_bitset
+      od.bitwise_intersection
+in intersection.set_bit_positions
+
 { list of all highest roots (one for each simple factor) }
 set highest_roots (RootDatum rd) = [vec]:
-  let pr=posroots(rd) in
-##for alpha in pr
-  do if all(for beta in pr do not is_posroot(rd,alpha+beta) od)
-     then [alpha] else []
-     fi
-  od
+   for i in highest_root_indices(rd) do root(rd,i) od
+set highest_coroots (RootDatum rd) = [vec]:
+   for i in highest_coroot_indices(rd) do root(rd,i) od
+set lowest_roots (RootDatum rd) = [vec]:
+   for i in highest_root_indices(rd) do root(rd,minus_1-i) od
+set lowest_coroots (RootDatum rd) = [vec]:
+   for i in highest_coroot_indices(rd) do root(rd,minus_1-i) od
+
+set simple_root_labels (RootDatum rd) = vec:
+   let exprs = [vec]:
+      for i in highest_root_indices(rd) do root_expression(rd,i) od
+in sum(rd.semisimple_rank,exprs)
+set simple_coroot_labels (RootDatum rd) = vec:
+   let exprs = [vec]:
+      for i in highest_coroot_indices(rd) do coroot_expression(rd,i) od
+in sum(rd.semisimple_rank,exprs)
 
 { single highest root, or error if |rd| has not exactly one simple factor }
 set highest_root (RootDatum rd) = vec:
@@ -2083,7 +2120,6 @@ set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 {		Rapid look-up in certain fixed structures		}
 
 { remove repetitions from a list of vecs, assumed all same size }
-{ DOESN'T WORK because of invocation of highest_weight }
 set no_reps([vec] L) = [vec]: 
     if =#L then []
     else
@@ -2105,14 +2141,23 @@ set no_reps([ratvec] L) = [ratvec]:
        in for p in monomials(P) do p.nu od
     fi
 
-set index_in ([vec] L) { equal size vectors } = (vec->int):
+set index_in = ([vec]->(vec->int)):
+   let limit = [30].to_bitset { $2^{30}$ } in
+   ([vec] L) { equal size vectors } (vec->int):
   if =#L then (vec .)int: minus_1 { search in empty list always fails }
   else
      let n=#L[0] then R=null(n,0)
      then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
-     then x0 = KGB(G,0), zero = null(n)
-     then P = null_K_module(G) +  for v@i in L do (i+1,K_type(x0,v)) od
-  in (vec v) int: P[K_type(x0,v)].int_part-1
+     then x0 = KGB(G,0)
+  in if #L<limit
+     then let P = null_K_module(G) + for v@i in L do (i+1,K_type(x0,v)) od
+          in (vec v) int: P[K_type(x0,v)].int_part-1
+     else let P = null_K_module(G) +
+             for v@i in L
+	     do let (q,r)= (i+1)\%limit in (Split:(r,q),K_type(x0,v))
+	     od
+	  in (vec v) int: let (r,q) = %P[K_type(x0,v)] in q*limit+r-1
+     fi
   fi
 
 set index_in ([ratvec] L) { equal size vectors } = (ratvec->int):
