@@ -1,23 +1,9 @@
 #!/bin/python3
 
-#output to a valid atlas file, of the form
-#K_chars=[...]
-#sample usage: Kpols.py -g G2_s -d 2 -f "facets_G2/facets_G2_s_dim
-#compute number of fundamental facets of dimension d, then look for files
-#facets_G2/facets_G2_s_dim2_i (0\le i\le d-1)
-#command line arguments:
-#-g: group
-#-d: dimension (for naming output files)
-#-f: facet_file_stem
-#-o: output_file_stem (optional: override default naming convention)
-#default output files: directory "group"/"group_dim" + dim + "_" + j + ".at"
-#example: G2_s/G2_s_dim1_3.at
+#test file of ostensibly non-unitary representations
+#mainly intended for checking 67M non-unitary principal series for E8 calculated by Steve Miller
 
-#to create a facet file (example):
-#in atlas:
-#>facetsE6dim4 facets(E6_s,4)   {4 dim facets}
-#>facetsE6dim4 facets(E6_s)     {all facets}
-import sys, time, os, getopt, subprocess, gc,re 
+import sys, time, os, getopt, subprocess, gc,re
 import concurrent.futures
 from subprocess import Popen, PIPE, STDOUT
 import multiprocessing as mp   #only for cpu count
@@ -33,20 +19,10 @@ def report(q,i,proc):
 #i: number of process
 def atlas_compute(i):
    print("starting atlas_compute process #", i)
-   N=number_parameters/number_jobs
    proc=procs[i]
-   output_file=directory + "/" + str(i)
-#   f=open(output_file,"w", buffering=4000000)
-   f=open(output_file,"w", buffering=1)
-   f.write("Starting computation at " + str(time.ctime()) + "\n")
-   f.write("Computing FPP_unitary_hash_one_level(G,hash) for G=E8_s\n")
-   line= "Job number: "  + str(i) + "\n" + "Number of jobs: " + str(number_jobs) + "\n" + "Number of parameters: " + str(number_parameters) + "\n" + "Number of parameters this job: " + str(N) + "\n"
-   f.write(line)
-   starttime=time.time()
-   print("Reading in file  (job #" + str(i) + "): " + str(input_file))
 
+   #first read in file, get N=total number of parameters
    atlas_arg='{}'.format("< " + input_file+ "\n").encode('utf-8')
-#   print("atlas arg: ", atlas_arg)
    proc.stdin.write(atlas_arg)
    proc.stdin.flush()
    while True:   #read until line with "Variable"
@@ -54,15 +30,24 @@ def atlas_compute(i):
       if "Variable" in line:
          break
       f.write(line)
-   print("Done reading in file (job #" + str(i) + ")")
-
-   atlas_arg='{}'.format("prints(\"number of parameters in file: \", #parameters)" + "\n").encode('utf-8')
-#   print("atlas arg: ", atlas_arg)
+   print("Done reading in file " + str(input_file) + "(job #" + str(i) + ")")
+   
+   output_file=directory + "/" + str(i)
+   f=open(output_file,"w", buffering=1)
+   f.write("Starting computation at " + str(time.ctime()) + "\n")
+   f.write("Computing FPP_unitary_hash_one_level(G,hash) for G=" + group)
+   line= "Job number: "  + str(i) + "\n" + "Number of jobs: " + str(number_jobs) + "\n" + "Number of parameters: " + str(number_parameters) + "\n" + "Number of parameters this job: " + str(N) + "\n"
+   f.write(line)
+   starttime=time.time()
+   print("Reading in file  (job #" + str(i) + "): " + str(input_file))
+   #get number of parameters in file
+   atlas_arg='{}'.format("#parameters" + "\n").encode('utf-8')
    proc.stdin.write(atlas_arg)
    proc.stdin.flush()
    line = proc.stdout.readline().decode('ascii')
-#   print("line="+line)   
-   f.write(line)
+   N=int(line)
+   print("N=",N)
+   f.write("Number of parameters; " + str(N))
    atlas_arg ='{}'.format("set x=is_unitary_to_level_one(parameters,"  + str(i*N) + "," + "N" + ")" + "\n").encode('utf-8')
    print("Atlas arg: ", atlas_arg)
    
@@ -86,10 +71,11 @@ def atlas_compute(i):
    return()
 
 def main(argv):
-   global directory, number_jobs,number_parameters,input_file
-   opts, args = getopt.getopt(argv, "d:i:n:N:")
+   global directory, number_jobs,input_file,group
+   group="E8_s"
+   opts, args = getopt.getopt(argv, "d:i:n:")
    if len(opts)<3:
-      print("Usage: \n-d: directory\n-i: input_file\n-n: number jobs\n-N:number of parameters to test")
+      print("Usage: \n-d: directory\n-i: input_file\n-n: number jobs")
       exit()
    print("----------------------------")
    print("Starting at ", time.ctime())
@@ -108,9 +94,6 @@ def main(argv):
        elif opt in ('-n'):
           number_jobs=int(arg)
           print("number_jobs: ", number_jobs)
-       elif opt in ('-N'):
-          number_parameters=int(arg)
-          print("number_parameters: ", number_parameters)
    with mp.Manager() as manager:
       global procs
       procs=[]
