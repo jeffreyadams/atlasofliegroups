@@ -3366,12 +3366,20 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     in  UParams
 
 {how often to redo is_unitary_to_ht for dims 0 and 1}
-set edge_reps = int: 2
+set edge_reps = int: 1
+
+{lowest height to start testing}
+set edge_offset = int: 3
+
+{how much to increase ht at each repetition}
+set edge_skip = int: 1
+
 set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashes) =
     [Param]:
     let G = x.real_form, pol_hash=make_KTypePol_hash()
     then r = rank(x.involution - 1)
-    then hts = next_heights(parameter(x,lambda,0*lambda),edge_reps)
+    then hts = next_heights(parameter(x,lambda,0*lambda),
+    	 (edge_reps-1)*edge_skip + edge_offset + 1)
     then ht = hts~[0]
     {get all verts}
     then (vd, Lvd, Perm, mapAct, LFDKH) = localFD_KHash000(x, lambda, pol_hash)
@@ -3386,15 +3394,19 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, [Param_hash] Uhashe
     then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LFDKH do #list od) fi
 	{compute graph on facets to dim 1, to ht0}
-    then () =  if test_verbose then prints("testing levels = ",hts) fi
+    then () =  if test_verbose then prints(new_line, "edge_reps = ",edge_reps,
+    	       ", edge_offset = ", edge_offset, ", edge_skip = ",edge_skip);
+    		  prints("testing levels = ",
+    	 for a:edge_reps do hts[a*edge_skip+edge_offset] od) fi
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_to_ht(p,ht)
     then () = for a:edge_reps
-    	      do let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[a])
-    	      	       {remove from LFDKH all facets failing is_unitary_to_ht(hts[a])}
+    	      do let b = a*edge_skip + edge_offset
+		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[b])
+    	      	       {remove from LFDKH all facets failing is_unitary_to_ht(hts[b])}
     		 then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		      gr, IUCL, CLBF, hts[a], Uhashes)
-    		 in if test_verbose then prints("unitary to ht ",hts[a],
+		      gr, IUCL, CLBF, hts[b], Uhashes)
+    		 in if test_verbose then prints("unitary to ht ",hts[b],
 		   	" facet counts to dim 1: ",for list in LFDKH do #list od) fi
 	      od
 { Have facets to dim 1 unitary to ht. Seek to extend list to all higher dims }
