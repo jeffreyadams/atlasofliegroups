@@ -22,12 +22,13 @@
 #include "bitmap.h"	// containment of bitmaps for real forms
 #include "permutations.h"// containment of root twist
 
+#include "lietype.h"    // inlining supposes |ext_gen| is complete type
 #include "cartanclass.h"// containment of |Fiber|
 #include "involutions.h"// containment of |InvolutionTable|, |Cartan_orbits|
 #include "subsystem.h"  // containment of |integral_datum_item|
 #include "poset.h"	// containment of Cartan poset
 #include "rootdata.h"	// containment of root datum and its dual
-#include "tits.h"	// containment of Tits group and its dual
+#include "tits.h"	// containment of TitsGroup (and so TwistedWeylGroup)
 
 namespace atlas {
 
@@ -107,13 +108,13 @@ void twisted_act
   datum recorded in the RootDatum class d_rootDatum, and its involutive
   distinguished automorphism. Many computations take place inside the Tits
   group, which is an extension of the (complex) Weyl group by the elements of
-  order 2 in the torus. (In fact the structure we store in |d_titsGroup|
+  order 2 in the torus. (In fact the structure we store in |d_Tits_group|
   allows computing in an even larger group, the semidirect product of the Tits
   group just described by a factor Z/2Z whose action on the other factor is
   determined by the given automorphism of the based root datum, the "twist".)
 
   The field |d_rootDatum| stores the root datum, which must have been
-  constructed before. The field |d_titsGroup| holds the mentioned (enlarged)
+  constructed before. The field |d_Tits_group| holds the mentioned (enlarged)
   Tits group, which is constructed upon entry from the root datum and the
   involution; it also gives access to just the (complex) Weyl group when that
   is necessary. Finally the other fields store the information relative to
@@ -173,10 +174,20 @@ class InnerClass
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
+  struct cofold_data
+  { ext_gens orbits; RootDatum datum; WeylGroup W;
+    cofold_data(const RootDatum& rd, const int_Matrix& delta)
+      : orbits(fold_orbits(rd,delta))
+      , datum(cofold(rd,orbits))
+      , W(datum.Cartan_matrix())
+    {}
+  };
+  mutable std::unique_ptr<cofold_data> cofolded; // generated on demand
+
   /*
     Fiber class for the fundamental Cartan subgroup
     The distinguished involution (permuting the simple roots) is stored here
-    so for construction it is convient to precede the |d_titsGroup| member
+    so for construction it is convient to precede the |d_Tits_group| member
   */
   Fiber d_fundamental;
 
@@ -189,12 +200,11 @@ class InnerClass
 
   // Tits group of the based root datum, extended by an involutive automorphism
   // this member also stores the |TwistedWeylGroup| (which refers to |W|)
-  const TitsGroup d_titsGroup;
+  const TitsGroup d_Tits_group;
   // Tits group of the dual based root datum
   const TitsGroup d_dualTitsGroup;
   // the permutation of the roots given by the based automorphism
   const Permutation root_twist;
-
 
   struct C_info
   { // gradings of the set of simple (co)roots, for all real forms
@@ -250,22 +260,39 @@ class InnerClass
 
 // Attributes "inherited" from component objects
 
-  const RootDatum& rootDatum() const { return d_rootDatum; }
-  const RootDatum& dualRootDatum() const { return d_dualRootDatum; }
+  const RootDatum& root_datum() const { return d_rootDatum; }
+  const RootDatum& dual_root_datum() const { return d_dualRootDatum; }
   const RootSystem& rootSystem() const {return d_rootDatum; } // base object
   const RootSystem& dualRootSystem() const {return d_dualRootDatum; } // base
-  size_t rank() const { return rootDatum().rank(); }
+  size_t rank() const { return root_datum().rank(); }
   size_t semisimple_rank() const { return rootSystem().rank(); }
 
 // Access to certain component objects themselves
 
-  const WeylGroup& weylGroup() const { return W; }
+  const WeylGroup& Weyl_group() const { return W; }
   const TwistedWeylGroup& twistedWeylGroup() const
-    { return d_titsGroup; } // in fact its base object
+    { return d_Tits_group; } // in fact its base object
   const TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
-  const TitsGroup& titsGroup() const { return d_titsGroup; }
+  const TitsGroup& Tits_group() const { return d_Tits_group; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
+
+  template <typename C> bool is_delta_fixed(const matrix::Vector<C>& v) const;
+  bool is_delta_fixed(const RatWeight& gamma) const
+  { return is_delta_fixed(gamma.numerator()); }
+
+  const ext_gens& cofolded_orbits() const
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->orbits;
+  }
+  const RootDatum& cofolded_datum() const
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->datum;
+  }
+  const WeylGroup& cofolded_W() const
+  { if (cofolded==nullptr) construct_cofolded();
+    return cofolded->W;
+  }
 
   const Fiber& fundamental_fiber () const { return d_fundamental; }
   const Fiber& fundamental_dual_fiber () const { return d_dualFundamental; }
@@ -472,26 +499,19 @@ class InnerClass
   WeylWord canonicalize(TwistedInvolution& sigma) const
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimple_rank()])); }
 
-  subsystem::integral_datum_item& int_item
-    (const RatWeight& gamma, unsigned long int& int_sys_nr);
-  subsystem::integral_datum_item& int_item
-    (const RootNbrSet& int_posroots, unsigned long int& int_sys_nr);
-  // same when |int_sys_nr| has already been computed:
-  const subsystem::integral_datum_item& int_item(unsigned long int int_sys_nr) const
+  subsystem::integral_datum_item& int_item (RatWeight gamma, repr::locator& loc);
+  // same when |loc| has already been computed (pass just |loc.int_sys_nr|)
+  const subsystem::integral_datum_item& int_item (unsigned int int_sys_nr) const
   { return int_table[int_sys_nr]; }
 
-  const subsystem::integral_datum_item::codec integrality_codec
-    (const RatWeight& gamma, InvolutionNbr inv, unsigned long int& int_sys_nr)
-  { auto& item = int_item(gamma,int_sys_nr); // this ensures |int_sys_nr| is set
-    return item.data(*this,int_sys_nr,inv);
-  }
+  repr::codec integrality_codec
+    (const RatWeight& gamma, InvolutionNbr inv) const;
 
-  // evaluation matrix on integral coroots
-  const int_Matrix& integral_eval(unsigned long int int_sys_nr) const
-  { return int_table[int_sys_nr].coroots_matrix(); }
-  const int_Matrix& integral_eval
-    (const RatWeight& gamma, unsigned long int& int_sys_nr)
-  { return int_item(gamma,int_sys_nr).coroots_matrix(); }
+  // map root (number) from |root_datum()| to its |cofolded_datum()| counterpart
+  RootNbr folded_root(RootNbr alpha) const;
+  RootNbrSet folded_roots(RootNbrSet S) const; // same for set of (co)roots
+  ext_gen unfold(weyl::Generator s) const { return cofolded_orbits()[s]; }
+  WeylElt unfold(const WeylElt& w) const; // embed into $W^\delta$
 
 // pseudo manipulator
 
@@ -515,12 +535,11 @@ class InnerClass
 // Auxiliary manipulators
 
   void construct(); // does essential work, common to two constructors
+  void construct_cofolded() const // |const|, as |cofolded| field is |mutable|
+  { cofolded = std::make_unique<cofold_data>(root_datum(),distinguished()); }
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|
-
-  // get |int_table| entry for |gamma|
-  subsystem::integral_datum_item& int_item(const RatWeight& gamma);
 
 }; // |class InnerClass|
 

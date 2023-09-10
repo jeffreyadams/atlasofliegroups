@@ -35,6 +35,11 @@ namespace blocks {
 
 /******** function declarations *********************************************/
 
+  void check_sub_block // to be defined unless the macro NDEBUG is
+  (const common_block& sub,
+   const BlockEltList& embed, const Permutation& simple_pi,
+   const common_block& block);
+
   // compute the involution in |dual_W| corresponding to |w| in |W|
   TwistedInvolution dual_involution
     (const TwistedInvolution& w,
@@ -298,7 +303,7 @@ class Block : public Block_base
 // accessors
 
   const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
-  const WeylGroup& weylGroup() const { return tW.weylGroup(); }
+  const WeylGroup& Weyl_group() const { return tW.Weyl_group(); }
 
   virtual KGBElt max_x() const { return xrange-1; }
   virtual KGBElt max_y() const { return yrange-1; }
@@ -341,16 +346,16 @@ class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
-  const SubSystem& integral_sys;
+  const RootNbrList simply_integrals;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<StandardReprMod,BlockElt>;
   StandardReprMod::Pooltype z_pool;
   repr_hash srm_hash;
 
-  // pair of an extended block and integral-orthogonal shift to |gamma_lambda|
-  struct ext_block_pair;
-  sl_list<ext_block_pair> extended;
+  // an extended block plus additional data necessary to interpret the twist
+  struct ext_block_data;
+  sl_list<ext_block_data> extended;
 
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
@@ -368,10 +373,12 @@ class common_block : public Block_base
     (const common_context& ctxt, sl_list<StandardReprMod>& elements);
   ~common_block(); // cleans up |extended|, so inline definition impossible
 
+  common_block(const common_block&) = delete; // no copying
+  common_block operator=(const common_block&) = delete; // no assigning
+
   // accessors that get values via |rc|
   const Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
-  const SubSystem& integral_subsystem() const { return integral_sys; }
   InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
@@ -380,6 +387,8 @@ class common_block : public Block_base
 
   // simple coroots of |sub| singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
+  RankFlags singular
+    (const repr::block_modifier& bm, const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const { return z_pool[z].gamma_lambda(); }
@@ -390,14 +399,22 @@ class common_block : public Block_base
 
   const StandardReprMod& representative (BlockElt z) const { return z_pool[z]; }
 
+  // these functions essentially delegate to similar methods from |Rep_context|
   StandardRepr sr // reconstruct |StandardRepr| at |gamma| from |z_pool[z]|
     (BlockElt z, const RatWeight& gamma) const;
   StandardRepr sr // reconstruct at |gamma| using |diff| of |gamma_lambda|s
-    (BlockElt z,const RatWeight& diff, const RatWeight& gamma) const;
+    (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const;
 
-  ext_gens fold_orbits(const WeightInvolution& delta) const;
+  WeightInvolution pull_back // of action by |delta| on block modified by |bm|
+    ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
+  RootNbrList simply_ints() const { return simply_integrals; }
+  RootNbrList simply_ints(const repr::block_modifier& bm) const;
+  ext_gens fold_orbits (const WeightInvolution& delta) const;
 
-  // unshifted, unshared extended block, but with "arbitrary" involution
+#ifndef NDEBUG
+  bool is_integral_orthogonal(const RatWeight& shift) const;
+#endif
+  // extension for custom built |common_block|, with "arbitrary" involution
   ext_block::ext_block extended_block(const WeightInvolution& delta) const;
 
   // manipulators
@@ -409,10 +426,13 @@ class common_block : public Block_base
   // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using argument
   kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
-    (common_block&& sub, const BlockEltList& embed,
+    (common_block&& sub,
+     const repr::block_modifier& bm, const BlockEltList& embed,
      KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
-  ext_block::ext_block& extended_block(ext_KL_hash_Table* pol_hash);
-  // get/build extended block for inner class involution; if built, store it
+
+  // get/build extended block for |delta|; if built, store it
+  ext_block::ext_block& extended_block
+    (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash);
 
   void set_Bruhat (sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 

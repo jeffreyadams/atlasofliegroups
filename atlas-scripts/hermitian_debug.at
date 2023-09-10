@@ -1,6 +1,8 @@
 { alternative to hermitian.at, introducing print commands to trace values }
 
 <basic.at
+<groups.at
+<std_decs.at
 <convert_c_form.at
 
 {.write c-invariant form on standard module as a KTypePol }

@@ -313,13 +313,13 @@ void posroots_rootbasis_f()
   const RootSystem& rs = commands::current_inner_class().rootSystem();
 
   ioutils::OutputFile file;
-  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
+  prettyprint::printInRootBasis(file,rs.posroot_set(),rs);
 }
 
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  const RootSystem rs (commands::current_inner_class().dualRootSystem());
+  const RootSystem& rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
   for (RootNbr i=0; i<rs.numRoots(); ++i)
@@ -330,10 +330,10 @@ void coroots_rootbasis_f()
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  const RootSystem rs (commands::current_inner_class().dualRootSystem());
+  const RootSystem& rs (commands::current_inner_class().dualRootSystem());
 
   ioutils::OutputFile file;
-  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
+  prettyprint::printInRootBasis(file,rs.posroot_set(),rs);
 }
 
 
@@ -531,11 +531,11 @@ void Ktypemat_f()
   std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-  matrix::Matrix_base<standardrepk::CharCoeff> m;
-  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::CharCoeff> m;
+  matrix::Matrix<standardrepk::CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
@@ -640,11 +640,11 @@ void qKtypemat_f()
   std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-  matrix::Matrix_base<standardrepk::q_CharCoeff> m;
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::q_CharCoeff> m;
+  matrix::Matrix<standardrepk::q_CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+  matrix::Matrix<standardrepk::q_CharCoeff> ktypemat =
     khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
@@ -845,7 +845,7 @@ void srtest_f()
     G.innerClass().involution_of_Cartan(sr.Cartan());
   if (kgb.involution(x)!=canonical)
     prettyprint::printWeylElt(std::cout << " at involution ",
-			      canonical, G.weylGroup());
+			      canonical, G.Weyl_group());
   std::cout << "\nHeight is " << khc.height(sr) << std::endl;
 
   khc.go(sr);
@@ -897,7 +897,7 @@ void test_f() // trial of twisted KLV computation
   ioutils::OutputFile f;
   for (BlockElt y=0; y<last; ++y)
     for (BlockElt x=y+1; x-->0; )
-      if (not twisted_KLV.P(x,y).isZero())
+      if (not twisted_KLV.P(x,y).is_zero())
       {
 	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
 	f << twisted_KLV.P(x,y) << std::endl;
@@ -982,7 +982,7 @@ void repr_braid_f()
     (commands::current_layout(), commands::current_lattice_basis());
 
   auto gamma = commands::currentStandardRepr().gamma();
-  if (not ((delta-1)*gamma.numerator()).isZero())
+  if (not ((delta-1)*gamma.numerator()).is_zero())
   {
     std::cout << "Chosen delta does not fix gamma=" << gamma
 	      << " for the current block." << std::endl;

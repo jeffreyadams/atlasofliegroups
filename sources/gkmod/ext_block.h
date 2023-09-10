@@ -135,19 +135,18 @@ class ext_block
 
   ext_KL_hash_Table* pol_hash; // hash table pointer for |KL_table| construction
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
+  DynkinDiagram diagram; // diagram defined on |orbits|
  public:
-// two passive |const| fields, unused by any method but publically visible
+// a passive |const| field, unused by any method but publically visible
 
-  const DynkinDiagram folded_diagram; // diagram defined on |orbits|
-  const WeightInvolution delta; // involution in coordinates
 
 // constructors and destructors
   ext_block(const InnerClass& G,
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const blocks::common_block& block, const WeightInvolution& delta,
-	    ext_KL_hash_Table* pol_hash);
+  ext_block(const blocks::common_block& block, const repr::block_modifier& bm,
+	    const WeightInvolution& delta, ext_KL_hash_Table* pol_hash);
 
   ext_block(ext_block&&) = default;
 
@@ -160,17 +159,19 @@ class ext_block
     (BlockElt limit, ext_KL_hash_Table* pool=nullptr);
 
   void swallow // integrate an older partial block, with mapping of elements
-    (ext_block&& sub, const BlockEltList& embed);
+  (ext_block&& sub, const BlockEltList& embed, const Permutation& simple_pi);
 
 // accessors
 
-  size_t rank() const { return orbits.size(); }
+  unsigned int rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
   const Block_base& untwisted() const // use when only the parent base is needed
     { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
+  const ext_gens& folded_generators() const { return orbits; }
+  const DynkinDiagram& folded_diagram() const { return diagram; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
@@ -206,6 +207,9 @@ class ext_block
   weyl::Generator first_descent_among
     (RankFlags singular_orbits, BlockElt y) const;
 
+  // permutation induced from orbits to |simple_pi|-image orbits
+  Permutation induced(const Permutation& simple_pi) const;
+
   // reduce a matrix to elements without descents among singular generators
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
@@ -226,7 +230,9 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
-  bool tune_signs(const blocks::common_block& block);
+  bool tune_signs
+  (const blocks::common_block& block, const repr::block_modifier& bm,
+     const WeightInvolution& delta);
 
 }; // |class ext_block|
 
@@ -304,6 +310,9 @@ struct ext_param // allow public member access; methods ensure no invariants
 	     KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   ext_param (const repr::Ext_rep_context& ec,
 	     KGBElt x, RatWeight&& gamma_lambda, bool flipped=false);
+  static ext_param def_ext
+    (const repr::Ext_rep_context& ec, const repr::block_modifier& bm,
+     StandardReprMod srm, bool flipped=false);
 
   ext_param (const ext_param& p) = default;
   ext_param (ext_param&& p)

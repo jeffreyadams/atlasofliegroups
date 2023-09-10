@@ -67,7 +67,7 @@ void RealReductiveGroup::construct()
 {
   const InnerClass& G_C=d_innerClass;
   const RealFormNbr rf=d_realForm;
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C.root_datum();
 
   const auto ms_tau = G_C.cartan(G_C.mostSplit(rf)).involution();
   dual_pi0_gens = topology::dual_component_group_basis(ms_tau,rd);
@@ -121,13 +121,13 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
 
 
 const RootDatum& RealReductiveGroup::root_datum() const
-  { return d_innerClass.rootDatum(); }
+  { return d_innerClass.root_datum(); }
 
-const TitsGroup& RealReductiveGroup::titsGroup() const
-  { return d_Tg->titsGroup(); }
+const TitsGroup& RealReductiveGroup::Tits_group() const
+  { return d_Tg->Tits_group(); }
 
-const WeylGroup& RealReductiveGroup::weylGroup() const
-  { return d_innerClass.weylGroup(); }
+const WeylGroup& RealReductiveGroup::Weyl_group() const
+  { return d_innerClass.Weyl_group(); }
 
 const TwistedWeylGroup& RealReductiveGroup::twistedWeylGroup() const
   { return d_innerClass.twistedWeylGroup(); }
@@ -175,7 +175,7 @@ size_t RealReductiveGroup::mostSplit() const
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
-  return cartanclass::restrictGrading(rset,root_datum().simpleRootList());
+  return cartanclass::restrictGrading(rset,root_datum().simple_root_list());
 }
 
 
@@ -216,7 +216,7 @@ TorusPart minimal_torus_part
 {
   assert(torus_factor==torus_factor*G.matrix(tw)); // assuming already projected
 
-  const auto& rd = G.rootDatum();
+  const auto& rd = G.root_datum();
 
   RatCoweight diff = (torus_factor-coch).normalize();
   assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
@@ -224,9 +224,9 @@ TorusPart minimal_torus_part
   TorusPart tp(diff.numerator());
   { // move to fundamental fiber
     TitsCoset Tc(G,innerclass::grading_of_simples(G,coch));
-    const auto& Tg = Tc.titsGroup();
+    const auto& Tg = Tc.Tits_group();
     TitsElt a (Tg,tp,tw);
-    const auto& W = Tg.weylGroup();
+    const auto& W = Tg.Weyl_group();
     const auto& i_tab = G.involution_table();
     const TwistedInvolution e; // basis (identity) twisted involution
 

@@ -110,7 +110,7 @@ template<unsigned int dim> class Subspace
 
   // the following methods reduce (finding representative) MODULO the subspace
   BitVector<dim>
-    representative(const BitVector<dim>&) const;
+     representative(const BitVector<dim>&) const;
 
   BitVector<dim> mod_image(const BitVector<dim>& w)
     const

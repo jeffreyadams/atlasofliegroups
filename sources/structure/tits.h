@@ -24,7 +24,7 @@
 
 #include "bitvector.h" // contained in |TitsGroup|
 #include "prerootdata.h" // contained in |GlobalTitsGroup|
-#include "weyl.h"      // contained in |TitsElt|
+#include "weyl.h"      // has base class |TwistedWeylGroup| of |TitsGroup|
 
 #include "y_values.h"
 
@@ -547,7 +547,7 @@ class TitsGroup : public TwistedWeylGroup
 
   // Length of the underlying Weyl group element.
   unsigned long length(const TitsElt& a) const
-    { return weylGroup().length(a.w()); }
+    { return Weyl_group().length(a.w()); }
 
   TorusPart left_torus_part(const TitsElt& a) const { return a.d_t; }
 
@@ -684,8 +684,8 @@ class TitsCoset
 
   /* accessors */
 
-  const TitsGroup& titsGroup() const { return Tg; }
-  const WeylGroup& weylGroup() const { return Tg.weylGroup(); }
+  const TitsGroup& Tits_group() const { return Tg; }
+  const WeylGroup& Weyl_group() const { return Tg.Weyl_group(); }
 
   bool hasTwistedCommutation
     (weyl::Generator s, const TwistedInvolution& tw)  const
@@ -744,7 +744,7 @@ class EnrichedTitsGroup : public TitsCoset
 
   // whether arbitrary root |n| is compact for |x| in fundamental fiber
   bool is_compact(const TorusPart& x, RootNbr n) const
-    { return not grading(TitsElt(titsGroup(),x),n); }
+    { return not grading(TitsElt(Tits_group(),x),n); }
 
   TitsElt backtrack_seed (const InnerClass& G,
 			  RealFormNbr rf, size_t cn) const;

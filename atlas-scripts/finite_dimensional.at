@@ -39,7 +39,7 @@ set Weyl_dim (RootDatum rd, vec lambda) = int:
   Leave it for now because otherwise weyl_character_formula.at fails to load }
 {.highest weight of finite dimensional in X^* coordinates.}
 set highest_weight_finite_dimensional (Param p) = vec:
-   (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
+  (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
 
 {allow ratvec if G has split central torus}
 set highest_weight_finite_dimensional_ratvec (Param p) = ratvec:
@@ -91,3 +91,55 @@ in for c@p in tensor_product(rd,gamma1,gamma2)
    do let lambda_rho = p.lambda_minus_rho
    in (split_as_int(c), lower(r,lambda_rho)+upper(r,lambda_rho)+rho2 )
    od
+
+{Finite dimensional algebraic representation with highest weight v as K-type
+  of the complexification of G}
+set complex_KT (RealForm G, vec v)=KType:
+   let GC=complexification(G), n=rank(G)
+   in K_type(KGB(GC,0),(v-two_rho(G))##null(n))
+
+{ in the next function |P| is for a pure torus sharing its $X^*$ with |rd| }
+{ one can get that torus as |torus(rd.rank,0,0)| as defined in torus.at }
+set Demazure (RootDatum rd, int i, KTypePol P) = KTypePol:
+(  let alpha=root(rd,i), alpha_v=coroot(rd,i), result = null_K_module(P)
+in P +:= { calls +@(KTypePol,[(Split,KType)]) }
+     for c@t in P
+     do (-c,let (x,lambda)=%t in K_type(x,reflect(rd,i,lambda)-alpha)) od
+;  while !=P
+   do let (x,lambda) = %first_K_type(P), acc=null_K_module(P)
+   then level = alpha_v*lambda
+   in if level.< then lambda+:=alpha*(minus_1-level) fi
+   ;  assert(!=P[K_type(x,lambda)], @:to_string("absent term for ",(x,lambda)))
+   ;  while !=P[K_type(x,lambda+alpha)] do lambda+:=alpha od { back up }
+   ;  level := alpha_v*lambda { recompute |level| }
+   ;  let top = K_type(x,lambda), bot=K_type(x,lambda+alpha*(minus_1-level))
+      then c=P[top]
+   in while assert(=P[top]+P[bot],"failing anti-symmetry"); P[top]:=P[bot]:=0
+      ; acc[top]+:=c
+      ; if =level
+        then dont { i.e., quit the loop }
+        else acc[bot:=K_type(x,bot.lambda_rho+alpha)]+:=c { mirror contribute }
+        ; level>=2 { condition to continue }
+        do level-:=2; c+:=P[top:=K_type(x,lambda-:=alpha)]
+	fi
+      od
+   ;  result +:= acc
+   od
+; result
+)
+
+{The weights of a finite dimensional algebraic representation with extremal
+weight hwt}
+set wts_of_fd (RootDatum rd, vec hwt)=KTypePol:
+   let r=rank(rd), w=word(w0(rd))
+   then T=torus(r,0,0)
+   then x=KGB(T,0)
+   then Q=KTypePol: K_type(x,hwt)
+   in for n in w
+      do Q:=Demazure(rd,n,Q)
+      od; Q
+
+
+
+
+

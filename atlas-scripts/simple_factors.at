@@ -62,9 +62,6 @@ set number_simple_factors(RootDatum rd) = int: #diagram_components(rd)
 set simple_factors_info(RootDatum rd) = ([RootDatum],[[int]]):
    (simple_factors(rd),diagram_components(rd))
 
-set highest_roots(RootDatum rd)=[vec]:
-   for factor in simple_factors(rd) do highest_root(factor) od
-
 { in case it is needed to project weights to the $\Q$-span of roots for one
   simple factor of the root datum the rational projection matrix is computed by
   |project_on_simple_factor|. On the root-coradical basis, this projection is a

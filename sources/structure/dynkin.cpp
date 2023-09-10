@@ -236,37 +236,44 @@ DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 	unsigned ii = orbits[i].s0;
 	if (not are_adjacent(ii,jj)) // then we got wrong orbit elements
 	  ii = orbits[i].s1; // fix first one
-	assert (are_adjacent(ii,jj));
+	assert (are_adjacent(ii,jj)); // we've got an edge that maps to $(i,j)$
 	r_star[i].set(j);
 	r_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
 
-	int diff=orbits[i].length()-orbits[j].length();
-	if (diff==0) // equal length
-	{ // then copy Cartan entries
-	  const int m = edge_multiplicity(ii,jj);
-	  if (m>1)
-	  {
-	    if (Cartan_entry(ii,jj)<-1)
-	      result.down_edges.emplace_back(Edge(i,j),m);
-	    else
-	      result.down_edges.emplace_back(Edge(j,i),m);
-	  }
+	bool p=orbits[i].type==ext_gen::two, q=orbits[j].type==ext_gen::two;
+	if (p==q) // both type |one| or ith type |two|
+	{ assert(orbits[i].type!=ext_gen::three and
+		 orbits[j].type!=ext_gen::three);
+	  for (const auto& edge : down_edges)
+	    if (edge.first.first==ii and edge.first.second==jj)
+	      result.down_edges.emplace_back(Edge(i,j),edge.second);
+	    else if (edge.first.first==jj and edge.first.second==ii)
+	      result.down_edges.emplace_back(Edge(j,i),edge.second);
+	  // |else| ignore this |edge| as unrelated to orbit pair $(i,j)$
 	}
-	else // unequal orbit lengths
-	{ // then mark multiplicity 2 edge from longer to shorter orbit
-	  if (diff<0)
-	    result.down_edges.emplace_back(Edge(i,j),2);
-	  else
-	    result.down_edges.emplace_back(Edge(j,i),2);
+	else // make double edge from the type |two| edge to the other edge
+	{ assert(p or q); // unequal types, one of them must be type |two|
+	  result.down_edges.emplace_back(p ? Edge(i,j) : Edge(j,i), 2);
 	}
       }
   }
   return result;
-}
+} // |DynkinDiagram::folded|
 
 
 /******** accessors **********************************************************/
 
+// recover Cartan matrix entry from Dynkin diagram
+int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
+{
+  if (not are_adjacent(i,j))
+    return i==j ? 2 : 0;
+  for (const auto& edge : down_edges)
+    if (edge.first.first==i and edge.first.second==j)
+      return -edge.second; // -2 or -3
+
+  return -1; // simple edge, or labelled edge in short->long direction
+}
 
 LieType DynkinDiagram::type() const
 {
@@ -287,19 +294,6 @@ Permutation DynkinDiagram::perm() const
     result.insert(result.end(),comp.position.begin(),comp.position.end());
   return result;
 }
-
-// recover Cartan matrix entry from Dynkin diagram
-int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
-{
-  if (not are_adjacent(i,j))
-    return i==j ? 2 : 0;
-  for (const auto& edge : down_edges)
-    if (edge.first.first==i and edge.first.second==j)
-      return -edge.second; // -2 or -3
-
-  return -1; // simple edge, or labelled edge in short->long direction
-}
-
 
 
 
@@ -340,6 +334,16 @@ LieType Lie_type(const int_Matrix& cm, Permutation& pi)
 
   return result;
 
+} // |Lie_type(const int_Matrix& cm, Permutation& pi)|
+
+void permute(const Permutation& pi, DynkinDiagram& D)
+{
+  const unsigned int r=D.rank();
+  int_Matrix new_Cartan(r,r);
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
+      new_Cartan(pi[i],pi[j]) = D.Cartan_entry(i,j);
+  D = DynkinDiagram(new_Cartan);
 }
 
 } // |namespace dynkin|

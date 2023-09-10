@@ -63,10 +63,6 @@ template <typename C>
                 > >& system,
      std::vector<seq_no>& new_order);
 
-template <typename C>
-  matrix::Matrix_base<C> inverse_lower_triangular
-    (const matrix::Matrix_base<C>& U);
-
   q_combin to_q(const combination& c);
   combination q_is_1(const q_combin& c);
 
@@ -265,10 +261,10 @@ class SRK_context
   // accessors
   const InnerClass& innerClass() const { return G.innerClass(); }
   const RootDatum& root_datum() const { return G.root_datum(); }
-  const WeylGroup& weylGroup() const { return G.weylGroup(); }
+  const WeylGroup& Weyl_group() const { return G.Weyl_group(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
-  const TitsGroup& titsGroup() const { return G.titsGroup(); }
+  const TitsGroup& Tits_group() const { return G.Tits_group(); }
   const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
 
   const TwistedInvolution involution_of_Cartan(CartanNbr cn) const
@@ -353,7 +349,7 @@ class SRK_context
 
   TitsElt titsElt(const StandardRepK& s) const
   {
-    return TitsElt(titsGroup(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
+    return TitsElt(Tits_group(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
   }
 
   // list of elements below element representing |q|, by Levi (real) generators
@@ -474,11 +470,11 @@ class KhatContext : public SRK_context
     (const std::set<equation>& system, level bound);
 
  // saturate and invert |system| up to |bound|, writing list into |reps|
-  matrix::Matrix_base<CharCoeff>
+  matrix::Matrix<CharCoeff>
     K_type_matrix(std::set<equation>& system,
 		  level bound,
 		  std::vector<seq_no>& reps,
-		  matrix::Matrix_base<CharCoeff>* direct_p); // non |const|
+		  matrix::Matrix<CharCoeff>* direct_p); // non |const|
 
   combination branch(seq_no s, level bound); // non |const|
 
@@ -542,11 +538,11 @@ class qKhatContext : public SRK_context
   std::vector<q_equation> saturate
     (const std::set<q_equation>& system, level bound);
 
-  matrix::Matrix_base<q_CharCoeff>
+  matrix::Matrix<q_CharCoeff>
     K_type_matrix(std::set<q_equation>& system,
 		  level bound,
 		  std::vector<seq_no>& reps,
-		  matrix::Matrix_base<q_CharCoeff>* direct_p); // non |const|
+		  matrix::Matrix<q_CharCoeff>* direct_p); // non |const|
 
   q_combin branch(seq_no s, level bound); // non |const|
 

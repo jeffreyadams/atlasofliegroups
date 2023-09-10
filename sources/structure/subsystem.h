@@ -42,7 +42,6 @@ namespace subsystem {
   in effect and roots of the subsystem are also roots of the parent system.
 */
 
-// A subsystem on the dual side of a given root datum
 class SubSystem : public RootSystem // new system, subsystem of parent
 {
   const RootDatum& rd; // parent root datum
@@ -117,9 +116,10 @@ class SubSystem : public RootSystem // new system, subsystem of parent
   const Coweight& simple_coroot(weyl::Generator s) const
   { return parent_datum().coroot(parent_nr_simple(s)); }
 
-  // numbers in parent for the positive (co)roots of the subsystem
+  // numbers in parent for the simple or positive (co)roots of the subsystem
+  RootNbrSet simple_roots() const; // for subsystem, as |parent| roots
   RootNbrSet positive_roots() const; // for subsystem, as |parent| roots
-  const RootNbrSet& posroot_subset() const { return which; } // as posroots
+  const RootNbrSet& posroot_subset() const { return which; } // same, shifted
 
   // methods that avoid building full |RootDatum srd(pre_root_datum())|
   template<typename C>
@@ -129,8 +129,7 @@ class SubSystem : public RootSystem // new system, subsystem of parent
     void simple_coreflect(matrix::Vector<C>& v,weyl::Generator s,int d=0) const
   { parent_datum().coreflect(v,parent_nr_simple(s),d); }
 
-  ext_gens fold_orbits (const WeightInvolution& delta) const; // as for |srd|
-  RankFlags singular_generators(const RatWeight& gamma) const; // as for |srd|
+  RankFlags singular_generators(const RatWeight& gamma) const;
 
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
@@ -157,7 +156,8 @@ class SubSystemWithGroup : public SubSystem
 
 struct integral_datum_entry // hashable (integral) subset of positive roots
 {
-  RootNbrSet posroots; // as set of posroot indices, so starting at 0
+  // a set of poscoroots indexes posroots from 0, capacity |numPosRoots()|
+  RootNbrSet posroots; // a subset of positive system of |ic.root_datum()|
 
   integral_datum_entry (const RootNbrSet& p) : posroots(p) {}
 
@@ -175,28 +175,28 @@ struct integral_datum_entry // hashable (integral) subset of positive roots
 
 class integral_datum_item
 {
-  std::unique_ptr<SubSystem> // pointer level avoids |SubSystem| being moved
-    integral; // references full root datum, presents integral datum
+  const InnerClass& ic;
+  SubSystem int_sys; // references full root datum, presents integral datum
   int_Matrix simple_coroots; // convenience, for creating |codec| values
 
  public:
-  struct codec
-  {
-    const int_Matrix& coroots_matrix;
-    const int_Matrix& theta_1_image_basis;
-    std::vector<int> diagonal; // inv.factors image $(1-\theta)X^*$ in $X^*/N$
-    int_Matrix in, out; // from $X^*/N$ to $-1$ subspace to $(1-\theta)X^*$
-    codec (const InnerClass& ic,
-	   unsigned long int isys, InvolutionNbr inv, const int_Matrix& cmat);
-  }; // |struct integral_datum_item::codec|
-
   integral_datum_item(InnerClass& ic,const RootNbrSet& int_posroots);
-  integral_datum_item(integral_datum_item&&)=default; // move, never copy
+  integral_datum_item(integral_datum_item&& other) // move, never copy
+    : ic(other.ic)
+    , int_sys(std::move(other.int_sys))
+    , simple_coroots(std::move(other.simple_coroots))
+  {}
 
-  const SubSystem& int_system() const { return *integral; }
-  codec data(const InnerClass& ic, unsigned long int isys, InvolutionNbr inv) const
-  { return { ic,isys,inv,simple_coroots }; }
-  const int_Matrix& coroots_matrix() const { return simple_coroots; }
+  const SubSystem& int_system () const { return int_sys; }
+  SubSystem int_system (const WeylElt& w) const; // image by |w| in |Weyl_group|
+
+  // root indices of images by |w| of integrally-simple coroots; must be positive
+  sl_list<RootNbr> image_simples (const WeylElt& w) const; // again |w| in |W|
+
+  int_Matrix coroots_matrix (const WeylElt& w) const;
+
+  repr::codec data (InvolutionNbr inv) const;
+  repr::codec data (InvolutionNbr inv, const WeylElt& w) const;
 
 }; // |class integral_datum_item|
 

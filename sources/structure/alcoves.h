@@ -25,9 +25,14 @@ RootNbrSet wall_set
   (const RootDatum& rd, const RatWeight& gamma, RootNbrSet& integrals);
 
 sl_list<RootNbr> sorted_by_label
-  (const RootSystem& rs, RootNbrSet walls, const RootNbrSet& integrals);
+  (const RootSystem& rs, const RootNbrSet& walls);
 
-StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr);
+// replace |walls| by the walls of the fundamental alcove in some permutation,
+// and return Weyl word for element that maps the fundamental alcove to one
+// with walls in the same configuration (up to translation) as orignal |walls|
+WeylWord from_fundamental_alcove (const RootSystem& rs, RootNbrSet& walls);
+
+StandardRepr alcove_center (const Rep_context& rc, const StandardRepr& sr);
 
 Weight root_vertex_of_alcove (const RootDatum& rd, const RatWeight& gamma);
 
@@ -49,7 +54,13 @@ sl_list<WeylElt> basic_orbit_ws
 (const int_Matrix& Cartan, Generator i,
  const WeylGroup& W, std::vector<WeylElt> gens);
 sl_list<WeylElt> affine_orbit_ws
-  (const RootDatum& rd, const WeylGroup& W, RatWeight gamma);
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
+
+sl_list<std::pair<WeylElt,sl_list<int_Vector> > > FPP_w_shifts
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
+
+sl_list<int_Vector> FPP_orbit_numers
+  (const RootDatum& rd, const WeylGroup& W, const RatWeight& gamma);
 
 } // |namespace weyl|
 

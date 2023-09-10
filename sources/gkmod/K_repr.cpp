@@ -112,7 +112,7 @@ bool Rep_context::is_semifinal(const K_repr::K_type& z) const
   const RootDatum& rd = root_datum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = involution_table();
-  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posroot_set();
   const Weight test_wt = z.lambda_rho()*2 // $2(\lambda-\rho)$
 	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
@@ -556,7 +556,7 @@ K_repr::K_type_pol Rep_context::K_type_formula
   auto terms = KGP_set(t); // this also moves |t| to a theta-stable parabolic
   // nilpotents of the parabolic subalgebra at |t|:
   auto max_l = kgb().length(t.x());
-  RootNbrSet radical_posroots = rd.posRootSet();
+  RootNbrSet radical_posroots = rd.posroot_set();
   radical_posroots.andnot(i_tab.real_roots(kgb().inv_nr(t.x())));
   K_repr::K_type_pol result;
 

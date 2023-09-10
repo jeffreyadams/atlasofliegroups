@@ -25,6 +25,8 @@
 #include "size.h"   // for stored order of the Weyl group
 #include "matrix.h" // for Coxeter matrix
 
+#include "ratvec.h" // to be able to inline some methods
+
 
 /******** type declarations *************************************************/
 
@@ -400,48 +402,60 @@ public:
   bool has_descent(const WeylElt&, Generator) const; // on the right
 
   // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
-  WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
+  WeylElt translation (const WeylElt& w, const WeylInterface& f) const;
   // same as |translation| but for $w^{-1}$ instead of $w$; this is faster!
-  WeylElt reverse_translation(const WeylElt& w, const WeylInterface& f) const;
+  WeylElt reverse_translation (const WeylElt& w, const WeylInterface& f) const;
 
-  void translate(WeylElt& w, const WeylInterface& i) const
+  void translate (WeylElt& w, const WeylInterface& i) const
     { w=translation(w,i); }
 
   // reflection action of Weyl group on a root
-  void act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const;
+  void act (const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const;
   // standard reflection action of Weyl group on weights for a root datum
   template<typename C>
-    void act(const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v)
+    void act (const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v)
     const;
   // standard reflection action of Weyl group on coweights for a root datum
   template<typename C>
-    void co_act(const RootDatum& rd, matrix::Vector<C>& v, const WeylElt& w)
+    void co_act (const RootDatum& rd, matrix::Vector<C>& v, const WeylElt& w)
     const;
   // standard reflection action of Weyl group using a root datum
-  void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
-  // standard reflection left action of Weyl group using a root datum
-  void act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
+  void act (const RootDatum& rd, const WeylElt& w, RatWeight& v) const
+    { act(rd,w,v.numerator()); }
+
+  // standard reflection left multiplication action on matrices
+  void act (const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
   template<typename C>
-    void act(const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v)
+    void act (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v)
     const;
-  void act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
-  void act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M) const;
+  void act (const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
+  void act (const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M) const;
   // Nondestructive version of |act| method
-  Weight
-    image_by(const RootDatum& rd, const WeylElt& w, Weight v) const
+  Weight image_by (const RootDatum& rd, const WeylElt& w, Weight v) const
     { act(rd,w,v); return v; }
 
-  void inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
+  template<typename C> void inverse_act
+    (const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v) const;
+
+  void inverse_act (const RootDatum& rd, const WeylElt& w, RatWeight& v) const
+    { inverse_act(rd,w,v.numerator()); }
+
+  // action as a matrix
+  int_Matrix matrix (const RootDatum& rd, const WeylElt& w) const;
+  int_Matrix inverse_matrix (const RootDatum& rd, const WeylElt& w) const;
+  int_Matrix conjugate
+    (const RootDatum& rd, const WeylElt& w, const int_Matrix& A) const
+  { return matrix(rd,w)*A*inverse_matrix(rd,w); }
 
   // Nondestructive version of |inverse_act| method
   Weight
-    image_by_inverse(const RootDatum& rd, const WeylElt& w, Weight v) const
+    image_by_inverse (const RootDatum& rd, const WeylElt& w, Weight v) const
     { inverse_act(rd,w,v); return v; }
 
   Coweight
-    image_by(const RootDatum& rd, Coweight v, const WeylElt& w) const
+    image_by (const RootDatum& rd, Coweight v, const WeylElt& w) const
     { co_act(rd,v,w); return v; }
 
 // manipulators: nothing can modify the |WeylGroup| itself after construction
@@ -482,7 +496,7 @@ public:
   // construct the "dual" twisted Weyl group: differs by a dual twist
   TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
 
-  const WeylGroup& weylGroup() const { return W; }
+  const WeylGroup& Weyl_group() const { return W; }
   Generator rank() const { return W.rank(); }
 
   int mult(WeylElt& w, Generator s) const { return W.mult(w,s); }
