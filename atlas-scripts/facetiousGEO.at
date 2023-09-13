@@ -105,7 +105,7 @@ set new_to_ht = true
 
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
-set facet_verbose = false
+set facet_verbose = true
 
 { if true, reports progress at each of 2^{rank+1} fundamental facets
   during FPP calculation }
