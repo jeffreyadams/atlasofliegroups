@@ -1473,8 +1473,8 @@ set localFD_KHash1new \
 )
 
 
-{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary to h
- ; so output is size 2.}
+{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary
+      to h; so output is size 2.}
 set localFD_KHash11 \
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsKHash]] LFKH, int h, KTypePol_hash ktp_hash,
@@ -1483,7 +1483,6 @@ set localFD_KHash11 \
     if facet_verbose
     then prints(new_line,"start localFD_Khash11")
     fi;
-    {let Llookup = Lvd.lookup}
     let G = x.real_form
     then (Affd, M, j0) = cofolded(G)
     then top = int: if any(for j:#Perm do Perm[j] > j od) then 4 else 1 fi
@@ -1538,9 +1537,9 @@ set localFD_KHash11 \
        LFKH#LFKH1
 )
 
-{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary to h
- ; so output is size 2. Instead of looking at all FPP facets, just uses pairs of LFKH[0]
- elements. UHash records some known unitary reps.}
+{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary
+ to h; so output is size 2. Instead of looking at all FPP facets, just uses pairs
+ of LFKH[0] elements. UHash records some known unitary reps.}
 set localFD_KHash12 \
   ( KGBElt x, ratvec lambda, VertexData Lvd, vec Perm, vec mapAct,
     [[FacetVertsKHash]] LFKH, int h, KTypePol_hash ktp_hash,
@@ -1663,7 +1662,6 @@ set localFD_1 \
     in if(facet_verbose) then prints("After localFD_1, facet counts are [",#LF[0],
     		      	   	  ",",#Edges,"]") fi;
        LF#Edges
-
  )
 
 {takes local data to height level, dimension \le b-1, and adds facets from
