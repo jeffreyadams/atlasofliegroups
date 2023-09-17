@@ -10,6 +10,12 @@ set twistedDeformations = [[KTypePol]]: for m:1500 do [] od
 set deformLookupCounter = make_counter()
 set deformCalcCounter = make_counter()
 
+{take a KTypePol _apparently_ attached to G and make it _actually_ attached
+to G. Need this to use looked-up deformations.}
+set regroup(RealForm G, KTypePol P) = KTypePol:
+    sum(G, for c@q in P do let (,m) = %q.x
+    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+
 set to_ht (KTypePol P,int N) = KTypePol:
   let (below,)=height_split(P,N) in below
 
@@ -105,7 +111,7 @@ set c_form_std(Param p) = KTypePol:
     then k = deformedParams[0].match(pc)
     in if k < #deformations[0]
        then deformLookupCounter.use();
-       	    deformations[0][k]
+       	    regroup (p.real_form, deformations[0][k])
        else deformCalcCounter.use();
        	    let P = full_deform(p)
 	    then () = deformations[0] :=
@@ -118,7 +124,7 @@ set twisted_c_form_std(Param p) = KTypePol: { c-form on extended group}
     then k = twistedDeformedParams[0].match(pc)
     in if k < #twistedDeformations[0]
        then deformLookupCounter.use();
-       	    twistedDeformations[0][k]
+       	    regroup(p.real_form, twistedDeformations[0][k])
        else deformCalcCounter.use();
        	    let P = twisted_full_deform(p)
 	    then () = twistedDeformations[0] :=
