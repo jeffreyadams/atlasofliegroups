@@ -1,15 +1,16 @@
-< basic.at
-< induction.at {for theta-stable parabolics}
-
-set any (maybe_a_mat M) = bool:
-   case M  | solution: true | no_mat: false esac
-set mat_requisition (string message) = (maybe_a_mat->mat):
-   (maybe_a_mat M) mat:
-    case M  | solution(s): s | else error(message) esac
-set requisition = mat_requisition("No solution found; having one was required")
-{system (A,B) means solving AX = B}
-set required_solution ((mat,mat) system) = mat: system.solve.requisition
-set required_solution ((mat,mat) system) = mat:system.solve.requisition
+< basic {for required_solution, etc.}
+< induction {for theta-stable parabolics}
+< hermitian {for is_unitary}
+< to_ht {for is_unitary_to_ht}
+<FPP_facets {for herm_center}
+{placed in hermitian.at, where it belongs.}
+{
+{take a KTypePol _apparently_ attached to G and make it _actually_ attached
+to G}
+set regroup(RealForm G, KTypePol P) = KTypePol:
+    sum(G, for c@q in P do let (,m) = %q.x
+    	   in c*K_type(KGB(G,m), q.lambda_minus_rho) od)
+}
 
 { lists real and/or complex simple factors }
 set simple_factors(RealForm G) = [RealForm]:
@@ -153,6 +154,9 @@ set good_descents(Param p) = [Param]:
     descents(p, good_support(p))
 
 set is_unitary_good(Param p) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
     for q in good_descents(p)
     do if not(is_unitary(q))
        then return false
@@ -160,8 +164,38 @@ set is_unitary_good(Param p) = bool:
     od;
     true
 
+set is_unitary_good_look(Param p, RealForm_hash RF_hash, [[Param_hash]] Uhasheses) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    if #good_support(p) = p.real_form.semisimple_rank
+    then is_unitary(p)
+    else all( for q in good_descents(p)
+    	      do let a = RF_hash.lookup(q.real_form), (,n) = %q.x
+    	      	 in if a = -1 then is_unitary(q)
+       	   	    else Uhasheses[a][n].lookup(herm_center(q)) >= 0
+       	   	    fi
+	      od )
+     fi
+
+set is_unitary_good_look(Param p, RealForm_hash RF_hash, [Param_hash] Uhashes) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
+    if #good_support(p) = p.real_form.semisimple_rank
+    then is_unitary(p)
+    else all( for q in good_descents(p)
+    	      do let a = RF_hash.lookup(q.real_form)
+    	      	 in if a = -1 then is_unitary(q)
+       	   	    else Uhashes[a].lookup(herm_center(q)) >= 0
+       	   	    fi
+	      od )
+     fi
 
 set is_unitary_weak(Param p) = bool:
+    if not is_hermitian(p)
+    then return false
+    fi;
     if all (for q in weak_descents(p)
        	    do is_unitary(q)
 	    od)
@@ -174,3 +208,18 @@ set is_unitary_weak(Param p) = bool:
     	 fi
 
      fi
+
+{passing this I think may guarantee is_unitary_to_ht, but
+FAILING this may not guarantee failure of is_unitary_to_ht???
+Probably dangerous to use in its present form.}
+set is_unitary_to_ht_good(Param p, int N) = bool:
+    let D = N - height(p)
+    then () = if not is_hermitian(p)
+    	      then return false
+    	      fi
+    then () = for q in good_descents(p)
+    	      do if not(is_unitary_to_ht(q, D+height(q)))
+       	      	 then return false
+       		 fi
+    	      od
+    in true
