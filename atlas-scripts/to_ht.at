@@ -31,12 +31,12 @@ set full_deform_to_ht(Param p, int N) = KTypePol:
        	    in if j.>=
 	       then deformLookupCounter.use();
 	            let P = regroup(p.real_form,to_ht(deformations[0][j],N))
-	       	    then () = deformations[N]:=
+	       	    then () = deformations[N]:= {deformations[N]#P}
 		    (deformations[N] next deformations[N]:=[]) # P
 		    in P
        	       else deformCalcCounter.use();
        	       	    let P = deform_to_height(p,N)
-       	    	    then () = deformations[N]:=
+       	    	    then () = deformations[N]:= {deformations[N]#P}
 	    	    (deformations[N] next deformations[N]:=[]) # P
 	    	    in P
 	       fi
@@ -55,12 +55,12 @@ set twisted_full_deform_to_ht(Param p,int N) = KTypePol:
 	       then deformLookupCounter.use();
 	            let P = regroup(p.real_form,
 		    	to_ht(twistedDeformations[0][j],N))
-	       	    then () = deformations[N]:=
+	       	    then () = twistedDeformations[N]:= {twistedDeformations[N]#P}
 		    (twistedDeformations[N] next twistedDeformations[N]:=[]) # P
 		    in P
        	       else deformCalcCounter.use();
        	       	    let P = to_ht(twisted_full_deform(p),N)
-       	    	    then () = twistedDeformations[N]:=
+       	    	    then () = twistedDeformations[N]:= {twistedDeformations[N]#P}
 	    	    (twistedDeformations[N] next twistedDeformations[N]:=[]) # P
 	    	    in P
 	       fi
