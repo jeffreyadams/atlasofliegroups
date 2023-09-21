@@ -2,7 +2,7 @@
 < induction {for theta-stable parabolics}
 < hermitian {for is_unitary}
 < to_ht {for is_unitary_to_ht}
-<FPP_facets {for herm_center}
+< FPP_facets {for herm_center}
 {placed in hermitian.at, where it belongs.}
 {
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached

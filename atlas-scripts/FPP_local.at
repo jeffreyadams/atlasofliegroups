@@ -18,14 +18,70 @@
 <cohom_reduction
 
 {This is meant to be functions for computing all unitary reps with
-fixed LKT (x,lambda) and infl char in the FPP.}
+fixed LKT (x,lambda) and infl char in the FPP. Functions are meant to
+use a Param_has Uhash containing a list of known unitary reps (like
+Arthur's special unipotent ones) in order to avoid doing difficult
+is_unitary calculations.
+
+Throughout, the VertexData vd is meant to be the list of all vertices
+in the FPP (that are fixed by the distinguished involution), and a
+lookup function.
+
+Attached to theta = x.involution and dlambda are
+
+Perm = vec (size = number of vertices of FPP)
+mapAct = vec (size = number of vertices of FPP)
+Lvd = VertexData (vertex infinitesimal chars v in the FPP of Params
+      		 (x, lambda v))
+
+Here Perm is a partially defined permutation of order two of (indices
+for) vd.list: it can happen that
+
+- Perm[i] = i (fixed vertex v_i, so (x,lambda,v_i) is a Param of infl char
+v_i); or
+
+- Perm[j] = k != j, and Perm[k] = j, so (x,lambda, (v_j+v_k)/2) is a Param
+  of infl char (v_j + v_k)/2; or
+
+- Perm[ell] = -1, in which case v_ell has nothing to do with FPP Params
+  at (x,lambda)
+
+Say there are P fixed i and Q pairs (j,k). Then Lvd.list is the P+Q
+vertices v_i and (v_j+v_k)/2, numbered in some way (probably not
+reasonable).
+
+mapAct is a partially defined map from the indices for vd.list to the
+indices for Lvd.list.
+
+If Perm[i] = i, then mapAct[i] = index of v_i in Lvd.list
+
+If Perm[j] = k != j, then mapAct[j] = mapAct[k] = mapAct[j] =
+number of (v_j+v_k)/2 in Lvd.list
+
+For other ell, mapAct[ell] = -1.
+
+Suppose (a_0,...,a_d) are the vertex numbers (indices in vd.list) of a d-diml facet of the
+FPP. Then this facet meets FPP Params at (x,lambda) if and only if
+(a_0,...,a_d) consists of p entries with Perm[a_i] = a_i and 2q
+entries (a_j, a_k) exchanged by Perm (and no -1 entries). In this case
+our facet meets the FPP infl chars in a facet of dimension p+q-1, with
+vertices the fixed a_i and the various (a_j+a_k)/2.
+
+The function localFD_Lvd(x, lambda, vd) computes (Lvd, Perm, mapAct).
+
+Each d-dimensional (local) facet at (x,lambda) is referred to by the
+vec of its d+1 indices in Lvd.list. Appended to the end of this vec is
+a single integer giving the location of the K_character of the local
+facet in a KTypePol_hash pol_hash.
+
+There are four main functions
+
+local_test_GEO_hash(x, lambda, vd, LVD
+
+}
 
 { assigning this to "false" uses is_unitary_to_ht_old }
 set new_to_ht = true
-
-{. if assigned to 'true' then induction only records unitary reps of
-Levis .}
-set only_unitary = false
 
 {. If "true," then print number of invocations of a unitarity test .}
 set test_verbose = true
@@ -159,7 +215,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]]
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
-	      if level.>= then is_unitary_to_ht(p, level)
+	      if level.>= then if new_to_ht then is_unitary_to_ht(p, level)
+ 	      	 	       else is_unitary_to_ht_old(p,level)
+			       fi
 	      else is_unitary(p)
 	      fi
     then () = if facet_verbose
@@ -324,16 +382,6 @@ set local_facets_GEO(KGBElt x, ratvec lambda) = [[FacetVertsIndex]]:
 
 set spherical_facets_GEO(RealForm G) = local_facets_GEO(x_open(G), G.rho)
 
-{how often to redo is_unitary_to_ht for dims 0 and 1}
-set edge_reps = int: 2
-
-{lowest height to start testing}
-set edge_offset = int: 3
-
-{how much to increase ht at each repetition}
-set edge_skip = int: 2
-
-{one unitary hash table for each KGBElt}
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let (G,j0) = %x
@@ -569,7 +617,9 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     		  prints("testing levels = ",
     	 for a:edge_reps do hts[a*edge_skip+edge_offset] od) fi
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_to_ht(p,ht)
+     	 if new_to_ht then is_unitary_to_ht(p, ht)
+ 	 else is_unitary_to_ht_old(p, ht)
+	 fi
     then () = for a:edge_reps
     	      do let b = a*edge_skip + edge_offset
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,hts[b])
