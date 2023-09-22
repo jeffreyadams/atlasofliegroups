@@ -197,7 +197,7 @@ set FPP_unitary_hash_no_ht(RealForm G,Param_hash Uhash) = void:
     KGBElt,ratvec,VertexData,VertexData,vec,vec,KTypePol_hash,
     Param_hash))
 
-set FPP_unitary_hashes2(RealForm G,Param_hash Uhash) = void:
+set FPP_unitary_hash2(RealForm G,Param_hash Uhash) = void:
     FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash2@(
     KGBElt,ratvec,VertexData,VertexData,vec,vec,KTypePol_hash,
     Param_hash))

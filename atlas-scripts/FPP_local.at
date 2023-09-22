@@ -730,7 +730,16 @@ set local_test_GEO_hash_one_level_old(KGBElt x, ratvec lambda, VertexData vd,
               in UParams
 	  fi
 
-set one_level = int: 5
+set local_test_GEO_hash_one_level_old(KGBElt x, ratvec lambda, Param_hash Uhash) =
+    [Param]:
+    let G = x.real_form, pol_hash=make_KTypePol_hash()
+    then vd = FPP_vertex_data(G)
+    then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
+    in local_test_GEO_hash_one_level_old(x, lambda, vd, Lvd, Perm, mapAct, pol_hash,
+       Uhash) 
+
+
+set one_level = int: 0
 
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, vec Perm, vec mapAct, KTypePol_hash pol_hash,
@@ -764,6 +773,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	      	   	  pol_hash, Uhash)
     	      fi
     then r = rank(thetaMinus)
+    then () = if one_level = 0 then one_level:= (r+1)\2 fi
     then hts = next_heights(parameter(x,lambda,0*lambda), one_level+1)
     then ht = hts~[0]
     {get all verts}
