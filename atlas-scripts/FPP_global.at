@@ -20,8 +20,8 @@ small values are faster. Too small a value cannot lead to wrong
 answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
-{next functions aim to compute FULL spherical dual in non-split case, when several
- different x give spherical reps}
+{next functions aim to compute FULL spherical dual in non-split case,
+when several different x give spherical reps}
 
 set spherical_xs(RealForm G) = [KGBElt]:
     let real_rank = rank(x_open(G).involution + 1)
@@ -32,7 +32,8 @@ set spherical_xs(RealForm G) = [KGBElt]:
 	  fi
        od.##
 
-{this seems to fail to find all relevant lambdas for some unequal rank cases}
+{this seems to fail to find all relevant lambdas for some unequal rank cases.
+Following function FPP_lambdas_big seems OK?}
 set FPP_lambdas(KGBElt x) = [ratvec]:
     let G=x.real_form, twists = all_lambda_differential_0(x)
     then zeroPol = ParamPol: 0*G.trivial
@@ -113,20 +114,7 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 	      esac
 	  od.##
 
-set unitary_inds(RealForm G) = [(KGBElt,[ratvec])]:
-    for x in KGB(G)
-  ~ do (x, FPP_lambdas(x))
-    od
-
 set unitary_hash = make_Param_hash()
-
-set FPP_unitary(RealForm G) = [Param]:
-    let () = test_verbose:=false
-    in for x in KGB(G)
-    do for lambda in FPP_lambdas(x)
-       do local_test_GEO(x,lambda)
-       od.##
-    od.##.reduce
 
 {load a bunch of Param_hash's into one}
 set transfer([Param_hash] Us, Param_hash target) = void:

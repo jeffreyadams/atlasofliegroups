@@ -20,10 +20,6 @@ fundamental parallelepiped
 
 { Just do this for root datum rd with simple derived datum.}
 
-{ at the end is a function "spherical" which (if G has simple derived
-group) might return which facets correspond to non-cohomologically
-induced spherical principal series. Haven't proven this. }
-
 { One problem is that there are TWO affine Weyl groups. The one
 considered here uses translation by ROOTS and acts on X^*. In this
 group the "simple affine root" involves the highest COROOT. The other
