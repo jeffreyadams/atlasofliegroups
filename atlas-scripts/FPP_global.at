@@ -114,6 +114,45 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 	      esac
 	  od.##
 
+{each term is a candidate lambda0 (mod comp gp char twists) and the
+corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
+Should use EITHER this OR FPP_lambdas_big in one session}
+set FPP_lambdas_quite_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
+    dlambda_hashes,
+    [[(VertexData, vec, vec,[[FacetVertsIndex]])]] LvdEtAlia) =
+    		    [(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
+    let G=x.real_form
+    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
+    then i = inv_hash.lookup(theta)
+    then rho = G.rho, verts = all_FPP_vertices(G)
+    then th1 = theta + 1
+    then lamthlams = [vec]:
+    	 for v in verts
+    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+	    else []
+	    fi
+	 od.##.no_reps
+    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
+    	 for lamthlam in lamthlams
+    	 do case vec_solve(th1,lamthlam - th1*rho)
+	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
+	    | solution(lr):
+	      let lambda0 = rho + lr
+	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
+    	      then j = dlambda_hashes[i].match(dlambda0)
+              then () = if j = #LvdEtAlia[i]
+                      	then
+                      	LvdEtAlia[i]:=LvdEtAlia[i]#localFD_01(x,lambda0,vd)
+                      	fi
+              then (Lvd, Perm, mapAct,LF) = LvdEtAlia[i][j]
+	      in if #Lvd.list > 0 and
+	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
+		 then [(lambda0, Lvd, Perm, mapAct,LF)]
+	      	 else []
+		 fi
+	      esac
+	  od.##
+
 set unitary_hash = make_Param_hash()
 
 {load a bunch of Param_hash's into one}
@@ -151,20 +190,23 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     then () = unipotents_to_hash(G,Uhash)
     then () = for x in KGB(G)
     	    ~ do {KGB} if(old_facet_verbose)
-      	      	 then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+      	      	 then prints(new_line, "KGBElt #", let (,m) = %x in m, ", #Uhash = ",
 		     Uhash.size(), ", #tests = ",
 		     unitary_test_counter.use_count(), ", #def lookups = ",
 		     deformLookupCounter.use_count(), ", #def calcs = ",
-		     deformCalcCounter.use_count())
+		     deformCalcCounter.use_count());
+		prints("#hash_one_level calls = ", hash_one_levelCounter.use_count(),
+		       ", #hash2 calls = ", hash2Counter.use_count(),
+		       ", #hash calls = ", hashCounter.use_count())
 	 	 fi;
 	 let twists = all_lambda_differential_0(x)
       	 then FPPbig = FPP_lambdas_big(x, vd, inv_hash, dlambda_hashes,
 	      LvdEtcs)
 	 then () = for (lambda0, Lvd, Perm, mapAct)@k in FPPbig
-      	      	   do if old_facet_verbose and k%4 = 0
+      	      	   do {if old_facet_verbose and k%4 = 0
 	      	      then prints("  working on ",k,"th dlambda out of ",
 		      	   	     #FPPbig)
-	    	      fi;
+	    	      fi;}
 		      for tau in twists
 	      	      do local(x, lambda0+tau, vd, Lvd, Perm, mapAct,
 		      	 	  pol_hash, Uhash)
@@ -176,9 +218,62 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     in prints("Number of FPP-unitary facets = ",Uhash.size())
     fi
 
+set FPP_unitary_hash_quite_general(RealForm G,Param_hash Uhash,
+    (KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash,
+    Param_hash->[Param])
+    local) = void:
+  if is_compact(G)
+  then for p in all_parameters_gamma(G,G.rho)
+       do Uhash.match(p) od
+  else
+    let inv_hash = make_mat_hash(), vd = FPP_vertex_data(G)
+    then () = for x in KGB(G) do inv_hash.match(x.involution) od
+    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
+    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
+    then LvdEtAlia = for i:NumInvs do [(VertexData,vec,vec,
+    	 [[FacetVertsIndex]])]:[] od
+    then old_facet_verbose = facet_verbose
+    then () = test_verbose:=false
+    then () = facet_verbose:=false
+    then () = deform_flag :=true
+    then () = unipotents_to_hash(G,Uhash)
+    then () = for x in KGB(G)
+    	    ~ do {KGB} if(old_facet_verbose)
+      	      	 then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+		     Uhash.size(), ", #tests = ",
+		     unitary_test_counter.use_count(), ", #def lookups = ",
+		     deformLookupCounter.use_count(), ", #def calcs = ",
+		     deformCalcCounter.use_count())
+	 	 fi;
+	 let twists = all_lambda_differential_0(x)
+      	 then FPPquitebig = FPP_lambdas_quite_big(x, vd, inv_hash,
+	 dlambda_hashes, LvdEtAlia)
+	 then () = for (lambda0, Lvd, Perm, mapAct,LF)@k in FPPquitebig
+      	      	   do if old_facet_verbose and k%4 = 0
+	      	      then prints("  working on ",k,"th dlambda out of ",
+		      	   	     #FPPquitebig)
+	    	      fi;
+		      for tau in twists
+	      	      do local(x, lambda0+tau, vd, Lvd, Perm, mapAct, LF,
+		      	 	  pol_hash, Uhash)
+		      od
+		   od
+	   in ()
+       	 od {KGB}
+    then () = facet_verbose:=old_facet_verbose
+    in prints("Number of FPP-unitary facets = ",Uhash.size())
+    fi
+
+
 set FPP_unitary_hash_one_level(RealForm G,Param_hash Uhash) = void:
     FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash_one_level@(
     KGBElt,ratvec,VertexData,VertexData,vec,vec, KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_quite_one_level(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_quite_general(G, Uhash, local_test_GEO_hash_one_level@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec, [[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
 
 set FPP_unitary_hash_no_ht(RealForm G,Param_hash Uhash) = void:
     FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash_no_ht@(

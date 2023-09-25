@@ -227,7 +227,7 @@ set is_unitary_to_ht (Param p,int N, KTypePol_hash cert_hash) = bool:
 
 set is_unitary_to_hts(Param p, [int] Ns) = bool:
     { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
+    {unitary_test_counter.use();}
     for N in Ns
     do if not is_unitary_to_ht(p,N)
        then return false

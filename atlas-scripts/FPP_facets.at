@@ -59,7 +59,6 @@ compute a list vlist of all vertices in the FPP (done by
 FPP_vertices@RootDatum); then for each d-dimensional facet to store a
 rank d+1 vec giving the indices of the vertices in vlist (done by
 FPP_vertex_sets_indices).
-
 What's needed to get going is a list of all barycenters of facets in
 the FPP. These are calculated by
 
@@ -276,8 +275,8 @@ set_type FacetBary = ratvec
 set_type FacetVertsIndex = vec { of length k+1 for k-dimensional facet }
 
 set_type
-[ FacetVertsKHash = vec {last entry is index of KChar in some hash}
-, LocalFacetVertsKHash = vec {last entry is index of KChar in some hash}
+[ FacetVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ's}
+, LocalFacetVertsKHash = vec {next to last entry is index of KChar in some hash, last is #LQ'a}
 ]
 
 set_type
@@ -988,16 +987,19 @@ set localFD_KHash000 \
     let vlistAct = Lvd.list
     in	[for v@k in vlistAct
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
-	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash000;",
+	    then prints("examining facet ",k," of ",#vlistAct,
+	    " in localFD_KHash000; ",
 	    "ktp_hash.size() = ",ktp_hash.size())
 	    fi;
-	    let P = parameter(x,lambda,v).finalize
-	    in if all(for p in monomials(P) do is_pos_on_LKTs(p) od)
+	    let p0 = parameter(x,lambda,v)
+	    then P = finalize(p0)
+	    then ms = monomials(P)
+	    in if all(for p in ms do is_pos_on_LKTs(p) od)
 	    {think this gives hermitian also?}
 	      {not sure I'm happy with what's eliminated by the if. "is_pos_on_LKTs"
 	       is too mysterious}
 	       then let Q = K_type_pol(character_formula(P))
-	    	    in [[k, ktp_hash.match(Q)]]
+	    	    in [[k, ktp_hash.match(Q), #ms]]
 	       else []
 	       fi
 	 od.##]
@@ -1027,10 +1029,10 @@ set localFD_KHash001 \
 	    let p = parameter(x,lambda,v)
 	    then P = finalize(p)
 	    then ps = monomials(P)
-	    in if all(for p in ps do UHash.lookup(p).>= or
-	       	  	  is_unitary_to_ht(p,h) od)
+	    in if all(for q in ps do UHash.lookup(q).>= or
+	       	  	  is_unitary_to_ht(q,h) od)
 	       then let Q = K_type_pol(character_formula(P))
-	    	    in [[k, ktp_hash.match(Q)]]
+	    	    in [[k, ktp_hash.match(Q), #ps]]
 	       else []
 	       fi
 	 od.##
@@ -1056,6 +1058,9 @@ set localFD_KHash001 \
     in (vd, Lvd, Perm, mapAct, localFD_KHash001(x, lambda, vd, Lvd, Perm, mapAct, h,
        ktp_hash, UHash))
 )
+
+set localFD_000(VertexData Lvd) = [[FacetVertsIndex]]:
+    [for k:#Lvd.list do [k] od]
 
 {creates vd, LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local
  verts, and 0-facets for (x,lambda)}
@@ -1088,11 +1093,13 @@ set localFD_KHash007 \
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash007;",
 	    " ktp_hash.size() = ",ktp_hash.size())
 	    fi;
-	    let P = parameter(x,lambda,v).finalize
-	    in if all(for p in monomials(P) do is_pos_on_LKTs(p) od)
+	    let p0 = parameter(x,lambda,v)
+	    then P = finalize(p0)
+	    then ms = monomials(P)
+	    in if all(for p in ms do is_pos_on_LKTs(p) od)
 	    {think this gives hermitian also?}
 	       then let Q = K_type_pol(character_formula(P))
-	    	    in [[k, ktp_hash.match(Q)]]
+	    	    in [[k, ktp_hash.match(Q), #ms]]
 	       else []
 	       fi
 	 od.##
@@ -1189,11 +1196,13 @@ set localFD_KHash1 \
     then LFKH1 = [FacetVertsKHash]:
     	 for actual in Edges
 	 do let bary = facet_bary(Lvd.list,actual)
-	    then P = parameter(x,lambda,bary).finalize
-	    in if all ( for p in monomials(P) do is_pos_on_LKTs(p) od)
+	    then p0 = parameter(x,lambda,bary)
+	    then P = finalize(p0)
+	    then ms = monomials(P)
+	    in if all ( for p in ms do is_pos_on_LKTs(p) od)
 	    {think this gives hermitian also?}
 	       then let Q = K_type_pol(character_formula(P))
-	       	    in [actual#ktp_hash.match(Q)]
+	       	    in [actual##[ktp_hash.match(Q), #ms]]
 	       else []
 	       fi
 	 od.##
@@ -1235,11 +1244,12 @@ set localFD_KHash1new \
     then LFKH1 = [FacetVertsKHash]:
     	 for actual in Edges
 	 do let bary = facet_bary(Lvd.list,actual)
-	    then P = parameter(x,lambda,bary).finalize
+	    then p0 = parameter(x,lambda,bary)
+	    then P = finalize(p0)
 	    in if all ( for p in monomials(P) do is_pos_on_LKTs(p) od)
 	    {think this gives hermitian also?}
 	       then let Q = K_type_pol(character_formula(P))
-	       	    in [actual#ktp_hash.match(Q)]
+	       	    in [actual##[ktp_hash.match(Q), #monomials(P)]]
 	       else []
 	       fi
 	 od.##
@@ -1301,10 +1311,11 @@ set localFD_KHash11 \
 	 do let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
+	    then ms = monomials(P)
 	    in if is_member(known)(k) or
-	       	  all(for p in monomials(P) do UHash.lookup(p).>= or is_unitary_to_ht(p,h) od)
+	       	  all(for p in ms do UHash.lookup(p).>= or is_unitary_to_ht(p,h) od)
 	       then let Q = K_type_pol(character_formula(P))
-	       	    in [actual#ktp_hash.match(Q)]
+	       	    in [actual##[ktp_hash.match(Q), #ms]]
 	       else []
 	       fi
 	 od.##
@@ -1358,11 +1369,12 @@ set localFD_KHash12 \
 	    let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
 	    then P = finalize(p)
-	    in if all(for p in monomials(P)
+	    then ms = monomials(P)
+	    in if all(for p in ms
 	       	   do UHash.lookup(p).>= or is_unitary_to_ht(p,h)
 		   od)
 	       then let Q = K_type_pol(character_formula(P))
-	       	    in [actual#ktp_hash.match(Q)]
+	       	    in [actual##[ktp_hash.match(Q), #ms]]
 	       else []
 	       fi
 	 od.##
@@ -1371,10 +1383,11 @@ set localFD_KHash12 \
        LFKH#LFKH1
 )
 
-{takes local vertices LF, and adds local 1-d facets; so output is size 2.}
+{takes local vertices LF, and adds local 1-d facets; so output is size
+2. Only depends on x.involution and dlambda}
 set localFD_1 \
-  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm, vec mapAct,
-    [[FacetVertsIndex]] LF) = [[FacetVertsIndex]]:
+  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
+  vec mapAct, [[FacetVertsIndex]] LF) = [[FacetVertsIndex]]:
 (   assert(#LF = 1,"localFD_1 takes only local VERTEX list");
     if facet_verbose
     then prints(new_line,"start localFD_1")
@@ -1410,7 +1423,7 @@ set localFD_1 \
 			    	   then for i in global
 			    	 	   do mapAct[i]
 				 	   od.sort_u
-			    	   else []
+			    		   else []
 			    	      fi
 			       in if #actual = 2 then [actual] else [] fi
 			    od.## {list of edges from FV}
@@ -1420,6 +1433,27 @@ set localFD_1 \
     		      	   	  ",",#Edges,"]") fi;
        LF#Edges
  )
+
+{takes computes local 1-d facets; so output is size
+2. Only depends on x.involution and dlambda}
+set localFD_01 \
+  ( KGBElt x, ratvec lambda, VertexData vd) = (VertexData, vec, vec, [[FacetVertsIndex]]):
+ let (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
+ then LF = localFD_000(Lvd)
+ in (Lvd, Perm, mapAct, localFD_1(x,lambda,vd, Lvd, Perm,  mapAct, LF))
+
+{takes 0 and 1-diml local facets and adds K-char index}
+set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp_hash,
+[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+    for d:#LF
+    do for v in LF[d]
+       do let nu = facet_bary(Lvd.list, v)
+       	  then p0 = parameter(x, lambda, nu)
+	  then P = finalize(p0)
+	  then Q = K_type_pol(character_formula(P))
+	  in v##[ktp_hash.match(Q), #monomials(P)]
+       od
+    od
 
 {takes local data to height level, dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets. Need to be sure that input is based only
@@ -1472,15 +1506,17 @@ set localFD_KHashbt \
 		       		    then () =
 				    if #actual > 1 {already got vertices}
 				    then let bary =  M*(wtilde*bary_F)
-	    				 then P = parameter(x,lambda,bary).finalize
-	    				 in if all(for p in monomials(P) do is_pos_on_LKTs(p) od)
+	    				 then p0 = parameter(x,lambda,bary)
+					 then P = finalize(p0)
+					 then ms = monomials(P)
+	    				 in if all(for p in ms do is_pos_on_LKTs(p) od)
 					 {think this gives hermitian also?}
 	       				    then let Q = K_type_pol(character_formula(P))
 	       				 {not sure what to do if P is
 					 reducible; maybe first_param(P)??}
-	       	    			 	 then () = actual:= actual#ktp_hash.match(Q)
-	       				         in LFKHnew[#actual-2] :=
-						   (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+	       	    			 	 then () = actual:= actual##[ktp_hash.match(Q), #ms]
+	       				         in LFKHnew[#actual-3] :=
+						   (LFKHnew[#actual-3] next LFKHnew[#actual-3]:=[])
 			   	 	      		# actual
 	       			    	    fi
 				    fi
@@ -1613,12 +1649,13 @@ set localFD_KHashbt \
 				     then () =
 				         if i=s
 				         then let bary = M*(wtilde*bary_F)
-					      then P = finalize(parameter(x,lambda, bary))
+					      then p0 = parameter(x,lambda, bary)
+					      then P = finalize(p0)
 					      then ps = monomials(P)
      					      then Q= K_type_pol(character_formula(P))
-					      then ()=actual:= actual##[ktp_hash.match(Q)]
-	     	       	    	      	      in LFKHnew[#actual-2] :=
-			    	 		  (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+					      then ()=actual:= actual##[ktp_hash.match(Q), #ps]
+	     	       	    	      	      in LFKHnew[#actual-3] :=
+			    	 		  (LFKHnew[#actual-3] next LFKHnew[#actual-3]:=[])
 			   	 	      	   # actual
 					  fi
 				     in ()
@@ -1690,11 +1727,13 @@ set localFD_KHashbt_lookDown \
 						     do lookups[d-1](delete(actual,e)) >= 0 od)
 						 {now we know that the subfacets are cand facets}
 					      then let bary = M*(wtilde*bary_F)
-					      	   then P = finalize(parameter(x,lambda, bary))
+					      	   then p0 = parameter(x,lambda, bary)
+						   then P = finalize(p0)
 					      	   then Q = K_type_pol(character_formula(P))
-	     	       	    	      	   	   then () = actual := actual##[ktp_hash.match(Q)]
-						   in LFKHnew[#actual-2] :=
-			    	 		     (LFKHnew[#actual-2] next LFKHnew[#actual-2]:=[])
+	     	       	    	      	   	   then () = actual := actual##[ktp_hash.match(Q),
+						   	#monomials(P)]
+						   in LFKHnew[#actual-3] :=
+			    	 		     (LFKHnew[#actual-3] next LFKHnew[#actual-3]:=[])
 			   	 	      	     # actual
 						fi
 				     in ()
@@ -1744,14 +1783,16 @@ set localFD_KHashbt_lookDownGEO \
     fi;
     let G = x.real_form
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
-    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],1)
+    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
 	       	    	      	   do let bary =
 				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
-		       	      	      then P = parameter(x,lambda, bary).finalize
-				      in if all(for p in monomials(P) do is_pos_on_LKTs(p) od)
-				      	 then [actual#ktp_hash.match(
-				              K_type_pol(character_formula(P)))]
+		       	      	      then p0 = parameter(x,lambda, bary)
+				      then P = finalize(p0)
+				      then ms = monomials(P)
+				      in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	 then [actual##[ktp_hash.match(
+				              K_type_pol(character_formula(P))), #ms]]
 		       		    	 else []
 				    	 fi
 		    	      	   od.## {[FacetVertsKHash]})
@@ -1841,11 +1882,13 @@ set localFD_KHashbt_lookDown \
 				        if i=s
 					then
 					  let bary = M*(wtilde*bary_F)
-					  then P = parameter(x,lambda, bary).finalize
-				      	  in if all(for p in monomials(P) do is_pos_on_LKTs(p) od)
+					  then p0 = parameter(x,lambda, bary)
+					  then P = finalize(p0)
+					  then ms = monomials(P)
+				      	  in if all(for p in ms do is_pos_on_LKTs(p) od)
 					     then let Q= K_type_pol(character_formula(P))
 				      	 	  then ()=actual :=
-						    actual#ktp_hash.match(Q)
+						    actual##[ktp_hash.match(Q), #ms]
 						  in LFKHnew[#actual-2] :=
 			    	 		     (LFKHnew[#actual-2] next
 						     LFKHnew[#actual-2]:=[])# actual
