@@ -256,7 +256,8 @@ set up_graph_gens(FacetDataKNum FDK) = [[int]]:
 
 {this function seems to take 98% of time in localGraph. Using
 Kpol_hash slows it by factor of two, but even without hash it's the
-main thing in localGraph}
+main thing in localGraph. 9/25/23: now add a last coord checking
+equality of #Langlands quotients}
 
 {same, but only check equality of KChars to height |level|}
 set up_graph_gens([[FacetVertsKHash]] FDK, KTypePol_hash Kpol_hash, int level) =
