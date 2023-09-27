@@ -1383,6 +1383,60 @@ set localFD_KHash12 \
        LFKH#LFKH1
 )
 
+{takes local vertices LFKH assumed unitary to h, and adds local 1-d facets unitary
+ to h; so output is size 2. Uses also list LF of all local edges.
+ Instead of looking at all FPP facets, just uses pairs
+ of LFKH[0] elements. UHash records some known unitary reps.}
+set localFD_KHash12 \
+  ( KGBElt x, ratvec lambda, VertexData Lvd, vec Perm, vec mapAct, [FacetVertsIndex] LE,
+    [[FacetVertsKHash]] LFKH, int h, KTypePol_hash ktp_hash, Param_hash UHash) =
+    [[FacetVertsKHash]]:
+(   assert(#LFKH = 1,"localFD_KHash12 takes only local VERTEX list");
+    if facet_verbose
+    then prints(new_line,"start localFD_Khash12")
+    fi;
+    {let Llookup = Lvd.lookup}
+    let G = x.real_form
+    then (Affd, M, j0) = cofolded(G)
+    then Uvert_lookup = index_in(for v in LFKH[0] do v[:1] od)
+    then Edges = [vec]:
+    	 if #LFKH[0] <= 1 then []
+	 else
+	 for w in LE
+	 do if Uvert_lookup([w[0]]) >= 0 and Uvert_lookup([w[1]]) >= 0
+	    then [w]
+	    else []
+	    fi
+	 od.##
+	 fi
+    then () = if facet_verbose
+             	then prints("examining ", #Edges, " facets of dim 1",
+	       " in construction of LFKH1")
+	     fi
+    then LFKH1 = [FacetVertsKHash]:
+    	 for actual@k in Edges
+	 do if k%(max(#Edges\50,2))=0 and fund_facet_verbose
+	    then prints("examining edge ",k," of ",#Edges," in localFD_KHash12;",
+	    " ktp_hash.size() = ",ktp_hash.size())
+	    fi;
+	    let bary = facet_bary(Lvd.list,actual)
+	    then p = parameter(x,lambda,bary)
+	    then P = finalize(p)
+	    then ms = monomials(P)
+	    in if all(for p in ms
+	       	   do UHash.lookup(p).>= or is_unitary_to_ht(p,h)
+		   od)
+	       then let Q = K_type_pol(character_formula(P))
+	       	    in [actual##[ktp_hash.match(Q), #ms]]
+	       else []
+	       fi
+	 od.##
+    in if(facet_verbose) then prints("After localFD_KHash12, facet counts are [",#LFKH[0],
+    		      	   	  ",",#LFKH1,"]") fi;
+       LFKH#LFKH1
+)
+
+
 {takes local vertices LF, and adds local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda}
 set localFD_1 \
