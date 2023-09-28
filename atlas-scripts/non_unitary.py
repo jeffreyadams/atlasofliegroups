@@ -85,8 +85,9 @@ def atlas_compute(i):
       line = proc.stdout.readline().decode('ascii').strip()
       print("line: ", line)
       line = comma + "(" + str(start_index + j) + "," + parameters[j] + "," + line + ")"
-#      line = line + "  {" +  time.strftime("%H:%M:%S", time.gmtime(time.time()-starttime)) + "}\n"
-      line = line + "  {"  +str(datetime.timedelta(seconds=384374974+time.time()-starttime)) + "}\n"
+#      line = line + "  {" +  time.strftime("%H:%M:%S", time.gmtime(time.time()-starttime))[-4] + "}\n"
+#      line = line + "  {"  +str(datetime.timedelta(seconds=384374974+time.time()-starttime))[:-4] + "}\n"
+      line = line + "  {"  +str(datetime.timedelta(seconds=time.time()-starttime))[:-4] + "}\n"
       f.write(line)
       comma=","
    f.write("]\n")
@@ -102,9 +103,10 @@ def atlas_compute(i):
 def main(argv):
    global directory, number_jobs,input_file,group, level
    group="E8_s"
-   opts, args = getopt.getopt(argv, "d:i:n:g:l:")
+   opts, args = getopt.getopt(argv, "d:i:n:g:l:m:")
    if len(opts)<3:
-      print("Usage: \n-d: directory\n-i: input_file\n-n: number jobs\n-g: group\n-l: level  (level <0 <-> is_unitary(p))")
+      print("Usage: \n-d: directory\n-i: input_file\n-n: number jobs\n-g: group\n-l: level  (level <0 <-> is_unitary(p))\n -m: max_level")
+      print("-m overrides -l")
       exit()
    print("----------------------------")
    print("Starting at ", time.ctime())
