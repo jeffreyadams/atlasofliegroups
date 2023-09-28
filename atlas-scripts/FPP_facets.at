@@ -1488,7 +1488,7 @@ set localFD_1 \
        LF#Edges
  )
 
-{takes computes local 1-d facets; so output is size
+{computes local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda}
 set localFD_01 \
   ( KGBElt x, ratvec lambda, VertexData vd) = (VertexData, vec, vec, [[FacetVertsIndex]]):
