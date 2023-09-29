@@ -159,11 +159,6 @@ dual. Therefore the functions FPP_unitary_hash... set this flag to
 "true".}
 set deform_flag = false
 
-{ If "true," then try to use a smaller set of test K-types in unitary_to_ht.
-Difficulty is that this invokes a full_deform calculation, which is huge in
-E7 and E8.}
-set use_Short = false
-
 {for is_unitary calculations on parameters of approxDiff > CUTOFF,
 it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=100
 means always is_unitary, and CUTOFF:=-1 means always
@@ -557,13 +552,11 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, pol_hash, Uhash)
 
 set short_hts(Param p) = [int]:
-    let list = reducibility_points(p)
-    in sort_u(for r in list[:min(4,#list)]
-    	   do for q in monomials(K_type_pol(character_formula(1*(p*r))))
-	      do height(q)
-	      od
-	   od.## #height(p))[1:]
-    {monomials(full_deform(pmax))}
+    (for @q in deform(p)
+    do for mu in LKTs(q)
+       do height(mu)
+       od
+    od.## # height(p)).sort_u[1:]
 
 set hashCounter = make_counter()
 
