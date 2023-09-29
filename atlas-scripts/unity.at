@@ -59,14 +59,12 @@ set next_heightB(Param p) = int:
 
 {. tests unitarity first on LKTs, then everywhere .}
 set is_unitary_test(Param p) = bool:
-    unitary_test_counter.use();
     is_pos_on_LKTs(p) and
     is_unitary(p)
 
 {. tests unitarity first on LKTs, then on next-to-lowest, then
 everywhere .}
 set is_unitary_test_next(Param p) = bool:
-    unitary_test_counter.use();
     is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, next_height(p)) and
     is_unitary(p)
@@ -74,7 +72,6 @@ set is_unitary_test_next(Param p) = bool:
 {. tests unitarity first on LKTs, then on next-to-lowest up to
 height(nu), then everywhere. If no K-types to height(nu), then true .}
 set is_unitary_test_nextB(Param p) = bool:
-    unitary_test_counter.use();
     is_pos_on_LKTs(p) and
     (
     let n = next_heightB(p)
@@ -90,42 +87,31 @@ set is_unitary_test_nextB(Param p) = bool:
 lowest term}
 {. same as previous if next_height N is known .}
 set is_unitary_test(Param p, int N) = bool:
-    unitary_test_counter.use();
-    is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, N) and
     is_unitary(p)
 
 set is_unitary_test(Param p, int N, KTypePol_hash cert_hash) = bool:
-    unitary_test_counter.use();
     is_pos_on_LKTs(p) and
     is_unitary_to_ht(p, N, cert_hash) and
     is_unitary(p,cert_hash)
 
 set is_unitary_test(Param p, int N1, int N2) = bool:
-    { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
     is_unitary_to_ht(p, N1) and
     is_unitary_to_ht(p, N2) and
     is_unitary(p)
 
 set is_unitary_test(Param p, int N1, int N2, KTypePol_hash cert_hash) = bool:
-    { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
     is_unitary_to_ht(p, N1, cert_hash) and
     is_unitary_to_ht(p, N2, cert_hash) and
     is_unitary(p, cert_hash)
 
 set is_unitary_test(Param p, int N1, int N2, int N3) = bool:
-    { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
     is_unitary_to_ht(p, N1) and
     is_unitary_to_ht(p, N2) and
     is_unitary_to_ht(p, N3) and
     is_unitary(p)
 
 set is_unitary_test(Param p, [int] Ns) = bool:
-    { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
     for N in Ns
     do if not is_unitary_to_ht(p,N)
        then return false
@@ -134,8 +120,6 @@ set is_unitary_test(Param p, [int] Ns) = bool:
     is_unitary(p)
 
 set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
-    { is_pos_on_LKTs(p) and }
-    unitary_test_counter.use();
     for N in Ns
     do if not is_unitary_to_ht(p,N, cert_hash)
        then return false

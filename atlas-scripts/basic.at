@@ -672,13 +672,21 @@ set any (maybe_a_mat M) = bool: case M  | solution: true | no_mat: false esac
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
+set any (maybe_a_mat M) = bool:
+   case M  | solution: true | no_mat: false esac
+set mat_requisition (string message) = (maybe_a_mat->mat):
+   (maybe_a_mat M) mat:
+    case M  | solution(s): s | else error(message) esac
+set requisition = mat_requisition("No solution found; having one was required")
+{system (A,B) means solving AX = B}
+set required_solution ((mat,mat) system) = mat: system.solve.requisition
+set required_solution ((mat,mat) system) = mat:system.solve.requisition
+
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
-
-
 
 {                           Rational vectors                            }
 
@@ -752,7 +760,6 @@ set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
 set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
-
 
 
 {                           Split integers                              }

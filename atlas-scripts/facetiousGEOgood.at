@@ -15,6 +15,7 @@
 <facet_classes.at {for ordering on facets}
 <hash.at {for KPolHash}
 <TWOHEIGHTS {for HTA and HT}
+<cohom_reduction {for is_unitary_weak and is_unitary_good}
 {current version incorporates storage of KTypePol's in a hash table
 KPolHash, and MvL's code FPP_w_shifts for quickly finding FPP
 facets. The functions that use neither of these are generally
@@ -105,7 +106,7 @@ set new_to_ht = true
 
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
-set facet_verbose = true
+set facet_verbose = false
 
 { if true, reports progress at each of 2^{rank+1} fundamental facets
   during FPP calculation }
@@ -2540,7 +2541,7 @@ set local_testK_level(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
     	  if level.>= then is_unitary_to_ht(p, level)
-	  else is_unitary(p)
+	  else is_unitary_good(p)
 	  fi
     then () = if facet_verbose
     	      then prints(); prints("start local_testK_level, "
@@ -2671,7 +2672,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd, [[FacetVertsKHash]]
     	, printInterval = int: 1
     then tester = (Param->bool): (Param p) bool:
 	      if level.>= then is_unitary_to_ht(p, level)
-	      else is_unitary(p)
+	      else is_unitary_good(p)
 	      fi
     then () = if facet_verbose
     then prints(); prints("start local_testK_hash at level ",level, ", ", NumClasses,
@@ -2834,7 +2835,7 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, VertexData vd,
     then ht = next_height(parameter(x,lambda,0*lambda))
     then tester = (Param->bool): (Param p) bool:
     	      { if (cert_flag) then is_unitary_test(p, ht, cert_hash)
-    	      else} is_unitary(p) {is_unitary_test(p,hts[1])}
+    	      else} is_unitary_good(p) {is_unitary_test(p,hts[1])}
 	      {fi}
     then tester1 = (Param->bool): (Param p) bool:
     	 is_unitary_to_ht(p,ht)
@@ -2899,7 +2900,7 @@ set local_test_GEO_hashes_no_ht(KGBElt x, ratvec lambda, VertexData vd,
 					  in if all(for p in ps
 					     	    do let (,j1) = %p.x
 						       in Uhashes[j1].lookup(p).>= or
-						       is_unitary(p){tester(p)}
+						       is_unitary_good(p){tester(p)}
 						    od)
 					     then [LFDKH[D+1][m]]
 					     else []
@@ -2968,7 +2969,7 @@ set local_test_GEO_hashes_one_level(KGBElt x, ratvec lambda, VertexData vd,
     then () = if {TINY CASE} #Lvd.list=1
     	      then let p = parameter(x,lambda,Lvd.list[0])
 	      	   then Q = monomials(finalize(p))
-	      	   in if all(for q in Q do is_unitary(q) od)
+	      	   in if all(for q in Q do is_unitary_good(q) od)
 		      then let () = for q in Q
 		      	       	    do let (,k) = %q.x
 				       in Uhashes[k].match(herm_center(q))
@@ -3175,9 +3176,9 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) =
 		 od
 	      od
      then tester = (Param->bool): (Param p) bool:
-    	      is_unitary(p)
+    	      is_unitary_good(p)
      in if(facet_verbose) then prints();
-       prints("setting tester = is_unitary(p)") fi;
+       prints("setting tester = is_unitary_good(p)") fi;
        local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,statuses,
 			Uhash, tester)
 
