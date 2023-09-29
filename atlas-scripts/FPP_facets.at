@@ -989,7 +989,7 @@ set localFD_KHash000 \
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct,
 	    " in localFD_KHash000; ",
-	    "ktp_hash.size() = ",ktp_hash.size())
+	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let p0 = parameter(x,lambda,v)
 	    then P = finalize(p0)
@@ -1024,7 +1024,7 @@ set localFD_KHash001 \
     	 for v@k in vlistAct
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash001;",
-	    "ktp_hash.size() = ",ktp_hash.size())
+	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let p = parameter(x,lambda,v)
 	    then P = finalize(p)
@@ -1091,7 +1091,7 @@ set localFD_KHash007 \
     	 for v@k in vlistAct
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash007;",
-	    " ktp_hash.size() = ",ktp_hash.size())
+	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let p0 = parameter(x,lambda,v)
 	    then P = finalize(p0)
@@ -1364,7 +1364,7 @@ set localFD_KHash12 \
     	 for actual@k in Edges
 	 do if k%(max(#Edges\50,2))=0 and fund_facet_verbose
 	    then prints("examining edge ",k," of ",#Edges," in localFD_KHash12;",
-	    " ktp_hash.size() = ",ktp_hash.size())
+	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
@@ -1417,7 +1417,7 @@ set localFD_KHash12 \
     	 for actual@k in Edges
 	 do if k%(max(#Edges\50,2))=0 and fund_facet_verbose
 	    then prints("examining edge ",k," of ",#Edges," in localFD_KHash12;",
-	    " ktp_hash.size() = ",ktp_hash.size())
+	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
 	    let bary = facet_bary(Lvd.list,actual)
 	    then p = parameter(x,lambda,bary)
@@ -1500,8 +1500,15 @@ set localFD_01 \
 set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp_hash,
 [[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
     for d:#LF
-    do for v in LF[d]
-       do let nu = facet_bary(Lvd.list, v)
+    do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+       	  		     " K-characters in dimension ",d,
+			     " in localFD_KHash_01")
+       fi; for v@k in LF[d]
+       	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
+	    then prints("examining facet ",k,
+	    "; #ktp_hash = ",ktp_hash.size())
+	  fi;
+	  let nu = facet_bary(Lvd.list, v)
        	  then p0 = parameter(x, lambda, nu)
 	  then P = finalize(p0)
 	  then Q = K_type_pol(character_formula(P))
@@ -1530,7 +1537,7 @@ set localFD_KHashbt \
        	      	      	   do if (facet_verbose and k=0) or fund_facet_verbose
        	       	       	      then prints("start fund facet ",k," of ", #facets,
 	       	       	      	   " in dim ", dim,
-		       		   " in localFD_KHashbt; ktp_hash.size() = ",
+		       		   " in localFD_KHashbt; #ktp_hash = ",
 		       		   ktp_hash.size())
 	       	 	      fi;
 	       	 	      let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
@@ -1667,7 +1674,7 @@ set localFD_KHashbt \
        	      	  do if (facet_verbose and k=0) or fund_facet_verbose
        	       	     then prints("start fund facet ",k," of ", #facets,
 	       	       	      	   " in dim ", dim,
-		       		   " in localFD_Khashbt; ktp_hash.size() = ",
+		       		   " in localFD_Khashbt; #ktp_hash = ",
 		       		   ktp_hash.size())
 	       	     fi;
 	       	     let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
@@ -1745,7 +1752,7 @@ set localFD_KHashbt_lookDown \
        	      	      	   do if (facet_verbose and k=0) or fund_facet_verbose
        	       	       	      then prints("start fund facet ",k," of ", #facets,
 	       	       	      	   " in dim ", dim,
-		       		   " in localFD_Khashbt; ktp_hash.size() = ",
+		       		   " in localFD_Khashbt; #ktp_hash = ",
 		       		   ktp_hash.size())
 	       	 	      fi;
 	       	 	      let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
@@ -1898,7 +1905,7 @@ set localFD_KHashbt_lookDown \
        	      	   do if (facet_verbose and k=0) or fund_facet_verbose
        	       	then prints("start fund facet ",k," of ", #facets,
 	       	       	    " in dim ", dim,
-		       	    " in localFD_KHashbt_lookDown; ktp_hash.size() = ",
+		       	    " in localFD_KHashbt_lookDown; #ktp_hash = ",
 		       	    ktp_hash.size())
 	       	       fi;
 	       	let bary_F=FacetBary: sum(Affd.rank,FV)/(dim+1)
