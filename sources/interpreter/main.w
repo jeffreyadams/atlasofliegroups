@@ -485,6 +485,8 @@ new line of input, or abandons the program in case none can be obtained.
 last_value = shared_value (new tuple_value(0));
 last_type = void_type.copy();
  // |last_type| is a |type_ptr| defined in \.{axis.w}
+elapsed_wrapper(expression_base::no_value); // start the stopwatch
+@)
 while (ana.prime())
   // get a fresh line for lexical analyser, or quit loop
 { @< Undo temporary trickery aimed at |readline| filename completion @>
