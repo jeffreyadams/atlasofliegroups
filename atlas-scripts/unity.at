@@ -1,11 +1,21 @@
 <to_ht.at
 <goodroots.at
 <induction.at {for theta_stable_quasi_data}
+<sort.at {for sort_u}
 <count.at
 
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom
+
+set short_hts(Param p) = [int]:
+    (for r in reducibility_points(p)
+    do for @q in deform(p*r)
+       do for mu in LKTs(q)
+       	  do height(mu)
+       	  od
+       od.##
+    od.## # height(p)).sort_u[1:]
 
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N =
@@ -127,6 +137,12 @@ set is_unitary_test(Param p, [int] Ns, KTypePol_hash cert_hash) = bool:
     od;
     {all(for N in Ns do is_unitary_to_ht(p,N,cert_hash) od) and}
     is_unitary(p,cert_hash)
+
+{use the first N heights from short_heights to test}
+set is_unitary_short_test(Param p,int N) = bool:
+    let short= short_hts(p)
+    in is_unitary_test(p,short[:min(N,#short)])
+
 
 { these commands are useful for speed tests over bunches of parameters
 

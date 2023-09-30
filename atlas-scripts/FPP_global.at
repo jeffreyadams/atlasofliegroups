@@ -226,6 +226,14 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	      ", #hash_one_level calls = ", hash_one_levelCounter.use_count())
     fi
 
+set FPP_unitary_hash_dumb(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash_dumb@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_dumb(RealForm G) = void:
+    FPP_unitary_hash_dumb(G,unitary_hash)
+
 set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
     FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash@(
     KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
