@@ -343,10 +343,6 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 		     fi{NEWU}
 	         fi
 	      od
-     { then() = if(test_verbose)
-     	      then prints(new_line,"number of tests = ",unitary_test_counter.use_count(),
-	      " to dim = ",#FVKH-1)
-       	      fi}
      {make new local facet list using only facets not already proven nonunitary}
      then FVKHnew = for @m in FVKH do [FacetVertsKHash]: [] od
           then () = for C@m in eq do if newStatuses[m][0] = "T"
@@ -358,8 +354,6 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 				   od
 			         fi
 			      od
-     {then () = if test_verbose then prints("facet counts to dim ",#FVKHnew - 1, " = ",
-     	       	  for list in FVKHnew do #list od) fi}
      in  FVKHnew
 
 set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
@@ -552,10 +546,12 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, pol_hash, Uhash)
 
 set short_hts(Param p) = [int]:
-    (for @q in deform(p)
-    do for mu in LKTs(q)
-       do height(mu)
-       od
+    (for r in reducibility_points(p)
+    do for @q in deform(p*r)
+       do for mu in LKTs(q)
+       	  do height(mu)
+       	  od
+       od.##
     od.## # height(p)).sort_u[1:]
 
 set hashCounter = make_counter()
