@@ -1516,6 +1516,27 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp
        od
     od
 
+{takes 0 and 1-diml local facets and adds K-char index to height HT}
+set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_hash ktp_hash,
+[[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
+    for d:#LF
+    do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+       	  		     " K-characters to height ",HT, " in dimension ",d,
+			     " in localFD_KHash_01")
+       fi; for v@k in LF[d]
+       	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
+	    then prints("examining facet ",k,
+	    "; #ktp_hash = ",ktp_hash.size())
+	  fi;
+	  let nu = facet_bary(Lvd.list, v)
+       	  then p0 = parameter(x, lambda, nu)
+	  then P = finalize(p0)
+	  then Q = K_type_pol(character_formula_to_height(P,HT))
+	  in v##[ktp_hash.match(Q), #monomials(P)]
+       od
+    od
+
+
 {takes local data to height level, dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets. Need to be sure that input is based only
 on FPP facets up to dim b-1, or repetitions can appear in output. Safety is
@@ -1863,6 +1884,42 @@ set localFD_KHashbt_lookDownGEO \
        LFKH
 )
 
+
+{takes local data to height level, dimension \le b-1, and adds facets from
+b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
+Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t). This time
+just calculate K characters to HT
+
+Need to assume b \ge 2, so have a list of potentially unitary facets and edges.}
+set localFD_KHashbt_lookDownGEO \
+  ( KGBElt x, ratvec lambda, VertexData Lvd, vec Perm, vec mapAct,
+    [[FacetVertsKHash]] LFKH, int b, int t, int HT, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+(   if facet_verbose
+    then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
+    fi;
+    let G = x.real_form
+    then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
+    	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
+	      	    	       	in for actual in acts
+	       	    	      	   do let bary =
+				      sum(G.rank, for j in actual do Lvd.list[j] od)/(dim+1)
+		       	      	      then p0 = parameter(x,lambda, bary)
+				      then P = finalize(p0)
+				      then ms = monomials(P)
+				      in if all(for p in ms do is_pos_on_LKTs(p) od)
+				      	 then [actual##[ktp_hash.match(
+				              K_type_pol(character_formula_to_height(P, HT))), #ms]]
+		       		    	 else []
+				    	 fi
+		    	      	   od.## {[FacetVertsKHash]})
+	 od
+    in if(facet_verbose) then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
+       			      for list in LFKH do #list od) fi;
+       LFKH
+)
+
+
+
 {takes local facets of dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets; make sure subfacets are also in list
 Roughly input goes from 0 to b-1 (size b), output 0 to t-1 (size t).
@@ -1965,3 +2022,27 @@ set localFD_KHashbt_lookDown \
     then dAct = last(for j:#LFKHnew do #LFKHnew[j] > 0 od)
     in LFKHnew[:dAct+1]
 )
+
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
+    vec mapAct,[[FacetVertsKHash]] LFKH, KTypePol_hash ktp_hash) = [[FacetVertsKHash]]:
+    if facet_verbose
+    then prints(new_line,"start extend_K_characters")
+    fi;
+    let G = x.real_form
+    in for d:#LFKH
+       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       	  		     " K-characters in dimension ",d,
+			     " in extend_K_characters")
+       	  fi; for v@k in LFKH[d]
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
+	      	 then prints("examining facet ",k,
+	    	      "; #ktp_hash = ",ktp_hash.size())
+	  	 fi;
+	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
+       	  	 then p0 = parameter(x, lambda, nu)
+	  	 then P = finalize(p0)
+	  	 then Q = K_type_pol(character_formula(P))
+	  	 then () = w[d+1] := ktp_hash.match(Q)
+		 in w
+              od
+      od
