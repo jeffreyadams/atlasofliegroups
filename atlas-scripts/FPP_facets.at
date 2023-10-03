@@ -2046,3 +2046,28 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
 		 in w
               od
       od
+
+set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
+    vec mapAct,[[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
+    	[[FacetVertsKHash]]:
+    if facet_verbose
+    then prints(new_line,"start extend_K_characters to height ",ht)
+    fi;
+    let G = x.real_form
+    in for d:#LFKH
+       do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
+       	  		     " K-characters in dimension ",d,
+			     " in extend_K_characters")
+       	  fi; for v@k in LFKH[d]
+       	      do if k%(max(#LFKH[d]\10,2))=0 and fund_facet_verbose
+	      	 then prints("examining facet ",k,
+	    	      "; #ktp_hash = ",ktp_hash.size())
+	  	 fi;
+	  	 let nu = facet_bary(Lvd.list, v[:d+1]), w=v
+       	  	 then p0 = parameter(x, lambda, nu)
+	  	 then P = finalize(p0)
+	  	 then Q = K_type_pol(character_formula_to_height(P,ht))
+	  	 then () = w[d+1] := ktp_hash.match(Q)
+		 in w
+              od
+      od
