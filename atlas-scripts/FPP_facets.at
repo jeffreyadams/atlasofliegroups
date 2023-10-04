@@ -5,7 +5,7 @@
 <goodroots.at {for is_pos_on_LKTs}
 <sort.at {for no_reps}
 <to_ht.at {for is_unitary_to_ht}
-
+<time.at {for print_time_string}
 {functions for calculating FPP facet lists, both "globally" (from the
 root datum) and "locally" (as relevant to parameters for a single LKT
 (x,lambda)}
@@ -95,6 +95,9 @@ set facet_verbose = false
   during FPP calculation }
 
 set fund_facet_verbose = false
+
+{ if true, reports elapsed time for various functions}
+set time_verbose = true
 
 { for facets of codim > facet_codim, use shifted char formula to
 improve memory use. Setting equal to folded semisimple rank means no
@@ -1499,22 +1502,27 @@ set localFD_01 \
 {takes 0 and 1-diml local facets and adds K-char index}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp_hash,
 [[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
-    for d:#LF
-    do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+    let start = elapsed_ms()
+    then answer = for d:#LF
+    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters in dimension ",d,
 			     " in localFD_KHash_01")
-       fi; for v@k in LF[d]
+       	     fi; for v@k in LF[d]
        	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
-	    then prints("examining facet ",k,
-	    "; #ktp_hash = ",ktp_hash.size())
-	  fi;
-	  let nu = facet_bary(Lvd.list, v)
-       	  then p0 = parameter(x, lambda, nu)
-	  then P = finalize(p0)
-	  then Q = K_type_pol(character_formula(P))
-	  in v##[ktp_hash.match(Q), #monomials(P)]
-       od
-    od
+	      then prints("examining facet ",k,
+	      	   "; #ktp_hash = ",ktp_hash.size())
+	      fi;
+	      let nu = facet_bary(Lvd.list, v)
+       	      then p0 = parameter(x, lambda, nu)
+	      then P = finalize(p0)
+	      then Q = K_type_pol(character_formula(P))
+	      in v##[ktp_hash.match(Q), #monomials(P)]
+       	  od
+    	od
+   then time = elapsed_ms() - start
+   then () = if time_verbose then prints("     time for localFD_KHash_01 = ",
+   	     		      	   		print_time_string(time)) fi
+   in answer
 
 {takes 0 and 1-diml local facets and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_hash ktp_hash,
@@ -1863,7 +1871,7 @@ set localFD_KHashbt_lookDownGEO \
 (   if facet_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
-    let G = x.real_form
+    let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
     	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
@@ -1879,6 +1887,10 @@ set localFD_KHashbt_lookDownGEO \
 				    	 fi
 		    	      	   od.## {[FacetVertsKHash]})
 	 od
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     time for localFD_Khashbt to one_ht to dim ",t-1, " = ",
+			       		    print_time_string(time)) fi
     in if(facet_verbose) then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
        			      for list in LFKH do #list od) fi;
        LFKH
@@ -2028,8 +2040,9 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
     if facet_verbose
     then prints(new_line,"start extend_K_characters")
     fi;
-    let G = x.real_form
-    in for d:#LFKH
+    let G = x.real_form, start = elapsed_ms()
+    then answer =
+       for d:#LFKH
        do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
@@ -2046,6 +2059,10 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
 		 in w
               od
       od
+     then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     time for extend_K_characters = ",
+		     	     		   		     print_time_string(time)) fi
+     in answer
 
 set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
     vec mapAct,[[FacetVertsKHash]] LFKH, int ht, KTypePol_hash ktp_hash) =
@@ -2053,8 +2070,9 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
     if facet_verbose
     then prints(new_line,"start extend_K_characters to height ",ht)
     fi;
-    let G = x.real_form
-    in for d:#LFKH
+    let G = x.real_form, start = elapsed_ms()
+    then answer =
+       for d:#LFKH
        do if fund_facet_verbose then prints(new_line, "start to extend ",#LFKH[d],
        	  		     " K-characters in dimension ",d,
 			     " in extend_K_characters")
@@ -2070,4 +2088,8 @@ set extend_K_characters(KGBElt x, ratvec lambda, VertexData Lvd, vec Perm,
 	  	 then () = w[d+1] := ktp_hash.match(Q)
 		 in w
               od
-      od
+       od
+     then time = elapsed_ms() - start
+     then () = if time_verbose then prints("     time for extend_K_characters = ",
+		     	     		   		     print_time_string(time)) fi
+     in answer

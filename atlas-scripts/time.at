@@ -1,0 +1,5 @@
+< tabulate {for pad}
+
+{converts output of elapsed_ms() to human-readable form}
+set print_time_string(int N) = string:
+to_string(N\1000)##"."##pad(to_string(N%1000),"r",3,"0")##"sec"
