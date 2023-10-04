@@ -1285,9 +1285,10 @@ RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
 #endif
 }
 
-ext_gens common_block::fold_orbits (const WeightInvolution& delta) const
+ext_gens common_block::fold_orbits
+    (const WeightInvolution& delta, const repr::block_modifier& bm) const
 { return rootdata::fold_orbits
-    (inner_class().root_datum(), simply_integrals, delta); }
+    (inner_class().root_datum(), simply_ints(bm), delta); }
 
 #ifndef NDEBUG
 bool common_block::is_integral_orthogonal(const RatWeight& shift) const
