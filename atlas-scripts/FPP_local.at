@@ -354,7 +354,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      	  then verts = vec: FVKH[d][j][:d+1]
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(vd.list, verts))))
-	          in if{NEWU} all(for p in ps do {Uhash.lookup(p).>= or}
+	          in if{NEWU} all(for p in ps do Uhash.lookup(p).>= or
 					       tester(p) od)
 		     then newStatuses[k]:= "T"
 		     else newStatuses:= updateNUclassesB(newStatuses, gr, k)
@@ -421,7 +421,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(Lvd.list, verts))))
 	      	in if{NEWU} all(for p in ps
-		   	    	do {Uhash.lookup(p).>= or }tester(p) od)
+		   	    	do Uhash.lookup(p).>= or tester(p) od)
 		   then for i in C
 		   	do let (d,j) = coords(LFVH,i)
 			   then () = unitary_by_dim[d]+:=1
@@ -450,7 +450,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash) = [Param]:
     local_test_hash(x, lambda, Lvd, LFVH, eq, gr,
-    classListByFacet, Uhash, ((Param->bool):(Param p): Uhash.lookup(p).>= or is_unitary(p)))
+    classListByFacet, Uhash, is_unitary@Param)
 
 {assume Uhash has unipotents listed}
 set local_testK_levels_B(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param]:
@@ -507,11 +507,11 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     let (G,j0) = %x, thetaMinus = x.involution - 1
     then test_hts = hts[:min(#hts,1)]
     then tester = (Param->bool): (Param p) bool:
-    	 Uhash.lookup(p).>= or is_unitary_test(p,test_hts)
+    	 is_unitary_test(p,test_hts)
     then () = if {TINY CASE} #Lvd.list=1
     	      then let p = parameter(x,lambda,Lvd.list[0])
 	      	   then Q = monomials(finalize(p))
-	      	   in if all(for q in Q do tester(q) od)
+	      	   in if all(for q in Q do Uhash.lookup(q).>= or tester(q) od)
 		      then let () = for q in Q
 		      	       	    do Uhash.match(herm_center(q))
 				    od
@@ -541,8 +541,6 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
                        Perm, mapAct, LFDKH, D+1,D+2,pol_hash)
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
        	      	 {compute graph on facets to dim D+1}
-		 { then () = LFDKH := local_testK_hash(x,lambda,Lvd,
-                      LFDKH, eq, gr, CLBF, tester, Uhash) }
 		 then lowUs = sum(for d:D+1 do #LFDKH[d] od)
 			   { write statuses more simply: all unitary except
 			     singleton classes of dim D+1 }
@@ -904,30 +902,36 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	     {to hold K-chars to hts[0] only}
              {get K-type formulas for all vertices and edges}
              then LFDKH = localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash_low, LF)
+	     then tester0 = (Param->bool): (Param p) bool:
+     	     	  is_unitary_to_ht(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
              then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, ((Param->bool):(Param p) bool: is_unitary_to_ht(p,hts[0])),
-		      Uhash)
+		      gr, CLBF, tester0, Uhash)
    	     then () = LFDKH := extend_K_characters(x, lambda, Lvd, Perm,
 	     	       	   mapAct, LFDKH, one_ht, pol_hash_one_ht)
 	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+	     then tester1 = (Param->bool): (Param p) bool:
+     	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[1:ONE+1])
+	 	  else is_unitary_to_ht(p,one_ht)
+	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
+	 	  fi
 	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		       	gr, CLBF, ((Param->bool):(Param p) bool: is_unitary_to_ht(p, one_ht)), Uhash)
+		       	gr, CLBF, tester1, Uhash)
 				{is_unitary_to_hts(p,hts[1:ONE+1]))}
 				{is_unitary_to_ht(p,one_ht)}
 	else {get K-type formulas for all vertices and edges}
     	     let LFDKH = localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
     	     {now have all local facets of dims 0 and 1.}
  	     {compute graph on facets to dim 1, to one_ht}
-    	     then tester = (Param->bool): (Param p) bool:
-     	     	  if prefer_to_hts then Uhash.lookup(p).>= or is_unitary_to_hts(p, hts[:ONE+1])
-	 	  else Uhash.lookup(p).>= or is_unitary_to_ht(p,one_ht)
+    	     then tester1 = (Param->bool): (Param p) bool:
+     	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[:ONE+1])
+	 	  else is_unitary_to_ht(p,one_ht)
 	 	  {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	      {remove from LFDKH all facets failing is_unitary_to_ht(one_ht)}
     	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
-		      gr, CLBF, tester, Uhash)
+		      gr, CLBF, tester1, Uhash)
 	     fi
     then () = if test_verbose then prints("unitary to ht ",one_ht,
 		   	   " facet counts to dim 1: ",for list in LFDKH do
