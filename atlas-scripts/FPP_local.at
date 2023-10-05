@@ -893,7 +893,7 @@ set local_test_GEO_hash_one_level_step(KGBElt x, ratvec lambda, VertexData vd,
     then one_ht = hts[ONE], last_ht = hts[LAST]
    then () =  if test_verbose then prints("facet counts to dim 1: ",
 			  for list in LF do #list od);
-	         prints("testing level = ", ONE, ", final level = ",LAST)
+	         prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
 	       fi
    {to store K-chars to low heights hts}
    then pol_hash_low = make_KTypePol_hash()
@@ -1064,17 +1064,16 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     {then hts = next_heights(parameter(x,lambda,0*lambda), LAST+1)}
     then one_ht = hts[ONE], last_ht = hts[LAST]
    then () =  if test_verbose then prints("facet counts to dim 1: ",
-			  for list in LF do #list od) fi
+			  for list in LF do #list od);
+		  prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
+	       fi
    {to store K-chars to height one_ht}
    then pol_hash_one_ht = make_KTypePol_hash()
     {get K-type formulas for all vertices and edges}
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, one_ht, pol_hash_one_ht, LF)
     {now have all local facets of dims 0 and 1.}
  	{compute graph on facets to dim 1, to one_ht}
-    then () =  if test_verbose then prints(new_line,"testing level = ",
-    	       	  ONE, ", final level = ",LAST)
-	       fi
-    then tester = (Param->bool): (Param p) bool:
+     then tester = (Param->bool): (Param p) bool:
      	 if prefer_to_hts then Uhash.lookup(p).>= or is_unitary_to_hts(p, hts[:ONE+1])
 	 else Uhash.lookup(p).>= or is_unitary_to_ht(p,one_ht)
 	 {to_ht is definitely 2% slower for F4 spherical, 10% slower for Sp(10) spherical}

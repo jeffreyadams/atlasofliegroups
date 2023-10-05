@@ -1527,23 +1527,27 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp
 {takes 0 and 1-diml local facets and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
-    for d:#LF
-    do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
+    let start = elapsed_ms()
+    then answer = for d:#LF
+    	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters to height ",HT, " in dimension ",d,
 			     " in localFD_KHash_01")
-       fi; for v@k in LF[d]
+       	    fi; for v@k in LF[d]
        	   do if k%(max(#LF[d]\10,2))=0 and fund_facet_verbose
-	    then prints("examining facet ",k,
-	    "; #ktp_hash = ",ktp_hash.size())
-	  fi;
-	  let nu = facet_bary(Lvd.list, v)
-       	  then p0 = parameter(x, lambda, nu)
-	  then P = finalize(p0)
-	  then Q = K_type_pol(character_formula_to_height(P,HT))
-	  in v##[ktp_hash.match(Q), #monomials(P)]
-       od
-    od
-
+	      then prints("examining facet ",k,
+	      	   "; #ktp_hash = ",ktp_hash.size())
+	      fi;
+	      let nu = facet_bary(Lvd.list, v)
+       	      then p0 = parameter(x, lambda, nu)
+	      then P = finalize(p0)
+	      then Q = K_type_pol(character_formula_to_height(P,HT))
+	      in v##[ktp_hash.match(Q), #monomials(P)]
+       	  od
+    	od
+   then time = elapsed_ms() - start
+   then () = if time_verbose then prints("     time for localFD_KHash_01 to height ", HT,
+   	     		     	  	   " = ", print_time_string(time)) fi
+   in answer
 
 {takes local data to height level, dimension \le b-1, and adds facets from
 b to (t-1)-dimensional FPP-facets. Need to be sure that input is based only
@@ -1889,7 +1893,7 @@ set localFD_KHashbt_lookDownGEO \
 	 od
     then time = elapsed_ms() - start
     then () = if time_verbose
-	      then prints("     time for localFD_Khashbt to one_ht to dim ",t-1, " = ",
+	      then prints("     time for localFD_Khashbt to dim ",t-1, " = ",
 			       		    print_time_string(time)) fi
     in if(facet_verbose) then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
        			      for list in LFKH do #list od) fi;
@@ -1909,7 +1913,7 @@ set localFD_KHashbt_lookDownGEO \
 (   if facet_verbose
     then prints(new_line,"start localFD_Khashbt_lookDownGEO, b = ",b,", t = ",t)
     fi;
-    let G = x.real_form
+    let G = x.real_form, start=elapsed_ms()
     then () = for dim:t-#LFKH from #LFKH {b has to be at least 2}
     	      do LFKH := LFKH# (let acts = superFacets(LFKH[0],LFKH[dim-1],2)
 	      	    	       	in for actual in acts
@@ -1925,6 +1929,10 @@ set localFD_KHashbt_lookDownGEO \
 				    	 fi
 		    	      	   od.## {[FacetVertsKHash]})
 	 od
+        then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     time for localFD_Khashbt to HT ", HT, " and dim ",t-1, " = ",
+			       		    print_time_string(time)) fi
     in if(facet_verbose) then prints("After localFD_KHashbt_lookDownGEO, facet counts are ",
        			      for list in LFKH do #list od) fi;
        LFKH
