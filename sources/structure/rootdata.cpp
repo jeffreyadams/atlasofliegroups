@@ -547,7 +547,7 @@ int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
 
 /*
   Since |Cmat(i,j)| pairs simple root |i| and simple coroot |j| (our conventions
-  would prefer the tranpose) we compute root(i)*Cmat*coroot(j)
+  would prefer the transpose) we compute root(i)*Cmat*coroot(j)
  */
   const Byte_vector& row = root(rt_abs(alpha));
   const Byte_vector& col = coroot(rt_abs(beta));

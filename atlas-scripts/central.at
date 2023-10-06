@@ -33,7 +33,7 @@ set change_basis_to_subspace_Q(mat A,ratvec v)=ratvec:
  this restricts to a character of Z(R)
  in particular lambda defines a character of Z^\delta
  equality: lambda=lambda' + [(1-delta)X^*+R]  and (1-delta)nu=(1-delta)nu'
-   (just like for Cartan, the addtion of R in the denominator accounts for the restriction to the center)
+   (just like for Cartan, the addition of R in the denominator accounts for the restriction to the center)
 }
 set_type [CentralCharacter=(InnerClass ic,vec lambda,ratvec nu)]
 set central_character(InnerClass ic,vec lambda, ratvec nu)=CentralCharacter:(ic,lambda,(1-ic.distinguished_involution)*nu/2)
@@ -83,7 +83,7 @@ sol=change_basis_to_subspace(A,lambda(cc)) in
 
 {element of split part of the character of the radical
  (mat A,ratvec v) <->
-   columnns of A are basis of [X^*_Q]^{-delta}, and ratvec v
+   columns of A are basis of [X^*_Q]^{-delta}, and ratvec v
    gives a linear combination of these
 }
 set split_radical(CentralCharacter cc)=

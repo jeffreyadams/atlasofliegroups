@@ -217,7 +217,7 @@ ATLAS
 
 While the program 'Fokko' gives a direct interface to the basic functions in
 the Atlas software, the 'atlas' program provides the same functionality
-withing the setting of a fairly elaborate user programming language.
+within the setting of a fairly elaborate user programming language.
 
 This is best run from the subdirectory atlas-scripts, which provides a large
 collection of predefined user functions, and also contains the help files for

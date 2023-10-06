@@ -1206,7 +1206,7 @@ cofolded: (InnerClass->RootDatum): Reduced root datum for delta-fixed weights
   each delta-orbit of 2 simple coroots whose sum is not a coroot, one is
   arbitrarily chosen to be retained; it would be more natural to retain the
   average of these two instead. However that might introduce non-integer
-  coordinates, and the root datum constucted here does not, and is a perfectly
+  coordinates, and the root datum constructed here does not, and is a perfectly
   valid root datum. It is intended to be used only with delta-fixed (rational)
   weights, and notably to decompose that space into alcoves; this is independent
   of the choice of simple coroots, and the alcoves are the same as those into
@@ -1237,7 +1237,7 @@ walls_attitude: (RootDatum,[int]->WeylElt) classify alcove up to translation
   For any alcove there are alcoves in the W-orbit of the fundamental alcove that
   are equal to it up to a translation; this function determines a Weyl group
   element that witnesses this from the set of walls of the alcove, represented
-  by a list of root indices as retuned by the 'walls' for an interior point of
+  by a list of root indices as returned by the 'walls' for an interior point of
   the alcove. The set of root indices must be that of the walls of some alcove,
   so in the W-orbit of the set of walls of the fundamental alcove (necessary
   conditions for this is the absence of acute angles, and a number of walls

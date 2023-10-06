@@ -342,7 +342,7 @@ StandardRepr alcove_center(const Rep_context& rc, const StandardRepr& sr)
 /* Given a component |comp| of an alcove wall set, and integer parts |ev_floors|
    of their evaluations on interior points of the alcove, return the unique
    vertex of the simplex for |comp| (the projection of the alcove on the span of
-   its roots) that is a sum of those roots with integer multiplicites.
+   its roots) that is a sum of those roots with integer multiplicities.
 */
 Weight root_vertex_simple
   (const RootDatum& rd, const RootNbrSet& comp, int_Vector ev_floors)
@@ -774,15 +774,15 @@ sl_list<WeylElt> basic_orbit_ws
 }
 
 /* When trying to generate the fundamental parallelepiped, the region of the
-   dominant chamber where are simple coroots takes values in [0,1], one can
+   dominant chamber where simple coroots takes values in [0,1], one can
    start with the W-orbit of the fundamental alcove, which is the region where
    all coroots take values in [-1,1], and see which of its alcoves (naturally
    indexed by Weyl group elements) shift to the fundamental parallelepiped by an
    element ot the root lattice. The required shift is the sum of a subset of the
    fundamental weights, namely those for which the alcove is on the negative
    side of its simple reflection wall; this is the set of (left) descents of the
-   Weyl group element by which the fundamewntal alcove was transformed. For
-   generting the alcoves of the fundamental parallelepiped, it is therefore
+   Weyl group element by which the fundamental alcove was transformed. For
+   generating the alcoves of the fundamental parallelepiped, it is therefore
    useful to tabulate those descent sets for which the corresponding sum of
    fundamental weights lies in the root lattice; the following class (whose name
    refers to the fact that the index of the root lattice in the lattice

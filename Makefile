@@ -7,7 +7,7 @@ INSTALL = /usr/bin/install
 # You may edit the INSTALLDIR and BINDIR variables
 
 # INSTALLDIR is where the executables Fokko, atlas and the messages directory
-# will be moved after successfull compilation
+# will be moved after successful compilation
 
 # BINDIR is where a symbolic link to the 'Fokko' executable will be created,
 # and shell script executing 'atlas' will be placed; provided this directory
