@@ -93,6 +93,8 @@ readline_completions: (string->[string]): list of completions of a prefix
   result is the list of all identifiers currently in use, as well as keywords,
   whose name starts with that prefix. Being currently in use means either being
   defined as a (global) variable, or being defined at least once as a function.
+elapsed_ms: (->int): number of milliseconds elapsed since program start-up
+  The timer starts after all command line argument files have been loaded
 
 { in bitwise operations, an integer n represents a finite (if n>=0) or co-finite
   if (n<0) set of natural numbers, the positions (from 0 on the right) of their
