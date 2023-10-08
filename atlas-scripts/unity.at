@@ -18,8 +18,8 @@ set short_hts(Param p) = [int]:
        	       od
        	    od.##
     	 od.## # height(p)).sort_u[1:]
-     then () = {if time_verbose then} prints("     ",
-     	     print_time_string(elapsed_ms() - start), " for short_hts") {fi}
+     {then () = {if time_verbose then} prints("     ",
+     	     print_time_string(elapsed_ms() - start), " for short_hts") {fi}}
      in answer
 
 { To test a bunch of parameters attached to one KGB element x, and one
