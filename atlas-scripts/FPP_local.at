@@ -394,7 +394,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash, (Param->bool) tester) = [Param]:
-    let NumClasses = #eq, printInterval = int: 1
+    let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
     { then listZero = [ratvec]: if #LFVH = 0
     	 	    	      then []
     			      else for w in LFVH[0] do Lvd.list[w[0]] od
@@ -443,6 +443,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
        	       	    		      		      unitary_by_dim);
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation by local_test_hash") fi
     in  UParams
 
 { Input is candidate facets, and graph info. Output is the unitary ones.}
@@ -504,7 +508,7 @@ presumably small KGBElts??}
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
-    let (G,j0) = %x, thetaMinus = x.involution - 1
+    let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
     then test_hts = hts[:min(#hts,1)]
     then tester = (Param->bool): (Param p) bool:
     	 is_unitary_test(p,test_hts)
@@ -588,6 +592,10 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 		 in p
               od
            od.##
+   then time = elapsed_ms() - start
+   then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ") fi
    in UParams
 
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,

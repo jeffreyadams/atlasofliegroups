@@ -9,13 +9,18 @@ set height(RootDatum R, ratvec nu) = int:
     in q.numer\q.denom
 
 set short_hts(Param p) = [int]:
-    (for r in reducibility_points(p)
-    do for @q in deform(p*r)
-       do for mu in LKTs(q)
-       	  do height(mu)
-       	  od
-       od.##
-    od.## # height(p)).sort_u[1:]
+    let start = elapsed_ms()
+    then answer = [int]:
+    	 (for r in reducibility_points(p)
+    	 do for @q in deform(p*r)
+       	    do for mu in LKTs(q)
+       	       do height(mu)
+       	       od
+       	    od.##
+    	 od.## # height(p)).sort_u[1:]
+     then () = {if time_verbose then} prints("     ",
+     	     print_time_string(elapsed_ms() - start), " for short_hts") {fi}
+     in answer
 
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N =
@@ -44,7 +49,7 @@ set next_height(Param p) = int:
 
 {entries are the m heights of K-types of standard of mu after mu.}
 set next_heights(KType mu, int m) = [int]:
-    let h = height(mu)
+    let h = height(mu), start = elapsed_ms()
     then N = h+10, list = [int]: []
     then () = while #list < m
     	 do list:=sort_u(for tau in monomials(branch(mu,N) - mu)
@@ -52,6 +57,8 @@ set next_heights(KType mu, int m) = [int]:
 			 od);
 	    N:=N+5
 	 od
+    then () = {if time_verbose then} prints("    ",print_time_string(
+    elapsed_ms() - start)," for next_heights to ",m) {fi}
     in list[:m]
 
 set next_heights(Param p, int m) = [int]:

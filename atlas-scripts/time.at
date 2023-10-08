@@ -3,3 +3,11 @@
 {converts output of elapsed_ms() to human-readable form}
 set print_time_string(int N) = string:
 to_string(N\1000)##"."##pad(to_string(N%1000),"r",3,"0")##"sec"
+
+{elapsed_ms() can be assigned to this at the beginning of a
+complicated function jumping over several scripts, then read
+at intermediate steps.}
+set general_time = int: 0
+
+{ if true, reports elapsed time for various functions}
+set time_verbose = true
