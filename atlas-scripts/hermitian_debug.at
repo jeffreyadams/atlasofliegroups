@@ -1,9 +1,15 @@
 { alternative to hermitian.at, introducing print commands to trace values }
 
+set twisted_full_deform(Param p) = twisted_full_deform(p.print)
+
 <basic.at
 <groups.at
 <std_decs.at
 <convert_c_form.at
+
+p:=trivial(G:=SO(5,5))
+q:=param(x:=KGB(G,110),null(5),[8,0,1,-1,0]/2)
+set go() = KP:=p.full_deform; q.twisted_full_deform
 
 {.write c-invariant form on standard module as a KTypePol }
 set c_form_std = (Param->KTypePol): { never involves |twisted_full_deform| }

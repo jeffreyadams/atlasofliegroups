@@ -558,6 +558,7 @@ WeylWord fixed_conjugate_simple
 
 ext_block::~ext_block() = default;
 
+#if 0 // the old style extended block construction is dysfunctional, not used
 ext_block::ext_block // for external twist; old style blocks
   (const InnerClass& G,
    const Block& block,
@@ -589,23 +590,36 @@ ext_block::ext_block // for external twist; old style blocks
   // FIXME cannot call |tune_signs| here, although sign flips depend on it
 
 } // |ext_block::ext_block|
+#endif
 
-BlockElt shift_twisted
-  (const blocks::common_block& block,
-   const RatWeight& shift, const WeightInvolution& delta,
+// find block element that, after |bm|-transforming the block, corresponds
+// to block element |z| twisted by |delta|
+BlockElt transformed_twisted
+  (const blocks::common_block& block, const repr::block_modifier& bm,
+   const WeightInvolution& delta,
    BlockElt z)
 {
-  const auto& kgb = block.context().kgb();
-  KGBElt x1 = kgb.twisted(block.x(z),delta);
-  RatWeight new_gl = delta*(block.gamma_lambda(z)+shift)-shift;
-  return block.lookup(x1,new_gl);
+  const auto& rc = block.context();
+  const auto& kgb = rc.kgb();
+
+  auto rep = block.representative(z);
+  rc.shift(bm.shift,rep);
+  rc.transform<false>(bm.w,rep);
+
+  KGBElt x1 = kgb.twisted(rep.x(),delta);
+  RatWeight new_gl = delta*rep.gamma_lambda();
+  rep = StandardReprMod::build(rc,x1,new_gl);
+
+  rc.transform<true>(bm.w,rep);
+  rc.shift(-bm.shift,rep);
+  return block.lookup(rep);
 }
 
 ext_block::ext_block
 (const blocks::common_block& block, const repr::block_modifier& bm,
    const WeightInvolution& delta, ext_KL_hash_Table* pol_hash)
   : parent(block)
-  , orbits(block.fold_orbits(delta)) // permuted below by |bm.simple_pi|
+  , orbits(block.fold_orbits(delta,bm)) // permuted below by |bm.simple_pi|
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
@@ -613,20 +627,11 @@ ext_block::ext_block
   , KL_ptr(nullptr)
   , diagram(block.Dynkin().folded(orbits))
 {
-#ifndef NDEBUG
-  const auto& ic = block.inner_class();
-  {
-    int_Matrix M = ic.root_datum().action_matrix(ic.Weyl_group().word(bm.w));
-    int_Matrix Dp = delta + 1, Dm = delta-1;
-    assert ((Dm * M * Dp).is_zero()); // commutation |delta|, |M| on image |Dp|
-  }
-#endif
-
   BitMap fixed_points(block.size());
 
   // compute the delta-fixed points of the block
   for (BlockElt z=0; z<block.size(); ++z)
-    if (shift_twisted(block,bm.shift,delta,z)==z)
+    if (transformed_twisted(block,bm,delta,z)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
