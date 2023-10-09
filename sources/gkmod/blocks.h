@@ -409,7 +409,8 @@ class common_block : public Block_base
     ( const repr::block_modifier& bm, const WeightInvolution& delta) const;
   RootNbrList simply_ints() const { return simply_integrals; }
   RootNbrList simply_ints(const repr::block_modifier& bm) const;
-  ext_gens fold_orbits (const WeightInvolution& delta) const;
+  ext_gens fold_orbits
+    (const WeightInvolution& delta, const repr::block_modifier& bm) const;
 
 #ifndef NDEBUG
   bool is_integral_orthogonal(const RatWeight& shift) const;
