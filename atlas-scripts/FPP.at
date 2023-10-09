@@ -1,0 +1,60 @@
+{This script runs (backward, for no serious reason) over a sequence of
+KGBElts x in E7_s, beginning at start and ending before start +
+interval. For each x, it computes the corresponding lambdas; then for
+each (x,lambda) it computes the list of FPP-unitary facets of
+parameters (x,lambda,*). These are assembled in LISTS = [[Param]],
+with one [Param] for each x. In practice what's interesting is the
+final Param's stored in Uhash.
+
+If you replace E7_s by some small group (say F4_s) and start by
+something in the middle of KGB(G) (say 100), you can quickly see what
+it does.
+
+I'm running this precise script on my laptop. After 15 minutes the job
+has grown to 60 mb, and has so far analyzed 8 of the 130 lambdas for
+the FIRST KGBElt. The first 8 lambdas finished probably in less than a
+minute; the ninth is taking a quite a long time.
+
+We can talk about how best to harvest the output from jobs like this,
+but even if the main loop is interrupted with CTRL-C, the hash table
+of Param's Uhash will remain accessible.
+
+I'm not sure whether my little experiment proves that this is viable
+idea or not. My do-them-all jobs on atlas are computing an average of
+one KGBElt each 90 minutes.
+}
+<FPP_global.at
+set test_verbose=false
+
+set FPP(RealForm G,int start_KGB,int number_KGB)=[[Param]]:
+let vd = FPP_vertex_data(G) then
+Uhash = make_Param_hash() then
+()=unipotents_to_hash(G,Uhash) in
+prints("G=", G,new_line,"KGB elements: from ", start_KGB, " to ", start_KGB+number_KGB, "  (", number_KGB," total)");
+let lists=[[Param]]:
+    for j:number_KGB from start_KGB
+    ~do let x = KGB(G,j)
+   then lambdas = FPP_lambdas(x)
+   then () = prints("KGB #",j,":",new_line, "#lambdas=",#lambdas,
+   	     	    ", #Uhash = ", Uhash.size())
+   in for lambda@j in lambdas
+      do prints("lambda #",j,", #Uhash = ", Uhash.size());
+	    local_test_GEO_hash(x,lambda, Uhash)
+      od.##
+   od in lists
+
+{to write a list of Param's for a single RealForm}
+{only change from writeFiles.at: "<groups.at"}
+set write_param_list_jda([Param] list, string listName) = void:
+    begin
+        prints("<groups.at");
+	write_real_form(list[0].real_form, "G_temp")
+	; prints("set Nullp = U(1,0).trivial")
+	; prints("set ",listName,"=[Param]: for i:",#list,
+	  	      " do Nullp od")
+        ; for p@i in list
+	  do let (,x) = %p.x
+	     in prints("void:",listName,"[",i,"]:=parameter(KGB(G_temp,",
+	     	x,"),",p.lambda,",",p.nu,")")
+	  od
+    end
