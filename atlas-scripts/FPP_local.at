@@ -159,6 +159,10 @@ dual. Therefore the functions FPP_unitary_hash... set this flag to
 "true".}
 set deform_flag = false
 
+{. If "true," then some local FPP calculations revert to simpler (?)
+   forms in "simple" cases.}
+set revert_flag = true
+
 {If "false", use the old version of one_level, in which vertex/edge calcs
 are done immediately to ONE_HT}
 set step_flag = false
@@ -621,7 +625,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param
 
 set hashCounter = make_counter()
 
-{assume we've already got hts, and decided not to use _dumb}
+{assume we've already got hts, #hts >= 1, and decided not to use _dumb}
 set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
@@ -693,11 +697,14 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     	      	then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	else next_heights(pmax,depth)
 				fi
-    	      	then () = if #Shorthts < depth then return local_test_GEO_hash_dumb(x, lambda, vd,
+    	      	then () = if #Shorthts < depth and revert_flag
+		     	  then return local_test_GEO_hash_dumb(x, lambda, vd,
     	      	 	     	   	       Lvd, Perm, mapAct, LF, Shorthts[:min(1,#Shorthts)],
 					       pol_hash, Uhash)
 	      		  fi
-    	        then hts = Shorthts[:depth]
+    	        then hts = [int]:
+		     let d0 = min(#Shorthts, depth)
+		     in Shorthts[:d0] ## for j:depth-d0 do -1 od
     	      	in local_test_GEO_hash_no_dumb(x, lambda, vd, Lvd, Perm, mapAct, LF, hts,
 	      	 pol_hash, Uhash)
 
@@ -750,12 +757,13 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     		     then Shorthts = if short_hts_flag then short_hts(pmax)
 		     	      	     else next_heights(pmax,depth)
 				     fi
-    		     then () = if #Shorthts < depth
+    		     then () = if #Shorthts < depth and revert_flag
 			       then return local_test_GEO_hash_dumb(x, lambda, vd,
     	      	 	     	   	       Lvd, Perm, mapAct, LF,
 					       Shorthts[:min(#Shorthts,1)], pol_hash, Uhash)
 			       fi
-    		     in Shorthts[:depth]
+    		     then d0 = min(#Shorthts, depth)
+		     in Shorthts[:d0] ## for j:depth-d0 do -1 od
     then  () = hash2Counter.use()
     then test_levels = for d:max(r,2) do d*edge_skip + edge_offset od
     then test_hts = for d:max(r,2) do hts[test_levels[d]] od
@@ -878,19 +886,20 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		      else return []
 		      fi
 	      fi
-    then hts =[int]: let () = if #Shorthts < max(max(r,2), LAST+1)
+    then hts =[int]: let () = if #Shorthts < max(max(r,2), LAST+1) and revert_flag
     	      		       then return local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm,
 	      	   	  	    	 	mapAct, LF, Shorthts[:min(1,#Shorthts)],
 						pol_hash, Uhash)
 	      		       fi
-    		      in Shorthts[:LAST+1]
+		      then d0 = min(LAST+1,#Shorthts)
+    		      in Shorthts[:d0] ## for j:LAST + 1 - d0 do -1 od
     then approxMaxDiff = approxDiff(pmax)
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     {then () = prints("approxMaxDiff = ",approxMaxDiff)}
     {now have at least two vertices. If it's an easy case,
     	 revert to local_test_GEO_hash}
-    then () = if (approxMaxDiff*approxVertexDiff < prod_cutoff) and
+    then () = if revert_flag and (approxMaxDiff*approxVertexDiff < prod_cutoff) and
     	      	 (approxMaxDiff < diff_cutoff)  {and}
 		 {(approxVertexDiff < vert_diff_cutoff)}
 	      then return local_test_GEO_hash_no_dumb(x, lambda, vd, Lvd, Perm, mapAct,

@@ -3,6 +3,7 @@
 <induction.at {for theta_stable_quasi_data}
 <sort.at {for sort_u}
 <count.at
+<time.at {for time_verbose}
 
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
@@ -18,8 +19,8 @@ set short_hts(Param p) = [int]:
        	       od
        	    od.##
     	 od.## # height(p)).sort_u[1:]
-     {then () = {if time_verbose then} prints("     ",
-     	     print_time_string(elapsed_ms() - start), " for short_hts") {fi}}
+    then () = if time_verbose then prints("     ",
+     	     print_time_string(elapsed_ms() - start), " for short_hts") fi
      in answer
 
 { To test a bunch of parameters attached to one KGB element x, and one
@@ -57,8 +58,8 @@ set next_heights(KType mu, int m) = [int]:
 			 od);
 	    N:=N+5
 	 od
-    then () = {if time_verbose then} prints("    ",print_time_string(
-    elapsed_ms() - start)," for next_heights to ",m) {fi}
+    then () = if time_verbose then prints("    ",print_time_string(
+    elapsed_ms() - start)," for next_heights to ",m) fi
     in list[:m]
 
 set next_heights(Param p, int m) = [int]:
