@@ -5023,6 +5023,39 @@ install_function(invert_wrapper,"invert","(mat->mat,int)");
 install_function(section_wrapper,"mod2_section","(mat->mat)");
 install_function(subspace_normal_wrapper,@|
    "subspace_normal","(mat->mat,mat,mat,[int])");
+
+@*1 The program timer.
+
+This one atypical function does not fit in any of the
+other categories, but it is a global function in the sense that it provides
+information about the program as a whole (which at least justifies its presence
+in this file). Apart from being user callable, we also call it from the |main|
+function, so it must be exported.
+
+@< Declarations of exported functions @>=
+void elapsed_wrapper(expression_base::level l);
+
+@ The function |elapsed_wrapper| provides a timer for the program execution,
+using a static variable of a type |Timer| defined in the utility
+file \.{timer.h}. Since a function-local static variable is initialised (which
+here implies the timer is started) the first time its declaration is executed,
+this function should be called once at program start-up, typically with
+|l==expression_base::no_value|, preferably after initial set up is done.
+
+@h "timer.h"
+
+@< Global function def... @>=
+void elapsed_wrapper(expression_base::level l)
+{
+  static time::Timer stopwatch;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(stopwatch.elapsed_ms()));
+}
+
+@ And we must install the function
+@< Initialise... @>=
+install_function(elapsed_wrapper,"elapsed_ms","(->int)");
+
 @* Index.
 
 % Local IspellDict: british
