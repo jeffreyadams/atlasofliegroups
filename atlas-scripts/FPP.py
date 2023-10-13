@@ -14,19 +14,19 @@ def report(q,i,proc):
    return("(i)[size of q]<status_i>: (" + str(i) + ")[:" + str(q.qsize()) +  "]<" + str(proc.poll()) + ">")
 
 #call the atlas process proc, with arguments:
-#q: queue of facet data, obtained from facet_file
 #procs: array of processes
 #i: number of process
-def atlas_compute(i):
+def atlas_compute(i,pid):
    print("starting atlas_compute process #", i)
    proc=procs[i]
-
    data_file=directory + "/" + str(i) + ".at"
    log_file=directory + "/logs/" + str(i)
    data=open(data_file,"w", buffering=1)
    log=open(log_file,"w", buffering=1)
    log.write("{Starting computation at " + str(time.ctime()) + "\n")
    log.write("Computing FPP for " + group + "\n")
+   log.write("Process number: " + str(i))
+   log.write("Process id: " + str(pid))
    atlas_arg='{}'.format("KGB_size(" + group + ")\n").encode('utf-8')
 #   print("atlas_arg: ", atlas_arg)
    proc.stdin.write(atlas_arg)
@@ -114,6 +114,7 @@ def main(argv):
    global directory, number_jobs,group, start_KGB
    group="E8_s"
    start_KGB=0
+   end_KGB=1000  #should probably be KGB_size(G)
    opts, args = getopt.getopt(argv, "d:n:g:k:i:")
    if len(opts)<4:
       print("Usage: \n-d: directory\n-n: number jobs\n-g: group\n-k: start KGB\n")
@@ -145,11 +146,12 @@ def main(argv):
    for i in range(number_jobs):
       proc=subprocess.Popen(["../atlas","FPP.at"], stdin=PIPE,stdout=PIPE)
       procs.append(proc)
+      print("pid: ", proc.pid)
 #   print("number of processes: ", len(procs))
    with concurrent.futures.ProcessPoolExecutor(number_jobs) as P:
       for i in range(number_jobs):
          proc=procs[i]
-         Q=P.submit(atlas_compute,i)
+         Q=P.submit(atlas_compute,i,proc.pid)
          T.append(Q)
    exit()
 #   for t in T:
