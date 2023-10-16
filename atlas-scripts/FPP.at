@@ -26,20 +26,6 @@ one KGBElt each 90 minutes.
 <FPP_global.at
 set test_verbose=false
 
-set FPP(RealForm G,int KGB_number)=[Param]:
-let vd = FPP_vertex_data(G) then
-Uhash = make_Param_hash() then
-()=unipotents_to_hash(G,Uhash) in
-prints("G=", G,new_line,"KGB element: ", KGB_number);
-let list=[Param]:[] then
-   x = KGB(G,KGB_number)
-   then lambdas = FPP_lambdas(x)
-   then () = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
-   	     	    ", #Uhash = ", Uhash.size())
-   in for lambda@j in lambdas
-      do prints("lambda #",j,", #Uhash = ", Uhash.size());
-	    local_test_GEO_hash_one_level(x,lambda, Uhash)
-      od.##
 
 {to write a list of Param's for a single RealForm}
 {only change from writeFiles.at: "<groups.at"}
@@ -56,3 +42,18 @@ set write_param_list_jda([Param] list, string listName) = void:
 	     	x,"),",p.lambda,",",p.nu,")")
 	  od
     end
+
+set FPP(RealForm G,int KGB_number)=[Param]:
+let vd = FPP_vertex_data(G) then
+Uhash = make_Param_hash() then
+()=unipotents_to_hash(G,Uhash) in
+prints("G=", G,new_line,"KGB element: ", KGB_number);
+let list=[Param]:[] then
+   x = KGB(G,KGB_number)
+   then lambdas = FPP_lambdas(x)
+   then () = prints("KGB #",KGB_number,":",new_line, "#lambdas=",#lambdas,
+   	     	    ", #Uhash = ", Uhash.size())
+   in for lambda@j in lambdas
+      do prints("lambda #",j,", #Uhash = ", Uhash.size());
+	    local_test_GEO_hash_one_level(x,lambda, Uhash)
+      od.##
