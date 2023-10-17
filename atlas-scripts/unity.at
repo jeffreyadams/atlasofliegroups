@@ -1,13 +1,191 @@
 <to_ht.at
-<goodroots.at
 <induction.at {for theta_stable_quasi_data}
+<goodroots.at
 <sort.at {for sort_u}
 <count.at
 <time.at {for time_verbose}
-
 set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom
+
+
+set deform_support (Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then seen=null_module(G), !empty_K=null_K_module(G)
+in p. { apply recursive function initially to our argument |p| }
+  (rec_fun support (Param p) KTypePol:
+      if =seen[p] else empty_K { skip already included support }
+      then seen[p]:=1
+      ; p.K_type +
+	for k@q
+	in sum(G,for factor in reducibility_points(p) do deform(p*factor)
+	{first_param(finalize(p*factor))} od)
+	do support(q) od
+      fi
+   )
+)
+
+set support_params_hash = make_Param_hash()
+set deform_supports_table = [KTypePol]: []
+
+set rec_fun deform_support_hash (Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then () = p:=alcove_center(p)
+   then j = support_params_hash.lookup(p)
+   then () = if not support_params_hash.size() = #deform_supports_table
+      	      	then error("haven't filled table with hash")
+	      	fi
+   then D = if j >= 0 
+      	    then deform_supports_table[j]
+	    else p.K_type +
+	       	    for k@q in sum(G,for factor in reducibility_points(p)
+	       	    	       	     do deform(p*factor) od)
+	            do deform_support_hash(q) od
+      	    fi
+   then () = D:= sum(G, for @r in D do r od)
+   then j1 = support_params_hash.match(p)
+   then () = if j1 = #deform_supports_table
+      	      	then deform_supports_table:=
+		(deform_supports_table next deform_supports_table:=[])
+		# D
+		fi
+    in D
+)
+
+{this is meant to be the block_Hasse interval below p}
+set lower_interval(Param p) = ParamPol:
+(if not is_final(p) then error("improper parameter") fi
+;   let (B,M) = block_Hasse(p), G=p.real_form
+    then d = length(B~[0]) - length(B[0])
+    then N = 1+M
+    then () = for j:d do N:= N+N*M od
+    then j0 = first(for q in B do p=q od)
+    in sum(G, for j:j0 do (if is_final(B[j]) and N[j,j0]!=0 then 1 else 0
+    fi)*B[j] od)
+)
+
+{
+{intended to hold last elements of common blocks}
+set block_hash = make_Param_hash()
+
+{for each block in block_hash, the result of block_of}
+set block_table = [[Param]]: []
+
+set lower_interval_hash(Param p) = ParamPol:
+(if not is_final(p) then error("improper parameter") fi
+;   let j = )
+}
+
+set deform_support_int (Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then seen=null_module(G), !empty_K=null_K_module(G)
+in p. { apply recursive function initially to our argument |p| }
+  (rec_fun support_int (Param p) KTypePol:
+      if =seen[p] else empty_K { skip already included support }
+      then seen[p]:=1
+      ; p.K_type +
+	for k@q in sum(G,for factor in reducibility_points(p)
+	    	   	 do lower_interval(first_param(finalize(p*factor)))
+		  	 od)
+	do support_int(q) od
+      fi
+   )
+)
+
+set support_params_int_hash = make_Param_hash()
+set deform_supports_int_table = [KTypePol]: []
+
+set rec_fun deform_support_int_hash(Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then () = p:=alcove_center(p)
+   then j = support_params_int_hash.lookup(p)
+   then () = if not support_params_int_hash.size() = #deform_supports_int_table
+      	     then error("haven't filled table with hash")
+	     fi
+   then D = if j >= 0 
+      	    then deform_supports_int_table[j]
+	    else p.K_type +
+	       	 for @q in sum(G,for factor in reducibility_points(p)
+	       	    	       	 do lower_interval(first_param(finalize(
+					p*factor))) od)
+	         do deform_support_int_hash(q) od
+      	       fi
+    then () = D:= sum(G, for @r in D do r od)
+    then j1 = support_params_int_hash.match(p)
+    then () = if j1 = #deform_supports_int_table
+      	      then deform_supports_int_table:=
+		(deform_supports_int_table next deform_supports_int_table:=[])
+		# D
+	      fi
+    in D
+)
+
+{this is meant to contain the block_Hasse interval below p}
+set lower_interval_dumb(Param p) = ParamPol:
+(if not is_final(p) then error("improper parameter") fi
+;   let B = block_of(p), G=p.real_form, ell = length(p)
+    then nullP = null_module(G)
+    in sum(G, for q in B
+       	      do if length(q) >= ell then break
+       	      	 else if is_final(q) then q
+		      else nullP
+		      fi
+		 fi
+	       od)
+)
+
+set deform_support_dumb (Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then () = p:=alcove_center(p)
+   then seen=null_module(G), !empty_K=null_K_module(G)
+in p. { apply recursive function initially to our argument |p| }
+  (rec_fun support_dumb (Param p) KTypePol:
+      if =seen[p] else empty_K { skip already included support }
+      then seen[p]:=1
+      ; p.K_type +
+	for k@q in sum(G,
+	    for factor in reducibility_points(p)
+	    do lower_interval_dumb(first_param(finalize(p*factor)))
+	    od)
+	do support_dumb(q) od
+      fi
+   )
+)
+
+set support_params_dumb_hash = make_Param_hash()
+set deform_supports_dumb_table = [KTypePol]: []
+
+set rec_fun deform_support_dumb_hash (Param p) = KTypePol:
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then () = p:=alcove_center(p)
+   then j = support_params_dumb_hash.lookup(p)
+   then () = if not support_params_dumb_hash.size() = #deform_supports_dumb_table
+      	      then error("haven't filled table with hash")
+	      fi
+   then D = if j >= 0
+      	    then deform_supports_dumb_table[j]
+	    else p.K_type +
+	       	    for k@q in sum(G,for factor in reducibility_points(p)
+	       	    	       	     do lower_interval_dumb(
+				     	first_param(p*factor)) od)
+	            do deform_support_dumb_hash(q) od
+      	    fi
+    then () = D:= sum(G, for @r in D do r od)
+    then j1 = support_params_dumb_hash.match(p)
+    then () = if j1 = #deform_supports_dumb_table
+      	      	then {deform_supports_dumb_table:=deform_supports_dumb_table # D}
+		deform_supports_dumb_table:=
+			(deform_supports_dumb_table next deform_supports_dumb_table :=[])
+		        	# D
+	       fi
+    in D
+)
 
 set short_hts(Param p) = [int]:
     let start = elapsed_ms()
@@ -22,6 +200,16 @@ set short_hts(Param p) = [int]:
     then () = if time_verbose then prints("     ",
      	     print_time_string(elapsed_ms() - start), " for short_hts") fi
      in answer
+
+set deform_hts(Param p) = [int]:
+    let start = elapsed_ms()
+    then answer = [int]:
+      for @q in deform_support_hash(p)
+      do height(q)
+      od.sort_u[1:]
+    then () = if time_verbose then prints("     ",
+     	     print_time_string(elapsed_ms() - start), " for deform__hts") fi
+    in answer
 
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N =
@@ -151,6 +339,13 @@ set is_unitary_short_test(Param p,int N) = bool:
     let short= short_hts(p)
     in is_unitary_test(p,short[:min(N,#short)])
 
+{use the first N heights from short_heights to test}
+set is_unitary_def_test(Param p,int N) = bool:
+    let def= deform_hts(p)
+    in if #def <= N
+       then is_pos_on_LKTs(p) and is_unitary_to_hts(p,def)
+       else is_unitary_test(p,def[:N])
+       fi
 
 { these commands are useful for speed tests over bunches of parameters
 
