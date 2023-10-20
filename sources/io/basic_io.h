@@ -97,6 +97,9 @@ namespace repr {
 std::ostream& print_stdrep
   (std::ostream& out, const StandardRepr& val, const Rep_context& rc);
 
+std::ostream& print_stdrep_mod
+  (std::ostream& out, const StandardReprMod& val, const Rep_context& rc);
+
 std::ostream& print_SR_poly
 (std::ostream& out, const repr::SR_poly& val, const Rep_context& rc);
 

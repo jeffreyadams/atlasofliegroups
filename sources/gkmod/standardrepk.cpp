@@ -239,7 +239,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
   CartanNbr cn = innerClass().class_number(sigma);
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
-		        (titsGroup().left_torus_part(a)),
+		        (Tits_group().left_torus_part(a)),
 		      project(cn,mu));
 
   return result;
@@ -1476,17 +1476,17 @@ qKhatContext::saturate(const std::set<q_equation>& system, level bound)
 } // |qKhatContext::saturate|
 
 
-matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
+matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
  (std::set<equation>& eq_set,
   level bound,
   std::vector<seq_no>& new_order,
-  matrix::Matrix_base<CharCoeff>* direct_p
+  matrix::Matrix<CharCoeff>* direct_p
   )
 {
   std::vector<equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
+  matrix::Matrix<CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix<CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
@@ -1494,17 +1494,17 @@ matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
 
 } // |KhatContext::K_type_matrix|
 
-matrix::Matrix_base<q_CharCoeff> qKhatContext::K_type_matrix
+matrix::Matrix<q_CharCoeff> qKhatContext::K_type_matrix
  (std::set<q_equation>& eq_set,
   level bound,
   std::vector<seq_no>& new_order,
-  matrix::Matrix_base<q_CharCoeff>* direct_p
+  matrix::Matrix<q_CharCoeff>* direct_p
   )
 {
   std::vector<q_equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<q_CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<q_CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
+  matrix::Matrix<q_CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix<q_CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
@@ -1681,9 +1681,9 @@ PSalgebra::PSalgebra(TitsElt base, const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
-    , nilpotents(G.rootDatum().posroot_set())
+    , nilpotents(G.root_datum().posroot_set())
 {
-  const RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.root_datum();
   InvolutionData id = G.involution_data(base.tw());
 
   // get |rd.simple_root_set()&id.real_roots()|, shifted to fit in |RankFlags|
@@ -1771,40 +1771,9 @@ template <typename C>
   return result;
 } // |triangularize|
 
-template <typename C>
-  matrix::Matrix_base<C> inverse_lower_triangular
-    (const matrix::Matrix_base<C>& L)
-{
-  size_t n=L.n_columns();
-  if (L.n_rows()!=n)
-    throw std::runtime_error ("invert triangular: matrix is not square");
-
-  matrix::Matrix_base<C> result(n,n,C(0));
-
-  for (size_t i=0; i<n; ++i)
-  {
-    if (L(i,i)!=C(1))
-      throw std::runtime_error ("invert triangular: not unitriangular");
-    result(i,i)=C(1);
-
-    for (size_t j=i; j-->0; )
-    {
-      C sum= C(0);
-      for (size_t k=i; k>j; --k) // $j<k\leq i$
-	sum += result(i,k)*L(k,j);
-      result(i,j) = -sum;
-    }
-  }
-  return result;
-}
-
 template
   matrix::Matrix_base<Polynomial<int> > triangularize
     (const std::vector<q_equation>& eq, std::vector<seq_no>& new_order);
-
-template
-  matrix::Matrix_base<Polynomial<int> > inverse_lower_triangular
-    (const matrix::Matrix_base<Polynomial<int> >& L);
 
 } // |namespace standardrepk|
 

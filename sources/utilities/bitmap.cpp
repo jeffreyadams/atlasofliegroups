@@ -83,15 +83,6 @@ namespace bitmap {
 
 /******** constructors and destructors ***************************************/
 
-template <typename I> // iterator type
-  BitMap::BitMap(unsigned long n, const I& first, const I& last)
-  : d_capacity(n)
-  , d_map((d_capacity+posBits)>>baseShift,0)
-{
-  for (I it = first; it!=last; ++it)
-    insert(*it);
-}
-
 /*
   In this constructor template we assume that I and J are iterator types with
   the same value_type. The idea is that [first,last[ is an ordered range,
@@ -696,14 +687,6 @@ using USP = US*; // that is pointer to unsigned integer
 
 template void BitMap::insert // root sets from RootNbrList
   (std::vector<US>::iterator, std::vector<US>::iterator);
-
-using ULVI = std::vector<unsigned long>::iterator;
-using VCI = std::vector<int>::const_iterator;
-
-template BitMap::BitMap(unsigned long n, const USP& first, const USP& last);
-template BitMap::BitMap(unsigned long n, const ULVI& first, const ULVI& last);
-template BitMap::BitMap(unsigned long n, const VCI& first, const VCI& last);
-// template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|
 

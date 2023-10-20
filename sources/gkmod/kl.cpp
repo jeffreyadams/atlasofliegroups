@@ -150,7 +150,7 @@ KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 {
   KLPolRef p = KL_pol(x,y);
-  return MuCoeff( p.isZero() or 2*p.degree()+1<l(y,x) ? 0 : p[p.degree()] );
+  return MuCoeff( p.is_zero() or 2*p.degree()+1<l(y,x) ? 0 : p[p.degree()] );
 }
 
 
@@ -438,7 +438,7 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     }
     // for now |Pxy.degree()| might be one notch too high, which will be
     // corrected in |mu_correction|; also |assert| there are based on this one
-    assert(Pxy.isZero() or 2*Pxy.degree()<l(y,x) or
+    assert(Pxy.is_zero() or 2*Pxy.degree()<l(y,x) or
 	   (2*Pxy.degree()==l(y,x) and
 	    Pxy[Pxy.degree()]==mu(x,sy)
 	    ));
@@ -560,7 +560,7 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
       const KLPol& Pxy = *it++;
       *KL_it = hash.match(Pxy);
       unsigned int lx = length(x);
-      if (not Pxy.isZero() and ly==lx+2*Pxy.degree()+1)
+      if (not Pxy.is_zero() and ly==lx+2*Pxy.degree()+1)
 	mu_pairs.emplace_front(x,MuCoeff(Pxy[Pxy.degree()]));
     }
     else // must insert a polynomial for primitive non-extremal |x|
@@ -713,7 +713,7 @@ void KL_table::new_recursion_column
 
       default: assert(false); //we've handled all possible NiceAscents
       }
-      if (not Pxy.isZero() and l_y==l_x+2*Pxy.degree()+1)
+      if (not Pxy.is_zero() and l_y==l_x+2*Pxy.degree()+1)
 	mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
 
     } // end of |first_nice_and_real| case
@@ -767,7 +767,7 @@ void KL_table::new_recursion_column
 	  mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
       } // |if (endgame_pair(x,y)) |
       else // |first_endgame_pair| found nothing
-	assert(*col_it==Zero); // just check unchanged since initialised
+	assert(col_it->is_zero()); // just check unchanged since initialised
     } // end of no NiceAscent case
   } // for(BlockElt x = length_less(l_y); prim_back_up(x,desc_y); --col_it)|
   assert(col_it==cur_col.begin());
@@ -953,9 +953,6 @@ void KL_table::verbose_fill(BlockElt limit)
 void KL_table::swallow
   (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
-#ifndef NDEBUG
-  check_sub(sub,embed);
-#endif
   // set up polynomial translation while ensuring those of |sub| are known here
   const bool shared_KL_pool =
     sub.pol_hash!=nullptr and &hash.pool()==&sub.pol_hash->pool();
@@ -969,7 +966,7 @@ void KL_table::swallow
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))
     { // then transfer |sub.d_KL[z]| and |sub.d_mu[z]| to new block
-      RankFlags desc = sub.descent_set(z);
+      RankFlags desc = descent_set(embed[z]);
       prepare_prim_index(desc); // first make sure |KLSuport| is ready for |z|
       auto sub_prims = sub.primitives(z);
       auto prims = primitives(embed[z]);
@@ -977,13 +974,13 @@ void KL_table::swallow
       BlockEltList sub_pc(sub_prims.begin(),sub_prims.end());
       BlockEltList pc(prims.begin(),prims.end());
       assert(sub.d_KL[z].size()==sub_pc.size());
-      assert(desc == descent_set(embed[z]));
       d_KL[embed[z]].resize(pc.size(),zero); // default to |zero|
       for (unsigned int i=0; i<sub_pc.size(); ++i)
       {
 	unsigned int new_i = prim_index(embed[sub_pc[i]],desc);
-	assert(sub.prim_index(sub_pc[i],desc)==i); // |sub_pc[i]| is primitive
-	assert(prim_index(pc[new_i],desc)==new_i); // |pc[new_i]| is primitive
+	// check that |sub_pc[i]| and |pc[new_i]| are primitive in their blocks
+	assert(sub.prim_index(sub_pc[i],sub.descent_set(z))==i);
+	assert(prim_index(pc[new_i],desc)==new_i);
 	d_KL[embed[z]][new_i] =
 	  shared_KL_pool ? sub.d_KL[z][i] : poly_trans[sub.d_KL[z][i]];
       }

@@ -992,15 +992,17 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 
 #endif
 
-PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
+PreRootDatum RootDatum::sub_predatum (const sl_list<RootNbr>& generators) const
 {
-  auto sr = generators.size();
-  LatticeMatrix simple_roots(rank(),sr);
-  LatticeMatrix simple_coroots(rank(),sr);
-  for (unsigned int j=0; j<sr; ++j)
+  LatticeMatrix simple_roots(rank(),generators.size());
+  LatticeMatrix simple_coroots(rank(),generators.size());
+
+  unsigned int j=0;
+  for (RootNbr alpha : generators)
   {
-    simple_roots.set_column(j,d_roots[generators[j]]);
-    simple_coroots.set_column(j,d_coroots[generators[j]]);
+    simple_roots.set_column(j,d_roots[alpha]);
+    simple_coroots.set_column(j,d_coroots[alpha]);
+    ++j;
   }
 
   return PreRootDatum(simple_roots,simple_coroots,prefer_coroots());
@@ -1111,7 +1113,8 @@ WeylWord RootDatum::word_of_inverse_matrix
 
 
 // make |lambda| dominant, and return Weyl word that will convert it back
-WeylWord RootDatum::factor_dominant (Weight& v) const
+template<typename C>
+  WeylWord RootDatum::factor_dominant (matrix::Vector<C>& v) const
 {
   containers::sl_list<weyl::Generator> w;
   weyl::Generator s;
@@ -1132,7 +1135,8 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
 }
 
 // make |lambda| codominant, and return Weyl word that will convert it back
-WeylWord RootDatum::factor_codominant (Coweight& v) const
+template<typename C>
+  WeylWord RootDatum::factor_codominant (matrix::Vector<C>& v) const
 {
   containers::sl_list<weyl::Generator> w;
   weyl::Generator s;
@@ -1152,14 +1156,9 @@ WeylWord RootDatum::factor_codominant (Coweight& v) const
   return WeylWord(std::move(w).to_vector());
 }
 
-/*
-  A reduced expression of the shortest |w| making |w.v| dominant
-
-  Algorithm: the greedy algorithm -- if v is not positive, there is a
-  simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
-  v closer to the dominant chamber.
-*/
-WeylWord RootDatum::to_dominant(Weight lambda) const
+// A reduced expression of the shortest |w| making |w*lambda| dominant
+template<typename C>
+  WeylWord RootDatum::to_dominant(matrix::Vector<C> lambda) const
 {
   WeylWord result = factor_dominant(lambda);
   // reverse result (action is from right to left)
@@ -1167,8 +1166,20 @@ WeylWord RootDatum::to_dominant(Weight lambda) const
   return result; // and forget modified |lambda|
 }
 
-void RootDatum::act(const WeylWord& ww, RatWeight& gamma) const
+// A reduced expression of the shortest |w| making |lambda*w| dominant
+template<typename C>
+  WeylWord RootDatum::to_codominant(matrix::Vector<C> lambda) const
+{
+  WeylWord result = factor_codominant(lambda);
+  // reverse result (action is from right to left)
+  std::reverse(result.begin(),result.end());
+  return result; // and forget modified |lambda|
+}
+
+void RootDatum::act (const WeylWord& ww, RatWeight& gamma) const
 { act(ww,gamma.numerator()); }
+void RootDatum::act_inverse (RatWeight& gamma, const WeylWord& ww) const
+{ act_inverse(gamma.numerator(),ww); }
 
 /*
   The matrix represented by ww.
@@ -1480,11 +1491,12 @@ RootNbrSet integrality_poscoroots(const RootDatum& rd, const RatWeight& gamma)
   return result;
 }
 
-RootNbrList integrality_simples(const RootDatum& rd, const RatWeight& gamma)
-{ RootNbrSet pos_integrals(rd.numRoots());
-  for (unsigned i : integrality_poscoroots(rd,gamma))
-    pos_integrals.insert(rd.posRootNbr(i));
-  return rd.simpleBasis(pos_integrals);
+sl_list<RootNbr> integrality_simples(const RootDatum& rd, const RatWeight& gamma)
+{ RootNbrSet pos_integrals(rd.numRoots()); // resize to full root system subset
+  for (RootNbr alpha : integrality_poscoroots(rd,gamma))
+    pos_integrals.insert(rd.posRootNbr(alpha)); // convert to full root range
+  auto result = rd.simpleBasis(pos_integrals);
+  return sl_list<RootNbr>(result.begin(),result.end());
 }
 
 
@@ -1554,7 +1566,7 @@ ext_gens fold_orbits
       pi[s] = it-alphas.begin();
     }
   }
-  ext_gens result; // we don't nyet know how big it will be
+  ext_gens result; // we don't yet know how big it will be
   for (weyl::Generator s=0; s<pi.size(); ++s)
     if (pi[s]==s)
       result.push_back(ext_gen(s));
@@ -1563,32 +1575,32 @@ ext_gens fold_orbits
   return result;
 }
 
-// the next version computes the same without using any |RootDatum| methods
-ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta)
+RootDatum cofold (const RootDatum& rd, const ext_gens& orbits)
 {
-  ext_gens result;
-  const auto sr = prd.semisimple_rank();
-  WeightList simple(sr);
-  for (unsigned j=0; j<sr; ++j)
-    simple[j] = prd.simple_root(j);
-  RankFlags seen;
-
-  for (weyl::Generator s=0; s<sr; ++s)
-    if (not seen[s])
-    { Weight image = delta*simple[s];
-      auto it = std::find(&simple[s],&simple[sr],image);
-      weyl::Generator t = it - &simple[0];
-      if (t==sr)
-	throw std::runtime_error("Not a distinguished involution");
-
-      seen.set(t);
-      if (s==t)
-	result.push_back(ext_gen(weyl::Generator(s)));
-      else // case |s<t<sr|
-	result.push_back(ext_gen(prd.simple_coroot(t).dot(simple[s])==0,s,t));
+  int_Matrix simple_roots(rd.rank(),orbits.size()),
+    simple_coroots(rd.rank(),orbits.size());
+  for (unsigned int j=0; j<orbits.size(); ++j)
+  {
+    auto orbit = orbits[j];
+    switch (orbit.type)
+    {
+    case ext_gen::one:
+      simple_coroots.set_column(j,rd.simpleCoroot(orbit.s0));
+      simple_roots.set_column(j,rd.simpleRoot(orbit.s0));
+      break;
+    case ext_gen::two:
+      simple_coroots.set_column(j,rd.simpleCoroot(orbit.s0));
+      simple_roots.set_column(j,rd.simpleRoot(orbit.s0)+rd.simpleRoot(orbit.s1));
+      break;
+    case ext_gen::three:
+      simple_coroots.set_column
+	(j, rd.simpleCoroot(orbit.s0)+rd.simpleCoroot(orbit.s1));
+      simple_roots.set_column
+	(j, rd.simpleRoot(orbit.s0)+rd.simpleRoot(orbit.s1));
     }
-
-  return result;
+  }
+  PreRootDatum prd(simple_roots,simple_coroots,rd.prefer_coroots());
+  return RootDatum(prd);
 }
 
 RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
@@ -1604,8 +1616,8 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
 bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma)
 {
   auto& numer = gamma.numerator();
-  for (weyl::Generator s=0; s<rd.semisimple_rank(); ++s)
-    if (rd.simpleCoroot(s).dot(numer)<0)
+  for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
+    if (it->dot(numer)<0)
       return false;
   return true;
 }
@@ -1886,6 +1898,13 @@ void RootSystem::toRootBasis
 
 template
 RootNbrSet additive_closure<true>(const RootSystem& rs, RootNbrSet generators);
+
+template WeylWord RootDatum::factor_dominant(Weight&) const;
+template WeylWord RootDatum::factor_codominant(Coweight&) const;
+template WeylWord RootDatum::to_dominant(Weight) const;
+// those instantiations were just for the record; they were already used above
+
+template WeylWord RootDatum::factor_dominant(Ratvec_Numer_t&) const;
 
 } // |namespace rootdata|
 

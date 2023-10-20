@@ -454,9 +454,26 @@ let M=radical_basis(rd_L) in
 if n_columns(M)=0 then false else
 let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L) fi fi
 
+{semisimple element t so that L=Cent_G(t)^0}
+set regular_central_elements(RootDatum rd_L, RootDatum rd)=
+{assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}
+let Lmod=mod_central_torus(rd_L) then
+Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
+L_rad=radical_basis(rd_L) {central torus} then
+(,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
+##for v in Z_Lmod do
+ let v_rd=lift(rd_L,v) in
+  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od
+
 set is_pseudo_Levi_in_simple_adjoint(RootDatum rd_L,RootDatum rd) = bool:
-  rd_L.mod_central_torus.has_cyclic_center and
- is_isomorphic(centralizer(rd,center(rd_L)),rd_L)
+   let (H,M)=mod_central_torus_info(rd_L)
+   in if has_cyclic_center(H)
+      then let cent=for v in elements_of_center(H)
+                    do lift(rd_L,v) od
+            then Lrad=for a in radical_basis(rd_L) do a/131 od
+            in dimension(centralizer(rd,cent##Lrad))=dimension(rd_L)
+      else false
+      fi
 
 set adjoint_image(RootDatum rd_L,RootDatum rd)=RootDatum:
 let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
@@ -477,16 +494,7 @@ let list=diagram_components(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
-{semisimple element t so that L=Cent_G(t)^0}
-set regular_central_elements(RootDatum rd_L, RootDatum rd)=
-{assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}
-let Lmod=mod_central_torus(rd_L) then
-Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
-L_rad=radical_basis(rd_L) {central torus} then
-(,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
-##for v in Z_Lmod do
- let v_rd=lift(rd_L,v) in
-  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od
+
 
 set regular_central_element(RootDatum rd_L, RootDatum rd)=regular_central_elements(rd_L,rd)[0]
 

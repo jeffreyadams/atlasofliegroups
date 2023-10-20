@@ -163,7 +163,7 @@ BlockElt& first_free_slot(BlockEltPair& p)
 
 Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
-  , dd(kgb.innerClass().rootDatum().Cartan_matrix())
+  , dd(kgb.innerClass().root_datum().Cartan_matrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , kl_tab_ptr(nullptr)
@@ -653,7 +653,7 @@ void Block::compute_supports()
     if (z==0 or involution(z)!=involution(z-1))
     { // compute involution support directly from definition
       RankFlags support;
-      WeylWord ww=tW.weylGroup().word(involution(z));
+      WeylWord ww=tW.Weyl_group().word(involution(z));
       for (size_t j=0; j<ww.size(); ++j)
 	support.set(ww[j]);
       d_involutionSupport.push_back(support);
@@ -697,17 +697,26 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
-RootNbrList common_block::int_simples() const // simply integral roots
-{ const auto& int_datum_item = inner_class().int_item(int_sys_nr);
-  return int_datum_item.image_simples(w).to_vector();
-}
 
 RankFlags common_block::singular (const RatWeight& gamma) const
 {
-  RootNbrList simples = int_simples();
+  RootNbrList simples = simply_ints();
   RankFlags result;
   for (weyl::Generator s=0; s<rank(); ++s)
     result.set(s,root_datum().coroot(simples[s]).dot(gamma.numerator())==0);
+  return result;
+}
+
+// Here the |block_modifier| records actual singular coroots, and the mapping
+RankFlags common_block::singular
+  (const repr::block_modifier& bm, const RatWeight& gamma) const
+{
+  RankFlags result;
+  auto is = simply_ints(bm);
+  for (weyl::Generator s=0; s<rank(); ++s)
+  { auto alpha = is[s];
+    result.set(s,root_datum().coroot(alpha).dot(gamma.numerator())==0);
+  }
   return result;
 }
 
@@ -727,8 +736,7 @@ common_block::common_block // full block constructor
   )
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc())
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , simply_integrals(ctxt.simply_integrals())
   , z_pool(), srm_hash(z_pool,4)
   , extended() // no extended blocks initially
   , highest_x() // defined below when we have moved to top of block
@@ -1080,8 +1088,7 @@ common_block::common_block // partial block constructor
      containers::sl_list<StandardReprMod>& elements)
   : Block_base(ctxt.subsys().rank())
   , rc(ctxt.rc()) // copy reference to longer living |Rep_context| object
-  , int_sys_nr(ctxt.base_integral_nr())
-  , w(ctxt.integral_attitude())
+  , simply_integrals(ctxt.simply_integrals())
   , z_pool(), srm_hash(z_pool,2) // partial blocks often are quite small
   , extended() // no extended blocks initially
   , highest_x(0) // it won't be less than this; increased later
@@ -1258,46 +1265,73 @@ repr::StandardRepr common_block::sr(BlockElt z, const RatWeight& gamma) const
 }
 
 repr::StandardRepr common_block::sr
-  (BlockElt z, const RatWeight& diff, const RatWeight& gamma) const
+  (BlockElt z, const repr::block_modifier& bm, const RatWeight& gamma) const
 {
-  const Weight lambda_rho =
-    gamma.integer_diff<int>(context().gamma_lambda_rho(z_pool[z])+diff);
-  return rc.sr_gamma(x(z),lambda_rho,gamma);
+  return rc.sr(representative(z),bm,gamma);
 }
 
-ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
-{ return rootdata::fold_orbits(root_datum(),int_simples(),delta); }
+// unlike |bm.simp_int| get simply integrals in mapped order using |bm.w|
+// This is used by |common_block::singular| above only.
+RootNbrList common_block::simply_ints(const repr::block_modifier& bm) const
+{
+#if 1 // original implementation
+  auto ww = rc.Weyl_group().word(bm.w);
+  RootNbrList result; result.reserve(simply_integrals.size());
+  for (auto alpha : simply_integrals)
+    result.push_back(root_datum().permuted_root(ww,alpha));
+  return result;
+#else
+  return bm.simple_pi.pull_back(bm.simp_int.to_vector());
+#endif
+}
 
+ext_gens common_block::fold_orbits
+    (const WeightInvolution& delta, const repr::block_modifier& bm) const
+{ return rootdata::fold_orbits
+    (inner_class().root_datum(), simply_ints(bm), delta); }
+
+#ifndef NDEBUG
+bool common_block::is_integral_orthogonal(const RatWeight& shift) const
+{
+  const auto& rd = root_datum();
+  for (RootNbr alpha : simply_integrals)
+    if (rd.coroot(alpha).dot(shift.numerator())!=0)
+      return false;
+  return true;
+}
+#endif
+
+// build extended block for custom built |common_block|, given an involution
 ext_block::ext_block common_block::extended_block
   (const WeightInvolution& delta) const
 {
-  return { *this, delta, nullptr };
+  repr::block_modifier bm(*this); // we are for temporary use only
+  return { *this, bm, delta, nullptr };
 }
 
-struct common_block::ext_block_pair
+struct common_block::ext_block_data
 {
-  ext_block::ext_block eblock;
   RatWeight shift; // integral-orthogonal shift to apply to |gamma_lambda|
-  ext_block_pair
-    (const blocks::common_block& block, const WeightInvolution& delta,
+  WeylElt w;
+  ext_block::ext_block eblock;
+  ext_block_data
+    (const blocks::common_block& block,
+     const repr::block_modifier& bm,
      ext_KL_hash_Table* pol_hash)
-    : eblock(block,delta,pol_hash)
-    , shift(block.root_datum().rank()) // at construction time, |shift| is zero
+  : shift(bm.shift) // at construction time, |shift| is zero
+  , w(bm.w)
+  , eblock(block,bm,block.inner_class().distinguished(),pol_hash)
   {}
 };
 
+// the following method is only used from built-ins to modify printed output
 void common_block::shift (const RatWeight& diff)
 {
-  if (diff.numerator().isZero())
+  if (diff.numerator().is_zero())
     return;
-  const auto& rc = context();
 #ifndef NDEBUG
-  auto& ic = rc.inner_class();
-  unsigned int int_sys_nr; // unused dummy
-  WeylElt w;
-  const int_Matrix& int_ev =
-    ic.integral_eval(z_pool[0].gamma_lambda(),int_sys_nr,w);
-  assert((int_ev*diff.numerator()).isZero());
+  for (auto i : simply_integrals)
+    assert(root_datum().coroot(i).dot(diff.numerator()) == 0);
 #endif
   for (auto& srm : z_pool)
     rc.shift(diff,srm);
@@ -1307,66 +1341,132 @@ void common_block::shift (const RatWeight& diff)
     (pair.shift -= diff).normalize(); // compensate in |extended| for base shift
 }
 
-// when this method is called, |shift| has been called, so twist works as-is
-ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
+ext_block::ext_block& common_block::extended_block
+   (const repr::block_modifier& bm, ext_KL_hash_Table* pol_hash)
 {
-  auto preceeds =
-    [] (const ext_block_pair& item, const RatWeight& value)
-    { return item.shift<value; };
+  assert(is_integral_orthogonal(bm.shift));
+  auto preceeds = [] (const ext_block_data& item, const repr::block_modifier& bm)
+  { return item.w==bm.w ? item.shift<bm.shift : item.w<bm.w; };
 
-  const RatWeight zero(root_datum().rank());
-  auto it = std::lower_bound(extended.begin(),extended.end(),zero,preceeds);
-  if (it!=extended.end() and it->shift==zero)
+  auto it = std::lower_bound(extended.begin(),extended.end(),bm,preceeds);
+  for ( ; it!=extended.end() and it->w==bm.w and it->shift==bm.shift; ++it)
     return it->eblock; // then identical extended block found, so use it
 
-  // otherwise construct |ext_block| within a pair
-  extended.emplace(it,*this,inner_class().distinguished(),pol_hash);
+  // otherwise construct |ext_block| within an |ext_block_data|
+  extended.emplace(it,*this,bm,pol_hash);
   return it->eblock; // return |ext_block| without |gamlam|
 } // |common_block::extended_block|
 
+// provide access to our polynomial hash table, creating it if necessary
 kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
     kl_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
 
   return kl_tab_ptr-> polynomial_hash_table();
+} // |common_block::KL_hash|
+
+#ifndef NDEBUG
+RankFlags permute(RankFlags in, const Permutation& pi)
+{
+  RankFlags result;
+  for (weyl::Generator s : in)
+    result.set(pi[s]);
+  return result;
+}
+
+void check_sub_block
+  (const common_block& sub,
+   const BlockEltList& embed, const Permutation& simple_pi,
+   const common_block& block)
+{
+  for (BlockElt z=0; z<sub.size(); ++z)
+  {
+    assert(sub.length(z) == block.length(embed[z]));
+    assert(sub.descent(z).permuted(simple_pi)==block.descent(embed[z]));
+    for (weyl::Generator s=0; s<block.rank(); ++s)
+      if (sub.cross(s,z)!=UndefBlock)
+	assert(embed[sub.cross(s,z)]==block.cross(simple_pi[s],embed[z]));
+  }
+}
+#endif
+
+Permutation induced
+  (const Permutation& pi, const ext_gens& ins, const ext_gens& outs)
+{
+  assert(ins.size()==outs.size());
+  std::vector<weyl::Generator> orig(pi.size());
+  for (unsigned int i=0; i<outs.size(); ++i)
+  { const auto& orbit = outs[i];
+    orig[orbit.s0] = i;
+    if (orbit.type!=ext_gen::one)
+      orig[orbit.s1] = i;
+  }
+  Permutation result; result.reserve(ins.size());
+  for (const auto& orbit : ins)
+  {
+    result.push_back(orig[pi[orbit.s0]]);
+    if (orbit.type!=ext_gen::one)
+      assert(orig[pi[orbit.s1]]==result.back());
+  }
+  return result;
 }
 
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-  (common_block&& sub, const BlockEltList& embed,
+(common_block&& sub, const repr::block_modifier& bm, const BlockEltList& embed,
    KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
+// note: our elements are links are not touched, so coordinates irrelevant here
 {
+#ifndef NDEBUG
+  check_sub_block(sub,embed,bm.simple_pi,*this);
+#endif
+  BruhatOrder&& Bruhat = std::move(sub).Bruhat_order(); // generate for pilfering
   for (BlockElt z=0; z<sub.size(); ++z)
   {
-    auto& covered = std::move(sub).Bruhat_order().Hasse(z);
+    auto&& covered = std::move(Bruhat).Hasse(z);
     for (auto& c : covered)
       c=embed[c]; // translate in place
     set_Bruhat_covered(embed[z],std::move(covered));
   }
   if (sub.kl_tab_ptr!=nullptr)
   {
-    auto hash_object = KL_hash(KL_pol_hash); // need this for polynomial look-up
+    // ensure existence of polynomial hash table; wrap up reference to it
+    kl::Poly_hash_export hash_object = KL_hash(KL_pol_hash);
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
+
+    // now swallow the poylnomial hash table of |sub| into ours
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
 
-  RatWeight final_shift(root_datum().rank()); // correction to be made finally
-  for (auto& pair : sub.extended)
+#if 0
+  const auto& ic = rc.inner_class();
+  const auto& rd = ic.root_datum();
+  const auto& W = ic.Weyl_group();
+  const auto& delta = ic.distinguished();
+
+  for (auto& data : sub.extended)
   {
-    auto& sub_eblock = pair.eblock;
-    const RatWeight diff = pair.shift; // take a copy: |sub.shift| modifies it
-    sub.shift(diff); // align the |sub| block to this extended block
-    shift(diff); // and adapt our block to match, so |embed| remains valid
-    assert(pair.shift.is_zero());
-    auto& eblock = extended_block(ext_KL_pol_hash); // find/create |ext_block|
+    auto& sub_eblock = data.eblock;
+    RatWeight block_shift = data.shift; // take a copy to be modified
+    assert(sub.is_integral_orthogonal(block_shift));
+    assert(sub.is_integral_orthogonal(bm.shift));
+    block_shift += bm.shift;
+    assert(ic.is_delta_fixed(block_shift));
+    assert(W.conjugate(rd,bm.w,delta)==delta); // we need commutation here
+    rd.act(W.word(bm.w),block_shift); // make shift in "our" attitude
+    assert(is_integral_orthogonal(block_shift));
+    auto& eblock = // find/create |ext_block|
+      extended_block(block_shift,delta,ext_KL_pol_hash);
     for (unsigned int n=0; n<sub_eblock.size(); ++n)
       assert(eblock.is_present(embed[sub_eblock.z(n)]));
-    eblock.swallow(std::move(sub_eblock),embed); // transfer computed KL data
-    shift(-diff);
-    sub.shift(-diff);
+    // transfer computed KL data:
+    eblock.swallow(std::move(sub_eblock), embed,
+		   induced(bm.simple_pi,
+			   sub_eblock.folded_generators(),
+			   eblock.folded_generators()));
   }
-  shift(final_shift);
+#endif
 } // |common_block::swallow|
 
 void common_block::set_Bruhat
@@ -1589,11 +1689,11 @@ std::vector<Poset::EltList> complete_Hasse_diagram
   currently the case for an inner class and its dual) then one could
   alternatively say simply
 
-    |return tW.prod(tW.weylGroup().longest(),dual_tW.twisted(W.inverse(w)))|
+    |return tW.prod(tW.Weyl_group().longest(),dual_tW.twisted(W.inverse(w)))|
 
   or
 
-    |return tW.prod(tW.inverse(tW.twisted(w)),tW.weylGroup().longest())|.
+    |return tW.prod(tW.inverse(tW.twisted(w)),tW.Weyl_group().longest())|.
 
   Note that this would involve implicit conversion of an element of |W| as one
   of |dual_W|.
@@ -1604,7 +1704,7 @@ dual_involution(const TwistedInvolution& w,
 		const TwistedWeylGroup& dual_tW)
 {
   WeylWord ww= tW.word(w);
-  TwistedInvolution result = dual_tW.weylGroup().longest();
+  TwistedInvolution result = dual_tW.Weyl_group().longest();
   for (size_t i=ww.size(); i-->0; )
     dual_tW.mult(result,dual_tW.twisted(ww[i]));
   return result;

@@ -131,7 +131,7 @@ public:
     return result;
   }
 
-  bool isZero() const;
+  bool is_zero() const;
 
   Vector operator+ (const Vector& v) const &
     { Vector result(*this); return result +=v; }
@@ -332,6 +332,9 @@ public:
   void swapRows(index_t, index_t);
 
 }; // |template<typename C> class Matrix|
+
+template <typename C> Matrix<C> inverse_upper_triangular (const Matrix<C>& U);
+template <typename C> Matrix<C> inverse_lower_triangular (const Matrix<C>& L);
 
 // The following derived class is for integer types only
 template<typename C> class PID_Matrix : public Matrix<C>

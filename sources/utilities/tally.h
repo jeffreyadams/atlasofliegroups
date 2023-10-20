@@ -12,7 +12,7 @@
   that can be used to maintain a histogram in an efficient and flexible way.
   The class behaves as a vector of counters, indexed by unsigned numbers, and
   the basic operation provided is to increment the counter for a given index.
-  The resulting vector can be written to are read back from a file, and an
+  The resulting vector can be written to and read back from a file, and an
   operation is provided to make a histogram of the counter values themselves.
 */
 
@@ -41,17 +41,17 @@ template <typename Count>
 class TallyVec
 {
  public:
-  typedef unsigned long long int Index;
-  typedef unsigned long long int ullong; // when used as counter value
+  using Index  = unsigned long long int;
+  using ullong = unsigned long long int; // when used as counter value
  private:
-  typedef std::map<Index,ullong> map_type;
+  using map_type = std::map<Index,ullong>;
 
   static const Count maxCount; // limit of |Count| type
 
   std::vector<Count> count; // primary histogram
   map_type overflow; // for multiplicities >=256
   Index max;         // maximal index seen
-  ullong total;      // grans total
+  ullong total;      // grand total
 
  public:
   TallyVec(size_t limit) : count(0), overflow(), max(0), total(0)

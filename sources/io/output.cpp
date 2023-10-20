@@ -106,7 +106,7 @@ FormNumberMap::FormNumberMap(const InnerClass& G,
 {
   const size_t nrf = G.numRealForms();
   const auto& rs = G.rootSystem();
-  const auto& rd = G.rootDatum();
+  const auto& rd = G.root_datum();
 
   std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
@@ -148,7 +148,7 @@ FormNumberMap::FormNumberMap(const InnerClass& G,
 , d_name(G.numDualRealForms())
 {
   const size_t ndrf = G.numDualRealForms();
-  const auto& drd = G.dualRootDatum();
+  const auto& drd = G.dual_root_datum();
   const auto& drs = G.dualRootSystem();
   const lietype::Layout dlo = dual(lo);
 
@@ -209,7 +209,7 @@ std::ostream& printGradings(std::ostream& strm,
   for (cartanclass::adjoint_fiber_orbit i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
 
-  printGradings(strm,cc.fiber(),rfl,G.rootDatum());
+  printGradings(strm,cc.fiber(),rfl,G.root_datum());
 
   return strm;
 }
@@ -221,7 +221,7 @@ std::ostream& printCartanClass(std::ostream& strm,
 			       size_t cn,
 			       output::Interface& CI)
 {
-  const RootSystem& rs = G.rootDatum();
+  const RootSystem& rs = G.root_datum();
 
   const CartanClass& cc = G.cartan(cn);
   const auto& tau = cc.involution();
@@ -232,7 +232,7 @@ std::ostream& printCartanClass(std::ostream& strm,
   {
     std::ostringstream os;
     os << "canonical twisted involution: ";
-    prettyprint::printWeylElt(os,G.involution_of_Cartan(cn),G.weylGroup());
+    prettyprint::printWeylElt(os,G.involution_of_Cartan(cn),G.Weyl_group());
     ioutils::foldLine(strm,os.str(),"",",") << std::endl;
   }
 
@@ -365,7 +365,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 {
   const InnerClass& G_C = G_R.innerClass();
   const RootDatum& rd = G_R.root_datum();
-  const WeylGroup& W = G_R.weylGroup();
+  const WeylGroup& W = G_R.Weyl_group();
 
   RealFormNbr rf = G_R.realForm();
 
@@ -450,8 +450,8 @@ std::ostream& printRealWeyl(std::ostream& strm,
 
   RealFormNbr rf = G_R.realForm();
 
-  const RootDatum& rd = G_C.rootDatum();
-  const WeylGroup& W = G_C.weylGroup();
+  const RootDatum& rd = G_C.root_datum();
+  const WeylGroup& W = G_C.Weyl_group();
   const CartanClass& cc = G_C.cartan(cn);
   const auto dafr = cc.dualFiber().adjointFiberRank();
 
@@ -514,7 +514,7 @@ std::ostream& printStrongReal(std::ostream& strm,
 
       RatWeight z (G_C.rank());
       for (Grading::iterator it=base_grading.begin(); it(); ++it)
-	z += G_C.rootDatum().fundamental_coweight(*it);
+	z += G_C.root_datum().fundamental_coweight(*it);
 
       Ratvec_Numer_t& zn = z.numerator();
       for (size_t i=0; i<z.size(); ++i)
