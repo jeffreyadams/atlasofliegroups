@@ -1,0 +1,328 @@
+<K_highest_weights {for all_lambda_differential_zero}
+<lattice {for vec_solve}
+{ <chopping_facets_fast.at {for chop_coroots(G, vertices)}}
+<facet_classes {for ordering on facets}
+<hash {for KPolHash}
+<TWOHEIGHTS {for HTA and HT}
+<cohom_reduction {for possible use of cohomological induction}
+<FPP_localDirac
+
+
+{functions for computing the entire FPP_unitary dual}
+{typically functions take a Param_hash Uhash and fill it with all
+unitary reps having infinitesimal character in the FPP. Each p is
+replaced by herm_center(p), at the barycenter of its local facet,
+so that the lists are finite.}
+
+{. This controls the maximum denominator size kept in chop_coroots,
+used in moving unitarity information from a Levi to G. Large values
+allow more chopped facets, and so convey more information to G; but
+small values are faster. Too small a value cannot lead to wrong
+answers, but only to running more is_unitary tests .}
+set chop_bound = int: 6
+
+{next functions aim to compute FULL spherical dual in non-split case,
+when several different x give spherical reps}
+
+set spherical_xs(RealForm G) = [KGBElt]:
+    let real_rank = rank(x_open(G).involution + 1)
+    in for x in KGB(G)
+       do if rank(x.involution + 1) = real_rank
+       	  then [x]
+	  else []
+	  fi
+       od.##
+
+{this seems to fail to find all relevant lambdas for some unequal rank cases.
+Following function FPP_lambdas_big seems OK?}
+set FPP_lambdas(KGBElt x) = [ratvec]:
+    let G=x.real_form, twists = all_lambda_differential_0(x)
+    then zeroPol = ParamPol: 0*G.trivial
+    then rho = G.rho, verts = FPP_vertices(G)
+    then th1 = x.involution + 1
+    then lamthlams = [vec]:
+    	 for v in verts
+    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+	    else []
+	    fi
+	 od.##.no_reps
+    then cands = [ratvec]:
+    	 for lamthlam in lamthlams
+    	 do case vec_solve(th1,lamthlam - th1*rho)
+	    | else [ratvec]: []
+	    | solution(lr):
+	      let lambda = rho + lr
+	      in for lambda0 in twists do lambda + lambda0 od
+	    esac
+	  od.##
+    in for lambda in cands
+       do let p = parameter(x,lambda,0*lambda)
+       	  then lambdaNorm = p.lambda
+	  in if 1*p = zeroPol
+       	     then []
+	     else [lambdaNorm]
+	  fi
+       od.##
+
+set all_FPP_vertices(RootDatum G) = [ratvec]:
+    let factors = for S in simple_factors(G)
+    		  do FPP_vertices(S,-1)
+		  od
+    in case #factors
+       in [ratvec:null(rank(G))/1],
+       factors[0],
+       for v in factors[0]
+       do for w in factors[1]
+       	  do v+w
+	  od
+       od.##
+       esac
+
+{each term is a candidate lambda0 (mod comp gp char twists) and the
+corresponding Lvd, Perm, mapAct}
+set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
+    dlambda_hashes, [[(VertexData, vec, vec)]] LvdEtcs) =
+    		    [(ratvec,VertexData, vec, vec)]:
+    let G=x.real_form
+    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
+    then i = inv_hash.lookup(theta)
+    then rho = G.rho, verts = all_FPP_vertices(G)
+    then th1 = theta + 1
+    then lamthlams = [vec]:
+    	 for v in verts
+    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+	    else []
+	    fi
+	 od.##.no_reps
+    in [(ratvec, VertexData, vec, vec)]:
+    	 for lamthlam in lamthlams
+    	 do case vec_solve(th1,lamthlam - th1*rho)
+	    | else [(ratvec,VertexData,vec,vec)]: []
+	    | solution(lr):
+	      let lambda0 = rho + lr
+	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
+    	      then j = dlambda_hashes[i].match(dlambda0)
+              then () = if j = #LvdEtcs[i]
+                      	then
+                      	LvdEtcs[i]:=LvdEtcs[i]#localFD_Lvd(x,lambda0,vd)
+                      	fi
+              then (Lvd, Perm, mapAct) = LvdEtcs[i][j]
+	      in if #Lvd.list > 0 and
+	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
+		 then [(lambda0, Lvd, Perm, mapAct)]
+	      	 else []
+		 fi
+	      esac
+	  od.##
+
+{each term is a candidate lambda0 (mod comp gp char twists) and the
+corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
+Should use EITHER this OR FPP_lambdas_big in one session}
+set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
+    dlambda_hashes,
+    [[(VertexData, vec, vec,[[FacetVertsIndex]])]] LvdEtAlia) =
+    		    [(ratvec, VertexData, vec, vec,[[FacetVertsIndex]])]:
+    let G=x.real_form
+    then zeroPol = ParamPol: 0*G.trivial, theta = x.involution
+    then i = inv_hash.lookup(theta)
+    then rho = G.rho, verts = all_FPP_vertices(G)
+    then th1 = theta + 1
+    then lamthlams = [vec]:
+    	 for v in verts
+    	 do if ((th1*v).denom = 1) then [ratvec_as_vec(th1*v)]
+	    else []
+	    fi
+	 od.##.no_reps
+    in [(ratvec, VertexData, vec, vec, [[FacetVertsIndex]])]:
+    	 for lamthlam in lamthlams
+    	 do case vec_solve(th1,lamthlam - th1*rho)
+	    | else [(ratvec,VertexData,vec,vec,[[FacetVertsIndex]])]: []
+	    | solution(lr):
+	      let lambda0 = rho + lr
+	      then dlambda0 = ratvec_as_vec(lambda0 + theta*lambda0)
+    	      then j = dlambda_hashes[i].match(dlambda0)
+              then () = if j = #LvdEtAlia[i]
+                      	then
+                      	LvdEtAlia[i]:=LvdEtAlia[i]#localFD_01(x,lambda0,vd)
+                      	fi
+              then (Lvd, Perm, mapAct,LF) = LvdEtAlia[i][j]
+	      in if #Lvd.list > 0 and
+	      	    1*parameter(x,lambda0,0*lambda0) != zeroPol
+		 then [(lambda0, Lvd, Perm, mapAct,LF)]
+	      	 else []
+		 fi
+	      esac
+	  od.##
+
+set unitary_hash = make_Param_hash()
+
+{load a bunch of Param_hash's into one}
+set transfer([Param_hash] Us, Param_hash target) = void:
+    for U in Us
+    do for j:U.size()
+       do target.match(U.index(j))
+       od
+    od
+
+{derived simple factors of all Levis of theta-stable P, omitting P=G}
+set DSFLevis(RealForm G) = [RealForm]:
+    for P in theta_stable_parabolics(G)~[1:]
+    do derived_simple_factors(P.Levi) od.##
+
+set DSFLevi_hash(RealForm G) = RealForm_hash:
+    make_RealForm_hash(DSFLevis(G), hash_code@(RealForm,int))
+
+set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
+    (KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash,
+    Param_hash->[Param])
+    local) = void:
+  if is_compact(G)
+  then for p in all_parameters_gamma(G,G.rho)
+       do Uhash.match(p) od
+  else
+    let inv_hash = make_mat_hash(), vd = FPP_vertex_data(G), start = elapsed_ms()
+    then () = prepDirac(G)
+    then () = for x in KGB(G) do inv_hash.match(x.involution) od
+    then NumInvs = inv_hash.size(), pol_hash = make_KTypePol_hash()
+    then dlambda_hashes = for i:NumInvs do make_vec_hash() od
+    then LvdEtAlia = for i:NumInvs do [(VertexData,vec,vec,
+    	 [[FacetVertsIndex]])]:[] od
+    then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose
+    then () = time_verbose:=false
+    then () = test_verbose:=false
+    then () = facet_verbose:=false
+    then () = deform_flag :=true
+    then () = unipotents_to_hash(G,Uhash)
+    then times = [int]: null(#KGB(G))
+    then current = elapsed_ms()
+    then () = for x@j in KGB(G)
+    	    ~ do {KGB} if(old_facet_verbose)
+      	      	 then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+		     Uhash.size(), ", #tests = ",
+		     unitary_test_counter.use_count(), ", #def lookups = ",
+		     deformLookupCounter.use_count(), ", #def calcs = ",
+		     deformCalcCounter.use_count());
+		     prints("#hash_dumb calls = ", hash_dumbCounter.use_count(),
+		       	    ", #hash calls = ", hashCounter.use_count(),
+		            ", #hash2 calls = ", hash2Counter.use_count(),
+		            ", #hash_one_level calls = ", hash_one_levelCounter.use_count())
+		       fi;
+	 let former_time = current
+	 then twists = all_lambda_differential_0(x)
+      	 then FPPbig = FPP_lambdas_big(x, vd, inv_hash,
+	 dlambda_hashes, LvdEtAlia)
+	 then () = for (lambda0, Lvd, Perm, mapAct,LF)@k in FPPbig
+      	      	   do if old_facet_verbose and k%4 = 0
+	      	      then prints("  working on ",k,"th dlambda out of ",
+		      	   	     #FPPbig)
+	    	      fi;
+		      for tau@j in twists
+	      	      do if old_facet_verbose and j%4 = 0
+	      	      	 then prints("  working on ",j,"th twist out of ",
+		      	   	     #twists)
+			 fi;
+		      local(x, lambda0+tau, vd, Lvd, Perm, mapAct, LF,
+		      	 	  pol_hash, Uhash)
+		      od
+		   od
+	   then () = current := elapsed_ms()
+	   then () = times[j] := current -former_time
+	   then () = if old_time_verbose
+	   	     then prints("time for KGBElt ",j," was ",print_time_string(times[j]))
+		     {,"; time so far ",print_time_string(current-start)}
+		     fi
+	   in ()
+       	 od {KGB}
+    then () = facet_verbose:=old_facet_verbose
+    then () = time_verbose:=old_time_verbose
+    then longest = max_loc(times)
+    in prints(new_line,"Total time = ", print_time_string(current-start),
+       	      "; max time = ",print_time_string(times[longest]),
+	      " for KGBElt ",longest,"; DiracIC time = ",print_time_string(DiracICtime));
+       prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
+       	      ", #hash calls=", hashCounter.use_count(),
+	      ", #hash2 calls=", hash2Counter.use_count(),
+	      ", #hash_one_level calls=", hash_one_levelCounter.use_count());
+       prints("Number of FPP-unitary facets = ",Uhash.size())
+    fi
+
+set FPP_unitary_hash_dumb(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash_dumb@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_dumb(RealForm G) = void:
+    FPP_unitary_hash_dumb(G,unitary_hash)
+
+set FPP_unitary_hash(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash(RealForm G) = void:
+    FPP_unitary_hash(G,unitary_hash)
+
+set FPP_unitary_hash2(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash2@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash2(RealForm G) = void:
+    FPP_unitary_hash2(G,unitary_hash)
+
+set FPP_unitary_hash_one_level(RealForm G,Param_hash Uhash) = void:
+    FPP_unitary_hash_general(G, Uhash, local_test_GEO_hash_one_level@(
+    KGBElt,ratvec,VertexData,VertexData,vec,vec, [[FacetVertsIndex]],
+    KTypePol_hash, Param_hash))
+
+set FPP_unitary_hash_one_level(RealForm G) = void:
+    FPP_unitary_hash_one_level(G,unitary_hash)
+
+{ lists real and/or complex simple factors }
+set simple_factors(RealForm G) = [RealForm]:
+    let delta=G.distinguished_involution, tf=KGB(G,0).torus_factor,
+	simpleFactors = simple_factors(RootDatum: G),
+	Factors = [RealForm]:[]
+    in
+    for rd@i in simpleFactors
+    do
+    let root = simple_roots(rd)[0]
+    then newRoot = delta*root
+    then simpleRootIndex = simple_root_index(G,root),
+	 newSimpleRootIndex = simple_root_index(G,newRoot)
+    then diagram = diagram_component(G,simpleRootIndex),
+	 newDiagram = diagram_component(G,newSimpleRootIndex)
+    in  if diagram=newDiagram then Factors##:=
+	 [real_form(inner_class(rd,delta), delta, tf)]
+	 else if diagram[0] < newDiagram[0] then Factors##:=
+	 [real_form(inner_class(sub_datum(G,diagram##newDiagram),
+		delta), delta, tf)]
+	      fi
+	fi
+    od; Factors
+
+set derived_simple_factors(RealForm G) = [RealForm]:
+    for S in simple_factors(G) do derived(S) od
+
+{(M,N): M is natural restriction from X^*(G) onto X^*(D).
+ N is right inverse of M.}
+set derived_infos(RealForm G) = (mat,mat):
+    let (,M) = derived_info(G) in (M,required_solution(M, id_mat(G.semisimple_rank)))
+
+{descend a parameter for G to all simple factors of theta-stable Levi support(x)}
+
+set descents(Param p) = [Param]:
+    let  x = p.x, G = p.real_form, lambda = p.lambda, nu = p.nu
+    then P = Parabolic: (support(x), x) {, theta = x.involution}
+    then L = P.Levi
+    then lambdaL = lambda - G.rho + L.rho, nuL = nu, xL = inverse_embed_KGB(x,L)
+    then SF = simple_factors(L)
+    then xSs = for S in SF do inverse_embed_KGB(xL,S) od
+    then nuSs = for xS in xSs do (nu - xS.involution*nu)/2 od
+    in for S@j in SF do parameter(xSs[j], lambda - G.rho + S.rho, nuSs[j]) od
+    {
+    then DSF = for S in SF do derived(S) od
+    then DSFinfos = for S in SF do derived_infos(S) od
+    }
+

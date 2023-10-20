@@ -18,24 +18,57 @@ set Ks(RealForm G) = [RealForm]:
     for x in KGB(G) do if x.involution = delta then [K_0(x)] else [] fi
     od.##
 
+set fundxs = [KGBElt]: []
+set ks = [RealForm]: []
+set rhocs = [ratvec]: []
+set rho = ratvec: []
+set preppedDirac = false
+
+set prepDirac(RealForm G) = void:
+    let () = fundxs := thetaStable(G)
+    then () = ks := Ks(G)
+    then () = rhocs := for x in fundxs do rho_c(x) od
+    then () = rho := G.rho
+    then () = preppedDirac := true
+    in ()
+
 {list of PRV components of mu\otimes spin(s), equal rank case}
 {one term for each x in fundamental fiber. Term for x is highest
-weight for K_0(x) of PRV component of mu \otimes rho_n(x)^*, plus rho_c(x)}
+weight for K_0(x) of PRV component of mu \otimes rho_n(x)^*, plus rho_c(x).
+If K disconnected, each highest weight will lead to same DiracIC, so keep
+only first. Maybe need to fix this for calculating Dirac cohomology?}
 set muPRVs(KType mu) = [ratvec]:
-	let Xth = thetaStable(mu.real_form), ks=Ks(mu.real_form), rhoo
-	= rho(mu.real_form)
-	then muth = for x in Xth do highest_weight(mu,x).mu od
-	in
-	for mu@j in  muth do dominant(ks[j],
-	(mu + rho_c(Xth[j]) - rhoo))+rho_c(Xth[j])  od
+    if preppedDirac
+    then let muth = for x in fundxs do highest_weights(mu,x)[0].mu od
+    	 in for mu@j in muth do dominant(ks[j], mu + rhocs[j] - rho) + rhocs[j] od
+    else let Xth = thetaStable(mu.real_form), ks=Ks(mu.real_form), rhoo = rho(mu.real_form)
+	 then muth = for x in Xth do highest_weights(mu,x)[0].mu od
+	 in for mu@j in  muth do dominant(ks[j], (mu + rho_c(Xth[j]) - rhoo))+rho_c(Xth[j])  od
+    fi
+
+set DiracICtime = int:0
+
+{meant to hold all K-types whose DiracIC's have been computed...}
+set KTypeHash = make_KType_hash()
+
+{...and the corresponding computations}
+set DiracICs = [ratvec]:[]
 
 {Dirac infl char estimate for mu, equal rank case}
 set DiracIC(KType mu) = ratvec:
-	let mutildes=muPRVs(mu), G= mu.real_form
-	then rhocheck = rho_check(G)
-	then ics= for muprime in mutildes do dominant(G,muprime) od
-	then minloc = min_loc(for ic in ics do ic*rhocheck od)
-	in ics[minloc]
+    	let start = elapsed_ms()
+	then j = KTypeHash.match(mu)
+	in   if j < #DiracICs
+	     then let () =  DiracICtime := DiracICtime + elapsed_ms() - start
+	     	  in DiracICs[j]
+	     else let mutildes=muPRVs(mu), G= mu.real_form
+	     	  then rhocheck = rho_check(G)
+	     	  then ics= for muprime in mutildes do dominant(G,muprime) od
+	     	  then minloc = min_loc(for ic in ics do ic*rhocheck od)
+	     	  then () = DiracICs := DiracICs#ics[minloc]
+	     	  then () = DiracICtime := DiracICtime + elapsed_ms() - start
+		  in ics[minloc]
+	     fi
 
 {this calculates all unitary reps containing mu for which mu
 contributes to Dirac cohom}
