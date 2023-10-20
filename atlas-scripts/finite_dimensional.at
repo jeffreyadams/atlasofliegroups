@@ -10,8 +10,9 @@ parameter(x_open(G),lambdadomrho,lambdadomrho)
 
 {.whether p is finite dimensional.}
 set is_finite_dimensional (Param p) = bool:
-  let ssr = semisimple_rank(real_form(p))
-  in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
+   #tau(p) = p.real_form.semisimple_rank
+  {let ssr = semisimple_rank(real_form(p))
+  in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr}
 
 {.for protecting functions intended for finite dimensional parameters only.}
 set fd_only (Param p) = Param:

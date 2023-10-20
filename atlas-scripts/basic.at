@@ -203,6 +203,14 @@ set set_bit_positions (int n) = vec:
    assert(n.>=,"Infinite number of set bits for negative number");
    while let pow = AND_NOT(n,n-1) in !=pow do n-:=pow; bit_length(pow)-1 od
 
+
+set is_subset_of_sorted ([int] sorted) = ([int]->bool):
+   let test = is_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+set is_disjoint_from_sorted ([int] sorted) = ([int]->bool):
+   let test = isnt_member_sorted(sorted) in
+   ([int] S)bool: all(#S,(int i)bool: test(S[i]))
+
 set bitwise_intersection ([int] ns) = int:
    let a=minus_1 in for n in ns do a:=AND(a,n) od; a
 set bitwise_union ([int] ns) = int:
@@ -375,7 +383,7 @@ set sum (int l,[vec] list) = vec: { sum of vecs of constant length l }
 { for large sums |sum(l#list)|, using |sum@mat|, might be marginally faster }
 
 { all words with letter |i| running over elements of |alphabets[i]| }
-set all_words ([[int]] alphabets) = mat:
+set all_words ([[int]] alphabets) = [vec]: {mat:}
   let rec_fun generate(int final) = [vec]:
      if =final then [null(0)]
      else final-:=1; let alphabet=alphabets[final] in
@@ -384,10 +392,10 @@ set all_words ([[int]] alphabets) = mat:
 	  od.##
      fi
   , size=#alphabets
-  in size # generate(size) { ensure column size |size|, even for empty set }
+  in generate(size) { ensure column size |size|, even for empty set }
 
 { all words of length |#limits|, with letter |i| running over |#limits[i]| }
-set all_words ([int] limits) = mat:
+set all_words ([int] limits) = [vec]: {mat:}
    for n in limits do #n od.all_words
 
 set all_0_1_vecs (int n) = [vec]: all_words(for :n do 2 od)
@@ -664,13 +672,21 @@ set any (maybe_a_mat M) = bool: case M  | solution: true | no_mat: false esac
 
 set required_solution ((mat,vec) system) = vec: system.solve.requisition
 
+set any (maybe_a_mat M) = bool:
+   case M  | solution: true | no_mat: false esac
+set mat_requisition (string message) = (maybe_a_mat->mat):
+   (maybe_a_mat M) mat:
+    case M  | solution(s): s | else error(message) esac
+set requisition = mat_requisition("No solution found; having one was required")
+{system (A,B) means solving AX = B}
+set required_solution ((mat,mat) system) = mat: system.solve.requisition
+set required_solution ((mat,mat) system) = mat:system.solve.requisition
+
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
-
-
 
 {                           Rational vectors                            }
 
@@ -744,7 +760,6 @@ set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
 set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
-
 
 
 {                           Split integers                              }
@@ -2098,8 +2113,40 @@ set purity (KTypePol P) = (int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+{ moved these earlier to use in no_reps }
+{ for user convenience; a ParamPol is an associative array ParamPol->Split
+  so selecting its monomials (Param values) by position is not reliable, but
+  allowing so is useful in user sessions to pick terms from a computed result
+}
+set monomials (KTypePol P) = [KType]: for @t in P do t od
+set monomials (ParamPol P) = [Param]: for @p in P do p od
+set monomial  (KTypePol P,int i) = KType: monomials(P)[i]
+set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
 
 {		Rapid look-up in certain fixed structures		}
+
+{ remove repetitions from a list of vecs, assumed all same size }
+set no_reps([vec] L) = [vec]: 
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),id_mat(n)).quasicompact_form
+       then x0 = KGB(G,0)
+       then P = sum(G, for v in L do K_type(x0,v) od)
+       in for p in monomials(P) do lambda_rho(p) od
+    fi
+
+{ remove repetitions from a list of ratvecs, assumed all same size }
+set no_reps([ratvec] L) = [ratvec]:
+    if =#L then []
+    else
+       let n = #L[0] then R=null(n,0)
+       then G = inner_class(root_datum(R,R),-id_mat(n)).quasisplit_form
+       then x0 = KGB(G,0), zero = null(n)
+       then P = sum(G, for v in L do param(x0,zero,v) od)
+       in for p in monomials(P) do p.nu od
+    fi
 
 set index_in = ([vec]->(vec->int)):
    let limit = [30].to_bitset { $2^{30}$ } in

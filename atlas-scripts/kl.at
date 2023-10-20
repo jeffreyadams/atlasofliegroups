@@ -27,7 +27,10 @@
 
 set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
 set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
-
+set character_formula_to_height(Param p, int N) = ParamPol:
+    s_to_1(KL_sum_at_s_to_height(p,N))
+set character_formula_to_height (ParamPol P, int N) = ParamPol:
+    map(((Param->ParamPol): (Param p): character_formula_to_height(p, N)), P)
 { ------------------------------------------------------------------- }
 
 { composition series }

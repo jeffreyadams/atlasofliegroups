@@ -1,0 +1,243 @@
+<induction.at {for theta_stable_quasi_data, theta_stable_quasi_data_im}
+<K.at {for K_0}
+<hermitian.at {for is_hermitian}
+<convert_c_form.at {for convert_cform_hermitian}
+<Vogan-dual.at {for dual@Param}
+<translate.at {for translate_param_by}
+<kl.at {for composition_series}
+<K_highest_weights.at {for all_parameters_x_gamma}
+
+{.long element for the good Weyl group. Hope that the condition to be
+Hermitian and positive on LKTs is w0_good_matrix(p) * p.nu = -p.nu.
+Calculation mostly takes place in the Levi of a theta-stable
+parabolic; at the end chw is change of variable to get back to
+(G,x,lambda).}
+{ really this only depends on the pair (x,lambda), but as far as I
+know there isn't a type (KGBElt,ratvec) like that??? }
+set w0_good_matrix_old(Param p) = ratmat:
+    let (w,) = from_dlambda_dom(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix,
+    	(Q,pL) = theta_stable_quasi_data(p)
+    then L = Q.Levi, pL0 = pL*0, x0=pL.x
+    {infinitesimal character of pL0 vanishes on all roots of L}
+    {difficulty with this L is that x0 need not be x_open(L), so
+    pL0.dual need not be in the fundamental fiber.}
+    then q0d = pL0.dual
+    {need to find something in block_of(q0d) that DOES live on fund fiber}
+    then L0d = q0d.real_form, q1d = last_param(character_formula(q0d))
+    then K0d = K_0(q1d.x),
+    	 deltad = L0d.distinguished_involution {=qld.x.involution}
+    { then () = assert(2^components_rank(L0d) >= #LKTs(p),
+	 "#LKTs doesn't match comps of L0d") |}
+    then w0d = w0(K0d).matrix, B = injection_from_K_matrix(q1d.x)
+      {B maps X_*(K0d) into X_*(L0d), ^B maps X^*(L0d) onto X*(K0d)}
+    then C = right_inverse(^B)
+      {C maps X^*(K0d) into X^(L0d), ^C maps X_*(L0d) onto X_*(K0d)}
+    in chw * (B*^w0d*^C*((1+^deltad)/2) + (1-^deltad)/2)*chwinv
+    {middle part (being conj by chw)  MIGHT need to be conjugated to make it
+    act on the -1 eig of theta for pL. More or less this is conj by
+    the Weyl element for L carrying theta(x0) to distinguished
+    involution for L. But problem doesn't arise in lots of tests.}
+
+set long_elt(RootDatum R) = mat:
+    let R_remaining = R
+    then M = id_mat(R.rank)
+    then r = #R_remaining.poscoroots
+    then () = while r > 0 do
+    	 M *:= reflection(R_remaining, r -1);
+	 R_remaining :=
+    	 	     centralizer([R_remaining.poscoroots[r-1]],R_remaining);
+         r:=#R_remaining.poscoroots
+	 od
+    in M
+
+{ this version takes also a distinguished involution MinusTheta of R,
+  assumed to be of order 2, and a vec d in X* (defined mod (1+MinusTheta)X*)
+  defining a character of H^theta; and computes a representative of
+  the long element of the good reduced root system. }
+set w0_good_long_elt (RootDatum R, mat MinusTheta, vec d) = mat:
+(  let roots_remaining = #R.nr_of_posroots, M=id_mat(R.rank)
+in while let !old_size = #roots_remaining { remember size at entry, for test }
+   in for i@k in roots_remaining
+     ~do let alpha_vee = coroot(R,i)
+      in if alpha_vee*MinusTheta != alpha_vee
+         then let S = reflection(R,i)
+	 in M *:= (S * MinusTheta)^2
+	 ; roots_remaining:=
+	 for j in roots_remaining[:k]
+	 do if
+	    =(alpha_vee+alpha_vee*MinusTheta)*root(R,j)
+	   then [j] else [] fi
+	 od.##
+	 ; break
+	 elif is_even(alpha_vee*d) {want essentially nonparity real roots}
+	 then M *:= reflection(R,i)
+	 ; roots_remaining:=
+	   for j in roots_remaining[:k]
+	   do if
+	      is_orthogonal(R,i,j) then [j] else [] fi
+	   od.##
+	   ; break
+	 fi
+      od
+   ;  #roots_remaining<old_size { continue while a |break| was executed above }
+   do ()
+   od
+;  M
+)
+
+{modify previous to pass through positive roots only once}
+set w0_good_long_elt_new(RootDatum R, mat MinusTheta, vec d) = mat:
+( let to_do = [bool]: for j: R.nr_of_posroots do true od, M=id_mat(R.rank)
+in for j:R.nr_of_posroots
+      ~do if to_do[j]
+	  then let alpha_vee = coroot(R,j)
+	  in if alpha_vee*MinusTheta != alpha_vee
+	  then let S = reflection(R,j) in
+	  M *:= (S * MinusTheta)^2
+	  ; for k:j
+		do
+		if  to_do[k] and
+		    !=(alpha_vee + alpha_vee*MinusTheta)*root(R,k)
+		    then to_do[k] := false
+		fi
+		od
+	   elif is_even(alpha_vee*d) {want essentially nonparity real roots}
+	   then M *:= reflection(R,j)
+	   ; for k:j
+		do
+		if to_do[k] and
+		not is_orthogonal(R,k,j)
+		then to_do[k] := false
+		fi
+		od
+	      fi
+	  fi
+     od
+; M
+)
+
+{. Version of w0_good_matrix using w0_good_long_elt .}
+
+set w0_good_matrix(Param p) = mat:
+    let (w,) = from_dlambda_dom(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix
+    ,	(Q,pL) = theta_stable_quasi_data(p)
+    then L = Q.Levi
+    then xL = x_open(L), tworhoL = ratvec_as_vec(2*L.rho)
+    , p1= Param: pL { dummy value overriden below }
+    then { x0=pL.x, pL0 = K_type(pL), }
+    {infinitesimal character of pL0 vanishes on all roots of L}
+    {difficulty with this L is that x0 need not be x_open(L).}
+      () = { find the proper value for p1 }
+        for q in { Cands_up_at_xL = }
+	  all_parameters_x_gamma(xL,pL.infinitesimal_character+tworhoL)
+        do  let q1 = translate_param_by(q,-tworhoL)
+    	in if finalize(q1)[pL] != 0 then p1:=q1; break { we are done } fi
+	od
+    then Ltest = ratvec_as_vec(p1.lambda - L.rho)
+    then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
+ in chw*(wzero)*chwinv
+
+{. Written by Annegret Paul at DV request; produces an
+induced-from-discrete series (as opposed to limit) parameter from
+which p is induced .}
+set anti_finalize (Param p)=Param:
+   let G = p.real_form
+   then Gs = singular_root_datum(G, p.infinitesimal_character)
+   then sr=simple_roots(Gs), n= int:minus_1, rhoc = G.rho_check
+   then test = rhoc*(p.x.involution)
+     in while (n:= first( for i:#sr do test*sr[i]>0 od)) >= 0
+		   do  if (is_noncompact_imaginary(sr[n],p.x)) then
+		      	p:= Cayley(sr[n],p);
+			test := rhoc*(p.x.involution)
+		   	else
+			p:= cross(sr[n],p);
+			test := rhoc*(p.x.involution)
+		   fi od; p
+
+{. Version of w0_good_matrix using w0_good_long_elt and Annegret's
+anti_finalize .}
+set w0_good_matrixAP(Param p) = mat:
+    let (w,) = from_dlambda_dom(p)
+    then chw = w.matrix, chwinv = w.inverse.matrix
+    ,	(Q,pL) = theta_stable_quasi_data(p)
+    then L = Q.Levi, p1 = anti_finalize(pL)
+    then xL = x_open(L), Ltest = ratvec_as_vec(p1.lambda - L.rho)
+    then wzero = w0_good_long_elt(L, -xL.involution, Ltest)
+ in chw*(wzero)*chwinv
+
+
+set is_pos_on_LKTs_old(Param p) = bool:
+    let () = if not is_hermitian(p) then
+    	 { prints("oops, parameter is not hermitian");} return false fi
+    then () = if #LKTs(p) = 1 then return true fi
+    then nu = p.nu, wpos = w0_good_matrix_old(p)
+    in wpos*nu = -nu
+
+{Version using new w0_good_matrix}
+set is_pos_on_LKTsDV(Param p) = bool:
+   if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   else #LKTs(p) = 1 or w0_good_matrix(p)*p.nu = -p.nu
+   fi
+
+set is_pos_on_LKTsAP(Param p) = bool:
+   if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   else #LKTs(p) = 1 or w0_good_matrixAP(p)*p.nu = -p.nu
+   fi
+
+{. this is Jeff's version, which is fastest .}
+set is_pos_on_LKTs(Param p) = bool:
+    let delta = p.real_form.distinguished_involution
+    in if not is_hermitian(p) then
+    	 {prints("oops, parameter is not hermitian");} false
+   	 else  #LKTs(p) = 1 or is_pure(convert_cform_hermitian(
+   	 	  K_type_pol(finalize_extended(p*0, delta))))
+       fi
+
+{. half sum of positive good restricted roots, in special case of
+quasisplit G, x_open, fine parameter; d is lambda-rho .}
+{ACTUALLY the "is_even" condition should be replaced by "not
+is_parity" for a corresponding parameter. So this function is no good
+if R is not split .}
+set rho_good(RootDatum R, mat MinusTheta, vec d) = ratvec:
+    sum(R.rank, for alpha@j in R.posroots do
+    	    if MinusTheta*alpha != alpha then [alpha]
+	    elif is_even(R.poscoroots[j]*d) then [2*alpha]
+	    else [] fi od.##)/4
+
+{. first try at GENERAL half sum of positive good restricted. Think
+it's still not right, because theta_stable_quasi_data composed with
+theta_stable_quasi_data_im is not right .}
+set rho_good(Param p) = ratvec:
+    let (,pL1) = theta_stable_quasi_data_im(p)
+    then (,pL) = theta_stable_quasi_data(pL1)
+    then E = pL.real_form, xL = pL.x
+    in sum(E.rank, for alpha@j in E.posroots do
+    	    if not is_real(alpha, xL) then [alpha]
+	    elif not is_parity(alpha,pL) then [2*alpha]
+	    else [] fi od.##)/4
+{Used to say "rho_good(pL.real_form, -pL.x.involution,
+    lambda_minus_rho(pL))" but that doesn't work.}
+
+
+{ Biggest: W^theta }
+set theta_Weyl(KGBElt x) = [WeylElt]:
+    let W=x.real_form.W, thetax = x.involution
+    in for w in W do if thetax*w.matrix = w.matrix*thetax then [w]
+       else [] fi od.##
+
+{ Next biggest: stuff in W coming from K }
+set real_Weyl(KGBElt x) = [WeylElt]:
+    let W = x.real_form.W
+    in for w in W do if cross(w,x) = x then [w] else [] fi od.##
+
+{this seems close to what's wanted}
+set stab_W_param(Param p) = [WeylElt]:
+    let rho = p.real_form.rho
+    then x = p.x, lr = p.lambda - rho, nu = p.nu
+    in for w in real_Weyl(p.x) do if p = parameter(p.x, w*lr + rho
+    , w*p.nu)
+    	then [w] else [] fi od.##

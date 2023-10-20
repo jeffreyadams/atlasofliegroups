@@ -1022,7 +1022,7 @@ generated for clients that need it.
 class root_datum_value : public value_base
 { struct token@+{}; // type passed to prove caller has private access;
   static root_datum_entry::Pooltype pool;
-  static HashTable<root_datum_entry,unsigned int> hash;
+  static HashTable<root_datum_entry,unsigned long int> hash;
   static std::vector<root_datum_weak_ptr> store;
   mutable simple_list<std::pair<const WeightInvolution,inner_class_weak_ptr> >
     classes;
@@ -1052,7 +1052,7 @@ directly; |store| starts out empty.
 
 @< Global variable definitions @>=
 root_datum_entry::Pooltype root_datum_value::pool;
-HashTable<root_datum_entry,unsigned int> @| root_datum_value::hash
+HashTable<root_datum_entry,unsigned long int> @| root_datum_value::hash
   (root_datum_value::pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
@@ -1825,6 +1825,7 @@ void integrality_points_wrapper(expression_base::level l)
     result->val[i]=std::make_shared<rat_value>(ipl[i]);
   push_value(std::move(result));
 }
+
 
 @ Here are four functions for (hopefully) rapid Weyl group orbit generation,
 which can be done using only a root datum. They are implemented by free

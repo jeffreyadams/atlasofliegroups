@@ -1,0 +1,38 @@
+< basic {for fundamental_weights}
+< W_orbit {for Weyl group}
+< translate {for T_param}
+< kl {for character_formula}
+
+set lower_bounds(RealForm G, ratvec gamma) = ratvec:
+let F=fundamental_weights(G), W=W(G), X=two_rho_check(G)*gamma in
+for f in F do min(for w in W do 
+(X-two_rho_check(G)*(w*gamma))/(two_rho_check(G)*(w*f)) od) od
+
+set interval(rat a, rat b) = vec:
+let A=floor(a+1), B=ceil(b-1) in
+for i:B-A+1 from A do i od
+
+set coefficients(RealForm G, ratvec gamma) = [vec]:
+let LB=lower_bounds(G,gamma), X=two_rho_check(G)*gamma in
+all_words(for a in LB do interval(a,X) od)
+
+set candidates(RealForm G, ratvec gamma) = [ratvec]:
+let coeff=coefficients(G,gamma), F=fundamental_weights(G) in
+for C in coeff do gamma+sum(rank(G),for f@i in F do f*C[i] od) od
+
+set candidates_final(RealForm G, ratvec gamma) = [ratvec]:
+let cands=candidates(G,gamma), X=two_rho_check(G)*gamma in
+##(for mu in cands do if dominant(G,mu)*two_rho_check(G) < X then [mu] 
+else [] fi od)
+
+
+set is_weakly_unipotent(Param p) = bool:
+let G=p.real_form, gamma=p.infinitesimal_character then
+cands=candidates_final(G,gamma) then
+test=sum(for mu in cands do 
+#(not(T_param(character_formula(p),mu)=null_module(G))) 
+od) in
+test=0
+
+
+  

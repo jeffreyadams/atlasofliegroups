@@ -43,6 +43,7 @@ Algorithm:
 Non-trivial \xi not yet considered
 }
 
+
 set sigma_lusztig_new_verbose=true
 
 {main algorithm for computing sigma_lusztig, this won't usually be called by the user.
@@ -66,8 +67,6 @@ then () = assert(is_special(st_M,O_M),
 then st_M = M.Springer_table, M_vee = dual(M)
 then st_M_vee = M_vee.Springer_table, O_M_vee =
 	     st_M.dual_map(O_M)
-then ()=if sigma_lusztig_new_verbose then
-  prints("O_M_vee: ", O_M_vee, new_line,"sigma_M_vee: ", st_M.ct.character(st_M_vee.springer(O_M_vee))) fi 
 then O_G_vee = induce_orbit(st_M_vee, st_G_vee,O_M_vee)
 then sigma_G_vee_num = st_G_vee.springer(O_G_vee)
 in (M,H_M,ct_G.tensor_sign_index(sigma_G_vee_num), O_G_vee)

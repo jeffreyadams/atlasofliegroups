@@ -54,6 +54,7 @@
 <four.at {four_inner_products BXYI}
 <special_rep.at
 <families.at
+<FPP_global.at
 <L_packet.at
 
 
@@ -63,6 +64,7 @@
 <test_non_distinguished.at
 
 <speh.at
+
 
 {<twisted_endoscopy.at}
 {<extended_character_formula.at}

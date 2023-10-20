@@ -1,0 +1,213 @@
+{Let G be a root datum, and let R be the interior of the convex hull of a finite set V \subset X^*(T) \otimes_Z Q. The affine co-roots for G induce a decomposition of R
+into a finite number of regions S1,...,Sn, and each Si is the interior of the convex hull of a finite set Wi \subset X^*(T) \otimes_Z Q. If we assume that Wi are minimal (i.e. that each
+Wi is the *vertex set* of Si), then the sets Wi are well-defined. The main function in this file chop_coroots(G,V) outputs the list [W1,...,Wn]}
+
+
+<basic.at
+<subgroups.at { for (paradoxically) |Levi_subgroups| }
+
+{. produces all k-element subsets of verts. The term "# #verts" is
+[0,1,...,#verts - 1]
+ .}
+set choices_from( [ratvec]verts, int k) = [[ratvec]]:
+    for S in choices_from(# #verts,k) do for s in S do verts[s] od od
+
+set to_rat(ratvec v) = [rat]:
+  for q in v do rat: q od
+
+set to_ratvec([rat] v) = ratvec:
+   for q in v do q od
+
+
+set almost_LI([ratvec] V) = bool:
+let M=mat:for v in V do numer(v) od in
+rank(M)+1=#V
+
+set almost_LI_subsets([ratvec] V) = [[ratvec]]:
+if #V=0 then [[ratvec]]:[[]] else
+let r=rank(mat:for v in V do numer(v) od) then
+subsets=choices_from(V,r+1) in
+##(for S in subsets do if almost_LI(S) then [S] else [] fi od) fi
+
+set bad_index([ratvec] V) = int:
+min(##(for j:#V do if rank(mat:for i:j+1 do numer(V[i]) od)=j then [j] else [] fi od))
+
+set find_basis([ratvec] V) = ([[rat]],[rat]):
+let k=bad_index(V) in
+(for i:k do to_rat(V[i]) od, to_rat(V[k]))
+
+set find_basis_ratvec([ratvec] V) = (mat,ratvec):
+let k=bad_index(V) in
+(for i:k do numer(V[i]) od, V[k])
+
+
+set in_hull_0_almost_LI([ratvec] V) = bool:
+if #V=0 then false else
+let S=solve(find_basis_ratvec(V)) in
+if any(S) then sum(for s in S.requisition do #(s>0) od)=0 
+else let S_exact=a_solution(find_basis(V)) in
+sum(for s in S_exact do #(s>0) od)=0 fi fi
+
+
+set in_hull_0([ratvec] V) = bool:
+let subsets=almost_LI_subsets(V) in
+any(#subsets,(int i):in_hull_0_almost_LI(subsets[i]))
+
+
+set in_hull([ratvec] V, ratvec p) = bool:
+let W=for v in V do v-p od in
+in_hull_0(W)
+
+{given list of distinct ratvecs, extracts vertices of convex hull}
+
+set vertices_of_hull([ratvec] V) = [ratvec]:
+let n=0 in
+while n<=#V-1 do
+if in_hull(delete(V,n),V[n]) then V:=delete(V,n) else
+n:=n+1 fi od; V
+
+{given the vertex set P of a convex region and a pair of indices i,j, determines whether P[i],P[j] are joined by an edge}
+
+set is_edge([ratvec] P, int i, int j) = bool:
+let b = (P[i]+P[j])/2, Q =##(for k:#P do if k!=i then [P[k]] else [] fi od) in
+not(in_hull(Q,b))
+
+{extracts (sub)ratvec of elements between two fixed integers, x and y}
+
+set extract([ratvec] vertices, vec functional, int x, int y) = [ratvec]:
+assert(y>=x, "first integer argument cannot be larger than the second");
+##(for v in vertices do if functional*v>=x and functional*v<=y then [v] else [] fi od)
+
+{extracts (sub)ratvec of elements less than or equal to a fixed integer x}
+
+set extractleft([ratvec] vertices, vec functional, int x) = [ratvec]:
+##(for v in vertices do if functional*v<=x then [v] else [] fi od)
+
+{extracts (sub)ratvec of elements greater than or equal to a fixed integer x}
+
+set extractright([ratvec] vertices, vec functional, int x) = [ratvec]:
+##(for v in vertices do if functional*v>=x then [v] else [] fi od)
+
+{given a list of rats, produces a list of all integers strictly greater than smallest and strictly smaller than largest}
+
+set intseq(ratvec list) = vec:
+for i:ceil(max(list))-floor(min(list))-1 from floor(min(list))+1 do i od
+
+
+{given a list of rats, produces a list of all integers greater than or equal to smallest and less than or equal to largest}
+
+set intseq_inclusive(ratvec list) = vec:
+for i:floor(max(list))-ceil(min(list))+1 from ceil(min(list)) do i od
+
+
+
+{given a pair of ratvecs (x,y) and a functional f produce a list of all ratvecs z on line xy such that f(z) is in
+intseq([f(x),f(y)])}
+
+set new_verts(ratvec x, ratvec y, vec functional) = [ratvec]:
+let (a,b)=(functional*x,functional*y) then
+list=intseq([a,b]) in
+for i in list do ((b-i)/(b-a))*x+((i-a)/(b-a))*y od
+
+
+{given a pair of ratvecs (x,y) and a functional f produce a list of all ratvecs z on line xy such that f(z) is in
+intseq_inclusive([f(x),f(y)])}
+
+set new_verts_inclusive(ratvec x, ratvec y, vec functional) = [ratvec]:
+let (a,b)=(functional*x,functional*y) then
+list=intseq_inclusive([a,b]) in
+for i in list do ((b-i)/(b-a))*x+((i-a)/(b-a))*y od
+
+
+set new_verts([ratvec] list, vec functional) = [ratvec]:
+let n=#list in
+##(for i:n do ##(##(for j:n-i-1 from i+1 do if is_edge(list,i,j) then [new_verts(list[i],list[j],functional)] else []
+fi od)) od)
+
+
+set new_verts_inclusive([ratvec] list, vec functional) = [ratvec]:
+let n=#list in
+##(for i:n do ##(##(for j:n-i-1 from i+1 do if is_edge(list,i,j) then [new_verts_inclusive(list[i],list[j],functional)] else []
+fi od)) od)
+
+
+
+set chop_big([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+(x,y)=(min(e),max(e)) in
+if is_integer(x) then if is_integer(y) then for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od
+                                            else ##(for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od,[extractright(V,f,floor(y))]) fi
+                      else if is_integer(y) then ##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od)
+                                            else ##(##([extractleft(V,f,ceil(x))],for i:floor(y)-ceil(x) from ceil(x) do extract(V,f,i,i+1) od),[extractright(V,f,floor(y))]) fi fi
+
+set chop_small([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+I=intseq(e) in
+for n in I do extract(V,f,n,n) od
+
+set chop_small_inclusive([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+I=intseq_inclusive(e) in
+for n in I do extract(V,f,n,n) od
+
+
+set chop([ratvec] V, vec f) = [[ratvec]]:
+let e=for v in V do f*v od then
+(x,y)=(min(e),max(e)) in
+if floor(x)>=ceil(y)-1 then [V]
+else let V=##(V,new_verts(V,f)) in
+for R in ##(chop_small(V,f),chop_big(V,f)) do vertices_of_hull(R) od fi
+
+
+
+
+
+
+
+
+set bary([ratvec] vertices) = ratvec:
+let n=#vertices, l=#vertices[0] in
+sum(l,vertices)/n
+
+{takes a convex region in X^*(T) \otimes_Z Q, specified by vertices, and chops it up using G-coroots}
+
+set chop_coroots(RootDatum G, [ratvec] vertices) = [[ratvec]]:
+let C=poscoroots(G), output = [[ratvec]]:[vertices] in
+for c in C do output:=##(for region in output do chop(region,c) od) od; output
+
+
+
+set chop_coroots_verbose(RootDatum G, [ratvec] vertices) = void:
+let C=poscoroots(G), output=[[ratvec]]:[vertices] in
+for c@i in C do output:=##(for region in output do chop(region,c) od); prints("coroot ", i, ": ", #output, " convex regions") od;
+prints("Final output: "); for R@i in output do prints("Region ", i, ": ", #R, " vertices, barycenter = ", bary(R))od
+
+
+
+
+
+
+
+{list maximal levis}
+
+set max_levis(RootDatum G) = [RootDatum]:
+let levis=Levi_subgroups(G), output=[RootDatum]:[] in
+for L in levis do if ss_rank(L) = ss_rank(G)-1 then output:=#(output,L) else output:=output fi od; output
+
+{Next command doesn't work without facetious, and I don't want to load
+facetious here, because I need chopping facets in facetious}
+{ set fundamental_vertices(RootDatum L) = [ratvec]:
+let sf=simple_factors(L) then
+indices=all_words(for x in sf do #fundamental_vertices(x) od) in
+for I in indices do sum(rank(L),for p@i in I do
+fundamental_vertices(sf[i])[p] od) od }
+
+{ same objection }
+{ set folded_alcove(RootDatum L) = [ratvec]:
+let (R,M,n)=cofolded(L.split_form) then
+VR=fundamental_vertices(R) in
+for v in VR do M*v od }
+
+
+
+

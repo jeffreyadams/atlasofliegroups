@@ -1148,7 +1148,6 @@ subsystem::integral_datum_item& InnerClass::int_item
   for (auto alpha : additive_closure(rd,on_wall_subset) & rd.posroot_set())
     fundamental_integral_poscoroots.insert(rd.posroot_index(alpha));
   subsystem::integral_datum_entry e(fundamental_integral_poscoroots);
-
   assert(integral_pool.size()==int_table.size());
   loc.int_sys_nr= int_hash.match(e);
   if (loc.int_sys_nr==int_table.size())

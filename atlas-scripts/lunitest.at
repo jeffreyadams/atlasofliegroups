@@ -1,0 +1,29 @@
+< rigid_unipotents.at
+< nilpotent_orbits.at {for real_nilpotent_orbits, type C}
+< hermitian.at {for is_unitary}
+< K_highest_weights.at {for all_parameters_gamma}
+< associated_variety_annihilator.at {for GK_dim}
+< basic.at {for count}
+
+{
+Just to remind me...
+set_type unipotent_datum=(ComplexNilpotent O, ratvec infl_char)
+}
+
+set testall(RealForm G) = void:
+    let SR = semirigid_data(G)
+    in
+	for (O,gamma) in SR do
+	    if #real_nilpotent_orbits(O,G) = 0 then ()
+	    else
+	    let id = integrality_datum(G,gamma)
+	    then S = for alphavee@j in id.simple_coroots do if
+    	    	 gamma*alphavee = 0 then [] else [j] fi od.##
+	    then all = all_parameters_gamma(G,gamma), d = dim(O)\2
+	    then allO = for p in all do if tau(p) = S and GK_dim(p) =
+    	    	      d then [p] else [] fi od.##
+
+	    then bools = for p in allO do is_unitary(p) od
+	    in  prints("SR infl char ",gamma,", having ",#allO,
+	    " reps, of which ",count(bools), " are unitary.")
+	    fi od
