@@ -171,6 +171,8 @@ set step_flag = false
 deform (KL calculations). So prefer false for rank \ge 7?}
 set short_hts_flag = true
 
+set long_out_flag = false
+
 {for is_unitary calculations on parameters of approxDiff > CUTOFF,
 it's assumed that is_unitary_to_ht is faster. Setting CUTOFF :=100
 means always is_unitary, and CUTOFF:=-1 means always
@@ -389,6 +391,21 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      Uhash.lookup(p).>= or is_unitary_to_ht(p, ht))
      in local_testK_hash(x, lambda, vd, FVKH, eq, gr, classListByFacet, tester, Uhash)
 
+set ParamsByDim = [[Param]]: for d:16 do [] od
+set LFDKHByDim = [[FacetVertsKHash]]: for d:16 do [] od
+
+{takes the unitary Param's listed in LFDKHByDim and computes the K-character
+ number in pol_hash}
+set KcharsByDim() = [[int]]:
+    for j:16 do for v in LFDKHByDim [j] do v[j+1] od od
+
+{lists all distinct K-characters (by number in pol_hash)}
+set AllKchars() = [int]:
+    KcharsByDim().##.sort_u
+
+set NumKchars() = int:
+    #AllKchars()
+
 { Input is candidate facets, and graph info. Output is the tester-unitary ones. 
  use and update a complete list Uhash of known tester-unitary facets. 
  try to compute and systematically use partial order on facets}
@@ -426,7 +443,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 		   then for i in C
 		   	do let (d,j) = coords(LFVH,i)
 			   then () = unitary_by_dim[d]+:=1
-			   then q = parameter(x,lambda, facet_bary(Lvd.list,LFVH[d][j][:d+1]))
+			   then q = parameter(x,lambda, facet_bary(Lvd.list,verts))
 			   then () = for q1 in monomials(finalize(q))
 			   	     do Uhash.match(herm_center(q1));
 				     if deform_flag
@@ -435,6 +452,11 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 					  od
 				     fi
 				     od
+			   then () = if long_out_flag
+		      	   	     then let () = ParamsByDim[d] := ParamsByDim[d]#q
+			   	     	  then () = LFDKHByDim[d] := LFDKHByDim[d]#LFVH[d][j]
+				     	  in ()
+			   	     fi
 		       	   in q
 		    	od {list of tester unitary Params}
 		   else []
@@ -593,6 +615,11 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 				  od
 			      fi
                           od
+		 then () = if long_out_flag
+		      	   then let () = ParamsByDim[d] := ParamsByDim[d]#p
+			   	then () = LFDKHByDim[d] := LFDKHByDim[d]#v
+				in ()
+			   fi
 		 in p
               od
            od.##
@@ -1036,6 +1063,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 				       od
 			     	  fi
                              	  od
+			then () = if long_out_flag
+		      	     	  then let () = ParamsByDim[d] := ParamsByDim[d]#p
+			   	       then () = LFDKHByDim[d] := LFDKHByDim[d]#v
+				       in ()
+			   	  fi
 		     	in p
                      od
                   od.##
@@ -1107,9 +1139,16 @@ set sphericalK_levels_B(RealForm G) = [Param]:
 
 set spherical_general(RealForm G, (KGBElt, ratvec->[Param]) local) = [Param]:
     let start = elapsed_ms()
+    then r = rank(x_open(G).involution - 1)
     then answer = local(x_open(G), G.rho)
     then () =  {if time_verbose
     	       then} prints("Total time ", print_time_string(elapsed_ms() -start)) {fi}
+    then () = if long_out_flag
+    	      then prints("unitary facets by dim = ", for j:r+1 do #LFDKHByDim[j] od)
+	      fi
+    then () = if long_out_flag
+    	      then prints("number of distinct K-characters = ",NumKchars())
+	      fi
     in answer
 
 set spherical_dumb(RealForm G) = [Param]:

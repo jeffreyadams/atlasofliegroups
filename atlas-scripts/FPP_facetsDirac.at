@@ -88,6 +88,12 @@ be ultimately be the only ones used. In particular, the special
 scripts like sphericalC for dealing with complex groups can and should
 now be replaced by sphericalFold.}
 
+{if true, unitary candidates are checked for Dirac inequality before
+anything else. This seems not to help significantly: checking Dirac
+takes significant time, (maybe 4% of total for F4) and the resulting
+savings in the rest of the computation seems tiny (maybe 1% for F4).}
+set Dirac_flag = false
+
 { useful to assign this to 'true" to get information about the
   progress of long calculations }
 set facet_verbose = false
@@ -959,11 +965,12 @@ set sort(RealForm G, VertexData Lvd, [[FacetVertsKHash]] LFDKH, int tail) = [[Fa
 {this is the infinitesimal character paired with rho_check bound provided by Dirac inequality on all LKTs}
 set DiracBD(KGBElt x, ratvec lambda) = rat:
     let G = x.real_form
-    in if not is_equal_rank(G)
-       then (G.rho)*(G.rho_check)
+    then Q = invariant_form(G)
+    in if not(Dirac_flag and is_equal_rank(G))
+       then Q(G.rho,G.rho)
        else let mus = LKTs(parameter(x,lambda,0*lambda))
        	    then ics = for mu in mus do DiracIC(mu) od
-    	    in ics[min_loc(for ic in ics do ic*(x.real_form.rho_check) od)]*G.rho_check
+    	    in min(for ic in ics do Q(ic,ic) od)
        fi
 
 {creates LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local verts}
@@ -1010,15 +1017,20 @@ set localFD_KHash000 \
     then prints("start localFD_KHash000")
     fi;
     let vlistAct = Lvd.list, G = x.real_form
-    then rhocheck = G.rho_check
-    then DiracBD = DiracBD(x,lambda)
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
     then answer = [[vec]]: [for v@k in vlistAct
 	 do if k%(max(#vlistAct\100,2))=0 and fund_facet_verbose
 	    then prints("examining facet ",k," of ",#vlistAct,
 	    " in localFD_KHash000; ",
 	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
-	    if (v*rhocheck > DiracBD)
+	    if (Dirac_flag and Q(v,v) > DiracBD)
 	    then []
 	    else let p0 = parameter(x,lambda,v)
 	    	 then P = finalize(p0)
@@ -1043,8 +1055,15 @@ set localFD_KHash001 \
 (   if facet_verbose
     then prints("start localFD_KHash001 to height ", h)
     fi;
-    let vlistAct = Lvd.list, start = elapsed_ms(), DiracBD = DiracBD(x,lambda), G=x.real_form
-    then Llookup = Lvd.lookup, rhocheck = G.rho_check
+    let vlistAct = Lvd.list, start = elapsed_ms(), G=x.real_form
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then Llookup = Lvd.lookup
     then () = if facet_verbose
              	then prints("examining ", #vlistAct, " facets of dim ",0,
 	       " in construction of local facet list0")
@@ -1055,7 +1074,7 @@ set localFD_KHash001 \
 	    then prints("examining facet ",k," of ",#vlistAct," in localFD_KHash001;",
 	    " #ktp_hash = ",ktp_hash.size())
 	    fi;
-	    if (v*rhocheck > DiracBD)
+	    if (Dirac_flag and Q(v,v) > DiracBD)
 	    then []
 	    else let p = parameter(x,lambda,v)
 	    	 then P = finalize(p)
@@ -1528,10 +1547,16 @@ set localFD_01Dirac\
     fi;
     let G = x.real_form, start = elapsed_ms()
     {then () = prints("starting localFD_01Dirac, LF = ",LF)}
-    then rhocheck = G.rho_check, DiracBD = DiracBD(x,lambda)
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
     then () = LF[0] :=
     	 for v in LF[0]
-	 do if Lvd.list[v[0]]*rhocheck > DiracBD
+	 do if (Dirac_flag and Q(Lvd.list[v[0]], Lvd.list[v[0]])> DiracBD)
 	    then []
 	    else [v]
 	    fi
@@ -1666,8 +1691,7 @@ set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, KTypePol_hash ktp
 {takes 0 and 1-diml local facets and adds K-char index to height HT}
 set localFD_KHash_01 (KGBElt x, ratvec lambda, VertexData Lvd, int HT, KTypePol_hash ktp_hash,
 [[FacetVertsIndex]] LF) = [[FacetVertsKHash]]:
-    let start = elapsed_ms(){, G = x.real_form
-    then rhocheck = G.rho_check, DiracBD = DiracBD(x,lambda)}
+    let start = elapsed_ms()
     then answer = for d:#LF
     	 do if fund_facet_verbose then prints(new_line, "start to compute ",#LF[d],
        	  		     " K-characters to height ",HT, " in dimension ",d,
