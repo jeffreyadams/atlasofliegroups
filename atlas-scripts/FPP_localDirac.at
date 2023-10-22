@@ -442,6 +442,7 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 		   	    	do Uhash.lookup(p).>= or tester(p) od)
 		   then for i in C
 		   	do let (d,j) = coords(LFVH,i)
+			   then verts = vec: LFVH[d][j][:d+1]
 			   then () = unitary_by_dim[d]+:=1
 			   then q = parameter(x,lambda, facet_bary(Lvd.list,verts))
 			   then () = for q1 in monomials(finalize(q))
@@ -661,6 +662,8 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     Param_hash Uhash) = [Param]:
     let () = hashCounter.use()
     then () = if(facet_verbose) then prints("hts = ",hts) fi
+    then long_out_temp_flag = long_out_flag
+    then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     then pol_hash0 = make_KTypePol_hash() {to hold formulas to ht hts[0]}
     {add K-chars to vertices and edges}
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, hts[0], pol_hash0, LF)
@@ -700,6 +703,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
      	     od
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+    then () = long_out_flag := long_out_temp_flag
     in local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
 
 {Assume we have local vertices and edges LF}
@@ -988,7 +992,8 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			     #list od)
 		    	   fi
 { Have facets to dim 1 unitary to one_ht. Seek to extend list to all higher dims }
-    then D = int:1
+    then D = int:1, long_out_temp_flag = long_out_flag
+    then () = long_out_flag:=false
     then () = while (D <= rank(x.involution-1) - 1  ) and
     	      	    (#LFDKH = D + 1) and
 		    (#(LFDKH~[0]) > D+1)
@@ -1038,6 +1043,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	      fi
     then () = LFDKH:= extend_K_characters(x, lambda, Lvd, Perm, mapAct, LFDKH, pol_hash)
     then start=elapsed_ms()
+    then () = long_out_flag := long_out_temp_flag
     then UParams = [Param]:
          if one_ht >=  0
          then let ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
