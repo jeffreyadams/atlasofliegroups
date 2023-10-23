@@ -8,7 +8,7 @@
  relations: P[i]=[a_1,a_2,...] means i<a_j
  i<i is assumed (P[i] should not contain i)
 }
-set_type Poset=[[int]]
+set_type [Poset=[[int]]]
 
 {add relations implied by reflexivity and transitivity}
 set transitive_fill_one(Poset P) = Poset:
@@ -60,13 +60,17 @@ for i:#P do
 
 {boolean: i<j in poset P}
 set less(Poset P,int i,int j)=bool:
-let Q=closure(P) in if find(P[i],j)>=0 then true else false fi
+let Q=closure(P) in if find(Q[i],j)>=0 then true else false fi
+
+set less_closed(Poset P, int i, int j)=bool:
+if find(P[i],j)>=0 then true else false fi
 
 set greater(Poset P,int i,int j)=bool:less(P,j,i)
 
 {nodes which point to nothing (only themselves)}
 set minimal_nodes(Poset P)=[int]:
 ##for i:#P do if =#P[i] or P[i]=[i] then [i] else [] fi od
+
 
 {nodes i satisfying:
  P[i] is empty (or P[i]=[i])
