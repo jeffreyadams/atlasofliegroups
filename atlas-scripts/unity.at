@@ -8,6 +8,10 @@ set height(RootDatum R, ratvec nu) = int:
     let q = dominant(R,nu)*R.two_rho_check
     in q.numer\q.denom
 
+set off_hts(KTypePol Q) = [int]:
+     for @q in Q
+     do height(q)
+     od.sort_u[1:]
 
 set deform_support (Param p) = KTypePol:
 ( if not is_final(p) then error("improper parameter") fi
@@ -29,6 +33,7 @@ in p. { apply recursive function initially to our argument |p| }
 set support_params_hash = make_Param_hash()
 set deform_supports_table = [KTypePol]: []
 
+{Same answer as deform_support, but much faster}
 set rec_fun deform_support_hash (Param p) = KTypePol:
 ( if not is_final(p) then error("improper parameter") fi
 ;  let G=real_form(p)
@@ -82,6 +87,7 @@ in p. { apply recursive function initially to our argument |p| }
 set support_params_int_hash = make_Param_hash()
 set deform_supports_int_table = [KTypePol]: []
 
+{Same answer as deform_support_int, but much faster}
 set rec_fun deform_support_int_hash(Param p) = KTypePol:
 ( if not is_final(p) then error("improper parameter") fi
 ;  let G=real_form(p)
@@ -112,6 +118,7 @@ set rec_fun deform_support_int_hash(Param p) = KTypePol:
 	      fi
     in D
 )
+
 
 {this is meant to contain the block_Hasse interval below p}
 set lower_interval_dumb(Param p) = ParamPol:
@@ -192,13 +199,50 @@ set short_hts(Param p) = [int]:
 
 set deform_hts(Param p) = [int]:
     let start = elapsed_ms()
-    then answer = [int]:
-      for @q in {deform_support_hash(p)} deform_support_int(p)
-      do height(q)
-      od.sort_u[1:]
+    then answer = off_hts(deform_support_int_hash(p))
     then () = if time_verbose then prints("     ",
-     	     print_time_string(elapsed_ms() - start), " for deform__hts") fi
+     	     print_time_string(elapsed_ms() - start), " for deform_hts") fi
     in answer
+
+
+{Seeks to return string of at least N terms from deform_hts. If this is all there are
+(so that testing to these hts determines unitarity, then bool is true.}
+set rec_fun deform_hts(Param p, int N) = ([int],bool):
+( if not is_final(p) then error("improper parameter") fi
+;  let G=real_form(p)
+   then empty_K = null_K_module(G)
+   then () = p:=alcove_center(p)
+   then j = support_params_int_hash.lookup(p)
+   then () = if not support_params_int_hash.size() = #deform_supports_int_table
+      	     then error("haven't filled table with hash")
+	     fi
+   in if j >= 0 
+      then let answer = off_hts(deform_supports_int_table[j])
+	   in return(answer[:min(N,#answer)], #answer<=N)
+      else let temp = 1*p.K_type
+	   then () = for factor in reducibility_points(p)
+	       	     do for @q in lower_interval(first_param(p*factor))
+		      	do if height(q) > height(p)
+			   then let () = temp:=temp+ deform_support_int_hash(q)
+			   	then test = off_hts(temp)
+			   	in if #test > N then return (test[:N],false)
+			      	   fi
+			   fi
+			od
+		     od
+	   then answer = off_hts(temp)
+	   then () = temp:= sum(G, for @r in temp do r od)
+		  then j1 = support_params_int_hash.match(p)
+		  then () = if j1 = #deform_supports_int_table
+      	      	       	    then deform_supports_int_table:=
+			    (deform_supports_int_table next deform_supports_int_table:=[])
+			    			       # temp
+	      		    fi
+		  in (answer[:min(N,#answer)], #answer<=N)
+      	     fi
+)
+
+
 
 { To test a bunch of parameters attached to one KGB element x, and one
 lambda, a good idea might be to compute N =
@@ -330,10 +374,10 @@ set is_unitary_short_test(Param p,int N) = bool:
 
 {use the first N heights from short_heights to test}
 set is_unitary_def_test(Param p,int N) = bool:
-    let def= deform_hts(p)
-    in if #def <= N
+    let (def,flag)= deform_hts(p,N)
+    in if flag
        then is_pos_on_LKTs(p) and is_unitary_to_hts(p,def)
-       else is_unitary_test(p,def[:N])
+       else is_unitary_test(p,def)
        fi
 
 { these commands are useful for speed tests over bunches of parameters

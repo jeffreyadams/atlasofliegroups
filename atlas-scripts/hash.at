@@ -77,6 +77,7 @@ set_type
 [ KTypePol_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->KTypePol) index
   , (KTypePol->int) match
   , (KTypePol->int) lookup
@@ -102,11 +103,18 @@ set make_KTypePol_hash ([KTypePol] list, (KTypePol,int->int) hash) = KTypePol_ha
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for P@m in list
    do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   ,  ( -> ): {clear} clear
    , (int->KTypePol): { index } (int i) KTypePol: list[i]
    , (KTypePol->int): { match } (KTypePol P) int:
      begin
@@ -130,6 +138,7 @@ set_type
 [ ratvec_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->ratvec) index
   , (ratvec->int) match
   , (ratvec->int) lookup
@@ -155,11 +164,18 @@ set make_ratvec_hash ([ratvec] list, (ratvec,int->int) hash) = ratvec_hash:
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for P@m in list
    do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->ratvec): { index } (int i) ratvec: list[i]
    , (ratvec->int): { match } (ratvec P) int:
      begin
@@ -184,6 +200,7 @@ set_type
 [ vec_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->vec) index
   , (vec->int) match
   , (vec->int) lookup
@@ -209,11 +226,18 @@ set make_vec_hash ([vec] list, (vec,int->int) hash) = vec_hash:
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for P@m in list
    do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->vec): { index } (int i) vec: list[i]
    , (vec->int): { match } (vec P) int:
      begin
@@ -237,6 +261,7 @@ set_type
 [ mat_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->mat) index
   , (mat->int) match
   , (mat->int) lookup
@@ -262,11 +287,18 @@ set make_mat_hash ([mat] list, (mat,int->int) hash) = mat_hash:
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for P@m in list
    do let (code,new) = find(P) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->mat): { index } (int i) mat: list[i]
    , (mat->int): { match } (mat P) int:
      begin
@@ -290,6 +322,7 @@ set_type
 [ Param_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->Param) index
   , (Param->int) match
   , (Param->int) lookup
@@ -315,11 +348,18 @@ set make_Param_hash ([Param] list, (Param,int->int) hash) = Param_hash:
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for p@m in list
    do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->Param): { index } (int i) Param: list[i]
    , (Param->int): { match } (Param p) int:
      begin
@@ -346,6 +386,7 @@ set_type
 [ KType_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->KType) index
   , (KType->int) match
   , (KType->int) lookup
@@ -371,11 +412,18 @@ set make_KType_hash ([KType] list, (KType,int->int) hash) = KType_hash:
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for p@m in list
    do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->KType): { index } (int i) KType: list[i]
    , (KType->int): { match } (KType p) int:
      begin
@@ -403,6 +451,7 @@ set_type
 [ RealForm_hash =
   ( ( -> int) size
   , ( -> int) capacity
+  , ( -> ) clear
   , (int->RealForm) index
   , (RealForm->int) match
   , (RealForm->int) lookup
@@ -428,11 +477,18 @@ set make_RealForm_hash ([RealForm] list, (RealForm,int->int) hash) = RealForm_ha
 	 ;  seq_nbrs[code] := m
 	 od
      end
+   then clear() = void:
+   	let () = capacity := 2
+   	then () = seq_nbrs := for :capacity do empty od
+	then () = maxfill := 2*capacity\3
+	then () = list:=[]
+	in ()
 in for p@m in list
    do let (code,new) = find(p) in if new then seq_nbrs[code] := m fi
    od
 ;  ( ( -> int): { size } @int: #list
    , ( -> int): { capacity } @int: capacity
+   , ( -> ): {clear} clear
    , (int->RealForm): { index } (int i) RealForm: list[i]
    , (RealForm->int): { match } (RealForm p) int:
      begin
