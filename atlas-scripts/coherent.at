@@ -87,8 +87,8 @@ set coherent_irr (ParamPol P,WeylElt w) = ParamPol: coherent_irr(P,w.word)
 { ---------------------------coherent families------------------------------ }
 
 set coherent_family_irr (ParamPol P, ratvec gamma_target)=ParamPol:
-  if is_dominant(root_datum(P),gamma_target) then T_irr(P,gamma_target)
-  else let (w,gamma_target_dominant)=from_dominant(root_datum(P),gamma_target) in
+  if is_integrally_dominant(root_datum(P),gamma_target) then T_irr(P,gamma_target)
+  else let (w,gamma_target_dominant)=from_dominant(integrality_datum(P),gamma_target) in
     T_irr(coherent_irr(P,w.word),gamma_target_dominant)
     {this translation is within the dominant chamber}
  fi

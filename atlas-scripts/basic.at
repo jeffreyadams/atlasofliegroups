@@ -1755,6 +1755,7 @@ set integrality_datum (Param p)= RootDatum:
   integrality_datum(p.real_form, p.infinitesimal_character)
 set integrality_rank (Param p) = int:
   integrality_rank(p.real_form, p.infinitesimal_character)
+{see integrality_datum@(ParamPol,ratvec) below, once infinitesimal_character@ParamPol is defined}
 
 { list or poscoroot indices that exhibit non-dominance of the parameter }
 set non_dominant_simples (Param p) = [int]:
@@ -2058,6 +2059,12 @@ set infinitesimal_character(ParamPol P) = ratvec:
   do assert(infinitesimal_character(p)=gamma
            ,"infinitesimal character not unique")
   od; gamma
+
+{ root datum whose coroots are those integral on P.infinitesimal_character, generalizing integrality_datum@(Param,ratvec) above}
+set integrality_datum (ParamPol P)= RootDatum:
+  integrality_datum(P.real_form, P.infinitesimal_character)
+set integrality_rank (ParamPol P) = int:
+  integrality_rank(P.real_form, P.infinitesimal_character)
 
 { split up a KTypePol or ParamPol into terms below a given height and others }
 set height_split ((KTypePol,int)(P,):pair) = (KTypePol,KTypePol):
