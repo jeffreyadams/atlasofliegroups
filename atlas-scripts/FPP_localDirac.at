@@ -343,6 +343,9 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     (Param->bool) tester, Param_hash Uhash) = [[FacetVertsKHash]]:
     let newStatuses = for j:#eq do "?" od,  NumClasses = #eq
     	, printInterval = int: 1
+    {use Uhash to mark some classes at known? (those that hit a unitary Param)}
+    {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Facet.
+     Look up class in classListByFacet, and mark "T"}
     then start = elapsed_ms()
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash ", NumClasses,
@@ -359,7 +362,7 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
 	      	   fi
 	      ; if newStatuses[k] = "?"
 	      	then let C=eq[k]
-	      	  then (d,j) = coords(FVKH,C[0])
+		  then (d,j) = coords(FVKH,C[0])
 	      	  then verts = vec: FVKH[d][j][:d+1]
 	      	  then ps = monomials(finalize(parameter(x, lambda
 		    	  , facet_bary(vd.list, verts))))
@@ -640,7 +643,9 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
+    then () = if Dirac_flag
+    	      then LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
+	      fi
     then () = if #LF[0] = 0 then return [] fi
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
@@ -755,14 +760,19 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     then rhocheck = G.rho_check
     then LF = [[FacetVertsIndex]]:
     [for k:#Lvd.list do [k] od]
-    then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF) {imposes Dirac}
+    then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF)
+    {imposes Dirac}
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
-set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param]:
-    let (G,j0) = %x, pol_hash=make_KTypePol_hash()
+set local_test_GEO_dumb(KGBElt x, ratvec lambda) =
+    [Param]:
+    let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
     then vd = FPP_vertex_data(G)
     then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
+    then () = unipotents_to_hash(x.real_form,Uhash)
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, pol_hash, Uhash)
+
+
 
 {vertex set size number at which to revert to local_test_GEO_hash_dumb.
 0 to 100 make sense: higher means revert MORE often}
@@ -788,7 +798,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH){pol_hash, hts[0])}
         {remove from LFDKH all facets failing is_unitary_to_ht(hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
-    	   (Param->bool):(Param p): Uhash.lookup(p).>= or
+    	   (Param->bool):(Param p): {Uhash.lookup(p).>= or}
 	   			is_unitary_to_ht(p,hts[0]), Uhash)
     then () = if test_verbose then prints("unitary to ht ",hts[0],
                         " facet counts to dim 1: ",for list in LFDKH
@@ -808,7 +818,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x,lambda,Lvd,
                       LFDKH, eq, gr, CLBF, (Param->bool): (Param p):
-		      Uhash.lookup(p).>= or is_unitary_to_ht(p,hts[D]), Uhash)
+		      {Uhash.lookup(p).>= or} is_unitary_to_ht(p,hts[D]), Uhash)
 		      {is_unitary_to_hts(p,hts[:D+1]), Uhash)}
 		 then () = if test_verbose then prints("facet counts to dim ",
 		     D+1,": ", for list in LFDKH do #list od) fi
@@ -870,15 +880,17 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF)
     in local_test_GEO_hash(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
-set local_test_GEO_hash(KGBElt x, ratvec lambda, Param_hash Uhash) = [Param]:
-    let (G,j0) = %x, pol_hash=make_KTypePol_hash()
+set local_test_GEO(KGBElt x, ratvec lambda) =
+    [Param]:
+    let Uhash = make_Param_hash(), G = x.real_form, pol_hash = make_KTypePol_hash()
     then vd = FPP_vertex_data(G)
+    then () = unipotents_to_hash(x.real_form,Uhash)
     then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
-    in local_test_GEO_hash(x, lambda, vd, Lvd, Perm, mapAct, pol_hash, Uhash)
+    in local_test_GEO_hash(x,lambda, vd, Lvd, Perm, mapAct, pol_hash, Uhash)
 
 {USE THESE IN HASH2!}
 {lowest level (index in hts[]) to start testing}
-set edge_offset = int: 0
+set edge_offset = int: -1
 
 {how much to increase level at each repetition}
 set edge_skip = int: 1
@@ -904,6 +916,9 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 		      fi
 	      fi
     then r = rank(x.involution - 1)
+    then () = if edge_offset = -1
+    	      then edge_offset:= r\2 {3 seems best for F4}
+	      fi
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then () = if approxVertexDiff < vert_diff_cutoff and revert_flag
@@ -941,9 +956,9 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH) {pol_hash ,test_hts[0])}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF,
     	   (Param->bool):(Param p): if prefer_to_hts
-	   			    then Uhash.lookup(p).>= or
+	   			    then {Uhash.lookup(p).>= or}
 				    is_unitary_to_hts(p,hts[:test_levels[0]+1])
-				    else Uhash.lookup(p).>= or
+				    else {Uhash.lookup(p).>= or}
 				    is_unitary_to_ht(p,test_hts[0])
 				    fi, Uhash)
     then () = LFDKH:= extend_K_characters(x, lambda, Lvd, Perm, mapAct, LFDKH, pol_hash)
@@ -962,7 +977,7 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 		 then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH,pol_hash,test_hts[D])
        	      	 {compute graph on facets to dim D+1}
 		 then () = LFDKH := local_testK_hash(x, lambda, Lvd, LFDKH, eq, gr, CLBF,
-		      (Param->bool):(Param p): Uhash.lookup(p).>= or
+		      (Param->bool):(Param p): {Uhash.lookup(p).>= or}
 		      			   is_unitary_to_ht(p, test_hts[D]), Uhash)
 			  {is_unitary_to_hts(p, hts[test_levels[D-1]+1:test_levels[D]+1])}
 		 then () = if test_verbose then prints("unitary to ht ",test_hts[D],
@@ -981,14 +996,12 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
     in local_test_GEO_hash2(x, lambda, vd, Lvd, Perm, mapAct,LF, pol_hash, Uhash)
 
-{Compute Lvd, pass to previous}
-set local_test_GEO_hash2(KGBElt x, ratvec lambda, Param_hash Uhash) =
-    [Param]:
-    let G = x.real_form, pol_hash=make_KTypePol_hash()
+set local_test_GEO2(KGBElt x, ratvec lambda) = [Param]:
+    let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
     then vd = FPP_vertex_data(G)
     then (Lvd, Perm, mapAct) = localFD_Lvd(x,lambda,vd)
-    in local_test_GEO_hash2(x, lambda, vd, Lvd, Perm, mapAct,
-       pol_hash, Uhash)
+    then () = unipotents_to_hash(x.real_form,Uhash)
+    in local_test_GEO_hash2(x,lambda,vd, Lvd, Perm, mapAct, pol_hash, Uhash)
 
 {difficulty at which to revert to local_test_GEO_hash on each vertex.
 0 to 100 make sense: higher means revert MORE often}
@@ -1029,6 +1042,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     	      else last_level
 	      fi
     {if LAST = ONE, then final step should be _just_ is_unitary}
+    then () = prints("ONE = ",ONE,", LAST = ",LAST)
     then maxDiffLoc = max_loc(for v in Lvd.list
     	 	       	      do G.two_rho_check*(dominant(G,thetaMinus*v))
 		       	      od)
@@ -1074,7 +1088,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 			  for list in LF do #list od);
 		  prints("testing level = ", ONE, ", final level = ",LAST, "; heights = ", hts, new_line)
 	       fi
-   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht}
+   then pol_hash_one_ht = make_KTypePol_hash() {to hold K_chars to height one_ht = hts[ONE]}
    then LFDKH = [[FacetVertsKHash]]:
    	if step_flag and ONE > 0{just calculate K-chars to hts[0], reduce the problem, then go to one_ht}
 	then let pol_hash_low = make_KTypePol_hash()
@@ -1085,11 +1099,13 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	     then tester0 = (Param->bool): (Param p) bool:
      	     	  is_unitary_to_ht(p, hts[0])
              then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-             then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
+             then () = prints("at hts[0], #eq = ", #eq)
+	     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq,
 		      gr, CLBF, tester0, Uhash)
    	     then () = LFDKH := extend_K_characters(x, lambda, Lvd, Perm,
 	     	       	   mapAct, LFDKH, one_ht, pol_hash_one_ht)
 	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
+	     then () = prints("at one_ht, #eq = ", #eq)
 	     then tester1 = (Param->bool): (Param p) bool:
      	     	  if prefer_to_hts then is_unitary_to_hts(p, hts[1:ONE+1])
 	 	  else is_unitary_to_ht(p,one_ht)
@@ -1110,6 +1126,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	 	  fi
     	     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     	      {remove from LFDKH all facets failing is_unitary_to_ht(one_ht)}
+	     then () = prints("at one_ht, #eq = ", #eq)
     	     in local_testK_hash(x,lambda,Lvd, LFDKH, eq,
 		      gr, CLBF, tester1, Uhash)
 	     fi
@@ -1213,48 +1230,25 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
    {fi}
 
 {JUST CALCULATE FIRST TWO LEVELS}
-set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, KTypePol_hash pol_hash,
-    Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1
-    then (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd)
-    in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
-
-{JUST CALCULATE FIRST TWO LEVELS}
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
-    then LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od]
+    then LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od] {0-facets only}
     then () = LF:=localFD_1(x,lambda, vd,Lvd, Perm, mapAct, LF) {impose Dirac}
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
-set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, Param_hash Uhash) =
-    [Param]:
-    let G = x.real_form, pol_hash=make_KTypePol_hash()
-    then vd = FPP_vertex_data(G)
-    in local_test_GEO_hash_one_level(x, lambda, vd, pol_hash, Uhash)
-
-set local_test_GEO_dumb(KGBElt x, ratvec lambda) =
-    [Param]:
-    let Uhash = make_Param_hash()
-    then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash_dumb(x,lambda, Uhash)
-
-set local_test_GEO(KGBElt x, ratvec lambda) =
-    [Param]:
-    let Uhash = make_Param_hash()
-    then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash(x,lambda, Uhash)
-
-set local_test_GEO2(KGBElt x, ratvec lambda) = [Param]:
-    let Uhash = make_Param_hash()
-    then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash2(x,lambda,Uhash)
+set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
+    KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
+    {let G = x.real_form, thetaMinus = x.involution - 1}
+    let (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd) {computes localFD_000 for verts,
+    	then localFD_1 for edges}
+    in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
 set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
     let G = x.real_form
-    then Uhash = make_Param_hash()
+    then Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), vd = FPP_vertex_data(G)
     then () = unipotents_to_hash(x.real_form,Uhash)
-    in local_test_GEO_hash_one_level(x,lambda,Uhash)
+    in local_test_GEO_hash_one_level(x,lambda,vd, pol_hash, Uhash)
 
 set local_facets(KGBElt x, ratvec lambda) = [[vec]]:
     let G = x.real_form
@@ -1283,6 +1277,7 @@ set spherical_general(RealForm G, (KGBElt, ratvec->[Param]) local) = [Param]:
 	      fi
     in answer
 
+{this gives def_dumb if def_flag = true}
 set spherical_dumb(RealForm G) = [Param]:
     spherical_general(G, local_test_GEO_dumb@(KGBElt, ratvec))
 
