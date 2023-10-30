@@ -230,8 +230,8 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	   then () = current := elapsed_ms()
 	   then () = times[j] := current -former_time
 	   then () = if old_time_verbose
-	   	     then prints("time for KGBElt ",j," was ",print_time_string(times[j]))
-		     {,"; time so far ",print_time_string(current-start)}
+	   	     then prints("time for KGBElt ",j," was ",print_time_string(times[j]),
+		     "; time so far ",print_time_string(current-start))
 		     fi
 	   in ()
        	 od {KGB}
