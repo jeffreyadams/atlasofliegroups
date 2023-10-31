@@ -335,9 +335,14 @@ fixed. The facet lists carried by [[FacetBary]] or [[FacetVertsIndex]]
 may be pruned of reps not interesting for unitarity, but the indices
 will always refer to a constant vlist.}
 
+{whether to fill in statuses for known unitaries in local_testK_hash}
+{this is useless, for reasons I don't understand; does NOT change # of
+is_unitary tests performed (for ex in FPP_unitary_hash_one_level(SO(4,4)))}
+set KU_flag = false
+
 {test candidate classes with (new) tester; delete
  from LFVKH facets established to be nonunitary in this way. Output is new
- shorter list of candidate facets}
+ shorter list of candidate facets. vd is LOCAL VertexData}
 set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     [[FacetVertsKHash]] FVKH, [[int]] eq, [[int]] gr, [vec] classListByFacet,
     (Param->bool) tester, Param_hash Uhash) = [[FacetVertsKHash]]:
@@ -345,8 +350,18 @@ set local_testK_hash(KGBElt x, ratvec lambda, VertexData vd,
     	, printInterval = int: 1
     {use Uhash to mark some classes at known? (those that hit a unitary Param)}
     {Find all Param's in Uhash with (x,lambda). For each, compute corresponding Facet.
+     Use function known_unitaries from FPP_facets
      Look up class in classListByFacet, and mark "T"}
     then start = elapsed_ms()
+    then () = if KU_flag and #FVKH = 2
+    	      then let knownUnitaries = known_unitaries(Uhash, x, lambda, vd, FVKH)
+    	      	   then () = for list@d in knownUnitaries
+    	      	   	     do for j in list
+	      	 	     	do newStatuses[classListByFacet[d][j]] := "T"
+	    	 		od
+	      		     od
+		   in ()
+	       fi
     then () = if fund_facet_verbose and NumClasses > 100
     then prints(); prints("start local_testK_hash ", NumClasses,
 		   " equiv classes of facets to dim ",#FVKH-1)
@@ -637,6 +652,8 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 	      " for UParams calculation ") fi
    in UParams
 
+{How many steps to use in is_unitary_def_test(p, steps) in def_dumb}
+set def_steps = -1
 
 {Assume we have local vertices and edges LF. Use is_unitary_def_test(p, (G.rank + 1)\2}
 set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -658,8 +675,13 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 		      else return []
 		      fi
 	      fi
+    then r = rank(x.involution - 1)
+    then def_steps_temp = if def_steps = -1
+    	 		  then (r+G.rank)\2
+			  else def_steps
+			  fi
     then tester = (Param->bool): (Param p) bool:
-    	 is_unitary_def_test(p,(G.rank+1)\2)
+    	 is_unitary_def_test(p,def_steps_temp) {(G.rank+1)\2)}
     then  () = hash_def_dumbCounter.use()
     then LFDKH = localFD_KHash_01(x, lambda, Lvd, pol_hash,LF)
     {then () = prints("#Lvd = ", #Lvd.list, ", #LFDKH[0] = ",#LFDKH[0])}
@@ -668,6 +690,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
         {compute graph on facets to dim 1}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
+    { then () = prints("def_steps_temp = ", def_steps_temp) }
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
     then () = if test_verbose then prints("unitary facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
@@ -1241,7 +1264,7 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	      in UParams
 	 fi
     then time = elapsed_ms() - start
-    then () = if time_verbose
+    then () = if time_verbose and one_ht < 0
 	      then prints("     ", print_time_string(time),
 	      " for UParams calculation ") fi
    in UParams
