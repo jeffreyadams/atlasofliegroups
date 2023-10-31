@@ -59,13 +59,15 @@ special_character(ct,cell,permutation)
 
 { requirement: simple roots of L are contained in the (positive) roots of G }
 set embed_simple_reflection (RootDatum L,RootDatum G, int i) = mat:
-   assert(root_index(G,L.simple_roots[i])<G.nr_of_posroots
+   let alpha=L.simple_roots[i]
+in assert(root_index(G,alpha)<G.nr_of_posroots
          ,"Simple root for L is not a root for G");
-   reflection(G,L.simple_roots[i]) { just |reflection(L,i)|, if coroots match }
+   reflection(G,alpha)
+   { just |reflection(L,i)| if |coroot(L,alpha)=coroot(G,alpha)|, as should be }
 
 set embed (RootDatum L, RootDatum G,[int] w) = mat:
    product(G.rank,for s in w do embed_simple_reflection(L,G,s) od)
-   { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match }
+   { equivalently |convert_to(G,W_elt(L,w)).matrix|, if coroots match as above }
 
 
 set embed (RootDatum L,RootDatum G,WeylElt w) = WeylElt:
