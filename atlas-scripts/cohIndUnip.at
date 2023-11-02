@@ -60,13 +60,14 @@ set Qs(RealForm G) = [KGPElt]:
 set Ls(RealForm G) = [RealForm]:
     for Q in Qs(G) do Q.Levi od
 
-{all the weights that can be subtracted from a unipotent on L to get a weakly
+{all the weights that can be subtracted from a unipotent on Q.Levi, shifted
+by a dominant v, to get a weakly
 fair induction for G}
-set shifts(KGPElt Q) = [vec]:
+set shifts(KGPElt Q,ratvec v) = [vec]:
     let G = Q.real_form, tworhou = two_rho_u(Q)
     then ms = [int]:
     	 for alphavee in G.simple_coroots
-    	 do (tworhou*alphavee+2)\2 {subtract 0...m-1?}
+    	 do ((tworhou+2*v)*alphavee+2)\2 {subtract 0...m-1?}
 	 od
     then terms = delta_fixed(G)
     then mcplx = for j in complex_simple(G) do ms[j] od
@@ -82,16 +83,39 @@ set shifts(KGPElt Q) = [vec]:
 	     fi
        od.##
 
+
+{all the weights that can be subtracted from a unipotent on L to get a weakly
+fair induction for G}
+set shifts(KGPElt Q) = [vec]:
+    shifts(Q, null(Q.real_form.rank)/1)
+
+{to be used as shift in unipotent_representations(Levi, shift)}
+set offsets(KGPElt Q) = [ratvec]:
+    let G = Q.real_form, tworhou = two_rho_u(Q)
+    then ks = [int]:
+    	 for j@k in (imag_simple(G)##complex_simple(G))
+	 do if tworhou*G.simple_coroots[j] > 0 then [k]
+	    else []
+	    fi
+	 od.##
+    then terms = delta_fixed(G)
+    then shiftBox = box(2,#ks)
+    in for b in shiftBox
+       do sum(G.rank, for k@i in ks
+       	  	      do b[i]*terms[k]
+		      od)/2
+       od
+
 set is_FPP(RootDatum rd, ratvec gamma) = bool:
     all(for alphavee in rd.simple_coroots
     	do gamma*alphavee <= 1 and gamma*alphavee >= 0
 	od)
 
-
-set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
+{assume v is G-dominant and central for L}
+set coh_ind_unip(KGPElt Q, Param_hash Uhash, ratvec v) = void:
     let L = Q.Levi, G = Q.real_form
-    then uLs = unipotent_representations(L)
-    then Qshifts = shifts(Q)
+    then uLs = unipotent_representations(L,v)
+    then Qshifts = shifts(Q,v)
     in void: for pL in uLs
        	     do for tau in Qshifts
        	     	do let P = theta_induce_irreducible(parameter(pL.x,
@@ -105,6 +129,20 @@ set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
 		      od
 		 od
 	     od
+
+
+set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
+    coh_ind_unip(Q, Uhash, null(Q.real_form.rank)/1)
+
+set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
+    let startTime = elapsed_ms()
+    then () = for Q in Qs(G)
+    	      do for v in offsets(Q)
+    	      	 do coh_ind_unip(Q,Uhash,v) od
+	      od
+    then () = prints("Total time for coh_ind_unip_long = ",
+    	      	  print_time_string(elapsed_ms() - startTime))
+    in ()
 
 set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
     let startTime = elapsed_ms()
