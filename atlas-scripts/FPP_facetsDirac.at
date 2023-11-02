@@ -962,7 +962,7 @@ set sort(RealForm G, VertexData Lvd, [[FacetVertsKHash]] LFDKH, int tail) = [[Fa
     else LFDKH
     fi
 
-{this is the infinitesimal character paired with rho_check bound provided by Dirac inequality on all LKTs}
+{this is the Q(infinitesimal character) bound provided by Dirac inequality on all LKTs}
 set DiracBD(KGBElt x, ratvec lambda) = rat:
     let G = x.real_form
     then Q = invariant_form(G)
@@ -971,6 +971,17 @@ set DiracBD(KGBElt x, ratvec lambda) = rat:
        else let mus = LKTs(parameter(x,lambda,0*lambda))
        	    then ics = for mu in mus do DiracIC(mu) od
     	    in min(for ic in ics do Q(ic,ic) od)
+       fi
+
+{"true" means unitarity is possible in light of Dirac}
+set DiracTest(Param p) = bool:
+    let G=p.real_form
+    then () = Dirac_flag:=true
+    in if not is_equal_rank(G) then return is_hermitian(p)
+       else let gamma = p.infinitesimal_character
+    	    then Q = invariant_form(G)
+	    then bound = DiracBD(p.x, p.lambda)
+	    in Q(gamma, gamma) <= bound
        fi
 
 {creates LVD, map Perm on FPPverts at (x,lambda), mapAct from FPPverts to local verts}

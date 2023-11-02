@@ -1,0 +1,114 @@
+< misc.at {for simple_root_index}
+< Dirac.at {for thetaStable}
+< weak_packets.at {for unipotent_representations}
+< time.at {for print_time_string}
+
+{enumerate weakly fair cohomologically induced from unipotent reps in
+the FPP}
+
+{delta-fixed wts for G}
+
+set complex_simple(RealForm G) = [int]:
+    for j:G.semisimple_rank
+    do if  simple_root_index(G,
+       (distinguished_involution(G)*G.simple_roots[j])) > j
+       then [j]
+       else []
+       fi
+    od.##
+
+set imag_simple(RealForm G) = [int]:
+    for j:G.semisimple_rank
+    do if =(distinguished_involution(G)-1)*G.simple_roots[j]
+       then [j]
+       else []
+       fi
+    od.##
+
+set delta_fixed(RealForm G) = [ratvec]:
+    let delta = distinguished_involution(G)
+    then listcplx = complex_simple(G)
+    then listimag = imag_simple(G)
+    in for j in listimag do G.fundamental_weights[j] od ##
+       for j in listcplx do (1+delta)*G.fundamental_weights[j] od
+
+set delta_fixed_sums(RealForm G) = [ratvec]:
+    let list = delta_fixed(G)
+    then B = box(2,#list)
+    in for j:#B-1 from 1
+    	do sum(G.rank, for ell@k in list
+	   	       do B[j][k]*ell
+		       od)
+	od
+
+{this is all theta-stable Q}
+set Qs(RealForm G) = [KGPElt]:
+    let X = thetaStable(G)
+    in for ell in delta_fixed_sums(G)
+       do let repQs = for x in X
+       	      	      do parabolic_by_wt(ell,x)
+		      od
+	  in for Q@j in repQs
+	     do if any(for k:j do repQs[k] = Q od)
+		then []
+		else [Q]
+		fi
+             od.##
+       od.##
+
+{Levis of all theta-stable Q}
+set Ls(RealForm G) = [RealForm]:
+    for Q in Qs(G) do Q.Levi od
+
+{all the weights that can be subtracted from a unipotent on L to get a weakly
+fair induction for G}
+set shifts(KGPElt Q) = [vec]:
+    let G = Q.real_form, tworhou = two_rho_u(Q)
+    then ms = [int]:
+    	 for alphavee in G.simple_coroots
+    	 do (tworhou*alphavee+2)\2 {subtract 0...m-1?}
+	 od
+    then terms = delta_fixed(G)
+    then mcplx = for j in complex_simple(G) do ms[j] od
+    then mimag = for k in imag_simple(G) do ms[k] od
+    then Qbox = box(mimag##mcplx)
+    in for b in Qbox
+       do let ell = sum(G.rank, for k@j in b
+       	  	      		do k*terms[j]
+		      		od)
+	  in if ell.denom = 1
+	     then [ratvec_as_vec(ell)]
+	     else []
+	     fi
+       od.##
+
+set is_FPP(RootDatum rd, ratvec gamma) = bool:
+    all(for alphavee in rd.simple_coroots
+    	do gamma*alphavee <= 1 and gamma*alphavee >= 0
+	od)
+
+
+set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
+    let L = Q.Levi, G = Q.real_form
+    then uLs = unipotent_representations(L)
+    then Qshifts = shifts(Q)
+    in void: for pL in uLs
+       	     do for tau in Qshifts
+       	     	do let P = theta_induce_irreducible(parameter(pL.x,
+				pL.lambda - tau, pL.nu), G)
+	     	   in void:
+		      for @q in P
+		      do if is_FPP(G,q.infinitesimal_character)
+	     	       	       then Uhash.match(q)
+			       else -1
+			       fi
+		      od
+		 od
+	     od
+
+set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
+    let startTime = elapsed_ms()
+    then () = for Q in Qs(G) do coh_ind_unip(Q,Uhash) od
+    then () = prints("Total time for coh_ind_unip = ",
+    	      	  print_time_string(elapsed_ms() - startTime))
+    in ()
