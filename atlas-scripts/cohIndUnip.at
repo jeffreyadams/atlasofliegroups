@@ -135,18 +135,20 @@ set coh_ind_unip(KGPElt Q, Param_hash Uhash) = void:
     coh_ind_unip(Q, Uhash, null(Q.real_form.rank)/1)
 
 set coh_ind_unip_long(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms()
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q in Qs(G)
     	      do for v in offsets(Q)
     	      	 do coh_ind_unip(Q,Uhash,v) od
 	      od
+    then () = prints("Found ",Uhash.size() - oldSize, " new unitary reps.")
     then () = prints("Total time for coh_ind_unip_long = ",
     	      	  print_time_string(elapsed_ms() - startTime))
     in ()
 
 set coh_ind_unip(RealForm G, Param_hash Uhash) = void:
-    let startTime = elapsed_ms()
+    let startTime = elapsed_ms(), oldSize = Uhash.size()
     then () = for Q in Qs(G) do coh_ind_unip(Q,Uhash) od
+    then () = prints("Found ",Uhash.size() - oldSize, " new unitary reps.")
     then () = prints("Total time for coh_ind_unip = ",
     	      	  print_time_string(elapsed_ms() - startTime))
     in ()

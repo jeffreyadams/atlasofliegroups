@@ -76,6 +76,9 @@ set dirac_cohomology(Param p, KGBElt x) = [(int, ratvec)]:
     then K0 = K_0(x)
     then gammaKtildes = gammaKs(G,K0,gamma)
     then mulists = DiracCohContributions(gamma,G)
+    then () = if #mulists = 0
+    	      then return []
+	      fi
     then M = max(for list in mulists
     	     	 do if #list = 0
 		    then -1

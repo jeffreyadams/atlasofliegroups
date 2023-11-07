@@ -897,7 +897,7 @@ set known_unitaries(Param_hash Uhash, KGBElt x, ratvec lambda, VertexData Lvd,
 	       then let local_verts = vec: for ell in list do Lvd.lookup(ell) od.sort
 	     	    then m = lookups[#list-1](local_verts)
 		    then () = assert(m.>=,"have known unitary not appearing in LFDKH")
-		    then () = out[#list-1]:=out[#list-1]#m
+		    then () = out[#list-1]:= (out[#list-1] next out[#list -1]:=[])#m
 		    in ()
 	       fi
 	 od

@@ -6,7 +6,7 @@
 <TWOHEIGHTS {for HTA and HT}
 <cohom_reduction {for possible use of cohomological induction}
 <FPP_localDirac
-
+<cohIndUnip {for weakly fair cohom ind}
 
 {functions for computing the entire FPP_unitary dual}
 {typically functions take a Param_hash Uhash and fill it with all
@@ -21,6 +21,7 @@ small values are faster. Too small a value cannot lead to wrong
 answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
+set coh_ind_flag = true
 {next functions aim to compute FULL spherical dual in non-split case,
 when several different x give spherical reps}
 
@@ -194,6 +195,9 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     then () = facet_verbose:=false
     then () = deform_flag :=true
     then () = unipotents_to_hash(G,Uhash)
+    then () = if coh_ind_flag
+    	      then coh_ind_unip_long(G,Uhash)
+	      fi
     then times = [int]: null(#KGB(G))
     then current = elapsed_ms()
     then () = for x@j in KGB(G)
@@ -320,8 +324,9 @@ set derived_simple_factors(RealForm G) = [RealForm]:
 
 {(M,N): M is natural restriction from X^*(G) onto X^*(D).
  N is right inverse of M.}
-set derived_infos(RealForm G) = (mat,mat):
+{ set derived_info(RealForm G) = (mat,mat):
     let (,M) = derived_info(G) in (M,required_solution(M, id_mat(G.semisimple_rank)))
+}
 
 {descend a parameter for G to all simple factors of theta-stable Levi support(x)}
 
