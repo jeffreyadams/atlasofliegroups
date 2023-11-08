@@ -156,6 +156,44 @@ set glued_tfs([ratvec] tfs, RealForm G) = ratvec:
 	      od
     in tf
 
+{invert descents: given a rational weights gamma,
+ on each derived simple factor, construct rational weight gamma for G}
+set glued_gammas([ratvec] gammas, RealForm G) = ratvec:
+    let DSFs = derived_simple_factors(G)
+    then MNrats = derived_infos_rat(G)
+    in sum(G.rank, for (,Nrat)@j in MNrats
+       		   do Nrat*gammas[j]
+		   od)
+{lambdas is one lambdaj for each derived simple factor; assemble into
+ lambda for G}
+set glued_lambdas([ratvec] lambdas, RealForm G) = [ratvec]:
+    let lr0 = glued_gammas(lambdas,G) - G.rho
+    then d = lr0.denom
+    then ((,),(Zgens,)) = Z_hat(G)
+    then zs = [vec]: Zgens
+    then B = box(d,#zs)
+    in for b in B
+       do let lr = ((Zgens*b)/d) + lr0
+       	  in if lr.denom = 1
+	     then [lr+G.rho]
+	     else []
+	     fi
+       od.##
+
+{these KGBElts are not necessarily for G, but rather for some central
+twist of G. Maybe OK just to move to G-KGBElts with same numbers?}
+set glued_KGBs([KGBElt] xs, RealForm G) = KGBElt:
+    KGB_elt(G.root_datum, glued_thetas(for x in xs do x.involution od, G),
+    		glued_tfs(for x in xs do x.torus_factor od, G))
+
+{lift the parameters ps[j] on the derived simple factors to parameters
+on G. Preserves unitarity}
+set ascents([Param] ps, RealForm G) = [Param]:
+    let (,x_num) = %glued_KGBs(for pj in ps do pj.x od,G)
+    then nu = glued_gammas(for pj in ps do pj.nu od, G)
+    then lambdas = glued_lambdas(for pj in ps do pj.lambda od, G)
+    in for lambda in lambdas do parameter(G,x_num,lambda,nu) od
+
 set weak_support(Param p) = [int]:
     support(p.x)
 
