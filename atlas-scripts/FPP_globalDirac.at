@@ -21,7 +21,11 @@ small values are faster. Too small a value cannot lead to wrong
 answers, but only to running more is_unitary tests .}
 set chop_bound = int: 6
 
+{if true, compute reps weakly fair cohom induced from Arthur unipotent}
 set coh_ind_flag = true
+
+{if true, pass through KGB backwards}
+set tilde_flag = false
 {next functions aim to compute FULL spherical dual in non-split case,
 when several different x give spherical reps}
 
@@ -200,19 +204,24 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	      fi
     then times = [int]: null(#KGB(G))
     then current = elapsed_ms()
-    then () = for x@j in KGB(G)
-    	    ~ do {KGB} if(old_facet_verbose)
-      	      	 then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
-		     Uhash.size(), ", #tests = ",
-		     unitary_test_counter.use_count(), ", #def lookups = ",
-		     deformLookupCounter.use_count(), ", #def calcs = ",
-		     deformCalcCounter.use_count());
-		     prints("#hash_dumb calls = ", hash_dumbCounter.use_count(),
-    		     	    ", #hash_def_dumb calls = ", hash_def_dumbCounter.use_count(),
-		       	    ", #hash calls = ", hashCounter.use_count(),
-		            ", #hash2 calls = ", hash2Counter.use_count(),
-		            ", #hash_one_level calls = ", hash_one_levelCounter.use_count())
-		       fi;
+    then X = KGB(G)
+    then () = if tilde_flag
+    	      then X:= for x in X ~do x od;
+    	      	   deform_flag:=false
+	      fi
+    then () = for x@j in X
+    	      do {KGB} if(old_facet_verbose)
+      	      	       then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+		       	     Uhash.size(), ", #tests = ",
+		     	     unitary_test_counter.use_count(), ", #def lookups = ",
+		      	     deformLookupCounter.use_count(), ", #def calcs = ",
+		     	     deformCalcCounter.use_count());
+		     	    prints("#hash_dumb calls = ", hash_dumbCounter.use_count(),
+    		     	     ", #hash_def_dumb calls = ", hash_def_dumbCounter.use_count(),
+		       	     ", #hash calls = ", hashCounter.use_count(),
+		             ", #hash2 calls = ", hash2Counter.use_count(),
+		             ", #hash_one_level calls = ", hash_one_levelCounter.use_count())
+		        fi;
 	 let former_time = current
 	 then twists = all_lambda_differential_0(x)
       	 then FPPbig = FPP_lambdas_big(x, vd, inv_hash,
@@ -234,17 +243,20 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	   then () = current := elapsed_ms()
 	   then () = times[j] := current -former_time
 	   then () = if old_time_verbose
-	   	     then prints("time for KGBElt ",j," was ",print_time_string(times[j]),
-		     "; time so far ",print_time_string(current-start))
+	   	     then prints("time for KGBElt ",if tilde_flag then
+    		     	  	  #X - j - 1 else j fi," was ",
+			  print_time_string(times[j]), "; time so far ",
+			  print_time_string(current-start))
 		     fi
 	   in ()
-       	 od {KGB}
+       	 od {X}
     then () = facet_verbose:=old_facet_verbose
     then () = time_verbose:=old_time_verbose
     then longest = max_loc(times)
     in prints(new_line,"Total time = ", print_time_string(current-start),
        	      "; max time = ",print_time_string(times[longest]),
-	      " for KGBElt ",longest,"; DiracIC time = ",print_time_string(DiracICtime));
+	      " for KGBElt ",if tilde_flag then #X - longest - 1 else longest fi,
+	      "; DiracIC time = ",print_time_string(DiracICtime));
        prints("#hash_dumb calls=", hash_dumbCounter.use_count(),
        	      ", #hash_def_dumb calls=", hash_def_dumbCounter.use_count(),
        	      ", #hash calls=", hashCounter.use_count(),
