@@ -1,0 +1,59 @@
+<basic.at
+<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
+<Weylgroup.at
+
+set W_orbit(RootDatum G,[int] S,((int,ratvec)->ratvec) action, ratvec gamma)=
+let orbit=[([int],ratvec)]:[([],gamma)] then
+todo=[([int],ratvec)]:[([],gamma)] in
+while #todo>0 do
+   let (w,v)=todo[0] in
+   for s in S do
+   let sv=action(s,v) then
+   j=first(for (,y) in orbit do y=sv od) in 
+   if j=-1 then orbit#:=([s]##w,sv); todo#:=([s]##w,sv) fi
+   od;
+   todo:=todo[1:]
+od;orbit
+
+set W_orbit(RootDatum G,((int,ratvec)->ratvec) action, ratvec gamma)=
+W_orbit(G,for i:ss_rank(G) do i od,action,gamma)
+
+set star_action(RootDatum G,int i, ratvec v)=
+let w=reflect(G,i,v)
+in dominant(integrality_datum(G,w),w)
+
+set star_W_orbit(RootDatum G,ratvec v)=
+let f(int i,ratvec v)=star_action(G,i,v) in W_orbit(G,f,v)
+
+set W_mod_W_int(RootDatum G,ratvec v)=for (w,) in star_W_orbit(G,v) do W_elt(G,w) od
+
+set products([WeylElt] sub,[WeylElt] quotient)=
+##for w in sub do
+ for z in quotient do
+  w*z
+ od
+od
+
+set embed_W(RootDatum G,RootDatum H)=
+for w in H.W do W_elt(G,w.matrix) od
+
+set W_mod_W_int_long(RootDatum G, ratvec v)=
+let H=integrality_datum(G,v) in
+(embed_W(G,H),W_mod_W_int(G,v))
+
+set sub_quotient_integrality(RootDatum G, ratvec v)=
+let (H,Q)=W_mod_W_int_long(G,v) in
+prints("integrality datum: ",integrality_datum(G,v));
+prints("Order of W(G): ", order_W(G));
+prints("Order W(lambda): ", #H,new_line, "Order W/W(lambda): ", #Q);(H,Q)
+
+set integrally_dominant_W_orbit(RootDatum G,ratvec v)=
+for w in W_mod_W_int(G,v) do w*v od
+
+set test(RootDatum G, ratvec v)=
+let (H,Q)=sub_quotient_integrality(G,v) in
+let words=for w in products(Q,H) do word(w)  od
+in
+let sorted=sort_u(words) in
+prints("Order HQ: ", #sorted);
+#sorted=order_W(G)
