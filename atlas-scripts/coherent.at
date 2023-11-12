@@ -1,4 +1,4 @@
-{		computing coherent continuations		}
+sbend{		computing coherent continuations		}
 
 <basic.at
 <translate.at { for translation functor T@(Param(Pol),ratvec) }
@@ -86,12 +86,32 @@ set coherent_irr (ParamPol P,WeylElt w) = ParamPol: coherent_irr(P,w.word)
 
 { ---------------------------coherent families------------------------------ }
 
+{p is always assumed to be dominant, probably integrally dominant is sufficient}
 
+{first case: infinitesimal character of p is regular => coherent family is unique
+ (return an error if infinitesimal character of p is not regular)
+ if gamma_target is dominant then return T_param(p,gamma_target), otherwise:
+ p -> character_formula(p)
+   -> T_param(character_formula(p))  = character formula of family at the target
+   -> composition_series($)          = coherent family at target as sum of irreducibles
+}
 
 set coherent_family_irr (Param p, ratvec gamma_target)=ParamPol:
-let cf=character_formula(p) then
-cf_translated=T_std(cf,gamma_target) in
-composition_series(cf_translated)
+assert(is_regular(p),"infinitesimal character is not regular, use coherent_family_irr_choice");
+assert(is_dominant(p),"p is not dominant");
+if is_integrally_dominant(p.root_datum,gamma_target) then
+   T_param(p,gamma_target)
+else
+   composition_series(T_param(character_formula(p),gamma_target))
+fi
+
+{if infinitesimal character is singular, coherent family isn't unique
+ default: return an error
+ alternative: use the unique coherent family which takes an irreducible at singular to irreducible in the (fixed) dominant chamber
+}
+set coherent_family_irr_choice (Param p, ratvec gamma_target)=ParamPol:
+assert(is_dominant(p),"p is not dominant");
+coherent_family_irr(make_regular_param(p), gamma_target) 
 
 set coherent_family_irr_old (ParamPol P, ratvec gamma_target)=ParamPol:
   if is_dominant(root_datum(P),gamma_target) then T_irr(P,gamma_target)
