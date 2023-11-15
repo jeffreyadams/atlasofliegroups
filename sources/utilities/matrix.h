@@ -196,7 +196,7 @@ public:
 // constructors
   Matrix_base(): d_rows(0),d_columns(0),d_data() {}
 
-  Matrix_base(index_t m, index_t n)
+  Matrix_base(index_t m, index_t n) // leaves all entries unset
     : d_rows(m),d_columns(n),d_data(static_cast<std::size_t>(m)*n) {}
   Matrix_base(index_t m, index_t n, const C& c)
     : d_rows(m), d_columns(n), d_data(static_cast<std::size_t>(m)*n,c) {}

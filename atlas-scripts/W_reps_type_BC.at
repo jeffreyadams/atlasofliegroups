@@ -209,7 +209,7 @@ set symbols (RootDatum rd) = [Symbol]:
 }
 
 
-{ given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
+{ given v=[a_0,...,a_n] increasing, returns (j,[a_j,...,a_n])
   where [a_0,...,a_{j-1}] is the longest string (of length j)
   increasing by 1 at each step
 }
@@ -232,9 +232,8 @@ set cut_off_last_string ([int] v) = (int,[int]):
    in if =k then (#v,[]) else (k,v[:k~]) fi
    fi
 
-{ recursive function: given v=[a1,...,am] (increasing) return
- [c1,...,cr]: length of strings in v
- for example [0,1,4,5,7,9,10,11,12] -> [4,2,2,1]
+{ given v=[a1,...,am] (increasing) return [c1,...,cr]: length of strings in v
+  for example [0, 1, 4,5, 7, 9,10,11,12] -> [4,2,2,1]
 }
 set extract_strings ([int] v) = Partition:
    let j=0 in while >#v do set (j,v):=cut_off_string(v); j od.sort_to_partition
