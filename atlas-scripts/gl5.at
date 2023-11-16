@@ -1,0 +1,229 @@
+<twisted_endoscopy.at
+set G=GL(5,R)
+set delta=G.distinguished_involution
+set (H,M)=endoscopic(G,delta)
+set H=H.split_form
+set all_G=unipotent_representations(G)
+set all_H_u=unipotent_representations(H)
+set all_H=all_parameters_gamma(H,H.rho)
+
+set p_H=all_H_u[5]
+set E_H=E(H.distinguished_involution,p_H)
+set E_G=lift_std(p_H,M,G,delta)
+set p_G=parameter(E_G)
+set ecf=extended_character_formula(p_G,delta)
+set m=monomials(ecf)
+
+set bad=m[0]
+
+set p=bad
+set list=all_parameters_gamma(H,left_inverse(M)*bad.infinitesimal_character)
+set ph=list[1]
+set E_G=lift_std(ph,M,G,delta)
+set p_G=E_G.parameter
+{lift_std(ph,M,G,delta).parameter=p  is true}
+set y_G=y_gen(p)
+set action_H=restrict_action(y_G.involution,M) 
+{set tf_u_G=y_G.torus_factor+bad.real_form.rho }
+set tf_u_G=y_G.unnormalized_torus_factor 
+set tf_u_H=left_inverse(M)*tf_u_G 
+set tf_H=(1+action_H)*(2*tf_u_H-H.rho)/2 
+set ()=prints("tf_u_G: ", tf_u_G, new_line, "tf_u_H: ", tf_u_H, new_line, "tf_H: ", tf_H) 
+set y_H_gen=KGB_elt_gen(dual(inner_class(H)),action_H,tf_H)
+
+set y_H_good=y_gen(ph)
+
+set F_G=E(delta,p)
+
+{ISSUE:
+
+given final parameter(x=25,lambda=[3,2,0,0,-1]/1,nu=[1,1,0,-1,-1]/2)
+
+find parameter on H that lifts to it
+
+main point:
+
+find y_gen for H lifting to y_gen(p)
+
+THESE ARE DIFFERENT BUT EQUIVALENT:
+atlas> E(delta,p).lambda_rho
+Value: [ 1, 1, 0, 1, 1 ]
+atlas> E_G.lambda_rho
+Value: [ -1, -1,  0,  1,  1 ]
+
+atlas> p.lambda-G.rho
+Value: [ 1, 1, 0, 1, 1 ]/1
+atlas> M*ph.lambda-G.rho
+Value: [ -1, -1,  0,  1,  1 ]/1
+atlas> display(E_G)
+         x=KGB element #25
+     gamma=[  1,  1,  0, -1, -1 ]/2
+         g=[  2,  1,  0, -1, -2 ]/1
+
+lambda_rho=[ -1, -1,  0,  1,  1 ]
+       tau=[ 0, 0, 0, 0, 0 ]
+         l=[ 0, 0, 0, 0, 0 ]
+         t=[ 0, 0, 0, 0, 0 ]
+atlas> display(E(delta,p))
+         x=KGB element #25
+     gamma=[  1,  1,  0, -1, -1 ]/2
+         g=[  2,  1,  0, -1, -2 ]/1
+
+lambda_rho=[ 1, 1, 0, 1, 1 ]
+       tau=[ -1, -1,  0, -1, -1 ]
+         l=[ 0, 0, 0, 0, 0 ]
+         t=[ 0, 0, 0, 0, 0 ]
+atlas> E_G=E(delta,p)
+Value: true
+
+
+
+}
+
+{set y_H=KGB_elt(KGB_elt_gen)}
+{lp=L_packet(H,left_inverse(M)*bad.infinitesimal_character,y_H_gen) then}
+
+
+{
+set p_G=parameter(E_G)
+set ecf=extended_character_formula(p_G,delta)
+set m=monomials(ecf)
+set unipotents_H=unipotent_representations(H)
+set unipH=unipotents_H[6]
+{set p=first_param(lift(unipH,M,G,delta))}
+{
+set lifts=for p in block_of(H.trivial) do (lift_std(p,M,G,delta)) od
+set p_H=block_of(H.trivial)[0]
+set E=lifts[0]
+set (ic,theta,v)=lift(p_H.x,M,G)
+}
+{
+set lifts_u=remove_duplicates(for (,p) in lifts do p od)
+
+set p=p_G
+}
+{set pFB=partial_extended_block(p,delta)}
+{set FB=fixed_block_of(delta,p) 
+set (I_delta_F,g_F,complete_indices_F,delta_action_F)=tabulate_indices(pFB,delta)
+set Bs=singular_block_of(p)
+set (I_delta_s,g_s,complete_indices_s,delta_action_s)=tabulate_indices(Bs,delta)
+set PF=big_KL_P_signed_polynomials(p,delta)
+set Ps=big_KL_P_signed_polynomials(Bs,delta)
+
+set index_F=find(complete_indices_F,(find(pFB,p),1))
+set index_s=find(complete_indices_s,(find(Bs,p),1))
+}
+}
+
+
+
+{
+atlas> inverse_lift_std (pg,H,M,delta)
+
+| -1,  0,  1,  0, 0,  0, -1, 1, 0, 0, 0, 0 |
+|  0, -1,  0,  1, 0, -1,  0, 0, 1, 0, 0, 0 |
+|  0,  0,  0,  0, 0,  0,  0, 0, 0, 1, 0, 0 |
+|  0,  1,  0, -1, 0,  1,  0, 0, 0, 0, 1, 0 |
+|  1,  0, -1,  0, 0,  0,  1, 0, 0, 0, 0, 1 |
+
+solving: [  3,  1,  0, -3, -5 ]/4
+solution: [ -3, -1,  0,  0,  0,  0,  0,  0,  0,  0, -2, -2 ]/4
+got FIRST tf_u_H: [ -3, -1 ]/2
+got SECOND tf_u_H: [ -3, -1 ]/2
+tf_u_G: [  3,  1,  0, -3, -5 ]/4
+tf_u_H: [ -3, -1 ]/2
+tf_H: [ 0, 0 ]/1
+y_H_gen=(Complex reductive group of type B2, with involution defining
+inner class of type 'c', with 3 real forms and 3 dual real forms,
+| -1,  0 |
+|  0, -1 |
+,[ 0, 0 ]/1)
+Runtime error:
+  (y_gen,gamma) is not valid
+Evaluation aborted.
+atlas> pg
+Value: final parameter(x=0,lambda=[1,1,0,0,0]/1,nu=[0,0,0,0,0]/1)
+
+
+atlas> M
+Value: 
+| -1,  0 |
+|  0, -1 |
+|  0,  0 |
+|  0,  1 |
+|  1,  0 |
+
+atlas> N
+Value: 
+|  1,  0, 0,  0, -1, 1, 0, 0, 0, 0 |
+|  0,  1, 0, -1,  0, 0, 1, 0, 0, 0 |
+|  0,  0, 0,  0,  0, 0, 0, 1, 0, 0 |
+|  0, -1, 0,  1,  0, 0, 0, 0, 1, 0 |
+| -1,  0, 0,  0,  1, 0, 0, 0, 0, 1 |
+
+atlas> v
+Value: [ -3, -1,  0,  0,  0,  0,  0,  0,  0,  0, -2, -2 ]/4
+atlas> w
+Value: [  3,  1,  0, -3, -5 ]/4
+atlas> M##N*v=w
+Value: true
+atlas> v1
+Value: [ -3, -1 ]/4
+atlas> v2
+Value: [  0,  0,  0,  0,  0,  0,  0,  0, -1, -1 ]/2
+atlas> M*v1=w-N*v2
+Value: true
+Note that M*v1=w mod (1+theta)X_{*,Q} + 2X_*   but need Q
+}
+
+set pg=parameter(KGB(G,0),[1,1,0,0,0]/1,[0,0,0,0,0])
+{
+inverse_lift_std(pg,H,M,delta) fails
+inverse_lift_std_by_search(pg,H,M,delta) succeeds
+
+atlas> inverse_lift_std(pg,H,M,delta)
+
+| -1,  0,  1,  0, 0,  0, -1, 1, 0, 0, 0, 0 |
+|  0, -1,  0,  1, 0, -1,  0, 0, 1, 0, 0, 0 |
+|  0,  0,  0,  0, 0,  0,  0, 0, 0, 1, 0, 0 |
+|  0,  1,  0, -1, 0,  1,  0, 0, 0, 0, 1, 0 |
+|  1,  0, -1,  0, 0,  0,  1, 0, 0, 0, 0, 1 |
+
+solving: [  3,  1,  0, -3, -5 ]/4
+solution: [ -3, -1,  0,  0,  0,  0,  0,  0,  0,  0, -2, -2 ]/4
+tf_u_G: [  3,  1,  0, -3, -5 ]/4
+tf_u_H: [ -3, -1 ]/2
+tf_H: [ 0, 0 ]/1
+y_H_gen=(Complex reductive group of type B2, with involution defining
+inner class of type 'c', with 3 real forms and 3 dual real forms,
+| -1,  0 |
+|  0, -1 |
+,[ 0, 0 ]/1)
+not valid, consider using inverse_lift_std_by_search instead
+Runtime error:
+  not valid
+Evaluation aborted.
+atlas> inverse_lift_std_by_search(pg,H,M,delta)
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+Value: 
+-1*parameter(x=4,lambda=[-1,0]/1,nu=[0,0]/1) [2]
+
+atlas> lift_std (ph,M,G,delta).parameter
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+Value: non-normal parameter(x=3,lambda=[1,0,0,0,-1]/1,nu=[0,0,0,0,0]/1)
+atlas> Finalize(lift_std (ph,M,G,delta).parameter)
+tf_H_raw=[ -3, -1 ]/4
+tf_G_raw=[  3,  1,  0, -1, -3 ]/4
+Value: final parameter(x=0,lambda=[1,1,0,0,0]/1,nu=[0,0,0,0,0]/1)
+
+}
+set p=parameter(KGB(G,16),[3,0,0,0,-1]/1,[1,0,0,0,-1]/1)
+set preg=parameter(p.x, p.lambda+two_rho(G), p.nu+two_rho(G))

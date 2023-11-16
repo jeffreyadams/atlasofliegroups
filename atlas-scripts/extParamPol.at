@@ -247,7 +247,7 @@ in if ed_verbose { choose verbose or non-verbose version of the function }
 
 set full_deform = recursive_deform@(Param,mat,int)
 
-set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
+set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
    , P=big_KL_P_signed_polynomials(B,delta)
    then index=find(complete_indices,(find(B,p),1))
@@ -257,7 +257,7 @@ set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
       if f!=0 then prints(complete_indices[i], ": ", prettyPrint(f)) fi
    od
 
-set print_extended_character_formula (Param p,mat delta) = void:
+set print_extended_character_formula_old(Param p,mat delta) = void:
    print_extended_character_formula(p,singular_block_of(p),delta)
 
 set print_extended_composition_series (Param p,[Param] B,mat delta) = void:
@@ -431,3 +431,35 @@ set print_is_unitary_big (Param p) = void:
 set is_weakly_unitary_big (Param p) = bool:
   is_weakly_unitary(hermitian_form_irreducible_big(p))
 
+
+set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
+   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+   , P=big_KL_P_signed_polynomials(B,delta) then
+
+{   , P=big_KL_P_polynomials(B,delta) then}
+
+   index=find(complete_indices,(find(B,p),1)) then
+   ()=prints("p=", p, new_line,"size of block: ", #B, new_line, "index of p in B: ", find(B,p)) then
+   ()=prints("number of complete indices: ", #complete_indices) then
+   ()=prints("index of parameter in complete indices: ", index) then
+   ()=prints("complete index: ", complete_indices[index]) then
+   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in mbbatrix",new_line) then
+   data=[["(i,c)","m","c*m","c*m*p"]] in
+   for i:#complete_indices
+   do let f=eval(P[i][index],s) then
+   (j,c)=complete_indices[i] in
+   let c_term=
+   if c=1 then 1
+    elif c=-1 then s
+    elif c=0 then {(1+s)}1
+    else error("c\ne 0,\pm 1")
+   fi
+   in
+{let        ()=prints("i: ", i, "f: ", f, " c_term:", c_term, " ", B[j]) in}
+
+   if {c*}f!=0  then data#:= ["(" + j.to_string+ "," + c.to_string + ")" ,prettyPrint(f), prettyPrint(f*c_term),  prettyPrint(f*c_term) + "*"  + B[j].to_string]  fi 
+   od;
+   tabulate(data)
+
+set print_extended_character_formula (Param p,mat delta) = void:
+   print_extended_character_formula_old(p,singular_block_of(p),delta)
