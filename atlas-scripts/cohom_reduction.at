@@ -4,6 +4,7 @@
 < hermitian {for is_unitary}
 < to_ht {for is_unitary_to_ht}
 < FPP_facets {for herm_center}
+< weak_packets {for unipotent_representations}
 {placed in hermitian.at, where it belongs.}
 {
 {take a KTypePol _apparently_ attached to G and make it _actually_ attached
@@ -89,6 +90,13 @@ set radical_delta(InnerClass G) = ratmat:
 	 od)
 
 {projection of torus factor on center}
+set radical_torus_factor(KGBElt x) = ratvec:
+    let tf = torus_factor(x), G = x.real_form
+    in tf - sum(G.rank, for e@i in G.fundamental_coweights
+       	    		do (tf*G.simple_roots[i])*e
+			od)
+			
+{projection of torus factor on center}
 set radical_torus_factor(RealForm G) = ratvec:
     let tf = torus_factor(KGB(G,0))
     in tf - sum(G.rank, for e@i in G.fundamental_coweights
@@ -145,16 +153,15 @@ set glued_thetas([mat] thetas, RealForm G) = mat:
 	      od
     in ratmat_as_mat(theta)
 
-{invert derived_torus_factors: given a torus factor tfs,
- construct torus factor tf for G}
+{should add a radical_torus_factor from glued_thetas}
+{invert derived_torus_factors: given torus factor tfs on each derived
+simple factor, and central part rf, construct torus factor tf for G}
 set glued_tfs([ratvec] tfs, RealForm G) = ratvec:
     let DSFs = derived_simple_factors(G)
     then MNs = derived_infos(G)
-    then tf = radical_torus_factor(G)
-    then () = for (M,)@j in MNs
-    	      do tf := tf + ^M*tfs[j]
-	      od
-    in tf
+    in sum(G.rank, for (M,)@j in MNs
+    	      	   do ^M*tfs[j]
+	      	   od)
 
 {invert descents: given a rational weights gamma,
  on each derived simple factor, construct rational weight gamma for G}
@@ -164,13 +171,40 @@ set glued_gammas([ratvec] gammas, RealForm G) = ratvec:
     in sum(G.rank, for (,Nrat)@j in MNrats
        		   do Nrat*gammas[j]
 		   od)
+
+{M  mxn integral matrix
+ N  mxr integral matrix
+ D int; want a solution with denominator D; assume D*v is a ratvec
+ v= rational vector size m
+ solve: M*w=v mod (Z-span of columns of N)
+  i.e. M(Dw)=Dv modulo the lattice spanned by the columns of DN
+  algorithm:  M##(D*N) is an mx(n+r) matrix
+  solve M##(D*N)*x=Dv in integers
+  #x=r+n
+  x=(x1,x2) #x1=r,#x2=n
+  M##DNx=Mx1+DNx2=v
+  Mx1=Dv-DNx2
+  M(x1/D) = v - Nx2, so x1/D is desired ratvec solution
+  }
+set solve_mod_N(mat M,mat N,ratvec v, int D)=[ratvec]:
+  let Dv = ratvec_as_vec(D*v), DN = D*N
+  then sol=solve((M##DN),Dv)
+  in
+   if any(sol)
+   then [ ratvec_as_vec(M*(sol.requisition)[:n_columns(M)]/D + v)]
+   else []
+   fi
+
+
 {lambdas is one lambdaj for each derived simple factor; assemble into
  lambda for G}
 set glued_lambdas([ratvec] lambdas, RealForm G) = [ratvec]:
     let lr0 = glued_gammas(lambdas,G) - G.rho
     then d = lr0.denom
     then ((,),(Zgens,)) = Z_hat(G)
-    then zs = [vec]: Zgens
+    then N = id_mat(G.rank)
+    in for lr in solve_mod_N(Zgens,N,lr0,2*d) do lr + G.rho od
+    { then zs = [vec]: Zgens
     then B = box(d,#zs)
     in for b in B
        do let lr = ((Zgens*b)/d) + lr0
@@ -178,21 +212,68 @@ set glued_lambdas([ratvec] lambdas, RealForm G) = [ratvec]:
 	     then [lr+G.rho]
 	     else []
 	     fi
+       od.##}
+
+{Doing actual gluing led to lots of difficult details about torus
+factors that I was unable to sort out.
+This version fails in G=GL(2,R), when it is unable to lift KGBElt #1
+of the derived group SL(2,R) to G.}
+set glued_KGBs([KGBElt] xs, RealForm G) = [KGBElt]:
+    let theta = glued_thetas(for x in xs do x.involution od, G)
+    then X = KGB(G)
+    then j0 = first(for j:#X do X[j].involution = theta od)
+    then k0 = first(for k:#X-j0 do X[j0+k].involution != theta od)
+    then () = if k0 = -1 then k0 := #X-j0 fi
+    {X's with correct involution run j0 to j0+k0-1}
+    in for j:k0 from j0
+       do let x = X[j]
+       	  then ys = derived_KGBs(x)
+       	  in if all(for k:#ys do ys[k] = xs[k] od)
+	     then [x]
+	     else []
+	     fi
        od.##
 
 {these KGBElts are not necessarily for G, but rather for some central
 twist of G. Maybe OK just to move to G-KGBElts with same numbers?}
-set glued_KGBs([KGBElt] xs, RealForm G) = KGBElt:
-    KGB_elt(G.root_datum, glued_thetas(for x in xs do x.involution od, G),
-    		glued_tfs(for x in xs do x.torus_factor od, G))
+{set glued_KGBs([mat] thetas, [ratvec] tfs,
+    [KGBElt] xs, RealForm G) = [KGBElt]:
+    let theta = glued_thetas(thetas, G), tf = glued_tfs(tfs,G)
+    then X = KGB(G)
+    then j0 = first(for j:#X  do X[j].involution = theta od)
+    then k0 = first(for k:#X-j0 do X[j0+k].involution != theta od)
+    {X's with correct involution run j0 to j0+k0-1}
+    in for j:k0 from j0 do if KGB_elt(G.root_datum, theta, tf +
+    	      	              radical_torus_factor(X[j])).real_form = G
+		           then [X[j]]
+		    	   else []
+		   	   fi
+		 	od.##}
+
 
 {lift the parameters ps[j] on the derived simple factors to parameters
 on G. Preserves unitarity}
+{FAILS TO LIFT SOME LIFTABLE THINGS, like ds#1 for SL(2,R) to GL(2,R)}
 set ascents([Param] ps, RealForm G) = [Param]:
-    let (,x_num) = %glued_KGBs(for pj in ps do pj.x od,G)
+    let xGs = glued_KGBs(for pj in ps do pj.x od,G)
     then nu = glued_gammas(for pj in ps do pj.nu od, G)
     then lambdas = glued_lambdas(for pj in ps do pj.lambda od, G)
-    in for lambda in lambdas do parameter(G,x_num,lambda,nu) od
+    in for xG in xGs
+       do for lambda in lambdas
+       	  do parameter(xG,lambda,nu)
+	  od
+       od.##
+
+{misses half of unip reps in some Levis in SO(5,5) and SO(4,6)}
+set unipotent_representations2(RealForm G) = [Param]:
+    let DSFs = derived_simple_factors(G)
+    then USFs = for DSF in DSFs do unipotent_representations(DSF) od
+    	 {[[Param]], size #DSFs}
+    then Ubox = box(for USF in USFs do #USF od)
+    then descents = for b in Ubox do for k@j in b do USFs[j][k] od od
+        {long list of [Param]; each [Param] has size #DSFs}
+    in for ps in descents do ascents(ps, G) od.##
+
 
 set weak_support(Param p) = [int]:
     support(p.x)
