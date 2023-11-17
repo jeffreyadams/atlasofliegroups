@@ -174,7 +174,7 @@ set glued_gammas([ratvec] gammas, RealForm G) = ratvec:
 
 {M  mxn integral matrix
  N  mxr integral matrix
- D int; want a solution with denominator D; assume D*v is a ratvec
+ D int; want a solution with denominator D; assume D*v is a vec
  v= rational vector size m
  solve: M*w=v mod (Z-span of columns of N)
   i.e. M(Dw)=Dv modulo the lattice spanned by the columns of DN
