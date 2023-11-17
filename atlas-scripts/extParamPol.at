@@ -258,7 +258,7 @@ set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
    od
 
 set print_extended_character_formula_old(Param p,mat delta) = void:
-   print_extended_character_formula(p,singular_block_of(p),delta)
+   print_extended_character_formula_old(p,singular_block_of(p),delta)
 
 set print_extended_composition_series (Param p,[Param] B,mat delta) = void:
    let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
@@ -462,4 +462,4 @@ set print_extended_character_formula (Param p,[Param] B,mat delta) = void:
    tabulate(data)
 
 set print_extended_character_formula (Param p,mat delta) = void:
-   print_extended_character_formula_old(p,singular_block_of(p),delta)
+   print_extended_character_formula(p,singular_block_of(p),delta)
