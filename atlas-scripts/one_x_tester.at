@@ -17,7 +17,7 @@ set LISTS = [[Param]]: {one for each lambda}
    	     	    ", #Uhash = ", Uhash.size(), new_line)
    in for lambda@j in lambdas
       do let (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd)
-      	 then LIST = local_test_GEO_hash_dumb{one_level}(x,lambda, vd, Lvd, Perm,
+      	 then LIST = local_test_GEO_hash_one_level(x,lambda, vd, Lvd, Perm,
 	      	     			mapAct, LF, pol_hash, Uhash)
 	 then () = prints("time for lambda #",j," = ", lambda,
 	      " was ", print_time_string(elapsed_ms() - lambda_time)) {,
