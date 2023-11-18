@@ -151,6 +151,10 @@ set prefer_to_hts = true
 {. If "true," then print number of invocations of a unitarity test .}
 set test_verbose = true
 
+{. If "true," then print a little info about invocations of a unitarity test .}
+set test_slightly_verbose = true
+
+
 {. If "true," then calculations of unitary reps of a certain LKT
 compute also the unitary deformations of these, with bigger
 LKT's. This is unimportant for calculating say the spherical FPP
@@ -484,7 +488,8 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 		   else []
 		   fi{NEWU}
 	  od.##
-    then () = if test_verbose then prints("tester unitary facets by dim = ",
+    then () = if test_verbose or test_slightly_verbose
+    	      then prints("tester unitary facets by dim = ",
        	       	    		      		      unitary_by_dim);
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
@@ -623,9 +628,16 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
                  then ()= D:=D+1
                  in ()
      	     od
+    then unitary_by_dim = for L in LFDKH do #L od
     {now have unitary facets of all dims}
-     then () = if test_verbose then prints("total number of tests = ",
-                                  unitary_test_counter.use_count()) fi
+     {then () = if test_verbose then prints("total number of tests = ",
+                                  unitary_test_counter.use_count())
+				  fi}
+    then () = if test_verbose or test_slightly_verbose
+    	      then prints("unitary facets by dim = ",
+       	       	    		      		      unitary_by_dim);
+		 prints("number of tests = ",unitary_test_counter.use_count())
+	      fi
      then UParams = [Param]:
           for list@d in LFDKH
           do for v in list
@@ -736,8 +748,12 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
                  in ()
      	     od
     {now have unitary facets of all dims}
-     then () = if test_verbose then prints("total number of tests = ",
-                                  unitary_test_counter.use_count()) fi
+     then unitary_by_dim = for L in LFDKH do #L od
+     then () = if test_verbose or test_slightly_verbose
+    	       then prints("unitary facets by dim = ",
+       	       	    		      		      unitary_by_dim);
+		 prints("number of tests = ",unitary_test_counter.use_count())
+	      fi
      then UParams = [Param]:
           for list@d in LFDKH
           do for v in list
