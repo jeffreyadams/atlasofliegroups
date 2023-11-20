@@ -59,7 +59,7 @@ all(for (c,) in %P do is_int(c) od)
 set Z_ext_param_pol (ExtParam E) = ZExtParamPol:
 let delta=E.delta, p=parameter(E) then
 N=null_module(real_form(p)) in
-if not is_fixed(p,delta) then (N,N,N+p,delta)
+if not is_fixed(delta,p) then (N,N,N+p,delta)
  elif sign(E)=1 then (N+p,N,N,delta)
  else (N,N+p,N,delta)
 fi
@@ -71,13 +71,13 @@ fi
 set Z_ext_param_pol (Param p,int plus_minus_0)=ZExtParamPol:
 let delta=p.real_form.distinguished_involution then
 N=null_module(p) in
-if is_fixed(p,delta) then
+if is_fixed(delta,p) then
  if plus_minus_0=1 then (N+p,N,N,delta)
   elif plus_minus_0=-1 then (N,N+p,N,delta)
   else error("plus_minus_0=0, should be \pm 1")
  fi
 else
- assert(not is_fixed(p,delta), "plus_minus_0=\pm 1, should be 0");
+ assert(not is_fixed(delta,p), "plus_minus_0=\pm 1, should be 0");
  (N,N,N+p,delta)
 fi
 
@@ -154,18 +154,18 @@ set * (ExtParam(ic,,,lambda,theta,,,,,):E,rat r) = ExtParam:
 {useful shorthand}
 set xi(Param p)=mat:distinguished_involution(p.inner_class)
 
-set choose_type(Param p,mat delta)=int: if is_fixed(p,delta) then 1 else 0 fi
+set choose_type(Param p,mat delta)=int: if is_fixed(delta,p) then 1 else 0 fi
 set is_valid_type(Param p, mat delta, int type)=bool:
- (is_fixed(p,delta) and abs(type)=1) or (not is_fixed(p,delta) and type=0) 
+ (is_fixed(delta,p) and abs(type)=1) or (not is_fixed(delta,p) and type=0) 
 
 
 set twisted_coefficient_sum(mat xi,ParamPol P)=(Param->Split):(Param p):
-if is_fixed(p,xi) then P[p] else s_to_1(P[p]+P[xi*p]) fi
+if is_fixed(xi,p) then P[p] else s_to_1(P[p]+P[xi*p]) fi
 
 set twisted_coefficient_sum(mat xi,mat delta,ParamPol P)=(Param->Split):(Param p):
-if is_fixed(p,xi)
+if is_fixed(xi,p)
    then twisted_coefficient_sum(delta,P)(p)
-elif is_fixed(p,delta)
+elif is_fixed(delta,p)
    then twisted_coefficient_sum(delta,P)(p)
 else {not fixed by xi or delta}
    s_to_1(P[p] + P[xi*p] + P[delta*p] + P[xi*delta*p])
@@ -212,7 +212,7 @@ set *(Split s,ExtParamPol(xi,P_plus,P_minus,P_ind,delta))= ExtParamPol:
   (xi,s*P_plus,s*P_minus,s*P_ind,delta)
 
 set Z_ext_param_pol (Param p)=ZExtParamPol:
- if is_fixed(p,p.real_form.distinguished_involution)
+ if is_fixed(p.real_form.distinguished_involution,p)
   then Z_ext_param_pol(p,1)
  else
   Z_ext_param_pol(p,0)
@@ -225,7 +225,7 @@ set Z_ext_param_pol (Param p)=ZExtParamPol:
 }
 set param_pol (ExtParam E) = ParamPol:
 let xi=E.distinguished_involution,p=parameter(E) in
-if not is_fixed(p,xi) then one_plus_twist(p,xi)
+if not is_fixed(xi,p) then one_plus_twist(p,xi)
  elif sign(E)=1 then p
  else s*p
 fi
@@ -274,9 +274,6 @@ set show (ExtParamPol(xi,A,B,C,delta)) = void:
   prints("induced:");
   pretty_print_with_spaces(C,2)
 set show (ZExtParamPol P)=void:show(ext_param_pol(P))
-
-set print_extended_character_formula_naive(Param p, mat delta)=show(extended_character_formula_naive(p,delta))
-set print_extended_character_formula(Param p, mat delta)=show(extended_character_formula(p,delta))
 
 
 
@@ -331,7 +328,7 @@ set change_nu (Param p, rat factor, int type) = ExtParamPol:
  {although p is not delta-fixed, it may be when nu is varied, this
   is always the case if factor=0
   then replace (N,N,q) with (q,q,N)}
-  in if is_fixed(q,delta) then rv:=(delta,q,q,N,delta) else rv:=(delta,N,N,q,delta) fi
+  in if is_fixed(delta,q) then rv:=(delta,q,q,N,delta) else rv:=(delta,N,N,q,delta) fi
   else
      let P=finalize_extended(p*factor,delta)
   in for c@q in P
@@ -346,7 +343,7 @@ plus=null_module(P.real_form) then
 minus=null_module(P.real_form) then
 ind=null_module(P.real_form) then
 ()=for c@p in P do
- if is_fixed(p,delta) then
+ if is_fixed(delta,p) then
   plus+:=int_part(c)*p;
   minus+:=s_part(c)*p
  else
@@ -376,6 +373,7 @@ else
   {  then P_mat=
      top_left_square_block
       (calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) }
+{   then (,polys)=big_KL_P_signed_polynomials_at_minus_one(p,delta)}
    then (,polys)=big_KL_P_signed_polynomials_at_minus_one(p,delta)
    then P_mat =
      top_left_square_block(polys,nB)
@@ -426,7 +424,7 @@ then
       ;  let at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
 	 for factor in reducibility_points(p)
 	~do let (pf,flipped) = { next deformation }
-	       if is_fixed(p,delta)
+	       if is_fixed(delta,p)
 	       then scale_extended(p,delta,factor)
 	       else (p*factor,false)
 	       fi
@@ -448,7 +446,7 @@ then
          let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
          for factor in reducibility_points(p)
         ~do let (pf,flipped) =  { next deformation }
-               if is_fixed(p,delta)
+               if is_fixed(delta,p)
                then scale_extended(p,delta,factor)
                else (p*factor,false)
                fi
@@ -482,7 +480,7 @@ set deform (ExtParam E, mat delta) = ExtParamPol:
 =======
 {P =sum a_i p_i, keep each delta-fixed p_i, and one of the two pairs interchanged by delta}
 set twisted_orbit_reps(ParamPol P,mat delta)=ParamPol:
-assert(is_fixed(P,delta),"P is not delta-fixed");
+assert(is_fixed(delta,p),"P is not delta-fixed");
 let monomials=[Param]:[] in
 for c@p in P do
  let f=find(monomials,twist(p,delta)) in
@@ -492,7 +490,7 @@ null_module(P.real_form) + for p in monomials do P[p]*p od
 
 set fixed_terms(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in 
- for c@p in P do if is_fixed(p,delta) then rv+:=c*p fi od;
+ for c@p in P do if is_fixed(delta,p) then rv+:=c*p fi od;
 rv
 
 set non_fixed_terms(ParamPol P, mat delta)=ParamPol:P-fixed_terms(P,delta)
@@ -510,7 +508,7 @@ set convert_to_param_pol(ExtParamPol E)=ParamPol:
 let (,P,Q,R,)=E in P-Q
 
 set finalize_extended_s(Param p, mat delta)=ParamPol:
-if is_fixed(p,delta) then
+if is_fixed(delta,p) then
  finalize_extended(p,delta) + non_fixed_terms(finalize(p),delta)
 else
  (1+s)*fixed_terms(finalize(p),delta) + non_fixed_terms(finalize(p),delta)
@@ -587,7 +585,7 @@ set print_extended_character_formula_old (Param p,[Param] B,mat delta) = void:
    ()=prints("number of complete indices: ", #complete_indices) then
    ()=prints("index of parameter in complete indices: ", index) then
    ()=prints("complete index: ", complete_indices[index]) then
-   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in matrix",new_line) then
+   ()=prints("(i,c): i=number of parameter; c=\pm 1,0 (extension; 0 <-> non-fixed not shown)",new_line,"m: entry in mbbatrix",new_line) then
    data=[["(i,c)","m","c*m","c*m*p"]] in
    for i:#complete_indices
    do let f=eval(P[i][index],s) then
@@ -842,7 +840,7 @@ set reduce (ExtParamPol(plus,minus,ind)) = ParamPol: plus+s*minus
 set extended_s_to_1(ParamPol P,mat delta)=ParamPol:
 let rv=null_module(P.real_form) in
  for c@p in P do
-  if is_fixed(p,delta)
+  if is_fixed(delta,p)
    then rv+:=c*p
   else
    rv+:=c*(p + twist(p,delta))

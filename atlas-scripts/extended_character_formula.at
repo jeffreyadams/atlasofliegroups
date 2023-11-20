@@ -61,7 +61,8 @@ index=find(complete_indices,(find(B,p),1)) in
   for (j,type)@i in complete_indices do
 {   let ()=prints("j,type,i=", j ," ", type, " ", i) in}
 {   let c=eval(P[i][index],s) in {key point here: evaluate at q=1}}
-   let c=eval(P[i][index],1) in
+
+{   let c=eval(P[i][index],1) in
     if !=c then
      if type=1 then {prints("plus", "j=",j, "c=",c);}plus+:=c*B[j]
        elif type=-1 then {prints("minus", "j=",j, "c=",c);}minus+:= c*B[j]
@@ -69,6 +70,20 @@ index=find(complete_indices,(find(B,p),1)) in
        else error("c\ne 0,\pm 1")
      fi
     fi
+
+}  
+    let (a,b)=%eval(P[i][index],s) in
+    let ()=prints("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") in 
+    if !=c then
+     if type=1 then
+       plus+:=a*B[j]; minus+:=b*B[j]
+     elif type=-1 then
+       plus+:=b*B[j]; minus+:=a*B[j]
+     elif type=0 then
+       ind+:=(a+b)*B[j]
+     fi
+    fi
+
   od;
   let rv=(plus,minus,ind,delta) in
   assert(is_ZExtParamPol(rv),"Not a ZExtParamPol");rv
