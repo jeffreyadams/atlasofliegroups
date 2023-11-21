@@ -196,6 +196,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     then old_facet_verbose = facet_verbose, old_time_verbose = time_verbose
     then () = time_verbose:=false
     then () = test_verbose:=false
+    then () = test_slightly_verbose:=false
     then () = facet_verbose:=false
     then () = deform_flag :=true
     then () = unipotents_to_hash(G,Uhash)
@@ -231,9 +232,9 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	      	      then prints("  working on ",k,"th dlambda out of ",
 		      	   	     #FPPbig)
 	    	      fi;
-		      for tau@j in twists
-	      	      do if old_facet_verbose and j%4 = 0
-	      	      	 then prints("  working on ",j,"th twist out of ",
+		      for tau@k in twists
+	      	      do if old_facet_verbose and k%4 = 0
+	      	      	 then prints("  working on ",k,"th twist out of ",
 		      	   	     #twists)
 			 fi;
 		      local(x, lambda0+tau, vd, Lvd, Perm, mapAct, LF,
