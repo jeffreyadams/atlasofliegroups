@@ -25,7 +25,7 @@ set chop_bound = int: 6
 set coh_ind_flag = true
 
 {if true, pass through KGB backwards}
-set tilde_flag = false
+set tilde_flag = true
 {next functions aim to compute FULL spherical dual in non-split case,
 when several different x give spherical reps}
 
@@ -82,7 +82,8 @@ set all_FPP_vertices(RootDatum G) = [ratvec]:
 	  od
        od.##
        esac
-
+       
+{not used?
 {each term is a candidate lambda0 (mod comp gp char twists) and the
 corresponding Lvd, Perm, mapAct}
 set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
@@ -119,6 +120,7 @@ set FPP_lambdas_big(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 		 fi
 	      esac
 	  od.##
+}
 
 {each term is a candidate lambda0 (mod comp gp char twists) and the
 corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
@@ -237,8 +239,15 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	      	      	 then prints("  working on ",k,"th twist out of ",
 		      	   	     #twists)
 			 fi;
-		      local(x, lambda0+tau, vd, Lvd, Perm, mapAct, LF,
-		      	 	  pol_hash, Uhash)
+		      local(x, lambda0+tau, vd, Lvd, Perm, mapAct, {LF,}
+		      	       for L@d in LF
+		   	       do for v in L do if is_pos_on_LKTs(parameter(x,
+			       lambda0+tau, facet_bary(Lvd.list,v[:d+1])))
+				    then [v]
+				    else []
+				    fi
+				  od.##
+		   	       od,  pol_hash, Uhash)
 		      od
 		   od
 	   then () = current := elapsed_ms()
