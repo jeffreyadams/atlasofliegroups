@@ -1,0 +1,32 @@
+< FPP_globalDirac.at
+
+set G=E7_s
+test_slightly_verbose:=true
+test_verbose:=false
+deform_flag:=false
+time_verbose:=false
+set start_time = elapsed_ms()
+set KGB_time = start_time, lambda_time = start_time
+set vd = FPP_vertex_data(G)
+set Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash()
+unipotents_to_hash(G,Uhash)
+set x = x_open(G)
+set LISTS = [[Param]]: {one for each lambda}
+   let lambdas = FPP_lambdas(x)
+   then () = prints("At ",x,", number of lambdas is ",#lambdas,
+   	     	    ", #Uhash = ", Uhash.size(), new_line)
+   in for lambda@j in lambdas
+      do let (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd)
+      	 then LIST = local_test_GEO_hash_one_level(x,lambda, vd, Lvd, Perm,
+	      	     			mapAct, LF, pol_hash, Uhash)
+	 then () = prints("time for lambda #",j," = ", lambda,
+	      " was ", print_time_string(elapsed_ms() - lambda_time)) {,
+	     " #Lvd = ", #Lvd.list, ", #O and 1 facets = ",
+      	 		for list in LF do #list od)};
+      	      prints("#LIST = ", #LIST, ", #Uhash = ",Uhash.size(),
+	      	     "; time so far = ",
+      		     print_time_string(elapsed_ms() - KGB_time), new_line)
+	 then () = lambda_time := elapsed_ms()
+    	 in LIST
+      od
+

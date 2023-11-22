@@ -1,12 +1,14 @@
 <Dirac
 <dirac_index
 <finite_dimensional
+<basic {for is_equal_rank}
 
 {Aim in equal rank case to tell whether a unitary rep has
 nonzero Dirac cohomology, and what it is??}
 
 set gammaKs(RealForm G, RealForm K0, ratvec gamma) = [ratvec]:
-       for w in W(G)
+    let () = assert(is_equal_rank(G),"gammaKs works only for G equal rank")
+    in for w in W(G)
        do if not (is_dominant(K0, w*gamma - K0.rho))
        	  then []
 	  else [w*gamma - K0.rho]
@@ -20,6 +22,8 @@ use KGB(G, 2^n - 1).)}
 
 set DiracCohContributions(ratvec gamma, KGBElt x) = [[(int,KType)]]:
     let K0 = K_0(x) {identity component of K}, G = x.real_form
+    then () = assert(is_equal_rank(G),
+    	"DiracCohContributions works only for G equal rank")
     then () = if not is_integer(gamma - G.rho)
     	      then return []
 	      fi
@@ -73,6 +77,7 @@ set DiracCohContributions(ratvec gamma, RealForm G) = [[(int,KType)]]:
 {ratvec's are highest weights of K0tilde types; ints are multiplicities}
 set dirac_cohomology(Param p, KGBElt x) = [(int, ratvec)]:
     let gamma = p.infinitesimal_character, G = p.real_form
+    then () = assert(is_equal_rank(G),"dirac_cohomology works only for G equal rank")
     then K0 = K_0(x)
     then gammaKtildes = gammaKs(G,K0,gamma)
     then mulists = DiracCohContributions(gamma,G)
