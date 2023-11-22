@@ -1914,7 +1914,7 @@ making this a class template with a Boolean template argument |variadic|. This
 is necessary because operator casts make it possible to use specialisations
 of variadic functions as function values (of the correspondingly specialised
 type), so they can occur not only in overloaded calls, but in any place that
-other built-in of user-defined functions can.
+other built-in or user-defined functions can.
 
 As another supplementary information, we store an indication of whether this
 built-in function wants to produce its result by modifying one of its arguments;
@@ -6653,16 +6653,15 @@ different wrapper functions.
 Syntactically there is hardly anything simpler than simple assignment
 statements. However, semantically we distinguish assignments to local and to
 global variables. Then there are ``component assignments'' which modify
-repetitive values like row values by changing one component; these too will
-distinguish local and global versions. Finally, while not present in the
-initial language design, a multiple assignment statement was added to the
-language that can take apart tuple components, just as can be done in
-definitions of new (global or local) variables. As these can mix local and
-global destinations, we will introduce a separate expression type for these
-somewhat more expensive assignments. We retain the following intermediate
-class for all assignment statements except multiple assignments (the latter
-will derive directly from |expression_base|), as it allows to avoid a bit of
-code duplication.
+repetitive values like row values by changing just one component; these too will
+distinguish local and global versions. Finally, while not present in the initial
+language design, a multiple assignment statement was added to the language that
+can take apart tuple components, just as can be done in definitions of new
+(global or local) variables. As these can mix local and global destinations, we
+will introduce a separate expression type for these somewhat more expensive
+assignments. We retain the following intermediate class for all assignment
+statements except multiple assignments (the latter will derive directly from
+|expression_base|), as it allows to avoid a bit of code duplication.
 
 @< Type definitions @>=
 struct assignment_expr : public expression_base
@@ -7010,7 +7009,7 @@ variable upon evaluation, as it our goal here. An alternative would be to
 explicitly ignore the |const|ness by assigning to
 |*const_cast<expression_ptr*>(&c)|; since such actions are frowned upon we shall
 not do so here, but in the next module where the necessary reconstruction
-efforts would be more elaborate, we shall prefer to cheat.
+efforts would be even more elaborate, we shall prefer to cheat.
 
 @< See if |rhs->argument| is the variable |lhs|, and if so...@>=
 { const expression_ptr& c = rhs->argument;
@@ -7348,12 +7347,16 @@ global_field_assignment::global_field_assignment @|
 : field_assignment(a,pos,std::move(r))
 , address(global_id_table->address_of(a)) @+{}
 
-@ It is in evaluation that component assignments differ most from ordinary
-ones. The work is delegated to the |assign| method of the base class, which is
-given a reference to the |shared_value| pointer holding the current value of
-the aggregate; it is this pointer that is in principle modified. Like when
-fetching the value of a global variable, we must be aware of a possible
-undefined value in the variable.
+@ It is in evaluation that component assignments differ most from ordinary ones.
+The work is delegated to the |assign| method of the base class, which is given a
+reference to the |shared_value| pointer holding the current value of the
+aggregate; it is this pointer that is in principle modified. In the templated
+context of |global_component_assignment::evaluate|, the base class must be
+explicitly mentioned using the local type name |base| when calling its |assign|
+method; while |global_field_assignment::evaluate| is also calling a method of
+that name from its base class, no local type name is needed (nor is it defined)
+in this case. Like when fetching the value of a global variable, we must be
+aware of a possible undefined value in the variable.
 
 @< Function def... @>=
 template <bool reversed>
@@ -7375,7 +7378,7 @@ void global_field_assignment::evaluate(expression_base::level l) const
       << main_hash_table->name_of(this->lhs);
     throw runtime_error(o.str());
   }
-  assign(l,*address);
+  assign(l,*address); // call method from base class (not called |base| here)
 }
 
 @ The |assign| method, which will also be called for local component
