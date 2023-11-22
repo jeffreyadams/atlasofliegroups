@@ -5,6 +5,8 @@
 <extended_misc.at   { basics: defines type |ExtParam|, |canonical_g| }
 <extended_types.at  { for |ext_type@(int,ExtParam)| }
 
+set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
+
 {       references:
   Parameters for Twisted Representations (Adams/Vogan)
   Extended Parameters in Atlas (Adams)
@@ -96,7 +98,7 @@
 set E (mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda) =
   ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
-  assert(is_fixed(delta,x),"x is not fixed by delta")
+  assert(is_fixed(x,delta),"x is not fixed by delta")
 ; assert(is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
 ; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
@@ -129,8 +131,8 @@ set E (mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt_gen y) =
   ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
   assert(dual(ic)=inner_class(y),"inner classes are not dual")
-; assert(is_fixed(delta,x),"x is not fixed by delta")
-; assert(is_fixed(^delta,y),"y is not fixed by ^delta")
+; assert(is_fixed(x,delta),"x is not fixed by delta")
+; assert(is_fixed(y,^delta),"y is not fixed by ^delta")
 ; assert(=(square(y)-gamma)%1 { difference should be in X^* }
         ,"y is not compatible with infinitesimal character gamma")
 ; assert(=(square(x)-g)%1
@@ -273,7 +275,7 @@ begin
   fi
 ; for p@i in B
   do
-    if is_fixed(delta,p)
+    if is_fixed(p,delta)
     then let types="" in
       for s:ss_rank(id) do types+:=" "+ext_type(delta,s,p) od
     ; prints(i, " ", types, ": ", p)

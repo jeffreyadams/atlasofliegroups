@@ -14,6 +14,7 @@ set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 { int_part and s_part of a ParamPol, s.t. P=int_part(P)+s*s_part(P) }
 set int_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.int_part,p) od
 set s_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.s_part,p) od
+set is_int(Split z)=bool: =s_part(z)
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
@@ -33,7 +34,7 @@ set finalize ([Param] P) = ParamPol: { will fail on an empty list }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
-set  #(ParamPol P,int t)= ParamPol: { with integer coefficients }
+set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
   null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
 {properties of groups}
@@ -45,7 +46,7 @@ set in_distinguished_fiber (KGBElt x) = bool:
 
 set distinguished_fiber (RealForm G) = [KGBElt]:
   for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
-
+  
 set ss_rank (RootDatum rd) = semisimple_rank(rd)
 
 set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
@@ -197,4 +198,7 @@ set simple_root_summand(RootDatum rd,vec alpha)=vec:
 if is_posroot(rd,alpha) then 
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else 
 let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]<0 od) in -simple_roots(rd)[i] fi
+
+{convenient shorthand}
+set pr([Param] B)=void:for p@i in B do prints(i, " ", p) od
 
