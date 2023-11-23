@@ -509,8 +509,8 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
 set hash_dumbCounter = make_counter()
 set hash_def_dumbCounter = make_counter()
 
-{Assume we have local vertices and edges LF. Called when there are not enough heights;
-presumably small KGBElts??}
+{Assume we have local vertices and edges LF, herm and pos on LKTs.
+Called when there are not enough heights; presumably small KGBElts??}
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
@@ -623,14 +623,12 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
 {How many steps to use in is_unitary_def_test(p, steps) in def_dumb}
 set def_steps = -1
 
-{Assume we have local vertices and edges LF. Use is_unitary_def_test(p, (G.rank + 1)\2}
+{Assume we have local vertices and edges LF, herm and pos on LKTs and Dirac
+	Use is_unitary_def_test(p, (G.rank + 1)\2}
 set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1, start = elapsed_ms()
-    then () = if Dirac_flag
-    	      then LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
-	      fi
     then () = if #LF[0] = 0 then return [] fi
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
@@ -736,6 +734,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
 	      " for UParams calculation ") fi
    in UParams
 
+{assume LF is verts and edges, herm and pos on LKTs and Dirac?}
 set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
     vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     if def_flag
@@ -788,7 +787,8 @@ set vert_diff_cutoff = int: 10
 
 set hashCounter = make_counter()
 
-{assume we've already got hts, #hts >= 1, imposed Dirac, and decided not to use _dumb}
+{assume we've already got hts, #hts >= 1, imposed Dirac, and decided not to use _dumb
+Assume LF is vertices and edges, already pos on LKTs and hermitian and Dirac}
 set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, [int] hts, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
@@ -845,12 +845,11 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     then () = long_out_flag := long_out_temp_flag
     in local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
 
-{Assume we have local vertices and edges LF}
+{Assume we have local vertices and edges LF, already herm, Dirac, pos on LKTs}
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
     let (G,j0) = %x, thetaMinus = x.involution - 1
-    then () = LF := localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
     then () = if {EMPTY CASE} #LF[0] = 0 then return [] fi
     then () = if {TINY CASE} #LF[0]=1
     	      then let p = parameter(x,lambda,Lvd.list[LF[0][0][0]])
@@ -896,8 +895,7 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od]
-    then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF)
+    let LF = localFD_1Dirac(x, lambda, vd, Lvd, Perm, mapAct)
     in local_test_GEO_hash(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -915,7 +913,6 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 
 set hash2Counter = make_counter()
 
-{assume 0 and 1 facets already calculated}
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
     vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
@@ -1277,9 +1274,10 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, Vertex
 
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    {let G = x.real_form, thetaMinus = x.involution - 1}
-    let (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd) {computes localFD_000 for verts, then localFD_1 for edges}
-    then () = LF:=localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac, herm, pos on LKTs}
+    let (Lvd, Perm, mapAct, LF) = localFD_01(x,lambda,vd)
+    	{computes localFD_000 for verts, then localFD_1 for edges}
+    then () = LF:=localFD_01Dirac(x, lambda, vd, Lvd, Perm, mapAct, LF)
+    	{impose Dirac, herm, pos on LKTs}
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
 set local_test_GEO_one_level(KGBElt x, ratvec lambda) = [Param]:
