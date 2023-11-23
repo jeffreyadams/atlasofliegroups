@@ -721,6 +721,20 @@ set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim,
     [FacetVertsIndex]:
     FPP_facets(Affd, to_vertex_data(vlist), dim, j)
 
+{global facets of dimensions zero to three, for use in local edge calculations}
+set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
+    if G.semisimple_rank = 0 then []
+    else let (Affd, M, j0) = cofolded(G)
+    	 then Avlist = FPP_vertices(Affd, j0)
+    	 then Avd = Avlist.to_vertex_data
+    	 in [[vec]]: [[vec]: for k:#Avlist do [k] od] ##
+       	    for d:3 from 1
+       	    do if d < Affd.semisimple_rank+1 then FPP_facets(Affd, Avd, d, j0)
+	       else []
+	       fi
+	    od
+    fi
+
 { m is a class known to be nonunitary; update classes above using
 graph; label as "Ffrom"##tail}
 { first list in toDo all n covering m; then what covers those...
@@ -1050,7 +1064,7 @@ set localFD_KHash1 \
     fi;
     let G = x.real_form
     then (Affd, M, j0) = cofolded(G)
-    then top = int: if any(for j:#Perm do Perm[j] > j od) then 4 else 1 fi
+    then top = int: if any(for j:#Perm do Perm[j] > j od) then 3 else 1 fi
     then Edges = [vec]:
     	       for dim:top from 1
     	       do [vec]:
@@ -1083,7 +1097,7 @@ set localFD_KHash1 \
 			       in if #actual = 2 then [actual] else [] fi
 			    od.## {list of edges from FV}
 			od.## {list of edges from dim FPP facets}
-		 od.## {list of edges from dims 1-4}
+		 od.## {list of edges from dims 1-3}
     then LFKH1 = [FacetVertsKHash]:
     	 for actual in Edges
 	 do let bary = facet_bary(Lvd.list,actual)
@@ -1115,7 +1129,7 @@ set localFD_1\
     fi;
     let start = elapsed_ms(), G = x.real_form
     then (Affd, M, j0) = cofolded(G)
-    then top = int: if any(for j:#Perm do Perm[j] > j od) then 4 else 1 fi
+    then top = int: if any(for j:#Perm do Perm[j] > j od) then 3 else 1 fi
     then Edges = [vec]:
     	       for dim:top from 1
     	       do [vec]:
@@ -1148,7 +1162,7 @@ set localFD_1\
 			       in if #actual = 2 then [actual] else [] fi
 			    od.## {list of edges from FV}
 			od.## {list of edges from dim FPP facets}
-		 od.## {list of edges from dims 1-4}
+		 od.## {list of edges from dims 1-3}
     then answer = sort(G, Lvd, LF#Edges, 0)
     in if(facet_verbose) then prints("After localFD_1, facet counts are [",#LF[0],
     		      	   	  ",",#Edges,"]") fi;
@@ -1171,7 +1185,7 @@ set localFD_01 \
 set localFD_01Dirac\
   ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
   vec mapAct, [[FacetVertsIndex]] LF) = [[FacetVertsIndex]]:
-(   assert(#LF = 2,"localFD_01 takes only vertex and edge list");
+(   assert(#LF = 2,"localFD_01Dirac takes only vertex and edge list");
     if facet_verbose
     then prints(new_line,"start localFD_01Dirac")
     fi;
@@ -1209,6 +1223,146 @@ set localFD_01Dirac\
     		      	   	  ",",#LF[1],"]") fi;
        if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
        			     		  " for localFD_01Dirac") fi;
+       answer
+ )
+
+{takes local data and computes vertices and edges, imposing hermitian,
+pos on LKTs, and Dirac}
+set localFD_1Dirac\
+  ( KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
+  vec mapAct) = [[FacetVertsIndex]]:
+(   if facet_verbose
+    then prints(new_line,"start localFD_1Dirac")
+    fi;
+    let G = x.real_form, start = elapsed_ms()
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then LF0 = [FacetVertsIndex]:
+    	 for v@j in Lvd.list
+	 do let p = parameter(x,lambda,v)
+	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
+	       (Dirac_flag and Q(v, v)> DiracBD)
+	    then []
+	    else [[j]]
+	    fi
+	 od.##
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then (Affd, M, j0) = cofolded(G)
+    then top = int: if any(for j:#Perm do Perm[j] > j od) then 3 else 1 fi
+    then Edges = [vec]:
+    	       for dim:top from 1
+    	       do [vec]:
+	       	  let facets = [FacetVerts]: facets_fundamental(Affd,dim)
+    	 	  in for FV@k in facets
+		     do [vec]:
+		     	let bary_F =FacetBary: sum(Affd.rank,FV)/(dim+1)
+			then aff_short_list = FPP_w_shifts(Affd,bary_F,j0)
+	       	 	then aff_list = [AffineCoWeylElt]:
+	       	    	     for (w,taus) in aff_short_list
+	       	    	     do for tau in taus do (tau,w) od
+			     od.##
+	       	 	in for wtilde in aff_list
+	       	    	   do let (tau,w) = wtilde
+		       	      then global = vec:
+				   for v in wtilde*FV
+		       	    	   do (vd.lookup)(M*v)
+				   od.sort {indices into FPP vertex list}
+			      then local = for ell in global do Perm[ell] od
+				     	  	  {indices into Lvd list}
+			      then actual = vec:
+				   if local.>= and
+				      is_subset(local,global) and
+				      none(for i in global do mapAct[i] < 0 od)
+			    	   then for i in global
+			    	 	   do mapAct[i]
+				 	   od.sort_u
+			    		   else []
+			    	      fi
+			       in if #actual = 2 then [actual] else [] fi
+			    od.## {list of edges from FV}
+			od.## {list of edges from dim FPP facets}
+		 od.## {list of edges from dims 1-3}
+    then LF1 = [FacetVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
+	    in  if all(for k in v do Llookup(k) od) and
+	       	   all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    then [v]
+	    else []
+	    fi
+	 od.##
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    in if(facet_verbose) then prints("After localFD_1Dirac, facet counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac") fi;
+       answer
+ )
+
+{takes local data and global 0 to 3 facets and computes vertices and edges, imposing hermitian,
+pos on LKTs, and Dirac}
+set localFD_1Dirac\
+  ( KGBElt x, ratvec lambda, VertexData Lvd, vec Perm, vec mapAct,
+    [[FacetVertsIndex]] globalFacets) = [[FacetVertsIndex]]:
+(   if facet_verbose
+    then prints(new_line,"start localFD_1Dirac")
+    fi;
+    let G = x.real_form, start = elapsed_ms()
+    then Q = (ratvec,ratvec->rat): (ratvec v, ratvec w) rat: 0/1
+    then DiracBD = 0/1
+    then () = if Dirac_flag
+    	      then let () = DiracBD := DiracBD(x,lambda)
+	      	   then () = Q:=invariant_form(G)
+	      	   in ()
+	      fi
+    then LF0 = [FacetVertsIndex]:
+    	 for v@j in Lvd.list
+	 do let p = parameter(x,lambda,v)
+	    in if any(for q in monomials(finalize(p)) do not is_pos_on_LKTs(q) od) or
+	       (Dirac_flag and Q(v, v)> DiracBD)
+	    then []
+	    else [[j]]
+	    fi
+	 od.##
+    then Llookup = is_member_sorted((for v in LF0 do v[0] od))
+    then (Affd, M, j0) = cofolded(G)
+    then top = int: if any(for j:#Perm do Perm[j] > j od) then 3 else 1 fi
+    then Edges = [vec]:
+    	       for dim:top from 1
+    	       do [vec]: for global in globalFacets[dim]
+	       	  	 do let local = for ell in global do Perm[ell] od
+				     	  	  {indices into Lvd list}
+			    then actual = vec:
+				 if local.>= and
+				    is_subset(local,global) and
+				    none(for i in global do mapAct[i] < 0 od)
+			    	 then for i in global
+			    	      do mapAct[i]
+				      od.sort_u
+			    	 else []
+			    	 fi
+			     in if #actual = 2 then [actual] else [] fi
+			 od.## {list of edges from dim global facets}
+		 od.## {list of edges from dims 1-3}
+    then LF1 = [FacetVertsIndex]:
+    	 for v in Edges
+	 do let p = parameter(x,lambda,facet_bary(Lvd.list, v))
+	    in  if all(for k in v do Llookup(k) od) and
+	       	   all(for q in monomials(p) do is_pos_on_LKTs(q) od)
+	    then [v]
+	    else []
+	    fi
+	 od.##
+    then answer = sort(G, Lvd, [LF0]##[LF1], 0)
+    in if(facet_verbose) then prints("After localFD_1Dirac, facet counts are [",#LF0,
+    		      	   	  ",",#LF1,"]") fi;
+       if(time_verbose) then prints("     ",print_time_string(elapsed_ms() - start),
+       			     		  " for localFD_1Dirac") fi;
        answer
  )
 

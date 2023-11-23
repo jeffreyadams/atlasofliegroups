@@ -759,6 +759,14 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     {imposes Dirac}
     in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
+set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
+    vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
+    let DiracBD = DiracBD(x,lambda), G=x.real_form
+    then rhocheck = G.rho_check
+    then LF = [[FacetVertsIndex]]: localFD_1Dirac(x, lambda, Lvd, Perm, mapAct, global_facets)
+    {imposes Dirac, herm, pos on LKTs for vertices and edges}
+    in local_test_GEO_hash_dumb(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
+
 set local_test_GEO_dumb(KGBElt x, ratvec lambda) =
     [Param]:
     let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
@@ -892,6 +900,11 @@ set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
     then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF)
     in local_test_GEO_hash(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
+set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
+    vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
+    let LF = [[FacetVertsIndex]]: localFD_1Dirac(x,lambda, Lvd, Perm, mapAct, global_facets)
+    in local_test_GEO_hash(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
+
 set local_test_GEO(KGBElt x, ratvec lambda) =
     [Param]:
     let Uhash = make_Param_hash(), G = x.real_form, pol_hash = make_KTypePol_hash()
@@ -903,8 +916,7 @@ set local_test_GEO(KGBElt x, ratvec lambda) =
 set hash2Counter = make_counter()
 
 {assume 0 and 1 facets already calculated}
-
-{This version assumes edges and vertices already computed; called by one_level}
+{This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
     vec mapAct, [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let G = x.real_form, thetaMinus = x.involution - 1
@@ -999,8 +1011,14 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
     vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
     let LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od]
-    then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac}
+    then () = LF:=localFD_1(x,lambda, vd, Lvd, Perm, mapAct, LF) {impose Dirac, pos on LKTs}
     in local_test_GEO_hash2(x, lambda, vd, Lvd, Perm, mapAct,LF, pol_hash, Uhash)
+
+{Compute 0 and 1 facets, ensuring hermitian, pos on LKTs, pass to previous}
+set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
+    vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
+    let LF = [[FacetVertsIndex]]: localFD_1Dirac(x, lambda, Lvd, Perm, mapAct, global_facets)
+    in local_test_GEO_hash2(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
 
 set local_test_GEO2(KGBElt x, ratvec lambda) = [Param]:
     let Uhash = make_Param_hash(), pol_hash = make_KTypePol_hash(), G = x.real_form
@@ -1249,6 +1267,13 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, Vertex
     then LF = [[FacetVertsIndex]]: [for k:#Lvd.list do [k] od] {0-facets only}
     then () = LF:=localFD_1(x,lambda, vd,Lvd, Perm, mapAct, LF) {impose Dirac}
     in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
+
+set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
+    vec Perm, vec mapAct, KTypePol_hash pol_hash, Param_hash Uhash, [[FacetVertsIndex]] global_facets) = [Param]:
+    let G = x.real_form, thetaMinus = x.involution - 1
+    then LF = [[FacetVertsIndex]]: localFD_1Dirac(x,lambda, Lvd, Perm, mapAct, global_facets)
+    in local_test_GEO_hash_one_level(x, lambda, vd, Lvd, Perm, mapAct, LF, pol_hash, Uhash)
+
 
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
