@@ -727,6 +727,9 @@ set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
     else let (Affd, M, j0) = cofolded(G)
     	 then Avlist = FPP_vertices(Affd, j0)
     	 then Avd = Avlist.to_vertex_data
+	 then () = if facet_verbose
+	      	   then prints("start low_FPP_facets")
+	           fi
     	 in [[vec]]: [[vec]: for k:#Avlist do [k] od] ##
        	    for d:3 from 1
        	    do if d < Affd.semisimple_rank+1 then FPP_facets(Affd, Avd, d, j0)
@@ -806,15 +809,25 @@ set local_vertices(Param p, VertexData vd, VertexData Lvd, vec Perm) = FacetVert
     then () = assert(perm.>=,"p appears not to be a hermitian parameter")
     in for v@j in list do (v + vd.list[perm[j]])/2 od.no_reps
 
+{computes the full vertices of the facet containing a delta-fixed dom
+ ratl weight gamma}
+set local_vertices(RealForm G, ratvec gamma) = FacetVerts:
+    if is_equal_rank(G) then facet_verts(G, gamma)
+    else let (Affd,M,j0) = cofolded(G)
+    	 then gamma0 = solve(M,gamma).requisition
+    	 in M*facet_verts(Affd, gamma0)
+    fi
+
 {compute the vertices of the local facet containing the HERMITIAN parameter p}
 set local_vertices(Param p) = FacetVerts:
     let G = p.real_form, gamma = p.infinitesimal_character
-    then list = [ratvec]:
+    then list = local_vertices(G, gamma)
+{    [ratvec]:
     	 if is_equal_rank(G) then facet_verts(G, gamma)
     	 else let (Affd,M,j0) = cofolded(G)
     	      then gamma0 = solve(M,gamma).requisition
     	      in M*facet_verts(Affd, gamma0)
-	 fi
+	 fi}
     then vd = to_vertex_data(list), x = p.x, lambda = p.lambda
     then Perm = thetaAct(x,lambda,vd)
     then () = assert(Perm.>=,"p appears not to be a hermitian parameter")
@@ -1009,17 +1022,30 @@ set localFD_Lvd \
 (   if facet_verbose
     then prints("start localFD_Lvd")
     fi;
-    let start = elapsed_ms(), Perm = thetaAct(x, lambda, vd)
+    let start = elapsed_ms(), Perm = thetaAct(x, lambda, vd), G = x.real_form
     then vlist = vd.list
-    then vlistRep = [ratvec]:
+    then vlistAct = [ratvec]:
  	 for v@i in vlist
 	     do let j = Perm[i]
-	     	in if j >= i
-		   then [(v + vlist[j])/2]
-		   else []
+	     	in if j = i
+		   then [v]
+		   else if j > i
+		   	then let w = vlist[j]
+			     then u = (v+w)/2
+			     then FV = local_vertices(G,u)
+			     in if #FV=2 and
+			     	   (FV[0] = v and FV[1] = w) or
+				   (FV[0] = w and FV[1] = v)
+			     	then [u]
+				else let () = Perm[i] := minus_1
+				     then () = Perm[j] := minus_1
+				     in []
+				fi
+			else []
+			fi
 		   fi
 	     od.##
-    then vlistAct = vlistRep.no_reps
+    {then vlistAct = vlistRep.no_reps}
     then Lvd = vlistAct.to_vertex_data
     then Llookup = Lvd.lookup
     then mapAct = vec:
