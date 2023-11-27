@@ -206,7 +206,6 @@ set FPP_lambdas_big_new(KGBElt x, VertexData vd, mat_hash inv_hash, [vec_hash]
 	      esac
 	  od.##
 
-
 {each term is a candidate lambda0 (mod comp gp char twists) and the
 corresponding Lvd, Perm, mapAct, LF, with LF the 0 and 1-diml local facets
 Should use EITHER this OR FPP_lambdas_big in one session}
@@ -356,7 +355,7 @@ set FPP_unitary_hash_general_old(RealForm G,Param_hash Uhash,
        prints("Number of FPP-unitary facets = ",Uhash.size())
     fi
 
-
+set global_facets = [[FacetVertsIndex]]: []
 set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
     (KGBElt,ratvec,VertexData,VertexData,vec,vec,[[FacetVertsIndex]],
     KTypePol_hash, Param_hash->[Param])
@@ -384,7 +383,9 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
     then times = [int]: null(#KGB(G))
-    then global_facets = low_FPP_facets(G)
+    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    	      then global_facets := low_FPP_facets(G)
+	      fi
     then current = elapsed_ms()
     then X = KGB(G)
     then () = if tilde_flag
@@ -473,7 +474,9 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
     	      then coh_ind_unip_long(G,Uhash)
 	      fi
     then times = [int]: null(#KGB(G))
-    then global_facets = low_FPP_facets(G)
+    then () = if #global_facets = 0 or #global_facets[0] != #vd.list
+    	      then global_facets := low_FPP_facets(G)
+	      fi
     then current = elapsed_ms()
     then X = KGB(G)
     then () = if tilde_flag
