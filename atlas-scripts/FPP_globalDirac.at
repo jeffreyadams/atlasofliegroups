@@ -298,7 +298,7 @@ set FPP_unitary_hash_general_old(RealForm G,Param_hash Uhash,
 	      fi
     then () = for x@j in X
     	      do {KGB} if(old_facet_verbose)
-      	      	       then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+      	      	       then prints(new_line, "KGBElt #", let (,m) = %x in m, ", #Uhash = ",
 		       	     Uhash.size(), ", #tests = ",
 		     	     unitary_test_counter.use_count(), ", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
@@ -338,7 +338,8 @@ set FPP_unitary_hash_general_old(RealForm G,Param_hash Uhash,
 	   	     then prints("time for KGBElt ",if tilde_flag then
     		     	  	  #X - j - 1 else j fi," was ",
 			  print_time_string(times[j]), "; time so far ",
-			  print_time_string(current-start))
+			  print_time_string(current-start),
+			  ", #Uhash = ", Uhash.size())
 		     fi
 	   in ()
        	 od {X}
@@ -397,7 +398,7 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
 	      fi
     then () = for x@j in X
     	      do {KGB} if(old_facet_verbose)
-      	      	       then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+      	      	       then prints(new_line, "KGBElt #", let (,m) = %x in m, ", #Uhash = ",
 		       	     Uhash.size(), ", #tests = ",
 		     	     unitary_test_counter.use_count(), ", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
@@ -424,7 +425,8 @@ set FPP_unitary_hash_general_prev(RealForm G,Param_hash Uhash,
 	   	     then prints("time for KGBElt ",if tilde_flag then
     		     	  	  #X - j - 1 else j fi," was ",
 			  print_time_string(times[j]), "; time so far ",
-			  print_time_string(current-start))
+			  print_time_string(current-start),
+			  ", #Uhash = ", Uhash.size())
 		     fi
 	   in ()
        	 od {X}
@@ -488,7 +490,7 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	      fi
     then () = for x@j in X
     	      do {KGB} if(old_facet_verbose)
-      	      	       then prints("KGBElt #", let (,m) = %x in m, ", #Uhash = ",
+      	      	       then prints(new_line, "KGBElt #", let (,m) = %x in m, ", #Uhash = ",
 		       	     Uhash.size(), ", #tests = ",
 		     	     unitary_test_counter.use_count(), ", #def lookups = ",
 		      	     deformLookupCounter.use_count(), ", #def calcs = ",
@@ -525,7 +527,8 @@ set FPP_unitary_hash_general(RealForm G,Param_hash Uhash,
 	   	     then prints("time for KGBElt ",if tilde_flag then
     		     	  	  #X - j - 1 else j fi," was ",
 			  print_time_string(times[j]), "; time so far ",
-			  print_time_string(current-start))
+			  print_time_string(current-start),
+			  ", #Uhash = ", Uhash.size())
 		     fi
 	   in ()
        	 od {X}
