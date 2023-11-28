@@ -1786,7 +1786,7 @@ built-in functions, while leaving the particulars of user defined functions
 later. This corresponds more or less to the development history of the
 interpreter, in which initially only built-in functions were catered for;
 however many of the aspects that we deal with right away, notably function
-overloading, are in fact much more recent additions than used-defined
+overloading, are in fact much more recent additions than user-defined
 functions were.
 
 There will be several classes of expressions to represent function calls,
@@ -7245,27 +7245,21 @@ the original value only at index~$i$ (it will however be implemented more
 efficiently if the storage of $a$ is not currently shared, as would usually be
 the case at least from the second such assignment to~$a$ on). The interpreter
 will treat such component assignments as a whole, using an expression type with
-three components $a,i,c$, in which $a$ must be an identifier. The latter
-requirement means that it will not be able to handle something like $a[i][j]:=c$
-even when that would seem to make sense (because $a[i]$ is not a name); however
-$m[i,j]:=c$ for matrix values $m$ will be supported. The design decision made
-here is made in the assumption that the type of assignments that $a[i][j]:=c$
-would represent are rare; when really needed they can be achieved by temporarily
-naming the value $a[i]$ and assigning to that name, and then assigning the value
-bound to the name back to~$a[i]$.
-
-In fact we need to implement a whole range of component assignments: there are
-assignments to general row-value components, to vector and matrix components
-and to matrix columns, and all this for local variables as well as for global
-ones. Like for general assignments we can start with a base class that
-implements common methods, and derive the specialised versions from it later.
-In fact by deriving from |assignment_expr| we only need to add the index as
-data member. We also provide a method |assign| that will do the real work for
-the |evaluate| methods of the derived classes, after those have located
-address of the aggregate to be modified and the type of component assignment
-to apply.
+three components $a,i,c$, in which $a$ must be an identifier. The type of this
+identifier may be one of several cases that allow component assignments: any row
+type, vector, matrix, or an Atlas-specific polynomial type. The class
+|component_assignment| below is a base class from which specific classes for
+local and global assignments will be derived; its only new data member is an
+expression |index| which at run time determines the component that is to be
+changed (the aggregate name |lhs| and expression |rhs| for the value to be
+assigned are members of its |assignment_expr| base class). This class provides a
+method |assign| that will do the real work for the |evaluate| methods of the
+derived classes, after those have located address of the aggregate to be
+modified and the type of component assignment to apply. Also, the class
+itself is templated over a Boolean |reversed| to allow for reversed indexing.
 
 @< Type definitions @>=
+
 template <bool reversed>
 struct component_assignment : public assignment_expr
 { expression_ptr index;
@@ -7274,6 +7268,40 @@ struct component_assignment : public assignment_expr
    (id_type a,expression_ptr&& i,expression_ptr&& r)
    : assignment_expr(a,std::move(r)), index(i.release()) @+{}
   virtual ~component_assignment() = default;
+
+  virtual void print (std::ostream& out) const;
+@)
+  void assign(level l,shared_value& aggregate,subscr_base::sub_type kind) const;
+};
+
+@ We define a variant of |component_assignment| called
+|component_transform_assignment|, in which the new value of the component is
+computed with aid of its previous value; this both avoids computing the indexing
+expression twice, and allows to try to optimise the case where the component can
+be modified without duplication when the transformation allows for modification
+in-place. And finally we define a base class |field_assignment| for assignments
+to a field of a value of some tuple type (whose usage requires declaring names
+field selectors for that type).
+
+@< Type definitions @>=
+
+template <bool reversed>
+struct component_transform_assignment : public assignment_expr
+{ using ptr_to_builtin = std::shared_ptr<const builtin_value<false> >;
+  source_location loc; // as in |call_base|
+  std::string name; // as in |overloaded_call|
+  ptr_to_builtin f; // as in |overloaded_builtin_call<false>|
+  wrapper_function f_ptr; // shortcut, as in |overloaded_builtin_call<false>|
+  expression_ptr index; // as in |component_assignment|
+@)
+  component_transform_assignment
+   (id_type a, expression_ptr&& i,expression_ptr&& r,
+    const ptr_to_builtin& fun,
+    const std::string& name, const source_location& loc)
+   : assignment_expr(a,std::move(r))
+   , loc(loc), name(fun->print_name), f(fun), f_ptr(fun->val)
+   , index(i.release()) @+{}
+  virtual ~component_transform_assignment() = default;
 
   virtual void print (std::ostream& out) const;
 @)
