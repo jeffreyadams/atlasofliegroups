@@ -1147,7 +1147,10 @@ finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
   extension, the finalization process on extended parameters may involve flips
   with respect to the default choices for the terms of the finalization as an
   ordinary parameter; such flips are recorded as a factor of (split integer
-  unit) s in the coefficient if the parameter in question.
+  unit) s in the coefficient if the parameter in question. For this function
+  the supplied parameter obviously does not have to be final; however, it must
+  be equilvalent to a delta-fixed parameter, and in addition its KGB element
+  x must have an involution that commutes wuth the guven involution delta.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a

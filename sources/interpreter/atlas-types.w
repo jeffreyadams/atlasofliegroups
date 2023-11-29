@@ -8371,6 +8371,12 @@ void finalize_extended_wrapper(expression_base::level l)
   test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
+  { const InvolutionTable& i_tab = rc.involution_table();
+    auto theta=i_tab.matrix(rc.kgb().involution(p->val.x()));
+    if (theta*delta->val!=delta->val*theta)
+      throw
+        runtime_error("Involution of parameter does not commute with delta");
+  }
   if (l==expression_base::no_value)
     return;
 @)
