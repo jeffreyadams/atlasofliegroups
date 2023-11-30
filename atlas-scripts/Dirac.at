@@ -6,6 +6,7 @@
 <K_highest_weights.at { for |highest_weight| }
 <hermitian.at { for |is_unitary| }
 <K_types.at { for |branch_irr| }
+<hash.at {for |make_KType_hash| }
 
 {list of theta-stable positive systems for fundamental Cartan}
 set thetaStable(RealForm G) = [KGBElt]:
