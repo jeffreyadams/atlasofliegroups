@@ -1,12 +1,13 @@
 <simple_factors.at { for simple_factors }
 <basic.at { for power_set, choices_from, sum@(int,[ratvec]), no_reps}
 <lattice.at {for vec_solve}
-<hash.at {for KTypePol_hash}
-<goodroots.at {for is_pos_on_LKTs}
-<sort.at {for no_reps}
-<to_ht.at {for is_unitary_to_ht}
-<time.at {for print_time_string}
-<Dirac.at {to restrict to local facets subject to Dirac inequality}
+<hash.at { for KTypePol_hash }
+<goodroots.at { for is_pos_on_LKTs }
+<sort.at { for no_reps }
+<to_ht.at { for is_unitary_to_ht }
+<time.at { for print_time_string }
+<Dirac.at { to restrict to local facets subject to Dirac inequality }
+<lietypes.at { for Lie_type_matrix }
 {functions for calculating FPP facet lists, both "globally" (from the
 root datum) and "local" (as relevant to parameters for a single LKT
 (x,lambda)}
@@ -110,6 +111,12 @@ improve memory use. Setting equal to folded semisimple rank means no
 use of shifted char formula.}
 set facet_codim = int: 3
 
+{This is the largest dimension of an FPP facet that can yield a local
+edge. Three is possible only in simply connected type D; otherwise two
+is possible only if the center has even order. See [adjust_global_top]
+below.}
+set global_top = int: 3
+
 {If the distinguished involution delta of G is nontrivial, then all
 UNITARY infinitesimal characters must be delta-fixed, and so lie in
 (h*)^\delta. They are most efficiently calculated not using the affine
@@ -197,6 +204,20 @@ set cofolded(RealForm G) = (RootDatum, mat, int):
 	 )
     in (rdB,M,j0)
 
+{3 is possible only for Spin(4k)}
+set adjust_global_top(RealForm G) = void:
+    let (rd,,) = cofolded(G)
+    then CFLT = Lie_type_matrix(rd)
+    then CTQ = center_torsion_quotient(G)
+    then () = if any(for j:7 do CFLT[3][2*j + 1] > 0 od) and
+    	      	 #CTQ = 2
+    	      then global_top :=3 ; return ()
+	      fi
+    then () = if any( for v in CTQ do is_even(v.denom) od)
+    	      then global_top :=2; return ()
+	      fi
+    then () = global_top :=1
+    in () 
 
 { An affine root datum is a root datum rd (which in atlas means with
 chosen pos_roots), and a list of the lowest coroots betav[j] in each
@@ -295,6 +316,9 @@ set_type
 , LocalFacetDataKHash = (VertexData v_data_local, KGBElt x,
   ratvec lambda, [[LocalFacetVertsKHash]] LFverts)
 ]
+
+{meant to hold FPP_facets up to dimension global_top}
+set global_facets = [[FacetVertsIndex]]: []
 
 set to_vertex_data ([ratvec] vlist) = VertexData: (vlist,index_in(vlist))
 
@@ -764,7 +788,7 @@ set FPP_facets (SimpleAffine Affd, [ratvec] vlist, int dim,
     [FacetVertsIndex]:
     FPP_facets(Affd, to_vertex_data(vlist), dim, j)
 
-{global facets of dimensions zero to three, for use in local edge calculations}
+{global facets of dimensions zero to global_top, for use in local edge calculations}
 set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
     if G.semisimple_rank = 0 then []
     else let start = elapsed_ms(), (Affd, M, j0) = cofolded(G)
@@ -774,7 +798,7 @@ set low_FPP_facets(RealForm G) = [[FacetVertsIndex]]:
 	      	   then prints("start low_FPP_facets")
 	           fi
     	 then answer = [[vec]]: [[vec]: for k:#Avlist do [k] od] ##
-       	    for d:3 from 1
+       	    for d:global_top from 1
        	    do if d < Affd.semisimple_rank+1 then FPP_facets(Affd, Avd, d, j0)
 	       else []
 	       fi
@@ -812,7 +836,7 @@ set FPP_add_dim (SimpleAffine Affd, int dim, [[FacetVertsIndex]] low_facets) =
     in low_facets#Ldim
 )
 
-{global facets of dimensions zero to three, for use in local edge calculations
+{global facets of dimensions zero to global_top, for use in local edge calculations
 This version is more than ten times slower than low_FPP_facets for F4.}
 {try instead to use super_facets?}
 set low_FPP_facets_B(RealForm G) = [[FacetVertsIndex]]:
@@ -825,7 +849,7 @@ set low_FPP_facets_B(RealForm G) = [[FacetVertsIndex]]:
 	              fi
 	    then low_facets = [[vec]]: [for k:#Avlist do [k] od]
     	    then () = low_facets:= low_facets # FPP_facets(Affd, Avlist, 1, j0)
-	    then () = for d:2 from 2
+	    then () = for d:global_top-1 from 2
 	      	      do low_facets:= FPP_add_dim(Affd, d, low_facets)
 	      	      od
 	    then () = if time_verbose
@@ -864,7 +888,7 @@ set FPP_add_dim_B (SimpleAffine Affd, int dim, [[FacetVertsIndex]] low_facets) =
     in low_facets#Ldim
 )
 
-{global facets of dimensions zero to three, for use in local edge calculations
+{global facets of dimensions zero to global_top, for use in local edge calculations
 This version is more than ten times slower than low_FPP_facets for F4.}
 {try instead to use super_facets?}
 set low_FPP_facets_BB(RealForm G) = [[FacetVertsIndex]]:
@@ -877,7 +901,7 @@ set low_FPP_facets_BB(RealForm G) = [[FacetVertsIndex]]:
 	              fi
 	    then low_facets = [[vec]]: [for k:#Avlist do [k] od]
     	    then () = low_facets:= low_facets # FPP_facets(Affd, Avlist, 1, j0)
-	    then () = for d:2 from 2
+	    then () = for d:global_top-1 from 2
 	      	      do low_facets:= FPP_add_dim_B(Affd, d, low_facets)
 	      	      od
 	    then () = if time_verbose
@@ -1488,7 +1512,6 @@ set localFD_KHash12 \
 {this is the largest dimension of a global facet on which an element tau in Z(G)^hat of order two can act
  with exactly two orbits on the vertices. The bound 3 is only obtained for D_2n.}
 
-set global_top = int: 3
 {takes local vertices LF, and adds local 1-d facets; so output is size
 2. Only depends on x.involution and dlambda. MAY NOT BE HERMITIAN}
 set localFD_1\
@@ -2058,7 +2081,7 @@ then answer = [vec]:
 in answer
 fi
 
-{global facets of dimensions zero to three, for use in local edge calculations
+{global facets of dimensions zero to global_top, for use in local edge calculations
 This version is better than _B, and _BB, but still many times slower than low_FPP_facets.}
 set low_FPP_facets_C(RealForm G) = [[FacetVertsIndex]]:
     let start = elapsed_ms()
@@ -2070,7 +2093,7 @@ set low_FPP_facets_C(RealForm G) = [[FacetVertsIndex]]:
 	              fi
 	    then low_facets = [[vec]]: [for k:#Avlist do [k] od]
     	    then () = low_facets:= low_facets # FPP_facets(Affd, Avlist, 1, j0)
-	    then () = for d:2 from 1
+	    then () = for d:global_top from 1
 	      	      do low_facets:= low_facets # superFacets(low_facets[0],low_facets[d],0)
 	      	      od
 	    then () = if time_verbose

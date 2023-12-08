@@ -532,7 +532,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
            {remove from LFDKH all facets failing is_unitary}
     then () = LFDKH := local_testK_hash(x,lambda,Lvd, LFDKH, eq, gr, CLBF, tester, Uhash)
-    then () = if test_verbose then prints("unitary facet counts to dim 1: ",
+    then () = if test_verbose then prints("unitary candidate facet counts to dim 1: ",
     for list in LFDKH do #list od) fi
     then D = int:1
     then () = while (D <= rank(x.involution-1) - 1  ) and
