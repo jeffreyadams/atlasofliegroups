@@ -1,5 +1,5 @@
 < basic.at {for x}
-
+<groups.at {for GL(1,R)}
 {These functions are meant for writing .at files that can later be
 read by atlas. For files of type [vec], such writing can be done ad
 hoc very easily; but the ad hoc files, which might look like
