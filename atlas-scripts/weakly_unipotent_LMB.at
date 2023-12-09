@@ -1,0 +1,230 @@
+<partitions.at
+<basic.at
+<sort.at { for |sort_u@(int,int->bool)| and |merge@(int,int->bool)| }
+<Weylgroup.at
+<translate.at
+
+{given a positive rational number x, and a positive integer n, this function lists all n-tuples [a_1,...,a_n] of nonnegative integers such that \sum a_i < x}
+
+set tuples(rat x, int n) = [vec]:
+let N=ceil(x)-1 in
+compositions_le(N,n)
+
+{given a positive rational number x and a ratvec weights, this function lists all #weights-tuples [a_1,...,a_n] of nonnegative 
+integers such that \sum a_i weights_i < x}
+
+
+set tuples_weighted(rat x, ratvec weights) = [vec]:
+let t=min(for w in weights do floor(w) od) then
+n=#weights then
+tuples=tuples(x/t,n) in
+##(for X in tuples do if X*weights<x then [X] else [] fi od)
+
+
+{given a ratvec X with nonnegative entries, a ratvec weights with positive entries, and a ratvec Y with arbitrary entries, lists all ratvecs Z such that
+1) sum Z_i weights_i < sum X_i weights_i
+2) Y_i - Z_i is an integer for each i}
+
+set tuples_weighted(ratvec X, ratvec weights, ratvec Y) = [ratvec]:
+let remainders=for y in Y do y-floor(y) od then
+total=X*weights then
+tuples=tuples_weighted(total,weights) in
+##(for Z in tuples do if (Z+remainders)*weights<X*weights then [Z+remainders] else [] fi od)
+
+
+{given a dominant weight \lambda and an arbitrary weight \gamma, lists all dominant weights such that 
+1) <\mu, \rho^{\vee}> < <\lambda, \rho^{\vee}>
+2) \gamma-\mu is in the weight lattice}
+
+set candidates_dominant(RootDatum G, ratvec lambda, ratvec gamma) = [ratvec]:
+let F=fundamental_weights(G) then
+C=simple_coroots(G) then
+X=for c in C do lambda*c od then
+Y=for c in C do gamma*c od then
+weights=for f in F do f*G.rho_check od then
+tuples=tuples_weighted(X,weights,Y) in
+for Z in tuples do sum(#F[0],for z@i in Z do z*F[i] od) od
+
+
+set W_orbit(RootDatum G,[int] S,((int,ratvec)->ratvec) action, ratvec gamma)=
+let orbit=[([int],ratvec)]:[([],gamma)] then
+todo=[([int],ratvec)]:[([],gamma)] in
+while #todo>0 do
+   let (w,v)=todo[0] in
+   for s in S do
+   let sv=action(s,v) then
+   j=first(for (,y) in orbit do y=sv od) in 
+   if j=-1 then orbit#:=([s]##w,sv); todo#:=([s]##w,sv) fi
+   od;
+   todo:=todo[1:]
+od;orbit
+
+set W_orbit(RootDatum G,((int,ratvec)->ratvec) action, ratvec gamma)=
+W_orbit(G,for i:ss_rank(G) do i od,action,gamma)
+
+set star_action(RootDatum G,int i, ratvec v)=
+let w=reflect(G,i,v)
+in dominant(integrality_datum(G,w),w)
+
+set star_W_orbit(RootDatum G,ratvec v)=
+let f(int i,ratvec v)=star_action(G,i,v) in W_orbit(G,f,v)
+
+set W_mod_W_int(RootDatum G,ratvec v)=for (w,) in star_W_orbit(G,v) do W_elt(G,w) od
+
+set products([WeylElt] sub,[WeylElt] quotient)=
+##for w in sub do
+ for z in quotient do
+  w*z
+ od
+od
+
+set embed_W(RootDatum G,RootDatum H)=
+for w in H.W do W_elt(G,w.matrix) od
+
+set W_mod_W_int_long(RootDatum G, ratvec v)=
+let H=integrality_datum(G,v) in
+(W_mod_W_int(G,v), embed_W(G,H))
+
+set sub_quotient_integrality(RootDatum G, ratvec v)=
+let (H,Q)=W_mod_W_int_long(G,v) in
+prints("integrality datum: ",integrality_datum(G,v));
+prints("Order of W(G): ", order_W(G));
+prints("Order W(lambda): ", #H,new_line, "Order W/W(lambda): ", #Q);(H,Q)
+
+
+set candidates_all_weight_lattice(RootDatum G, ratvec lambda) = [ratvec]:
+let ws=W_mod_W_int(G,lambda) in
+##(for w in ws do let list=candidates_dominant(G,lambda,w*lambda) in
+for x in list do w.inverse*x od od)
+
+set in_root_lattice(RootDatum G, ratvec lambda)= bool:
+let F=fundamental_coweights(G) then
+X=for f in F do f*lambda od in
+sum(for x in X do #(x=floor(x)) od)=#X
+
+
+{extracts ratvecs from candidates_all which differ from lambda by root lattice}
+
+set candidates_all(RootDatum G, ratvec lambda) = [ratvec]:
+let C=candidates_all_weight_lattice(G,lambda) in
+##(for x in C do if in_root_lattice(G,x-lambda) then [x] else [] fi od)
+
+
+set translate_crude(Param p, ratvec gamma) = ParamPol:
+let lambda=p.infinitesimal_character then
+G=p.root_datum in
+T_param(character_formula(T_param(p,lambda+2*G.rho)),gamma)
+
+
+set is_killed(Param p, ratvec gamma) = bool:
+#monomials(translate_crude(p,gamma))=0
+
+
+
+set filter_by_translation_complex(RootDatum G, ratvec lambda, [ratvec] list) = ([ratvec],[ratvec]):
+let GC=G.complexification then
+p=first_param(finalize(parameter(x_open(GC),GC.rho,lambda##lambda))) then
+good=[ratvec]:[] then
+bad= [ratvec]:[]  in
+for gamma in list do 
+if is_killed(p,gamma##gamma) then good#:=gamma else bad#:=gamma fi od;
+(good,bad)
+
+
+set filter_by_translation_complex_integral(RootDatum G, ratvec lambda, [ratvec] list) = ([ratvec],[ratvec]):
+let GC=integrality_datum(G,lambda).complexification then
+p=first_param(finalize(parameter(x_open(GC),GC.rho,lambda##lambda))) then
+good=[ratvec]:[] then
+bad= [ratvec]:[]  in
+for gamma in list do
+if is_killed(p,gamma##gamma) then good#:=gamma else bad#:=gamma fi od;
+(good,bad)
+
+
+
+set is_weakly_unipotent_slow(RootDatum G, ratvec lambda) = bool:
+let list=candidates_all(G,lambda) in
+if #list=0 then true else
+let (good,bad)=filter_by_translation_complex(G,lambda,list) in
+#bad=0 fi
+
+
+set is_weakly_unipotent_faster(RootDatum G, ratvec lambda) = bool:
+let list=candidates_all(G,lambda) in
+if #list=0 then true else
+let (good,bad)=filter_by_translation_complex_integral(G,lambda,list) in
+#bad=0 fi
+
+
+
+
+
+
+
+
+{major time suck is manipulating parameters for COMPLEX group. Functions below attempt to speed things up by translating reps of split form of integrality datum}
+
+
+{returns a parameter for the split form of the integrality datum
+having infl char gamma and maximal primitive ideal}
+
+set max_ideal_param(RootDatum rd, ratvec gamma) = Param:
+    let startTime = elapsed_ms()
+    then rd_int = integrality_datum(rd,gamma)
+    then () = gamma:=dominant(rd_int,gamma)
+    then rd_int_sc = rd_int.simply_connected
+    then G_int_sc = rd_int_sc.split_form, rho_int_sc = rd_int_sc.rho
+    then x = x_open(G_int_sc)
+    then () = gamma:= sum(rd_int.semisimple_rank, for xi@j in rd_int_sc.fundamental_weights
+	 	 		  do (gamma*rd_int.simple_coroots[j])*xi
+				  od)
+    then D = GK_dim_maximal_ideal(rd_int_sc,gamma)
+    then tau = for j:G_int_sc.rank
+    	       do let m = gamma*G_int_sc.simple_coroots[j]
+	       	  in if m > 0 and m\2 = 0
+	       	     then [j]
+		     else []
+		     fi
+	       od.##
+    then rest = complement(G_int_sc.semisimple_rank,tau)
+    then first_lambda = rho_int_sc + sum(G_int_sc.rank, for j in tau
+    	 	      		      do G_int_sc.fundamental_weights[j]
+				      od)
+    then () = for b in box(2,#rest)
+    	      do let lambda = rho_int_sc+ sum(G_int_sc.rank,
+	      	     	    for j@k in b do j*G_int_sc.fundamental_weights[rest[k]] od)
+	      	 then p = first_param(finalize(parameter(x, lambda, gamma)))
+	      	 in if GK_dim(p) = D
+		    then prints("time required was ",
+		    print_time_string(elapsed_ms() - startTime)); return p
+		    fi
+	      od
+    {if we get here, something went wrong!}
+    then G_int_sc_C = rd_int_sc.complexification
+    then xC = x_open(G_int_sc_C)
+    then () = prints("Failed to find split group Param; here's one for GC")
+    in first_param(finalize(parameter(xC,rho_int_sc##rho_int_sc,gamma##gamma)))
+
+
+
+set filter_by_translation_split(RootDatum G, ratvec lambda, [ratvec] list) = ([ratvec],[ratvec]):
+let G_int=integrality_datum(G,lambda) then
+p = max_ideal_param(G,lambda) then
+G_int_sc = p.real_form then
+good=[ratvec]:[] then
+bad= [ratvec]:[]  in
+for gamma in list do
+	let gamma_prime=sum(G_int.semisimple_rank, for xi@j in G_int_sc.fundamental_weights
+                                  do (gamma*G_int.simple_coroots[j])*xi
+                                  od)
+	in if is_killed(p,gamma_prime) then good#:=gamma else bad#:=gamma fi od;
+(good,bad)
+            
+
+
+
+set is_weakly_unipotent_fast(RootDatum G, ratvec lambda) = bool:
+let list=candidates_all(G,lambda) in
+if #list=0 then true else
+let (good,bad)=filter_by_translation_split(G,lambda,list) in
+#bad=0 fi
