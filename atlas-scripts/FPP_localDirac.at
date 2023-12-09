@@ -440,7 +440,7 @@ set test_string = ""
 set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
     [[LocalFacetVertsHash]] LFVH, [[int]] eq, [[int]] gr,
     [vec] classListByFacet, Param_hash Uhash, (Param->bool) tester) = [Param]:
-    let NumClasses = #eq, printInterval = int: 1, start = elapsed_ms()
+    let NumClasses = #eq, printInterval = int: 1{, start = elapsed_ms()}
     { then listZero = [ratvec]: if #LFVH = 0
     	 	    	      then []
     			      else for w in LFVH[0] do Lvd.list[w[0]] od
@@ -496,10 +496,10 @@ set local_test_hash(KGBElt x, ratvec lambda, VertexData Lvd,
        	       	    	   unitary_by_dim, test_string);
 		 prints("number of tests = ",unitary_test_counter.use_count())
 	      fi
-    then time = elapsed_ms() - start
+    { then time = elapsed_ms() - start
     then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      " for UParams calculation by local_test_hash") fi
+	      " for UParams calculation by local_test_hash") fi}
     in  UParams
 
 { Input is candidate facets, and graph info. Output is the unitary ones.}
@@ -622,7 +622,7 @@ set local_test_GEO_hash_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexData 
    then time = elapsed_ms() - start
    then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      " for UParams calculation ") fi
+	      " for UParams calculation ", test_string, new_line) fi
    in UParams
 
 {How many steps to use in is_unitary_def_test(p, steps) in def_dumb}
@@ -737,7 +737,7 @@ set local_test_GEO_hash_def_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexD
    then time = elapsed_ms() - start
    then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      " for UParams calculation ") fi
+	      " for UParams calculation ", test_string, new_line) fi
    in UParams
 
 {assume LF is verts and edges, herm and pos on LKTs and Dirac?}
@@ -814,7 +814,7 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     let () = hashCounter.use()
     then () = test_string:= " using local_test_GEO_hash"
     then () = if(facet_verbose) then prints("hts = ",hts) fi
-    then long_out_temp_flag = long_out_flag, r = rank(x.involution -1)
+    then long_out_temp_flag = long_out_flag, r = rank(x.involution -1), start = elapsed_ms()
     then () = long_out_flag:=false {to allow using local_test_hash without recording Params}
     {then () = prints("start no_dumb, hts = ",hts)}
     then edge_offset_temp = edge_offset
@@ -869,7 +869,13 @@ set local_test_GEO_hash_no_dumb(KGBElt x, ratvec lambda, VertexData vd, VertexDa
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
     then () = long_out_flag := long_out_temp_flag
-    in local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then UParams = local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ", test_string, new_line) fi
+    in UParams
+
 
 {Assume we have local vertices and edges LF, already herm, Dirac, pos on LKTs}
 set local_test_GEO_hash(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
@@ -957,7 +963,7 @@ set hash2Counter = make_counter()
 {This version assumes edges and vertices already computed, with herm and pos on LKTs; called by one_level}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, {vec Perm,
     vec mapAct,} [[FacetVertsIndex]] LF, KTypePol_hash pol_hash, Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1
+    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
     then () = if {TINY CASE} #Lvd.list=1
     	      then let p = parameter(x,lambda,Lvd.list[0])
 	      	   then Q = monomials(finalize(p))
@@ -1049,7 +1055,13 @@ set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd,
      	     od
     {now have facets of all dims, to height hts[?]}
     then ((eq,gr),IUCL,CLBF) = localGraphK(LFDKH)
-    in local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then UParams = local_test_hash(x,lambda,Lvd,LFDKH,eq,gr,CLBF,Uhash)
+    then time = elapsed_ms() - start
+    then () = if time_verbose
+	      then prints("     ", print_time_string(time),
+	      " for UParams calculation ", test_string, new_line) fi
+    in UParams
+
 
 {Compute 0 and 1 facets, pass to previous}
 set local_test_GEO_hash2(KGBElt x, ratvec lambda, VertexData vd, VertexData Lvd, vec Perm,
@@ -1107,7 +1119,7 @@ set hash_one_levelCounter = make_counter()
 set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
     VertexData Lvd, {vec Perm, vec mapAct,} [[FacetVertsIndex]] LF, KTypePol_hash pol_hash,
     Param_hash Uhash) = [Param]:
-    let G = x.real_form, thetaMinus = x.involution - 1
+    let G = x.real_form, thetaMinus = x.involution - 1, start = elapsed_ms()
     then vertexDiff = #Lvd.list/#vd.list
     then approxVertexDiff = vertexDiff.numer*100\vertexDiff.denom
     then () = if approxVertexDiff < vert_diff_cutoff and revert_flag
@@ -1289,9 +1301,11 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 		   					 else Uhash.lookup(p).>= or
 							      is_unitary_test(p,hts[LAST])
 							 fi)
-              then () = if test_verbose then prints("total number of tests = ",
-                                        unitary_test_counter.use_count()) fi
-              in UParams
+    	      then time = elapsed_ms() - start
+    	      then () = if time_verbose
+	      	      	then prints("     ", print_time_string(time),
+	      		     	    " for UParams calculation ", test_string, new_line) fi
+               in UParams
          else let UParams =
                   for list@d in LFDKH
                   do for v in list
@@ -1315,9 +1329,12 @@ set local_test_GEO_hash_one_level(KGBElt x, ratvec lambda, VertexData vd,
 	      in UParams
 	 fi
     then time = elapsed_ms() - start
-    then () = if time_verbose and one_ht < 0
+    then () = if time_verbose
 	      then prints("     ", print_time_string(time),
-	      " for UParams calculation ") fi
+	      " for UParams calculation ", test_string, new_line){;}
+	      {then () = if test_verbose then prints("total number of tests = ",
+                                        unitary_test_counter.use_count())}
+	      fi
    in UParams
    {fi}
 
